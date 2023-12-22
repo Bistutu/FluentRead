@@ -21,8 +21,7 @@ func TestInsertAndGet(t *testing.T) {
 		Model: gorm.Model{
 			ID: 0,
 		},
-		Hash: signature,
-		//Route:      "consul.io",
+		Hash:       signature,
 		Source:     text,
 		TargetType: 1,
 		Target:     target,

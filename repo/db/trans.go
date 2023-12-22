@@ -10,9 +10,10 @@ import (
 
 /*插入/更新*/
 
+// InsertTrans 插入一条翻译记录，冲突时不更新任何字段
 func InsertTrans(ctx context.Context, model *models.Translation) (err error) {
 	return db.Clauses(clause.OnConflict{
-		UpdateAll: true,
+		UpdateAll: false,
 	}).Create(model).Error
 }
 
