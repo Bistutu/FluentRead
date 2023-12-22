@@ -25,7 +25,7 @@ func TestAliTransData(t *testing.T) {
 		assert.NoError(t, err)
 		item.Target = translatedText
 		item.Translated = true
-		err = db.InsertTrans(ctx, item)
+		err = db.UpdateTrans(ctx, item)
 		assert.NoError(t, err)
 		fmt.Printf("第 %d 条翻译完成：%v\n", count, translatedText)
 		count++

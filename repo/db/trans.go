@@ -17,6 +17,10 @@ func InsertTrans(ctx context.Context, model *models.Translation) (err error) {
 	}).Create(model).Error
 }
 
+func UpdateTrans(ctx context.Context, model *models.Translation) (err error) {
+	return db.Updates(model).Error
+}
+
 func BatchInsert(ctx context.Context, models []*models.Translation) error {
 	// 发生冲突时，只更新 updated_at 字段
 	return db.Clauses(clause.OnConflict{

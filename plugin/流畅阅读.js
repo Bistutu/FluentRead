@@ -51,7 +51,7 @@ const debouncedObserveDOM = debounce(observeDOM, debouncedTime);
             const observer = new MutationObserver(function (mutations, obs) {
                 mutations.forEach(mutation => {
                     // TODO deleted
-                    console.log("变更记录: ", mutation.target);
+                    //console.log("变更记录: ", mutation.target);
 
                     // 处理每个变更记录
                     if (["div", "span", "nav"].includes(mutation.target.tagName.toLowerCase())) {

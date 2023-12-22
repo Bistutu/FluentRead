@@ -7,6 +7,7 @@
 // @icon         [icon URL]
 // @match        *://*/*
 // @grant        none
+// @run-at       document-idle
 // ==/UserScript==
 
 let s = new Set();
@@ -17,21 +18,24 @@ const debouncedObserveDOM = debounce(echo, debouncedTime);
 (function () {
     'use strict';
 
-    parseDfs(document.body);
-    debouncedObserveDOM();
+    // 延迟执行，等待页面加载完成
+    setTimeout(() => {
+        parseDfs(document.body);
+        debouncedObserveDOM();
 
-    // 使用MutationObserver监听DOM变化，配置和启动观察器
-    const observer = new MutationObserver(function (mutations, obs) {
-        mutations.forEach(mutation => {
-
-            // 处理每个变更记录
-            if (["div", "span", "nav"].includes(mutation.target.tagName.toLowerCase())) {
-                parseDfs(mutation.target)
-                debouncedObserveDOM();
-            }
+        // 使用MutationObserver监听DOM变化，配置和启动观察器
+        const observer = new MutationObserver(function (mutations, obs) {
+            mutations.forEach(mutation => {
+                // 处理每个变更记录
+                if (["div", "span", "nav"].includes(mutation.target.tagName.toLowerCase())) {
+                    parseDfs(mutation.target);
+                    debouncedObserveDOM();
+                }
+            });
         });
-    });
-    observer.observe(document.body, {childList: true, subtree: true});
+        observer.observe(document.body, { childList: true, subtree: true });
+    }, 2000); // 延迟时间设置为2000毫秒（2秒）
+
 
 })();
 
@@ -61,7 +65,7 @@ function parseDfs(node) {
 
 function parseText(node) {
     let text = node.textContent.replace(/\u00A0/g, ' ').trim();
-    if (text.length > 0 && isNonChinese(text)) {
+    if (text.length > 0 && isNonChinese(text)&&isEnglish(text)) {
         s.add(text);
     }
 }
@@ -70,10 +74,10 @@ function processInput(node) {
     let placeholder = node.placeholder.replace(/\u00A0/g, ' ').trim();
     let value = node.value.replace(/\u00A0/g, ' ').trim();
 
-    if (placeholder.length > 0 && isNonChinese(placeholder)) {
+    if (placeholder.length > 0 && isNonChinese(placeholder)&&isEnglish(placeholder)) {
         s.add(placeholder);
     }
-    if (value.length > 0 && isNonChinese(value)) {
+    if (value.length > 0 && isNonChinese(value)&&isEnglish(value)) {
         s.add(value);
     }
 }
@@ -81,6 +85,11 @@ function processInput(node) {
 // 判断字符串是非中文
 function isNonChinese(text) {
     return !/[\u4e00-\u9fa5]/.test(text);
+}
+
+// 判断字符串是英文
+function isEnglish(text) {
+    return /^[a-zA-Z]+$/.test(text);
 }
 
 // 防抖函数

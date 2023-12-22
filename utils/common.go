@@ -4,7 +4,6 @@ package utils
 import (
 	"net/url"
 	"os"
-	"regexp"
 	"unicode"
 
 	"FluentRead/misc/log"
@@ -58,5 +57,3 @@ func GetEnvDefault(env string, backup string) string {
 	}
 	return value
 }
-
-var re, _ = regexp.Compile("[a-zA-Z]")
