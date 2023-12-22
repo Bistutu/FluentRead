@@ -13,7 +13,7 @@ var (
 	ctx = context.Background()
 )
 
-func TestCountCharacter(t *testing.T) {
+func TestNotTransCountCharacter(t *testing.T) {
 
 	listNotTranslated, err := db.ListNotTranslated(ctx)
 	assert.NoError(t, err)
@@ -22,4 +22,15 @@ func TestCountCharacter(t *testing.T) {
 		count += len(item.Source)
 	}
 	t.Log("未翻译的字符数：", count)
+}
+
+func TestCountCharacter(t *testing.T) {
+
+	listNotTranslated, err := db.ListTrans(ctx)
+	assert.NoError(t, err)
+	count := 0
+	for _, item := range listNotTranslated {
+		count += len(item.Source)
+	}
+	t.Log("已翻译的字符数：", count)
 }

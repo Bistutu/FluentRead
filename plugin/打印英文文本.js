@@ -18,22 +18,22 @@ const debounced = debounce(echo, debouncedTime);
 (function () {
     'use strict';
 
-    // setTimeout(() => {
-    parseDfs(document.body);
-    debounced();
+    setTimeout(() => {
+        parseDfs(document.body);
+        debounced();
 
-    // 使用MutationObserver监听DOM变化，配置和启动观察器
-    const observer = new MutationObserver(function (mutations, obs) {
-        mutations.forEach(mutation => {
-            // 处理每个变更记录
-            if (["div", "span", "nav"].includes(mutation.target.tagName.toLowerCase())) {
-                parseDfs(mutation.target);
-                debounced();
-            }
+        // 使用MutationObserver监听DOM变化，配置和启动观察器
+        const observer = new MutationObserver(function (mutations, obs) {
+            mutations.forEach(mutation => {
+                // 处理每个变更记录
+                if (["div", "span", "nav"].includes(mutation.target.tagName.toLowerCase())) {
+                    parseDfs(mutation.target);
+                    debounced();
+                }
+            });
         });
-    });
-    observer.observe(document.body, {childList: true, subtree: true});
-    // }, 2000); // 延迟时间设置为2000毫秒（2秒）
+        observer.observe(document.body, {childList: true, subtree: true});
+    }, 2000); // 延迟时间设置为2000毫秒（2秒）
 
 
 })();
@@ -50,8 +50,8 @@ function echo() {
 // 递归提取节点的文本内容
 function parseDfs(node) {
     switch (true) {
-        case node.nodeType === Node.ELEMENT_NODE && ["head", "script", "style", "img", "noscript"].includes(node.tagName.toLowerCase()):
-            break
+        case node.nodeType === Node.ELEMENT_NODE && ["head","picture", "script", "style", "img", "noscript"].includes(node.tagName.toLowerCase()):
+            return
         case node.nodeType === Node.ELEMENT_NODE && ["input", "textarea"].includes(node.tagName.toLowerCase()):
             processInput(node);
             break
