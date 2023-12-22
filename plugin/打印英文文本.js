@@ -12,37 +12,40 @@
 
 let s = new Set();
 const debouncedTime = 1000;
-const debouncedObserveDOM = debounce(echo, debouncedTime);
+const debounced = debounce(echo, debouncedTime);
 
 
 (function () {
     'use strict';
 
-    // 延迟执行，等待页面加载完成
-    setTimeout(() => {
-        parseDfs(document.body);
-        debouncedObserveDOM();
+    // setTimeout(() => {
+    parseDfs(document.body);
+    debounced();
 
-        // 使用MutationObserver监听DOM变化，配置和启动观察器
-        const observer = new MutationObserver(function (mutations, obs) {
-            mutations.forEach(mutation => {
-                // 处理每个变更记录
-                if (["div", "span", "nav"].includes(mutation.target.tagName.toLowerCase())) {
-                    parseDfs(mutation.target);
-                    debouncedObserveDOM();
-                }
-            });
+    // 使用MutationObserver监听DOM变化，配置和启动观察器
+    const observer = new MutationObserver(function (mutations, obs) {
+        mutations.forEach(mutation => {
+            // 处理每个变更记录
+            if (["div", "span", "nav"].includes(mutation.target.tagName.toLowerCase())) {
+                parseDfs(mutation.target);
+                debounced();
+            }
         });
-        observer.observe(document.body, { childList: true, subtree: true });
-    }, 2000); // 延迟时间设置为2000毫秒（2秒）
+    });
+    observer.observe(document.body, {childList: true, subtree: true});
+    // }, 2000); // 延迟时间设置为2000毫秒（2秒）
 
 
 })();
 
 function echo() {
-    console.log(s);
+    // 将Set转换为数组
+    let arrayFromSet = Array.from(s);
+    // 对数组进行字母排序，忽略大小写
+    arrayFromSet.sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+    // 输出排序后的数组，保持原始大小写
+    console.log(arrayFromSet);
 }
-
 
 // 递归提取节点的文本内容
 function parseDfs(node) {
@@ -65,7 +68,7 @@ function parseDfs(node) {
 
 function parseText(node) {
     let text = node.textContent.replace(/\u00A0/g, ' ').trim();
-    if (text.length > 0 && isNonChinese(text)&&isEnglish(text)) {
+    if (text.length > 0 && isNonChinese(text) && isEnglish(text)) {
         s.add(text);
     }
 }
@@ -74,10 +77,10 @@ function processInput(node) {
     let placeholder = node.placeholder.replace(/\u00A0/g, ' ').trim();
     let value = node.value.replace(/\u00A0/g, ' ').trim();
 
-    if (placeholder.length > 0 && isNonChinese(placeholder)&&isEnglish(placeholder)) {
+    if (placeholder.length > 0 && isNonChinese(placeholder) && isEnglish(placeholder)) {
         s.add(placeholder);
     }
-    if (value.length > 0 && isNonChinese(value)&&isEnglish(value)) {
+    if (value.length > 0 && isNonChinese(value) && isEnglish(value)) {
         s.add(value);
     }
 }
@@ -89,8 +92,15 @@ function isNonChinese(text) {
 
 // 判断字符串是英文
 function isEnglish(text) {
-    return /^[a-zA-Z]+$/.test(text);
+    for (let i = 0; i < text.length; i++) {
+        let v = text.charCodeAt(i);
+        if ((v >= 'a'.charCodeAt(0) && v <= 'z'.charCodeAt(0)) || (v >= 'A'.charCodeAt(0) && v <= 'Z'.charCodeAt(0))) {
+            return true;
+        }
+    }
+    return false;
 }
+
 
 // 防抖函数
 function debounce(func, wait) {
