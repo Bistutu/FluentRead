@@ -44,8 +44,8 @@ const debouncedObserveDOM = debounce(observeDOM, 200);
             const observer = new MutationObserver(function (mutations, obs) {
                 mutations.forEach(mutation => {
                     // 处理每个变更记录
-                    // console.log("变更记录: ", mutation.target.tagName);
-                    if (["div"].includes(mutation.target.tagName.toLowerCase())) {
+                    console.log("变更记录: ", mutation.target.tagName);
+                    if (["div","span","nav"].includes(mutation.target.tagName.toLowerCase())) {
                         handleDOMUpdate(mutation.target);
                     }
                 });
