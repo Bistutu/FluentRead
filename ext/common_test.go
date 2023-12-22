@@ -32,5 +32,5 @@ func TestCountCharacter(t *testing.T) {
 	for _, item := range listNotTranslated {
 		count += len(item.Source)
 	}
-	t.Log("已翻译的字符数：", count)
+	t.Log("全部字符数：", count)
 }
