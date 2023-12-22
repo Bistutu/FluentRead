@@ -28,7 +28,7 @@ func TestInsertTrans_JSON(t *testing.T) {
 	pageId, err := db.InsertPage(ctx, &models.Page{Link: link})
 	assert.NoError(t, err)
 	// 打开文件
-	file, err := os.Open("manual_json.json")
+	file, err := os.Open("manual.json")
 	assert.NoError(t, err)
 	defer file.Close()
 	bytes, _ := io.ReadAll(file)
