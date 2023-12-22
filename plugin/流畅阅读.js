@@ -15,21 +15,28 @@
 // @run-at       document-start
 // ==/UserScript==
 
+
+// URL 相关
 const METHOD = "POST";
-// 解析 URL
 let url = new URL(window.location.href.split('?')[0]);
+
 // cacheKey
 const checkKey = "fluent_read_check";
 const pageKey = "page:%s";
 
+// 时间
+// const expiringTime = 86400000; // 24小时
+const expiringTime = 30000; // 30秒
+const debouncedTime = 200;  // 200毫秒
+
+// 服务端地址
 // const readLink = "https://fr.unmeta.cn/read";
 // const preReadLink = "https://fr.unmeta.cn/preread";
-
 const readLink = "http://127.0.0.1:80/read";
 const preReadLink = "http://127.0.0.1:80/preread";
 
-// 使用防抖包装观察函数
-const debouncedObserveDOM = debounce(observeDOM, 200);
+// 防抖包装观察函数
+const debouncedObserveDOM = debounce(observeDOM, debouncedTime);
 
 (function () {
     'use strict';
@@ -43,14 +50,16 @@ const debouncedObserveDOM = debounce(observeDOM, 200);
             // 添加监听器：使用MutationObserver监听DOM变化，并配置和启动观察器
             const observer = new MutationObserver(function (mutations, obs) {
                 mutations.forEach(mutation => {
+                    // TODO deleted
+                    console.log("变更记录: ", mutation.target);
+
                     // 处理每个变更记录
-                    console.log("变更记录: ", mutation.target.tagName);
-                    if (["div","span","nav"].includes(mutation.target.tagName.toLowerCase())) {
+                    if (["div", "span", "nav"].includes(mutation.target.tagName.toLowerCase())) {
                         handleDOMUpdate(mutation.target);
                     }
                 });
             });
-            observer.observe(document, {childList: true, subtree: true});
+            observer.observe(document.body, {childList: true, subtree: true});
 
             handleDOMUpdate(document.body);
         }
@@ -91,8 +100,7 @@ function clearCacheIfNeeded() {
     let lastRun = GM_getValue("lastRun");
     let now = new Date().getTime();
 
-    // if (lastRun != null && now - lastRun > 1800000) { // 30 分钟
-    if (lastRun === null || lastRun === undefined || now - lastRun > 30000) { // 30秒
+    if (lastRun === null || lastRun === undefined || now - lastRun > expiringTime) {
 
         console.log("清空所有缓存");
 
