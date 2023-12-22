@@ -4,6 +4,7 @@ package utils
 import (
 	"net/url"
 	"os"
+	"regexp"
 	"unicode"
 
 	"FluentRead/misc/log"
@@ -39,6 +40,16 @@ func IsNonChinese(text string) bool {
 	return true
 }
 
+// IsEnglish 判断是否包含英文字符
+func IsEnglish(text string) bool {
+	for _, v := range text {
+		if (v >= 'a' && v <= 'z') || (v >= 'A' && v <= 'Z') {
+			return true
+		}
+	}
+	return false
+}
+
 // GetEnvDefault 获取环境变量，如果为空则返回备用值
 func GetEnvDefault(env string, backup string) string {
 	value := os.Getenv(env)
@@ -47,3 +58,5 @@ func GetEnvDefault(env string, backup string) string {
 	}
 	return value
 }
+
+var re, _ = regexp.Compile("[a-zA-Z]")
