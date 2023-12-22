@@ -20,7 +20,7 @@ import (
 var (
 	ctx  = context.Background()
 	link = utils.GetHostByString(
-		"https://hub.docker.com/",
+		"https://hub.docker.com/support/contact",
 	)
 )
 

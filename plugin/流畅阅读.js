@@ -164,6 +164,7 @@ function sendRequest(callback) {
     });
 }
 
+
 // 递归提取节点的文本内容
 function parseDfs(node, respMap) {
     // 检查node是否为null
@@ -174,7 +175,7 @@ function parseDfs(node, respMap) {
     switch (true) {
         case node.nodeType === Node.ELEMENT_NODE && ["head", "script", "style", "img", "noscript"].includes(node.tagName.toLowerCase()):
             // console.log("忽略节点: ", node);
-            break
+            return;
         case node.nodeType === Node.ELEMENT_NODE && ["input", "textarea"].includes(node.tagName.toLowerCase()):
             processInput(node, respMap);
             break

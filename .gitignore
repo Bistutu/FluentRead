@@ -1,3 +1,4 @@
 .DS_Store
 test/manuals/manual
 .idea
+test/manuals/manual_json.json
