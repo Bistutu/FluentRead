@@ -54,7 +54,7 @@ const debouncedObserveDOM = debounce(observeDOM, debouncedTime);
                     //console.log("变更记录: ", mutation.target);
 
                     // 处理每个变更记录
-                    if (["div", "span", "nav"].includes(mutation.target.tagName.toLowerCase())) {
+                    if (["div","button","svg", "span", "nav"].includes(mutation.target.tagName.toLowerCase())) {
                         handleDOMUpdate(mutation.target);
                     }
                 });
@@ -176,9 +176,9 @@ function parseDfs(node, respMap) {
         case node.nodeType === Node.ELEMENT_NODE && ["head", "script", "style", "img", "noscript"].includes(node.tagName.toLowerCase()):
             // console.log("忽略节点: ", node);
             return;
-        case node.nodeType === Node.ELEMENT_NODE && ["input", "textarea"].includes(node.tagName.toLowerCase()):
+        case node.nodeType === Node.ELEMENT_NODE && ["input","button", "textarea"].includes(node.tagName.toLowerCase()):
             processInput(node, respMap);
-            break
+            // break
         case node.nodeType === Node.TEXT_NODE :
             processTextNode(node, respMap);
     }
@@ -192,31 +192,34 @@ function parseDfs(node, respMap) {
 
 // 处理 input placeholder
 function processInput(node, respMap) {
-    let placeholder = node.placeholder.replace(/\u00A0/g, ' ').trim();
-    let value = node.value.replace(/\u00A0/g, ' ').trim();
+    if (node.placeholder) {
+        let placeholder = node.placeholder.replace(/\u00A0/g, ' ').trim();
+        if (placeholder.length > 0 && isNonChinese(placeholder)) {
 
-    if (placeholder.length > 0 && isNonChinese(placeholder)) {
-
-        signature(url.host + placeholder).then((value) => {
-            // 在这里添加一个检查以确保 respMap 是有效的
-            if (respMap && respMap[value] !== undefined && respMap[value] !== "") {
-                node.placeholder = respMap[value];
-            }
-        }).catch((error) => {
-            // 处理任何可能的错误
-            console.error("Error in signature promise: ", error);
-        });
+            signature(url.host + placeholder).then((value) => {
+                // 在这里添加一个检查以确保 respMap 是有效的
+                if (respMap && respMap[value] !== undefined && respMap[value] !== "") {
+                    node.placeholder = respMap[value];
+                }
+            }).catch((error) => {
+                // 处理任何可能的错误
+                console.error("Error in signature promise: ", error);
+            });
+        }
     }
-    if (value.length > 0 && isNonChinese(value)) {
-        signature(url.host + value).then((value) => {
-            // 在这里添加一个检查以确保 respMap 是有效的
-            if (respMap && respMap[value] !== undefined && respMap[value] !== "") {
-                node.value = respMap[value];
-            }
-        }).catch((error) => {
-            // 处理任何可能的错误
-            console.error("Error in signature promise: ", error);
-        });
+    if (node.value) {
+        let value = node.value.replace(/\u00A0/g, ' ').trim();
+        if (value.length > 0 && isNonChinese(value)) {
+            signature(url.host + value).then((value) => {
+                // 在这里添加一个检查以确保 respMap 是有效的
+                if (respMap && respMap[value] !== undefined && respMap[value] !== "") {
+                    node.value = respMap[value];
+                }
+            }).catch((error) => {
+                // 处理任何可能的错误
+                console.error("Error in signature promise: ", error);
+            });
+        }
     }
 }
 
