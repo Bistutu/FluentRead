@@ -103,13 +103,17 @@ function clearCacheIfNeeded() {
 
     if (lastRun === null || lastRun === undefined || now - lastRun > expiringTime) {
 
-        console.log("清空所有缓存");
-
         // 清除所有通过 GM_setValue 存储的数据
         const values = GM_listValues();
+
+        console.log("list values: ", values);
+
         for (let i = 0; i < values.length; i++) {
+            console.log("delete value: ", GM_getValue(values[i]));
             GM_deleteValue(values[i]);
         }
+
+        console.log("即将清空所有缓存");
 
         GM_setValue("lastRun", now.toString());
     }
