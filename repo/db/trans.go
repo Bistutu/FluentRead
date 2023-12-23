@@ -12,6 +12,10 @@ import (
 
 // InsertTrans 插入一条翻译记录，冲突时不更新任何字段
 func InsertTrans(ctx context.Context, model *models.Translation) (err error) {
+	// TODO 跳过一些不需要翻译的短语
+	if model.Source == "153 results" || model.Source == "T" || model.Source == "ThinkStu" {
+		return nil
+	}
 	return db.Clauses(clause.OnConflict{
 		UpdateAll: false,
 	}).Create(model).Error

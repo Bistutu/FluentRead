@@ -177,9 +177,10 @@ function parseDfs(node, respMap) {
         // 元素节点
         case node.nodeType === Node.ELEMENT_NODE:
             // console.log("元素节点》 ", node);
-            if (["head","path", "script", "style", "img", "noscript"].includes(node.tagName.toLowerCase())
+            if (["head", "path", "script", "style", "img", "noscript"].includes(node.tagName.toLowerCase())
                 // 适配 OpenAI
                 || node.hasAttribute("data-message-author-role")
+                || node.classList.contains("thread-item")
             ) {
                 return;
                 // console.log("忽略节点: ", node);
