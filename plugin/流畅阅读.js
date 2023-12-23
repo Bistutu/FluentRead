@@ -26,7 +26,7 @@ const pageKey = "page:%s";
 
 // 时间
 // const expiringTime = 86400000; // 24小时
-const expiringTime = 30000; // 30秒
+const expiringTime = 10000; // 10秒
 const debouncedTime = 200; // 200毫秒
 
 // 服务端地址
