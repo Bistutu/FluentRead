@@ -4,7 +4,7 @@
 
 基于上下文语境的人工智能翻译引擎，为部分网站提供精准翻译，让所有人都能够拥有基于母语般的阅读体验。
 
-
+我们的理念："Translate every site, but do not translate everything."（翻译所有网站，但是不翻译所有内容）
 
 # 使用指南
 
