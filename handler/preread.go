@@ -9,12 +9,12 @@ import (
 
 func PreReadHandler(c *gin.Context) {
 
-	read, err := logic.PreRead(c)
+	data, err := logic.PreRead(c)
 	if err != nil {
 		c.JSON(500, err)
 		return
 	}
 
-	c.JSON(200, models.OK(read))
+	c.JSON(200, models.OK(data))
 	return
 }

@@ -4,6 +4,8 @@ import (
 	"strconv"
 
 	"gorm.io/gorm"
+
+	"FluentRead/utils"
 )
 
 // cache 键的规范：域名:哈希值
@@ -37,6 +39,15 @@ func PageToStrings(pages []*Page) []string {
 	rs := make([]string, 0)
 	for _, v := range pages {
 		rs = append(rs, v.Link)
+	}
+	return rs
+}
+
+// PageToMap 将页面数组转换为 map，key：页面链接，value：页面更新时间的哈希值
+func PageToMap(pages []*Page) map[string]string {
+	rs := make(map[string]string, len(pages))
+	for _, v := range pages {
+		rs[v.Link] = utils.Signature(v.UpdatedAt.String())
 	}
 	return rs
 }

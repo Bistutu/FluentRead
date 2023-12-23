@@ -50,7 +50,6 @@ const debouncedObserveDOM = debounce(observeDOM, debouncedTime);
             // 添加监听器：使用MutationObserver监听DOM变化，并配置和启动观察器
             const observer = new MutationObserver(function (mutations, obs) {
                 mutations.forEach(mutation => {
-                    // TODO deleted
                     // console.log("变更记录: ", mutation.target);
 
                     // 处理每个变更记录（包含 body）
@@ -67,12 +66,57 @@ const debouncedObserveDOM = debounce(observeDOM, debouncedTime);
     });
 })();
 
+
+// 初始化函数
+function clearCacheIfNeeded() {
+
+    let lastRun = GM_getValue("lastRun");
+    let now = new Date().getTime();
+
+    if (lastRun === null || lastRun === undefined || now - lastRun > expiringTime) {
+
+        let cacheData = GM_getValue(checkKey, undefined);
+        if (cacheData !== undefined && cacheData !== null) {
+            // 网络请求获取
+
+            GM_xmlhttpRequest({
+                method: METHOD,
+                url: preReadLink,
+                onload: function (response) {
+                    let data = JSON.parse(response.responseText).Data;
+                    cacheData.forEach(function (k, v) {
+                        if (data[k] === undefined && data[k] !== v) {
+                            GM_deleteValue(pageKey.replace("%s", k));
+                        }
+                    })
+                },
+                onerror: function (error) {
+                    console.error("请求失败: ", error);
+                    callback(false);
+                }
+            });
+
+
+        }
+
+
+        console.log("清空所有缓存");
+
+        // 清除所有通过 GM_setValue 存储的数据
+
+
+        GM_setValue("lastRun", now.toString());
+    }
+}
+
 // 异步返回 callback，表示是否需要拉取数据
 function checkNeedToRun(callback) {
     // 1、检查缓存
     let data = GM_getValue(checkKey, undefined);
     if (data !== undefined && data !== null) {
-        data.includes(url.host) ? callback(true) : callback(false);
+        // TODO 待修改，将 []string -> map
+        data[url.host] ? callback(true) : callback(false);
+        // data.includes(url.host) ? callback(true) : callback(false);
         return;
     }
 
@@ -85,34 +129,13 @@ function checkNeedToRun(callback) {
             // 设置缓存
             GM_setValue(checkKey, data);
 
-            data !== null && data.includes(url.host) ? callback(true) : callback(false);
+            data[url.host] ? callback(true) : callback(false);
         },
         onerror: function (error) {
             console.error("请求失败: ", error);
             callback(false);
         }
     });
-}
-
-
-// 初始化函数
-function clearCacheIfNeeded() {
-
-    let lastRun = GM_getValue("lastRun");
-    let now = new Date().getTime();
-
-    if (lastRun === null || lastRun === undefined || now - lastRun > expiringTime) {
-
-        console.log("清空所有缓存");
-
-        // 清除所有通过 GM_setValue 存储的数据
-        const values = GM_listValues();
-        for (let i = 0; i < values.length; i++) {
-            GM_deleteValue(values[i]);
-        }
-
-        GM_setValue("lastRun", now.toString());
-    }
 }
 
 // 处理 DOM 更新
