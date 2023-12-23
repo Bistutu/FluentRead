@@ -27,7 +27,7 @@ const pageKey = "page:%s";
 // 时间
 // const expiringTime = 86400000; // 24小时
 const expiringTime = 30000; // 30秒
-const debouncedTime = 200;  // 200毫秒
+const debouncedTime = 200; // 200毫秒
 
 // 服务端地址
 // const readLink = "https://fr.unmeta.cn/read";
@@ -51,16 +51,17 @@ const debouncedObserveDOM = debounce(observeDOM, debouncedTime);
             const observer = new MutationObserver(function (mutations, obs) {
                 mutations.forEach(mutation => {
                     // TODO deleted
-                    //console.log("变更记录: ", mutation.target);
+                    console.log("变更记录: ", mutation.target);
 
-                    // 处理每个变更记录
-                    if (["div", "button", "svg", "span", "nav"].includes(mutation.target.tagName.toLowerCase())) {
+                    // 处理每个变更记录（包含 body）
+                    if (["div", "button", "svg", "span", "nav", "body"].includes(mutation.target.tagName.toLowerCase())) {
                         handleDOMUpdate(mutation.target);
                     }
                 });
             });
             observer.observe(document, {childList: true, subtree: true});
 
+            // handleDOMUpdate(document.body);
             handleDOMUpdate(document.body);
         }
     });
@@ -175,12 +176,12 @@ function parseDfs(node, respMap) {
     switch (true) {
         // 元素节点
         case node.nodeType === Node.ELEMENT_NODE:
+            // console.log("元素节点》 ", node);
             if (["head", "script", "style", "img", "noscript"].includes(node.tagName.toLowerCase())
                 // 适配 OpenAI
                 || node.hasAttribute("data-message-author-role")
             ) {
                 // console.log("忽略节点: ", node);
-                return;
             }
             if (["input", "button", "textarea"].includes(node.tagName.toLowerCase())) {
                 processInput(node, respMap);
@@ -188,6 +189,7 @@ function parseDfs(node, respMap) {
             break;
         // 文本节点
         case node.nodeType === Node.TEXT_NODE:
+            // console.log("文本节点》 ", node);
             processTextNode(node, respMap);
             break;
     }

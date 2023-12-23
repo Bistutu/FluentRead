@@ -14,7 +14,9 @@
 
 # 目前支持的网站列表
 
-1. docker 仓库：[hub.docker.com](https://hub.docker.com)
+1. openAI 官网：[openai.com](https://openai.com/)
+2. chatGPT：[chat.openai.com](https://chat.openai.com/)
+2. docker 仓库：[hub.docker.com](https://hub.docker.com)
 2. maven 仓库：[mvnrepository.com](https://mvnrepository.com/)
 3. stackoverflow：[stackoverflow.com](https://stackoverflow.com/)
 
