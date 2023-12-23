@@ -54,7 +54,7 @@ const debouncedObserveDOM = debounce(observeDOM, debouncedTime);
                     //console.log("变更记录: ", mutation.target);
 
                     // 处理每个变更记录
-                    if (["div","button","svg", "span", "nav"].includes(mutation.target.tagName.toLowerCase())) {
+                    if (["div", "button", "svg", "span", "nav"].includes(mutation.target.tagName.toLowerCase())) {
                         handleDOMUpdate(mutation.target);
                     }
                 });
@@ -173,15 +173,21 @@ function parseDfs(node, respMap) {
     }
 
     switch (true) {
-        case node.nodeType === Node.ELEMENT_NODE && ["head", "script", "style", "img", "noscript"].includes(node.tagName.toLowerCase()):
+        case node.nodeType === Node.ELEMENT_NODE && ["main", "head", "script", "style", "img", "noscript"].includes(node.tagName.toLowerCase()):
+            // TODO
             // console.log("忽略节点: ", node);
             return;
-        case node.nodeType === Node.ELEMENT_NODE && ["input","button", "textarea"].includes(node.tagName.toLowerCase()):
+        case node.nodeType === Node.ELEMENT_NODE && ["input", "button", "textarea"].includes(node.tagName.toLowerCase()):
             processInput(node, respMap);
-            // break
-        case node.nodeType === Node.TEXT_NODE :
+            break;
+        case node.nodeType === Node.hasAttribute("data-message-author-role"):
+            // 适配 OpenAI
+            return;
+        case node.nodeType === Node.TEXT_NODE:
             processTextNode(node, respMap);
+            break;
     }
+
     // 递归处理子节点
     let child = node.firstChild;
     while (child) {
