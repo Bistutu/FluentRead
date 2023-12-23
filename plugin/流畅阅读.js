@@ -173,14 +173,14 @@ function parseDfs(node, respMap) {
     }
 
     switch (true) {
-        case node.nodeType === Node.ELEMENT_NODE && ["main", "head", "script", "style", "img", "noscript"].includes(node.tagName.toLowerCase()):
+        case node.nodeType === Node.ELEMENT_NODE && [ "head", "script", "style", "img", "noscript"].includes(node.tagName.toLowerCase()):
             // TODO
             // console.log("忽略节点: ", node);
             return;
         case node.nodeType === Node.ELEMENT_NODE && ["input", "button", "textarea"].includes(node.tagName.toLowerCase()):
             processInput(node, respMap);
             break;
-        case node.nodeType === Node.hasAttribute("data-message-author-role"):
+        case node.nodeType === Node.ELEMENT_NODE  && node.hasAttribute("data-message-author-role"):
             // 适配 OpenAI
             return;
         case node.nodeType === Node.TEXT_NODE:
