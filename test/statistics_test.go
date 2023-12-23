@@ -42,7 +42,7 @@ func TestCountCharacter(t *testing.T) {
 
 // 统计某网站的未翻译字符数
 func TestNotTransCountCharacterByLink(t *testing.T) {
-	link := utils.GetHostByString("https://chat.openai.com/")
+	link := utils.GetHostByString("https://platform.openai.com/")
 	// 查询网站对应的pageId
 	page, err := db.GetPageByLink(ctx, link)
 	assert.NoError(t, err)
@@ -52,7 +52,7 @@ func TestNotTransCountCharacterByLink(t *testing.T) {
 	count := 0
 	for _, item := range trans {
 		if item.PageId == page.ID {
-			count += len(item.Source)
+			count += len(item.Target)
 		}
 	}
 	countInKB := float64(count) / 1024
