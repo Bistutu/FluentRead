@@ -32,7 +32,7 @@ func PreRead(ctx context.Context) (map[string]string, error) {
 	}
 
 	// 2、读数据库
-	pages, err := db.ListAllPages(ctx)
+	pages, err := db.ListPages(ctx)
 	if err != nil {
 		log.Errorf("获取所有页面信息失败: %v", err)
 		return nil, err

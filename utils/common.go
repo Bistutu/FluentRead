@@ -1,9 +1,10 @@
-// Package utils common 通用工具
+// Package utils spider 通用工具
 package utils
 
 import (
 	"net/url"
 	"os"
+	"strings"
 	"unicode"
 
 	"FluentRead/misc/log"
@@ -47,6 +48,17 @@ func IsEnglish(text string) bool {
 		}
 	}
 	return false
+}
+
+// IsAllEnglishAndNum 检查是否为纯[英文+数字]
+func IsAllEnglishAndNum(fragment string) bool {
+	fragment = strings.TrimSpace(fragment)
+	for _, v := range fragment {
+		if !((v >= 'a' && v <= 'z') || (v >= 'A' && v <= 'Z') || (v >= '0' && v <= '9')) {
+			return false
+		}
+	}
+	return true
 }
 
 // GetEnvDefault 获取环境变量，如果为空则返回备用值

@@ -68,7 +68,7 @@ func GetPageById(ctx context.Context, id int64) (*models.Page, error) {
 	return &page, db.First(&page, id).Error
 }
 
-func ListAllPages(ctx context.Context) ([]*models.Page, error) {
+func ListPages(ctx context.Context) ([]*models.Page, error) {
 	var pages []*models.Page
 	return pages, db.Find(&pages).Error
 }

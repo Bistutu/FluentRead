@@ -62,3 +62,8 @@ func ListTrans(ctx context.Context) ([]*models.Translation, error) {
 	var models []*models.Translation
 	return models, db.Order("id").Find(&models).Error
 }
+
+// RemoveTrans 删除
+func RemoveTrans(ctx context.Context, trans *models.Translation) error {
+	return db.Delete(trans).Error
+}
