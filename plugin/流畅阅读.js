@@ -104,16 +104,37 @@ function clearCacheIfNeeded() {
     if (lastRun === null || lastRun === undefined || now - lastRun > expiringTime) {
 
         // 清除所有通过 GM_setValue 存储的数据
-        const values = GM_listValues();
+        const listValues = GM_listValues();
 
-        console.log("list values: ", values);
+        console.log("list values: ", listValues);
 
-        for (let i = 0; i < values.length; i++) {
-            console.log("delete value: ", GM_getValue(values[i]));
-            GM_deleteValue(values[i]);
-        }
+        GM_xmlhttpRequest({
+            method: METHOD,
+            url: preReadLink,
+            onload: function (response) {
+                let data = JSON.parse(response.responseText).Data;
 
-        console.log("即将清空所有缓存");
+                // 设置 pages 表
+                GM_setValiu(checkKey, data);
+
+                for (let i = 0; i < listValues.length; i++) {
+                    let host = listValues[i];
+                    // 获取所有数据
+                    let cached = getPageCached();
+                    if (cached !== null && cached !== undefined) {
+                        // 哈希值不一样则删除
+                        if (cached[host] !== data[host]) {
+                            GM_deleteValue(host);
+                            console.log("delete value: ", GM_getValue(host));
+                        }
+                    }
+                }
+            },
+            onerror: function (error) {
+                console.error("请求失败: ", error);
+                callback(false);
+            }
+        });
 
         GM_setValue("lastRun", now.toString());
     }
@@ -137,7 +158,7 @@ function observeDOM() {
 }
 
 function getPageCached() {
-    const cachedData = GM_getValue(pageKey.replace("%s", url.host), undefined);
+    const cachedData = GM_getValue(url.host, undefined);
     if (cachedData !== undefined && cachedData !== null) {
         return cachedData;
     }
@@ -148,9 +169,7 @@ function getPageCached() {
 // 发送请求获取 host 对应的翻译数据
 function sendRequest(callback) {
 
-    let param = {
-        page: url.origin, TargetType: 1, HashList: []
-    };
+    let param = {page: url.origin};
 
     GM_xmlhttpRequest({
         method: METHOD,
@@ -159,7 +178,7 @@ function sendRequest(callback) {
         onload: function (response) {
             if (callback) {
                 let parse = JSON.parse(response.responseText);
-                GM_setValue(pageKey.replace("%s", url.host), parse.Data);
+                GM_setValue(url.host, parse.Data);
                 callback(parse.Data);
             }
         },
