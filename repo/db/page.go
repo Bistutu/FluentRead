@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"FluentRead/misc/log"
 	"FluentRead/models"
@@ -30,6 +31,14 @@ func InsertPage(ctx context.Context, page *models.Page) (uint, error) {
 		return existingPage.ID, nil
 	}
 	return page.ID, nil
+}
+
+func InsertOrUpdatePage(ctx context.Context, page *models.Page) (uint, error) {
+	tx := db.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "link"}},
+		DoUpdates: clause.AssignmentColumns([]string{"updated_at"}),
+	}).Create(page)
+	return page.ID, tx.Error
 }
 
 // BatchInsertPageInfo 批量插入页面信息，如果已存在则不插入

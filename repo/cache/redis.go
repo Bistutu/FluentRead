@@ -75,3 +75,8 @@ func MSet(ctx context.Context, kv sync.Map) error {
 	}
 	return nil
 }
+
+// RemoveKey 删除缓存
+func RemoveKey(ctx context.Context, key string) error {
+	return rdb.Del(ctx, key).Err()
+}

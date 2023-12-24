@@ -22,11 +22,10 @@ let url = new URL(window.location.href.split('?')[0]);
 
 // cacheKey
 const checkKey = "fluent_read_check";
-const pageKey = "page:%s";
 
 // 时间
 // const expiringTime = 86400000; // 24小时
-const expiringTime = 10000; // 10秒
+const expiringTime = 3000; // 3秒
 const debouncedTime = 200; // 200毫秒
 
 // 服务端地址
@@ -51,7 +50,6 @@ const debouncedObserveDOM = debounce(observeDOM, debouncedTime);
             const observer = new MutationObserver(function (mutations, obs) {
                 mutations.forEach(mutation => {
                     // console.log("变更记录: ", mutation.target);
-
                     // 处理每个变更记录（包含 body）
                     if (["div", "button", "svg", "span", "nav", "body"].includes(mutation.target.tagName.toLowerCase())) {
                         handleDOMUpdate(mutation.target);
@@ -60,63 +58,17 @@ const debouncedObserveDOM = debounce(observeDOM, debouncedTime);
             });
             observer.observe(document, {childList: true, subtree: true});
 
-            // handleDOMUpdate(document.body);
             handleDOMUpdate(document.body);
         }
     });
 })();
 
-
-// 初始化函数
-function clearCacheIfNeeded() {
-
-    let lastRun = GM_getValue("lastRun");
-    let now = new Date().getTime();
-
-    if (lastRun === null || lastRun === undefined || now - lastRun > expiringTime) {
-
-        let cacheData = GM_getValue(checkKey, undefined);
-        if (cacheData !== undefined && cacheData !== null) {
-            // 网络请求获取
-
-            GM_xmlhttpRequest({
-                method: METHOD,
-                url: preReadLink,
-                onload: function (response) {
-                    let data = JSON.parse(response.responseText).Data;
-                    cacheData.forEach(function (k, v) {
-                        if (data[k] === undefined && data[k] !== v) {
-                            GM_deleteValue(pageKey.replace("%s", k));
-                        }
-                    })
-                },
-                onerror: function (error) {
-                    console.error("请求失败: ", error);
-                    callback(false);
-                }
-            });
-
-
-        }
-
-
-        console.log("清空所有缓存");
-
-        // 清除所有通过 GM_setValue 存储的数据
-
-
-        GM_setValue("lastRun", now.toString());
-    }
-}
-
 // 异步返回 callback，表示是否需要拉取数据
 function checkNeedToRun(callback) {
     // 1、检查缓存
-    let data = GM_getValue(checkKey, undefined);
-    if (data !== undefined && data !== null) {
-        // TODO 待修改，将 []string -> map
-        data[url.host] ? callback(true) : callback(false);
-        // data.includes(url.host) ? callback(true) : callback(false);
+    let PagesMapCache = GM_getValue(checkKey, undefined);
+    if (PagesMapCache !== undefined && PagesMapCache !== null) {
+        PagesMapCache[url.host] ? callback(true) : callback(false);
         return;
     }
 
@@ -125,15 +77,53 @@ function checkNeedToRun(callback) {
         method: METHOD,
         url: preReadLink,
         onload: function (response) {
-            let data = JSON.parse(response.responseText).Data;
+            let pagesMap = JSON.parse(response.responseText).Data;
             // 设置缓存
-            GM_setValue(checkKey, data);
+            GM_setValue(checkKey, pagesMap);
 
-            data[url.host] ? callback(true) : callback(false);
+            pagesMap !== null && pagesMap !== undefined && pagesMap[url.host] ? callback(true) : callback(false);
         },
         onerror: function (error) {
             console.error("请求失败: ", error);
             callback(false);
+        }
+    });
+}
+
+
+// 初始化函数
+function clearCacheIfNeeded() {
+    const lastRun = GM_getValue("lastRun");
+    const now = new Date().getTime();
+
+    if (lastRun === null || lastRun === undefined || now - lastRun > expiringTime) {
+        updateCache();
+        GM_setValue("lastRun", now.toString());
+    }
+}
+
+function updateCache() {
+    GM_xmlhttpRequest({
+        method: METHOD,
+        url: preReadLink,
+        onload: handleCacheUpdateResponse,
+        onerror: (error) => console.error("请求失败: ", error)
+    });
+}
+
+function handleCacheUpdateResponse(response) {
+    const pagesMap = JSON.parse(response.responseText).Data;
+    const pageMapCache = GM_getValue(checkKey) || {};
+
+    GM_setValue(checkKey, pagesMap);
+
+    const listValues = GM_listValues();
+
+    listValues.forEach(host => {
+
+        if (pageMapCache[host] !== pagesMap[host]) {
+            GM_deleteValue(host);
+            console.log("删除缓存: ", host);
         }
     });
 }
@@ -156,7 +146,7 @@ function observeDOM() {
 }
 
 function getPageCached() {
-    const cachedData = GM_getValue(pageKey.replace("%s", url.host), undefined);
+    const cachedData = GM_getValue(url.host, undefined);
     if (cachedData !== undefined && cachedData !== null) {
         return cachedData;
     }
@@ -167,9 +157,7 @@ function getPageCached() {
 // 发送请求获取 host 对应的翻译数据
 function sendRequest(callback) {
 
-    let param = {
-        page: url.origin, TargetType: 1, HashList: []
-    };
+    let param = {page: url.origin};
 
     GM_xmlhttpRequest({
         method: METHOD,
@@ -178,8 +166,10 @@ function sendRequest(callback) {
         onload: function (response) {
             if (callback) {
                 let parse = JSON.parse(response.responseText);
-                GM_setValue(pageKey.replace("%s", url.host), parse.Data);
+                GM_setValue(url.host, parse.Data);
                 callback(parse.Data);
+
+                console.log("新请求: ", url.host);
             }
         },
         onerror: function (error) {
@@ -265,10 +255,9 @@ function processTextNode(node, respMap) {
     let text = node.textContent.replace(/\u00A0/g, ' ').trim();
 
     if (text.length > 0 && isNonChinese(text)) {
-        // 执行相关操作，例如打印
         // console.log(text);
         signature(url.host + text).then((value) => {
-            // 在这里添加一个检查以确保 respMap 是有效的
+            // 添加一个检查以确保 respMap 是有效的
             if (respMap && respMap[value] !== undefined && respMap[value] !== "") {
                 node.textContent = respMap[value];
             }
