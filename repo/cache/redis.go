@@ -17,10 +17,9 @@ const (
 )
 
 var (
-	rdb *redis.Client
-	//expiration = 72 * time.Hour // 默认缓存 3 天
-	// TODO time.Millisecond
-	expiration = time.Millisecond // 默认缓存 3 天
+	rdb        *redis.Client
+	expiration = 24 * time.Hour // 默认缓存 1 天
+	//expiration = time.Millisecond // 默认缓存 1 毫秒
 )
 
 func init() {
@@ -31,13 +30,13 @@ func init() {
 	})
 }
 
+// SetKey 默认过期时间 24 小时
 func SetKey(ctx context.Context, key string, value string) error {
 	return rdb.Set(ctx, key, value, expiration).Err()
 }
 
+// SetKeyWithTimeout 自定义过期时间
 func SetKeyWithTimeout(ctx context.Context, key string, timeout time.Duration, value string) error {
-	// TODO
-	timeout = time.Millisecond
 	return rdb.Set(ctx, key, value, timeout).Err()
 }
 
@@ -75,4 +74,9 @@ func MSet(ctx context.Context, kv sync.Map) error {
 		return err
 	}
 	return nil
+}
+
+// RemoveKey 删除缓存
+func RemoveKey(ctx context.Context, key string) error {
+	return rdb.Del(ctx, key).Err()
 }

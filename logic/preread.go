@@ -3,7 +3,6 @@ package logic
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	"FluentRead/misc/log"
 	"FluentRead/models"
@@ -15,7 +14,7 @@ const (
 	prereadKey = "preread"
 )
 
-func PreRead(ctx context.Context) ([]string, error) {
+func PreRead(ctx context.Context) (map[string]string, error) {
 
 	// 1、读缓存
 	data, err := cache.GetKey(ctx, prereadKey)
@@ -23,13 +22,13 @@ func PreRead(ctx context.Context) ([]string, error) {
 		log.Warnf("获取缓存失败: %v", err)
 	}
 	if data != "" {
-		var pageToStrings []string
-		err = json.Unmarshal([]byte(data), &pageToStrings)
+		var pageMap map[string]string
+		err = json.Unmarshal([]byte(data), &pageMap)
 		if err != nil {
 			log.Errorf("解析缓存失败: %v", err)
 			return nil, err
 		}
-		return pageToStrings, nil
+		return pageMap, nil
 	}
 
 	// 2、读数据库
@@ -38,14 +37,14 @@ func PreRead(ctx context.Context) ([]string, error) {
 		log.Errorf("获取所有页面信息失败: %v", err)
 		return nil, err
 	}
-	pageToStrings := models.PageToStrings(pages)
+	pageMap := models.PageToMap(pages)
 
 	// 3、写缓存
-	bytes, _ := json.Marshal(pageToStrings)
-	err = cache.SetKeyWithTimeout(ctx, prereadKey, time.Millisecond, string(bytes))
+	bytes, _ := json.Marshal(pageMap)
+	err = cache.SetKey(ctx, prereadKey, string(bytes))
 	if err != nil {
 		log.Warnf("写入缓存失败: %v", err)
 	}
 
-	return pageToStrings, nil
+	return pageMap, nil
 }

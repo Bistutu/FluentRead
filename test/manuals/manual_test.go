@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -13,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"FluentRead/models"
+	"FluentRead/repo/cache"
 	"FluentRead/repo/db"
 	"FluentRead/utils"
 )
@@ -29,8 +31,12 @@ var (
 )
 
 func TestInsertTrans_JSON(t *testing.T) {
-	pageId, err := db.InsertPage(ctx, &models.Page{Link: link})
+	pageId, err := db.InsertOrUpdatePage(ctx, &models.Page{Link: link})
 	assert.NoError(t, err)
+	// 删除缓存
+	cache.RemoveKey(ctx, "preread")
+	cache.RemoveKey(ctx, fmt.Sprintf("page:%s", link))
+
 	// 打开文件
 	file, err := os.Open("manual.json")
 	assert.NoError(t, err)
@@ -60,8 +66,11 @@ func TestInsertTrans_JSON(t *testing.T) {
 }
 
 func TestInsertTrans(t *testing.T) {
-	pageId, err := db.InsertPage(ctx, &models.Page{Link: link})
+	pageId, err := db.InsertOrUpdatePage(ctx, &models.Page{Link: link})
 	assert.NoError(t, err)
+	// 删除缓存
+	cache.RemoveKey(ctx, "preread")
+	cache.RemoveKey(ctx, fmt.Sprintf("page:%s", link))
 	// 打开文件
 	file, err := os.Open("manual")
 	assert.NoError(t, err)
