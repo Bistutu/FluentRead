@@ -10,9 +10,8 @@
 
 # 使用指南
 
-
-
-
+1. 浏览器安装[油猴插件](www.tampermonkey.net)
+2. 在油猴中安装[【流畅阅读】脚本（可直接点击此跳转）](www.tampermonkey.net)
 
 # 目前支持的网站列表
 
@@ -20,9 +19,7 @@
 2. ChatGPT：[chat.openai.com](https://chat.openai.com/)
 2. Docker 仓库：[hub.docker.com](https://hub.docker.com)
 2. Maven 仓库：[mvnrepository.com](https://mvnrepository.com/)
-3. Stackoverflow：[stackoverflow.com](https://stackoverflow.com/)
-
-
+3. ~~Stackoverflow~~：[stackoverflow.com](https://stackoverflow.com/)
 
 # 如何参与开源项目？
 
