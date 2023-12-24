@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/url"
 
 	"github.com/gin-gonic/gin"
@@ -20,9 +19,6 @@ func ReadHandler(c *gin.Context) {
 		models.SendBadRequestResp(c, err)
 		return
 	}
-	// TODO delete
-
-	fmt.Printf("》》》》》%+v\n", readRequest)
 
 	if parse, err := url.Parse(readRequest.Page); err != nil || parse.Host == "" {
 		models.SendBadRequestResp(c, err)

@@ -123,7 +123,7 @@ func fetchHTML(link string) (*html.Node, error) {
 func parseDFS(ctx context.Context, parsedUrl *url.URL, node *html.Node, queue *models.Queue, pageId uint, count int) int {
 	// node.Type 为节点类型，node.Data 为标签名
 	switch {
-	case node.Type == html.ElementNode && utils.CheckStringInSlice(node.Data, []string{"script", "style", "img", "noscript"}):
+	case node.Type == html.ElementNode && utils.IsContain(node.Data, []string{"script", "style", "img", "noscript"}):
 		return count
 	case node.Type == html.ElementNode && node.Data == "a":
 		parseHref(ctx, parsedUrl, node, queue)

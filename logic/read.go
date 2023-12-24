@@ -16,7 +16,7 @@ import (
 const (
 	pageCacheConst = "page:%s" // page:link
 	shortTimeOut   = 30 * time.Second
-	longTimeOut    = 72 * time.Hour
+	longTimeOut    = 24 * time.Hour
 )
 
 // PageRead 按域名全文读取
@@ -36,6 +36,7 @@ func PageRead(ctx *gin.Context, link string) (transMap map[string]string, err er
 			log.Errorf("缓存数据转换失败：%v", err)
 			return nil, err
 		}
+		log.Infof("缓存命中：%s", link)
 		return transMap, nil
 	}
 
@@ -47,7 +48,7 @@ func PageRead(ctx *gin.Context, link string) (transMap map[string]string, err er
 	}
 	transMap = models.BatchTransToMap(transs)
 
-	// 3、写缓存（+防缓存穿透）	TODO 12.15 发送到 MQ，统计网站的请求次数，用以判断是否需要翻译
+	// 3、写缓存（+防缓存穿透）
 	timeout := shortTimeOut
 	if len(transs) > 0 {
 		timeout = longTimeOut

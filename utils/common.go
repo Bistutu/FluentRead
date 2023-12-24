@@ -9,8 +9,8 @@ import (
 	"FluentRead/misc/log"
 )
 
-// CheckStringInSlice 判断字符串是否在字符串数组中
-func CheckStringInSlice(str string, strs []string) bool {
+// IsContain 判断字符串是否在字符串数组中
+func IsContain(str string, strs []string) bool {
 	for _, v := range strs {
 		if v == str {
 			return true

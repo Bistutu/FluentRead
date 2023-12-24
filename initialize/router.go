@@ -13,6 +13,8 @@ func NewRouter() *gin.Engine {
 
 	// 允许所有跨域请求
 	engine.Use(cors.Default())
+	// 加载静态资源
+	engine.StaticFile("/", "./static")
 
 	// 绑定路由
 	engine.POST("/read", handler.ReadHandler)
