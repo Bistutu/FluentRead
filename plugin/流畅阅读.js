@@ -30,10 +30,10 @@ const expiringTime = 86400000 / 4;
 const debouncedTime = 200; // 200毫秒
 
 // 服务端地址
-const readLink = "https://fr.unmeta.cn/read";
-const preReadLink = "https://fr.unmeta.cn/preread";
-//const readLink = "http://127.0.0.1:80/read";
-//const preReadLink = "http://127.0.0.1:80/preread";
+//const readLink = "https://fr.unmeta.cn/read";
+//const preReadLink = "https://fr.unmeta.cn/preread";
+const readLink = "http://127.0.0.1:80/read";
+const preReadLink = "http://127.0.0.1:80/preread";
 
 // 防抖包装观察函数
 const debouncedObserveDOM = debounce(observeDOM, debouncedTime);
@@ -60,6 +60,16 @@ const debouncedObserveDOM = debounce(observeDOM, debouncedTime);
             observer.observe(document, {childList: true, subtree: true});
 
             handleDOMUpdate(document.body);
+        }
+    });
+    // remove all cache
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'F2') {
+            console.log('Cache cleared!');
+            let listValues = GM_listValues();
+            listValues.forEach(e => {
+                GM_deleteValue(e)
+            })
         }
     });
 })();
@@ -268,6 +278,10 @@ function processTextNode(node, respMap) {
             console.error("Error in signature promise: ", error);
         });
     }
+}
+
+function clearCache() {
+    console.log("clear")
 }
 
 // 防抖函数
