@@ -4,7 +4,9 @@
 
 基于上下文语境的人工智能翻译引擎，为部分网站提供精准翻译，让所有人都能够拥有基于母语般的阅读体验。
 
-我们的理念："Translate every site, but do not translate everything."（翻译所有网站，但是不翻译所有内容）
+我们的理念："Translate every site, but do not translate everything."（翻译所有网站，但不翻译所有内容）
+
+<img src="./misc/images/sample-1.png" alt="image-20231008190713343" style="width: 60%; max-width: 100%;">
 
 # 使用指南
 
@@ -22,19 +24,18 @@
 
 
 
-# 如何启动程序？
+# 如何参与开源项目？
 
 - 安装 Golang
 - 将程序克隆至本地
 - 编译并运行
+- 将你的想法付诸执行！
 
 ```shell
 git clone https://github.com/Bistutu/FluentRead.git
 cd FluentRead
 go build &&./FluentRead
 ```
-
-
 
 # 许可证
 

@@ -1,5 +1,6 @@
 // ==UserScript==
 // @name         流畅阅读
+// @license      GPL-3.0 license
 // @namespace    https://fr.unmeta.cn/
 // @version      0.1
 // @description  基于上下文语境的人工智能翻译引擎，为部分网站提供精准翻译，让所有人都能够拥有基于母语般的阅读体验。程序Github开源：https://github.com/Bistutu/FluentRead，欢迎 star。
