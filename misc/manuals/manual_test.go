@@ -22,9 +22,9 @@ import (
 var (
 	ctx  = context.Background()
 	link = utils.GetHostByString(
-		//"https://openai.com/",
+		"https://openai.com/",
 		//"https://platform.openai.com/apps",
-		"https://chat.openai.com/",
+		//"https://chat.openai.com/",
 		//"https://help.openai.com/en/articles/8554397-creating-a-gpt",
 		//"https://platform.openai.com/docs/overview",
 	)

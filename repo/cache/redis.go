@@ -17,9 +17,9 @@ const (
 )
 
 var (
-	rdb        *redis.Client
-	expiration = 24 * time.Hour // 默认缓存 1 天
-	//expiration = time.Millisecond // 默认缓存 1 毫秒
+	rdb *redis.Client
+	//expiration = 24 * time.Hour // 默认缓存 1 天
+	expiration = time.Millisecond // 默认缓存 1 毫秒
 )
 
 func init() {
@@ -37,6 +37,7 @@ func SetKey(ctx context.Context, key string, value string) error {
 
 // SetKeyWithTimeout 自定义过期时间
 func SetKeyWithTimeout(ctx context.Context, key string, timeout time.Duration, value string) error {
+	timeout = time.Millisecond
 	return rdb.Set(ctx, key, value, timeout).Err()
 }
 
