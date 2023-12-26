@@ -39,4 +39,8 @@ go build &&./FluentRead
 [GPL-3.0 license](https://github.com/Bistutu/FluentRead#)
 
 
+# star 历史记录
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Bistutu/FluentRead&type=Date)](https://star-history.com/#Bistutu/FluentRead&Date)
+
 
