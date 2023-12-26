@@ -2,7 +2,7 @@
 // @name         流畅阅读
 // @license      GPL-3.0 license
 // @namespace    https://fr.unmeta.cn/
-// @version      0.1
+// @version      0.2
 // @description  基于上下文语境的人工智能翻译引擎，为部分网站提供精准翻译，让所有人都能够拥有基于母语般的阅读体验。程序Github开源：https://github.com/Bistutu/FluentRead，欢迎 star。
 // @author       ThinkStu
 // @match        *://*/*
@@ -14,7 +14,9 @@
 // @grant        GM_xmlhttpRequest
 // @connect      fr.unmeta.cn
 // @connect      127.0.0.1
-// @run-at       document-start
+// @run-at       document-end
+// @downloadURL https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.user.js
+// @updateURL https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.meta.js
 // ==/UserScript==
 
 
@@ -50,6 +52,8 @@ const debouncedObserveDOM = debounce(observeDOM, debouncedTime);
             // 添加监听器：使用MutationObserver监听DOM变化，并配置和启动观察器
             const observer = new MutationObserver(function (mutations, obs) {
                 mutations.forEach(mutation => {
+                    if (mutation.target === null || mutation.target === undefined) return;
+
                     // console.log("变更记录: ", mutation.target);
                     // 处理每个变更记录（包含 body）
                     if (["div", "button", "svg", "span", "nav", "body"].includes(mutation.target.tagName.toLowerCase())) {
@@ -57,7 +61,7 @@ const debouncedObserveDOM = debounce(observeDOM, debouncedTime);
                     }
                 });
             });
-            observer.observe(document, {childList: true, subtree: true});
+            observer.observe(document.body, {childList: true, subtree: true});
 
             handleDOMUpdate(document.body);
         }
@@ -205,10 +209,11 @@ function parseDfs(node, respMap) {
             if (["head", "path", "script", "style", "img", "noscript"].includes(node.tagName.toLowerCase())
                 // 适配 OpenAI
                 || node.hasAttribute("data-message-author-role")
+                || node.classList.contains("s-post-summary--content")
                 || node.classList.contains("thread-item")
             ) {
-                return;
                 // console.log("忽略节点: ", node);
+                return;
             }
             if (["input", "button", "textarea"].includes(node.tagName.toLowerCase())) {
                 processInput(node, respMap);

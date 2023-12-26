@@ -22,7 +22,7 @@ import (
 var (
 	ctx  = context.Background()
 	link = utils.GetHostByString(
-		"https://star-history.com/",
+		"https://stackoverflow.com/?tab=interesting",
 		//"https://platform.openai.com/apps",
 		//"https://chat.openai.com/",
 		//"https://help.openai.com/en/articles/8554397-creating-a-gpt",
