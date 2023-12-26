@@ -17,9 +17,10 @@
 
 1. OpenAI 官网：[openai.com](https://openai.com/)
 2. ChatGPT：[chat.openai.com](https://chat.openai.com/)
-2. Docker 仓库：[hub.docker.com](https://hub.docker.com)
-2. Maven 仓库：[mvnrepository.com](https://mvnrepository.com/)
-3. ~~Stackoverflow~~：[stackoverflow.com](https://stackoverflow.com/)
+3. Docker 仓库：[hub.docker.com](https://hub.docker.com)
+4. Maven 仓库：[mvnrepository.com](https://mvnrepository.com/)
+5. ~~Stackoverflow~~：[stackoverflow.com](https://stackoverflow.com/)
+6. github star 趋势生成网：[star-history.com](https://star-history.com/)
 
 # 如何参与开源项目？
 
