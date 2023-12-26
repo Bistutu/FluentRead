@@ -18,6 +18,13 @@ const debounced = debounce(echo, debouncedTime);
 (function () {
     'use strict';
 
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'F3') {
+            console.log('清空Set');
+            s.clear();
+        }
+    });
+
     setTimeout(() => {
         parseDfs(document.body);
         debounced();
@@ -25,16 +32,17 @@ const debounced = debounce(echo, debouncedTime);
         // 使用MutationObserver监听DOM变化，配置和启动观察器
         const observer = new MutationObserver(function (mutations, obs) {
             mutations.forEach(mutation => {
+                let node = mutation.target;
+
                 // 处理每个变更记录
-                if (["div", "span", "nav"].includes(mutation.target.tagName.toLowerCase())) {
-                    parseDfs(mutation.target);
+                if (["div", "span", "nav"].includes(node.tagName.toLowerCase())) {
+                    parseDfs(node);
                     debounced();
                 }
             });
         });
         observer.observe(document.body, {childList: true, subtree: true});
     }, 2000); // 延迟时间设置为2000毫秒（2秒）
-
 
 })();
 
@@ -49,8 +57,26 @@ function echo() {
 
 // 递归提取节点的文本内容
 function parseDfs(node) {
+
+    // TODO 限定条件，跳过一些不必要的处理
+    if (node.nodeType === Node.ELEMENT_NODE && (node.hasAttribute("data-message-author-role")
+        || node.classList.contains("post-layout")
+        // || node.hasAttribute("data-post-id")
+        || node.classList.contains("s-post-summary--content")
+        || node.classList.contains("d-block")
+        || node.classList.contains("s-prose")
+        || node.classList.contains("question-hyperlink")
+        || node.classList.contains("user-info")
+        || node.classList.contains("js-post-body")
+        || node.id === "inline_related_var_a_less"
+        || node.id === "hot-network-questions"
+    )) {
+        // console.log("忽略节点: ", node);
+        return;
+    }
+
     switch (true) {
-        case node.nodeType === Node.ELEMENT_NODE && ["head","picture", "script", "style", "img", "noscript"].includes(node.tagName.toLowerCase()):
+        case node.nodeType === Node.ELEMENT_NODE && ["head", "picture", "script", "style", "img", "noscript"].includes(node.tagName.toLowerCase()):
             return
         case node.nodeType === Node.ELEMENT_NODE && ["input", "textarea"].includes(node.tagName.toLowerCase()):
             processInput(node);
