@@ -19,7 +19,7 @@
 2. ChatGPT：[chat.openai.com](https://chat.openai.com/)
 3. Docker 仓库：[hub.docker.com](https://hub.docker.com)
 4. Maven 仓库：[mvnrepository.com](https://mvnrepository.com/)
-5. ~~Stackoverflow~~：[stackoverflow.com](https://stackoverflow.com/)
+5. Stackoverflow：[stackoverflow.com](https://stackoverflow.com/)
 6. github star 趋势生成网：[star-history.com](https://star-history.com/)
 
 # 如何参与开源项目？
@@ -43,5 +43,4 @@ go build &&./FluentRead
 # star 历史记录
 
 [![Star History Chart](https://api.star-history.com/svg?repos=Bistutu/FluentRead&type=Date)](https://star-history.com/#Bistutu/FluentRead&Date)
-
 
