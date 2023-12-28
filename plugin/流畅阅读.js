@@ -432,8 +432,8 @@ function processTextNode_dockerhub(node, respMap) {
             // 将 'a' 或 'an' 转换为 '1'
             if (quantity === 'a' || quantity === 'an') {
                 quantity = ' 1';
-            }else {
-                quantity=' '+quantity
+            } else {
+                quantity = ' ' + quantity
             }
 
             // 单位转换
@@ -457,6 +457,19 @@ function processTextNode_dockerhub(node, respMap) {
 
             // 构建新的文本格式
             text = `${quantity} ${unit}之前`;
+            node.textContent = text;
+            return;
+        }
+
+        // 处理分页信息的翻译
+        let paginationMatch = text.match(/^(\d+)\s*-\s*(\d+)\s+of\s+([\d,]+)$/);
+        if (paginationMatch) {
+            let start = paginationMatch[1];
+            let end = paginationMatch[2];
+            let total = paginationMatch[3].replace(/,/g, ''); // 去除数字中的逗号
+
+            // 构建新的文本格式
+            text = `当前第 ${start} - ${end} 项，共 ${total} `;
             node.textContent = text;
             return;
         }
