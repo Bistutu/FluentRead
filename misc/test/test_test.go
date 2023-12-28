@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 	"time"
 )
@@ -22,5 +23,16 @@ func TestCount(t *testing.T) {
 		// 按照 "Compile Dependencies (i)" 的格式打印每个数字
 		//fmt.Println(fmt.Sprintf("Test Dependencies (%d)", i))
 		fmt.Println(fmt.Sprintf("测试依赖 Test (%d)", i))
+	}
+}
+
+// BenchmarkContainsNumber 对 ContainsNumber 函数进行基准测试
+func BenchmarkContainsNumber(b *testing.B) {
+	msg := "snjkanJNsjka21212"
+	// 在字符串中查找匹配项
+	for i := 0; i < b.N; i++ {
+		re := regexp.MustCompile(`\d`)
+		// 调用函数并传入测试字符串
+		re.MatchString(msg)
 	}
 }

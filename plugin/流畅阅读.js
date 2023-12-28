@@ -294,40 +294,6 @@ function processTextNode(node, respMap) {
     }
 }
 
-function processTextNode_maven(node, respMap) {
-    let text = node.textContent.replace(/\u00A0/g, ' ').trim();
-
-    if (text.length > 0 && isNonChinese(text)) {
-        // 如果是 Maven，且为日期格式，则改变其格式 May 09, 2019 变为 2019-05-09
-        if (text.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s\d{2},\s\d{4}$/)) {
-            let date = new Date(text);
-            let year = date.getFullYear();
-            let month = date.getMonth() + 1; // 月份是从0开始的
-            let day = date.getDate();
-            // 确保月份和日期为两位数
-            month = month < 10 ? '0' + month : month;
-            day = day < 10 ? '0' + day : day;
-            text = year + "-" + month + "-" + day;
-            node.textContent = text;
-            return
-        } else {
-            let match = text.match(/Last Release on (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s(\d{2}),\s(\d{4})/);
-            if (match) {
-                        let date = new Date(match[1] + " " + match[2] + ", " + match[3]);
-                        let year = date.getFullYear();
-                        let month = date.getMonth() + 1; // 月份是从0开始的
-                        let day = date.getDate();
-                        // 构建新的日期格式
-                        text = `最近更新 ${year}年${month}月${day}日`;
-                        node.textContent = text;
-                        return;
-                    }
-        }
-        // 如果都不符合，则进行普通哈希替换
-        processTextNode(node, respMap)
-    }
-}
-
 // 防抖函数
 function debounce(func, wait) {
     let timeout;
@@ -355,4 +321,76 @@ async function signature(text) {
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     return hashHex.slice(-20);
+}
+
+// 适配 maven
+function processTextNode_maven(node, respMap) {
+    let text = node.textContent.replace(/\u00A0/g, ' ').trim();
+
+    if (text.length > 0 && isNonChinese(text)) {
+        // 如果是 Maven，且为日期格式，则改变其格式 May 09, 2019 变为 2019-05-09
+        if (text.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s\d{1,2},\s\d{4}$/)) {
+            let date = new Date(text);
+            let year = date.getFullYear();
+            let month = date.getMonth() + 1; // 月份是从0开始的
+            let day = date.getDate();
+            // 确保月份和日期为两位数
+            month = month < 10 ? '0' + month : month;
+            day = day < 10 ? '0' + day : day;
+            text = year + "-" + month + "-" + day;
+            node.textContent = text;
+            return
+        } else {
+            let match = text.match(/Last Release on (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s(\d{1,2}),\s(\d{4})/);
+            if (match) {
+                let date = new Date(match[1] + " " + match[2] + ", " + match[3]);
+                let year = date.getFullYear();
+                let month = date.getMonth() + 1; // 月份是从0开始的
+                let day = date.getDate();
+                // 构建新的日期格式
+                text = `最近更新 ${year}年${month}月${day}日`;
+                node.textContent = text;
+                return;
+            }
+            // 处理依赖类型的翻译
+            let dependencyMatch = text.match(/(Test|Provided|Compile) Dependencies \((\d+)\)/);
+            if (dependencyMatch) {
+                let type = dependencyMatch[1];
+                let count = dependencyMatch[2];
+                switch (type) {
+                    case 'Test':
+                        text = `测试依赖 Test (${count})`;
+                        break;
+                    case 'Provided':
+                        text = `提供依赖 Provided (${count})`;
+                        break;
+                    case 'Compile':
+                        text = `编译依赖 Compile (${count})`;
+                        break;
+                    // 可以根据需要添加更多的情况
+                }
+
+                node.textContent = text;
+                return;
+            }
+        }
+        // 处理 "#数字 in" 格式的字符串
+        let rankMatch = text.match(/#(\d+) in\s*(.*)/);
+        if (rankMatch) {
+            let number = rankMatch[1];
+            let context = rankMatch[2]; // 如 "MvnRepository" 或为空
+
+            if (context) {
+                text = `第 ${number} 位 ${context}`;
+            } else {
+                text = `第 ${number} 位 `;
+            }
+
+            node.textContent = text;
+            return;
+        }
+
+        // 如果都不符合，则进行普通哈希替换
+        processTextNode(node, respMap)
+    }
 }
