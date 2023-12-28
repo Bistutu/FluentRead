@@ -37,7 +37,8 @@ const debouncedTime = 200; // 200毫秒
 const readLink = "http://127.0.0.1:80/read";
 const preReadLink = "http://127.0.0.1:80/preread";
 // const url
-const maven = "mvnrepository.com";
+const Maven = "mvnrepository.com";
+const DockerHub = "hub.docker.com";
 
 // 防抖包装观察函数
 const debouncedObserveDOM = debounce(observeDOM, debouncedTime);
@@ -225,13 +226,16 @@ function parseDfs(node, respMap) {
         // 文本节点
         case node.nodeType === Node.TEXT_NODE:
             // console.log("文本节点》 ", node);
-            // 如果是 maven
-            if (url.host === maven) {
-                processTextNode_maven(node, respMap);
-            } else {
-                processTextNode(node, respMap);
+            switch (url.host) {
+                case  Maven:
+                    processTextNode_maven(node, respMap);
+                    break;
+                case DockerHub:
+                    processTextNode_dockerhub(node, respMap);
+                    break;
+                default:
+                    processTextNode(node, respMap);
             }
-            break;
     }
 
     // 递归处理子节点
@@ -389,6 +393,35 @@ function processTextNode_maven(node, respMap) {
             node.textContent = text;
             return;
         }
+        // 处理 "21,687 artifacts" 到 "被引用 21,687 次" 的转换
+        // 处理 artifacts 的翻译
+        // 处理 artifacts 被引用的翻译
+        let artifactsMatch = text.match(/^([\d,]+)\s+artifacts$/);
+        if (artifactsMatch) {
+            let count = artifactsMatch[1];
+            text = `被引用 ${count} 次`;
+            node.textContent = text;
+            return;
+        }
+        // 处理漏洞数量的翻译
+        let vulnerabilityMatch = text.match(/^(\d+)\s+vulnerabilit(y|ies)$/);
+        if (vulnerabilityMatch) {
+            let count = vulnerabilityMatch[1];
+            text = `${count}个漏洞`;
+            node.textContent = text;
+            return;
+        }
+
+        // 如果都不符合，则进行普通哈希替换
+        processTextNode(node, respMap)
+    }
+}
+
+function processTextNode_dockerhub(node, respMap) {
+    let text = node.textContent.replace(/\u00A0/g, ' ').trim();
+
+    if (text.length > 0 && isNonChinese(text)) {
+
 
         // 如果都不符合，则进行普通哈希替换
         processTextNode(node, respMap)
