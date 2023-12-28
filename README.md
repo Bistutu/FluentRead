@@ -10,8 +10,8 @@
 
 # 使用指南
 
-1. 浏览器安装[油猴插件](www.tampermonkey.net)
-2. 在油猴中安装[【流畅阅读】脚本（可直接点击此跳转）](https://greasyfork.org/zh-CN/scripts/482986-%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB)
+1. 浏览器安装 [油猴插件（如已安装则跳过）](www.tampermonkey.net)
+2. 在油猴中安装 [流畅阅读（点击跳转）](https://greasyfork.org/zh-CN/scripts/482986-%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB)
 
 # 目前支持的网站列表
 
@@ -20,7 +20,7 @@
 3. Docker 仓库：[hub.docker.com](https://hub.docker.com)
 4. Maven 仓库：[mvnrepository.com](https://mvnrepository.com/)
 5. Stackoverflow：[stackoverflow.com](https://stackoverflow.com/)
-6. github star 趋势生成网：[star-history.com](https://star-history.com/)
+6. GitHub Star 趋势生成网：[star-history.com](https://star-history.com/)
 
 # 如何参与开源项目？
 
