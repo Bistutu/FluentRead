@@ -422,6 +422,44 @@ function processTextNode_dockerhub(node, respMap) {
 
     if (text.length > 0 && isNonChinese(text)) {
 
+        // 处理更新时间的翻译
+        let timeMatch = text.match(/^(a|an|\d+)\s+(minute|hour|day|month|year)(s)?\s+ago$/);
+        if (timeMatch) {
+            let quantity = timeMatch[1];
+            let unit = timeMatch[2];
+            let isPlural = timeMatch[3];
+
+            // 将 'a' 或 'an' 转换为 '1'
+            if (quantity === 'a' || quantity === 'an') {
+                quantity = ' 1';
+            }else {
+                quantity=' '+quantity
+            }
+
+            // 单位转换
+            switch (unit) {
+                case 'minute':
+                    unit = '分钟';
+                    break;
+                case 'hour':
+                    unit = '小时';
+                    break;
+                case 'day':
+                    unit = '天';
+                    break;
+                case 'month':
+                    unit = '月';
+                    break;
+                case 'year':
+                    unit = '年';
+                    break;
+            }
+
+            // 构建新的文本格式
+            text = `${quantity} ${unit}之前`;
+            node.textContent = text;
+            return;
+        }
 
         // 如果都不符合，则进行普通哈希替换
         processTextNode(node, respMap)
