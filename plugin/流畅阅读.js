@@ -36,6 +36,17 @@ const debouncedTime = 200; // 200毫秒
 //const preReadLink = "https://fr.unmeta.cn/preread";
 const readLink = "http://127.0.0.1:80/read";
 const preReadLink = "http://127.0.0.1:80/preread";
+// regex compile
+// 预编译正则表达式
+const timeRegex = /^(a|an|\d+)\s+(minute|hour|day|month|year)(s)?\s+ago$/;
+const paginationRegex = /^(\d+)\s*-\s*(\d+)\s+of\s+([\d,]+)$/;
+const dateRegex = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s\d{1,2},\s\d{4}$/;
+const lastReleaseRegex = /Last Release on (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s(\d{1,2}),\s(\d{4})/;
+const dependencyRegex = /(Test|Provided|Compile) Dependencies \((\d+)\)/;
+const rankRegex = /#(\d+) in\s*(.*)/;
+const artifactsRegex = /^([\d,]+)\s+artifacts$/;
+const vulnerabilityRegex = /^(\d+)\s+vulnerabilit(y|ies)$/;
+
 // const url
 const Maven = "mvnrepository.com";
 const DockerHub = "hub.docker.com";
@@ -332,88 +343,63 @@ function processTextNode_maven(node, respMap) {
     let text = node.textContent.replace(/\u00A0/g, ' ').trim();
 
     if (text.length > 0 && isNonChinese(text)) {
-        // 如果是 Maven，且为日期格式，则改变其格式 May 09, 2019 变为 2019-05-09
-        if (text.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s\d{1,2},\s\d{4}$/)) {
+        // 处理日期格式
+        if (dateRegex.test(text)) {
             let date = new Date(text);
-            let year = date.getFullYear();
-            let month = date.getMonth() + 1; // 月份是从0开始的
-            let day = date.getDate();
-            // 确保月份和日期为两位数
-            month = month < 10 ? '0' + month : month;
-            day = day < 10 ? '0' + day : day;
-            text = year + "-" + month + "-" + day;
+            text = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
             node.textContent = text;
-            return
-        } else {
-            let match = text.match(/Last Release on (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s(\d{1,2}),\s(\d{4})/);
-            if (match) {
-                let date = new Date(match[1] + " " + match[2] + ", " + match[3]);
-                let year = date.getFullYear();
-                let month = date.getMonth() + 1; // 月份是从0开始的
-                let day = date.getDate();
-                // 构建新的日期格式
-                text = `最近更新 ${year}年${month}月${day}日`;
-                node.textContent = text;
-                return;
-            }
-            // 处理依赖类型的翻译
-            let dependencyMatch = text.match(/(Test|Provided|Compile) Dependencies \((\d+)\)/);
-            if (dependencyMatch) {
-                let type = dependencyMatch[1];
-                let count = dependencyMatch[2];
-                switch (type) {
-                    case 'Test':
-                        text = `测试依赖 Test (${count})`;
-                        break;
-                    case 'Provided':
-                        text = `提供依赖 Provided (${count})`;
-                        break;
-                    case 'Compile':
-                        text = `编译依赖 Compile (${count})`;
-                        break;
-                    // 可以根据需要添加更多的情况
-                }
-
-                node.textContent = text;
-                return;
-            }
+            return;
         }
-        // 处理 "#数字 in" 格式的字符串
-        let rankMatch = text.match(/#(\d+) in\s*(.*)/);
+
+        // 处理“Last Release on”格式的日期
+        let lastReleaseMatch = text.match(lastReleaseRegex);
+        if (lastReleaseMatch) {
+            let date = new Date(`${lastReleaseMatch[1]} ${lastReleaseMatch[2]}, ${lastReleaseMatch[3]}`);
+            text = `最近更新 ${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+            node.textContent = text;
+            return;
+        }
+
+        // 处理依赖类型
+        let dependencyMatch = text.match(dependencyRegex);
+        if (dependencyMatch) {
+            let [_, type, count] = dependencyMatch;
+            const typeMap = {
+                'Test': '测试',
+                'Provided': '提供',
+                'Compile': '编译'
+            };
+            text = `${typeMap[type] || type}依赖 (${count})`;
+            node.textContent = text;
+            return;
+        }
+
+        // 处理排名
+        let rankMatch = text.match(rankRegex);
         if (rankMatch) {
-            let number = rankMatch[1];
-            let context = rankMatch[2]; // 如 "MvnRepository" 或为空
-
-            if (context) {
-                text = `第 ${number} 位 ${context}`;
-            } else {
-                text = `第 ${number} 位 `;
-            }
-
+            text = `第 ${rankMatch[1]} 位 ${rankMatch[2]}`;
             node.textContent = text;
             return;
         }
-        // 处理 "21,687 artifacts" 到 "被引用 21,687 次" 的转换
-        // 处理 artifacts 的翻译
-        // 处理 artifacts 被引用的翻译
-        let artifactsMatch = text.match(/^([\d,]+)\s+artifacts$/);
+
+        // 处理 artifacts 被引用次数
+        let artifactsMatch = text.match(artifactsRegex);
         if (artifactsMatch) {
-            let count = artifactsMatch[1];
-            text = `被引用 ${count} 次`;
+            text = `被引用 ${artifactsMatch[1]} 次`;
             node.textContent = text;
             return;
         }
-        // 处理漏洞数量的翻译
-        let vulnerabilityMatch = text.match(/^(\d+)\s+vulnerabilit(y|ies)$/);
+
+        // 处理漏洞数量
+        let vulnerabilityMatch = text.match(vulnerabilityRegex);
         if (vulnerabilityMatch) {
-            let count = vulnerabilityMatch[1];
-            text = `${count}个漏洞`;
+            text = `${vulnerabilityMatch[1]}个漏洞`;
             node.textContent = text;
             return;
         }
 
         // 如果都不符合，则进行普通哈希替换
-        processTextNode(node, respMap)
+        processTextNode(node, respMap);
     }
 }
 
@@ -423,37 +409,22 @@ function processTextNode_dockerhub(node, respMap) {
     if (text.length > 0 && isNonChinese(text)) {
 
         // 处理更新时间的翻译
-        let timeMatch = text.match(/^(a|an|\d+)\s+(minute|hour|day|month|year)(s)?\s+ago$/);
+        let timeMatch = text.match(timeRegex);
         if (timeMatch) {
-            let quantity = timeMatch[1];
-            let unit = timeMatch[2];
-            let isPlural = timeMatch[3];
+            let [_, quantity, unit, isPlural] = timeMatch;
 
             // 将 'a' 或 'an' 转换为 '1'
-            if (quantity === 'a' || quantity === 'an') {
-                quantity = ' 1';
-            } else {
-                quantity = ' ' + quantity
-            }
+            quantity = (quantity === 'a' || quantity === 'an') ? ' 1' : ` ${quantity}`;
 
             // 单位转换
-            switch (unit) {
-                case 'minute':
-                    unit = '分钟';
-                    break;
-                case 'hour':
-                    unit = '小时';
-                    break;
-                case 'day':
-                    unit = '天';
-                    break;
-                case 'month':
-                    unit = '月';
-                    break;
-                case 'year':
-                    unit = '年';
-                    break;
-            }
+            const unitMap = {
+                'minute': '分钟',
+                'hour': '小时',
+                'day': '天',
+                'month': '月',
+                'year': '年'
+            };
+            unit = unitMap[unit] || unit;
 
             // 构建新的文本格式
             text = `${quantity} ${unit}之前`;
@@ -462,11 +433,10 @@ function processTextNode_dockerhub(node, respMap) {
         }
 
         // 处理分页信息的翻译
-        let paginationMatch = text.match(/^(\d+)\s*-\s*(\d+)\s+of\s+([\d,]+)$/);
+        let paginationMatch = text.match(paginationRegex);
         if (paginationMatch) {
-            let start = paginationMatch[1];
-            let end = paginationMatch[2];
-            let total = paginationMatch[3].replace(/,/g, ''); // 去除数字中的逗号
+            let [_, start, end, total] = paginationMatch;
+            total = total.replace(/,/g, ''); // 去除数字中的逗号
 
             // 构建新的文本格式
             text = `当前第 ${start} - ${end} 项，共 ${total} `;
@@ -475,6 +445,6 @@ function processTextNode_dockerhub(node, respMap) {
         }
 
         // 如果都不符合，则进行普通哈希替换
-        processTextNode(node, respMap)
+        processTextNode(node, respMap);
     }
 }
