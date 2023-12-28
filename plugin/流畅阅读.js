@@ -2,7 +2,7 @@
 // @name         流畅阅读
 // @license      GPL-3.0 license
 // @namespace    https://fr.unmeta.cn/
-// @version      0.1
+// @version      0.2
 // @description  基于上下文语境的人工智能翻译引擎，为部分网站提供精准翻译，让所有人都能够拥有基于母语般的阅读体验。程序Github开源：https://github.com/Bistutu/FluentRead，欢迎 star。
 // @author       ThinkStu
 // @match        *://*/*
@@ -14,7 +14,9 @@
 // @grant        GM_xmlhttpRequest
 // @connect      fr.unmeta.cn
 // @connect      127.0.0.1
-// @run-at       document-start
+// @run-at       document-end
+// @downloadURL https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.user.js
+// @updateURL https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.meta.js
 // ==/UserScript==
 
 
@@ -34,6 +36,8 @@ const debouncedTime = 200; // 200毫秒
 //const preReadLink = "https://fr.unmeta.cn/preread";
 const readLink = "http://127.0.0.1:80/read";
 const preReadLink = "http://127.0.0.1:80/preread";
+// const url
+const maven = "mvnrepository.com";
 
 // 防抖包装观察函数
 const debouncedObserveDOM = debounce(observeDOM, debouncedTime);
@@ -50,6 +54,8 @@ const debouncedObserveDOM = debounce(observeDOM, debouncedTime);
             // 添加监听器：使用MutationObserver监听DOM变化，并配置和启动观察器
             const observer = new MutationObserver(function (mutations, obs) {
                 mutations.forEach(mutation => {
+                    if (mutation.target === null || mutation.target === undefined) return;
+
                     // console.log("变更记录: ", mutation.target);
                     // 处理每个变更记录（包含 body）
                     if (["div", "button", "svg", "span", "nav", "body"].includes(mutation.target.tagName.toLowerCase())) {
@@ -57,7 +63,7 @@ const debouncedObserveDOM = debounce(observeDOM, debouncedTime);
                     }
                 });
             });
-            observer.observe(document, {childList: true, subtree: true});
+            observer.observe(document.body, {childList: true, subtree: true});
 
             handleDOMUpdate(document.body);
         }
@@ -205,10 +211,12 @@ function parseDfs(node, respMap) {
             if (["head", "path", "script", "style", "img", "noscript"].includes(node.tagName.toLowerCase())
                 // 适配 OpenAI
                 || node.hasAttribute("data-message-author-role")
+                // 适配 stackoverflow
+                || node.classList.contains("s-post-summary--content")
                 || node.classList.contains("thread-item")
             ) {
-                return;
                 // console.log("忽略节点: ", node);
+                return;
             }
             if (["input", "button", "textarea"].includes(node.tagName.toLowerCase())) {
                 processInput(node, respMap);
@@ -217,7 +225,12 @@ function parseDfs(node, respMap) {
         // 文本节点
         case node.nodeType === Node.TEXT_NODE:
             // console.log("文本节点》 ", node);
-            processTextNode(node, respMap);
+            // 如果是 maven
+            if (url.host === maven) {
+                processTextNode_maven(node, respMap);
+            } else {
+                processTextNode(node, respMap);
+            }
             break;
     }
 
@@ -267,6 +280,7 @@ function processTextNode(node, respMap) {
     let text = node.textContent.replace(/\u00A0/g, ' ').trim();
 
     if (text.length > 0 && isNonChinese(text)) {
+
         // console.log(text);
         signature(url.host + text).then((value) => {
             // 添加一个检查以确保 respMap 是有效的
@@ -280,8 +294,38 @@ function processTextNode(node, respMap) {
     }
 }
 
-function clearCache() {
-    console.log("clear")
+function processTextNode_maven(node, respMap) {
+    let text = node.textContent.replace(/\u00A0/g, ' ').trim();
+
+    if (text.length > 0 && isNonChinese(text)) {
+        // 如果是 Maven，且为日期格式，则改变其格式 May 09, 2019 变为 2019-05-09
+        if (text.match(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s\d{2},\s\d{4}$/)) {
+            let date = new Date(text);
+            let year = date.getFullYear();
+            let month = date.getMonth() + 1; // 月份是从0开始的
+            let day = date.getDate();
+            // 确保月份和日期为两位数
+            month = month < 10 ? '0' + month : month;
+            day = day < 10 ? '0' + day : day;
+            text = year + "-" + month + "-" + day;
+            node.textContent = text;
+            return
+        } else {
+            let match = text.match(/Last Release on (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s(\d{2}),\s(\d{4})/);
+            if (match) {
+                        let date = new Date(match[1] + " " + match[2] + ", " + match[3]);
+                        let year = date.getFullYear();
+                        let month = date.getMonth() + 1; // 月份是从0开始的
+                        let day = date.getDate();
+                        // 构建新的日期格式
+                        text = `最近更新 ${year}年${month}月${day}日`;
+                        node.textContent = text;
+                        return;
+                    }
+        }
+        // 如果都不符合，则进行普通哈希替换
+        processTextNode(node, respMap)
+    }
 }
 
 // 防抖函数
