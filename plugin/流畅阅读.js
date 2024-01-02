@@ -364,11 +364,7 @@ function processTextNode_maven(node, respMap) {
         let dependencyMatch = text.match(dependencyRegex);
         if (dependencyMatch) {
             let [_, type, count] = dependencyMatch;
-            const typeMap = {
-                'Test': '测试',
-                'Provided': '提供',
-                'Compile': '编译'
-            };
+            const typeMap = {'Test': '测试', 'Provided': '提供', 'Compile': '编译'};
             text = `${typeMap[type] || type}依赖 ${type} (${count})`;
             node.textContent = text;
             return;
@@ -417,13 +413,7 @@ function processTextNode_dockerhub(node, respMap) {
             quantity = (quantity === 'a' || quantity === 'an') ? ' 1' : ` ${quantity}`;
 
             // 单位转换
-            const unitMap = {
-                'minute': '分钟',
-                'hour': '小时',
-                'day': '天',
-                'month': '月',
-                'year': '年'
-            };
+            const unitMap = {'minute': '分钟', 'hour': '小时', 'day': '天', 'month': '月',};
             unit = unitMap[unit] || unit;
 
             // 构建新的文本格式
