@@ -48,7 +48,7 @@ func SetKeyNotExpiration(ctx context.Context, key string, value string) error {
 func GetKey(ctx context.Context, key string) (string, error) {
 	val, err := rdb.Get(ctx, key).Result()
 	// redis.Nil 不是错误，表示 key 不存在
-	if err != redis.Nil && err != nil {
+	if !errors.Is(err, redis.Nil) && err != nil {
 		return "", err
 	}
 
