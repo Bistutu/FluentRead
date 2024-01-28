@@ -17,6 +17,7 @@
 // @connect      www.iflyrec.com
 // @connect      edge.microsoft.com
 // @connect      api-edge.cognitive.microsofttranslator.com
+// @connect      aip.baidubce.com
 // @run-at       document-end
 // @downloadURL https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.user.js
 // @updateURL https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.meta.js
@@ -29,7 +30,9 @@ const POST = "POST";
 const url = new URL(location.href.split('?')[0]);
 // cacheKey 与 时间
 const checkKey = "fluent_read_check";
-const microsoft_token = "microsoft_token";
+const microsoft_token = null;
+const wxyy_key = "wxyy_key";
+let wxyy_access_token = null;
 let ctrlPressed = false;
 let hoverTimer;
 const expiringTime = 86400000 / 4;
@@ -82,6 +85,7 @@ const typeMap = {'Test': '测试', 'Provided': '提供', 'Compile': '编译'};
 
 (function () {
     'use strict';
+
     // 初始化
     init()
     // 检查是否需要拉取数据
@@ -403,9 +407,65 @@ function init() {
 // endregion
 
 
-// region 三方翻译
+// region 通用翻译处理模块
+let mySet = new Set();
 
-// feat: 微软翻译
+// 通用翻译程序
+function process(node, times) {
+    if (times > 2) return; // 最多往下查找2层
+    switch (node.nodeType) {
+        case Node.ELEMENT_NODE:
+            for (let child of node.childNodes) {
+                if (mySet.has(child) || ["body", "script", "img", "noscript"].includes(node.tagName.toLowerCase())) continue;
+                mySet.add(child);
+                process(child, times + 1);
+            }
+            break;
+        case Node.TEXT_NODE:
+            if (!node.textContent || !NotChinese(node.textContent)) return; // 包含为空或中文则跳过
+
+            let textParent = node.parentNode;   // 获取当前节点的父节点
+            let textSibling = node.nextSibling; // 获取当前节点的下一个兄弟节点
+            let spinner = createLoadingSpinner();   // 创建转圈动画
+            textParent.insertBefore(spinner, textSibling);  // 在“node 的下一个兄弟节点”插入转圈动画元素
+
+            // 调用微软翻译
+            // microsoft_trans(node.textContent, text => {
+            //     // 移除转圈动画元素
+            //     textParent.removeChild(spinner);
+            //
+            //     if (!text || node.textContent === text) return
+            //
+            //     console.log("翻译结果：", text);
+            //     node.textContent = text;    // 替换文本
+            // });
+
+            // 调用文心一言
+            let ak = "AGI7DMInjo7aG0ghoqEVbXCZ"
+            let sk = "jVWFSwGWeT14CrDZ5wj2MFnw870skv6e"
+            getWxYYAccessToken(ak, sk).then(token => {
+                chatWXYY(token, node.textContent, text => {
+                    textParent.removeChild(spinner);
+                    if (!text || node.textContent === text) return
+                    console.log("翻译结果：", text);
+                    node.textContent = text;    // 替换文本
+                });
+            })
+    }
+}
+
+
+// 创建转圈动画元素
+function createLoadingSpinner() {
+    const spinner = document.createElement('div');
+    spinner.className = 'loading-spinner-fluentread';
+    return spinner;
+}
+
+// endregion
+
+
+// region 微软翻译
 
 // 返回有效的令牌或 false
 function refreshToken(token) {
@@ -488,93 +548,89 @@ function microsoft_trans(origin, callback) {
     });
 }
 
-let mySet = new Set();
+// endregion
 
-function process(node, times) {
-    if (times > 2) return; // 最多往下查找2层
-    switch (node.nodeType) {
-        case Node.ELEMENT_NODE:
-            for (let child of node.childNodes) {
-                if (mySet.has(child) || ["body", "script", "img", "noscript"].includes(node.tagName.toLowerCase())) continue;
-                mySet.add(child);
-                process(child, times + 1);
-            }
-            break;
-        case Node.TEXT_NODE:
-            if (!node.textContent || !NotChinese(node.textContent)) return; // 包含为空或中文则跳过
+// region 谷歌翻译
 
-            // 创建转圈动画的元素
-            let spinner = createLoadingSpinner();
-            let textParent = node.parentNode;
-            let textSibling = node.nextSibling;
-            textParent.insertBefore(spinner, textSibling); // 插入动画元素
+// endregion
 
-            microsoft_trans(node.textContent, text => {
-                // 移除转圈动画元素
-                textParent.removeChild(spinner);
-
-                if (!text || node.textContent === text) return
-
-                console.log("翻译结果：", text);
-                node.textContent = text;    // 替换文本
-            });
-    }
-}
-
-
-// 这是创建转圈动画元素的函数
-function createLoadingSpinner() {
-    const spinner = document.createElement('div');
-    spinner.className = 'loading-spinner-fluentread';
-    return spinner;
-}
+// region openai翻译
 
 // endregion
 
 // region 文心一言
 
-let access_token_wxyy = "";
+// todo 暂未完工，需思考 setValue 与 getValue 方式，以及最终提供出一个通用的接口（还有翻译）
+// req: API Key、Secret Key
+// resp: access_token，有效期默认 30 天
+function getWxYYAccessToken(ak, sk) {
 
-function chatWXYY(origin, callback) {
+    if (wxyy_access_token) return wxyy_access_token
+
+    let gmGetValue = GM_getValue(wxyy_key, null);
+    if (gmGetValue) {
+        wxyy_access_token = gmGetValue
+        return gmGetValue
+    }
+
+    return new Promise((resolve, reject) => {
+        GM_xmlhttpRequest({
+            method: "POST",
+            url: 'https://aip.baidubce.com/oauth/2.0/token',
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            data: 'grant_type=client_credentials&client_id=' + ak + '&client_secret=' + sk,
+            onload: response => {
+                let res = JSON.parse(response.responseText);
+                if (res.access_token) {
+                    wxyy_access_token = res.access_token;
+                    resolve(wxyy_access_token);
+                } else reject(new Error('No access token in response'));
+            },
+            onerror: error => {
+                console.log('Failed to refresh access token:', error);
+                reject(error);
+            }
+        });
+    });
+}
+
+// 使用 chatWXYY 函数
+function chatWXYY(token, origin, callback) {
+    if (!wxyy_access_token) {
+        console.error("No access token available.");
+        callback(null);
+        return;
+    }
     GM_xmlhttpRequest({
         method: "POST",
-        url: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions_pro?access_token=' + access_token_wxyy,
+        // ERNIE-Bot 4.0 模型，模型定价页面：https://console.bce.baidu.com/qianfan/chargemanage/list
+        url: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions_pro?access_token=' + token,
         headers: {"Content-Type": "application/json"},
         data: JSON.stringify({
+            'temperature': 0.5, // 随机度
+            'disable_search': true, // 禁用搜索
             'messages': [{
                 "role": "user",
-                "content": "汉化，请你翻译：A minimal Docker image based on Alpine Linux with a complete package index and only 5 MB in size!"
-            },]
+                "content": "汉化，我正在访问{{title}}网站，请直接翻译：{{origin}}".replace("{{title}}", document.title).replace("{{origin}}", origin)
+            }],
         }),
         onload: function (response) {
-            // 请求成功
-            console.log("#>> onload", response.responseText);
             let res = JSON.parse(response.responseText);
             callback(res.result);
         },
         onerror: error => {
-            console.log("#>> onerror", error)
-            callback(null)
+            console.log("#>> onerror", error);
+            callback(null);
         }
-    })
-}
-
-// 根据ak与sk获取文心一言 access_token TODO 理解 refresh_token 的使用
-function getWxYYAccessToken(ak, sk) {
-    GM_xmlhttpRequest({
-        method: "POST",
-        url: 'https://aip.baidubce.com/oauth/2.0/token',
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        data: 'grant_type=client_credentials&client_id=' + ak + '&client_secret=' + sk,
-        onload: function (response) {
-            let res = JSON.parse(response.responseText);
-            if (res.access_token) access_token_wxyy = res.access_token;
-        },
-        onerror: error => console.log('Failed to refresh access token:', error)
     });
 }
+
+// endregion
+
+// region 通义千问
+
 
 // endregion
 
