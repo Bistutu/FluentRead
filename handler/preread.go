@@ -21,6 +21,6 @@ func PreReadHandler(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, models.OK(data))
+	c.JSON(200, models.Success(data))
 	return
 }

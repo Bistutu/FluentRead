@@ -63,7 +63,7 @@ func GetPageByLink(ctx context.Context, link string) (*models.Page, error) {
 }
 
 // GetPageById 按 id 获取页面信息
-func GetPageById(ctx context.Context, id int64) (*models.Page, error) {
+func GetPageById(ctx context.Context, id uint) (*models.Page, error) {
 	var page models.Page
 	return &page, db.First(&page, id).Error
 }

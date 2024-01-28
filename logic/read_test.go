@@ -12,11 +12,7 @@ var (
 )
 
 func TestReadByPage(t *testing.T) {
-	read, err := PageRead(ctx, "https://www.consul.io/")
-	assert.NoError(t, err)
-	t.Log(read)
-
-	read, err = PageRead(ctx, "https://music.unmeta.cn/")
+	read, err := PageRead(ctx, "https://chat.openai.com/")
 	assert.NoError(t, err)
 	t.Log(read)
 }

@@ -148,7 +148,7 @@ func parseText(ctx context.Context, parsedUrl *url.URL, node *html.Node, pageId 
 	// 如果文本长度大于 0，且全是英文，则插入数据库
 	if len(text) > 0 && utils.IsNonChinese(text) {
 		// 签名
-		signature := utils.Signature(parsedUrl.Host + text)
+		signature := models.Signature(parsedUrl.Host + text)
 
 		db.InsertTrans(ctx, &models.Translation{
 			Source:     text,

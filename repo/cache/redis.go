@@ -31,17 +31,22 @@ func init() {
 }
 
 // SetKey 默认过期时间 24 小时
-func SetKey(ctx context.Context, key string, value string) error {
+func SetKey(ctx context.Context, key string, value interface{}) error {
+	// TODO 测试
+	expiration = 1 * time.Second
 	return rdb.Set(ctx, key, value, expiration).Err()
 }
 
 // SetKeyWithTimeout 自定义过期时间
-func SetKeyWithTimeout(ctx context.Context, key string, timeout time.Duration, value string) error {
+func SetKeyWithTimeout(ctx context.Context, key string, timeout time.Duration, value interface{}) error {
+	// TODO 测试
+	timeout = 1 * time.Second
+
 	return rdb.Set(ctx, key, value, timeout).Err()
 }
 
 // SetKeyNotExpiration 永不过期
-func SetKeyNotExpiration(ctx context.Context, key string, value string) error {
+func SetKeyNotExpiration(ctx context.Context, key string, value interface{}) error {
 	return rdb.Set(ctx, key, value, 0).Err()
 }
 

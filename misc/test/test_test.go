@@ -36,3 +36,22 @@ func BenchmarkContainsNumber(b *testing.B) {
 		re.MatchString(msg)
 	}
 }
+
+func BenchmarkTest(b *testing.B) {
+	msg := ""
+	tmp := "snjkanJNsjka21212"
+	for i := 0; i < 100; i++ {
+		msg += tmp
+	}
+	fmt.Println(msg)
+	b.Run("1", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_ = msg
+		}
+	})
+	b.Run("2", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			_ = []byte(msg)
+		}
+	})
+}

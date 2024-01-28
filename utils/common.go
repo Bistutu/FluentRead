@@ -20,8 +20,8 @@ func IsContain(str string, strs []string) bool {
 	return false
 }
 
-// GetHostByString 根据 string 获取链接的host
-func GetHostByString(link string) string {
+// GetHost 根据 string 获取链接的host
+func GetHost(link string) string {
 	parsedUrl, err := url.Parse(link)
 	if err != nil {
 		log.Errorf("链接解析失败: %v", err)

@@ -1,6 +1,7 @@
 package logic
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -19,10 +20,10 @@ const (
 	longTimeOut    = 24 * time.Hour
 )
 
-// PageRead 按域名全文读取
+// PageRead 按域名读取
 func PageRead(ctx *gin.Context, link string) (transMap map[string]string, err error) {
 
-	link = utils.GetHostByString(link)
+	link = utils.GetHost(link)
 
 	// 1、查缓存，获取失败不影响后续流程
 	key := fmt.Sprintf(pageCacheConst, link)
@@ -31,7 +32,7 @@ func PageRead(ctx *gin.Context, link string) (transMap map[string]string, err er
 		log.Warnf("缓存读取失败：%v", err)
 	}
 	if len(transString) > 0 {
-		err = models.StringToMap(transString, &transMap)
+		err = json.Unmarshal([]byte(transString), &transMap)
 		if err != nil {
 			log.Errorf("缓存数据转换失败：%v", err)
 			return nil, err
@@ -48,12 +49,12 @@ func PageRead(ctx *gin.Context, link string) (transMap map[string]string, err er
 	}
 	transMap = models.BatchTransToMap(transs)
 
-	// 3、写缓存（+防缓存穿透）
+	// 3、写缓存 and 防缓存穿透
 	timeout := shortTimeOut
 	if len(transs) > 0 {
 		timeout = longTimeOut
 	}
-	err = cache.SetKeyWithTimeout(ctx, key, timeout, models.MapToString(transMap))
+	err = cache.SetKeyWithTimeout(ctx, key, timeout, models.MapToBytes(transMap))
 	if err != nil {
 		log.Warnf("缓存写入失败：%v", err)
 	}

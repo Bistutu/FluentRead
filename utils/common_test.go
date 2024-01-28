@@ -1,6 +1,8 @@
 package utils
 
-import "testing"
+import (
+	"testing"
+)
 
 // check是否为英语单词性能测试
 func BenchmarkCheck(b *testing.B) {

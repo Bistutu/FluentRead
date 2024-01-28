@@ -21,14 +21,18 @@ import (
 
 var (
 	ctx  = context.Background()
-	link = utils.GetHostByString(
+	link = utils.GetHost(
 		//"https://openai.com/",
 		//"https://platform.openai.com/apps",
-		//"https://chat.openai.com/",
-		"https://hub.docker.com/search?q=",
+		"https://chat.openai.com/",
+		//"https://hub.docker.com/search?q=",
 		//"https://mvnrepository.com/artifact/com.alibaba/fastjson/2.0.44",
 		//"https://help.openai.com/en/articles/8554397-creating-a-gpt",
 		//"https://platform.openai.com/docs/overview",
+		//"https://mvnrepository.com/repos",
+		//"https://www.nexusmods.com/",
+		//"https://users.nexusmods.com/",
+		//"https://www.coze.com/space/7313028917407842311/plugin",
 	)
 )
 
@@ -55,7 +59,7 @@ func TestInsertTrans_JSON(t *testing.T) {
 			continue
 		}
 
-		signature := utils.Signature(link + line)
+		signature := models.Signature(link + line)
 		db.InsertTrans(ctx, &models.Translation{
 			Source:     line,
 			Target:     "",
@@ -86,7 +90,7 @@ func TestInsertTrans(t *testing.T) {
 			continue
 		}
 
-		signature := utils.Signature(link + line)
+		signature := models.Signature(link + line)
 		db.InsertTrans(ctx, &models.Translation{Source: line, Target: "", Hash: signature, Translated: false, TargetType: 0, PageId: pageId})
 	}
 	// 检查Scan过程中是否有错误发生（文件结尾除外）

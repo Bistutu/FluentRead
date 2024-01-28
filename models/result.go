@@ -7,10 +7,18 @@ type Result struct {
 	Data interface{} `json:"Data"`
 }
 
-func OK(data interface{}) *Result {
+func Success(data interface{}) *Result {
 	return &Result{
 		Code: 0,
 		Msg:  "ok",
 		Data: data,
+	}
+}
+
+func Fail(msg string) *Result {
+	return &Result{
+		Code: -1,
+		Msg:  msg,
+		Data: nil,
 	}
 }

@@ -41,7 +41,7 @@ func PreRead(ctx context.Context) (map[string]string, error) {
 
 	// 3、写缓存
 	bytes, _ := json.Marshal(pageMap)
-	err = cache.SetKey(ctx, prereadKey, string(bytes))
+	err = cache.SetKey(ctx, prereadKey, bytes)
 	if err != nil {
 		log.Warnf("写入缓存失败: %v", err)
 	}

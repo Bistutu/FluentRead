@@ -1,11 +1,7 @@
 package models
 
 import (
-	"strconv"
-
 	"gorm.io/gorm"
-
-	"FluentRead/utils"
 )
 
 // cache 键的规范：域名:哈希值
@@ -28,17 +24,11 @@ type Page struct {
 	gorm.Model
 }
 
+// BatchTransToMap 将批量翻译结果转换为 map
 func BatchTransToMap(transModels []*Translation) map[string]string {
 	rs := make(map[string]string, len(transModels))
 	for _, v := range transModels {
 		rs[v.Hash] = v.Target
-	}
-	return rs
-}
-func PageToStrings(pages []*Page) []string {
-	rs := make([]string, 0)
-	for _, v := range pages {
-		rs = append(rs, v.Link)
 	}
 	return rs
 }
@@ -47,37 +37,7 @@ func PageToStrings(pages []*Page) []string {
 func PageToMap(pages []*Page) map[string]string {
 	rs := make(map[string]string, len(pages))
 	for _, v := range pages {
-		rs[v.Link] = utils.Signature(v.UpdatedAt.String())
+		rs[v.Link] = Signature(v.UpdatedAt.String())
 	}
-	return rs
-}
-
-func TransToSlice(trans *Translation) []string {
-	rs := make([]string, 0)
-	rs = append(
-		rs,
-		strconv.Itoa(int(trans.ID)),
-		strconv.Itoa(int(trans.PageId)),
-		trans.Hash,
-		trans.Source,
-		strconv.Itoa(int(trans.TargetType)),
-		trans.Target,
-		strconv.FormatBool(trans.Translated),
-		trans.UpdatedAt.String(),
-		trans.CreatedAt.String(),
-	)
-	return rs
-}
-
-func PageToSlice(page *Page) []string {
-	rs := make([]string, 0)
-	rs = append(
-		rs,
-		strconv.Itoa(int(page.ID)),
-		page.Link,
-		page.Describe,
-		page.UpdatedAt.String(),
-		page.CreatedAt.String(),
-	)
 	return rs
 }

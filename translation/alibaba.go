@@ -1,4 +1,5 @@
-package ext
+// Package translation 阿里翻译
+package translation
 
 import (
 	"encoding/json"
