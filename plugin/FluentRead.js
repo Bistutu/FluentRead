@@ -408,10 +408,14 @@ function init() {
 
 
 // region 通用翻译处理模块
-let mySet = new Set();
+let mySet = new Set();  // 剪枝 set
+// 提供 GM 提取
+const translationModelKey = "translation_model_key";   // 翻译语言模型缓存 key
+const translationMessageKey = "translation_message_key";   // 翻译消息缓存 key
 
 // 通用翻译程序
-function process(node, times) {
+function
+process(node, times) {
     if (times > 2) return; // 最多往下查找2层
     switch (node.nodeType) {
         case Node.ELEMENT_NODE:
@@ -423,44 +427,50 @@ function process(node, times) {
             break;
         case Node.TEXT_NODE:
             if (!node.textContent || !NotChinese(node.textContent)) return; // 包含为空或中文则跳过
-
-            let textParent = node.parentNode;   // 获取当前节点的父节点
-            let textSibling = node.nextSibling; // 获取当前节点的下一个兄弟节点
-            let spinner = createLoadingSpinner();   // 创建转圈动画
-            textParent.insertBefore(spinner, textSibling);  // 在“node 的下一个兄弟节点”插入转圈动画元素
-
+            let spinner = createLoadingSpinner(node);  // 创建转圈动画并插入
             // 调用微软翻译
             // microsoft_trans(node.textContent, text => {
             //     // 移除转圈动画元素
-            //     textParent.removeChild(spinner);
-            //
+            //     removeLoadingSpinner(node, spinner);
             //     if (!text || node.textContent === text) return
-            //
-            //     console.log("翻译结果：", text);
             //     node.textContent = text;    // 替换文本
             // });
 
-            // 调用文心一言
-            let ak = "AGI7DMInjo7aG0ghoqEVbXCZ"
-            let sk = "jVWFSwGWeT14CrDZ5wj2MFnw870skv6e"
-            getWxYYAccessToken(ak, sk).then(token => {
-                chatWXYY(token, node.textContent, text => {
-                    textParent.removeChild(spinner);
-                    if (!text || node.textContent === text) return
-                    console.log("翻译结果：", text);
-                    node.textContent = text;    // 替换文本
-                });
-            })
+        // todo 从 GM 中取出定义的翻译源（文心一言等配置也需存储在 GM）
+
+        // 调用文心一言
+        let ak = "AGI7DMInjo7aG0ghoqEVbXCZ"
+        let sk = "jVWFSwGWeT14CrDZ5wj2MFnw870skv6e"
+        getWxYYAccessToken(ak, sk).then(token => {
+            chatWXYY(token, node.textContent, text => {
+                removeLoadingSpinner(node, spinner);    // 移除转圈动画
+                if (!text || node.textContent === text) return
+                console.log("翻译结果：", text);
+                node.textContent = text;    // 替换文本
+            });
+        })
     }
 }
 
 
-// 创建转圈动画元素
-function createLoadingSpinner() {
+// 创建转圈动画并插入
+function createLoadingSpinner(node) {
     const spinner = document.createElement('div');
     spinner.className = 'loading-spinner-fluentread';
+    let textParent = node.parentNode;   // 获取当前节点的父节点
+    let textSibling = node.nextSibling; // 获取当前节点的下一个兄弟节点
+    textParent.insertBefore(spinner, textSibling);  // 在“node 的下一个兄弟节点”插入转圈动画元素
     return spinner;
 }
+
+// 移除转圈动画
+function removeLoadingSpinner(node, spinner) {
+    let textParent = node.parentNode;   // 获取当前节点的父节点
+    textParent.removeChild(spinner);    // 移除转圈动画元素
+}
+
+// 必须考虑到多翻译源切换的问题
+
 
 // endregion
 
@@ -471,10 +481,7 @@ function createLoadingSpinner() {
 function refreshToken(token) {
     const decodedToken = parseJwt(token);
     const currentTimestamp = Math.floor(Date.now() / 1000); // 当前时间的UNIX时间戳（秒）
-
-    // 如果令牌有效且未过期，则立即返回true
     if (decodedToken && currentTimestamp < decodedToken.exp) {
-        // console.log('令牌有效');
         return Promise.resolve(token);
     }
 
@@ -483,12 +490,12 @@ function refreshToken(token) {
         GM_xmlhttpRequest({
             method: 'GET',
             url: "https://edge.microsoft.com/translate/auth",
-            onload: function (response) {
-                if (response.status === 200) {
-                    let token = response.responseText;
+            onload: resp => {
+                if (resp.status === 200) {
+                    let token = resp.responseText;
                     GM_setValue('microsoft_token', token);
                     resolve(token);
-                } else reject('请求 microsoft translation auth 失败: ' + response.status);
+                } else reject('请求 microsoft translation auth 失败: ' + resp.status);
             },
             onerror: function (error) {
                 console.error('请求 microsoft translation auth 发生错误: ', error);
@@ -499,7 +506,7 @@ function refreshToken(token) {
 }
 
 
-// 解析 jwt，返回对象
+// 解析 jwt，返回解析后对象
 function parseJwt(token) {
     try {
         const base64Url = token.split('.')[1];
@@ -517,9 +524,9 @@ function parseJwt(token) {
 function microsoft_trans(origin, callback) {
     // 从 GM 缓存获取 token
     let jwtToken = GM_getValue('microsoft_token', undefined);
-    refreshToken(jwtToken).then(rs => {
+    refreshToken(jwtToken).then(jwtString => {
         // 失败，提前返回
-        if (!rs) {
+        if (!jwtString) {
             callback(null);
             return;
         }
@@ -528,19 +535,19 @@ function microsoft_trans(origin, callback) {
             url: "https://api-edge.cognitive.microsofttranslator.com/translate?from=&to=zh&api-version=3.0&includeSentenceLength=true",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": "Bearer " + rs
+                "Authorization": "Bearer " + jwtString
             },
             data: JSON.stringify([{"Text": origin}]),
             onload: function (response) {
-                if (response.status === 200) {
-                    let resultJson = JSON.parse(response.responseText);
-                    callback(resultJson[0].translations[0].text);
-                } else {
+                if (response.status !== 200) {
                     console.log("调用微软翻译失败：", response.status);
                     callback(null);
+                    return
                 }
+                let resultJson = JSON.parse(response.responseText);
+                callback(resultJson[0].translations[0].text);
             },
-            onerror: function (error) {
+            onerror: error => {
                 console.log("调用微软翻译失败：", error);
                 callback(null);
             }
