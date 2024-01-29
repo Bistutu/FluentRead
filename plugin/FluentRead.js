@@ -19,9 +19,11 @@
 // @connect      api-edge.cognitive.microsofttranslator.com
 // @connect      aip.baidubce.com
 // @connect      dashscope.aliyuncs.com
+// @connect      open.bigmodel.cn
 // @run-at       document-end
 // @downloadURL https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.user.js
 // @updateURL https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.meta.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js
 // ==/UserScript==
 
 // region 常量与变量
@@ -84,6 +86,7 @@ const transModel = {    // 翻译模型枚举
     openai: "openai",   // GPT
     yiyan: "yiyan", // 文心一言
     tongyi: "tongyi",   // 通义千问
+    zhipu: "zhipu", // 智谱
     // --- 机器翻译 ---
     microsoft: "microsoft",
     google: "google",
@@ -398,6 +401,7 @@ function init() {
     // 翻译模型
     transFnMap[transModel.yiyan] = yiyan
     transFnMap[transModel.tongyi] = tongyi
+    transFnMap[transModel.zhipu] = zhipu
     // 设置 token
 
 
@@ -447,7 +451,7 @@ function translate(node, times) {
             // todo 从 GM 中取出定义的翻译源（文心一言等配置也需存储在 GM）
 
             // 调用翻译模型
-            transFnMap[transModel.tongyi](node.textContent, text => {
+            transFnMap[transModel.zhipu](node.textContent, text => {
                 removeLoadingSpinner(node, spinner);    // 移除转圈动画
                 if (!text || node.textContent === text) return
                 node.textContent = text;    // 替换文本
@@ -692,6 +696,86 @@ function tongyi(origin, callback) {
             console.error('Request failed:', error);
         }
     });
+}
+
+// endregion
+
+// region 智谱
+
+function zhipu(origin, callback) {
+    // 获取 tokenObject
+    let tokenObject = GM_getValue(transModel.zhipu, null);
+    let token = tokenObject.token;
+    if (!token || tokenObject.expiration >= Date.now()) {
+        token = generateToken(tokenObject.apikey);
+    }
+
+    // 发起请求
+    GM_xmlhttpRequest({
+        method: "POST",
+        url: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+        },
+        data: JSON.stringify({
+            "model": "glm-4",
+            "messages": [
+                {"role": "system", "content": chatMgs.system},
+                {"role": "user", "content": chatMgs.user.replace("{{origin}}", origin)}
+            ],
+            "stream": false,
+            "temperature": 0.1
+        }),
+        onload: resp => {
+            let res = JSON.parse(resp.responseText);
+            if (resp.status === 200) {
+                callback(res.choices[0].message.content);
+            } else {
+                console.log("调用智谱失败：", resp);
+                callback(null);
+            }
+        },
+        onerror: error => {
+            console.error('Error:', error);
+        }
+    });
+}
+
+function generateToken(apiKey) {
+
+    if (!apiKey || !apiKey.includes('.')) {
+        console.log("API Key 格式错误：", apiKey)
+        return;
+    }
+    let duration = 3600000 * 24; // 生成的 token 默认24小时后过期
+
+    const [key, secret] = apiKey.split('.');
+    let token = generateJWT(secret, {alg: "HS256", sign_type: "SIGN", typ: "JWT"}, {
+        api_key: key,
+        exp: Math.floor(Date.now() / 1000) + (duration / 1000),
+        timestamp: Math.floor(Date.now() / 1000)
+    });
+    if (!token) return  // 失败则提前返回
+    // 存储
+    GM_setValue(transModel.zhipu, {apikey: apiKey, token: token, expiration: Date.now() + duration});
+
+    return token;
+}
+
+// 生成JWT（JSON Web Token）
+function generateJWT(secret, header, payload) {
+    // 对header和payload部分进行UTF-8编码，然后转换为Base64URL格式
+    const encodedHeader = base64UrlSafe(btoa(JSON.stringify(header)));
+    const encodedPayload = base64UrlSafe(btoa(JSON.stringify(payload)));
+    // 生成 jwt 签名
+    let hmacsha256 = base64UrlSafe(CryptoJS.HmacSHA256(encodedHeader + "." + encodedPayload, secret).toString(CryptoJS.enc.Base64))
+    return `${encodedHeader}.${encodedPayload}.${hmacsha256}`;
+}
+
+// 将Base64字符串转换为Base64URL格式的函数
+function base64UrlSafe(base64String) {
+    return base64String.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 
