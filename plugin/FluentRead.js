@@ -18,6 +18,7 @@
 // @connect      edge.microsoft.com
 // @connect      api-edge.cognitive.microsofttranslator.com
 // @connect      aip.baidubce.com
+// @connect      dashscope.aliyuncs.com
 // @run-at       document-end
 // @downloadURL https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.user.js
 // @updateURL https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.meta.js
@@ -30,9 +31,6 @@ const POST = "POST";
 const url = new URL(location.href.split('?')[0]);
 // cacheKey 与 时间
 const checkKey = "fluent_read_check";
-const microsoft_token = null;
-const wxyy_key = "wxyy_key";
-let wxyy_access_token = null;
 let ctrlPressed = false;
 let hoverTimer;
 const expiringTime = 86400000 / 4;
@@ -80,6 +78,19 @@ let throttleObserveDOM = throttle(observeDOM, 3000);
 let pruneSet = new Set();
 // 其余常量
 const typeMap = {'Test': '测试', 'Provided': '提供', 'Compile': '编译'};
+// 翻译模型
+const transModel = {    // 翻译模型枚举
+    // --- LLM翻译 ---
+    openai: "openai",   // GPT
+    yiyan: "yiyan", // 文心一言
+    tongyi: "tongyi",   // 通义千问
+    // --- 机器翻译 ---
+    microsoft: "microsoft",
+    google: "google",
+    tencent: "tencent",
+}
+const transFnMap = new Map();   // 翻译函数 map
+
 
 // endregion
 
@@ -142,10 +153,10 @@ const typeMap = {'Test': '测试', 'Provided': '提供', 'Compile': '编译'};
             hoverTimer = setTimeout(() => {
                 // 若触发特殊节点，则从父节点开始向下查找
                 if (["p", "th", "td"].includes(event.target.parentNode.tagName.toLowerCase())) {
-                    process(event.target.parentNode, 0); // 从父节点开始，向下查找
+                    translate(event.target.parentNode, 0); // 从父节点开始，向下查找
                     return
                 }
-                process(event.target, 0); // 从当前元素开始，向下查找
+                translate(event.target, 0); // 从当前元素开始，向下查找
             }, 50);
 
         }
@@ -384,6 +395,11 @@ function init() {
     preprocess[docker] = function (node) {
         return false
     }
+    // 翻译模型
+    transFnMap[transModel.yiyan] = yiyan
+    transFnMap[transModel.tongyi] = tongyi
+    // 设置 token
+
 
     // 插入CSS：转圈动画
     const style = document.createElement('style');
@@ -412,46 +428,37 @@ let mySet = new Set();  // 剪枝 set
 // 提供 GM 提取
 const translationModelKey = "translation_model_key";   // 翻译语言模型缓存 key
 const translationMessageKey = "translation_message_key";   // 翻译消息缓存 key
+const microsoft_token = null;
 
 // 通用翻译程序
-function
-process(node, times) {
+function translate(node, times) {
     if (times > 2) return; // 最多往下查找2层
     switch (node.nodeType) {
         case Node.ELEMENT_NODE:
             for (let child of node.childNodes) {
                 if (mySet.has(child) || ["body", "script", "img", "noscript"].includes(node.tagName.toLowerCase())) continue;
                 mySet.add(child);
-                process(child, times + 1);
+                translate(child, times + 1);
             }
             break;
         case Node.TEXT_NODE:
             if (!node.textContent || !NotChinese(node.textContent)) return; // 包含为空或中文则跳过
             let spinner = createLoadingSpinner(node);  // 创建转圈动画并插入
-            // 调用微软翻译
-            // microsoft_trans(node.textContent, text => {
-            //     // 移除转圈动画元素
-            //     removeLoadingSpinner(node, spinner);
-            //     if (!text || node.textContent === text) return
-            //     node.textContent = text;    // 替换文本
-            // });
+            // todo 从 GM 中取出定义的翻译源（文心一言等配置也需存储在 GM）
 
-        // todo 从 GM 中取出定义的翻译源（文心一言等配置也需存储在 GM）
-
-        // 调用文心一言
-        let ak = "AGI7DMInjo7aG0ghoqEVbXCZ"
-        let sk = "jVWFSwGWeT14CrDZ5wj2MFnw870skv6e"
-        getWxYYAccessToken(ak, sk).then(token => {
-            chatWXYY(token, node.textContent, text => {
+            // 调用翻译模型
+            transFnMap[transModel.tongyi](node.textContent, text => {
                 removeLoadingSpinner(node, spinner);    // 移除转圈动画
                 if (!text || node.textContent === text) return
-                console.log("翻译结果：", text);
                 node.textContent = text;    // 替换文本
-            });
-        })
+            })
     }
 }
 
+// 检验键值并设置 token
+function setToken(key, value) {
+    transFnMap[key] ? GM_setValue(key, value) : null
+}
 
 // 创建转圈动画并插入
 function createLoadingSpinner(node) {
@@ -567,76 +574,125 @@ function microsoft_trans(origin, callback) {
 
 // region 文心一言
 
-// todo 暂未完工，需思考 setValue 与 getValue 方式，以及最终提供出一个通用的接口（还有翻译）
+const chatMgs = {
+    system: "You are a professional, authentic translation engine, only returns translations.",
+    user: "Please translate them into Chinese, please do not explain my original text: {{origin}}"
+}
+const JSONFormatHeader = {"Content-Type": "application/json"}
+
 // req: API Key、Secret Key
 // resp: access_token，有效期默认 30 天
-function getWxYYAccessToken(ak, sk) {
-
-    if (wxyy_access_token) return wxyy_access_token
-
-    let gmGetValue = GM_getValue(wxyy_key, null);
-    if (gmGetValue) {
-        wxyy_access_token = gmGetValue
-        return gmGetValue
-    }
-
+function getYiyanToken() {
     return new Promise((resolve, reject) => {
+        // 1、尝试从 GM 中获取 token，并检测是否有效
+        let v = GM_getValue(transModel.yiyan, null);
+        if (v && v.token && v.ak && v.sk && v.expiration > Date.now()) {
+            resolve(v.token); // 直接返回有效的 token
+            return
+        }
+        // 2、发起网络请求
         GM_xmlhttpRequest({
             method: "POST",
             url: 'https://aip.baidubce.com/oauth/2.0/token',
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
-            data: 'grant_type=client_credentials&client_id=' + ak + '&client_secret=' + sk,
-            onload: response => {
-                let res = JSON.parse(response.responseText);
+            data: 'grant_type=client_credentials&client_id=' + v.ak + '&client_secret=' + v.sk,
+            onload: resp => {
+                let res = JSON.parse(resp.responseText);
                 if (res.access_token) {
-                    wxyy_access_token = res.access_token;
-                    resolve(wxyy_access_token);
-                } else reject(new Error('No access token in response'));
+                    // 获取有效时间范围，单位秒
+                    let expiration = new Date().getTime() + res.expires_in * 1000;
+                    GM_setValue(transModel.yiyan, {
+                        ak: v.ak,
+                        sk: v.sk,
+                        token: res.access_token,
+                        expiration: expiration
+                    });
+                    resolve(res.access_token);
+                } else reject(new Error(res.error_description));
             },
             onerror: error => {
                 console.log('Failed to refresh access token:', error);
                 reject(error);
             }
         });
-    });
+    })
 }
 
-// 使用 chatWXYY 函数
-function chatWXYY(token, origin, callback) {
-    if (!wxyy_access_token) {
-        console.error("No access token available.");
-        callback(null);
-        return;
-    }
-    GM_xmlhttpRequest({
-        method: "POST",
-        // ERNIE-Bot 4.0 模型，模型定价页面：https://console.bce.baidu.com/qianfan/chargemanage/list
-        url: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions_pro?access_token=' + token,
-        headers: {"Content-Type": "application/json"},
-        data: JSON.stringify({
-            'temperature': 0.5, // 随机度
-            'disable_search': true, // 禁用搜索
-            'messages': [{
-                "role": "user",
-                "content": "汉化，我正在访问{{title}}网站，请直接翻译：{{origin}}".replace("{{title}}", document.title).replace("{{origin}}", origin)
-            }],
-        }),
-        onload: function (response) {
-            let res = JSON.parse(response.responseText);
-            callback(res.result);
-        },
-        onerror: error => {
-            console.log("#>> onerror", error);
-            callback(null);
-        }
-    });
+function yiyan(origin, callback) {
+    if (origin.trim().length === 0) return;
+    getYiyanToken().then(token => {
+        GM_xmlhttpRequest({
+            method: "POST",
+            // ERNIE-Bot 4.0 模型，模型定价页面：https://console.bce.baidu.com/qianfan/chargemanage/list
+            // api 文档中心：https://cloud.baidu.com/doc/WENXINWORKSHOP/s/clntwmv7t
+            url: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions_pro?access_token=' + token,
+            headers: JSONFormatHeader,
+            data: JSON.stringify({
+                'temperature': 0.1, // 随机度
+                'disable_search': true, // 禁用搜索
+                'messages': [{
+                    "role": "user",
+                    "content": chatMgs.system + chatMgs.user.replace("{{origin}}", origin)
+                }],
+            }),
+            onload: resp => {
+                let res = JSON.parse(resp.responseText);
+                callback(res.result);
+            },
+            onerror: error => {
+                console.log("#>> onerror", error);
+                callback(null);
+            }
+        });
+    })
 }
 
 // endregion
 
 // region 通义千问
+
+
+function tongyi(origin, callback) {
+    // 获取 token
+    let token = GM_getValue(transModel.tongyi, null);
+    if (!token) {
+        console.log("通义千问：未获取到 token");
+        return
+    }
+
+    // 发起请求
+    GM_xmlhttpRequest({
+        method: "POST",
+        url: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
+        headers: {
+            "Authorization": "Bearer " + token,
+            "Content-Type": "application/json"
+        },
+        data: JSON.stringify({
+            "model": "qwen-turbo",
+            "input": {
+                "messages": [
+                    {"role": "system", "content": chatMgs.system},
+                    {"role": "user", "content": chatMgs.user.replace("{{origin}}", origin)}
+                ]
+            },
+            "parameters": {}
+        }),
+        onload: resp => {
+            let res = JSON.parse(resp.responseText);
+            if (resp.status === 200) {
+                callback(res.output.text);
+            } else {
+                console.log("调用通义千问失败：", resp);
+                // todo 应展示友好的提示
+                callback(null);
+            }
+
+        },
+        onerror: error => {
+            console.error('Request failed:', error);
+        }
+    });
+}
 
 
 // endregion
