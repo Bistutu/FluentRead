@@ -20,38 +20,44 @@
     });
 
     document.addEventListener('keyup', event => {
-        if (event.key === "Control") ctrlPressed = false;
+        if (event.key === "Control") ctrlPressed = false
     });
 
-    // 监听到的元素，应该取其 textContent
-    document.body.addEventListener('mouseover', function (event) {
-        if (ctrlPressed && event.target && !["body", "script", "img", "noscript"].includes(event.target.tagName.toLowerCase())) {
-            // 开始计时
-            hoverTimer = setTimeout(() => {
-                process(event.target, 0);   // 从当前元素开始，向下查找
-            }, 200);
+    // 当浏览器或标签页失去焦点时，重置 ctrlPressed
+    window.addEventListener('blur', () => ctrlPressed = false)
+
+    // 增加鼠标监听事件
+    document.addEventListener('mousemove', (event) => {
+        if (!ctrlPressed) {
+            return;
         }
-    });
-    // 如果在指定时间内移出元素，则取消操作与计时
-    document.body.addEventListener('mouseout', event => clearTimeout(hoverTimer));
-})();
 
-let mySet = new Set();
+        clearTimeout(hoverTimer); // 清除之前的计时器
+        hoverTimer = setTimeout(() => {
+            let hoveredElement = event.target;
+            let textContent = '';
 
-function process(node, times) {
-    if (times > 2) return;  // 最多往下查找2层
-    switch (node.nodeType) {
-        case Node.ELEMENT_NODE:
-            for (let child of node.childNodes) {
-                if (mySet.has(child)) continue;
-                mySet.add(child);
-                process(child, times + 1);
+            // 如果存在子节点
+            if (hoveredElement.childNodes.length > 0) {
+                // 遍历所有子节点
+                hoveredElement.childNodes.forEach(node => {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        // 如果是文本节点，添加其文本
+                        textContent += node.textContent.trim() + ' ';
+                    } else if (node.nodeType === Node.ELEMENT_NODE) {
+                        console.log("Element Node: ", node);
+                        // 如果是元素节点，也添加其文本
+                        textContent += node.innerText.trim() + ' ';
+                    }
+                });
+            } else {    // 如果没有子节点，直接获取元素的文本
+                textContent = hoveredElement.textContent.trim();
             }
-            break;
-        case Node.TEXT_NODE:
-            // 打印文本
-            console.log(node.textContent);
-    }
-}
 
-
+            // 检查换行符
+            if (textContent && textContent.split("\n").length === 1) {
+                console.log("Hovered Text: ", textContent);
+            }
+        }, 50)
+    });
+})();
