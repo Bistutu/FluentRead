@@ -357,6 +357,18 @@ function NotChinese(text) {
     return !/[\u4e00-\u9fa5]/.test(text);
 }
 
+// 检测中文率
+function calculateChineseRate(text) {
+    let chineseCharCount = 0;
+    let totalCharCount = text.length;
+    for (let i = 0; i < text.length; i++) {
+        if (text[i].match(/[\u4E00-\u9FFF]/)) {
+            chineseCharCount++;
+        }
+    }
+    return chineseCharCount / totalCharCount;
+}
+
 // 判断是否应该剪枝
 function shouldPrune(text) {
     let has = pruneSet.has(text);
@@ -422,6 +434,7 @@ function init() {
     transFnMap[transModel.yiyan] = yiyan
     transFnMap[transModel.tongyi] = tongyi
     transFnMap[transModel.zhipu] = zhipu
+    transFnMap[transModel.microsoft] = microsoft
     // 设置 token
 
 
@@ -458,13 +471,16 @@ const microsoft_token = null;
 
 // 通用翻译程序，参数：节点、待翻译文本
 function translate(node, origin) {
-    // todo 判断文本类型，如果是中文则不翻译
+
+    // 检测中文率，如果中文率大于 50% 则不翻译
+    if (calculateChineseRate(origin) > 0.5) return;
 
     let spinner = createLoadingSpinner(node);  // 创建转圈动画并插入
+
     // todo 从 GM 中取出定义的翻译源（文心一言等配置也需存储在 GM）
 
     // 调用翻译模型
-    transFnMap[transModel.zhipu](origin, text => {
+    transFnMap[transModel.microsoft](origin, text => {
         node.removeChild(spinner);    // 移除转圈动画
         if (!text || origin === text) return
         node.textContent = text;    // 替换文本
@@ -536,7 +552,7 @@ function parseJwt(token) {
 }
 
 // 微软翻译接口
-function microsoft_trans(origin, callback) {
+function microsoft(origin, callback) {
     // 从 GM 缓存获取 token
     let jwtToken = GM_getValue('microsoft_token', undefined);
     refreshToken(jwtToken).then(jwtString => {
