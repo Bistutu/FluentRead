@@ -94,6 +94,8 @@ const transModel = {    // 翻译模型枚举
 }
 const transFnMap = new Map();   // 翻译函数 map
 
+// 鼠标悬停去重 set
+let sentenceSet = new Set();
 
 // endregion
 
@@ -148,21 +150,39 @@ const transFnMap = new Map();   // 翻译函数 map
 
     // 增加鼠标监听事件
     document.body.addEventListener('mousemove', function (event) {
-        if (event.target && !["body", "script", "img", "noscript"].includes(event.target.tagName.toLowerCase())) {
-            // 只有当 ctrl 被按下时才开始计时
-            if (!ctrlPressed) return
 
-            clearTimeout(hoverTimer); // 清除之前的计时器
-            hoverTimer = setTimeout(() => {
-                // 若触发特殊节点，则从父节点开始向下查找
-                if (["p", "th", "td"].includes(event.target.parentNode.tagName.toLowerCase())) {
-                    translate(event.target.parentNode, 0); // 从父节点开始，向下查找
-                    return
-                }
-                translate(event.target, 0); // 从当前元素开始，向下查找
-            }, 50);
+        if (!ctrlPressed) return;
 
-        }
+        clearTimeout(hoverTimer); // 清除之前的计时器
+        hoverTimer = setTimeout(() => {
+            let hoveredElement = event.target;
+            let textContent = '';
+
+            // 去重判断
+            if (sentenceSet.has(hoveredElement)) return;
+
+            // 如果存在子节点
+            if (hoveredElement.childNodes.length > 0) {
+                // 遍历所有子节点
+                hoveredElement.childNodes.forEach(node => {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        // 如果是文本节点，添加其文本
+                        textContent += node.textContent.trim() + ' ';
+                    } else if (node.nodeType === Node.ELEMENT_NODE && node.innerText) {
+                        textContent += node.innerText.trim() + ' ';
+                    }
+                });
+            } else {    // 如果没有子节点，直接获取元素的文本
+                textContent = hoveredElement.textContent.trim();
+            }
+
+            // 检查换行符
+            if (textContent && textContent.split("\n").length === 1) {
+                sentenceSet.add(hoveredElement);
+                console.log("Hovered Text: ", textContent);
+                translate(hoveredElement, textContent)
+            }
+        }, 50)
     });
 })();
 
@@ -422,6 +442,8 @@ function init() {
         display: inline-block;
     }`;
     document.head.appendChild(style);
+
+
 }
 
 // endregion
@@ -434,29 +456,19 @@ const translationModelKey = "translation_model_key";   // 翻译语言模型缓�
 const translationMessageKey = "translation_message_key";   // 翻译消息缓存 key
 const microsoft_token = null;
 
-// 通用翻译程序
-function translate(node, times) {
-    if (times > 2) return; // 最多往下查找2层
-    switch (node.nodeType) {
-        case Node.ELEMENT_NODE:
-            for (let child of node.childNodes) {
-                if (mySet.has(child) || ["body", "script", "img", "noscript"].includes(node.tagName.toLowerCase())) continue;
-                mySet.add(child);
-                translate(child, times + 1);
-            }
-            break;
-        case Node.TEXT_NODE:
-            if (!node.textContent || !NotChinese(node.textContent)) return; // 包含为空或中文则跳过
-            let spinner = createLoadingSpinner(node);  // 创建转圈动画并插入
-            // todo 从 GM 中取出定义的翻译源（文心一言等配置也需存储在 GM）
+// 通用翻译程序，参数：节点、待翻译文本
+function translate(node, origin) {
+    // todo 判断文本类型，如果是中文则不翻译
 
-            // 调用翻译模型
-            transFnMap[transModel.zhipu](node.textContent, text => {
-                removeLoadingSpinner(node, spinner);    // 移除转圈动画
-                if (!text || node.textContent === text) return
-                node.textContent = text;    // 替换文本
-            })
-    }
+    let spinner = createLoadingSpinner(node);  // 创建转圈动画并插入
+    // todo 从 GM 中取出定义的翻译源（文心一言等配置也需存储在 GM）
+
+    // 调用翻译模型
+    transFnMap[transModel.zhipu](origin, text => {
+        node.removeChild(spinner);    // 移除转圈动画
+        if (!text || origin === text) return
+        node.textContent = text;    // 替换文本
+    })
 }
 
 // 检验键值并设置 token
@@ -468,16 +480,8 @@ function setToken(key, value) {
 function createLoadingSpinner(node) {
     const spinner = document.createElement('div');
     spinner.className = 'loading-spinner-fluentread';
-    let textParent = node.parentNode;   // 获取当前节点的父节点
-    let textSibling = node.nextSibling; // 获取当前节点的下一个兄弟节点
-    textParent.insertBefore(spinner, textSibling);  // 在“node 的下一个兄弟节点”插入转圈动画元素
+    node.appendChild(spinner)
     return spinner;
-}
-
-// 移除转圈动画
-function removeLoadingSpinner(node, spinner) {
-    let textParent = node.parentNode;   // 获取当前节点的父节点
-    textParent.removeChild(spinner);    // 移除转圈动画元素
 }
 
 // 必须考虑到多翻译源切换的问题
