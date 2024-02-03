@@ -20,6 +20,8 @@
 // @connect      aip.baidubce.com
 // @connect      dashscope.aliyuncs.com
 // @connect      open.bigmodel.cn
+// @connect      translate.googleapis.com
+// @connect      api.openai.com
 // @run-at       document-end
 // @downloadURL https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.user.js
 // @updateURL https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.meta.js
@@ -62,7 +64,7 @@ const autoSavedRegex = /Auto-saved (\d{2}):(\d{2}):(\d{2})/;
 const maven = "mvnrepository.com";
 const docker = "hub.docker.com";
 const nexusmods = "www.nexusmods.com"
-const openai = "openai.com"
+const openai_web = "openai.com"
 const chatGPT = "chat.openai.com"
 const coze = "www.coze.com"
 // 文本类型
@@ -406,11 +408,11 @@ function init() {
     adapterFnMap[maven] = procMaven
     adapterFnMap[docker] = procDockerhub
     adapterFnMap[nexusmods] = procNexusmods
-    adapterFnMap[openai] = procOpenai
+    adapterFnMap[openai_web] = procOpenai
     adapterFnMap[chatGPT] = procChatGPT
     adapterFnMap[coze] = procCoze
     // 填充 skip map
-    skipStringMap[openai] = function (node) {
+    skipStringMap[openai_web] = function (node) {
         return node.hasAttribute("data-message-author-role") || node.hasAttribute("data-projection-id")
     }
     skipStringMap[nexusmods] = function (node) {
@@ -435,8 +437,8 @@ function init() {
     transFnMap[transModel.tongyi] = tongyi
     transFnMap[transModel.zhipu] = zhipu
     transFnMap[transModel.microsoft] = microsoft
-    // 设置 token
-
+    transFnMap[transModel.google] = google
+    transFnMap[transModel.openai] = openai
 
     // 插入CSS：转圈动画
     const style = document.createElement('style');
@@ -480,7 +482,7 @@ function translate(node, origin) {
     // todo 从 GM 中取出定义的翻译源（文心一言等配置也需存储在 GM）
 
     // 调用翻译模型
-    transFnMap[transModel.microsoft](origin, text => {
+    transFnMap[transModel.openai](origin, text => {
         node.removeChild(spinner);    // 移除转圈动画
         if (!text || origin === text) return
         node.textContent = text;    // 替换文本
@@ -507,6 +509,41 @@ function createLoadingSpinner(node) {
 
 
 // region 微软翻译
+
+// 微软翻译接口
+function microsoft(origin, callback) {
+    // 从 GM 缓存获取 token
+    let jwtToken = GM_getValue('microsoft_token', undefined);
+    refreshToken(jwtToken).then(jwtString => {
+        // 失败，提前返回
+        if (!jwtString) {
+            callback(null);
+            return;
+        }
+        GM_xmlhttpRequest({
+            method: 'POST',
+            url: "https://api-edge.cognitive.microsofttranslator.com/translate?from=&to=zh&api-version=3.0&includeSentenceLength=true",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + jwtString
+            },
+            data: JSON.stringify([{"Text": origin}]),
+            onload: function (response) {
+                if (response.status !== 200) {
+                    console.log("调用微软翻译失败：", response.status);
+                    callback(null);
+                    return
+                }
+                let resultJson = JSON.parse(response.responseText);
+                callback(resultJson[0].translations[0].text);
+            },
+            onerror: error => {
+                console.log("调用微软翻译失败：", error);
+                callback(null);
+            }
+        });
+    });
+}
 
 // 返回有效的令牌或 false
 function refreshToken(token) {
@@ -551,48 +588,79 @@ function parseJwt(token) {
     }
 }
 
-// 微软翻译接口
-function microsoft(origin, callback) {
-    // 从 GM 缓存获取 token
-    let jwtToken = GM_getValue('microsoft_token', undefined);
-    refreshToken(jwtToken).then(jwtString => {
-        // 失败，提前返回
-        if (!jwtString) {
-            callback(null);
-            return;
-        }
-        GM_xmlhttpRequest({
-            method: 'POST',
-            url: "https://api-edge.cognitive.microsofttranslator.com/translate?from=&to=zh&api-version=3.0&includeSentenceLength=true",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + jwtString
-            },
-            data: JSON.stringify([{"Text": origin}]),
-            onload: function (response) {
-                if (response.status !== 200) {
-                    console.log("调用微软翻译失败：", response.status);
-                    callback(null);
-                    return
-                }
-                let resultJson = JSON.parse(response.responseText);
-                callback(resultJson[0].translations[0].text);
-            },
-            onerror: error => {
-                console.log("调用微软翻译失败：", error);
-                callback(null);
-            }
-        });
-    });
-}
 
 // endregion
 
 // region 谷歌翻译
 
+function google(origin, callback) {
+    let params = {
+        'client': 'gtx', 'sl': 'auto', 'tl': 'zh-CN', 'dt': 't',
+        'q': encodeURIComponent(origin)
+    };
+
+    let queryString = Object.keys(params).map(function (key) {
+        return key + '=' + params[key];
+    }).join('&');
+
+    GM_xmlhttpRequest({
+        method: 'GET',
+        url: 'https://translate.googleapis.com/translate_a/single?' + queryString,
+        onload: resp => {
+            // 如果包含<title>Error 400 (Bad Request)则失败
+            if (resp.responseText.includes('Error 400 (Bad Request)')) {
+                console.log('Google翻译失败：', resp.responseText);
+                callback(null);
+                return;
+            }
+            // 开始解析
+            let result = JSON.parse(resp.responseText);
+            let sentence = ''
+            result[0].forEach(e => sentence += e[0]);
+            callback(sentence);
+        },
+        onerror: error => {
+            console.error('Request failed', error);
+        }
+    });
+}
+
 // endregion
 
-// region openai翻译
+// region openai
+
+function openai(origin, callback) {
+    // 获取 token
+
+    let token = GM_getValue(transModel.openai, null);
+    if (!token) return
+
+    let headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+    };
+
+    let data = {
+        'model': 'gpt-3.5-turbo',
+        'messages': [
+            {'role': 'system', 'content': chatMgs.system},
+            {'role': 'user', 'content': chatMgs.user.replace("{{origin}}", origin)}]
+    };
+
+    GM_xmlhttpRequest({
+        method: 'POST',
+        url: 'https://api.openai.com/v1/chat/completions',
+        headers: headers,
+        data: JSON.stringify(data),
+        onload: resp => {
+            let result = JSON.parse(resp.responseText);
+            callback(result.choices[0].message.content);
+        },
+        onerror: error => {
+            console.error('Request failed', error);
+        }
+    });
+}
 
 // endregion
 
