@@ -93,6 +93,18 @@ const transModel = {    // 翻译模型枚举
     google: "google",
 }
 const transFnMap = new Map();   // 翻译函数 map
+// token 管理器
+const tokenManager = {
+    // 检验键值并设置 token
+    setToken: function (key, value) {
+        transFnMap[key] ? GM_setValue("token_" + key, value) : null;
+    },
+
+    // 获取 token
+    getToken: function (key) {
+        return GM_getValue("token_" + key, null);
+    }
+};
 
 // 鼠标悬停去重 set
 let sentenceSet = new Set();
@@ -400,16 +412,23 @@ function replaceText(type, node, value) {
 }
 
 function init() {
+    // 翻译模型
+    transFnMap[transModel.yiyan] = yiyan
+    transFnMap[transModel.tongyi] = tongyi
+    transFnMap[transModel.zhipu] = zhipu
+    transFnMap[transModel.microsoft] = microsoft
+    transFnMap[transModel.google] = google
+    transFnMap[transModel.openai] = openai
+
+
     ctrlPressed = false;
     // 填充适配器 map
-    adapterFnMap = {
-        maven: procMaven,
-        docker: procDockerhub,
-        nexusmods: procNexusmods,
-        openai_web: procOpenai,
-        chatGPT: procChatGPT,
-        coze: procCoze
-    }
+    adapterFnMap[maven] = procMaven
+    adapterFnMap[docker] = procDockerhub
+    adapterFnMap[nexusmods] = procNexusmods
+    adapterFnMap[openai_web] = procOpenai
+    adapterFnMap[chatGPT] = procChatGPT
+    adapterFnMap[coze] = procCoze
     // 填充 skip map
     skipStringMap[openai_web] = function (node) {
         return node.hasAttribute("data-message-author-role") || node.hasAttribute("data-projection-id")
@@ -424,13 +443,6 @@ function init() {
             || node.classList.contains("NcsIaDLOKk0l8CjedpJc")
             || ["code"].includes(node.tagName.toLowerCase())
     }
-    // 翻译模型
-    transFnMap[transModel.yiyan] = yiyan
-    transFnMap[transModel.tongyi] = tongyi
-    transFnMap[transModel.zhipu] = zhipu
-    transFnMap[transModel.microsoft] = microsoft
-    transFnMap[transModel.google] = google
-    transFnMap[transModel.openai] = openai
 
     // 插入CSS：转圈动画
     const style = document.createElement('style');
@@ -455,12 +467,6 @@ function init() {
 // endregion
 
 // region 通用翻译处理模块
-let mySet = new Set();  // 剪枝 set
-// 提供 GM 提取
-const translationModelKey = "translation_model_key";   // 翻译语言模型缓存 key
-const translationMessageKey = "translation_message_key";   // 翻译消息缓存 key
-const microsoft_token = null;
-
 // 通用翻译程序，参数：节点、待翻译文本
 function translate(node, origin) {
 
@@ -472,7 +478,7 @@ function translate(node, origin) {
     // todo 从 GM 中取出定义的翻译源（文心一言等配置也需存储在 GM）
 
     // 调用翻译模型
-    transFnMap[transModel.openai](origin, text => {
+    transFnMap[transModel.zhipu](origin, text => {
         node.removeChild(spinner);    // 移除转圈动画
         if (!text || origin === text) return;
         // 匹配代码格式文本，替换为 <code>
@@ -481,11 +487,6 @@ function translate(node, origin) {
         // 将替换后的文本设置为节点的 HTML 内容
         node.innerHTML = text;
     })
-}
-
-// 检验键值并设置 token
-function setToken(key, value) {
-    transFnMap[key] ? GM_setValue(key, value) : null
 }
 
 // 创建转圈动画并插入
@@ -501,7 +502,7 @@ function createLoadingSpinner(node) {
 // region 微软翻译
 function microsoft(origin, callback) {
     // 从 GM 缓存获取 token
-    let jwtToken = GM_getValue('microsoft_token', undefined);
+    let jwtToken = tokenManager.getToken(transModel.microsoft);
     refreshToken(jwtToken).then(jwtString => {
         // 失败，提前返回
         if (!jwtString) {
@@ -549,7 +550,7 @@ function refreshToken(token) {
             onload: resp => {
                 if (resp.status === 200) {
                     let token = resp.responseText;
-                    GM_setValue('microsoft_token', token);
+                    tokenManager.setToken(transModel.microsoft, token);
                     resolve(token);
                 } else reject('请求 microsoft translation auth 失败: ' + resp.status);
             },
@@ -575,7 +576,6 @@ function parseJwt(token) {
         return null;
     }
 }
-
 
 // endregion
 
@@ -620,7 +620,7 @@ function google(origin, callback) {
 function openai(origin, callback) {
     // 获取 token
 
-    let token = GM_getValue(transModel.openai, null);
+    let token = tokenManager.getToken(transModel.openai)
     if (!token) return
 
     let headers = {
@@ -665,7 +665,7 @@ const JSONFormatHeader = {"Content-Type": "application/json"}
 function getYiyanToken() {
     return new Promise((resolve, reject) => {
         // 1、尝试从 GM 中获取 token，并检测是否有效
-        let v = GM_getValue(transModel.yiyan, null);
+        let v = tokenManager.getToken(transModel.yiyan)
         if (v && v.token && v.ak && v.sk && v.expiration > Date.now()) {
             resolve(v.token); // 直接返回有效的 token
             return
@@ -680,7 +680,7 @@ function getYiyanToken() {
                 if (res.access_token) {
                     // 获取有效时间范围，单位秒
                     let expiration = new Date().getTime() + res.expires_in * 1000;
-                    GM_setValue(transModel.yiyan, {
+                    tokenManager.setToken(transModel.yiyan, {
                         ak: v.ak,
                         sk: v.sk,
                         token: res.access_token,
@@ -733,7 +733,7 @@ function yiyan(origin, callback) {
 
 function tongyi(origin, callback) {
     // 获取 token
-    let token = GM_getValue(transModel.tongyi, null);
+    let token = tokenManager.getToken(transModel.tongyi)
     if (!token) {
         console.log("通义千问：未获取到 token");
         return
@@ -780,7 +780,7 @@ function tongyi(origin, callback) {
 
 function zhipu(origin, callback) {
     // 获取 tokenObject
-    let tokenObject = GM_getValue(transModel.zhipu, null);
+    let tokenObject = tokenManager.getToken(transModel.zhipu);
     let token = tokenObject.token;
     if (!token || tokenObject.expiration >= Date.now()) {
         token = generateToken(tokenObject.apikey);
@@ -834,7 +834,7 @@ function generateToken(apiKey) {
     });
     if (!token) return  // 失败则提前返回
     // 存储
-    GM_setValue(transModel.zhipu, {apikey: apiKey, token: token, expiration: Date.now() + duration});
+    tokenManager.setToken(transModel.zhipu, {apikey: apiKey, token: token, expiration: Date.now() + duration});
 
     return token;
 }
