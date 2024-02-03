@@ -75,7 +75,6 @@ const ariaLabel = 3
 // 适配器与剪枝、预处理 map
 let adapterFnMap = new (Map);
 let skipStringMap = new Map();
-let preprocess = new Map();
 // DOM 防抖，单位毫秒
 let throttleObserveDOM = throttle(observeDOM, 3000);
 // 剪枝 set
@@ -85,14 +84,13 @@ const typeMap = {'Test': '测试', 'Provided': '提供', 'Compile': '编译'};
 // 翻译模型
 const transModel = {    // 翻译模型枚举
     // --- LLM翻译 ---
-    openai: "openai",   // GPT
-    yiyan: "yiyan", // 文心一言
-    tongyi: "tongyi",   // 通义千问
-    zhipu: "zhipu", // 智谱
+    openai: "openai",   // openai GPT
+    yiyan: "yiyan", // 百度文心一言
+    tongyi: "tongyi",   // 阿里通义千问
+    zhipu: "zhipu", // 清华智谱
     // --- 机器翻译 ---
     microsoft: "microsoft",
     google: "google",
-    tencent: "tencent",
 }
 const transFnMap = new Map();   // 翻译函数 map
 
@@ -109,36 +107,34 @@ let sentenceSet = new Set();
     // 检查是否需要拉取数据
     checkRun(function (shouldRun) {
         // 如果 host 包含在 preread 中，shouldRun 为 true，则开始解析 DOM 树并设置监听器
-        if (shouldRun) {
-            // 1、添加监听器，使用 MutationObserver 监听 DOM 变化
-            const observer = new MutationObserver(function (mutations, obs) {
-                mutations.forEach(mutation => {
-                    if (isEmpty(mutation.target)) return;
-                    // console.log("原先变更记录：", mutation.target);
-                    // 如果不包含下面节点，则处理
-                    if (!["img", "noscript"].includes(mutation.target.tagName.toLowerCase())) {
-                        handleDOMUpdate(mutation.target);
-                    }
-                });
-            });
-            observer.observe(document.body, {childList: true, subtree: true});
+        if (!shouldRun) return
 
-            // 2、手动开启一次解析 DOM 树
-            handleDOMUpdate(document.body);
-        }
+        // 1、添加监听器，使用 MutationObserver 监听 DOM 变化
+        const observer = new MutationObserver(function (mutations, obs) {
+            mutations.forEach(mutation => {
+                if (isEmpty(mutation.target)) return;
+                // console.log("原先变更记录：", mutation.target);
+                // 如果不包含下面节点，则处理
+                if (!["img", "noscript"].includes(mutation.target.tagName.toLowerCase())) {
+                    handleDOMUpdate(mutation.target);
+                }
+            });
+        });
+        observer.observe(document.body, {childList: true, subtree: true});
+        // 2、手动开启一次解析 DOM 树
+        handleDOMUpdate(document.body);
     });
 
     // 快捷键 F2，清空所有缓存
     document.addEventListener('keydown', function (event) {
         if (event.key === 'F2') {
             let listValues = GM_listValues();
-            listValues.forEach(e => {
-                GM_deleteValue(e)
-            })
+            listValues.forEach(e => GM_deleteValue(e))
             console.log('Cache cleared!');
         }
     });
 
+    // 快捷键+悬停翻译
     document.addEventListener('keydown', event => {
         if (event.key === "Control") ctrlPressed = true;
     });
@@ -146,32 +142,37 @@ let sentenceSet = new Set();
     document.addEventListener('keyup', event => {
         if (event.key === "Control") ctrlPressed = false
     });
-
     // 当浏览器或标签页失去焦点时，重置 ctrlPressed
     window.addEventListener('blur', () => ctrlPressed = false)
 
-    // 增加鼠标监听事件
-    document.body.addEventListener('mousemove', function (event) {
+    // 增加鼠标监听事件，悬停 50ms 后执行
+    document.body.addEventListener('mousemove', event => {
+        if (!ctrlPressed) return;   // 如果没有按下 ctrl 键，不执行
 
-        if (!ctrlPressed) return;
-
-        clearTimeout(hoverTimer); // 清除之前的计时器
+        clearTimeout(hoverTimer); // 清除计时器
         hoverTimer = setTimeout(() => {
             let hoveredElement = event.target;
             let textContent = '';
 
             // 去重判断
             if (sentenceSet.has(hoveredElement)) return;
+            sentenceSet.add(hoveredElement);
 
             // 如果存在子节点
             if (hoveredElement.childNodes.length > 0) {
                 // 遍历所有子节点
                 hoveredElement.childNodes.forEach(node => {
-                    if (node.nodeType === Node.TEXT_NODE) {
-                        // 如果是文本节点，添加其文本
+                    if (node.nodeType === Node.TEXT_NODE) { // 如果是文本节点，添加其文本
+                        console.log("文本节点：", node.textContent.trim());
                         textContent += node.textContent.trim() + ' ';
                     } else if (node.nodeType === Node.ELEMENT_NODE && node.innerText) {
-                        textContent += node.innerText.trim() + ' ';
+                        console.log("元素节点：", node.innerText.trim());
+                        // 如果是<code>元素，则保留<code>标签
+                        if (node.tagName.toLowerCase() === "code") {
+                            textContent += "`" + node.innerText.trim() + "`";
+                        } else {
+                            textContent += node.innerText.trim() + ' ';
+                        }
                     }
                 });
             } else {    // 如果没有子节点，直接获取元素的文本
@@ -180,8 +181,7 @@ let sentenceSet = new Set();
 
             // 检查换行符
             if (textContent && textContent.split("\n").length === 1) {
-                sentenceSet.add(hoveredElement);
-                console.log("Hovered Text: ", textContent);
+                console.log("开始翻译: ", textContent);
                 translate(hoveredElement, textContent)
             }
         }, 50)
@@ -266,9 +266,6 @@ function parseDfs(node, respMap) {
             // 根据 host 获取 skip 函数，判断是否需要跳过
             let skipFn = skipStringMap[url.host];
             if (skipFn && skipFn(node)) return;
-            // todo 前置操作，暂未使用
-            let preFn = preprocess[url.host];
-            preFn ? preFn(node) : null;
             // aria 提示信息
             if (node.hasAttribute("aria-label")) processNode(node, ariaLabel, respMap);
             // 按钮与文本域节点
@@ -405,12 +402,14 @@ function replaceText(type, node, value) {
 function init() {
     ctrlPressed = false;
     // 填充适配器 map
-    adapterFnMap[maven] = procMaven
-    adapterFnMap[docker] = procDockerhub
-    adapterFnMap[nexusmods] = procNexusmods
-    adapterFnMap[openai_web] = procOpenai
-    adapterFnMap[chatGPT] = procChatGPT
-    adapterFnMap[coze] = procCoze
+    adapterFnMap = {
+        maven: procMaven,
+        docker: procDockerhub,
+        nexusmods: procNexusmods,
+        openai_web: procOpenai,
+        chatGPT: procChatGPT,
+        coze: procCoze
+    }
     // 填充 skip map
     skipStringMap[openai_web] = function (node) {
         return node.hasAttribute("data-message-author-role") || node.hasAttribute("data-projection-id")
@@ -424,13 +423,6 @@ function init() {
             || node.classList.contains("XnSvnXQFZ4QHrFiqJPSG")
             || node.classList.contains("NcsIaDLOKk0l8CjedpJc")
             || ["code"].includes(node.tagName.toLowerCase())
-    }
-    // 预处理
-    preprocess[maven] = function (node) {
-        return false
-    }
-    preprocess[docker] = function (node) {
-        return false
     }
     // 翻译模型
     transFnMap[transModel.yiyan] = yiyan
@@ -458,11 +450,9 @@ function init() {
     }`;
     document.head.appendChild(style);
 
-
 }
 
 // endregion
-
 
 // region 通用翻译处理模块
 let mySet = new Set();  // 剪枝 set
@@ -484,8 +474,12 @@ function translate(node, origin) {
     // 调用翻译模型
     transFnMap[transModel.openai](origin, text => {
         node.removeChild(spinner);    // 移除转圈动画
-        if (!text || origin === text) return
-        node.textContent = text;    // 替换文本
+        if (!text || origin === text) return;
+        // 匹配代码格式文本，替换为 <code>
+        const regex = /`(.*?)`/g;
+        text = text.replace(regex, (match, p1) => `<code>${p1}</code>`);
+        // 将替换后的文本设置为节点的 HTML 内容
+        node.innerHTML = text;
     })
 }
 
@@ -502,15 +496,9 @@ function createLoadingSpinner(node) {
     return spinner;
 }
 
-// 必须考虑到多翻译源切换的问题
-
-
 // endregion
 
-
 // region 微软翻译
-
-// 微软翻译接口
 function microsoft(origin, callback) {
     // 从 GM 缓存获取 token
     let jwtToken = GM_getValue('microsoft_token', undefined);
@@ -668,7 +656,7 @@ function openai(origin, callback) {
 
 const chatMgs = {
     system: "You are a professional, authentic translation engine, only returns translations.",
-    user: "Please translate them into Chinese, please do not explain my original text: {{origin}}"
+    user: "Please translate them into cn-zh, please do not explain my original text: {{origin}}"
 }
 const JSONFormatHeader = {"Content-Type": "application/json"}
 
