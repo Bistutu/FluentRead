@@ -195,11 +195,13 @@ let util = {
             let dom = `
   <div style="font-size: 1em;">
     <!-- 其他设置项 -->
-    <label class="instant-setting-label">快捷键<select id="fluent-read-hotkey" class="instant-setting-select">${this.generateOptions(hotkeyOptions, util.getValue('hotkey'))}</select></label>
+    <label class="instant-setting-label">快捷键<select id="fluent-read-hotkey" class="instant-setting-select">${this.generateOptions(hotkeyOptions, this.getValue('hotkey'))}</select></label>
     <label class="instant-setting-label">翻译源语言<select id="fluent-read-from" class="instant-setting-select">${this.generateOptions(fromOption, this.getValue('from'))}</select></label>
     <label class="instant-setting-label">翻译目标语言<select id="fluent-read-to" class="instant-setting-select">${this.generateOptions(toOption, this.getValue('to'))}</select></label>
-    <label class="instant-setting-label">翻译服务<select id="fluent-read-model" class="instant-setting-select">${this.generateOptions(transModelOptions, util.getValue('model'))}</select></label>
-    <label class="instant-setting-label" id="fluent-read-token-label" style="display: none;">Token<input type="text" class="instant-setting-input" id="fluent-read-token" value="${util.getValue('token')}" ></label>
+    <label class="instant-setting-label">翻译服务<select id="fluent-read-model" class="instant-setting-select">${this.generateOptions(transModelOptions, this.getValue('model'))}</select></label>
+    <label class="instant-setting-label" id="fluent-read-token-label" style="display: none;">Token令牌<input type="text" class="instant-setting-input" id="fluent-read-token" value="" ></label>
+    <label class="instant-setting-label" id="fluent-read-ak-label" style="display: none;">ak令牌<input type="text" class="instant-setting-input" id="fluent-read-ak" value="" ></label>
+    <label class="instant-setting-label" id="fluent-read-sk-label" style="display: none;">sk令牌<input type="text" class="instant-setting-input" id="fluent-read-sk" value="" ></label>
   </div>`;
             Swal.fire({
                     title: '设置中心',
@@ -210,25 +212,84 @@ let util = {
                 },
             ).then(async (result) => {
                 if (result.isConfirmed) {
-                    util.setValue('fluent-read-hotkey', document.getElementById('hotkey').value);
-                    util.setValue('fluent-read-from', document.getElementById('from').value);
-                    util.setValue('fluent-read-to', document.getElementById('to').value);
-                    util.setValue('fluent-read-model', document.getElementById('model').value);
-                    util.setValue('fluent-read-token', document.getElementById('token').value);
+                    util.setValue('hotkey', document.getElementById('fluent-read-hotkey').value);
+                    util.setValue('from', document.getElementById('fluent-read-from').value);
+                    util.setValue('to', document.getElementById('fluent-read-to').value);
+                    let model = document.getElementById('fluent-read-model').value;
+                    util.setValue('model', model);
+                    // 判断如何存储 token
+                    switch (model) {
+                        case transModel.openai:
+                            tokenManager.setToken(model, document.getElementById('fluent-read-token').value);
+                            break;
+                        case transModel.tongyi:
+                            tokenManager.setToken(model, document.getElementById('fluent-read-token').value);
+                            break;
+                        case transModel.yiyan:
+                            tokenManager.setToken(model, {
+                                ak: document.getElementById('fluent-read-ak').value,
+                                sk: document.getElementById('fluent-read-sk').value
+                            });
+                            break;
+                        case transModel.zhipu:
+                            tokenManager.setToken(model, {apikey: document.getElementById('fluent-read-token').value});
+                            break;
+                    }
                     toast.fire({icon: 'success', title: '设置成功！'});
                     history.go(0); // 刷新页面
                 }
             });
+            // 判断是否展示 token
+            let model = document.getElementById('fluent-read-model').value;
+            if ([transModel.openai, transModel.zhipu, transModel.tongyi, transModel.yiyan].includes(model)) {
+                this.showToken(model);
+            }
             // 监听“翻译服务”选择框
-            document.getElementById('fluent-read-model').addEventListener('change', function (e) {
+            document.getElementById('fluent-read-model').addEventListener('change', e => {
                 const model = e.currentTarget.value;
-                const tokenLabel = document.getElementById('fluent-read-token-label');
-                if (model === transModel.openai || model === transModel.yiyan || model === transModel.tongyi || model === transModel.zhipu) {
-                    tokenLabel.style.display = 'flex';
-                } else {
-                    tokenLabel.style.display = 'none';
-                }
+                this.showToken(model);
             });
+        },
+        showToken(model) {
+            const token = document.getElementById('fluent-read-token');
+            const ak = document.getElementById('fluent-read-ak');
+            const sk = document.getElementById('fluent-read-sk');
+
+            const tokenLabel = document.getElementById('fluent-read-token-label');
+            const akLabel = document.getElementById('fluent-read-ak-label');
+            const skLabel = document.getElementById('fluent-read-sk-label');
+            let tokenValue = tokenManager.getToken(model) || ''
+            switch (model) {
+                case transModel.openai:
+                    token.value = tokenValue;
+                    tokenLabel.style.display = 'flex';
+                    akLabel.style.display = 'none';
+                    skLabel.style.display = 'none';
+                    break;
+                case transModel.tongyi:
+                    token.value = tokenValue;
+                    tokenLabel.style.display = 'flex';
+                    akLabel.style.displaya = 'none';
+                    skLabel.style.display = 'none';
+                    break;
+                case transModel.yiyan:
+                    ak.value = tokenValue ? tokenValue.ak || '' : '';
+                    sk.value = tokenValue ? tokenValue.sk || '' : '';
+                    tokenLabel.style.display = 'none';
+                    akLabel.style.display = 'flex';
+                    skLabel.style.display = 'flex';
+                    break;
+                case transModel.zhipu:
+                    token.value = tokenValue.apikey || '';
+                    tokenLabel.style.display = 'flex';
+                    akLabel.style.display = 'none';
+                    skLabel.style.display = 'none';
+                    break;
+                default:
+                    tokenLabel.style.display = 'none';
+                    akLabel.style.display = 'none';
+                    skLabel.style.display = 'none';
+            }
         },
         setHotkey() {
             Swal.fire({
@@ -606,8 +667,6 @@ function init() {
     transFnMap[transModel.microsoft] = microsoft
     transFnMap[transModel.google] = google
     transFnMap[transModel.openai] = openai
-
-
 
     ctrlPressed = false;
     // 填充适配器 map
