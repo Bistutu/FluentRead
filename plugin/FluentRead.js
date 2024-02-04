@@ -39,7 +39,7 @@ const POST = "POST";
 const url = new URL(location.href.split('?')[0]);
 // cacheKey 与 时间
 const checkKey = "fluent_read_check";
-let ctrlPressed = false;
+let hotkeyPressed = false;
 let currentShortcut = null;
 let hoverTimer;
 const expiringTime = 86400000 / 4;
@@ -371,24 +371,21 @@ let util = {
     // 快捷键+悬停翻译
     setShortcut(util.getValue('hotkey'));
     // 当浏览器或标签页失去焦点时，重置 ctrlPressed
-    window.addEventListener('blur', () => ctrlPressed = false)
+    window.addEventListener('blur', () => hotkeyPressed = false)
 
     // 增加鼠标监听事件，悬停 50ms 后执行
     document.body.addEventListener('mousemove', event => {
-        if (!ctrlPressed) return;   // 如果没有按下 ctrl 键，不执行
+        if (!hotkeyPressed) return;   // 如果没有按下 ctrl 键，不执行
 
         clearTimeout(hoverTimer); // 清除计时器
         hoverTimer = setTimeout(() => {
             let hoveredElement = event.target;
-            let textContent = '';
 
             // 去重判断
             if (sentenceSet.has(hoveredElement)) return;
             sentenceSet.add(hoveredElement);
-            let hoveredText = getHoveredText(hoveredElement);
-            // todo 临时打印
-            console.log("悬停文本：", hoveredText);
-            if (hoveredText) translate(hoveredElement, hoveredText)
+            let hovered = getHoveredText(hoveredElement);
+            if (hovered.text) translate(hovered.range, hovered.text)
         }, 50)
     });
 })();
@@ -523,7 +520,7 @@ function processNode(node, attr, respMap) {
 // 快捷键处理
 function handleShortcut(event, shortcut) {
     if (event.key === shortcut) {
-        ctrlPressed = (event.type === 'keydown');
+        hotkeyPressed = (event.type === 'keydown');
     }
 }
 
@@ -550,13 +547,37 @@ function keyUpListener(event) {
 // 获取鼠标悬停文本，若为多行文本则返回空字符串
 function getHoveredText(node) {
     let range = document.createRange();
-    range.selectNodeContents(node);  // 设置Range的开始和结束位置
+
+    // todo 设置Range的开始和结束位置，首尾最后一个 text 节点包裹的范围
+    range.setStartBefore(node.firstChild);
+
+    let lastChild = node.lastChild;
+    while (lastChild) {
+        if (lastChild.nodeType === Node.TEXT_NODE || lastChild.nodeName === "CODE"||lastChild.nodeName === "A") {
+            range.setEndAfter(lastChild);
+            break;
+        }
+        lastChild = lastChild.previousSibling;
+    }
+
+    console.log(range)
+
+    // 获取range文本
     let text = range.toString().trim();
-    if (text.includes('\n')) return "";
 
-    // TODO 获取鼠标悬停文本时应考虑 <code>
+    console.log("鼠标悬停文本：", text);
 
-    return text;
+    if (text.includes('\n')) return null, "";
+
+    return {range: range, text: text};
+}
+
+// 替换范围内的文本
+function replaceTextInRange(range, text) {
+    // 用翻译后的文本创建一个新的节点
+    let newNode = document.createTextNode(text);
+    range.deleteContents(); // 删除当前范围内的内容
+    range.insertNode(newNode); // 插入新的文本节点
 }
 
 // 计算SHA-1散列，取最后20个字符
@@ -656,7 +677,7 @@ function init() {
     transFnMap[transModel.google] = google
     transFnMap[transModel.openai] = openai
 
-    ctrlPressed = false;
+    hotkeyPressed = false;
     // 填充适配器 map
     adapterFnMap[maven] = procMaven
     adapterFnMap[docker] = procDockerhub
@@ -697,31 +718,38 @@ function init() {
 
 // region 通用翻译处理模块
 // 通用翻译程序，参数：节点、待翻译文本
-function translate(node, origin) {
+function translate(range, origin) {
+
+    console.log(range)
 
     // 检测中文率，如果中文率大于 50% 则不翻译
     if (calculateChineseRate(origin) > 0.5) return;
 
-    let spinner = createLoadingSpinner(node);  // 创建转圈动画并插入
+    let spinner = createLoadingSpinner(range);  // 创建转圈动画并插入
 
     // 调用翻译模型
     let model = util.getValue('model')
     transFnMap[model](origin, text => {
-        node.removeChild(spinner);    // 移除转圈动画
+        spinner.remove()
         if (!text || origin === text) return;
         // 匹配代码格式文本，替换为 <code>
         const regex = /`(.*?)`/g;
         text = text.replace(regex, (match, p1) => `<code>${p1}</code>`);
         // 将替换后的文本设置为节点的 HTML 内容
-        node.innerHTML = text;
+        // node.innerHTML = text;
+        replaceTextInRange(range, text);
     })
 }
 
 // 创建转圈动画并插入
-function createLoadingSpinner(node) {
+function createLoadingSpinner(range) {
     const spinner = document.createElement('div');
     spinner.className = 'loading-spinner-fluentread';
-    node.appendChild(spinner)
+    console.log(range.endOffset)
+    // 在range的末尾插入spinner
+    console.log(range)
+    // range.insertNode(spinner);
+    range.endContainer.appendChild(spinner);
     return spinner;
 }
 
