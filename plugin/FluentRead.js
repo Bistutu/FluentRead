@@ -549,6 +549,9 @@ function getHoveredText(node) {
     let range = document.createRange();
 
     // todo 设置Range的开始和结束位置，首尾最后一个 text 节点包裹的范围
+    // 模式 1
+    // range.selectNode(node);
+    // 模式 2
     range.setStartBefore(node.firstChild);
 
     let lastChild = node.lastChild;
