@@ -2,7 +2,7 @@
 // @name         流畅阅读
 // @license      GPL-3.0 license
 // @namespace    https://fr.unmeta.cn/
-// @version      0.6
+// @version      1.0
 // @description  基于上下文语境的人工智能翻译引擎，为部分网站提供精准翻译，让所有人都能够拥有基于母语般的阅读体验。程序Github开源：https://github.com/Bistutu/FluentRead，欢迎 star。
 // @author       ThinkStu
 // @match        *://*/*
@@ -12,9 +12,11 @@
 // @grant        GM_listValues
 // @grant        GM_deleteValue
 // @grant        GM_xmlhttpRequest
+// @grant        GM_addStyle
+// @grant        GM_registerMenuCommand
+// @grant        GM_getResourceText
 // @connect      fr.unmeta.cn
 // @connect      127.0.0.1
-// @connect      www.iflyrec.com
 // @connect      edge.microsoft.com
 // @connect      api-edge.cognitive.microsofttranslator.com
 // @connect      aip.baidubce.com
@@ -23,9 +25,11 @@
 // @connect      translate.googleapis.com
 // @connect      api.openai.com
 // @run-at       document-end
-// @downloadURL https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.user.js
-// @updateURL https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.meta.js
+// @downloadURL  https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.user.js
+// @updateURL    https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.meta.js
 // @require      https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.0.0/crypto-js.min.js
+// @require      https://registry.npmmirror.com/sweetalert2/10.16.6/files/dist/sweetalert2.min.js
+// @resource     swalStyle https://registry.npmmirror.com/sweetalert2/10.16.6/files/dist/sweetalert2.min.css
 // ==/UserScript==
 
 // region 常量与变量
@@ -36,6 +40,7 @@ const url = new URL(location.href.split('?')[0]);
 // cacheKey 与 时间
 const checkKey = "fluent_read_check";
 let ctrlPressed = false;
+let currentShortcut = null;
 let hoverTimer;
 const expiringTime = 86400000 / 4;
 // 服务请求地址
@@ -95,27 +100,182 @@ const transModel = {    // 翻译模型枚举
 const transFnMap = new Map();   // 翻译函数 map
 // token 管理器
 const tokenManager = {
-    // 检验键值并设置 token
-    setToken: function (key, value) {
-        transFnMap[key] ? GM_setValue("token_" + key, value) : null;
-    },
-
-    // 获取 token
-    getToken: function (key) {
+    setToken: (key, value) => transFnMap[key] ? GM_setValue("token_" + key, value) : null,
+    getToken: key => {
         return GM_getValue("token_" + key, null);
     }
 };
 
 // 鼠标悬停去重 set
 let sentenceSet = new Set();
+// swal toast
+const toastClass = {
+    container: 'translate-d-container',
+    popup: 'translate-d-popup',
+};
+let toast = Swal.mixin({
+    toast: true,
+    position: 'top',
+    showConfirmButton: false,
+    timerProgressBar: false,
+    customClass: toastClass,
+    didOpen: (toast) => {
+        toast.addEventListener('mouseenter', Swal.stopTimer);
+        toast.addEventListener('mouseleave', Swal.resumeTimer);
+    }
+});
+let fromOption = {
+    'auto': '自动检测',
+    'zh-CN': '简体中文',
+    'en': '英语',
+};
+let toOption = {
+    'zh-CN': '简体中文',
+    'en': '英语',
+};
+let hotkeyOptions = {Control: 'Control', Alt: 'Alt', Shift: 'Shift'}
+
+const transModelOptions = {
+    [transModel.openai]: 'chatGPT',
+    [transModel.yiyan]: '百度-文心一言',
+    [transModel.tongyi]: '阿里-通义千问',
+    [transModel.zhipu]: '清华-智谱AI',
+    [transModel.google]: '谷歌机器翻译',
+    [transModel.microsoft]: '微软机器翻译',
+}
 
 // endregion
+let util = {
+        parseLanguage(language) {
+            return fromOption[language] || language;
+        },
+        getValue(name) {
+            return GM_getValue(name);
+        },
+        setValue(name, value) {
+            GM_setValue(name, value);
+        },
+        // 初始化配置
+        initConfigValue() {
+            let config = [
+                {
+                    name: 'hotkey', value: 'Control'
+                }, {
+                    name: 'from', value: 'auto'
+                }, {
+                    name: 'to', value: 'zh-CN'
+                }, {
+                    name: 'model', value: transModel.openai
+                }
+            ]
+            config.forEach(v => !this.getValue(v.name) ? this.setValue(v.name, v.value) : null);
+        },
+        registerMenuCommand() {
+            GM_registerMenuCommand(`原始语言：${this.parseLanguage(this.getValue('from'))}`, () => {
+            });
+            GM_registerMenuCommand(`目标语言：${this.parseLanguage(this.getValue('to'))}`, () => {
+            });
+            GM_registerMenuCommand(`鼠标快捷键：${this.getValue('hotkey')}`, () => {
+                this.setHotkey()
+            });
+            GM_registerMenuCommand('翻译服务：' + transModelOptions[this.getValue('model')], () => {
+                this.setModel()
+            });
+
+            GM_registerMenuCommand(`设置中心`, () => {
+                this.setSetting()
+            });
+        },
+        generateOptions(options, selectedValue) {
+            return Object.entries(options).map(([value, name]) =>
+                `<option value="${value}" ${selectedValue === value ? 'selected' : ''}>${name}</option>`
+            ).join('');
+        },
+        setSetting() {
+            let dom = `
+  <div style="font-size: 1em;">
+    <!-- 其他设置项 -->
+    <label class="instant-setting-label">快捷键<select id="fluent-read-hotkey" class="instant-setting-select">${this.generateOptions(hotkeyOptions, util.getValue('hotkey'))}</select></label>
+    <label class="instant-setting-label">翻译源语言<select id="fluent-read-from" class="instant-setting-select">${this.generateOptions(fromOption, this.getValue('from'))}</select></label>
+    <label class="instant-setting-label">翻译目标语言<select id="fluent-read-to" class="instant-setting-select">${this.generateOptions(toOption, this.getValue('to'))}</select></label>
+    <label class="instant-setting-label">翻译服务<select id="fluent-read-model" class="instant-setting-select">${this.generateOptions(transModelOptions, util.getValue('model'))}</select></label>
+    <label class="instant-setting-label" id="fluent-read-token-label" style="display: none;">Token<input type="text" class="instant-setting-input" id="fluent-read-token" value="${util.getValue('token')}" ></label>
+  </div>`;
+            Swal.fire({
+                    title: '设置中心',
+                    html: dom,
+                    showCancelButton: true,
+                    confirmButtonText: '保存',
+                    customClass: toastClass
+                },
+            ).then(async (result) => {
+                if (result.isConfirmed) {
+                    util.setValue('fluent-read-hotkey', document.getElementById('hotkey').value);
+                    util.setValue('fluent-read-from', document.getElementById('from').value);
+                    util.setValue('fluent-read-to', document.getElementById('to').value);
+                    util.setValue('fluent-read-model', document.getElementById('model').value);
+                    util.setValue('fluent-read-token', document.getElementById('token').value);
+                    toast.fire({icon: 'success', title: '设置成功！'});
+                    history.go(0); // 刷新页面
+                }
+            });
+            // 监听“翻译服务”选择框
+            document.getElementById('fluent-read-model').addEventListener('change', function (e) {
+                const model = e.currentTarget.value;
+                const tokenLabel = document.getElementById('fluent-read-token-label');
+                if (model === transModel.openai || model === transModel.yiyan || model === transModel.tongyi || model === transModel.zhipu) {
+                    tokenLabel.style.display = 'flex';
+                } else {
+                    tokenLabel.style.display = 'none';
+                }
+            });
+        },
+        setHotkey() {
+            Swal.fire({
+                title: '快捷键设置',
+                text: '请选择鼠标悬停快捷键',
+                input: 'select',
+                inputValue: this.getValue('hotkey'),
+                inputOptions: hotkeyOptions,
+                confirmButtonText: '确定',
+                customClass: toastClass,
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    util.setValue('hotkey', result.value);
+                    setShortcut(result.value);
+                    toast.fire({icon: 'success', title: '快捷键设置成功！'});
+                    history.go(0); // 刷新页面
+                }
+            });
+        }
+        ,
+        setModel(popAgain = false) {
+            Swal.fire({
+                title: '翻译服务',
+                text: '选择您想要的翻译服务',
+                input: 'select',
+                inputValue: this.getValue('model'),
+                inputOptions: transModelOptions,
+                confirmButtonText: '确定',
+                customClass: toastClass,
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    util.setValue('model', result.value);
+                    toast.fire({icon: 'success', title: '设置成功！'});
+                    history.go(0); // 刷新页面
+                }
+            });
+        }
+        ,
+    }
+;
 
 (function () {
     'use strict';
 
     // 初始化
     init()
+
     // 检查是否需要拉取数据
     checkRun(function (shouldRun) {
         // 如果 host 包含在 preread 中，shouldRun 为 true，则开始解析 DOM 树并设置监听器
@@ -146,14 +306,9 @@ let sentenceSet = new Set();
         }
     });
 
-    // 快捷键+悬停翻译
-    document.addEventListener('keydown', event => {
-        if (event.key === "Control") ctrlPressed = true;
-    });
 
-    document.addEventListener('keyup', event => {
-        if (event.key === "Control") ctrlPressed = false
-    });
+    // 快捷键+悬停翻译
+    setShortcut(util.getValue('hotkey'));
     // 当浏览器或标签页失去焦点时，重置 ctrlPressed
     window.addEventListener('blur', () => ctrlPressed = false)
 
@@ -327,6 +482,34 @@ function processNode(node, attr, respMap) {
 // endregion
 
 // region 通用函数
+// 快捷键处理
+function handleShortcut(event, shortcut) {
+    if (event.key === shortcut) {
+        ctrlPressed = (event.type === 'keydown');
+    }
+}
+
+function setShortcut(shortcut) {
+    // 移除旧的事件监听器
+    if (currentShortcut) {
+        document.removeEventListener('keydown', keyDownListener);
+        document.removeEventListener('keyup', keyUpListener);
+    }
+
+    // 设置新的快捷键并添加事件监听器
+    currentShortcut = shortcut;
+    document.addEventListener('keydown', keyDownListener);
+    document.addEventListener('keyup', keyUpListener);
+}
+
+function keyDownListener(event) {
+    handleShortcut(event, currentShortcut);
+}
+
+function keyUpListener(event) {
+    handleShortcut(event, currentShortcut);
+}
+
 // 计算SHA-1散列，取最后20个字符
 async function signature(text) {
     if (!text) return "";
@@ -412,6 +595,10 @@ function replaceText(type, node, value) {
 }
 
 function init() {
+
+    util.initConfigValue();
+    util.registerMenuCommand()
+
     // 翻译模型
     transFnMap[transModel.yiyan] = yiyan
     transFnMap[transModel.tongyi] = tongyi
@@ -419,6 +606,7 @@ function init() {
     transFnMap[transModel.microsoft] = microsoft
     transFnMap[transModel.google] = google
     transFnMap[transModel.openai] = openai
+
 
 
     ctrlPressed = false;
@@ -443,25 +631,19 @@ function init() {
             || node.classList.contains("NcsIaDLOKk0l8CjedpJc")
             || ["code"].includes(node.tagName.toLowerCase())
     }
-
-    // 插入CSS：转圈动画
-    const style = document.createElement('style');
-    style.innerHTML = `
+    // 引入外部 css 库
+    GM_addStyle(GM_getResourceText("swalStyle"));
+    GM_addStyle(`
     @keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
-    .loading-spinner-fluentread {
-        border: 2px solid #f3f3f3;
-        border-top: 2px solid blue;
-        border-radius: 50%;
-        width: 12px;
-        height: 12px;
-        animation: spin 1s linear infinite;
-        display: inline-block;
-    }`;
-    document.head.appendChild(style);
-
+    .loading-spinner-fluentread {border: 2px solid #f3f3f3;border-top: 2px solid blue;border-radius: 50%;width: 12px;height: 12px;animation: spin 1s linear infinite;display: inline-block;}
+    .translate-d-container { z-index: 999999!important;}
+    .translate-d-popup { font-size: 14px !important;}
+    .instant-setting-label { display: flex;align-items: center;justify-content: space-between;padding-top: 15px; }
+    .instant-setting-input { border: 1px solid #bbb; box-sizing: border-box; padding: 5px 10px; border-radius: 5px; width: 100px}
+    `);
 }
 
 // endregion
@@ -478,7 +660,8 @@ function translate(node, origin) {
     // todo 从 GM 中取出定义的翻译源（文心一言等配置也需存储在 GM）
 
     // 调用翻译模型
-    transFnMap[transModel.zhipu](origin, text => {
+    let model = util.getValue('model')
+    transFnMap[model](origin, text => {
         node.removeChild(spinner);    // 移除转圈动画
         if (!text || origin === text) return;
         // 匹配代码格式文本，替换为 <code>
@@ -655,8 +838,10 @@ function openai(origin, callback) {
 // region 文心一言
 
 const chatMgs = {
-    system: "You are a professional, authentic translation engine, only returns translations.",
-    user: "Please translate them into cn-zh, please do not explain my original text: {{origin}}"
+    system: `You are a professional, authentic translation engine, only returns translations.`,
+    user: `Please translate them into zh-CN, please do not explain my original text.:
+     
+    {{origin}}`
 }
 const JSONFormatHeader = {"Content-Type": "application/json"}
 
@@ -1042,4 +1227,3 @@ function procDockerhub(node, respMap) {
 }
 
 // endregion
-
