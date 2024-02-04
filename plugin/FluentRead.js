@@ -385,33 +385,10 @@ let util = {
             // 去重判断
             if (sentenceSet.has(hoveredElement)) return;
             sentenceSet.add(hoveredElement);
-
-            // 如果存在子节点
-            if (hoveredElement.childNodes.length > 0) {
-                // 遍历所有子节点
-                hoveredElement.childNodes.forEach(node => {
-                    if (node.nodeType === Node.TEXT_NODE) { // 如果是文本节点，添加其文本
-                        console.log("文本节点：", node.textContent.trim());
-                        textContent += node.textContent.trim() + ' ';
-                    } else if (node.nodeType === Node.ELEMENT_NODE && node.innerText) {
-                        console.log("元素节点：", node.innerText.trim());
-                        // 如果是<code>元素，则保留<code>标签
-                        if (node.tagName.toLowerCase() === "code") {
-                            textContent += "`" + node.innerText.trim() + "`";
-                        } else {
-                            textContent += node.innerText.trim() + ' ';
-                        }
-                    }
-                });
-            } else {    // 如果没有子节点，直接获取元素的文本
-                textContent = hoveredElement.textContent.trim();
-            }
-
-            // 检查换行符
-            if (textContent && textContent.split("\n").length === 1) {
-                console.log("开始翻译: ", textContent);
-                translate(hoveredElement, textContent)
-            }
+            let hoveredText = getHoveredText(hoveredElement);
+            // todo 临时打印
+            console.log("悬停文本：", hoveredText);
+            if (hoveredText) translate(hoveredElement, hoveredText)
         }, 50)
     });
 })();
@@ -556,7 +533,6 @@ function setShortcut(shortcut) {
         document.removeEventListener('keydown', keyDownListener);
         document.removeEventListener('keyup', keyUpListener);
     }
-
     // 设置新的快捷键并添加事件监听器
     currentShortcut = shortcut;
     document.addEventListener('keydown', keyDownListener);
@@ -569,6 +545,18 @@ function keyDownListener(event) {
 
 function keyUpListener(event) {
     handleShortcut(event, currentShortcut);
+}
+
+// 获取鼠标悬停文本，若为多行文本则返回空字符串
+function getHoveredText(node) {
+    let range = document.createRange();
+    range.selectNodeContents(node);  // 设置Range的开始和结束位置
+    let text = range.toString().trim();
+    if (text.includes('\n')) return "";
+
+    // TODO 获取鼠标悬停文本时应考虑 <code>
+
+    return text;
 }
 
 // 计算SHA-1散列，取最后20个字符
@@ -715,8 +703,6 @@ function translate(node, origin) {
     if (calculateChineseRate(origin) > 0.5) return;
 
     let spinner = createLoadingSpinner(node);  // 创建转圈动画并插入
-
-    // todo 从 GM 中取出定义的翻译源（文心一言等配置也需存储在 GM）
 
     // 调用翻译模型
     let model = util.getValue('model')
