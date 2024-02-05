@@ -832,7 +832,7 @@ function parseJwt(token) {
 
 function google(origin, callback) {
     let params = {
-        'client': 'gtx', 'sl': 'auto', 'tl': 'zh-CN', 'dt': 't',
+        client: 'gtx', sl: 'auto', tl: 'zh-CN', dt: 't', browers: true,
         'q': encodeURIComponent(origin)
     };
 
