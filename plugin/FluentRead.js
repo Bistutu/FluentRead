@@ -586,8 +586,14 @@ function replaceTextInRange(range, text) {
     container.innerHTML = text;
 
     sentenceSet.add(container.textContent); // 去重，添加翻译后的文本
-    range.deleteContents(); // 删除当前范围内的内容
-    range.insertNode(container.firstChild); // 插入子节点
+
+    // 如果是 google 与微软翻译，因为翻译的是 html，所以需替换原 range
+    if ([transModel.google, transModel.microsoft].includes(util.getValue('model'))) {
+        range.startContainer.outerHTML= container.firstChild.outerHTML;
+    } else {
+        range.deleteContents(); // 删除当前范围内的内容
+        range.insertNode(container.firstChild); // 插入子节点
+    }
 }
 
 // 计算SHA-1散列，取最后20个字符
@@ -746,8 +752,9 @@ function translate(range, origin) {
     transFnMap[model](origin, text => {
         spinner.remove()
         // 打印翻译之前和之后的文本
-        console.log("翻译前：", origin);
-        console.log("翻译后：", text);
+        console.log("翻译前的句子：", origin);
+        console.log("翻译后的句子：", text);
+
         if (!text || origin === text) return;
         replaceTextInRange(range, text);
     })
@@ -871,10 +878,9 @@ function google(origin, callback) {
             let result = JSON.parse(resp.responseText);
             let sentence = ''
             result[0].forEach(e => sentence += e[0]);
-            // todo 暂时性的兼容设置
 
-            // 将< a替换为<a
-            // sentence = sentence.replaceAll('< a', '<a');
+            // 将类似于 < a href="..."> 的字符串转换为 <a href="...">（标准化 html）
+            sentence = sentence.replace(/<\s*(\w+)\s*(.*?)>/g, '<$1 $2>');
 
             callback(sentence);
         },
