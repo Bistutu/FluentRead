@@ -302,6 +302,9 @@ let util = {
 ;
 // endregion
 
+// sentence 去重 set
+let sentenceSet = new Set();
+
 (function () {
     'use strict';
 
@@ -353,8 +356,10 @@ let util = {
             let hoveredElement = event.target;
 
             // 去重判断
+            if (sentenceSet.has(hoveredElement)) return;
+            sentenceSet.add(hoveredElement);
+            // 如果浏览器元素标注了 notranslate，则不翻译
             if (hoveredElement.classList.contains('notranslate')) return;
-            hoveredElement.nodeType === Node.TEXT_NODE ? hoveredElement.parentNode.classList.add("notranslate") : hoveredElement.classList.add("notranslate");
 
             let hovered = getHoveredText(hoveredElement);
             if (hovered.text) translate(hovered.range, hovered.text)
@@ -725,10 +730,16 @@ function translate(range, origin) {
     // 检测中文率，如果中文率大于 50% 则不翻译
     if (calculateChineseRate(origin) > 0.5) return;
 
-    let spinner = createLoadingSpinner(range);  // 创建转圈动画并插入
-
-    // 调用翻译模型
+    // 获取翻译模型名称
     let model = util.getValue('model')
+
+    // 如果是谷歌或者微软翻译的话，应该翻译 html
+    if ([transModel.microsoft, transModel.google].includes(model)) {
+        origin = range.startContainer.outerHTML
+    }
+
+    // 创建转圈动画并插入，不能置于 origin = range.startContainer.outerHTML 前
+    let spinner = createLoadingSpinner(range);
     transFnMap[model](origin, text => {
         spinner.remove()
         if (!text || origin === text) return;
@@ -741,7 +752,6 @@ function createLoadingSpinner(range) {
     const spinner = document.createElement('div');
     spinner.className = 'loading-spinner-fluentread';
     // 在range的末尾插入spinner
-    // range.insertNode(spinner);
     range.endContainer.appendChild(spinner);
     return spinner;
 }
@@ -767,6 +777,7 @@ function microsoft(origin, callback) {
             },
             data: JSON.stringify([{"Text": origin}]),
             onload: function (response) {
+                console.log("微软翻译结果：", response.responseText);
                 if (response.status !== 200) {
                     console.log("调用微软翻译失败：", response.status);
                     callback(null);
