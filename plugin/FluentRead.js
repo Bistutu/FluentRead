@@ -90,9 +90,9 @@ const typeMap = {'Test': '测试', 'Provided': '提供', 'Compile': '编译'};
 const transModel = {    // 翻译模型枚举
     // --- LLM翻译 ---
     openai: "openai",   // openai GPT
-    yiyan: "yiyan", // 百度文心一言
+    yiyan: "yiyan",     // 百度文心一言
     tongyi: "tongyi",   // 阿里通义千问
-    zhipu: "zhipu", // 清华智谱
+    zhipu: "zhipu",     // 清华智谱
     // --- 机器翻译 ---
     microsoft: "microsoft",
     google: "google",
@@ -105,6 +105,10 @@ const tokenManager = {
         return GM_getValue("token_" + key, null);
     }
 };
+
+// endregion
+
+// region 菜单
 
 // 鼠标悬停去重 set
 let sentenceSet = new Set();
@@ -125,21 +129,21 @@ let toast = Swal.mixin({
     }
 });
 let fromOption = {
-    'auto': '自动检测',
-    'zh-CN': '简体中文',
+    // 'auto': '自动检测',
+    // 'zh-CN': '简体中文',
     'en': '英语',
 };
 let toOption = {
     'zh-CN': '简体中文',
-    'en': '英语',
+    // 'en': '英语',
 };
 let hotkeyOptions = {Control: 'Control', Alt: 'Alt', Shift: 'Shift'}
 
 const transModelOptions = {
     [transModel.openai]: 'chatGPT',
-    [transModel.yiyan]: '百度-文心一言',
-    [transModel.tongyi]: '阿里-通义千问',
-    [transModel.zhipu]: '清华-智谱AI',
+    [transModel.yiyan]: '文心一言',
+    [transModel.tongyi]: '通义千问',
+    [transModel.zhipu]: '智谱AI',
     [transModel.google]: '谷歌机器翻译',
     [transModel.microsoft]: '微软机器翻译',
 }
@@ -165,7 +169,7 @@ let util = {
                 }, {
                     name: 'to', value: 'zh-CN'
                 }, {
-                    name: 'model', value: transModel.openai
+                    name: 'model', value: transModel.microsoft
                 }
             ]
             config.forEach(v => !this.getValue(v.name) ? this.setValue(v.name, v.value) : null);
@@ -178,11 +182,7 @@ let util = {
             GM_registerMenuCommand(`鼠标快捷键：${this.getValue('hotkey')}`, () => {
                 this.setHotkey()
             });
-            GM_registerMenuCommand('翻译服务：' + transModelOptions[this.getValue('model')], () => {
-                this.setModel()
-            });
-
-            GM_registerMenuCommand(`设置中心`, () => {
+            GM_registerMenuCommand(`翻译服务：${transModelOptions[this.getValue('model')]}`, () => {
                 this.setSetting()
             });
         },
@@ -207,7 +207,8 @@ let util = {
                     title: '设置中心',
                     html: dom,
                     showCancelButton: true,
-                    confirmButtonText: '保存',
+                    confirmButtonText: '保存并刷新页面',
+                    cancelButtonText: '取消',
                     customClass: toastClass
                 },
             ).then(async (result) => {
@@ -262,33 +263,23 @@ let util = {
             switch (model) {
                 case transModel.openai:
                     token.value = tokenValue;
-                    tokenLabel.style.display = 'flex';
-                    akLabel.style.display = 'none';
-                    skLabel.style.display = 'none';
+                    setDisplayStyle([tokenLabel], [akLabel, skLabel]);
                     break;
                 case transModel.tongyi:
                     token.value = tokenValue;
-                    tokenLabel.style.display = 'flex';
-                    akLabel.style.displaya = 'none';
-                    skLabel.style.display = 'none';
+                    setDisplayStyle([tokenLabel], [akLabel, skLabel]);
                     break;
                 case transModel.yiyan:
                     ak.value = tokenValue ? tokenValue.ak || '' : '';
                     sk.value = tokenValue ? tokenValue.sk || '' : '';
-                    tokenLabel.style.display = 'none';
-                    akLabel.style.display = 'flex';
-                    skLabel.style.display = 'flex';
+                    setDisplayStyle([akLabel, skLabel], [tokenLabel]);
                     break;
                 case transModel.zhipu:
                     token.value = tokenValue.apikey || '';
-                    tokenLabel.style.display = 'flex';
-                    akLabel.style.display = 'none';
-                    skLabel.style.display = 'none';
+                    setDisplayStyle([tokenLabel], [akLabel, skLabel]);
                     break;
                 default:
-                    tokenLabel.style.display = 'none';
-                    akLabel.style.display = 'none';
-                    skLabel.style.display = 'none';
+                    setDisplayStyle([], [tokenLabel, akLabel, skLabel]);
             }
         },
         setHotkey() {
@@ -308,28 +299,10 @@ let util = {
                     history.go(0); // 刷新页面
                 }
             });
-        }
-        ,
-        setModel(popAgain = false) {
-            Swal.fire({
-                title: '翻译服务',
-                text: '选择您想要的翻译服务',
-                input: 'select',
-                inputValue: this.getValue('model'),
-                inputOptions: transModelOptions,
-                confirmButtonText: '确定',
-                customClass: toastClass,
-            }).then(async (result) => {
-                if (result.isConfirmed) {
-                    util.setValue('model', result.value);
-                    toast.fire({icon: 'success', title: '设置成功！'});
-                    history.go(0); // 刷新页面
-                }
-            });
-        }
-        ,
+        },
     }
 ;
+// endregion
 
 (function () {
     'use strict';
@@ -548,25 +521,31 @@ function keyUpListener(event) {
 function getHoveredText(node) {
     let range = document.createRange();
 
-    // todo 设置Range的开始和结束位置，首尾最后一个 text 节点包裹的范围
-    // 模式 1
+    // 模式 1：全部选择
     // range.selectNode(node);
-    // 模式 2
+
+    // 模式 2：设置Range的开始和结束位置，首尾最后一个 text 节点包裹的范围
     range.setStartBefore(node.firstChild);
 
     let lastChild = node.lastChild;
     while (lastChild) {
-        if (lastChild.nodeType === Node.TEXT_NODE || lastChild.nodeName === "CODE"||lastChild.nodeName === "A") {
+        if (lastChild.nodeType === Node.TEXT_NODE || ["code", "a", "span", "pre"].includes(lastChild.tagName.toLowerCase())) {
             range.setEndAfter(lastChild);
             break;
         }
         lastChild = lastChild.previousSibling;
     }
 
-    console.log(range)
-
-    // 获取range文本
-    let text = range.toString().trim();
+    // 遍历 range + 匹配 <code> 标签
+    let text = ""
+    range.startContainer.childNodes.forEach(node => {
+        console.log("当前节点：", node);
+        if (node.nodeType !== Node.TEXT_NODE && ["code"].includes(node.tagName.toLowerCase())) {
+            text += '`' + node.textContent.trim() + '`'
+        } else if (node.nodeType === Node.TEXT_NODE||["a", "span", "pre"].includes(node.tagName.toLowerCase())) {
+            text += node.textContent.trim()
+        }
+    })
 
     console.log("鼠标悬停文本：", text);
 
@@ -575,10 +554,17 @@ function getHoveredText(node) {
     return {range: range, text: text};
 }
 
+// 批量设置元素的 display 样式
+function setDisplayStyle(flex, none) {
+    flex.forEach(element => element.style.display = "flex");
+    none.forEach(element => element.style.display = "none");
+}
+
 // 替换范围内的文本
 function replaceTextInRange(range, text) {
     // 用翻译后的文本创建一个新的节点
-    let newNode = document.createTextNode(text);
+    let newNode = document.createElement("span");
+    newNode.innerHTML = text;
     range.deleteContents(); // 删除当前范围内的内容
     range.insertNode(newNode); // 插入新的文本节点
 }
@@ -722,8 +708,6 @@ function init() {
 // region 通用翻译处理模块
 // 通用翻译程序，参数：节点、待翻译文本
 function translate(range, origin) {
-
-    console.log(range)
 
     // 检测中文率，如果中文率大于 50% 则不翻译
     if (calculateChineseRate(origin) > 0.5) return;
