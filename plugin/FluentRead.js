@@ -760,7 +760,7 @@ function microsoft(origin, callback) {
         }
         GM_xmlhttpRequest({
             method: 'POST',
-            url: "https://api-edge.cognitive.microsofttranslator.com/translate?from=&to=zh&api-version=3.0&includeSentenceLength=true",
+            url: "https://api-edge.cognitive.microsofttranslator.com/translate?from=&to=zh&api-version=3.0&includeSentenceLength=true&textType=html",
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": "Bearer " + jwtString
