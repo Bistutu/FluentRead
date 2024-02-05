@@ -110,8 +110,6 @@ const tokenManager = {
 
 // region 菜单
 
-// 鼠标悬停去重 set
-let sentenceSet = new Set();
 // swal toast
 const toastClass = {
     container: 'translate-d-container',
@@ -355,8 +353,9 @@ let util = {
             let hoveredElement = event.target;
 
             // 去重判断
-            if (sentenceSet.has(hoveredElement)) return;
-            sentenceSet.add(hoveredElement);
+            if (hoveredElement.classList.contains('notranslate')) return;
+            hoveredElement.nodeType === Node.TEXT_NODE ? hoveredElement.parentNode.classList.add("notranslate") : hoveredElement.classList.add("notranslate");
+
             let hovered = getHoveredText(hoveredElement);
             if (hovered.text) translate(hovered.range, hovered.text)
         }, 50)
@@ -539,13 +538,27 @@ function getHoveredText(node) {
     // 遍历 range + 匹配 <code> 标签
     let text = ""
     range.startContainer.childNodes.forEach(node => {
-        console.log("当前节点：", node);
-        if (node.nodeType !== Node.TEXT_NODE && ["code"].includes(node.tagName.toLowerCase())) {
-            text += '`' + node.textContent.trim() + '`'
-        } else if (node.nodeType === Node.TEXT_NODE||["a", "span", "pre"].includes(node.tagName.toLowerCase())) {
-            text += node.textContent.trim()
+            switch (node.nodeType) {
+                // 1、文本节点
+                case Node.TEXT_NODE:
+                    if (["p", "strong", "b"].includes(node.parentNode.tagName.toLowerCase())) {
+                        text += node.textContent.replace(/\n/g, " ").trim() // 替换所有 \n 为空格
+                    } else {
+                        text += node.textContent.trim()
+                    }
+                    break;
+                // 2、元素节点
+                case Node.ELEMENT_NODE:
+                    if (["code", "pre", "gist", "codemirror-code"].includes(node.tagName.toLowerCase())) {
+                        // 添加 class="notranslate" 属性，防止翻译
+                        node.classList.add("notranslate");
+                        text += node.outerHTML.trim()
+                    } else if (["a", "span"].includes(node.tagName.toLowerCase())) {
+                        text += node.textContent.trim()
+                    }
+            }
         }
-    })
+    )
 
     console.log("鼠标悬停文本：", text);
 
@@ -719,11 +732,6 @@ function translate(range, origin) {
     transFnMap[model](origin, text => {
         spinner.remove()
         if (!text || origin === text) return;
-        // 匹配代码格式文本，替换为 <code>
-        const regex = /`(.*?)`/g;
-        text = text.replace(regex, (match, p1) => `<code>${p1}</code>`);
-        // 将替换后的文本设置为节点的 HTML 内容
-        // node.innerHTML = text;
         replaceTextInRange(range, text);
     })
 }
@@ -732,9 +740,7 @@ function translate(range, origin) {
 function createLoadingSpinner(range) {
     const spinner = document.createElement('div');
     spinner.className = 'loading-spinner-fluentread';
-    console.log(range.endOffset)
     // 在range的末尾插入spinner
-    console.log(range)
     // range.insertNode(spinner);
     range.endContainer.appendChild(spinner);
     return spinner;
