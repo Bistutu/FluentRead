@@ -356,8 +356,9 @@ let sentenceSet = new Set();
             let hoveredElement = event.target;
 
             // 去重判断
-            if (sentenceSet.has(hoveredElement)) return;
-            sentenceSet.add(hoveredElement);
+            if (sentenceSet.has(hoveredElement.textContent)) return;
+            sentenceSet.add(hoveredElement.textContent);
+
             // 如果浏览器元素标注了 notranslate，则不翻译
             if (hoveredElement.classList.contains('notranslate')) return;
 
@@ -580,11 +581,13 @@ function setDisplayStyle(flex, none) {
 
 // 替换范围内的文本
 function replaceTextInRange(range, text) {
-    // 用翻译后的文本创建一个新的节点
-    let newNode = document.createElement("span");
-    newNode.innerHTML = text;
+    // div 是多余的，为的是将 text 转换为 DOM 元素
+    let container = document.createElement("div");
+    container.innerHTML = text;
+
+    sentenceSet.add(container.textContent); // 去重，添加翻译后的文本
     range.deleteContents(); // 删除当前范围内的内容
-    range.insertNode(newNode); // 插入新的文本节点
+    range.insertNode(container.firstChild); // 插入子节点
 }
 
 // 计算SHA-1散列，取最后20个字符
@@ -742,6 +745,9 @@ function translate(range, origin) {
     let spinner = createLoadingSpinner(range);
     transFnMap[model](origin, text => {
         spinner.remove()
+        // 打印翻译之前和之后的文本
+        console.log("翻译前：", origin);
+        console.log("翻译后：", text);
         if (!text || origin === text) return;
         replaceTextInRange(range, text);
     })
@@ -749,7 +755,7 @@ function translate(range, origin) {
 
 // 创建转圈动画并插入
 function createLoadingSpinner(range) {
-    const spinner = document.createElement('div');
+    const spinner = document.createElement('span');
     spinner.className = 'loading-spinner-fluentread';
     // 在range的末尾插入spinner
     range.endContainer.appendChild(spinner);
@@ -843,8 +849,8 @@ function parseJwt(token) {
 
 function google(origin, callback) {
     let params = {
-        client: 'gtx', sl: 'auto', tl: 'zh-CN', dt: 't', browers: true,
-        'q': encodeURIComponent(origin)
+        client: 'gtx', sl: 'auto', tl: 'zh-CN', dt: 't', browsers: true,
+        'q': encodeURIComponent(origin),
     };
 
     let queryString = Object.keys(params).map(function (key) {
@@ -865,6 +871,11 @@ function google(origin, callback) {
             let result = JSON.parse(resp.responseText);
             let sentence = ''
             result[0].forEach(e => sentence += e[0]);
+            // todo 暂时性的兼容设置
+
+            // 将< a替换为<a
+            // sentence = sentence.replaceAll('< a', '<a');
+
             callback(sentence);
         },
         onerror: error => {
