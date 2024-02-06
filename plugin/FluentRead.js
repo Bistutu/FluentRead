@@ -109,6 +109,7 @@ const tokenManager = {
     }
 };
 
+// 模型类型
 const modelOptionsManager = {
     openai: {
         "gpt-3.5-turbo": "gpt-3.5-turbo",
@@ -423,7 +424,7 @@ let sentenceSet = new Set();
             // 如果浏览器元素标注了 notranslate，则不翻译
             if (hoveredElement.classList.contains('notranslate')) return;
 
-            let hovered = getHoveredText(hoveredElement);
+            let hovered = getHoveredText(hoveredElement);   // 获取鼠标悬停文本
             if (hovered.text) translate(hovered.range, hovered.text)
         }, 50)
     });
@@ -590,12 +591,14 @@ function getHoveredText(node) {
     // 模式 1：全部选择
     // range.selectNode(node);
 
+    // 步骤：先获取选中的范围，然后获取范围内文本（这两步目前单独实现）
+
     // 模式 2：设置Range的开始和结束位置，首尾最后一个 text 节点包裹的范围
     range.setStartBefore(node.firstChild);
 
     let lastChild = node.lastChild;
     while (lastChild) {
-        if (lastChild.nodeType === Node.TEXT_NODE || ["code", "a", "span", "pre"].includes(lastChild.tagName.toLowerCase())) {
+        if (lastChild.nodeType === Node.TEXT_NODE || ["code", "a", "span"].includes(lastChild.tagName.toLowerCase())) {
             range.setEndAfter(lastChild);
             break;
         }
@@ -608,6 +611,7 @@ function getHoveredText(node) {
             switch (node.nodeType) {
                 // 1、文本节点
                 case Node.TEXT_NODE:
+                    // 如果是 <p>、<strong>、<b> 标签的子节点，认为是单独的段落、去除 \n
                     if (["p", "strong", "b"].includes(node.parentNode.tagName.toLowerCase())) {
                         text += node.textContent.replace(/\n/g, " ").trim() // 替换所有 \n 为空格
                     } else {
@@ -617,8 +621,7 @@ function getHoveredText(node) {
                 // 2、元素节点
                 case Node.ELEMENT_NODE:
                     if (["code", "pre", "gist", "codemirror-code"].includes(node.tagName.toLowerCase())) {
-                        // 添加 class="notranslate" 属性，防止翻译
-                        node.classList.add("notranslate");
+                        node.classList.add("notranslate");  // 添加 class="notranslate" 属性，防止在句子中翻译
                         text += node.outerHTML.trim()
                     } else if (["a", "span"].includes(node.tagName.toLowerCase())) {
                         text += node.textContent.trim()
@@ -626,8 +629,6 @@ function getHoveredText(node) {
             }
         }
     )
-
-    console.log("鼠标悬停文本：", text);
 
     if (text.includes('\n')) return null, "";
 
@@ -663,23 +664,6 @@ function setDisplayStyle(flex, none) {
         optionLabel.style.display = "flex";
     } else {
         optionLabel.style.display = "none";
-    }
-}
-
-// 替换范围内的文本
-function replaceTextInRange(range, text) {
-    // div 是多余的，为的是将 text 转换为 DOM 元素
-    let container = document.createElement("div");
-    container.innerHTML = text;
-
-    sentenceSet.add(container.textContent); // 去重，添加翻译后的文本
-
-    // 如果是 google 与微软翻译，因为翻译的是 html，所以需替换原 range
-    if ([transModel.google, transModel.microsoft].includes(util.getValue('model'))) {
-        range.startContainer.outerHTML = container.firstChild.outerHTML;
-    } else {
-        range.deleteContents(); // 删除当前范围内的内容
-        range.insertNode(container.firstChild); // 插入子节点
     }
 }
 
@@ -835,8 +819,9 @@ function translate(range, origin) {
         origin = range.startContainer.outerHTML
     }
 
-    // 创建转圈动画并插入，不能置于 origin = range.startContainer.outerHTML 前
+    // 插入转圈动画，不能置于 origin = range.startContainer.outerHTML 前
     let spinner = createLoadingSpinner(range);
+
     transFnMap[model](origin, text => {
         spinner.remove()
         // 打印翻译之前和之后的文本
@@ -847,6 +832,25 @@ function translate(range, origin) {
         replaceTextInRange(range, text);
     })
 }
+
+// 替换范围内的文本
+function replaceTextInRange(range, text) {
+    // div 是多余的，为的是将 text 转换为 DOM 元素
+    let container = document.createElement("span");
+    container.innerHTML = text;
+    container.classList.add("notranslate");
+
+    sentenceSet.add(container.textContent); // 去重，添加翻译后的文本
+
+    // 如果是 google 与微软翻译，因为翻译的是 html，所以需替换原 range
+    if ([transModel.google, transModel.microsoft].includes(util.getValue('model'))) {
+        range.startContainer.outerHTML = container.firstChild.outerHTML;
+    } else {
+        range.deleteContents(); // 删除当前范围内的内容
+        range.insertNode(container); // 插入子节点
+    }
+}
+
 
 // 创建转圈动画并插入
 function createLoadingSpinner(range) {
@@ -1021,7 +1025,6 @@ function openai(origin, callback) {
 // region moonshot
 function moonshot(origin, callback) {
     // 获取 token
-
     let token = tokenManager.getToken(transModel.moonshot)
     if (!token) return
 
