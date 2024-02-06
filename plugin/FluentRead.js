@@ -24,6 +24,7 @@
 // @connect      open.bigmodel.cn
 // @connect      translate.googleapis.com
 // @connect      api.openai.com
+// @connect      api.moonshot.cn
 // @run-at       document-end
 // @downloadURL  https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.user.js
 // @updateURL    https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.meta.js
@@ -93,6 +94,7 @@ const transModel = {    // 翻译模型枚举
     yiyan: "yiyan",     // 百度文心一言
     tongyi: "tongyi",   // 阿里通义千问
     zhipu: "zhipu",     // 清华智谱
+    moonshot: "moonshot", // moonshot
     // --- 机器翻译 ---
     microsoft: "microsoft",
     google: "google",
@@ -128,6 +130,9 @@ const modelOptionsManager = {
         "glm-4": "glm-4",
         "glm-4v": "glm-4v",
         "glm-3-turbo": "glm-3-turbo",
+    },
+    moonshot: {
+        "moonshot-v1-8k": "moonshot-v1-8k",
     },
     getOption(model) {
         return GM_getValue("model_" + model) || '';
@@ -173,6 +178,7 @@ const transModelOptions = {
     [transModel.yiyan]: '文心一言',
     [transModel.tongyi]: '通义千问',
     [transModel.zhipu]: '智谱AI',
+    [transModel.moonshot]: 'moonshot',
     [transModel.google]: '谷歌机器翻译',
     [transModel.microsoft]: '微软机器翻译',
 }
@@ -208,6 +214,7 @@ let util = {
                 {[transModel.yiyan]: "completions"},
                 {[transModel.tongyi]: "qwen-turbo"},
                 {[transModel.zhipu]: "glm-3-turbo"},
+                {[transModel.moonshot]: "moonshot-v1-8"}
             ]
             modelOptions.forEach((option) => {
                 if (!modelOptionsManager.getOption(option.key)) {
@@ -265,6 +272,9 @@ let util = {
                         case transModel.openai:
                             tokenManager.setToken(model, document.getElementById('fluent-read-token').value);
                             break;
+                        case transModel.moonshot:
+                            tokenManager.setToken(model, document.getElementById('fluent-read-token').value);
+                            break;
                         case transModel.tongyi:
                             tokenManager.setToken(model, document.getElementById('fluent-read-token').value);
                             break;
@@ -286,7 +296,7 @@ let util = {
             });
             // 判断是否展示 token
             let model = document.getElementById('fluent-read-model').value;
-            if ([transModel.openai, transModel.zhipu, transModel.tongyi, transModel.yiyan].includes(model)) {
+            if ([transModel.openai, transModel.zhipu, transModel.tongyi, transModel.yiyan, transModel.moonshot].includes(model)) {
                 this.showHidden(model);
             }
             // 监听“翻译服务”选择框
@@ -307,6 +317,10 @@ let util = {
             let tokenValue = tokenManager.getToken(model) || ''
             switch (model) {
                 case transModel.openai:
+                    token.value = tokenValue;
+                    setDisplayStyle([tokenLabel], [akLabel, skLabel]);
+                    break;
+                case transModel.moonshot:
                     token.value = tokenValue;
                     setDisplayStyle([tokenLabel], [akLabel, skLabel]);
                     break;
@@ -759,12 +773,13 @@ function init() {
     util.registerMenuCommand()
 
     // 翻译模型
+    transFnMap[transModel.openai] = openai
     transFnMap[transModel.yiyan] = yiyan
     transFnMap[transModel.tongyi] = tongyi
     transFnMap[transModel.zhipu] = zhipu
+    transFnMap[transModel.moonshot] = moonshot
     transFnMap[transModel.microsoft] = microsoft
     transFnMap[transModel.google] = google
-    transFnMap[transModel.openai] = openai
 
     hotkeyPressed = false;
     // 填充适配器 map
@@ -1000,6 +1015,44 @@ function openai(origin, callback) {
         }
     });
 }
+
+// endregion
+
+// region moonshot
+function moonshot(origin, callback) {
+    // 获取 token
+
+    let token = tokenManager.getToken(transModel.moonshot)
+    if (!token) return
+
+    let headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+    };
+
+    let option = modelOptionsManager.getOption(transModel.moonshot);
+
+    let data = {
+        'model': option,
+        'messages': [
+            {'role': 'system', 'content': chatMgs.system},
+            {'role': 'user', 'content': chatMgs.user.replace("{{origin}}", origin)}]
+    };
+    GM_xmlhttpRequest({
+        method: 'POST',
+        url: 'https://api.moonshot.cn/v1/chat/completions',
+        headers: headers,
+        data: JSON.stringify(data),
+        onload: resp => {
+            let result = JSON.parse(resp.responseText);
+            callback(result.choices[0].message.content);
+        },
+        onerror: error => {
+            console.error('Request failed', error);
+        }
+    });
+}
+
 
 // endregion
 
