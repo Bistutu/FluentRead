@@ -97,6 +97,7 @@ const transModel = {    // 翻译模型枚举
     microsoft: "microsoft",
     google: "google",
 }
+
 const transFnMap = new Map();   // 翻译函数 map
 // token 管理器
 const tokenManager = {
@@ -105,6 +106,36 @@ const tokenManager = {
         return GM_getValue("token_" + key, null);
     }
 };
+
+const modelOptionsManager = {
+    openai: {
+        "gpt-3.5-turbo": "gpt-3.5-turbo",
+        "gpt-4": "gpt-4",
+        "gpt-4-turbo-preview": "gpt-4-turbo-preview",
+    },
+    yiyan: {
+        "ERNIE-Bot 4.0": "completions_pro", // url 后缀
+        "ERNIE-Bot-8K": "ernie_bot_8k",
+        "ERNIE-Bot": "completions",
+    },
+    tongyi: {
+        "qwen-turbo": "qwen-turbo",
+        "qwen-plus": "qwen-plus",
+        "qwen-max": "qwen-max",
+        "qwen-max-longcontext": "qwen-max-longcontext",
+    },
+    zhipu: {
+        "glm-4": "glm-4",
+        "glm-4v": "glm-4v",
+        "glm-3-turbo": "glm-3-turbo",
+    },
+    getOption(model) {
+        return GM_getValue("model_" + model) || '';
+    },
+    setOption(model, value) {
+        GM_setValue("model_" + model, value);
+    }
+}
 
 // endregion
 
@@ -159,7 +190,7 @@ let util = {
         },
         // 初始化配置
         initConfigValue() {
-            let config = [
+            let common = [
                 {
                     name: 'hotkey', value: 'Control'
                 }, {
@@ -170,7 +201,19 @@ let util = {
                     name: 'model', value: transModel.microsoft
                 }
             ]
-            config.forEach(v => !this.getValue(v.name) ? this.setValue(v.name, v.value) : null);
+            common.forEach(v => !this.getValue(v.name) ? this.setValue(v.name, v.value) : null);
+
+            let modelOptions = [
+                {[transModel.openai]: "gpt-3.5-turbo"},
+                {[transModel.yiyan]: "completions"},
+                {[transModel.tongyi]: "qwen-turbo"},
+                {[transModel.zhipu]: "glm-3-turbo"},
+            ]
+            modelOptions.forEach((option) => {
+                if (!modelOptionsManager.getOption(option.key)) {
+                    modelOptionsManager.setOption(option.key, option.value);
+                }
+            });
         },
         registerMenuCommand() {
             GM_registerMenuCommand(`原始语言：${this.parseLanguage(this.getValue('from'))}`, () => {
@@ -197,6 +240,7 @@ let util = {
     <label class="instant-setting-label">翻译源语言<select id="fluent-read-from" class="instant-setting-select">${this.generateOptions(fromOption, this.getValue('from'))}</select></label>
     <label class="instant-setting-label">翻译目标语言<select id="fluent-read-to" class="instant-setting-select">${this.generateOptions(toOption, this.getValue('to'))}</select></label>
     <label class="instant-setting-label">翻译服务<select id="fluent-read-model" class="instant-setting-select">${this.generateOptions(transModelOptions, this.getValue('model'))}</select></label>
+    <label class="instant-setting-label" id="fluent-read-option-label" style="display: none;">模型类型<select id="fluent-read-option" class="instant-setting-select"></select></label>
     <label class="instant-setting-label" id="fluent-read-token-label" style="display: none;">Token令牌<input type="text" class="instant-setting-input" id="fluent-read-token" value="" ></label>
     <label class="instant-setting-label" id="fluent-read-ak-label" style="display: none;">ak令牌<input type="text" class="instant-setting-input" id="fluent-read-ak" value="" ></label>
     <label class="instant-setting-label" id="fluent-read-sk-label" style="display: none;">sk令牌<input type="text" class="instant-setting-input" id="fluent-read-sk" value="" ></label>
@@ -234,6 +278,8 @@ let util = {
                             tokenManager.setToken(model, {apikey: document.getElementById('fluent-read-token').value});
                             break;
                     }
+                    // 存储 option
+                    modelOptionsManager.setOption(model, document.getElementById('fluent-read-option').value);
                     toast.fire({icon: 'success', title: '设置成功！'});
                     history.go(0); // 刷新页面
                 }
@@ -241,15 +287,15 @@ let util = {
             // 判断是否展示 token
             let model = document.getElementById('fluent-read-model').value;
             if ([transModel.openai, transModel.zhipu, transModel.tongyi, transModel.yiyan].includes(model)) {
-                this.showToken(model);
+                this.showHidden(model);
             }
             // 监听“翻译服务”选择框
             document.getElementById('fluent-read-model').addEventListener('change', e => {
                 const model = e.currentTarget.value;
-                this.showToken(model);
+                this.showHidden(model);
             });
         },
-        showToken(model) {
+        showHidden(model) {
             const token = document.getElementById('fluent-read-token');
             const ak = document.getElementById('fluent-read-ak');
             const sk = document.getElementById('fluent-read-sk');
@@ -257,6 +303,7 @@ let util = {
             const tokenLabel = document.getElementById('fluent-read-token-label');
             const akLabel = document.getElementById('fluent-read-ak-label');
             const skLabel = document.getElementById('fluent-read-sk-label');
+
             let tokenValue = tokenManager.getToken(model) || ''
             switch (model) {
                 case transModel.openai:
@@ -577,6 +624,32 @@ function getHoveredText(node) {
 function setDisplayStyle(flex, none) {
     flex.forEach(element => element.style.display = "flex");
     none.forEach(element => element.style.display = "none");
+    // option 是 select，设置值
+    const optionSelect = document.getElementById('fluent-read-option');
+    // 清除现有的所有选项
+    while (optionSelect.options.length > 0) {
+        optionSelect.remove(0)
+    }
+    // 添加新的选项
+    const newOptions = modelOptionsManager[document.getElementById('fluent-read-model').value];
+    for (const key in newOptions) {
+        if (newOptions.hasOwnProperty(key)) {
+            const newOption = document.createElement('option');
+            newOption.value = key;
+            newOption.text = newOptions[key];
+            optionSelect.appendChild(newOption);
+        }
+    }
+    // 设置默认选中的值
+    optionSelect.value = modelOptionsManager.getOption(document.getElementById('fluent-read-model').value);
+
+
+    const optionLabel = document.getElementById('fluent-read-option-label');
+    if (flex.length !== 0) {
+        optionLabel.style.display = "flex";
+    } else {
+        optionLabel.style.display = "none";
+    }
 }
 
 // 替换范围内的文本
@@ -589,7 +662,7 @@ function replaceTextInRange(range, text) {
 
     // 如果是 google 与微软翻译，因为翻译的是 html，所以需替换原 range
     if ([transModel.google, transModel.microsoft].includes(util.getValue('model'))) {
-        range.startContainer.outerHTML= container.firstChild.outerHTML;
+        range.startContainer.outerHTML = container.firstChild.outerHTML;
     } else {
         range.deleteContents(); // 删除当前范围内的内容
         range.insertNode(container.firstChild); // 插入子节点
@@ -905,13 +978,14 @@ function openai(origin, callback) {
         'Authorization': 'Bearer ' + token
     };
 
+    let option = modelOptionsManager.getOption(transModel.openai);
+
     let data = {
-        'model': 'gpt-3.5-turbo',
+        'model': option,
         'messages': [
             {'role': 'system', 'content': chatMgs.system},
             {'role': 'user', 'content': chatMgs.user.replace("{{origin}}", origin)}]
     };
-
     GM_xmlhttpRequest({
         method: 'POST',
         url: 'https://api.openai.com/v1/chat/completions',
@@ -979,11 +1053,13 @@ function getYiyanToken() {
 function yiyan(origin, callback) {
     if (origin.trim().length === 0) return;
     getYiyanToken().then(token => {
+        // option
+        let option = modelOptionsManager[transModel.yiyan][modelOptionsManager.getOption(transModel.yiyan)];
         GM_xmlhttpRequest({
             method: "POST",
             // ERNIE-Bot 4.0 模型，模型定价页面：https://console.bce.baidu.com/qianfan/chargemanage/list
             // api 文档中心：https://cloud.baidu.com/doc/WENXINWORKSHOP/s/clntwmv7t
-            url: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/completions_pro?access_token=' + token,
+            url: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/' + option + '?access_token=' + token,
             headers: JSONFormatHeader,
             data: JSON.stringify({
                 'temperature': 0.1, // 随机度
@@ -1017,6 +1093,7 @@ function tongyi(origin, callback) {
         console.log("通义千问：未获取到 token");
         return
     }
+    let option = modelOptionsManager.getOption(transModel.tongyi);
 
     // 发起请求
     GM_xmlhttpRequest({
@@ -1027,7 +1104,7 @@ function tongyi(origin, callback) {
             "Content-Type": "application/json"
         },
         data: JSON.stringify({
-            "model": "qwen-turbo",
+            "model": option,
             "input": {
                 "messages": [
                     {"role": "system", "content": chatMgs.system},
@@ -1065,6 +1142,8 @@ function zhipu(origin, callback) {
         token = generateToken(tokenObject.apikey);
     }
 
+    let option = modelOptionsManager.getOption(transModel.zhipu);
+
     // 发起请求
     GM_xmlhttpRequest({
         method: "POST",
@@ -1074,7 +1153,7 @@ function zhipu(origin, callback) {
             "Authorization": "Bearer " + token
         },
         data: JSON.stringify({
-            "model": "glm-4",
+            "model": option,
             "messages": [
                 {"role": "system", "content": chatMgs.system},
                 {"role": "user", "content": chatMgs.user.replace("{{origin}}", origin)}
