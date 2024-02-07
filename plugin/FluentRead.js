@@ -164,15 +164,40 @@ let toast = Swal.mixin({
         toast.addEventListener('mouseleave', Swal.resumeTimer);
     }
 });
-let fromOption = {
-    // 'auto': '自动检测',
-    // 'zh-CN': '简体中文',
-    'en': '英语',
-};
-let toOption = {
-    'zh-CN': '简体中文',
-    // 'en': '英语',
-};
+
+
+// 多语言
+let langManager = {
+    fromOption: {
+        'auto': '自动检测',
+        // 'zh-CN': '简体中文',
+        // 'en': '英语',
+    },
+    toOption: {
+        'zh-Hans': '简体中文',
+        'en': '英语',
+    },
+    // set
+    setFromTo(from, to) {
+        GM_setValue('from', from);
+        GM_setValue('to', to);
+    },
+    // get
+    getFromTo() {
+        return {
+            from: GM_getValue('from', 'auto'),
+            to: GM_getValue('to', 'zh-Hans')
+        }
+    },
+    getFrom() {
+        return GM_getValue('from', 'auto')
+    },
+    getTo() {
+        return GM_getValue('to', 'zh-Hans')
+    }
+}
+
+
 let hotkeyOptions = {Control: 'Control', Alt: 'Alt', Shift: 'Shift'}
 
 const transModelOptions = {
@@ -188,7 +213,7 @@ const transModelOptions = {
 // endregion
 let util = {
         parseLanguage(language) {
-            return fromOption[language] || language;
+            return langManager.fromOption[language] || language;
         },
         getValue(name) {
             return GM_getValue(name);
@@ -226,8 +251,10 @@ let util = {
         },
         registerMenuCommand() {
             GM_registerMenuCommand(`原始语言：${this.parseLanguage(this.getValue('from'))}`, () => {
+                this.setLanguage('from')
             });
             GM_registerMenuCommand(`目标语言：${this.parseLanguage(this.getValue('to'))}`, () => {
+                this.setLanguage('to')
             });
             GM_registerMenuCommand(`鼠标快捷键：${this.getValue('hotkey')}`, () => {
                 this.setHotkey()
@@ -246,8 +273,8 @@ let util = {
   <div style="font-size: 1em;">
     <!-- 其他设置项 -->
     <label class="instant-setting-label">快捷键<select id="fluent-read-hotkey" class="instant-setting-select">${this.generateOptions(hotkeyOptions, this.getValue('hotkey'))}</select></label>
-    <label class="instant-setting-label">翻译源语言<select id="fluent-read-from" class="instant-setting-select">${this.generateOptions(fromOption, this.getValue('from'))}</select></label>
-    <label class="instant-setting-label">翻译目标语言<select id="fluent-read-to" class="instant-setting-select">${this.generateOptions(toOption, this.getValue('to'))}</select></label>
+    <label class="instant-setting-label">翻译源语言<select id="fluent-read-from" class="instant-setting-select">${this.generateOptions(langManager.fromOption, langManager.getFrom())}</select></label>
+    <label class="instant-setting-label">翻译目标语言<select id="fluent-read-to" class="instant-setting-select">${this.generateOptions(langManager.toOption, langManager.getTo())}</select></label>
     <label class="instant-setting-label">翻译服务<select id="fluent-read-model" class="instant-setting-select">${this.generateOptions(transModelOptions, this.getValue('model'))}</select></label>
     <label class="instant-setting-label" id="fluent-read-option-label" style="display: none;">模型类型<select id="fluent-read-option" class="instant-setting-select"></select></label>
     <label class="instant-setting-label" id="fluent-read-token-label" style="display: none;">Token令牌<input type="text" class="instant-setting-input" id="fluent-read-token" value="" ></label>
@@ -264,12 +291,16 @@ let util = {
                 },
             ).then(async (result) => {
                 if (result.isConfirmed) {
+                    // 设置快捷键
                     util.setValue('hotkey', document.getElementById('fluent-read-hotkey').value);
-                    util.setValue('from', document.getElementById('fluent-read-from').value);
-                    util.setValue('to', document.getElementById('fluent-read-to').value);
+                    // 设置语言
+                    let from = document.getElementById('fluent-read-from').value;
+                    let to = document.getElementById('fluent-read-to').value;
+                    langManager.setFromTo(from, to);
+                    // 设置翻译服务
                     let model = document.getElementById('fluent-read-model').value;
                     util.setValue('model', model);
-                    // 判断如何存储 token
+                    // 存储 token
                     switch (model) {
                         case transModel.openai:
                             tokenManager.setToken(model, document.getElementById('fluent-read-token').value);
@@ -361,6 +392,32 @@ let util = {
                 }
             });
         },
+        setToLanguage(lang) {
+            let args = lang === 'from' ? {
+                notion: "源",
+                inputValue: langManager.getFrom(),
+                inputOptions: langManager.fromOption,
+            } : {
+                notion: "目标",
+                inputValue: langManager.getTo(),
+                inputOptions: langManager.toOption,
+            }
+            Swal.fire({
+                title: args.notion + '语言设置',
+                text: '请选择翻译' + args.notion + '语言',
+                input: 'select',
+                inputValue: args.inputValue,
+                inputOptions: args.inputOptions,
+                confirmButtonText: '确定',
+                customClass: toastClass,
+            }).then(async (result) => {
+                if (result.isConfirmed) {
+                    langManager.setFromTo(langManager.getFrom(), result.value);
+                    toast.fire({icon: 'success', title: args.notion + '语言设置成功！'});
+                    history.go(0); // 刷新页面
+                }
+            });
+        }
     }
 ;
 // endregion
@@ -733,7 +790,7 @@ function calculateChineseRate(text) {
 }
 
 const langMap = {
-    zh: 'zh-cn',
+    zh: 'zh-Hans',
     cht: 'zh-Hant',
     en: 'en',
     jp: 'ja',
@@ -878,10 +935,17 @@ function translate(range, origin) {
     // 检测语言类型，如果是中文则不翻译
     baiduDetectLang(origin).then(lang => {
         // 如果原文是中文，则不翻译
-        if (lang === 'zh-cn') return;
+        if (lang === langManager.getTo()) return;
 
         // 获取翻译模型名称
         let model = util.getValue('model')
+        // 获取 from 与 to
+        let fromTo = langManager.getFromTo();
+
+        // 构建请求参数
+        let args = {
+            from: fromTo.from, to: fromTo.to    // 翻译语言
+        };
 
         // 如果是谷歌或者微软翻译的话，应该翻译 html
         if ([transModel.microsoft, transModel.google].includes(model)) {
@@ -932,10 +996,25 @@ function createLoadingSpinner(range) {
     return spinner;
 }
 
+const chatMgs = {
+    system: `You are a professional, authentic translation engine, only returns translations.`,
+    user: `Please translate them into {{to}}, please do not explain my original text.:
+     
+    {{origin}}`,
+
+    getUserMsg(origin) {
+        return this.user.replace("{{origin}}", origin).replace("{{to}}", langManager.getFromTo.to);
+    }
+}
+const JSONFormatHeader = {"Content-Type": "application/json"}
+
 // endregion
 
 // region 微软翻译
 function microsoft(origin, callback) {
+
+    let from = langManager.getFrom() === 'auto' ? '' : langManager.getFrom()
+
     // 从 GM 缓存获取 token
     let jwtToken = tokenManager.getToken(transModel.microsoft);
     refreshToken(jwtToken).then(jwtString => {
@@ -944,9 +1023,10 @@ function microsoft(origin, callback) {
             callback(null);
             return;
         }
+        // 文档：https://learn.microsoft.com/zh-cn/azure/ai-services/translator/language-support
         GM_xmlhttpRequest({
             method: 'POST',
-            url: "https://api-edge.cognitive.microsofttranslator.com/translate?from=&to=zh&api-version=3.0&includeSentenceLength=true&textType=html",
+            url: "https://api-edge.cognitive.microsofttranslator.com/translate?from=" + from + "&to=" + langManager.getTo() + "&api-version=3.0&includeSentenceLength=true&textType=html",
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": "Bearer " + jwtString
@@ -1019,7 +1099,7 @@ function parseJwt(token) {
 
 function google(origin, callback) {
     let params = {
-        client: 'gtx', sl: 'auto', tl: 'zh-CN', dt: 't', browsers: true,
+        client: 'gtx', sl: langManager.getFrom(), tl: langManager.getTo(), dt: 't', browsers: true,
         'q': encodeURIComponent(origin),
     };
 
@@ -1078,7 +1158,7 @@ function openai(origin, callback) {
         'model': option,
         'messages': [
             {'role': 'system', 'content': chatMgs.system},
-            {'role': 'user', 'content': chatMgs.user.replace("{{origin}}", origin)}]
+            {'role': 'user', 'content': chatMgs.getUserMsg(origin)}]
     };
     GM_xmlhttpRequest({
         method: 'POST',
@@ -1114,7 +1194,7 @@ function moonshot(origin, callback) {
         'model': option,
         'messages': [
             {'role': 'system', 'content': chatMgs.system},
-            {'role': 'user', 'content': chatMgs.user.replace("{{origin}}", origin)}]
+            {'role': 'user', 'content': chatMgs.getUserMsg(origin)}]
     };
     GM_xmlhttpRequest({
         method: 'POST',
@@ -1136,13 +1216,36 @@ function moonshot(origin, callback) {
 
 // region 文心一言
 
-const chatMgs = {
-    system: `You are a professional, authentic translation engine, only returns translations.`,
-    user: `Please translate them into zh-CN, please do not explain my original text.:
-     
-    {{origin}}`
+function yiyan(origin, callback) {
+    if (origin.trim().length === 0) return;
+    getYiyanToken().then(token => {
+        // option
+        let option = modelOptionsManager[transModel.yiyan][modelOptionsManager.getOption(transModel.yiyan)];
+        GM_xmlhttpRequest({
+            method: "POST",
+            // ERNIE-Bot 4.0 模型，模型定价页面：https://console.bce.baidu.com/qianfan/chargemanage/list
+            // api 文档中心：https://cloud.baidu.com/doc/WENXINWORKSHOP/s/clntwmv7t
+            url: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/' + option + '?access_token=' + token,
+            headers: JSONFormatHeader,
+            data: JSON.stringify({
+                'temperature': 0.1, // 随机度
+                'disable_search': true, // 禁用搜索
+                'messages': [{
+                    "role": "user",
+                    "content": chatMgs.system + chatMgs.getUserMsg(origin)
+                }],
+            }),
+            onload: resp => {
+                let res = JSON.parse(resp.responseText);
+                callback(res.result);
+            },
+            onerror: error => {
+                console.log("#>> onerror", error);
+                callback(null);
+            }
+        });
+    })
 }
-const JSONFormatHeader = {"Content-Type": "application/json"}
 
 // req: API Key、Secret Key
 // resp: access_token，有效期默认 30 天
@@ -1181,37 +1284,6 @@ function getYiyanToken() {
     })
 }
 
-function yiyan(origin, callback) {
-    if (origin.trim().length === 0) return;
-    getYiyanToken().then(token => {
-        // option
-        let option = modelOptionsManager[transModel.yiyan][modelOptionsManager.getOption(transModel.yiyan)];
-        GM_xmlhttpRequest({
-            method: "POST",
-            // ERNIE-Bot 4.0 模型，模型定价页面：https://console.bce.baidu.com/qianfan/chargemanage/list
-            // api 文档中心：https://cloud.baidu.com/doc/WENXINWORKSHOP/s/clntwmv7t
-            url: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/' + option + '?access_token=' + token,
-            headers: JSONFormatHeader,
-            data: JSON.stringify({
-                'temperature': 0.1, // 随机度
-                'disable_search': true, // 禁用搜索
-                'messages': [{
-                    "role": "user",
-                    "content": chatMgs.system + chatMgs.user.replace("{{origin}}", origin)
-                }],
-            }),
-            onload: resp => {
-                let res = JSON.parse(resp.responseText);
-                callback(res.result);
-            },
-            onerror: error => {
-                console.log("#>> onerror", error);
-                callback(null);
-            }
-        });
-    })
-}
-
 // endregion
 
 // region 通义千问
@@ -1239,7 +1311,7 @@ function tongyi(origin, callback) {
             "input": {
                 "messages": [
                     {"role": "system", "content": chatMgs.system},
-                    {"role": "user", "content": chatMgs.user.replace("{{origin}}", origin)}
+                    {"role": "user", "content": chatMgs.getUserMsg(origin)}
                 ]
             },
             "parameters": {}
@@ -1287,7 +1359,7 @@ function zhipu(origin, callback) {
             "model": option,
             "messages": [
                 {"role": "system", "content": chatMgs.system},
-                {"role": "user", "content": chatMgs.user.replace("{{origin}}", origin)}
+                {"role": "user", "content": chatMgs.getUserMsg(origin)}
             ],
             "stream": false,
             "temperature": 0.1
