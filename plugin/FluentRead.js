@@ -835,20 +835,20 @@ function translate(range, origin) {
 
 // 替换范围内的文本
 function replaceTextInRange(range, text) {
-    // div 是多余的，为的是将 text 转换为 DOM 元素
-    let container = document.createElement("span");
-    container.innerHTML = text;
-    container.classList.add("notranslate");
 
-    sentenceSet.add(container.textContent); // 去重，添加翻译后的文本
+    sentenceSet.add(text); // 去重，添加翻译后的文本
 
     // 如果是 google 与微软翻译，因为翻译的是 html，所以需替换原 range
     if ([transModel.google, transModel.microsoft].includes(util.getValue('model'))) {
-        range.startContainer.outerHTML = container.firstChild.outerHTML;
-    } else {
-        range.deleteContents(); // 删除当前范围内的内容
-        range.insertNode(container); // 插入子节点
+        range.startContainer.outerHTML = text
+        return
     }
+    // 如果是其他翻译模型，直接替换文本
+    let container = document.createElement("span");
+    container.innerHTML = text;
+    container.classList.add("notranslate");
+    range.deleteContents();      // 删除当前范围内的内容
+    range.insertNode(container); // 插入子节点
 }
 
 
