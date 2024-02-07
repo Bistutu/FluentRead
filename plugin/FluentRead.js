@@ -421,6 +421,10 @@ let sentenceSet = new Set();
             // 去重判断
             if (sentenceSet.has(hoveredElement.textContent)) return;
             sentenceSet.add(hoveredElement.textContent);
+            // 500 毫秒后去除
+            setTimeout(() => {
+                sentenceSet.delete(hoveredElement.textContent);
+            }, 500);
 
             // 如果浏览器元素标注了 notranslate，则不翻译
             if (hoveredElement.classList.contains('notranslate')) return;
@@ -592,9 +596,9 @@ function getHoveredText(node) {
     // 模式 1：全部选择
     // range.selectNode(node);
 
-    // 步骤：先获取选中的范围，然后获取范围内文本（这两步目前单独实现）
-
     // 模式 2：设置Range的开始和结束位置，首尾最后一个 text 节点包裹的范围
+
+    // 步骤：先获取选中的范围，然后获取范围内文本（这两步目前单独实现）
     range.setStartBefore(node.firstChild);
 
     let lastChild = node.lastChild;
@@ -604,6 +608,11 @@ function getHoveredText(node) {
             break;
         }
         lastChild = lastChild.previousSibling;
+    }
+
+    // 如果 range 只有一个节点，去除换行符后返回 textContent
+    if (range.startContainer.childNodes.length === 1 && range.startContainer.textContent) {
+        return {range: range, text: range.startContainer.textContent.replace(/\n/g, " ").trim()};
     }
 
     // 遍历 range + 匹配 <code> 标签
@@ -722,7 +731,7 @@ function calculateChineseRate(text) {
 }
 
 const langMap = {
-    zh: 'zh-Hans',
+    zh: 'zh-cn',
     cht: 'zh-Hant',
     en: 'en',
     jp: 'ja',
@@ -867,7 +876,7 @@ function translate(range, origin) {
     // 检测语言类型，如果是中文则不翻译
     baiduDetectLang(origin).then(lang => {
         // 如果原文是中文，则不翻译
-        if (lang === 'zh') return;
+        if (lang === 'zh-cn') return;
 
         // 获取翻译模型名称
         let model = util.getValue('model')
@@ -1035,6 +1044,8 @@ function google(origin, callback) {
             sentence = sentence.replace(/<\s*(\w+)\s*(.*?)>/g, '<$1 $2>');
             // <a > 的字符串转换为 <a>
             sentence = sentence.replace(/<\s*(\w+)\s*>/g, '<$1>');
+            // 将< /a> 的字符串转换为 </a>
+            sentence = sentence.replace(/<\s*\/\s*(\w+)\s*>/g, '</$1>');
 
             callback(sentence);
         },
