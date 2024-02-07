@@ -611,7 +611,9 @@ function getHoveredText(node) {
     }
 
     // 如果 range 只有一个节点，去除换行符后返回 textContent
-    if (range.startContainer.childNodes.length === 1 && range.startContainer.textContent) {
+    if (range.startContainer.childNodes.length === 1
+        && range.startContainer.childNodes[0].nodeType === Node.TEXT_NODE
+        && range.startContainer.textContent) {
         return {range: range, text: range.startContainer.textContent.replace(/\n/g, " ").trim()};
     }
 
