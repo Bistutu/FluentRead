@@ -25,6 +25,7 @@
 // @connect      translate.googleapis.com
 // @connect      api.openai.com
 // @connect      api.moonshot.cn
+// @connect      fanyi.baidu.com
 // @run-at       document-end
 // @downloadURL  https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.user.js
 // @updateURL    https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.meta.js
@@ -720,6 +721,58 @@ function calculateChineseRate(text) {
     return chineseCharCount / totalCharCount;
 }
 
+const langMap = {
+    zh: 'zh-Hans',
+    cht: 'zh-Hant',
+    en: 'en',
+    jp: 'ja',
+    kor: 'ko',
+    fra: 'fr',
+    spa: 'es',
+    ru: 'ru',
+    de: 'de',
+    it: 'it',
+    tr: 'tr',
+    pt: 'pt',
+    vie: 'vi',
+    id: 'id',
+    th: 'th',
+    ar: 'ar',
+    hi: 'hi',
+    per: 'fa',
+};
+
+// 检测语言类型
+function baiduDetectLang(text) {
+    return new Promise((resolve, reject) => {
+        // 数据参数
+        const data = new URLSearchParams();
+        data.append('query', text);
+        const url = 'https://fanyi.baidu.com/langdetect?' + data.toString();
+
+        // 发起请求
+        GM_xmlhttpRequest({
+            method: 'POST',
+            url: url,
+            onload: function (response) {
+                if (response.status === 200) {
+                    const jsn = JSON.parse(response.responseText);
+                    if (jsn && jsn.lan) {
+                        resolve(langMap[jsn.lan] || 'en');
+                    } else {
+                        reject(new Error('Language detection failed'));
+                    }
+                } else {
+                    reject(new Error('Server responded with status ' + response.status));
+                }
+            },
+            onerror: function (error) {
+                reject(new Error('GM_xmlhttpRequest failed'));
+            }
+        });
+    });
+}
+
 // 判断是否应该剪枝
 function shouldPrune(text) {
     let has = pruneSet.has(text);
@@ -809,28 +862,35 @@ function init() {
 function translate(range, origin) {
 
     // 检测中文率，如果中文率大于 50% 则不翻译
-    if (calculateChineseRate(origin) > 0.5) return;
+    // if (calculateChineseRate(origin) > 0.5) return;
 
-    // 获取翻译模型名称
-    let model = util.getValue('model')
+    // 检测语言类型，如果是中文则不翻译
+    baiduDetectLang(origin).then(lang => {
+        // 如果原文是中文，则不翻译
+        if (lang === 'zh') return;
 
-    // 如果是谷歌或者微软翻译的话，应该翻译 html
-    if ([transModel.microsoft, transModel.google].includes(model)) {
-        origin = range.startContainer.outerHTML
-    }
+        // 获取翻译模型名称
+        let model = util.getValue('model')
 
-    // 插入转圈动画，不能置于 origin = range.startContainer.outerHTML 前
-    let spinner = createLoadingSpinner(range);
+        // 如果是谷歌或者微软翻译的话，应该翻译 html
+        if ([transModel.microsoft, transModel.google].includes(model)) {
+            origin = range.startContainer.outerHTML
+        }
 
-    transFnMap[model](origin, text => {
-        spinner.remove()
-        // 打印翻译之前和之后的文本
-        console.log("翻译前的句子：", origin);
-        console.log("翻译后的句子：", text);
+        // 插入转圈动画，不能置于 origin = range.startContainer.outerHTML 前
+        let spinner = createLoadingSpinner(range);
 
-        if (!text || origin === text) return;
-        replaceTextInRange(range, text);
-    })
+        transFnMap[model](origin, text => {
+            spinner.remove()
+            // 打印翻译之前和之后的文本
+            console.log("翻译前的句子：", origin);
+            console.log("翻译后的句子：", text);
+
+            if (!text || origin === text) return;
+            replaceTextInRange(range, text);
+        })
+
+    }).catch(e => console.error(e));
 }
 
 // 替换范围内的文本
@@ -973,6 +1033,8 @@ function google(origin, callback) {
 
             // 将类似于 < a href="..."> 的字符串转换为 <a href="...">（标准化 html）
             sentence = sentence.replace(/<\s*(\w+)\s*(.*?)>/g, '<$1 $2>');
+            // <a > 的字符串转换为 <a>
+            sentence = sentence.replace(/<\s*(\w+)\s*>/g, '<$1>');
 
             callback(sentence);
         },
