@@ -941,11 +941,13 @@ function createLoadingSpinner(node) {
 }
 
 const chatMgs = {
-    system: `You are a professional, authentic translation engine, only returns translations.`,
+    system: `You are a professional, authentic translation engine, you, You will translate content from '{{website}}', only returns translations.`,
     user: `Please translate them into {{to}}, please do not explain my original text.:
      
     {{origin}}`,
-
+    getSystemMsg() {
+        return this.system.replace("{{website}}", document.title);
+    },
     getUserMsg(origin) {
         return this.user.replace("{{origin}}", origin).replace("{{to}}", langManager.getTo());
     }
@@ -1100,7 +1102,7 @@ function openai(origin, callback) {
     let data = {
         'model': option,
         'messages': [
-            {'role': 'system', 'content': chatMgs.system},
+            {'role': 'system', 'content': chatMgs.getSystemMsg()},
             {'role': 'user', 'content': chatMgs.getUserMsg(origin)}]
     };
     GM_xmlhttpRequest({
@@ -1136,7 +1138,7 @@ function moonshot(origin, callback) {
     let data = {
         'model': option,
         'messages': [
-            {'role': 'system', 'content': chatMgs.system},
+            {'role': 'system', 'content': chatMgs.getSystemMsg()},
             {'role': 'user', 'content': chatMgs.getUserMsg(origin)}]
     };
     GM_xmlhttpRequest({
@@ -1164,14 +1166,13 @@ function yiyan(origin, callback) {
     getYiyanToken().then(token => {
         // option
         let option = modelOptionsManager.getModelOption(transModel.yiyan);
-        console.log(chatMgs.system + chatMgs.getUserMsg(origin))
         GM_xmlhttpRequest({
             method: "POST",
             // ERNIE-Bot 4.0 模型，模型定价页面：https://console.bce.baidu.com/qianfan/chargemanage/list
             // api 文档中心：https://cloud.baidu.com/doc/WENXINWORKSHOP/s/clntwmv7t
             url: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/' + option + '?access_token=' + token,
             headers: JSONFormatHeader,
-            system: chatMgs.system,
+            system: chatMgs.getSystemMsg(),
             data: JSON.stringify({
                 'temperature': 0.3, // 随机度
                 'disable_search': true, // 禁用搜索
@@ -1179,7 +1180,6 @@ function yiyan(origin, callback) {
             }),
             onload: resp => {
                 let res = JSON.parse(resp.responseText);
-                console.log("#>> onload", res);
                 callback(res.result);
             },
             onerror: error => {
@@ -1253,7 +1253,7 @@ function tongyi(origin, callback) {
             "model": option,
             "input": {
                 "messages": [
-                    {"role": "system", "content": chatMgs.system},
+                    {"role": "system", "content": chatMgs.getSystemMsg()},
                     {"role": "user", "content": chatMgs.getUserMsg(origin)}
                 ]
             },
@@ -1301,7 +1301,7 @@ function zhipu(origin, callback) {
         data: JSON.stringify({
             "model": option,
             "messages": [
-                {"role": "system", "content": chatMgs.system},
+                {"role": "system", "content": chatMgs.getSystemMsg()},
                 {"role": "user", "content": chatMgs.getUserMsg(origin)}
             ],
             "stream": false,
