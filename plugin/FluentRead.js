@@ -101,6 +101,9 @@ const transModel = {    // 翻译模型枚举
     google: "google",
 }
 
+// 鼠标位置
+let mouseX = 0, mouseY = 0;
+
 const transFnMap = new Map();   // 翻译函数 map
 // token 管理器
 const tokenManager = {
@@ -465,45 +468,51 @@ let sentenceSet = new Set();
         }
     });
 
-
     // 快捷键+悬停翻译
     setShortcut(util.getValue('hotkey'));
     // 当浏览器或标签页失去焦点时，重置 ctrlPressed
     window.addEventListener('blur', () => hotkeyPressed = false)
 
-    // 增加鼠标监听事件，悬停 50ms 后执行
+    //  // 鼠标、键盘监听事件，悬停翻译
+    document.addEventListener('keydown', event => handler(mouseX, mouseY, event))
     document.body.addEventListener('mousemove', event => {
-        if (!hotkeyPressed) return;   // 如果没有按下 ctrl 键，不执行
+        // 更新鼠标位置
+        mouseX = event.clientX;
+        mouseY = event.clientY;
 
-        clearTimeout(hoverTimer); // 清除计时器
-        hoverTimer = setTimeout(() => {
-                let node = event.target;
-
-                // 避免全局
-                if (event.nodeName === 'HTML' || event.nodeName === 'BODY') return;
-
-                // 去重判断
-                if (sentenceSet.has(node.innerText)) return;
-                sentenceSet.add(node.innerText);
-                // 3 秒后去除
-                setTimeout(() => {
-                    sentenceSet.delete(node.innerText);
-                }, 3000);
-
-                // 如果浏览器元素标注了 notranslate，则不翻译
-                if (node.classList.contains('notranslate')) return;
-
-                // 如果是单行文本或者单一节点包含文本，则翻译
-                if ((node.innerText && !node.innerText.includes('\n'))
-                    || (node.childNodes.length === 1 && node.childNodes[0].nodeType === node.TEXT_NODE&&node.innerText)) {
-                    translate(node)
-                }
-            }
-            ,
-            0
-        )
+        handler(mouseX, mouseY, event);
     });
 })();
+
+// 监听事件处理器
+function handler(mouseX, mouseY, event) {
+    if (!hotkeyPressed) return;
+
+    clearTimeout(hoverTimer); // 清除计时器
+    hoverTimer = setTimeout(() => {
+        let node = document.elementFromPoint(mouseX, mouseY);
+
+        // 避免全局
+        if (event.nodeName === 'HTML' || event.nodeName === 'BODY') return;
+
+        // 去重判断
+        if (sentenceSet.has(node.innerText)) return;
+        sentenceSet.add(node.innerText);
+        // 3 秒后去除
+        setTimeout(() => {
+            sentenceSet.delete(node.innerText);
+        }, 3000);
+
+        // 如果浏览器元素标注了 notranslate，则不翻译
+        if (node.classList.contains('notranslate')) return;
+
+        // 如果是单行文本或者单一节点包含文本，则翻译
+        if ((node.innerText && !node.innerText.includes('\n'))
+            || (node.childNodes.length === 1 && node.childNodes[0].nodeType === node.TEXT_NODE && node.innerText)) {
+            translate(node)
+        }
+    }, 25);
+}
 
 // region read
 // read：异步返回 callback，表示是否需要拉取数据
@@ -633,12 +642,6 @@ function processNode(node, attr, respMap) {
 
 // region 通用函数
 // 快捷键处理
-function handleShortcut(event, shortcut) {
-    if (event.key === shortcut) {
-        hotkeyPressed = (event.type === 'keydown');
-    }
-}
-
 function setShortcut(shortcut) {
     // 移除旧的事件监听器
     if (currentShortcut) {
@@ -658,6 +661,13 @@ function keyDownListener(event) {
 function keyUpListener(event) {
     handleShortcut(event, currentShortcut);
 }
+
+function handleShortcut(event, shortcut) {
+    if (event.key === shortcut) {
+        hotkeyPressed = (event.type === 'keydown');
+    }
+}
+
 
 // 批量设置元素的 display 样式
 function setDisplayStyle(flex, none) {
