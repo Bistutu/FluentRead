@@ -525,9 +525,6 @@ function handler(mouseX, mouseY) {
         let origin = node.innerText;
         if (sentenceSet.has(origin)) return
         sentenceSet.add(origin);
-        setTimeout(() => {
-            sentenceSet.delete(origin);
-        }, delay);
 
         let outerHtmlCache = sessionManager.getTransCache(node.outerHTML);
         // console.log("节点：", node.outerHTML, ", 缓存：", outerHtmlCache);
@@ -952,7 +949,6 @@ function translate(node) {
 
             // 保存旧 outerHTML
             let tempOuterHtml = node.outerHTML
-            console.log("旧 outerHTML：", tempOuterHtml);
 
             if ([transModel.microsoft, transModel.google].includes(model)) {
                 if (node.parentNode) {
@@ -970,6 +966,8 @@ function translate(node) {
                 node.innerText = text;
                 sessionManager.setTransCache(tempOuterHtml, node.outerHTML);
             }
+
+            sentenceSet.remove(origin);
 
             sentenceSet.add(node.innerText); // 去重，添加翻译后的文本
             setTimeout(() => {
