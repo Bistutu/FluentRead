@@ -494,7 +494,7 @@ let sentenceSet = new Set();
             if (node.classList.contains('notranslate')) return;
 
             // 只翻译单行文本
-            if (!node.innerText.includes('\n')) {
+            if (node.innerText && !node.innerText.includes('\n')) {
                 translate(node)
             }
         }, 0)
@@ -895,8 +895,17 @@ function translate(node) {
             console.log("翻译后的句子：", text);
 
             if (!text || origin === text) return;
+
             if ([transModel.microsoft, transModel.google].includes(model)) {
                 if (node.parentNode) {
+                    // youtube 适配
+                    if (url.host === "www.youtube.com") {
+                        let element = document.createElement('span');
+                        element.innerHTML = text;
+                        // node.parentNode.replaceChild(element, node);
+                        node.innerText = element.innerText;
+                        return;
+                    }
                     node.outerHTML = text;
                 }
             } else {
@@ -1072,7 +1081,7 @@ function openai(origin, callback) {
         'Authorization': 'Bearer ' + token
     };
 
-    let option = modelOptionsManager.getOption(transModel.openai);
+    let option = modelOptionsManager.getModelOption(transModel.openai)
 
     let data = {
         'model': option,
@@ -1108,7 +1117,7 @@ function moonshot(origin, callback) {
         'Authorization': 'Bearer ' + token
     };
 
-    let option = modelOptionsManager.getOption(transModel.moonshot);
+    let option = modelOptionsManager.getModelOption(transModel.moonshot)
 
     let data = {
         'model': option,
@@ -1152,11 +1161,7 @@ function yiyan(origin, callback) {
             data: JSON.stringify({
                 'temperature': 0.3, // 随机度
                 'disable_search': true, // 禁用搜索
-                'messages': [
-                    {
-                        "role": "user",
-                        "content": chatMgs.getUserMsg(origin)
-                    }],
+                'messages': [{"role": "user", "content": chatMgs.getUserMsg(origin)}],
             }),
             onload: resp => {
                 let res = JSON.parse(resp.responseText);
@@ -1220,7 +1225,7 @@ function tongyi(origin, callback) {
         console.log("通义千问：未获取到 token");
         return
     }
-    let option = modelOptionsManager.getOption(transModel.tongyi);
+    let option = modelOptionsManager.getModelOption(transModel.tongyi)
 
     // 发起请求
     GM_xmlhttpRequest({
@@ -1269,7 +1274,7 @@ function zhipu(origin, callback) {
         token = generateToken(tokenObject.apikey);
     }
 
-    let option = modelOptionsManager.getOption(transModel.zhipu);
+    let option = modelOptionsManager.getModelOption(transModel.zhipu)
 
     // 发起请求
     GM_xmlhttpRequest({
