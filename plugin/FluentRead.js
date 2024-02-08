@@ -141,6 +141,10 @@ const modelOptionsManager = {
     },
     setOption(model, value) {
         GM_setValue("model_" + model, value);
+    },
+    getModelOption(model) {
+        return this[model][this.getOption(model)];
+
     }
 }
 
@@ -473,22 +477,27 @@ let sentenceSet = new Set();
 
         clearTimeout(hoverTimer); // 清除计时器
         hoverTimer = setTimeout(() => {
-            let hoveredElement = event.target;
+            let node = event.target;
+
+            // 避免全局
+            if (event.nodeName === 'HTML' || event.nodeName === 'BODY') return;
 
             // 去重判断
-            if (sentenceSet.has(hoveredElement.textContent)) return;
-            sentenceSet.add(hoveredElement.textContent);
-            // 500 毫秒后去除
+            if (sentenceSet.has(node.innerText)) return;
+            sentenceSet.add(node.innerText);
+            // 3 秒后去除
             setTimeout(() => {
-                sentenceSet.delete(hoveredElement.textContent);
-            }, 500);
+                sentenceSet.delete(node.innerText);
+            }, 3000);
 
             // 如果浏览器元素标注了 notranslate，则不翻译
-            if (hoveredElement.classList.contains('notranslate')) return;
+            if (node.classList.contains('notranslate')) return;
 
-            let hovered = getHoveredText(hoveredElement);   // 获取鼠标悬停文本
-            if (hovered.text) translate(hovered.range, hovered.text)
-        }, 50)
+            // 只翻译单行文本
+            if (!node.innerText.includes('\n')) {
+                translate(node)
+            }
+        }, 0)
     });
 })();
 
@@ -646,64 +655,6 @@ function keyUpListener(event) {
     handleShortcut(event, currentShortcut);
 }
 
-// 获取鼠标悬停文本，若为多行文本则返回空字符串
-function getHoveredText(node) {
-    let range = document.createRange();
-
-    // 模式 1：全部选择
-    // range.selectNode(node);
-
-    // 模式 2：设置Range的开始和结束位置，首尾最后一个 text 节点包裹的范围
-
-    // 步骤：先获取选中的范围，然后获取范围内文本（这两步目前单独实现）
-    range.setStartBefore(node.firstChild);
-
-    let lastChild = node.lastChild;
-    while (lastChild) {
-        if (lastChild.nodeType === Node.TEXT_NODE || ["code", "a", "span"].includes(lastChild.tagName.toLowerCase())) {
-            range.setEndAfter(lastChild);
-            break;
-        }
-        lastChild = lastChild.previousSibling;
-    }
-
-    // 如果 range 只有一个节点，去除换行符后返回 textContent
-    if (range.startContainer.childNodes.length === 1
-        && range.startContainer.childNodes[0].nodeType === Node.TEXT_NODE
-        && range.startContainer.textContent) {
-        return {range: range, text: range.startContainer.textContent.replace(/\n/g, " ").trim()};
-    }
-
-    // 遍历 range + 匹配 <code> 标签
-    let text = ""
-    range.startContainer.childNodes.forEach(node => {
-            switch (node.nodeType) {
-                // 1、文本节点
-                case Node.TEXT_NODE:
-                    // 如果是 <p>、<strong>、<b> 标签的子节点，认为是单独的段落、去除 \n
-                    if (["p", "strong", "b"].includes(node.parentNode.tagName.toLowerCase())) {
-                        text += node.textContent.replace(/\n/g, " ").trim() // 替换所有 \n 为空格
-                    } else {
-                        text += node.textContent.trim()
-                    }
-                    break;
-                // 2、元素节点
-                case Node.ELEMENT_NODE:
-                    if (["code", "pre", "gist", "codemirror-code"].includes(node.tagName.toLowerCase())) {
-                        node.classList.add("notranslate");  // 添加 class="notranslate" 属性，防止在句子中翻译
-                        text += node.outerHTML.trim()
-                    } else if (["a", "span"].includes(node.tagName.toLowerCase())) {
-                        text += node.textContent.trim()
-                    }
-            }
-        }
-    )
-
-    if (text.includes('\n')) return null, "";
-
-    return {range: range, text: text};
-}
-
 // 批量设置元素的 display 样式
 function setDisplayStyle(flex, none) {
     flex.forEach(element => element.style.display = "flex");
@@ -775,18 +726,6 @@ function parseDateOrFalse(dateString) {
 // 判断字符串是否不包含中文
 function NotChinese(text) {
     return !/[\u4e00-\u9fa5]/.test(text);
-}
-
-// 检测中文率
-function calculateChineseRate(text) {
-    let chineseCharCount = 0;
-    let totalCharCount = text.length;
-    for (let i = 0; i < text.length; i++) {
-        if (text[i].match(/[\u4E00-\u9FFF]/)) {
-            chineseCharCount++;
-        }
-    }
-    return chineseCharCount / totalCharCount;
 }
 
 const langMap = {
@@ -927,33 +866,27 @@ function init() {
 
 // region 通用翻译处理模块
 // 通用翻译程序，参数：节点、待翻译文本
-function translate(range, origin) {
+function translate(node) {
 
-    // 检测中文率，如果中文率大于 50% 则不翻译
-    // if (calculateChineseRate(origin) > 0.5) return;
+    let origin = node.innerText;
 
     // 检测语言类型，如果是中文则不翻译
     baiduDetectLang(origin).then(lang => {
-        // 如果原文是中文，则不翻译
+        // 与目标语言相同，不翻译
         if (lang === langManager.getTo()) return;
 
         // 获取翻译模型名称
         let model = util.getValue('model')
-        // 获取 from 与 to
-        let fromTo = langManager.getFromTo();
-
-        // 构建请求参数
-        let args = {
-            from: fromTo.from, to: fromTo.to    // 翻译语言
-        };
 
         // 如果是谷歌或者微软翻译的话，应该翻译 html
         if ([transModel.microsoft, transModel.google].includes(model)) {
-            origin = range.startContainer.outerHTML
+            origin = node.outerHTML;
         }
 
         // 插入转圈动画，不能置于 origin = range.startContainer.outerHTML 前
-        let spinner = createLoadingSpinner(range);
+        let spinner = createLoadingSpinner(node);
+        // 10 秒后必定移除转圈动画
+        setTimeout(() => spinner.remove(), 10000);
 
         transFnMap[model](origin, text => {
             spinner.remove()
@@ -962,37 +895,25 @@ function translate(range, origin) {
             console.log("翻译后的句子：", text);
 
             if (!text || origin === text) return;
-            replaceTextInRange(range, text);
+            if ([transModel.microsoft, transModel.google].includes(model)) {
+                if (node.parentNode) {
+                    node.outerHTML = text;
+                }
+            } else {
+                node.innerText = text;
+            }
+
+            sentenceSet.add(node.innerText); // 去重，添加翻译后的文本
         })
 
     }).catch(e => console.error(e));
 }
 
-// 替换范围内的文本
-function replaceTextInRange(range, text) {
-
-    sentenceSet.add(text); // 去重，添加翻译后的文本
-
-    // 如果是 google 与微软翻译，因为翻译的是 html，所以需替换原 range
-    if ([transModel.google, transModel.microsoft].includes(util.getValue('model'))) {
-        range.startContainer.outerHTML = text
-        return
-    }
-    // 如果是其他翻译模型，直接替换文本
-    let container = document.createElement("span");
-    container.innerHTML = text;
-    container.classList.add("notranslate");
-    range.deleteContents();      // 删除当前范围内的内容
-    range.insertNode(container); // 插入子节点
-}
-
-
 // 创建转圈动画并插入
-function createLoadingSpinner(range) {
+function createLoadingSpinner(node) {
     const spinner = document.createElement('span');
     spinner.className = 'loading-spinner-fluentread';
-    // 在range的末尾插入spinner
-    range.endContainer.appendChild(spinner);
+    node.appendChild(spinner);
     return spinner;
 }
 
@@ -1003,7 +924,7 @@ const chatMgs = {
     {{origin}}`,
 
     getUserMsg(origin) {
-        return this.user.replace("{{origin}}", origin).replace("{{to}}", langManager.getFromTo.to);
+        return this.user.replace("{{origin}}", origin).replace("{{to}}", langManager.getTo());
     }
 }
 const JSONFormatHeader = {"Content-Type": "application/json"}
@@ -1033,7 +954,6 @@ function microsoft(origin, callback) {
             },
             data: JSON.stringify([{"Text": origin}]),
             onload: function (response) {
-                console.log("微软翻译结果：", response.responseText);
                 if (response.status !== 200) {
                     console.log("调用微软翻译失败：", response.status);
                     callback(null);
@@ -1220,23 +1140,27 @@ function yiyan(origin, callback) {
     if (origin.trim().length === 0) return;
     getYiyanToken().then(token => {
         // option
-        let option = modelOptionsManager[transModel.yiyan][modelOptionsManager.getOption(transModel.yiyan)];
+        let option = modelOptionsManager.getModelOption(transModel.yiyan);
+        console.log(chatMgs.system + chatMgs.getUserMsg(origin))
         GM_xmlhttpRequest({
             method: "POST",
             // ERNIE-Bot 4.0 模型，模型定价页面：https://console.bce.baidu.com/qianfan/chargemanage/list
             // api 文档中心：https://cloud.baidu.com/doc/WENXINWORKSHOP/s/clntwmv7t
             url: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/' + option + '?access_token=' + token,
             headers: JSONFormatHeader,
+            system: chatMgs.system,
             data: JSON.stringify({
-                'temperature': 0.1, // 随机度
+                'temperature': 0.3, // 随机度
                 'disable_search': true, // 禁用搜索
-                'messages': [{
-                    "role": "user",
-                    "content": chatMgs.system + chatMgs.getUserMsg(origin)
-                }],
+                'messages': [
+                    {
+                        "role": "user",
+                        "content": chatMgs.getUserMsg(origin)
+                    }],
             }),
             onload: resp => {
                 let res = JSON.parse(resp.responseText);
+                console.log("#>> onload", res);
                 callback(res.result);
             },
             onerror: error => {
