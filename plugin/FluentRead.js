@@ -113,6 +113,23 @@ const tokenManager = {
     }
 };
 
+// sessionStorage
+const sessionManager = {
+    // 同时缓存原文和译文
+    setTransCache(origin, result) {
+        let model = util.getValue('model');
+        sessionStorage.setItem(model + "_" + origin, result)
+        sessionStorage.setItem(model + "_" + result, origin)
+    },
+    getTransCache(key) {
+        return sessionStorage.getItem(util.getValue('model') + "_" + key)
+    },
+    removeSession(key) {
+        sessionStorage.removeItem(util.getValue('model') + "_" + key)
+    },
+
+}
+
 // 模型类型
 const modelOptionsManager = {
     openai: {
@@ -223,7 +240,7 @@ let util = {
             return langManager.fromOption[language] || language;
         },
         getValue(name) {
-            return GM_getValue(name);
+            return GM_getValue(name, '');
         },
         setValue(name, value) {
             GM_setValue(name, value);
@@ -474,44 +491,67 @@ let sentenceSet = new Set();
     window.addEventListener('blur', () => hotkeyPressed = false)
 
     //  // 鼠标、键盘监听事件，悬停翻译
-    document.addEventListener('keydown', event => handler(mouseX, mouseY, event))
+    document.addEventListener('keydown', event => handler(mouseX, mouseY))
     document.body.addEventListener('mousemove', event => {
         // 更新鼠标位置
         mouseX = event.clientX;
         mouseY = event.clientY;
 
-        handler(mouseX, mouseY, event);
+        handler(mouseX, mouseY);
     });
 })();
 
+// 翻译延迟时间
+let delay = 1000;
+
 // 监听事件处理器
-function handler(mouseX, mouseY, event) {
+function handler(mouseX, mouseY) {
     if (!hotkeyPressed) return;
 
     clearTimeout(hoverTimer); // 清除计时器
     hoverTimer = setTimeout(() => {
+        console.log("鼠标位置：", mouseX, mouseY);
+
         let node = document.elementFromPoint(mouseX, mouseY);
 
         // 避免全局
-        if (event.nodeName === 'HTML' || event.nodeName === 'BODY') return;
-
-        // 去重判断
-        if (sentenceSet.has(node.innerText)) return;
-        sentenceSet.add(node.innerText);
-        // 3 秒后去除
-        setTimeout(() => {
-            sentenceSet.delete(node.innerText);
-        }, 3000);
-
+        if (['html', 'body'].includes(node.tagName.toLowerCase())) return;
         // 如果浏览器元素标注了 notranslate，则不翻译
         if (node.classList.contains('notranslate')) return;
 
+        // console.log(sentenceSet.has(node.innerText), node.innerText, sentenceSet);
+
+        // 去重判断
+        let origin = node.innerText;
+        if (sentenceSet.has(origin)) return
+        sentenceSet.add(origin);
+        setTimeout(() => {
+            sentenceSet.delete(origin);
+        }, delay);
+
+        let outerHtmlCache = sessionManager.getTransCache(node.outerHTML);
+        // console.log("节点：", node.outerHTML, ", 缓存：", outerHtmlCache);
+        if (outerHtmlCache) {
+            let spinner = createLoadingSpinner(node);
+            setTimeout(() => {
+                node.outerHTML = outerHtmlCache;
+                spinner.remove();
+            }, 250);
+            // 去重
+            let temp = document.createElement('span');
+            temp.innerHTML = outerHtmlCache;
+            sentenceSet.add(temp.innerText);
+            setTimeout(() => {
+                sentenceSet.delete(temp.innerText);
+            }, delay);
+            return;
+        }
+
         // 如果是单行文本或者单一节点包含文本，则翻译
-        if ((node.innerText && !node.innerText.includes('\n'))
-            || (node.childNodes.length === 1 && node.childNodes[0].nodeType === node.TEXT_NODE && node.innerText)) {
+        if (origin && (!origin.includes('\n') || (node.childNodes.length === 1 && node.childNodes[0].nodeType === node.TEXT_NODE))) {
             translate(node)
         }
-    }, 25);
+    }, 10);
 }
 
 // region read
@@ -897,9 +937,9 @@ function translate(node) {
             origin = node.outerHTML;
         }
 
-        // 插入转圈动画，不能置于 origin = range.startContainer.outerHTML 前
+        // 插入转圈动画
         let spinner = createLoadingSpinner(node);
-        // 10 秒后必定移除转圈动画
+        // 10 秒后超时取消转圈动画
         setTimeout(() => spinner.remove(), 10000);
 
         transFnMap[model](origin, text => {
@@ -910,23 +950,31 @@ function translate(node) {
 
             if (!text || origin === text) return;
 
+            // 保存旧 outerHTML
+            let tempOuterHtml = node.outerHTML
+            console.log("旧 outerHTML：", tempOuterHtml);
+
             if ([transModel.microsoft, transModel.google].includes(model)) {
                 if (node.parentNode) {
-                    // youtube 适配
+                    // youtube 适配   // todo 暂未考虑特殊情况
                     if (url.host === "www.youtube.com") {
                         let element = document.createElement('span');
                         element.innerHTML = text;
-                        // node.parentNode.replaceChild(element, node);
                         node.innerText = element.innerText;
                         return;
                     }
                     node.outerHTML = text;
+                    sessionManager.setTransCache(tempOuterHtml, text);
                 }
             } else {
                 node.innerText = text;
+                sessionManager.setTransCache(tempOuterHtml, node.outerHTML);
             }
 
             sentenceSet.add(node.innerText); // 去重，添加翻译后的文本
+            setTimeout(() => {
+                sentenceSet.delete(node.innerText);
+            }, delay)
         })
 
     }).catch(e => console.error(e));
