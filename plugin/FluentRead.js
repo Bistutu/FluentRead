@@ -941,12 +941,12 @@ function createLoadingSpinner(node) {
 }
 
 const chatMgs = {
-    system: `You are a professional, authentic translation engine, you, You will translate content from '{{website}}', only returns translations.`,
+    system: `You are a professional, authentic translation engine, you, only returns translations.`,
     user: `Please translate them into {{to}}, please do not explain my original text.:
      
     {{origin}}`,
     getSystemMsg() {
-        return this.system.replace("{{website}}", document.title);
+        return this.system;
     },
     getUserMsg(origin) {
         return this.user.replace("{{origin}}", origin).replace("{{to}}", langManager.getTo());
