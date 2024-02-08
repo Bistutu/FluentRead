@@ -477,27 +477,31 @@ let sentenceSet = new Set();
 
         clearTimeout(hoverTimer); // 清除计时器
         hoverTimer = setTimeout(() => {
-            let node = event.target;
+                let node = event.target;
 
-            // 避免全局
-            if (event.nodeName === 'HTML' || event.nodeName === 'BODY') return;
+                // 避免全局
+                if (event.nodeName === 'HTML' || event.nodeName === 'BODY') return;
 
-            // 去重判断
-            if (sentenceSet.has(node.innerText)) return;
-            sentenceSet.add(node.innerText);
-            // 3 秒后去除
-            setTimeout(() => {
-                sentenceSet.delete(node.innerText);
-            }, 3000);
+                // 去重判断
+                if (sentenceSet.has(node.innerText)) return;
+                sentenceSet.add(node.innerText);
+                // 3 秒后去除
+                setTimeout(() => {
+                    sentenceSet.delete(node.innerText);
+                }, 3000);
 
-            // 如果浏览器元素标注了 notranslate，则不翻译
-            if (node.classList.contains('notranslate')) return;
+                // 如果浏览器元素标注了 notranslate，则不翻译
+                if (node.classList.contains('notranslate')) return;
 
-            // 只翻译单行文本
-            if (node.innerText && !node.innerText.includes('\n')) {
-                translate(node)
+                // 如果是单行文本或者单一节点包含文本，则翻译
+                if ((node.innerText && !node.innerText.includes('\n'))
+                    || (node.childNodes.length === 1 && node.childNodes[0].nodeType === node.TEXT_NODE&&node.innerText)) {
+                    translate(node)
+                }
             }
-        }, 0)
+            ,
+            0
+        )
     });
 })();
 
