@@ -178,46 +178,55 @@ const modelOptionsManager = {
 
 // region 菜单
 
-// swal toast
+// toast 样式定义
 const toastClass = {
     container: 'translate-d-container',
     popup: 'translate-d-popup',
 };
-let toast = Swal.mixin({
+// toast 实例
+const toast = Swal.mixin({
     toast: true,
     position: 'top',
     showConfirmButton: false,
     timerProgressBar: false,
     customClass: toastClass,
-    didOpen: (toast) => {
+    didOpen: toast => {
         toast.addEventListener('mouseenter', Swal.stopTimer);
         toast.addEventListener('mouseleave', Swal.resumeTimer);
     }
 });
 
 
-// 多语言
-let langManager = {
-    fromOption: {
-        'auto': '自动检测',
-        // 'zh-CN': '简体中文',
-        // 'en': '英语',
+// 定义一个多语言管理对象
+const langManager = {
+    type: {
+        auto: '自动检测',  // 自动检测语言
+        zh: 'zh-Hans',    // 简体中文
+        cht: 'zh-Hant',   // 繁体中文
+        en: 'en',         // 英语
+        jp: 'ja',         // 日语
+        kor: 'ko',        // 韩语
+        fra: 'fr',        // 法语
+        spa: 'es',        // 西班牙语
+        ru: 'ru',         // 俄语
+        de: 'de',         // 德语
+        it: 'it',         // 意大利语
+        tr: 'tr',         // 土耳其语
+        pt: 'pt',         // 葡萄牙语
+        vie: 'vi',        // 越南语
+        id: 'id',         // 印度尼西亚语
+        th: 'th',         // 泰语
+        ar: 'ar',         // 阿拉伯语
+        hi: 'hi',         // 印地语
+        per: 'fa',        // 波斯语
     },
-    toOption: {
-        'zh-Hans': '简体中文',
-        'en': '英语',
-    },
+    // from 属性用于设置翻译的源语言
+    from: {auto: '自动检测'},
+    to: {'zh-Hans': '简体中文', 'en': '英语',},
     // set
     setFromTo(from, to) {
         GM_setValue('from', from);
         GM_setValue('to', to);
-    },
-    // get
-    getFromTo() {
-        return {
-            from: GM_getValue('from', 'auto'),
-            to: GM_getValue('to', 'zh-Hans')
-        }
     },
     getFrom() {
         return GM_getValue('from', 'auto')
@@ -227,23 +236,25 @@ let langManager = {
     }
 }
 
-
-let hotkeyOptions = {Control: 'Control', Alt: 'Alt', Shift: 'Shift'}
-
-const transModelOptions = {
+// 快捷键
+const hotkeyOptions = {Control: 'Control', Alt: 'Alt', Shift: 'Shift'}
+// 模型
+const modelOptions = {
     [transModel.openai]: 'chatGPT',
     [transModel.yiyan]: '文心一言',
     [transModel.tongyi]: '通义千问',
     [transModel.zhipu]: '智谱AI',
     [transModel.moonshot]: 'moonshot',
+
     [transModel.google]: '谷歌机器翻译',
     [transModel.microsoft]: '微软机器翻译',
 }
 
 // endregion
-let util = {
+const util = {
+        // 解析语言种类
         parseLanguage(language) {
-            return langManager.fromOption[language] || language;
+            return langManager.type[language] || language;
         },
         getValue(name) {
             return GM_getValue(name, '');
@@ -253,7 +264,7 @@ let util = {
         },
         // 初始化配置
         initConfigValue() {
-            let common = [
+            let commonConfig = [
                 {
                     name: 'hotkey', value: 'Control'
                 }, {
@@ -264,48 +275,48 @@ let util = {
                     name: 'model', value: transModel.microsoft
                 }
             ]
-            common.forEach(v => !this.getValue(v.name) ? this.setValue(v.name, v.value) : null);
-
-            let modelOptions = [
+            let modelConfig = [
                 {[transModel.openai]: "gpt-3.5-turbo"},
                 {[transModel.yiyan]: "completions"},
                 {[transModel.tongyi]: "qwen-turbo"},
                 {[transModel.zhipu]: "glm-3-turbo"},
                 {[transModel.moonshot]: "moonshot-v1-8"}
             ]
-            modelOptions.forEach((option) => {
-                if (!modelOptionsManager.getOption(option.key)) {
-                    modelOptionsManager.setOption(option.key, option.value);
-                }
+            commonConfig.forEach(v => !this.getValue(v.name) ? this.setValue(v.name, v.value) : null);
+            modelConfig.forEach(option => {
+                if (!modelOptionsManager.getOption(option.key)) modelOptionsManager.setOption(option.key, option.value);
             });
         },
         registerMenuCommand() {
-            GM_registerMenuCommand(`原始语言：${this.parseLanguage(this.getValue('from'))}`, () => {
+            GM_registerMenuCommand(`原始语言：${langManager.from[this.getValue('from')]}`, () => {
                 this.setLanguage('from')
             });
-            GM_registerMenuCommand(`目标语言：${this.parseLanguage(this.getValue('to'))}`, () => {
+            GM_registerMenuCommand(`目标语言：${langManager.to[this.getValue('to')]}`, () => {
                 this.setLanguage('to')
             });
             GM_registerMenuCommand(`鼠标快捷键：${this.getValue('hotkey')}`, () => {
                 this.setHotkey()
             });
-            GM_registerMenuCommand(`翻译服务：${transModelOptions[this.getValue('model')]}`, () => {
+            GM_registerMenuCommand(`翻译服务：${modelOptions[this.getValue('model')]}`, () => {
                 this.setSetting()
             });
         },
+        // 将对象转换为 HTML 选项字符串
         generateOptions(options, selectedValue) {
-            return Object.entries(options).map(([value, name]) =>
-                `<option value="${value}" ${selectedValue === value ? 'selected' : ''}>${name}</option>`
+            return Object.entries(options).map(([key, value]) =>
+                `<option value="${key}" ${selectedValue === key ? 'selected' : ''}>${value}</option>`
             ).join('');
         },
+        // 总设置界面
         setSetting() {
             let dom = `
   <div style="font-size: 1em;">
     <!-- 其他设置项 -->
     <label class="instant-setting-label">快捷键<select id="fluent-read-hotkey" class="instant-setting-select">${this.generateOptions(hotkeyOptions, this.getValue('hotkey'))}</select></label>
-    <label class="instant-setting-label">翻译源语言<select id="fluent-read-from" class="instant-setting-select">${this.generateOptions(langManager.fromOption, langManager.getFrom())}</select></label>
-    <label class="instant-setting-label">翻译目标语言<select id="fluent-read-to" class="instant-setting-select">${this.generateOptions(langManager.toOption, langManager.getTo())}</select></label>
-    <label class="instant-setting-label">翻译服务<select id="fluent-read-model" class="instant-setting-select">${this.generateOptions(transModelOptions, this.getValue('model'))}</select></label>
+    <label class="instant-setting-label">翻译源语言<select id="fluent-read-from" class="instant-setting-select">${this.generateOptions(langManager.from, langManager.getFrom())}</select></label>
+    <label class="instant-setting-label">翻译目标语言<select id="fluent-read-to" class="instant-setting-select">${this.generateOptions(langManager.to, langManager.getTo())}</select></label>
+    <label class="instant-setting-label">翻译服务<select id="fluent-read-model" class="instant-setting-select">${this.generateOptions(modelOptions, this.getValue('model'))}</select></label>
+    
     <label class="instant-setting-label" id="fluent-read-option-label" style="display: none;">模型类型<select id="fluent-read-option" class="instant-setting-select"></select></label>
     <label class="instant-setting-label" id="fluent-read-token-label" style="display: none;">Token令牌<input type="text" class="instant-setting-input" id="fluent-read-token" value="" ></label>
     <label class="instant-setting-label" id="fluent-read-ak-label" style="display: none;">ak令牌<input type="text" class="instant-setting-input" id="fluent-read-ak" value="" ></label>
@@ -422,15 +433,15 @@ let util = {
                 }
             });
         },
-        setToLanguage(lang) {
+        setLanguage(lang) {
             let args = lang === 'from' ? {
                 notion: "源",
                 inputValue: langManager.getFrom(),
-                inputOptions: langManager.fromOption,
+                inputOptions: langManager.from,
             } : {
                 notion: "目标",
                 inputValue: langManager.getTo(),
-                inputOptions: langManager.toOption,
+                inputOptions: langManager.to,
             }
             Swal.fire({
                 title: args.notion + '语言设置',
@@ -818,27 +829,6 @@ function NotChinese(text) {
     return !/[\u4e00-\u9fa5]/.test(text);
 }
 
-const langMap = {
-    zh: 'zh-Hans',
-    cht: 'zh-Hant',
-    en: 'en',
-    jp: 'ja',
-    kor: 'ko',
-    fra: 'fr',
-    spa: 'es',
-    ru: 'ru',
-    de: 'de',
-    it: 'it',
-    tr: 'tr',
-    pt: 'pt',
-    vie: 'vi',
-    id: 'id',
-    th: 'th',
-    ar: 'ar',
-    hi: 'hi',
-    per: 'fa',
-};
-
 // 检测语言类型
 function baiduDetectLang(text) {
     return new Promise((resolve, reject) => {
@@ -855,7 +845,7 @@ function baiduDetectLang(text) {
                 if (response.status === 200) {
                     const jsn = JSON.parse(response.responseText);
                     if (jsn && jsn.lan) {
-                        resolve(langMap[jsn.lan] || 'en');
+                        resolve(langManager.type[jsn.lan] || 'en');
                     } else {
                         reject(new Error('Language detection failed'));
                     }
