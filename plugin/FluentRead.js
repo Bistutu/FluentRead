@@ -15,6 +15,7 @@
 // @grant        GM_addStyle
 // @grant        GM_registerMenuCommand
 // @grant        GM_getResourceText
+// @grant unsafeWindow
 // @connect      fr.unmeta.cn
 // @connect      127.0.0.1
 // @connect      edge.microsoft.com
@@ -518,29 +519,26 @@ function handler(mouseX, mouseY) {
         if (['html', 'body'].includes(node.tagName.toLowerCase())) return;
         if (node.classList.contains('notranslate')) return;
 
-        // 去重判断
-        let origin = node.innerText;
-        if (sentenceSet.has(origin)) return
-        sentenceSet.add(origin);
+        // 去重判断，outerHTML
+        if (sentenceSet.has(node.outerHTML)) return
+        sentenceSet.add(node.outerHTML);
 
         // 如果存在翻译存在 session 缓存
         let outerHtmlCache = sessionManager.getTransCache(node.outerHTML);
         if (outerHtmlCache) {
             let spinner = createLoadingSpinner(node);
             setTimeout(() => {
+                // 去重
+                sentenceSet.add(outerHtmlCache);
+                setTimeout(() => {
+                    sentenceSet.delete(outerHtmlCache);
+                }, delay);
+                // 替换
                 node.outerHTML = outerHtmlCache;
                 spinner.remove();
             }, 250);
-            // 去重
-            let temp = document.createElement('span');
-            temp.innerHTML = outerHtmlCache;
-            sentenceSet.add(temp.innerText);
-            setTimeout(() => {
-                sentenceSet.delete(temp.innerText);
-            }, delay);
             return;
         }
-
         // 判断是否翻译
         if (showTranslation(node)) translate(node)
     }, 10);
@@ -548,12 +546,13 @@ function handler(mouseX, mouseY) {
 
 // 判断是否应该翻译
 function showTranslation(node) {
-    let origin = node.innerText;
-    if (!origin) return false;
+    if (!node.innerText) return false;
 
-    if (!origin.includes('\n')
-        || (node.childNodes.length === 1 && node.childNodes[0].nodeType === node.TEXT_NODE)
-        || (["p", 'span'].includes(node.nodeName.toLowerCase()))) {
+    let origin = node.innerText;
+    if (!origin.includes('\n')  // 1、不包含换行符的 innerText
+        || (node.childNodes.length === 1 && node.childNodes[0].nodeType === node.TEXT_NODE) // 2、只包含文本的单一节点
+        || ["p", 'span'].includes(node.nodeName.toLowerCase())  // 3、p、span 标签内视为完整句子
+    ) {
         return true;
     }
     return false
@@ -934,17 +933,15 @@ function translate(node) {
         // 与目标语言相同，不翻译
         if (lang === langManager.getTo()) return;
 
-        // 获取翻译模型名称
-        let model = util.getValue('model')
+        let model = util.getValue('model')  // 获取翻译模型名称
 
         // 如果是谷歌或者微软翻译的话，应该翻译 html
         if ([transModel.microsoft, transModel.google].includes(model)) {
             origin = node.outerHTML;
         }
 
-        // 插入转圈动画
+        // 插入转圈动画，30 秒后超时取消转圈动画
         let spinner = createLoadingSpinner(node);
-        // 30 秒后超时取消转圈动画
         setTimeout(() => spinner.remove(), 30000);
 
         transFnMap[model](origin, text => {
@@ -967,20 +964,27 @@ function translate(node) {
                         node.innerText = element.innerText;
                         return;
                     }
+
                     node.outerHTML = text;
-                    sessionManager.setTransCache(tempOuterHtml, text);
+                    sessionManager.setTransCache(tempOuterHtml, text);  // 旧、新 outerHTML 缓存
+
+                    sentenceSet.add(text); // 去重，添加翻译后的文本
+                    setTimeout(() => {
+                        sentenceSet.delete(text);
+                    }, delay)
                 }
             } else {
                 node.innerText = text;
-                sessionManager.setTransCache(tempOuterHtml, node.outerHTML);
+                sessionManager.setTransCache(tempOuterHtml, node.outerHTML);    // 旧、新 outerHTML 缓存
+
+                sentenceSet.add(node.outerHTML); // 去重，添加翻译后的文本
+                setTimeout(() => {
+                    sentenceSet.delete(node.outerHTML);
+                }, delay)
             }
 
-            sentenceSet.delete(origin);
+            sentenceSet.delete(tempOuterHtml);
 
-            sentenceSet.add(node.innerText); // 去重，添加翻译后的文本
-            setTimeout(() => {
-                sentenceSet.delete(node.innerText);
-            }, delay)
         })
 
     }).catch(e => console.error(e));
@@ -1284,8 +1288,7 @@ function getYiyanToken() {
 // endregion
 
 // region 通义千问
-
-
+// 文档：https://help.aliyun.com/zh/dashscope/developer-reference/tongyi-thousand-questions-metering-and-billing
 function tongyi(origin, callback) {
     // 获取 token
     let token = tokenManager.getToken(transModel.tongyi)
