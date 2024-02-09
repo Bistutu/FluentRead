@@ -101,6 +101,12 @@ const transModel = {    // 翻译模型枚举
     google: "google",
 }
 
+const transType = {
+    none: 0,
+    self: 1,
+    parent: 2
+}
+
 // 鼠标位置
 let mouseX = 0, mouseY = 0;
 
@@ -539,22 +545,49 @@ function handler(mouseX, mouseY) {
             return;
         }
         // 判断是否翻译
-        if (showTranslation(node)) translate(node)
+        switch (checkTransType(node)) {
+            case  transType.self: // 翻译自身
+                translate(node);
+                break;
+            case transType.parent: // 翻译父元素
+                translate(node.parentNode);
+                break;
+            default:
+                return;
+        }
     }, 10);
 }
 
-// 判断是否应该翻译
-function showTranslation(node) {
-    if (!node.innerText) return false;
+// 判断是否应该翻译，返回 0 表示不翻译，返回 1 表示翻译自身、返回 2 表示翻译父元素
+function checkTransType(node) {
+    if (!node.innerText) return transType.none;
+
+    // 判断是否应该从父元素开始翻译（仅在谷歌与微软翻译前提下）
+    if ([transModel.microsoft, transModel.google].includes(util.getValue('model')) && node.parentNode && detectChildMeta(node.parentNode)) {
+        return transType.parent;
+    }
 
     let origin = node.innerText;
     if (!origin.includes('\n')  // 1、不包含换行符的 innerText
         || (node.childNodes.length === 1 && node.childNodes[0].nodeType === node.TEXT_NODE) // 2、只包含文本的单一节点
         || ["p", 'span'].includes(node.nodeName.toLowerCase())  // 3、p、span 标签内视为完整句子
     ) {
-        return true;
+        return transType.self;
     }
-    return false
+    return transType.none;
+}
+
+// 检测子元素
+function detectChildMeta(node) {
+    let child = node.firstChild;
+    while (child) {
+        // 如果子元素不是 a、b、strong、span、p、img 标签，则返回 false
+        if (child.nodeType === Node.ELEMENT_NODE && !['a', 'b', 'strong', 'span', 'p', 'img'].includes(child.nodeName.toLowerCase())) {
+            return false;
+        }
+        child = child.nextSibling;
+    }
+    return true;
 }
 
 // region read
