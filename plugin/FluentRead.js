@@ -502,7 +502,7 @@ let sentenceSet = new Set();
 })();
 
 // 翻译延迟时间
-let delay = 1000;
+let delay = 500;
 
 // 监听事件处理器
 function handler(mouseX, mouseY) {
@@ -516,18 +516,15 @@ function handler(mouseX, mouseY) {
 
         // 避免全局
         if (['html', 'body'].includes(node.tagName.toLowerCase())) return;
-        // 如果浏览器元素标注了 notranslate，则不翻译
         if (node.classList.contains('notranslate')) return;
-
-        // console.log(sentenceSet.has(node.innerText), node.innerText, sentenceSet);
 
         // 去重判断
         let origin = node.innerText;
         if (sentenceSet.has(origin)) return
         sentenceSet.add(origin);
 
+        // 如果存在翻译存在 session 缓存
         let outerHtmlCache = sessionManager.getTransCache(node.outerHTML);
-        // console.log("节点：", node.outerHTML, ", 缓存：", outerHtmlCache);
         if (outerHtmlCache) {
             let spinner = createLoadingSpinner(node);
             setTimeout(() => {
@@ -544,11 +541,22 @@ function handler(mouseX, mouseY) {
             return;
         }
 
-        // 如果是单行文本或者单一节点包含文本，则翻译
-        if (origin && (!origin.includes('\n') || (node.childNodes.length === 1 && node.childNodes[0].nodeType === node.TEXT_NODE))) {
-            translate(node)
-        }
+        // 判断是否翻译
+        if (showTranslation(node)) translate(node)
     }, 10);
+}
+
+// 判断是否应该翻译
+function showTranslation(node) {
+    let origin = node.innerText;
+    if (!origin) return false;
+
+    if (!origin.includes('\n')
+        || (node.childNodes.length === 1 && node.childNodes[0].nodeType === node.TEXT_NODE)
+        || (["p", 'span'].includes(node.nodeName.toLowerCase()))) {
+        return true;
+    }
+    return false
 }
 
 // region read
@@ -936,8 +944,8 @@ function translate(node) {
 
         // 插入转圈动画
         let spinner = createLoadingSpinner(node);
-        // 10 秒后超时取消转圈动画
-        setTimeout(() => spinner.remove(), 10000);
+        // 30 秒后超时取消转圈动画
+        setTimeout(() => spinner.remove(), 30000);
 
         transFnMap[model](origin, text => {
             spinner.remove()
@@ -967,7 +975,7 @@ function translate(node) {
                 sessionManager.setTransCache(tempOuterHtml, node.outerHTML);
             }
 
-            sentenceSet.remove(origin);
+            sentenceSet.delete(origin);
 
             sentenceSet.add(node.innerText); // 去重，添加翻译后的文本
             setTimeout(() => {
