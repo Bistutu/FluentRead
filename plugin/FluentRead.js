@@ -15,7 +15,6 @@
 // @grant        GM_addStyle
 // @grant        GM_registerMenuCommand
 // @grant        GM_getResourceText
-// @grant unsafeWindow
 // @connect      fr.unmeta.cn
 // @connect      127.0.0.1
 // @connect      edge.microsoft.com
@@ -909,14 +908,14 @@ function init() {
     GM_addStyle(GM_getResourceText("swalStyle"));
     GM_addStyle(`
     @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+        0% { transform: rotate(0deg) !important; }
+        100% { transform: rotate(360deg) !important; }
     }
-    .loading-spinner-fluentread {border: 2px solid #f3f3f3;border-top: 2px solid blue;border-radius: 50%;width: 12px;height: 12px;animation: spin 1s linear infinite;display: inline-block;}
-    .translate-d-container { z-index: 999999!important;}
+    .loading-spinner-fluentread {border: 2px solid #f3f3f3 !important;border-top: 2px solid blue !important;border-radius: 50% !important;width: 12px !important;height: 12px !important;animation: spin 1s linear infinite !important;display: inline-block !important;}
+    .translate-d-container { z-index: 999999 !important;}
     .translate-d-popup { font-size: 14px !important;}
-    .instant-setting-label { display: flex;align-items: center;justify-content: space-between;padding-top: 15px; }
-    .instant-setting-input { border: 1px solid #bbb; box-sizing: border-box; padding: 5px 10px; border-radius: 5px; width: 100px}
+    .instant-setting-label { display: flex ;align-items: center !important;justify-content: space-between !important;padding-top: 15px !important; }
+    .instant-setting-input { border: 1px solid #bbb !important; box-sizing: border-box !important; padding: 5px 10px !important; border-radius: 5px !important; width: 100px !important}
     `);
 }
 
