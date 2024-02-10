@@ -191,12 +191,15 @@ const sessionManager = {
     // 同时缓存原文和译文
     setTransCache(origin, result) {
         let model = util.getValue('model');
+        let option = optionsManager.getOption(model);
         // key: 模型_文本，value: 文本
-        sessionStorage.setItem(model + "_" + origin, result)
-        sessionStorage.setItem(model + "_" + result, origin)
+        sessionStorage.setItem(model + "_" + option + "_" + origin, result)
+        sessionStorage.setItem(model + "_" + option + "_" + result, origin)
     },
     getTransCache(key) {
-        return sessionStorage.getItem(util.getValue('model') + "_" + key)
+        let model = util.getValue('model');
+        let option = optionsManager.getOption(model);
+        return sessionStorage.getItem(model + "_" + option + "_" + key)
     },
     removeSession(key) {
         sessionStorage.removeItem(util.getValue('model') + "_" + key)
