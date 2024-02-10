@@ -948,9 +948,9 @@ function translate(node) {
 
     // 插入转圈动画，60 秒后超时取消转圈动画
     let spinner = createLoadingSpinner(node);
-    setTimeout(() => {
+    let timeout = setTimeout(() => {
         spinner.remove();
-        createFailedTip(node, "网络超时，请稍后重试~");
+        createFailedTip(node, "网络超时，请稍后重试");
     }, 60000);
 
     // 检测语言类型，如果是中文则不翻译
@@ -959,6 +959,9 @@ function translate(node) {
         if (isMachineTrans(model)) origin = node.outerHTML; // 如果是谷歌或微软翻译，应翻译 HTML
 
         transModelFn[model](origin, text => {
+
+            clearTimeout(timeout);  // 取消超时
+
             spinner.remove()
             // console.log("翻译前的句子：", origin);
             // console.log("翻译后的句子：", text);
@@ -992,8 +995,9 @@ function translate(node) {
             outerHTMLSet.delete(oldOuterHtml);
         })
     }).catch(e => {
-        // 打印错误、取消转圈、创建错误提示
+        // 打印错误、取消超时函数与转圈动画、创建错误提示
         console.error(e)
+        clearTimeout(timeout);
         spinner.remove()
         createFailedTip(node,  e.message);
     });
