@@ -45,56 +45,54 @@ let hotkeyPressed = false;
 let currentShortcut = null;
 let hoverTimer;
 const expiringTime = 86400000 / 4;
+
 // 服务请求地址
 // const source = "http://127.0.0.1"
 const source = "https://fr.unmeta.cn"
 const read = "%s/read".replace("%s", source), preread = "%s/preread".replace("%s", source);
+
 // 预编译正则表达式
-const timeRegex = /^(a|an|\d+)\s+(minute|hour|day|month|year)(s)?\s+ago$/; // "2 days ago"
-const paginationRegex = /^(\d+)\s*-\s*(\d+)\s+of\s+([\d,]+)$/; // "10 - 20 of 300"
-const lastReleaseRegex = /Last Release on (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s(\d{1,2}),\s(\d{4})/; // "Last Release on Jul 4, 2022"
-const dependencyRegex = /(Test|Provided|Compile) Dependencies \((\d+)\)/; // "Compile Dependencies (5)"
-const rankRegex = /#(\d+) in\s*(.*)/; // "#3 in Algorithms"
-const artifactsRegex = /^([\d,]+)\s+artifacts$/; // "1,024 artifacts"
-const vulnerabilityRegex = /^(\d+)\s+vulnerabilit(y|ies)$/; // "3 vulnerabilities"
-const repositoriesRegex = /Indexed (Repositories|Artifacts) \(([\d.]+)M?\)/; //  Indexed Repositories (100)
-const packagesRegex = /([\d,]+) indexed packages/;  // 12,795,152 indexed packages
-const joinedRegex = /Joined ((Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).*\s\d{1,2},?\s\d{4}$)/;  // Joined March 27, 2022
-const moreRegex = /\+(\d+) more\.\.\./; // More 100
-const commentsRegex = /(\d+)\sComments/;    // 数字 Comments
-const gamesRegex = /(\d{1,3}(?:,\d{3})*)( games| Collections)/;
-const combinedDateRegex = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).*\s\d{1,2},?\s\d{4}$|^\d{1,2}\s(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).*,?\s\d{4}$|^\d{1,2}\/\d{1,2}\/\d{4}$/i;
-const emailRegex = /^Receive feedback emails \((.*)\)$/;
-const verifyDomain = /To verify ownership of (.*), navigate to your DNS provider and add a TXT record with this value:/
-const autoSavedRegex = /Auto-saved (\d{2}):(\d{2}):(\d{2})/;
-// 特例适配
-const maven = "mvnrepository.com";
-const docker = "hub.docker.com";
-const nexusmods = "www.nexusmods.com"
-const openai_web = "openai.com"
-const chatGPT = "chat.openai.com"
-const coze = "www.coze.com"
-// 文本类型
-const textContent = 0
-const placeholder = 1
-const inputValue = 2
-const ariaLabel = 3
-// 适配器与剪枝、预处理 map
-let adapterFnMap = new (Map);
-let skipStringMap = new Map();
-// DOM 防抖，单位毫秒
-let throttleObserveDOM = throttle(observeDOM, 3000);
-// 剪枝 set
-let pruneSet = new Set();
-// 其余常量
-const typeMap = {'Test': '测试', 'Provided': '提供', 'Compile': '编译'};
+const regex = {
+    timeRegex: /^(a|an|\d+)\s+(minute|hour|day|month|year)(s)?\s+ago$/, // "2 days ago"
+    paginationRegex: /^(\d+)\s*-\s*(\d+)\s+of\s+([\d,]+)$/, // "10 - 20 of 300"
+    lastReleaseRegex: /Last Release on (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s(\d{1,2}),\s(\d{4})/, // "Last Release on Jul 4, 2022"
+    dependencyRegex: /(Test|Provided|Compile) Dependencies \((\d+)\)/, // "Compile Dependencies (5)"
+    rankRegex: /#(\d+) in\s*(.*)/, // "#3 in Algorithms"
+    artifactsRegex: /^([\d,]+)\s+artifacts$/, // "1,024 artifacts"
+    vulnerabilityRegex: /^(\d+)\s+vulnerabilit(y|ies)$/, // "3 vulnerabilities"
+    repositoriesRegex: /Indexed (Repositories|Artifacts) \(([\d.]+)M?\)/, //  Indexed Repositories (100)
+    packagesRegex: /([\d,]+) indexed packages/,  // 12,795,152 indexed packages
+    joinedRegex: /Joined ((Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).*\s\d{1,2},?\s\d{4}$)/,  // Joined March 27, 2022
+    moreRegex: /\+(\d+) more\.\.\./, // More 100
+    commentsRegex: /(\d+)\sComments/,    // 数字 Comments
+    gamesRegex: /(\d{1,3}(?:,\d{3})*)( games| Collections)/,
+    combinedDateRegex: /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).*\s\d{1,2},?\s\d{4}$|^\d{1,2}\s(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec).*,?\s\d{4}$|^\d{1,2}\/\d{1,2}\/\d{4}$/i,
+    emailRegex: /^Receive feedback emails \((.*)\)$/,
+    verifyDomain: /To verify ownership of (.*), navigate to your DNS provider and add a TXT record with this value:/,
+    autoSavedRegex: /Auto-saved (\d{2}):(\d{2}):(\d{2})/,
+    // 辅助变量
+    typeMap: {'Test': '测试', 'Provided': '提供', 'Compile': '编译'},
+}
+
+// 精确翻译特例适配
+const exceptionMap = {
+    maven: "mvnrepository.com",
+    docker: "hub.docker.com",
+    nexusmods: "www.nexusmods.com",
+    openai_web: "openai.com",
+    chatGPT: "chat.openai.com",
+    coze: "www.coze.com",
+    // 适配函数
+    transFnMap: new Map()   // 翻译函数 map
+}
+
 // 翻译模型
 const transModel = {    // 翻译模型枚举
     // --- LLM翻译 ---
-    openai: "openai",   // openai GPT
-    yiyan: "yiyan",     // 百度文心一言
-    tongyi: "tongyi",   // 阿里通义千问
-    zhipu: "zhipu",     // 清华智谱
+    openai: "openai",     // openai GPT
+    yiyan: "yiyan",       // 百度文心一言
+    tongyi: "tongyi",     // 阿里通义千问
+    zhipu: "zhipu",       // 清华智谱
     moonshot: "moonshot", // moonshot
     // --- 机器翻译 ---
     microsoft: "microsoft",
@@ -102,18 +100,34 @@ const transModel = {    // 翻译模型枚举
 }
 
 const transType = {
-    none: 0,
-    self: 1,
-    parent: 2
+    none: 0,    // 不翻译
+    self: 1,    // 翻译自身
+    parent: 2   // 翻译父元素
 }
+
+// 文本类型
+const textType = {
+    textContent: 0,
+    placeholder: 1,
+    inputValue: 2,
+    ariaLabel: 3,
+}
+
+
+// 适配器与剪枝、预处理 map
+let adapterFnMap = new (Map);
+let skipStringMap = new Map();
+let pruneSet = new Set();   // 剪枝 set
+
+// DOM 防抖，单位毫秒
+let throttleObserveDOM = throttle(observeDOM, 3000);
 
 // 鼠标位置
 let mouseX = 0, mouseY = 0;
 
-const transFnMap = new Map();   // 翻译函数 map
 // token 管理器
 const tokenManager = {
-    setToken: (key, value) => transFnMap[key] ? GM_setValue("token_" + key, value) : null,
+    setToken: (key, value) => transModel[key] ? GM_setValue("token_" + key, value) : null,
     getToken: key => {
         return GM_getValue("token_" + key, null);
     }
@@ -680,17 +694,17 @@ function parseDfs(node, respMap) {
             let skipFn = skipStringMap[url.host];
             if (skipFn && skipFn(node)) return;
             // aria 提示信息
-            if (node.hasAttribute("aria-label")) processNode(node, ariaLabel, respMap);
+            if (node.hasAttribute("aria-label")) processNode(node, textType.ariaLabel, respMap);
             // 按钮与文本域节点
             if (["input", "button", "textarea"].includes(node.tagName.toLowerCase())) {
-                if (node.placeholder) processNode(node, placeholder, respMap);
-                if (node.value && (node.tagName.toLowerCase() === "button" || ["submit", "button"].includes(node.type))) processNode(node, inputValue, respMap);
+                if (node.placeholder) processNode(node, textType.placeholder, respMap);
+                if (node.value && (node.tagName.toLowerCase() === "button" || ["submit", "button"].includes(node.type))) processNode(node, textType.inputValue, respMap);
             }
             break;
         // 2、文本节点
         case  Node.TEXT_NODE:
             let fn = adapterFnMap[url.host];    // 根据 host 获取 adapter 函数，判断是否需要特殊处理
-            isEmpty(fn) ? processNode(node, textContent, respMap) : fn(node, respMap);
+            isEmpty(fn) ? processNode(node, textType.textContent, respMap) : fn(node, respMap);
             return; // 文本节点无子节点，return
     }
     let child = node.firstChild;
@@ -703,16 +717,16 @@ function parseDfs(node, respMap) {
 function processNode(node, attr, respMap) {
     let text;
     switch (attr) {
-        case textContent:
+        case textType.textContent:
             text = node.textContent;
             break;
-        case placeholder:
+        case textType.placeholder:
             text = node.placeholder;
             break;
-        case inputValue:
+        case textType.inputValue:
             text = node.value;
             break;
-        case ariaLabel:
+        case textType.ariaLabel:
             text = node.getAttribute('aria-label');
             break;
     }
@@ -818,7 +832,7 @@ function isEmpty(node) {
 // 验证并解析日期格式，如果格式不正确则返回false
 function parseDateOrFalse(dateString) {
     // 正则表达式，用于检查常见的日期格式（如 YYYY-MM-DD）
-    if (!combinedDateRegex.test(dateString)) return false;
+    if (!regex.combinedDateRegex.test(dateString)) return false;
     // 尝试解析日期，如果无效返回 false
     const date = new Date(dateString);
     return !isNaN(date.getTime()) ? date : false;
@@ -875,16 +889,16 @@ function format(text) {
 // 替换文本
 function replaceText(type, node, value) {
     switch (type) {
-        case textContent:
+        case textType.textContent:
             node.textContent = value;
             break;
-        case placeholder:
+        case textType.placeholder:
             node.placeholder = value;
             break;
-        case inputValue:
+        case textType.inputValue:
             node.value = value;
             break;
-        case ariaLabel:
+        case textType.ariaLabel:
             node.setAttribute('aria-label', value);
             break;
     }
@@ -897,30 +911,30 @@ function init() {
     util.registerMenuCommand()
 
     // 翻译模型
-    transFnMap[transModel.openai] = openai
-    transFnMap[transModel.yiyan] = yiyan
-    transFnMap[transModel.tongyi] = tongyi
-    transFnMap[transModel.zhipu] = zhipu
-    transFnMap[transModel.moonshot] = moonshot
-    transFnMap[transModel.microsoft] = microsoft
-    transFnMap[transModel.google] = google
+    exceptionMap.transFnMap[transModel.openai] = openai
+    exceptionMap.transFnMap[transModel.yiyan] = yiyan
+    exceptionMap.transFnMap[transModel.tongyi] = tongyi
+    exceptionMap.transFnMap[transModel.zhipu] = zhipu
+    exceptionMap.transFnMap[transModel.moonshot] = moonshot
+    exceptionMap.transFnMap[transModel.microsoft] = microsoft
+    exceptionMap.transFnMap[transModel.google] = google
 
     hotkeyPressed = false;
     // 填充适配器 map
-    adapterFnMap[maven] = procMaven
-    adapterFnMap[docker] = procDockerhub
-    adapterFnMap[nexusmods] = procNexusmods
-    adapterFnMap[openai_web] = procOpenai
-    adapterFnMap[chatGPT] = procChatGPT
-    adapterFnMap[coze] = procCoze
+    adapterFnMap[exceptionMap.maven] = procMaven
+    adapterFnMap[exceptionMap.docker] = procDockerhub
+    adapterFnMap[exceptionMap.nexusmods] = procNexusmods
+    adapterFnMap[exceptionMap.openai_web] = procOpenai
+    adapterFnMap[exceptionMap.chatGPT] = procChatGPT
+    adapterFnMap[exceptionMap.coze] = procCoze
     // 填充 skip map
-    skipStringMap[openai_web] = function (node) {
+    skipStringMap[exceptionMap.openai_web] = function (node) {
         return node.hasAttribute("data-message-author-role") || node.hasAttribute("data-projection-id")
     }
-    skipStringMap[nexusmods] = function (node) {
+    skipStringMap[exceptionMap.nexusmods] = function (node) {
         return node.classList.contains("desc") || node.classList.contains("material-icons") || node.classList.contains("material-icons-outlined")
     }
-    skipStringMap[coze] = function (node) {
+    skipStringMap[exceptionMap.coze] = function (node) {
         return node.classList.contains("auto-hide-last-sibling-br")
             || node.classList.contains("jwzzTyL0ME4eVCKuxpDL")
             || node.classList.contains("XnSvnXQFZ4QHrFiqJPSG")
@@ -966,7 +980,7 @@ function translate(node) {
         let spinner = createLoadingSpinner(node);
         setTimeout(() => spinner.remove(), 30000);
 
-        transFnMap[model](origin, text => {
+        exceptionMap.transFnMap[model](origin, text => {
             spinner.remove()
             // 打印翻译之前和之后的文本
             console.log("翻译前的句子：", origin);
@@ -1447,13 +1461,13 @@ function procCoze(node, respMap) {
     let text = format(node.textContent);
     if (text && NotChinese(text)) {
         // "Auto-saved 21:28:58"
-        let autoSavedMatch = text.match(autoSavedRegex);
+        let autoSavedMatch = text.match(regex.autoSavedRegex);
         if (autoSavedMatch) {
             node.textContent = `自动保存于 ${autoSavedMatch[1]}:${autoSavedMatch[2]}:${autoSavedMatch[3]}`;
             return;
         }
 
-        processNode(node, textContent, respMap);
+        processNode(node, textType.textContent, respMap);
     }
 }
 
@@ -1462,13 +1476,13 @@ function procNexusmods(node, respMap) {
     let text = format(node.textContent)
     if (text && NotChinese(text)) {
         // 使用正则表达式匹配 text
-        let commentsMatch = text.match(commentsRegex);
+        let commentsMatch = text.match(regex.commentsRegex);
         if (commentsMatch) {
             node.textContent = `${parseInt(commentsMatch[1], 10)} 条评论`;
             return;
         }
         // TODO 翻译待修正
-        let gamesMatch = text.match(gamesRegex);
+        let gamesMatch = text.match(regex.gamesRegex);
         if (gamesMatch) {
             let type = gamesMatch[2] === " games" ? "份游戏" : "个收藏";  // 判断是游戏还是收藏
             node.textContent = `${gamesMatch[1]}${type}`;
@@ -1480,7 +1494,7 @@ function procNexusmods(node, respMap) {
             node.textContent = `${dateOrFalse.getFullYear()}-${String(dateOrFalse.getMonth() + 1).padStart(2, '0')}-${String(dateOrFalse.getDate()).padStart(2, '0')}`
         }
 
-        processNode(node, textContent, respMap);
+        processNode(node, textType.textContent, respMap);
     }
 }
 
@@ -1493,7 +1507,7 @@ function procOpenai(node, respMap) {
             return;
         }
 
-        processNode(node, textContent, respMap);
+        processNode(node, textType.textContent, respMap);
     }
 }
 
@@ -1501,13 +1515,13 @@ function procChatGPT(node, respMap) {
     let text = format(node.textContent);
     if (text && NotChinese(text)) {
         // 提取电子邮件地址
-        let emailMatch = text.match(emailRegex);
+        let emailMatch = text.match(regex.emailRegex);
         if (emailMatch) {
             node.textContent = `接收反馈邮件（${emailMatch[1]}）`;
             return;
         }
         // 验证域名
-        let verifyDomainMatch = text.match(verifyDomain);
+        let verifyDomainMatch = text.match(regex.verifyDomain);
         if (verifyDomainMatch) {
             node.textContent = `要验证 ${verifyDomainMatch[1]} 的所有权，请转到您的DNS提供商并添加一个带有以下值的TXT记录：`;
             return;
@@ -1519,7 +1533,7 @@ function procChatGPT(node, respMap) {
             return;
         }
 
-        processNode(node, textContent, respMap);
+        processNode(node, textType.textContent, respMap);
     }
 }
 
@@ -1529,21 +1543,21 @@ function procMaven(node, respMap) {
     let text = format(node.textContent);
     if (text && NotChinese(text)) {
         // 处理 “Indexed Repositories (1936)” 与 “Indexed Artifacts (1.2M)” 的格式
-        let repositoriesMatch = text.match(repositoriesRegex);
+        let repositoriesMatch = text.match(regex.repositoriesRegex);
         if (repositoriesMatch) {
             let count = parseInt(repositoriesMatch[2], 10);
             node.textContent = repositoriesMatch[1] === "Repositories" ? `索引库数量（${count}）` : `索引包数量（${count * 100}万）`;
             return;
         }
         // 匹配并处理 "indexed packages" 的格式
-        let packagesMatch = text.match(packagesRegex);
+        let packagesMatch = text.match(regex.packagesRegex);
         if (packagesMatch) {
             let count = parseInt(packagesMatch[1].replace(/,/g, ''), 10);   // 移除数字中的逗号，然后转换为整数
             node.textContent = `${count.toLocaleString()}个索引包`;
             return;
         }
         // 处理“Last Release on”格式的日期
-        let lastReleaseMatch = text.match(lastReleaseRegex);
+        let lastReleaseMatch = text.match(regex.lastReleaseRegex);
         if (lastReleaseMatch) {
             let date = new Date(`${lastReleaseMatch[1]} ${lastReleaseMatch[2]}, ${lastReleaseMatch[3]}`);
             node.textContent = `最近更新 ${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
@@ -1556,32 +1570,32 @@ function procMaven(node, respMap) {
             return;
         }
         // 处理依赖类型
-        let dependencyMatch = text.match(dependencyRegex);
+        let dependencyMatch = text.match(regex.dependencyRegex);
         if (dependencyMatch) {
             let [_, type, count] = dependencyMatch;
-            node.textContent = `${typeMap[type] || type}依赖 ${type} (${count})`;
+            node.textContent = `${regex.typeMap[type] || type}依赖 ${type} (${count})`;
             return;
         }
         // 处理排名
-        let rankMatch = text.match(rankRegex);
+        let rankMatch = text.match(regex.rankRegex);
         if (rankMatch) {
             node.textContent = `第 ${rankMatch[1]} 位 ${rankMatch[2]}`;
             return;
         }
         // 处理 artifacts 被引用次数
-        let artifactsMatch = text.match(artifactsRegex);
+        let artifactsMatch = text.match(regex.artifactsRegex);
         if (artifactsMatch) {
             node.textContent = `被引用 ${artifactsMatch[1]} 次`;
             return;
         }
         // 处理漏洞数量
-        let vulnerabilityMatch = text.match(vulnerabilityRegex);
+        let vulnerabilityMatch = text.match(regex.vulnerabilityRegex);
         if (vulnerabilityMatch) {
             node.textContent = `${vulnerabilityMatch[1]}个漏洞`;
             return;
         }
 
-        processNode(node, textContent, respMap);
+        processNode(node, textType.textContent, respMap);
     }
 }
 
@@ -1589,7 +1603,7 @@ function procDockerhub(node, respMap) {
     let text = format(node.textContent);
     if (text && NotChinese(text)) {
         // 处理更新时间的翻译
-        let timeMatch = text.match(timeRegex);
+        let timeMatch = text.match(regex.timeRegex);
         if (timeMatch) {
             let [_, quantity, unit, isPlural] = timeMatch;
             quantity = (quantity === 'a' || quantity === 'an') ? ' 1' : ` ${quantity}`; // 将 'a' 或 'an' 转换为 '1'
@@ -1599,7 +1613,7 @@ function procDockerhub(node, respMap) {
             return;
         }
         // 处理分页信息的翻译
-        let paginationMatch = text.match(paginationRegex);
+        let paginationMatch = text.match(regex.paginationRegex);
         if (paginationMatch) {
             let [_, start, end, total] = paginationMatch;
             total = total.replace(/,/g, ''); // 去除数字中的逗号
@@ -1607,20 +1621,20 @@ function procDockerhub(node, respMap) {
             return;
         }
         // 处理 "Joined March 27, 2022"
-        let joinedMatch = text.match(joinedRegex);
+        let joinedMatch = text.match(regex.joinedRegex);
         if (joinedMatch) {
             const date = new Date(joinedMatch[1]);
             node.textContent = `加入时间：${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
             return;
         }
         // 处理 "+5 more..."
-        let moreMatch = text.match(moreRegex);
+        let moreMatch = text.match(regex.moreRegex);
         if (moreMatch) {
             node.textContent = `还有${parseInt(moreMatch[1], 10)}个更多...`;
             return;
         }
 
-        processNode(node, textContent, respMap);
+        processNode(node, textType.textContent, respMap);
     }
 }
 
