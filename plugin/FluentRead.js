@@ -79,6 +79,7 @@ const exceptionMap = {
     openai_web: "openai.com",
     chatGPT: "chat.openai.com",
     coze: "www.coze.com",
+    youtube: "www.youtube.com",
 }
 
 // 文本类型
@@ -164,7 +165,6 @@ const optionsManager = {
     },
     // 获取 option key
     getOption(model) {
-        console.log("model:", model);
         return GM_getValue("model_" + model) || optionsManager[model][0] || '';
     },
     setOption(model, value) {
@@ -505,58 +505,54 @@ const settingManager = {
     window.addEventListener('blur', () => shortcutManager.hotkeyPressed = false)
 
     // 鼠标、键盘监听事件，悬停翻译
-    window.addEventListener('keydown', event => handler(mouseX, mouseY))
+    window.addEventListener('keydown', event => handler(mouseX, mouseY, 10))
     document.body.addEventListener('mousemove', event => {
         // 更新鼠标位置
         mouseX = event.clientX;
         mouseY = event.clientY;
 
-        handler(mouseX, mouseY);
+        handler(mouseX, mouseY, 250);
     });
 })();
 
-// endregion
+// 延迟响应时间
+let delay = 250;
 
-// region 额外
-
-// 翻译延迟时间
-let delay = 500;
-
-// 监听事件处理器
-function handler(mouseX, mouseY) {
+// 监听事件处理器，参数：鼠标坐标、计时器
+function handler(mouseX, mouseY, time) {
     if (!shortcutManager.hotkeyPressed) return;
 
     clearTimeout(hoverTimer); // 清除计时器
     hoverTimer = setTimeout(() => {
-        console.log("鼠标位置：", mouseX, mouseY);
+        let node = document.elementFromPoint(mouseX, mouseY);   // 获取鼠标
 
-        let node = document.elementFromPoint(mouseX, mouseY);
-
-        // 避免全局
-        if (['html', 'body'].includes(node.tagName.toLowerCase())) return;
-        if (node.classList.contains('notranslate')) return;
+        // 全局与空节点、class="notranslate" 的节点不翻译
+        if (['HTML', 'BODY'].includes(node.tagName) || !node.innerText || node.classList.contains('notranslate')) return;
 
         // 去重判断，outerHTML
-        if (outerHTMLSet.has(node.outerHTML)) return
+        if (outerHTMLSet.has(node.outerHTML)) {
+            console.log("去重：", node.outerHTML);
+            console.log('outerHTMLSet：',outerHTMLSet)
+            return
+        }
         outerHTMLSet.add(node.outerHTML);
 
-        // 如果存在翻译存在 session 缓存
-        let outerHtmlCache = sessionManager.getTransCache(node.outerHTML);
-        if (outerHtmlCache) {
+        // 检测缓存 cache
+        let outerHTMLCache = sessionManager.getTransCache(node.outerHTML);
+        if (outerHTMLCache) {
             let spinner = createLoadingSpinner(node);
-            setTimeout(() => {
-                // 去重
-                outerHTMLSet.add(outerHtmlCache);
-                setTimeout(() => {
-                    outerHTMLSet.delete(outerHtmlCache);
-                }, delay);
-                // 替换
-                node.outerHTML = outerHtmlCache;
+            setTimeout(() => {  // 延迟 remove 转圈动画与替换文本
                 spinner.remove();
-            }, 250);
+
+                outerHTMLSet.add(node.outerHTML);
+                setTimeout(() => {
+                    outerHTMLSet.delete(node.outerHTML);
+                }, 5000);
+                node.outerHTML = outerHTMLCache;    // 替换
+            }, delay);
             return;
         }
-        // 判断是否翻译
+        // 判断翻译类型
         switch (checkTransType(node)) {
             case  transType.self: // 翻译自身
                 translate(node);
@@ -564,34 +560,33 @@ function handler(mouseX, mouseY) {
             case transType.parent: // 翻译父元素
                 translate(node.parentNode);
                 break;
-            default:
+            default:    // 不翻译
                 return;
         }
-    }, 10);
+    }, time);
 }
 
-// 判断是否应该翻译，返回 0 表示不翻译，返回 1 表示翻译自身、返回 2 表示翻译父元素
+// 判断是否应该翻译，返回翻译类型
 function checkTransType(node) {
-    if (!node.innerText) return transType.none;
-
-    // 判断是否应该从父元素开始翻译（仅在谷歌与微软翻译前提下）
-    if ([transModel.microsoft, transModel.google].includes(util.getValue('model')) && node.parentNode && detectChildMeta(node.parentNode)) {
+    // 1、判断是否应该从父元素开始翻译（谷歌与微软翻译时）
+    if ([transModel.microsoft, transModel.google].includes(util.getValue('model'))
+        && node.parentNode && detectChildMeta(node.parentNode)) {
         return transType.parent;
     }
-
-    let origin = node.innerText;
-    if (!origin.includes('\n')  // 1、不包含换行符的 innerText
+    // 2、判断是否应该翻译自身
+    if (!node.innerText.includes('\n')  // 1、不包含换行符的 innerText
         || (node.childNodes.length === 1 && node.childNodes[0].nodeType === node.TEXT_NODE) // 2、只包含文本的单一节点
         || ["p", 'span'].includes(node.nodeName.toLowerCase())  // 3、p、span 标签内视为完整句子
     ) {
         return transType.self;
     }
+    // 3、不翻译
     return transType.none;
 }
 
-// 检测子元素
-function detectChildMeta(node) {
-    let child = node.firstChild;
+// 检测子元素中是否包含指定标签以外的元素
+function detectChildMeta(parent) {
+    let child = parent.firstChild;
     while (child) {
         // 如果子元素不是 a、b、strong、span、p、img 标签，则返回 false
         if (child.nodeType === Node.ELEMENT_NODE && !['a', 'b', 'strong', 'span', 'p', 'img'].includes(child.nodeName.toLowerCase())) {
@@ -720,10 +715,10 @@ function processNode(node, attr, respMap) {
             break;
     }
 
-    if (shouldPrune(text)) return;
+    if (pruneSet.has(text)) return;
 
     let formattedText = format(text);
-    if (formattedText && NotChinese(formattedText)) {
+    if (formattedText && withoutChinese(formattedText)) {
         signature(url.host + formattedText).then(sign => respMap[sign] ? replaceText(attr, node, respMap[sign]) : null)
     }
 }
@@ -731,31 +726,57 @@ function processNode(node, attr, respMap) {
 // endregion
 
 // region 通用函数
+
 // 快捷键处理
 function setShortcut(shortcut) {
-    // 移除旧的事件监听器
+    // 1、移除旧的事件监听器
     if (shortcutManager.currentShortcut) {
-        document.removeEventListener('keydown', keyDownListener);
-        document.removeEventListener('keyup', keyUpListener);
+        document.removeEventListener('keydown', shortcutListener);
+        document.removeEventListener('keyup', shortcutListener);
     }
-    // 设置新的快捷键并添加事件监听器
+
+    // 2、设置新的快捷键并添加事件监听器
     shortcutManager.currentShortcut = shortcut;
-    document.addEventListener('keydown', keyDownListener);
-    document.addEventListener('keyup', keyUpListener);
-}
+    document.addEventListener('keydown', shortcutListener);
+    document.addEventListener('keyup', shortcutListener);
 
-function keyDownListener(event) {
-    handleShortcut(event, shortcutManager.currentShortcut);
-}
-
-function keyUpListener(event) {
-    handleShortcut(event, shortcutManager.currentShortcut);
-}
-
-function handleShortcut(event, shortcut) {
-    if (event.key === shortcut) {
-        shortcutManager.hotkeyPressed = (event.type === 'keydown');
+    function shortcutListener(event) {
+        if (event.key === shortcut) {   // 按下相关快捷键，调整 ctrlPressed
+            shortcutManager.hotkeyPressed = (event.type === 'keydown');
+        }
     }
+}
+
+// 判断是否为机器翻译
+function isMachineTrans(model) {
+    return [transModel.microsoft, transModel.google].includes(model);
+}
+
+// 检测语言类型
+function baiduDetectLang(text) {
+    return new Promise((resolve, reject) => {
+        // 数据参数
+        const data = new URLSearchParams();
+        data.append('query', text);
+        const url = 'https://fanyi.baidu.com/langdetect?' + data.toString();
+
+        // 发起请求
+        GM_xmlhttpRequest({
+            method: 'POST',
+            url: url,
+            onload: resp => {
+                const jsn = JSON.parse(resp.responseText);
+                if (resp.status === 200 && jsn && jsn.lan) {
+                    resolve(langManager.parseLanguage(jsn.lan));
+                } else {
+                    reject(new Error('Server responded with status ' + resp.status));
+                }
+            },
+            onerror: error => {
+                reject(new Error('GM_xmlhttpRequest failed'));
+            }
+        });
+    })
 }
 
 // 计算SHA-1散列，取最后20个字符
@@ -795,46 +816,8 @@ function parseDateOrFalse(dateString) {
 }
 
 // 判断字符串是否不包含中文
-function NotChinese(text) {
+function withoutChinese(text) {
     return !/[\u4e00-\u9fa5]/.test(text);
-}
-
-// 检测语言类型
-function baiduDetectLang(text) {
-    return new Promise((resolve, reject) => {
-        // 数据参数
-        const data = new URLSearchParams();
-        data.append('query', text);
-        const url = 'https://fanyi.baidu.com/langdetect?' + data.toString();
-
-        // 发起请求
-        GM_xmlhttpRequest({
-            method: 'POST',
-            url: url,
-            onload: function (response) {
-                if (response.status === 200) {
-                    const jsn = JSON.parse(response.responseText);
-                    if (jsn && jsn.lan) {
-                        resolve(langManager.parseLanguage(jsn.lan));
-                    } else {
-                        reject(new Error('Language detection failed'));
-                    }
-                } else {
-                    reject(new Error('Server responded with status ' + response.status));
-                }
-            },
-            onerror: function (error) {
-                reject(new Error('GM_xmlhttpRequest failed'));
-            }
-        });
-    });
-}
-
-// 判断是否应该剪枝
-function shouldPrune(text) {
-    let has = pruneSet.has(text);
-    // if (has) console.log("已处理的节点，跳过：", text)
-    return has;
 }
 
 // 文本格式化
@@ -861,8 +844,8 @@ function replaceText(type, node, value) {
     pruneSet.add(value)    // 剪枝
 }
 
+// 初始化程序
 function initApplication() {
-
     // 初始化菜单栏配置
     let commonConfig = [
         {name: 'hotkey', value: 'Control'},
@@ -939,84 +922,9 @@ function initApplication() {
 // endregion
 
 // region 通用翻译处理模块
-// 通用翻译程序，参数：节点、待翻译文本
-function translate(node) {
-
-    let origin = node.innerText;
-
-    // 检测语言类型，如果是中文则不翻译
-    baiduDetectLang(origin).then(lang => {
-        // 与目标语言相同，不翻译
-        if (lang === langManager.getTo()) return;
-
-        let model = util.getValue('model')  // 获取翻译模型名称
-
-        // 如果是谷歌或者微软翻译的话，应该翻译 html
-        if ([transModel.microsoft, transModel.google].includes(model)) {
-            origin = node.outerHTML;
-        }
-
-        // 插入转圈动画，30 秒后超时取消转圈动画
-        let spinner = createLoadingSpinner(node);
-        setTimeout(() => spinner.remove(), 30000);
-
-        transModelFn[model](origin, text => {
-            spinner.remove()
-            // 打印翻译之前和之后的文本
-            console.log("翻译前的句子：", origin);
-            console.log("翻译后的句子：", text);
-
-            if (!text || origin === text) return;
-
-            // 保存旧 outerHTML
-            let tempOuterHtml = node.outerHTML
-
-            if ([transModel.microsoft, transModel.google].includes(model)) {
-                if (node.parentNode) {
-                    // youtube 适配   // todo 暂未考虑特殊情况
-                    if (url.host === "www.youtube.com") {
-                        let element = document.createElement('span');
-                        element.innerHTML = text;
-                        node.innerText = element.innerText;
-                        return;
-                    }
-
-                    node.outerHTML = text;
-                    sessionManager.setTransCache(tempOuterHtml, text);  // 旧、新 outerHTML 缓存
-
-                    outerHTMLSet.add(text); // 去重，添加翻译后的文本
-                    setTimeout(() => {
-                        outerHTMLSet.delete(text);
-                    }, delay)
-                }
-            } else {
-                node.innerText = text;
-                sessionManager.setTransCache(tempOuterHtml, node.outerHTML);    // 旧、新 outerHTML 缓存
-
-                outerHTMLSet.add(node.outerHTML); // 去重，添加翻译后的文本
-                setTimeout(() => {
-                    outerHTMLSet.delete(node.outerHTML);
-                }, delay)
-            }
-
-            outerHTMLSet.delete(tempOuterHtml);
-
-        })
-
-    }).catch(e => console.error(e));
-}
-
-// 创建转圈动画并插入
-function createLoadingSpinner(node) {
-    const spinner = document.createElement('span');
-    spinner.className = 'loading-spinner-fluentread';
-    node.appendChild(spinner);
-    return spinner;
-}
-
 const chatMgs = {
     system: `You are a professional, authentic translation engine, you, only returns translations.`,
-    user: `Please translate them into {{to}}, please do not explain my original text.:
+    user: `Please translate them into {{to}}, please do not explain my original text:
      
     {{origin}}`,
     getSystemMsg() {
@@ -1026,7 +934,70 @@ const chatMgs = {
         return this.user.replace("{{origin}}", origin).replace("{{to}}", langManager.getTo());
     }
 }
-const JSONFormatHeader = {"Content-Type": "application/json"}
+
+function translate(node) {
+
+    let model = util.getValue('model')
+    let origin = node.innerText;
+
+    // 检测语言类型，如果是中文则不翻译
+    baiduDetectLang(origin).then(lang => {
+        if (lang === langManager.getTo()) return;   // 与目标语言相同，不翻译
+        if (isMachineTrans(model)) origin = node.outerHTML; // 如果是谷歌或微软翻译，应翻译 HTML
+
+        // 插入转圈动画，30 秒后超时取消转圈动画
+        let spinner = createLoadingSpinner(node);
+        setTimeout(() => {
+            spinner.remove();
+            // todo 显示超时提示，2024-2-10
+
+        }, 30000);
+
+        transModelFn[model](origin, text => {
+            spinner.remove()
+            console.log("翻译前的句子：", origin);
+            console.log("翻译后的句子：", text);
+
+            if (!text || origin === text) return;
+
+            // 保存旧的 outerHTML
+            let oldOuterHtml = node.outerHTML
+            let newOuterHtml = text
+
+            if (isMachineTrans(model)) {    // 1、机器翻译
+                if (!node.parentNode) return;
+
+                // todo 1、特殊情况需使用高阶函数，2、暂未考虑特殊情况。2024-2-10
+                if (url.host === exceptionMap.youtube) {    // youtube 适配
+                    let element = document.createElement('span');
+                    element.innerHTML = text;
+                    node.innerText = element.innerText;
+                    return;
+                }
+
+                node.outerHTML = text;
+            } else {    // 2、LLM 翻译
+                node.innerText = text;
+                newOuterHtml = node.outerHTML;
+            }
+
+            sessionManager.setTransCache(oldOuterHtml, newOuterHtml);   // 设置缓存
+            outerHTMLSet.add(newOuterHtml);
+            setTimeout(() => {
+                outerHTMLSet.delete(newOuterHtml);
+            }, 5000);
+            outerHTMLSet.delete(oldOuterHtml);
+        })
+    }).catch(e => console.error(e));    // 只打印错误信息
+}
+
+// 创建转圈动画并插入
+function createLoadingSpinner(node) {
+    const spinner = document.createElement('span');
+    spinner.className = 'loading-spinner-fluentread';
+    node.appendChild(spinner);
+    return spinner;
+}
 
 // endregion
 
@@ -1245,7 +1216,7 @@ function yiyan(origin, callback) {
             // ERNIE-Bot 4.0 模型，模型定价页面：https://console.bce.baidu.com/qianfan/chargemanage/list
             // api 文档中心：https://cloud.baidu.com/doc/WENXINWORKSHOP/s/clntwmv7t
             url: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/' + option + '?access_token=' + token,
-            headers: JSONFormatHeader,
+            headers: {"Content-Type": "application/json"},
             system: chatMgs.getSystemMsg(),
             data: JSON.stringify({
                 'temperature': 0.3, // 随机度
@@ -1439,7 +1410,7 @@ function base64UrlSafe(base64String) {
 // 适配 coze
 function procCoze(node, respMap) {
     let text = format(node.textContent);
-    if (text && NotChinese(text)) {
+    if (text && withoutChinese(text)) {
         // "Auto-saved 21:28:58"
         let autoSavedMatch = text.match(regex.autoSavedRegex);
         if (autoSavedMatch) {
@@ -1454,7 +1425,7 @@ function procCoze(node, respMap) {
 // 适配 nexusmods
 function procNexusmods(node, respMap) {
     let text = format(node.textContent)
-    if (text && NotChinese(text)) {
+    if (text && withoutChinese(text)) {
         // 使用正则表达式匹配 text
         let commentsMatch = text.match(regex.commentsRegex);
         if (commentsMatch) {
@@ -1480,7 +1451,7 @@ function procNexusmods(node, respMap) {
 
 function procOpenai(node, respMap) {
     let text = format(node.textContent);
-    if (text && NotChinese(text)) {
+    if (text && withoutChinese(text)) {
         let dateOrFalse = parseDateOrFalse(text);
         if (dateOrFalse) {
             node.textContent = `${dateOrFalse.getFullYear()}-${dateOrFalse.getMonth() + 1}-${dateOrFalse.getDate()}`;
@@ -1493,7 +1464,7 @@ function procOpenai(node, respMap) {
 
 function procChatGPT(node, respMap) {
     let text = format(node.textContent);
-    if (text && NotChinese(text)) {
+    if (text && withoutChinese(text)) {
         // 提取电子邮件地址
         let emailMatch = text.match(regex.emailRegex);
         if (emailMatch) {
@@ -1521,7 +1492,7 @@ function procChatGPT(node, respMap) {
 // 适配 maven
 function procMaven(node, respMap) {
     let text = format(node.textContent);
-    if (text && NotChinese(text)) {
+    if (text && withoutChinese(text)) {
         // 处理 “Indexed Repositories (1936)” 与 “Indexed Artifacts (1.2M)” 的格式
         let repositoriesMatch = text.match(regex.repositoriesRegex);
         if (repositoriesMatch) {
@@ -1581,7 +1552,7 @@ function procMaven(node, respMap) {
 
 function procDockerhub(node, respMap) {
     let text = format(node.textContent);
-    if (text && NotChinese(text)) {
+    if (text && withoutChinese(text)) {
         // 处理更新时间的翻译
         let timeMatch = text.match(regex.timeRegex);
         if (timeMatch) {
