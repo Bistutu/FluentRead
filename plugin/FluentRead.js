@@ -218,6 +218,23 @@ const util = {
     },
 }
 
+const htmlManager = {
+    openTagWithAttributes: /<\s*(\w+)(\s+[^>]*?)?\s*>/g,
+    openTag: /<\s*(\w+)\s*>/g,
+    closingTag: /<\s*\/\s*(\w+)\s*>/g,
+    // 标准化 HTML
+    standardizeHtml(sentence) {
+        // 1、处理开标签和属性，移除标签名和属性之间多余的空格，// 如 < a href="#"> 会被转换成 <a href="#">
+        // 2、处理没有属性的开标签，移除标签名周围的多余空格，如 "<p >" 会被转换成 "<p>"
+        // 3、处理闭合标签，移除标签名周围的多余空格，如 "</ p>" 会被转换成 "</p>"
+        sentence = sentence.replace(this.openTagWithAttributes, (match, p1, p2) => {
+            return `<${p1}${p2 ? ' ' + p2.trim() : ''}>`;
+        }).replace(this.openTag, "<$1>").replace(this.closingTag, "</$1>")
+        return sentence;
+    }
+};
+
+
 // endregion
 
 // region 菜单
@@ -541,11 +558,8 @@ function handler(mouseX, mouseY, time) {
 
 
         // 判断翻译类型
-        let tempNode = checkTransType(node);
-        if (tempNode) {
-            // console.log("翻译节点：", tempNode);
-            node = tempNode;
-        }
+        node = getTransNode(node);
+        if (!node) return;  // 如果不需要翻译，则跳过
 
         if (hasLoadingSpinner(node)) return;    // 如果已经在翻译，则跳过
 
@@ -580,10 +594,11 @@ function hasLoadingSpinner(node) {
     return false;
 }
 
-function checkTransType(node) {
+function getTransNode(node) {
     // 1、判断是否应该从父元素开始翻译（谷歌与微软翻译时）
     let parent = isMachineTrans(util.getValue('model')) ? shouldTranslateFromParent(node.parentNode) : false;
     if (parent) {
+        console.log("应当翻译父节点：", parent);
         return parent;  // 返回应该翻译的父节点
     }
 
@@ -592,6 +607,7 @@ function checkTransType(node) {
         || (node.childNodes.length === 1 && node.childNodes[0].nodeType === node.TEXT_NODE) // 只包含文本的单一节点
         || ["p", 'span'].includes(node.nodeName.toLowerCase())  // p、span 标签内视为完整句子
     ) {
+        console.log("应当翻译自身：", node);
         return node;  // 返回自身节点，因为它应该翻译
     }
 
@@ -984,7 +1000,8 @@ function translate(node) {
         // 插入转圈动画
         let spinner = createLoadingSpinner(node);
 
-        transModelFn[model](origin, text => {
+        // 调用翻译服务
+        transModelFn[model](origin, function (text) {
 
             clearTimeout(timeout);  // 取消超时
 
@@ -1211,17 +1228,12 @@ function google(origin, callback) {
                 callback(null);
                 return;
             }
-            // 开始解析
             let result = JSON.parse(resp.responseText);
             let sentence = ''
             result[0].forEach(e => sentence += e[0]);
 
-            // 将类似于 < a href="..."> 的字符串转换为 <a href="...">（标准化 html）
-            sentence = sentence.replace(/<\s*(\w+)\s*(.*?)>/g, '<$1 $2>');
-            // <a > 的字符串转换为 <a>
-            sentence = sentence.replace(/<\s*(\w+)\s*>/g, '<$1>');
-            // 将< /a> 的字符串转换为 </a>
-            sentence = sentence.replace(/<\s*\/\s*(\w+)\s*>/g, '</$1>');
+            // 正则标准化 HTML
+            sentence = htmlManager.standardizeHtml(sentence)
 
             callback(sentence);
         },
