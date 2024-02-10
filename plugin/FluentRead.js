@@ -543,35 +543,37 @@ function handler(mouseX, mouseY, time) {
         ) return;
 
 
+        // 判断翻译类型
+        let number = checkTransType(node);
+        switch (number) {
+            case transType.parent: // 翻译父元素
+                node = node.parentNode;
+                break;
+            case transType.none: // 不翻译
+                return;
+            default:    // 翻译自身
+                node = node;
+        }
+
         // 去重判断
         if (outerHTMLSet.has(node.outerHTML)) return
         outerHTMLSet.add(node.outerHTML);
 
         // 检测缓存 cache
         let outerHTMLCache = sessionManager.getTransCache(node.outerHTML);
-        console.log(node.outerHTML)
-        console.log("翻译缓存：", outerHTMLCache)
         if (outerHTMLCache) {
+            let temp = node.outerHTML;
+            // console.log("缓存命中：", outerHTMLCache);
             let spinner = createLoadingSpinner(node);
-            console.log("创建转圈")
             setTimeout(() => {  // 延迟 remove 转圈动画与替换文本
                 spinner.remove();
+                outerHTMLSet.delete(temp);
                 node.outerHTML = outerHTMLCache;    // 替换
                 delayRemoveCache(outerHTMLCache);
             }, delay);
             return;
         }
-        // 判断翻译类型
-        switch (checkTransType(node)) {
-            case  transType.self: // 翻译自身
-                translate(node);
-                break;
-            case transType.parent: // 翻译父元素
-                translate(node.parentNode);
-                break;
-            default:    // 不翻译
-                return;
-        }
+        translate(node);
     }, time);
 }
 
@@ -971,7 +973,7 @@ function translate(node) {
         if (lang === langManager.getTo()) return;   // 与目标语言相同，不翻译
         if (isMachineTrans(model)) origin = node.outerHTML; // 如果是谷歌或微软翻译，应翻译 HTML
         // 插入转圈动画
-        spinner = createLoadingSpinner(node);
+        let spinner = createLoadingSpinner(node);
 
         transModelFn[model](origin, text => {
 
