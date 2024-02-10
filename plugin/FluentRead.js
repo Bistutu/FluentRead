@@ -537,23 +537,17 @@ function handler(mouseX, mouseY, time) {
         let node = document.elementFromPoint(mouseX, mouseY);   // 获取鼠标
 
         // 全局与空节点、class="notranslate" 的节点不翻译
-        if (node.classList.contains('notranslate')
-            || hasLoadingSpinner(node)
-            || !node.innerText || ['HTML', 'BODY'].includes(node.tagName)
-        ) return;
+        if (node.classList.contains('notranslate') || !node.innerText || ['HTML', 'BODY'].includes(node.tagName)) return;
 
 
         // 判断翻译类型
-        let number = checkTransType(node);
-        switch (number) {
-            case transType.parent: // 翻译父元素
-                node = node.parentNode;
-                break;
-            case transType.none: // 不翻译
-                return;
-            default:    // 翻译自身
-                node = node;
+        let tempNode = checkTransType(node);
+        if (tempNode) {
+            // console.log("翻译节点：", tempNode);
+            node = tempNode;
         }
+
+        if (hasLoadingSpinner(node)) return;    // 如果已经在翻译，则跳过
 
         // 去重判断
         if (outerHTMLSet.has(node.outerHTML)) return
@@ -577,7 +571,6 @@ function handler(mouseX, mouseY, time) {
     }, time);
 }
 
-// 判断子节点是否包含 loading-spinner-fluentread（只检测一级子节点）
 function hasLoadingSpinner(node) {
     let child = node.firstChild;
     while (child) {
@@ -587,22 +580,38 @@ function hasLoadingSpinner(node) {
     return false;
 }
 
-// 判断是否应该翻译，返回翻译类型
 function checkTransType(node) {
     // 1、判断是否应该从父元素开始翻译（谷歌与微软翻译时）
-    if ([transModel.microsoft, transModel.google].includes(util.getValue('model'))
-        && node.parentNode && detectChildMeta(node.parentNode)) {
-        return transType.parent;
+    let parent = isMachineTrans(util.getValue('model')) ? shouldTranslateFromParent(node.parentNode) : false;
+    if (parent) {
+        return parent;  // 返回应该翻译的父节点
     }
+
     // 2、判断是否应该翻译自身
-    if (!node.innerText.includes('\n')  // 1、不包含换行符的 innerText
-        || (node.childNodes.length === 1 && node.childNodes[0].nodeType === node.TEXT_NODE) // 2、只包含文本的单一节点
-        || ["p", 'span'].includes(node.nodeName.toLowerCase())  // 3、p、span 标签内视为完整句子
+    if (!node.innerText.includes('\n')  // 不包含换行符的 innerText
+        || (node.childNodes.length === 1 && node.childNodes[0].nodeType === node.TEXT_NODE) // 只包含文本的单一节点
+        || ["p", 'span'].includes(node.nodeName.toLowerCase())  // p、span 标签内视为完整句子
     ) {
-        return transType.self;
+        return node;  // 返回自身节点，因为它应该翻译
     }
-    // 3、不翻译
-    return transType.none;
+
+    // 3、不需要翻译
+    return false;
+}
+
+// 返回最终应该翻译的父节点或 false
+function shouldTranslateFromParent(node) {
+    // 如果节点为空，或者已经到达了文档的根节点，则不需要翻译
+    if (!node || node === document.body || node === document.documentElement) {
+        return false;
+    }
+
+    // 检测当前节点是否满足翻译条件
+    if (detectChildMeta(node)) {
+        return shouldTranslateFromParent(node.parentNode) || node;  // 返回应该翻译的节点
+    }
+
+    return false
 }
 
 // 检测子元素中是否包含指定标签以外的元素
