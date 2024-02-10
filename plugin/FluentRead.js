@@ -41,9 +41,6 @@ const POST = "POST";
 const url = new URL(location.href.split('?')[0]);
 // cacheKey 与 时间
 const checkKey = "fluent_read_check";
-let hotkeyPressed = false;
-let currentShortcut = null;
-let hoverTimer;
 const expiringTime = 86400000 / 4;
 
 // 服务请求地址
@@ -82,27 +79,6 @@ const exceptionMap = {
     openai_web: "openai.com",
     chatGPT: "chat.openai.com",
     coze: "www.coze.com",
-    // 适配函数
-    transFnMap: new Map()   // 翻译函数 map
-}
-
-// 翻译模型
-const transModel = {    // 翻译模型枚举
-    // --- LLM翻译 ---
-    openai: "openai",     // openai GPT
-    yiyan: "yiyan",       // 百度文心一言
-    tongyi: "tongyi",     // 阿里通义千问
-    zhipu: "zhipu",       // 清华智谱
-    moonshot: "moonshot", // moonshot
-    // --- 机器翻译 ---
-    microsoft: "microsoft",
-    google: "google",
-}
-
-const transType = {
-    none: 0,    // 不翻译
-    self: 1,    // 翻译自身
-    parent: 2   // 翻译父元素
 }
 
 // 文本类型
@@ -125,40 +101,49 @@ let throttleObserveDOM = throttle(observeDOM, 3000);
 // 鼠标位置
 let mouseX = 0, mouseY = 0;
 
-// token 管理器
-const tokenManager = {
-    setToken: (key, value) => transModel[key] ? GM_setValue("token_" + key, value) : null,
-    getToken: key => {
-        return GM_getValue("token_" + key, null);
-    }
-};
+//
+const transModelFn = new Map()   // 翻译模型 map
 
-// sessionStorage
-const sessionManager = {
-    // 同时缓存原文和译文
-    setTransCache(origin, result) {
-        let model = util.getValue('model');
-        sessionStorage.setItem(model + "_" + origin, result)
-        sessionStorage.setItem(model + "_" + result, origin)
-    },
-    getTransCache(key) {
-        return sessionStorage.getItem(util.getValue('model') + "_" + key)
-    },
-    removeSession(key) {
-        sessionStorage.removeItem(util.getValue('model') + "_" + key)
-    },
+// 翻译模型
+const transModel = {    // 翻译模型枚举
+    // --- LLM翻译 ---
+    openai: "openai",
+    yiyan: "yiyan",
+    tongyi: "tongyi",
+    zhipu: "zhipu",
+    moonshot: "moonshot",
+    // --- 机器翻译 ---
+    microsoft: "microsoft",
+    google: "google",
+}
 
+// 翻译模型名称
+const transModelName = {
+    [transModel.openai]: 'chatGPT',
+    [transModel.yiyan]: '文心一言',
+    [transModel.tongyi]: '通义千问',
+    [transModel.zhipu]: '智谱AI',
+    [transModel.moonshot]: 'moonshot',
+
+    [transModel.google]: '谷歌机器翻译',
+    [transModel.microsoft]: '微软机器翻译',
+}
+
+const transType = {
+    none: 0,    // 不翻译
+    self: 1,    // 翻译自身
+    parent: 2   // 翻译父元素
 }
 
 // 模型类型
-const modelOptionsManager = {
+const optionsManager = {
     openai: {
         "gpt-3.5-turbo": "gpt-3.5-turbo",
         "gpt-4": "gpt-4",
         "gpt-4-turbo-preview": "gpt-4-turbo-preview",
     },
-    yiyan: {
-        "ERNIE-Bot 4.0": "completions_pro", // url 后缀
+    yiyan: {    // url 后缀
+        "ERNIE-Bot 4.0": "completions_pro",
         "ERNIE-Bot-8K": "ernie_bot_8k",
         "ERNIE-Bot": "completions",
     },
@@ -176,16 +161,45 @@ const modelOptionsManager = {
     moonshot: {
         "moonshot-v1-8k": "moonshot-v1-8k",
     },
+    // 获取 option key
     getOption(model) {
-        return GM_getValue("model_" + model) || '';
+        console.log("model:", model);
+        return GM_getValue("model_" + model) || optionsManager[model][0] || '';
     },
     setOption(model, value) {
         GM_setValue("model_" + model, value);
     },
-    getModelOption(model) {
+    // 获取 option value
+    getOptionName(model) {
         return this[model][this.getOption(model)];
-
     }
+}
+
+// token 管理器
+const tokenManager = {
+    setToken: (key, value) => {
+        if (transModel[key]) GM_setValue("token_" + key, value)
+    },
+    getToken: key => {
+        return GM_getValue("token_" + key, null);
+    }
+};
+
+// sessionStorage
+const sessionManager = {
+    // 同时缓存原文和译文
+    setTransCache(origin, result) {
+        let model = util.getValue('model');
+        // key: 模型_文本，value: 文本
+        sessionStorage.setItem(model + "_" + origin, result)
+        sessionStorage.setItem(model + "_" + result, origin)
+    },
+    getTransCache(key) {
+        return sessionStorage.getItem(util.getValue('model') + "_" + key)
+    },
+    removeSession(key) {
+        sessionStorage.removeItem(util.getValue('model') + "_" + key)
+    },
 }
 
 // endregion
@@ -210,33 +224,34 @@ const toast = Swal.mixin({
     }
 });
 
-
-// 定义一个多语言管理对象
+// 多语言管理对象
 const langManager = {
-    type: {
-        auto: '自动检测',  // 自动检测语言
-        zh: 'zh-Hans',    // 简体中文
-        cht: 'zh-Hant',   // 繁体中文
-        en: 'en',         // 英语
-        jp: 'ja',         // 日语
-        kor: 'ko',        // 韩语
-        fra: 'fr',        // 法语
-        spa: 'es',        // 西班牙语
-        ru: 'ru',         // 俄语
-        de: 'de',         // 德语
-        it: 'it',         // 意大利语
-        tr: 'tr',         // 土耳其语
-        pt: 'pt',         // 葡萄牙语
-        vie: 'vi',        // 越南语
-        id: 'id',         // 印度尼西亚语
-        th: 'th',         // 泰语
-        ar: 'ar',         // 阿拉伯语
-        hi: 'hi',         // 印地语
-        per: 'fa',        // 波斯语
-    },
-    // from 属性用于设置翻译的源语言
+    auto: '自动检测',  // 自动检测
+    zh: 'zh-Hans',    // 简体中文
+    cht: 'zh-Hant',   // 繁体中文
+    en: 'en',         // 英语
+    jp: 'ja',         // 日语
+    kor: 'ko',        // 韩语
+    fra: 'fr',        // 法语
+    spa: 'es',        // 西班牙语
+    ru: 'ru',         // 俄语
+    de: 'de',         // 德语
+    it: 'it',         // 意大利语
+    tr: 'tr',         // 土耳其语
+    pt: 'pt',         // 葡萄牙语
+    vie: 'vi',        // 越南语
+    id: 'id',         // 印度尼西亚语
+    th: 'th',         // 泰语
+    ar: 'ar',         // 阿拉伯语
+    hi: 'hi',         // 印地语
+    per: 'fa',        // 波斯语
+    // from、to 源语言、目标语言
     from: {auto: '自动检测'},
     to: {'zh-Hans': '简体中文', 'en': '英语',},
+    // 解析语言种类
+    parseLanguage(language) {
+        return langManager[language] || language || 'en';
+    },
     // set
     setFromTo(from, to) {
         GM_setValue('from', from);
@@ -251,55 +266,21 @@ const langManager = {
 }
 
 // 快捷键
-const hotkeyOptions = {Control: 'Control', Alt: 'Alt', Shift: 'Shift'}
-// 模型
-const modelOptions = {
-    [transModel.openai]: 'chatGPT',
-    [transModel.yiyan]: '文心一言',
-    [transModel.tongyi]: '通义千问',
-    [transModel.zhipu]: '智谱AI',
-    [transModel.moonshot]: 'moonshot',
-
-    [transModel.google]: '谷歌机器翻译',
-    [transModel.microsoft]: '微软机器翻译',
+const shortcutManager = {
+    currentShortcut: null,
+    hotkeyOptions: {Control: 'Control', Alt: 'Alt', Shift: 'Shift'},
+    hotkeyPressed: false,
 }
 
-// endregion
+// 鼠标悬停计时器
+let hoverTimer;
+
 const util = {
-        // 解析语言种类
-        parseLanguage(language) {
-            return langManager.type[language] || language;
-        },
         getValue(name) {
             return GM_getValue(name, '');
         },
         setValue(name, value) {
             GM_setValue(name, value);
-        },
-        // 初始化配置
-        initConfigValue() {
-            let commonConfig = [
-                {
-                    name: 'hotkey', value: 'Control'
-                }, {
-                    name: 'from', value: 'auto'
-                }, {
-                    name: 'to', value: 'zh-CN'
-                }, {
-                    name: 'model', value: transModel.microsoft
-                }
-            ]
-            let modelConfig = [
-                {[transModel.openai]: "gpt-3.5-turbo"},
-                {[transModel.yiyan]: "completions"},
-                {[transModel.tongyi]: "qwen-turbo"},
-                {[transModel.zhipu]: "glm-3-turbo"},
-                {[transModel.moonshot]: "moonshot-v1-8"}
-            ]
-            commonConfig.forEach(v => !this.getValue(v.name) ? this.setValue(v.name, v.value) : null);
-            modelConfig.forEach(option => {
-                if (!modelOptionsManager.getOption(option.key)) modelOptionsManager.setOption(option.key, option.value);
-            });
         },
         registerMenuCommand() {
             GM_registerMenuCommand(`原始语言：${langManager.from[this.getValue('from')]}`, () => {
@@ -311,7 +292,7 @@ const util = {
             GM_registerMenuCommand(`鼠标快捷键：${this.getValue('hotkey')}`, () => {
                 this.setHotkey()
             });
-            GM_registerMenuCommand(`翻译服务：${modelOptions[this.getValue('model')]}`, () => {
+            GM_registerMenuCommand(`翻译服务：${transModelName[this.getValue('model')]}`, () => {
                 this.setSetting()
             });
         },
@@ -326,10 +307,10 @@ const util = {
             let dom = `
   <div style="font-size: 1em;">
     <!-- 其他设置项 -->
-    <label class="instant-setting-label">快捷键<select id="fluent-read-hotkey" class="instant-setting-select">${this.generateOptions(hotkeyOptions, this.getValue('hotkey'))}</select></label>
+    <label class="instant-setting-label">快捷键<select id="fluent-read-hotkey" class="instant-setting-select">${this.generateOptions(shortcutManager.hotkeyOptions, this.getValue('hotkey'))}</select></label>
     <label class="instant-setting-label">翻译源语言<select id="fluent-read-from" class="instant-setting-select">${this.generateOptions(langManager.from, langManager.getFrom())}</select></label>
     <label class="instant-setting-label">翻译目标语言<select id="fluent-read-to" class="instant-setting-select">${this.generateOptions(langManager.to, langManager.getTo())}</select></label>
-    <label class="instant-setting-label">翻译服务<select id="fluent-read-model" class="instant-setting-select">${this.generateOptions(modelOptions, this.getValue('model'))}</select></label>
+    <label class="instant-setting-label">翻译服务<select id="fluent-read-model" class="instant-setting-select">${this.generateOptions(transModelName, this.getValue('model'))}</select></label>
     
     <label class="instant-setting-label" id="fluent-read-option-label" style="display: none;">模型类型<select id="fluent-read-option" class="instant-setting-select"></select></label>
     <label class="instant-setting-label" id="fluent-read-token-label" style="display: none;">Token令牌<input type="text" class="instant-setting-input" id="fluent-read-token" value="" ></label>
@@ -377,7 +358,7 @@ const util = {
                             break;
                     }
                     // 存储 option
-                    modelOptionsManager.setOption(model, document.getElementById('fluent-read-option').value);
+                    optionsManager.setOption(model, document.getElementById('fluent-read-option').value);
                     toast.fire({icon: 'success', title: '设置成功！'});
                     history.go(0); // 刷新页面
                 }
@@ -435,7 +416,7 @@ const util = {
                 text: '请选择鼠标悬停快捷键',
                 input: 'select',
                 inputValue: this.getValue('hotkey'),
-                inputOptions: hotkeyOptions,
+                inputOptions: shortcutManager.hotkeyOptions,
                 confirmButtonText: '确定',
                 customClass: toastClass,
             }).then(async (result) => {
@@ -519,7 +500,7 @@ let sentenceSet = new Set();
     // 快捷键+悬停翻译
     setShortcut(util.getValue('hotkey'));
     // 当浏览器或标签页失去焦点时，重置 ctrlPressed
-    window.addEventListener('blur', () => hotkeyPressed = false)
+    window.addEventListener('blur', () => shortcutManager.hotkeyPressed = false)
 
     //  // 鼠标、键盘监听事件，悬停翻译
     document.addEventListener('keydown', event => handler(mouseX, mouseY))
@@ -537,7 +518,7 @@ let delay = 500;
 
 // 监听事件处理器
 function handler(mouseX, mouseY) {
-    if (!hotkeyPressed) return;
+    if (!shortcutManager.hotkeyPressed) return;
 
     clearTimeout(hoverTimer); // 清除计时器
     hoverTimer = setTimeout(() => {
@@ -745,27 +726,27 @@ function processNode(node, attr, respMap) {
 // 快捷键处理
 function setShortcut(shortcut) {
     // 移除旧的事件监听器
-    if (currentShortcut) {
+    if (shortcutManager.currentShortcut) {
         document.removeEventListener('keydown', keyDownListener);
         document.removeEventListener('keyup', keyUpListener);
     }
     // 设置新的快捷键并添加事件监听器
-    currentShortcut = shortcut;
+    shortcutManager.currentShortcut = shortcut;
     document.addEventListener('keydown', keyDownListener);
     document.addEventListener('keyup', keyUpListener);
 }
 
 function keyDownListener(event) {
-    handleShortcut(event, currentShortcut);
+    handleShortcut(event, shortcutManager.currentShortcut);
 }
 
 function keyUpListener(event) {
-    handleShortcut(event, currentShortcut);
+    handleShortcut(event, shortcutManager.currentShortcut);
 }
 
 function handleShortcut(event, shortcut) {
     if (event.key === shortcut) {
-        hotkeyPressed = (event.type === 'keydown');
+        shortcutManager.hotkeyPressed = (event.type === 'keydown');
     }
 }
 
@@ -781,7 +762,7 @@ function setDisplayStyle(flex, none) {
         optionSelect.remove(0)
     }
     // 添加新的选项
-    const newOptions = modelOptionsManager[document.getElementById('fluent-read-model').value];
+    const newOptions = optionsManager[document.getElementById('fluent-read-model').value];
     for (const key in newOptions) {
         if (newOptions.hasOwnProperty(key)) {
             const newOption = document.createElement('option');
@@ -791,7 +772,7 @@ function setDisplayStyle(flex, none) {
         }
     }
     // 设置默认选中的值
-    optionSelect.value = modelOptionsManager.getOption(document.getElementById('fluent-read-model').value);
+    optionSelect.value = optionsManager.getOption(document.getElementById('fluent-read-model').value);
 
 
     const optionLabel = document.getElementById('fluent-read-option-label');
@@ -859,7 +840,7 @@ function baiduDetectLang(text) {
                 if (response.status === 200) {
                     const jsn = JSON.parse(response.responseText);
                     if (jsn && jsn.lan) {
-                        resolve(langManager.type[jsn.lan] || 'en');
+                        resolve(langManager.parseLanguage(jsn.lan));
                     } else {
                         reject(new Error('Language detection failed'));
                     }
@@ -907,19 +888,42 @@ function replaceText(type, node, value) {
 
 function init() {
 
-    util.initConfigValue();
-    util.registerMenuCommand()
+    // 初始化菜单栏配置
+    let commonConfig = [
+        {name: 'hotkey', value: 'Control'},
+        {name: 'from', value: 'auto'},
+        {name: 'to', value: 'zh-CN'},
+        {name: 'model', value: transModel.microsoft}
+    ]
+    let modelConfig = [
+        {openai: "gpt-3.5-turbo"},
+        {yiyan: "completions"},
+        {tongyi: "qwen-turbo"},
+        {zhipu: "glm-3-turbo"},
+        {moonshot: "moonshot-v1-8"},
+    ]
+    commonConfig.forEach(v => !util.getValue(v.name) ? util.setValue(v.name, v.value) : null);
+    modelConfig.forEach(option => {
+        let key = Object.keys(option)[0]; // 获取对象的第一个键
+        let value = option[key]; // 使用该键获取值
+        if (!optionsManager.getOption(key)) optionsManager.setOption(key, value);
+    });
 
-    // 翻译模型
-    exceptionMap.transFnMap[transModel.openai] = openai
-    exceptionMap.transFnMap[transModel.yiyan] = yiyan
-    exceptionMap.transFnMap[transModel.tongyi] = tongyi
-    exceptionMap.transFnMap[transModel.zhipu] = zhipu
-    exceptionMap.transFnMap[transModel.moonshot] = moonshot
-    exceptionMap.transFnMap[transModel.microsoft] = microsoft
-    exceptionMap.transFnMap[transModel.google] = google
+    // 初始化菜单
+    GM_registerMenuCommand(`原始语言：${langManager.from[util.getValue('from')]}`, () => util.setLanguage('from'));
+    GM_registerMenuCommand(`目标语言：${langManager.to[util.getValue('to')]}`, () => util.setLanguage('to'));
+    GM_registerMenuCommand(`鼠标快捷键：${util.getValue('hotkey')}`, () => util.setHotkey());
+    GM_registerMenuCommand(`翻译服务：${transModelName[util.getValue('model')]}`, () => util.setSetting());
 
-    hotkeyPressed = false;
+    // 初始化翻译模型对应函数
+    transModelFn[transModel.openai] = openai
+    transModelFn[transModel.yiyan] = yiyan
+    transModelFn[transModel.tongyi] = tongyi
+    transModelFn[transModel.zhipu] = zhipu
+    transModelFn[transModel.moonshot] = moonshot
+    transModelFn[transModel.microsoft] = microsoft
+    transModelFn[transModel.google] = google
+
     // 填充适配器 map
     adapterFnMap[exceptionMap.maven] = procMaven
     adapterFnMap[exceptionMap.docker] = procDockerhub
@@ -980,7 +984,7 @@ function translate(node) {
         let spinner = createLoadingSpinner(node);
         setTimeout(() => spinner.remove(), 30000);
 
-        exceptionMap.transFnMap[model](origin, text => {
+        transModelFn[model](origin, text => {
             spinner.remove()
             // 打印翻译之前和之后的文本
             console.log("翻译前的句子：", origin);
@@ -1191,7 +1195,7 @@ function openai(origin, callback) {
         'Authorization': 'Bearer ' + token
     };
 
-    let option = modelOptionsManager.getModelOption(transModel.openai)
+    let option = optionsManager.getOptionName(transModel.openai)
 
     let data = {
         'model': option,
@@ -1227,7 +1231,7 @@ function moonshot(origin, callback) {
         'Authorization': 'Bearer ' + token
     };
 
-    let option = modelOptionsManager.getModelOption(transModel.moonshot)
+    let option = optionsManager.getOptionName(transModel.moonshot)
 
     let data = {
         'model': option,
@@ -1259,7 +1263,7 @@ function yiyan(origin, callback) {
     if (origin.trim().length === 0) return;
     getYiyanToken().then(token => {
         // option
-        let option = modelOptionsManager.getModelOption(transModel.yiyan);
+        let option = optionsManager.getOptionName(transModel.yiyan);
         GM_xmlhttpRequest({
             method: "POST",
             // ERNIE-Bot 4.0 模型，模型定价页面：https://console.bce.baidu.com/qianfan/chargemanage/list
@@ -1332,7 +1336,7 @@ function tongyi(origin, callback) {
         console.log("通义千问：未获取到 token");
         return
     }
-    let option = modelOptionsManager.getModelOption(transModel.tongyi)
+    let option = optionsManager.getOptionName(transModel.tongyi)
 
     // 发起请求
     GM_xmlhttpRequest({
@@ -1381,7 +1385,7 @@ function zhipu(origin, callback) {
         token = generateToken(tokenObject.apikey);
     }
 
-    let option = modelOptionsManager.getModelOption(transModel.zhipu)
+    let option = optionsManager.getOptionName(transModel.zhipu)
 
     // 发起请求
     GM_xmlhttpRequest({
