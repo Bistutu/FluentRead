@@ -518,6 +518,13 @@ const settingManager = {
 // 延迟响应时间
 let delay = 250;
 
+function delayRemoveCache(key, time = 250) {
+    outerHTMLSet.add(key);
+    setTimeout(() => {
+        outerHTMLSet.delete(key);
+    }, time);
+}
+
 // 监听事件处理器，参数：鼠标坐标、计时器
 function handler(mouseX, mouseY, time) {
     if (!shortcutManager.hotkeyPressed) return;
@@ -529,13 +536,10 @@ function handler(mouseX, mouseY, time) {
         // 全局与空节点、class="notranslate" 的节点不翻译
         if (['HTML', 'BODY'].includes(node.tagName) || !node.innerText || node.classList.contains('notranslate')) return;
 
-        // 去重判断，outerHTML
-        if (outerHTMLSet.has(node.outerHTML)) {
-            console.log("去重：", node.outerHTML);
-            console.log('outerHTMLSet：',outerHTMLSet)
-            return
-        }
-        outerHTMLSet.add(node.outerHTML);
+        // 去重判断
+        if (outerHTMLSet.has(node.outerHTML) || outerHTMLSet.has(node.innerText)) return
+        outerHTMLSet.add(node.outerHTML);   // 双写
+        delayRemoveCache(node.innerText);   // 双写
 
         // 检测缓存 cache
         let outerHTMLCache = sessionManager.getTransCache(node.outerHTML);
@@ -543,12 +547,8 @@ function handler(mouseX, mouseY, time) {
             let spinner = createLoadingSpinner(node);
             setTimeout(() => {  // 延迟 remove 转圈动画与替换文本
                 spinner.remove();
-
-                outerHTMLSet.add(node.outerHTML);
-                setTimeout(() => {
-                    outerHTMLSet.delete(node.outerHTML);
-                }, 5000);
                 node.outerHTML = outerHTMLCache;    // 替换
+                delayRemoveCache(outerHTMLCache);
             }, delay);
             return;
         }
@@ -955,8 +955,8 @@ function translate(node) {
 
         transModelFn[model](origin, text => {
             spinner.remove()
-            console.log("翻译前的句子：", origin);
-            console.log("翻译后的句子：", text);
+            // console.log("翻译前的句子：", origin);
+            // console.log("翻译后的句子：", text);
 
             if (!text || origin === text) return;
 
@@ -982,10 +982,8 @@ function translate(node) {
             }
 
             sessionManager.setTransCache(oldOuterHtml, newOuterHtml);   // 设置缓存
-            outerHTMLSet.add(newOuterHtml);
-            setTimeout(() => {
-                outerHTMLSet.delete(newOuterHtml);
-            }, 5000);
+            // 延迟 newOuterHtml，删除 oldOuterHtml
+            delayRemoveCache(newOuterHtml);
             outerHTMLSet.delete(oldOuterHtml);
         })
     }).catch(e => console.error(e));    // 只打印错误信息
