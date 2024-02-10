@@ -919,7 +919,10 @@ function initApplication() {
     .translate-d-popup { font-size: 14px !important;}
     .instant-setting-label { display: flex;align-items: center;justify-content: space-between;padding-top: 15px; }
     .instant-setting-input { border: 1px solid #bbb; box-sizing: border-box; padding: 5px 10px; border-radius: 5px; width: 100px}
-    `);
+    .retry-error-wrapper {display: inline-flex;align-items: center;}
+    .retry-error-button, .retry-error-tip {color: #428ADF;text-decoration: underline;text-underline-offset: 0.2em;margin-left: 0.2em;font-size: 1em;cursor: pointer;}
+    `
+    );
 }
 
 // endregion
@@ -943,20 +946,17 @@ function translate(node) {
     let model = util.getValue('model')
     let origin = node.innerText;
 
+    // 插入转圈动画，60 秒后超时取消转圈动画
+    let spinner = createLoadingSpinner(node);
+    setTimeout(() => {
+        spinner.remove();
+        createFailedTip(node, "网络超时，请稍后重试~");
+    }, 60000);
+
     // 检测语言类型，如果是中文则不翻译
     baiduDetectLang(origin).then(lang => {
         if (lang === langManager.getTo()) return;   // 与目标语言相同，不翻译
         if (isMachineTrans(model)) origin = node.outerHTML; // 如果是谷歌或微软翻译，应翻译 HTML
-
-        // 插入转圈动画，60 秒后超时取消转圈动画
-        let spinner = createLoadingSpinner(node);
-        setTimeout(() => {
-            spinner.remove();
-            // todo 显示超时提示，2024-2-10
-            createFailedTip(node);
-
-        }, 1000);
-        return;
 
         transModelFn[model](origin, text => {
             spinner.remove()
@@ -991,7 +991,12 @@ function translate(node) {
             delayRemoveCache(newOuterHtml);
             outerHTMLSet.delete(oldOuterHtml);
         })
-    }).catch(e => console.error(e));    // 只打印错误信息
+    }).catch(e => {
+        // 打印错误、取消转圈、创建错误提示
+        console.error(e)
+        spinner.remove()
+        createFailedTip(node,  e.message);
+    });
 }
 
 // 创建转圈动画并插入
@@ -1002,51 +1007,35 @@ function createLoadingSpinner(node) {
     return spinner;
 }
 
-function createFailedTip(node) {
-    // 创建一个包装元素，用于包含重试按钮和错误提示
-    const wrapper = document.createElement('span'); // 使用 div 而非 font 标签
-    wrapper.style.display = 'inline-flex'; // 使用 flex 布局
-    wrapper.style.alignItems = 'center'; // 确保子元素垂直居中
+function createFailedTip(node, errorMsg) {
+    // 创建包装元素
+    const wrapper = document.createElement('span');
+    wrapper.classList.add('retry-error-wrapper');
 
     // 创建重试按钮
-    const retryButton = document.createElement('a');
+    const retryButton = document.createElement('span');
     retryButton.innerText = '重试';
-    retryButton.style.color = '#428ADF';
-    retryButton.style.textDecoration = 'underline';
-    retryButton.style.textUnderlineOffset = '0.2em';
-    retryButton.style.marginLeft = '0.2em';
-    retryButton.style.fontSize = '0.9em';
-    // 添加重试按钮的事件监听器
+    retryButton.classList.add('retry-error-button');
     retryButton.addEventListener('click', function () {
-        window.alert('重试按钮被点击');
+        // 移除错误提示元素，重新翻译
+        wrapper.remove();
+        translate(node);
     });
 
     // 创建错误提示元素
     const errorTip = document.createElement('span');
     errorTip.innerText = '错误原因';
-    errorTip.style.color = '#428ADF'; // 根据示例中的颜色
-    errorTip.style.textDecoration = 'underline';
-    errorTip.style.textUnderlineOffset = '0.2em';
-    errorTip.style.marginLeft = '0.2em';
-    errorTip.style.fontSize = '0.9em';
-    // 添加错误提示的事件监听器
+    errorTip.classList.add('retry-error-tip');
     errorTip.addEventListener('click', function () {
-        // 这里添加显示错误提示详情的逻辑，例如使用 Swal.fire
-        Swal.fire({
-            type: 'error',
-            title: '错误',
-            text: '网络问题，无法连接到服务，请检查你的代理或本地网络连接后重试。'
-        });
+        window.alert(errorMsg || '未知错误');
     });
 
-    // 将重试按钮和错误提示添加到包装元素
+    // 将 SVG 图标和文本添加到包装元素
     wrapper.appendChild(createRetrySvgIcon());
     wrapper.appendChild(retryButton);
-
     wrapper.appendChild(createWarnSvgIcon());
     wrapper.appendChild(errorTip);
 
-    // 将包装元素添加到指定的节点中
     node.appendChild(wrapper);
 }
 
