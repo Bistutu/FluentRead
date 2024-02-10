@@ -34,7 +34,7 @@
 // @resource     swalStyle https://registry.npmmirror.com/sweetalert2/10.16.6/files/dist/sweetalert2.min.css
 // ==/UserScript==
 
-// region 常量与变量
+// region 变量
 
 // URL 相关
 const POST = "POST";
@@ -94,6 +94,7 @@ const textType = {
 let adapterFnMap = new (Map);
 let skipStringMap = new Map();
 let pruneSet = new Set();   // 剪枝 set
+let outerHTMLSet = new Set();   // outerHTML set prune
 
 // DOM 防抖，单位毫秒
 let throttleObserveDOM = throttle(observeDOM, 3000);
@@ -181,7 +182,7 @@ const tokenManager = {
         if (transModel[key]) GM_setValue("token_" + key, value)
     },
     getToken: key => {
-        return GM_getValue("token_" + key, null);
+        return GM_getValue("token_" + key, '');
     }
 };
 
@@ -199,6 +200,18 @@ const sessionManager = {
     },
     removeSession(key) {
         sessionStorage.removeItem(util.getValue('model') + "_" + key)
+    },
+}
+const util = {
+    getValue(name) {
+        return GM_getValue(name, '');
+    },
+    setValue(name, value) {
+        GM_setValue(name, value);
+    },
+    // 获取元素值
+    getElementValue(id) {
+        return document.getElementById(id).value || '';
     },
 }
 
@@ -275,200 +288,191 @@ const shortcutManager = {
 // 鼠标悬停计时器
 let hoverTimer;
 
-const util = {
-        getValue(name) {
-            return GM_getValue(name, '');
-        },
-        setValue(name, value) {
-            GM_setValue(name, value);
-        },
-        registerMenuCommand() {
-            GM_registerMenuCommand(`原始语言：${langManager.from[this.getValue('from')]}`, () => {
-                this.setLanguage('from')
-            });
-            GM_registerMenuCommand(`目标语言：${langManager.to[this.getValue('to')]}`, () => {
-                this.setLanguage('to')
-            });
-            GM_registerMenuCommand(`鼠标快捷键：${this.getValue('hotkey')}`, () => {
-                this.setHotkey()
-            });
-            GM_registerMenuCommand(`翻译服务：${transModelName[this.getValue('model')]}`, () => {
-                this.setSetting()
-            });
-        },
-        // 将对象转换为 HTML 选项字符串
-        generateOptions(options, selectedValue) {
-            return Object.entries(options).map(([key, value]) =>
-                `<option value="${key}" ${selectedValue === key ? 'selected' : ''}>${value}</option>`
-            ).join('');
-        },
-        // 总设置界面
-        setSetting() {
-            let dom = `
+const settingManager = {
+    // 将对象转换为 HTML option 标签
+    generateOptions(options, selectedValue) {
+        return Object.entries(options).map(([key, value]) =>
+            `<option value="${key}" ${selectedValue === key ? 'selected' : ''}>${value}</option>`
+        ).join('');
+    },
+    // 设置中心界面
+    setSetting() {
+        // 页面 dom
+        const dom = `
   <div style="font-size: 1em;">
-    <!-- 其他设置项 -->
-    <label class="instant-setting-label">快捷键<select id="fluent-read-hotkey" class="instant-setting-select">${this.generateOptions(shortcutManager.hotkeyOptions, this.getValue('hotkey'))}</select></label>
+    <label class="instant-setting-label">快捷键<select id="fluent-read-hotkey" class="instant-setting-select">${this.generateOptions(shortcutManager.hotkeyOptions, util.getValue('hotkey'))}</select></label>
     <label class="instant-setting-label">翻译源语言<select id="fluent-read-from" class="instant-setting-select">${this.generateOptions(langManager.from, langManager.getFrom())}</select></label>
     <label class="instant-setting-label">翻译目标语言<select id="fluent-read-to" class="instant-setting-select">${this.generateOptions(langManager.to, langManager.getTo())}</select></label>
-    <label class="instant-setting-label">翻译服务<select id="fluent-read-model" class="instant-setting-select">${this.generateOptions(transModelName, this.getValue('model'))}</select></label>
+    <label class="instant-setting-label">翻译服务<select id="fluent-read-model" class="instant-setting-select">${this.generateOptions(transModelName, util.getValue('model'))}</select></label>
     
     <label class="instant-setting-label" id="fluent-read-option-label" style="display: none;">模型类型<select id="fluent-read-option" class="instant-setting-select"></select></label>
     <label class="instant-setting-label" id="fluent-read-token-label" style="display: none;">Token令牌<input type="text" class="instant-setting-input" id="fluent-read-token" value="" ></label>
     <label class="instant-setting-label" id="fluent-read-ak-label" style="display: none;">ak令牌<input type="text" class="instant-setting-input" id="fluent-read-ak" value="" ></label>
     <label class="instant-setting-label" id="fluent-read-sk-label" style="display: none;">sk令牌<input type="text" class="instant-setting-input" id="fluent-read-sk" value="" ></label>
   </div>`;
-            Swal.fire({
-                    title: '设置中心',
-                    html: dom,
-                    showCancelButton: true,
-                    confirmButtonText: '保存并刷新页面',
-                    cancelButtonText: '取消',
-                    customClass: toastClass
-                },
-            ).then(async (result) => {
+        Swal.fire({
+                title: '设置中心',
+                html: dom,
+                showCancelButton: true,
+                confirmButtonText: '保存并刷新页面',
+                cancelButtonText: '取消',
+                customClass: toastClass
+            },
+        ).then(async (result) => {
                 if (result.isConfirmed) {
-                    // 设置快捷键
-                    util.setValue('hotkey', document.getElementById('fluent-read-hotkey').value);
-                    // 设置语言
-                    let from = document.getElementById('fluent-read-from').value;
-                    let to = document.getElementById('fluent-read-to').value;
-                    langManager.setFromTo(from, to);
-                    // 设置翻译服务
-                    let model = document.getElementById('fluent-read-model').value;
+                    // 1、设置语言
+                    util.setValue('from', util.getElementValue('fluent-read-from'));
+                    util.setValue('to', util.getElementValue('fluent-read-to'));
+                    // 2、设置快捷键
+                    util.setValue('hotkey', util.getElementValue('fluent-read-hotkey'));
+                    // 3、设置翻译服务
+                    let model = util.getElementValue('fluent-read-model');
                     util.setValue('model', model);
-                    // 存储 token
+                    // 4、设置模型类型
+                    optionsManager.setOption(model, util.getElementValue('fluent-read-option'));
+                    // 5、存储 token
+                    let token = util.getElementValue('fluent-read-token');
+                    let ak = util.getElementValue('fluent-read-ak');
+                    let sk = util.getElementValue('fluent-read-sk');
                     switch (model) {
-                        case transModel.openai:
-                            tokenManager.setToken(model, document.getElementById('fluent-read-token').value);
-                            break;
-                        case transModel.moonshot:
-                            tokenManager.setToken(model, document.getElementById('fluent-read-token').value);
-                            break;
-                        case transModel.tongyi:
-                            tokenManager.setToken(model, document.getElementById('fluent-read-token').value);
-                            break;
                         case transModel.yiyan:
-                            tokenManager.setToken(model, {
-                                ak: document.getElementById('fluent-read-ak').value,
-                                sk: document.getElementById('fluent-read-sk').value
-                            });
+                            tokenManager.setToken(model, {ak: ak, sk: sk});
                             break;
                         case transModel.zhipu:
-                            tokenManager.setToken(model, {apikey: document.getElementById('fluent-read-token').value});
+                            tokenManager.setToken(model, {apikey: token});
                             break;
+                        default:
+                            tokenManager.setToken(model, token);
                     }
-                    // 存储 option
-                    optionsManager.setOption(model, document.getElementById('fluent-read-option').value);
+                    //
                     toast.fire({icon: 'success', title: '设置成功！'});
                     history.go(0); // 刷新页面
                 }
-            });
-            // 判断是否展示 token
-            let model = document.getElementById('fluent-read-model').value;
-            if ([transModel.openai, transModel.zhipu, transModel.tongyi, transModel.yiyan, transModel.moonshot].includes(model)) {
-                this.showHidden(model);
             }
-            // 监听“翻译服务”选择框
-            document.getElementById('fluent-read-model').addEventListener('change', e => {
-                const model = e.currentTarget.value;
-                this.showHidden(model);
-            });
-        },
-        showHidden(model) {
-            const token = document.getElementById('fluent-read-token');
-            const ak = document.getElementById('fluent-read-ak');
-            const sk = document.getElementById('fluent-read-sk');
-
-            const tokenLabel = document.getElementById('fluent-read-token-label');
-            const akLabel = document.getElementById('fluent-read-ak-label');
-            const skLabel = document.getElementById('fluent-read-sk-label');
-
-            let tokenValue = tokenManager.getToken(model) || ''
-            switch (model) {
-                case transModel.openai:
-                    token.value = tokenValue;
-                    setDisplayStyle([tokenLabel], [akLabel, skLabel]);
-                    break;
-                case transModel.moonshot:
-                    token.value = tokenValue;
-                    setDisplayStyle([tokenLabel], [akLabel, skLabel]);
-                    break;
-                case transModel.tongyi:
-                    token.value = tokenValue;
-                    setDisplayStyle([tokenLabel], [akLabel, skLabel]);
-                    break;
-                case transModel.yiyan:
-                    ak.value = tokenValue ? tokenValue.ak || '' : '';
-                    sk.value = tokenValue ? tokenValue.sk || '' : '';
-                    setDisplayStyle([akLabel, skLabel], [tokenLabel]);
-                    break;
-                case transModel.zhipu:
-                    token.value = tokenValue.apikey || '';
-                    setDisplayStyle([tokenLabel], [akLabel, skLabel]);
-                    break;
-                default:
-                    setDisplayStyle([], [tokenLabel, akLabel, skLabel]);
-            }
-        },
-        setHotkey() {
-            Swal.fire({
-                title: '快捷键设置',
-                text: '请选择鼠标悬停快捷键',
-                input: 'select',
-                inputValue: this.getValue('hotkey'),
-                inputOptions: shortcutManager.hotkeyOptions,
-                confirmButtonText: '确定',
-                customClass: toastClass,
-            }).then(async (result) => {
-                if (result.isConfirmed) {
-                    util.setValue('hotkey', result.value);
-                    setShortcut(result.value);
-                    toast.fire({icon: 'success', title: '快捷键设置成功！'});
-                    history.go(0); // 刷新页面
-                }
-            });
-        },
-        setLanguage(lang) {
-            let args = lang === 'from' ? {
-                notion: "源",
-                inputValue: langManager.getFrom(),
-                inputOptions: langManager.from,
-            } : {
-                notion: "目标",
-                inputValue: langManager.getTo(),
-                inputOptions: langManager.to,
-            }
-            Swal.fire({
-                title: args.notion + '语言设置',
-                text: '请选择翻译' + args.notion + '语言',
-                input: 'select',
-                inputValue: args.inputValue,
-                inputOptions: args.inputOptions,
-                confirmButtonText: '确定',
-                customClass: toastClass,
-            }).then(async (result) => {
-                if (result.isConfirmed) {
-                    langManager.setFromTo(langManager.getFrom(), result.value);
-                    toast.fire({icon: 'success', title: args.notion + '语言设置成功！'});
-                    history.go(0); // 刷新页面
-                }
-            });
+        )
+        // 设置中心打开时需判断是否展示 token 选项
+        let model = util.getElementValue('fluent-read-model');
+        if ([transModel.openai, transModel.zhipu, transModel.tongyi, transModel.yiyan, transModel.moonshot].includes(model)) {
+            this.showHidden(model);
         }
+        // 监听“翻译服务”选择框
+        document.getElementById('fluent-read-model').addEventListener('change', e => {
+            const model = e.currentTarget.value;
+            this.showHidden(model);
+        });
+    },
+    showHidden(model) {
+        // label 是最外层的标签
+        const tokenLabel = document.getElementById('fluent-read-token-label');
+        const akLabel = document.getElementById('fluent-read-ak-label');
+        const skLabel = document.getElementById('fluent-read-sk-label');
+
+        const token = document.getElementById('fluent-read-token');
+        const ak = document.getElementById('fluent-read-ak');
+        const sk = document.getElementById('fluent-read-sk');
+
+        // 获取存储的 token 对象
+        const tokenObject = tokenManager.getToken(model)
+
+        switch (model) {
+            case transModel.yiyan:
+                ak.value = tokenObject ? tokenObject.ak : '';
+                sk.value = tokenObject ? tokenObject.sk : '';
+                this.setDisplayStyle([akLabel, skLabel], [tokenLabel]);
+                break;
+            case transModel.zhipu:
+                token.value = tokenObject.apikey || '';
+                this.setDisplayStyle([tokenLabel], [akLabel, skLabel]);
+                break;
+            default:
+                if (model === transModel.openai || model === transModel.moonshot || model === transModel.tongyi) {
+                    token.value = tokenObject;
+                    this.setDisplayStyle([tokenLabel], [akLabel, skLabel]);
+                } else {
+                    this.setDisplayStyle([], [tokenLabel, akLabel, skLabel]);
+                }
+        }
+    },
+    // 批量设置元素的 display 样式
+    setDisplayStyle(flex, none) {
+        // 1、如果 flex 为空，则设置所有元素的 display 为 none，返回
+        if (flex.length === 0) {
+            document.getElementById('fluent-read-option-label').style.display = "none";
+            none.forEach(element => element.style.display = "none");
+            return
+        }
+        // 2、正常逻辑，更新选项、按需要显示元素
+        // 更新下拉框选项
+        let model = util.getElementValue('fluent-read-model');
+        const optionSelect = document.getElementById('fluent-read-option');
+        optionSelect.innerHTML = settingManager.generateOptions(optionsManager[model], optionsManager.getOption(model));
+
+        const optionLabel = document.getElementById('fluent-read-option-label');
+        optionLabel.style.display = "flex"
+
+        flex.forEach(element => element.style.display = "flex");
+        none.forEach(element => element.style.display = "none");
+    },
+    setHotkey() {
+        Swal.fire({
+            title: '快捷键设置',
+            text: '请选择鼠标悬停快捷键',
+            input: 'select',
+            inputValue: util.getValue('hotkey'),
+            inputOptions: shortcutManager.hotkeyOptions,
+            confirmButtonText: '保存并刷新页面',
+            cancelButtonText: '取消',
+            showCancelButton: true,
+            customClass: toastClass,
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                util.setValue('hotkey', result.value);
+                setShortcut(result.value);
+                toast.fire({icon: 'success', title: '快捷键设置成功！'});
+                history.go(0); // 刷新页面
+            }
+        });
+    },
+    setLanguage(lang) {
+        let args = lang === 'from' ? {
+            notion: "源",
+            inputValue: langManager.getFrom(),
+            inputOptions: langManager.from,
+        } : {
+            notion: "目标",
+            inputValue: langManager.getTo(),
+            inputOptions: langManager.to,
+        }
+        Swal.fire({
+            title: args.notion + '语言设置',
+            text: '请选择翻译' + args.notion + '语言',
+            input: 'select',
+            inputValue: args.inputValue,
+            inputOptions: args.inputOptions,
+            confirmButtonText: '保存并刷新页面',
+            cancelButtonText: '取消',
+            showCancelButton: true,
+            customClass: toastClass,
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                langManager.setFromTo(langManager.getFrom(), result.value);
+                toast.fire({icon: 'success', title: args.notion + '语言设置成功！'});
+                history.go(0); // 刷新页面
+            }
+        });
     }
-;
+};
 // endregion
 
-// sentence 去重 set
-let sentenceSet = new Set();
+// region 主函数
 
 (function () {
     'use strict';
 
-    // 初始化
-    init()
+    initApplication()
 
     // 检查是否需要拉取数据
-    checkRun(function (shouldRun) {
+    checkRun(shouldRun => {
         // 如果 host 包含在 preread 中，shouldRun 为 true，则开始解析 DOM 树并设置监听器
         if (!shouldRun) return
 
@@ -497,13 +501,11 @@ let sentenceSet = new Set();
         }
     });
 
-    // 快捷键+悬停翻译
-    setShortcut(util.getValue('hotkey'));
     // 当浏览器或标签页失去焦点时，重置 ctrlPressed
     window.addEventListener('blur', () => shortcutManager.hotkeyPressed = false)
 
-    //  // 鼠标、键盘监听事件，悬停翻译
-    document.addEventListener('keydown', event => handler(mouseX, mouseY))
+    // 鼠标、键盘监听事件，悬停翻译
+    window.addEventListener('keydown', event => handler(mouseX, mouseY))
     document.body.addEventListener('mousemove', event => {
         // 更新鼠标位置
         mouseX = event.clientX;
@@ -512,6 +514,10 @@ let sentenceSet = new Set();
         handler(mouseX, mouseY);
     });
 })();
+
+// endregion
+
+// region 额外
 
 // 翻译延迟时间
 let delay = 500;
@@ -531,8 +537,8 @@ function handler(mouseX, mouseY) {
         if (node.classList.contains('notranslate')) return;
 
         // 去重判断，outerHTML
-        if (sentenceSet.has(node.outerHTML)) return
-        sentenceSet.add(node.outerHTML);
+        if (outerHTMLSet.has(node.outerHTML)) return
+        outerHTMLSet.add(node.outerHTML);
 
         // 如果存在翻译存在 session 缓存
         let outerHtmlCache = sessionManager.getTransCache(node.outerHTML);
@@ -540,9 +546,9 @@ function handler(mouseX, mouseY) {
             let spinner = createLoadingSpinner(node);
             setTimeout(() => {
                 // 去重
-                sentenceSet.add(outerHtmlCache);
+                outerHTMLSet.add(outerHtmlCache);
                 setTimeout(() => {
-                    sentenceSet.delete(outerHtmlCache);
+                    outerHTMLSet.delete(outerHtmlCache);
                 }, delay);
                 // 替换
                 node.outerHTML = outerHtmlCache;
@@ -595,6 +601,8 @@ function detectChildMeta(node) {
     }
     return true;
 }
+
+// endregion
 
 // region read
 // read：异步返回 callback，表示是否需要拉取数据
@@ -750,39 +758,6 @@ function handleShortcut(event, shortcut) {
     }
 }
 
-
-// 批量设置元素的 display 样式
-function setDisplayStyle(flex, none) {
-    flex.forEach(element => element.style.display = "flex");
-    none.forEach(element => element.style.display = "none");
-    // option 是 select，设置值
-    const optionSelect = document.getElementById('fluent-read-option');
-    // 清除现有的所有选项
-    while (optionSelect.options.length > 0) {
-        optionSelect.remove(0)
-    }
-    // 添加新的选项
-    const newOptions = optionsManager[document.getElementById('fluent-read-model').value];
-    for (const key in newOptions) {
-        if (newOptions.hasOwnProperty(key)) {
-            const newOption = document.createElement('option');
-            newOption.value = key;
-            newOption.text = newOptions[key];
-            optionSelect.appendChild(newOption);
-        }
-    }
-    // 设置默认选中的值
-    optionSelect.value = optionsManager.getOption(document.getElementById('fluent-read-model').value);
-
-
-    const optionLabel = document.getElementById('fluent-read-option-label');
-    if (flex.length !== 0) {
-        optionLabel.style.display = "flex";
-    } else {
-        optionLabel.style.display = "none";
-    }
-}
-
 // 计算SHA-1散列，取最后20个字符
 async function signature(text) {
     if (!text) return "";
@@ -886,7 +861,7 @@ function replaceText(type, node, value) {
     pruneSet.add(value)    // 剪枝
 }
 
-function init() {
+function initApplication() {
 
     // 初始化菜单栏配置
     let commonConfig = [
@@ -908,12 +883,13 @@ function init() {
         let value = option[key]; // 使用该键获取值
         if (!optionsManager.getOption(key)) optionsManager.setOption(key, value);
     });
+    setShortcut(util.getValue('hotkey'));  // 快捷键设置
 
     // 初始化菜单
-    GM_registerMenuCommand(`原始语言：${langManager.from[util.getValue('from')]}`, () => util.setLanguage('from'));
-    GM_registerMenuCommand(`目标语言：${langManager.to[util.getValue('to')]}`, () => util.setLanguage('to'));
-    GM_registerMenuCommand(`鼠标快捷键：${util.getValue('hotkey')}`, () => util.setHotkey());
-    GM_registerMenuCommand(`翻译服务：${transModelName[util.getValue('model')]}`, () => util.setSetting());
+    GM_registerMenuCommand(`原始语言：${langManager.from[util.getValue('from')]}`, () => settingManager.setLanguage('from'));
+    GM_registerMenuCommand(`目标语言：${langManager.to[util.getValue('to')]}`, () => settingManager.setLanguage('to'));
+    GM_registerMenuCommand(`鼠标快捷键：${util.getValue('hotkey')}`, () => settingManager.setHotkey());
+    GM_registerMenuCommand(`翻译服务：${transModelName[util.getValue('model')]}`, () => settingManager.setSetting());
 
     // 初始化翻译模型对应函数
     transModelFn[transModel.openai] = openai
@@ -1008,22 +984,22 @@ function translate(node) {
                     node.outerHTML = text;
                     sessionManager.setTransCache(tempOuterHtml, text);  // 旧、新 outerHTML 缓存
 
-                    sentenceSet.add(text); // 去重，添加翻译后的文本
+                    outerHTMLSet.add(text); // 去重，添加翻译后的文本
                     setTimeout(() => {
-                        sentenceSet.delete(text);
+                        outerHTMLSet.delete(text);
                     }, delay)
                 }
             } else {
                 node.innerText = text;
                 sessionManager.setTransCache(tempOuterHtml, node.outerHTML);    // 旧、新 outerHTML 缓存
 
-                sentenceSet.add(node.outerHTML); // 去重，添加翻译后的文本
+                outerHTMLSet.add(node.outerHTML); // 去重，添加翻译后的文本
                 setTimeout(() => {
-                    sentenceSet.delete(node.outerHTML);
+                    outerHTMLSet.delete(node.outerHTML);
                 }, delay)
             }
 
-            sentenceSet.delete(tempOuterHtml);
+            outerHTMLSet.delete(tempOuterHtml);
 
         })
 
