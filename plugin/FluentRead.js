@@ -731,15 +731,14 @@ function translate(node) {
             delayRemoveCache(newOuterHtml);
             outerHTMLSet.delete(oldOuterHtml);
         }).catch(e => {
-            console.error(e);
             clearTimeout(timeout);
-            createFailedTip(node, spinner, e.message);
+            createFailedTip(node, spinner, e.toString());
         })
     }).catch(e => {
         // 打印错误、取消超时函数与转圈动画、创建错误提示
         console.error("发生错误：", e)
         clearTimeout(timeout);
-        createFailedTip(node, spinner, e.message);
+        createFailedTip(node, spinner, e.toString());
     });
 }
 
@@ -773,6 +772,14 @@ function createFailedTip(node, spinner, errorMsg) {
     errorTip.innerText = '错误原因';
     errorTip.classList.add('retry-error-tip');
     errorTip.addEventListener('click', function () {
+        if (errorMsg.includes("auth failed")) {
+            window.alert("认证失败，请检查 token 是否正确");
+            return;
+        }
+        if (errorMsg.includes("quota")) {
+            window.alert("每分钟翻译次数已达上限，请稍后再试");
+            return
+        }
         window.alert(errorMsg || '未知错误');
     });
 
@@ -841,7 +848,7 @@ function microsoft(origin) {
                         let resultJson = JSON.parse(resp.responseText);
                         resolve(resultJson[0].translations[0].text);
                     } catch (e) {
-                        reject(e + ' ' + resp.responseText);
+                        reject(resp.responseText);
                     }
                 },
                 onerror: error => reject(error)
@@ -922,7 +929,7 @@ function google(origin) {
                     sentence = htmlManager.standardizeHtml(sentence)    // 正则标准化 HTML
                     resolve(sentence);
                 } catch (e) {
-                    reject(e + ' ' + resp.responseText);
+                    reject(resp.responseText);
                 }
             },
             onerror: error => reject(error)
@@ -955,7 +962,7 @@ function openai(origin) {
                     let result = JSON.parse(resp.responseText);
                     resolve(result.choices[0].message.content);
                 } catch (e) {
-                    reject(e + ' ' + resp.responseText);
+                    reject(resp.responseText);
                 }
             },
             onerror: error => reject(error)
@@ -979,15 +986,13 @@ function moonshot(origin) {
             method: POST,
             url: 'https://api.moonshot.cn/v1/chat/completions',
             headers: LLMFormat.getStdHeader(token),
-            data: JSON.stringify(LLMFormat.getStdData(origin, option)),
+            data: LLMFormat.getStdData(origin, option),
             onload: resp => {
                 try {
                     let result = JSON.parse(resp.responseText);
                     resolve(result.choices[0].message.content);
-                    console.log(result)
                 } catch (e) {
-                    console.log(e + ' ' + resp.responseText);
-                    reject(e + ' ' + resp.responseText);
+                    reject(resp.responseText);
                 }
             },
             onerror: error => reject(error)
@@ -1022,7 +1027,7 @@ function yiyan(origin) {
                         let res = JSON.parse(resp.responseText);
                         resolve(res.result);
                     } catch (e) {
-                        reject(e + ' ' + resp.responseText);
+                        reject(resp.responseText);
                     }
                 },
                 onerror: error => reject(error)
@@ -1103,7 +1108,7 @@ function tongyi(origin) {
                     let res = JSON.parse(resp.responseText);
                     resolve(res.output.text);
                 } catch (e) {
-                    reject(e + ' ' + resp.responseText);
+                    reject(resp.responseText);
                 }
             },
             onerror: error => reject(error)
@@ -1136,7 +1141,7 @@ function zhipu(origin) {
                     let res = JSON.parse(resp.responseText);
                     resolve(res.choices[0].message.content);
                 } catch (e) {
-                    reject(e + ' ' + resp.responseText);
+                    reject(resp.responseText);
                 }
             },
             onerror: error => reject(error)
