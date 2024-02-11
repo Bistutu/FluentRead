@@ -687,12 +687,12 @@ function translate(node) {
         createFailedTip(node, "网络超时，请稍后重试");
     }, 60000);
 
-    if (isMachineTrans(model)) origin = node.outerHTML; // 如果是谷歌或微软翻译，应翻译 HTML
-    let spinner = createLoadingSpinner(node);   // 插入转圈动画
-
     // 检测语言类型，如果是中文则不翻译
     baiduDetectLang(origin).then(lang => {
         if (lang === langManager.getTo()) return;   // 与目标语言相同，不翻译
+
+        if (isMachineTrans(model)) origin = node.outerHTML; // 如果是谷歌或微软翻译，应翻译 HTML
+        let spinner = createLoadingSpinner(node);   // 插入转圈动画
 
         // 调用翻译服务
         transModelFn[model](origin).then(text => {
@@ -731,15 +731,15 @@ function translate(node) {
             delayRemoveCache(newOuterHtml);
             outerHTMLSet.delete(oldOuterHtml);
         }).catch(e => {
-            console.log("发生错误：", e);
+            console.error("发生错误：", e)
             clearTimeout(timeout);
-            createFailedTip(node, spinner, e.toString());
+            createFailedTip(node, e.toString(), spinner);
         })
     }).catch(e => {
         // 打印错误、取消超时函数与转圈动画、创建错误提示
         console.error("发生错误：", e)
         clearTimeout(timeout);
-        createFailedTip(node, spinner, e.toString());
+        createFailedTip(node, e.toString());
     });
 }
 
@@ -751,7 +751,7 @@ function createLoadingSpinner(node) {
     return spinner;
 }
 
-function createFailedTip(node, spinner, errorMsg) {
+function createFailedTip(node, errorMsg, spinner) {
     // 取消转圈动画
     spinner.remove();
     // 创建包装元素
@@ -1349,10 +1349,9 @@ function baiduDetectLang(text) {
         const data = new URLSearchParams();
         data.append('query', text);
         const url = 'https://fanyi.baidu.com/langdetect?' + data.toString();
-
         // 发起请求
         GM_xmlhttpRequest({
-            method: 'POST',
+            method: POST,
             url: url,
             onload: resp => {
                 const jsn = JSON.parse(resp.responseText);
