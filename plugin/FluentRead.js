@@ -687,15 +687,15 @@ function translate(node) {
         createFailedTip(node, "网络超时，请稍后重试");
     }, 60000);
 
+    if (isMachineTrans(model)) origin = node.outerHTML; // 如果是谷歌或微软翻译，应翻译 HTML
+    let spinner = createLoadingSpinner(node);   // 插入转圈动画
+
     // 检测语言类型，如果是中文则不翻译
     baiduDetectLang(origin).then(lang => {
         if (lang === langManager.getTo()) return;   // 与目标语言相同，不翻译
-        if (isMachineTrans(model)) origin = node.outerHTML; // 如果是谷歌或微软翻译，应翻译 HTML
-        // 插入转圈动画
-        let spinner = createLoadingSpinner(node);
 
         // 调用翻译服务
-        transModelFn[model](origin, function (text) {
+        transModelFn[model](origin).then(text => {
 
             clearTimeout(timeout);  // 取消超时
 
@@ -730,12 +730,16 @@ function translate(node) {
             // 延迟 newOuterHtml，删除 oldOuterHtml
             delayRemoveCache(newOuterHtml);
             outerHTMLSet.delete(oldOuterHtml);
+        }).catch(e => {
+            console.error(e);
+            clearTimeout(timeout);
+            createFailedTip(node, spinner, e.message);
         })
     }).catch(e => {
         // 打印错误、取消超时函数与转圈动画、创建错误提示
-        console.error(e)
+        console.error("发生错误：", e)
         clearTimeout(timeout);
-        createFailedTip(node, e.message);
+        createFailedTip(node, spinner, e.message);
     });
 }
 
@@ -747,7 +751,9 @@ function createLoadingSpinner(node) {
     return spinner;
 }
 
-function createFailedTip(node, errorMsg) {
+function createFailedTip(node, spinner, errorMsg) {
+    // 取消转圈动画
+    spinner.remove();
     // 创建包装元素
     const wrapper = document.createElement('span');
     wrapper.classList.add('retry-error-wrapper');
@@ -817,68 +823,65 @@ function createSvgIcon(d) {
 // endregion
 
 // region 微软翻译
-function microsoft(origin, callback) {
+function microsoft(origin) {
+    return new Promise((resolve, reject) => {
+        let from = langManager.getFrom() === 'auto' ? '' : langManager.getFrom()
 
-    let from = langManager.getFrom() === 'auto' ? '' : langManager.getFrom()
-
-    // 从 GM 缓存获取 token
-    let jwtToken = tokenManager.getToken(transModel.microsoft);
-    refreshToken(jwtToken).then(jwtString => {
-        // 失败，提前返回
-        if (!jwtString) {
-            callback(null);
-            return;
-        }
-        // 文档：https://learn.microsoft.com/zh-cn/azure/ai-services/translator/language-support
-        GM_xmlhttpRequest({
-            method: 'POST',
-            url: "https://api-edge.cognitive.microsofttranslator.com/translate?from=" + from + "&to=" + langManager.getTo() + "&api-version=3.0&includeSentenceLength=true&textType=html",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + jwtString
-            },
-            data: JSON.stringify([{"Text": origin}]),
-            onload: function (response) {
-                if (response.status !== 200) {
-                    console.log("调用微软翻译失败：", response.status);
-                    callback(null);
-                    return
-                }
-                let resultJson = JSON.parse(response.responseText);
-                callback(resultJson[0].translations[0].text);
-            },
-            onerror: error => {
-                console.log("调用微软翻译失败：", error);
-                callback(null);
-            }
+        // 从 GM 缓存获取 token
+        let jwtToken = tokenManager.getToken(transModel.microsoft);
+        refreshToken(jwtToken).then(jwtString => {
+            // 文档：https://learn.microsoft.com/zh-cn/azure/ai-services/translator/language-support
+            GM_xmlhttpRequest({
+                method: POST,
+                url: "https://api-edge.cognitive.microsofttranslator.com/translate?from=" + from + "&to=" + langManager.getTo() + "&api-version=3.0&includeSentenceLength=true&textType=html",
+                headers: LLMFormat.getStdHeader(jwtString),
+                data: JSON.stringify([{Text: origin}]),
+                onload: resp => {
+                    if (resp.status !== 200) {
+                        reject('微软翻译调用失败：' + resp.status + ' ' + resp.responseText);
+                        return
+                    }
+                    try {
+                        let resultJson = JSON.parse(resp.responseText);
+                        resolve(resultJson[0].translations[0].text);
+                    } catch (e) {
+                        reject(e);
+                    }
+                },
+                onerror: error => reject(error)
+            });
+        }).catch(error => {
+            reject('Error refreshing microsoft token: ' + error);
         });
     });
 }
 
 // 返回有效的令牌或 false
 function refreshToken(token) {
-    const decodedToken = parseJwt(token);
-    const currentTimestamp = Math.floor(Date.now() / 1000); // 当前时间的UNIX时间戳（秒）
-    if (decodedToken && currentTimestamp < decodedToken.exp) {
-        return Promise.resolve(token);
-    }
-
-    // 如果令牌无效或已过期，则尝试获取新令牌
     return new Promise((resolve, reject) => {
+        const decodedToken = parseJwt(token);
+        const currentTimestamp = Math.floor(Date.now() / 1000); // 当前时间的UNIX时间戳（秒）
+        if (decodedToken && currentTimestamp < decodedToken.exp) {
+            resolve(token);
+            return
+        }
+
+        // 如果令牌无效或已过期，则尝试获取新令牌
         GM_xmlhttpRequest({
             method: 'GET',
             url: "https://edge.microsoft.com/translate/auth",
             onload: resp => {
                 if (resp.status === 200) {
                     let token = resp.responseText;
+                    if (!token) {
+                        reject(resp.responseText);
+                        return;
+                    }
                     tokenManager.setToken(transModel.microsoft, token);
                     resolve(token);
-                } else reject('请求 microsoft translation auth 失败: ' + resp.status);
+                } else reject(resp.status, resp.responseText);
             },
-            onerror: function (error) {
-                console.error('请求 microsoft translation auth 发生错误: ', error);
-                reject(error);
-            }
+            onerror: error => reject(error)
         });
     });
 }
@@ -940,25 +943,31 @@ function google(origin, callback) {
 
 // region openai
 
-function openai(origin, callback) {
-    // 获取 token
-    let token = tokenManager.getToken(transModel.openai)
-    let option = optionsManager.getOptionName(transModel.openai)
+function openai(origin) {
+    return new Promise((resolve, reject) => {
+        let token = tokenManager.getToken(transModel.openai)
+        let option = optionsManager.getOptionName(transModel.openai)
 
-    if (!token) return
-
-    GM_xmlhttpRequest({
-        method: 'POST',
-        url: 'https://api.openai.com/v1/chat/completions',
-        headers: LLMFormat.getStdHeader(token),
-        data: LLMFormat.getStdData(origin, option),
-        onload: resp => {
-            let result = JSON.parse(resp.responseText);
-            callback(result.choices[0].message.content);
-        },
-        onerror: error => {
-            console.error('Request failed', error);
+        if (!token) {
+            reject('No token available');
+            return;
         }
+
+        GM_xmlhttpRequest({
+            method: 'POST',
+            url: 'https://api.openai.com/v1/chat/completions',
+            headers: LLMFormat.getStdHeader(token),
+            data: LLMFormat.getStdData(origin, option),
+            onload: resp => {
+                try {
+                    let result = JSON.parse(resp.responseText);
+                    resolve(result.choices[0].message.content);
+                } catch (e) {
+                    reject(e);
+                }
+            },
+            onerror: error => reject(error)
+        });
     });
 }
 
