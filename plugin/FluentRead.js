@@ -837,15 +837,11 @@ function microsoft(origin) {
                 headers: LLMFormat.getStdHeader(jwtString),
                 data: JSON.stringify([{Text: origin}]),
                 onload: resp => {
-                    if (resp.status !== 200) {
-                        reject('微软翻译调用失败：' + resp.status + ' ' + resp.responseText);
-                        return
-                    }
                     try {
                         let resultJson = JSON.parse(resp.responseText);
                         resolve(resultJson[0].translations[0].text);
                     } catch (e) {
-                        reject(e);
+                        reject(e + ' ' + resp.responseText);
                     }
                 },
                 onerror: error => reject(error)
@@ -905,39 +901,35 @@ function parseJwt(token) {
 
 // region 谷歌翻译
 
-function google(origin, callback) {
-    let params = {
-        client: 'gtx', sl: langManager.getFrom(), tl: langManager.getTo(), dt: 't', strip: 1, nonced: 1,
-        'q': encodeURIComponent(origin),
-    };
+function google(origin) {
+    return new Promise((resolve, reject) => {
+        let params = {
+            client: 'gtx', sl: langManager.getFrom(), tl: langManager.getTo(), dt: 't', strip: 1, nonced: 1,
+            'q': encodeURIComponent(origin),
+        };
+        let queryString = Object.keys(params).map(key => {
+            return key + '=' + params[key];
+        }).join('&');
 
-    let queryString = Object.keys(params).map(key => {
-        return key + '=' + params[key];
-    }).join('&');
-    GM_xmlhttpRequest({
-        method: 'GET',
-        url: 'https://translate.googleapis.com/translate_a/single?' + queryString,
-        onload: resp => {
-            // 如果包含<title>Error 400 (Bad Request)则失败
-            if (resp.responseText.includes('Error 400 (Bad Request)')) {
-                console.log('Google翻译失败：', resp.responseText);
-                callback(null);
-                return;
-            }
-            let result = JSON.parse(resp.responseText);
-            let sentence = ''
-            result[0].forEach(e => sentence += e[0]);
-
-            // 正则标准化 HTML
-            sentence = htmlManager.standardizeHtml(sentence)
-
-            callback(sentence);
-        },
-        onerror: error => {
-            console.error('Request failed', error);
-        }
+        GM_xmlhttpRequest({
+            method: 'GET',
+            url: 'https://translate.googleapis.com/translate_a/single?' + queryString,
+            onload: resp => {
+                try {
+                    let result = JSON.parse(resp.responseText);
+                    let sentence = ''
+                    result[0].forEach(e => sentence += e[0]);
+                    sentence = htmlManager.standardizeHtml(sentence)    // 正则标准化 HTML
+                    resolve(sentence);
+                } catch (e) {
+                    reject(e + ' ' + resp.responseText);
+                }
+            },
+            onerror: error => reject(error)
+        });
     });
 }
+
 
 // endregion
 
@@ -963,7 +955,7 @@ function openai(origin) {
                     let result = JSON.parse(resp.responseText);
                     resolve(result.choices[0].message.content);
                 } catch (e) {
-                    reject(e);
+                    reject(e + ' ' + resp.responseText);
                 }
             },
             onerror: error => reject(error)
@@ -974,24 +966,32 @@ function openai(origin) {
 // endregion
 
 // region moonshot
-function moonshot(origin, callback) {
-    let token = tokenManager.getToken(transModel.moonshot)
-    let option = optionsManager.getOptionName(transModel.moonshot)
-
-    if (!token) return
-
-    GM_xmlhttpRequest({
-        method: 'POST',
-        url: 'https://api.moonshot.cn/v1/chat/completions',
-        headers: LLMFormat.getStdHeader(token),
-        data: JSON.stringify(LLMFormat.getStdData(origin, option)),
-        onload: resp => {
-            let result = JSON.parse(resp.responseText);
-            callback(result.choices[0].message.content);
-        },
-        onerror: error => {
-            console.error('Request failed', error);
+function moonshot(origin) {
+    return new Promise((resolve, reject) => {
+        let token = tokenManager.getToken(transModel.moonshot);
+        let option = optionsManager.getOptionName(transModel.moonshot);
+        if (!token) {
+            reject('No token available');
+            return;
         }
+
+        GM_xmlhttpRequest({
+            method: POST,
+            url: 'https://api.moonshot.cn/v1/chat/completions',
+            headers: LLMFormat.getStdHeader(token),
+            data: JSON.stringify(LLMFormat.getStdData(origin, option)),
+            onload: resp => {
+                try {
+                    let result = JSON.parse(resp.responseText);
+                    resolve(result.choices[0].message.content);
+                    console.log(result)
+                } catch (e) {
+                    console.log(e + ' ' + resp.responseText);
+                    reject(e + ' ' + resp.responseText);
+                }
+            },
+            onerror: error => reject(error)
+        });
     });
 }
 
@@ -1000,34 +1000,37 @@ function moonshot(origin, callback) {
 
 // region 文心一言
 
-function yiyan(origin, callback) {
-    if (origin.trim().length === 0) return;
-    getYiyanToken().then(token => {
-        // option
-        let option = optionsManager.getOptionName(transModel.yiyan);
-        GM_xmlhttpRequest({
-            method: "POST",
+function yiyan(origin) {
+    return new Promise((resolve, reject) => {
+        getYiyanToken().then(token => {
+            let option = optionsManager.getOptionName(transModel.yiyan);
+
             // ERNIE-Bot 4.0 模型，模型定价页面：https://console.bce.baidu.com/qianfan/chargemanage/list
             // api 文档中心：https://cloud.baidu.com/doc/WENXINWORKSHOP/s/clntwmv7t
-            url: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/' + option + '?access_token=' + token,
-            headers: {"Content-Type": "application/json"},
-            system: chatMgs.getSystemMsg(),
-            data: JSON.stringify({
-                'temperature': 0.3, // 随机度
-                'disable_search': true, // 禁用搜索
-                'messages': [{"role": "user", "content": chatMgs.getUserMsg(origin)}],
-            }),
-            onload: resp => {
-                let res = JSON.parse(resp.responseText);
-                callback(res.result);
-            },
-            onerror: error => {
-                console.log("#>> onerror", error);
-                callback(null);
-            }
-        });
-    })
+            GM_xmlhttpRequest({
+                method: POST,
+                url: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/' + option + '?access_token=' + token,
+                headers: {"Content-Type": "application/json"},
+                system: chatMgs.getSystemMsg(),
+                data: JSON.stringify({
+                    'temperature': 0.3, // 随机度
+                    'disable_search': true, // 禁用搜索
+                    'messages': [{"role": "user", "content": chatMgs.getUserMsg(origin)}],
+                }),
+                onload: resp => {
+                    try {
+                        let res = JSON.parse(resp.responseText);
+                        resolve(res.result);
+                    } catch (e) {
+                        reject(e + ' ' + resp.responseText);
+                    }
+                },
+                onerror: error => reject(error)
+            });
+        }).catch(error => reject('Error getting Yiyan token: ' + error));
+    });
 }
+
 
 // req: API Key、Secret Key
 // resp: access_token，有效期默认 30 天
@@ -1036,32 +1039,33 @@ function getYiyanToken() {
         // 1、尝试从 GM 中获取 token，并检测是否有效
         let v = tokenManager.getToken(transModel.yiyan)
         if (v && v.token && v.ak && v.sk && v.expiration > Date.now()) {
-            resolve(v.token); // 直接返回有效的 token
+            resolve(v.token); // 返回有效的 token
             return
         }
         // 2、发起网络请求
         GM_xmlhttpRequest({
-            method: "POST",
+            method: POST,
             url: 'https://aip.baidubce.com/oauth/2.0/token',
             data: 'grant_type=client_credentials&client_id=' + v.ak + '&client_secret=' + v.sk,
             onload: resp => {
-                let res = JSON.parse(resp.responseText);
-                if (res.access_token) {
-                    // 获取有效时间范围，单位秒
-                    let expiration = new Date().getTime() + res.expires_in * 1000;
-                    tokenManager.setToken(transModel.yiyan, {
-                        ak: v.ak,
-                        sk: v.sk,
-                        token: res.access_token,
-                        expiration: expiration
-                    });
-                    resolve(res.access_token);
-                } else reject(new Error(res.error_description));
+                try {
+                    let res = JSON.parse(resp.responseText);
+                    if (res.access_token) {
+                        // 获取有效时间范围，有效期30天（单位秒），需 x1000 转换为毫秒
+                        let expiration = new Date().getTime() + res.expires_in * 1000;
+                        tokenManager.setToken(transModel.yiyan, {
+                            ak: v.ak,
+                            sk: v.sk,
+                            token: res.access_token,
+                            expiration: expiration
+                        });
+                        resolve(res.access_token);
+                    } else reject(new Error(res.error_description));
+                } catch (e) {
+                    reject(e);
+                }
             },
-            onerror: error => {
-                console.log('Failed to refresh access token:', error);
-                reject(error);
-            }
+            onerror: error => reject(error)
         });
     })
 }
@@ -1070,77 +1074,76 @@ function getYiyanToken() {
 
 // region 通义千问
 // 文档：https://help.aliyun.com/zh/dashscope/developer-reference/tongyi-thousand-questions-metering-and-billing
-function tongyi(origin, callback) {
-    let token = tokenManager.getToken(transModel.tongyi)
-    let option = optionsManager.getOptionName(transModel.tongyi)
-
-    if (!token) return
-
-    // 发起请求
-    GM_xmlhttpRequest({
-        method: "POST",
-        url: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
-        headers: LLMFormat.getStdHeader(token),
-        data: JSON.stringify({
-            "model": option,
-            "input": {
-                "messages": [
-                    {"role": "system", "content": chatMgs.getSystemMsg()},
-                    {"role": "user", "content": chatMgs.getUserMsg(origin)}
-                ]
-            },
-            "parameters": {}
-        }),
-        onload: resp => {
-            let res = JSON.parse(resp.responseText);
-            if (resp.status === 200) {
-                callback(res.output.text);
-            } else {
-                console.log("调用通义千问失败：", resp);
-                callback(null);
-            }
-
-        },
-        onerror: error => {
-            console.error('Request failed:', error);
+function tongyi(origin) {
+    return new Promise((resolve, reject) => {
+        let token = tokenManager.getToken(transModel.tongyi);
+        let option = optionsManager.getOptionName(transModel.tongyi);
+        if (!token) {
+            reject('No token available');
+            return;
         }
+
+        // 发起请求
+        GM_xmlhttpRequest({
+            method: POST,
+            url: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
+            headers: LLMFormat.getStdHeader(token),
+            data: JSON.stringify({
+                "model": option,
+                "input": {
+                    "messages": [
+                        {"role": "system", "content": chatMgs.getSystemMsg()},
+                        {"role": "user", "content": chatMgs.getUserMsg(origin)}
+                    ]
+                },
+                "parameters": {}
+            }),
+            onload: resp => {
+                try {
+                    let res = JSON.parse(resp.responseText);
+                    resolve(res.output.text);
+                } catch (e) {
+                    reject(e + ' ' + resp.responseText);
+                }
+            },
+            onerror: error => reject(error)
+        });
     });
 }
+
 
 // endregion
 
 // region 智谱
-
-function zhipu(origin, callback) {
-    // 获取 tokenObject
-    let tokenObject = tokenManager.getToken(transModel.zhipu);
-    let token = tokenObject.token;
-    if (!token || tokenObject.expiration >= Date.now()) {
-        token = generateToken(tokenObject.apikey);
-    }
-
-    let option = optionsManager.getOptionName(transModel.zhipu)
-
-    // 发起请求
-    GM_xmlhttpRequest({
-        method: "POST",
-        url: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
-        headers: LLMFormat.getStdHeader(token),
-        data: LLMFormat.getStdData(origin, option),
-        onload: resp => {
-            let res = JSON.parse(resp.responseText);
-            if (resp.status === 200) {
-                callback(res.choices[0].message.content);
-            } else {
-                console.log("调用智谱失败：", resp);
-                callback(null);
-            }
-        },
-        onerror: error => {
-            console.error('Error:', error);
+function zhipu(origin) {
+    return new Promise((resolve, reject) => {
+        let tokenObject = tokenManager.getToken(transModel.zhipu);  // 获取 tokenObject
+        let token = tokenObject.token;
+        if (!token || tokenObject.expiration >= Date.now()) {
+            token = generateToken(tokenObject.apikey);
         }
+
+        let option = optionsManager.getOptionName(transModel.zhipu);
+
+        // 发起请求
+        GM_xmlhttpRequest({
+            method: POST,
+            url: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+            headers: LLMFormat.getStdHeader(token),
+            data: LLMFormat.getStdData(origin, option),
+            onload: resp => {
+                try {
+                    let res = JSON.parse(resp.responseText);
+                    resolve(res.choices[0].message.content);
+                } catch (e) {
+                    reject(e + ' ' + resp.responseText);
+                }
+            },
+            onerror: error => reject(error)
+        });
     });
 }
+
 
 function generateToken(apiKey) {
 
