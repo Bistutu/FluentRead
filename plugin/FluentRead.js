@@ -121,14 +121,14 @@ const transModel = {    // 翻译模型枚举
 
 // 翻译模型名称
 const transModelName = {
-    [transModel.openai]: 'chatGPT',
-    [transModel.yiyan]: '文心一言',
-    [transModel.tongyi]: '通义千问',
-    [transModel.zhipu]: '智谱AI',
-    [transModel.moonshot]: 'moonshot',
-
-    [transModel.google]: '谷歌翻译',
     [transModel.microsoft]: '微软翻译（推荐）',
+    [transModel.google]: '谷歌翻译',
+
+    [transModel.openai]: 'chatGPT AI',
+    [transModel.tongyi]: '通义千问AI',
+    [transModel.zhipu]: '智谱清言AI',
+    [transModel.yiyan]: '文心一言AI',
+    [transModel.moonshot]: 'moonshot AI',
 }
 
 const transType = {
@@ -731,6 +731,7 @@ function translate(node) {
             delayRemoveCache(newOuterHtml);
             outerHTMLSet.delete(oldOuterHtml);
         }).catch(e => {
+            console.log("发生错误：", e);
             clearTimeout(timeout);
             createFailedTip(node, spinner, e.toString());
         })
