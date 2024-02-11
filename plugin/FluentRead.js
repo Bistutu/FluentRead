@@ -127,8 +127,8 @@ const transModelName = {
     [transModel.zhipu]: '智谱AI',
     [transModel.moonshot]: 'moonshot',
 
-    [transModel.google]: '谷歌机器翻译',
-    [transModel.microsoft]: '微软机器翻译',
+    [transModel.google]: '谷歌翻译',
+    [transModel.microsoft]: '微软翻译（推荐）',
 }
 
 const transType = {
@@ -173,6 +173,24 @@ const optionsManager = {
     // 获取 option value
     getOptionName(model) {
         return this[model][this.getOption(model)];
+    }
+}
+
+let LLMFormat = {
+    getStdHeader(token) {
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+        }
+    },
+    getStdData(origin, option) {
+        return JSON.stringify({
+            'model': option,
+            "temperature": 0.3,
+            'messages': [
+                {'role': 'system', 'content': chatMgs.getSystemMsg()},
+                {'role': 'user', 'content': chatMgs.getUserMsg(origin)}]
+        })
     }
 }
 
@@ -645,6 +663,514 @@ function detectChildMeta(parent) {
 
 // endregion
 
+
+// region 通用翻译处理模块
+const chatMgs = {
+    system: `You are a professional, authentic translation engine, you, only returns translations.`,
+    user: `Please translate them into {{to}}, please do not explain my original text:
+     
+    {{origin}}`,
+    getSystemMsg() {
+        return this.system;
+    },
+    getUserMsg(origin) {
+        return this.user.replace("{{origin}}", origin).replace("{{to}}", langManager.getTo());
+    }
+}
+
+function translate(node) {
+
+    let model = util.getValue('model')
+    let origin = node.innerText;
+
+    let timeout = setTimeout(() => {
+        createFailedTip(node, "网络超时，请稍后重试");
+    }, 60000);
+
+    // 检测语言类型，如果是中文则不翻译
+    baiduDetectLang(origin).then(lang => {
+        if (lang === langManager.getTo()) return;   // 与目标语言相同，不翻译
+        if (isMachineTrans(model)) origin = node.outerHTML; // 如果是谷歌或微软翻译，应翻译 HTML
+        // 插入转圈动画
+        let spinner = createLoadingSpinner(node);
+
+        // 调用翻译服务
+        transModelFn[model](origin, function (text) {
+
+            clearTimeout(timeout);  // 取消超时
+
+            spinner.remove()
+            console.log("翻译前的句子：", origin);
+            console.log("翻译后的句子：", text);
+
+            if (!text || origin === text) return;
+
+            // 保存旧的 outerHTML
+            let oldOuterHtml = node.outerHTML
+            let newOuterHtml = text
+
+
+            if (isMachineTrans(model)) {    // 1、机器翻译
+                if (!node.parentNode) return;
+
+                // todo 1、特殊情况需使用高阶函数，2、暂未考虑特殊情况。2024-2-10
+                if (url.host === exceptionMap.youtube) {    // youtube 适配
+                    let element = document.createElement('span');
+                    element.innerHTML = text;
+                    node.innerText = element.innerText;
+                    return;
+                }
+                node.outerHTML = text;
+            } else {    // 2、LLM 翻译
+                node.innerText = text;
+                newOuterHtml = node.outerHTML;
+            }
+
+            sessionManager.setTransCache(oldOuterHtml, newOuterHtml);   // 设置缓存
+            // 延迟 newOuterHtml，删除 oldOuterHtml
+            delayRemoveCache(newOuterHtml);
+            outerHTMLSet.delete(oldOuterHtml);
+        })
+    }).catch(e => {
+        // 打印错误、取消超时函数与转圈动画、创建错误提示
+        console.error(e)
+        clearTimeout(timeout);
+        createFailedTip(node, e.message);
+    });
+}
+
+// 创建转圈动画并插入
+function createLoadingSpinner(node) {
+    const spinner = document.createElement('span');
+    spinner.className = 'loading-spinner-fluentread';
+    node.appendChild(spinner);
+    return spinner;
+}
+
+function createFailedTip(node, errorMsg) {
+    // 创建包装元素
+    const wrapper = document.createElement('span');
+    wrapper.classList.add('retry-error-wrapper');
+
+    // 创建重试按钮
+    const retryButton = document.createElement('span');
+    retryButton.innerText = '重试';
+    retryButton.classList.add('retry-error-button');
+    retryButton.addEventListener('click', function () {
+        // 移除错误提示元素，重新翻译
+        wrapper.remove();
+        translate(node);
+    });
+
+    // 创建错误提示元素
+    const errorTip = document.createElement('span');
+    errorTip.innerText = '错误原因';
+    errorTip.classList.add('retry-error-tip');
+    errorTip.addEventListener('click', function () {
+        window.alert(errorMsg || '未知错误');
+    });
+
+    // 将 SVG 图标和文本添加到包装元素
+    wrapper.appendChild(createRetrySvgIcon());
+    wrapper.appendChild(retryButton);
+    wrapper.appendChild(createWarnSvgIcon());
+    wrapper.appendChild(errorTip);
+
+    node.appendChild(wrapper);
+}
+
+// 重试 svg
+function createRetrySvgIcon() {
+    return createSvgIcon(`M35.9387 5.48805C35.9166 4.60421 35.2434 4.04719 34.279 4.0675C33.3131 4.0878 32.8154 4.67712 32.6567 5.56132C32.5745 6.01985 32.601 6.49957 32.5962 6.96997C32.5881 7.77251 32.594 8.5752 32.594 9.3779C32.4685 9.43478 32.343 9.4917 32.2175 9.54866C31.7961 9.14366 31.3817 8.73102 30.9521 8.33488C27.0799 4.76502 22.4856 3.43605 17.3405 4.22591C10.0761 5.34107 4.69388 11.3891 4.06231 18.939C3.46983 26.0213 8.03881 32.8643 14.897 35.1663C21.8348 37.495 29.5543 34.7845 33.4563 28.6429C33.7074 28.2475 33.9685 27.8417 34.1218 27.4045C34.4194 26.5555 34.2699 25.765 33.4312 25.3113C32.6231 24.8743 31.8573 25.0498 31.2835 25.7915C30.9966 26.1625 30.7785 26.5856 30.5106 26.9724C28.0914 30.4658 24.7682 32.3693 20.5158 32.5766C14.8218 32.8541 9.60215 29.1608 7.94272 23.717C6.22884 18.0946 8.59939 12.0366 13.6698 9.08126C18.5986 6.20837 24.9262 7.03281 28.9148 11.0837C29.2069 11.3803 29.4036 11.7708 29.8772 12.4519C28.32 12.4519 27.1212 12.3885 25.9323 12.4704C24.8345 12.5461 24.253 13.1995 24.262 14.1166C24.2708 15.0096 24.8931 15.7485 25.9495 15.7745C28.7068 15.8424 31.4671 15.8177 34.2259 15.7884C35.1348 15.7787 35.8872 15.2584 35.9148 14.3603C36.0054 11.4048 36.0127 8.44397 35.9387 5.48805Z`)
+}
+
+// 警告 svg
+function createWarnSvgIcon() {
+    return createSvgIcon(`M20.5607 2.5191C10.735 2.05516 2.46528 10.1045 2.50011 20.0984C2.54469 32.8837 15.9794 41.3025 27.521 35.772C28.0597 35.5138 28.6042 35.2357 29.0745 34.8742C29.9064 34.2347 30.0797 33.3404 29.5712 32.5989C29.0382 31.8217 28.2936 31.6838 27.4596 32.0227C27.2265 32.1174 27.0066 32.2437 26.7865 32.3701C26.6008 32.4767 26.415 32.5833 26.2211 32.6712C20.8005 35.1282 15.6165 34.6504 11.0342 30.8857C6.38506 27.0662 4.83815 21.9885 6.36608 16.1605C8.23236 9.04216 15.6457 4.59129 22.7912 6.13629C30.3201 7.76418 35.1917 14.6886 33.9006 22.1467C33.6763 23.4426 33.1697 24.693 32.665 25.9388C32.4936 26.3618 32.3223 26.7846 32.1625 27.2081C31.7321 28.3488 31.8755 29.1499 32.727 29.6338C33.5625 30.1085 34.3839 29.8271 35.0848 28.8121C35.2031 28.6407 35.3005 28.4544 35.3977 28.2685C35.4242 28.2179 35.4507 28.1672 35.4776 28.1169C36.5263 26.154 37.166 24.0544 37.3992 21.8528C38.4715 11.7296 30.8594 3.00541 20.5607 2.5191ZM22.2324 19.4482C22.6221 17.6294 21.6934 16.7853 19.8682 17.1885C19.4795 17.2744 19.0887 17.3789 18.7223 17.531C17.5055 18.036 17.1067 18.9307 17.8422 20.0563C18.3665 20.8586 18.2472 21.5161 18.0255 22.2965L17.9039 22.7239C17.5079 24.1148 17.1115 25.5072 16.7935 26.9165C16.4841 28.2873 17.2241 29.1723 18.6198 29.1593C18.6749 29.1502 18.7366 29.1408 18.8028 29.1307C18.9623 29.1063 19.1482 29.078 19.332 29.0394C21.5543 28.5732 21.9094 27.8227 20.9844 25.759C20.8192 25.3904 20.8406 24.873 20.9389 24.4633C21.1123 23.7404 21.3092 23.0227 21.5061 22.3052C21.7664 21.3567 22.0267 20.4083 22.2324 19.4482ZM21.2918 10.7674C22.3383 10.7322 23.3464 11.7297 23.3245 12.7787C23.3035 13.7817 22.4311 14.6541 21.4139 14.6892C20.3685 14.7252 19.5018 13.9485 19.4202 12.9025C19.3341 11.798 20.2055 10.8041 21.2918 10.7674Z`)
+}
+
+// 根据 d 创建 svg 元素
+function createSvgIcon(d) {
+    // 创建SVG元素
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("viewBox", "0 0 40 40");
+    svg.setAttribute("height", "40");
+    svg.setAttribute("width", "40");
+    svg.style.alignItems = 'center';
+    svg.style.justifyContent = 'center';  // 可选，如果也需要水平居中
+    svg.style.display = "inline";
+    svg.style.width = "1em";
+    svg.style.height = "1em";
+    svg.style.marginLeft = '1em';
+    svg.style.pointerEvents = "none";
+
+    // 创建path元素并设置属性
+    const path = document.createElementNS(svgNS, "path");
+    path.setAttribute("fill", "#428ADF");
+    path.setAttribute("d", d);
+    svg.appendChild(path);
+    return svg;
+}
+
+// endregion
+
+// region 微软翻译
+function microsoft(origin, callback) {
+
+    let from = langManager.getFrom() === 'auto' ? '' : langManager.getFrom()
+
+    // 从 GM 缓存获取 token
+    let jwtToken = tokenManager.getToken(transModel.microsoft);
+    refreshToken(jwtToken).then(jwtString => {
+        // 失败，提前返回
+        if (!jwtString) {
+            callback(null);
+            return;
+        }
+        // 文档：https://learn.microsoft.com/zh-cn/azure/ai-services/translator/language-support
+        GM_xmlhttpRequest({
+            method: 'POST',
+            url: "https://api-edge.cognitive.microsofttranslator.com/translate?from=" + from + "&to=" + langManager.getTo() + "&api-version=3.0&includeSentenceLength=true&textType=html",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + jwtString
+            },
+            data: JSON.stringify([{"Text": origin}]),
+            onload: function (response) {
+                if (response.status !== 200) {
+                    console.log("调用微软翻译失败：", response.status);
+                    callback(null);
+                    return
+                }
+                let resultJson = JSON.parse(response.responseText);
+                callback(resultJson[0].translations[0].text);
+            },
+            onerror: error => {
+                console.log("调用微软翻译失败：", error);
+                callback(null);
+            }
+        });
+    });
+}
+
+// 返回有效的令牌或 false
+function refreshToken(token) {
+    const decodedToken = parseJwt(token);
+    const currentTimestamp = Math.floor(Date.now() / 1000); // 当前时间的UNIX时间戳（秒）
+    if (decodedToken && currentTimestamp < decodedToken.exp) {
+        return Promise.resolve(token);
+    }
+
+    // 如果令牌无效或已过期，则尝试获取新令牌
+    return new Promise((resolve, reject) => {
+        GM_xmlhttpRequest({
+            method: 'GET',
+            url: "https://edge.microsoft.com/translate/auth",
+            onload: resp => {
+                if (resp.status === 200) {
+                    let token = resp.responseText;
+                    tokenManager.setToken(transModel.microsoft, token);
+                    resolve(token);
+                } else reject('请求 microsoft translation auth 失败: ' + resp.status);
+            },
+            onerror: function (error) {
+                console.error('请求 microsoft translation auth 发生错误: ', error);
+                reject(error);
+            }
+        });
+    });
+}
+
+
+// 解析 jwt，返回解析后对象
+function parseJwt(token) {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+    } catch (e) {
+        return null;
+    }
+}
+
+// endregion
+
+// region 谷歌翻译
+
+function google(origin, callback) {
+    let params = {
+        client: 'gtx', sl: langManager.getFrom(), tl: langManager.getTo(), dt: 't', strip: 1, nonced: 1,
+        'q': encodeURIComponent(origin),
+    };
+
+    let queryString = Object.keys(params).map(key => {
+        return key + '=' + params[key];
+    }).join('&');
+    GM_xmlhttpRequest({
+        method: 'GET',
+        url: 'https://translate.googleapis.com/translate_a/single?' + queryString,
+        onload: resp => {
+            // 如果包含<title>Error 400 (Bad Request)则失败
+            if (resp.responseText.includes('Error 400 (Bad Request)')) {
+                console.log('Google翻译失败：', resp.responseText);
+                callback(null);
+                return;
+            }
+            let result = JSON.parse(resp.responseText);
+            let sentence = ''
+            result[0].forEach(e => sentence += e[0]);
+
+            // 正则标准化 HTML
+            sentence = htmlManager.standardizeHtml(sentence)
+
+            callback(sentence);
+        },
+        onerror: error => {
+            console.error('Request failed', error);
+        }
+    });
+}
+
+// endregion
+
+// region openai
+
+function openai(origin, callback) {
+    // 获取 token
+    let token = tokenManager.getToken(transModel.openai)
+    let option = optionsManager.getOptionName(transModel.openai)
+
+    if (!token) return
+
+    GM_xmlhttpRequest({
+        method: 'POST',
+        url: 'https://api.openai.com/v1/chat/completions',
+        headers: LLMFormat.getStdHeader(token),
+        data: LLMFormat.getStdData(origin, option),
+        onload: resp => {
+            let result = JSON.parse(resp.responseText);
+            callback(result.choices[0].message.content);
+        },
+        onerror: error => {
+            console.error('Request failed', error);
+        }
+    });
+}
+
+// endregion
+
+// region moonshot
+function moonshot(origin, callback) {
+    let token = tokenManager.getToken(transModel.moonshot)
+    let option = optionsManager.getOptionName(transModel.moonshot)
+
+    if (!token) return
+
+    GM_xmlhttpRequest({
+        method: 'POST',
+        url: 'https://api.moonshot.cn/v1/chat/completions',
+        headers: LLMFormat.getStdHeader(token),
+        data: JSON.stringify(LLMFormat.getStdData(origin, option)),
+        onload: resp => {
+            let result = JSON.parse(resp.responseText);
+            callback(result.choices[0].message.content);
+        },
+        onerror: error => {
+            console.error('Request failed', error);
+        }
+    });
+}
+
+
+// endregion
+
+// region 文心一言
+
+function yiyan(origin, callback) {
+    if (origin.trim().length === 0) return;
+    getYiyanToken().then(token => {
+        // option
+        let option = optionsManager.getOptionName(transModel.yiyan);
+        GM_xmlhttpRequest({
+            method: "POST",
+            // ERNIE-Bot 4.0 模型，模型定价页面：https://console.bce.baidu.com/qianfan/chargemanage/list
+            // api 文档中心：https://cloud.baidu.com/doc/WENXINWORKSHOP/s/clntwmv7t
+            url: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/' + option + '?access_token=' + token,
+            headers: {"Content-Type": "application/json"},
+            system: chatMgs.getSystemMsg(),
+            data: JSON.stringify({
+                'temperature': 0.3, // 随机度
+                'disable_search': true, // 禁用搜索
+                'messages': [{"role": "user", "content": chatMgs.getUserMsg(origin)}],
+            }),
+            onload: resp => {
+                let res = JSON.parse(resp.responseText);
+                callback(res.result);
+            },
+            onerror: error => {
+                console.log("#>> onerror", error);
+                callback(null);
+            }
+        });
+    })
+}
+
+// req: API Key、Secret Key
+// resp: access_token，有效期默认 30 天
+function getYiyanToken() {
+    return new Promise((resolve, reject) => {
+        // 1、尝试从 GM 中获取 token，并检测是否有效
+        let v = tokenManager.getToken(transModel.yiyan)
+        if (v && v.token && v.ak && v.sk && v.expiration > Date.now()) {
+            resolve(v.token); // 直接返回有效的 token
+            return
+        }
+        // 2、发起网络请求
+        GM_xmlhttpRequest({
+            method: "POST",
+            url: 'https://aip.baidubce.com/oauth/2.0/token',
+            data: 'grant_type=client_credentials&client_id=' + v.ak + '&client_secret=' + v.sk,
+            onload: resp => {
+                let res = JSON.parse(resp.responseText);
+                if (res.access_token) {
+                    // 获取有效时间范围，单位秒
+                    let expiration = new Date().getTime() + res.expires_in * 1000;
+                    tokenManager.setToken(transModel.yiyan, {
+                        ak: v.ak,
+                        sk: v.sk,
+                        token: res.access_token,
+                        expiration: expiration
+                    });
+                    resolve(res.access_token);
+                } else reject(new Error(res.error_description));
+            },
+            onerror: error => {
+                console.log('Failed to refresh access token:', error);
+                reject(error);
+            }
+        });
+    })
+}
+
+// endregion
+
+// region 通义千问
+// 文档：https://help.aliyun.com/zh/dashscope/developer-reference/tongyi-thousand-questions-metering-and-billing
+function tongyi(origin, callback) {
+    let token = tokenManager.getToken(transModel.tongyi)
+    let option = optionsManager.getOptionName(transModel.tongyi)
+
+    if (!token) return
+
+    // 发起请求
+    GM_xmlhttpRequest({
+        method: "POST",
+        url: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
+        headers: LLMFormat.getStdHeader(token),
+        data: JSON.stringify({
+            "model": option,
+            "input": {
+                "messages": [
+                    {"role": "system", "content": chatMgs.getSystemMsg()},
+                    {"role": "user", "content": chatMgs.getUserMsg(origin)}
+                ]
+            },
+            "parameters": {}
+        }),
+        onload: resp => {
+            let res = JSON.parse(resp.responseText);
+            if (resp.status === 200) {
+                callback(res.output.text);
+            } else {
+                console.log("调用通义千问失败：", resp);
+                callback(null);
+            }
+
+        },
+        onerror: error => {
+            console.error('Request failed:', error);
+        }
+    });
+}
+
+// endregion
+
+// region 智谱
+
+function zhipu(origin, callback) {
+    // 获取 tokenObject
+    let tokenObject = tokenManager.getToken(transModel.zhipu);
+    let token = tokenObject.token;
+    if (!token || tokenObject.expiration >= Date.now()) {
+        token = generateToken(tokenObject.apikey);
+    }
+
+    let option = optionsManager.getOptionName(transModel.zhipu)
+
+    // 发起请求
+    GM_xmlhttpRequest({
+        method: "POST",
+        url: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+        headers: LLMFormat.getStdHeader(token),
+        data: LLMFormat.getStdData(origin, option),
+        onload: resp => {
+            let res = JSON.parse(resp.responseText);
+            if (resp.status === 200) {
+                callback(res.choices[0].message.content);
+            } else {
+                console.log("调用智谱失败：", resp);
+                callback(null);
+            }
+        },
+        onerror: error => {
+            console.error('Error:', error);
+        }
+    });
+}
+
+function generateToken(apiKey) {
+
+    if (!apiKey || !apiKey.includes('.')) {
+        console.log("API Key 格式错误：", apiKey)
+        return;
+    }
+    let duration = 3600000 * 24; // 生成的 token 默认24小时后过期
+
+    const [key, secret] = apiKey.split('.');
+    let token = generateJWT(secret, {alg: "HS256", sign_type: "SIGN", typ: "JWT"}, {
+        api_key: key,
+        exp: Math.floor(Date.now() / 1000) + (duration / 1000),
+        timestamp: Math.floor(Date.now() / 1000)
+    });
+    if (!token) return  // 失败则提前返回
+    // 存储
+    tokenManager.setToken(transModel.zhipu, {apikey: apiKey, token: token, expiration: Date.now() + duration});
+
+    return token;
+}
+
+// 生成JWT（JSON Web Token）
+function generateJWT(secret, header, payload) {
+    // 对header和payload部分进行UTF-8编码，然后转换为Base64URL格式
+    const encodedHeader = base64UrlSafe(btoa(JSON.stringify(header)));
+    const encodedPayload = base64UrlSafe(btoa(JSON.stringify(payload)));
+    // 生成 jwt 签名
+    let hmacsha256 = base64UrlSafe(CryptoJS.HmacSHA256(encodedHeader + "." + encodedPayload, secret).toString(CryptoJS.enc.Base64))
+    return `${encodedHeader}.${encodedPayload}.${hmacsha256}`;
+}
+
+// 将Base64字符串转换为Base64URL格式的函数
+function base64UrlSafe(base64String) {
+    return base64String.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// endregion
+
 // region read
 // read：异步返回 callback，表示是否需要拉取数据
 function checkRun(callback) {
@@ -967,557 +1493,6 @@ function initApplication() {
     `
     );
 }
-
-// endregion
-
-// region 通用翻译处理模块
-const chatMgs = {
-    system: `You are a professional, authentic translation engine, you, only returns translations.`,
-    user: `Please translate them into {{to}}, please do not explain my original text:
-     
-    {{origin}}`,
-    getSystemMsg() {
-        return this.system;
-    },
-    getUserMsg(origin) {
-        return this.user.replace("{{origin}}", origin).replace("{{to}}", langManager.getTo());
-    }
-}
-
-function translate(node) {
-
-    let model = util.getValue('model')
-    let origin = node.innerText;
-
-    let timeout = setTimeout(() => {
-        createFailedTip(node, "网络超时，请稍后重试");
-    }, 60000);
-
-    // 检测语言类型，如果是中文则不翻译
-    baiduDetectLang(origin).then(lang => {
-        if (lang === langManager.getTo()) return;   // 与目标语言相同，不翻译
-        if (isMachineTrans(model)) origin = node.outerHTML; // 如果是谷歌或微软翻译，应翻译 HTML
-        // 插入转圈动画
-        let spinner = createLoadingSpinner(node);
-
-        // 调用翻译服务
-        transModelFn[model](origin, function (text) {
-
-            clearTimeout(timeout);  // 取消超时
-
-            spinner.remove()
-            // console.log("翻译前的句子：", origin);
-            // console.log("翻译后的句子：", text);
-
-            if (!text || origin === text) return;
-
-            // 保存旧的 outerHTML
-            let oldOuterHtml = node.outerHTML
-            let newOuterHtml = text
-
-
-            if (isMachineTrans(model)) {    // 1、机器翻译
-                if (!node.parentNode) return;
-
-                // todo 1、特殊情况需使用高阶函数，2、暂未考虑特殊情况。2024-2-10
-                if (url.host === exceptionMap.youtube) {    // youtube 适配
-                    let element = document.createElement('span');
-                    element.innerHTML = text;
-                    node.innerText = element.innerText;
-                    return;
-                }
-                node.outerHTML = text;
-            } else {    // 2、LLM 翻译
-                node.innerText = text;
-                newOuterHtml = node.outerHTML;
-            }
-
-            sessionManager.setTransCache(oldOuterHtml, newOuterHtml);   // 设置缓存
-            // 延迟 newOuterHtml，删除 oldOuterHtml
-            delayRemoveCache(newOuterHtml);
-            outerHTMLSet.delete(oldOuterHtml);
-        })
-    }).catch(e => {
-        // 打印错误、取消超时函数与转圈动画、创建错误提示
-        console.error(e)
-        clearTimeout(timeout);
-        createFailedTip(node, e.message);
-    });
-}
-
-// 创建转圈动画并插入
-function createLoadingSpinner(node) {
-    const spinner = document.createElement('span');
-    spinner.className = 'loading-spinner-fluentread';
-    node.appendChild(spinner);
-    return spinner;
-}
-
-function createFailedTip(node, errorMsg) {
-    // 创建包装元素
-    const wrapper = document.createElement('span');
-    wrapper.classList.add('retry-error-wrapper');
-
-    // 创建重试按钮
-    const retryButton = document.createElement('span');
-    retryButton.innerText = '重试';
-    retryButton.classList.add('retry-error-button');
-    retryButton.addEventListener('click', function () {
-        // 移除错误提示元素，重新翻译
-        wrapper.remove();
-        translate(node);
-    });
-
-    // 创建错误提示元素
-    const errorTip = document.createElement('span');
-    errorTip.innerText = '错误原因';
-    errorTip.classList.add('retry-error-tip');
-    errorTip.addEventListener('click', function () {
-        window.alert(errorMsg || '未知错误');
-    });
-
-    // 将 SVG 图标和文本添加到包装元素
-    wrapper.appendChild(createRetrySvgIcon());
-    wrapper.appendChild(retryButton);
-    wrapper.appendChild(createWarnSvgIcon());
-    wrapper.appendChild(errorTip);
-
-    node.appendChild(wrapper);
-}
-
-// 重试 svg
-function createRetrySvgIcon() {
-    return createSvgIcon(`M35.9387 5.48805C35.9166 4.60421 35.2434 4.04719 34.279 4.0675C33.3131 4.0878 32.8154 4.67712 32.6567 5.56132C32.5745 6.01985 32.601 6.49957 32.5962 6.96997C32.5881 7.77251 32.594 8.5752 32.594 9.3779C32.4685 9.43478 32.343 9.4917 32.2175 9.54866C31.7961 9.14366 31.3817 8.73102 30.9521 8.33488C27.0799 4.76502 22.4856 3.43605 17.3405 4.22591C10.0761 5.34107 4.69388 11.3891 4.06231 18.939C3.46983 26.0213 8.03881 32.8643 14.897 35.1663C21.8348 37.495 29.5543 34.7845 33.4563 28.6429C33.7074 28.2475 33.9685 27.8417 34.1218 27.4045C34.4194 26.5555 34.2699 25.765 33.4312 25.3113C32.6231 24.8743 31.8573 25.0498 31.2835 25.7915C30.9966 26.1625 30.7785 26.5856 30.5106 26.9724C28.0914 30.4658 24.7682 32.3693 20.5158 32.5766C14.8218 32.8541 9.60215 29.1608 7.94272 23.717C6.22884 18.0946 8.59939 12.0366 13.6698 9.08126C18.5986 6.20837 24.9262 7.03281 28.9148 11.0837C29.2069 11.3803 29.4036 11.7708 29.8772 12.4519C28.32 12.4519 27.1212 12.3885 25.9323 12.4704C24.8345 12.5461 24.253 13.1995 24.262 14.1166C24.2708 15.0096 24.8931 15.7485 25.9495 15.7745C28.7068 15.8424 31.4671 15.8177 34.2259 15.7884C35.1348 15.7787 35.8872 15.2584 35.9148 14.3603C36.0054 11.4048 36.0127 8.44397 35.9387 5.48805Z`)
-}
-
-// 警告 svg
-function createWarnSvgIcon() {
-    return createSvgIcon(`M20.5607 2.5191C10.735 2.05516 2.46528 10.1045 2.50011 20.0984C2.54469 32.8837 15.9794 41.3025 27.521 35.772C28.0597 35.5138 28.6042 35.2357 29.0745 34.8742C29.9064 34.2347 30.0797 33.3404 29.5712 32.5989C29.0382 31.8217 28.2936 31.6838 27.4596 32.0227C27.2265 32.1174 27.0066 32.2437 26.7865 32.3701C26.6008 32.4767 26.415 32.5833 26.2211 32.6712C20.8005 35.1282 15.6165 34.6504 11.0342 30.8857C6.38506 27.0662 4.83815 21.9885 6.36608 16.1605C8.23236 9.04216 15.6457 4.59129 22.7912 6.13629C30.3201 7.76418 35.1917 14.6886 33.9006 22.1467C33.6763 23.4426 33.1697 24.693 32.665 25.9388C32.4936 26.3618 32.3223 26.7846 32.1625 27.2081C31.7321 28.3488 31.8755 29.1499 32.727 29.6338C33.5625 30.1085 34.3839 29.8271 35.0848 28.8121C35.2031 28.6407 35.3005 28.4544 35.3977 28.2685C35.4242 28.2179 35.4507 28.1672 35.4776 28.1169C36.5263 26.154 37.166 24.0544 37.3992 21.8528C38.4715 11.7296 30.8594 3.00541 20.5607 2.5191ZM22.2324 19.4482C22.6221 17.6294 21.6934 16.7853 19.8682 17.1885C19.4795 17.2744 19.0887 17.3789 18.7223 17.531C17.5055 18.036 17.1067 18.9307 17.8422 20.0563C18.3665 20.8586 18.2472 21.5161 18.0255 22.2965L17.9039 22.7239C17.5079 24.1148 17.1115 25.5072 16.7935 26.9165C16.4841 28.2873 17.2241 29.1723 18.6198 29.1593C18.6749 29.1502 18.7366 29.1408 18.8028 29.1307C18.9623 29.1063 19.1482 29.078 19.332 29.0394C21.5543 28.5732 21.9094 27.8227 20.9844 25.759C20.8192 25.3904 20.8406 24.873 20.9389 24.4633C21.1123 23.7404 21.3092 23.0227 21.5061 22.3052C21.7664 21.3567 22.0267 20.4083 22.2324 19.4482ZM21.2918 10.7674C22.3383 10.7322 23.3464 11.7297 23.3245 12.7787C23.3035 13.7817 22.4311 14.6541 21.4139 14.6892C20.3685 14.7252 19.5018 13.9485 19.4202 12.9025C19.3341 11.798 20.2055 10.8041 21.2918 10.7674Z`)
-}
-
-// 根据 d 创建 svg 元素
-function createSvgIcon(d) {
-    // 创建SVG元素
-    const svgNS = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(svgNS, "svg");
-    svg.setAttribute("fill", "none");
-    svg.setAttribute("viewBox", "0 0 40 40");
-    svg.setAttribute("height", "40");
-    svg.setAttribute("width", "40");
-    svg.style.alignItems = 'center';
-    svg.style.justifyContent = 'center';  // 可选，如果也需要水平居中
-    svg.style.display = "inline";
-    svg.style.width = "1em";
-    svg.style.height = "1em";
-    svg.style.marginLeft = '1em';
-    svg.style.pointerEvents = "none";
-
-    // 创建path元素并设置属性
-    const path = document.createElementNS(svgNS, "path");
-    path.setAttribute("fill", "#428ADF");
-    path.setAttribute("d", d);
-    svg.appendChild(path);
-    return svg;
-}
-
-// endregion
-
-// region 微软翻译
-function microsoft(origin, callback) {
-
-    let from = langManager.getFrom() === 'auto' ? '' : langManager.getFrom()
-
-    // 从 GM 缓存获取 token
-    let jwtToken = tokenManager.getToken(transModel.microsoft);
-    refreshToken(jwtToken).then(jwtString => {
-        // 失败，提前返回
-        if (!jwtString) {
-            callback(null);
-            return;
-        }
-        // 文档：https://learn.microsoft.com/zh-cn/azure/ai-services/translator/language-support
-        GM_xmlhttpRequest({
-            method: 'POST',
-            url: "https://api-edge.cognitive.microsofttranslator.com/translate?from=" + from + "&to=" + langManager.getTo() + "&api-version=3.0&includeSentenceLength=true&textType=html",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + jwtString
-            },
-            data: JSON.stringify([{"Text": origin}]),
-            onload: function (response) {
-                if (response.status !== 200) {
-                    console.log("调用微软翻译失败：", response.status);
-                    callback(null);
-                    return
-                }
-                let resultJson = JSON.parse(response.responseText);
-                callback(resultJson[0].translations[0].text);
-            },
-            onerror: error => {
-                console.log("调用微软翻译失败：", error);
-                callback(null);
-            }
-        });
-    });
-}
-
-// 返回有效的令牌或 false
-function refreshToken(token) {
-    const decodedToken = parseJwt(token);
-    const currentTimestamp = Math.floor(Date.now() / 1000); // 当前时间的UNIX时间戳（秒）
-    if (decodedToken && currentTimestamp < decodedToken.exp) {
-        return Promise.resolve(token);
-    }
-
-    // 如果令牌无效或已过期，则尝试获取新令牌
-    return new Promise((resolve, reject) => {
-        GM_xmlhttpRequest({
-            method: 'GET',
-            url: "https://edge.microsoft.com/translate/auth",
-            onload: resp => {
-                if (resp.status === 200) {
-                    let token = resp.responseText;
-                    tokenManager.setToken(transModel.microsoft, token);
-                    resolve(token);
-                } else reject('请求 microsoft translation auth 失败: ' + resp.status);
-            },
-            onerror: function (error) {
-                console.error('请求 microsoft translation auth 发生错误: ', error);
-                reject(error);
-            }
-        });
-    });
-}
-
-
-// 解析 jwt，返回解析后对象
-function parseJwt(token) {
-    try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        return JSON.parse(jsonPayload);
-    } catch (e) {
-        return null;
-    }
-}
-
-// endregion
-
-// region 谷歌翻译
-
-function google(origin, callback) {
-    let params = {
-        client: 'gtx', sl: langManager.getFrom(), tl: langManager.getTo(), dt: 't', browsers: true,
-        'q': encodeURIComponent(origin),
-    };
-
-    let queryString = Object.keys(params).map(function (key) {
-        return key + '=' + params[key];
-    }).join('&');
-
-    GM_xmlhttpRequest({
-        method: 'GET',
-        url: 'https://translate.googleapis.com/translate_a/single?' + queryString,
-        onload: resp => {
-            // 如果包含<title>Error 400 (Bad Request)则失败
-            if (resp.responseText.includes('Error 400 (Bad Request)')) {
-                console.log('Google翻译失败：', resp.responseText);
-                callback(null);
-                return;
-            }
-            let result = JSON.parse(resp.responseText);
-            let sentence = ''
-            result[0].forEach(e => sentence += e[0]);
-
-            // 正则标准化 HTML
-            sentence = htmlManager.standardizeHtml(sentence)
-
-            callback(sentence);
-        },
-        onerror: error => {
-            console.error('Request failed', error);
-        }
-    });
-}
-
-// endregion
-
-// region openai
-
-function openai(origin, callback) {
-    // 获取 token
-
-    let token = tokenManager.getToken(transModel.openai)
-    if (!token) return
-
-    let headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-    };
-
-    let option = optionsManager.getOptionName(transModel.openai)
-
-    let data = {
-        'model': option,
-        'messages': [
-            {'role': 'system', 'content': chatMgs.getSystemMsg()},
-            {'role': 'user', 'content': chatMgs.getUserMsg(origin)}]
-    };
-    GM_xmlhttpRequest({
-        method: 'POST',
-        url: 'https://api.openai.com/v1/chat/completions',
-        headers: headers,
-        data: JSON.stringify(data),
-        onload: resp => {
-            let result = JSON.parse(resp.responseText);
-            callback(result.choices[0].message.content);
-        },
-        onerror: error => {
-            console.error('Request failed', error);
-        }
-    });
-}
-
-// endregion
-
-// region moonshot
-function moonshot(origin, callback) {
-    // 获取 token
-    let token = tokenManager.getToken(transModel.moonshot)
-    if (!token) return
-
-    let headers = {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
-    };
-
-    let option = optionsManager.getOptionName(transModel.moonshot)
-
-    let data = {
-        'model': option,
-        'messages': [
-            {'role': 'system', 'content': chatMgs.getSystemMsg()},
-            {'role': 'user', 'content': chatMgs.getUserMsg(origin)}]
-    };
-    GM_xmlhttpRequest({
-        method: 'POST',
-        url: 'https://api.moonshot.cn/v1/chat/completions',
-        headers: headers,
-        data: JSON.stringify(data),
-        onload: resp => {
-            let result = JSON.parse(resp.responseText);
-            callback(result.choices[0].message.content);
-        },
-        onerror: error => {
-            console.error('Request failed', error);
-        }
-    });
-}
-
-
-// endregion
-
-// region 文心一言
-
-function yiyan(origin, callback) {
-    if (origin.trim().length === 0) return;
-    getYiyanToken().then(token => {
-        // option
-        let option = optionsManager.getOptionName(transModel.yiyan);
-        GM_xmlhttpRequest({
-            method: "POST",
-            // ERNIE-Bot 4.0 模型，模型定价页面：https://console.bce.baidu.com/qianfan/chargemanage/list
-            // api 文档中心：https://cloud.baidu.com/doc/WENXINWORKSHOP/s/clntwmv7t
-            url: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/' + option + '?access_token=' + token,
-            headers: {"Content-Type": "application/json"},
-            system: chatMgs.getSystemMsg(),
-            data: JSON.stringify({
-                'temperature': 0.3, // 随机度
-                'disable_search': true, // 禁用搜索
-                'messages': [{"role": "user", "content": chatMgs.getUserMsg(origin)}],
-            }),
-            onload: resp => {
-                let res = JSON.parse(resp.responseText);
-                callback(res.result);
-            },
-            onerror: error => {
-                console.log("#>> onerror", error);
-                callback(null);
-            }
-        });
-    })
-}
-
-// req: API Key、Secret Key
-// resp: access_token，有效期默认 30 天
-function getYiyanToken() {
-    return new Promise((resolve, reject) => {
-        // 1、尝试从 GM 中获取 token，并检测是否有效
-        let v = tokenManager.getToken(transModel.yiyan)
-        if (v && v.token && v.ak && v.sk && v.expiration > Date.now()) {
-            resolve(v.token); // 直接返回有效的 token
-            return
-        }
-        // 2、发起网络请求
-        GM_xmlhttpRequest({
-            method: "POST",
-            url: 'https://aip.baidubce.com/oauth/2.0/token',
-            data: 'grant_type=client_credentials&client_id=' + v.ak + '&client_secret=' + v.sk,
-            onload: resp => {
-                let res = JSON.parse(resp.responseText);
-                if (res.access_token) {
-                    // 获取有效时间范围，单位秒
-                    let expiration = new Date().getTime() + res.expires_in * 1000;
-                    tokenManager.setToken(transModel.yiyan, {
-                        ak: v.ak,
-                        sk: v.sk,
-                        token: res.access_token,
-                        expiration: expiration
-                    });
-                    resolve(res.access_token);
-                } else reject(new Error(res.error_description));
-            },
-            onerror: error => {
-                console.log('Failed to refresh access token:', error);
-                reject(error);
-            }
-        });
-    })
-}
-
-// endregion
-
-// region 通义千问
-// 文档：https://help.aliyun.com/zh/dashscope/developer-reference/tongyi-thousand-questions-metering-and-billing
-function tongyi(origin, callback) {
-    // 获取 token
-    let token = tokenManager.getToken(transModel.tongyi)
-    if (!token) {
-        console.log("通义千问：未获取到 token");
-        return
-    }
-    let option = optionsManager.getOptionName(transModel.tongyi)
-
-    // 发起请求
-    GM_xmlhttpRequest({
-        method: "POST",
-        url: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation',
-        headers: {
-            "Authorization": "Bearer " + token,
-            "Content-Type": "application/json"
-        },
-        data: JSON.stringify({
-            "model": option,
-            "input": {
-                "messages": [
-                    {"role": "system", "content": chatMgs.getSystemMsg()},
-                    {"role": "user", "content": chatMgs.getUserMsg(origin)}
-                ]
-            },
-            "parameters": {}
-        }),
-        onload: resp => {
-            let res = JSON.parse(resp.responseText);
-            if (resp.status === 200) {
-                callback(res.output.text);
-            } else {
-                console.log("调用通义千问失败：", resp);
-                // todo 应展示友好的提示
-                callback(null);
-            }
-
-        },
-        onerror: error => {
-            console.error('Request failed:', error);
-        }
-    });
-}
-
-// endregion
-
-// region 智谱
-
-function zhipu(origin, callback) {
-    // 获取 tokenObject
-    let tokenObject = tokenManager.getToken(transModel.zhipu);
-    let token = tokenObject.token;
-    if (!token || tokenObject.expiration >= Date.now()) {
-        token = generateToken(tokenObject.apikey);
-    }
-
-    let option = optionsManager.getOptionName(transModel.zhipu)
-
-    // 发起请求
-    GM_xmlhttpRequest({
-        method: "POST",
-        url: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + token
-        },
-        data: JSON.stringify({
-            "model": option,
-            "messages": [
-                {"role": "system", "content": chatMgs.getSystemMsg()},
-                {"role": "user", "content": chatMgs.getUserMsg(origin)}
-            ],
-            "stream": false,
-            "temperature": 0.1
-        }),
-        onload: resp => {
-            let res = JSON.parse(resp.responseText);
-            if (resp.status === 200) {
-                callback(res.choices[0].message.content);
-            } else {
-                console.log("调用智谱失败：", resp);
-                callback(null);
-            }
-        },
-        onerror: error => {
-            console.error('Error:', error);
-        }
-    });
-}
-
-function generateToken(apiKey) {
-
-    if (!apiKey || !apiKey.includes('.')) {
-        console.log("API Key 格式错误：", apiKey)
-        return;
-    }
-    let duration = 3600000 * 24; // 生成的 token 默认24小时后过期
-
-    const [key, secret] = apiKey.split('.');
-    let token = generateJWT(secret, {alg: "HS256", sign_type: "SIGN", typ: "JWT"}, {
-        api_key: key,
-        exp: Math.floor(Date.now() / 1000) + (duration / 1000),
-        timestamp: Math.floor(Date.now() / 1000)
-    });
-    if (!token) return  // 失败则提前返回
-    // 存储
-    tokenManager.setToken(transModel.zhipu, {apikey: apiKey, token: token, expiration: Date.now() + duration});
-
-    return token;
-}
-
-// 生成JWT（JSON Web Token）
-function generateJWT(secret, header, payload) {
-    // 对header和payload部分进行UTF-8编码，然后转换为Base64URL格式
-    const encodedHeader = base64UrlSafe(btoa(JSON.stringify(header)));
-    const encodedPayload = base64UrlSafe(btoa(JSON.stringify(payload)));
-    // 生成 jwt 签名
-    let hmacsha256 = base64UrlSafe(CryptoJS.HmacSHA256(encodedHeader + "." + encodedPayload, secret).toString(CryptoJS.enc.Base64))
-    return `${encodedHeader}.${encodedPayload}.${hmacsha256}`;
-}
-
-// 将Base64字符串转换为Base64URL格式的函数
-function base64UrlSafe(base64String) {
-    return base64String.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
 
 // endregion
 
