@@ -268,7 +268,6 @@ const toast = Swal.mixin({
     position: 'top',
     showConfirmButton: false,
     timerProgressBar: false,
-    customClass: toastClass,
     didOpen: toast => {
         toast.addEventListener('mouseenter', Swal.stopTimer);
         toast.addEventListener('mouseleave', Swal.resumeTimer);
@@ -338,15 +337,19 @@ const settingManager = {
         // 页面 dom
         const dom = `
   <div style="font-size: 1em;">
-    <label class="instant-setting-label">快捷键<select id="fluent-read-hotkey" class="instant-setting-select">${this.generateOptions(shortcutManager.hotkeyOptions, util.getValue('hotkey'))}</select></label>
-    <label class="instant-setting-label">翻译源语言<select id="fluent-read-from" class="instant-setting-select">${this.generateOptions(langManager.from, langManager.getFrom())}</select></label>
-    <label class="instant-setting-label">翻译目标语言<select id="fluent-read-to" class="instant-setting-select">${this.generateOptions(langManager.to, langManager.getTo())}</select></label>
+    <label class="instant-setting-label">快捷键<select id="fluent-read-hotkey" class="instant-setting-common">${this.generateOptions(shortcutManager.hotkeyOptions, util.getValue('hotkey'))}</select></label>
+    <label class="instant-setting-label">翻译源语言<select id="fluent-read-from" class="instant-setting-common">${this.generateOptions(langManager.from, langManager.getFrom())}</select></label>
+    <label class="instant-setting-label">翻译目标语言<select id="fluent-read-to" class="instant-setting-common">${this.generateOptions(langManager.to, langManager.getTo())}</select></label>
     <label class="instant-setting-label">翻译服务<select id="fluent-read-model" class="instant-setting-select">${this.generateOptions(transModelName, util.getValue('model'))}</select></label>
     
     <label class="instant-setting-label" id="fluent-read-option-label" style="display: none;">模型类型<select id="fluent-read-option" class="instant-setting-select"></select></label>
-    <label class="instant-setting-label" id="fluent-read-token-label" style="display: none;">Token令牌<input type="text" class="instant-setting-input" id="fluent-read-token" value="" ></label>
+    <!-- 令牌区域 -->
+    <label class="instant-setting-label" id="fluent-read-token-label" style="display: none;">token令牌<input type="text" class="instant-setting-input" id="fluent-read-token" value="" ></label>
     <label class="instant-setting-label" id="fluent-read-ak-label" style="display: none;">ak令牌<input type="text" class="instant-setting-input" id="fluent-read-ak" value="" ></label>
     <label class="instant-setting-label" id="fluent-read-sk-label" style="display: none;">sk令牌<input type="text" class="instant-setting-input" id="fluent-read-sk" value="" ></label>
+    <!-- 添加的输入区域 -->
+    <label class="instant-setting-label" id="fluent-read-system-label" style="display: none;">system设定<textarea class="instant-setting-textarea" id="fluent-read-system-message">${chatMgs.getSystemMsg()}</textarea></label>
+    <label class="instant-setting-label" id="fluent-read-user-label" style="display: none;">消息模板<textarea class="instant-setting-textarea" id="fluent-read-user-message">${chatMgs.getOriginUserMsg()}</textarea></label>
   </div>`;
         Swal.fire({
                 title: '设置中心',
@@ -382,7 +385,10 @@ const settingManager = {
                         default:
                             tokenManager.setToken(model, token);
                     }
-                    //
+                    // 6、设置 chatGPT 消息模板
+                    chatMgs.setSystemMsg(util.getElementValue('fluent-read-system-message'));
+                    chatMgs.setUserMsg(util.getElementValue('fluent-read-user-message'));
+
                     toast.fire({icon: 'success', title: '设置成功！'});
                     history.go(0); // 刷新页面
                 }
@@ -433,9 +439,14 @@ const settingManager = {
     },
     // 批量设置元素的 display 样式
     setDisplayStyle(flex, none) {
+        const systemMsgLabel = document.getElementById('fluent-read-system-label');
+        const userMsgLabel = document.getElementById('fluent-read-user-label');
+
         // 1、如果 flex 为空，则设置所有元素的 display 为 none，返回
         if (flex.length === 0) {
             document.getElementById('fluent-read-option-label').style.display = "none";
+            systemMsgLabel.style.display = "none";
+            userMsgLabel.style.display = "none";
             none.forEach(element => element.style.display = "none");
             return
         }
@@ -450,6 +461,8 @@ const settingManager = {
 
         flex.forEach(element => element.style.display = "flex");
         none.forEach(element => element.style.display = "none");
+        systemMsgLabel.style.display = "flex";
+        userMsgLabel.style.display = "flex";
     },
     setHotkey() {
         Swal.fire({
@@ -666,15 +679,27 @@ function detectChildMeta(parent) {
 
 // region 通用翻译处理模块
 const chatMgs = {
-    system: `You are a professional, authentic translation engine, you, only returns translations.`,
-    user: `Please translate them into {{to}}, please do not explain my original text:
-     
-    {{origin}}`,
+    system: `You are a professional, authentic translation engine, only returns translations.`,
+    user_pre: `Please translate them into {{to}}, `,    // 隐藏前半部分（语言选择），显示用户自定义的后半部分
+    user_post: `please do not explain my original text:
+
+{{origin}}`,
+    setSystemMsg(msg) {
+        GM_setValue('systemMsg', msg);
+    },
+    setUserMsg(msg) {
+        GM_setValue('userMsg', this.user_pre + msg);
+    },
+    getOriginUserMsg() {
+        let userMsg = GM_getValue('userMsg', this.user_pre + this.user_post);
+        return userMsg.substring(userMsg.indexOf(',') + 2, userMsg.length);
+    },
     getSystemMsg() {
-        return this.system;
+        return GM_getValue('systemMsg', this.system);
     },
     getUserMsg(origin) {
-        return this.user.replace("{{origin}}", origin).replace("{{to}}", langManager.getTo());
+        let userMsg = GM_getValue('userMsg', this.user_pre + this.user_post);
+        return userMsg.replace('{{origin}}', origin).replace('{{to}}', langManager.getTo());
     }
 }
 
@@ -1501,10 +1526,13 @@ function initApplication() {
         100% { transform: rotate(360deg); }
     }
     .loading-spinner-fluentread {border: 2px solid #f3f3f3;border-top: 2px solid blue;border-radius: 50%;width: 12px;height: 12px;animation: spin 1s linear infinite;display: inline-block;}
-    .translate-d-container { z-index: 999999!important;}
-    .translate-d-popup { font-size: 14px !important;}
+    .translate-d-container { z-index: 999999!important; }
+    .translate-d-popup { font-size: 14px !important;width:50% !important;max-width: 500px !important;}
     .instant-setting-label { display: flex;align-items: center;justify-content: space-between;padding-top: 15px; }
-    .instant-setting-input { border: 1px solid #bbb; box-sizing: border-box; padding: 5px 10px; border-radius: 5px; width: 100px}
+    .instant-setting-input { border: 1px solid #bbb; box-sizing: border-box; padding: 5px 10px; border-radius: 5px; width: 15em !important;}
+    .instant-setting-textarea { border: 1px solid #bbb; box-sizing: border-box; padding: 5px 10px; border-radius: 5px; width: 20em !important;}
+    .instant-setting-common { border: 1px solid #bbb; box-sizing: border-box; padding: 5px 10px; border-radius: 5px; width: 8em !important;}
+    .instant-setting-select { border: 1px solid #bbb; box-sizing: border-box; padding: 5px 10px; border-radius: 5px; width: 12em !important;}
     .retry-error-wrapper {display: inline-flex;align-items: center;}
     .retry-error-button, .retry-error-tip {color: #428ADF;text-decoration: underline;text-underline-offset: 0.2em;margin-left: 0.2em;font-size: 1em;cursor: pointer;}
     `
