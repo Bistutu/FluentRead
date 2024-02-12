@@ -353,8 +353,9 @@ const settingManager = {
     <textarea class="instant-setting-textarea" id="fluent-read-system-message">${chatMgs.getSystemMsg()}</textarea>
     </label>
     <label class="instant-setting-label" id="fluent-read-user-label" style="display: none;">
-    <span class="fluent-read-tooltip">system设定<span class="fluent-read-tooltiptext">用户对话内容，如：请你翻译“Hello”</span></span>
-    <textarea class="instant-setting-textarea" id="fluent-read-user-message">${chatMgs.getOriginUserMsg()}</textarea></label>
+    <span class="fluent-read-tooltip">system设定<span class="fluent-read-tooltiptext">用户对话内容，如：请你翻译 Hello</br>注意：{{text}} 是你需要翻译的原文，不可缺少。</span></span>
+    <textarea class="instant-setting-textarea" id="fluent-read-user-message">${chatMgs.getOriginUserMsg()}</textarea>
+    </label>
   </div>`;
         Swal.fire({
                 title: '设置中心',
@@ -472,7 +473,7 @@ const settingManager = {
     setHotkey() {
         Swal.fire({
             title: '快捷键设置',
-            text: '请选择鼠标悬停快捷键',
+            text: '请选择鼠标快捷键',
             input: 'select',
             inputValue: util.getValue('hotkey'),
             inputOptions: shortcutManager.hotkeyOptions,
@@ -516,6 +517,10 @@ const settingManager = {
                 history.go(0); // 刷新页面
             }
         });
+    },
+    about(){
+        // 跳转页面
+        window.open('https://fr.unmeta.cn/');
     }
 };
 // endregion
@@ -713,16 +718,16 @@ function translate(node) {
     let model = util.getValue('model')
     let origin = node.innerText;
 
-    let timeout = setTimeout(() => {
-        createFailedTip(node, "网络超时，请稍后重试");
-    }, 60000);
-
     // 检测语言类型，如果是中文则不翻译
     baiduDetectLang(origin).then(lang => {
         if (lang === langManager.getTo()) return;   // 与目标语言相同，不翻译
 
         if (isMachineTrans(model)) origin = node.outerHTML; // 如果是谷歌或微软翻译，应翻译 HTML
         let spinner = createLoadingSpinner(node);   // 插入转圈动画
+
+        let timeout = setTimeout(() => {
+            createFailedTip(node, "网络超时，请稍后重试", spinner);
+        }, 60000);
 
         // 调用翻译服务
         transModelFn[model](origin).then(text => {
@@ -763,12 +768,11 @@ function translate(node) {
         }).catch(e => {
             console.error("发生错误：", e)
             clearTimeout(timeout);
-            createFailedTip(node, e.toString(), spinner);
+            createFailedTip(node, e, spinner);
         })
     }).catch(e => {
         // 打印错误、取消超时函数与转圈动画、创建错误提示
         console.error("发生错误：", e)
-        clearTimeout(timeout);
         createFailedTip(node, e.toString());
     });
 }
@@ -1492,6 +1496,7 @@ function initApplication() {
     GM_registerMenuCommand(`目标语言：${langManager.to[util.getValue('to')]}`, () => settingManager.setLanguage('to'));
     GM_registerMenuCommand(`鼠标快捷键：${util.getValue('hotkey')}`, () => settingManager.setHotkey());
     GM_registerMenuCommand(`翻译服务：${transModelName[util.getValue('model')]}`, () => settingManager.setSetting());
+    GM_registerMenuCommand('关于项目', () => settingManager.about());
 
     // 初始化翻译模型对应函数
     transModelFn[transModel.openai] = openai
@@ -1544,7 +1549,7 @@ function initApplication() {
     .retry-error-button, .retry-error-tip {color: #428ADF;text-decoration: underline;text-underline-offset: 0.2em;margin-left: 0.2em;font-size: 1em;cursor: pointer;}
     /* 工具提示 */
     .fluent-read-tooltip { position: relative; display: inline-block; }
-    .fluent-read-tooltip .fluent-read-tooltiptext { visibility: hidden; width: 15em; background-color: black; color: #fff; text-align: left; border-radius: 6px; padding: 5px; position: absolute; z-index: 1; bottom: 100%; left: 50%; margin-left: -60px; opacity: 0; transition: opacity 0.6s; font-size: 14px; }
+    .fluent-read-tooltip .fluent-read-tooltiptext { visibility: hidden; width: 25em; background-color: black; color: #fff; text-align: left; border-radius: 6px; padding: 5px; position: absolute; z-index: 1; bottom: 100%; left: 50%; margin-left: -60px; opacity: 0; transition: opacity 0.6s; font-size: 14px; }
     .fluent-read-tooltip:hover .fluent-read-tooltiptext { visibility: visible; opacity: 1; }
     `
     );
