@@ -197,11 +197,11 @@ let LLMFormat = {
 
 // token 管理器
 const tokenManager = {
-    setToken: (key, value) => {
-        if (transModel[key]) GM_setValue("token_" + key, value)
+    setToken: (model, value) => {
+        if (transModel[model]) GM_setValue("token_" + model, value)
     },
-    getToken: key => {
-        return GM_getValue("token_" + key, '');
+    getToken: model => {
+        return GM_getValue("token_" + model, '');
     }
 };
 
@@ -350,11 +350,11 @@ const settingManager = {
     <label class="instant-setting-label" id="fluent-read-sk-label" style="display: none;">sk令牌<input type="text" class="instant-setting-input" id="fluent-read-sk" value="" ></label>
     <!-- 添加的输入区域 -->
     <label class="instant-setting-label" id="fluent-read-system-label" style="display: none;">
-        <span class="fluent-read-tooltip">system设定<span class="fluent-read-tooltiptext">模型角色设定，如：你是一名专业的翻译家...</span></span>
+        <span class="fluent-read-tooltip">system角色设定<span class="fluent-read-tooltiptext">模型角色设定，如：你是一名专业的翻译家...</span></span>
     <textarea class="instant-setting-textarea" id="fluent-read-system-message">${chatMgs.getSystemMsg()}</textarea>
     </label>
     <label class="instant-setting-label" id="fluent-read-user-label" style="display: none;">
-    <span class="fluent-read-tooltip">system设定<span class="fluent-read-tooltiptext">用户对话内容，如：请你翻译 Hello</br>注意：{{text}} 是你需要翻译的原文，不可缺少。</span></span>
+    <span class="fluent-read-tooltip">user消息模板<span class="fluent-read-tooltiptext">用户对话内容，如：请你翻译 Hello</br>注意：{{text}} 是你需要翻译的原文，不可缺少。</span></span>
     <textarea class="instant-setting-textarea" id="fluent-read-user-message">${chatMgs.getOriginUserMsg()}</textarea>
     </label>
   </div>`;
@@ -793,7 +793,7 @@ function getTextWithCode(node) {
             text += child.nodeValue;
         } else if (child.nodeType === Node.ELEMENT_NODE) {
             // 元素节点：检查是否是<code>标签
-            if (['code', 'a'].includes(child.tagName.toLowerCase())) {
+            if (['code', 'a','strong','b'].includes(child.tagName.toLowerCase())) {
                 // 是<code>、<a>标签，添加 outerHTML
                 text += child.outerHTML;
             } else {
