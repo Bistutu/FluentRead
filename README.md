@@ -5,7 +5,7 @@
 
 拥有基于上下文语境的人工智能翻译引擎，为网站提供更加友好的翻译，让所有人都能够拥有基于母语般的阅读体验。
 
-<img src="./misc/images/sample-git-1.gif" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;">
+<kbd><img src="./misc/images/sample-git-1.gif" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
 
 # 安装指南
 
@@ -16,7 +16,7 @@
 
 1. 打开油猴插件，**配置**你想要的翻译服务（如果选择 AI 翻译则需要填写 `token`）。
 
-   <img src="./misc/images/sample-git-3.gif" alt="sample-git-1.gif" style="width: 90%; max-width: 100%;border: 2px solid black;">
+   <kbd><img src="./misc/images/sample-git-3.gif" alt="sample-git-1.gif" style="width: 90%; max-width: 100%;border: 2px solid black;"></kbd>
 
 2. 翻译功能
 
@@ -29,11 +29,11 @@
 
    为了避免 AI 模型重复翻译句子，流畅阅读基于每个页面做了缓存，你无需关心具体细节（蓝色表示正常翻译、绿色表示使用缓存）。
 
-   <img src="./misc/images/sample-git-4.gif" alt="sample-git-1.gif" style="width: 15%; max-width: 100%;border: 1px solid black;">
+   <kbd><img src="./misc/images/sample-git-4.gif" alt="sample-git-1.gif" style="width: 15%; max-width: 100%;border: 1px solid black;"></kbd>
 
    当你将鼠标悬浮在已翻译的文本上时，会触发“回译”功能。
 
-   <img src="./misc/images/sample-git-2.gif" alt="sample-git-1.gif" style="width: 70%; max-width: 100%;border: 1px solid black;">
+   <kbd><img src="./misc/images/sample-git-2.gif" alt="sample-git-1.gif" style="width: 70%; max-width: 100%;border: 1px solid black;"></kdb>
 
 4. 部分网站定制化翻译功能
 
