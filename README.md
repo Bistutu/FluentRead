@@ -31,7 +31,7 @@
 
    <kbd><img src="./misc/images/sample-git-4.gif" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
 
-   当你将鼠标悬浮在已翻译的文本上时，会触发“回译”功能。
+   当你将鼠标悬浮在已翻译的文本上并按下快捷键时，会触发“回译”功能。
 
    <kbd><img src="./misc/images/sample-git-2.gif" alt="sample-git-1.gif" style="width: 70%; max-width: 100%;border: 1px solid black;"></kdb>
 
@@ -45,7 +45,12 @@
 
 1. 程序开源、免费
 2. 代码接受审查、不收集任何用户信息，保证信息安全
-3. 支持常见国产AI大模型
+3. 支持常见国外或国产AI大模型，如：
+   - chatGPT：https://platform.openai.com/
+   - 通义千问：https://dashscope.console.aliyun.com/overview
+   - 智谱清言：https://open.bigmodel.cn/
+   - 文心一言：https://cloud.baidu.com/wenxin.html
+   - moonshot：https://www.moonshot.cn/
 
 # 常见问题解答
 
