@@ -29,7 +29,7 @@
 
    为了避免 AI 模型重复翻译句子，流畅阅读基于每个页面做了缓存，你无需关心具体细节（蓝色表示正常翻译、绿色表示使用缓存）。
 
-   <kbd><img src="./misc/images/sample-git-4.gif" alt="sample-git-1.gif" style="width: 15%; max-width: 100%;border: 1px solid black;"></kbd>
+   <kbd><img src="./misc/images/sample-git-4.gif" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
 
    当你将鼠标悬浮在已翻译的文本上时，会触发“回译”功能。
 
