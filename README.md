@@ -39,11 +39,24 @@
 
    由于部分网站属于“较常”访问的站点，流畅阅读在编写时考虑到了这些场景，因此针对部分网站做了专门的翻译，这些站点包括但不限于：
 
-   [OpenAI官网](https://openai.com/)、[Docker仓库](https://hub.docker.com)、[Maven仓库](https://mvnrepository.com/)、[Stackoverflow](https://stackoverflow.com/)、[GitHub Star 趋势生成网](https://star-history.com/)、[coze人工智能助手](https://www.coze.com)
+   [OpenAI官网](https://openai.com/)、[Docker仓库](https://hub.docker.com)、[Maven仓库](https://mvnrepository.com/)、[Stackoverflow](https://stackoverflow.com/)、[GitHub Star 趋势生成网](https://star-history.com/)、[Coze人工智能助手](https://www.coze.com)
 
-# star 历史记录
+# 为什么选择流畅阅读？
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Bistutu/FluentRead&type=Date)](https://star-history.com/#520250/FluentRead&Date)
+1. 程序开源、免费
+2. 代码接受审查、不收集任何用户信息，保证信息安全
+3. 支持常见国产AI大模型
+
+# 常见问题解答
+
+<details>
+    <summary>1、我该如何获取 token？</summary>
+  &emsp;&emsp;如果你想获取各家大模型的 token，建议直接在百度或 Google 中以关键词 <code>模型名称 + api</code> 进行搜索。
+</details>
+<details>
+    <summary>2、为什么翻译的内容不准确？</summary>
+&emsp;&emsp;翻译可能不准确的原因有很多。首先，翻译引擎可能无法完全理解原文的上下文和细微的语言差异。其次，不同语言之间的语法结构和表达方式可能存在很大差异，这使得直接翻译时难以保留原文的全部含义。<strong>建议更换其他模型进行尝试</strong>
+</details>
 
 # 版本更新记录
 
@@ -59,6 +72,10 @@
 # 开源许可证
 
 [GPL-3.0 license](https://github.com/Bistutu/FluentRead#)
+
+# star 历史记录
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Bistutu/FluentRead&type=Date)](https://star-history.com/#520250/FluentRead&Date)
 
 
 
