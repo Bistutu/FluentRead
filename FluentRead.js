@@ -348,8 +348,13 @@ const settingManager = {
     <label class="instant-setting-label" id="fluent-read-ak-label" style="display: none;">ak令牌<input type="text" class="instant-setting-input" id="fluent-read-ak" value="" ></label>
     <label class="instant-setting-label" id="fluent-read-sk-label" style="display: none;">sk令牌<input type="text" class="instant-setting-input" id="fluent-read-sk" value="" ></label>
     <!-- 添加的输入区域 -->
-    <label class="instant-setting-label" id="fluent-read-system-label" style="display: none;">system设定<textarea class="instant-setting-textarea" id="fluent-read-system-message">${chatMgs.getSystemMsg()}</textarea></label>
-    <label class="instant-setting-label" id="fluent-read-user-label" style="display: none;">消息模板<textarea class="instant-setting-textarea" id="fluent-read-user-message">${chatMgs.getOriginUserMsg()}</textarea></label>
+    <label class="instant-setting-label" id="fluent-read-system-label" style="display: none;">
+        <span class="fluent-read-tooltip">system设定<span class="fluent-read-tooltiptext">模型角色设定，如：你是一名专业的翻译家...</span></span>
+    <textarea class="instant-setting-textarea" id="fluent-read-system-message">${chatMgs.getSystemMsg()}</textarea>
+    </label>
+    <label class="instant-setting-label" id="fluent-read-user-label" style="display: none;">
+    <span class="fluent-read-tooltip">system设定<span class="fluent-read-tooltiptext">用户对话内容，如：请你翻译“Hello”</span></span>
+    <textarea class="instant-setting-textarea" id="fluent-read-user-message">${chatMgs.getOriginUserMsg()}</textarea></label>
   </div>`;
         Swal.fire({
                 title: '设置中心',
@@ -1528,13 +1533,19 @@ function initApplication() {
     .loading-spinner-fluentread {border: 2px solid #f3f3f3;border-top: 2px solid blue;border-radius: 50%;width: 12px;height: 12px;animation: spin 1s linear infinite;display: inline-block;}
     .translate-d-container { z-index: 999999!important; }
     .translate-d-popup { font-size: 14px !important;width:50% !important;max-width: 500px !important;}
-    .instant-setting-label { display: flex;align-items: center;justify-content: space-between;padding-top: 15px; }
+    /* 翻译设置 */
+    .instant-setting-label { display: flex;align-items: center;justify-content: space-between;padding-top: 15px;}
     .instant-setting-input { border: 1px solid #bbb; box-sizing: border-box; padding: 5px 10px; border-radius: 5px; width: 15em !important;}
-    .instant-setting-textarea { border: 1px solid #bbb; box-sizing: border-box; padding: 5px 10px; border-radius: 5px; width: 20em !important;}
+    .instant-setting-textarea { border: 1px solid #bbb; box-sizing: border-box; padding: 5px 10px; border-radius: 5px; width: 18em !important;}
     .instant-setting-common { border: 1px solid #bbb; box-sizing: border-box; padding: 5px 10px; border-radius: 5px; width: 8em !important;}
     .instant-setting-select { border: 1px solid #bbb; box-sizing: border-box; padding: 5px 10px; border-radius: 5px; width: 12em !important;}
+    /* 重试错误提示 */
     .retry-error-wrapper {display: inline-flex;align-items: center;}
     .retry-error-button, .retry-error-tip {color: #428ADF;text-decoration: underline;text-underline-offset: 0.2em;margin-left: 0.2em;font-size: 1em;cursor: pointer;}
+    /* 工具提示 */
+    .fluent-read-tooltip { position: relative; display: inline-block; }
+    .fluent-read-tooltip .fluent-read-tooltiptext { visibility: hidden; width: 15em; background-color: black; color: #fff; text-align: left; border-radius: 6px; padding: 5px; position: absolute; z-index: 1; bottom: 100%; left: 50%; margin-left: -60px; opacity: 0; transition: opacity 0.6s; font-size: 14px; }
+    .fluent-read-tooltip:hover .fluent-read-tooltiptext { visibility: visible; opacity: 1; }
     `
     );
 }
