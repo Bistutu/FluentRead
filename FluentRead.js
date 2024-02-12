@@ -90,7 +90,6 @@ const textType = {
     ariaLabel: 3,
 }
 
-
 // 适配器与剪枝、预处理 map
 let adapterFnMap = new (Map);
 let skipStringMap = new Map();
@@ -131,10 +130,12 @@ const transModelName = {
     [transModel.moonshot]: 'moonshot AI',
 }
 
-const transType = {
-    none: 0,    // 不翻译
-    self: 1,    // 翻译自身
-    parent: 2   // 翻译父元素
+// 错误类型
+const errorManager = {
+    unknownError: "未知错误",
+    netError: "网络超时，请稍后重试",
+    authFailed: "认证失败，请检查 token 是否正确",
+    quota: "每分钟翻译次数已达上限，请稍后再试",
 }
 
 // 模型类型
@@ -518,7 +519,7 @@ const settingManager = {
             }
         });
     },
-    about(){
+    about() {
         // 跳转页面
         window.open('https://fr.unmeta.cn/');
     }
@@ -713,6 +714,7 @@ const chatMgs = {
     }
 }
 
+
 function translate(node) {
 
     let model = util.getValue('model')
@@ -726,7 +728,7 @@ function translate(node) {
         let spinner = createLoadingSpinner(node);   // 插入转圈动画
 
         let timeout = setTimeout(() => {
-            createFailedTip(node, "网络超时，请稍后重试", spinner);
+            createFailedTip(node, new Error(errorManager.netError), spinner);
         }, 60000);
 
         // 调用翻译服务
@@ -766,15 +768,10 @@ function translate(node) {
             delayRemoveCache(newOuterHtml);
             outerHTMLSet.delete(oldOuterHtml);
         }).catch(e => {
-            console.error("发生错误：", e)
             clearTimeout(timeout);
-            createFailedTip(node, e, spinner);
+            createFailedTip(node, e.toString(), spinner);
         })
-    }).catch(e => {
-        // 打印错误、取消超时函数与转圈动画、创建错误提示
-        console.error("发生错误：", e)
-        createFailedTip(node, e.toString());
-    });
+    }).catch(e => createFailedTip(node, e.toString()));
 }
 
 // 创建转圈动画并插入
@@ -786,8 +783,9 @@ function createLoadingSpinner(node) {
 }
 
 function createFailedTip(node, errorMsg, spinner) {
+    console.log(errorMsg); // 打印错误信息
     // 取消转圈动画
-    spinner.remove();
+    spinner?.remove();
     // 创建包装元素
     const wrapper = document.createElement('span');
     wrapper.classList.add('retry-error-wrapper');
@@ -808,14 +806,14 @@ function createFailedTip(node, errorMsg, spinner) {
     errorTip.classList.add('retry-error-tip');
     errorTip.addEventListener('click', function () {
         if (errorMsg.includes("auth failed")) {
-            window.alert("认证失败，请检查 token 是否正确");
+            window.alert(errorManager.authFailed);
             return;
         }
-        if (errorMsg.includes("quota")) {
-            window.alert("每分钟翻译次数已达上限，请稍后再试");
+        if (errorMsg.includes("quota") || errorMsg.includes("limit")) {
+            window.alert(errorManager.quota);
             return
         }
-        window.alert(errorMsg || '未知错误');
+        window.alert(errorMsg || errorManager.unknownError);
     });
 
     // 将 SVG 图标和文本添加到包装元素
