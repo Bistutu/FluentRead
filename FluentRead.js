@@ -728,7 +728,7 @@ function translate(node) {
         let spinner = createLoadingSpinner(node);   // 插入转圈动画
 
         let timeout = setTimeout(() => {
-            createFailedTip(node, new Error(errorManager.netError), spinner);
+            createFailedTip(node, new Error(errorManager.netError).toString(), spinner);
         }, 60000);
 
         // 调用翻译服务
