@@ -543,7 +543,7 @@ const settingManager = {
         mouseX = event.clientX;
         mouseY = event.clientY;
 
-        handler(mouseX, mouseY, 250);
+        handler(mouseX, mouseY, 150);
     });
 
     // 检查是否需要拉取数据
@@ -614,7 +614,7 @@ function handler(mouseX, mouseY, time) {
         if (outerHTMLCache) {
             let temp = node.outerHTML;
             // console.log("缓存命中：", outerHTMLCache);
-            let spinner = createLoadingSpinner(node);
+            let spinner = createLoadingSpinner(node, true);
             setTimeout(() => {  // 延迟 remove 转圈动画与替换文本
                 spinner.remove();
                 outerHTMLSet.delete(temp);
@@ -776,9 +776,10 @@ function translate(node) {
 }
 
 // 创建转圈动画并插入
-function createLoadingSpinner(node) {
+function createLoadingSpinner(node, isCache) {
     const spinner = document.createElement('span');
     spinner.className = 'loading-spinner-fluentread';
+    if (isCache) spinner.style.borderTop = '3px solid green'
     node.appendChild(spinner);
     return spinner;
 }
@@ -793,7 +794,7 @@ function getTextWithCode(node) {
             text += child.nodeValue;
         } else if (child.nodeType === Node.ELEMENT_NODE) {
             // 元素节点：检查是否是<code>标签
-            if (['code', 'a','strong','b'].includes(child.tagName.toLowerCase())) {
+            if (['code', 'a', 'strong', 'b'].includes(child.tagName.toLowerCase())) {
                 // 是<code>、<a>标签，添加 outerHTML
                 text += child.outerHTML;
             } else {
@@ -1556,7 +1557,7 @@ function initApplication() {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
-    .loading-spinner-fluentread {border: 2px solid #f3f3f3;border-top: 2px solid blue;border-radius: 50%;width: 12px;height: 12px;animation: spin 1s linear infinite;display: inline-block;}
+    .loading-spinner-fluentread {border: 3px solid #f3f3f3;border-top: 3px solid blue;border-radius: 50%;width: 12px;height: 12px;animation: spin 1s linear infinite;display: inline-block;}
     .translate-d-container { z-index: 999999!important; }
     .translate-d-popup { font-size: 14px !important;width:50% !important;max-width: 500px !important;}
     /* 翻译设置 */
