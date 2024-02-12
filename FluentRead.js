@@ -533,6 +533,19 @@ const settingManager = {
 
     initApplication()
 
+    // 当浏览器或标签页失去焦点时，重置 ctrlPressed
+    window.addEventListener('blur', () => shortcutManager.hotkeyPressed = false)
+
+    // 鼠标、键盘监听事件，悬停翻译
+    window.addEventListener('keydown', event => handler(mouseX, mouseY, 10))
+    document.body.addEventListener('mousemove', event => {
+        // 更新鼠标位置
+        mouseX = event.clientX;
+        mouseY = event.clientY;
+
+        handler(mouseX, mouseY, 250);
+    });
+
     // 检查是否需要拉取数据
     checkRun(shouldRun => {
         // 如果 host 包含在 preread 中，shouldRun 为 true，则开始解析 DOM 树并设置监听器
@@ -561,19 +574,6 @@ const settingManager = {
             listValues.forEach(e => GM_deleteValue(e))
             console.log('Cache cleared!');
         }
-    });
-
-    // 当浏览器或标签页失去焦点时，重置 ctrlPressed
-    window.addEventListener('blur', () => shortcutManager.hotkeyPressed = false)
-
-    // 鼠标、键盘监听事件，悬停翻译
-    window.addEventListener('keydown', event => handler(mouseX, mouseY, 10))
-    document.body.addEventListener('mousemove', event => {
-        // 更新鼠标位置
-        mouseX = event.clientX;
-        mouseY = event.clientY;
-
-        handler(mouseX, mouseY, 250);
     });
 })();
 
@@ -718,13 +718,14 @@ const chatMgs = {
 function translate(node) {
 
     let model = util.getValue('model')
-    let origin = node.innerText;
+    let origin = getTextWithCode(node);
 
     // 检测语言类型，如果是中文则不翻译
     baiduDetectLang(origin).then(lang => {
         if (lang === langManager.getTo()) return;   // 与目标语言相同，不翻译
 
         if (isMachineTrans(model)) origin = node.outerHTML; // 如果是谷歌或微软翻译，应翻译 HTML
+
         let spinner = createLoadingSpinner(node);   // 插入转圈动画
 
         let timeout = setTimeout(() => {
@@ -759,7 +760,7 @@ function translate(node) {
                 }
                 node.outerHTML = text;
             } else {    // 2、LLM 翻译
-                node.innerText = text;
+                node.innerHTML = text;
                 newOuterHtml = node.outerHTML;
             }
 
@@ -780,6 +781,28 @@ function createLoadingSpinner(node) {
     spinner.className = 'loading-spinner-fluentread';
     node.appendChild(spinner);
     return spinner;
+}
+
+// LLM 模式获取翻译文本
+function getTextWithCode(node) {
+    let text = "";
+    // 遍历所有子节点
+    node.childNodes.forEach(child => {
+        if (child.nodeType === Node.TEXT_NODE) {
+            // 文本节点：直接添加其文本
+            text += child.nodeValue;
+        } else if (child.nodeType === Node.ELEMENT_NODE) {
+            // 元素节点：检查是否是<code>标签
+            if (['code', 'a'].includes(child.tagName.toLowerCase())) {
+                // 是<code>、<a>标签，添加 outerHTML
+                text += child.outerHTML;
+            } else {
+                // 不是<code>标签：递归处理
+                text += getTextWithCode(child);
+            }
+        }
+    });
+    return text;
 }
 
 function createFailedTip(node, errorMsg, spinner) {
