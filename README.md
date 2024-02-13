@@ -44,13 +44,12 @@
 # 为什么选择流畅阅读？
 
 1. 程序开源、免费
+
 2. 代码接受审查、不收集任何用户信息，保证信息安全
+
 3. 支持常见国外或国产AI大模型，如：
-   - chatGPT：https://platform.openai.com/
-   - 通义千问：https://dashscope.console.aliyun.com/overview
-   - 智谱清言：https://open.bigmodel.cn/
-   - 文心一言：https://cloud.baidu.com/wenxin.html
-   - moonshot：https://www.moonshot.cn/
+   
+   [chatGPT](https://platform.openai.com/)、[通义千问](https://dashscope.console.aliyun.com/overview)、[智谱清言](https://open.bigmodel.cn/)、[文心一言](https://cloud.baidu.com/wenxin.html)、[moonshot](https://www.moonshot.cn/)
 
 # 常见问题解答
 

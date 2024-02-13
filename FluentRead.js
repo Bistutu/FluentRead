@@ -202,6 +202,9 @@ const tokenManager = {
     },
     getToken: model => {
         return GM_getValue("token_" + model, '');
+    },
+    removeToken(model) {
+        GM_deleteValue("token_" + model)
     }
 };
 
@@ -770,9 +773,9 @@ function translate(node) {
             outerHTMLSet.delete(oldOuterHtml);
         }).catch(e => {
             clearTimeout(timeout);
-            createFailedTip(node, e.toString(), spinner);
+            createFailedTip(node, e.toString() || errorManager.unknownError, spinner);
         })
-    }).catch(e => createFailedTip(node, e.toString()));
+    }).catch(e => createFailedTip(node, e.toString() || errorManager.unknownError));
 }
 
 // 创建转圈动画并插入
@@ -910,9 +913,7 @@ function microsoft(origin) {
                 },
                 onerror: error => reject(error)
             });
-        }).catch(error => {
-            reject('Error refreshing microsoft token: ' + error);
-        });
+        }).catch(error => reject('Error refreshing microsoft token: ' + error))
     });
 }
 
@@ -1495,7 +1496,7 @@ function initApplication() {
     let commonConfig = [
         {name: 'hotkey', value: 'Control'},
         {name: 'from', value: 'auto'},
-        {name: 'to', value: 'zh-CN'},
+        {name: 'to', value: 'zh-Hans'},
         {name: 'model', value: transModel.microsoft}
     ]
     let modelConfig = [
