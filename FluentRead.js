@@ -587,14 +587,8 @@ function handler(mouseX, mouseY, time) {
 
     clearTimeout(hoverTimer); // 清除计时器
     hoverTimer = setTimeout(() => {
-        let node = document.elementFromPoint(mouseX, mouseY);   // 获取鼠标
-
-        // 全局与空节点、class="notranslate" 的节点不翻译
-        if (node.classList.contains('notranslate') || !node.innerText || ['HTML', 'BODY'].includes(node.tagName)) return;
-
-
-        // 判断翻译类型
-        node = getTransNode(node);
+        let node = getTransNode(document.elementFromPoint(mouseX, mouseY));  // 获取最终需要翻译的节点
+        console.log("翻译节点：", node);
         if (!node) return;  // 如果不需要翻译，则跳过
 
         if (hasLoadingSpinner(node)) return;    // 如果已经在翻译，则跳过
@@ -621,48 +615,29 @@ function handler(mouseX, mouseY, time) {
     }, time);
 }
 
-function getTransNode(node) {
-    // 1、判断是否应该从父元素开始翻译（微软翻译时）
-    let parent = isMachineTrans(util.getValue('model')) ? shouldTranslateFromParent(node.parentNode) : false;
-    if (parent) {
-        console.log("应当翻译父节点：", parent);
-        return parent;  // 返回应该翻译的父节点
-    }
-
-    // 2、判断是否应该翻译自身
-    if (!node.innerText.includes('\n')  // 不包含换行符的 innerText
-        || (node.childNodes.length === 1 && node.childNodes[0].nodeType === node.TEXT_NODE) // 只包含文本的单一节点
-        || ["p", 'span'].includes(node.nodeName.toLowerCase())  // p、span 标签内视为完整句子
-    ) {
-        console.log("应当翻译自身：", node);
-        return node;  // 返回自身节点，因为它应该翻译
-    }
-
-    // 3、不需要翻译
-    return false;
-}
 
 // 返回最终应该翻译的父节点或 false
-function shouldTranslateFromParent(node) {
-    // 如果节点为空，或者已经到达了文档的根节点，则不需要翻译
-    if (!node || node === document.body || node === document.documentElement) {
-        return false;
-    }
+function getTransNode(node) {
+    // 全局节点与空节点、class="notranslate" 的节点不翻译
+    if (!node || node === document.body || node === document.documentElement || node.classList.contains('notranslate')) return false;
 
     // 检测当前节点是否满足翻译条件
-    if (detectChildMeta(node)) {
-        return shouldTranslateFromParent(node.parentNode) || node;  // 返回应该翻译的节点
+    if (['span', 'p'].includes(node.tagName.toLowerCase()) || detectChildMeta(node)) {
+        return getTransNode(node.parentNode) || node;  // 返回应该翻译的节点
     }
 
     return false
 }
+
+// 如果是 p span，应当立马通过
 
 // 检测子元素中是否包含指定标签以外的元素
 function detectChildMeta(parent) {
     let child = parent.firstChild;
     while (child) {
         // 如果子元素不是 a、b、strong、span、p、img 标签，则返回 false
-        if (child.nodeType === Node.ELEMENT_NODE && !['a', 'b', 'strong', 'span', 'p', 'img'].includes(child.nodeName.toLowerCase())) {
+        if (child.nodeType === Node.ELEMENT_NODE &&
+            !['a', 'b', 'strong', 'span', 'p', 'img'].includes(child.nodeName.toLowerCase())) {
             return false;
         }
         child = child.nextSibling;
@@ -701,18 +676,16 @@ const chatMgs = {
 
 
 function translate(node) {
-
     let model = util.getValue('model')
-    let origin = getTextWithCode(node);
 
     // 检测语言类型，如果是中文则不翻译
-    baiduDetectLang(origin).then(lang => {
+    baiduDetectLang(node.innerText).then(lang => {
         if (lang === langManager.getTo()) return;   // 与目标语言相同，不翻译
 
-        if (isMachineTrans(model)) origin = node.outerHTML; // 如果是微软翻译，应翻译 HTML
+        // 如果是机器翻译，则翻译 outerHTML，否则递归获取文本
+        let origin = isMachineTrans(model) ? node.outerHTML : getTextWithNode(node);
 
         let spinner = createLoadingSpinner(node);   // 插入转圈动画
-
         let timeout = setTimeout(() => {
             createFailedTip(node, new Error(errorManager.netError).toString(), spinner);
         }, 60000);
@@ -760,7 +733,7 @@ function translate(node) {
 }
 
 // LLM 模式获取翻译文本
-function getTextWithCode(node) {
+function getTextWithNode(node) {
     let text = "";
     // 遍历所有子节点
     node.childNodes.forEach(child => {
@@ -768,14 +741,11 @@ function getTextWithCode(node) {
             // 文本节点：直接添加其文本
             text += child.nodeValue;
         } else if (child.nodeType === Node.ELEMENT_NODE) {
-            // 元素节点：检查是否是<code>标签
+            // 检查是否为特定节点
             if (['code', 'a', 'strong', 'b'].includes(child.tagName.toLowerCase())) {
-                // 是<code>、<a>标签，添加 outerHTML
-                text += child.outerHTML;
-            } else {
-                // 不是<code>标签：递归处理
-                text += getTextWithCode(child);
+                text += child.outerHTML;    // 添加至 outerHTML
             }
+            text += getTextWithNode(child); // 递归
         }
     });
     return text;
