@@ -47,6 +47,12 @@ const expiringTime = 86400000 / 4;
 const source = "https://fr.unmeta.cn"
 const read = "%s/read".replace("%s", source), preread = "%s/preread".replace("%s", source);
 
+// icon
+const icon = {
+    retryIcon: createRetrySvgIcon(),
+    warnIcon: createWarnSvgIcon()
+}
+
 // 预编译正则表达式
 const regex = {
     timeRegex: /^(a|an|\d+)\s+(minute|hour|day|month|year)(s)?\s+ago$/, // "2 days ago"
@@ -253,11 +259,9 @@ const htmlManager = {
     }
 };
 
-
 // endregion
 
 // region 菜单
-
 // toast 样式定义
 const toastClass = {
     container: 'translate-d-container',
@@ -577,16 +581,6 @@ const settingManager = {
     });
 })();
 
-// 延迟响应时间
-let delay = 250;
-
-function delayRemoveCache(key, time = 250) {
-    outerHTMLSet.add(key);
-    setTimeout(() => {
-        outerHTMLSet.delete(key);
-    }, time);
-}
-
 // 监听事件处理器，参数：鼠标坐标、计时器
 function handler(mouseX, mouseY, time) {
     if (!shortcutManager.hotkeyPressed) return;
@@ -620,20 +614,11 @@ function handler(mouseX, mouseY, time) {
                 outerHTMLSet.delete(temp);
                 node.outerHTML = outerHTMLCache;    // 替换
                 delayRemoveCache(outerHTMLCache);
-            }, delay);
+            });
             return;
         }
         translate(node);
     }, time);
-}
-
-function hasLoadingSpinner(node) {
-    let child = node.firstChild;
-    while (child) {
-        if (child.classList && child.classList.contains('loading-spinner-fluentread')) return true;
-        child = child.nextSibling;
-    }
-    return false;
 }
 
 function getTransNode(node) {
@@ -736,18 +721,16 @@ function translate(node) {
         transModelFn[model](origin).then(text => {
 
             clearTimeout(timeout);  // 取消超时
+            spinner.remove()    // 移除 spinner
 
-            spinner.remove()
             console.log("翻译前的句子：", origin);
             console.log("翻译后的句子：", text);
 
             if (!text || origin === text) return;
 
-            // 保存旧的 outerHTML
-            let oldOuterHtml = node.outerHTML
+            let oldOuterHtml = node.outerHTML  // 保存旧的 outerHTML
+
             let newOuterHtml = text
-
-
             if (isMachineTrans(model)) {    // 1、机器翻译
                 if (!node.parentNode) return;
 
@@ -758,6 +741,7 @@ function translate(node) {
                     node.innerText = element.innerText;
                     return;
                 }
+
                 node.outerHTML = text;
             } else {    // 2、LLM 翻译
                 node.innerHTML = text;
@@ -773,15 +757,6 @@ function translate(node) {
             createFailedTip(node, e.toString() || errorManager.unknownError, spinner);
         })
     }).catch(e => createFailedTip(node, e.toString() || errorManager.unknownError));
-}
-
-// 创建转圈动画并插入
-function createLoadingSpinner(node, isCache) {
-    const spinner = document.createElement('span');
-    spinner.className = 'loading-spinner-fluentread';
-    if (isCache) spinner.style.borderTop = '3px solid green'
-    node.appendChild(spinner);
-    return spinner;
 }
 
 // LLM 模式获取翻译文本
@@ -804,84 +779,6 @@ function getTextWithCode(node) {
         }
     });
     return text;
-}
-
-function createFailedTip(node, errorMsg, spinner) {
-    console.log(errorMsg); // 打印错误信息
-    // 取消转圈动画
-    spinner?.remove();
-    // 创建包装元素
-    const wrapper = document.createElement('span');
-    wrapper.classList.add('retry-error-wrapper');
-
-    // 创建重试按钮
-    const retryButton = document.createElement('span');
-    retryButton.innerText = '重试';
-    retryButton.classList.add('retry-error-button');
-    retryButton.addEventListener('click', function () {
-        // 移除错误提示元素，重新翻译
-        wrapper.remove();
-        translate(node);
-    });
-
-    // 创建错误提示元素
-    const errorTip = document.createElement('span');
-    errorTip.innerText = '错误原因';
-    errorTip.classList.add('retry-error-tip');
-    errorTip.addEventListener('click', function () {
-        if (errorMsg.includes("auth failed")) {
-            window.alert(errorManager.authFailed);
-            return;
-        }
-        if (errorMsg.includes("quota") || errorMsg.includes("limit")) {
-            window.alert(errorManager.quota);
-            return
-        }
-        window.alert(errorMsg || errorManager.unknownError);
-    });
-
-    // 将 SVG 图标和文本添加到包装元素
-    wrapper.appendChild(createRetrySvgIcon());
-    wrapper.appendChild(retryButton);
-    wrapper.appendChild(createWarnSvgIcon());
-    wrapper.appendChild(errorTip);
-
-    node.appendChild(wrapper);
-}
-
-// 重试 svg
-function createRetrySvgIcon() {
-    return createSvgIcon(`M35.9387 5.48805C35.9166 4.60421 35.2434 4.04719 34.279 4.0675C33.3131 4.0878 32.8154 4.67712 32.6567 5.56132C32.5745 6.01985 32.601 6.49957 32.5962 6.96997C32.5881 7.77251 32.594 8.5752 32.594 9.3779C32.4685 9.43478 32.343 9.4917 32.2175 9.54866C31.7961 9.14366 31.3817 8.73102 30.9521 8.33488C27.0799 4.76502 22.4856 3.43605 17.3405 4.22591C10.0761 5.34107 4.69388 11.3891 4.06231 18.939C3.46983 26.0213 8.03881 32.8643 14.897 35.1663C21.8348 37.495 29.5543 34.7845 33.4563 28.6429C33.7074 28.2475 33.9685 27.8417 34.1218 27.4045C34.4194 26.5555 34.2699 25.765 33.4312 25.3113C32.6231 24.8743 31.8573 25.0498 31.2835 25.7915C30.9966 26.1625 30.7785 26.5856 30.5106 26.9724C28.0914 30.4658 24.7682 32.3693 20.5158 32.5766C14.8218 32.8541 9.60215 29.1608 7.94272 23.717C6.22884 18.0946 8.59939 12.0366 13.6698 9.08126C18.5986 6.20837 24.9262 7.03281 28.9148 11.0837C29.2069 11.3803 29.4036 11.7708 29.8772 12.4519C28.32 12.4519 27.1212 12.3885 25.9323 12.4704C24.8345 12.5461 24.253 13.1995 24.262 14.1166C24.2708 15.0096 24.8931 15.7485 25.9495 15.7745C28.7068 15.8424 31.4671 15.8177 34.2259 15.7884C35.1348 15.7787 35.8872 15.2584 35.9148 14.3603C36.0054 11.4048 36.0127 8.44397 35.9387 5.48805Z`)
-}
-
-// 警告 svg
-function createWarnSvgIcon() {
-    return createSvgIcon(`M20.5607 2.5191C10.735 2.05516 2.46528 10.1045 2.50011 20.0984C2.54469 32.8837 15.9794 41.3025 27.521 35.772C28.0597 35.5138 28.6042 35.2357 29.0745 34.8742C29.9064 34.2347 30.0797 33.3404 29.5712 32.5989C29.0382 31.8217 28.2936 31.6838 27.4596 32.0227C27.2265 32.1174 27.0066 32.2437 26.7865 32.3701C26.6008 32.4767 26.415 32.5833 26.2211 32.6712C20.8005 35.1282 15.6165 34.6504 11.0342 30.8857C6.38506 27.0662 4.83815 21.9885 6.36608 16.1605C8.23236 9.04216 15.6457 4.59129 22.7912 6.13629C30.3201 7.76418 35.1917 14.6886 33.9006 22.1467C33.6763 23.4426 33.1697 24.693 32.665 25.9388C32.4936 26.3618 32.3223 26.7846 32.1625 27.2081C31.7321 28.3488 31.8755 29.1499 32.727 29.6338C33.5625 30.1085 34.3839 29.8271 35.0848 28.8121C35.2031 28.6407 35.3005 28.4544 35.3977 28.2685C35.4242 28.2179 35.4507 28.1672 35.4776 28.1169C36.5263 26.154 37.166 24.0544 37.3992 21.8528C38.4715 11.7296 30.8594 3.00541 20.5607 2.5191ZM22.2324 19.4482C22.6221 17.6294 21.6934 16.7853 19.8682 17.1885C19.4795 17.2744 19.0887 17.3789 18.7223 17.531C17.5055 18.036 17.1067 18.9307 17.8422 20.0563C18.3665 20.8586 18.2472 21.5161 18.0255 22.2965L17.9039 22.7239C17.5079 24.1148 17.1115 25.5072 16.7935 26.9165C16.4841 28.2873 17.2241 29.1723 18.6198 29.1593C18.6749 29.1502 18.7366 29.1408 18.8028 29.1307C18.9623 29.1063 19.1482 29.078 19.332 29.0394C21.5543 28.5732 21.9094 27.8227 20.9844 25.759C20.8192 25.3904 20.8406 24.873 20.9389 24.4633C21.1123 23.7404 21.3092 23.0227 21.5061 22.3052C21.7664 21.3567 22.0267 20.4083 22.2324 19.4482ZM21.2918 10.7674C22.3383 10.7322 23.3464 11.7297 23.3245 12.7787C23.3035 13.7817 22.4311 14.6541 21.4139 14.6892C20.3685 14.7252 19.5018 13.9485 19.4202 12.9025C19.3341 11.798 20.2055 10.8041 21.2918 10.7674Z`)
-}
-
-// 根据 d 创建 svg 元素
-function createSvgIcon(d) {
-    // 创建SVG元素
-    const svgNS = "http://www.w3.org/2000/svg";
-    const svg = document.createElementNS(svgNS, "svg");
-    svg.setAttribute("fill", "none");
-    svg.setAttribute("viewBox", "0 0 40 40");
-    svg.setAttribute("height", "40");
-    svg.setAttribute("width", "40");
-    svg.style.alignItems = 'center';
-    svg.style.justifyContent = 'center';  // 可选，如果也需要水平居中
-    svg.style.display = "inline";
-    svg.style.width = "1em";
-    svg.style.height = "1em";
-    svg.style.marginLeft = '1em';
-    svg.style.pointerEvents = "none";
-
-    // 创建path元素并设置属性
-    const path = document.createElementNS(svgNS, "path");
-    path.setAttribute("fill", "#428ADF");
-    path.setAttribute("d", d);
-    svg.appendChild(path);
-    return svg;
 }
 
 // endregion
@@ -1080,10 +977,7 @@ function getYiyanToken() {
                         // 获取有效时间范围，有效期30天（单位秒），需 x1000 转换为毫秒
                         let expiration = new Date().getTime() + res.expires_in * 1000;
                         tokenManager.setToken(transModel.yiyan, {
-                            ak: v.ak,
-                            sk: v.sk,
-                            token: res.access_token,
-                            expiration: expiration
+                            ak: v.ak, sk: v.sk, token: res.access_token, expiration: expiration
                         });
                         resolve(res.access_token);
                     } else reject(new Error(res.error_description));
@@ -1209,132 +1103,6 @@ function base64UrlSafe(base64String) {
 
 // endregion
 
-// region read
-// read：异步返回 callback，表示是否需要拉取数据
-function checkRun(callback) {
-    // 1、检查缓存
-    let pageMapCache = GM_getValue(checkKey, false);
-    if (pageMapCache) {
-        pageMapCache[url.host] ? callback(true) : callback(false);
-    }
-
-    // 2、网络请求
-    const lastRun = GM_getValue("lastRun", undefined);
-    const now = new Date().getTime();
-
-    if (isEmpty(lastRun) || now - lastRun > expiringTime) {
-        console.log("开始更新 preread 缓存");
-        GM_xmlhttpRequest({
-            method: POST,
-            url: preread,
-            onload: function (response) {
-                // pagesMap 是新获取的数据，pageMapCache 是从缓存中获取的旧数据
-                let pagesMap = JSON.parse(response.responseText).Data;
-                pagesMap[url.host] ? callback(true) : callback(false);
-                // 将 fluent_read_check 设置为新的缓存
-                GM_setValue(checkKey, pagesMap);
-                // 检查 preread 名单判断是否需要更新对应 host 的 read 数据
-                const listValues = GM_listValues();
-                listValues.forEach(host => {
-                    if (pageMapCache[host] !== pagesMap[host]) {
-                        GM_deleteValue(host);
-                        console.log("删除过期的缓存数据：", host);
-                    }
-                });
-                GM_setValue("lastRun", now.toString()); // 请求成功后设置当前时间
-            },
-            onerror: (error) => console.error("请求失败: ", error)
-        });
-    }
-}
-
-// read：处理 DOM 更新
-function handleDOMUpdate(node) {
-    // 如果数据存在则直接解析，否则发起网络请求
-    let cachedData = GM_getValue(url.host, undefined);
-    cachedData ? parseDfs(node, cachedData) : throttleObserveDOM();
-}
-
-// read：监听器配置
-function observeDOM() {
-    GM_xmlhttpRequest({
-        method: POST,
-        url: read,
-        data: JSON.stringify({page: url.origin}),   // 请求参数
-        onload: function (response) {
-            console.log("新的 read 请求：", url.host);
-
-            let respMap = JSON.parse(response.responseText).Data;
-            GM_setValue(url.host, respMap);
-            parseDfs(document.body, respMap);
-        },
-        onerror: function (error) {
-            console.error("请求失败: ", error);
-        }
-    });
-}
-
-
-// read：递归提取节点文本
-function parseDfs(node, respMap) {
-    if (isEmpty(node)) return;
-
-    // console.log("当前节点：", node)
-    switch (node.nodeType) {
-        // 1、元素节点
-        case Node.ELEMENT_NODE:
-            // console.log("元素节点： ", node);
-            // 根据 host 获取 skip 函数，判断是否需要跳过
-            let skipFn = skipStringMap[url.host];
-            if (skipFn && skipFn(node)) return;
-            // aria 提示信息
-            if (node.hasAttribute("aria-label")) processNode(node, textType.ariaLabel, respMap);
-            // 按钮与文本域节点
-            if (["input", "button", "textarea"].includes(node.tagName.toLowerCase())) {
-                if (node.placeholder) processNode(node, textType.placeholder, respMap);
-                if (node.value && (node.tagName.toLowerCase() === "button" || ["submit", "button"].includes(node.type))) processNode(node, textType.inputValue, respMap);
-            }
-            break;
-        // 2、文本节点
-        case  Node.TEXT_NODE:
-            let fn = adapterFnMap[url.host];    // 根据 host 获取 adapter 函数，判断是否需要特殊处理
-            isEmpty(fn) ? processNode(node, textType.textContent, respMap) : fn(node, respMap);
-            return; // 文本节点无子节点，return
-    }
-    let child = node.firstChild;
-    while (child) {
-        parseDfs(child, respMap);
-        child = child.nextSibling;
-    }
-}
-
-function processNode(node, attr, respMap) {
-    let text;
-    switch (attr) {
-        case textType.textContent:
-            text = node.textContent;
-            break;
-        case textType.placeholder:
-            text = node.placeholder;
-            break;
-        case textType.inputValue:
-            text = node.value;
-            break;
-        case textType.ariaLabel:
-            text = node.getAttribute('aria-label');
-            break;
-    }
-
-    if (pruneSet.has(text)) return;
-
-    let formattedText = format(text);
-    if (formattedText && withoutChinese(formattedText)) {
-        signature(url.host + formattedText).then(sign => respMap[sign] ? replaceText(attr, node, respMap[sign]) : null)
-    }
-}
-
-// endregion
-
 // region 通用函数
 
 // 快捷键处理
@@ -1386,6 +1154,108 @@ function baiduDetectLang(text) {
             }
         });
     })
+}
+
+// 延迟删除缓存
+function delayRemoveCache(key, time = 250) {
+    outerHTMLSet.add(key);
+    setTimeout(() => {
+        outerHTMLSet.delete(key);
+    }, time);
+}
+
+function createFailedTip(node, errorMsg, spinner) {
+    console.log(errorMsg); // 打印错误信息
+    // 取消转圈动画
+    spinner?.remove();
+    // 创建包装元素
+    const wrapper = document.createElement('span');
+    wrapper.classList.add('retry-error-wrapper');
+
+    // 创建重试按钮
+    const retryButton = document.createElement('span');
+    retryButton.innerText = '重试';
+    retryButton.classList.add('retry-error-button');
+    retryButton.addEventListener('click', function () {
+        // 移除错误提示元素，重新翻译
+        wrapper.remove();
+        translate(node);
+    });
+
+    // 创建错误提示元素
+    const errorTip = document.createElement('span');
+    errorTip.innerText = '错误原因';
+    errorTip.classList.add('retry-error-tip');
+    errorTip.addEventListener('click', function () {
+        if (errorMsg.includes("auth failed")) {
+            errorMsg = errorManager.authFailed
+        }
+        if (errorMsg.includes("quota") || errorMsg.includes("limit")) {
+            window.alert(errorManager.quota);
+        }
+        window.alert(errorMsg || errorManager.unknownError);
+    });
+
+    // 将 SVG 图标和文本添加到包装元素
+    wrapper.appendChild(icon.retryIcon);
+    wrapper.appendChild(retryButton);
+    wrapper.appendChild(icon.warnIcon);
+    wrapper.appendChild(errorTip);
+
+    node.appendChild(wrapper);
+}
+
+// 重试 svg
+function createRetrySvgIcon() {
+    return createSvgIcon(`M35.9387 5.48805C35.9166 4.60421 35.2434 4.04719 34.279 4.0675C33.3131 4.0878 32.8154 4.67712 32.6567 5.56132C32.5745 6.01985 32.601 6.49957 32.5962 6.96997C32.5881 7.77251 32.594 8.5752 32.594 9.3779C32.4685 9.43478 32.343 9.4917 32.2175 9.54866C31.7961 9.14366 31.3817 8.73102 30.9521 8.33488C27.0799 4.76502 22.4856 3.43605 17.3405 4.22591C10.0761 5.34107 4.69388 11.3891 4.06231 18.939C3.46983 26.0213 8.03881 32.8643 14.897 35.1663C21.8348 37.495 29.5543 34.7845 33.4563 28.6429C33.7074 28.2475 33.9685 27.8417 34.1218 27.4045C34.4194 26.5555 34.2699 25.765 33.4312 25.3113C32.6231 24.8743 31.8573 25.0498 31.2835 25.7915C30.9966 26.1625 30.7785 26.5856 30.5106 26.9724C28.0914 30.4658 24.7682 32.3693 20.5158 32.5766C14.8218 32.8541 9.60215 29.1608 7.94272 23.717C6.22884 18.0946 8.59939 12.0366 13.6698 9.08126C18.5986 6.20837 24.9262 7.03281 28.9148 11.0837C29.2069 11.3803 29.4036 11.7708 29.8772 12.4519C28.32 12.4519 27.1212 12.3885 25.9323 12.4704C24.8345 12.5461 24.253 13.1995 24.262 14.1166C24.2708 15.0096 24.8931 15.7485 25.9495 15.7745C28.7068 15.8424 31.4671 15.8177 34.2259 15.7884C35.1348 15.7787 35.8872 15.2584 35.9148 14.3603C36.0054 11.4048 36.0127 8.44397 35.9387 5.48805Z`)
+}
+
+// 警告 svg
+function createWarnSvgIcon() {
+    return createSvgIcon(`M20.5607 2.5191C10.735 2.05516 2.46528 10.1045 2.50011 20.0984C2.54469 32.8837 15.9794 41.3025 27.521 35.772C28.0597 35.5138 28.6042 35.2357 29.0745 34.8742C29.9064 34.2347 30.0797 33.3404 29.5712 32.5989C29.0382 31.8217 28.2936 31.6838 27.4596 32.0227C27.2265 32.1174 27.0066 32.2437 26.7865 32.3701C26.6008 32.4767 26.415 32.5833 26.2211 32.6712C20.8005 35.1282 15.6165 34.6504 11.0342 30.8857C6.38506 27.0662 4.83815 21.9885 6.36608 16.1605C8.23236 9.04216 15.6457 4.59129 22.7912 6.13629C30.3201 7.76418 35.1917 14.6886 33.9006 22.1467C33.6763 23.4426 33.1697 24.693 32.665 25.9388C32.4936 26.3618 32.3223 26.7846 32.1625 27.2081C31.7321 28.3488 31.8755 29.1499 32.727 29.6338C33.5625 30.1085 34.3839 29.8271 35.0848 28.8121C35.2031 28.6407 35.3005 28.4544 35.3977 28.2685C35.4242 28.2179 35.4507 28.1672 35.4776 28.1169C36.5263 26.154 37.166 24.0544 37.3992 21.8528C38.4715 11.7296 30.8594 3.00541 20.5607 2.5191ZM22.2324 19.4482C22.6221 17.6294 21.6934 16.7853 19.8682 17.1885C19.4795 17.2744 19.0887 17.3789 18.7223 17.531C17.5055 18.036 17.1067 18.9307 17.8422 20.0563C18.3665 20.8586 18.2472 21.5161 18.0255 22.2965L17.9039 22.7239C17.5079 24.1148 17.1115 25.5072 16.7935 26.9165C16.4841 28.2873 17.2241 29.1723 18.6198 29.1593C18.6749 29.1502 18.7366 29.1408 18.8028 29.1307C18.9623 29.1063 19.1482 29.078 19.332 29.0394C21.5543 28.5732 21.9094 27.8227 20.9844 25.759C20.8192 25.3904 20.8406 24.873 20.9389 24.4633C21.1123 23.7404 21.3092 23.0227 21.5061 22.3052C21.7664 21.3567 22.0267 20.4083 22.2324 19.4482ZM21.2918 10.7674C22.3383 10.7322 23.3464 11.7297 23.3245 12.7787C23.3035 13.7817 22.4311 14.6541 21.4139 14.6892C20.3685 14.7252 19.5018 13.9485 19.4202 12.9025C19.3341 11.798 20.2055 10.8041 21.2918 10.7674Z`)
+}
+
+// 根据 d 创建 svg 元素
+function createSvgIcon(d) {
+    // 创建SVG元素
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(svgNS, "svg");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("viewBox", "0 0 40 40");
+    svg.setAttribute("height", "40");
+    svg.setAttribute("width", "40");
+    svg.style.alignItems = 'center';
+    svg.style.justifyContent = 'center';  // 可选，如果也需要水平居中
+    svg.style.display = "inline";
+    svg.style.width = "1em";
+    svg.style.height = "1em";
+    svg.style.marginLeft = '1em';
+    svg.style.pointerEvents = "none";
+
+    // 创建path元素并设置属性
+    const path = document.createElementNS(svgNS, "path");
+    path.setAttribute("fill", "#428ADF");
+    path.setAttribute("d", d);
+    svg.appendChild(path);
+    return svg;
+}
+
+// 创建转圈动画并插入
+function createLoadingSpinner(node, isCache) {
+    const spinner = document.createElement('span');
+    spinner.className = 'loading-spinner-fluentread';
+    if (isCache) spinner.style.borderTop = '3px solid green'
+    node.appendChild(spinner);
+    return spinner;
+}
+
+// 递归检查是否包含 spinner
+function hasLoadingSpinner(node) {
+    if (node.classList.contains('loading-spinner-fluentread')) return true;
+    for (let child of node.children) {
+        if (hasLoadingSpinner(child)) return true;
+    }
+    return false;
 }
 
 // 计算SHA-1散列，取最后20个字符
@@ -1538,6 +1408,132 @@ function initApplication() {
     .fluent-read-tooltip:hover .fluent-read-tooltiptext { visibility: visible; opacity: 1; }
     `
     );
+}
+
+// endregion
+
+// region read
+// read：异步返回 callback，表示是否需要拉取数据
+function checkRun(callback) {
+    // 1、检查缓存
+    let pageMapCache = GM_getValue(checkKey, false);
+    if (pageMapCache) {
+        pageMapCache[url.host] ? callback(true) : callback(false);
+    }
+
+    // 2、网络请求
+    const lastRun = GM_getValue("lastRun", undefined);
+    const now = new Date().getTime();
+
+    if (isEmpty(lastRun) || now - lastRun > expiringTime) {
+        console.log("开始更新 preread 缓存");
+        GM_xmlhttpRequest({
+            method: POST,
+            url: preread,
+            onload: function (response) {
+                // pagesMap 是新获取的数据，pageMapCache 是从缓存中获取的旧数据
+                let pagesMap = JSON.parse(response.responseText).Data;
+                pagesMap[url.host] ? callback(true) : callback(false);
+                // 将 fluent_read_check 设置为新的缓存
+                GM_setValue(checkKey, pagesMap);
+                // 检查 preread 名单判断是否需要更新对应 host 的 read 数据
+                const listValues = GM_listValues();
+                listValues.forEach(host => {
+                    if (pageMapCache[host] !== pagesMap[host]) {
+                        GM_deleteValue(host);
+                        console.log("删除过期的缓存数据：", host);
+                    }
+                });
+                GM_setValue("lastRun", now.toString()); // 请求成功后设置当前时间
+            },
+            onerror: (error) => console.error("请求失败: ", error)
+        });
+    }
+}
+
+// read：处理 DOM 更新
+function handleDOMUpdate(node) {
+    // 如果数据存在则直接解析，否则发起网络请求
+    let cachedData = GM_getValue(url.host, undefined);
+    cachedData ? parseDfs(node, cachedData) : throttleObserveDOM();
+}
+
+// read：监听器配置
+function observeDOM() {
+    GM_xmlhttpRequest({
+        method: POST,
+        url: read,
+        data: JSON.stringify({page: url.origin}),   // 请求参数
+        onload: function (response) {
+            console.log("新的 read 请求：", url.host);
+
+            let respMap = JSON.parse(response.responseText).Data;
+            GM_setValue(url.host, respMap);
+            parseDfs(document.body, respMap);
+        },
+        onerror: function (error) {
+            console.error("请求失败: ", error);
+        }
+    });
+}
+
+
+// read：递归提取节点文本
+function parseDfs(node, respMap) {
+    if (isEmpty(node)) return;
+
+    // console.log("当前节点：", node)
+    switch (node.nodeType) {
+        // 1、元素节点
+        case Node.ELEMENT_NODE:
+            // console.log("元素节点： ", node);
+            // 根据 host 获取 skip 函数，判断是否需要跳过
+            let skipFn = skipStringMap[url.host];
+            if (skipFn && skipFn(node)) return;
+            // aria 提示信息
+            if (node.hasAttribute("aria-label")) processNode(node, textType.ariaLabel, respMap);
+            // 按钮与文本域节点
+            if (["input", "button", "textarea"].includes(node.tagName.toLowerCase())) {
+                if (node.placeholder) processNode(node, textType.placeholder, respMap);
+                if (node.value && (node.tagName.toLowerCase() === "button" || ["submit", "button"].includes(node.type))) processNode(node, textType.inputValue, respMap);
+            }
+            break;
+        // 2、文本节点
+        case  Node.TEXT_NODE:
+            let fn = adapterFnMap[url.host];    // 根据 host 获取 adapter 函数，判断是否需要特殊处理
+            isEmpty(fn) ? processNode(node, textType.textContent, respMap) : fn(node, respMap);
+            return; // 文本节点无子节点，return
+    }
+    let child = node.firstChild;
+    while (child) {
+        parseDfs(child, respMap);
+        child = child.nextSibling;
+    }
+}
+
+function processNode(node, attr, respMap) {
+    let text;
+    switch (attr) {
+        case textType.textContent:
+            text = node.textContent;
+            break;
+        case textType.placeholder:
+            text = node.placeholder;
+            break;
+        case textType.inputValue:
+            text = node.value;
+            break;
+        case textType.ariaLabel:
+            text = node.getAttribute('aria-label');
+            break;
+    }
+
+    if (pruneSet.has(text)) return;
+
+    let formattedText = format(text);
+    if (formattedText && withoutChinese(formattedText)) {
+        signature(url.host + formattedText).then(sign => respMap[sign] ? replaceText(attr, node, respMap[sign]) : null)
+    }
 }
 
 // endregion
