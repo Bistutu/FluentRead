@@ -22,7 +22,6 @@
 // @connect      aip.baidubce.com
 // @connect      dashscope.aliyuncs.com
 // @connect      open.bigmodel.cn
-// @connect      translate.googleapis.com
 // @connect      api.openai.com
 // @connect      api.moonshot.cn
 // @connect      fanyi.baidu.com
@@ -115,18 +114,16 @@ const transModel = {    // 翻译模型枚举
     moonshot: "moonshot",
     // --- 机器翻译 ---
     microsoft: "microsoft",
-    google: "google",
 }
 
 // 翻译模型名称
 const transModelName = {
     [transModel.microsoft]: '微软翻译（推荐）',
-    [transModel.google]: '谷歌翻译',
 
-    [transModel.openai]: 'chatGPT AI',
-    [transModel.tongyi]: '通义千问AI',
     [transModel.zhipu]: '智谱清言AI',
+    [transModel.tongyi]: '通义千问AI',
     [transModel.yiyan]: '文心一言AI',
+    [transModel.openai]: 'chatGPT AI',
     [transModel.moonshot]: 'moonshot AI',
 }
 
@@ -640,7 +637,7 @@ function hasLoadingSpinner(node) {
 }
 
 function getTransNode(node) {
-    // 1、判断是否应该从父元素开始翻译（谷歌与微软翻译时）
+    // 1、判断是否应该从父元素开始翻译（微软翻译时）
     let parent = isMachineTrans(util.getValue('model')) ? shouldTranslateFromParent(node.parentNode) : false;
     if (parent) {
         console.log("应当翻译父节点：", parent);
@@ -695,7 +692,7 @@ function detectChildMeta(parent) {
 const chatMgs = {
     system: `You are a professional, authentic translation engine, only returns translations.`,
     user_pre: `Please translate them into {{to}}, `,    // 隐藏前半部分（语言选择），显示用户自定义的后半部分
-    user_post: `please do not explain my original text:
+    user_post: `please do not explain my original text.:
 
 {{origin}}`,
     setSystemMsg(msg) {
@@ -727,7 +724,7 @@ function translate(node) {
     baiduDetectLang(origin).then(lang => {
         if (lang === langManager.getTo()) return;   // 与目标语言相同，不翻译
 
-        if (isMachineTrans(model)) origin = node.outerHTML; // 如果是谷歌或微软翻译，应翻译 HTML
+        if (isMachineTrans(model)) origin = node.outerHTML; // 如果是微软翻译，应翻译 HTML
 
         let spinner = createLoadingSpinner(node);   // 插入转圈动画
 
@@ -961,40 +958,6 @@ function parseJwt(token) {
         return null;
     }
 }
-
-// endregion
-
-// region 谷歌翻译
-
-function google(origin) {
-    return new Promise((resolve, reject) => {
-        let params = {
-            client: 'gtx', sl: langManager.getFrom(), tl: langManager.getTo(), dt: 't', strip: 1, nonced: 1,
-            'q': encodeURIComponent(origin),
-        };
-        let queryString = Object.keys(params).map(key => {
-            return key + '=' + params[key];
-        }).join('&');
-
-        GM_xmlhttpRequest({
-            method: 'GET',
-            url: 'https://translate.googleapis.com/translate_a/single?' + queryString,
-            onload: resp => {
-                try {
-                    let result = JSON.parse(resp.responseText);
-                    let sentence = ''
-                    result[0].forEach(e => sentence += e[0]);
-                    sentence = htmlManager.standardizeHtml(sentence)    // 正则标准化 HTML
-                    resolve(sentence);
-                } catch (e) {
-                    reject(resp.responseText);
-                }
-            },
-            onerror: error => reject(error)
-        });
-    });
-}
-
 
 // endregion
 
@@ -1396,7 +1359,7 @@ function setShortcut(shortcut) {
 
 // 判断是否为机器翻译
 function isMachineTrans(model) {
-    return [transModel.microsoft, transModel.google].includes(model);
+    return [transModel.microsoft].includes(model);
 }
 
 // 检测语言类型
@@ -1528,7 +1491,6 @@ function initApplication() {
     transModelFn[transModel.zhipu] = zhipu
     transModelFn[transModel.moonshot] = moonshot
     transModelFn[transModel.microsoft] = microsoft
-    transModelFn[transModel.google] = google
 
     // 填充适配器 map
     adapterFnMap[exceptionMap.maven] = procMaven
