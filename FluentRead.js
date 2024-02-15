@@ -512,7 +512,7 @@ const settingManager = {
     },
     about() {
         // 跳转页面
-        window.open('https://fr.unmeta.cn/');
+        window.open('https://github.com/Bistutu/FluentRead');
     }
 };
 // endregion
