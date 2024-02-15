@@ -84,7 +84,11 @@ const exceptionMap = {
     openai_web: "openai.com",
     chatGPT: "chat.openai.com",
     coze: "www.coze.com",
-    youtube: "www.youtube.com",
+}
+
+// 兼容
+const compatFn = {
+    "www.youtube.com": youtube,
 }
 
 // 文本类型
@@ -107,7 +111,6 @@ let throttleObserveDOM = throttle(observeDOM, 3000);
 // 鼠标位置
 let mouseX = 0, mouseY = 0;
 
-//
 const transModelFn = new Map()   // 翻译模型 map
 
 // 翻译模型
@@ -242,22 +245,6 @@ const util = {
         return document.getElementById(id).value || '';
     },
 }
-
-const htmlManager = {
-    openTagWithAttributes: /<\s*(\w+)(\s+[^>]*?)?\s*>/g,
-    openTag: /<\s*(\w+)\s*>/g,
-    closingTag: /<\s*\/\s*(\w+)\s*>/g,
-    // 标准化 HTML
-    standardizeHtml(sentence) {
-        // 1、处理开标签和属性，移除标签名和属性之间多余的空格，// 如 < a href="#"> 会被转换成 <a href="#">
-        // 2、处理没有属性的开标签，移除标签名周围的多余空格，如 "<p >" 会被转换成 "<p>"
-        // 3、处理闭合标签，移除标签名周围的多余空格，如 "</ p>" 会被转换成 "</p>"
-        sentence = sentence.replace(this.openTagWithAttributes, (match, p1, p2) => {
-            return `<${p1}${p2 ? ' ' + p2.trim() : ''}>`;
-        }).replace(this.openTag, "<$1>").replace(this.closingTag, "</$1>")
-        return sentence;
-    }
-};
 
 // endregion
 
@@ -588,27 +575,35 @@ function handler(mouseX, mouseY, time) {
     clearTimeout(hoverTimer); // 清除计时器
     hoverTimer = setTimeout(() => {
         let node = getTransNode(document.elementFromPoint(mouseX, mouseY));  // 获取最终需要翻译的节点
-        console.log("翻译节点：", node);
         if (!node) return;  // 如果不需要翻译，则跳过
 
         if (hasLoadingSpinner(node)) return;    // 如果已经在翻译，则跳过
 
         // 去重判断
-        if (outerHTMLSet.has(node.outerHTML)) return
+        if (outerHTMLSet.has(node.outerHTML)) {
+            console.log('重复节点', node);
+            return;
+        }
+        console.log('处理节点', node);
         outerHTMLSet.add(node.outerHTML);
 
         // 检测缓存 cache
         let outerHTMLCache = sessionManager.getTransCache(node.outerHTML);
         if (outerHTMLCache) {
             let temp = node.outerHTML;
-            // console.log("缓存命中：", outerHTMLCache);
+            console.log("缓存命中：", outerHTMLCache);
             let spinner = createLoadingSpinner(node, true);
             setTimeout(() => {  // 延迟 remove 转圈动画与替换文本
                 spinner.remove();
                 outerHTMLSet.delete(temp);
-                node.outerHTML = outerHTMLCache;    // 替换
+                let fn = compatFn[url.host];    // 兼容函数
+                if (fn) {
+                    fn(node, outerHTMLCache);    // 兼容函数
+                } else {
+                    node.outerHTML = outerHTMLCache;    // 替换
+                }
                 delayRemoveCache(outerHTMLCache);
-            });
+            }, 250);
             return;
         }
         translate(node);
@@ -616,28 +611,44 @@ function handler(mouseX, mouseY, time) {
 }
 
 
+const getTransNodeSet = new Set([
+    'span', 'p',    // 日常
+    'yt-formatted-string',   // youtube 评论
+]);
+
 // 返回最终应该翻译的父节点或 false
 function getTransNode(node) {
     // 全局节点与空节点、class="notranslate" 的节点不翻译
     if (!node || node === document.body || node === document.documentElement || node.classList.contains('notranslate')) return false;
 
     // 检测当前节点是否满足翻译条件
-    if (['span', 'p'].includes(node.tagName.toLowerCase()) || detectChildMeta(node)) {
+    if ( getTransNodeSet.has(node.tagName.toLowerCase()) || detectChildMeta(node)) {
         return getTransNode(node.parentNode) || node;  // 返回应该翻译的节点
     }
+
+    console.log('不翻译节点：', node);
 
     return false
 }
 
-// 如果是 p span，应当立马通过
+// node 的 parentNode 只含有这些标签时，会向上翻译 parentNode
+const detectChildMetaSet = new Set([
+    'a', 'b', 'strong', 'span', 'p', 'img',
+    'br', 'em', 'u', 'small', 'sub', 'sup', 'i',
+    'font', 'big', 'strike', 's', 'del', 'ins',
+    'mark', 'cite', 'q', 'abbr', 'acronym', 'dfn',
+    'code', 'samp', 'kbd', 'var', 'pre', 'address',
+    'time', 'ruby', 'rt', 'rp', 'bdi', 'bdo', 'wbr',
+    'details', 'summary', 'menuitem', 'menu', 'dialog',
+    'slot', 'template', 'shadow', 'content', 'element',
+]);
 
 // 检测子元素中是否包含指定标签以外的元素
 function detectChildMeta(parent) {
     let child = parent.firstChild;
     while (child) {
         // 如果子元素不是 a、b、strong、span、p、img 标签，则返回 false
-        if (child.nodeType === Node.ELEMENT_NODE &&
-            !['a', 'b', 'strong', 'span', 'p', 'img'].includes(child.nodeName.toLowerCase())) {
+        if (child.nodeType === Node.ELEMENT_NODE && !detectChildMetaSet.has(child.nodeName.toLowerCase())) {
             return false;
         }
         child = child.nextSibling;
@@ -693,11 +704,11 @@ function translate(node) {
         // 调用翻译服务
         transModelFn[model](origin).then(text => {
 
-            clearTimeout(timeout);  // 取消超时
-            spinner.remove()    // 移除 spinner
+            clearTimeout(timeout) // 取消超时
+            spinner.remove()      // 移除 spinner
 
-            console.log("翻译前的句子：", origin);
-            console.log("翻译后的句子：", text);
+            // console.log("翻译前的句子：", origin);
+            // console.log("翻译后的句子：", text);
 
             if (!text || origin === text) return;
 
@@ -706,16 +717,17 @@ function translate(node) {
             let newOuterHtml = text
             if (isMachineTrans(model)) {    // 1、机器翻译
                 if (!node.parentNode) return;
-
-                // todo 1、特殊情况需使用高阶函数，2、暂未考虑特殊情况。2024-2-10
-                if (url.host === exceptionMap.youtube) {    // youtube 适配
-                    let element = document.createElement('span');
-                    element.innerHTML = text;
-                    node.innerText = element.innerText;
-                    return;
+                let fn = compatFn[url.host];    // 兼容函数
+                // TODO 存在不能恢复翻译的 bug
+                if (fn) {
+                    node.innerText = node.innerText
+                    oldOuterHtml = node.outerHTML;
+                    newOuterHtml = fn(node, text);
+                    console.log('oldOuterHtml:', oldOuterHtml);
+                    console.log('newOuterHtml:', newOuterHtml);
+                } else {
+                    node.outerHTML = text;
                 }
-
-                node.outerHTML = text;
             } else {    // 2、LLM 翻译
                 node.innerHTML = text;
                 newOuterHtml = node.outerHTML;
@@ -730,6 +742,14 @@ function translate(node) {
             createFailedTip(node, e.toString() || errorManager.unknownError, spinner);
         })
     }).catch(e => createFailedTip(node, e.toString() || errorManager.unknownError));
+}
+
+function youtube(node, text) {
+    // 替换 innerText
+    let temp = document.createElement('span');
+    temp.innerHTML = text;
+    node.innerText = temp.innerText;
+    return node.outerHTML
 }
 
 // LLM 模式获取翻译文本
@@ -752,6 +772,12 @@ function getTextWithNode(node) {
 }
 
 // endregion
+
+// region 翻译兼容
+
+
+// endregion
+
 
 // region 微软翻译
 function microsoft(origin) {
