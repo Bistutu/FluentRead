@@ -1,4 +1,4 @@
-# 流畅阅读<img src="./misc/images/icon.png" alt="流畅阅读" style="width:1em;" />
+# 流畅阅读 <img src="./misc/images/icon.png" alt="流畅阅读" style="width:1em;" />
 
 > Fluent Read，基于母语般的阅读体验
 
