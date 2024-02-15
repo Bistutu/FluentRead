@@ -2,7 +2,7 @@
 // @name         流畅阅读
 // @license      GPL-3.0 license
 // @namespace    https://fr.unmeta.cn/
-// @version      1.0
+// @version      1.02
 // @description  基于上下文语境的人工智能翻译引擎，为部分网站提供精准翻译，让所有人都能够拥有基于母语般的阅读体验。程序Github开源：https://github.com/Bistutu/FluentRead，欢迎 star。
 // @author       ThinkStu
 // @match        *://*/*
@@ -559,13 +559,13 @@ const settingManager = {
     });
 
     // 快捷键 F2，清空所有缓存
-    document.addEventListener('keydown', function (event) {
-        if (event.key === 'F2') {
-            let listValues = GM_listValues();
-            listValues.forEach(e => GM_deleteValue(e))
-            console.log('Cache cleared!');
-        }
-    });
+    // document.addEventListener('keydown', function (event) {
+    //     if (event.key === 'F2') {
+    //         let listValues = GM_listValues();
+    //         listValues.forEach(e => GM_deleteValue(e))
+    //         console.log('Cache cleared!');
+    //     }
+    // });
 })();
 
 // 监听事件处理器，参数：鼠标坐标、计时器
@@ -577,14 +577,14 @@ function handler(mouseX, mouseY, time) {
         let node = getTransNode(document.elementFromPoint(mouseX, mouseY));  // 获取最终需要翻译的节点
         if (!node) return;  // 如果不需要翻译，则跳过
 
-        console.log('翻译节点：', node);
+        // console.log('翻译节点：', node);
 
         if (hasLoadingSpinner(node)) return;    // 如果已经在翻译，则跳过
 
         // 去重判断
         let outerHTMLTemp = node.outerHTML;
         if (outerHTMLSet.has(outerHTMLTemp)) {
-            console.log('重复节点', node);
+            // console.log('重复节点', node);
             return;
         }
         outerHTMLSet.add(outerHTMLTemp);
@@ -592,7 +592,7 @@ function handler(mouseX, mouseY, time) {
         // 检测缓存 cache
         let outerHTMLCache = sessionManager.getTransCache(node.outerHTML);
         if (outerHTMLCache) {
-            console.log("缓存命中：", outerHTMLCache);
+            // console.log("缓存命中：", outerHTMLCache);
             let spinner = createLoadingSpinner(node, true);
             setTimeout(() => {  // 延迟 remove 转圈动画与替换文本
                 spinner.remove();
@@ -619,7 +619,6 @@ const getTransNodeSet = new Set([
 // 特例适配
 const getTransNodeCompat = new Map([
     ["mvnrepository.com", function (node) {
-        console.log('特例适配：', node, node.tagName.toLowerCase() === 'div' && node.classList.contains('im-description'))
         if (node.tagName.toLowerCase() === 'div' && node.classList.contains('im-description')) {
             return true
         }
@@ -640,7 +639,7 @@ function getTransNode(node) {
     let fn = getTransNodeCompat.get(url.host);
     if (fn && fn(node)) return node;
 
-    console.log('不翻译节点：', node);
+    // console.log('不翻译节点：', node);
 
     return false
 }
@@ -721,8 +720,8 @@ function translate(node) {
             clearTimeout(timeout) // 取消超时
             spinner.remove()      // 移除 spinner
 
-            console.log("翻译前的句子：", origin);
-            console.log("翻译后的句子：", text);
+            // console.log("翻译前的句子：", origin);
+            // console.log("翻译后的句子：", text);
 
             if (!text || origin === text) return;
 
