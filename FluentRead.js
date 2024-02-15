@@ -777,7 +777,7 @@ function getTextWithNode(node) {
             // 检查是否为特定节点
             if (getTextWithNodeSet.has(child.tagName.toLowerCase())) {
                 text += child.outerHTML;    // 添加至 outerHTML
-            }else {
+            } else {
                 text += getTextWithNode(child); // 递归
             }
         }
@@ -887,7 +887,7 @@ function openai(origin) {
         }
 
         GM_xmlhttpRequest({
-            method: 'POST',
+            method: POST,
             url: 'https://api.openai.com/v1/chat/completions',
             headers: LLMFormat.getStdHeader(token),
             data: LLMFormat.getStdData(origin, option),
