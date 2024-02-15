@@ -580,22 +580,21 @@ function handler(mouseX, mouseY, time) {
         if (hasLoadingSpinner(node)) return;    // 如果已经在翻译，则跳过
 
         // 去重判断
-        if (outerHTMLSet.has(node.outerHTML)) {
+        let outerHTMLTemp = node.outerHTML;
+        if (outerHTMLSet.has(outerHTMLTemp)) {
             console.log('重复节点', node);
             return;
         }
-        console.log('处理节点', node);
-        outerHTMLSet.add(node.outerHTML);
+        outerHTMLSet.add(outerHTMLTemp);
 
         // 检测缓存 cache
         let outerHTMLCache = sessionManager.getTransCache(node.outerHTML);
         if (outerHTMLCache) {
-            let temp = node.outerHTML;
             console.log("缓存命中：", outerHTMLCache);
             let spinner = createLoadingSpinner(node, true);
             setTimeout(() => {  // 延迟 remove 转圈动画与替换文本
                 spinner.remove();
-                outerHTMLSet.delete(temp);
+                outerHTMLSet.delete(outerHTMLTemp);
                 let fn = compatFn[url.host];    // 兼容函数
                 if (fn) {
                     fn(node, outerHTMLCache);    // 兼容函数
@@ -622,7 +621,7 @@ function getTransNode(node) {
     if (!node || node === document.body || node === document.documentElement || node.classList.contains('notranslate')) return false;
 
     // 检测当前节点是否满足翻译条件
-    if ( getTransNodeSet.has(node.tagName.toLowerCase()) || detectChildMeta(node)) {
+    if (getTransNodeSet.has(node.tagName.toLowerCase()) || detectChildMeta(node)) {
         return getTransNode(node.parentNode) || node;  // 返回应该翻译的节点
     }
 
@@ -718,13 +717,10 @@ function translate(node) {
             if (isMachineTrans(model)) {    // 1、机器翻译
                 if (!node.parentNode) return;
                 let fn = compatFn[url.host];    // 兼容函数
-                // TODO 存在不能恢复翻译的 bug
                 if (fn) {
-                    node.innerText = node.innerText
-                    oldOuterHtml = node.outerHTML;
-                    newOuterHtml = fn(node, text);
-                    console.log('oldOuterHtml:', oldOuterHtml);
-                    console.log('newOuterHtml:', newOuterHtml);
+                    oldOuterHtml = node.outerHTML
+                    fn(node, text);
+                    newOuterHtml = node.outerHTML;
                 } else {
                     node.outerHTML = text;
                 }
@@ -748,8 +744,8 @@ function youtube(node, text) {
     // 替换 innerText
     let temp = document.createElement('span');
     temp.innerHTML = text;
-    node.innerText = temp.innerText;
-    return node.outerHTML
+    node.innerHTML = temp.innerText;
+    return node.outerHTML;
 }
 
 // LLM 模式获取翻译文本
