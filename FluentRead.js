@@ -756,6 +756,7 @@ function translate(node) {
 }
 
 const getTextWithNodeSet = new Set([
+    'div',
     'code', 'a', 'strong', 'b', 'em', 'i', 'u', 's', 'del',
     'ins', 'mark', 'small', 'sub', 'sup', 'big', 'font',
     'abbr', 'acronym', 'cite', 'dfn', 'kbd', 'samp', 'var',
@@ -776,8 +777,9 @@ function getTextWithNode(node) {
             // 检查是否为特定节点
             if (getTextWithNodeSet.has(child.tagName.toLowerCase())) {
                 text += child.outerHTML;    // 添加至 outerHTML
+            }else {
+                text += getTextWithNode(child); // 递归
             }
-            text += getTextWithNode(child); // 递归
         }
     });
     return text;
