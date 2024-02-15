@@ -1,6 +1,6 @@
 # 流畅阅读
 
-> Fluent Read，基于母语般的阅读体验<img src="./misc/images/icon.png" alt="流畅阅读" style="zoom:20%;" />
+> Fluent Read，基于母语般的阅读体验<img src="./misc/images/icon.png" alt="流畅阅读" style="width:2em;" />
 
 拥有基于上下文语境的人工智能翻译引擎，为网站提供更加友好的翻译，让所有人都能够拥有基于母语般的阅读体验。
 
