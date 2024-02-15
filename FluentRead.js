@@ -577,6 +577,8 @@ function handler(mouseX, mouseY, time) {
         let node = getTransNode(document.elementFromPoint(mouseX, mouseY));  // 获取最终需要翻译的节点
         if (!node) return;  // 如果不需要翻译，则跳过
 
+        console.log('翻译节点：', node);
+
         if (hasLoadingSpinner(node)) return;    // 如果已经在翻译，则跳过
 
         // 去重判断
@@ -609,10 +611,19 @@ function handler(mouseX, mouseY, time) {
     }, time);
 }
 
-
 const getTransNodeSet = new Set([
     'span', 'p',    // 日常
     'yt-formatted-string',   // youtube 评论
+]);
+
+// 特例适配
+const getTransNodeCompat = new Map([
+    ["mvnrepository.com", function (node) {
+        console.log('特例适配：', node, node.tagName.toLowerCase() === 'div' && node.classList.contains('im-description'))
+        if (node.tagName.toLowerCase() === 'div' && node.classList.contains('im-description')) {
+            return true
+        }
+    }],
 ]);
 
 // 返回最终应该翻译的父节点或 false
@@ -624,6 +635,10 @@ function getTransNode(node) {
     if (getTransNodeSet.has(node.tagName.toLowerCase()) || detectChildMeta(node)) {
         return getTransNode(node.parentNode) || node;  // 返回应该翻译的节点
     }
+
+    // 特例适配 是否应该翻译
+    let fn = getTransNodeCompat.get(url.host);
+    if (fn && fn(node)) return node;
 
     console.log('不翻译节点：', node);
 
@@ -706,8 +721,8 @@ function translate(node) {
             clearTimeout(timeout) // 取消超时
             spinner.remove()      // 移除 spinner
 
-            // console.log("翻译前的句子：", origin);
-            // console.log("翻译后的句子：", text);
+            console.log("翻译前的句子：", origin);
+            console.log("翻译后的句子：", text);
 
             if (!text || origin === text) return;
 
@@ -740,13 +755,14 @@ function translate(node) {
     }).catch(e => createFailedTip(node, e.toString() || errorManager.unknownError));
 }
 
-function youtube(node, text) {
-    // 替换 innerText
-    let temp = document.createElement('span');
-    temp.innerHTML = text;
-    node.innerHTML = temp.innerText;
-    return node.outerHTML;
-}
+const getTextWithNodeSet = new Set([
+    'code', 'a', 'strong', 'b', 'em', 'i', 'u', 's', 'del',
+    'ins', 'mark', 'small', 'sub', 'sup', 'big', 'font',
+    'abbr', 'acronym', 'cite', 'dfn', 'kbd', 'samp', 'var',
+    'pre', 'q', 'blockquote', 'address', 'time', 'ruby', 'rt',
+    'rp', 'bdi', 'bdo', 'wbr', 'details', 'summary', 'menuitem',
+    'menu', 'dialog', 'slot', 'template', 'shadow', 'content', 'element',
+])
 
 // LLM 模式获取翻译文本
 function getTextWithNode(node) {
@@ -758,7 +774,7 @@ function getTextWithNode(node) {
             text += child.nodeValue;
         } else if (child.nodeType === Node.ELEMENT_NODE) {
             // 检查是否为特定节点
-            if (['code', 'a', 'strong', 'b'].includes(child.tagName.toLowerCase())) {
+            if (getTextWithNodeSet.has(child.tagName.toLowerCase())) {
                 text += child.outerHTML;    // 添加至 outerHTML
             }
             text += getTextWithNode(child); // 递归
@@ -770,7 +786,13 @@ function getTextWithNode(node) {
 // endregion
 
 // region 翻译兼容
-
+function youtube(node, text) {
+    // 替换 innerText
+    let temp = document.createElement('span');
+    temp.innerHTML = text;
+    node.innerHTML = temp.innerText;
+    return node.outerHTML;
+}
 
 // endregion
 
@@ -1636,7 +1658,7 @@ function procMaven(node, respMap) {
         let lastReleaseMatch = text.match(regex.lastReleaseRegex);
         if (lastReleaseMatch) {
             let date = new Date(`${lastReleaseMatch[1]} ${lastReleaseMatch[2]}, ${lastReleaseMatch[3]}`);
-            node.textContent = `最近更新 ${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+            node.textContent = `Last Release on ${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
             return;
         }
         // 处理日期格式
