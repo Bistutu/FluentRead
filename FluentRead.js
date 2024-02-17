@@ -667,6 +667,7 @@ function handler(mouseX, mouseY, time) {
 
 const getTransNodeSet = new Set([
     'span', 'p',    // 日常
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',    // 标题
     'yt-formatted-string',   // youtube 评论
 ]);
 
@@ -809,7 +810,7 @@ function translate(node) {
 }
 
 const getTextWithNodeSet = new Set([
-    'div','br',
+    'div', 'br',
     'code', 'a', 'strong', 'b', 'em', 'i', 'u', 's', 'del',
     'ins', 'mark', 'small', 'sub', 'sup', 'big', 'font',
     'abbr', 'acronym', 'cite', 'dfn', 'kbd', 'samp', 'var',
