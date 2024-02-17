@@ -27,6 +27,7 @@
 // @connect      fanyi.baidu.com
 // @connect      gateway.ai.cloudflare.com
 // @connect      api.chatanywhere.com.cn
+// @connect      generativelanguage.googleapis.com
 // @run-at       document-end
 // @downloadURL  https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.user.js
 // @updateURL    https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.meta.js
@@ -119,6 +120,7 @@ const transModelFn = new Map()   // 翻译模型 map
 const transModel = {    // 翻译模型枚举
     // --- LLM翻译 ---
     openai: "openai",
+    gemini: "gemini",
     yiyan: "yiyan",
     tongyi: "tongyi",
     zhipu: "zhipu",
@@ -127,7 +129,7 @@ const transModel = {    // 翻译模型枚举
     microsoft: "microsoft",
 }
 
-const LLM = new Set([transModel.openai, transModel.yiyan, transModel.tongyi, transModel.zhipu, transModel.moonshot])  // LLM 翻译模型
+const LLM = new Set([transModel.openai, transModel.yiyan, transModel.tongyi, transModel.zhipu, transModel.moonshot, transModel.gemini])  // LLM 翻译模型
 
 // 翻译模型名称
 const transModelName = {
@@ -136,6 +138,7 @@ const transModelName = {
     [transModel.tongyi]: '通义千问AI',
     [transModel.yiyan]: '文心一言AI',
     [transModel.openai]: 'chatGPT AI',
+    [transModel.gemini]: 'gemini AI',
     [transModel.moonshot]: 'moonshot AI',
 }
 
@@ -153,6 +156,9 @@ const optionsManager = {
         "gpt-3.5-turbo": "gpt-3.5-turbo",
         "gpt-4": "gpt-4",
         "gpt-4-turbo-preview": "gpt-4-turbo-preview",
+    },
+    gemini: {
+        "gemini-pro": "gemini-pro",
     },
     yiyan: {    // url 后缀
         "ERNIE-Bot 4.0": "completions_pro",
@@ -313,7 +319,7 @@ const langManager = {
 // 快捷键
 const shortcutManager = {
     currentShortcut: null,
-    hotkeyOptions: {Control: 'Control', Alt: 'Alt', Shift: 'Shift','`':'反引号键'},
+    hotkeyOptions: {Control: 'Control', Alt: 'Alt', Shift: 'Shift', '`': '反引号键'},
     hotkeyPressed: false,
 }
 // 自定义 GPT地址
@@ -477,7 +483,7 @@ const settingManager = {
                 this.setDisplayStyle([tokenLabel], [akLabel, skLabel]);
                 break;
             default:
-                if (model === transModel.openai || model === transModel.moonshot || model === transModel.tongyi) {
+                if ([transModel.openai, transModel.moonshot, transModel.tongyi, transModel.gemini].includes(model)) {
                     token.value = tokenObject;
                     this.setDisplayStyle([tokenLabel], [akLabel, skLabel]);
                 } else {
@@ -960,6 +966,40 @@ function openai(origin) {
 
 // endregion
 
+// region gemini
+function gemini(origin) {
+    return new Promise((resolve, reject) => {
+        // 获取 token 和选项，这里的 tokenManager 和 optionsManager 应由您实现
+        let token = tokenManager.getToken('gemini');
+        let option = optionsManager.getOption('gemini');    // gemini-pro
+
+        // 检查 token 是否存在
+        if (!token) {
+            reject('No token available');
+            return;
+        }
+
+        // 发送请求
+        GM_xmlhttpRequest({
+            method: POST,
+            url: "https://generativelanguage.googleapis.com/v1beta/models/" + option + ":generateContent?key=" + token,
+            headers: {'Content-Type': 'application/json'},
+            data: JSON.stringify({"contents": [{"parts": [{"text": chatMgs.getSystemMsg() + chatMgs.getUserMsg(origin)}]}]}),
+            onload: response => {
+                try {
+                    let result = JSON.parse(response.responseText);
+                    resolve(result.candidates[0].content.parts[0].text);
+                } catch (e) {
+                    reject(response.responseText);
+                }
+            },
+            onerror: error => reject(error)
+        });
+    });
+}
+
+// endregion
+
 // region moonshot
 function moonshot(origin) {
     return new Promise((resolve, reject) => {
@@ -1408,6 +1448,7 @@ function initApplication() {
         {tongyi: "qwen-turbo"},
         {zhipu: "glm-3-turbo"},
         {moonshot: "moonshot-v1-8"},
+        {gemini: "gemini-pro"},
     ]
     commonConfig.forEach(v => !util.getValue(v.name) ? util.setValue(v.name, v.value) : null);
     modelConfig.forEach(option => {
@@ -1431,6 +1472,7 @@ function initApplication() {
     transModelFn[transModel.zhipu] = zhipu
     transModelFn[transModel.moonshot] = moonshot
     transModelFn[transModel.microsoft] = microsoft
+    transModelFn[transModel.gemini] = gemini
 
     // 填充适配器 map
     adapterFnMap[exceptionMap.maven] = procMaven
