@@ -94,7 +94,7 @@
 
 实习经历：米哈游（半年）
 
-独立开发者作品：[流畅阅读](https://github.com/Bistutu/FluentRead)、[音乐迁移网站](https://github.com/Bistutu/FluentRead)、[空闲教室查询应用](https://github.com/Bistutu/BistuEmpty)
+独立开发者作品：[流畅阅读](https://github.com/Bistutu/FluentRead)、[音乐迁移网站](https://github.com/Bistutu/gomusic)、[空闲教室查询应用](https://github.com/Bistutu/BistuEmpty)
 
 **在线简历**：[点击查看](https://thinkstu-typora.oss-cn-hangzhou.aliyuncs.com/typora/%E9%99%88%E7%BB%B5%E5%BA%B7-%E7%AE%80%E5%8E%86.pdf)
 
