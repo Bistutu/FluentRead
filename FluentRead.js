@@ -594,7 +594,7 @@ const settingManager = {
         mouseX = event.clientX;
         mouseY = event.clientY;
 
-        handler(mouseX, mouseY, 150);
+        handler(mouseX, mouseY, 50);
     });
 
     // 检查是否需要拉取数据
@@ -763,7 +763,7 @@ const chatMgs = {
 function translate(node) {
     let model = util.getValue('model')
 
-    if (!node.innerText) return; // 如果没有文本，则跳过
+    if (!node.innerText.trim()) return; // 空文本，跳过
 
     // 检测语言类型，如果是中文则不翻译
     baiduDetectLang(node.innerText).then(lang => {
