@@ -763,6 +763,8 @@ const chatMgs = {
 function translate(node) {
     let model = util.getValue('model')
 
+    if (!node.innerText) return; // 如果没有文本，则跳过
+
     // 检测语言类型，如果是中文则不翻译
     baiduDetectLang(node.innerText).then(lang => {
         if (lang === langManager.getTo()) return;   // 与目标语言相同，不翻译
@@ -809,10 +811,14 @@ function translate(node) {
             delayRemoveCache(newOuterHtml);
             outerHTMLSet.delete(oldOuterHtml);
         }).catch(e => {
+            console.log(e)
             clearTimeout(timeout);
             createFailedTip(node, e.toString() || errorManager.unknownError, spinner);
         })
-    }).catch(e => createFailedTip(node, e.toString() || errorManager.unknownError));
+    }).catch(e => {
+        console.log(e)
+        createFailedTip(node, e.toString() || errorManager.unknownError)
+    })
 }
 
 const getTextWithNodeSet = new Set([
@@ -1256,11 +1262,11 @@ function baiduDetectLang(text) {
                 if (resp.status === 200 && jsn && jsn.lan) {
                     resolve(langManager.parseLanguage(jsn.lan));
                 } else {
-                    reject(new Error('Server responded with status ' + resp.status));
+                    reject(new Error('Server responded with status ' + resp));
                 }
             },
             onerror: error => {
-                reject(new Error('GM_xmlhttpRequest failed'));
+                reject(new Error('baiduDetectLang GM_xmlhttpRequest failed'));
             }
         });
     })
@@ -1275,7 +1281,7 @@ function delayRemoveCache(key, time = 250) {
 }
 
 function createFailedTip(node, errorMsg, spinner) {
-    console.log(errorMsg); // 打印错误信息
+    // console.log(errorMsg); // 打印错误信息
     // 取消转圈动画
     spinner?.remove();
     // 创建包装元素
