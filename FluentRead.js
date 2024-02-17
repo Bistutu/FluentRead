@@ -2,7 +2,7 @@
 // @name         流畅阅读
 // @license      GPL-3.0 license
 // @namespace    https://fr.unmeta.cn/
-// @version      1.1
+// @version      1.11
 // @description  基于上下文语境的人工智能翻译引擎，为部分网站提供精准翻译，让所有人都能够拥有基于母语般的阅读体验。程序Github开源：https://github.com/Bistutu/FluentRead，欢迎 star。
 // @author       ThinkStu
 // @match        *://*/*
@@ -350,7 +350,7 @@ const settingManager = {
     setSetting() {
         // 页面 dom
         const dom = `
-  <div style="font-size: 1em;">
+  <div style="font-size: 1em;" xmlns="http://www.w3.org/1999/html">
     <label class="instant-setting-label">快捷键<select id="fluent-read-hotkey" class="instant-setting-common">${this.generateOptions(shortcutManager.hotkeyOptions, util.getValue('hotkey'))}</select></label>
     <label class="instant-setting-label">翻译源语言<select id="fluent-read-from" class="instant-setting-common">${this.generateOptions(langManager.from, langManager.getFrom())}</select></label>
     <label class="instant-setting-label">翻译目标语言<select id="fluent-read-to" class="instant-setting-common">${this.generateOptions(langManager.to, langManager.getTo())}</select></label>
@@ -359,7 +359,16 @@ const settingManager = {
     <label class="instant-setting-label" id="fluent-read-option-label" style="display: none;">模型类型<select id="fluent-read-option" class="instant-setting-select"></select></label>
     <!-- custom 输入框-->
     <label class="instant-setting-label" id="fluent-read-custom-label" style="display: none;">
-        <span class="fluent-read-tooltip">自定义 GPT 地址<span class="fluent-read-tooltiptext">仅支持 cloudflare 代理模式，国内可访问，需要填写完整的 URL 地址，如：https://gateway.ai.cloudflare.com/v1/随机码/用户名/openai/chat/completions</span></span>
+        <span class="fluent-read-tooltip">自定义 GPT 地址
+            <span class="fluent-read-tooltiptext">1、支持 OpenAI 官方地址，如：https://api.openai.com/v1/chat/completions
+            </br>
+            2、支持 cloudflare 代理模式，国内可访问，需要填写完整的 URL 地址，如：https://gateway.ai.cloudflare.com/v1/随机码/用户名/openai/chat/completions
+            </br>
+            3、支持国内开源代理，见：https://github.com/chatanywhere/GPT_API_free
+            </br>
+            4、由于浏览器安全限制，如需支持其他代理，请于 GitHub 提 issue.
+            </span>
+        </span>
         <input type="text" class="instant-setting-input" id="fluent-read-custom" value="${customGPT.getGPTUrl()}" >
     </label>
     <!-- 令牌区域 -->
