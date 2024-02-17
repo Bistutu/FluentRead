@@ -100,5 +100,5 @@
 
 **联系方式**：1914493943@qq.com
 
-<img src="./misc/images/wechat.jpg" alt="sample-git-1.gif" style="width: 35%; max-width: 100%;border: 1px solid black;">
+<img src="./misc/images/wechat.jpg" alt="wechat" style="width: 35%; max-width: 100%;border: 1px solid black;">
 
