@@ -40,15 +40,17 @@
 
    [OpenAI官网](https://openai.com/)、[Docker仓库](https://hub.docker.com)、[Maven仓库](https://mvnrepository.com/)、[Stackoverflow](https://stackoverflow.com/)、[GitHub Star 趋势生成网](https://star-history.com/)、[Coze人工智能助手](https://www.coze.com)
 
-# 为什么选择流畅阅读？
+# 为什么是流畅阅读？
 
 1. 程序开源、免费
 
 2. 代码接受审查、不收集任何用户信息，保证数据安全
 
 3. 支持常见国外或国产AI大模型，如：
-   
+
    [chatGPT](https://platform.openai.com/)、[通义千问](https://dashscope.console.aliyun.com/overview)、[智谱清言](https://open.bigmodel.cn/)、[文心一言](https://cloud.baidu.com/wenxin.html)、[moonshot](https://www.moonshot.cn/)
+
+4. 支持 chatGPT 自定义 API 接口地址，支持使用国内代理访问
 
 # 常见问题解答
 
@@ -65,7 +67,7 @@
 
 - 2024-02-18：1.0版本发布。
   1. 接入微软机器翻译
-  2. 接入 openAI、智谱清言、文心一言、通义千问、moonshot 人工智能引擎
+  2. 接入 OpenAI、智谱清言、文心一言、通义千问、moonshot 人工智能引擎
   3. 增加鼠标快捷键操作
   4. 增加翻译缓存与回译功能
 - 2024-01：0.6版本发布，增加讯飞翻译引擎
@@ -82,10 +84,21 @@
 
 # 最重要的事情！
 
-**应届生找工作！**
+**春招求职！**
 
-各位 HR 与内推大大们好，作为北京信息科技大学计算机专业 2024 届的本科应届毕业生，自初中开始就特别喜欢互联网，从大学开始陆陆续续独立开发过 3-4 款应用，2023年曾于上海某游戏公司（~~原神~~）实习半年，但是本身并不玩游戏，因为我觉得技术能够带给我的快乐大于游戏。
+姓名：Chen Miankang
 
-曾担任学校技术社团的负责人，熟悉 Go 与 Java 后端开发，对于程序开发有自己的想法，目前希望在上海以南的地区找一份合适的工作（因为家在南方），欢迎感兴趣的同学联系我，我会把完整简历发给你！**简历如下**：[点击查看](https://thinkstu-typora.oss-cn-hangzhou.aliyuncs.com/typora/%E9%99%88%E7%BB%B5%E5%BA%B7-%E7%AE%80%E5%8E%86.pdf)。邮箱为：1914493943@qq.com
+院校：北京信息科技大学 计算机专业  2024 届本科毕业生
 
-> 没有下架这段话就是还在找工作！
+专业技能：熟悉 Go 以及 Java 生态
+
+实习经历：米哈游（半年）
+
+独立开发者作品：[流畅阅读](https://github.com/Bistutu/FluentRead)、[音乐迁移网站](https://github.com/Bistutu/FluentRead)、[空闲教室查询应用](https://github.com/Bistutu/BistuEmpty)
+
+**在线简历**：[点击查看](https://thinkstu-typora.oss-cn-hangzhou.aliyuncs.com/typora/%E9%99%88%E7%BB%B5%E5%BA%B7-%E7%AE%80%E5%8E%86.pdf)
+
+**联系方式**：1914493943@qq.com
+
+<img src="./misc/images/wechat.jpg" alt="sample-git-1.gif" style="width: 35%; max-width: 100%;border: 1px solid black;">
+
