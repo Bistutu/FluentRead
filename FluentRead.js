@@ -313,7 +313,7 @@ const langManager = {
 // 快捷键
 const shortcutManager = {
     currentShortcut: null,
-    hotkeyOptions: {Control: 'Control', Alt: 'Alt', Shift: 'Shift'},
+    hotkeyOptions: {Control: 'Control', Alt: 'Alt', Shift: 'Shift','`':'反引号键'},
     hotkeyPressed: false,
 }
 // 自定义 GPT地址
@@ -775,8 +775,8 @@ function translate(node) {
             clearTimeout(timeout) // 取消超时
             spinner.remove()      // 移除 spinner
 
-            // console.log("翻译前的句子：", origin);
-            // console.log("翻译后的句子：", text);
+            console.log("翻译前的句子：", origin);
+            console.log("翻译后的句子：", text);
 
             if (!text || origin === text) return;
 
@@ -1420,7 +1420,7 @@ function initApplication() {
     // 初始化菜单
     GM_registerMenuCommand(`原始语言：${langManager.from[util.getValue('from')]}`, () => settingManager.setLanguage('from'));
     GM_registerMenuCommand(`目标语言：${langManager.to[util.getValue('to')]}`, () => settingManager.setLanguage('to'));
-    GM_registerMenuCommand(`鼠标快捷键：${util.getValue('hotkey')}`, () => settingManager.setHotkey());
+    GM_registerMenuCommand(`鼠标快捷键：${shortcutManager.hotkeyOptions[util.getValue('hotkey')]}`, () => settingManager.setHotkey());
     GM_registerMenuCommand(`翻译服务：${transModelName[util.getValue('model')]}`, () => settingManager.setSetting());
     GM_registerMenuCommand('关于项目', () => settingManager.about());
 
