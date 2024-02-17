@@ -26,6 +26,7 @@
 // @connect      api.moonshot.cn
 // @connect      fanyi.baidu.com
 // @connect      gateway.ai.cloudflare.com
+// @connect      api.chatanywhere.com.cn
 // @run-at       document-end
 // @downloadURL  https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.user.js
 // @updateURL    https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.meta.js
@@ -322,8 +323,9 @@ const customGPT = {
         url = url.trim();   // 去除首尾空格
 
         // 解析 url，确保为 cloudflare 代理或 openai 官方地址
-        let reg = /https:\/\/gateway.ai.cloudflare.com\/v1\/\w+\/\w+\/openai\/chat\/completions/;
-        if ( url === this.openai || reg.test(url)) {
+        let cloudflareReg = /https:\/\/gateway.ai.cloudflare.com\/v1\/\w+\/\w+\/openai\/chat\/completions/;
+
+        if (url === this.openai || url === "https://api.chatanywhere.com.cn/v1/chat/completions" || cloudflareReg.test(url)) {
             GM_setValue('openai_url', url)
             return true
         }
