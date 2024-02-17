@@ -809,7 +809,7 @@ function translate(node) {
 }
 
 const getTextWithNodeSet = new Set([
-    'div',
+    'div','br',
     'code', 'a', 'strong', 'b', 'em', 'i', 'u', 's', 'del',
     'ins', 'mark', 'small', 'sub', 'sup', 'big', 'font',
     'abbr', 'acronym', 'cite', 'dfn', 'kbd', 'samp', 'var',
