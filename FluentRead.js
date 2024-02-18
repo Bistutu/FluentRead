@@ -783,8 +783,8 @@ function translate(node) {
             clearTimeout(timeout) // 取消超时
             spinner.remove()      // 移除 spinner
 
-            console.log("翻译前的句子：", origin);
-            console.log("翻译后的句子：", text);
+            // console.log("翻译前的句子：", origin);
+            // console.log("翻译后的句子：", text);
 
             if (!text || origin === text) return;
 

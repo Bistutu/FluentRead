@@ -48,7 +48,7 @@
 
 3. 支持常见国外或国产AI大模型，如：
 
-   [chatGPT](https://platform.openai.com/)、[通义千问](https://dashscope.console.aliyun.com/overview)、[智谱清言](https://open.bigmodel.cn/)、[文心一言](https://cloud.baidu.com/wenxin.html)、[moonshot](https://www.moonshot.cn/)
+   [chatGPT](https://platform.openai.com/)、[Gemini](https://gemini.google.com/)、[通义千问](https://dashscope.console.aliyun.com/overview)、[智谱清言](https://open.bigmodel.cn/)、[文心一言](https://cloud.baidu.com/wenxin.html)、[moonshot](https://www.moonshot.cn/)
 
 4. 支持 chatGPT 自定义 API 接口地址，支持使用国内代理访问
 
