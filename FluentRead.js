@@ -205,7 +205,10 @@ let LLMFormat = {
             "temperature": 0.3,
             'messages': [
                 {'role': 'system', 'content': chatMgs.getSystemMsg()},
-                {'role': 'user', 'content': chatMgs.getUserMsg(origin)}]
+                {'role': 'user', 'content': chatMgs.getUserMsg('you are welcome')},
+                {'role': "assistant", 'content': '不客气'},
+                {'role': 'user', 'content': origin}
+            ]
         })
     }
 }
