@@ -1331,30 +1331,22 @@ function DetectLang(text) {
     return new Promise((resolve, reject) => {
         // 数据参数
         const data = new URLSearchParams();
-        console.log(text)
-        data.append('text', text); // 确保这与后端期望的参数名一致
-        const url = 'https://fr.unmeta.cn/detect'; // 您的后端服务URL
-
+        data.append('text', text);
         // 发起请求
         GM_xmlhttpRequest({
             method: 'POST',
-            url: url,
+            url: 'https://fr.unmeta.cn/detect',
             data: data.toString(),
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
+            headers: {"Content-Type": "application/x-www-form-urlencoded"},
             onload: function (response) {
                 if (response.status === 200) {
                     const jsn = JSON.parse(response.responseText);
-                    console.log(jsn.language)
                     if (jsn && jsn.language) resolve(jsn.language);
                 } else {
                     reject(new Error('Server responded with status ' + response.status));
                 }
             },
-            onerror: function () {
-                reject(new Error('GM_xmlhttpRequest failed'));
-            }
+            onerror: () => reject(new Error('GM_xmlhttpRequest failed'))
         });
     });
 }
