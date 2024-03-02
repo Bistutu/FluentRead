@@ -489,7 +489,7 @@ const settingManager = {
                 this.setDisplayStyle([tokenLabel], [akLabel, skLabel]);
                 break;
             default:
-                if ([transModel.openai, transModel.moonshot, transModel.tongyi, transModel.gemini,transModel.deepL].includes(model)) {
+                if ([transModel.openai, transModel.moonshot, transModel.tongyi, transModel.gemini, transModel.deepL].includes(model)) {
                     token.value = tokenObject;
                     this.setDisplayStyle([tokenLabel], [akLabel, skLabel]);
                 } else {
@@ -514,7 +514,7 @@ const settingManager = {
         }
         // 2、正常逻辑，更新选项、按需要显示元素
         let model = util.getElementValue('fluent-read-model');
-        if (model===transModel.deepL) {
+        if (model === transModel.deepL) {
             document.getElementById('fluent-read-option-label').style.display = "none";
             flex.forEach(element => element.style.display = "flex");
             none.forEach(element => element.style.display = "none");
@@ -633,13 +633,13 @@ const settingManager = {
     });
 
     // 快捷键 F2，清空所有缓存
-    // document.addEventListener('keydown', function (event) {
-    //     if (event.key === 'F2') {
-    //         let listValues = GM_listValues();
-    //         listValues.forEach(e => GM_deleteValue(e))
-    //         console.log('Cache cleared!');
-    //     }
-    // });
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'F2') {
+            let listValues = GM_listValues();
+            listValues.forEach(e => GM_deleteValue(e))
+            console.log('Cache cleared!');
+        }
+    });
 })();
 
 // 监听事件处理器，参数：鼠标坐标、计时器
@@ -780,7 +780,7 @@ function translate(node) {
     if (!node.innerText.trim()) return; // 空文本，跳过
 
     // 检测语言类型，如果是中文则不翻译
-    baiduDetectLang(node.innerText).then(lang => {
+    DetectLang(node.innerText).then(lang => {
         if (lang === langManager.getTo()) return;   // 与目标语言相同，不翻译
 
         // 如果是机器翻译，则翻译 outerHTML，否则递归获取文本
@@ -1326,6 +1326,39 @@ function baiduDetectLang(text) {
         });
     })
 }
+
+function DetectLang(text) {
+    return new Promise((resolve, reject) => {
+        // 数据参数
+        const data = new URLSearchParams();
+        console.log(text)
+        data.append('text', text); // 确保这与后端期望的参数名一致
+        const url = 'https://fr.unmeta.cn/detect'; // 您的后端服务URL
+
+        // 发起请求
+        GM_xmlhttpRequest({
+            method: 'POST',
+            url: url,
+            data: data.toString(),
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            onload: function (response) {
+                if (response.status === 200) {
+                    const jsn = JSON.parse(response.responseText);
+                    console.log(jsn.language)
+                    if (jsn && jsn.language) resolve(jsn.language);
+                } else {
+                    reject(new Error('Server responded with status ' + response.status));
+                }
+            },
+            onerror: function () {
+                reject(new Error('GM_xmlhttpRequest failed'));
+            }
+        });
+    });
+}
+
 
 // 延迟删除缓存
 function delayRemoveCache(key, time = 250) {
