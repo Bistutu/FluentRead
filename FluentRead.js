@@ -2,7 +2,7 @@
 // @name         流畅阅读
 // @license      GPL-3.0 license
 // @namespace    https://fr.unmeta.cn/
-// @version      1.20
+// @version      1.30
 // @description  基于上下文语境的人工智能翻译引擎，为部分网站提供精准翻译，让所有人都能够拥有基于母语般的阅读体验。程序Github开源：https://github.com/Bistutu/FluentRead，欢迎 star。
 // @author       ThinkStu
 // @match        *://*/*
@@ -136,7 +136,7 @@ const LLM = new Set([transModel.openai, transModel.yiyan, transModel.tongyi, tra
 // 翻译模型名称
 const transModelName = {
     [transModel.microsoft]: '微软翻译（推荐）',
-    [transModel.deepL]: 'DeepL翻译（需要token）',
+    [transModel.deepL]: 'DeepL翻译(需令牌)',
     [transModel.zhipu]: '智谱清言AI',
     [transModel.tongyi]: '通义千问AI',
     [transModel.yiyan]: '文心一言AI',
@@ -208,8 +208,8 @@ let LLMFormat = {
             "temperature": 0.3,
             'messages': [
                 {'role': 'system', 'content': chatMgs.getSystemMsg()},
-                {'role': 'user', 'content': chatMgs.getUserMsg('you are welcome')},
-                {'role': "assistant", 'content': '不客气'},
+                {'role': 'user', 'content': chatMgs.getUserMsg('hello')},
+                {'role': "assistant", 'content': '你好'},
                 {'role': 'user', 'content': origin}
             ]
         })
@@ -230,23 +230,40 @@ const tokenManager = {
 };
 
 // sessionStorage
-const sessionManager = {
+const localStorageManager = {
     // 同时缓存原文和译文
     setTransCache(origin, result) {
         let model = util.getValue('model');
         let option = optionsManager.getOption(model);
+        // if (model === transModel.deepL) {
+        //     optionsManager.setOption(model,"")
+        //     option = ""
+        // } // TODO bug 突显 gpt-3.5 标识，待修复
         // key: 模型_文本，value: 文本
-        sessionStorage.setItem(model + "_" + option + "_" + origin, result)
-        sessionStorage.setItem(model + "_" + option + "_" + result, origin)
+        localStorage.setItem(model + "_" + option + "_" + origin, result)
+        localStorage.setItem(model + "_" + option + "_" + result, origin)
     },
     getTransCache(key) {
         let model = util.getValue('model');
         let option = optionsManager.getOption(model);
-        return sessionStorage.getItem(model + "_" + option + "_" + key)
+        return localStorage.getItem(model + "_" + option + "_" + key)
     },
     removeSession(key) {
-        sessionStorage.removeItem(util.getValue('model') + "_" + key)
+        localStorage.removeItem(util.getValue('model') + "_" + key)
     },
+    // 清空相关域下的 LocalStorage
+    clearLocalStorageIfNewSession() {
+        const lastSessionTimestamp = localStorage.getItem('lastSessionTimestamp');
+        const currentTime = new Date().getTime();
+
+        // 超过 30 分钟时清空localStorage
+        if (!lastSessionTimestamp || currentTime - parseInt(lastSessionTimestamp) > 1800000) {
+            // if (!lastSessionTimestamp || currentTime - parseInt(lastSessionTimestamp) > 20000) {
+            localStorage.clear();
+        }
+        // 更新时间戳
+        localStorage.setItem('lastSessionTimestamp', currentTime.toString());
+    }
 }
 const util = {
     getValue(name) {
@@ -633,13 +650,13 @@ const settingManager = {
     });
 
     // 快捷键 F2，清空所有缓存
-    document.addEventListener('keydown', function (event) {
-        if (event.key === 'F2') {
-            let listValues = GM_listValues();
-            listValues.forEach(e => GM_deleteValue(e))
-            console.log('Cache cleared!');
-        }
-    });
+    // document.addEventListener('keydown', function (event) {
+    //     if (event.key === 'F2') {
+    //         let listValues = GM_listValues();
+    //         listValues.forEach(e => GM_deleteValue(e))
+    //         console.log('Cache cleared!');
+    //     }
+    // });
 })();
 
 // 监听事件处理器，参数：鼠标坐标、计时器
@@ -664,7 +681,7 @@ function handler(mouseX, mouseY, time) {
         outerHTMLSet.add(outerHTMLTemp);
 
         // 检测缓存 cache
-        let outerHTMLCache = sessionManager.getTransCache(node.outerHTML);
+        let outerHTMLCache = localStorageManager.getTransCache(node.outerHTML);
         if (outerHTMLCache) {
             // console.log("缓存命中：", outerHTMLCache);
             let spinner = createLoadingSpinner(node, true);
@@ -780,7 +797,7 @@ function translate(node) {
     if (!node.innerText.trim()) return; // 空文本，跳过
 
     // 检测语言类型，如果是中文则不翻译
-    DetectLang(node.innerText).then(lang => {
+    baiduDetectLang(node.innerText).then(lang => {
         if (lang === langManager.getTo()) return;   // 与目标语言相同，不翻译
 
         // 如果是机器翻译，则翻译 outerHTML，否则递归获取文本
@@ -820,7 +837,7 @@ function translate(node) {
                 newOuterHtml = node.outerHTML;
             }
 
-            sessionManager.setTransCache(oldOuterHtml, newOuterHtml);   // 设置缓存
+            localStorageManager.setTransCache(oldOuterHtml, newOuterHtml);   // 设置缓存
             // 延迟 newOuterHtml，删除 oldOuterHtml
             delayRemoveCache(newOuterHtml);
             outerHTMLSet.delete(oldOuterHtml);
@@ -1044,7 +1061,21 @@ function gemini(origin) {
             method: POST,
             url: "https://generativelanguage.googleapis.com/v1beta/models/" + option + ":generateContent?key=" + token,
             headers: {'Content-Type': 'application/json'},
-            data: JSON.stringify({"contents": [{"parts": [{"text": chatMgs.getSystemMsg() + chatMgs.getUserMsg(origin)}]}]}),
+            data: JSON.stringify({
+                "contents": [
+                    {
+                        "role": "user",
+                        "parts": [{"text": chatMgs.getSystemMsg() + chatMgs.getUserMsg("hello")}]
+                    },
+                    {
+                        "role": "model",
+                        "parts": [{"text": "你好"}]
+                    },
+                    {
+                        "role": "user",
+                        "parts": [{"text": origin}]
+                    }]
+            }),
             onload: response => {
                 try {
                     let result = JSON.parse(response.responseText);
@@ -1108,7 +1139,11 @@ function yiyan(origin) {
                 data: JSON.stringify({
                     'temperature': 0.3, // 随机度
                     'disable_search': true, // 禁用搜索
-                    'messages': [{"role": "user", "content": chatMgs.getUserMsg(origin)}],
+                    'messages': [
+                        {"role": "user", "content": chatMgs.getUserMsg("hello")},
+                        {"role": "assistant", "content": "你好"},
+                        {"role": "user", "content": origin}
+                    ],
                 }),
                 onload: resp => {
                     try {
@@ -1183,7 +1218,9 @@ function tongyi(origin) {
                 "input": {
                     "messages": [
                         {"role": "system", "content": chatMgs.getSystemMsg()},
-                        {"role": "user", "content": chatMgs.getUserMsg(origin)}
+                        {"role": "user", "content": chatMgs.getUserMsg("hello")},
+                        {"role": "assistant", "content": "你好"},
+                        {"role": "user", "content": origin}
                     ]
                 },
                 "parameters": {}
@@ -1200,7 +1237,6 @@ function tongyi(origin) {
         });
     });
 }
-
 
 // endregion
 
@@ -1521,6 +1557,8 @@ function replaceText(type, node, value) {
 
 // 初始化程序
 function initApplication() {
+    // 判断是否需要清除当前页面的缓存
+    localStorageManager.clearLocalStorageIfNewSession()
     // 初始化菜单栏配置
     let commonConfig = [
         {name: 'hotkey', value: 'Control'},
