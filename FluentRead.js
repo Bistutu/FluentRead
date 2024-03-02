@@ -28,6 +28,7 @@
 // @connect      gateway.ai.cloudflare.com
 // @connect      api.chatanywhere.com.cn
 // @connect      generativelanguage.googleapis.com
+// @connect      api-free.deepl.com
 // @run-at       document-end
 // @downloadURL  https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.user.js
 // @updateURL    https://update.greasyfork.org/scripts/482986/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB.meta.js
@@ -127,6 +128,7 @@ const transModel = {    // 翻译模型枚举
     moonshot: "moonshot",
     // --- 机器翻译 ---
     microsoft: "microsoft",
+    deepL: "deepL",
 }
 
 const LLM = new Set([transModel.openai, transModel.yiyan, transModel.tongyi, transModel.zhipu, transModel.moonshot, transModel.gemini])  // LLM 翻译模型
@@ -134,6 +136,7 @@ const LLM = new Set([transModel.openai, transModel.yiyan, transModel.tongyi, tra
 // 翻译模型名称
 const transModelName = {
     [transModel.microsoft]: '微软翻译（推荐）',
+    [transModel.deepL]: 'DeepL翻译（FREE计划）',
     [transModel.zhipu]: '智谱清言AI',
     [transModel.tongyi]: '通义千问AI',
     [transModel.yiyan]: '文心一言AI',
@@ -452,8 +455,7 @@ const settingManager = {
         )
         // 设置中心打开时需判断是否展示 token 选项
         let model = util.getElementValue('fluent-read-model');
-        if (LLM.has(model)) {
-            console.log(true)
+        if (LLM.has(model) || model === transModel.deepL) {
             this.showHidden(model);
         }
         // 监听“翻译服务”选择框
@@ -474,6 +476,7 @@ const settingManager = {
 
         // 获取存储的 token 对象
         const tokenObject = tokenManager.getToken(model)
+        console.log(model, tokenObject)
 
         switch (model) {
             case transModel.yiyan:
@@ -486,7 +489,7 @@ const settingManager = {
                 this.setDisplayStyle([tokenLabel], [akLabel, skLabel]);
                 break;
             default:
-                if ([transModel.openai, transModel.moonshot, transModel.tongyi, transModel.gemini].includes(model)) {
+                if ([transModel.openai, transModel.moonshot, transModel.tongyi, transModel.gemini,transModel.deepL].includes(model)) {
                     token.value = tokenObject;
                     this.setDisplayStyle([tokenLabel], [akLabel, skLabel]);
                 } else {
@@ -510,8 +513,16 @@ const settingManager = {
             return
         }
         // 2、正常逻辑，更新选项、按需要显示元素
-        // 更新下拉框选项
         let model = util.getElementValue('fluent-read-model');
+        if (model===transModel.deepL) {
+            document.getElementById('fluent-read-option-label').style.display = "none";
+            flex.forEach(element => element.style.display = "flex");
+            none.forEach(element => element.style.display = "none");
+            systemMsgLabel.style.display = "none";
+            userMsgLabel.style.display = "none";
+            return;
+        }
+        // 更新下拉框选项
         const optionSelect = document.getElementById('fluent-read-option');
         optionSelect.innerHTML = settingManager.generateOptions(optionsManager[model], optionsManager.getOption(model));
 
@@ -597,7 +608,7 @@ const settingManager = {
         mouseX = event.clientX;
         mouseY = event.clientY;
 
-        handler(mouseX, mouseY, 50);
+        handler(mouseX, mouseY, 20);
     });
 
     // 检查是否需要拉取数据
@@ -940,6 +951,46 @@ function parseJwt(token) {
         return null;
     }
 }
+
+// endregion
+
+// region DeepL
+function deepL(origin) {
+    return new Promise((resolve, reject) => {
+        let target_lang = langManager.getTo();
+        if (target_lang === 'zh-Hans') target_lang = 'zh';  // DeepL 不支持 zh-Hans
+
+        // 获取 DeepL API 密钥
+        let deepLAuthKey = tokenManager.getToken(transModel.deepL);
+
+        // 发起翻译请求
+        GM_xmlhttpRequest({
+            method: 'POST',
+            url: "https://api-free.deepl.com/v2/translate",
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'DeepL-Auth-Key ' + deepLAuthKey
+            },
+            data: JSON.stringify({
+                text: [origin], // 确保text是一个数组
+                target_lang: target_lang,
+                tag_handling: 'html',
+                context: url.host + document.title,   // 添加上下文辅助
+                preserve_formatting: true
+            }),
+            onload: resp => {
+                try {
+                    let resultJson = JSON.parse(resp.responseText);
+                    resolve(resultJson.translations[0].text);
+                } catch (e) {
+                    reject(resp.responseText);
+                }
+            },
+            onerror: error => reject(error)
+        });
+    });
+}
+
 
 // endregion
 
@@ -1475,12 +1526,14 @@ function initApplication() {
     GM_registerMenuCommand('关于项目', () => settingManager.about());
 
     // 初始化翻译模型对应函数
+    transModelFn[transModel.microsoft] = microsoft
+    transModelFn[transModel.deepL] = deepL
+
     transModelFn[transModel.openai] = openai
     transModelFn[transModel.yiyan] = yiyan
     transModelFn[transModel.tongyi] = tongyi
     transModelFn[transModel.zhipu] = zhipu
     transModelFn[transModel.moonshot] = moonshot
-    transModelFn[transModel.microsoft] = microsoft
     transModelFn[transModel.gemini] = gemini
 
     // 填充适配器 map
