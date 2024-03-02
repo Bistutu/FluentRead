@@ -972,13 +972,17 @@ function parseJwt(token) {
 // endregion
 
 // region DeepL
-function deepL(origin) {
+// native 判断是否为本地部署模型
+function deepL(origin, native = false) {
     return new Promise((resolve, reject) => {
         let target_lang = langManager.getTo();
         if (target_lang === 'zh-Hans') target_lang = 'zh';  // DeepL 不支持 zh-Hans
 
         // 获取 DeepL API 密钥
         let deepLAuthKey = tokenManager.getToken(transModel.deepL);
+
+        // 判断是否为本地部署模型（模型所需参数些许不同）
+        let text = native ? origin : [origin]
 
         // 发起翻译请求
         GM_xmlhttpRequest({
@@ -989,7 +993,7 @@ function deepL(origin) {
                 'Authorization': 'DeepL-Auth-Key ' + deepLAuthKey
             },
             data: JSON.stringify({
-                text: [origin], // 确保text是一个数组
+                text: text, // 确保text是一个数组
                 target_lang: target_lang,
                 tag_handling: 'html',
                 context: url.host + document.title,   // 添加上下文辅助
@@ -1007,38 +1011,6 @@ function deepL(origin) {
         });
     });
 }
-
-// 本地部署 DeepL 模型（类似但不完全相同，主要体现在  text: origin、[origin]）
-function deepLFake(origin) {
-    return new Promise((resolve, reject) => {
-        let target_lang = langManager.getTo();
-        if (target_lang === 'zh-Hans') target_lang = 'zh';  // DeepL 不支持 zh-Hans
-
-        // 发起翻译请求
-        GM_xmlhttpRequest({
-            method: 'POST',
-            url: "http://127.0.0.1:1188/translate",
-            headers: {'Content-Type': 'application/json',},
-            data: JSON.stringify({
-                text: origin,
-                target_lang: target_lang,
-                tag_handling: 'html',
-                context: url.host + document.title,   // 添加上下文辅助
-                preserve_formatting: true
-            }),
-            onload: resp => {
-                try {
-                    let resultJson = JSON.parse(resp.responseText);
-                    resolve(resultJson.data);
-                } catch (e) {
-                    reject(resp.responseText);
-                }
-            },
-            onerror: error => reject(error)
-        });
-    });
-}
-
 
 // endregion
 
