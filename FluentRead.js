@@ -1008,6 +1008,37 @@ function deepL(origin) {
     });
 }
 
+// 本地部署 DeepL 模型（类似但不完全相同，主要体现在  text: origin、[origin]）
+function deepLFake(origin) {
+    return new Promise((resolve, reject) => {
+        let target_lang = langManager.getTo();
+        if (target_lang === 'zh-Hans') target_lang = 'zh';  // DeepL 不支持 zh-Hans
+
+        // 发起翻译请求
+        GM_xmlhttpRequest({
+            method: 'POST',
+            url: "http://127.0.0.1:1188/translate",
+            headers: {'Content-Type': 'application/json',},
+            data: JSON.stringify({
+                text: origin,
+                target_lang: target_lang,
+                tag_handling: 'html',
+                context: url.host + document.title,   // 添加上下文辅助
+                preserve_formatting: true
+            }),
+            onload: resp => {
+                try {
+                    let resultJson = JSON.parse(resp.responseText);
+                    resolve(resultJson.data);
+                } catch (e) {
+                    reject(resp.responseText);
+                }
+            },
+            onerror: error => reject(error)
+        });
+    });
+}
+
 
 // endregion
 
