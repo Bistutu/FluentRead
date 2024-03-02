@@ -972,7 +972,7 @@ function parseJwt(token) {
 // endregion
 
 // region DeepL
-// native 判断是否为本地部署模型
+// native 判断是否为本地部署模型（native 不支持 html，暂保留）
 function deepL(origin, native = false) {
     return new Promise((resolve, reject) => {
         let target_lang = langManager.getTo();
@@ -983,17 +983,18 @@ function deepL(origin, native = false) {
 
         // 判断是否为本地部署模型（模型所需参数些许不同）
         let text = native ? origin : [origin]
+        let url = native ? "http://127.0.0.1:1188/translate" : "https://api-free.deepl.com/v2/translate"
 
         // 发起翻译请求
         GM_xmlhttpRequest({
             method: 'POST',
-            url: "https://api-free.deepl.com/v2/translate",
+            url: url,
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': 'DeepL-Auth-Key ' + deepLAuthKey
             },
             data: JSON.stringify({
-                text: text, // 确保text是一个数组
+                text: text,
                 target_lang: target_lang,
                 tag_handling: 'html',
                 context: url.host + document.title,   // 添加上下文辅助
@@ -1002,7 +1003,8 @@ function deepL(origin, native = false) {
             onload: resp => {
                 try {
                     let resultJson = JSON.parse(resp.responseText);
-                    resolve(resultJson.translations[0].text);
+                    if (native) resolve(resultJson.data);
+                    else resolve(resultJson.translations[0].text);
                 } catch (e) {
                     reject(resp.responseText);
                 }
