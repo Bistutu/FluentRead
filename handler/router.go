@@ -17,6 +17,7 @@ func NewRouter() *gin.Engine {
 	// 绑定路由
 	engine.POST("/preread", PreReadHandler) // 预读接口
 	engine.POST("/read", ReadHandler)       // 按 host 全文读取接口
+	engine.POST("/detect", DetectHandler)   // 语言检测接口
 
 	return engine
 }

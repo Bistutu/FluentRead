@@ -136,7 +136,7 @@ const LLM = new Set([transModel.openai, transModel.yiyan, transModel.tongyi, tra
 // 翻译模型名称
 const transModelName = {
     [transModel.microsoft]: '微软翻译（推荐）',
-    [transModel.deepL]: 'DeepL翻译（FREE计划）',
+    [transModel.deepL]: 'DeepL翻译（需要token）',
     [transModel.zhipu]: '智谱清言AI',
     [transModel.tongyi]: '通义千问AI',
     [transModel.yiyan]: '文心一言AI',
@@ -1316,6 +1316,7 @@ function baiduDetectLang(text) {
                 if (resp.status === 200 && jsn && jsn.lan) {
                     resolve(langManager.parseLanguage(jsn.lan));
                 } else {
+                    console.log(resp)
                     reject(new Error('Server responded with status ' + resp));
                 }
             },
