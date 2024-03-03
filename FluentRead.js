@@ -744,11 +744,7 @@ function getTransNode(node) {
                 transModelFn[model](child.textContent).then(text => {
                     child.textContent = text;
                 })
-                break; // 只处理首行文本
-            }
-            else if (child.nodeType === Node.ELEMENT_NODE && child.tagName.toLowerCase() === 'a') {
-                translate(child);
-                break
+                return; // 只翻译首行文本
             }
             child = child.nextSibling;
         }
