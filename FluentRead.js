@@ -704,37 +704,56 @@ function handler(mouseX, mouseY, time, noSkip = true) {
     }, time);
 }
 
-const getTransNodeSet = new Set([
-    'span', 'p',    // 日常
-    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',    // 标题
+const getTransNodeSet = new Set(['span']);
+// 特例集合
+const specialSet = new Set([
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',  // 标题
+    'p',         // 段落（p 标签通常代表一句完整的话）
+    "li",        // 列表
     'yt-formatted-string',   // youtube 评论
 ]);
 
 // 特例适配
 const getTransNodeCompat = new Map([
-    ["mvnrepository.com", function (node) {
-        if (node.tagName.toLowerCase() === 'div' && node.classList.contains('im-description')) {
-            return true
-        }
-    }],
+    ["mvnrepository.com", node => {
+        if (node.tagName.toLowerCase() === 'div' && node.classList.contains('im-description')) return true
+    },
+    ],
 ]);
 
 // 返回最终应该翻译的父节点或 false
 function getTransNode(node) {
-    // 全局节点与空节点、class="notranslate" 的节点不翻译
-    if (!node || node === document.body || node === document.documentElement || node.classList.contains('notranslate')) return false;
-
-    // 检测当前节点是否满足翻译条件
-    if (getTransNodeSet.has(node.tagName.toLowerCase()) || detectChildMeta(node)) {
-        return getTransNode(node.parentNode) || node;  // 返回应该翻译的节点
-    }
-
-    // 特例适配 是否应该翻译
+    // 1、全局节点与空节点、class="notranslate" 的节点不翻译
+    if (!node || node === document.body || node.tagName.toLowerCase() === "iframe" || node === document.documentElement || node.classList.contains('notranslate')) return false;
+    // 2、特例适配标签，遇到这些标签则直接返回节点
+    if (specialSet.has(node.tagName.toLowerCase())) return node;
+    // 3、特例适配函数，根据 host 适配、且支持匹配 class
     let fn = getTransNodeCompat.get(url.host);
     if (fn && fn(node)) return node;
-
+    // 4、检测当前节点是否满足翻译条件
+    if (getTransNodeSet.has(node.tagName.toLowerCase()) || detectChildMeta(node)) {
+        return getTransNode(node.parentNode) || node;   // 如果当前节点满足翻译条件，则向上寻找最终符合的父节点
+    }
+    // 5、如果节点是div并且不符合一般翻译条件，可翻译首行文本
+    let model = util.getValue('model')
+    if (node.tagName.toLowerCase() === 'div' && !detectChildMeta(node)) {
+        // 遍历子节点，寻找首个文本节点或 a 标签节点
+        let child = node.firstChild;
+        while (child) {
+            if (child.nodeType === Node.TEXT_NODE && child.textContent.trim() !== '') {
+                transModelFn[model](child.textContent).then(text => {
+                    child.textContent = text;
+                })
+                break; // 只处理首行文本
+            }
+            else if (child.nodeType === Node.ELEMENT_NODE && child.tagName.toLowerCase() === 'a') {
+                translate(child);
+                break
+            }
+            child = child.nextSibling;
+        }
+    }
     // console.log('不翻译节点：', node);
-
     return false
 }
 
@@ -754,7 +773,6 @@ const detectChildMetaSet = new Set([
 function detectChildMeta(parent) {
     let child = parent.firstChild;
     while (child) {
-        // 如果子元素不是 a、b、strong、span、p、img 标签，则返回 false
         if (child.nodeType === Node.ELEMENT_NODE && !detectChildMetaSet.has(child.nodeName.toLowerCase())) {
             return false;
         }
@@ -973,7 +991,7 @@ function parseJwt(token) {
 
 // endregion
 
-// region DeepL
+// region deepL
 // native 判断是否为本地部署模型（native 不支持 html，暂保留）
 function deepL(origin, native = false) {
     return new Promise((resolve, reject) => {
@@ -1400,15 +1418,15 @@ function reliableDetectLang(text) {
     return new Promise((resolve, reject) => {
         detectLang(text)
             .then(resolve)
-            .catch(() => {
-                if (fail) reject('Both methods failed');
+            .catch(error => {
+                if (fail) reject('Both methods failed' + error);
                 else fail = true;
             });
 
         baiduDetectLang(text)
             .then(resolve)
-            .catch(() => {
-                if (fail) reject('Both methods failed');
+            .catch(error => {
+                if (fail) reject('Both methods failed' + error);
                 else fail = true;
             });
     });
