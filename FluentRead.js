@@ -2,7 +2,7 @@
 // @name         流畅阅读
 // @license      GPL-3.0 license
 // @namespace    https://fr.unmeta.cn/
-// @version      1.41
+// @version      1.42
 // @description  基于上下文语境的人工智能翻译引擎，为部分网站提供精准翻译，让所有人都能够拥有基于母语般的阅读体验。程序Github开源：https://github.com/Bistutu/FluentRead，欢迎 star。
 // @author       ThinkStu
 // @match        *://*/*
@@ -187,7 +187,8 @@ const optionsManager = {
         return GM_getValue("model_" + model) || '';
     },
     setOption(model, value) {
-        GM_setValue("model_" + model, value);
+        // LLM 才有 option 选项
+        if (LLM.has(model)) GM_setValue("model_" + model, value);
     },
     // 获取 option value
     getOptionName(model) {
@@ -235,10 +236,6 @@ const localStorageManager = {
     setTransCache(origin, result) {
         let model = util.getValue('model');
         let option = optionsManager.getOption(model);
-        // if (model === transModel.deepL) {
-        //     optionsManager.setOption(model,"")
-        //     option = ""
-        // } // TODO bug 突显 gpt-3.5 标识，待修复
         // key: 模型_文本，value: 文本
         localStorage.setItem(model + "_" + option + "_" + origin, result)
         localStorage.setItem(model + "_" + option + "_" + result, origin)
@@ -391,9 +388,9 @@ const settingManager = {
         <span class="fluent-read-tooltip">自定义 GPT 地址
             <span class="fluent-read-tooltiptext">1、支持 OpenAI 官方地址，如：https://api.openai.com/v1/chat/completions
             </br>
-            2、支持 cloudflare 代理模式，国内可访问，需要填写完整的 URL 地址，如：https://gateway.ai.cloudflare.com/v1/随机码/用户名/openai/chat/completions
+            2、支持 Cloudflare 代理模式，如：https://gateway.ai.cloudflare.com/.../openai/chat/completions
             </br>
-            3、支持国内开源代理，见：https://github.com/chatanywhere/GPT_API_free
+            3、支持国内开源代理，如：https://api.chatanywhere.com.cn/v1/chat/completions
             </br>
             4、由于浏览器安全限制，如需支持其他代理，请于 GitHub 提 issue.
             </span>
@@ -406,7 +403,7 @@ const settingManager = {
     <label class="instant-setting-label" id="fluent-read-sk-label" style="display: none;">sk令牌<input type="text" class="instant-setting-input" id="fluent-read-sk" value="" ></label>
     <!-- 添加的输入区域 -->
     <label class="instant-setting-label" id="fluent-read-system-label" style="display: none;">
-        <span class="fluent-read-tooltip">system角色设定<span class="fluent-read-tooltiptext">模型角色设定，如：你是一名专业的翻译家...</span></span>
+        <span class="fluent-read-tooltip">system角色设定<span class="fluent-read-tooltiptext">模型角色设定，如：你是一名专业的翻译家</span></span>
         <textarea class="instant-setting-textarea" id="fluent-read-system-message">${chatMgs.getSystemMsg()}</textarea>
     </label>
     <label class="instant-setting-label" id="fluent-read-user-label" style="display: none;">
@@ -430,10 +427,9 @@ const settingManager = {
                     if (model === transModel.openai) {
                         let ok = customGPT.setGPTUrl(util.getElementValue('fluent-read-custom'));
                         if (!ok) {
-                            toast.fire({
-                                icon: 'error',
-                                title: '自定义地址不合法，仅支持 OpenAI 官方地址与 cloudflare 代理地址！'
-                            });
+                            toast.fire(
+                                {icon: 'error', title: '自定义地址不合法，仅支持 OpenAI 官方地址与 cloudflare 代理地址！'}
+                            );
                             return
                         }
                     }
@@ -493,7 +489,6 @@ const settingManager = {
 
         // 获取存储的 token 对象
         const tokenObject = tokenManager.getToken(model)
-        console.log(model, tokenObject)
 
         switch (model) {
             case transModel.yiyan:
@@ -516,29 +511,25 @@ const settingManager = {
     },
     // 批量设置元素的 display 样式
     setDisplayStyle(flex, none) {
+        // 消息模版
         const systemMsgLabel = document.getElementById('fluent-read-system-label');
         const userMsgLabel = document.getElementById('fluent-read-user-label');
-        // 获取自定义 GPT 地址输入框
+        // 自定义 GPT 地址框
         const customLabel = document.getElementById('fluent-read-custom-label');
 
-        // 1、如果 flex 为空，则设置所有元素的 display 为 none，返回
-        if (flex.length === 0) {
+        // 1、如果 flex 为空，则设置所有元素的 display 为 none，返回 / 如果是 DeepL
+        let model = util.getElementValue('fluent-read-model');
+        if (flex.length === 0 || model === transModel.deepL) {
             document.getElementById('fluent-read-option-label').style.display = "none";
             systemMsgLabel.style.display = "none";
             userMsgLabel.style.display = "none";
+            customLabel.style.display = "none";
             none.forEach(element => element.style.display = "none");
+            flex.forEach(element => element.style.display = "flex");
             return
         }
+
         // 2、正常逻辑，更新选项、按需要显示元素
-        let model = util.getElementValue('fluent-read-model');
-        if (model === transModel.deepL) {
-            document.getElementById('fluent-read-option-label').style.display = "none";
-            flex.forEach(element => element.style.display = "flex");
-            none.forEach(element => element.style.display = "none");
-            systemMsgLabel.style.display = "none";
-            userMsgLabel.style.display = "none";
-            return;
-        }
         // 更新下拉框选项
         const optionSelect = document.getElementById('fluent-read-option');
         optionSelect.innerHTML = settingManager.generateOptions(optionsManager[model], optionsManager.getOption(model));
