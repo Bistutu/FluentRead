@@ -2,7 +2,7 @@
 // @name         流畅阅读
 // @license      GPL-3.0 license
 // @namespace    https://fr.unmeta.cn/
-// @version      1.37
+// @version      1.41
 // @description  基于上下文语境的人工智能翻译引擎，为部分网站提供精准翻译，让所有人都能够拥有基于母语般的阅读体验。程序Github开源：https://github.com/Bistutu/FluentRead，欢迎 star。
 // @author       ThinkStu
 // @match        *://*/*
@@ -1660,6 +1660,25 @@ function initApplication() {
     .fluent-read-tooltip { position: relative; display: inline-block; }
     .fluent-read-tooltip .fluent-read-tooltiptext { visibility: hidden; width: 25em; background-color: black; color: #fff; text-align: left; border-radius: 6px; padding: 5px; position: absolute; z-index: 1; bottom: 100%; left: 50%; margin-left: -60px; opacity: 0; transition: opacity 0.6s; font-size: 14px; }
     .fluent-read-tooltip:hover .fluent-read-tooltiptext { visibility: visible; opacity: 1; }
+    
+     /* 适配移动端 */
+    @media (max-width: 600px) {
+        .translate-d-popup {
+            font-size: 12px !important; /* 调整字体大小 */
+            width: 90% !important; /* 在小屏幕上占据更多空间 */
+        }
+        .instant-setting-input,
+        .instant-setting-textarea,
+        .instant-setting-common,
+        .instant-setting-select {
+            width: 60% !important; /* 调整宽度以适应屏幕 */
+        }
+    
+        .fluent-read-tooltip .fluent-read-tooltiptext {
+            width: 18em; /* 调整工具提示宽度 */
+            font-size: 12px; /* 调整工具提示字体大小 */
+        }
+    }
     `
     );
 }
