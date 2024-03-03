@@ -627,7 +627,7 @@ const settingManager = {
         mouseX = event.clientX;
         mouseY = event.clientY;
 
-        handler(mouseX, mouseY, 20);
+        handler(mouseX, mouseY, 10);
     });
 
     // 检查是否需要拉取数据
@@ -799,7 +799,7 @@ function translate(node) {
     if (!node.innerText.trim()) return; // 空文本，跳过
 
     // 检测语言类型，如果是中文则不翻译
-    baiduDetectLang(node.innerText).then(lang => {
+    reliableDetectLang(node.innerText).then(lang => {
         if (lang === langManager.getTo()) return;   // 与目标语言相同，不翻译
 
         // 如果是机器翻译，则翻译 outerHTML，否则递归获取文本
@@ -1391,6 +1391,26 @@ function detectLang(text) {
             },
             onerror: () => reject(new Error('GM_xmlhttpRequest failed'))
         });
+    });
+}
+
+// 可靠的语言检测（竞速）
+function reliableDetectLang(text) {
+    let fail = false;
+    return new Promise((resolve, reject) => {
+        detectLang(text)
+            .then(resolve)
+            .catch(() => {
+                if (fail) reject('Both methods failed');
+                else fail = true;
+            });
+
+        baiduDetectLang(text)
+            .then(resolve)
+            .catch(() => {
+                if (fail) reject('Both methods failed');
+                else fail = true;
+            });
     });
 }
 
