@@ -253,8 +253,8 @@ const localStorageManager = {
         const lastSessionTimestamp = localStorage.getItem('lastSessionTimestamp');
         const currentTime = new Date().getTime();
 
-        // 超过 30 分钟时清空localStorage
-        if (!lastSessionTimestamp || currentTime - parseInt(lastSessionTimestamp) > 1800000) {
+        // 超过 24 小时清空 localStorage
+        if (!lastSessionTimestamp || currentTime - parseInt(lastSessionTimestamp) > 24 * 3600000) {
             // if (!lastSessionTimestamp || currentTime - parseInt(lastSessionTimestamp) > 20000) {
             localStorage.clear();
         }
@@ -651,6 +651,14 @@ const settingManager = {
         handleDOMUpdate(document.body);
     });
 
+    // F2 清空当前页面所有翻译缓存
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'F2') {
+            localStorage.clear()
+            toast.fire({icon: 'success', title: '当前页面翻译缓存清空成功！'});
+        }
+    });
+
     // 快捷键 F2，清空所有缓存
     // document.addEventListener('keydown', function (event) {
     //     if (event.key === 'F2') {
@@ -659,6 +667,7 @@ const settingManager = {
     //         console.log('Cache cleared!');
     //     }
     // });
+
 })();
 
 // 监听事件处理器，参数：鼠标坐标、计时器
@@ -670,7 +679,7 @@ function handler(mouseX, mouseY, time, noSkip = true) {
         let node = getTransNode(document.elementFromPoint(mouseX, mouseY));  // 获取最终需要翻译的节点
         if (!node) return;  // 如果不需要翻译，则跳过
 
-        // console.log('翻译节点：', node);
+        console.log('翻译节点：', node);
 
         if (hasLoadingSpinner(node)) return;    // 如果已经在翻译，则跳过
 
@@ -723,7 +732,6 @@ const getTransNodeCompat = new Map([
 
 // 返回最终应该翻译的父节点或 false
 function getTransNode(node) {
-    console.log('当前节点长度：', node.textContent.length)
     // 1、全局节点与空节点、文字过多的节点、class="notranslate" 的节点不翻译
     if (!node || [document.documentElement, document.body].includes(node)
         || node.tagName.toLowerCase() === "iframe" || node.classList.contains('notranslate')
@@ -753,7 +761,7 @@ function getTransNode(node) {
             child = child.nextSibling;
         }
     }
-    // console.log('不翻译节点：', node);
+    console.log('不翻译节点：', node);
     return false
 }
 
