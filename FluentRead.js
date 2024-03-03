@@ -723,8 +723,12 @@ const getTransNodeCompat = new Map([
 
 // 返回最终应该翻译的父节点或 false
 function getTransNode(node) {
-    // 1、全局节点与空节点、class="notranslate" 的节点不翻译
-    if (!node || node === document.body || node.tagName.toLowerCase() === "iframe" || node === document.documentElement || node.classList.contains('notranslate')) return false;
+    console.log('当前节点长度：', node.textContent.length)
+    // 1、全局节点与空节点、文字过多的节点、class="notranslate" 的节点不翻译
+    if (!node || [document.documentElement, document.body].includes(node)
+        || node.tagName.toLowerCase() === "iframe" || node.classList.contains('notranslate')
+        || node.textContent.length > 4096
+    ) return false;
     // 2、特例适配标签，遇到这些标签则直接返回节点
     if (specialSet.has(node.tagName.toLowerCase())) return node;
     // 3、特例适配函数，根据 host 适配、且支持匹配 class
