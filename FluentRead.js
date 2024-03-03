@@ -2,7 +2,7 @@
 // @name         流畅阅读
 // @license      GPL-3.0 license
 // @namespace    https://fr.unmeta.cn/
-// @version      1.30
+// @version      1.37
 // @description  基于上下文语境的人工智能翻译引擎，为部分网站提供精准翻译，让所有人都能够拥有基于母语般的阅读体验。程序Github开源：https://github.com/Bistutu/FluentRead，欢迎 star。
 // @author       ThinkStu
 // @match        *://*/*
@@ -615,6 +615,17 @@ const settingManager = {
 
     initApplication()
 
+    // 触屏监听事件：三指触摸触发翻译事件
+    document.body.addEventListener('touchstart', event => {
+        // 检查是否有三个触摸点以及其中心位置
+        if (event.touches.length === 3) {
+            let centerX = (event.touches[0].clientX + event.touches[1].clientX + event.touches[2].clientX) / 3;
+            let centerY = (event.touches[0].clientY + event.touches[1].clientY + event.touches[2].clientY) / 3;
+            // 调用翻译处理函数
+            handler(centerX, centerY, 0, false);
+        }
+    });
+
     // 当浏览器或标签页失去焦点时，重置 ctrlPressed
     window.addEventListener('blur', () => shortcutManager.hotkeyPressed = false)
 
@@ -660,8 +671,8 @@ const settingManager = {
 })();
 
 // 监听事件处理器，参数：鼠标坐标、计时器
-function handler(mouseX, mouseY, time) {
-    if (!shortcutManager.hotkeyPressed) return;
+function handler(mouseX, mouseY, time, noSkip = true) {
+    if (noSkip && !shortcutManager.hotkeyPressed) return;
 
     clearTimeout(hoverTimer); // 清除计时器
     hoverTimer = setTimeout(() => {
@@ -1368,7 +1379,7 @@ function baiduDetectLang(text) {
     })
 }
 
-function DetectLang(text) {
+function detectLang(text) {
     return new Promise((resolve, reject) => {
         // 数据参数
         const data = new URLSearchParams();
