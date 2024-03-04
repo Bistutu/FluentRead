@@ -275,6 +275,14 @@ const util = {
     },
 }
 
+// trustHTML
+let safeFluentRead;
+if (window.trustedTypes && window.trustedTypes.createPolicy) {
+    safeFluentRead = window.trustedTypes.createPolicy("safeFluentRead", {
+        createHTML: (string) => string
+    });
+}
+
 // endregion
 
 // region 菜单
@@ -705,12 +713,13 @@ function handler(mouseX, mouseY, time, noSkip = true) {
                 if (fn) {
                     fn(node, outerHTMLCache);    // 兼容函数
                 } else {
-                    node.outerHTML = outerHTMLCache;    // 替换
+                    node.outerHTML = safeFluentRead ? safeFluentRead.createHTML(outerHTMLCache) : outerHTMLCache;
                 }
                 delayRemoveCache(outerHTMLCache);
             }, 250);
             return;
         }
+
         translate(node);
     }, time);
 }
@@ -829,23 +838,6 @@ const chatMgs = {
         let userMsg = GM_getValue('userMsg', this.user_pre + this.user_post);
         return userMsg.replace('{{origin}}', origin).replace('{{to}}', langManager.getTo());
     }
-}
-
-function safeSetInnerHTML(node, html) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    while (node.firstChild) {
-        node.removeChild(node.firstChild);
-    }
-    node.appendChild(doc.body);
-}
-
-// trustHTML
-let safeFluentRead;
-if (window.trustedTypes && window.trustedTypes.createPolicy) {
-    safeFluentRead = window.trustedTypes.createPolicy("safeFluentRead", {
-        createHTML: (string) => string
-    });
 }
 
 function translate(node) {
