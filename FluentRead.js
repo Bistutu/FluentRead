@@ -135,14 +135,16 @@ const LLM = new Set([transModel.openai, transModel.yiyan, transModel.tongyi, tra
 
 // 翻译模型名称
 const transModelName = {
+    ['machine']: '---【机器翻译】---',
     [transModel.microsoft]: '微软翻译（推荐）',
     [transModel.deepL]: 'DeepL翻译(需令牌)',
-    [transModel.zhipu]: '智谱清言AI',
-    [transModel.tongyi]: '通义千问AI',
-    [transModel.yiyan]: '文心一言AI',
-    [transModel.openai]: 'chatGPT AI',
-    [transModel.gemini]: 'gemini AI',
-    [transModel.moonshot]: 'moonshot AI',
+    ['llm']: '---【AI翻译】---',
+    [transModel.moonshot]: 'Moonshot',
+    [transModel.zhipu]: '智谱清言',
+    [transModel.tongyi]: '通义千问',
+    [transModel.yiyan]: '文心一言',
+    [transModel.openai]: 'ChatGPT',
+    [transModel.gemini]: 'Gemini',
 }
 
 // 错误类型
@@ -374,12 +376,14 @@ const customGPT = {
 let hoverTimer;
 
 const settingManager = {
-    // 将对象转换为 HTML option 标签
     generateOptions(options, selectedValue) {
-        return Object.entries(options).map(([key, value]) =>
-            `<option value="${key}" ${selectedValue === key ? 'selected' : ''}>${value}</option>`
-        ).join('');
+        return Object.entries(options).map(([key, value]) => {
+            // 检查是否为需要禁用的选项
+            const isDisabled = value === '---【机器翻译】---' || value === '---【AI翻译】---';
+            return `<option value="${key}" ${selectedValue === key ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}>${value}</option>`;
+        }).join('');
     },
+
     // 设置中心界面
     setSetting() {
         // 页面 dom
