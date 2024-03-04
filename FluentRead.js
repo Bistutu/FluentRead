@@ -604,6 +604,10 @@ const settingManager = {
             }
         });
     },
+    update() {
+        // 跳转页面
+        window.open('https://greasyfork.org/zh-CN/scripts/482986-%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB');
+    },
     about() {
         // 跳转页面
         window.open('https://github.com/Bistutu/FluentRead');
@@ -1697,6 +1701,7 @@ function initApplication() {
     GM_registerMenuCommand(`目标语言：${langManager.to[util.getValue('to')]}`, () => settingManager.setLanguage('to'));
     GM_registerMenuCommand(`鼠标快捷键：${shortcutManager.hotkeyOptions[util.getValue('hotkey')]}`, () => settingManager.setHotkey());
     GM_registerMenuCommand(`翻译服务：${transModelName[util.getValue('model')]}`, () => settingManager.setSetting());
+    GM_registerMenuCommand('检查更新', () => settingManager.update());
     GM_registerMenuCommand('关于项目', () => settingManager.about());
 
     // 初始化翻译模型对应函数
