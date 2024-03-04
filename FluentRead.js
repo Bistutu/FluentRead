@@ -627,7 +627,7 @@ const settingManager = {
         mouseX = event.clientX;
         mouseY = event.clientY;
 
-        handler(mouseX, mouseY, 10);
+        handler(mouseX, mouseY, 25);
     });
 
     // 检查是否需要拉取数据
@@ -652,28 +652,24 @@ const settingManager = {
     });
 
     document.addEventListener('keydown', function (event) {
-        // 鼠标选中事件，暂未开放
-        // if (event.key === 'F3') {
-        //     translateSelectedText();
-        // }
-
         // F2 清空当前页面所有翻译缓存
-
         if (event.key === 'F2') {
             localStorage.clear()
             toast.fire({icon: 'success', title: '当前页面翻译缓存清空成功！'});
         }
+
+        // 快捷键 F1，清空所有缓存
+        // if (event.key === 'F1') {
+        //     let listValues = GM_listValues();
+        //     listValues.forEach(e => GM_deleteValue(e))
+        //     console.log('Cache cleared!');
+        // }
+
+        // 鼠标选中事件，暂未开放
+        // if (event.key === 'F3') {
+        //     translateSelectedText();
+        // }
     });
-
-    // 快捷键 F1，清空所有缓存
-    // document.addEventListener('keydown', function (event) {
-    //     if (event.key === 'F1') {
-    //         let listValues = GM_listValues();
-    //         listValues.forEach(e => GM_deleteValue(e))
-    //         console.log('Cache cleared!');
-    //     }
-    // });
-
 })();
 
 // 监听事件处理器，参数：鼠标坐标、计时器
@@ -741,6 +737,7 @@ const getTransNodeCompat = new Map([
 
 // 返回最终应该翻译的父节点或 false
 function getTransNode(node) {
+    let model = util.getValue('model')
     // 1、全局节点与空节点、文字过多的节点、class="notranslate" 的节点不翻译
     if (!node || [document.documentElement, document.body].includes(node)
         || node.tagName.toLowerCase() === "iframe" || node.classList.contains('notranslate')
@@ -756,7 +753,6 @@ function getTransNode(node) {
         return getTransNode(node.parentNode) || node;   // 如果当前节点满足翻译条件，则向上寻找最终符合的父节点
     }
     // 5、如果节点是div并且不符合一般翻译条件，可翻译首行文本
-    let model = util.getValue('model')
     if (node.tagName.toLowerCase() === 'div') {
         // 遍历子节点，寻找首个文本节点或 a 标签节点
         let child = node.firstChild;
@@ -835,6 +831,22 @@ const chatMgs = {
     }
 }
 
+function safeSetInnerHTML(node, html) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    while (node.firstChild) {
+        node.removeChild(node.firstChild);
+    }
+    node.appendChild(doc.body);
+}
+
+// trustHTML
+let safeFluentRead;
+if (window.trustedTypes && window.trustedTypes.createPolicy) {
+    safeFluentRead = window.trustedTypes.createPolicy("safeFluentRead", {
+        createHTML: (string) => string
+    });
+}
 
 function translate(node) {
     let model = util.getValue('model')
@@ -867,18 +879,20 @@ function translate(node) {
             let oldOuterHtml = node.outerHTML  // 保存旧的 outerHTML
 
             let newOuterHtml = text
-            if (isMachineTrans(model)) {    // 1、机器翻译
+            if (isMachineTrans(model)) {
+                // 机器翻译
                 if (!node.parentNode) return;
-                let fn = compatFn[url.host];    // 兼容函数
+                let fn = compatFn[url.host];
                 if (fn) {
-                    oldOuterHtml = node.outerHTML
+                    oldOuterHtml = node.outerHTML;
                     fn(node, text);
                     newOuterHtml = node.outerHTML;
                 } else {
-                    node.outerHTML = text;
+                    node.outerHTML = safeFluentRead ? safeFluentRead.createHTML(text) : text;
                 }
-            } else {    // 2、LLM 翻译
-                node.innerHTML = text;
+            } else {
+                // LLM 翻译
+                node.innerHTML = safeFluentRead ? safeFluentRead.createHTML(text) : text;
                 newOuterHtml = node.outerHTML;
             }
 
@@ -1382,7 +1396,7 @@ function setShortcut(shortcut) {
 
 // 判断是否为机器翻译
 function isMachineTrans(model) {
-    return [transModel.microsoft].includes(model);
+    return [transModel.microsoft, transModel.deepL].includes(model);
 }
 
 // 检测语言类型
