@@ -651,17 +651,23 @@ const settingManager = {
         handleDOMUpdate(document.body);
     });
 
-    // F2 清空当前页面所有翻译缓存
     document.addEventListener('keydown', function (event) {
+        // 鼠标选中事件，暂未开放
+        // if (event.key === 'F3') {
+        //     translateSelectedText();
+        // }
+
+        // F2 清空当前页面所有翻译缓存
+
         if (event.key === 'F2') {
             localStorage.clear()
             toast.fire({icon: 'success', title: '当前页面翻译缓存清空成功！'});
         }
     });
 
-    // 快捷键 F2，清空所有缓存
+    // 快捷键 F1，清空所有缓存
     // document.addEventListener('keydown', function (event) {
-    //     if (event.key === 'F2') {
+    //     if (event.key === 'F1') {
     //         let listValues = GM_listValues();
     //         listValues.forEach(e => GM_deleteValue(e))
     //         console.log('Cache cleared!');
@@ -727,6 +733,9 @@ const getTransNodeCompat = new Map([
     ["mvnrepository.com", node => {
         if (node.tagName.toLowerCase() === 'div' && node.classList.contains('im-description')) return true
     },
+        "www.aozora.gr.jp", node => {
+        if (node.tagName.toLowerCase() === 'div' && node.classList.contains('main_text')) return true
+    },
     ],
 ]);
 
@@ -748,7 +757,7 @@ function getTransNode(node) {
     }
     // 5、如果节点是div并且不符合一般翻译条件，可翻译首行文本
     let model = util.getValue('model')
-    if (node.tagName.toLowerCase() === 'div' && !detectChildMeta(node)) {
+    if (node.tagName.toLowerCase() === 'div') {
         // 遍历子节点，寻找首个文本节点或 a 标签节点
         let child = node.firstChild;
         while (child) {
@@ -756,11 +765,19 @@ function getTransNode(node) {
                 transModelFn[model](child.textContent).then(text => {
                     child.textContent = text;
                 })
-                return; // 只翻译首行文本
+                return false; // 只翻译首行文本
             }
             child = child.nextSibling;
         }
     }
+    // 6、翻译文本节点
+    if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '') {
+        transModelFn[model](node.textContent).then(text => {
+            node.textContent = text;
+        })
+        return false; // 只翻译文本节点
+    }
+
     console.log('不翻译节点：', node);
     return false
 }
@@ -772,7 +789,7 @@ const detectChildMetaSet = new Set([
     'font', 'big', 'strike', 's', 'del', 'ins',
     'mark', 'cite', 'q', 'abbr', 'acronym', 'dfn',
     'code', 'samp', 'kbd', 'var', 'pre', 'address',
-    'time', 'ruby', 'rt', 'rp', 'bdi', 'bdo', 'wbr',
+    'time', 'ruby', 'rb', 'rt', 'rp', 'bdi', 'bdo', 'wbr',
     'details', 'summary', 'menuitem', 'menu', 'dialog',
     'slot', 'template', 'shadow', 'content', 'element',
 ]);
@@ -1152,7 +1169,6 @@ function moonshot(origin) {
     });
 }
 
-
 // endregion
 
 // region 文心一言
@@ -1438,6 +1454,37 @@ function reliableDetectLang(text) {
                 else fail = true;
             });
     });
+}
+
+// 翻译选中的文本
+function translateSelectedText() {
+    const selectedText = window.getSelection().toString();
+    if (selectedText.length > 5) {  // 如果选中文本长度大于 5 字符，则翻译（避免误触事件）
+        // 检查原始文本是否以换行符结尾
+        const endsWithNewline = selectedText.endsWith('\n');
+
+        let model = util.getValue('model');
+        transModelFn[model](selectedText).then(translatedText => {
+            replaceSelectedText(translatedText, endsWithNewline);
+        });
+    }
+}
+
+// 替换选中范围内的文本
+function replaceSelectedText(replacementText, endsWithNewline) {
+    const selection = window.getSelection();
+    if (!selection.rangeCount) return false;
+    selection.deleteFromDocument();
+
+    // 创建一个 span 元素来包含翻译后的文本
+    const span = document.createElement('span');
+    span.textContent = replacementText;
+    if (endsWithNewline) span.appendChild(document.createElement('br'));
+
+    // 获取当前选中范围的第一个 Range 对象
+    const range = selection.getRangeAt(0);
+    range.insertNode(span);
+
 }
 
 
