@@ -697,9 +697,12 @@ function handler(mouseX, mouseY, time, noSkip = true) {
         let node = getTransNode(document.elementFromPoint(mouseX, mouseY));  // 获取最终需要翻译的节点
         if (!node) return;  // 如果不需要翻译，则跳过
 
-        console.log('翻译节点：', node);
-
-        if (hasLoadingSpinner(node)) return;    // 如果已经在翻译，则跳过
+        if (hasLoadingSpinner(node)) {    // 如果已经在翻译，则跳过
+            // console.log('正在翻译中...跳过');
+            return;
+            // }else {
+            //     console.log('翻译节点：', node);
+        }
 
         // 去重判断
         let outerHTMLTemp = node.outerHTML;
