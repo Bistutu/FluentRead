@@ -2,7 +2,7 @@
 // @name         流畅阅读
 // @license      GPL-3.0 license
 // @namespace    https://fr.unmeta.cn/
-// @version      1.42
+// @version      1.30
 // @description  基于上下文语境的人工智能翻译引擎，为部分网站提供精准翻译，让所有人都能够拥有基于母语般的阅读体验。程序Github开源：https://github.com/Bistutu/FluentRead，欢迎 star。
 // @author       ThinkStu
 // @match        *://*/*
@@ -235,12 +235,10 @@ let LLMFormat = {
         return JSON.stringify({
             'model': option,
             "stream": false,
-            "temperature": 0.3,
+            "temperature": 0.1,
             'messages': [
                 {'role': 'system', 'content': chatMgs.getSystemMsg()},
-                {'role': 'user', 'content': chatMgs.getUserMsg('hello')},
-                {'role': "assistant", 'content': '你好'},
-                {'role': 'user', 'content': origin}
+                {'role': 'user', 'content': chatMgs.getUserMsg(origin)},
             ]
         })
     }
@@ -382,9 +380,7 @@ const shortcutManager = {
 // 自定义 GPT地址
 const customGPT = {
     openai: "https://api.openai.com/v1/chat/completions",
-    setGPTUrl(url) {
-        const model = util.getValue('model');
-
+    setGPTUrl(model, url) {
         url = url.trim();   // 去除首尾空格
         // 解析 url，确保为 cloudflare 代理或 openai 官方地址
         let cloudflareReg = /https:\/\/gateway.ai.cloudflare.com\/v1\/\w+\/\w+\/openai\/chat\/completions/;
@@ -400,8 +396,8 @@ const customGPT = {
         }
         return false
     },
-    getGPTUrl() {
-        const model = util.getValue('model');
+    getGPTUrl(model) {
+        if (!model) model = util.getValue('model');
         return GM_getValue(model + '_url', this.openai)
     }
 }
@@ -429,19 +425,28 @@ const settingManager = {
     <label class="instant-setting-label">翻译服务<select id="fluent-read-model" class="instant-setting-select">${this.generateOptions(transModelName, util.getValue('model'))}</select></label>
     
     <!--支持 ollama 等自定义模型名称-->
-    <label class="instant-setting-label" id="fluent-read-custom-type-label" style="display: none;">自定义模型类型<input type="text" class="instant-setting-input" id="fluent-read-custom-type" value="${optionsManager.getOption(util.getValue('model'))}" ></label>
+    <label class="instant-setting-label" id="fluent-read-custom-type-label" style="display: none;">
+    <span class="fluent-read-tooltip">自定义模型类型
+            <span class="fluent-read-tooltiptext">
+            请填写模型类型全称，如：gemma:7b、llama2:7b
+            </span>
+        </span>
+    <input type="text" class="instant-setting-input" id="fluent-read-custom-type" value="${optionsManager.getOption(util.getValue('model'))}" ></label>
     
     <label class="instant-setting-label" id="fluent-read-option-label" style="display: none;">模型类型<select id="fluent-read-option" class="instant-setting-select"></select></label> 
     <!-- custom 输入框-->
     <label class="instant-setting-label" id="fluent-read-custom-label" style="display: none;">
         <span class="fluent-read-tooltip">自定义 GPT 地址
-            <span class="fluent-read-tooltiptext">1、支持 OpenAI 官方地址，如：https://api.openai.com/v1/chat/completions
+            <span class="fluent-read-tooltiptext">
+            1、支持 OpenAI 官方地址，如：https://api.openai.com/v1/chat/completions
             </br>
-            2、支持 Cloudflare 代理模式，如：https://gateway.ai.cloudflare.com/.../openai/chat/completions
+            2、支持 Cloudflare 代理，如：https://gateway.ai.cloudflare.com/.../openai/chat/completions
             </br>
             3、支持国内开源代理，如：https://api.chatanywhere.com.cn/v1/chat/completions
             </br>
-            4、由于浏览器安全限制，如需支持其他代理，请于 GitHub 提 issue.
+            4、支持本地代理，如：http://localhost:11434/v1/chat/completions
+            </br>
+            5、由于浏览器安全限制，如需支持其他代理，请于 GitHub 提 issue.
             </span>
         </span>
         <input type="text" class="instant-setting-input" id="fluent-read-custom" value="${customGPT.getGPTUrl()}" >
@@ -474,11 +479,12 @@ const settingManager = {
 
                     // 0、设置自定义 GPT 地址
                     if ([transModel.openai, transModel.ollama].includes(model)) {
-                        let ok = customGPT.setGPTUrl(util.getElementValue('fluent-read-custom'));
+                        let ok = customGPT.setGPTUrl(model, util.getElementValue('fluent-read-custom'));
                         if (!ok) {
-                            toast.fire(
-                                {icon: 'error', title: '自定义地址不合法，仅支持 OpenAI 官方地址与 cloudflare 代理地址！'}
-                            );
+                            toast.fire({
+                                icon: 'error',
+                                title: '自定义地址不合法，请检查后重试！'
+                            });
                             return
                         }
                     }
@@ -491,7 +497,11 @@ const settingManager = {
                     // 3、设置翻译服务
                     util.setValue('model', model);
                     // 4、设置模型类型
-                    optionsManager.setOption(model, util.getElementValue('fluent-read-option'));
+                    if (model === transModel.ollama) {
+                        optionsManager.setOption(model, util.getElementValue('fluent-read-custom-type'));
+                    } else {
+                        optionsManager.setOption(model, util.getElementValue('fluent-read-option'));
+                    }
                     // 5、存储 token
                     let token = util.getElementValue('fluent-read-token');
                     let ak = util.getElementValue('fluent-read-ak');
@@ -509,8 +519,6 @@ const settingManager = {
                     // 6、设置 chatGPT 消息模板
                     chatMgs.setSystemMsg(util.getElementValue('fluent-read-system-message'));
                     chatMgs.setUserMsg(util.getElementValue('fluent-read-user-message'));
-                    // 7、设置 fluent-read-custom-type
-                    optionsManager.setOption(model, util.getElementValue('fluent-read-custom-type'));
 
                     toast.fire({icon: 'success', title: '设置成功！'});
                     history.go(0); // 刷新页面
@@ -585,6 +593,7 @@ const settingManager = {
         // 2、正常逻辑，更新选项、按需要显示元素
 
         customLabel.style.display = [transModel.openai, transModel.ollama].includes(model) ? "flex" : "none";  // 判断是否显示自定义 GPT 地址输入框
+        document.getElementById('fluent-read-custom').value = customGPT.getGPTUrl(model);  // 设置自定义 GPT 地址
 
         flex.forEach(element => element.style.display = "flex");
         none.forEach(element => element.style.display = "none");
@@ -596,6 +605,7 @@ const settingManager = {
             optionLabel.style.display = "none"
             customTypeLabel.style.display = "flex"
             flex.forEach(element => element.style.display = "none");
+            document.getElementById('fluent-read-custom-type').value = optionsManager.getCustomOption(model);
         } else {
             const optionSelect = document.getElementById('fluent-read-option');
             optionSelect.innerHTML = settingManager.generateOptions(optionsManager[model], optionsManager.getOption(model));
@@ -845,7 +855,7 @@ function getTransNode(node) {
         return false; // 只翻译文本节点
     }
 
-    console.log('不翻译节点：', node);
+    // console.log('不翻译节点：', node);
     return false
 }
 
