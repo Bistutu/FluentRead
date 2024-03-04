@@ -17,6 +17,7 @@
 // @grant        GM_getResourceText
 // @connect      fr.unmeta.cn
 // @connect      127.0.0.1
+// @connect      localhost
 // @connect      edge.microsoft.com
 // @connect      api-edge.cognitive.microsofttranslator.com
 // @connect      aip.baidubce.com
@@ -129,9 +130,17 @@ const transModel = {    // 翻译模型枚举
     // --- 机器翻译 ---
     microsoft: "microsoft",
     deepL: "deepL",
+    // --- 本地大模型 ---
+    ollama: "ollama",
 }
 
-const LLM = new Set([transModel.openai, transModel.yiyan, transModel.tongyi, transModel.zhipu, transModel.moonshot, transModel.gemini])  // LLM 翻译模型
+const LLM = new Set(
+    [
+        transModel.openai, transModel.yiyan, transModel.tongyi,
+        transModel.zhipu, transModel.moonshot, transModel.gemini,
+        transModel.ollama,
+    ]
+)
 
 // 翻译模型名称
 const transModelName = {
@@ -145,6 +154,8 @@ const transModelName = {
     [transModel.yiyan]: '文心一言',
     [transModel.openai]: 'ChatGPT',
     [transModel.gemini]: 'Gemini',
+    ['native']: '---【本地大模型】---',
+    [transModel.ollama]: 'ollama',
 }
 
 // 错误类型
@@ -195,6 +206,9 @@ const optionsManager = {
     // 获取 option value
     getOptionName(model) {
         return this[model][this.getOption(model)];
+    },
+    getCustomOption(model) {
+        return GM_getValue("model_" + model) || '';
     }
 }
 
@@ -208,6 +222,19 @@ let LLMFormat = {
     getStdData(origin, option) {
         return JSON.stringify({
             'model': option,
+            "temperature": 0.3,
+            'messages': [
+                {'role': 'system', 'content': chatMgs.getSystemMsg()},
+                {'role': 'user', 'content': chatMgs.getUserMsg('hello')},
+                {'role': "assistant", 'content': '你好'},
+                {'role': 'user', 'content': origin}
+            ]
+        })
+    },
+    getOllamaData(origin, option) {
+        return JSON.stringify({
+            'model': option,
+            "stream": false,
             "temperature": 0.3,
             'messages': [
                 {'role': 'system', 'content': chatMgs.getSystemMsg()},
@@ -356,19 +383,26 @@ const shortcutManager = {
 const customGPT = {
     openai: "https://api.openai.com/v1/chat/completions",
     setGPTUrl(url) {
-        url = url.trim();   // 去除首尾空格
+        const model = util.getValue('model');
 
+        url = url.trim();   // 去除首尾空格
         // 解析 url，确保为 cloudflare 代理或 openai 官方地址
         let cloudflareReg = /https:\/\/gateway.ai.cloudflare.com\/v1\/\w+\/\w+\/openai\/chat\/completions/;
-
-        if (url === this.openai || url === "https://api.chatanywhere.com.cn/v1/chat/completions" || cloudflareReg.test(url)) {
-            GM_setValue('openai_url', url)
+        if (url === this.openai
+            || url === "https://api.chatanywhere.com.cn/v1/chat/completions"
+            || cloudflareReg.test(url)
+            // 是 127.0.0.1 或 localhost
+            || url.indexOf("127.0.0.1") !== -1
+            || url.indexOf("localhost") !== -1
+        ) {
+            GM_setValue(model + '_url', url)
             return true
         }
         return false
     },
     getGPTUrl() {
-        return GM_getValue('openai_url', this.openai)
+        const model = util.getValue('model');
+        return GM_getValue(model + '_url', this.openai)
     }
 }
 
@@ -379,7 +413,7 @@ const settingManager = {
     generateOptions(options, selectedValue) {
         return Object.entries(options).map(([key, value]) => {
             // 检查是否为需要禁用的选项
-            const isDisabled = value === '---【机器翻译】---' || value === '---【AI翻译】---';
+            const isDisabled = ['---【机器翻译】---', '---【AI翻译】---', '---【本地大模型】---'].includes(value);
             return `<option value="${key}" ${selectedValue === key ? 'selected' : ''} ${isDisabled ? 'disabled' : ''}>${value}</option>`;
         }).join('');
     },
@@ -394,7 +428,10 @@ const settingManager = {
     <label class="instant-setting-label">翻译目标语言<select id="fluent-read-to" class="instant-setting-common">${this.generateOptions(langManager.to, langManager.getTo())}</select></label>
     <label class="instant-setting-label">翻译服务<select id="fluent-read-model" class="instant-setting-select">${this.generateOptions(transModelName, util.getValue('model'))}</select></label>
     
-    <label class="instant-setting-label" id="fluent-read-option-label" style="display: none;">模型类型<select id="fluent-read-option" class="instant-setting-select"></select></label>
+    <!--支持 ollama 等自定义模型名称-->
+    <label class="instant-setting-label" id="fluent-read-custom-type-label" style="display: none;">自定义模型类型<input type="text" class="instant-setting-input" id="fluent-read-custom-type" value="${optionsManager.getOption(util.getValue('model'))}" ></label>
+    
+    <label class="instant-setting-label" id="fluent-read-option-label" style="display: none;">模型类型<select id="fluent-read-option" class="instant-setting-select"></select></label> 
     <!-- custom 输入框-->
     <label class="instant-setting-label" id="fluent-read-custom-label" style="display: none;">
         <span class="fluent-read-tooltip">自定义 GPT 地址
@@ -436,7 +473,7 @@ const settingManager = {
                     let model = util.getElementValue('fluent-read-model');
 
                     // 0、设置自定义 GPT 地址
-                    if (model === transModel.openai) {
+                    if ([transModel.openai, transModel.ollama].includes(model)) {
                         let ok = customGPT.setGPTUrl(util.getElementValue('fluent-read-custom'));
                         if (!ok) {
                             toast.fire(
@@ -472,6 +509,8 @@ const settingManager = {
                     // 6、设置 chatGPT 消息模板
                     chatMgs.setSystemMsg(util.getElementValue('fluent-read-system-message'));
                     chatMgs.setUserMsg(util.getElementValue('fluent-read-user-message'));
+                    // 7、设置 fluent-read-custom-type
+                    optionsManager.setOption(model, util.getElementValue('fluent-read-custom-type'));
 
                     toast.fire({icon: 'success', title: '设置成功！'});
                     history.go(0); // 刷新页面
@@ -513,7 +552,7 @@ const settingManager = {
                 this.setDisplayStyle([tokenLabel], [akLabel, skLabel]);
                 break;
             default:
-                if ([transModel.openai, transModel.moonshot, transModel.tongyi, transModel.gemini, transModel.deepL].includes(model)) {
+                if ([transModel.openai, transModel.moonshot, transModel.tongyi, transModel.gemini, transModel.deepL, transModel.ollama].includes(model)) {
                     token.value = tokenObject;
                     this.setDisplayStyle([tokenLabel], [akLabel, skLabel]);
                 } else {
@@ -528,11 +567,13 @@ const settingManager = {
         const userMsgLabel = document.getElementById('fluent-read-user-label');
         // 自定义 GPT 地址框
         const customLabel = document.getElementById('fluent-read-custom-label');
+        const optionLabel = document.getElementById('fluent-read-option-label');
+        const customTypeLabel = document.getElementById('fluent-read-custom-type-label');
 
         // 1、如果 flex 为空，则设置所有元素的 display 为 none，返回 / 如果是 DeepL
         let model = util.getElementValue('fluent-read-model');
         if (flex.length === 0 || model === transModel.deepL) {
-            document.getElementById('fluent-read-option-label').style.display = "none";
+            optionLabel.style.display = "none";
             systemMsgLabel.style.display = "none";
             userMsgLabel.style.display = "none";
             customLabel.style.display = "none";
@@ -542,20 +583,27 @@ const settingManager = {
         }
 
         // 2、正常逻辑，更新选项、按需要显示元素
-        // 更新下拉框选项
-        const optionSelect = document.getElementById('fluent-read-option');
-        optionSelect.innerHTML = settingManager.generateOptions(optionsManager[model], optionsManager.getOption(model));
 
-        const optionLabel = document.getElementById('fluent-read-option-label');
-        optionLabel.style.display = "flex"
-
-        customLabel.style.display = model === transModel.openai ? "flex" : "none";  // 判断是否显示自定义 GPT 地址输入框
+        customLabel.style.display = [transModel.openai, transModel.ollama].includes(model) ? "flex" : "none";  // 判断是否显示自定义 GPT 地址输入框
 
         flex.forEach(element => element.style.display = "flex");
         none.forEach(element => element.style.display = "none");
         systemMsgLabel.style.display = "flex";
         userMsgLabel.style.display = "flex";
-    },
+
+        // 更新下拉框选项
+        if (model === transModel.ollama) {
+            optionLabel.style.display = "none"
+            customTypeLabel.style.display = "flex"
+            flex.forEach(element => element.style.display = "none");
+        } else {
+            const optionSelect = document.getElementById('fluent-read-option');
+            optionSelect.innerHTML = settingManager.generateOptions(optionsManager[model], optionsManager.getOption(model));
+            optionLabel.style.display = "flex"
+            customTypeLabel.style.display = "none"
+        }
+    }
+    ,
     setHotkey() {
         Swal.fire({
             title: '快捷键设置',
@@ -575,7 +623,8 @@ const settingManager = {
                 history.go(0); // 刷新页面
             }
         });
-    },
+    }
+    ,
     setLanguage(lang) {
         let args = lang === 'from' ? {
             notion: "源",
@@ -603,11 +652,13 @@ const settingManager = {
                 history.go(0); // 刷新页面
             }
         });
-    },
+    }
+    ,
     update() {
         // 跳转页面
         window.open('https://greasyfork.org/zh-CN/scripts/482986-%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB');
-    },
+    }
+    ,
     about() {
         // 跳转页面
         window.open('https://github.com/Bistutu/FluentRead');
@@ -1095,6 +1146,31 @@ function openai(origin) {
             url: customGPT.getGPTUrl(),
             headers: LLMFormat.getStdHeader(token),
             data: LLMFormat.getStdData(origin, option),
+            onload: resp => {
+                try {
+                    let result = JSON.parse(resp.responseText);
+                    resolve(result.choices[0].message.content);
+                } catch (e) {
+                    reject(resp.responseText);
+                }
+            },
+            onerror: error => reject(error)
+        });
+    });
+}
+
+// endregion
+
+// region ollama
+
+function ollama(origin) {
+    return new Promise((resolve, reject) => {
+        let option = optionsManager.getCustomOption(transModel.ollama)
+        GM_xmlhttpRequest({
+            method: POST,
+            url: customGPT.getGPTUrl(),
+            headers: {'Content-Type': 'application/json'},
+            data: LLMFormat.getOllamaData(origin, option),
             onload: resp => {
                 try {
                     let result = JSON.parse(resp.responseText);
@@ -1717,6 +1793,8 @@ function initApplication() {
     transModelFn[transModel.zhipu] = zhipu
     transModelFn[transModel.moonshot] = moonshot
     transModelFn[transModel.gemini] = gemini
+
+    transModelFn[transModel.ollama] = ollama
 
     // 填充适配器 map
     adapterFnMap[exceptionMap.maven] = procMaven
