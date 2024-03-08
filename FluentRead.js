@@ -822,7 +822,7 @@ function getTransNode(node) {
     // 1、全局节点与空节点、文字过多的节点、class="notranslate" 的节点不翻译
     if (!node || [document.documentElement, document.body].includes(node)
         || node.tagName.toLowerCase() === "iframe" || node.classList.contains('notranslate')
-        || node.textContent.length > 4096
+        || node.textContent.length > 8192
     ) return false;
     // 2、特例适配标签，遇到这些标签则直接返回节点
     if (specialSet.has(node.tagName.toLowerCase())) return node;
@@ -2018,32 +2018,6 @@ function procCoze(node, respMap) {
     }
 }
 
-// 适配 nexusmods
-function procNexusmods(node, respMap) {
-    let text = format(node.textContent)
-    if (text && withoutChinese(text)) {
-        // 使用正则表达式匹配 text
-        let commentsMatch = text.match(regex.commentsRegex);
-        if (commentsMatch) {
-            node.textContent = `${parseInt(commentsMatch[1], 10)} 条评论`;
-            return;
-        }
-        // TODO 翻译待修正
-        let gamesMatch = text.match(regex.gamesRegex);
-        if (gamesMatch) {
-            let type = gamesMatch[2] === " games" ? "份游戏" : "个收藏";  // 判断是游戏还是收藏
-            node.textContent = `${gamesMatch[1]}${type}`;
-            return;
-        }
-
-        let dateOrFalse = parseDateOrFalse(text);
-        if (dateOrFalse) {
-            node.textContent = `${dateOrFalse.getFullYear()}-${String(dateOrFalse.getMonth() + 1).padStart(2, '0')}-${String(dateOrFalse.getDate()).padStart(2, '0')}`
-        }
-
-        processNode(node, textType.textContent, respMap);
-    }
-}
 
 function procOpenai(node, respMap) {
     let text = format(node.textContent);
@@ -2058,31 +2032,6 @@ function procOpenai(node, respMap) {
     }
 }
 
-function procChatGPT(node, respMap) {
-    let text = format(node.textContent);
-    if (text && withoutChinese(text)) {
-        // 提取电子邮件地址
-        let emailMatch = text.match(regex.emailRegex);
-        if (emailMatch) {
-            node.textContent = `接收反馈邮件（${emailMatch[1]}）`;
-            return;
-        }
-        // 验证域名
-        let verifyDomainMatch = text.match(regex.verifyDomain);
-        if (verifyDomainMatch) {
-            node.textContent = `要验证 ${verifyDomainMatch[1]} 的所有权，请转到您的DNS提供商并添加一个带有以下值的TXT记录：`;
-            return;
-        }
-        // 处理日期格式
-        let dateOrFalse = parseDateOrFalse(text);
-        if (dateOrFalse) {
-            node.textContent = `${dateOrFalse.getFullYear()}-${String(dateOrFalse.getMonth() + 1).padStart(2, '0')}-${String(dateOrFalse.getDate()).padStart(2, '0')}`;
-            return;
-        }
-
-        processNode(node, textType.textContent, respMap);
-    }
-}
 
 
 // 适配 maven
