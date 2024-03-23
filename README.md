@@ -93,23 +93,20 @@
 
 [![Star History Chart](https://api.star-history.com/svg?repos=Bistutu/FluentRead&type=Date)](https://star-history.com/#520250/FluentRead&Date)
 
-# 最重要的事情！
+# 赞赏码
 
-**春招求职！**
+如果您希望向作者给予鼓励，请扫描下面二维码，您的名字将会出现在我们的赞助名单上。
 
-姓名：Chen Miankang
+<img src="./misc/images/approve.jpg" alt="wechat" style="width: 35%; max-width: 100%;border: 1px solid black;">
 
-院校：北京信息科技大学 计算机专业  2024 届本科毕业生
-
-专业技能：熟悉 Go 以及 Java 生态
-
-实习经历：米哈游（半年）
-
-独立开发者作品：[流畅阅读](https://github.com/Bistutu/FluentRead)、[音乐迁移网站](https://github.com/Bistutu/gomusic)、[空闲教室查询应用](https://github.com/Bistutu/BistuEmpty)
-
-**在线简历**：[点击查看](https://thinkstu-typora.oss-cn-hangzhou.aliyuncs.com/typora/%E9%99%88%E7%BB%B5%E5%BA%B7-%E7%AE%80%E5%8E%86.pdf)
-
-**联系方式**：1914493943@qq.com
-
-<img src="./misc/images/wechat.jpg" alt="wechat" style="width: 35%; max-width: 100%;border: 1px solid black;">
+| 序号 |       🌼赞助者🌼       | 赞助金额 |
+| :--: | :------------------: | :------: |
+|  1   |         TOO          |   100    |
+|  2   |     很酷的小当家     |    57    |
+|  3   |       coonut🥥        |    36    |
+|  4   |     一懒众山小.      |    18    |
+|  5   |         嘴馋         |    17    |
+|  6   | 听说海能吞掉鱼的眼泪 |    17    |
+|  7   |    真心不过半斤ぴ    |    5     |
+|  8   |          …           |    …     |
 

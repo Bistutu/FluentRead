@@ -1809,9 +1809,7 @@ function initApplication() {
     // 填充适配器 map
     adapterFnMap[exceptionMap.maven] = procMaven
     adapterFnMap[exceptionMap.docker] = procDockerhub
-    adapterFnMap[exceptionMap.nexusmods] = procNexusmods
     adapterFnMap[exceptionMap.openai_web] = procOpenai
-    adapterFnMap[exceptionMap.chatGPT] = procChatGPT
     adapterFnMap[exceptionMap.coze] = procCoze
     // 填充 skip map
     skipStringMap[exceptionMap.openai_web] = function (node) {
@@ -2031,7 +2029,6 @@ function procOpenai(node, respMap) {
         processNode(node, textType.textContent, respMap);
     }
 }
-
 
 
 // 适配 maven
