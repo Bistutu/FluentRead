@@ -8,6 +8,25 @@
 
 # 安装指南
 
+> 插件已经上架各大浏览器的应用商店，可以点击下方链接进行直接安装：
+>
+
+- **Chrome 浏览器**：[直接安装](https://chromewebstore.google.com/detail/流畅阅读/djnlaiohfaaifbibleebjggkghlmcpcj?hl=zh-CN&authuser=0)、[直接安装（备用链接）](https://www.crxsoso.com/webstore/detail/djnlaiohfaaifbibleebjggkghlmcpcj)
+- **Edge 浏览器**：[直接安装](https://www.crxsoso.com/webstore/detail/djnlaiohfaaifbibleebjggkghlmcpcj)
+- **Firefox（火狐）浏览器**：[直接安装](https://www.crxsoso.com/firefox/detail/流畅阅读)
+- **其他浏览器，尝试**：[直接安装](https://www.crxsoso.com/webstore/detail/djnlaiohfaaifbibleebjggkghlmcpcj)
+
+> 若直接安装失败，也可以下载 `.zip` 压缩格式的插件压缩包，然后打开浏览器的**管理扩展程序窗口**、激活开发者模式，并将压缩包**拖进浏览器**内进行安装。
+
+- 通用浏览器版本：[直接下载](https://bistutu.github.io/images/fr/FluentRead-0.0.1-chrome.zip)
+- Firefox（火狐）浏览器版本：[直接下载](https://bistutu.github.io/images/fr/FluentRead--0.0.2-firefox.zip)
+
+<img src="./misc/images/install-1.png" alt="sample-git-1.gif" style="width: 45%; max-width: 100%;border: 1px solid black;"><img src="./misc/images/install-2.png" alt="sample-git-2.gif" style="width: 45%; max-width: 100%;border: 1px solid black;">
+
+> 手机版如何安装？
+
+手机版目前只支持使用**油猴插件**进行安装，油猴脚本相对于正式版本有更新延迟，安装方式如下：
+
 1. 在浏览器中安装 [油猴插件](https://www.tampermonkey.net)（如已安装则跳过）
 2. 在油猴中安装 [流畅阅读](https://greasyfork.org/zh-CN/scripts/482986-%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB) 插件
 
