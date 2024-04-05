@@ -6,7 +6,7 @@
 
 <kbd><img src="./misc/images/sample-git-1.gif" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
 
-<kbd><img src="./misc/images/sample-3.png" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
+<kbd><img src="./misc/images/sample-4.png" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
 
 # 安装指南
 
