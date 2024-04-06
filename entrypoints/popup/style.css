@@ -1,0 +1,63 @@
+:root {
+    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+
+    color-scheme: light dark;
+    color: rgba(255, 255, 255, 0.87);
+    background-color: #242424;
+
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-text-size-adjust: 100%;
+}
+
+.lightblue {
+    /*background-color: #f0f2f5;*/
+}
+
+.rounded-corner {
+    border-radius: 5px; /* 或者您期望的圆角大小 */
+}
+
+/*popup选项框文字*/
+.popup-text {
+    font-size: 15px;
+    color: #000000;
+}
+
+.popup-vertical-left {
+    display: flex; /* 启用 Flexbox */
+    align-items: center; /* 垂直居中 */
+    justify-content: left; /* 水平居中，如果需要的话 */
+    height: 100%; /* 父容器等高 */
+}
+
+.margin-left-2em {
+  margin-left: 2em;
+}
+
+.margin-bottom {
+    margin-bottom: 10px;
+}
+
+.custom-padding {
+    padding: 10px !important;
+}
+
+#app {
+    min-width: 340px;
+    /*max-width: 1280px;*/
+    margin: 0 auto;
+    padding: 0;
+    text-align: center;
+}
+
+@media (prefers-color-scheme: light) {
+    :root {
+        color: #213547;
+        background-color: #ffffff;
+    }
+}
