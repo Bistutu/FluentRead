@@ -38,6 +38,8 @@
 // @resource     swalStyle https://registry.npmmirror.com/sweetalert2/10.16.6/files/dist/sweetalert2.min.css
 // ==/UserScript==
 
+// TODO 油猴脚本
+
 // region 变量
 
 // URL 相关
