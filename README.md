@@ -8,6 +8,8 @@
 
 <kbd><img src="./misc/sample-git-1.gif" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
 
+<kbd><img src="./misc/screenshot-3.png" alt="sample-git-1.gif" style="width: 40%; max-width: 100%;border: 1px solid black;"></kbd>
+
 # 安装指南
 
 > 插件已经上架各大浏览器的应用商店，可以点击下方链接进行直接安装：
