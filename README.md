@@ -4,7 +4,7 @@
 
 流畅阅读是一款高效的浏览器翻译插件，可以将网页上的文字翻译成任何语言，方便、快捷、直观，支持人工智能引擎。
 
-流畅阅读采用 [Vue3](https://cn.vuejs.org/) + [Element-Plus](https://element-plus.org/) + [WXT](https://wxt.dev/) 框架编写，支持编译成可安装在绝大多数浏览器的插件。
+流畅阅读采用 TypeScript + [Vue3](https://cn.vuejs.org/) + [Element-Plus](https://element-plus.org/) + [WXT](https://wxt.dev/) 框架编写，支持编译成可安装在绝大多数浏览器的插件。
 
 <kbd><img src="./misc/sample-git-1.gif" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
 
