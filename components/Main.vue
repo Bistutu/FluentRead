@@ -220,7 +220,7 @@
             <el-tooltip
                 class="box-item"
                 effect="dark"
-                content="以用户身份 user 发送的对话，其中&#123;&#123;to&#125;&#125;表示目标语言，&#123;&#123;text&#125;&#125;表示待翻译的文本内容，两者不可缺少。"
+                content="以用户身份 user 发送的对话，其中&#123;&#123;to&#125;&#125;表示目标语言，&#123;&#123;origin&#125;&#125;表示待翻译的文本内容，两者不可缺少。"
                 placement="top-start"
             >
               <span class="popup-text popup-vertical-left">user<el-icon class="icon-margin"><ChatDotRound/></el-icon></span>
