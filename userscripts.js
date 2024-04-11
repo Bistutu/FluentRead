@@ -2,7 +2,7 @@
 // @name         流畅阅读
 // @license      GPL-3.0 license
 // @namespace    https://fr.unmeta.cn/
-// @version      1.30
+// @version      1.31
 // @description  基于上下文语境的人工智能翻译引擎，为部分网站提供精准翻译，让所有人都能够拥有基于母语般的阅读体验。程序Github开源：https://github.com/Bistutu/FluentRead，欢迎 star。
 // @author       ThinkStu
 // @match        *://*/*
@@ -734,7 +734,8 @@ const settingManager = {
         // F2 清空当前页面所有翻译缓存
         if (event.key === 'F2') {
             localStorage.clear()
-            toast.fire({icon: 'success', title: '当前页面翻译缓存清空成功！'});
+            // toast.fire({icon: 'success', title: '当前页面翻译缓存清空成功！'});
+            console.log('当前页面翻译缓存清空成功！')
         }
 
         // 快捷键 F1，清空所有缓存
@@ -920,7 +921,7 @@ function translate(node) {
     if (!node.innerText.trim()) return; // 空文本，跳过
 
     // 检测语言类型，如果是中文则不翻译
-    reliableDetectLang(node.innerText).then(lang => {
+    baiduDetectLang(node.innerText).then(lang => {
         if (lang === langManager.getTo()) return;   // 与目标语言相同，不翻译
 
         // 如果是机器翻译，则翻译 outerHTML，否则递归获取文本
@@ -1516,82 +1517,6 @@ function baiduDetectLang(text) {
         });
     })
 }
-
-function detectLang(text) {
-    return new Promise((resolve, reject) => {
-        // 数据参数
-        const data = new URLSearchParams();
-        data.append('text', text);
-        // 发起请求
-        GM_xmlhttpRequest({
-            method: 'POST',
-            url: 'https://fr.unmeta.cn/detect',
-            data: data.toString(),
-            headers: {"Content-Type": "application/x-www-form-urlencoded"},
-            onload: function (response) {
-                if (response.status === 200) {
-                    const jsn = JSON.parse(response.responseText);
-                    if (jsn && jsn.language) resolve(jsn.language);
-                } else {
-                    reject(new Error('Server responded with status ' + response.status));
-                }
-            },
-            onerror: () => reject(new Error('GM_xmlhttpRequest failed'))
-        });
-    });
-}
-
-// 可靠的语言检测（竞速）
-function reliableDetectLang(text) {
-    let fail = false;
-    return new Promise((resolve, reject) => {
-        detectLang(text)
-            .then(resolve)
-            .catch(error => {
-                if (fail) reject('Both methods failed' + error);
-                else fail = true;
-            });
-
-        baiduDetectLang(text)
-            .then(resolve)
-            .catch(error => {
-                if (fail) reject('Both methods failed' + error);
-                else fail = true;
-            });
-    });
-}
-
-// 翻译选中的文本
-function translateSelectedText() {
-    const selectedText = window.getSelection().toString();
-    if (selectedText.length > 5) {  // 如果选中文本长度大于 5 字符，则翻译（避免误触事件）
-        // 检查原始文本是否以换行符结尾
-        const endsWithNewline = selectedText.endsWith('\n');
-
-        let model = util.getValue('model');
-        transModelFn[model](selectedText).then(translatedText => {
-            replaceSelectedText(translatedText, endsWithNewline);
-        });
-    }
-}
-
-// 替换选中范围内的文本
-function replaceSelectedText(replacementText, endsWithNewline) {
-    const selection = window.getSelection();
-    if (!selection.rangeCount) return false;
-    selection.deleteFromDocument();
-
-    // 创建一个 span 元素来包含翻译后的文本
-    const span = document.createElement('span');
-    span.textContent = replacementText;
-    if (endsWithNewline) span.appendChild(document.createElement('br'));
-
-    // 获取当前选中范围的第一个 Range 对象
-    const range = selection.getRangeAt(0);
-    range.insertNode(span);
-
-}
-
 
 // 延迟删除缓存
 function delayRemoveCache(key, time = 250) {
