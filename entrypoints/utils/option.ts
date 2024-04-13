@@ -16,7 +16,7 @@ export const services = {
     infini: 'infini',
     baidu: 'baidu',
     // 阵营划分
-    machine: new Set(["microsoft", "deepL", "google", "xiaoniu","baidu"]),
+    machine: new Set(["microsoft", "deepL", "google", "xiaoniu", "baidu"]),
     ai: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu", "moonshot", "claude", "ollama", "infini"]),
     // 需要 token，或者 ak/sk
     useToken: new Set(["openai", "gemini", "tongyi", "zhipu", "moonshot", "claude", "deepL", "xiaoniu", "infini"]),
@@ -31,6 +31,7 @@ export const services = {
     isNative: (service: string) => service === "ollama",
     isUseToken: (service: string) => services.useToken.has(service),
     isUseAkSk: (service: string) => services.useAkSk.has(service),
+    isUseAppIdKey: (service: string) => service === "baidu",
     isUseProxy: (service: string) => services.useProxy.has(service),
     isUseModel: (service: string) => services.useModel.has(service),
 }
@@ -45,7 +46,7 @@ export const models = new Map<string, Array<string>>([
     [services.moonshot, ["moonshot-v1-8k", customModelString]],
     [services.claude, ["claude3-Haiku", "claude3-Sonnet", "claude3-Opus"]],    // claude 也不支持自定义模型
     [services.ollama, ["gemma:7b", "llama2:7b", "mistral:7b", customModelString]],
-    [services.infini, ["infini-megrez-7b","llama-2-13b-chat","qwen-14b-chat", "llama-2-70b-chat", "qwen-72b-chat",customModelString]],
+    [services.infini, ["infini-megrez-7b", "llama-2-13b-chat", "qwen-14b-chat", "llama-2-70b-chat", "qwen-72b-chat", customModelString]],
 ]);
 
 export const options = {
@@ -122,7 +123,7 @@ export const options = {
             label: 'DeepL翻译',
         },
         {
-          value: services.baidu,
+            value: services.baidu,
             label: '百度翻译',
         },
         {

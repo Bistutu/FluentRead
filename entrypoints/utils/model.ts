@@ -18,6 +18,8 @@ export class Config {
     token: IMapping;
     ak: string;
     sk: string;
+    appid: string;
+    key: string;
     model: IMapping;
     customModel: IMapping;  // 自定义模型名称
     proxy: IMapping;  // 代理地址
@@ -36,6 +38,8 @@ export class Config {
         this.token = {};
         this.ak = '';
         this.sk = '';
+        this.appid = '';
+        this.key = '';
         this.model = {};
         this.customModel = {};
         this.proxy = {};
@@ -50,7 +54,7 @@ export class Config {
             [services.moonshot]: defaultOption.system_role,
             [services.ollama]: defaultOption.system_role,
             [services.claude]: defaultOption.system_role,
-            [services.infini]:defaultOption.system_role,
+            [services.infini]: defaultOption.system_role,
         },
             this.user_role = {
                 [services.openai]: defaultOption.user_role,

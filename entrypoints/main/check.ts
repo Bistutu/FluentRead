@@ -8,7 +8,10 @@ export function checkConfig(config: Config): boolean {
     if (!config.on) return false;
 
     // 2、检查 token 是否已经输入（如果是需要 token 的服务且 token 为空时返回 false）
-    if ((services.isUseToken(config.service) && !config.token[config.service]) || (config.service === services.yiyan && (!config.ak || !config.sk))) {
+    if ((services.isUseToken(config.service) && !config.token[config.service])
+        || (config.service === services.yiyan && (!config.ak || !config.sk))
+        || (config.service === services.baidu && (!config.appid || !config.key))
+    ) {
         sendErrorMessage("令牌尚未配置，请前往设置页配置")
         return false;
     }

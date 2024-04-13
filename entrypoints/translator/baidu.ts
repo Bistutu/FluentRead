@@ -4,13 +4,10 @@ import {urls} from "@/entrypoints/utils/constant";
 import {services} from "@/entrypoints/utils/option";
 
 async function baidu(config: Config, message: any) {
-    const appid = '';
-    const key = '';
     const salt = Math.floor(Math.random() * 10000);
     const query = message.origin;
 
-    // UTF-8 encoding and generation of the MD5 signature using crypto-js
-    const signStr = appid + query + salt + key;
+    const signStr = config.appid + query + salt + config.key;
     const sign = CryptoJS.MD5(signStr).toString(CryptoJS.enc.Hex);
 
     let to: string = "";
@@ -26,7 +23,7 @@ async function baidu(config: Config, message: any) {
             q: query,
             from: config.from,
             to: to,
-            appid: appid,
+            appid: config.appid,
             salt: salt.toString(),
             sign: sign
         })
@@ -34,8 +31,8 @@ async function baidu(config: Config, message: any) {
 
     if (resp.ok) {
         const result = await resp.json();
-        console.log(result)
-        return result.trans_result.map((item: any) => item.dst).join(' ');
+        // 百度翻译结果需替换中文引号为英文引号
+        return result.trans_result[0].dst.replace(/“/g, '"').replace(/”/g, '"');
     } else {
         console.log(resp)
         throw new Error(`请求失败: ${resp.status} ${resp.statusText} body: ${await resp.text()}`);

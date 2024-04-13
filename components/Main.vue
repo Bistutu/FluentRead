@@ -127,6 +127,24 @@
       </el-col>
     </el-row>
 
+    <!--  使用 appid、key -->
+    <el-row v-show="compute.showAppIdKey" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <span class="popup-text popup-vertical-left">APPID</span>
+      </el-col>
+      <el-col :span="12">
+        <el-input v-model="config.appid" placeholder="请输入 appid"/>
+      </el-col>
+    </el-row>
+    <el-row v-show="compute.showAppIdKey" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <span class="popup-text popup-vertical-left">Key</span>
+      </el-col>
+      <el-col :span="12">
+        <el-input v-model="config.key" placeholder="请输入 Key"/>
+      </el-col>
+    </el-row>
+
     <!-- 本地大模型配置 -->
     <el-row v-show="compute.showNative" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -284,6 +302,8 @@ let compute = ref({
   showNative: computed(() => services.isNative(config.value.service)),
   // 9、是否自定义模型
   showCustomModel: computed(() => services.isAI(config.value.service) && config.value.model[config.value.service] === "自定义模型"),
+  // 10、是否使用 appid、key
+  showAppIdKey: computed(() => services.isUseAppIdKey(config.value.service)),
 })
 
 </script>
