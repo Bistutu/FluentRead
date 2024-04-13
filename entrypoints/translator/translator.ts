@@ -12,6 +12,7 @@ import google from "./google";
 import xiaoniu from "./xiaoniu";
 import claude from "./claude";
 import infini from "@/entrypoints/translator/infini";
+import baidu from "@/entrypoints/translator/baidu";
 
 
 export const translator = {
@@ -28,4 +29,5 @@ export const translator = {
     [services.xiaoniu]: xiaoniu,
     [services.claude]: claude,
     [services.infini]: infini,
+    [services.baidu]: baidu,
 }

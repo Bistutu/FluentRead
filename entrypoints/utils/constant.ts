@@ -15,6 +15,7 @@ export const urls = {
     [services.zhipu]: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
     [services.xiaoniu]: "https://api.niutrans.com/NiuTransServer/translationXML",
     [services.claude]: "https://api.anthropic.com/v1/messages",
+    [services.baidu]: "https://fanyi-api.baidu.com/api/trans/vip/translate",
 }
 
 export const method = {POST: "POST", GET: "GET",};

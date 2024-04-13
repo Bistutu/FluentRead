@@ -14,8 +14,9 @@ export const services = {
     claude: 'claude',
     ollama: 'ollama',
     infini: 'infini',
+    baidu: 'baidu',
     // 阵营划分
-    machine: new Set(["microsoft", "deepL", "google", "xiaoniu"]),
+    machine: new Set(["microsoft", "deepL", "google", "xiaoniu","baidu"]),
     ai: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu", "moonshot", "claude", "ollama", "infini"]),
     // 需要 token，或者 ak/sk
     useToken: new Set(["openai", "gemini", "tongyi", "zhipu", "moonshot", "claude", "deepL", "xiaoniu", "infini"]),
@@ -119,6 +120,10 @@ export const options = {
         {
             value: services.deepL,
             label: 'DeepL翻译',
+        },
+        {
+          value: services.baidu,
+            label: '百度翻译',
         },
         {
             value: services.xiaoniu,
