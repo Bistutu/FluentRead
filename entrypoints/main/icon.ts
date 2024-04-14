@@ -25,7 +25,11 @@ export function insertFailedTip(config: Config, node: any, errMsg: string, spinn
     const retryBtn = document.createElement('span');
     retryBtn.innerText = '重试';
     retryBtn.classList.add('fluent-read-retry');
-    retryBtn.addEventListener('click', function () {
+    retryBtn.addEventListener('click', (event: any) => {
+
+        event.preventDefault();   // 阻止默认行为，如链接跳转
+        event.stopPropagation();  // 阻止事件继续向上传播
+
         wrapper.remove();   // 移除错误提示元素，重新翻译
         translate(config, node);
     });
@@ -37,7 +41,11 @@ export function insertFailedTip(config: Config, node: any, errMsg: string, spinn
     const errorTip = document.createElement('span');
     errorTip.innerText = '错误原因';
     errorTip.classList.add('fluent-read-reason');
-    errorTip.addEventListener('click', function () {
+    errorTip.addEventListener('click', (event: any) => {
+
+        event.preventDefault();   // 阻止默认行为，如链接跳转
+        event.stopPropagation();  // 阻止事件继续向上传播
+
         if (errMsg.includes("auth failed") || errMsg.includes("API key") || errMsg.includes("api key")) {
             sendErrorMessage("token 令牌设置错误，请前往设置页检查")
         } else if (errMsg.includes("quota") || errMsg.includes("limit")) {
