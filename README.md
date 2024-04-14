@@ -2,6 +2,8 @@
 
 > Fluent Read，基于母语般的阅读体验，[B站视频介绍](https://www.bilibili.com/video/BV1ux4y1e73x)。
 
+[中文](https://github.com/Bistutu/FluentRead) | [English](https://github.com/Bistutu/FluentRead/misc/README_EN.md)
+
 流畅阅读是一款高效的浏览器翻译插件，可以将网页上的文字翻译成任何语言，方便、快捷、直观，支持人工智能引擎。
 
 流畅阅读采用 TypeScript + [Vue3](https://cn.vuejs.org/) + [Element-Plus](https://element-plus.org/) + [WXT](https://wxt.dev/) 框架编写，支持编译成可安装在绝大多数浏览器的插件。
@@ -12,7 +14,7 @@
 
 # 安装指南
 
-> 插件已经上架各大浏览器的应用商店，可以点击下方链接进行直接安装：
+> 插件已经上架各大浏览器的应用商店，可以点击下方链接进行安装：
 >
 
 - **Chrome 浏览器**：[直接安装](https://chromewebstore.google.com/detail/流畅阅读/djnlaiohfaaifbibleebjggkghlmcpcj?hl=zh-CN&authuser=0)、[备用链接](https://www.crxsoso.com/webstore/detail/djnlaiohfaaifbibleebjggkghlmcpcj)
@@ -104,9 +106,13 @@ pnpm zip
 pnpm zip:firefox
 ```
 
+# Star 历史记录
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Bistutu/FluentRead&type=Date)](https://star-history.com/#Bistutu/FluentRead&Date)
+
 # 赞赏码
 
-如果您希望向作者给予鼓励，请扫描下面二维码，您的名字将会出现在赞助名单上。
+如果您希望向作者给予鼓励，请使用「微信」扫描下面二维码，您的名字将会出现在赞助名单上。
 
 <img src="./misc/approve.jpg" alt="wechat" style="width: 35%; max-width: 100%;border: 1px solid black;">
 
