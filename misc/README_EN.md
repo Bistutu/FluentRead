@@ -2,7 +2,7 @@
 
 > Fluent Read, designed for a native-like reading experience. [Introduction video on Bilibili](https://www.bilibili.com/video/BV1ux4y1e73x).
 
-[中文](https://github.com/Bistutu/FluentRead) | [English](https://github.com/Bistutu/FluentRead/misc/README_EN.md)
+[中文](https://github.com/Bistutu/FluentRead) | [English](https://github.com/Bistutu/FluentRead/blob/main/misc/README_EN.md)
 
 Fluent Read is a highly efficient browser translation plugin that can translate text on web pages into any language. It is convenient, fast, and intuitive, and is powered by an artificial intelligence engine.
 

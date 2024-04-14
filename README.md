@@ -2,7 +2,7 @@
 
 > Fluent Read，基于母语般的阅读体验，[B站视频介绍](https://www.bilibili.com/video/BV1ux4y1e73x)。
 
-[中文](https://github.com/Bistutu/FluentRead) | [English](https://github.com/Bistutu/FluentRead/misc/README_EN.md)
+[中文](https://github.com/Bistutu/FluentRead) | [English](https://github.com/Bistutu/FluentRead/blob/main/misc/README_EN.md)
 
 流畅阅读是一款高效的浏览器翻译插件，可以将网页上的文字翻译成任何语言，方便、快捷、直观，支持人工智能引擎。
 
