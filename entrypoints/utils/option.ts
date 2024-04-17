@@ -24,7 +24,7 @@ export const services = {
     // 需要 model
     useModel: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu", "moonshot", "claude", "ollama", "infini"]),
     // 支持代理
-    useProxy: new Set(["openai", "gemini", "claude", "google"]),
+    useProxy: new Set(["openai", "claude", "google"]),
     // 函数
     isMachine: (service: string) => services.machine.has(service),
     isAI: (service: string) => services.ai.has(service),
