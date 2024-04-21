@@ -106,14 +106,16 @@ If you wish to encourage the author, please use WeChat to scan the QR code below
 
 <img src="../misc/approve.jpg" alt="wechat" style="width: 35%; max-width: 100%;border: 1px solid black;">
 
-| No.  |               🌼Sponsor🌼                | Amount Sponsored |
-| :--: | :------------------------------------: | :--------------: |
-|  1   |                  TOO                   |       100        |
-|  2   |            Cool Little Boss            |        57        |
-|  3   |                coonut🥥                 |        36        |
-|  4   |             Lazy Mountain.             |        18        |
-|  5   |                Glutton                 |        17        |
-|  6   | They say the sea swallows fish's tears |        17        |
-|  7   |               Tang Qing                |       6.6        |
-|  8   |      Sincerely not half a poundぴ      |        5         |
-|  9   |                   …                    |        …         |
+
+| No. |      🌼 Sponsor 🌼      |   Amount Sponsore   |
+| :--: |:-------------------:|:-------------------:|
+|  1   |         TOO          |         100         |
+|  2   |    Cool Little Master    |         57          |
+|  3   |       coonut🥥       |         36          |
+|  4   |      hoochanlon      |        23.7         |
+|  5   |    Lazy Mountain Small    |         18          |
+|  6   |        Mouth Craving       |         17          |
+|  7   |   Heard the Sea Can Swallow Tears  |         17          |
+|  8   |         Soup Qing         |         6.6         |
+|  9   |   Sincerely Less Than Half a Jin   |          5          |
+|  10  |          …           |          …          |
