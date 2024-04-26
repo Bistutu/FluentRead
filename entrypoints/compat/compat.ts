@@ -37,5 +37,9 @@ export const selectCompatFn: SelectCompatFn = {
     },
     ["youtube.com"]: (node: any) => {
         if (node.tagName.toLowerCase() === 'yt-formatted-string') return true
+    },
+    ['www.webtrees.net']: (node: any) => {
+        // class='kmsg'
+        if (node.tagName.toLowerCase() === 'div' && node.classList.contains('kmsg')) return true
     }
 }

@@ -53,6 +53,8 @@ export default defineContentScript({
             }
         });
 
+        // todo 2024.4.26 双击翻译）开关控制
+
         // background.ts
         browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (message.message === 'clearCache') {
