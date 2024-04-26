@@ -107,6 +107,11 @@ export const options = {
             value: "`",
             label: "波浪号键"
         },
+        // 鼠标双击左键
+        {
+            value: 'DoubleClick',
+            label: "鼠标双击"
+        },
     ],
     services: [
         {

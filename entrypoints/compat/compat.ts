@@ -6,6 +6,7 @@ type SelectFunction = (url: any) => any;
 interface ReplaceCompatFn {
     [domain: string]: ReplaceFunction;
 }
+
 interface SelectCompatFn {
     [domain: string]: SelectFunction;
 }
@@ -41,5 +42,9 @@ export const selectCompatFn: SelectCompatFn = {
     ['www.webtrees.net']: (node: any) => {
         // class='kmsg'
         if (node.tagName.toLowerCase() === 'div' && node.classList.contains('kmsg')) return true
-    }
+    },
+    ['webtrees.net']: (node: any) => {
+        // class='kmsg'
+        if (node.tagName.toLowerCase() === 'div' && node.classList.contains('kmsg')) return true
+    },
 }

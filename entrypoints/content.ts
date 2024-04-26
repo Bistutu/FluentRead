@@ -2,6 +2,7 @@ import {Config} from "./utils/model";
 import {cssInject} from "./main/css";
 import {handler} from "./main/dom";
 import {cache} from "./utils/cache";
+import {DoubleClick} from "@/entrypoints/utils/constant";
 
 export default defineContentScript({
     matches: ['<all_urls>'],  // 匹配所有页面
@@ -53,7 +54,17 @@ export default defineContentScript({
             }
         });
 
-        // todo 2024.4.26 双击翻译）开关控制
+        // 6、双击鼠标翻译事件
+        document.body.addEventListener('dblclick', event => {
+            if (config.hotkey == DoubleClick) {
+                // 通过双击事件获取鼠标位置
+                let mouseX = event.clientX;
+                let mouseY = event.clientY;
+                // 调用 handler 函数进行翻译
+                handler(config, mouseX, mouseY);
+            }
+        });
+
 
         // background.ts
         browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
