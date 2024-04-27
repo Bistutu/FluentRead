@@ -137,12 +137,12 @@ export const options = {
             label: 'DeepL翻译',
         },
         {
-            value: services.baidu,
-            label: '百度翻译',
-        },
-        {
             value: services.xiaoniu,
             label: '小牛翻译',
+        },
+        {
+            value: services.baidu,
+            label: '百度翻译(Beta)',
         },
         // free 接口，翻译 html 会出现问题，隐藏。
         // {
