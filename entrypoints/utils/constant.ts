@@ -20,4 +20,8 @@ export const urls = {
 
 export const method = {POST: "POST", GET: "GET",};
 
-export const DoubleClick = "DoubleClick";
+export const constants = {
+    DoubleClick : "DoubleClick",
+    LongPress : "LongPress",
+    MiddleClick : "MiddleClick",
+}

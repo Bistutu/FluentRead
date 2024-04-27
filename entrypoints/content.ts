@@ -2,7 +2,7 @@ import {Config} from "./utils/model";
 import {cssInject} from "./main/css";
 import {handler} from "./main/dom";
 import {cache} from "./utils/cache";
-import {DoubleClick} from "@/entrypoints/utils/constant";
+import {constants} from "@/entrypoints/utils/constant";
 
 export default defineContentScript({
     matches: ['<all_urls>'],  // 匹配所有页面
@@ -54,15 +54,17 @@ export default defineContentScript({
             }
         });
 
-        // 6、双击鼠标翻译事件
-        document.body.addEventListener('dblclick', event => {
-            if (config.hotkey == DoubleClick) {
-                // 通过双击事件获取鼠标位置
+        // 7、长按鼠标翻译事件
+        let timer:number; // 计时器变量用于设置延时
+        document.body.addEventListener('mouseup', () => clearTimeout(timer));
+        document.body.addEventListener('mousedown', event => {
+            clearTimeout(timer);    // 清除之前的计时器
+            timer = setTimeout(() => {
+                console.log('长按事件触发')
                 let mouseX = event.clientX;
                 let mouseY = event.clientY;
-                // 调用 handler 函数进行翻译
                 handler(config, mouseX, mouseY);
-            }
+            }, 500)  as unknown as number;
         });
 
 

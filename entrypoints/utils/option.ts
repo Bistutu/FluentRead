@@ -112,6 +112,11 @@ export const options = {
             value: 'DoubleClick',
             label: "鼠标双击"
         },
+        // 鼠标长按
+        {
+            value: 'LongPress',
+            label: "鼠标长按"
+        },
     ],
     services: [
         {
