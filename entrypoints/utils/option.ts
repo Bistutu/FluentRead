@@ -117,6 +117,10 @@ export const options = {
             value: 'LongPress',
             label: "鼠标长按"
         },
+        {
+            value: 'MiddleClick',
+            label: "鼠标中键"
+        }
     ],
     services: [
         {

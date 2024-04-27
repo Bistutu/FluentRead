@@ -67,6 +67,17 @@ export default defineContentScript({
             }, 500)  as unknown as number;
         });
 
+        // 8、鼠标中键翻译事件
+        document.body.addEventListener('click', event => {
+            if (config.hotkey===constants.MiddleClick) {
+                if (event.button === 1) {
+                    let mouseX = event.clientX;
+                    let mouseY = event.clientY;
+                    handler(config, mouseX, mouseY);
+                }
+            }
+        });
+
 
         // background.ts
         browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
