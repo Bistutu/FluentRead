@@ -65,22 +65,38 @@ export default defineContentScript({
             }
         });
 
-        // 7、长按鼠标翻译事件
-        let timer:number; // 计时器变量用于设置延时
+        // 7、长按鼠标翻译事件（长按事件时鼠标不能移动）
+        let timer: number;
+        let startPos = {x: 0, y: 0}; // startPos 记录鼠标按下时的位置
         document.body.addEventListener('mouseup', () => clearTimeout(timer));
         document.body.addEventListener('mousedown', event => {
-            clearTimeout(timer);    // 清除之前的计时器
+            clearTimeout(timer); // 清除之前的计时器
+            startPos.x = event.clientX; // 记录鼠标按下时的初始位置
+            startPos.y = event.clientY;
             timer = setTimeout(() => {
-                console.log('长按事件触发')
                 let mouseX = event.clientX;
                 let mouseY = event.clientY;
                 handler(config, mouseX, mouseY);
-            }, 500)  as unknown as number;
+            }, 500) as unknown as number;
         });
+        document.body.addEventListener('mousemove', event => {
+            // 如果鼠标移动超过10像素，取消长按事件
+            if (Math.abs(event.clientX - startPos.x) > 10 || Math.abs(event.clientY - startPos.y) > 10) {
+                clearTimeout(timer);
+            }
+        });
+
+        document.body.addEventListener('mousemove', event => {
+            // 检测鼠标是否移动
+            if (Math.abs(event.clientX - startPos.x) > 10 || Math.abs(event.clientY - startPos.y) > 10) {
+                clearTimeout(timer); // 如果鼠标移动超过10像素，取消长按事件
+            }
+        });
+
 
         // 8、鼠标中键翻译事件
         document.body.addEventListener('click', event => {
-            if (config.hotkey===constants.MiddleClick) {
+            if (config.hotkey === constants.MiddleClick) {
                 if (event.button === 1) {
                     let mouseX = event.clientX;
                     let mouseY = event.clientY;
