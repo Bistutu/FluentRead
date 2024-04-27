@@ -54,6 +54,17 @@ export default defineContentScript({
             }
         });
 
+        // 6、双击鼠标翻译事件
+        document.body.addEventListener('dblclick', event => {
+            if (config.hotkey == constants.DoubleClick) {
+                // 通过双击事件获取鼠标位置
+                let mouseX = event.clientX;
+                let mouseY = event.clientY;
+                // 调用 handler 函数进行翻译
+                handler(config, mouseX, mouseY);
+            }
+        });
+
         // 7、长按鼠标翻译事件
         let timer:number; // 计时器变量用于设置延时
         document.body.addEventListener('mouseup', () => clearTimeout(timer));
