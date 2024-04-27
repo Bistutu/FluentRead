@@ -160,6 +160,11 @@ export const options = {
             model: "gpt-3.5-turbo",
         },
         {
+            value: services.moonshot,
+            label: 'Kimi（月之暗面）',
+            model: "moonshot-v1-8k",
+        },
+        {
             value: services.claude,
             label: 'Claude',
             model: "Haiku",
@@ -168,11 +173,6 @@ export const options = {
             value: services.gemini,
             label: 'Gemini',
             model: "gemini-pro",
-        },
-        {
-            value: services.moonshot,
-            label: 'Moonshot',
-            model: "moonshot-v1-8k",
         },
         {
             value: services.zhipu,

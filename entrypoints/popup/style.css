@@ -14,10 +14,6 @@
     -webkit-text-size-adjust: 100%;
 }
 
-.lightblue {
-    /*background-color: #f0f2f5;*/
-}
-
 .rounded-corner {
     border-radius: 5px; /* 或者您期望的圆角大小 */
 }
@@ -25,7 +21,7 @@
 /*popup选项框文字*/
 .popup-text {
     font-size: 15px;
-    color: #000000;
+    /*color: #000000;*/
 }
 
 .popup-vertical-left {

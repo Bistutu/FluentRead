@@ -70,14 +70,16 @@ export default defineContentScript({
         let startPos = {x: 0, y: 0}; // startPos 记录鼠标按下时的位置
         document.body.addEventListener('mouseup', () => clearTimeout(timer));
         document.body.addEventListener('mousedown', event => {
-            clearTimeout(timer); // 清除之前的计时器
-            startPos.x = event.clientX; // 记录鼠标按下时的初始位置
-            startPos.y = event.clientY;
-            timer = setTimeout(() => {
-                let mouseX = event.clientX;
-                let mouseY = event.clientY;
-                handler(config, mouseX, mouseY);
-            }, 500) as unknown as number;
+            if (config.hotkey === constants.LongPress) {
+                clearTimeout(timer); // 清除之前的计时器
+                startPos.x = event.clientX; // 记录鼠标按下时的初始位置
+                startPos.y = event.clientY;
+                timer = setTimeout(() => {
+                    let mouseX = event.clientX;
+                    let mouseY = event.clientY;
+                    handler(config, mouseX, mouseY);
+                }, 500) as unknown as number;
+            }
         });
         document.body.addEventListener('mousemove', event => {
             // 如果鼠标移动超过10像素，取消长按事件
@@ -85,11 +87,11 @@ export default defineContentScript({
                 clearTimeout(timer);
             }
         });
-
         document.body.addEventListener('mousemove', event => {
-            // 检测鼠标是否移动
-            if (Math.abs(event.clientX - startPos.x) > 10 || Math.abs(event.clientY - startPos.y) > 10) {
-                clearTimeout(timer); // 如果鼠标移动超过10像素，取消长按事件
+            // 检测鼠标是否移动，如果鼠标移动超过10像素，取消长按事件
+            if (config.hotkey === constants.LongPress
+                && Math.abs(event.clientX - startPos.x) > 10 || Math.abs(event.clientY - startPos.y) > 10) {
+                clearTimeout(timer);
             }
         });
 
