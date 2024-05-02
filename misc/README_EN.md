@@ -116,6 +116,7 @@ If you wish to encourage the author, please use WeChat to scan the QR code below
 |  5   |    Lazy Mountain Small    |         18          |
 |  6   |        Mouth Craving       |         17          |
 |  7   |   Heard the Sea Can Swallow Tears  |         17          |
-|  8   |         Soup Qing         |         6.6         |
-|  9   |   Sincerely Less Than Half a Jin   |          5          |
-|  10  |          …           |          …          |
+| 8 | 吆吆好叼啊 | 10 |
+|  9  |         Soup Qing         |         6.6         |
+|  10  |   Sincerely Less Than Half a Jin   |          5          |
+|  11  |          …           |          …          |
