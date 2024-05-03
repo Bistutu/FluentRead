@@ -11,7 +11,6 @@ function _sendSuccessMessage(message: string) {
 }
 
 // 修改防抖限流函数（允许传递参数）
-// 修改防抖限流函数（允许传递参数）
 export function throttle(fn: (...args: any[]) => void, interval: number) {
     let last = 0;   // 维护上次执行的时间
     return function(this: any, ...args: any[]) {  // 使用 any 放宽 this 类型

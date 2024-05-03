@@ -24,7 +24,7 @@ export const services = {
     // 需要 model
     useModel: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu", "moonshot", "claude", "ollama", "infini"]),
     // 支持代理
-    useProxy: new Set(["openai", "claude", "gemini","google"]),
+    useProxy: new Set(["openai", "claude", "gemini", "google"]),
     // 函数
     isMachine: (service: string) => services.machine.has(service),
     isAI: (service: string) => services.ai.has(service),
@@ -38,7 +38,7 @@ export const services = {
 
 export const customModelString = "自定义模型"
 export const models = new Map<string, Array<string>>([
-    [services.openai, ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo-preview", customModelString]],
+    [services.openai, ["gpt-3.5-turbo", "gpt-4", "gpt-4-turbo", "gpt-4-turbo-preview", customModelString]],
     [services.gemini, ["gemini-pro", customModelString]],
     [services.yiyan, ["ERNIE-Bot 4.0", "ERNIE-Bot"]],  // 因文心一言模式不同，暂不支持自定义模型（还需根据model获取最终的url请求参数）
     [services.tongyi, ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext", customModelString]],
