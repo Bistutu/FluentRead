@@ -65,7 +65,6 @@ export function stringifyNode(node: any): string {
 // 移除特定样式
 export function checkAndRemoveStyle(node: any, styleProperty: any) {
     if (node.style && node.style[styleProperty] !== undefined) {
-        console.log('remove style', node.style[styleProperty]);
         // 移除特定样式
         node.style[styleProperty] = '';
     }

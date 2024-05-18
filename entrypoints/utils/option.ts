@@ -235,7 +235,7 @@ export const options = {
         },
         {
             value: 6,
-            label: '白纸阴影',
+            label: '阴影效果',
         },
         {
             value: 7,
@@ -243,11 +243,11 @@ export const options = {
         },
         {
             value: 8,
-            label: '引用',
+            label: '引用模式',
         },
         {
             value: 9,
-            label: '加粗',
+            label: '加粗模式',
         },
     ],
 }

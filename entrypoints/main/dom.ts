@@ -138,15 +138,16 @@ function bilingualTranslate(config: Config, node: any, htmlString: string) {
             clearTimeout(timeout) // 取消超时
             spinner.remove();
 
+            if (!cached || origin === cached) {
+                htmlSet.delete(htmlString);
+                return;
+            }
+
             // 250 ms 后移除 spinner
             setTimeout(() => {
                 htmlSet.delete(htmlString);
+                bilingualAppendChild(config,node, cached);  // 追加至原文后面
             }, 250);
-
-            if (!cached || origin === cached) return;
-
-            // 追加至原文后面
-            bilingualAppendChild(config,node, cached);
 
             return;
         }
