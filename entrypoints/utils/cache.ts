@@ -40,12 +40,13 @@ export const cache = {
     },
     // 清除当前页面所有由 fluent read 缓存的数据
     clearCurrentHostCache() {
-        // 反向迭代，即使删除项也不会影响尚未迭代到的项的索引
-        for (let i = localStorage.length - 1; i >= 0; i--) {
-            let key = localStorage.key(i);
-            if (key && key.startsWith("flcache_")) {
-                localStorage.removeItem(key);
-            }
+        const keysToDelete = [];
+        // 收集所有要删除的键
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(prefix)) keysToDelete.push(key);
         }
+        // 批量删除
+        keysToDelete.forEach(key => localStorage.removeItem(key));
     }
 }
