@@ -23,10 +23,10 @@
   <div v-show="config.on">
     <!--    翻译样式-->
     <el-row class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
+      <el-col :span="10" class="lightblue rounded-corner">
         <span class="popup-text popup-vertical-left">翻译样式</span>
       </el-col>
-      <el-col :span="12">
+      <el-col :span="14">
         <el-select v-model="config.style" placeholder="请选择翻译样式">
           <el-option
               class="select-left"
@@ -79,23 +79,16 @@
 
     <el-row class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
-        <span class="popup-text popup-vertical-left">源语言</span>
-      </el-col>
-      <el-col :span="12">
-        <el-select v-model="config.from" placeholder="请选择源语言">
-          <el-option
-              class="select-left"
-              v-for="item in options.form"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-          />
-        </el-select>
-      </el-col>
-    </el-row>
-    <el-row class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <span class="popup-text popup-vertical-left">目标语言</span>
+
+        <el-tooltip
+            class="box-item"
+            effect="dark"
+            content="流畅阅读会自动识别源语言，目标语言需设置"
+            placement="top-start"
+        >
+          <span class="popup-text popup-vertical-left">目标语言<el-icon class="icon-margin"><ChatDotRound/></el-icon></span>
+        </el-tooltip>
+
 
       </el-col>
       <el-col :span="12">
