@@ -205,7 +205,7 @@ export const options = {
         },
         {
             value: 1,
-            label: '双语对照（测试版）',
+            label: '双语对照-测试版',
         },
     ],
     display: [
@@ -219,16 +219,35 @@ export const options = {
         },
         {
             value: 2,
-            label: '下划线',
+            label: '实线下划线',
         },
-
         {
             value: 3,
-            label: '学习模式',
+            label: '虚线下划线',
         },
         {
             value: 4,
+            label: '学习模式',
+        },
+        {
+          value: 5,
+            label: '透明模式',
+        },
+        {
+            value: 6,
             label: '白纸阴影',
+        },
+        {
+            value: 7,
+            label: '马克笔',
+        },
+        {
+            value: 8,
+            label: '引用',
+        },
+        {
+            value: 9,
+            label: '加粗',
         },
     ],
 }

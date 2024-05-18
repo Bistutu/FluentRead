@@ -8,6 +8,7 @@ import {insertFailedTip, insertLoadingSpinner} from "./icon";
 import {beautyHTML} from "./common";
 import {throttle} from "@/entrypoints/utils/tip";
 import {styles} from "@/entrypoints/utils/constant";
+import {displays} from "@/entrypoints/main/css";
 
 let hoverTimer: any; // 鼠标悬停计时器
 let htmlSet = new Set();   // 去重
@@ -98,12 +99,23 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
 }
 
 // 双语模式追加翻译结果+控制样式
-function bilingualAppendChild(node: any, text: string) {
+function bilingualAppendChild(config:Config,node: any, text: string) {
+
+    let root = document.createElement("span");
+    let br = document.createElement("br");
     let newNode = document.createElement("span");
-    newNode.innerHTML = "<br>" + text;    // <br> 确保换行
-    newNode.classList.add("fluent-read-bilingual");
+
+    root.classList.add("fluent-read-bilingual");
+
+    newNode.innerHTML =  text;
+    newNode.classList.add(displays[config.display]);
+
+    root.appendChild(br);
+    root.appendChild(newNode);
+
     checkAndRemoveStyle(node, 'webkitLineClamp');   // 移除特定样式，webkitLineClamp 会导致多行文本截断
-    node.appendChild(newNode);
+
+    node.appendChild(root);
 }
 
 function bilingualTranslate(config: Config, node: any, htmlString: string) {
@@ -134,7 +146,7 @@ function bilingualTranslate(config: Config, node: any, htmlString: string) {
             if (!cached || origin === cached) return;
 
             // 追加至原文后面
-            bilingualAppendChild(node, cached);
+            bilingualAppendChild(config,node, cached);
 
             return;
         }
@@ -151,7 +163,7 @@ function bilingualTranslate(config: Config, node: any, htmlString: string) {
                 }, 250);
 
                 if (!text || origin === text) return;
-                bilingualAppendChild(node, text);
+                bilingualAppendChild(config,node, text);
                 cache.bilingualSet(config, origin, text);
             })
             .catch(error => {
