@@ -33,15 +33,11 @@ export const selectCompatFn: SelectCompatFn = {
     ["mvnrepository.com"]: (node: any) => {
         if (node.tagName.toLowerCase() === 'div' && node.classList.contains('im-description')) return true
     },
-    ["www.aozora.gr.jp"]: (node: any) => {
+    ["aozora.gr.jp"]: (node: any) => {
         if (node.tagName.toLowerCase() === 'div' && node.classList.contains('main_text')) return true
     },
     ["youtube.com"]: (node: any) => {
         if (node.tagName.toLowerCase() === 'yt-formatted-string') return true
-    },
-    ['www.webtrees.net']: (node: any) => {
-        // class='kmsg'
-        if (node.tagName.toLowerCase() === 'div' && node.classList.contains('kmsg')) return true
     },
     ['webtrees.net']: (node: any) => {
         // class='kmsg'

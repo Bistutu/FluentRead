@@ -1,6 +1,6 @@
 import {checkConfig, skipNode} from "./check";
 import {Config} from "../utils/model";
-import {getMainDomain, replaceCompatFn, selectCompatFn} from "../compat/compat";
+import {getMainDomain, replaceCompatFn, selectCompatFn} from "./compatible";
 import {cache} from "../utils/cache";
 import {detectlang} from "./detectlang";
 import {services} from "../utils/option";
@@ -37,6 +37,8 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
     hoverTimer = setTimeout(() => {
         // 获取起始节点
         let node = grabNode(config, document.elementFromPoint(mouseX, mouseY));  // 获取最终需要翻译的节点
+
+        // console.log("翻译节点：", node);
 
         // 跳过不需要翻译的节点
         if (skipNode(node)) return;
@@ -111,21 +113,21 @@ function grabNode(config: Config, node: any): any {
     let curTag = node.tagName.toLowerCase();    // 当前 tag
 
     // 1、全局节点与空节点、input 节点、文字过多的节点、class="notranslate" 的节点不翻译
-    if (!node || skipSet.has(curTag) || curTag === 'input' || node.classList.contains('notranslate') || node.textContent.length > 8192) {
+    if (!node || skipSet.has(curTag) || curTag === 'input' || node.classList.contains('notranslate')
+        || node.textContent.length > 3072 || (node.outerHTML && node.outerHTML.length > 4096)) {
+
         return false;
     }
 
     // 2、普通适配，遇到这些标签则直接翻译节点
-    if (directSet.has(curTag)) return node;
+    if (directSet.has(curTag)) {
+        return node;
+    }
 
     // 3、button 按钮适配
-    if (curTag === 'button'
-        || (curTag === 'span' && node.parentNode && node.parentNode.tagName.toLowerCase() === 'button')) {
+    if (curTag === 'button' || (curTag === 'span' && node.parentNode && node.parentNode.tagName.toLowerCase() === 'button')) {
         // 翻译按钮内部而不是整个按钮，避免按钮失去响应式点击事件
-        if (node.textContent.trim() !== '') {
-            btnTransThrottle(config, node)
-        }
-
+        if (node.textContent.trim() !== '') btnTransThrottle(config, node)
         return false;
     }
 

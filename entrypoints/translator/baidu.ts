@@ -16,6 +16,8 @@ async function baidu(config: Config, message: any) {
     else if (config.to === "fr") to = "fra";
     else to = config.to;
 
+    console.log("q",query)
+
     const resp = await fetch(urls[services.baidu], {
         method: 'POST',
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -31,8 +33,16 @@ async function baidu(config: Config, message: any) {
 
     if (resp.ok) {
         const result = await resp.json();
-        // 百度翻译结果需替换中文引号为英文引号
-        return result.trans_result[0].dst.replace(/“/g, '"').replace(/”/g, '"');
+
+        // 初始化一个数组用于收集翻译结果
+        const translatedParts: string[] = [];
+
+        // 循环 result.trans_result，获取每个翻译结果的 dst 字段，替换中文引号为英文引号（百度适配）
+        for (let i = 0; i < result.trans_result.length; i++) {
+            translatedParts.push(result.trans_result[i].dst.replace(/“/g, '"').replace(/”/g, '"'));
+        }
+
+        return  translatedParts.join('');
     } else {
         console.log(resp)
         throw new Error(`请求失败: ${resp.status} ${resp.statusText} body: ${await resp.text()}`);

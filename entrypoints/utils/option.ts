@@ -137,14 +137,14 @@ export const options = {
             label: 'DeepL翻译',
         },
         {
+            value: services.baidu,
+            label: '百度翻译',
+        },
+        {
             value: services.xiaoniu,
             label: '小牛翻译',
         },
-        {
-            value: services.baidu,
-            label: '百度翻译(Beta)',
-        },
-        // free 接口，翻译 html 会出现问题，隐藏。
+        // free 接口，翻译 html 会出现问题，暂不启用。
         // {
         //     value: services.google,
         //     label: 'Google翻译',
@@ -191,7 +191,7 @@ export const options = {
         },
         {
             value: services.infini,
-            label: '无向芯穹Infini',
+            label: '无向芯穹',
         },
         {
             value: services.ollama,
