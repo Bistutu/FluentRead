@@ -6,7 +6,10 @@ async function deepl(config: Config, message: any) {
     // deepl 不支持 zh-Hans，需要转换为 zh
     let targetLang = config.to === 'zh-Hans' ? 'zh' : config.to;
 
-    const resp = await fetch(urls[services.deepL], {
+    // 判断是否使用代理
+    let url: string = config.proxy[config.service] ? config.proxy[config.service] : urls[services.deepL]
+
+    const resp = await fetch(url, {
         method: method.POST,
         headers: {
             'Content-Type': 'application/json',

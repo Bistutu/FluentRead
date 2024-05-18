@@ -16,7 +16,7 @@ async function zhipu(config: Config, message: any) {
         if (!secret) throw new Error('无法生成令牌');
         // 保存 secret 和 expiration
         config.extra[services.zhipu] = {secret, expiration: Date.now() + 3600000 * 24};
-        storage.setItem('local:config', JSON.stringify(config));
+        await storage.setItem('local:config', JSON.stringify(config));
     }
 
     // 构建请求头

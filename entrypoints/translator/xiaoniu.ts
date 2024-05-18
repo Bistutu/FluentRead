@@ -6,7 +6,10 @@ async function xiaoniu(config: Config, message: any) {
     // 根据需要调整目标语言
     let targetLang = config.to === 'zh-Hans' ? 'zh' : config.to;
 
-    const resp = await fetch(urls[services.xiaoniu], {
+    // 判断是否使用代理
+    let url: string = config.proxy[config.service] ? config.proxy[config.service] : urls[services.xiaoniu]
+
+    const resp = await fetch(url, {
         method: method.POST,
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: `from=auto&to=${targetLang}&apikey=${config.token[services.xiaoniu]}&src_text=${encodeURIComponent(message.origin)}`

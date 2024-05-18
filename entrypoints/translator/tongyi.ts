@@ -9,7 +9,11 @@ async function tongyi(config: Config, message: any) {
     let headers = new Headers();
     headers.append('Content-Type', 'application/json');
     headers.append('Authorization', `Bearer ${config.token[services.tongyi]}`);
-    const resp = await fetch(urls[services.tongyi], {
+
+    // 判断是否使用代理
+    let url: string = config.proxy[config.service] ? config.proxy[config.service] : urls[services.tongyi]
+
+    const resp = await fetch(url, {
         method: method.POST,
         headers: headers,
         body: tongyiMsgTemplate(config, message.origin)
