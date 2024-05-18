@@ -1,3 +1,5 @@
+import {constants, styles} from "@/entrypoints/utils/constant";
+
 export const services = {
     // 机器翻译
     microsoft: 'microsoft',

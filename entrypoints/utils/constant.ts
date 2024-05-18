@@ -25,3 +25,10 @@ export const constants = {
     LongPress : "LongPress",
     MiddleClick : "MiddleClick",
 }
+
+export const styles = {
+    // 仅译文
+    translationOnly: 0,
+    // 双语对照模式
+    bilingualComparison: 1,
+}

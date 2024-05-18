@@ -1,15 +1,16 @@
 import {checkConfig, hasClassName, skipNode} from "./check";
 import {Config} from "../utils/model";
 import {getMainDomain, replaceCompatFn, selectCompatFn} from "./compatible";
-import {cache} from "../utils/cache";
+import {cache, checkAndRemoveStyle, stringifyNode} from "../utils/cache";
 import {detectlang} from "./detectlang";
 import {services} from "../utils/option";
 import {insertFailedTip, insertLoadingSpinner} from "./icon";
 import {beautyHTML} from "./common";
 import {throttle} from "@/entrypoints/utils/tip";
+import {styles} from "@/entrypoints/utils/constant";
 
 let hoverTimer: any; // 鼠标悬停计时器
-let outerHTMLSet = new Set();   // 去重
+let htmlSet = new Set();   // 去重
 const url = new URL(location.href.split('?')[0]);
 
 // 当遇到这些 tag 时直接翻译
@@ -43,26 +44,34 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
         // 跳过不需要翻译的节点
         if (skipNode(node)) return;
 
-        // TODO 2024.5.18
-        // 我们需要一个新的 translate 函数，原先的耦合性太强了！先写一个吧，如果效果可以，则抽取出来
-        // 判断是否为双语对照模式，如果是则走双语翻译
-        if (config.style === 1) {
-            let bilingualNode = hasClassName(node, 'fluent-read-bilingual');
-            if (bilingualNode) {
-                bilingualNode.remove(); // 移除 bilingualNode
-                return;
-            }
-            bilingualTranslate(config, node)
-            return;
-        }
-
         // 去重判断
-        let outerHTMLTemp = node.outerHTML;
-        if (outerHTMLSet.has(outerHTMLTemp)) {
+        let htmlString = stringifyNode(node);
+        if (htmlSet.has(htmlString)) {
             // console.log('重复节点', node);
             return;
         }
-        outerHTMLSet.add(outerHTMLTemp);
+        htmlSet.add(htmlString);
+
+
+        // TODO 2024.5.18 下述代码需重构
+        // 判断是否为双语对照模式，如果是则走双语翻译
+        if (config.style === styles.bilingualComparison) {
+            // 如果已经翻译过，则移除译文
+            let bilingualNode = hasClassName(node, 'fluent-read-bilingual');
+            if (bilingualNode) {
+                let spinner = insertLoadingSpinner(bilingualNode, true);
+                setTimeout(() => {
+                    spinner.remove();
+                    bilingualNode.remove();
+                    htmlSet.delete(htmlString);
+                }, 250);
+                return;
+            }
+            bilingualTranslate(config, node, htmlString)
+            return;
+        }
+
+        // else 为仅译文模式
 
         // 检测缓存
         let outerHTMLCache = cache.get(config, node.outerHTML);
@@ -71,7 +80,7 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
             let spinner = insertLoadingSpinner(node, true);
             setTimeout(() => {  // 延迟 remove 转圈动画与替换文本
                 spinner.remove();
-                outerHTMLSet.delete(outerHTMLTemp);
+                htmlSet.delete(htmlString);
                 let compatFn = replaceCompatFn[getMainDomain(url.host)];    // 兼容函数
                 if (compatFn) {
                     compatFn(node, outerHTMLCache);    // 兼容函数
@@ -88,71 +97,64 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
     }, time);
 }
 
-// todo 支持回译
-function bilingualTranslate(config: Config, node: any) {
-    console.log("翻译节点：", node)
-
+function bilingualTranslate(config: Config, node: any, htmlString: string) {
     // 正则表达式去除所有空格后再检查语言类型
     if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
-
     // 待翻译文本
     let origin = node.innerText
-
     // 插入转圈动画
     let spinner = insertLoadingSpinner(node);
     let timeout = setTimeout(() => {
         insertFailedTip(config, node, "timeout", spinner);
     }, 45000);
 
-    config.count++; // 翻译次数 +1
-    storage.setItem('local:config', JSON.stringify(config));  // 更新配置
-
     // 调用翻译服务（正在翻译ing...），允许失败重试 3 次、间隔 500ms
     const translating = (failCount = 0) => {
 
         // 判断缓存
-        let rs = cache.get(config, origin);
-        if (rs) {
+        let cached = cache.get(config, origin);
+        if (cached) {
             clearTimeout(timeout) // 取消超时
-            spinner.remove()      // 移除 spinner
+            spinner.remove();
 
-            // 格式化 html 翻译结果
-            rs = beautyHTML(rs)
+            // 250 ms 后移除 spinner
+            setTimeout(() => {
+                htmlSet.delete(htmlString);
+            }, 250);
 
-            if (!rs || origin === rs) return;
+            if (!cached || origin === cached) return;
 
             // 追加至原文后面
-            let newNode = document.createElement("div");
-            newNode.innerHTML = rs;
+            let newNode = document.createElement("span");
+            newNode.innerHTML = "<br>" + cached;    // <br> 确保换行
             newNode.classList.add("fluent-read-bilingual");
+            checkAndRemoveStyle(node, 'webkitLineClamp');   // 移除特定样式，webkitLineClamp 会导致多行文本截断
             node.appendChild(newNode);
 
             return;
         }
 
+        // 翻译次数 +1，更新配置
+        config.count++ && storage.setItem('local:config', JSON.stringify(config));
+
         browser.runtime.sendMessage({context: document.title, origin: origin})
             .then((text: string) => {
                 clearTimeout(timeout) // 取消超时
                 spinner.remove()      // 移除 spinner
-
-                // 格式化 html 翻译结果
-                text = beautyHTML(text)
-
-                console.log("翻译前的句子：", origin);
-                console.log("翻译后的句子：", text);
+                setTimeout(() => {
+                    htmlSet.delete(htmlString);
+                }, 250);
 
                 if (!text || origin === text) return;
 
                 // 追加至原文后面
-                let newNode = document.createElement("div");
-                newNode.innerHTML = text;
+                let newNode = document.createElement("span");
+                newNode.innerHTML = "<br>" + text;    // <br> 确保换行
                 newNode.classList.add("fluent-read-bilingual");
+                checkAndRemoveStyle(node, 'webkitLineClamp');   // 移除特定样式，webkitLineClamp 会导致多行文本截断
                 node.appendChild(newNode);
 
                 cache.bilingualSet(config, origin, text);
-
-                // todo 缓存、回译（也就是删掉译文？）
-
             })
             .catch(error => {
                 clearTimeout(timeout);
@@ -314,7 +316,7 @@ export function translate(config: Config, node: any) {
                 cache.set(config, oldOuterHtml, newOuterHtml);  // 设置缓存
                 // 延迟删除 newOuterHtml，立即删除 oldOuterHtml
                 deferCacheRemoval(newOuterHtml);
-                outerHTMLSet.delete(oldOuterHtml);
+                htmlSet.delete(oldOuterHtml);
             })
             .catch(error => {
                 clearTimeout(timeout);
@@ -346,9 +348,9 @@ function detectChildMeta(parent: any): boolean {
 
 // 延迟删除缓存，避免短时间内重复翻译
 function deferCacheRemoval(key: any, time = 250) {
-    outerHTMLSet.add(key);
+    htmlSet.add(key);
     setTimeout(() => {
-        outerHTMLSet.delete(key);
+        htmlSet.delete(key);
     }, time);
 }
 
