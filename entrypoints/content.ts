@@ -97,7 +97,7 @@ export default defineContentScript({
 
 
         // 8、鼠标中键翻译事件
-        document.body.addEventListener('click', event => {
+        document.body.addEventListener('mousedown', event => {
             if (config.hotkey === constants.MiddleClick) {
                 if (event.button === 1) {
                     let mouseX = event.clientX;
