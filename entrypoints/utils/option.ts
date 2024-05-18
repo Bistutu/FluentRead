@@ -198,12 +198,23 @@ export const options = {
             label: 'Ollama本地模型',
         },
     ],
+    styles: [
+        {
+            value: 0,
+            label: '仅译文',
+        },
+        {
+            value: 1,
+            label: '双语对照（测试版）',
+        },
+    ],
 }
 
 export const defaultOption = {
     on: true,
     from: 'auto',
     to: 'zh-Hans',
+    style: 0,
     hotkey: 'Control',
     service: services.microsoft,
     native: 'http://localhost:11434/v1/chat/completions',

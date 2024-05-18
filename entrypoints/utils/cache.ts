@@ -17,6 +17,9 @@ export const cache = {
         localStorage.setItem(buildKey(config, origin), result)
         localStorage.setItem(buildKey(config, result), origin)
     },
+    bilingualSet(config: Config, origin: string, result: string) {
+        localStorage.setItem(buildKey(config, origin), result)
+    },
     get(config: Config, origin: string) {
         return localStorage.getItem(buildKey(config, origin))
     },

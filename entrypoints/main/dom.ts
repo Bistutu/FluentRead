@@ -1,4 +1,4 @@
-import {checkConfig, skipNode} from "./check";
+import {checkConfig, hasClassName, skipNode} from "./check";
 import {Config} from "../utils/model";
 import {getMainDomain, replaceCompatFn, selectCompatFn} from "./compatible";
 import {cache} from "../utils/cache";
@@ -43,6 +43,19 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
         // 跳过不需要翻译的节点
         if (skipNode(node)) return;
 
+        // TODO 2024.5.18
+        // 我们需要一个新的 translate 函数，原先的耦合性太强了！先写一个吧，如果效果可以，则抽取出来
+        // 判断是否为双语对照模式，如果是则走双语翻译
+        if (config.style === 1) {
+            let bilingualNode = hasClassName(node, 'fluent-read-bilingual');
+            if (bilingualNode) {
+                bilingualNode.remove(); // 移除 bilingualNode
+                return;
+            }
+            bilingualTranslate(config, node)
+            return;
+        }
+
         // 去重判断
         let outerHTMLTemp = node.outerHTML;
         if (outerHTMLSet.has(outerHTMLTemp)) {
@@ -73,6 +86,88 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
         // 无缓存，正常翻译
         translate(config, node);
     }, time);
+}
+
+// todo 支持回译
+function bilingualTranslate(config: Config, node: any) {
+    console.log("翻译节点：", node)
+
+    // 正则表达式去除所有空格后再检查语言类型
+    if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
+
+    // 待翻译文本
+    let origin = node.innerText
+
+    // 插入转圈动画
+    let spinner = insertLoadingSpinner(node);
+    let timeout = setTimeout(() => {
+        insertFailedTip(config, node, "timeout", spinner);
+    }, 45000);
+
+    config.count++; // 翻译次数 +1
+    storage.setItem('local:config', JSON.stringify(config));  // 更新配置
+
+    // 调用翻译服务（正在翻译ing...），允许失败重试 3 次、间隔 500ms
+    const translating = (failCount = 0) => {
+
+        // 判断缓存
+        let rs = cache.get(config, origin);
+        if (rs) {
+            clearTimeout(timeout) // 取消超时
+            spinner.remove()      // 移除 spinner
+
+            // 格式化 html 翻译结果
+            rs = beautyHTML(rs)
+
+            if (!rs || origin === rs) return;
+
+            // 追加至原文后面
+            let newNode = document.createElement("div");
+            newNode.innerHTML = rs;
+            newNode.classList.add("fluent-read-bilingual");
+            node.appendChild(newNode);
+
+            return;
+        }
+
+        browser.runtime.sendMessage({context: document.title, origin: origin})
+            .then((text: string) => {
+                clearTimeout(timeout) // 取消超时
+                spinner.remove()      // 移除 spinner
+
+                // 格式化 html 翻译结果
+                text = beautyHTML(text)
+
+                console.log("翻译前的句子：", origin);
+                console.log("翻译后的句子：", text);
+
+                if (!text || origin === text) return;
+
+                // 追加至原文后面
+                let newNode = document.createElement("div");
+                newNode.innerHTML = text;
+                newNode.classList.add("fluent-read-bilingual");
+                node.appendChild(newNode);
+
+                cache.bilingualSet(config, origin, text);
+
+                // todo 缓存、回译（也就是删掉译文？）
+
+            })
+            .catch(error => {
+                clearTimeout(timeout);
+                if (failCount < 3) { // 如果失败次数小于3次，重新尝试
+                    // 延迟 500ms 后重试
+                    setTimeout(() => {
+                        translating(failCount + 1);
+                    }, 500);
+                } else { // 达到3次失败后，显示失败提示
+                    insertFailedTip(config, node, error.toString() || "", spinner);
+                }
+            });
+    }
+
+    translating();   // 开始翻译
 }
 
 // 按钮翻译节流

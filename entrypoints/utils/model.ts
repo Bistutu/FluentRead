@@ -14,6 +14,7 @@ export class Config {
     from: string;
     to: string;
     hotkey: string;
+    style: number;
     service: string;
     token: IMapping;
     ak: string;
@@ -33,6 +34,7 @@ export class Config {
         this.on = true;
         this.from = defaultOption.from;
         this.to = defaultOption.to;
+        this.style = defaultOption.style;
         this.hotkey = defaultOption.hotkey;
         this.service = defaultOption.service;
         this.token = {};

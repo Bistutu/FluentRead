@@ -21,6 +21,24 @@
   </div>
 
   <div v-show="config.on">
+    <!--    翻译样式-->
+    <el-row class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <span class="popup-text popup-vertical-left">翻译样式</span>
+      </el-col>
+      <el-col :span="12">
+        <el-select v-model="config.style" placeholder="请选择翻译样式">
+          <el-option
+              class="select-left"
+              v-for="item in options.styles"
+              :key="item.value"
+              :label="item.label"
+              :value="item.value"
+          />
+        </el-select>
+      </el-col>
+    </el-row>
+
     <!-- 翻译服务 -->
     <el-row class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">

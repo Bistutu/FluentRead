@@ -37,7 +37,7 @@ export function skipNode(node: Node): boolean {
 // 判断是否有加载动画
 export function hasLoadingSpinner(node: any) {
     // 文本节点的下一个节点是否包含加载动画
-    if (node.nodeType === Node.TEXT_NODE ) return false;
+    if (node.nodeType === Node.TEXT_NODE) return false;
 
     if (node.classList.contains('fluent-read-loading')) return true;
     for (let child of node.children) {
@@ -49,11 +49,21 @@ export function hasLoadingSpinner(node: any) {
 // 判断节点是否有重试属性
 export function hasRetryTag(node: any) {
     // 文本节点的下一个节点是否包含重试属性
-    if (node.nodeType === Node.TEXT_NODE ) return false;
+    if (node.nodeType === Node.TEXT_NODE) return false;
 
     if (node.classList.contains('fluent-read-failure')) return true;
     for (let child of node.children) {
         if (hasLoadingSpinner(child)) return true;
+    }
+    return false;
+}
+
+// 判断是否有指定 class 属性，并返回最终包含该 class 的节点
+export function hasClassName(node: any, className: string): any {
+    if (node.classList.contains(className)) return node;
+    for (let child of node.children) {
+        let result = hasClassName(child, className);
+        if (result) return result;
     }
     return false;
 }
