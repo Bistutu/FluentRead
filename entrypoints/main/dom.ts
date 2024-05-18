@@ -160,7 +160,6 @@ function grabNode(config: Config, node: any): any {
     return false
 }
 
-// failCount 用于记录翻译失败次数，默认为 0
 export function translate(config: Config, node: any) {
 
     // console.log("翻译节点：", node)
