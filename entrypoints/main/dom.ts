@@ -97,6 +97,15 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
     }, time);
 }
 
+// 双语模式追加翻译结果+控制样式
+function bilingualAppendChild(node: any, text: string) {
+    let newNode = document.createElement("span");
+    newNode.innerHTML = "<br>" + text;    // <br> 确保换行
+    newNode.classList.add("fluent-read-bilingual");
+    checkAndRemoveStyle(node, 'webkitLineClamp');   // 移除特定样式，webkitLineClamp 会导致多行文本截断
+    node.appendChild(newNode);
+}
+
 function bilingualTranslate(config: Config, node: any, htmlString: string) {
     // 正则表达式去除所有空格后再检查语言类型
     if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
@@ -125,11 +134,7 @@ function bilingualTranslate(config: Config, node: any, htmlString: string) {
             if (!cached || origin === cached) return;
 
             // 追加至原文后面
-            let newNode = document.createElement("span");
-            newNode.innerHTML = "<br>" + cached;    // <br> 确保换行
-            newNode.classList.add("fluent-read-bilingual");
-            checkAndRemoveStyle(node, 'webkitLineClamp');   // 移除特定样式，webkitLineClamp 会导致多行文本截断
-            node.appendChild(newNode);
+            bilingualAppendChild(node, cached);
 
             return;
         }
@@ -146,14 +151,7 @@ function bilingualTranslate(config: Config, node: any, htmlString: string) {
                 }, 250);
 
                 if (!text || origin === text) return;
-
-                // 追加至原文后面
-                let newNode = document.createElement("span");
-                newNode.innerHTML = "<br>" + text;    // <br> 确保换行
-                newNode.classList.add("fluent-read-bilingual");
-                checkAndRemoveStyle(node, 'webkitLineClamp');   // 移除特定样式，webkitLineClamp 会导致多行文本截断
-                node.appendChild(newNode);
-
+                bilingualAppendChild(node, text);
                 cache.bilingualSet(config, origin, text);
             })
             .catch(error => {
