@@ -113,10 +113,11 @@ If you wish to encourage the author, please use WeChat to scan the QR code below
 |  2   |    Cool Little Master    |         57          |
 |  3   |       coonut🥥       |         36          |
 |  4   |      hoochanlon      |        23.7         |
-|  5   |    Lazy Mountain Small    |         18          |
-|  6   |        Mouth Craving       |         17          |
-|  7   |   Heard the Sea Can Swallow Tears  |         17          |
-| 8 | 吆吆好叼啊 | 10 |
-|  9  |         Soup Qing         |         6.6         |
-|  10  |   Sincerely Less Than Half a Jin   |          5          |
-|  11  |          …           |          …          |
+| 5 | Juncai | 20 |
+|  6  |    Lazy Mountain Small    |         18          |
+|  7  |        Mouth Craving       |         17          |
+|  8  |   Heard the Sea Can Swallow Tears  |         17          |
+| 9 | 吆吆好叼啊 | 10 |
+|  10  |         Soup Qing         |         6.6         |
+|  11  |   Sincerely Less Than Half a Jin   |          5          |
+|  12  |          …           |          …          |
