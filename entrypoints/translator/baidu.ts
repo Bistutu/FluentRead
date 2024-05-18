@@ -33,6 +33,7 @@ async function baidu(config: Config, message: any) {
 
     if (resp.ok) {
         const result = await resp.json();
+        console.log(result)
 
         // 初始化一个数组用于收集翻译结果
         const translatedParts: string[] = [];
@@ -42,7 +43,9 @@ async function baidu(config: Config, message: any) {
             translatedParts.push(result.trans_result[i].dst.replace(/“/g, '"').replace(/”/g, '"'));
         }
 
-        return  translatedParts.join('');
+        let rs = translatedParts.join('');
+        console.log(rs)
+        return  rs;
     } else {
         console.log(resp)
         throw new Error(`请求失败: ${resp.status} ${resp.statusText} body: ${await resp.text()}`);

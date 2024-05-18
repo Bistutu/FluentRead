@@ -46,7 +46,7 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
         if (skipNode(node)) return;
 
         // 去重判断
-        let htmlString = stringifyNode(node);
+        let htmlString = node.outerHTML;
         if (htmlSet.has(htmlString)) {
             // console.log('重复节点', node);
             return;
@@ -68,6 +68,24 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
                 }, 250);
                 return;
             }
+            // 判断缓存
+            let cached = cache.get(config, node.innerText);
+            if (cached) {
+                let spinner = insertLoadingSpinner(node, true);
+                if (!cached || origin === cached) {
+                    htmlSet.delete(htmlString);
+                    return;
+                }
+                // 250 ms 后移除 spinner
+                setTimeout(() => {
+                    spinner.remove();
+                    htmlSet.delete(htmlString);
+                    bilingualAppendChild(config,node, cached);  // 追加至原文后面
+                }, 250);
+
+                return;
+            }
+
             bilingualTranslate(config, node, htmlString)
             return;
         }
@@ -131,26 +149,6 @@ function bilingualTranslate(config: Config, node: any, htmlString: string) {
 
     // 调用翻译服务（正在翻译ing...），允许失败重试 3 次、间隔 500ms
     const translating = (failCount = 0) => {
-
-        // 判断缓存
-        let cached = cache.get(config, origin);
-        if (cached) {
-            clearTimeout(timeout) // 取消超时
-            spinner.remove();
-
-            if (!cached || origin === cached) {
-                htmlSet.delete(htmlString);
-                return;
-            }
-
-            // 250 ms 后移除 spinner
-            setTimeout(() => {
-                htmlSet.delete(htmlString);
-                bilingualAppendChild(config,node, cached);  // 追加至原文后面
-            }, 250);
-
-            return;
-        }
 
         // 翻译次数 +1，更新配置
         config.count++ && storage.setItem('local:config', JSON.stringify(config));
@@ -299,8 +297,8 @@ export function translate(config: Config, node: any) {
                 // 格式化 html 翻译结果
                 text = beautyHTML(text)
 
-                // console.log("翻译前的句子：", origin);
-                // console.log("翻译后的句子：", text);
+                console.log("翻译前的句子：", origin);
+                console.log("翻译后的句子：", text);
 
                 if (!text || origin === text) return;
 
