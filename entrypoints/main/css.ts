@@ -115,4 +115,5 @@ export function checkAndRemoveStyle(node: any, styleProperty: any) {
 export function smashTruncationStyle(node: any) {
     checkAndRemoveStyle(node, ' webkitLineClamp');
     node.style.webkitLineClamp='unset';
+    node.style.maxHeight='unset';
 }
