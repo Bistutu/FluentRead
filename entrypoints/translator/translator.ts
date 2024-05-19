@@ -17,6 +17,7 @@ import baichuang from "@/entrypoints/translator/baichuang";
 import baichuan from "@/entrypoints/translator/baichuang";
 import lingyi from "@/entrypoints/translator/lingyi";
 import deepseek from "@/entrypoints/translator/deepseek";
+import minimax from "@/entrypoints/translator/minimax";
 
 
 export const translator = {
@@ -37,4 +38,5 @@ export const translator = {
     [services.baichuan]: baichuan,
     [services.lingyi]: lingyi,
     [services.deepseek]: deepseek,
+    [services.minimax]: minimax,
 }

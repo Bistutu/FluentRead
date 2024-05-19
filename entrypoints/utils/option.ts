@@ -18,17 +18,18 @@ export const services = {
     baichuan: 'baichuan',
     lingyi: 'lingyi',
     deepseek: 'deepseek',
+    minimax: 'minimax',
     // 阵营划分
     machine: new Set(["microsoft", "deepL", "google", "xiaoniu", "baidu"]),
     ai: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu",
-        "moonshot", "claude", "custom", "infini", "baichuan", "deepseek", "lingyi"]),
+        "moonshot", "claude", "custom", "infini", "baichuan", "deepseek", "lingyi","minimax"]),
     // 需要 token，或者 ak/sk
     useToken: new Set(["openai", "gemini", "tongyi", "zhipu", "moonshot", "claude",
-        "deepL", "xiaoniu", "infini", "custom", "baichuan", "deepseek", "lingyi"]),
+        "deepL", "xiaoniu", "infini", "custom", "baichuan", "deepseek", "lingyi","minimax"]),
     useAkSk: new Set(["yiyan"]),
     // 需要 model
     useModel: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu",
-        "moonshot", "claude", "custom", "infini", "baichuan", "deepseek", "lingyi"]),
+        "moonshot", "claude", "custom", "infini", "baichuan", "deepseek", "lingyi","minimax"]),
     // 支持代理
     useProxy: new Set(["openai", "claude", "gemini", "google", "deepl",
         "moonshot", "tongyi", "xiaoniu", "baichuan", "deepseek", "lingyi"]),
@@ -57,6 +58,7 @@ export const models = new Map<string, Array<string>>([
     [services.baichuan, ["Baichuan2-Turbo", "Baichuan2-53B", customModelString]],
     [services.lingyi, ["yi-spark", "yi-medium", "yi-large", "yi-large-turbo", customModelString]],
     [services.deepseek, ["deepseek-chat", customModelString]],
+    [services.minimax, ["chatcompletion_v2"]],
 ]);
 
 export const options = {
@@ -211,6 +213,10 @@ export const options = {
         {
             value: services.deepseek,
             label: 'DeepSeek',
+        },
+        {
+            value: services.minimax,
+            label: 'MiniMax',
         },
         {
             value: services.infini,

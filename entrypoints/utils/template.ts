@@ -113,3 +113,22 @@ export function customMsgTemplate(config: Config, origin: string) {
         ]
     })
 }
+
+export function minimaxTemplate(config: Config, origin: string) {
+    let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
+
+    let system = config.system_role[config.service] || defaultOption.system_role;
+    let user = (config.user_role[config.service] || defaultOption.user_role).replace('{{to}}', config.to).replace('{{origin}}', origin);
+
+    return JSON.stringify({
+        model: "abab6.5-chat",
+        stream: false,
+        temperature: 0.3,
+        messages: [
+            { role: 'system', content: system },
+            { role: 'user', content: user },
+            { role: 'assistant', content: '你好' },
+            { role: 'user', content: origin }
+        ]
+    })
+}

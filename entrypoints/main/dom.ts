@@ -300,8 +300,8 @@ export function translate(config: Config, node: any) {
                 // 格式化 html 翻译结果
                 text = beautyHTML(text)
 
-                console.log("翻译前的句子：", origin);
-                console.log("翻译后的句子：", text);
+                // console.log("翻译前的句子：", origin);
+                // console.log("翻译后的句子：", text);
 
                 if (!text || origin === text) return;
 
