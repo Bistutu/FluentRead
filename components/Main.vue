@@ -177,7 +177,7 @@
         <span class="popup-text popup-vertical-left">Key</span>
       </el-col>
       <el-col :span="12">
-        <el-input v-model="config.key" placeholder="请输入 Key"/>
+        <el-input v-model="config.key" type="password" placeholder="请输入 Key"/>
       </el-col>
     </el-row>
 
