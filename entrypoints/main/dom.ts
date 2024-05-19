@@ -1,13 +1,14 @@
 import {checkConfig, hasClassName, skipNode} from "./check";
 import {Config} from "../utils/model";
 import {getMainDomain, replaceCompatFn, selectCompatFn} from "./compatible";
-import {cache, checkAndRemoveStyle} from "../utils/cache";
+import {cache} from "../utils/cache";
 import {detectlang} from "./detectlang";
 import {options, services} from "../utils/option";
 import {insertFailedTip, insertLoadingSpinner} from "./icon";
 import {beautyHTML} from "./common";
 import {throttle} from "@/entrypoints/utils/tip";
 import {styles} from "@/entrypoints/utils/constant";
+import {smashTruncationStyle} from "@/entrypoints/main/css";
 
 let hoverTimer: any; // 鼠标悬停计时器
 let htmlSet = new Set();   // 去重
@@ -130,54 +131,10 @@ function bilingualAppendChild(config: Config, node: any, text: string) {
     root.appendChild(br);
     root.appendChild(newNode);
 
-    checkAndRemoveStyle(node, 'webkitLineClamp');   // 移除特定样式，webkitLineClamp 会导致多行文本截断
+    // 移除特定样式，这些样式会影响翻译结果的显示
+    smashTruncationStyle(node);
 
     node.appendChild(root);
-}
-
-function bilingualTranslate(config: Config, node: any, htmlString: string) {
-    // 正则表达式去除所有空格后再检查语言类型
-    if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
-    // 待翻译文本
-    let origin = node.innerText
-    // 插入转圈动画
-    let spinner = insertLoadingSpinner(node);
-    let timeout = setTimeout(() => {
-        insertFailedTip(config, node, "timeout", spinner);
-    }, 45000);
-
-    // 调用翻译服务（正在翻译ing...），允许失败重试 3 次、间隔 500ms
-    const translating = (failCount = 0) => {
-
-        // 翻译次数 +1，更新配置
-        config.count++ && storage.setItem('local:config', JSON.stringify(config));
-
-        browser.runtime.sendMessage({context: document.title, origin: origin})
-            .then((text: string) => {
-                clearTimeout(timeout) // 取消超时
-                spinner.remove()      // 移除 spinner
-                setTimeout(() => {
-                    htmlSet.delete(htmlString);
-                }, 250);
-
-                if (!text || origin === text) return;
-                bilingualAppendChild(config, node, text);
-                cache.bilingualSet(config, origin, text);
-            })
-            .catch(error => {
-                clearTimeout(timeout);
-                if (failCount < 3) { // 如果失败次数小于3次，重新尝试
-                    // 延迟 500ms 后重试
-                    setTimeout(() => {
-                        translating(failCount + 1);
-                    }, 500);
-                } else { // 达到3次失败后，显示失败提示
-                    insertFailedTip(config, node, error.toString() || "", spinner);
-                }
-            });
-    }
-
-    translating();   // 开始翻译
 }
 
 // 按钮翻译节流
@@ -265,6 +222,53 @@ function grabNode(config: Config, node: any): any {
     // console.log('不翻译节点：', node);
 
     return false
+}
+
+function bilingualTranslate(config: Config, node: any, htmlString: string) {
+    // 正则表达式去除所有空格后再检查语言类型
+    if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
+    // 待翻译文本
+    let origin = node.innerText
+    // 插入转圈动画
+    let spinner = insertLoadingSpinner(node);
+    let timeout = setTimeout(() => {
+        insertFailedTip(config, node, "timeout", spinner);
+    }, 45000);
+
+    // 调用翻译服务（正在翻译ing...），允许失败重试 3 次、间隔 500ms
+    const translating = (failCount = 0) => {
+
+        // 翻译次数 +1，更新配置
+        config.count++ && storage.setItem('local:config', JSON.stringify(config));
+
+        browser.runtime.sendMessage({context: document.title, origin: origin})
+            .then((text: string) => {
+                clearTimeout(timeout) // 取消超时
+                spinner.remove()      // 移除 spinner
+                setTimeout(() => {
+                    htmlSet.delete(htmlString);
+                }, 250);
+
+                // 相同也不应该隐藏，否则可能会造成用户误解
+                // if (!text || origin === text) return;
+
+                bilingualAppendChild(config, node, text);
+                cache.bilingualSet(config, origin, text);
+            })
+            .catch(error => {
+                clearTimeout(timeout);
+                if (failCount < 3) { // 如果失败次数小于3次，重新尝试
+                    // 延迟 500ms 后重试
+                    setTimeout(() => {
+                        translating(failCount + 1);
+                    }, 500);
+                } else { // 达到3次失败后，显示失败提示
+                    insertFailedTip(config, node, error.toString() || "", spinner);
+                }
+            });
+    }
+
+    translating();   // 开始翻译
 }
 
 export function translate(config: Config, node: any) {

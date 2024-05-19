@@ -61,11 +61,3 @@ export function stringifyNode(node: any): string {
     outerHTML = outerHTML.replace(/\s{2,}/g, ' ').trim();
     return outerHTML;
 }
-
-// 移除特定样式
-export function checkAndRemoveStyle(node: any, styleProperty: any) {
-    if (node.style && node.style[styleProperty] !== undefined) {
-        // 移除特定样式
-        node.style[styleProperty] = '';
-    }
-}
