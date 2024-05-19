@@ -65,9 +65,11 @@ const css = `
 
 /* 阴影效果 */
 .fluent-display-card-mode {
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1); /* 加强阴影的尺寸和不透明度 */
-    padding: 2px;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.20); /* 加强阴影的尺寸和不透明度 */
+    padding: 8px 16px;
     border-radius: 5px;
+    margin: 4px 0 !important;
+    display: block ;
 }
 
 /* 马克笔 */

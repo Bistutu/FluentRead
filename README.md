@@ -6,7 +6,11 @@
 
 流畅阅读是一款高效的浏览器翻译插件，可以将网页上的文字翻译成任何语言，方便、快捷、直观，支持人工智能引擎。流畅阅读使用 JavaScript、TypeScript 语言结合 [Vue3](https://cn.vuejs.org/) + [Element-Plus](https://element-plus.org/) + [WXT](https://wxt.dev/) 框架编写，可以编译成支持绝大多数浏览器的插件。
 
+流畅阅读支持「仅译文模式」和「双语模式」，为所有人提供可选的翻译模式。
+
 <kbd><img src="./misc/sample-git-1.gif" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
+
+<kbd><img src="./misc/sample-git-4.gif" alt="sample-git-4.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
 
 <kbd><img src="./misc/screenshot-3.png" alt="sample-git-1.gif" style="width: 40%; max-width: 100%;border: 1px solid black;"></kbd>
 
@@ -33,18 +37,22 @@
 
 # 特点介绍
 
-1. **支持多种翻译引擎**
+1. **支持多种翻译方式**
 
-   微软翻译、DeepL翻译、百度翻译、小牛翻译、OpenAI、Claude、Gemini、Kimi（月之暗面）、智谱清言、通义千问、文心一言、无向芯穹、Ollama本地模型等。
+   - 仅译文模式
+   - 双语模式
 
-2. **支持多种翻译方式**
+2. **支持多种翻译引擎**
 
-   1. 快捷键翻译：将鼠标悬浮在文本上，并按下设定的快捷键即可翻译。
-   2. 滑动翻译：持续按住快捷键，同时用鼠标滑动选择需要翻译的文本区域。
+   微软翻译、谷歌翻译、DeepL翻译、百度翻译、小牛翻译、OpenAI、Claude、Gemini、Kimi（月之暗面）、智谱清言、通义千问、文心一言、百川大模型、零一万物、DeepSeek、MiniMax、无向芯穹、⭐️自定义引擎等。
 
-   目前支持的快捷键有：Ctrl键、Alt键、Shift键、波浪号键、鼠标左键双击、鼠标左键长按、鼠标中键单击。
+3. **支持多种翻译方式**
 
-3. **支持缓存与回译**
+   1. 快捷键翻译：将鼠标悬浮在文本上，并按下设定的快捷键即可翻译，目前支持的快捷键有 Ctrl、Alt、Shift、波浪号键。
+   2. 鼠标翻译：**双击鼠标**、**长按鼠标**、**鼠标滚轮单击**可触发翻译。
+   3. 滑动翻译：持续按住快捷键，同时用鼠标滑动选择需要翻译的文本区域。
+
+4. **支持缓存与回译**
 
    为了避免重复翻译句子、减少请求次数，流畅阅读基于每个页面做了翻译缓存，你无需关心具体细节（蓝色表示正常翻译、绿色表示使用缓存），当你使用缓存时，插件不会发生网络请求。
 
@@ -78,32 +86,33 @@
 </details>
 <details>
     <summary>6、这款软件如何盈利？</summary>
-&emsp;&emsp;正如你所见，这款软件目前并没有任何盈利的地方。如果您希望向作者给予鼓励，请滑动页面到最底部扫描“微信赞赏码”，作者在此表示感谢~
+&emsp;&emsp;正如你所见，这款软件目前并没有任何盈利的地方。如果您希望向作者给予鼓励，可以滑动页面到最底部使用微信扫描“赞赏码”，作者在此表示感谢~
 </details>
 
 
 
 # 版本更新记录
 
-- 2024-05-18: 0.05 版本
-  1. 接入百度翻译等引擎
-  2. 增加鼠标中键单击翻译等快捷方式
-  3. 优化插件体验
+- 2024-05-19: **0.05 版本**
+  1. 增加“双语翻译”模式
+  2. 接入谷歌翻译、百度翻译、百创大模型、零一万物等引擎
+  3. 支持 GPT-4o 等模型
+  4. 增加鼠标事件，支持快捷翻译
+  5. 增加对自定义接口的支持，兼容 [one-api](https://github.com/songquanpeng/one-api)、[new-api](https://github.com/Calcium-Ion/new-api) 等方式调用
 - 2024-04-01：0.01 版本
-  1. 使用 Vue3 + WXT 重构程序，重新发布
-- 2024-03-04：1.30版本
+  1. 使用 Vue3 + WXT 重构程序
+- 2024-03-04
   1. 增加 [DeepL](https://deepl.com/zh/) 翻译服务
   2. 增加 [ollama](https://github.com/ollama/ollama) 本地大模型支持
   3. 兼容移动设备，实现“三指触摸”翻译
   4. 优化缓存逻辑
-- 2024-02-18：1.0版本
+- 2024-02-18
   1. 接入微软机器翻译
   2. 接入 OpenAI、智谱清言、moonshot 等人工智能引擎
   3. 增加快捷键翻译功能
   4. 增加翻译缓存与回译功能
-- 2024-01：0.6版本
 - ...
-- 2023-12：0.1版本
+- 2023-12 beta 版本
 
 # 开源许可证
 
@@ -130,7 +139,7 @@ pnpm zip:firefox	# 打包为支持 FireFox 内核的插件
 
 如果您想向作者表达感谢，请使用微信扫描下方二维码，您的名字将出现在赞助名单上。
 
-<img src="./misc/approve.jpg" alt="wechat" style="width: 35%; max-width: 100%;border: 1px solid black;">
+<img src="./misc/approve.jpg" alt="wechat" style="width: 40%; max-width: 100%;border: 1px solid black;">
 
 （赞助名单最后更新于：2024年5月18日）
 

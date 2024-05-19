@@ -131,7 +131,7 @@ export const options = {
         },
         {
             value: 'MiddleClick',
-            label: "鼠标中键"
+            label: "鼠标滚轮单击"
         }
     ],
     services: [

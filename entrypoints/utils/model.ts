@@ -59,6 +59,11 @@ export class Config {
             [services.custom]: defaultOption.system_role,
             [services.claude]: defaultOption.system_role,
             [services.infini]: defaultOption.system_role,
+            [services.baichuan]: defaultOption.system_role,
+            [services.lingyi]: defaultOption.system_role,
+            [services.deepseek]: defaultOption.system_role,
+            [services.minimax]: defaultOption.system_role,
+
         },
             this.user_role = {
                 [services.openai]: defaultOption.user_role,
@@ -70,6 +75,10 @@ export class Config {
                 [services.custom]: defaultOption.user_role,
                 [services.claude]: defaultOption.user_role,
                 [services.infini]: defaultOption.user_role,
+                [services.baichuan]: defaultOption.user_role,
+                [services.lingyi]: defaultOption.user_role,
+                [services.deepseek]: defaultOption.user_role,
+                [services.minimax]: defaultOption.user_role,
             },
             this.count = 0;
     }
