@@ -15,6 +15,8 @@ import infini from "@/entrypoints/translator/infini";
 import baidu from "@/entrypoints/translator/baidu";
 import baichuang from "@/entrypoints/translator/baichuang";
 import baichuan from "@/entrypoints/translator/baichuang";
+import lingyi from "@/entrypoints/translator/lingyi";
+import deepseek from "@/entrypoints/translator/deepseek";
 
 
 export const translator = {
@@ -33,4 +35,6 @@ export const translator = {
     [services.infini]: infini,
     [services.baidu]: baidu,
     [services.baichuan]: baichuan,
+    [services.lingyi]: lingyi,
+    [services.deepseek]: deepseek,
 }

@@ -17,6 +17,8 @@ export const urls = {
     [services.claude]: "https://api.anthropic.com/v1/messages",
     [services.baidu]: "https://fanyi-api.baidu.com/api/trans/vip/translate",
     [services.baichuan]: "https://api.baichuan-ai.com/v1/chat/completions",
+    [services.lingyi]: "https://api.lingyiwanwu.com/v1/chat/completions",
+    [services.deepseek]: "https://api.deepseek.com/chat/completions",
 }
 
 export const method = {POST: "POST", GET: "GET",};

@@ -16,17 +16,22 @@ export const services = {
     infini: 'infini',
     baidu: 'baidu',
     baichuan: 'baichuan',
+    lingyi: 'lingyi',
+    deepseek: 'deepseek',
     // 阵营划分
     machine: new Set(["microsoft", "deepL", "google", "xiaoniu", "baidu"]),
     ai: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu",
-        "moonshot", "claude", "custom", "infini","baichuan"]),
+        "moonshot", "claude", "custom", "infini", "baichuan", "deepseek", "lingyi"]),
     // 需要 token，或者 ak/sk
-    useToken: new Set(["openai", "gemini", "tongyi", "zhipu", "moonshot", "claude", "deepL", "xiaoniu", "infini","custom","baichuan"]),
+    useToken: new Set(["openai", "gemini", "tongyi", "zhipu", "moonshot", "claude",
+        "deepL", "xiaoniu", "infini", "custom", "baichuan", "deepseek", "lingyi"]),
     useAkSk: new Set(["yiyan"]),
     // 需要 model
-    useModel: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu", "moonshot", "claude", "custom", "infini","baichuan"]),
+    useModel: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu",
+        "moonshot", "claude", "custom", "infini", "baichuan", "deepseek", "lingyi"]),
     // 支持代理
-    useProxy: new Set(["openai", "claude", "gemini", "google", "deepl", "moonshot", "tongyi", "xiaoniu","baichuan"]),
+    useProxy: new Set(["openai", "claude", "gemini", "google", "deepl",
+        "moonshot", "tongyi", "xiaoniu", "baichuan", "deepseek", "lingyi"]),
     // 函数
     isMachine: (service: string) => services.machine.has(service),
     isAI: (service: string) => services.ai.has(service),
@@ -47,9 +52,11 @@ export const models = new Map<string, Array<string>>([
     [services.zhipu, ["glm-4", "glm-4v", "glm-3-turbo", customModelString]],
     [services.moonshot, ["moonshot-v1-8k", customModelString]],
     [services.claude, ["claude3-Haiku", "claude3-Sonnet", "claude3-Opus"]],    // claude 也不支持自定义模型
-    [services.custom, ["gpt-3.5-turbo","gpt-4o", "gpt-4", "gpt-4-turbo","gemma:7b", "llama2:7b", "mistral:7b", customModelString]],
+    [services.custom, ["gpt-3.5-turbo", "gpt-4o", "gpt-4", "gpt-4-turbo", "gemma:7b", "llama2:7b", "mistral:7b", customModelString]],
     [services.infini, ["infini-megrez-7b", "llama-2-13b-chat", "qwen-14b-chat", "llama-2-70b-chat", "qwen-72b-chat", customModelString]],
     [services.baichuan, ["Baichuan2-Turbo", "Baichuan2-53B", customModelString]],
+    [services.lingyi, ["yi-spark", "yi-medium", "yi-large", "yi-large-turbo", customModelString]],
+    [services.deepseek, ["deepseek-chat", customModelString]],
 ]);
 
 export const options = {
@@ -194,13 +201,20 @@ export const options = {
             model: "ERNIE-Bot",
         },
         {
-            value: services.infini,
-            label: '无向芯穹',
-        },
-        {
             value: services.baichuan,
             label: '百川大模型',
-            model: "Baichuan2-Turbo",
+        },
+        {
+            value: services.lingyi,
+            label: '零一万物',
+        },
+        {
+            value: services.deepseek,
+            label: 'DeepSeek',
+        },
+        {
+            value: services.infini,
+            label: '无向芯穹',
         },
         {
             value: services.custom,
@@ -245,7 +259,7 @@ export const options = {
             class: 'fluent-display-learning-mode',
         },
         {
-          value: 5,
+            value: 5,
             label: '透明',
             class: 'fluent-display-transparent-mode',
         },
