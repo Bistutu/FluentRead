@@ -95,7 +95,7 @@
 
 - 2024-05-19: **0.05 版本**
   1. 增加“双语翻译”模式
-  2. 接入谷歌翻译、百度翻译、百创大模型、零一万物等引擎
+  2. 接入谷歌翻译、百度翻译、百川大模型、零一万物等引擎
   3. 支持 GPT-4o 等模型
   4. 增加鼠标事件，支持快捷翻译
   5. 增加对自定义接口的支持，兼容 [one-api](https://github.com/songquanpeng/one-api)、[new-api](https://github.com/Calcium-Ion/new-api) 等方式调用
