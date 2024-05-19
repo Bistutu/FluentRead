@@ -15,16 +15,18 @@ export const services = {
     custom: 'custom',
     infini: 'infini',
     baidu: 'baidu',
+    baichuan: 'baichuan',
     // 阵营划分
     machine: new Set(["microsoft", "deepL", "google", "xiaoniu", "baidu"]),
-    ai: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu", "moonshot", "claude", "custom", "infini"]),
+    ai: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu",
+        "moonshot", "claude", "custom", "infini","baichuan"]),
     // 需要 token，或者 ak/sk
-    useToken: new Set(["openai", "gemini", "tongyi", "zhipu", "moonshot", "claude", "deepL", "xiaoniu", "infini","custom"]),
+    useToken: new Set(["openai", "gemini", "tongyi", "zhipu", "moonshot", "claude", "deepL", "xiaoniu", "infini","custom","baichuan"]),
     useAkSk: new Set(["yiyan"]),
     // 需要 model
-    useModel: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu", "moonshot", "claude", "custom", "infini"]),
+    useModel: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu", "moonshot", "claude", "custom", "infini","baichuan"]),
     // 支持代理
-    useProxy: new Set(["openai", "claude", "gemini", "google", "deepl", "moonshot", "tongyi", "xiaoniu"]),
+    useProxy: new Set(["openai", "claude", "gemini", "google", "deepl", "moonshot", "tongyi", "xiaoniu","baichuan"]),
     // 函数
     isMachine: (service: string) => services.machine.has(service),
     isAI: (service: string) => services.ai.has(service),
@@ -47,6 +49,7 @@ export const models = new Map<string, Array<string>>([
     [services.claude, ["claude3-Haiku", "claude3-Sonnet", "claude3-Opus"]],    // claude 也不支持自定义模型
     [services.custom, ["gpt-3.5-turbo","gpt-4o", "gpt-4", "gpt-4-turbo","gemma:7b", "llama2:7b", "mistral:7b", customModelString]],
     [services.infini, ["infini-megrez-7b", "llama-2-13b-chat", "qwen-14b-chat", "llama-2-70b-chat", "qwen-72b-chat", customModelString]],
+    [services.baichuan, ["Baichuan2-Turbo", "Baichuan2-53B", customModelString]],
 ]);
 
 export const options = {
@@ -193,6 +196,11 @@ export const options = {
         {
             value: services.infini,
             label: '无向芯穹',
+        },
+        {
+            value: services.baichuan,
+            label: '百川大模型',
+            model: "Baichuan2-Turbo",
         },
         {
             value: services.custom,

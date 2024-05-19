@@ -13,6 +13,8 @@ import xiaoniu from "./xiaoniu";
 import claude from "./claude";
 import infini from "@/entrypoints/translator/infini";
 import baidu from "@/entrypoints/translator/baidu";
+import baichuang from "@/entrypoints/translator/baichuang";
+import baichuan from "@/entrypoints/translator/baichuang";
 
 
 export const translator = {
@@ -30,4 +32,5 @@ export const translator = {
     [services.claude]: claude,
     [services.infini]: infini,
     [services.baidu]: baidu,
+    [services.baichuan]: baichuan,
 }
