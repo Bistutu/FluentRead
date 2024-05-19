@@ -3,7 +3,7 @@ import microsoft from "./microsoft";
 import deepl from "./deepl";
 import openai from "./openai";
 import moonshot from "./moonshot";
-import ollama from "./ollama";
+import custom from "./custom";
 import tongyi from "./tongyi";
 import zhipu from "./zhipu";
 import yiyan from "./yiyan";
@@ -21,7 +21,7 @@ export const translator = {
     [services.google]: google,
     [services.openai]: openai,
     [services.moonshot]: moonshot,
-    [services.ollama]: ollama,
+    [services.custom]: custom,
     [services.tongyi]: tongyi,
     [services.zhipu]: zhipu,
     [services.yiyan]: yiyan,

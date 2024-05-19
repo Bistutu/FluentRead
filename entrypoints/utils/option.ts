@@ -12,23 +12,23 @@ export const services = {
     zhipu: 'zhipu',
     moonshot: 'moonshot',
     claude: 'claude',
-    ollama: 'ollama',
+    custom: 'custom',
     infini: 'infini',
     baidu: 'baidu',
     // 阵营划分
     machine: new Set(["microsoft", "deepL", "google", "xiaoniu", "baidu"]),
-    ai: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu", "moonshot", "claude", "ollama", "infini"]),
+    ai: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu", "moonshot", "claude", "custom", "infini"]),
     // 需要 token，或者 ak/sk
-    useToken: new Set(["openai", "gemini", "tongyi", "zhipu", "moonshot", "claude", "deepL", "xiaoniu", "infini"]),
+    useToken: new Set(["openai", "gemini", "tongyi", "zhipu", "moonshot", "claude", "deepL", "xiaoniu", "infini","custom"]),
     useAkSk: new Set(["yiyan"]),
     // 需要 model
-    useModel: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu", "moonshot", "claude", "ollama", "infini"]),
+    useModel: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu", "moonshot", "claude", "custom", "infini"]),
     // 支持代理
     useProxy: new Set(["openai", "claude", "gemini", "google", "deepl", "moonshot", "tongyi", "xiaoniu"]),
     // 函数
     isMachine: (service: string) => services.machine.has(service),
     isAI: (service: string) => services.ai.has(service),
-    isNative: (service: string) => service === "ollama",
+    isCustom: (service: string) => service === "custom",
     isUseToken: (service: string) => services.useToken.has(service),
     isUseAkSk: (service: string) => services.useAkSk.has(service),
     isUseAppIdKey: (service: string) => service === "baidu",
@@ -45,7 +45,7 @@ export const models = new Map<string, Array<string>>([
     [services.zhipu, ["glm-4", "glm-4v", "glm-3-turbo", customModelString]],
     [services.moonshot, ["moonshot-v1-8k", customModelString]],
     [services.claude, ["claude3-Haiku", "claude3-Sonnet", "claude3-Opus"]],    // claude 也不支持自定义模型
-    [services.ollama, ["gemma:7b", "llama2:7b", "mistral:7b", customModelString]],
+    [services.custom, ["gpt-3.5-turbo","gpt-4o", "gpt-4", "gpt-4-turbo","gemma:7b", "llama2:7b", "mistral:7b", customModelString]],
     [services.infini, ["infini-megrez-7b", "llama-2-13b-chat", "qwen-14b-chat", "llama-2-70b-chat", "qwen-72b-chat", customModelString]],
 ]);
 
@@ -195,8 +195,8 @@ export const options = {
             label: '无向芯穹',
         },
         {
-            value: services.ollama,
-            label: 'Ollama本地模型',
+            value: services.custom,
+            label: '⭐自定义⭐️',
         },
     ],
     display: [
@@ -272,7 +272,7 @@ export const defaultOption = {
     style: 0,
     hotkey: 'Control',
     service: services.microsoft,
-    native: 'http://localhost:11434/v1/chat/completions',
+    custom: 'http://localhost:11434/v1/chat/completions',
     system_role: 'You are a professional, authentic translation engine, only returns translations.',
     user_role: `Please translate them into {{to}}, please do not explain my original text.:
 

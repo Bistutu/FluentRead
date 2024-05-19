@@ -30,7 +30,7 @@
             content="流畅阅读目前支持“仅译文”和“双语对照”两种翻译模式"
             placement="top-start"
         >
-        <span class="popup-text popup-vertical-left">翻译模式<el-icon class="icon-margin"><ChatDotRound/></el-icon></span>
+          <span class="popup-text popup-vertical-left">翻译模式<el-icon class="icon-margin"><ChatDotRound/></el-icon></span>
         </el-tooltip>
       </el-col>
       <el-col :span="12">
@@ -182,19 +182,20 @@
     </el-row>
 
     <!-- 本地大模型配置 -->
-    <el-row v-show="compute.showNative" class="margin-bottom margin-left-2em">
+    <el-row v-show="compute.showCustom" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip
             class="box-item"
             effect="dark"
-            content="由于本地服务的特殊性，目前仅支持 openai 格式的请求接口，且需要在命令行使用以下命令启动ollama（允许跨域访问）：OLLAMA_ORIGINS=chrome-extension://* ollama serve"
+            content="目前仅支持OpenAI格式的请求接口，如http://localhost:3000/v1/chat/completions，其中 localhost:11434 可更换为任意值。
+                     如果使用的是 ollama，则需要使用 OLLAMA_ORIGINS=chrome-extension://* ollama serve 启动 ollama 以允许跨域访问。"
             placement="top-start"
         >
-          <span class="popup-text popup-vertical-left">本地接口<el-icon class="icon-margin"><ChatDotRound/></el-icon></span>
+          <span class="popup-text popup-vertical-left">自定义接口<el-icon class="icon-margin"><ChatDotRound/></el-icon></span>
         </el-tooltip>
       </el-col>
       <el-col :span="12">
-        <el-input v-model="config.native" placeholder="请输入本地接口地址"/>
+        <el-input v-model="config.custom" placeholder="请输入自定义接口地址"/>
       </el-col>
     </el-row>
 
@@ -334,8 +335,8 @@ let compute = ref({
   showAkSk: computed(() => services.isUseAkSk(config.value.service)),
   // 7、获取模型列表
   model: computed(() => models.get(config.value.service) || []),
-  // 8、是否为 ollama
-  showNative: computed(() => services.isNative(config.value.service)),
+  // 8、是否需要自定义接口
+  showCustom: computed(() => services.isCustom(config.value.service)),
   // 9、是否自定义模型
   showCustomModel: computed(() => services.isAI(config.value.service) && config.value.model[config.value.service] === "自定义模型"),
   // 10、是否使用 appid、key

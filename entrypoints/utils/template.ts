@@ -15,10 +15,7 @@ export function openaiMsgTemplate(config: Config, origin: string) {
         "temperature": 0.3,
         'messages': [
             {'role': 'system', 'content': system},
-            {
-                'role': 'user',
-                'content': user
-            },
+            {'role': 'user', 'content': user},
             {'role': "assistant", 'content': '你好'},
             {'role': 'user', 'content': origin}
         ]
@@ -31,18 +28,9 @@ export function geminiMsgTemplate(config: Config, origin: string) {
 
     return JSON.stringify({
         "contents": [
-            {
-                "role": "user",
-                "parts": [{"text": user}]
-            },
-            {
-                "role": "model",
-                "parts": [{"text": "你好"}]
-            },
-            {
-                "role": "user",
-                "parts": [{"text": origin}]
-            }]
+            {"role": "user", "parts": [{"text": user}]},
+            {"role": "model", "parts": [{"text": "你好"}]},
+            {"role": "user", "parts": [{"text": origin}]}]
     })
 }
 
@@ -81,10 +69,7 @@ export function tongyiMsgTemplate(config: Config, origin: string) {
         "input": {
             "messages": [
                 {"role": "system", "content": system},
-                {
-                    "role": "user",
-                    "content": user
-                },
+                {"role": "user", "content": user},
                 {"role": "assistant", "content": "你好"},
                 {"role": "user", "content": origin}
             ]
@@ -101,10 +86,7 @@ export function yiyanMsgTemplate(config: Config, origin: string) {
         'temperature': 0.3, // 随机度
         'disable_search': true, // 禁用搜索
         'messages': [
-            {
-                "role": "user",
-                "content": user
-            },
+            {"role": "user", "content": user},
             {"role": "assistant", "content": "你好"},
             {"role": "user", "content": origin}
         ],
@@ -113,7 +95,7 @@ export function yiyanMsgTemplate(config: Config, origin: string) {
 
 
 // ollama
-export function ollamaMsgTemplate(config: Config, origin: string) {
+export function customMsgTemplate(config: Config, origin: string) {
     let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
 
     let system = config.system_role[config.service] || defaultOption.system_role;
@@ -122,13 +104,12 @@ export function ollamaMsgTemplate(config: Config, origin: string) {
     return JSON.stringify({
         'model': model,
         "stream": false,
-        "temperature": 0.1,
+        "temperature": 0.3,
         'messages': [
             {'role': 'system', 'content': system},
-            {
-                'role': 'user',
-                'content': user,
-            },
+            {'role': 'user', 'content': user},
+            {'role': "assistant", 'content': '你好'},
+            {'role': 'user', 'content': origin}
         ]
     })
 }

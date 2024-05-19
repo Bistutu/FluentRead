@@ -25,7 +25,7 @@ export class Config {
     model: IMapping;
     customModel: IMapping;  // 自定义模型名称
     proxy: IMapping;  // 代理地址
-    native: string; // 本地服务地址
+    custom: string; // 本地服务地址
     extra: IExtra;  // 额外信息（内包信息）
     system_role: IMapping;
     user_role: IMapping;
@@ -47,7 +47,7 @@ export class Config {
         this.model = {};
         this.customModel = {};
         this.proxy = {};
-        this.native = defaultOption.native;
+        this.custom = defaultOption.custom;
         this.extra = {};
         this.system_role = {
             [services.openai]: defaultOption.system_role,
@@ -56,7 +56,7 @@ export class Config {
             [services.tongyi]: defaultOption.system_role,
             [services.zhipu]: defaultOption.system_role,
             [services.moonshot]: defaultOption.system_role,
-            [services.ollama]: defaultOption.system_role,
+            [services.custom]: defaultOption.system_role,
             [services.claude]: defaultOption.system_role,
             [services.infini]: defaultOption.system_role,
         },
@@ -67,7 +67,7 @@ export class Config {
                 [services.tongyi]: defaultOption.user_role,
                 [services.zhipu]: defaultOption.user_role,
                 [services.moonshot]: defaultOption.user_role,
-                [services.ollama]: defaultOption.user_role,
+                [services.custom]: defaultOption.user_role,
                 [services.claude]: defaultOption.user_role,
                 [services.infini]: defaultOption.user_role,
             },
