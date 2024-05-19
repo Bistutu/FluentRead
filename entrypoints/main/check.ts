@@ -24,6 +24,12 @@ export function checkConfig(config: Config): boolean {
         return false;
     }
 
+    // 谷歌翻译仅在“双语模式”启用
+    if (config.service === services.google && config.style !== 1) {
+        sendErrorMessage("谷歌翻译仅在“双语模式”下启用，请切换翻译服务")
+        return false;
+    }
+
     return true;
 }
 

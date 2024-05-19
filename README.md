@@ -118,7 +118,7 @@ pnpm install && pnpm dev
 ```
 
 ```shell
-pnpm zip					# 打包为支持 Chromium 内核的插件
+pnpm zip	# 打包为支持 Chromium 内核的插件
 pnpm zip:firefox	# 打包为支持 FireFox 内核的插件
 ```
 

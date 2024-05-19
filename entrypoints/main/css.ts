@@ -103,17 +103,3 @@ export function cssInject() {
     style.textContent = css;
     document.head.appendChild(style);
 }
-
-// 双语翻译的 9 种模式：默认、弱化、实线下划线、虚线下划线、学习模式、透明模式、白纸阴影、马克笔、引用、加粗
-export const displays = {
-    [options.display[0].value]: "fluent-display-default",
-    [options.display[1].value]: "fluent-display-dimmed",
-    [options.display[2].value]: "fluent-display-solid-underline",
-    [options.display[3].value]: "fluent-display-dot-underline",
-    [options.display[4].value]: "fluent-display-learning-mode",
-    [options.display[5].value]: "fluent-display-transparent-mode",
-    [options.display[6].value]: "fluent-display-card-mode",
-    [options.display[7].value]: "fluent-display-marker",
-    [options.display[8].value]: "fluent-display-quote",
-    [options.display[9].value]: "fluent-display-bold",
-}

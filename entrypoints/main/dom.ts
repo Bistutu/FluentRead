@@ -1,14 +1,13 @@
 import {checkConfig, hasClassName, skipNode} from "./check";
 import {Config} from "../utils/model";
 import {getMainDomain, replaceCompatFn, selectCompatFn} from "./compatible";
-import {cache, checkAndRemoveStyle, stringifyNode} from "../utils/cache";
+import {cache, checkAndRemoveStyle} from "../utils/cache";
 import {detectlang} from "./detectlang";
-import {services} from "../utils/option";
+import {options, services} from "../utils/option";
 import {insertFailedTip, insertLoadingSpinner} from "./icon";
 import {beautyHTML} from "./common";
 import {throttle} from "@/entrypoints/utils/tip";
 import {styles} from "@/entrypoints/utils/constant";
-import {displays} from "@/entrypoints/main/css";
 
 let hoverTimer: any; // 鼠标悬停计时器
 let htmlSet = new Set();   // 去重
@@ -80,7 +79,7 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
                 setTimeout(() => {
                     spinner.remove();
                     htmlSet.delete(htmlString);
-                    bilingualAppendChild(config,node, cached);  // 追加至原文后面
+                    bilingualAppendChild(config, node, cached);  // 追加至原文后面
                 }, 250);
 
                 return;
@@ -117,7 +116,7 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
 }
 
 // 双语模式追加翻译结果+控制样式
-function bilingualAppendChild(config:Config,node: any, text: string) {
+function bilingualAppendChild(config: Config, node: any, text: string) {
 
     let root = document.createElement("span");
     let br = document.createElement("br");
@@ -125,8 +124,8 @@ function bilingualAppendChild(config:Config,node: any, text: string) {
 
     root.classList.add("fluent-read-bilingual");
 
-    newNode.innerHTML =  text;
-    newNode.classList.add(displays[config.display]);
+    newNode.innerHTML = text;
+    newNode.classList.add(options.styles[config.display].class);   // 控制译文显示样式
 
     root.appendChild(br);
     root.appendChild(newNode);
@@ -162,7 +161,7 @@ function bilingualTranslate(config: Config, node: any, htmlString: string) {
                 }, 250);
 
                 if (!text || origin === text) return;
-                bilingualAppendChild(config,node, text);
+                bilingualAppendChild(config, node, text);
                 cache.bilingualSet(config, origin, text);
             })
             .catch(error => {

@@ -132,6 +132,12 @@ export const options = {
             value: services.microsoft,
             label: '微软翻译',
         },
+        // 谷歌翻译只在双语模式中使用
+        {
+            value: services.google,
+            label: '谷歌翻译',
+            hidden: true,
+        },
         {
             value: services.deepL,
             label: 'DeepL翻译',
@@ -144,11 +150,6 @@ export const options = {
             value: services.xiaoniu,
             label: '小牛翻译',
         },
-        // free 接口，翻译 html 会出现问题，暂不启用。
-        // {
-        //     value: services.google,
-        //     label: 'Google翻译',
-        // },
         {
             value: 'ai',
             label: 'AI翻译',
@@ -198,56 +199,67 @@ export const options = {
             label: 'Ollama本地模型',
         },
     ],
-    styles: [
+    display: [
         {
             value: 0,
             label: '仅译文',
         },
         {
             value: 1,
-            label: '双语对照-测试版',
+            label: '双语模式',
         },
     ],
-    display: [
+    // 双语翻译的 9 种模式：默认、弱化、实线下划线、虚线下划线、学习模式、透明模式、白纸阴影、马克笔、引用、加粗
+    styles: [
         {
             value: 0,
             label: '默认',
+            class: 'fluent-display-default',
         },
         {
             value: 1,
             label: '弱化',
+            class: 'fluent-display-dimmed',
         },
         {
             value: 2,
             label: '实线下划线',
+            class: 'fluent-display-solid-underline',
         },
         {
             value: 3,
             label: '虚线下划线',
+            class: 'fluent-display-dot-underline',
         },
         {
             value: 4,
             label: '学习模式',
+            class: 'fluent-display-learning-mode',
         },
         {
           value: 5,
             label: '透明模式',
+            class: 'fluent-display-transparent-mode',
         },
         {
             value: 6,
             label: '阴影效果',
+            class: 'fluent-display-card-mode',
         },
         {
             value: 7,
             label: '马克笔',
+            class: 'fluent-display-marker',
         },
         {
             value: 8,
             label: '引用模式',
+            class: 'fluent-display-quote',
         },
         {
             value: 9,
             label: '加粗模式',
+            class: 'fluent-display-bold',
         },
     ],
 }

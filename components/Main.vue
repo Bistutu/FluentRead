@@ -30,7 +30,7 @@
         <el-select v-model="config.style" placeholder="请选择翻译样式">
           <el-option
               class="select-left"
-              v-for="item in options.styles"
+              v-for="item in options.display"
               :key="item.value"
               :label="item.label"
               :value="item.value"
@@ -39,17 +39,16 @@
       </el-col>
     </el-row>
 
-<!--    如果选择了“双语翻译样式，则应显示译文显示样式”-->
+    <!--    如果选择了“双语翻译样式，则应显示译文显示样式”-->
     <el-row v-show="config.style === 1" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
-        <span class="popup-text
-        popup-vertical-left">译文显示样式</span>
+        <span class="popup-text popup-vertical-left">译文样式</span>
       </el-col>
       <el-col :span="12">
         <el-select v-model="config.display" placeholder="请选择译文显示样式">
           <el-option
               class="select-left"
-              v-for="item in options.display"
+              v-for="item in options.styles"
               :key="item.value"
               :label="item.label"
               :value="item.value"
@@ -67,7 +66,7 @@
         <el-select v-model="config.service" placeholder="请选择翻译服务">
           <el-option
               class="select-left"
-              v-for="item in options.services"
+              v-for="item in compute.filteredServices"
               :key="item.value"
               :label="item.label"
               :value="item.value"
@@ -334,6 +333,15 @@ let compute = ref({
   showCustomModel: computed(() => services.isAI(config.value.service) && config.value.model[config.value.service] === "自定义模型"),
   // 10、是否使用 appid、key
   showAppIdKey: computed(() => services.isUseAppIdKey(config.value.service)),
+  // 判断是否为“双语模式”，控制一些翻译服务的显示
+  filteredServices: computed((service: any) => {
+    return options.services.filter((service: any) => {
+      if (service.value === 'google' && config.value.style !== 1) {
+        return false;
+      }
+      return true;
+    });
+  })
 })
 
 </script>
