@@ -213,7 +213,7 @@ export const options = {
     styles: [
         {
             value: 0,
-            label: '默认',
+            label: '默认样式',
             class: 'fluent-display-default',
         },
         {
@@ -233,17 +233,17 @@ export const options = {
         },
         {
             value: 4,
-            label: '学习模式',
+            label: '学习效果',
             class: 'fluent-display-learning-mode',
         },
         {
           value: 5,
-            label: '透明模式',
+            label: '透明',
             class: 'fluent-display-transparent-mode',
         },
         {
             value: 6,
-            label: '阴影效果',
+            label: '阴影',
             class: 'fluent-display-card-mode',
         },
         {
@@ -253,12 +253,12 @@ export const options = {
         },
         {
             value: 8,
-            label: '引用模式',
+            label: '引用',
             class: 'fluent-display-quote',
         },
         {
             value: 9,
-            label: '加粗模式',
+            label: '加粗',
             class: 'fluent-display-bold',
         },
     ],
@@ -268,8 +268,8 @@ export const defaultOption = {
     on: true,
     from: 'auto',
     to: 'zh-Hans',
-    style: 0,
     display: 0,
+    style: 0,
     hotkey: 'Control',
     service: services.microsoft,
     native: 'http://localhost:11434/v1/chat/completions',

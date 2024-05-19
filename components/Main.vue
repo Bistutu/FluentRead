@@ -21,13 +21,20 @@
   </div>
 
   <div v-show="config.on">
-    <!--    翻译样式-->
+    <!--    翻译模式-->
     <el-row class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
-        <span class="popup-text popup-vertical-left">翻译样式</span>
+        <el-tooltip
+            class="box-item"
+            effect="dark"
+            content="流畅阅读目前支持“仅译文”和“双语对照”两种翻译模式"
+            placement="top-start"
+        >
+        <span class="popup-text popup-vertical-left">翻译模式<el-icon class="icon-margin"><ChatDotRound/></el-icon></span>
+        </el-tooltip>
       </el-col>
       <el-col :span="12">
-        <el-select v-model="config.style" placeholder="请选择翻译样式">
+        <el-select v-model="config.style" placeholder="请选择翻译模式">
           <el-option
               class="select-left"
               v-for="item in options.display"
@@ -85,8 +92,8 @@
             content="流畅阅读会自动识别源语言，目标语言需设置"
             placement="top-start"
         >
-          <span class="popup-text popup-vertical-left">目标语言<el-icon class="icon-margin"><ChatDotRound/></el-icon></span>
         </el-tooltip>
+        <span class="popup-text popup-vertical-left">目标语言<el-icon class="icon-margin"><ChatDotRound/></el-icon></span>
 
 
       </el-col>
