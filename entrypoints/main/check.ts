@@ -24,12 +24,17 @@ export function checkConfig(config: Config): boolean {
         return false;
     }
 
-    // 谷歌翻译仅在“双语模式”启用
-    if (config.service === services.google && config.style !== 1) {
-        sendErrorMessage("谷歌翻译仅在“双语模式”下启用，请切换翻译服务")
-        return false;
+    // 部分翻译服务仅在“双语模式”启用
+    if (config.style === 0) {
+        switch (config.service) {
+            case services.google:
+                sendErrorMessage("谷歌翻译仅在“双语模式”下启用，请切换翻译服务")
+                return false;
+            case  services.deepLx:
+                sendErrorMessage("DeepLx 仅在“双语模式”下启用，请切换翻译服务")
+                return false;
+        }
     }
-
     return true;
 }
 

@@ -2,6 +2,7 @@ export const services = {
     // 机器翻译
     microsoft: 'microsoft',
     deepL: 'deepL',
+    deepLx: 'deepLx',
     google: 'google',
     xiaoniu: 'xiaoniu',
     // AI 翻译
@@ -21,7 +22,7 @@ export const services = {
     minimax: 'minimax',
     jieyue: "jieyue",    // 阶跃星辰
     // 阵营划分
-    machine: new Set(["microsoft", "deepL", "google", "xiaoniu", "baidu"]),
+    machine: new Set(["microsoft", "deepL", "google", "xiaoniu", "baidu",'deepLx']),
     ai: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu", "moonshot", "claude",
         "custom", "infini", "baichuan", "deepseek", "lingyi","minimax","jieyue"]),
     // 需要 token，或者 ak/sk
@@ -33,7 +34,7 @@ export const services = {
         "moonshot", "claude", "custom", "infini", "baichuan", "deepseek", "lingyi","minimax","jieyue"]),
     // 支持代理
     useProxy: new Set(["openai", "claude", "gemini", "google", "deepl",
-        "moonshot", "tongyi", "xiaoniu", "baichuan", "deepseek", "lingyi","jieyue"]),
+        "moonshot", "tongyi", "xiaoniu", "baichuan", "deepseek", "lingyi","jieyue","deeplx"]),
     // 函数
     isMachine: (service: string) => services.machine.has(service),
     isAI: (service: string) => services.ai.has(service),
@@ -156,6 +157,11 @@ export const options = {
             value: services.deepL,
             label: 'DeepL翻译',
         },
+        // {
+        //     value:services.deepLx,
+        //     label: 'DeepLx',
+        //     hidden: true,
+        // },
         {
             value: services.baidu,
             label: '百度翻译',

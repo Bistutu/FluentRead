@@ -13,11 +13,13 @@ import infini from "@/entrypoints/translator/infini";
 import baidu from "@/entrypoints/translator/baidu";
 import minimax from "@/entrypoints/translator/minimax";
 import common from "@/entrypoints/translator/common";
+import deeplx from "@/entrypoints/translator/deeplx";
 
 
 export const translator = {
     [services.microsoft]: microsoft,
     [services.deepL]: deepl,
+    [services.deepLx]:deeplx,
     [services.google]: google,
     [services.openai]: common,
     [services.moonshot]: common,

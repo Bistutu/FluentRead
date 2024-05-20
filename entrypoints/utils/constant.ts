@@ -8,6 +8,7 @@ export const app = {
 
 export const urls = {
     [services.deepL]: "https://api-free.deepl.com/v2/translate",
+    [services.deepLx]: "http://localhost:1188/translate",
     [services.openai]: "https://api.openai.com/v1/chat/completions",
     [services.moonshot]: "https://api.moonshot.cn/v1/chat/completions",
     [services.custom]: "https://localhost:11434/v1/chat/completions",
