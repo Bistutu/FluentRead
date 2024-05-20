@@ -3,12 +3,13 @@ import {Config} from "./model";
 import {customModelString, defaultOption, services} from "./option";
 
 // openai 格式的消息模板（通用）
-export function openaiMsgTemplate(config: Config, origin: string) {
+export function commonMsgTemplate(config: Config, origin: string) {
     // 检测是否使用自定义模型
     let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
 
     let system = config.system_role[config.service] || defaultOption.system_role;
-    let user = ((config.user_role[config.service] || defaultOption.user_role)).replace('{{to}}', config.to).replace('{{origin}}', 'hello');
+    let user = (config.user_role[config.service] || defaultOption.user_role)
+        .replace('{{to}}', config.to).replace('{{origin}}', 'hello');
 
     return JSON.stringify({
         'model': model,
@@ -24,7 +25,8 @@ export function openaiMsgTemplate(config: Config, origin: string) {
 
 // gemini
 export function geminiMsgTemplate(config: Config, origin: string) {
-    let user = (config.user_role[config.service] || defaultOption.user_role).replace('{{to}}', config.to).replace('{{origin}}', 'hello');
+    let user = (config.user_role[config.service] || defaultOption.user_role)
+        .replace('{{to}}', config.to).replace('{{origin}}', 'hello');
 
     return JSON.stringify({
         "contents": [
@@ -42,7 +44,8 @@ export function claudeMsgTemplate(config: Config, origin: string) {
     else if (model === "Opus") model = "claude-3-opus-20240229";
 
     let system = config.system_role[config.service] || defaultOption.system_role;
-    let user = (config.user_role[config.service] || defaultOption.user_role).replace('{{to}}', config.to).replace('{{origin}}', 'hello');
+    let user = (config.user_role[config.service] || defaultOption.user_role)
+        .replace('{{to}}', config.to).replace('{{origin}}', 'hello');
 
     return JSON.stringify({
         model: model,
@@ -62,7 +65,8 @@ export function tongyiMsgTemplate(config: Config, origin: string) {
     let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
 
     let system = config.system_role[config.service] || defaultOption.system_role;
-    let user = (config.user_role[config.service] || defaultOption.user_role).replace('{{to}}', config.to).replace('{{origin}}', 'hello');
+    let user = (config.user_role[config.service] || defaultOption.user_role)
+        .replace('{{to}}', config.to).replace('{{origin}}', 'hello');
 
     return JSON.stringify({
         "model": model,
@@ -80,7 +84,8 @@ export function tongyiMsgTemplate(config: Config, origin: string) {
 
 // 文心一言
 export function yiyanMsgTemplate(config: Config, origin: string) {
-    let user = (config.user_role[config.service] || defaultOption.user_role).replace('{{to}}', config.to).replace('{{origin}}', 'hello');
+    let user = (config.user_role[config.service] || defaultOption.user_role)
+        .replace('{{to}}', config.to).replace('{{origin}}', 'hello');
 
     return JSON.stringify({
         'temperature': 0.3, // 随机度
@@ -93,42 +98,21 @@ export function yiyanMsgTemplate(config: Config, origin: string) {
     })
 }
 
-
-// ollama
-export function customMsgTemplate(config: Config, origin: string) {
-    let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
-
-    let system = config.system_role[config.service] || defaultOption.system_role;
-    let user = (config.user_role[config.service] || defaultOption.user_role).replace('{{to}}', config.to).replace('{{origin}}', origin);
-
-    return JSON.stringify({
-        'model': model,
-        "stream": false,
-        "temperature": 0.3,
-        'messages': [
-            {'role': 'system', 'content': system},
-            {'role': 'user', 'content': user},
-            {'role': "assistant", 'content': '你好'},
-            {'role': 'user', 'content': origin}
-        ]
-    })
-}
-
 export function minimaxTemplate(config: Config, origin: string) {
-    let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
 
     let system = config.system_role[config.service] || defaultOption.system_role;
-    let user = (config.user_role[config.service] || defaultOption.user_role).replace('{{to}}', config.to).replace('{{origin}}', origin);
+    let user = (config.user_role[config.service] || defaultOption.user_role)
+        .replace('{{to}}', config.to).replace('{{origin}}', 'hello');
 
     return JSON.stringify({
         model: "abab6.5-chat",
         stream: false,
         temperature: 0.3,
         messages: [
-            { role: 'system', content: system },
-            { role: 'user', content: user },
-            { role: 'assistant', content: '你好' },
-            { role: 'user', content: origin }
+            {role: 'system', content: system},
+            {role: 'user', content: user},
+            {role: 'assistant', content: '你好'},
+            {role: 'user', content: origin}
         ]
     })
 }

@@ -2,7 +2,7 @@
 import {Config} from "../utils/model";
 import {customModelString, services} from "../utils/option";
 import {method} from "../utils/constant";
-import {openaiMsgTemplate} from "@/entrypoints/utils/template";
+import {commonMsgTemplate} from "@/entrypoints/utils/template";
 
 async function infini(config: Config, message: any) {
     // 构建请求头
@@ -16,7 +16,7 @@ async function infini(config: Config, message: any) {
     const resp = await fetch(`https://cloud.infini-ai.com/maas/${model}/nvidia/chat/completions`, {
         method: method.POST,
         headers: headers,
-        body: openaiMsgTemplate(config, message.origin)
+        body: commonMsgTemplate(config, message.origin)
     });
 
     if (resp.ok) {

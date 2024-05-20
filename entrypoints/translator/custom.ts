@@ -1,5 +1,5 @@
 import {Config} from "../utils/model";
-import {customMsgTemplate} from "../utils/template";
+import {commonMsgTemplate} from "../utils/template";
 import {method} from "../utils/constant";
 import {services} from "@/entrypoints/utils/option";
 
@@ -12,7 +12,7 @@ async function custom(config: Config, message: any) {
     const resp = await fetch(config.custom, {
         method: method.POST,
         headers: headers,
-        body: customMsgTemplate(config, message.origin)
+        body: commonMsgTemplate(config, message.origin)
     });
 
     if (resp.ok) {

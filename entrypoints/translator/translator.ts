@@ -1,8 +1,6 @@
 import {services} from "../utils/option";
 import microsoft from "./microsoft";
 import deepl from "./deepl";
-import openai from "./openai";
-import moonshot from "./moonshot";
 import custom from "./custom";
 import tongyi from "./tongyi";
 import zhipu from "./zhipu";
@@ -13,19 +11,16 @@ import xiaoniu from "./xiaoniu";
 import claude from "./claude";
 import infini from "@/entrypoints/translator/infini";
 import baidu from "@/entrypoints/translator/baidu";
-import baichuang from "@/entrypoints/translator/baichuang";
-import baichuan from "@/entrypoints/translator/baichuang";
-import lingyi from "@/entrypoints/translator/lingyi";
-import deepseek from "@/entrypoints/translator/deepseek";
 import minimax from "@/entrypoints/translator/minimax";
+import common from "@/entrypoints/translator/common";
 
 
 export const translator = {
     [services.microsoft]: microsoft,
     [services.deepL]: deepl,
     [services.google]: google,
-    [services.openai]: openai,
-    [services.moonshot]: moonshot,
+    [services.openai]: common,
+    [services.moonshot]: common,
     [services.custom]: custom,
     [services.tongyi]: tongyi,
     [services.zhipu]: zhipu,
@@ -35,8 +30,8 @@ export const translator = {
     [services.claude]: claude,
     [services.infini]: infini,
     [services.baidu]: baidu,
-    [services.baichuan]: baichuan,
-    [services.lingyi]: lingyi,
-    [services.deepseek]: deepseek,
+    [services.baichuan]: common,
+    [services.lingyi]: common,
+    [services.deepseek]: common,
     [services.minimax]: minimax,
 }

@@ -1,7 +1,7 @@
 import {Config} from "../utils/model";
 import {method, urls} from "../utils/constant";
 import {services} from "../utils/option";
-import {openaiMsgTemplate} from "../utils/template";
+import {commonMsgTemplate} from "../utils/template";
 import CryptoJS from 'crypto-js';
 
 
@@ -28,7 +28,7 @@ async function zhipu(config: Config, message: any) {
     const resp = await fetch(urls[services.zhipu], {
         method: method.POST,
         headers: headers,
-        body: openaiMsgTemplate(config, message.origin)
+        body: commonMsgTemplate(config, message.origin)
     });
 
     if (resp.ok) {
