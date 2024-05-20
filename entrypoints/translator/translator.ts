@@ -34,4 +34,5 @@ export const translator = {
     [services.lingyi]: common,
     [services.deepseek]: common,
     [services.minimax]: minimax,
+    [services.jieyue]:common,
 }

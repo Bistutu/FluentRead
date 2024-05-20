@@ -19,6 +19,7 @@ export const urls = {
     [services.baichuan]: "https://api.baichuan-ai.com/v1/chat/completions",
     [services.lingyi]: "https://api.lingyiwanwu.com/v1/chat/completions",
     [services.deepseek]: "https://api.deepseek.com/chat/completions",
+    [services.jieyue]:"https://api.stepfun.com/v1/chat/completions",
 }
 
 export const method = {POST: "POST", GET: "GET",};

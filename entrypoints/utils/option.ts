@@ -19,20 +19,21 @@ export const services = {
     lingyi: 'lingyi',
     deepseek: 'deepseek',
     minimax: 'minimax',
+    jieyue: "jieyue",    // 阶跃星辰
     // 阵营划分
     machine: new Set(["microsoft", "deepL", "google", "xiaoniu", "baidu"]),
-    ai: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu",
-        "moonshot", "claude", "custom", "infini", "baichuan", "deepseek", "lingyi","minimax"]),
+    ai: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu", "moonshot", "claude",
+        "custom", "infini", "baichuan", "deepseek", "lingyi","minimax","jieyue"]),
     // 需要 token，或者 ak/sk
     useToken: new Set(["openai", "gemini", "tongyi", "zhipu", "moonshot", "claude",
-        "deepL", "xiaoniu", "infini", "custom", "baichuan", "deepseek", "lingyi","minimax"]),
+        "deepL", "xiaoniu", "infini", "custom", "baichuan", "deepseek", "lingyi","minimax","jieyue"]),
     useAkSk: new Set(["yiyan"]),
     // 需要 model
     useModel: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu",
-        "moonshot", "claude", "custom", "infini", "baichuan", "deepseek", "lingyi","minimax"]),
+        "moonshot", "claude", "custom", "infini", "baichuan", "deepseek", "lingyi","minimax","jieyue"]),
     // 支持代理
     useProxy: new Set(["openai", "claude", "gemini", "google", "deepl",
-        "moonshot", "tongyi", "xiaoniu", "baichuan", "deepseek", "lingyi"]),
+        "moonshot", "tongyi", "xiaoniu", "baichuan", "deepseek", "lingyi","jieyue"]),
     // 函数
     isMachine: (service: string) => services.machine.has(service),
     isAI: (service: string) => services.ai.has(service),
@@ -59,6 +60,7 @@ export const models = new Map<string, Array<string>>([
     [services.lingyi, ["yi-spark", "yi-medium", "yi-large", "yi-large-turbo", customModelString]],
     [services.deepseek, ["deepseek-chat", customModelString]],
     [services.minimax, ["chatcompletion_v2"]],
+    [services.jieyue,["step-1-8k",customModelString]],
 ]);
 
 export const options = {
@@ -217,6 +219,10 @@ export const options = {
         {
             value: services.minimax,
             label: 'MiniMax',
+        },
+        {
+            value: services.jieyue,
+            label: '阶跃星辰'
         },
         {
             value: services.infini,
