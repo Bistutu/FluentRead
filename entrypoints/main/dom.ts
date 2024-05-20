@@ -58,7 +58,7 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
         // 判断是否为双语对照模式，如果是则走双语翻译
         if (config.style === styles.bilingualComparison) {
             // 如果已经翻译过，则移除译文
-            let bilingualNode = hasClassName(node, 'fluent-read-bilingual');
+            let bilingualNode = hasClassName(node, 'fluent-bilingual-tag');
             if (bilingualNode) {
                 let spinner = insertLoadingSpinner(bilingualNode, true);
                 setTimeout(() => {
@@ -119,23 +119,19 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
 // 双语模式追加翻译结果+控制样式
 function bilingualAppendChild(config: Config, node: any, text: string) {
 
-    let root = document.createElement("span");
-    let br = document.createElement("br");
     let newNode = document.createElement("span");
 
-    root.classList.add("fluent-read-bilingual");
-
-    newNode.innerHTML = text;
+    newNode.classList.add("fluent-bilingual-style","fluent-bilingual-tag")  // 样式、标记
     newNode.classList.add(options.styles[config.display].class);   // 控制译文显示样式
 
-    root.appendChild(br);
-    root.appendChild(newNode);
+    newNode.innerHTML = text;
 
     // 移除特定样式，这些样式会影响翻译结果的显示
     smashTruncationStyle(node);
 
-    node.appendChild(root);
+    node.appendChild(newNode);
 }
+
 
 // 按钮翻译节流
 const btnTransThrottle = throttle(btnTrans, 250);

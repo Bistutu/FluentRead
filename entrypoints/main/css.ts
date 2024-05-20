@@ -98,6 +98,13 @@ const css = `
     font-weight: bold;
 }
 
+/*双语模式，block 强制换行、inline-block 自适应换行*/
+.fluent-bilingual-style{
+    display: block;
+    word-break: break-word;
+    margin: 8px 0 !important;
+}
+
 `;
 
 export function cssInject() {
