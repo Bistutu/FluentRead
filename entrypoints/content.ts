@@ -47,7 +47,7 @@ export default defineContentScript({
         });
         // 5、（手机端）触摸事件，三指触摸时触发翻译（取触摸点中心位置）
         document.body.addEventListener('touchstart', event => {
-            if (event.touches.length === 3 && screen.hotkeyPressed) {
+            if (event.touches.length === 3) {
                 let centerX = (event.touches[0].clientX + event.touches[1].clientX + event.touches[2].clientX) / 3;
                 let centerY = (event.touches[0].clientY + event.touches[1].clientY + event.touches[2].clientY) / 3;
                 handler(config, centerX, centerY)
