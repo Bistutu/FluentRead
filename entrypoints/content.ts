@@ -33,7 +33,7 @@ export default defineContentScript({
         window.addEventListener('keydown', event => {
             if (config.hotkey === event.key) {
                 screen.hotkeyPressed = true;
-                handler(config, screen.mouseX, screen.mouseY)
+                handler(config, screen.mouseX, screen.mouseY,25)
             }
         })
 

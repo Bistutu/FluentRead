@@ -10,6 +10,8 @@ import {throttle} from "@/entrypoints/utils/tip";
 import {styles} from "@/entrypoints/utils/constant";
 import {smashTruncationStyle} from "@/entrypoints/main/css";
 
+// todo 需重构、分离
+
 let hoverTimer: any; // 鼠标悬停计时器
 let htmlSet = new Set();   // 去重
 const url = new URL(location.href.split('?')[0]);
@@ -18,8 +20,6 @@ const url = new URL(location.href.split('?')[0]);
 const directSet = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', "li"]);
 // 当遇到这些节点时，不应当翻译
 const skipSet = new Set(["html", "body",]); // "iframe" 暂时去除
-// button兼容（避免按钮失去响应式点击事件）
-const buttonCompatSet = new Set(['button', 'submit', 'reset', 'image', 'file']);
 
 // 1、若某节点的兄弟节点中「只」包含下列节点，则应当翻译其父节点
 // 2、llm 模式翻译时，翻译下列节点的 outerHTML 属性
@@ -46,12 +46,12 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
         if (skipNode(node)) return;
 
         // 去重判断
-        let htmlString = node.outerHTML;
-        if (htmlSet.has(htmlString)) {
+        let nodeOuterHTML = node.outerHTML;
+        if (htmlSet.has(nodeOuterHTML)) {
             // console.log('重复节点', node);
             return;
         }
-        htmlSet.add(htmlString);
+        htmlSet.add(nodeOuterHTML);
 
 
         // TODO 2024.5.18 下述代码需重构
@@ -64,7 +64,7 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
                 setTimeout(() => {
                     spinner.remove();
                     bilingualNode.remove();
-                    htmlSet.delete(htmlString);
+                    htmlSet.delete(nodeOuterHTML);
                 }, 250);
                 return;
             }
@@ -73,20 +73,20 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
             if (cached) {
                 let spinner = insertLoadingSpinner(node, true);
                 if (!cached || origin === cached) {
-                    htmlSet.delete(htmlString);
+                    htmlSet.delete(nodeOuterHTML);
                     return;
                 }
                 // 250 ms 后移除 spinner
                 setTimeout(() => {
                     spinner.remove();
-                    htmlSet.delete(htmlString);
+                    htmlSet.delete(nodeOuterHTML);
                     bilingualAppendChild(config, node, cached);  // 追加至原文后面
                 }, 250);
 
                 return;
             }
 
-            bilingualTranslate(config, node, htmlString)
+            bilingualTranslate(config, node, nodeOuterHTML)
             return;
         }
 
@@ -99,7 +99,7 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
             let spinner = insertLoadingSpinner(node, true);
             setTimeout(() => {  // 延迟 remove 转圈动画与替换文本
                 spinner.remove();
-                htmlSet.delete(htmlString);
+                htmlSet.delete(nodeOuterHTML);
                 let compatFn = replaceCompatFn[getMainDomain(url.host)];    // 兼容函数
                 if (compatFn) {
                     compatFn(node, outerHTMLCache);    // 兼容函数
@@ -220,13 +220,14 @@ function grabNode(config: Config, node: any): any {
     return false
 }
 
-function bilingualTranslate(config: Config, node: any, htmlString: string) {
+function bilingualTranslate(config: Config, node: any, nodeOuterHTML: any) {
     // 正则表达式去除所有空格后再检查语言类型
     if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
     // 待翻译文本
     let origin = node.innerText
     // 插入转圈动画
     let spinner = insertLoadingSpinner(node);
+    // 超时控制
     let timeout = setTimeout(() => {
         insertFailedTip(config, node, "timeout", spinner);
     }, 45000);
@@ -234,21 +235,20 @@ function bilingualTranslate(config: Config, node: any, htmlString: string) {
     // 调用翻译服务（正在翻译ing...），允许失败重试 3 次、间隔 500ms
     const translating = (failCount = 0) => {
 
-        // 翻译次数 +1，更新配置
-        config.count++ && storage.setItem('local:config', JSON.stringify(config));
+        config.count++ && storage.setItem('local:config', JSON.stringify(config));  // 翻译次数 +1，更新配置
 
         browser.runtime.sendMessage({context: document.title, origin: origin})
             .then((text: string) => {
                 clearTimeout(timeout) // 取消超时
                 spinner.remove()      // 移除 spinner
                 setTimeout(() => {
-                    htmlSet.delete(htmlString);
-                }, 250);
+                    bilingualAppendChild(config, node, text);
+                    htmlSet.delete(nodeOuterHTML);
+                }, 150);
 
                 // 相同也不应该隐藏，否则可能会造成用户误解
                 // if (!text || origin === text) return;
 
-                bilingualAppendChild(config, node, text);
                 cache.bilingualSet(config, origin, text);
             })
             .catch(error => {
