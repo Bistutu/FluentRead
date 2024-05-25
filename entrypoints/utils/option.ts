@@ -258,9 +258,10 @@ export const options = {
         },
         {
             value: 1,
-            label: '弱化',
-            class: 'fluent-display-dimmed',
+            label: '加粗',
+            class: 'fluent-display-bold',
         },
+
         {
             value: 2,
             label: '实线下划线',
@@ -271,10 +272,11 @@ export const options = {
             label: '虚线下划线',
             class: 'fluent-display-dot-underline',
         },
+
         {
             value: 4,
-            label: '学习效果',
-            class: 'fluent-display-learning-mode',
+            label: '弱化',
+            class: 'fluent-display-dimmed',
         },
         {
             value: 5,
@@ -288,19 +290,20 @@ export const options = {
         },
         {
             value: 7,
+            label: '学习效果',
+            class: 'fluent-display-learning-mode',
+        },
+        {
+            value: 8,
             label: '马克笔',
             class: 'fluent-display-marker',
         },
         {
-            value: 8,
+            value: 9,
             label: '引用',
             class: 'fluent-display-quote',
         },
-        {
-            value: 9,
-            label: '加粗',
-            class: 'fluent-display-bold',
-        },
+
     ],
 }
 

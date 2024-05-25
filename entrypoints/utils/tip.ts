@@ -1,4 +1,5 @@
 import {ElMessage} from "element-plus";
+import {throttle} from "@/entrypoints/utils/common";
 
 const prefix = "流畅阅读：";
 
@@ -8,18 +9,6 @@ function _sendErrorMessage(message: string) {
 
 function _sendSuccessMessage(message: string) {
     ElMessage({message: prefix + message, type: 'success'});
-}
-
-// 修改防抖限流函数（允许传递参数）
-export function throttle(fn: (...args: any[]) => void, interval: number) {
-    let last = 0;   // 维护上次执行的时间
-    return function(this: any, ...args: any[]) {  // 使用 any 放宽 this 类型
-        const now = Date.now();
-        if (now - last >= interval) {
-            last = now;
-            fn.apply(this, args);  // 使用 apply 来传递参数数组
-        }
-    };
 }
 
 // 使用防抖函数包装，1s 内只能发送一次消息

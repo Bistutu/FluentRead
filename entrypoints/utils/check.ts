@@ -1,6 +1,6 @@
-import {customModelString, services} from "../utils/option";
-import {Config} from "../utils/model";
-import {sendErrorMessage} from "../utils/tip";
+import {customModelString, services} from "./option";
+import {Config} from "./model";
+import {sendErrorMessage} from "./tip";
 
 // 检查翻译前配置
 export function checkConfig(config: Config): boolean {

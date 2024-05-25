@@ -1,8 +1,8 @@
 // 失败时展示的图标
-import {sendErrorMessage} from "../utils/tip";
-import {Config} from "../utils/model";
+import {sendErrorMessage} from "./tip";
+import {Config} from "./model";
 import 'element-plus/es/components/message/style/css'
-import {translate} from "./trans";
+import {singleTranslate} from "@/entrypoints/main/trans";
 
 const icon = {
     retry: `<svg fill="none" viewBox="0 0 40 40" height="40" width="40" style="display: inline; align-items: center; justify-content: center; width: 1em; height: 1em; margin-left: 1em; pointer-events: none;">
@@ -31,7 +31,7 @@ export function insertFailedTip(config: Config, node: any, errMsg: string, spinn
         event.stopPropagation();  // 阻止事件继续向上传播
 
         wrapper.remove();   // 移除错误提示元素，重新翻译
-        translate(config, node);
+        singleTranslate(config, node);
     });
 
     // 添加失败标记 failure

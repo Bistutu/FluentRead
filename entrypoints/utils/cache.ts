@@ -9,21 +9,21 @@ function buildKey(config: Config, message: string) {
     let service = config.service
     let model = config.model[service] === customModelString ? config.customModel[service] : config.model[service]
     // 前缀_服务_模型_目标语言_消息
-    return prefix + service + "_" + model + "_" + config.to + "_" + message
+    return [prefix, config.style, service, model, config.to, message].join('_')
 }
 
 export const cache = {
-    set(set: Set<any>, key: any, time: number) {
+    set(set: Set<any>, key: any, expire: number) {
         set.add(key);
-        if (time >= 0) setTimeout(() => set.delete(key), time);
+        if (expire >= 0) setTimeout(() => set.delete(key), expire);
     },
     // local 系列为特化的缓存方法，用于操作翻译缓存
-    localSet(config: Config, origin: string, result: string) {
-        localStorage.setItem(buildKey(config, origin), result)
+    localSet(config: Config, key: string, value: string) {
+        localStorage.setItem(buildKey(config, key), value)
     },
-    localSetDual(config: Config, origin: string, result: string) {
-        this.localSet(config, result, origin)
-        this.localSet(config, origin, result)
+    localSetDual(config: Config, key: string, value: string) {
+        this.localSet(config, value, key)
+        this.localSet(config, key, value)
     },
     localGet(config: Config, origin: string) {
         return localStorage.getItem(buildKey(config, origin))

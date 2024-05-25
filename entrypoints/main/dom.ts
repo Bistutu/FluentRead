@@ -1,6 +1,7 @@
 import {Config} from "@/entrypoints/utils/model";
-import {btnTransThrottle} from "@/entrypoints/main/trans";
-import {getMainDomain, selectCompatFn} from "@/entrypoints/main/compatible";
+import {getMainDomain, selectCompatFn} from "@/entrypoints/main/compat";
+import {html} from 'js-beautify';
+import {handleBtnTranslation} from "@/entrypoints/main/trans";
 
 // 当遇到这些 tag 时直接翻译
 const directSet = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', "li"]);
@@ -33,12 +34,12 @@ export function grabNode(config: Config, node: any): any {
     // 3、button 按钮适配
     if (curTag === 'button' || (curTag === 'span' && node.parentNode && node.parentNode.tagName.toLowerCase() === 'button')) {
         // 翻译按钮内部而不是整个按钮，避免按钮失去响应式点击事件
-        if (node.textContent.trim() !== '') btnTransThrottle(config, node)
+        if (node.textContent.trim() !== '') handleBtnTranslation(config, node)
         return false;
     }
 
     // 4、特殊适配，根据域名进行特殊处理
-    let fn = selectCompatFn[getMainDomain(url)];
+    let fn = selectCompatFn[getMainDomain(url.host)];
     if (fn && fn(node)) return node;
 
     // 4、如果遇到 span，则首先该节点就符合翻译条件
@@ -97,4 +98,33 @@ export function LLMStandardHTML(node: any) {
         }
     });
     return text;
+}
+
+export function beautyHTML(text: string): string {
+    text = replaceSensitiveWords(text);
+    return html(text)
+}
+
+// 替换 svg 标签中的一些大小写敏感的词（html 不区分大小写，但 svg 标签区分大小写）
+function replaceSensitiveWords(text: string): string {
+    return text.replace(/viewbox|preserveaspectratio|clippathunits|gradienttransform|patterncontentunits|lineargradient|clippath/gi, (match) => {
+        switch (match.toLowerCase()) {
+            case 'viewbox':
+                return 'viewBox';
+            case 'preserveaspectratio':
+                return 'preserveAspectRatio';
+            case 'clippathunits':
+                return 'clipPathUnits';
+            case 'gradienttransform':
+                return 'gradientTransform';
+            case 'patterncontentunits':
+                return 'patternContentUnits';
+            case 'lineargradient':
+                return 'linearGradient';
+            case 'clippath':
+                return 'clipPath';
+            default:
+                return match;
+        }
+    });
 }

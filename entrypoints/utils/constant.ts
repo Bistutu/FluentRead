@@ -33,7 +33,7 @@ export const constants = {
 
 export const styles = {
     // 仅译文
-    translationOnly: 0,
+    singleTranslation: 0,
     // 双语对照模式
-    bilingualComparison: 1,
+    bilingualTranslation: 1,
 }

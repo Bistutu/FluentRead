@@ -1,6 +1,6 @@
 import {Config} from "./utils/model";
 import {cssInject} from "./main/css";
-import {handler} from "./main/trans";
+import {handleTranslation} from "./main/trans";
 import {cache} from "./utils/cache";
 import {constants} from "@/entrypoints/utils/constant";
 
@@ -34,7 +34,7 @@ export default defineContentScript({
         window.addEventListener('keydown', event => {
             if (config.hotkey === event.key) {
                 screen.hotkeyPressed = true;
-                handler(config, screen.mouseX, screen.mouseY, 25)
+                handleTranslation(config, screen.mouseX, screen.mouseY)
             }
         })
 
@@ -43,7 +43,7 @@ export default defineContentScript({
             screen.mouseX = event.clientX;
             screen.mouseY = event.clientY;
             if (screen.hotkeyPressed) {
-                handler(config, screen.mouseX, screen.mouseY, 25, true)
+                handleTranslation(config, screen.mouseX, screen.mouseY, 50)
             }
         });
 
@@ -52,7 +52,7 @@ export default defineContentScript({
             if (event.touches.length === 3) {
                 let centerX = (event.touches[0].clientX + event.touches[1].clientX + event.touches[2].clientX) / 3;
                 let centerY = (event.touches[0].clientY + event.touches[1].clientY + event.touches[2].clientY) / 3;
-                handler(config, centerX, centerY)
+                handleTranslation(config, centerX, centerY)
             }
         });
 
@@ -62,8 +62,8 @@ export default defineContentScript({
                 // 通过双击事件获取鼠标位置
                 let mouseX = event.clientX;
                 let mouseY = event.clientY;
-                // 调用 handler 函数进行翻译
-                handler(config, mouseX, mouseY);
+                // 调用 handleTranslation 函数进行翻译
+                handleTranslation(config, mouseX, mouseY);
             }
         });
 
@@ -79,7 +79,7 @@ export default defineContentScript({
                 timer = setTimeout(() => {
                     let mouseX = event.clientX;
                     let mouseY = event.clientY;
-                    handler(config, mouseX, mouseY);
+                    handleTranslation(config, mouseX, mouseY);
                 }, 500) as unknown as number;
             }
         });
@@ -104,7 +104,7 @@ export default defineContentScript({
                 if (event.button === 1) {
                     let mouseX = event.clientX;
                     let mouseY = event.clientY;
-                    handler(config, mouseX, mouseY);
+                    handleTranslation(config, mouseX, mouseY);
                 }
             }
         });

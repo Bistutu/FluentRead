@@ -17,16 +17,16 @@
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
     "crypto-js": "^4.2.0",
-    "element-plus": "^2.6.2",
+    "element-plus": "^2.7.3",
     "franc-min": "^6.2.0",
     "js-beautify": "^1.15.1",
-    "vue": "^3.4.0"
+    "vue": "^3.4.27"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.0.1",
-    "typescript": "^5.3.3",
-    "vite": "^5.2.7",
-    "vue-tsc": "^2.0.6",
-    "wxt": "^0.17.0"
+    "@vitejs/plugin-vue": "^5.0.4",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11",
+    "vue-tsc": "^2.0.19",
+    "wxt": "^0.18.3"
   }
 }
