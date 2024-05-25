@@ -1,7 +1,7 @@
 import {services} from "../utils/option";
 import {Config} from "../utils/model";
 import {yiyanMsgTemplate} from "../utils/template";
-import {method} from "../utils/constant";
+import {method, urls} from "../utils/constant";
 
 // ERNIE-Bot 4.0 模型，模型定价页面：https://console.bce.baidu.com/qianfan/chargemanage/list
 // api 文档中心：https://cloud.baidu.com/doc/WENXINWORKSHOP/s/clntwmv7t
@@ -12,10 +12,13 @@ async function yiyan(config: Config, message: any) {
     let model = config.model[services.yiyan]
     // model 参数转换
     if (model === "ERNIE-Bot 4.0") model = "completions_pro"
-    else if (model==="ERNIE-Bot") model="completions"
+    else if (model === "ERNIE-Bot") model = "completions"
+    else if(model==="ERNIE-Speed-8K") model="ernie_speed"
 
     const secret = await getSecret(config);
     const url = `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/${model}?access_token=${secret}`;
+
+    console.log(url)
 
     // 发起 fetch 请求
     const resp = await fetch(url, {
@@ -23,6 +26,8 @@ async function yiyan(config: Config, message: any) {
         headers: {'Content-Type': 'application/json'},
         body: yiyanMsgTemplate(config, message.origin)
     });
+
+    console.log(resp)
 
     if (resp.ok) {
         let result = await resp.json();
@@ -49,7 +54,7 @@ async function getSecret(config: Config) {
     });
 
     // 发起 fetch 请求
-    const resp = await fetch('https://aip.baidubce.com/oauth/2.0/token', {
+    const resp = await fetch(urls[config.service].tokenUrl, {
         method: method.POST,
         body: params
     });
@@ -62,7 +67,7 @@ async function getSecret(config: Config) {
         config.extra[services.yiyan] = {secret: res.access_token, expiration: expiration};
         storage.setItem('local:config', JSON.stringify(config));
         return res.access_token;
-    } else throw new Error(res.error_description || '智谱清言获取 token 失败');
+    } else throw new Error(res.error_description || '文心一言获取 token 失败');
 }
 
 export default yiyan;

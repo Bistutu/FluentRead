@@ -6,7 +6,7 @@ export const app = {
     version: "0.0.6",
 }
 
-export const urls = {
+export const urls: any = {
     [services.deepL]: "https://api-free.deepl.com/v2/translate",
     [services.deepLx]: "http://localhost:1188/translate",
     [services.openai]: "https://api.openai.com/v1/chat/completions",
@@ -21,6 +21,7 @@ export const urls = {
     [services.lingyi]: "https://api.lingyiwanwu.com/v1/chat/completions",
     [services.deepseek]: "https://api.deepseek.com/chat/completions",
     [services.jieyue]:"https://api.stepfun.com/v1/chat/completions",
+    [services.yiyan]:{tokenUrl:"https://aip.baidubce.com/oauth/2.0/token"},
 }
 
 export const method = {POST: "POST", GET: "GET",};
