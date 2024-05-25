@@ -29,11 +29,12 @@ export default defineContentScript({
         window.addEventListener('keyup', event => {
             if (config.hotkey === event.key) screen.hotkeyPressed = false;
         })
+
         // 3、按下快捷按键时 hotkeyPressed = true 并翻译节点
         window.addEventListener('keydown', event => {
             if (config.hotkey === event.key) {
                 screen.hotkeyPressed = true;
-                handler(config, screen.mouseX, screen.mouseY,25)
+                handler(config, screen.mouseX, screen.mouseY, 25)
             }
         })
 
@@ -42,9 +43,10 @@ export default defineContentScript({
             screen.mouseX = event.clientX;
             screen.mouseY = event.clientY;
             if (screen.hotkeyPressed) {
-                handler(config, screen.mouseX, screen.mouseY, 25)
+                handler(config, screen.mouseX, screen.mouseY, 25, true)
             }
         });
+
         // 5、（手机端）触摸事件，三指触摸时触发翻译（取触摸点中心位置）
         document.body.addEventListener('touchstart', event => {
             if (event.touches.length === 3) {

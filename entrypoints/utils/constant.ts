@@ -3,7 +3,7 @@
 import {services} from "./option";
 
 export const app = {
-    version: "0.0.5",
+    version: "0.0.6",
 }
 
 export const urls = {

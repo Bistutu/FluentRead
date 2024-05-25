@@ -30,7 +30,7 @@ const chileSet = new Set([
     'details', 'summary', 'menuitem', 'menu', 'dialog', 'slot', 'template', 'shadow', 'content', 'element',
 ]);
 
-export function handler(config: Config, mouseX: number, mouseY: number, time: number = 0) {
+export function handler(config: Config, mouseX: number, mouseY: number, time: number = 0, slide = false) {
 
     // 检查配置项是否正确
     if (!checkConfig(config)) return;
@@ -53,13 +53,17 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
         }
         htmlSet.add(nodeOuterHTML);
 
-
         // TODO 2024.5.18 下述代码需重构
         // 判断是否为双语对照模式，如果是则走双语翻译
         if (config.style === styles.bilingualComparison) {
             // 如果已经翻译过，则移除译文
             let bilingualNode = hasClassName(node, 'fluent-bilingual-tag');
             if (bilingualNode) {
+                console.log(slide)
+                if (slide) {
+                    htmlSet.delete(nodeOuterHTML);
+                    return;
+                }
                 let spinner = insertLoadingSpinner(bilingualNode, true);
                 setTimeout(() => {
                     spinner.remove();
@@ -95,6 +99,10 @@ export function handler(config: Config, mouseX: number, mouseY: number, time: nu
         // 检测缓存
         let outerHTMLCache = cache.get(config, node.outerHTML);
         if (outerHTMLCache) {
+            if (slide) {
+                htmlSet.delete(nodeOuterHTML);
+                return;
+            }
             // console.log("缓存命中：", outerHTMLCache);
             let spinner = insertLoadingSpinner(node, true);
             setTimeout(() => {  // 延迟 remove 转圈动画与替换文本
@@ -121,7 +129,7 @@ function bilingualAppendChild(config: Config, node: any, text: string) {
 
     let newNode = document.createElement("span");
 
-    newNode.classList.add("fluent-bilingual-style","fluent-bilingual-tag")  // 样式、标记
+    newNode.classList.add("fluent-bilingual-style", "fluent-bilingual-tag")  // 样式、标记
     newNode.classList.add(options.styles[config.display].class);   // 控制译文显示样式
 
     newNode.innerHTML = text;

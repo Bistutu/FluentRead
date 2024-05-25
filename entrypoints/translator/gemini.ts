@@ -9,7 +9,8 @@ async function gemini(config: Config, message: any) {
     let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
 
     // 判断是否使用代理
-    let url: string = config.proxy[config.service] ? config.proxy[config.service] : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.token[services.gemini]}`;
+    let url: string = config.proxy[config.service] ?
+        config.proxy[config.service] : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.token[services.gemini]}`;
 
     const resp = await fetch(url, {
         method: method.POST,
