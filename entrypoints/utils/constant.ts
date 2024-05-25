@@ -22,6 +22,7 @@ export const urls: any = {
     [services.deepseek]: "https://api.deepseek.com/chat/completions",
     [services.jieyue]:"https://api.stepfun.com/v1/chat/completions",
     [services.yiyan]:{tokenUrl:"https://aip.baidubce.com/oauth/2.0/token"},
+    [services.graq]: "https://api.groq.com/openai/v1/chat/completions",
 }
 
 export const method = {POST: "POST", GET: "GET",};

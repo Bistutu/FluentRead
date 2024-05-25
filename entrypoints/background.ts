@@ -1,4 +1,4 @@
-import {service} from "@/entrypoints/service/service";
+import {_service} from "@/entrypoints/service/_service";
 import {Config} from "./utils/model";
 
 export default defineBackground(async () => {
@@ -16,7 +16,7 @@ export default defineBackground(async () => {
     browser.runtime.onMessage.addListener(message => {
         return new Promise((resolve, reject) => {
             // 翻译
-            service[config.service](config, message)
+            _service[config.service](config, message)
                 .then(resp => resolve(resp))    // 成功
                 .catch(error => reject(error)); // 失败
         });

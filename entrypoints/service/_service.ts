@@ -16,7 +16,7 @@ import common from "@/entrypoints/service/common";
 import deeplx from "@/entrypoints/service/deeplx";
 
 
-export const service = {
+export const _service = {
     [services.microsoft]: microsoft,
     [services.deepL]: deepl,
     [services.deepLx]:deeplx,
@@ -37,4 +37,5 @@ export const service = {
     [services.deepseek]: common,
     [services.minimax]: minimax,
     [services.jieyue]:common,
+    [services.graq]: common,
 }

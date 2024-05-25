@@ -21,20 +21,21 @@ export const services = {
     deepseek: 'deepseek',
     minimax: 'minimax',
     jieyue: "jieyue",    // 阶跃星辰
+    graq: 'graq',
     // 阵营划分
-    machine: new Set(["microsoft", "deepL", "google", "xiaoniu", "baidu",'deepLx']),
+    machine: new Set([,"microsoft", "deepL", "google", "xiaoniu", "baidu",'deepLx']),
     ai: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu", "moonshot", "claude",
-        "custom", "infini", "baichuan", "deepseek", "lingyi","minimax","jieyue"]),
+        "custom", "infini", "baichuan", "deepseek", "lingyi","minimax","jieyue","graq"]),
     // 需要 token，或者 ak/sk
     useToken: new Set(["openai", "gemini", "tongyi", "zhipu", "moonshot", "claude",
-        "deepL", "xiaoniu", "infini", "custom", "baichuan", "deepseek", "lingyi","minimax","jieyue"]),
+        "deepL", "xiaoniu", "infini", "custom", "baichuan", "deepseek", "lingyi","minimax","jieyue","graq"]),
     useAkSk: new Set(["yiyan"]),
     // 需要 model
     useModel: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu",
-        "moonshot", "claude", "custom", "infini", "baichuan", "deepseek", "lingyi","minimax","jieyue"]),
+        "moonshot", "claude", "custom", "infini", "baichuan", "deepseek", "lingyi","minimax","jieyue","graq"]),
     // 支持代理
     useProxy: new Set(["openai", "claude", "gemini", "google", "deepl",
-        "moonshot", "tongyi", "xiaoniu", "baichuan", "deepseek", "lingyi","jieyue","deeplx"]),
+        "moonshot", "tongyi", "xiaoniu", "baichuan", "deepseek", "lingyi","jieyue","deeplx","graq"]),
     // 函数
     isMachine: (service: string) => services.machine.has(service),
     isAI: (service: string) => services.ai.has(service),
@@ -62,6 +63,7 @@ export const models = new Map<string, Array<string>>([
     [services.deepseek, ["deepseek-chat", customModelString]],
     [services.minimax, ["chatcompletion_v2"]],
     [services.jieyue,["step-1-8k",customModelString]],
+    [services.graq, ["gemma-7b-it", "mixtral-8x7b-32768", "llama3-70b-8192","llama3-8b-8192",customModelString]],
 ]);
 
 export const options = {
@@ -138,7 +140,7 @@ export const options = {
         },
         {
             value: 'touchscreen',
-            label: "触屏设备",
+            label: "触屏设备选项",
             disabled: true,
         },
         {
@@ -215,6 +217,10 @@ export const options = {
             value: services.gemini,
             label: 'Gemini',
             model: "gemini-pro",
+        },
+        {
+            value: services.graq,
+            label: 'Graq',
         },
         {
             value: services.zhipu,
