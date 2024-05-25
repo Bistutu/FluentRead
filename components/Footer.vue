@@ -9,11 +9,11 @@
     </el-icon>
     {{ buttonText }}
   </el-link>
-  <el-link class="right" href="https://fr.unmeta.cn/introduce" target="_blank">
+  <el-link class="right" href="https://github.com/Bistutu/FluentRead" target="_blank">
     <el-icon style="margin-right: 1px;font-size: 1.25em">
       <Star/>
     </el-icon>
-    插件介绍
+    GitHub开源
   </el-link>
 </template>
 

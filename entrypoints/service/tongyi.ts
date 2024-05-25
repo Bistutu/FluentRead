@@ -21,7 +21,8 @@ async function tongyi(config: Config, message: any) {
 
     if (resp.ok) {
         let result = await resp.json();
-        return result.output.text
+        if (config.model[config.service] === "qwen-long") return result.output.choices[0].message.content;
+        else return result.output.text
     } else {
         console.log(resp)
         throw new Error(`翻译失败: ${resp.status} ${resp.statusText} body: ${await resp.text()}`);
@@ -29,3 +30,6 @@ async function tongyi(config: Config, message: any) {
 }
 
 export default tongyi;
+
+
+//

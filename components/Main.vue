@@ -70,6 +70,7 @@
         <span class="popup-text popup-vertical-left">翻译服务</span>
       </el-col>
       <el-col :span="12">
+        <b>
         <el-select v-model="config.service" placeholder="请选择翻译服务">
           <el-option
               class="select-left"
@@ -80,6 +81,7 @@
               :disabled="item.disabled"
           />
         </el-select>
+        </b>
       </el-col>
     </el-row>
 
@@ -134,7 +136,7 @@
         <el-tooltip
             class="box-item"
             effect="dark"
-            content="你的令牌将存储在本地，流畅阅读不会获取你的任何token信息。对应服务的token获取方式请自行搜索，如：文心一言 api"
+            content="你的令牌将存储在本地，流畅阅读不会获取你的任何token信息。对应服务的token获取方式请自行搜索，如：Kimi api"
             placement="top-start"
         >
           <span class="popup-text popup-vertical-left">token令牌<el-icon class="icon-margin"><ChatDotRound/></el-icon></span>
@@ -315,7 +317,7 @@
 <script lang="ts" setup>
 // Main 处理配置信息
 import {computed, ref, watch} from 'vue'
-import {defaultOption, models, options, services, servicesType} from "../entrypoints/utils/option";
+import {models, options, servicesType} from "../entrypoints/utils/option";
 import {Config} from "@/entrypoints/utils/model";
 
 // 配置信息
@@ -378,5 +380,4 @@ let compute = ref({
 .icon-margin {
   margin-left: 0.25em;
 }
-
 </style>
