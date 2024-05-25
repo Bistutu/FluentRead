@@ -49,7 +49,7 @@ export const services = {
 export const customModelString = "自定义模型"
 export const models = new Map<string, Array<string>>([
     [services.openai, ["gpt-3.5-turbo", "gpt-4o", "gpt-4", "gpt-4-turbo", customModelString]],
-    [services.gemini, ["gemini-pro", "gemini-1.5-pro", "gemini-flash-1.5", customModelString]],
+    [services.gemini, ["gemini-pro", "gemini-1.5-pro", "gemini-1.5-flash", customModelString]],
     [services.yiyan, ["ERNIE-Bot 4.0", "ERNIE-Bot","ERNIE-Speed-8K"]],  // 因文心一言模式不同，暂不支持自定义模型（还需根据model获取最终的url请求参数）
     [services.tongyi, ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext", customModelString]],
     [services.zhipu, ["glm-4", "glm-4v", "glm-3-turbo", customModelString]],
