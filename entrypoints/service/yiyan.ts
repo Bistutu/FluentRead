@@ -14,11 +14,10 @@ async function yiyan(config: Config, message: any) {
     if (model === "ERNIE-Bot 4.0") model = "completions_pro"
     else if (model === "ERNIE-Bot") model = "completions"
     else if(model==="ERNIE-Speed-8K") model="ernie_speed"
+    else if(model==="ERNIE-Speed-128K") model="ernie-speed-128k"
 
     const secret = await getSecret(config);
     const url = `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/${model}?access_token=${secret}`;
-
-    console.log(url)
 
     // 发起 fetch 请求
     const resp = await fetch(url, {
@@ -26,8 +25,6 @@ async function yiyan(config: Config, message: any) {
         headers: {'Content-Type': 'application/json'},
         body: yiyanMsgTemplate(config, message.origin)
     });
-
-    console.log(resp)
 
     if (resp.ok) {
         let result = await resp.json();
