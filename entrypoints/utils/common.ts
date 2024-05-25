@@ -23,3 +23,19 @@ export function detectlang(origin: any): string {
     else if (find === "rus") return "ru"
     else return find
 }
+
+// 获取触摸点的中心位置
+export function getCenterPoint(touches: TouchList, point: number) {
+    // 检查触摸点数量是否等于指定的数量
+    if (touches.length !== point) return;
+
+    let centerX = 0;
+    let centerY = 0;
+    for (let i = 0; i < touches.length; i++) {
+        centerX += touches[i].clientX; // 累加所有触摸点的X坐标
+        centerY += touches[i].clientY; // 累加所有触摸点的Y坐标
+    }
+    centerX /= touches.length; // 计算中心点的X坐标
+    centerY /= touches.length; // 计算中心点的Y坐标
+    return {x: centerX, y: centerY};
+}

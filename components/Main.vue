@@ -122,6 +122,7 @@
               :key="item.value"
               :label="item.label"
               :value="item.value"
+              :disabled="item.disabled"
           />
         </el-select>
       </el-col>

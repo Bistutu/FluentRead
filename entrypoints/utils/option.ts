@@ -135,6 +135,27 @@ export const options = {
         {
             value: 'MiddleClick',
             label: "鼠标滚轮单击"
+        },
+        {
+            value: 'touchscreen',
+            label: "触屏设备",
+            disabled: true,
+        },
+        {
+            value: 'TwoFinger',
+            label: "双指翻译",
+        },
+        {
+            value: 'ThreeFinger',
+            label: "三指翻译",
+        },
+        {
+            value: 'FourFinger',
+            label: "四指翻译",
+        },
+        {
+            value: 'DoubleClickScree',
+            label: "双击翻译",
         }
     ],
     services: [

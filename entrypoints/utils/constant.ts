@@ -26,9 +26,15 @@ export const urls = {
 export const method = {POST: "POST", GET: "GET",};
 
 export const constants = {
+    // 电脑设备事件
     DoubleClick : "DoubleClick",
     LongPress : "LongPress",
     MiddleClick : "MiddleClick",
+    // 触屏设备事件
+    TwoFinger : "TwoFinger",
+    ThreeFinger: "ThreeFinger",
+    FourFinger: "FourFinger",
+    DoubleClickScreen: "DoubleClickScree",
 }
 
 export const styles = {

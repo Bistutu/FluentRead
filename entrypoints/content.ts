@@ -3,6 +3,7 @@ import {cssInject} from "./main/css";
 import {handleTranslation} from "./main/trans";
 import {cache} from "./utils/cache";
 import {constants} from "@/entrypoints/utils/constant";
+import {getCenterPoint} from "@/entrypoints/utils/common";
 
 export default defineContentScript({
     matches: ['<all_urls>'],  // 匹配所有页面
@@ -47,13 +48,24 @@ export default defineContentScript({
             }
         });
 
-        // 5、（手机端）触摸事件，三指触摸时触发翻译（取触摸点中心位置）
+        // 5、手机端触摸事件，取中心点翻译
         document.body.addEventListener('touchstart', event => {
-            if (event.touches.length === 3) {
-                let centerX = (event.touches[0].clientX + event.touches[1].clientX + event.touches[2].clientX) / 3;
-                let centerY = (event.touches[0].clientY + event.touches[1].clientY + event.touches[2].clientY) / 3;
-                handleTranslation(config, centerX, centerY)
+            let coordinate;
+            switch (config.hotkey) {
+                case constants.TwoFinger:
+                    coordinate = getCenterPoint(event.touches, 2);
+                    break;
+                case constants.ThreeFinger:
+                    coordinate = getCenterPoint(event.touches, 3);
+                    break;
+                case constants.FourFinger:
+                    coordinate = getCenterPoint(event.touches, 4);
+                    break;
+                default:
+                    return
             }
+
+            handleTranslation(config, coordinate!.x, coordinate!.y);
         });
 
         // 6、双击鼠标翻译事件
@@ -109,6 +121,22 @@ export default defineContentScript({
             }
         });
 
+        // 9、触屏设备双击翻译事件
+        let touchCount = 0;
+        let touchTimer: any;
+        document.body.addEventListener('touchstart', event => {
+            if (config.hotkey !== constants.DoubleClickScreen) return;
+            touchCount++; // 记录触摸次数
+            if (touchCount === 1) { // 如果是第一次触摸，设置定时器
+                touchTimer = setTimeout(() => touchCount = 0, 300);
+            } else if (touchCount === 2) {
+                clearTimeout(touchTimer); // 清除定时器
+                let centerX = (event.touches[0].clientX + event.touches[1].clientX) / 2; // 计算双击点的中心位置
+                let centerY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
+                handleTranslation(config, centerX, centerY); // 调用翻译处理函数
+                touchCount = 0;
+            }
+        });
 
         // background.ts
         browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
