@@ -2,7 +2,7 @@
 import {sendErrorMessage} from "../utils/tip";
 import {Config} from "../utils/model";
 import 'element-plus/es/components/message/style/css'
-import {translate} from "./dom";
+import {translate} from "./trans";
 
 const icon = {
     retry: `<svg fill="none" viewBox="0 0 40 40" height="40" width="40" style="display: inline; align-items: center; justify-content: center; width: 1em; height: 1em; margin-left: 1em; pointer-events: none;">

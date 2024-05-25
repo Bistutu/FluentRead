@@ -9,14 +9,14 @@ import gemini from "./gemini";
 import google from "./google";
 import xiaoniu from "./xiaoniu";
 import claude from "./claude";
-import infini from "@/entrypoints/translator/infini";
-import baidu from "@/entrypoints/translator/baidu";
-import minimax from "@/entrypoints/translator/minimax";
-import common from "@/entrypoints/translator/common";
-import deeplx from "@/entrypoints/translator/deeplx";
+import infini from "@/entrypoints/service/infini";
+import baidu from "@/entrypoints/service/baidu";
+import minimax from "@/entrypoints/service/minimax";
+import common from "@/entrypoints/service/common";
+import deeplx from "@/entrypoints/service/deeplx";
 
 
-export const translator = {
+export const service = {
     [services.microsoft]: microsoft,
     [services.deepL]: deepl,
     [services.deepLx]:deeplx,

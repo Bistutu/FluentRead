@@ -1,187 +1,27 @@
-import {checkConfig, hasClassName, skipNode} from "./check";
-import {Config} from "../utils/model";
-import {getMainDomain, replaceCompatFn, selectCompatFn} from "./compatible";
-import {cache} from "../utils/cache";
-import {detectlang} from "./detectlang";
-import {options, services} from "../utils/option";
-import {insertFailedTip, insertLoadingSpinner} from "./icon";
-import {beautyHTML} from "./common";
-import {throttle} from "@/entrypoints/utils/tip";
-import {styles} from "@/entrypoints/utils/constant";
-import {smashTruncationStyle} from "@/entrypoints/main/css";
-
-// todo 需重构、分离
-
-let hoverTimer: any; // 鼠标悬停计时器
-let htmlSet = new Set();   // 去重
-const url = new URL(location.href.split('?')[0]);
+import {Config} from "@/entrypoints/utils/model";
+import {btnTransThrottle} from "@/entrypoints/main/trans";
+import {getMainDomain, selectCompatFn} from "@/entrypoints/main/compatible";
 
 // 当遇到这些 tag 时直接翻译
 const directSet = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', "li"]);
-// 当遇到这些节点时，不应当翻译
-const skipSet = new Set(["html", "body",]); // "iframe" 暂时去除
+const skipSet = new Set(["html", "body",]);
 
-// 1、若某节点的兄弟节点中「只」包含下列节点，则应当翻译其父节点
-// 2、llm 模式翻译时，翻译下列节点的 outerHTML 属性
-const chileSet = new Set([
+export const chileSet = new Set([
     'a', 'b', 'strong', 'span', 'img', 'br', 'em', 'u', 'small', 'sub', 'sup', 'i', 'font',
     'big', 'strike', 's', 'del', 'ins', 'mark', 'cite', 'q', 'abbr', 'acronym', 'dfn', 'svg',
     'code', 'samp', 'kbd', 'var', 'pre', 'address', 'time', 'ruby', 'rb', 'rt', 'rp', 'bdi', 'bdo', 'wbr',
     'details', 'summary', 'menuitem', 'menu', 'dialog', 'slot', 'template', 'shadow', 'content', 'element',
 ]);
 
-export function handler(config: Config, mouseX: number, mouseY: number, time: number = 0, slide = false) {
-
-    // 检查配置项是否正确
-    if (!checkConfig(config)) return;
-
-    clearTimeout(hoverTimer); // 清除计时器
-    hoverTimer = setTimeout(() => {
-        // 获取起始节点
-        let node = grabNode(config, document.elementFromPoint(mouseX, mouseY));  // 获取最终需要翻译的节点
-
-        // console.log("翻译节点：", node);
-
-        // 跳过不需要翻译的节点
-        if (skipNode(node)) return;
-
-        // 去重判断
-        let nodeOuterHTML = node.outerHTML;
-        if (htmlSet.has(nodeOuterHTML)) {
-            // console.log('重复节点', node);
-            return;
-        }
-        htmlSet.add(nodeOuterHTML);
-
-        // TODO 2024.5.18 下述代码需重构
-        // 判断是否为双语对照模式，如果是则走双语翻译
-        if (config.style === styles.bilingualComparison) {
-            // 如果已经翻译过，则移除译文
-            let bilingualNode = hasClassName(node, 'fluent-bilingual-tag');
-            if (bilingualNode) {
-                console.log(slide)
-                if (slide) {
-                    htmlSet.delete(nodeOuterHTML);
-                    return;
-                }
-                let spinner = insertLoadingSpinner(bilingualNode, true);
-                setTimeout(() => {
-                    spinner.remove();
-                    bilingualNode.remove();
-                    htmlSet.delete(nodeOuterHTML);
-                }, 250);
-                return;
-            }
-            // 判断缓存
-            let cached = cache.get(config, node.innerText);
-            if (cached) {
-                let spinner = insertLoadingSpinner(node, true);
-                if (!cached || origin === cached) {
-                    htmlSet.delete(nodeOuterHTML);
-                    return;
-                }
-                // 250 ms 后移除 spinner
-                setTimeout(() => {
-                    spinner.remove();
-                    htmlSet.delete(nodeOuterHTML);
-                    bilingualAppendChild(config, node, cached);  // 追加至原文后面
-                }, 250);
-
-                return;
-            }
-
-            bilingualTranslate(config, node, nodeOuterHTML)
-            return;
-        }
-
-        // else 为仅译文模式
-
-        // 检测缓存
-        let outerHTMLCache = cache.get(config, node.outerHTML);
-        if (outerHTMLCache) {
-            if (slide) {
-                htmlSet.delete(nodeOuterHTML);
-                return;
-            }
-            // console.log("缓存命中：", outerHTMLCache);
-            let spinner = insertLoadingSpinner(node, true);
-            setTimeout(() => {  // 延迟 remove 转圈动画与替换文本
-                spinner.remove();
-                htmlSet.delete(nodeOuterHTML);
-                let compatFn = replaceCompatFn[getMainDomain(url.host)];    // 兼容函数
-                if (compatFn) {
-                    compatFn(node, outerHTMLCache);    // 兼容函数
-                } else {
-                    node.outerHTML = outerHTMLCache;
-                }
-                deferCacheRemoval(outerHTMLCache);
-            }, 250);
-            return;
-        }
-        // console.log("无缓存：", node.outerHTML);
-        // 无缓存，正常翻译
-        translate(config, node);
-    }, time);
-}
-
-// 双语模式追加翻译结果+控制样式
-function bilingualAppendChild(config: Config, node: any, text: string) {
-
-    let newNode = document.createElement("span");
-
-    newNode.classList.add("fluent-bilingual-style", "fluent-bilingual-tag")  // 样式、标记
-    newNode.classList.add(options.styles[config.display].class);   // 控制译文显示样式
-
-    newNode.innerHTML = text;
-
-    // 移除特定样式，这些样式会影响翻译结果的显示
-    smashTruncationStyle(node);
-
-    node.appendChild(newNode);
-}
-
-
-// 按钮翻译节流
-const btnTransThrottle = throttle(btnTrans, 250);
-
-function btnTrans(config: Config, child: any) {
-    if (services.isMachine(config.service)) {
-        // 机器翻译 innerHTML
-        let rs = cache.get(config, child.innerHTML);
-        if (rs) {
-            child.innerHTML = rs;
-            return;
-        }
-        // background.ts
-        browser.runtime.sendMessage({context: document.title, origin: child.innerHTML})
-            .then((text: string) => {
-                cache.set(config, child.innerHTML, text)
-                child.innerHTML = text
-            }).catch(error => console.error('调用失败:', error))
-    } else {
-        // LLM 翻译 textContent
-        let rs = cache.get(config, child.textContent);
-        if (rs) {
-            child.textContent = rs;
-            return;
-        }
-        // background.ts
-        browser.runtime.sendMessage({context: document.title, origin: child.textContent})
-            .then((text: string) => {
-                cache.set(config, child.textContent, text)
-                child.textContent = text
-            }).catch(error => console.error('调用失败:', error))
-    }
-}
+const url = new URL(location.href.split('?')[0]);
 
 // 返回最终应该翻译的父节点或 false
-function grabNode(config: Config, node: any): any {
+export function grabNode(config: Config, node: any): any {
     let curTag = node.tagName.toLowerCase();    // 当前 tag
 
     // 1、全局节点与空节点、input 节点、文字过多的节点、class="notranslate" 的节点不翻译
     if (!node || skipSet.has(curTag) || curTag === 'input' || node.classList.contains('notranslate')
         || node.textContent.length > 3072 || (node.outerHTML && node.outerHTML.length > 4096)) {
-
         return false;
     }
 
@@ -198,7 +38,7 @@ function grabNode(config: Config, node: any): any {
     }
 
     // 4、特殊适配，根据域名进行特殊处理
-    let fn = selectCompatFn[getMainDomain(url.host)];
+    let fn = selectCompatFn[getMainDomain(url)];
     if (fn && fn(node)) return node;
 
     // 4、如果遇到 span，则首先该节点就符合翻译条件
@@ -228,128 +68,6 @@ function grabNode(config: Config, node: any): any {
     return false
 }
 
-function bilingualTranslate(config: Config, node: any, nodeOuterHTML: any) {
-    // 正则表达式去除所有空格后再检查语言类型
-    if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
-    // 待翻译文本
-    let origin = node.innerText
-    // 插入转圈动画
-    let spinner = insertLoadingSpinner(node);
-    // 超时控制
-    let timeout = setTimeout(() => {
-        insertFailedTip(config, node, "timeout", spinner);
-    }, 45000);
-
-    // 调用翻译服务（正在翻译ing...），允许失败重试 3 次、间隔 500ms
-    const translating = (failCount = 0) => {
-
-        config.count++ && storage.setItem('local:config', JSON.stringify(config));  // 翻译次数 +1，更新配置
-
-        browser.runtime.sendMessage({context: document.title, origin: origin})
-            .then((text: string) => {
-                clearTimeout(timeout) // 取消超时
-                spinner.remove()      // 移除 spinner
-                setTimeout(() => {
-                    bilingualAppendChild(config, node, text);
-                    htmlSet.delete(nodeOuterHTML);
-                }, 150);
-
-                // 相同也不应该隐藏，否则可能会造成用户误解
-                // if (!text || origin === text) return;
-
-                cache.bilingualSet(config, origin, text);
-            })
-            .catch(error => {
-                clearTimeout(timeout);
-                if (failCount < 3) { // 如果失败次数小于3次，重新尝试
-                    // 延迟 500ms 后重试
-                    setTimeout(() => {
-                        translating(failCount + 1);
-                    }, 500);
-                } else { // 达到3次失败后，显示失败提示
-                    insertFailedTip(config, node, error.toString() || "", spinner);
-                }
-            });
-    }
-
-    translating();   // 开始翻译
-}
-
-export function translate(config: Config, node: any) {
-
-    // console.log("翻译节点：", node)
-
-    // 正则表达式去除所有空格后再检查语言类型
-    // 如果源语言与目标语言相同，则不翻译
-    if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
-
-    // origin 是待翻译文本；机器翻译 origin = outerHTML；LLM 翻译 origin = llmGetText(node)
-    let origin = services.isMachine(config.service) ? node.outerHTML : llmGetText(node);
-
-    let spinner = insertLoadingSpinner(node);   // 插入转圈动画
-    let timeout = setTimeout(() => {
-        insertFailedTip(config, node, "timeout", spinner);
-    }, 45000);
-
-    config.count++; // 翻译次数 +1
-    storage.setItem('local:config', JSON.stringify(config));  // 更新配置
-
-    // 调用翻译服务（正在翻译ing...），允许失败重试 3 次、间隔 500ms
-    const translating = (failCount = 0) => {
-        browser.runtime.sendMessage({context: document.title, origin: origin})
-            .then((text: string) => {
-                clearTimeout(timeout) // 取消超时
-                spinner.remove()      // 移除 spinner
-
-                // 格式化 html 翻译结果
-                text = beautyHTML(text)
-
-                // console.log("翻译前的句子：", origin);
-                // console.log("翻译后的句子：", text);
-
-                if (!text || origin === text) return;
-
-                let oldOuterHtml = node.outerHTML  // 保存旧的 outerHTML
-
-                let newOuterHtml = text
-                if (services.isMachine(config.service)) {
-                    // 1、机器翻译
-                    if (!node.parentNode) return;
-                    let compatFn = replaceCompatFn[getMainDomain(url.host)];
-                    if (compatFn) {
-                        oldOuterHtml = node.outerHTML;
-                        compatFn(node, text);
-                        newOuterHtml = node.outerHTML;
-                    } else {
-                        node.outerHTML = text;
-                    }
-                } else {
-                    // 2、LLM 翻译
-                    node.innerHTML = text;
-                    newOuterHtml = node.outerHTML;
-                }
-
-                cache.set(config, oldOuterHtml, newOuterHtml);  // 设置缓存
-                // 延迟删除 newOuterHtml，立即删除 oldOuterHtml
-                deferCacheRemoval(newOuterHtml);
-                htmlSet.delete(oldOuterHtml);
-            })
-            .catch(error => {
-                clearTimeout(timeout);
-                if (failCount < 3) { // 如果失败次数小于3次，重新尝试
-                    // 延迟 500ms 后重试
-                    setTimeout(() => {
-                        translating(failCount + 1);
-                    }, 500);
-                } else { // 达到3次失败后，显示失败提示
-                    insertFailedTip(config, node, error.toString() || "", spinner);
-                }
-            });
-    }
-
-    translating();   // 开始翻译
-}
-
 // 检测子元素中是否包含指定标签以外的元素
 function detectChildMeta(parent: any): boolean {
     let child = parent.firstChild;
@@ -362,16 +80,8 @@ function detectChildMeta(parent: any): boolean {
     return true;
 }
 
-// 延迟删除缓存，避免短时间内重复翻译
-function deferCacheRemoval(key: any, time = 250) {
-    htmlSet.add(key);
-    setTimeout(() => {
-        htmlSet.delete(key);
-    }, time);
-}
-
-// LLM 模式获取翻译文本
-function llmGetText(node: any) {
+// 仅译文模式下获取 LLM 应当翻译的标准 HTML
+export function LLMStandardHTML(node: any) {
     let text = "";
     // 遍历所有子节点
     node.childNodes.forEach((child: any) => {
@@ -382,7 +92,7 @@ function llmGetText(node: any) {
             if (chileSet.has(child.tagName.toLowerCase())) {
                 text += child.outerHTML;
             } else {
-                text += llmGetText(child); // 递归
+                text += LLMStandardHTML(child); // 递归
             }
         }
     });

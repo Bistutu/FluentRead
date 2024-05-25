@@ -1,6 +1,6 @@
 import {Config} from "./utils/model";
 import {cssInject} from "./main/css";
-import {handler} from "./main/dom";
+import {handler} from "./main/trans";
 import {cache} from "./utils/cache";
 import {constants} from "@/entrypoints/utils/constant";
 
@@ -113,7 +113,7 @@ export default defineContentScript({
         // background.ts
         browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (message.message === 'clearCache') {
-                cache.clearCurrentHostCache()
+                cache.clean()
             }
             sendResponse();
             return true;

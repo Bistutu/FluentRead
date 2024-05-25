@@ -13,17 +13,22 @@ function buildKey(config: Config, message: string) {
 }
 
 export const cache = {
-    set(config: Config, origin: string, result: string) {
-        localStorage.setItem(buildKey(config, origin), result)
-        localStorage.setItem(buildKey(config, result), origin)
+    set(set: Set<any>, key: any, time: number) {
+        set.add(key);
+        if (time >= 0) setTimeout(() => set.delete(key), time);
     },
-    bilingualSet(config: Config, origin: string, result: string) {
+    // local 系列为特化的缓存方法，用于操作翻译缓存
+    localSet(config: Config, origin: string, result: string) {
         localStorage.setItem(buildKey(config, origin), result)
     },
-    get(config: Config, origin: string) {
+    localSetDual(config: Config, origin: string, result: string) {
+        this.localSet(config, result, origin)
+        this.localSet(config, origin, result)
+    },
+    localGet(config: Config, origin: string) {
         return localStorage.getItem(buildKey(config, origin))
     },
-    remove(config: Config, origin: string) {
+    localRemove(config: Config, origin: string) {
         let result: any = localStorage.getItem(buildKey(config, origin))
         localStorage.removeItem(buildKey(config, origin))
         localStorage.removeItem(buildKey(config, result))
@@ -37,12 +42,12 @@ export const cache = {
             localStorage.setItem('flLastSessionTimestamp', currentTime.toString());
         } else if (currentTime - parseInt(lastSessionTimestamp) > 24 * 3600000) {
             // }else if (currentTime - parseInt(lastSessionTimestamp) > 20000) {
-            this.clearCurrentHostCache()
+            this.clean()
             localStorage.setItem('flLastSessionTimestamp', currentTime.toString());
         }
     },
-    // 清除当前页面所有由 fluent read 缓存的数据
-    clearCurrentHostCache() {
+    // 清除当前 url.host 的翻译缓存
+    clean() {
         const keysToDelete = [];
         // 收集所有要删除的键
         for (let i = 0; i < localStorage.length; i++) {
@@ -61,3 +66,4 @@ export function stringifyNode(node: any): string {
     outerHTML = outerHTML.replace(/\s{2,}/g, ' ').trim();
     return outerHTML;
 }
+

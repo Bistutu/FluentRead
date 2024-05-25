@@ -1,4 +1,4 @@
-import {translator} from "./translator/translator";
+import {service} from "@/entrypoints/service/service";
 import {Config} from "./utils/model";
 
 export default defineBackground(async () => {
@@ -16,7 +16,7 @@ export default defineBackground(async () => {
     browser.runtime.onMessage.addListener(message => {
         return new Promise((resolve, reject) => {
             // 翻译
-            translator[config.service](config, message)
+            service[config.service](config, message)
                 .then(resp => resolve(resp))    // 成功
                 .catch(error => reject(error)); // 失败
         });
