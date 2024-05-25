@@ -1,4 +1,4 @@
-import {customModelString, services} from "./option";
+import {customModelString, services, servicesType} from "./option";
 import {Config} from "./model";
 import {sendErrorMessage} from "./tip";
 
@@ -8,7 +8,7 @@ export function checkConfig(config: Config): boolean {
     if (!config.on) return false;
 
     // 2、检查 token 是否已经输入（如果是需要 token 的服务且 token 为空时返回 false）
-    if ((services.isUseToken(config.service) && !config.token[config.service])
+    if ((servicesType.isUseToken(config.service) && !config.token[config.service])
         || (config.service === services.yiyan && (!config.ak || !config.sk))
         || (config.service === services.baidu && (!config.appid || !config.key))
     ) {
@@ -17,7 +17,7 @@ export function checkConfig(config: Config): boolean {
     }
 
     // 3、检查模型 model 是否已经选择（如果是 AI 且模型栏为空时返回 false）
-    if (services.isAI(config.service) &&
+    if (servicesType.isAI(config.service) &&
         (!config.model[config.service] ||
             (config.model[config.service] === customModelString && config.customModel[config.service] === ""))) {
         sendErrorMessage("模型尚未配置，请前往设置页配置")

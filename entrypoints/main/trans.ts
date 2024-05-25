@@ -1,7 +1,7 @@
 import {checkConfig, hasClassName, skipNode} from "../utils/check";
 import {Config} from "../utils/model";
 import {cache} from "../utils/cache";
-import {options, services} from "../utils/option";
+import {options, services, servicesType} from "../utils/option";
 import {insertFailedTip, insertLoadingSpinner} from "../utils/icon";
 import {styles} from "@/entrypoints/utils/constant";
 import {smashTruncationStyle} from "@/entrypoints/main/css";
@@ -141,7 +141,7 @@ function bilingualTranslate(config: Config, node: any, nodeOuterHTML: any) {
 export function singleTranslate(config: Config, node: any) {
     if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
 
-    let origin = services.isMachine(config.service) ? node.outerHTML : LLMStandardHTML(node);
+    let origin = servicesType.isMachine(config.service) ? node.outerHTML : LLMStandardHTML(node);
     let spinner = insertLoadingSpinner(node);
     let timeout = setTimeout(() => {
         insertFailedTip(config, node, "timeout", spinner);

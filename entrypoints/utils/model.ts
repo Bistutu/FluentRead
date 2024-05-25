@@ -49,37 +49,22 @@ export class Config {
         this.proxy = {};
         this.custom = defaultOption.custom;
         this.extra = {};
-        this.system_role = {
-            [services.openai]: defaultOption.system_role,
-            [services.gemini]: defaultOption.system_role,
-            [services.yiyan]: defaultOption.system_role,
-            [services.tongyi]: defaultOption.system_role,
-            [services.zhipu]: defaultOption.system_role,
-            [services.moonshot]: defaultOption.system_role,
-            [services.custom]: defaultOption.system_role,
-            [services.claude]: defaultOption.system_role,
-            [services.infini]: defaultOption.system_role,
-            [services.baichuan]: defaultOption.system_role,
-            [services.lingyi]: defaultOption.system_role,
-            [services.deepseek]: defaultOption.system_role,
-            [services.minimax]: defaultOption.system_role,
-
-        },
-            this.user_role = {
-                [services.openai]: defaultOption.user_role,
-                [services.gemini]: defaultOption.user_role,
-                [services.yiyan]: defaultOption.user_role,
-                [services.tongyi]: defaultOption.user_role,
-                [services.zhipu]: defaultOption.user_role,
-                [services.moonshot]: defaultOption.user_role,
-                [services.custom]: defaultOption.user_role,
-                [services.claude]: defaultOption.user_role,
-                [services.infini]: defaultOption.user_role,
-                [services.baichuan]: defaultOption.user_role,
-                [services.lingyi]: defaultOption.user_role,
-                [services.deepseek]: defaultOption.user_role,
-                [services.minimax]: defaultOption.user_role,
-            },
-            this.count = 0;
+        this.count = 0;
+        this.system_role = systemRoleFactory();
+        this.user_role = userRoleFactory();
     }
+}
+
+// 构建所有服务的 system_role
+function systemRoleFactory(): IMapping {
+    let systems_role: IMapping = {};
+    Object.keys(services).forEach(key => systems_role[key] = defaultOption.system_role);
+    return systems_role;
+}
+
+// 构建所有服务的 user_role
+function userRoleFactory(): IMapping {
+    let users_role: IMapping = {};
+    Object.keys(services).forEach(key => users_role[key] = defaultOption.user_role);
+    return users_role;
 }

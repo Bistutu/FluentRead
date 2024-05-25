@@ -1,5 +1,4 @@
 export const services = {
-    // 机器翻译
     microsoft: 'microsoft',
     deepL: 'deepL',
     deepLx: 'deepLx',
@@ -22,36 +21,52 @@ export const services = {
     minimax: 'minimax',
     jieyue: "jieyue",    // 阶跃星辰
     graq: 'graq',
+}
+
+export const servicesType = {
     // 阵营划分
-    machine: new Set([,"microsoft", "deepL", "google", "xiaoniu", "baidu",'deepLx']),
-    ai: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu", "moonshot", "claude",
-        "custom", "infini", "baichuan", "deepseek", "lingyi","minimax","jieyue","graq"]),
-    // 需要 token，或者 ak/sk
-    useToken: new Set(["openai", "gemini", "tongyi", "zhipu", "moonshot", "claude",
-        "deepL", "xiaoniu", "infini", "custom", "baichuan", "deepseek", "lingyi","minimax","jieyue","graq"]),
-    useAkSk: new Set(["yiyan"]),
+    machine: new Set([
+        services.microsoft, services.deepL, services.google, services.xiaoniu, services.baidu, services.deepLx
+    ]),
+    AI: new Set([
+        services.openai, services.gemini, services.yiyan, services.tongyi, services.zhipu, services.moonshot,
+        services.claude, services.custom, services.infini, services.baichuan, services.deepseek, services.lingyi,
+        services.minimax, services.jieyue, services.graq
+    ]),
+    // 需要 token
+    useToken: new Set([
+        services.openai, services.gemini, services.tongyi, services.zhipu, services.moonshot, services.claude,
+        services.deepL, services.xiaoniu, services.infini, services.baichuan, services.deepseek, services.lingyi,
+        services.minimax, services.jieyue, services.graq, services.custom,
+    ]),
     // 需要 model
-    useModel: new Set(["openai", "gemini", "yiyan", "tongyi", "zhipu",
-        "moonshot", "claude", "custom", "infini", "baichuan", "deepseek", "lingyi","minimax","jieyue","graq"]),
+    useModel: new Set([
+        services.openai, services.gemini, services.yiyan, services.tongyi, services.zhipu, services.moonshot,
+        services.claude, services.custom, services.infini, services.baichuan, services.deepseek, services.lingyi,
+        services.minimax, services.jieyue, services.graq
+    ]),
     // 支持代理
-    useProxy: new Set(["openai", "claude", "gemini", "google", "deepl",
-        "moonshot", "tongyi", "xiaoniu", "baichuan", "deepseek", "lingyi","jieyue","deeplx","graq"]),
-    // 函数
-    isMachine: (service: string) => services.machine.has(service),
-    isAI: (service: string) => services.ai.has(service),
-    isCustom: (service: string) => service === "custom",
-    isUseToken: (service: string) => services.useToken.has(service),
-    isUseAkSk: (service: string) => services.useAkSk.has(service),
-    isUseAppIdKey: (service: string) => service === "baidu",
-    isUseProxy: (service: string) => services.useProxy.has(service),
-    isUseModel: (service: string) => services.useModel.has(service),
+    useProxy: new Set([
+        services.openai, services.gemini, services.claude, services.google, services.deepL, services.moonshot,
+        services.tongyi, services.xiaoniu, services.baichuan, services.deepseek, services.lingyi, services.deepLx,
+        services.jieyue, services.graq
+    ]),
+
+    isMachine: (service: string) => servicesType.machine.has(service),
+    isAI: (service: string) => servicesType.AI.has(service),
+    isUseToken: (service: string) => servicesType.useToken.has(service),
+    isUseProxy: (service: string) => servicesType.useProxy.has(service),
+    isUseModel: (service: string) => servicesType.useModel.has(service),
+    isCustom: (service: string) => service === services.custom,
+    isUseAkSk: (service: string) => service === services.yiyan,
+    isUseAppIdKey: (service: string) => service === services.baidu,
 }
 
 export const customModelString = "自定义模型"
 export const models = new Map<string, Array<string>>([
     [services.openai, ["gpt-3.5-turbo", "gpt-4o", "gpt-4", "gpt-4-turbo", customModelString]],
     [services.gemini, ["gemini-pro", "gemini-1.5-pro", "gemini-1.5-flash", customModelString]],
-    [services.yiyan, ["ERNIE-Bot 4.0", "ERNIE-Bot","ERNIE-Speed-8K"]],  // 因文心一言模式不同，暂不支持自定义模型（还需根据model获取最终的url请求参数）
+    [services.yiyan, ["ERNIE-Bot 4.0", "ERNIE-Bot", "ERNIE-Speed-8K"]],  // 因文心一言模式不同，暂不支持自定义模型（还需根据model获取最终的url请求参数）
     [services.tongyi, ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext", customModelString]],
     [services.zhipu, ["glm-4", "glm-4v", "glm-3-turbo", customModelString]],
     [services.moonshot, ["moonshot-v1-8k", customModelString]],
@@ -62,8 +77,8 @@ export const models = new Map<string, Array<string>>([
     [services.lingyi, ["yi-spark", "yi-medium", "yi-large", "yi-large-turbo", customModelString]],
     [services.deepseek, ["deepseek-chat", customModelString]],
     [services.minimax, ["chatcompletion_v2"]],
-    [services.jieyue,["step-1-8k",customModelString]],
-    [services.graq, ["gemma-7b-it", "mixtral-8x7b-32768", "llama3-70b-8192","llama3-8b-8192",customModelString]],
+    [services.jieyue, ["step-1-8k", customModelString]],
+    [services.graq, ["gemma-7b-it", "mixtral-8x7b-32768", "llama3-70b-8192", "llama3-8b-8192", customModelString]],
 ]);
 
 export const options = {

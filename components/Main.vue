@@ -283,7 +283,9 @@
             </el-tooltip>
           </el-col>
           <el-col :span="16">
-            <el-input type="textarea" v-model="config.user_role[config.service]" maxlength="8192"
+            <el-input type="textarea"
+                      v-model="config.user_role[config.service]"
+                      maxlength="8192"
                       placeholder="user message template"/>
           </el-col>
         </el-row>
@@ -296,7 +298,7 @@
 <script lang="ts" setup>
 // Main 处理配置信息
 import {computed, ref, watch} from 'vue'
-import {models, options, services} from "../entrypoints/utils/option";
+import {defaultOption, models, options, services, servicesType} from "../entrypoints/utils/option";
 import {Config} from "@/entrypoints/utils/model";
 
 // 配置信息
@@ -323,34 +325,27 @@ watch(config, (newValue, oldValue) => {
 // 计算属性
 let compute = ref({
   // 1、是否是AI服务
-  showAI: computed(() => services.isAI(config.value.service)),
+  showAI: computed(() => servicesType.isAI(config.value.service)),
   // 2、是否是机器翻译
-  showMachine: computed(() => services.isMachine(config.value.service)),
+  showMachine: computed(() => servicesType.isMachine(config.value.service)),
   // 3、是否显示代理
-  showProxy: computed(() => services.isUseProxy(config.value.service)),
+  showProxy: computed(() => servicesType.isUseProxy(config.value.service)),
   // 4、是否显示模型
-  showModel: computed(() => services.isUseModel(config.value.service)),
+  showModel: computed(() => servicesType.isUseModel(config.value.service)),
   // 5、是否显示token
-  showToken: computed(() => services.isUseToken(config.value.service)),
+  showToken: computed(() => servicesType.isUseToken(config.value.service)),
   // 6、是否显示 AkSk
-  showAkSk: computed(() => services.isUseAkSk(config.value.service)),
+  showAkSk: computed(() => servicesType.isUseAkSk(config.value.service)),
   // 7、获取模型列表
   model: computed(() => models.get(config.value.service) || []),
   // 8、是否需要自定义接口
-  showCustom: computed(() => services.isCustom(config.value.service)),
+  showCustom: computed(() => servicesType.isCustom(config.value.service)),
   // 9、是否自定义模型
-  showCustomModel: computed(() => services.isAI(config.value.service) && config.value.model[config.value.service] === "自定义模型"),
+  showCustomModel: computed(() => servicesType.isAI(config.value.service) && config.value.model[config.value.service] === "自定义模型"),
   // 10、是否使用 appid、key
-  showAppIdKey: computed(() => services.isUseAppIdKey(config.value.service)),
-  // 判断是否为“双语模式”，控制一些翻译服务的显示
-  filteredServices: computed((service: any) => {
-    return options.services.filter((service: any) => {
-      if (service.value === 'google' && config.value.style !== 1) {
-        return false;
-      }
-      return true;
-    });
-  })
+  showAppIdKey: computed(() => servicesType.isUseAppIdKey(config.value.service)),
+  // 11、判断是否为“双语模式”，控制一些翻译服务的显示
+  filteredServices: computed(() => options.services.filter((service: any) => !(service.value === 'google' && config.value.style !== 1))),
 })
 
 </script>
