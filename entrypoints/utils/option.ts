@@ -343,8 +343,8 @@ export const defaultOption = {
     hotkey: 'Control',
     service: services.microsoft,
     custom: 'http://localhost:11434/v1/chat/completions',
-    system_role: 'You are a professional, authentic translation engine, only returns translations.',
-    user_role: `Please translate them into {{to}}, please do not explain my original text.:
+    system_role: 'You are a professional, authentic machine translation engine. You only return the translated text, without any explanations.',
+    user_role: `Translate the following text into {{to}}, output translation text directly without any extra information:
 
 {{origin}}`,
     count: 0,

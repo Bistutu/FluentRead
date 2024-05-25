@@ -9,16 +9,14 @@ export function commonMsgTemplate(config: Config, origin: string) {
 
     let system = config.system_role[config.service] || defaultOption.system_role;
     let user = (config.user_role[config.service] || defaultOption.user_role)
-        .replace('{{to}}', config.to).replace('{{origin}}', 'hello');
+        .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
     return JSON.stringify({
         'model': model,
-        "temperature": 0.3,
+        "temperature": 0.7,
         'messages': [
             {'role': 'system', 'content': system},
             {'role': 'user', 'content': user},
-            {'role': "assistant", 'content': '你好'},
-            {'role': 'user', 'content': origin}
         ]
     })
 }
@@ -26,13 +24,12 @@ export function commonMsgTemplate(config: Config, origin: string) {
 // gemini
 export function geminiMsgTemplate(config: Config, origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
-        .replace('{{to}}', config.to).replace('{{origin}}', 'hello');
+        .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
     return JSON.stringify({
         "contents": [
             {"role": "user", "parts": [{"text": user}]},
-            {"role": "model", "parts": [{"text": "你好"}]},
-            {"role": "user", "parts": [{"text": origin}]}]
+        ]
     })
 }
 
@@ -45,7 +42,7 @@ export function claudeMsgTemplate(config: Config, origin: string) {
 
     let system = config.system_role[config.service] || defaultOption.system_role;
     let user = (config.user_role[config.service] || defaultOption.user_role)
-        .replace('{{to}}', config.to).replace('{{origin}}', 'hello');
+        .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
     return JSON.stringify({
         model: model,
@@ -54,8 +51,6 @@ export function claudeMsgTemplate(config: Config, origin: string) {
         system: system,
         messages: [
             {role: "user", content: user},
-            {role: "assistant", content: "你好"},
-            {role: "user", content: origin}
         ]
     })
 }
@@ -66,7 +61,7 @@ export function tongyiMsgTemplate(config: Config, origin: string) {
 
     let system = config.system_role[config.service] || defaultOption.system_role;
     let user = (config.user_role[config.service] || defaultOption.user_role)
-        .replace('{{to}}', config.to).replace('{{origin}}', 'hello');
+        .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
     return JSON.stringify({
         "model": model,
@@ -74,8 +69,6 @@ export function tongyiMsgTemplate(config: Config, origin: string) {
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
-                {"role": "assistant", "content": "你好"},
-                {"role": "user", "content": origin}
             ]
         },
         "parameters": {}
@@ -85,15 +78,13 @@ export function tongyiMsgTemplate(config: Config, origin: string) {
 // 文心一言
 export function yiyanMsgTemplate(config: Config, origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
-        .replace('{{to}}', config.to).replace('{{origin}}', 'hello');
+        .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
     return JSON.stringify({
-        'temperature': 0.3, // 随机度
+        'temperature': 0.7,
         'disable_search': true, // 禁用搜索
         'messages': [
             {"role": "user", "content": user},
-            {"role": "assistant", "content": "你好"},
-            {"role": "user", "content": origin}
         ],
     })
 }
@@ -102,17 +93,15 @@ export function minimaxTemplate(config: Config, origin: string) {
 
     let system = config.system_role[config.service] || defaultOption.system_role;
     let user = (config.user_role[config.service] || defaultOption.user_role)
-        .replace('{{to}}', config.to).replace('{{origin}}', 'hello');
+        .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
     return JSON.stringify({
         model: "abab6.5-chat",
         stream: false,
-        temperature: 0.3,
+        temperature: 0.7,
         messages: [
             {role: 'system', content: system},
             {role: 'user', content: user},
-            {role: 'assistant', content: '你好'},
-            {role: 'user', content: origin}
         ]
     })
 }
