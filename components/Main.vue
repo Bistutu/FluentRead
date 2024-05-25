@@ -182,6 +182,23 @@
       </el-col>
     </el-row>
 
+    <!--  Coze需显示 robot_id -->
+    <el-row v-show="compute.showRobotId" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip
+            class="box-item"
+            effect="dark"
+            content="如何获取 Bot ID？国内版，请访问：coze.cn/docs/developer_guides/coze_api_overview"
+            placement="top-start"
+        >
+          <span class="popup-text popup-vertical-left">Bot ID<el-icon class="icon-margin"><ChatDotRound/></el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-input v-model="config.robot_id[config.service]" placeholder="请输入机器人ID"/>
+      </el-col>
+    </el-row>
+
     <!-- 本地大模型配置 -->
     <el-row v-show="compute.showCustom" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -346,6 +363,8 @@ let compute = ref({
   showAppIdKey: computed(() => servicesType.isUseAppIdKey(config.value.service)),
   // 11、判断是否为“双语模式”，控制一些翻译服务的显示
   filteredServices: computed(() => options.services.filter((service: any) => !(service.value === 'google' && config.value.style !== 1))),
+  // 12、判断是否为 coze
+  showRobotId: computed(() => servicesType.isCoze(config.value.service)),
 })
 
 </script>

@@ -14,6 +14,7 @@ import baidu from "@/entrypoints/service/baidu";
 import minimax from "@/entrypoints/service/minimax";
 import common from "@/entrypoints/service/common";
 import deeplx from "@/entrypoints/service/deeplx";
+import coze from "@/entrypoints/service/coze";
 
 
 export const _service = {
@@ -38,4 +39,6 @@ export const _service = {
     [services.minimax]: minimax,
     [services.jieyue]:common,
     [services.graq]: common,
+    [services.cozecom]: coze,
+    [services.cozecn]: coze,
 }

@@ -23,6 +23,8 @@ export const urls: any = {
     [services.jieyue]:"https://api.stepfun.com/v1/chat/completions",
     [services.yiyan]:{tokenUrl:"https://aip.baidubce.com/oauth/2.0/token"},
     [services.graq]: "https://api.groq.com/openai/v1/chat/completions",
+    [services.cozecom]: "https://api.coze.com/open_api/v2/chat",
+    [services.cozecn]: "https://api.coze.cn/open_api/v2/chat",
 }
 
 export const method = {POST: "POST", GET: "GET",};

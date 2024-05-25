@@ -27,6 +27,7 @@ export class Config {
     proxy: IMapping;  // 代理地址
     custom: string; // 本地服务地址
     extra: IExtra;  // 额外信息（内包信息）
+    robot_id: IMapping;  // 机器人 ID（兼容 coze）
     system_role: IMapping;
     user_role: IMapping;
     count: number;  // 翻译次数
@@ -49,9 +50,10 @@ export class Config {
         this.proxy = {};
         this.custom = defaultOption.custom;
         this.extra = {};
-        this.count = 0;
+        this.robot_id = {};
         this.system_role = systemRoleFactory();
         this.user_role = userRoleFactory();
+        this.count = 0;
     }
 }
 

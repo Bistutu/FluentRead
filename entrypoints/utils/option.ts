@@ -21,6 +21,8 @@ export const services = {
     minimax: 'minimax',
     jieyue: "jieyue",    // 阶跃星辰
     graq: 'graq',
+    cozecom: 'cozecom', // coze 支持机器人不支持模型
+    cozecn: 'cozecn',
 }
 
 export const servicesType = {
@@ -31,13 +33,13 @@ export const servicesType = {
     AI: new Set([
         services.openai, services.gemini, services.yiyan, services.tongyi, services.zhipu, services.moonshot,
         services.claude, services.custom, services.infini, services.baichuan, services.deepseek, services.lingyi,
-        services.minimax, services.jieyue, services.graq
+        services.minimax, services.jieyue, services.graq, services.cozecom, services.cozecn
     ]),
     // 需要 token
     useToken: new Set([
         services.openai, services.gemini, services.tongyi, services.zhipu, services.moonshot, services.claude,
         services.deepL, services.xiaoniu, services.infini, services.baichuan, services.deepseek, services.lingyi,
-        services.minimax, services.jieyue, services.graq, services.custom,
+        services.minimax, services.jieyue, services.graq, services.custom, , services.cozecom, services.cozecn
     ]),
     // 需要 model
     useModel: new Set([
@@ -49,7 +51,7 @@ export const servicesType = {
     useProxy: new Set([
         services.openai, services.gemini, services.claude, services.google, services.deepL, services.moonshot,
         services.tongyi, services.xiaoniu, services.baichuan, services.deepseek, services.lingyi, services.deepLx,
-        services.jieyue, services.graq
+        services.jieyue, services.graq, services.cozecom, services.cozecn
     ]),
 
     isMachine: (service: string) => servicesType.machine.has(service),
@@ -60,13 +62,14 @@ export const servicesType = {
     isCustom: (service: string) => service === services.custom,
     isUseAkSk: (service: string) => service === services.yiyan,
     isUseAppIdKey: (service: string) => service === services.baidu,
+    isCoze: (service: string) => service === services.cozecom || service === services.cozecn,
 }
 
 export const customModelString = "自定义模型"
 export const models = new Map<string, Array<string>>([
     [services.openai, ["gpt-3.5-turbo", "gpt-4o", "gpt-4", "gpt-4-turbo", customModelString]],
     [services.gemini, ["gemini-pro", "gemini-1.5-pro", "gemini-1.5-flash", customModelString]],
-    [services.yiyan, ["ERNIE-Bot 4.0", "ERNIE-Bot", "ERNIE-Speed-8K","ERNIE-Speed-128K"]],  // 因文心一言模式不同，暂不支持自定义模型（还需根据model获取最终的url请求参数）
+    [services.yiyan, ["ERNIE-Bot 4.0", "ERNIE-Bot", "ERNIE-Speed-8K", "ERNIE-Speed-128K"]],  // 因文心一言模式不同，暂不支持自定义模型（还需根据model获取最终的url请求参数）
     [services.tongyi, ["qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext", customModelString]],
     [services.zhipu, ["glm-4", "glm-4v", "glm-3-turbo", customModelString]],
     [services.moonshot, ["moonshot-v1-8k", customModelString]],
@@ -217,6 +220,14 @@ export const options = {
             value: services.openai,
             label: 'OpenAI',
             model: "gpt-3.5-turbo",
+        },
+        {
+            value: services.cozecom,
+            label: 'Coze国际版',
+        },
+        {
+            value: services.cozecn,
+            label: 'Coze国内版',
         },
         {
             value: services.moonshot,

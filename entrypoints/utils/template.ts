@@ -105,3 +105,18 @@ export function minimaxTemplate(config: Config, origin: string) {
         ]
     })
 }
+
+export function cozeTemplate(config: Config, origin: string) {
+
+    let system = config.system_role[config.service] || defaultOption.system_role;
+    let user = (config.user_role[config.service] || defaultOption.user_role)
+        .replace('{{to}}', config.to).replace('{{origin}}', origin);
+
+    console.log(system + user)
+    return JSON.stringify({
+        bot_id: config.robot_id[config.service],
+        user: "FluentRead",
+        query: system + user,
+        stream: false
+    });
+}

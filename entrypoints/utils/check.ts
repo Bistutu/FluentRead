@@ -18,6 +18,7 @@ export function checkConfig(config: Config): boolean {
 
     // 3、检查模型 model 是否已经选择（如果是 AI 且模型栏为空时返回 false）
     if (servicesType.isAI(config.service) &&
+        ![services.cozecn,services.cozecom].includes(config.service) &&
         (!config.model[config.service] ||
             (config.model[config.service] === customModelString && config.customModel[config.service] === ""))) {
         sendErrorMessage("模型尚未配置，请前往设置页配置")
