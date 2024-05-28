@@ -49,7 +49,7 @@ export function insertFailedTip(config: Config, node: any, errMsg: string, spinn
         if (errMsg.includes("auth failed") || errMsg.includes("API key") || errMsg.includes("api key")) {
             sendErrorMessage("token 令牌设置错误，请前往设置页检查")
         } else if (errMsg.includes("quota") || errMsg.includes("limit")) {
-            sendErrorMessage("翻译次数已达上限，请稍后再试")
+            sendErrorMessage("api 访问频率过快，请稍后再试")
         } else if (errMsg.includes("network error")) {
             sendErrorMessage("网络错误，请检查网络连接")
         } else if (errMsg.includes("model")) {

@@ -162,7 +162,7 @@
         <span class="popup-text popup-vertical-left">Secret Key</span>
       </el-col>
       <el-col :span="12">
-        <el-input v-model="config.sk" placeholder="请输入Secret Key"/>
+        <el-input v-model="config.sk" type="password" placeholder="请输入Secret Key"/>
       </el-col>
     </el-row>
 
