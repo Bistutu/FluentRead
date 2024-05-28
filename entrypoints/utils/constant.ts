@@ -2,10 +2,6 @@
 
 import {services} from "./option";
 
-export const app = {
-    version: "0.0.7",
-}
-
 export const urls: any = {
     [services.deepL]: "https://api-free.deepl.com/v2/translate",
     [services.deepLx]: "http://localhost:1188/translate",

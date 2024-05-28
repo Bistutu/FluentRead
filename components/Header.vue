@@ -3,9 +3,8 @@
 </template>
 
 <script lang="ts" setup>
-import {app} from "../entrypoints/utils/constant";
 
-const version = app.version
+const version = process.env.VUE_APP_VERSION
 </script>
 
 <style scoped>

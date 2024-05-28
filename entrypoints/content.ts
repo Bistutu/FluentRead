@@ -11,7 +11,7 @@ export default defineContentScript({
     async main() {
 
         cssInject();        // css 样式注入
-        cache.cleaner();    // 检测是否清理缓存
+        cache.cleaner();    // 检测是否清理缓存\
 
         // 获得配置并监控变化
         let config: Config = new Config();
