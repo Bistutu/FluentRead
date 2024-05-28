@@ -105,6 +105,31 @@ const css = `
     margin: 8px 0 !important;
 }
 
+.fluent-display-lightyellow {
+    background-color: lightyellow;
+}
+
+.fluent-display-lightblue {
+    background-color: lightblue;
+}
+
+.fluent-display-lightgray {
+    background-color: lightgray;
+}
+
+
+.fluent-display-italic {
+    font-style: italic;
+}
+
+.fluent-display-border {
+    border: 1px solid #000;
+    padding: 2px;
+}
+
+.fluent-display-text-shadow {
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+}
 `;
 
 export function cssInject() {

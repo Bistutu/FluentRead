@@ -299,15 +299,15 @@ export const options = {
     ],
     display: [
         {
-            value: 1,
-            label: '双语模式',
-        },
-        {
             value: 0,
             label: '仅译文',
         },
+        {
+            value: 1,
+            label: '双语模式',
+        },
     ],
-    // 双语翻译的 9 种模式：默认、弱化、实线下划线、虚线下划线、学习模式、透明模式、白纸阴影、马克笔、引用、加粗
+    // 双语翻译的 15 种模式：默认、加粗、实线下划线、虚线下划线、弱化、透明、阴影、学习效果、马克笔、引用、高亮、背景色、斜体、边框、文字阴影
     styles: [
         {
             value: 0,
@@ -319,7 +319,6 @@ export const options = {
             label: '加粗',
             class: 'fluent-display-bold',
         },
-
         {
             value: 2,
             label: '实线下划线',
@@ -330,7 +329,6 @@ export const options = {
             label: '虚线下划线',
             class: 'fluent-display-dot-underline',
         },
-
         {
             value: 4,
             label: '弱化',
@@ -343,7 +341,7 @@ export const options = {
         },
         {
             value: 6,
-            label: '阴影',
+            label: '卡片模式',
             class: 'fluent-display-card-mode',
         },
         {
@@ -361,16 +359,45 @@ export const options = {
             label: '引用',
             class: 'fluent-display-quote',
         },
-
-    ],
+        {
+            value: 10,
+            label: '淡黄色背景',
+            class: 'fluent-display-lightyellow',
+        },
+        {
+            value: 11,
+            label: '淡蓝色背景',
+            class: 'fluent-display-lightblue',
+        },
+        {
+            value: 12,
+            label: '淡灰色背景',
+            class: 'fluent-display-lightgray',
+        },
+        {
+            value: 13,
+            label: '斜体',
+            class: 'fluent-display-italic',
+        },
+        {
+            value: 14,
+            label: '边框',
+            class: 'fluent-display-border',
+        },
+        {
+            value: 15,
+            label: '文字阴影',
+            class: 'fluent-display-text-shadow',
+        },
+    ]
 }
 
 export const defaultOption = {
     on: true,
     from: 'auto',
     to: 'zh-Hans',
+    style: 1,
     display: 0,
-    style: 0,
     hotkey: 'Control',
     service: services.microsoft,
     custom: 'http://localhost:11434/v1/chat/completions',
