@@ -1,16 +1,15 @@
 import {Config} from "./utils/model";
-import {cssInject} from "./main/css";
 import {handleTranslation} from "./main/trans";
 import {cache} from "./utils/cache";
 import {constants} from "@/entrypoints/utils/constant";
 import {getCenterPoint} from "@/entrypoints/utils/common";
+import './style.css';   // 导入自定义 css 样式
 
 export default defineContentScript({
     matches: ['<all_urls>'],  // 匹配所有页面
     runAt: 'document_end',  // 在页面加载完成后运行
     async main() {
 
-        cssInject();        // css 样式注入
         cache.cleaner();    // 检测是否清理缓存\
 
         // 获得配置并监控变化

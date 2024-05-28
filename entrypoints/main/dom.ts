@@ -128,3 +128,17 @@ function replaceSensitiveWords(text: string): string {
         }
     });
 }
+
+// 移除特定样式
+export function checkAndRemoveStyle(node: any, styleProperty: any) {
+    if (node.style && node.style[styleProperty] !== undefined) {
+        node.style[styleProperty] = ''; // 置为空
+    }
+}
+
+// 移除特定样式
+export function smashTruncationStyle(node: any) {
+    checkAndRemoveStyle(node, ' webkitLineClamp');
+    node.style.webkitLineClamp='unset';
+    node.style.maxHeight='unset';
+}

@@ -4,8 +4,7 @@ import {cache} from "../utils/cache";
 import {options, services, servicesType} from "../utils/option";
 import {insertFailedTip, insertLoadingSpinner} from "../utils/icon";
 import {styles} from "@/entrypoints/utils/constant";
-import {smashTruncationStyle} from "@/entrypoints/main/css";
-import {beautyHTML, grabNode, LLMStandardHTML} from "@/entrypoints/main/dom";
+import {beautyHTML, grabNode, LLMStandardHTML, smashTruncationStyle} from "@/entrypoints/main/dom";
 import {detectlang, throttle} from "@/entrypoints/utils/common";
 
 let hoverTimer: any; // 鼠标悬停计时器
