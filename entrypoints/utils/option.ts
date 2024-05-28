@@ -70,7 +70,7 @@ export const models = new Map<string, Array<string>>([
     [services.openai, ["gpt-3.5-turbo", "gpt-4o", "gpt-4", "gpt-4-turbo", customModelString]],
     [services.gemini, ["gemini-pro", "gemini-1.5-pro", "gemini-1.5-flash", customModelString]],
     [services.yiyan, ["ERNIE-Bot 4.0", "ERNIE-Bot", "ERNIE-Speed-8K", "ERNIE-Speed-128K"]],  // 因文心一言模式不同，暂不支持自定义模型（还需根据model获取最终的url请求参数）
-    [services.tongyi, ["qwen-long","qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext", customModelString]],
+    [services.tongyi, ["qwen-long", "qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext", customModelString]],
     [services.zhipu, ["glm-4", "glm-4v", "glm-3-turbo", customModelString]],
     [services.moonshot, ["moonshot-v1-8k", customModelString]],
     [services.claude, ["claude3-Haiku", "claude3-Sonnet", "claude3-Opus"]],    // claude 也不支持自定义模型
@@ -176,6 +176,11 @@ export const options = {
         {
             value: 'DoubleClickScree',
             label: "双击翻译",
+        },
+        {
+            value: 'TripleClickScree',
+            label: "三击翻译",
+
         }
     ],
     services: [

@@ -131,9 +131,7 @@ export default defineContentScript({
                 touchTimer = setTimeout(() => touchCount = 0, 300);
             } else if (touchCount === 2) {
                 clearTimeout(touchTimer); // 清除定时器
-                let centerX = (event.touches[0].clientX + event.touches[1].clientX) / 2; // 计算双击点的中心位置
-                let centerY = (event.touches[0].clientY + event.touches[1].clientY) / 2;
-                handleTranslation(config, centerX, centerY); // 调用翻译处理函数
+                handleTranslation(config, event.touches[0].clientX, event.touches[0].clientY); // 调用翻译处理函数
                 touchCount = 0;
             }
         });

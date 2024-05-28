@@ -3,7 +3,7 @@
 import {services} from "./option";
 
 export const app = {
-    version: "0.0.6",
+    version: "0.0.7",
 }
 
 export const urls: any = {
@@ -39,6 +39,7 @@ export const constants = {
     ThreeFinger: "ThreeFinger",
     FourFinger: "FourFinger",
     DoubleClickScreen: "DoubleClickScree",
+    TripleClickScreen: "TripleClickScreen",
 }
 
 export const styles = {

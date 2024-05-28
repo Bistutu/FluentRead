@@ -2,7 +2,7 @@ import {options} from "@/entrypoints/utils/option";
 
 const css = `
 @keyframes spin {
-  0% { transform: rotate(0deg); }
+  0% { transform: rotate(-1deg); }
   100% { transform: rotate(360deg); }
 }
 .fluent-read-loading {
