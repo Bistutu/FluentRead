@@ -1,10 +1,10 @@
-import {Config} from "../utils/model";
 import {services} from "../utils/option";
 import {method, urls} from "../utils/constant";
 import {tongyiMsgTemplate} from "../utils/template";
+import {config} from "@/entrypoints/utils/config";
 
 // 文档：https://help.aliyun.com/zh/dashscope/developer-reference/tongyi-thousand-questions-metering-and-billing
-async function tongyi(config: Config, message: any) {
+async function tongyi(message: any) {
     // 构建请求头
     let headers = new Headers();
     headers.append('Content-Type', 'application/json');
@@ -16,7 +16,7 @@ async function tongyi(config: Config, message: any) {
     const resp = await fetch(url, {
         method: method.POST,
         headers: headers,
-        body: tongyiMsgTemplate(config, message.origin)
+        body: tongyiMsgTemplate(message.origin)
     });
 
     if (resp.ok) {

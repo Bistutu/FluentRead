@@ -1,8 +1,8 @@
-import {Config} from "../utils/model";
 import {method, urls} from "../utils/constant";
 import {services} from "../utils/option";
+import {config} from "@/entrypoints/utils/config";
 
-async function xiaoniu(config: Config, message: any) {
+async function xiaoniu(message: any) {
     // 根据需要调整目标语言
     let targetLang = config.to === 'zh-Hans' ? 'zh' : config.to;
 

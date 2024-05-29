@@ -3,23 +3,15 @@ import {handleTranslation} from "./main/trans";
 import {cache} from "./utils/cache";
 import {constants} from "@/entrypoints/utils/constant";
 import {getCenterPoint} from "@/entrypoints/utils/common";
-import './style.css';   // 导入自定义 css 样式
+import './style.css';
+import {config} from "@/entrypoints/utils/config";   // 导入自定义 css 样式
 
 export default defineContentScript({
     matches: ['<all_urls>'],  // 匹配所有页面
     runAt: 'document_end',  // 在页面加载完成后运行
-    async main() {
+    main() {
 
-        cache.cleaner();    // 检测是否清理缓存\
-
-        // 获得配置并监控变化
-        let config: Config = new Config();
-        await storage.getItem('local:config').then((value) => {
-            if (typeof value === 'string' && value) Object.assign(config, JSON.parse(value));
-        });
-        storage.watch('local:config', (newValue, oldValue) => {
-            if (typeof newValue === 'string' && newValue) Object.assign(config, JSON.parse(newValue));
-        });
+        cache.cleaner();    // 检测是否清理缓存
 
         // 鼠标移动事件监听
         const screen = {mouseX: 0, mouseY: 0, hotkeyPressed: false}
@@ -34,7 +26,7 @@ export default defineContentScript({
         window.addEventListener('keydown', event => {
             if (config.hotkey === event.key) {
                 screen.hotkeyPressed = true;
-                handleTranslation(config, screen.mouseX, screen.mouseY)
+                handleTranslation(screen.mouseX, screen.mouseY)
             }
         })
 
@@ -43,7 +35,7 @@ export default defineContentScript({
             screen.mouseX = event.clientX;
             screen.mouseY = event.clientY;
             if (screen.hotkeyPressed) {
-                handleTranslation(config, screen.mouseX, screen.mouseY, 50)
+                handleTranslation(screen.mouseX, screen.mouseY, 50)
             }
         });
 
@@ -64,7 +56,7 @@ export default defineContentScript({
                     return
             }
 
-            handleTranslation(config, coordinate!.x, coordinate!.y);
+            handleTranslation( coordinate!.x, coordinate!.y);
         });
 
         // 6、双击鼠标翻译事件
@@ -74,7 +66,7 @@ export default defineContentScript({
                 let mouseX = event.clientX;
                 let mouseY = event.clientY;
                 // 调用 handleTranslation 函数进行翻译
-                handleTranslation(config, mouseX, mouseY);
+                handleTranslation( mouseX, mouseY);
             }
         });
 
@@ -90,7 +82,7 @@ export default defineContentScript({
                 timer = setTimeout(() => {
                     let mouseX = event.clientX;
                     let mouseY = event.clientY;
-                    handleTranslation(config, mouseX, mouseY);
+                    handleTranslation(mouseX, mouseY);
                 }, 500) as unknown as number;
             }
         });
@@ -115,7 +107,7 @@ export default defineContentScript({
                 if (event.button === 1) {
                     let mouseX = event.clientX;
                     let mouseY = event.clientY;
-                    handleTranslation(config, mouseX, mouseY);
+                    handleTranslation( mouseX, mouseY);
                 }
             }
         });
@@ -130,7 +122,7 @@ export default defineContentScript({
                 touchTimer = setTimeout(() => touchCount = 0, 300);
             } else if (touchCount === 2) {
                 clearTimeout(touchTimer); // 清除定时器
-                handleTranslation(config, event.touches[0].clientX, event.touches[0].clientY); // 调用翻译处理函数
+                handleTranslation( event.touches[0].clientX, event.touches[0].clientY); // 调用翻译处理函数
                 touchCount = 0;
             }
         });

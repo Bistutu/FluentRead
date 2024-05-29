@@ -1,10 +1,10 @@
-import {Config} from "../utils/model";
 import {method} from "../utils/constant";
 import {geminiMsgTemplate} from "../utils/template";
-import {customModelString, services} from "../utils/option";
+import {customModelString} from "../utils/option";
+import {config} from "@/entrypoints/utils/config";
 
 
-async function gemini(config: Config, message: any) {
+async function gemini(message: any) {
 
     let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
 
@@ -15,7 +15,7 @@ async function gemini(config: Config, message: any) {
     const resp = await fetch(url, {
         method: method.POST,
         headers: {'Content-Type': 'application/json'},
-        body: geminiMsgTemplate(config, message.origin),
+        body: geminiMsgTemplate(message.origin),
     });
     if (resp.ok) {
         let result = await resp.json();

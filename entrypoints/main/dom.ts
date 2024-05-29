@@ -1,10 +1,10 @@
-import {Config} from "@/entrypoints/utils/model";
 import {getMainDomain, selectCompatFn} from "@/entrypoints/main/compat";
 import {html} from 'js-beautify';
 import {handleBtnTranslation} from "@/entrypoints/main/trans";
+import {config} from "@/entrypoints/utils/config";
 
 // 当遇到这些 tag 时直接翻译
-const directSet = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', "li","dd","blockquote"]);
+const directSet = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', "li", "dd", "blockquote"]);
 const skipSet = new Set(["html", "body",]);
 
 export const chileSet = new Set([
@@ -17,7 +17,7 @@ export const chileSet = new Set([
 const url = new URL(location.href.split('?')[0]);
 
 // 返回最终应该翻译的父节点或 false
-export function grabNode(config: Config, node: any): any {
+export function grabNode(node: any): any {
     let curTag = node.tagName.toLowerCase();    // 当前 tag
 
     // 1、全局节点与空节点、input 节点、文字过多的节点、class="notranslate" 的节点不翻译
@@ -42,12 +42,12 @@ export function grabNode(config: Config, node: any): any {
     let fn = selectCompatFn[getMainDomain(url.host)];
     if (fn) {
         let rs = fn(node);
-        if (rs)  return rs
+        if (rs) return rs
     }
 
     // 4、如果遇到 span，则首先该节点就符合翻译条件
     if (curTag === "span" || node.nodeType === Node.TEXT_NODE || detectChildMeta(node)) {
-        return grabNode(config, node.parentNode) || node;   // 递归向上寻找最后一个符合的父节点
+        return grabNode(node.parentNode) || node;   // 递归向上寻找最后一个符合的父节点
     }
 
     // 5、如果节点是div并且不符合一般翻译条件，可翻译首行文本

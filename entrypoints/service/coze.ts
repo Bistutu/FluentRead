@@ -1,8 +1,9 @@
 import {Config} from "../utils/model";
 import {method, urls} from "../utils/constant";
 import {cozeTemplate} from "@/entrypoints/utils/template";
+import {config} from "@/entrypoints/utils/config";
 
-async function coze(config: Config, message: any) {
+async function coze( message: any) {
     // 构建请求头
     let headers = new Headers();
     headers.append('Content-Type', 'application/json');
@@ -15,7 +16,7 @@ async function coze(config: Config, message: any) {
     const resp = await fetch(url, {
         method: method.POST,
         headers: headers,
-        body: cozeTemplate(config, message.origin)
+        body: cozeTemplate(message.origin)
     });
 
     if (resp.ok) {

@@ -1,9 +1,8 @@
-import {Config} from "../utils/model";
-import {services} from "../utils/option";
 import {method, urls} from "../utils/constant";
 import {commonMsgTemplate} from "../utils/template";
+import {config} from "@/entrypoints/utils/config";
 
-async function common(config: Config, message: any) {
+async function common(message: any) {
     // 构建请求头
     let headers = new Headers();
     headers.append('Content-Type', 'application/json');
@@ -16,7 +15,7 @@ async function common(config: Config, message: any) {
     const resp = await fetch(url, {
         method: method.POST,
         headers: headers,
-        body: commonMsgTemplate(config, message.origin)
+        body: commonMsgTemplate(message.origin)
     })
     if (resp.ok) {
         let result = await resp.json();

@@ -1,9 +1,9 @@
 // 消息模板工具
-import {Config} from "./model";
 import {customModelString, defaultOption, services} from "./option";
+import {config} from "@/entrypoints/utils/config";
 
 // openai 格式的消息模板（通用）
-export function commonMsgTemplate(config: Config, origin: string) {
+export function commonMsgTemplate(origin: string) {
     // 检测是否使用自定义模型
     let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
 
@@ -22,7 +22,7 @@ export function commonMsgTemplate(config: Config, origin: string) {
 }
 
 // gemini
-export function geminiMsgTemplate(config: Config, origin: string) {
+export function geminiMsgTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
@@ -34,7 +34,7 @@ export function geminiMsgTemplate(config: Config, origin: string) {
 }
 
 // claude
-export function claudeMsgTemplate(config: Config, origin: string) {
+export function claudeMsgTemplate(origin: string) {
     let model = config.model[services.claude];
     if (model === "Haiku") model = "claude-3-haiku-20240307";
     else if (model === "Sonnet") model = "claude-3-sonnet-20240229";
@@ -56,7 +56,7 @@ export function claudeMsgTemplate(config: Config, origin: string) {
 }
 
 // 通义千问
-export function tongyiMsgTemplate(config: Config, origin: string) {
+export function tongyiMsgTemplate(origin: string) {
     let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
 
     let system = config.system_role[config.service] || defaultOption.system_role;
@@ -76,7 +76,7 @@ export function tongyiMsgTemplate(config: Config, origin: string) {
 }
 
 // 文心一言
-export function yiyanMsgTemplate(config: Config, origin: string) {
+export function yiyanMsgTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
@@ -89,7 +89,7 @@ export function yiyanMsgTemplate(config: Config, origin: string) {
     })
 }
 
-export function minimaxTemplate(config: Config, origin: string) {
+export function minimaxTemplate(origin: string) {
 
     let system = config.system_role[config.service] || defaultOption.system_role;
     let user = (config.user_role[config.service] || defaultOption.user_role)
@@ -106,7 +106,7 @@ export function minimaxTemplate(config: Config, origin: string) {
     })
 }
 
-export function cozeTemplate(config: Config, origin: string) {
+export function cozeTemplate(origin: string) {
 
     let system = config.system_role[config.service] || defaultOption.system_role;
     let user = (config.user_role[config.service] || defaultOption.user_role)

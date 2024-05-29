@@ -1,9 +1,10 @@
 import {customModelString, services, servicesType} from "./option";
 import {Config} from "./model";
 import {sendErrorMessage} from "./tip";
+import {config} from "@/entrypoints/utils/config";
 
 // 检查翻译前配置
-export function checkConfig(config: Config): boolean {
+export function checkConfig(): boolean {
     // 1、检查插件是否开启
     if (!config.on) return false;
 

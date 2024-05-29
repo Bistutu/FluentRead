@@ -1,7 +1,7 @@
-import {Config} from "../utils/model";
 import {services} from "../utils/option";
+import {config} from "@/entrypoints/utils/config";
 
-async function microsoft(config: Config, message: any) {
+async function microsoft(message: any) {
     let fromLang = config.from === 'auto' ? '' : config.from;
 
     const jwtToken = await refreshToken(config.token[services.microsoft]);

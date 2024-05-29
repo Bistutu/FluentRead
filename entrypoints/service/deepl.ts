@@ -1,8 +1,8 @@
-import {Config} from "../utils/model";
 import {method, urls} from "../utils/constant";
 import {services} from "../utils/option";
+import {config} from "@/entrypoints/utils/config";
 
-async function deepl(config: Config, message: any) {
+async function deepl(message: any) {
     // deepl 不支持 zh-Hans，需要转换为 zh
     let targetLang = config.to === 'zh-Hans' ? 'zh' : config.to;
 

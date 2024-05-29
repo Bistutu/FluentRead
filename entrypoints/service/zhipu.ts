@@ -1,12 +1,12 @@
-import {Config} from "../utils/model";
 import {method, urls} from "../utils/constant";
 import {services} from "../utils/option";
 import {commonMsgTemplate} from "../utils/template";
 import CryptoJS from 'crypto-js';
+import {config} from "@/entrypoints/utils/config";
 
 
 // 文档参考：https://open.bigmodel.cn/dev/api#nosdk
-async function zhipu(config: Config, message: any) {
+async function zhipu(message: any) {
     // 智谱根据 token 获取 secret（签名密钥） 和 expiration
     let token = config.token[services.zhipu];
     let secret, expiration;
@@ -28,7 +28,7 @@ async function zhipu(config: Config, message: any) {
     const resp = await fetch(urls[services.zhipu], {
         method: method.POST,
         headers: headers,
-        body: commonMsgTemplate(config, message.origin)
+        body: commonMsgTemplate(message.origin)
     });
 
     if (resp.ok) {

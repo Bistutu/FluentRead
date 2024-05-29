@@ -1,9 +1,9 @@
-import {Config} from "../utils/model";
 import {services} from "../utils/option";
 import {method, urls} from "../utils/constant";
 import {claudeMsgTemplate} from "../utils/template";
+import {config} from "@/entrypoints/utils/config";
 
-async function claude(config: Config, message: any) {
+async function claude(message: any) {
     // 构建请求头
     let headers = new Headers();
     headers.append('Content-Type', 'application/json');
@@ -17,7 +17,7 @@ async function claude(config: Config, message: any) {
     const resp = await fetch(url, {
         method: method.POST,
         headers: headers,
-        body: claudeMsgTemplate(config, message.origin)
+        body: claudeMsgTemplate(message.origin)
     })
     if (resp.ok) {
         let result = await resp.json();

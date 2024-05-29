@@ -2,8 +2,7 @@
   "name": "流畅阅读",
   "description": "拥有基于上下文语境的人工智能翻译引擎，为网站提供更加友好的翻译，让所有人都能够拥有基于母语般的阅读体验",
   "private": true,
-  "version_name": "0.0.7-alpha1",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "type": "module",
   "scripts": {
     "dev": "wxt",

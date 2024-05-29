@@ -1,7 +1,7 @@
-import {Config} from "../utils/model";
 import {method} from "../utils/constant";
+import {config} from "@/entrypoints/utils/config";
 
-async function google(config: Config, message: any) {
+async function google(message: any) {
     let params: any = {
         client: 'gtx', sl: config.from, tl: config.to, dt: 't', strip: 1, nonced: 1,
         'q': encodeURIComponent(message.origin),

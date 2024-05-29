@@ -1,6 +1,5 @@
 // 失败时展示的图标
 import {sendErrorMessage} from "./tip";
-import {Config} from "./model";
 import 'element-plus/es/components/message/style/css'
 import {singleTranslate} from "@/entrypoints/main/trans";
 
@@ -14,7 +13,7 @@ const icon = {
 }
 
 
-export function insertFailedTip(config: Config, node: any, errMsg: string, spinner: HTMLElement) {
+export function insertFailedTip(node: any, errMsg: string, spinner: HTMLElement) {
     spinner?.remove();  // 取消转圈动画
 
     // 创建包装元素
@@ -31,7 +30,7 @@ export function insertFailedTip(config: Config, node: any, errMsg: string, spinn
         event.stopPropagation();  // 阻止事件继续向上传播
 
         wrapper.remove();   // 移除错误提示元素，重新翻译
-        singleTranslate(config, node);
+        singleTranslate(node);
     });
 
     // 添加失败标记 failure

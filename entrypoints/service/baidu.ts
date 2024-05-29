@@ -1,9 +1,9 @@
-import {Config} from "@/entrypoints/utils/model";
 import CryptoJS from 'crypto-js';
 import {urls} from "@/entrypoints/utils/constant";
 import {services} from "@/entrypoints/utils/option";
+import {config} from "@/entrypoints/utils/config";
 
-async function baidu(config: Config, message: any) {
+async function baidu(message: any) {
     const salt = Math.floor(Math.random() * 10000);
     const query = message.origin;
 
@@ -43,7 +43,7 @@ async function baidu(config: Config, message: any) {
                 .replace(/＜/g, "<").replace(/＞/g, ">"));
         }
 
-        return  translatedParts.join('');
+        return translatedParts.join('');
     } else {
         console.log(resp)
         throw new Error(`请求失败: ${resp.status} ${resp.statusText} body: ${await resp.text()}`);

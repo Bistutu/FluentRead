@@ -2,19 +2,20 @@ import {services} from "../utils/option";
 import {Config} from "../utils/model";
 import {yiyanMsgTemplate} from "../utils/template";
 import {method, urls} from "../utils/constant";
+import {config} from "@/entrypoints/utils/config";
 
 // ERNIE-Bot 4.0 模型，模型定价页面：https://console.bce.baidu.com/qianfan/chargemanage/list
 // api 文档中心：https://cloud.baidu.com/doc/WENXINWORKSHOP/s/clntwmv7t
 
 // 文心一言根据 ak, sk 获取 secret 和 expiration
-async function yiyan(config: Config, message: any) {
+async function yiyan(message: any) {
 
     let model = config.model[services.yiyan]
     // model 参数转换
     if (model === "ERNIE-Bot 4.0") model = "completions_pro"
     else if (model === "ERNIE-Bot") model = "completions"
-    else if(model==="ERNIE-Speed-8K") model="ernie_speed"
-    else if(model==="ERNIE-Speed-128K") model="ernie-speed-128k"
+    else if (model === "ERNIE-Speed-8K") model = "ernie_speed"
+    else if (model === "ERNIE-Speed-128K") model = "ernie-speed-128k"
 
     const secret = await getSecret(config);
     const url = `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/${model}?access_token=${secret}`;
@@ -23,7 +24,7 @@ async function yiyan(config: Config, message: any) {
     const resp = await fetch(url, {
         method: method.POST,
         headers: {'Content-Type': 'application/json'},
-        body: yiyanMsgTemplate(config, message.origin)
+        body: yiyanMsgTemplate(message.origin)
     });
 
     if (resp.ok) {

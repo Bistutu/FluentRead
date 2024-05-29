@@ -16,11 +16,15 @@ import common from "@/entrypoints/service/common";
 import deeplx from "@/entrypoints/service/deeplx";
 import coze from "@/entrypoints/service/coze";
 
+type ServiceFunction = (message: any) => Promise<any>;
+type ServiceMap = {
+    [key: string]: ServiceFunction;
+};
 
-export const _service = {
+export const _service: ServiceMap = {
     [services.microsoft]: microsoft,
     [services.deepL]: deepl,
-    [services.deepLx]:deeplx,
+    [services.deepLx]: deeplx,
     [services.google]: google,
     [services.openai]: common,
     [services.moonshot]: common,
@@ -37,7 +41,7 @@ export const _service = {
     [services.lingyi]: common,
     [services.deepseek]: common,
     [services.minimax]: minimax,
-    [services.jieyue]:common,
+    [services.jieyue]: common,
     [services.graq]: common,
     [services.cozecom]: coze,
     [services.cozecn]: coze,

@@ -1,26 +1,15 @@
 import { _service } from "@/entrypoints/service/_service";
-import { Config } from "./utils/model";
-import { storage } from "wxt/storage";
+import {config} from "@/entrypoints/utils/config";
 
 export default defineBackground({
     persistent: {
         safari: false,
     },
-    async main() {
-        // 1. 获得配置并监控变化
-        let config: Config = new Config();
-        await storage.getItem('local:config').then((value) => {
-            if (typeof value === 'string' && value) config = JSON.parse(value);
-        });
-        storage.watch('local:config', (newValue, oldValue) => {
-            if (typeof newValue === 'string' && newValue) config = JSON.parse(newValue);
-        });
-
-        // 2. 监听来自 main 的消息
+    main() {
         browser.runtime.onMessage.addListener(message => {
             return new Promise((resolve, reject) => {
                 // 翻译
-                _service[config.service](config, message)
+                _service[config.service]( message)
                     .then(resp => resolve(resp))    // 成功
                     .catch(error => reject(error)); // 失败
             });

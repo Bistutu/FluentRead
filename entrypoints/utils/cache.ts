@@ -1,11 +1,11 @@
 // localStorage
-import {Config} from "./model";
 import {customModelString} from "./option";
+import {config} from "@/entrypoints/utils/config";
 
 const prefix = "flcache_"    // fluent read cache
 
 // 构建缓存 key
-function buildKey(config: Config, message: string) {
+function buildKey(message: string) {
     let service = config.service
     let model = config.model[service] === customModelString ? config.customModel[service] : config.model[service]
     // 前缀_服务_模型_目标语言_消息
@@ -18,20 +18,20 @@ export const cache = {
         if (expire >= 0) setTimeout(() => set.delete(key), expire);
     },
     // local 系列为特化的缓存方法，用于操作翻译缓存
-    localSet(config: Config, key: string, value: string) {
-        localStorage.setItem(buildKey(config, key), value)
+    localSet(key: string, value: string) {
+        localStorage.setItem(buildKey(key), value)
     },
-    localSetDual(config: Config, key: string, value: string) {
-        this.localSet(config, value, key)
-        this.localSet(config, key, value)
+    localSetDual(key: string, value: string) {
+        this.localSet(value, key)
+        this.localSet(key, value)
     },
-    localGet(config: Config, origin: string) {
-        return localStorage.getItem(buildKey(config, origin))
+    localGet(origin: string) {
+        return localStorage.getItem(buildKey(origin))
     },
-    localRemove(config: Config, origin: string) {
-        let result: any = localStorage.getItem(buildKey(config, origin))
-        localStorage.removeItem(buildKey(config, origin))
-        localStorage.removeItem(buildKey(config, result))
+    localRemove(origin: string) {
+        let result: any = localStorage.getItem(buildKey(origin))
+        localStorage.removeItem(buildKey(origin))
+        localStorage.removeItem(buildKey(result))
     },
     // 24h 清理一次缓存（每次页面打开即 main.js 时都应该调用）
     cleaner() {

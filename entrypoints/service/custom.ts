@@ -1,9 +1,9 @@
-import {Config} from "../utils/model";
 import {commonMsgTemplate} from "../utils/template";
 import {method} from "../utils/constant";
 import {services} from "@/entrypoints/utils/option";
+import {config} from "@/entrypoints/utils/config";
 
-async function custom(config: Config, message: any) {
+async function custom(message: any) {
 
     let headers = new Headers();
     headers.append('Content-Type', 'application/json');
@@ -12,7 +12,7 @@ async function custom(config: Config, message: any) {
     const resp = await fetch(config.custom, {
         method: method.POST,
         headers: headers,
-        body: commonMsgTemplate(config, message.origin)
+        body: commonMsgTemplate(message.origin)
     });
 
     if (resp.ok) {

@@ -1,10 +1,10 @@
 // 引入所需模块
-import {Config} from "../utils/model";
 import {customModelString, services} from "../utils/option";
 import {method} from "../utils/constant";
 import {commonMsgTemplate} from "@/entrypoints/utils/template";
+import {config} from "@/entrypoints/utils/config";
 
-async function infini(config: Config, message: any) {
+async function infini(message: any) {
     // 构建请求头
     let headers = new Headers();
     headers.append('Content-Type', 'application/json');
@@ -16,7 +16,7 @@ async function infini(config: Config, message: any) {
     const resp = await fetch(`https://cloud.infini-ai.com/maas/${model}/nvidia/chat/completions`, {
         method: method.POST,
         headers: headers,
-        body: commonMsgTemplate(config, message.origin)
+        body: commonMsgTemplate(message.origin)
     });
 
     if (resp.ok) {
