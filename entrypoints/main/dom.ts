@@ -40,7 +40,10 @@ export function grabNode(config: Config, node: any): any {
 
     // 4、特殊适配，根据域名进行特殊处理
     let fn = selectCompatFn[getMainDomain(url.host)];
-    if (fn && fn(node)) return node;
+    if (fn) {
+        let rs = fn(node);
+        if (rs)  return rs
+    }
 
     // 4、如果遇到 span，则首先该节点就符合翻译条件
     if (curTag === "span" || node.nodeType === Node.TEXT_NODE || detectChildMeta(node)) {
@@ -139,6 +142,6 @@ export function checkAndRemoveStyle(node: any, styleProperty: any) {
 // 移除特定样式
 export function smashTruncationStyle(node: any) {
     checkAndRemoveStyle(node, ' webkitLineClamp');
-    node.style.webkitLineClamp='unset';
-    node.style.maxHeight='unset';
+    node.style.webkitLineClamp = 'unset';
+    node.style.maxHeight = 'unset';
 }

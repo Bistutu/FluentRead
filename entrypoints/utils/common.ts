@@ -3,7 +3,7 @@ import {franc} from "franc-min";
 
 export function throttle(fn: (...args: any[]) => void, interval: number) {
     let last = 0;   // 维护上次执行的时间
-    return function(this: any, ...args: any[]) {
+    return function (this: any, ...args: any[]) {
         const now = Date.now();
         if (now - last >= interval) {
             last = now;
@@ -38,4 +38,24 @@ export function getCenterPoint(touches: TouchList, point: number) {
     centerX /= touches.length; // 计算中心点的X坐标
     centerY /= touches.length; // 计算中心点的Y坐标
     return {x: centerX, y: centerY};
+}
+
+// 按 selector 查找匹配的元素，返回匹配的元素或 false
+export function findMatchingElement(element: any, selector: any) {
+
+    // 检查当前元素是否匹配传入的选择器
+    if (element.matches(selector)) {
+        return element;
+    }
+
+    // 遍历所有父元素
+    let parent = element.parentElement;
+    while (parent) {
+        if (parent.matches(selector)) {
+            return parent;
+        }
+        parent = parent.parentElement;
+    }
+
+    return false;
 }

@@ -6,6 +6,7 @@ import {insertFailedTip, insertLoadingSpinner} from "../utils/icon";
 import {styles} from "@/entrypoints/utils/constant";
 import {beautyHTML, grabNode, LLMStandardHTML, smashTruncationStyle} from "@/entrypoints/main/dom";
 import {detectlang, throttle} from "@/entrypoints/utils/common";
+import {getElementDetails} from "@/entrypoints/utils/test";
 
 let hoverTimer: any; // 鼠标悬停计时器
 let htmlSet = new Set(); // 防抖
@@ -104,7 +105,7 @@ function handleSingleTranslation(config: Config, node: any, slide: boolean) {
 function bilingualTranslate(config: Config, node: any, nodeOuterHTML: any) {
     if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
 
-    let origin = node.innerText;
+    let origin = node.textContent;
     let spinner = insertLoadingSpinner(node);
     let timeout = setTimeout(() => {
         insertFailedTip(config, node, "timeout", spinner);
