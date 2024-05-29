@@ -12,10 +12,10 @@ export let config: Config = new Config();
     } catch (error) {
         console.error('Error getting config:', error);
     }
-
-    storage.watch('local:config', (newValue, oldValue) => {
-        if (typeof newValue === 'string' && newValue) {
-            Object.assign(config, JSON.parse(newValue));
-        }
-    });
 })();
+
+storage.watch('local:config', (newValue, oldValue) => {
+    if (typeof newValue === 'string' && newValue) {
+        Object.assign(config, JSON.parse(newValue));
+    }
+});

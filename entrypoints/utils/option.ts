@@ -24,6 +24,7 @@ export const services = {
     cozecom: 'cozecom', // coze 支持机器人不支持模型
     cozecn: 'cozecn',
     transmart: 'transmart', // 腾讯交互式翻译
+    baidufree: 'baidufree',
 }
 
 export const servicesType = {
@@ -201,8 +202,17 @@ export const options = {
         },
         {
             value: services.transmart,
-            label: '腾讯交互式翻译',
+            label: '腾讯翻译',
             hidden: true,
+        },
+        {
+            value: services.baidufree,
+            label: '百度翻译',
+            hidden: true,
+        },
+        {
+            value: services.baidu,
+            label: '百度翻译 API',
         },
         {
             value: services.deepL,
@@ -213,10 +223,6 @@ export const options = {
         //     label: 'DeepLx',
         //     hidden: true,
         // },
-        {
-            value: services.baidu,
-            label: '百度翻译',
-        },
         {
             value: services.xiaoniu,
             label: '小牛翻译',

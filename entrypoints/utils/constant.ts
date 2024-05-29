@@ -22,6 +22,7 @@ export const urls: any = {
     [services.cozecom]: "https://api.coze.com/open_api/v2/chat",
     [services.cozecn]: "https://api.coze.cn/open_api/v2/chat",
     [services.transmart]: "https://transmart.qq.com/api/imt",
+    [services.baidufree]:"https://fanyi.baidu.com/transapi"
 }
 
 export const method = {POST: "POST", GET: "GET",};

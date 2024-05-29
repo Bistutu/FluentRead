@@ -188,6 +188,8 @@ export const handleBtnTranslation = throttle((config: Config, node: any) => {
         return;
     }
 
+    config.count++ && storage.setItem('local:config', JSON.stringify(config));
+
     browser.runtime.sendMessage({context: document.title, origin: origin})
         .then((text: string) => {
             cache.localSetDual(origin, text);

@@ -31,12 +31,12 @@ export function checkConfig(): boolean {
             switch (config.service) {
                 case services.google:
                     sendErrorMessage("「谷歌翻译」仅支持双语模式，请切换翻译服务")
-                    return false;
                 case  services.deepLx:
                     sendErrorMessage("「DeepLx」仅支持双语模式，请切换翻译服务")
-                    return false;
                 case services.transmart:
                     sendErrorMessage("「腾讯交互式翻译」仅支持双语模式，请切换翻译服务")
+                case services.baidufree:
+                    sendErrorMessage("「百度翻译」仅支持双语模式，请切换翻译服务")
                     return false;
             }
     }

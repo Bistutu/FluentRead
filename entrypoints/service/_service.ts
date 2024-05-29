@@ -16,6 +16,7 @@ import common from "@/entrypoints/service/common";
 import deeplx from "@/entrypoints/service/deeplx";
 import coze from "@/entrypoints/service/coze";
 import transmart from "@/entrypoints/service/transmart";
+import baidufree from "@/entrypoints/service/baidufree";
 
 type ServiceFunction = (message: any) => Promise<any>;
 type ServiceMap = {
@@ -47,4 +48,5 @@ export const _service: ServiceMap = {
     [services.cozecom]: coze,
     [services.cozecn]: coze,
     [services.transmart]: transmart,
+    [services.baidufree]: baidufree,
 }
