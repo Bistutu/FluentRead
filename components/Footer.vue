@@ -42,13 +42,13 @@ async function clearCache() {
       buttonText.value = "清除完成";
       buttonType.value = 'success';
       showLoading.value = false;
-    }, 1000);
+    }, 500);
     // 过3秒恢复原始文本，取消禁止状态
     setTimeout(() => {
       buttonDisabled.value = false;
       buttonText.value = '清除翻译缓存';
       buttonType.value = '';
-    }, 2000);
+    }, 1500);
   });
 }
 

@@ -1,10 +1,9 @@
-import {Config} from "./utils/model";
 import {handleTranslation} from "./main/trans";
 import {cache} from "./utils/cache";
 import {constants} from "@/entrypoints/utils/constant";
 import {getCenterPoint} from "@/entrypoints/utils/common";
 import './style.css';
-import {config} from "@/entrypoints/utils/config";   // 导入自定义 css 样式
+import {config} from "@/entrypoints/utils/config"; // 导入自定义 css 样式
 
 export default defineContentScript({
     matches: ['<all_urls>'],  // 匹配所有页面
@@ -56,7 +55,7 @@ export default defineContentScript({
                     return
             }
 
-            handleTranslation( coordinate!.x, coordinate!.y);
+            handleTranslation(coordinate!.x, coordinate!.y);
         });
 
         // 6、双击鼠标翻译事件
@@ -66,7 +65,7 @@ export default defineContentScript({
                 let mouseX = event.clientX;
                 let mouseY = event.clientY;
                 // 调用 handleTranslation 函数进行翻译
-                handleTranslation( mouseX, mouseY);
+                handleTranslation(mouseX, mouseY);
             }
         });
 
@@ -107,31 +106,40 @@ export default defineContentScript({
                 if (event.button === 1) {
                     let mouseX = event.clientX;
                     let mouseY = event.clientY;
-                    handleTranslation( mouseX, mouseY);
+                    handleTranslation(mouseX, mouseY);
                 }
             }
         });
 
-        // 9、触屏设备双击翻译事件
+
+        // 9、触屏设备双击/三击翻译事件
         let touchCount = 0;
         let touchTimer: any;
         document.body.addEventListener('touchstart', event => {
-            if (config.hotkey !== constants.DoubleClickScreen) return;
+            // 检查是否为有效的热键配置，并且只处理单指触摸事件
+            if (![constants.DoubleClickScreen, constants.TripleClickScreen].includes(config.hotkey)
+                || event.touches.length !== 1) return;
+
+            // 确定需要的点击次数
+            const requiredTouches = config.hotkey === constants.DoubleClickScreen ? 2 : 3;
+
             touchCount++; // 记录触摸次数
-            if (touchCount === 1) { // 如果是第一次触摸，设置定时器
-                touchTimer = setTimeout(() => touchCount = 0, 300);
-            } else if (touchCount === 2) {
-                clearTimeout(touchTimer); // 清除定时器
-                handleTranslation( event.touches[0].clientX, event.touches[0].clientY); // 调用翻译处理函数
+
+            if (touchCount === 1) {
+                // 如果是第一次触摸，设置定时器，500ms内没有达到所需的触摸次数则重置
+                touchTimer = setTimeout(() => touchCount = 0, 500);
+            } else if (touchCount === requiredTouches) {
+                // 如果达到了所需的触摸次数，清除定时器并调用翻译处理函数
+                clearTimeout(touchTimer);
                 touchCount = 0;
+                handleTranslation(event.touches[0].clientX, event.touches[0].clientY);
             }
         });
 
+
         // background.ts
         browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
-            if (message.message === 'clearCache') {
-                cache.clean()
-            }
+            if (message.message === 'clearCache') cache.clean()
             sendResponse();
             return true;
         });

@@ -177,10 +177,10 @@ export const options = {
             value: 'DoubleClickScree',
             label: "双击翻译",
         },
-        // {
-        //     value: 'TripleClickScree',
-        //     label: "三击翻译",
-        // }
+        {
+            value: 'TripleClickScree',
+            label: "三击翻译",
+        }
     ],
     services: [
         {
