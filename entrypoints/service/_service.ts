@@ -15,6 +15,7 @@ import minimax from "@/entrypoints/service/minimax";
 import common from "@/entrypoints/service/common";
 import deeplx from "@/entrypoints/service/deeplx";
 import coze from "@/entrypoints/service/coze";
+import transmart from "@/entrypoints/service/transmart";
 
 type ServiceFunction = (message: any) => Promise<any>;
 type ServiceMap = {
@@ -45,4 +46,5 @@ export const _service: ServiceMap = {
     [services.graq]: common,
     [services.cozecom]: coze,
     [services.cozecn]: coze,
+    [services.transmart]: transmart,
 }

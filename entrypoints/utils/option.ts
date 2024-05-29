@@ -23,6 +23,7 @@ export const services = {
     graq: 'graq',
     cozecom: 'cozecom', // coze 支持机器人不支持模型
     cozecn: 'cozecn',
+    transmart: 'transmart', // 腾讯交互式翻译
 }
 
 export const servicesType = {
@@ -196,6 +197,11 @@ export const options = {
         {
             value: services.google,
             label: '谷歌翻译',
+            hidden: true,
+        },
+        {
+            value: services.transmart,
+            label: '腾讯交互式翻译',
             hidden: true,
         },
         {

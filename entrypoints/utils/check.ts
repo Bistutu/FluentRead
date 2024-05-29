@@ -1,5 +1,4 @@
 import {customModelString, services, servicesType} from "./option";
-import {Config} from "./model";
 import {sendErrorMessage} from "./tip";
 import {config} from "@/entrypoints/utils/config";
 
@@ -19,7 +18,7 @@ export function checkConfig(): boolean {
 
     // 3、检查模型 model 是否已经选择（如果是 AI 且模型栏为空时返回 false）
     if (servicesType.isAI(config.service) &&
-        ![services.cozecn,services.cozecom].includes(config.service) &&
+        ![services.cozecn, services.cozecom].includes(config.service) &&
         (!config.model[config.service] ||
             (config.model[config.service] === customModelString && config.customModel[config.service] === ""))) {
         sendErrorMessage("模型尚未配置，请前往设置页配置")
@@ -28,14 +27,18 @@ export function checkConfig(): boolean {
 
     // 部分翻译服务仅在“双语模式”启用
     if (config.style === 0) {
-        switch (config.service) {
-            case services.google:
-                sendErrorMessage("谷歌翻译仅在“双语模式”下启用，请切换翻译服务")
-                return false;
-            case  services.deepLx:
-                sendErrorMessage("DeepLx 仅在“双语模式”下启用，请切换翻译服务")
-                return false;
-        }
+        if (config.service)
+            switch (config.service) {
+                case services.google:
+                    sendErrorMessage("「谷歌翻译」仅支持双语模式，请切换翻译服务")
+                    return false;
+                case  services.deepLx:
+                    sendErrorMessage("「DeepLx」仅支持双语模式，请切换翻译服务")
+                    return false;
+                case services.transmart:
+                    sendErrorMessage("「腾讯交互式翻译」仅支持双语模式，请切换翻译服务")
+                    return false;
+            }
     }
     return true;
 }
