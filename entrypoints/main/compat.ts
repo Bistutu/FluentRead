@@ -5,6 +5,8 @@ import {findMatchingElement} from "@/entrypoints/utils/common";
 type ReplaceFunction = (node: any, text: any) => any;
 type SelectFunction = (url: any) => any;
 
+const parser = new DOMParser();
+
 interface ReplaceCompatFn {
     [domain: string]: ReplaceFunction;
 }
@@ -22,11 +24,9 @@ export function getMainDomain(url: any) {
 // 文本替换环节的兼容函数，主域名 : 兼容函数
 export const replaceCompatFn: ReplaceCompatFn = {
     ["youtube.com"]: (node: any, text: any) => {
-        // 替换 innerText
-        let temp = document.createElement('span');
-        temp.innerHTML = text;
-        node.innerHTML = temp.innerText;
-        return node.outerHTML;
+        const doc = parser.parseFromString(text, 'text/html');
+        const newNode = doc.body.firstChild as HTMLElement;
+        node.innerHTML= newNode.innerHTML
     },
 };
 

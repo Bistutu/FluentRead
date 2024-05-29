@@ -1,15 +1,15 @@
 import {checkConfig, hasClassName, skipNode} from "../utils/check";
 import {Config} from "../utils/model";
 import {cache} from "../utils/cache";
-import {options, services, servicesType} from "../utils/option";
+import {options, servicesType} from "../utils/option";
 import {insertFailedTip, insertLoadingSpinner} from "../utils/icon";
 import {styles} from "@/entrypoints/utils/constant";
 import {beautyHTML, grabNode, LLMStandardHTML, smashTruncationStyle} from "@/entrypoints/main/dom";
 import {detectlang, throttle} from "@/entrypoints/utils/common";
+import {getMainDomain, replaceCompatFn} from "@/entrypoints/main/compat";
 
 let hoverTimer: any; // 鼠标悬停计时器
 let htmlSet = new Set(); // 防抖
-const url = new URL(location.href.split('?')[0]);
 
 export function handleTranslation(config: Config, mouseX: number, mouseY: number, delayTime: number = 0) {
     // 检查配置
@@ -85,15 +85,11 @@ function handleSingleTranslation(config: Config, node: any, slide: boolean) {
             spinner.remove();
             htmlSet.delete(nodeOuterHTML);
 
-            // 创建临时节点 span，获取 outerHTMLCache innerHTML
-            let tmpNode = document.createElement("span");
-            tmpNode.innerHTML = outerHTMLCache;
-            let elementNode = tmpNode.firstChild as HTMLElement;
+            // 兼容部分网站独特的 DOM 结构
+            let fn = replaceCompatFn[getMainDomain(document.location.hostname)];
+            if (fn) fn(node, outerHTMLCache);
+            else node.outerHTML = outerHTMLCache;
 
-            // 替换节点内容
-            node.innerHTML = elementNode.innerHTML;
-
-            cache.set(htmlSet, outerHTMLCache, 250);
         }, 250);
         return;
     }
@@ -140,7 +136,8 @@ function bilingualTranslate(config: Config, node: any, nodeOuterHTML: any) {
 export function singleTranslate(config: Config, node: any) {
     if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
 
-    let origin = servicesType.isMachine(config.service) ? node.outerHTML : LLMStandardHTML(node);
+    let origin = servicesType.isMachine(config.service) ? node.innerHTML : LLMStandardHTML(node);
+
     let spinner = insertLoadingSpinner(node);
     let timeout = setTimeout(() => {
         insertFailedTip(config, node, "timeout", spinner);
