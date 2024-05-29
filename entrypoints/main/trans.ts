@@ -6,7 +6,6 @@ import {insertFailedTip, insertLoadingSpinner} from "../utils/icon";
 import {styles} from "@/entrypoints/utils/constant";
 import {beautyHTML, grabNode, LLMStandardHTML, smashTruncationStyle} from "@/entrypoints/main/dom";
 import {detectlang, throttle} from "@/entrypoints/utils/common";
-import {getElementDetails} from "@/entrypoints/utils/test";
 
 let hoverTimer: any; // 鼠标悬停计时器
 let htmlSet = new Set(); // 防抖
@@ -58,7 +57,7 @@ function handleBilingualTranslation(config: Config, node: any, slide: boolean) {
     }
 
     // 检查是否有缓存
-    let cached = cache.localGet(config, node.innerText);
+    let cached = cache.localGet(config, node.textContent);
     if (cached) {
         let spinner = insertLoadingSpinner(node, true);
         setTimeout(() => {

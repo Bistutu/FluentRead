@@ -48,6 +48,6 @@ export const selectCompatFn: SelectCompatFn = {
     ['x.com']: (node: any) => {
         return findMatchingElement(node, 'article div[lang]')   // 帖子
             || findMatchingElement(node, 'div[data-testid="UserDescription"]')  // 个人简介
-        ||findMatchingElement(node, 'div.css-146c3p1')  // 右侧边栏用户简介
-    }
+            || findMatchingElement(node, 'div.css-146c3p1')  // 右侧边栏用户简介
+    },
 }

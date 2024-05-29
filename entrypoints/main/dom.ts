@@ -4,7 +4,7 @@ import {html} from 'js-beautify';
 import {handleBtnTranslation} from "@/entrypoints/main/trans";
 
 // 当遇到这些 tag 时直接翻译
-const directSet = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', "li"]);
+const directSet = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', "li","dd","blockquote"]);
 const skipSet = new Set(["html", "body",]);
 
 export const chileSet = new Set([
