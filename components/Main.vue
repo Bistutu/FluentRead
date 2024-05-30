@@ -34,7 +34,7 @@
         </el-tooltip>
       </el-col>
       <el-col :span="12">
-        <el-select v-model="config.style" placeholder="请选择翻译模式">
+        <el-select v-model="config.display" placeholder="请选择翻译模式">
           <el-option
               class="select-left"
               v-for="item in options.display"
@@ -47,12 +47,12 @@
     </el-row>
 
     <!--    如果选择了“双语翻译样式，则应显示译文显示样式”-->
-    <el-row v-show="config.style === 1" class="margin-bottom margin-left-2em">
+    <el-row v-show="config.display === 1" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
         <span class="popup-text popup-vertical-left">译文样式</span>
       </el-col>
       <el-col :span="12">
-        <el-select v-model="config.display" placeholder="请选择译文显示样式">
+        <el-select v-model="config.style" placeholder="请选择译文显示样式">
           <el-option
               class="select-left"
               v-for="item in options.styles"

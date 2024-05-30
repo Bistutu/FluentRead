@@ -29,7 +29,7 @@ export function handleTranslation(mouseX: number, mouseY: number, delayTime: num
         htmlSet.add(nodeOuterHTML);
 
         // 根据翻译模式进行翻译
-        if (config.style === styles.bilingualTranslation) {
+        if (config.display === styles.bilingualTranslation) {
             handleBilingualTranslation(node, delayTime > 0);  // 根据 delayTime 可判断是否为滑动翻译
         } else {
             handleSingleTranslation(node, delayTime > 0);
@@ -200,7 +200,7 @@ export const handleBtnTranslation = throttle((node: any) => {
 function bilingualAppendChild(node: any, text: string) {
     let newNode = document.createElement("span");
     newNode.classList.add("fluent-read-bilingual");
-    newNode.classList.add(options.styles[config.display].class);
+    newNode.classList.add(options.styles[config.style].class);
     newNode.innerHTML = text;
     smashTruncationStyle(node);
     node.appendChild(newNode);
