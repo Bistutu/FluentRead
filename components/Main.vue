@@ -71,16 +71,16 @@
       </el-col>
       <el-col :span="12">
         <b>
-        <el-select v-model="config.service" placeholder="请选择翻译服务">
-          <el-option
-              class="select-left"
-              v-for="item in compute.filteredServices"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-              :disabled="item.disabled"
-          />
-        </el-select>
+          <el-select v-model="config.service" placeholder="请选择翻译服务">
+            <el-option
+                class="select-left"
+                v-for="item in compute.filteredServices"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+                :disabled="item.disabled"
+            />
+          </el-select>
         </b>
       </el-col>
     </el-row>
@@ -364,7 +364,9 @@ let compute = ref({
   // 10、是否使用 appid、key
   showAppIdKey: computed(() => servicesType.isUseAppIdKey(config.value.service)),
   // 11、判断是否为“双语模式”，控制一些翻译服务的显示
-  filteredServices: computed(() => options.services.filter((service: any) => !(service.value === 'google' && config.value.style !== 1))),
+  filteredServices: computed(() => options.services.filter((service: any) =>
+      !(['google', 'baidufree'].includes(service.value) && config.value.display !== 1))
+  ),
   // 12、判断是否为 coze
   showRobotId: computed(() => servicesType.isCoze(config.value.service)),
 })
