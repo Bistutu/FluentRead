@@ -42,7 +42,6 @@ async function baidufree(message: any) {
     // 处理响应
     if (resp.ok) {
         let result = await resp.json();
-        console.log(JSON.stringify(result));
         if (result.status === 0) {
             return result.data[0].dst;
         } else {
