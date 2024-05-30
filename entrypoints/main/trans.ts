@@ -1,5 +1,4 @@
 import {checkConfig, hasClassName, skipNode} from "../utils/check";
-import {Config} from "../utils/model";
 import {cache} from "../utils/cache";
 import {options, servicesType} from "../utils/option";
 import {insertFailedTip, insertLoadingSpinner} from "../utils/icon";
@@ -64,13 +63,13 @@ function handleBilingualTranslation(node: any, slide: boolean) {
         setTimeout(() => {
             spinner.remove();
             htmlSet.delete(nodeOuterHTML);
-            bilingualAppendChild(config, node, cached);
+            bilingualAppendChild(node, cached);
         }, 250);
         return;
     }
 
     // 翻译
-    bilingualTranslate(config, node, nodeOuterHTML);
+    bilingualTranslate(node, nodeOuterHTML);
 }
 
 function handleSingleTranslation(node: any, slide: boolean) {
@@ -98,7 +97,7 @@ function handleSingleTranslation(node: any, slide: boolean) {
     singleTranslate(node);
 }
 
-function bilingualTranslate(config: Config, node: any, nodeOuterHTML: any) {
+function bilingualTranslate(node: any, nodeOuterHTML: any) {
     if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
 
     let origin = node.textContent;
@@ -116,7 +115,7 @@ function bilingualTranslate(config: Config, node: any, nodeOuterHTML: any) {
                 clearTimeout(timeout);
                 spinner.remove();
                 htmlSet.delete(nodeOuterHTML);
-                bilingualAppendChild(config, node, text);
+                bilingualAppendChild(node, text);
                 cache.localSet(origin, text);
             })
             .catch(error => {
@@ -180,7 +179,7 @@ export function singleTranslate(node: any) {
     translating();
 }
 
-export const handleBtnTranslation = throttle((config: Config, node: any) => {
+export const handleBtnTranslation = throttle((node: any) => {
     let origin = node.innerText;
     let rs = cache.localGet(origin);
     if (rs) {
@@ -198,7 +197,7 @@ export const handleBtnTranslation = throttle((config: Config, node: any) => {
 }, 250)
 
 
-function bilingualAppendChild(config: Config, node: any, text: string) {
+function bilingualAppendChild(node: any, text: string) {
     let newNode = document.createElement("span");
     newNode.classList.add("fluent-read-bilingual");
     newNode.classList.add(options.styles[config.display].class);

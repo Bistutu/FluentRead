@@ -1,7 +1,6 @@
 import {getMainDomain, selectCompatFn} from "@/entrypoints/main/compat";
 import {html} from 'js-beautify';
 import {handleBtnTranslation} from "@/entrypoints/main/trans";
-import {config} from "@/entrypoints/utils/config";
 
 // 当遇到这些 tag 时直接翻译
 const directSet = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', "li", "dd", "blockquote"]);
@@ -34,7 +33,7 @@ export function grabNode(node: any): any {
     // 3、button 按钮适配
     if (curTag === 'button' || (curTag === 'span' && node.parentNode && node.parentNode.tagName.toLowerCase() === 'button')) {
         // 翻译按钮内部而不是整个按钮，避免按钮失去响应式点击事件
-        if (node.textContent.trim() !== '') handleBtnTranslation(config, node)
+        if (node.textContent.trim() !== '') handleBtnTranslation(node)
         return false;
     }
 

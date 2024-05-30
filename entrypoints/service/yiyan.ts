@@ -1,5 +1,4 @@
 import {services} from "../utils/option";
-import {Config} from "../utils/model";
 import {yiyanMsgTemplate} from "../utils/template";
 import {method, urls} from "../utils/constant";
 import {config} from "@/entrypoints/utils/config";
@@ -17,7 +16,7 @@ async function yiyan(message: any) {
     else if (model === "ERNIE-Speed-8K") model = "ernie_speed"
     else if (model === "ERNIE-Speed-128K") model = "ernie-speed-128k"
 
-    const secret = await getSecret(config);
+    const secret = await getSecret();
     const url = `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/${model}?access_token=${secret}`;
 
     // 发起 fetch 请求
@@ -37,7 +36,7 @@ async function yiyan(message: any) {
     }
 }
 
-async function getSecret(config: Config) {
+async function getSecret() {
     let secret, expiration;
     config.extra[services.yiyan] && ({secret, expiration} = config.extra[services.yiyan]);
 

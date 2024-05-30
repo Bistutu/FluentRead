@@ -95,11 +95,15 @@
     font-weight: bold;
 }
 
-/*双语模式，block 强制换行、inline-block 自适应换行*/
-.fluent-read-bilingual{
-    display: block;
-    word-break: break-word;
-    margin: 8px 0 !important;
+/* 双语模式，block 强制换行、inline-block 自适应换行 */
+.fluent-read-bilingual {
+    display: block; /* 设置为块级元素，强制换行 */
+    word-break: break-word; /* 允许在单词内断行，避免超出容器边界 */
+    margin: 8px 0 !important; /* 上下边距设置为8px，并强制覆盖其他样式 */
+    color: inherit; /* 保持文本颜色与周围文本一致 */
+    background: transparent; /* 确保背景透明，与周围背景融合 */
+    box-sizing: border-box; /* 使用 border-box 模型，确保内外边距和边框计算正确 */
+    overflow-wrap: break-word; /* 处理长单词或 URL 的断行，避免溢出 */
 }
 
 .fluent-display-lightyellow {
