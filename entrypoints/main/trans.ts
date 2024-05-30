@@ -28,6 +28,9 @@ export function handleTranslation(mouseX: number, mouseY: number, delayTime: num
         if (htmlSet.has(nodeOuterHTML)) return;
         htmlSet.add(nodeOuterHTML);
 
+        // 翻译服务
+        // console.log('翻译服务：', config.service)
+
         // 根据翻译模式进行翻译
         if (config.display === styles.bilingualTranslation) {
             handleBilingualTranslation(node, delayTime > 0);  // 根据 delayTime 可判断是否为滑动翻译

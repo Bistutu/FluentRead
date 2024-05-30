@@ -26,15 +26,15 @@ export function checkConfig(): boolean {
     }
 
     // 部分翻译服务仅在“双语模式”启用
-    if (config.style === 0) {
+    if (config.display === 0) {
         if (config.service)
             switch (config.service) {
                 case services.google:
                     sendErrorMessage("「谷歌翻译」仅支持双语模式，请切换翻译服务")
                 case  services.deepLx:
                     sendErrorMessage("「DeepLx」仅支持双语模式，请切换翻译服务")
-                case services.transmart:
-                    sendErrorMessage("「腾讯交互式翻译」仅支持双语模式，请切换翻译服务")
+                // case services.transmart:
+                //     sendErrorMessage("「腾讯交互式翻译」仅支持双语模式，请切换翻译服务")
                 case services.baidufree:
                     sendErrorMessage("「百度翻译」仅支持双语模式，请切换翻译服务")
                     return false;
