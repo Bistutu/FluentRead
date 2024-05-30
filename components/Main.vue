@@ -365,7 +365,7 @@ let compute = ref({
   showAppIdKey: computed(() => servicesType.isUseAppIdKey(config.value.service)),
   // 11、判断是否为“双语模式”，控制一些翻译服务的显示
   filteredServices: computed(() => options.services.filter((service: any) =>
-      !(['google', 'baidufree'].includes(service.value) && config.value.display !== 1))
+      !([service.google, service.baidufree].includes(service.value) && config.value.display !== 1))
   ),
   // 12、判断是否为 coze
   showRobotId: computed(() => servicesType.isCoze(config.value.service)),
