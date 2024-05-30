@@ -317,7 +317,7 @@
 <script lang="ts" setup>
 // Main 处理配置信息
 import {computed, ref, watch} from 'vue'
-import {models, options, servicesType} from "../entrypoints/utils/option";
+import {models, options, services, servicesType} from "../entrypoints/utils/option";
 import {Config} from "@/entrypoints/utils/model";
 
 // 配置信息
@@ -365,7 +365,7 @@ let compute = ref({
   showAppIdKey: computed(() => servicesType.isUseAppIdKey(config.value.service)),
   // 11、判断是否为“双语模式”，控制一些翻译服务的显示
   filteredServices: computed(() => options.services.filter((service: any) =>
-      !([service.google, service.baidufree].includes(service.value) && config.value.display !== 1))
+      !([services.google, services.baidufree].includes(service.value) && config.value.display !== 1))
   ),
   // 12、判断是否为 coze
   showRobotId: computed(() => servicesType.isCoze(config.value.service)),

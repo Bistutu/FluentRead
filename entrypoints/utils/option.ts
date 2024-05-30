@@ -30,7 +30,8 @@ export const services = {
 export const servicesType = {
     // 阵营划分
     machine: new Set([
-        services.microsoft, services.deepL, services.google, services.xiaoniu, services.baidu, services.deepLx
+        services.microsoft, services.deepL, services.google, services.xiaoniu, services.baidu, services.deepLx,
+        services.transmart, services.baidufree
     ]),
     AI: new Set([
         services.openai, services.gemini, services.yiyan, services.tongyi, services.zhipu, services.moonshot,
@@ -194,21 +195,17 @@ export const options = {
             value: services.microsoft,
             label: '微软翻译',
         },
-        // 谷歌翻译只在双语模式中使用
-        {
-            value: services.google,
-            label: '谷歌翻译',
-            hidden: true,
-        },
         {
             value: services.transmart,
             label: '腾讯翻译',
-            hidden: true,
+        },
+        {
+            value: services.google,
+            label: '谷歌翻译',
         },
         {
             value: services.baidufree,
             label: '百度翻译',
-            hidden: true,
         },
         {
             value: services.baidu,
