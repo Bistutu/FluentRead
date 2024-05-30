@@ -75,10 +75,10 @@ export function hasRetryTag(node: any) {
 }
 
 // 判断是否有指定 class 属性，并返回最终包含该 class 的节点
-export function hasClassName(node: any, className: string): any {
+export function searchClassName(node: any, className: string): any {
     if (node.classList.contains(className)) return node;
     for (let child of node.children) {
-        let result = hasClassName(child, className);
+        let result = searchClassName(child, className);
         if (result) return result;
     }
     return false;

@@ -1,4 +1,4 @@
-import {checkConfig, hasClassName, skipNode} from "../utils/check";
+import {checkConfig, searchClassName, skipNode} from "../utils/check";
 import {cache} from "../utils/cache";
 import {options, servicesType} from "../utils/option";
 import {insertFailedTip, insertLoadingSpinner} from "../utils/icon";
@@ -44,7 +44,7 @@ export function handleTranslation(mouseX: number, mouseY: number, delayTime: num
 function handleBilingualTranslation(node: any, slide: boolean) {
     let nodeOuterHTML = node.outerHTML;
     // 如果已经翻译过，250ms 后删除翻译结果
-    let bilingualNode = hasClassName(node, 'fluent-read-bilingual');
+    let bilingualNode = searchClassName(node, 'fluent-read-bilingual');
     if (bilingualNode) {
         if (slide) {
             htmlSet.delete(nodeOuterHTML);
@@ -53,7 +53,8 @@ function handleBilingualTranslation(node: any, slide: boolean) {
         let spinner = insertLoadingSpinner(bilingualNode, true);
         setTimeout(() => {
             spinner.remove();
-            bilingualNode.remove();
+            searchClassName(bilingualNode, 'fluent-read-bilingual-content').remove();
+            bilingualNode.classList.remove('fluent-read-bilingual');
             htmlSet.delete(nodeOuterHTML);
         }, 250);
         return;
@@ -201,8 +202,9 @@ export const handleBtnTranslation = throttle((node: any) => {
 
 
 function bilingualAppendChild(node: any, text: string) {
+    node.classList.add("fluent-read-bilingual");
     let newNode = document.createElement("span");
-    newNode.classList.add("fluent-read-bilingual");
+    newNode.classList.add("fluent-read-bilingual-content");
     newNode.classList.add(options.styles[config.style].class);
     newNode.innerHTML = text;
     smashTruncationStyle(node);

@@ -96,7 +96,7 @@
 }
 
 /* 双语模式，block 强制换行、inline-block 自适应换行 */
-.fluent-read-bilingual {
+.fluent-read-bilingual-content {
     display: block; /* 设置为块级元素，强制换行 */
     word-break: break-word; /* 允许在单词内断行，避免超出容器边界 */
     margin: 8px 0 !important; /* 上下边距设置为8px，并强制覆盖其他样式 */
