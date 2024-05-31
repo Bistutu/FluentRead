@@ -25,31 +25,31 @@ export function grabNode(node: any): any {
         return false;
     }
 
-    // 2、普通适配，遇到这些标签则直接翻译节点
-    if (directSet.has(curTag)) {
-        return node;
-    }
-
-    // 3、button 按钮适配
-    if (curTag === 'button' || (curTag === 'span' && node.parentNode && node.parentNode.tagName.toLowerCase() === 'button')) {
-        // 翻译按钮内部而不是整个按钮，避免按钮失去响应式点击事件
-        if (node.textContent.trim() !== '') handleBtnTranslation(node)
-        return false;
-    }
-
-    // 4、特殊适配，根据域名进行特殊处理
+    // 2、特殊适配，根据域名进行特殊处理
     let fn = selectCompatFn[getMainDomain(url.host)];
     if (fn) {
         let rs = fn(node);
         if (rs) return rs
     }
 
-    // 4、如果遇到 span，则首先该节点就符合翻译条件
+    // 3、普通适配，遇到这些标签则直接翻译节点
+    if (directSet.has(curTag)) {
+        return node;
+    }
+
+    // 4、button 按钮适配
+    if (curTag === 'button' || (curTag === 'span' && node.parentNode && node.parentNode.tagName.toLowerCase() === 'button')) {
+        // 翻译按钮内部而不是整个按钮，避免按钮失去响应式点击事件
+        if (node.textContent.trim() !== '') handleBtnTranslation(node)
+        return false;
+    }
+
+    // 5、如果遇到 span，则首先该节点就符合翻译条件
     if (curTag === "span" || node.nodeType === Node.TEXT_NODE || detectChildMeta(node)) {
         return grabNode(node.parentNode) || node;   // 递归向上寻找最后一个符合的父节点
     }
 
-    // 5、如果节点是div并且不符合一般翻译条件，可翻译首行文本
+    // 6、如果节点是div并且不符合一般翻译条件，可翻译首行文本
     if (curTag === 'div' || curTag === 'label') {
         // 遍历子节点，寻找首个文本节点或 a 标签节点
         let child = node.firstChild;

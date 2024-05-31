@@ -26,7 +26,7 @@ export const replaceCompatFn: ReplaceCompatFn = {
     ["youtube.com"]: (node: any, text: any) => {
         const doc = parser.parseFromString(text, 'text/html');
         const newNode = doc.body.firstChild as HTMLElement;
-        node.innerHTML= newNode.innerHTML
+        node.innerHTML = newNode.innerHTML
     },
 };
 
