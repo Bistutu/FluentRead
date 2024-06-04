@@ -12,24 +12,36 @@ export default defineContentScript({
 
         cache.cleaner();    // 检测是否清理缓存
 
-        // 鼠标移动事件监听
-        const screen = {mouseX: 0, mouseY: 0, hotkeyPressed: false}
-        // 1、失去焦点时 hotkeyPressed = false
-        window.addEventListener('blur', () => screen.hotkeyPressed = false)
-        // 2、抬起快捷按键时 hotkeyPressed = false
-        window.addEventListener('keyup', event => {
-            if (config.hotkey === event.key) screen.hotkeyPressed = false;
-        })
+        const screen = { mouseX: 0, mouseY: 0, hotkeyPressed: false, otherKeyPressed: false };
 
-        // 3、按下快捷按键时 hotkeyPressed = true 并翻译节点
+        // 1. 失去焦点时
+        window.addEventListener('blur', () => {
+            screen.hotkeyPressed = false;
+            screen.otherKeyPressed = false;
+        });
+
+        // 2. 按下按键时
         window.addEventListener('keydown', event => {
             if (config.hotkey === event.key) {
                 screen.hotkeyPressed = true;
-                handleTranslation(screen.mouseX, screen.mouseY)
+                screen.otherKeyPressed = false;
+            } else if (screen.hotkeyPressed) {
+                screen.otherKeyPressed = true;
             }
-        })
+        });
 
-        // 4、鼠标移动时更新位置，并根据 hotkeyPressed 决定是否触发翻译
+        // 3. 抬起按键时
+        window.addEventListener('keyup', event => {
+            if (config.hotkey === event.key) {
+                if (!screen.otherKeyPressed) {
+                    handleTranslation(screen.mouseX, screen.mouseY);
+                }
+                screen.hotkeyPressed = false;
+                screen.otherKeyPressed = false;
+            }
+        });
+
+        // 4. 鼠标移动时更新位置，并根据 hotkeyPressed 决定是否触发翻译
         document.body.addEventListener('mousemove', event => {
             screen.mouseX = event.clientX;
             screen.mouseY = event.clientY;
