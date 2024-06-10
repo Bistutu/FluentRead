@@ -86,7 +86,7 @@
 </details>
 <details>
     <summary>6、这款软件如何盈利？</summary>
-&emsp;&emsp;正如你所见，这款软件目前并没有任何盈利的地方。如果您希望向作者给予鼓励，可以滑动页面到最底部使用微信扫描“赞赏码”，作者在此表示感谢~
+&emsp;&emsp;软件目前没有盈利的地方。
 </details>
 
 
@@ -104,18 +104,6 @@
   3. 支持 GPT-4o 等模型
   4. 增加鼠标事件，支持快捷翻译
   5. 增加对自定义接口的支持，兼容 [one-api](https://github.com/songquanpeng/one-api)、[new-api](https://github.com/Calcium-Ion/new-api) 等方式调用
-- 2024-04-01：0.01 版本
-  1. 使用 Vue3 + WXT 重构程序
-- 2024-03-04
-  1. 增加 [DeepL](https://deepl.com/zh/) 翻译服务
-  2. 增加 [ollama](https://github.com/ollama/ollama) 本地大模型支持
-  3. 兼容移动设备，实现“三指触摸”翻译
-  4. 优化缓存逻辑
-- 2024-02-18
-  1. 接入微软机器翻译
-  2. 接入 OpenAI、智谱清言、moonshot 等人工智能引擎
-  3. 增加快捷键翻译功能
-  4. 增加翻译缓存与回译功能
 - ...
 - 2023-12 beta 版本
 
@@ -144,7 +132,7 @@ pnpm zip:firefox	# 打包为支持 FireFox 内核的插件
 
 如果您想向作者表达感谢，请使用微信扫描下方二维码，您的名字将出现在赞助名单上。
 
-<img src="./misc/approve.jpg" alt="wechat" style="width: 40%; max-width: 100%;border: 1px solid black;">
+<img src="https://oss.thinkstu.com/typora/202406102143926.jpg?x-oss-process=style/optimize" alt="wechat" style="width: 40%; max-width: 100%;border: 1px solid black;">
 
 （赞助名单最后更新于：2024年5月18日）
 
