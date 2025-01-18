@@ -31,6 +31,7 @@ export class Config {
     system_role: IMapping;
     user_role: IMapping;
     count: number;  // 翻译次数
+    theme: string;  // 主题模式：'auto' | 'light' | 'dark'
 
     constructor() {
         this.on = true;
@@ -54,6 +55,7 @@ export class Config {
         this.system_role = systemRoleFactory();
         this.user_role = userRoleFactory();
         this.count = 0;
+        this.theme = 'auto';  // 默认跟随系统
     }
 }
 

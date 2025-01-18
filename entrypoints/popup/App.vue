@@ -18,8 +18,13 @@
 import Header from '../../components/Header.vue';
 import Main from "../../components/Main.vue";
 import Footer from "../../components/Footer.vue";
+import '../../styles/theme.css';
 
 </script>
 
-<style scoped>
+<style>
+.common-layout {
+  background-color: var(--el-bg-color);
+  color: var(--el-text-color);
+}
 </style>

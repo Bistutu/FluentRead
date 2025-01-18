@@ -244,6 +244,11 @@ export const options = {
         {value: 14, label: "边框", class: "fluent-display-border"},
         {value: 15, label: "文字阴影", class: "fluent-display-text-shadow"},
     ],
+    theme: [
+        {value: "auto", label: "跟随操作系统"},
+        {value: "light", label: "亮色主题"},
+        {value: "dark", label: "暗色主题"},
+    ],
 };
 
 export const defaultOption = {
@@ -262,3 +267,4 @@ export const defaultOption = {
 {{origin}}`,
     count: 0,
 };
+

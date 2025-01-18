@@ -126,24 +126,6 @@
       </el-col>
     </el-row>
 
-    <!--  使用 appid、key -->
-    <el-row v-show="compute.showAppIdKey" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <span class="popup-text popup-vertical-left">APPID</span>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.appid" placeholder="请输入 appid" />
-      </el-col>
-    </el-row>
-    <el-row v-show="compute.showAppIdKey" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <span class="popup-text popup-vertical-left">Key</span>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.key" type="password" placeholder="请输入 Key" />
-      </el-col>
-    </el-row>
-
     <!--  Coze需显示 robot_id -->
     <el-row v-show="compute.showRobotId" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -251,30 +233,65 @@
         </el-row>
       </el-collapse-item>
     </el-collapse>
+
+    <!-- 主题设置 -->
+    <el-row class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="设置界面主题，可跟随系统自动切换" placement="top-start">
+          <span class="popup-text popup-vertical-left">主题设置<el-icon class="icon-margin">
+              <Setting />
+            </el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-select v-model="config.theme" placeholder="请选择主题模式">
+          <el-option class="select-left" v-for="item in options.theme" :key="item.value" :label="item.label"
+            :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
   </div>
 
 </template>
 
 <script lang="ts" setup>
 // Main 处理配置信息
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, onUnmounted } from 'vue'
 import { models, options, servicesType } from "../entrypoints/utils/option";
 import { Config } from "@/entrypoints/utils/model";
 import { storage } from '@wxt-dev/storage';
+import { Setting } from '@element-plus/icons-vue'
 
+// 初始化深色模式媒体查询
+const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+// 更新主题函数
+function updateTheme(theme: string) {
+  if (theme === 'auto') {
+    // 自动模式下，直接使用系统主题
+    const isDark = darkModeMediaQuery.matches;
+    console.log('isDark', isDark);
+    
+    document.documentElement.classList.toggle('dark', isDark);
+  } else {
+    // 手动模式下，使用选择的主题
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+  }
+}
 
 // 配置信息
 let config = ref(new Config());
-// 从 storage 中获取本地配置 'local:config'
-// 使用 Promise 异步获取存储的值
+
+// 从 storage 中获取本地配置
 storage.getItem('local:config').then((value: any) => {
-  // 检查 value 是否为非空字符串
-  // 如果是,则将解析后的 JSON 对象合并到 config.value 中
-  // 这样可以保留用户之前保存的配置信息
   if (typeof value === 'string' && value) {
-    Object.assign(config.value, JSON.parse(value));
+    const parsedConfig = JSON.parse(value);
+    Object.assign(config.value, parsedConfig);
   }
+  // 初始应用主题
+  updateTheme(config.value.theme || 'auto');
 });
+
 // 监听 storage 中 'local:config' 的变化
 // 当其他页面修改了配置时,会触发这个监听器
 // newValue 是新的配置值,oldValue 是旧的配置值
@@ -322,6 +339,23 @@ let compute = ref({
   // 11、判断是否为 coze
   showRobotId: computed(() => servicesType.isCoze(config.value.service)),
 })
+
+// 监听主题变化
+watch(() => config.value.theme, (newTheme) => {
+  updateTheme(newTheme || 'auto');
+});
+
+// 使用 onchange 监听系统主题变化
+darkModeMediaQuery.onchange = (e) => {
+  if (config.value.theme === 'auto') {
+    updateTheme('auto');
+  }
+};
+
+// 组件卸载时清理
+onUnmounted(() => {
+  darkModeMediaQuery.onchange = null;
+});
 
 </script>
 
