@@ -23,6 +23,7 @@ import {Star} from "@element-plus/icons-vue";
 import {Config} from "../entrypoints/utils/model";
 import {config as importedConfig} from "@/entrypoints/utils/config";
 import { storage } from '@wxt-dev/storage';
+import browser from 'webextension-polyfill';
 
 // 实际上是 el-link 而不是 el-button
 const buttonDisabled = ref(false);
@@ -32,33 +33,46 @@ const buttonType = ref('');
 const showLoading = ref(false);
 
 async function clearCache() {
-  buttonDisabled.value = true;
-  buttonText.value = "正在清除...";
-  showLoading.value = true; // 开始显示 Loading 图标
+  try {
+    buttonDisabled.value = true;
+    buttonText.value = "正在清除...";
+    showLoading.value = true;
 
-  // 发送消息到 content.js 告知清除缓存
-  await sendMessageToContentScript({message: 'clearCache'}, function () {
-    // 1秒后显示清除完成，隐藏 Loading 图标
+    // 获取当前标签页
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+    if (!tabs[0]?.id) {
+      throw new Error('No active tab found');
+    }
+
+    // 发送消息到 content.js
+    await browser.tabs.sendMessage(tabs[0].id, { type: 'clearCache' });
+    
+    // 成功清除后的UI反馈
     setTimeout(() => {
       buttonText.value = "清除完成";
       buttonType.value = 'success';
       showLoading.value = false;
     }, 500);
-    // 过3秒恢复原始文本，取消禁止状态
+
+    // 恢复按钮状态
     setTimeout(() => {
       buttonDisabled.value = false;
       buttonText.value = '清除翻译缓存';
       buttonType.value = '';
     }, 1500);
-  });
-}
 
-// 发送消息到 content.js，参数：消息体，回调函数（恢复函数）
-async function sendMessageToContentScript(message: any, recover: Function) {
-  const tabs = await browser.tabs.query({active: true, currentWindow: true});
-  if (tabs[0] && typeof tabs[0].id === 'number') {
-    await browser.tabs.sendMessage(tabs[0].id, message);  // 发送消息到 content.js 清除缓存
-    recover();
+  } catch (error) {
+    console.error('清除缓存失败:', error);
+    buttonText.value = "清除失败";
+    buttonType.value = 'danger';
+    
+    // 恢复按钮状态
+    setTimeout(() => {
+      buttonDisabled.value = false;
+      buttonText.value = '清除翻译缓存';
+      buttonType.value = '';
+      showLoading.value = false;
+    }, 1500);
   }
 }
 
