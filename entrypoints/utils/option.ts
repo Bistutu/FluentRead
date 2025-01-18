@@ -225,34 +225,34 @@ export const options = {
     ],
     display: [
         {value: 0, label: "仅译文模式"},
-        {value: 1, label: "双语模式"},
+        {value: 1, label: "双语对照模式"},
     ],
     // 双语翻译的 15 种模式：默认、加粗、实线下划线、虚线下划线、弱化、透明、阴影、学习效果、马克笔、引用、高亮、背景色、斜体、边框、文字阴影
     styles: [
         // 基础样式
         {value: "basic", label: "基础样式", disabled: true},
-        {value: 0, label: "朴素模式", class: "fluent-display-default"},
-        {value: 1, label: "加粗显示", class: "fluent-display-bold"},
-        {value: 2, label: "优雅斜体", class: "fluent-display-italic"},
-        {value: 3, label: "立体阴影", class: "fluent-display-text-shadow"},
+        {value: 0, label: "朴素模式", class: "fluent-display-default", group: "basic"},
+        {value: 1, label: "加粗显示", class: "fluent-display-bold", group: "basic"},
+        {value: 2, label: "优雅斜体", class: "fluent-display-italic", group: "basic"},
+        {value: 3, label: "立体阴影", class: "fluent-display-text-shadow", group: "basic"},
         
         // 下划线系列
         {value: "underline", label: "下划线系列", disabled: true},
-        {value: 4, label: "蓝色实线", class: "fluent-display-solid-underline"},
-        {value: 5, label: "优雅虚线", class: "fluent-display-dot-underline"},
-        {value: 6, label: "活泼波浪", class: "fluent-display-wavy"},
+        {value: 4, label: "蓝色实线", class: "fluent-display-solid-underline", group: "underline"},
+        {value: 5, label: "优雅虚线", class: "fluent-display-dot-underline", group: "underline"},
+        {value: 6, label: "活泼波浪", class: "fluent-display-wavy", group: "underline"},
         
         // 卡片系列
         {value: "card", label: "卡片系列", disabled: true},
-        {value: 7, label: "简约卡片", class: "fluent-display-card-mode"},
-        {value: 8, label: "渐变卡片", class: "fluent-display-modern-card"},
-        {value: 9, label: "纸张卡片", class: "fluent-display-paper"},
+        {value: 7, label: "简约卡片", class: "fluent-display-card-mode", group: "card"},
+        {value: 8, label: "渐变卡片", class: "fluent-display-modern-card", group: "card"},
+        {value: 9, label: "纸张卡片", class: "fluent-display-paper", group: "card"},
         
         // 高亮系列
         {value: "highlight", label: "高亮系列", disabled: true},
-        {value: 10, label: "学习标记", class: "fluent-display-learning-mode"},
-        {value: 11, label: "荧光标记", class: "fluent-display-marker"},
-        {value: 12, label: "柔和渐变", class: "fluent-display-highlight-fade"},
+        {value: 10, label: "学习标记", class: "fluent-display-learning-mode", group: "highlight"},
+        {value: 11, label: "荧光标记", class: "fluent-display-marker", group: "highlight"},
+        {value: 12, label: "柔和渐变", class: "fluent-display-highlight-fade", group: "highlight"},
         
         // 背景色系列
         {value: "background", label: "背景色系列", disabled: true},

@@ -130,4 +130,29 @@
 /* 过渡动画 */
 * {
   transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
+
+/* 下拉菜单分组样式 */
+.el-select-group__title {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--el-text-color-secondary) !important;
+  background-color: var(--el-fill-color-light);
+  border-bottom: 1px solid var(--el-border-color-light);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.el-select-group__wrap:not(:last-of-type) {
+  margin-bottom: 8px;
+}
+
+.el-select-group__wrap .el-select-dropdown__item {
+  padding-left: 20px;
+}
+
+.el-select-dropdown__item.selected {
+  color: var(--el-color-primary) !important;
+  font-weight: bold;
 } 
