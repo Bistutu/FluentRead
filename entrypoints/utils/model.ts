@@ -1,4 +1,4 @@
-import {defaultOption, services} from "./option";
+import { defaultOption, services } from "./option";
 
 interface IMapping {
     [key: string]: string;
@@ -15,7 +15,7 @@ export class Config {
     to: string;
     hotkey: string;
     style: number;
-    display: number;
+    display: number = 1;
     service: string;
     token: IMapping;
     ak: string;

@@ -150,7 +150,7 @@ export default defineContentScript({
 
 
         // background.ts
-        browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        browser.runtime.onMessage.addListener((message: { message: string; }, sender: any, sendResponse: () => void) => {
             if (message.message === 'clearCache') cache.clean()
             sendResponse();
             return true;

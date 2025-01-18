@@ -21,7 +21,8 @@
 import {computed, reactive, ref} from 'vue';
 import {Star} from "@element-plus/icons-vue";
 import {Config} from "../entrypoints/utils/model";
-import {config} from "@/entrypoints/utils/config";
+import {config as importedConfig} from "@/entrypoints/utils/config";
+import { storage } from '@wxt-dev/storage';
 
 // 实际上是 el-link 而不是 el-button
 const buttonDisabled = ref(false);
@@ -62,17 +63,17 @@ async function sendMessageToContentScript(message: any, recover: Function) {
 }
 
 // 获取配置，用于显示翻译次数
-let config = reactive(new Config());
+let localConfig = reactive(new Config());
 
 storage.getItem('local:config').then((value) => {
-  if (typeof value === 'string' && value) Object.assign(config, JSON.parse(value));
+  if (typeof value === 'string' && value) Object.assign(localConfig, JSON.parse(value));
 });
 
 storage.watch('local:config', (newValue, oldValue) => {
-  if (typeof newValue === 'string' && newValue) Object.assign(config, JSON.parse(newValue));
+  if (typeof newValue === 'string' && newValue) Object.assign(localConfig, JSON.parse(newValue));
 });
 
-const computedCount = computed(() => config.count);
+const computedCount = computed(() => localConfig.count);
 
 
 </script>

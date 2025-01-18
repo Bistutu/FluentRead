@@ -6,7 +6,7 @@ export default defineBackground({
         safari: false,
     },
     main() {
-        browser.runtime.onMessage.addListener(message => {
+        browser.runtime.onMessage.addListener((message: any) => {
             return new Promise((resolve, reject) => {
                 // 翻译
                 _service[config.service]( message)

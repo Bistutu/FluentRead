@@ -13,7 +13,8 @@ const icon = {
 }
 
 
-export function insertFailedTip(node: any, errMsg: string, spinner: HTMLElement) {
+// 插入失败提示并处理错误
+export function insertFailedTip(node: HTMLElement, errMsg: string, spinner: HTMLElement) {
     spinner?.remove();  // 取消转圈动画
 
     // 创建包装元素
@@ -24,62 +25,77 @@ export function insertFailedTip(node: any, errMsg: string, spinner: HTMLElement)
     const retryBtn = document.createElement('span');
     retryBtn.innerText = '重试';
     retryBtn.classList.add('fluent-read-retry');
-    retryBtn.addEventListener('click', (event: any) => {
+    retryBtn.addEventListener('click', handleRetryClick(node, wrapper));
 
-        event.preventDefault();   // 阻止默认行为，如链接跳转
-        event.stopPropagation();  // 阻止事件继续向上传播
-
-        wrapper.remove();   // 移除错误提示元素，重新翻译
-        singleTranslate(node);
-    });
-
-    // 添加失败标记 failure
+    // 添加失败标记
     node.classList.add('fluent-read-failure');
 
     // 创建错误信息提示按钮
     const errorTip = document.createElement('span');
     errorTip.innerText = '错误原因';
     errorTip.classList.add('fluent-read-reason');
-    errorTip.addEventListener('click', (event: any) => {
+    errorTip.addEventListener('click', handleErrorClick(errMsg));
 
-        event.preventDefault();   // 阻止默认行为，如链接跳转
-        event.stopPropagation();  // 阻止事件继续向上传播
+    // 创建图标元素
+    const retryElement = createIconElement(icon.retry);
+    const warnElement = createIconElement(icon.warn);
 
-        if (errMsg.includes("auth failed") || errMsg.includes("API key") || errMsg.includes("api key")) {
-            sendErrorMessage("token 令牌设置错误，请前往设置页检查")
-        } else if (errMsg.includes("quota") || errMsg.includes("limit")) {
-            sendErrorMessage("api 访问频率过快，请稍后再试")
-        } else if (errMsg.includes("network error")) {
-            sendErrorMessage("网络错误，请检查网络连接")
-        } else if (errMsg.includes("model")) {
-            sendErrorMessage("model 模型设置错误，请前往设置页检查")
-        } else if (errMsg.includes("timeout")) {
-            sendErrorMessage("请求超时，请稍后再试")
-        } else {
-            sendErrorMessage(errMsg || "未知错误，请联系开发者")
-        }
-    });
-
-    const retryElement = document.createElement('div');
-    retryElement.innerHTML = icon.retry;
-
-    const warnElement = document.createElement('div');
-    warnElement.innerHTML = icon.warn;
-
-    // 将 SVG 图标和文本添加到包装元素
-    wrapper.appendChild(retryElement);    // 这里不是 httpElement，而是字符串
-    wrapper.appendChild(retryBtn);
-    wrapper.appendChild(warnElement);
-    wrapper.appendChild(errorTip);
-
+    // 将所有元素批量添加到 wrapper
+    wrapper.append(retryElement, retryBtn, warnElement, errorTip);
     node.appendChild(wrapper);
 }
 
+// 处理重试按钮点击事件
+function handleRetryClick(node: HTMLElement, wrapper: HTMLElement) {
+    return (event: MouseEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        wrapper.remove();  // 移除错误提示元素，重新翻译
+        singleTranslate(node);  // 调用翻译函数
+    };
+}
+
+// 处理错误提示按钮点击事件
+function handleErrorClick(errMsg: string) {
+    return (event: MouseEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
+
+        const message = getErrorMessage(errMsg);
+        sendErrorMessage(message);  // 发送错误提示
+    };
+}
+
+// 根据错误信息返回错误提示
+function getErrorMessage(errMsg: string): string {
+    if (errMsg.includes("auth failed") || errMsg.includes("API key")) {
+        return "token 令牌设置错误，请前往设置页检查";
+    } else if (errMsg.includes("quota") || errMsg.includes("limit")) {
+        return "api 访问频率过快，请稍后再试";
+    } else if (errMsg.includes("network error")) {
+        return "网络错误，请检查网络连接";
+    } else if (errMsg.includes("model")) {
+        return "model 模型设置错误，请前往设置页检查";
+    } else if (errMsg.includes("timeout")) {
+        return "请求超时，请稍后再试";
+    } else {
+        return errMsg || "未知错误，请联系开发者";
+    }
+}
+
+// 创建图标元素
+function createIconElement(iconContent: string): HTMLElement {
+    const iconElement = document.createElement('div');
+    iconElement.innerHTML = iconContent;
+    return iconElement;
+}
+
 // 插入加载动画
-export function insertLoadingSpinner(node: any, isCache: boolean = false) {
+export function insertLoadingSpinner(node: HTMLElement, isCache: boolean = false): HTMLElement {
     const spinner = document.createElement('span');
     spinner.className = 'fluent-read-loading';
-    if (isCache) spinner.style.borderTop = '3px solid green'    // 存在缓存时改为绿色
+    if (isCache) spinner.style.borderTop = '3px solid green';  // 存在缓存时改为绿色
     node.appendChild(spinner);
     return spinner;
 }

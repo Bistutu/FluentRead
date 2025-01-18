@@ -1,8 +1,8 @@
 {
   "name": "流畅阅读",
-  "description": "拥有基于上下文语境的人工智能翻译引擎，为网站提供更加友好的翻译，让所有人都能够拥有基于母语般的阅读体验",
+  "description": "A context-aware AI translation engine that provides more natural website translations, enabling everyone to have a native-like reading experience",
   "private": true,
-  "version": "0.0.9",
+  "version": "0.0.10",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -16,17 +16,20 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
+    "@wxt-dev/storage": "^1.0.1",
     "crypto-js": "^4.2.0",
-    "element-plus": "^2.7.3",
+    "element-plus": "^2.9.3",
     "franc-min": "^6.2.0",
     "js-beautify": "^1.15.1",
-    "vue": "^3.4.27"
+    "vue": "^3.5.13",
+    "webextension-polyfill": "^0.12.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.0.4",
-    "typescript": "^5.4.5",
-    "vite": "^5.2.11",
-    "vue-tsc": "^2.0.19",
-    "wxt": "^0.18.3"
+    "@types/webextension-polyfill": "^0.12.1",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "^5.7.3",
+    "vite": "^5.4.11",
+    "vue-tsc": "^2.2.0",
+    "wxt": "^0.19.24"
   }
 }

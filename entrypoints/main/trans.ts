@@ -50,11 +50,12 @@ function handleBilingualTranslation(node: any, slide: boolean) {
             htmlSet.delete(nodeOuterHTML);
             return;
         }
-        let spinner = insertLoadingSpinner(bilingualNode, true);
+        let spinner = insertLoadingSpinner(bilingualNode as HTMLElement, true);
         setTimeout(() => {
             spinner.remove();
-            searchClassName(bilingualNode, 'fluent-read-bilingual-content').remove();
-            bilingualNode.classList.remove('fluent-read-bilingual');
+            const content = searchClassName(bilingualNode as HTMLElement, 'fluent-read-bilingual-content');
+            if (content && content instanceof HTMLElement) content.remove();
+            (bilingualNode as HTMLElement).classList.remove('fluent-read-bilingual');
             htmlSet.delete(nodeOuterHTML);
         }, 250);
         return;
@@ -122,7 +123,7 @@ function bilingualTranslate(node: any, nodeOuterHTML: any) {
                 bilingualAppendChild(node, text);
                 cache.localSet(origin, text);
             })
-            .catch(error => {
+            .catch((error: { toString: () => any; }) => {
                 clearTimeout(timeout);
                 if (failCount < 3) {
                     setTimeout(() => {
@@ -169,7 +170,7 @@ export function singleTranslate(node: any) {
                 cache.set(htmlSet, newOuterHtml, 250);
                 htmlSet.delete(oldOuterHtml);
             })
-            .catch(error => {
+            .catch((error: { toString: () => any; }) => {
                 clearTimeout(timeout);
                 if (failCount < 3) {
                     setTimeout(() => {
@@ -197,7 +198,7 @@ export const handleBtnTranslation = throttle((node: any) => {
         .then((text: string) => {
             cache.localSetDual(origin, text);
             node.innerText = text;
-        }).catch(error => console.error('调用失败:', error))
+        }).catch((error: any) => console.error('调用失败:', error))
 }, 250)
 
 

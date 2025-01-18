@@ -58,7 +58,7 @@ export function grabNode(node: any): any {
                 // background.ts
                 browser.runtime.sendMessage({context: document.title, origin: child.textContent})
                     .then((text: string) => child.textContent = text)
-                    .catch(error => console.error('调用失败:', error))
+                    .catch((error: any) => console.error('调用失败:', error))
 
                 return false; // 只翻译首行文本，不再进行后续步骤
             }
