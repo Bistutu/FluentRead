@@ -174,11 +174,13 @@ export const options = {
         {value: "ru", label: "俄语"},
     ],
     keys: [
-        {value: "Computer", label: "电脑选项", disabled: true},
+        {value: "Computer", label: "键盘选项", disabled: true},
         {value: "Control", label: "Ctrl"},
         {value: "Alt", label: "Alt"},
         {value: "Shift", label: "Shift"},
         {value: "`", label: "波浪号键"},
+
+        {value: "mouse", label: "鼠标选项", disabled: true}, 
         {value: "DoubleClick", label: "鼠标双击"},
         {value: "LongPress", label: "鼠标长按"},
         {value: "MiddleClick", label: "鼠标滚轮单击"},

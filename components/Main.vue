@@ -88,7 +88,8 @@
       <el-col :span="12">
         <el-select v-model="config.hotkey" placeholder="翻译快捷键">
           <el-option class="select-left" v-for="item in options.keys" :key="item.value" :label="item.label"
-            :value="item.value" :disabled="item.disabled" />
+            :value="item.value" :disabled="item.disabled" 
+            :class="{ 'select-divider': item.disabled }" />
         </el-select>
       </el-col>
     </el-row>
