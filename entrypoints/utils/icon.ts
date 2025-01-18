@@ -1,7 +1,9 @@
 // 失败时展示的图标
 import {sendErrorMessage} from "./tip";
 import 'element-plus/es/components/message/style/css'
-import {singleTranslate} from "@/entrypoints/main/trans";
+import { handleBilingualTranslation, handleSingleTranslation} from "@/entrypoints/main/trans";
+import {config} from "@/entrypoints/utils/config";
+import {styles} from "@/entrypoints/utils/constant";
 
 const icon = {
     retry: `<svg fill="none" viewBox="0 0 40 40" height="40" width="40" style="display: inline; align-items: center; justify-content: center; width: 1em; height: 1em; margin-left: 1em; pointer-events: none;">
@@ -52,7 +54,14 @@ function handleRetryClick(node: HTMLElement, wrapper: HTMLElement) {
         event.stopPropagation();
 
         wrapper.remove();  // 移除错误提示元素，重新翻译
-        singleTranslate(node);  // 调用翻译函数
+        node.classList.remove('fluent-read-failure'); // 移除失败标记
+        
+        // 根据当前配置的翻译模式决定使用哪种翻译方式
+        if (config.display === styles.bilingualTranslation) {
+            handleBilingualTranslation(node, false);
+        } else {
+            handleSingleTranslation(node, false);
+        }
     };
 }
 

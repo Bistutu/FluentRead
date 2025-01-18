@@ -41,7 +41,7 @@ export function handleTranslation(mouseX: number, mouseY: number, delayTime: num
 }
 
 // 双语翻译
-function handleBilingualTranslation(node: any, slide: boolean) {
+export function handleBilingualTranslation(node: any, slide: boolean) {
     let nodeOuterHTML = node.outerHTML;
     // 如果已经翻译过，250ms 后删除翻译结果
     let bilingualNode = searchClassName(node, 'fluent-read-bilingual');
@@ -77,7 +77,7 @@ function handleBilingualTranslation(node: any, slide: boolean) {
     bilingualTranslate(node, nodeOuterHTML);
 }
 
-function handleSingleTranslation(node: any, slide: boolean) {
+export function handleSingleTranslation(node: any, slide: boolean) {
     let nodeOuterHTML = node.outerHTML;
     let outerHTMLCache = cache.localGet(node.outerHTML);
     if (outerHTMLCache) {
