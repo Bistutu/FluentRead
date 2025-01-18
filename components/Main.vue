@@ -55,7 +55,8 @@
         <b>
           <el-select v-model="config.service" placeholder="请选择翻译服务">
             <el-option class="select-left" v-for="item in compute.filteredServices" :key="item.value"
-              :label="item.label" :value="item.value" :disabled="item.disabled" />
+              :label="item.label" :value="item.value" :disabled="item.disabled" 
+              :class="{ 'select-divider': item.disabled }" />
           </el-select>
         </b>
       </el-col>
@@ -362,7 +363,21 @@ onUnmounted(() => {
 <style scoped>
 .select-left {
   text-align: left;
-  font-size: 1.15em;
+}
+
+.select-divider {
+  background: #f2f6fc;
+  color: #409eff;
+  font-size: 12px;
+  padding: 4px 12px;
+  cursor: default;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e4e7ed;
+  margin: 4px 0;
+  pointer-events: none;
+  opacity: 0.9;
 }
 
 .icon-margin {
