@@ -25,6 +25,11 @@ export function grabNode(node: any): any {
         return false;
     }
 
+    // 如果节点是可编辑的，则不翻译
+    if (node.isContentEditable) {
+        return false;
+    }
+
     // 2、特殊适配，根据域名进行特殊处理
     let fn = selectCompatFn[getMainDomain(url.host)];
     if (fn) {
