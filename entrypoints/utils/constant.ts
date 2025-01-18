@@ -31,7 +31,7 @@ export const urls: any = {
 export const method = {POST: "POST", GET: "GET",};
 
 export const constants = {
-    // 电脑设备事件
+    // 键鼠事件
     DoubleClick: "DoubleClick",
     LongPress: "LongPress",
     MiddleClick: "MiddleClick",

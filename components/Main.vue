@@ -41,7 +41,8 @@
       <el-col :span="12">
         <el-select v-model="config.style" placeholder="请选择译文显示样式">
           <el-option class="select-left" v-for="item in options.styles" :key="item.value" :label="item.label"
-            :value="item.value" />
+            :value="item.value" :disabled="item.disabled" 
+            :class="{ 'select-divider': item.disabled }" />
         </el-select>
       </el-col>
     </el-row>

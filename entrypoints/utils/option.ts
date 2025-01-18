@@ -229,22 +229,53 @@ export const options = {
     ],
     // 双语翻译的 15 种模式：默认、加粗、实线下划线、虚线下划线、弱化、透明、阴影、学习效果、马克笔、引用、高亮、背景色、斜体、边框、文字阴影
     styles: [
-        {value: 0, label: "默认样式", class: "fluent-display-default"},
-        {value: 1, label: "加粗", class: "fluent-display-bold"},
-        {value: 2, label: "实线下划线", class: "fluent-display-solid-underline"},
-        {value: 3, label: "虚线下划线", class: "fluent-display-dot-underline"},
-        {value: 4, label: "弱化", class: "fluent-display-dimmed"},
-        {value: 5, label: "透明", class: "fluent-display-transparent-mode"},
-        {value: 6, label: "卡片模式", class: "fluent-display-card-mode"},
-        {value: 7, label: "学习效果", class: "fluent-display-learning-mode"},
-        {value: 8, label: "马克笔", class: "fluent-display-marker"},
-        {value: 9, label: "引用", class: "fluent-display-quote"},
-        {value: 10, label: "淡黄色背景", class: "fluent-display-lightyellow"},
-        {value: 11, label: "淡蓝色背景", class: "fluent-display-lightblue"},
-        {value: 12, label: "淡灰色背景", class: "fluent-display-lightgray"},
-        {value: 13, label: "斜体", class: "fluent-display-italic"},
-        {value: 14, label: "边框", class: "fluent-display-border"},
-        {value: 15, label: "文字阴影", class: "fluent-display-text-shadow"},
+        // 基础样式
+        {value: "basic", label: "基础样式", disabled: true},
+        {value: 0, label: "朴素模式", class: "fluent-display-default"},
+        {value: 1, label: "加粗显示", class: "fluent-display-bold"},
+        {value: 2, label: "优雅斜体", class: "fluent-display-italic"},
+        {value: 3, label: "立体阴影", class: "fluent-display-text-shadow"},
+        
+        // 下划线系列
+        {value: "underline", label: "下划线系列", disabled: true},
+        {value: 4, label: "蓝色实线", class: "fluent-display-solid-underline"},
+        {value: 5, label: "优雅虚线", class: "fluent-display-dot-underline"},
+        {value: 6, label: "活泼波浪", class: "fluent-display-wavy"},
+        
+        // 卡片系列
+        {value: "card", label: "卡片系列", disabled: true},
+        {value: 7, label: "简约卡片", class: "fluent-display-card-mode"},
+        {value: 8, label: "渐变卡片", class: "fluent-display-modern-card"},
+        {value: 9, label: "纸张卡片", class: "fluent-display-paper"},
+        
+        // 高亮系列
+        {value: "highlight", label: "高亮系列", disabled: true},
+        {value: 10, label: "学习标记", class: "fluent-display-learning-mode"},
+        {value: 11, label: "荧光标记", class: "fluent-display-marker"},
+        {value: 12, label: "柔和渐变", class: "fluent-display-highlight-fade"},
+        
+        // 背景色系列
+        {value: "background", label: "背景色系列", disabled: true},
+        {value: 13, label: "温暖黄底", class: "fluent-display-lightyellow"},
+        {value: 14, label: "清新蓝底", class: "fluent-display-lightblue"},
+        {value: 15, label: "素雅灰底", class: "fluent-display-lightgray"},
+        
+        // 特殊效果
+        {value: "special", label: "特殊效果", disabled: true},
+        {value: 16, label: "典雅引用", class: "fluent-display-quote"},
+        {value: 17, label: "轻巧边框", class: "fluent-display-border"},
+        {value: 18, label: "阅读焦点", class: "fluent-display-focus"},
+        {value: 19, label: "简约底线", class: "fluent-display-clean"},
+        
+        // 专业样式
+        {value: "pro", label: "专业样式", disabled: true},
+        {value: 20, label: "代码风格", class: "fluent-display-tech"},
+        {value: 21, label: "书籍风格", class: "fluent-display-elegant"},
+        
+        // 透明度
+        {value: "transparent", label: "透明效果", disabled: true},
+        {value: 22, label: "半透明弱化", class: "fluent-display-dimmed"},
+        {value: 23, label: "轻透明感", class: "fluent-display-transparent-mode"},
     ],
     theme: [
         {value: "auto", label: "跟随操作系统"},

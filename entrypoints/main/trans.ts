@@ -206,7 +206,11 @@ function bilingualAppendChild(node: any, text: string) {
     node.classList.add("fluent-read-bilingual");
     let newNode = document.createElement("span");
     newNode.classList.add("fluent-read-bilingual-content");
-    newNode.classList.add(options.styles[config.style].class);
+    // find the style
+    const style = options.styles.find(s => s.value === config.style && !s.disabled);
+    if (style?.class) {
+        newNode.classList.add(style.class);
+    }
     newNode.innerHTML = text;
     smashTruncationStyle(node);
     node.appendChild(newNode);

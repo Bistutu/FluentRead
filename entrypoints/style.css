@@ -29,65 +29,48 @@
 
 /* 弱化 */
 .fluent-display-dimmed {
-    opacity: 0.5;
+    opacity: 0.7;
 }
 
 /* 实线下划线 */
 .fluent-display-solid-underline {
-    text-decoration: underline;
+    border-bottom: 2px solid #409eff;
 }
 
 /* 虚线下划线 */
 .fluent-display-dot-underline {
-    text-decoration: underline dotted;
+    border-bottom: 2px dotted #409eff;
 }
 
 /* 学习模式 */
 .fluent-display-learning-mode {
-    filter: blur(4px);
-    transition: filter 0.3s;
-}
-.fluent-display-learning-mode:hover {
-    filter: none;
+    background: linear-gradient(transparent 60%, #ffd700 40%);
 }
 
 /* 透明模式 */
 .fluent-display-transparent-mode {
-    opacity: 0.5;
-    transition: opacity 0.3s;
-}
-.fluent-display-transparent-mode:hover {
-    opacity: 1;
+    opacity: 0.85;
 }
 
 /* 阴影效果 */
 .fluent-display-card-mode {
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.20); /* 加强阴影的尺寸和不透明度 */
-    padding: 8px 16px;
-    border-radius: 5px;
-    margin: 4px 0 !important;
-    display: block ;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: rgba(64, 158, 255, 0.1);
 }
 
 /* 马克笔 */
 .fluent-display-marker {
-    background: linear-gradient(to right,
-    rgba(251, 218, 65, 0.1),
-    rgba(251, 218, 65, 0.9) 3%,
-    rgba(251, 218, 65, 0.9) 35%,
-    rgba(251, 218, 65, 0.9) 70%,
-    rgba(251, 218, 65, 0.8) 95%,
-    rgba(251, 218, 65, 0.3));
-    padding: 0 2px;
+    background: #ffeb3b;
+    padding: 0 4px;
 }
-
 
 /* 引用 */
 .fluent-display-quote {
+    border-left: 4px solid #409eff;
+    padding-left: 8px;
     font-style: italic;
-    color: grey;
-    border-left: 3px solid #cc3355;
-    padding-left: 10px;
 }
 
 /* 加粗 */
@@ -107,27 +90,82 @@
 }
 
 .fluent-display-lightyellow {
-    background-color: lightyellow;
+    background-color: rgba(255, 235, 59, 0.2);
 }
 
 .fluent-display-lightblue {
-    background-color: lightblue;
+    background-color: rgba(64, 158, 255, 0.1);
 }
 
 .fluent-display-lightgray {
-    background-color: lightgray;
+    background-color: rgba(158, 158, 158, 0.1);
 }
-
 
 .fluent-display-italic {
     font-style: italic;
 }
 
 .fluent-display-border {
-    border: 1px solid #000;
-    padding: 2px;
+    border: 1px solid #409eff;
+    border-radius: 4px;
+    padding: 2px 6px;
 }
 
 .fluent-display-text-shadow {
-    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* 新增的双语翻译样式 */
+.fluent-display-modern-card {
+    background: linear-gradient(135deg, #f5f7fa 0%, #e4e7ed 100%);
+    border-radius: 8px;
+    padding: 6px 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    margin: 4px 0;
+}
+
+.fluent-display-wavy {
+    text-decoration: wavy underline #409eff;
+    text-underline-offset: 4px;
+}
+
+.fluent-display-highlight-fade {
+    background: linear-gradient(104deg, rgba(64,158,255,0) 0.9%, rgba(64,158,255,0.1) 2.4%, rgba(64,158,255,0.15) 5.8%, rgba(64,158,255,0.1) 93%, rgba(64,158,255,0.1) 96%);
+    padding: 0.5em 0.8em;
+    border-radius: 4px;
+}
+
+.fluent-display-elegant {
+    font-family: "Georgia", serif;
+    color: #666;
+    line-height: 1.6;
+    letter-spacing: 0.3px;
+}
+
+.fluent-display-focus {
+    background: linear-gradient(to right, transparent, rgba(64,158,255,0.1) 4%, rgba(64,158,255,0.1) 96%, transparent);
+    padding: 4px 12px;
+    border-radius: 3px;
+}
+
+.fluent-display-paper {
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    border: 1px solid #eee;
+    padding: 8px 12px;
+    border-radius: 6px;
+}
+
+.fluent-display-clean {
+    border-bottom: 1px solid #e4e7ed;
+    padding-bottom: 2px;
+    margin-bottom: 2px;
+}
+
+.fluent-display-tech {
+    font-family: "Consolas", monospace;
+    background: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid #eee;
 }
