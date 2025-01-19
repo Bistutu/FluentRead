@@ -150,7 +150,7 @@ export const models = new Map<string, Array<string>>([
     [services.deepseek, ["deepseek-chat", customModelString]],
     [services.minimax, ["chatcompletion_v2"]],
     [services.jieyue, ["step-1-8k", customModelString]],
-    [services.huanYuan, ["hunyuan-lite", "hunyuan-standard", "hunyuan-turbo", customModelString]],
+    [services.huanYuan, ["hunyuan-turbo（推荐）","hunyuan-lite", "hunyuan-standard", customModelString]],
     [services.doubao, [customModelString]],
 
     // mix model
@@ -203,11 +203,11 @@ export const options = {
         {value: "ai", label: "AI翻译", disabled: true},
         {value: services.deepseek, label: "DeepSeek⭐️"},
         {value: services.siliconCloud, label: "SiliconCloud⭐️"},
-        {value: services.openai, label: "OpenAI"},
-        {value: services.moonshot, label: "Kimi"},
-        {value: services.huanYuan, label: "腾讯混元"},
+        {value: services.huanYuan, label: "腾讯混元⭐️"},
         {value: services.doubao, label: "字节豆包"},
         {value: services.tongyi, label: "阿里通义"},
+        {value: services.openai, label: "OpenAI"},
+        {value: services.moonshot, label: "Kimi"},
         {value: services.openrouter, label: "OpenRouter"},
         {value: services.graq, label: "Graq"},
         {value: services.zhipu, label: "智谱清言"},

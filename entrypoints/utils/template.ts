@@ -7,10 +7,8 @@ export function commonMsgTemplate(origin: string) {
     // 检测是否使用自定义模型
     let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
 
-    // 如果模型名称包含“（免费）”，则表示是免费模型，最终应去除“（免费）” 
-    if (model.includes("（免费）")) {
-        model = model.replace("（免费）", "");
-    }
+    // 删除模型名称中的中文括号及其内容，如"gpt-4（推荐）" -> "gpt-4"
+    model = model.replace(/（.*）/g, "");
 
     let system = config.system_role[config.service] || defaultOption.system_role;
     let user = (config.user_role[config.service] || defaultOption.user_role)
