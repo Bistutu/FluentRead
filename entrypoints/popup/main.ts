@@ -22,7 +22,8 @@ import {
   ElEmpty,
   ElIcon,
   ElMessage,
-  ElLink
+  ElLink,
+  ElText
 } from 'element-plus'
 
 const app = createApp(App);
@@ -45,7 +46,8 @@ const components = [
   ElTooltip,
   ElEmpty,
   ElIcon,
-  ElLink
+  ElLink,
+  ElText
 ]
 
 components.forEach(component => {
