@@ -1,7 +1,8 @@
 import {ElMessage} from "element-plus";
 import {throttle} from "@/entrypoints/utils/common";
 
-const prefix = "流畅阅读：";
+// deprecated
+const prefix = "";
 
 function _sendErrorMessage(message: string) {
     ElMessage({message: prefix + message, type: 'error'});
