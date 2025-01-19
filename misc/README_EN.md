@@ -126,3 +126,5 @@ If you believe this software has brought you more than 100 CNY in value, you can
 |  9   |       嘴馋 (Greedy)      |   17   |
 |  10  | 听说海能吞掉鱼的眼泪 (Sea’s Tear) |   17   |
 |  …   |         …         |   …    |
+
+---

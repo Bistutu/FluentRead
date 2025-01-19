@@ -7,12 +7,11 @@
 流畅阅读是一款高效的浏览器翻译插件，可以将网页上的文字翻译成其他语言，方便、快捷、直观，支持人工智能引擎。
 
 插件提供「仅译文模式」和「双语模式」，让用户根据需求自由选择适合的翻译方式。
+<kbd><img src="./misc/sample-git-1.gif" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;border-radius: 8px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></kbd>
 
-<kbd><img src="./misc/sample-git-1.gif" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
+<kbd><img src="./misc/sample-git-4.gif" alt="sample-git-4.gif" style="width: 80%; max-width: 100%;border: 1px solid black;border-radius: 8px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></kbd>
 
-<kbd><img src="./misc/sample-git-4.gif" alt="sample-git-4.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
-
-<kbd><img src="./misc/screenshot-3.png" alt="sample-git-1.gif" style="width: 40%; max-width: 100%;border: 1px solid black;"></kbd>
+<kbd><img src="./misc/screenshot-3.png" alt="sample-git-1.gif" style="width: 40%; max-width: 100%;border: 1px solid black;border-radius: 8px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></kbd>
 
 # 特点介绍
 
@@ -35,11 +34,11 @@
 
    为避免重复翻译句子并减少请求次数，流畅阅读对每个页面实现了翻译缓存。您无需关注具体细节，翻译状态通过颜色区分：蓝色表示正常翻译，绿色表示使用缓存。当使用缓存时，插件不会发起网络请求。
 
-   <kbd><img src="./misc/sample-git-3.gif" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
+   <kbd><img src="./misc/sample-git-3.gif" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;border-radius: 8px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></kbd>
 
    将鼠标悬停在已翻译文本上，并按下快捷键，即可启用**回译功能**。
 
-   <kbd><img src="./misc/sample-git-2.gif" alt="sample-git-1.gif" style="width: 70%; max-width: 100%;border: 1px solid black;"></kbd>
+   <kbd><img src="./misc/sample-git-2.gif" alt="sample-git-1.gif" style="width: 70%; max-width: 100%;border: 1px solid black;border-radius: 8px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></kbd>
 
 # 安装指南
 
@@ -56,7 +55,7 @@
 2. 启用“开发者模式”
 3. 将下载的压缩包拖入浏览器窗口完成安装
 
-<img src="./misc/screenshot-1.png" alt="sample-git-1.gif" style="width: 45%; max-width: 100%;border: 1px solid black;"><img src="./misc/screenshot-2.png" alt="sample-git-2.gif" style="width: 45%; max-width: 100%;border: 1px solid black;">
+<img src="./misc/screenshot-1.png" alt="sample-git-1.gif" style="width: 45%; max-width: 100%;border: 1px solid black;margin: 5px;border-radius: 8px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);"><img src="./misc/screenshot-2.png" alt="sample-git-2.gif" style="width: 45%; max-width: 100%;border: 1px solid black;margin: 5px;border-radius: 8px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
 
 > 手机如何安装？
 
@@ -123,7 +122,7 @@ pnpm zip:firefox
 
 如果你觉得软件给你带来了超过100元的价值，可以在扫描下面的赞赏码赞助1元给开发者，我将会在下方展示赞助金额排名前十的支持者。
 
-<img src="https://oss.thinkstu.com/typora/202406102143926.jpg?x-oss-process=style/optimize" alt="wechat" style="width: 40%; max-width: 100%;border: 1px solid black;">
+<img src="https://oss.thinkstu.com/typora/202406102143926.jpg?x-oss-process=style/optimize" alt="wechat" style="width: 40%; max-width: 100%; border: 2px solid #000; border-radius: 8px; padding: 10px;">
 
 | 序号 |       🌼赞助者🌼        | 赞助金额 |
 | :--: |:--------------------:| :------: |
