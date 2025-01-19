@@ -1,34 +1,37 @@
 <template>
-  <p style="margin: 0">你已经翻译
-    <el-text class="mx-1" type="success">{{ computedCount }}</el-text>
-    次
-  </p>
-  <el-link class="left" :type="buttonType" @click="clearCache" :disabled="buttonDisabled">
-    <el-icon v-if="showLoading">
-      <Loading class="el-icon-loading"/>
-    </el-icon>
-    {{ buttonText }}
-  </el-link>
-  <el-link class="right" href="https://github.com/Bistutu/FluentRead" target="_blank">
-    <el-icon style="margin-right: 1px;font-size: 1.25em">
-      <Star/>
-    </el-icon>
-    GitHub开源
-  </el-link>
+  <div class="footer-container">
+    <p class="translation-count">你已经翻译
+      <el-text class="count-number" type="primary">{{ computedCount }}</el-text>
+      次
+    </p>
+    <div class="footer-links">
+      <el-link class="action-link left" :class="{ 'failed': buttonText === '清除失败' }" @click="clearCache"
+        :disabled="buttonDisabled">
+        <el-icon v-if="showLoading">
+          <Loading class="el-icon-loading" />
+        </el-icon>
+        {{ buttonText }}
+      </el-link>
+      <el-link class="action-link right" href="https://github.com/Bistutu/FluentRead" target="_blank">
+        <el-icon class="github-icon">
+          <Star />
+        </el-icon>
+        GitHub开源
+      </el-link>
+    </div>
+  </div>
 </template>
 
 <script lang="ts" setup>
-import {computed, reactive, ref} from 'vue';
-import {Star} from "@element-plus/icons-vue";
-import {Config} from "../entrypoints/utils/model";
-import {config as importedConfig} from "@/entrypoints/utils/config";
+import { computed, reactive, ref } from 'vue';
+import { Star, Loading } from "@element-plus/icons-vue";
+import { Config } from "../entrypoints/utils/model";
 import { storage } from '@wxt-dev/storage';
 import browser from 'webextension-polyfill';
 
 // 实际上是 el-link 而不是 el-button
 const buttonDisabled = ref(false);
 const buttonText = ref('清除翻译缓存');
-const buttonType = ref('');
 
 const showLoading = ref(false);
 
@@ -46,33 +49,24 @@ async function clearCache() {
 
     // 发送消息到 content.js
     await browser.tabs.sendMessage(tabs[0].id, { type: 'clearCache' });
-    
-    // 成功清除后的UI反馈
-    setTimeout(() => {
-      buttonText.value = "清除完成";
-      buttonType.value = 'success';
-      showLoading.value = false;
-    }, 500);
 
     // 恢复按钮状态
     setTimeout(() => {
       buttonDisabled.value = false;
       buttonText.value = '清除翻译缓存';
-      buttonType.value = '';
-    }, 1500);
+      showLoading.value = false;
+    }, 1000);
 
   } catch (error) {
     console.error('清除缓存失败:', error);
     buttonText.value = "清除失败";
-    buttonType.value = 'danger';
-    
+
     // 恢复按钮状态
     setTimeout(() => {
       buttonDisabled.value = false;
       buttonText.value = '清除翻译缓存';
-      buttonType.value = '';
       showLoading.value = false;
-    }, 1500);
+    }, 1000);
   }
 }
 
@@ -93,26 +87,82 @@ const computedCount = computed(() => localConfig.count);
 </script>
 
 <style scoped>
-.left {
-  float: left;
-  margin: 0 0 0 1em;
+.footer-container {
+  background: var(--el-bg-color);
+  margin: 0 -16px;
+  padding: 10px 16px;
 }
 
-.right {
-  float: right;
-  margin: 0 1em 0 0;
+.translation-count {
+  margin: 0;
+  font-size: 1.2em;
+  color: var(--el-text-color-regular);
+  text-align: center;
+  margin-bottom: 8px;
 }
 
-.el-icon-loading {
-  animation: rotating 2s linear infinite;
+.count-number {
+  font-weight: 600;
+  font-size: 1.1em;
+  margin: 0 3px;
+  color: var(--el-color-success);
+}
+
+.footer-links {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px;
+}
+
+.action-link {
+  font-size: 1.2em;
+  transition: all 1s ease;
+  text-decoration: none !important;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.action-link:hover {
+  opacity: 0.8;
+}
+
+.action-link:active {
+  transform: scale(0.98);
+}
+
+.github-icon {
+  font-size: 1.2em;
+  margin-right: 4px;
+}
+
+:deep(.el-icon-loading) {
+  animation: rotating 1s linear infinite;
 }
 
 @keyframes rotating {
   from {
     transform: rotate(0deg);
   }
+
   to {
     transform: rotate(360deg);
+  }
+}
+
+.clearing {
+  color: var(--el-color-success) !important;
+}
+
+.failed {
+  color: var(--el-color-danger) !important;
+}
+
+/* 暗色主题适配 */
+@media (prefers-color-scheme: dark) {
+  .footer-container {
+    background: var(--el-bg-color-darker);
   }
 }
 </style>
