@@ -7,11 +7,11 @@
 流畅阅读是一款高效的浏览器翻译插件，可以将网页上的文字翻译成其他语言，方便、快捷、直观，支持人工智能引擎。
 
 插件提供「仅译文模式」和「双语模式」，让用户根据需求自由选择适合的翻译方式。
-<kbd><img src="./misc/sample-git-1.gif" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;border-radius: 8px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></kbd>
+<img src="./misc/sample-git-1.gif" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;border-radius: 8px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
 
-<kbd><img src="./misc/sample-git-4.gif" alt="sample-git-4.gif" style="width: 80%; max-width: 100%;border: 1px solid black;border-radius: 8px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></kbd>
+<img src="./misc/sample-git-4.gif" alt="sample-git-4.gif" style="width: 80%; max-width: 100%;border: 1px solid black;border-radius: 8px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
 
-<kbd><img src="./misc/screenshot-3.png" alt="sample-git-1.gif" style="width: 40%; max-width: 100%;border: 1px solid black;border-radius: 8px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></kbd>
+<img src="./misc/screenshot-3.png" alt="sample-git-1.gif" style="width: 40%; max-width: 100%;border: 1px solid black;border-radius: 8px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
 
 # 特点介绍
 
@@ -34,11 +34,11 @@
 
    为避免重复翻译句子并减少请求次数，流畅阅读对每个页面实现了翻译缓存。您无需关注具体细节，翻译状态通过颜色区分：蓝色表示正常翻译，绿色表示使用缓存。当使用缓存时，插件不会发起网络请求。
 
-   <kbd><img src="./misc/sample-git-3.gif" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;border-radius: 8px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></kbd>
+   <img src="./misc/sample-git-3.gif" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;border-radius: 8px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
 
    将鼠标悬停在已翻译文本上，并按下快捷键，即可启用**回译功能**。
 
-   <kbd><img src="./misc/sample-git-2.gif" alt="sample-git-1.gif" style="width: 70%; max-width: 100%;border: 1px solid black;border-radius: 8px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></kbd>
+   <img src="./misc/sample-git-2.gif" alt="sample-git-1.gif" style="width: 70%; max-width: 100%;border: 1px solid black;border-radius: 8px;box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
 
 # 安装指南
 
