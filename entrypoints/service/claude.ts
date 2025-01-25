@@ -9,6 +9,7 @@ async function claude(message: any) {
     headers.append('Content-Type', 'application/json');
     headers.append('x-api-key', config.token[services.claude]);
     headers.append('anthropic-version', '2023-06-01');
+    headers.append('anthropic-dangerous-direct-browser-access', 'true');
 
     const url = config.proxy[config.service] || urls[services.claude];
 
