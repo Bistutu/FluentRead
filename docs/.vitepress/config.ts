@@ -6,7 +6,7 @@ export default defineConfig({
   description: "让所有人都能够拥有基于母语般的阅读体验",
   lang: 'zh-CN',
   lastUpdated: true,
-  base: '/FluentRead/',
+  base: '/',
   
   head: [
     ['link', { rel: 'icon', href: '/FluentRead/logo.png' }]
@@ -65,7 +65,7 @@ export default defineConfig({
         text: '介绍',
         items: [
           { text: '什么是流畅阅读?', link: '/guide/' },
-          { text: '快速开始', link: '/guide/getting-started' },
+          { text: '快速安装', link: '/guide/getting-started' },
           { text: '功能介绍', link: '/guide/features' }
         ]
       },

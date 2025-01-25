@@ -2,7 +2,9 @@
 
 流畅阅读（FluentRead）是一款革新性的浏览器翻译插件，专注于为用户提供无缝的双语阅读体验。它不仅仅是一个简单的翻译工具，更是一个智能的阅读助手，能够理解上下文语境，提供准确、自然的翻译结果。
 
-<img src="/sample-git-4.gif" alt="双语对照模式" style="width: 60%; max-width: 100%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
+<img src="/basic-config.png" alt="基本设置" style="width: 40%; max-width: 100%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
+
+观看[B站功能介绍视频](https://www.bilibili.com/video/BV1ux4y1e73x/)，快速了解流畅阅读的主要特性。
 
 ## 核心特性
 
@@ -68,4 +70,4 @@
 
 ## 开始使用
 
-准备好开始使用了吗？请查看[快速开始](./getting-started.md)章节，了解如何在几分钟内配置并开始使用流畅阅读。 
+准备好开始使用了吗？请查看[安装指南](./getting-started.md)章节，了解如何在几分钟内配置并开始使用流畅阅读。 
