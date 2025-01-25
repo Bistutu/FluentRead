@@ -265,6 +265,15 @@
               placeholder="user message template" />
           </el-col>
         </el-row>
+        <!-- 恢复默认模板按钮 -->
+        <el-row v-show="compute.showAI" class="margin-bottom">
+          <el-col :span="24" style="text-align: right;">
+            <el-button type="primary" link @click="resetTemplate">
+              <el-icon><Refresh /></el-icon>
+              恢复默认模板
+            </el-button>
+          </el-col>
+        </el-row>
       </el-collapse-item>
     </el-collapse>
 
@@ -287,10 +296,11 @@
 <script lang="ts" setup>
 // Main 处理配置信息
 import { computed, ref, watch, onUnmounted } from 'vue'
-import { models, options, servicesType } from "../entrypoints/utils/option";
+import { models, options, servicesType, defaultOption } from "../entrypoints/utils/option";
 import { Config } from "@/entrypoints/utils/model";
 import { storage } from '@wxt-dev/storage';
-import { Setting } from '@element-plus/icons-vue'
+import { ChatDotRound, Refresh } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 // 初始化深色模式媒体查询
 const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -395,6 +405,29 @@ const styleGroups = computed(() => {
     options: options.styles.filter(item => !item.disabled && item.group === group.value)
   }));
 });
+
+// 恢复默认模板
+const resetTemplate = () => {
+  ElMessageBox.confirm(
+    '确定要恢复默认的 system 和 user 模板吗？此操作将覆盖当前的自定义模板。',
+    '恢复默认模板',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }
+  ).then(() => {
+    config.value.system_role[config.value.service] = defaultOption.system_role;
+    config.value.user_role[config.value.service] = defaultOption.user_role;
+    ElMessage({
+      message: '已成功恢复默认翻译模板',
+      type: 'success',
+      duration: 2000
+    });
+  }).catch(() => {
+    // 用户取消操作，不做任何处理
+  });
+};
 
 </script>
 
