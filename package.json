@@ -1,6 +1,6 @@
 {
   "name": "流畅阅读",
-  "description": "A context-aware AI translation engine that provides more natural website translations, enabling everyone to have a native-like reading experience",
+  "description": "拥有基于上下文语境的人工智能翻译引擎，为网站提供更加友好的翻译，让所有人都能够拥有基于母语般的阅读体验",
   "private": true,
   "version": "0.0.10",
   "type": "module",
@@ -12,7 +12,10 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "vue-tsc --noEmit",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
@@ -21,15 +24,19 @@
     "element-plus": "^2.9.3",
     "franc-min": "^6.2.0",
     "js-beautify": "^1.15.1",
-    "vue": "^3.5.13",
     "webextension-polyfill": "^0.12.0"
   },
   "devDependencies": {
     "@types/webextension-polyfill": "^0.12.1",
     "@vitejs/plugin-vue": "^5.2.1",
+    "@vuepress/client": "2.0.0-rc.19",
     "typescript": "^5.7.3",
     "vite": "^5.4.11",
+    "vite-plugin-imagemin": "^0.6.1",
+    "vitepress": "^1.6.3",
+    "vue": "^3.5.13",
     "vue-tsc": "^2.2.0",
+    "vuepress": "2.0.0-rc.19",
     "wxt": "^v0.18.15"
   }
 }
