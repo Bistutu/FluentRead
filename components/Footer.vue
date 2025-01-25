@@ -12,7 +12,7 @@
         </el-icon>
         {{ buttonText }}
       </el-link>
-      <el-link class="action-link right" href="https://github.com/Bistutu/FluentRead" target="_blank">
+      <el-link class="action-link right" href="https://fluent.thinkstu.com/" target="_blank">
         <el-icon class="github-icon">
           <Star />
         </el-icon>

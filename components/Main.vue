@@ -34,7 +34,8 @@
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" 
           content="选择双语模式下译文的显示样式，提供多种美观的效果" 
-          placement="top-start">
+          placement="top-start"
+          :show-after="500">
           <span class="popup-text popup-vertical-left">译文样式<el-icon class="icon-margin">
               <ChatDotRound />
             </el-icon></span>
@@ -58,7 +59,8 @@
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" 
           content="机器翻译：快速稳定，适合日常使用；AI翻译：更自然流畅，需要配置令牌" 
-          placement="top-start">
+          placement="top-start"
+          :show-after="500">
           <span class="popup-text popup-vertical-left">翻译服务<el-icon class="icon-margin">
               <ChatDotRound />
             </el-icon></span>
@@ -107,7 +109,8 @@
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark"
           content="API访问令牌仅保存在本地，用于访问翻译服务。获取方式请参考对应服务的官方文档" 
-          placement="top-start">
+          placement="top-start"
+          :show-after="500">
           <span class="popup-text popup-vertical-left">访问令牌<el-icon class="icon-margin">
               <ChatDotRound />
             </el-icon></span>
@@ -123,7 +126,8 @@
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark"
           content="百度文心一言API密钥对，用于访问翻译服务" 
-          placement="top-start">
+          placement="top-start"
+          :show-after="500">
           <span class="popup-text popup-vertical-left">API Key<el-icon class="icon-margin">
               <ChatDotRound />
             </el-icon></span>
@@ -137,7 +141,8 @@
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark"
           content="百度文心一言API密钥对，用于访问翻译服务" 
-          placement="top-start">
+          placement="top-start"
+          :show-after="500">
           <span class="popup-text popup-vertical-left">Secret Key<el-icon class="icon-margin">
               <ChatDotRound />
             </el-icon></span>
@@ -153,7 +158,8 @@
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark"
           content="Coze机器人ID，可在Coze开发者文档中查看获取方式" 
-          placement="top-start">
+          placement="top-start"
+          :show-after="500">
           <span class="popup-text popup-vertical-left">机器人ID<el-icon class="icon-margin">
               <ChatDotRound />
             </el-icon></span>
@@ -169,7 +175,8 @@
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="目前仅支持OpenAI格式的请求接口，如http://localhost:3000/v1/chat/completions，其中 localhost:11434 可更换为任意值。
                      如果使用的是 ollama，则需要使用 OLLAMA_ORIGINS=chrome-extension://* ollama serve 启动 ollama 以允许跨域访问。"
-          placement="top-start">
+          placement="top-start"
+          :show-after="500">
           <span class="popup-text popup-vertical-left">自定义接口<el-icon class="icon-margin">
               <ChatDotRound />
             </el-icon></span>
@@ -196,7 +203,8 @@
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" 
           :content="config.service === 'doubao' ? '豆包的model为接入点，获取方式见官方文档：https://console.volcengine.com/ark/region:ark+cn-beijing/endpoint' : '注意：自定义模型名称需要与服务商提供的模型名称一致，否则无法使用！'" 
-          placement="top-start">
+          placement="top-start"
+          :show-after="500">
           <span class="popup-text popup-vertical-left">{{config.service === 'doubao' ? '接入点' : '自定义模型'}}<el-icon class="icon-margin">
               <ChatDotRound />
             </el-icon></span>
@@ -213,7 +221,8 @@
         <!-- 使用代理转发 -->
         <el-row v-show="compute.showProxy" class="margin-bottom">
           <el-col :span="8" class="lightblue rounded-corner">
-            <el-tooltip class="box-item" effect="dark" content="使用代理可以解决网络无法访问的问题，如不熟悉代理设置请留空！" placement="top-start">
+            <el-tooltip class="box-item" effect="dark" content="使用代理可以解决网络无法访问的问题，如不熟悉代理设置请留空！" placement="top-start"
+              :show-after="500">
               <span class="popup-text popup-vertical-left">代理地址<el-icon class="icon-margin">
                   <ChatDotRound />
                 </el-icon></span>
@@ -228,7 +237,8 @@
         <el-row v-show="compute.showAI" class="margin-bottom">
           <el-col :span="8" class="lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark" content="以系统身份 system 发送的对话，常用于指定 AI 要扮演的角色"
-              placement="top-start">
+              placement="top-start"
+              :show-after="500">
               <span class="popup-text popup-vertical-left">system<el-icon class="icon-margin">
                   <ChatDotRound />
                 </el-icon></span>
@@ -243,7 +253,8 @@
           <el-col :span="8" class="lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark"
               content="以用户身份 user 发送的对话，其中&#123;&#123;to&#125;&#125;表示目标语言，&#123;&#123;origin&#125;&#125;表示待翻译的文本内容，两者不可缺少。"
-              placement="top-start">
+              placement="top-start"
+              :show-after="500">
               <span class="popup-text popup-vertical-left">user<el-icon class="icon-margin">
                   <ChatDotRound />
                 </el-icon></span>
@@ -409,5 +420,39 @@ const styleGroups = computed(() => {
 
 .icon-margin {
   margin-left: 0.25em;
+}
+
+/* 添加自适应样式 */
+:deep(.el-select) {
+  width: 100%;
+}
+
+:deep(.el-input) {
+  width: 100%;
+}
+
+.margin-bottom {
+  margin-bottom: 12px;
+}
+
+.margin-left-2em {
+  margin-left: 1em;
+  margin-right: 1em;
+}
+
+/* 设置滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 3px;
 }
 </style>

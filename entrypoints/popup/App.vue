@@ -27,4 +27,24 @@ import '../../styles/theme.css';
   background-color: var(--el-bg-color);
   color: var(--el-text-color);
 }
+
+.popup-container {
+  width: 460px;
+  max-height: 600px;
+  overflow-y: auto;
+  padding: 16px 0;
+  box-sizing: border-box;
+}
+
+@media screen and (max-height: 600px) {
+  .popup-container {
+    max-height: 90vh;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .popup-container {
+    width: 95vw;
+  }
+}
 </style>
