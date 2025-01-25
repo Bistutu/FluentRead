@@ -30,13 +30,13 @@ import '../../styles/theme.css';
 
 .popup-container {
   width: 460px;
-  max-height: 600px;
+  max-height: 800px;
   overflow-y: auto;
   padding: 16px 0;
   box-sizing: border-box;
 }
 
-@media screen and (max-height: 600px) {
+@media screen and (max-height: 800px) {
   .popup-container {
     max-height: 90vh;
   }
@@ -46,5 +46,29 @@ import '../../styles/theme.css';
   .popup-container {
     width: 95vw;
   }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f5f5f5;
+  border-radius: 3px;
+}
+
+.el-main {
+  min-height: 400px;
+  height: auto;
+}
+
+.custom-padding {
+  padding: 12px 16px;
 }
 </style>
