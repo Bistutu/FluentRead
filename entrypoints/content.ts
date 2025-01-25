@@ -12,12 +12,13 @@ export default defineContentScript({
 
         cache.cleaner();    // 检测是否清理缓存
 
-        const screen = { mouseX: 0, mouseY: 0, hotkeyPressed: false, otherKeyPressed: false };
+        const screen = { mouseX: 0, mouseY: 0, hotkeyPressed: false, otherKeyPressed: false, hasSlideTranslation: false };
 
         // 1. 失去焦点时
         window.addEventListener('blur', () => {
             screen.hotkeyPressed = false;
             screen.otherKeyPressed = false;
+            screen.hasSlideTranslation = false;
         });
 
         // 2. 按下按键时
@@ -33,11 +34,12 @@ export default defineContentScript({
         // 3. 抬起按键时
         window.addEventListener('keyup', event => {
             if (config.hotkey === event.key) {
-                if (!screen.otherKeyPressed) {
+                if (!screen.otherKeyPressed && !screen.hasSlideTranslation) {
                     handleTranslation(screen.mouseX, screen.mouseY);
                 }
                 screen.hotkeyPressed = false;
                 screen.otherKeyPressed = false;
+                screen.hasSlideTranslation = false;
             }
         });
 
@@ -46,6 +48,7 @@ export default defineContentScript({
             screen.mouseX = event.clientX;
             screen.mouseY = event.clientY;
             if (screen.hotkeyPressed) {
+                screen.hasSlideTranslation = true;
                 handleTranslation(screen.mouseX, screen.mouseY, 50)
             }
         });
