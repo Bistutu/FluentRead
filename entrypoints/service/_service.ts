@@ -13,6 +13,7 @@ import infini from "@/entrypoints/service/infini";
 import minimax from "@/entrypoints/service/minimax";
 import common from "@/entrypoints/service/common";
 import coze from "@/entrypoints/service/coze";
+import deepseek from "./deepseek";
 
 type ServiceFunction = (message: any) => Promise<any>;
 type ServiceMap = {[key: string]: ServiceFunction;};
@@ -35,12 +36,12 @@ export const _service: ServiceMap = {
     [services.minimax]: minimax,
     [services.cozecom]: coze,
     [services.cozecn]: coze,
+    [services.deepseek]: deepseek,
     // openai schema
     [services.openai]: common,
     [services.moonshot]: common,
     [services.baichuan]: common,
     [services.lingyi]: common,
-    [services.deepseek]: common,
     [services.jieyue]: common,
     [services.graq]: common,
     [services.huanYuan]: common,

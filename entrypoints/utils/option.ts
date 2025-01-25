@@ -147,7 +147,7 @@ export const models = new Map<string, Array<string>>([
     [services.infini, ["llama-2-13b-chat", "llama-3.3-70b-instruct", "qwen2.5-14b-instruct","gemma-2-27b-it", "glm-4-9b-chat", customModelString]],
     [services.baichuan, ["Baichuan4-Air", "Baichuan4-Turbo", "Baichuan4", customModelString]],
     [services.lingyi, ["yi-lightning", customModelString]],
-    [services.deepseek, ["deepseek-chat", customModelString]],
+    [services.deepseek, ["deepseek-chat","deepseek-reasoner", customModelString]],
     [services.minimax, ["chatcompletion_v2"]],
     [services.jieyue, ["step-1-8k", customModelString]],
     [services.huanYuan, ["hunyuan-turbo（推荐）","hunyuan-lite", "hunyuan-standard", customModelString]],
