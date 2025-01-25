@@ -10,7 +10,12 @@
             "*.zip",
             "*.crx",
             "*.xpi",
-            "misc"
+            "misc",
+            ".output",
+            "*.lock",
+            ".DS_Store",
+            "coverage",
+            "temp"
         ],
         "language": {
             "typescript": {
@@ -35,8 +40,16 @@
             "excludePatterns": [
                 "node_modules/**",
                 "dist/**",
-                "misc/**"
+                "misc/**",
+                ".output/**",
+                "coverage/**",
+                "temp/**"
             ]
+        },
+        "build": {
+            "outDir": ".output",
+            "sourcemap": true,
+            "minify": true
         }
     }
 } 

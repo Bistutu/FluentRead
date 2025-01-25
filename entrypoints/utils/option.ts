@@ -227,7 +227,7 @@ export const options = {
         {value: 0, label: "仅译文模式"},
         {value: 1, label: "双语对照模式"},
     ],
-    // 双语翻译的 15 种模式：默认、加粗、实线下划线、虚线下划线、弱化、透明、阴影、学习效果、马克笔、引用、高亮、背景色、斜体、边框、文字阴影
+    // 双语翻译样式
     styles: [
         // 基础样式
         {value: "basic", label: "基础样式", disabled: true},
@@ -256,26 +256,26 @@ export const options = {
         
         // 背景色系列
         {value: "background", label: "背景色系列", disabled: true},
-        {value: 13, label: "温暖黄底", class: "fluent-display-lightyellow"},
-        {value: 14, label: "清新蓝底", class: "fluent-display-lightblue"},
-        {value: 15, label: "素雅灰底", class: "fluent-display-lightgray"},
+        {value: 13, label: "温暖黄底", class: "fluent-display-lightyellow", group: "background"},
+        {value: 14, label: "清新蓝底", class: "fluent-display-lightblue", group: "background"},
+        {value: 15, label: "素雅灰底", class: "fluent-display-lightgray", group: "background"},
         
         // 特殊效果
         {value: "special", label: "特殊效果", disabled: true},
-        {value: 16, label: "典雅引用", class: "fluent-display-quote"},
-        {value: 17, label: "轻巧边框", class: "fluent-display-border"},
-        {value: 18, label: "阅读焦点", class: "fluent-display-focus"},
-        {value: 19, label: "简约底线", class: "fluent-display-clean"},
+        {value: 16, label: "典雅引用", class: "fluent-display-quote", group: "special"},
+        {value: 17, label: "轻巧边框", class: "fluent-display-border", group: "special"},
+        {value: 18, label: "阅读焦点", class: "fluent-display-focus", group: "special"},
+        {value: 19, label: "简约底线", class: "fluent-display-clean", group: "special"},
         
         // 专业样式
         {value: "pro", label: "专业样式", disabled: true},
-        {value: 20, label: "代码风格", class: "fluent-display-tech"},
-        {value: 21, label: "书籍风格", class: "fluent-display-elegant"},
+        {value: 20, label: "代码风格", class: "fluent-display-tech", group: "pro"},
+        {value: 21, label: "书籍风格", class: "fluent-display-elegant", group: "pro"},
         
         // 透明度
         {value: "transparent", label: "透明效果", disabled: true},
-        {value: 22, label: "半透明弱化", class: "fluent-display-dimmed"},
-        {value: 23, label: "轻透明感", class: "fluent-display-transparent-mode"},
+        {value: 22, label: "半透明弱化", class: "fluent-display-dimmed", group: "transparent"},
+        {value: 23, label: "轻透明感", class: "fluent-display-transparent-mode", group: "transparent"},
     ],
     theme: [
         {value: "auto", label: "跟随操作系统"},
