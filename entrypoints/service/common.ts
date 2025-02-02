@@ -1,6 +1,7 @@
 import {method, urls} from "../utils/constant";
 import {commonMsgTemplate} from "../utils/template";
 import {config} from "@/entrypoints/utils/config";
+import {contentPostHandler} from "@/entrypoints/utils/check";
 
 async function common(message: any) {
     try {
@@ -22,7 +23,7 @@ async function common(message: any) {
         }
 
         const result = await resp.json();
-        return result.choices[0].message.content;
+        return contentPostHandler(result.choices[0].message.content);
     } catch (error) {
         console.error('API调用失败:', error);
         throw error;

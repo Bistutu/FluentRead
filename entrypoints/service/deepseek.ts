@@ -1,6 +1,7 @@
-import {method, urls} from "../utils/constant";
-import {deepseekMsgTemplate} from "../utils/template";
-import {config} from "@/entrypoints/utils/config";
+import { method, urls } from "../utils/constant";
+import { deepseekMsgTemplate } from "../utils/template";
+import { config } from "@/entrypoints/utils/config";
+import { contentPostHandler } from "@/entrypoints/utils/check";
 
 async function deepseek(message: any) {
     try {
@@ -22,10 +23,7 @@ async function deepseek(message: any) {
         }
 
         const result = await resp.json();
-        // 替换掉<think>与</think>之间的内容
-        let content = result.choices[0].message.content;
-        content = content.replace(/^<think>[\s\S]*?<\/think>/, "");
-        return content;
+        return contentPostHandler(result.choices[0].message.content);
     } catch (error) {
         console.error('API调用失败:', error);
         throw error;

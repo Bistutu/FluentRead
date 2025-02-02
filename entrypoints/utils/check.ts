@@ -1,3 +1,4 @@
+import { S } from "wxt/dist/index-nWRfwAJi";
 import { customModelString, services, servicesType } from "./option";
 import { sendErrorMessage } from "./tip";
 import { config } from "@/entrypoints/utils/config";
@@ -53,7 +54,7 @@ export function hasLoadingSpinner(node: Node): boolean {
     if (node instanceof Element) {
         return Array.from(node.children).some(child => hasLoadingSpinner(child));
     }
-    
+
     return false;
 }
 
@@ -85,4 +86,11 @@ export function searchClassName(node: Node, className: string): Node | null {
     }
 
     return null;
+}
+
+export function contentPostHandler(text: string) {
+    // 替换掉<think>与</think>之间的内容
+    let content = text;
+    content = content.replace(/^<think>[\s\S]*?<\/think>/, "");
+    return content;
 }
