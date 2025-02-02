@@ -17,7 +17,10 @@ async function custom(message: any) {
 
     if (resp.ok) {
         let result = await resp.json();
-        return result.choices[0].message.content
+        // 替换掉<think>与</think>之间的内容
+        let content = result.choices[0].message.content;
+        content = content.replace(/^<think>[\s\S]*?<\/think>/, "");
+        return  content;
     } else {
         console.log("翻译失败：", resp);
         throw new Error(`翻译失败: ${resp.status} ${resp.statusText} body: ${await resp.text()}`);

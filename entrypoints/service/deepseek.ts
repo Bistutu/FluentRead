@@ -22,7 +22,10 @@ async function deepseek(message: any) {
         }
 
         const result = await resp.json();
-        return result.choices[0].message.content;
+        // 替换掉<think>与</think>之间的内容
+        let content = result.choices[0].message.content;
+        content = content.replace(/^<think>[\s\S]*?<\/think>/, "");
+        return content;
     } catch (error) {
         console.error('API调用失败:', error);
         throw error;
