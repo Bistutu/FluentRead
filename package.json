@@ -2,7 +2,7 @@
   "name": "流畅阅读",
   "description": "拥有基于上下文语境的人工智能翻译引擎，为网站提供更加友好的翻译，让所有人都能够拥有基于母语般的阅读体验",
   "private": true,
-  "version": "0.0.12",
+  "version": "0.0.15",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -27,6 +27,7 @@
     "webextension-polyfill": "^0.12.0"
   },
   "devDependencies": {
+    "@types/crypto-js": "^4.2.2",
     "@types/webextension-polyfill": "^0.12.1",
     "@vitejs/plugin-vue": "^5.2.1",
     "@vuepress/client": "2.0.0-rc.19",

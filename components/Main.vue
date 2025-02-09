@@ -108,7 +108,7 @@
     <el-row v-show="compute.showToken" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark"
-          content="API访问令牌仅保存在本地，用于访问翻译服务。获取方式请参考对应服务的官方文档" 
+          content="API访问令牌仅保存在本地，用于访问翻译服务。获取方式请参考对应服务的官方文档；翻译服务为 ollama 时，token 可为任意值" 
           placement="top-start"
           :show-after="500">
           <span class="popup-text popup-vertical-left">访问令牌<el-icon class="icon-margin">
@@ -174,7 +174,7 @@
     <el-row v-show="compute.showCustom" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="目前仅支持OpenAI格式的请求接口，如http://localhost:3000/v1/chat/completions，其中 localhost:11434 可更换为任意值。
-                     如果使用的是 ollama，则需要使用 OLLAMA_ORIGINS=chrome-extension://* ollama serve 启动 ollama 以允许跨域访问。"
+                     ollama 配置请参考：https://fluent.thinkstu.com/guide/faq.html"
           placement="top-start"
           :show-after="500">
           <span class="popup-text popup-vertical-left">自定义接口<el-icon class="icon-margin">

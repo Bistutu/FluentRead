@@ -294,7 +294,7 @@ export const defaultOption = {
     service: services.microsoft,
     custom: "http://localhost:11434/v1/chat/completions",
     system_role:
-        "You are a professional, authentic machine translation engine. You only return the translated text, without any explanations.",
+        "You are a professional, authentic machine translation engine.",
     user_role: `Translate the following text into {{to}}, If translation is unnecessary (e.g. proper nouns, codes, etc.), return the original text. NO explanations. NO notes:
 
 {{origin}}`,
