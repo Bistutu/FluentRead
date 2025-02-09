@@ -75,6 +75,12 @@ export default defineConfig({
           { text: '基本配置', link: '/config/' },
           { text: '翻译引擎配置', link: '/config/translation-engines' },
         ]
+      },
+      {
+        text: '常见问题',
+        items: [
+          { text: 'Ollama 配置问题', link: '/guide/faq#ollama-配置问题' }
+        ]
       }
     ],
 
