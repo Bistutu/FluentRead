@@ -6,7 +6,7 @@
     </el-col>
 
     <el-col :span="4" class="flex-end">
-      <el-switch v-model="config.on" inline-prompt active-text="开" inactive-text="关" />
+      <el-switch v-model="config.on" inline-prompt active-text="开" inactive-text="关" @change="handleSwitchChange" />
     </el-col>
   </el-row>
 
@@ -26,7 +26,8 @@
         </el-tooltip>
       </el-col>
       <el-col :span="12" class="flex-end">
-        <el-switch v-model="config.autoTranslate" inline-prompt active-text="开" inactive-text="关" />
+        <el-switch v-model="config.autoTranslate" inline-prompt active-text="开" inactive-text="关"
+          @change="handleSwitchChange" />
       </el-col>
     </el-row>
     <!--    翻译模式-->
@@ -274,7 +275,7 @@
     </el-collapse>
 
     <!-- 主题设置 -->
-    <el-row class="margin-bottom margin-left-2em">
+    <el-row class="margin-bottom margin-left-2em margin-top-2em">
       <el-col :span="12" class="lightblue rounded-corner">
         <span class="popup-text popup-vertical-left">主题设置</span>
       </el-col>
@@ -288,14 +289,14 @@
   </div>
 
   <el-row v-if="showRefreshTip" class="refresh-tip margin-bottom">
-    <el-alert type="info" :closable="false" show-icon>
-      <template #default>
-        设置已更新，需要刷新页面生效
-        <el-button type="primary" link @click="refreshPage">
-          立即刷新
-        </el-button>
-      </template>
-    </el-alert>
+    <el-col :span="19" class="lightblue rounded-corner">
+      <span class="popup-text popup-vertical-left">设置已更新 需刷新页面生效</span>
+    </el-col>
+    <el-col :span="5">
+      <el-button class="refresh-button" type="primary" @click="refreshPage">
+        刷新
+      </el-button>
+    </el-col>
   </el-row>
 
 </template>
@@ -440,6 +441,11 @@ const resetTemplate = () => {
 // 显示刷新提示
 const showRefreshTip = ref(false);
 
+// 监听开关变化
+const handleSwitchChange = () => {
+  showRefreshTip.value = true;
+};
+
 // 刷新页面
 const refreshPage = async () => {
   const tabs = await browser.tabs.query({ active: true, currentWindow: true });
@@ -498,6 +504,10 @@ const refreshPage = async () => {
   margin-right: 1em;
 }
 
+.margin-top-2em {
+  margin-top: 1em;
+}
+
 /* 设置滚动条样式 */
 ::-webkit-scrollbar {
   width: 6px;
@@ -516,5 +526,22 @@ const refreshPage = async () => {
 
 .refresh-tip {
   margin: 0 1em;
+}
+
+.refresh-button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.5em 1em;
+  color: #fff;
+  background-color: #409eff;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.refresh-button:hover {
+  background-color: #66b1ff;
+  color: #fff;
 }
 </style>
