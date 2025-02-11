@@ -164,6 +164,11 @@ export const options = {
         {value: true, label: "开启"},
         {value: false, label: "关闭"},
     ],
+    // 是否即时翻译
+    autoTranslate: [
+        {value: true, label: "开启"},
+        {value: false, label: "关闭"},
+    ],
     form: [{value: "auto", label: "自动检测"}],
     to: [
         {value: "zh-Hans", label: "中文"},
@@ -174,6 +179,7 @@ export const options = {
         {value: "ru", label: "俄语"},
     ],
     keys: [
+
         {value: "Computer", label: "键盘选项", disabled: true},
         {value: "Control", label: "Ctrl"},
         {value: "Alt", label: "Alt"},

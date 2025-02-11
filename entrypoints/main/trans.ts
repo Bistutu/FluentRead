@@ -11,6 +11,18 @@ import {config} from "@/entrypoints/utils/config";
 let hoverTimer: any; // 鼠标悬停计时器
 let htmlSet = new Set(); // 防抖
 
+export function autoTranslateEnglishPage() {
+    console.log('自动翻译英文页面');
+    // 获取当前页面的语言
+    const language = detectlang(document.documentElement.textContent || '');
+    console.log('当前页面语言：', language);
+    if (language === 'en') {
+        console.log('当前页面是英文，开始翻译');
+        // 翻译当前页面
+        handleTranslation(0, 0, 0);
+    }
+}
+
 export function handleTranslation(mouseX: number, mouseY: number, delayTime: number = 0) {
     // 检查配置
     if (!checkConfig()) return;
@@ -102,6 +114,7 @@ export function handleSingleTranslation(node: any, slide: boolean) {
     singleTranslate(node);
 }
 
+
 function bilingualTranslate(node: any, nodeOuterHTML: any) {
     if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
 
@@ -137,6 +150,7 @@ function bilingualTranslate(node: any, nodeOuterHTML: any) {
 
     translating();
 }
+
 
 export function singleTranslate(node: any) {
     if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
