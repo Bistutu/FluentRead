@@ -10,8 +10,10 @@ export default defineContentScript({
     runAt: 'document_end',  // 在页面加载完成后运行
     async main() {
         await configReady // 等待配置加载完成
+
         if (config.autoTranslate) {
             // 添加自动翻译事件监听器
+            if (config.on === false) return; // 如果配置关闭，则不执行任何操作
             autoTranslationEvent();
         } else {
             // 添加手动翻译事件监听器

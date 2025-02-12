@@ -1,28 +1,89 @@
-import {checkConfig, searchClassName, skipNode} from "../utils/check";
-import {cache} from "../utils/cache";
-import {options, servicesType} from "../utils/option";
-import {insertFailedTip, insertLoadingSpinner} from "../utils/icon";
-import {styles} from "@/entrypoints/utils/constant";
-import {beautyHTML, grabNode, LLMStandardHTML, smashTruncationStyle} from "@/entrypoints/main/dom";
-import {detectlang, throttle} from "@/entrypoints/utils/common";
-import {getMainDomain, replaceCompatFn} from "@/entrypoints/main/compat";
-import {config} from "@/entrypoints/utils/config";
+import { checkConfig, searchClassName, skipNode } from "../utils/check";
+import { cache } from "../utils/cache";
+import { options, servicesType } from "../utils/option";
+import { insertFailedTip, insertLoadingSpinner } from "../utils/icon";
+import { styles } from "@/entrypoints/utils/constant";
+import { beautyHTML, grabNode, grabAllNode, LLMStandardHTML, smashTruncationStyle } from "@/entrypoints/main/dom";
+import { detectlang, throttle } from "@/entrypoints/utils/common";
+import { getMainDomain, replaceCompatFn } from "@/entrypoints/main/compat";
+import { config } from "@/entrypoints/utils/config";
 
 let hoverTimer: any; // 鼠标悬停计时器
 let htmlSet = new Set(); // 防抖
 
+// 自动翻译整个页面的功能
 export function autoTranslateEnglishPage() {
     console.log('自动翻译英文页面');
     // 获取当前页面的语言
     const language = detectlang(document.documentElement.textContent || '');
     console.log('当前页面语言：', language);
-    if (language === 'en') {
-        console.log('当前页面是英文，开始翻译');
-        // 翻译当前页面
-        handleTranslation(0, 0, 0);
+    const to = config.to;
+    if (to.includes(language)) {
+        console.log('目标语言与当前页面语言相同，不进行翻译');
+        return;
     }
+
+    console.log('当前页面非目标语言，开始翻译');
+    // 获取所有需要翻译的节点
+    const nodes = grabAllNode(document.body);
+    if (!nodes.length) return;
+
+    // 创建观察器
+    const observer = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const node = entry.target;
+
+                // 检查特定文本的触发
+                console.log(node.textContent, 'node.textContent')
+
+                // 翻译可见节点
+                if (config.display === styles.bilingualTranslation) {
+                    handleBilingualTranslation(node as Element, false);
+                } else {
+                    handleSingleTranslation(node as Element, false);
+                }
+                // 翻译完就停止观察
+                observer.unobserve(node);
+            }
+        });
+    }, {
+        root: null,
+        rootMargin: '50px',
+        threshold: 0.1 // 只要出现10%就开始翻译
+    });
+
+    // 开始观察所有节点
+    nodes.forEach(node => {
+        observer.observe(node);
+    });
+
+    // 创建 MutationObserver 监听 DOM 变化
+    const mutationObserver = new MutationObserver((mutations) => {
+        mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+                if (node.nodeType === 1) { // Element node
+                    const newNodes = grabAllNode(node as Element);
+                    newNodes.forEach(n => observer.observe(n));
+                }
+            });
+        });
+    });
+
+    // 监听整个 body 的变化
+    mutationObserver.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+
+    // 清理函数同时断开两个 observer
+    return () => {
+        observer.disconnect();
+        mutationObserver.disconnect();
+    };
 }
 
+// 处理鼠标悬停翻译的主函数
 export function handleTranslation(mouseX: number, mouseY: number, delayTime: number = 0) {
     // 检查配置
     if (!checkConfig()) return;
@@ -39,9 +100,6 @@ export function handleTranslation(mouseX: number, mouseY: number, delayTime: num
         let nodeOuterHTML = node.outerHTML;
         if (htmlSet.has(nodeOuterHTML)) return;
         htmlSet.add(nodeOuterHTML);
-
-        // 翻译服务
-        // console.log('翻译服务：', config.service)
 
         // 根据翻译模式进行翻译
         if (config.display === styles.bilingualTranslation) {
@@ -89,14 +147,14 @@ export function handleBilingualTranslation(node: any, slide: boolean) {
     bilingualTranslate(node, nodeOuterHTML);
 }
 
+// 单语翻译
 export function handleSingleTranslation(node: any, slide: boolean) {
     let nodeOuterHTML = node.outerHTML;
     let outerHTMLCache = cache.localGet(node.outerHTML);
+
+
     if (outerHTMLCache) {
-        if (slide) {
-            htmlSet.delete(nodeOuterHTML);
-            return;
-        }
+        // handleTranslation 已处理防抖 故删除判断 原bug 在保存完成后 刷新页面 可以取得缓存 直接return并没有翻译
         let spinner = insertLoadingSpinner(node, true);
         setTimeout(() => {
             spinner.remove();
@@ -128,7 +186,7 @@ function bilingualTranslate(node: any, nodeOuterHTML: any) {
 
     // 正在翻译...允许失败重试 3 次
     const translating = (failCount = 0) => {
-        browser.runtime.sendMessage({context: document.title, origin: origin})
+        browser.runtime.sendMessage({ context: document.title, origin: origin })
             .then((text: string) => {
                 clearTimeout(timeout);
                 spinner.remove();
@@ -166,7 +224,7 @@ export function singleTranslate(node: any) {
 
     // 正在翻译...允许失败重试 3 次
     const translating = (failCount = 0) => {
-        browser.runtime.sendMessage({context: document.title, origin: origin})
+        browser.runtime.sendMessage({ context: document.title, origin: origin })
             .then((text: string) => {
                 clearTimeout(timeout);
                 spinner.remove();
@@ -208,7 +266,7 @@ export const handleBtnTranslation = throttle((node: any) => {
 
     config.count++ && storage.setItem('local:config', JSON.stringify(config));
 
-    browser.runtime.sendMessage({context: document.title, origin: origin})
+    browser.runtime.sendMessage({ context: document.title, origin: origin })
         .then((text: string) => {
             cache.localSetDual(origin, text);
             node.innerText = text;
