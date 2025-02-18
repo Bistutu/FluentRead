@@ -103,7 +103,7 @@
         <span class="popup-text popup-vertical-left">快捷键</span>
       </el-col>
       <el-col :span="12">
-        <el-select v-model="config.hotkey" placeholder="请选择快捷键" :disabled="config.autoTranslate">
+        <el-select v-model="config.hotkey" placeholder="请选择快捷键">
           <el-option class="select-left" v-for="item in options.keys" :key="item.value" :label="item.label"
             :value="item.value" :disabled="item.disabled" :class="{ 'select-divider': item.disabled }" />
         </el-select>
@@ -302,6 +302,7 @@
 </template>
 
 <script lang="ts" setup>
+
 // Main 处理配置信息
 import { computed, ref, watch, onUnmounted } from 'vue'
 import { models, options, servicesType, defaultOption } from "../entrypoints/utils/option";
@@ -458,6 +459,7 @@ const refreshPage = async () => {
 </script>
 
 <style scoped>
+
 .select-left {
   text-align: left;
 }
