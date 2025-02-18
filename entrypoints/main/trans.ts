@@ -11,6 +11,9 @@ import { config } from "@/entrypoints/utils/config";
 let hoverTimer: any; // 鼠标悬停计时器
 let htmlSet = new Set(); // 防抖
 
+// 使用自定义属性标记已翻译的节点
+const TRANSLATED_ATTR = 'data-fr-translated';
+
 // 自动翻译整个页面的功能
 export function autoTranslateEnglishPage() {
     console.log('自动翻译英文页面');
@@ -32,18 +35,20 @@ export function autoTranslateEnglishPage() {
     const observer = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
-                const node = entry.target;
+                const node = entry.target as Element;
 
-                // 检查特定文本的触发
-                console.log(node.textContent, 'node.textContent')
+                // 去重
+                if (node.hasAttribute(TRANSLATED_ATTR)) return;
+                // 标记为已翻译
+                node.setAttribute(TRANSLATED_ATTR, 'true');
 
-                // 翻译可见节点
                 if (config.display === styles.bilingualTranslation) {
-                    handleBilingualTranslation(node as Element, false);
+                    handleBilingualTranslation(node, false);
                 } else {
-                    handleSingleTranslation(node as Element, false);
+                    handleSingleTranslation(node, false);
                 }
-                // 翻译完就停止观察
+
+                // 停止观察该节点
                 observer.unobserve(node);
             }
         });
@@ -62,8 +67,11 @@ export function autoTranslateEnglishPage() {
     const mutationObserver = new MutationObserver((mutations) => {
         mutations.forEach(mutation => {
             mutation.addedNodes.forEach(node => {
-                if (node.nodeType === 1) { // Element node
-                    const newNodes = grabAllNode(node as Element);
+                if (node.nodeType === 1) { // 元素节点
+                    // 只处理未翻译的新节点
+                    const newNodes = grabAllNode(node as Element).filter(
+                        n => !n.hasAttribute(TRANSLATED_ATTR)
+                    );
                     newNodes.forEach(n => observer.observe(n));
                 }
             });
