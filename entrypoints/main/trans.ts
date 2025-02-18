@@ -4,7 +4,7 @@ import { options, servicesType } from "../utils/option";
 import { insertFailedTip, insertLoadingSpinner } from "../utils/icon";
 import { styles } from "@/entrypoints/utils/constant";
 import { beautyHTML, grabNode, grabAllNode, LLMStandardHTML, smashTruncationStyle } from "@/entrypoints/main/dom";
-import { detectlang, throttle } from "@/entrypoints/utils/common";
+import { detectlang, detectlangAll, throttle } from "@/entrypoints/utils/common";
 import { getMainDomain, replaceCompatFn } from "@/entrypoints/main/compat";
 import { config } from "@/entrypoints/utils/config";
 
@@ -16,9 +16,11 @@ const TRANSLATED_ATTR = 'data-fr-translated';
 
 // 自动翻译整个页面的功能
 export function autoTranslateEnglishPage() {
-    console.log('自动翻译英文页面');
     // 获取当前页面的语言
-    const language = detectlang(document.documentElement.textContent || '');
+    const text = document.documentElement.innerText || '';
+    const cleanText = text.replace(/[\s\u3000]+/g, ' ').trim().slice(0, 500);
+
+    const language = detectlang(cleanText);
     console.log('当前页面语言：', language);
     const to = config.to;
     if (to.includes(language)) {
@@ -68,7 +70,7 @@ export function autoTranslateEnglishPage() {
         mutations.forEach(mutation => {
             mutation.addedNodes.forEach(node => {
                 if (node.nodeType === 1) { // 元素节点
-                    // 只处理未翻译的新节点
+                    // 5. 只处理未翻译的新节点
                     const newNodes = grabAllNode(node as Element).filter(
                         n => !n.hasAttribute(TRANSLATED_ATTR)
                     );
