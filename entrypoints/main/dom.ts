@@ -44,6 +44,11 @@ export function grabAllNode(rootNode: Node): Element[] {
                     return NodeFilter.FILTER_REJECT;
                 }
 
+                // 在初始全局翻译时 跳过header与footer
+                if (tag === 'header' || tag === 'footer') {
+                    return NodeFilter.FILTER_REJECT;
+                }
+
                 // 检查是否只包含有效文本内容
                 let hasText = false;
                 let hasElement = false;
