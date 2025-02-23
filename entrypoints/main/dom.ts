@@ -1,6 +1,6 @@
-import {getMainDomain, selectCompatFn} from "@/entrypoints/main/compat";
-import {html} from 'js-beautify';
-import {handleBtnTranslation} from "@/entrypoints/main/trans";
+import { getMainDomain, selectCompatFn } from "@/entrypoints/main/compat";
+import { html } from 'js-beautify';
+import { handleBtnTranslation } from "@/entrypoints/main/trans";
 
 // 直接翻译的标签集合（块级元素）
 const directSet = new Set([
@@ -12,7 +12,7 @@ const directSet = new Set([
 // 需要跳过的标签
 const skipSet = new Set([
     'html', 'body', 'script', 'style', 'noscript', 'iframe',
-    'input', 'textarea', 'select', 'button', 'code', 'pre'
+    'input', 'textarea', 'select', 'button', 'code', 'pre',
 ]);
 
 // 内联元素集合（可以包含在其他元素内的元素）
@@ -22,6 +22,84 @@ export const inlineSet = new Set([
     'img', 'br', 'wbr', 'svg'
 ]);
 
+// 传入父节点，返回所有需要翻译的 DOM 元素数组
+export function grabAllNode(rootNode: Node): Element[] {
+    if (!rootNode) return [];
+
+    const result: Element[] = [];
+
+    const walker = document.createTreeWalker(
+        rootNode,
+        NodeFilter.SHOW_ELEMENT,
+        {
+            acceptNode: (node: Node): number => {
+                if (!(node instanceof Element)) return NodeFilter.FILTER_SKIP;
+
+                const tag = node.tagName.toLowerCase();
+
+                // 跳过黑名单标签
+                if (skipSet.has(tag) ||
+                    node.classList?.contains('sr-only') ||
+                    node.classList?.contains('notranslate')) {
+                    return NodeFilter.FILTER_REJECT;
+                }
+
+                // 在初始全局翻译时 跳过header与footer
+                if (tag === 'header' || tag === 'footer') {
+                    return NodeFilter.FILTER_REJECT;
+                }
+
+                // 检查是否只包含有效文本内容
+                let hasText = false;
+                let hasElement = false;
+                let hasNonEmptyElement = false;
+
+                for (const child of node.childNodes) {
+                    if (child.nodeType === Node.ELEMENT_NODE) {
+                        hasElement = true;
+                        // 检查子元素是否包含文本
+                        if (child.textContent?.trim()) {
+                            hasNonEmptyElement = true;
+                        }
+                    }
+                    if (child.nodeType === Node.TEXT_NODE && child.textContent?.trim()) {
+                        hasText = true;
+                    }
+                }
+
+                // 如果有非空子元素，跳过当前节点
+                if (hasNonEmptyElement) {
+                    return NodeFilter.FILTER_SKIP;
+                }
+
+                if (hasText && !hasElement) {
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+
+                // 如果有子元素，继续遍历
+                if (node.childNodes.length > 0) {
+                    return NodeFilter.FILTER_SKIP;
+                }
+
+                return NodeFilter.FILTER_REJECT;
+            }
+        }
+    );
+
+    // 遍历出所有可翻译的节点
+    let currentNode: Node | null;
+    while (currentNode = walker.nextNode()) {
+        const translateNode = grabNode(currentNode as Element);
+        if (translateNode) {
+            result.push(translateNode);
+            // 跳过已确定要翻译的节点的所有子节点
+            walker.currentNode = currentNode.nextSibling || currentNode;
+        }
+    }
+
+
+    return Array.from(new Set(result));;
+}
 // 返回最终应该翻译的父节点或 false
 export function grabNode(node: any): any {
     // 空节点检查
@@ -68,25 +146,25 @@ function shouldSkipNode(node: any, tag: string): boolean {
     // 3. 判断节点是否可编辑
     // 4. 判断文本是否过长
     return skipSet.has(tag) ||
-           node.classList?.contains('notranslate') ||
-           node.isContentEditable ||
-           isTextTooLong(node);
+        node.classList?.contains('notranslate') ||
+        node.isContentEditable ||
+        isTextTooLong(node);
 }
 
 // 检查文本长度
 function isTextTooLong(node: any): boolean {
     // 1. 若文本内容长度超过 3072
     // 2. 或者 outerHTML 长度超过 4096，都视为过长
-    return node.textContent.length > 3072 || 
-           (node.outerHTML && node.outerHTML.length > 4096);
+    return node.textContent.length > 3072 ||
+        (node.outerHTML && node.outerHTML.length > 4096);
 }
 
 // 检查是否为按钮
 function isButton(node: any, tag: string): boolean {
     // 1. 若当前标签就是 button
     // 2. 或者当前标签为 span 并且其父节点为 button，则视为按钮
-    return tag === 'button' || 
-           (tag === 'span' && node.parentNode?.tagName.toLowerCase() === 'button');
+    return tag === 'button' ||
+        (tag === 'span' && node.parentNode?.tagName.toLowerCase() === 'button');
 }
 
 // 处理按钮翻译
@@ -102,9 +180,9 @@ function isInlineElement(node: any, tag: string): boolean {
     // 1. 判断是否在 inlineSet 中
     // 2. 判断是否文本节点
     // 3. 检查子元素中是否包含非内联元素
-    return inlineSet.has(tag) || 
-           node.nodeType === Node.TEXT_NODE || 
-           detectChildMeta(node);
+    return inlineSet.has(tag) ||
+        node.nodeType === Node.TEXT_NODE ||
+        detectChildMeta(node);
 }
 
 // 查找可翻译的父节点
@@ -124,11 +202,11 @@ function handleFirstLineText(node: any): boolean {
     while (child) {
         if (child.nodeType === Node.TEXT_NODE && child.textContent.trim()) {
             browser.runtime.sendMessage({
-                context: document.title, 
+                context: document.title,
                 origin: child.textContent
             })
-            .then((text: string) => child.textContent = text)
-            .catch((error: any) => console.error('翻译失败:', error));
+                .then((text: string) => child.textContent = text)
+                .catch((error: any) => console.error('翻译失败:', error));
             return false;
         }
         child = child.nextSibling;
