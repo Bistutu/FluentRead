@@ -293,7 +293,7 @@ function bilingualAppendChild(node: any, text: string) {
     if (style?.class) {
         newNode.classList.add(style.class);
     }
-    newNode.innerHTML = text;
+    newNode.append(text);
     smashTruncationStyle(node);
     node.appendChild(newNode);
 }
