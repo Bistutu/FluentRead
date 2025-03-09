@@ -136,21 +136,21 @@ export const servicesType = {
 
 export const customModelString = "自定义模型";
 export const models = new Map<string, Array<string>>([
-    [services.openai, ["gpt-4o-mini", "gpt-4o", "o1", "o1-mini", "gpt-3.5-turbo", customModelString]],
+    [services.openai, ["gpt-4o-mini", "gpt-4o", "o1", "o1-mini", "o3-mini", customModelString]],
     [services.gemini, ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro", "gemini-2.0-flash-exp", customModelString]],
     [services.yiyan, ["ERNIE-Bot 4.0", "ERNIE-Bot", "ERNIE-Speed-8K"]],
     [services.tongyi, ["qwen-long", "qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext", customModelString]],
     [services.zhipu, ["GLM-4-Flash", "glm-4-plus", "glm-4", "glm-4v", "glm-3-turbo", customModelString]],
     [services.moonshot, ["moonshot-v1-8k", "moonshot-v1-32k", customModelString]],
-    [services.claude, ["claude-3-5-haiku", "claude-3-5-sonnet", "claude-3-opus"]],
+    [services.claude, ["claude-3-7-sonnet", "claude-3-5-haiku", "claude-3-5-sonnet", "claude-3-opus"]],
     [services.custom, ["gpt-3.5-turbo", "gpt-4o", "gpt-4", "gpt-4-turbo", "gemma:7b", "llama2:7b", "mistral:7b", customModelString]],
-    [services.infini, ["llama-2-13b-chat", "llama-3.3-70b-instruct", "qwen2.5-14b-instruct","gemma-2-27b-it", "glm-4-9b-chat", customModelString]],
+    [services.infini, ["llama-2-13b-chat", "llama-3.3-70b-instruct", "qwen2.5-14b-instruct", "gemma-2-27b-it", "glm-4-9b-chat", customModelString]],
     [services.baichuan, ["Baichuan4-Air", "Baichuan4-Turbo", "Baichuan4", customModelString]],
     [services.lingyi, ["yi-lightning", customModelString]],
-    [services.deepseek, ["deepseek-chat","deepseek-reasoner", customModelString]],
+    [services.deepseek, ["deepseek-chat", "deepseek-reasoner", customModelString]],
     [services.minimax, ["chatcompletion_v2"]],
     [services.jieyue, ["step-1-8k", customModelString]],
-    [services.huanYuan, ["hunyuan-turbo（推荐）","hunyuan-lite", "hunyuan-standard", customModelString]],
+    [services.huanYuan, ["hunyuan-turbos-latest（推荐）","hunyuan-turbo", "hunyuan-lite", "hunyuan-standard", customModelString]],
     [services.doubao, [customModelString]],
 
     // mix model
@@ -186,7 +186,7 @@ export const options = {
         {value: "Shift", label: "Shift"},
         {value: "`", label: "波浪号键"},
 
-        {value: "mouse", label: "鼠标选项", disabled: true}, 
+        {value: "mouse", label: "鼠标选项", disabled: true},
         {value: "DoubleClick", label: "鼠标双击"},
         {value: "LongPress", label: "鼠标长按"},
         {value: "MiddleClick", label: "鼠标滚轮单击"},
@@ -208,8 +208,8 @@ export const options = {
         // 大模型翻译
         {value: "ai", label: "AI翻译", disabled: true},
         {value: services.deepseek, label: "DeepSeek⭐️"},
-        {value: services.siliconCloud, label: "SiliconCloud⭐️"},
-        {value: services.huanYuan, label: "腾讯混元⭐️"},
+        {value: services.siliconCloud, label: "硅基流动-SiliconFlow⭐️"},
+        {value: services.huanYuan, label: "腾讯混元⭐"},
         {value: services.doubao, label: "字节豆包"},
         {value: services.tongyi, label: "阿里通义"},
         {value: services.openai, label: "OpenAI"},
@@ -241,43 +241,43 @@ export const options = {
         {value: 1, label: "加粗显示", class: "fluent-display-bold", group: "basic"},
         {value: 2, label: "优雅斜体", class: "fluent-display-italic", group: "basic"},
         {value: 3, label: "立体阴影", class: "fluent-display-text-shadow", group: "basic"},
-        
+
         // 下划线系列
         {value: "underline", label: "下划线系列", disabled: true},
         {value: 4, label: "蓝色实线", class: "fluent-display-solid-underline", group: "underline"},
         {value: 5, label: "优雅虚线", class: "fluent-display-dot-underline", group: "underline"},
         {value: 6, label: "活泼波浪", class: "fluent-display-wavy", group: "underline"},
-        
+
         // 卡片系列
         {value: "card", label: "卡片系列", disabled: true},
         {value: 7, label: "简约卡片", class: "fluent-display-card-mode", group: "card"},
         {value: 8, label: "渐变卡片", class: "fluent-display-modern-card", group: "card"},
         {value: 9, label: "纸张卡片", class: "fluent-display-paper", group: "card"},
-        
+
         // 高亮系列
         {value: "highlight", label: "高亮系列", disabled: true},
         {value: 10, label: "学习标记", class: "fluent-display-learning-mode", group: "highlight"},
         {value: 11, label: "荧光标记", class: "fluent-display-marker", group: "highlight"},
         {value: 12, label: "柔和渐变", class: "fluent-display-highlight-fade", group: "highlight"},
-        
+
         // 背景色系列
         {value: "background", label: "背景色系列", disabled: true},
         {value: 13, label: "温暖黄底", class: "fluent-display-lightyellow", group: "background"},
         {value: 14, label: "清新蓝底", class: "fluent-display-lightblue", group: "background"},
         {value: 15, label: "素雅灰底", class: "fluent-display-lightgray", group: "background"},
-        
+
         // 特殊效果
         {value: "special", label: "特殊效果", disabled: true},
         {value: 16, label: "典雅引用", class: "fluent-display-quote", group: "special"},
         {value: 17, label: "轻巧边框", class: "fluent-display-border", group: "special"},
         {value: 18, label: "阅读焦点", class: "fluent-display-focus", group: "special"},
         {value: 19, label: "简约底线", class: "fluent-display-clean", group: "special"},
-        
+
         // 专业样式
         {value: "pro", label: "专业样式", disabled: true},
         {value: 20, label: "代码风格", class: "fluent-display-tech", group: "pro"},
         {value: 21, label: "书籍风格", class: "fluent-display-elegant", group: "pro"},
-        
+
         // 透明度
         {value: "transparent", label: "透明效果", disabled: true},
         {value: 22, label: "半透明弱化", class: "fluent-display-dimmed", group: "transparent"},
