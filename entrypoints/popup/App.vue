@@ -1,5 +1,5 @@
 <template>
-  <div class="popup-container">
+  <div>
     <el-container>
       <el-header class="custom-padding">
         <Header/>
@@ -23,15 +23,7 @@ import '../../styles/theme.css';
 </script>
 
 <style>
-.popup-container {
-  background-color: var(--el-bg-color);
-  color: var(--el-text-color);
-  width: 460px;
-  max-height: 1000px;
-  box-sizing: border-box;
-}
-
-@media screen and (max-height: 1000px) {
+@media screen and (max-height: 800px) {
   .popup-container {
     max-height: 90vh;
   }
@@ -60,7 +52,6 @@ import '../../styles/theme.css';
 
 .el-main {
   min-height: 460px;
-  margin-bottom: 0px;
   height: auto;
 }
 

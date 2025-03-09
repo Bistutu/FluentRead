@@ -1,5 +1,5 @@
 <template>
-  <div class="footer-container">
+  <div class="footer-container footer-size">
     <p class="translation-count">你已经翻译
       <el-text class="count-number" type="primary">{{ computedCount }}</el-text>
       次
@@ -108,6 +108,10 @@ const computedCount = computed(() => localConfig.count);
 </script>
 
 <style scoped>
+.footer-size {
+  font-size: 0.8em;
+}
+
 .footer-container {
   background: var(--el-bg-color);
   margin: -16px;

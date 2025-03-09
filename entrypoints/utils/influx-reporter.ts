@@ -20,6 +20,7 @@ export async function reportTranslationCount(): Promise<void> {
         }
         // get user id
         const userId = await getUserId();
+        console.log('userId:', userId);
         // get count
         const count = config.count || 0;
         if (count <= 0) {
