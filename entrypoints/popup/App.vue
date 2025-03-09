@@ -1,5 +1,5 @@
 <template>
-  <div class="common-layout">
+  <div class="popup-container">
     <el-container>
       <el-header class="custom-padding">
         <Header/>
@@ -23,20 +23,15 @@ import '../../styles/theme.css';
 </script>
 
 <style>
-.common-layout {
+.popup-container {
   background-color: var(--el-bg-color);
   color: var(--el-text-color);
-}
-
-.popup-container {
   width: 460px;
-  max-height: 800px;
-  overflow-y: auto;
-  padding: 16px 0;
+  max-height: 1000px;
   box-sizing: border-box;
 }
 
-@media screen and (max-height: 800px) {
+@media screen and (max-height: 1000px) {
   .popup-container {
     max-height: 90vh;
   }
@@ -64,7 +59,8 @@ import '../../styles/theme.css';
 }
 
 .el-main {
-  min-height: 400px;
+  min-height: 460px;
+  margin-bottom: 0px;
   height: auto;
 }
 

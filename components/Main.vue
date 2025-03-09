@@ -498,7 +498,7 @@ const refreshPage = async () => {
 }
 
 .margin-bottom {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .margin-left-2em {
