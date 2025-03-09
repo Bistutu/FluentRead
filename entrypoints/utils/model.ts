@@ -33,6 +33,7 @@ export class Config {
     user_role: IMapping;
     count: number;  // 翻译次数
     theme: string;  // 主题模式：'auto' | 'light' | 'dark'
+    useCache: boolean; // 是否使用缓存
 
     constructor() {
         this.on = true;
@@ -58,6 +59,7 @@ export class Config {
         this.user_role = userRoleFactory();
         this.count = 0;
         this.theme = 'auto';  // 默认跟随系统
+        this.useCache = true; // 默认开启缓存
     }
 }
 

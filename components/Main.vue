@@ -6,7 +6,7 @@
     </el-col>
 
     <el-col :span="4" class="flex-end">
-      <el-switch v-model="config.on" inline-prompt active-text="开" inactive-text="关" @change="handleSwitchChange" />
+      <el-switch v-model="config.on" inline-prompt active-text="开" inactive-text="关" />
     </el-col>
   </el-row>
 
@@ -30,6 +30,22 @@
 <!--          @change="handleSwitchChange" />-->
 <!--      </el-col>-->
 <!--    </el-row>-->
+
+  <!-- 缓存开关 -->
+  <el-row class="margin-bottom margin-left-2em">
+    <el-col :span="20" class="lightblue rounded-corner">
+      <el-tooltip class="box-item" effect="dark" content="开启缓存可以提高翻译速度，减少重复请求，但可能导致翻译结果不是最新的" placement="top-start" :show-after="500">
+        <span class="popup-text popup-vertical-left">缓存翻译结果<el-icon class="icon-margin">
+            <ChatDotRound />
+          </el-icon></span>
+      </el-tooltip>
+    </el-col>
+
+    <el-col :span="4" class="flex-end">
+      <el-switch v-model="config.useCache" inline-prompt active-text="开" inactive-text="关"/>
+    </el-col>
+  </el-row>
+
     <!--    翻译模式-->
     <el-row class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">

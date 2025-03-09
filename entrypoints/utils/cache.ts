@@ -14,6 +14,9 @@ function buildKey(message: string) {
 export const cache = {
     // 存入缓存并设置过期时间
     set(set: Set<any>, key: any, expire: number) {
+        // 如果禁用缓存，则不执行任何操作
+        if (!config.useCache) return;
+        
         set.add(key);
         if (expire >= 0) {
             setTimeout(() => set.delete(key), expire);
@@ -22,15 +25,24 @@ export const cache = {
 
     // local 系列为特化的缓存方法，用于操作翻译缓存
     localSet(key: string, value: string) {
+        // 如果禁用缓存，则不执行任何操作
+        if (!config.useCache) return;
+        
         localStorage.setItem(buildKey(key), value);
     },
 
     localSetDual(key: string, value: string) {
+        // 如果禁用缓存，则不执行任何操作
+        if (!config.useCache) return;
+        
         this.localSet(value, key);
         this.localSet(key, value);
     },
 
     localGet(origin: string) {
+        // 如果禁用缓存，则始终返回 null
+        if (!config.useCache) return null;
+        
         return localStorage.getItem(buildKey(origin));
     },
 

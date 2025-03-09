@@ -169,6 +169,11 @@ export const options = {
         {value: true, label: "开启"},
         {value: false, label: "关闭"},
     ],
+    // 是否使用缓存
+    useCache: [
+        {value: true, label: "开启"},
+        {value: false, label: "关闭"},
+    ],
     form: [{value: "auto", label: "自动检测"}],
     to: [
         {value: "zh-Hans", label: "中文"},
@@ -305,5 +310,6 @@ export const defaultOption = {
 
 {{origin}}`,
     count: 0,
+    useCache: true,
 };
 
