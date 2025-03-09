@@ -4,7 +4,7 @@
 
 [English](https://github.com/Bistutu/FluentRead/blob/main/misc/README_EN.md) | 中文
 
-一款革新性的浏览器开源翻译插件，让所有人都能够拥有基于母语般的阅读体验。[B站视频介绍](https://www.bilibili.com/video/BV1ux4y1e73x/)
+一款革新性的浏览器开源翻译插件，让所有人都能够拥有母语般的阅读体验。[B站视频介绍](https://www.bilibili.com/video/BV1ux4y1e73x/)
 
 ## 🌟 特性
 
@@ -38,21 +38,3 @@
 
 [![Star History Chart](https://api.star-history.com/svg?repos=Bistutu/FluentRead&type=Date)](https://star-history.com/#Bistutu/FluentRead&Date)
 
-# 赞赏码
-
-如果你觉得插件好用，可以使用微信扫描下方二维码对作者表示感谢！
-
-<img src="https://oss.thinkstu.com/typora/202406102143926.jpg?x-oss-process=style/optimize" alt="wechat" style="width: 40%; max-width: 100%;border: 1px solid black;">
-
-| 序号 |       🌼赞助者🌼        | 赞助金额 |
-| :--: |:--------------------:| :------: |
-|  1   |         TOO          |   100    |
-|  2   |         匿名          |   100    |
-|  3   |        很酷的小当家        |    57    |
-|  4   |       coonut🥥       |    36    |
-|  5   |      hoochanlon      | 23.7 |
-| 6 | Juncai（公众号"译观"） | 20 |
-| 7 |        一懒众山小.        |    18    |
-| 8 |          嘴馋          |    17    |
-| 9 |      听说海能吞掉鱼的眼泪      |    17    |
-| 10 | 吆吆好叼啊 | 10 |
