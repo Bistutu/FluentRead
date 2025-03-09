@@ -17,19 +17,19 @@
 
   <div v-show="config.on">
     <!-- 即时翻译 -->
-    <el-row class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="开启后访问英文页面时会自动翻译" placement="top-start" :show-after="500">
-          <span class="popup-text popup-vertical-left">即时翻译<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12" class="flex-end">
-        <el-switch v-model="config.autoTranslate" inline-prompt active-text="开" inactive-text="关"
-          @change="handleSwitchChange" />
-      </el-col>
-    </el-row>
+<!--    <el-row class="margin-bottom margin-left-2em">-->
+<!--      <el-col :span="12" class="lightblue rounded-corner">-->
+<!--        <el-tooltip class="box-item" effect="dark" content="开启后访问英文页面时会自动翻译" placement="top-start" :show-after="500">-->
+<!--          <span class="popup-text popup-vertical-left">即时翻译<el-icon class="icon-margin">-->
+<!--              <ChatDotRound />-->
+<!--            </el-icon></span>-->
+<!--        </el-tooltip>-->
+<!--      </el-col>-->
+<!--      <el-col :span="12" class="flex-end">-->
+<!--        <el-switch v-model="config.autoTranslate" inline-prompt active-text="开" inactive-text="关"-->
+<!--          @change="handleSwitchChange" />-->
+<!--      </el-col>-->
+<!--    </el-row>-->
     <!--    翻译模式-->
     <el-row class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
