@@ -1,6 +1,6 @@
-import { _service } from "@/entrypoints/service/_service";
-import { config } from "@/entrypoints/utils/config";
-import { reportTranslationCount } from "@/entrypoints/utils/influx-reporter";
+import {_service} from "@/entrypoints/service/_service";
+import {config} from "@/entrypoints/utils/config";
+import {reportTranslationCount} from "@/entrypoints/utils/influx-reporter";
 
 export default defineBackground({
     persistent: {
@@ -18,13 +18,12 @@ export default defineBackground({
         });
 
         reportTranslationCount().catch(error => {
-            console.error('初始化上报失败:', error);
+            console.error('init report failed:', error);
         });
-
         setInterval(() => {
             reportTranslationCount().catch(error => {
-                console.error('定时上报失败:', error);
+                console.error('report failed:', error);
             });
-        }, 60000); // 10 min
+        }, 300000);
     }
 });

@@ -12,7 +12,7 @@ async function loadConfig() {
         if (isValidConfig(value)) {
             // 如果配置有效，合并到当前 config 中
             Object.assign(config, JSON.parse(value));
-            console.log(config, '更新config')
+            // console.log(config, '更新config')
         }
     } catch (error) {
         console.error('Error getting config:', error);

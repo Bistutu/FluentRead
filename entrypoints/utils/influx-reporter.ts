@@ -1,92 +1,68 @@
-/**
- * InfluxDB 数据上报服务
- * 用于将用户使用数据上报到 InfluxDB
- */
-
 import {config} from './config';
-import {getUserId} from './user-id';
+import {getLastReportTime, setLastReportTime,getUserId} from './user-info';
 
-// InfluxDB 配置
 const INFLUX_CONFIG = {
-    url: 'http://124.221.238.116:8086',
-    token: 'VE4xd1lzRDU5QUtWSzZJM0hpNjJ5YkhoMUZCVGsyZkZ0RGlLRUlWdEFfY3c0dWNQMlMxSVBpTjNyeS1hNFZPdEp6dnFhVVVkRFJRa2R5LUxxTDdzM0E9PQ==',
-    org: 'TK',
-    bucket: 'FR',
+    url: 'aHR0cDovLzEyNC4yMjEuMjM4LjExNjo4MDg2',
+    token: 'TFZLRS1PVTY4eWtiUFM2QlRKdGt6SnpvSkw2Tk84NlNkUE9TdTFWWGJhUHE5WFRnbHU2N1pjRklpOUR6UXY5Zm02akdHTXhXaHhKQ3E2ekRTczZhX3c9PQo=',
+    org: 'com.fluent-read',
+    bucket: 'FluentRead',
 };
 
-// 上次上报时间的存储键名
-const LAST_REPORT_TIME_KEY = 'last_report_time';
-
 /**
- * 上报翻译次数到 InfluxDB
- * 每小时上报一次
+ * Plan：汇总+改进翻译体验
  */
 export async function reportTranslationCount(): Promise<void> {
     try {
-        // 检查是否需要上报（每小时上报一次）
+        // check if should report
         const shouldReport = await checkShouldReport();
         if (!shouldReport) {
             return;
         }
-
-        // 获取用户标识
+        // get user id
         const userId = await getUserId();
-        // 获取当前翻译次数
+        // get count
         const count = config.count || 0;
         if (count <= 0) {
             return; // don't report
         }
 
-        // 构建上报数据
+        // generate data
         const data = `total-times,user_id=${userId} count=${count}`;
 
         // send
         await sendToInfluxDB(data);
 
-        // 更新上次上报时间
-        await browser.storage.local.set({[LAST_REPORT_TIME_KEY]: Date.now().toString()});
+        // update last report time
+        await setLastReportTime(Date.now());
     } catch (error) {
-        // console.error('上报失败:', error);
+        console.error('report failed:', error);
     }
 }
 
-/**
- * 检查是否需要上报数据
- * 每小时上报一次
- */
 async function checkShouldReport(): Promise<boolean> {
     try {
-        // 获取上次上报时间
-        const result = await browser.storage.local.get(LAST_REPORT_TIME_KEY);
-        const lastReportTimeStr = result[LAST_REPORT_TIME_KEY];
-
-        // 如果没有上报过，则需要上报
-        if (!lastReportTimeStr) {
+        const lastReportTime = await getLastReportTime();
+        if (lastReportTime === 0) {
             return true;
         }
 
-        // 计算距离上次上报的时间（毫秒）
-        const lastReportTime = parseInt(lastReportTimeStr);
+        // calculate time diff
         const currentTime = Date.now();
         const timeDiff = currentTime - lastReportTime;
 
-        // 如果距离上次上报超过 x，需要上报
-        // return timeDiff >= 3600000;
-        return timeDiff >=  30000;
+        // check if should report
+        return timeDiff >= 600000;
     } catch (error) {
-        console.error('检查是否需要上报失败:', error);
+        console.error('check should report failed:', error);
         return false;
     }
 }
 
-/**
- * 发送数据到 InfluxDB
- * @param data 上报的数据，使用 Line Protocol 格式
- */
 async function sendToInfluxDB(data: string): Promise<void> {
     const {url, token, org, bucket} = INFLUX_CONFIG;
+    const decodedUrl = atob(url);
     const decodedToken = atob(token);
-    const apiUrl = `${url}/api/v2/write?org=${org}&bucket=${bucket}&precision=ms`;
+    const apiUrl = `${decodedUrl}/api/v2/write?org=${org}&bucket=${bucket}&precision=ms`;
 
     try {
         const response = await fetch(apiUrl, {
@@ -103,6 +79,7 @@ async function sendToInfluxDB(data: string): Promise<void> {
             throw new Error(`error: ${response.status} ${errorText}`);
         }
     } catch (error) {
+        console.error('report failed:', error);
         throw error;
     }
 } 
