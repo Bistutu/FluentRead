@@ -20,7 +20,7 @@
 - **阿里通义**：[API 文档](https://help.aliyun.com/zh/dashscope/developer-reference/api-details)
 - **智谱清言**：免费提供 `GLM-4-Flash` 模型，[开放平台](https://open.bigmodel.cn/console/overview)
 - **OpenRouter**：国外多模型聚合服务，提供免费模型，[API 参考](https://openrouter.ai/docs)
-- **Graq**：国外多模型聚合服务，提供免费模型，[开发者文档](https://groq.com/)
+- **Groq**：国外多模型聚合服务，提供免费模型，[开发者文档](https://groq.com/)
 - **百度文心**：[开放平台](https://cloud.baidu.com/doc/WENXINWORKSHOP/index.html)
 - **百川智能**：[开发者文档](https://platform.baichuan-ai.com/docs/api)
 - **零一万物**：[API 中心](https://platform.lingyiwanwu.com/)

@@ -17,7 +17,7 @@
 
 2. **AI 大模型翻译**
     
-    **OpenAI**、**DeepSeek**、**SiliconCloud**、Kimi、腾讯混元、字节豆包、阿里通义、智谱清言、OpenRouter、Graq、百度文心、百川智能、零一万物、MiniMax、无向芯穹、阶跃星辰、Claude、Gemini、Ollama 等
+    **OpenAI**、**DeepSeek**、**SiliconCloud**、Kimi、腾讯混元、字节豆包、阿里通义、智谱清言、OpenRouter、Groq、百度文心、百川智能、零一万物、MiniMax、无向芯穹、阶跃星辰、Claude、Gemini、Ollama 等
 
 3. **自定义引擎**
     

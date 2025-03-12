@@ -20,7 +20,7 @@ export const services = {
     deepseek: "deepseek",
     minimax: "minimax",
     jieyue: "jieyue", // 阶跃星辰
-    graq: "graq",
+    groq: "groq",
     cozecom: "cozecom", // coze 支持机器人不支持模型
     cozecn: "cozecn",
     huanYuan: "huanYuan", // 腾讯混元
@@ -46,7 +46,7 @@ export const servicesType = {
         services.lingyi,
         services.minimax,
         services.jieyue,
-        services.graq,
+        services.groq,
         services.cozecom,
         services.cozecn,
         services.huanYuan,
@@ -70,7 +70,7 @@ export const servicesType = {
         services.lingyi,
         services.minimax,
         services.jieyue,
-        services.graq,
+        services.groq,
         services.custom,
         services.cozecom,
         services.cozecn,
@@ -95,7 +95,7 @@ export const servicesType = {
         services.lingyi,
         services.minimax,
         services.jieyue,
-        services.graq,
+        services.groq,
         services.huanYuan,
         services.doubao,
         services.siliconCloud,
@@ -115,7 +115,7 @@ export const servicesType = {
         services.deepseek,
         services.lingyi,
         services.jieyue,
-        services.graq,
+        services.groq,
         services.cozecom,
         services.cozecn,
         services.huanYuan,
@@ -155,7 +155,7 @@ export const models = new Map<string, Array<string>>([
 
     // mix model
     [services.siliconCloud, ["Qwen/Qwen2.5-7B-Instruct（免费）", "meta-llama/Meta-Llama-3.1-8B-Instruct（免费）", "internlm/internlm2_5-7b-chat（免费）", "THUDM/glm-4-9b-chat（免费）", "01-ai/Yi-1.5-9B-Chat-16K（免费）", "google/gemma-2-9b-it（免费）", customModelString]],
-    [services.graq, ["llama-3.1-8b-instant（免费）", "llama3-8b-8192（免费）", "llama-3.3-70b-versatile（免费）", "gemma2-9b-it（免费）", "mixtral-8x7b-32768（免费）", "whisper-large-v3（免费）", customModelString]],
+    [services.groq, ["llama-3.1-8b-instant（免费）", "llama3-8b-8192（免费）", "llama-3.3-70b-versatile（免费）", "gemma2-9b-it（免费）", "mixtral-8x7b-32768（免费）", "whisper-large-v3（免费）", customModelString]],
     [services.openrouter, ["meta-llama/llama-3.1-8b-instruct（免费）", "google/gemini-2.0-flash-exp（免费）", "qwen/qwen-2-7b-instruct（免费）", "huggingfaceh4/zephyr-7b-beta（免费）", customModelString]]
 ]);
 
@@ -220,7 +220,7 @@ export const options = {
         {value: services.openai, label: "OpenAI"},
         {value: services.moonshot, label: "Kimi"},
         {value: services.openrouter, label: "OpenRouter"},
-        {value: services.graq, label: "Graq"},
+        {value: services.groq, label: "Groq"},
         {value: services.zhipu, label: "智谱清言"},
         {value: services.baichuan, label: "百川智能"},
         {value: services.lingyi, label: "零一万物"},

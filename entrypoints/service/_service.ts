@@ -43,7 +43,7 @@ export const _service: ServiceMap = {
     [services.baichuan]: common,
     [services.lingyi]: common,
     [services.jieyue]: common,
-    [services.graq]: common,
+    [services.groq]: common,
     [services.huanYuan]: common,
     [services.doubao]: common,
     [services.siliconCloud]: common,
