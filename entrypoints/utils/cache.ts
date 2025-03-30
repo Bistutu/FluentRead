@@ -76,6 +76,18 @@ export const cache = {
         }
         // 批量删除
         keysToDelete.forEach(key => localStorage.removeItem(key));
+    },
+
+    // 导出所有缓存数据为JSON
+    async exportCache() {
+        const cacheData: Record<string, string> = {};
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(prefix)) {
+                cacheData[key] = localStorage.getItem(key) as string;
+            }
+        }
+        return JSON.stringify(cacheData, null, 2);
     }
 };
 

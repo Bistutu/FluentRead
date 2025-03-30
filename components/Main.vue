@@ -290,6 +290,20 @@
       </el-collapse-item>
     </el-collapse>
 
+    <!-- 缓存操作 -->
+    <el-row class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="导出当前所有缓存数据为JSON文件" placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">导出缓存<el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12" class="flex-end">
+        <el-button type="primary" @click="exportCache">导出JSON</el-button>
+      </el-col>
+    </el-row>
+
     <!-- 主题设置 -->
     <el-row class="margin-bottom margin-left-2em margin-top-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -464,6 +478,24 @@ const handleSwitchChange = () => {
 };
 
 // 刷新页面
+// 导出缓存为JSON文件
+const exportCache = async () => {
+  try {
+    // 发送消息到 content script 触发导出
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+    if (tabs[0]?.id) {
+      browser.tabs.sendMessage(tabs[0].id, { type: 'exportCache' });
+    }
+  } catch (error) {
+    console.error('导出缓存失败:', error);
+    ElMessage({
+      message: '导出缓存失败',
+      type: 'error',
+      duration: 2000
+    });
+  }
+};
+
 const refreshPage = async () => {
   const tabs = await browser.tabs.query({ active: true, currentWindow: true });
   if (tabs[0]?.id) {

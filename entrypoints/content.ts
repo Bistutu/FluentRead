@@ -31,6 +31,10 @@ export default defineContentScript({
                 // 清除所有翻译缓存
                 clearAllTranslations();
                 return Promise.resolve(true); // 返回成功响应
+            } else if (message.type === 'exportCache') {
+                // 导出缓存
+                exportCacheToFile();
+                return Promise.resolve(true);
             }
         });
     }
@@ -202,4 +206,22 @@ function clearAllTranslations() {
     cache.clean();
 
     console.log('已清除所有翻译缓存');
+}
+
+// 添加导出缓存到文件的函数
+async function exportCacheToFile() {
+    try {
+        const cacheData = await cache.exportCache();
+        const blob = new Blob([cacheData], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `fluent-read-cache-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('导出缓存失败:', error);
+    }
 }
