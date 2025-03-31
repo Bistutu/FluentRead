@@ -26,35 +26,38 @@ export function commonMsgTemplate(origin: string) {
 
 // deepseek
 export function deepseekMsgTemplate(origin: string, isContextMenu?: boolean) {
-    // 根据是否右键翻译使用不同的配置选项
     const serviceType = isContextMenu ? config.contextMenuService : config.service;
-
-    // 检测是否使用自定义模型
     let model = config.model[serviceType] === customModelString 
         ? config.customModel[serviceType] 
         : config.model[serviceType];
 
-    // 删除模型名称中的中文括号及其内容，如"gpt-4（推荐）" -> "gpt-4"
-    model = model.replace(/（.*）/g, "");
-
-    let system = config.system_role[serviceType] || defaultOption.system_role;
-    let user = (config.user_role[serviceType] || defaultOption.user_role)
+    const cleanModel = model.replace(/（.*）/g, "");
+    const system = config.system_role[serviceType] || defaultOption.system_role;
+    const user = (config.user_role[serviceType] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
     const payload: any = {
-        'model': model,
+        'model': cleanModel,
         'messages': [
             {'role': 'system', 'content': system},
             {'role': 'user', 'content': user},
         ]
     };
 
-    // 如果不是 deepseek-reasoner 模型,则添加 temperature
-    if (model !== 'deepseek-reasoner') {
+    if (cleanModel !== 'deepseek-reasoner') {
         payload.temperature = 0.7;
     }
 
-    return JSON.stringify(payload);
+    // 返回训练数据和模板
+    return { 
+        template: JSON.stringify(payload),
+        trainingData: {
+            instruction: user,
+            input: "",
+            output: "",
+            system: system,
+        }
+    };
 }
 
 // gemini

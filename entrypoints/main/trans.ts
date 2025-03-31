@@ -211,12 +211,23 @@ function bilingualTranslate(node: any, nodeOuterHTML: any, forcedService?: strin
             service: forcedService,
             isContextMenu // 添加isContextMenu参数
         })
-            .then((text: string) => {
+            .then((response: any) => {
                 clearTimeout(timeout);
                 spinner.remove();
                 htmlSet.delete(nodeOuterHTML);
-                bilingualAppendChild(node, text);
-                cache.localSet(origin, text);
+                
+                // 如果是deepseek服务且返回了训练数据
+                if (response.trainingData) {
+                    const saveKey = `deepseek_train_${Date.now()}`;
+                    localStorage.setItem(saveKey, JSON.stringify(response.trainingData));
+                    console.log('保存deepseek训练数据:', saveKey, response.trainingData);
+                    bilingualAppendChild(node, response.text);
+                    cache.localSet(origin, response.text);
+                } else {
+                    // 处理普通翻译结果
+                    bilingualAppendChild(node, response);
+                    cache.localSet(origin, response);
+                }
             })
             .catch((error: { toString: () => any; }) => {
                 clearTimeout(timeout);

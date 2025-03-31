@@ -15,11 +15,12 @@ async function deepseek(message: any) {
         });
 
         const url = config.proxy[message.service || config.service] || urls[message.service || config.service];
+        const { template, trainingData } = deepseekMsgTemplate(message.origin, message.isContextMenu);
 
         const resp = await fetch(url, {
             method: method.POST,
             headers,
-            body: deepseekMsgTemplate(message.origin, message.isContextMenu)
+            body: template
         });
 
         if (!resp.ok) {
@@ -27,7 +28,17 @@ async function deepseek(message: any) {
         }
 
         const result = await resp.json();
-        return contentPostHandler(result.choices[0].message.content);
+        console.log('deepseek result:', result);
+        
+        // 将训练数据作为附加信息返回
+        const translatedText = result.choices[0].message.content;
+        return {
+            text: contentPostHandler(translatedText),
+            trainingData: {
+                ...trainingData,
+                output: translatedText
+            }
+        };
     } catch (error) {
         console.error('API调用失败:', error);
         throw error;
