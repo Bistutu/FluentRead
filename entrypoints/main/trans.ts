@@ -94,7 +94,8 @@ export function autoTranslateEnglishPage() {
 }
 
 // 处理鼠标悬停翻译的主函数
-export function handleTranslation(mouseX: number, mouseY: number, delayTime: number = 0) {
+// 添加可选参数 forcedService
+export function handleTranslation(mouseX: number, mouseY: number, delayTime: number = 0, forcedService?: string) {
     // 检查配置
     if (!checkConfig()) return;
 
@@ -113,15 +114,15 @@ export function handleTranslation(mouseX: number, mouseY: number, delayTime: num
 
         // 根据翻译模式进行翻译
         if (config.display === styles.bilingualTranslation) {
-            handleBilingualTranslation(node, delayTime > 0);  // 根据 delayTime 可判断是否为滑动翻译
+            handleBilingualTranslation(node, delayTime > 0, forcedService);  // 根据 delayTime 可判断是否为滑动翻译
         } else {
-            handleSingleTranslation(node, delayTime > 0);
+            handleSingleTranslation(node, delayTime > 0, forcedService);
         }
     }, delayTime);
 }
 
 // 双语翻译
-export function handleBilingualTranslation(node: any, slide: boolean) {
+export function handleBilingualTranslation(node: any, slide: boolean, forcedService?: string) {
     let nodeOuterHTML = node.outerHTML;
     // 如果已经翻译过，250ms 后删除翻译结果
     let bilingualNode = searchClassName(node, 'fluent-read-bilingual');
@@ -154,11 +155,11 @@ export function handleBilingualTranslation(node: any, slide: boolean) {
     }
 
     // 翻译
-    bilingualTranslate(node, nodeOuterHTML);
+    bilingualTranslate(node, nodeOuterHTML, forcedService);
 }
 
 // 单语翻译
-export function handleSingleTranslation(node: any, slide: boolean) {
+export function handleSingleTranslation(node: any, slide: boolean, forcedService?: string) {
     let nodeOuterHTML = node.outerHTML;
     let outerHTMLCache = cache.localGet(node.outerHTML);
 
@@ -179,11 +180,11 @@ export function handleSingleTranslation(node: any, slide: boolean) {
         return;
     }
 
-    singleTranslate(node);
+    singleTranslate(node, forcedService);
 }
 
 
-function bilingualTranslate(node: any, nodeOuterHTML: any) {
+function bilingualTranslate(node: any, nodeOuterHTML: any, forcedService?: string) {
     if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
 
     let origin = node.textContent;
@@ -196,7 +197,11 @@ function bilingualTranslate(node: any, nodeOuterHTML: any) {
 
     // 正在翻译...允许失败重试 3 次
     const translating = (failCount = 0) => {
-        browser.runtime.sendMessage({ context: document.title, origin: origin })
+        browser.runtime.sendMessage({ 
+            context: document.title, 
+            origin: origin,
+            service: forcedService // 添加service参数
+        })
             .then((text: string) => {
                 clearTimeout(timeout);
                 spinner.remove();
@@ -220,10 +225,10 @@ function bilingualTranslate(node: any, nodeOuterHTML: any) {
 }
 
 
-export function singleTranslate(node: any) {
+export function singleTranslate(node: any, forcedService?: string) {
     if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
 
-    let origin = servicesType.isMachine(config.service) ? node.innerHTML : LLMStandardHTML(node);
+    let origin = servicesType.isMachine(forcedService || config.service) ? node.innerHTML : LLMStandardHTML(node);
 
     let spinner = insertLoadingSpinner(node);
     let timeout = setTimeout(() => {
@@ -234,7 +239,11 @@ export function singleTranslate(node: any) {
 
     // 正在翻译...允许失败重试 3 次
     const translating = (failCount = 0) => {
-        browser.runtime.sendMessage({ context: document.title, origin: origin })
+        browser.runtime.sendMessage({ 
+            context: document.title, 
+            origin: origin,
+            service: forcedService // 添加service参数
+        })
             .then((text: string) => {
                 clearTimeout(timeout);
                 spinner.remove();

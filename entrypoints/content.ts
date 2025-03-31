@@ -60,7 +60,7 @@ export default defineContentScript({
                         // 移除翻译结果元素
                         element.querySelectorAll('.fluent-read-bilingual-content').forEach(el => el.remove());
                         // 触发翻译
-                        handleTranslation(x, y);
+                        handleTranslation(x, y, undefined, config.contextMenuService);
                     }
                 }
                 return Promise.resolve(true);

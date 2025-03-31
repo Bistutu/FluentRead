@@ -28,8 +28,10 @@ export default defineBackground({
         // 处理翻译请求
         browser.runtime.onMessage.addListener((message: any) => {
             return new Promise((resolve, reject) => {
+                // 使用指定的服务或默认服务
+                const serviceToUse = message.service || config.service;
                 // 翻译
-                _service[config.service](message)
+                _service[serviceToUse](message)
                     .then(resp => resolve(resp))    // 成功
                     .catch(error => reject(error)); // 失败
             });

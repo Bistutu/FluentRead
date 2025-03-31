@@ -100,6 +100,24 @@
       </el-col>
     </el-row>
 
+    <!-- 右键翻译服务 -->
+    <el-row class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="设置右键菜单使用的翻译服务，可以与主翻译服务不同" placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">右键翻译服务<el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-select v-model="config.contextMenuService" placeholder="请选择右键翻译服务">
+          <el-option class="select-left" v-for="item in compute.filteredServices" :key="item.value"
+            :label="item.label" :value="item.value" :disabled="item.disabled"
+            :class="{ 'select-divider': item.disabled }" />
+        </el-select>
+      </el-col>
+    </el-row>
+
     <!-- 目标语言 -->
     <el-row class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
