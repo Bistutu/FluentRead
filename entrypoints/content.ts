@@ -59,8 +59,8 @@ export default defineContentScript({
                         element.removeAttribute('data-fr-translated');
                         // 移除翻译结果元素
                         element.querySelectorAll('.fluent-read-bilingual-content').forEach(el => el.remove());
-                        // 触发翻译
-                        handleTranslation(x, y, undefined, config.contextMenuService);
+                        // 触发翻译，添加 skipCache 参数为 true
+                        handleTranslation(x, y, undefined, config.contextMenuService, true);
                     }
                 }
                 return Promise.resolve(true);
