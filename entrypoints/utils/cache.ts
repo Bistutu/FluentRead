@@ -78,16 +78,19 @@ export const cache = {
         keysToDelete.forEach(key => localStorage.removeItem(key));
     },
 
-    // 导出所有缓存数据为JSON
+    // 专门导出 deepseek 训练数据
     async exportCache() {
-        const cacheData: Record<string, string> = {};
+        const trainData = [];
+        // 遍历所有本地存储项
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
-            if (key && key.startsWith(prefix)) {
-                cacheData[key] = localStorage.getItem(key) as string;
+            // 只收集 deepseek_train_ 开头的数据
+            if (key && key.startsWith('deepseek_train_')) {
+                const data = JSON.parse(localStorage.getItem(key) || '{}');
+                trainData.push(data);
             }
         }
-        return JSON.stringify(cacheData, null, 2);
+        return JSON.stringify(trainData, null, 2);
     }
 };
 
