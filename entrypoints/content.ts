@@ -26,7 +26,7 @@ export default defineContentScript({
         });
 
         // 监听来自 popup 的消息
-        browser.runtime.onMessage.addListener((message: { type: string; }) => {
+        browser.runtime.onMessage.addListener((message: { type: string; x?: number; y?: number; }) => {
             if (message.type === 'clearCache') {
                 // 清除所有翻译缓存
                 clearAllTranslations();
@@ -34,6 +34,19 @@ export default defineContentScript({
             } else if (message.type === 'exportCache') {
                 // 导出缓存
                 exportCacheToFile();
+                return Promise.resolve(true);
+            } else if (message.type === 'retranslate' && message.x !== undefined && message.y !== undefined) {
+                // 移除已翻译标记
+                const element = document.elementFromPoint(message.x, message.y) as HTMLElement;
+                if (element) {
+                    // 移除所有相关的翻译类和属性
+                    element.classList.remove('fluent-read-processed', 'fluent-read-bilingual');
+                    element.removeAttribute('data-fr-translated');
+                    // 移除翻译结果元素
+                    element.querySelectorAll('.fluent-read-bilingual-content').forEach(el => el.remove());
+                    // 触发翻译
+                    handleTranslation(message.x, message.y);
+                }
                 return Promise.resolve(true);
             }
         });

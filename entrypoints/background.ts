@@ -7,6 +7,24 @@ export default defineBackground({
         safari: false,
     },
     main() {
+        // 注册右键菜单
+        browser.contextMenus.create({
+            id: "retranslate",
+            title: "重新翻译",
+            contexts: ["all"]
+        });
+
+        // 处理右键菜单点击
+        browser.contextMenus.onClicked.addListener((info, tab) => {
+            if (info.menuItemId === "retranslate" && tab?.id) {
+                browser.tabs.sendMessage(tab.id, {
+                    type: "retranslate",
+                    x: info.x,
+                    y: info.y
+                });
+            }
+        });
+
         // 处理翻译请求
         browser.runtime.onMessage.addListener((message: any) => {
             return new Promise((resolve, reject) => {
