@@ -5,12 +5,16 @@ import { contentPostHandler } from "@/entrypoints/utils/check";
 
 async function deepseek(message: any) {
     try {
+        console.log('deepseek:', message);
+        console.log('deepseek config:', config);
+        console.log('是否右键翻译:', message.isContextMenu);
+
         const headers = new Headers({
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${config.token[config.service]}`
+            'Authorization': `Bearer ${config.token[message.service || config.service]}`
         });
 
-        const url = config.proxy[config.service] || urls[config.service];
+        const url = config.proxy[message.service || config.service] || urls[message.service || config.service];
 
         const resp = await fetch(url, {
             method: method.POST,

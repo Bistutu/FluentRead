@@ -95,8 +95,8 @@ export function autoTranslateEnglishPage() {
 
 // 处理鼠标悬停翻译的主函数
 // 添加可选参数 forcedService
-// 修改handleTranslation函数签名，添加skipCache参数
-export function handleTranslation(mouseX: number, mouseY: number, delayTime: number = 0, forcedService?: string, skipCache: boolean = false) {
+// 修改handleTranslation函数签名，添加isContextMenu参数
+export function handleTranslation(mouseX: number, mouseY: number, delayTime: number = 0, forcedService?: string, isContextMenu: boolean = false) {
     // 检查配置
     if (!checkConfig()) return;
 
@@ -115,16 +115,16 @@ export function handleTranslation(mouseX: number, mouseY: number, delayTime: num
 
         // 根据翻译模式进行翻译
         if (config.display === styles.bilingualTranslation) {
-            handleBilingualTranslation(node, delayTime > 0, forcedService, skipCache);  // 根据 delayTime 可判断是否为滑动翻译
+            handleBilingualTranslation(node, delayTime > 0, forcedService, isContextMenu);  // 根据 delayTime 可判断是否为滑动翻译
         } else {
-            handleSingleTranslation(node, delayTime > 0, forcedService, skipCache);
+            handleSingleTranslation(node, delayTime > 0, forcedService, isContextMenu);
         }
     }, delayTime);
 }
 
 // 双语翻译
 // 修改双语翻译函数
-export function handleBilingualTranslation(node: any, slide: boolean, forcedService?: string, skipCache: boolean = false) {
+export function handleBilingualTranslation(node: any, slide: boolean, forcedService?: string, isContextMenu: boolean = false) {
     let nodeOuterHTML = node.outerHTML;
 
 
@@ -145,8 +145,8 @@ export function handleBilingualTranslation(node: any, slide: boolean, forcedServ
         }, 250);
         return;
     }
-    // 不是skipCache时才检查缓存
-    if (!skipCache) {
+    // 不是isContextMenu时才检查缓存
+    if (!isContextMenu) {
         // 检查是否有缓存
         let cached = cache.localGet(node.textContent);
         if (cached) {
@@ -161,15 +161,15 @@ export function handleBilingualTranslation(node: any, slide: boolean, forcedServ
     }
 
     // 翻译
-    bilingualTranslate(node, nodeOuterHTML, forcedService);
+    bilingualTranslate(node, nodeOuterHTML, forcedService, isContextMenu);
 }
 
 // 单语翻译
 // 修改单语翻译函数
-export function handleSingleTranslation(node: any, slide: boolean, forcedService?: string, skipCache: boolean = false) {
+export function handleSingleTranslation(node: any, slide: boolean, forcedService?: string, isContextMenu: boolean = false) {
     let nodeOuterHTML = node.outerHTML;
 
-    if (!skipCache) {
+    if (!isContextMenu) {
         let outerHTMLCache = cache.localGet(node.outerHTML);
         if (outerHTMLCache) {
             // handleTranslation 已处理防抖 故删除判断 原bug 在保存完成后 刷新页面 可以取得缓存 直接return并没有翻译
@@ -188,11 +188,11 @@ export function handleSingleTranslation(node: any, slide: boolean, forcedService
         }
     }
 
-    singleTranslate(node, forcedService);
+    singleTranslate(node, forcedService, isContextMenu);
 }
 
 
-function bilingualTranslate(node: any, nodeOuterHTML: any, forcedService?: string) {
+function bilingualTranslate(node: any, nodeOuterHTML: any, forcedService?: string, isContextMenu: boolean = false) {
     if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
 
     let origin = node.textContent;
@@ -208,7 +208,8 @@ function bilingualTranslate(node: any, nodeOuterHTML: any, forcedService?: strin
         browser.runtime.sendMessage({
             context: document.title,
             origin: origin,
-            service: forcedService // 添加service参数
+            service: forcedService,
+            isContextMenu // 添加isContextMenu参数
         })
             .then((text: string) => {
                 clearTimeout(timeout);
@@ -233,7 +234,7 @@ function bilingualTranslate(node: any, nodeOuterHTML: any, forcedService?: strin
 }
 
 
-export function singleTranslate(node: any, forcedService?: string) {
+export function singleTranslate(node: any, forcedService?: string, isContextMenu: boolean = false) {
     if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
 
     let origin = servicesType.isMachine(forcedService || config.service) ? node.innerHTML : LLMStandardHTML(node);
@@ -250,7 +251,8 @@ export function singleTranslate(node: any, forcedService?: string) {
         browser.runtime.sendMessage({
             context: document.title,
             origin: origin,
-            service: forcedService // 添加service参数
+            service: forcedService,
+            isContextMenu // 添加isContextMenu参数
         })
             .then((text: string) => {
                 clearTimeout(timeout);
