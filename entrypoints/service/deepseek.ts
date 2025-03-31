@@ -19,7 +19,7 @@ async function deepseek(message: any) {
         const resp = await fetch(url, {
             method: method.POST,
             headers,
-            body: deepseekMsgTemplate(message.origin)
+            body: deepseekMsgTemplate(message.origin, message.isContextMenu)
         });
 
         if (!resp.ok) {

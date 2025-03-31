@@ -25,15 +25,20 @@ export function commonMsgTemplate(origin: string) {
 }
 
 // deepseek
-export function deepseekMsgTemplate(origin: string) {
+export function deepseekMsgTemplate(origin: string, isContextMenu?: boolean) {
+    // 根据是否右键翻译使用不同的配置选项
+    const serviceType = isContextMenu ? config.contextMenuService : config.service;
+
     // 检测是否使用自定义模型
-    let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
+    let model = config.model[serviceType] === customModelString 
+        ? config.customModel[serviceType] 
+        : config.model[serviceType];
 
     // 删除模型名称中的中文括号及其内容，如"gpt-4（推荐）" -> "gpt-4"
     model = model.replace(/（.*）/g, "");
 
-    let system = config.system_role[config.service] || defaultOption.system_role;
-    let user = (config.user_role[config.service] || defaultOption.user_role)
+    let system = config.system_role[serviceType] || defaultOption.system_role;
+    let user = (config.user_role[serviceType] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
     const payload: any = {
@@ -51,6 +56,7 @@ export function deepseekMsgTemplate(origin: string) {
 
     return JSON.stringify(payload);
 }
+
 // gemini
 export function geminiMsgTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
