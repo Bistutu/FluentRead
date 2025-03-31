@@ -218,9 +218,25 @@ function bilingualTranslate(node: any, nodeOuterHTML: any, forcedService?: strin
                 
                 // 如果是deepseek服务且返回了训练数据
                 if (response.trainingData) {
+                    // 查找并删除相同翻译内容的旧训练数据
+                    const keysToDelete = [];
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && key.startsWith('deepseek_train_')) {
+                            const data = JSON.parse(localStorage.getItem(key) || '{}');
+                            if (data.instruction === response.trainingData.instruction) {
+                                keysToDelete.push(key);
+                            }
+                        }
+                    }
+                    // 删除旧的训练数据
+                    keysToDelete.forEach(key => localStorage.removeItem(key));
+                    
+                    // 保存新的训练数据
                     const saveKey = `deepseek_train_${Date.now()}`;
                     localStorage.setItem(saveKey, JSON.stringify(response.trainingData));
                     console.log('保存deepseek训练数据:', saveKey, response.trainingData);
+                    
                     bilingualAppendChild(node, response.text);
                     cache.localSet(origin, response.text);
                 } else {
