@@ -35,17 +35,33 @@ export default defineContentScript({
                 // 导出缓存
                 exportCacheToFile();
                 return Promise.resolve(true);
-            } else if (message.type === 'retranslate' && message.x !== undefined && message.y !== undefined) {
-                // 移除已翻译标记
-                const element = document.elementFromPoint(message.x, message.y) as HTMLElement;
-                if (element) {
-                    // 移除所有相关的翻译类和属性
-                    element.classList.remove('fluent-read-processed', 'fluent-read-bilingual');
-                    element.removeAttribute('data-fr-translated');
-                    // 移除翻译结果元素
-                    element.querySelectorAll('.fluent-read-bilingual-content').forEach(el => el.remove());
-                    // 触发翻译
-                    handleTranslation(message.x, message.y);
+            } else if (message.type === 'retranslate') {
+                let x = message.x;
+                let y = message.y;
+                
+                // 如果没有收到坐标，尝试从选区获取
+                if (x === undefined || y === undefined) {
+                    const selection = window.getSelection();
+                    if (selection && selection.rangeCount > 0) {
+                        const range = selection.getRangeAt(0);
+                        const rect = range.getBoundingClientRect();
+                        x = rect.left;
+                        y = rect.top;
+                    }
+                }
+            
+                // 只有在有有效坐标时才进行处理
+                if (x !== undefined && y !== undefined) {
+                    const element = document.elementFromPoint(x, y) as HTMLElement;
+                    if (element) {
+                        // 移除所有相关的翻译类和属性
+                        element.classList.remove('fluent-read-processed', 'fluent-read-bilingual');
+                        element.removeAttribute('data-fr-translated');
+                        // 移除翻译结果元素
+                        element.querySelectorAll('.fluent-read-bilingual-content').forEach(el => el.remove());
+                        // 触发翻译
+                        handleTranslation(x, y);
+                    }
                 }
                 return Promise.resolve(true);
             }

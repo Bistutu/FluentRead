@@ -15,7 +15,7 @@ export default defineBackground({
         });
 
         // 处理右键菜单点击
-        browser.contextMenus.onClicked.addListener((info, tab) => {
+        browser.contextMenus.onClicked.addListener((info:any, tab:any) => {
             if (info.menuItemId === "retranslate" && tab?.id) {
                 browser.tabs.sendMessage(tab.id, {
                     type: "retranslate",
