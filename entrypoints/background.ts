@@ -13,12 +13,25 @@ export default defineBackground({
             title: "重新翻译",
             contexts: ["all"]
         });
+        
+        // 添加修改翻译菜单
+        browser.contextMenus.create({
+            id: "editTranslation",
+            title: "修改译文",
+            contexts: ["all"]
+        });
 
         // 处理右键菜单点击
         browser.contextMenus.onClicked.addListener((info:any, tab:any) => {
             if (info.menuItemId === "retranslate" && tab?.id) {
                 browser.tabs.sendMessage(tab.id, {
                     type: "retranslate",
+                    x: info.x,
+                    y: info.y
+                });
+            } else if (info.menuItemId === "editTranslation" && tab?.id) {
+                browser.tabs.sendMessage(tab.id, {
+                    type: "editTranslation",
                     x: info.x,
                     y: info.y
                 });

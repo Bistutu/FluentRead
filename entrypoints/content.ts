@@ -64,10 +64,87 @@ export default defineContentScript({
                     }
                 }
                 return Promise.resolve(true);
+            } else if (message.type === 'editTranslation') {
+                let x = message.x;
+                let y = message.y;
+                
+                // 如果没有收到坐标，尝试从选区获取
+                if (x === undefined || y === undefined) {
+                    const selection = window.getSelection();
+                    if (selection && selection.rangeCount > 0) {
+                        const range = selection.getRangeAt(0);
+                        const rect = range.getBoundingClientRect();
+                        x = rect.left;
+                        y = rect.top;
+                    }
+                }
+                
+                if (x !== undefined && y !== undefined) {
+                    const element = document.elementFromPoint(x, y) as HTMLElement;
+                    if (element) {
+                        const bilingualContent = element.querySelector('.fluent-read-bilingual-content');
+                        if (bilingualContent) {
+                            const originalText = element.textContent?.replace(bilingualContent.textContent || '', '').trim() || '';
+                            
+                            // 查找对应的训练数据
+                            let trainKey = '';
+                            for (let i = 0; i < localStorage.length; i++) {
+                                const key = localStorage.key(i);
+                                if (key?.startsWith('deepseek_train_')) {
+                                    const data = JSON.parse(localStorage.getItem(key) || '{}');
+                                    if (data.instruction.includes(originalText)) {
+                                        trainKey = key;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            if (trainKey) {
+                                // 创建编辑弹窗
+                                const dialog = document.createElement('div');
+                                const saveButton = document.createElement('button');
+                                const textarea = document.createElement('textarea');
+                                
+                                dialog.className = 'edit-translation-modal';
+                                dialog.innerHTML = `
+                                    <h3>修改译文</h3>
+                                    <div>原文：${originalText}</div>
+                                    <div>译文：</div>
+                                `;
+                                
+                                textarea.value = bilingualContent.textContent || '';
+                                saveButton.textContent = '保存';
+                                saveButton.className = 'save-translation-btn';
+                                
+                                dialog.appendChild(textarea);
+                                dialog.appendChild(saveButton);
+                                document.body.appendChild(dialog);
+                                
+                                // 使用 addEventListener 绑定事件
+                                saveButton.addEventListener('click', () => {
+                                    const data = JSON.parse(localStorage.getItem(trainKey) || '{}');
+                                    data.output = textarea.value;
+                                    localStorage.setItem(trainKey, JSON.stringify(data));
+                                    dialog.remove();
+                                    // 更新显示的译文
+                                    document.querySelector('.fluent-read-bilingual-content')!.textContent = textarea.value;
+                                });
+                            }
+                        }
+                    }
+                }
+                return Promise.resolve(true);
             }
         });
     }
 })
+
+// 声明全局函数类型
+declare global {
+    interface Window {
+        saveTranslation: (key: string, button: HTMLButtonElement) => void;
+    }
+}
 
 // 注册所有手动翻译触发事件监听器
 function setupManualTranslationTriggers() {

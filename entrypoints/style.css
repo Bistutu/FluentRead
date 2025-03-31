@@ -169,3 +169,30 @@
     border-radius: 3px;
     border: 1px solid #eee;
 }
+
+.edit-translation-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+    z-index: 9999;
+}
+
+.edit-translation-modal textarea {
+    width: 100%;
+    min-height: 100px;
+    margin: 10px 0;
+}
+
+.edit-translation-modal button {
+    padding: 8px 16px;
+    background: #409eff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
