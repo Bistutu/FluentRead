@@ -82,7 +82,8 @@ export default defineContentScript({
                 if (x !== undefined && y !== undefined) {
                     const element = document.elementFromPoint(x, y) as HTMLElement;
                     if (element) {
-                        const bilingualContent = element.querySelector('.fluent-read-bilingual-content');
+                        // 修改这里：只获取当前点击元素内的译文内容
+                        const bilingualContent = element.querySelector(':scope > .fluent-read-bilingual-content');
                         if (bilingualContent) {
                             const originalText = element.textContent?.replace(bilingualContent.textContent || '', '').trim() || '';
                             
@@ -126,8 +127,8 @@ export default defineContentScript({
                                     data.output = textarea.value;
                                     localStorage.setItem(trainKey, JSON.stringify(data));
                                     dialog.remove();
-                                    // 更新显示的译文
-                                    document.querySelector('.fluent-read-bilingual-content')!.textContent = textarea.value;
+                                    // 修改这里：确保只更新当前点击元素内的译文
+                                    element.querySelector(':scope > .fluent-read-bilingual-content')!.textContent = textarea.value;
                                 });
                             }
                         }
@@ -138,13 +139,6 @@ export default defineContentScript({
         });
     }
 })
-
-// 声明全局函数类型
-declare global {
-    interface Window {
-        saveTranslation: (key: string, button: HTMLButtonElement) => void;
-    }
-}
 
 // 注册所有手动翻译触发事件监听器
 function setupManualTranslationTriggers() {
