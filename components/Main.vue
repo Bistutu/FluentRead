@@ -118,6 +118,21 @@
       </el-col>
     </el-row>
 
+    <!-- 右键翻译快捷键 -->
+    <el-row class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="按住此键重新翻译指针所在文本，使用右键翻译服务" placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">右键翻译快捷键</span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-select v-model="config.contextMenuHotkey" placeholder="请选择快捷键">
+          <el-option class="select-left" v-for="item in options.contextMenuKeys" :key="item.value" :label="item.label"
+            :value="item.value" :disabled="item.disabled" :class="{ 'select-divider': item.disabled }" />
+        </el-select>
+      </el-col>
+    </el-row>
+
     <!-- 目标语言 -->
     <el-row class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">

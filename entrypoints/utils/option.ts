@@ -293,6 +293,13 @@ export const options = {
         {value: "light", label: "亮色主题"},
         {value: "dark", label: "暗色主题"},
     ],
+    
+    // 右键翻译快捷键
+    contextMenuKeys: [
+        { value: 'Alt', label: 'Alt 键', disabled: false },
+        { value: 'Control', label: 'Ctrl 键', disabled: false },
+        { value: 'Shift', label: 'Shift 键', disabled: false }
+    ],
 };
 
 export const defaultOption = {

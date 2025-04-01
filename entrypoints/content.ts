@@ -143,6 +143,20 @@ export default defineContentScript({
 // 注册所有手动翻译触发事件监听器
 function setupManualTranslationTriggers() {
     const screen = { mouseX: 0, mouseY: 0, hotkeyPressed: false, otherKeyPressed: false, hasSlideTranslation: false };
+    
+    // 添加右键翻译快捷键监听
+    window.addEventListener('keydown', event => {
+        if (config.contextMenuHotkey === event.key) {
+            const element = document.elementFromPoint(screen.mouseX, screen.mouseY) as HTMLElement;
+            if (element) {
+                element.classList.remove('fluent-read-processed', 'fluent-read-bilingual');
+                element.removeAttribute('data-fr-translated');
+                element.querySelectorAll('.fluent-read-bilingual-content').forEach(el => el.remove());
+                handleTranslation(screen.mouseX, screen.mouseY, undefined, config.contextMenuService, true);
+            }
+        }
+    });
+
     // 1. 失去焦点时
     window.addEventListener('blur', () => {
         screen.hotkeyPressed = false;
