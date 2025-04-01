@@ -1,3 +1,37 @@
+# 本项目是给人定制的流畅阅读 (FluentRead)插件
+
+为了在本地llm翻译不准确时，使用deepseek翻译，并缓存deepseek翻译的内容，微调本地模型
+
+## 🌟 个人添加功能
+
+- 支持保存deepseek翻译内容缓存
+- 支持导出缓存内容
+
+![alt text](image-2.png)
+
+- 添加右键菜单翻译和右键菜单翻译快捷（先在翻译服务配置deepseek，然后右键服务直接选deepseek）
+
+![alt text](image-1.png)
+
+- 添加修改译文功能
+
+
+- 导出的内容如下
+
+ ```json
+[
+  {
+    "instruction": "Translate the following text into zh-Hans, If translation is unnecessary (e.g. proper nouns, codes, etc.), return the original text. NO explanations. NO notes:\n\n\n    Same here.. I was pretty excited the moment it was announced, and frankly speaking, the demo on their chat.qwen.ai looks pretty viable. I would definitely use if we can run it locally as easy as the other local models.\n  ",
+    "input": "",
+    "output": "我也是...宣布的那一刻我相当兴奋，坦白说，他们在chat.qwen.ai上的演示看起来相当可行。如果能像其他本地模型一样轻松地在本地运行，我肯定会用。",
+    "system": "You are a professional, authentic machine translation engine."
+  }
+]
+
+ ```
+
+
+
 # 流畅阅读 (FluentRead)
 
 > 官方文档：https://fluent.thinkstu.com/
@@ -5,6 +39,8 @@
 [English](https://github.com/Bistutu/FluentRead/blob/main/misc/README_EN.md) | 中文
 
 一款革新性的浏览器开源翻译插件，让所有人都能够拥有母语般的阅读体验。[B站视频介绍](https://www.bilibili.com/video/BV1ux4y1e73x/)
+
+
 
 ## 🌟 特性
 
