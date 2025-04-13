@@ -7,12 +7,12 @@
 ### 双语对照模式
 双语对照模式同时显示原文和译文，方便对照学习和理解。你可以通过快捷键或鼠标操作快速切换显示状态。
 
-<img src="/sample-git-1.gif" alt="双语对照模式" style="width: 60%; max-width: 100%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
+<img src="/sample-git-4.gif" alt="双语对照模式" style="width: 60%; max-width: 100%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
 
 ### 仅译文模式
 仅译文模式只显示翻译后的文本，让阅读更加清爽。适合快速浏览和阅读理解场景。
 
-<img src="/sample-git-4.gif" alt="仅译文模式" style="width: 60%; max-width: 100%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
+<img src="/sample-git-1.gif" alt="仅译文模式" style="width: 60%; max-width: 100%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
 
 ## 智能功能
 
