@@ -10,12 +10,50 @@ import { config } from "@/entrypoints/utils/config";
 
 let hoverTimer: any; // 鼠标悬停计时器
 let htmlSet = new Set(); // 防抖
+export let originalContents = new Map(); // 保存原始内容
+let isAutoTranslating = false; // 控制是否继续翻译新内容
+let observer: IntersectionObserver | null = null; // 保存观察器实例
+let mutationObserver: MutationObserver | null = null; // 保存 DOM 变化观察器实例
 
 // 使用自定义属性标记已翻译的节点
 const TRANSLATED_ATTR = 'data-fr-translated';
+const TRANSLATED_ID_ATTR = 'data-fr-node-id'; // 添加节点ID属性
+
+let nodeIdCounter = 0; // 节点ID计数器
+
+// 恢复原文内容
+export function restoreOriginalContent() {
+    // 遍历所有已翻译的节点
+    document.querySelectorAll(`[${TRANSLATED_ATTR}="true"]`).forEach(node => {
+        const nodeId = node.getAttribute(TRANSLATED_ID_ATTR);
+        if (nodeId && originalContents.has(nodeId)) {
+            const originalContent = originalContents.get(nodeId);
+            node.innerHTML = originalContent;
+            node.removeAttribute(TRANSLATED_ATTR);
+            node.removeAttribute(TRANSLATED_ID_ATTR);
+        }
+    });
+    // 清空存储的原始内容
+    originalContents.clear();
+    
+    // 停止观察
+    if (observer) {
+        observer.disconnect();
+        observer = null;
+    }
+    if (mutationObserver) {
+        mutationObserver.disconnect();
+        mutationObserver = null;
+    }
+    
+    isAutoTranslating = false;
+}
 
 // 自动翻译整个页面的功能
 export function autoTranslateEnglishPage() {
+    // 如果已经在翻译中，则返回
+    if (isAutoTranslating) return;
+    
     // 获取当前页面的语言
     const text = document.documentElement.innerText || '';
     const cleanText = text.replace(/[\s\u3000]+/g, ' ').trim().slice(0, 500);
@@ -33,14 +71,24 @@ export function autoTranslateEnglishPage() {
     const nodes = grabAllNode(document.body);
     if (!nodes.length) return;
 
+    isAutoTranslating = true;
+
     // 创建观察器
-    const observer = new IntersectionObserver((entries, observer) => {
+    observer = new IntersectionObserver((entries, observer) => {
         entries.forEach(entry => {
-            if (entry.isIntersecting) {
+            if (entry.isIntersecting && isAutoTranslating) {
                 const node = entry.target as Element;
 
                 // 去重
                 if (node.hasAttribute(TRANSLATED_ATTR)) return;
+                
+                // 为节点分配唯一ID
+                const nodeId = `fr-node-${nodeIdCounter++}`;
+                node.setAttribute(TRANSLATED_ID_ATTR, nodeId);
+                
+                // 保存原始内容
+                originalContents.set(nodeId, node.innerHTML);
+                
                 // 标记为已翻译
                 node.setAttribute(TRANSLATED_ATTR, 'true');
 
@@ -62,19 +110,21 @@ export function autoTranslateEnglishPage() {
 
     // 开始观察所有节点
     nodes.forEach(node => {
-        observer.observe(node);
+        observer?.observe(node);
     });
 
     // 创建 MutationObserver 监听 DOM 变化
-    const mutationObserver = new MutationObserver((mutations) => {
+    mutationObserver = new MutationObserver((mutations) => {
+        if (!isAutoTranslating) return;
+        
         mutations.forEach(mutation => {
             mutation.addedNodes.forEach(node => {
                 if (node.nodeType === 1) { // 元素节点
-                    // 5. 只处理未翻译的新节点
+                    // 只处理未翻译的新节点
                     const newNodes = grabAllNode(node as Element).filter(
                         n => !n.hasAttribute(TRANSLATED_ATTR)
                     );
-                    newNodes.forEach(n => observer.observe(n));
+                    newNodes.forEach(n => observer?.observe(n));
                 }
             });
         });
@@ -85,12 +135,6 @@ export function autoTranslateEnglishPage() {
         childList: true,
         subtree: true
     });
-
-    // 清理函数同时断开两个 observer
-    return () => {
-        observer.disconnect();
-        mutationObserver.disconnect();
-    };
 }
 
 // 处理鼠标悬停翻译的主函数

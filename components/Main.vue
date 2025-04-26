@@ -304,6 +304,21 @@
     </el-row>
   </div>
 
+  <!-- 添加悬浮球开关 -->
+  <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
+    <el-col :span="20" class="lightblue rounded-corner">
+      <el-tooltip class="box-item" effect="dark" content="控制是否显示屏幕边缘的即时翻译悬浮球，用于对整个网页进行翻译" placement="top-start" :show-after="500">
+        <span class="popup-text popup-vertical-left">即时翻译悬浮球<el-icon class="icon-margin">
+            <ChatDotRound />
+          </el-icon></span>
+      </el-tooltip>
+    </el-col>
+
+    <el-col :span="4" class="flex-end">
+      <el-switch v-model="floatingBallEnabled" inline-prompt active-text="开" inactive-text="关" />
+    </el-col>
+  </el-row>
+  
   <el-row v-if="showRefreshTip" class="refresh-tip margin-bottom">
     <el-col :span="19" class="lightblue rounded-corner">
       <span class="popup-text popup-vertical-left">设置已更新 需刷新页面生效</span>
@@ -455,13 +470,51 @@ const resetTemplate = () => {
   });
 };
 
-// 显示刷新提示
-const showRefreshTip = ref(false);
+// 悬浮球开关的计算属性
+const floatingBallEnabled = computed({
+  get: () => !config.value.disableFloatingBall,
+  set: (value) => {
+    config.value.disableFloatingBall = !value;
+    // 向所有激活的标签页发送消息
+    browser.tabs.query({}).then(tabs => {
+      tabs.forEach(tab => {
+        if (tab.id) {
+          browser.tabs.sendMessage(tab.id, { 
+            type: 'toggleFloatingBall',
+            isEnabled: value 
+          }).catch(() => {
+            // 忽略发送失败的错误（可能是页面未加载内容脚本）
+          });
+        }
+      });
+    });
+  }
+});
 
 // 监听开关变化
 const handleSwitchChange = () => {
   showRefreshTip.value = true;
 };
+
+// 处理悬浮球开关变化
+const toggleFloatingBall = (val: boolean) => {
+  // 向所有激活的标签页发送消息
+  browser.tabs.query({}).then(tabs => {
+    tabs.forEach(tab => {
+      if (tab.id) {
+        browser.tabs.sendMessage(tab.id, { 
+          type: 'toggleFloatingBall',
+          isEnabled: val 
+        }).catch(() => {
+          // 忽略发送失败的错误（可能是页面未加载内容脚本）
+        });
+      }
+    });
+  });
+};
+
+// 显示刷新提示
+const showRefreshTip = ref(false);
 
 // 刷新页面
 const refreshPage = async () => {
@@ -524,6 +577,10 @@ const refreshPage = async () => {
 
 .margin-top-2em {
   margin-top: 1em;
+}
+
+.margin-top-1em {
+  margin-top: 0.5em;
 }
 
 /* 设置滚动条样式 */
