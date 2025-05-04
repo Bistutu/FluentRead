@@ -51,10 +51,16 @@ export function mountFloatingBall(position?: 'left' | 'right') {
     // 添加翻译状态变化事件监听
     onTranslationToggle: (isTranslating: boolean) => {
       if (isTranslating && !isTranslated) {
+        // 触发翻译开始事件
+        document.dispatchEvent(new CustomEvent('fluentread-translation-started'));
+
         // 触发即时翻译
         autoTranslateEnglishPage();
         isTranslated = true;
       } else if (!isTranslating && isTranslated) {
+        // 触发翻译结束事件
+        document.dispatchEvent(new CustomEvent('fluentread-translation-ended'));
+        
         // 恢复原文
         restoreOriginalContent();
         isTranslated = false;

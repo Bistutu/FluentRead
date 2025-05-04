@@ -8,6 +8,7 @@ import browser from 'webextension-polyfill';
 import { config } from './config';
 import { cache } from './cache';
 import { detectlang } from './common';
+import { storage } from '@wxt-dev/storage';
 
 // 调试相关
 const isDev = process.env.NODE_ENV === 'development';
@@ -47,6 +48,8 @@ export async function translateText(origin: string, context: string = document.t
 
   // 增加翻译计数
   config.count++;
+  // 保存配置以确保计数持久化
+  storage.setItem('local:config', JSON.stringify(config));
 
   // 使用队列处理翻译请求
   return enqueueTranslation(async () => {
