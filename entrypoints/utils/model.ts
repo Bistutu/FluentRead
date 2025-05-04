@@ -36,6 +36,7 @@ export class Config {
     useCache: boolean; // 是否使用缓存
     disableFloatingBall: boolean; // 是否禁用悬浮球
     floatingBallPosition: 'left' | 'right'; // 悬浮球位置
+    floatingBallHotkey: string; // 悬浮球快捷键
 
     constructor() {
         this.on = true;
@@ -64,6 +65,7 @@ export class Config {
         this.useCache = true; // 默认开启缓存
         this.disableFloatingBall = false; // 默认启用悬浮球
         this.floatingBallPosition = 'right'; // 默认在右侧
+        this.floatingBallHotkey = 'Alt+T'; // 默认快捷键为 Alt+T
     }
 }
 

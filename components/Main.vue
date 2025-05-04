@@ -65,6 +65,26 @@
       </el-col>
     </el-row>
 
+    <!-- 悬浮球快捷键选择 -->
+    <el-row v-if="config.on && floatingBallEnabled" class="margin-bottom margin-left-2em margin-top-1em">
+      <el-col :span="14" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="设置快捷键以便快速切换全文翻译状态，无需鼠标点击悬浮球" placement="top-start" :show-after="500">
+        <span class="popup-text popup-vertical-left">
+          <span class="new-feature-badge">新</span>
+          全文翻译快捷键
+          <el-icon class="icon-margin">
+            <ChatDotRound />
+          </el-icon>
+        </span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="10" class="flex-end">
+        <el-select v-model="config.floatingBallHotkey" placeholder="选择快捷键" size="small" style="width: 100%">
+          <el-option v-for="item in options.floatingBallHotkeys" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
+
     <!--    翻译模式-->
     <el-row class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">

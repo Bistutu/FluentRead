@@ -288,6 +288,16 @@ export const options = {
         {value: 22, label: "半透明弱化", class: "fluent-display-dimmed", group: "transparent"},
         {value: 23, label: "轻透明感", class: "fluent-display-transparent-mode", group: "transparent"},
     ],
+    // 悬浮球快捷键选项
+    floatingBallHotkeys: [
+        {value: "Alt+T", label: "Alt+T / Option+T (默认)"},
+        {value: "Alt+A", label: "Alt+A / Option+A"},
+        {value: "Alt+S", label: "Alt+S / Option+S"},
+        {value: "Ctrl+T", label: "Ctrl+T / Control+T"},
+        {value: "Ctrl+Alt+T", label: "Ctrl+Alt+T / Control+Option+T"},
+        {value: "Ctrl+Shift+T", label: "Ctrl+Shift+T / Control+Shift+T"},
+        {value: "none", label: "禁用快捷键"},
+    ],
     theme: [
         {value: "auto", label: "跟随操作系统"},
         {value: "light", label: "亮色主题"},
@@ -311,5 +321,6 @@ export const defaultOption = {
 {{origin}}`,
     count: 0,
     useCache: true,
+    floatingBallHotkey: "Alt+T", // 默认悬浮球快捷键
 };
 

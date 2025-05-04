@@ -2,7 +2,8 @@
   <div class="floating-ball" :class="{
     'floating-ball-expanded': isExpanded,
     'dragging': isDragging,
-    'is-translating': isTranslating
+    'is-translating': isTranslating,
+    'animating': isAnimating
   }" :data-position="currentDisplayPosition" @mouseenter="expandBall" @mouseleave="collapseBall" :style="positionStyle"
     @mousedown="startDrag" @click="toggleTranslation" ref="floatingBall">
     <div class="floating-ball-icon">
@@ -29,6 +30,14 @@
         </svg>
 
         <div class="check-mark" v-if="isTranslating"></div>
+        
+        <!-- 添加快捷键提示 -->
+        <div class="shortcut-tooltip" v-if="showShortcutTooltip">
+          {{ shortcutTip }}
+        </div>
+        
+        <!-- 波纹效果容器 -->
+        <div class="ripple-container" ref="rippleContainer"></div>
       </div>
     </div>
   </div>
@@ -68,6 +77,14 @@ const props = defineProps({
     type: String as PropType<'simple' | 'morden'>,
     default: 'morden',
     validator: (value: string) => ['simple', 'morden'].includes(value)
+  },
+  showShortcutTooltip: {
+    type: Boolean,
+    default: false
+  },
+  shortcutTip: {
+    type: String,
+    default: ''
   }
 });
 
@@ -81,6 +98,10 @@ const internalPosition = ref<'left' | 'right' | null>(null);
 const isTranslating = ref(false);
 const dragStartTime = ref(0);
 const floatingBall = ref<HTMLElement | null>(null);
+const rippleContainer = ref<HTMLElement | null>(null);
+const isAnimating = ref(false);
+const showShortcutTooltip = ref(false);
+const shortcutTip = ref('快捷键: Alt+T');
 
 const currentDisplayPosition = computed(() => internalPosition.value || props.position);
 
@@ -198,6 +219,51 @@ const handleSettingsClick = (event: MouseEvent) => {
   props.onSettingsClick(event);
 };
 
+// 新增：添加波纹效果
+const addRippleEffect = (color: string = '#4caf50') => {
+  if (!rippleContainer.value) return;
+  
+  const ripple = document.createElement('div');
+  ripple.classList.add('ripple');
+  ripple.style.backgroundColor = color;
+  
+  rippleContainer.value.appendChild(ripple);
+  
+  // 触发波纹动画
+  setTimeout(() => {
+    ripple.classList.add('active');
+    
+    // 动画结束后移除波纹元素
+    setTimeout(() => {
+      if (rippleContainer.value?.contains(ripple)) {
+        rippleContainer.value.removeChild(ripple);
+      }
+    }, 600);
+  }, 10);
+};
+
+// 新增：触发动画效果
+const triggerAnimation = (type: 'translate' | 'restore') => {
+  isAnimating.value = true;
+  
+  // 添加波纹效果
+  addRippleEffect(type === 'translate' ? '#4285f4' : '#4caf50');
+  
+  // 显示快捷键提示
+  showShortcutTooltip.value = true;
+  
+  // 2秒后隐藏提示
+  setTimeout(() => {
+    showShortcutTooltip.value = false;
+  }, 2000);
+  
+  // 动画结束后重置状态
+  setTimeout(() => {
+    isAnimating.value = false;
+  }, 500);
+};
+
+// 修改原有的toggleTranslation函数
 const toggleTranslation = (event: MouseEvent) => {
   const dragDuration = Date.now() - dragStartTime.value;
   const movedX = Math.abs(event.clientX - startX.value);
@@ -210,9 +276,23 @@ const toggleTranslation = (event: MouseEvent) => {
   }
 
   isTranslating.value = !isTranslating.value;
+  triggerAnimation(isTranslating.value ? 'translate' : 'restore');
+  
   if (floatingBall.value?.matches(':hover')) {
     isExpanded.value = true;
   }
+  props.onTranslationToggle(isTranslating.value);
+};
+
+// 新增：响应自定义事件，从外部触发切换
+const handleExternalToggle = () => {
+  // 切换状态
+  isTranslating.value = !isTranslating.value;
+  
+  // 触发动画
+  triggerAnimation(isTranslating.value ? 'translate' : 'restore');
+  
+  // 通知父组件
   props.onTranslationToggle(isTranslating.value);
 };
 
@@ -235,6 +315,15 @@ onMounted(() => {
   window.addEventListener('resize', updatePositionStyle);
   document.addEventListener('click', handleClickOutside);
   document.addEventListener('mousemove', handleMouseMove);
+  
+  // 监听自定义事件
+  document.addEventListener('fluentread-toggle-translation', handleExternalToggle);
+  
+  // 使组件暴露给父组件
+  if (floatingBall.value) {
+    (floatingBall.value as any).element = floatingBall.value;
+    (floatingBall.value as any).isTranslating = isTranslating.value;
+  }
 });
 
 onBeforeUnmount(() => {
@@ -243,6 +332,9 @@ onBeforeUnmount(() => {
   document.removeEventListener('mouseup', stopDrag);
   document.removeEventListener('click', handleClickOutside);
   document.removeEventListener('mousemove', handleMouseMove);
+  
+  // 移除自定义事件监听
+  document.removeEventListener('fluentread-toggle-translation', handleExternalToggle);
 });
 
 watch(() => props.position, (newPosition) => {
@@ -279,6 +371,8 @@ watch(() => props.position, (newPosition) => {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   transition: all 0.3s ease;
   border: 1.5px solid #e0e0e0;
+  overflow: hidden;
+  position: relative;
 }
 
 .imt-fb-logo-img-big-bg {
@@ -322,6 +416,113 @@ watch(() => props.position, (newPosition) => {
   background-color: #ffffff;
   border-color: #4caf50;
   box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+}
+
+/* 动画相关样式 */
+.animating.is-translating .floating-ball-icon {
+  animation: pulse-green 0.5s ease;
+}
+
+.animating:not(.is-translating) .floating-ball-icon {
+  animation: pulse-blue 0.5s ease;
+}
+
+@keyframes pulse-green {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  50% {
+    transform: scale(1.2);
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.8);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+  }
+}
+
+@keyframes pulse-blue {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  50% {
+    transform: scale(1.2);
+    box-shadow: 0 0 15px rgba(0, 128, 255, 0.8);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* 波纹效果 */
+.ripple-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.ripple {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0.6;
+  transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.ripple.active {
+  width: 200%;
+  height: 200%;
+  opacity: 0;
+}
+
+/* 快捷键提示 */
+.shortcut-tooltip {
+  position: absolute;
+  bottom: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  animation: fadeIn 0.3s ease forwards;
+}
+
+.shortcut-tooltip:after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 0 6px 6px 6px;
+  border-style: solid;
+  border-color: transparent transparent rgba(0, 0, 0, 0.7) transparent;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 5px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 .check-mark {

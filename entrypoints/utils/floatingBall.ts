@@ -67,8 +67,97 @@ export function mountFloatingBall(position?: 'left' | 'right') {
 
   // 挂载应用
   floatingBallInstance = app.mount(container);
+  
+  // 监听自定义事件，用于通过快捷键触发悬浮球
+  document.addEventListener('fluentread-toggle-translation', toggleFloatingBallTranslation);
 
   return floatingBallInstance;
+}
+
+/**
+ * 切换悬浮球翻译状态
+ */
+export function toggleFloatingBallTranslation() {
+  if (!floatingBallInstance) return;
+  
+  const isDev = process.env.NODE_ENV === 'development';
+  
+  if (isTranslated) {
+    // 如果当前是翻译状态，恢复原文
+    restoreOriginalContent();
+    isTranslated = false;
+    
+    // 更新悬浮球UI状态
+    floatingBallInstance.isTranslating = false;
+    
+    // 兼容Vue组件暴露的元素
+    const element = floatingBallInstance.element || floatingBallInstance.$el;
+    if (element) {
+      element.classList.remove('translating', 'is-translating');
+    }
+    
+    if (isDev) {
+      console.log('[FluentRead] 通过快捷键取消翻译');
+    }
+  } else {
+    // 如果当前是原文状态，执行翻译
+    // 先标记状态
+    isTranslated = true;
+    floatingBallInstance.isTranslating = true;
+    
+    // 兼容Vue组件暴露的元素
+    const element = floatingBallInstance.element || floatingBallInstance.$el;
+    if (element) {
+      element.classList.add('translating', 'is-translating');
+    }
+    
+    // 执行翻译
+    autoTranslateEnglishPage();
+    
+    if (isDev) {
+      console.log('[FluentRead] 通过快捷键激活翻译');
+    }
+  }
+}
+
+// 悬浮球动画效果
+function addFloatingBallAnimation(type: 'translate' | 'restore') {
+  if (!floatingBallInstance) return;
+  
+  const ball = floatingBallInstance.element;
+  const originalBackground = ball.style.background;
+  const originalTransition = ball.style.transition;
+  
+  // 设置过渡效果
+  ball.style.transition = 'all 0.3s ease';
+  
+  // 根据类型设置不同动画
+  if (type === 'translate') {
+    // 翻译激活动画
+    ball.style.transform = 'scale(1.2)';
+    ball.style.boxShadow = '0 0 15px rgba(0, 128, 255, 0.8)';
+    ball.style.background = '#4285f4';
+  } else {
+    // 恢复原文动画
+    ball.style.transform = 'scale(1.2)';
+    ball.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.8)';
+    ball.style.background = '#4caf50';
+  }
+  
+  // 恢复原状
+  setTimeout(() => {
+    if (!floatingBallInstance) return;
+    ball.style.transform = '';
+    ball.style.boxShadow = '';
+    ball.style.background = originalBackground;
+    
+    // 恢复原来的过渡设置
+    setTimeout(() => {
+      if (floatingBallInstance) {
+        ball.style.transition = originalTransition;
+      }
+    }, 300);
+  }, 300);
 }
 
 /**
@@ -86,6 +175,9 @@ function saveConfig() {
  */
 export function unmountFloatingBall() {
   if (floatingBallInstance && app) {
+    // 移除事件监听
+    document.removeEventListener('fluentread-toggle-translation', toggleFloatingBallTranslation);
+    
     // 获取容器
     const container = document.getElementById('fluent-read-floating-ball-container');
     
