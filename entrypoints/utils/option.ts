@@ -27,6 +27,7 @@ export const services = {
     doubao: "doubao", // 字节豆包
     siliconCloud: "siliconCloud", // 硅流
     openrouter: "openrouter", // openrouter
+    grok: "grok", // X.AI 的 Grok
 };
 
 export const servicesType = {
@@ -53,6 +54,7 @@ export const servicesType = {
         services.doubao,
         services.siliconCloud,
         services.openrouter,
+        services.grok,
     ]),
     // 需要 token
     useToken: new Set([
@@ -78,6 +80,7 @@ export const servicesType = {
         services.doubao,
         services.siliconCloud,
         services.openrouter,
+        services.grok,
     ]),
     // 需要 model
     useModel: new Set([
@@ -100,6 +103,7 @@ export const servicesType = {
         services.doubao,
         services.siliconCloud,
         services.openrouter,
+        services.grok,
     ]),
     // 支持代理
     useProxy: new Set([
@@ -122,6 +126,7 @@ export const servicesType = {
         services.doubao,
         services.siliconCloud,
         services.openrouter,
+        services.grok,
     ]),
 
     isMachine: (service: string) => servicesType.machine.has(service),
@@ -136,14 +141,14 @@ export const servicesType = {
 
 export const customModelString = "自定义模型";
 export const models = new Map<string, Array<string>>([
-    [services.openai, ["gpt-4o-mini", "gpt-4o", "o1", "o1-mini", "o3-mini", customModelString]],
+    [services.openai, ["gpt-4.1","gpt-4.1-mini","gpt-4.1-nano","gpt-4o-mini", "gpt-4o", "o3", "o3-mini", customModelString]],
     [services.gemini, ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro", "gemini-2.0-flash-exp", customModelString]],
     [services.yiyan, ["ERNIE-Bot 4.0", "ERNIE-Bot", "ERNIE-Speed-8K"]],
     [services.tongyi, ["qwen-long", "qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext", customModelString]],
     [services.zhipu, ["GLM-4-Flash", "glm-4-plus", "glm-4", "glm-4v", "glm-3-turbo", customModelString]],
     [services.moonshot, ["moonshot-v1-8k", "moonshot-v1-32k", customModelString]],
     [services.claude, ["claude-3-7-sonnet", "claude-3-5-haiku", "claude-3-5-sonnet", "claude-3-opus"]],
-    [services.custom, ["gpt-3.5-turbo", "gpt-4o", "gpt-4", "gpt-4-turbo", "gemma:7b", "llama2:7b", "mistral:7b", customModelString]],
+    [services.custom, [ "gpt-4o", "gpt-4", "gpt-4-turbo", "gemma:7b", "llama2:7b", "mistral:7b", customModelString]],
     [services.infini, ["llama-2-13b-chat", "llama-3.3-70b-instruct", "qwen2.5-14b-instruct", "gemma-2-27b-it", "glm-4-9b-chat", customModelString]],
     [services.baichuan, ["Baichuan4-Air", "Baichuan4-Turbo", "Baichuan4", customModelString]],
     [services.lingyi, ["yi-lightning", customModelString]],
@@ -152,9 +157,13 @@ export const models = new Map<string, Array<string>>([
     [services.jieyue, ["step-1-8k", customModelString]],
     [services.huanYuan, ["hunyuan-turbos-latest（推荐）","hunyuan-turbo", "hunyuan-lite", "hunyuan-standard", customModelString]],
     [services.doubao, [customModelString]],
+    [services.grok, ["grok-3-beta", "grok-3-fast-beta", "grok-3-mini-beta", "grok-3-mini-fast-beta", customModelString]],
 
     // mix model
-    [services.siliconCloud, ["Qwen/Qwen2.5-7B-Instruct（免费）", "meta-llama/Meta-Llama-3.1-8B-Instruct（免费）", "internlm/internlm2_5-7b-chat（免费）", "THUDM/glm-4-9b-chat（免费）", "01-ai/Yi-1.5-9B-Chat-16K（免费）", "google/gemma-2-9b-it（免费）", customModelString]],
+    [services.siliconCloud, ["Qwen/Qwen3-8B（免费）","THUDM/GLM-Z1-9B-0414（免费）","THUDM/GLM-4-9B-0414（免费）",
+        "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B（免费）","deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B（免费）",
+        "Qwen/Qwen2.5-7B-Instruct（免费）", "internlm/internlm2_5-7b-chat（免费）", "THUDM/glm-4-9b-chat（免费）", customModelString]],
+
     [services.groq, ["llama-3.1-8b-instant（免费）", "llama3-8b-8192（免费）", "llama-3.3-70b-versatile（免费）", "gemma2-9b-it（免费）", "mixtral-8x7b-32768（免费）", "whisper-large-v3（免费）", customModelString]],
     [services.openrouter, ["meta-llama/llama-3.1-8b-instruct（免费）", "google/gemini-2.0-flash-exp（免费）", "qwen/qwen-2-7b-instruct（免费）", "huggingfaceh4/zephyr-7b-beta（免费）", customModelString]]
 ]);
@@ -215,12 +224,13 @@ export const options = {
         {value: services.deepseek, label: "DeepSeek⭐️"},
         {value: services.siliconCloud, label: "硅基流动-SiliconFlow⭐️"},
         {value: services.huanYuan, label: "腾讯混元⭐"},
+        {value: services.grok, label: "Grok (X.AI)"},
+        {value: services.openrouter, label: "OpenRouter"},
+        {value: services.groq, label: "Groq"},
         {value: services.doubao, label: "字节豆包"},
         {value: services.tongyi, label: "阿里通义"},
         {value: services.openai, label: "OpenAI"},
         {value: services.moonshot, label: "Kimi"},
-        {value: services.openrouter, label: "OpenRouter"},
-        {value: services.groq, label: "Groq"},
         {value: services.zhipu, label: "智谱清言"},
         {value: services.baichuan, label: "百川智能"},
         {value: services.lingyi, label: "零一万物"},

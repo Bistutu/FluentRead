@@ -48,4 +48,5 @@ export const _service: ServiceMap = {
     [services.doubao]: common,
     [services.siliconCloud]: common,
     [services.openrouter]: common,
+    [services.grok]: common,
 }

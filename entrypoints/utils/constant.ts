@@ -22,6 +22,7 @@ export const urls: any = {
     [services.doubao]: "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
     [services.siliconCloud]: "https://api.siliconflow.cn/v1/chat/completions",
     [services.openrouter]: "https://openrouter.ai/api/v1/chat/completions",
+    [services.grok]: "https://api.x.ai/v1/chat/completions",
 
     // [services.baidufree]:"https://fanyi.baidu.com/transapi"
     // [services.baidu]: "https://fanyi-api.baidu.com/api/trans/vip/translate",
