@@ -4,6 +4,7 @@ import { constants } from "@/entrypoints/utils/constant";
 import { getCenterPoint } from "@/entrypoints/utils/common";
 import './style.css';
 import { config, configReady } from "@/entrypoints/utils/config";
+import { mountFloatingBall, unmountFloatingBall, toggleFloatingBallPosition } from "@/entrypoints/utils/floatingBall";
 
 export default defineContentScript({
     matches: ['<all_urls>'],  // 匹配所有页面
@@ -16,6 +17,12 @@ export default defineContentScript({
         // 添加自动翻译事件监听器
         if (config.autoTranslate) autoTranslationEvent();
 
+        // 挂载悬浮球（如果配置未禁用）
+        if (config.disableFloatingBall !== true) {
+            // 使用配置中的位置
+            mountFloatingBall();
+        }
+
         cache.cleaner();    // 检测是否清理缓存
 
         // background.ts
@@ -26,11 +33,25 @@ export default defineContentScript({
         });
 
         // 监听来自 popup 的消息
-        browser.runtime.onMessage.addListener((message: { type: string; }) => {
+        browser.runtime.onMessage.addListener((message: { type: string; isEnabled?: boolean }) => {
             if (message.type === 'clearCache') {
                 // 清除所有翻译缓存
                 clearAllTranslations();
                 return Promise.resolve(true); // 返回成功响应
+            } else if (message.type === 'toggleFloatingBall') {
+                // 切换悬浮球显示状态
+                if (message.isEnabled === false) {
+                    config.disableFloatingBall = true;
+                    unmountFloatingBall();
+                } else {
+                    config.disableFloatingBall = false;
+                    mountFloatingBall();
+                }
+                return Promise.resolve(true);
+            } else if (message.type === 'toggleFloatingBallPosition') {
+                // 切换悬浮球位置
+                toggleFloatingBallPosition();
+                return Promise.resolve(true);
             }
         });
     }
