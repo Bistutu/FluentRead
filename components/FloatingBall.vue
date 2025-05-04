@@ -278,6 +278,15 @@ const toggleTranslation = (event: MouseEvent) => {
   isTranslating.value = !isTranslating.value;
   triggerAnimation(isTranslating.value ? 'translate' : 'restore');
   
+  // 触发自定义事件
+  if (isTranslating.value) {
+    document.dispatchEvent(new CustomEvent('fluentread-translation-started'));
+    console.log('[悬浮球] 通过点击开始翻译');
+  } else {
+    document.dispatchEvent(new CustomEvent('fluentread-translation-ended'));
+    console.log('[悬浮球] 通过点击停止翻译');
+  }
+  
   if (floatingBall.value?.matches(':hover')) {
     isExpanded.value = true;
   }
@@ -291,6 +300,15 @@ const handleExternalToggle = () => {
   
   // 触发动画
   triggerAnimation(isTranslating.value ? 'translate' : 'restore');
+  
+  // 触发自定义事件
+  if (isTranslating.value) {
+    document.dispatchEvent(new CustomEvent('fluentread-translation-started'));
+    console.log('[悬浮球] 通过快捷键开始翻译');
+  } else {
+    document.dispatchEvent(new CustomEvent('fluentread-translation-ended'));
+    console.log('[悬浮球] 通过快捷键停止翻译');
+  }
   
   // 通知父组件
   props.onTranslationToggle(isTranslating.value);

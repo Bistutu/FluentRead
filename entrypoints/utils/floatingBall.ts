@@ -76,46 +76,69 @@ export function mountFloatingBall(position?: 'left' | 'right') {
 
 /**
  * 切换悬浮球翻译状态
+ * 通过键盘快捷键触发时使用
  */
 export function toggleFloatingBallTranslation() {
   if (!floatingBallInstance) return;
+
+  const currentState = floatingBallInstance.isTranslating;
+  const newState = !currentState;
   
-  const isDev = process.env.NODE_ENV === 'development';
-  
-  if (isTranslated) {
-    // 如果当前是翻译状态，恢复原文
-    restoreOriginalContent();
-    isTranslated = false;
-    
-    // 更新悬浮球UI状态
-    floatingBallInstance.isTranslating = false;
-    
-    // 兼容Vue组件暴露的元素
-    const element = floatingBallInstance.element || floatingBallInstance.$el;
-    if (element) {
-      element.classList.remove('translating', 'is-translating');
-    }
-    
-    if (isDev) {
-      console.log('[FluentRead] 通过快捷键取消翻译');
-    }
+  // 触发对应的自定义事件
+  if (newState) {
+    document.dispatchEvent(new CustomEvent('fluentread-translation-started'));
+    console.log('[悬浮球] 通过快捷键开始翻译');
   } else {
-    // 如果当前是原文状态，执行翻译
-    // 先标记状态
-    isTranslated = true;
-    floatingBallInstance.isTranslating = true;
-    
-    // 兼容Vue组件暴露的元素
-    const element = floatingBallInstance.element || floatingBallInstance.$el;
-    if (element) {
-      element.classList.add('translating', 'is-translating');
+    document.dispatchEvent(new CustomEvent('fluentread-translation-ended'));
+    console.log('[悬浮球] 通过快捷键停止翻译');
+  }
+  
+  // 更新悬浮球状态
+  floatingBallInstance.isTranslating = newState;
+  
+  // 更新UI状态 - 使用Vue实例的$el属性
+  if (floatingBallInstance.$el) {
+    if (newState) {
+      floatingBallInstance.$el.classList.add('fluent-read-floating-ball-active');
+      // 开始翻译
+      autoTranslateEnglishPage();
+    } else {
+      floatingBallInstance.$el.classList.remove('fluent-read-floating-ball-active');
+      // 恢复原文
+      restoreOriginalContent();
     }
-    
-    // 执行翻译
-    autoTranslateEnglishPage();
-    
-    if (isDev) {
-      console.log('[FluentRead] 通过快捷键激活翻译');
+  }
+}
+
+/**
+ * 处理悬浮球点击事件
+ */
+function handleFloatingBallClick() {
+  if (!floatingBallInstance) return;
+  
+  // 切换悬浮球翻译状态
+  const newState = !floatingBallInstance.isTranslating;
+  floatingBallInstance.isTranslating = newState;
+  
+  // 触发对应的自定义事件
+  if (newState) {
+    document.dispatchEvent(new CustomEvent('fluentread-translation-started'));
+    console.log('[悬浮球] 通过点击开始翻译');
+  } else {
+    document.dispatchEvent(new CustomEvent('fluentread-translation-ended'));
+    console.log('[悬浮球] 通过点击停止翻译');
+  }
+  
+  // 更新UI状态 - 使用Vue实例的$el属性
+  if (floatingBallInstance.$el) {
+    if (newState) {
+      floatingBallInstance.$el.classList.add('fluent-read-floating-ball-active');
+      // 开始翻译
+      autoTranslateEnglishPage();
+    } else {
+      floatingBallInstance.$el.classList.remove('fluent-read-floating-ball-active');
+      // 恢复原文
+      restoreOriginalContent();
     }
   }
 }

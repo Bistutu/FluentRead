@@ -1,5 +1,5 @@
 <template>
-  <div class="translation-status-container" v-if="isVisible">
+  <div class="translation-status-container" v-if="isVisible && isFloatingBallTranslating">
     <div class="translation-status-card">
       <div class="translation-status-header">
         <div class="translation-status-title">翻译进度</div>
@@ -28,6 +28,7 @@ import { getTranslationStatus } from '../entrypoints/utils/translateApi';
 
 // 组件状态
 const isVisible = ref(false);
+const isFloatingBallTranslating = ref(false);
 const status = ref({
   activeTranslations: 0,
   pendingTranslations: 0,
@@ -62,15 +63,45 @@ const updateStatus = () => {
   isVisible.value = currentStatus.activeTranslations > 0 || currentStatus.pendingTranslations > 0;
 };
 
-// 组件挂载时启动定时器
+// 监听悬浮球翻译状态变化
+const listenToFloatingBallState = () => {
+  // 监听自定义事件: 翻译开始
+  const handleTranslationStarted = () => {
+    isFloatingBallTranslating.value = true;
+  };
+  
+  // 监听自定义事件: 翻译结束
+  const handleTranslationEnded = () => {
+    isFloatingBallTranslating.value = false;
+  };
+  
+  // 添加事件监听器
+  document.addEventListener('fluentread-translation-started', handleTranslationStarted);
+  document.addEventListener('fluentread-translation-ended', handleTranslationEnded);
+  
+  // 返回清理函数
+  return {
+    cleanup: () => {
+      document.removeEventListener('fluentread-translation-started', handleTranslationStarted);
+      document.removeEventListener('fluentread-translation-ended', handleTranslationEnded);
+    }
+  };
+};
+
+// 存储事件监听器的清理函数
+let eventListenerCleanup: { cleanup: () => void };
+
+// 组件挂载时启动定时器和事件监听
 onMounted(() => {
   updateStatus(); // 立即执行一次更新
   statusUpdateTimer = window.setInterval(updateStatus, 500);
+  eventListenerCleanup = listenToFloatingBallState();
 });
 
-// 组件卸载时清理定时器
+// 组件卸载时清理定时器和事件监听
 onUnmounted(() => {
   clearInterval(statusUpdateTimer);
+  eventListenerCleanup.cleanup();
 });
 </script>
 
@@ -152,26 +183,50 @@ onUnmounted(() => {
   transition: width 0.3s ease, background-color 0.3s ease;
 }
 
-/* 暗黑模式支持 */
+/* 暗黑模式支持 - 使用 :root[class="dark"] 选择器匹配 FluentRead 的主题系统 */
+:root[class="dark"] .translation-status-card {
+  background-color: #2d3436;
+  border-color: #4d4d4d;
+  color: #dfe6e9;
+}
+
+:root[class="dark"] .translation-status-header {
+  background-color: #2980b9;
+}
+
+:root[class="dark"] .translation-status-label {
+  color: #b2bec3;
+}
+
+:root[class="dark"] .translation-status-value {
+  color: #dfe6e9;
+}
+
+:root[class="dark"] .translation-status-progress {
+  background-color: #3d3d3d;
+}
+
+/* 保留媒体查询以支持自动模式 */
 @media (prefers-color-scheme: dark) {
-  .translation-status-card {
+  :root:not([class="light"]) .translation-status-card {
     background-color: #2d3436;
     border-color: #4d4d4d;
-  }
-  
-  .translation-status-header {
-    background-color: #2980b9;
-  }
-  
-  .translation-status-label {
-    color: #b2bec3;
-  }
-  
-  .translation-status-value {
     color: #dfe6e9;
   }
   
-  .translation-status-progress {
+  :root:not([class="light"]) .translation-status-header {
+    background-color: #2980b9;
+  }
+  
+  :root:not([class="light"]) .translation-status-label {
+    color: #b2bec3;
+  }
+  
+  :root:not([class="light"]) .translation-status-value {
+    color: #dfe6e9;
+  }
+  
+  :root:not([class="light"]) .translation-status-progress {
     background-color: #3d3d3d;
   }
 }
