@@ -7,6 +7,7 @@ import { beautyHTML, grabNode, grabAllNode, LLMStandardHTML, smashTruncationStyl
 import { detectlang, throttle } from "@/entrypoints/utils/common";
 import { getMainDomain, replaceCompatFn } from "@/entrypoints/main/compat";
 import { config } from "@/entrypoints/utils/config";
+import { translateText, cancelAllTranslations } from '@/entrypoints/utils/translateApi';
 
 let hoverTimer: any; // 鼠标悬停计时器
 let htmlSet = new Set(); // 防抖
@@ -23,6 +24,9 @@ let nodeIdCounter = 0; // 节点ID计数器
 
 // 恢复原文内容
 export function restoreOriginalContent() {
+    // 取消所有等待中的翻译任务
+    cancelAllTranslations();
+    
     // 1. 遍历所有已翻译的节点
     document.querySelectorAll(`[${TRANSLATED_ATTR}="true"]`).forEach(node => {
         const nodeId = node.getAttribute(TRANSLATED_ID_ATTR);
@@ -253,35 +257,18 @@ function bilingualTranslate(node: any, nodeOuterHTML: any) {
 
     let origin = node.textContent;
     let spinner = insertLoadingSpinner(node);
-    let timeout = setTimeout(() => {
-        insertFailedTip(node, "timeout", spinner);
-    }, 45000);
-
-    config.count++ && storage.setItem('local:config', JSON.stringify(config));
-
-    // 正在翻译...允许失败重试 3 次
-    const translating = (failCount = 0) => {
-        browser.runtime.sendMessage({ context: document.title, origin: origin })
-            .then((text: string) => {
-                clearTimeout(timeout);
-                spinner.remove();
-                htmlSet.delete(nodeOuterHTML);
-                bilingualAppendChild(node, text);
-                cache.localSet(origin, text);
-            })
-            .catch((error: { toString: () => any; }) => {
-                clearTimeout(timeout);
-                if (failCount < 3) {
-                    setTimeout(() => {
-                        translating(failCount + 1);
-                    }, 1000);
-                } else {
-                    insertFailedTip(node, error.toString() || "", spinner);
-                }
-            });
-    }
-
-    translating();
+    
+    // 使用队列管理的翻译API
+    translateText(origin, document.title)
+        .then((text: string) => {
+            spinner.remove();
+            htmlSet.delete(nodeOuterHTML);
+            bilingualAppendChild(node, text);
+        })
+        .catch((error: Error) => {
+            spinner.remove();
+            insertFailedTip(node, error.toString() || "翻译失败", spinner);
+        });
 }
 
 
@@ -289,46 +276,30 @@ export function singleTranslate(node: any) {
     if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
 
     let origin = servicesType.isMachine(config.service) ? node.innerHTML : LLMStandardHTML(node);
-
     let spinner = insertLoadingSpinner(node);
-    let timeout = setTimeout(() => {
-        insertFailedTip(node, "timeout", spinner);
-    }, 45000);
-
-    config.count++ && storage.setItem('local:config', JSON.stringify(config));
-
-    // 正在翻译...允许失败重试 3 次
-    const translating = (failCount = 0) => {
-        browser.runtime.sendMessage({ context: document.title, origin: origin })
-            .then((text: string) => {
-                clearTimeout(timeout);
-                spinner.remove();
-
-                text = beautyHTML(text);
-
-                if (!text || origin === text) return;
-
-                let oldOuterHtml = node.outerHTML;
-                node.innerHTML = text;
-                let newOuterHtml = node.outerHTML;
-
-                // 缓存翻译结果
-                cache.localSetDual(oldOuterHtml, newOuterHtml);
-                cache.set(htmlSet, newOuterHtml, 250);
-                htmlSet.delete(oldOuterHtml);
-            })
-            .catch((error: { toString: () => any; }) => {
-                clearTimeout(timeout);
-                if (failCount < 3) {
-                    setTimeout(() => {
-                        translating(failCount + 1);
-                    }, 1000);
-                } else {
-                    insertFailedTip(node, error.toString() || "", spinner);
-                }
-            });
-    }
-    translating();
+    
+    // 使用队列管理的翻译API
+    translateText(origin, document.title)
+        .then((text: string) => {
+            spinner.remove();
+            
+            text = beautyHTML(text);
+            
+            if (!text || origin === text) return;
+            
+            let oldOuterHtml = node.outerHTML;
+            node.innerHTML = text;
+            let newOuterHtml = node.outerHTML;
+            
+            // 缓存翻译结果
+            cache.localSetDual(oldOuterHtml, newOuterHtml);
+            cache.set(htmlSet, newOuterHtml, 250);
+            htmlSet.delete(oldOuterHtml);
+        })
+        .catch((error: Error) => {
+            spinner.remove();
+            insertFailedTip(node, error.toString() || "翻译失败", spinner);
+        });
 }
 
 export const handleBtnTranslation = throttle((node: any) => {

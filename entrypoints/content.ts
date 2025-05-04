@@ -5,6 +5,9 @@ import { getCenterPoint } from "@/entrypoints/utils/common";
 import './style.css';
 import { config, configReady } from "@/entrypoints/utils/config";
 import { mountFloatingBall, unmountFloatingBall, toggleFloatingBallPosition } from "@/entrypoints/utils/floatingBall";
+import { cancelAllTranslations } from "@/entrypoints/utils/translateApi";
+import { createApp } from 'vue';
+import TranslationStatus from '@/components/TranslationStatus.vue';
 
 export default defineContentScript({
     matches: ['<all_urls>'],  // 匹配所有页面
@@ -24,6 +27,9 @@ export default defineContentScript({
             // 使用配置中的位置
             mountFloatingBall();
         }
+        
+        // 挂载翻译状态组件
+        mountTranslationStatusComponent();
 
         cache.cleaner();    // 检测是否清理缓存
 
@@ -46,6 +52,14 @@ export default defineContentScript({
                 return true;
             }
             return false;
+        });
+        
+        // 在页面卸载时清理资源
+        window.addEventListener('beforeunload', () => {
+            // 取消所有待处理的翻译任务
+            cancelAllTranslations();
+            // 移除悬浮球
+            unmountFloatingBall();
         });
     }
 })
@@ -314,4 +328,18 @@ function clearAllTranslations() {
     cache.clean();
 
     console.log('已清除所有翻译缓存');
+}
+
+/**
+ * 挂载翻译状态组件
+ */
+function mountTranslationStatusComponent() {
+    // 创建容器元素
+    const container = document.createElement('div');
+    container.id = 'fluent-read-translation-status-container';
+    document.body.appendChild(container);
+    
+    // 创建并挂载组件
+    const app = createApp(TranslationStatus);
+    app.mount(container);
 }
