@@ -46,38 +46,26 @@ export function mountFloatingBall(position?: 'left' | 'right') {
       
       // 保存配置到存储
       saveConfig();
+
+    },
+    // 添加翻译状态变化事件监听
+    onTranslationToggle: (isTranslating: boolean) => {
+      if (isTranslating && !isTranslated) {
+        // 触发即时翻译
+        autoTranslateEnglishPage();
+        isTranslated = true;
+      } else if (!isTranslating && isTranslated) {
+        // 恢复原文
+        restoreOriginalContent();
+        isTranslated = false;
+      }
     }
   });
 
   // 挂载应用
   floatingBallInstance = app.mount(container);
 
-  // 添加事件监听
-  const ballElement = container.querySelector('.floating-ball');
-  if (ballElement) {
-    ballElement.addEventListener('click', handleFloatingBallClick);
-  }
-
   return floatingBallInstance;
-}
-
-/**
- * 处理悬浮球点击事件
- */
-function handleFloatingBallClick(event: Event) {
-  // 防止事件冒泡
-  event.stopPropagation();
-  
-  
-  if (!isTranslated) {
-    // 触发即时翻译
-    autoTranslateEnglishPage();
-    isTranslated = true;
-  } else {
-    // 恢复原文
-    restoreOriginalContent();
-    isTranslated = false;
-  }
 }
 
 /**
@@ -95,20 +83,16 @@ function saveConfig() {
  */
 export function unmountFloatingBall() {
   if (floatingBallInstance && app) {
-    // 移除事件监听
+    // 获取容器
     const container = document.getElementById('fluent-read-floating-ball-container');
+    
+    // 卸载 Vue 应用
+    app.unmount();
+    floatingBallInstance = null;
+    app = null;
+    
+    // 移除容器
     if (container) {
-      const ballElement = container.querySelector('.floating-ball');
-      if (ballElement) {
-        ballElement.removeEventListener('click', handleFloatingBallClick);
-      }
-      
-      // 卸载 Vue 应用
-      app.unmount();
-      floatingBallInstance = null;
-      app = null;
-      
-      // 移除容器
       container.remove();
     }
   }

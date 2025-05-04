@@ -180,9 +180,8 @@ const stopDrag = (event: MouseEvent) => {
   draggedY.value = finalY;
   internalPosition.value = newPosition;
 
-  if (newPosition !== props.position) {
-    props.onPositionChanged(newPosition);
-  }
+  // 无论位置是否变化，都通知父组件，以便触发拖动状态更新
+  props.onPositionChanged(newPosition);
 
   nextTick(() => {
     updatePositionStyle();
@@ -205,7 +204,8 @@ const toggleTranslation = (event: MouseEvent) => {
   const movedY = Math.abs(event.clientY - startY.value);
   const isDragEndClick = dragDuration > 150 || movedX > 5 || movedY > 5;
 
-  if (isDragEndClick && isDragging.value === false) {
+  // 如果是拖动结束的点击，或者当前正在拖动中，则不触发翻译
+  if (isDragEndClick || isDragging.value) {
     return;
   }
 
