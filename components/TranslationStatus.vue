@@ -1,5 +1,5 @@
 <template>
-  <div class="translation-status-container" v-if="isVisible && isFloatingBallTranslating">
+  <div class="translation-status-container" v-if="isVisible && isFloatingBallTranslating && !userClosed">
     <div class="translation-status-card">
       <div class="translation-status-header">
         <div class="translation-status-title">翻译进度</div>
@@ -29,6 +29,7 @@ import { getTranslationStatus } from '../entrypoints/utils/translateApi';
 // 组件状态
 const isVisible = ref(false);
 const isFloatingBallTranslating = ref(false);
+const userClosed = ref(false); // 用户是否关闭了状态框
 const status = ref({
   activeTranslations: 0,
   pendingTranslations: 0,
@@ -48,7 +49,36 @@ const progressStyle = computed(() => {
 
 // 关闭状态卡片
 const close = () => {
-  isVisible.value = false;
+  userClosed.value = true; // 标记用户已关闭
+};
+
+// 重置关闭状态 - 当用户离开页面后重置
+const resetClosedState = () => {
+  // 监听页面可见性变化
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      // 当页面不可见时（用户切换标签页或最小化），重置状态
+      setTimeout(() => {
+        userClosed.value = false;
+      }, 1000);
+    }
+  });
+  
+  // 监听 URL 变化
+  const lastUrl = location.href;
+  const urlObserver = new MutationObserver(() => {
+    if (location.href !== lastUrl) {
+      userClosed.value = false;
+    }
+  });
+  
+  // 观察 document 的子节点变化，这可能发生在 URL 变化时
+  urlObserver.observe(document, { subtree: true, childList: true });
+  
+  return () => {
+    document.removeEventListener('visibilitychange', () => {});
+    urlObserver.disconnect();
+  };
 };
 
 // 更新状态的定时器
@@ -68,6 +98,10 @@ const listenToFloatingBallState = () => {
   // 监听自定义事件: 翻译开始
   const handleTranslationStarted = () => {
     isFloatingBallTranslating.value = true;
+    // 当新的翻译开始时，如果是同一页面内重新开始翻译，也要重置用户关闭状态
+    if (!isVisible.value) {
+      userClosed.value = false;
+    }
   };
   
   // 监听自定义事件: 翻译结束
@@ -90,18 +124,21 @@ const listenToFloatingBallState = () => {
 
 // 存储事件监听器的清理函数
 let eventListenerCleanup: { cleanup: () => void };
+let resetClosedStateCleanup: () => void;
 
 // 组件挂载时启动定时器和事件监听
 onMounted(() => {
   updateStatus(); // 立即执行一次更新
   statusUpdateTimer = window.setInterval(updateStatus, 500);
   eventListenerCleanup = listenToFloatingBallState();
+  resetClosedStateCleanup = resetClosedState();
 });
 
 // 组件卸载时清理定时器和事件监听
 onUnmounted(() => {
   clearInterval(statusUpdateTimer);
   eventListenerCleanup.cleanup();
+  resetClosedStateCleanup();
 });
 </script>
 
