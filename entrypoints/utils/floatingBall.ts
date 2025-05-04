@@ -58,6 +58,9 @@ export function mountFloatingBall(position?: 'left' | 'right') {
         // 恢复原文
         restoreOriginalContent();
         isTranslated = false;
+        
+        // 恢复后确保状态同步
+        floatingBallInstance.$el.classList.remove('is-translating');
       }
     }
   });

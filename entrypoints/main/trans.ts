@@ -23,7 +23,7 @@ let nodeIdCounter = 0; // 节点ID计数器
 
 // 恢复原文内容
 export function restoreOriginalContent() {
-    // 遍历所有已翻译的节点
+    // 1. 遍历所有已翻译的节点
     document.querySelectorAll(`[${TRANSLATED_ATTR}="true"]`).forEach(node => {
         const nodeId = node.getAttribute(TRANSLATED_ID_ATTR);
         if (nodeId && originalContents.has(nodeId)) {
@@ -31,12 +31,26 @@ export function restoreOriginalContent() {
             node.innerHTML = originalContent;
             node.removeAttribute(TRANSLATED_ATTR);
             node.removeAttribute(TRANSLATED_ID_ATTR);
+            
+            // 移除可能添加的翻译相关类
+            node.classList.remove('fluent-read-bilingual');
         }
     });
-    // 清空存储的原始内容
+    
+    // 2. 移除所有翻译内容元素
+    document.querySelectorAll('.fluent-read-bilingual-content').forEach(element => {
+        element.remove();
+    });
+    
+    // 3. 移除所有翻译过程中添加的加载动画和错误提示
+    document.querySelectorAll('.fluent-read-loading, .fluent-read-retry-wrapper').forEach(element => {
+        element.remove();
+    });
+    
+    // 4. 清空存储的原始内容
     originalContents.clear();
     
-    // 停止观察
+    // 5. 停止所有观察器
     if (observer) {
         observer.disconnect();
         observer = null;
@@ -46,7 +60,14 @@ export function restoreOriginalContent() {
         mutationObserver = null;
     }
     
+    // 6. 重置所有翻译相关的状态
     isAutoTranslating = false;
+    htmlSet.clear(); // 清空防抖集合
+    nodeIdCounter = 0; // 重置节点ID计数器
+    
+    // 7. 消除可能存在的全局样式污染
+    const tempStyleElements = document.querySelectorAll('style[data-fr-temp-style]');
+    tempStyleElements.forEach(el => el.remove());
 }
 
 // 自动翻译整个页面的功能
