@@ -46,6 +46,25 @@
     </el-col>
   </el-row>
 
+    <!-- 添加悬浮球开关 -->
+    <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
+      <el-col :span="20" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="控制是否显示屏幕边缘的即时翻译悬浮球，用于对整个网页进行翻译" placement="top-start" :show-after="500">
+        <span class="popup-text popup-vertical-left">
+          <span class="new-feature-badge">新</span>
+          全文翻译悬浮球
+          <el-icon class="icon-margin">
+            <ChatDotRound />
+          </el-icon>
+        </span>
+        </el-tooltip>
+      </el-col>
+
+      <el-col :span="4" class="flex-end">
+        <el-switch v-model="floatingBallEnabled" inline-prompt active-text="开" inactive-text="关" />
+      </el-col>
+    </el-row>
+
     <!--    翻译模式-->
     <el-row class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -304,21 +323,6 @@
     </el-row>
   </div>
 
-  <!-- 添加悬浮球开关 -->
-  <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
-    <el-col :span="20" class="lightblue rounded-corner">
-      <el-tooltip class="box-item" effect="dark" content="控制是否显示屏幕边缘的即时翻译悬浮球，用于对整个网页进行翻译" placement="top-start" :show-after="500">
-        <span class="popup-text popup-vertical-left">即时翻译悬浮球<el-icon class="icon-margin">
-            <ChatDotRound />
-          </el-icon></span>
-      </el-tooltip>
-    </el-col>
-
-    <el-col :span="4" class="flex-end">
-      <el-switch v-model="floatingBallEnabled" inline-prompt active-text="开" inactive-text="关" />
-    </el-col>
-  </el-row>
-  
   <el-row v-if="showRefreshTip" class="refresh-tip margin-bottom">
     <el-col :span="19" class="lightblue rounded-corner">
       <span class="popup-text popup-vertical-left">设置已更新 需刷新页面生效</span>
@@ -618,5 +622,35 @@ const refreshPage = async () => {
 .refresh-button:hover {
   background-color: #66b1ff;
   color: #fff;
+}
+
+.new-feature-badge {
+  display: inline-block;
+  font-size: 12px;
+  background-color: #f56c6c;
+  color: white;
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-right: 8px;
+  font-weight: bold;
+  animation: bounce 1s infinite alternate;
+}
+
+@keyframes pulse-glow {
+  0% {
+    box-shadow: 0 2px 8px rgba(64, 158, 255, 0.1);
+  }
+  100% {
+    box-shadow: 0 2px 12px rgba(64, 158, 255, 0.5);
+  }
+}
+
+@keyframes bounce {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-3px);
+  }
 }
 </style>
