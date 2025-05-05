@@ -4,12 +4,16 @@
     <div v-if="showIndicator" 
          class="selection-indicator" 
          :style="indicatorStyle" 
-         @mouseenter="showTooltip = true"
-         @mouseleave="showTooltip = false">
+         @mouseenter="handleMouseEnter"
+         @mouseleave="handleMouseLeave">
     </div>
     
     <!-- 翻译结果弹窗 -->
-    <div v-if="showTooltip" class="translation-tooltip" :style="tooltipStyle">
+    <div v-if="showTooltip" 
+         class="translation-tooltip" 
+         :style="tooltipStyle"
+         @mouseenter="handleMouseEnterTooltip"
+         @mouseleave="handleMouseLeaveTooltip">
       <div class="tooltip-header">
         <span>翻译结果</span>
         <button class="close-btn" @click="closeTooltip">×</button>
@@ -39,6 +43,8 @@ const showIndicator = ref(false);
 const showTooltip = ref(false);
 const isLoading = ref(false);
 const error = ref('');
+const hideTooltipTimer = ref<number | null>(null);
+const isHoveringTooltip = ref(false);
 
 // 计算小红点指示器的样式
 const indicatorStyle = computed(() => {
@@ -65,7 +71,7 @@ const tooltipStyle = computed(() => {
     left: `${left}px`,
     top: `${selectionRect.value.top}px`,
     maxWidth: '300px',
-    maxHeight: '200px'
+    maxHeight: '400px' // 增加最大高度以支持更多内容
   };
 });
 
@@ -93,10 +99,52 @@ const handleTextSelection = () => {
   showIndicator.value = true;
 };
 
+// 鼠标进入指示器
+const handleMouseEnter = () => {
+  clearHideTooltipTimer();
+  showTooltip.value = true;
+};
+
+// 鼠标离开指示器
+const handleMouseLeave = () => {
+  // 如果鼠标不在tooltip上，则设置定时器隐藏tooltip
+  if (!isHoveringTooltip.value) {
+    setHideTooltipTimer();
+  }
+};
+
+// 鼠标进入弹窗
+const handleMouseEnterTooltip = () => {
+  isHoveringTooltip.value = true;
+  clearHideTooltipTimer();
+};
+
+// 鼠标离开弹窗
+const handleMouseLeaveTooltip = () => {
+  isHoveringTooltip.value = false;
+  setHideTooltipTimer();
+};
+
+// 设置隐藏弹窗的定时器
+const setHideTooltipTimer = () => {
+  clearHideTooltipTimer();
+  hideTooltipTimer.value = window.setTimeout(() => {
+    showTooltip.value = false;
+  }, 1000); // 1秒后隐藏
+};
+
+// 清除隐藏弹窗的定时器
+const clearHideTooltipTimer = () => {
+  if (hideTooltipTimer.value !== null) {
+    clearTimeout(hideTooltipTimer.value);
+    hideTooltipTimer.value = null;
+  }
+};
+
 // 隐藏指示器
 const hideIndicator = () => {
   showIndicator.value = false;
-  showTooltip.value = false;
+  setHideTooltipTimer();
 };
 
 // 关闭翻译弹窗
@@ -144,6 +192,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('mouseup', handleTextSelection);
   document.removeEventListener('selectionchange', handleTextSelection);
+  clearHideTooltipTimer();
 });
 </script>
 
@@ -185,6 +234,8 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  width: 300px; /* 固定宽度 */
+  transition: opacity 0.2s ease;
 }
 
 .tooltip-header {
@@ -194,6 +245,9 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #e8e8e8;
+  position: sticky; /* 使header粘性定位 */
+  top: 0;
+  z-index: 1;
 }
 
 .close-btn {
@@ -213,8 +267,10 @@ onBeforeUnmount(() => {
 
 .tooltip-content {
   padding: 12px;
-  overflow-y: auto;
-  max-height: 200px;
+  overflow-y: auto; /* 添加垂直滚动 */
+  max-height: 350px; /* 增加最大高度 */
+  scrollbar-width: thin; /* 细滚动条 */
+  scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
 }
 
 .original-text {
@@ -222,6 +278,8 @@ onBeforeUnmount(() => {
   color: #666;
   font-size: 14px;
   word-break: break-word;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed #eee;
 }
 
 .translation-result {
@@ -229,6 +287,8 @@ onBeforeUnmount(() => {
   font-size: 15px;
   font-weight: 500;
   word-break: break-word;
+  margin-top: 8px;
+  line-height: 1.5;
 }
 
 .loading-spinner {
@@ -252,6 +312,21 @@ onBeforeUnmount(() => {
   padding: 10px;
 }
 
+/* 自定义滚动条样式 */
+.tooltip-content::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.tooltip-content::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
+}
+
+.tooltip-content::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
 /* 暗黑模式适配 */
 :root.dark .translation-tooltip {
   background-color: #1f1f1f;
@@ -265,6 +340,7 @@ onBeforeUnmount(() => {
 
 :root.dark .original-text {
   color: #aaa;
+  border-bottom: 1px dashed #444;
 }
 
 :root.dark .translation-result {
@@ -277,5 +353,9 @@ onBeforeUnmount(() => {
 
 :root.dark .close-btn:hover {
   color: #ddd;
+}
+
+:root.dark .tooltip-content::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.3);
 }
 </style> 
