@@ -565,13 +565,13 @@ function shouldSkipGitHubElement(node: any): boolean {
         debugLog('GitHub', '特殊内容跳过', node.textContent);
         return true;
     }
-
+    
     // 判断是否为目录名称或路径
     if (isGitHubPathOrFileName(node)) {
         debugLog('GitHub', '目录/文件名跳过', node.textContent);
         return true;
     }
-
+    
     // 如果当前节点或其祖先节点匹配这些选择器，则跳过
     const skipSelectors = [
         // 导航栏和菜单
@@ -633,8 +633,64 @@ function shouldSkipGitHubElement(node: any): boolean {
         'span.Link--secondary', // 次要链接文本
         // 仓库元数据
         'div.BorderGrid-row',
+        
+        // 仓库统计信息和小组件
+        '.repo-language-color', // 语言颜色指示器
+        'a.topic-tag', // 话题标签
+        'span.d-inline-block.mr-3', // 内联统计块
+        'a.Link--muted', // 次要链接
+        'span.no-wrap', // 不换行的文本（通常是统计数据）
+        '.octicon', // 图标
+        'a.Link--primary > svg.octicon', // 主要链接中的图标
+        'div.d-flex', // 弹性布局容器（常用于统计信息）
+        'div.repo-and-owner', // 仓库和所有者信息
+        
+        // 仓库顶部区域
+        'nav.js-repo-nav',
+        'h1.flex-auto', // 标题
+        'div.pagehead', // 页面头部
+        'div.pagehead-actions', // 页面头部操作区
+        'div.f4.mt-3', // 主要描述
+        'h2#files', // 文件列表标题
+        
+        // 底部区域元素
+        'div.commit-tease', // 提交信息预览
+        'div.file-wrap', // 文件包装器
+        'ul.repository-lang-stats-numbers', // 语言统计数字
+        
+        // 统计计数器和标签
+        'span.Counter', // 计数器
+        'a.UnderlineNav-item', // 导航下划线项
+        'span[data-view-component="true"]', // 视图组件
+        'span.color-fg-muted', // 灰色文本
+        'span.text-bold', // 粗体文本
+        
+        // Issue/PR导航区域
+        'div.tabnav', // 标签导航
+        'div.tabnav-tabs', // 标签导航标签
+        'div.table-list-header-toggle', // 表格列表头切换
+        
+        // 活动区域
+        'div.Box-header',
+        'div.TimelineItem-badge',
+        
+        // 包管理和发布区域
+        'div.package-list', // 包列表
+        'div.release-entry', // 发布条目
+        
+        // 通用组件
+        'span.Label', // 标签
+        'span.State', // 状态指示器
+        'a.social-count', // 社交计数
+        'a.pl-3', // 带左内边距的链接
+        'div[role="grid"]', // 网格角色的div
+        'div.flash', // 闪烁通知
+        
+        // 仓库信息卡片
+        'div.Box-row--gray', // 灰色行
+        'div.BorderGrid-cell', // 边框网格单元格
     ];
-    
+
     // 检查当前节点是否匹配跳过选择器
     for (const selector of skipSelectors) {
         if (node.matches?.(selector)) {
@@ -644,7 +700,7 @@ function shouldSkipGitHubElement(node: any): boolean {
     }
     
     // 检查节点的类名是否包含特定关键字
-    const skipClassKeywords = [ 'octicon', 'anim-', 'btn', 'menu', 'icon', 'Avatar', 'repo', 'branch', 'commits', 'issues', 'pull', 'directory', 'filename'];
+    const skipClassKeywords = ['octicon', 'anim-', 'btn', 'menu', 'icon', 'Avatar', 'repo', 'branch', 'commits', 'issues', 'pull', 'directory', 'filename', 'Counter', 'topic-tag', 'social-count', 'State', 'Label', 'color-fg-', 'text-bold', 'text-small', 'UnderlineNav'];
     
     if (node.className && typeof node.className === 'string') {
         for (const keyword of skipClassKeywords) {
@@ -670,6 +726,27 @@ function shouldSkipGitHubElement(node: any): boolean {
     // 忽略图标
     if (node.tagName?.toLowerCase() === 'svg') {
         debugLog('GitHub', 'SVG图标跳过');
+        return true;
+    }
+    
+    // 检查是否为统计数字和计数（例如：16.3k stars, 854 watching等）
+    const statCountPattern = /^\s*\d+(\.\d+)?[kKmMbB]?\s*(stars|watching|forks|views|issues|pull|commits|watchers)?\s*$/;
+    if (statCountPattern.test(node.textContent?.trim())) {
+        debugLog('GitHub', '统计数字跳过', node.textContent);
+        return true;
+    }
+    
+    // 检查是否为仓库标签文本
+    if (node.className?.includes('topic-tag-link') || 
+        node.className?.includes('topic-tag') || 
+        node.parentElement?.className?.includes('topic-tag')) {
+        debugLog('GitHub', '仓库标签跳过', node.textContent);
+        return true;
+    }
+    
+    // 检查是否为许可证文本
+    if (/^Apache-[\d.]+|MIT|GPL-[\d.]+|BSD|LGPL/.test(node.textContent?.trim())) {
+        debugLog('GitHub', '许可证文本跳过', node.textContent);
         return true;
     }
     
