@@ -1,4 +1,4 @@
-# FluentRead
+# FluentRead(Open Immersive Translate)
 
 > [中文](https://github.com/Bistutu/FluentRead/blob/main/README.md) | English
 

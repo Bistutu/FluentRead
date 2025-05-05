@@ -2,6 +2,8 @@
 
 > [English](https://github.com/Bistutu/FluentRead/blob/main/misc/README_EN.md) | 中文
 
+Open Immersive Translate 开源的沉浸式翻译。
+
 一款革命性的浏览器开源翻译插件，让所有人都能够拥有母语般的阅读体验。
 
 1. [官方文档（必看）](https://fluent.thinkstu.com/)

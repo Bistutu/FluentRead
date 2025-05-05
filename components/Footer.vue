@@ -33,12 +33,12 @@
       class="donate-dialog"
     >
       <div class="donate-content">
-        <p class="donate-text">如果您觉得这个插件对您有帮助，<br>可以通过微信👇🏻赞赏作者一杯咖啡
+        <p class="donate-text">如果你觉得这个插件对您有帮助，<br>可以通过微信👇🏻赞赏作者一杯咖啡
           <el-icon class="donate-icon"><Coffee /></el-icon> </p>
         <div class="qrcode-container">
           <img src="/misc/approve.jpg" alt="赞赏码" class="qrcode-image" />
         </div>
-        <p class="donate-thanks">感谢您的支持！❤️</p>
+        <p class="donate-thanks">感谢你的支持！❤️</p>
       </div>
     </div>
   </div>
