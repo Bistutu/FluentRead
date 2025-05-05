@@ -12,6 +12,8 @@ A revolutionary open-source browser translation plugin that provides everyone wi
 
 - **Smart Translation**: Supports 20+ translation engines, including traditional translation and AI large language models, such as Microsoft Translator, Google Translate, DeepL, OpenAI, DeepSeek, Kimi, Ollama, custom engines, etc.
 - **Bilingual Display**: Supports side-by-side display of original text and translation for easier reading.
+- **Text Selection Translation**: Select any text to get instant translation, with one-click copying of translated content, improving reading efficiency.
+- **Full Page Translation**: One-click translation of entire webpages via a floating ball, switchable without page refresh.
 - **Privacy Protection**: All data is stored locally, with open-source and transparent code.
 - **Highly Customizable**: Rich customization options to meet various use cases.
 - **Completely Free**: Open-source and free, non-commercial project.

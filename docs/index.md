@@ -24,9 +24,9 @@ features:
   - icon: 🥳
     title: 双语翻译
     details: 支持多语言双语翻译，让阅读更加便捷
-  - icon: 🤩
-    title: 高度可定制
-    details: 支持多个翻译引擎，可自定义翻译规则和快捷键
+  - icon: ✂️
+    title: 划词翻译
+    details: 选中文本即可查看翻译，一键复制译文，提高学习效率
   - icon: 😙
     title: 开源免费
     details: 开源免费，非商业化项目
