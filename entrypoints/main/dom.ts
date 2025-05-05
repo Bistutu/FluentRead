@@ -113,6 +113,11 @@ export function grabNode(node: any): any {
     const domainHandler = selectCompatFn[getMainDomain(location.href.split('?')[0])];
     if (domainHandler) {
         const result = domainHandler(node);
+        // 如果返回的是对象且包含skip属性为true，则跳过该节点
+        if (result && typeof result === 'object' && 'skip' in result && result.skip === true) {
+            return false;
+        }
+        // 如果返回值为节点或其他真值，则返回该值作为翻译节点
         if (result) return result;
     }
 

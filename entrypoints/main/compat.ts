@@ -3,9 +3,55 @@
 import {findMatchingElement} from "@/entrypoints/utils/common";
 
 type ReplaceFunction = (node: any, text: any) => any;
-type SelectFunction = (node: any) => any;
+type SelectFunction = (node: any) => any | {skip: boolean} | false;
 
 const parser = new DOMParser();
+
+// 调试相关
+const isDev = process.env.NODE_ENV === 'development';
+
+/**
+ * 调试日志函数，只在开发模式下输出
+ * @param type 日志类型
+ * @param message 日志消息
+ * @param ...args 日志参数
+ */
+function debugLog(type: string, message: string, ...args: any[]): void {
+  if (!isDev) return;
+
+  // 为不同类型设置不同颜色
+  const colors: {[key: string]: string} = {
+    'Twitter': 'color: #1DA1F2; font-weight: bold',
+    'GitHub': 'color: #6e5494; font-weight: bold',
+    'StackOverflow': 'color: #f48024; font-weight: bold',
+    'Reddit': 'color: #FF4500; font-weight: bold',
+    'Medium': 'color: #00ab6c; font-weight: bold',
+    'Compat': 'color: #0366d6; font-weight: bold',
+    'Skip': 'color: #d73a49; font-weight: bold',
+    'Content': 'color: #28a745; font-weight: bold',
+    'Default': 'color: #24292e; font-weight: bold'
+  };
+  
+  const color = colors[type] || colors['Default'];
+  const prefix = `%c[FluentRead][${type}]`;
+  
+  // 根据日志类型决定是否需要分组
+  if (['Content', 'Skip'].includes(type) && args.length > 0) {
+    // 使用折叠分组，减少日志视觉干扰
+    console.groupCollapsed(prefix, color, message);
+    args.forEach((arg, index) => {
+      if (typeof arg === 'string') {
+        console.log(`参数${index + 1}:`, arg.substring(0, 100) + (arg.length > 100 ? '...' : ''));
+      } else {
+        console.log(`参数${index + 1}:`, arg);
+      }
+    });
+    console.groupEnd();
+  } else {
+    // 常规日志输出
+    console.log(prefix, color, message, ...args);
+  }
+}
 
 interface ReplaceCompatFn {
     [domain: string]: ReplaceFunction;
@@ -80,12 +126,26 @@ function isSpecialContent(text: string): boolean {
     if (/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(trimmedText)) return true;
     
     // 检查是否为社交媒体用户名格式
-    if (/^@\w+/.test(trimmedText) && trimmedText.length <= 24) return true;      // Twitter格式：@username
-    if (/^u\/\w+/.test(trimmedText) && trimmedText.length <= 24) return true;    // Reddit格式：u/username
+    if (/^@\w+$/.test(trimmedText)) return true;      // Twitter格式：@username
+    if (/^u\/\w+$/.test(trimmedText)) return true;    // Reddit格式：u/username
     
     // 检查是否为x.com或twitter.com的ID格式
     if (/^id@https?:\/\/(x\.com|twitter\.com)\/[\w-]+\/status\/\d+/.test(trimmedText)) return true;
     
+    // 检查是否为GitHub相关特殊内容
+    // GitHub Issue或PR编号
+    if (/^#\d+$/.test(trimmedText)) return true;
+    // GitHub仓库引用 user/repo#123
+    if (/^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+#\d+$/.test(trimmedText)) return true;
+    // GitHub 文件路径
+    if (/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+\/(blob|tree)\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-\/]+$/.test(trimmedText)) return true;
+    // GitHub提交哈希
+    if (/^[a-f0-9]{7,40}$/.test(trimmedText)) return true;
+    // 以.开头的文件名
+    if (/^\.[a-zA-Z0-9_.-]+$/.test(trimmedText)) return true;
+    // 以通过文件后缀结尾的
+    if (/^[a-zA-Z0-9_.-]+\.[a-zA-Z0-9_.-]+$/.test(trimmedText)) return true;
+
     // 检查是否为代码片段（简单判断，可能会有误判）
     if (/^[a-zA-Z0-9_]+\([^)]*\)/.test(trimmedText)) return true;  // 函数调用
     if (/^import\s+|^from\s+|^require\(/.test(trimmedText)) return true;  // 导入语句
@@ -123,7 +183,11 @@ export const selectCompatFn: SelectCompatFn = {
     },
     ['x.com']: (node: any) => {
         // 需要先检查是否为应该跳过的元素
-        if (shouldSkipTwitterElement(node)) return false;
+        if (shouldSkipTwitterElement(node)) {
+            // 开发模式下记录被跳过的Twitter元素
+            debugLog('Compat', '跳过Twitter元素:', node.textContent);
+            return { skip: true };
+        }
         
         // 个人简介
         const userDescription = findMatchingElement(node, 'div[data-testid="UserDescription"]'); 
@@ -150,13 +214,17 @@ export const selectCompatFn: SelectCompatFn = {
     },
     ['github.com']: (node: any) => {
         // 判断是否应该跳过该节点
-        if (shouldSkipGitHubElement(node)) return false;
+        if (shouldSkipGitHubElement(node)) {
+            return { skip: true };
+        }
+        
+        // 检查是否为目录节点
+        if (isGitHubPathOrFileName(node)) {
+            debugLog('GitHub', '目录/文件名跳过', node.textContent);
+            return { skip: true };
+        }
         
         // 首先翻译最重要的文本内容
-        
-        // README 内容和文档
-        const readmeContent = findMatchingElement(node, 'article.markdown-body');
-        if (readmeContent) return readmeContent;
         
         // 问题（Issue）和PR内容
         const issueBody = findMatchingElement(node, 'div.comment-body');
@@ -172,6 +240,10 @@ export const selectCompatFn: SelectCompatFn = {
         const issueTitle = findMatchingElement(node, 'div.js-issue-title');
         if (issueTitle) return issueTitle;
         
+        // PR描述
+        const prDescription = findMatchingElement(node, 'div.pull-request-review-comment');
+        if (prDescription) return prDescription;
+        
         // 仓库描述
         const repoDescription = findMatchingElement(node, 'p.f4.my-3');
         if (repoDescription) return repoDescription;
@@ -185,6 +257,10 @@ export const selectCompatFn: SelectCompatFn = {
         if (aboutText) return aboutText;
         
         // 最后翻译其他辅助内容
+        
+        // PR状态信息
+        const prStatus = findMatchingElement(node, 'div.merge-status-item span.status-meta');
+        if (prStatus) return prStatus;
         
         // 项目语言描述
         const languageDesc = findMatchingElement(node, 'div.f6.color-fg-muted.mt-2');
@@ -207,7 +283,9 @@ export const selectCompatFn: SelectCompatFn = {
     },
     ['stackoverflow.com']: (node: any) => {
         // 判断是否应该跳过该节点
-        if (shouldSkipStackOverflowElement(node)) return false;
+        if (shouldSkipStackOverflowElement(node)) {
+            return { skip: true };
+        }
         
         // 首先翻译最重要的内容
         
@@ -252,7 +330,9 @@ export const selectCompatFn: SelectCompatFn = {
     },
     ['medium.com']: (node: any) => {
         // 判断是否应该跳过该节点
-        if (shouldSkipMediumElement(node)) return false;
+        if (shouldSkipMediumElement(node)) {
+            return { skip: true };
+        }
         
         // 文章标题
         const articleTitle = findMatchingElement(node, 'h1');
@@ -291,7 +371,9 @@ export const selectCompatFn: SelectCompatFn = {
     },
     ['reddit.com']: (node: any) => {
         // 判断是否应该跳过该节点
-        if (shouldSkipRedditElement(node)) return false;
+        if (shouldSkipRedditElement(node)) {
+            return { skip: true };
+        }
         
         // 帖子标题
         const postTitle = findMatchingElement(node, 'h1, h3');
@@ -326,7 +408,9 @@ export const selectCompatFn: SelectCompatFn = {
     },
     ['news.ycombinator.com']: (node: any) => {
         // 判断是否应该跳过该节点
-        if (shouldSkipHNElement(node)) return false;
+        if (shouldSkipHNElement(node)) {
+            return { skip: true };
+        }
         
         // 帖子标题
         const storyTitle = findMatchingElement(node, 'td.title a.titlelink');
@@ -355,13 +439,14 @@ export const selectCompatFn: SelectCompatFn = {
 function shouldSkipTwitterElement(node: any): boolean {
     // 检查是否为特殊内容（URL、邮箱、用户名等）
     if (node.textContent && isSpecialContent(node.textContent)) {
+        debugLog('Twitter', '特殊内容', node.textContent);
         return true;
     }
 
     // 如果当前节点或其祖先节点匹配这些选择器，则跳过
     const skipSelectors = [
         // 侧边栏导航
-        'nav[aria-label="Primary"]',
+        // 'nav[aria-label="Primary"]',
         'div[data-testid="sidebarColumn"]',
         // 趋势栏
         'div[aria-label="Timeline: Trending now"]',
@@ -399,53 +484,49 @@ function shouldSkipTwitterElement(node: any): boolean {
 
     // 检查当前节点是否匹配跳过选择器
     for (const selector of skipSelectors) {
-        if (node.matches?.(selector)) return true;
-        
-        // 检查祖先节点
-        let parent = node.parentElement;
-        while (parent) {
-            if (parent.matches?.(selector)) return true;
-            parent = parent.parentElement;
+        if (node.matches?.(selector)) {
+            debugLog('Twitter', '选择器匹配跳过', selector, node.textContent);
+            return true;
         }
     }
     
     // 检查节点的类名、属性等特征
     const nodeTag = node.tagName?.toLowerCase();
-    if (nodeTag === 'svg' || nodeTag === 'path' || nodeTag === 'g') return true;
-    
+    if (nodeTag === 'svg' || nodeTag === 'path' || nodeTag === 'g') {
+        debugLog('Twitter', 'SVG元素跳过', node.textContent);
+        return true;
+    }
+
     // 检查是否为操作按钮文本（点赞、转发、评论等）
-    if (node.textContent?.trim().match(/^(\d+|Like|Reply|Retweet|Share)$/)) return true;
+    if (node.textContent?.trim().match(/^(\d+|Like|Reply|Retweet|Share)$/)) {
+        debugLog('Twitter', '操作按钮跳过', node.textContent);
+        return true;
+    }
     
     // 检查是否为用户名或用户ID
     const textContent = node.textContent?.trim();
     if (textContent) {
         // 检查是否为用户名格式
-        if (textContent.startsWith('@')) return true;
+        if (textContent.startsWith('@')) {
+            debugLog('Twitter', '用户名跳过', node.textContent);
+            return true;
+        }
         
         // 检查是否为用户ID格式 
-        if (textContent.startsWith('id@')) return true;
+        if (textContent.startsWith('id@')) {
+            debugLog('Twitter', '用户ID跳过', node.textContent);
+            return true;
+        }
         
         // 检查是否包含关注字样
-        if (textContent.includes('关注') || textContent.includes('Follow')) return true;
-        
-        // 检查是否包含典型的用户名
-        const usernamePattern = /(\s|^)@?\w+(\s|$)/;
-        if (usernamePattern.test(textContent)) {
-            // 如果文本看起来像是包含用户名，检查是否在关注按钮或用户信息区域
-            if (textContent.length < 50) {  // 通常用户名相关文本较短
-                return true;
-            }
+        if (textContent.includes('关注') || textContent.includes('Follow')) {
+            debugLog('Twitter', '关注按钮跳过', node.textContent);
+            return true;
         }
         
         // 检查是否为Twitter用户名标签
         if (/^([A-Za-z0-9_]{1,15})$/.test(textContent)) {
-            return true;
-        }
-        
-        // 进一步检查是否包含用户名
-        // Twitter用户名通常是字母数字下划线组合，我们检查文本中是否存在这种模式
-        if (/\s+\w{1,15}\s*$/.test(textContent) ||  // 句尾有用户名
-            /^\s*\w{1,15}\s+/.test(textContent)) {  // 句首有用户名
+            debugLog('Twitter', '用户名标签跳过', node.textContent);
             return true;
         }
     }
@@ -453,24 +534,24 @@ function shouldSkipTwitterElement(node: any): boolean {
     // 检查常见的Twitter UI元素类名
     const classList = node.classList;
     if (classList) {
-        // 特别针对用户名的样式类
-        for (const className of classList) {
-            if (className === 'css-1jxf684' || className === 'r-poiln3' || 
-                className === 'css-146c3p1' || className === 'css-175oi2r') return true;
-        }
-        
         // Twitter常用的UI类名前缀
         for (const className of classList) {
             if (className.startsWith('r-') || className.startsWith('css-')) {
                 // 进一步检查节点内容是否为纯UI元素
                 const text = node.textContent?.trim();
-                if (!text || text.length < 10) return true;
+                if (!text || text.length < 10) {
+                    debugLog('Twitter', 'UI元素跳过', node.textContent);
+                    return true;
+                }
             }
         }
     }
     
     // 检查ID属性
-    if (node.id && node.id.startsWith('id__')) return true;
+    if (node.id && node.id.startsWith('id__')) {
+        debugLog('Twitter', 'ID属性跳过', node.textContent);
+        return true;
+    }
     
     return false;
 }
@@ -481,6 +562,13 @@ function shouldSkipTwitterElement(node: any): boolean {
 function shouldSkipGitHubElement(node: any): boolean {
     // 检查是否为特殊内容（URL、邮箱、用户名等）
     if (node.textContent && isSpecialContent(node.textContent)) {
+        debugLog('GitHub', '特殊内容跳过', node.textContent);
+        return true;
+    }
+    
+    // 判断是否为目录名称或路径
+    if (isGitHubPathOrFileName(node)) {
+        debugLog('GitHub', '目录/文件名跳过', node.textContent);
         return true;
     }
     
@@ -519,6 +607,15 @@ function shouldSkipGitHubElement(node: any): boolean {
         'span.js-hidden-pane-button',
         // 文件树
         'div.js-details-container Details',
+        'div.Box-row',
+        // 目录文件名相关
+        'div.react-directory-filename-column',
+        'div.react-directory-filename-cell',
+        'div.react-directory-truncate',
+        'div[class*="directory-"]', // 匹配所有包含directory-的类名
+        'a[title][aria-label*="Directory"]',
+        'a[title][aria-label*="File"]',
+        'a.js-navigation-open',
         // 底部
         'footer',
         // 用户名相关
@@ -526,38 +623,150 @@ function shouldSkipGitHubElement(node: any): boolean {
         'span.author',
         'a.user-mention', // @提及
         'a.commit-author',
+        'a.Link--primary', // 文件名和目录链接
+        // Pull Request和Issue相关元素
+        'div.merge-status-list',
+        'div.js-navigation-container',
+        'span.State', // PR状态标签
+        'div.TimelineItem-badge',
+        'div.color-fg-muted', // 灰色提示文本
+        'div.Box-header',
+        'div.js-details-container', // 折叠的详情容器
+        'span.Link--secondary', // 次要链接文本
+        // 仓库元数据
+        'div.BorderGrid-row'
     ];
     
     // 检查当前节点是否匹配跳过选择器
     for (const selector of skipSelectors) {
-        if (node.matches?.(selector)) return true;
+        if (node.matches?.(selector)) {
+            debugLog('GitHub', '选择器匹配跳过', selector, node.textContent);
+            return true;
+        }
         
         // 检查祖先节点
         let parent = node.parentElement;
         while (parent) {
-            if (parent.matches?.(selector)) return true;
+            if (parent.matches?.(selector)) {
+                debugLog('GitHub', '祖先节点匹配跳过', selector, node.textContent);
+                return true;
+            }
             parent = parent.parentElement;
         }
     }
     
     // 检查节点的类名是否包含特定关键字
-    const skipClassKeywords = ['js-', 'octicon', 'anim-', 'btn', 'menu', 'icon', 'Avatar'];
+    const skipClassKeywords = ['js-', 'octicon', 'anim-', 'btn', 'menu', 'icon', 'Avatar', 'repo', 'branch', 'commits', 'issues', 'pull', 'directory', 'filename'];
     
     if (node.className && typeof node.className === 'string') {
         for (const keyword of skipClassKeywords) {
-            if (node.className.includes(keyword)) return true;
+            if (node.className.includes(keyword)) {
+                debugLog('GitHub', '类名关键字跳过', keyword, node.className);
+                return true;
+            }
         }
     }
     
     // 检查是否为用户名或@提及
-    if (node.textContent?.trim().startsWith('@')) return true;
+    if (node.textContent?.trim().startsWith('@')) {
+        debugLog('GitHub', '用户名@提及跳过', node.textContent);
+        return true;
+    }
     
     // 忽略代码片段
-    if (node.tagName?.toLowerCase() === 'pre' || node.tagName?.toLowerCase() === 'code') return true;
+    if (node.tagName?.toLowerCase() === 'pre' || node.tagName?.toLowerCase() === 'code') {
+        debugLog('GitHub', '代码片段跳过', node.tagName);
+        return true;
+    }
     
     // 忽略图标
-    if (node.tagName?.toLowerCase() === 'svg') return true;
+    if (node.tagName?.toLowerCase() === 'svg') {
+        debugLog('GitHub', 'SVG图标跳过');
+        return true;
+    }
     
+    return false;
+}
+
+/**
+ * 判断节点是否包含GitHub的路径或文件名
+ */
+function isGitHubPathOrFileName(node: any): boolean {
+    if (!node || !node.textContent) return false;
+    
+    const text = node.textContent.trim();
+    if (!text) return false;
+
+    // 检查节点是否为导航路径元素
+    if (node.matches?.('nav[aria-label="Breadcrumb"]') || 
+        node.matches?.('span.final-path') || 
+        node.matches?.('span.js-repo-root') ||
+        node.matches?.('a[title][aria-label*="Directory"]') ||
+        node.matches?.('a[title][aria-label*="File"]')) {
+        return true;
+    }
+    
+    // 检查父元素是否为目录元素
+    let parent = node.parentElement;
+    while (parent) {
+        if (parent.matches?.('div.react-directory-filename-column') || 
+            parent.matches?.('div.react-directory-filename-cell') ||
+            parent.matches?.('div.react-directory-truncate') ||
+            parent.className?.includes('directory-')) {
+            return true;
+        }
+        parent = parent.parentElement;
+    }
+    
+    // 检查是否为目录链接
+    if (node.tagName?.toLowerCase() === 'a' && 
+        (node.getAttribute('aria-label')?.includes('Directory') || 
+         node.getAttribute('title') || 
+         node.className?.includes('Link--primary'))) {
+        return true;
+    }
+    
+    // 检查是否为常见目录或文件名
+    if (/^\.github|^src\/|^test\/|^docs\/|^\.gitignore$|^LICENSE$|^README\.md$|^CHANGELOG\.md$|^package\.json$|^Dockerfile$|/i.test(text)) {
+        // 如果当前节点是链接或者在文件列表中
+        if (node.tagName?.toLowerCase() === 'a' || 
+            node.parentElement?.matches?.('div.Box-row')) {
+            return true;
+        }
+    }
+    
+    // 检查是否为路径格式（包含/的短文本）
+    if (text.includes('/') && text.length < 100 && 
+        !/\s/.test(text) && // 不包含空格
+        !/[，。？！；：""''（）【】「」『』〔〕]/.test(text)) { // 不包含中文标点
+        return true;
+    }
+    
+    // 检查是否为常见的开发相关文件扩展名
+    if (/\.(js|ts|jsx|tsx|css|scss|html|json|md|py|java|go|rs|c|cpp|h|hpp|rb|php|sh|bat|cmd|yaml|yml|xml)$/i.test(text)) {
+        return true;
+    }
+    
+    // 检查是否为Issue/PR编号格式
+    if (/^#\d+$/.test(text) || /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+#\d+$/.test(text)) {
+        return true;
+    }
+
+    // 包含 - 且长度不超过16
+    if (text.includes('-') && text.length <= 16) {
+        return true;
+    }
+
+    // 包含 _ 且长度不超过16
+    if (text.includes('_') && text.length <= 16) {
+        return true;
+    }
+
+    // 包含 . 且长度不超过16
+    if (text.includes('.') && text.length <= 16) {
+        return true;
+    }
+
     return false;
 }
 
