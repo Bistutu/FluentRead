@@ -26,6 +26,7 @@ function debugLog(type: string, message: string, ...args: any[]): void {
     'StackOverflow': 'color: #f48024; font-weight: bold',
     'Reddit': 'color: #FF4500; font-weight: bold',
     'Medium': 'color: #00ab6c; font-weight: bold',
+    'YouTube': 'color: #FF0000; font-weight: bold',  // 添加YouTube的颜色
     'Compat': 'color: #0366d6; font-weight: bold',
     'Skip': 'color: #d73a49; font-weight: bold',
     'Content': 'color: #28a745; font-weight: bold',
@@ -36,7 +37,7 @@ function debugLog(type: string, message: string, ...args: any[]): void {
   const prefix = `%c[FluentRead][${type}]`;
   
   // 根据日志类型决定是否需要分组
-  if (['Content', 'Skip'].includes(type) && args.length > 0) {
+  if (['Content', 'Skip', 'YouTube', 'GitHub', 'Twitter'].includes(type) && args.length > 0) {
     // 使用折叠分组，减少日志视觉干扰
     console.groupCollapsed(prefix, color, message);
     args.forEach((arg, index) => {
@@ -160,9 +161,46 @@ function isSpecialContent(text: string): boolean {
 // 文本替换环节的兼容函数，主域名 : 兼容函数
 export const replaceCompatFn: ReplaceCompatFn = {
     ["youtube.com"]: (node: any, text: any) => {
+        // 使用DOMParser解析翻译后的HTML
         const doc = parser.parseFromString(text, 'text/html');
         const newNode = doc.body.firstChild as HTMLElement;
-        node.innerHTML = newNode.innerHTML
+        
+        // 针对YouTube特有的格式化字符串进行特殊处理
+        if (node.tagName.toLowerCase() === 'yt-formatted-string') {
+            // 尝试保留原有的属性和样式
+            if (node.hasAttribute('has-link-only_')) {
+                node.innerHTML = newNode.innerHTML;
+                return;
+            }
+            
+            // 处理具有特殊格式的内容
+            if (node.querySelector('a') || node.querySelector('span')) {
+                // 尝试保留链接和格式，但更新文本内容
+                const links = node.querySelectorAll('a');
+                const spans = node.querySelectorAll('span');
+                
+                if (links.length > 0 || spans.length > 0) {
+                    // 创建临时元素存储新文本
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = newNode.innerHTML;
+                    
+                    // 保留原有的链接和格式元素
+                    node.childNodes.forEach((child: Node) => {
+                        if (child.nodeType === Node.ELEMENT_NODE) {
+                            // 保留原有的HTML元素
+                            if (child.nodeName.toLowerCase() === 'a' || child.nodeName.toLowerCase() === 'span') {
+                                // 更新元素内容，但保留属性
+                                (child as HTMLElement).textContent = tempDiv.textContent || '';
+                            }
+                        }
+                    });
+                    return;
+                }
+            }
+        }
+        
+        // 默认处理：直接替换innerHTML
+        node.innerHTML = newNode.innerHTML;
     }
 };
 
@@ -175,7 +213,93 @@ export const selectCompatFn: SelectCompatFn = {
         if (node.tagName.toLowerCase() === 'div' && node.classList.contains('main_text')) return node
     },
     ["youtube.com"]: (node: any) => {
-        if (node.tagName.toLowerCase() === 'yt-formatted-string') return node
+        // 检查是否应该跳过该节点
+        if (shouldSkipYouTubeElement(node)) {
+            debugLog('Compat', '跳过YouTube元素:', node.textContent);
+            return { skip: true };
+        }
+        
+        // 视频标题
+        const videoTitle = findMatchingElement(node, 'h1.title');
+        if (videoTitle) {
+            debugLog('YouTube', '翻译视频标题', videoTitle.textContent);
+            return videoTitle;
+        }
+        
+        // 视频描述
+        const videoDescription = findMatchingElement(node, 'div#description-inline-expander');
+        if (videoDescription) {
+            debugLog('YouTube', '翻译视频描述', videoDescription.textContent?.substring(0, 50) + '...');
+            return videoDescription;
+        }
+        
+        // 评论内容
+        const commentContent = findMatchingElement(node, 'yt-formatted-string#content-text');
+        if (commentContent) {
+            debugLog('YouTube', '翻译评论内容', commentContent.textContent);
+            return commentContent;
+        }
+        
+        // 频道简介
+        const channelDescription = findMatchingElement(node, 'div#description');
+        if (channelDescription) {
+            debugLog('YouTube', '翻译频道简介', channelDescription.textContent?.substring(0, 50) + '...');
+            return channelDescription;
+        }
+
+        // 播放列表描述
+        const playlistDescription = findMatchingElement(node, 'yt-formatted-string.ytd-playlist-panel-renderer');
+        if (playlistDescription) {
+            debugLog('YouTube', '翻译播放列表描述', playlistDescription.textContent);
+            return playlistDescription;
+        }
+        
+        // 视频卡片标题
+        const videoCardTitle = findMatchingElement(node, 'yt-formatted-string.ytd-compact-video-renderer');
+        if (videoCardTitle) {
+            debugLog('YouTube', '翻译视频卡片标题', videoCardTitle.textContent);
+            return videoCardTitle;
+        }
+        
+        // 社区帖子内容
+        const communityPost = findMatchingElement(node, 'div#content');
+        if (communityPost && communityPost.closest('ytd-backstage-post-renderer')) {
+            debugLog('YouTube', '翻译社区帖子', communityPost.textContent?.substring(0, 50) + '...');
+            return communityPost;
+        }
+        
+        // 字幕内容
+        const captionText = findMatchingElement(node, 'span.captions-text');
+        if (captionText) {
+            debugLog('YouTube', '翻译字幕内容', captionText.textContent);
+            return captionText;
+        }
+        
+        // 视频信息文本 - 一般格式化字符串处理
+        if (node.tagName.toLowerCase() === 'yt-formatted-string' && 
+            node.textContent?.trim() &&
+            node.textContent.length > 5) {
+            // 检查是否不在按钮或控制区域内
+            let isInControl = false;
+            let parent = node.parentElement;
+            while (parent) {
+                if (parent.id === 'top-level-buttons-computed' || 
+                    parent.id === 'subscribe-button' || 
+                    parent.classList?.contains('ytd-menu-renderer')) {
+                    isInControl = true;
+                    break;
+                }
+                parent = parent.parentElement;
+            }
+            
+            if (!isInControl) {
+                debugLog('YouTube', '翻译格式化字符串', node.textContent);
+                return node;
+            }
+        }
+        
+        // 默认不翻译
+        return false;
     },
     ['webtrees.net']: (node: any) => {
         // class='kmsg'
@@ -1059,6 +1183,183 @@ function shouldSkipHNElement(node: any): boolean {
     // 检查节点文本是否为纯按钮/链接文本
     const skipTexts = ['reply', 'flag', 'favorite', 'hide', 'past', 'web', 'comments', 'ask', 'show', 'jobs', 'submit'];
     if (node.textContent && skipTexts.includes(node.textContent.trim().toLowerCase())) {
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * 判断是否应该跳过YouTube网站上的特定元素
+ */
+function shouldSkipYouTubeElement(node: any): boolean {
+    // 检查是否为特殊内容（URL、邮箱、用户名等）
+    if (node.textContent && isSpecialContent(node.textContent)) {
+        debugLog('YouTube', '特殊内容跳过', node.textContent);
+        return true;
+    }
+    
+    // 如果当前节点或其祖先节点匹配这些选择器，则跳过
+    const skipSelectors = [
+        // 导航和菜单相关
+        'div#masthead-container', // 顶部导航栏
+        'div#guide-content', // 左侧菜单
+        'ytd-mini-guide-renderer', // 迷你导航
+        'div#buttons', // 按钮区域
+        'ytd-topbar-menu-button-renderer', // 顶部菜单按钮
+        'ytd-guide-entry-renderer', // 导航入口
+        'ytd-guide-section-renderer h3', // 导航区标题
+        'div#channel-header', // 频道头部区域
+        'div#channel-navigation', // 频道导航区域
+        
+        // 视频控制相关
+        'div.ytp-chrome-bottom', // 播放器底部控制栏
+        'div.ytp-chrome-top', // 播放器顶部控制栏
+        'div.ytp-right-controls', // 右侧控制
+        'div.ytp-left-controls', // 左侧控制
+        'div.ytp-progress-bar-container', // 进度条容器
+        'span.ytp-time-current', // 当前时间
+        'span.ytp-time-duration', // 视频总时长
+        'button.ytp-button', // 所有播放器按钮
+        'div.ytp-chapter-container', // 章节容器
+        
+        // 统计和互动区域
+        'div#info-contents ytd-video-primary-info-renderer div#top-level-buttons-computed', // 点赞/分享按钮
+        'span#dot', // 分隔点
+        'span.ytd-video-view-count-renderer', // 观看次数
+        'span.ytd-video-owner-renderer', // 频道信息区域
+        'div#owner', // 视频所有者区域
+        'a.ytd-video-owner-renderer', // 频道链接
+        'ytd-subscribe-button-renderer', // 订阅按钮
+        'div.ytd-subscribe-button-renderer', // 订阅按钮渲染器
+        'ytd-button-renderer', // 按钮渲染器
+        'ytd-menu-renderer', // 菜单渲染器
+        'ytd-badge-supported-renderer', // 徽章支持渲染器
+        'div#sponsor-button', // 赞助按钮
+        
+        // 评论区控制元素
+        'div#action-buttons', // 评论操作按钮
+        'ytd-toggle-button-renderer', // 切换按钮
+        'div#vote-count-middle', // 评论投票计数
+        'ytd-comments-header-renderer', // 评论头部渲染器
+        'div#title.ytd-comments-header-renderer', // 评论标题
+        'span.ytd-comments-header-renderer', // 评论数量
+        'ytd-sort-filter-sub-menu-renderer', // 评论排序选项
+        'ytd-comment-action-buttons-renderer', // 评论操作按钮
+        
+        // 内容卡片和元数据
+        'div.ytd-metadata-row-container-renderer', // 元数据行
+        'div#subscribe-button', // 订阅按钮
+        'span.ytd-channel-name', // 频道名称
+        'div#owner-sub-count', // 订阅者数量
+        'div.ytd-watch-metadata yt-formatted-string[is-empty]', // 空格式化字符串
+        'ytd-metadata-row-renderer', // 元数据行
+        'div#above-the-fold', // 页面顶部区域
+        'div#primary-inner ytd-merch-shelf-renderer', // 商品架
+        'div.ytd-structured-description-content-renderer', // 结构化描述内容
+        'ytd-info-panel-content-renderer', // 信息面板内容
+        'ytd-info-panel-container-renderer', // 信息面板容器
+        
+        // 缩略图和推荐视频信息
+        'span.ytd-thumbnail-overlay-time-status-renderer', // 视频时长
+        'span.ytd-video-meta-block', // 视频元数据块
+        'div#metadata-line', // 元数据行
+        'span.ytd-grid-video-renderer', // 网格视频渲染器
+        'div#video-title.ytd-grid-video-renderer', // 视频网格标题
+        'a.yt-simple-endpoint.ytd-grid-video-renderer', // 视频网格链接
+        'ytd-thumbnail', // 缩略图
+        'div#hover-overlays', // 悬停叠加层
+        
+        // 其他UI元素
+        'button', // 所有按钮
+        'yt-icon', // YouTube图标
+        'a.yt-simple-endpoint[href^="/hashtag/"]', // 话题标签链接
+        'a.yt-simple-endpoint[href^="/channel/"]', // 频道链接
+        'div#text.ytd-channel-name', // 频道名文本
+        'span.yt-core-attributed-string--link-inherit-color', // 特定格式化字符串
+        'ytd-notification-topbar-button-renderer', // 通知按钮
+        'ytd-searchbox', // 搜索框
+        'ytd-dropdown-renderer', // 下拉菜单
+        'ytd-live-chat-frame', // 直播聊天
+        'ytd-playlist-header-renderer div#stats', // 播放列表统计数据
+        'ytd-playlist-panel-renderer div#header-count', // 播放列表计数
+        'ytd-playlist-panel-renderer div#play-button', // 播放列表播放按钮
+        'ytd-playlist-panel-renderer a.ytd-playlist-panel-video-renderer', // 播放列表视频链接
+        'ytd-playlist-byline-renderer', // 播放列表署名
+    ];
+    
+    // 检查当前节点是否匹配跳过选择器
+    for (const selector of skipSelectors) {
+        if (node.matches?.(selector)) {
+            debugLog('YouTube', '选择器匹配跳过', selector, node.textContent);
+            return true;
+        }
+    }
+    
+    // 检查节点的类名是否包含特定关键字
+    const skipClassKeywords = ['ytp-', 'button', 'badge', 'menu', 'selector', 'icon', 'thumbnail', 'avatar'];
+    
+    if (node.className && typeof node.className === 'string') {
+        for (const keyword of skipClassKeywords) {
+            if (node.className.includes(keyword)) {
+                debugLog('YouTube', '类名关键字跳过', keyword, node.className);
+                return true;
+            }
+        }
+    }
+    
+    // 检查文本内容特征
+    const textContent = node.textContent?.trim();
+    if (textContent) {
+        // 跳过纯数字、视图计数、日期等
+        if (/^\d+(\.\d+)?[KMB]?$/.test(textContent)) {
+            debugLog('YouTube', '数字计数跳过', textContent);
+            return true;
+        }
+        
+        // 跳过视频时长格式
+        if (/^\d+:\d+$/.test(textContent) || /^\d+:\d+:\d+$/.test(textContent)) {
+            debugLog('YouTube', '时间格式跳过', textContent);
+            return true;
+        }
+        
+        // 跳过视图计数和日期组合
+        if (/^\d+(\.\d+)?[KMB]? views/.test(textContent) || 
+            /\d+ (days|months|years) ago$/.test(textContent) ||
+            /^\d+(\.\d+)?[KMB]? watching now$/.test(textContent)) {
+            debugLog('YouTube', '视图计数/日期跳过', textContent);
+            return true;
+        }
+        
+        // 跳过YouTube常用单词和短语
+        const skipPhrases = [
+            'Subscribe', 'subscribed', 'subscribers', 'Join', 'Share', 'Save', 
+            'Report', 'Download', 'Add to', 'Show more', 'Show less', 
+            'Like', 'Dislike', 'Reply', 'Sort by', 'Top comments', 'Newest first',
+            'Edit', 'View', 'playlist', 'Autoplay', 'Cast', 'Settings', 'Play',
+            'Pause', 'Stream', 'Live', 'Premiere', 'Premieres', 'Premiered',
+            'Skip', 'Next', 'Previous', 'Shuffle', 'Transcript', 'Captions',
+            'Quality', 'Playback speed', 'More', 'Stats for nerds'
+        ];
+        
+        for (const phrase of skipPhrases) {
+            if (textContent.includes(phrase) && textContent.length < 30) {
+                debugLog('YouTube', '特定短语跳过', phrase, textContent);
+                return true;
+            }
+        }
+        
+        // 检查是否为频道名/@用户名
+        if (/^@\w+$/.test(textContent) || 
+            (textContent.startsWith('@') && textContent.length < 30)) {
+            debugLog('YouTube', '频道/用户名跳过', textContent);
+            return true;
+        }
+    }
+    
+    // 忽略图标和图像
+    if (node.tagName?.toLowerCase() === 'svg' || node.tagName?.toLowerCase() === 'img') {
+        debugLog('YouTube', '图标/图像跳过');
         return true;
     }
     
