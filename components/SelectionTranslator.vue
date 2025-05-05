@@ -16,16 +16,34 @@
          @mouseleave="handleMouseLeaveTooltip">
       <div class="tooltip-header">
         <span>翻译结果</span>
-        <button class="close-btn" @click="closeTooltip">×</button>
+        <div class="tooltip-actions">
+          <button class="copy-btn" @click="copyTranslation" title="复制译文">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+          <button class="close-btn" @click="closeTooltip">×</button>
+        </div>
       </div>
       <div class="tooltip-content">
         <div v-if="isLoading" class="loading-spinner"></div>
         <div v-else-if="error" class="error-message">{{ error }}</div>
-        <div v-else>
-          <div class="original-text">{{ selectedText }}</div>
-          <div class="translation-result">{{ translationResult }}</div>
+        <div v-else class="translation-container">
+          <div class="original-text user-select-text">{{ selectedText }}</div>
+          <div class="translation-result user-select-text">{{ translationResult }}</div>
         </div>
       </div>
+    </div>
+    
+    <!-- 复制成功提示 -->
+    <div v-if="copySuccess" class="copy-success-toast">
+      <div class="copy-success-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
+      <span>复制译文成功!</span>
     </div>
   </teleport>
 </template>
@@ -45,6 +63,7 @@ const isLoading = ref(false);
 const error = ref('');
 const hideTooltipTimer = ref<number | null>(null);
 const isHoveringTooltip = ref(false);
+const copySuccess = ref(false);
 
 // 计算小红点指示器的样式
 const indicatorStyle = computed(() => {
@@ -130,7 +149,7 @@ const setHideTooltipTimer = () => {
   clearHideTooltipTimer();
   hideTooltipTimer.value = window.setTimeout(() => {
     showTooltip.value = false;
-  }, 1000); // 1秒后隐藏
+  }, 250); // 250毫秒后隐藏
 };
 
 // 清除隐藏弹窗的定时器
@@ -169,6 +188,25 @@ const getTranslation = async () => {
   } finally {
     isLoading.value = false;
   }
+};
+
+// 复制翻译文本
+const copyTranslation = () => {
+  if (!translationResult.value) return;
+  
+  // 使用navigator.clipboard API复制文本
+  navigator.clipboard.writeText(translationResult.value)
+    .then(() => {
+      // 显示复制成功消息
+      copySuccess.value = true;
+      // 1.5秒后隐藏消息
+      setTimeout(() => {
+        copySuccess.value = false;
+      }, 1500);
+    })
+    .catch(err => {
+      console.error('复制失败:', err);
+    });
 };
 
 // 监听事件
@@ -248,6 +286,30 @@ onBeforeUnmount(() => {
   position: sticky; /* 使header粘性定位 */
   top: 0;
   z-index: 1;
+}
+
+.tooltip-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.copy-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.copy-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #333;
 }
 
 .close-btn {
@@ -357,5 +419,66 @@ onBeforeUnmount(() => {
 
 :root.dark .tooltip-content::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.3);
+}
+
+.translation-container {
+  position: relative;
+}
+
+.user-select-text {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  cursor: text;
+}
+
+.copy-success-toast {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 10010;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  animation: toast-fade 1.5s ease forwards;
+}
+
+.copy-success-icon {
+  color: #52c41a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes toast-fade {
+  0% { opacity: 0; transform: translate(-50%, -40%); }
+  20% { opacity: 1; transform: translate(-50%, -50%); }
+  80% { opacity: 1; transform: translate(-50%, -50%); }
+  100% { opacity: 0; transform: translate(-50%, -60%); }
+}
+
+:root.dark .copy-success-toast {
+  background-color: rgba(0, 0, 0, 0.85);
+}
+
+:root.dark .copy-success-icon {
+  color: #73d13d;
+}
+
+:root.dark .copy-btn {
+  color: #bbb;
+}
+
+:root.dark .copy-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #eee;
 }
 </style> 
