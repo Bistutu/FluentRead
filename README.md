@@ -1,18 +1,20 @@
 # 流畅阅读 (FluentRead)
 
-> 官方文档：https://fluent.thinkstu.com/
+> [English](https://github.com/Bistutu/FluentRead/blob/main/misc/README_EN.md) | 中文
 
-[English](https://github.com/Bistutu/FluentRead/blob/main/misc/README_EN.md) | 中文
+一款革命性的浏览器开源翻译插件，让所有人都能够拥有母语般的阅读体验。
 
-一款革新性的浏览器开源翻译插件，让所有人都能够拥有母语般的阅读体验。[B站视频介绍](https://www.bilibili.com/video/BV1ux4y1e73x/)
+1. [官方文档（必看）](https://fluent.thinkstu.com/)
+2. [B站视频介绍](https://www.bilibili.com/video/BV1ux4y1e73x/)
+3. [deepwiki 架构介绍](https://deepwiki.com/Bistutu/FluentRead)
 
 ## 🌟 特性
 
-- **智能翻译**：支持 20+ 种翻译引擎，包括传统翻译和 AI 大模型。如：微软翻译、谷歌翻译、DeepL翻译、OpenAI、DeepSeek、Kimi、SiliconCloud、Ollama、自定义引擎等。
-- **双语对照**：支持原文与译文并列显示，让阅读更轻松
-- **隐私保护**：所有数据本地存储，代码开源透明
-- **高度定制**：丰富的自定义选项，满足不同场景需求
-- **完全免费**：开源免费，非商业化项目
+- **智能翻译**：支持 20+ 种翻译引擎，包括传统翻译和 AI 大模型。如：微软翻译、谷歌翻译、DeepL翻译、OpenAI、DeepSeek、Kimi、Ollama、自定义引擎等。
+- **双语对照**：支持原文与译文并列显示，让阅读更轻松。
+- **隐私保护**：所有数据本地存储，代码开源透明。
+- **高度定制**：丰富的自定义选项，满足不同场景需求。
+- **完全免费**：开源免费，非商业化项目。
 
 <kbd><img src="./misc/sample-git-1.gif" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
 
