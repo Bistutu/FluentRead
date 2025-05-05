@@ -24,6 +24,8 @@ Open Immersive Translate 开源的沉浸式翻译。
 
 <kbd><img src="./misc/sample-git-4.gif" alt="sample-git-4.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
 
+<kbd><img src="./misc/highlight_trans.png" alt="sample-git-4.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
+
 ## 📦 安装
 
 | 浏览器 | 安装方式 |
