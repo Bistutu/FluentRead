@@ -10,8 +10,14 @@
 
 直接使用以下命令启动 Ollama，允许跨域访问：
 
+对于Chrome扩展：
 ```bash
 OLLAMA_ORIGINS=chrome-extension://* ollama serve
+```
+
+对于Firefox扩展：
+```bash
+OLLAMA_ORIGINS=moz-extension://* ollama serve
 ```
 
 #### 方案二：配置环境变量
@@ -21,9 +27,17 @@ OLLAMA_ORIGINS=chrome-extension://* ollama serve
 ##### macOS 配置步骤
 
 1. 打开终端，执行以下命令：
+
+对于Chrome扩展：
 ```bash
 launchctl setenv OLLAMA_ORIGINS "chrome-extension://*"
 ```
+
+对于Firefox扩展：
+```bash
+launchctl setenv OLLAMA_ORIGINS "moz-extension://*"
+```
+
 2. 重启 Ollama 应用
 
 ##### Linux 配置步骤
@@ -34,9 +48,17 @@ systemctl edit ollama.service
 ```
 
 2. 在 [Service] 部分添加：
+
+对于Chrome扩展：
 ```ini
 [Service]
 Environment="OLLAMA_ORIGINS=chrome-extension://*"
+```
+
+对于Firefox扩展：
+```ini
+[Service]
+Environment="OLLAMA_ORIGINS=moz-extension://*"
 ```
 
 3. 重启服务：
@@ -53,7 +75,7 @@ systemctl restart ollama
 
 2. 添加新的环境变量：
    - 变量名：`OLLAMA_ORIGINS`
-   - 变量值：`chrome-extension://*`
+   - 变量值：`chrome-extension://*`（Chrome扩展）或 `moz-extension://*`（Firefox扩展）
 
 3. 保存设置并重启 Ollama
 
