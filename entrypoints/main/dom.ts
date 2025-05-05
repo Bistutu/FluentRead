@@ -148,16 +148,18 @@ function shouldSkipNode(node: any, tag: string): boolean {
     return skipSet.has(tag) ||
         node.classList?.contains('notranslate') ||
         node.isContentEditable ||
-        isTextTooLong(node) ||
+        checkTextSize(node) ||
         isMainlyNumericContent(node);
 }
 
 // 检查文本长度
-function isTextTooLong(node: any): boolean {
+function checkTextSize(node: any): boolean {
     // 1. 若文本内容长度超过 3072
     // 2. 或者 outerHTML 长度超过 4096，都视为过长
+    // 3. 少于3个字符
     return node.textContent.length > 3072 ||
-        (node.outerHTML && node.outerHTML.length > 4096);
+        (node.outerHTML && node.outerHTML.length > 4096) ||
+        node.textContent.length < 3;
 }
 
 // 检查节点内容是否主要为数字
@@ -241,8 +243,7 @@ function isUserIdentifier(text: string): boolean {
  * 10. 版本号 (例如: 1.0.0, 2.3.5-beta)
  * 11. ID格式 (例如: id@x.com/user/status/123456789)
  * 12. 用户名格式 (例如: @username, gunsnrosesgirl3)
- * 13. 少于3个字符
- * 14. #数字 格式的
+ * 13. #数字 格式的
  * 
  * 这些格式的数字和用户标识符通常不需要翻译，保持原样更有利于页面理解。
  */
@@ -253,9 +254,6 @@ function isNumericContent(text: string): boolean {
     const trimmedText = text.trim();
     if (!trimmedText) return false;
 
-    // 少于3个字符
-    if (trimmedText.length < 3) return true;
-    
     // 首先检查是否为用户标识符
     if (isUserIdentifier(trimmedText)) return true;
     
