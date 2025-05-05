@@ -241,6 +241,8 @@ function isUserIdentifier(text: string): boolean {
  * 10. 版本号 (例如: 1.0.0, 2.3.5-beta)
  * 11. ID格式 (例如: id@x.com/user/status/123456789)
  * 12. 用户名格式 (例如: @username, gunsnrosesgirl3)
+ * 13. 少于3个字符
+ * 14. #数字 格式的
  * 
  * 这些格式的数字和用户标识符通常不需要翻译，保持原样更有利于页面理解。
  */
@@ -250,6 +252,9 @@ function isNumericContent(text: string): boolean {
     // 去除空白字符
     const trimmedText = text.trim();
     if (!trimmedText) return false;
+
+    // 少于3个字符
+    if (trimmedText.length < 3) return true;
     
     // 首先检查是否为用户标识符
     if (isUserIdentifier(trimmedText)) return true;
@@ -294,7 +299,10 @@ function isNumericContent(text: string): boolean {
     // 匹配常见的数字ID格式
     if (/^ID[:：]?\s*\d+$/.test(trimmedText)) return true;
     if (/^No[\.:]?\s*\d+$/i.test(trimmedText)) return true;
-    
+
+    // #数字 格式的
+    if (/^#[\d]+$/.test(trimmedText)) return true;
+
     return false;
 }
 
