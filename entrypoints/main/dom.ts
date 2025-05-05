@@ -171,6 +171,9 @@ function isMainlyNumericContent(node: any): boolean {
     // 对于短文本，直接判断整体是否为数字格式
     if (text.length < 30 && isNumericContent(text)) return true;
     
+    // 检查是否为用户名或用户ID格式
+    if (isUserIdentifier(text)) return true;
+    
     // 对于较长的内容，检查是否主要为数字格式
     // 处理节点可能含有多个文本子节点的情况
     // 这有助于更精确地识别混合内容中的数字部分
@@ -196,6 +199,33 @@ function isMainlyNumericContent(node: any): boolean {
 }
 
 /**
+ * 检查文本是否为用户标识符（用户名、ID等）
+ */
+function isUserIdentifier(text: string): boolean {
+    if (!text || typeof text !== 'string') return false;
+    
+    const trimmedText = text.trim();
+    
+    // 检查是否为社交媒体用户名格式
+    if (/^@\w+/.test(trimmedText)) return true;  // Twitter格式：@username
+    if (/^u\/\w+/.test(trimmedText)) return true; // Reddit格式：u/username
+    
+    // 检查是否为x.com或twitter.com的ID格式
+    if (/^id@https?:\/\/(x\.com|twitter\.com)\/[\w-]+\/status\/\d+/.test(trimmedText)) return true;
+    
+    // 检查是否包含"关注"相关内容
+    if (/关注.*\w+/.test(trimmedText) || /Follow.*\w+/.test(trimmedText)) return true;
+    
+    // 检查是否为纯粹的用户名格式（字母、数字、下划线组合）
+    if (/^[A-Za-z0-9_]{1,15}$/.test(trimmedText)) return true;
+    
+    // 特殊格式：带点击动作的用户名
+    if (/点击.*\w+/.test(trimmedText) && trimmedText.length < 50) return true;
+    
+    return false;
+}
+
+/**
  * 检查文本是否为纯数字或标准数字格式
  * 
  * 识别以下数字格式：
@@ -209,8 +239,10 @@ function isMainlyNumericContent(node: any): boolean {
  * 8. 常见日期格式 (例如: 2023-01-01, 01/01/2023)
  * 9. 时间格式 (例如: 13:45:30, 9:30)
  * 10. 版本号 (例如: 1.0.0, 2.3.5-beta)
+ * 11. ID格式 (例如: id@x.com/user/status/123456789)
+ * 12. 用户名格式 (例如: @username, gunsnrosesgirl3)
  * 
- * 这些格式的数字通常不需要翻译，保持原样更有利于页面理解。
+ * 这些格式的数字和用户标识符通常不需要翻译，保持原样更有利于页面理解。
  */
 function isNumericContent(text: string): boolean {
     if (!text || typeof text !== 'string') return false;
@@ -218,6 +250,9 @@ function isNumericContent(text: string): boolean {
     // 去除空白字符
     const trimmedText = text.trim();
     if (!trimmedText) return false;
+    
+    // 首先检查是否为用户标识符
+    if (isUserIdentifier(trimmedText)) return true;
     
     // 如果包含多个单词，则不视为纯数字内容
     if (/\s+/.test(trimmedText.replace(/[\d,.\-%+]/g, ''))) return false;
@@ -252,6 +287,13 @@ function isNumericContent(text: string): boolean {
     
     // 匹配版本号 (例如: 1.0.0, 2.3.5-beta)
     if (/^\d+(\.\d+){1,3}(-[a-zA-Z0-9]+)?$/.test(trimmedText)) return true;
+    
+    // 匹配社交媒体的ID格式
+    if (/^id@https?:\/\/(x\.com|twitter\.com)\/[\w-]+\/status\/\d+/.test(trimmedText)) return true;
+    
+    // 匹配常见的数字ID格式
+    if (/^ID[:：]?\s*\d+$/.test(trimmedText)) return true;
+    if (/^No[\.:]?\s*\d+$/i.test(trimmedText)) return true;
     
     return false;
 }

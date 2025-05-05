@@ -79,19 +79,18 @@ export function autoTranslateEnglishPage() {
     // 如果已经在翻译中，则返回
     if (isAutoTranslating) return;
     
-    // 获取当前页面的语言
-    const text = document.documentElement.innerText || '';
-    const cleanText = text.replace(/[\s\u3000]+/g, ' ').trim().slice(0, 500);
+    // 获取当前页面的语言（暂时注释，存在识别问题）
+    // const text = document.documentElement.innerText || '';
+    // const cleanText = text.replace(/[\s\u3000]+/g, ' ').trim().slice(0, 500);
+    // const language = detectlang(cleanText);
+    // console.log('当前页面语言：', language);
+    // const to = config.to;
+    // if (to.includes(language)) {
+    //     console.log('目标语言与当前页面语言相同，不进行翻译');
+    //     return;
+    // }
+    // console.log('当前页面非目标语言，开始翻译');
 
-    const language = detectlang(cleanText);
-    console.log('当前页面语言：', language);
-    const to = config.to;
-    if (to.includes(language)) {
-        console.log('目标语言与当前页面语言相同，不进行翻译');
-        return;
-    }
-
-    console.log('当前页面非目标语言，开始翻译');
     // 获取所有需要翻译的节点
     const nodes = grabAllNode(document.body);
     if (!nodes.length) return;

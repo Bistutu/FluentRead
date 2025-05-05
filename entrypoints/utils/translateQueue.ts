@@ -22,9 +22,6 @@ export function enqueueTranslation<T>(translationTask: () => Promise<T>): Promis
   return new Promise((resolve, reject) => {
     // 创建任务包装器，在任务完成后处理队列状态
     const taskWrapper = async () => {
-      if (isDev) {
-        console.log(`[翻译队列] 开始执行翻译任务，当前活跃任务: ${activeTranslations}/${MAX_CONCURRENT_TRANSLATIONS}`);
-      }
       
       try {
         // 执行实际的翻译任务
@@ -39,9 +36,6 @@ export function enqueueTranslation<T>(translationTask: () => Promise<T>): Promis
         activeTranslations--;
         processQueue();
         
-        if (isDev) {
-          console.log(`[翻译队列] 翻译任务完成，剩余任务: ${pendingTranslations.length}, 活跃任务: ${activeTranslations}`);
-        }
       }
     };
 
@@ -51,10 +45,6 @@ export function enqueueTranslation<T>(translationTask: () => Promise<T>): Promis
       activeTranslations++;
       taskWrapper();
     } else {
-      // 将任务加入等待队列
-      if (isDev) {
-        console.log(`[翻译队列] 队列已满，任务进入等待状态。等待任务数: ${pendingTranslations.length + 1}`);
-      }
       pendingTranslations.push(taskWrapper);
     }
   });
@@ -81,9 +71,6 @@ function processQueue() {
  * 当页面切换或用户手动停止翻译时调用
  */
 export function clearTranslationQueue() {
-  if (isDev && pendingTranslations.length > 0) {
-    console.log(`[翻译队列] 清空翻译队列，取消 ${pendingTranslations.length} 个待处理任务`);
-  }
   
   pendingTranslations = [];
   // 不重置activeTranslations，让活跃的翻译任务自然完成
