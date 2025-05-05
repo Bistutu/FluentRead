@@ -6,7 +6,7 @@
     </el-col>
 
     <el-col :span="4" class="flex-end">
-      <el-switch v-model="config.on" inline-prompt active-text="开" inactive-text="关" />
+      <el-switch v-model="config.on" inline-prompt active-text="开" inactive-text="关" @change="handlePluginStateChange" />
     </el-col>
   </el-row>
 
@@ -496,7 +496,7 @@ const resetTemplate = () => {
 
 // 悬浮球开关的计算属性
 const floatingBallEnabled = computed({
-  get: () => !config.value.disableFloatingBall,
+  get: () => !config.value.disableFloatingBall && config.value.on,
   set: (value) => {
     config.value.disableFloatingBall = !value;
     // 向所有激活的标签页发送消息
@@ -518,6 +518,27 @@ const floatingBallEnabled = computed({
 // 监听开关变化
 const handleSwitchChange = () => {
   showRefreshTip.value = true;
+};
+
+// 处理插件状态变化
+const handlePluginStateChange = (val: boolean) => {
+  // 如果插件被关闭，确保悬浮球也被关闭
+  if (!val && !config.value.disableFloatingBall) {
+    config.value.disableFloatingBall = true;
+    // 向所有激活的标签页发送消息，关闭悬浮球
+    browser.tabs.query({}).then(tabs => {
+      tabs.forEach(tab => {
+        if (tab.id) {
+          browser.tabs.sendMessage(tab.id, { 
+            type: 'toggleFloatingBall',
+            isEnabled: false
+          }).catch(() => {
+            // 忽略发送失败的错误（可能是页面未加载内容脚本）
+          });
+        }
+      });
+    });
+  }
 };
 
 // 处理悬浮球开关变化
