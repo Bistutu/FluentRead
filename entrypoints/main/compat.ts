@@ -413,17 +413,6 @@ export const selectCompatFn: SelectCompatFn = {
         
         // 首先翻译最重要的内容
         
-        // 问题内容
-        const questionBody = findMatchingElement(node, 'div.js-post-body');
-        if (questionBody) return questionBody;
-        
-        // 回答内容
-        const answerBody = findMatchingElement(node, 'div.answer div.js-post-body');
-        if (answerBody) return answerBody;
-        
-        // 评论
-        const comment = findMatchingElement(node, 'div.comment-body');
-        if (comment) return comment;
         
         // 然后翻译次要但仍然重要的内容
         
