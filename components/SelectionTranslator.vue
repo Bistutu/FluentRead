@@ -30,8 +30,8 @@
         <div v-if="isLoading" class="loading-spinner"></div>
         <div v-else-if="error" class="error-message">{{ error }}</div>
         <div v-else class="translation-container">
-          <div class="original-text user-select-text">{{ selectedText }}</div>
-          <div class="translation-result user-select-text">{{ translationResult }}</div>
+          <div class="original-text no-select">{{ selectedText }}</div>
+          <div class="translation-result no-select">{{ translationResult }}</div>
         </div>
       </div>
     </div>
@@ -425,12 +425,33 @@ onBeforeUnmount(() => {
   position: relative;
 }
 
-.user-select-text {
-  user-select: text !important;
-  -webkit-user-select: text !important;
-  -moz-user-select: text !important;
-  -ms-user-select: text !important;
-  cursor: text;
+.no-select {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  cursor: default;
+}
+
+/* 移除不需要的选择样式 */
+.user-select-text::selection {
+  background-color: #409eff;
+  color: white;
+}
+
+.translation-result, .original-text {
+  padding: 8px;
+  border-radius: 4px;
+  transition: background-color 0.15s ease;
+}
+
+.translation-result:hover, .original-text:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+:root.dark .translation-result:hover, 
+:root.dark .original-text:hover {
+  background-color: rgba(255, 255, 255, 0.05);
 }
 
 .copy-success-toast {
