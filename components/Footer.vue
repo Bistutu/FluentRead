@@ -5,7 +5,7 @@
       次
     </p>
     <div class="footer-links">
-      <el-link class="action-link left" :class="{ 'failed': buttonText === '清除失败' }" @click="clearCache"
+      <el-link class="action-link left" :class="{ 'failed': buttonText === '清除失败', 'success': buttonText === '清除成功' }" @click="clearCache"
         :disabled="buttonDisabled">
         <el-icon v-if="showLoading">
           <Loading class="el-icon-loading" />
@@ -69,14 +69,17 @@ async function clearCache() {
     }
 
     // 发送消息到 content.js
-    await browser.tabs.sendMessage(tabs[0].id, { type: 'clearCache' });
+    await browser.tabs.sendMessage(tabs[0].id, { message: 'clearCache' });
+
+    // 显示成功状态
+    buttonText.value = "清除成功";
 
     // 恢复按钮状态
     setTimeout(() => {
       buttonDisabled.value = false;
       buttonText.value = '清除翻译缓存';
       showLoading.value = false;
-    }, 1000);
+    }, 1500);
 
   } catch (error) {
     console.error('清除缓存失败:', error);
@@ -87,7 +90,7 @@ async function clearCache() {
       buttonDisabled.value = false;
       buttonText.value = '清除翻译缓存';
       showLoading.value = false;
-    }, 1000);
+    }, 1500);
   }
 }
 
@@ -189,6 +192,11 @@ const computedCount = computed(() => localConfig.count);
 
 .failed {
   color: var(--el-color-danger) !important;
+}
+
+/* 添加成功状态样式 */
+.action-link.success {
+  color: var(--el-color-success) !important;
 }
 
 /* 赞赏码弹窗样式 */
