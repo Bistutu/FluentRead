@@ -65,6 +65,25 @@
       </el-col>
     </el-row>
 
+    <!-- 添加划词翻译开关 -->
+    <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
+      <el-col :span="20" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="（测试版）选中文本后显示红点，鼠标移到红点上查看翻译结果" placement="top-start" :show-after="500">
+        <span class="popup-text popup-vertical-left">
+          <span class="new-feature-badge">新</span>
+          划词翻译
+          <el-icon class="icon-margin">
+            <ChatDotRound />
+          </el-icon>
+        </span>
+        </el-tooltip>
+      </el-col>
+
+      <el-col :span="4" class="flex-end">
+        <el-switch v-model="selectionTranslatorEnabled" inline-prompt active-text="开" inactive-text="关" />
+      </el-col>
+    </el-row>
+
     <!-- 悬浮球快捷键选择 -->
     <el-row v-if="config.on && floatingBallEnabled" class="margin-bottom margin-left-2em margin-top-1em">
       <el-col :span="14" class="lightblue rounded-corner">
@@ -515,6 +534,27 @@ const floatingBallEnabled = computed({
   }
 });
 
+// 划词翻译开关的计算属性
+const selectionTranslatorEnabled = computed({
+  get: () => !config.value.disableSelectionTranslator && config.value.on,
+  set: (value) => {
+    config.value.disableSelectionTranslator = !value;
+    // 向所有激活的标签页发送消息
+    browser.tabs.query({}).then(tabs => {
+      tabs.forEach(tab => {
+        if (tab.id) {
+          browser.tabs.sendMessage(tab.id, { 
+            type: 'toggleSelectionTranslator',
+            isEnabled: value 
+          }).catch(() => {
+            // 忽略发送失败的错误（可能是页面未加载内容脚本）
+          });
+        }
+      });
+    });
+  }
+});
+
 // 监听开关变化
 const handleSwitchChange = () => {
   showRefreshTip.value = true;
@@ -522,22 +562,43 @@ const handleSwitchChange = () => {
 
 // 处理插件状态变化
 const handlePluginStateChange = (val: boolean) => {
-  // 如果插件被关闭，确保悬浮球也被关闭
-  if (!val && !config.value.disableFloatingBall) {
-    config.value.disableFloatingBall = true;
-    // 向所有激活的标签页发送消息，关闭悬浮球
-    browser.tabs.query({}).then(tabs => {
-      tabs.forEach(tab => {
-        if (tab.id) {
-          browser.tabs.sendMessage(tab.id, { 
-            type: 'toggleFloatingBall',
-            isEnabled: false
-          }).catch(() => {
-            // 忽略发送失败的错误（可能是页面未加载内容脚本）
-          });
-        }
+  // 如果插件被关闭，确保悬浮球和划词翻译也被关闭
+  if (!val) {
+    // 处理悬浮球
+    if (!config.value.disableFloatingBall) {
+      config.value.disableFloatingBall = true;
+      // 向所有激活的标签页发送消息，关闭悬浮球
+      browser.tabs.query({}).then(tabs => {
+        tabs.forEach(tab => {
+          if (tab.id) {
+            browser.tabs.sendMessage(tab.id, { 
+              type: 'toggleFloatingBall',
+              isEnabled: false
+            }).catch(() => {
+              // 忽略发送失败的错误（可能是页面未加载内容脚本）
+            });
+          }
+        });
       });
-    });
+    }
+    
+    // 处理划词翻译
+    if (!config.value.disableSelectionTranslator) {
+      config.value.disableSelectionTranslator = true;
+      // 向所有激活的标签页发送消息，关闭划词翻译
+      browser.tabs.query({}).then(tabs => {
+        tabs.forEach(tab => {
+          if (tab.id) {
+            browser.tabs.sendMessage(tab.id, { 
+              type: 'toggleSelectionTranslator',
+              isEnabled: false
+            }).catch(() => {
+              // 忽略发送失败的错误（可能是页面未加载内容脚本）
+            });
+          }
+        });
+      });
+    }
   }
 };
 

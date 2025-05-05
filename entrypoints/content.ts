@@ -5,6 +5,7 @@ import { getCenterPoint } from "@/entrypoints/utils/common";
 import './style.css';
 import { config, configReady } from "@/entrypoints/utils/config";
 import { mountFloatingBall, unmountFloatingBall, toggleFloatingBallPosition } from "@/entrypoints/utils/floatingBall";
+import { mountSelectionTranslator, unmountSelectionTranslator } from "@/entrypoints/utils/selectionTranslator";
 import { cancelAllTranslations } from "@/entrypoints/utils/translateApi";
 import { createApp } from 'vue';
 import TranslationStatus from '@/components/TranslationStatus.vue';
@@ -26,6 +27,11 @@ export default defineContentScript({
         if (config.disableFloatingBall !== true) {
             // 使用配置中的位置
             mountFloatingBall();
+        }
+        
+        // 挂载划词翻译组件（如果配置未禁用）
+        if (config.disableSelectionTranslator !== true) {
+            mountSelectionTranslator();
         }
         
         // 挂载翻译状态组件
@@ -54,12 +60,28 @@ export default defineContentScript({
             return false;
         });
         
+        // 处理划词翻译控制消息
+        browser.runtime.onMessage.addListener((message: any, sender: any, sendResponse: () => void) => {
+            if (message.type === 'toggleSelectionTranslator') {
+                if (message.isEnabled) {
+                    mountSelectionTranslator();
+                } else {
+                    unmountSelectionTranslator();
+                }
+                sendResponse();
+                return true;
+            }
+            return false;
+        });
+        
         // 在页面卸载时清理资源
         window.addEventListener('beforeunload', () => {
             // 取消所有待处理的翻译任务
             cancelAllTranslations();
             // 移除悬浮球
             unmountFloatingBall();
+            // 移除划词翻译组件
+            unmountSelectionTranslator();
         });
     }
 })
