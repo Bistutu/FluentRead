@@ -565,13 +565,13 @@ function shouldSkipGitHubElement(node: any): boolean {
         debugLog('GitHub', '特殊内容跳过', node.textContent);
         return true;
     }
-    
+
     // 判断是否为目录名称或路径
     if (isGitHubPathOrFileName(node)) {
         debugLog('GitHub', '目录/文件名跳过', node.textContent);
         return true;
     }
-    
+
     // 如果当前节点或其祖先节点匹配这些选择器，则跳过
     const skipSelectors = [
         // 导航栏和菜单
@@ -615,7 +615,6 @@ function shouldSkipGitHubElement(node: any): boolean {
         'div[class*="directory-"]', // 匹配所有包含directory-的类名
         'a[title][aria-label*="Directory"]',
         'a[title][aria-label*="File"]',
-        'a.js-navigation-open',
         // 底部
         'footer',
         // 用户名相关
@@ -623,7 +622,6 @@ function shouldSkipGitHubElement(node: any): boolean {
         'span.author',
         'a.user-mention', // @提及
         'a.commit-author',
-        'a.Link--primary', // 文件名和目录链接
         // Pull Request和Issue相关元素
         'div.merge-status-list',
         'div.js-navigation-container',
@@ -634,7 +632,7 @@ function shouldSkipGitHubElement(node: any): boolean {
         'div.js-details-container', // 折叠的详情容器
         'span.Link--secondary', // 次要链接文本
         // 仓库元数据
-        'div.BorderGrid-row'
+        'div.BorderGrid-row',
     ];
     
     // 检查当前节点是否匹配跳过选择器
@@ -643,20 +641,10 @@ function shouldSkipGitHubElement(node: any): boolean {
             debugLog('GitHub', '选择器匹配跳过', selector, node.textContent);
             return true;
         }
-        
-        // 检查祖先节点
-        let parent = node.parentElement;
-        while (parent) {
-            if (parent.matches?.(selector)) {
-                debugLog('GitHub', '祖先节点匹配跳过', selector, node.textContent);
-                return true;
-            }
-            parent = parent.parentElement;
-        }
     }
     
     // 检查节点的类名是否包含特定关键字
-    const skipClassKeywords = ['js-', 'octicon', 'anim-', 'btn', 'menu', 'icon', 'Avatar', 'repo', 'branch', 'commits', 'issues', 'pull', 'directory', 'filename'];
+    const skipClassKeywords = [ 'octicon', 'anim-', 'btn', 'menu', 'icon', 'Avatar', 'repo', 'branch', 'commits', 'issues', 'pull', 'directory', 'filename'];
     
     if (node.className && typeof node.className === 'string') {
         for (const keyword of skipClassKeywords) {
@@ -696,13 +684,14 @@ function isGitHubPathOrFileName(node: any): boolean {
     
     const text = node.textContent.trim();
     if (!text) return false;
-
+    
     // 检查节点是否为导航路径元素
     if (node.matches?.('nav[aria-label="Breadcrumb"]') || 
         node.matches?.('span.final-path') || 
         node.matches?.('span.js-repo-root') ||
         node.matches?.('a[title][aria-label*="Directory"]') ||
         node.matches?.('a[title][aria-label*="File"]')) {
+        debugLog('GitHub', '路径导航元素', '匹配选择器', node.outerHTML?.substring(0, 100));
         return true;
     }
     
@@ -713,6 +702,7 @@ function isGitHubPathOrFileName(node: any): boolean {
             parent.matches?.('div.react-directory-filename-cell') ||
             parent.matches?.('div.react-directory-truncate') ||
             parent.className?.includes('directory-')) {
+            debugLog('GitHub', '目录元素父节点', '匹配父元素选择器', parent.outerHTML?.substring(0, 100));
             return true;
         }
         parent = parent.parentElement;
@@ -720,17 +710,17 @@ function isGitHubPathOrFileName(node: any): boolean {
     
     // 检查是否为目录链接
     if (node.tagName?.toLowerCase() === 'a' && 
-        (node.getAttribute('aria-label')?.includes('Directory') || 
-         node.getAttribute('title') || 
-         node.className?.includes('Link--primary'))) {
+        node.getAttribute('aria-label')?.includes('Directory')) {
+        debugLog('GitHub', '目录链接', 'aria-label包含Directory', node.getAttribute('aria-label'));
         return true;
     }
     
     // 检查是否为常见目录或文件名
-    if (/^\.github|^src\/|^test\/|^docs\/|^\.gitignore$|^LICENSE$|^README\.md$|^CHANGELOG\.md$|^package\.json$|^Dockerfile$|/i.test(text)) {
+    if (/^\.github|^src\/|^test\/|^docs\/|^\.gitignore$|^LICENSE$|^README\.md$|^CHANGELOG\.md$|^package\.json$|^Dockerfile$/i.test(text)) {
         // 如果当前节点是链接或者在文件列表中
         if (node.tagName?.toLowerCase() === 'a' || 
             node.parentElement?.matches?.('div.Box-row')) {
+            debugLog('GitHub', '常见目录或文件名', text);
             return true;
         }
     }
@@ -739,34 +729,22 @@ function isGitHubPathOrFileName(node: any): boolean {
     if (text.includes('/') && text.length < 100 && 
         !/\s/.test(text) && // 不包含空格
         !/[，。？！；：""''（）【】「」『』〔〕]/.test(text)) { // 不包含中文标点
+        debugLog('GitHub', '路径格式文本', text);
         return true;
     }
     
     // 检查是否为常见的开发相关文件扩展名
     if (/\.(js|ts|jsx|tsx|css|scss|html|json|md|py|java|go|rs|c|cpp|h|hpp|rb|php|sh|bat|cmd|yaml|yml|xml)$/i.test(text)) {
+        debugLog('GitHub', '文件扩展名匹配', text);
         return true;
     }
     
     // 检查是否为Issue/PR编号格式
     if (/^#\d+$/.test(text) || /^[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+#\d+$/.test(text)) {
+        debugLog('GitHub', 'Issue/PR编号', text);
         return true;
     }
-
-    // 包含 - 且长度不超过16
-    if (text.includes('-') && text.length <= 16) {
-        return true;
-    }
-
-    // 包含 _ 且长度不超过16
-    if (text.includes('_') && text.length <= 16) {
-        return true;
-    }
-
-    // 包含 . 且长度不超过16
-    if (text.includes('.') && text.length <= 16) {
-        return true;
-    }
-
+    
     return false;
 }
 
