@@ -17,7 +17,20 @@
       <div class="tooltip-header">
         <span>翻译结果<small>（via 流畅阅读）</small></span>
         <div class="tooltip-actions">
-          <button class="copy-btn" @click="copyTranslation" title="复制译文">
+          <button class="action-btn" @click="playAudio(selectedText)" title="播放原文">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+            </svg>
+          </button>
+          <button class="action-btn" @click="playAudio(translationResult)" title="播放译文">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+          </button>
+          <button class="action-btn" @click="copyTranslation" title="复制译文">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -30,8 +43,24 @@
         <div v-if="isLoading" class="loading-spinner"></div>
         <div v-else-if="error" class="error-message">{{ error }}</div>
         <div v-else class="translation-container">
-          <div class="original-text no-select">{{ selectedText }}</div>
-          <div class="translation-result no-select">{{ translationResult }}</div>
+          <div class="original-text no-select">
+            {{ selectedText }}
+            <button class="text-audio-btn" @click="playAudio(selectedText)" title="播放原文">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+              </svg>
+            </button>
+          </div>
+          <div class="translation-result no-select">
+            {{ translationResult }}
+            <button class="text-audio-btn" @click="playAudio(translationResult)" title="播放译文">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -44,6 +73,17 @@
         </svg>
       </div>
       <span>复制译文成功!</span>
+    </div>
+
+    <!-- 正在播放音频提示 -->
+    <div v-if="isPlaying" class="audio-playing-toast">
+      <div class="audio-playing-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+          <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
+        </svg>
+      </div>
+      <span>正在播放...</span>
     </div>
   </teleport>
 </template>
@@ -64,6 +104,8 @@ const error = ref('');
 const hideTooltipTimer = ref<number | null>(null);
 const isHoveringTooltip = ref(false);
 const copySuccess = ref(false);
+const isPlaying = ref(false);
+const audioElement = ref<HTMLAudioElement | null>(null);
 
 // 计算小红点指示器的样式
 const indicatorStyle = computed(() => {
@@ -209,6 +251,118 @@ const copyTranslation = () => {
     });
 };
 
+// 播放文本语音
+const playAudio = (text: string) => {
+  if (!text) return;
+  
+  // 停止当前正在播放的音频
+  if (audioElement.value) {
+    audioElement.value.pause();
+    audioElement.value = null;
+  }
+  
+  // 检测语言
+  const language = detectLanguage(text);
+  
+  // 创建语音合成URL
+  const speechUrl = createSpeechUrl(text, language);
+  
+  // 创建音频元素
+  const audio = new Audio(speechUrl);
+  audioElement.value = audio;
+  
+  // 显示正在播放状态
+  isPlaying.value = true;
+  
+  // 监听播放结束事件
+  audio.onended = () => {
+    isPlaying.value = false;
+    audioElement.value = null;
+  };
+  
+  // 监听错误事件
+  audio.onerror = (e) => {
+    console.error('音频播放失败:', e);
+    isPlaying.value = false;
+    audioElement.value = null;
+    
+    // 尝试使用Web Speech API作为备选
+    tryWebSpeechAPI(text, language);
+  };
+  
+  // 开始播放
+  audio.play().catch(err => {
+    console.error('音频播放出错:', err);
+    isPlaying.value = false;
+    audioElement.value = null;
+    
+    // 尝试使用Web Speech API作为备选
+    tryWebSpeechAPI(text, language);
+  });
+};
+
+// 检测语言
+const detectLanguage = (text: string): string => {
+  // 简单的语言检测，可根据实际需求完善
+  // 检测是否包含中文字符
+  const hasChinese = /[\u4e00-\u9fa5]/.test(text);
+  if (hasChinese) return 'zh-CN';
+  
+  // 检测是否包含日文字符
+  const hasJapanese = /[\u3040-\u30ff]/.test(text);
+  if (hasJapanese) return 'ja-JP';
+  
+  // 检测是否包含韩文字符
+  const hasKorean = /[\uAC00-\uD7A3]/.test(text);
+  if (hasKorean) return 'ko-KR';
+  
+  // 检测是否包含俄文字符
+  const hasRussian = /[\u0400-\u04FF]/.test(text);
+  if (hasRussian) return 'ru-RU';
+  
+  // 检测是否包含德文特殊字符
+  const hasGerman = /[äöüßÄÖÜ]/.test(text);
+  if (hasGerman) return 'de-DE';
+  
+  // 检测是否包含法文特殊字符
+  const hasFrench = /[àâçéèêëîïôùûüÿæœÀÂÇÉÈÊËÎÏÔÙÛÜŸÆŒ]/.test(text);
+  if (hasFrench) return 'fr-FR';
+  
+  // 检测是否包含西班牙文特殊字符
+  const hasSpanish = /[áéíóúüñÁÉÍÓÚÜÑ]/.test(text);
+  if (hasSpanish) return 'es-ES';
+  
+  // 默认返回英语
+  return 'en-US';
+};
+
+// 创建语音合成URL
+const createSpeechUrl = (text: string, language: string): string => {
+  // 使用Google Text-to-Speech API
+  const encodedText = encodeURIComponent(text);
+  return `https://translate.google.com/translate_tts?ie=UTF-8&tl=${language}&client=tw-ob&q=${encodedText}`;
+};
+
+// 使用Web Speech API作为备选方案
+const tryWebSpeechAPI = (text: string, language: string) => {
+  // 检查浏览器是否支持Web Speech API
+  if ('speechSynthesis' in window) {
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = language;
+    utterance.onend = () => {
+      isPlaying.value = false;
+    };
+    utterance.onerror = () => {
+      isPlaying.value = false;
+    };
+    
+    isPlaying.value = true;
+    window.speechSynthesis.speak(utterance);
+  } else {
+    console.error('此浏览器不支持语音合成');
+  }
+};
+
 // 监听事件
 onMounted(() => {
   document.addEventListener('mouseup', handleTextSelection);
@@ -231,6 +385,17 @@ onBeforeUnmount(() => {
   document.removeEventListener('mouseup', handleTextSelection);
   document.removeEventListener('selectionchange', handleTextSelection);
   clearHideTooltipTimer();
+  
+  // 停止所有音频播放
+  if (audioElement.value) {
+    audioElement.value.pause();
+    audioElement.value = null;
+  }
+  
+  // 停止Web Speech API
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
 });
 </script>
 
@@ -291,10 +456,10 @@ onBeforeUnmount(() => {
 .tooltip-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
-.copy-btn {
+.action-btn, .copy-btn {
   background: none;
   border: none;
   cursor: pointer;
@@ -302,12 +467,12 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2px;
+  padding: 4px;
   border-radius: 4px;
-  transition: background-color 0.2s;
+  transition: background-color 0.2s, color 0.2s;
 }
 
-.copy-btn:hover {
+.action-btn:hover, .copy-btn:hover {
   background-color: rgba(0, 0, 0, 0.05);
   color: #333;
 }
@@ -342,6 +507,7 @@ onBeforeUnmount(() => {
   word-break: break-word;
   padding-bottom: 8px;
   border-bottom: 1px dashed #eee;
+  position: relative;
 }
 
 .translation-result {
@@ -351,6 +517,7 @@ onBeforeUnmount(() => {
   word-break: break-word;
   margin-top: 8px;
   line-height: 1.5;
+  position: relative;
 }
 
 .loading-spinner {
@@ -372,6 +539,34 @@ onBeforeUnmount(() => {
   color: #ff4d4f;
   text-align: center;
   padding: 10px;
+}
+
+/* 文本内播放按钮 */
+.text-audio-btn {
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #999;
+  opacity: 0;
+  transition: opacity 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.original-text:hover .text-audio-btn,
+.translation-result:hover .text-audio-btn {
+  opacity: 1;
+}
+
+.text-audio-btn:hover {
+  color: #1890ff;
+  background-color: rgba(24, 144, 255, 0.1);
 }
 
 /* 自定义滚动条样式 */
@@ -479,6 +674,37 @@ onBeforeUnmount(() => {
   justify-content: center;
 }
 
+/* 播放中提示 */
+.audio-playing-toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 10010;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  animation: audio-wave 1.5s ease infinite;
+}
+
+.audio-playing-icon {
+  color: #1890ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes audio-wave {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
 @keyframes toast-fade {
   0% { opacity: 0; transform: translate(-50%, -40%); }
   20% { opacity: 1; transform: translate(-50%, -50%); }
@@ -486,7 +712,8 @@ onBeforeUnmount(() => {
   100% { opacity: 0; transform: translate(-50%, -60%); }
 }
 
-:root.dark .copy-success-toast {
+:root.dark .copy-success-toast,
+:root.dark .audio-playing-toast {
   background-color: rgba(0, 0, 0, 0.85);
 }
 
@@ -494,12 +721,24 @@ onBeforeUnmount(() => {
   color: #73d13d;
 }
 
-:root.dark .copy-btn {
+:root.dark .audio-playing-icon {
+  color: #69c0ff;
+}
+
+:root.dark .action-btn,
+:root.dark .copy-btn,
+:root.dark .text-audio-btn {
   color: #bbb;
 }
 
+:root.dark .action-btn:hover,
 :root.dark .copy-btn:hover {
   background-color: rgba(255, 255, 255, 0.1);
   color: #eee;
+}
+
+:root.dark .text-audio-btn:hover {
+  color: #69c0ff;
+  background-color: rgba(24, 144, 255, 0.15);
 }
 </style> 
