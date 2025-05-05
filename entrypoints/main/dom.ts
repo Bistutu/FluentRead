@@ -96,10 +96,9 @@ export function grabAllNode(rootNode: Node): Element[] {
             walker.currentNode = currentNode.nextSibling || currentNode;
         }
     }
-
-
     return Array.from(new Set(result));;
 }
+
 // 返回最终应该翻译的父节点或 false
 export function grabNode(node: any): any {
     // 空节点检查
@@ -145,10 +144,12 @@ function shouldSkipNode(node: any, tag: string): boolean {
     // 2. 检查是否具有 notranslate 类
     // 3. 判断节点是否可编辑
     // 4. 判断文本是否过长
+    // 5. 判断文本是否为纯数字或标准数字格式（仅当节点内容几乎全是数字时才跳过）
     return skipSet.has(tag) ||
         node.classList?.contains('notranslate') ||
         node.isContentEditable ||
-        isTextTooLong(node);
+        isTextTooLong(node) ||
+        isMainlyNumericContent(node);
 }
 
 // 检查文本长度
@@ -157,6 +158,102 @@ function isTextTooLong(node: any): boolean {
     // 2. 或者 outerHTML 长度超过 4096，都视为过长
     return node.textContent.length > 3072 ||
         (node.outerHTML && node.outerHTML.length > 4096);
+}
+
+// 检查节点内容是否主要为数字
+function isMainlyNumericContent(node: any): boolean {
+    if (!node || !node.textContent) return false;
+    
+    const text = node.textContent.trim();
+    if (!text) return false;
+    
+    // 如果内容很短，且是纯数字格式，则跳过
+    // 对于短文本，直接判断整体是否为数字格式
+    if (text.length < 30 && isNumericContent(text)) return true;
+    
+    // 对于较长的内容，检查是否主要为数字格式
+    // 处理节点可能含有多个文本子节点的情况
+    // 这有助于更精确地识别混合内容中的数字部分
+    const textNodes = [];
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, null);
+    let textNode;
+    while (textNode = walker.nextNode()) {
+        const nodeText = textNode.textContent?.trim() || '';
+        if (nodeText) {
+            textNodes.push(nodeText);
+        }
+    }
+    
+    // 如果只有一个文本节点且为数字，则跳过翻译
+    if (textNodes.length === 1 && isNumericContent(textNodes[0])) return true;
+    
+    // 如果所有文本节点都是数字，则跳过翻译
+    // 这可能是表格中的数字列或者纯数字列表等
+    if (textNodes.length > 0 && textNodes.every(t => isNumericContent(t))) return true;
+    
+    // 否则不跳过，允许翻译
+    return false;
+}
+
+/**
+ * 检查文本是否为纯数字或标准数字格式
+ * 
+ * 识别以下数字格式：
+ * 1. 整数 (例如: 12345, -123)
+ * 2. 带千位分隔符的数字 (例如: 1,234,567)
+ * 3. 数字范围 (例如: 1-100, 5~10)
+ * 4. 小数 (例如: 3.14159)
+ * 5. 百分比 (例如: 85%, -2.5%)
+ * 6. 科学计数法 (例如: 1.23e+4)
+ * 7. 货币金额 (例如: $123.45, €100)
+ * 8. 常见日期格式 (例如: 2023-01-01, 01/01/2023)
+ * 9. 时间格式 (例如: 13:45:30, 9:30)
+ * 10. 版本号 (例如: 1.0.0, 2.3.5-beta)
+ * 
+ * 这些格式的数字通常不需要翻译，保持原样更有利于页面理解。
+ */
+function isNumericContent(text: string): boolean {
+    if (!text || typeof text !== 'string') return false;
+    
+    // 去除空白字符
+    const trimmedText = text.trim();
+    if (!trimmedText) return false;
+    
+    // 如果包含多个单词，则不视为纯数字内容
+    if (/\s+/.test(trimmedText.replace(/[\d,.\-%+]/g, ''))) return false;
+    
+    // 检查是否为纯数字
+    if (/^-?\d+$/.test(trimmedText)) return true;
+    
+    // 检查是否为标准数字格式：带逗号的数字 (例如: 1,234,567)
+    if (/^-?(\d{1,3}(,\d{3})+)$/.test(trimmedText)) return true;
+    
+    // 检查是否为范围数字 (例如: 1-123)
+    if (/^\d+\s*[-~]\s*\d+$/.test(trimmedText)) return true;
+    
+    // 检查是否为小数
+    if (/^-?\d+\.\d+$/.test(trimmedText)) return true;
+    
+    // 检查是否为百分比
+    if (/^-?\d+(\.\d+)?%$/.test(trimmedText)) return true;
+    
+    // 检查是否为科学计数法 (例如: 1.23e+4)
+    if (/^-?\d+(\.\d+)?(e[-+]\d+)?$/i.test(trimmedText)) return true;
+    
+    // 检查是否为带货币符号的金额 (例如: $123.45, €123, ¥123)
+    if (/^[$€¥£₹₽₩]?\s*-?\d+(,\d{3})*(\.\d+)?$/.test(trimmedText)) return true;
+    
+    // 检查是否为日期时间格式 (仅考虑常见的数字日期格式)
+    // 匹配 YYYY-MM-DD, YYYY/MM/DD, DD-MM-YYYY, DD/MM/YYYY, MM-DD-YYYY, MM/DD/YYYY
+    if (/^(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[-/]\d{1,2}[-/]\d{4}|\d{1,2}[-/]\d{1,2}[-/]\d{1,2})$/.test(trimmedText)) return true;
+    
+    // 匹配时间格式 HH:MM:SS, HH:MM
+    if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(trimmedText)) return true;
+    
+    // 匹配版本号 (例如: 1.0.0, 2.3.5-beta)
+    if (/^\d+(\.\d+){1,3}(-[a-zA-Z0-9]+)?$/.test(trimmedText)) return true;
+    
+    return false;
 }
 
 // 检查是否为按钮
