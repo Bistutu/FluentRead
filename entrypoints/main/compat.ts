@@ -835,7 +835,7 @@ function shouldSkipGitHubElement(node: any): boolean {
     }
     
     // 检查节点的类名是否包含特定关键字
-    const skipClassKeywords = ['octicon', 'anim-', 'btn', 'menu', 'icon', 'Avatar', 'repo', 'branch', 'commits', 'issues', 'pull', 'directory', 'filename', 'Counter', 'topic-tag', 'social-count', 'State', 'Label', 'color-fg-', 'text-bold', 'text-small', 'UnderlineNav'];
+    const skipClassKeywords = ['octicon', 'anim-', 'btn', 'menu', 'icon', 'Avatar', 'repo', 'branch', 'commits', 'issues', 'pull', 'directory', 'filename', 'Counter', 'topic-tag', 'social-count', 'State', 'Label', 'UnderlineNav'];
     
     if (node.className && typeof node.className === 'string') {
         for (const keyword of skipClassKeywords) {
