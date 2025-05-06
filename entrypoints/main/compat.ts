@@ -707,6 +707,64 @@ function shouldSkipGitHubElement(node: any): boolean {
         return true;
     }
     
+    // 检查是否为GitHub特定的标签文本
+    const gitHubLabels = [
+        'bug', 'feature', 'enhancement', 'documentation', 'duplicate', 'good first issue',
+        'help wanted', 'invalid', 'question', 'wontfix', 'dependencies', 'security',
+        'enhancement', 'open', 'closed', 'merged', 'draft', 'done', 'in progress',
+        'pending', 'fixed', 'resolved', 'won\'t fix', 'needs review', 'approved',
+        'blocked', 'stale', 'needs work', 'ready for review', 'needs more information',
+        'enhancement', 'frontend', 'backend', 'api', 'ui', 'ux', 'refactor', 'test',
+        'needs tests', 'ready for work', 'wip', 'top priority', 'low priority', 'medium priority',
+        'high priority', 'work in progress', 'needs investigation', 'feature request',
+        'discussion', 'breaking change', 'needs triage'
+    ];
+    
+    // GitHub状态文本
+    const gitHubStatusTexts = [
+        'Open', 'Closed', 'Merged', 'Draft', 'Pending', 'Approved',
+        'Changes requested', 'Review required', 'Needs work', 'Ready for review',
+        'Assignee', 'Author', 'Changed', 'Comments', 'Commits', 'Conversation',
+        'Files changed', 'Participants', 'Reviewers', 'Unresolved conversations',
+        'View changes', 'Clone', 'Code', 'Contributors', 'Raw', 'Blame', 'History',
+        'is:issue', 'is:pr', 'is:open', 'is:closed', 'state:open', 'state:closed',
+        'No wrap', 'Soft wrap', 'Set status'
+    ];
+    
+    // 如果节点文本是GitHub标签或状态文本，跳过翻译
+    if (node.textContent) {
+        const text = node.textContent.trim();
+        
+        // 检查是否为GitHub Label文本
+        for (const label of gitHubLabels) {
+            if (text.toLowerCase() === label.toLowerCase()) {
+                debugLog('GitHub', 'GitHub Label跳过', text);
+                return true;
+            }
+        }
+        
+        // 检查是否为GitHub状态文本
+        for (const status of gitHubStatusTexts) {
+            if (text === status) {
+                debugLog('GitHub', 'GitHub状态文本跳过', text);
+                return true;
+            }
+        }
+        
+        // 检查是否为搜索过滤器语法
+        if (/^([a-z]+):([a-z]+)(\s+([a-z]+):([a-z]+))*$/.test(text)) {
+            debugLog('GitHub', '搜索过滤器语法跳过', text);
+            return true;
+        }
+        
+        // 检查是否为版本号或数字统计
+        if (/^v?\d+\.\d+(\.\d+)?(-[a-z0-9.]+)?$/.test(text) || 
+            /^\d+\s+(issues|pull requests|commits|stars|forks|watching)$/.test(text.toLowerCase())) {
+            debugLog('GitHub', '版本号或数字统计跳过', text);
+            return true;
+        }
+    }
+    
     // 如果当前节点或其祖先节点匹配这些选择器，则跳过
     const skipSelectors = [
         // 导航栏和菜单
@@ -755,7 +813,7 @@ function shouldSkipGitHubElement(node: any): boolean {
         // 用户名相关
         'a.author',
         'span.author',
-        'a.user-mention', // @提及
+        'a.user-mention',
         'a.commit-author',
         // Pull Request和Issue相关元素
         'div.merge-status-list',
@@ -824,6 +882,72 @@ function shouldSkipGitHubElement(node: any): boolean {
         // 仓库信息卡片
         'div.Box-row--gray', // 灰色行
         'div.BorderGrid-cell', // 边框网格单元格
+        
+        // Issue和PR搜索结果页面的元素
+        'div.issue-item', // Issue项
+        'div.issue-item-header', // Issue项头部
+        'span.opened-by', // 打开者标记
+        'div.issue-item-body', // Issue项内容
+        'div.issue-item-footer', // Issue项底部
+        'span.issue-item-meta', // Issue项元数据
+        'span.issue-meta-section', // Issue元数据区域
+        'div.flex-auto.min-width-0', // 弹性自动最小宽度容器
+        'div.issues-reset-query-wrapper', // 重置查询包装器
+        'span.issue-keyword', // Issue关键字
+        'a.issues-reset-query', // 重置查询链接
+        'span.selected-text', // 选中文本
+        'a.filter-item', // 过滤项
+        'span.label', // 标签
+        'span.tooltipped', // 提示标签
+        'div.select-menu-item-text', // 选择菜单项文本
+        'div.select-menu-filters', // 选择菜单过滤器
+        'a.select-menu-item', // 选择菜单项
+        'div.select-menu-list', // 选择菜单列表
+        'nav.subnav', // 子导航
+        'div.flex-column.flex-auto', // 弹性列自动容器
+        'div.table-list-filters', // 表格列表过滤器
+        'div.table-list-header', // 表格列表头
+        'div.flex-items-center.flex-justify-between', // 弹性项目居中和两端对齐
+        'div.js-issue-row', // Issue行
+        'div.lh-default', // 默认行高
+        'a.js-selected-navigation-item', // 选中的导航项
+        'nav.d-flex', // 弹性导航
+        'div.js-check-all-container', // 全选容器
+        'div.flex-shrink-0', // 弹性收缩为0
+        'div.timeline-comment-header', // 时间线评论头
+        'div.comment-form-textarea', // 评论表单文本域
+        'div.sidebar-notifications', // 侧边栏通知
+        'div.gh-header', // GitHub头部
+        'span.js-issue-title', // Issue标题
+        'a.js-hard-refresh', // 强制刷新链接
+        'div.Link--muted', // 次要链接
+        
+        // 新增：Issue标签元素
+        'a.IssueLabel', // Issue标签链接
+        'span.IssueLabel', // Issue标签
+        'span.Label', // 通用标签
+        'span.labels', // 标签容器
+        'span.label-link', // 标签链接
+        'a.label-link', // 标签链接
+        'div.labels', // 标签容器
+        'span.color-label', // 颜色标签
+        'span.bg-yellow', // 黄色背景（通常用于标签）
+        'span.bg-green', // 绿色背景
+        'span.bg-red', // 红色背景
+        'span.bg-purple', // 紫色背景
+        'span.bg-blue', // 蓝色背景
+        'span.text-green', // 绿色文本
+        'span.text-red', // 红色文本
+        'span.text-gray', // 灰色文本
+        'div.js-issue-labels', // Issue标签容器
+        'div.js-issue-labels .labels a', // Issue标签链接
+        'div.js-issue-labels .IssueLabel', // Issue标签
+        'span.js-issue-labels', // Issue标签
+        'span.issue-meta-section.ml-2.issue-label-group', // Issue标签组
+        'span.color-fg-danger', // 危险颜色（通常用于closed/rejected状态）
+        'span.color-fg-success', // 成功颜色（通常用于open/accepted状态）
+        'span.color-fg-muted', // 暗淡颜色（通常用于辅助信息）
+        'span.color-fg-done', // 完成颜色
     ];
 
     // 检查当前节点是否匹配跳过选择器
@@ -835,7 +959,13 @@ function shouldSkipGitHubElement(node: any): boolean {
     }
     
     // 检查节点的类名是否包含特定关键字
-    const skipClassKeywords = ['octicon', 'anim-', 'btn', 'menu', 'icon', 'Avatar', 'repo', 'branch', 'commits', 'issues', 'pull', 'directory', 'filename', 'Counter', 'topic-tag', 'social-count', 'State', 'Label', 'UnderlineNav'];
+    const skipClassKeywords = [
+        'octicon', 'anim-', 'btn', 'menu', 'icon', 'Avatar', 'repo', 
+        'branch', 'commits', 'issues', 'pull', 'directory', 'filename', 
+        'Counter', 'topic-tag', 'social-count', 'State', 'Label', 'UnderlineNav',
+        'IssueLabel', 'issue-keyword', 'issue-label', 'label-link', 'color-label',
+        'js-issue-labels', 'issue-meta', 'bg-',  'color-text-'
+    ];
     
     if (node.className && typeof node.className === 'string') {
         for (const keyword of skipClassKeywords) {
@@ -843,6 +973,20 @@ function shouldSkipGitHubElement(node: any): boolean {
                 debugLog('GitHub', '类名关键字跳过', keyword, node.className);
                 return true;
             }
+        }
+    }
+    
+    // 检查特定属性
+    const skipAttributes = [
+        'data-hovercard-type', 'data-issue-and-pr-hovercards-enabled',
+        'data-issue-title', 'data-url', 'data-pjax', 'data-hotkey', 'data-target', 
+        'data-filter-value', 'data-direction', 'data-state'
+    ];
+    
+    for (const attr of skipAttributes) {
+        if (node.hasAttribute && node.hasAttribute(attr)) {
+            debugLog('GitHub', '属性匹配跳过', attr);
+            return true;
         }
     }
     
