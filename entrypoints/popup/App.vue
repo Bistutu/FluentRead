@@ -22,7 +22,7 @@ import '../../styles/theme.css';
 
 </script>
 
-<style>
+<style scoped>
 @media screen and (max-height: 800px) {
   .popup-container {
     max-height: 90vh;

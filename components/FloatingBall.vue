@@ -365,7 +365,7 @@ watch(() => props.position, (newPosition) => {
 
 </script>
 
-<style>
+<style scoped>
 .floating-ball {
   position: fixed;
   z-index: 9999;
