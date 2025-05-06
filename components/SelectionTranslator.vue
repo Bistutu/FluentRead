@@ -106,6 +106,9 @@ const isHoveringTooltip = ref(false);
 const copySuccess = ref(false);
 const isPlaying = ref(false);
 const audioElement = ref<HTMLAudioElement | null>(null);
+const lastSelectedText = ref(''); // 用于存储上一次选择的文本
+const isSelecting = ref(false); // 标记用户是否正在选择文本中
+const debounceTimer = ref<number | null>(null); // 防抖定时器
 
 // 计算小红点指示器的样式
 const indicatorStyle = computed(() => {
@@ -136,28 +139,52 @@ const tooltipStyle = computed(() => {
   };
 });
 
-// 处理文本选择事件
+// 防抖函数
+const debounce = (fn: Function, delay: number) => {
+  if (debounceTimer.value) {
+    clearTimeout(debounceTimer.value);
+  }
+  debounceTimer.value = window.setTimeout(() => {
+    fn();
+    debounceTimer.value = null;
+  }, delay);
+};
+
+// 处理文本选择事件 (使用防抖优化)
 const handleTextSelection = () => {
-  const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0) {
-    hideIndicator();
-    return;
-  }
+  // 如果用户正在选择中，不立即处理
+  if (isSelecting.value) return;
   
-  const selectedTextContent = selection.toString().trim();
-  if (!selectedTextContent) {
-    hideIndicator();
-    return;
-  }
-  
-  // 获取选中文本位置信息
-  const range = selection.getRangeAt(0);
-  const rect = range.getBoundingClientRect();
-  
-  // 保存选中文本和位置
-  selectedText.value = selectedTextContent;
-  selectionRect.value = rect;
-  showIndicator.value = true;
+  debounce(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+      hideIndicator();
+      return;
+    }
+    
+    const selectedTextContent = selection.toString().trim();
+    
+    // 如果选中的文本为空或与上次相同，则不处理
+    if (!selectedTextContent || selectedTextContent === lastSelectedText.value) {
+      return;
+    }
+    
+    // 忽略过短的选择（避免意外触发）
+    if (selectedTextContent.length < 3) {
+      hideIndicator();
+      return;
+    }
+    
+    // 获取选中文本位置信息
+    const range = selection.getRangeAt(0);
+    const rect = range.getBoundingClientRect();
+    
+    // 保存选中文本和位置
+    selectedText.value = selectedTextContent;
+    lastSelectedText.value = selectedTextContent;
+    selectionRect.value = rect;
+    showIndicator.value = true;
+  }, 300); // 300ms防抖延迟
 };
 
 // 鼠标进入指示器
@@ -363,13 +390,21 @@ const tryWebSpeechAPI = (text: string, language: string) => {
   }
 };
 
-// 监听事件
+// 监听事件 (优化事件监听)
 onMounted(() => {
-  document.addEventListener('mouseup', handleTextSelection);
-  document.addEventListener('selectionchange', () => {
-    // 延迟一下处理，避免选择过程中频繁触发
-    setTimeout(handleTextSelection, 100);
+  // 鼠标按下时，标记开始选择
+  document.addEventListener('mousedown', () => {
+    isSelecting.value = true;
   });
+  
+  // 鼠标抬起时，标记选择结束，并处理选中文本
+  document.addEventListener('mouseup', () => {
+    isSelecting.value = false;
+    handleTextSelection();
+  });
+  
+  // 避免使用selectionchange事件，它触发过于频繁
+  // 只在mouseup时处理选择，减少不必要的处理
   
   // 监听鼠标移动到指示器上的事件
   watch(showTooltip, async (newValue: boolean) => {
@@ -378,13 +413,38 @@ onMounted(() => {
       await getTranslation();
     }
   });
+  
+  // 添加点击页面其他区域时隐藏指示器和弹窗
+  document.addEventListener('click', (e) => {
+    // 检查点击事件是否发生在指示器或弹窗之外
+    const target = e.target as HTMLElement;
+    const isOutsideIndicator = !target.closest('.selection-indicator');
+    const isOutsideTooltip = !target.closest('.translation-tooltip');
+    
+    if (isOutsideIndicator && isOutsideTooltip && showIndicator.value) {
+      hideIndicator();
+      closeTooltip();
+    }
+  });
 });
 
-// 清理事件监听
+// 清理事件监听 (更新清理逻辑)
 onBeforeUnmount(() => {
-  document.removeEventListener('mouseup', handleTextSelection);
-  document.removeEventListener('selectionchange', handleTextSelection);
+  document.removeEventListener('mousedown', () => {
+    isSelecting.value = true;
+  });
+  document.removeEventListener('mouseup', () => {
+    isSelecting.value = false;
+    handleTextSelection();
+  });
+  document.removeEventListener('click', () => {});
+  
+  // 清理所有定时器
   clearHideTooltipTimer();
+  if (debounceTimer.value) {
+    clearTimeout(debounceTimer.value);
+    debounceTimer.value = null;
+  }
   
   // 停止所有音频播放
   if (audioElement.value) {
