@@ -175,6 +175,13 @@ const handleTextSelection = () => {
       return;
     }
     
+    // 忽略过长的选择（避免处理大段文本导致性能问题）
+    const maxTextLength = 4096; // 设置最大字符数限制
+    if (selectedTextContent.length > maxTextLength) {
+      hideIndicator();
+      return;
+    }
+    
     // 获取选中文本位置信息
     const range = selection.getRangeAt(0);
     const rect = range.getBoundingClientRect();
