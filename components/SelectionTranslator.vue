@@ -44,7 +44,7 @@
         <div v-else-if="error" class="error-message">{{ error }}</div>
         <div v-else class="translation-container">
           <div class="original-text no-select">
-            {{ selectedText }}
+            <pre>{{ selectedText }}</pre>
             <button class="text-audio-btn" @click="playAudio(selectedText)" title="播放原文">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
@@ -53,7 +53,7 @@
             </button>
           </div>
           <div class="translation-result no-select">
-            {{ translationResult }}
+            <pre>{{ translationResult }}</pre>
             <button class="text-audio-btn" @click="playAudio(translationResult)" title="播放译文">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
@@ -128,13 +128,13 @@ const tooltipStyle = computed(() => {
   // 确保弹窗不会超出视口
   const left = Math.min(
     selectionRect.value.right + 15,
-    window.innerWidth - 300
+    window.innerWidth - 350 // 稍微增加宽度，适应换行文本
   );
   
   return {
     left: `${left}px`,
     top: `${selectionRect.value.top}px`,
-    maxWidth: '300px',
+    maxWidth: '350px', // 增加宽度以适应更多内容
     maxHeight: '400px' // 增加最大高度以支持更多内容
   };
 });
@@ -504,7 +504,7 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  width: 300px; /* 固定宽度 */
+  width: 350px; /* 增加宽度 */
   transition: opacity 0.2s ease;
 }
 
@@ -565,6 +565,16 @@ onBeforeUnmount(() => {
   max-height: 350px; /* 增加最大高度 */
   scrollbar-width: thin; /* 细滚动条 */
   scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+}
+
+.original-text pre,
+.translation-result pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
 }
 
 .original-text {
@@ -662,12 +672,11 @@ onBeforeUnmount(() => {
   border-bottom: 1px solid #444;
 }
 
-:root.dark .original-text {
+:root.dark .original-text pre {
   color: #aaa;
-  border-bottom: 1px dashed #444;
 }
 
-:root.dark .translation-result {
+:root.dark .translation-result pre {
   color: #ddd;
 }
 
