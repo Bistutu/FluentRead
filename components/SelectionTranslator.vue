@@ -32,7 +32,7 @@
         <div v-else class="translation-container">
           <div class="original-text no-select">
             <pre>{{ selectedText }}</pre>
-            <button class="text-audio-btn" @click="toggleAudio(selectedText)" title="播放/停止原文">
+            <button class="text-audio-btn" @click="(e) => toggleAudio(selectedText, e)" title="播放/停止原文">
               <svg v-if="isPlaying && currentPlayingText === selectedText" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="6" y="4" width="4" height="16"></rect>
                 <rect x="14" y="4" width="4" height="16"></rect>
@@ -45,7 +45,7 @@
           </div>
           <div class="translation-result no-select">
             <pre>{{ translationResult }}</pre>
-            <button class="text-audio-btn" @click="toggleAudio(translationResult)" title="播放/停止译文">
+            <button class="text-audio-btn" @click="(e) => toggleAudio(translationResult, e)" title="播放/停止译文">
               <svg v-if="isPlaying && currentPlayingText === translationResult" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="6" y="4" width="4" height="16"></rect>
                 <rect x="14" y="4" width="4" height="16"></rect>
@@ -65,8 +65,8 @@
                 <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
               </svg>
             </div>
-            <span>正在播放...</span>
-            <button class="stop-audio-btn" @click="stopAudio">
+            <span>正在播放: {{ currentPlayingText === selectedText ? '原文' : '译文' }}</span>
+            <button class="stop-audio-btn" @click="(e) => stopAudio(e)">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="6" y="4" width="4" height="16"></rect>
                 <rect x="14" y="4" width="4" height="16"></rect>
@@ -111,6 +111,7 @@ const lastSelectedText = ref(''); // 用于存储上一次选择的文本
 const isSelecting = ref(false); // 标记用户是否正在选择文本中
 const debounceTimer = ref<number | null>(null); // 防抖定时器
 const currentPlayingText = ref(''); // 当前正在播放的文本
+const isFirefox = ref(false); // 是否为Firefox浏览器
 
 // 计算小红点指示器的样式
 const indicatorStyle = computed(() => {
@@ -119,7 +120,7 @@ const indicatorStyle = computed(() => {
   return {
     left: `${selectionRect.value.right}px`,
     top: `${selectionRect.value.top}px`,
-    transform: 'translate(10px, -50%)'
+    transform: 'translate(3px, -50%)'
   };
 });
 
@@ -297,11 +298,18 @@ const copyTranslation = () => {
 };
 
 // 播放或停止文本语音
-const toggleAudio = (text: string) => {
+const toggleAudio = (text: string, e?: Event) => {
   if (!text) return;
 
   // 阻止事件冒泡，避免触发外部点击事件导致弹窗关闭
-  event?.stopPropagation();
+  // 针对Firefox兼容性问题，优先使用传入的事件对象，否则使用全局event
+  if (e) {
+    e.stopPropagation();
+    e.preventDefault();
+  } else if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
   
   // 确保弹窗不会消失
   clearHideTooltipTimer();
@@ -309,13 +317,13 @@ const toggleAudio = (text: string) => {
 
   // 如果当前正在播放同一文本，则停止播放
   if (isPlaying.value && currentPlayingText.value === text) {
-    stopAudio();
+    stopAudio(e);
     return;
   }
   
   // 如果正在播放其他文本，先停止
   if (isPlaying.value) {
-    stopAudio();
+    stopAudio(e);
   }
   
   // 检测语言
@@ -324,13 +332,20 @@ const toggleAudio = (text: string) => {
   // 创建语音合成URL
   const speechUrl = createSpeechUrl(text, language);
   
+  // 创建音频元素前先设置状态，解决Firefox中状态更新不及时的问题
+  isPlaying.value = true;
+  currentPlayingText.value = text;
+  
   // 创建音频元素
   const audio = new Audio(speechUrl);
   audioElement.value = audio;
   
-  // 显示正在播放状态
-  isPlaying.value = true;
-  currentPlayingText.value = text;
+  // 监听播放开始事件
+  audio.onplay = () => {
+    // 确保状态已更新
+    isPlaying.value = true;
+    currentPlayingText.value = text;
+  };
   
   // 监听播放结束事件
   audio.onended = () => {
@@ -351,21 +366,32 @@ const toggleAudio = (text: string) => {
   };
   
   // 开始播放
-  audio.play().catch(err => {
-    console.error('音频播放出错:', err);
-    isPlaying.value = false;
-    audioElement.value = null;
-    currentPlayingText.value = '';
-    
-    // 尝试使用Web Speech API作为备选，只在Google TTS失败时使用
-    tryWebSpeechAPI(text, language);
-  });
+  const playPromise = audio.play();
+  
+  // 处理播放Promise
+  if (playPromise !== undefined) {
+    playPromise.catch(err => {
+      console.error('音频播放出错:', err);
+      isPlaying.value = false;
+      audioElement.value = null;
+      currentPlayingText.value = '';
+      
+      // 尝试使用Web Speech API作为备选，只在Google TTS失败时使用
+      tryWebSpeechAPI(text, language);
+    });
+  }
 };
 
 // 停止音频播放
-const stopAudio = () => {
+const stopAudio = (e?: Event) => {
   // 阻止事件冒泡
-  event?.stopPropagation();
+  if (e) {
+    e.stopPropagation();
+    e.preventDefault();
+  } else if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
   
   if (audioElement.value) {
     audioElement.value.pause();
@@ -435,25 +461,43 @@ const tryWebSpeechAPI = (text: string, language: string) => {
     
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = language;
+    
+    // 设置状态
+    isPlaying.value = true;
+    currentPlayingText.value = text;
+    
+    utterance.onstart = () => {
+      // 确保状态已更新
+      isPlaying.value = true;
+      currentPlayingText.value = text;
+    };
+    
     utterance.onend = () => {
       isPlaying.value = false;
       currentPlayingText.value = '';
     };
+    
     utterance.onerror = () => {
       isPlaying.value = false;
       currentPlayingText.value = '';
     };
     
-    isPlaying.value = true;
-    currentPlayingText.value = text;
     window.speechSynthesis.speak(utterance);
   } else {
     console.error('此浏览器不支持语音合成');
   }
 };
 
+// 检测是否为Firefox浏览器
+const detectFirefox = () => {
+  return navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+};
+
 // 监听事件
 onMounted(() => {
+  // 检测浏览器类型
+  isFirefox.value = detectFirefox();
+  
   // 鼠标按下时，标记开始选择
   document.addEventListener('mousedown', () => {
     isSelecting.value = true;
@@ -468,11 +512,14 @@ onMounted(() => {
   // 避免使用selectionchange事件，它触发过于频繁
   // 只在mouseup时处理选择，减少不必要的处理
   
-  // 监听鼠标移动到指示器上的事件
+  // 监听翻译显示状态的变化
   watch(showTooltip, async (newValue: boolean) => {
     if (newValue) {
       // 当显示弹窗时，加载翻译结果
       await getTranslation();
+    } else if (isPlaying.value) {
+      // 当关闭弹窗时，停止播放
+      stopAudio();
     }
   });
   
@@ -494,13 +541,6 @@ onMounted(() => {
     if (isOutsideIndicator && isOutsideTooltip && showIndicator.value) {
       hideIndicator();
       closeTooltip();
-    }
-  });
-  
-  // 监听显示状态变化，在弹窗关闭时停止播放
-  watch(showTooltip, (newValue: boolean) => {
-    if (!newValue && isPlaying.value) {
-      stopAudio();
     }
   });
 });
@@ -832,6 +872,25 @@ onBeforeUnmount(() => {
   color: #1890ff;
   font-size: 13px;
   animation: pulse-light 1.5s infinite;
+}
+
+/* 修复Firefox浏览器中动画丢失的问题 */
+@-moz-document url-prefix() {
+  .playing-status {
+    animation-name: moz-pulse-light;
+  }
+  
+  @keyframes moz-pulse-light {
+    0% {
+      background-color: rgba(24, 144, 255, 0.05);
+    }
+    50% {
+      background-color: rgba(24, 144, 255, 0.15);
+    }
+    100% {
+      background-color: rgba(24, 144, 255, 0.05);
+    }
+  }
 }
 
 .playing-status-icon {
