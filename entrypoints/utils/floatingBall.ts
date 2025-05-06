@@ -93,10 +93,8 @@ export function toggleFloatingBallTranslation() {
   // 触发对应的自定义事件
   if (newState) {
     document.dispatchEvent(new CustomEvent('fluentread-translation-started'));
-    console.log('[悬浮球] 通过快捷键开始翻译');
   } else {
     document.dispatchEvent(new CustomEvent('fluentread-translation-ended'));
-    console.log('[悬浮球] 通过快捷键停止翻译');
   }
   
   // 更新悬浮球状态
@@ -129,10 +127,8 @@ function handleFloatingBallClick() {
   // 触发对应的自定义事件
   if (newState) {
     document.dispatchEvent(new CustomEvent('fluentread-translation-started'));
-    console.log('[悬浮球] 通过点击开始翻译');
   } else {
     document.dispatchEvent(new CustomEvent('fluentread-translation-ended'));
-    console.log('[悬浮球] 通过点击停止翻译');
   }
   
   // 更新UI状态 - 使用Vue实例的$el属性
