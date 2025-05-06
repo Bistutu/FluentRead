@@ -17,19 +17,6 @@
       <div class="tooltip-header">
         <span>翻译结果<small>（via 流畅阅读）</small></span>
         <div class="tooltip-actions">
-          <button class="action-btn" @click="playAudio(selectedText)" title="播放原文">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
-            </svg>
-          </button>
-          <button class="action-btn" @click="playAudio(translationResult)" title="播放译文">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-            </svg>
-          </button>
           <button class="action-btn" @click="copyTranslation" title="复制译文">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -45,8 +32,12 @@
         <div v-else class="translation-container">
           <div class="original-text no-select">
             <pre>{{ selectedText }}</pre>
-            <button class="text-audio-btn" @click="playAudio(selectedText)" title="播放原文">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button class="text-audio-btn" @click="toggleAudio(selectedText)" title="播放/停止原文">
+              <svg v-if="isPlaying && currentPlayingText === selectedText" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
+              </svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
                 <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
               </svg>
@@ -54,10 +45,31 @@
           </div>
           <div class="translation-result no-select">
             <pre>{{ translationResult }}</pre>
-            <button class="text-audio-btn" @click="playAudio(translationResult)" title="播放译文">
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button class="text-audio-btn" @click="toggleAudio(translationResult)" title="播放/停止译文">
+              <svg v-if="isPlaying && currentPlayingText === translationResult" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
+              </svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
                 <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              </svg>
+            </button>
+          </div>
+          
+          <!-- 播放状态提示 - 显示在弹窗内部 -->
+          <div v-if="isPlaying" class="playing-status">
+            <div class="playing-status-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+                <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
+              </svg>
+            </div>
+            <span>正在播放...</span>
+            <button class="stop-audio-btn" @click="stopAudio">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
               </svg>
             </button>
           </div>
@@ -73,17 +85,6 @@
         </svg>
       </div>
       <span>复制译文成功!</span>
-    </div>
-
-    <!-- 正在播放音频提示 -->
-    <div v-if="isPlaying" class="audio-playing-toast">
-      <div class="audio-playing-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
-          <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
-        </svg>
-      </div>
-      <span>正在播放...</span>
     </div>
   </teleport>
 </template>
@@ -109,6 +110,7 @@ const audioElement = ref<HTMLAudioElement | null>(null);
 const lastSelectedText = ref(''); // 用于存储上一次选择的文本
 const isSelecting = ref(false); // 标记用户是否正在选择文本中
 const debounceTimer = ref<number | null>(null); // 防抖定时器
+const currentPlayingText = ref(''); // 当前正在播放的文本
 
 // 计算小红点指示器的样式
 const indicatorStyle = computed(() => {
@@ -217,6 +219,10 @@ const handleMouseEnterTooltip = () => {
 // 鼠标离开弹窗
 const handleMouseLeaveTooltip = () => {
   isHoveringTooltip.value = false;
+  
+  // 如果当前正在播放音频，不自动隐藏弹窗
+  if (isPlaying.value) return;
+  
   setHideTooltipTimer();
 };
 
@@ -224,6 +230,9 @@ const handleMouseLeaveTooltip = () => {
 const setHideTooltipTimer = () => {
   clearHideTooltipTimer();
   hideTooltipTimer.value = window.setTimeout(() => {
+    // 如果当前正在播放音频，不隐藏弹窗
+    if (isPlaying.value) return;
+    
     showTooltip.value = false;
   }, 250); // 250毫秒后隐藏
 };
@@ -245,6 +254,8 @@ const hideIndicator = () => {
 // 关闭翻译弹窗
 const closeTooltip = () => {
   showTooltip.value = false;
+  // 当关闭弹窗时停止音频播放
+  stopAudio();
 };
 
 // 获取翻译结果
@@ -285,14 +296,26 @@ const copyTranslation = () => {
     });
 };
 
-// 播放文本语音
-const playAudio = (text: string) => {
+// 播放或停止文本语音
+const toggleAudio = (text: string) => {
   if (!text) return;
+
+  // 阻止事件冒泡，避免触发外部点击事件导致弹窗关闭
+  event?.stopPropagation();
   
-  // 停止当前正在播放的音频
-  if (audioElement.value) {
-    audioElement.value.pause();
-    audioElement.value = null;
+  // 确保弹窗不会消失
+  clearHideTooltipTimer();
+  isHoveringTooltip.value = true;
+
+  // 如果当前正在播放同一文本，则停止播放
+  if (isPlaying.value && currentPlayingText.value === text) {
+    stopAudio();
+    return;
+  }
+  
+  // 如果正在播放其他文本，先停止
+  if (isPlaying.value) {
+    stopAudio();
   }
   
   // 检测语言
@@ -307,11 +330,13 @@ const playAudio = (text: string) => {
   
   // 显示正在播放状态
   isPlaying.value = true;
+  currentPlayingText.value = text;
   
   // 监听播放结束事件
   audio.onended = () => {
     isPlaying.value = false;
     audioElement.value = null;
+    currentPlayingText.value = '';
   };
   
   // 监听错误事件
@@ -319,9 +344,10 @@ const playAudio = (text: string) => {
     console.error('音频播放失败:', e);
     isPlaying.value = false;
     audioElement.value = null;
+    currentPlayingText.value = '';
     
-    // 尝试使用Web Speech API作为备选
-    tryWebSpeechAPI(text, language);
+    // 不要尝试使用Web Speech API作为备选，避免重复播放
+    // tryWebSpeechAPI(text, language);
   };
   
   // 开始播放
@@ -329,10 +355,30 @@ const playAudio = (text: string) => {
     console.error('音频播放出错:', err);
     isPlaying.value = false;
     audioElement.value = null;
+    currentPlayingText.value = '';
     
-    // 尝试使用Web Speech API作为备选
+    // 尝试使用Web Speech API作为备选，只在Google TTS失败时使用
     tryWebSpeechAPI(text, language);
   });
+};
+
+// 停止音频播放
+const stopAudio = () => {
+  // 阻止事件冒泡
+  event?.stopPropagation();
+  
+  if (audioElement.value) {
+    audioElement.value.pause();
+    audioElement.value = null;
+  }
+  
+  // 停止Web Speech API
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+  }
+  
+  isPlaying.value = false;
+  currentPlayingText.value = '';
 };
 
 // 检测语言
@@ -379,25 +425,34 @@ const createSpeechUrl = (text: string, language: string): string => {
 
 // 使用Web Speech API作为备选方案
 const tryWebSpeechAPI = (text: string, language: string) => {
+  // 如果已经在播放，不要重复播放
+  if (isPlaying.value) return;
+  
   // 检查浏览器是否支持Web Speech API
   if ('speechSynthesis' in window) {
+    // 停止任何可能正在播放的内容
+    window.speechSynthesis.cancel();
+    
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = language;
     utterance.onend = () => {
       isPlaying.value = false;
+      currentPlayingText.value = '';
     };
     utterance.onerror = () => {
       isPlaying.value = false;
+      currentPlayingText.value = '';
     };
     
     isPlaying.value = true;
+    currentPlayingText.value = text;
     window.speechSynthesis.speak(utterance);
   } else {
     console.error('此浏览器不支持语音合成');
   }
 };
 
-// 监听事件 (优化事件监听)
+// 监听事件
 onMounted(() => {
   // 鼠标按下时，标记开始选择
   document.addEventListener('mousedown', () => {
@@ -428,9 +483,24 @@ onMounted(() => {
     const isOutsideIndicator = !target.closest('.selection-indicator');
     const isOutsideTooltip = !target.closest('.translation-tooltip');
     
+    // 检查点击事件是否发生在音频按钮上
+    const isAudioButton = target.closest('.text-audio-btn') || target.closest('.stop-audio-btn');
+    
+    // 如果点击在音频按钮上，不要隐藏弹窗
+    if (isAudioButton) {
+      return;
+    }
+    
     if (isOutsideIndicator && isOutsideTooltip && showIndicator.value) {
       hideIndicator();
       closeTooltip();
+    }
+  });
+  
+  // 监听显示状态变化，在弹窗关闭时停止播放
+  watch(showTooltip, (newValue: boolean) => {
+    if (!newValue && isPlaying.value) {
+      stopAudio();
     }
   });
 });
@@ -750,35 +820,73 @@ onBeforeUnmount(() => {
   justify-content: center;
 }
 
-/* 播放中提示 */
-.audio-playing-toast {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background-color: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 10px 16px;
-  border-radius: 8px;
-  font-size: 14px;
+/* 内部播放状态提示 */
+.playing-status {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background-color: rgba(24, 144, 255, 0.1);
+  border-radius: 6px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  z-index: 10010;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  animation: audio-wave 1.5s ease infinite;
+  gap: 8px;
+  color: #1890ff;
+  font-size: 13px;
+  animation: pulse-light 1.5s infinite;
 }
 
-.audio-playing-icon {
-  color: #1890ff;
+.playing-status-icon {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-@keyframes audio-wave {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.03); }
-  100% { transform: scale(1); }
+@keyframes pulse-light {
+  0% {
+    background-color: rgba(24, 144, 255, 0.05);
+  }
+  50% {
+    background-color: rgba(24, 144, 255, 0.15);
+  }
+  100% {
+    background-color: rgba(24, 144, 255, 0.05);
+  }
+}
+
+.stop-audio-btn {
+  background: none;
+  border: none;
+  color: #1890ff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 50%;
+  margin-left: auto;
+  transition: background-color 0.2s;
+}
+
+.stop-audio-btn:hover {
+  background-color: rgba(24, 144, 255, 0.2);
+}
+
+/* 暗黑模式适配 */
+:root.dark .playing-status {
+  background-color: rgba(64, 169, 255, 0.1);
+  color: #69c0ff;
+}
+
+:root.dark .stop-audio-btn {
+  color: #69c0ff;
+}
+
+:root.dark .stop-audio-btn:hover {
+  background-color: rgba(64, 169, 255, 0.2);
+}
+
+/* 移除外部播放提示样式，改为内部显示 */
+.audio-playing-toast {
+  display: none;
 }
 
 @keyframes toast-fade {
