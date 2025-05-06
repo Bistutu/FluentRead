@@ -141,7 +141,7 @@ export const servicesType = {
 
 export const customModelString = "自定义模型";
 export const models = new Map<string, Array<string>>([
-    [services.openai, ["gpt-4.1","gpt-4.1-mini","gpt-4.1-nano","gpt-4o-mini", "gpt-4o", "o3", "o3-mini", customModelString]],
+    [services.openai, ["gpt-4.1","gpt-4.1-mini","gpt-4.1-nano","gpt-4o-mini", "gpt-4o", "o3", "o3-mini","o4-mini", customModelString]],
     [services.gemini, ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro", "gemini-2.0-flash-exp", customModelString]],
     [services.yiyan, ["ERNIE-Bot 4.0", "ERNIE-Bot", "ERNIE-Speed-8K"]],
     [services.tongyi, ["qwen-long", "qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext", customModelString]],
