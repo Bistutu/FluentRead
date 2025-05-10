@@ -8,7 +8,7 @@ hero:
   image:
     src: /logo.png
     alt: FluentRead
-    style: "width: 120px; height: auto;"
+    style: "width: 240px; height: auto;"
   actions:
     - theme: brand
       text: 快速开始
