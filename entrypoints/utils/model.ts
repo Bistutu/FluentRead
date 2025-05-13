@@ -1,4 +1,4 @@
-import {defaultOption, services} from "./option";
+import { defaultOption, services } from "./option";
 
 interface IMapping {
     [key: string]: string;
@@ -11,11 +11,12 @@ interface IExtra {
 
 export class Config {
     on: boolean; // 是否开启
+    autoTranslate: boolean; // 是否即时翻译
     from: string;
     to: string;
     hotkey: string;
     style: number;
-    display: number;
+    display: number = 1;
     service: string;
     token: IMapping;
     ak: string;
@@ -31,9 +32,16 @@ export class Config {
     system_role: IMapping;
     user_role: IMapping;
     count: number;  // 翻译次数
+    theme: string;  // 主题模式：'auto' | 'light' | 'dark'
+    useCache: boolean; // 是否使用缓存
+    disableFloatingBall: boolean; // 是否禁用悬浮球
+    floatingBallPosition: 'left' | 'right'; // 悬浮球位置
+    floatingBallHotkey: string; // 悬浮球快捷键
+    disableSelectionTranslator: boolean; // 是否禁用划词翻译
 
     constructor() {
         this.on = true;
+        this.autoTranslate = false;
         this.from = defaultOption.from;
         this.to = defaultOption.to;
         this.style = defaultOption.style;
@@ -54,6 +62,12 @@ export class Config {
         this.system_role = systemRoleFactory();
         this.user_role = userRoleFactory();
         this.count = 0;
+        this.theme = 'auto';  // 默认跟随系统
+        this.useCache = true; // 默认开启缓存
+        this.disableFloatingBall = false; // 默认启用悬浮球
+        this.floatingBallPosition = 'right'; // 默认在右侧
+        this.floatingBallHotkey = 'Alt+T'; // 默认快捷键为 Alt+T
+        this.disableSelectionTranslator = false; // 默认不禁用划词翻译
     }
 }
 

@@ -4,7 +4,7 @@
     font-weight: 400;
 
     color-scheme: light dark;
-    color: rgba(255, 255, 255, 0.87);
+    color: rgba(255, 255, 255, 0.95);
     background-color: #242424;
 
     font-synthesis: none;
@@ -14,25 +14,34 @@
     -webkit-text-size-adjust: 100%;
 }
 
+/* 标题样式 */
+.title {
+    font-size: 1.5em;
+    font-weight: 600;
+    margin: 1em 0;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
 .rounded-corner {
-    border-radius: 5px; /* 或者您期望的圆角大小 */
+    border-radius: 5px;
 }
 
 /*popup选项框文字*/
 .popup-text {
     font-size: 15px;
-    /*color: #000000;*/
+    font-weight: 500;
 }
 
 .popup-vertical-left {
-    display: flex; /* 启用 Flexbox */
-    align-items: center; /* 垂直居中 */
-    justify-content: left; /* 水平居中，如果需要的话 */
-    height: 100%; /* 父容器等高 */
+    display: flex;
+    align-items: center;
+    justify-content: left;
+    height: 100%;
 }
 
 .margin-left-2em {
-  margin-left: 2em;
+    margin-left: 2em;
 }
 
 .margin-bottom {
@@ -45,15 +54,36 @@
 
 #app {
     min-width: 340px;
-    /*max-width: 1280px;*/
     margin: 0 auto;
     padding: 0;
     text-align: center;
 }
 
+/* 暗色主题特定样式 */
+@media (prefers-color-scheme: dark) {
+    :root {
+        color: rgba(255, 255, 255, 0.95);
+        background-color: #242424;
+    }
+    
+    .title {
+        color: #fff;
+    }
+    
+    .popup-text {
+        color: rgba(255, 255, 255, 0.95);
+    }
+}
+
+/* 亮色主题特定样式 */
 @media (prefers-color-scheme: light) {
     :root {
         color: #213547;
         background-color: #ffffff;
+    }
+    
+    .title {
+        color: #213547;
+        text-shadow: none;
     }
 }

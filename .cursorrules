@@ -1,0 +1,55 @@
+{
+    "projectName": "FluentRead",
+    "description": "一款高效的浏览器翻译插件，支持多种翻译引擎和翻译模式",
+    "rules": {
+        "ignore": [
+            "node_modules",
+            "dist",
+            "*.log",
+            ".git",
+            "*.zip",
+            "*.crx",
+            "*.xpi",
+            "misc",
+            ".output",
+            "*.lock",
+            ".DS_Store",
+            "coverage",
+            "temp"
+        ],
+        "language": {
+            "typescript": {
+                "filePatterns": ["*.ts", "*.tsx"],
+                "tabSize": 2
+            },
+            "vue": {
+                "filePatterns": ["*.vue"],
+                "tabSize": 2
+            },
+            "css": {
+                "filePatterns": ["*.css"],
+                "tabSize": 2
+            }
+        },
+        "formatting": {
+            "useTabs": false,
+            "trimTrailingWhitespace": true,
+            "insertFinalNewline": true
+        },
+        "search": {
+            "excludePatterns": [
+                "node_modules/**",
+                "dist/**",
+                "misc/**",
+                ".output/**",
+                "coverage/**",
+                "temp/**"
+            ]
+        },
+        "build": {
+            "outDir": ".output",
+            "sourcemap": true,
+            "minify": true
+        }
+    }
+} 

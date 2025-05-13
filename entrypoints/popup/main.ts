@@ -1,15 +1,63 @@
 import {createApp} from 'vue';
 import './style.css';
 import App from './App.vue';
-import ElementPlus, {ElMessage} from 'element-plus'
 import 'element-plus/dist/index.css'
-import * as ElementPlusIconsVue from '@element-plus/icons-vue'
+import { ChatDotRound, Setting } from '@element-plus/icons-vue'
 
+import {
+  ElRow,
+  ElCol,
+  ElContainer,
+  ElHeader,
+  ElMain,
+  ElFooter,
+  ElSelect,
+  ElOption,
+  ElOptionGroup,
+  ElInput,
+  ElSwitch,
+  ElCollapse,
+  ElCollapseItem,
+  ElTooltip,
+  ElEmpty,
+  ElIcon,
+  ElMessage,
+  ElLink,
+  ElText
+} from 'element-plus'
 
 const app = createApp(App);
 
-//  导入 element-plus ui，注册所有 element-plus 的图标
-app.use(ElementPlus)
-for (const [key, component] of Object.entries(ElementPlusIconsVue)) app.component(key, component)
+// 按需注册组件
+const components = [
+  ElRow,
+  ElCol,
+  ElContainer,
+  ElHeader,
+  ElMain,
+  ElFooter,
+  ElSelect,
+  ElOption,
+  ElOptionGroup,
+  ElInput,
+  ElSwitch,
+  ElCollapse,
+  ElCollapseItem,
+  ElTooltip,
+  ElEmpty,
+  ElIcon,
+  ElLink,
+  ElText
+]
+
+components.forEach(component => {
+  if (component.name) {
+    app.component(component.name, component)
+  }
+})
+
+// 注册使用到的图标
+app.component('ChatDotRound', ChatDotRound)
+app.component('Setting', Setting)
 
 app.mount('#app');

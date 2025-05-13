@@ -2,10 +2,13 @@
 import {customModelString, defaultOption, services} from "./option";
 import {config} from "@/entrypoints/utils/config";
 
-// openai 格式的消息模板（通用）
+// openai 格式的消息模板（通用模板）
 export function commonMsgTemplate(origin: string) {
     // 检测是否使用自定义模型
     let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
+
+    // 删除模型名称中的中文括号及其内容，如"gpt-4（推荐）" -> "gpt-4"
+    model = model.replace(/（.*）/g, "");
 
     let system = config.system_role[config.service] || defaultOption.system_role;
     let user = (config.user_role[config.service] || defaultOption.user_role)
@@ -21,6 +24,33 @@ export function commonMsgTemplate(origin: string) {
     })
 }
 
+// deepseek
+export function deepseekMsgTemplate(origin: string) {
+    // 检测是否使用自定义模型
+    let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
+
+    // 删除模型名称中的中文括号及其内容，如"gpt-4（推荐）" -> "gpt-4"
+    model = model.replace(/（.*）/g, "");
+
+    let system = config.system_role[config.service] || defaultOption.system_role;
+    let user = (config.user_role[config.service] || defaultOption.user_role)
+        .replace('{{to}}', config.to).replace('{{origin}}', origin);
+
+    const payload: any = {
+        'model': model,
+        'messages': [
+            {'role': 'system', 'content': system},
+            {'role': 'user', 'content': user},
+        ]
+    };
+
+    // 如果不是 deepseek-reasoner 模型,则添加 temperature
+    if (model !== 'deepseek-reasoner') {
+        payload.temperature = 0.7;
+    }
+
+    return JSON.stringify(payload);
+}
 // gemini
 export function geminiMsgTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
@@ -36,9 +66,9 @@ export function geminiMsgTemplate(origin: string) {
 // claude
 export function claudeMsgTemplate(origin: string) {
     let model = config.model[services.claude];
-    if (model === "Haiku") model = "claude-3-haiku-20240307";
-    else if (model === "Sonnet") model = "claude-3-sonnet-20240229";
-    else if (model === "Opus") model = "claude-3-opus-20240229";
+    if (model === "claude-3-5-haiku") model = "claude-3-5-haiku-20241022";
+    else if (model === "claude-3-5-sonnet") model = "claude-3-5-sonnet-20241022";
+    else if (model === "claude-3-opus") model = "claude-3-opus-20240229";
 
     let system = config.system_role[config.service] || defaultOption.system_role;
     let user = (config.user_role[config.service] || defaultOption.user_role)
@@ -96,7 +126,7 @@ export function minimaxTemplate(origin: string) {
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
     return JSON.stringify({
-        model: "abab6.5-chat",
+        model: "MiniMax-Text-01",
         stream: false,
         temperature: 0.7,
         messages: [
@@ -112,7 +142,6 @@ export function cozeTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
-    console.log(system + user)
     return JSON.stringify({
         bot_id: config.robot_id[config.service],
         user: "FluentRead",

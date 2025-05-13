@@ -1,0 +1,158 @@
+/* 基础变量 */
+:root {
+  --el-bg-color: #ffffff;
+  --el-text-color: #000000;
+  --el-border-color: #dcdfe6;
+  --el-hover-color: #f5f7fa;
+  --el-popup-bg-color: #ffffff;
+}
+
+/* 深色模式变量 */
+:root.dark {
+  --el-bg-color: #1a1a1a;
+  --el-text-color: #ffffff;
+  --el-border-color: #4c4c4c;
+  --el-hover-color: #2c2c2c;
+  --el-popup-bg-color: #1a1a1a;
+  --el-fill-color-blank: #1a1a1a;
+  --el-bg-color-overlay: #1a1a1a;
+  --el-fill-color-light: #2c2c2c;
+  --el-component-bg-color: #1a1a1a;
+}
+
+/* Element Plus 组件适配 */
+.el-select-dropdown {
+  background-color: var(--el-popup-bg-color) !important;
+  border-color: var(--el-border-color) !important;
+}
+
+.el-select-dropdown__item {
+  color: var(--el-text-color) !important;
+}
+
+.el-select-dropdown__item.hover,
+.el-select-dropdown__item:hover {
+  background-color: var(--el-hover-color) !important;
+}
+
+.el-input__wrapper {
+  background-color: var(--el-bg-color) !important;
+}
+
+.el-input__inner {
+  color: var(--el-text-color) !important;
+}
+
+.el-textarea__inner {
+  background-color: var(--el-bg-color) !important;
+  color: var(--el-text-color) !important;
+}
+
+/* 自定义组件适配 */
+.popup-text {
+  color: var(--el-text-color) !important;
+}
+
+.lightblue {
+  background-color: var(--el-bg-color) !important;
+}
+
+/* 折叠面板适配 */
+.el-collapse {
+  --el-collapse-header-bg-color: var(--el-bg-color);
+  --el-collapse-content-bg-color: var(--el-bg-color);
+  border-color: var(--el-border-color);
+}
+
+.el-collapse-item__header,
+.el-collapse-item__content {
+  color: var(--el-text-color);
+}
+
+/* 深色模式特殊处理 */
+.dark {
+  /* 容器背景 */
+  .el-container,
+  .el-header,
+  .el-main,
+  .el-footer {
+    background-color: var(--el-bg-color) !important;
+  }
+
+  /* 输入框和下拉菜单 */
+  .el-input__wrapper,
+  .el-textarea__wrapper {
+    background-color: var(--el-fill-color-light) !important;
+    box-shadow: 0 0 0 1px var(--el-border-color) inset !important;
+  }
+
+  /* 下拉菜单 */
+  .el-select-dropdown,
+  .el-dropdown-menu {
+    background-color: var(--el-bg-color-overlay) !important;
+    border-color: var(--el-border-color) !important;
+  }
+
+  /* 按钮和开关 */
+  .el-button:not(.el-button--primary):not(.el-button--success) {
+    background-color: var(--el-fill-color-light) !important;
+    border-color: var(--el-border-color) !important;
+    color: #ffffff !important;
+  }
+
+  /* 开关 */
+  .el-switch {
+    --el-switch-off-color: var(--el-fill-color-light);
+  }
+
+  /* 弹出层 */
+  .el-tooltip__popper,
+  .el-message-box,
+  .el-dialog {
+    background-color: var(--el-bg-color-overlay) !important;
+    border-color: var(--el-border-color) !important;
+  }
+
+  /* 文字颜色统一处理 */
+  * {
+    color: #ffffff !important;
+  }
+
+  .el-select-dropdown__item.is-disabled {
+    color: rgba(255, 255, 255, 0.5) !important;
+  }
+
+  .el-select-group__title {
+    color: rgba(255, 255, 255, 0.7) !important;
+  }
+}
+
+/* 过渡动画 */
+* {
+  transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+}
+
+/* 下拉菜单分组样式 */
+.el-select-group__title {
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--el-text-color-secondary) !important;
+  background-color: var(--el-fill-color-light);
+  border-bottom: 1px solid var(--el-border-color-light);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.el-select-group__wrap:not(:last-of-type) {
+  margin-bottom: 8px;
+}
+
+.el-select-group__wrap .el-select-dropdown__item {
+  padding-left: 20px;
+}
+
+.el-select-dropdown__item.selected {
+  color: var(--el-color-primary) !important;
+  font-weight: bold;
+} 
