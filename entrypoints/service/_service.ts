@@ -1,6 +1,7 @@
 import {services} from "../utils/option";
 import microsoft from "./microsoft";
 import deepl from "./deepl";
+import deeplx from "./deeplx";
 import custom from "./custom";
 import tongyi from "./tongyi";
 import zhipu from "./zhipu";
@@ -22,6 +23,7 @@ export const _service: ServiceMap = {
     // 传统机器翻译
     [services.microsoft]: microsoft,
     [services.deepL]: deepl,
+    [services.deeplx]: deeplx,
     [services.google]: google,
     [services.xiaoniu]: xiaoniu,
 

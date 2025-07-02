@@ -2,6 +2,7 @@ export const services = {
     // 传统机器翻译
     microsoft: "microsoft",
     deepL: "deepL",
+    deeplx: "deeplx",
     google: "google",
     xiaoniu: "xiaoniu",
     // 大模型翻译
@@ -32,7 +33,7 @@ export const services = {
 
 export const servicesType = {
     // 阵营划分
-    machine: new Set([services.microsoft, services.deepL, services.google, services.xiaoniu,]),
+    machine: new Set([services.microsoft, services.deepL, services.deeplx, services.google, services.xiaoniu,]),
     AI: new Set([
         services.openai,
         services.gemini,
@@ -65,6 +66,7 @@ export const servicesType = {
         services.moonshot,
         services.claude,
         services.deepL,
+        services.deeplx,
         services.xiaoniu,
         services.infini,
         services.baichuan,
@@ -112,6 +114,7 @@ export const servicesType = {
         services.claude,
         services.google,
         services.deepL,
+        services.deeplx,
         services.moonshot,
         services.tongyi,
         services.xiaoniu,
@@ -128,6 +131,11 @@ export const servicesType = {
         services.openrouter,
         services.grok,
     ]),
+    // 支持自定义 URL 的服务
+    useCustomUrl: new Set([
+        services.custom,
+        services.deeplx,
+    ]),
 
     isMachine: (service: string) => servicesType.machine.has(service),
     isAI: (service: string) => servicesType.AI.has(service),
@@ -137,6 +145,7 @@ export const servicesType = {
     isCustom: (service: string) => service === services.custom,
     isUseAkSk: (service: string) => service === services.yiyan,
     isCoze: (service: string) => service === services.cozecom || service === services.cozecn,
+    isUseCustomUrl: (service: string) => servicesType.useCustomUrl.has(service),
 };
 
 export const customModelString = "自定义模型";
@@ -218,6 +227,7 @@ export const options = {
         {value: services.microsoft, label: "微软翻译"},
         {value: services.google, label: "谷歌翻译"},
         {value: services.deepL, label: "DeepL"},
+        {value: services.deeplx, label: "DeepLX"},
         {value: services.xiaoniu, label: "小牛翻译"},
         // 大模型翻译
         {value: "ai", label: "AI翻译", disabled: true},
@@ -324,6 +334,7 @@ export const defaultOption = {
     hotkey: "Control",
     service: services.microsoft,
     custom: "http://localhost:11434/v1/chat/completions",
+    deeplx: "http://localhost:1188/translate",
     system_role:
         "You are a professional, authentic machine translation engine.",
     user_role: `Translate the following text into {{to}}, If translation is unnecessary (e.g. proper nouns, codes, etc.), return the original text. NO explanations. NO notes:

@@ -3,6 +3,7 @@ import { services } from "./option";
 // 常量工具类
 export const urls: any = {
     [services.deepL]: "https://api-free.deepl.com/v2/translate",
+    [services.deeplx]: "http://localhost:1188/translate",
     [services.openai]: "https://api.openai.com/v1/chat/completions",
     [services.moonshot]: "https://api.moonshot.cn/v1/chat/completions",
     [services.custom]: "https://localhost:11434/v1/chat/completions",
@@ -26,7 +27,6 @@ export const urls: any = {
 
     // [services.baidufree]:"https://fanyi.baidu.com/transapi"
     // [services.baidu]: "https://fanyi-api.baidu.com/api/trans/vip/translate",
-    // [services.deepLx]: "http://localhost:1188/translate",
 }
 
 export const method = {POST: "POST", GET: "GET",};
