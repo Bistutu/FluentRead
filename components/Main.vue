@@ -200,6 +200,20 @@
       </el-col>
     </el-row>
 
+    <!-- DeepLX URL 配置-->
+    <el-row v-show="compute.showDeepLX" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark"
+          content="DeepLX API 服务地址，默认为本地地址。如果使用远程 DeepLX 服务，请修改为对应的服务地址" placement="top-start"
+          :show-after="500">
+          <span class="popup-text popup-vertical-left">服务地址</span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-input v-model="config.deeplx" placeholder="http://localhost:1188/translate" />
+      </el-col>
+    </el-row>
+
     <!-- 使用AkSk -->
     <el-row v-show="compute.showAkSk" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -454,13 +468,15 @@ let compute = ref({
   model: computed(() => models.get(config.value.service) || []),
   // 8、是否需要自定义接口
   showCustom: computed(() => servicesType.isCustom(config.value.service)),
-  // 9、是否自定义模型
+  // 9、是否显示 DeepLX URL 配置
+  showDeepLX: computed(() => config.value.service === 'deeplx'),
+  // 10、是否自定义模型
   showCustomModel: computed(() => servicesType.isAI(config.value.service) && config.value.model[config.value.service] === "自定义模型"),
-  // 10、判断是否为"双语模式"，控制一些翻译服务的显示
+  // 11、判断是否为"双语模式"，控制一些翻译服务的显示
   filteredServices: computed(() => options.services.filter((service: any) =>
     !([service.google].includes(service.value) && config.value.display !== 1))
   ),
-  // 11、判断是否为 coze
+  // 12、判断是否为 coze
   showRobotId: computed(() => servicesType.isCoze(config.value.service)),
 })
 
