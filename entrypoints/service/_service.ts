@@ -15,6 +15,7 @@ import minimax from "@/entrypoints/service/minimax";
 import common from "@/entrypoints/service/common";
 import coze from "@/entrypoints/service/coze";
 import deepseek from "./deepseek";
+import newapi from "./newapi";
 
 type ServiceFunction = (message: any) => Promise<any>;
 type ServiceMap = {[key: string]: ServiceFunction;};
@@ -39,6 +40,7 @@ export const _service: ServiceMap = {
     [services.cozecom]: coze,
     [services.cozecn]: coze,
     [services.deepseek]: deepseek,
+    [services.newapi]: newapi,
     // openai schema
     [services.openai]: common,
     [services.moonshot]: common,

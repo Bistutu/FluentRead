@@ -38,6 +38,7 @@ export class Config {
     floatingBallPosition: 'left' | 'right'; // 悬浮球位置
     floatingBallHotkey: string; // 悬浮球快捷键
     disableSelectionTranslator: boolean; // 是否禁用划词翻译
+    newApiUrl: string; // NewAPI地址
 
     constructor() {
         this.on = true;
@@ -68,6 +69,7 @@ export class Config {
         this.floatingBallPosition = 'right'; // 默认在右侧
         this.floatingBallHotkey = 'Alt+T'; // 默认快捷键为 Alt+T
         this.disableSelectionTranslator = false; // 默认不禁用划词翻译
+        this.newApiUrl = ''; // NewAPI地址默认为空
     }
 }
 
