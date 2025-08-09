@@ -3,8 +3,12 @@
  * 控制并发翻译任务的数量，避免同时进行过多翻译请求
  */
 
-// 队列配置
-const MAX_CONCURRENT_TRANSLATIONS = 6; // 最大并发翻译数量
+import { config } from './config';
+
+// 获取当前最大并发数
+function getMaxConcurrentTranslations(): number {
+  return config.maxConcurrentTranslations || 6; // 默认值为6
+}
 
 // 队列状态
 let activeTranslations = 0; // 当前活跃的翻译任务数量
@@ -40,7 +44,7 @@ export function enqueueTranslation<T>(translationTask: () => Promise<T>): Promis
     };
 
     // 将任务添加到队列
-    if (activeTranslations < MAX_CONCURRENT_TRANSLATIONS) {
+    if (activeTranslations < getMaxConcurrentTranslations()) {
       // 直接执行任务
       activeTranslations++;
       taskWrapper();
@@ -55,7 +59,7 @@ export function enqueueTranslation<T>(translationTask: () => Promise<T>): Promis
  */
 function processQueue() {
   // 如果有等待的任务，并且活跃任务数量未达到上限，执行下一个任务
-  if (pendingTranslations.length > 0 && activeTranslations < MAX_CONCURRENT_TRANSLATIONS) {
+  if (pendingTranslations.length > 0 && activeTranslations < getMaxConcurrentTranslations()) {
     const nextTask = pendingTranslations.shift();
     if (nextTask) {
       activeTranslations++;
@@ -81,11 +85,12 @@ export function clearTranslationQueue() {
  * @returns 返回当前队列状态对象
  */
 export function getQueueStatus() {
+  const maxConcurrent = getMaxConcurrentTranslations();
   return {
     activeTranslations,
     pendingTranslations: pendingTranslations.length,
-    maxConcurrent: MAX_CONCURRENT_TRANSLATIONS,
-    isQueueFull: activeTranslations >= MAX_CONCURRENT_TRANSLATIONS,
+    maxConcurrent,
+    isQueueFull: activeTranslations >= maxConcurrent,
     totalTasksInProcess: activeTranslations + pendingTranslations.length
   };
 }
@@ -96,6 +101,6 @@ export function getQueueStatus() {
  */
 export function canAcceptMoreTasks(): boolean {
   // 如果等待队列太长，返回false表示需要暂停扫描
-  const MAX_QUEUE_LENGTH = MAX_CONCURRENT_TRANSLATIONS * 3;
+  const MAX_QUEUE_LENGTH = getMaxConcurrentTranslations() * 3;
   return pendingTranslations.length < MAX_QUEUE_LENGTH;
 } 

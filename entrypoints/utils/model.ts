@@ -38,7 +38,9 @@ export class Config {
     floatingBallPosition: 'left' | 'right'; // 悬浮球位置
     floatingBallHotkey: string; // 悬浮球快捷键
     disableSelectionTranslator: boolean; // 是否禁用划词翻译
+    selectionTranslatorMode: string; // 划词翻译显示模式: 'disabled' | 'bilingual' | 'translation-only'
     newApiUrl: string; // NewAPI地址
+    maxConcurrentTranslations: number; // 最大并发翻译数量
 
     constructor() {
         this.on = true;
@@ -69,7 +71,9 @@ export class Config {
         this.floatingBallPosition = 'right'; // 默认在右侧
         this.floatingBallHotkey = 'Alt+T'; // 默认快捷键为 Alt+T
         this.disableSelectionTranslator = false; // 默认不禁用划词翻译
+        this.selectionTranslatorMode = 'bilingual'; // 默认双语显示模式
         this.newApiUrl = 'http://localhost:3000'; // NewAPI 默认地址
+        this.maxConcurrentTranslations = 6; // 默认最大并发数为6
     }
 }
 
