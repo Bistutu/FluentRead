@@ -88,18 +88,44 @@ export function claudeMsgTemplate(origin: string) {
 // 通义千问
 export function tongyiMsgTemplate(origin: string) {
     let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
+    const normalTemplate = () => {
+        let system = config.system_role[config.service] || defaultOption.system_role;
+        let user = (config.user_role[config.service] || defaultOption.user_role)
+            .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
-    let system = config.system_role[config.service] || defaultOption.system_role;
-    let user = (config.user_role[config.service] || defaultOption.user_role)
-        .replace('{{to}}', config.to).replace('{{origin}}', origin);
-
-    return JSON.stringify({
-        "model": model,
-	"messages": [
-	    {"role": "system", "content": system},
-	    {"role": "user", "content": user},
+        return JSON.stringify({
+            "model": model,
+	    "messages": [
+	        {"role": "system", "content": system},
+	        {"role": "user", "content": user},
+	    ]
+        })
+    }
+    // 翻译模型qwen-mt-plus和qwen-mt-turbo的格式和通用的不同
+    const mtModelTemplate = () => {
+	const langMap = [
+            {value: "zh-Hans", target: "zh"},
+            {value: "en"},
+            {value: "ja"},
+            {value: "ko"},
+            {value: "fr"},
+            {value: "ru"},
 	]
-    })
+	let targetItem = langMap.find(i => i.value === config.to) || langMap[0]
+	let targetLang = targetItem.target || targetItem.value
+        return JSON.stringify({
+            "model": model,
+	    "messages": [
+	        {"role": "user", "content": origin},
+	    ],
+	    "translation_options": {
+                "source_lang": "auto",
+                "target_lang": targetLang
+            }
+        })
+    }
+    return model.startsWith("qwen-mt") ? mtModelTemplate() : normalTemplate()
+
 }
 
 // 文心一言

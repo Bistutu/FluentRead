@@ -153,7 +153,7 @@ export const models = new Map<string, Array<string>>([
     [services.openai, ["gpt-4.1","gpt-4.1-mini","gpt-4.1-nano","gpt-4o-mini", "gpt-4o", "o3", "o3-mini","o4-mini", customModelString]],
     [services.gemini, ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro", "gemini-2.0-flash-exp", customModelString]],
     [services.yiyan, ["ERNIE-Bot 4.0", "ERNIE-Bot", "ERNIE-Speed-8K"]],
-    [services.tongyi, ["qwen-long", "qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext", customModelString]],
+    [services.tongyi, ["qwen-long", "qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext", "qwen-mt-plus", "qwen-mt-turbo", customModelString]],
     [services.zhipu, ["GLM-4-Flash", "glm-4-plus", "glm-4", "glm-4v", "glm-3-turbo", customModelString]],
     [services.moonshot, ["moonshot-v1-8k", "moonshot-v1-32k", customModelString]],
     [services.claude, ["claude-3-7-sonnet", "claude-3-5-haiku", "claude-3-5-sonnet", "claude-3-opus"]],
