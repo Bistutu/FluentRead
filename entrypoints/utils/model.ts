@@ -71,7 +71,7 @@ export class Config {
         this.floatingBallHotkey = 'Alt+T'; // 默认快捷键为 Alt+T
         this.disableSelectionTranslator = false; // 默认不禁用划词翻译
         this.maxConcurrentTranslations = 6; // 默认最大并发翻译数量
-        this.deeplx = 'http://localhost:1188/translate'; // DeepLX 默认服务地址
+        this.deeplx = ''; // DeepLX 默认服务地址
     }
 }
 
