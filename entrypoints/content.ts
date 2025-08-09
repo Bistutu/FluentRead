@@ -20,6 +20,19 @@ export default defineContentScript({
         setupManualTranslationTriggers();
         // 添加悬浮球快捷键事件监听器
         setupFloatingBallHotkey();
+        // 当悬浮球关闭时，仍然允许使用快捷键进行全文翻译的独立开关
+        let isFullPageTranslating = false;
+        document.addEventListener('fluentread-toggle-translation', () => {
+            // 仅在悬浮球被禁用（未挂载）时由内容脚本接管快捷键
+            if (config.disableFloatingBall === true) {
+                isFullPageTranslating = !isFullPageTranslating;
+                if (isFullPageTranslating) {
+                    autoTranslateEnglishPage();
+                } else {
+                    restoreOriginalContent();
+                }
+            }
+        });
         // 添加自动翻译事件监听器
         if (config.autoTranslate) autoTranslationEvent();
 
@@ -227,7 +240,7 @@ function setupManualTranslationTriggers() {
     });
 }
 
-// 设置悬浮球快捷键
+        // 设置全文翻译快捷键（与悬浮球解耦）
 function setupFloatingBallHotkey() {
     // 如果快捷键设置为 "none"，则禁用快捷键
     if (config.floatingBallHotkey === 'none') return;
@@ -288,7 +301,8 @@ function setupFloatingBallHotkey() {
                                 (hotkeyParts.includes('shift') || !hotkeysPressed.has('shift'));
         
         // 如果按键组合匹配配置的快捷键，且没有额外的修饰键
-        if (allKeysPressed && noExtraModifiers && !config.disableFloatingBall) {
+        // 无论悬浮球是否启用，都派发统一事件，由对应处理方接管
+        if (allKeysPressed && noExtraModifiers) {
             // 防止事件继续传播和默认行为
             event.preventDefault();
             event.stopPropagation();

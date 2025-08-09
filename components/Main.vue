@@ -84,8 +84,8 @@
       </el-col>
     </el-row>
 
-    <!-- 悬浮球快捷键选择 -->
-    <el-row v-if="config.on && floatingBallEnabled" class="margin-bottom margin-left-2em margin-top-1em">
+    <!-- 全文翻译快捷键选择（独立于悬浮球显示） -->
+    <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
       <el-col :span="14" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="（测试版）设置快捷键以便快速切换全文翻译状态，无需鼠标点击悬浮球" placement="top-start" :show-after="500">
         <span class="popup-text popup-vertical-left">
