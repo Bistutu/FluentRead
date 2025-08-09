@@ -272,6 +272,20 @@
       </el-col>
     </el-row>
 
+    <!-- NewAPI 配置 -->
+    <el-row v-show="compute.showNewAPI" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="填写 New API 的访问地址，如http://localhost:3000 " placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">NewAPI接口<el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-input v-model="config.newApiUrl" placeholder="请输入您的New API接口地址" />
+      </el-col>
+    </el-row>
+
     <!--  模型 -->
     <el-row v-show="compute.showModel" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -478,6 +492,8 @@ let compute = ref({
   ),
   // 12、判断是否为 coze
   showRobotId: computed(() => servicesType.isCoze(config.value.service)),
+  // 13、是否显示New API配置
+  showNewAPI: computed(() => servicesType.isNewApi(config.value.service)),
 })
 
 // 监听主题变化

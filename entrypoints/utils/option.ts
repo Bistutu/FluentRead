@@ -29,6 +29,7 @@ export const services = {
     siliconCloud: "siliconCloud", // 硅流
     openrouter: "openrouter", // openrouter
     grok: "grok", // X.AI 的 Grok
+    newapi: "newapi", // New API 接口
 };
 
 export const servicesType = {
@@ -56,6 +57,7 @@ export const servicesType = {
         services.siliconCloud,
         services.openrouter,
         services.grok,
+        services.newapi,
     ]),
     // 需要 token
     useToken: new Set([
@@ -83,6 +85,7 @@ export const servicesType = {
         services.siliconCloud,
         services.openrouter,
         services.grok,
+        services.newapi,
     ]),
     // 需要 model
     useModel: new Set([
@@ -106,6 +109,7 @@ export const servicesType = {
         services.siliconCloud,
         services.openrouter,
         services.grok,
+        services.newapi,
     ]),
     // 支持代理
     useProxy: new Set([
@@ -135,6 +139,7 @@ export const servicesType = {
     useCustomUrl: new Set([
         services.custom,
         services.deeplx,
+        services.newapi,
     ]),
 
     isMachine: (service: string) => servicesType.machine.has(service),
@@ -143,6 +148,7 @@ export const servicesType = {
     isUseProxy: (service: string) => servicesType.useProxy.has(service),
     isUseModel: (service: string) => servicesType.useModel.has(service),
     isCustom: (service: string) => service === services.custom,
+    isNewApi: (service: string) => service === services.newapi,
     isUseAkSk: (service: string) => service === services.yiyan,
     isCoze: (service: string) => service === services.cozecom || service === services.cozecn,
     isUseCustomUrl: (service: string) => servicesType.useCustomUrl.has(service),
@@ -165,8 +171,7 @@ export const models = new Map<string, Array<string>>([
     [services.minimax, ["chatcompletion_v2"]],
     [services.jieyue, ["step-1-8k", customModelString]],
     [services.huanYuan, ["hunyuan-turbos-latest（推荐）","hunyuan-turbo", "hunyuan-lite", "hunyuan-standard", customModelString]],
-    [services.doubao, [customModelString]],
-    [services.grok, ["grok-3-beta", "grok-3-fast-beta", "grok-3-mini-beta", "grok-3-mini-fast-beta", customModelString]],
+    [services.newapi, ["gemini-2.5-flash-lite","gemini-2.0-flash", "gpt-4.1-mini","gpt-4.1-nano","gpt-4o-mini", customModelString]],
 
     // mix model
     [services.siliconCloud, ["Qwen/Qwen3-8B（免费）","THUDM/GLM-Z1-9B-0414（免费）","THUDM/GLM-4-9B-0414（免费）",
@@ -234,6 +239,7 @@ export const options = {
         {value: services.deepseek, label: "DeepSeek⭐️"},
         {value: services.siliconCloud, label: "硅基流动-SiliconFlow⭐️"},
         {value: services.huanYuan, label: "腾讯混元⭐"},
+        {value: services.newapi, label: "New API"},
         {value: services.grok, label: "Grok (X.AI)"},
         {value: services.openrouter, label: "OpenRouter"},
         {value: services.groq, label: "Groq"},
