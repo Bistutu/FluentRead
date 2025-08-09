@@ -38,6 +38,8 @@ export class Config {
     floatingBallPosition: 'left' | 'right'; // 悬浮球位置
     floatingBallHotkey: string; // 悬浮球快捷键
     disableSelectionTranslator: boolean; // 是否禁用划词翻译
+    maxConcurrentTranslations: number; // 最大并发翻译数量
+    deeplx: string; // DeepLX 服务地址
 
     constructor() {
         this.on = true;
@@ -68,6 +70,8 @@ export class Config {
         this.floatingBallPosition = 'right'; // 默认在右侧
         this.floatingBallHotkey = 'Alt+T'; // 默认快捷键为 Alt+T
         this.disableSelectionTranslator = false; // 默认不禁用划词翻译
+        this.maxConcurrentTranslations = 6; // 默认最大并发翻译数量
+        this.deeplx = 'http://localhost:1188/translate'; // DeepLX 默认服务地址
     }
 }
 
