@@ -41,6 +41,7 @@ export class Config {
     selectionTranslatorMode: string; // 划词翻译显示模式: 'disabled' | 'bilingual' | 'translation-only'
     newApiUrl: string; // NewAPI地址
     maxConcurrentTranslations: number; // 最大并发翻译数量
+    disableAnimations: boolean; // 是否禁用动画效果（节省GPU）
 
     constructor() {
         this.on = true;
@@ -74,6 +75,7 @@ export class Config {
         this.selectionTranslatorMode = 'bilingual'; // 默认双语显示模式
         this.newApiUrl = 'http://localhost:3000'; // NewAPI 默认地址
         this.maxConcurrentTranslations = 6; // 默认最大并发数为6
+        this.disableAnimations = false; // 默认启用动画
     }
 }
 

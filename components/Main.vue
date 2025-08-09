@@ -398,6 +398,22 @@
               style="width: 100%" />
           </el-col>
         </el-row>
+        
+        <!-- 禁用动画设置 -->
+        <el-row class="margin-bottom">
+          <el-col :span="20" class="lightblue rounded-corner">
+            <el-tooltip class="box-item" effect="dark" 
+              content="禁用所有动画效果（包括加载动画、悬浮动画等）以节省GPU资源和电量。适合低配置设备或希望节省资源的用户。" 
+              placement="top-start" :show-after="500">
+              <span class="popup-text popup-vertical-left">禁用动画效果<el-icon class="icon-margin">
+                  <ChatDotRound />
+                </el-icon></span>
+            </el-tooltip>
+          </el-col>
+          <el-col :span="4" class="flex-end">
+            <el-switch v-model="config.disableAnimations" inline-prompt active-text="禁用" inactive-text="启用" />
+          </el-col>
+        </el-row>
       </el-collapse-item>
     </el-collapse>
 

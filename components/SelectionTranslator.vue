@@ -27,7 +27,7 @@
         </div>
       </div>
       <div class="tooltip-content">
-        <div v-if="isLoading" class="loading-spinner"></div>
+        <div v-if="isLoading" :class="['loading-spinner', { 'static': config.disableAnimations }]"></div>
         <div v-else-if="error" class="error-message">{{ error }}</div>
         <div v-else class="translation-container">
           <!-- 原文显示（双语模式才显示） -->
@@ -717,6 +717,28 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   margin: 10px auto;
   animation: spin 1s linear infinite;
+}
+
+/* 静态加载样式 */
+.loading-spinner.static {
+  animation: none;
+  background: radial-gradient(circle, rgb(230, 151, 171) 30%, rgba(230, 151, 171, 0.6) 70%);
+  border: 2px solid rgb(200, 121, 141);
+  box-shadow: 0 0 10px rgba(230, 151, 171, 0.5);
+  position: relative;
+}
+
+/* 添加光泽效果 */
+.loading-spinner.static::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 50%, rgba(0,0,0,0.1) 100%);
+  border-radius: 50%;
+  pointer-events: none;
 }
 
 @keyframes spin {

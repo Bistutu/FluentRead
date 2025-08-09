@@ -3,7 +3,8 @@
     'floating-ball-expanded': isExpanded,
     'dragging': isDragging,
     'is-translating': isTranslating,
-    'animating': isAnimating
+    'animating': isAnimating && !config.disableAnimations,
+    'static-mode': config.disableAnimations
   }" :data-position="currentDisplayPosition" @mouseenter="expandBall" @mouseleave="collapseBall" :style="positionStyle"
        @mousedown="startDrag" @click="toggleTranslation" ref="floatingBall">
     <div class="floating-ball-icon">
@@ -46,6 +47,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import type { PropType, CSSProperties } from 'vue';
+import { config } from '@/entrypoints/utils/config';
 
 const props = defineProps({
   position: {
@@ -439,6 +441,25 @@ watch(() => props.position, (newPosition) => {
 
 .animating:not(.is-translating) .floating-ball-icon {
   animation: pulse-blue 0.5s ease;
+}
+
+/* 静态模式样式 */
+.static-mode .floating-ball-icon {
+  animation: none !important;
+}
+
+.static-mode .floating-ball-tooltip {
+  animation: none !important;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.static-mode .pulsing-circle {
+  animation: none !important;
+}
+
+.static-mode .dot-animate {
+  animation: none !important;
 }
 
 @keyframes pulse-green {
