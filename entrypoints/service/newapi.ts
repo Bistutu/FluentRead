@@ -38,7 +38,12 @@ async function newapi(message: any) {
         }
 
         const result = await resp.json();
-        return contentPostHandler(result.choices[0].message.content);
+
+        if (result.choices && result.choices.length > 0) {
+            return contentPostHandler(result.choices[0].message.content);
+        }
+
+        throw new Error('翻译失败: 上游未返回内容');
     } catch (error) {
         console.error('API调用失败:', error);
         throw error;
