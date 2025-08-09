@@ -177,6 +177,7 @@
           size="small"
           style="width: 100%"
           @change="handleConcurrentChange"
+          controls-position="right"
         />
       </el-col>
     </el-row>
@@ -420,7 +421,7 @@ import { models, options, servicesType, defaultOption } from "../entrypoints/uti
 import { Config } from "@/entrypoints/utils/model";
 import { storage } from '@wxt-dev/storage';
 import { ChatDotRound, Refresh } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElInputNumber } from 'element-plus'
 import browser from 'webextension-polyfill';
 
 // 初始化深色模式媒体查询
@@ -659,9 +660,9 @@ const toggleFloatingBall = (val: boolean) => {
 };
 
 // 处理并发数量变化
-const handleConcurrentChange = (value: number) => {
+const handleConcurrentChange = (currentValue: number | undefined, oldValue: number | undefined) => {
   // 验证并发数量的有效性
-  if (value < 1 || value > 20) {
+  if (currentValue === undefined || currentValue < 1 || currentValue > 20) {
     ElMessage({
       message: '并发数量必须在 1-20 之间',
       type: 'warning',
@@ -676,7 +677,7 @@ const handleConcurrentChange = (value: number) => {
   showRefreshTip.value = true;
   
   ElMessage({
-    message: `并发数量已更新为 ${value}`,
+    message: `并发数量已更新为 ${currentValue}`,
     type: 'success',
     duration: 2000
   });
