@@ -174,7 +174,6 @@
           :min="1" 
           :max="20" 
           :step="1"
-          size="small"
           style="width: 100%"
           @change="handleConcurrentChange"
           controls-position="right"
