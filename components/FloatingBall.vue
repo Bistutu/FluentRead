@@ -1,13 +1,13 @@
 <template>
-  <div class="floating-ball" :class="{
+  <div class="fr-floating-ball" :class="{
     'floating-ball-expanded': isExpanded,
     'dragging': isDragging,
     'is-translating': isTranslating,
     'animating': isAnimating
   }" :data-position="currentDisplayPosition" @mouseenter="expandBall" @mouseleave="collapseBall" :style="positionStyle"
-    @mousedown="startDrag" @click="toggleTranslation" ref="floatingBall">
+       @mousedown="startDrag" @click="toggleTranslation" ref="floatingBall">
     <div class="floating-ball-icon">
-      <div class="icon-container">
+      <div class="fr-icon-container">
         <svg v-if="iconType === 'simple' && !isTranslating" class="translation-icon" viewBox="0 0 24 24" fill="none"
           xmlns="http://www.w3.org/2000/svg">
           <path
@@ -362,7 +362,7 @@ watch(() => props.position, (newPosition) => {
 </script>
 
 <style scoped>
-.floating-ball {
+.fr-floating-ball {
   position: fixed;
   z-index: 9999;
   transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
@@ -405,7 +405,7 @@ watch(() => props.position, (newPosition) => {
   border-color: #4caf50;
 }
 
-.icon-container {
+.fr-icon-container {
   position: relative;
   display: flex;
   align-items: center;
@@ -481,24 +481,6 @@ watch(() => props.position, (newPosition) => {
   overflow: hidden;
   border-radius: 50%;
   pointer-events: none;
-}
-
-.ripple {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  opacity: 0.6;
-  transition: all 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
-}
-
-.ripple.active {
-  width: 200%;
-  height: 200%;
-  opacity: 0;
 }
 
 /* 快捷键提示 */
@@ -582,13 +564,13 @@ watch(() => props.position, (newPosition) => {
   transform: rotate(45deg) translate(-0.75px, -0.75px);
 }
 
-.floating-ball[data-position="left"] {
+.fr-floating-ball[data-position="left"] {
   left: 0;
   right: auto;
   transform: translateX(-50%);
 }
 
-.floating-ball[data-position="right"] {
+.fr-floating-ball[data-position="right"] {
   right: 0;
   left: auto;
   transform: translateX(50%);
@@ -598,41 +580,12 @@ watch(() => props.position, (newPosition) => {
   transform: translateX(0) !important;
 }
 
-.floating-ball-menu {
-  position: absolute;
-  top: 40px;
-  left: 0;
-  background-color: white;
-  border-radius: 16px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  padding: 7px 0;
-  width: 34px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.menu-item {
-  padding: 7px;
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  cursor: pointer;
-  color: #666;
-  transition: background-color 0.2s;
-}
-
-.menu-item:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-.floating-ball.dragging {
+.fr-floating-ball.dragging {
   transition: none;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
-.floating-ball.dragging .floating-ball-icon {
+.fr-floating-ball.dragging .floating-ball-icon {
   border-color: #4caf50;
   box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
 }

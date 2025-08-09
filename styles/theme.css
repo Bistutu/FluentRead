@@ -1,72 +1,82 @@
 /* 基础变量 */
 :root {
-  --el-bg-color: #ffffff;
-  --el-text-color: #000000;
-  --el-border-color: #dcdfe6;
-  --el-hover-color: #f5f7fa;
-  --el-popup-bg-color: #ffffff;
+  --fr-bg-color: #ffffff;
+  --fr-text-color: #000000;
+  --fr-border-color: #dcdfe6;
+  --fr-hover-color: #f5f7fa;
+  --fr-popup-bg-color: #ffffff;
+  --fr-text-color-regular: #606266;
+  --fr-text-color-primary: #303133;
+  --fr-border-color-lighter: #e4e7ed;
+  --fr-border-color-light: #dcdfe6;
+  --fr-bg-color-darker: #0a0a0a;
 }
 
 /* 深色模式变量 */
 :root.dark {
-  --el-bg-color: #1a1a1a;
-  --el-text-color: #ffffff;
-  --el-border-color: #4c4c4c;
-  --el-hover-color: #2c2c2c;
-  --el-popup-bg-color: #1a1a1a;
-  --el-fill-color-blank: #1a1a1a;
-  --el-bg-color-overlay: #1a1a1a;
-  --el-fill-color-light: #2c2c2c;
-  --el-component-bg-color: #1a1a1a;
+  --fr-bg-color: #1a1a1a;
+  --fr-text-color: #ffffff;
+  --fr-border-color: #4c4c4c;
+  --fr-hover-color: #2c2c2c;
+  --fr-popup-bg-color: #1a1a1a;
+  --fr-fill-color-blank: #1a1a1a;
+  --fr-bg-color-overlay: #1a1a1a;
+  --fr-fill-color-light: #2c2c2c;
+  --fr-component-bg-color: #1a1a1a;
+  --fr-text-color-regular: #e5eaf3;
+  --fr-text-color-primary: #e5eaf3;
+  --fr-border-color-lighter: #414243;
+  --fr-border-color-light: #4c4c4c;
+  --fr-bg-color-darker: #0a0a0a;
 }
 
 /* Element Plus 组件适配 */
 .el-select-dropdown {
-  background-color: var(--el-popup-bg-color) !important;
-  border-color: var(--el-border-color) !important;
+  background-color: var(--fr-popup-bg-color) !important;
+  border-color: var(--fr-border-color) !important;
 }
 
 .el-select-dropdown__item {
-  color: var(--el-text-color) !important;
+  color: var(--fr-text-color) !important;
 }
 
 .el-select-dropdown__item.hover,
 .el-select-dropdown__item:hover {
-  background-color: var(--el-hover-color) !important;
+  background-color: var(--fr-hover-color) !important;
 }
 
 .el-input__wrapper {
-  background-color: var(--el-bg-color) !important;
+  background-color: var(--fr-bg-color) !important;
 }
 
 .el-input__inner {
-  color: var(--el-text-color) !important;
+  color: var(--fr-text-color) !important;
 }
 
 .el-textarea__inner {
-  background-color: var(--el-bg-color) !important;
-  color: var(--el-text-color) !important;
+  background-color: var(--fr-bg-color) !important;
+  color: var(--fr-text-color) !important;
 }
 
 /* 自定义组件适配 */
 .popup-text {
-  color: var(--el-text-color) !important;
+  color: var(--fr-text-color) !important;
 }
 
 .lightblue {
-  background-color: var(--el-bg-color) !important;
+  background-color: var(--fr-bg-color) !important;
 }
 
 /* 折叠面板适配 */
 .el-collapse {
-  --el-collapse-header-bg-color: var(--el-bg-color);
-  --el-collapse-content-bg-color: var(--el-bg-color);
-  border-color: var(--el-border-color);
+  --el-collapse-header-bg-color: var(--fr-bg-color);
+  --el-collapse-content-bg-color: var(--fr-bg-color);
+  border-color: var(--fr-border-color);
 }
 
 .el-collapse-item__header,
 .el-collapse-item__content {
-  color: var(--el-text-color);
+  color: var(--fr-text-color);
 }
 
 /* 深色模式特殊处理 */
@@ -76,41 +86,41 @@
   .el-header,
   .el-main,
   .el-footer {
-    background-color: var(--el-bg-color) !important;
+    background-color: var(--fr-bg-color) !important;
   }
 
   /* 输入框和下拉菜单 */
   .el-input__wrapper,
   .el-textarea__wrapper {
-    background-color: var(--el-fill-color-light) !important;
-    box-shadow: 0 0 0 1px var(--el-border-color) inset !important;
+    background-color: var(--fr-fill-color-light) !important;
+    box-shadow: 0 0 0 1px var(--fr-border-color) inset !important;
   }
 
   /* 下拉菜单 */
   .el-select-dropdown,
   .el-dropdown-menu {
-    background-color: var(--el-bg-color-overlay) !important;
-    border-color: var(--el-border-color) !important;
+    background-color: var(--fr-bg-color-overlay) !important;
+    border-color: var(--fr-border-color) !important;
   }
 
   /* 按钮和开关 */
   .el-button:not(.el-button--primary):not(.el-button--success) {
-    background-color: var(--el-fill-color-light) !important;
-    border-color: var(--el-border-color) !important;
+    background-color: var(--fr-fill-color-light) !important;
+    border-color: var(--fr-border-color) !important;
     color: #ffffff !important;
   }
 
   /* 开关 */
   .el-switch {
-    --el-switch-off-color: var(--el-fill-color-light);
+    --el-switch-off-color: var(--fr-fill-color-light);
   }
 
   /* 弹出层 */
   .el-tooltip__popper,
   .el-message-box,
   .el-dialog {
-    background-color: var(--el-bg-color-overlay) !important;
-    border-color: var(--el-border-color) !important;
+    background-color: var(--fr-bg-color-overlay) !important;
+    border-color: var(--fr-border-color) !important;
   }
 
   /* 文字颜色统一处理 */
@@ -138,7 +148,7 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--el-text-color-secondary) !important;
-  background-color: var(--el-fill-color-light);
+  background-color: var(--fr-fill-color-light);
   border-bottom: 1px solid var(--el-border-color-light);
   margin: 0;
   line-height: 1.5;

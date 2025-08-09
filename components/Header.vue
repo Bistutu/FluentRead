@@ -10,7 +10,7 @@ const version = process.env.VUE_APP_VERSION
 .title {
   font-size: 1.75em;
   margin: 0.5em 0;
-  color: var(--el-text-color-primary);
+  color: var(--fr-text-color-primary);
   font-weight: 600;
 }
 
