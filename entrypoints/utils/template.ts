@@ -95,13 +95,10 @@ export function tongyiMsgTemplate(origin: string) {
 
     return JSON.stringify({
         "model": model,
-        "input": {
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ]
-        },
-        "parameters": {}
+	"messages": [
+	    {"role": "system", "content": system},
+	    {"role": "user", "content": user},
+	]
     })
 }
 
