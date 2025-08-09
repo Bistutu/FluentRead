@@ -46,28 +46,6 @@
     </el-col>
   </el-row>
 
-  <!-- 划词翻译模式选择 -->
-  <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
-    <el-col :span="14" class="lightblue rounded-corner">
-      <el-tooltip class="box-item" effect="dark" content="选中文本后显示红点，鼠标移到红点上查看翻译结果。可选择关闭、双语显示或只显示译文" placement="top-start" :show-after="500">
-      <span class="popup-text popup-vertical-left">
-        <span class="new-feature-badge">新</span>
-        划词翻译
-        <el-icon class="icon-margin">
-          <ChatDotRound />
-        </el-icon>
-      </span>
-      </el-tooltip>
-    </el-col>
-    <el-col :span="10" class="flex-end">
-      <el-select v-model="config.selectionTranslatorMode" placeholder="选择模式" size="small" style="width: 100%">
-        <el-option label="关闭" value="disabled" />
-        <el-option label="双语显示" value="bilingual" />
-        <el-option label="只显示译文" value="translation-only" />
-      </el-select>
-    </el-col>
-  </el-row>
-
     <!-- 添加悬浮球开关 -->
     <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
       <el-col :span="20" class="lightblue rounded-corner">
@@ -103,6 +81,28 @@
       <el-col :span="10" class="flex-end">
         <el-select v-model="config.floatingBallHotkey" placeholder="选择快捷键" size="small" style="width: 100%">
           <el-option v-for="item in options.floatingBallHotkeys" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
+
+    <!-- 划词翻译模式选择 -->
+    <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
+      <el-col :span="14" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="选中文本后显示红点，鼠标移到红点上查看翻译结果。可选择关闭、双语显示或只显示译文" placement="top-start" :show-after="500">
+      <span class="popup-text popup-vertical-left">
+        <span class="new-feature-badge">新</span>
+        划词翻译
+        <el-icon class="icon-margin">
+          <ChatDotRound />
+        </el-icon>
+      </span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="10" class="flex-end">
+        <el-select v-model="config.selectionTranslatorMode" placeholder="选择模式" size="small" style="width: 100%">
+          <el-option label="关闭" value="disabled" />
+          <el-option label="双语显示" value="bilingual" />
+          <el-option label="只显示译文" value="translation-only" />
         </el-select>
       </el-col>
     </el-row>

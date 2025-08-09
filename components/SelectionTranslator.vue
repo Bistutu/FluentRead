@@ -30,7 +30,8 @@
         <div v-if="isLoading" class="loading-spinner"></div>
         <div v-else-if="error" class="error-message">{{ error }}</div>
         <div v-else class="translation-container">
-          <div class="original-text no-select">
+          <!-- 原文显示（双语模式才显示） -->
+          <div v-if="config.selectionTranslatorMode === 'bilingual'" class="original-text no-select">
             <pre>{{ selectedText }}</pre>
             <button class="text-audio-btn" @click="(e) => toggleAudio(selectedText, e)" title="播放/停止原文">
               <svg v-if="isPlaying && currentPlayingText === selectedText" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -43,7 +44,8 @@
               </svg>
             </button>
           </div>
-          <div class="translation-result no-select">
+          <!-- 译文显示（双语模式和只显示译文模式都显示） -->
+          <div v-if="config.selectionTranslatorMode === 'bilingual' || config.selectionTranslatorMode === 'translation-only'" class="translation-result no-select">
             <pre>{{ translationResult }}</pre>
             <button class="text-audio-btn" @click="(e) => toggleAudio(translationResult, e)" title="播放/停止译文">
               <svg v-if="isPlaying && currentPlayingText === translationResult" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

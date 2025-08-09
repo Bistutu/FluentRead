@@ -78,11 +78,17 @@ export default defineContentScript({
         
         // 处理划词翻译控制消息
         browser.runtime.onMessage.addListener((message: any, sender: any, sendResponse: () => void) => {
-            if (message.type === 'toggleSelectionTranslator') {
-                if (message.isEnabled) {
-                    mountSelectionTranslator();
-                } else {
+            if (message.type === 'updateSelectionTranslatorMode') {
+                // 更新配置
+                config.selectionTranslatorMode = message.mode;
+                
+                if (message.mode === 'disabled') {
                     unmountSelectionTranslator();
+                } else {
+                    // 如果之前没有挂载，现在挂载
+                    if (!document.getElementById('fluent-read-selection-translator-container')) {
+                        mountSelectionTranslator();
+                    }
                 }
                 sendResponse();
                 return true;
