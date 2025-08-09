@@ -275,7 +275,7 @@
     <!-- NewAPI 配置 -->
     <el-row v-show="compute.showNewAPI" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="填写 New API 的访问地址，如http://localhost:3000 " placement="top-start" :show-after="500">
+        <el-tooltip class="box-item" effect="dark" content="填写 New API 的访问地址，如：http://localhost:3000" placement="top-start" :show-after="500">
           <span class="popup-text popup-vertical-left">NewAPI接口<el-icon class="icon-margin">
               <ChatDotRound />
             </el-icon></span>

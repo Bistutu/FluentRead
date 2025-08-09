@@ -9,6 +9,7 @@ const packageJson = JSON.parse(fs.readFileSync(resolve(__dirname, 'package.json'
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
+    modules: ['@wxt-dev/webextension-polyfill'],
     imports: {
         addons: {
             vueTemplate: true,

@@ -51,6 +51,7 @@ export function deepseekMsgTemplate(origin: string) {
 
     return JSON.stringify(payload);
 }
+
 // gemini
 export function geminiMsgTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
@@ -95,30 +96,31 @@ export function tongyiMsgTemplate(origin: string) {
 
         return JSON.stringify({
             "model": model,
-	    "messages": [
-	        {"role": "system", "content": system},
-	        {"role": "user", "content": user},
-	    ]
+            "enable_thinking": false,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ]
         })
     }
     // 翻译模型qwen-mt-plus和qwen-mt-turbo的格式和通用的不同
     const mtModelTemplate = () => {
-	const langMap = [
+        const langMap = [
             {value: "zh-Hans", target: "zh"},
             {value: "en"},
             {value: "ja"},
             {value: "ko"},
             {value: "fr"},
             {value: "ru"},
-	]
-	let targetItem = langMap.find(i => i.value === config.to) || langMap[0]
-	let targetLang = targetItem.target || targetItem.value
+        ]
+        let targetItem = langMap.find(i => i.value === config.to) || langMap[0]
+        let targetLang = targetItem.target || targetItem.value
         return JSON.stringify({
             "model": model,
-	    "messages": [
-	        {"role": "user", "content": origin},
-	    ],
-	    "translation_options": {
+            "messages": [
+                {"role": "user", "content": origin},
+            ],
+            "translation_options": {
                 "source_lang": "auto",
                 "target_lang": targetLang
             }
