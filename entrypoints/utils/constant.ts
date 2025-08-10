@@ -11,6 +11,7 @@ export const urls: any = {
     [services.zhipu]: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
     [services.xiaoniu]: "https://api.niutrans.com/NiuTransServer/translationXML",
     [services.youdao]: "https://openapi.youdao.com/api",
+    [services.tencent]: "https://tmt.tencentcloudapi.com/",
     [services.claude]: "https://api.anthropic.com/v1/messages",
     [services.baichuan]: "https://api.baichuan-ai.com/v1/chat/completions",
     [services.lingyi]: "https://api.lingyiwanwu.com/v1/chat/completions",

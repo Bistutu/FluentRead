@@ -22,6 +22,12 @@ export function checkConfig(): boolean {
         sendErrorMessage("令牌尚未配置，请前往设置页配置");
         return false;
     }
+    
+    // Special case for Tencent Cloud service (requires both SecretId and SecretKey)
+    if (config.service === services.tencent && (!config.tencentSecretId || !config.tencentSecretKey)) {
+        sendErrorMessage("腾讯云机器翻译密钥尚未配置，请前往设置页配置SecretId和SecretKey");
+        return false;
+    }
 
     // 3. Check if a model is selected for AI services (except specific services like Coze)
     if (servicesType.isAI(config.service) && ![services.cozecn, services.cozecom].includes(config.service)) {

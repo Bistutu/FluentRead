@@ -243,6 +243,34 @@
       </el-col>
     </el-row>
 
+    <!-- 腾讯云机器翻译配置 -->
+    <el-row v-show="compute.showTencent" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="腾讯云API访问密钥ID，用于访问腾讯云机器翻译服务。可在腾讯云控制台的访问管理中获取" placement="top-start"
+          :show-after="500">
+          <span class="popup-text popup-vertical-left">Secret ID<el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-input v-model="config.tencentSecretId" placeholder="腾讯云 SecretId" />
+      </el-col>
+    </el-row>
+    <el-row v-show="compute.showTencent" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="腾讯云API访问密钥，用于访问腾讯云机器翻译服务。可在腾讯云控制台的访问管理中获取" placement="top-start"
+          :show-after="500">
+          <span class="popup-text popup-vertical-left">Secret Key<el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-input v-model="config.tencentSecretKey" type="password" show-password placeholder="腾讯云 SecretKey" />
+      </el-col>
+    </el-row>
+
     <!--  Coze需显示 robot_id -->
     <el-row v-show="compute.showRobotId" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -542,6 +570,8 @@ let compute = ref({
   showAkSk: computed(() => servicesType.isUseAkSk(config.value.service)),
   // 6.5、是否显示有道翻译配置
   showYoudao: computed(() => servicesType.isYoudao(config.value.service)),
+  // 6.6、是否显示腾讯云机器翻译配置
+  showTencent: computed(() => servicesType.isTencent(config.value.service)),
   // 7、获取模型列表
   model: computed(() => models.get(config.value.service) || []),
   // 8、是否需要自定义接口

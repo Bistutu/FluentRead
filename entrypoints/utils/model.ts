@@ -44,6 +44,8 @@ export class Config {
     maxConcurrentTranslations: number; // 最大并发翻译数量
     youdaoAppKey: string; // 有道翻译 App Key
     youdaoAppSecret: string; // 有道翻译 App Secret
+    tencentSecretId: string; // 腾讯云 Secret ID
+    tencentSecretKey: string; // 腾讯云 Secret Key
     animations: boolean; // 是否启用动画效果
     translationStatus: boolean; // 是否启用全文翻译进度面板
 
@@ -82,6 +84,8 @@ export class Config {
         this.maxConcurrentTranslations = 6; // 默认最大并发数为6
         this.youdaoAppKey = ''; // 有道翻译 App Key
         this.youdaoAppSecret = ''; // 有道翻译 App Secret
+        this.tencentSecretId = ''; // 腾讯云 Secret ID
+        this.tencentSecretKey = ''; // 腾讯云 Secret Key
         this.animations = true; // 默认启用动画
         this.translationStatus = true; // 默认启用翻译进度面板
     }

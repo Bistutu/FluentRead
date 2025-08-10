@@ -10,6 +10,7 @@ import gemini from "./gemini";
 import google from "./google";
 import xiaoniu from "./xiaoniu";
 import youdao from "./youdao";
+import tencent from "./tencent";
 import claude from "./claude";
 import infini from "@/entrypoints/service/infini";
 import minimax from "@/entrypoints/service/minimax";
@@ -29,6 +30,7 @@ export const _service: ServiceMap = {
     [services.google]: google,
     [services.xiaoniu]: xiaoniu,
     [services.youdao]: youdao,
+    [services.tencent]: tencent,
 
     // 大模型翻译
     [services.custom]: custom,
