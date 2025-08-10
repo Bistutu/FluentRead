@@ -169,13 +169,23 @@ const handleTextSelection = () => {
     
     const selectedTextContent = selection.toString().trim();
     
-    // 如果选中的文本为空或与上次相同，则不处理
-    if (!selectedTextContent || selectedTextContent === lastSelectedText.value) {
+    // 如果选中的文本为空，则不处理
+    if (!selectedTextContent) {
+      return;
+    }
+    
+    // 如果选中的文本与上次相同，重新显示指示器（避免因为相同文本而不显示的问题）
+    if (selectedTextContent === lastSelectedText.value) {
+      // 重新显示指示器，但不重新获取翻译
+      const range = selection.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      selectionRect.value = rect;
+      showIndicator.value = true;
       return;
     }
     
     // 忽略过短的选择（避免意外触发）
-    if (selectedTextContent.length < 3) {
+    if (selectedTextContent.length < 2) {
       hideIndicator();
       return;
     }
@@ -196,7 +206,7 @@ const handleTextSelection = () => {
     lastSelectedText.value = selectedTextContent;
     selectionRect.value = rect;
     showIndicator.value = true;
-  }, 300); // 300ms防抖延迟
+  }, 200); // 200ms防抖延迟，减少延迟提高响应性
 };
 
 // 鼠标进入指示器
@@ -500,19 +510,45 @@ onMounted(() => {
   // 检测浏览器类型
   isFirefox.value = detectFirefox();
   
-  // 鼠标按下时，标记开始选择
-  document.addEventListener('mousedown', () => {
+  // 定义事件监听器函数
+  mouseDownHandler = () => {
     isSelecting.value = true;
-  });
+  };
   
-  // 鼠标抬起时，标记选择结束，并处理选中文本
-  document.addEventListener('mouseup', () => {
+  mouseUpHandler = () => {
     isSelecting.value = false;
     handleTextSelection();
-  });
+  };
   
-  // 避免使用selectionchange事件，它触发过于频繁
-  // 只在mouseup时处理选择，减少不必要的处理
+  // 鼠标按下时，标记开始选择
+  document.addEventListener('mousedown', mouseDownHandler);
+  
+  // 鼠标抬起时，标记选择结束，并处理选中文本
+  document.addEventListener('mouseup', mouseUpHandler);
+  
+  // 添加selectionchange事件作为备用机制（使用节流限制频率）
+  let lastSelectionChangeTime = 0;
+  selectionChangeHandler = () => {
+    const now = Date.now();
+    // 节流：只有在500ms内没有处理过selectionchange且不在选择过程中时才处理
+    if (now - lastSelectionChangeTime > 500 && !isSelecting.value) {
+      lastSelectionChangeTime = now;
+      // 延迟处理，确保选择操作完成
+      setTimeout(() => {
+        if (!isSelecting.value) {
+          handleTextSelection();
+        }
+      }, 100);
+    }
+  };
+  
+  document.addEventListener('selectionchange', selectionChangeHandler);
+  
+  // 更新clickHandler定义，添加selectionchange的清理
+  const originalClickHandler = clickHandler;
+  clickHandler = (e: Event) => {
+    originalClickHandler(e);
+  };
   
   // 监听翻译显示状态的变化
   watch(showTooltip, async (newValue: boolean) => {
@@ -525,8 +561,8 @@ onMounted(() => {
     }
   });
   
-  // 添加点击页面其他区域时隐藏指示器和弹窗
-  document.addEventListener('click', (e) => {
+  // 定义点击事件处理函数
+  clickHandler = (e: Event) => {
     // 检查点击事件是否发生在指示器或弹窗之外
     const target = e.target as HTMLElement;
     const isOutsideIndicator = !target.closest('.selection-indicator');
@@ -544,19 +580,33 @@ onMounted(() => {
       hideIndicator();
       closeTooltip();
     }
-  });
+  };
+  
+  // 添加点击页面其他区域时隐藏指示器和弹窗
+  document.addEventListener('click', clickHandler);
 });
 
-// 清理事件监听 (更新清理逻辑)
+// 存储事件监听器函数的引用，用于正确移除
+let mouseDownHandler: () => void;
+let mouseUpHandler: () => void;
+let clickHandler: (e: Event) => void;
+let selectionChangeHandler: () => void;
+
+// 清理事件监听 (修复清理逻辑)
 onBeforeUnmount(() => {
-  document.removeEventListener('mousedown', () => {
-    isSelecting.value = true;
-  });
-  document.removeEventListener('mouseup', () => {
-    isSelecting.value = false;
-    handleTextSelection();
-  });
-  document.removeEventListener('click', () => {});
+  // 正确移除事件监听器
+  if (mouseDownHandler) {
+    document.removeEventListener('mousedown', mouseDownHandler);
+  }
+  if (mouseUpHandler) {
+    document.removeEventListener('mouseup', mouseUpHandler);
+  }
+  if (clickHandler) {
+    document.removeEventListener('click', clickHandler);
+  }
+  if (selectionChangeHandler) {
+    document.removeEventListener('selectionchange', selectionChangeHandler);
+  }
   
   // 清理所有定时器
   clearHideTooltipTimer();
