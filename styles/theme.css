@@ -10,6 +10,13 @@
   --fr-border-color-lighter: #e4e7ed;
   --fr-border-color-light: #dcdfe6;
   --fr-bg-color-darker: #0a0a0a;
+  color-scheme: light;
+}
+
+/* 全局基础前景/背景，确保 Popup 与页面根节点使用变量 */
+html, body, #app {
+  background-color: var(--fr-bg-color);
+  color: var(--fr-text-color);
 }
 
 /* 深色模式变量 */
@@ -28,6 +35,7 @@
   --fr-border-color-lighter: #414243;
   --fr-border-color-light: #4c4c4c;
   --fr-bg-color-darker: #0a0a0a;
+  color-scheme: dark;
 }
 
 /* Element Plus 组件适配 */
@@ -79,62 +87,64 @@
   color: var(--fr-text-color);
 }
 
-/* 深色模式特殊处理 */
-.dark {
-  /* 容器背景 */
-  .el-container,
-  .el-header,
-  .el-main,
-  .el-footer {
-    background-color: var(--fr-bg-color) !important;
-  }
+/* 深色模式特殊处理（展开为标准选择器，避免无效嵌套） */
+/* 容器背景与文本 */
+.dark .el-container,
+.dark .el-header,
+.dark .el-main,
+.dark .el-footer {
+  background-color: var(--fr-bg-color) !important;
+  color: var(--fr-text-color) !important;
+}
 
-  /* 输入框和下拉菜单 */
-  .el-input__wrapper,
-  .el-textarea__wrapper {
-    background-color: var(--fr-fill-color-light) !important;
-    box-shadow: 0 0 0 1px var(--fr-border-color) inset !important;
-  }
+/* 输入框和下拉菜单输入区 */
+.dark .el-input__wrapper,
+.dark .el-textarea__wrapper {
+  background-color: var(--fr-fill-color-light) !important;
+  box-shadow: 0 0 0 1px var(--fr-border-color) inset !important;
+}
 
-  /* 下拉菜单 */
-  .el-select-dropdown,
-  .el-dropdown-menu {
-    background-color: var(--fr-bg-color-overlay) !important;
-    border-color: var(--fr-border-color) !important;
-  }
+/* 下拉菜单容器 */
+.dark .el-select-dropdown,
+.dark .el-dropdown-menu {
+  background-color: var(--fr-bg-color-overlay) !important;
+  border-color: var(--fr-border-color) !important;
+}
 
-  /* 按钮和开关 */
-  .el-button:not(.el-button--primary):not(.el-button--success) {
-    background-color: var(--fr-fill-color-light) !important;
-    border-color: var(--fr-border-color) !important;
-    color: #ffffff !important;
-  }
+/* 一般按钮（非主按钮/成功按钮） */
+.dark .el-button:not(.el-button--primary):not(.el-button--success) {
+  background-color: var(--fr-fill-color-light) !important;
+  border-color: var(--fr-border-color) !important;
+  color: #ffffff !important;
+}
 
-  /* 开关 */
-  .el-switch {
-    --el-switch-off-color: var(--fr-fill-color-light);
-  }
+/* 开关未开启色 */
+.dark .el-switch {
+  --el-switch-off-color: var(--fr-fill-color-light);
+}
 
-  /* 弹出层 */
-  .el-tooltip__popper,
-  .el-message-box,
-  .el-dialog {
-    background-color: var(--fr-bg-color-overlay) !important;
-    border-color: var(--fr-border-color) !important;
-  }
+/* 弹出层类组件 */
+.dark .el-tooltip__popper,
+.dark .el-message-box,
+.dark .el-dialog {
+  background-color: var(--fr-bg-color-overlay) !important;
+  border-color: var(--fr-border-color) !important;
+}
 
-  /* 文字颜色统一处理 */
-  * {
-    color: #ffffff !important;
-  }
+/* 文本色适配点状控制 */
+.dark .popup-text,
+.dark .el-collapse-item__header,
+.dark .el-collapse-item__content {
+  color: var(--fr-text-color) !important;
+}
 
-  .el-select-dropdown__item.is-disabled {
-    color: rgba(255, 255, 255, 0.5) !important;
-  }
+/* 下拉项和分组标题在暗色下的弱化色 */
+.dark .el-select-dropdown__item.is-disabled {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
 
-  .el-select-group__title {
-    color: rgba(255, 255, 255, 0.7) !important;
-  }
+.dark .el-select-group__title {
+  color: rgba(255, 255, 255, 0.7) !important;
 }
 
 /* 过渡动画 */

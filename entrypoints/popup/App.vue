@@ -19,6 +19,9 @@ import Header from '../../components/Header.vue';
 import Main from "../../components/Main.vue";
 import Footer from "../../components/Footer.vue";
 import '../../styles/theme.css';
+// Element Plus 基础与暗色变量
+import 'element-plus/theme-chalk/base.css';
+import 'element-plus/theme-chalk/dark/css-vars.css';
 
 </script>
 

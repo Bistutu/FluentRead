@@ -2,11 +2,9 @@
     font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
     line-height: 1.5;
     font-weight: 400;
-
-    color-scheme: light dark;
-    color: rgba(255, 255, 255, 0.95);
-    background-color: #242424;
-
+    /* 颜色与主题交由 styles/theme.css 控制 */
+    color: var(--fr-text-color);
+    background-color: var(--fr-bg-color);
     font-synthesis: none;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
@@ -19,8 +17,7 @@
     font-size: 1.5em;
     font-weight: 600;
     margin: 1em 0;
-    color: #fff;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    color: var(--fr-text-color);
 }
 
 .rounded-corner {
@@ -59,31 +56,4 @@
     text-align: center;
 }
 
-/* 暗色主题特定样式 */
-@media (prefers-color-scheme: dark) {
-    :root {
-        color: rgba(255, 255, 255, 0.95);
-        background-color: #242424;
-    }
-    
-    .title {
-        color: #fff;
-    }
-    
-    .popup-text {
-        color: rgba(255, 255, 255, 0.95);
-    }
-}
-
-/* 亮色主题特定样式 */
-@media (prefers-color-scheme: light) {
-    :root {
-        color: #213547;
-        background-color: #ffffff;
-    }
-    
-    .title {
-        color: #213547;
-        text-shadow: none;
-    }
-}
+/* 由 .dark 类与变量控制主题，这里不再强制全局颜色 */
