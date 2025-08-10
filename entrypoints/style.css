@@ -12,6 +12,28 @@
     display: inline-block;
 }
 
+/* 静态加载样式（禁用动画时） */
+.fluent-read-loading.static {
+    animation: none;
+    background: radial-gradient(circle, rgb(230, 151, 171) 30%, rgba(230, 151, 171, 0.6) 70%);
+    border: 2px solid rgb(200, 121, 141);
+    box-shadow: 0 0 8px rgba(230, 151, 171, 0.4);
+    position: relative;
+}
+
+/* 添加一个微妙的内阴影效果 */
+.fluent-read-loading.static::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    right: 2px;
+    bottom: 2px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%, rgba(0,0,0,0.1) 100%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
 .fluent-read-retry-wrapper {
     display: inline-flex;
     align-items: center;

@@ -44,8 +44,7 @@ export function enqueueTranslation<T>(translationTask: () => Promise<T>): Promis
     };
 
     // 将任务添加到队列
-    const maxConcurrent = getMaxConcurrentTranslations();
-    if (activeTranslations < maxConcurrent) {
+    if (activeTranslations < getMaxConcurrentTranslations()) {
       // 直接执行任务
       activeTranslations++;
       taskWrapper();
@@ -60,8 +59,7 @@ export function enqueueTranslation<T>(translationTask: () => Promise<T>): Promis
  */
 function processQueue() {
   // 如果有等待的任务，并且活跃任务数量未达到上限，执行下一个任务
-  const maxConcurrent = getMaxConcurrentTranslations();
-  if (pendingTranslations.length > 0 && activeTranslations < maxConcurrent) {
+  if (pendingTranslations.length > 0 && activeTranslations < getMaxConcurrentTranslations()) {
     const nextTask = pendingTranslations.shift();
     if (nextTask) {
       activeTranslations++;
@@ -103,7 +101,6 @@ export function getQueueStatus() {
  */
 export function canAcceptMoreTasks(): boolean {
   // 如果等待队列太长，返回false表示需要暂停扫描
-  const maxConcurrent = getMaxConcurrentTranslations();
-  const MAX_QUEUE_LENGTH = maxConcurrent * 3;
+  const MAX_QUEUE_LENGTH = getMaxConcurrentTranslations() * 3;
   return pendingTranslations.length < MAX_QUEUE_LENGTH;
 }

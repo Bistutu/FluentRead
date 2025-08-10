@@ -46,25 +46,6 @@
     </el-col>
   </el-row>
 
-  <!-- 添加划词翻译开关 -->
-  <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
-      <el-col :span="20" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="（测试版）选中文本后显示红点，鼠标移到红点上查看翻译结果" placement="top-start" :show-after="500">
-        <span class="popup-text popup-vertical-left">
-          <span class="new-feature-badge">新</span>
-          划词翻译
-          <el-icon class="icon-margin">
-            <ChatDotRound />
-          </el-icon>
-        </span>
-        </el-tooltip>
-      </el-col>
-
-      <el-col :span="4" class="flex-end">
-        <el-switch v-model="selectionTranslatorEnabled" inline-prompt active-text="开" inactive-text="关" />
-      </el-col>
-    </el-row>
-
     <!-- 添加悬浮球开关 -->
     <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
       <el-col :span="20" class="lightblue rounded-corner">
@@ -84,8 +65,8 @@
       </el-col>
     </el-row>
 
-    <!-- 悬浮球快捷键选择 -->
-    <el-row v-if="config.on && floatingBallEnabled" class="margin-bottom margin-left-2em margin-top-1em">
+    <!-- 全文翻译快捷键选择（独立于悬浮球显示） -->
+    <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
       <el-col :span="14" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="（测试版）设置快捷键以便快速切换全文翻译状态，无需鼠标点击悬浮球" placement="top-start" :show-after="500">
         <span class="popup-text popup-vertical-left">
@@ -100,6 +81,28 @@
       <el-col :span="10" class="flex-end">
         <el-select v-model="config.floatingBallHotkey" placeholder="选择快捷键" size="small" style="width: 100%">
           <el-option v-for="item in options.floatingBallHotkeys" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
+
+    <!-- 划词翻译模式选择 -->
+    <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
+      <el-col :span="14" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="选中文本后显示红点，鼠标移到红点上查看翻译结果。可选择关闭、双语显示或只显示译文" placement="top-start" :show-after="500">
+      <span class="popup-text popup-vertical-left">
+        <span class="new-feature-badge">新</span>
+        划词翻译
+        <el-icon class="icon-margin">
+          <ChatDotRound />
+        </el-icon>
+      </span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="10" class="flex-end">
+        <el-select v-model="config.selectionTranslatorMode" placeholder="选择模式" size="small" style="width: 100%">
+          <el-option label="关闭" value="disabled" />
+          <el-option label="双语显示" value="bilingual" />
+          <el-option label="只显示译文" value="translation-only" />
         </el-select>
       </el-col>
     </el-row>
@@ -295,6 +298,20 @@
       </el-col>
     </el-row>
 
+    <!-- NewAPI 配置 -->
+    <el-row v-show="compute.showNewAPI" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="填写 New API 的访问地址，如：http://localhost:3000" placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">NewAPI接口<el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-input v-model="config.newApiUrl" placeholder="请输入您的New API接口地址" />
+      </el-col>
+    </el-row>
+
     <!--  模型 -->
     <el-row v-show="compute.showModel" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -371,7 +388,7 @@
               placeholder="user message template" />
           </el-col>
         </el-row>
-        <!-- 恢复默认模板按钮 -->
+        <!-- 恢夏默认模板按钮 -->
         <el-row v-show="compute.showAI" class="margin-bottom">
           <el-col :span="24" style="text-align: right;">
             <el-button type="primary" link @click="resetTemplate">
@@ -380,6 +397,44 @@
               </el-icon>
               恢复默认模板
             </el-button>
+          </el-col>
+        </el-row>
+        
+        <!-- 翻译并发数设置 -->
+        <el-row class="margin-bottom">
+          <el-col :span="8" class="lightblue rounded-corner">
+            <el-tooltip class="box-item" effect="dark" 
+              content="设置同时进行的最大翻译请求数量。较高的数值可能提高翻译速度，但也可能导致API限制或网络占用过高。建议范围：1-20。" 
+              placement="top-start" :show-after="500">
+              <span class="popup-text popup-vertical-left">翻译并发数<el-icon class="icon-margin">
+                  <ChatDotRound />
+                </el-icon></span>
+            </el-tooltip>
+          </el-col>
+          <el-col :span="16">
+            <el-input 
+              v-model.number="config.maxConcurrentTranslations" 
+              type="number"
+              min="1" 
+              max="20" 
+              placeholder="请输入并发数(1-20)" 
+              style="width: 100%" />
+          </el-col>
+        </el-row>
+        
+        <!-- 禁用动画设置 -->
+        <el-row class="margin-bottom">
+          <el-col :span="20" class="lightblue rounded-corner">
+            <el-tooltip class="box-item" effect="dark" 
+              content="禁用所有动画效果（包括加载动画、悬浮动画等）以节省GPU资源和电量。适合低配置设备或希望节省资源的用户。" 
+              placement="top-start" :show-after="500">
+              <span class="popup-text popup-vertical-left">禁用动画效果<el-icon class="icon-margin">
+                  <ChatDotRound />
+                </el-icon></span>
+            </el-tooltip>
+          </el-col>
+          <el-col :span="4" class="flex-end">
+            <el-switch v-model="config.disableAnimations" inline-prompt active-text="禁用" inactive-text="启用" />
           </el-col>
         </el-row>
       </el-collapse-item>
@@ -501,6 +556,8 @@ let compute = ref({
   ),
   // 12、判断是否为 coze
   showRobotId: computed(() => servicesType.isCoze(config.value.service)),
+  // 13、是否显示New API配置
+  showNewAPI: computed(() => servicesType.isNewApi(config.value.service)),
 })
 
 // 监听主题变化
@@ -573,25 +630,21 @@ const floatingBallEnabled = computed({
   }
 });
 
-// 划词翻译开关的计算属性
-const selectionTranslatorEnabled = computed({
-  get: () => !config.value.disableSelectionTranslator && config.value.on,
-  set: (value) => {
-    config.value.disableSelectionTranslator = !value;
-    // 向所有激活的标签页发送消息
-    browser.tabs.query({}).then(tabs => {
-      tabs.forEach(tab => {
-        if (tab.id) {
-          browser.tabs.sendMessage(tab.id, { 
-            type: 'toggleSelectionTranslator',
-            isEnabled: value 
-          }).catch(() => {
-            // 忽略发送失败的错误（可能是页面未加载内容脚本）
-          });
-        }
-      });
+// 监听划词翻译模式变化
+watch(() => config.value.selectionTranslatorMode, (newMode) => {
+  // 向所有激活的标签页发送消息
+  browser.tabs.query({}).then(tabs => {
+    tabs.forEach(tab => {
+      if (tab.id) {
+        browser.tabs.sendMessage(tab.id, { 
+          type: 'updateSelectionTranslatorMode',
+          mode: newMode 
+        }).catch(() => {
+          // 忽略发送失败的错误（可能是页面未加载内容脚本）
+        });
+      }
     });
-  }
+  });
 });
 
 // 监听开关变化
@@ -622,15 +675,15 @@ const handlePluginStateChange = (val: boolean) => {
     }
     
     // 处理划词翻译
-    if (!config.value.disableSelectionTranslator) {
-      config.value.disableSelectionTranslator = true;
+    if (config.value.selectionTranslatorMode !== 'disabled') {
+      config.value.selectionTranslatorMode = 'disabled';
       // 向所有激活的标签页发送消息，关闭划词翻译
       browser.tabs.query({}).then(tabs => {
         tabs.forEach(tab => {
           if (tab.id) {
             browser.tabs.sendMessage(tab.id, { 
-              type: 'toggleSelectionTranslator',
-              isEnabled: false
+              type: 'updateSelectionTranslatorMode',
+              mode: 'disabled'
             }).catch(() => {
               // 忽略发送失败的错误（可能是页面未加载内容脚本）
             });

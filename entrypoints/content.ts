@@ -9,6 +9,7 @@ import { mountSelectionTranslator, unmountSelectionTranslator } from "@/entrypoi
 import { cancelAllTranslations } from "@/entrypoints/utils/translateApi";
 import { createApp } from 'vue';
 import TranslationStatus from '@/components/TranslationStatus.vue';
+import { mountNewApiComponent } from "@/entrypoints/utils/newApi";
 
 export default defineContentScript({
     matches: ['<all_urls>'],  // 匹配所有页面
@@ -20,6 +21,19 @@ export default defineContentScript({
         setupManualTranslationTriggers();
         // 添加悬浮球快捷键事件监听器
         setupFloatingBallHotkey();
+        // 当悬浮球关闭时，仍然允许使用快捷键进行全文翻译的独立开关
+        let isFullPageTranslating = false;
+        document.addEventListener('fluentread-toggle-translation', () => {
+            // 仅在悬浮球被禁用（未挂载）时由内容脚本接管快捷键
+            if (config.disableFloatingBall === true) {
+                isFullPageTranslating = !isFullPageTranslating;
+                if (isFullPageTranslating) {
+                    autoTranslateEnglishPage();
+                } else {
+                    restoreOriginalContent();
+                }
+            }
+        });
         // 添加自动翻译事件监听器
         if (config.autoTranslate) autoTranslationEvent();
 
@@ -36,6 +50,8 @@ export default defineContentScript({
         
         // 挂载翻译状态组件
         mountTranslationStatusComponent();
+
+        mountNewApiComponent();
 
         cache.cleaner();    // 检测是否清理缓存
 
@@ -62,11 +78,17 @@ export default defineContentScript({
         
         // 处理划词翻译控制消息
         browser.runtime.onMessage.addListener((message: any, sender: any, sendResponse: () => void) => {
-            if (message.type === 'toggleSelectionTranslator') {
-                if (message.isEnabled) {
-                    mountSelectionTranslator();
-                } else {
+            if (message.type === 'updateSelectionTranslatorMode') {
+                // 更新配置
+                config.selectionTranslatorMode = message.mode;
+                
+                if (message.mode === 'disabled') {
                     unmountSelectionTranslator();
+                } else {
+                    // 如果之前没有挂载，现在挂载
+                    if (!document.getElementById('fluent-read-selection-translator-container')) {
+                        mountSelectionTranslator();
+                    }
                 }
                 sendResponse();
                 return true;
@@ -227,7 +249,7 @@ function setupManualTranslationTriggers() {
     });
 }
 
-// 设置悬浮球快捷键
+        // 设置全文翻译快捷键（与悬浮球解耦）
 function setupFloatingBallHotkey() {
     // 如果快捷键设置为 "none"，则禁用快捷键
     if (config.floatingBallHotkey === 'none') return;
@@ -288,7 +310,8 @@ function setupFloatingBallHotkey() {
                                 (hotkeyParts.includes('shift') || !hotkeysPressed.has('shift'));
         
         // 如果按键组合匹配配置的快捷键，且没有额外的修饰键
-        if (allKeysPressed && noExtraModifiers && !config.disableFloatingBall) {
+        // 无论悬浮球是否启用，都派发统一事件，由对应处理方接管
+        if (allKeysPressed && noExtraModifiers) {
             // 防止事件继续传播和默认行为
             event.preventDefault();
             event.stopPropagation();

@@ -116,6 +116,16 @@ export function insertLoadingSpinner(
   const spinner = document.createElement("span");
   spinner.className = "fluent-read-loading";
   if (isCache) spinner.style.borderTop = "3px solid green"; // 存在缓存时改为绿色
+  
+  // 异步检查动画配置
+  import('@/entrypoints/utils/config').then(({ config }) => {
+    if (config.disableAnimations && !spinner.classList.contains('static')) {
+      spinner.classList.add('static');
+    }
+  }).catch(() => {
+    // 忽略错误，使用默认动画
+  });
+  
   node.appendChild(spinner);
   return spinner;
 }

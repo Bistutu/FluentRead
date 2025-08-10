@@ -21,8 +21,7 @@ async function tongyi(message: any) {
 
     if (resp.ok) {
         let result = await resp.json();
-        if (config.model[config.service] === "qwen-long") return result.output.choices[0].message.content;
-        else return result.output.text
+        return result.choices[0].message.content;
     } else {
         console.log(resp)
         throw new Error(`翻译失败: ${resp.status} ${resp.statusText} body: ${await resp.text()}`);

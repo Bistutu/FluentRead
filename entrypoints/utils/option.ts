@@ -29,6 +29,7 @@ export const services = {
     siliconCloud: "siliconCloud", // 硅流
     openrouter: "openrouter", // openrouter
     grok: "grok", // X.AI 的 Grok
+    newapi: "newapi", // New API 接口
 };
 
 export const servicesType = {
@@ -56,6 +57,7 @@ export const servicesType = {
         services.siliconCloud,
         services.openrouter,
         services.grok,
+        services.newapi,
     ]),
     // 需要 token
     useToken: new Set([
@@ -83,6 +85,7 @@ export const servicesType = {
         services.siliconCloud,
         services.openrouter,
         services.grok,
+        services.newapi,
     ]),
     // 需要 model
     useModel: new Set([
@@ -106,6 +109,7 @@ export const servicesType = {
         services.siliconCloud,
         services.openrouter,
         services.grok,
+        services.newapi,
     ]),
     // 支持代理
     useProxy: new Set([
@@ -135,6 +139,7 @@ export const servicesType = {
     useCustomUrl: new Set([
         services.custom,
         services.deeplx,
+        services.newapi,
     ]),
 
     isMachine: (service: string) => servicesType.machine.has(service),
@@ -143,6 +148,7 @@ export const servicesType = {
     isUseProxy: (service: string) => servicesType.useProxy.has(service),
     isUseModel: (service: string) => servicesType.useModel.has(service),
     isCustom: (service: string) => service === services.custom,
+    isNewApi: (service: string) => service === services.newapi,
     isUseAkSk: (service: string) => service === services.yiyan,
     isCoze: (service: string) => service === services.cozecom || service === services.cozecn,
     isUseCustomUrl: (service: string) => servicesType.useCustomUrl.has(service),
@@ -150,31 +156,32 @@ export const servicesType = {
 
 export const customModelString = "自定义模型";
 export const models = new Map<string, Array<string>>([
-    [services.openai, ["gpt-4.1","gpt-4.1-mini","gpt-4.1-nano","gpt-4o-mini", "gpt-4o", "o3", "o3-mini","o4-mini", customModelString]],
-    [services.gemini, ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro", "gemini-2.0-flash-exp", customModelString]],
+    [services.openai, ["gpt-5-nano", "gpt-5-mini", "gpt5", "gpt-5-chat-latest", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini", "gpt-4o", "o3", "o3-mini", customModelString]],
+    [services.gemini, ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro", customModelString]],
     [services.yiyan, ["ERNIE-Bot 4.0", "ERNIE-Bot", "ERNIE-Speed-8K"]],
-    [services.tongyi, ["qwen-long", "qwen-turbo", "qwen-plus", "qwen-max", "qwen-max-longcontext", customModelString]],
-    [services.zhipu, ["GLM-4-Flash", "glm-4-plus", "glm-4", "glm-4v", "glm-3-turbo", customModelString]],
-    [services.moonshot, ["moonshot-v1-8k", "moonshot-v1-32k", customModelString]],
-    [services.claude, ["claude-3-7-sonnet", "claude-3-5-haiku", "claude-3-5-sonnet", "claude-3-opus"]],
-    [services.custom, [ "gpt-4o", "gpt-4", "gpt-4-turbo", "gemma:7b", "llama2:7b", "mistral:7b", customModelString]],
+    [services.tongyi, ["qwen-long", "qwen-turbo", "qwen-plus", "qwen3-8b", "qwen-mt-plus", "qwen-mt-turbo", customModelString]],
+    [services.zhipu, ["glm-4.5", "GLM-4-Flash", "glm-4-plus", "glm-4", "glm-4v", customModelString]],
+    [services.moonshot, ["kimi-k2-0711-preview", "kimi-k2-turbo-preview", "moonshot-v1-auto", "moonshot-v1-8k", "moonshot-v1-32k", customModelString]],
+    [services.claude, ["claude-sonnet-4-0", "claude-opus-4-1", "claude-3-5-haiku-latest"]],
+    [services.custom, ["gpt-5-nano", "gpt-5-mini", "gpt5", "gpt-4o", "gemma:7b", "llama2:7b", "mistral:7b", customModelString]],
     [services.infini, ["llama-2-13b-chat", "llama-3.3-70b-instruct", "qwen2.5-14b-instruct", "gemma-2-27b-it", "glm-4-9b-chat", customModelString]],
     [services.baichuan, ["Baichuan4-Air", "Baichuan4-Turbo", "Baichuan4", customModelString]],
     [services.lingyi, ["yi-lightning", customModelString]],
     [services.deepseek, ["deepseek-chat", "deepseek-reasoner", customModelString]],
     [services.minimax, ["chatcompletion_v2"]],
     [services.jieyue, ["step-1-8k", customModelString]],
-    [services.huanYuan, ["hunyuan-turbos-latest（推荐）","hunyuan-turbo", "hunyuan-lite", "hunyuan-standard", customModelString]],
+    [services.huanYuan, ["hunyuan-turbos-latest", "hunyuan-t1-latest", "hunyuan-a13b", "hunyuan-lite", "hunyuan-standard", customModelString]],
+    [services.newapi, ["gemini-2.5-flash-lite", "gemini-2.0-flash", "gpt-5-nano", "gpt-5-mini", "gpt5", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini", customModelString]],
+    [services.grok, ["grok-4-0709","grok-3-mini", customModelString]],
     [services.doubao, [customModelString]],
-    [services.grok, ["grok-3-beta", "grok-3-fast-beta", "grok-3-mini-beta", "grok-3-mini-fast-beta", customModelString]],
 
     // mix model
-    [services.siliconCloud, ["Qwen/Qwen3-8B（免费）","THUDM/GLM-Z1-9B-0414（免费）","THUDM/GLM-4-9B-0414（免费）",
-        "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B（免费）","deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B（免费）",
-        "Qwen/Qwen2.5-7B-Instruct（免费）", "internlm/internlm2_5-7b-chat（免费）", "THUDM/glm-4-9b-chat（免费）", customModelString]],
+    [services.siliconCloud, ["Qwen/Qwen3-Coder-30B-A3B-Instruct", "Qwen/Qwen3-8B", "THUDM/GLM-Z1-9B-0414", "THUDM/GLM-4-9B-0414",
+        "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B", "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
+        "Qwen/Qwen2.5-7B-Instruct", "internlm/internlm2_5-7b-chat", "THUDM/glm-4-9b-chat", customModelString]],
 
-    [services.groq, ["llama-3.1-8b-instant（免费）", "llama3-8b-8192（免费）", "llama-3.3-70b-versatile（免费）", "gemma2-9b-it（免费）", "mixtral-8x7b-32768（免费）", "whisper-large-v3（免费）", customModelString]],
-    [services.openrouter, ["meta-llama/llama-3.1-8b-instruct（免费）", "google/gemini-2.0-flash-exp（免费）", "qwen/qwen-2-7b-instruct（免费）", "huggingfaceh4/zephyr-7b-beta（免费）", customModelString]]
+    [services.groq, ["llama-3.1-8b-instant", "llama3-8b-8192", "llama-3.3-70b-versatile", "gemma2-9b-it", "mixtral-8x7b-32768", "whisper-large-v3", customModelString]],
+    [services.openrouter, ["meta-llama/llama-3.1-8b-instruct", "google/gemini-2.0-flash-exp", "qwen/qwen-2-7b-instruct", "huggingfaceh4/zephyr-7b-beta", customModelString]]
 ]);
 
 export const options = {
@@ -234,6 +241,7 @@ export const options = {
         {value: services.deepseek, label: "DeepSeek⭐️"},
         {value: services.siliconCloud, label: "硅基流动-SiliconFlow⭐️"},
         {value: services.huanYuan, label: "腾讯混元⭐"},
+        {value: services.newapi, label: "New API"},
         {value: services.grok, label: "Grok (X.AI)"},
         {value: services.openrouter, label: "OpenRouter"},
         {value: services.groq, label: "Groq"},

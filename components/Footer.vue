@@ -116,14 +116,14 @@ const computedCount = computed(() => localConfig.count);
 }
 
 .footer-container {
-  background: var(--el-bg-color);
+  background: var(--fr-bg-color);
   margin: -16px;
 }
 
 .translation-count {
   margin: 0px;
   font-size: 1.2em;
-  color: var(--el-text-color-regular);
+  color: var(--fr-text-color-regular);
   text-align: center;
 }
 
@@ -204,7 +204,7 @@ const computedCount = computed(() => localConfig.count);
   padding-bottom: 10px;
   margin-right: 0;
   text-align: center;
-  border-bottom: 1px solid var(--el-border-color-lighter);
+  border-bottom: 1px solid var(--fr-border-color-lighter);
 }
 
 .donate-dialog :deep(.el-dialog__headerbtn) {
@@ -221,7 +221,7 @@ const computedCount = computed(() => localConfig.count);
 .donate-text {
   text-align: center;
   margin-bottom: 15px;
-  color: var(--el-text-color-primary);
+  color: var(--fr-text-color-primary);
   line-height: 1.5;
 }
 
@@ -231,7 +231,7 @@ const computedCount = computed(() => localConfig.count);
   margin: 0 auto 15px;
   border-radius: 8px;
   overflow: hidden;
-  border: 1px solid var(--el-border-color-light);
+  border: 1px solid var(--fr-border-color-light);
   box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
   transition: transform 0.3s ease;
 }
@@ -257,11 +257,11 @@ const computedCount = computed(() => localConfig.count);
 /* 暗色主题适配 */
 @media (prefers-color-scheme: dark) {
   .footer-container {
-    background: var(--el-bg-color-darker);
+    background: var(--fr-bg-color-darker);
   }
   
   .qrcode-image {
-    border: 1px solid var(--el-border-color);
+    border: 1px solid var(--fr-border-color);
   }
 }
 </style>

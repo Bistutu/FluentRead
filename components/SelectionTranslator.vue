@@ -27,10 +27,11 @@
         </div>
       </div>
       <div class="tooltip-content">
-        <div v-if="isLoading" class="loading-spinner"></div>
+        <div v-if="isLoading" :class="['loading-spinner', { 'static': config.disableAnimations }]"></div>
         <div v-else-if="error" class="error-message">{{ error }}</div>
         <div v-else class="translation-container">
-          <div class="original-text no-select">
+          <!-- 原文显示（双语模式才显示） -->
+          <div v-if="config.selectionTranslatorMode === 'bilingual'" class="original-text no-select">
             <pre>{{ selectedText }}</pre>
             <button class="text-audio-btn" @click="(e) => toggleAudio(selectedText, e)" title="播放/停止原文">
               <svg v-if="isPlaying && currentPlayingText === selectedText" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -43,7 +44,8 @@
               </svg>
             </button>
           </div>
-          <div class="translation-result no-select">
+          <!-- 译文显示（双语模式和只显示译文模式都显示） -->
+          <div v-if="config.selectionTranslatorMode === 'bilingual' || config.selectionTranslatorMode === 'translation-only'" class="translation-result no-select">
             <pre>{{ translationResult }}</pre>
             <button class="text-audio-btn" @click="(e) => toggleAudio(translationResult, e)" title="播放/停止译文">
               <svg v-if="isPlaying && currentPlayingText === translationResult" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -715,6 +717,28 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   margin: 10px auto;
   animation: spin 1s linear infinite;
+}
+
+/* 静态加载样式 */
+.loading-spinner.static {
+  animation: none;
+  background: radial-gradient(circle, rgb(230, 151, 171) 30%, rgba(230, 151, 171, 0.6) 70%);
+  border: 2px solid rgb(200, 121, 141);
+  box-shadow: 0 0 10px rgba(230, 151, 171, 0.5);
+  position: relative;
+}
+
+/* 添加光泽效果 */
+.loading-spinner.static::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 50%, rgba(0,0,0,0.1) 100%);
+  border-radius: 50%;
+  pointer-events: none;
 }
 
 @keyframes spin {
