@@ -161,29 +161,6 @@
       </el-col>
     </el-row>
 
-    <!-- 并发翻译数量 -->
-    <el-row class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="控制同时进行的最大翻译任务数，数值越高翻译速度越快，但可能占用更多系统资源" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">并发翻译数量<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input-number 
-          v-model="config.maxConcurrentTranslations" 
-          :min="1" 
-          :max="20" 
-          :step="1"
-          style="width: 100%"
-          @change="handleConcurrentChange"
-          controls-position="right"
-        />
-      </el-col>
-    </el-row>
-
     <!-- 目标语言 -->
     <el-row class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -340,6 +317,29 @@
       </el-col>
     </el-row>
 
+    <!-- 翻译并发数 -->
+    <el-row class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="控制同时进行的最大翻译任务数，数值越高翻译速度越快，但可能占用更多系统资源" placement="top-start"
+                    :show-after="500">
+          <span class="popup-text popup-vertical-left">翻译并发数<el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-input-number
+            v-model="config.maxConcurrentTranslations"
+            :min="1"
+            :max="100"
+            :step="1"
+            style="width: 100%"
+            @change="handleConcurrentChange"
+            controls-position="right"
+        />
+      </el-col>
+    </el-row>
+
     <!-- 高级选项-->
     <el-collapse>
       <el-collapse-item title="高级选项" style="margin-left: 2em;" :disabled="compute.showMachine">
@@ -400,28 +400,6 @@
           </el-col>
         </el-row>
         
-        <!-- 翻译并发数设置 -->
-        <el-row class="margin-bottom">
-          <el-col :span="8" class="lightblue rounded-corner">
-            <el-tooltip class="box-item" effect="dark" 
-              content="设置同时进行的最大翻译请求数量。较高的数值可能提高翻译速度，但也可能导致API限制或网络占用过高。建议范围：1-20。" 
-              placement="top-start" :show-after="500">
-              <span class="popup-text popup-vertical-left">翻译并发数<el-icon class="icon-margin">
-                  <ChatDotRound />
-                </el-icon></span>
-            </el-tooltip>
-          </el-col>
-          <el-col :span="16">
-            <el-input 
-              v-model.number="config.maxConcurrentTranslations" 
-              type="number"
-              min="1" 
-              max="20" 
-              placeholder="请输入并发数(1-20)" 
-              style="width: 100%" />
-          </el-col>
-        </el-row>
-        
         <!-- 禁用动画设置 -->
         <el-row class="margin-bottom">
           <el-col :span="20" class="lightblue rounded-corner">
@@ -453,17 +431,6 @@
       </el-col>
     </el-row>
   </div>
-
-  <el-row v-if="showRefreshTip" class="refresh-tip margin-bottom">
-    <el-col :span="19" class="lightblue rounded-corner">
-      <span class="popup-text popup-vertical-left">设置已更新 需刷新页面生效</span>
-    </el-col>
-    <el-col :span="5">
-      <el-button class="refresh-button" type="primary" @click="refreshPage">
-        刷新
-      </el-button>
-    </el-col>
-  </el-row>
 
 </template>
 
@@ -714,9 +681,9 @@ const toggleFloatingBall = (val: boolean) => {
 // 处理并发数量变化
 const handleConcurrentChange = (currentValue: number | undefined, oldValue: number | undefined) => {
   // 验证并发数量的有效性
-  if (currentValue === undefined || currentValue < 1 || currentValue > 20) {
+  if (currentValue === undefined || currentValue < 1 || currentValue > 100) {
     ElMessage({
-      message: '并发数量必须在 1-20 之间',
+      message: '并发数量必须在 1-100 之间',
       type: 'warning',
       duration: 2000
     });
