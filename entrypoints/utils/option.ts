@@ -5,6 +5,7 @@ export const services = {
     deeplx: "deeplx",
     google: "google",
     xiaoniu: "xiaoniu",
+    youdao: "youdao",
     // 大模型翻译
     openai: "openai",
     gemini: "gemini",
@@ -34,7 +35,7 @@ export const services = {
 
 export const servicesType = {
     // 阵营划分
-    machine: new Set([services.microsoft, services.deepL, services.deeplx, services.google, services.xiaoniu,]),
+    machine: new Set([services.microsoft, services.deepL, services.deeplx, services.google, services.xiaoniu, services.youdao,]),
     AI: new Set([
         services.openai,
         services.gemini,
@@ -122,6 +123,7 @@ export const servicesType = {
         services.moonshot,
         services.tongyi,
         services.xiaoniu,
+        services.youdao,
         services.baichuan,
         services.deepseek,
         services.lingyi,
@@ -151,6 +153,7 @@ export const servicesType = {
     isNewApi: (service: string) => service === services.newapi,
     isUseAkSk: (service: string) => service === services.yiyan,
     isCoze: (service: string) => service === services.cozecom || service === services.cozecn,
+    isYoudao: (service: string) => service === services.youdao,
     isUseCustomUrl: (service: string) => servicesType.useCustomUrl.has(service),
 };
 
@@ -236,6 +239,7 @@ export const options = {
         {value: services.deepL, label: "DeepL"},
         {value: services.deeplx, label: "DeepLX"},
         {value: services.xiaoniu, label: "小牛翻译"},
+        {value: services.youdao, label: "有道翻译"},
         // 大模型翻译
         {value: "ai", label: "AI翻译", disabled: true},
         {value: services.deepseek, label: "DeepSeek⭐️"},

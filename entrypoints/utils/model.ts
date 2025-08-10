@@ -42,6 +42,8 @@ export class Config {
     selectionTranslatorMode: string; // 划词翻译显示模式: 'disabled' | 'bilingual' | 'translation-only'
     newApiUrl: string; // NewAPI地址
     maxConcurrentTranslations: number; // 最大并发翻译数量
+    youdaoAppKey: string; // 有道翻译 App Key
+    youdaoAppSecret: string; // 有道翻译 App Secret
     animations: boolean; // 是否启用动画效果
     translationStatus: boolean; // 是否启用全文翻译进度面板
 
@@ -78,6 +80,8 @@ export class Config {
         this.selectionTranslatorMode = 'bilingual'; // 默认双语显示模式
         this.newApiUrl = 'http://localhost:3000'; // NewAPI 默认地址
         this.maxConcurrentTranslations = 6; // 默认最大并发数为6
+        this.youdaoAppKey = ''; // 有道翻译 App Key
+        this.youdaoAppSecret = ''; // 有道翻译 App Secret
         this.animations = true; // 默认启用动画
         this.translationStatus = true; // 默认启用翻译进度面板
     }

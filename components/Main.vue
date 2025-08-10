@@ -215,6 +215,34 @@
       </el-col>
     </el-row>
 
+    <!-- 有道翻译配置 -->
+    <el-row v-show="compute.showYoudao" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="有道智云翻译API应用ID，用于访问有道翻译服务。可在有道智云控制台获取" placement="top-start"
+          :show-after="500">
+          <span class="popup-text popup-vertical-left">App Key<el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-input v-model="config.youdaoAppKey" placeholder="有道 AppKey" />
+      </el-col>
+    </el-row>
+    <el-row v-show="compute.showYoudao" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="有道智云翻译API应用密钥，用于访问有道翻译服务。可在有道智云控制台获取" placement="top-start"
+          :show-after="500">
+          <span class="popup-text popup-vertical-left">App Secret<el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-input v-model="config.youdaoAppSecret" type="password" show-password placeholder="有道 AppSecret" />
+      </el-col>
+    </el-row>
+
     <!--  Coze需显示 robot_id -->
     <el-row v-show="compute.showRobotId" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -512,6 +540,8 @@ let compute = ref({
   showToken: computed(() => servicesType.isUseToken(config.value.service)),
   // 6、是否显示 AkSk
   showAkSk: computed(() => servicesType.isUseAkSk(config.value.service)),
+  // 6.5、是否显示有道翻译配置
+  showYoudao: computed(() => servicesType.isYoudao(config.value.service)),
   // 7、获取模型列表
   model: computed(() => models.get(config.value.service) || []),
   // 8、是否需要自定义接口

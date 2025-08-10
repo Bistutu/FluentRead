@@ -9,6 +9,7 @@ import yiyan from "./yiyan";
 import gemini from "./gemini";
 import google from "./google";
 import xiaoniu from "./xiaoniu";
+import youdao from "./youdao";
 import claude from "./claude";
 import infini from "@/entrypoints/service/infini";
 import minimax from "@/entrypoints/service/minimax";
@@ -27,6 +28,7 @@ export const _service: ServiceMap = {
     [services.deeplx]: deeplx,
     [services.google]: google,
     [services.xiaoniu]: xiaoniu,
+    [services.youdao]: youdao,
 
     // 大模型翻译
     [services.custom]: custom,

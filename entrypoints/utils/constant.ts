@@ -10,6 +10,7 @@ export const urls: any = {
     [services.tongyi]: "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
     [services.zhipu]: "https://open.bigmodel.cn/api/paas/v4/chat/completions",
     [services.xiaoniu]: "https://api.niutrans.com/NiuTransServer/translationXML",
+    [services.youdao]: "https://openapi.youdao.com/api",
     [services.claude]: "https://api.anthropic.com/v1/messages",
     [services.baichuan]: "https://api.baichuan-ai.com/v1/chat/completions",
     [services.lingyi]: "https://api.lingyiwanwu.com/v1/chat/completions",
