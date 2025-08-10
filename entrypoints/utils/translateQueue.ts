@@ -5,17 +5,17 @@
 
 import { config } from './config';
 
-// 获取当前最大并发数
-function getMaxConcurrentTranslations(): number {
-  return config.maxConcurrentTranslations || 6; // 默认值为6
-}
-
 // 队列状态
 let activeTranslations = 0; // 当前活跃的翻译任务数量
 let pendingTranslations: Array<() => Promise<any>> = []; // 等待执行的翻译任务队列
 
 // 调试相关
 const isDev = process.env.NODE_ENV === 'development';
+
+// 获取最大并发翻译数量
+function getMaxConcurrentTranslations(): number {
+  return config.maxConcurrentTranslations || 6; // 默认值为6
+}
 
 /**
  * 添加翻译任务到队列
@@ -89,7 +89,7 @@ export function getQueueStatus() {
   return {
     activeTranslations,
     pendingTranslations: pendingTranslations.length,
-    maxConcurrent,
+    maxConcurrent: maxConcurrent,
     isQueueFull: activeTranslations >= maxConcurrent,
     totalTasksInProcess: activeTranslations + pendingTranslations.length
   };
@@ -103,4 +103,4 @@ export function canAcceptMoreTasks(): boolean {
   // 如果等待队列太长，返回false表示需要暂停扫描
   const MAX_QUEUE_LENGTH = getMaxConcurrentTranslations() * 3;
   return pendingTranslations.length < MAX_QUEUE_LENGTH;
-} 
+}

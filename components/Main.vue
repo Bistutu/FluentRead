@@ -161,6 +161,29 @@
       </el-col>
     </el-row>
 
+    <!-- 并发翻译数量 -->
+    <el-row class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="控制同时进行的最大翻译任务数，数值越高翻译速度越快，但可能占用更多系统资源" placement="top-start"
+          :show-after="500">
+          <span class="popup-text popup-vertical-left">并发翻译数量<el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-input-number 
+          v-model="config.maxConcurrentTranslations" 
+          :min="1" 
+          :max="20" 
+          :step="1"
+          style="width: 100%"
+          @change="handleConcurrentChange"
+          controls-position="right"
+        />
+      </el-col>
+    </el-row>
+
     <!-- 目标语言 -->
     <el-row class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -452,7 +475,7 @@ import { models, options, servicesType, defaultOption } from "../entrypoints/uti
 import { Config } from "@/entrypoints/utils/model";
 import { storage } from '@wxt-dev/storage';
 import { ChatDotRound, Refresh } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElInputNumber } from 'element-plus'
 import browser from 'webextension-polyfill';
 
 // 初始化深色模式媒体查询
@@ -685,6 +708,30 @@ const toggleFloatingBall = (val: boolean) => {
         });
       }
     });
+  });
+};
+
+// 处理并发数量变化
+const handleConcurrentChange = (currentValue: number | undefined, oldValue: number | undefined) => {
+  // 验证并发数量的有效性
+  if (currentValue === undefined || currentValue < 1 || currentValue > 20) {
+    ElMessage({
+      message: '并发数量必须在 1-20 之间',
+      type: 'warning',
+      duration: 2000
+    });
+    // 恢复默认值
+    config.value.maxConcurrentTranslations = 6;
+    return;
+  }
+  
+  // 显示设置已更新的提示
+  showRefreshTip.value = true;
+  
+  ElMessage({
+    message: `并发数量已更新为 ${currentValue}`,
+    type: 'success',
+    duration: 2000
   });
 };
 
