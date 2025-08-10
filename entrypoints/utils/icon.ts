@@ -119,7 +119,7 @@ export function insertLoadingSpinner(
   
   // 异步检查动画配置
   import('@/entrypoints/utils/config').then(({ config }) => {
-    if (config.disableAnimations && !spinner.classList.contains('static')) {
+    if (!config.animations && !spinner.classList.contains('static')) {
       spinner.classList.add('static');
     }
   }).catch(() => {

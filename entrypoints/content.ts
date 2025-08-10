@@ -48,8 +48,10 @@ export default defineContentScript({
             mountSelectionTranslator();
         }
         
-        // 挂载翻译状态组件
-        mountTranslationStatusComponent();
+        // 挂载翻译状态组件（可配置禁用）
+        if (config.translationStatus === true) {
+            mountTranslationStatusComponent();
+        }
 
         mountNewApiComponent();
 

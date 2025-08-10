@@ -27,7 +27,7 @@
         </div>
       </div>
       <div class="tooltip-content">
-        <div v-if="isLoading" :class="['loading-spinner', { 'static': config.disableAnimations }]"></div>
+        <div v-if="isLoading" :class="['loading-spinner', { 'static': !config.animations }]"></div>
         <div v-else-if="error" class="error-message">{{ error }}</div>
         <div v-else class="translation-container">
           <!-- 原文显示（双语模式才显示） -->

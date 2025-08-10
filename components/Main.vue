@@ -16,36 +16,6 @@
   </div>
 
   <div v-show="config.on">
-    <!-- 即时翻译 -->
-<!--    <el-row class="margin-bottom margin-left-2em">-->
-<!--      <el-col :span="12" class="lightblue rounded-corner">-->
-<!--        <el-tooltip class="box-item" effect="dark" content="开启后访问英文页面时会自动翻译" placement="top-start" :show-after="500">-->
-<!--          <span class="popup-text popup-vertical-left">即时翻译<el-icon class="icon-margin">-->
-<!--              <ChatDotRound />-->
-<!--            </el-icon></span>-->
-<!--        </el-tooltip>-->
-<!--      </el-col>-->
-<!--      <el-col :span="12" class="flex-end">-->
-<!--        <el-switch v-model="config.autoTranslate" inline-prompt active-text="开" inactive-text="关"-->
-<!--          @change="handleSwitchChange" />-->
-<!--      </el-col>-->
-<!--    </el-row>-->
-
-  <!-- 缓存开关 -->
-  <el-row class="margin-bottom margin-left-2em">
-    <el-col :span="20" class="lightblue rounded-corner">
-      <el-tooltip class="box-item" effect="dark" content="开启缓存可以提高翻译速度，减少重复请求，但可能导致翻译结果不是最新的" placement="top-start" :show-after="500">
-        <span class="popup-text popup-vertical-left">缓存翻译结果<el-icon class="icon-margin">
-            <ChatDotRound />
-          </el-icon></span>
-      </el-tooltip>
-    </el-col>
-
-    <el-col :span="4" class="flex-end">
-      <el-switch v-model="config.useCache" inline-prompt active-text="开" inactive-text="关"/>
-    </el-col>
-  </el-row>
-
     <!-- 添加悬浮球开关 -->
     <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
       <el-col :span="20" class="lightblue rounded-corner">
@@ -317,49 +287,110 @@
       </el-col>
     </el-row>
 
-    <!-- 翻译并发数 -->
-    <el-row class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="控制同时进行的最大翻译任务数，数值越高翻译速度越快，但可能占用更多系统资源" placement="top-start"
-                    :show-after="500">
+    <!-- 高级选项-->
+    <el-collapse class="margin-left-2em margin-bottom">
+      <el-collapse-item title="高级选项">
+
+        <!-- 主题设置 -->
+        <el-row class="margin-bottom margin-left-2em margin-top-2em">
+          <el-col :span="12" class="lightblue rounded-corner">
+            <span class="popup-text popup-vertical-left">主题设置</span>
+          </el-col>
+          <el-col :span="12">
+            <el-select v-model="config.theme" placeholder="请选择主题模式">
+              <el-option class="select-left" v-for="item in options.theme" :key="item.value" :label="item.label"
+                         :value="item.value" />
+            </el-select>
+          </el-col>
+        </el-row>
+
+        <!-- 缓存开关 -->
+        <el-row class="margin-bottom margin-left-2em">
+          <el-col :span="20" class="lightblue rounded-corner">
+            <el-tooltip class="box-item" effect="dark" content="开启缓存可以提高翻译速度，减少重复请求，但可能导致翻译结果不是最新的" placement="top-start" :show-after="500">
+        <span class="popup-text popup-vertical-left">缓存翻译结果<el-icon class="icon-margin">
+            <ChatDotRound />
+          </el-icon></span>
+            </el-tooltip>
+          </el-col>
+
+          <el-col :span="4" class="flex-end">
+            <el-switch v-model="config.useCache" inline-prompt active-text="开" inactive-text="关"/>
+          </el-col>
+        </el-row>
+
+        <!-- 翻译进度面板 -->
+        <el-row class="margin-bottom margin-left-2em">
+          <el-col :span="20" class="lightblue rounded-corner">
+            <el-tooltip class="box-item" effect="dark"
+                        content="翻译进度面板（默认关）：关闭后将不再显示右下角的全文翻译进度面板，适合移动端或希望更少打扰的用户。"
+                        placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">翻译进度面板<el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon></span>
+            </el-tooltip>
+          </el-col>
+          <el-col :span="4" class="flex-end">
+          <el-switch v-model="config.translationStatus" inline-prompt active-text="启动" inactive-text="禁用" />
+          </el-col>
+        </el-row>
+
+        <!-- 禁用动画设置 -->
+        <el-row class="margin-bottom margin-left-2em">
+          <el-col :span="20" class="lightblue rounded-corner">
+            <el-tooltip class="box-item" effect="dark"
+                        content="动画效果（默认开）：禁用后将关闭加载/悬浮等动画，以节省GPU资源和电量。适合低配置设备或希望节省资源的用户。"
+                        placement="top-start" :show-after="500">
+              <span class="popup-text popup-vertical-left">动画效果<el-icon class="icon-margin">
+                  <ChatDotRound />
+                </el-icon></span>
+            </el-tooltip>
+          </el-col>
+          <el-col :span="4" class="flex-end">
+            <el-switch v-model="config.animations" inline-prompt active-text="启动" inactive-text="禁用" />
+          </el-col>
+        </el-row>
+
+        <!-- 翻译并发数 -->
+        <el-row class="margin-bottom margin-left-2em">
+          <el-col :span="12" class="lightblue rounded-corner">
+            <el-tooltip class="box-item" effect="dark" content="控制同时进行的最大翻译任务数，数值越高翻译速度越快，但可能占用更多系统资源" placement="top-start"
+                        :show-after="500">
           <span class="popup-text popup-vertical-left">翻译并发数<el-icon class="icon-margin">
               <ChatDotRound />
             </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input-number
-            v-model="config.maxConcurrentTranslations"
-            :min="1"
-            :max="100"
-            :step="1"
-            style="width: 100%"
-            @change="handleConcurrentChange"
-            controls-position="right"
-        />
-      </el-col>
-    </el-row>
+            </el-tooltip>
+          </el-col>
+          <el-col :span="12">
+            <el-input-number
+                v-model="config.maxConcurrentTranslations"
+                :min="1"
+                :max="100"
+                :step="1"
+                style="width: 100%"
+                @change="handleConcurrentChange"
+                controls-position="right"
+            />
+          </el-col>
+        </el-row>
 
-    <!-- 高级选项-->
-    <el-collapse>
-      <el-collapse-item title="高级选项" style="margin-left: 2em;" :disabled="compute.showMachine">
         <!-- 使用代理转发 -->
-        <el-row v-show="compute.showProxy" class="margin-bottom">
+        <el-row v-show="compute.showProxy" class="margin-bottom margin-left-2em">
           <el-col :span="8" class="lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark" content="使用代理可以解决网络无法访问的问题，如不熟悉代理设置请留空！" placement="top-start"
-              :show-after="500">
+                        :show-after="500">
               <span class="popup-text popup-vertical-left">代理地址<el-icon class="icon-margin">
                   <ChatDotRound />
                 </el-icon></span>
             </el-tooltip>
           </el-col>
           <el-col :span="16">
-
             <el-input v-model="config.proxy[config.service]" placeholder="默认不使用代理" />
           </el-col>
         </el-row>
+
         <!-- 角色和模板 -->
-        <el-row v-show="compute.showAI" class="margin-bottom">
+        <el-row v-show="compute.showAI" class="margin-bottom margin-left-2em">
           <el-col :span="8" class="lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark" content="以系统身份 system 发送的对话，常用于指定 AI 要扮演的角色"
               placement="top-start" :show-after="500">
@@ -373,7 +404,7 @@
               placeholder="system message " />
           </el-col>
         </el-row>
-        <el-row v-show="compute.showAI" class="margin-bottom">
+        <el-row v-show="compute.showAI" class="margin-bottom margin-left-2em">
           <el-col :span="8" class="lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark"
               content="以用户身份 user 发送的对话，其中&#123;&#123;to&#125;&#125;表示目标语言，&#123;&#123;origin&#125;&#125;表示待翻译的文本内容，两者不可缺少。"
@@ -389,7 +420,7 @@
           </el-col>
         </el-row>
         <!-- 恢夏默认模板按钮 -->
-        <el-row v-show="compute.showAI" class="margin-bottom">
+        <el-row v-show="compute.showAI" class="margin-bottom margin-left-2em">
           <el-col :span="24" style="text-align: right;">
             <el-button type="primary" link @click="resetTemplate">
               <el-icon>
@@ -399,37 +430,9 @@
             </el-button>
           </el-col>
         </el-row>
-        
-        <!-- 禁用动画设置 -->
-        <el-row class="margin-bottom">
-          <el-col :span="20" class="lightblue rounded-corner">
-            <el-tooltip class="box-item" effect="dark" 
-              content="禁用所有动画效果（包括加载动画、悬浮动画等）以节省GPU资源和电量。适合低配置设备或希望节省资源的用户。" 
-              placement="top-start" :show-after="500">
-              <span class="popup-text popup-vertical-left">禁用动画效果<el-icon class="icon-margin">
-                  <ChatDotRound />
-                </el-icon></span>
-            </el-tooltip>
-          </el-col>
-          <el-col :span="4" class="flex-end">
-            <el-switch v-model="config.disableAnimations" inline-prompt active-text="禁用" inactive-text="启用" />
-          </el-col>
-        </el-row>
       </el-collapse-item>
     </el-collapse>
-
-    <!-- 主题设置 -->
-    <el-row class="margin-bottom margin-left-2em margin-top-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <span class="popup-text popup-vertical-left">主题设置</span>
-      </el-col>
-      <el-col :span="12">
-        <el-select v-model="config.theme" placeholder="请选择主题模式">
-          <el-option class="select-left" v-for="item in options.theme" :key="item.value" :label="item.label"
-            :value="item.value" />
-        </el-select>
-      </el-col>
-    </el-row>
+    <!--    -->
   </div>
 
 </template>

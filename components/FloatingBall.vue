@@ -3,8 +3,8 @@
     'floating-ball-expanded': isExpanded,
     'dragging': isDragging,
     'is-translating': isTranslating,
-    'animating': isAnimating && !config.disableAnimations,
-    'static-mode': config.disableAnimations
+    'animating': isAnimating && config.animations,
+    'static-mode': !config.animations
   }" :data-position="currentDisplayPosition" @mouseenter="expandBall" @mouseleave="collapseBall" :style="positionStyle"
        @mousedown="startDrag" @click="toggleTranslation" ref="floatingBall">
     <div class="floating-ball-icon">
