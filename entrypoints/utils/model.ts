@@ -37,6 +37,8 @@ export class Config {
     disableFloatingBall: boolean; // 是否禁用悬浮球
     floatingBallPosition: 'left' | 'right'; // 悬浮球位置
     floatingBallHotkey: string; // 悬浮球快捷键
+    customFloatingBallHotkey: string; // 自定义悬浮球快捷键
+    customHotkey: string; // 自定义鼠标悬浮快捷键
     disableSelectionTranslator: boolean; // 是否禁用划词翻译
     deeplx: string; // DeepLX 服务地址
     selectionTranslatorMode: string; // 划词翻译显示模式: 'disabled' | 'bilingual' | 'translation-only'
@@ -77,6 +79,8 @@ export class Config {
         this.disableFloatingBall = false; // 默认启用悬浮球
         this.floatingBallPosition = 'right'; // 默认在右侧
         this.floatingBallHotkey = 'Alt+T'; // 默认快捷键为 Alt+T
+        this.customFloatingBallHotkey = ''; // 自定义快捷键为空
+        this.customHotkey = ''; // 自定义鼠标悬浮快捷键为空
         this.disableSelectionTranslator = false; // 默认不禁用划词翻译
         this.deeplx = ''; // DeepLX 默认服务地址
         this.selectionTranslatorMode = 'bilingual'; // 默认双语显示模式

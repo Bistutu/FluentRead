@@ -215,11 +215,13 @@ export const options = {
         {value: "ru", label: "俄语"},
     ],
     keys: [
+        {value: "none", label: "禁用快捷键"},
 
         {value: "Computer", label: "键盘选项", disabled: true},
         {value: "Control", label: "Ctrl"},
         {value: "Alt", label: "Alt"},
         {value: "Shift", label: "Shift"},
+        {value: "Escape", label: "ESC"},
         {value: "`", label: "波浪号键"},
 
         {value: "mouse", label: "鼠标选项", disabled: true},
@@ -233,6 +235,8 @@ export const options = {
         {value: "FourFinger", label: "四指翻译"},
         {value: "DoubleClickScree", label: "双击翻译"},
         {value: "TripleClickScree", label: "三击翻译"},
+        
+        {value: "custom", label: "自定义快捷键（测试版）"},
     ],
     services: [
         // 传统机器翻译
@@ -326,13 +330,19 @@ export const options = {
     ],
     // 悬浮球快捷键选项
     floatingBallHotkeys: [
+        {value: "none", label: "禁用快捷键"},
         {value: "Alt+T", label: "Alt+T / Option+T (默认)"},
         {value: "Alt+A", label: "Alt+A / Option+A"},
         {value: "Alt+S", label: "Alt+S / Option+S"},
-        {value: "Ctrl+T", label: "Ctrl+T / Control+T"},
-        {value: "Ctrl+Alt+T", label: "Ctrl+Alt+T / Control+Option+T"},
+        {value: "Alt+D", label: "Alt+D / Option+D"},
+        {value: "Alt+Q", label: "Alt+Q / Option+Q"},
         {value: "Ctrl+Shift+T", label: "Ctrl+Shift+T / Control+Shift+T"},
-        {value: "none", label: "禁用快捷键"},
+        {value: "Ctrl+Shift+A", label: "Ctrl+Shift+A / Control+Shift+A"},
+        {value: "F9", label: "F9"},
+        {value: "F10", label: "F10"},
+        {value: "F11", label: "F11"},
+        {value: "F12", label: "F12"},
+        {value: "custom", label: "自定义快捷键（测试版）"},
     ],
     theme: [
         {value: "auto", label: "跟随操作系统"},

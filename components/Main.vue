@@ -16,67 +16,6 @@
   </div>
 
   <div v-show="config.on">
-    <!-- 添加悬浮球开关 -->
-    <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
-      <el-col :span="20" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="（测试版）控制是否显示屏幕边缘的即时翻译悬浮球，用于对整个网页进行翻译" placement="top-start" :show-after="500">
-        <span class="popup-text popup-vertical-left">
-          <span class="new-feature-badge">新</span>
-          全文翻译悬浮球
-          <el-icon class="icon-margin">
-            <ChatDotRound />
-          </el-icon>
-        </span>
-        </el-tooltip>
-      </el-col>
-
-      <el-col :span="4" class="flex-end">
-        <el-switch v-model="floatingBallEnabled" inline-prompt active-text="开" inactive-text="关" />
-      </el-col>
-    </el-row>
-
-    <!-- 全文翻译快捷键选择（独立于悬浮球显示） -->
-    <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
-      <el-col :span="14" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="（测试版）设置快捷键以便快速切换全文翻译状态，无需鼠标点击悬浮球" placement="top-start" :show-after="500">
-        <span class="popup-text popup-vertical-left">
-          <span class="new-feature-badge">新</span>
-          全文翻译快捷键
-          <el-icon class="icon-margin">
-            <ChatDotRound />
-          </el-icon>
-        </span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="10" class="flex-end">
-        <el-select v-model="config.floatingBallHotkey" placeholder="选择快捷键" size="small" style="width: 100%">
-          <el-option v-for="item in options.floatingBallHotkeys" :key="item.value" :label="item.label" :value="item.value" />
-        </el-select>
-      </el-col>
-    </el-row>
-
-    <!-- 划词翻译模式选择 -->
-    <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
-      <el-col :span="14" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="选中文本后显示红点，鼠标移到红点上查看翻译结果。可选择关闭、双语显示或只显示译文" placement="top-start" :show-after="500">
-      <span class="popup-text popup-vertical-left">
-        <span class="new-feature-badge">新</span>
-        划词翻译
-        <el-icon class="icon-margin">
-          <ChatDotRound />
-        </el-icon>
-      </span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="10" class="flex-end">
-        <el-select v-model="config.selectionTranslatorMode" placeholder="选择模式" size="small" style="width: 100%">
-          <el-option label="关闭" value="disabled" />
-          <el-option label="双语显示" value="bilingual" />
-          <el-option label="只显示译文" value="translation-only" />
-        </el-select>
-      </el-col>
-    </el-row>
-
     <!--    翻译模式-->
     <el-row class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -144,15 +83,108 @@
       </el-col>
     </el-row>
 
-    <!-- 快捷键 -->
-    <el-row class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <span class="popup-text popup-vertical-left">快捷键</span>
+
+
+    <!-- 鼠标悬浮快捷键 -->
+    <el-row class="margin-bottom margin-left-2em" :class="{ 'custom-hotkey-row': config.hotkey === 'custom' }">
+      <el-col :span="14" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="按住指定快捷键并悬停在文本上进行翻译" placement="top-start" :show-after="500">
+        <span class="popup-text popup-vertical-left">
+          鼠标悬浮快捷键
+          <el-icon class="icon-margin">
+            <ChatDotRound />
+          </el-icon>
+        </span>
+        </el-tooltip>
       </el-col>
-      <el-col :span="12">
-        <el-select v-model="config.hotkey" placeholder="请选择快捷键">
-          <el-option class="select-left" v-for="item in options.keys" :key="item.value" :label="item.label"
-            :value="item.value" :disabled="item.disabled" :class="{ 'select-divider': item.disabled }" />
+      <el-col :span="10" class="flex-end">
+        <div class="hotkey-config">
+          <el-select 
+            v-model="config.hotkey" 
+            placeholder="请选择快捷键" 
+            size="small" 
+            style="width: 100%"
+            @change="handleMouseHotkeyChange"
+          >
+            <el-option v-for="item in options.keys" :key="item.value" :label="item.label" :value="item.value" :disabled="item.disabled" :class="{ 'select-divider': item.disabled }" />
+          </el-select>
+          
+          <!-- 自定义快捷键显示（选择自定义时总是显示） -->
+          <div v-if="config.hotkey === 'custom'" class="custom-hotkey-display">
+            <span class="hotkey-text" v-if="config.customHotkey">
+              {{ getCustomMouseHotkeyDisplayName() }}
+            </span>
+            <span class="hotkey-text placeholder-text" v-else>
+              点击设置自定义快捷键
+            </span>
+            <el-button size="small" type="text" @click="openCustomMouseHotkeyDialog" class="edit-button">
+              <el-icon><Edit /></el-icon>
+            </el-button>
+          </div>
+        </div>
+      </el-col>
+    </el-row>
+
+    <!-- 全文翻译快捷键选择 -->
+    <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em" :class="{ 'custom-hotkey-row': config.floatingBallHotkey === 'custom' }">
+      <el-col :span="14" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="（测试版）设置快捷键以便快速切换全文翻译状态，无需鼠标点击悬浮球" placement="top-start" :show-after="500">
+        <span class="popup-text popup-vertical-left">
+          <!-- <span class="new-feature-badge">新</span> -->
+          全文翻译快捷键
+          <el-icon class="icon-margin">
+            <ChatDotRound />
+          </el-icon>
+        </span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="10" class="flex-end">
+        <div class="hotkey-config">
+          <el-select 
+            v-model="config.floatingBallHotkey" 
+            placeholder="选择快捷键" 
+            size="small" 
+            style="width: 100%"
+            @change="handleHotkeyChange"
+          >
+            <el-option v-for="item in options.floatingBallHotkeys" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+          
+          <!-- 自定义快捷键显示（选择自定义时总是显示） -->
+          <div v-if="config.floatingBallHotkey === 'custom'" class="custom-hotkey-display">
+            <span class="hotkey-text" v-if="config.customFloatingBallHotkey">
+              {{ getCustomHotkeyDisplayName() }}
+            </span>
+            <span class="hotkey-text placeholder-text" v-else>
+              点击设置自定义快捷键
+            </span>
+            <el-button size="small" type="text" @click="openCustomHotkeyDialog" class="edit-button">
+              <el-icon><Edit /></el-icon>
+            </el-button>
+          </div>
+        </div>
+      </el-col>
+    </el-row>
+
+
+    <!-- 划词翻译模式选择 -->
+    <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
+      <el-col :span="14" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="选中文本后显示红点，鼠标移到红点上查看翻译结果。可选择关闭、双语显示或只显示译文" placement="top-start" :show-after="500">
+      <span class="popup-text popup-vertical-left">
+        <!-- <span class="new-feature-badge">新</span> -->
+        划词翻译
+        <el-icon class="icon-margin">
+          <ChatDotRound />
+        </el-icon>
+      </span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="10" class="flex-end">
+        <el-select v-model="config.selectionTranslatorMode" placeholder="选择模式" size="small" style="width: 100%">
+          <el-option label="关闭" value="disabled" />
+          <el-option label="双语显示" value="bilingual" />
+          <el-option label="只显示译文" value="translation-only" />
         </el-select>
       </el-col>
     </el-row>
@@ -371,9 +403,29 @@
           </el-col>
 
           <el-col :span="4" class="flex-end">
-            <el-switch v-model="config.useCache" inline-prompt active-text="开" inactive-text="关"/>
+            <el-switch v-model="config.useCache" inline-prompt active-text="启用" inactive-text="禁用"/>
           </el-col>
         </el-row>
+
+        <!-- 悬浮球开关 -->
+      <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
+        <el-col :span="20" class="lightblue rounded-corner">
+          <el-tooltip class="box-item" effect="dark" content="（测试版）控制是否显示屏幕边缘的即时翻译悬浮球，用于对整个网页进行翻译" placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">
+            <!-- <span class="new-feature-badge">新</span> -->
+            全文翻译悬浮球
+            <el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon>
+          </span>
+          </el-tooltip>
+        </el-col>
+
+        <el-col :span="4" class="flex-end">
+          <el-switch v-model="floatingBallEnabled" inline-prompt active-text="启用" inactive-text="禁用" />
+        </el-col>
+      </el-row>
+
 
         <!-- 翻译进度面板 -->
         <el-row class="margin-bottom margin-left-2em">
@@ -491,6 +543,22 @@
     <!--    -->
   </div>
 
+  <!-- 自定义快捷键对话框 -->
+  <CustomHotkeyInput
+    v-model="showCustomHotkeyDialog"
+    :current-value="config.customFloatingBallHotkey"
+    @confirm="handleCustomHotkeyConfirm"
+    @cancel="handleCustomHotkeyCancel"
+  />
+
+  <!-- 自定义鼠标悬浮快捷键对话框 -->
+  <CustomHotkeyInput
+    v-model="showCustomMouseHotkeyDialog"
+    :current-value="config.customHotkey"
+    @confirm="handleCustomMouseHotkeyConfirm"
+    @cancel="handleCustomMouseHotkeyCancel"
+  />
+
 </template>
 
 <script lang="ts" setup>
@@ -500,9 +568,12 @@ import { computed, ref, watch, onUnmounted } from 'vue'
 import { models, options, servicesType, defaultOption } from "../entrypoints/utils/option";
 import { Config } from "@/entrypoints/utils/model";
 import { storage } from '@wxt-dev/storage';
-import { ChatDotRound, Refresh } from '@element-plus/icons-vue'
+import { ChatDotRound, Refresh, Edit } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, ElInputNumber } from 'element-plus'
 import browser from 'webextension-polyfill';
+import { defineAsyncComponent } from 'vue';
+const CustomHotkeyInput = defineAsyncComponent(() => import('@/components/CustomHotkeyInput.vue'));
+import { parseHotkey } from '@/entrypoints/utils/hotkey';
 
 // 初始化深色模式媒体查询
 const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -741,6 +812,110 @@ const toggleFloatingBall = (val: boolean) => {
   });
 };
 
+// 自定义快捷键相关
+const showCustomHotkeyDialog = ref(false);
+const showCustomMouseHotkeyDialog = ref(false);
+
+// 处理快捷键选择变化
+const handleHotkeyChange = (value: string) => {
+  if (value === 'custom') {
+    // 选择自定义后，如果没有设置过自定义快捷键，自动打开设置对话框
+    if (!config.value.customFloatingBallHotkey) {
+      // 延迟一下，让选择框先完成状态更新
+      setTimeout(() => {
+        openCustomHotkeyDialog();
+      }, 100);
+    }
+  }
+};
+
+// 打开自定义快捷键对话框
+const openCustomHotkeyDialog = () => {
+  showCustomHotkeyDialog.value = true;
+};
+
+// 确认自定义快捷键
+const handleCustomHotkeyConfirm = (hotkey: string) => {
+  config.value.customFloatingBallHotkey = hotkey;
+  config.value.floatingBallHotkey = 'custom';
+  
+  ElMessage({
+    message: hotkey === 'none' ? '已禁用快捷键' : `快捷键已设置为: ${getCustomHotkeyDisplayName()}`,
+    type: 'success',
+    duration: 2000
+  });
+};
+
+// 取消自定义快捷键
+const handleCustomHotkeyCancel = () => {
+  // 如果没有自定义快捷键，回退到默认选项
+  if (!config.value.customFloatingBallHotkey) {
+    config.value.floatingBallHotkey = 'Alt+T';
+  }
+};
+
+// 获取自定义快捷键显示名称
+const getCustomHotkeyDisplayName = () => {
+  if (!config.value.customFloatingBallHotkey) return '';
+  
+  if (config.value.customFloatingBallHotkey === 'none') {
+    return '已禁用';
+  }
+  
+  const parsed = parseHotkey(config.value.customFloatingBallHotkey);
+  return parsed.isValid ? parsed.displayName : config.value.customFloatingBallHotkey;
+};
+
+// 处理鼠标悬浮快捷键选择变化
+const handleMouseHotkeyChange = (value: string) => {
+  if (value === 'custom') {
+    // 选择自定义后，如果没有设置过自定义快捷键，自动打开设置对话框
+    if (!config.value.customHotkey) {
+      // 延迟一下，让选择框先完成状态更新
+      setTimeout(() => {
+        openCustomMouseHotkeyDialog();
+      }, 100);
+    }
+  }
+};
+
+// 打开自定义鼠标悬浮快捷键对话框
+const openCustomMouseHotkeyDialog = () => {
+  showCustomMouseHotkeyDialog.value = true;
+};
+
+// 确认自定义鼠标悬浮快捷键
+const handleCustomMouseHotkeyConfirm = (hotkey: string) => {
+  config.value.customHotkey = hotkey;
+  config.value.hotkey = 'custom';
+  
+  ElMessage({
+    message: hotkey === 'none' ? '已禁用快捷键' : `快捷键已设置为: ${getCustomMouseHotkeyDisplayName()}`,
+    type: 'success',
+    duration: 2000
+  });
+};
+
+// 取消自定义鼠标悬浮快捷键
+const handleCustomMouseHotkeyCancel = () => {
+  // 如果没有自定义快捷键，回退到默认选项
+  if (!config.value.customHotkey) {
+    config.value.hotkey = 'Control';
+  }
+};
+
+// 获取自定义鼠标悬浮快捷键显示名称
+const getCustomMouseHotkeyDisplayName = () => {
+  if (!config.value.customHotkey) return '';
+  
+  if (config.value.customHotkey === 'none') {
+    return '已禁用';
+  }
+  
+  const parsed = parseHotkey(config.value.customHotkey);
+  return parsed.isValid ? parsed.displayName : config.value.customHotkey;
+};
+
 // 处理并发数量变化
 const handleConcurrentChange = (currentValue: number | undefined, oldValue: number | undefined) => {
   // 验证并发数量的有效性
@@ -900,5 +1075,141 @@ const refreshPage = async () => {
   100% {
     transform: translateY(-3px);
   }
+}
+
+/* 自定义快捷键相关样式 */
+.hotkey-config {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.custom-hotkey-display {
+  display: flex;
+  align-items: center;
+  padding: 6px 6px 6px 10px;
+  background: var(--el-color-primary-light-9);
+  border: 1px solid var(--el-color-primary-light-7);
+  border-radius: 4px;
+  font-size: 12px;
+  height: 32px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.hotkey-text {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-weight: 600;
+  color: var(--el-color-primary);
+  font-size: 13px;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  max-width: calc(100% - 32px);
+}
+
+.edit-button {
+  padding: 2px 4px;
+  margin-left: 4px;
+  color: var(--el-color-primary);
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.edit-button:hover {
+  background: var(--el-color-primary-light-8);
+}
+
+.edit-button .el-icon {
+  font-size: 12px;
+}
+
+.placeholder-text {
+  color: var(--el-text-color-placeholder) !important;
+  font-style: italic;
+  font-family: inherit !important;
+  font-weight: normal !important;
+}
+
+/* 自定义快捷键行样式 */
+.custom-hotkey-row {
+  border-radius: 8px;
+  padding: 8px;
+  margin: 6px 0 !important;
+  background: linear-gradient(135deg, 
+    rgba(64, 158, 255, 0.03) 0%, 
+    rgba(64, 158, 255, 0.01) 50%, 
+    rgba(103, 194, 58, 0.02) 100%);
+  transition: all 0.3s ease;
+  position: relative;
+  border: 1px solid transparent;
+}
+
+.custom-hotkey-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, 
+    rgba(64, 158, 255, 0.2) 0%, 
+    rgba(64, 158, 255, 0.1) 30%,
+    rgba(103, 194, 58, 0.1) 70%,
+    rgba(103, 194, 58, 0.2) 100%);
+  border-radius: 8px;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.custom-hotkey-row::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  background: linear-gradient(135deg, 
+    rgba(64, 158, 255, 0.3), 
+    rgba(103, 194, 58, 0.3));
+  border-radius: 8px;
+  z-index: -2;
+  opacity: 0.6;
+}
+
+.custom-hotkey-row:hover {
+  background: linear-gradient(135deg, 
+    rgba(64, 158, 255, 0.05) 0%, 
+    rgba(64, 158, 255, 0.03) 50%, 
+    rgba(103, 194, 58, 0.04) 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.15);
+}
+
+.custom-hotkey-row:hover::before {
+  opacity: 0.1;
+}
+
+/* 自定义标识徽章 */
+.custom-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  background: var(--el-color-primary);
+  color: white;
+  font-size: 10px;
+  border-radius: 10px;
+  font-weight: 500;
+  margin-left: 6px;
+  line-height: 1;
 }
 </style>
