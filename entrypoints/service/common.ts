@@ -2,14 +2,21 @@ import {method, urls} from "../utils/constant";
 import {commonMsgTemplate} from "../utils/template";
 import {config} from "@/entrypoints/utils/config";
 import {contentPostHandler} from "@/entrypoints/utils/check";
+import { services } from "../utils/option";
 
 async function common(message: any) {
     try {
+
         const headers = new Headers({
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${config.token[config.service]}`
         });
 
+        if(config.service === services.openrouter){
+            headers.append('HTTP-Referer', 'https://fluent.thinkstu.com');
+            headers.append('X-Title', 'FluentRead');
+        }
+                
         const url = config.proxy[config.service] || urls[config.service];
 
         const resp = await fetch(url, {
