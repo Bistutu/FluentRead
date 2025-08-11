@@ -11,6 +11,7 @@
     <!-- 翻译结果弹窗 -->
     <div v-if="showTooltip" 
          class="translation-tooltip" 
+         :class="{ 'dark-theme': isDarkTheme }"
          :style="tooltipStyle"
          @mouseenter="handleMouseEnterTooltip"
          @mouseleave="handleMouseLeaveTooltip">
@@ -80,7 +81,7 @@
     </div>
     
     <!-- 复制成功提示 -->
-    <div v-if="copySuccess" class="copy-success-toast">
+    <div v-if="copySuccess" class="copy-success-toast" :class="{ 'dark-theme': isDarkTheme }">
       <div class="copy-success-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"></polyline>
@@ -114,6 +115,7 @@ const isSelecting = ref(false); // 标记用户是否正在选择文本中
 const debounceTimer = ref<number | null>(null); // 防抖定时器
 const currentPlayingText = ref(''); // 当前正在播放的文本
 const isFirefox = ref(false); // 是否为Firefox浏览器
+const isDarkTheme = ref(false); // 主题状态
 
 // 计算小红点指示器的样式
 const indicatorStyle = computed(() => {
@@ -505,10 +507,43 @@ const detectFirefox = () => {
   return navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
 };
 
+// 获取当前主题状态
+const getCurrentTheme = () => {
+  const currentTheme = config.theme || 'auto';
+  if (currentTheme === 'auto') {
+    // 自动模式下检测系统主题
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  return currentTheme === 'dark';
+};
+
+// 更新主题状态
+const updateTheme = () => {
+  isDarkTheme.value = getCurrentTheme();
+};
+
 // 监听事件
 onMounted(() => {
   // 检测浏览器类型
   isFirefox.value = detectFirefox();
+  
+  // 初始化主题状态
+  updateTheme();
+  
+  // 监听主题变化
+  watch(() => config.theme, updateTheme, { immediate: true });
+  
+  // 监听系统主题变化（用于自动模式）
+  const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+  const handleSystemThemeChange = () => {
+    if (config.theme === 'auto') {
+      updateTheme();
+    }
+  };
+  darkModeMediaQuery.addEventListener('change', handleSystemThemeChange);
+  
+  // 保存系统主题监听器引用供清理使用
+  systemThemeHandler = handleSystemThemeChange;
   
   // 定义事件监听器函数
   mouseDownHandler = () => {
@@ -591,6 +626,7 @@ let mouseDownHandler: () => void;
 let mouseUpHandler: () => void;
 let clickHandler: (e: Event) => void;
 let selectionChangeHandler: () => void;
+let systemThemeHandler: () => void;
 
 // 清理事件监听 (修复清理逻辑)
 onBeforeUnmount(() => {
@@ -606,6 +642,12 @@ onBeforeUnmount(() => {
   }
   if (selectionChangeHandler) {
     document.removeEventListener('selectionchange', selectionChangeHandler);
+  }
+  
+  // 移除系统主题监听器
+  if (systemThemeHandler) {
+    const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    darkModeMediaQuery.removeEventListener('change', systemThemeHandler);
   }
   
   // 清理所有定时器
@@ -769,6 +811,11 @@ onBeforeUnmount(() => {
   animation: spin 1s linear infinite;
 }
 
+.translation-tooltip.dark-theme .loading-spinner {
+  border: 2px solid #444;
+  border-top: 2px solid #69c0ff;
+}
+
 /* 静态加载样式 */
 .loading-spinner.static {
   animation: none;
@@ -800,6 +847,10 @@ onBeforeUnmount(() => {
   color: #ff4d4f;
   text-align: center;
   padding: 10px;
+}
+
+.translation-tooltip.dark-theme .error-message {
+  color: #ff7875;
 }
 
 /* 文本内播放按钮 */
@@ -846,33 +897,47 @@ onBeforeUnmount(() => {
 }
 
 /* 暗黑模式适配 */
-:root.dark .translation-tooltip {
+.translation-tooltip.dark-theme {
   background-color: #1f1f1f;
   border: 1px solid #333;
+  color: #ffffff;
 }
 
-:root.dark .tooltip-header {
+.translation-tooltip.dark-theme .tooltip-header {
   background-color: #2a2a2a;
   border-bottom: 1px solid #444;
+  color: #ffffff;
 }
 
-:root.dark .original-text pre {
-  color: #aaa;
+.translation-tooltip.dark-theme .tooltip-header span {
+  color: #ffffff;
 }
 
-:root.dark .translation-result pre {
-  color: #ddd;
+.translation-tooltip.dark-theme .original-text {
+  color: #ffffff;
 }
 
-:root.dark .close-btn {
+.translation-tooltip.dark-theme .original-text pre {
+  color: #ffffff;
+}
+
+.translation-tooltip.dark-theme .translation-result {
+  color: #ffffff;
+}
+
+.translation-tooltip.dark-theme .translation-result pre {
+  color: #ffffff;
+}
+
+.translation-tooltip.dark-theme .close-btn {
   color: #bbb;
 }
 
-:root.dark .close-btn:hover {
-  color: #ddd;
+.translation-tooltip.dark-theme .close-btn:hover {
+  color: #ffffff;
 }
 
-:root.dark .tooltip-content::-webkit-scrollbar-thumb {
+.translation-tooltip.dark-theme .tooltip-content::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.3);
 }
 
@@ -904,8 +969,8 @@ onBeforeUnmount(() => {
   background-color: rgba(0, 0, 0, 0.03);
 }
 
-:root.dark .translation-result:hover, 
-:root.dark .original-text:hover {
+.translation-tooltip.dark-theme .translation-result:hover, 
+.translation-tooltip.dark-theme .original-text:hover {
   background-color: rgba(255, 255, 255, 0.05);
 }
 
@@ -1004,16 +1069,16 @@ onBeforeUnmount(() => {
 }
 
 /* 暗黑模式适配 */
-:root.dark .playing-status {
-  background-color: rgba(64, 169, 255, 0.1);
+.translation-tooltip.dark-theme .playing-status {
+  background-color: rgba(64, 169, 255, 0.15);
+  color: #ffffff;
+}
+
+.translation-tooltip.dark-theme .stop-audio-btn {
   color: #69c0ff;
 }
 
-:root.dark .stop-audio-btn {
-  color: #69c0ff;
-}
-
-:root.dark .stop-audio-btn:hover {
+.translation-tooltip.dark-theme .stop-audio-btn:hover {
   background-color: rgba(64, 169, 255, 0.2);
 }
 
@@ -1029,32 +1094,27 @@ onBeforeUnmount(() => {
   100% { opacity: 0; transform: translate(-50%, -60%); }
 }
 
-:root.dark .copy-success-toast,
-:root.dark .audio-playing-toast {
+.copy-success-toast.dark-theme {
   background-color: rgba(0, 0, 0, 0.85);
 }
 
-:root.dark .copy-success-icon {
+.copy-success-toast.dark-theme .copy-success-icon {
   color: #73d13d;
 }
 
-:root.dark .audio-playing-icon {
-  color: #69c0ff;
+.translation-tooltip.dark-theme .action-btn,
+.translation-tooltip.dark-theme .copy-btn,
+.translation-tooltip.dark-theme .text-audio-btn {
+  color: #ffffff;
 }
 
-:root.dark .action-btn,
-:root.dark .copy-btn,
-:root.dark .text-audio-btn {
-  color: #bbb;
-}
-
-:root.dark .action-btn:hover,
-:root.dark .copy-btn:hover {
+.translation-tooltip.dark-theme .action-btn:hover,
+.translation-tooltip.dark-theme .copy-btn:hover {
   background-color: rgba(255, 255, 255, 0.1);
-  color: #eee;
+  color: #ffffff;
 }
 
-:root.dark .text-audio-btn:hover {
+.translation-tooltip.dark-theme .text-audio-btn:hover {
   color: #69c0ff;
   background-color: rgba(24, 144, 255, 0.15);
 }
