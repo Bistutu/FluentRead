@@ -103,7 +103,6 @@ export default defineContentScript({
             if (message.type === 'contextMenuTranslate' && message.action === 'fullPage') {
                 // 检查插件是否已启用
                 if (config.on === false) {
-                    console.log('FluentRead is disabled, cannot translate');
                     sendResponse({ status: 'disabled' });
                     return true;
                 }

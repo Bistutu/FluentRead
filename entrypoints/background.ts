@@ -9,11 +9,20 @@ export default defineBackground({
     },
     main() {
         // 创建右键菜单项
-        browser.contextMenus.create({
-            id: CONTEXT_MENU_IDS.TRANSLATE_FULL_PAGE,
-            title: 'FluentRead - 全文翻译',
-            contexts: ['page', 'selection'],
-        });
+        try {
+            browser.contextMenus.create({
+                id: CONTEXT_MENU_IDS.TRANSLATE_FULL_PAGE,
+                title: 'FluentRead - 全文翻译',
+                contexts: ['page', 'selection'],
+            }, () => {
+                // 检查是否有错误
+                if (browser.runtime.lastError) {
+                    console.error('Failed to create context menu:', browser.runtime.lastError.message);
+                }
+            });
+        } catch (error) {
+            console.error('Error setting up context menu:', error);
+        }
 
         // 监听右键菜单点击事件
         browser.contextMenus.onClicked.addListener((info, tab) => {
@@ -22,6 +31,8 @@ export default defineBackground({
                 browser.tabs.sendMessage(tab.id, {
                     type: 'contextMenuTranslate',
                     action: 'fullPage'
+                }).catch(error => {
+                    console.error('Failed to send message to content script:', error);
                 });
             }
         });
