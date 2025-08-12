@@ -7,6 +7,24 @@ export default defineBackground({
         safari: false,
     },
     main() {
+        // 创建右键菜单项
+        browser.contextMenus.create({
+            id: 'fluent-read-translate-full-page',
+            title: 'FluentRead - 全文翻译',
+            contexts: ['page', 'selection'],
+        });
+
+        // 监听右键菜单点击事件
+        browser.contextMenus.onClicked.addListener((info, tab) => {
+            if (info.menuItemId === 'fluent-read-translate-full-page' && tab?.id) {
+                // 发送消息到内容脚本触发全文翻译
+                browser.tabs.sendMessage(tab.id, {
+                    type: 'contextMenuTranslate',
+                    action: 'fullPage'
+                });
+            }
+        });
+
         // 处理翻译请求
         browser.runtime.onMessage.addListener((message: any) => {
             return new Promise((resolve, reject) => {
