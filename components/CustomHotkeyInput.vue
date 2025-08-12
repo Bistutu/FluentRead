@@ -80,7 +80,7 @@
         <!-- 简化说明 -->
         <div class="help-section">
           <el-text size="small" type="info">
-            提示：建议使用修饰键组合（如 Ctrl+字母），避免与系统快捷键冲突
+            提示：建议使用修饰键组合（如 Ctrl+字母），避免与系统快捷键冲突。注意：不能使用 CMD 充当快捷键
           </el-text>
         </div>
       </div>

@@ -144,6 +144,17 @@ export function parseHotkey(hotkeyString: string): ParsedHotkey {
     };
   }
 
+  // 禁用包含 CMD/Meta 键的快捷键组合
+  if (modifiers.includes('meta')) {
+    return {
+      modifiers,
+      key,
+      isValid: false,
+      displayName: '',
+      errorMessage: 'CMD 键已被禁用，请使用其他修饰键组合'
+    };
+  }
+
   // 生成显示名称
   const displayName = generateDisplayName(modifiers, key);
   
