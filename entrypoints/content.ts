@@ -98,19 +98,26 @@ export default defineContentScript({
             return false;
         });
         
-        // 处理右键菜单触发的全文翻译
-        browser.runtime.onMessage.addListener((message: any, sender: any, sendResponse: () => void) => {
-            if (message.type === 'contextMenuTranslate' && message.action === 'fullPage') {
+        // 处理右键菜单触发的全文翻译和撤销
+        browser.runtime.onMessage.addListener((message: any, sender: any, sendResponse: (response?: any) => void) => {
+            if (message.type === 'contextMenuTranslate') {
                 // 检查插件是否已启用
                 if (config.on === false) {
                     sendResponse({ status: 'disabled' });
                     return true;
                 }
                 
-                // 触发全文翻译
-                autoTranslateEnglishPage();
-                sendResponse({ status: 'success' });
-                return true;
+                if (message.action === 'fullPage') {
+                    // 触发全文翻译
+                    autoTranslateEnglishPage();
+                    sendResponse({ status: 'success', action: 'translated' });
+                    return true;
+                } else if (message.action === 'restore') {
+                    // 撤销翻译，恢复原文
+                    restoreOriginalContent();
+                    sendResponse({ status: 'success', action: 'restored' });
+                    return true;
+                }
             }
             return false;
         });
