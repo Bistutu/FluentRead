@@ -169,9 +169,16 @@ function setupManualTranslationTriggers() {
         // 防止重复事件
         if (event.repeat) return;
         
+        // 在 Mac 上禁止 cmd 键参与快捷键
+        const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+        if (isMac && event.metaKey) {
+            return;
+        }
+        
         // 记录修饰键
         if (event.altKey) mouseHotkeysPressed.add('alt');
-        if (event.ctrlKey || event.metaKey) mouseHotkeysPressed.add('control');
+        if (event.ctrlKey) mouseHotkeysPressed.add('control');
+        if (event.metaKey && !isMac) mouseHotkeysPressed.add('control'); // 非Mac系统上metaKey映射到control
         if (event.shiftKey) mouseHotkeysPressed.add('shift');
         
         // 处理普通按键
@@ -223,30 +230,59 @@ function setupManualTranslationTriggers() {
 
     // 3. 抬起按键时
     window.addEventListener('keyup', event => {
-        // 检查是否刚刚释放了鼠标悬浮快捷键
-        const wasHotkeyPressed = checkMouseHotkey();
+        // 清除字母键状态（在检查前先清除）
+        const releasedKey = event.key.toLowerCase();
+        const releasedCode = event.code?.toLowerCase();
+        if (releasedCode && releasedCode.startsWith('key')) {
+            const letter = releasedCode.slice(3).toLowerCase();
+            mouseHotkeysPressed.delete(letter);
+        } else if (releasedKey.length === 1) {
+            mouseHotkeysPressed.delete(releasedKey);
+        } else if (/^f\d+$/.test(releasedKey)) {
+            mouseHotkeysPressed.delete(releasedKey);
+        } else {
+            // 特殊键
+            const specialKeys: Record<string, string> = {
+                'escape': 'escape',
+                'enter': 'enter',
+                'space': 'space',
+                'tab': 'tab',
+                'backspace': 'backspace',
+                'delete': 'delete',
+                'insert': 'insert',
+                'home': 'home',
+                'end': 'end',
+                'pageup': 'pageup',
+                'pagedown': 'pagedown',
+                'arrowup': 'arrowup',
+                'arrowdown': 'arrowdown',
+                'arrowleft': 'arrowleft',
+                'arrowright': 'arrowright'
+            };
+            if (specialKeys[releasedKey]) {
+                mouseHotkeysPressed.delete(specialKeys[releasedKey]);
+            }
+        }
         
         // 清除修饰键状态
         if (!event.altKey) mouseHotkeysPressed.delete('alt');
-        if (!event.ctrlKey && !event.metaKey) mouseHotkeysPressed.delete('control');
+        if (!event.ctrlKey) mouseHotkeysPressed.delete('control');
+        if (!event.metaKey) mouseHotkeysPressed.delete('control');
         if (!event.shiftKey) mouseHotkeysPressed.delete('shift');
         
-        // 清除字母键状态
-        if (event.code && event.code.startsWith('Key')) {
-            const letter = event.code.slice(3).toLowerCase();
-            mouseHotkeysPressed.delete(letter);
-        } else if (event.key && event.key.length === 1) {
-            mouseHotkeysPressed.delete(event.key.toLowerCase());
+        // 获取当前配置的快捷键
+        const hotkeyParts = getConfiguredMouseHotkeyParts();
+        
+        // 如果当前按键集合为空，且之前激活了快捷键，且配置的快捷键不包含当前释放的键，则触发翻译
+        if (screen.hotkeyPressed && mouseHotkeysPressed.size === 0 && !screen.otherKeyPressed && !screen.hasSlideTranslation) {
+            // 检查插件是否开启
+            if (config.on) {
+                handleTranslation(screen.mouseX, screen.mouseY);
+            }
         }
         
-        // 如果释放前匹配快捷键，且没有其他按键干扰，且没有滑动翻译，则触发翻译
-        if (wasHotkeyPressed && screen.hotkeyPressed) {
-            if (!screen.otherKeyPressed && !screen.hasSlideTranslation) {
-                // 检查插件是否开启
-                if (config.on) {
-                    handleTranslation(screen.mouseX, screen.mouseY);
-                }
-            }
+        // 如果所有按键都释放了，重置状态
+        if (mouseHotkeysPressed.size === 0) {
             screen.hotkeyPressed = false;
             screen.otherKeyPressed = false;
             screen.hasSlideTranslation = false;
@@ -415,9 +451,15 @@ function setupFloatingBallHotkey() {
         if (now - lastKeyDownTime < 50) return;
         lastKeyDownTime = now;
         
+        // 在 Mac 上禁止 cmd 键参与快捷键
+        if (isMac && event.metaKey) {
+            return;
+        }
+        
         // 记录修饰键状态
         if (event.altKey) hotkeysPressed.add('alt');
-        if (event.ctrlKey || event.metaKey) hotkeysPressed.add('control'); // 在Mac上，metaKey是Command键
+        if (event.ctrlKey) hotkeysPressed.add('control');
+        if (event.metaKey && !isMac) hotkeysPressed.add('control'); // 非Mac系统上metaKey映射到control
         if (event.shiftKey) hotkeysPressed.add('shift');
         
         // 处理普通按键
@@ -495,18 +537,45 @@ function setupFloatingBallHotkey() {
     
     // 监听按键释放事件
     document.addEventListener('keyup', (event) => {
+        // 清除字母键状态
+        const releasedKey = event.key.toLowerCase();
+        const releasedCode = event.code?.toLowerCase();
+        if (releasedCode && releasedCode.startsWith('key')) {
+            const letter = releasedCode.slice(3).toLowerCase();
+            hotkeysPressed.delete(letter);
+        } else if (releasedKey.length === 1) {
+            hotkeysPressed.delete(releasedKey);
+        } else if (/^f\d+$/.test(releasedKey)) {
+            hotkeysPressed.delete(releasedKey);
+        } else {
+            // 特殊键
+            const specialKeys: Record<string, string> = {
+                'escape': 'escape',
+                'enter': 'enter',
+                'space': 'space',
+                'tab': 'tab',
+                'backspace': 'backspace',
+                'delete': 'delete',
+                'arrowup': 'arrowup',
+                'arrowdown': 'arrowdown',
+                'arrowleft': 'arrowleft',
+                'arrowright': 'arrowright',
+                'home': 'home',
+                'end': 'end',
+                'pageup': 'pageup',
+                'pagedown': 'pagedown',
+                'insert': 'insert'
+            };
+            if (specialKeys[releasedKey]) {
+                hotkeysPressed.delete(specialKeys[releasedKey]);
+            }
+        }
+        
         // 清除修饰键状态
         if (!event.altKey) hotkeysPressed.delete('alt');
-        if (!event.ctrlKey && !event.metaKey) hotkeysPressed.delete('control');
+        if (!event.ctrlKey) hotkeysPressed.delete('control');
+        if (!event.metaKey) hotkeysPressed.delete('control');
         if (!event.shiftKey) hotkeysPressed.delete('shift');
-        
-        // 清除字母键状态
-        if (event.code && event.code.startsWith('Key')) {
-            const letter = event.code.slice(3).toLowerCase();
-            hotkeysPressed.delete(letter);
-        } else if (event.key && event.key.length === 1) {
-            hotkeysPressed.delete(event.key.toLowerCase());
-        }
     });
     
     // 页面失焦或切换标签页时，清除所有按键状态
