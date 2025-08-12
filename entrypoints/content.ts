@@ -98,6 +98,23 @@ export default defineContentScript({
             return false;
         });
         
+        // 处理右键菜单触发的全文翻译
+        browser.runtime.onMessage.addListener((message: any, sender: any, sendResponse: () => void) => {
+            if (message.type === 'contextMenuTranslate' && message.action === 'fullPage') {
+                // 检查插件是否已启用
+                if (config.on === false) {
+                    sendResponse({ status: 'disabled' });
+                    return true;
+                }
+                
+                // 触发全文翻译
+                autoTranslateEnglishPage();
+                sendResponse({ status: 'success' });
+                return true;
+            }
+            return false;
+        });
+        
         // 在页面卸载时清理资源
         window.addEventListener('beforeunload', () => {
             // 取消所有待处理的翻译任务

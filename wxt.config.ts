@@ -22,7 +22,7 @@ export default defineConfig({
         }
     }),
     manifest: {
-        permissions: ['storage'],
+        permissions: ['storage', 'contextMenus'],
     },
 
 });

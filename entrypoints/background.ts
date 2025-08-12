@@ -1,12 +1,42 @@
 import {_service} from "@/entrypoints/service/_service";
 import {config} from "@/entrypoints/utils/config";
 import {reportTranslationCount} from "@/entrypoints/utils/influx-reporter";
+import {CONTEXT_MENU_IDS} from "@/entrypoints/utils/constant";
 
 export default defineBackground({
     persistent: {
         safari: false,
     },
     main() {
+        // 创建右键菜单项
+        try {
+            browser.contextMenus.create({
+                id: CONTEXT_MENU_IDS.TRANSLATE_FULL_PAGE,
+                title: 'FluentRead - 全文翻译',
+                contexts: ['page', 'selection'],
+            }, () => {
+                // 检查是否有错误
+                if (browser.runtime.lastError) {
+                    console.error('Failed to create context menu:', browser.runtime.lastError.message);
+                }
+            });
+        } catch (error) {
+            console.error('Error setting up context menu:', error);
+        }
+
+        // 监听右键菜单点击事件
+        browser.contextMenus.onClicked.addListener((info, tab) => {
+            if (info.menuItemId === CONTEXT_MENU_IDS.TRANSLATE_FULL_PAGE && tab?.id) {
+                // 发送消息到内容脚本触发全文翻译
+                browser.tabs.sendMessage(tab.id, {
+                    type: 'contextMenuTranslate',
+                    action: 'fullPage'
+                }).catch(error => {
+                    console.error('Failed to send message to content script:', error);
+                });
+            }
+        });
+
         // 处理翻译请求
         browser.runtime.onMessage.addListener((message: any) => {
             return new Promise((resolve, reject) => {
