@@ -2,7 +2,7 @@
   <teleport to="body">
     <!-- 小红点指示器 -->
     <div v-if="showIndicator" 
-         class="selection-indicator" 
+         class="fr-selection-indicator" 
          :style="indicatorStyle" 
          @mouseenter="handleMouseEnter"
          @mouseleave="handleMouseLeave">
@@ -10,31 +10,31 @@
     
     <!-- 翻译结果弹窗 -->
     <div v-if="showTooltip" 
-         class="translation-tooltip" 
-         :class="{ 'dark-theme': isDarkTheme }"
+         class="fr-translation-tooltip" 
+         :class="{ 'fr-dark-theme': isDarkTheme }"
          :style="tooltipStyle"
          @mouseenter="handleMouseEnterTooltip"
          @mouseleave="handleMouseLeaveTooltip">
-      <div class="tooltip-header">
+      <div class="fr-tooltip-header">
         <span>翻译结果<small>（via 流畅阅读）</small></span>
-        <div class="tooltip-actions">
-          <button class="action-btn" @click="copyTranslation" title="复制译文">
+        <div class="fr-tooltip-actions">
+          <button class="fr-action-btn" @click="copyTranslation" title="复制译文">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
             </svg>
           </button>
-          <button class="close-btn" @click="closeTooltip">×</button>
+          <button class="fr-close-btn" @click="closeTooltip">×</button>
         </div>
       </div>
-      <div class="tooltip-content">
-        <div v-if="isLoading" :class="['loading-spinner', { 'static': !config.animations }]"></div>
-        <div v-else-if="error" class="error-message">{{ error }}</div>
-        <div v-else class="translation-container">
+      <div class="fr-tooltip-content">
+        <div v-if="isLoading" :class="['fr-loading-spinner', { 'fr-static': !config.animations }]"></div>
+        <div v-else-if="error" class="fr-error-message">{{ error }}</div>
+        <div v-else class="fr-translation-container">
           <!-- 原文显示（双语模式才显示） -->
-          <div v-if="config.selectionTranslatorMode === 'bilingual'" class="original-text no-select">
+          <div v-if="config.selectionTranslatorMode === 'bilingual'" class="fr-original-text fr-no-select">
             <pre>{{ selectedText }}</pre>
-            <button class="text-audio-btn" @click="(e) => toggleAudio(selectedText, e)" title="播放/停止原文">
+            <button class="fr-text-audio-btn" @click="(e) => toggleAudio(selectedText, e)" title="播放/停止原文">
               <svg v-if="isPlaying && currentPlayingText === selectedText" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="6" y="4" width="4" height="16"></rect>
                 <rect x="14" y="4" width="4" height="16"></rect>
@@ -46,9 +46,9 @@
             </button>
           </div>
           <!-- 译文显示（双语模式和只显示译文模式都显示） -->
-          <div v-if="config.selectionTranslatorMode === 'bilingual' || config.selectionTranslatorMode === 'translation-only'" class="translation-result no-select">
+          <div v-if="config.selectionTranslatorMode === 'bilingual' || config.selectionTranslatorMode === 'translation-only'" class="fr-translation-result fr-no-select">
             <pre>{{ translationResult }}</pre>
-            <button class="text-audio-btn" @click="(e) => toggleAudio(translationResult, e)" title="播放/停止译文">
+            <button class="fr-text-audio-btn" @click="(e) => toggleAudio(translationResult, e)" title="播放/停止译文">
               <svg v-if="isPlaying && currentPlayingText === translationResult" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="6" y="4" width="4" height="16"></rect>
                 <rect x="14" y="4" width="4" height="16"></rect>
@@ -61,15 +61,15 @@
           </div>
           
           <!-- 播放状态提示 - 显示在弹窗内部 -->
-          <div v-if="isPlaying" class="playing-status">
-            <div class="playing-status-icon">
+          <div v-if="isPlaying" class="fr-playing-status">
+            <div class="fr-playing-status-icon">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
                 <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>
               </svg>
             </div>
             <span>正在播放: {{ currentPlayingText === selectedText ? '原文' : '译文' }}</span>
-            <button class="stop-audio-btn" @click="(e) => stopAudio(e)">
+            <button class="fr-stop-audio-btn" @click="(e) => stopAudio(e)">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="6" y="4" width="4" height="16"></rect>
                 <rect x="14" y="4" width="4" height="16"></rect>
@@ -81,8 +81,8 @@
     </div>
     
     <!-- 复制成功提示 -->
-    <div v-if="copySuccess" class="copy-success-toast" :class="{ 'dark-theme': isDarkTheme }">
-      <div class="copy-success-icon">
+    <div v-if="copySuccess" class="fr-copy-success-toast" :class="{ 'fr-dark-theme': isDarkTheme }">
+      <div class="fr-copy-success-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"></polyline>
         </svg>
@@ -600,11 +600,11 @@ onMounted(() => {
   clickHandler = (e: Event) => {
     // 检查点击事件是否发生在指示器或弹窗之外
     const target = e.target as HTMLElement;
-    const isOutsideIndicator = !target.closest('.selection-indicator');
-    const isOutsideTooltip = !target.closest('.translation-tooltip');
+    const isOutsideIndicator = !target.closest('.fr-selection-indicator');
+    const isOutsideTooltip = !target.closest('.fr-translation-tooltip');
     
     // 检查点击事件是否发生在音频按钮上
-    const isAudioButton = target.closest('.text-audio-btn') || target.closest('.stop-audio-btn');
+    const isAudioButton = target.closest('.fr-text-audio-btn') || target.closest('.fr-stop-audio-btn');
     
     // 如果点击在音频按钮上，不要隐藏弹窗
     if (isAudioButton) {
@@ -671,7 +671,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.selection-indicator {
+.fr-selection-indicator {
   position: fixed;
   width: 12px;
   height: 12px;
@@ -698,9 +698,9 @@ onBeforeUnmount(() => {
   }
 }
 
-.translation-tooltip {
+.fr-translation-tooltip {
   position: fixed;
-  background-color: white;
+  background-color: white !important;
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
   z-index: 10000;
@@ -712,9 +712,9 @@ onBeforeUnmount(() => {
   transition: opacity 0.2s ease;
 }
 
-.tooltip-header {
+.fr-tooltip-header {
   padding: 8px 12px;
-  background-color: #f5f5f5;
+  background-color: #f5f5f5 !important;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -724,13 +724,13 @@ onBeforeUnmount(() => {
   z-index: 1;
 }
 
-.tooltip-actions {
+.fr-tooltip-actions {
   display: flex;
   align-items: center;
   gap: 6px;
 }
 
-.action-btn, .copy-btn {
+.fr-action-btn, .fr-copy-btn {
   background: none;
   border: none;
   cursor: pointer;
@@ -743,12 +743,12 @@ onBeforeUnmount(() => {
   transition: background-color 0.2s, color 0.2s;
 }
 
-.action-btn:hover, .copy-btn:hover {
+.fr-action-btn:hover, .fr-copy-btn:hover {
   background-color: rgba(0, 0, 0, 0.05);
   color: #333;
 }
 
-.close-btn {
+.fr-close-btn {
   background: none;
   border: none;
   font-size: 16px;
@@ -759,31 +759,32 @@ onBeforeUnmount(() => {
   line-height: 1;
 }
 
-.close-btn:hover {
+.fr-close-btn:hover {
   color: #666;
 }
 
-.tooltip-content {
+.fr-tooltip-content {
   padding: 12px;
+  background-color: white !important;
   overflow-y: auto; /* 添加垂直滚动 */
   max-height: 350px; /* 增加最大高度 */
   scrollbar-width: thin; /* 细滚动条 */
   scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
 }
 
-.original-text pre,
-.translation-result pre {
+.fr-original-text pre,
+.fr-translation-result pre {
   margin: 0;
   white-space: pre-wrap;
   word-wrap: break-word;
   font-family: inherit;
   font-size: inherit;
-  color: inherit;
+  color: inherit !important;
 }
 
-.original-text {
+.fr-original-text {
   margin-bottom: 8px;
-  color: #666;
+  color: #666 !important;
   font-size: 14px;
   word-break: break-word;
   padding-bottom: 8px;
@@ -791,8 +792,8 @@ onBeforeUnmount(() => {
   position: relative;
 }
 
-.translation-result {
-  color: #333;
+.fr-translation-result {
+  color: #333 !important;
   font-size: 15px;
   font-weight: 500;
   word-break: break-word;
@@ -801,7 +802,7 @@ onBeforeUnmount(() => {
   position: relative;
 }
 
-.loading-spinner {
+.fr-loading-spinner {
   width: 20px;
   height: 20px;
   border: 2px solid #f3f3f3;
@@ -811,13 +812,13 @@ onBeforeUnmount(() => {
   animation: spin 1s linear infinite;
 }
 
-.translation-tooltip.dark-theme .loading-spinner {
+.fr-translation-tooltip.fr-dark-theme .fr-loading-spinner {
   border: 2px solid #444;
   border-top: 2px solid #69c0ff;
 }
 
 /* 静态加载样式 */
-.loading-spinner.static {
+.fr-loading-spinner.fr-static {
   animation: none;
   background: radial-gradient(circle, rgb(230, 151, 171) 30%, rgba(230, 151, 171, 0.6) 70%);
   border: 2px solid rgb(200, 121, 141);
@@ -826,7 +827,7 @@ onBeforeUnmount(() => {
 }
 
 /* 添加光泽效果 */
-.loading-spinner.static::before {
+.fr-loading-spinner.fr-static::before {
   content: '';
   position: absolute;
   top: 2px;
@@ -843,18 +844,18 @@ onBeforeUnmount(() => {
   100% { transform: rotate(360deg); }
 }
 
-.error-message {
+.fr-error-message {
   color: #ff4d4f;
   text-align: center;
   padding: 10px;
 }
 
-.translation-tooltip.dark-theme .error-message {
+.fr-translation-tooltip.fr-dark-theme .fr-error-message {
   color: #ff7875;
 }
 
 /* 文本内播放按钮 */
-.text-audio-btn {
+.fr-text-audio-btn {
   position: absolute;
   right: 4px;
   top: 4px;
@@ -871,81 +872,85 @@ onBeforeUnmount(() => {
   border-radius: 4px;
 }
 
-.original-text:hover .text-audio-btn,
-.translation-result:hover .text-audio-btn {
+.fr-original-text:hover .fr-text-audio-btn,
+.fr-translation-result:hover .fr-text-audio-btn {
   opacity: 1;
 }
 
-.text-audio-btn:hover {
+.fr-text-audio-btn:hover {
   color: #1890ff;
   background-color: rgba(24, 144, 255, 0.1);
 }
 
 /* 自定义滚动条样式 */
-.tooltip-content::-webkit-scrollbar {
+.fr-tooltip-content::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
-.tooltip-content::-webkit-scrollbar-thumb {
+.fr-tooltip-content::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.3);
   border-radius: 3px;
 }
 
-.tooltip-content::-webkit-scrollbar-track {
+.fr-tooltip-content::-webkit-scrollbar-track {
   background-color: transparent;
 }
 
 /* 暗黑模式适配 */
-.translation-tooltip.dark-theme {
-  background-color: #1f1f1f;
+.fr-translation-tooltip.fr-dark-theme {
+  background-color: #1f1f1f !important;
   border: 1px solid #333;
   color: #ffffff;
 }
 
-.translation-tooltip.dark-theme .tooltip-header {
-  background-color: #2a2a2a;
+.fr-translation-tooltip.fr-dark-theme .fr-tooltip-header {
+  background-color: #2a2a2a !important;
   border-bottom: 1px solid #444;
   color: #ffffff;
 }
 
-.translation-tooltip.dark-theme .tooltip-header span {
+.fr-translation-tooltip.fr-dark-theme .fr-tooltip-header span {
   color: #ffffff;
 }
 
-.translation-tooltip.dark-theme .original-text {
-  color: #ffffff;
+.fr-translation-tooltip.fr-dark-theme .fr-original-text {
+  color: #ffffff !important;
 }
 
-.translation-tooltip.dark-theme .original-text pre {
-  color: #ffffff;
+.fr-translation-tooltip.fr-dark-theme .fr-original-text pre {
+  color: #ffffff !important;
 }
 
-.translation-tooltip.dark-theme .translation-result {
-  color: #ffffff;
+.fr-translation-tooltip.fr-dark-theme .fr-translation-result {
+  color: #ffffff !important;
 }
 
-.translation-tooltip.dark-theme .translation-result pre {
-  color: #ffffff;
+.fr-translation-tooltip.fr-dark-theme .fr-translation-result pre {
+  color: #ffffff !important;
 }
 
-.translation-tooltip.dark-theme .close-btn {
+.fr-translation-tooltip.fr-dark-theme .fr-close-btn {
   color: #bbb;
 }
 
-.translation-tooltip.dark-theme .close-btn:hover {
+.fr-translation-tooltip.fr-dark-theme .fr-close-btn:hover {
   color: #ffffff;
 }
 
-.translation-tooltip.dark-theme .tooltip-content::-webkit-scrollbar-thumb {
+.fr-translation-tooltip.fr-dark-theme .fr-tooltip-content {
+  background-color: #1f1f1f !important;
+}
+
+.fr-translation-tooltip.fr-dark-theme .fr-tooltip-content::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.3);
 }
 
-.translation-container {
+.fr-translation-container {
   position: relative;
 }
 
-.no-select {
+.fr-no-select {
   user-select: none !important;
   -webkit-user-select: none !important;
   -moz-user-select: none !important;
@@ -959,22 +964,23 @@ onBeforeUnmount(() => {
   color: white;
 }
 
-.translation-result, .original-text {
+.fr-translation-result, .fr-original-text {
   padding: 8px;
   border-radius: 4px;
+  background: transparent;
   transition: background-color 0.15s ease;
 }
 
-.translation-result:hover, .original-text:hover {
+.fr-translation-result:hover, .fr-original-text:hover {
   background-color: rgba(0, 0, 0, 0.03);
 }
 
-.translation-tooltip.dark-theme .translation-result:hover, 
-.translation-tooltip.dark-theme .original-text:hover {
+.fr-translation-tooltip.fr-dark-theme .fr-translation-result:hover, 
+.fr-translation-tooltip.fr-dark-theme .fr-original-text:hover {
   background-color: rgba(255, 255, 255, 0.05);
 }
 
-.copy-success-toast {
+.fr-copy-success-toast {
   position: fixed;
   top: 50%;
   left: 50%;
@@ -992,7 +998,7 @@ onBeforeUnmount(() => {
   animation: toast-fade 1.5s ease forwards;
 }
 
-.copy-success-icon {
+.fr-copy-success-icon {
   color: #52c41a;
   display: flex;
   align-items: center;
@@ -1000,7 +1006,7 @@ onBeforeUnmount(() => {
 }
 
 /* 内部播放状态提示 */
-.playing-status {
+.fr-playing-status {
   margin-top: 10px;
   padding: 8px 12px;
   background-color: rgba(24, 144, 255, 0.1);
@@ -1015,7 +1021,7 @@ onBeforeUnmount(() => {
 
 /* 修复Firefox浏览器中动画丢失的问题 */
 @-moz-document url-prefix() {
-  .playing-status {
+  .fr-playing-status {
     animation-name: moz-pulse-light;
   }
   
@@ -1032,7 +1038,7 @@ onBeforeUnmount(() => {
   }
 }
 
-.playing-status-icon {
+.fr-playing-status-icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1050,7 +1056,7 @@ onBeforeUnmount(() => {
   }
 }
 
-.stop-audio-btn {
+.fr-stop-audio-btn {
   background: none;
   border: none;
   color: #1890ff;
@@ -1064,26 +1070,26 @@ onBeforeUnmount(() => {
   transition: background-color 0.2s;
 }
 
-.stop-audio-btn:hover {
+.fr-stop-audio-btn:hover {
   background-color: rgba(24, 144, 255, 0.2);
 }
 
 /* 暗黑模式适配 */
-.translation-tooltip.dark-theme .playing-status {
+.fr-translation-tooltip.fr-dark-theme .fr-playing-status {
   background-color: rgba(64, 169, 255, 0.15);
   color: #ffffff;
 }
 
-.translation-tooltip.dark-theme .stop-audio-btn {
+.fr-translation-tooltip.fr-dark-theme .fr-stop-audio-btn {
   color: #69c0ff;
 }
 
-.translation-tooltip.dark-theme .stop-audio-btn:hover {
+.fr-translation-tooltip.fr-dark-theme .fr-stop-audio-btn:hover {
   background-color: rgba(64, 169, 255, 0.2);
 }
 
 /* 移除外部播放提示样式，改为内部显示 */
-.audio-playing-toast {
+.fr-audio-playing-toast {
   display: none;
 }
 
@@ -1094,27 +1100,27 @@ onBeforeUnmount(() => {
   100% { opacity: 0; transform: translate(-50%, -60%); }
 }
 
-.copy-success-toast.dark-theme {
+.fr-copy-success-toast.fr-dark-theme {
   background-color: rgba(0, 0, 0, 0.85);
 }
 
-.copy-success-toast.dark-theme .copy-success-icon {
+.fr-copy-success-toast.fr-dark-theme .fr-copy-success-icon {
   color: #73d13d;
 }
 
-.translation-tooltip.dark-theme .action-btn,
-.translation-tooltip.dark-theme .copy-btn,
-.translation-tooltip.dark-theme .text-audio-btn {
+.fr-translation-tooltip.fr-dark-theme .fr-action-btn,
+.fr-translation-tooltip.fr-dark-theme .fr-copy-btn,
+.fr-translation-tooltip.fr-dark-theme .fr-text-audio-btn {
   color: #ffffff;
 }
 
-.translation-tooltip.dark-theme .action-btn:hover,
-.translation-tooltip.dark-theme .copy-btn:hover {
+.fr-translation-tooltip.fr-dark-theme .fr-action-btn:hover,
+.fr-translation-tooltip.fr-dark-theme .fr-copy-btn:hover {
   background-color: rgba(255, 255, 255, 0.1);
   color: #ffffff;
 }
 
-.translation-tooltip.dark-theme .text-audio-btn:hover {
+.fr-translation-tooltip.fr-dark-theme .fr-text-audio-btn:hover {
   color: #69c0ff;
   background-color: rgba(24, 144, 255, 0.15);
 }
