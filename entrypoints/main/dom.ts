@@ -33,14 +33,17 @@ export function grabAllNode(rootNode: Node): Element[] {
         NodeFilter.SHOW_ELEMENT,
         {
             acceptNode: (node: Node): number => {
-                if (!(node instanceof Element)) return NodeFilter.FILTER_SKIP;
+                // 更兼容的元素类型检查
+                if (node.nodeType !== Node.ELEMENT_NODE) {
+                    return NodeFilter.FILTER_SKIP;
+                }
 
-                const tag = node.tagName.toLowerCase();
+                const tag = (node as Element).tagName.toLowerCase();
 
                 // 跳过黑名单标签
                 if (skipSet.has(tag) ||
-                    node.classList?.contains('sr-only') ||
-                    node.classList?.contains('notranslate')) {
+                    (node as Element).classList?.contains('sr-only') ||
+                    (node as Element).classList?.contains('notranslate')) {
                     return NodeFilter.FILTER_REJECT;
                 }
 
@@ -53,13 +56,21 @@ export function grabAllNode(rootNode: Node): Element[] {
                 let hasText = false;
                 let hasElement = false;
                 let hasNonEmptyElement = false;
+                let hasBlockElement = false;
 
                 for (const child of node.childNodes) {
                     if (child.nodeType === Node.ELEMENT_NODE) {
                         hasElement = true;
+                        const childTag = (child as Element).tagName.toLowerCase();
+                        
                         // 检查子元素是否包含文本
                         if (child.textContent?.trim()) {
                             hasNonEmptyElement = true;
+                            
+                            // 检查是否为块级元素（非内联元素）
+                            if (!inlineSet.has(childTag)) {
+                                hasBlockElement = true;
+                            }
                         }
                     }
                     if (child.nodeType === Node.TEXT_NODE && child.textContent?.trim()) {
@@ -67,16 +78,23 @@ export function grabAllNode(rootNode: Node): Element[] {
                     }
                 }
 
-                // 如果有非空子元素，跳过当前节点
-                if (hasNonEmptyElement) {
+                // 如果有块级子元素，跳过当前节点
+                // 但如果只有内联子元素（如a、strong、em等），则允许翻译
+                if (hasBlockElement) {
                     return NodeFilter.FILTER_SKIP;
                 }
 
-                if (hasText && !hasElement) {
+                // 如果有文本内容，无论是否有内联子元素，都接受该节点
+                if (hasText) {
                     return NodeFilter.FILTER_ACCEPT;
                 }
 
-                // 如果有子元素，继续遍历
+                // 如果有非空的内联子元素，也接受该节点进行翻译
+                if (hasNonEmptyElement && !hasBlockElement) {
+                    return NodeFilter.FILTER_ACCEPT;
+                }
+
+                // 如果有子元素但没有文本内容，继续遍历子节点
                 if (node.childNodes.length > 0) {
                     return NodeFilter.FILTER_SKIP;
                 }
@@ -92,8 +110,6 @@ export function grabAllNode(rootNode: Node): Element[] {
         const translateNode = grabNode(currentNode as Element);
         if (translateNode) {
             result.push(translateNode);
-            // 跳过已确定要翻译的节点的所有子节点
-            walker.currentNode = currentNode.nextSibling || currentNode;
         }
     }
     return Array.from(new Set(result));;
@@ -147,24 +163,48 @@ export function grabNode(node: any): any {
 function shouldSkipNode(node: any, tag: string): boolean {
     // 1. 判断标签是否在 skipSet 内
     // 2. 检查是否具有 notranslate 类
-    // 3. 判断节点是否可编辑
+    // 3. 判断节点是否可编辑（兼容 JSDOM 环境）
     // 4. 判断文本是否过长
     // 5. 判断文本是否为纯数字或标准数字格式（仅当节点内容几乎全是数字时才跳过）
     return skipSet.has(tag) ||
         node.classList?.contains('notranslate') ||
-        node.isContentEditable ||
+        isContentEditableNode(node) ||
         checkTextSize(node) ||
         isMainlyNumericContent(node);
+}
+
+// 检查节点是否可编辑（兼容 JSDOM 环境）
+function isContentEditableNode(node: any): boolean {
+    return node.isContentEditable || 
+           node.contentEditable === 'true' ||
+           node.getAttribute?.('contenteditable') === 'true';
 }
 
 // 检查文本长度
 function checkTextSize(node: any): boolean {
     // 1. 若文本内容长度超过 3072
     // 2. 或者 outerHTML 长度超过 4096，都视为过长
-    // 3. 少于3个字符
-    return node.textContent.length > 3072 ||
-        (node.outerHTML && node.outerHTML.length > 4096) ||
-        node.textContent.length < 3;
+    // 3. 空文本内容，但需要考虑是否有内联子元素
+    if (node.textContent.length > 3072 ||
+        (node.outerHTML && node.outerHTML.length > 4096)) {
+        return true;
+    }
+    
+    // 如果没有任何文本内容，检查是否有包含文本的内联子元素
+    const trimmedText = node.textContent.trim();
+    if (trimmedText.length === 0) {
+        // 检查是否有包含文本的内联子元素
+        const children = Array.from(node.children || []);
+        const hasTextInInlineChildren = children.some((child: any) => {
+            const childTag = child.tagName?.toLowerCase();
+            return inlineSet.has(childTag) && child.textContent?.trim();
+        });
+        // 如果有包含文本的内联子元素，则不跳过
+        return !hasTextInInlineChildren;
+    }
+    
+    // 如果文本长度过短（少于3个字符），则跳过
+    return trimmedText.length < 3;
 }
 
 // 检查节点内容是否主要为数字
