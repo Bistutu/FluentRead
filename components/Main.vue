@@ -1059,7 +1059,14 @@ const handleImport = () => {
 const saveImport = async () => {
   try {
     const parsedConfig = JSON.parse(importData.value);
-    // You might want to add more validation here
+    // Add validation here
+    if (!validateConfig(parsedConfig)) {
+      ElMessage({
+        message: '配置无效或格式不正确, 请检查!',
+        type: 'error',
+      });
+      return;
+    }
     await storage.setItem('local:config', JSON.stringify(parsedConfig));
     ElMessage({
       message: '配置导入成功!',
