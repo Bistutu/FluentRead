@@ -30,9 +30,11 @@ export function grabAllNode(rootNode: Node): Element[] {
 
     const walker = document.createTreeWalker(
         rootNode,
-        NodeFilter.SHOW_ELEMENT,
+        NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
         {
             acceptNode: (node: Node): number => {
+                if (node instanceof Text) return NodeFilter.FILTER_ACCEPT;
+
                 if (!(node instanceof Element)) return NodeFilter.FILTER_SKIP;
 
                 const tag = node.tagName.toLowerCase();
@@ -89,7 +91,7 @@ export function grabAllNode(rootNode: Node): Element[] {
     // 遍历出所有可翻译的节点
     let currentNode: Node | null;
     while (currentNode = walker.nextNode()) {
-        const translateNode = grabNode(currentNode as Element);
+        const translateNode = grabNode(currentNode as Element | Text);
         if (translateNode) {
             result.push(translateNode);
             // 跳过已确定要翻译的节点的所有子节点
@@ -102,7 +104,18 @@ export function grabAllNode(rootNode: Node): Element[] {
 // 返回最终应该翻译的父节点或 false
 export function grabNode(node: any): any {
     // 空节点检查
-    if (!node || !node.tagName) return false;
+    if (!node) return false;
+
+    // 对于 Text 节点，尝试找到其可翻译的父节点
+    if (node instanceof Text) {
+        const parentOrSelf = findTranslatableParent(node);
+        if (parentOrSelf && parentOrSelf !== node) {
+            return parentOrSelf;
+        }
+        return false;
+    }
+
+    if (!node.tagName) return false;
 
     const curTag = node.tagName.toLowerCase();
 
