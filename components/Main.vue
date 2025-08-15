@@ -542,15 +542,25 @@
         <!-- 配置导入导出 -->
         <el-row class="margin-bottom margin-left-2em">
           <el-col :span="24">
-            <el-divider content-position="left">配置管理</el-divider>
+            <el-divider content-position="center">配置管理</el-divider>
           </el-col>
         </el-row>
         <el-row class="margin-bottom margin-left-2em">
-          <el-col :span="24" class="flex-end">
-            <el-button-group>
-              <el-button type="primary" @click="handleExport" :icon="Download">导出配置</el-button>
-              <el-button type="success" @click="handleImport" :icon="Upload">导入配置</el-button>
-            </el-button-group>
+          <el-col :span="12">
+            <el-button type="primary" @click="handleExport">
+              <el-icon>
+                <Download />
+              </el-icon>
+              导出配置
+            </el-button>
+          </el-col>
+          <el-col :span="12">
+            <el-button type="success" @click="handleImport">
+              <el-icon>
+                <Upload />
+              </el-icon>
+              导入配置
+            </el-button>
           </el-col>
         </el-row>
 
