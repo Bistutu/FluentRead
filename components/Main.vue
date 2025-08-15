@@ -515,7 +515,7 @@
         <el-row v-show="compute.showAI" class="margin-bottom margin-left-2em">
           <el-col :span="8" class="lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark"
-              content="以用户身份 user 发送的对话，其中&#123;&#123;to&#125;&#125;表示目标语言，&#123;&#123;origin&#125;&#125;表示待翻译的文本内容，两者不可缺少。"
+              content="以用户身份 user 发送的对话，其中{{to}}表示目标语言，{{origin}}表示待翻译的文本内容，两者不可缺少。"
               placement="top-start" :show-after="500">
               <span class="popup-text popup-vertical-left">user<el-icon class="icon-margin">
                   <ChatDotRound />
@@ -536,6 +536,38 @@
               </el-icon>
               恢复默认模板
             </el-button>
+          </el-col>
+        </el-row>
+
+        <!-- 配置导入导出 -->
+        <el-row class="margin-bottom margin-left-2em">
+          <el-col :span="24">
+            <el-divider content-position="left">配置管理</el-divider>
+          </el-col>
+        </el-row>
+        <el-row class="margin-bottom margin-left-2em">
+          <el-col :span="24" class="flex-end">
+            <el-button-group>
+              <el-button type="primary" @click="handleExport" :icon="Download">导出配置</el-button>
+              <el-button type="success" @click="handleImport" :icon="Upload">导入配置</el-button>
+            </el-button-group>
+          </el-col>
+        </el-row>
+
+        <!-- 导出配置 -->
+        <el-row v-if="showExportBox" class="margin-bottom margin-left-2em">
+          <el-col :span="24">
+            <el-input v-model="exportData" type="textarea" :rows="8" readonly />
+          </el-col>
+        </el-row>
+
+        <!-- 导入配置 -->
+        <el-row v-if="showImportBox" class="margin-bottom margin-left-2em">
+          <el-col :span="24">
+            <el-input v-model="importData" type="textarea" :rows="8" placeholder="请在此处粘贴您的JSON配置" />
+            <div style="margin-top: 10px; text-align: right;">
+              <el-button @click="saveImport">保存</el-button>
+            </div>
           </el-col>
         </el-row>
       </el-collapse-item>
@@ -559,6 +591,8 @@
     @cancel="handleCustomMouseHotkeyCancel"
   />
 
+
+
 </template>
 
 <script lang="ts" setup>
@@ -568,7 +602,7 @@ import { computed, ref, watch, onUnmounted } from 'vue'
 import { models, options, servicesType, defaultOption } from "../entrypoints/utils/option";
 import { Config } from "@/entrypoints/utils/model";
 import { storage } from '@wxt-dev/storage';
-import { ChatDotRound, Refresh, Edit } from '@element-plus/icons-vue'
+import { ChatDotRound, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, ElInputNumber } from 'element-plus'
 import browser from 'webextension-polyfill';
 import { defineAsyncComponent } from 'vue';
@@ -816,6 +850,13 @@ const toggleFloatingBall = (val: boolean) => {
 const showCustomHotkeyDialog = ref(false);
 const showCustomMouseHotkeyDialog = ref(false);
 
+// 配置导入导出相关
+const showExportConfig = ref(false);
+const showImportConfig = ref(false);
+const exportedConfig = ref('');
+const importConfigText = ref('');
+const importLoading = ref(false);
+
 // 处理快捷键选择变化
 const handleHotkeyChange = (value: string) => {
   if (value === 'custom') {
@@ -949,6 +990,247 @@ const refreshPage = async () => {
   if (tabs[0]?.id) {
     browser.tabs.reload(tabs[0].id);
     showRefreshTip.value = false; // 刷新后隐藏提示
+  }
+};
+
+const showExportBox = ref(false);
+const exportData = ref('');
+const showImportBox = ref(false);
+const importData = ref('');
+
+const handleExport = async () => {
+  const configStr = await storage.getItem('local:config');
+  if (!configStr) {
+    ElMessage({
+      message: '没有找到配置信息',
+      type: 'warning',
+    });
+    return;
+  }
+
+  const configToExport = JSON.parse(configStr as string);
+
+  // Create a deep copy to avoid modifying the actual config
+  const cleanedConfig = JSON.parse(JSON.stringify(configToExport));
+
+  // Clean system_role and user_role if they are default
+  if (cleanedConfig.system_role) {
+    for (const service in cleanedConfig.system_role) {
+      if (cleanedConfig.system_role[service] === defaultOption.system_role) {
+        delete cleanedConfig.system_role[service];
+      }
+    }
+    if (Object.keys(cleanedConfig.system_role).length === 0) {
+      delete cleanedConfig.system_role;
+    }
+  }
+
+  if (cleanedConfig.user_role) {
+    for (const service in cleanedConfig.user_role) {
+      if (cleanedConfig.user_role[service] === defaultOption.user_role) {
+        delete cleanedConfig.user_role[service];
+      }
+    }
+    if (Object.keys(cleanedConfig.user_role).length === 0) {
+      delete cleanedConfig.user_role;
+    }
+  }
+
+  exportData.value = JSON.stringify(cleanedConfig, null, 2);
+  showExportBox.value = !showExportBox.value;
+  showImportBox.value = false;
+};
+
+const handleImport = () => {
+  showImportBox.value = !showImportBox.value;
+  showExportBox.value = false;
+};
+
+const saveImport = async () => {
+  try {
+    const parsedConfig = JSON.parse(importData.value);
+    // You might want to add more validation here
+    await storage.setItem('local:config', JSON.stringify(parsedConfig));
+    ElMessage({
+      message: '配置导入成功!',
+      type: 'success',
+    });
+    showImportBox.value = false;
+    importData.value = '';
+    // Optionally, reload the extension or relevant parts
+  } catch (e) {
+    ElMessage({
+      message: '配置格式错误, 请检查!',
+      type: 'error',
+    });
+  }
+};
+
+
+// 切换导出配置显示
+const toggleExportConfig = async () => {
+  if (showExportConfig.value) {
+    // 如果已经显示，则隐藏
+    showExportConfig.value = false;
+    exportedConfig.value = '';
+  } else {
+    // 如果未显示，则显示并生成配置
+    try {
+      // 确保从storage获取最新的配置
+      const latestConfig = await storage.getItem('local:config');
+      let configToExport;
+      
+      if (latestConfig && typeof latestConfig === 'string') {
+        // 使用storage中的最新配置
+        configToExport = JSON.parse(latestConfig);
+      } else {
+        // 如果storage中没有，使用当前config.value
+        configToExport = JSON.parse(JSON.stringify(config.value));
+      }
+      
+      exportedConfig.value = JSON.stringify(configToExport, null, 2);
+      showExportConfig.value = true;
+      
+      ElMessage({
+        message: '配置已生成，请复制保存',
+        type: 'success',
+        duration: 2000
+      });
+    } catch (error) {
+      ElMessage({
+         message: '导出配置失败：' + ((error as Error)?.message || '未知错误'),
+         type: 'error',
+         duration: 3000
+       });
+    }
+  }
+};
+
+// 复制导出的配置到剪贴板
+const copyExportedConfig = async () => {
+  try {
+    await navigator.clipboard.writeText(exportedConfig.value);
+    ElMessage({
+      message: '配置已复制到剪贴板',
+      type: 'success',
+      duration: 2000
+    });
+  } catch (error) {
+    ElMessage({
+      message: '复制失败，请手动复制',
+      type: 'warning',
+      duration: 2000
+    });
+  }
+};
+
+// 切换导入配置显示
+const toggleImportConfig = () => {
+  if (showImportConfig.value) {
+    // 如果已经显示，则隐藏并清空内容
+    showImportConfig.value = false;
+    importConfigText.value = '';
+  } else {
+    // 如果未显示，则显示
+    showImportConfig.value = true;
+    importConfigText.value = '';
+  }
+};
+
+// 取消导入
+const cancelImport = () => {
+  // 清空输入框并隐藏导入区域
+  importConfigText.value = '';
+  showImportConfig.value = false;
+  importLoading.value = false;
+};
+
+// 导入配置
+const importConfig = async () => {
+  if (!importConfigText.value.trim()) {
+    ElMessage({
+      message: '请输入配置内容',
+      type: 'warning',
+      duration: 2000
+    });
+    return;
+  }
+
+  importLoading.value = true;
+  
+  try {
+    // 解析JSON配置
+    const importedConfig = JSON.parse(importConfigText.value);
+    
+    // 验证配置格式
+    if (!validateConfig(importedConfig)) {
+      throw new Error('配置格式不正确');
+    }
+    
+    // 确认导入
+    await ElMessageBox.confirm(
+      '导入配置将覆盖当前所有设置，确定要继续吗？',
+      '确认导入',
+      {
+        confirmButtonText: '确定导入',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    );
+    
+    // 应用新配置
+    Object.assign(config.value, importedConfig);
+    
+    // 保存到storage
+    await storage.setItem('local:config', JSON.stringify(config.value));
+    
+    // 隐藏导入区域并清空输入
+    showImportConfig.value = false;
+    importConfigText.value = '';
+    
+    ElMessage({
+      message: '配置导入成功',
+      type: 'success',
+      duration: 2000
+    });
+    
+  } catch (error) {
+    if ((error as Error).message !== 'cancel') {
+      ElMessage({
+        message: '导入失败：' + ((error as Error).message || '配置格式错误'),
+        type: 'error',
+        duration: 3000
+      });
+    }
+  } finally {
+    importLoading.value = false;
+  }
+};
+
+// 验证配置格式
+const validateConfig = (configData: any): boolean => {
+  try {
+    // 检查是否是对象
+    if (typeof configData !== 'object' || configData === null) {
+      return false;
+    }
+    
+    // 检查必要的配置字段
+    const requiredFields = ['on', 'service', 'display', 'from', 'to'];
+    for (const field of requiredFields) {
+      if (!(field in configData)) {
+        return false;
+      }
+    }
+    
+    // 检查服务配置
+    if (typeof configData.service !== 'string') {
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    return false;
   }
 };
 
