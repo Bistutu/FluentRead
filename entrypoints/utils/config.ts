@@ -12,7 +12,9 @@ async function loadConfig() {
         if (isValidConfig(value)) {
             // 如果配置有效，合并到当前 config 中
             Object.assign(config, JSON.parse(value));
-            // console.log(config, '更新config')
+        } else {
+            // 如果存储中没有配置，则将当前带有默认值的 config 对象存入存储
+            await storage.setItem('local:config', JSON.stringify(config));
         }
     } catch (error) {
         console.error('Error getting config:', error);
