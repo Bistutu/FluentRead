@@ -20,6 +20,7 @@ import deepseek from "./deepseek";
 import newapi from "./newapi";
 import azureOpenai from "./azure-openai";
 import chromeTranslator from "./chrome-translator";
+import hunyuanTranslation from "./hunyuan-translation";
 
 type ServiceFunction = (message: any) => Promise<any>;
 type ServiceMap = {[key: string]: ServiceFunction;};
@@ -57,6 +58,7 @@ export const _service: ServiceMap = {
     [services.jieyue]: common,
     [services.groq]: common,
     [services.huanYuan]: common,
+    [services.huanYuanTranslation]: hunyuanTranslation,
     [services.doubao]: common,
     [services.siliconCloud]: common,
     [services.openrouter]: common,

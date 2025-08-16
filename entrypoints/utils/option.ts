@@ -28,6 +28,7 @@ export const services = {
     cozecom: "cozecom", // coze 支持机器人不支持模型
     cozecn: "cozecn",
     huanYuan: "huanYuan", // 腾讯混元
+    huanYuanTranslation: "huanYuanTranslation", // 腾讯混元翻译大模型
     doubao: "doubao", // 字节豆包
     siliconCloud: "siliconCloud", // 硅流
     openrouter: "openrouter", // openrouter
@@ -58,6 +59,7 @@ export const servicesType = {
         services.cozecom,
         services.cozecn,
         services.huanYuan,
+        services.huanYuanTranslation,
         services.doubao,
         services.siliconCloud,
         services.openrouter,
@@ -112,6 +114,7 @@ export const servicesType = {
         services.jieyue,
         services.groq,
         services.huanYuan,
+        services.huanYuanTranslation,
         services.doubao,
         services.siliconCloud,
         services.openrouter,
@@ -140,6 +143,7 @@ export const servicesType = {
         services.cozecom,
         services.cozecn,
         services.huanYuan,
+        services.huanYuanTranslation,
         services.doubao,
         services.siliconCloud,
         services.openrouter,
@@ -163,7 +167,7 @@ export const servicesType = {
     isUseAkSk: (service: string) => service === services.yiyan,
     isCoze: (service: string) => service === services.cozecom || service === services.cozecn,
     isYoudao: (service: string) => service === services.youdao,
-    isTencent: (service: string) => service === services.tencent,
+    isTencent: (service: string) => service === services.tencent || service === services.huanYuanTranslation,
     isAzureOpenai: (service: string) => service === services.azureOpenai,
     isUseCustomUrl: (service: string) => servicesType.useCustomUrl.has(service),
 };
@@ -186,6 +190,7 @@ export const models = new Map<string, Array<string>>([
     [services.minimax, ["chatcompletion_v2"]],
     [services.jieyue, ["step-1-8k", customModelString]],
     [services.huanYuan, ["hunyuan-turbos-latest", "hunyuan-t1-latest", "hunyuan-a13b", "hunyuan-lite", "hunyuan-standard", customModelString]],
+    [services.huanYuanTranslation, ["hunyuan-translation", "hunyuan-translation-lite", customModelString]],
     [services.newapi, ["gemini-2.5-flash-lite", "gemini-2.0-flash", "gpt-5-nano", "gpt-5-mini", "gpt5", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini", customModelString]],
     [services.grok, ["grok-4-0709","grok-3-mini", customModelString]],
     [services.doubao, [customModelString]],
@@ -256,7 +261,7 @@ export const options = {
         {value: services.deeplx, label: "DeepLX"},
         {value: services.xiaoniu, label: "小牛翻译"},
         {value: services.youdao, label: "有道翻译"},
-        {value: services.tencent, label: "腾讯云机器翻译"},
+        {value: services.tencent, label: "腾讯云翻译"},
         // 大模型翻译
         {value: "ai", label: "AI翻译", disabled: true},
         {value: services.chromeTranslator, label: "Chrome内置AI翻译⭐"},
@@ -266,11 +271,12 @@ export const options = {
         {value: services.deepseek, label: "DeepSeek️"},
         {value: services.openai, label: "OpenAI"},
         {value: services.azureOpenai, label: "Azure OpenAI"},
+        {value: services.huanYuanTranslation, label: "腾讯混元翻译"},
+        {value: services.tongyi, label: "阿里通义"},
+        {value: services.doubao, label: "字节豆包"},
         {value: services.grok, label: "Grok (X.AI)"},
         {value: services.openrouter, label: "OpenRouter"},
         {value: services.groq, label: "Groq"},
-        {value: services.doubao, label: "字节豆包"},
-        {value: services.tongyi, label: "阿里通义"},
         {value: services.moonshot, label: "Kimi"},
         {value: services.zhipu, label: "智谱清言"},
         {value: services.baichuan, label: "百川智能"},

@@ -23,6 +23,7 @@ export const urls: any = {
     [services.cozecom]: "https://api.coze.com/open_api/v2/chat",
     [services.cozecn]: "https://api.coze.cn/open_api/v2/chat",
     [services.huanYuan]: "https://api.hunyuan.cloud.tencent.com/v1/chat/completions",
+    [services.huanYuanTranslation]: "https://hunyuan.tencentcloudapi.com/",
     [services.doubao]: "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
     [services.siliconCloud]: "https://api.siliconflow.cn/v1/chat/completions",
     [services.openrouter]: "https://openrouter.ai/api/v1/chat/completions",
