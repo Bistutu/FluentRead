@@ -927,11 +927,6 @@ async function handleInputBoxTranslation(element: HTMLElement): Promise<void> {
         const originalText = getInputBoxText(element);
         
         if (!originalText) {
-            console.log('输入框中没有文本，跳过翻译');
-            // 显示提示
-            tooltip = createTranslationTooltip(element, '请先输入要翻译的内容', 'error');
-            addInputBoxAnimation(element, 'error');
-            setTimeout(() => removeExistingTooltip(), 2000);
             return;
         }
         
@@ -939,14 +934,9 @@ async function handleInputBoxTranslation(element: HTMLElement): Promise<void> {
         const cleanedText = removeTriggerSymbols(originalText, config.inputBoxTranslationTrigger);
         
         if (!cleanedText) {
-            console.log('清理后的文本为空，跳过翻译');
-            tooltip = createTranslationTooltip(element, '请先输入要翻译的内容', 'error');
-            addInputBoxAnimation(element, 'error');
-            setTimeout(() => removeExistingTooltip(), 2000);
             return;
         }
         
-        console.log('开始翻译输入框文本:', cleanedText);
         
         // 显示翻译中的动画和提示
         addInputBoxAnimation(element, 'translating');
@@ -973,8 +963,6 @@ async function handleInputBoxTranslation(element: HTMLElement): Promise<void> {
                 addInputBoxAnimation(element, 'success');
                 removeExistingTooltip();
                 tooltip = createTranslationTooltip(element, '翻译成功', 'success');
-                
-                console.log('翻译完成:', translatedText);
             } else {
                 // 翻译结果与原文相同或为空
                 element.classList.remove('fluent-input-translating');

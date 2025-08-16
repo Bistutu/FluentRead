@@ -259,8 +259,8 @@ export const options = {
         {value: services.tencent, label: "腾讯云机器翻译"},
         // 大模型翻译
         {value: "ai", label: "AI翻译", disabled: true},
-        {value: services.chromeTranslator, label: "Chrome 内置AI翻译"},
-        {value: services.deepseek, label: "DeepSeek⭐️"},
+        {value: services.chromeTranslator, label: "Chrome内置AI翻译⭐"},
+        {value: services.deepseek, label: "DeepSeek️"},
         {value: services.siliconCloud, label: "硅基流动⭐️"},
         {value: services.huanYuan, label: "腾讯混元⭐"},
         {value: services.newapi, label: "New API"},
@@ -283,7 +283,7 @@ export const options = {
         {value: services.claude, label: "Claude"},
         {value: services.gemini, label: "Gemini"},
         {value: services.yiyan, label: "文心一言"},
-        {value: services.custom, label: "⭐自定义⭐️"},
+        {value: services.custom, label: "自定义接口⭐️"},
     ],
     display: [
         {value: 0, label: "仅译文模式"},

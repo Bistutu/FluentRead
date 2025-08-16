@@ -144,7 +144,7 @@ async function handleTranslationRequest(data: any): Promise<string> {
     const { text, from, to } = data;
     
     if (!text || typeof text !== 'string' || text.trim() === '') {
-        throw new Error('翻译文本不能为空');
+        return ""
     }
 
     // 检查是否支持 Chrome Translation API
