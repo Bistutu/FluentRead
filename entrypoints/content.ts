@@ -919,47 +919,24 @@ function addInputBoxAnimation(element: HTMLElement, animationType: 'translating'
 
 /**
  * 专门用于输入框翻译的微软翻译函数（不使用缓存）
+ * 通过background脚本调用，避免Firefox的CORS问题
  */
 async function translateWithMicrosoft(text: string, targetLang: string): Promise<string> {
     try {
-        // 获取微软翻译的JWT令牌
-        const jwtToken = await refreshMicrosoftToken();
-        
-        // 调用微软翻译API
-        const response = await fetch(`https://api-edge.cognitive.microsofttranslator.com/translate?from=&to=${targetLang}&api-version=3.0&includeSentenceLength=true&textType=html`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + jwtToken
-            },
-            body: JSON.stringify([{Text: text}])
+        // 发送消息给background脚本进行翻译
+        const result = await browser.runtime.sendMessage({
+            type: 'inputBoxTranslation',
+            text: text,
+            targetLang: targetLang
         });
-
-        if (response.ok) {
-            const result = await response.json();
-            return result[0].translations[0].text;
+        
+        if (result && result.success) {
+            return result.translatedText;
         } else {
-            throw new Error(`微软翻译失败: ${response.status} ${response.statusText}`);
+            throw new Error(result?.error || '微软翻译失败');
         }
     } catch (error) {
         console.error('微软翻译请求失败:', error);
-        throw error;
-    }
-}
-
-/**
- * 刷新微软翻译令牌
- */
-async function refreshMicrosoftToken(): Promise<string> {
-    try {
-        const response = await fetch("https://edge.microsoft.com/translate/auth");
-        if (response.ok) {
-            return await response.text();
-        } else {
-            throw new Error(`获取微软翻译令牌失败: ${response.status} ${response.statusText}`);
-        }
-    } catch (error) {
-        console.error('获取微软翻译令牌失败:', error);
         throw error;
     }
 }
