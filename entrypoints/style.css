@@ -47,6 +47,110 @@
     cursor: pointer;
 }
 
+/* 输入框翻译相关样式 - 柔和呼吸效果 */
+@keyframes inputBoxTranslating {
+    0% {
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+    }
+    50% {
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+    }
+    100% {
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+    }
+}
+
+@keyframes inputBoxSuccess {
+    0% {
+        box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.3);
+    }
+    100% {
+        box-shadow: none;
+    }
+}
+
+@keyframes inputBoxError {
+    0% {
+        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.4);
+        transform: translateX(0);
+    }
+    25% {
+        transform: translateX(-1px);
+    }
+    75% {
+        transform: translateX(1px);
+    }
+    100% {
+        box-shadow: none;
+        transform: translateX(0);
+    }
+}
+
+.fluent-input-translating {
+    animation: inputBoxTranslating 3s infinite ease-in-out;
+    transition: all 0.3s ease;
+}
+
+.fluent-input-success {
+    animation: inputBoxSuccess 1.5s ease-out;
+}
+
+.fluent-input-error {
+    animation: inputBoxError 0.5s ease-out;
+}
+
+/* 翻译提示弹窗样式 - 柔和低调设计 */
+.fluent-input-tooltip {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.75);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 400;
+    z-index: 10000;
+    pointer-events: none;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(3px);
+}
+
+.fluent-input-tooltip.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.fluent-input-tooltip.hide {
+    opacity: 0;
+    transform: translateY(-5px);
+}
+
+.fluent-input-tooltip.translating {
+    background: rgba(59, 130, 246, 0.85);
+}
+
+.fluent-input-tooltip.success {
+    background: rgba(34, 197, 94, 0.85);
+}
+
+.fluent-input-tooltip.error {
+    background: rgba(239, 68, 68, 0.85);
+}
+
+/* 图标旋转动画 */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 /* display 译文显示样式*/
 
 /* 弱化 */

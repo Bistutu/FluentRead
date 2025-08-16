@@ -482,6 +482,38 @@
           </el-col>
         </el-row>
 
+        <!-- 输入框翻译功能 -->
+        <el-row class="margin-bottom margin-left-2em">
+          <el-col :span="12" class="lightblue rounded-corner">
+            <el-tooltip class="box-item" effect="dark"
+                        content="输入框翻译：在任何文本输入框中使用指定方式触发翻译当前输入的内容。"
+                        placement="top-start" :show-after="500">
+              <span class="popup-text popup-vertical-left">输入框翻译<el-icon class="icon-margin">
+                  <ChatDotRound />
+                </el-icon></span>
+            </el-tooltip>
+          </el-col>
+          <el-col :span="12">
+            <el-select v-model="config.inputBoxTranslationTrigger" placeholder="请选择触发方式">
+              <el-option class="select-left" v-for="item in options.inputBoxTranslationTrigger" :key="item.value" 
+                         :label="item.label" :value="item.value" />
+            </el-select>
+          </el-col>
+        </el-row>
+
+        <!-- 输入框翻译目标语言 -->
+        <el-row v-if="config.inputBoxTranslationTrigger !== 'disabled'" class="margin-bottom margin-left-2em">
+          <el-col :span="12" class="lightblue rounded-corner">
+            <span class="popup-text popup-vertical-left">翻译目标语言</span>
+          </el-col>
+          <el-col :span="12">
+            <el-select v-model="config.inputBoxTranslationTarget" placeholder="请选择目标语言">
+              <el-option class="select-left" v-for="item in options.inputBoxTranslationTarget" :key="item.value" 
+                         :label="item.label" :value="item.value" />
+            </el-select>
+          </el-col>
+        </el-row>
+
         <!-- 翻译并发数 -->
         <el-row class="margin-bottom margin-left-2em">
           <el-col :span="12" class="lightblue rounded-corner">

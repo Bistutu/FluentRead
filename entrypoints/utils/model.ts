@@ -51,6 +51,8 @@ export class Config {
     azureOpenaiEndpoint: string; // Azure OpenAI 端点地址
     animations: boolean; // 是否启用动画效果
     translationStatus: boolean; // 是否启用全文翻译进度面板
+    inputBoxTranslationTrigger: string; // 输入框翻译触发方式
+    inputBoxTranslationTarget: string; // 输入框翻译目标语言
 
     constructor() {
         this.on = true;
@@ -94,6 +96,8 @@ export class Config {
         this.azureOpenaiEndpoint = ''; // Azure OpenAI 端点地址
         this.animations = true; // 默认启用动画
         this.translationStatus = true; // 默认启用翻译进度面板
+        this.inputBoxTranslationTrigger = 'disabled'; // 默认关闭输入框翻译
+        this.inputBoxTranslationTarget = 'en'; // 默认翻译成英文
     }
 }
 

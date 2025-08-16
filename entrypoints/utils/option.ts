@@ -360,6 +360,26 @@ export const options = {
         {value: "light", label: "亮色主题"},
         {value: "dark", label: "暗色主题"},
     ],
+    // 输入框翻译目标语言选项
+    inputBoxTranslationTarget: [
+        {value: "zh-Hans", label: "中文"},
+        {value: "en", label: "英语"},
+        {value: "ja", label: "日语"},
+        {value: "ko", label: "韩语"},
+        {value: "fr", label: "法语"},
+        {value: "ru", label: "俄语"},
+        {value: "es", label: "西班牙语"},
+        {value: "de", label: "德语"},
+        {value: "pt", label: "葡萄牙语"},
+        {value: "it", label: "意大利语"},
+    ],
+    // 输入框翻译触发方式选项
+    inputBoxTranslationTrigger: [
+        {value: "disabled", label: "关闭"},
+        {value: "triple_space", label: "连按三下空格"},
+        {value: "triple_equal", label: "连按三下等号(=)"},
+        {value: "triple_dash", label: "连按三下短横线(-)"},
+    ],
 };
 
 export const defaultOption = {
@@ -380,5 +400,7 @@ export const defaultOption = {
     count: 0,
     useCache: true,
     floatingBallHotkey: "Alt+T", // 默认悬浮球快捷键
+    inputBoxTranslationTrigger: "disabled", // 默认关闭输入框翻译
+    inputBoxTranslationTarget: "en", // 默认翻译成英文
 };
 
