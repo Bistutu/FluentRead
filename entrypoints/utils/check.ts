@@ -1,4 +1,3 @@
-import { S } from "wxt/dist/index-nWRfwAJi";
 import { customModelString, services, servicesType } from "./option";
 import { sendErrorMessage } from "./tip";
 import { config } from "@/entrypoints/utils/config";
