@@ -29,6 +29,26 @@
       </el-col>
     </el-row>
 
+    <!-- 翻译分段模式 -->
+<!--    <el-row class="margin-bottom margin-left-2em">-->
+<!--      <el-col :span="14" class="lightblue rounded-corner">-->
+<!--        <el-tooltip class="box-item" effect="dark" content="元素模式：按HTML标签分段翻译，兼容性好；段落模式：按自然段落分段翻译，语义更连贯" placement="top-start" :show-after="500">-->
+<!--          <span class="popup-text popup-vertical-left">-->
+<!--            翻译分段模式-->
+<!--            <el-icon class="icon-margin">-->
+<!--              <ChatDotRound />-->
+<!--            </el-icon>-->
+<!--          </span>-->
+<!--        </el-tooltip>-->
+<!--      </el-col>-->
+<!--      <el-col :span="10">-->
+<!--        <el-select v-model="config.translationMode" placeholder="请选择分段模式">-->
+<!--          <el-option class="select-left" label="元素模式" value="element" />-->
+<!--          <el-option class="select-left" label="段落模式" value="paragraph" />-->
+<!--        </el-select>-->
+<!--      </el-col>-->
+<!--    </el-row>-->
+
     <!--    译文样式选择器-->
     <el-row v-show="config.display === 1" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">

@@ -53,6 +53,7 @@ export class Config {
     translationStatus: boolean; // 是否启用全文翻译进度面板
     inputBoxTranslationTrigger: string; // 输入框翻译触发方式
     inputBoxTranslationTarget: string; // 输入框翻译目标语言
+    translationMode: string; // 翻译模式: 'element' | 'paragraph'
 
     constructor() {
         this.on = true;
@@ -98,6 +99,7 @@ export class Config {
         this.translationStatus = true; // 默认启用翻译进度面板
         this.inputBoxTranslationTrigger = 'disabled'; // 默认关闭输入框翻译
         this.inputBoxTranslationTarget = 'en'; // 默认翻译成英文
+        this.translationMode = 'element'; // 默认按元素翻译
     }
 }
 
