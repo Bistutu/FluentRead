@@ -33,11 +33,12 @@ export const services = {
     openrouter: "openrouter", // openrouter
     grok: "grok", // X.AI 的 Grok
     newapi: "newapi", // New API 接口
+    chromeTranslator: "chromeTranslator", // Chrome 内置翻译 API
 };
 
 export const servicesType = {
     // 阵营划分
-    machine: new Set([services.microsoft, services.deepL, services.deeplx, services.google, services.xiaoniu, services.youdao, services.tencent,]),
+    machine: new Set([services.microsoft, services.deepL, services.deeplx, services.google, services.xiaoniu, services.youdao, services.tencent, services.chromeTranslator,]),
     AI: new Set([
         services.openai,
         services.azureOpenai,
@@ -258,8 +259,9 @@ export const options = {
         {value: services.tencent, label: "腾讯云机器翻译"},
         // 大模型翻译
         {value: "ai", label: "AI翻译", disabled: true},
+        {value: services.chromeTranslator, label: "Chrome 内置AI翻译"},
         {value: services.deepseek, label: "DeepSeek⭐️"},
-        {value: services.siliconCloud, label: "硅基流动-SiliconFlow⭐️"},
+        {value: services.siliconCloud, label: "硅基流动⭐️"},
         {value: services.huanYuan, label: "腾讯混元⭐"},
         {value: services.newapi, label: "New API"},
         {value: services.grok, label: "Grok (X.AI)"},

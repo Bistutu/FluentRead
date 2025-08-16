@@ -19,6 +19,7 @@ import coze from "@/entrypoints/service/coze";
 import deepseek from "./deepseek";
 import newapi from "./newapi";
 import azureOpenai from "./azure-openai";
+import chromeTranslator from "./chrome-translator";
 
 type ServiceFunction = (message: any) => Promise<any>;
 type ServiceMap = {[key: string]: ServiceFunction;};
@@ -32,6 +33,7 @@ export const _service: ServiceMap = {
     [services.xiaoniu]: xiaoniu,
     [services.youdao]: youdao,
     [services.tencent]: tencent,
+    [services.chromeTranslator]: chromeTranslator,
 
     // 大模型翻译
     [services.custom]: custom,
