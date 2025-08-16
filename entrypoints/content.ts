@@ -918,6 +918,53 @@ function addInputBoxAnimation(element: HTMLElement, animationType: 'translating'
 }
 
 /**
+ * 专门用于输入框翻译的微软翻译函数（不使用缓存）
+ */
+async function translateWithMicrosoft(text: string, targetLang: string): Promise<string> {
+    try {
+        // 获取微软翻译的JWT令牌
+        const jwtToken = await refreshMicrosoftToken();
+        
+        // 调用微软翻译API
+        const response = await fetch(`https://api-edge.cognitive.microsofttranslator.com/translate?from=&to=${targetLang}&api-version=3.0&includeSentenceLength=true&textType=html`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + jwtToken
+            },
+            body: JSON.stringify([{Text: text}])
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            return result[0].translations[0].text;
+        } else {
+            throw new Error(`微软翻译失败: ${response.status} ${response.statusText}`);
+        }
+    } catch (error) {
+        console.error('微软翻译请求失败:', error);
+        throw error;
+    }
+}
+
+/**
+ * 刷新微软翻译令牌
+ */
+async function refreshMicrosoftToken(): Promise<string> {
+    try {
+        const response = await fetch("https://edge.microsoft.com/translate/auth");
+        if (response.ok) {
+            return await response.text();
+        } else {
+            throw new Error(`获取微软翻译令牌失败: ${response.status} ${response.statusText}`);
+        }
+    } catch (error) {
+        console.error('获取微软翻译令牌失败:', error);
+        throw error;
+    }
+}
+
+/**
  * 处理输入框翻译
  */
 async function handleInputBoxTranslation(element: HTMLElement): Promise<void> {
@@ -937,20 +984,13 @@ async function handleInputBoxTranslation(element: HTMLElement): Promise<void> {
             return;
         }
         
-        
         // 显示翻译中的动画和提示
         addInputBoxAnimation(element, 'translating');
-        tooltip = createTranslationTooltip(element, '智能翻译中', 'translating');
-        
-        // 临时保存当前配置的目标语言
-        const originalTo = config.to;
-        
-        // 临时设置目标语言为输入框翻译的目标语言  
-        config.to = config.inputBoxTranslationTarget;
+        tooltip = createTranslationTooltip(element, '微软翻译中', 'translating');
         
         try {
-            // 调用翻译API
-            const translatedText = await translateText(cleanedText, document.title);
+            // 直接调用微软翻译API，不使用缓存
+            const translatedText = await translateWithMicrosoft(cleanedText, config.inputBoxTranslationTarget);
             
             if (translatedText && translatedText !== cleanedText) {
                 // 移除翻译中的动画
@@ -970,9 +1010,13 @@ async function handleInputBoxTranslation(element: HTMLElement): Promise<void> {
                 removeExistingTooltip();
                 tooltip = createTranslationTooltip(element, '内容无需翻译', 'error');
             }
-        } finally {
-            // 恢复原始的目标语言设置
-            config.to = originalTo;
+        } catch (translationError) {
+            // 翻译失败
+            element.classList.remove('fluent-input-translating');
+            addInputBoxAnimation(element, 'error');
+            removeExistingTooltip();
+            tooltip = createTranslationTooltip(element, '微软翻译失败', 'error');
+            console.error('微软翻译失败:', translationError);
         }
         
         // 自动隐藏提示
