@@ -18,6 +18,7 @@ import common from "@/entrypoints/service/common";
 import coze from "@/entrypoints/service/coze";
 import deepseek from "./deepseek";
 import newapi from "./newapi";
+import azureOpenai from "./azure-openai";
 
 type ServiceFunction = (message: any) => Promise<any>;
 type ServiceMap = {[key: string]: ServiceFunction;};
@@ -47,6 +48,7 @@ export const _service: ServiceMap = {
     [services.newapi]: newapi,
     // openai schema
     [services.openai]: common,
+    [services.azureOpenai]: azureOpenai,
     [services.moonshot]: common,
     [services.baichuan]: common,
     [services.lingyi]: common,

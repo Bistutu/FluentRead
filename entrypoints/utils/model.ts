@@ -48,6 +48,7 @@ export class Config {
     youdaoAppSecret: string; // 有道翻译 App Secret
     tencentSecretId: string; // 腾讯云 Secret ID
     tencentSecretKey: string; // 腾讯云 Secret Key
+    azureOpenaiEndpoint: string; // Azure OpenAI 端点地址
     animations: boolean; // 是否启用动画效果
     translationStatus: boolean; // 是否启用全文翻译进度面板
 
@@ -90,6 +91,7 @@ export class Config {
         this.youdaoAppSecret = ''; // 有道翻译 App Secret
         this.tencentSecretId = ''; // 腾讯云 Secret ID
         this.tencentSecretKey = ''; // 腾讯云 Secret Key
+        this.azureOpenaiEndpoint = ''; // Azure OpenAI 端点地址
         this.animations = true; // 默认启用动画
         this.translationStatus = true; // 默认启用翻译进度面板
     }

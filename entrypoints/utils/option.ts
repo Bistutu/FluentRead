@@ -9,6 +9,7 @@ export const services = {
     tencent: "tencent", // 腾讯云机器翻译
     // 大模型翻译
     openai: "openai",
+    azureOpenai: "azureOpenai", // Azure OpenAI
     gemini: "gemini",
     yiyan: "yiyan",
     tongyi: "tongyi",
@@ -39,6 +40,7 @@ export const servicesType = {
     machine: new Set([services.microsoft, services.deepL, services.deeplx, services.google, services.xiaoniu, services.youdao, services.tencent,]),
     AI: new Set([
         services.openai,
+        services.azureOpenai,
         services.gemini,
         services.yiyan,
         services.tongyi,
@@ -64,6 +66,7 @@ export const servicesType = {
     // 需要 token
     useToken: new Set([
         services.openai,
+        services.azureOpenai,
         services.gemini,
         services.tongyi,
         services.zhipu,
@@ -92,6 +95,7 @@ export const servicesType = {
     // 需要 model
     useModel: new Set([
         services.openai,
+        services.azureOpenai,
         services.gemini,
         services.yiyan,
         services.tongyi,
@@ -116,6 +120,7 @@ export const servicesType = {
     // 支持代理
     useProxy: new Set([
         services.openai,
+        services.azureOpenai,
         services.gemini,
         services.claude,
         services.google,
@@ -144,6 +149,7 @@ export const servicesType = {
         services.custom,
         services.deeplx,
         services.newapi,
+        services.azureOpenai,
     ]),
 
     isMachine: (service: string) => servicesType.machine.has(service),
@@ -157,12 +163,14 @@ export const servicesType = {
     isCoze: (service: string) => service === services.cozecom || service === services.cozecn,
     isYoudao: (service: string) => service === services.youdao,
     isTencent: (service: string) => service === services.tencent,
+    isAzureOpenai: (service: string) => service === services.azureOpenai,
     isUseCustomUrl: (service: string) => servicesType.useCustomUrl.has(service),
 };
 
 export const customModelString = "自定义模型";
 export const models = new Map<string, Array<string>>([
     [services.openai, ["gpt-5-nano", "gpt-5-mini", "gpt5", "gpt-5-chat-latest", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini", "gpt-4o", "o3", "o3-mini", customModelString]],
+    [services.azureOpenai, ["gpt-5-nano", "gpt-5-mini", "gpt5", "gpt-5-chat-latest", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini", "gpt-4o", "o3", "o3-mini", customModelString]],
     [services.gemini, ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro", customModelString]],
     [services.yiyan, ["ERNIE-Bot 4.0", "ERNIE-Bot", "ERNIE-Speed-8K"]],
     [services.tongyi, ["qwen-long", "qwen-turbo", "qwen-plus", "qwen3-8b", "qwen-mt-plus", "qwen-mt-turbo", customModelString]],
@@ -260,6 +268,7 @@ export const options = {
         {value: services.doubao, label: "字节豆包"},
         {value: services.tongyi, label: "阿里通义"},
         {value: services.openai, label: "OpenAI"},
+        {value: services.azureOpenai, label: "Azure OpenAI"},
         {value: services.moonshot, label: "Kimi"},
         {value: services.zhipu, label: "智谱清言"},
         {value: services.baichuan, label: "百川智能"},

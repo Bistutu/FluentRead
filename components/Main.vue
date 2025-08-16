@@ -205,6 +205,29 @@
       </el-col>
     </el-row>
 
+    <!-- Azure OpenAI 端点配置 -->
+    <el-row v-show="compute.showAzureOpenaiEndpoint" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark"
+          content="Azure OpenAI 服务端点地址，必须包含完整的部署信息。格式：https://your-resource-name.openai.azure.com/openai/deployments/your-deployment-name/chat/completions?api-version=2024-02-15-preview" placement="top-start"
+          :show-after="500">
+          <span class="popup-text popup-vertical-left">Azure 端点<el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-input 
+          v-model="config.azureOpenaiEndpoint" 
+          placeholder="https://your-resource.openai.azure.com/openai/deployments/your-model/chat/completions?api-version=2024-02-15-preview"
+          :class="{ 'input-error': config.azureOpenaiEndpoint && !isValidAzureEndpoint(config.azureOpenaiEndpoint) }"
+        />
+        <div v-if="config.azureOpenaiEndpoint && !isValidAzureEndpoint(config.azureOpenaiEndpoint)" class="error-text">
+          端点地址格式不正确，请确保包含 openai.azure.com 域名和 /chat/completions 路径
+        </div>
+      </el-col>
+    </el-row>
+
     <!-- DeepLX URL 配置-->
     <el-row v-show="compute.showDeepLX" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -659,6 +682,8 @@ let compute = ref({
   showRobotId: computed(() => servicesType.isCoze(config.value.service)),
   // 13、是否显示New API配置
   showNewAPI: computed(() => servicesType.isNewApi(config.value.service)),
+  // 14、是否显示Azure OpenAI端点配置
+  showAzureOpenaiEndpoint: computed(() => servicesType.isAzureOpenai(config.value.service)),
 })
 
 // 监听主题变化
@@ -952,6 +977,20 @@ const refreshPage = async () => {
   }
 };
 
+// Azure OpenAI 端点地址验证函数
+const isValidAzureEndpoint = (endpoint: string) => {
+  if (!endpoint || endpoint.trim() === '') {
+    return false;
+  }
+  
+  // 检查是否包含必要的组件
+  const hasAzureDomain = endpoint.includes('openai.azure.com');
+  const hasChatCompletions = endpoint.includes('/chat/completions');
+  const hasHttps = endpoint.startsWith('https://');
+  
+  return hasHttps && hasAzureDomain && hasChatCompletions;
+};
+
 </script>
 
 <style scoped>
@@ -1211,5 +1250,22 @@ const refreshPage = async () => {
   font-weight: 500;
   margin-left: 6px;
   line-height: 1;
+}
+
+/* 错误样式 */
+.input-error {
+  border-color: var(--el-color-danger) !important;
+}
+
+.input-error:focus {
+  border-color: var(--el-color-danger) !important;
+  box-shadow: 0 0 0 2px rgba(245, 108, 108, 0.2) !important;
+}
+
+.error-text {
+  color: var(--el-color-danger);
+  font-size: 12px;
+  margin-top: 4px;
+  line-height: 1.4;
 }
 </style>
