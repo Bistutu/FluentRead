@@ -1,4 +1,5 @@
 import { Config } from "@/entrypoints/utils/model";
+import { storage } from '@wxt-dev/storage';
 
 // 声明 config 类型, new Config() 会设置好所有默认值
 export let config: Config = new Config();
