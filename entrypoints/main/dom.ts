@@ -22,6 +22,12 @@ export const inlineSet = new Set([
     'img', 'br', 'wbr', 'svg'
 ]);
 
+// 块级元素集合（作为翻译单元的块级元素）
+const blockLevelTranslationElements = new Set([
+    'p', 'li', 'div', 'section', 'article', 'blockquote', 
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'dd'
+]);
+
 // 传入父节点，返回所有需要翻译的 DOM 元素数组
 export function grabAllNode(rootNode: Node): Element[] {
     if (!rootNode) return [];
@@ -350,23 +356,18 @@ function isInlineElement(node: any, tag: string): boolean {
 
 // 查找可翻译的父节点
 function findTranslatableParent(node: any): any {
-    // 1. 递归调用 grabNode 查找父节点是否可翻译
-    // 2. 若父节点不可翻译，则返回当前节点
-    // 3. 但要在块级元素处停止，不要无限向上查找
+    // 当前节点为内联元素时，向上遍历父节点链
+    // 直到找到最近的块级元素为止（如 p, li, div, section 等）
+    // 这样可以避免过度向上查找，确保翻译粒度合适
     
     let current = node;
-    // 这些是应该作为翻译单元的块级元素
-    const blockElements = new Set([
-        'p', 'li', 'div', 'section', 'article', 'blockquote', 
-        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'dd'
-    ]);
     
     // 向上查找，直到找到块级元素或父节点不存在
     while (current && current.parentNode) {
         const tag = current.tagName?.toLowerCase();
         
         // 如果当前节点是块级元素，返回它
-        if (blockElements.has(tag)) {
+        if (blockLevelTranslationElements.has(tag)) {
             return current;
         }
         
