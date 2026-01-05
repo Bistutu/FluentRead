@@ -348,13 +348,7 @@ export const selectCompatFn: SelectCompatFn = {
             return { skip: true };
         }
         
-        // 首先翻译最重要的文本内容
-        
-        // 问题（Issue）和PR内容
-        const issueBody = findMatchingElement(node, 'div.comment-body');
-        if (issueBody) return issueBody;
-        
-        // 评论内容
+        // Let generic logic handle individual <p>, <li> elements instead of the entire container
         const comment = findMatchingElement(node, 'div.comment-body td.comment-body');
         if (comment) return comment;
         
