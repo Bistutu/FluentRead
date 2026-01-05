@@ -352,8 +352,29 @@ function isInlineElement(node: any, tag: string): boolean {
 function findTranslatableParent(node: any): any {
     // 1. 递归调用 grabNode 查找父节点是否可翻译
     // 2. 若父节点不可翻译，则返回当前节点
-    const parentResult = grabNode(node.parentNode);
-    return parentResult || node;
+    // 3. 但要在块级元素处停止，不要无限向上查找
+    
+    let current = node;
+    // 这些是应该作为翻译单元的块级元素
+    const blockElements = new Set([
+        'p', 'li', 'div', 'section', 'article', 'blockquote', 
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'dd'
+    ]);
+    
+    // 向上查找，直到找到块级元素或父节点不存在
+    while (current && current.parentNode) {
+        const tag = current.tagName?.toLowerCase();
+        
+        // 如果当前节点是块级元素，返回它
+        if (blockElements.has(tag)) {
+            return current;
+        }
+        
+        current = current.parentNode;
+    }
+    
+    // 如果没有找到块级元素，返回原节点
+    return node;
 }
 
 // 处理首行文本
