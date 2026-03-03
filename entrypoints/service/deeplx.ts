@@ -3,7 +3,7 @@ import {services} from "../utils/option";
 import {config} from "@/entrypoints/utils/config";
 
 async function deeplx(message: any) {
-    // deeplx 不支持 zh-Hans，需要转换为 zh
+    // deeplx 不支持 zh-Hans，需要转换为 zh；zh-Hant 转换为 zh-Hant（DeepLX 不原生支持繁体中文，可能返回错误）
     let targetLang = config.to === 'zh-Hans' ? 'zh' : config.to;
     let sourceLang = config.from === 'auto' ? 'auto' : config.from;
     

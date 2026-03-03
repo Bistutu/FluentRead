@@ -221,7 +221,8 @@ export const options = {
     ],
     form: [{value: "auto", label: "自动检测"}],
     to: [
-        {value: "zh-Hans", label: "中文"},
+        {value: "zh-Hans", label: "简体中文"},
+        {value: "zh-Hant", label: "繁體中文"},
         {value: "en", label: "英语"},
         {value: "ja", label: "日语"},
         {value: "ko", label: "韩语"},
@@ -368,7 +369,8 @@ export const options = {
     ],
     // 输入框翻译目标语言选项
     inputBoxTranslationTarget: [
-        {value: "zh-Hans", label: "中文"},
+        {value: "zh-Hans", label: "简体中文"},
+        {value: "zh-Hant", label: "繁體中文"},
         {value: "en", label: "英语"},
         {value: "ja", label: "日语"},
         {value: "ko", label: "韩语"},

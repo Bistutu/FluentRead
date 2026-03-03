@@ -107,6 +107,7 @@ export function tongyiMsgTemplate(origin: string) {
     const mtModelTemplate = () => {
         const langMap = [
             {value: "zh-Hans", target: "zh"},
+            {value: "zh-Hant", target: "zh-tw"},
             {value: "en"},
             {value: "ja"},
             {value: "ko"},

@@ -4,7 +4,7 @@ import {config} from "@/entrypoints/utils/config";
 
 async function xiaoniu(message: any) {
     // 根据需要调整目标语言
-    let targetLang = config.to === 'zh-Hans' ? 'zh' : config.to;
+    let targetLang = config.to === 'zh-Hans' ? 'zh' : config.to === 'zh-Hant' ? 'cht' : config.to;
 
     // 判断是否使用代理
     let url: string = config.proxy[config.service] ? config.proxy[config.service] : urls[services.xiaoniu]

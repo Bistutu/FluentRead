@@ -5,7 +5,7 @@ import { detectlang } from "../utils/common";
 // 混元翻译大模型支持的语言代码映射
 const languageMap: Record<string, string> = {
     'zh-Hans': 'zh',    // 简体中文
-    'zh-Hant': 'yue',   // 繁体中文使用粤语代码
+    'zh-Hant': 'zh-TW',  // 繁体中文
     'en': 'en',         // 英语
     'ja': 'ja',         // 日语
     'ko': 'ko',         // 韩语
