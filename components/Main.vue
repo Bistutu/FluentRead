@@ -370,6 +370,25 @@
       </el-col>
     </el-row>
 
+    <!-- 通义千问站点选择 -->
+    <el-row v-show="compute.showTongyiSite" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark"
+          content="选择通义千问 DashScope API 的站点，国际站和美国站适用于海外用户" placement="top-start"
+          :show-after="500">
+          <span class="popup-text popup-vertical-left">API站点<el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-select v-model="config.tongyiSite" placeholder="请选择站点">
+          <el-option class="select-left" v-for="item in options.tongyiSite" :key="item.value" :label="item.label"
+            :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
+
     <!--  模型 -->
     <el-row v-show="compute.showModel" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -664,7 +683,7 @@
 
 // Main 处理配置信息
 import { computed, ref, watch, onUnmounted } from 'vue'
-import { models, options, servicesType, defaultOption } from "../entrypoints/utils/option";
+import { models, options, services, servicesType, defaultOption } from "../entrypoints/utils/option";
 import { Config } from "@/entrypoints/utils/model";
 import { storage } from '@wxt-dev/storage';
 import { ChatDotRound, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
@@ -760,6 +779,8 @@ let compute = ref({
   showNewAPI: computed(() => servicesType.isNewApi(config.value.service)),
   // 14、是否显示Azure OpenAI端点配置
   showAzureOpenaiEndpoint: computed(() => servicesType.isAzureOpenai(config.value.service)),
+  // 15、是否显示通义千问站点选择
+  showTongyiSite: computed(() => config.value.service === services.tongyi),
 })
 
 // 监听主题变化

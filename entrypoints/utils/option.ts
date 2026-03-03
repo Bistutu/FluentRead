@@ -386,6 +386,12 @@ export const options = {
         {value: "triple_equal", label: "连按三下等号(=)"},
         {value: "triple_dash", label: "连按三下短横线(-)"},
     ],
+    // 通义千问站点选项
+    tongyiSite: [
+        {value: "cn", label: "中国站"},
+        {value: "intl", label: "国际站"},
+        {value: "us", label: "美国站"},
+    ],
 };
 
 export const defaultOption = {

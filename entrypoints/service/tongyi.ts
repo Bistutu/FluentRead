@@ -10,8 +10,10 @@ async function tongyi(message: any) {
     headers.append('Content-Type', 'application/json');
     headers.append('Authorization', `Bearer ${config.token[services.tongyi]}`);
 
-    // 判断是否使用代理
-    let url: string = config.proxy[config.service] ? config.proxy[config.service] : urls[services.tongyi]
+    // 判断是否使用代理，支持国际站点选择
+    const site = config.tongyiSite || 'cn';
+    const tongyiUrls = urls[services.tongyi];
+    let url: string = config.proxy[config.service] ? config.proxy[config.service] : tongyiUrls[site]
 
     const resp = await fetch(url, {
         method: method.POST,
