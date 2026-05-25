@@ -1,15 +1,40 @@
-// 消息模板工具
 import {customModelString, defaultOption, services} from "./option";
 import {config} from "@/entrypoints/utils/config";
 
-// openai 格式的消息模板（通用模板）
+const BATCH_SYSTEM_ROLE = `You are a professional, authentic translation engine. You receive a JSON array of texts from a single document. Translate ALL texts into the specified language, leveraging the full context across the entire array for consistent terminology, tone, and high-quality translations. You MUST respond with ONLY a raw JSON array of the EXACT same length and order — each element is the translation of the corresponding input element. No markdown code fences, no explanations, no notes.`;
+
+function isBatchOrigin(origin: string): boolean {
+    if (!origin.startsWith('[') || !origin.endsWith(']')) return false;
+    try {
+        const parsed = JSON.parse(origin);
+        return Array.isArray(parsed) && parsed.length > 1 && parsed.every(item => typeof item === 'string');
+    } catch {
+        return false;
+    }
+}
+
+function batchUserContent(origin: string): string {
+    return `Translate into ${config.to}:\n\n${origin}`;
+}
+
+function resolveModel(): string {
+    let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service];
+    return model.replace(/（.*）/g, "");
+}
+
 export function commonMsgTemplate(origin: string) {
-    // 检测是否使用自定义模型
-    let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
+    if (isBatchOrigin(origin)) {
+        return JSON.stringify({
+            'model': resolveModel(),
+            "temperature": 1.0,
+            'messages': [
+                {'role': 'system', 'content': BATCH_SYSTEM_ROLE},
+                {'role': 'user', 'content': batchUserContent(origin)},
+            ]
+        });
+    }
 
-    // 删除模型名称中的中文括号及其内容，如"gpt-4（推荐）" -> "gpt-4"
-    model = model.replace(/（.*）/g, "");
-
+    let model = resolveModel();
     let system = config.system_role[config.service] || defaultOption.system_role;
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
@@ -24,14 +49,22 @@ export function commonMsgTemplate(origin: string) {
     })
 }
 
-// deepseek
 export function deepseekMsgTemplate(origin: string) {
-    // 检测是否使用自定义模型
-    let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
+    if (isBatchOrigin(origin)) {
+        const payload: any = {
+            'model': resolveModel(),
+            'messages': [
+                {'role': 'system', 'content': BATCH_SYSTEM_ROLE},
+                {'role': 'user', 'content': batchUserContent(origin)},
+            ]
+        };
+        if (resolveModel() !== 'deepseek-reasoner') {
+            payload.temperature = 0.7;
+        }
+        return JSON.stringify(payload);
+    }
 
-    // 删除模型名称中的中文括号及其内容，如"gpt-4（推荐）" -> "gpt-4"
-    model = model.replace(/（.*）/g, "");
-
+    let model = resolveModel();
     let system = config.system_role[config.service] || defaultOption.system_role;
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
@@ -44,7 +77,6 @@ export function deepseekMsgTemplate(origin: string) {
         ]
     };
 
-    // 如果不是 deepseek-reasoner 模型,则添加 temperature
     if (model !== 'deepseek-reasoner') {
         payload.temperature = 0.7;
     }
@@ -52,8 +84,15 @@ export function deepseekMsgTemplate(origin: string) {
     return JSON.stringify(payload);
 }
 
-// gemini
 export function geminiMsgTemplate(origin: string) {
+    if (isBatchOrigin(origin)) {
+        return JSON.stringify({
+            "contents": [
+                {"role": "user", "parts": [{"text": BATCH_SYSTEM_ROLE + "\n\n" + batchUserContent(origin)}]},
+            ]
+        });
+    }
+
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
@@ -64,12 +103,23 @@ export function geminiMsgTemplate(origin: string) {
     })
 }
 
-// claude
 export function claudeMsgTemplate(origin: string) {
     let model = config.model[services.claude];
     if (model === "claude-3-5-haiku") model = "claude-3-5-haiku-20241022";
     else if (model === "claude-3-5-sonnet") model = "claude-3-5-sonnet-20241022";
     else if (model === "claude-3-opus") model = "claude-3-opus-20240229";
+
+    if (isBatchOrigin(origin)) {
+        return JSON.stringify({
+            model: model,
+            max_tokens: 4096,
+            stream: false,
+            system: BATCH_SYSTEM_ROLE,
+            messages: [
+                {role: "user", content: batchUserContent(origin)},
+            ]
+        });
+    }
 
     let system = config.system_role[config.service] || defaultOption.system_role;
     let user = (config.user_role[config.service] || defaultOption.user_role)
@@ -86,25 +136,10 @@ export function claudeMsgTemplate(origin: string) {
     })
 }
 
-// 通义千问
 export function tongyiMsgTemplate(origin: string) {
     let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
-    const normalTemplate = () => {
-        let system = config.system_role[config.service] || defaultOption.system_role;
-        let user = (config.user_role[config.service] || defaultOption.user_role)
-            .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
-        return JSON.stringify({
-            "model": model,
-            "enable_thinking": false,
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ]
-        })
-    }
-    // 翻译模型qwen-mt-plus和qwen-mt-turbo的格式和通用的不同
-    const mtModelTemplate = () => {
+    if (model.startsWith("qwen-mt")) {
         const langMap = [
             {value: "zh-Hans", target: "zh"},
             {value: "en"},
@@ -126,18 +161,49 @@ export function tongyiMsgTemplate(origin: string) {
             }
         })
     }
-    return model.startsWith("qwen-mt") ? mtModelTemplate() : normalTemplate()
 
+    if (isBatchOrigin(origin)) {
+        return JSON.stringify({
+            "model": model,
+            "enable_thinking": false,
+            "messages": [
+                {"role": "system", "content": BATCH_SYSTEM_ROLE},
+                {"role": "user", "content": batchUserContent(origin)},
+            ]
+        });
+    }
+
+    let system = config.system_role[config.service] || defaultOption.system_role;
+    let user = (config.user_role[config.service] || defaultOption.user_role)
+        .replace('{{to}}', config.to).replace('{{origin}}', origin);
+
+    return JSON.stringify({
+        "model": model,
+        "enable_thinking": false,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ]
+    })
 }
 
-// 文心一言
 export function yiyanMsgTemplate(origin: string) {
+    if (isBatchOrigin(origin)) {
+        return JSON.stringify({
+            'temperature': 0.7,
+            'disable_search': true,
+            'messages': [
+                {"role": "user", "content": BATCH_SYSTEM_ROLE + "\n\n" + batchUserContent(origin)},
+            ],
+        });
+    }
+
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
     return JSON.stringify({
         'temperature': 0.7,
-        'disable_search': true, // 禁用搜索
+        'disable_search': true,
         'messages': [
             {"role": "user", "content": user},
         ],
@@ -145,6 +211,17 @@ export function yiyanMsgTemplate(origin: string) {
 }
 
 export function minimaxTemplate(origin: string) {
+    if (isBatchOrigin(origin)) {
+        return JSON.stringify({
+            model: "MiniMax-Text-01",
+            stream: false,
+            temperature: 0.7,
+            messages: [
+                {role: 'system', content: BATCH_SYSTEM_ROLE},
+                {role: 'user', content: batchUserContent(origin)},
+            ]
+        });
+    }
 
     let system = config.system_role[config.service] || defaultOption.system_role;
     let user = (config.user_role[config.service] || defaultOption.user_role)
@@ -162,6 +239,14 @@ export function minimaxTemplate(origin: string) {
 }
 
 export function cozeTemplate(origin: string) {
+    if (isBatchOrigin(origin)) {
+        return JSON.stringify({
+            bot_id: config.robot_id[config.service],
+            user: "FluentRead",
+            query: BATCH_SYSTEM_ROLE + "\n\n" + batchUserContent(origin),
+            stream: false
+        });
+    }
 
     let system = config.system_role[config.service] || defaultOption.system_role;
     let user = (config.user_role[config.service] || defaultOption.user_role)

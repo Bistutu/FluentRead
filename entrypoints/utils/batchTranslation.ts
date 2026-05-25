@@ -1,41 +1,29 @@
-/**
- * 批量翻译管理器
- * 负责收集、分组、批量翻译和分配翻译结果
- */
-
 import { config } from './config';
 import { cache } from './cache';
 import { detectlang } from './common';
 import { enqueueTranslation } from './translateQueue';
+import { servicesType } from './option';
 
-// 批量翻译文本项接口
 export interface BatchTextItem {
-  id: string; // 唯一标识
-  text: string; // 原始文本
-  node: Element; // 对应的DOM节点
-  nodeId: string; // 节点ID
-  translated: boolean; // 是否已翻译
+  id: string;
+  text: string;
+  node: Element;
+  nodeId: string;
+  translated: boolean;
 }
 
-// 批量翻译组接口
 export interface BatchTranslationGroup {
-  id: string; // 组ID
-  items: BatchTextItem[]; // 该组包含的文本项
-  combinedText: string; // 合并后的文本
-  translatedText?: string; // 翻译后的文本
-  translated?: boolean; // 是否已翻译
+  id: string;
+  items: BatchTextItem[];
+  totalTextLength: number;
+  translatedText?: string;
+  translated?: boolean;
 }
 
-// 批量翻译管理器类
 export class BatchTranslationManager {
   private groups: Map<string, BatchTranslationGroup> = new Map();
   private isProcessing: boolean = false;
 
-  /**
-   * 添加文本项到批量翻译队列
-   * @param text 原始文本
-   * @param node 对应的DOM节点
-   */
   public addTextItem(text: string, node: Element): void {
     if (!text || !text.trim() || this.isTextTranslated(text)) {
       return;
@@ -60,9 +48,8 @@ export class BatchTranslationManager {
     for (let i = groupsArray.length - 1; i >= 0; i--) {
       const g = groupsArray[i];
       if (!g.translated) {
-        const sep = this.getSeparator(g.items.length);
-        const newLength = (g.combinedText ? g.combinedText.length + sep.length : 0) + item.text.length;
-        if (newLength <= config.batchTranslationSize) {
+        const estimatedSize = g.totalTextLength + item.text.length + (g.items.length + 1) * 3 + 2;
+        if (estimatedSize <= config.batchTranslationSize) {
           targetGroup = g;
           break;
         }
@@ -70,24 +57,19 @@ export class BatchTranslationManager {
     }
 
     if (targetGroup) {
-      const sep = this.getSeparator(targetGroup.items.length);
       targetGroup.items.push(item);
-      targetGroup.combinedText = (targetGroup.combinedText ? targetGroup.combinedText + sep : '') + item.text;
+      targetGroup.totalTextLength += item.text.length;
     } else {
-      // 创建新组并加入
       const groupId = `group-${Date.now()}-${crypto.randomUUID()}`;
       const group: BatchTranslationGroup = {
         id: groupId,
         items: [item],
-        combinedText: item.text
+        totalTextLength: item.text.length,
       };
       this.groups.set(groupId, group);
     }
   }
 
-  /**
-   * 开始批量翻译
-   */
   public async startBatchTranslation(): Promise<void> {
     if (this.isProcessing || this.groups.size === 0) {
       return;
@@ -109,20 +91,35 @@ export class BatchTranslationManager {
     }
   }
 
-  /**
-   * 翻译一个组
-   */
+  private buildGroupKey(group: BatchTranslationGroup): string {
+    return JSON.stringify(group.items.map(i => i.text));
+  }
+
   private async translateGroup(group: BatchTranslationGroup): Promise<void> {
     if (group.translatedText) {
       return;
     }
 
-    const combinedText = group.combinedText;
+    const isLLM = servicesType.isAI(config.service);
+    const key = this.buildGroupKey(group);
 
-    const cached = cache.localGet(combinedText);
+    if (group.items.length === 1 || !isLLM) {
+      return enqueueTranslation(async () => {
+        try {
+          if (group.items.length === 1) {
+            await this.translateAndApplySingle(group.items[0]);
+          } else {
+            await this.fallbackIndividualTranslation(group);
+          }
+        } finally {
+          this.groups.delete(group.id);
+        }
+      }, group.totalTextLength);
+    }
+
+    const cached = cache.localGet(key);
     if (cached) {
-      group.translatedText = cached;
-      const segments = this.splitTranslatedText(combinedText, cached, group.items.length);
+      const segments = this.parseBatchResponse(cached, group.items.length);
       if (segments.length === group.items.length) {
         group.items.forEach((item, index) => {
           this.applyTranslationToNode(item, segments[index]);
@@ -138,24 +135,22 @@ export class BatchTranslationManager {
       return;
     }
 
-    // 计算字符数
-    const characterCount = combinedText.length;
+    const origin = key;
+    const characterCount = group.totalTextLength;
 
     return enqueueTranslation(async () => {
       try {
         const result = await Promise.race([
-          browser.runtime.sendMessage({ context: document.title, origin: combinedText }),
-
+          browser.runtime.sendMessage({ context: document.title, origin }),
           new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error('翻译请求超时')), 60000)
           )
         ]) as string;
 
-        if (result && result !== combinedText) {
-          group.translatedText = result;
-          cache.localSet(combinedText, result);
+        if (result && result !== origin) {
+          cache.localSet(key, result);
 
-          const segments = this.splitTranslatedText(combinedText, result, group.items.length);
+          const segments = this.parseBatchResponse(result, group.items.length);
           if (segments.length === group.items.length) {
             group.items.forEach((item, index) => {
               this.applyTranslationToNode(item, segments[index]);
@@ -165,12 +160,10 @@ export class BatchTranslationManager {
             await this.fallbackIndividualTranslation(group);
           }
         } else {
-          group.translatedText = combinedText;
           group.items.forEach(item => item.translated = true);
         }
       } catch (error) {
-        console.error('Group translation failed:', error);
-        group.translatedText = combinedText;
+        console.error('Batch translation failed:', error);
         group.items.forEach(item => item.translated = true);
       } finally {
         this.groups.delete(group.id);
@@ -178,59 +171,62 @@ export class BatchTranslationManager {
     }, characterCount);
   }
 
-  /**
-   * 生成带索引的分隔符
-   */
-  private getSeparator(index: number): string {
-    return `\n\n=====FR_${index}=====\n\n`;
+  private async translateAndApplySingle(item: BatchTextItem): Promise<void> {
+    const cached = cache.localGet(item.text);
+    if (cached) {
+      this.applyTranslationToNode(item, cached);
+      item.translated = true;
+      return;
+    }
+
+    try {
+      const result = await Promise.race([
+        browser.runtime.sendMessage({ context: document.title, origin: item.text }),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('翻译请求超时')), 30000)
+        )
+      ]) as string;
+
+      if (result && result !== item.text) {
+        cache.localSet(item.text, result);
+        this.applyTranslationToNode(item, result);
+      }
+      item.translated = true;
+    } catch (error) {
+      console.error('Single translation failed:', error);
+      item.translated = true;
+    }
   }
 
-  /**
-   * 分割翻译文本（多策略容错）
-   */
-  private splitTranslatedText(originalText: string, translatedText: string, expectedCount: number): string[] {
-    if (expectedCount <= 1) {
-      return [translatedText];
-    }
+  private parseBatchResponse(response: string, expectedCount: number): string[] {
+    if (!response || expectedCount <= 0) return [];
+    if (expectedCount === 1) return [response];
 
-    // 策略1：按带索引的分隔符正则分割
-    const indexedSegments = translatedText.split(/\s*=+FR_\d+=+\s*/).filter(s => s.length > 0);
-    if (indexedSegments.length === expectedCount) {
-      return indexedSegments;
-    }
+    let text = response.trim();
 
-    // 策略2：按连续等号分割
-    const simpleSegments = translatedText.split(/\s*={5,}\s*/).filter(s => s.length > 0);
-    if (simpleSegments.length === expectedCount) {
-      return simpleSegments;
-    }
+    text = text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '');
+    text = text.trim();
 
-    // 策略3：按原始段落长度比例分割
-    const originalSegments = originalText.split(/\s*=+FR_\d+=+\s*/).filter(s => s.length > 0);
-    if (originalSegments.length === expectedCount) {
-      const originalLengths = originalSegments.map(s => s.length);
-      const totalOriginalLength = originalLengths.reduce((a, b) => a + b, 0);
-      if (totalOriginalLength > 0) {
-        const segments: string[] = [];
-        let pos = 0;
-        const translatedLen = translatedText.length;
-        for (let i = 0; i < expectedCount - 1; i++) {
-          const ratio = originalLengths[i] / totalOriginalLength;
-          const splitPos = Math.min(pos + Math.round(ratio * translatedLen), translatedLen);
-          segments.push(translatedText.substring(pos, splitPos));
-          pos = splitPos;
-        }
-        segments.push(translatedText.substring(pos));
-        return segments;
+    try {
+      const parsed = JSON.parse(text);
+      if (Array.isArray(parsed) && parsed.length === expectedCount) {
+        return parsed.map((item: any) => String(item));
       }
+    } catch {}
+
+    const match = text.match(/\[[\s\S]*\]/);
+    if (match) {
+      try {
+        const parsed = JSON.parse(match[0]);
+        if (Array.isArray(parsed) && parsed.length === expectedCount) {
+          return parsed.map((item: any) => String(item));
+        }
+      } catch {}
     }
 
     return [];
   }
 
-  /**
-   * 回退：逐条翻译组中的每个文本项
-   */
   private async fallbackIndividualTranslation(group: BatchTranslationGroup): Promise<void> {
     for (const item of group.items) {
       if (item.translated) continue;
@@ -262,9 +258,6 @@ export class BatchTranslationManager {
     }
   }
 
-  /**
-   * 将翻译结果应用到单个节点
-   */
   private applyTranslationToNode(item: BatchTextItem, translatedText: string): void {
     if (!translatedText || translatedText === item.text) {
       return;
@@ -272,41 +265,29 @@ export class BatchTranslationManager {
 
     const node = item.node;
 
-    // 根据翻译模式应用结果
     if (config.display === 1) {
-      // 双语模式
       node.classList.add('fluent-read-bilingual');
 
-      // 移除旧的翻译内容
       const existingTranslation = node.querySelector('.fluent-read-bilingual-content');
       if (existingTranslation) {
         existingTranslation.remove();
       }
 
-      // 添加新的翻译内容
       const translationNode = document.createElement('span');
       translationNode.className = 'fluent-read-bilingual-content';
       translationNode.textContent = translatedText;
       node.appendChild(translationNode);
     } else {
-      // 单语模式
       node.innerHTML = translatedText;
     }
   }
 
-  /**
- * 清空所有文本项和组
- */
   public clear(): void {
     this.groups.clear();
     this.isProcessing = false;
   }
 
-  /**
-   * 检查文本是否已经翻译
-   */
   private isTextTranslated(text: string): boolean {
-    // 检查语言
     if (detectlang(text.replace(/[\s\u3000]/g, '')) === config.to) {
       return true;
     }
@@ -315,5 +296,4 @@ export class BatchTranslationManager {
   }
 }
 
-// 创建全局批量翻译管理器实例
 export const batchTranslationManager = new BatchTranslationManager();
