@@ -30,7 +30,6 @@ export interface BatchTranslationGroup {
 export class BatchTranslationManager {
   private groups: Map<string, BatchTranslationGroup> = new Map();
   private isProcessing: boolean = false;
-  private separator: string = '\n\n=====\n\n';
 
   /**
    * 添加文本项到批量翻译队列
@@ -61,7 +60,8 @@ export class BatchTranslationManager {
     for (let i = groupsArray.length - 1; i >= 0; i--) {
       const g = groupsArray[i];
       if (!g.translated) {
-        const newLength = (g.combinedText ? g.combinedText.length + this.separator.length : 0) + item.text.length;
+        const sep = this.getSeparator(g.items.length);
+        const newLength = (g.combinedText ? g.combinedText.length + sep.length : 0) + item.text.length;
         if (newLength <= config.batchTranslationSize) {
           targetGroup = g;
           break;
@@ -70,9 +70,9 @@ export class BatchTranslationManager {
     }
 
     if (targetGroup) {
-      // 追加到已有组
+      const sep = this.getSeparator(targetGroup.items.length);
       targetGroup.items.push(item);
-      targetGroup.combinedText = (targetGroup.combinedText ? targetGroup.combinedText + this.separator : '') + item.text;
+      targetGroup.combinedText = (targetGroup.combinedText ? targetGroup.combinedText + sep : '') + item.text;
     } else {
       // 创建新组并加入
       const groupId = `group-${Date.now()}-${crypto.randomUUID()}`;
@@ -122,7 +122,19 @@ export class BatchTranslationManager {
     const cached = cache.localGet(combinedText);
     if (cached) {
       group.translatedText = cached;
-      this.applyTranslationToGroup(group, cached);
+      const segments = this.splitTranslatedText(combinedText, cached, group.items.length);
+      if (segments.length === group.items.length) {
+        group.items.forEach((item, index) => {
+          this.applyTranslationToNode(item, segments[index]);
+          item.translated = true;
+        });
+        this.groups.delete(group.id);
+      } else {
+        enqueueTranslation(async () => {
+          await this.fallbackIndividualTranslation(group);
+          this.groups.delete(group.id);
+        }, 0);
+      }
       return;
     }
 
@@ -142,56 +154,112 @@ export class BatchTranslationManager {
         if (result && result !== combinedText) {
           group.translatedText = result;
           cache.localSet(combinedText, result);
-          this.applyTranslationToGroup(group, result);
+
+          const segments = this.splitTranslatedText(combinedText, result, group.items.length);
+          if (segments.length === group.items.length) {
+            group.items.forEach((item, index) => {
+              this.applyTranslationToNode(item, segments[index]);
+              item.translated = true;
+            });
+          } else {
+            await this.fallbackIndividualTranslation(group);
+          }
         } else {
           group.translatedText = combinedText;
           group.items.forEach(item => item.translated = true);
-          this.groups.delete(group.id);
         }
       } catch (error) {
         console.error('Group translation failed:', error);
         group.translatedText = combinedText;
         group.items.forEach(item => item.translated = true);
+      } finally {
         this.groups.delete(group.id);
       }
     }, characterCount);
   }
 
   /**
-   * 将翻译结果应用到组中的所有节点
+   * 生成带索引的分隔符
    */
-  private applyTranslationToGroup(group: BatchTranslationGroup, translatedText: string): void {
-    if (!translatedText) {
-      return;
-    }
-
-    // 分割翻译文本
-    const translatedSegments = this.splitTranslatedText(group.combinedText, translatedText);
-
-    // 应用到对应的节点
-    group.items.forEach((item, index) => {
-      if (index < translatedSegments.length) {
-        this.applyTranslationToNode(item, translatedSegments[index]);
-        item.translated = true;
-      }
-    });
-    this.groups.delete(group.id);
+  private getSeparator(index: number): string {
+    return `\n\n=====FR_${index}=====\n\n`;
   }
 
   /**
-   * 分割翻译文本
+   * 分割翻译文本（多策略容错）
    */
-  private splitTranslatedText(originalText: string, translatedText: string): string[] {
-    // 简单实现：按换行符分割
-    const originalSegments = originalText.split(this.separator);
-    const translatedSegments = translatedText.split(this.separator);
-
-    // 如果分割后的数量不匹配，返回整个翻译文本
-    if (originalSegments.length !== translatedSegments.length) {
+  private splitTranslatedText(originalText: string, translatedText: string, expectedCount: number): string[] {
+    if (expectedCount <= 1) {
       return [translatedText];
     }
 
-    return translatedSegments;
+    // 策略1：按带索引的分隔符正则分割
+    const indexedSegments = translatedText.split(/\s*=+FR_\d+=+\s*/).filter(s => s.length > 0);
+    if (indexedSegments.length === expectedCount) {
+      return indexedSegments;
+    }
+
+    // 策略2：按连续等号分割
+    const simpleSegments = translatedText.split(/\s*={5,}\s*/).filter(s => s.length > 0);
+    if (simpleSegments.length === expectedCount) {
+      return simpleSegments;
+    }
+
+    // 策略3：按原始段落长度比例分割
+    const originalSegments = originalText.split(/\s*=+FR_\d+=+\s*/).filter(s => s.length > 0);
+    if (originalSegments.length === expectedCount) {
+      const originalLengths = originalSegments.map(s => s.length);
+      const totalOriginalLength = originalLengths.reduce((a, b) => a + b, 0);
+      if (totalOriginalLength > 0) {
+        const segments: string[] = [];
+        let pos = 0;
+        const translatedLen = translatedText.length;
+        for (let i = 0; i < expectedCount - 1; i++) {
+          const ratio = originalLengths[i] / totalOriginalLength;
+          const splitPos = Math.min(pos + Math.round(ratio * translatedLen), translatedLen);
+          segments.push(translatedText.substring(pos, splitPos));
+          pos = splitPos;
+        }
+        segments.push(translatedText.substring(pos));
+        return segments;
+      }
+    }
+
+    return [];
+  }
+
+  /**
+   * 回退：逐条翻译组中的每个文本项
+   */
+  private async fallbackIndividualTranslation(group: BatchTranslationGroup): Promise<void> {
+    for (const item of group.items) {
+      if (item.translated) continue;
+
+      const cached = cache.localGet(item.text);
+      if (cached) {
+        this.applyTranslationToNode(item, cached);
+        item.translated = true;
+        continue;
+      }
+
+      try {
+        const result = await Promise.race([
+          browser.runtime.sendMessage({ context: document.title, origin: item.text }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('翻译请求超时')), 30000)
+          )
+        ]) as string;
+
+        if (result && result !== item.text) {
+          cache.localSet(item.text, result);
+          this.applyTranslationToNode(item, result);
+        }
+        item.translated = true;
+      } catch (error) {
+        console.error('Individual translation fallback failed:', error);
+        item.translated = true;
+      }
+    }
   }
 
   /**
