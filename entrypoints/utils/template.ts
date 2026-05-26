@@ -17,6 +17,11 @@ function batchUserContent(origin: string): string {
     return `Translate into ${config.to}:\n\n${origin}`;
 }
 
+function withBatchLog(payload: string): string {
+    try { console.log('[Batch LLM] Request:', JSON.parse(payload)); } catch { console.log('[Batch LLM] Request (raw):', payload); }
+    return payload;
+}
+
 function resolveModel(): string {
     let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service];
     return model.replace(/（.*）/g, "");
@@ -24,14 +29,14 @@ function resolveModel(): string {
 
 export function commonMsgTemplate(origin: string) {
     if (isBatchOrigin(origin)) {
-        return JSON.stringify({
+        return withBatchLog(JSON.stringify({
             'model': resolveModel(),
             "temperature": 1.0,
             'messages': [
                 {'role': 'system', 'content': BATCH_SYSTEM_ROLE},
                 {'role': 'user', 'content': batchUserContent(origin)},
             ]
-        });
+        }));
     }
 
     let model = resolveModel();
@@ -61,7 +66,7 @@ export function deepseekMsgTemplate(origin: string) {
         if (resolveModel() !== 'deepseek-reasoner') {
             payload.temperature = 0.7;
         }
-        return JSON.stringify(payload);
+        return withBatchLog(JSON.stringify(payload));
     }
 
     let model = resolveModel();
@@ -86,11 +91,11 @@ export function deepseekMsgTemplate(origin: string) {
 
 export function geminiMsgTemplate(origin: string) {
     if (isBatchOrigin(origin)) {
-        return JSON.stringify({
+        return withBatchLog(JSON.stringify({
             "contents": [
                 {"role": "user", "parts": [{"text": BATCH_SYSTEM_ROLE + "\n\n" + batchUserContent(origin)}]},
             ]
-        });
+        }));
     }
 
     let user = (config.user_role[config.service] || defaultOption.user_role)
@@ -110,7 +115,7 @@ export function claudeMsgTemplate(origin: string) {
     else if (model === "claude-3-opus") model = "claude-3-opus-20240229";
 
     if (isBatchOrigin(origin)) {
-        return JSON.stringify({
+        return withBatchLog(JSON.stringify({
             model: model,
             max_tokens: 4096,
             stream: false,
@@ -118,7 +123,7 @@ export function claudeMsgTemplate(origin: string) {
             messages: [
                 {role: "user", content: batchUserContent(origin)},
             ]
-        });
+        }));
     }
 
     let system = config.system_role[config.service] || defaultOption.system_role;
@@ -163,14 +168,14 @@ export function tongyiMsgTemplate(origin: string) {
     }
 
     if (isBatchOrigin(origin)) {
-        return JSON.stringify({
+        return withBatchLog(JSON.stringify({
             "model": model,
             "enable_thinking": false,
             "messages": [
                 {"role": "system", "content": BATCH_SYSTEM_ROLE},
                 {"role": "user", "content": batchUserContent(origin)},
             ]
-        });
+        }));
     }
 
     let system = config.system_role[config.service] || defaultOption.system_role;
@@ -189,13 +194,13 @@ export function tongyiMsgTemplate(origin: string) {
 
 export function yiyanMsgTemplate(origin: string) {
     if (isBatchOrigin(origin)) {
-        return JSON.stringify({
+        return withBatchLog(JSON.stringify({
             'temperature': 0.7,
             'disable_search': true,
             'messages': [
                 {"role": "user", "content": BATCH_SYSTEM_ROLE + "\n\n" + batchUserContent(origin)},
             ],
-        });
+        }));
     }
 
     let user = (config.user_role[config.service] || defaultOption.user_role)
@@ -212,7 +217,7 @@ export function yiyanMsgTemplate(origin: string) {
 
 export function minimaxTemplate(origin: string) {
     if (isBatchOrigin(origin)) {
-        return JSON.stringify({
+        return withBatchLog(JSON.stringify({
             model: "MiniMax-Text-01",
             stream: false,
             temperature: 0.7,
@@ -220,7 +225,7 @@ export function minimaxTemplate(origin: string) {
                 {role: 'system', content: BATCH_SYSTEM_ROLE},
                 {role: 'user', content: batchUserContent(origin)},
             ]
-        });
+        }));
     }
 
     let system = config.system_role[config.service] || defaultOption.system_role;
@@ -240,12 +245,12 @@ export function minimaxTemplate(origin: string) {
 
 export function cozeTemplate(origin: string) {
     if (isBatchOrigin(origin)) {
-        return JSON.stringify({
+        return withBatchLog(JSON.stringify({
             bot_id: config.robot_id[config.service],
             user: "FluentRead",
             query: BATCH_SYSTEM_ROLE + "\n\n" + batchUserContent(origin),
             stream: false
-        });
+        }));
     }
 
     let system = config.system_role[config.service] || defaultOption.system_role;

@@ -138,6 +138,8 @@ export class BatchTranslationManager {
     const origin = key;
     const characterCount = group.totalTextLength;
 
+    console.log('[BatchTranslation] Sending to LLM:', { itemCount: group.items.length, texts: group.items.map(i => i.text), origin });
+
     return enqueueTranslation(async () => {
       try {
         const result = await Promise.race([
