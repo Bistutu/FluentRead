@@ -63,7 +63,7 @@ export function deepseekMsgTemplate(origin: string) {
                 {'role': 'user', 'content': batchUserContent(origin)},
             ]
         };
-        if (resolveModel() !== 'deepseek-reasoner') {
+        if (resolveModel() !== 'deepseek-v4-pro') {
             payload.temperature = 0.7;
         }
         return withBatchLog(JSON.stringify(payload));
@@ -82,7 +82,7 @@ export function deepseekMsgTemplate(origin: string) {
         ]
     };
 
-    if (model !== 'deepseek-reasoner') {
+    if (model !== 'deepseek-v4-pro') {
         payload.temperature = 0.7;
     }
 
