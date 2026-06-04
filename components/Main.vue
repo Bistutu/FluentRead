@@ -398,6 +398,27 @@
       </el-col>
     </el-row>
 
+    <!-- 自定义请求体 -->
+    <el-row v-show="compute.showModel" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark"
+          content='以 JSON 对象形式追加到请求体（顶层合并，会覆盖同名默认字段）。'
+          placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">自定义请求体<el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-input v-model="config.customBody[config.service]"
+          :class="{ 'input-error': !isValidCustomBody(config.customBody[config.service]) }"
+          placeholder='例如：{"thinking": {"type": "disabled"}}' />
+        <div v-if="!isValidCustomBody(config.customBody[config.service])" class="error-text">
+          请输入合法的 JSON 对象，否则该配置将被忽略
+        </div>
+      </el-col>
+    </el-row>
+
     <!-- 高级选项-->
     <el-collapse class="margin-left-2em margin-bottom">
       <el-collapse-item title="高级选项">
@@ -1079,6 +1100,17 @@ const isValidAzureEndpoint = (endpoint: string) => {
   return hasHttps && hasAzureDomain && hasChatCompletions;
 };
 
+// 自定义请求体（JSON）校验：留空视为合法（不启用），否则必须是 JSON 对象
+const isValidCustomBody = (str: string | undefined): boolean => {
+  if (!str || !str.trim()) return true;
+  try {
+    const v = JSON.parse(str);
+    return v !== null && typeof v === 'object' && !Array.isArray(v);
+  } catch {
+    return false;
+  }
+};
+
 const handleExport = async () => {
   const configStr = await storage.getItem('local:config');
   if (!configStr) {
@@ -1114,6 +1146,19 @@ const handleExport = async () => {
     }
     if (Object.keys(cleanedConfig.user_role).length === 0) {
       delete cleanedConfig.user_role;
+    }
+  }
+
+  // Clean empty customBody entries
+  if (cleanedConfig.customBody) {
+    for (const service in cleanedConfig.customBody) {
+      const value = cleanedConfig.customBody[service];
+      if (!value || !String(value).trim()) {
+        delete cleanedConfig.customBody[service];
+      }
+    }
+    if (Object.keys(cleanedConfig.customBody).length === 0) {
+      delete cleanedConfig.customBody;
     }
   }
 

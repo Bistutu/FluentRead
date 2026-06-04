@@ -2,6 +2,29 @@
 import {customModelString, defaultOption, services} from "./option";
 import {config} from "@/entrypoints/utils/config";
 
+// 将用户自定义的 JSON 请求体合并进 payload（顶层浅合并，用户字段优先）。
+// 主要用于向请求体补充额外参数（例如 {"thinking": {"type": "disabled"}} 这类控制字段）。
+export function mergeCustomBody(payload: Record<string, any>, raw?: string | null): Record<string, any> {
+    if (!raw || !raw.trim()) return payload;
+    try {
+        const extra = JSON.parse(raw);
+        // 仅接受 JSON 对象（排除数组、null 及基本类型）
+        if (extra && typeof extra === 'object' && !Array.isArray(extra)) {
+            Object.assign(payload, extra);
+        } else {
+            console.warn('[FluentRead] 自定义请求体必须是 JSON 对象，已忽略：', raw);
+        }
+    } catch (e) {
+        console.warn('[FluentRead] 自定义请求体不是合法的 JSON，已忽略：', raw, e);
+    }
+    return payload;
+}
+
+// 读取当前服务的自定义请求体（JSON 字符串）
+function currentCustomBody(): string | undefined {
+    return config.customBody?.[config.service];
+}
+
 // openai 格式的消息模板（通用模板）
 export function commonMsgTemplate(origin: string) {
     // 检测是否使用自定义模型
@@ -14,14 +37,16 @@ export function commonMsgTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
-    return JSON.stringify({
+    const payload: any = {
         'model': model,
         "temperature": 1.0,
         'messages': [
             {'role': 'system', 'content': system},
             {'role': 'user', 'content': user},
         ]
-    })
+    };
+
+    return JSON.stringify(mergeCustomBody(payload, currentCustomBody()))
 }
 
 // deepseek
@@ -49,7 +74,7 @@ export function deepseekMsgTemplate(origin: string) {
         payload.temperature = 0.7;
     }
 
-    return JSON.stringify(payload);
+    return JSON.stringify(mergeCustomBody(payload, currentCustomBody()));
 }
 
 // gemini
@@ -57,11 +82,13 @@ export function geminiMsgTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
-    return JSON.stringify({
+    const payload: any = {
         "contents": [
             {"role": "user", "parts": [{"text": user}]},
         ]
-    })
+    };
+
+    return JSON.stringify(mergeCustomBody(payload, currentCustomBody()))
 }
 
 // claude
@@ -75,7 +102,7 @@ export function claudeMsgTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
-    return JSON.stringify({
+    const payload: any = {
         model: model,
         max_tokens: 4096,
         stream: false,
@@ -83,7 +110,9 @@ export function claudeMsgTemplate(origin: string) {
         messages: [
             {role: "user", content: user},
         ]
-    })
+    };
+
+    return JSON.stringify(mergeCustomBody(payload, currentCustomBody()))
 }
 
 // 通义千问
@@ -94,14 +123,15 @@ export function tongyiMsgTemplate(origin: string) {
         let user = (config.user_role[config.service] || defaultOption.user_role)
             .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
-        return JSON.stringify({
+        const payload: any = {
             "model": model,
             "enable_thinking": false,
             "messages": [
                 {"role": "system", "content": system},
                 {"role": "user", "content": user},
             ]
-        })
+        };
+        return JSON.stringify(mergeCustomBody(payload, currentCustomBody()))
     }
     // 翻译模型qwen-mt-plus和qwen-mt-turbo的格式和通用的不同
     const mtModelTemplate = () => {
@@ -115,7 +145,7 @@ export function tongyiMsgTemplate(origin: string) {
         ]
         let targetItem = langMap.find(i => i.value === config.to) || langMap[0]
         let targetLang = targetItem.target || targetItem.value
-        return JSON.stringify({
+        const payload: any = {
             "model": model,
             "messages": [
                 {"role": "user", "content": origin},
@@ -124,7 +154,8 @@ export function tongyiMsgTemplate(origin: string) {
                 "source_lang": "auto",
                 "target_lang": targetLang
             }
-        })
+        };
+        return JSON.stringify(mergeCustomBody(payload, currentCustomBody()))
     }
     return model.startsWith("qwen-mt") ? mtModelTemplate() : normalTemplate()
 
@@ -135,13 +166,15 @@ export function yiyanMsgTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
-    return JSON.stringify({
+    const payload: any = {
         'temperature': 0.7,
         'disable_search': true, // 禁用搜索
         'messages': [
             {"role": "user", "content": user},
         ],
-    })
+    };
+
+    return JSON.stringify(mergeCustomBody(payload, currentCustomBody()))
 }
 
 export function minimaxTemplate(origin: string) {
@@ -150,7 +183,7 @@ export function minimaxTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
-    return JSON.stringify({
+    const payload: any = {
         model: "MiniMax-Text-01",
         stream: false,
         temperature: 0.7,
@@ -158,7 +191,9 @@ export function minimaxTemplate(origin: string) {
             {role: 'system', content: system},
             {role: 'user', content: user},
         ]
-    })
+    };
+
+    return JSON.stringify(mergeCustomBody(payload, currentCustomBody()))
 }
 
 export function cozeTemplate(origin: string) {
@@ -167,10 +202,12 @@ export function cozeTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
-    return JSON.stringify({
+    const payload: any = {
         bot_id: config.robot_id[config.service],
         user: "FluentRead",
         query: system + user,
         stream: false
-    });
+    };
+
+    return JSON.stringify(mergeCustomBody(payload, currentCustomBody()));
 }
