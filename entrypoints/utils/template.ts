@@ -17,8 +17,15 @@ function batchUserContent(origin: string): string {
     return `Translate into ${config.to}:\n\n${origin}`;
 }
 
-function withBatchLog(payload: string): string {
-    try { console.log('[Batch LLM] Request:', JSON.parse(payload)); } catch { console.log('[Batch LLM] Request (raw):', payload); }
+export let _lastRequestBody: any = null;
+
+function storeDebug(payload: string): string {
+    try {
+        _lastRequestBody = JSON.parse(payload);
+        console.log('[LLM Request]', _lastRequestBody);
+    } catch {
+        console.log('[LLM Request (raw)]', payload);
+    }
     return payload;
 }
 
@@ -29,7 +36,7 @@ function resolveModel(): string {
 
 export function commonMsgTemplate(origin: string) {
     if (isBatchOrigin(origin)) {
-        return withBatchLog(JSON.stringify({
+        return storeDebug(JSON.stringify({
             'model': resolveModel(),
             "temperature": 1.0,
             'messages': [
@@ -44,14 +51,14 @@ export function commonMsgTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
-    return JSON.stringify({
+    return storeDebug(JSON.stringify({
         'model': model,
         "temperature": 1.0,
         'messages': [
             {'role': 'system', 'content': system},
             {'role': 'user', 'content': user},
         ]
-    })
+    }))
 }
 
 export function deepseekMsgTemplate(origin: string) {
@@ -66,7 +73,7 @@ export function deepseekMsgTemplate(origin: string) {
         if (resolveModel() !== 'deepseek-v4-pro') {
             payload.temperature = 0.7;
         }
-        return withBatchLog(JSON.stringify(payload));
+        return storeDebug(JSON.stringify(payload));
     }
 
     let model = resolveModel();
@@ -86,12 +93,12 @@ export function deepseekMsgTemplate(origin: string) {
         payload.temperature = 0.7;
     }
 
-    return JSON.stringify(payload);
+    return storeDebug(JSON.stringify(payload));
 }
 
 export function geminiMsgTemplate(origin: string) {
     if (isBatchOrigin(origin)) {
-        return withBatchLog(JSON.stringify({
+        return storeDebug(JSON.stringify({
             "contents": [
                 {"role": "user", "parts": [{"text": BATCH_SYSTEM_ROLE + "\n\n" + batchUserContent(origin)}]},
             ]
@@ -101,11 +108,11 @@ export function geminiMsgTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
-    return JSON.stringify({
+    return storeDebug(JSON.stringify({
         "contents": [
             {"role": "user", "parts": [{"text": user}]},
         ]
-    })
+    }))
 }
 
 export function claudeMsgTemplate(origin: string) {
@@ -115,7 +122,7 @@ export function claudeMsgTemplate(origin: string) {
     else if (model === "claude-3-opus") model = "claude-3-opus-20240229";
 
     if (isBatchOrigin(origin)) {
-        return withBatchLog(JSON.stringify({
+        return storeDebug(JSON.stringify({
             model: model,
             max_tokens: 4096,
             stream: false,
@@ -130,7 +137,7 @@ export function claudeMsgTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
-    return JSON.stringify({
+    return storeDebug(JSON.stringify({
         model: model,
         max_tokens: 4096,
         stream: false,
@@ -138,7 +145,7 @@ export function claudeMsgTemplate(origin: string) {
         messages: [
             {role: "user", content: user},
         ]
-    })
+    }))
 }
 
 export function tongyiMsgTemplate(origin: string) {
@@ -155,7 +162,7 @@ export function tongyiMsgTemplate(origin: string) {
         ]
         let targetItem = langMap.find(i => i.value === config.to) || langMap[0]
         let targetLang = targetItem.target || targetItem.value
-        return JSON.stringify({
+        return storeDebug(JSON.stringify({
             "model": model,
             "messages": [
                 {"role": "user", "content": origin},
@@ -164,11 +171,11 @@ export function tongyiMsgTemplate(origin: string) {
                 "source_lang": "auto",
                 "target_lang": targetLang
             }
-        })
+        }))
     }
 
     if (isBatchOrigin(origin)) {
-        return withBatchLog(JSON.stringify({
+        return storeDebug(JSON.stringify({
             "model": model,
             "enable_thinking": false,
             "messages": [
@@ -182,19 +189,19 @@ export function tongyiMsgTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
-    return JSON.stringify({
+    return storeDebug(JSON.stringify({
         "model": model,
         "enable_thinking": false,
         "messages": [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ]
-    })
+    }))
 }
 
 export function yiyanMsgTemplate(origin: string) {
     if (isBatchOrigin(origin)) {
-        return withBatchLog(JSON.stringify({
+        return storeDebug(JSON.stringify({
             'temperature': 0.7,
             'disable_search': true,
             'messages': [
@@ -206,18 +213,18 @@ export function yiyanMsgTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
-    return JSON.stringify({
+    return storeDebug(JSON.stringify({
         'temperature': 0.7,
         'disable_search': true,
         'messages': [
             {"role": "user", "content": user},
         ],
-    })
+    }))
 }
 
 export function minimaxTemplate(origin: string) {
     if (isBatchOrigin(origin)) {
-        return withBatchLog(JSON.stringify({
+        return storeDebug(JSON.stringify({
             model: "MiniMax-Text-01",
             stream: false,
             temperature: 0.7,
@@ -232,7 +239,7 @@ export function minimaxTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
-    return JSON.stringify({
+    return storeDebug(JSON.stringify({
         model: "MiniMax-Text-01",
         stream: false,
         temperature: 0.7,
@@ -240,12 +247,12 @@ export function minimaxTemplate(origin: string) {
             {role: 'system', content: system},
             {role: 'user', content: user},
         ]
-    })
+    }))
 }
 
 export function cozeTemplate(origin: string) {
     if (isBatchOrigin(origin)) {
-        return withBatchLog(JSON.stringify({
+        return storeDebug(JSON.stringify({
             bot_id: config.robot_id[config.service],
             user: "FluentRead",
             query: BATCH_SYSTEM_ROLE + "\n\n" + batchUserContent(origin),
@@ -257,10 +264,10 @@ export function cozeTemplate(origin: string) {
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
-    return JSON.stringify({
+    return storeDebug(JSON.stringify({
         bot_id: config.robot_id[config.service],
         user: "FluentRead",
         query: system + user,
         stream: false
-    });
+    }));
 }

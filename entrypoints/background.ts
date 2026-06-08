@@ -2,6 +2,8 @@ import {_service} from "@/entrypoints/service/_service";
 import {config} from "@/entrypoints/utils/config";
 import {CONTEXT_MENU_IDS} from "@/entrypoints/utils/constant";
 import { translationStatsManager } from "@/entrypoints/utils/translationStats";
+import * as debugLogger from "@/entrypoints/utils/debugLogger";
+import { _lastRequestBody } from "@/entrypoints/utils/template";
 
 // 翻译状态管理
 let translationStateMap = new Map<number, boolean>(); // tabId -> isTranslated
@@ -168,11 +170,37 @@ export default defineBackground({
                         resolve({ success: true, translatedText });
                         return;
                     }
+
+                    // 处理调试查询请求
+                    if (message.type === 'getDebugLatest') {
+                        resolve(debugLogger.getLatest());
+                        return;
+                    }
                     
                     // 处理普通翻译请求
+                    const startTime = Date.now();
+                    const capturedRequest = _lastRequestBody;
                     _service[config.service](message)
-                        .then(resp => resolve(resp))    // 成功
-                        .catch(error => reject(error)); // 失败
+                        .then(resp => {
+                            debugLogger.store({
+                                service: config.service,
+                                origin: message.origin,
+                                request: capturedRequest,
+                                response: resp,
+                                duration: Date.now() - startTime,
+                            });
+                            resolve(resp);
+                        })
+                        .catch(error => {
+                            debugLogger.store({
+                                service: config.service,
+                                origin: message.origin,
+                                request: capturedRequest,
+                                error: error instanceof Error ? error.message : String(error),
+                                duration: Date.now() - startTime,
+                            });
+                            reject(error);
+                        });
                 } catch (error) {
                     resolve({ success: false, error: error instanceof Error ? error.message : String(error) });
                 }

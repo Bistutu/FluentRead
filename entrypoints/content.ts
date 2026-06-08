@@ -10,6 +10,7 @@ import { cancelAllTranslations, translateText } from "@/entrypoints/utils/transl
 import { createApp } from 'vue';
 import TranslationStatus from '@/components/TranslationStatus.vue';
 import { mountNewApiComponent } from "@/entrypoints/utils/newApi";
+import { initDebugPopup } from "@/entrypoints/utils/debugPopup";
 
 export default defineContentScript({
     matches: ['<all_urls>'],  // 匹配所有页面
@@ -54,6 +55,7 @@ export default defineContentScript({
         }
 
         mountNewApiComponent();
+        initDebugPopup();
 
         cache.cleaner();    // 检测是否清理缓存
 

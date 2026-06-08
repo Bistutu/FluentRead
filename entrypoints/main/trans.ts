@@ -131,8 +131,10 @@ export function autoTranslateEnglishPage() {
             
             mutations.forEach(mutation => {
                 mutation.addedNodes.forEach(node => {
-                    if (node.nodeType === 1) { 
-                        const newNodes = grabAllNode(node as Element).filter(
+                    if (node.nodeType === 1) {
+                        const el = node as Element;
+                        if (el.classList?.contains('notranslate') || el.closest?.('.notranslate')) return;
+                        const newNodes = grabAllNode(el).filter(
                             n => !n.hasAttribute(TRANSLATED_ATTR)
                         );
                         newNodesToTranslate.push(...newNodes);
@@ -215,9 +217,10 @@ export function autoTranslateEnglishPage() {
         
         mutations.forEach(mutation => {
             mutation.addedNodes.forEach(node => {
-                if (node.nodeType === 1) { // 元素节点
-                    // 只处理未翻译的新节点
-                    const newNodes = grabAllNode(node as Element).filter(
+                if (node.nodeType === 1) {
+                    const el = node as Element;
+                    if (el.classList?.contains('notranslate') || el.closest?.('.notranslate')) return;
+                    const newNodes = grabAllNode(el).filter(
                         n => !n.hasAttribute(TRANSLATED_ATTR)
                     );
                     newNodes.forEach(n => observer?.observe(n));
