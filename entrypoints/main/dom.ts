@@ -15,6 +15,11 @@ const skipSet = new Set([
     'input', 'textarea', 'select', 'button', 'code', 'pre',
 ]);
 
+// 容器元素集合（块级和语义化容器，不应被视为内联元素向上穿透）
+const containerSet = new Set([
+    'div', 'nav', 'aside', 'menu', 'section', 'article', 'main', 'header', 'footer'
+]);
+
 // 内联元素集合（可以包含在其他元素内的元素）
 export const inlineSet = new Set([
     'a', 'b', 'strong', 'span', 'em', 'i', 'u', 'small', 'sub', 'sup',
@@ -46,9 +51,10 @@ export function grabAllNode(rootNode: Node): Element[] {
                     return NodeFilter.FILTER_REJECT;
                 }
 
-                // 在初始全局翻译时 跳过header与footer
+                // 在初始全局翻译时 跳过header与footer自身，但仍遍历其子节点
+                // 部分文档站点（如 Mintlify）将侧边栏放在 header 内，FILTER_SKIP 可确保侧边栏内容不被遗漏
                 if (tag === 'header' || tag === 'footer') {
-                    return NodeFilter.FILTER_REJECT;
+                    return NodeFilter.FILTER_SKIP;
                 }
 
                 // 检查是否只包含有效文本内容
@@ -148,8 +154,8 @@ export function grabNode(node: any): any {
         return findTranslatableParent(node);
     }
 
-    // 6. 首行文本处理：处理 div 和 label 的首行文本
-    if (curTag === 'div' || curTag === 'label') {
+    // 6. 容器元素处理：处理 div、nav、aside 等容器元素的首行文本
+    if (containerSet.has(curTag)) {
         return handleFirstLineText(node);
     }
 
@@ -342,10 +348,10 @@ function handleButtonTranslation(node: any): void {
 function isInlineElement(node: any, tag: string): boolean {
     // 1. 判断是否在 inlineSet 中
     // 2. 判断是否文本节点
-    // 3. 检查子元素中是否包含非内联元素
+    // 3. 检查子元素中是否全部为内联元素（容器元素不参与此检查，避免向上穿透过多层级）
     return inlineSet.has(tag) ||
         node.nodeType === Node.TEXT_NODE ||
-        detectChildMeta(node);
+        (!containerSet.has(tag) && detectChildMeta(node));
 }
 
 // 查找可翻译的父节点
