@@ -69,3 +69,17 @@ export function findMatchingElement(element: Element, selector: string): Element
 
     return false; // 未找到匹配元素
 }
+
+// 仅在祖先元素中查找匹配的元素（排除 element 自身），返回匹配的元素或 false
+// 适用于 body 内容（如帖子正文）这种只应在外层容器上匹配、
+// 而不希望在段落级元素（如 <p>）上误匹配导致多段落被合并翻译的场景
+export function findMatchingElementAncestorOnly(element: Element, selector: string): Element | false {
+    // 仅遍历父元素，跳过 element 自身的匹配
+    let parent = element.parentElement;
+    while (parent) {
+        if (parent.matches(selector)) return parent;
+        parent = parent.parentElement;
+    }
+
+    return false; // 未找到匹配元素
+}

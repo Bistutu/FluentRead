@@ -1,11 +1,20 @@
 // 兼容部分网站独特的 DOM 结构
 
-import {findMatchingElement} from "@/entrypoints/utils/common";
+import {findMatchingElement, findMatchingElementAncestorOnly} from "@/entrypoints/utils/common";
 
 type ReplaceFunction = (node: any, text: any) => any;
 type SelectFunction = (node: any) => any | {skip: boolean} | false;
 
 const parser = new DOMParser();
+
+// Reddit 正文/评论的 rtjson 内容容器选择器
+// 帖子正文 id 形如 "t3_xxx-post-rtjson-content"，评论 id 形如 "t1_xxx-comment-rtjson-content"
+// 这些容器内部由多个 <p>/<li>/blockquote 段落组成，需要保持分段翻译
+const REDDIT_RTJSON_CONTENT_SELECTOR = '[id$="-post-rtjson-content"], [id$="-comment-rtjson-content"]';
+
+// Reddit 正文容器内部的段落级块标签集合
+// 匹配到这些标签时，让它们走 directSet 分支被独立翻译，从而保持分段结构
+const REDDIT_BLOCK_TAGS = new Set(['p', 'li', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']);
 
 // 调试相关
 const isDev = process.env.NODE_ENV === 'development';
@@ -488,56 +497,85 @@ export const selectCompatFn: SelectCompatFn = {
             debugLog('Reddit', '跳过Reddit元素', node.textContent);
             return { skip: true };
         }
-        
+
+        // 帖子/评论正文：Reddit 使用 rtjson 渲染，内容为 [id$="-post-rtjson-content"] 或
+        // [id$="-comment-rtjson-content"] 这种容器，内部由多个 <p> 段落组成。
+        // 这里只在祖先容器上匹配（使用 findMatchingElementAncestorOnly），
+        // 当前段落级节点（如 <p>）本身不匹配，从而让 grabNode 继续走 directSet 分支，
+        // 使每个 <p> 都被独立翻译、保持分段结构。
+        const redditContentBody = findMatchingElementAncestorOnly(node, REDDIT_RTJSON_CONTENT_SELECTOR);
+        if (redditContentBody) {
+            const curTag = node.tagName?.toLowerCase();
+            // 段落级节点（<p>/<li>/blockquote 等）走默认 directSet 分支，保持分段
+            if (REDDIT_BLOCK_TAGS.has(curTag)) {
+                return false;
+            }
+            // 落到容器本身（如悬停在容器空白处、容器直接包含文本节点）：翻译整个容器
+            debugLog('Reddit', '翻译正文容器', redditContentBody.textContent?.substring(0, 50) + '...');
+            return redditContentBody;
+        }
+
         // 帖子标题
         const postTitle = findMatchingElement(node, 'h1, h3[data-click-id="body"]');
         if (postTitle) {
             debugLog('Reddit', '翻译帖子标题', postTitle.textContent);
             return postTitle;
         }
-        
-        // 描述文本
-        const description = findMatchingElement(node, 'div.community-details-heading p, div.community-details p, div.wiki-page-content, div[data-click-id="text"]');
+
+        // 描述文本（只匹配外层容器，避免把内部多个段落合并为一次翻译）
+        const description = findMatchingElementAncestorOnly(node, 'div.community-details-heading p, div.community-details p, div.wiki-page-content, div[data-click-id="text"]');
         if (description) {
+            const curTag = node.tagName?.toLowerCase();
+            if (REDDIT_BLOCK_TAGS.has(curTag)) {
+                return false;
+            }
             debugLog('Reddit', '翻译描述文本', description.textContent?.substring(0, 50) + '...');
             return description;
         }
-        
-        // Wiki内容
-        const wikiContent = findMatchingElement(node, 'div.md-container div.md, div.md');
+
+        // Wiki内容（只匹配外层容器）
+        const wikiContent = findMatchingElementAncestorOnly(node, 'div.md-container div.md, div.md');
         if (wikiContent) {
+            const curTag = node.tagName?.toLowerCase();
+            if (REDDIT_BLOCK_TAGS.has(curTag)) {
+                return false;
+            }
             debugLog('Reddit', '翻译Wiki内容', wikiContent.textContent?.substring(0, 50) + '...');
             return wikiContent;
         }
-        
+
         // 社区描述
         const communityDescription = findMatchingElement(node, 'div[data-click-id="about"] h2, div[data-redditstyle="true"] h2');
         if (communityDescription) {
             debugLog('Reddit', '翻译社区描述', communityDescription.textContent);
             return communityDescription;
         }
-        
+
         // 社区规则
         const communityRules = findMatchingElement(node, 'div.rules-list div.rule-item div.rule-item-body, div.rule-item p');
         if (communityRules) {
             debugLog('Reddit', '翻译社区规则', communityRules.textContent);
             return communityRules;
         }
-        
+
         // 帖子卡片内容
         const postCard = findMatchingElement(node, 'div[data-testid="post-title"], div.Post h3');
         if (postCard) {
             debugLog('Reddit', '翻译帖子卡片', postCard.textContent);
             return postCard;
         }
-        
-        // 公告内容
-        const announcement = findMatchingElement(node, 'div[data-testid="content"], div.announcement');
+
+        // 公告内容（只匹配外层容器）
+        const announcement = findMatchingElementAncestorOnly(node, 'div[data-testid="content"], div.announcement');
         if (announcement) {
+            const curTag = node.tagName?.toLowerCase();
+            if (REDDIT_BLOCK_TAGS.has(curTag)) {
+                return false;
+            }
             debugLog('Reddit', '翻译公告内容', announcement.textContent?.substring(0, 50) + '...');
             return announcement;
         }
-        
+
         // 默认不翻译
         return false;
     },
