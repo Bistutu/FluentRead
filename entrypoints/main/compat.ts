@@ -1,6 +1,6 @@
 // 兼容部分网站独特的 DOM 结构
 
-import {findMatchingElement, findMatchingElementAncestorOnly} from "@/entrypoints/utils/common";
+import {findMatchingElement} from "@/entrypoints/utils/common";
 
 type ReplaceFunction = (node: any, text: any) => any;
 type SelectFunction = (node: any) => any | {skip: boolean} | false;
@@ -500,19 +500,22 @@ export const selectCompatFn: SelectCompatFn = {
 
         // 帖子/评论正文：Reddit 使用 rtjson 渲染，内容为 [id$="-post-rtjson-content"] 或
         // [id$="-comment-rtjson-content"] 这种容器，内部由多个 <p> 段落组成。
-        // 这里只在祖先容器上匹配（使用 findMatchingElementAncestorOnly），
-        // 当前段落级节点（如 <p>）本身不匹配，从而让 grabNode 继续走 directSet 分支，
-        // 使每个 <p> 都被独立翻译、保持分段结构。
-        const redditContentBody = findMatchingElementAncestorOnly(node, REDDIT_RTJSON_CONTENT_SELECTOR);
-        if (redditContentBody) {
-            const curTag = node.tagName?.toLowerCase();
-            // 段落级节点（<p>/<li>/blockquote 等）走默认 directSet 分支，保持分段
-            if (REDDIT_BLOCK_TAGS.has(curTag)) {
-                return false;
-            }
-            // 落到容器本身（如悬停在容器空白处、容器直接包含文本节点）：翻译整个容器
-            debugLog('Reddit', '翻译正文容器', redditContentBody.textContent?.substring(0, 50) + '...');
-            return redditContentBody;
+        // 重要：这里只判断【节点自身】是否为 rtjson 容器（用 node.matches，不向上查找祖先），
+        // 因为内部 <p> 的祖先就是这个容器——若用 findMatchingElement 向上查找，
+        // <p> 也会匹配到容器从而被跳过，导致 <p> 永远不被翻译。
+        // 容器自身被跳过后，内部各 <p> 会继续走到 grabNode 的 directSet 分支独立翻译，保持分段。
+        if (node.matches?.(REDDIT_RTJSON_CONTENT_SELECTOR)) {
+            debugLog('Reddit', '跳过rtjson正文容器（分段由内部<p>处理）', node.textContent?.substring(0, 50) + '...');
+            return { skip: true };
+        }
+
+        // rtjson 容器【内部】的块级段落节点（<p>/<li>/blockquote 等）：
+        // 直接返回 false，让 grabNode 走 directSet 分支独立翻译，保持分段。
+        // 这样可以避免被下方 description/wiki/announcement 的容器选择器误捕获
+        // （例如外层 comment 容器带有 "md" 类，会被 div.md 选中导致整段合并/重复翻译）。
+        if (REDDIT_BLOCK_TAGS.has(node.tagName?.toLowerCase()) &&
+            node.closest?.(REDDIT_RTJSON_CONTENT_SELECTOR)) {
+            return false;
         }
 
         // 帖子标题
@@ -522,8 +525,8 @@ export const selectCompatFn: SelectCompatFn = {
             return postTitle;
         }
 
-        // 描述文本（只匹配外层容器，避免把内部多个段落合并为一次翻译）
-        const description = findMatchingElementAncestorOnly(node, 'div.community-details-heading p, div.community-details p, div.wiki-page-content, div[data-click-id="text"]');
+        // 描述文本（内部通常也是多段落，跳过容器避免合并翻译）
+        const description = findMatchingElement(node, 'div.community-details-heading p, div.community-details p, div.wiki-page-content, div[data-click-id="text"]');
         if (description) {
             const curTag = node.tagName?.toLowerCase();
             if (REDDIT_BLOCK_TAGS.has(curTag)) {
@@ -533,8 +536,8 @@ export const selectCompatFn: SelectCompatFn = {
             return description;
         }
 
-        // Wiki内容（只匹配外层容器）
-        const wikiContent = findMatchingElementAncestorOnly(node, 'div.md-container div.md, div.md');
+        // Wiki内容（内部通常也是多段落，跳过容器避免合并翻译）
+        const wikiContent = findMatchingElement(node, 'div.md-container div.md, div.md');
         if (wikiContent) {
             const curTag = node.tagName?.toLowerCase();
             if (REDDIT_BLOCK_TAGS.has(curTag)) {
@@ -565,8 +568,8 @@ export const selectCompatFn: SelectCompatFn = {
             return postCard;
         }
 
-        // 公告内容（只匹配外层容器）
-        const announcement = findMatchingElementAncestorOnly(node, 'div[data-testid="content"], div.announcement');
+        // 公告内容（内部通常也是多段落，跳过容器避免合并翻译）
+        const announcement = findMatchingElement(node, 'div[data-testid="content"], div.announcement');
         if (announcement) {
             const curTag = node.tagName?.toLowerCase();
             if (REDDIT_BLOCK_TAGS.has(curTag)) {
