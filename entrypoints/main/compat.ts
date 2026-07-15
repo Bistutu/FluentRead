@@ -509,12 +509,12 @@ export const selectCompatFn: SelectCompatFn = {
             return { skip: true };
         }
 
-        // rtjson 容器【内部】的块级段落节点（<p>/<li>/blockquote 等）：
-        // 直接返回 false，让 grabNode 走 directSet 分支独立翻译，保持分段。
-        // 这样可以避免被下方 description/wiki/announcement 的容器选择器误捕获
-        // （例如外层 comment 容器带有 "md" 类，会被 div.md 选中导致整段合并/重复翻译）。
-        if (REDDIT_BLOCK_TAGS.has(node.tagName?.toLowerCase()) &&
-            node.closest?.(REDDIT_RTJSON_CONTENT_SELECTOR)) {
+        // rtjson 容器【内部】的任何节点（<p>/<li>/blockquote 等块级段落，以及 <em>/<a>/<strong> 等内联元素）：
+        // 一律返回 false，让 grabNode 走默认逻辑（块级走 directSet 独立翻译，内联走 findTranslatableParent
+        // 向上找到所属 <p>）。这样可以避免被下方 description/wiki/announcement 的容器选择器误捕获——
+        // 例如外层 comment 容器带有 "md" 类，<p> 内部的 <em>/<a> 通过 findMatchingElement 向上查找时
+        // 会命中 div.md 从而返回整个容器，导致正文与各 <p> 重复翻译。
+        if (node.closest?.(REDDIT_RTJSON_CONTENT_SELECTOR)) {
             return false;
         }
 
