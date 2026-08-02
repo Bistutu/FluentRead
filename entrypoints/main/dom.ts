@@ -172,12 +172,21 @@ function shouldSkipNode(node: any, tag: string): boolean {
 
 // 检查文本长度
 function checkTextSize(node: any): boolean {
-    // 1. 若文本内容长度超过 3072
-    // 2. 或者 outerHTML 长度超过 4096，都视为过长
+    // 1. 若文本内容长度超过 3072，视为过长
+    // 2. 若 outerHTML 长度超过 4096，剔除属性值（如维基百科 data-mw 的巨型 JSON 属性）后，
+    //    再按真实的 HTML 结构体积判断，避免因冗长属性虚高而误伤含大量引用的正常段落
     // 3. 少于3个字符
-    return node.textContent.length > 3072 ||
-        (node.outerHTML && node.outerHTML.length > 4096) ||
-        node.textContent.length < 3;
+    if (node.textContent.length > 3072) return true;
+
+    if (node.outerHTML && node.outerHTML.length > 4096) {
+        const structureLength = node.outerHTML.replace(
+            /<[^>]*>/g,
+            (m: string) => m.replace(/\s[a-zA-Z-]+(=("[^"]*"|'[^']*'))?/g, '')
+        ).length;
+        if (structureLength > 4096) return true;
+    }
+
+    return node.textContent.length < 3;
 }
 
 // 检查节点内容是否主要为数字
