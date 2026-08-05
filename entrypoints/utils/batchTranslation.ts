@@ -18,6 +18,11 @@ export interface BatchTranslationGroup {
   totalTextLength: number;
   translatedText?: string;
   translated?: boolean;
+  // 该批次翻译完成后的结果段落（与 items 一一对应）。
+  // 翻译阶段（可并发）只填充该字段，应用阶段再按顺序写入 DOM。
+  resultSegments?: string[];
+  // 标记本批次是否已完成翻译阶段（无论成功失败）。
+  done?: boolean;
 }
 
 export class BatchTranslationManager {
@@ -43,11 +48,12 @@ export class BatchTranslationManager {
       translated: false
     };
 
+    // 从前往后查找第一个仍可容纳本条文本的批次，确保批次顺序与文档顺序一致。
     const groupsArray = Array.from(this.groups.values());
     let targetGroup: BatchTranslationGroup | undefined;
-    for (let i = groupsArray.length - 1; i >= 0; i--) {
+    for (let i = 0; i < groupsArray.length; i++) {
       const g = groupsArray[i];
-      if (!g.translated) {
+      if (!g.translated && !g.done) {
         const estimatedSize = g.totalTextLength + item.text.length + (g.items.length + 1) * 3 + 2;
         if (estimatedSize <= config.batchTranslationSize) {
           targetGroup = g;
@@ -77,12 +83,31 @@ export class BatchTranslationManager {
 
     this.isProcessing = true;
 
+    // 按插入顺序（即文档从上到下的顺序）快照所有未完成的批次。
+    // 翻译阶段：所有批次并发提交到全局并发队列（保留并发速度，受 maxConcurrentTranslations 控制）。
+    // 应用阶段：严格按文档顺序写入 DOM —— 第 i 个批次必须等第 i-1 个批次应用完成后才应用，
+    // 这样用户从上到下依次看到翻译结果，避免"后面的文字先翻译出来"的问题。
+    const orderedGroups = Array.from(this.groups.values()).filter(
+      g => !g.translatedText && !g.translated && !g.done
+    );
+
     try {
-      for (const group of this.groups.values()) {
-        if (!group.translatedText && !group.translated) {
-          group.translated = true;
-          this.translateGroup(group);
+      // 1) 并发发起所有批次的翻译（仅生产结果，不写 DOM）。
+      //    每个批次完成后将结果填入 group.resultSegments，并标记 group.done。
+      const groupPromises = orderedGroups.map(group => {
+        group.translated = true;
+        return this.translateGroup(group);
+      });
+
+      // 2) 按文档顺序串行应用：等待第 i 个批次完成 -> 写入 DOM -> 再处理第 i+1 个。
+      for (let i = 0; i < orderedGroups.length; i++) {
+        const group = orderedGroups[i];
+        try {
+          await groupPromises[i];
+        } catch {
+          // 单个批次失败不影响后续批次的应用；翻译阶段内部已做容错并填充了 resultSegments。
         }
+        this.applyGroupResult(group);
       }
     } catch (error) {
       console.error('Batch translation failed:', error);
@@ -91,12 +116,33 @@ export class BatchTranslationManager {
     }
   }
 
+  /**
+   * 将某批次的结果按顺序应用到 DOM。
+   * 翻译阶段只负责生产 resultSegments，所有 DOM 写入都集中到这里，保证顺序一致。
+   */
+  private applyGroupResult(group: BatchTranslationGroup): void {
+    if (group.resultSegments && group.resultSegments.length === group.items.length) {
+      group.items.forEach((item, index) => {
+        this.applyTranslationToNode(item, group.resultSegments![index]);
+        item.translated = true;
+      });
+    } else {
+      // 没有结果（失败或无翻译内容），仅标记为已处理，保持顺序推进。
+      group.items.forEach(item => (item.translated = true));
+    }
+    this.groups.delete(group.id);
+  }
+
   private buildGroupKey(group: BatchTranslationGroup): string {
     return JSON.stringify(group.items.map(i => i.text));
   }
 
+  /**
+   * 翻译单个批次：仅生产结果（填入 group.resultSegments），不直接写 DOM。
+   * 由 startBatchTranslation 负责按顺序调用 applyGroupResult 写入 DOM。
+   */
   private async translateGroup(group: BatchTranslationGroup): Promise<void> {
-    if (group.translatedText) {
+    if (group.done || group.resultSegments) {
       return;
     }
 
@@ -104,33 +150,41 @@ export class BatchTranslationManager {
     const key = this.buildGroupKey(group);
 
     if (group.items.length === 1 || !isLLM) {
-      return enqueueTranslation(async () => {
-        try {
+      try {
+        const segments = await enqueueTranslation(async () => {
           if (group.items.length === 1) {
-            await this.translateAndApplySingle(group.items[0]);
+            return await this.translateSingleItem(group.items[0]);
           } else {
-            await this.fallbackIndividualTranslation(group);
+            return await this.fallbackIndividualTranslation(group);
           }
-        } finally {
-          this.groups.delete(group.id);
-        }
-      }, group.totalTextLength);
+        }, group.totalTextLength);
+        group.resultSegments = segments;
+      } catch (error) {
+        console.error('Batch translation failed:', error);
+      } finally {
+        group.done = true;
+      }
+      return;
     }
 
     const cached = cache.localGet(key);
     if (cached) {
       const segments = this.parseBatchResponse(cached, group.items.length);
       if (segments.length === group.items.length) {
-        group.items.forEach((item, index) => {
-          this.applyTranslationToNode(item, segments[index]);
-          item.translated = true;
-        });
-        this.groups.delete(group.id);
-      } else {
-        enqueueTranslation(async () => {
-          await this.fallbackIndividualTranslation(group);
-          this.groups.delete(group.id);
+        group.resultSegments = segments;
+        group.done = true;
+        return;
+      }
+      // 缓存解析失败，回退到逐条翻译
+      try {
+        const segs = await enqueueTranslation(async () => {
+          return await this.fallbackIndividualTranslation(group);
         }, 0);
+        group.resultSegments = segs;
+      } catch (error) {
+        console.error('Batch translation failed:', error);
+      } finally {
+        group.done = true;
       }
       return;
     }
@@ -140,45 +194,42 @@ export class BatchTranslationManager {
 
     console.log('[BatchTranslation] Sending to LLM:', { itemCount: group.items.length, texts: group.items.map(i => i.text), origin });
 
-    return enqueueTranslation(async () => {
-      try {
-        const result = await Promise.race([
+    try {
+      const result = await enqueueTranslation(async () => {
+        return await Promise.race([
           browser.runtime.sendMessage({ context: document.title, origin }),
           new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error('翻译请求超时')), 60000)
           )
         ]) as string;
+      }, characterCount);
 
-        if (result && result !== origin) {
-          cache.localSet(key, result);
+      if (result && result !== origin) {
+        cache.localSet(key, result);
 
-          const segments = this.parseBatchResponse(result, group.items.length);
-          if (segments.length === group.items.length) {
-            group.items.forEach((item, index) => {
-              this.applyTranslationToNode(item, segments[index]);
-              item.translated = true;
-            });
-          } else {
-            await this.fallbackIndividualTranslation(group);
-          }
+        const segments = this.parseBatchResponse(result, group.items.length);
+        if (segments.length === group.items.length) {
+          group.resultSegments = segments;
         } else {
-          group.items.forEach(item => item.translated = true);
+          // LLM 返回的段数不匹配，回退到逐条翻译
+          group.resultSegments = await this.fallbackIndividualTranslation(group);
         }
-      } catch (error) {
-        console.error('Batch translation failed:', error);
-        group.items.forEach(item => item.translated = true);
-      } finally {
-        this.groups.delete(group.id);
       }
-    }, characterCount);
+    } catch (error) {
+      console.error('Batch translation failed:', error);
+    } finally {
+      group.done = true;
+    }
   }
 
-  private async translateAndApplySingle(item: BatchTextItem): Promise<void> {
+  /**
+   * 翻译单条文本：返回译文，不直接写 DOM。
+   *（写入 DOM 由 applyGroupResult 统一按顺序完成。）
+   */
+  private async translateSingleItem(item: BatchTextItem): Promise<string[]> {
     const cached = cache.localGet(item.text);
     if (cached) {
-      this.applyTranslationToNode(item, cached);
-      item.translated = true;
-      return;
+      return [cached];
     }
 
     try {
@@ -191,13 +242,12 @@ export class BatchTranslationManager {
 
       if (result && result !== item.text) {
         cache.localSet(item.text, result);
-        this.applyTranslationToNode(item, result);
+        return [result];
       }
-      item.translated = true;
     } catch (error) {
       console.error('Single translation failed:', error);
-      item.translated = true;
     }
+    return [item.text];
   }
 
   private parseBatchResponse(response: string, expectedCount: number): string[] {
@@ -229,14 +279,16 @@ export class BatchTranslationManager {
     return [];
   }
 
-  private async fallbackIndividualTranslation(group: BatchTranslationGroup): Promise<void> {
+  /**
+   * 逐条翻译回退：返回与 items 一一对应的译文数组，不直接写 DOM。
+   *（写入 DOM 由 applyGroupResult 统一按顺序完成。）
+   */
+  private async fallbackIndividualTranslation(group: BatchTranslationGroup): Promise<string[]> {
+    const segments: string[] = [];
     for (const item of group.items) {
-      if (item.translated) continue;
-
       const cached = cache.localGet(item.text);
       if (cached) {
-        this.applyTranslationToNode(item, cached);
-        item.translated = true;
+        segments.push(cached);
         continue;
       }
 
@@ -250,14 +302,16 @@ export class BatchTranslationManager {
 
         if (result && result !== item.text) {
           cache.localSet(item.text, result);
-          this.applyTranslationToNode(item, result);
+          segments.push(result);
+        } else {
+          segments.push(item.text);
         }
-        item.translated = true;
       } catch (error) {
         console.error('Individual translation fallback failed:', error);
-        item.translated = true;
+        segments.push(item.text);
       }
     }
+    return segments;
   }
 
   private applyTranslationToNode(item: BatchTextItem, translatedText: string): void {
