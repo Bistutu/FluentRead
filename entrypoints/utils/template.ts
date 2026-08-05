@@ -33,24 +33,37 @@ export function getCurrentModel() {
     return model.replace(/（.*）/g, "");
 }
 
+// DeepSeek 温度参数：thinking 模式（deepseek-reasoner）下 temperature 无效，不传；其余模型统一 0.7
+// 两种 API 格式共用同一逻辑，保证行为一致
+function deepseekTemperature(model: string): number | undefined {
+    return model === 'deepseek-reasoner' ? undefined : 0.7;
+}
+
 // DeepSeek Responses API 格式（POST /responses），仅 deepseek-v4-* 系列模型支持
 // 参考: https://api-docs.deepseek.com/guides/responses_api/
 export function deepseekResponsesMsgTemplate(origin: string) {
+    const model = getCurrentModel();
     let system = config.system_role[config.service] || defaultOption.system_role;
     let user = (config.user_role[config.service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
-    return JSON.stringify({
-        'model': getCurrentModel(),
+    const payload: any = {
+        'model': model,
         'instructions': system,
         'input': user,
-        'temperature': 0.7,
-    })
+    };
+
+    const temperature = deepseekTemperature(model);
+    if (temperature !== undefined) {
+        payload.temperature = temperature;
+    }
+
+    return JSON.stringify(payload);
 }
 
 // DeepSeek chat completions 格式（POST /chat/completions），兼容自定义模型与第三方 OpenAI 兼容端点
 export function deepseekMsgTemplate(origin: string) {
-    let model = getCurrentModel();
+    const model = getCurrentModel();
 
     let system = config.system_role[config.service] || defaultOption.system_role;
     let user = (config.user_role[config.service] || defaultOption.user_role)
@@ -64,9 +77,9 @@ export function deepseekMsgTemplate(origin: string) {
         ]
     };
 
-    // 如果不是 deepseek-reasoner 模型,则添加 temperature
-    if (model !== 'deepseek-reasoner') {
-        payload.temperature = 0.7;
+    const temperature = deepseekTemperature(model);
+    if (temperature !== undefined) {
+        payload.temperature = temperature;
     }
 
     return JSON.stringify(payload);

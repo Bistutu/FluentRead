@@ -24,11 +24,13 @@ async function deepseek(message: any) {
         const model = getCurrentModel();
         const endpoint = config.proxy[config.service] || urls[config.service];
 
-        // Responses API 与 chat completions 的端点不同，把 /chat/completions 路径替换为 /responses
+        // 去掉可能存在的 /chat/completions 后缀得到 base URL，再按所选 API 格式拼接端点。
+        // 这样无论配置的是完整端点（.../chat/completions）还是 base URL（.../v1），
+        // payload 与端点都由同一个 isResponses 决定，不会出现格式错配。
         const isResponses = useResponsesApi(model);
-        const url = isResponses
-            ? endpoint.replace(/\/chat\/completions\/?$/, '/responses')
-            : endpoint;
+        // 去掉 /chat/completions 后缀和多余的尾斜杠，得到干净的 base URL
+        const baseUrl = endpoint.replace(/\/chat\/completions\/?$/, '').replace(/\/+$/, '');
+        const url = isResponses ? `${baseUrl}/responses` : `${baseUrl}/chat/completions`;
 
         const resp = await fetch(url, {
             method: method.POST,
