@@ -5,8 +5,13 @@ import { contentPostHandler } from "@/entrypoints/utils/check";
 
 // deepseek-v4-* 系列模型走官方的 Responses API（POST /responses）
 // 其他模型（含自定义模型）走 OpenAI 兼容的 chat completions 接口
+// API 格式由设置中的 deepseekApiType 控制：'responses' 强制 Responses API，'chat' 强制 Chat Completion，'auto' 按模型支持情况自动选择
 function useResponsesApi(model: string) {
-    return model.startsWith("deepseek-v4-");
+    const apiType = config.deepseekApiType;
+    if (apiType === 'responses') return true;
+    if (apiType === 'chat') return false;
+    // auto: v4-flash 官方原生支持 Responses API；v4-pro 支持尚在灰度，走 chat completions 最稳
+    return model === 'deepseek-v4-flash';
 }
 
 async function deepseek(message: any) {
