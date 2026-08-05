@@ -1,7 +1,13 @@
 import { method, urls } from "../utils/constant";
-import { deepseekMsgTemplate } from "../utils/template";
+import { deepseekMsgTemplate, deepseekResponsesMsgTemplate, getCurrentModel } from "../utils/template";
 import { config } from "@/entrypoints/utils/config";
 import { contentPostHandler } from "@/entrypoints/utils/check";
+
+// deepseek-v4-* 系列模型走官方的 Responses API（POST /responses）
+// 其他模型（含自定义模型）走 OpenAI 兼容的 chat completions 接口
+function useResponsesApi(model: string) {
+    return model.startsWith("deepseek-v4-");
+}
 
 async function deepseek(message: any) {
     try {
@@ -10,12 +16,21 @@ async function deepseek(message: any) {
             'Authorization': `Bearer ${config.token[config.service]}`
         });
 
-        const url = config.proxy[config.service] || urls[config.service];
+        const model = getCurrentModel();
+        const endpoint = config.proxy[config.service] || urls[config.service];
+
+        // Responses API 与 chat completions 的端点不同，把 /chat/completions 路径替换为 /responses
+        const isResponses = useResponsesApi(model);
+        const url = isResponses
+            ? endpoint.replace(/\/chat\/completions\/?$/, '/responses')
+            : endpoint;
 
         const resp = await fetch(url, {
             method: method.POST,
             headers,
-            body: deepseekMsgTemplate(message.origin)
+            body: isResponses
+                ? deepseekResponsesMsgTemplate(message.origin)
+                : deepseekMsgTemplate(message.origin)
         });
 
         if (!resp.ok) {
@@ -23,7 +38,29 @@ async function deepseek(message: any) {
         }
 
         const result = await resp.json();
-        return contentPostHandler(result.choices[0].message.content);
+
+        // Responses API: output 数组中的 message 类型内容；chat completions: choices[0].message.content
+        if (isResponses) {
+            if (typeof result.output_text === 'string' && result.output_text) {
+                return contentPostHandler(result.output_text);
+            }
+            const output = result.output || [];
+            const text = output
+                .filter((item: any) => item.type === 'message' && item.content)
+                .flatMap((item: any) => item.content)
+                .filter((part: any) => part.type === 'output_text')
+                .map((part: any) => part.text)
+                .join('');
+            if (text) {
+                return contentPostHandler(text);
+            }
+            throw new Error('翻译失败: 上游未返回内容');
+        }
+
+        if (result.choices && result.choices.length > 0) {
+            return contentPostHandler(result.choices[0].message.content);
+        }
+        throw new Error('翻译失败: 上游未返回内容');
     } catch (error) {
         console.error('API调用失败:', error);
         throw error;

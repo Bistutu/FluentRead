@@ -25,12 +25,32 @@ export function commonMsgTemplate(origin: string) {
 }
 
 // deepseek
-export function deepseekMsgTemplate(origin: string) {
+export function getCurrentModel() {
     // 检测是否使用自定义模型
     let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
 
     // 删除模型名称中的中文括号及其内容，如"gpt-4（推荐）" -> "gpt-4"
-    model = model.replace(/（.*）/g, "");
+    return model.replace(/（.*）/g, "");
+}
+
+// DeepSeek Responses API 格式（POST /responses），仅 deepseek-v4-* 系列模型支持
+// 参考: https://api-docs.deepseek.com/guides/responses_api/
+export function deepseekResponsesMsgTemplate(origin: string) {
+    let system = config.system_role[config.service] || defaultOption.system_role;
+    let user = (config.user_role[config.service] || defaultOption.user_role)
+        .replace('{{to}}', config.to).replace('{{origin}}', origin);
+
+    return JSON.stringify({
+        'model': getCurrentModel(),
+        'instructions': system,
+        'input': user,
+        'temperature': 0.7,
+    })
+}
+
+// DeepSeek chat completions 格式（POST /chat/completions），兼容自定义模型与第三方 OpenAI 兼容端点
+export function deepseekMsgTemplate(origin: string) {
+    let model = getCurrentModel();
 
     let system = config.system_role[config.service] || defaultOption.system_role;
     let user = (config.user_role[config.service] || defaultOption.user_role)
