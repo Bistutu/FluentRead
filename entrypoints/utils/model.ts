@@ -1,4 +1,5 @@
 import { defaultOption, services } from "./option";
+import { normalizeCustomBodyMapping } from "./custom-body";
 
 export type DeepSeekApiType = 'auto' | 'responses' | 'chat';
 export type DeepSeekThinkingMode = 'enabled' | 'disabled';
@@ -28,6 +29,7 @@ export class Config {
     key: string;
     model: IMapping;
     customModel: IMapping;  // 自定义模型名称
+    customBody: IMapping;  // 自定义请求体（JSON 字符串，按服务存储），会合并进请求体
     proxy: IMapping;  // 代理地址
     custom: string; // 本地服务地址
     extra: IExtra;  // 额外信息（内包信息）
@@ -75,6 +77,7 @@ export class Config {
         this.key = '';
         this.model = {};
         this.customModel = {};
+        this.customBody = {};
         this.proxy = {};
         this.custom = defaultOption.custom;
         this.extra = {};
@@ -118,6 +121,7 @@ export function normalizeConfig(value: unknown): Config {
 
     normalized.model = isRecord(source.model) ? {...source.model} : {};
     normalized.customModel = isRecord(source.customModel) ? {...source.customModel} : {};
+    normalized.customBody = normalizeCustomBodyMapping(source.customBody);
 
     const selectedModel = normalized.model[services.deepseek];
     const configuredThinkingMode = source.deepseekThinkingMode;

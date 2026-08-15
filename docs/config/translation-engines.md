@@ -1,14 +1,18 @@
 # 翻译引擎配置
 
-流畅阅读支持多种翻译引擎，包括传统机器翻译和大语言模型。本文将介绍各个翻译引擎的配置方法。
+流畅阅读支持多种翻译引擎，包括机器翻译和大语言模型。本文将介绍各个翻译引擎的配置方法。
 
 ## 支持的翻译引擎
 
-### 免费服务
+### 机器翻译
 - **Microsoft 翻译**：免费且无需配置，开箱即用，支持多种语言互译
 - **Google 翻译**：免费且无需配置，支持多种语言，国内暂不支持使用
 - **DeepL (免费版)**：每月 50 万字符免费额度，[开发者平台](https://www.deepl.com/pro-api)
+- **DeepLX**：免费的 DeepL 翻译代理服务，需自行部署，[项目地址](https://deeplx.owo.network/)
 - **小牛翻译**：[API 文档](https://niutrans.com/dev-page?type=text)
+- **有道翻译**：新用户可获体验资金，具体额度以[官方计费规则](https://ai.youdao.com/DOCSIRMA/html/trans/price/wbfy/index.html)为准
+- **腾讯云文本翻译**：每月 500 万字符免费额度，[产品页面](https://cloud.tencent.com/product/tmt)
+- **Chrome 内置 AI 翻译**：使用浏览器内置 Translator API，无需 API Key，仅支持 Google Chrome 138 Stable 及以上版本，[开发文档](https://developer.chrome.com/docs/ai/translator-api?hl=zh-cn)
 
 ### AI 大模型
 - **OpenAI（推荐⭐️）**：国际领先的大模型服务，支持 GPT-4o 和 GPT-o1-mini 等，[API 文档](https://platform.openai.com/docs/api-reference)
@@ -16,11 +20,13 @@
 - **SiliconCloud（推荐⭐️）**：国内多模型聚合服务，**提供免费模型**，包括 `Qwen2.5-7B-Instruct`、`Meta-Llama-3.1-8B-Instruct`、`gemma-2-9b-it` 等，[API 文档](https://cloud.siliconflow.cn/models)
 - **Kimi**：[API 文档](https://platform.moonshot.cn/)
 - **腾讯混元**：[API 中心](https://cloud.tencent.com/document/product/1729)
+- **腾讯混元翻译**：腾讯混元翻译专用大模型，[API 中心](https://cloud.tencent.com/document/product/1729)
 - **字节豆包**：[开发者平台](https://www.volcengine.com/product/doubao)
 - **阿里通义**：[API 文档](https://help.aliyun.com/zh/dashscope/developer-reference/api-details)
 - **智谱清言**：免费提供 `GLM-4-Flash` 模型，[开放平台](https://open.bigmodel.cn/console/overview)
 - **OpenRouter**：国外多模型聚合服务，提供免费模型，[API 参考](https://openrouter.ai/docs)
 - **Groq**：国外多模型聚合服务，提供免费模型，[开发者文档](https://groq.com/)
+- **Grok**：X.AI 的 AI 模型，[API 文档](https://docs.x.ai/)
 - **百度文心**：[开放平台](https://cloud.baidu.com/doc/WENXINWORKSHOP/index.html)
 - **百川智能**：[开发者文档](https://platform.baichuan-ai.com/docs/api)
 - **零一万物**：[API 中心](https://platform.lingyiwanwu.com/)
@@ -30,6 +36,10 @@
 - **Claude**：Anthropic 公司的 AI 模型，[API 参考](https://docs.anthropic.com/claude/reference)
 - **Gemini**：谷歌最新的 AI 模型，[API 文档](https://ai.google.dev/)
 - **Ollama**：开源的本地部署模型，[GitHub页面](https://github.com/ollama/ollama)
+- **Azure OpenAI**：微软 Azure 托管的 OpenAI 服务，[API 参考](https://learn.microsoft.com/zh-cn/azure/ai-services/openai/reference)
+- **Coze 国际**：字节跳动 AI 机器人平台，[官网](https://www.coze.com/)
+- **Coze 国内（扣子）**：字节跳动 AI 机器人平台，[官网](https://www.coze.cn/)
+- **New API**：开源大模型网关，需自行部署，[GitHub](https://github.com/QuantumNous/new-api)
 
 ## 配置示例：以 DeepSeek 为例
 

@@ -1,6 +1,7 @@
 import { method } from "../utils/constant";
 import { config } from "@/entrypoints/utils/config";
 import { detectlang } from "../utils/common";
+import { mergeCustomBody } from "../utils/custom-body";
 
 // 混元翻译大模型支持的语言代码映射
 const languageMap: Record<string, string> = {
@@ -89,6 +90,20 @@ async function createHunyuanSignature(requestPayload: string, timestamp: number,
     return authorization;
 }
 
+export function buildHunyuanTranslationRequestBody(
+    text: string,
+    target: string,
+    model: string,
+    customBody?: unknown,
+) {
+    return mergeCustomBody({
+        Model: model,
+        Stream: false,
+        Text: text,
+        Target: target,
+    }, customBody);
+}
+
 async function hunyuanTranslation(message: any) {
     try {
         console.log('🔄 混元翻译开始处理:', message.origin);
@@ -145,14 +160,13 @@ async function hunyuanTranslation(message: any) {
         // 获取模型配置，默认使用 hunyuan-translation
         const model = config.model[config.service] || 'hunyuan-translation';
         
-        // 构建请求体
-        const requestBody: any = {
-            Model: model,
-            Stream: false, // 暂时使用非流式调用
-            Text: message.origin,
-            // Source: sourceLang,
-            Target: targetLang
-        };
+        // 自定义字段必须在序列化和签名前合并，否则签名内容会与实际请求体不一致。
+        const requestBody = buildHunyuanTranslationRequestBody(
+            message.origin,
+            targetLang,
+            model,
+            config.customBody?.[config.service],
+        );
         
         // 如果有配置领域信息，可以添加 Field 参数
         // requestBody.Field = '通用';

@@ -1,5 +1,5 @@
 export const services = {
-    // 传统机器翻译
+    // 机器翻译
     microsoft: "microsoft",
     deepL: "deepL",
     deeplx: "deeplx",
@@ -7,6 +7,7 @@ export const services = {
     xiaoniu: "xiaoniu",
     youdao: "youdao",
     tencent: "tencent", // 腾讯云机器翻译
+    chromeTranslator: "chromeTranslator", // Chrome 内置翻译 API
     // 大模型翻译
     openai: "openai",
     azureOpenai: "azureOpenai", // Azure OpenAI
@@ -34,7 +35,6 @@ export const services = {
     openrouter: "openrouter", // openrouter
     grok: "grok", // X.AI 的 Grok
     newapi: "newapi", // New API 接口
-    chromeTranslator: "chromeTranslator", // Chrome 内置翻译 API
 };
 
 export const servicesType = {
@@ -162,6 +162,8 @@ export const servicesType = {
     isUseToken: (service: string) => servicesType.useToken.has(service),
     isUseProxy: (service: string) => servicesType.useProxy.has(service),
     isUseModel: (service: string) => servicesType.useModel.has(service),
+    // 所有 AI 服务的请求体都支持附加顶层字段，包括不使用模型选择器的 Coze。
+    isUseCustomBody: (service: string) => servicesType.AI.has(service),
     isCustom: (service: string) => service === services.custom,
     isNewApi: (service: string) => service === services.newapi,
     isUseAkSk: (service: string) => service === services.yiyan,
@@ -263,7 +265,7 @@ export const options = {
         {value: "custom", label: "自定义快捷键（测试版）"},
     ],
     services: [
-        // 传统机器翻译
+        // 机器翻译
         {value: "machine", label: "机器翻译", disabled: true},
         {value: services.microsoft, label: "微软翻译"},
         {value: services.google, label: "谷歌翻译"},
@@ -272,9 +274,9 @@ export const options = {
         {value: services.xiaoniu, label: "小牛翻译"},
         {value: services.youdao, label: "有道翻译"},
         {value: services.tencent, label: "腾讯云翻译"},
+        {value: services.chromeTranslator, label: "Chrome内置AI翻译⭐"},
         // 大模型翻译
         {value: "ai", label: "AI翻译", disabled: true},
-        {value: services.chromeTranslator, label: "Chrome内置AI翻译⭐"},
         {value: services.siliconCloud, label: "硅基流动⭐️"},
         {value: services.huanYuan, label: "腾讯混元⭐"},
         {value: services.newapi, label: "New API"},
