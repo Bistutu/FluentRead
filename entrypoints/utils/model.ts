@@ -1,4 +1,4 @@
-import { defaultOption, services } from "./option";
+import { currentModelIds, defaultOption, services } from "./option";
 import { normalizeCustomBodyMapping } from "./custom-body";
 
 export type DeepSeekApiType = 'auto' | 'responses' | 'chat';
@@ -113,34 +113,62 @@ export class Config {
 
 const modelMigrations: Record<string, Record<string, string>> = {
     [services.openai]: {
-        gpt5: 'gpt-5.6-luna',
+        gpt5: currentModelIds.openai,
     },
     [services.zhipu]: {
         'glm-4.5': 'glm-4.7',
-        'GLM-4-Flash': 'glm-4.7-flashx',
+        'GLM-4-Flash': currentModelIds.zhipuFlash,
         'glm-4-plus': 'glm-4.7',
         'glm-4': 'glm-4.7',
         'glm-4v': 'glm-4.7',
     },
     [services.moonshot]: {
-        'kimi-k2-0711-preview': 'kimi-k2.6',
-        'kimi-k2-turbo-preview': 'kimi-k2.6',
-        'moonshot-v1-auto': 'kimi-k2.6',
-        'moonshot-v1-8k': 'kimi-k2.6',
-        'moonshot-v1-32k': 'kimi-k2.6',
+        'kimi-k2-0711-preview': currentModelIds.moonshotCompatible,
+        'kimi-k2-turbo-preview': currentModelIds.moonshotCompatible,
+        'moonshot-v1-auto': currentModelIds.moonshotCompatible,
+        'moonshot-v1-8k': currentModelIds.moonshotCompatible,
+        'moonshot-v1-32k': currentModelIds.moonshotCompatible,
     },
     [services.claude]: {
-        'claude-sonnet-4-0': 'claude-sonnet-4-6',
-        'claude-opus-4-1': 'claude-opus-4-8',
-        'claude-3-5-haiku-latest': 'claude-haiku-4-5',
+        'claude-sonnet-4-0': currentModelIds.claudeSonnet,
+        'claude-sonnet-4-6': currentModelIds.claudeSonnet,
+        'claude-opus-4-1': currentModelIds.claudeOpus,
+        'claude-opus-4-8': currentModelIds.claudeOpus,
+        'claude-3-5-haiku-latest': currentModelIds.claudeHaiku,
     },
     [services.grok]: {
-        'grok-4-0709': 'grok-4.3',
+        'grok-4-0709': currentModelIds.grok,
     },
     [services.groq]: {
-        'llama-3.3-70b-versatile': 'openai/gpt-oss-120b',
-        'llama-3.1-8b-instant': 'openai/gpt-oss-20b',
-        'llama3-8b-8192': 'openai/gpt-oss-20b',
+        'llama-3.3-70b-versatile': currentModelIds.groqLarge,
+        'llama-3.1-8b-instant': currentModelIds.groqSmall,
+        'llama3-8b-8192': currentModelIds.groqSmall,
+    },
+    [services.yiyan]: {
+        'ERNIE-Bot 4.0': currentModelIds.yiyan,
+        'ERNIE-Bot': currentModelIds.yiyan,
+        'ERNIE-Speed-8K': currentModelIds.yiyanFast,
+    },
+    [services.minimax]: {
+        chatcompletion_v2: currentModelIds.minimax,
+        'MiniMax-Text-01': currentModelIds.minimax,
+    },
+    [services.jieyue]: {
+        'step-1-8k': currentModelIds.jieyue,
+    },
+    [services.huanYuan]: {
+        'hunyuan-turbos-latest': currentModelIds.huanYuan,
+        'hunyuan-t1-latest': currentModelIds.huanYuan,
+        'hunyuan-a13b': currentModelIds.huanYuan,
+        'hunyuan-lite': currentModelIds.huanYuan,
+        'hunyuan-standard': currentModelIds.huanYuan,
+    },
+    [services.infini]: {
+        'llama-2-13b-chat': currentModelIds.infiniGeneral,
+        'llama-3.3-70b-instruct': currentModelIds.infiniGeneral,
+        'qwen2.5-14b-instruct': currentModelIds.infiniGeneral,
+        'gemma-2-27b-it': currentModelIds.infiniGeneral,
+        'glm-4-9b-chat': currentModelIds.zhipu,
     },
 };
 
@@ -162,11 +190,11 @@ export function normalizeConfig(value: unknown): Config {
     const configuredThinkingMode = source.deepseekThinkingMode;
 
     if (selectedModel === 'deepseek-chat') {
-        normalized.model[services.deepseek] = 'deepseek-v4-flash';
+        normalized.model[services.deepseek] = currentModelIds.deepseek;
         normalized.deepseekThinkingMode = 'disabled';
     } else if (selectedModel === 'deepseek-reasoner') {
         // 官方迁移指南要求 reasoner 使用 v4-flash 并显式开启 thinking。
-        normalized.model[services.deepseek] = 'deepseek-v4-flash';
+        normalized.model[services.deepseek] = currentModelIds.deepseek;
         normalized.deepseekThinkingMode = 'enabled';
     } else if (configuredThinkingMode !== 'enabled' && configuredThinkingMode !== 'disabled') {
         // 兼容 #219 的早期配置：该实现把 v4-pro 作为默认思考模型。

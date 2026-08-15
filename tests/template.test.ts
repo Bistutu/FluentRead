@@ -41,14 +41,14 @@ beforeEach(() => {
     mockConfig.service = 'openai';
     mockConfig.to = 'zh-Hans';
     mockConfig.model = {
-        openai: 'gpt-5.6-luna',
+        openai: 'gpt-5.6-sol',
         moonshot: 'kimi-k2.6',
         deepseek: 'deepseek-chat',
         gemini: 'gemini-3.6-flash',
-        claude: 'claude-sonnet-4-6',
-        tongyi: 'qwen3.7-flash',
-        yiyan: 'ERNIE-Bot',
-        minimax: 'chatcompletion_v2',
+        claude: 'claude-sonnet-5',
+        tongyi: 'qwen3.7-plus',
+        yiyan: 'ernie-5.1',
+        minimax: 'MiniMax-M2.7',
     };
     mockConfig.customModel = {};
     mockConfig.system_role = Object.fromEntries(
@@ -145,7 +145,7 @@ describe('commonMsgTemplate（集成）', () => {
     it('未配置自定义请求体时，生成标准 OpenAI 请求体', () => {
         const body = JSON.parse(commonMsgTemplate('hello'));
         expect(body).toEqual({
-            model: 'gpt-5.6-luna',
+            model: 'gpt-5.6-sol',
             temperature: 1.0,
             messages: [
                 { role: 'system', content: 'You are a translator.' },
@@ -164,7 +164,7 @@ describe('commonMsgTemplate（集成）', () => {
     it('非法的自定义请求体被忽略，标准请求体保持完整', () => {
         mockConfig.customBody = { openai: '{oops' };
         const body = JSON.parse(commonMsgTemplate('hello'));
-        expect(body.model).toBe('gpt-5.6-luna');
+        expect(body.model).toBe('gpt-5.6-sol');
         expect(body.thinking).toBeUndefined();
         expect(body.messages).toHaveLength(2);
     });

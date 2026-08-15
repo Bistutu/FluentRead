@@ -210,7 +210,9 @@ export function minimaxTemplate(origin: string) {
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
 
     const payload: any = {
-        model: "MiniMax-Text-01",
+        model: config.model[services.minimax] === customModelString
+            ? config.customModel[services.minimax]
+            : config.model[services.minimax],
         stream: false,
         temperature: 0.7,
         messages: [

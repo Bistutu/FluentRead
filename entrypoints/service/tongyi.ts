@@ -1,5 +1,5 @@
-import {services} from "../utils/option";
-import {method, urls} from "../utils/constant";
+import {currentModelIds, services} from "../utils/option";
+import {method, tongyiTokenPlanUrl, urls} from "../utils/constant";
 import {tongyiMsgTemplate} from "../utils/template";
 import {config} from "@/entrypoints/utils/config";
 
@@ -11,7 +11,11 @@ async function tongyi(message: any) {
     headers.append('Authorization', `Bearer ${config.token[services.tongyi]}`);
 
     // 判断是否使用代理
-    let url: string = config.proxy[config.service] ? config.proxy[config.service] : urls[services.tongyi]
+    const selectedModel = config.model[services.tongyi];
+    const officialUrl = selectedModel === currentModelIds.tongyiTokenPlan
+        ? tongyiTokenPlanUrl
+        : urls[services.tongyi];
+    const url: string = config.proxy[config.service] || officialUrl;
 
     const resp = await fetch(url, {
         method: method.POST,

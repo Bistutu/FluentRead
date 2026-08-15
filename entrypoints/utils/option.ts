@@ -71,6 +71,7 @@ export const servicesType = {
         services.openai,
         services.azureOpenai,
         services.gemini,
+        services.yiyan,
         services.tongyi,
         services.zhipu,
         services.moonshot,
@@ -166,7 +167,8 @@ export const servicesType = {
     isUseCustomBody: (service: string) => servicesType.AI.has(service),
     isCustom: (service: string) => service === services.custom,
     isNewApi: (service: string) => service === services.newapi,
-    isUseAkSk: (service: string) => service === services.yiyan,
+    // 文心一言已迁移到千帆 v2 的 Bearer Token 鉴权；保留方法供 UI 兼容。
+    isUseAkSk: (_service: string) => false,
     isCoze: (service: string) => service === services.cozecom || service === services.cozecn,
     isYoudao: (service: string) => service === services.youdao,
     isTencent: (service: string) => service === services.tencent || service === services.huanYuanTranslation,
@@ -175,35 +177,58 @@ export const servicesType = {
 };
 
 export const customModelString = "自定义模型";
+
+// 当前官方模型编号的单一来源，同时供列表和旧配置迁移使用。
+export const currentModelIds = {
+    openai: "gpt-5.6-sol",
+    zhipu: "glm-5.2",
+    zhipuFlash: "glm-4.5-flash",
+    tongyiTokenPlan: "qwen3.8-max-preview",
+    moonshot: "kimi-k3",
+    moonshotCompatible: "kimi-k2.6",
+    claude: "claude-fable-5",
+    claudeSonnet: "claude-sonnet-5",
+    claudeOpus: "claude-opus-5",
+    claudeHaiku: "claude-haiku-4-5",
+    deepseek: "deepseek-v4-flash",
+    minimax: "MiniMax-M2.7",
+    jieyue: "step-3.5-flash",
+    huanYuan: "hy3",
+    grok: "grok-4.5",
+    groqLarge: "openai/gpt-oss-120b",
+    groqSmall: "openai/gpt-oss-20b",
+    yiyan: "ernie-5.1",
+    yiyanFast: "ernie-speed-128k",
+    infiniGeneral: "qwen3.6-27b",
+} as const;
+
 export const models = new Map<string, Array<string>>([
-    [services.openai, ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.5", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5-mini", "gpt-5-nano", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", customModelString]],
-    [services.azureOpenai, ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.5", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5-mini", "gpt-5-nano", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", customModelString]],
+    [services.openai, [currentModelIds.openai, "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5-mini", "gpt-5-nano", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", customModelString]],
+    [services.azureOpenai, [currentModelIds.openai, "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5-mini", "gpt-5-nano", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", customModelString]],
     [services.gemini, ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro", customModelString]],
-    [services.yiyan, ["ERNIE-Bot 4.0", "ERNIE-Bot", "ERNIE-Speed-8K"]],
-    [services.tongyi, ["qwen3.7-max", "qwen3.7-plus", "qwen3.7-flash", "qwen3.6-flash", "qwen-mt-plus", "qwen-mt-turbo", "qwen-mt-flash", "qwen-mt-lite", "qwen-long-latest", customModelString]],
-    [services.zhipu, ["glm-5.2", "glm-5-turbo", "glm-5", "glm-4.7", "glm-4.7-flashx", customModelString]],
-    [services.moonshot, ["kimi-k3", "kimi-k2.6", "kimi-k2.5", customModelString]],
-    [services.claude, ["claude-opus-4-8", "claude-sonnet-4-6", "claude-haiku-4-5", customModelString]],
-    [services.custom, ["gpt-5.6-luna", "gpt-5.4-mini", "gemini-3.6-flash", "claude-sonnet-4-6", "deepseek-v4-flash", "gemma:7b", "llama2:7b", "mistral:7b", customModelString]],
-    [services.infini, ["llama-2-13b-chat", "llama-3.3-70b-instruct", "qwen2.5-14b-instruct", "gemma-2-27b-it", "glm-4-9b-chat", customModelString]],
-    [services.baichuan, ["Baichuan4-Air", "Baichuan4-Turbo", "Baichuan4", customModelString]],
+    [services.yiyan, [currentModelIds.yiyan, "ernie-5.0-thinking-preview", "ernie-x1.1-preview", "ernie-4.5-turbo-128k", "ernie-4.5-21b-a3b", currentModelIds.yiyanFast, customModelString]],
+    [services.tongyi, [currentModelIds.tongyiTokenPlan, "qwen3.7-max", "qwen3.7-plus", "qwen3.6-flash", "qwen-mt-plus", "qwen-mt-turbo", "qwen-mt-flash", "qwen-mt-lite", "qwen-long-latest", customModelString]],
+    [services.zhipu, [currentModelIds.zhipu, "glm-5.1", "glm-5-turbo", "glm-5", "glm-4.7", currentModelIds.zhipuFlash, customModelString]],
+    [services.moonshot, [currentModelIds.moonshot, "kimi-k2.7-code-highspeed", "kimi-k2.7-code", currentModelIds.moonshotCompatible, "kimi-k2.5", customModelString]],
+    [services.claude, [currentModelIds.claude, currentModelIds.claudeOpus, currentModelIds.claudeSonnet, currentModelIds.claudeHaiku, "claude-opus-4-8", "claude-sonnet-4-6", customModelString]],
+    [services.custom, [currentModelIds.openai, "gpt-5.4-mini", "gemini-3.6-flash", currentModelIds.claude, currentModelIds.deepseek, "gemma:7b", "llama2:7b", "mistral:7b", customModelString]],
+    [services.infini, [currentModelIds.deepseek, "deepseek-v4-pro", currentModelIds.zhipu, "kimi-k2.7-code", currentModelIds.infiniGeneral, "qwen3.6-35b-a3b", customModelString]],
+    [services.baichuan, ["Baichuan-M3-Plus", "Baichuan-M3", "Baichuan4-Air", "Baichuan4-Turbo", "Baichuan4", customModelString]],
     [services.lingyi, ["yi-lightning", customModelString]],
-    [services.deepseek, ["deepseek-v4-flash", "deepseek-v4-pro", customModelString]],
-    [services.minimax, ["chatcompletion_v2"]],
-    [services.jieyue, ["step-1-8k", customModelString]],
-    [services.huanYuan, ["hunyuan-turbos-latest", "hunyuan-t1-latest", "hunyuan-a13b", "hunyuan-lite", "hunyuan-standard", customModelString]],
+    [services.deepseek, [currentModelIds.deepseek, "deepseek-v4-pro", customModelString]],
+    [services.minimax, [currentModelIds.minimax, "MiniMax-M2.7-highspeed", "MiniMax-M2.5", "MiniMax-M2.5-highspeed", customModelString]],
+    [services.jieyue, [currentModelIds.jieyue, "step-3", "step-2", customModelString]],
+    [services.huanYuan, [currentModelIds.huanYuan, "hy3-preview", customModelString]],
     [services.huanYuanTranslation, ["hunyuan-translation", "hunyuan-translation-lite", customModelString]],
-    [services.newapi, ["gpt-5.6-luna", "gpt-5.4-mini", "gemini-3.6-flash", "gemini-3.5-flash-lite", "claude-sonnet-4-6", "deepseek-v4-flash", "kimi-k2.6", customModelString]],
-    [services.grok, ["grok-4.5", "grok-4.3", customModelString]],
+    [services.newapi, [currentModelIds.openai, "gpt-5.4-mini", "gemini-3.6-flash", "gemini-3.5-flash-lite", currentModelIds.claude, currentModelIds.deepseek, "kimi-k2.7-code", customModelString]],
+    [services.grok, [currentModelIds.grok, "grok-4.3", customModelString]],
     [services.doubao, [customModelString]],
 
     // mix model
-    [services.siliconCloud, ["Qwen/Qwen3-Coder-30B-A3B-Instruct", "Qwen/Qwen3-8B", "THUDM/GLM-Z1-9B-0414", "THUDM/GLM-4-9B-0414",
-        "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B", "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
-        "Qwen/Qwen2.5-7B-Instruct", "internlm/internlm2_5-7b-chat", "THUDM/glm-4-9b-chat", customModelString]],
+    [services.siliconCloud, ["deepseek-ai/DeepSeek-V4-Pro", "deepseek-ai/DeepSeek-V4-Flash", "zai-org/GLM-5.2", "Qwen/Qwen3.6-27B", "Qwen/Qwen3.6-35B-A3B", "deepseek-ai/DeepSeek-V3.2", "deepseek-ai/DeepSeek-R1", customModelString]],
 
-    [services.groq, ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.6-27b", customModelString]],
-    [services.openrouter, ["openrouter/auto", "openai/gpt-5.6-luna", "google/gemini-3.6-flash", "anthropic/claude-sonnet-4.6", "x-ai/grok-4.5", "deepseek/deepseek-v4-flash", "moonshotai/kimi-k3", customModelString]]
+    [services.groq, [currentModelIds.groqLarge, currentModelIds.groqSmall, "qwen/qwen3.6-27b", customModelString]],
+    [services.openrouter, ["openrouter/auto", "openai/gpt-5.6-sol", "google/gemini-3.6-flash", "anthropic/claude-fable-5", "anthropic/claude-opus-5", "x-ai/grok-4.5", "deepseek/deepseek-v4-pro", "moonshotai/kimi-k3", "z-ai/glm-5.2", customModelString]]
 ]);
 
 export const options = {
