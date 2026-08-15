@@ -222,9 +222,13 @@ export const options = {
     form: [{value: "auto", label: "自动检测"}],
     // DeepSeek API 格式（仅 DeepSeek 服务显示）
     deepseekApiType: [
-        {value: "auto", label: "自动（推荐）"},
+        {value: "auto", label: "自动（Chat Completion）"},
         {value: "responses", label: "Responses API"},
         {value: "chat", label: "Chat Completion"},
+    ],
+    deepseekThinkingMode: [
+        {value: "disabled", label: "关闭（推荐）"},
+        {value: "enabled", label: "开启"},
     ],
     to: [
         {value: "zh-Hans", label: "中文"},
@@ -415,4 +419,3 @@ export const defaultOption = {
     inputBoxTranslationTrigger: "disabled", // 默认关闭输入框翻译
     inputBoxTranslationTarget: "en", // 默认翻译成英文
 };
-

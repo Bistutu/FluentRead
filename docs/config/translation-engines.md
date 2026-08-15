@@ -50,6 +50,12 @@
 4. 在引擎列表中选择 "DeepSeek"
 5. 选择 `deepseek-v4-flash` 模型，并填入配置信息
 
+旧版配置会自动迁移：`deepseek-chat` 会迁移为关闭思考模式的 `deepseek-v4-flash`，
+`deepseek-reasoner` 会迁移为开启思考模式的 `deepseek-v4-flash`。
+
+默认的 API 格式使用 DeepSeek 官方 Chat Completion。只有当自定义代理或网关明确支持
+Responses API 时，才需要在设置中手动切换；代理 URL 中已有的查询参数会被保留。
+
 <img src="/click-fluent_read.png" alt="点击流畅阅读图标" style="width: 80%; max-width: 100%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
 
 

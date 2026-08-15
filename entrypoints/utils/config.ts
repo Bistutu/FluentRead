@@ -1,4 +1,4 @@
-import { Config } from "@/entrypoints/utils/model";
+import { Config, normalizeConfig } from "@/entrypoints/utils/model";
 
 // 声明 config 类型, new Config() 会设置好所有默认值
 export let config: Config = new Config();
@@ -20,8 +20,11 @@ async function loadConfig() {
         if (typeof value === 'string' && value.trim().length > 0) {
             const parsedConfig = JSON.parse(value);
             if (isConfigObjectValid(parsedConfig)) {
-                // 如果配置有效，合并到当前 config 中
-                Object.assign(config, parsedConfig);
+                const normalizedConfig = normalizeConfig(parsedConfig);
+                Object.assign(config, normalizedConfig);
+                if (JSON.stringify(parsedConfig) !== JSON.stringify(normalizedConfig)) {
+                    await storage.setItem('local:config', JSON.stringify(normalizedConfig));
+                }
                 return; // 加载成功，直接返回
             }
         }
@@ -45,7 +48,7 @@ storage.watch('local:config', (newValue: any, oldValue: any) => {
             const parsedConfig = JSON.parse(newValue);
             if (isConfigObjectValid(parsedConfig)) {
                 // 如果新的配置有效，更新 config
-                Object.assign(config, parsedConfig);
+                Object.assign(config, normalizeConfig(parsedConfig));
             } else {
                 console.warn('An invalid configuration was detected in storage.watch. Ignoring.');
             }

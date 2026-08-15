@@ -1,5 +1,8 @@
 import { defaultOption, services } from "./option";
 
+export type DeepSeekApiType = 'auto' | 'responses' | 'chat';
+export type DeepSeekThinkingMode = 'enabled' | 'disabled';
+
 interface IMapping {
     [key: string]: string;
 }
@@ -53,7 +56,8 @@ export class Config {
     translationStatus: boolean; // 是否启用全文翻译进度面板
     inputBoxTranslationTrigger: string; // 输入框翻译触发方式
     inputBoxTranslationTarget: string; // 输入框翻译目标语言
-    deepseekApiType: string; // DeepSeek API 格式: 'auto' | 'responses' | 'chat'
+    deepseekApiType: DeepSeekApiType; // DeepSeek API 格式
+    deepseekThinkingMode: DeepSeekThinkingMode; // DeepSeek Chat Completion 思考模式
 
     constructor() {
         this.on = true;
@@ -100,7 +104,45 @@ export class Config {
         this.inputBoxTranslationTrigger = 'disabled'; // 默认关闭输入框翻译
         this.inputBoxTranslationTarget = 'en'; // 默认翻译成英文
         this.deepseekApiType = 'auto'; // DeepSeek 默认自动选择 API 格式
+        this.deepseekThinkingMode = 'disabled'; // 翻译默认关闭思考模式，降低延迟和输出噪音
     }
+}
+
+/**
+ * 将存储或导入的普通对象补齐为当前配置结构，并迁移已退役的 DeepSeek 模型名。
+ */
+export function normalizeConfig(value: unknown): Config {
+    const normalized = new Config();
+    const source = value && typeof value === 'object' ? value as Partial<Config> : {};
+    Object.assign(normalized, source);
+
+    normalized.model = isRecord(source.model) ? {...source.model} : {};
+    normalized.customModel = isRecord(source.customModel) ? {...source.customModel} : {};
+
+    const selectedModel = normalized.model[services.deepseek];
+    const configuredThinkingMode = source.deepseekThinkingMode;
+
+    if (selectedModel === 'deepseek-chat') {
+        normalized.model[services.deepseek] = 'deepseek-v4-flash';
+        normalized.deepseekThinkingMode = 'disabled';
+    } else if (selectedModel === 'deepseek-reasoner') {
+        // 官方迁移指南要求 reasoner 使用 v4-flash 并显式开启 thinking。
+        normalized.model[services.deepseek] = 'deepseek-v4-flash';
+        normalized.deepseekThinkingMode = 'enabled';
+    } else if (configuredThinkingMode !== 'enabled' && configuredThinkingMode !== 'disabled') {
+        // 兼容 #219 的早期配置：该实现把 v4-pro 作为默认思考模型。
+        normalized.deepseekThinkingMode = selectedModel === 'deepseek-v4-pro' ? 'enabled' : 'disabled';
+    }
+
+    if (!['auto', 'responses', 'chat'].includes(normalized.deepseekApiType)) {
+        normalized.deepseekApiType = 'auto';
+    }
+
+    return normalized;
+}
+
+function isRecord(value: unknown): value is Record<string, string> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 // 构建所有服务的 system_role
