@@ -4,6 +4,7 @@ import {
   cleanServiceLabel,
   filterModels,
   filterServiceGroups,
+  splitModelOptions,
 } from '@/entrypoints/utils/serviceCatalog'
 
 const options = [
@@ -52,5 +53,21 @@ describe('service catalog helpers', () => {
 
   it('removes decorative recommendation stars from labels', () => {
     expect(cleanServiceLabel('硅基流动⭐️')).toBe('硅基流动')
+  })
+
+  it('keeps common models short and promotes the current selection', () => {
+    const models = ['one', 'two', 'three', 'four', 'five', 'six']
+
+    expect(splitModelOptions(models, 'six')).toEqual({
+      common: ['one', 'two', 'three', 'six'],
+      more: ['four', 'five'],
+    })
+  })
+
+  it('does not create a more group for a short model list', () => {
+    expect(splitModelOptions(['one', 'two'], 'two')).toEqual({
+      common: ['one', 'two'],
+      more: [],
+    })
   })
 })

@@ -54,3 +54,16 @@ export function filterModels(modelOptions: string[], query: string) {
   if (!keyword) return modelOptions
   return modelOptions.filter((model) => model.toLocaleLowerCase().includes(keyword))
 }
+
+export function splitModelOptions(modelOptions: string[], selectedModel = '', visibleCount = 4) {
+  const common = modelOptions.slice(0, visibleCount)
+
+  if (selectedModel && modelOptions.includes(selectedModel) && !common.includes(selectedModel)) {
+    common.splice(Math.max(visibleCount - 1, 0), 1, selectedModel)
+  }
+
+  return {
+    common,
+    more: modelOptions.filter((model) => !common.includes(model)),
+  }
+}

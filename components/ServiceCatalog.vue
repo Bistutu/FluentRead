@@ -64,29 +64,50 @@
               <span>模型列表</span>
               <strong>{{ selectedModel || '尚未选择模型' }}</strong>
             </div>
-            <label v-if="modelOptions.length > 6" class="model-search">
+            <label v-if="modelOptions.length > commonModelCount" class="model-search">
               <span aria-hidden="true">⌕</span>
               <input v-model.trim="modelQuery" type="search" placeholder="搜索模型" />
             </label>
           </div>
 
-          <div v-if="filteredModels.length" class="model-grid" role="listbox" aria-label="可用模型">
+          <div v-if="displayedModels.length" class="model-list">
+            <div class="model-list-heading">
+              <strong>{{ modelQuery ? '搜索结果' : moreModelsOpen ? '全部模型' : '常用模型' }}</strong>
+              <span>{{ displayedModels.length }}</span>
+            </div>
+            <div id="model-options" class="model-grid" role="listbox" aria-label="可用模型">
+              <button
+                v-for="model in displayedModels"
+                :key="model"
+                type="button"
+                class="model-item"
+                :class="{ active: selectedModel === model, custom: model === customModelLabel }"
+                role="option"
+                :aria-selected="selectedModel === model"
+                @click="$emit('update:model', model)"
+              >
+                <span class="model-icon">{{ model === customModelLabel ? '+' : 'M' }}</span>
+                <span>
+                  <strong>{{ model }}</strong>
+                  <small>{{ model === customModelLabel ? '填写服务商支持的模型标识' : '使用此模型进行翻译' }}</small>
+                </span>
+                <span v-if="selectedModel === model" class="checkmark">✓</span>
+              </button>
+            </div>
+
             <button
-              v-for="model in filteredModels"
-              :key="model"
+              v-if="!modelQuery && moreModels.length"
               type="button"
-              class="model-item"
-              :class="{ active: selectedModel === model, custom: model === customModelLabel }"
-              role="option"
-              :aria-selected="selectedModel === model"
-              @click="$emit('update:model', model)"
+              class="more-models-toggle"
+              :aria-expanded="moreModelsOpen"
+              aria-controls="model-options"
+              @click="moreModelsOpen = !moreModelsOpen"
             >
-              <span class="model-icon">{{ model === customModelLabel ? '+' : 'M' }}</span>
               <span>
-                <strong>{{ model }}</strong>
-                <small>{{ model === customModelLabel ? '填写服务商支持的模型标识' : '使用此模型进行翻译' }}</small>
+                <strong>更多模型</strong>
+                <small>{{ moreModels.length }} 个较少使用的模型</small>
               </span>
-              <span v-if="selectedModel === model" class="checkmark">✓</span>
+              <b>{{ moreModelsOpen ? '收起' : '展开' }} <i aria-hidden="true">⌄</i></b>
             </button>
           </div>
           <p v-else class="catalog-empty">没有匹配的模型</p>
@@ -113,6 +134,7 @@ import {
   buildServiceGroups,
   filterModels,
   filterServiceGroups,
+  splitModelOptions,
   type ServiceOption,
 } from '@/entrypoints/utils/serviceCatalog'
 
@@ -131,11 +153,18 @@ defineEmits<{
 
 const serviceQuery = ref('')
 const modelQuery = ref('')
+const moreModelsOpen = ref(false)
+const commonModelCount = 4
 const customModelLabel = customModelString
 
 const groups = computed(() => buildServiceGroups(props.services))
 const filteredGroups = computed(() => filterServiceGroups(groups.value, serviceQuery.value))
 const filteredModels = computed(() => filterModels(props.modelOptions, modelQuery.value))
+const modelGroups = computed(() => splitModelOptions(props.modelOptions, props.selectedModel, commonModelCount))
+const moreModels = computed(() => modelGroups.value.more)
+const displayedModels = computed(() => modelQuery.value
+  ? filteredModels.value
+  : moreModelsOpen.value ? [...modelGroups.value.common, ...moreModels.value] : modelGroups.value.common)
 const selectedService = computed(() => groups.value.flatMap((group) => group.items).find((item) => item.value === props.service))
 
 const descriptions: Record<string, string> = {
@@ -161,6 +190,11 @@ const serviceDescription = computed(() =>
 
 watch(() => props.service, () => {
   modelQuery.value = ''
+  moreModelsOpen.value = false
+})
+
+watch(modelQuery, () => {
+  moreModelsOpen.value = false
 })
 
 const markMap: Record<string, string> = {
@@ -225,7 +259,10 @@ function serviceTone(value: string) {
 .model-heading span { color: #81899a; font-size: 9px; font-weight: 750; }
 .model-heading strong { overflow: hidden; margin-top: 3px; color: #172033; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .model-search { width: 168px; height: 34px; }
-.model-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-height: 330px; padding: 2px; overflow: auto; }
+.model-list-heading { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 8px; color: #81899a; }
+.model-list-heading strong { font-size: 9px; }
+.model-list-heading span { font-size: 9px; }
+.model-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .model-item { display: grid; grid-template-columns: 30px minmax(0, 1fr) 16px; align-items: center; gap: 9px; min-width: 0; padding: 10px; border: 1px solid #e4e7ee; border-radius: 12px; color: #172033; background: #fff; text-align: left; cursor: pointer; transition: 150ms ease; }
 .model-item:hover { border-color: #f0a9bc; transform: translateY(-1px); }
 .model-item.active { border-color: #ef4776; background: #fff4f7; box-shadow: 0 7px 16px rgba(214, 50, 96, .08); }
@@ -235,6 +272,14 @@ function serviceTone(value: string) {
 .model-item strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .model-item small { overflow: hidden; margin-top: 2px; color: #9299a8; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
 .checkmark { color: #da315f; font-size: 12px; font-weight: 900; }
+.more-models-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin-top: 10px; padding: 11px 12px; border: 1px solid #e4e7ee; border-radius: 12px; color: #172033; background: #fafbfc; text-align: left; cursor: pointer; }
+.more-models-toggle:hover { border-color: #f0a9bc; background: #fff8fa; }
+.more-models-toggle > span { display: flex; flex-direction: column; }
+.more-models-toggle strong { font-size: 10px; }
+.more-models-toggle small { margin-top: 2px; color: #9299a8; font-size: 8px; }
+.more-models-toggle b { color: #c72a56; font-size: 9px; font-weight: 750; white-space: nowrap; }
+.more-models-toggle i { display: inline-block; margin-left: 3px; font-style: normal; transition: transform 150ms ease; }
+.more-models-toggle[aria-expanded="true"] i { transform: rotate(180deg); }
 .no-model-panel { display: flex; align-items: center; gap: 12px; margin-top: 20px; padding: 18px; border: 1px solid #d9eee5; border-radius: 14px; background: #f2faf6; }
 .no-model-panel > span { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; color: #fff; background: #28aa79; font-size: 14px; }
 .no-model-panel strong { color: #185d46; font-size: 12px; }
