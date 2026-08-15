@@ -3,7 +3,8 @@ import { cache } from "../utils/cache";
 import { options, services, servicesType } from "../utils/option";
 import { insertFailedTip, insertLoadingSpinner } from "../utils/icon";
 import { styles } from "@/entrypoints/utils/constant";
-import { beautyHTML, grabNode, grabAllNode, LLMStandardHTML, smashTruncationStyle } from "@/entrypoints/main/dom";
+import { beautyHTML, grabAllNode, grabManualNode, LLMStandardHTML, smashTruncationStyle } from "@/entrypoints/main/dom";
+import { manualChunkClass, manualChunkSourceClass, manualChunkTranslationClass, unwrapManualChunk } from "@/entrypoints/main/manual";
 import { detectlang, throttle } from "@/entrypoints/utils/common";
 import { getMainDomain, replaceCompatFn } from "@/entrypoints/main/compat";
 import { config } from "@/entrypoints/utils/config";
@@ -42,8 +43,12 @@ export function restoreOriginalContent() {
     });
     
     // 2. 移除所有翻译内容元素
-    document.querySelectorAll('.fluent-read-bilingual-content').forEach(element => {
+    document.querySelectorAll(`.fluent-read-bilingual-content, .${manualChunkTranslationClass}`).forEach(element => {
         element.remove();
+    });
+
+    document.querySelectorAll(`.${manualChunkClass}`).forEach(node => {
+        unwrapManualChunk(node);
     });
     
     // 3. 移除所有翻译过程中添加的加载动画和错误提示
@@ -169,10 +174,10 @@ export function handleTranslation(mouseX: number, mouseY: number, delayTime: num
     clearTimeout(hoverTimer);
     hoverTimer = setTimeout(() => {
 
-        let node = grabNode(document.elementFromPoint(mouseX, mouseY));
+        const node = grabManualNode(mouseX, mouseY);
 
         // 判断是否跳过节点
-        if (skipNode(node)) return;
+        if (!node || skipNode(node)) return;
 
         // 防抖
         let nodeOuterHTML = node.outerHTML;
@@ -204,6 +209,7 @@ export function handleBilingualTranslation(node: any, slide: boolean) {
             const content = searchClassName(bilingualNode as HTMLElement, 'fluent-read-bilingual-content');
             if (content && content instanceof HTMLElement) content.remove();
             (bilingualNode as HTMLElement).classList.remove('fluent-read-bilingual');
+            releaseManualChunk(bilingualNode as HTMLElement);
             htmlSet.delete(nodeOuterHTML);
         }, 250);
         return;
@@ -228,7 +234,12 @@ export function handleBilingualTranslation(node: any, slide: boolean) {
 // 单语翻译
 export function handleSingleTranslation(node: any, slide: boolean) {
     let nodeOuterHTML = node.outerHTML;
-    let outerHTMLCache = cache.localGet(node.outerHTML);
+    if (restoreManualChunk(node)) {
+        htmlSet.delete(nodeOuterHTML);
+        return;
+    }
+    const isManualChunk = node instanceof HTMLElement && Boolean(node.dataset.frChunkId);
+    let outerHTMLCache = isManualChunk ? null : cache.localGet(node.outerHTML);
 
 
     if (outerHTMLCache) {
@@ -253,8 +264,11 @@ export function handleSingleTranslation(node: any, slide: boolean) {
 
 function bilingualTranslate(node: any, nodeOuterHTML: any) {
     const cleanedText = node.textContent.replace(/[\s\u3000]/g, '');
-    if (!cleanedText || cleanedText.length === 0) return;
-    if (detectlang(cleanedText) === config.to) return;
+    if (!cleanedText || detectlang(cleanedText) === config.to) {
+        htmlSet.delete(nodeOuterHTML);
+        releaseManualChunk(node);
+        return;
+    }
 
     let origin = node.textContent;
     let spinner = insertLoadingSpinner(node);
@@ -274,13 +288,21 @@ function bilingualTranslate(node: any, nodeOuterHTML: any) {
 
 
 export function singleTranslate(node: any) {
-    const cleanedText = node.textContent.replace(/[\s\u3000]/g, '');
-    if (!cleanedText || cleanedText.length === 0) return;
-    if (detectlang(cleanedText) === config.to) return;
+    const nodeOuterHTML = node.outerHTML;
+    const manualSource = node instanceof HTMLElement
+        ? node.querySelector(`:scope > .${manualChunkSourceClass}`) as HTMLElement | null
+        : null;
+    const sourceNode = manualSource ?? node;
+    const cleanedText = sourceNode.textContent.replace(/[\s\u3000]/g, '');
+    if (!cleanedText || detectlang(cleanedText) === config.to) {
+        htmlSet.delete(nodeOuterHTML);
+        releaseManualChunk(node);
+        return;
+    }
 
-    let origin = servicesType.isMachine(config.service) ? node.innerHTML : LLMStandardHTML(node);
+    let origin = servicesType.isMachine(config.service) ? sourceNode.innerHTML : LLMStandardHTML(sourceNode);
     const translation = config.service === services.microsoft
-        ? translateMicrosoftHtml(node)
+        ? translateMicrosoftHtml(sourceNode)
         : translateText(origin, document.title);
     let spinner = insertLoadingSpinner(node);
     
@@ -291,14 +313,27 @@ export function singleTranslate(node: any) {
             
             text = beautyHTML(text);
             
-            if (!text || origin === text) return;
+            if (!text || origin === text) {
+                htmlSet.delete(nodeOuterHTML);
+                releaseManualChunk(node);
+                return;
+            }
             
             let oldOuterHtml = node.outerHTML;
-            node.innerHTML = text;
+            if (manualSource) {
+                const translated = document.createElement('span');
+                translated.className = manualChunkTranslationClass;
+                translated.innerHTML = text;
+                manualSource.hidden = true;
+                node.append(translated);
+                node.dataset.frChunkTranslated = 'true';
+            } else {
+                node.innerHTML = text;
+            }
             let newOuterHtml = node.outerHTML;
             
             // 缓存翻译结果
-            cache.localSetDual(oldOuterHtml, newOuterHtml);
+            if (!node.dataset.frChunkId) cache.localSetDual(oldOuterHtml, newOuterHtml);
             cache.set(htmlSet, newOuterHtml, 250);
             htmlSet.delete(oldOuterHtml);
         })
@@ -372,4 +407,17 @@ function bilingualAppendChild(node: any, text: string) {
     newNode.append(text);
     smashTruncationStyle(node);
     node.appendChild(newNode);
+}
+
+function restoreManualChunk(node: HTMLElement): boolean {
+    const id = node.dataset.frChunkId;
+    if (!id || node.dataset.frChunkTranslated !== 'true') return false;
+    releaseManualChunk(node);
+    return true;
+}
+
+function releaseManualChunk(node: HTMLElement) {
+    const id = node.dataset.frChunkId;
+    if (!id) return;
+    unwrapManualChunk(node);
 }

@@ -1,6 +1,7 @@
 import { getMainDomain, selectCompatFn } from "@/entrypoints/main/compat";
 import { html } from 'js-beautify';
 import { handleBtnTranslation } from "@/entrypoints/main/trans";
+import { existingManualChunk, refineManualNode } from "@/entrypoints/main/manual";
 
 // 直接翻译的标签集合（块级元素）
 const directSet = new Set([
@@ -8,6 +9,8 @@ const directSet = new Set([
     'p', 'li', 'dd', 'blockquote',       // 段落和列表
     'figcaption'                         // 图片说明
 ]);
+
+const directSelector = Array.from(directSet).join(',');
 
 // 需要跳过的标签
 const skipSet = new Set([
@@ -110,13 +113,13 @@ export function grabAllNode(rootNode: Node): Element[] {
 }
 
 // 返回最终应该翻译的父节点或 false
-export function grabNode(node: any): any {
+export function grabNode(node: any, ignoreTextSize = false): any {
     // 空节点检查
     if (!node) return false;
 
     // 对于 Text 节点，尝试找到其可翻译的父节点
     if (node instanceof Text) {
-        const parentOrSelf = findTranslatableParent(node);
+        const parentOrSelf = findTranslatableParent(node, ignoreTextSize);
         if (parentOrSelf && parentOrSelf !== node) {
             return parentOrSelf;
         }
@@ -128,7 +131,7 @@ export function grabNode(node: any): any {
     const curTag = node.tagName.toLowerCase();
 
     // 1. 快速过滤：跳过不需要翻译的节点
-    if (shouldSkipNode(node, curTag)) return false;
+    if (shouldSkipNode(node, curTag, ignoreTextSize)) return false;
 
     // 2. 特殊适配：根据域名进行特殊处理
     const domainHandler = selectCompatFn[getMainDomain(location.href.split('?')[0])];
@@ -153,7 +156,7 @@ export function grabNode(node: any): any {
 
     // 5. 内联元素处理：向上查找合适的父节点
     if (isInlineElement(node, curTag)) {
-        return findTranslatableParent(node);
+        return findTranslatableParent(node, ignoreTextSize);
     }
 
     // 6. 首行文本处理：处理 div 和 label 的首行文本
@@ -164,8 +167,20 @@ export function grabNode(node: any): any {
     return false;
 }
 
+export function grabManualNode(x: number, y: number): Element | false {
+    const hit = document.elementFromPoint(x, y);
+    if (!(hit instanceof Element)) return false;
+
+    const existingChunk = existingManualChunk(hit);
+    if (existingChunk) return existingChunk;
+
+    const resolved = grabNode(hit, true);
+    if (!(resolved instanceof Element)) return false;
+    return refineManualNode(hit, resolved, directSelector, x, y);
+}
+
 // 检查是否应该跳过节点
-function shouldSkipNode(node: any, tag: string): boolean {
+function shouldSkipNode(node: any, tag: string, ignoreTextSize = false): boolean {
     // 1. 判断标签是否在 skipSet 内
     // 2. 检查是否具有 notranslate 类
     // 3. 判断节点是否可编辑
@@ -174,7 +189,7 @@ function shouldSkipNode(node: any, tag: string): boolean {
     return skipSet.has(tag) ||
         node.classList?.contains('notranslate') ||
         node.isContentEditable ||
-        checkTextSize(node) ||
+        (!ignoreTextSize && checkTextSize(node)) ||
         isMainlyNumericContent(node);
 }
 
@@ -357,10 +372,10 @@ function isInlineElement(node: any, tag: string): boolean {
 }
 
 // 查找可翻译的父节点
-function findTranslatableParent(node: any): any {
+function findTranslatableParent(node: any, ignoreTextSize = false): any {
     // 1. 递归调用 grabNode 查找父节点是否可翻译
     // 2. 若父节点不可翻译，则返回当前节点
-    const parentResult = grabNode(node.parentNode);
+    const parentResult = grabNode(node.parentNode, ignoreTextSize);
     return parentResult || node;
 }
 

@@ -209,6 +209,16 @@
     overflow-wrap: break-word; /* 处理长单词或 URL 的断行，避免溢出 */
 }
 
+.fluent-read-translation-chunk,
+.fluent-read-translation-chunk-source,
+.fluent-read-translation-chunk-content {
+    display: contents;
+}
+
+.fluent-read-translation-chunk-source[hidden] {
+    display: none;
+}
+
 /* 马克笔 */
 .fluent-display-marker {
     background: #ffeb3b;
