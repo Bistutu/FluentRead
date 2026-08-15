@@ -2,19 +2,39 @@ import { handleTranslation, autoTranslateEnglishPage, restoreOriginalContent } f
 import { cache } from "./utils/cache";
 import { constants } from "@/entrypoints/utils/constant";
 import { getCenterPoint } from "@/entrypoints/utils/common";
-import './style.css';
+import pageStyles from './style.css?inline';
 import { config, configReady } from "@/entrypoints/utils/config";
 import { mountFloatingBall, unmountFloatingBall, toggleFloatingBallPosition } from "@/entrypoints/utils/floatingBall";
 import { mountSelectionTranslator, unmountSelectionTranslator } from "@/entrypoints/utils/selectionTranslator";
 import { cancelAllTranslations, translateText } from "@/entrypoints/utils/translateApi";
-import { createApp } from 'vue';
 import TranslationStatus from '@/components/TranslationStatus.vue';
 import { mountNewApiComponent } from "@/entrypoints/utils/newApi";
+import type { ContentScriptContext } from 'wxt/utils/content-script-context';
+import { createShadowRootUi, type ShadowRootContentScriptUi } from 'wxt/utils/content-script-ui/shadow-root';
+import { createVueShadowUi, type VueShadowMount } from '@/entrypoints/utils/shadowUi';
+
+let contentScriptContext: ContentScriptContext | null = null;
+let translationStatusUi: ShadowRootContentScriptUi<VueShadowMount> | null = null;
+let inputTooltipUi: ShadowRootContentScriptUi<HTMLElement> | null = null;
+
+function installPageStyles(ctx: ContentScriptContext) {
+    const existing = document.getElementById('fluent-read-page-styles');
+    if (existing) return;
+
+    const style = document.createElement('style');
+    style.id = 'fluent-read-page-styles';
+    style.textContent = pageStyles;
+    (document.head ?? document.documentElement).appendChild(style);
+    ctx.onInvalidated(() => style.remove());
+}
 
 export default defineContentScript({
     matches: ['<all_urls>'],  // 匹配所有页面
     runAt: 'document_end',  // 在页面加载完成后运行
-    async main() {
+    cssInjectionMode: 'ui',
+    async main(ctx) {
+        contentScriptContext = ctx;
+        installPageStyles(ctx);
         await configReady // 等待配置加载完成
         if (config.on === false) return; // 如果配置关闭，则不执行任何操作
         // 添加手动翻译事件监听器
@@ -40,17 +60,17 @@ export default defineContentScript({
         // 挂载悬浮球（如果配置未禁用）
         if (config.disableFloatingBall !== true) {
             // 使用配置中的位置
-            mountFloatingBall();
+            await mountFloatingBall(ctx);
         }
         
         // 挂载划词翻译组件（如果配置未禁用）
         if (config.disableSelectionTranslator !== true) {
-            mountSelectionTranslator();
+            await mountSelectionTranslator(ctx);
         }
         
         // 挂载翻译状态组件（可配置禁用）
         if (config.translationStatus === true) {
-            mountTranslationStatusComponent();
+            await mountTranslationStatusComponent(ctx);
         }
 
         mountNewApiComponent();
@@ -68,7 +88,7 @@ export default defineContentScript({
         browser.runtime.onMessage.addListener((message: any, sender: any, sendResponse: () => void) => {
             if (message.type === 'toggleFloatingBall') {
                 if (message.isEnabled) {
-                    mountFloatingBall();
+                    void mountFloatingBall(ctx);
                 } else {
                     unmountFloatingBall();
                 }
@@ -89,7 +109,7 @@ export default defineContentScript({
                 } else {
                     // 如果之前没有挂载，现在挂载
                     if (!document.getElementById('fluent-read-selection-translator-container')) {
-                        mountSelectionTranslator();
+                        void mountSelectionTranslator(ctx);
                     }
                 }
                 sendResponse();
@@ -130,6 +150,9 @@ export default defineContentScript({
             unmountFloatingBall();
             // 移除划词翻译组件
             unmountSelectionTranslator();
+            translationStatusUi?.remove();
+            translationStatusUi = null;
+            removeExistingTooltip();
         });
     }
 })
@@ -639,15 +662,16 @@ function clearAllTranslations() {
 /**
  * 挂载翻译状态组件
  */
-function mountTranslationStatusComponent() {
-    // 创建容器元素
-    const container = document.createElement('div');
-    container.id = 'fluent-read-translation-status-container';
-    document.body.appendChild(container);
-    
-    // 创建并挂载组件
-    const app = createApp(TranslationStatus);
-    app.mount(container);
+async function mountTranslationStatusComponent(ctx: ContentScriptContext) {
+    if (translationStatusUi) return translationStatusUi.mounted?.instance;
+
+    translationStatusUi = await createVueShadowUi(ctx, {
+        name: 'fluent-read-translation-status-ui',
+        hostId: 'fluent-read-translation-status-container',
+        component: TranslationStatus,
+        zIndex: 2_147_483_645,
+    });
+    return translationStatusUi.mounted?.instance;
 }
 
 /**
@@ -829,26 +853,80 @@ function setInputBoxText(element: HTMLElement, text: string): void {
 /**
  * 创建并显示翻译提示弹窗
  */
-function createTranslationTooltip(element: HTMLElement, message: string, type: 'translating' | 'success' | 'error'): HTMLElement {
+async function createTranslationTooltip(element: HTMLElement, message: string, type: 'translating' | 'success' | 'error'): Promise<HTMLElement> {
     // 移除已存在的提示
     removeExistingTooltip();
-    
-    const tooltip = document.createElement('div');
-    tooltip.className = `fluent-input-tooltip ${type}`;
-    tooltip.id = 'fluent-input-translation-tooltip';
-    
-    // 添加图标和文字
-    const icon = getTooltipIcon(type);
-    tooltip.innerHTML = `${icon} ${message}`;
-    
-    // 计算位置
+
+    if (!contentScriptContext) {
+        throw new Error('Content script context is not ready');
+    }
+
     const rect = element.getBoundingClientRect();
-    const tooltipTop = rect.bottom + window.scrollY + 12;
-    const tooltipLeft = rect.left + window.scrollX + (rect.width / 2);
-    
-    tooltip.style.top = `${tooltipTop}px`;
-    tooltip.style.left = `${tooltipLeft}px`;
-    tooltip.style.transform = 'translateX(-50%)';
+
+    inputTooltipUi = await createShadowRootUi<HTMLElement>(contentScriptContext, {
+        name: 'fluent-read-input-tooltip-ui',
+        position: 'overlay',
+        alignment: 'top-left',
+        zIndex: 2_147_483_647,
+        mode: 'open',
+        inheritStyles: false,
+        css: `
+            :host {
+                all: initial !important;
+                display: block !important;
+                position: relative !important;
+                width: 0 !important;
+                height: 0 !important;
+                overflow: visible !important;
+            }
+            html, body {
+                width: 0 !important;
+                height: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: visible !important;
+            }
+            .fluent-input-tooltip {
+                position: fixed;
+                box-sizing: border-box;
+                background: rgba(17, 24, 39, 0.88);
+                color: #fff;
+                padding: 8px 12px;
+                border: 0;
+                border-radius: 8px;
+                font: 500 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+                white-space: nowrap;
+                z-index: 2147483647;
+                pointer-events: none;
+                transition: opacity 0.2s ease, transform 0.2s ease;
+                backdrop-filter: blur(8px);
+                box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2);
+            }
+            .fluent-input-tooltip.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+            .fluent-input-tooltip.hide { opacity: 0; transform: translateX(-50%) translateY(-5px); }
+            .fluent-input-tooltip.translating { background: rgba(59, 130, 246, 0.9); }
+            .fluent-input-tooltip.success { background: rgba(34, 197, 94, 0.9); }
+            .fluent-input-tooltip.error { background: rgba(239, 68, 68, 0.9); }
+        `,
+        onMount(container) {
+            const tooltip = document.createElement('div');
+            tooltip.className = `fluent-input-tooltip ${type}`;
+            tooltip.id = 'fluent-input-translation-tooltip';
+            tooltip.textContent = `${getTooltipIcon(type)} ${message}`;
+            tooltip.style.top = `${rect.bottom + 12}px`;
+            tooltip.style.left = `${rect.left + (rect.width / 2)}px`;
+            tooltip.style.transform = 'translateX(-50%) translateY(3px)';
+            tooltip.style.opacity = config.animations ? '0' : '1';
+            container.appendChild(tooltip);
+            return tooltip;
+        },
+    });
+
+    inputTooltipUi.shadowHost.id = 'fluent-input-translation-tooltip-host';
+    inputTooltipUi.shadowHost.setAttribute('data-fluent-read-ui', 'input-tooltip');
+    inputTooltipUi.mount();
+
+    const tooltip = inputTooltipUi.mounted!;
     
     // 如果禁用动画，直接显示，否则使用淡入效果
     if (!config.animations) {
@@ -861,7 +939,6 @@ function createTranslationTooltip(element: HTMLElement, message: string, type: '
         }, 10);
     }
     
-    document.body.appendChild(tooltip);
     return tooltip;
 }
 
@@ -881,15 +958,17 @@ function getTooltipIcon(type: 'translating' | 'success' | 'error'): string {
  * 移除现有的提示弹窗
  */
 function removeExistingTooltip(): void {
-    const existing = document.getElementById('fluent-input-translation-tooltip');
-    if (existing) {
+    const ui = inputTooltipUi;
+    const existing = ui?.mounted;
+    inputTooltipUi = null;
+    if (ui && existing) {
         if (!config.animations) {
             // 如果禁用动画，直接移除
-            existing.remove();
+            ui.remove();
         } else {
             // 使用淡出动画
             existing.classList.add('hide');
-            setTimeout(() => existing.remove(), 300);
+            setTimeout(() => ui.remove(), 300);
         }
     }
 }
@@ -963,7 +1042,7 @@ async function handleInputBoxTranslation(element: HTMLElement): Promise<void> {
         
         // 显示翻译中的动画和提示
         addInputBoxAnimation(element, 'translating');
-        tooltip = createTranslationTooltip(element, '微软翻译中', 'translating');
+        tooltip = await createTranslationTooltip(element, '微软翻译中', 'translating');
         
         try {
             // 直接调用微软翻译API，不使用缓存
@@ -979,20 +1058,20 @@ async function handleInputBoxTranslation(element: HTMLElement): Promise<void> {
                 // 显示成功动画和提示
                 addInputBoxAnimation(element, 'success');
                 removeExistingTooltip();
-                tooltip = createTranslationTooltip(element, '翻译成功', 'success');
+                tooltip = await createTranslationTooltip(element, '翻译成功', 'success');
             } else {
                 // 翻译结果与原文相同或为空
                 element.classList.remove('fluent-input-translating');
                 addInputBoxAnimation(element, 'error');
                 removeExistingTooltip();
-                tooltip = createTranslationTooltip(element, '内容无需翻译', 'error');
+                tooltip = await createTranslationTooltip(element, '内容无需翻译', 'error');
             }
         } catch (translationError) {
             // 翻译失败
             element.classList.remove('fluent-input-translating');
             addInputBoxAnimation(element, 'error');
             removeExistingTooltip();
-            tooltip = createTranslationTooltip(element, '微软翻译失败', 'error');
+            tooltip = await createTranslationTooltip(element, '微软翻译失败', 'error');
             console.error('微软翻译失败:', translationError);
         }
         
@@ -1008,7 +1087,7 @@ async function handleInputBoxTranslation(element: HTMLElement): Promise<void> {
         // 显示错误动画和提示
         addInputBoxAnimation(element, 'error');
         removeExistingTooltip();
-        tooltip = createTranslationTooltip(element, '翻译服务暂时不可用', 'error');
+        tooltip = await createTranslationTooltip(element, '翻译服务暂时不可用', 'error');
         
         // 自动隐藏错误提示
         setTimeout(() => removeExistingTooltip(), 3000);

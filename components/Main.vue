@@ -1,6 +1,7 @@
 <template>
+  <section v-show="props.activeSection === 'settings-general'" id="settings-general" class="settings-section">
   <!-- 开关 -->
-  <el-row id="settings-general" class="margin-bottom margin-left-2em">
+  <el-row class="margin-bottom margin-left-2em">
     <el-col :span="20" class="lightblue rounded-corner">
       <span class="popup-text popup-vertical-left">插件状态</span>
     </el-col>
@@ -17,7 +18,7 @@
 
   <div v-show="config.on">
     <!--    翻译模式-->
-    <el-row id="settings-services" class="margin-bottom margin-left-2em">
+    <el-row class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
         <span class="popup-text popup-vertical-left">翻译模式</span>
       </el-col>
@@ -48,27 +49,27 @@
         </el-select>
       </el-col>
     </el-row>
+  </div>
+  </section>
+
+  <div v-if="!config.on && props.activeSection !== 'settings-general'" class="disabled-section">
+    <strong>插件当前已关闭</strong>
+    <p>请先在“通用设置”中启用插件，再调整该分类。</p>
+  </div>
+
+  <div v-show="config.on">
 
     <!-- 翻译服务 -->
-    <el-row class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="机器翻译：快速稳定，适合日常使用；AI翻译：更自然流畅，需要配置令牌" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">翻译服务<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <b>
-          <el-select v-model="config.service" aria-label="翻译服务" placeholder="请选择翻译服务">
-            <el-option class="select-left" v-for="item in compute.filteredServices" :key="item.value"
-              :label="item.label" :value="item.value" :disabled="item.disabled"
-              :class="{ 'select-divider': item.disabled }" />
-          </el-select>
-        </b>
-      </el-col>
-    </el-row>
+    <section v-show="props.activeSection === 'settings-services'" id="settings-services" class="settings-section">
+      <ServiceCatalog
+        :service="config.service"
+        :selected-model="config.model[config.service]"
+        :services="compute.filteredServices"
+        :model-options="compute.model"
+        :show-model="compute.showModel"
+        @update:service="config.service = $event"
+        @update:model="config.model[config.service] = $event"
+      />
 
     <!-- 免费翻译服务降级顺序 -->
     <el-row v-show="compute.showFreeTranslation" class="margin-bottom margin-left-2em">
@@ -98,11 +99,13 @@
         </el-select>
       </el-col>
     </el-row>
+    </section>
 
 
 
     <!-- 鼠标悬浮快捷键 -->
-    <el-row id="settings-shortcuts" class="margin-bottom margin-left-2em" :class="{ 'custom-hotkey-row': config.hotkey === 'custom' }">
+    <section v-show="props.activeSection === 'settings-shortcuts'" id="settings-shortcuts" class="settings-section">
+    <el-row class="margin-bottom margin-left-2em" :class="{ 'custom-hotkey-row': config.hotkey === 'custom' }">
       <el-col :span="14" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="按住指定快捷键并悬停在文本上进行翻译" placement="top-start" :show-after="500">
         <span class="popup-text popup-vertical-left">
@@ -206,8 +209,14 @@
         </el-select>
       </el-col>
     </el-row>
+    </section>
 
     <!-- token -->
+    <section v-show="props.activeSection === 'settings-services'" class="settings-section service-connection-section">
+      <div class="subsection-heading">
+        <div><span>服务配置</span><strong>连接与请求参数</strong></div>
+        <p>这里只显示 {{ currentServiceLabel }} 实际需要的设置。</p>
+      </div>
     <el-row v-show="compute.showToken" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark"
@@ -411,18 +420,6 @@
       </el-col>
     </el-row>
 
-    <!--  模型 -->
-    <el-row v-show="compute.showModel" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <span class="popup-text popup-vertical-left">模型</span>
-      </el-col>
-      <el-col :span="12">
-        <el-select v-model="config.model[config.service]" placeholder="请选择模型">
-          <el-option class="select-left" v-for="item in compute.model" :key="item" :label="item" :value="item" />
-        </el-select>
-      </el-col>
-    </el-row>
-
     <el-row v-show="compute.showCustomModel" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark"
@@ -497,10 +494,10 @@
         </div>
       </el-col>
     </el-row>
+    </section>
 
     <!-- 高级选项-->
-    <el-collapse id="settings-advanced" class="margin-left-2em margin-bottom">
-      <el-collapse-item title="高级选项">
+    <section v-show="props.activeSection === 'settings-advanced'" id="settings-advanced" class="settings-section">
 
         <!-- 主题设置 -->
         <el-row class="margin-bottom margin-left-2em margin-top-2em">
@@ -694,8 +691,11 @@
           </el-col>
         </el-row>
 
+    </section>
+
+    <section v-show="props.activeSection === 'settings-data'" id="settings-data" class="settings-section data-section">
         <!-- 配置导入导出 -->
-        <el-row id="settings-data" class="margin-bottom margin-left-2em">
+        <el-row class="margin-bottom margin-left-2em">
           <el-col :span="24">
             <el-divider content-position="center">配置管理</el-divider>
           </el-col>
@@ -735,8 +735,7 @@
             </div>
           </el-col>
         </el-row>
-      </el-collapse-item>
-    </el-collapse>
+    </section>
     <!--    -->
   </div>
 
@@ -765,6 +764,7 @@
 // Main 处理配置信息
 import { computed, ref, watch, onUnmounted } from 'vue'
 import { models, options, services, servicesType, defaultOption } from "../entrypoints/utils/option";
+import { cleanServiceLabel } from '@/entrypoints/utils/serviceCatalog';
 import { Config, normalizeConfig } from "@/entrypoints/utils/model";
 import { storage } from '@wxt-dev/storage';
 import { ChatDotRound, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
@@ -772,12 +772,19 @@ import { ElMessage, ElMessageBox, ElInputNumber } from 'element-plus'
 import browser from 'webextension-polyfill';
 import { defineAsyncComponent } from 'vue';
 const CustomHotkeyInput = defineAsyncComponent(() => import('@/components/CustomHotkeyInput.vue'));
+const ServiceCatalog = defineAsyncComponent(() => import('@/components/ServiceCatalog.vue'));
 import { parseHotkey } from '@/entrypoints/utils/hotkey';
 import {
   isCustomBodyMapping,
   isValidCustomBody,
 } from '@/entrypoints/utils/custom-body';
 import {DEEPLX_ENDPOINT_PRESETS, parseDeepLXEndpoints} from '@/entrypoints/utils/deeplx';
+
+const props = withDefaults(defineProps<{
+  activeSection?: string
+}>(), {
+  activeSection: 'settings-general',
+})
 
 // 初始化深色模式媒体查询
 const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -885,6 +892,11 @@ let compute = ref({
   // 15、是否显示 DeepSeek API 格式配置
   showDeepseekApiType: computed(() => config.value.service === 'deepseek'),
   showDeepseekThinkingMode: computed(() => config.value.service === 'deepseek' && config.value.deepseekApiType !== 'responses'),
+})
+
+const currentServiceLabel = computed(() => {
+  const item = options.services.find((service: any) => service.value === config.value.service)
+  return item ? cleanServiceLabel(item.label) : config.value.service
 })
 
 // 监听主题变化
@@ -1467,6 +1479,72 @@ const validateConfig = (configData: any): boolean => {
 </script>
 
 <style scoped>
+
+.settings-section {
+  min-width: 0;
+}
+
+.disabled-section {
+  margin: 18px 12px 8px;
+  padding: 28px;
+  border: 1px dashed #d8dce6;
+  border-radius: 16px;
+  color: #677084;
+  background: #f8f9fb;
+  text-align: center;
+}
+
+.disabled-section strong {
+  color: #263044;
+  font-size: 15px;
+}
+
+.disabled-section p {
+  margin: 7px 0 0;
+  font-size: 11px;
+}
+
+.service-connection-section {
+  margin-top: 22px;
+  padding-top: 22px;
+  border-top: 1px solid #e8eaf0;
+}
+
+.subsection-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 12px 16px;
+}
+
+.subsection-heading > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.subsection-heading span {
+  color: #dc315f;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.subsection-heading strong {
+  margin-top: 4px;
+  color: #172033;
+  font-size: 17px;
+}
+
+.subsection-heading p {
+  margin: 0;
+  color: #7c8495;
+  font-size: 10px;
+}
+
+.data-section {
+  min-height: 260px;
+}
 
 .select-left {
   text-align: left;

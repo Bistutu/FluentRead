@@ -1,0 +1,259 @@
+<template>
+  <section class="service-catalog" aria-labelledby="service-catalog-title">
+    <header class="catalog-header">
+      <div>
+        <span class="catalog-eyebrow">翻译引擎</span>
+        <h3 id="service-catalog-title">选择服务与模型</h3>
+        <p>先选择翻译服务，再为支持模型的 AI 服务指定模型。</p>
+      </div>
+      <div class="current-summary" aria-live="polite">
+        <span>当前使用</span>
+        <strong>{{ selectedService?.label || '未选择' }}</strong>
+      </div>
+    </header>
+
+    <div class="catalog-layout">
+      <aside class="service-rail" aria-label="翻译服务列表">
+        <label class="catalog-search">
+          <span aria-hidden="true">⌕</span>
+          <input v-model.trim="serviceQuery" type="search" placeholder="搜索翻译服务" />
+        </label>
+
+        <div v-if="filteredGroups.length" class="service-groups">
+          <section v-for="group in filteredGroups" :key="group.id" class="service-group">
+            <div class="group-heading">
+              <strong>{{ group.label }}</strong>
+              <span>{{ group.items.length }}</span>
+            </div>
+            <button
+              v-for="item in group.items"
+              :key="item.value"
+              type="button"
+              class="service-item"
+              :class="{ active: service === item.value }"
+              :aria-pressed="service === item.value"
+              @click="$emit('update:service', item.value)"
+            >
+              <span class="service-mark" :data-tone="serviceTone(item.value)">{{ serviceMark(item.value, item.label) }}</span>
+              <span class="service-copy">
+                <strong>{{ item.label }}</strong>
+                <small>{{ group.id === 'machine' ? '机器翻译' : 'AI 翻译' }}</small>
+              </span>
+              <span v-if="service === item.value" class="current-dot" title="当前使用"></span>
+            </button>
+          </section>
+        </div>
+        <p v-else class="catalog-empty">没有匹配的翻译服务</p>
+      </aside>
+
+      <section class="service-detail" aria-label="当前翻译服务详情">
+        <div class="detail-hero">
+          <span class="service-mark large" :data-tone="serviceTone(service)">{{ serviceMark(service, selectedService?.label) }}</span>
+          <div>
+            <div class="detail-title-row">
+              <h4>{{ selectedService?.label || '请选择翻译服务' }}</h4>
+              <span class="active-badge">当前默认</span>
+            </div>
+            <p>{{ serviceDescription }}</p>
+          </div>
+        </div>
+
+        <div v-if="showModel" class="model-section">
+          <div class="model-heading">
+            <div>
+              <span>模型列表</span>
+              <strong>{{ selectedModel || '尚未选择模型' }}</strong>
+            </div>
+            <label v-if="modelOptions.length > 6" class="model-search">
+              <span aria-hidden="true">⌕</span>
+              <input v-model.trim="modelQuery" type="search" placeholder="搜索模型" />
+            </label>
+          </div>
+
+          <div v-if="filteredModels.length" class="model-grid" role="listbox" aria-label="可用模型">
+            <button
+              v-for="model in filteredModels"
+              :key="model"
+              type="button"
+              class="model-item"
+              :class="{ active: selectedModel === model, custom: model === customModelLabel }"
+              role="option"
+              :aria-selected="selectedModel === model"
+              @click="$emit('update:model', model)"
+            >
+              <span class="model-icon">{{ model === customModelLabel ? '+' : 'M' }}</span>
+              <span>
+                <strong>{{ model }}</strong>
+                <small>{{ model === customModelLabel ? '填写服务商支持的模型标识' : '使用此模型进行翻译' }}</small>
+              </span>
+              <span v-if="selectedModel === model" class="checkmark">✓</span>
+            </button>
+          </div>
+          <p v-else class="catalog-empty">没有匹配的模型</p>
+        </div>
+
+        <div v-else class="no-model-panel">
+          <span aria-hidden="true">✓</span>
+          <div><strong>无需选择模型</strong><p>该服务会使用自身的翻译引擎，保存后即可使用。</p></div>
+        </div>
+
+        <div class="detail-footer">
+          <span>下方仅显示当前服务需要的连接参数</span>
+          <b>{{ showModel ? `${modelOptions.length} 个模型候选` : '即选即用' }}</b>
+        </div>
+      </section>
+    </div>
+  </section>
+</template>
+
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import { customModelString } from '@/entrypoints/utils/option'
+import {
+  buildServiceGroups,
+  filterModels,
+  filterServiceGroups,
+  type ServiceOption,
+} from '@/entrypoints/utils/serviceCatalog'
+
+const props = defineProps<{
+  service: string
+  selectedModel?: string
+  services: ServiceOption[]
+  modelOptions: string[]
+  showModel: boolean
+}>()
+
+defineEmits<{
+  'update:service': [value: string]
+  'update:model': [value: string]
+}>()
+
+const serviceQuery = ref('')
+const modelQuery = ref('')
+const customModelLabel = customModelString
+
+const groups = computed(() => buildServiceGroups(props.services))
+const filteredGroups = computed(() => filterServiceGroups(groups.value, serviceQuery.value))
+const filteredModels = computed(() => filterModels(props.modelOptions, modelQuery.value))
+const selectedService = computed(() => groups.value.flatMap((group) => group.items).find((item) => item.value === props.service))
+
+const descriptions: Record<string, string> = {
+  microsoft: '稳定快速的机器翻译服务，适合日常网页双语阅读。',
+  google: 'Google 翻译服务，仅在双语对照模式下提供。',
+  deepL: '偏重自然表达的机器翻译服务，需要配置访问令牌。',
+  deeplx: '可连接自托管 DeepLX 地址的翻译服务。',
+  chromeTranslator: '调用 Chrome 内置翻译能力，无需选择模型。',
+  openai: '使用 OpenAI 兼容模型进行更自然的上下文翻译。',
+  azureOpenai: '通过 Azure OpenAI 部署端点调用模型。',
+  deepseek: '使用 DeepSeek 模型，可继续配置 API 格式与思考模式。',
+  gemini: '使用 Google Gemini 模型完成上下文翻译。',
+  custom: '连接兼容 OpenAI 请求格式的自定义或本地模型服务。',
+  newapi: '连接 New API 聚合服务，并选择对应的模型标识。',
+}
+
+const serviceDescription = computed(() =>
+  descriptions[props.service]
+    || (groups.value.find((group) => group.items.some((item) => item.value === props.service))?.id === 'machine'
+      ? '快速稳定的机器翻译服务，无需额外选择模型。'
+      : '使用大语言模型进行上下文翻译，需要按服务要求配置连接参数。'),
+)
+
+watch(() => props.service, () => {
+  modelQuery.value = ''
+})
+
+const markMap: Record<string, string> = {
+  microsoft: 'M', google: 'G', deepL: 'D', deeplx: 'DX', chromeTranslator: 'C',
+  openai: 'OA', azureOpenai: 'AZ', deepseek: 'DS', gemini: 'G', claude: 'C',
+  siliconCloud: 'S', huanYuan: '混', tongyi: '通', doubao: '豆', custom: '自', newapi: 'N',
+}
+
+function serviceMark(value: string, label = '') {
+  return markMap[value] || label.trim().slice(0, 1).toLocaleUpperCase() || '译'
+}
+
+function serviceTone(value: string) {
+  if (['openai', 'azureOpenai', 'custom', 'newapi'].includes(value)) return 'violet'
+  if (['deepseek', 'deepL', 'deeplx', 'microsoft'].includes(value)) return 'blue'
+  if (['gemini', 'google', 'chromeTranslator'].includes(value)) return 'green'
+  return 'rose'
+}
+</script>
+
+<style scoped>
+.service-catalog { margin: 2px 0 20px; border: 1px solid #e4e7ef; border-radius: 20px; overflow: hidden; background: #fff; }
+.catalog-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 24px; border-bottom: 1px solid #eceef3; }
+.catalog-eyebrow { color: #dc315f; font-size: 11px; font-weight: 800; letter-spacing: .1em; }
+.catalog-header h3 { margin: 5px 0 5px; color: #172033; font-size: 20px; letter-spacing: -.02em; }
+.catalog-header p { margin: 0; color: #737c8f; font-size: 12px; }
+.current-summary { display: flex; min-width: 140px; padding: 10px 13px; flex-direction: column; border: 1px solid #f4cad6; border-radius: 12px; background: #fff4f7; }
+.current-summary span { color: #9a6171; font-size: 9px; font-weight: 750; }
+.current-summary strong { margin-top: 3px; color: #c92b57; font-size: 12px; }
+.catalog-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 520px; }
+.service-rail { padding: 16px 12px 18px; border-right: 1px solid #eceef3; background: #fafbfc; }
+.catalog-search, .model-search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 11px; border: 1px solid #dfe3eb; border-radius: 11px; background: #fff; }
+.catalog-search span, .model-search span { color: #8991a2; font-size: 16px; }
+.catalog-search input, .model-search input { width: 100%; min-width: 0; border: 0; outline: 0; color: #172033; background: transparent; font-size: 11px; }
+.service-groups { display: grid; gap: 18px; margin-top: 17px; }
+.group-heading { display: flex; align-items: center; justify-content: space-between; padding: 0 8px 7px; color: #858d9e; }
+.group-heading strong { font-size: 10px; letter-spacing: .05em; }
+.group-heading span { font-size: 9px; }
+.service-group { min-width: 0; }
+.service-item { display: grid; grid-template-columns: 34px minmax(0, 1fr) 8px; align-items: center; gap: 9px; width: 100%; padding: 9px; border: 1px solid transparent; border-radius: 12px; color: #172033; background: transparent; text-align: left; cursor: pointer; transition: 150ms ease; }
+.service-item:hover { border-color: #e2e5ec; background: #fff; transform: translateX(2px); }
+.service-item.active { border-color: #f3c4d1; background: #fff0f4; box-shadow: 0 7px 18px rgba(214, 50, 96, .08); }
+.service-copy { display: flex; min-width: 0; flex-direction: column; }
+.service-copy strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.service-copy small { margin-top: 2px; color: #9097a7; font-size: 9px; }
+.service-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: #d42f60; background: #ffeaf0; font-size: 10px; font-weight: 850; }
+.service-mark[data-tone="blue"] { color: #2c65bb; background: #eaf2ff; }
+.service-mark[data-tone="green"] { color: #18835d; background: #e9f8f1; }
+.service-mark[data-tone="violet"] { color: #694bc2; background: #f0ebff; }
+.service-mark.large { width: 48px; height: 48px; border-radius: 14px; font-size: 13px; }
+.current-dot { width: 7px; height: 7px; border-radius: 50%; background: #ef4776; box-shadow: 0 0 0 4px rgba(239, 71, 118, .12); }
+.service-detail { display: flex; min-width: 0; padding: 24px; flex-direction: column; }
+.detail-hero { display: flex; align-items: flex-start; gap: 13px; padding-bottom: 20px; border-bottom: 1px solid #eceef3; }
+.detail-hero > div:last-child { min-width: 0; }
+.detail-title-row { display: flex; align-items: center; gap: 9px; }
+.detail-title-row h4 { margin: 1px 0 5px; color: #172033; font-size: 17px; }
+.active-badge { padding: 3px 7px; border-radius: 999px; color: #bd2853; background: #ffe9ef; font-size: 8px; font-weight: 800; }
+.detail-hero p { margin: 0; color: #737c8f; font-size: 11px; line-height: 1.6; }
+.model-section { margin-top: 20px; }
+.model-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 15px; margin-bottom: 12px; }
+.model-heading > div { display: flex; min-width: 0; flex-direction: column; }
+.model-heading span { color: #81899a; font-size: 9px; font-weight: 750; }
+.model-heading strong { overflow: hidden; margin-top: 3px; color: #172033; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.model-search { width: 168px; height: 34px; }
+.model-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-height: 330px; padding: 2px; overflow: auto; }
+.model-item { display: grid; grid-template-columns: 30px minmax(0, 1fr) 16px; align-items: center; gap: 9px; min-width: 0; padding: 10px; border: 1px solid #e4e7ee; border-radius: 12px; color: #172033; background: #fff; text-align: left; cursor: pointer; transition: 150ms ease; }
+.model-item:hover { border-color: #f0a9bc; transform: translateY(-1px); }
+.model-item.active { border-color: #ef4776; background: #fff4f7; box-shadow: 0 7px 16px rgba(214, 50, 96, .08); }
+.model-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; color: #6b7487; background: #f1f3f7; font-size: 10px; font-weight: 850; }
+.model-item.custom .model-icon { color: #c72a56; background: #ffe9ef; font-size: 16px; }
+.model-item > span:nth-child(2) { display: flex; min-width: 0; flex-direction: column; }
+.model-item strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.model-item small { overflow: hidden; margin-top: 2px; color: #9299a8; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.checkmark { color: #da315f; font-size: 12px; font-weight: 900; }
+.no-model-panel { display: flex; align-items: center; gap: 12px; margin-top: 20px; padding: 18px; border: 1px solid #d9eee5; border-radius: 14px; background: #f2faf6; }
+.no-model-panel > span { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; color: #fff; background: #28aa79; font-size: 14px; }
+.no-model-panel strong { color: #185d46; font-size: 12px; }
+.no-model-panel p { margin: 3px 0 0; color: #628074; font-size: 10px; }
+.detail-footer { display: flex; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 18px; color: #8b92a2; font-size: 9px; }
+.detail-footer b { color: #5f687a; }
+.catalog-empty { margin: 20px 8px; color: #9299a8; font-size: 10px; text-align: center; }
+@media (max-width: 900px) {
+  .catalog-layout { grid-template-columns: 220px minmax(0, 1fr); }
+  .model-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  .catalog-header { align-items: flex-start; padding: 18px; flex-direction: column; }
+  .current-summary { width: 100%; }
+  .catalog-layout { display: block; }
+  .service-rail { border-right: 0; border-bottom: 1px solid #eceef3; }
+  .service-groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .service-detail { padding: 18px; }
+  .model-heading { align-items: stretch; flex-direction: column; }
+  .model-search { width: 100%; }
+}
+</style>

@@ -281,11 +281,13 @@ async function broadcast(message: Record<string, unknown>) {
 function setPluginEnabled(enabled: boolean) {
   config.value.on = enabled;
   if (!enabled) {
-    config.value.disableFloatingBall = true;
-    config.value.selectionTranslatorMode = 'disabled';
     void broadcast({ type: 'toggleFloatingBall', isEnabled: false });
     void broadcast({ type: 'updateSelectionTranslatorMode', mode: 'disabled' });
+    return;
   }
+
+  void broadcast({ type: 'toggleFloatingBall', isEnabled: !config.value.disableFloatingBall });
+  void broadcast({ type: 'updateSelectionTranslatorMode', mode: config.value.selectionTranslatorMode });
 }
 
 function openDrawer(name: DrawerName) { activeDrawer.value = name; drawerVisible.value = true; }

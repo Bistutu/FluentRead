@@ -1,5 +1,5 @@
 <template>
-  <teleport to="body">
+  <div class="fr-selection-translator-root">
     <div ref="selection-ref" class="fr-selection-translator-wrapper">
       <!-- 小红点指示器 -->
       <div v-if="showIndicator" 
@@ -89,7 +89,7 @@
       </div>
       <span>复制译文成功!</span>
     </div>
-  </teleport>
+  </div>
 </template>
 
 <script setup lang="ts">
