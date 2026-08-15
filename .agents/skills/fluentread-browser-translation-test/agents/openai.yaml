@@ -1,4 +1,0 @@
-interface:
-  display_name: "FluentRead 浏览器翻译测试"
-  short_description: "启动开发版浏览器插件并验证指定段落翻译的三态状态切换流程"
-  default_prompt: "Use $fluentread-browser-translation-test to run the real-browser Control-key paragraph translation toggle test for FluentRead."
