@@ -23,7 +23,7 @@
 
   <div v-show="config.on">
     <!--    翻译模式-->
-    <el-row class="margin-bottom margin-left-2em">
+    <el-row class="margin-bottom margin-left-2em settings-preference-row">
       <el-col :span="12" class="lightblue rounded-corner">
         <span class="popup-text popup-vertical-left">翻译模式</span>
       </el-col>
@@ -36,7 +36,7 @@
     </el-row>
 
     <!-- 默认目标语言 -->
-    <el-row class="margin-bottom margin-left-2em">
+    <el-row class="margin-bottom margin-left-2em settings-preference-row">
       <el-col :span="12" class="lightblue rounded-corner">
         <span class="popup-text popup-vertical-left">默认目标语言</span>
       </el-col>
@@ -49,7 +49,7 @@
     </el-row>
 
     <!--    译文样式选择器-->
-    <el-row v-show="config.display === 1" class="margin-bottom margin-left-2em">
+    <el-row v-show="config.display === 1" class="margin-bottom margin-left-2em settings-preference-row">
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="选择双语模式下译文的显示样式，提供多种美观的效果" placement="top-start"
           :show-after="500">

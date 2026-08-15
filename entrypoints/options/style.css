@@ -93,6 +93,28 @@ h1 { margin-bottom: 6px; font-size: 28px; line-height: 1.25; letter-spacing: -.0
 .settings-card .el-row .popup-text { display: inline-flex; align-items: center; min-height: 34px; }
 .settings-card .lightblue { background: transparent !important; }
 .settings-card .popup-text { color: var(--ink); font-size: 13px; font-weight: 650; }
+.settings-card .settings-preference-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) clamp(220px, 32vw, 360px);
+  align-items: center;
+  gap: 18px;
+}
+.settings-card .settings-preference-row > .el-col {
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0;
+  flex: 0 0 auto !important;
+}
+.settings-card .settings-preference-row > .el-col:last-child {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.settings-card .settings-preference-row > .el-col:last-child > .el-select {
+  width: 100% !important;
+  max-width: 360px !important;
+  min-width: 0;
+}
 .settings-card .el-select, .settings-card .el-input, .settings-card .el-input-number { max-width: 360px; }
 .settings-card .el-select,
 .settings-card .el-input,
@@ -304,6 +326,13 @@ h1 { margin-bottom: 6px; font-size: 28px; line-height: 1.25; letter-spacing: -.0
   }
   .settings-card .el-row > .el-col { max-width: 100%; flex: 0 0 100%; }
   .settings-card .el-row > .flex-end { justify-content: flex-start; }
+  .settings-card .settings-preference-row {
+    grid-template-columns: minmax(0, 1fr) clamp(200px, 32vw, 300px);
+    gap: 12px;
+  }
+  .settings-card .settings-preference-row > .el-col { width: auto !important; max-width: none; flex: 0 0 auto; }
+  .settings-card .settings-preference-row > .el-col:last-child { justify-content: flex-end; }
+  .settings-card .settings-preference-row > .el-col:last-child > .el-select { max-width: 100% !important; }
   .settings-card .el-select,
   .settings-card .el-input,
   .settings-card .el-input-number { width: 100%; max-width: none; }
@@ -339,6 +368,11 @@ h1 { margin-bottom: 6px; font-size: 28px; line-height: 1.25; letter-spacing: -.0
 }
 
 @media (max-width: 480px) {
+  .settings-card .settings-preference-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+  }
+  .settings-card .settings-preference-row > .el-col:last-child { justify-content: stretch; }
   .settings-card .settings-control-row {
     grid-template-columns: minmax(0, 1fr);
     gap: 9px;
