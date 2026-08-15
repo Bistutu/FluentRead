@@ -398,6 +398,27 @@
       </el-col>
     </el-row>
 
+    <!-- 自定义请求体 -->
+    <el-row v-show="compute.showCustomBody" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark"
+          content='以 JSON 对象形式追加到请求体（顶层合并，会覆盖同名默认字段）。'
+          placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">自定义请求体<el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-input v-model="config.customBody[config.service]"
+          :class="{ 'input-error': !isValidCustomBody(config.customBody[config.service]) }"
+          placeholder='例如：{"thinking": {"type": "disabled"}}' />
+        <div v-if="!isValidCustomBody(config.customBody[config.service])" class="error-text">
+          请输入合法的 JSON 对象，否则该配置将被忽略
+        </div>
+      </el-col>
+    </el-row>
+
     <!-- 高级选项-->
     <el-collapse class="margin-left-2em margin-bottom">
       <el-collapse-item title="高级选项">
@@ -673,6 +694,11 @@ import browser from 'webextension-polyfill';
 import { defineAsyncComponent } from 'vue';
 const CustomHotkeyInput = defineAsyncComponent(() => import('@/components/CustomHotkeyInput.vue'));
 import { parseHotkey } from '@/entrypoints/utils/hotkey';
+import {
+  isCustomBodyMapping,
+  isValidCustomBody,
+  normalizeCustomBodyMapping,
+} from '@/entrypoints/utils/custom-body';
 
 // 初始化深色模式媒体查询
 const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -699,6 +725,7 @@ storage.getItem('local:config').then((value: any) => {
   if (typeof value === 'string' && value) {
     const parsedConfig = JSON.parse(value);
     Object.assign(config.value, parsedConfig);
+    config.value.customBody = normalizeCustomBodyMapping(parsedConfig.customBody);
   }
   // 初始应用主题
   updateTheme(config.value.theme || 'auto');
@@ -712,7 +739,9 @@ storage.watch('local:config', (newValue: any, oldValue: any) => {
   if (typeof newValue === 'string' && newValue) {
     // 将新的配置值解析为对象,并合并到当前的 config.value 中
     // 这样可以保持所有页面的配置同步
-    Object.assign(config.value, JSON.parse(newValue));
+    const parsedConfig = JSON.parse(newValue);
+    Object.assign(config.value, parsedConfig);
+    config.value.customBody = normalizeCustomBodyMapping(parsedConfig.customBody);
   }
 });
 
@@ -734,6 +763,8 @@ let compute = ref({
   showProxy: computed(() => servicesType.isUseProxy(config.value.service)),
   // 4、是否显示模型
   showModel: computed(() => servicesType.isUseModel(config.value.service)),
+  // 4.5、是否支持自定义请求体
+  showCustomBody: computed(() => servicesType.isUseCustomBody(config.value.service)),
   // 5、是否显示token
   showToken: computed(() => servicesType.isUseToken(config.value.service)),
   // 6、是否显示 AkSk
@@ -1117,6 +1148,19 @@ const handleExport = async () => {
     }
   }
 
+  // Clean empty customBody entries
+  if (cleanedConfig.customBody) {
+    for (const service in cleanedConfig.customBody) {
+      const value = cleanedConfig.customBody[service];
+      if (!value || !String(value).trim()) {
+        delete cleanedConfig.customBody[service];
+      }
+    }
+    if (Object.keys(cleanedConfig.customBody).length === 0) {
+      delete cleanedConfig.customBody;
+    }
+  }
+
   exportData.value = JSON.stringify(cleanedConfig, null, 2);
   showExportBox.value = !showExportBox.value;
   showImportBox.value = false;
@@ -1313,6 +1357,10 @@ const validateConfig = (configData: any): boolean => {
 
     // 检查服务配置
     if (typeof configData.service !== 'string') {
+      return false;
+    }
+
+    if ('customBody' in configData && !isCustomBodyMapping(configData.customBody)) {
       return false;
     }
 
