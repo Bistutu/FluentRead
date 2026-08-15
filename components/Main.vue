@@ -160,7 +160,6 @@
       <el-col :span="14" class="settings-control-label lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="（测试版）设置快捷键以便快速切换全文翻译状态，无需鼠标点击悬浮球" placement="top-start" :show-after="500">
         <span class="popup-text popup-vertical-left">
-          <!-- <span class="new-feature-badge">新</span> -->
           全文翻译快捷键
           <el-icon class="icon-margin">
             <ChatDotRound />
@@ -203,7 +202,6 @@
       <el-col :span="14" class="settings-control-label lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="选中文本后显示红点，鼠标移到红点上查看翻译结果。可选择关闭、双语显示或只显示译文" placement="top-start" :show-after="500">
       <span class="popup-text popup-vertical-left">
-        <!-- <span class="new-feature-badge">新</span> -->
         划词翻译
         <el-icon class="icon-margin">
           <ChatDotRound />
@@ -258,7 +256,6 @@
         <el-col :span="20" class="settings-control-label lightblue rounded-corner">
           <el-tooltip class="box-item" effect="dark" content="（测试版）控制是否显示屏幕边缘的即时翻译悬浮球，用于对整个网页进行翻译" placement="top-start" :show-after="500">
           <span class="popup-text popup-vertical-left">
-            <!-- <span class="new-feature-badge">新</span> -->
             全文翻译悬浮球
             <el-icon class="icon-margin">
               <ChatDotRound />
@@ -493,7 +490,7 @@ import { models, options, servicesType, defaultOption } from "../entrypoints/uti
 import { Config, normalizeConfig } from "@/entrypoints/utils/model";
 import { storage } from '@wxt-dev/storage';
 import { ChatDotRound, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox, ElInputNumber } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import browser from 'webextension-polyfill';
 import { defineAsyncComponent } from 'vue';
 const CustomHotkeyInput = defineAsyncComponent(() => import('@/components/CustomHotkeyInput.vue'));
@@ -505,6 +502,7 @@ import {
   isValidCustomBody,
 } from '@/entrypoints/utils/custom-body';
 import {DEEPLX_ENDPOINT_PRESETS, parseDeepLXEndpoints} from '@/entrypoints/utils/deeplx';
+import { isConfigImportValid, sanitizeConfigForExport } from '@/entrypoints/utils/config-transfer';
 
 const props = withDefaults(defineProps<{
   activeSection?: string
@@ -519,10 +517,7 @@ const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 function updateTheme(theme: string) {
   if (theme === 'auto') {
     // 自动模式下，直接使用系统主题
-    const isDark = darkModeMediaQuery.matches;
-    console.log('isDark', isDark);
-
-    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.classList.toggle('dark', darkModeMediaQuery.matches);
   } else {
     // 手动模式下，使用选择的主题
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -530,7 +525,7 @@ function updateTheme(theme: string) {
 }
 
 // 配置信息
-let config = ref(new Config());
+const config = ref(new Config());
 const selectedDeepLXPreset = ref('');
 
 const appendDeepLXPreset = (endpoint: string | undefined) => {
@@ -545,38 +540,29 @@ const appendDeepLXPreset = (endpoint: string | undefined) => {
   selectedDeepLXPreset.value = '';
 };
 
-// 从 storage 中获取本地配置
-storage.getItem('local:config').then((value: any) => {
-  if (typeof value === 'string' && value) {
-    const parsedConfig = JSON.parse(value);
-    Object.assign(config.value, normalizeConfig(parsedConfig));
-  }
-  // 初始应用主题
-  updateTheme(config.value.theme || 'auto');
-});
+function applyStoredConfig(value: unknown) {
+  if (typeof value !== 'string' || !value.trim()) return;
 
-// 监听 storage 中 'local:config' 的变化
-// 当其他页面修改了配置时,会触发这个监听器
-// newValue 是新的配置值,oldValue 是旧的配置值
-storage.watch('local:config', (newValue: any, oldValue: any) => {
-  // 检查 newValue 是否为非空字符串
-  if (typeof newValue === 'string' && newValue) {
-    // 将新的配置值解析为对象,并合并到当前的 config.value 中
-    // 这样可以保持所有页面的配置同步
-    Object.assign(config.value, normalizeConfig(JSON.parse(newValue)));
+  try {
+    Object.assign(config.value, normalizeConfig(JSON.parse(value)));
+  } catch (error) {
+    console.warn('[FluentRead] 无法读取设置页配置', error);
   }
-});
+}
 
-// 监听菜单栏配置变化
-// 当配置发生改变时,将新的配置序列化为 JSON 字符串并保存到 storage 中
-// deep: true 表示深度监听对象内部属性的变化
-watch(config, (newValue: any, oldValue: any) => {
-  // TODO 监听配置变化，显示刷新提示
-  storage.setItem('local:config', JSON.stringify(newValue));
+void storage.getItem('local:config')
+  .then((value) => applyStoredConfig(value))
+  .catch((error) => console.warn('[FluentRead] 无法读取本地配置', error))
+  .finally(() => updateTheme(config.value.theme || 'auto'));
+
+storage.watch('local:config', (newValue) => applyStoredConfig(newValue));
+
+watch(config, (newValue) => {
+  void storage.setItem('local:config', JSON.stringify(newValue));
 }, { deep: true });
 
 // 计算属性
-let compute = ref({
+const compute = ref({
   // 1、是否是AI服务
   showAI: computed(() => servicesType.isAI(config.value.service)),
   // 2、是否是机器翻译
@@ -709,11 +695,6 @@ watch(() => config.value.selectionTranslatorMode, (newMode) => {
   });
 });
 
-// 监听开关变化
-const handleSwitchChange = () => {
-  showRefreshTip.value = true;
-};
-
 // 处理插件状态变化
 const handlePluginStateChange = (val: boolean) => {
   // 总开关只控制当前运行状态，不覆盖用户对悬浮球和划词翻译的偏好。
@@ -756,13 +737,6 @@ const toggleFloatingBall = (val: boolean) => {
 // 自定义快捷键相关
 const showCustomHotkeyDialog = ref(false);
 const showCustomMouseHotkeyDialog = ref(false);
-
-// 配置导入导出相关
-const showExportConfig = ref(false);
-const showImportConfig = ref(false);
-const exportedConfig = ref('');
-const importConfigText = ref('');
-const importLoading = ref(false);
 
 // 处理快捷键选择变化
 const handleHotkeyChange = (value: string) => {
@@ -865,7 +839,7 @@ const getCustomMouseHotkeyDisplayName = () => {
 };
 
 // 处理并发数量变化
-const handleConcurrentChange = (currentValue: number | undefined, oldValue: number | undefined) => {
+const handleConcurrentChange = (currentValue: number | undefined) => {
   // 验证并发数量的有效性
   if (currentValue === undefined || currentValue < 1 || currentValue > 100) {
     ElMessage({
@@ -878,26 +852,11 @@ const handleConcurrentChange = (currentValue: number | undefined, oldValue: numb
     return;
   }
   
-  // 显示设置已更新的提示
-  showRefreshTip.value = true;
-  
   ElMessage({
     message: `并发数量已更新为 ${currentValue}`,
     type: 'success',
     duration: 2000
   });
-};
-
-// 显示刷新提示
-const showRefreshTip = ref(false);
-
-// 刷新页面
-const refreshPage = async () => {
-  const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-  if (tabs[0]?.id) {
-    browser.tabs.reload(tabs[0].id);
-    showRefreshTip.value = false; // 刷新后隐藏提示
-  }
 };
 
 const showExportBox = ref(false);
@@ -920,59 +879,26 @@ const isValidAzureEndpoint = (endpoint: string) => {
 };
 
 const handleExport = async () => {
-  const configStr = await storage.getItem('local:config');
-  if (!configStr) {
+  try {
+    const configStr = await storage.getItem('local:config');
+    if (typeof configStr !== 'string' || !configStr.trim()) {
+      ElMessage({ message: '没有找到配置信息', type: 'warning' });
+      return;
+    }
+
+    exportData.value = JSON.stringify(
+      sanitizeConfigForExport(JSON.parse(configStr)),
+      null,
+      2,
+    );
+    showExportBox.value = !showExportBox.value;
+    showImportBox.value = false;
+  } catch (error) {
     ElMessage({
-      message: '没有找到配置信息',
-      type: 'warning',
+      message: `导出配置失败：${error instanceof Error ? error.message : '配置格式错误'}`,
+      type: 'error',
     });
-    return;
   }
-
-  const configToExport = JSON.parse(configStr as string);
-
-  // Create a deep copy to avoid modifying the actual config
-  const cleanedConfig = JSON.parse(JSON.stringify(configToExport));
-
-  // Clean system_role and user_role if they are default
-  if (cleanedConfig.system_role) {
-    for (const service in cleanedConfig.system_role) {
-      if (cleanedConfig.system_role[service] === defaultOption.system_role) {
-        delete cleanedConfig.system_role[service];
-      }
-    }
-    if (Object.keys(cleanedConfig.system_role).length === 0) {
-      delete cleanedConfig.system_role;
-    }
-  }
-
-  if (cleanedConfig.user_role) {
-    for (const service in cleanedConfig.user_role) {
-      if (cleanedConfig.user_role[service] === defaultOption.user_role) {
-        delete cleanedConfig.user_role[service];
-      }
-    }
-    if (Object.keys(cleanedConfig.user_role).length === 0) {
-      delete cleanedConfig.user_role;
-    }
-  }
-
-  // Clean empty customBody entries
-  if (cleanedConfig.customBody) {
-    for (const service in cleanedConfig.customBody) {
-      const value = cleanedConfig.customBody[service];
-      if (!value || !String(value).trim()) {
-        delete cleanedConfig.customBody[service];
-      }
-    }
-    if (Object.keys(cleanedConfig.customBody).length === 0) {
-      delete cleanedConfig.customBody;
-    }
-  }
-
-  exportData.value = JSON.stringify(cleanedConfig, null, 2);
-  showExportBox.value = !showExportBox.value;
-  showImportBox.value = false;
 };
 
 const handleImport = () => {
@@ -983,8 +909,7 @@ const handleImport = () => {
 const saveImport = async () => {
   try {
     const parsedConfig = JSON.parse(importData.value);
-    // Add validation here
-    if (!validateConfig(parsedConfig)) {
+    if (!isConfigImportValid(parsedConfig)) {
       ElMessage({
         message: '配置无效或格式不正确, 请检查!',
         type: 'error',
@@ -1004,178 +929,6 @@ const saveImport = async () => {
       message: '配置格式错误, 请检查!',
       type: 'error',
     });
-  }
-};
-
-
-// 切换导出配置显示
-const toggleExportConfig = async () => {
-  if (showExportConfig.value) {
-    // 如果已经显示，则隐藏
-    showExportConfig.value = false;
-    exportedConfig.value = '';
-  } else {
-    // 如果未显示，则显示并生成配置
-    try {
-      // 确保从storage获取最新的配置
-      const latestConfig = await storage.getItem('local:config');
-      let configToExport;
-
-      if (latestConfig && typeof latestConfig === 'string') {
-        // 使用storage中的最新配置
-        configToExport = JSON.parse(latestConfig);
-      } else {
-        // 如果storage中没有，使用当前config.value
-        configToExport = JSON.parse(JSON.stringify(config.value));
-      }
-
-      exportedConfig.value = JSON.stringify(configToExport, null, 2);
-      showExportConfig.value = true;
-
-      ElMessage({
-        message: '配置已生成，请复制保存',
-        type: 'success',
-        duration: 2000
-      });
-    } catch (error) {
-      ElMessage({
-         message: '导出配置失败：' + ((error as Error)?.message || '未知错误'),
-         type: 'error',
-         duration: 3000
-       });
-    }
-  }
-};
-
-// 复制导出的配置到剪贴板
-const copyExportedConfig = async () => {
-  try {
-    await navigator.clipboard.writeText(exportedConfig.value);
-    ElMessage({
-      message: '配置已复制到剪贴板',
-      type: 'success',
-      duration: 2000
-    });
-  } catch (error) {
-    ElMessage({
-      message: '复制失败，请手动复制',
-      type: 'warning',
-      duration: 2000
-    });
-  }
-};
-
-// 切换导入配置显示
-const toggleImportConfig = () => {
-  if (showImportConfig.value) {
-    // 如果已经显示，则隐藏并清空内容
-    showImportConfig.value = false;
-    importConfigText.value = '';
-  } else {
-    // 如果未显示，则显示
-    showImportConfig.value = true;
-    importConfigText.value = '';
-  }
-};
-
-// 取消导入
-const cancelImport = () => {
-  // 清空输入框并隐藏导入区域
-  importConfigText.value = '';
-  showImportConfig.value = false;
-  importLoading.value = false;
-};
-
-// 导入配置
-const importConfig = async () => {
-  if (!importConfigText.value.trim()) {
-    ElMessage({
-      message: '请输入配置内容',
-      type: 'warning',
-      duration: 2000
-    });
-    return;
-  }
-
-  importLoading.value = true;
-
-  try {
-    // 解析JSON配置
-    const importedConfig = JSON.parse(importConfigText.value);
-
-    // 验证配置格式
-    if (!validateConfig(importedConfig)) {
-      throw new Error('配置格式不正确');
-    }
-
-    // 确认导入
-    await ElMessageBox.confirm(
-      '导入配置将覆盖当前所有设置，确定要继续吗？',
-      '确认导入',
-      {
-        confirmButtonText: '确定导入',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }
-    );
-
-    // 应用新配置
-    Object.assign(config.value, normalizeConfig(importedConfig));
-
-    // 保存到storage
-    await storage.setItem('local:config', JSON.stringify(config.value));
-
-    // 隐藏导入区域并清空输入
-    showImportConfig.value = false;
-    importConfigText.value = '';
-
-    ElMessage({
-      message: '配置导入成功',
-      type: 'success',
-      duration: 2000
-    });
-
-  } catch (error) {
-    if ((error as Error).message !== 'cancel') {
-      ElMessage({
-        message: '导入失败：' + ((error as Error).message || '配置格式错误'),
-        type: 'error',
-        duration: 3000
-      });
-    }
-  } finally {
-    importLoading.value = false;
-  }
-};
-
-// 验证配置格式
-const validateConfig = (configData: any): boolean => {
-  try {
-    // 检查是否是对象
-    if (typeof configData !== 'object' || configData === null) {
-      return false;
-    }
-
-    // 检查必要的配置字段
-    const requiredFields = ['on', 'service', 'display', 'from', 'to'];
-    for (const field of requiredFields) {
-      if (!(field in configData)) {
-        return false;
-      }
-    }
-
-    // 检查服务配置
-    if (typeof configData.service !== 'string') {
-      return false;
-    }
-
-    if ('customBody' in configData && !isCustomBodyMapping(configData.customBody)) {
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    return false;
   }
 };
 
@@ -1369,14 +1122,6 @@ const validateConfig = (configData: any): boolean => {
   margin-right: 1em;
 }
 
-.margin-top-2em {
-  margin-top: 1em;
-}
-
-.margin-top-1em {
-  margin-top: 0.5em;
-}
-
 /* 设置滚动条样式 */
 ::-webkit-scrollbar {
   width: 6px;
@@ -1391,57 +1136,6 @@ const validateConfig = (configData: any): boolean => {
 ::-webkit-scrollbar-track {
   background: #f5f5f5;
   border-radius: 3px;
-}
-
-.refresh-tip {
-  margin: 0 1em;
-}
-
-.refresh-button {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 0.5em 1em;
-  color: #fff;
-  background-color: #409eff;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s, color 0.3s;
-}
-
-.refresh-button:hover {
-  background-color: #66b1ff;
-  color: #fff;
-}
-
-.new-feature-badge {
-  display: inline-block;
-  font-size: 12px;
-  background-color: #f56c6c;
-  color: white;
-  padding: 1px 6px;
-  border-radius: 10px;
-  margin-right: 8px;
-  font-weight: bold;
-  animation: bounce 1s infinite alternate;
-}
-
-@keyframes pulse-glow {
-  0% {
-    box-shadow: 0 2px 8px rgba(64, 158, 255, 0.1);
-  }
-  100% {
-    box-shadow: 0 2px 12px rgba(64, 158, 255, 0.5);
-  }
-}
-
-@keyframes bounce {
-  0% {
-    transform: translateY(0);
-  }
-  100% {
-    transform: translateY(-3px);
-  }
 }
 
 /* 自定义快捷键相关样式 */

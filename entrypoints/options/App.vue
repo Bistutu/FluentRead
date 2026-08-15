@@ -97,85 +97,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import Main from '@/components/Main.vue'
-
-type NavigationItem = {
-  id: string
-  icon: string
-  label: string
-  description: string
-  group: string
-  heading: string
-  summary: string
-  kicker: string
-  title: string
-  detail: string
-  searchDescription: string
-}
+import { navigationGroups, navigationItems } from './navigation'
 
 const version = process.env.VUE_APP_VERSION
 const query = ref('')
 const activeSection = ref('settings-general')
 
-const navigationGroups: Array<{ label: string; items: NavigationItem[] }> = [
-  {
-    label: '基础设置',
-    items: [
-      {
-        id: 'settings-general', icon: '⌂', label: '通用设置', description: '状态与显示', group: '基础设置',
-        heading: '调整你的阅读体验', summary: '管理插件状态、翻译模式和译文的基础显示方式。',
-        kicker: '阅读偏好', title: '通用设置', detail: '常用开关集中在这里，修改后会自动保存。',
-        searchDescription: '插件启停、双语模式、译文样式与主题',
-      },
-      {
-        id: 'settings-services', icon: '译', label: '翻译服务', description: '服务与模型', group: '基础设置',
-        heading: '配置翻译服务与模型', summary: '按机器翻译和 AI 翻译分类，配置之后网页翻译默认使用的服务、模型及连接参数。',
-        kicker: '翻译能力', title: '翻译服务与模型', detail: '配置网页翻译默认使用的服务、模型和连接参数。',
-        searchDescription: '微软翻译、OpenAI、DeepSeek、Gemini、模型与令牌',
-      },
-    ],
-  },
-  {
-    label: '阅读工具',
-    items: [
-      {
-        id: 'settings-shortcuts', icon: '⌘', label: '交互与快捷键', description: '悬停、划词、全文', group: '阅读工具',
-        heading: '让翻译顺手发生', summary: '统一设置鼠标悬停、划词和全文翻译的触发习惯。',
-        kicker: '操作方式', title: '交互与快捷键', detail: '为高频动作选择容易记忆且不冲突的触发方式。',
-        searchDescription: '鼠标悬停、划词翻译、全文翻译与自定义按键',
-      },
-    ],
-  },
-  {
-    label: '系统与数据',
-    items: [
-      {
-        id: 'settings-advanced', icon: '◇', label: '高级选项', description: '性能与模板', group: '系统与数据',
-        heading: '精细控制运行方式', summary: '管理缓存、动画、并发、悬浮工具、代理和 AI 提示词。',
-        kicker: '运行策略', title: '高级选项', detail: '这些设置更偏向性能、兼容性和高级翻译行为。',
-        searchDescription: '缓存、动画、并发、悬浮球、输入框、代理与提示词',
-      },
-      {
-        id: 'settings-data', icon: '⇅', label: '配置管理', description: '导入与导出', group: '系统与数据',
-        heading: '备份与迁移配置', summary: '导出当前设置，或从已有配置恢复你的使用习惯。',
-        kicker: '数据工具', title: '配置管理', detail: '通过 JSON 完成配置备份、迁移与恢复。',
-        searchDescription: '备份、迁移、导出与导入 JSON 配置',
-      },
-    ],
-  },
-  {
-    label: '关于',
-    items: [
-      {
-        id: 'settings-about', icon: 'i', label: '关于流畅阅读', description: '版本与项目', group: '关于',
-        heading: '关于流畅阅读', summary: '了解插件版本、核心体验与项目入口。',
-        kicker: '关于项目', title: '关于流畅阅读', detail: '一个让双语阅读更自然的开源浏览器翻译插件。',
-        searchDescription: '版本、开源项目、使用文档与问题反馈',
-      },
-    ],
-  },
-]
-
-const navigation = navigationGroups.flatMap((group) => group.items)
+const navigation = navigationItems
 const activeItem = computed(() => navigation.find((item) => item.id === activeSection.value) || navigation[0])
 
 const filteredResults = computed(() => {
