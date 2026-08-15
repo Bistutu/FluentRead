@@ -195,19 +195,32 @@ h1 { margin-bottom: 6px; font-size: 28px; line-height: 1.25; letter-spacing: -.0
 .settings-card .settings-control-row .settings-toggle {
   --el-switch-on-color: var(--brand);
   --el-switch-off-color: #dfe3eb;
-  width: 52px !important;
-  height: 30px !important;
+  --el-switch-border-color: #dfe4ed;
+  width: 44px !important;
+  height: 24px !important;
 }
 .settings-card .settings-control-row .el-switch__core {
-  width: 52px !important;
-  min-width: 52px !important;
-  height: 30px !important;
-  border: 0;
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 24px !important;
+  border: 1px solid var(--el-switch-border-color);
   border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(23, 32, 51, .02);
 }
 .settings-card .settings-control-row .el-switch__action {
-  width: 24px;
-  height: 24px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  box-shadow: 0 2px 5px rgba(23, 32, 51, .16);
+}
+.settings-card .settings-control-row .el-switch.is-checked .el-switch__core {
+  --el-switch-border-color: var(--brand);
+}
+.settings-card .settings-control-row .el-switch.is-checked .el-switch__action {
+  left: calc(100% - 20px);
+}
+.settings-card .settings-control-row .el-switch:hover .el-switch__core {
+  border-color: #ef9ab1;
 }
 .settings-card .settings-control-row .custom-hotkey-display {
   min-height: 42px;
