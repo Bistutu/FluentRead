@@ -168,7 +168,7 @@ watch(modelQuery, () => {
 
 <style scoped>
 .service-catalog { display: flex; height: clamp(520px, calc(100vh - 270px), 760px); min-height: 520px; margin: 2px 0 20px; border: 1px solid #e4e7ef; border-radius: 20px; overflow: hidden; background: #fff; flex-direction: column; }
-.catalog-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 0; flex: 1; overflow: hidden; }
+.catalog-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 0; flex: 1; overflow: hidden; }
 .service-rail { min-height: 0; padding: 16px 12px 18px; border-right: 1px solid #eceef3; background: #fafbfc; overflow-y: auto; }
 .catalog-search, .model-search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 11px; border: 1px solid #dfe3eb; border-radius: 11px; background: #fff; }
 .catalog-search span, .model-search span { color: #8991a2; font-size: 16px; }
@@ -185,7 +185,11 @@ watch(modelQuery, () => {
 .service-copy strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .service-copy small { margin-top: 3px; color: #9097a7; font-size: 10px; }
 .current-dot { width: 7px; height: 7px; border-radius: 50%; background: #ef4776; box-shadow: 0 0 0 4px rgba(239, 71, 118, .12); }
-.service-detail { display: flex; min-width: 0; min-height: 0; padding: 24px; flex-direction: column; overflow: hidden; }
+.service-detail { display: flex; min-width: 0; min-height: 0; margin: 14px; padding: 22px; border: 1px solid #e4e7ef; border-radius: 16px; background: #fff; flex-direction: column; overflow: hidden; }
+.service-detail > .detail-hero,
+.service-detail > .model-section,
+.service-detail > .no-model-panel,
+.service-detail > .service-configuration-slot { width: min(100%, 1080px); }
 .detail-hero { display: flex; align-items: flex-start; gap: 13px; padding-bottom: 20px; border-bottom: 1px solid #eceef3; }
 .detail-hero > div:last-child { min-width: 0; }
 .detail-title-row { display: flex; align-items: center; gap: 9px; }
@@ -236,7 +240,7 @@ watch(modelQuery, () => {
   .service-detail { padding: 18px; }
   .model-heading { align-items: stretch; flex-direction: column; }
   .model-search { width: 100%; }
-  .service-detail { min-height: 520px; overflow: visible; }
+  .service-detail { min-height: 520px; margin: 0; padding: 18px; border: 0; border-radius: 0; overflow: visible; }
   .model-grid { max-height: 400px; }
   .service-configuration-slot { max-height: none; overflow: visible; }
 }

@@ -90,7 +90,6 @@
         <Main v-else :active-section="activeSection" />
       </section>
 
-      <footer>FluentRead V{{ version }} · 为更自然的双语阅读而设计</footer>
     </main>
   </div>
 </template>
