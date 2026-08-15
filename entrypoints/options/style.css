@@ -69,10 +69,18 @@ h1 { margin-bottom: 8px; font-size: 30px; line-height: 1.25; letter-spacing: -.0
 .search-empty { padding: 18px; text-align: center; }
 
 .settings-card { min-height: 0; padding: 28px 28px 18px; border: 1px solid var(--line); border-radius: 24px; background: var(--surface); box-shadow: 0 18px 50px rgba(31, 40, 61, .07); flex: 1; overflow: auto; }
-.settings-card.services-view { overflow: auto; }
-.settings-card.services-view { padding: 0; }
+.settings-card.services-view {
+  display: flex; width: calc(100% + 72px); margin-right: -36px; margin-left: -36px; padding: 0; border-right: 0; border-left: 0; border-radius: 0;
+  flex-direction: column; overflow: hidden;
+}
 .settings-card.services-view > .card-intro { margin: 0; padding: 28px 28px 22px; }
-.settings-card.services-view .service-catalog { margin: 0; border-right: 0; border-left: 0; border-radius: 0; }
+.settings-card.services-view > .settings-main-sections { display: flex; height: 100%; min-height: 0; flex: 1 1 0%; flex-direction: column; }
+.settings-card.services-view #settings-services { display: flex !important; min-height: 0; flex: 1 1 0%; flex-direction: column; }
+.settings-card.services-view .service-catalog { min-height: 0 !important; height: 0 !important; margin: 0; border-right: 0; border-left: 0; border-radius: 0; flex: 1 1 0%; }
+.settings-card.services-view .service-catalog .catalog-layout { min-height: 0; overflow: hidden; }
+.settings-card.services-view .service-configuration-slot .service-connection-section { margin-top: 0; padding-top: 0; border-top: 0; }
+.settings-card.services-view .service-configuration-slot .subsection-heading { margin-right: 0; margin-left: 0; }
+.settings-card.services-view .service-configuration-slot .el-row { margin-right: 0 !important; margin-left: 0 !important; }
 .card-intro { margin: 0 16px 25px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
 .card-intro h2 { margin-bottom: 6px; font-size: 21px; }
 .settings-card > div:last-child > .el-row,
@@ -123,6 +131,7 @@ h1 { margin-bottom: 8px; font-size: 30px; line-height: 1.25; letter-spacing: -.0
   body { min-width: 720px; }
   .sidebar { flex-basis: 210px; width: 210px; }
   .workspace { width: calc(100% - 210px); padding: 36px 28px 24px; }
+  .settings-card.services-view { width: calc(100% + 40px); margin-right: -20px; margin-left: -20px; }
   .topbar { align-items: stretch; flex-direction: column; }
   .search-box { width: 100%; }
 }
@@ -152,6 +161,8 @@ h1 { margin-bottom: 8px; font-size: 30px; line-height: 1.25; letter-spacing: -.0
   .topbar p { font-size: 12px; line-height: 1.55; }
   .search-box { height: 44px; }
   .settings-card { padding: 20px 8px 14px; border-radius: 20px; }
+  .settings-card.services-view { display: block; width: 100%; margin-right: 0; margin-left: 0; border-right: 1px solid var(--line); border-left: 1px solid var(--line); border-radius: 20px; overflow: visible; }
+  .settings-card.services-view .service-catalog { height: auto !important; flex: 0 0 auto; }
   .card-intro { margin: 0 10px 16px; padding-bottom: 16px; }
   .card-intro h2 { font-size: 19px; }
   .settings-card .el-row {

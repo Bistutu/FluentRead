@@ -73,7 +73,7 @@
     <p>请先在“通用设置”中启用插件，再调整该分类。</p>
   </div>
 
-  <div v-show="config.on">
+  <div v-show="config.on" class="settings-main-sections">
 
     <!-- 翻译服务 -->
     <section v-show="props.activeSection === 'settings-services'" id="settings-services" class="settings-section">
@@ -85,7 +85,17 @@
         :show-model="compute.showModel"
         @update:service="config.service = $event"
         @update:model="config.model[config.service] = $event"
-      />
+      >
+        <template #configuration>
+          <ServiceConfiguration
+            :config="config"
+            :compute="compute"
+            :options="options"
+            :current-service-label="currentServiceLabel"
+            :is-valid-azure-endpoint="isValidAzureEndpoint"
+          />
+        </template>
+      </ServiceCatalog>
 
     <!-- 免费翻译服务降级顺序 -->
     <el-row v-show="compute.showFreeTranslation" class="margin-bottom margin-left-2em">
@@ -228,290 +238,6 @@
     </section>
 
     <!-- token -->
-    <section v-show="props.activeSection === 'settings-services'" class="settings-section service-connection-section">
-      <div class="subsection-heading">
-        <div><span>服务配置</span><strong>连接与请求参数</strong></div>
-        <p>这里只显示 {{ currentServiceLabel }} 实际需要的设置。</p>
-      </div>
-    <el-row v-show="compute.showToken" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark"
-          content="API访问令牌仅保存在本地，用于访问翻译服务。获取方式请参考对应服务的官方文档；翻译服务为 ollama 时，token 可为任意值" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">访问令牌<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.token[config.service]" type="password" show-password placeholder="请输入API访问令牌" />
-      </el-col>
-    </el-row>
-
-    <!-- Azure OpenAI 端点配置 -->
-    <el-row v-show="compute.showAzureOpenaiEndpoint" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark"
-          content="Azure OpenAI 服务端点地址，必须包含完整的部署信息。格式：https://your-resource-name.openai.azure.com/openai/deployments/your-deployment-name/chat/completions?api-version=2024-02-15-preview" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">Azure 端点<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input
-          v-model="config.azureOpenaiEndpoint"
-          placeholder="https://your-resource.openai.azure.com/openai/deployments/your-model/chat/completions?api-version=2024-02-15-preview"
-          :class="{ 'input-error': config.azureOpenaiEndpoint && !isValidAzureEndpoint(config.azureOpenaiEndpoint) }"
-        />
-        <div v-if="config.azureOpenaiEndpoint && !isValidAzureEndpoint(config.azureOpenaiEndpoint)" class="error-text">
-          端点地址格式不正确，请确保包含 openai.azure.com 域名和 /chat/completions 路径
-        </div>
-      </el-col>
-    </el-row>
-
-    <!-- DeepLX URL 配置-->
-    <el-row v-show="compute.showDeepLX" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark"
-          content="DeepLX 是非官方免费服务。可填写多个地址，每行或逗号分隔；请求会按顺序故障转移。公共站点可能记录翻译文本，敏感内容建议使用本地或自建服务。"
-          placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">服务地址</span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input
-          v-model="config.deeplx"
-          type="textarea"
-          :rows="3"
-          resize="vertical"
-          placeholder="https://deeplx.1stg.me/translate&#10;http://localhost:1188/translate"
-        />
-        <div class="deeplx-hint">每行或逗号分隔，按顺序尝试；带 &#123;&#123;apiKey&#125;&#125; 的地址会使用上方访问令牌。</div>
-        <el-select
-          v-model="selectedDeepLXPreset"
-          class="deeplx-presets"
-          size="small"
-          clearable
-          placeholder="快速添加推荐站点"
-          @change="appendDeepLXPreset"
-        >
-          <el-option
-            v-for="preset in DEEPLX_ENDPOINT_PRESETS"
-            :key="preset.url"
-            :label="preset.label"
-            :value="preset.url"
-          />
-        </el-select>
-      </el-col>
-    </el-row>
-
-    <!-- 使用AkSk -->
-    <el-row v-show="compute.showAkSk" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="百度文心一言API密钥对，用于访问翻译服务" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">API Key<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.ak" placeholder="请输入Access Key" />
-      </el-col>
-    </el-row>
-    <el-row v-show="compute.showAkSk" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="百度文心一言API密钥对，用于访问翻译服务" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">Secret Key<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.sk" type="password" placeholder="请输入Secret Key" />
-      </el-col>
-    </el-row>
-
-    <!-- 有道翻译配置 -->
-    <el-row v-show="compute.showYoudao" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="有道智云翻译API应用ID，用于访问有道翻译服务。可在有道智云控制台获取" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">App Key<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.youdaoAppKey" placeholder="有道 AppKey" />
-      </el-col>
-    </el-row>
-    <el-row v-show="compute.showYoudao" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="有道智云翻译API应用密钥，用于访问有道翻译服务。可在有道智云控制台获取" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">App Secret<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.youdaoAppSecret" type="password" show-password placeholder="有道 AppSecret" />
-      </el-col>
-    </el-row>
-
-    <!-- 腾讯云机器翻译配置 -->
-    <el-row v-show="compute.showTencent" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="腾讯云API访问密钥ID，用于访问腾讯云机器翻译服务。可在腾讯云控制台的访问管理中获取" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">Secret ID<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.tencentSecretId" placeholder="腾讯云 SecretId" />
-      </el-col>
-    </el-row>
-    <el-row v-show="compute.showTencent" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="腾讯云API访问密钥，用于访问腾讯云机器翻译服务。可在腾讯云控制台的访问管理中获取" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">Secret Key<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.tencentSecretKey" type="password" show-password placeholder="腾讯云 SecretKey" />
-      </el-col>
-    </el-row>
-
-    <!--  Coze需显示 robot_id -->
-    <el-row v-show="compute.showRobotId" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="Coze机器人ID，可在Coze开发者文档中查看获取方式" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">机器人ID<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.robot_id[config.service]" placeholder="请输入Coze机器人ID" />
-      </el-col>
-    </el-row>
-
-    <!-- 本地大模型配置 -->
-    <el-row v-show="compute.showCustom" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="目前仅支持OpenAI格式的请求接口，如http://localhost:3000/v1/chat/completions，其中 localhost:11434 可更换为任意值。
-                     ollama 配置请参考：https://fluent.thinkstu.com/guide/faq.html" placement="top-start" :show-after="500">
-          <span class="popup-text popup-vertical-left">自定义接口<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.custom" placeholder="请输入自定义接口地址" />
-      </el-col>
-    </el-row>
-
-    <!-- NewAPI 配置 -->
-    <el-row v-show="compute.showNewAPI" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="填写 New API 的访问地址，如：http://localhost:3000" placement="top-start" :show-after="500">
-          <span class="popup-text popup-vertical-left">NewAPI接口<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.newApiUrl" placeholder="请输入您的New API接口地址" />
-      </el-col>
-    </el-row>
-
-    <el-row v-show="compute.showCustomModel" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark"
-          :content="config.service === 'doubao' ? '豆包的model为接入点，获取方式见官方文档：https://console.volcengine.com/ark/region:ark+cn-beijing/endpoint' : '注意：自定义模型名称需要与服务商提供的模型名称一致，否则无法使用！'"
-          placement="top-start" :show-after="500">
-          <span class="popup-text popup-vertical-left">{{ config.service === 'doubao' ? '接入点' : '自定义模型' }}<el-icon
-              class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.customModel[config.service]" placeholder="例如：gemma:7b" />
-      </el-col>
-    </el-row>
-
-    <!-- DeepSeek API 格式 -->
-    <el-row v-show="compute.showDeepseekApiType" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark"
-          content="自动：使用 DeepSeek 官方 Chat Completion；仅当代理或网关明确支持 Responses API 时手动选择 Responses API"
-          placement="top-start" :show-after="500">
-          <span class="popup-text popup-vertical-left">API 格式<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-select v-model="config.deepseekApiType" placeholder="请选择 API 格式">
-          <el-option class="select-left" v-for="item in options.deepseekApiType" :key="item.value" :label="item.label"
-                     :value="item.value" />
-        </el-select>
-      </el-col>
-    </el-row>
-
-    <!-- DeepSeek 思考模式 -->
-    <el-row v-show="compute.showDeepseekThinkingMode" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark"
-          content="DeepSeek V4 Chat Completion 思考模式。翻译通常建议关闭以降低延迟；旧 deepseek-reasoner 配置会自动迁移为开启。"
-          placement="top-start" :show-after="500">
-          <span class="popup-text popup-vertical-left">思考模式<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-select v-model="config.deepseekThinkingMode" placeholder="请选择思考模式">
-          <el-option class="select-left" v-for="item in options.deepseekThinkingMode" :key="item.value"
-                     :label="item.label" :value="item.value" />
-        </el-select>
-      </el-col>
-    </el-row>
-
-    <!-- 自定义请求体 -->
-    <el-row v-show="compute.showCustomBody" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark"
-          content='以 JSON 对象形式追加到请求体（顶层合并，会覆盖同名默认字段）。'
-          placement="top-start" :show-after="500">
-          <span class="popup-text popup-vertical-left">自定义请求体<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.customBody[config.service]"
-          :class="{ 'input-error': !isValidCustomBody(config.customBody[config.service]) }"
-          placeholder='例如：{"thinking": {"type": "disabled"}}' />
-        <div v-if="!isValidCustomBody(config.customBody[config.service])" class="error-text">
-          请输入合法的 JSON 对象，否则该配置将被忽略
-        </div>
-      </el-col>
-    </el-row>
-    </section>
-
     <!-- 高级选项-->
     <section v-show="props.activeSection === 'settings-advanced'" id="settings-advanced" class="settings-section">
 
@@ -788,7 +514,8 @@ import { ElMessage, ElMessageBox, ElInputNumber } from 'element-plus'
 import browser from 'webextension-polyfill';
 import { defineAsyncComponent } from 'vue';
 const CustomHotkeyInput = defineAsyncComponent(() => import('@/components/CustomHotkeyInput.vue'));
-const ServiceCatalog = defineAsyncComponent(() => import('@/components/ServiceCatalog.vue'));
+import ServiceCatalog from '@/components/ServiceCatalog.vue';
+import ServiceConfiguration from '@/components/ServiceConfiguration.vue';
 import { parseHotkey } from '@/entrypoints/utils/hotkey';
 import {
   isCustomBodyMapping,

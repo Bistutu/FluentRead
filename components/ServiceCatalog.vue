@@ -4,10 +4,10 @@
       <div>
         <span class="catalog-eyebrow">翻译引擎</span>
         <h3 id="service-catalog-title">选择服务与模型</h3>
-        <p>先选择翻译服务，再为支持模型的 AI 服务指定模型。</p>
+        <p>这里配置默认翻译服务和模型，之后网页翻译会按此设置执行。</p>
       </div>
       <div class="current-summary" aria-live="polite">
-        <span>当前使用</span>
+        <span>默认服务</span>
         <strong>{{ selectedService?.label || '未选择' }}</strong>
       </div>
     </header>
@@ -23,7 +23,7 @@
           <section v-for="group in filteredGroups" :key="group.id" class="service-group">
             <div class="group-heading">
               <strong>{{ group.label }}</strong>
-              <span>{{ group.items.length }}</span>
+              <span>{{ group.items.length }} 项</span>
             </div>
             <button
               v-for="item in group.items"
@@ -39,7 +39,7 @@
                 <strong>{{ item.label }}</strong>
                 <small>{{ group.id === 'machine' ? '机器翻译' : 'AI 翻译' }}</small>
               </span>
-              <span v-if="service === item.value" class="current-dot" title="当前使用"></span>
+              <span v-if="service === item.value" class="current-dot" title="默认服务"></span>
             </button>
           </section>
         </div>
@@ -52,7 +52,7 @@
           <div>
             <div class="detail-title-row">
               <h4>{{ selectedService?.label || '请选择翻译服务' }}</h4>
-              <span class="active-badge">当前默认</span>
+              <span class="active-badge">默认配置</span>
             </div>
             <p>{{ serviceDescription }}</p>
           </div>
@@ -115,12 +115,16 @@
 
         <div v-else class="no-model-panel">
           <span aria-hidden="true">✓</span>
-          <div><strong>无需选择模型</strong><p>该服务会使用自身的翻译引擎，保存后即可使用。</p></div>
+          <div><strong>该服务不使用模型</strong><p>微软翻译等机器翻译服务会直接使用自身引擎，无需配置模型。</p></div>
+        </div>
+
+        <div class="service-configuration-slot" aria-label="当前服务配置">
+          <slot name="configuration" />
         </div>
 
         <div class="detail-footer">
-          <span>下方仅显示当前服务需要的连接参数</span>
-          <b>{{ showModel ? `${modelOptions.length} 个模型候选` : '即选即用' }}</b>
+          <span>下方配置该默认服务需要的连接参数</span>
+          <b>{{ showModel ? `${modelOptions.length} 个模型候选` : '无需模型配置' }}</b>
         </div>
       </section>
     </div>
@@ -218,29 +222,29 @@ function serviceTone(value: string) {
 <style scoped>
 .service-catalog { display: flex; height: clamp(520px, calc(100vh - 270px), 760px); min-height: 520px; margin: 2px 0 20px; border: 1px solid #e4e7ef; border-radius: 20px; overflow: hidden; background: #fff; flex-direction: column; }
 .catalog-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 24px; border-bottom: 1px solid #eceef3; }
-.catalog-eyebrow { color: #dc315f; font-size: 11px; font-weight: 800; letter-spacing: .1em; }
-.catalog-header h3 { margin: 5px 0 5px; color: #172033; font-size: 20px; letter-spacing: -.02em; }
-.catalog-header p { margin: 0; color: #737c8f; font-size: 12px; }
+.catalog-eyebrow { color: #dc315f; font-size: 12px; font-weight: 800; letter-spacing: .1em; }
+.catalog-header h3 { margin: 6px 0 6px; color: #172033; font-size: 24px; letter-spacing: -.02em; }
+.catalog-header p { margin: 0; color: #737c8f; font-size: 14px; }
 .current-summary { display: flex; min-width: 140px; padding: 10px 13px; flex-direction: column; border: 1px solid #f4cad6; border-radius: 12px; background: #fff4f7; }
-.current-summary span { color: #9a6171; font-size: 9px; font-weight: 750; }
-.current-summary strong { margin-top: 3px; color: #c92b57; font-size: 12px; }
-.catalog-layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); min-height: 0; flex: 1; }
+.current-summary span { color: #9a6171; font-size: 10px; font-weight: 750; }
+.current-summary strong { margin-top: 3px; color: #c92b57; font-size: 14px; }
+.catalog-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 0; flex: 1; overflow: hidden; }
 .service-rail { min-height: 0; padding: 16px 12px 18px; border-right: 1px solid #eceef3; background: #fafbfc; overflow-y: auto; }
 .catalog-search, .model-search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 11px; border: 1px solid #dfe3eb; border-radius: 11px; background: #fff; }
 .catalog-search span, .model-search span { color: #8991a2; font-size: 16px; }
-.catalog-search input, .model-search input { width: 100%; min-width: 0; border: 0; outline: 0; color: #172033; background: transparent; font-size: 11px; }
+.catalog-search input, .model-search input { width: 100%; min-width: 0; border: 0; outline: 0; color: #172033; background: transparent; font-size: 13px; }
 .service-groups { display: grid; gap: 18px; margin-top: 17px; }
-.group-heading { display: flex; align-items: center; justify-content: space-between; padding: 0 8px 7px; color: #858d9e; }
-.group-heading strong { font-size: 10px; letter-spacing: .05em; }
-.group-heading span { font-size: 9px; }
+.group-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; padding: 8px 9px; border-bottom: 1px solid #e5e8ef; color: #667187; background: #f3f5f9; }
+.group-heading strong { color: #46526a; font-size: 12px; letter-spacing: .05em; }
+.group-heading span { font-size: 10px; }
 .service-group { min-width: 0; }
-.service-item { display: grid; grid-template-columns: 34px minmax(0, 1fr) 8px; align-items: center; gap: 9px; width: 100%; padding: 9px; border: 1px solid transparent; border-radius: 12px; color: #172033; background: transparent; text-align: left; cursor: pointer; transition: 150ms ease; }
+.service-item { display: grid; grid-template-columns: 40px minmax(0, 1fr) 8px; align-items: center; gap: 10px; width: 100%; padding: 10px; border: 1px solid transparent; border-radius: 12px; color: #172033; background: transparent; text-align: left; cursor: pointer; transition: 150ms ease; }
 .service-item:hover { border-color: #e2e5ec; background: #fff; transform: translateX(2px); }
 .service-item.active { border-color: #f3c4d1; background: #fff0f4; box-shadow: 0 7px 18px rgba(214, 50, 96, .08); }
 .service-copy { display: flex; min-width: 0; flex-direction: column; }
-.service-copy strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.service-copy small { margin-top: 2px; color: #9097a7; font-size: 9px; }
-.service-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: #d42f60; background: #ffeaf0; font-size: 10px; font-weight: 850; }
+.service-copy strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.service-copy small { margin-top: 3px; color: #9097a7; font-size: 10px; }
+.service-mark { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 11px; color: #d42f60; background: #ffeaf0; font-size: 12px; font-weight: 850; }
 .service-mark[data-tone="blue"] { color: #2c65bb; background: #eaf2ff; }
 .service-mark[data-tone="green"] { color: #18835d; background: #e9f8f1; }
 .service-mark[data-tone="violet"] { color: #694bc2; background: #f0ebff; }
@@ -250,28 +254,28 @@ function serviceTone(value: string) {
 .detail-hero { display: flex; align-items: flex-start; gap: 13px; padding-bottom: 20px; border-bottom: 1px solid #eceef3; }
 .detail-hero > div:last-child { min-width: 0; }
 .detail-title-row { display: flex; align-items: center; gap: 9px; }
-.detail-title-row h4 { margin: 1px 0 5px; color: #172033; font-size: 17px; }
-.active-badge { padding: 3px 7px; border-radius: 999px; color: #bd2853; background: #ffe9ef; font-size: 8px; font-weight: 800; }
-.detail-hero p { margin: 0; color: #737c8f; font-size: 11px; line-height: 1.6; }
-.model-section { display: flex; min-height: 0; margin-top: 20px; flex: 1; flex-direction: column; }
+.detail-title-row h4 { margin: 1px 0 5px; color: #172033; font-size: 22px; }
+.active-badge { padding: 4px 8px; border-radius: 999px; color: #bd2853; background: #ffe9ef; font-size: 10px; font-weight: 800; }
+.detail-hero p { margin: 0; color: #737c8f; font-size: 13px; line-height: 1.6; }
+.model-section { display: flex; min-height: 0; margin-top: 20px; flex: 0 0 auto; flex-direction: column; }
 .model-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 15px; margin-bottom: 12px; }
 .model-heading > div { display: flex; min-width: 0; flex-direction: column; }
-.model-heading span { color: #81899a; font-size: 9px; font-weight: 750; }
-.model-heading strong { overflow: hidden; margin-top: 3px; color: #172033; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.model-heading span { color: #81899a; font-size: 11px; font-weight: 750; }
+.model-heading strong { overflow: hidden; margin-top: 3px; color: #172033; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
 .model-search { width: 168px; height: 34px; }
 .model-list { display: flex; min-height: 0; flex: 1; flex-direction: column; }
 .model-list-heading { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 8px; color: #81899a; flex: 0 0 auto; }
-.model-list-heading strong { font-size: 9px; }
-.model-list-heading span { font-size: 9px; }
-.model-grid { display: grid; min-height: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-content: start; overflow-y: auto; padding: 1px 4px 4px 1px; }
+.model-list-heading strong { font-size: 12px; }
+.model-list-heading span { font-size: 11px; }
+.model-grid { display: grid; min-height: 0; max-height: 246px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-content: start; overflow-y: auto; padding: 1px 4px 4px 1px; }
 .model-item { display: grid; grid-template-columns: 30px minmax(0, 1fr) 16px; align-items: center; gap: 9px; min-width: 0; padding: 10px; border: 1px solid #e4e7ee; border-radius: 12px; color: #172033; background: #fff; text-align: left; cursor: pointer; transition: 150ms ease; }
 .model-item:hover { border-color: #f0a9bc; transform: translateY(-1px); }
 .model-item.active { border-color: #ef4776; background: #fff4f7; box-shadow: 0 7px 16px rgba(214, 50, 96, .08); }
 .model-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; color: #6b7487; background: #f1f3f7; font-size: 10px; font-weight: 850; }
 .model-item.custom .model-icon { color: #c72a56; background: #ffe9ef; font-size: 16px; }
 .model-item > span:nth-child(2) { display: flex; min-width: 0; flex-direction: column; }
-.model-item strong { overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.model-item small { overflow: hidden; margin-top: 2px; color: #9299a8; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.model-item strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.model-item small { overflow: hidden; margin-top: 3px; color: #9299a8; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
 .checkmark { color: #da315f; font-size: 12px; font-weight: 900; }
 .more-models-toggle { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin-top: 10px; padding: 11px 12px; border: 1px solid #e4e7ee; border-radius: 12px; color: #172033; background: #fafbfc; text-align: left; cursor: pointer; }
 .more-models-toggle:hover { border-color: #f0a9bc; background: #fff8fa; }
@@ -283,8 +287,9 @@ function serviceTone(value: string) {
 .more-models-toggle[aria-expanded="true"] i { transform: rotate(180deg); }
 .no-model-panel { display: flex; align-items: center; gap: 12px; margin-top: 20px; padding: 18px; border: 1px solid #d9eee5; border-radius: 14px; background: #f2faf6; }
 .no-model-panel > span { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; color: #fff; background: #28aa79; font-size: 14px; }
-.no-model-panel strong { color: #185d46; font-size: 12px; }
-.no-model-panel p { margin: 3px 0 0; color: #628074; font-size: 10px; }
+.no-model-panel strong { color: #185d46; font-size: 15px; }
+.no-model-panel p { margin: 4px 0 0; color: #628074; font-size: 12px; }
+.service-configuration-slot { min-height: 0; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eceef3; overflow-y: auto; flex: 1; }
 .detail-footer { display: flex; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 18px; color: #8b92a2; font-size: 9px; }
 .detail-footer b { color: #5f687a; }
 .catalog-empty { margin: 20px 8px; color: #9299a8; font-size: 10px; text-align: center; }
@@ -304,5 +309,6 @@ function serviceTone(value: string) {
   .model-search { width: 100%; }
   .service-detail { min-height: 520px; overflow: visible; }
   .model-grid { max-height: 400px; }
+  .service-configuration-slot { max-height: none; overflow: visible; }
 }
 </style>
