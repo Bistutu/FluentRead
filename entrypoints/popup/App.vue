@@ -10,7 +10,7 @@
       </div>
       <div class="header-actions">
         <span class="status-pill" :class="{ active: config.on }"><i />{{ config.on ? '已启用' : '已暂停' }}</span>
-        <button class="icon-button" type="button" title="完整设置" @click="openOptions">
+        <button class="icon-button" type="button" title="完整设置" @click="openOptions()">
           <Setting />
         </button>
       </div>
@@ -115,7 +115,7 @@
     <section class="features">
       <div class="section-heading">
         <div><span class="eyebrow">快捷功能</span><h2>按你的阅读习惯工作</h2></div>
-        <button type="button" @click="openOptions">全部设置</button>
+        <button type="button" @click="openOptions()">全部设置</button>
       </div>
       <div class="feature-grid">
         <button class="feature-card" type="button" :disabled="!config.on" @click="openDrawer('hover')">
@@ -241,7 +241,7 @@
         </label>
       </div>
 
-      <button class="drawer-settings-link" type="button" @click="openOptions">在完整设置中查看全部选项 ↗</button>
+      <button class="drawer-settings-link" type="button" @click="openOptions(drawerSettingsSection[activeDrawer])">在完整设置中查看全部选项 ↗</button>
     </el-drawer>
 
     <CustomHotkeyInput v-model="showCustomHotkeyDialog" :current-value="config.customFloatingBallHotkey" @confirm="confirmFloatingHotkey" @cancel="cancelFloatingHotkey" />
@@ -259,6 +259,7 @@ import { options } from '@/entrypoints/utils/option';
 import ServiceIcon from '@/components/ServiceIcon.vue';
 
 type DrawerName = 'hover' | 'selection' | 'floating' | 'appearance';
+type SettingsSection = 'settings-general' | 'settings-shortcuts';
 const CustomHotkeyInput = defineAsyncComponent(() => import('@/components/CustomHotkeyInput.vue'));
 const version = process.env.VUE_APP_VERSION;
 const config = ref(new Config());
@@ -278,6 +279,12 @@ const hydrated = ref(false);
 let lastSerialized = '';
 let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 const darkMode = window.matchMedia('(prefers-color-scheme: dark)');
+const drawerSettingsSection: Record<DrawerName, SettingsSection> = {
+  hover: 'settings-shortcuts',
+  selection: 'settings-shortcuts',
+  floating: 'settings-shortcuts',
+  appearance: 'settings-general',
+};
 
 const serviceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
 const popularServiceValues = ['microsoft', 'google', 'deepL', 'deeplx', 'deepseek', 'openai', 'gemini', 'claude'];
@@ -393,7 +400,14 @@ function setPluginEnabled(enabled: boolean) {
 }
 
 function openDrawer(name: DrawerName) { activeDrawer.value = name; drawerVisible.value = true; }
-async function openOptions() { await browser.runtime.openOptionsPage(); window.close(); }
+async function openOptions(section?: SettingsSection) {
+  if (section) {
+    await browser.tabs.create({ url: `${browser.runtime.getURL('options.html')}#${section}` });
+  } else {
+    await browser.runtime.openOptionsPage();
+  }
+  window.close();
+}
 
 async function togglePageTranslation() {
   translating.value = true;
