@@ -196,12 +196,12 @@ function getCachedInnerHTML(node: HTMLElement, cached: string): string {
 function markAttemptError(
     node: HTMLElement,
     attempt: ReturnType<typeof beginTranslation>,
-    spinner: HTMLElement,
+    spinner: HTMLElement | undefined,
     error: unknown,
 ): void {
     if (!attempt) return;
 
-    spinner.remove();
+    spinner?.remove();
     if (!node.isConnected || !markTranslationError(node, attempt.state, attempt.generation)) {
         discardTranslation(node, attempt.state);
         return;
@@ -235,7 +235,7 @@ async function renderBilingualResult(
         const content = appendBilingualTranslation(node, text);
         setBilingualContent(node, content);
     } catch (error) {
-        markAttemptError(node, attempt, spinner as HTMLElement, error);
+        markAttemptError(node, attempt, spinner, error);
     }
 }
 
@@ -270,7 +270,7 @@ async function renderSingleResult(
         setTranslatedHTML(node, node.innerHTML);
         cache.localSetDual(state.sourceOuterHTML, node.outerHTML);
     } catch (error) {
-        markAttemptError(node, attempt, spinner as HTMLElement, error);
+        markAttemptError(node, attempt, spinner, error);
     }
 }
 

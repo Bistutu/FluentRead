@@ -101,7 +101,9 @@ export function markTranslationError(
     state: TranslationState,
     generation: number,
 ): boolean {
-    if (states.get(node) !== state || state.generation !== generation) return false;
+    // 失败结果也不能覆盖站点在请求期间写入的新内容。
+    // 调用方会先移除插件自己的 spinner，再进行这次快照校验。
+    if (!isCurrentTranslation(node, state, generation)) return false;
     state.phase = "error";
     state.spinner = undefined;
     return true;

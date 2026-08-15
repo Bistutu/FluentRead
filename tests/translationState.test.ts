@@ -110,4 +110,19 @@ describe("指定节点翻译状态机", () => {
         expect(node.childNodes).toEqual([hostChild]);
         expect(node.childNodes).not.toContain(originalChild);
     });
+
+    it("站点在请求期间重渲染时，不把失败状态写入新内容", () => {
+        const attempt = beginTranslation(node as unknown as HTMLElement, "bilingual");
+        expect(attempt).not.toBeNull();
+
+        node.innerHTML = "Host rerendered text";
+
+        expect(markTranslationError(
+            node as unknown as HTMLElement,
+            attempt!.state,
+            attempt!.generation,
+        )).toBe(false);
+        expect(getTranslationState(node as unknown as HTMLElement)).toBe(attempt!.state);
+        expect(attempt!.state.phase).toBe("loading");
+    });
 });

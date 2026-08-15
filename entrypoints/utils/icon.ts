@@ -22,7 +22,7 @@ const icon = {
 export function insertFailedTip(
   node: HTMLElement,
   errMsg: string,
-  spinner: HTMLElement
+  spinner?: HTMLElement
 ) {
   spinner?.remove(); // 取消转圈动画
 
