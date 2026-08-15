@@ -1,6 +1,5 @@
 import { getMainDomain, selectCompatFn } from "@/entrypoints/main/compat";
 import { html } from 'js-beautify';
-import { handleBtnTranslation } from "@/entrypoints/main/trans";
 
 // 直接翻译的标签集合（块级元素）
 const directSet = new Set([
@@ -22,8 +21,93 @@ export const inlineSet = new Set([
     'img', 'br', 'wbr', 'svg'
 ]);
 
+const inlineDisplays = new Set([
+    'inline',
+    'inline-block',
+    'inline-flex',
+    'inline-grid',
+    'contents',
+    'ruby',
+    'ruby-base',
+    'ruby-text',
+]);
+
+const semanticBlockTags = new Set([
+    'article', 'aside', 'dd', 'div', 'dt', 'figcaption', 'li', 'main',
+    'nav', 'section', 'td', 'th', 'label',
+]);
+
+const extensionSelector = [
+    '#fluent-read-floating-ball-container',
+    '#fluent-read-selection-translator-container',
+    '#fluent-read-translation-status-container',
+    '[class*="fluent-read-loading"]',
+    '[class*="fluent-read-retry"]',
+].join(',');
+
+/**
+ * 判断节点是否是插件自己的浮层或过程节点。
+ * 这些节点不应成为网页正文翻译目标，也不应被递归扫描。
+ */
+function isExtensionElement(node: Element): boolean {
+    return Boolean(node.matches(extensionSelector) || node.closest(extensionSelector));
+}
+
+/**
+ * 收集 root 下所有开放的 ShadowRoot。
+ * 浏览器无法从 content script 读取 closed shadow root，因此这里只处理可公开访问的根。
+ */
+function getImmediateOpenShadowRoots(rootNode: Node): ShadowRoot[] {
+    const roots: ShadowRoot[] = [];
+    const collect = (element: Element) => {
+        if (element.shadowRoot) {
+            roots.push(element.shadowRoot);
+        }
+    };
+
+    if (rootNode instanceof Element) collect(rootNode);
+
+    const walker = document.createTreeWalker(rootNode, NodeFilter.SHOW_ELEMENT);
+    let currentNode = walker.nextNode();
+    while (currentNode) {
+        if (currentNode instanceof Element) collect(currentNode);
+        currentNode = walker.nextNode();
+    }
+
+    return roots;
+}
+
+export function getOpenShadowRoots(rootNode: Node): ShadowRoot[] {
+    const roots: ShadowRoot[] = [];
+    const seen = new Set<ShadowRoot>();
+    const pending: Node[] = [rootNode];
+    let pendingIndex = 0;
+
+    while (pendingIndex < pending.length) {
+        const currentRoot = pending[pendingIndex++];
+        if (!currentRoot) continue;
+
+        for (const shadowRoot of getImmediateOpenShadowRoots(currentRoot)) {
+            if (seen.has(shadowRoot)) continue;
+            seen.add(shadowRoot);
+            roots.push(shadowRoot);
+            pending.push(shadowRoot);
+        }
+    }
+
+    return roots;
+}
+
 // 传入父节点，返回所有需要翻译的 DOM 元素数组
 export function grabAllNode(rootNode: Node): Element[] {
+    return grabAllNodeInternal(rootNode, new Set<ShadowRoot>());
+}
+
+/**
+ * 扫描一个 DOM 根，并递归扫描其中的开放 ShadowRoot。
+ * visitedRoots 防止嵌套 Shadow DOM 在递归过程中被重复处理。
+ */
+function grabAllNodeInternal(rootNode: Node, visitedRoots: Set<ShadowRoot>): Element[] {
     if (!rootNode) return [];
 
     const result: Element[] = [];
@@ -42,6 +126,9 @@ export function grabAllNode(rootNode: Node): Element[] {
                 if (!(node instanceof Element)) return NodeFilter.FILTER_SKIP;
 
                 const tag = node.tagName.toLowerCase();
+
+                // 插件自身的 UI 不属于网页正文，直接跳过整个子树。
+                if (isExtensionElement(node)) return NodeFilter.FILTER_REJECT;
 
                 // 跳过黑名单标签
                 if (skipSet.has(tag) ||
@@ -106,62 +193,144 @@ export function grabAllNode(rootNode: Node): Element[] {
             walker.currentNode = currentNode.nextSibling || currentNode;
         }
     }
-    return Array.from(new Set(result));;
+
+    // TreeWalker 不会穿透 Shadow DOM，需要显式扫描每个开放根。
+    for (const shadowRoot of getImmediateOpenShadowRoots(rootNode)) {
+        if (visitedRoots.has(shadowRoot)) continue;
+        visitedRoots.add(shadowRoot);
+        result.push(...grabAllNodeInternal(shadowRoot, visitedRoots));
+    }
+
+    return Array.from(new Set(result));
 }
 
-// 返回最终应该翻译的父节点或 false
-export function grabNode(node: any): any {
-    // 空节点检查
+function isInlineLayout(node: Element): boolean {
+    const tag = node.tagName.toLowerCase();
+    if (inlineSet.has(tag)) return true;
+
+    try {
+        return inlineDisplays.has(getComputedStyle(node).display);
+    } catch {
+        return false;
+    }
+}
+
+function isDocumentSurface(node: Element): boolean {
+    return node === document.documentElement || node === document.body;
+}
+
+function getCompatNode(node: Element): Element | 'skip' | false {
+    if (typeof location === 'undefined') return false;
+
+    const domainHandler = selectCompatFn[getMainDomain(location.href.split('?')[0])];
+    if (!domainHandler) return false;
+
+    const result = domainHandler(node);
+    if (result && typeof result === 'object' && 'skip' in result && result.skip === true) {
+        return 'skip';
+    }
+
+    return result instanceof Element ? result : false;
+}
+
+function getParentElement(node: Element): Element | null {
+    return node.parentElement;
+}
+
+/**
+ * 从一个元素向上归一为语义文本块。
+ * 这个函数只负责选择，不发送请求、不插入 spinner、不改写 DOM。
+ */
+function resolveTranslatableElement(start: Element): Element | false {
+    let current: Element | null = start;
+    let lastInlineCandidate: Element | false = false;
+
+    while (current && !isDocumentSurface(current)) {
+        if (isExtensionElement(current)) {
+            const translatedTarget = current.closest('.fluent-read-bilingual');
+            if (translatedTarget instanceof Element) return translatedTarget;
+            current = getParentElement(current);
+            continue;
+        }
+
+        const tag = current.tagName.toLowerCase();
+        if (shouldSkipNode(current, tag) || isButton(current, tag)) return false;
+
+        const compatNode = getCompatNode(current);
+        if (compatNode === 'skip') return false;
+        if (compatNode) return compatNode;
+
+        if (directSet.has(tag)) return current;
+
+        if (isInlineLayout(current)) {
+            lastInlineCandidate = current;
+            current = getParentElement(current);
+            continue;
+        }
+
+        if (semanticBlockTags.has(tag) || !lastInlineCandidate) {
+            return current.textContent?.trim() ? current : false;
+        }
+
+        return lastInlineCandidate;
+    }
+
+    return lastInlineCandidate;
+}
+
+// 返回最终应该翻译的父节点或 false。
+// 该函数保持纯选择语义，调用者负责翻译和 DOM 渲染。
+export function grabNode(node: Node | null | undefined): Element | false {
     if (!node) return false;
 
-    // 对于 Text 节点，尝试找到其可翻译的父节点
-    if (node instanceof Text) {
-        const parentOrSelf = findTranslatableParent(node);
-        if (parentOrSelf && parentOrSelf !== node) {
-            return parentOrSelf;
+    const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : node as Element;
+    if (!(element instanceof Element)) return false;
+
+    return resolveTranslatableElement(element);
+}
+
+function findElementsAtPoint(
+    root: Document | ShadowRoot,
+    mouseX: number,
+    mouseY: number,
+): Element[] {
+    const pointRoot = root as Document & {
+        elementsFromPoint?: (x: number, y: number) => Element[];
+    };
+
+    if (typeof pointRoot.elementsFromPoint === 'function') {
+        return pointRoot.elementsFromPoint(mouseX, mouseY);
+    }
+
+    const element = root.elementFromPoint(mouseX, mouseY);
+    return element ? [element] : [];
+}
+
+function resolveShadowTarget(
+    root: Document | ShadowRoot,
+    mouseX: number,
+    mouseY: number,
+): Element | false {
+    for (const element of findElementsAtPoint(root, mouseX, mouseY)) {
+        if (element.shadowRoot) {
+            const shadowTarget = resolveShadowTarget(element.shadowRoot, mouseX, mouseY);
+            if (shadowTarget) return shadowTarget;
         }
-        return false;
-    }
 
-    if (!node.tagName) return false;
-
-    const curTag = node.tagName.toLowerCase();
-
-    // 1. 快速过滤：跳过不需要翻译的节点
-    if (shouldSkipNode(node, curTag)) return false;
-
-    // 2. 特殊适配：根据域名进行特殊处理
-    const domainHandler = selectCompatFn[getMainDomain(location.href.split('?')[0])];
-    if (domainHandler) {
-        const result = domainHandler(node);
-        // 如果返回的是对象且包含skip属性为true，则跳过该节点
-        if (result && typeof result === 'object' && 'skip' in result && result.skip === true) {
-            return false;
-        }
-        // 如果返回值为节点或其他真值，则返回该值作为翻译节点
-        if (result) return result;
-    }
-
-    // 3. 直接翻译：块级元素
-    if (directSet.has(curTag)) return node;
-
-    // 4. 按钮处理：特殊处理按钮内的文本
-    if (isButton(node, curTag)) {
-        handleButtonTranslation(node);
-        return false;
-    }
-
-    // 5. 内联元素处理：向上查找合适的父节点
-    if (isInlineElement(node, curTag)) {
-        return findTranslatableParent(node);
-    }
-
-    // 6. 首行文本处理：处理 div 和 label 的首行文本
-    if (curTag === 'div' || curTag === 'label') {
-        return handleFirstLineText(node);
+        const target = grabNode(element);
+        if (target) return target;
     }
 
     return false;
+}
+
+/**
+ * 解析鼠标坐标下的翻译目标。
+ * 优先使用坐标下的元素栈，支持开放 ShadowRoot；解析完成前不产生任何翻译副作用。
+ */
+export function resolveNodeAtPoint(mouseX: number, mouseY: number): Element | false {
+    if (typeof document === 'undefined') return false;
+    return resolveShadowTarget(document, mouseX, mouseY);
 }
 
 // 检查是否应该跳过节点
@@ -336,67 +505,6 @@ function isButton(node: any, tag: string): boolean {
     // 2. 或者当前标签为 span 并且其父节点为 button，则视为按钮
     return tag === 'button' ||
         (tag === 'span' && node.parentNode?.tagName.toLowerCase() === 'button');
-}
-
-// 处理按钮翻译
-function handleButtonTranslation(node: any): void {
-    // 1. 若文本非空，则调用 handleBtnTranslation 进行按钮文本翻译处理
-    if (node.textContent.trim()) {
-        handleBtnTranslation(node);
-    }
-}
-
-// 检查是否为内联元素
-function isInlineElement(node: any, tag: string): boolean {
-    // 1. 判断是否在 inlineSet 中
-    // 2. 判断是否文本节点
-    // 3. 检查子元素中是否包含非内联元素
-    return inlineSet.has(tag) ||
-        node.nodeType === Node.TEXT_NODE ||
-        detectChildMeta(node);
-}
-
-// 查找可翻译的父节点
-function findTranslatableParent(node: any): any {
-    // 1. 递归调用 grabNode 查找父节点是否可翻译
-    // 2. 若父节点不可翻译，则返回当前节点
-    const parentResult = grabNode(node.parentNode);
-    return parentResult || node;
-}
-
-// 处理首行文本
-function handleFirstLineText(node: any): boolean {
-    // 1. 遍历子节点，找到首个文本节点
-    // 2. 若存在可翻译文本，则通过 browser.runtime.sendMessage 进行翻译
-    // 3. 翻译成功后，替换该文本；出现错误时，打印错误日志
-    let child = node.firstChild;
-    while (child) {
-        if (child.nodeType === Node.TEXT_NODE && child.textContent.trim()) {
-            browser.runtime.sendMessage({
-                context: document.title,
-                origin: child.textContent
-            })
-                .then((text: string) => child.textContent = text)
-                .catch((error: any) => console.error('翻译失败:', error));
-            return false;
-        }
-        child = child.nextSibling;
-    }
-    return false;
-}
-
-// 检测子元素中是否包含指定标签以外的元素
-function detectChildMeta(parent: any): boolean {
-    // 1. 逐个检查子节点
-    // 2. 若发现非内联元素则返回 false；否则全部检查通过则返回 true
-    let child = parent.firstChild;
-    while (child) {
-        if (child.nodeType === Node.ELEMENT_NODE && !inlineSet.has(child.nodeName.toLowerCase())) {
-            return false;
-        }
-        child = child.nextSibling;
-    }
-    return true;
 }
 
 // 仅译文模式下获取 LLM 应当翻译的标准 HTML

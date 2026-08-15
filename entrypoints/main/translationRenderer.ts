@@ -1,0 +1,100 @@
+import { options } from "@/entrypoints/utils/option";
+import { config } from "@/entrypoints/utils/config";
+import { smashTruncationStyle } from "@/entrypoints/main/dom";
+
+/**
+ * 译文允许保留的内联元素。
+ * 翻译服务返回的结构不是可信 HTML，因此不直接把响应写入 innerHTML。
+ */
+const allowedTags = new Set([
+    "a", "abbr", "b", "bdi", "bdo", "br", "cite", "em", "font",
+    "i", "mark", "q", "ruby", "small", "span", "strong", "sub", "sup",
+    "time", "u", "wbr",
+]);
+
+const blockedTags = new Set([
+    "iframe", "object", "script", "style", "template", "xmp",
+]);
+
+function isSafeHref(value: string): boolean {
+    try {
+        const url = new URL(value, document.baseURI);
+        return ["http:", "https:", "mailto:"].includes(url.protocol);
+    } catch {
+        return false;
+    }
+}
+
+function copySafeAttributes(source: Element, target: HTMLElement): void {
+    if (source.tagName.toLowerCase() === "a") {
+        const href = source.getAttribute("href");
+        if (href && isSafeHref(href)) target.setAttribute("href", href);
+
+        const title = source.getAttribute("title");
+        if (title) target.setAttribute("title", title);
+    }
+}
+
+function sanitizeNode(node: Node): Node[] {
+    if (node.nodeType === Node.TEXT_NODE) {
+        return [document.createTextNode(node.nodeValue ?? "")];
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) return [];
+
+    const source = node as Element;
+    const tag = source.tagName.toLowerCase();
+    if (blockedTags.has(tag)) return [];
+
+    const children = Array.from(source.childNodes).flatMap(sanitizeNode);
+
+    // 不在白名单中的结构只展开其安全文本/内联子节点，避免丢失译文内容。
+    if (!allowedTags.has(tag)) return children;
+
+    const target = document.createElement(tag);
+    copySafeAttributes(source, target);
+    children.forEach((child) => target.appendChild(child));
+    return [target];
+}
+
+/**
+ * 将服务响应解析为安全的 DocumentFragment。
+ * DOMParser 使用独立文档解析，随后只迁移白名单节点和安全属性。
+ */
+export function createSafeTranslationFragment(text: string): DocumentFragment {
+    const parsed = new DOMParser().parseFromString(text || "", "text/html");
+    const fragment = document.createDocumentFragment();
+    Array.from(parsed.body.childNodes)
+        .flatMap(sanitizeNode)
+        .forEach((node) => fragment.appendChild(node));
+    return fragment;
+}
+
+/**
+ * 双语模式：译文仍放在目标段落内部，以保持现有 DOM 断言和页面布局习惯；
+ * 但具体节点由状态机保存，恢复时只移除这一份 wrapper。
+ */
+export function appendBilingualTranslation(node: HTMLElement, text: string): HTMLElement {
+    node.classList.add("fluent-read-bilingual");
+
+    const content = document.createElement("span");
+    content.classList.add("fluent-read-bilingual-content");
+
+    const style = options.styles.find((item) => item.value === config.style && !item.disabled);
+    if (style?.class) content.classList.add(style.class);
+
+    content.textContent = text;
+    smashTruncationStyle(node);
+    node.appendChild(content);
+    return content;
+}
+
+/**
+ * 仅译文模式：只替换目标元素的子节点，不替换目标元素本身。
+ * 状态机已经保存原始 ChildNode，因而恢复时可以重新插入原节点对象。
+ */
+export function replaceWithSafeTranslation(node: HTMLElement, text: string): string {
+    const fragment = createSafeTranslationFragment(text);
+    node.replaceChildren(fragment);
+    return node.innerHTML;
+}
