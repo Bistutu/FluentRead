@@ -41,14 +41,68 @@
         </label>
       </div>
 
-      <label class="service-field">
-        <span class="service-icon">译</span>
-        <span class="service-copy"><small>翻译服务</small><strong>{{ serviceLabel }}</strong></span>
-        <select v-model="config.service" :disabled="!config.on" aria-label="翻译服务">
-          <option v-for="item in serviceOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
-        </select>
-        <span class="chevron">›</span>
-      </label>
+      <div ref="servicePicker" class="service-picker">
+        <button
+          class="service-field"
+          type="button"
+          :disabled="!config.on"
+          aria-haspopup="listbox"
+          :aria-expanded="servicePickerOpen"
+          aria-label="翻译服务"
+          @click="toggleServicePicker"
+        >
+          <span class="service-icon">译</span>
+          <span class="service-copy"><small>翻译服务</small><strong>{{ serviceLabel }}</strong></span>
+          <span class="chevron" :class="{ open: servicePickerOpen }">⌄</span>
+        </button>
+
+        <div v-if="servicePickerOpen" class="service-picker-panel" role="listbox" aria-label="翻译服务列表">
+          <div class="service-picker-heading">
+            <div><strong>选择翻译服务</strong><small>常用服务优先，更多服务已收起</small></div>
+            <span>{{ serviceOptions.length }}</span>
+          </div>
+
+          <div class="service-group">
+            <span class="service-group-label">常用服务</span>
+            <button
+              v-for="item in popularServiceOptions"
+              :key="item.value"
+              class="service-option"
+              type="button"
+              role="option"
+              :data-service-value="item.value"
+              :aria-selected="config.service === item.value"
+              @click="selectService(item.value)"
+            >
+              <span class="service-option-icon">{{ serviceInitial(item.label) }}</span>
+              <span>{{ item.label }}</span>
+              <span v-if="config.service === item.value" class="service-option-check">✓</span>
+            </button>
+          </div>
+
+          <button class="service-more-toggle" type="button" :aria-expanded="moreServicesOpen" @click="moreServicesOpen = !moreServicesOpen">
+            <span>更多服务</span>
+            <span class="service-more-meta">{{ moreServiceOptions.length }} 项 <b :class="{ open: moreServicesOpen }">⌄</b></span>
+          </button>
+
+          <div v-if="moreServicesOpen" class="service-group service-group-more">
+            <button
+              v-for="item in moreServiceOptions"
+              :key="item.value"
+              class="service-option"
+              type="button"
+              role="option"
+              :data-service-value="item.value"
+              :aria-selected="config.service === item.value"
+              @click="selectService(item.value)"
+            >
+              <span class="service-option-icon">{{ serviceInitial(item.label) }}</span>
+              <span>{{ item.label }}</span>
+              <span v-if="config.service === item.value" class="service-option-check">✓</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       <button class="translate-button" type="button" :disabled="!config.on || translating" @click="togglePageTranslation">
         <span v-if="translating" class="spinner" />
@@ -183,7 +237,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, defineAsyncComponent, onUnmounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue';
 import browser from 'webextension-polyfill';
 import { storage } from '@wxt-dev/storage';
 import { Setting } from '@element-plus/icons-vue';
@@ -203,12 +257,20 @@ const notice = ref('');
 const noticeType = ref<'success' | 'error'>('success');
 const showCustomHotkeyDialog = ref(false);
 const showCustomMouseHotkeyDialog = ref(false);
+const servicePicker = ref<HTMLElement | null>(null);
+const servicePickerOpen = ref(false);
+const moreServicesOpen = ref(false);
 const hydrated = ref(false);
 let lastSerialized = '';
 let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 const darkMode = window.matchMedia('(prefers-color-scheme: dark)');
 
 const serviceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
+const popularServiceValues = ['microsoft', 'google', 'deepL', 'deeplx', 'deepseek', 'openai', 'gemini', 'claude'];
+const popularServiceOptions = computed(() => popularServiceValues
+  .map(value => serviceOptions.value.find((item: any) => item.value === value))
+  .filter((item): item is any => Boolean(item)));
+const moreServiceOptions = computed(() => serviceOptions.value.filter((item: any) => !popularServiceValues.includes(item.value)));
 const styleOptions = computed(() => options.styles.filter((item: any) => !item.disabled));
 const serviceLabel = computed(() => serviceOptions.value.find((item: any) => item.value === config.value.service)?.label || config.value.service);
 const styleLabel = computed(() => styleOptions.value.find((item: any) => item.value === config.value.style)?.label || '默认样式');
@@ -264,7 +326,36 @@ watch(config, async value => {
 }, { deep: true });
 watch(() => config.value.theme, theme => applyTheme(theme || 'auto'));
 darkMode.onchange = () => { if (config.value.theme === 'auto') applyTheme('auto'); };
-onUnmounted(() => { darkMode.onchange = null; if (noticeTimer) clearTimeout(noticeTimer); });
+
+function closeServicePicker(event?: Event) {
+  if (event && servicePicker.value?.contains(event.target as Node)) return;
+  servicePickerOpen.value = false;
+}
+function handleServicePickerKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') closeServicePicker();
+}
+function toggleServicePicker() {
+  if (!config.value.on) return;
+  servicePickerOpen.value = !servicePickerOpen.value;
+  if (servicePickerOpen.value) moreServicesOpen.value = !popularServiceValues.includes(config.value.service);
+}
+function selectService(value: string) {
+  config.value.service = value;
+  servicePickerOpen.value = false;
+}
+function serviceInitial(label: string) {
+  return label.replace(/[⭐️]/g, '').trim().slice(0, 1) || '译';
+}
+onMounted(() => {
+  document.addEventListener('pointerdown', closeServicePicker);
+  document.addEventListener('keydown', handleServicePickerKeydown);
+});
+onUnmounted(() => {
+  document.removeEventListener('pointerdown', closeServicePicker);
+  document.removeEventListener('keydown', handleServicePickerKeydown);
+  darkMode.onchange = null;
+  if (noticeTimer) clearTimeout(noticeTimer);
+});
 
 function showNotice(message: string, type: 'success' | 'error' = 'success') {
   notice.value = message;
