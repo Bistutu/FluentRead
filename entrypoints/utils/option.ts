@@ -176,15 +176,15 @@ export const servicesType = {
 
 export const customModelString = "自定义模型";
 export const models = new Map<string, Array<string>>([
-    [services.openai, ["gpt-5-nano", "gpt-5-mini", "gpt5", "gpt-5-chat-latest", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini", "gpt-4o", "o3", "o3-mini", customModelString]],
-    [services.azureOpenai, ["gpt-5-nano", "gpt-5-mini", "gpt5", "gpt-5-chat-latest", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini", "gpt-4o", "o3", "o3-mini", customModelString]],
-    [services.gemini, ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro", customModelString]],
+    [services.openai, ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.5", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5-mini", "gpt-5-nano", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", customModelString]],
+    [services.azureOpenai, ["gpt-5.6-luna", "gpt-5.6-terra", "gpt-5.6-sol", "gpt-5.5", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5-mini", "gpt-5-nano", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", customModelString]],
+    [services.gemini, ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro", customModelString]],
     [services.yiyan, ["ERNIE-Bot 4.0", "ERNIE-Bot", "ERNIE-Speed-8K"]],
-    [services.tongyi, ["qwen-long", "qwen-turbo", "qwen-plus", "qwen3-8b", "qwen-mt-plus", "qwen-mt-turbo", customModelString]],
-    [services.zhipu, ["glm-4.5", "GLM-4-Flash", "glm-4-plus", "glm-4", "glm-4v", customModelString]],
-    [services.moonshot, ["kimi-k2-0711-preview", "kimi-k2-turbo-preview", "moonshot-v1-auto", "moonshot-v1-8k", "moonshot-v1-32k", customModelString]],
-    [services.claude, ["claude-sonnet-4-0", "claude-opus-4-1", "claude-3-5-haiku-latest"]],
-    [services.custom, ["gpt-5-nano", "gpt-5-mini", "gpt5", "gpt-4o", "gemma:7b", "llama2:7b", "mistral:7b", customModelString]],
+    [services.tongyi, ["qwen3.7-max", "qwen3.7-plus", "qwen3.7-flash", "qwen3.6-flash", "qwen-mt-plus", "qwen-mt-turbo", "qwen-mt-flash", "qwen-mt-lite", "qwen-long-latest", customModelString]],
+    [services.zhipu, ["glm-5.2", "glm-5-turbo", "glm-5", "glm-4.7", "glm-4.7-flashx", customModelString]],
+    [services.moonshot, ["kimi-k3", "kimi-k2.6", "kimi-k2.5", customModelString]],
+    [services.claude, ["claude-opus-4-8", "claude-sonnet-4-6", "claude-haiku-4-5", customModelString]],
+    [services.custom, ["gpt-5.6-luna", "gpt-5.4-mini", "gemini-3.6-flash", "claude-sonnet-4-6", "deepseek-v4-flash", "gemma:7b", "llama2:7b", "mistral:7b", customModelString]],
     [services.infini, ["llama-2-13b-chat", "llama-3.3-70b-instruct", "qwen2.5-14b-instruct", "gemma-2-27b-it", "glm-4-9b-chat", customModelString]],
     [services.baichuan, ["Baichuan4-Air", "Baichuan4-Turbo", "Baichuan4", customModelString]],
     [services.lingyi, ["yi-lightning", customModelString]],
@@ -193,8 +193,8 @@ export const models = new Map<string, Array<string>>([
     [services.jieyue, ["step-1-8k", customModelString]],
     [services.huanYuan, ["hunyuan-turbos-latest", "hunyuan-t1-latest", "hunyuan-a13b", "hunyuan-lite", "hunyuan-standard", customModelString]],
     [services.huanYuanTranslation, ["hunyuan-translation", "hunyuan-translation-lite", customModelString]],
-    [services.newapi, ["gemini-2.5-flash-lite", "gemini-2.0-flash", "gpt-5-nano", "gpt-5-mini", "gpt5", "gpt-4.1-mini", "gpt-4.1-nano", "gpt-4o-mini", customModelString]],
-    [services.grok, ["grok-4-0709","grok-3-mini", customModelString]],
+    [services.newapi, ["gpt-5.6-luna", "gpt-5.4-mini", "gemini-3.6-flash", "gemini-3.5-flash-lite", "claude-sonnet-4-6", "deepseek-v4-flash", "kimi-k2.6", customModelString]],
+    [services.grok, ["grok-4.5", "grok-4.3", customModelString]],
     [services.doubao, [customModelString]],
 
     // mix model
@@ -202,8 +202,8 @@ export const models = new Map<string, Array<string>>([
         "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B", "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B",
         "Qwen/Qwen2.5-7B-Instruct", "internlm/internlm2_5-7b-chat", "THUDM/glm-4-9b-chat", customModelString]],
 
-    [services.groq, ["llama-3.1-8b-instant", "llama3-8b-8192", "llama-3.3-70b-versatile", "gemma2-9b-it", "mixtral-8x7b-32768", "whisper-large-v3", customModelString]],
-    [services.openrouter, ["meta-llama/llama-3.1-8b-instruct", "google/gemini-2.0-flash-exp", "qwen/qwen-2-7b-instruct", "huggingfaceh4/zephyr-7b-beta", customModelString]]
+    [services.groq, ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.6-27b", customModelString]],
+    [services.openrouter, ["openrouter/auto", "openai/gpt-5.6-luna", "google/gemini-3.6-flash", "anthropic/claude-sonnet-4.6", "x-ai/grok-4.5", "deepseek/deepseek-v4-flash", "moonshotai/kimi-k3", customModelString]]
 ]);
 
 export const options = {

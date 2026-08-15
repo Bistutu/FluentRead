@@ -111,8 +111,41 @@ export class Config {
     }
 }
 
+const modelMigrations: Record<string, Record<string, string>> = {
+    [services.openai]: {
+        gpt5: 'gpt-5.6-luna',
+    },
+    [services.zhipu]: {
+        'glm-4.5': 'glm-4.7',
+        'GLM-4-Flash': 'glm-4.7-flashx',
+        'glm-4-plus': 'glm-4.7',
+        'glm-4': 'glm-4.7',
+        'glm-4v': 'glm-4.7',
+    },
+    [services.moonshot]: {
+        'kimi-k2-0711-preview': 'kimi-k2.6',
+        'kimi-k2-turbo-preview': 'kimi-k2.6',
+        'moonshot-v1-auto': 'kimi-k2.6',
+        'moonshot-v1-8k': 'kimi-k2.6',
+        'moonshot-v1-32k': 'kimi-k2.6',
+    },
+    [services.claude]: {
+        'claude-sonnet-4-0': 'claude-sonnet-4-6',
+        'claude-opus-4-1': 'claude-opus-4-8',
+        'claude-3-5-haiku-latest': 'claude-haiku-4-5',
+    },
+    [services.grok]: {
+        'grok-4-0709': 'grok-4.3',
+    },
+    [services.groq]: {
+        'llama-3.3-70b-versatile': 'openai/gpt-oss-120b',
+        'llama-3.1-8b-instant': 'openai/gpt-oss-20b',
+        'llama3-8b-8192': 'openai/gpt-oss-20b',
+    },
+};
+
 /**
- * 将存储或导入的普通对象补齐为当前配置结构，并迁移已退役的 DeepSeek 模型名。
+ * 将存储或导入的普通对象补齐为当前配置结构，并迁移已退役或错误的模型编号。
  */
 export function normalizeConfig(value: unknown): Config {
     const normalized = new Config();
@@ -122,6 +155,8 @@ export function normalizeConfig(value: unknown): Config {
     normalized.model = isRecord(source.model) ? {...source.model} : {};
     normalized.customModel = isRecord(source.customModel) ? {...source.customModel} : {};
     normalized.customBody = normalizeCustomBodyMapping(source.customBody);
+
+    migrateModelIdentifiers(normalized.model);
 
     const selectedModel = normalized.model[services.deepseek];
     const configuredThinkingMode = source.deepseekThinkingMode;
@@ -143,6 +178,16 @@ export function normalizeConfig(value: unknown): Config {
     }
 
     return normalized;
+}
+
+function migrateModelIdentifiers(configuredModels: IMapping): void {
+    for (const [service, migrations] of Object.entries(modelMigrations)) {
+        const selectedModel = configuredModels[service];
+        const migratedModel = migrations[selectedModel];
+        if (migratedModel) {
+            configuredModels[service] = migratedModel;
+        }
+    }
 }
 
 function isRecord(value: unknown): value is Record<string, string> {

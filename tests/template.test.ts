@@ -41,12 +41,12 @@ beforeEach(() => {
     mockConfig.service = 'openai';
     mockConfig.to = 'zh-Hans';
     mockConfig.model = {
-        openai: 'gpt-4o',
-        moonshot: 'kimi-k2-0711-preview',
+        openai: 'gpt-5.6-luna',
+        moonshot: 'kimi-k2.6',
         deepseek: 'deepseek-chat',
-        gemini: 'gemini-2.5-flash',
-        claude: 'claude-sonnet-4-0',
-        tongyi: 'qwen-plus',
+        gemini: 'gemini-3.6-flash',
+        claude: 'claude-sonnet-4-6',
+        tongyi: 'qwen3.7-flash',
         yiyan: 'ERNIE-Bot',
         minimax: 'chatcompletion_v2',
     };
@@ -145,7 +145,7 @@ describe('commonMsgTemplate（集成）', () => {
     it('未配置自定义请求体时，生成标准 OpenAI 请求体', () => {
         const body = JSON.parse(commonMsgTemplate('hello'));
         expect(body).toEqual({
-            model: 'gpt-4o',
+            model: 'gpt-5.6-luna',
             temperature: 1.0,
             messages: [
                 { role: 'system', content: 'You are a translator.' },
@@ -164,7 +164,7 @@ describe('commonMsgTemplate（集成）', () => {
     it('非法的自定义请求体被忽略，标准请求体保持完整', () => {
         mockConfig.customBody = { openai: '{oops' };
         const body = JSON.parse(commonMsgTemplate('hello'));
-        expect(body.model).toBe('gpt-4o');
+        expect(body.model).toBe('gpt-5.6-luna');
         expect(body.thinking).toBeUndefined();
         expect(body.messages).toHaveLength(2);
     });
@@ -185,7 +185,7 @@ describe('自定义请求体注入 thinking 字段（issue #213）', () => {
         const body = JSON.parse(commonMsgTemplate('你好世界'));
         expect(body.thinking).toEqual({ type: 'disabled' });
         // 同时不破坏原有字段
-        expect(body.model).toBe('kimi-k2-0711-preview');
+        expect(body.model).toBe('kimi-k2.6');
         expect(body.messages[1].content).toBe('Translate to zh-Hans: 你好世界');
     });
 
