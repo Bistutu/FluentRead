@@ -30,6 +30,12 @@ export async function translateText(origin: string, context: string = document.t
     useCache = config.useCache,
   } = options;
 
+  // 检查 origin 是否为空或只有空白字符
+  const cleanedOrigin = origin?.replace(/[\s\u3000]/g, '') || '';
+  if (!cleanedOrigin || cleanedOrigin.length === 0) {
+    return origin || '';
+  }
+
   // 如果目标语言与当前文本语言相同，直接返回原文
   if (detectlang(origin.replace(/[\s\u3000]/g, '')) === config.to) {
     return origin;

@@ -252,7 +252,9 @@ export function handleSingleTranslation(node: any, slide: boolean) {
 
 
 function bilingualTranslate(node: any, nodeOuterHTML: any) {
-    if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
+    const cleanedText = node.textContent.replace(/[\s\u3000]/g, '');
+    if (!cleanedText || cleanedText.length === 0) return;
+    if (detectlang(cleanedText) === config.to) return;
 
     let origin = node.textContent;
     let spinner = insertLoadingSpinner(node);
@@ -272,7 +274,9 @@ function bilingualTranslate(node: any, nodeOuterHTML: any) {
 
 
 export function singleTranslate(node: any) {
-    if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
+    const cleanedText = node.textContent.replace(/[\s\u3000]/g, '');
+    if (!cleanedText || cleanedText.length === 0) return;
+    if (detectlang(cleanedText) === config.to) return;
 
     let origin = servicesType.isMachine(config.service) ? node.innerHTML : LLMStandardHTML(node);
     const translation = config.service === services.microsoft

@@ -33,7 +33,11 @@ export function grabAllNode(rootNode: Node): Element[] {
         NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
         {
             acceptNode: (node: Node): number => {
-                if (node instanceof Text) return NodeFilter.FILTER_ACCEPT;
+                if (node instanceof Text) {
+                    // 检查文本节点是否有实际内容（去除空白后）
+                    const textContent = node.textContent?.replace(/[\s\u3000]/g, '') || '';
+                    return textContent.length > 0 ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
+                }
 
                 if (!(node instanceof Element)) return NodeFilter.FILTER_SKIP;
 
@@ -59,13 +63,17 @@ export function grabAllNode(rootNode: Node): Element[] {
                 for (const child of node.childNodes) {
                     if (child.nodeType === Node.ELEMENT_NODE) {
                         hasElement = true;
-                        // 检查子元素是否包含文本
-                        if (child.textContent?.trim()) {
+                        // 检查子元素是否包含文本（去除空白后）
+                        const childText = child.textContent?.replace(/[\s\u3000]/g, '') || '';
+                        if (childText.length > 0) {
                             hasNonEmptyElement = true;
                         }
                     }
-                    if (child.nodeType === Node.TEXT_NODE && child.textContent?.trim()) {
-                        hasText = true;
+                    if (child.nodeType === Node.TEXT_NODE) {
+                        const textContent = child.textContent?.replace(/[\s\u3000]/g, '') || '';
+                        if (textContent.length > 0) {
+                            hasText = true;
+                        }
                     }
                 }
 
