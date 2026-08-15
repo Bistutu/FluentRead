@@ -28,13 +28,14 @@
     "webextension-polyfill": "^0.12.0"
   },
   "devDependencies": {
+    "@types/chrome": "^0.2.0",
     "@types/crypto-js": "^4.2.2",
     "@types/webextension-polyfill": "^0.12.1",
     "@vitejs/plugin-vue": "^5.2.1",
     "@vuepress/client": "2.0.0-rc.19",
     "@wxt-dev/webextension-polyfill": "^1.0.0",
     "typescript": "^5.7.3",
-    "vite": "^5.4.11",
+    "vite": "^5.4.19",
     "vite-plugin-imagemin": "^0.6.1",
     "vitepress": "^1.6.3",
     "vue": "^3.5.13",

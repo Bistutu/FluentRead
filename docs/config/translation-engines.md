@@ -48,7 +48,7 @@
 2. 点击设置图标，进入设置页面
 3. 选择 "翻译引擎" 选项卡
 4. 在引擎列表中选择 "DeepSeek"
-5. 选择 `deepseek-chat` 模型，并填入配置信息
+5. 选择 `deepseek-v4-flash` 模型，并填入配置信息
 
 <img src="/click-fluent_read.png" alt="点击流畅阅读图标" style="width: 80%; max-width: 100%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
 

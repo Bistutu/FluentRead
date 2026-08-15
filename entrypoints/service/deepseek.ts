@@ -23,11 +23,23 @@ async function deepseek(message: any) {
         }
 
         const result = await resp.json();
-        return contentPostHandler(result.choices[0].message.content);
+        return extractDeepSeekContent(result);
     } catch (error) {
         console.error('API调用失败:', error);
         throw error;
     }
+}
+
+function extractDeepSeekContent(result: any): string {
+    const content = result?.choices?.[0]?.message?.content;
+
+    if (typeof content !== 'string') {
+        throw new Error('DeepSeek 返回数据格式异常：缺少 choices[0].message.content');
+    }
+
+    // Only final message.content is rendered. DeepSeek thinking fields such as
+    // reasoning_content are intentionally ignored and must never reach the page.
+    return contentPostHandler(content);
 }
 
 export default deepseek;
