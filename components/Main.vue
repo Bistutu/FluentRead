@@ -1,13 +1,18 @@
 <template>
   <section v-show="props.activeSection === 'settings-general'" id="settings-general" class="settings-section">
   <!-- 开关 -->
-  <el-row class="margin-bottom margin-left-2em">
-    <el-col :span="20" class="lightblue rounded-corner">
-      <span class="popup-text popup-vertical-left">插件状态</span>
+  <el-row class="margin-bottom margin-left-2em settings-status-row">
+    <el-col :span="18" class="lightblue rounded-corner">
+      <div class="settings-status-copy">
+        <span class="settings-status-kicker">{{ config.on ? '正在工作' : '已暂停' }}</span>
+        <strong>插件状态</strong>
+        <small>{{ config.on ? '网页翻译与快捷功能均已启用' : '重新启用后即可继续翻译网页' }}</small>
+      </div>
     </el-col>
 
-    <el-col :span="4" class="flex-end">
-      <el-switch v-model="config.on" aria-label="插件状态" inline-prompt active-text="开" inactive-text="关" @change="handlePluginStateChange" />
+    <el-col :span="6" class="flex-end settings-status-control">
+      <span class="settings-status-badge" :class="{ active: config.on }"><i />{{ config.on ? '已启用' : '已暂停' }}</span>
+      <el-switch class="settings-switch" v-model="config.on" aria-label="插件状态" size="large" @change="handlePluginStateChange" />
     </el-col>
   </el-row>
 
@@ -49,6 +54,17 @@
         </el-select>
       </el-col>
     </el-row>
+
+    <section v-show="config.display === 1" class="style-preview-card" aria-live="polite">
+      <div class="style-preview-heading">
+        <div><span>实时预览</span><strong>译文样式</strong></div>
+      </div>
+      <div class="style-preview-example">
+        <p class="style-preview-source">Reading should feel calm and effortless.</p>
+        <p :key="config.style" class="style-preview-text" :class="currentStyleClass">阅读应该轻松、自然，不打断你的节奏。</p>
+      </div>
+      <small class="style-preview-note">切换上方选项即可预览译文在网页中的显示效果。</small>
+    </section>
   </div>
   </section>
 
@@ -925,6 +941,10 @@ const styleGroups = computed(() => {
   }));
 });
 
+const currentStyleClass = computed(() =>
+  options.styles.find(item => item.value === config.value.style && !item.disabled)?.class || 'fluent-display-default'
+);
+
 // 恢复默认模板
 const resetTemplate = () => {
   ElMessageBox.confirm(
@@ -993,44 +1013,24 @@ const handleSwitchChange = () => {
 
 // 处理插件状态变化
 const handlePluginStateChange = (val: boolean) => {
-  // 如果插件被关闭，确保悬浮球和划词翻译也被关闭
-  if (!val) {
-    // 处理悬浮球
-    if (!config.value.disableFloatingBall) {
-      config.value.disableFloatingBall = true;
-      // 向所有激活的标签页发送消息，关闭悬浮球
-      browser.tabs.query({}).then(tabs => {
-        tabs.forEach(tab => {
-          if (tab.id) {
-            browser.tabs.sendMessage(tab.id, { 
-              type: 'toggleFloatingBall',
-              isEnabled: false
-            }).catch(() => {
-              // 忽略发送失败的错误（可能是页面未加载内容脚本）
-            });
-          }
-        });
+  // 总开关只控制当前运行状态，不覆盖用户对悬浮球和划词翻译的偏好。
+  browser.tabs.query({}).then(tabs => {
+    tabs.forEach(tab => {
+      if (!tab.id) return;
+      browser.tabs.sendMessage(tab.id, {
+        type: 'toggleFloatingBall',
+        isEnabled: val && !config.value.disableFloatingBall,
+      }).catch(() => {
+        // 忽略发送失败的错误（可能是页面未加载内容脚本）
       });
-    }
-    
-    // 处理划词翻译
-    if (config.value.selectionTranslatorMode !== 'disabled') {
-      config.value.selectionTranslatorMode = 'disabled';
-      // 向所有激活的标签页发送消息，关闭划词翻译
-      browser.tabs.query({}).then(tabs => {
-        tabs.forEach(tab => {
-          if (tab.id) {
-            browser.tabs.sendMessage(tab.id, { 
-              type: 'updateSelectionTranslatorMode',
-              mode: 'disabled'
-            }).catch(() => {
-              // 忽略发送失败的错误（可能是页面未加载内容脚本）
-            });
-          }
-        });
+      browser.tabs.sendMessage(tab.id, {
+        type: 'updateSelectionTranslatorMode',
+        mode: val ? config.value.selectionTranslatorMode : 'disabled',
+      }).catch(() => {
+        // 忽略发送失败的错误（可能是页面未加载内容脚本）
       });
-    }
-  }
+    });
+  });
 };
 
 // 处理悬浮球开关变化
@@ -1483,6 +1483,80 @@ const validateConfig = (configData: any): boolean => {
 .settings-section {
   min-width: 0;
 }
+
+.settings-status-row {
+  align-items: center;
+  min-height: 92px !important;
+  padding: 18px 20px !important;
+  border: 1px solid #e4e8f0;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fff8fa, #fff);
+}
+
+.settings-status-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-status-kicker {
+  color: #dc315f;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.settings-status-copy strong { color: #172033; font-size: 16px; }
+.settings-status-copy small { color: #737c8f; font-size: 11px; }
+.settings-status-control { align-items: center; gap: 13px; }
+.settings-status-badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border: 1px solid #e1e5ed;
+  border-radius: 999px; color: #7b8496; background: #f7f8fb; font-size: 10px; font-weight: 750;
+}
+.settings-status-badge i { width: 7px; height: 7px; border-radius: 50%; background: #aab2c0; }
+.settings-status-badge.active { border-color: #bfead9; color: #18835d; background: #effbf6; }
+.settings-status-badge.active i { background: #25aa78; box-shadow: 0 0 0 4px rgba(37, 170, 120, .12); }
+.settings-switch { --el-switch-on-color: #ef4776; --el-switch-off-color: #cfd5df; }
+
+.style-preview-card {
+  margin: 6px 12px 24px;
+  padding: 18px;
+  border: 1px solid #e3e7ef;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #fbfcff, #fff8fa);
+}
+.style-preview-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.style-preview-heading div { display: flex; flex-direction: column; gap: 4px; }
+.style-preview-heading span { color: #dc315f; font-size: 10px; font-weight: 800; letter-spacing: .08em; }
+.style-preview-heading strong { color: #172033; font-size: 14px; }
+.style-preview-example { margin-top: 14px; padding: 14px 16px; border: 1px solid #e5e8ef; border-radius: 14px; background: #fff; }
+.style-preview-source { margin: 0 0 8px; color: #7f889b; font-size: 11px; }
+.style-preview-text { margin: 0; color: #172033; font-size: 15px; line-height: 1.7; transition: all 160ms ease; }
+.style-preview-note { display: block; margin-top: 10px; color: #8b93a4; font-size: 10px; }
+.style-preview-text.fluent-display-default { color: #273247; }
+.style-preview-text.fluent-display-bold { font-weight: 800; }
+.style-preview-text.fluent-display-italic { font-style: italic; }
+.style-preview-text.fluent-display-text-shadow { text-shadow: 1px 2px 3px rgba(23, 32, 51, .22); }
+.style-preview-text.fluent-display-solid-underline { text-decoration: underline; text-decoration-color: #4d8eea; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.style-preview-text.fluent-display-dot-underline { text-decoration: underline dotted #4d8eea 2px; text-underline-offset: 4px; }
+.style-preview-text.fluent-display-wavy { text-decoration: underline wavy #ef4776 2px; text-underline-offset: 4px; }
+.style-preview-text.fluent-display-card-mode { padding: 8px 10px; border-radius: 8px; background: #f4f6fb; }
+.style-preview-text.fluent-display-modern-card { padding: 8px 10px; border-radius: 8px; background: linear-gradient(90deg, #fff0f4, #f1f4ff); }
+.style-preview-text.fluent-display-paper { padding: 8px 10px; border: 1px solid #eadfca; background: #fffaf0; }
+.style-preview-text.fluent-display-learning-mode { padding: 2px 6px; background: #fff1a8; }
+.style-preview-text.fluent-display-marker { padding: 2px 6px; background: #d6f5b7; }
+.style-preview-text.fluent-display-highlight-fade { padding: 2px 6px; background: linear-gradient(90deg, #fff0b8, transparent); }
+.style-preview-text.fluent-display-lightyellow { padding: 4px 8px; background: #fff7db; }
+.style-preview-text.fluent-display-lightblue { padding: 4px 8px; background: #eaf4ff; }
+.style-preview-text.fluent-display-lightgray { padding: 4px 8px; background: #f1f3f5; }
+.style-preview-text.fluent-display-quote { padding-left: 10px; border-left: 3px solid #ef4776; }
+.style-preview-text.fluent-display-border { padding: 6px 9px; border: 1px solid #bfc8d8; border-radius: 6px; }
+.style-preview-text.fluent-display-focus { padding: 5px 8px; border-radius: 6px; box-shadow: 0 0 0 3px rgba(239, 71, 118, .12); }
+.style-preview-text.fluent-display-clean { border-bottom: 2px solid #ef4776; }
+.style-preview-text.fluent-display-tech { padding: 5px 8px; border-radius: 5px; color: #245070; background: #edf6fb; font-family: ui-monospace, SFMono-Regular, monospace; }
+.style-preview-text.fluent-display-elegant { font-family: Georgia, "Songti SC", serif; letter-spacing: .04em; }
+.style-preview-text.fluent-display-dimmed { opacity: .62; }
+.style-preview-text.fluent-display-transparent-mode { opacity: .82; }
 
 .disabled-section {
   margin: 18px 12px 8px;
