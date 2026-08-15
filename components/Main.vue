@@ -115,8 +115,8 @@
 
     <!-- 鼠标悬浮快捷键 -->
     <section v-show="props.activeSection === 'settings-shortcuts'" id="settings-shortcuts" class="settings-section">
-    <el-row class="margin-bottom margin-left-2em" :class="{ 'custom-hotkey-row': config.hotkey === 'custom' }">
-      <el-col :span="14" class="lightblue rounded-corner">
+    <el-row class="settings-control-row" :class="{ 'custom-hotkey-row': config.hotkey === 'custom' }">
+      <el-col :span="14" class="settings-control-label lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="按住指定快捷键并悬停在文本上进行翻译" placement="top-start" :show-after="500">
         <span class="popup-text popup-vertical-left">
           鼠标悬浮快捷键
@@ -126,7 +126,7 @@
         </span>
         </el-tooltip>
       </el-col>
-      <el-col :span="10" class="flex-end">
+      <el-col :span="10" class="settings-control-field flex-end">
         <div class="hotkey-config">
           <el-select 
             v-model="config.hotkey" 
@@ -156,8 +156,8 @@
     </el-row>
 
     <!-- 全文翻译快捷键选择 -->
-    <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em" :class="{ 'custom-hotkey-row': config.floatingBallHotkey === 'custom' }">
-      <el-col :span="14" class="lightblue rounded-corner">
+    <el-row v-if="config.on" class="settings-control-row" :class="{ 'custom-hotkey-row': config.floatingBallHotkey === 'custom' }">
+      <el-col :span="14" class="settings-control-label lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="（测试版）设置快捷键以便快速切换全文翻译状态，无需鼠标点击悬浮球" placement="top-start" :show-after="500">
         <span class="popup-text popup-vertical-left">
           <!-- <span class="new-feature-badge">新</span> -->
@@ -168,7 +168,7 @@
         </span>
         </el-tooltip>
       </el-col>
-      <el-col :span="10" class="flex-end">
+      <el-col :span="10" class="settings-control-field flex-end">
         <div class="hotkey-config">
           <el-select 
             v-model="config.floatingBallHotkey" 
@@ -199,8 +199,8 @@
 
 
     <!-- 划词翻译模式选择 -->
-    <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
-      <el-col :span="14" class="lightblue rounded-corner">
+    <el-row v-if="config.on" class="settings-control-row">
+      <el-col :span="14" class="settings-control-label lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="选中文本后显示红点，鼠标移到红点上查看翻译结果。可选择关闭、双语显示或只显示译文" placement="top-start" :show-after="500">
       <span class="popup-text popup-vertical-left">
         <!-- <span class="new-feature-badge">新</span> -->
@@ -211,7 +211,7 @@
       </span>
         </el-tooltip>
       </el-col>
-      <el-col :span="10" class="flex-end">
+      <el-col :span="10" class="settings-control-field flex-end">
         <el-select v-model="config.selectionTranslatorMode" aria-label="划词翻译模式" placeholder="选择模式" size="small" style="width: 100%">
           <el-option label="关闭" value="disabled" />
           <el-option label="双语显示" value="bilingual" />
@@ -226,11 +226,11 @@
     <section v-show="props.activeSection === 'settings-advanced'" id="settings-advanced" class="settings-section">
 
         <!-- 主题设置 -->
-        <el-row class="margin-bottom margin-left-2em margin-top-2em">
-          <el-col :span="12" class="lightblue rounded-corner">
+        <el-row class="settings-control-row">
+          <el-col :span="12" class="settings-control-label lightblue rounded-corner">
             <span class="popup-text popup-vertical-left">主题设置</span>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="12" class="settings-control-field">
             <el-select v-model="config.theme" placeholder="请选择主题模式">
               <el-option class="select-left" v-for="item in options.theme" :key="item.value" :label="item.label"
                          :value="item.value" />
@@ -239,8 +239,8 @@
         </el-row>
 
         <!-- 缓存开关 -->
-        <el-row class="margin-bottom margin-left-2em">
-          <el-col :span="20" class="lightblue rounded-corner">
+        <el-row class="settings-control-row">
+          <el-col :span="20" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark" content="开启缓存可以提高翻译速度，减少重复请求，但可能导致翻译结果不是最新的" placement="top-start" :show-after="500">
         <span class="popup-text popup-vertical-left">缓存翻译结果<el-icon class="icon-margin">
             <ChatDotRound />
@@ -248,14 +248,14 @@
             </el-tooltip>
           </el-col>
 
-          <el-col :span="4" class="flex-end">
-            <el-switch v-model="config.useCache" inline-prompt active-text="启用" inactive-text="禁用"/>
+          <el-col :span="4" class="settings-control-field flex-end">
+            <el-switch v-model="config.useCache" class="settings-toggle" aria-label="缓存翻译结果" />
           </el-col>
         </el-row>
 
         <!-- 悬浮球开关 -->
-      <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
-        <el-col :span="20" class="lightblue rounded-corner">
+      <el-row v-if="config.on" class="settings-control-row">
+        <el-col :span="20" class="settings-control-label lightblue rounded-corner">
           <el-tooltip class="box-item" effect="dark" content="（测试版）控制是否显示屏幕边缘的即时翻译悬浮球，用于对整个网页进行翻译" placement="top-start" :show-after="500">
           <span class="popup-text popup-vertical-left">
             <!-- <span class="new-feature-badge">新</span> -->
@@ -267,15 +267,15 @@
           </el-tooltip>
         </el-col>
 
-        <el-col :span="4" class="flex-end">
-          <el-switch v-model="floatingBallEnabled" inline-prompt active-text="启用" inactive-text="禁用" />
+        <el-col :span="4" class="settings-control-field flex-end">
+          <el-switch v-model="floatingBallEnabled" class="settings-toggle" aria-label="全文翻译悬浮球" />
         </el-col>
       </el-row>
 
 
         <!-- 翻译进度面板 -->
-        <el-row class="margin-bottom margin-left-2em">
-          <el-col :span="20" class="lightblue rounded-corner">
+        <el-row class="settings-control-row">
+          <el-col :span="20" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark"
                         content="翻译进度面板（默认关）：关闭后将不再显示右下角的全文翻译进度面板，适合移动端或希望更少打扰的用户。"
                         placement="top-start" :show-after="500">
@@ -284,14 +284,14 @@
             </el-icon></span>
             </el-tooltip>
           </el-col>
-          <el-col :span="4" class="flex-end">
-          <el-switch v-model="config.translationStatus" inline-prompt active-text="启动" inactive-text="禁用" />
+          <el-col :span="4" class="settings-control-field flex-end">
+          <el-switch v-model="config.translationStatus" class="settings-toggle" aria-label="翻译进度面板" />
           </el-col>
         </el-row>
 
         <!-- 禁用动画设置 -->
-        <el-row class="margin-bottom margin-left-2em">
-          <el-col :span="20" class="lightblue rounded-corner">
+        <el-row class="settings-control-row">
+          <el-col :span="20" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark"
                         content="动画效果（默认开）：禁用后将关闭加载/悬浮等动画，以节省GPU资源和电量。适合低配置设备或希望节省资源的用户。"
                         placement="top-start" :show-after="500">
@@ -300,14 +300,14 @@
                 </el-icon></span>
             </el-tooltip>
           </el-col>
-          <el-col :span="4" class="flex-end">
-            <el-switch v-model="config.animations" inline-prompt active-text="启动" inactive-text="禁用" />
+          <el-col :span="4" class="settings-control-field flex-end">
+            <el-switch v-model="config.animations" class="settings-toggle" aria-label="动画效果" />
           </el-col>
         </el-row>
 
         <!-- 输入框翻译功能 -->
-        <el-row class="margin-bottom margin-left-2em">
-          <el-col :span="12" class="lightblue rounded-corner">
+        <el-row class="settings-control-row">
+          <el-col :span="12" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark"
                         content="输入框翻译：在任何文本输入框中使用指定方式触发翻译当前输入的内容。"
                         placement="top-start" :show-after="500">
@@ -316,7 +316,7 @@
                 </el-icon></span>
             </el-tooltip>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="12" class="settings-control-field">
             <el-select v-model="config.inputBoxTranslationTrigger" placeholder="请选择触发方式">
               <el-option class="select-left" v-for="item in options.inputBoxTranslationTrigger" :key="item.value" 
                          :label="item.label" :value="item.value" />
@@ -325,11 +325,11 @@
         </el-row>
 
         <!-- 输入框翻译目标语言 -->
-        <el-row v-if="config.inputBoxTranslationTrigger !== 'disabled'" class="margin-bottom margin-left-2em">
-          <el-col :span="12" class="lightblue rounded-corner">
+        <el-row v-if="config.inputBoxTranslationTrigger !== 'disabled'" class="settings-control-row">
+          <el-col :span="12" class="settings-control-label lightblue rounded-corner">
             <span class="popup-text popup-vertical-left">翻译目标语言</span>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="12" class="settings-control-field">
             <el-select v-model="config.inputBoxTranslationTarget" placeholder="请选择目标语言">
               <el-option class="select-left" v-for="item in options.inputBoxTranslationTarget" :key="item.value" 
                          :label="item.label" :value="item.value" />
@@ -338,8 +338,8 @@
         </el-row>
 
         <!-- 翻译并发数 -->
-        <el-row class="margin-bottom margin-left-2em">
-          <el-col :span="12" class="lightblue rounded-corner">
+        <el-row class="settings-control-row">
+          <el-col :span="12" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark" content="控制同时进行的最大翻译任务数，数值越高翻译速度越快，但可能占用更多系统资源" placement="top-start"
                         :show-after="500">
           <span class="popup-text popup-vertical-left">翻译并发数<el-icon class="icon-margin">
@@ -347,7 +347,7 @@
             </el-icon></span>
             </el-tooltip>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="12" class="settings-control-field">
             <el-input-number
                 v-model="config.maxConcurrentTranslations"
                 :min="1"
@@ -361,8 +361,8 @@
         </el-row>
 
         <!-- 使用代理转发 -->
-        <el-row v-show="compute.showProxy" class="margin-bottom margin-left-2em">
-          <el-col :span="8" class="lightblue rounded-corner">
+        <el-row v-show="compute.showProxy" class="settings-control-row">
+          <el-col :span="8" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark" content="使用代理可以解决网络无法访问的问题，如不熟悉代理设置请留空！" placement="top-start"
                         :show-after="500">
               <span class="popup-text popup-vertical-left">代理地址<el-icon class="icon-margin">
@@ -370,14 +370,14 @@
                 </el-icon></span>
             </el-tooltip>
           </el-col>
-          <el-col :span="16">
+          <el-col :span="16" class="settings-control-field">
             <el-input v-model="config.proxy[config.service]" placeholder="默认不使用代理" />
           </el-col>
         </el-row>
 
         <!-- 角色和模板 -->
-        <el-row v-show="compute.showAI" class="margin-bottom margin-left-2em">
-          <el-col :span="8" class="lightblue rounded-corner">
+        <el-row v-show="compute.showAI" class="settings-control-row">
+          <el-col :span="8" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark" content="以系统身份 system 发送的对话，常用于指定 AI 要扮演的角色"
               placement="top-start" :show-after="500">
               <span class="popup-text popup-vertical-left">system<el-icon class="icon-margin">
@@ -385,13 +385,13 @@
                 </el-icon></span>
             </el-tooltip>
           </el-col>
-          <el-col :span="16">
+          <el-col :span="16" class="settings-control-field">
             <el-input type="textarea" v-model="config.system_role[config.service]" maxlength="8192"
               placeholder="system message " />
           </el-col>
         </el-row>
-        <el-row v-show="compute.showAI" class="margin-bottom margin-left-2em">
-          <el-col :span="8" class="lightblue rounded-corner">
+        <el-row v-show="compute.showAI" class="settings-control-row">
+          <el-col :span="8" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark"
               content="以用户身份 user 发送的对话，其中{{to}}表示目标语言，{{origin}}表示待翻译的文本内容，两者不可缺少。"
               placement="top-start" :show-after="500">
@@ -400,7 +400,7 @@
                 </el-icon></span>
             </el-tooltip>
           </el-col>
-          <el-col :span="16">
+          <el-col :span="16" class="settings-control-field">
             <el-input type="textarea" v-model="config.user_role[config.service]" maxlength="8192"
               placeholder="user message template" />
           </el-col>
@@ -1508,63 +1508,19 @@ const validateConfig = (configData: any): boolean => {
 
 /* 自定义快捷键行样式 */
 .custom-hotkey-row {
-  border-radius: 8px;
-  padding: 8px;
-  margin: 6px 0 !important;
-  background: linear-gradient(135deg, 
-    rgba(64, 158, 255, 0.03) 0%, 
-    rgba(64, 158, 255, 0.01) 50%, 
-    rgba(103, 194, 58, 0.02) 100%);
-  transition: all 0.3s ease;
-  position: relative;
-  border: 1px solid transparent;
-}
-
-.custom-hotkey-row::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, 
-    rgba(64, 158, 255, 0.2) 0%, 
-    rgba(64, 158, 255, 0.1) 30%,
-    rgba(103, 194, 58, 0.1) 70%,
-    rgba(103, 194, 58, 0.2) 100%);
-  border-radius: 8px;
-  z-index: -1;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.custom-hotkey-row::after {
-  content: '';
-  position: absolute;
-  top: -1px;
-  left: -1px;
-  right: -1px;
-  bottom: -1px;
-  background: linear-gradient(135deg, 
-    rgba(64, 158, 255, 0.3), 
-    rgba(103, 194, 58, 0.3));
-  border-radius: 8px;
-  z-index: -2;
-  opacity: 0.6;
+  border-color: #f2c2d0;
+  background: var(--brand-soft);
 }
 
 .custom-hotkey-row:hover {
-  background: linear-gradient(135deg, 
-    rgba(64, 158, 255, 0.05) 0%, 
-    rgba(64, 158, 255, 0.03) 50%, 
-    rgba(103, 194, 58, 0.04) 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.15);
+  border-color: #ef9ab1;
+  background: #fff;
+  transform: none;
+  box-shadow: 0 8px 22px rgba(239, 71, 118, .08);
 }
 
-.custom-hotkey-row:hover::before {
-  opacity: 0.1;
-}
+.custom-hotkey-row::before,
+.custom-hotkey-row::after { display: none; }
 
 /* 自定义标识徽章 */
 .custom-badge {

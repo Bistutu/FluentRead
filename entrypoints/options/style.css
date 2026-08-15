@@ -119,6 +119,104 @@ h1 { margin-bottom: 6px; font-size: 28px; line-height: 1.25; letter-spacing: -.0
 .settings-card .el-select__caret { color: #7d8799; font-size: 16px; }
 .settings-card .el-input-group__prepend,
 .settings-card .el-input-group__append { border-color: #e2e6ef; background: #f8f9fc; }
+
+/* 设置项使用固定的标签列与控件列，避免浏览器缩放后由 el-col 的百分比宽度互相挤压。 */
+.settings-card .settings-control-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) clamp(200px, 32vw, 360px);
+  align-items: center;
+  gap: 18px;
+  min-height: 76px;
+  margin: 0 0 12px !important;
+  padding: 14px 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--surface-soft);
+  box-sizing: border-box;
+}
+.settings-card .settings-control-row:hover {
+  border-color: #efb5c5;
+  background: var(--surface);
+  box-shadow: 0 8px 22px rgba(31, 40, 61, .045);
+}
+.settings-card .settings-control-row > .el-col {
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0;
+  flex: 0 0 auto !important;
+}
+.settings-card .settings-control-label {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.settings-card .settings-control-label .popup-text {
+  min-width: 0;
+  line-height: 1.45;
+}
+.settings-card .settings-control-field {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: 100%;
+  min-width: 0;
+}
+.settings-card .settings-control-field > .el-select,
+.settings-card .settings-control-field > .el-input,
+.settings-card .settings-control-field > .el-input-number,
+.settings-card .settings-control-field > .hotkey-config {
+  width: 100% !important;
+  max-width: 360px !important;
+  min-width: 0;
+}
+.settings-card .settings-control-field > .el-switch {
+  flex: 0 0 auto;
+}
+.settings-card .settings-control-row .hotkey-config {
+  display: grid;
+  gap: 8px;
+}
+.settings-card .settings-control-row .el-select__wrapper,
+.settings-card .settings-control-row .el-input__wrapper,
+.settings-card .settings-control-row .el-input-number .el-input__wrapper {
+  min-height: 44px;
+  padding: 0 14px;
+  border-color: #dfe4ed;
+  border-radius: 13px;
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgba(31, 40, 61, .035);
+}
+.settings-card .settings-control-row .el-select__selected-item,
+.settings-card .settings-control-row .el-input__inner,
+.settings-card .settings-control-row .el-input-number .el-input__inner {
+  font-size: 14px;
+}
+.settings-card .settings-control-row .el-switch,
+.settings-card .settings-control-row .settings-toggle {
+  --el-switch-on-color: var(--brand);
+  --el-switch-off-color: #dfe3eb;
+  width: 52px !important;
+  height: 30px !important;
+}
+.settings-card .settings-control-row .el-switch__core {
+  width: 52px !important;
+  min-width: 52px !important;
+  height: 30px !important;
+  border: 0;
+  border-radius: 999px;
+}
+.settings-card .settings-control-row .el-switch__action {
+  width: 24px;
+  height: 24px;
+}
+.settings-card .settings-control-row .custom-hotkey-display {
+  min-height: 42px;
+  height: auto;
+  padding: 6px 7px 6px 11px;
+  border-color: #dfe4ed;
+  border-radius: 13px;
+  background: var(--surface);
+}
 .settings-card .el-collapse { margin: 18px 0 0 !important; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
 .settings-card .el-collapse-item__header { height: 56px; padding: 0 18px; border: 0; font-size: 14px; font-weight: 700; }
 .settings-card .el-collapse-item__wrap { border: 0; }
@@ -196,6 +294,28 @@ h1 { margin-bottom: 6px; font-size: 28px; line-height: 1.25; letter-spacing: -.0
   .settings-card .el-select,
   .settings-card .el-input,
   .settings-card .el-input-number { width: 100%; max-width: none; }
+  .settings-card .settings-control-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) clamp(200px, 32vw, 300px);
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+  }
+  .settings-card .settings-control-row > .el-col {
+    width: auto !important;
+    max-width: none !important;
+    flex: 0 0 auto !important;
+  }
+  .settings-card .settings-control-row > .settings-control-field {
+    justify-content: flex-end;
+  }
+  .settings-card .settings-control-field > .el-select,
+  .settings-card .settings-control-field > .el-input,
+  .settings-card .settings-control-field > .el-input-number,
+  .settings-card .settings-control-field > .hotkey-config {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
   .settings-card .margin-left-2em { margin-right: 0 !important; margin-left: 0 !important; }
   .settings-card .el-collapse-item__header { padding: 0 14px; }
   .settings-card .el-collapse-item__content { padding: 4px 8px 14px; }
@@ -203,6 +323,16 @@ h1 { margin-bottom: 6px; font-size: 28px; line-height: 1.25; letter-spacing: -.0
   .about-logo { width: 64px; height: 64px; border-radius: 18px; }
   .about-hero h3 { font-size: 21px; }
   .about-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 480px) {
+  .settings-card .settings-control-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 9px;
+  }
+  .settings-card .settings-control-row > .settings-control-field {
+    justify-content: stretch;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
