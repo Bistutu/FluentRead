@@ -93,7 +93,7 @@ export class Config {
         this.customFloatingBallHotkey = ''; // 自定义快捷键为空
         this.customHotkey = ''; // 自定义鼠标悬浮快捷键为空
         this.disableSelectionTranslator = false; // 默认不禁用划词翻译
-        this.deeplx = ''; // DeepLX 默认服务地址
+        this.deeplx = defaultOption.deeplx; // DeepLX 默认服务地址
         this.selectionTranslatorMode = 'bilingual'; // 默认双语显示模式
         this.newApiUrl = 'http://localhost:3000'; // NewAPI 默认地址
         this.maxConcurrentTranslations = 6; // 默认最大并发数为6

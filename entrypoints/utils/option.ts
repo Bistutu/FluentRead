@@ -1,3 +1,5 @@
+import {DEFAULT_DEEPLX_ENDPOINT} from "./deeplx";
+
 export const services = {
     // 机器翻译
     microsoft: "microsoft",
@@ -296,7 +298,7 @@ export const options = {
         {value: services.microsoft, label: "微软翻译"},
         {value: services.google, label: "谷歌翻译"},
         {value: services.deepL, label: "DeepL"},
-        {value: services.deeplx, label: "DeepLX"},
+        {value: services.deeplx, label: "DeepLX（免费非官方）"},
         {value: services.xiaoniu, label: "小牛翻译"},
         {value: services.youdao, label: "有道翻译"},
         {value: services.tencent, label: "腾讯云翻译"},
@@ -435,7 +437,7 @@ export const defaultOption = {
     hotkey: "Control",
     service: services.microsoft,
     custom: "http://localhost:11434/v1/chat/completions",
-    deeplx: "http://localhost:1188/translate",
+    deeplx: DEFAULT_DEEPLX_ENDPOINT,
     system_role:
         "You are a professional, authentic machine translation engine.",
     user_role: `Translate the following text into {{to}}, If translation is unnecessary (e.g. proper nouns, codes, etc.), return the original text. NO explanations. NO notes:
