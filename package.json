@@ -24,6 +24,7 @@
     "@floating-ui/dom": "^1.7.4",
     "@wxt-dev/storage": "^1.0.1",
     "crypto-js": "^4.2.0",
+    "dompurify": "^3.4.13",
     "element-plus": "^2.9.3",
     "franc-min": "^6.2.0",
     "js-beautify": "^1.15.1",
