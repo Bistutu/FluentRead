@@ -50,7 +50,44 @@
           <h2>{{ activeItem.title }}</h2>
           <p>{{ activeItem.detail }}</p>
         </div>
-        <Main :active-section="activeSection" />
+        <section v-if="activeSection === 'settings-about'" id="settings-about" class="about-page" aria-labelledby="about-title">
+          <div class="about-hero">
+            <img class="about-logo" src="/icon/128.png" alt="流畅阅读图标" />
+            <div>
+              <span class="eyebrow">关于流畅阅读</span>
+              <h3 id="about-title">让双语阅读自然发生</h3>
+              <p>流畅阅读是一款开源浏览器翻译插件，帮助你在阅读网页时更自然地理解不同语言的内容。</p>
+              <span class="about-version">FluentRead · V{{ version }}</span>
+            </div>
+          </div>
+
+          <div class="about-grid">
+            <article class="about-panel">
+              <span class="about-panel-kicker">核心体验</span>
+              <h3>为阅读而生</h3>
+              <p>从网页翻译到划词、悬浮与快捷键，把常用能力放在真正需要的位置。</p>
+              <div class="about-feature-list">
+                <span><b>译</b>网页双语阅读</span>
+                <span><b>⌘</b>顺手的阅读工具</span>
+                <span><b>AI</b>灵活的翻译服务</span>
+              </div>
+            </article>
+
+            <article class="about-panel about-links-panel">
+              <span class="about-panel-kicker">了解更多</span>
+              <h3>一起让它变得更好</h3>
+              <p>查看项目代码、使用文档，或反馈你在阅读中的想法。</p>
+              <div class="about-links">
+                <a href="https://github.com/Bistutu/FluentRead" target="_blank" rel="noreferrer">开源项目 <span>↗</span></a>
+                <a href="https://fluent.thinkstu.com/" target="_blank" rel="noreferrer">使用文档 <span>↗</span></a>
+                <a href="https://github.com/Bistutu/FluentRead/issues" target="_blank" rel="noreferrer">问题反馈 <span>↗</span></a>
+              </div>
+            </article>
+          </div>
+
+          <p class="about-footer">感谢你使用流畅阅读。</p>
+        </section>
+        <Main v-else :active-section="activeSection" />
       </section>
 
       <footer>FluentRead V{{ version }} · 为更自然的双语阅读而设计</footer>
@@ -123,6 +160,17 @@ const navigationGroups: Array<{ label: string; items: NavigationItem[] }> = [
         heading: '备份与迁移配置', summary: '导出当前设置，或从已有配置恢复你的使用习惯。',
         kicker: '数据工具', title: '配置管理', detail: '通过 JSON 完成配置备份、迁移与恢复。',
         searchDescription: '备份、迁移、导出与导入 JSON 配置',
+      },
+    ],
+  },
+  {
+    label: '关于',
+    items: [
+      {
+        id: 'settings-about', icon: 'i', label: '关于流畅阅读', description: '版本与项目', group: '关于',
+        heading: '关于流畅阅读', summary: '了解插件版本、核心体验与项目入口。',
+        kicker: '关于项目', title: '关于流畅阅读', detail: '一个让双语阅读更自然的开源浏览器翻译插件。',
+        searchDescription: '版本、开源项目、使用文档与问题反馈',
       },
     ],
   },
