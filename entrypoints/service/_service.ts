@@ -1,5 +1,6 @@
 import {services} from "../utils/option";
 import microsoft from "./microsoft";
+import freeTranslation from "./free-translation";
 import deepl from "./deepl";
 import deeplx from "./deeplx";
 import custom from "./custom";
@@ -25,6 +26,7 @@ type ServiceMap = {[key: string]: ServiceFunction;};
 export const _service: ServiceMap = {
     // 机器翻译
     [services.microsoft]: microsoft,
+    [services.freeTranslation]: freeTranslation,
     [services.deepL]: deepl,
     [services.deeplx]: deeplx,
     [services.google]: google,

@@ -30,6 +30,8 @@ export default defineConfig({
             'https://deeplx.1stg.me/*',
             'https://freeapi.fanyimao.cn/*',
             'https://api.deeplx.org/*',
+            'http://localhost/*',
+            'http://127.0.0.1/*',
         ],
     },
 

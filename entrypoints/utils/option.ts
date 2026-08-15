@@ -3,6 +3,7 @@ import {DEFAULT_DEEPLX_ENDPOINT} from "./deeplx";
 export const services = {
     // 机器翻译
     microsoft: "microsoft",
+    freeTranslation: "freeTranslation",
     deepL: "deepL",
     deeplx: "deeplx",
     google: "google",
@@ -41,7 +42,7 @@ export const services = {
 
 export const servicesType = {
     // 阵营划分
-    machine: new Set([services.microsoft, services.deepL, services.deeplx, services.google, services.xiaoniu, services.youdao, services.tencent, services.chromeTranslator,]),
+    machine: new Set([services.microsoft, services.freeTranslation, services.deepL, services.deeplx, services.google, services.xiaoniu, services.youdao, services.tencent, services.chromeTranslator,]),
     AI: new Set([
         services.openai,
         services.azureOpenai,
@@ -296,6 +297,7 @@ export const options = {
         // 机器翻译
         {value: "machine", label: "机器翻译", disabled: true},
         {value: services.microsoft, label: "微软翻译"},
+        {value: services.freeTranslation, label: "免费翻译服务"},
         {value: services.google, label: "谷歌翻译"},
         {value: services.deepL, label: "DeepL"},
         {value: services.deeplx, label: "DeepLX（免费非官方）"},
