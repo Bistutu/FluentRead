@@ -92,8 +92,8 @@ const navigationGroups: Array<{ label: string; items: NavigationItem[] }> = [
       },
       {
         id: 'settings-services', icon: '译', label: '翻译服务', description: '服务与模型', group: '基础设置',
-        heading: '选择翻译服务与模型', summary: '按机器翻译和 AI 翻译分类，配置之后网页翻译默认使用的服务、模型及连接参数。',
-        kicker: '翻译能力', title: '翻译服务与模型', detail: '配置默认翻译服务和模型，之后网页翻译会按此设置执行。',
+        heading: '配置翻译服务与模型', summary: '按机器翻译和 AI 翻译分类，配置之后网页翻译默认使用的服务、模型及连接参数。',
+        kicker: '翻译能力', title: '翻译服务与模型', detail: '配置网页翻译默认使用的服务、模型和连接参数。',
         searchDescription: '微软翻译、OpenAI、DeepSeek、Gemini、模型与令牌',
       },
     ],

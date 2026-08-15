@@ -35,6 +35,19 @@
       </el-col>
     </el-row>
 
+    <!-- 默认目标语言 -->
+    <el-row class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <span class="popup-text popup-vertical-left">默认目标语言</span>
+      </el-col>
+      <el-col :span="12">
+        <el-select v-model="config.to" aria-label="默认目标语言" placeholder="请选择目标语言">
+          <el-option class="select-left" v-for="item in options.to" :key="item.value" :label="item.label"
+            :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
+
     <!--    译文样式选择器-->
     <el-row v-show="config.display === 1" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -91,40 +104,11 @@
             :config="config"
             :compute="compute"
             :options="options"
-            :current-service-label="currentServiceLabel"
             :is-valid-azure-endpoint="isValidAzureEndpoint"
           />
         </template>
       </ServiceCatalog>
 
-    <!-- 免费翻译服务降级顺序 -->
-    <el-row v-show="compute.showFreeTranslation" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip
-          class="box-item"
-          effect="dark"
-          content="按微软翻译、DeepLX、谷歌翻译的顺序尝试。只有失败后才会继续下一个服务；DeepLX 地址使用 DeepLX 服务中的配置。"
-          placement="top-start"
-          :show-after="500"
-        >
-          <span class="popup-text popup-vertical-left">免费翻译降级顺序</span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12" class="free-translation-order">微软翻译 → DeepLX → 谷歌翻译</el-col>
-    </el-row>
-
-    <!-- 目标语言 -->
-    <el-row class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <span class="popup-text popup-vertical-left">目标语言</span>
-      </el-col>
-      <el-col :span="12">
-        <el-select v-model="config.to" aria-label="目标语言" placeholder="请选择目标语言">
-          <el-option class="select-left" v-for="item in options.to" :key="item.value" :label="item.label"
-            :value="item.value" />
-        </el-select>
-      </el-col>
-    </el-row>
     </section>
 
 
@@ -505,8 +489,7 @@
 
 // Main 处理配置信息
 import { computed, ref, watch, onUnmounted } from 'vue'
-import { models, options, services, servicesType, defaultOption } from "../entrypoints/utils/option";
-import { cleanServiceLabel } from '@/entrypoints/utils/serviceCatalog';
+import { models, options, servicesType, defaultOption } from "../entrypoints/utils/option";
 import { Config, normalizeConfig } from "@/entrypoints/utils/model";
 import { storage } from '@wxt-dev/storage';
 import { ChatDotRound, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
@@ -618,8 +601,6 @@ let compute = ref({
   showCustom: computed(() => servicesType.isCustom(config.value.service)),
   // 9、是否显示 DeepLX URL 配置
   showDeepLX: computed(() => config.value.service === 'deeplx'),
-  // 9.1、是否显示免费翻译服务的降级说明
-  showFreeTranslation: computed(() => config.value.service === services.freeTranslation),
   // 10、是否自定义模型
   showCustomModel: computed(() => servicesType.isAI(config.value.service) && config.value.model[config.value.service] === "自定义模型"),
   // 11、判断是否为"双语模式"，控制一些翻译服务的显示
@@ -635,11 +616,6 @@ let compute = ref({
   // 15、是否显示 DeepSeek API 格式配置
   showDeepseekApiType: computed(() => config.value.service === 'deepseek'),
   showDeepseekThinkingMode: computed(() => config.value.service === 'deepseek' && config.value.deepseekApiType !== 'responses'),
-})
-
-const currentServiceLabel = computed(() => {
-  const item = options.services.find((service: any) => service.value === config.value.service)
-  return item ? cleanServiceLabel(item.label) : config.value.service
 })
 
 // 监听主题变化

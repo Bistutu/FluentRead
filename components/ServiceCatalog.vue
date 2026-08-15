@@ -1,17 +1,5 @@
 <template>
-  <section class="service-catalog" aria-labelledby="service-catalog-title">
-    <header class="catalog-header">
-      <div>
-        <span class="catalog-eyebrow">翻译引擎</span>
-        <h3 id="service-catalog-title">选择服务与模型</h3>
-        <p>这里配置默认翻译服务和模型，之后网页翻译会按此设置执行。</p>
-      </div>
-      <div class="current-summary" aria-live="polite">
-        <span>默认服务</span>
-        <strong>{{ selectedService?.label || '未选择' }}</strong>
-      </div>
-    </header>
-
+  <section class="service-catalog" aria-label="配置翻译服务与模型">
     <div class="catalog-layout">
       <aside class="service-rail" aria-label="翻译服务列表">
         <label class="catalog-search">
@@ -51,10 +39,9 @@
           <span class="service-mark large" :data-tone="serviceTone(service)">{{ serviceMark(service, selectedService?.label) }}</span>
           <div>
             <div class="detail-title-row">
-              <h4>{{ selectedService?.label || '请选择翻译服务' }}</h4>
+              <h4>{{ selectedService?.label || '尚未配置服务' }}</h4>
               <span class="active-badge">默认配置</span>
             </div>
-            <p>{{ serviceDescription }}</p>
           </div>
         </div>
 
@@ -115,17 +102,13 @@
 
         <div v-else class="no-model-panel">
           <span aria-hidden="true">✓</span>
-          <div><strong>该服务不使用模型</strong><p>微软翻译等机器翻译服务会直接使用自身引擎，无需配置模型。</p></div>
+          <div><strong>此服务无需模型配置</strong><p>机器翻译直接使用自身引擎。</p></div>
         </div>
 
         <div class="service-configuration-slot" aria-label="当前服务配置">
           <slot name="configuration" />
         </div>
 
-        <div class="detail-footer">
-          <span>下方配置该默认服务需要的连接参数</span>
-          <b>{{ showModel ? `${modelOptions.length} 个模型候选` : '无需模型配置' }}</b>
-        </div>
       </section>
     </div>
   </section>
@@ -171,27 +154,6 @@ const displayedModels = computed(() => modelQuery.value
   : moreModelsOpen.value ? [...modelGroups.value.common, ...moreModels.value] : modelGroups.value.common)
 const selectedService = computed(() => groups.value.flatMap((group) => group.items).find((item) => item.value === props.service))
 
-const descriptions: Record<string, string> = {
-  microsoft: '稳定快速的机器翻译服务，适合日常网页双语阅读。',
-  google: 'Google 翻译服务，仅在双语对照模式下提供。',
-  deepL: '偏重自然表达的机器翻译服务，需要配置访问令牌。',
-  deeplx: '可连接自托管 DeepLX 地址的翻译服务。',
-  chromeTranslator: '调用 Chrome 内置翻译能力，无需选择模型。',
-  openai: '使用 OpenAI 兼容模型进行更自然的上下文翻译。',
-  azureOpenai: '通过 Azure OpenAI 部署端点调用模型。',
-  deepseek: '使用 DeepSeek 模型，可继续配置 API 格式与思考模式。',
-  gemini: '使用 Google Gemini 模型完成上下文翻译。',
-  custom: '连接兼容 OpenAI 请求格式的自定义或本地模型服务。',
-  newapi: '连接 New API 聚合服务，并选择对应的模型标识。',
-}
-
-const serviceDescription = computed(() =>
-  descriptions[props.service]
-    || (groups.value.find((group) => group.items.some((item) => item.value === props.service))?.id === 'machine'
-      ? '快速稳定的机器翻译服务，无需额外选择模型。'
-      : '使用大语言模型进行上下文翻译，需要按服务要求配置连接参数。'),
-)
-
 watch(() => props.service, () => {
   modelQuery.value = ''
   moreModelsOpen.value = false
@@ -221,13 +183,6 @@ function serviceTone(value: string) {
 
 <style scoped>
 .service-catalog { display: flex; height: clamp(520px, calc(100vh - 270px), 760px); min-height: 520px; margin: 2px 0 20px; border: 1px solid #e4e7ef; border-radius: 20px; overflow: hidden; background: #fff; flex-direction: column; }
-.catalog-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 24px; border-bottom: 1px solid #eceef3; }
-.catalog-eyebrow { color: #dc315f; font-size: 12px; font-weight: 800; letter-spacing: .1em; }
-.catalog-header h3 { margin: 6px 0 6px; color: #172033; font-size: 24px; letter-spacing: -.02em; }
-.catalog-header p { margin: 0; color: #737c8f; font-size: 14px; }
-.current-summary { display: flex; min-width: 140px; padding: 10px 13px; flex-direction: column; border: 1px solid #f4cad6; border-radius: 12px; background: #fff4f7; }
-.current-summary span { color: #9a6171; font-size: 10px; font-weight: 750; }
-.current-summary strong { margin-top: 3px; color: #c92b57; font-size: 14px; }
 .catalog-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 0; flex: 1; overflow: hidden; }
 .service-rail { min-height: 0; padding: 16px 12px 18px; border-right: 1px solid #eceef3; background: #fafbfc; overflow-y: auto; }
 .catalog-search, .model-search { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 11px; border: 1px solid #dfe3eb; border-radius: 11px; background: #fff; }
@@ -290,16 +245,12 @@ function serviceTone(value: string) {
 .no-model-panel strong { color: #185d46; font-size: 15px; }
 .no-model-panel p { margin: 4px 0 0; color: #628074; font-size: 12px; }
 .service-configuration-slot { min-height: 0; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eceef3; overflow-y: auto; flex: 1; }
-.detail-footer { display: flex; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 18px; color: #8b92a2; font-size: 9px; }
-.detail-footer b { color: #5f687a; }
 .catalog-empty { margin: 20px 8px; color: #9299a8; font-size: 10px; text-align: center; }
 @media (max-width: 900px) {
   .catalog-layout { grid-template-columns: 220px minmax(0, 1fr); }
   .model-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 700px) {
-  .catalog-header { align-items: flex-start; padding: 18px; flex-direction: column; }
-  .current-summary { width: 100%; }
   .service-catalog { height: auto; min-height: 0; }
   .catalog-layout { display: block; flex: 0 0 auto; }
   .service-rail { border-right: 0; border-bottom: 1px solid #eceef3; }

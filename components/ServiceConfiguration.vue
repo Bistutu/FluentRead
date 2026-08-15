@@ -1,8 +1,7 @@
 <template>
   <section class="settings-section service-connection-section">
     <div class="subsection-heading">
-      <div><span>服务配置</span><strong>连接与请求参数</strong></div>
-      <p>这里只显示 {{ currentServiceLabel }} 实际需要的设置。</p>
+      <div><strong>连接参数</strong></div>
     </div>
 
     <el-row v-show="compute.showToken" class="margin-bottom margin-left-2em">
@@ -109,13 +108,11 @@ const props = defineProps<{
   config: Config
   compute: Record<string, any>
   options: typeof optionConfig
-  currentServiceLabel: string
   isValidAzureEndpoint: (endpoint: string) => boolean
 }>()
 
 const config = toRef(props, 'config')
 const compute = toRef(props, 'compute')
 const options = toRef(props, 'options')
-const currentServiceLabel = toRef(props, 'currentServiceLabel')
 const isValidAzureEndpoint = toRef(props, 'isValidAzureEndpoint')
 </script>
