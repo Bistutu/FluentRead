@@ -36,6 +36,9 @@ importers:
         specifier: ^0.12.0
         version: 0.12.0
     devDependencies:
+      '@types/chrome':
+        specifier: ^0.2.0
+        version: 0.2.0
       '@types/crypto-js':
         specifier: ^4.2.2
         version: 4.2.2
@@ -772,6 +775,9 @@ packages:
   '@trysound/sax@0.2.0':
     resolution: {integrity: sha512-L7z9BgrNEcYyUYtF+HaEfiS5ebkh9jXqbszz7pC0hRBPaatV0XjSD3+eHrpqFemQfgwiFF0QPIarnIihIDn7OA==}
     engines: {node: '>=10.13.0'}
+
+  '@types/chrome@0.2.0':
+    resolution: {integrity: sha512-K/i7EKEVSpmyXXjE0ev5oASWBYMY6yM8LFSutG2PkM1DmxJUggZsoaTc0W1RsVwDDKrsZEjpHFAbqqxlRxGsSg==}
 
   '@types/crypto-js@4.2.2':
     resolution: {integrity: sha512-sDOLlVbHhXpAUAL0YHDUUwDZf3iN4Bwi4W6a0W0b+QcAezUbRtH4FVb+9J4h+XFPW7l/gQ9F8qC7P+Ec4k8QVQ==}
@@ -4752,6 +4758,11 @@ snapshots:
   '@sxzz/popperjs-es@2.11.7': {}
 
   '@trysound/sax@0.2.0': {}
+
+  '@types/chrome@0.2.0':
+    dependencies:
+      '@types/filesystem': 0.0.36
+      '@types/har-format': 1.2.16
 
   '@types/crypto-js@4.2.2': {}
 

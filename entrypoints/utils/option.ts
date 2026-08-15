@@ -188,7 +188,7 @@ export const models = new Map<string, Array<string>>([
     [services.infini, ["llama-2-13b-chat", "llama-3.3-70b-instruct", "qwen2.5-14b-instruct", "gemma-2-27b-it", "glm-4-9b-chat", customModelString]],
     [services.baichuan, ["Baichuan4-Air", "Baichuan4-Turbo", "Baichuan4", customModelString]],
     [services.lingyi, ["yi-lightning", customModelString]],
-    [services.deepseek, ["deepseek-chat", "deepseek-reasoner", customModelString]],
+    [services.deepseek, ["deepseek-v4-flash", "deepseek-v4-pro", customModelString]],
     [services.minimax, ["chatcompletion_v2"]],
     [services.jieyue, ["step-1-8k", customModelString]],
     [services.huanYuan, ["hunyuan-turbos-latest", "hunyuan-t1-latest", "hunyuan-a13b", "hunyuan-lite", "hunyuan-standard", customModelString]],
@@ -222,6 +222,16 @@ export const options = {
         {value: false, label: "关闭"},
     ],
     form: [{value: "auto", label: "自动检测"}],
+    // DeepSeek API 格式（仅 DeepSeek 服务显示）
+    deepseekApiType: [
+        {value: "auto", label: "自动（Chat Completion）"},
+        {value: "responses", label: "Responses API"},
+        {value: "chat", label: "Chat Completion"},
+    ],
+    deepseekThinkingMode: [
+        {value: "disabled", label: "关闭（推荐）"},
+        {value: "enabled", label: "开启"},
+    ],
     to: [
         {value: "zh-Hans", label: "中文"},
         {value: "en", label: "英语"},

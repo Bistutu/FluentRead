@@ -398,6 +398,44 @@
       </el-col>
     </el-row>
 
+    <!-- DeepSeek API 格式 -->
+    <el-row v-show="compute.showDeepseekApiType" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark"
+          content="自动：使用 DeepSeek 官方 Chat Completion；仅当代理或网关明确支持 Responses API 时手动选择 Responses API"
+          placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">API 格式<el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-select v-model="config.deepseekApiType" placeholder="请选择 API 格式">
+          <el-option class="select-left" v-for="item in options.deepseekApiType" :key="item.value" :label="item.label"
+                     :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
+
+    <!-- DeepSeek 思考模式 -->
+    <el-row v-show="compute.showDeepseekThinkingMode" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark"
+          content="DeepSeek V4 Chat Completion 思考模式。翻译通常建议关闭以降低延迟；旧 deepseek-reasoner 配置会自动迁移为开启。"
+          placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">思考模式<el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-select v-model="config.deepseekThinkingMode" placeholder="请选择思考模式">
+          <el-option class="select-left" v-for="item in options.deepseekThinkingMode" :key="item.value"
+                     :label="item.label" :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
+
     <!-- 自定义请求体 -->
     <el-row v-show="compute.showCustomBody" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -686,7 +724,7 @@
 // Main 处理配置信息
 import { computed, ref, watch, onUnmounted } from 'vue'
 import { models, options, servicesType, defaultOption } from "../entrypoints/utils/option";
-import { Config } from "@/entrypoints/utils/model";
+import { Config, normalizeConfig } from "@/entrypoints/utils/model";
 import { storage } from '@wxt-dev/storage';
 import { ChatDotRound, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox, ElInputNumber } from 'element-plus'
@@ -697,7 +735,6 @@ import { parseHotkey } from '@/entrypoints/utils/hotkey';
 import {
   isCustomBodyMapping,
   isValidCustomBody,
-  normalizeCustomBodyMapping,
 } from '@/entrypoints/utils/custom-body';
 
 // 初始化深色模式媒体查询
@@ -724,8 +761,7 @@ let config = ref(new Config());
 storage.getItem('local:config').then((value: any) => {
   if (typeof value === 'string' && value) {
     const parsedConfig = JSON.parse(value);
-    Object.assign(config.value, parsedConfig);
-    config.value.customBody = normalizeCustomBodyMapping(parsedConfig.customBody);
+    Object.assign(config.value, normalizeConfig(parsedConfig));
   }
   // 初始应用主题
   updateTheme(config.value.theme || 'auto');
@@ -739,9 +775,7 @@ storage.watch('local:config', (newValue: any, oldValue: any) => {
   if (typeof newValue === 'string' && newValue) {
     // 将新的配置值解析为对象,并合并到当前的 config.value 中
     // 这样可以保持所有页面的配置同步
-    const parsedConfig = JSON.parse(newValue);
-    Object.assign(config.value, parsedConfig);
-    config.value.customBody = normalizeCustomBodyMapping(parsedConfig.customBody);
+    Object.assign(config.value, normalizeConfig(JSON.parse(newValue)));
   }
 });
 
@@ -791,6 +825,9 @@ let compute = ref({
   showNewAPI: computed(() => servicesType.isNewApi(config.value.service)),
   // 14、是否显示Azure OpenAI端点配置
   showAzureOpenaiEndpoint: computed(() => servicesType.isAzureOpenai(config.value.service)),
+  // 15、是否显示 DeepSeek API 格式配置
+  showDeepseekApiType: computed(() => config.value.service === 'deepseek'),
+  showDeepseekThinkingMode: computed(() => config.value.service === 'deepseek' && config.value.deepseekApiType !== 'responses'),
 })
 
 // 监听主题变化
@@ -1182,7 +1219,7 @@ const saveImport = async () => {
       });
       return;
     }
-    await storage.setItem('local:config', JSON.stringify(parsedConfig));
+    await storage.setItem('local:config', JSON.stringify(normalizeConfig(parsedConfig)));
     ElMessage({
       message: '配置导入成功!',
       type: 'success',
@@ -1311,7 +1348,7 @@ const importConfig = async () => {
     );
 
     // 应用新配置
-    Object.assign(config.value, importedConfig);
+    Object.assign(config.value, normalizeConfig(importedConfig));
 
     // 保存到storage
     await storage.setItem('local:config', JSON.stringify(config.value));

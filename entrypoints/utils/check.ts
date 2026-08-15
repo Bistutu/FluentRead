@@ -98,8 +98,6 @@ export function searchClassName(node: Node, className: string): Node | null {
 }
 
 export function contentPostHandler(text: string) {
-    // 替换掉<think>与</think>之间的内容
-    let content = text;
-    content = content.replace(/^<think>[\s\S]*?<\/think>/, "");
-    return content;
+    // Never render model reasoning tags in translated page content.
+    return text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
 }

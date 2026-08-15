@@ -35,27 +35,68 @@ export function commonMsgTemplate(origin: string) {
 }
 
 // deepseek
-export function deepseekMsgTemplate(origin: string) {
-    // 检测是否使用自定义模型
-    let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
+export function getCurrentModel(): string {
+    const selectedModel = config.model[config.service] === customModelString
+        ? config.customModel[config.service]
+        : config.model[config.service];
+    const normalizedModel = (selectedModel || '').replace(/（.*）/g, "");
 
-    // 删除模型名称中的中文括号及其内容，如"gpt-4（推荐）" -> "gpt-4"
-    model = model.replace(/（.*）/g, "");
+    // 运行时兜底：后台脚本若早于配置迁移读取到旧值，仍使用可用的 V4 模型。
+    if (normalizedModel === 'deepseek-chat' || normalizedModel === 'deepseek-reasoner') {
+        return 'deepseek-v4-flash';
+    }
 
-    let system = config.system_role[config.service] || defaultOption.system_role;
-    let user = (config.user_role[config.service] || defaultOption.user_role)
-        .replace('{{to}}', config.to).replace('{{origin}}', origin);
+    return normalizedModel;
+}
 
+function getDeepSeekThinkingMode(): 'enabled' | 'disabled' {
+    const selectedModel = config.model[config.service];
+    if (selectedModel === 'deepseek-reasoner') return 'enabled';
+    if (selectedModel === 'deepseek-chat') return 'disabled';
+    return config.deepseekThinkingMode === 'enabled' ? 'enabled' : 'disabled';
+}
+
+function deepseekPrompt(origin: string) {
+    return {
+        system: config.system_role[config.service] || defaultOption.system_role,
+        user: (config.user_role[config.service] || defaultOption.user_role)
+            .replace('{{to}}', config.to)
+            .replace('{{origin}}', origin),
+    };
+}
+
+// Responses API 格式供明确支持该协议的端点使用。
+export function deepseekResponsesMsgTemplate(origin: string) {
+    const model = getCurrentModel();
+    const {system, user} = deepseekPrompt(origin);
     const payload: any = {
-        'model': model,
-        'messages': [
-            {'role': 'system', 'content': system},
-            {'role': 'user', 'content': user},
-        ]
+        model,
+        instructions: system,
+        input: user,
     };
 
-    // 如果不是 deepseek-reasoner 模型,则添加 temperature
-    if (model !== 'deepseek-reasoner') {
+    if (getDeepSeekThinkingMode() === 'disabled') {
+        payload.temperature = 0.7;
+    }
+
+    return JSON.stringify(payload);
+}
+
+// DeepSeek 官方 V4 Chat Completion 格式。
+export function deepseekMsgTemplate(origin: string) {
+    const model = getCurrentModel();
+    const {system, user} = deepseekPrompt(origin);
+    const thinking = getDeepSeekThinkingMode();
+    const payload: any = {
+        model,
+        messages: [
+            {role: 'system', content: system},
+            {role: 'user', content: user},
+        ],
+        thinking: {type: thinking},
+    };
+
+    if (thinking === 'disabled') {
         payload.temperature = 0.7;
     }
 
