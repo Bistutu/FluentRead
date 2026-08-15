@@ -70,6 +70,22 @@
       </el-col>
     </el-row>
 
+    <!-- 免费翻译服务降级顺序 -->
+    <el-row v-show="compute.showFreeTranslation" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip
+          class="box-item"
+          effect="dark"
+          content="按微软翻译、DeepLX、谷歌翻译的顺序尝试。只有失败后才会继续下一个服务；DeepLX 地址使用 DeepLX 服务中的配置。"
+          placement="top-start"
+          :show-after="500"
+        >
+          <span class="popup-text popup-vertical-left">免费翻译降级顺序</span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12" class="free-translation-order">微软翻译 → DeepLX → 谷歌翻译</el-col>
+    </el-row>
+
     <!-- 目标语言 -->
     <el-row class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -746,7 +762,7 @@
 
 // Main 处理配置信息
 import { computed, ref, watch, onUnmounted } from 'vue'
-import { models, options, servicesType, defaultOption } from "../entrypoints/utils/option";
+import { models, options, services, servicesType, defaultOption } from "../entrypoints/utils/option";
 import { Config, normalizeConfig } from "@/entrypoints/utils/model";
 import { storage } from '@wxt-dev/storage';
 import { ChatDotRound, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
@@ -850,6 +866,8 @@ let compute = ref({
   showCustom: computed(() => servicesType.isCustom(config.value.service)),
   // 9、是否显示 DeepLX URL 配置
   showDeepLX: computed(() => config.value.service === 'deeplx'),
+  // 9.1、是否显示免费翻译服务的降级说明
+  showFreeTranslation: computed(() => config.value.service === services.freeTranslation),
   // 10、是否自定义模型
   showCustomModel: computed(() => servicesType.isAI(config.value.service) && config.value.model[config.value.service] === "自定义模型"),
   // 11、判断是否为"双语模式"，控制一些翻译服务的显示
@@ -1732,5 +1750,12 @@ const validateConfig = (configData: any): boolean => {
 .deeplx-presets {
   margin-top: 6px;
   width: 100%;
+}
+
+.free-translation-order {
+  display: flex;
+  align-items: center;
+  color: var(--el-color-primary);
+  font-weight: 600;
 }
 </style>

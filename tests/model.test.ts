@@ -28,6 +28,8 @@ describe('AI 模型编号列表', () => {
         expect(models.get(services.groq)).not.toContain('whisper-large-v3');
         expect(models.get(services.openrouter)?.at(-1)).toBe(customModelString);
         expect(options.services.find(option => option.value === services.zhipu)?.label).toBe('智谱');
+        expect(options.services.find(option => option.value === services.freeTranslation)?.label).toBe('免费翻译服务');
+        expect(servicesType.isMachine(services.freeTranslation)).toBe(true);
     });
 
     it('不会把下拉列表中仍可选择的模型当成退役编号改写', () => {
