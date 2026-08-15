@@ -23,6 +23,11 @@ export default defineConfig({
     }),
     manifest: {
         permissions: ['storage', 'contextMenus', 'offscreen'],
+        host_permissions: [
+            'https://translate.google.com/*',
+            'https://translate.google.co.uk/*',
+            'https://translate.googleapis.com/*',
+        ],
     },
 
 });

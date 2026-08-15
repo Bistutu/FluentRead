@@ -20,6 +20,28 @@ function createGoogleBatchRequest(text: string, fromLang: string, toLang: string
     return JSON.stringify([[[GOOGLE_TRANSLATE_RPC_ID, request, null, 'generic']]]);
 }
 
+function getArrayItem(value: unknown, index: number): unknown {
+    return Array.isArray(value) ? value[index] : undefined;
+}
+
+function joinTranslationSegments(value: unknown): string | null {
+    if (!Array.isArray(value)) {
+        return null;
+    }
+
+    const translatedText = value
+        .map(segment => Array.isArray(segment) && typeof segment[0] === 'string' ? segment[0] : '')
+        .join('');
+    return translatedText.length > 0 ? translatedText : null;
+}
+
+function getGoogleBatchSegments(payload: unknown): unknown {
+    const translationGroups = getArrayItem(payload, 1);
+    const firstGroup = getArrayItem(translationGroups, 0);
+    const firstTranslation = getArrayItem(firstGroup, 0);
+    return getArrayItem(firstTranslation, 5);
+}
+
 export function parseGoogleBatchResponse(responseBody: string): string {
     const lines = responseBody
         .replace(/^\)\]\}'(?:\r?\n)?/, '')
@@ -59,15 +81,8 @@ export function parseGoogleBatchResponse(responseBody: string): string {
                 continue;
             }
 
-            const segments = (payload as any)?.[1]?.[0]?.[0]?.[5];
-            if (!Array.isArray(segments)) {
-                continue;
-            }
-
-            const translatedText = segments
-                .map(segment => Array.isArray(segment) && typeof segment[0] === 'string' ? segment[0] : '')
-                .join('');
-            if (translatedText.length > 0) {
+            const translatedText = joinTranslationSegments(getGoogleBatchSegments(payload));
+            if (translatedText !== null) {
                 return translatedText;
             }
         }
@@ -84,15 +99,8 @@ export function parseGoogleLegacyResponse(responseBody: string): string {
         throw new Error('返回的不是 JSON');
     }
 
-    const segments = (result as any)?.[0];
-    if (!Array.isArray(segments)) {
-        throw new Error('返回格式异常');
-    }
-
-    const translatedText = segments
-        .map(segment => Array.isArray(segment) && typeof segment[0] === 'string' ? segment[0] : '')
-        .join('');
-    if (translatedText.length === 0) {
+    const translatedText = joinTranslationSegments(getArrayItem(result, 0));
+    if (translatedText === null) {
         throw new Error('返回格式异常');
     }
     return translatedText;
@@ -108,6 +116,15 @@ function formatResponseBody(responseBody: string): string {
         return '';
     }
     return compactBody.slice(0, GOOGLE_ERROR_BODY_PREVIEW_LENGTH);
+}
+
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+}
+
+function createGoogleParseError(error: unknown, responseBody: string): Error {
+    const responsePreview = formatResponseBody(responseBody) || '空响应';
+    return new Error(`${getErrorMessage(error)}，响应摘要: ${responsePreview}`);
 }
 
 async function fetchGoogleResponse(
@@ -154,7 +171,11 @@ async function translateGoogleBatch(
             'f.req': createGoogleBatchRequest(text, fromLang, toLang),
         }).toString(),
     }, timeoutMs);
-    return parseGoogleBatchResponse(responseBody);
+    try {
+        return parseGoogleBatchResponse(responseBody);
+    } catch (error) {
+        throw createGoogleParseError(error, responseBody);
+    }
 }
 
 async function translateGoogleLegacy(
@@ -173,11 +194,11 @@ async function translateGoogleLegacy(
     url.searchParams.set('q', text);
 
     const {responseBody} = await fetchGoogleResponse(url, {method: 'GET'}, timeoutMs);
-    return parseGoogleLegacyResponse(responseBody);
-}
-
-function getErrorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : String(error);
+    try {
+        return parseGoogleLegacyResponse(responseBody);
+    } catch (error) {
+        throw createGoogleParseError(error, responseBody);
+    }
 }
 
 export async function translateGoogleText(

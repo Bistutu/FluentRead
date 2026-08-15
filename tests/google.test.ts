@@ -60,6 +60,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
 });
 
@@ -137,20 +139,61 @@ describe('谷歌翻译适配器', () => {
         expect(init?.headers).toBeUndefined();
     });
 
-    it('所有接口失败时汇总原因并隐藏 CAPTCHA HTML', async () => {
+    it('所有接口失败时汇总原因、响应摘要并隐藏 CAPTCHA HTML', async () => {
         fetchMock
             .mockResolvedValueOnce(mockResponse('<!doctype html><html>captcha details</html>', {
                 ok: false,
                 status: 429,
                 statusText: 'Too Many Requests',
             }))
-            .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+            .mockResolvedValueOnce(mockResponse(`)]}'\n\n[["unexpected", true]]`))
             .mockResolvedValueOnce(mockResponse('not-json'));
 
         await expect(translateGoogleText('hello', 'en', 'zh-Hans'))
             .rejects.toThrow(
-                '谷歌翻译所有匿名接口均失败：主网页 RPC: HTTP 429 Too Many Requests，响应: 收到 HTML 页面（可能触发了 CAPTCHA）；备用网页 RPC: Failed to fetch；旧版 gtx 接口: 返回的不是 JSON',
+                `谷歌翻译所有匿名接口均失败：主网页 RPC: HTTP 429 Too Many Requests，响应: 收到 HTML 页面（可能触发了 CAPTCHA）；备用网页 RPC: 返回格式异常，响应摘要: )]}' [["unexpected", true]]；旧版 gtx 接口: 返回的不是 JSON，响应摘要: not-json`,
             );
+    });
+
+    it('读取响应体失败时继续故障转移并汇总错误', async () => {
+        fetchMock.mockResolvedValue(mockResponse('', {
+            text: vi.fn().mockRejectedValue(new Error('stream error')),
+        }));
+
+        await expect(translateGoogleText('hello', 'en', 'zh-Hans'))
+            .rejects.toThrow(
+                '谷歌翻译所有匿名接口均失败：主网页 RPC: stream error；备用网页 RPC: stream error；旧版 gtx 接口: stream error',
+            );
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+
+    it('单接口超时后继续故障转移，并遵守 15 秒总预算', async () => {
+        vi.useFakeTimers();
+        const signals: AbortSignal[] = [];
+        fetchMock.mockImplementation((_input, init) => {
+            const signal = init?.signal;
+            if (!signal) {
+                return Promise.reject(new Error('缺少 AbortSignal'));
+            }
+            signals.push(signal);
+            return new Promise((_resolve, reject) => {
+                signal.addEventListener('abort', () => {
+                    reject(new DOMException('The operation was aborted.', 'AbortError'));
+                }, {once: true});
+            });
+        });
+
+        const translationPromise = translateGoogleText('hello', 'en', 'zh-Hans');
+        const assertion = expect(translationPromise).rejects.toThrow(
+            '谷歌翻译所有匿名接口均失败：主网页 RPC: 请求超时（8 秒）；备用网页 RPC: 请求超时（7 秒）',
+        );
+
+        await vi.runAllTimersAsync();
+        await assertion;
+
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(signals).toHaveLength(2);
+        expect(signals.every(signal => signal.aborted)).toBe(true);
     });
 
     it('按网页 RPC 服务端片段原样拼接译文，不额外插入空格', () => {
