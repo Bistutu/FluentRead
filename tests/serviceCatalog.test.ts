@@ -6,6 +6,7 @@ import {
   filterServiceGroups,
   splitModelOptions,
 } from '@/entrypoints/utils/serviceCatalog'
+import { customModelString, models, servicesType } from '@/entrypoints/utils/option'
 
 const options = [
   { value: 'machine', label: '机器翻译', disabled: true },
@@ -69,5 +70,12 @@ describe('service catalog helpers', () => {
       common: ['one', 'two'],
       more: [],
     })
+  })
+
+  it('为所有需要模型的 AI 服务提供自定义模型入口', () => {
+    for (const service of servicesType.useModel) {
+      expect(models.get(service), `${service} 缺少模型列表`).toBeDefined()
+      expect(models.get(service), `${service} 缺少自定义模型`).toContain(customModelString)
+    }
   })
 })
