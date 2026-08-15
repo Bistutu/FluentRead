@@ -1,5 +1,10 @@
 <template>
-  <section class="service-catalog" aria-label="配置翻译服务与模型">
+  <section
+    class="service-catalog"
+    aria-label="翻译服务配置"
+    :data-default-service="defaultService"
+    :data-editing-service="service"
+  >
     <div class="catalog-layout">
       <aside class="service-rail" aria-label="翻译服务列表">
         <label class="catalog-search">
@@ -18,6 +23,7 @@
               :key="item.value"
               type="button"
               class="service-item"
+              :data-service-value="item.value"
               :class="{ active: service === item.value }"
               :aria-pressed="service === item.value"
               @click="$emit('update:service', item.value)"
@@ -27,7 +33,11 @@
                 <strong>{{ item.label }}</strong>
                 <small>{{ group.id === 'machine' ? '机器翻译' : 'AI 翻译' }}</small>
               </span>
-              <span v-if="service === item.value" class="current-dot" title="默认服务"></span>
+              <span
+                v-if="defaultService === item.value"
+                class="current-dot"
+                title="默认翻译服务"
+              ></span>
             </button>
           </section>
         </div>
@@ -40,7 +50,7 @@
           <div>
             <div class="detail-title-row">
               <h4>{{ selectedService?.label || '尚未配置服务' }}</h4>
-              <span class="active-badge">默认配置</span>
+              <span class="active-badge">{{ service === defaultService ? '当前默认' : '正在配置' }}</span>
             </div>
           </div>
         </div>
@@ -128,6 +138,7 @@ import {
 
 const props = defineProps<{
   service: string
+  defaultService: string
   selectedModel?: string
   services: ServiceOption[]
   modelOptions: string[]

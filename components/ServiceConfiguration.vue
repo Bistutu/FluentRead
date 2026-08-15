@@ -10,7 +10,7 @@
           <span class="popup-text popup-vertical-left">访问令牌<el-icon class="icon-margin"><ChatDotRound /></el-icon></span>
         </el-tooltip>
       </el-col>
-      <el-col :span="12"><el-input v-model="config.token[config.service]" type="password" show-password placeholder="请输入API访问令牌" /></el-col>
+      <el-col :span="12"><el-input v-model="config.token[service]" type="password" show-password placeholder="请输入API访问令牌" /></el-col>
     </el-row>
 
     <el-row v-show="compute.showAzureOpenaiEndpoint" class="margin-bottom margin-left-2em">
@@ -61,7 +61,7 @@
 
     <el-row v-show="compute.showRobotId" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner"><el-tooltip effect="dark" content="填写对应 Coze 机器人的 ID。" placement="top-start" :show-after="300"><span class="popup-text popup-vertical-left">机器人ID<el-icon class="icon-margin"><ChatDotRound /></el-icon></span></el-tooltip></el-col>
-      <el-col :span="12"><el-input v-model="config.robot_id[config.service]" placeholder="请输入Coze机器人ID" /></el-col>
+      <el-col :span="12"><el-input v-model="config.robot_id[service]" placeholder="请输入Coze机器人ID" /></el-col>
     </el-row>
 
     <el-row v-show="compute.showCustom" class="margin-bottom margin-left-2em">
@@ -74,8 +74,8 @@
     </el-row>
 
     <el-row v-show="compute.showCustomModel" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner"><el-tooltip effect="dark" content="填写服务商支持的模型标识；选择自定义模型后，网页翻译会使用这里的值。" placement="top-start" :show-after="300"><span class="popup-text popup-vertical-left">{{ config.service === 'doubao' ? '接入点' : '自定义模型' }}<el-icon class="icon-margin"><ChatDotRound /></el-icon></span></el-tooltip></el-col>
-      <el-col :span="12"><el-input v-model="config.customModel[config.service]" placeholder="例如：gemma:7b" /></el-col>
+      <el-col :span="12" class="lightblue rounded-corner"><el-tooltip effect="dark" content="填写服务商支持的模型标识；选择自定义模型后，网页翻译会使用这里的值。" placement="top-start" :show-after="300"><span class="popup-text popup-vertical-left">{{ service === 'doubao' ? '接入点' : '自定义模型' }}<el-icon class="icon-margin"><ChatDotRound /></el-icon></span></el-tooltip></el-col>
+      <el-col :span="12"><el-input v-model="config.customModel[service]" placeholder="例如：gemma:7b" /></el-col>
     </el-row>
 
     <el-row v-show="compute.showDeepseekApiType" class="margin-bottom margin-left-2em">
@@ -90,8 +90,8 @@
     <el-row v-show="compute.showCustomBody" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner"><el-tooltip effect="dark" content="填写要合并到翻译请求中的 JSON 参数对象。" placement="top-start" :show-after="300"><span class="popup-text popup-vertical-left">自定义请求体<el-icon class="icon-margin"><ChatDotRound /></el-icon></span></el-tooltip></el-col>
       <el-col :span="12">
-        <el-input v-model="config.customBody[config.service]" :class="{ 'input-error': !isValidCustomBody(config.customBody[config.service]) }" placeholder='例如：{"thinking": {"type": "disabled"}}' />
-        <div v-if="!isValidCustomBody(config.customBody[config.service])" class="error-text">请输入合法的 JSON 对象，否则该配置将被忽略</div>
+        <el-input v-model="config.customBody[service]" :class="{ 'input-error': !isValidCustomBody(config.customBody[service]) }" placeholder='例如：{"thinking": {"type": "disabled"}}' />
+        <div v-if="!isValidCustomBody(config.customBody[service])" class="error-text">请输入合法的 JSON 对象，否则该配置将被忽略</div>
       </el-col>
     </el-row>
   </section>
@@ -106,12 +106,14 @@ import { isValidCustomBody } from '@/entrypoints/utils/custom-body'
 
 const props = defineProps<{
   config: Config
+  service: string
   compute: Record<string, any>
   options: typeof optionConfig
   isValidAzureEndpoint: (endpoint: string) => boolean
 }>()
 
 const config = toRef(props, 'config')
+const service = toRef(props, 'service')
 const compute = toRef(props, 'compute')
 const options = toRef(props, 'options')
 const isValidAzureEndpoint = toRef(props, 'isValidAzureEndpoint')

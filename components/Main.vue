@@ -91,18 +91,20 @@
     <!-- 翻译服务 -->
     <section v-show="props.activeSection === 'settings-services'" id="settings-services" class="settings-section">
       <ServiceCatalog
-        :service="config.service"
-        :selected-model="config.model[config.service]"
-        :services="compute.filteredServices"
-        :model-options="compute.model"
-        :show-model="compute.showModel"
-        @update:service="config.service = $event"
-        @update:model="config.model[config.service] = $event"
+        :service="selectedConfigurationService"
+        :default-service="config.service"
+        :selected-model="config.model[selectedConfigurationService]"
+        :services="configurationCompute.filteredServices"
+        :model-options="configurationCompute.model"
+        :show-model="configurationCompute.showModel"
+        @update:service="setConfigurationService"
+        @update:model="config.model[selectedConfigurationService] = $event"
       >
         <template #configuration>
           <ServiceConfiguration
             :config="config"
-            :compute="compute"
+            :service="selectedConfigurationService"
+            :compute="configurationCompute"
             :options="options"
             :is-valid-azure-endpoint="isValidAzureEndpoint"
           />
@@ -561,48 +563,58 @@ watch(config, (newValue) => {
   void storage.setItem('local:config', JSON.stringify(newValue));
 }, { deep: true });
 
-// 计算属性
-const compute = ref({
-  // 1、是否是AI服务
-  showAI: computed(() => servicesType.isAI(config.value.service)),
-  // 2、是否是机器翻译
-  showMachine: computed(() => servicesType.isMachine(config.value.service)),
-  // 3、是否显示代理
-  showProxy: computed(() => servicesType.isUseProxy(config.value.service)),
-  // 4、是否显示模型
-  showModel: computed(() => servicesType.isUseModel(config.value.service)),
-  // 4.5、是否支持自定义请求体
-  showCustomBody: computed(() => servicesType.isUseCustomBody(config.value.service)),
-  // 5、是否显示token
-  showToken: computed(() => servicesType.isUseToken(config.value.service)),
-  // 6、是否显示 AkSk
-  showAkSk: computed(() => servicesType.isUseAkSk(config.value.service)),
-  // 6.5、是否显示有道翻译配置
-  showYoudao: computed(() => servicesType.isYoudao(config.value.service)),
-  // 6.6、是否显示腾讯云机器翻译配置
-  showTencent: computed(() => servicesType.isTencent(config.value.service)),
-  // 7、获取模型列表
-  model: computed(() => models.get(config.value.service) || []),
-  // 8、是否需要自定义接口
-  showCustom: computed(() => servicesType.isCustom(config.value.service)),
-  // 9、是否显示 DeepLX URL 配置
-  showDeepLX: computed(() => config.value.service === 'deeplx'),
-  // 10、是否自定义模型
-  showCustomModel: computed(() => servicesType.isAI(config.value.service) && config.value.model[config.value.service] === "自定义模型"),
-  // 11、判断是否为"双语模式"，控制一些翻译服务的显示
-  filteredServices: computed(() => options.services.filter((service: any) =>
-    !([service.google].includes(service.value) && config.value.display !== 1))
+// 设置页左侧列表只切换正在编辑的服务，不改变网页翻译实际使用的默认服务。
+const configurationService = ref<string | null>(null);
+const selectedConfigurationService = computed(
+  () => configurationService.value ?? config.value.service,
+);
+
+const setConfigurationService = (value: string) => {
+  configurationService.value = value;
+};
+
+type ServiceSource = { value: string };
+
+const actualService = computed(() => config.value.service);
+const filteredServices = computed(() =>
+  options.services.filter((item: any) =>
+    !([item.google].includes(item.value) && config.value.display !== 1),
   ),
-  // 12、判断是否为 coze
-  showRobotId: computed(() => servicesType.isCoze(config.value.service)),
-  // 13、是否显示New API配置
-  showNewAPI: computed(() => servicesType.isNewApi(config.value.service)),
-  // 14、是否显示Azure OpenAI端点配置
-  showAzureOpenaiEndpoint: computed(() => servicesType.isAzureOpenai(config.value.service)),
-  // 15、是否显示 DeepSeek API 格式配置
-  showDeepseekApiType: computed(() => config.value.service === 'deepseek'),
-  showDeepseekThinkingMode: computed(() => config.value.service === 'deepseek' && config.value.deepseekApiType !== 'responses'),
-})
+);
+
+// 两个页面都需要相同的服务能力判断，但数据源不同：实际翻译使用默认服务，
+// 设置页右侧表单使用正在配置的服务。统一从这里生成，避免两套逻辑继续漂移。
+const createServiceCompute = (serviceSource: ServiceSource) => ({
+  showAI: computed(() => servicesType.isAI(serviceSource.value)),
+  showMachine: computed(() => servicesType.isMachine(serviceSource.value)),
+  showProxy: computed(() => servicesType.isUseProxy(serviceSource.value)),
+  showModel: computed(() => servicesType.isUseModel(serviceSource.value)),
+  showCustomBody: computed(() => servicesType.isUseCustomBody(serviceSource.value)),
+  showToken: computed(() => servicesType.isUseToken(serviceSource.value)),
+  showAkSk: computed(() => servicesType.isUseAkSk(serviceSource.value)),
+  showYoudao: computed(() => servicesType.isYoudao(serviceSource.value)),
+  showTencent: computed(() => servicesType.isTencent(serviceSource.value)),
+  model: computed(() => models.get(serviceSource.value) || []),
+  showCustom: computed(() => servicesType.isCustom(serviceSource.value)),
+  showDeepLX: computed(() => serviceSource.value === 'deeplx'),
+  showCustomModel: computed(
+    () =>
+      servicesType.isAI(serviceSource.value) &&
+      config.value.model[serviceSource.value] === '自定义模型',
+  ),
+  filteredServices,
+  showRobotId: computed(() => servicesType.isCoze(serviceSource.value)),
+  showNewAPI: computed(() => servicesType.isNewApi(serviceSource.value)),
+  showAzureOpenaiEndpoint: computed(() => servicesType.isAzureOpenai(serviceSource.value)),
+  showDeepseekApiType: computed(() => serviceSource.value === 'deepseek'),
+  showDeepseekThinkingMode: computed(
+    () => serviceSource.value === 'deepseek' && config.value.deepseekApiType !== 'responses',
+  ),
+});
+
+const compute = ref(createServiceCompute(actualService));
+// config.service 仍表示实际默认翻译服务；这里仅用于设置页正在编辑的服务。
+const configurationCompute = ref(createServiceCompute(selectedConfigurationService));
 
 // 监听主题变化
 watch(() => config.value.theme, (newTheme) => {
