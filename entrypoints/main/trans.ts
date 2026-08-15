@@ -3,7 +3,7 @@ import { cache } from "../utils/cache";
 import { services, servicesType } from "../utils/option";
 import { insertFailedTip, insertLoadingSpinner } from "../utils/icon";
 import { styles } from "@/entrypoints/utils/constant";
-import { beautyHTML, grabAllNode, LLMStandardHTML, resolveNodeAtPoint } from "@/entrypoints/main/dom";
+import { beautyHTML, getOpenShadowRoots, grabAllNode, LLMStandardHTML, resolveNodeAtPoint } from "@/entrypoints/main/dom";
 import { detectlang, throttle } from "@/entrypoints/utils/common";
 import { config } from "@/entrypoints/utils/config";
 import { translateText, translateTextBatch, cancelAllTranslations } from '@/entrypoints/utils/translateApi';
@@ -23,6 +23,7 @@ import {
 
 let hoverTimer: any; // 鼠标悬停计时器
 export let originalContents = new Map(); // 保存原始内容
+const originalNodes = new Map<string, Element>(); // 保存全文翻译节点，支持 Shadow DOM 恢复
 let isAutoTranslating = false; // 控制是否继续翻译新内容
 let observer: IntersectionObserver | null = null; // 保存观察器实例
 let mutationObserver: MutationObserver | null = null; // 保存 DOM 变化观察器实例
@@ -41,9 +42,8 @@ export function restoreOriginalContent() {
     // 先恢复指定节点翻译状态机管理的节点，避免用字符串 innerHTML 覆盖真实节点。
     restoreAllTranslations();
     
-    // 1. 遍历所有已翻译的节点
-    document.querySelectorAll(`[${TRANSLATED_ATTR}="true"]`).forEach(node => {
-        const nodeId = node.getAttribute(TRANSLATED_ID_ATTR);
+    const restoreLegacyNode = (node: Element, nodeId: string | null) => {
+        if (!nodeId) return;
         if (nodeId && originalContents.has(nodeId)) {
             const originalContent = originalContents.get(nodeId);
             // 指定节点状态机可能已经恢复过真实 ChildNode；只有内容仍然不同才做兼容恢复。
@@ -54,6 +54,14 @@ export function restoreOriginalContent() {
             // 移除可能添加的翻译相关类
             node.classList.remove('fluent-read-bilingual');
         }
+    };
+
+    // 1. 遍历普通 DOM 与已记录的 Shadow DOM 节点。
+    document.querySelectorAll(`[${TRANSLATED_ATTR}="true"]`).forEach(node => {
+        restoreLegacyNode(node, node.getAttribute(TRANSLATED_ID_ATTR));
+    });
+    originalNodes.forEach((node, nodeId) => {
+        restoreLegacyNode(node, nodeId);
     });
     
     // 2. 移除所有翻译内容元素
@@ -68,6 +76,7 @@ export function restoreOriginalContent() {
     
     // 4. 清空存储的原始内容
     originalContents.clear();
+    originalNodes.clear();
     
     // 5. 停止所有观察器
     if (observer) {
@@ -126,6 +135,7 @@ export function autoTranslateEnglishPage() {
                 
                 // 保存原始内容
                 originalContents.set(nodeId, node.innerHTML);
+                originalNodes.set(nodeId, node);
                 
                 // 标记为已翻译
                 node.setAttribute(TRANSLATED_ATTR, 'true');
@@ -151,6 +161,11 @@ export function autoTranslateEnglishPage() {
         observer?.observe(node);
     });
 
+    const mutationObserverOptions: MutationObserverInit = {
+        childList: true,
+        subtree: true,
+    };
+
     // 创建 MutationObserver 监听 DOM 变化
     mutationObserver = new MutationObserver((mutations) => {
         if (!isAutoTranslating) return;
@@ -163,15 +178,21 @@ export function autoTranslateEnglishPage() {
                         n => !n.hasAttribute(TRANSLATED_ATTR)
                     );
                     newNodes.forEach(n => observer?.observe(n));
+
+                    // MutationObserver 不会自动穿透新出现的 ShadowRoot。
+                    // 将开放根单独注册，后续动态内容才能进入同一翻译队列。
+                    getOpenShadowRoots(node as Element).forEach(shadowRoot => {
+                        mutationObserver?.observe(shadowRoot, mutationObserverOptions);
+                    });
                 }
             });
         });
     });
 
     // 监听整个 body 的变化
-    mutationObserver.observe(document.body, {
-        childList: true,
-        subtree: true
+    mutationObserver.observe(document.body, mutationObserverOptions);
+    getOpenShadowRoots(document.body).forEach(shadowRoot => {
+        mutationObserver?.observe(shadowRoot, mutationObserverOptions);
     });
 }
 

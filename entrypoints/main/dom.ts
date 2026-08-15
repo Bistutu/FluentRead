@@ -45,8 +45,69 @@ const extensionSelector = [
     '[class*="fluent-read-retry"]',
 ].join(',');
 
+/**
+ * 判断节点是否是插件自己的浮层或过程节点。
+ * 这些节点不应成为网页正文翻译目标，也不应被递归扫描。
+ */
+function isExtensionElement(node: Element): boolean {
+    return Boolean(node.matches(extensionSelector) || node.closest(extensionSelector));
+}
+
+/**
+ * 收集 root 下所有开放的 ShadowRoot。
+ * 浏览器无法从 content script 读取 closed shadow root，因此这里只处理可公开访问的根。
+ */
+function getImmediateOpenShadowRoots(rootNode: Node): ShadowRoot[] {
+    const roots: ShadowRoot[] = [];
+    const collect = (element: Element) => {
+        if (element.shadowRoot) {
+            roots.push(element.shadowRoot);
+        }
+    };
+
+    if (rootNode instanceof Element) collect(rootNode);
+
+    const walker = document.createTreeWalker(rootNode, NodeFilter.SHOW_ELEMENT);
+    let currentNode = walker.nextNode();
+    while (currentNode) {
+        if (currentNode instanceof Element) collect(currentNode);
+        currentNode = walker.nextNode();
+    }
+
+    return roots;
+}
+
+export function getOpenShadowRoots(rootNode: Node): ShadowRoot[] {
+    const roots: ShadowRoot[] = [];
+    const seen = new Set<ShadowRoot>();
+    const pending: Node[] = [rootNode];
+    let pendingIndex = 0;
+
+    while (pendingIndex < pending.length) {
+        const currentRoot = pending[pendingIndex++];
+        if (!currentRoot) continue;
+
+        for (const shadowRoot of getImmediateOpenShadowRoots(currentRoot)) {
+            if (seen.has(shadowRoot)) continue;
+            seen.add(shadowRoot);
+            roots.push(shadowRoot);
+            pending.push(shadowRoot);
+        }
+    }
+
+    return roots;
+}
+
 // 传入父节点，返回所有需要翻译的 DOM 元素数组
 export function grabAllNode(rootNode: Node): Element[] {
+    return grabAllNodeInternal(rootNode, new Set<ShadowRoot>());
+}
+
+/**
+ * 扫描一个 DOM 根，并递归扫描其中的开放 ShadowRoot。
+ * visitedRoots 防止嵌套 Shadow DOM 在递归过程中被重复处理。
+ */
+function grabAllNodeInternal(rootNode: Node, visitedRoots: Set<ShadowRoot>): Element[] {
     if (!rootNode) return [];
 
     const result: Element[] = [];
@@ -65,6 +126,9 @@ export function grabAllNode(rootNode: Node): Element[] {
                 if (!(node instanceof Element)) return NodeFilter.FILTER_SKIP;
 
                 const tag = node.tagName.toLowerCase();
+
+                // 插件自身的 UI 不属于网页正文，直接跳过整个子树。
+                if (isExtensionElement(node)) return NodeFilter.FILTER_REJECT;
 
                 // 跳过黑名单标签
                 if (skipSet.has(tag) ||
@@ -129,15 +193,15 @@ export function grabAllNode(rootNode: Node): Element[] {
             walker.currentNode = currentNode.nextSibling || currentNode;
         }
     }
-    return Array.from(new Set(result));;
-}
 
-/**
- * 判断节点是否是插件自己的浮层或过程节点。
- * 这些节点不应成为网页正文翻译目标。
- */
-function isExtensionElement(node: Element): boolean {
-    return Boolean(node.matches(extensionSelector) || node.closest(extensionSelector));
+    // TreeWalker 不会穿透 Shadow DOM，需要显式扫描每个开放根。
+    for (const shadowRoot of getImmediateOpenShadowRoots(rootNode)) {
+        if (visitedRoots.has(shadowRoot)) continue;
+        visitedRoots.add(shadowRoot);
+        result.push(...grabAllNodeInternal(shadowRoot, visitedRoots));
+    }
+
+    return Array.from(new Set(result));
 }
 
 function isInlineLayout(node: Element): boolean {
