@@ -109,15 +109,18 @@ export function getDeepLXRequestLanguages(from: string, to: string): {sourceLang
     };
 }
 
-async function deeplx(message: {origin: string}) {
-    if (typeof message.origin !== "string") {
+export async function translateDeepLXText(
+    text: string,
+    serviceKey: string = services.deeplx,
+): Promise<string> {
+    if (typeof text !== "string") {
         throw new Error("DeepLX 翻译仅支持单条文本");
     }
 
-    const token = config.token[services.deeplx]?.trim() || "";
+    const token = config.token[serviceKey]?.trim() || "";
     const endpoints = getDeepLXEndpoints(
         config.deeplx,
-        config.proxy[config.service],
+        config.proxy[serviceKey],
         token,
     );
     const {sourceLang, targetLang} = getDeepLXRequestLanguages(config.from, config.to);
@@ -133,7 +136,7 @@ async function deeplx(message: {origin: string}) {
         try {
             return await translateFromDeepLX(
                 endpoint,
-                message.origin,
+                text,
                 sourceLang,
                 targetLang,
                 token,
@@ -146,6 +149,14 @@ async function deeplx(message: {origin: string}) {
 
     const failureSummary = failures.length > 0 ? failures.join("；") : "总请求时间已耗尽";
     throw new Error(`DeepLX 所有备用站点均失败：${failureSummary}`);
+}
+
+async function deeplx(message: {origin: string}) {
+    if (typeof message.origin !== "string") {
+        throw new Error("DeepLX 翻译仅支持单条文本");
+    }
+
+    return translateDeepLXText(message.origin, services.deeplx);
 }
 
 export default deeplx;
