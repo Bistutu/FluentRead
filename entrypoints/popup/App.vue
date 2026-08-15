@@ -51,7 +51,7 @@
           aria-label="翻译服务"
           @click="toggleServicePicker"
         >
-          <span class="service-icon">译</span>
+          <ServiceIcon :service="config.service" :label="serviceLabel" />
           <span class="service-copy"><small>翻译服务</small><strong>{{ serviceLabel }}</strong></span>
           <span class="chevron" :class="{ open: servicePickerOpen }">⌄</span>
         </button>
@@ -74,7 +74,7 @@
               :aria-selected="config.service === item.value"
               @click="selectService(item.value)"
             >
-              <span class="service-option-icon">{{ serviceInitial(item.label) }}</span>
+              <ServiceIcon :service="item.value" :label="item.label" size="small" />
               <span>{{ item.label }}</span>
               <span v-if="config.service === item.value" class="service-option-check">✓</span>
             </button>
@@ -96,7 +96,7 @@
               :aria-selected="config.service === item.value"
               @click="selectService(item.value)"
             >
-              <span class="service-option-icon">{{ serviceInitial(item.label) }}</span>
+              <ServiceIcon :service="item.value" :label="item.label" size="small" />
               <span>{{ item.label }}</span>
               <span v-if="config.service === item.value" class="service-option-check">✓</span>
             </button>
@@ -243,6 +243,7 @@ import { storage } from '@wxt-dev/storage';
 import { Setting } from '@element-plus/icons-vue';
 import { Config, normalizeConfig } from '@/entrypoints/utils/model';
 import { options } from '@/entrypoints/utils/option';
+import ServiceIcon from '@/components/ServiceIcon.vue';
 
 type DrawerName = 'hover' | 'selection' | 'floating' | 'appearance';
 const CustomHotkeyInput = defineAsyncComponent(() => import('@/components/CustomHotkeyInput.vue'));
@@ -342,9 +343,6 @@ function toggleServicePicker() {
 function selectService(value: string) {
   config.value.service = value;
   servicePickerOpen.value = false;
-}
-function serviceInitial(label: string) {
-  return label.replace(/[⭐️]/g, '').trim().slice(0, 1) || '译';
 }
 onMounted(() => {
   document.addEventListener('pointerdown', closeServicePicker);

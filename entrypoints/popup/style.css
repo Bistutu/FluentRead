@@ -127,10 +127,6 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
   border-color: rgba(239, 71, 118, .48); box-shadow: 0 0 0 3px rgba(239, 71, 118, .08);
 }
 .service-field:disabled { cursor: not-allowed; opacity: .5; }
-.service-icon {
-  display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px;
-  color: var(--brand-strong); background: var(--brand-soft); font-size: 14px; font-weight: 800;
-}
 .service-copy { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .service-copy small { color: var(--muted); font-size: 9px; }
 .service-copy strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
@@ -155,10 +151,6 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
 }
 .service-option:hover, .service-option[aria-selected="true"] { border-color: rgba(239, 71, 118, .22); background: var(--brand-soft); }
 .service-option > span:nth-child(2) { overflow: hidden; flex: 1; font-size: 11px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-.service-option-icon {
-  display: grid; place-items: center; flex: none; width: 25px; height: 25px; border-radius: 8px;
-  color: var(--brand-strong); background: var(--brand-soft); font-size: 10px; font-weight: 800;
-}
 .service-option-check { color: var(--brand-strong); font-size: 14px; font-weight: 800; }
 .service-more-toggle { justify-content: space-between; margin-top: 7px; border-color: var(--line); background: var(--surface-soft); font-size: 10px; font-weight: 700; }
 .service-more-toggle:hover { border-color: rgba(239, 71, 118, .32); background: var(--brand-soft); }

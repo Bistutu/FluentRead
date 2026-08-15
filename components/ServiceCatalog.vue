@@ -22,7 +22,7 @@
               :aria-pressed="service === item.value"
               @click="$emit('update:service', item.value)"
             >
-              <span class="service-mark" :data-tone="serviceTone(item.value)">{{ serviceMark(item.value, item.label) }}</span>
+              <ServiceIcon :service="item.value" :label="item.label" />
               <span class="service-copy">
                 <strong>{{ item.label }}</strong>
                 <small>{{ group.id === 'machine' ? '机器翻译' : 'AI 翻译' }}</small>
@@ -36,7 +36,7 @@
 
       <section class="service-detail" aria-label="当前翻译服务详情">
         <div class="detail-hero">
-          <span class="service-mark large" :data-tone="serviceTone(service)">{{ serviceMark(service, selectedService?.label) }}</span>
+          <ServiceIcon :service="service" :label="selectedService?.label" size="large" />
           <div>
             <div class="detail-title-row">
               <h4>{{ selectedService?.label || '尚未配置服务' }}</h4>
@@ -73,7 +73,7 @@
                 :aria-selected="selectedModel === model"
                 @click="$emit('update:model', model)"
               >
-                <span class="model-icon">{{ model === customModelLabel ? '+' : 'M' }}</span>
+                <ServiceIcon :service="model === customModelLabel ? 'custom' : service" :label="model" size="model" />
                 <span>
                   <strong>{{ model }}</strong>
                   <small>{{ model === customModelLabel ? '填写服务商支持的模型标识' : '使用此模型进行翻译' }}</small>
@@ -116,6 +116,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import ServiceIcon from '@/components/ServiceIcon.vue'
 import { customModelString } from '@/entrypoints/utils/option'
 import {
   buildServiceGroups,
@@ -163,22 +164,6 @@ watch(modelQuery, () => {
   moreModelsOpen.value = false
 })
 
-const markMap: Record<string, string> = {
-  microsoft: 'M', google: 'G', deepL: 'D', deeplx: 'DX', chromeTranslator: 'C',
-  openai: 'OA', azureOpenai: 'AZ', deepseek: 'DS', gemini: 'G', claude: 'C',
-  siliconCloud: 'S', huanYuan: '混', tongyi: '通', doubao: '豆', custom: '自', newapi: 'N',
-}
-
-function serviceMark(value: string, label = '') {
-  return markMap[value] || label.trim().slice(0, 1).toLocaleUpperCase() || '译'
-}
-
-function serviceTone(value: string) {
-  if (['openai', 'azureOpenai', 'custom', 'newapi'].includes(value)) return 'violet'
-  if (['deepseek', 'deepL', 'deeplx', 'microsoft'].includes(value)) return 'blue'
-  if (['gemini', 'google', 'chromeTranslator'].includes(value)) return 'green'
-  return 'rose'
-}
 </script>
 
 <style scoped>
@@ -199,11 +184,6 @@ function serviceTone(value: string) {
 .service-copy { display: flex; min-width: 0; flex-direction: column; }
 .service-copy strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .service-copy small { margin-top: 3px; color: #9097a7; font-size: 10px; }
-.service-mark { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 11px; color: #d42f60; background: #ffeaf0; font-size: 12px; font-weight: 850; }
-.service-mark[data-tone="blue"] { color: #2c65bb; background: #eaf2ff; }
-.service-mark[data-tone="green"] { color: #18835d; background: #e9f8f1; }
-.service-mark[data-tone="violet"] { color: #694bc2; background: #f0ebff; }
-.service-mark.large { width: 48px; height: 48px; border-radius: 14px; font-size: 13px; }
 .current-dot { width: 7px; height: 7px; border-radius: 50%; background: #ef4776; box-shadow: 0 0 0 4px rgba(239, 71, 118, .12); }
 .service-detail { display: flex; min-width: 0; min-height: 0; padding: 24px; flex-direction: column; overflow: hidden; }
 .detail-hero { display: flex; align-items: flex-start; gap: 13px; padding-bottom: 20px; border-bottom: 1px solid #eceef3; }
@@ -226,8 +206,6 @@ function serviceTone(value: string) {
 .model-item { display: grid; grid-template-columns: 30px minmax(0, 1fr) 16px; align-items: center; gap: 9px; min-width: 0; padding: 10px; border: 1px solid #e4e7ee; border-radius: 12px; color: #172033; background: #fff; text-align: left; cursor: pointer; transition: 150ms ease; }
 .model-item:hover { border-color: #f0a9bc; transform: translateY(-1px); }
 .model-item.active { border-color: #ef4776; background: #fff4f7; box-shadow: 0 7px 16px rgba(214, 50, 96, .08); }
-.model-icon { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; color: #6b7487; background: #f1f3f7; font-size: 10px; font-weight: 850; }
-.model-item.custom .model-icon { color: #c72a56; background: #ffe9ef; font-size: 16px; }
 .model-item > span:nth-child(2) { display: flex; min-width: 0; flex-direction: column; }
 .model-item strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .model-item small { overflow: hidden; margin-top: 3px; color: #9299a8; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
