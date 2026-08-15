@@ -98,6 +98,53 @@ export async function translateText(origin: string, context: string = document.t
 }
 
 /**
+ * 批量翻译纯文本片段。用于仅译文模式保留原始 DOM 结构，避免机器翻译接口修改标签和属性。
+ */
+export async function translateTextBatch(
+  origins: string[],
+  context: string = document.title,
+  options: TranslateOptions = {},
+): Promise<string[]> {
+  if (origins.length === 0) return [];
+
+  const {
+    maxRetries = 3,
+    retryDelay = 1000,
+    timeout = 45000,
+  } = options;
+
+  config.count++;
+  storage.setItem('local:config', JSON.stringify(config));
+
+  return enqueueTranslation(async () => {
+    const translationTask = async (retryCount: number = 0): Promise<string[]> => {
+      try {
+        const result = await Promise.race([
+          browser.runtime.sendMessage({ context, origin: origins }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('翻译请求超时')), timeout)
+          )
+        ]);
+
+        if (!Array.isArray(result) || result.length !== origins.length || result.some(item => typeof item !== 'string')) {
+          throw new Error('批量翻译返回格式异常');
+        }
+
+        return result as string[];
+      } catch (error) {
+        if (retryCount < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          return translationTask(retryCount + 1);
+        }
+        throw error;
+      }
+    };
+
+    return translationTask();
+  });
+}
+
+/**
  * 当用户离开页面或主动取消翻译时，清空翻译队列
  */
 export function cancelAllTranslations() {
@@ -127,4 +174,4 @@ export interface TranslateOptions {
   timeout?: number;
   /** 是否使用缓存 */
   useCache?: boolean;
-} 
+}

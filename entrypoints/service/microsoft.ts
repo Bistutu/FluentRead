@@ -1,53 +1,81 @@
-import {services} from "../utils/option";
 import {config} from "@/entrypoints/utils/config";
 
-async function microsoft(message: any) {
-    let fromLang = config.from === 'auto' ? '' : config.from;
+const MICROSOFT_TRANSLATE_URL = "https://edge.microsoft.com/translate/translatetext";
 
-    const jwtToken = await refreshToken(config.token[services.microsoft]);
-    const resp = await fetch(`https://api-edge.cognitive.microsofttranslator.com/translate?from=${fromLang}&to=${config.to}&api-version=3.0&includeSentenceLength=true&textType=html`, {
+type MicrosoftTranslation = {
+    translations?: Array<{text?: string}>;
+};
+
+function escapeHtmlText(text: string): string {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function decodeHtmlText(text: string): string {
+    return text
+        .replace(/&#(?:0*39);|&#x0*27;/gi, "'")
+        .replace(/&quot;/gi, '"')
+        .replace(/&gt;/gi, '>')
+        .replace(/&lt;/gi, '<')
+        .replace(/&amp;/gi, '&');
+}
+
+export async function translateMicrosoftTexts(
+    texts: string[],
+    fromLang: string,
+    toLang: string,
+): Promise<string[]> {
+    if (texts.length === 0) return [];
+
+    const url = new URL(MICROSOFT_TRANSLATE_URL);
+    url.searchParams.set('from', fromLang === 'auto' ? '' : fromLang);
+    url.searchParams.set('to', toLang);
+    url.searchParams.set('isEnterpriseClient', 'false');
+
+    const resp = await fetch(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Ocp-Apim-Subscription-Key': config.token[services.microsoft],
-            'Authorization': 'Bearer ' + jwtToken
         },
-        body: JSON.stringify([{Text: message.origin}])
+        // The endpoint always runs an HTML tag aligner. Escaping keeps plain-text
+        // comparison operators and user input from being interpreted as markup.
+        body: JSON.stringify(texts.map(escapeHtmlText)),
     });
 
-    if (resp.ok) {
-        let result = await resp.json();
-        return result[0].translations[0].text;
-    } else {
-        console.log(resp)
+    if (!resp.ok) {
         throw new Error(`翻译失败: ${resp.status} ${resp.statusText} body: ${await resp.text()}`);
     }
+
+    const result = await resp.json() as MicrosoftTranslation[];
+    if (!Array.isArray(result) || result.length !== texts.length) {
+        throw new Error(`微软翻译返回数量异常: 期望 ${texts.length} 条，实际 ${Array.isArray(result) ? result.length : 0} 条`);
+    }
+
+    return result.map((item, index) => {
+        const translatedText = item?.translations?.[0]?.text;
+        if (typeof translatedText !== 'string') {
+            throw new Error(`微软翻译第 ${index + 1} 条结果缺少译文`);
+        }
+        return decodeHtmlText(translatedText);
+    });
 }
 
-async function refreshToken(token: string) {
-    const decodedToken = parseJwt(token);
-    const currentTimestamp = Math.floor(Date.now() / 1000); // 当前时间的UNIX时间戳（秒）
-    if (decodedToken && currentTimestamp < decodedToken.exp) {
-        return token;
-    }
-    // 如果令牌无效或已过期，则尝试获取新令牌
-    const resp = await fetch("https://edge.microsoft.com/translate/auth")
-    if (resp.ok) return resp.text();
-    else throw new Error(`请求失败: ${resp}`);
-}
+async function microsoft(message: {origin: string | string[]}) {
+    const origin = message.origin;
+    const isSingleText = typeof origin === 'string';
+    const texts: string[] = typeof origin === 'string' ? [origin] : origin;
+    const translations = await translateMicrosoftTexts(texts, config.from, config.to);
+    if (!isSingleText) return translations;
 
-// 解析 jwt，返回解析后对象
-function parseJwt(token: string) {
-    try {
-        const base64Url = token.split('.')[1];
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-        return JSON.parse(jsonPayload);
-    } catch (e) {
-        return null;
+    const translatedText = translations[0];
+    if (translatedText === undefined) {
+        throw new Error('微软翻译未返回译文');
     }
+    return translatedText;
 }
 
 export default microsoft;

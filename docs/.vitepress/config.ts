@@ -81,6 +81,12 @@ export default defineConfig({
         items: [
           { text: 'Ollama 配置问题', link: '/guide/faq#ollama-配置问题' }
         ]
+      },
+      {
+        text: '开发与测试',
+        items: [
+          { text: 'Codex 浏览器翻译测试', link: '/guide/codex-browser-testing' }
+        ]
       }
     ],
 
@@ -94,4 +100,4 @@ export default defineConfig({
     }
   },
   
-}) 
+})

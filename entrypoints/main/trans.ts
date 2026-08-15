@@ -1,13 +1,13 @@
 import { checkConfig, searchClassName, skipNode } from "../utils/check";
 import { cache } from "../utils/cache";
-import { options, servicesType } from "../utils/option";
+import { options, services, servicesType } from "../utils/option";
 import { insertFailedTip, insertLoadingSpinner } from "../utils/icon";
 import { styles } from "@/entrypoints/utils/constant";
 import { beautyHTML, grabNode, grabAllNode, LLMStandardHTML, smashTruncationStyle } from "@/entrypoints/main/dom";
 import { detectlang, throttle } from "@/entrypoints/utils/common";
 import { getMainDomain, replaceCompatFn } from "@/entrypoints/main/compat";
 import { config } from "@/entrypoints/utils/config";
-import { translateText, cancelAllTranslations } from '@/entrypoints/utils/translateApi';
+import { translateText, translateTextBatch, cancelAllTranslations } from '@/entrypoints/utils/translateApi';
 
 let hoverTimer: any; // 鼠标悬停计时器
 let htmlSet = new Set(); // 防抖
@@ -275,10 +275,13 @@ export function singleTranslate(node: any) {
     if (detectlang(node.textContent.replace(/[\s\u3000]/g, '')) === config.to) return;
 
     let origin = servicesType.isMachine(config.service) ? node.innerHTML : LLMStandardHTML(node);
+    const translation = config.service === services.microsoft
+        ? translateMicrosoftHtml(node)
+        : translateText(origin, document.title);
     let spinner = insertLoadingSpinner(node);
     
     // 使用队列管理的翻译API
-    translateText(origin, document.title)
+    translation
         .then((text: string) => {
             spinner.remove();
             
@@ -299,6 +302,40 @@ export function singleTranslate(node: any) {
             spinner.remove();
             insertFailedTip(node, error.toString() || "翻译失败", spinner);
         });
+}
+
+async function translateMicrosoftHtml(node: HTMLElement): Promise<string> {
+    const clone = node.cloneNode(true) as HTMLElement;
+    const walker = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT);
+    const textNodes: Array<{node: Text; prefix: string; suffix: string}> = [];
+    const texts: string[] = [];
+
+    let currentNode = walker.nextNode();
+    while (currentNode) {
+        const textNode = currentNode as Text;
+        const parentTag = textNode.parentElement?.tagName.toLowerCase();
+        const value = textNode.nodeValue || '';
+        const match = value.match(/^(\s*)([\s\S]*?\S)(\s*)$/);
+
+        if (match && !['script', 'style', 'noscript'].includes(parentTag || '')) {
+            textNodes.push({node: textNode, prefix: match[1], suffix: match[3]});
+            texts.push(match[2]);
+        }
+
+        currentNode = walker.nextNode();
+    }
+
+    if (texts.length === 0) return clone.innerHTML;
+
+    const translations = await translateTextBatch(texts, document.title, {useCache: false});
+    translations.forEach((translation, index) => {
+        const textNodeInfo = textNodes[index];
+        if (!textNodeInfo) return;
+        const {node: textNode, prefix, suffix} = textNodeInfo;
+        textNode.nodeValue = `${prefix}${translation}${suffix}`;
+    });
+
+    return clone.innerHTML;
 }
 
 export const handleBtnTranslation = throttle((node: any) => {

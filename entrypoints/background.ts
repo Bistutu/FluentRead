@@ -1,4 +1,5 @@
 import {_service} from "@/entrypoints/service/_service";
+import {translateMicrosoftTexts} from "@/entrypoints/service/microsoft";
 import {config} from "@/entrypoints/utils/config";
 import {CONTEXT_MENU_IDS} from "@/entrypoints/utils/constant";
 
@@ -9,47 +10,12 @@ let translationStateMap = new Map<number, boolean>(); // tabId -> isTranslated
  * 在background脚本中调用微软翻译API（避免Firefox CORS问题）
  */
 async function translateWithMicrosoftInBackground(text: string, targetLang: string): Promise<string> {
-    try {
-        // 获取微软翻译的JWT令牌
-        const jwtToken = await refreshMicrosoftTokenInBackground();
-
-        // 调用微软翻译API
-        const response = await fetch(`https://api-edge.cognitive.microsofttranslator.com/translate?from=&to=${targetLang}&api-version=3.0&includeSentenceLength=true&textType=html`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Bearer ' + jwtToken
-            },
-            body: JSON.stringify([{ Text: text }])
-        });
-
-        if (response.ok) {
-            const result = await response.json();
-            return result[0].translations[0].text;
-        } else {
-            throw new Error(`微软翻译失败: ${response.status} ${response.statusText}`);
-        }
-    } catch (error) {
-        console.error('微软翻译请求失败:', error);
-        throw error;
+    const translations = await translateMicrosoftTexts([text], '', targetLang);
+    const translatedText = translations[0];
+    if (translatedText === undefined) {
+        throw new Error('微软翻译未返回译文');
     }
-}
-
-/**
- * 在background脚本中刷新微软翻译令牌
- */
-async function refreshMicrosoftTokenInBackground(): Promise<string> {
-    try {
-        const response = await fetch("https://edge.microsoft.com/translate/auth");
-        if (response.ok) {
-            return await response.text();
-        } else {
-            throw new Error(`获取微软翻译令牌失败: ${response.status} ${response.statusText}`);
-        }
-    } catch (error) {
-        console.error('获取微软翻译令牌失败:', error);
-        throw error;
-    }
+    return translatedText;
 }
 
 export default defineBackground({
