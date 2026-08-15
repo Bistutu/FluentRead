@@ -1,12 +1,12 @@
 <template>
   <!-- 开关 -->
-  <el-row class="margin-bottom margin-left-2em">
+  <el-row id="settings-general" class="margin-bottom margin-left-2em">
     <el-col :span="20" class="lightblue rounded-corner">
       <span class="popup-text popup-vertical-left">插件状态</span>
     </el-col>
 
     <el-col :span="4" class="flex-end">
-      <el-switch v-model="config.on" inline-prompt active-text="开" inactive-text="关" @change="handlePluginStateChange" />
+      <el-switch v-model="config.on" aria-label="插件状态" inline-prompt active-text="开" inactive-text="关" @change="handlePluginStateChange" />
     </el-col>
   </el-row>
 
@@ -17,12 +17,12 @@
 
   <div v-show="config.on">
     <!--    翻译模式-->
-    <el-row class="margin-bottom margin-left-2em">
+    <el-row id="settings-services" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
         <span class="popup-text popup-vertical-left">翻译模式</span>
       </el-col>
       <el-col :span="12">
-        <el-select v-model="config.display" placeholder="请选择翻译模式">
+        <el-select v-model="config.display" aria-label="翻译模式" placeholder="请选择翻译模式">
           <el-option class="select-left" v-for="item in options.display" :key="item.value" :label="item.label"
             :value="item.value" />
         </el-select>
@@ -40,7 +40,7 @@
         </el-tooltip>
       </el-col>
       <el-col :span="12">
-        <el-select v-model="config.style" placeholder="请选择译文显示样式">
+        <el-select v-model="config.style" aria-label="译文样式" placeholder="请选择译文显示样式">
           <el-option-group v-for="group in styleGroups" :key="group.value" :label="group.label">
             <el-option v-for="item in group.options" :key="item.value" :label="item.label" :value="item.value"
               :class="item.class" />
@@ -61,7 +61,7 @@
       </el-col>
       <el-col :span="12">
         <b>
-          <el-select v-model="config.service" placeholder="请选择翻译服务">
+          <el-select v-model="config.service" aria-label="翻译服务" placeholder="请选择翻译服务">
             <el-option class="select-left" v-for="item in compute.filteredServices" :key="item.value"
               :label="item.label" :value="item.value" :disabled="item.disabled"
               :class="{ 'select-divider': item.disabled }" />
@@ -92,7 +92,7 @@
         <span class="popup-text popup-vertical-left">目标语言</span>
       </el-col>
       <el-col :span="12">
-        <el-select v-model="config.to" placeholder="请选择目标语言">
+        <el-select v-model="config.to" aria-label="目标语言" placeholder="请选择目标语言">
           <el-option class="select-left" v-for="item in options.to" :key="item.value" :label="item.label"
             :value="item.value" />
         </el-select>
@@ -102,7 +102,7 @@
 
 
     <!-- 鼠标悬浮快捷键 -->
-    <el-row class="margin-bottom margin-left-2em" :class="{ 'custom-hotkey-row': config.hotkey === 'custom' }">
+    <el-row id="settings-shortcuts" class="margin-bottom margin-left-2em" :class="{ 'custom-hotkey-row': config.hotkey === 'custom' }">
       <el-col :span="14" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="按住指定快捷键并悬停在文本上进行翻译" placement="top-start" :show-after="500">
         <span class="popup-text popup-vertical-left">
@@ -117,6 +117,7 @@
         <div class="hotkey-config">
           <el-select 
             v-model="config.hotkey" 
+            aria-label="鼠标悬浮快捷键"
             placeholder="请选择快捷键" 
             size="small" 
             style="width: 100%"
@@ -158,6 +159,7 @@
         <div class="hotkey-config">
           <el-select 
             v-model="config.floatingBallHotkey" 
+            aria-label="全文翻译快捷键"
             placeholder="选择快捷键" 
             size="small" 
             style="width: 100%"
@@ -197,7 +199,7 @@
         </el-tooltip>
       </el-col>
       <el-col :span="10" class="flex-end">
-        <el-select v-model="config.selectionTranslatorMode" placeholder="选择模式" size="small" style="width: 100%">
+        <el-select v-model="config.selectionTranslatorMode" aria-label="划词翻译模式" placeholder="选择模式" size="small" style="width: 100%">
           <el-option label="关闭" value="disabled" />
           <el-option label="双语显示" value="bilingual" />
           <el-option label="只显示译文" value="translation-only" />
@@ -497,7 +499,7 @@
     </el-row>
 
     <!-- 高级选项-->
-    <el-collapse class="margin-left-2em margin-bottom">
+    <el-collapse id="settings-advanced" class="margin-left-2em margin-bottom">
       <el-collapse-item title="高级选项">
 
         <!-- 主题设置 -->
@@ -693,7 +695,7 @@
         </el-row>
 
         <!-- 配置导入导出 -->
-        <el-row class="margin-bottom margin-left-2em">
+        <el-row id="settings-data" class="margin-bottom margin-left-2em">
           <el-col :span="24">
             <el-divider content-position="center">配置管理</el-divider>
           </el-col>
