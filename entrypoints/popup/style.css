@@ -153,6 +153,8 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
   transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
 }
 .translate-button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 13px 26px rgba(233, 50, 103, .3); }
+.translate-button.translated { background: linear-gradient(135deg, #35b98a, #15966e); box-shadow: 0 10px 22px rgba(21, 150, 110, .24); }
+.translate-button.translated:hover:not(:disabled) { box-shadow: 0 13px 26px rgba(21, 150, 110, .3); }
 .translate-glyph { font-size: 11px; font-weight: 850; }
 .spinner { width: 16px; height: 16px; border: 2px solid rgba(255, 255, 255, .45); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

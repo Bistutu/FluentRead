@@ -104,7 +104,14 @@
         </div>
       </div>
 
-      <button class="translate-button" type="button" :disabled="!config.on || translating" @click="togglePageTranslation">
+      <button
+        class="translate-button"
+        :class="{ translated: pageTranslated }"
+        type="button"
+        :disabled="!config.on || translating"
+        :aria-pressed="pageTranslated"
+        @click="togglePageTranslation"
+      >
         <span v-if="translating" class="spinner" />
         <span v-else class="translate-glyph">A↔译</span>
         {{ pageTranslated ? '恢复当前网页' : '翻译当前网页' }}
@@ -408,12 +415,13 @@ async function openOptions(section?: SettingsSection) {
 
 async function togglePageTranslation() {
   translating.value = true;
+  const action = pageTranslated.value ? 'restore' : 'fullPage';
   try {
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) throw new Error('No active tab');
-    const response = await browser.tabs.sendMessage(tab.id, { type: 'contextMenuTranslate', action: pageTranslated.value ? 'restore' : 'fullPage' }) as { status?: string } | undefined;
-    if (response?.status === 'disabled') throw new Error('Plugin disabled');
-    pageTranslated.value = !pageTranslated.value;
+    const response = await browser.tabs.sendMessage(tab.id, { type: 'contextMenuTranslate', action }) as { status?: string } | undefined;
+    if (response?.status !== 'success') throw new Error(response?.status === 'disabled' ? 'Plugin disabled' : 'Translation failed');
+    pageTranslated.value = action === 'fullPage';
     showNotice(pageTranslated.value ? '正在翻译当前网页' : '已恢复网页原文');
   } catch (error) {
     console.error(error);
