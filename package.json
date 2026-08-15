@@ -12,6 +12,8 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "vue-tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "postinstall": "wxt prepare",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
@@ -37,10 +39,16 @@
     "vite": "^5.4.11",
     "vite-plugin-imagemin": "^0.6.1",
     "vitepress": "^1.6.3",
+    "vitest": "^2.1.9",
     "vue": "^3.5.13",
     "vue-tsc": "^2.2.0",
     "vuepress": "2.0.0-rc.19",
     "wxt": "^0.20.18"
+  },
+  "pnpm": {
+    "overrides": {
+      "vite": "5.4.11"
+    }
   },
   "packageManager": "pnpm@9.12.1+sha1.7084e7df42ee1d221994c2c2599277a2a937f050"
 }
