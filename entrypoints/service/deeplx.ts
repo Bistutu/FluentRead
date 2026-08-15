@@ -114,11 +114,12 @@ async function deeplx(message: {origin: string}) {
         throw new Error("DeepLX 翻译仅支持单条文本");
     }
 
+    const token = config.token[services.deeplx]?.trim() || "";
     const endpoints = getDeepLXEndpoints(
         config.deeplx,
         config.proxy[config.service],
+        token,
     );
-    const token = config.token[services.deeplx]?.trim() || "";
     const {sourceLang, targetLang} = getDeepLXRequestLanguages(config.from, config.to);
     const deadline = Date.now() + DEEPLX_TOTAL_TIMEOUT_MS;
     const failures: string[] = [];

@@ -246,7 +246,22 @@
           resize="vertical"
           placeholder="https://deeplx.1stg.me/translate&#10;http://localhost:1188/translate"
         />
-        <div class="deeplx-hint">每行或逗号分隔，按顺序尝试；默认使用已验证的公共站点。</div>
+        <div class="deeplx-hint">每行或逗号分隔，按顺序尝试；带 &#123;&#123;apiKey&#125;&#125; 的地址会使用上方访问令牌。</div>
+        <el-select
+          v-model="selectedDeepLXPreset"
+          class="deeplx-presets"
+          size="small"
+          clearable
+          placeholder="快速添加推荐站点"
+          @change="appendDeepLXPreset"
+        >
+          <el-option
+            v-for="preset in DEEPLX_ENDPOINT_PRESETS"
+            :key="preset.url"
+            :label="preset.label"
+            :value="preset.url"
+          />
+        </el-select>
       </el-col>
     </el-row>
 
@@ -744,6 +759,7 @@ import {
   isCustomBodyMapping,
   isValidCustomBody,
 } from '@/entrypoints/utils/custom-body';
+import {DEEPLX_ENDPOINT_PRESETS, parseDeepLXEndpoints} from '@/entrypoints/utils/deeplx';
 
 // 初始化深色模式媒体查询
 const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -764,6 +780,19 @@ function updateTheme(theme: string) {
 
 // 配置信息
 let config = ref(new Config());
+const selectedDeepLXPreset = ref('');
+
+const appendDeepLXPreset = (endpoint: string | undefined) => {
+  if (!endpoint) {
+    return;
+  }
+
+  const endpoints = parseDeepLXEndpoints(config.value.deeplx);
+  if (!endpoints.includes(endpoint)) {
+    config.value.deeplx = [...endpoints, endpoint].join('\n');
+  }
+  selectedDeepLXPreset.value = '';
+};
 
 // 从 storage 中获取本地配置
 storage.getItem('local:config').then((value: any) => {
@@ -1698,5 +1727,10 @@ const validateConfig = (configData: any): boolean => {
   font-size: 12px;
   line-height: 1.4;
   margin-top: 4px;
+}
+
+.deeplx-presets {
+  margin-top: 6px;
+  width: 100%;
 }
 </style>

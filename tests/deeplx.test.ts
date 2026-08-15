@@ -17,7 +17,7 @@ import deeplx, {
     getDeepLXRequestLanguages,
     normalizeDeepLXLanguage,
 } from "@/entrypoints/service/deeplx";
-import {DEFAULT_DEEPLX_ENDPOINT, getDeepLXEndpoints} from "@/entrypoints/utils/deeplx";
+import {DEFAULT_DEEPLX_ENDPOINT, DEEPLX_ENDPOINT_PRESETS, getDeepLXEndpoints} from "@/entrypoints/utils/deeplx";
 
 const fetchMock = vi.fn<typeof fetch>();
 
@@ -56,6 +56,13 @@ describe("DeepLX endpoint configuration", () => {
             .toEqual(["https://one.example/translate", "https://two.example/translate"]);
         expect(getDeepLXEndpoints("https://configured.example/translate", "https://proxy.example/translate"))
             .toEqual(["https://proxy.example/translate"]);
+    });
+
+    it("resolves token placeholders without returning a secret in the configured URL", () => {
+        expect(getDeepLXEndpoints(DEEPLX_ENDPOINT_PRESETS[1].url, "", "site-token"))
+            .toEqual(["https://freeapi.fanyimao.cn/translate?token=site-token"]);
+        expect(getDeepLXEndpoints(DEEPLX_ENDPOINT_PRESETS[2].url, "", ""))
+            .toEqual([DEFAULT_DEEPLX_ENDPOINT]);
     });
 });
 
@@ -113,6 +120,16 @@ describe("DeepLX adapter", () => {
             "Content-Type": "application/json",
             Authorization: "Bearer test-token",
         });
+    });
+
+    it("supports a token placeholder in a preset endpoint", async () => {
+        mockConfig.deeplx = DEEPLX_ENDPOINT_PRESETS[1].url;
+        mockConfig.token = {deeplx: "site-token"};
+        fetchMock.mockResolvedValue(mockResponse({code: 200, data: "你好"}));
+
+        await expect(deeplx({origin: "Hello"})).resolves.toBe("你好");
+
+        expect(fetchMock.mock.calls[0]?.[0]).toBe("https://freeapi.fanyimao.cn/translate?token=site-token");
     });
 
     it("normalizes Chinese language variants", () => {

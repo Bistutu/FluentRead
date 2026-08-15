@@ -16,14 +16,18 @@
 
 #### DeepLX 备用地址
 
-在 DeepLX 的“服务地址”中可以填写多个地址，每行或逗号分隔。插件会按填写顺序请求，当前地址失败或返回无效响应时自动尝试下一个地址：
+在 DeepLX 的“服务地址”中可以填写多个地址，每行或逗号分隔。设置页提供“快速添加推荐站点”，插件会按填写顺序请求，当前地址失败或返回无效响应时自动尝试下一个地址：
 
 ```text
 https://deeplx.1stg.me/translate
+https://freeapi.fanyimao.cn/translate?token={{apiKey}}
+https://api.deeplx.org/{{apiKey}}/translate
 http://localhost:1188/translate
 ```
 
-`deeplx.1stg.me` 是当前验证可用的公共实例；公共实例属于非官方服务，可能限流、停用或记录请求内容。敏感文本建议使用本地或自建 DeepLX 服务。
+`deeplx.1stg.me` 是当前验证可用且无需 Token 的公共实例。`freeapi.fanyimao.cn` 也已验证可返回译文，但需要用户自己的站点 Token；`api.deeplx.org` 需要个人 Token。地址中的 `{{apiKey}}` 会替换为设置页的“访问令牌”，不会把 Token 写入插件代码。
+
+这些公共实例都属于非官方服务，可能限流、停用或记录请求内容。公开列表中的其他候选站点当前出现了 401、404、530、DNS/TLS 错误或已暂停，因此没有加入默认备用链。敏感文本建议使用本地或自建 DeepLX 服务。
 
 ### AI 大模型
 - **OpenAI（推荐⭐️）**：国际领先的大模型服务，支持 GPT-4o 和 GPT-o1-mini 等，[API 文档](https://platform.openai.com/docs/api-reference)
