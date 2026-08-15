@@ -1,5 +1,5 @@
 import { method, urls } from "../utils/constant";
-import {commonMsgTemplate, deepseekMsgTemplate} from "../utils/template";
+import {commonMsgTemplate} from "../utils/template";
 import { config } from "@/entrypoints/utils/config";
 import { contentPostHandler } from "@/entrypoints/utils/check";
 

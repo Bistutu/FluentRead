@@ -2,13 +2,6 @@
 import {customModelString, defaultOption, services} from "./option";
 import {config} from "@/entrypoints/utils/config";
 
-type DeepSeekThinkingMode = 'enabled' | 'disabled';
-
-interface DeepSeekModelConfig {
-    model: string;
-    thinking: DeepSeekThinkingMode;
-}
-
 // openai 格式的消息模板（通用模板）
 export function commonMsgTemplate(origin: string) {
     // 检测是否使用自定义模型
@@ -32,51 +25,72 @@ export function commonMsgTemplate(origin: string) {
 }
 
 // deepseek
-export function deepseekMsgTemplate(origin: string) {
-    // 检测是否使用自定义模型
-    const selectedModel = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
+export function getCurrentModel(): string {
+    const selectedModel = config.model[config.service] === customModelString
+        ? config.customModel[config.service]
+        : config.model[config.service];
+    const normalizedModel = (selectedModel || '').replace(/（.*）/g, "");
 
-    const modelConfig = normalizeDeepSeekModel(selectedModel);
+    // 运行时兜底：后台脚本若早于配置迁移读取到旧值，仍使用可用的 V4 模型。
+    if (normalizedModel === 'deepseek-chat' || normalizedModel === 'deepseek-reasoner') {
+        return 'deepseek-v4-flash';
+    }
 
-    let system = config.system_role[config.service] || defaultOption.system_role;
-    let user = (config.user_role[config.service] || defaultOption.user_role)
-        .replace('{{to}}', config.to).replace('{{origin}}', origin);
+    return normalizedModel;
+}
 
+function getDeepSeekThinkingMode(): 'enabled' | 'disabled' {
+    const selectedModel = config.model[config.service];
+    if (selectedModel === 'deepseek-reasoner') return 'enabled';
+    if (selectedModel === 'deepseek-chat') return 'disabled';
+    return config.deepseekThinkingMode === 'enabled' ? 'enabled' : 'disabled';
+}
+
+function deepseekPrompt(origin: string) {
+    return {
+        system: config.system_role[config.service] || defaultOption.system_role,
+        user: (config.user_role[config.service] || defaultOption.user_role)
+            .replace('{{to}}', config.to)
+            .replace('{{origin}}', origin),
+    };
+}
+
+// Responses API 格式供明确支持该协议的端点使用。
+export function deepseekResponsesMsgTemplate(origin: string) {
+    const model = getCurrentModel();
+    const {system, user} = deepseekPrompt(origin);
     const payload: any = {
-        'model': modelConfig.model,
-        'messages': [
-            {'role': 'system', 'content': system},
-            {'role': 'user', 'content': user},
-        ],
-        // DeepSeek OpenAI-format Chat Completion / Thinking Mode docs, checked 2026-06-20:
-        // direct REST requests use top-level {"thinking": {"type": "enabled" | "disabled"}}.
-        'thinking': {'type': modelConfig.thinking}
+        model,
+        instructions: system,
+        input: user,
     };
 
-    if (modelConfig.thinking === 'enabled') {
-        payload.reasoning_effort = 'high';
-    } else {
+    if (getDeepSeekThinkingMode() === 'disabled') {
         payload.temperature = 0.7;
     }
 
     return JSON.stringify(payload);
 }
 
-function normalizeDeepSeekModel(model: string): DeepSeekModelConfig {
-    const normalizedModel = (model || '').replace(/（.*）/g, "");
+// DeepSeek 官方 V4 Chat Completion 格式。
+export function deepseekMsgTemplate(origin: string) {
+    const model = getCurrentModel();
+    const {system, user} = deepseekPrompt(origin);
+    const thinking = getDeepSeekThinkingMode();
+    const payload: any = {
+        model,
+        messages: [
+            {role: 'system', content: system},
+            {role: 'user', content: user},
+        ],
+        thinking: {type: thinking},
+    };
 
-    // Legacy DeepSeek names are scheduled for deprecation on 2026-07-24.
-    // Keep saved configs working while preserving their semantics:
-    // deepseek-chat stays non-thinking; deepseek-reasoner stays thinking-capable.
-    if (normalizedModel === 'deepseek-chat') {
-        return {model: 'deepseek-v4-flash', thinking: 'disabled'};
+    if (thinking === 'disabled') {
+        payload.temperature = 0.7;
     }
 
-    if (normalizedModel === 'deepseek-reasoner') {
-        return {model: 'deepseek-v4-pro', thinking: 'enabled'};
-    }
-
-    return {model: normalizedModel, thinking: 'disabled'};
+    return JSON.stringify(payload);
 }
 
 // gemini

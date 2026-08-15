@@ -220,6 +220,12 @@ export const options = {
         {value: false, label: "关闭"},
     ],
     form: [{value: "auto", label: "自动检测"}],
+    // DeepSeek API 格式（仅 DeepSeek 服务显示）
+    deepseekApiType: [
+        {value: "auto", label: "自动（推荐）"},
+        {value: "responses", label: "Responses API"},
+        {value: "chat", label: "Chat Completion"},
+    ],
     to: [
         {value: "zh-Hans", label: "中文"},
         {value: "en", label: "英语"},

@@ -398,6 +398,25 @@
       </el-col>
     </el-row>
 
+    <!-- DeepSeek API 格式 -->
+    <el-row v-show="compute.showDeepseekApiType" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark"
+          content="自动：deepseek-v4-flash 走 Responses API，其余模型走 Chat Completion；如使用仅支持 OpenAI 格式的第三方代理，请选择 Chat Completion"
+          placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">API 格式<el-icon class="icon-margin">
+              <ChatDotRound />
+            </el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-select v-model="config.deepseekApiType" placeholder="请选择 API 格式">
+          <el-option class="select-left" v-for="item in options.deepseekApiType" :key="item.value" :label="item.label"
+                     :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
+
     <!-- 高级选项-->
     <el-collapse class="margin-left-2em margin-bottom">
       <el-collapse-item title="高级选项">
@@ -760,6 +779,8 @@ let compute = ref({
   showNewAPI: computed(() => servicesType.isNewApi(config.value.service)),
   // 14、是否显示Azure OpenAI端点配置
   showAzureOpenaiEndpoint: computed(() => servicesType.isAzureOpenai(config.value.service)),
+  // 15、是否显示 DeepSeek API 格式配置
+  showDeepseekApiType: computed(() => config.value.service === 'deepseek'),
 })
 
 // 监听主题变化
