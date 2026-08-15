@@ -5,6 +5,7 @@ import {
     isCurrentTranslation,
     markTranslationError,
     restoreTranslation,
+    setRenderedStyleAttribute,
 } from "@/entrypoints/main/translationState";
 
 /**
@@ -18,6 +19,7 @@ class FakeElement {
     outerHTML = "<p>Original text</p>";
     childNodes: object[] = [{ type: "original-child" }];
     classList = { remove: vi.fn() };
+    attributes = new Map<string, string>();
     controller?: AbortController;
 
     get firstChild(): object | undefined {
@@ -33,6 +35,18 @@ class FakeElement {
     appendChild(child: object): object {
         this.childNodes.push(child);
         return child;
+    }
+
+    getAttribute(name: string): string | null {
+        return this.attributes.get(name) ?? null;
+    }
+
+    setAttribute(name: string, value: string): void {
+        this.attributes.set(name, value);
+    }
+
+    removeAttribute(name: string): void {
+        this.attributes.delete(name);
     }
 
     querySelectorAll(): object[] {
@@ -124,5 +138,41 @@ describe("指定节点翻译状态机", () => {
         )).toBe(false);
         expect(getTranslationState(node as unknown as HTMLElement)).toBe(attempt!.state);
         expect(attempt!.state.phase).toBe("loading");
+    });
+
+    it("恢复双语翻译时还原插件临时修改的内联样式", () => {
+        node.setAttribute("style", "display: -webkit-box; -webkit-line-clamp: 2; max-height: 4px;");
+        const attempt = beginTranslation(node as unknown as HTMLElement, "bilingual");
+        expect(attempt).not.toBeNull();
+
+        node.setAttribute("style", "display: -webkit-box; -webkit-line-clamp: unset; max-height: unset;");
+        setRenderedStyleAttribute(node as unknown as HTMLElement);
+
+        expect(restoreTranslation(node as unknown as HTMLElement)).toBe(true);
+        expect(node.getAttribute("style")).toBe("display: -webkit-box; -webkit-line-clamp: 2; max-height: 4px;");
+    });
+
+    it("网站在翻译后更新样式时，恢复不会覆盖网站的新值", () => {
+        node.setAttribute("style", "max-height: 4px;");
+        const attempt = beginTranslation(node as unknown as HTMLElement, "bilingual");
+        expect(attempt).not.toBeNull();
+
+        node.setAttribute("style", "max-height: unset;");
+        setRenderedStyleAttribute(node as unknown as HTMLElement);
+        node.setAttribute("style", "max-height: none;");
+
+        expect(restoreTranslation(node as unknown as HTMLElement)).toBe(true);
+        expect(node.getAttribute("style")).toBe("max-height: none;");
+    });
+
+    it("原节点没有 style 属性时，恢复会移除插件临时创建的 style", () => {
+        const attempt = beginTranslation(node as unknown as HTMLElement, "bilingual");
+        expect(attempt).not.toBeNull();
+
+        node.setAttribute("style", "-webkit-line-clamp: unset; max-height: unset;");
+        setRenderedStyleAttribute(node as unknown as HTMLElement);
+
+        expect(restoreTranslation(node as unknown as HTMLElement)).toBe(true);
+        expect(node.getAttribute("style")).toBeNull();
     });
 });

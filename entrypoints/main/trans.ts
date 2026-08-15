@@ -17,6 +17,7 @@ import {
     restoreAllTranslations,
     restoreTranslation,
     setBilingualContent,
+    setRenderedStyleAttribute,
     setSpinner,
     setTranslatedHTML,
 } from "@/entrypoints/main/translationState";
@@ -255,6 +256,7 @@ async function renderBilingualResult(
 
         const content = appendBilingualTranslation(node, text);
         setBilingualContent(node, content);
+        setRenderedStyleAttribute(node);
     } catch (error) {
         markAttemptError(node, attempt, spinner, error);
     }
@@ -371,15 +373,17 @@ export function singleTranslate(node: unknown): void {
     const attempt = beginTranslation(target, 'single');
     if (!attempt) return;
 
-    const spinner = insertLoadingSpinner(target);
-    setSpinner(target, spinner);
-
     const cached = cache.localGet(attempt.state.sourceOuterHTML);
     const translation = cached
         ? Promise.resolve(cached)
         : config.service === services.microsoft
             ? translateMicrosoftHtml(target)
             : translateText(origin, document.title);
+
+    // 先创建翻译请求，再插入 loading 节点。微软 HTML 翻译会克隆目标
+    // 元素；如果顺序相反，loading 节点也会被带进服务响应和最终译文。
+    const spinner = insertLoadingSpinner(target);
+    setSpinner(target, spinner);
 
     void renderSingleResult(target, attempt, origin, translation, Boolean(cached));
 }

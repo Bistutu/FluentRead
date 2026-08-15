@@ -15,6 +15,10 @@ export interface TranslationState {
     sourceText: string;
     sourceHTML: string;
     sourceOuterHTML: string;
+    /** 翻译开始前的内联 style 属性，用于可条件恢复。 */
+    originalStyleAttribute: string | null;
+    /** 插件完成渲染后记录的 style 属性；undefined 表示尚未改动样式。 */
+    renderedStyleAttribute?: string | null;
     translatedHTML?: string;
     /**
      * 仅译文模式会暂时移除这些原始子节点。
@@ -58,6 +62,7 @@ export function beginTranslation(
         sourceText: node.textContent ?? "",
         sourceHTML: node.innerHTML,
         sourceOuterHTML: node.outerHTML,
+        originalStyleAttribute: node.getAttribute("style"),
         originalChildren: Array.from(node.childNodes),
         controller: new AbortController(),
     };
@@ -119,6 +124,17 @@ export function setBilingualContent(node: HTMLElement, content: HTMLElement): vo
     if (state) state.bilingualContent = content;
 }
 
+/**
+ * 记录插件完成渲染后的内联样式。
+ *
+ * 恢复时只有当节点仍保持这个值，才会写回原始样式；如果网站已经
+ * 修改过 style，则保留网站的新值，避免翻译恢复覆盖宿主页面更新。
+ */
+export function setRenderedStyleAttribute(node: HTMLElement): void {
+    const state = states.get(node);
+    if (state) state.renderedStyleAttribute = node.getAttribute("style");
+}
+
 function removeExtensionNode(node: Node | undefined): void {
     if (node?.parentNode) node.parentNode.removeChild(node);
 }
@@ -135,6 +151,17 @@ function clearState(node: HTMLElement): void {
 
 function removeCurrentChildren(node: HTMLElement): void {
     while (node.firstChild) node.removeChild(node.firstChild);
+}
+
+function restoreOriginalStyle(node: HTMLElement, state: TranslationState): void {
+    if (state.renderedStyleAttribute === undefined) return;
+    if (node.getAttribute("style") !== state.renderedStyleAttribute) return;
+
+    if (state.originalStyleAttribute === null) {
+        node.removeAttribute("style");
+    } else {
+        node.setAttribute("style", state.originalStyleAttribute);
+    }
 }
 
 /**
@@ -158,6 +185,8 @@ export function restoreTranslation(node: HTMLElement): boolean {
             state.originalChildren.forEach((child) => node.appendChild(child));
         }
     }
+
+    restoreOriginalStyle(node, state);
 
     node.classList.remove("fluent-read-bilingual", "fluent-read-failure");
     clearState(node);
