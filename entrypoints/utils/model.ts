@@ -172,7 +172,7 @@ const modelMigrations: Record<string, Record<string, string>> = {
         'llama-3.3-70b-instruct': currentModelIds.infiniGeneral,
         'qwen2.5-14b-instruct': currentModelIds.infiniGeneral,
         'gemma-2-27b-it': currentModelIds.infiniGeneral,
-        'glm-4-9b-chat': currentModelIds.zhipu,
+        'glm-4-9b-chat': currentModelIds.infiniZhipu,
     },
 };
 

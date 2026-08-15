@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { normalizeConfig } from '@/entrypoints/utils/model';
 import { tongyiTokenPlanUrl, urls } from '@/entrypoints/utils/constant';
-import { customModelString, models, services, servicesType } from '@/entrypoints/utils/option';
+import { customModelString, models, options, services, servicesType } from '@/entrypoints/utils/option';
 
 describe('AI 模型编号列表', () => {
     it('展示当前主流模型，并移除已退役或错误的预设编号', () => {
@@ -15,8 +15,10 @@ describe('AI 模型编号列表', () => {
         expect(models.get(services.tongyi)?.at(0)).toBe('qwen3.8-max-preview');
         expect(models.get(services.tongyi)).toContain('qwen3.7-max');
         expect(models.get(services.tongyi)).not.toContain('qwen3.7-flash');
+        expect(models.get(services.zhipu)?.at(0)).toBe('glm-5.3');
         expect(models.get(services.zhipu)).toContain('glm-5.2');
-        expect(models.get(services.zhipu)).not.toContain('glm-5.3');
+        expect(models.get(services.infini)).toContain('glm-5.2');
+        expect(models.get(services.infini)).not.toContain('glm-5.3');
         expect(models.get(services.moonshot)).toContain('kimi-k2.7-code');
         expect(models.get(services.yiyan)).toContain('ernie-5.1');
         expect(models.get(services.minimax)).toContain('MiniMax-M2.7');
@@ -25,6 +27,7 @@ describe('AI 模型编号列表', () => {
         expect(models.get(services.grok)).toContain('grok-4.5');
         expect(models.get(services.groq)).not.toContain('whisper-large-v3');
         expect(models.get(services.openrouter)?.at(-1)).toBe(customModelString);
+        expect(options.services.find(option => option.value === services.zhipu)?.label).toBe('智谱');
     });
 
     it('不会把下拉列表中仍可选择的模型当成退役编号改写', () => {
@@ -62,7 +65,7 @@ describe('旧模型编号兼容迁移', () => {
         '将智谱普通旧模型 %s 直接迁移到当前默认模型',
         legacyModel => {
             const normalized = normalizeConfig({model: {[services.zhipu]: legacyModel}});
-            expect(normalized.model[services.zhipu]).toBe('glm-5.2');
+            expect(normalized.model[services.zhipu]).toBe('glm-5.3');
         },
     );
 

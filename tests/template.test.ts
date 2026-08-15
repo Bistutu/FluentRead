@@ -255,7 +255,7 @@ describe('请求时旧模型编号兜底', () => {
         mockConfig.model[services.zhipu] = 'glm-4-plus';
 
         const body = JSON.parse(commonMsgTemplate('hello'));
-        expect(body.model).toBe('glm-5.2');
+        expect(body.model).toBe('glm-5.3');
     });
 
     it('自定义模型编号保持原样，不套用官方预设迁移', () => {

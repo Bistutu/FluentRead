@@ -181,7 +181,7 @@ export const customModelString = "自定义模型";
 // 当前官方模型编号的单一来源，同时供列表和旧配置迁移使用。
 export const currentModelIds = {
     openai: "gpt-5.6-sol",
-    zhipu: "glm-5.2",
+    zhipu: "glm-5.3",
     zhipuFlash: "glm-4.5-flash",
     tongyiTokenPlan: "qwen3.8-max-preview",
     moonshot: "kimi-k3",
@@ -199,6 +199,7 @@ export const currentModelIds = {
     groqSmall: "openai/gpt-oss-20b",
     yiyan: "ernie-5.1",
     yiyanFast: "ernie-speed-128k",
+    infiniZhipu: "glm-5.2",
     infiniGeneral: "qwen3.6-27b",
 } as const;
 
@@ -208,11 +209,11 @@ export const models = new Map<string, Array<string>>([
     [services.gemini, ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro", customModelString]],
     [services.yiyan, [currentModelIds.yiyan, "ernie-5.0-thinking-preview", "ernie-x1.1-preview", "ernie-4.5-turbo-128k", "ernie-4.5-21b-a3b", currentModelIds.yiyanFast, customModelString]],
     [services.tongyi, [currentModelIds.tongyiTokenPlan, "qwen3.7-max", "qwen3.7-plus", "qwen3.6-flash", "qwen-mt-plus", "qwen-mt-turbo", "qwen-mt-flash", "qwen-mt-lite", "qwen-long-latest", customModelString]],
-    [services.zhipu, [currentModelIds.zhipu, "glm-5.1", "glm-5-turbo", "glm-5", "glm-4.7", currentModelIds.zhipuFlash, customModelString]],
+    [services.zhipu, [currentModelIds.zhipu, "glm-5.2", "glm-5.1", "glm-5-turbo", "glm-5", "glm-4.7", currentModelIds.zhipuFlash, customModelString]],
     [services.moonshot, [currentModelIds.moonshot, "kimi-k2.7-code-highspeed", "kimi-k2.7-code", currentModelIds.moonshotCompatible, "kimi-k2.5", customModelString]],
     [services.claude, [currentModelIds.claude, currentModelIds.claudeOpus, currentModelIds.claudeSonnet, currentModelIds.claudeHaiku, "claude-opus-4-8", "claude-sonnet-4-6", customModelString]],
     [services.custom, [currentModelIds.openai, "gpt-5.4-mini", "gemini-3.6-flash", currentModelIds.claude, currentModelIds.deepseek, "gemma:7b", "llama2:7b", "mistral:7b", customModelString]],
-    [services.infini, [currentModelIds.deepseek, "deepseek-v4-pro", currentModelIds.zhipu, "kimi-k2.7-code", currentModelIds.infiniGeneral, "qwen3.6-35b-a3b", customModelString]],
+    [services.infini, [currentModelIds.deepseek, "deepseek-v4-pro", currentModelIds.infiniZhipu, "kimi-k2.7-code", currentModelIds.infiniGeneral, "qwen3.6-35b-a3b", customModelString]],
     [services.baichuan, ["Baichuan-M3-Plus", "Baichuan-M3", "Baichuan4-Air", "Baichuan4-Turbo", "Baichuan4", customModelString]],
     [services.lingyi, ["yi-lightning", customModelString]],
     [services.deepseek, [currentModelIds.deepseek, "deepseek-v4-pro", customModelString]],
@@ -315,7 +316,7 @@ export const options = {
         {value: services.openrouter, label: "OpenRouter"},
         {value: services.groq, label: "Groq"},
         {value: services.moonshot, label: "Kimi"},
-        {value: services.zhipu, label: "智谱清言"},
+        {value: services.zhipu, label: "智谱"},
         {value: services.baichuan, label: "百川智能"},
         {value: services.lingyi, label: "零一万物"},
         {value: services.minimax, label: "MiniMax"},
