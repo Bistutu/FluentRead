@@ -36,7 +36,7 @@
     "@vuepress/client": "2.0.0-rc.19",
     "@wxt-dev/webextension-polyfill": "^1.0.0",
     "typescript": "^5.7.3",
-    "vite": "^5.4.11",
+    "vite": "^5.4.19",
     "vite-plugin-imagemin": "^0.6.1",
     "vitepress": "^1.6.3",
     "vitest": "^2.1.9",
@@ -47,7 +47,7 @@
   },
   "pnpm": {
     "overrides": {
-      "vite": "5.4.11"
+      "vite": "5.4.19"
     }
   },
   "packageManager": "pnpm@9.12.1+sha1.7084e7df42ee1d221994c2c2599277a2a937f050"

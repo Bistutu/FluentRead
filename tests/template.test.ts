@@ -11,22 +11,57 @@ const { mockConfig } = vi.hoisted(() => ({
         system_role: {} as Record<string, string>,
         user_role: {} as Record<string, string>,
         customBody: {} as Record<string, string>,
+        robot_id: {} as Record<string, string>,
     },
 }));
 
 vi.mock('@/entrypoints/utils/config', () => ({ config: mockConfig }));
 
-import { mergeCustomBody, commonMsgTemplate } from '@/entrypoints/utils/template';
+import {
+    claudeMsgTemplate,
+    commonMsgTemplate,
+    cozeTemplate,
+    deepseekMsgTemplate,
+    geminiMsgTemplate,
+    minimaxTemplate,
+    tongyiMsgTemplate,
+    yiyanMsgTemplate,
+} from '@/entrypoints/utils/template';
+import {
+    isCustomBodyMapping,
+    isValidCustomBody,
+    mergeCustomBody,
+    normalizeCustomBodyMapping,
+} from '@/entrypoints/utils/custom-body';
+import { buildHunyuanTranslationRequestBody } from '@/entrypoints/service/hunyuan-translation';
+import { services, servicesType } from '@/entrypoints/utils/option';
 
 beforeEach(() => {
     // 每个用例前重置 mock 配置，避免相互污染
     mockConfig.service = 'openai';
     mockConfig.to = 'zh-Hans';
-    mockConfig.model = { openai: 'gpt-4o' };
+    mockConfig.model = {
+        openai: 'gpt-4o',
+        moonshot: 'kimi-k2-0711-preview',
+        deepseek: 'deepseek-chat',
+        gemini: 'gemini-2.5-flash',
+        claude: 'claude-sonnet-4-0',
+        tongyi: 'qwen-plus',
+        yiyan: 'ERNIE-Bot',
+        minimax: 'chatcompletion_v2',
+    };
     mockConfig.customModel = {};
-    mockConfig.system_role = { openai: 'You are a translator.' };
-    mockConfig.user_role = { openai: 'Translate to {{to}}: {{origin}}' };
+    mockConfig.system_role = Object.fromEntries(
+        Object.values(services).map(service => [service, 'You are a translator.'])
+    );
+    mockConfig.user_role = Object.fromEntries(
+        Object.values(services).map(service => [service, 'Translate to {{to}}: {{origin}}'])
+    );
     mockConfig.customBody = {};
+    mockConfig.robot_id = {
+        cozecom: 'coze-bot',
+        cozecn: 'coze-bot',
+    };
 });
 
 describe('mergeCustomBody（纯函数）', () => {
@@ -47,21 +82,21 @@ describe('mergeCustomBody（纯函数）', () => {
 
     it('合法 JSON 对象会被合并进 payload', () => {
         const payload: any = { model: 'm', messages: [] };
-        mergeCustomBody(payload, '{"max_tokens": 1024}');
-        expect(payload.max_tokens).toBe(1024);
-        expect(payload.model).toBe('m');
+        const result = mergeCustomBody(payload, '{"max_tokens": 1024}');
+        expect(result.max_tokens).toBe(1024);
+        expect(result.model).toBe('m');
     });
 
     it('用户字段优先：覆盖同名的默认字段', () => {
         const payload: any = { temperature: 1.0 };
-        mergeCustomBody(payload, '{"temperature": 0.6}');
-        expect(payload.temperature).toBe(0.6);
+        const result = mergeCustomBody(payload, '{"temperature": 0.6}');
+        expect(result.temperature).toBe(0.6);
     });
 
     it('支持嵌套对象（如 thinking 这类控制字段）', () => {
         const payload: any = { model: 'm' };
-        mergeCustomBody(payload, '{"thinking": {"type": "disabled"}}');
-        expect(payload.thinking).toEqual({ type: 'disabled' });
+        const result = mergeCustomBody(payload, '{"thinking": {"type": "disabled"}}');
+        expect(result.thinking).toEqual({ type: 'disabled' });
     });
 
     it('非法 JSON 被安全忽略，payload 不变', () => {
@@ -81,10 +116,28 @@ describe('mergeCustomBody（纯函数）', () => {
         expect(mergeCustomBody({ a: 1 }, 'null')).toEqual({ a: 1 });
     });
 
-    it('原地修改并返回同一个 payload 引用', () => {
+    it('返回合并后的新对象，不修改原始 payload', () => {
         const payload = { a: 1 };
         const result = mergeCustomBody(payload, '{"b": 2}');
-        expect(result).toBe(payload);
+        expect(result).not.toBe(payload);
+        expect(result).toEqual({ a: 1, b: 2 });
+        expect(payload).toEqual({ a: 1 });
+    });
+});
+
+describe('自定义请求体校验与配置兼容', () => {
+    it('UI 与运行时共享同一套 JSON 对象校验', () => {
+        expect(isValidCustomBody('')).toBe(true);
+        expect(isValidCustomBody('{"thinking": {"type": "disabled"}}')).toBe(true);
+        expect(isValidCustomBody('[]')).toBe(false);
+        expect(isValidCustomBody('{oops')).toBe(false);
+    });
+
+    it('只接受字符串映射，并可清理旧配置中的异常值', () => {
+        expect(isCustomBodyMapping({ openai: '{}', moonshot: '{"a": 1}' })).toBe(true);
+        expect(isCustomBodyMapping({ openai: null })).toBe(false);
+        expect(normalizeCustomBodyMapping({ openai: '{}', invalid: 1 })).toEqual({ openai: '{}' });
+        expect(normalizeCustomBodyMapping(null)).toEqual({});
     });
 });
 
@@ -127,11 +180,12 @@ describe('commonMsgTemplate（集成）', () => {
 // 重点：确保 thinking 等额外字段能够正确注入请求体顶层（issue #213）
 describe('自定义请求体注入 thinking 字段（issue #213）', () => {
     it('关闭思考：{"thinking": {"type": "disabled"}} 注入到请求体顶层', () => {
-        mockConfig.customBody = { openai: '{"thinking": {"type": "disabled"}}' };
+        mockConfig.service = services.moonshot;
+        mockConfig.customBody = { moonshot: '{"thinking": {"type": "disabled"}}' };
         const body = JSON.parse(commonMsgTemplate('你好世界'));
         expect(body.thinking).toEqual({ type: 'disabled' });
         // 同时不破坏原有字段
-        expect(body.model).toBe('gpt-4o');
+        expect(body.model).toBe('kimi-k2-0711-preview');
         expect(body.messages[1].content).toBe('Translate to zh-Hans: 你好世界');
     });
 
@@ -158,5 +212,52 @@ describe('自定义请求体注入 thinking 字段（issue #213）', () => {
         };
         const body = JSON.parse(commonMsgTemplate('hi'));
         expect(body.thinking).toEqual({ type: 'disabled' });
+    });
+});
+
+describe('所有 AI 请求模板的自定义请求体支持', () => {
+    const templateCases = [
+        [services.openai, commonMsgTemplate],
+        [services.deepseek, deepseekMsgTemplate],
+        [services.gemini, geminiMsgTemplate],
+        [services.claude, claudeMsgTemplate],
+        [services.tongyi, tongyiMsgTemplate],
+        [services.yiyan, yiyanMsgTemplate],
+        [services.minimax, minimaxTemplate],
+        [services.cozecom, cozeTemplate],
+    ] as const;
+
+    it.each(templateCases)('%s 模板会合并顶层自定义字段', (service, template) => {
+        mockConfig.service = service;
+        mockConfig.customBody = {[service]: '{"request_tag": "custom"}'};
+
+        const body = JSON.parse(template('hello'));
+        expect(body.request_tag).toBe('custom');
+    });
+
+    it('自定义请求体入口覆盖所有 AI 服务，但不覆盖机器翻译', () => {
+        for (const service of servicesType.AI) {
+            expect(servicesType.isUseCustomBody(service)).toBe(true);
+        }
+        expect(servicesType.isUseCustomBody(services.google)).toBe(false);
+    });
+});
+
+describe('腾讯混元翻译自定义请求体', () => {
+    it('在序列化和签名前合并自定义字段，并允许覆盖默认字段', () => {
+        const body = buildHunyuanTranslationRequestBody(
+            'hello',
+            'zh',
+            'hunyuan-translation',
+            '{"Stream": true, "Field": "通用"}',
+        );
+
+        expect(body).toEqual({
+            Model: 'hunyuan-translation',
+            Stream: true,
+            Text: 'hello',
+            Target: 'zh',
+            Field: '通用',
+        });
     });
 });

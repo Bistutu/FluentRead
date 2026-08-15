@@ -162,6 +162,8 @@ export const servicesType = {
     isUseToken: (service: string) => servicesType.useToken.has(service),
     isUseProxy: (service: string) => servicesType.useProxy.has(service),
     isUseModel: (service: string) => servicesType.useModel.has(service),
+    // 所有 AI 服务的请求体都支持附加顶层字段，包括不使用模型选择器的 Coze。
+    isUseCustomBody: (service: string) => servicesType.AI.has(service),
     isCustom: (service: string) => service === services.custom,
     isNewApi: (service: string) => service === services.newapi,
     isUseAkSk: (service: string) => service === services.yiyan,
@@ -409,4 +411,3 @@ export const defaultOption = {
     inputBoxTranslationTrigger: "disabled", // 默认关闭输入框翻译
     inputBoxTranslationTarget: "en", // 默认翻译成英文
 };
-

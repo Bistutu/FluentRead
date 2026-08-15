@@ -1,4 +1,5 @@
 import { Config } from "@/entrypoints/utils/model";
+import { normalizeCustomBodyMapping } from "@/entrypoints/utils/custom-body";
 
 // 声明 config 类型, new Config() 会设置好所有默认值
 export let config: Config = new Config();
@@ -22,6 +23,7 @@ async function loadConfig() {
             if (isConfigObjectValid(parsedConfig)) {
                 // 如果配置有效，合并到当前 config 中
                 Object.assign(config, parsedConfig);
+                config.customBody = normalizeCustomBodyMapping(parsedConfig.customBody);
                 return; // 加载成功，直接返回
             }
         }
@@ -46,6 +48,7 @@ storage.watch('local:config', (newValue: any, oldValue: any) => {
             if (isConfigObjectValid(parsedConfig)) {
                 // 如果新的配置有效，更新 config
                 Object.assign(config, parsedConfig);
+                config.customBody = normalizeCustomBodyMapping(parsedConfig.customBody);
             } else {
                 console.warn('An invalid configuration was detected in storage.watch. Ignoring.');
             }

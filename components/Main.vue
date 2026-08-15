@@ -399,7 +399,7 @@
     </el-row>
 
     <!-- 自定义请求体 -->
-    <el-row v-show="compute.showModel" class="margin-bottom margin-left-2em">
+    <el-row v-show="compute.showCustomBody" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark"
           content='以 JSON 对象形式追加到请求体（顶层合并，会覆盖同名默认字段）。'
@@ -694,6 +694,11 @@ import browser from 'webextension-polyfill';
 import { defineAsyncComponent } from 'vue';
 const CustomHotkeyInput = defineAsyncComponent(() => import('@/components/CustomHotkeyInput.vue'));
 import { parseHotkey } from '@/entrypoints/utils/hotkey';
+import {
+  isCustomBodyMapping,
+  isValidCustomBody,
+  normalizeCustomBodyMapping,
+} from '@/entrypoints/utils/custom-body';
 
 // 初始化深色模式媒体查询
 const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -720,6 +725,7 @@ storage.getItem('local:config').then((value: any) => {
   if (typeof value === 'string' && value) {
     const parsedConfig = JSON.parse(value);
     Object.assign(config.value, parsedConfig);
+    config.value.customBody = normalizeCustomBodyMapping(parsedConfig.customBody);
   }
   // 初始应用主题
   updateTheme(config.value.theme || 'auto');
@@ -733,7 +739,9 @@ storage.watch('local:config', (newValue: any, oldValue: any) => {
   if (typeof newValue === 'string' && newValue) {
     // 将新的配置值解析为对象,并合并到当前的 config.value 中
     // 这样可以保持所有页面的配置同步
-    Object.assign(config.value, JSON.parse(newValue));
+    const parsedConfig = JSON.parse(newValue);
+    Object.assign(config.value, parsedConfig);
+    config.value.customBody = normalizeCustomBodyMapping(parsedConfig.customBody);
   }
 });
 
@@ -755,6 +763,8 @@ let compute = ref({
   showProxy: computed(() => servicesType.isUseProxy(config.value.service)),
   // 4、是否显示模型
   showModel: computed(() => servicesType.isUseModel(config.value.service)),
+  // 4.5、是否支持自定义请求体
+  showCustomBody: computed(() => servicesType.isUseCustomBody(config.value.service)),
   // 5、是否显示token
   showToken: computed(() => servicesType.isUseToken(config.value.service)),
   // 6、是否显示 AkSk
@@ -1100,17 +1110,6 @@ const isValidAzureEndpoint = (endpoint: string) => {
   return hasHttps && hasAzureDomain && hasChatCompletions;
 };
 
-// 自定义请求体（JSON）校验：留空视为合法（不启用），否则必须是 JSON 对象
-const isValidCustomBody = (str: string | undefined): boolean => {
-  if (!str || !str.trim()) return true;
-  try {
-    const v = JSON.parse(str);
-    return v !== null && typeof v === 'object' && !Array.isArray(v);
-  } catch {
-    return false;
-  }
-};
-
 const handleExport = async () => {
   const configStr = await storage.getItem('local:config');
   if (!configStr) {
@@ -1358,6 +1357,10 @@ const validateConfig = (configData: any): boolean => {
 
     // 检查服务配置
     if (typeof configData.service !== 'string') {
+      return false;
+    }
+
+    if ('customBody' in configData && !isCustomBodyMapping(configData.customBody)) {
       return false;
     }
 

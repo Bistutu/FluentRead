@@ -1,24 +1,9 @@
 // 消息模板工具
 import {customModelString, defaultOption, services} from "./option";
 import {config} from "@/entrypoints/utils/config";
+import {mergeCustomBody} from "./custom-body";
 
-// 将用户自定义的 JSON 请求体合并进 payload（顶层浅合并，用户字段优先）。
-// 主要用于向请求体补充额外参数（例如 {"thinking": {"type": "disabled"}} 这类控制字段）。
-export function mergeCustomBody(payload: Record<string, any>, raw?: string | null): Record<string, any> {
-    if (!raw || !raw.trim()) return payload;
-    try {
-        const extra = JSON.parse(raw);
-        // 仅接受 JSON 对象（排除数组、null 及基本类型）
-        if (extra && typeof extra === 'object' && !Array.isArray(extra)) {
-            Object.assign(payload, extra);
-        } else {
-            console.warn('[FluentRead] 自定义请求体必须是 JSON 对象，已忽略：', raw);
-        }
-    } catch (e) {
-        console.warn('[FluentRead] 自定义请求体不是合法的 JSON，已忽略：', raw, e);
-    }
-    return payload;
-}
+export {mergeCustomBody};
 
 // 读取当前服务的自定义请求体（JSON 字符串）
 function currentCustomBody(): string | undefined {
