@@ -1,9 +1,10 @@
 import { services } from "./option";
+import {DEFAULT_DEEPLX_ENDPOINT} from "./deeplx";
 
 // 常量工具类
 export const urls: any = {
     [services.deepL]: "https://api-free.deepl.com/v2/translate",
-    [services.deeplx]: "http://localhost:1188/translate",
+    [services.deeplx]: DEFAULT_DEEPLX_ENDPOINT,
     [services.openai]: "https://api.openai.com/v1/chat/completions",
     [services.azureOpenai]: "https://your-resource-name.openai.azure.com/openai/deployments/your-deployment-name/chat/completions?api-version=2024-02-15-preview",
     [services.moonshot]: "https://api.moonshot.cn/v1/chat/completions",

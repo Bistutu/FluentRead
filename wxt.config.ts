@@ -27,6 +27,9 @@ export default defineConfig({
             'https://translate.google.com/*',
             'https://translate.google.co.uk/*',
             'https://translate.googleapis.com/*',
+            'https://deeplx.1stg.me/*',
+            'https://freeapi.fanyimao.cn/*',
+            'https://api.deeplx.org/*',
         ],
     },
 

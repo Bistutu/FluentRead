@@ -232,13 +232,36 @@
     <el-row v-show="compute.showDeepLX" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark"
-          content="DeepLX API 服务地址，默认为本地地址。如果使用远程 DeepLX 服务，请修改为对应的服务地址" placement="top-start"
+          content="DeepLX 是非官方免费服务。可填写多个地址，每行或逗号分隔；请求会按顺序故障转移。公共站点可能记录翻译文本，敏感内容建议使用本地或自建服务。"
+          placement="top-start"
           :show-after="500">
           <span class="popup-text popup-vertical-left">服务地址</span>
         </el-tooltip>
       </el-col>
       <el-col :span="12">
-        <el-input v-model="config.deeplx" placeholder="http://localhost:1188/translate" />
+        <el-input
+          v-model="config.deeplx"
+          type="textarea"
+          :rows="3"
+          resize="vertical"
+          placeholder="https://deeplx.1stg.me/translate&#10;http://localhost:1188/translate"
+        />
+        <div class="deeplx-hint">每行或逗号分隔，按顺序尝试；带 &#123;&#123;apiKey&#125;&#125; 的地址会使用上方访问令牌。</div>
+        <el-select
+          v-model="selectedDeepLXPreset"
+          class="deeplx-presets"
+          size="small"
+          clearable
+          placeholder="快速添加推荐站点"
+          @change="appendDeepLXPreset"
+        >
+          <el-option
+            v-for="preset in DEEPLX_ENDPOINT_PRESETS"
+            :key="preset.url"
+            :label="preset.label"
+            :value="preset.url"
+          />
+        </el-select>
       </el-col>
     </el-row>
 
@@ -736,6 +759,7 @@ import {
   isCustomBodyMapping,
   isValidCustomBody,
 } from '@/entrypoints/utils/custom-body';
+import {DEEPLX_ENDPOINT_PRESETS, parseDeepLXEndpoints} from '@/entrypoints/utils/deeplx';
 
 // 初始化深色模式媒体查询
 const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -756,6 +780,19 @@ function updateTheme(theme: string) {
 
 // 配置信息
 let config = ref(new Config());
+const selectedDeepLXPreset = ref('');
+
+const appendDeepLXPreset = (endpoint: string | undefined) => {
+  if (!endpoint) {
+    return;
+  }
+
+  const endpoints = parseDeepLXEndpoints(config.value.deeplx);
+  if (!endpoints.includes(endpoint)) {
+    config.value.deeplx = [...endpoints, endpoint].join('\n');
+  }
+  selectedDeepLXPreset.value = '';
+};
 
 // 从 storage 中获取本地配置
 storage.getItem('local:config').then((value: any) => {
@@ -1683,5 +1720,17 @@ const validateConfig = (configData: any): boolean => {
   font-size: 12px;
   margin-top: 4px;
   line-height: 1.4;
+}
+
+.deeplx-hint {
+  color: var(--fr-secondary-text-color, #909399);
+  font-size: 12px;
+  line-height: 1.4;
+  margin-top: 4px;
+}
+
+.deeplx-presets {
+  margin-top: 6px;
+  width: 100%;
 }
 </style>
