@@ -17,12 +17,14 @@ export const urls: any = {
     [services.baichuan]: "https://api.baichuan-ai.com/v1/chat/completions",
     [services.lingyi]: "https://api.lingyiwanwu.com/v1/chat/completions",
     [services.deepseek]: "https://api.deepseek.com/chat/completions",
+    [services.infini]: "https://cloud.infini-ai.com/maas/v1/chat/completions",
+    [services.minimax]: "https://api.minimax.io/v1/chat/completions",
     [services.jieyue]: "https://api.stepfun.com/v1/chat/completions",
-    [services.yiyan]: {tokenUrl: "https://aip.baidubce.com/oauth/2.0/token"},
+    [services.yiyan]: "https://qianfan.bj.baidubce.com/v2/chat/completions",
     [services.groq]: "https://api.groq.com/openai/v1/chat/completions",
     [services.cozecom]: "https://api.coze.com/open_api/v2/chat",
     [services.cozecn]: "https://api.coze.cn/open_api/v2/chat",
-    [services.huanYuan]: "https://api.hunyuan.cloud.tencent.com/v1/chat/completions",
+    [services.huanYuan]: "https://api.tokenhub.tencent.com/v1/chat/completions",
     [services.huanYuanTranslation]: "https://hunyuan.tencentcloudapi.com/",
     [services.doubao]: "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
     [services.siliconCloud]: "https://api.siliconflow.cn/v1/chat/completions",
@@ -34,6 +36,9 @@ export const urls: any = {
 }
 
 export const method = {POST: "POST", GET: "GET",};
+
+// qwen3.8 预览模型属于百炼 Token Plan，使用独立的 OpenAI 兼容端点。
+export const tongyiTokenPlanUrl = "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions";
 
 export const constants = {
     // 键鼠事件

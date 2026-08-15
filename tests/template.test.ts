@@ -23,9 +23,7 @@ import {
     cozeTemplate,
     deepseekMsgTemplate,
     geminiMsgTemplate,
-    minimaxTemplate,
     tongyiMsgTemplate,
-    yiyanMsgTemplate,
 } from '@/entrypoints/utils/template';
 import {
     isCustomBodyMapping,
@@ -41,14 +39,14 @@ beforeEach(() => {
     mockConfig.service = 'openai';
     mockConfig.to = 'zh-Hans';
     mockConfig.model = {
-        openai: 'gpt-4o',
-        moonshot: 'kimi-k2-0711-preview',
+        openai: 'gpt-5.6-sol',
+        moonshot: 'kimi-k3',
         deepseek: 'deepseek-chat',
-        gemini: 'gemini-2.5-flash',
-        claude: 'claude-sonnet-4-0',
-        tongyi: 'qwen-plus',
-        yiyan: 'ERNIE-Bot',
-        minimax: 'chatcompletion_v2',
+        gemini: 'gemini-3.6-flash',
+        claude: 'claude-sonnet-5',
+        tongyi: 'qwen3.7-plus',
+        yiyan: 'ernie-5.1',
+        minimax: 'MiniMax-M2.7',
     };
     mockConfig.customModel = {};
     mockConfig.system_role = Object.fromEntries(
@@ -145,7 +143,7 @@ describe('commonMsgTemplate（集成）', () => {
     it('未配置自定义请求体时，生成标准 OpenAI 请求体', () => {
         const body = JSON.parse(commonMsgTemplate('hello'));
         expect(body).toEqual({
-            model: 'gpt-4o',
+            model: 'gpt-5.6-sol',
             temperature: 1.0,
             messages: [
                 { role: 'system', content: 'You are a translator.' },
@@ -164,7 +162,7 @@ describe('commonMsgTemplate（集成）', () => {
     it('非法的自定义请求体被忽略，标准请求体保持完整', () => {
         mockConfig.customBody = { openai: '{oops' };
         const body = JSON.parse(commonMsgTemplate('hello'));
-        expect(body.model).toBe('gpt-4o');
+        expect(body.model).toBe('gpt-5.6-sol');
         expect(body.thinking).toBeUndefined();
         expect(body.messages).toHaveLength(2);
     });
@@ -185,7 +183,7 @@ describe('自定义请求体注入 thinking 字段（issue #213）', () => {
         const body = JSON.parse(commonMsgTemplate('你好世界'));
         expect(body.thinking).toEqual({ type: 'disabled' });
         // 同时不破坏原有字段
-        expect(body.model).toBe('kimi-k2-0711-preview');
+        expect(body.model).toBe('kimi-k3');
         expect(body.messages[1].content).toBe('Translate to zh-Hans: 你好世界');
     });
 
@@ -222,8 +220,8 @@ describe('所有 AI 请求模板的自定义请求体支持', () => {
         [services.gemini, geminiMsgTemplate],
         [services.claude, claudeMsgTemplate],
         [services.tongyi, tongyiMsgTemplate],
-        [services.yiyan, yiyanMsgTemplate],
-        [services.minimax, minimaxTemplate],
+        [services.yiyan, commonMsgTemplate],
+        [services.minimax, commonMsgTemplate],
         [services.cozecom, cozeTemplate],
     ] as const;
 
@@ -240,6 +238,33 @@ describe('所有 AI 请求模板的自定义请求体支持', () => {
             expect(servicesType.isUseCustomBody(service)).toBe(true);
         }
         expect(servicesType.isUseCustomBody(services.google)).toBe(false);
+    });
+});
+
+describe('请求时旧模型编号兜底', () => {
+    it('Claude 配置尚未持久化迁移时，也不会回退到 2024 dated ID', () => {
+        mockConfig.service = services.claude;
+        mockConfig.model[services.claude] = 'claude-3-5-sonnet';
+
+        const body = JSON.parse(claudeMsgTemplate('hello'));
+        expect(body.model).toBe('claude-sonnet-5');
+    });
+
+    it('通用 OpenAI 兼容服务在请求时也应用旧编号迁移', () => {
+        mockConfig.service = services.zhipu;
+        mockConfig.model[services.zhipu] = 'glm-4-plus';
+
+        const body = JSON.parse(commonMsgTemplate('hello'));
+        expect(body.model).toBe('glm-5.3');
+    });
+
+    it('自定义模型编号保持原样，不套用官方预设迁移', () => {
+        mockConfig.service = services.claude;
+        mockConfig.model[services.claude] = '自定义模型';
+        mockConfig.customModel[services.claude] = 'claude-3-5-sonnet';
+
+        const body = JSON.parse(claudeMsgTemplate('hello'));
+        expect(body.model).toBe('claude-3-5-sonnet');
     });
 });
 

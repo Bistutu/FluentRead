@@ -1,4 +1,4 @@
-import { defaultOption, services } from "./option";
+import { currentModelIds, defaultOption, services } from "./option";
 import { normalizeCustomBodyMapping } from "./custom-body";
 
 export type DeepSeekApiType = 'auto' | 'responses' | 'chat';
@@ -111,8 +111,73 @@ export class Config {
     }
 }
 
+const modelMigrations: Record<string, Record<string, string>> = {
+    [services.openai]: {
+        gpt5: currentModelIds.openai,
+    },
+    [services.zhipu]: {
+        'glm-4.5': currentModelIds.zhipu,
+        'GLM-4-Flash': currentModelIds.zhipuFlash,
+        'glm-4-plus': currentModelIds.zhipu,
+        'glm-4': currentModelIds.zhipu,
+        'glm-4v': currentModelIds.zhipu,
+    },
+    [services.moonshot]: {
+        'kimi-k2-0711-preview': currentModelIds.moonshot,
+        'kimi-k2-turbo-preview': currentModelIds.moonshot,
+        'moonshot-v1-auto': currentModelIds.moonshot,
+        'moonshot-v1-8k': currentModelIds.moonshot,
+        'moonshot-v1-32k': currentModelIds.moonshot,
+    },
+    [services.claude]: {
+        'claude-sonnet-4-0': currentModelIds.claudeSonnet,
+        'claude-opus-4-1': currentModelIds.claudeOpus,
+        'claude-3-5-sonnet': currentModelIds.claudeSonnet,
+        'claude-3-5-sonnet-20241022': currentModelIds.claudeSonnet,
+        'claude-3-opus': currentModelIds.claudeOpus,
+        'claude-3-opus-20240229': currentModelIds.claudeOpus,
+        'claude-3-5-haiku': currentModelIds.claudeHaiku,
+        'claude-3-5-haiku-20241022': currentModelIds.claudeHaiku,
+        'claude-3-5-haiku-latest': currentModelIds.claudeHaiku,
+    },
+    [services.grok]: {
+        'grok-4-0709': currentModelIds.grok,
+    },
+    [services.groq]: {
+        'llama-3.3-70b-versatile': currentModelIds.groqLarge,
+        'llama-3.1-8b-instant': currentModelIds.groqSmall,
+        'llama3-8b-8192': currentModelIds.groqSmall,
+    },
+    [services.yiyan]: {
+        'ERNIE-Bot 4.0': currentModelIds.yiyan,
+        'ERNIE-Bot': currentModelIds.yiyan,
+        'ERNIE-Speed-8K': currentModelIds.yiyanFast,
+    },
+    [services.minimax]: {
+        chatcompletion_v2: currentModelIds.minimax,
+        'MiniMax-Text-01': currentModelIds.minimax,
+    },
+    [services.jieyue]: {
+        'step-1-8k': currentModelIds.jieyue,
+    },
+    [services.huanYuan]: {
+        'hunyuan-turbos-latest': currentModelIds.huanYuan,
+        'hunyuan-t1-latest': currentModelIds.huanYuan,
+        'hunyuan-a13b': currentModelIds.huanYuan,
+        'hunyuan-lite': currentModelIds.huanYuan,
+        'hunyuan-standard': currentModelIds.huanYuan,
+    },
+    [services.infini]: {
+        'llama-2-13b-chat': currentModelIds.infiniGeneral,
+        'llama-3.3-70b-instruct': currentModelIds.infiniGeneral,
+        'qwen2.5-14b-instruct': currentModelIds.infiniGeneral,
+        'gemma-2-27b-it': currentModelIds.infiniGeneral,
+        'glm-4-9b-chat': currentModelIds.infiniZhipu,
+    },
+};
+
 /**
- * 将存储或导入的普通对象补齐为当前配置结构，并迁移已退役的 DeepSeek 模型名。
+ * 将存储或导入的普通对象补齐为当前配置结构，并迁移已退役或错误的模型编号。
  */
 export function normalizeConfig(value: unknown): Config {
     const normalized = new Config();
@@ -123,15 +188,17 @@ export function normalizeConfig(value: unknown): Config {
     normalized.customModel = isRecord(source.customModel) ? {...source.customModel} : {};
     normalized.customBody = normalizeCustomBodyMapping(source.customBody);
 
+    migrateModelIdentifiers(normalized.model);
+
     const selectedModel = normalized.model[services.deepseek];
     const configuredThinkingMode = source.deepseekThinkingMode;
 
     if (selectedModel === 'deepseek-chat') {
-        normalized.model[services.deepseek] = 'deepseek-v4-flash';
+        normalized.model[services.deepseek] = currentModelIds.deepseek;
         normalized.deepseekThinkingMode = 'disabled';
     } else if (selectedModel === 'deepseek-reasoner') {
         // 官方迁移指南要求 reasoner 使用 v4-flash 并显式开启 thinking。
-        normalized.model[services.deepseek] = 'deepseek-v4-flash';
+        normalized.model[services.deepseek] = currentModelIds.deepseek;
         normalized.deepseekThinkingMode = 'enabled';
     } else if (configuredThinkingMode !== 'enabled' && configuredThinkingMode !== 'disabled') {
         // 兼容 #219 的早期配置：该实现把 v4-pro 作为默认思考模型。
@@ -143,6 +210,22 @@ export function normalizeConfig(value: unknown): Config {
     }
 
     return normalized;
+}
+
+function migrateModelIdentifiers(configuredModels: IMapping): void {
+    for (const service of Object.keys(modelMigrations)) {
+        const selectedModel = configuredModels[service];
+        if (!selectedModel) continue;
+        configuredModels[service] = migrateModelIdentifier(service, selectedModel);
+    }
+}
+
+/**
+ * 将单个官方预设的旧编号映射到当前编号，供配置加载与请求模板共同兜底。
+ * 自定义模型应由调用方跳过此函数，以免改写私有部署别名。
+ */
+export function migrateModelIdentifier(service: string, selectedModel: string): string {
+    return modelMigrations[service]?.[selectedModel] || selectedModel;
 }
 
 function isRecord(value: unknown): value is Record<string, string> {

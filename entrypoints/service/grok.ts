@@ -6,7 +6,7 @@ import {contentPostHandler} from "@/entrypoints/utils/check";
 /**
  * Grok 服务实现
  * 使用 X.AI API，兼容 OpenAI 接口
- * 支持模型：grok-3-beta, grok-3-fast-beta, grok-3-mini-beta, grok-3-mini-fast-beta
+ * 当前预设模型：grok-4.5、grok-4.3；也支持用户输入自定义模型编号。
  */
 async function grok(message: any) {
     try {
@@ -35,4 +35,4 @@ async function grok(message: any) {
     }
 }
 
-export default grok; 
+export default grok;

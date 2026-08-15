@@ -16,12 +16,6 @@ export function checkConfig(): boolean {
             return false;
         }
     }
-    // Special case for YiYan service (requires both AK and SK)
-    if (config.service === services.yiyan && (!config.ak || !config.sk)) {
-        sendErrorMessage("令牌尚未配置，请前往设置页配置");
-        return false;
-    }
-    
     // Special case for Tencent Cloud service (requires both SecretId and SecretKey)
     if (config.service === services.tencent && (!config.tencentSecretId || !config.tencentSecretKey)) {
         sendErrorMessage("腾讯云机器翻译密钥尚未配置，请前往设置页配置SecretId和SecretKey");
