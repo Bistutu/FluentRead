@@ -9,9 +9,9 @@
         </div>
       </div>
       <div class="header-actions">
-        <span class="status-pill" :class="{ active: config.on }"><i />{{ config.on ? '已启用' : '已暂停' }}</span>
-        <button class="icon-button" type="button" title="完整设置" @click="openOptions()">
+        <button class="settings-button" type="button" title="完整设置" aria-label="打开完整设置" @click="openOptions()">
           <Setting />
+          <span>设置</span>
         </button>
       </div>
     </header>
@@ -113,10 +113,7 @@
     </section>
 
     <section class="features">
-      <div class="section-heading">
-        <div><span class="eyebrow">快捷功能</span><h2>按你的阅读习惯工作</h2></div>
-        <button type="button" @click="openOptions()">全部设置</button>
-      </div>
+      <span class="eyebrow features-eyebrow">快捷功能</span>
       <div class="feature-grid">
         <button class="feature-card" type="button" :disabled="!config.on" @click="openDrawer('hover')">
           <span class="feature-icon rose">↖</span>
