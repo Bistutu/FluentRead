@@ -1,7 +1,8 @@
 // 消息模板工具
-import {customModelString, defaultOption, services} from "./option";
+import {currentModelIds, customModelString, defaultOption, services} from "./option";
 import {config} from "@/entrypoints/utils/config";
 import {mergeCustomBody} from "./custom-body";
+import {migrateModelIdentifier} from "./model";
 
 export {mergeCustomBody};
 
@@ -10,10 +11,17 @@ function currentCustomBody(): string | undefined {
     return config.customBody?.[config.service];
 }
 
+function currentConfiguredModel(service: string): string {
+    const selectedModel = config.model[service];
+    if (selectedModel === customModelString) {
+        return config.customModel[service] || '';
+    }
+    return migrateModelIdentifier(service, selectedModel || '');
+}
+
 // openai 格式的消息模板（通用模板）
 export function commonMsgTemplate(origin: string) {
-    // 检测是否使用自定义模型
-    let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
+    let model = currentConfiguredModel(config.service);
 
     // 删除模型名称中的中文括号及其内容，如"gpt-4（推荐）" -> "gpt-4"
     model = model.replace(/（.*）/g, "");
@@ -36,14 +44,12 @@ export function commonMsgTemplate(origin: string) {
 
 // deepseek
 export function getCurrentModel(): string {
-    const selectedModel = config.model[config.service] === customModelString
-        ? config.customModel[config.service]
-        : config.model[config.service];
+    const selectedModel = currentConfiguredModel(config.service);
     const normalizedModel = (selectedModel || '').replace(/（.*）/g, "");
 
     // 运行时兜底：后台脚本若早于配置迁移读取到旧值，仍使用可用的 V4 模型。
     if (normalizedModel === 'deepseek-chat' || normalizedModel === 'deepseek-reasoner') {
-        return 'deepseek-v4-flash';
+        return currentModelIds.deepseek;
     }
 
     return normalizedModel;
@@ -119,10 +125,7 @@ export function geminiMsgTemplate(origin: string) {
 
 // claude
 export function claudeMsgTemplate(origin: string) {
-    let model = config.model[services.claude];
-    if (model === "claude-3-5-haiku") model = "claude-3-5-haiku-20241022";
-    else if (model === "claude-3-5-sonnet") model = "claude-3-5-sonnet-20241022";
-    else if (model === "claude-3-opus") model = "claude-3-opus-20240229";
+    const model = currentConfiguredModel(services.claude);
 
     let system = config.system_role[config.service] || defaultOption.system_role;
     let user = (config.user_role[config.service] || defaultOption.user_role)
@@ -143,7 +146,7 @@ export function claudeMsgTemplate(origin: string) {
 
 // 通义千问
 export function tongyiMsgTemplate(origin: string) {
-    let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
+    const model = currentConfiguredModel(config.service);
     const normalTemplate = () => {
         let system = config.system_role[config.service] || defaultOption.system_role;
         let user = (config.user_role[config.service] || defaultOption.user_role)
@@ -185,43 +188,6 @@ export function tongyiMsgTemplate(origin: string) {
     }
     return model.startsWith("qwen-mt") ? mtModelTemplate() : normalTemplate()
 
-}
-
-// 文心一言
-export function yiyanMsgTemplate(origin: string) {
-    let user = (config.user_role[config.service] || defaultOption.user_role)
-        .replace('{{to}}', config.to).replace('{{origin}}', origin);
-
-    const payload: any = {
-        'temperature': 0.7,
-        'disable_search': true, // 禁用搜索
-        'messages': [
-            {"role": "user", "content": user},
-        ],
-    };
-
-    return JSON.stringify(mergeCustomBody(payload, currentCustomBody()))
-}
-
-export function minimaxTemplate(origin: string) {
-
-    let system = config.system_role[config.service] || defaultOption.system_role;
-    let user = (config.user_role[config.service] || defaultOption.user_role)
-        .replace('{{to}}', config.to).replace('{{origin}}', origin);
-
-    const payload: any = {
-        model: config.model[services.minimax] === customModelString
-            ? config.customModel[services.minimax]
-            : config.model[services.minimax],
-        stream: false,
-        temperature: 0.7,
-        messages: [
-            {role: 'system', content: system},
-            {role: 'user', content: user},
-        ]
-    };
-
-    return JSON.stringify(mergeCustomBody(payload, currentCustomBody()))
 }
 
 export function cozeTemplate(origin: string) {

@@ -116,24 +116,28 @@ const modelMigrations: Record<string, Record<string, string>> = {
         gpt5: currentModelIds.openai,
     },
     [services.zhipu]: {
-        'glm-4.5': 'glm-4.7',
+        'glm-4.5': currentModelIds.zhipu,
         'GLM-4-Flash': currentModelIds.zhipuFlash,
-        'glm-4-plus': 'glm-4.7',
-        'glm-4': 'glm-4.7',
-        'glm-4v': 'glm-4.7',
+        'glm-4-plus': currentModelIds.zhipu,
+        'glm-4': currentModelIds.zhipu,
+        'glm-4v': currentModelIds.zhipu,
     },
     [services.moonshot]: {
-        'kimi-k2-0711-preview': currentModelIds.moonshotCompatible,
-        'kimi-k2-turbo-preview': currentModelIds.moonshotCompatible,
-        'moonshot-v1-auto': currentModelIds.moonshotCompatible,
-        'moonshot-v1-8k': currentModelIds.moonshotCompatible,
-        'moonshot-v1-32k': currentModelIds.moonshotCompatible,
+        'kimi-k2-0711-preview': currentModelIds.moonshot,
+        'kimi-k2-turbo-preview': currentModelIds.moonshot,
+        'moonshot-v1-auto': currentModelIds.moonshot,
+        'moonshot-v1-8k': currentModelIds.moonshot,
+        'moonshot-v1-32k': currentModelIds.moonshot,
     },
     [services.claude]: {
         'claude-sonnet-4-0': currentModelIds.claudeSonnet,
-        'claude-sonnet-4-6': currentModelIds.claudeSonnet,
         'claude-opus-4-1': currentModelIds.claudeOpus,
-        'claude-opus-4-8': currentModelIds.claudeOpus,
+        'claude-3-5-sonnet': currentModelIds.claudeSonnet,
+        'claude-3-5-sonnet-20241022': currentModelIds.claudeSonnet,
+        'claude-3-opus': currentModelIds.claudeOpus,
+        'claude-3-opus-20240229': currentModelIds.claudeOpus,
+        'claude-3-5-haiku': currentModelIds.claudeHaiku,
+        'claude-3-5-haiku-20241022': currentModelIds.claudeHaiku,
         'claude-3-5-haiku-latest': currentModelIds.claudeHaiku,
     },
     [services.grok]: {
@@ -209,13 +213,19 @@ export function normalizeConfig(value: unknown): Config {
 }
 
 function migrateModelIdentifiers(configuredModels: IMapping): void {
-    for (const [service, migrations] of Object.entries(modelMigrations)) {
+    for (const service of Object.keys(modelMigrations)) {
         const selectedModel = configuredModels[service];
-        const migratedModel = migrations[selectedModel];
-        if (migratedModel) {
-            configuredModels[service] = migratedModel;
-        }
+        if (!selectedModel) continue;
+        configuredModels[service] = migrateModelIdentifier(service, selectedModel);
     }
+}
+
+/**
+ * 将单个官方预设的旧编号映射到当前编号，供配置加载与请求模板共同兜底。
+ * 自定义模型应由调用方跳过此函数，以免改写私有部署别名。
+ */
+export function migrateModelIdentifier(service: string, selectedModel: string): string {
+    return modelMigrations[service]?.[selectedModel] || selectedModel;
 }
 
 function isRecord(value: unknown): value is Record<string, string> {
