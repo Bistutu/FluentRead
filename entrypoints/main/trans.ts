@@ -9,6 +9,7 @@ import { detectlang, throttle } from "@/entrypoints/utils/common";
 import { getMainDomain, replaceCompatFn } from "@/entrypoints/main/compat";
 import { config } from "@/entrypoints/utils/config";
 import { translateText, translateTextBatch, cancelAllTranslations } from '@/entrypoints/utils/translateApi';
+import { sanitizeTranslationHtml } from '@/entrypoints/utils/sanitize';
 
 let hoverTimer: any; // 鼠标悬停计时器
 let htmlSet = new Set(); // 防抖
@@ -320,15 +321,16 @@ export function singleTranslate(node: any) {
             }
             
             let oldOuterHtml = node.outerHTML;
+            const translatedContent = sanitizeTranslationHtml(text);
             if (manualSource) {
                 const translated = document.createElement('span');
                 translated.className = manualChunkTranslationClass;
-                translated.innerHTML = text;
+                translated.replaceChildren(translatedContent);
                 manualSource.hidden = true;
                 node.append(translated);
                 node.dataset.frChunkTranslated = 'true';
             } else {
-                node.innerHTML = text;
+                node.replaceChildren(translatedContent);
             }
             let newOuterHtml = node.outerHTML;
             

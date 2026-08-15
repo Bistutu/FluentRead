@@ -65,7 +65,17 @@ export function unwrapManualChunk(node: Element) {
 
 function collectTextLayout(root: Element): TextLayout {
     const positions: TextNodePosition[] = [];
+    const styles = new WeakMap<Element, CSSStyleDeclaration>();
     let text = '';
+
+    const styleOf = (node: Element) => {
+        let style = styles.get(node);
+        if (!style) {
+            style = getComputedStyle(node);
+            styles.set(node, style);
+        }
+        return style;
+    };
 
     const appendParagraphBreak = () => {
         const trailingBreaks = text.match(/\n*$/)?.[0].length ?? 0;
@@ -75,7 +85,7 @@ function collectTextLayout(root: Element): TextLayout {
     const visit = (parent: Element) => {
         for (const child of parent.childNodes) {
             if (child instanceof Text) {
-                const whiteSpace = getComputedStyle(parent).whiteSpace;
+                const whiteSpace = styleOf(parent).whiteSpace;
                 const value = /^(pre|pre-line|pre-wrap|break-spaces)$/.test(whiteSpace)
                     ? child.data
                     : child.data.replace(/[\r\n]/g, ' ');
@@ -84,13 +94,13 @@ function collectTextLayout(root: Element): TextLayout {
                 continue;
             }
 
-            if (!(child instanceof Element) || shouldIgnore(child)) continue;
+            if (!(child instanceof Element) || shouldIgnore(child, styleOf(child).display)) continue;
             if (child.tagName === 'BR') {
                 text += '\n';
                 continue;
             }
 
-            const block = isLayoutBlock(child);
+            const block = isLayoutBlock(styleOf(child).display);
             if (block && text) appendParagraphBreak();
             visit(child);
             if (block) appendParagraphBreak();
@@ -101,13 +111,12 @@ function collectTextLayout(root: Element): TextLayout {
     return { text, positions };
 }
 
-function shouldIgnore(node: Element): boolean {
+function shouldIgnore(node: Element, display: string): boolean {
     return node.matches(`button, input, select, textarea, [aria-hidden="true"], .sr-only, .fluent-read-bilingual-content, .${manualChunkTranslationClass}, .fluent-read-loading, .fluent-read-retry-wrapper`)
-        || getComputedStyle(node).display === 'none';
+        || display === 'none';
 }
 
-function isLayoutBlock(node: Element): boolean {
-    const display = getComputedStyle(node).display;
+function isLayoutBlock(display: string): boolean {
     return display === 'block'
         || display === 'flex'
         || display === 'grid'
