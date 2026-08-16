@@ -219,3 +219,17 @@ flowchart LR
 4. 修复或隔离既有 floating drawer UI 测试失败后，再进行完整扩展 UI 回归。
 5. 在 PR 审阅前重点检查 Shadow DOM、输入框/可编辑区域、PDF/iframe、`notranslate` 页面和选择清理行为；本次范围仍不包括圈选翻译。
 
+## 7. 本轮 UI 细化
+
+根据视觉反馈，本轮在不改变划词逻辑和配置语义的前提下进一步收紧了界面：
+
+- 默认划词入口从 28×28px 调整为 22×22px，hover 放大幅度和阴影也同步降低；紧凑圆点从 14px 调整为 10px。
+- 翻译卡片宽度从 380px 调整为 344px，标题栏、操作按钮、内容区和文本块的内边距/间距整体收紧。
+- 译文块增加细窄品牌色内侧强调线，保留原文/译文区分，但减少大面积粉色带来的视觉重量。
+- 原文、译文播放按钮由 emoji 扬声器改为统一的 SVG 线性图标，并保持常驻可见；播放中使用暂停图标。
+- 卡片标题改为更紧凑的“翻译结果 + via FluentRead”层级，复制和关闭按钮尺寸统一为 26px。
+
+本轮隔离 Edge 实测结果：入口 `22×22px`，翻译卡片 `344px` 宽、约 `216px` 高，两个语音按钮均为 `26×26px` 且可见；截图保存在：
+
+- `/private/tmp/fluentread-selection-ui-evidence-indicator.png`
+- `/private/tmp/fluentread-selection-ui-evidence-tooltip.png`

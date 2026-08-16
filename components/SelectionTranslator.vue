@@ -6,7 +6,7 @@
 
     <section v-if="showTooltip" ref="tooltip-ref" class="fr-translation-tooltip" :class="{ 'fr-dark-theme': isDarkTheme }" :data-placement="popupPlacement" :style="tooltipStyle" role="dialog" aria-label="划词翻译结果" @pointerdown.prevent.stop>
       <header class="fr-tooltip-header">
-        <span>翻译结果 <small>via FluentRead</small></span>
+        <div class="fr-tooltip-title"><span>翻译结果</span><small>via FluentRead</small></div>
         <div class="fr-tooltip-actions">
           <button class="fr-action-btn" type="button" title="复制译文" aria-label="复制译文" @click="copyTranslation"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg></button>
           <button class="fr-close-btn" type="button" title="关闭" aria-label="关闭翻译结果" @click="closeTooltip">×</button>
@@ -19,11 +19,17 @@
         <div v-else class="fr-translation-container">
           <div v-if="config.selectionTranslatorMode === 'bilingual'" class="fr-text-block fr-original-text">
             <div class="fr-text-label">原文</div><pre>{{ selectedText }}</pre>
-            <button class="fr-text-audio-btn" type="button" :aria-label="audioLabel('source')" :title="audioLabel('source')" @click="toggleAudio(selectedText, 'source')"><span v-if="isCurrentAudio('source')" aria-hidden="true">Ⅱ</span><span v-else aria-hidden="true">🔊</span></button>
+            <button class="fr-text-audio-btn" type="button" :aria-label="audioLabel('source')" :title="audioLabel('source')" @click="toggleAudio(selectedText, 'source')">
+              <svg v-if="isCurrentAudio('source')" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6v12M16 6v12" /></svg>
+              <svg v-else viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z" /><path d="M16 9.5a4.5 4.5 0 0 1 0 5M18.5 7a8 8 0 0 1 0 10" /></svg>
+            </button>
           </div>
           <div v-if="config.selectionTranslatorMode === 'bilingual' || config.selectionTranslatorMode === 'translation-only'" class="fr-text-block fr-translation-result">
             <div class="fr-text-label">译文</div><pre>{{ translationResult }}</pre>
-            <button class="fr-text-audio-btn" type="button" :aria-label="audioLabel('translation')" :title="audioLabel('translation')" @click="toggleAudio(translationResult, 'translation')"><span v-if="isCurrentAudio('translation')" aria-hidden="true">Ⅱ</span><span v-else aria-hidden="true">🔊</span></button>
+            <button class="fr-text-audio-btn" type="button" :aria-label="audioLabel('translation')" :title="audioLabel('translation')" @click="toggleAudio(translationResult, 'translation')">
+              <svg v-if="isCurrentAudio('translation')" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6v12M16 6v12" /></svg>
+              <svg v-else viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z" /><path d="M16 9.5a4.5 4.5 0 0 1 0 5M18.5 7a8 8 0 0 1 0 10" /></svg>
+            </button>
           </div>
           <div v-if="isPlaying" class="fr-playing-status"><span>正在播放{{ currentAudioKind === 'source' ? '原文' : '译文' }}</span><button type="button" aria-label="停止播放" title="停止播放" @click="stopAudio">停止</button></div>
         </div>
@@ -296,35 +302,37 @@ onBeforeUnmount(() => {
 <style scoped>
 .fr-selection-translator-root { position: fixed; inset: 0; z-index: 2147483647; width: 100vw; height: 100vh; pointer-events: none; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #25252a; }
 .fr-selection-indicator, .fr-translation-tooltip, .fr-copy-success-toast { pointer-events: auto; }
-.fr-selection-indicator { position: fixed; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 50%; transform: translate(-50%, -50%); background: #ef4b86; color: #fff; box-shadow: 0 4px 14px rgba(204, 40, 104, .35), 0 0 0 3px rgba(255, 255, 255, .92); cursor: pointer; transition: transform .14s ease, box-shadow .14s ease; }
-.fr-selection-indicator--dot { width: 14px; height: 14px; }
+.fr-selection-indicator { position: fixed; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; transform: translate(-50%, -50%); background: #ef4b86; color: #fff; box-shadow: 0 3px 10px rgba(204, 40, 104, .3), 0 0 0 2px rgba(255, 255, 255, .94); cursor: pointer; transition: transform .14s ease, box-shadow .14s ease; }
+.fr-selection-indicator--dot { width: 10px; height: 10px; }
 .fr-selection-indicator--dot .fr-selection-indicator-glyph { display: none; }
-.fr-selection-indicator:hover, .fr-selection-indicator:focus-visible { transform: translate(-50%, -50%) scale(1.12); box-shadow: 0 5px 18px rgba(204, 40, 104, .45), 0 0 0 4px rgba(255, 255, 255, .95); outline: none; }
-.fr-selection-indicator-glyph { font-size: 15px; font-weight: 700; line-height: 1; }
-.fr-translation-tooltip { position: fixed; width: min(380px, calc(100vw - 24px)); max-height: min(520px, calc(100vh - 24px)); overflow: hidden; border: 1px solid rgba(28, 28, 36, .08); border-radius: 14px; background: rgba(255, 255, 255, .98); box-shadow: 0 16px 45px rgba(30, 28, 40, .18), 0 2px 8px rgba(30, 28, 40, .08); backdrop-filter: blur(16px); }
-.fr-tooltip-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 15px; border-bottom: 1px solid #f0f0f3; font-size: 15px; font-weight: 700; }
-.fr-tooltip-header small { color: #90909a; font-size: 11px; font-weight: 500; }
-.fr-tooltip-actions { display: flex; align-items: center; gap: 4px; }
+.fr-selection-indicator:hover, .fr-selection-indicator:focus-visible { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 4px 14px rgba(204, 40, 104, .4), 0 0 0 3px rgba(255, 255, 255, .95); outline: none; }
+.fr-selection-indicator-glyph { font-size: 12px; font-weight: 700; line-height: 1; }
+.fr-translation-tooltip { position: fixed; width: min(344px, calc(100vw - 20px)); max-height: min(480px, calc(100vh - 20px)); overflow: hidden; border: 1px solid rgba(28, 28, 36, .08); border-radius: 16px; background: rgba(255, 255, 255, .98); box-shadow: 0 14px 34px rgba(30, 28, 40, .16), 0 2px 8px rgba(30, 28, 40, .07); backdrop-filter: blur(16px); }
+.fr-tooltip-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #f0f0f3; font-size: 14px; font-weight: 700; }
+.fr-tooltip-title { display: flex; align-items: baseline; gap: 6px; }
+.fr-tooltip-header small { color: #9a9aa4; font-size: 10px; font-weight: 500; }
+.fr-tooltip-actions { display: flex; align-items: center; gap: 2px; }
 .fr-action-btn, .fr-close-btn, .fr-text-audio-btn, .fr-playing-status button { border: 0; background: transparent; color: #777780; cursor: pointer; }
-.fr-action-btn { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 7px; }
+.fr-action-btn { display: grid; width: 26px; height: 26px; place-items: center; border-radius: 7px; }
 .fr-action-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .fr-action-btn:hover, .fr-action-btn:focus-visible { background: #f4f4f7; color: #ef4b86; outline: none; }
-.fr-close-btn { width: 28px; height: 28px; font-size: 23px; line-height: 1; border-radius: 7px; }
+.fr-close-btn { width: 26px; height: 26px; font-size: 21px; line-height: 1; border-radius: 7px; }
 .fr-close-btn:hover, .fr-close-btn:focus-visible { background: #f4f4f7; color: #303038; outline: none; }
-.fr-tooltip-content { max-height: min(460px, calc(100vh - 82px)); overflow: auto; padding: 14px; }
+.fr-tooltip-content { max-height: min(420px, calc(100vh - 72px)); overflow: auto; padding: 10px; }
 .fr-loading-state, .fr-error-state { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 80px; color: #777780; font-size: 13px; }
 .fr-error-state { flex-direction: column; color: #c43b63; }
 .fr-error-state button { border: 1px solid currentColor; border-radius: 7px; padding: 4px 10px; background: transparent; color: inherit; cursor: pointer; }
 .fr-loading-spinner { width: 18px; height: 18px; border: 2px solid #f5bfd3; border-top-color: #ef4b86; border-radius: 50%; animation: fr-spin .7s linear infinite; }
 .fr-loading-spinner.fr-static { animation: none; }
 @keyframes fr-spin { to { transform: rotate(360deg); } }
-.fr-text-block { position: relative; padding: 10px 36px 10px 12px; border-radius: 10px; }
-.fr-text-block + .fr-text-block { margin-top: 10px; }
+.fr-text-block { position: relative; padding: 9px 36px 10px 11px; border-radius: 11px; }
+.fr-text-block + .fr-text-block { margin-top: 8px; }
 .fr-original-text { background: #f7f7f9; color: #666670; }
-.fr-translation-result { background: #fff3f7; color: #33333a; }
-.fr-text-label { margin-bottom: 4px; color: #9a9aa4; font-size: 11px; font-weight: 700; }
-.fr-text-block pre { max-height: 190px; margin: 0; overflow: auto; white-space: pre-wrap; word-break: break-word; font: inherit; line-height: 1.55; }
-.fr-text-audio-btn { position: absolute; top: 10px; right: 8px; width: 28px; height: 28px; border-radius: 8px; font-size: 15px; }
+.fr-translation-result { background: #fff3f7; color: #33333a; box-shadow: inset 2px 0 0 rgba(239, 75, 134, .28); }
+.fr-text-label { margin-bottom: 3px; color: #9a9aa4; font-size: 10px; font-weight: 700; letter-spacing: .02em; }
+.fr-text-block pre { max-height: 170px; margin: 0; overflow: auto; white-space: pre-wrap; word-break: break-word; font: inherit; font-size: 15px; line-height: 1.48; }
+.fr-text-audio-btn { position: absolute; top: 8px; right: 7px; display: grid; width: 26px; height: 26px; place-items: center; border-radius: 8px; }
+.fr-text-audio-btn svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .fr-text-audio-btn:hover, .fr-text-audio-btn:focus-visible { background: rgba(239, 75, 134, .13); color: #ef4b86; outline: none; }
 .fr-playing-status { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; color: #777780; font-size: 12px; }
 .fr-playing-status button { border: 1px solid #e8a4bc; border-radius: 7px; padding: 3px 8px; color: #d83e70; }
