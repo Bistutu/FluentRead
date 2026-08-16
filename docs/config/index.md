@@ -1,98 +1,45 @@
-# 基本配置
+# 设置总览
 
-本章节将介绍流畅阅读插件的基本配置选项。
+打开 FluentRead 弹窗，点击设置图标即可进入选项页。设置会保存在当前浏览器的扩展存储中，不需要登录账号。
 
-<img src="/basic-config.png" alt="基本设置" style="width: 40%; max-width: 100%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
+<img class="doc-screenshot" src="/screenshots/settings-general.png" alt="FluentRead general settings" />
 
+## 常用设置
 
-## 插件状态
+### 语言
 
-插件状态开关控制整个插件的启用/禁用。你可以通过点击开关快速切换插件状态：
-- 开启：插件正常工作，可以使用所有翻译功能
-- 关闭：暂时禁用插件，不会触发任何翻译操作
+- **源语言**：网页原文的语言。可以选择具体语言，也可以交给服务自动识别。
+- **目标语言**：译文语言。阅读中途修改后，恢复原文再重新翻译更稳妥。
 
-## 翻译模式
+### 翻译模式
 
-### 双语对照/仅译文
-- **双语对照模式**：同时显示原文和译文，适合学习和对照
-- **仅译文模式**：只显示翻译后的文本，适合快速阅读
+根据页面和阅读习惯选择页面翻译、选区翻译或其他可用模式。长文建议先用选区确认服务正常，再执行整页翻译。
 
-## 译文样式
+### 翻译样式
 
-流畅阅读提供了丰富的`双语翻译样式`选项：
-| 分类 | 样式名称 | 说明 |
-|------|---------|------|
-| 基础样式 | **朴素模式** | 最基本的显示方式 |
-| | **加粗显示** | 译文加粗突出 |
-| | **优雅斜体** | 以斜体形式呈现 |
-| | **立体阴影** | 添加文字阴影效果 |
-| 下划线系列 | **蓝色实线** | 添加蓝色实线下划线 |
-| | **优雅虚线** | 使用虚线下划线 |
-| | **活泼波浪** | 波浪形下划线 |
-| 卡片系列 | **简约卡片** | 将译文放置在简洁卡片中 |
-| | **渐变卡片** | 使用渐变效果的卡片 |
-| | **纸张卡片** | 模拟纸张质感的卡片 |
-| 高亮系列 | **学习标记** | 类似学习笔记的标记样式 |
-| | **荧光标记** | 使用荧光笔效果 |
-| | **柔和渐变** | 渐变式的高亮效果 |
+调整译文的颜色、背景、字号和显示方式。样式会尽量隔离在 FluentRead 的内容节点内，不主动改写网站原有 CSS。
 
+### 主题与界面
 
-以下是一些常用样式的实际效果展示，更多样式选项请在设置中探索：
+可以使用浅色、深色或跟随系统。弹窗和设置页会根据浏览器主题同步显示。
 
-<div style="margin: 20px 0;">
-  <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
-    <div style="width: 48%;">
-      <img src="/style/bold-style.png" alt="加粗样式" style="width: 100%; border: 1px solid #eee; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
-      <p>加粗样式：字体加粗突出译文，提高可读性</p>
-    </div>
-    <div style="width: 48%;">
-      <img src="/style/blue-wave-style.png" alt="蓝色波浪样式" style="width: 100%; border: 1px solid #eee; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
-      <p>蓝色波浪：优雅的波浪下划线，突出重点内容</p>
-    </div>
-  </div>
-  <div style="display: flex; justify-content: space-between;">
-    <div style="width: 48%;">
-      <img src="/style/paper-style.png" alt="纸张卡片样式" style="width: 100%; border: 1px solid #eee; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
-      <p>纸张卡片：模拟真实纸张质感，舒适自然的阅读体验</p>
-    </div>
-    <div style="width: 48%;">
-      <img src="/style/yellow-style.png" alt="黄底高亮样式" style="width: 100%; border: 1px solid #eee; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
-      <p>黄底高亮：类似传统荧光笔标记，让重要内容一目了然</p>
-    </div>
-  </div>
-</div>
+## 服务设置
 
-## 目标语言
+翻译服务单独放在服务管理页，便于按使用场景启用或停用。每个服务通常包含：
 
-选择翻译的目标语言：
-- 中文（简体）
-- 英语
-- 日语
-- 韩语
-- 法语
-- 俄语
+- 服务类型和请求地址；
+- API 密钥、模型或其他凭据；
+- 可选的超时、并发或高级参数；
+- 当前配置是否完整的状态提示。
 
-## 快捷键设置
+<img class="doc-screenshot" src="/screenshots/settings-services.png" alt="FluentRead translation services settings" />
 
-### 触发方式
-- **按键选择**：支持 Ctrl、Alt、Option、Shift、波浪号等
-- **组合键**：可设置多个按键组合
+不要把 API 密钥写入公开 Issue、截图或仓库。服务的计费、配额、地区限制和数据保留策略由服务提供方决定。
 
-### 触发动作
-- 鼠标悬停翻译
-- 双击翻译
-- 长按翻译
-- 中键翻译
+## 缓存
 
-## 主题设置
+启用缓存可以减少重复请求。若你正在调试服务、修改提示词或需要获取最新结果，可以暂时关闭缓存，或先恢复原文后再次翻译。
 
-### 显示风格
-- **跟随系统**：自动适应系统的明暗主题
-- **浅色主题**：始终使用浅色界面
-- **深色主题**：始终使用深色界面
+## 快捷键
 
-
-## 下一步
-
-- 查看[翻译引擎配置](../config/translation-engines.md)，选择合适的翻译引擎
-- 访问我们的 [GitHub 仓库](https://github.com/Bistutu/FluentRead)参与讨论
+扩展快捷键由浏览器统一管理。修改后如果没有立即生效，请检查是否与浏览器或其他扩展占用了同一组合键。详细步骤见[自定义快捷键](/guide/custom-hotkey)。

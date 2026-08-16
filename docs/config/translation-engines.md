@@ -1,172 +1,69 @@
-# 翻译引擎配置
+# 翻译服务
 
-流畅阅读支持多种翻译引擎，包括机器翻译和大语言模型。本文将介绍各个翻译引擎的配置方法。
+FluentRead 不把翻译能力锁定在单一供应商上。你可以在设置页启用多个服务，并根据质量、速度、成本和隐私要求选择当前使用的引擎。
 
-## 支持的翻译引擎
+<img class="doc-screenshot" src="/screenshots/settings-services.png" alt="FluentRead translation service settings" />
 
-## AI 智能上下文
+## 如何选择
 
-在“高级设置”中开启“AI 智能上下文”后，FluentRead 会在使用大模型翻译时附加当前网页的标题、描述和相关正文片段，帮助模型理解术语、指代和歧义表达。上下文只发送给 AI 翻译服务，机器翻译服务不会附加网页正文。
+| 你的优先级 | 建议先尝试 |
+| --- | --- |
+| 想快速体验 | 免费翻译服务 |
+| 想要稳定的通用翻译 | Microsoft、Google 或 DeepL |
+| 想让译文更关注上下文 | OpenAI 兼容 API 或其他 AI 服务 |
+| 不希望文本离开本机 | Ollama 本地模型 |
 
-该功能默认关闭；开启后每次 AI 翻译请求都会携带额外上下文，首次翻译还会先生成一次网页摘要，因此可能增加延迟和模型费用。网页正文被作为不可信参考材料包裹在请求中，不应被模型当作指令执行。上下文也会参与翻译缓存键，避免不同页面语境复用同一条译文。
+公共免费服务可能受到流量、区域、频率和维护状态影响；它适合入门和临时使用，不适合作为关键工作流的唯一依赖。
 
-### 机器翻译
-- **Microsoft 翻译**：免费且无需配置，开箱即用，支持多种语言互译
-- **免费翻译服务**：免费提供，按“微软翻译 → DeepLX → 谷歌翻译”顺序自动尝试。当前服务失败或返回无效结果时才会继续下一个服务；DeepLX 使用“DeepLX”服务中配置的地址和可选令牌。由于依赖免费服务，翻译质量和可用性不作保证。
-- **Google 翻译**：免费且无需配置，支持多种语言，国内暂不支持使用
-- **DeepL (免费版)**：每月 50 万字符免费额度，[开发者平台](https://www.deepl.com/pro-api)
-- **DeepLX（免费非官方）**：无需官方 API Key 的 DeepL 兼容服务。默认使用已验证的公共站点，也支持在设置中填入本地、自建或多个备用地址；公共站点可能记录文本，敏感内容建议使用自建服务。[项目文档](https://deeplx.owo.network/)
-- **小牛翻译**：[API 文档](https://niutrans.com/dev-page?type=text)
-- **有道翻译**：新用户可获体验资金，具体额度以[官方计费规则](https://ai.youdao.com/DOCSIRMA/html/trans/price/wbfy/index.html)为准
-- **腾讯云文本翻译**：每月 500 万字符免费额度，[产品页面](https://cloud.tencent.com/product/tmt)
-- **Chrome 内置 AI 翻译**：使用浏览器内置 Translator API，无需 API Key，仅支持 Google Chrome 138 Stable 及以上版本，[开发文档](https://developer.chrome.com/docs/ai/translator-api?hl=zh-cn)
+## 通用配置流程
 
-#### DeepLX 备用地址
+1. 打开设置页的“翻译服务”。
+2. 启用目标服务，填写服务要求的地址、密钥或模型名称。
+3. 保存后先用一小段普通文本测试。
+4. 确认结果、耗时和额度都符合预期，再处理长页面。
 
-在 DeepLX 的“服务地址”中可以填写多个地址，每行或逗号分隔。设置页提供“快速添加推荐站点”，插件会按填写顺序请求，当前地址失败或返回无效响应时自动尝试下一个地址：
+## 云端服务
 
-```text
-https://deeplx.1stg.me/translate
-https://freeapi.fanyimao.cn/translate?token={{apiKey}}
-https://api.deeplx.org/{{apiKey}}/translate
-http://localhost:1188/translate
-```
+Microsoft、Google、DeepL 以及其他云端服务通常需要 API 密钥或账号配额。请从服务商的官方控制台获取凭据，并确认：
 
-`deeplx.1stg.me` 是当前验证可用且无需 Token 的公共实例。`freeapi.fanyimao.cn` 也已验证可返回译文，但需要用户自己的站点 Token；`api.deeplx.org` 需要个人 Token。地址中的 `{{apiKey}}` 会替换为设置页的“访问令牌”，不会把 Token 写入插件代码。
+- API 地址与区域、版本或项目设置匹配；
+- 密钥只拥有必要权限，并设置合理的额度限制；
+- 服务商是否会保存请求内容；
+- 你的文本是否包含不应上传的个人或机密信息。
 
-这些公共实例都属于非官方服务，可能限流、停用或记录请求内容。公开列表中的其他候选站点当前出现了 401、404、530、DNS/TLS 错误或已暂停，因此没有加入默认备用链。敏感文本建议使用本地或自建 DeepLX 服务。
+云服务的价格、免费额度和接口要求可能变化，使用前应以服务商当前文档为准。
 
-### AI 大模型
-- **OpenAI（推荐⭐️）**：国际领先的大模型服务，支持 GPT-4o 和 GPT-o1-mini 等，[API 文档](https://platform.openai.com/docs/api-reference)
-- **DeepSeek（推荐⭐️）**：国内领先的大模型服务，[开发者中心](https://platform.deepseek.com/)
-- **SiliconCloud（推荐⭐️）**：国内多模型聚合服务，**提供免费模型**，包括 `Qwen2.5-7B-Instruct`、`Meta-Llama-3.1-8B-Instruct`、`gemma-2-9b-it` 等，[API 文档](https://cloud.siliconflow.cn/models)
-- **Kimi**：[API 文档](https://platform.moonshot.cn/)
-- **腾讯混元**：[API 中心](https://cloud.tencent.com/document/product/1729)
-- **腾讯混元翻译**：腾讯混元翻译专用大模型，[API 中心](https://cloud.tencent.com/document/product/1729)
-- **字节豆包**：[开发者平台](https://www.volcengine.com/product/doubao)
-- **阿里通义**：[API 文档](https://help.aliyun.com/zh/dashscope/developer-reference/api-details)
-- **智谱清言**：免费提供 `GLM-4-Flash` 模型，[开放平台](https://open.bigmodel.cn/console/overview)
-- **OpenRouter**：国外多模型聚合服务，提供免费模型，[API 参考](https://openrouter.ai/docs)
-- **Groq**：国外多模型聚合服务，提供免费模型，[开发者文档](https://groq.com/)
-- **Grok**：X.AI 的 AI 模型，[API 文档](https://docs.x.ai/)
-- **百度文心**：[开放平台](https://cloud.baidu.com/doc/WENXINWORKSHOP/index.html)
-- **百川智能**：[开发者文档](https://platform.baichuan-ai.com/docs/api)
-- **零一万物**：[API 中心](https://platform.lingyiwanwu.com/)
-- **MiniMax**：[开放平台](https://api.minimax.chat/)
-- **无问芯穹**：[开发者平台](https://cloud.infini-ai.com/promotion)
-- **阶跃星辰**：[开发者平台](https://platform.stepfun.com/)
-- **Claude**：Anthropic 公司的 AI 模型，[API 参考](https://docs.anthropic.com/claude/reference)
-- **Gemini**：谷歌最新的 AI 模型，[API 文档](https://ai.google.dev/)
-- **Ollama**：开源的本地部署模型，[GitHub页面](https://github.com/ollama/ollama)
-- **Azure OpenAI**：微软 Azure 托管的 OpenAI 服务，[API 参考](https://learn.microsoft.com/zh-cn/azure/ai-services/openai/reference)
-- **Coze 国际**：字节跳动 AI 机器人平台，[官网](https://www.coze.com/)
-- **Coze 国内（扣子）**：字节跳动 AI 机器人平台，[官网](https://www.coze.cn/)
-- **New API**：开源大模型网关，需自行部署，[GitHub](https://github.com/QuantumNous/new-api)
+## AI 服务与 OpenAI 兼容接口
 
-## 配置示例：以 DeepSeek 为例
+AI 翻译更适合需要上下文、术语一致性或风格控制的内容。配置时通常需要填写：
 
-<img src="/model.png" alt="模型选择" style="width: 60%; max-width: 40%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
+- API Base URL；
+- API Key；
+- Model 名称；
+- 目标语言和可选的高级参数。
 
-### 1. 获取 API Key
-1. 访问 [DeepSeek 开发者中心](https://platform.deepseek.com/)
-2. 注册/登录账号
-3. 进入 API Keys 页面创建密钥
-4. 复制生成的 API Key
+不同供应商对兼容接口的实现并不完全相同。如果请求失败，先用服务商官方示例验证地址、模型和密钥，再回到 FluentRead 检查配置。
 
-<img src="/deepseek-apikey.png" alt="DeepSeek API Key" style="width: 80%; max-width: 100%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
+## Ollama 本地模型
 
-### 2. 配置插件
-1. 点击浏览器工具栏中的流畅阅读图标
-2. 点击设置图标，进入设置页面
-3. 选择 "翻译引擎" 选项卡
-4. 在引擎列表中选择 "DeepSeek"
-5. 选择 `deepseek-v4-flash` 模型，并填入配置信息
+Ollama 适合希望在本机处理文本的用户。你需要在本机运行 Ollama、准备一个可用模型，并让浏览器扩展可以访问本地接口。
 
-旧版配置会自动迁移：`deepseek-chat` 会迁移为关闭思考模式的 `deepseek-v4-flash`，
-`deepseek-reasoner` 会迁移为开启思考模式的 `deepseek-v4-flash`。
+如果浏览器控制台出现跨域错误，请参考[常见问题中的 Ollama 部分](/guide/faq#ollama-无法连接)。本地模型的速度和质量取决于模型大小、显卡或 CPU 性能以及上下文长度。
 
-默认的 API 格式使用 DeepSeek 官方 Chat Completion。只有当自定义代理或网关明确支持
-Responses API 时，才需要在设置中手动切换；代理 URL 中已有的查询参数会被保留。
+## 失败排查
 
-<img src="/click-fluent_read.png" alt="点击流畅阅读图标" style="width: 80%; max-width: 100%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
+### 请求超时
 
+先用短文本测试，检查网络和服务地址，再降低并发或切换到响应更快的服务。
 
-### 4. 使用效果
-原文：
-```text
-The quantum computer performs operations on qubits, which can exist in multiple states simultaneously due to quantum superposition.
-```
+### 返回空结果或格式错误
 
-翻译结果：
-```text
-量子计算机对量子比特进行操作，由于量子叠加原理，这些量子比特可以同时存在于多个状态。
-```
+确认模型支持当前请求格式，并检查服务商是否返回了错误信息或触发了内容过滤。AI 服务还需要确认模型名称正确。
 
-### 5. 高级选项
+### 只有部分段落成功
 
-<img src="/advance.png" alt="高级选项" style="width: 40%; max-width: 100%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
+长页面可能触发额度、频率或上下文限制。恢复原文后分批翻译，或选择更适合长文本的服务。
 
-#### 代理配置
-如果你所在的网络环境无法直接访问某些 AI 服务，可以配置代理服务器。一般情况下无需配置此项。
+### API 密钥泄露
 
-
-#### 提示词配置
-大语言模型的翻译效果很大程度上取决于提示词（Prompt）的设置。流畅阅读提供了默认的提示词配置：
-
-##### 系统提示词（System Prompt）
-```text
-You are a professional, authentic machine translation engine.
-You only return the translated text, without any explanations.
-```
-
-这个提示词告诉模型：
-- 扮演专业的机器翻译引擎
-- 只返回翻译结果
-- 不添加任何解释或额外信息
-
-##### 用户提示词（User Prompt）
-```
-Translate the following text into {to}, 
-output translation text directly without any extra information:
-
-{{origin}}
-```
-
-其中：
-```text
-{{to}} 表示目标语言
-{{origin}} 表示原文内容
-```
-
-两者不可或缺。
-
-#### 自定义提示词
-你可以根据需要自定义提示词，以获得不同的翻译效果：
-
-1. **更正式的翻译**
-```text
-You are a professional translator specializing in formal documentation.
-Translate with accuracy and maintain professional terminology.
-```
-
-2. **更口语化的翻译**
-```text
-You are a translator focusing on natural, conversational language.
-Translate into casual, everyday speech.
-```
-
-3. **技术文档翻译**
-```text
-You are a technical documentation translator.
-Maintain precise technical terms and professional standards.
-```
-
-::: tip 提示
-1. 修改提示词时请保持简洁明确
-2. 避免添加过多限制条件
-3. 确保提示词与目标语言相匹配
-:::
-
-## 下一步
-
-- 访问 [GitHub Issues](https://github.com/Bistutu/FluentRead/issues) 反馈问题 
+立即在服务商控制台撤销并重新生成密钥，同时检查仓库、Issue、截图和浏览器同步记录中是否存在旧密钥。不要把密钥提交到 Git。

@@ -1,96 +1,52 @@
 # 常见问题
 
-## Ollama 配置问题
+## 点击“翻译页面”后没有变化
 
-### 如何解决 Ollama 403 跨域访问问题？
+先确认当前标签页是普通网页，并且页面中确实有可见的文本段落。浏览器内部页面、扩展商店、部分 PDF 阅读器和受保护的编辑器可能禁止扩展注入内容。
 
- [Ollama 默认禁用跨域访问](https://github.com/ollama/ollama/issues/669)，需要特殊配置才能在浏览器扩展中使用。按系统进行如下“通配符 * 快速修复”配置即可。
+如果网页正常，再检查翻译服务是否启用、密钥是否有效、目标语言是否正确。建议先选中一句话测试服务，再尝试整页翻译。
 
- - macOS：在终端执行下面指令，允许跨域：
-   ```bash
-   launchctl setenv OLLAMA_ORIGINS "*"
-   ```
-   然后使用以下命令启动 App：
-   ```bash
-   OLLAMA_ORIGINS="*" ollama serve
-   ```
+## 页面只翻译了一部分
 
- - Windows：打开系统环境变量（用户变量）新建 2 个变量，然后启动 App：
-   - 变量名：`OLLAMA_HOST`，变量值：`0.0.0.0`
-   - 变量名：`OLLAMA_ORIGINS`，变量值：`*`
+这是长页面中最常见的情况，可能与请求超时、服务额度、频率限制、页面动态加载或文本节点结构有关。可以恢复原文后分段翻译，也可以在页面加载完成后再执行一次。
 
-   在命令提示符（CMD）中也可以临时设置后启动：
-   ```bat
-   set "OLLAMA_ORIGINS=*"
-   ollama serve
-   ```
-   如果使用 PowerShell，请执行：
-   ```powershell
-   $env:OLLAMA_ORIGINS = "*"
-   ollama serve
-   ```
+## 如何恢复原文？
 
- - Linux：直接命令行启动。
-   ```bash
-   OLLAMA_ORIGINS="*" ollama serve
-   ```
+打开 FluentRead 弹窗，使用“恢复原文”。恢复操作只移除 FluentRead 插入的双语内容，不会把网页原本的文本写回其他位置。
 
-#### 配置验证
+如果修改了目标语言或翻译服务，建议先恢复原文，再重新翻译。
 
-配置完成后，你可以通过以下方式验证配置是否生效：
+## 为什么选区翻译可用，但整页翻译不工作？
 
-1. **查看启动日志**：启动 Ollama 后，在控制台日志中应该能看到类似信息：
-```
-OLLAMA_ORIGINS:[... * ...]
-```
-或
-```
-OLLAMA_ORIGINS:[... chrome-extension://* ...]
-```
+选区翻译只需要处理你选中的文本，整页翻译还需要识别页面结构、过滤导航和控件，并面对动态内容。遇到特殊网站时，可以先使用选区翻译，或在 GitHub 提交页面链接和复现步骤。
 
-2. **测试 API 连通性**：在终端中测试 API 是否可访问：
-```bash
-curl -X POST http://localhost:11434/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model": "your-model-name", "messages": [{"role": "user", "content": "Hello"}], "stream": false}'
-```
+## Ollama 无法连接
 
-### 正确的 Ollama 接口地址
+请按顺序确认：
 
-使用 Ollama 时，请确保在 FluentRead 插件设置中使用正确的接口地址：
+1. Ollama 服务已经在本机运行，并且目标模型已安装。
+2. FluentRead 中填写的地址与本机实际地址一致。
+3. 浏览器控制台没有 CORS 或网络错误。
+4. 本地接口允许来自扩展页面的请求。
 
-```
-http://localhost:11434/v1/chat/completions
-```
+不同系统、模型和 Ollama 版本的启动方式可能不同，请以 Ollama 当前官方文档为准。若本地接口能用 `curl` 请求但扩展不能访问，通常是浏览器跨域策略或扩展权限问题。
 
-### 故障排除
+## API Key 应该放在哪里？
 
-如果仍然遇到 403 错误，请按以下步骤排查：
+只填写在 FluentRead 设置页的服务配置中，不要放进网页、截图、Issue、聊天记录或 Git 仓库。若怀疑已经泄露，请立即在服务商控制台撤销并重新生成。
 
-1. **确认环境变量设置**：
-   - macOS: 执行 `launchctl getenv OLLAMA_ORIGINS` 查看是否设置成功
-   - Windows: 在命令提示符中执行 `echo %OLLAMA_ORIGINS%` 查看环境变量
-   - Linux: 执行 `echo $OLLAMA_ORIGINS` 查看环境变量
+## 翻译结果看起来重复或排版异常
 
-2. **完全重启 Ollama**：
-   - 完全退出 Ollama 应用
-   - 等待几秒钟
-   - 重新启动 Ollama
+先恢复原文，再重新翻译一次。对于会动态更新内容的网站，等待页面完全加载后再翻译；如果仍然重复，请刷新页面并确认没有同时运行两个翻译扩展。
 
-3. **检查插件配置**：
-   - 翻译服务选择："⭐自定义⭐️"
-   - API 地址：`http://localhost:11434/v1/chat/completions`
-   - Token：可设置为任意值（例如：`test`）
-   - 模型：确保使用本地已安装的模型名称
+## 如何报告问题？
 
-4. **查看浏览器控制台**：
-   - 打开浏览器开发者工具（F12）
-   - 查看 Console 和 Network 标签页中的错误信息
+在 [GitHub Issues](https://github.com/Bistutu/FluentRead/issues) 中提供：
 
-::: tip 提示
-如果遇到连接问题，请确保：
-1. Ollama 服务已正常启动
-2. 已正确配置跨域访问，并在日志中确认生效
-3. 接口地址完全正确，包括 `/v1/chat/completions` 路径
-4. 本地已安装了相应的模型（可通过 `ollama list` 查看已安装模型）
-:::
+- 浏览器及版本；
+- FluentRead 版本；
+- 网页类型或可公开访问的链接；
+- 复现步骤和预期结果；
+- 控制台错误的脱敏截图或文字。
+
+请删除 API Key、Cookie、个人信息和受版权或隐私保护的原文后再提交。
