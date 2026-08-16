@@ -15,7 +15,9 @@ import {
     getVideoPretranslationWindowMs,
     isYouTubeVideoPage,
     normalizeVideoSubtitleDisplayMode,
+    normalizeVideoCaptionText,
     readVisibleCaptionText,
+    revealVideoSubtitleTranslation,
     VIDEO_CAPTION_SEGMENT_SELECTOR,
 } from '@/entrypoints/main/videoSubtitle';
 
@@ -72,5 +74,16 @@ describe('YouTube 视频字幕识别', () => {
         expect(getVideoServiceLabel('custom-service')).toBe('custom-service');
         expect(getVideoPretranslationWindowMs('microsoft')).toBe(10_000);
         expect(getVideoPretranslationWindowMs('openai')).toBe(30_000);
+    });
+
+    it('按原生字幕已经显示的前缀揭示完整 cue 的译文，并保留一次性完整字幕的整句结果', () => {
+        const fullSource = 'understand from [music] the axioms and the basics.';
+        const fullTranslation = '从音乐中理解公理和基础。';
+
+        expect(normalizeVideoCaptionText('  understand\nfrom   [music]  ')).toBe('understand from [music]');
+        expect(revealVideoSubtitleTranslation(fullTranslation, 'understand', fullSource)).toBe('从音乐');
+        expect(revealVideoSubtitleTranslation(fullTranslation, 'understand from [music] the axioms and', fullSource)).toBe('从音乐中理解公理和基');
+        expect(revealVideoSubtitleTranslation(fullTranslation, fullSource, fullSource)).toBe(fullTranslation);
+        expect(revealVideoSubtitleTranslation(fullTranslation, 'unrelated subtitle', fullSource)).toBe(fullTranslation);
     });
 });

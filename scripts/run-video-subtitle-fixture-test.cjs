@@ -235,26 +235,64 @@ async function main() {
     await page.screenshot({ path: path.join(artifactsDir, 'video-subtitle-fixture-menu.png'), fullPage: false });
 
     const overlaySelector = '#fluent-read-video-subtitle';
+    const progressiveSource = 'understand from [music] the axioms and the basics.';
+    const progressiveExpectedTranslation = '从音乐中理解公理和基础。';
+    const progressiveRequestStart = translationSources.filter((source) => source === progressiveSource).length;
+    await page.evaluate((source) => {
+      const video = document.querySelector('video.html5-main-video');
+      if (video) {
+        try { video.currentTime = 0; } catch {}
+        video.dispatchEvent(new Event('timeupdate'));
+      }
+      window.postMessage({
+        source: 'fluent-read',
+        type: 'fluent-read-youtube-timedtext',
+        url: 'https://www.youtube.com/api/timedtext?v=fixture-progressive&lang=en',
+        responseText: JSON.stringify({ events: [{ tStartMs: 0, dDurationMs: 5000, segs: [{ utf8: source }] }] }),
+      }, window.location.origin);
+    }, progressiveSource);
+    const pretranslationDeadline = Date.now() + 10000;
+    while (translationSources.filter((source) => source === progressiveSource).length < 1 && Date.now() < pretranslationDeadline) {
+      await page.waitForTimeout(100);
+    }
+    if (translationSources.filter((source) => source === progressiveSource).length !== 1) {
+      throw new Error(`渐进字幕没有在播放前完成一次完整 cue 翻译：${JSON.stringify({ translationSources })}`);
+    }
+
     const progressiveTexts = [
       'understand',
       'understand from',
       'understand from [music]',
       'understand from [music] the axioms and',
-      'understand from [music] the axioms and the basics.',
     ];
-    const progressiveRequestStart = translationRequests;
+    const progressiveVisibleTexts = [];
+    let previousProgressiveTranslation = '';
     for (const text of progressiveTexts) {
       await page.evaluate((value) => {
         const segment = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
         if (segment) segment.textContent = value;
       }, text);
-      await page.waitForTimeout(180);
+      await page.waitForFunction(({ value, expected, previous }) => {
+        const overlayText = document.querySelector('#fluent-read-video-subtitle')?.textContent?.trim() || '';
+        return value === expected
+          ? overlayText === expected
+          : Boolean(overlayText) && overlayText !== expected && overlayText !== previous;
+      }, { value: text, expected: progressiveExpectedTranslation, previous: previousProgressiveTranslation }, { timeout: 10000 });
       const partialOverlay = await page.locator(overlaySelector).textContent();
-      if (partialOverlay?.trim()) {
-        throw new Error(`渐进字幕在稳定前提前显示译文：${JSON.stringify({ text, partialOverlay })}`);
+      if (!partialOverlay?.trim() || partialOverlay.trim() === progressiveExpectedTranslation) {
+        throw new Error(`渐进字幕没有按原字幕前缀逐步显示：${JSON.stringify({ text, partialOverlay })}`);
       }
+      progressiveVisibleTexts.push({ source: text, translation: partialOverlay.trim() });
+      previousProgressiveTranslation = partialOverlay.trim();
     }
-    await page.waitForFunction((selector) => document.querySelector(selector)?.textContent === '从音乐中理解公理和基础。', overlaySelector, { timeout: 20000 });
+    if (new Set(progressiveVisibleTexts.map(({ translation }) => translation)).size !== progressiveVisibleTexts.length) {
+      throw new Error(`渐进字幕的译文没有随原字幕前缀增长：${JSON.stringify({ progressiveVisibleTexts })}`);
+    }
+    await page.evaluate((value) => {
+      const segment = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
+      if (segment) segment.textContent = value;
+    }, progressiveSource);
+    await page.waitForFunction(({ selector, expected }) => document.querySelector(selector)?.textContent?.trim() === expected, { selector: overlaySelector, expected: progressiveExpectedTranslation }, { timeout: 20000 });
     const progressiveTranslation = await page.locator(overlaySelector).textContent();
     const translationPlacement = await page.evaluate(() => {
       const native = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
@@ -274,9 +312,9 @@ async function main() {
     if (translationPlacement.gap === null || translationPlacement.gap < 4 || !translationPlacement.fontFamily.includes('PingFang SC') || translationPlacement.strokeWidth === '0px') {
       throw new Error(`译文没有稳定显示在原字幕上方或字体清晰度样式未生效：${JSON.stringify(translationPlacement)}`);
     }
-    const progressiveRequests = translationRequests - progressiveRequestStart;
+    const progressiveRequests = translationSources.filter((source) => source === progressiveSource).length - progressiveRequestStart;
     if (progressiveRequests !== 1) {
-      throw new Error(`渐进字幕没有合并为单次翻译请求：${JSON.stringify({ progressiveRequests, translationRequests })}`);
+      throw new Error(`渐进字幕没有合并为单次完整 cue 翻译请求：${JSON.stringify({ progressiveRequests, translationSources })}`);
     }
 
     await page.evaluate(() => {
@@ -443,6 +481,7 @@ async function main() {
       afterRedraw,
       afterDisappearance,
       progressiveTranslation,
+      progressiveVisibleTexts,
       translationPlacement,
       progressiveRequests,
       secondTranslation,

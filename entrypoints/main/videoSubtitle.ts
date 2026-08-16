@@ -60,6 +60,47 @@ export function getVideoServiceLabel(service: string): string {
   return item?.label || service;
 }
 
+export function normalizeVideoCaptionText(value: string): string {
+  return value.replace(/[\s\u3000]+/g, ' ').trim();
+}
+
+function getVideoCaptionPrefixProgress(visibleSource: string, fullSource: string): number | null {
+  const visible = normalizeVideoCaptionText(visibleSource);
+  const full = normalizeVideoCaptionText(fullSource);
+  if (!visible || !full) return null;
+
+  const visibleFolded = visible.toLocaleLowerCase();
+  const fullFolded = full.toLocaleLowerCase();
+  if (visibleFolded === fullFolded) return 1;
+  if (!fullFolded.startsWith(visibleFolded)) return null;
+
+  const visibleLength = Array.from(visible).length;
+  const fullLength = Array.from(full).length;
+  return fullLength > 0 ? Math.min(1, visibleLength / fullLength) : null;
+}
+
+/**
+ * 原生字幕可能会先把一条 cue 逐词写入 DOM。完整 cue 已经翻译好时，
+ * 只揭示与当前原文前缀相同比例的译文，避免连续说话期间一直空白或重复请求。
+ * 如果站点一次性给出完整句，则直接返回整句，不人为增加播放延迟。
+ */
+export function revealVideoSubtitleTranslation(
+  translatedText: string,
+  visibleSource: string,
+  fullSource: string,
+): string {
+  const translated = translatedText.trim();
+  if (!translated) return '';
+
+  const progress = getVideoCaptionPrefixProgress(visibleSource, fullSource);
+  if (progress === null || progress >= 1) return translated;
+
+  const units = Array.from(translated);
+  if (units.length === 0) return '';
+  const visibleLength = Math.max(1, Math.min(units.length, Math.ceil(units.length * progress)));
+  return units.slice(0, visibleLength).join('');
+}
+
 function getTimedTextCacheKey(url: string): string {
   try {
     const parsed = new URL(url, window.location.href);
@@ -477,11 +518,20 @@ export function mountVideoSubtitleTranslation(): () => void {
   let pretranslationCues: VideoSubtitleCue[] = [];
   let pretranslationCacheVersion = 0;
   let pretranslationConfigKey = `${config.videoService}|${config.from}|${config.to}`;
+  let progressiveCueKey = '';
+  let progressiveCue: VideoSubtitleCue | null = null;
+  let progressiveTranslation = '';
 
   const clearRenderedTranslation = () => {
     document.querySelectorAll(`#${VIDEO_TRANSLATION_OVERLAY_ID}`).forEach((node) => {
       node.textContent = '';
     });
+  };
+
+  const clearProgressiveCaption = () => {
+    progressiveCueKey = '';
+    progressiveCue = null;
+    progressiveTranslation = '';
   };
 
   const cancelCaptionEmptyClear = () => {
@@ -506,6 +556,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     lastTranslatedText = '';
     pendingTranslationSource = '';
     pendingTranslationOverlay = null;
+    clearProgressiveCaption();
     clearRenderedTranslation();
   };
 
@@ -525,6 +576,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     pretranslationCacheVersion += 1;
     translatedVideoCache.clear();
     inFlightVideoTranslations.clear();
+    resetTranslationState();
     if (clearTrack) {
       pretranslationTrackRequest = undefined;
       pretranslationTrackRequestKey = '';
@@ -567,6 +619,111 @@ export function mountVideoSubtitleTranslation(): () => void {
     return request;
   };
 
+  const findProgressiveCue = (source: string): VideoSubtitleCue | null => {
+    const normalizedSource = normalizeVideoCaptionText(source);
+    if (!normalizedSource || pretranslationCues.length === 0) return null;
+
+    const foldedSource = normalizedSource.toLocaleLowerCase();
+    const matches = pretranslationCues.filter((cue) => {
+      const fullSource = normalizeVideoCaptionText(cue.text).toLocaleLowerCase();
+      return fullSource === foldedSource || fullSource.startsWith(foldedSource);
+    });
+    if (matches.length === 0) return null;
+
+    const currentMs = observedVideo ? observedVideo.currentTime * 1000 : Number.NaN;
+    const sourceLength = Array.from(normalizedSource).length;
+    const score = (cue: VideoSubtitleCue): number[] => {
+      const fullSource = normalizeVideoCaptionText(cue.text);
+      const exact = fullSource.toLocaleLowerCase() === foldedSource ? 0 : 1;
+      const endMs = cue.startMs + Math.max(cue.durationMs, 500);
+      const timeDistance = Number.isFinite(currentMs)
+        ? currentMs < cue.startMs
+          ? cue.startMs - currentMs
+          : currentMs > endMs
+            ? currentMs - endMs
+            : 0
+        : 0;
+      return [
+        exact,
+        timeDistance,
+        Math.abs(Array.from(fullSource).length - sourceLength),
+        cue.startMs,
+      ];
+    };
+
+    return [...matches].sort((left, right) => {
+      const leftScore = score(left);
+      const rightScore = score(right);
+      for (let index = 0; index < leftScore.length; index += 1) {
+        if (leftScore[index] !== rightScore[index]) return leftScore[index] - rightScore[index];
+      }
+      return 0;
+    })[0] || null;
+  };
+
+  const renderProgressiveCaption = (source: string, overlay: HTMLElement, container: HTMLElement) => {
+    if (!progressiveCue || !progressiveTranslation) return;
+
+    const revealed = revealVideoSubtitleTranslation(
+      progressiveTranslation,
+      source,
+      progressiveCue.text,
+    );
+    if (!revealed) return;
+    overlay.textContent = revealed;
+    syncTranslationOverlayPosition(container);
+  };
+
+  const updateProgressiveCaption = (source: string, overlay: HTMLElement, container: HTMLElement): boolean => {
+    const cue = findProgressiveCue(source);
+    if (!cue) return false;
+
+    cancelStableCaption();
+    const cueKey = `${cue.startMs}:${cue.durationMs}:${normalizeVideoCaptionText(cue.text)}`;
+    if (cueKey !== progressiveCueKey) {
+      progressiveCueKey = cueKey;
+      progressiveCue = cue;
+      progressiveTranslation = '';
+      ++generation;
+      lastTranslatedSource = '';
+      lastTranslatedText = '';
+      overlay.textContent = '';
+    } else {
+      progressiveCue = cue;
+    }
+    lastSource = source;
+
+    if (progressiveTranslation) {
+      renderProgressiveCaption(source, overlay, container);
+    }
+
+    const requestGeneration = generation;
+    const requestCueKey = cueKey;
+    void getCachedVideoTranslation(cue.text).then((translated) => {
+      if (destroyed || requestGeneration !== generation || requestCueKey !== progressiveCueKey) return;
+
+      const result = typeof translated === 'string' ? translated.trim() : '';
+      if (!result || normalizeVideoCaptionText(result) === normalizeVideoCaptionText(cue.text)) return;
+      progressiveTranslation = result;
+
+      const currentContainer = findCaptionContainer();
+      const currentSource = readVisibleCaptionText(currentContainer);
+      const currentCue = currentSource ? findProgressiveCue(currentSource) : null;
+      const currentCueKey = currentCue
+        ? `${currentCue.startMs}:${currentCue.durationMs}:${normalizeVideoCaptionText(currentCue.text)}`
+        : '';
+      if (!currentContainer || !currentSource || currentCueKey !== requestCueKey) return;
+      lastSource = currentSource;
+      renderProgressiveCaption(currentSource, overlay, currentContainer);
+    }).catch((error) => {
+      if (!destroyed && requestGeneration === generation) {
+        console.warn('[FluentRead] 视频字幕前置翻译失败', error);
+      }
+    });
+
+    return true;
+  };
+
   const primeUpcomingVideoCaptions = () => {
     if (destroyed || !canTranslateVideo() || !observedVideo || pretranslationCues.length === 0) return;
     const currentMs = observedVideo.currentTime * 1000;
@@ -604,6 +761,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     pretranslationCacheVersion += 1;
     translatedVideoCache.clear();
     inFlightVideoTranslations.clear();
+    resetTranslationState();
     schedulePretranslation();
   };
 
@@ -648,6 +806,7 @@ export function mountVideoSubtitleTranslation(): () => void {
         capturedSubtitleTracks.set(key, entry);
         setPretranslationTrack(key, entry);
         pretranslationTrackRetryAt = 0;
+        scheduleUpdate();
       } catch {
         // 页面尚未准备好字幕轨道时，保留 DOM 实时翻译回退，并降低重试频率。
         pretranslationTrackRetryAt = Date.now() + 5000;
@@ -768,7 +927,10 @@ export function mountVideoSubtitleTranslation(): () => void {
     const key = getTimedTextCacheKey(data.url);
     const entry = { url: data.url, cues };
     capturedSubtitleTracks.set(key, entry);
-    if (canTranslateVideo()) setPretranslationTrack(key, entry);
+    if (canTranslateVideo()) {
+      setPretranslationTrack(key, entry);
+      scheduleUpdate();
+    }
   };
 
   const resolveDownloadTrack = async (): Promise<{ languageCode: string; cues: VideoSubtitleCue[] }> => {
@@ -1110,6 +1272,16 @@ export function mountVideoSubtitleTranslation(): () => void {
     }
 
     cancelCaptionEmptyClear();
+    if (updateProgressiveCaption(source, overlay, container)) return;
+
+    if (progressiveCueKey) {
+      clearProgressiveCaption();
+      lastSource = '';
+      lastTranslatedSource = '';
+      lastTranslatedText = '';
+      overlay.textContent = '';
+    }
+
     if (source === lastSource) {
       syncTranslationOverlayPosition(container);
       if (lastTranslatedSource === source && lastTranslatedText && overlay.textContent !== lastTranslatedText) {

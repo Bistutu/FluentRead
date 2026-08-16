@@ -96,7 +96,7 @@ async function main() {
       videoSection: Boolean(document.querySelector('#settings-video')),
       providerControl: Boolean(document.querySelector('[aria-label="视频字幕翻译服务"]')),
     }));
-    if (optionsState.activeNav !== '视频字幕 Beta 测试' || !optionsState.videoSection || !optionsState.providerControl) {
+    if (!optionsState.activeNav?.includes('视频字幕 Beta 测试') || !optionsState.videoSection || !optionsState.providerControl) {
       throw new Error(`视频字幕设置导航校验失败：${JSON.stringify(optionsState)}`);
     }
     await options.screenshot({ path: path.join(artifactsDir, 'options-video-subtitle.png'), fullPage: true });
