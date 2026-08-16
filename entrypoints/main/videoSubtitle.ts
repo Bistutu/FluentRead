@@ -866,7 +866,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     menu.className = 'fluent-read-video-subtitle-menu fluent-read-video-ui notranslate';
     menu.hidden = true;
     menu.setAttribute('role', 'menu');
-    menu.setAttribute('aria-label', 'FluentRead 视频字幕翻译菜单');
+    menu.setAttribute('aria-label', '流畅阅读视频字幕翻译菜单');
     markVideoUi(menu);
 
     const title = document.createElement('div');
@@ -874,7 +874,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     const heading = document.createElement('span');
     heading.className = 'fluent-read-video-menu-heading';
     heading.append(
-      createTextElement('span', 'fluent-read-video-menu-brand', 'FluentRead'),
+      createTextElement('span', 'fluent-read-video-menu-brand', '流畅阅读'),
       createTextElement('span', 'fluent-read-video-menu-title-text', '视频字幕翻译'),
     );
     title.append(
