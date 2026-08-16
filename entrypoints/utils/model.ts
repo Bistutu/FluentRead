@@ -1,4 +1,4 @@
-import { currentModelIds, defaultOption, services } from "./option";
+import { currentModelIds, defaultModels, defaultOption, services } from "./option";
 import { normalizeCustomBodyMapping } from "./custom-body";
 
 export type DeepSeekApiType = 'auto' | 'responses' | 'chat';
@@ -77,7 +77,7 @@ export class Config {
         this.sk = '';
         this.appid = '';
         this.key = '';
-        this.model = {};
+        this.model = Object.fromEntries(defaultModels);
         this.customModel = {};
         this.customBody = {};
         this.proxy = {};
@@ -194,6 +194,11 @@ export function normalizeConfig(value: unknown): Config {
     normalized.customBody = normalizeCustomBodyMapping(source.customBody);
 
     migrateModelIdentifiers(normalized.model);
+
+    // 旧配置可能没有保存过模型选择；为所有 AI 服务补齐各自的默认模型。
+    defaultModels.forEach((defaultModel, service) => {
+        if (!normalized.model[service]) normalized.model[service] = defaultModel;
+    });
 
     const selectedModel = normalized.model[services.deepseek];
     const configuredThinkingMode = source.deepseekThinkingMode;

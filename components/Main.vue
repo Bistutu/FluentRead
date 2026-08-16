@@ -574,6 +574,7 @@ import {
 } from '@/entrypoints/utils/custom-body';
 import {DEEPLX_ENDPOINT_PRESETS, parseDeepLXEndpoints} from '@/entrypoints/utils/deeplx';
 import { isConfigImportValid, sanitizeConfigForExport } from '@/entrypoints/utils/config-transfer';
+import { getMissingCredentialMessage } from '@/entrypoints/utils/configValidation';
 import {
   IMAGE_OCR_LANGUAGE_PACKS,
   IMAGE_OCR_LANGUAGE_STATE_KEY,
@@ -717,6 +718,7 @@ const createServiceCompute = (serviceSource: ServiceSource) => ({
   showModel: computed(() => servicesType.isUseModel(serviceSource.value)),
   showCustomBody: computed(() => servicesType.isUseCustomBody(serviceSource.value)),
   showToken: computed(() => servicesType.isUseToken(serviceSource.value)),
+  credentialWarning: computed(() => getMissingCredentialMessage(serviceSource.value, config.value)),
   showAkSk: computed(() => servicesType.isUseAkSk(serviceSource.value)),
   showYoudao: computed(() => servicesType.isYoudao(serviceSource.value)),
   showTencent: computed(() => servicesType.isTencent(serviceSource.value)),

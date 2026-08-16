@@ -6,7 +6,8 @@ import {
   filterServiceGroups,
   splitModelOptions,
 } from '@/entrypoints/utils/serviceCatalog'
-import { customModelString, models, servicesType } from '@/entrypoints/utils/option'
+import { customModelString, defaultModels, models, servicesType } from '@/entrypoints/utils/option'
+import { Config, normalizeConfig } from '@/entrypoints/utils/model'
 
 const options = [
   { value: 'machine', label: '机器翻译', disabled: true },
@@ -76,6 +77,17 @@ describe('service catalog helpers', () => {
     for (const service of servicesType.useModel) {
       expect(models.get(service), `${service} 缺少模型列表`).toBeDefined()
       expect(models.get(service), `${service} 缺少自定义模型`).toContain(customModelString)
+    }
+  })
+
+  it('为每个需要模型的 AI 服务补齐并默认选中列表第一项', () => {
+    const normalized = normalizeConfig({})
+
+    for (const service of servicesType.useModel) {
+      const defaultModel = defaultModels.get(service)
+      expect(defaultModel, `${service} 缺少默认模型`).toBeTruthy()
+      expect(normalized.model[service], `${service} 未选中默认模型`).toBe(defaultModel)
+      expect(new Config().model[service], `${service} 的初始配置未选中默认模型`).toBe(defaultModel)
     }
   })
 })
