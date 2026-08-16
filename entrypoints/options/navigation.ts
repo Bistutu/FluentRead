@@ -44,6 +44,12 @@ export const navigationGroups: NavigationGroup[] = [
         kicker: '操作方式', title: '交互与快捷键', detail: '为高频动作选择容易记忆且不冲突的触发方式。',
         searchDescription: '鼠标悬停、划词翻译、全文翻译与自定义按键',
       },
+      {
+        id: 'settings-image-translation', icon: '图', label: '图片翻译', description: 'OCR 与语言包', group: '阅读工具',
+        heading: '管理图片翻译语言', summary: '图片翻译使用本地 OCR。首次识别前，请下载对应的语言包。',
+        kicker: 'Beta 测试', title: '图片翻译', detail: '按需下载 OCR 语言包；推荐先下载简体中文和 English。',
+        searchDescription: '图片翻译、OCR、语言包、中文、英文、日文、下载',
+      },
     ],
   },
   {

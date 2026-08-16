@@ -142,6 +142,14 @@
           <span><strong>译文显示</strong><small>{{ displaySummary }}</small></span>
           <b>›</b>
         </button>
+        <button class="feature-card" type="button" :disabled="!config.on" @click="openDrawer('image')">
+          <span class="feature-icon teal">▧</span>
+          <span class="feature-copy">
+            <span class="feature-title"><strong>图片翻译</strong><em class="beta-badge">Beta 测试</em></span>
+            <small>{{ imageTranslationSummary }}</small>
+          </span>
+          <i :class="{ active: !config.disableImageTranslator }" />
+        </button>
       </div>
     </section>
 
@@ -239,6 +247,20 @@
         </button>
       </div>
 
+      <div v-else-if="activeDrawer === 'image'" class="drawer-content">
+        <div class="image-translation-preview">
+          <div class="image-translation-preview-art"><span>文字</span><b>文</b></div>
+          <div>
+            <span class="feature-title"><strong>悬停图片显示翻译入口</strong><em class="beta-badge">Beta 测试</em></span>
+            <small>点击图片右上角的小图标即可识别并翻译图片文字</small>
+          </div>
+        </div>
+        <div class="setting-row">
+          <span><strong>启用图片翻译</strong><small>在网页图片右上角显示“文”按钮</small></span>
+          <button class="switch compact" type="button" role="switch" :aria-checked="!config.disableImageTranslator" aria-label="启用或关闭图片翻译" @click="setImageTranslatorEnabled(config.disableImageTranslator)"><i /></button>
+        </div>
+      </div>
+
       <div v-else class="drawer-content">
         <div class="choice-block">
           <label>翻译模式</label>
@@ -256,7 +278,7 @@
         </label>
       </div>
 
-      <button class="drawer-settings-link" type="button" @click="openOptions(drawerSettingsSection[activeDrawer])">在完整设置中查看全部选项 ↗</button>
+      <button v-if="activeDrawer !== 'image'" class="drawer-settings-link" type="button" @click="openOptions(drawerSettingsSection[activeDrawer])">在完整设置中查看全部选项 ↗</button>
     </el-drawer>
 
     <CustomHotkeyInput v-model="showCustomHotkeyDialog" :current-value="config.customFloatingBallHotkey" @confirm="confirmFloatingHotkey" @cancel="cancelFloatingHotkey" />
@@ -278,7 +300,7 @@ import { Config } from '@/entrypoints/utils/model';
 import { options } from '@/entrypoints/utils/option';
 import ServiceIcon from '@/components/ServiceIcon.vue';
 
-type DrawerName = 'hover' | 'selection' | 'floating' | 'appearance';
+type DrawerName = 'hover' | 'selection' | 'floating' | 'appearance' | 'image';
 type SettingsSection = 'settings-general' | 'settings-shortcuts';
 const CustomHotkeyInput = defineAsyncComponent(() => import('@/components/CustomHotkeyInput.vue'));
 const version = process.env.VUE_APP_VERSION;
@@ -304,6 +326,7 @@ const drawerSettingsSection: Record<DrawerName, SettingsSection> = {
   selection: 'settings-shortcuts',
   floating: 'settings-shortcuts',
   appearance: 'settings-general',
+  image: 'settings-general',
 };
 
 const serviceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
@@ -320,12 +343,14 @@ const hoverSummary = computed(() => config.value.hotkey === 'none' ? '已关闭'
 const selectionSummary = computed(() => ({ disabled: '已关闭', bilingual: '双语显示', 'translation-only': '仅显示译文' }[config.value.selectionTranslatorMode] || '双语显示'));
 const floatingSummary = computed(() => `${config.value.floatingBallPosition === 'left' ? '页面左侧' : '页面右侧'} · ${config.value.floatingBallHotkey}`);
 const displaySummary = computed(() => config.value.display === 1 ? `双语 · ${styleLabel.value}` : '仅显示译文');
-const drawerTitle = computed(() => ({ hover: '鼠标悬停翻译设置', selection: '划词翻译设置', floating: '全文悬浮球设置', appearance: '译文显示设置' }[activeDrawer.value]));
+const imageTranslationSummary = computed(() => config.value.disableImageTranslator ? '已关闭' : '悬停图片');
+const drawerTitle = computed(() => ({ hover: '鼠标悬停翻译设置', selection: '划词翻译设置', floating: '全文悬浮球设置', appearance: '译文显示设置', image: '图片翻译设置' }[activeDrawer.value]));
 const drawerDescription = computed(() => ({
   hover: '把鼠标停在文本上，用轻量快捷键获取即时译文。',
   selection: '选中文字后，按你的偏好显示原文与译文。',
   floating: '把全文翻译入口固定在最顺手的位置。',
   appearance: '调整双语布局、译文样式与界面主题。',
+  image: '把鼠标移到图片上，从图片右上角打开翻译入口。',
 }[activeDrawer.value]));
 const hoverChoices = [
   { value: 'Control', label: 'Ctrl' },
@@ -419,11 +444,13 @@ function setPluginEnabled(enabled: boolean) {
   if (!enabled) {
     void broadcast({ type: 'toggleFloatingBall', isEnabled: false });
     void broadcast({ type: 'updateSelectionTranslatorMode', mode: 'disabled' });
+    void broadcast({ type: 'toggleImageTranslator', isEnabled: false });
     return;
   }
 
   void broadcast({ type: 'toggleFloatingBall', isEnabled: !config.value.disableFloatingBall });
   void broadcast({ type: 'updateSelectionTranslatorMode', mode: config.value.selectionTranslatorMode });
+  void broadcast({ type: 'toggleImageTranslator', isEnabled: !config.value.disableImageTranslator });
 }
 
 function openDrawer(name: DrawerName) { activeDrawer.value = name; drawerVisible.value = true; }
@@ -481,6 +508,10 @@ function setSelectionTrigger(trigger: string) {
 function setFloatingEnabled(enabled: boolean) {
   config.value.disableFloatingBall = !enabled;
   void broadcast({ type: 'toggleFloatingBall', isEnabled: enabled });
+}
+function setImageTranslatorEnabled(enabled: boolean) {
+  config.value.disableImageTranslator = !enabled;
+  void broadcast({ type: 'toggleImageTranslator', isEnabled: enabled });
 }
 function handleFloatingHotkeyChange() {
   if (config.value.floatingBallHotkey === 'custom' && !config.value.customFloatingBallHotkey) showCustomHotkeyDialog.value = true;

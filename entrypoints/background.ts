@@ -8,7 +8,16 @@ import {
     buildTranslationCacheKey,
     translationCache,
 } from "@/entrypoints/utils/translationCache";
+import { downloadImageOcrLanguagesWithOffscreen, recognizeImageWithOffscreen, translateImageWithOffscreen } from "@/entrypoints/service/chrome-translator";
+import { imageBufferToDataUrl, MAX_REMOTE_IMAGE_BYTES, normalizeRemoteImageUrl } from "@/entrypoints/utils/imageFetch";
 import {buildPageSummaryPrompt, buildPageSummarySystemPrompt} from "@/entrypoints/utils/template";
+import {
+    getRequiredImageOcrLanguages,
+    IMAGE_OCR_LANGUAGE_PACKS,
+    IMAGE_OCR_LANGUAGE_STATE_KEY,
+    normalizeImageOcrLanguageCodes,
+    type ImageOcrLanguageCode,
+} from "@/entrypoints/utils/imageOcrLanguages";
 
 // 翻译状态管理
 let translationStateMap = new Map<number, boolean>(); // tabId -> isTranslated
@@ -42,9 +51,49 @@ type TranslationSingleRequestMessage = TranslationRequestMessageBase & { origin:
 type TranslationBatchRequestMessage = TranslationRequestMessageBase & { origin: string[] };
 type TranslationRequestMessage = TranslationSingleRequestMessage | TranslationBatchRequestMessage;
 
+async function getDownloadedImageOcrLanguages(): Promise<ImageOcrLanguageCode[]> {
+    const stored = await browser.storage.local.get(IMAGE_OCR_LANGUAGE_STATE_KEY);
+    return normalizeImageOcrLanguageCodes(stored[IMAGE_OCR_LANGUAGE_STATE_KEY]);
+}
+
+async function markImageOcrLanguagesDownloaded(languages: ImageOcrLanguageCode[]): Promise<ImageOcrLanguageCode[]> {
+    const downloaded = new Set(await getDownloadedImageOcrLanguages());
+    languages.forEach(language => downloaded.add(language));
+    const next = normalizeImageOcrLanguageCodes([...downloaded]);
+    await browser.storage.local.set({ [IMAGE_OCR_LANGUAGE_STATE_KEY]: next });
+    return next;
+}
+
+async function assertImageOcrLanguagesDownloaded(sourceLanguage: string): Promise<void> {
+    const downloaded = new Set(await getDownloadedImageOcrLanguages());
+    const missing = getRequiredImageOcrLanguages(sourceLanguage).filter(language => !downloaded.has(language));
+    if (missing.length === 0) return;
+
+    const labels = new Map(IMAGE_OCR_LANGUAGE_PACKS.map(pack => [pack.code, pack.label]));
+    const missingLabels = missing.map(language => labels.get(language) || language).join('、');
+    throw new Error(`图片文字识别需要先下载${missingLabels}语言包，请前往设置 > 图片翻译下载`);
+}
+
 type CacheRequestMode = 'single' | 'batch';
 
 const TRANSLATION_CACHE_CLEANUP_ALARM = 'fluentread-translation-cache-cleanup';
+
+async function fetchImageForOcr(source: string): Promise<string> {
+    const url = normalizeRemoteImageUrl(source);
+    const response = await fetch(url, { credentials: 'omit', redirect: 'follow' });
+    if (!response.ok) {
+        throw new Error(`图片服务器返回 ${response.status}`);
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    const contentLength = Number(response.headers.get('content-length') || 0);
+    if (contentLength > MAX_REMOTE_IMAGE_BYTES) {
+        throw new Error('图片文件过大');
+    }
+
+    const buffer = await response.arrayBuffer();
+    return imageBufferToDataUrl(buffer, contentType);
+}
 
 function getSelectedModel(service: string): string {
     return resolveConfiguredModel(config.model[service], config.customModel[service]);
@@ -506,6 +555,53 @@ export default defineBackground({
                         await translationCache.clear();
                         pageSummaryCache.clear();
                         resolve({ success: true });
+                        return;
+                    }
+
+                    if (message.type === 'fluentReadImageOcr') {
+                        await assertImageOcrLanguagesDownloaded(message.sourceLanguage);
+                        const lines = await recognizeImageWithOffscreen(message.image, message.sourceLanguage);
+                        resolve({ success: true, lines });
+                        return;
+                    }
+
+                    if (message.type === 'fluentReadImageTranslate') {
+                        await assertImageOcrLanguagesDownloaded(message.sourceLanguage);
+                        const result = await translateImageWithOffscreen(
+                            message.image,
+                            message.sourceLanguage,
+                            typeof message.title === 'string' ? message.title : '',
+                        );
+                        resolve({ success: true, ...result });
+                        return;
+                    }
+
+                    if (message.type === 'fluentReadImageTranslateTexts') {
+                        const texts = Array.isArray(message.texts)
+                            ? message.texts.filter((text: unknown): text is string => typeof text === 'string' && text.trim().length > 0)
+                            : [];
+                        if (texts.length === 0) throw new Error('图片中没有可翻译文字');
+                        const translations = await translateWithCache({
+                            origin: texts,
+                            context: typeof message.title === 'string' ? message.title : '',
+                            pageContext: '',
+                            useCache: true,
+                        });
+                        resolve({ success: true, translations });
+                        return;
+                    }
+
+                    if (message.type === 'fluentReadImageOcrDownload') {
+                        const languages = normalizeImageOcrLanguageCodes(message.languages);
+                        await downloadImageOcrLanguagesWithOffscreen(languages);
+                        const downloaded = await markImageOcrLanguagesDownloaded(languages);
+                        resolve({ success: true, languages: downloaded });
+                        return;
+                    }
+
+                    if (message.type === 'fluentReadImageFetch') {
+                        const image = await fetchImageForOcr(message.url);
+                        resolve({ success: true, image });
                         return;
                     }
 

@@ -47,6 +47,65 @@
     cursor: pointer;
 }
 
+/* 图片翻译覆盖层：翻译完成后用同尺寸位图层覆盖原图，避免原文字从译文下面透出。 */
+.fluent-read-image-translation-overlay {
+    position: fixed;
+    z-index: 2147483646;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.fluent-read-image-translation-canvas {
+    position: absolute;
+    inset: 0;
+    display: none;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.fluent-read-image-translation-button {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 999px;
+    background: rgba(20, 20, 20, 0.68);
+    color: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.28);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 24px;
+    opacity: 0.78;
+    pointer-events: auto;
+    transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease;
+    z-index: 1;
+}
+
+.fluent-read-image-translation-button:hover,
+.fluent-read-image-translation-button:focus-visible {
+    background: rgba(20, 20, 20, 0.9);
+    opacity: 1;
+    outline: none;
+    transform: scale(1.06);
+}
+
+.fluent-read-image-translation-button[data-phase="loading"] {
+    animation: fluent-read-image-translation-pulse 1.1s ease-in-out infinite;
+}
+
+.fluent-read-image-translation-button[data-phase="error"] {
+    background: rgba(185, 28, 28, 0.88);
+}
+
+@keyframes fluent-read-image-translation-pulse {
+    0%, 100% { opacity: 0.52; }
+    50% { opacity: 1; }
+}
+
 /* 输入框翻译相关样式 - 柔和呼吸效果 */
 @keyframes inputBoxTranslating {
     0% {

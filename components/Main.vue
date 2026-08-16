@@ -81,7 +81,7 @@
   </div>
   </section>
 
-  <div v-if="!config.on && props.activeSection !== 'settings-general'" class="disabled-section">
+  <div v-if="!config.on && !['settings-general', 'settings-image-translation'].includes(props.activeSection)" class="disabled-section">
     <strong>插件当前已关闭</strong>
     <p>请先在“通用设置”中启用插件，再调整该分类。</p>
   </div>
@@ -111,6 +111,62 @@
         </template>
       </ServiceCatalog>
 
+    </section>
+
+    <!-- 图片翻译与 OCR 语言包 -->
+    <section v-show="props.activeSection === 'settings-image-translation'" id="settings-image-translation" class="settings-section image-ocr-section">
+      <div class="image-ocr-heading">
+        <div>
+          <span class="image-ocr-kicker">Beta 测试</span>
+          <h2>图片翻译需要 OCR 语言包</h2>
+          <p>语言包会在运行时按需下载并缓存在浏览器本地，不会随扩展安装包一起下载。</p>
+        </div>
+        <span class="image-ocr-runtime-badge">按需下载</span>
+      </div>
+
+      <div class="image-ocr-recommendation">
+        <div>
+          <strong>推荐先下载中文和 English</strong>
+          <p>自动检测默认使用这两种语言。识别日文图片前，再下载日本語语言包即可。</p>
+        </div>
+        <button
+          type="button"
+          class="image-ocr-primary-action"
+          :disabled="imageOcrRecommendedReady || imageOcrRecommendedDownloading"
+          @click="downloadImageOcrLanguages(imageOcrRecommendedCodes)"
+        >
+          {{ imageOcrRecommendedReady ? '推荐语言已就绪' : imageOcrRecommendedDownloading ? '下载中…' : '下载推荐语言' }}
+        </button>
+      </div>
+
+      <div class="image-ocr-pack-list">
+        <article v-for="pack in imageOcrLanguagePacks" :key="pack.code" class="image-ocr-pack-card">
+          <div class="image-ocr-pack-icon">{{ pack.code === 'chi_sim' ? '中' : pack.code === 'eng' ? 'A' : '日' }}</div>
+          <div class="image-ocr-pack-copy">
+            <div class="image-ocr-pack-title">
+              <strong>{{ pack.label }}</strong>
+              <span v-if="pack.recommended" class="image-ocr-recommended">推荐</span>
+            </div>
+            <small>{{ pack.description }} · {{ pack.size }}</small>
+          </div>
+          <div class="image-ocr-pack-action">
+            <span :class="['image-ocr-pack-status', { ready: imageOcrDownloadedCodes.includes(pack.code) }]">
+              {{ imageOcrDownloadedCodes.includes(pack.code) ? '已下载' : '未下载' }}
+            </span>
+            <button
+              type="button"
+              class="image-ocr-download-button"
+              :disabled="imageOcrDownloadedCodes.includes(pack.code) || imageOcrDownloadingCodes.includes(pack.code)"
+              @click="downloadImageOcrLanguages([pack.code])"
+            >
+              {{ imageOcrDownloadedCodes.includes(pack.code) ? '已就绪' : imageOcrDownloadingCodes.includes(pack.code) ? '下载中…' : '下载' }}
+            </button>
+          </div>
+        </article>
+      </div>
+
+      <p v-if="imageOcrDownloadError" class="image-ocr-error">{{ imageOcrDownloadError }}</p>
+      <p class="image-ocr-footnote">只有下载对应语言后，图片翻译才会执行文字识别。语言包由 Tesseract.js 下载并缓存到扩展本地存储。</p>
     </section>
 
 
@@ -501,7 +557,7 @@
 <script lang="ts" setup>
 
 // Main 处理配置信息
-import { computed, ref, watch, onUnmounted } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { models, options, resolveConfiguredModel, servicesType, defaultOption } from "../entrypoints/utils/option";
 import { Config, normalizeConfig } from "@/entrypoints/utils/model";
 import { InfoFilled, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
@@ -519,6 +575,13 @@ import {
 import {DEEPLX_ENDPOINT_PRESETS, parseDeepLXEndpoints} from '@/entrypoints/utils/deeplx';
 import { isConfigImportValid, sanitizeConfigForExport } from '@/entrypoints/utils/config-transfer';
 import { getMissingCredentialMessage } from '@/entrypoints/utils/configValidation';
+import {
+  IMAGE_OCR_LANGUAGE_PACKS,
+  IMAGE_OCR_LANGUAGE_STATE_KEY,
+  IMAGE_OCR_RECOMMENDED_LANGUAGES,
+  normalizeImageOcrLanguageCodes,
+  type ImageOcrLanguageCode,
+} from '@/entrypoints/utils/imageOcrLanguages';
 import {
   config as runtimeConfig,
   configReady,
@@ -549,6 +612,45 @@ function updateTheme(theme: string) {
 // 配置信息
 const config = ref(new Config());
 const selectedDeepLXPreset = ref('');
+const imageOcrLanguagePacks = IMAGE_OCR_LANGUAGE_PACKS;
+const imageOcrRecommendedCodes = IMAGE_OCR_RECOMMENDED_LANGUAGES;
+const imageOcrDownloadedCodes = ref<ImageOcrLanguageCode[]>([]);
+const imageOcrDownloadingCodes = ref<ImageOcrLanguageCode[]>([]);
+const imageOcrDownloadError = ref('');
+
+const imageOcrRecommendedReady = computed(() =>
+  imageOcrRecommendedCodes.every(code => imageOcrDownloadedCodes.value.includes(code)),
+);
+const imageOcrRecommendedDownloading = computed(() =>
+  imageOcrRecommendedCodes.some(code => imageOcrDownloadingCodes.value.includes(code)),
+);
+
+async function refreshImageOcrLanguageState() {
+  const stored = await browser.storage.local.get(IMAGE_OCR_LANGUAGE_STATE_KEY);
+  imageOcrDownloadedCodes.value = normalizeImageOcrLanguageCodes(stored[IMAGE_OCR_LANGUAGE_STATE_KEY]);
+}
+
+async function downloadImageOcrLanguages(languages: ImageOcrLanguageCode[]) {
+  const pending = languages.filter(code => !imageOcrDownloadedCodes.value.includes(code));
+  if (pending.length === 0) return;
+
+  imageOcrDownloadError.value = '';
+  imageOcrDownloadingCodes.value = [...new Set([...imageOcrDownloadingCodes.value, ...pending])];
+  try {
+    const response = await browser.runtime.sendMessage({
+      type: 'fluentReadImageOcrDownload',
+      languages: pending,
+    }) as { success?: boolean; languages?: unknown; error?: string } | undefined;
+    if (!response?.success) throw new Error(response?.error || '语言包下载失败');
+    imageOcrDownloadedCodes.value = normalizeImageOcrLanguageCodes(response.languages);
+  } catch (error) {
+    imageOcrDownloadError.value = error instanceof Error
+      ? `${error.message}。请检查网络后重试。`
+      : '语言包下载失败，请检查网络后重试。';
+  } finally {
+    imageOcrDownloadingCodes.value = imageOcrDownloadingCodes.value.filter(code => !pending.includes(code));
+  }
+}
 
 const appendDeepLXPreset = (endpoint: string | undefined) => {
   if (!endpoint) {
@@ -578,6 +680,10 @@ void configReady
 watch(config, (newValue) => {
   if (hydrated) void saveConfig(newValue).catch((error) => console.warn('[FluentRead] 保存设置失败', error));
 }, { deep: true });
+
+onMounted(() => {
+  void refreshImageOcrLanguageState().catch(() => undefined);
+});
 
 // 设置页左侧列表只切换正在编辑的服务，不改变网页翻译实际使用的默认服务。
 const configurationService = ref<string | null>(null);
@@ -971,6 +1077,135 @@ const saveImport = async () => {
   min-width: 0;
 }
 
+.image-ocr-section {
+  display: grid;
+  gap: 16px;
+}
+
+.image-ocr-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 0 12px 4px;
+}
+
+.image-ocr-kicker {
+  display: block;
+  margin-bottom: 7px;
+  color: #dc315f;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+
+.image-ocr-heading h2 {
+  margin: 0 0 7px;
+  color: #172033;
+  font-size: 22px;
+}
+
+.image-ocr-heading p {
+  margin: 0;
+  color: #737c8f;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.image-ocr-runtime-badge,
+.image-ocr-recommended {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.image-ocr-runtime-badge {
+  padding: 7px 10px;
+  border: 1px solid #ccebdd;
+  color: #18835d;
+  background: #effbf6;
+}
+
+.image-ocr-recommendation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 12px;
+  padding: 18px 20px;
+  border: 1px solid #f3cfda;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fff6f8, #fff);
+}
+
+.image-ocr-recommendation strong { color: #172033; font-size: 14px; }
+.image-ocr-recommendation p { margin: 6px 0 0; color: #737c8f; font-size: 11px; line-height: 1.5; }
+.image-ocr-primary-action,
+.image-ocr-download-button {
+  flex: none;
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  background: #ef4776;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.image-ocr-primary-action { min-height: 38px; padding: 0 14px; }
+.image-ocr-primary-action:disabled { cursor: default; opacity: .55; }
+
+.image-ocr-pack-list { display: grid; gap: 10px; margin: 0 12px; }
+.image-ocr-pack-card {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 76px;
+  padding: 12px 14px;
+  border: 1px solid #e5e8ef;
+  border-radius: 16px;
+  background: #fbfcfe;
+}
+.image-ocr-pack-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 12px;
+  color: #2678c9;
+  background: #eaf4ff;
+  font-size: 16px;
+  font-weight: 800;
+}
+.image-ocr-pack-card:nth-child(1) .image-ocr-pack-icon { color: #e73a6c; background: #fff0f4; }
+.image-ocr-pack-card:nth-child(3) .image-ocr-pack-icon { color: #6f55d9; background: #f1edff; }
+.image-ocr-pack-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 5px; }
+.image-ocr-pack-title { display: flex; align-items: center; gap: 7px; }
+.image-ocr-pack-title strong { color: #172033; font-size: 13px; }
+.image-ocr-pack-copy small { overflow: hidden; color: #737c8f; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.image-ocr-recommended { padding: 3px 6px; color: #dc315f; background: #fff0f4; font-size: 8px; }
+.image-ocr-pack-action { display: flex; align-items: center; gap: 10px; flex: none; }
+.image-ocr-pack-status { color: #9aa2b1; font-size: 10px; }
+.image-ocr-pack-status.ready { color: #18835d; }
+.image-ocr-download-button { min-width: 58px; min-height: 30px; padding: 0 10px; }
+.image-ocr-download-button:disabled { color: #18835d; background: #effbf6; cursor: default; }
+.image-ocr-error { margin: 0 12px; color: #d9345e; font-size: 11px; line-height: 1.5; }
+.image-ocr-footnote { margin: 0 12px; color: #8b93a4; font-size: 10px; line-height: 1.5; }
+
+:root.dark .image-ocr-heading h2,
+:root.dark .image-ocr-recommendation strong,
+:root.dark .image-ocr-pack-title strong { color: #f4f5f8; }
+:root.dark .image-ocr-heading p,
+:root.dark .image-ocr-recommendation p,
+:root.dark .image-ocr-pack-copy small { color: #a7adba; }
+:root.dark .image-ocr-recommendation,
+:root.dark .image-ocr-pack-card { border-color: #30333c; background: #252830; }
+:root.dark .image-ocr-recommendation { background: linear-gradient(135deg, rgba(239, 71, 118, .12), #252830); }
+
 .settings-status-row {
   align-items: center;
   min-height: 92px !important;
@@ -1297,5 +1532,15 @@ const saveImport = async () => {
   align-items: center;
   color: var(--el-color-primary);
   font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .image-ocr-heading,
+  .image-ocr-recommendation { align-items: flex-start; flex-direction: column; }
+  .image-ocr-recommendation { gap: 12px; }
+  .image-ocr-primary-action { width: 100%; }
+  .image-ocr-pack-card { align-items: flex-start; flex-wrap: wrap; }
+  .image-ocr-pack-copy { min-width: calc(100% - 54px); }
+  .image-ocr-pack-action { width: 100%; justify-content: flex-end; }
 }
 </style>
