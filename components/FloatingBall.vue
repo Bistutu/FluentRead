@@ -34,23 +34,20 @@
       <span v-if="isTranslating" class="check-mark" aria-hidden="true" />
     </button>
 
-    <button
+    <div
       class="floating-ball-main floating-ball-item"
-      type="button"
-      :aria-label="mainButtonLabel"
-      :aria-pressed="isTranslating"
-      :title="mainButtonTitle"
-      @focus="expandBall"
-      @blur="collapseBall"
+      role="img"
+      aria-label="FluentRead"
+      title="按住拖动调整位置"
       @pointerdown="startDrag"
       @pointerup="finishPointerInteraction"
       @pointercancel="cancelPointerInteraction"
     >
       <svg class="floating-ball-mascot" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <image v-if="logoUrl" :href="logoUrl" x="0" y="0" width="32" height="32" preserveAspectRatio="none" image-rendering="pixelated" />
+        <image v-if="logoUrl" :href="logoUrl" x="0" y="0" width="32" height="32" preserveAspectRatio="none" image-rendering="auto" />
       </svg>
       <span v-if="isTranslating" class="check-mark" aria-hidden="true" />
-    </button>
+    </div>
 
     <button
       v-if="showMenu"
@@ -129,8 +126,6 @@ let animationTimer: ReturnType<typeof setTimeout> | undefined;
 let tooltipTimer: ReturnType<typeof setTimeout> | undefined;
 
 const currentDisplayPosition = computed(() => internalPosition.value || props.position);
-const mainButtonLabel = computed(() => isTranslating.value ? '恢复网页原文' : '翻译整个网页');
-const mainButtonTitle = computed(() => `${mainButtonLabel.value}；按住拖动调整位置`);
 
 function expandBall() {
   if (!isDragging.value) isExpanded.value = true;
@@ -227,8 +222,6 @@ function finishPointerInteraction(event: PointerEvent) {
     nextTick(updatePositionStyle);
     return;
   }
-
-  toggleTranslation();
 }
 
 function cancelPointerInteraction(event: PointerEvent) {
@@ -401,10 +394,10 @@ watch(() => props.position, (newPosition) => {
 
 .floating-ball-mascot {
   display: block;
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   pointer-events: none;
-  image-rendering: pixelated;
+  image-rendering: auto;
 }
 
 .translation-icon {
