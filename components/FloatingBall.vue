@@ -400,8 +400,8 @@ watch(() => props.position, (newPosition) => {
 
 .floating-ball-logo {
   display: block;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   object-fit: cover;
   pointer-events: none;
@@ -409,22 +409,22 @@ watch(() => props.position, (newPosition) => {
 
 .floating-ball-logo-fallback {
   display: inline-flex;
-  width: 36px;
-  height: 36px;
+  width: 30px;
+  height: 30px;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   background: linear-gradient(145deg, #f2487d, #ff7397);
   color: #fff;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: -1px;
   pointer-events: none;
 }
 
 .translation-icon {
-  width: 19px;
-  height: 19px;
+  width: 17px;
+  height: 17px;
 }
 
 .floating-ball-tool {
@@ -492,8 +492,8 @@ watch(() => props.position, (newPosition) => {
 }
 
 .floating-ball-settings svg {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
 }
 
 .shortcut-tooltip {
