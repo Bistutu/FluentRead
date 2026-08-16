@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     calculateSelectionPopupPosition,
     chooseSelectionRect,
+    isSameLanguage,
     normalizeSelectionText,
     normalizeSpeechLanguage,
 } from '@/entrypoints/utils/selectionTranslatorCore';
@@ -36,6 +37,14 @@ describe('selection translator core geometry', () => {
 });
 
 describe('selection translator text and speech language normalization', () => {
+    it('matches detected languages with configured language families', () => {
+        expect(isSameLanguage('zh-Hans', 'zh-Hant')).toBe(true);
+        expect(isSameLanguage('eng', 'en')).toBe(true);
+        expect(isSameLanguage('ja', 'en')).toBe(false);
+        expect(isSameLanguage('und', 'en')).toBe(false);
+        expect(isSameLanguage('en', 'auto')).toBe(false);
+    });
+
     it('normalizes browser whitespace without changing words', () => {
         expect(normalizeSelectionText('  hello\u00a0  world\n   again  ')).toBe('hello world\nagain');
     });
