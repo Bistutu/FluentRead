@@ -1,648 +1,519 @@
 <template>
-  <div class="fr-floating-ball" :class="{
-    'floating-ball-expanded': isExpanded,
-    'dragging': isDragging,
-    'is-translating': isTranslating,
-    'animating': isAnimating && config.animations,
-    'static-mode': !config.animations
-  }" :data-position="currentDisplayPosition" @mouseenter="expandBall" @mouseleave="collapseBall" :style="positionStyle"
-       @mousedown="startDrag" @click="toggleTranslation" ref="floatingBall">
-    <div class="floating-ball-icon">
-      <div class="fr-icon-container">
-        <svg v-if="iconType === 'simple' && !isTranslating" class="translation-icon" viewBox="0 0 24 24" fill="none"
-          xmlns="http://www.w3.org/2000/svg">
+  <div
+    ref="floatingBall"
+    class="fr-floating-ball"
+    :class="{
+      'floating-ball-expanded': isExpanded,
+      dragging: isDragging,
+      'is-translating': isTranslating,
+      animating: isAnimating && config.animations,
+      'static-mode': !config.animations,
+    }"
+    :data-position="currentDisplayPosition"
+    :style="positionStyle"
+    @mouseenter="expandBall"
+    @mouseleave="collapseBall"
+  >
+    <button
+      ref="mainButton"
+      class="floating-ball-main"
+      type="button"
+      :aria-label="mainButtonLabel"
+      :aria-pressed="isTranslating"
+      :title="mainButtonTitle"
+      @focus="expandBall"
+      @blur="collapseBall"
+      @pointerdown="startDrag"
+      @pointerup="finishPointerInteraction"
+      @pointercancel="cancelPointerInteraction"
+    >
+      <span class="floating-ball-icon" aria-hidden="true">
+        <svg class="translation-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path
-            d="M12.87 15.07L10.33 12.56L10.36 12.53C12.1 10.59 13.34 8.36 14.07 6H17V4H10V2H8V4H1V6H12.17C11.5 7.92 10.44 9.75 9 11.35C8.07 10.32 7.3 9.19 6.69 8H4.69C5.42 9.63 6.42 11.17 7.67 12.56L2.58 17.58L4 19L9 14L12.11 17.11L12.87 15.07Z"
-            fill="#333" />
+            d="M12.87 15.07 10.33 12.56l.03-.03A16.6 16.6 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17A16.8 16.8 0 0 1 9 11.35 15.7 15.7 0 0 1 6.69 8h-2A18.3 18.3 0 0 0 7.67 12.56L2.58 17.58 4 19l5-5 3.11 3.11z"
+            fill="currentColor"
+          />
         </svg>
-        <svg v-if="iconType === 'simple' && isTranslating" class="translation-icon" viewBox="0 0 24 24" fill="none"
-          xmlns="http://www.w3.org/2000/svg">
-          <path
-            d="M12.87 15.07L10.33 12.56L10.36 12.53C12.1 10.59 13.34 8.36 14.07 6H17V4H10V2H8V4H1V6H12.17C11.5 7.92 10.44 9.75 9 11.35C8.07 10.32 7.3 9.19 6.69 8H4.69C5.42 9.63 6.42 11.17 7.67 12.56L2.58 17.58L4 19L9 14L12.11 17.11L12.87 15.07Z"
-            fill="#4caf50" />
-        </svg>
-        <svg v-if="iconType === 'morden'" class="imt-fb-logo-img-big-bg translation-icon"
-          :class="{ 'imt-float-ball-translated': isTranslating }" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-          width="20" height="20">
-          <path fill="none" d="M0 0h24v24H0z"></path>
-          <path
-            d="M5 15v2a2 2 0 0 0 1.85 1.995L7 19h3v2H7a4 4 0 0 1-4-4v-2h2zm13-5l4.4 11h-2.155l-1.201-3h-4.09l-1.199 3h-2.154L16 10h2zm-1 2.885L15.753 16h2.492L17 12.885zM8 2v2h4v7H8v3H6v-3H2V4h4V2h2zm9 1a4 4 0 0 1 4 4v2h-2V7a2 2 0 0 0-2-2h-3V3h3zM6 6H4v3h2V6zm4 0H8v3h2V6z"
-            fill="rgba(255,255,255,1)"></path>
-        </svg>
+        <span v-if="isTranslating" class="check-mark" />
+      </span>
+      <span class="floating-ball-label">{{ isTranslating ? '恢复原文' : '翻译全文' }}</span>
+    </button>
 
-        <div class="check-mark" v-if="isTranslating"></div>
-        
-        <!-- 添加快捷键提示 -->
-        <div class="shortcut-tooltip" v-if="showShortcutTooltip">
-          {{ shortcutTip }}
-        </div>
-        
-        <!-- 波纹效果容器 -->
-        <div class="ripple-container" ref="rippleContainer"></div>
-      </div>
+    <div v-show="isExpanded && !isDragging && showMenu" class="floating-ball-menu" role="group" aria-label="悬浮球工具">
+      <button
+        class="floating-ball-action"
+        type="button"
+        aria-label="打开 FluentRead 设置"
+        title="打开设置"
+        @pointerdown.stop
+        @click.stop="handleSettingsClick"
+      >
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="m19.43 12.98 1.25.98-1.5 2.6-1.5-.6a7.3 7.3 0 0 1-1.69.98L15.77 18h-3l-.22-1.06a7.3 7.3 0 0 1-1.69-.98l-1.5.6-1.5-2.6 1.25-.98a6.7 6.7 0 0 1 0-1.96l-1.25-.98 1.5-2.6 1.5.6a7.3 7.3 0 0 1 1.69-.98L12.77 6h3l.22 1.06c.6.24 1.16.57 1.69.98l1.5-.6 1.5 2.6-1.25.98a6.7 6.7 0 0 1 0 1.96Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
+          <circle cx="14.27" cy="12" r="2.4" stroke="currentColor" stroke-width="1.7" />
+        </svg>
+      </button>
     </div>
+
+    <div v-if="showShortcutTooltip" class="shortcut-tooltip" role="status">{{ shortcutTip }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { PropType, CSSProperties } from 'vue';
 import { config } from '@/entrypoints/utils/config';
+
+const DRAG_THRESHOLD = 6;
+const BALL_SIZE = 42;
 
 const props = defineProps({
   position: {
     type: String as PropType<'left' | 'right'>,
     default: 'right',
-    validator: (value: string) => ['left', 'right'].includes(value)
+    validator: (value: string) => ['left', 'right'].includes(value),
   },
   showMenu: {
     type: Boolean,
-    default: true
-  },
-  onDocClick: {
-    type: Function as PropType<(event: MouseEvent) => void>,
-    default: () => { }
+    default: true,
   },
   onSettingsClick: {
     type: Function as PropType<(event: MouseEvent) => void>,
-    default: () => { }
+    default: () => {},
   },
   onPositionChanged: {
     type: Function as PropType<(newPosition: 'left' | 'right') => void>,
-    default: () => { }
+    default: () => {},
   },
   onTranslationToggle: {
     type: Function as PropType<(isTranslating: boolean) => void>,
-    default: () => { }
+    default: () => {},
   },
-  iconType: {
-    type: String as PropType<'simple' | 'morden'>,
-    default: 'morden',
-    validator: (value: string) => ['simple', 'morden'].includes(value)
-  },
-  showShortcutTooltip: {
-    type: Boolean,
-    default: false
-  },
-  shortcutTip: {
-    type: String,
-    default: ''
-  }
 });
+
+interface PointerDragState {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  moved: boolean;
+}
 
 const isExpanded = ref(false);
 const positionStyle = ref<CSSProperties>({});
 const isDragging = ref(false);
-const startX = ref(0);
-const startY = ref(0);
 const draggedY = ref<number | null>(null);
 const internalPosition = ref<'left' | 'right' | null>(null);
 const isTranslating = ref(false);
-const dragStartTime = ref(0);
 const floatingBall = ref<HTMLElement | null>(null);
-const rippleContainer = ref<HTMLElement | null>(null);
-const isAnimating = ref(false);
+const mainButton = ref<HTMLButtonElement | null>(null);
 const showShortcutTooltip = ref(false);
-const shortcutTip = ref('快捷键: Alt+T');
+const shortcutTip = ref('快捷键：Alt+T');
+const dragState = ref<PointerDragState | null>(null);
+const isAnimating = ref(false);
+let animationTimer: ReturnType<typeof setTimeout> | undefined;
+let tooltipTimer: ReturnType<typeof setTimeout> | undefined;
 
 const currentDisplayPosition = computed(() => internalPosition.value || props.position);
+const mainButtonLabel = computed(() => isTranslating.value ? '恢复网页原文' : '翻译整个网页');
+const mainButtonTitle = computed(() => `${mainButtonLabel.value}；按住拖动调整位置`);
 
-const expandBall = () => {
+function expandBall() {
+  if (!isDragging.value) isExpanded.value = true;
+}
+
+function collapseBall() {
+  if (!isDragging.value && !mainButton.value?.matches(':focus')) isExpanded.value = false;
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function updatePositionStyle() {
   if (isDragging.value) return;
-  isExpanded.value = true;
-};
-
-const collapseBall = () => {
-  if (isDragging.value) return;
-  if (floatingBall.value?.matches(':hover')) return;
-  isExpanded.value = false;
-};
-
-const updatePositionStyle = () => {
-  if (isDragging.value) return;
-
-  const newTop = draggedY.value !== null ? `${draggedY.value}px` : '50%';
 
   positionStyle.value = {
-    top: newTop,
+    top: draggedY.value === null ? '50%' : `${clamp(draggedY.value, 0, Math.max(0, window.innerHeight - BALL_SIZE))}px`,
     left: undefined,
     right: undefined,
-    transform: undefined
+    transform: undefined,
   };
-};
+}
 
-const startDrag = (event: MouseEvent) => {
-  if (event.button !== 0 || !floatingBall.value) return;
-
-  isDragging.value = true;
-  isExpanded.value = false;
-  startX.value = event.clientX;
-  startY.value = event.clientY;
-  dragStartTime.value = Date.now();
-
-  const rect = floatingBall.value.getBoundingClientRect();
-  const currentElementX = rect.left;
-  const currentElementY = rect.top;
-
-  positionStyle.value = {
-    left: `${currentElementX}px`,
-    top: `${currentElementY}px`,
-    right: 'auto',
-    transform: 'none'
-  };
-
-  document.addEventListener('mousemove', drag);
-  document.addEventListener('mouseup', stopDrag);
+function startDrag(event: PointerEvent) {
+  if (event.pointerType === 'mouse' && event.button !== 0) return;
 
   event.preventDefault();
-};
-
-const drag = (event: MouseEvent) => {
-  if (!isDragging.value || !floatingBall.value) return;
-
-  const rect = floatingBall.value.getBoundingClientRect();
-  const offsetX = event.clientX - startX.value;
-  const offsetY = event.clientY - startY.value;
-
-  const newX = rect.left + offsetX;
-  const newY = rect.top + offsetY;
-
-  // 确保悬浮球不会超出屏幕边界
-  const maxX = window.innerWidth - rect.width;
-  const maxY = window.innerHeight - rect.height;
-
-  positionStyle.value = {
-    left: `${Math.max(0, Math.min(newX, maxX))}px`,
-    top: `${Math.max(0, Math.min(newY, maxY))}px`,
-    right: 'auto',
-    transform: 'none'
+  isExpanded.value = false;
+  isDragging.value = true;
+  dragState.value = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    moved: false,
   };
 
-  startX.value = event.clientX;
-  startY.value = event.clientY;
-};
+  const startLeft = clamp(event.clientX - BALL_SIZE / 2, 0, Math.max(0, window.innerWidth - BALL_SIZE));
+  const startTop = clamp(event.clientY - BALL_SIZE / 2, 0, Math.max(0, window.innerHeight - BALL_SIZE));
+  positionStyle.value = {
+    left: `${startLeft}px`,
+    top: `${startTop}px`,
+    right: 'auto',
+    transform: 'none',
+  };
 
-const stopDrag = (event: MouseEvent) => {
-  if (!isDragging.value || !floatingBall.value) return;
+  window.addEventListener('pointermove', handlePointerMove);
+  window.addEventListener('pointerup', finishPointerInteraction);
+  window.addEventListener('pointercancel', cancelPointerInteraction);
+}
 
-  document.removeEventListener('mousemove', drag);
-  document.removeEventListener('mouseup', stopDrag);
+function handlePointerMove(event: PointerEvent) {
+  const currentDrag = dragState.value;
+  if (!currentDrag || currentDrag.pointerId !== event.pointerId) return;
 
+  if (Math.hypot(event.clientX - currentDrag.startX, event.clientY - currentDrag.startY) > DRAG_THRESHOLD) {
+    currentDrag.moved = true;
+  }
+
+  const nextLeft = clamp(event.clientX - BALL_SIZE / 2, 0, Math.max(0, window.innerWidth - BALL_SIZE));
+  const nextTop = clamp(event.clientY - BALL_SIZE / 2, 0, Math.max(0, window.innerHeight - BALL_SIZE));
+  positionStyle.value = {
+    left: `${nextLeft}px`,
+    top: `${nextTop}px`,
+    right: 'auto',
+    transform: 'none',
+  };
+}
+
+function finishPointerInteraction(event: PointerEvent) {
+  const currentDrag = dragState.value;
+  if (!currentDrag || currentDrag.pointerId !== event.pointerId) return;
+
+  removePointerListeners();
+  dragState.value = null;
   isDragging.value = false;
 
-  const dragDuration = Date.now() - dragStartTime.value;
-  const movedX = Math.abs(event.clientX - startX.value);
-  const movedY = Math.abs(event.clientY - startY.value);
-  const isDragGesture = dragDuration > 200 || movedX > 5 || movedY > 5;
-
-  const rect = floatingBall.value.getBoundingClientRect();
-  const finalY = rect.top;
-
-  const newPosition = event.clientX < window.innerWidth / 2 ? 'left' : 'right';
-
-  draggedY.value = finalY;
-  internalPosition.value = newPosition;
-
-  // 无论位置是否变化，都通知父组件，以便触发拖动状态更新
-  props.onPositionChanged(newPosition);
-
-  nextTick(() => {
-    updatePositionStyle();
-  });
-};
-
-const handleDocClick = (event: MouseEvent) => {
-  event.stopPropagation();
-  props.onDocClick(event);
-};
-
-const handleSettingsClick = (event: MouseEvent) => {
-  event.stopPropagation();
-  props.onSettingsClick(event);
-};
-
-// 新增：添加波纹效果
-const addRippleEffect = (color: string = '#4caf50') => {
-  if (!rippleContainer.value) return;
-  
-  const ripple = document.createElement('div');
-  ripple.classList.add('ripple');
-  ripple.style.backgroundColor = color;
-  
-  rippleContainer.value.appendChild(ripple);
-  
-  // 触发波纹动画
-  setTimeout(() => {
-    ripple.classList.add('active');
-    
-    // 动画结束后移除波纹元素
-    setTimeout(() => {
-      if (rippleContainer.value?.contains(ripple)) {
-        rippleContainer.value.removeChild(ripple);
-      }
-    }, 600);
-  }, 10);
-};
-
-// 新增：触发动画效果
-const triggerAnimation = (type: 'translate' | 'restore') => {
-  isAnimating.value = true;
-  
-  // 添加波纹效果
-  addRippleEffect(type === 'translate' ? '#4285f4' : '#4caf50');
-  
-  // 显示快捷键提示
-  showShortcutTooltip.value = true;
-  
-  // 2秒后隐藏提示
-  setTimeout(() => {
-    showShortcutTooltip.value = false;
-  }, 2000);
-  
-  // 动画结束后重置状态
-  setTimeout(() => {
-    isAnimating.value = false;
-  }, 500);
-};
-
-// 修改原有的toggleTranslation函数
-const toggleTranslation = (event: MouseEvent) => {
-  const dragDuration = Date.now() - dragStartTime.value;
-  const movedX = Math.abs(event.clientX - startX.value);
-  const movedY = Math.abs(event.clientY - startY.value);
-  const isDragEndClick = dragDuration > 150 || movedX > 5 || movedY > 5;
-
-  // 如果是拖动结束的点击，或者当前正在拖动中，则不触发翻译
-  if (isDragEndClick || isDragging.value) {
+  if (currentDrag.moved) {
+    const rect = floatingBall.value?.getBoundingClientRect();
+    const finalTop = rect?.top ?? event.clientY - BALL_SIZE / 2;
+    const nextPosition = event.clientX < window.innerWidth / 2 ? 'left' : 'right';
+    draggedY.value = clamp(finalTop, 0, Math.max(0, window.innerHeight - BALL_SIZE));
+    internalPosition.value = nextPosition;
+    props.onPositionChanged(nextPosition);
+    nextTick(updatePositionStyle);
     return;
   }
 
+  toggleTranslation();
+}
+
+function cancelPointerInteraction(event: PointerEvent) {
+  const currentDrag = dragState.value;
+  if (!currentDrag || currentDrag.pointerId !== event.pointerId) return;
+
+  removePointerListeners();
+  dragState.value = null;
+  isDragging.value = false;
+  updatePositionStyle();
+}
+
+function removePointerListeners() {
+  window.removeEventListener('pointermove', handlePointerMove);
+  window.removeEventListener('pointerup', finishPointerInteraction);
+  window.removeEventListener('pointercancel', cancelPointerInteraction);
+}
+
+function triggerAnimation() {
+  if (!config.animations) return;
+
+  if (animationTimer) clearTimeout(animationTimer);
+  if (tooltipTimer) clearTimeout(tooltipTimer);
+  isAnimating.value = true;
+  showShortcutTooltip.value = true;
+  isExpanded.value = true;
+  tooltipTimer = setTimeout(() => {
+    showShortcutTooltip.value = false;
+  }, 1800);
+  animationTimer = setTimeout(() => {
+    isAnimating.value = false;
+    animationTimer = undefined;
+  }, 500);
+}
+
+function toggleTranslation() {
   isTranslating.value = !isTranslating.value;
-  triggerAnimation(isTranslating.value ? 'translate' : 'restore');
-  
-  // 触发自定义事件
-  if (isTranslating.value) {
-    document.dispatchEvent(new CustomEvent('fluentread-translation-started'));
-  } else {
-    document.dispatchEvent(new CustomEvent('fluentread-translation-ended'));
-  }
-  
-  if (floatingBall.value?.matches(':hover')) {
-    isExpanded.value = true;
-  }
+  triggerAnimation();
   props.onTranslationToggle(isTranslating.value);
-};
+}
 
-// 新增：响应自定义事件，从外部触发切换
-const handleExternalToggle = () => {
-  // 切换状态
-  isTranslating.value = !isTranslating.value;
-  
-  // 触发动画
-  triggerAnimation(isTranslating.value ? 'translate' : 'restore');
-  
-  // 触发自定义事件
-  if (isTranslating.value) {
-    document.dispatchEvent(new CustomEvent('fluentread-translation-started'));
-  } else {
-    document.dispatchEvent(new CustomEvent('fluentread-translation-ended'));
-  }
-  
-  // 通知父组件
-  props.onTranslationToggle(isTranslating.value);
-};
+function handleExternalToggle() {
+  if (!floatingBall.value) return;
+  toggleTranslation();
+}
 
-const handleClickOutside = (event: MouseEvent) => {
-  if (floatingBall.value?.matches(':hover')) return;
-  if (!floatingBall.value?.contains(event.target as Node)) {
-    isExpanded.value = false;
-  }
-};
+function handleSettingsClick(event: MouseEvent) {
+  props.onSettingsClick(event);
+}
 
-const handleMouseMove = (event: MouseEvent) => {
-  if (floatingBall.value?.contains(event.target as Node)) {
-    isExpanded.value = true;
-  }
-};
+function handleDocumentKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') isExpanded.value = false;
+}
 
 onMounted(() => {
   internalPosition.value = props.position;
   updatePositionStyle();
   window.addEventListener('resize', updatePositionStyle);
-  document.addEventListener('click', handleClickOutside);
-  document.addEventListener('mousemove', handleMouseMove);
-  
-  // 监听自定义事件
+  document.addEventListener('keydown', handleDocumentKeydown);
   document.addEventListener('fluentread-toggle-translation', handleExternalToggle);
-  
-  // 使组件暴露给父组件
-  if (floatingBall.value) {
-    (floatingBall.value as any).element = floatingBall.value;
-    (floatingBall.value as any).isTranslating = isTranslating.value;
-  }
 });
 
 onBeforeUnmount(() => {
+  removePointerListeners();
   window.removeEventListener('resize', updatePositionStyle);
-  document.removeEventListener('mousemove', drag);
-  document.removeEventListener('mouseup', stopDrag);
-  document.removeEventListener('click', handleClickOutside);
-  document.removeEventListener('mousemove', handleMouseMove);
-  
-  // 移除自定义事件监听
+  document.removeEventListener('keydown', handleDocumentKeydown);
   document.removeEventListener('fluentread-toggle-translation', handleExternalToggle);
+  if (animationTimer) clearTimeout(animationTimer);
+  if (tooltipTimer) clearTimeout(tooltipTimer);
 });
 
 watch(() => props.position, (newPosition) => {
-  if (newPosition !== internalPosition.value) {
-    internalPosition.value = newPosition;
-    draggedY.value = null;
-    updatePositionStyle();
-  }
+  if (newPosition === internalPosition.value) return;
+  internalPosition.value = newPosition;
+  draggedY.value = null;
+  updatePositionStyle();
 });
-
 </script>
 
 <style scoped>
 .fr-floating-ball {
   position: fixed;
   z-index: 9999;
-  transition: all 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
-  cursor: pointer;
+  display: flex;
+  width: 42px;
+  height: 42px;
+  align-items: center;
+  transition: width 0.22s ease, transform 0.22s ease;
   user-select: none;
   touch-action: none;
-  border-radius: 50%;
-}
-
-.floating-ball-icon {
-  width: 34px;
-  height: 34px;
-  background-color: #ffffff;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #333;
-  font-weight: bold;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transition: all 0.3s ease;
-  border: 1.5px solid #e0e0e0;
-  overflow: hidden;
-  position: relative;
-}
-
-.imt-fb-logo-img-big-bg {
-  width: 20px;
-  height: 20px;
-  margin: 0;
-  padding: 3px;
-  background-color: #ED6D8F;
-  border-radius: 50%;
-  margin: 0 3px;
-}
-
-.floating-ball-expanded .floating-ball-icon {
-  transform: scale(1.05);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-  border-color: #4caf50;
-}
-
-.fr-icon-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-}
-
-.translation-icon {
-  width: 18px;
-  height: 18px;
-  transition: all 0.3s ease;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
-}
-
-.is-translating .translation-icon {
-  transform: scale(1.1);
-  filter: drop-shadow(0 2px 4px rgba(76, 175, 80, 0.2));
-}
-
-.is-translating .floating-ball-icon {
-  background-color: #ffffff;
-  border-color: #4caf50;
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-}
-
-/* 动画相关样式 */
-.animating.is-translating .floating-ball-icon {
-  animation: pulse-green 0.5s ease;
-}
-
-.animating:not(.is-translating) .floating-ball-icon {
-  animation: pulse-blue 0.5s ease;
-}
-
-/* 静态模式样式 */
-.static-mode .floating-ball-icon {
-  animation: none !important;
-}
-
-.static-mode .floating-ball-tooltip {
-  animation: none !important;
-  opacity: 1;
-  transition: opacity 0.2s ease;
-}
-
-.static-mode .pulsing-circle {
-  animation: none !important;
-}
-
-.static-mode .dot-animate {
-  animation: none !important;
-}
-
-@keyframes pulse-green {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-  50% {
-    transform: scale(1.2);
-    box-shadow: 0 0 15px rgba(76, 175, 80, 0.8);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
-  }
-}
-
-@keyframes pulse-blue {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-  50% {
-    transform: scale(1.2);
-    box-shadow: 0 0 15px rgba(0, 128, 255, 0.8);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-}
-
-/* 波纹效果 */
-.ripple-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-/* 快捷键提示 */
-.shortcut-tooltip {
-  position: absolute;
-  bottom: -40px;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  white-space: nowrap;
-  opacity: 0;
-  animation: fadeIn 0.3s ease forwards;
-}
-
-.shortcut-tooltip:after {
-  content: '';
-  position: absolute;
-  top: -6px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-width: 0 6px 6px 6px;
-  border-style: solid;
-  border-color: transparent transparent rgba(0, 0, 0, 0.7) transparent;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translate(-50%, 5px);
-  }
-  to {
-    opacity: 1;
-    transform: translate(-50%, 0);
-  }
-}
-
-.check-mark {
-  position: absolute;
-  bottom: 1.5px;
-  right: 1.5px;
-  width: 12px;
-  height: 12px;
-  background-color: #4caf50;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 4px rgba(76, 175, 80, 0.3);
-  animation: pulse 1.5s infinite ease-in-out;
-  border: 0.75px solid #ffffff;
-}
-
-@keyframes pulse {
-  0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
-  }
-
-  70% {
-    transform: scale(1);
-    box-shadow: 0 0 0 6px rgba(76, 175, 80, 0);
-  }
-
-  100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
-  }
-}
-
-.check-mark::after {
-  content: "";
-  display: block;
-  width: 4px;
-  height: 7px;
-  border-right: 1.5px solid white;
-  border-bottom: 1.5px solid white;
-  transform: rotate(45deg) translate(-0.75px, -0.75px);
 }
 
 .fr-floating-ball[data-position="left"] {
   left: 0;
-  right: auto;
+  justify-content: flex-start;
   transform: translateX(-50%);
 }
 
 .fr-floating-ball[data-position="right"] {
   right: 0;
-  left: auto;
+  justify-content: flex-end;
   transform: translateX(50%);
 }
 
-.floating-ball-expanded {
+.fr-floating-ball-expanded {
+  width: 166px;
   transform: translateX(0) !important;
 }
 
-.fr-floating-ball.dragging {
+.floating-ball-main {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 10px;
+  overflow: hidden;
+  border: 1px solid #e1e5eb;
+  border-radius: 22px;
+  background: #fff;
+  color: #364152;
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.2);
+  cursor: pointer;
+  transition: width 0.22s ease, border-color 0.22s ease, background 0.22s ease, box-shadow 0.22s ease;
+}
+
+.fr-floating-ball-expanded .floating-ball-main {
+  width: 124px;
+  border-color: #b9c9f8;
+  box-shadow: 0 7px 22px rgba(37, 99, 235, 0.22);
+}
+
+.floating-ball-main:hover,
+.floating-ball-main:focus-visible {
+  outline: none;
+  border-color: #6d8ce8;
+  box-shadow: 0 8px 24px rgba(37, 99, 235, 0.28);
+}
+
+.floating-ball-icon {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #ed6d8f;
+  color: #fff;
+}
+
+.translation-icon {
+  width: 17px;
+  height: 17px;
+}
+
+.floating-ball-label {
+  max-width: 0;
+  overflow: hidden;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 650;
+  opacity: 0;
+  white-space: nowrap;
+  transition: max-width 0.22s ease, opacity 0.16s ease;
+}
+
+.fr-floating-ball-expanded .floating-ball-label {
+  max-width: 76px;
+  opacity: 1;
+}
+
+.is-translating .floating-ball-icon {
+  background: #3b82f6;
+}
+
+.is-translating .floating-ball-main {
+  border-color: #86b5f7;
+}
+
+.animating .floating-ball-main {
+  animation: floating-ball-pulse 0.5s ease;
+}
+
+.check-mark {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 9px;
+  height: 9px;
+  border: 1px solid #fff;
+  border-radius: 50%;
+  background: #22c55e;
+}
+
+.check-mark::after {
+  position: absolute;
+  top: 1px;
+  left: 2px;
+  width: 3px;
+  height: 5px;
+  border-right: 1px solid #fff;
+  border-bottom: 1px solid #fff;
+  content: '';
+  transform: rotate(45deg);
+}
+
+.floating-ball-menu {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin: 0 6px;
+  border: 1px solid #e1e5eb;
+  border-radius: 17px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.16);
+  animation: floating-ball-menu-in 0.18s ease both;
+}
+
+.floating-ball-action {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #667085;
+  cursor: pointer;
+}
+
+.floating-ball-action:hover,
+.floating-ball-action:focus-visible {
+  outline: none;
+  background: #eef2ff;
+  color: #3155c7;
+}
+
+.floating-ball-action svg {
+  width: 18px;
+  height: 18px;
+}
+
+.shortcut-tooltip {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  z-index: 2;
+  padding: 5px 8px;
+  border-radius: 6px;
+  background: rgba(17, 24, 39, 0.9);
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: floating-ball-tooltip-in 0.18s ease both;
+}
+
+.dragging {
   transition: none;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
-.fr-floating-ball.dragging .floating-ball-icon {
-  border-color: #4caf50;
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+.dragging .floating-ball-main {
+  width: 42px;
+  cursor: grabbing;
+  border-color: #6d8ce8;
+  box-shadow: 0 8px 25px rgba(15, 23, 42, 0.28);
 }
 
-.path-animate {
-  transition: all 0.5s ease;
+.dragging .floating-ball-label,
+.static-mode .shortcut-tooltip {
+  display: none;
 }
 
-.path-animate.active {
-  filter: drop-shadow(0 0 2px rgba(76, 175, 80, 0.7));
+@keyframes floating-ball-menu-in {
+  from { opacity: 0; transform: translateX(4px) scale(0.92); }
+  to { opacity: 1; transform: translateX(0) scale(1); }
 }
 
-.dot-animate {
-  r: 1;
-  opacity: 0.7;
-  transition: all 0.3s ease;
+@keyframes floating-ball-tooltip-in {
+  from { opacity: 0; transform: translate(-50%, -3px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 
-.dot-animate.active {
-  animation: dotPulse 2s infinite alternate;
+@keyframes floating-ball-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+  100% { transform: scale(1); }
 }
 
-@keyframes dotPulse {
-  0% {
-    r: 1;
-    opacity: 0.7;
+@media (prefers-reduced-motion: reduce) {
+  .fr-floating-ball,
+  .floating-ball-main,
+  .floating-ball-label {
+    transition: none;
   }
 
-  50% {
-    r: 1.5;
-    opacity: 1;
-  }
-
-  100% {
-    r: 1;
-    opacity: 0.7;
+  .floating-ball-menu,
+  .shortcut-tooltip,
+  .animating .floating-ball-main {
+    animation: none;
   }
 }
 </style>
