@@ -2,7 +2,7 @@ import {method, urls} from "../utils/constant";
 import {services} from "../utils/option";
 import {commonMsgTemplate} from "../utils/template";
 import CryptoJS from 'crypto-js';
-import {config} from "@/entrypoints/utils/config";
+import {config, saveConfig} from "@/entrypoints/utils/config";
 
 
 // 文档参考：https://open.bigmodel.cn/dev/api#nosdk
@@ -16,7 +16,7 @@ async function zhipu(message: any) {
         if (!secret) throw new Error('无法生成令牌');
         // 保存 secret 和 expiration
         config.extra[services.zhipu] = {secret, expiration: Date.now() + 3600000 * 24};
-        await storage.setItem('local:config', JSON.stringify(config));
+        await saveConfig();
     }
 
     // 构建请求头

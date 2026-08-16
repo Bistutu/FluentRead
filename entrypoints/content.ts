@@ -85,7 +85,11 @@ export default defineContentScript({
         // 处理悬浮球控制消息
         browser.runtime.onMessage.addListener((message: any, sender: any, sendResponse: () => void) => {
             if (message.type === 'toggleFloatingBall') {
-                if (message.isEnabled) {
+                // 弹窗修改的是存储配置，当前内容脚本还持有旧的内存配置。
+                // 先同步状态，否则启用时 mountFloatingBall 会被旧的禁用标记直接拦截。
+                const isEnabled = message.isEnabled === true;
+                config.disableFloatingBall = !isEnabled;
+                if (isEnabled) {
                     void mountFloatingBall(ctx);
                 } else {
                     unmountFloatingBall();

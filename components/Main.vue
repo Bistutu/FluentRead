@@ -504,7 +504,6 @@
 import { computed, ref, watch, onUnmounted } from 'vue'
 import { models, options, resolveConfiguredModel, servicesType, defaultOption } from "../entrypoints/utils/option";
 import { Config, normalizeConfig } from "@/entrypoints/utils/model";
-import { storage } from '@wxt-dev/storage';
 import { InfoFilled, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import browser from 'webextension-polyfill';
@@ -519,6 +518,12 @@ import {
 } from '@/entrypoints/utils/custom-body';
 import {DEEPLX_ENDPOINT_PRESETS, parseDeepLXEndpoints} from '@/entrypoints/utils/deeplx';
 import { isConfigImportValid, sanitizeConfigForExport } from '@/entrypoints/utils/config-transfer';
+import {
+  config as runtimeConfig,
+  configReady,
+  saveConfig,
+  subscribeConfig,
+} from '@/entrypoints/utils/config';
 
 const props = withDefaults(defineProps<{
   activeSection?: string
@@ -556,25 +561,21 @@ const appendDeepLXPreset = (endpoint: string | undefined) => {
   selectedDeepLXPreset.value = '';
 };
 
-function applyStoredConfig(value: unknown) {
-  if (typeof value !== 'string' || !value.trim()) return;
+let hydrated = false;
+const unsubscribeConfig = subscribeConfig((nextConfig) => {
+  Object.assign(config.value, nextConfig);
+});
 
-  try {
-    Object.assign(config.value, normalizeConfig(JSON.parse(value)));
-  } catch (error) {
-    console.warn('[FluentRead] 无法读取设置页配置', error);
-  }
-}
-
-void storage.getItem('local:config')
-  .then((value) => applyStoredConfig(value))
-  .catch((error) => console.warn('[FluentRead] 无法读取本地配置', error))
-  .finally(() => updateTheme(config.value.theme || 'auto'));
-
-storage.watch('local:config', (newValue) => applyStoredConfig(newValue));
+void configReady
+  .then(() => {
+    Object.assign(config.value, runtimeConfig);
+    hydrated = true;
+    updateTheme(config.value.theme || 'auto');
+  })
+  .catch((error) => console.warn('[FluentRead] 无法读取本地配置', error));
 
 watch(config, (newValue) => {
-  void storage.setItem('local:config', JSON.stringify(newValue));
+  if (hydrated) void saveConfig(newValue).catch((error) => console.warn('[FluentRead] 保存设置失败', error));
 }, { deep: true });
 
 // 设置页左侧列表只切换正在编辑的服务，不改变网页翻译实际使用的默认服务。
@@ -650,6 +651,7 @@ darkModeMediaQuery.onchange = (e) => {
 // 组件卸载时清理
 onUnmounted(() => {
   darkModeMediaQuery.onchange = null;
+  unsubscribeConfig();
 });
 
 // 计算样式分组
@@ -912,14 +914,9 @@ const isValidAzureEndpoint = (endpoint: string) => {
 
 const handleExport = async () => {
   try {
-    const configStr = await storage.getItem('local:config');
-    if (typeof configStr !== 'string' || !configStr.trim()) {
-      ElMessage({ message: '没有找到配置信息', type: 'warning' });
-      return;
-    }
-
+    await configReady;
     exportData.value = JSON.stringify(
-      sanitizeConfigForExport(JSON.parse(configStr)),
+      sanitizeConfigForExport(runtimeConfig),
       null,
       2,
     );
@@ -948,7 +945,7 @@ const saveImport = async () => {
       });
       return;
     }
-    await storage.setItem('local:config', JSON.stringify(normalizeConfig(parsedConfig)));
+    await saveConfig(normalizeConfig(parsedConfig));
     ElMessage({
       message: '配置导入成功!',
       type: 'success',
