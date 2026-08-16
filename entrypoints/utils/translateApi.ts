@@ -143,6 +143,30 @@ export async function translateTextBatch(
 }
 
 /**
+ * 翻译视频字幕。视频字幕使用独立的服务配置，但仍通过 background
+ * 统一请求、缓存和错误边界；只发送 YouTube 已提供的纯文本字幕内容。
+ */
+export async function translateVideoText(origin: string): Promise<string> {
+  const cleanedOrigin = origin?.replace(/[\s\u3000]/g, '') || '';
+  if (!cleanedOrigin) return origin || '';
+
+  config.count++;
+  void saveConfig().catch((error) => console.error('[FluentRead] 保存视频翻译计数失败:', error));
+
+  return enqueueTranslation(async () => {
+    return Promise.race([
+      browser.runtime.sendMessage({
+        context: `YouTube 视频字幕：${document.title}`,
+        origin,
+        useCache: config.useCache,
+        serviceOverride: config.videoService,
+      }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('视频字幕翻译请求超时')), 20000)),
+    ]) as Promise<string>;
+  });
+}
+
+/**
  * 当用户离开页面或主动取消翻译时，清空翻译队列
  */
 export function cancelAllTranslations() {

@@ -53,6 +53,8 @@ interface TranslationRequestMessageBase {
     context?: string;
     pageContext?: string;
     useCache?: boolean;
+    /** 视频字幕使用的独立机器翻译服务；普通网页请求不设置。 */
+    serviceOverride?: string;
 }
 
 type TranslationSingleRequestMessage = TranslationRequestMessageBase & { origin: string };
@@ -109,8 +111,8 @@ function getSelectedModel(service: string): string {
     return resolveConfiguredModel(config.model[service], config.customModel[service]);
 }
 
-function isAIContextEnabled(): boolean {
-    return config.enableAIContext && servicesType.isUseAIContext(config.service, getSelectedModel(config.service));
+function isAIContextEnabled(service = config.service): boolean {
+    return config.enableAIContext && servicesType.isUseAIContext(service, getSelectedModel(service));
 }
 
 function getProviderEndpoint(service: string): string {
@@ -126,8 +128,9 @@ function buildCacheKey(
     context: string,
     pageContext: string,
     mode: CacheRequestMode,
+    serviceOverride?: string,
 ): string {
-    const service = config.service;
+    const service = serviceOverride || config.service;
 
     return buildTranslationCacheKey({
         requestMode: mode,
@@ -149,7 +152,7 @@ function buildCacheKey(
         // DeepL sends the title context to the provider. AI adapters send the
         // bounded webpage context through their prompt templates.
         context: service === 'deepL' ? context : undefined,
-        pageContext: isAIContextEnabled() && service === config.service ? pageContext : undefined,
+        pageContext: isAIContextEnabled(service) ? pageContext : undefined,
     });
 }
 
@@ -161,10 +164,10 @@ function isCacheableResult(origin: string, result: unknown): result is string {
     return typeof result === 'string' && result.length > 0 && result !== origin;
 }
 
-function getTranslationService() {
-    const service = _service[config.service];
+function getTranslationService(serviceName = config.service) {
+    const service = _service[serviceName];
     if (!service) {
-        throw new Error(`未找到翻译服务适配器: ${config.service}`);
+        throw new Error(`未找到翻译服务适配器: ${serviceName}`);
     }
     return service;
 }
@@ -269,11 +272,12 @@ async function translateSingleWithCache(
     pageContext: string,
     useCache: boolean,
 ): Promise<string> {
+    const service = message.serviceOverride || config.service;
     if (!useCache) {
-        return getTranslationService()({...message, context, pageContext});
+        return getTranslationService(service)({...message, context, pageContext});
     }
 
-    const key = buildCacheKey(message.origin, context, pageContext, 'single');
+    const key = buildCacheKey(message.origin, context, pageContext, 'single', service);
     const existing = pendingTranslations.get(key);
     if (existing) return existing;
 
@@ -281,7 +285,7 @@ async function translateSingleWithCache(
         const cached = await translationCache.get(key);
         if (cached !== null) return cached;
 
-        const result = await getTranslationService()({...message, context, pageContext});
+        const result = await getTranslationService(service)({...message, context, pageContext});
         if (isCacheableResult(message.origin, result)) {
             await translationCache.set(key, result);
         }
@@ -306,19 +310,20 @@ async function translateBatchWithCache(
     pageContext: string,
     useCache: boolean,
 ): Promise<string[]> {
+    const service = message.serviceOverride || config.service;
     if (!useCache) {
-        const result = await getTranslationService()({...message, context, pageContext});
+        const result = await getTranslationService(service)({...message, context, pageContext});
         if (!Array.isArray(result)) throw new Error('批量翻译返回格式异常');
         return result as string[];
     }
 
-    const batchKey = buildCacheKey(message.origin, context, pageContext, 'batch');
+    const batchKey = buildCacheKey(message.origin, context, pageContext, 'batch', service);
     const existing = pendingBatches.get(batchKey);
     if (existing) return existing;
 
     const request = (async () => {
         const cached = await Promise.all(
-            message.origin.map((origin) => translationCache.get(buildCacheKey(origin, context, pageContext, 'batch'))),
+            message.origin.map((origin) => translationCache.get(buildCacheKey(origin, context, pageContext, 'batch', service))),
         );
         const missingIndexes = cached
             .map((value, index) => value === null ? index : -1)
@@ -335,12 +340,12 @@ async function translateBatchWithCache(
         const uniqueMissingOrigins = Array.from(
             new Map(
                 missingEntries.map(({origin}) => [
-                    buildCacheKey(origin, context, pageContext, 'batch'),
+                    buildCacheKey(origin, context, pageContext, 'batch', service),
                     origin,
                 ]),
             ).values(),
         );
-        const translated = await getTranslationService()({
+        const translated = await getTranslationService(service)({
             ...message,
             context,
             pageContext,
@@ -353,15 +358,15 @@ async function translateBatchWithCache(
         const result = [...cached] as Array<string | null>;
         const translatedByKey = new Map(
             uniqueMissingOrigins.map((origin, index) => [
-                buildCacheKey(origin, context, pageContext, 'batch'),
+                buildCacheKey(origin, context, pageContext, 'batch', service),
                 translated[index],
             ]),
         );
         await Promise.all(missingEntries.map(async ({index, origin}) => {
-            const value = translatedByKey.get(buildCacheKey(origin, context, pageContext, 'batch'));
+            const value = translatedByKey.get(buildCacheKey(origin, context, pageContext, 'batch', service));
             result[index] = value as string;
             if (isCacheableResult(origin, value)) {
-                await translationCache.set(buildCacheKey(origin, context, pageContext, 'batch'), value);
+                await translationCache.set(buildCacheKey(origin, context, pageContext, 'batch', service), value);
             }
         }));
 
@@ -382,8 +387,13 @@ async function translateBatchWithCache(
 
 async function translateWithCache(message: TranslationRequestMessage): Promise<string | string[]> {
     await configReady;
-    const missingCredentialMessage = getMissingCredentialMessage(config.service, config);
+    const serviceOverride = message.serviceOverride;
+    const selectedService = serviceOverride || config.service;
+    const missingCredentialMessage = getMissingCredentialMessage(selectedService, config);
     if (missingCredentialMessage) throw new Error(missingCredentialMessage);
+    if (serviceOverride && !servicesType.machine.has(serviceOverride) && !servicesType.isAI(serviceOverride)) {
+        throw new Error('视频字幕翻译服务不可用，请在设置中选择已配置的机器翻译或 AI 服务');
+    }
     const context = typeof message.context === 'string' ? message.context : '';
     const rawPageContext = typeof message.pageContext === 'string' ? message.pageContext : '';
     const pageContext = await addPageSummary(rawPageContext);
@@ -547,7 +557,13 @@ export default defineBackground({
                     }
 
                     if (message.type === 'openOptionsPage') {
-                        await browser.runtime.openOptionsPage();
+                        if (message.section === 'settings-video') {
+                            await browser.tabs.create({
+                                url: `${browser.runtime.getURL('/options.html')}#settings-video`,
+                            });
+                        } else {
+                            await browser.runtime.openOptionsPage();
+                        }
                         resolve({ success: true });
                         return;
                     }
