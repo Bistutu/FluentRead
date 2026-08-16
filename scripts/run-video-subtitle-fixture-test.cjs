@@ -167,12 +167,17 @@ async function main() {
       const controls = document.createElement('div');
       controls.className = 'ytp-right-controls';
       controls.style.cssText = 'position:absolute;right:20px;bottom:18px;display:flex;align-items:center;gap:8px;width:auto;height:52px;z-index:8;';
+      const existingTranslationButton = document.createElement('button');
+      existingTranslationButton.type = 'button';
+      existingTranslationButton.className = 'fixture-existing-translation-button';
+      existingTranslationButton.textContent = '其他翻译';
+      existingTranslationButton.style.cssText = 'width:64px;height:40px;color:#fff;background:#334155;border:0;border-radius:8px;font-size:12px;';
       const settings = document.createElement('button');
       settings.type = 'button';
       settings.className = 'ytp-settings-button';
       settings.textContent = '⚙';
       settings.style.cssText = 'width:40px;height:40px;color:#fff;background:#334155;border:0;border-radius:8px;font-size:20px;';
-      controls.appendChild(settings);
+      controls.append(existingTranslationButton, settings);
 
       player.append(surface, video, container, controls);
     });
@@ -195,12 +200,13 @@ async function main() {
         iconRect: iconRect?.toJSON() || null,
         iconTag: icon?.tagName || '',
         iconSrc: icon instanceof HTMLImageElement ? icon.src : '',
+        buttonIsLeftmost: button?.parentElement?.firstElementChild === button,
         iconCenterDelta: buttonRect && iconRect
           ? Math.abs((buttonRect.top + buttonRect.height / 2) - (iconRect.top + iconRect.height / 2))
           : null,
       };
     });
-    if (!playerUi.buttonPresent || !playerUi.buttonInControls || playerUi.iconTag !== 'IMG' || !playerUi.iconSrc.includes('/icon/128.png') || playerUi.iconCenterDelta === null || playerUi.iconCenterDelta > 2) {
+    if (!playerUi.buttonPresent || !playerUi.buttonInControls || !playerUi.buttonIsLeftmost || playerUi.iconTag !== 'IMG' || !playerUi.iconSrc.includes('/icon/128.png') || playerUi.iconCenterDelta === null || playerUi.iconCenterDelta > 2) {
       throw new Error(`播放器入口布局校验失败：${JSON.stringify(playerUi)}`);
     }
 

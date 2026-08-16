@@ -979,14 +979,9 @@ export function mountVideoSubtitleTranslation(): () => void {
     }
     const playerButton = button as HTMLButtonElement;
     bindButtonClick(playerButton);
-    if (playerButton.parentElement !== controls) {
-      const rightControlsGroup = Array.from(controls.children)
-        .find((child) => child.matches('.ytp-right-controls-right, .ytp-settings-button')) || null;
-      if (rightControlsGroup) {
-        controls.insertBefore(playerButton, rightControlsGroup);
-      } else {
-        controls.appendChild(playerButton);
-      }
+    const firstControl = controls.firstElementChild;
+    if (playerButton.parentElement !== controls || firstControl !== playerButton) {
+      controls.insertBefore(playerButton, firstControl);
     }
     buttonElement = playerButton;
 
