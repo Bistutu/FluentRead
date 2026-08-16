@@ -682,7 +682,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     );
     title.append(
       heading,
-      createTextElement('span', 'fluent-read-video-menu-beta', 'Beta'),
+      createTextElement('span', 'fluent-read-video-menu-beta', 'Beta 测试'),
     );
     menu.appendChild(title);
 

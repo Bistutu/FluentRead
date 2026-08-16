@@ -184,7 +184,10 @@
         </button>
         <button class="feature-card video-feature-card" data-feature="video-subtitle" type="button" :disabled="!config.on" @click="openDrawer('video')">
           <span class="feature-icon teal">CC</span>
-          <span><strong>视频字幕 <em>Beta</em></strong><small>{{ videoSummary }}</small></span>
+          <span class="feature-copy">
+            <span class="feature-title"><strong>视频字幕</strong><em class="beta-badge">Beta 测试</em></span>
+            <small>{{ videoSummary }}</small>
+          </span>
           <i :class="{ active: config.videoTranslationEnabled }" />
         </button>
       </div>
@@ -299,7 +302,7 @@
       </div>
 
       <div v-else-if="activeDrawer === 'video'" class="drawer-content">
-        <div class="video-beta-banner"><span class="feature-icon teal">CC</span><span><strong>FluentRead · YouTube 字幕翻译</strong><small>Beta · 只处理播放器已经提供的字幕文本</small></span></div>
+        <div class="video-beta-banner"><span class="feature-icon teal">CC</span><span><strong>FluentRead · YouTube 字幕翻译</strong><small>Beta 测试 · 只处理播放器已经提供的字幕文本</small></span></div>
         <div class="setting-row">
           <span><strong>启用视频字幕翻译</strong><small>在 YouTube 原生字幕下方显示中文译文</small></span>
           <button class="switch compact" type="button" role="switch" :aria-checked="config.videoTranslationEnabled" aria-label="启用或关闭视频字幕翻译" @click="setVideoTranslationEnabled(!config.videoTranslationEnabled)"><i /></button>

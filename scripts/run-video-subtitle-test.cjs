@@ -70,11 +70,12 @@ async function main() {
         featurePresent: Boolean(document.querySelector('[data-feature="video-subtitle"]')),
         featureCount: document.querySelectorAll('.feature-card').length,
         imageFeaturePresent: [...document.querySelectorAll('.feature-card')].some((node) => node.textContent?.includes('图片翻译')),
+        videoBetaLabel: document.querySelector('[data-feature="video-subtitle"] .beta-badge')?.textContent?.trim(),
         popupHeight: document.body.scrollHeight,
         config: stored.config,
       };
     });
-    if (popupState.featureCount !== 6 || !popupState.imageFeaturePresent || popupState.config.videoService !== 'microsoft') {
+    if (popupState.featureCount !== 6 || !popupState.imageFeaturePresent || popupState.videoBetaLabel !== 'Beta 测试' || popupState.config.videoService !== 'microsoft') {
       throw new Error(`Popup 快捷功能卡校验失败：数量=${popupState.featureCount}，图片翻译=${popupState.imageFeaturePresent}`);
     }
     await popup.locator('[data-feature="video-subtitle"]').click();
@@ -95,6 +96,9 @@ async function main() {
       videoSection: Boolean(document.querySelector('#settings-video')),
       providerControl: Boolean(document.querySelector('[aria-label="视频字幕翻译服务"]')),
     }));
+    if (optionsState.activeNav !== '视频字幕 Beta 测试' || !optionsState.videoSection || !optionsState.providerControl) {
+      throw new Error(`视频字幕设置导航校验失败：${JSON.stringify(optionsState)}`);
+    }
     await options.screenshot({ path: path.join(artifactsDir, 'options-video-subtitle.png'), fullPage: true });
     await options.close();
 
@@ -139,8 +143,9 @@ async function main() {
       bilingualSelected: document.querySelector('#fluent-read-video-subtitle-menu [data-mode="bilingual"]')?.getAttribute('aria-checked') === 'true',
       service: document.querySelector('#fluent-read-video-subtitle-menu [data-service-label]')?.textContent,
       brand: document.querySelector('#fluent-read-video-subtitle-menu .fluent-read-video-menu-brand')?.textContent,
+      beta: document.querySelector('#fluent-read-video-subtitle-menu .fluent-read-video-menu-beta')?.textContent,
     }));
-    if (playerMenuState.modeCount !== 3 || !playerMenuState.downloadPresent || !playerMenuState.bilingualSelected || playerMenuState.service !== '微软翻译' || playerMenuState.brand !== 'FluentRead') {
+    if (playerMenuState.modeCount !== 3 || !playerMenuState.downloadPresent || !playerMenuState.bilingualSelected || playerMenuState.service !== '微软翻译' || playerMenuState.brand !== 'FluentRead' || playerMenuState.beta !== 'Beta 测试') {
       throw new Error(`播放器字幕翻译菜单校验失败：${JSON.stringify(playerMenuState)}`);
     }
     await page.screenshot({ path: path.join(artifactsDir, 'youtube-video-subtitle-menu.png'), fullPage: false });

@@ -85,6 +85,20 @@ async function main() {
         useCache: false,
       }});
     });
+    const popupFeature = await control.evaluate(() => ({
+      cardPresent: Boolean(document.querySelector('[data-feature="video-subtitle"]')),
+      beta: document.querySelector('[data-feature="video-subtitle"] .beta-badge')?.textContent?.trim() || '',
+    }));
+    if (!popupFeature.cardPresent || popupFeature.beta !== 'Beta 测试') {
+      throw new Error(`Popup 视频字幕 Beta 徽标校验失败：${JSON.stringify(popupFeature)}`);
+    }
+    await control.locator('[data-feature="video-subtitle"]').click();
+    await control.waitForFunction(() => Boolean([...document.querySelectorAll('.drawer-content')].find((node) => node.textContent?.includes('视频翻译服务'))), null, { timeout: 10000 });
+    const popupDrawerBeta = await control.locator('.video-beta-banner small').textContent();
+    if (!popupDrawerBeta?.startsWith('Beta 测试')) {
+      throw new Error(`Popup 视频字幕抽屉 Beta 徽标校验失败：${popupDrawerBeta}`);
+    }
+    await control.screenshot({ path: path.join(artifactsDir, 'popup-video-beta-test.png'), fullPage: true });
 
     const page = await context.newPage();
     const pageErrors = [];
@@ -168,11 +182,12 @@ async function main() {
     await page.waitForFunction(() => document.querySelector('#fluent-read-video-subtitle-menu')?.hidden === false, null, { timeout: 10000 });
     const menu = await page.evaluate(() => ({
       brand: document.querySelector('#fluent-read-video-subtitle-menu .fluent-read-video-menu-brand')?.textContent || '',
+      beta: document.querySelector('#fluent-read-video-subtitle-menu .fluent-read-video-menu-beta')?.textContent || '',
       service: document.querySelector('#fluent-read-video-subtitle-menu [data-service-label]')?.textContent || '',
       bilingual: document.querySelector('#fluent-read-video-subtitle-menu [data-mode="bilingual"]')?.getAttribute('aria-checked') === 'true',
       rect: document.querySelector('#fluent-read-video-subtitle-menu')?.getBoundingClientRect().toJSON() || null,
     }));
-    if (menu.brand !== 'FluentRead' || menu.service !== '微软翻译' || !menu.bilingual || !menu.rect || menu.rect.width <= 0 || menu.rect.height <= 0) {
+    if (menu.brand !== 'FluentRead' || menu.beta !== 'Beta 测试' || menu.service !== '微软翻译' || !menu.bilingual || !menu.rect || menu.rect.width <= 0 || menu.rect.height <= 0) {
       throw new Error(`播放器菜单校验失败：${JSON.stringify(menu)}`);
     }
     await page.screenshot({ path: path.join(artifactsDir, 'video-subtitle-fixture-menu.png'), fullPage: false });
@@ -287,6 +302,8 @@ async function main() {
       url,
       playerUi,
       menu,
+      popupFeature,
+      popupDrawerBeta,
       beforeRedraw,
       duringRedraw,
       afterRedraw,
