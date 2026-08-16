@@ -185,8 +185,28 @@ footer button {
 :root.dark .feature-icon.amber { background: rgba(177, 104, 29, .17); }
 :root.dark .feature-icon.teal { background: rgba(8, 127, 130, .18); }
 .feature-card > span:nth-child(2) { display: flex; flex-direction: column; min-width: 0; }
+.feature-title { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
 .feature-card strong { font-size: 11.5px; line-height: 1.4; }
 .feature-card small { margin-top: 2px; overflow: hidden; color: var(--muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.beta-badge {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  height: 15px;
+  padding: 0 5px;
+  border: 1px solid rgba(239, 71, 118, .22);
+  border-radius: 999px;
+  color: var(--brand-strong);
+  background: var(--brand-soft);
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 750;
+  letter-spacing: .1px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.image-translation-preview .feature-title { flex-wrap: wrap; }
+.image-translation-preview .feature-title strong { font-size: 11px; }
 .feature-card > i { width: 6px; height: 6px; }
 .feature-card > b { color: var(--muted); font-size: 18px; font-weight: 400; }
 .feature-card:disabled, .translate-button:disabled, select:disabled { cursor: not-allowed; opacity: .48; }

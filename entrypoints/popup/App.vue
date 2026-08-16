@@ -144,7 +144,10 @@
         </button>
         <button class="feature-card" type="button" :disabled="!config.on" @click="openDrawer('image')">
           <span class="feature-icon teal">▧</span>
-          <span><strong>图片翻译</strong><small>{{ imageTranslationSummary }}</small></span>
+          <span class="feature-copy">
+            <span class="feature-title"><strong>图片翻译</strong><em class="beta-badge">Beta 测试</em></span>
+            <small>{{ imageTranslationSummary }}</small>
+          </span>
           <i :class="{ active: !config.disableImageTranslator }" />
         </button>
       </div>
@@ -247,7 +250,10 @@
       <div v-else-if="activeDrawer === 'image'" class="drawer-content">
         <div class="image-translation-preview">
           <div class="image-translation-preview-art"><span>文字</span><b>文</b></div>
-          <div><strong>悬停图片显示翻译入口</strong><small>点击图片右上角的小图标即可识别并翻译图片文字</small></div>
+          <div>
+            <span class="feature-title"><strong>悬停图片显示翻译入口</strong><em class="beta-badge">Beta 测试</em></span>
+            <small>点击图片右上角的小图标即可识别并翻译图片文字</small>
+          </div>
         </div>
         <div class="setting-row">
           <span><strong>启用图片翻译</strong><small>在网页图片右上角显示“文”按钮</small></span>
@@ -339,7 +345,7 @@ const drawerDescription = computed(() => ({
   selection: '选中文字后，按你的偏好显示原文与译文。',
   floating: '把全文翻译入口固定在最顺手的位置。',
   appearance: '调整双语布局、译文样式与界面主题。',
-  image: '把鼠标移到图片上，从图片右下角打开翻译入口。',
+  image: '把鼠标移到图片上，从图片右上角打开翻译入口。',
 }[activeDrawer.value]));
 const hoverChoices = [
   { value: 'Control', label: 'Ctrl' },
