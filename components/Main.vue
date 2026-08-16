@@ -265,6 +265,24 @@
           </el-col>
         </el-row>
 
+        <!-- AI 智能上下文 -->
+        <el-row class="settings-control-row">
+          <el-col :span="20" class="settings-control-label ai-context-label lightblue rounded-corner">
+            <el-tooltip class="box-item" effect="dark"
+                        content="开启后，AI 翻译会参考当前网页的标题、描述和相关正文片段；仅对大模型翻译服务生效。"
+                        placement="top-start" :show-after="500">
+              <span class="popup-text popup-vertical-left">AI 智能上下文<el-icon class="icon-margin">
+                  <ChatDotRound />
+                </el-icon></span>
+            </el-tooltip>
+            <small class="settings-control-hint">提升术语和歧义表达的语境准确度；首次请求还会额外生成摘要并增加一次调用。</small>
+          </el-col>
+
+          <el-col :span="4" class="settings-control-field flex-end">
+            <el-switch v-model="config.enableAIContext" :disabled="!canUseAIContext" class="settings-toggle" aria-label="AI 智能上下文" />
+          </el-col>
+        </el-row>
+
         <!-- 悬浮球开关 -->
       <el-row v-if="config.on" class="settings-control-row">
         <el-col :span="20" class="settings-control-label lightblue rounded-corner">
@@ -484,7 +502,7 @@
 
 // Main 处理配置信息
 import { computed, ref, watch, onUnmounted } from 'vue'
-import { models, options, servicesType, defaultOption } from "../entrypoints/utils/option";
+import { models, options, resolveConfiguredModel, servicesType, defaultOption } from "../entrypoints/utils/option";
 import { Config, normalizeConfig } from "@/entrypoints/utils/model";
 import { storage } from '@wxt-dev/storage';
 import { ChatDotRound, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
@@ -572,6 +590,11 @@ const setConfigurationService = (value: string) => {
 type ServiceSource = { value: string };
 
 const actualService = computed(() => config.value.service);
+const aiContextModel = computed(() => resolveConfiguredModel(
+  config.value.model[config.value.service],
+  config.value.customModel[config.value.service],
+));
+const canUseAIContext = computed(() => servicesType.isUseAIContext(config.value.service, aiContextModel.value));
 const filteredServices = computed(() =>
   options.services.filter((item: any) =>
     !([item.google].includes(item.value) && config.value.display !== 1),
@@ -973,6 +996,8 @@ const saveImport = async () => {
 
 .settings-status-copy strong { color: #172033; font-size: 16px; }
 .settings-status-copy small { color: #737c8f; font-size: 11px; }
+.ai-context-label { flex-direction: column; align-items: flex-start !important; gap: 4px; }
+.ai-context-label small { color: #8b93a4; font-size: 10px; line-height: 1.45; }
 .settings-status-control { align-items: center; gap: 13px; }
 .settings-status-badge {
   display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border: 1px solid #e1e5ed;

@@ -163,6 +163,10 @@ export const servicesType = {
 
     isMachine: (service: string) => servicesType.machine.has(service),
     isAI: (service: string) => servicesType.AI.has(service),
+    isUseAIContext: (service: string, model = '') =>
+        servicesType.AI.has(service)
+        && service !== services.huanYuanTranslation
+        && !(service === services.tongyi && model.startsWith('qwen-mt')),
     isUseToken: (service: string) => servicesType.useToken.has(service),
     isUseProxy: (service: string) => servicesType.useProxy.has(service),
     isUseModel: (service: string) => servicesType.useModel.has(service),
@@ -180,6 +184,11 @@ export const servicesType = {
 };
 
 export const customModelString = "自定义模型";
+
+/** Resolve the model that is actually sent to a provider. */
+export function resolveConfiguredModel(selectedModel?: string, customModel?: string): string {
+    return selectedModel === customModelString ? customModel || '' : selectedModel || '';
+}
 
 // 当前官方模型编号的单一来源，同时供列表和旧配置迁移使用。
 export const currentModelIds = {

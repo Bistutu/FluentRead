@@ -2,12 +2,13 @@ import {_service} from "@/entrypoints/service/_service";
 import {translateMicrosoftTexts} from "@/entrypoints/service/microsoft";
 import {config, configReady} from "@/entrypoints/utils/config";
 import {CONTEXT_MENU_IDS} from "@/entrypoints/utils/constant";
+import {resolveConfiguredModel, servicesType} from "@/entrypoints/utils/option";
 import {synthesizeEdgeTts} from "@/entrypoints/utils/edgeTts";
-import {customModelString} from "@/entrypoints/utils/option";
 import {
     buildTranslationCacheKey,
     translationCache,
 } from "@/entrypoints/utils/translationCache";
+import {buildPageSummaryPrompt, buildPageSummarySystemPrompt} from "@/entrypoints/utils/template";
 
 // 翻译状态管理
 let translationStateMap = new Map<number, boolean>(); // tabId -> isTranslated
@@ -33,6 +34,7 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 
 interface TranslationRequestMessageBase {
     context?: string;
+    pageContext?: string;
     useCache?: boolean;
 }
 
@@ -45,9 +47,11 @@ type CacheRequestMode = 'single' | 'batch';
 const TRANSLATION_CACHE_CLEANUP_ALARM = 'fluentread-translation-cache-cleanup';
 
 function getSelectedModel(service: string): string {
-    return config.model[service] === customModelString
-        ? config.customModel[service] || ''
-        : config.model[service] || '';
+    return resolveConfiguredModel(config.model[service], config.customModel[service]);
+}
+
+function isAIContextEnabled(): boolean {
+    return config.enableAIContext && servicesType.isUseAIContext(config.service, getSelectedModel(config.service));
 }
 
 function getProviderEndpoint(service: string): string {
@@ -61,6 +65,7 @@ function getProviderEndpoint(service: string): string {
 function buildCacheKey(
     origin: string | string[],
     context: string,
+    pageContext: string,
     mode: CacheRequestMode,
 ): string {
     const service = config.service;
@@ -82,9 +87,10 @@ function buildCacheKey(
         userRole: config.user_role[service] || '',
         deepseekApiType: config.deepseekApiType,
         deepseekThinkingMode: config.deepseekThinkingMode,
-        // DeepL sends context to the provider. Other current adapters do not;
-        // omitting it there preserves cross-page cache hits.
+        // DeepL sends the title context to the provider. AI adapters send the
+        // bounded webpage context through their prompt templates.
         context: service === 'deepL' ? context : undefined,
+        pageContext: isAIContextEnabled() && service === config.service ? pageContext : undefined,
     });
 }
 
@@ -106,17 +112,109 @@ function getTranslationService() {
 
 const pendingTranslations = new Map<string, Promise<string>>();
 const pendingBatches = new Map<string, Promise<string[]>>();
+const pageSummaryCache = new Map<string, string>();
+const pendingPageSummaries = new Map<string, Promise<string>>();
+const PAGE_SUMMARY_CACHE_SIZE = 8;
+const PAGE_SUMMARY_LIMIT = 1200;
+
+function buildPageSummaryCacheKey(pageContext: string): string {
+    return buildTranslationCacheKey({
+        requestMode: 'page-summary',
+        sourceLanguage: config.from,
+        targetLanguage: '',
+        sourceText: pageContext,
+        service: config.service,
+        model: getSelectedModel(config.service),
+        endpoint: getProviderEndpoint(config.service),
+        customBody: config.customBody[config.service] || '',
+    });
+}
+
+function cachePageSummary(key: string, value: string): void {
+    if (pageSummaryCache.size >= PAGE_SUMMARY_CACHE_SIZE) {
+        const oldestKey = pageSummaryCache.keys().next().value;
+        if (oldestKey) pageSummaryCache.delete(oldestKey);
+    }
+    pageSummaryCache.set(key, value);
+}
+
+/**
+ * Read Frog generates one short summary per page context and reuses it for
+ * the paragraphs that follow. FluentRead keeps the same behavior in the
+ * background so the extra request is shared by all content-script callers.
+ * A summary failure is deliberately non-fatal: the raw readable context is
+ * still useful and the ordinary translation must continue.
+ */
+async function addPageSummary(pageContext: string): Promise<string> {
+    if (!isAIContextEnabled() || !pageContext.trim()) {
+        return '';
+    }
+
+    const key = buildPageSummaryCacheKey(pageContext);
+    const cached = pageSummaryCache.get(key);
+    if (cached) return cached;
+
+    const existing = pendingPageSummaries.get(key);
+    if (existing) return existing;
+
+    const request = (async () => {
+        try {
+            // Keep summaries across MV3 service-worker restarts, matching Read
+            // Frog's article-summary cache. Cache failures are swallowed by
+            // translationCache and simply fall through to generation.
+            const persisted = await translationCache.get(key);
+            if (persisted !== null) {
+                cachePageSummary(key, persisted);
+                return persisted;
+            }
+
+            const result = await getTranslationService()({
+                origin: '',
+                context: '',
+                pageContext: '',
+                summaryPrompt: buildPageSummaryPrompt(pageContext),
+                summarySystemPrompt: buildPageSummarySystemPrompt(),
+            });
+            const summary = typeof result === 'string' ? result.trim().slice(0, PAGE_SUMMARY_LIMIT) : '';
+            if (!summary) {
+                cachePageSummary(key, pageContext);
+                return pageContext;
+            }
+
+            const summarizedContext = `Page summary (AI-generated reference):\n${summary}\n\n${pageContext}`.slice(0, 4000);
+            cachePageSummary(key, summarizedContext);
+            await translationCache.set(key, summarizedContext);
+            return summarizedContext;
+        } catch (error) {
+            console.warn('[FluentRead] page context summary failed; using extracted context:', error);
+            cachePageSummary(key, pageContext);
+            return pageContext;
+        }
+    })();
+
+    pendingPageSummaries.set(key, request);
+    void request.then(
+        () => {
+            if (pendingPageSummaries.get(key) === request) pendingPageSummaries.delete(key);
+        },
+        () => {
+            if (pendingPageSummaries.get(key) === request) pendingPageSummaries.delete(key);
+        },
+    );
+    return request;
+}
 
 async function translateSingleWithCache(
     message: TranslationSingleRequestMessage,
     context: string,
+    pageContext: string,
     useCache: boolean,
 ): Promise<string> {
     if (!useCache) {
-        return getTranslationService()(message);
+        return getTranslationService()({...message, context, pageContext});
     }
 
-    const key = buildCacheKey(message.origin, context, 'single');
+    const key = buildCacheKey(message.origin, context, pageContext, 'single');
     const existing = pendingTranslations.get(key);
     if (existing) return existing;
 
@@ -124,7 +222,7 @@ async function translateSingleWithCache(
         const cached = await translationCache.get(key);
         if (cached !== null) return cached;
 
-        const result = await getTranslationService()({...message, context});
+        const result = await getTranslationService()({...message, context, pageContext});
         if (isCacheableResult(message.origin, result)) {
             await translationCache.set(key, result);
         }
@@ -146,21 +244,22 @@ async function translateSingleWithCache(
 async function translateBatchWithCache(
     message: TranslationBatchRequestMessage,
     context: string,
+    pageContext: string,
     useCache: boolean,
 ): Promise<string[]> {
     if (!useCache) {
-        const result = await getTranslationService()({...message, context});
+        const result = await getTranslationService()({...message, context, pageContext});
         if (!Array.isArray(result)) throw new Error('批量翻译返回格式异常');
         return result as string[];
     }
 
-    const batchKey = buildCacheKey(message.origin, context, 'batch');
+    const batchKey = buildCacheKey(message.origin, context, pageContext, 'batch');
     const existing = pendingBatches.get(batchKey);
     if (existing) return existing;
 
     const request = (async () => {
         const cached = await Promise.all(
-            message.origin.map((origin) => translationCache.get(buildCacheKey(origin, context, 'batch'))),
+            message.origin.map((origin) => translationCache.get(buildCacheKey(origin, context, pageContext, 'batch'))),
         );
         const missingIndexes = cached
             .map((value, index) => value === null ? index : -1)
@@ -177,7 +276,7 @@ async function translateBatchWithCache(
         const uniqueMissingOrigins = Array.from(
             new Map(
                 missingEntries.map(({origin}) => [
-                    buildCacheKey(origin, context, 'batch'),
+                    buildCacheKey(origin, context, pageContext, 'batch'),
                     origin,
                 ]),
             ).values(),
@@ -185,6 +284,7 @@ async function translateBatchWithCache(
         const translated = await getTranslationService()({
             ...message,
             context,
+            pageContext,
             origin: uniqueMissingOrigins,
         });
         if (!Array.isArray(translated) || translated.length !== uniqueMissingOrigins.length) {
@@ -194,15 +294,15 @@ async function translateBatchWithCache(
         const result = [...cached] as Array<string | null>;
         const translatedByKey = new Map(
             uniqueMissingOrigins.map((origin, index) => [
-                buildCacheKey(origin, context, 'batch'),
+                buildCacheKey(origin, context, pageContext, 'batch'),
                 translated[index],
             ]),
         );
         await Promise.all(missingEntries.map(async ({index, origin}) => {
-            const value = translatedByKey.get(buildCacheKey(origin, context, 'batch'));
+            const value = translatedByKey.get(buildCacheKey(origin, context, pageContext, 'batch'));
             result[index] = value as string;
             if (isCacheableResult(origin, value)) {
-                await translationCache.set(buildCacheKey(origin, context, 'batch'), value);
+                await translationCache.set(buildCacheKey(origin, context, pageContext, 'batch'), value);
             }
         }));
 
@@ -224,12 +324,14 @@ async function translateBatchWithCache(
 async function translateWithCache(message: TranslationRequestMessage): Promise<string | string[]> {
     await configReady;
     const context = typeof message.context === 'string' ? message.context : '';
+    const rawPageContext = typeof message.pageContext === 'string' ? message.pageContext : '';
+    const pageContext = await addPageSummary(rawPageContext);
     const useCache = isCacheEnabled(message);
 
     if (Array.isArray(message.origin)) {
-        return translateBatchWithCache(message as TranslationBatchRequestMessage, context, useCache);
+        return translateBatchWithCache(message as TranslationBatchRequestMessage, context, pageContext, useCache);
     }
-    return translateSingleWithCache(message as TranslationSingleRequestMessage, context, useCache);
+    return translateSingleWithCache(message as TranslationSingleRequestMessage, context, pageContext, useCache);
 }
 
 function setupTranslationCacheCleanup(): void {
@@ -402,6 +504,7 @@ export default defineBackground({
 
                     if (message.type === 'clearTranslationCache') {
                         await translationCache.clear();
+                        pageSummaryCache.clear();
                         resolve({ success: true });
                         return;
                     }
