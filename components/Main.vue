@@ -205,7 +205,7 @@
 
       <el-row class="settings-control-row">
         <el-col :span="12" class="settings-control-label lightblue rounded-corner">
-          <el-tooltip class="box-item" effect="dark" content="视频字幕独立使用机器翻译服务，默认 DeepLX；网页翻译仍使用上方的文本翻译服务。" placement="top-start" :show-after="500">
+          <el-tooltip class="box-item" effect="dark" content="视频字幕独立选择翻译服务，默认微软翻译；AI 服务会提前预取字幕，网页翻译仍使用上方的文本翻译服务。" placement="top-start" :show-after="500">
             <span class="popup-text popup-vertical-left">视频翻译服务<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
           </el-tooltip>
         </el-col>
@@ -218,7 +218,7 @@
 
       <div class="video-settings-note">
         <strong>使用方式</strong>
-        <p>打开 YouTube 视频的原生字幕后，FluentRead 会在字幕下方显示译文。字幕变化时自动更新；切换视频或关闭此功能会清理译文。</p>
+        <p>打开 YouTube 视频的原生字幕后，FluentRead 会在字幕下方显示译文。机器翻译约提前 10 秒、AI 服务约提前 30 秒准备字幕；切换视频或关闭此功能会清理译文。</p>
       </div>
     </section>
 
@@ -831,9 +831,7 @@ const aiContextModel = computed(() => resolveConfiguredModel(
   config.value.customModel[config.value.service],
 ));
 const canUseAIContext = computed(() => servicesType.isUseAIContext(config.value.service, aiContextModel.value));
-const videoServiceOptions = computed(() => options.services.filter((item: any) =>
-  !item.disabled && servicesType.machine.has(item.value),
-));
+const videoServiceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
 const filteredServices = computed(() =>
   options.services.filter((item: any) =>
     !([item.google].includes(item.value) && config.value.display !== 1),

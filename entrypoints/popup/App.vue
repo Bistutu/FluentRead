@@ -313,7 +313,7 @@
             <option v-for="item in videoServiceOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
           </select>
         </label>
-        <small class="drawer-hint">目前支持 YouTube；播放器内会显示“译”按钮，可切换字幕模式、显示状态和下载 SRT。视频默认使用微软翻译；如切换 DeepLX，可在完整设置中配置服务地址。</small>
+        <small class="drawer-hint">目前支持 YouTube；播放器内会显示 FluentRead 图标，可切换字幕模式、显示状态和下载 SRT。视频默认使用微软翻译；AI 服务会提前预取字幕，如切换 DeepLX，可在完整设置中配置服务地址。</small>
       </div>
 
       <div v-else class="drawer-content">
@@ -357,8 +357,6 @@ import { options } from '@/entrypoints/utils/option';
 import { getMissingCredentialMessage } from '@/entrypoints/utils/configValidation';
 import ServiceIcon from '@/components/ServiceIcon.vue';
 
-import { servicesType } from '@/entrypoints/utils/option';
-
 type DrawerName = 'hover' | 'selection' | 'floating' | 'appearance' | 'image' | 'video';
 type SettingsSection = 'settings-general' | 'settings-shortcuts' | 'settings-services' | 'settings-video';
 const CustomHotkeyInput = defineAsyncComponent(() => import('@/components/CustomHotkeyInput.vue'));
@@ -394,7 +392,7 @@ const drawerSettingsSection: Record<DrawerName, SettingsSection> = {
 const persistConfig = (value: unknown) => requestConfigSave(value, browser.runtime.sendMessage.bind(browser.runtime));
 
 const serviceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
-const videoServiceOptions = computed(() => options.services.filter((item: any) => !item.disabled && servicesType.machine.has(item.value)));
+const videoServiceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
 const popularServiceValues = ['freeTranslation', 'microsoft', 'google', 'deepL', 'deeplx', 'deepseek', 'openai', 'gemini', 'claude'];
 const popularServiceOptions = computed(() => popularServiceValues
   .map(value => serviceOptions.value.find((item: any) => item.value === value))

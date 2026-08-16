@@ -53,7 +53,7 @@ interface TranslationRequestMessageBase {
     context?: string;
     pageContext?: string;
     useCache?: boolean;
-    /** 视频字幕使用的独立机器翻译服务；普通网页请求不设置。 */
+    /** 视频字幕使用的独立翻译服务；普通网页请求不设置。 */
     serviceOverride?: string;
 }
 

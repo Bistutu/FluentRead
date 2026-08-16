@@ -12,6 +12,7 @@ vi.mock('webextension-polyfill', () => ({
 }));
 import {
     getVideoServiceLabel,
+    getVideoPretranslationWindowMs,
     isYouTubeVideoPage,
     normalizeVideoSubtitleDisplayMode,
     readVisibleCaptionText,
@@ -69,5 +70,7 @@ describe('YouTube 视频字幕识别', () => {
         expect(normalizeVideoSubtitleDisplayMode('unknown')).toBe('bilingual');
         expect(getVideoServiceLabel('microsoft')).toBe('微软翻译');
         expect(getVideoServiceLabel('custom-service')).toBe('custom-service');
+        expect(getVideoPretranslationWindowMs('microsoft')).toBe(10_000);
+        expect(getVideoPretranslationWindowMs('openai')).toBe(30_000);
     });
 });

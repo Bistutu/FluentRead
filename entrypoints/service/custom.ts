@@ -6,15 +6,16 @@ import {contentPostHandler} from "@/entrypoints/utils/check";
 import {appendOptionalBearer} from './auth';
 
 async function custom(message: any) {
+    const service = message.serviceOverride || services.custom;
 
     let headers = new Headers();
     headers.append('Content-Type', 'application/json');
-    appendOptionalBearer(headers, config.token[services.custom]);
+    appendOptionalBearer(headers, config.token[service]);
 
     const resp = await fetch(config.custom, {
         method: method.POST,
         headers: headers,
-        body: commonMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt)
+        body: commonMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service)
     });
 
     if (resp.ok) {

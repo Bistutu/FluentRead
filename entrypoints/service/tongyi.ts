@@ -6,22 +6,23 @@ import {appendOptionalBearer} from './auth';
 
 // 文档：https://help.aliyun.com/zh/dashscope/developer-reference/tongyi-thousand-questions-metering-and-billing
 async function tongyi(message: any) {
+    const service = message.serviceOverride || services.tongyi;
     // 构建请求头
     let headers = new Headers();
     headers.append('Content-Type', 'application/json');
-    appendOptionalBearer(headers, config.token[services.tongyi]);
+    appendOptionalBearer(headers, config.token[service]);
 
     // 判断是否使用代理
-    const selectedModel = config.model[services.tongyi];
+    const selectedModel = config.model[service];
     const officialUrl = selectedModel === currentModelIds.tongyiTokenPlan
         ? tongyiTokenPlanUrl
         : urls[services.tongyi];
-    const url: string = config.proxy[config.service] || officialUrl;
+    const url: string = config.proxy[service] || officialUrl;
 
     const resp = await fetch(url, {
         method: method.POST,
         headers: headers,
-        body: tongyiMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt)
+        body: tongyiMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service)
     });
 
     if (resp.ok) {

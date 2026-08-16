@@ -4,19 +4,20 @@ import {config} from "@/entrypoints/utils/config";
 import {appendOptionalBearer} from './auth';
 
 async function coze( message: any) {
+    const service = message.serviceOverride || config.service;
     // 构建请求头
     let headers = new Headers();
     headers.append('Content-Type', 'application/json');
-    appendOptionalBearer(headers, config.token[config.service]);
+    appendOptionalBearer(headers, config.token[service]);
 
     // 判断是否使用代理
-    let url: string = config.proxy[config.service] ? config.proxy[config.service] : urls[config.service];
+    let url: string = config.proxy[service] ? config.proxy[service] : urls[service];
 
     // 发起 fetch 请求
     const resp = await fetch(url, {
         method: method.POST,
         headers: headers,
-        body: cozeTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt)
+        body: cozeTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service)
     });
 
     if (resp.ok) {

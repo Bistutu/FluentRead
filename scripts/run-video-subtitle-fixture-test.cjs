@@ -45,19 +45,34 @@ async function main() {
   });
 
   let translationRequests = 0;
+  const translationSources = [];
+  const aiTranslationSources = [];
   await context.route('https://edge.microsoft.com/translate/translatetext**', async (route) => {
     translationRequests += 1;
     const body = route.request().postDataJSON();
     const source = Array.isArray(body) ? String(body[0] || '') : '';
+    translationSources.push(source);
     const translated = source === 'and the housing market took a hit.'
       ? '房地产市场受到了冲击。'
       : source === 'understand from [music] the axioms and the basics.'
         ? '从音乐中理解公理和基础。'
+        : source === 'This subtitle was translated in advance.'
+          ? '预先翻译的字幕。'
         : `【译文】${source}`;
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify([{ translations: [{ text: translated }] }]),
+    });
+  });
+  await context.route('https://api.openai.com/v1/chat/completions**', async (route) => {
+    const body = route.request().postDataJSON();
+    const source = body?.messages?.findLast?.((message) => message?.role === 'user')?.content || '';
+    aiTranslationSources.push(String(source));
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ choices: [{ message: { content: 'AI预先翻译的字幕。' } }] }),
     });
   });
 
@@ -98,6 +113,10 @@ async function main() {
     if (!popupDrawerBeta?.startsWith('Beta 测试')) {
       throw new Error(`Popup 视频字幕抽屉 Beta 徽标校验失败：${popupDrawerBeta}`);
     }
+    const popupVideoServiceOptions = await control.locator('.drawer-content .select-row select option').allTextContents();
+    if (!popupVideoServiceOptions.includes('OpenAI') || !popupVideoServiceOptions.includes('微软翻译')) {
+      throw new Error(`Popup 视频翻译服务没有同时提供机器翻译和 AI 服务：${JSON.stringify(popupVideoServiceOptions)}`);
+    }
     await control.screenshot({ path: path.join(artifactsDir, 'popup-video-beta-test.png'), fullPage: true });
 
     const page = await context.newPage();
@@ -132,6 +151,11 @@ async function main() {
       label.style.cssText = 'position:absolute;left:28px;top:24px;color:#94a3b8;font:600 18px/1.4 Arial,sans-serif;';
       surface.appendChild(label);
 
+      const video = document.createElement('video');
+      video.className = 'html5-main-video';
+      video.muted = true;
+      video.style.cssText = 'position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;';
+
       const container = document.createElement('div');
       container.id = 'ytp-caption-window-container';
       container.style.cssText = 'position:absolute;left:0;right:0;top:66%;height:18%;z-index:4;text-align:center;color:#fff;font:600 30px/1.35 Arial,sans-serif;';
@@ -150,7 +174,7 @@ async function main() {
       settings.style.cssText = 'width:40px;height:40px;color:#fff;background:#334155;border:0;border-radius:8px;font-size:20px;';
       controls.appendChild(settings);
 
-      player.append(surface, container, controls);
+      player.append(surface, video, container, controls);
     });
 
     await page.waitForFunction(() => {
@@ -169,12 +193,14 @@ async function main() {
         buttonEnabled: button?.getAttribute('aria-pressed') === 'true',
         buttonRect: buttonRect?.toJSON() || null,
         iconRect: iconRect?.toJSON() || null,
+        iconTag: icon?.tagName || '',
+        iconSrc: icon instanceof HTMLImageElement ? icon.src : '',
         iconCenterDelta: buttonRect && iconRect
           ? Math.abs((buttonRect.top + buttonRect.height / 2) - (iconRect.top + iconRect.height / 2))
           : null,
       };
     });
-    if (!playerUi.buttonPresent || !playerUi.buttonInControls || playerUi.iconCenterDelta === null || playerUi.iconCenterDelta > 2) {
+    if (!playerUi.buttonPresent || !playerUi.buttonInControls || playerUi.iconTag !== 'IMG' || !playerUi.iconSrc.includes('/icon/128.png') || playerUi.iconCenterDelta === null || playerUi.iconCenterDelta > 2) {
       throw new Error(`播放器入口布局校验失败：${JSON.stringify(playerUi)}`);
     }
 
@@ -296,6 +322,78 @@ async function main() {
     }, afterRedraw, { timeout: 20000 });
     const secondTranslation = await page.locator(overlaySelector).textContent();
 
+    const pretranslatedSource = 'This subtitle was translated in advance.';
+    const prefetchRequestStart = translationSources.filter((source) => source === pretranslatedSource).length;
+    await page.evaluate((source) => {
+      const video = document.querySelector('video.html5-main-video');
+      if (video) {
+        try { video.currentTime = 0; } catch {}
+        video.dispatchEvent(new Event('timeupdate'));
+      }
+      window.postMessage({
+        source: 'fluent-read',
+        type: 'fluent-read-youtube-timedtext',
+        url: 'https://www.youtube.com/api/timedtext?v=fixture&lang=en',
+        responseText: JSON.stringify({ events: [{ tStartMs: 8000, dDurationMs: 2000, segs: [{ utf8: source }] }] }),
+      }, window.location.origin);
+    }, pretranslatedSource);
+    await page.waitForTimeout(1200);
+    const prefetchRequests = translationSources.filter((source) => source === pretranslatedSource).length - prefetchRequestStart;
+    if (prefetchRequests !== 1) {
+      throw new Error(`时间轴前置翻译没有提前请求一次：${JSON.stringify({ prefetchRequests, translationSources })}`);
+    }
+    await page.evaluate((source) => {
+      const segment = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
+      if (segment) segment.textContent = source;
+    }, pretranslatedSource);
+    await page.waitForFunction((selector) => document.querySelector(selector)?.textContent === '预先翻译的字幕。', overlaySelector, { timeout: 20000 });
+    const displayedPrefetchTranslation = await page.locator(overlaySelector).textContent();
+    const displayedPrefetchRequests = translationSources.filter((source) => source === pretranslatedSource).length;
+    if (displayedPrefetchRequests - prefetchRequestStart !== 1) {
+      throw new Error(`已前置翻译的字幕再次显示时重复请求：${JSON.stringify({ prefetchRequestStart, displayedPrefetchRequests, translationSources })}`);
+    }
+
+    await control.evaluate(async () => {
+      const stored = await chrome.storage.local.get('config');
+      await chrome.storage.local.set({ config: {
+        ...(stored.config || {}),
+        videoService: 'openai',
+        videoServiceDefaultMigrated: true,
+        useCache: false,
+        token: { ...(stored.config?.token || {}), openai: 'fixture-token' },
+        model: { ...(stored.config?.model || {}), openai: 'fixture-model' },
+      }});
+    });
+    await page.waitForFunction(() => document.querySelector('#fluent-read-video-subtitle-menu [data-service-label]')?.textContent === 'OpenAI', null, { timeout: 10000 });
+    const aiPretranslatedSource = 'This AI subtitle was translated in advance.';
+    await page.evaluate((source) => {
+      const video = document.querySelector('video.html5-main-video');
+      if (video) {
+        try { video.currentTime = 0; } catch {}
+        video.dispatchEvent(new Event('timeupdate'));
+      }
+      window.postMessage({
+        source: 'fluent-read',
+        type: 'fluent-read-youtube-timedtext',
+        url: 'https://www.youtube.com/api/timedtext?v=fixture-ai&lang=en',
+        responseText: JSON.stringify({ events: [{ tStartMs: 20000, dDurationMs: 2000, segs: [{ utf8: source }] }] }),
+      }, window.location.origin);
+    }, aiPretranslatedSource);
+    await page.waitForTimeout(1500);
+    const aiPrefetchRequests = aiTranslationSources.filter((source) => source.includes(aiPretranslatedSource));
+    if (aiPrefetchRequests.length !== 1) {
+      throw new Error(`AI 字幕没有按 30 秒窗口前置翻译：${JSON.stringify({ aiTranslationSources })}`);
+    }
+    await page.evaluate((source) => {
+      const segment = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
+      if (segment) segment.textContent = source;
+    }, aiPretranslatedSource);
+    await page.waitForFunction((selector) => document.querySelector(selector)?.textContent === 'AI预先翻译的字幕。', overlaySelector, { timeout: 20000 });
+    const aiDisplayedPrefetchTranslation = await page.locator(overlaySelector).textContent();
+    if (aiTranslationSources.filter((source) => source.includes(aiPretranslatedSource)).length !== 1) {
+      throw new Error(`AI 已前置翻译的字幕再次显示时重复请求：${JSON.stringify({ aiTranslationSources })}`);
+    }
+
     await page.screenshot({ path: path.join(artifactsDir, 'video-subtitle-fixture-player.png'), fullPage: false });
     console.log(JSON.stringify({
       ok: pageErrors.length === 0,
@@ -304,6 +402,7 @@ async function main() {
       menu,
       popupFeature,
       popupDrawerBeta,
+      popupVideoServiceOptions,
       beforeRedraw,
       duringRedraw,
       afterRedraw,
@@ -311,7 +410,13 @@ async function main() {
       progressiveTranslation,
       progressiveRequests,
       secondTranslation,
+      prefetchRequests,
+      displayedPrefetchTranslation,
+      displayedPrefetchRequests,
+      aiDisplayedPrefetchTranslation,
+      aiTranslationRequests: aiPrefetchRequests.length,
       translationRequests,
+      translationSources,
       pageErrors,
       artifactsDir,
     }, null, 2));

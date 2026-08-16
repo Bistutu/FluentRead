@@ -6,9 +6,10 @@ import {isApiKeyRequired} from "@/entrypoints/utils/configValidation";
 
 async function azureOpenai(message: any) {
     try {
+        const service = message.serviceOverride || config.service;
         // 验证必要的配置
-        const apiKey = config.token[config.service];
-        if ((!apiKey || apiKey.trim() === '') && isApiKeyRequired(config.service, config)) {
+        const apiKey = config.token[service];
+        if ((!apiKey || apiKey.trim() === '') && isApiKeyRequired(service, config)) {
             throw new Error('Azure OpenAI API Key 未配置，请在设置中输入有效的 API Key');
         }
 
@@ -28,7 +29,7 @@ async function azureOpenai(message: any) {
         const resp = await fetch(endpoint, {
             method: method.POST,
             headers,
-            body: commonMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt)
+            body: commonMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service)
         });
 
         if (!resp.ok) {

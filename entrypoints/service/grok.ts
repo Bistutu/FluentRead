@@ -11,15 +11,16 @@ import { appendOptionalBearer } from './auth';
  */
 async function grok(message: any) {
     try {
+        const service = message.serviceOverride || config.service;
         const headers = new Headers({'Content-Type': 'application/json'});
-        appendOptionalBearer(headers, config.token[config.service]);
+        appendOptionalBearer(headers, config.token[service]);
 
-        const url = config.proxy[config.service] || urls[config.service];
+        const url = config.proxy[service] || urls[service];
 
         const resp = await fetch(url, {
             method: method.POST,
             headers,
-            body: commonMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt)
+            body: commonMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service)
         });
 
         if (!resp.ok) {

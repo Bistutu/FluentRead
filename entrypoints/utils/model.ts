@@ -222,7 +222,9 @@ export function normalizeConfig(value: unknown): Config {
     // 执行一次迁移，避免覆盖用户在新版本中主动选择的 DeepLX。
     const shouldMigrateLegacyVideoDefault = source.videoService === services.deeplx
         && source.videoServiceDefaultMigrated !== true;
-    if (shouldMigrateLegacyVideoDefault || !servicesType.machine.has(normalized.videoService)) {
+    const supportsVideoService = servicesType.machine.has(normalized.videoService)
+        || servicesType.isAI(normalized.videoService);
+    if (shouldMigrateLegacyVideoDefault || !supportsVideoService) {
         normalized.videoService = services.microsoft;
     }
     normalized.videoServiceDefaultMigrated = true;

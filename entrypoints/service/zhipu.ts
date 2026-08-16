@@ -8,17 +8,18 @@ import {isApiKeyRequired} from "@/entrypoints/utils/configValidation";
 
 // 文档参考：https://open.bigmodel.cn/dev/api#nosdk
 async function zhipu(message: any) {
+    const service = message.serviceOverride || services.zhipu;
     // 智谱根据 token 获取 secret（签名密钥） 和 expiration
-    let token = config.token[services.zhipu];
+    let token = config.token[service];
     let secret, expiration;
-    config.extra[services.zhipu] && ({secret, expiration} = config.extra[services.zhipu]);
-    if (!token?.trim() && !isApiKeyRequired(services.zhipu, config)) {
+    config.extra[service] && ({secret, expiration} = config.extra[service]);
+    if (!token?.trim() && !isApiKeyRequired(service, config)) {
         secret = undefined;
     } else if (!secret || expiration <= Date.now()) {
         secret = generateToken(token);
         if (!secret) throw new Error('无法生成令牌');
         // 保存 secret 和 expiration
-        config.extra[services.zhipu] = {secret, expiration: Date.now() + 3600000 * 24};
+        config.extra[service] = {secret, expiration: Date.now() + 3600000 * 24};
         await saveConfig();
     }
 
@@ -31,7 +32,7 @@ async function zhipu(message: any) {
     const resp = await fetch(urls[services.zhipu], {
         method: method.POST,
         headers: headers,
-            body: commonMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt)
+            body: commonMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service)
     });
 
     if (resp.ok) {

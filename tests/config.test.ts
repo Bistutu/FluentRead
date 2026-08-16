@@ -77,12 +77,18 @@ describe('统一配置存储', () => {
         expect(configStore.config.videoSubtitleDisplayMode).toBe('bilingual');
     });
 
-    it('非法的视频服务回退到机器翻译默认服务', async () => {
-        const configStore = await loadConfigModule({ ...storedConfig, videoService: 'openai' });
+    it('保留用户选择的视频 AI 服务，并将未知服务回退到微软翻译', async () => {
+        const aiConfigStore = await loadConfigModule({ ...storedConfig, videoService: 'openai' });
 
-        await configStore.configReady;
+        await aiConfigStore.configReady;
 
-        expect(configStore.config.videoService).toBe('microsoft');
+        expect(aiConfigStore.config.videoService).toBe('openai');
+
+        const invalidConfigStore = await loadConfigModule({ ...storedConfig, videoService: 'not-a-service' });
+
+        await invalidConfigStore.configReady;
+
+        expect(invalidConfigStore.config.videoService).toBe('microsoft');
     });
 
     it('把早期 Beta 写入的 DeepLX 默认值一次迁移为微软翻译', async () => {

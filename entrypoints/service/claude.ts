@@ -5,20 +5,21 @@ import {config} from "@/entrypoints/utils/config";
 import {appendOptionalHeader} from './auth';
 
 async function claude(message: any) {
+    const service = message.serviceOverride || services.claude;
     // 构建请求头
     let headers = new Headers();
     headers.append('Content-Type', 'application/json');
-    appendOptionalHeader(headers, 'x-api-key', config.token[services.claude]);
+    appendOptionalHeader(headers, 'x-api-key', config.token[service]);
     headers.append('anthropic-version', '2023-06-01');
     headers.append('anthropic-dangerous-direct-browser-access', 'true');
 
-    const url = config.proxy[config.service] || urls[services.claude];
+    const url = config.proxy[service] || urls[services.claude];
 
     try {
         const resp = await fetch(url, {
             method: method.POST,
             headers,
-            body: claudeMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt)
+            body: claudeMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service)
         });
 
         if (!resp.ok) {
