@@ -114,7 +114,8 @@
       >
         <span v-if="translating" class="spinner" />
         <span v-else class="translate-glyph">A↔译</span>
-        {{ pageTranslated ? '恢复当前网页' : '翻译当前网页' }}
+        <span class="translate-label">{{ pageTranslated ? '恢复当前网页' : '翻译当前网页' }}</span>
+        <kbd class="translate-hotkey" :class="{ disabled: fullPageHotkey === '未设置' }">{{ fullPageHotkey }}</kbd>
       </button>
       <p v-if="notice" class="notice" :class="noticeType">{{ notice }}</p>
     </section>
@@ -340,8 +341,14 @@ const serviceLabel = computed(() => serviceOptions.value.find((item: any) => ite
 const styleLabel = computed(() => styleOptions.value.find((item: any) => item.value === config.value.style)?.label || '默认样式');
 const hoverKey = computed(() => config.value.hotkey === 'custom' ? (config.value.customHotkey || '自定义') : config.value.hotkey);
 const hoverSummary = computed(() => config.value.hotkey === 'none' ? '已关闭' : `${hoverKey.value} + 鼠标悬停`);
+const fullPageHotkey = computed(() => {
+  const hotkey = config.value.floatingBallHotkey === 'custom'
+    ? config.value.customFloatingBallHotkey
+    : config.value.floatingBallHotkey;
+  return hotkey && hotkey !== 'none' ? hotkey : '未设置';
+});
 const selectionSummary = computed(() => ({ disabled: '已关闭', bilingual: '双语显示', 'translation-only': '仅显示译文' }[config.value.selectionTranslatorMode] || '双语显示'));
-const floatingSummary = computed(() => `${config.value.floatingBallPosition === 'left' ? '页面左侧' : '页面右侧'} · ${config.value.floatingBallHotkey}`);
+const floatingSummary = computed(() => `${config.value.floatingBallPosition === 'left' ? '页面左侧' : '页面右侧'} · ${fullPageHotkey.value}`);
 const displaySummary = computed(() => config.value.display === 1 ? `双语 · ${styleLabel.value}` : '仅显示译文');
 const imageTranslationSummary = computed(() => config.value.disableImageTranslator ? '已关闭' : '悬停图片');
 const drawerTitle = computed(() => ({ hover: '鼠标悬停翻译设置', selection: '划词翻译设置', floating: '全文悬浮球设置', appearance: '译文显示设置', image: '图片翻译设置' }[activeDrawer.value]));
