@@ -47,6 +47,152 @@
     cursor: pointer;
 }
 
+/* FluentRead 页面提示：避免把配置问题渲染成宿主网页的巨大红色报错。 */
+.fluent-read-message.el-message {
+    box-sizing: border-box;
+    display: flex !important;
+    align-items: center !important;
+    width: min(480px, calc(100vw - 32px));
+    min-height: 58px;
+    padding: 10px 12px 10px 10px;
+    border: 1px solid #e8dff0;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .98);
+    box-shadow: 0 12px 30px rgba(39, 29, 55, .14), 0 0 0 4px rgba(239, 71, 118, .07);
+    color: #273247;
+}
+
+.fluent-read-message,
+.fluent-read-message * {
+    box-sizing: border-box;
+}
+
+.fluent-read-message .el-message__icon {
+    display: grid;
+    flex: 0 0 auto;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    margin-right: 10px;
+    border-radius: 10px;
+    color: #fff;
+    background: linear-gradient(145deg, #f35482, #dc315f);
+}
+
+.fluent-read-notice-mark {
+    display: block;
+    width: 30px !important;
+    height: 30px !important;
+    border-radius: 9px;
+    object-fit: cover;
+}
+
+.fluent-read-message .el-message__content {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0;
+    color: inherit;
+    line-height: 1.4;
+}
+
+.fluent-read-notice-copy {
+    display: flex;
+    flex: 1 1 0%;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+    width: 0;
+}
+
+.fluent-read-notice-heading {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    font-size: 11px;
+}
+
+.fluent-read-notice-brand {
+    color: #dc315f;
+    font-weight: 800;
+}
+
+.fluent-read-notice-divider {
+    color: #b0a7b8;
+}
+
+.fluent-read-notice-title {
+    color: #737c8f;
+    font-weight: 700;
+}
+
+.fluent-read-notice-body {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.fluent-read-notice-detail {
+    overflow-wrap: anywhere;
+    color: #273247;
+    font-size: 13px;
+    font-weight: 550;
+}
+
+.fluent-read-notice-action {
+    flex: 0 0 auto;
+    padding: 3px 8px;
+    border: 1px solid rgba(180, 107, 0, .28);
+    border-radius: 7px;
+    color: #a86500;
+    background: rgba(255, 255, 255, .72);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.fluent-read-notice-action:hover,
+.fluent-read-notice-action:focus-visible {
+    border-color: rgba(180, 107, 0, .46);
+    background: #fff;
+    outline: none;
+}
+
+.fluent-read-message .el-message__closeBtn {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    justify-content: center;
+    align-self: center;
+    width: 20px;
+    height: 20px;
+    margin-left: 8px;
+    color: #9da4b2;
+}
+
+.fluent-read-message .el-message__closeBtn svg {
+    width: 14px !important;
+    height: 14px !important;
+}
+
+.fluent-read-message-credential.el-message {
+    border-color: #f0d49f;
+    background: linear-gradient(135deg, #fffdf8, #fff9ef);
+    box-shadow: 0 12px 30px rgba(122, 86, 20, .13), 0 0 0 4px rgba(243, 209, 158, .16);
+}
+
+.fluent-read-message-credential .fluent-read-notice-title,
+.fluent-read-message-credential .fluent-read-notice-detail {
+    color: #795b27;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fluent-read-message.el-message { transition: none; }
+}
+
 /* 图片翻译覆盖层：翻译完成后用同尺寸位图层覆盖原图，避免原文字从译文下面透出。 */
 .fluent-read-image-translation-overlay {
     position: fixed;
