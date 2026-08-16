@@ -27,10 +27,9 @@
       @click.stop="toggleTranslation"
     >
       <svg class="translation-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path
-          d="M12.87 15.07 10.33 12.56l.03-.03A16.6 16.6 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17A16.8 16.8 0 0 1 9 11.35 15.7 15.7 0 0 1 6.69 8h-2A18.3 18.3 0 0 0 7.67 12.56L2.58 17.58 4 19l5-5 3.11 3.11z"
-          fill="currentColor"
-        />
+        <text x="2.5" y="10.5" fill="currentColor" font-size="8" font-weight="700" font-family="Arial, sans-serif">A</text>
+        <text x="13.3" y="10.5" fill="currentColor" font-size="7.5" font-weight="700" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">文</text>
+        <path d="M4 16h16M4 16l2-2M4 16l2 2M20 16l-2-2M20 16l-2 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
       <span v-if="isTranslating" class="check-mark" aria-hidden="true" />
     </button>
@@ -48,16 +47,12 @@
       @pointercancel="cancelPointerInteraction"
     >
       <svg class="floating-ball-mascot" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M6.6 12.7 7.9 5.1a1 1 0 0 1 1.5-.6l5.3 3.3a9.6 9.6 0 0 1 2.6 0l5.3-3.3a1 1 0 0 1 1.5.6l1.3 7.6A9.6 9.6 0 0 1 16 25.8a9.6 9.6 0 0 1-9.4-13.1Z" fill="#FF7FA3" stroke="#D94E76" stroke-width=".8" />
-        <path d="m9.1 7 4.2 2.6-3.4 1.1L9.1 7Zm13.8 0-4.2 2.6 3.4 1.1.8-3.7Z" fill="#FFC4D3" />
-        <ellipse cx="12.2" cy="15.4" rx="1.5" ry="1.8" fill="#633548" />
-        <ellipse cx="19.8" cy="15.4" rx="1.5" ry="1.8" fill="#633548" />
-        <circle cx="12.7" cy="14.8" r=".45" fill="white" />
-        <circle cx="20.3" cy="14.8" r=".45" fill="white" />
-        <ellipse cx="13.8" cy="19.2" rx="2.4" ry="1.7" fill="#FFD5DF" />
-        <ellipse cx="18.2" cy="19.2" rx="2.4" ry="1.7" fill="#FFD5DF" />
-        <path d="m15 18.4 1 .8 1-.8c.1 1-.3 1.5-1 1.5s-1.1-.5-1-1.5Z" fill="#D94E76" />
-        <path d="M16 20.1c.5.8 1.3 1.1 2.1.4M16 20.1c-.5.8-1.3 1.1-2.1.4M10.9 18.7l-4.2-.6M10.9 20l-4 .8M21.1 18.7l4.2-.6M21.1 20l4 .8" stroke="#D94E76" stroke-width=".75" stroke-linecap="round" />
+        <path d="M6.8 13 7.8 6.5a.9.9 0 0 1 1.4-.6l5 2.8a9.3 9.3 0 0 1 3.6 0l5-2.8a.9.9 0 0 1 1.4.6l1 6.5A9.4 9.4 0 0 1 16 25.5 9.4 9.4 0 0 1 6.8 13Z" fill="#FFADC1" />
+        <path d="m9.2 7.8 3.7 2.1-3 1-.7-3.1Zm13.6 0-3.7 2.1 3 1 .7-3.1Z" fill="#FFE0E8" />
+        <path d="M11 15.8c.6-.7 1.5-.7 2.1 0M18.9 15.8c-.6-.7-1.5-.7-2.1 0" stroke="#B85C78" stroke-width="1.15" stroke-linecap="round" />
+        <circle cx="11.5" cy="18.5" r="1.25" fill="#FFCFDA" />
+        <circle cx="20.5" cy="18.5" r="1.25" fill="#FFCFDA" />
+        <path d="m15 18.1 1 .7 1-.7c0 .8-.4 1.2-1 1.2s-1-.4-1-1.2ZM16 20c.5.6 1 .8 1.6.3M16 20c-.5.6-1 .8-1.6.3" fill="#E87592" stroke="#B85C78" stroke-width=".7" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
       <span v-if="isTranslating" class="check-mark" aria-hidden="true" />
     </button>
