@@ -39,7 +39,7 @@
 <img src="/hotkey.png" alt="快捷键操作" style="width: 35%; max-width: 100%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
 
 ### 电脑设备
-- **悬停翻译**：按住 `Ctrl` / `Alt` / `Option` / `Shift` / `~（波浪号）` 键，将鼠标悬停在需要翻译的文本上
+- **鼠标悬停翻译**：按住 `Ctrl` / `Alt` / `Option` / `Shift` / `~（波浪号）` 键，将鼠标悬停在需要翻译的文本上
 - **双击翻译**：无需按键，直接双击选中文本即可翻译
 - **长按翻译**：无需按键，按住鼠标左键不动（约 0.5 秒）即可翻译
 - **中键翻译**：无需按键，直接点击鼠标中键（滚轮按钮）即可翻译
