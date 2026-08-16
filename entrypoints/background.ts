@@ -8,7 +8,7 @@ import {
     buildTranslationCacheKey,
     translationCache,
 } from "@/entrypoints/utils/translationCache";
-import { downloadImageOcrLanguagesWithOffscreen, recognizeImageWithOffscreen } from "@/entrypoints/service/chrome-translator";
+import { downloadImageOcrLanguagesWithOffscreen, recognizeImageWithOffscreen, translateImageWithOffscreen } from "@/entrypoints/service/chrome-translator";
 import { imageBufferToDataUrl, MAX_REMOTE_IMAGE_BYTES, normalizeRemoteImageUrl } from "@/entrypoints/utils/imageFetch";
 import {buildPageSummaryPrompt, buildPageSummarySystemPrompt} from "@/entrypoints/utils/template";
 import {
@@ -562,6 +562,32 @@ export default defineBackground({
                         await assertImageOcrLanguagesDownloaded(message.sourceLanguage);
                         const lines = await recognizeImageWithOffscreen(message.image, message.sourceLanguage);
                         resolve({ success: true, lines });
+                        return;
+                    }
+
+                    if (message.type === 'fluentReadImageTranslate') {
+                        await assertImageOcrLanguagesDownloaded(message.sourceLanguage);
+                        const result = await translateImageWithOffscreen(
+                            message.image,
+                            message.sourceLanguage,
+                            typeof message.title === 'string' ? message.title : '',
+                        );
+                        resolve({ success: true, ...result });
+                        return;
+                    }
+
+                    if (message.type === 'fluentReadImageTranslateTexts') {
+                        const texts = Array.isArray(message.texts)
+                            ? message.texts.filter((text: unknown): text is string => typeof text === 'string' && text.trim().length > 0)
+                            : [];
+                        if (texts.length === 0) throw new Error('图片中没有可翻译文字');
+                        const translations = await translateWithCache({
+                            origin: texts,
+                            context: typeof message.title === 'string' ? message.title : '',
+                            pageContext: '',
+                            useCache: true,
+                        });
+                        resolve({ success: true, translations });
                         return;
                     }
 

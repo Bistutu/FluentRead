@@ -1,10 +1,9 @@
 import { config } from '@/entrypoints/utils/config';
-import { translateText } from '@/entrypoints/utils/translateApi';
-import { fetchImageInExtension, recognizeImageInExtension } from '@/entrypoints/utils/imageOcrClient';
-import { scaleOcrBox, selectChangedTranslations, type OcrLine } from '@/entrypoints/utils/imageTranslationCore';
-import { inpaintTextRegions } from '@/entrypoints/utils/imageInpainting';
+import { fetchImageInExtension, translateImageInExtension } from '@/entrypoints/utils/imageOcrClient';
+import type { OcrLine } from '@/entrypoints/utils/imageTranslationCore';
 
 const IMAGE_TRANSLATION_OVERLAY = 'fluent-read-image-translation-overlay';
+const IMAGE_TRANSLATION_ROOT = 'fluent-read-image-translation-root';
 const IMAGE_TRANSLATION_BUTTON = 'fluent-read-image-translation-button';
 const MIN_IMAGE_WIDTH = 80;
 const MIN_IMAGE_HEIGHT = 40;
@@ -22,14 +21,70 @@ interface ImageTranslationState {
     phase: ImageTranslationPhase;
     abortController: AbortController | null;
     hoverTimer: number | null;
+    resizeObserver: ResizeObserver | null;
+    imageLoadHandler: (() => void) | null;
     lines: Array<OcrLine & { backgroundColor: string }>;
     translatedImage: HTMLImageElement | null;
 }
 
 let mounted = false;
 let removeListeners: (() => void) | null = null;
+let imageOverlayHost: HTMLDivElement | null = null;
+let imageOverlayContainer: HTMLDivElement | null = null;
+let layoutObserver: MutationObserver | null = null;
+let positionFrame: number | null = null;
 const states = new WeakMap<HTMLImageElement, ImageTranslationState>();
 const activeStates = new Set<ImageTranslationState>();
+
+function ensureImageOverlayRoot(): HTMLDivElement {
+    if (imageOverlayContainer) return imageOverlayContainer;
+
+    const host = document.createElement('div');
+    host.id = IMAGE_TRANSLATION_ROOT;
+    host.setAttribute('data-fluent-read-ui', 'image-translation');
+    host.style.cssText = [
+        'all: initial !important',
+        'position: fixed !important',
+        'inset: 0 !important',
+        'width: 100vw !important',
+        'height: 100vh !important',
+        'pointer-events: none !important',
+        'z-index: 2147483646 !important',
+    ].join(';');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const style = document.createElement('style');
+    style.textContent = `
+      :host { all: initial; position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 2147483646; }
+      .${IMAGE_TRANSLATION_OVERLAY} { position: fixed !important; overflow: hidden !important; pointer-events: none !important; box-sizing: border-box !important; }
+      .${IMAGE_TRANSLATION_OVERLAY} canvas { position: absolute !important; inset: 0 !important; display: none; width: 100%; height: 100%; pointer-events: none; }
+      .${IMAGE_TRANSLATION_BUTTON} {
+        position: absolute !important; right: 8px !important; top: 8px !important; z-index: 1 !important;
+        width: 26px !important; height: 26px !important; padding: 0 !important;
+        border: 1px solid rgba(255,255,255,.7) !important; border-radius: 999px !important;
+        background: rgba(20,20,20,.68) !important; color: rgba(255,255,255,.95) !important;
+        box-shadow: 0 1px 5px rgba(0,0,0,.28) !important; cursor: pointer !important;
+        font: 14px/24px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif !important;
+        opacity: .78 !important; pointer-events: auto !important;
+        transition: opacity .15s ease, transform .15s ease, background .15s ease !important;
+      }
+      .${IMAGE_TRANSLATION_BUTTON}:hover, .${IMAGE_TRANSLATION_BUTTON}:focus-visible { background: rgba(20,20,20,.9) !important; opacity: 1 !important; outline: none !important; transform: scale(1.06); }
+      .${IMAGE_TRANSLATION_BUTTON}[data-phase="loading"] { animation: fluent-read-image-translation-pulse 1.1s ease-in-out infinite; }
+      .${IMAGE_TRANSLATION_BUTTON}[data-phase="error"] { background: rgba(185,28,28,.88) !important; }
+      @keyframes fluent-read-image-translation-pulse { 0%,100% { opacity:.52; } 50% { opacity:1; } }
+    `;
+    const container = document.createElement('div');
+    shadow.append(style, container);
+    document.documentElement.appendChild(host);
+    imageOverlayHost = host;
+    imageOverlayContainer = container;
+    return container;
+}
+
+function removeImageOverlayRoot(): void {
+    imageOverlayHost?.remove();
+    imageOverlayHost = null;
+    imageOverlayContainer = null;
+}
 
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
     let timer: number | undefined;
@@ -55,6 +110,8 @@ function clearHoverTimer(state: ImageTranslationState): void {
 function removeState(state: ImageTranslationState): void {
     clearHoverTimer(state);
     state.abortController?.abort();
+    state.resizeObserver?.disconnect();
+    if (state.imageLoadHandler) state.image.removeEventListener('load', state.imageLoadHandler);
     state.overlay.remove();
     activeStates.delete(state);
     if (states.get(state.image) === state) states.delete(state.image);
@@ -79,6 +136,7 @@ function updateOverlayPosition(state: ImageTranslationState): void {
 }
 
 function createState(image: HTMLImageElement): ImageTranslationState {
+    const overlayContainer = ensureImageOverlayRoot();
     const overlay = document.createElement('div');
     overlay.className = IMAGE_TRANSLATION_OVERLAY;
     overlay.dataset.fluentReadImageTranslation = 'true';
@@ -110,7 +168,7 @@ function createState(image: HTMLImageElement): ImageTranslationState {
     canvas.className = 'fluent-read-image-translation-canvas';
     canvas.setAttribute('aria-hidden', 'true');
     overlay.append(canvas, button);
-    document.documentElement.appendChild(overlay);
+    overlayContainer.appendChild(overlay);
 
     const state: ImageTranslationState = {
         image,
@@ -120,9 +178,17 @@ function createState(image: HTMLImageElement): ImageTranslationState {
         phase: 'idle',
         abortController: null,
         hoverTimer: null,
+        resizeObserver: null,
+        imageLoadHandler: null,
         lines: [],
         translatedImage: null,
     };
+    state.imageLoadHandler = () => updateOverlayPosition(state);
+    state.resizeObserver = typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(() => updateOverlayPosition(state));
+    state.resizeObserver?.observe(image);
+    image.addEventListener('load', state.imageLoadHandler);
     states.set(image, state);
     activeStates.add(state);
     overlay.addEventListener('pointerenter', () => {
@@ -177,6 +243,29 @@ async function getImageData(image: HTMLImageElement): Promise<string> {
     }
 }
 
+async function waitForImageReady(image: HTMLImageElement): Promise<void> {
+    if (image.naturalWidth > 0 && image.naturalHeight > 0) return;
+    if (image.complete) throw new Error('图片尚未加载完成');
+
+    await new Promise<void>((resolve, reject) => {
+        const onLoad = () => {
+            cleanup();
+            if (image.naturalWidth > 0 && image.naturalHeight > 0) resolve();
+            else reject(new Error('图片尚未加载完成'));
+        };
+        const onError = () => {
+            cleanup();
+            reject(new Error('图片加载失败'));
+        };
+        const cleanup = () => {
+            image.removeEventListener('load', onLoad);
+            image.removeEventListener('error', onError);
+        };
+        image.addEventListener('load', onLoad, { once: true });
+        image.addEventListener('error', onError, { once: true });
+    });
+}
+
 function loadImage(dataUrl: string): Promise<HTMLImageElement> {
     return new Promise((resolve, reject) => {
         const source = new Image();
@@ -184,75 +273,6 @@ function loadImage(dataUrl: string): Promise<HTMLImageElement> {
         source.onerror = () => reject(new Error('图片数据无法解码'));
         source.src = dataUrl;
     });
-}
-
-function getBackgroundColor(
-    pixels: Uint8ClampedArray,
-    imageWidth: number,
-    imageHeight: number,
-    bbox: OcrLine['bbox'],
-): string {
-    const x0 = Math.max(0, Math.floor(bbox.x0));
-    const y0 = Math.max(0, Math.floor(bbox.y0));
-    const x1 = Math.min(imageWidth, Math.ceil(bbox.x1));
-    const y1 = Math.min(imageHeight, Math.ceil(bbox.y1));
-    const colors = new Map<string, number>();
-    const sample = (x: number, y: number) => {
-        if (x < 0 || y < 0 || x >= imageWidth || y >= imageHeight) return;
-        const offset = (y * imageWidth + x) * 4;
-        const red = Math.min(255, Math.round(pixels[offset] / 16) * 16);
-        const green = Math.min(255, Math.round(pixels[offset + 1] / 16) * 16);
-        const blue = Math.min(255, Math.round(pixels[offset + 2] / 16) * 16);
-        const key = `${red},${green},${blue}`;
-        colors.set(key, (colors.get(key) || 0) + 1);
-    };
-    for (let y = y0 - 4; y <= y1 + 3; y += 1) {
-        for (let x = x0 - 4; x <= x1 + 3; x += 1) {
-            if (x < x0 || x >= x1 || y < y0 || y >= y1) sample(x, y);
-        }
-    }
-    let best = '255,255,255';
-    let bestCount = 0;
-    colors.forEach((count, color) => {
-        if (count > bestCount) {
-            best = color;
-            bestCount = count;
-        }
-    });
-    return `rgb(${best})`;
-}
-
-async function prepareTranslatedImage(dataUrl: string, lines: OcrLine[]): Promise<{
-    translated: HTMLImageElement;
-    lines: Array<OcrLine & { backgroundColor: string }>;
-}> {
-    const source = await loadImage(dataUrl);
-    const canvas = document.createElement('canvas');
-    canvas.width = source.naturalWidth || source.width;
-    canvas.height = source.naturalHeight || source.height;
-    const context = canvas.getContext('2d');
-    if (!context || !canvas.width || !canvas.height) {
-        return { translated: source, lines: lines.map(line => ({ ...line, backgroundColor: 'rgb(255, 255, 255)' })) };
-    }
-    context.drawImage(source, 0, 0, canvas.width, canvas.height);
-    const sourcePixels = context.getImageData(0, 0, canvas.width, canvas.height);
-    const pixels = inpaintTextRegions(sourcePixels.data, canvas.width, canvas.height, lines);
-    sourcePixels.data.set(pixels);
-    context.putImageData(sourcePixels, 0, 0);
-    const translated = await loadImage(canvas.toDataURL('image/png'));
-    return {
-        translated,
-        lines: lines.map(line => ({
-            ...line,
-            backgroundColor: getBackgroundColor(pixels, canvas.width, canvas.height, line.bbox),
-        })),
-    };
-}
-
-function getTextColor(backgroundColor: string): string {
-    const channels = backgroundColor.match(/\d+/g)?.map(Number) || [255, 255, 255];
-    const luminance = (channels[0] * 299 + channels[1] * 587 + channels[2] * 114) / 1000;
-    return luminance > 150 ? '#111827' : '#ffffff';
 }
 
 interface RenderedImageRect {
@@ -297,58 +317,8 @@ function getRenderedImageRect(image: HTMLImageElement, renderedWidth: number, re
     };
 }
 
-function drawTranslatedText(
-    context: CanvasRenderingContext2D,
-    text: string,
-    left: number,
-    top: number,
-    width: number,
-    height: number,
-    backgroundColor: string,
-): void {
-    const horizontalPadding = Math.max(3, Math.round(height * 0.14));
-    let fontSize = Math.max(10, Math.min(30, height * 0.76));
-    context.textAlign = 'center';
-    context.textBaseline = 'middle';
-    context.fillStyle = getTextColor(backgroundColor);
-    const maxWidth = Math.max(1, width - horizontalPadding * 2);
-    const getTokens = () => /[\u2e80-\u9fff\u3040-\u30ff\uac00-\ud7af]/u.test(text)
-        ? Array.from(text.replace(/\s+/g, ''))
-        : text.trim().split(/\s+/).filter(Boolean);
-    const getLines = () => {
-        const lines: string[] = [];
-        let current = '';
-        getTokens().forEach(token => {
-            const candidate = current ? `${current}${/[\u2e80-\u9fff\u3040-\u30ff\uac00-\ud7af]/u.test(token) ? '' : ' '}${token}` : token;
-            if (current && context.measureText(candidate).width > maxWidth) {
-                lines.push(current);
-                current = token;
-            } else {
-                current = candidate;
-            }
-        });
-        if (current) lines.push(current);
-        return lines.length ? lines : [''];
-    };
-    let lines: string[] = [];
-    while (fontSize >= 10) {
-        context.font = `600 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-        lines = getLines();
-        const lineHeight = fontSize * 1.14;
-        if (lines.length <= 3 && lines.length * lineHeight <= height - 2) break;
-        fontSize -= 1;
-    }
-    const lineHeight = fontSize * 1.14;
-    const firstLineTop = top + (height - lineHeight * lines.length) / 2 + lineHeight / 2;
-    lines.slice(0, 3).forEach((line, index) => {
-        context.fillText(line, left + width / 2, firstLineTop + index * lineHeight, maxWidth);
-    });
-}
-
 function renderTranslatedBitmap(state: ImageTranslationState, renderedWidth: number, renderedHeight: number): void {
-    const imageWidth = state.image.naturalWidth;
-    const imageHeight = state.image.naturalHeight;
-    if (!imageWidth || !imageHeight || !state.translatedImage) return;
+    if (!state.image.naturalWidth || !state.image.naturalHeight || !state.translatedImage) return;
 
     const pixelRatio = Math.min(2, window.devicePixelRatio || 1);
     state.canvas.style.display = 'block';
@@ -362,27 +332,10 @@ function renderTranslatedBitmap(state: ImageTranslationState, renderedWidth: num
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     context.clearRect(0, 0, renderedWidth, renderedHeight);
     context.drawImage(state.translatedImage, imageRect.left, imageRect.top, imageRect.width, imageRect.height);
-
-    state.lines.forEach(line => {
-        const scaledBox = scaleOcrBox(line.bbox, imageWidth, imageHeight, imageRect.width, imageRect.height);
-        const box = {
-            left: scaledBox.left + imageRect.left,
-            top: scaledBox.top + imageRect.top,
-            width: scaledBox.width,
-            height: scaledBox.height,
-        };
-        const paddingX = Math.max(3, Math.round(box.height * 0.14));
-        const paddingY = Math.max(2, Math.round(box.height * 0.18));
-        const left = Math.max(0, box.left - paddingX);
-        const top = Math.max(0, box.top - paddingY);
-        const width = Math.min(renderedWidth - left, box.width + paddingX * 2);
-        const height = Math.min(renderedHeight - top, box.height + paddingY * 2);
-        drawTranslatedText(context, line.text, left, top, Math.max(1, width), Math.max(1, height), line.backgroundColor);
-    });
 }
 
 function setButtonState(state: ImageTranslationState, phase: ImageTranslationPhase, message: string): void {
-    const userMessage = phase === 'error' ? '图片无法读取，请尝试保存图片后翻译' : message;
+    const userMessage = message;
     state.phase = phase;
     state.button.textContent = phase === 'translated' ? '↶' : phase === 'error' ? '!' : '文';
     state.button.title = userMessage;
@@ -404,30 +357,22 @@ function restoreImageTranslation(state: ImageTranslationState): void {
 
 async function translateImage(state: ImageTranslationState): Promise<void> {
     if (state.phase === 'loading') return;
-    if (!state.image.isConnected || !state.image.naturalWidth || !state.image.naturalHeight) return;
+    if (!state.image.isConnected) return;
 
     const controller = new AbortController();
     state.abortController = controller;
     setButtonState(state, 'loading', '正在识别图片文字');
     try {
+        await withTimeout(waitForImageReady(state.image), IMAGE_READ_TIMEOUT_MS, '图片加载超时');
         const imageData = await withTimeout(getImageData(state.image), IMAGE_READ_TIMEOUT_MS, '图片读取超时');
-        const lines = await withTimeout(recognizeImageInExtension(imageData, config.from), IMAGE_OCR_TIMEOUT_MS, '图片文字识别超时');
-        if (controller.signal.aborted) return;
-        if (lines.length === 0) throw new Error('没有识别到图片文字');
-        const translations = await withTimeout(
-            Promise.all(lines.map(line => translateText(line.text, document.title))),
-            IMAGE_TRANSLATION_TIMEOUT_MS,
+        const result = await withTimeout(
+            translateImageInExtension(imageData, config.from, document.title),
+            IMAGE_OCR_TIMEOUT_MS + IMAGE_TRANSLATION_TIMEOUT_MS,
             '图片翻译超时',
         );
         if (controller.signal.aborted) return;
-
-        const translatedLines = selectChangedTranslations(lines, translations);
-        if (translatedLines.length === 0) {
-            throw new Error('图片中没有需要翻译的文字');
-        }
-        const prepared = await withTimeout(prepareTranslatedImage(imageData, translatedLines), IMAGE_READ_TIMEOUT_MS, '图片背景修复超时');
-        state.translatedImage = prepared.translated;
-        state.lines = prepared.lines;
+        state.translatedImage = await loadImage(result.image);
+        state.lines = result.lines;
         setButtonState(state, 'translated', '恢复原图');
         updateOverlayPosition(state);
     } catch (error) {
@@ -456,8 +401,12 @@ function handlePointerOut(event: PointerEvent): void {
     if (image) hideImageButton(image);
 }
 
-function handleViewportChange(): void {
-    activeStates.forEach(updateOverlayPosition);
+function scheduleViewportChange(): void {
+    if (positionFrame !== null) return;
+    positionFrame = window.requestAnimationFrame(() => {
+        positionFrame = null;
+        activeStates.forEach(updateOverlayPosition);
+    });
 }
 
 export function mountImageTranslator(): void {
@@ -465,13 +414,26 @@ export function mountImageTranslator(): void {
     mounted = true;
     document.addEventListener('pointerover', handlePointerOver, true);
     document.addEventListener('pointerout', handlePointerOut, true);
-    window.addEventListener('scroll', handleViewportChange, true);
-    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('scroll', scheduleViewportChange, true);
+    window.addEventListener('resize', scheduleViewportChange);
+    layoutObserver = new MutationObserver(scheduleViewportChange);
+    layoutObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'style'],
+        childList: true,
+        subtree: true,
+    });
     removeListeners = () => {
         document.removeEventListener('pointerover', handlePointerOver, true);
         document.removeEventListener('pointerout', handlePointerOut, true);
-        window.removeEventListener('scroll', handleViewportChange, true);
-        window.removeEventListener('resize', handleViewportChange);
+        window.removeEventListener('scroll', scheduleViewportChange, true);
+        window.removeEventListener('resize', scheduleViewportChange);
+        layoutObserver?.disconnect();
+        layoutObserver = null;
+        if (positionFrame !== null) {
+            window.cancelAnimationFrame(positionFrame);
+            positionFrame = null;
+        }
     };
 }
 
@@ -481,4 +443,5 @@ export function unmountImageTranslator(): void {
     removeListeners?.();
     removeListeners = null;
     Array.from(activeStates).forEach(removeState);
+    removeImageOverlayRoot();
 }

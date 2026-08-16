@@ -59,8 +59,9 @@ describe('AI 模型编号列表', () => {
 });
 
 describe('图片翻译配置', () => {
-    it('默认启用，并保留用户关闭状态', () => {
-        expect(normalizeConfig({}).disableImageTranslator).toBe(false);
+    it('默认关闭，并保留用户主动启用或关闭的状态', () => {
+        expect(normalizeConfig({}).disableImageTranslator).toBe(true);
+        expect(normalizeConfig({disableImageTranslator: false}).disableImageTranslator).toBe(false);
         expect(normalizeConfig({disableImageTranslator: true}).disableImageTranslator).toBe(true);
     });
 });

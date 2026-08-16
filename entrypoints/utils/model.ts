@@ -96,7 +96,7 @@ export class Config {
         this.customFloatingBallHotkey = ''; // 自定义快捷键为空
         this.customHotkey = ''; // 自定义鼠标悬浮快捷键为空
         this.disableSelectionTranslator = true; // 默认关闭划词翻译
-        this.disableImageTranslator = false; // 默认启用图片翻译
+        this.disableImageTranslator = true; // 默认关闭图片翻译，避免首次安装后扫描网页图片
         this.deeplx = defaultOption.deeplx; // DeepLX 默认服务地址
         this.selectionTranslatorMode = 'disabled'; // 默认关闭划词翻译
         this.selectionTranslatorTrigger = 'icon'; // 默认显示可发现的操作图标
