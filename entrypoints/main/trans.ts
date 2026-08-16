@@ -1,13 +1,24 @@
 import { checkConfig, skipNode } from "../utils/check";
-import { cache } from "../utils/cache";
 import { services, servicesType } from "../utils/option";
 import { insertFailedTip, insertLoadingSpinner } from "../utils/icon";
 import { styles } from "@/entrypoints/utils/constant";
-import { beautyHTML, getOpenShadowRoots, grabAllNode, LLMStandardHTML, resolveNodeAtPoint } from "@/entrypoints/main/dom";
-import { detectlang, throttle } from "@/entrypoints/utils/common";
+import {
+    getOpenShadowRoots,
+    grabAllNode,
+    grabNode,
+    isTranslationControl,
+    LLMStandardHTML,
+    resolveNodeAtPoint,
+    smashTruncationStyle,
+} from "@/entrypoints/main/dom";
+import { detectlang } from "@/entrypoints/utils/common";
 import { config } from "@/entrypoints/utils/config";
-import { translateText, translateTextBatch, cancelAllTranslations } from '@/entrypoints/utils/translateApi';
-import { appendBilingualTranslation, replaceWithSafeTranslation } from "@/entrypoints/main/translationRenderer";
+import { translateText, translateTextBatch, cancelAllTranslations } from "@/entrypoints/utils/translateApi";
+import {
+    appendBilingualTranslation,
+    createSafeTranslationFragment,
+    replaceWithSafeTranslation,
+} from "@/entrypoints/main/translationRenderer";
 import {
     beginTranslation,
     discardTranslation,
@@ -22,419 +33,480 @@ import {
     setTranslatedHTML,
 } from "@/entrypoints/main/translationState";
 
-let hoverTimer: any; // 鼠标悬停计时器
-export let originalContents = new Map(); // 保存原始内容
-const originalNodes = new Map<string, Element>(); // 保存全文翻译节点，支持 Shadow DOM 恢复
-let isAutoTranslating = false; // 控制是否继续翻译新内容
-let observer: IntersectionObserver | null = null; // 保存观察器实例
-let mutationObserver: MutationObserver | null = null; // 保存 DOM 变化观察器实例
+/**
+ * 兼容旧调用方保留的导出。新的实现不再使用 innerHTML 字符串作为节点身份，
+ * 实际恢复由 translationState 的 WeakMap + 原始 ChildNode 快照负责。
+ */
+export const originalContents = new Map<string, string>();
 
-// 使用自定义属性标记已翻译的节点
-const TRANSLATED_ATTR = 'data-fr-translated';
-const TRANSLATED_ID_ATTR = 'data-fr-node-id'; // 添加节点ID属性
+const TRANSLATION_ARTIFACT_SELECTOR = [
+    ".fluent-read-bilingual-content",
+    ".fluent-read-loading",
+    ".fluent-read-retry-wrapper",
+    '[data-fr-translation-owned="true"]',
+].join(",");
 
-let nodeIdCounter = 0; // 节点ID计数器
+type TranslationResult = string | ControlTranslationResult;
 
-// 恢复原文内容
-export function restoreOriginalContent() {
-    // 取消所有等待中的翻译任务
-    cancelAllTranslations();
-
-    // 先恢复指定节点翻译状态机管理的节点，避免用字符串 innerHTML 覆盖真实节点。
-    restoreAllTranslations();
-    
-    const restoreLegacyNode = (node: Element, nodeId: string | null) => {
-        if (!nodeId) return;
-        if (nodeId && originalContents.has(nodeId)) {
-            const originalContent = originalContents.get(nodeId);
-            // 指定节点状态机可能已经恢复过真实 ChildNode；只有内容仍然不同才做兼容恢复。
-            if (node.innerHTML !== originalContent) node.innerHTML = originalContent;
-            node.removeAttribute(TRANSLATED_ATTR);
-            node.removeAttribute(TRANSLATED_ID_ATTR);
-            
-            // 移除可能添加的翻译相关类
-            node.classList.remove('fluent-read-bilingual');
-        }
-    };
-
-    // 1. 遍历普通 DOM 与已记录的 Shadow DOM 节点。
-    document.querySelectorAll(`[${TRANSLATED_ATTR}="true"]`).forEach(node => {
-        restoreLegacyNode(node, node.getAttribute(TRANSLATED_ID_ATTR));
-    });
-    originalNodes.forEach((node, nodeId) => {
-        restoreLegacyNode(node, nodeId);
-    });
-    
-    // 2. 移除所有翻译内容元素
-    document.querySelectorAll('.fluent-read-bilingual-content').forEach(element => {
-        element.remove();
-    });
-    
-    // 3. 移除所有翻译过程中添加的加载动画和错误提示
-    document.querySelectorAll('.fluent-read-loading, .fluent-read-retry-wrapper').forEach(element => {
-        element.remove();
-    });
-    
-    // 4. 清空存储的原始内容
-    originalContents.clear();
-    originalNodes.clear();
-    
-    // 5. 停止所有观察器
-    if (observer) {
-        observer.disconnect();
-        observer = null;
-    }
-    if (mutationObserver) {
-        mutationObserver.disconnect();
-        mutationObserver = null;
-    }
-    
-    // 6. 重置所有翻译相关的状态
-    isAutoTranslating = false;
-    nodeIdCounter = 0; // 重置节点ID计数器
-    
-    // 7. 消除可能存在的全局样式污染
-    const tempStyleElements = document.querySelectorAll('style[data-fr-temp-style]');
-    tempStyleElements.forEach(el => el.remove());
+interface ControlTextPart {
+    node: Text;
+    prefix: string;
+    suffix: string;
+    source: string;
 }
 
-// 自动翻译整个页面的功能
-export function autoTranslateEnglishPage() {
-    // 如果已经在翻译中，则返回
-    if (isAutoTranslating) return;
-    
-    // 获取当前页面的语言（暂时注释，存在识别问题）
-    // const text = document.documentElement.innerText || '';
-    // const cleanText = text.replace(/[\s\u3000]+/g, ' ').trim().slice(0, 500);
-    // const language = detectlang(cleanText);
-    // console.log('当前页面语言：', language);
-    // const to = config.to;
-    // if (to.includes(language)) {
-    //     console.log('目标语言与当前页面语言相同，不进行翻译');
-    //     return;
-    // }
-    // console.log('当前页面非目标语言，开始翻译');
-
-    // 获取所有需要翻译的节点
-    const nodes = grabAllNode(document.body);
-    if (!nodes.length) return;
-
-    isAutoTranslating = true;
-
-    // 创建观察器
-    observer = new IntersectionObserver((entries, observer) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting && isAutoTranslating) {
-                const node = entry.target as Element;
-
-                // 去重
-                if (node.hasAttribute(TRANSLATED_ATTR)) return;
-                
-                // 为节点分配唯一ID
-                const nodeId = `fr-node-${nodeIdCounter++}`;
-                node.setAttribute(TRANSLATED_ID_ATTR, nodeId);
-                
-                // 保存原始内容
-                originalContents.set(nodeId, node.innerHTML);
-                originalNodes.set(nodeId, node);
-                
-                // 标记为已翻译
-                node.setAttribute(TRANSLATED_ATTR, 'true');
-
-                if (config.display === styles.bilingualTranslation) {
-                    handleBilingualTranslation(node, false);
-                } else {
-                    handleSingleTranslation(node, false);
-                }
-
-                // 停止观察该节点
-                observer.unobserve(node);
-            }
-        });
-    }, {
-        root: null,
-        rootMargin: '50px',
-        threshold: 0.1 // 只要出现10%就开始翻译
-    });
-
-    // 开始观察所有节点
-    nodes.forEach(node => {
-        observer?.observe(node);
-    });
-
-    const mutationObserverOptions: MutationObserverInit = {
-        childList: true,
-        subtree: true,
-    };
-
-    // 创建 MutationObserver 监听 DOM 变化
-    mutationObserver = new MutationObserver((mutations) => {
-        if (!isAutoTranslating) return;
-        
-        mutations.forEach(mutation => {
-            mutation.addedNodes.forEach(node => {
-                if (node.nodeType === 1) { // 元素节点
-                    // 只处理未翻译的新节点
-                    const newNodes = grabAllNode(node as Element).filter(
-                        n => !n.hasAttribute(TRANSLATED_ATTR)
-                    );
-                    newNodes.forEach(n => observer?.observe(n));
-
-                    // MutationObserver 不会自动穿透新出现的 ShadowRoot。
-                    // 将开放根单独注册，后续动态内容才能进入同一翻译队列。
-                    getOpenShadowRoots(node as Element).forEach(shadowRoot => {
-                        mutationObserver?.observe(shadowRoot, mutationObserverOptions);
-                    });
-                }
-            });
-        });
-    });
-
-    // 监听整个 body 的变化
-    mutationObserver.observe(document.body, mutationObserverOptions);
-    getOpenShadowRoots(document.body).forEach(shadowRoot => {
-        mutationObserver?.observe(shadowRoot, mutationObserverOptions);
-    });
+interface ControlTranslationResult {
+    kind: "control";
+    changed: boolean;
+    apply: () => string;
 }
 
-function asTranslationNode(node: unknown): HTMLElement | null {
+interface FullPageSession {
+    active: boolean;
+    generation: number;
+    observer: IntersectionObserver;
+    mutationObserver: MutationObserver;
+    roots: Set<Node>;
+    pending: Set<HTMLElement>;
+    scheduled: Set<HTMLElement>;
+    inFlight: number;
+    draining: boolean;
+    flushTimer: number | null;
+}
+
+let hoverTimer: ReturnType<typeof setTimeout> | undefined;
+let fullPageSession: FullPageSession | null = null;
+let sessionSequence = 0;
+
+function asHTMLElement(node: unknown): HTMLElement | null {
     return node instanceof HTMLElement ? node : null;
 }
 
-function getCachedInnerHTML(node: HTMLElement, cached: string): string {
-    // 旧缓存保存的是完整 outerHTML；新的渲染器只接受目标元素内部内容。
-    try {
-        const parsed = new DOMParser().parseFromString(cached, 'text/html');
-        const first = parsed.body.firstElementChild;
-        if (first && first.tagName.toLowerCase() === node.tagName.toLowerCase()) {
-            return first.innerHTML;
-        }
-    } catch {
-        // 缓存格式异常时按普通译文处理，后续白名单解析会继续保护 DOM。
-    }
-    return cached;
+function normalizeComparableText(text: string): string {
+    return text.replace(/[\s\u3000]+/g, " ").trim();
 }
 
-function markAttemptError(
+function isTranslationArtifact(node: Node): boolean {
+    if (!(node instanceof Element)) return false;
+    return Boolean(node.matches(TRANSLATION_ARTIFACT_SELECTOR) || node.closest(TRANSLATION_ARTIFACT_SELECTOR));
+}
+
+function isProtectedTextNode(node: Text): boolean {
+    const parent = node.parentElement;
+    if (!parent) return true;
+    if (isTranslationArtifact(parent)) return true;
+    if (parent.closest('[aria-hidden="true"]')) return true;
+    const tag = parent.tagName.toLowerCase();
+    return ["script", "style", "noscript", "pre", "code", "kbd", "samp", "var", "math", "svg"].includes(tag);
+}
+
+function collectTextParts(root: HTMLElement): ControlTextPart[] {
+    const parts: ControlTextPart[] = [];
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let current = walker.nextNode();
+    while (current) {
+        const node = current as Text;
+        const value = node.nodeValue || "";
+        const match = value.match(/^(\s*)([\s\S]*?\S)(\s*)$/);
+        if (match && !isProtectedTextNode(node)) {
+            parts.push({ node, prefix: match[1], source: match[2], suffix: match[3] });
+        }
+        current = walker.nextNode();
+    }
+    return parts;
+}
+
+function isBatchFriendlyService(): boolean {
+    return config.service === services.microsoft || config.service === services.freeTranslation;
+}
+
+/**
+ * 对机器翻译的 HTML 克隆逐个替换文本节点。标签、链接、图标和原文 DOM
+ * 都不直接交给服务端，避免响应把网页结构打碎；微软/免费翻译的数组接口
+ * 还可以把同一段中的多个文本节点合并成一次请求。
+ */
+async function translateElementHTML(node: HTMLElement): Promise<string> {
+    const clone = node.cloneNode(true) as HTMLElement;
+    clone.querySelectorAll(TRANSLATION_ARTIFACT_SELECTOR).forEach((child) => child.remove());
+    const parts = collectTextParts(clone);
+    if (parts.length === 0) return clone.innerHTML;
+
+    const origins = parts.map((part) => part.source);
+    const translations = isBatchFriendlyService()
+        ? await translateTextBatch(origins, document.title, { useCache: false })
+        : await Promise.all(origins.map((origin) => translateText(origin, document.title)));
+    translations.forEach((translation, index) => {
+        const part = parts[index];
+        if (part) part.node.nodeValue = `${part.prefix}${translation}${part.suffix}`;
+    });
+    return clone.innerHTML;
+}
+
+/**
+ * 按钮、role=button 等交互控件必须保持原有 DOM 结构和行为，因此即使当前
+ * 页面选择了双语模式，也只替换控件内的可见文本，不追加第二段译文。
+ */
+async function translateControlText(node: HTMLElement): Promise<ControlTranslationResult> {
+    const parts = collectTextParts(node);
+    if (parts.length === 0) return { kind: "control", changed: false, apply: () => node.innerHTML };
+
+    const origins = parts.map((part) => part.source);
+    const translations = isBatchFriendlyService()
+        ? await translateTextBatch(origins, document.title, { useCache: false })
+        : await Promise.all(origins.map((origin) => translateText(origin, document.title)));
+    const changed = translations.some((translation, index) =>
+        normalizeComparableText(translation) !== normalizeComparableText(origins[index] || ""),
+    );
+
+    return {
+        kind: "control",
+        changed,
+        apply: () => {
+            translations.forEach((translation, index) => {
+                const part = parts[index];
+                if (part?.node.isConnected) {
+                    part.node.nodeValue = `${part.prefix}${translation}${part.suffix}`;
+                }
+            });
+            return node.innerHTML;
+        },
+    };
+}
+
+async function createTranslationRequest(node: HTMLElement, kind: "content" | "control"): Promise<TranslationResult> {
+    if (kind === "control") return translateControlText(node);
+
+    if (servicesType.isMachine(config.service)) {
+        if (isBatchFriendlyService()) return translateElementHTML(node);
+        return translateText(node.innerHTML, document.title);
+    }
+
+    // AI 服务继续使用结构化 HTML 输入，响应再经过白名单解析；这比把一个
+    // article/div 的所有内容压成纯文本更能保持链接、强调和换行的语义。
+    return translateText(LLMStandardHTML(node), document.title);
+}
+
+function getSafeTranslationText(text: string): string {
+    const fragment = createSafeTranslationFragment(text);
+    return fragment.textContent || "";
+}
+
+function markFailedTranslation(
     node: HTMLElement,
-    attempt: ReturnType<typeof beginTranslation>,
+    attempt: NonNullable<ReturnType<typeof beginTranslation>>,
     spinner: HTMLElement | undefined,
     error: unknown,
 ): void {
-    if (!attempt) return;
-
     spinner?.remove();
     if (!node.isConnected || !markTranslationError(node, attempt.state, attempt.generation)) {
         discardTranslation(node, attempt.state);
         return;
     }
-
-    insertFailedTip(node, error instanceof Error ? error.toString() : String(error || '翻译失败'), spinner);
+    insertFailedTip(node, error instanceof Error ? error.message : String(error || "翻译失败"), spinner);
 }
 
-async function renderBilingualResult(
+async function renderTranslation(
     node: HTMLElement,
     attempt: NonNullable<ReturnType<typeof beginTranslation>>,
-    translation: Promise<string> | string,
+    request: Promise<TranslationResult>,
 ): Promise<void> {
     const { state, generation } = attempt;
     const spinner = state.spinner;
 
     try {
-        const text = await translation;
+        const result = await request;
         spinner?.remove();
 
-        if (!text || text === state.sourceText) {
+        if (!node.isConnected || !markTranslationComplete(node, state, generation)) {
             discardTranslation(node, state);
             return;
         }
 
-        if (!markTranslationComplete(node, state, generation)) {
+        if (state.kind === "control") {
+            const controlResult = result as ControlTranslationResult;
+            if (!controlResult.changed) {
+                discardTranslation(node, state);
+                return;
+            }
+            const translatedHTML = controlResult.apply();
+            setTranslatedHTML(node, translatedHTML);
+            return;
+        }
+
+        const translatedText = typeof result === "string" ? result : "";
+        const translatedPlainText = getSafeTranslationText(translatedText);
+        if (!translatedPlainText || normalizeComparableText(translatedPlainText) === normalizeComparableText(state.sourceText)) {
             discardTranslation(node, state);
             return;
         }
 
-        const content = appendBilingualTranslation(node, text);
-        setBilingualContent(node, content);
-        setRenderedStyleAttribute(node);
-    } catch (error) {
-        markAttemptError(node, attempt, spinner, error);
-    }
-}
-
-async function renderSingleResult(
-    node: HTMLElement,
-    attempt: NonNullable<ReturnType<typeof beginTranslation>>,
-    origin: string,
-    translation: Promise<string> | string,
-    fromCache: boolean,
-): Promise<void> {
-    const { state, generation } = attempt;
-    const spinner = state.spinner;
-
-    try {
-        let text = await translation;
-        spinner?.remove();
-
-        if (fromCache) text = getCachedInnerHTML(node, text);
-        else text = beautyHTML(text);
-
-        if (!text || text === origin) {
-            discardTranslation(node, state);
-            return;
-        }
-
-        if (!markTranslationComplete(node, state, generation)) {
-            discardTranslation(node, state);
-            return;
-        }
-
-        replaceWithSafeTranslation(node, text);
-        setTranslatedHTML(node, node.innerHTML);
-        cache.localSetDual(state.sourceOuterHTML, node.outerHTML);
-    } catch (error) {
-        markAttemptError(node, attempt, spinner, error);
-    }
-}
-
-// 处理鼠标悬停翻译的主函数。
-export function handleTranslation(mouseX: number, mouseY: number, delayTime: number = 0) {
-    if (!checkConfig()) return;
-
-    clearTimeout(hoverTimer);
-    hoverTimer = setTimeout(() => {
-        const node = resolveNodeAtPoint(mouseX, mouseY);
-        if (!(node instanceof HTMLElement) || skipNode(node)) return;
-
-        if (config.display === styles.bilingualTranslation) {
-            handleBilingualTranslation(node, delayTime > 0);
+        if (state.mode === "bilingual") {
+            const content = appendBilingualTranslation(node, translatedText);
+            setBilingualContent(node, content);
+            setRenderedStyleAttribute(node);
         } else {
-            handleSingleTranslation(node, delayTime > 0);
+            // 翻译后文本通常比原文更长，先解除宿主页面的 line-clamp/max-height，
+            // 但状态机会在恢复时按“样式没有被网站改写”条件精确写回原值。
+            smashTruncationStyle(node);
+            replaceWithSafeTranslation(node, translatedText);
+            setTranslatedHTML(node, node.innerHTML);
+            setRenderedStyleAttribute(node);
         }
+    } catch (error) {
+        markFailedTranslation(node, attempt, spinner, error);
+    }
+}
+
+async function translateTarget(
+    node: HTMLElement,
+    displayMode: "bilingual" | "single",
+    slide: boolean,
+): Promise<void> {
+    if (!node.isConnected) return;
+
+    const current = getTranslationState(node);
+    if (current?.phase === "loading") return;
+    if (current?.phase === "translated") {
+        // 滑动触发只对当前鼠标下的新目标翻译，不在移动过程中反复恢复原文。
+        if (!slide) restoreTranslation(node);
+        return;
+    }
+    if (current?.phase === "error") restoreTranslation(node);
+
+    if (skipNode(node)) return;
+    const sourceText = node.textContent || "";
+    if (!normalizeComparableText(sourceText)) return;
+
+    // 只有明确检测到目标语言时才跳过，检测失败不应该让页面整段漏译。
+    try {
+        const detected = detectlang(normalizeComparableText(sourceText));
+        if (detected && detected === config.to) return;
+    } catch {
+        // 语言检测只是优化，不影响正常翻译流程。
+    }
+
+    const kind = isTranslationControl(node) ? "control" : "content";
+    const attempt = beginTranslation(node, displayMode, kind);
+    if (!attempt) return;
+
+    // 请求必须在 spinner 插入前创建；微软 HTML 克隆和文本节点快照不能把
+    // 插件自己的 loading 元素送到服务端。
+    const request = createTranslationRequest(node, kind);
+    const spinner = insertLoadingSpinner(node);
+    setSpinner(node, spinner);
+    await renderTranslation(node, attempt, request);
+}
+
+function scheduleFullPageDrain(session: FullPageSession): void {
+    if (!session.active || session.flushTimer !== null) return;
+    session.flushTimer = window.setTimeout(() => {
+        session.flushTimer = null;
+        drainFullPage(session);
+    }, 0);
+}
+
+function drainFullPage(session: FullPageSession): void {
+    if (!session.active || session.draining) return;
+    session.draining = true;
+    const maxConcurrent = 3;
+
+    while (session.active && session.inFlight < maxConcurrent && session.pending.size > 0) {
+        const iterator = session.pending.values().next();
+        const node = iterator.value as HTMLElement | undefined;
+        if (!node) break;
+        session.pending.delete(node);
+        session.inFlight += 1;
+        void translateTarget(node, config.display === styles.bilingualTranslation ? "bilingual" : "single", true)
+            .finally(() => {
+                session.inFlight -= 1;
+                if (session.active) scheduleFullPageDrain(session);
+            });
+    }
+    session.draining = false;
+}
+
+function addFullPageBlocks(session: FullPageSession, root: Node): void {
+    if (!session.active) return;
+    for (const node of grabAllNode(root)) {
+        const target = asHTMLElement(node);
+        if (!target || !target.isConnected || session.scheduled.has(target)) continue;
+        if (getTranslationState(target)?.phase === "translated") continue;
+        session.scheduled.add(target);
+        session.observer.observe(target);
+    }
+}
+
+function observeFullPageRoot(session: FullPageSession, root: Node): void {
+    if (session.roots.has(root)) return;
+    session.roots.add(root);
+    session.mutationObserver.observe(root, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+        characterDataOldValue: true,
+    });
+}
+
+function isOwnMutation(mutation: MutationRecord): boolean {
+    if (isTranslationArtifact(mutation.target)) return true;
+    const mutationElement = mutation.target instanceof Element ? mutation.target : mutation.target.parentElement;
+    const resolvedTarget = mutationElement ? grabNode(mutationElement) : false;
+    const target = resolvedTarget instanceof HTMLElement ? resolvedTarget : mutationElement;
+    const state = target ? getTranslationState(target as HTMLElement) : undefined;
+    if (!state || state.phase !== "translated") return false;
+    if (state.kind === "control" && state.translatedHTML === (target as Element)?.innerHTML) return true;
+    if (state.mode === "single" && state.translatedHTML === (target as Element)?.innerHTML) return true;
+    if (state.bilingualContent?.isConnected) return true;
+    return mutation.addedNodes.length > 0 && Array.from(mutation.addedNodes).every(isTranslationArtifact);
+}
+
+function attachFullPageMutationHandling(session: FullPageSession): void {
+    session.mutationObserver = new MutationObserver((mutations) => {
+        if (!session.active) return;
+        for (const mutation of mutations) {
+            if (isOwnMutation(mutation)) continue;
+
+            if (mutation.type === "childList") {
+                const mutationElement = mutation.target instanceof Element
+                    ? mutation.target
+                    : mutation.target.parentElement;
+                const changedTarget = mutationElement ? grabNode(mutationElement) : false;
+                const changedState = changedTarget instanceof HTMLElement
+                    ? getTranslationState(changedTarget)
+                    : undefined;
+
+                // React/Vue 等页面可能在翻译完成后重建控件或内容块。若 DOM
+                // 已不再等于插件写入的译文，先放弃旧节点快照，再把新节点
+                // 重新排入全文队列，避免按钮短暂翻译后又恢复成英文。
+                if (changedTarget instanceof HTMLElement && changedState?.phase === "translated") {
+                    restoreTranslation(changedTarget);
+                    session.scheduled.delete(changedTarget);
+                    session.pending.add(changedTarget);
+                    session.observer.observe(changedTarget);
+                }
+
+                for (const added of Array.from(mutation.addedNodes)) {
+                    if (isTranslationArtifact(added)) continue;
+                    if (added.nodeType === Node.ELEMENT_NODE) {
+                        addFullPageBlocks(session, added);
+                        for (const root of getOpenShadowRoots(added)) observeFullPageRoot(session, root);
+                    }
+                }
+                if (mutation.addedNodes.length > 0) scheduleFullPageDrain(session);
+            } else if (mutation.type === "characterData") {
+                const target = grabNode(mutation.target.parentElement);
+                if (target instanceof HTMLElement) {
+                    const state = getTranslationState(target);
+                    if (state?.phase === "translated") restoreTranslation(target);
+                    session.scheduled.delete(target);
+                    session.pending.add(target);
+                    session.observer.observe(target);
+                    scheduleFullPageDrain(session);
+                }
+            }
+        }
+    });
+}
+
+function stopFullPageSession(): void {
+    if (!fullPageSession) return;
+    fullPageSession.active = false;
+    if (fullPageSession.flushTimer !== null) window.clearTimeout(fullPageSession.flushTimer);
+    fullPageSession.observer.disconnect();
+    fullPageSession.mutationObserver.disconnect();
+    fullPageSession.pending.clear();
+    fullPageSession = null;
+}
+
+/**
+ * 恢复全文翻译。全文和悬浮翻译共享同一份节点状态，因此这里无需再用
+ * data-fr-node-id + innerHTML 覆盖页面，也能处理 Shadow DOM 和动态节点。
+ */
+export function restoreOriginalContent(): void {
+    stopFullPageSession();
+    cancelAllTranslations();
+    restoreAllTranslations();
+    originalContents.clear();
+
+    // 兼容升级前遗留的 wrapper/属性；新状态机不会依赖这些标记，但旧页面
+    // 不应在扩展热更新后留下半截译文。
+    const roots: Node[] = [document.documentElement, ...getOpenShadowRoots(document.documentElement)];
+    for (const root of roots) {
+        if (!(root instanceof Element || root instanceof DocumentFragment || root instanceof Document)) continue;
+        root.querySelectorAll?.(".fluent-read-bilingual-content, .fluent-read-loading, .fluent-read-retry-wrapper").forEach((element) => element.remove());
+        root.querySelectorAll?.(".fluent-read-bilingual").forEach((element) => element.classList.remove("fluent-read-bilingual"));
+    }
+}
+
+/**
+ * 启动全文翻译会话：根固定为 documentElement，使用较大的预取窗口和并发
+ * 限制，并持续观察新增 DOM/open ShadowRoot。这样 body 被 SPA 替换后仍能
+ * 继续工作，也不会一次性给整页发出数百个请求。
+ */
+export function autoTranslateEnglishPage(): void {
+    if (!checkConfig() || fullPageSession?.active) return;
+    const root = document.documentElement;
+    if (!root) return;
+
+    const observer = new IntersectionObserver((entries) => {
+        const session = fullPageSession;
+        if (!session?.active) return;
+        for (const entry of entries) {
+            const node = entry.target as HTMLElement;
+            if (entry.isIntersecting && !session.pending.has(node)) session.pending.add(node);
+        }
+        scheduleFullPageDrain(session);
+    }, {
+        root: null,
+        rootMargin: "600px 0px",
+        threshold: 0.01,
+    });
+
+    const session: FullPageSession = {
+        active: true,
+        generation: ++sessionSequence,
+        observer,
+        mutationObserver: new MutationObserver(() => undefined),
+        roots: new Set(),
+        pending: new Set(),
+        scheduled: new Set(),
+        inFlight: 0,
+        draining: false,
+        flushTimer: null,
+    };
+    fullPageSession = session;
+    attachFullPageMutationHandling(session);
+    observeFullPageRoot(session, root);
+    addFullPageBlocks(session, root);
+    for (const shadowRoot of getOpenShadowRoots(root)) observeFullPageRoot(session, shadowRoot);
+}
+
+/**
+ * 处理鼠标悬浮/快捷键翻译。坐标只负责找到内容块，真正的翻译调用与全文
+ * 会话共用 translateTarget，因此按钮、富文本和恢复行为不会出现两套规则。
+ */
+export function handleTranslation(mouseX: number, mouseY: number, delayTime = 0): void {
+    if (!checkConfig()) return;
+    if (hoverTimer) clearTimeout(hoverTimer);
+    hoverTimer = setTimeout(() => {
+        const node = asHTMLElement(resolveNodeAtPoint(mouseX, mouseY));
+        if (!node) return;
+        void translateTarget(node, config.display === styles.bilingualTranslation ? "bilingual" : "single", delayTime > 0);
     }, delayTime);
 }
 
-// 双语翻译。
 export function handleBilingualTranslation(node: unknown, slide: boolean): void {
-    const target = asTranslationNode(node);
+    const target = asHTMLElement(node);
     if (!target) return;
-
-    const current = getTranslationState(target);
-    if (current?.phase === 'loading') return;
-    if (current?.phase === 'translated') {
-        if (!slide) restoreTranslation(target);
-        return;
-    }
-    if (current?.phase === 'error') restoreTranslation(target);
-    if (skipNode(target)) return;
-
-    const origin = target.textContent ?? '';
-    const cleanedText = origin.replace(/[\s\u3000]/g, '');
-    if (!cleanedText || detectlang(cleanedText) === config.to) return;
-
-    const attempt = beginTranslation(target, 'bilingual');
-    if (!attempt) return;
-
-    const spinner = insertLoadingSpinner(target);
-    setSpinner(target, spinner);
-
-    const cached = cache.localGet(origin);
-    const translation = cached ?? translateText(origin, document.title);
-    void renderBilingualResult(target, attempt, translation);
+    void translateTarget(target, "bilingual", slide);
 }
 
-// 单语/仅译文翻译。
 export function handleSingleTranslation(node: unknown, slide: boolean): void {
-    const target = asTranslationNode(node);
+    const target = asHTMLElement(node);
     if (!target) return;
-
-    const current = getTranslationState(target);
-    if (current?.phase === 'loading') return;
-    if (current?.phase === 'translated') {
-        if (!slide) restoreTranslation(target);
-        return;
-    }
-    if (current?.phase === 'error') restoreTranslation(target);
-    if (skipNode(target)) return;
-
-    singleTranslate(target);
+    void translateTarget(target, "single", slide);
 }
 
 export function singleTranslate(node: unknown): void {
-    const target = asTranslationNode(node);
-    if (!target) return;
-
-    const origin = servicesType.isMachine(config.service)
-        ? target.innerHTML
-        : LLMStandardHTML(target);
-    const cleanedText = target.textContent?.replace(/[\s\u3000]/g, '') ?? '';
-    if (!cleanedText || detectlang(cleanedText) === config.to) return;
-
-    const attempt = beginTranslation(target, 'single');
-    if (!attempt) return;
-
-    const cached = cache.localGet(attempt.state.sourceOuterHTML);
-    const translation = cached
-        ? Promise.resolve(cached)
-        : config.service === services.microsoft
-            ? translateMicrosoftHtml(target)
-            : translateText(origin, document.title);
-
-    // 先创建翻译请求，再插入 loading 节点。微软 HTML 翻译会克隆目标
-    // 元素；如果顺序相反，loading 节点也会被带进服务响应和最终译文。
-    const spinner = insertLoadingSpinner(target);
-    setSpinner(target, spinner);
-
-    void renderSingleResult(target, attempt, origin, translation, Boolean(cached));
+    handleSingleTranslation(node, false);
 }
-
-async function translateMicrosoftHtml(node: HTMLElement): Promise<string> {
-    const clone = node.cloneNode(true) as HTMLElement;
-    const walker = document.createTreeWalker(clone, NodeFilter.SHOW_TEXT);
-    const textNodes: Array<{node: Text; prefix: string; suffix: string}> = [];
-    const texts: string[] = [];
-
-    let currentNode = walker.nextNode();
-    while (currentNode) {
-        const textNode = currentNode as Text;
-        const parentTag = textNode.parentElement?.tagName.toLowerCase();
-        const value = textNode.nodeValue || '';
-        const match = value.match(/^(\s*)([\s\S]*?\S)(\s*)$/);
-
-        if (match && !['script', 'style', 'noscript'].includes(parentTag || '')) {
-            textNodes.push({node: textNode, prefix: match[1], suffix: match[3]});
-            texts.push(match[2]);
-        }
-
-        currentNode = walker.nextNode();
-    }
-
-    if (texts.length === 0) return clone.innerHTML;
-
-    const translations = await translateTextBatch(texts, document.title, {useCache: false});
-    translations.forEach((translation, index) => {
-        const textNodeInfo = textNodes[index];
-        if (!textNodeInfo) return;
-        const {node: textNode, prefix, suffix} = textNodeInfo;
-        textNode.nodeValue = `${prefix}${translation}${suffix}`;
-    });
-
-    return clone.innerHTML;
-}
-
-export const handleBtnTranslation = throttle((node: any) => {
-    let origin = node.innerText;
-    let rs = cache.localGet(origin);
-    if (rs) {
-        node.innerText = rs;
-        return;
-    }
-
-    config.count++ && storage.setItem('local:config', JSON.stringify(config));
-
-    browser.runtime.sendMessage({ context: document.title, origin: origin })
-        .then((text: string) => {
-            cache.localSetDual(origin, text);
-            node.innerText = text;
-        }).catch((error: any) => console.error('调用失败:', error))
-}, 250)

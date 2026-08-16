@@ -7,9 +7,12 @@
  */
 export type TranslationDisplayMode = "bilingual" | "single";
 export type TranslationPhase = "loading" | "translated" | "error";
+export type TranslationTargetKind = "content" | "control";
 
 export interface TranslationState {
     mode: TranslationDisplayMode;
+    /** 内容块使用上下双语；按钮等交互控件只替换内部可见文字。 */
+    kind: TranslationTargetKind;
     phase: TranslationPhase;
     generation: number;
     sourceText: string;
@@ -25,6 +28,8 @@ export interface TranslationState {
      * 恢复时重新插入同一批节点，避免重建页面原有节点对象。
      */
     originalChildren: ChildNode[];
+    /** 控件翻译直接修改原 Text 节点；恢复时需要把节点内容写回原值。 */
+    originalTextValues: Array<{node: Text; value: string}>;
     controller: AbortController;
     spinner?: HTMLElement;
     bilingualContent?: HTMLElement;
@@ -49,14 +54,26 @@ export function getTranslationState(node: HTMLElement): TranslationState | undef
 export function beginTranslation(
     node: HTMLElement,
     mode: TranslationDisplayMode,
+    kind: TranslationTargetKind = "content",
 ): TranslationAttempt | null {
     const previous = states.get(node);
     if (previous?.phase === "loading") return null;
 
     previous?.controller.abort();
 
+    const originalTextValues: Array<{node: Text; value: string}> = [];
+    if (node.ownerDocument?.createTreeWalker) {
+        const textWalker = node.ownerDocument.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+        let textNode = textWalker.nextNode();
+        while (textNode) {
+            originalTextValues.push({node: textNode as Text, value: textNode.nodeValue ?? ""});
+            textNode = textWalker.nextNode();
+        }
+    }
+
     const state: TranslationState = {
         mode,
+        kind,
         phase: "loading",
         generation: (previous?.generation ?? 0) + 1,
         sourceText: node.textContent ?? "",
@@ -64,6 +81,7 @@ export function beginTranslation(
         sourceOuterHTML: node.outerHTML,
         originalStyleAttribute: node.getAttribute("style"),
         originalChildren: Array.from(node.childNodes),
+        originalTextValues,
         controller: new AbortController(),
     };
 
@@ -178,9 +196,14 @@ export function restoreTranslation(node: HTMLElement): boolean {
     removeExtensionNode(state.bilingualContent);
     removeRetryArtifacts(node);
 
-    if (state.mode === "single") {
+    if (state.mode === "single" || state.kind === "control") {
         // 站点在翻译完成后可能已经重渲染了目标；此时不能用旧快照覆盖站点内容。
         if (!state.translatedHTML || node.innerHTML === state.translatedHTML) {
+            if (state.kind === "control") {
+                state.originalTextValues.forEach(({node: textNode, value}) => {
+                    textNode.nodeValue = value;
+                });
+            }
             removeCurrentChildren(node);
             state.originalChildren.forEach((child) => node.appendChild(child));
         }
