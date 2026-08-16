@@ -1,7 +1,6 @@
 import FloatingBall from '@/components/FloatingBall.vue';
-import { config } from '@/entrypoints/utils/config';
+import { config, saveConfig } from '@/entrypoints/utils/config';
 import browser from 'webextension-polyfill';
-import { storage } from '@wxt-dev/storage';
 import { autoTranslateEnglishPage, restoreOriginalContent } from '@/entrypoints/main/trans';
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import type { ShadowRootContentScriptUi } from 'wxt/utils/content-script-ui/shadow-root';
@@ -54,7 +53,7 @@ export function mountFloatingBall(ctx?: ContentScriptContext, position?: 'left' 
         config.floatingBallPosition = newPosition;
 
         // 保存配置到存储
-        saveConfig();
+        void saveConfig().catch((error) => console.error('Failed to save config:', error));
       },
       // 添加翻译状态变化事件监听
       onTranslationToggle: (isTranslating: boolean) => {
@@ -204,16 +203,6 @@ function addFloatingBallAnimation(type: 'translate' | 'restore') {
 }
 
 /**
- * 保存配置到存储
- */
-function saveConfig() {
-  // 使用插件提供的存储 API 保存配置
-  storage.setItem('local:config', JSON.stringify(config)).catch((error) => {
-    console.error('Failed to save config:', error);
-  });
-}
-
-/**
  * 卸载悬浮球
  */
 export function unmountFloatingBall() {
@@ -242,7 +231,7 @@ export function toggleFloatingBall() {
   }
   
   // 保存配置到存储
-  saveConfig();
+  void saveConfig().catch((error) => console.error('Failed to save config:', error));
 }
 
 /**
@@ -259,5 +248,5 @@ export function toggleFloatingBallPosition() {
   }
   
   // 保存配置到存储
-  saveConfig();
+  void saveConfig().catch((error) => console.error('Failed to save config:', error));
 }

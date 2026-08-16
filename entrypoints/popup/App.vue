@@ -267,9 +267,14 @@
 <script lang="ts" setup>
 import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue';
 import browser from 'webextension-polyfill';
-import { storage } from '@wxt-dev/storage';
+import {
+  config as runtimeConfig,
+  configReady,
+  saveConfig,
+  subscribeConfig,
+} from '@/entrypoints/utils/config';
 import { Setting } from '@element-plus/icons-vue';
-import { Config, normalizeConfig } from '@/entrypoints/utils/model';
+import { Config } from '@/entrypoints/utils/model';
 import { options } from '@/entrypoints/utils/option';
 import ServiceIcon from '@/components/ServiceIcon.vue';
 
@@ -344,18 +349,19 @@ function applyTheme(theme: string) {
 }
 
 async function hydrate() {
-  const value = await storage.getItem('local:config');
-  if (typeof value === 'string' && value) Object.assign(config.value, normalizeConfig(JSON.parse(value)));
+  await configReady;
+  Object.assign(config.value, runtimeConfig);
   lastSerialized = JSON.stringify(config.value);
   hydrated.value = true;
   applyTheme(config.value.theme || 'auto');
 }
 void hydrate();
 
-storage.watch('local:config', (value: any) => {
-  if (typeof value !== 'string' || !value || value === lastSerialized) return;
-  lastSerialized = value;
-  Object.assign(config.value, normalizeConfig(JSON.parse(value)));
+const unsubscribeConfig = subscribeConfig((value) => {
+  const serialized = JSON.stringify(value);
+  if (serialized === lastSerialized) return;
+  lastSerialized = serialized;
+  Object.assign(config.value, value);
 });
 
 watch(config, async value => {
@@ -363,7 +369,7 @@ watch(config, async value => {
   const serialized = JSON.stringify(value);
   if (serialized === lastSerialized) return;
   lastSerialized = serialized;
-  await storage.setItem('local:config', serialized);
+  await saveConfig(value).catch((error) => console.warn('[FluentRead] 保存 popup 设置失败', error));
 }, { deep: true });
 watch(() => config.value.theme, theme => applyTheme(theme || 'auto'));
 darkMode.onchange = () => { if (config.value.theme === 'auto') applyTheme('auto'); };
@@ -389,6 +395,7 @@ onMounted(() => {
   document.addEventListener('keydown', handleServicePickerKeydown);
 });
 onUnmounted(() => {
+  unsubscribeConfig();
   document.removeEventListener('pointerdown', closeServicePicker);
   document.removeEventListener('keydown', handleServicePickerKeydown);
   darkMode.onchange = null;

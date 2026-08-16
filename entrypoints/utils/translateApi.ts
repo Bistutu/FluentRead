@@ -5,9 +5,8 @@
 
 import { enqueueTranslation, clearTranslationQueue } from './translateQueue';
 import browser from 'webextension-polyfill';
-import { config } from './config';
+import { config, saveConfig } from './config';
 import { detectlang } from './common';
-import { storage } from '@wxt-dev/storage';
 import { resolveConfiguredModel, servicesType } from './option';
 import { getPageTranslationContext } from './pageContext';
 
@@ -46,7 +45,7 @@ export async function translateText(origin: string, context: string = document.t
   // 增加翻译计数
   config.count++;
   // 保存配置以确保计数持久化
-  storage.setItem('local:config', JSON.stringify(config));
+  void saveConfig().catch((error) => console.error('[FluentRead] 保存翻译计数失败:', error));
 
   // 使用队列处理翻译请求
   return enqueueTranslation(async () => {
@@ -108,7 +107,7 @@ export async function translateTextBatch(
   const pageContext = await resolvePageContext(options.pageContext);
 
   config.count++;
-  storage.setItem('local:config', JSON.stringify(config));
+  void saveConfig().catch((error) => console.error('[FluentRead] 保存翻译计数失败:', error));
 
   return enqueueTranslation(async () => {
     const translationTask = async (retryCount: number = 0): Promise<string[]> => {

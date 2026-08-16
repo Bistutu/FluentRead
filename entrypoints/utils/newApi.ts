@@ -1,6 +1,5 @@
-import { config } from "@/entrypoints/utils/config";
+import { config, saveConfig } from "@/entrypoints/utils/config";
 import {customModelString, services} from "@/entrypoints/utils/option";
-import { storage } from '@wxt-dev/storage';
 
 let containerEl: HTMLElement | null = null;
 
@@ -47,7 +46,7 @@ export function mountNewApiComponent() {
 
 
     try {
-      await storage.setItem('local:config', JSON.stringify(config));
+      await saveConfig();
     } catch (error) {
       console.error('Error saving config:', error);
     }
