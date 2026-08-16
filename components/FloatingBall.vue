@@ -370,12 +370,11 @@ watch(() => props.position, (newPosition) => {
   align-items: center;
   justify-content: center;
   padding: 0;
-  border: 1px solid rgba(217, 222, 231, 0.96);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.94);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
   cursor: pointer;
-  opacity: 0.84;
+  opacity: 1;
   overflow: visible;
 }
 
@@ -388,20 +387,22 @@ watch(() => props.position, (newPosition) => {
 }
 
 .fr-floating-ball-expanded .floating-ball-main {
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.22);
+  filter: drop-shadow(0 8px 10px rgba(15, 23, 42, 0.16));
 }
 
 .floating-ball-main:hover,
 .floating-ball-main:focus-visible {
   outline: none;
-  border-color: #f06a92;
-  box-shadow: 0 10px 30px rgba(240, 106, 146, 0.28);
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  filter: drop-shadow(0 8px 12px rgba(240, 106, 146, 0.3));
 }
 
 .floating-ball-mascot {
   display: block;
-  width: 30px;
-  height: 30px;
+  width: 48px;
+  height: 48px;
   pointer-events: none;
   image-rendering: pixelated;
 }
@@ -444,8 +445,9 @@ watch(() => props.position, (newPosition) => {
 }
 
 .is-translating .floating-ball-main {
-  border-color: #f06a92;
-  box-shadow: 0 10px 28px rgba(240, 106, 146, 0.24);
+  border-color: transparent;
+  box-shadow: none;
+  filter: drop-shadow(0 8px 12px rgba(240, 106, 146, 0.3));
 }
 
 .animating .floating-ball-main {
