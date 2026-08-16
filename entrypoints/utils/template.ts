@@ -106,10 +106,6 @@ export function deepseekResponsesMsgTemplate(origin: string, context?: string, p
         input: user,
     };
 
-    if (getDeepSeekThinkingMode(serviceOverride) === 'disabled') {
-        payload.temperature = 0.7;
-    }
-
     return JSON.stringify(payload);
 }
 
@@ -126,10 +122,6 @@ export function deepseekMsgTemplate(origin: string, context?: string, prompt?: s
         ],
         thinking: {type: thinking},
     };
-
-    if (thinking === 'disabled') {
-        payload.temperature = 0.7;
-    }
 
     return JSON.stringify(mergeCustomBody(payload, currentCustomBody(serviceOverride || config.service)));
 }
