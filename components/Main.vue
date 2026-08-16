@@ -622,6 +622,7 @@ const appendDeepLXPreset = (endpoint: string | undefined) => {
 
 let hydrated = false;
 let applyingExternalConfig = false;
+let pageExitSaveStarted = false;
 const unsubscribeConfig = subscribeConfig((nextConfig) => {
   const serialized = JSON.stringify(nextConfig);
   if (serialized === lastSerialized) return;
@@ -652,19 +653,21 @@ watch(config, (newValue) => {
 }, { deep: true, flush: 'sync' });
 
 // 设置页关闭前提交最新快照，避免 Firefox 销毁页面时丢失最后一次修改。
+// pagehide 和 unmounted 可能连续触发，只提交一次，避免重复写入和重复历史。
+function persistOnPageExit() {
+  if (!hydrated || pageExitSaveStarted) return;
+  pageExitSaveStarted = true;
+  void saveConfig(config.value).catch((error) => console.warn('[FluentRead] 设置页关闭前本地保存失败', error));
+  void persistConfig(config.value).catch((error) => console.warn('[FluentRead] 设置页关闭前后台保存失败', error));
+}
+
 onUnmounted(() => {
-  if (hydrated) {
-    void saveConfig(config.value).catch((error) => console.warn('[FluentRead] 设置页关闭前本地保存失败', error));
-    void persistConfig(config.value).catch((error) => console.warn('[FluentRead] 设置页关闭前后台保存失败', error));
-  }
+  persistOnPageExit();
   window.removeEventListener('pagehide', saveOnPageHide);
 });
 
 function saveOnPageHide() {
-  if (hydrated) {
-    void saveConfig(config.value).catch((error) => console.warn('[FluentRead] 设置页 pagehide 本地保存失败', error));
-    void persistConfig(config.value).catch((error) => console.warn('[FluentRead] 设置页 pagehide 后台保存失败', error));
-  }
+  persistOnPageExit();
 }
 window.addEventListener('pagehide', saveOnPageHide);
 

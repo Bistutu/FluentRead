@@ -299,6 +299,7 @@ const moreServicesOpen = ref(false);
 const hydrated = ref(false);
 let lastSerialized = '';
 let applyingExternalConfig = false;
+let pageExitSaveStarted = false;
 let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 const darkMode = window.matchMedia('(prefers-color-scheme: dark)');
 const drawerSettingsSection: Record<DrawerName, SettingsSection> = {
@@ -403,11 +404,7 @@ onMounted(() => {
   document.addEventListener('keydown', handleServicePickerKeydown);
 });
 onUnmounted(() => {
-  // Firefox 关闭 popup 会立即销毁页面，卸载前把当前快照交给后台再保存一次。
-  if (hydrated) {
-    void saveConfig(config.value).catch((error) => console.warn('[FluentRead] popup 关闭前本地保存设置失败', error));
-    void persistConfig(config.value).catch((error) => console.warn('[FluentRead] popup 关闭前后台保存设置失败', error));
-  }
+  persistOnPageExit();
   window.removeEventListener('pagehide', saveOnPageHide);
   unsubscribeConfig();
   document.removeEventListener('pointerdown', closeServicePicker);
@@ -417,12 +414,17 @@ onUnmounted(() => {
 });
 
 function saveOnPageHide() {
-  if (hydrated) {
-    void saveConfig(config.value).catch((error) => console.warn('[FluentRead] popup pagehide 本地保存设置失败', error));
-    void persistConfig(config.value).catch((error) => console.warn('[FluentRead] popup pagehide 后台保存设置失败', error));
-  }
+  persistOnPageExit();
 }
 window.addEventListener('pagehide', saveOnPageHide);
+
+// Firefox 可能同时触发 pagehide 和 unmounted；只提交一次最新快照。
+function persistOnPageExit() {
+  if (!hydrated.value || pageExitSaveStarted) return;
+  pageExitSaveStarted = true;
+  void saveConfig(config.value).catch((error) => console.warn('[FluentRead] popup 关闭前本地保存设置失败', error));
+  void persistConfig(config.value).catch((error) => console.warn('[FluentRead] popup 关闭前后台保存设置失败', error));
+}
 
 function showNotice(message: string, type: 'success' | 'error' = 'success') {
   notice.value = message;

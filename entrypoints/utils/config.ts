@@ -156,10 +156,10 @@ function notifyHistoryListeners(): void {
     historyListeners.forEach((listener) => listener(snapshot));
 }
 
-function setHistoryState(nextHistory: ConfigHistoryState): void {
+function setHistoryState(nextHistory: ConfigHistoryState, notify = true): void {
     historyState = cloneHistoryState(nextHistory);
     historyLastSerialized = serializeHistory(historyState);
-    notifyHistoryListeners();
+    if (notify) notifyHistoryListeners();
 }
 
 function handleStoredHistoryChange(value: unknown): void {
@@ -181,8 +181,7 @@ async function queueHistoryWrite(nextHistory: ConfigHistoryState): Promise<void>
         .then(async () => {
             if (revision !== historyWriteRevision || historyLastSerialized !== serialized) return;
             await storage.setItem<ConfigHistoryState>(CONFIG_HISTORY_STORAGE_KEY, nextHistory);
-            historyState = cloneHistoryState(nextHistory);
-            notifyHistoryListeners();
+            setHistoryState(nextHistory);
         });
     try {
         await historyWriteQueue;
@@ -201,13 +200,11 @@ async function initializeConfigHistory(): Promise<void> {
         if (parsed) {
             setHistoryState(parsed);
         } else {
-            historyState = createBaselineHistory();
-            historyLastSerialized = serializeHistory(historyState);
+            setHistoryState(createBaselineHistory(), false);
         }
     } catch (error) {
         historyInitialized = true;
-        historyState = createBaselineHistory();
-        historyLastSerialized = serializeHistory(historyState);
+        setHistoryState(createBaselineHistory(), false);
         console.error('[FluentRead] 配置历史读取失败，使用当前配置快照', error);
     }
 }
@@ -235,33 +232,33 @@ async function appendHistorySnapshotNow(value: unknown): Promise<void> {
     await queueHistoryWrite(nextHistory);
 }
 
+function takePendingHistorySnapshot(): Config | null {
+    if (pendingHistoryTimer) clearTimeout(pendingHistoryTimer);
+    pendingHistoryTimer = undefined;
+    const snapshot = pendingHistorySnapshot;
+    pendingHistorySnapshot = null;
+    return snapshot;
+}
+
+function flushHistorySnapshot(snapshot: Config): void {
+    historyFlushPromise = appendHistorySnapshotNow(snapshot).finally(() => {
+        historyFlushPromise = null;
+    });
+    void historyFlushPromise.catch((error) => console.error('[FluentRead] 配置历史保存失败', error));
+}
+
 function scheduleHistorySnapshot(value: unknown): void {
     pendingHistorySnapshot = normalizeConfig(value);
     if (pendingHistoryTimer) clearTimeout(pendingHistoryTimer);
     pendingHistoryTimer = setTimeout(() => {
-        pendingHistoryTimer = undefined;
-        const snapshot = pendingHistorySnapshot;
-        pendingHistorySnapshot = null;
-        if (!snapshot) return;
-        historyFlushPromise = appendHistorySnapshotNow(snapshot).finally(() => {
-            historyFlushPromise = null;
-        });
-        void historyFlushPromise.catch((error) => console.error('[FluentRead] 配置历史保存失败', error));
+        const snapshot = takePendingHistorySnapshot();
+        if (snapshot) flushHistorySnapshot(snapshot);
     }, CONFIG_HISTORY_DEBOUNCE_MS);
 }
 
 export async function flushConfigHistory(): Promise<void> {
-    if (pendingHistoryTimer) {
-        clearTimeout(pendingHistoryTimer);
-        pendingHistoryTimer = undefined;
-        const snapshot = pendingHistorySnapshot;
-        pendingHistorySnapshot = null;
-        if (snapshot) {
-            historyFlushPromise = appendHistorySnapshotNow(snapshot).finally(() => {
-                historyFlushPromise = null;
-            });
-        }
-    }
+    const snapshot = takePendingHistorySnapshot();
+    if (snapshot) flushHistorySnapshot(snapshot);
     await historyFlushPromise;
 }
 

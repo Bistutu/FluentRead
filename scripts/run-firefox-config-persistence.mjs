@@ -97,6 +97,15 @@ async function evaluateAsyncJson(client, frame, source) {
     throw new Error('Firefox async evaluation timeout');
 }
 
+const CONFIG_PROJECTION_SOURCE = `browser.storage.local.get(null).then(all => {
+    const value = all.config || all['local:config'];
+    return {on: value?.on, from: value?.from, to: value?.to, service: value?.service, style: value?.style, display: value?.display, theme: value?.theme};
+})`;
+
+function readConfigProjection(client, frame) {
+    return evaluateAsyncJson(client, frame, CONFIG_PROJECTION_SOURCE);
+}
+
 async function navigate(client, url) {
     const current = await selectedFrame(client);
     await client.request({to: current.frame.actor, type: 'navigateTo', url});
@@ -329,24 +338,15 @@ async function main() {
         const currentVersion = result.historyCases.current;
         await historyClick(`[aria-label="恢复配置 v${restoreEntry.version}"]`, 'restore');
         const restoredVersion = await evaluateJson(client, (await selectedFrame(client)).frame, `document.querySelector('.config-history-entry.current .config-history-version b')?.textContent?.trim() || null`);
-        const restoredStorage = await evaluateAsyncJson(client, (await selectedFrame(client)).frame, `browser.storage.local.get(null).then(all => {
-            const value = all.config || all['local:config'];
-            return {on: value?.on, from: value?.from, to: value?.to, service: value?.service, style: value?.style, display: value?.display, theme: value?.theme};
-        })`);
+        const restoredStorage = await readConfigProjection(client, (await selectedFrame(client)).frame);
         if (!restoredVersion || restoredVersion === currentVersion) throw new Error('Firefox 配置历史恢复没有改变当前版本');
         if (JSON.stringify(restoredStorage) !== JSON.stringify(restoreEntry.config)) throw new Error(`Firefox 配置恢复未写入目标配置: ${JSON.stringify({expected: restoreEntry.config, actual: restoredStorage})}`);
         await historyClick('[aria-label="撤销配置恢复"]', 'undo');
         const undoneVersion = await evaluateJson(client, (await selectedFrame(client)).frame, `document.querySelector('.config-history-entry.current .config-history-version b')?.textContent?.trim() || null`);
-        const undoneStorage = await evaluateAsyncJson(client, (await selectedFrame(client)).frame, `browser.storage.local.get(null).then(all => {
-            const value = all.config || all['local:config'];
-            return {on: value?.on, from: value?.from, to: value?.to, service: value?.service, style: value?.style, display: value?.display, theme: value?.theme};
-        })`);
+        const undoneStorage = await readConfigProjection(client, (await selectedFrame(client)).frame);
         await historyClick('[aria-label="重做配置恢复"]', 'redo');
         const redoneVersion = await evaluateJson(client, (await selectedFrame(client)).frame, `document.querySelector('.config-history-entry.current .config-history-version b')?.textContent?.trim() || null`);
-        const redoneStorage = await evaluateAsyncJson(client, (await selectedFrame(client)).frame, `browser.storage.local.get(null).then(all => {
-            const value = all.config || all['local:config'];
-            return {on: value?.on, from: value?.from, to: value?.to, service: value?.service, style: value?.style, display: value?.display, theme: value?.theme};
-        })`);
+        const redoneStorage = await readConfigProjection(client, (await selectedFrame(client)).frame);
         result.historyCases.restore = {before: currentVersion, restored: restoredVersion, undone: undoneVersion, redone: redoneVersion};
         result.historyCases.storageAfterActions = {
             restoredTo: restoredStorage?.to || null,
