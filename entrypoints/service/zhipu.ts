@@ -28,7 +28,7 @@ async function zhipu(message: any) {
     const resp = await fetch(urls[services.zhipu], {
         method: method.POST,
         headers: headers,
-        body: commonMsgTemplate(message.origin, message.pageContext)
+            body: commonMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt)
     });
 
     if (resp.ok) {

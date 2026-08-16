@@ -7,6 +7,7 @@ import {
     buildTranslationCacheKey,
     translationCache,
 } from "@/entrypoints/utils/translationCache";
+import {buildPageSummaryPrompt, buildPageSummarySystemPrompt} from "@/entrypoints/utils/template";
 
 // 翻译状态管理
 let translationStateMap = new Map<number, boolean>(); // tabId -> isTranslated
@@ -101,6 +102,84 @@ function getTranslationService() {
 
 const pendingTranslations = new Map<string, Promise<string>>();
 const pendingBatches = new Map<string, Promise<string[]>>();
+const pageSummaryCache = new Map<string, string>();
+const pendingPageSummaries = new Map<string, Promise<string>>();
+const PAGE_SUMMARY_CACHE_SIZE = 8;
+const PAGE_SUMMARY_LIMIT = 1200;
+
+function buildPageSummaryCacheKey(pageContext: string): string {
+    return JSON.stringify({
+        service: config.service,
+        model: getSelectedModel(config.service),
+        endpoint: getProviderEndpoint(config.service),
+        customBody: config.customBody[config.service] || '',
+        pageContext,
+    });
+}
+
+function cachePageSummary(key: string, value: string): void {
+    if (pageSummaryCache.size >= PAGE_SUMMARY_CACHE_SIZE) {
+        const oldestKey = pageSummaryCache.keys().next().value;
+        if (oldestKey) pageSummaryCache.delete(oldestKey);
+    }
+    pageSummaryCache.set(key, value);
+}
+
+/**
+ * Read Frog generates one short summary per page context and reuses it for
+ * the paragraphs that follow. FluentRead keeps the same behavior in the
+ * background so the extra request is shared by all content-script callers.
+ * A summary failure is deliberately non-fatal: the raw readable context is
+ * still useful and the ordinary translation must continue.
+ */
+async function addPageSummary(pageContext: string): Promise<string> {
+    if (!pageContext.trim() || !servicesType.isUseAIContext(config.service, getSelectedModel(config.service))) {
+        return pageContext;
+    }
+
+    const key = buildPageSummaryCacheKey(pageContext);
+    const cached = pageSummaryCache.get(key);
+    if (cached) return cached;
+
+    const existing = pendingPageSummaries.get(key);
+    if (existing) return existing;
+
+    const request = (async () => {
+        try {
+            const result = await getTranslationService()({
+                origin: '',
+                context: '',
+                pageContext: '',
+                summaryPrompt: buildPageSummaryPrompt(pageContext),
+                summarySystemPrompt: buildPageSummarySystemPrompt(),
+            });
+            const summary = typeof result === 'string' ? result.trim().slice(0, PAGE_SUMMARY_LIMIT) : '';
+            if (!summary) {
+                cachePageSummary(key, pageContext);
+                return pageContext;
+            }
+
+            const summarizedContext = `Page summary (AI-generated reference):\n${summary}\n\n${pageContext}`.slice(0, 4000);
+            cachePageSummary(key, summarizedContext);
+            return summarizedContext;
+        } catch (error) {
+            console.warn('[FluentRead] page context summary failed; using extracted context:', error);
+            cachePageSummary(key, pageContext);
+            return pageContext;
+        }
+    })();
+
+    pendingPageSummaries.set(key, request);
+    void request.then(
+        () => {
+            if (pendingPageSummaries.get(key) === request) pendingPageSummaries.delete(key);
+        },
+        () => {
+            if (pendingPageSummaries.get(key) === request) pendingPageSummaries.delete(key);
+        },
+    );
+    return request;
+}
 
 async function translateSingleWithCache(
     message: TranslationSingleRequestMessage,
@@ -109,7 +188,7 @@ async function translateSingleWithCache(
     useCache: boolean,
 ): Promise<string> {
     if (!useCache) {
-        return getTranslationService()(message);
+        return getTranslationService()({...message, context, pageContext});
     }
 
     const key = buildCacheKey(message.origin, context, pageContext, 'single');
@@ -146,7 +225,7 @@ async function translateBatchWithCache(
     useCache: boolean,
 ): Promise<string[]> {
     if (!useCache) {
-        const result = await getTranslationService()({...message, context});
+        const result = await getTranslationService()({...message, context, pageContext});
         if (!Array.isArray(result)) throw new Error('批量翻译返回格式异常');
         return result as string[];
     }
@@ -222,7 +301,8 @@ async function translateBatchWithCache(
 async function translateWithCache(message: TranslationRequestMessage): Promise<string | string[]> {
     await configReady;
     const context = typeof message.context === 'string' ? message.context : '';
-    const pageContext = typeof message.pageContext === 'string' ? message.pageContext : '';
+    const rawPageContext = typeof message.pageContext === 'string' ? message.pageContext : '';
+    const pageContext = await addPageSummary(rawPageContext);
     const useCache = isCacheEnabled(message);
 
     if (Array.isArray(message.origin)) {
@@ -390,6 +470,7 @@ export default defineBackground({
 
                     if (message.type === 'clearTranslationCache') {
                         await translationCache.clear();
+                        pageSummaryCache.clear();
                         resolve({ success: true });
                         return;
                     }

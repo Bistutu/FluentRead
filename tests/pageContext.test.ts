@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 describe('getPageTranslationContext', () => {
-    it('提取标题、描述和当前原文附近的正文，并移除插件生成内容', () => {
+    it('提取标题、描述和正文，并移除插件生成内容', async () => {
         const removed: string[] = [];
         const clone = {
             innerText: 'prefix context sentence target sentence suffix',
@@ -35,15 +35,15 @@ describe('getPageTranslationContext', () => {
             configurable: true,
         });
 
-        const context = getPageTranslationContext('target sentence');
+        const context = await getPageTranslationContext();
 
         expect(context).toContain('Page title: An article');
         expect(context).toContain('Page description: A short description');
-        expect(context).toContain('Relevant page content: prefix context sentence target sentence suffix');
+        expect(context).toContain('Readable page content (Markdown):\nprefix context sentence target sentence suffix');
         expect(removed).toEqual(['generated']);
     });
 
-    it('限制上下文长度，避免正文无限扩大请求体', () => {
+    it('限制上下文长度，避免正文无限扩大请求体', async () => {
         const longText = 'x'.repeat(10000);
         const clone = {
             innerText: longText,
@@ -64,6 +64,9 @@ describe('getPageTranslationContext', () => {
             configurable: true,
         });
 
-        expect(getPageTranslationContext()).toHaveLength(4000);
+        const context = await getPageTranslationContext();
+        expect(context).toContain('Readable page content (Markdown):');
+        expect(context.length).toBeLessThanOrEqual(4000);
+        expect(context).toContain('x'.repeat(2000));
     });
 });

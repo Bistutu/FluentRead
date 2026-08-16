@@ -41,7 +41,7 @@ export async function translateText(origin: string, context: string = document.t
     return origin;
   }
 
-  const pageContext = resolvePageContext(origin, options.pageContext);
+  const pageContext = await resolvePageContext(options.pageContext);
 
   // 增加翻译计数
   config.count++;
@@ -105,7 +105,7 @@ export async function translateTextBatch(
     timeout = 45000,
     useCache = config.useCache,
   } = options;
-  const pageContext = resolvePageContext(origins[0] || '', options.pageContext);
+  const pageContext = await resolvePageContext(options.pageContext);
 
   config.count++;
   storage.setItem('local:config', JSON.stringify(config));
@@ -164,7 +164,7 @@ export interface TranslateOptions {
   pageContext?: string;
 }
 
-function resolvePageContext(origin: string, suppliedContext?: string): string | undefined {
+async function resolvePageContext(suppliedContext?: string): Promise<string | undefined> {
   if (!config.enableAIContext || !servicesType.isUseAIContext(config.service, config.model[config.service] || '')) return undefined;
-  return suppliedContext?.trim().slice(0, 4000) || getPageTranslationContext(origin) || undefined;
+  return suppliedContext?.trim().slice(0, 4000) || await getPageTranslationContext() || undefined;
 }

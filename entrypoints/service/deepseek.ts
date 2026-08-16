@@ -26,8 +26,8 @@ async function deepseek(message: any) {
             method: method.POST,
             headers,
             body: isResponses
-                ? deepseekResponsesMsgTemplate(message.origin, message.pageContext)
-                : deepseekMsgTemplate(message.origin, message.pageContext)
+                ? deepseekResponsesMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt)
+                : deepseekMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt)
         });
 
         if (!resp.ok) {
