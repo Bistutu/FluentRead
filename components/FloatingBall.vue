@@ -47,8 +47,13 @@
       @pointerup="finishPointerInteraction"
       @pointercancel="cancelPointerInteraction"
     >
-      <img v-if="logoUrl" class="floating-ball-logo" :src="logoUrl" alt="" draggable="false" />
-      <span v-else class="floating-ball-logo-fallback" aria-hidden="true">A↔中</span>
+      <svg class="floating-ball-mascot" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M7.2 11.8 8.4 5.3l5.1 3.1a9.5 9.5 0 0 1 5 0l5.1-3.1 1.2 6.5A9.4 9.4 0 0 1 16 25.2a9.4 9.4 0 0 1-8.8-13.4Z" fill="#F45B87" />
+        <circle cx="12.2" cy="15.2" r="1.45" fill="white" />
+        <circle cx="19.8" cy="15.2" r="1.45" fill="white" />
+        <path d="M13.1 19.1c.8.9 1.8 1.4 2.9 1.4s2.1-.5 2.9-1.4" stroke="white" stroke-width="1.45" stroke-linecap="round" />
+        <circle cx="16" cy="17.8" r=".85" fill="#FFB0C6" />
+      </svg>
       <span v-if="isTranslating" class="check-mark" aria-hidden="true" />
     </button>
 
@@ -88,10 +93,6 @@ const props = defineProps({
   showMenu: {
     type: Boolean,
     default: true,
-  },
-  logoUrl: {
-    type: String,
-    default: '',
   },
   onSettingsClick: {
     type: Function as PropType<(event: MouseEvent) => void>,
@@ -398,27 +399,10 @@ watch(() => props.position, (newPosition) => {
   box-shadow: 0 10px 30px rgba(240, 106, 146, 0.28);
 }
 
-.floating-ball-logo {
+.floating-ball-mascot {
   display: block;
   width: 30px;
   height: 30px;
-  border-radius: 50%;
-  object-fit: cover;
-  pointer-events: none;
-}
-
-.floating-ball-logo-fallback {
-  display: inline-flex;
-  width: 30px;
-  height: 30px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: linear-gradient(145deg, #f2487d, #ff7397);
-  color: #fff;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: -1px;
   pointer-events: none;
 }
 

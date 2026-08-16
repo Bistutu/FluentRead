@@ -62,12 +62,6 @@ export default defineConfig({
             'http://localhost/*',
             'http://127.0.0.1/*',
         ],
-        web_accessible_resources: [
-            {
-                resources: ['icon/128.png'],
-                matches: ['<all_urls>'],
-            },
-        ],
     },
 
 });
