@@ -273,7 +273,7 @@ footer > button { justify-self: end; }
 .donation-icon svg { width: 21px; height: 21px; }
 .donation-card .eyebrow { margin-bottom: 5px; }
 .donation-card h2 { margin-bottom: 6px; font-size: 19px; }
-.donation-qr-label { margin: 0 auto 9px; color: var(--ink); font-size: 13px; font-weight: 750; line-height: 1.4; white-space: nowrap; }
+.donation-description { max-width: 280px; margin: 0 auto 14px; color: var(--muted); font-size: 13px; line-height: 1.55; white-space: nowrap; }
 .donation-qr-frame {
   width: 194px; height: 194px; margin: 0 auto 13px; padding: 6px; border: 1px solid var(--line); border-radius: 17px;
   background: #fff; box-shadow: 0 10px 24px rgba(31, 40, 61, .1);
