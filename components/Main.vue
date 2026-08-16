@@ -660,7 +660,7 @@
 
 // Main 处理配置信息
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
-import { models, options, resolveConfiguredModel, servicesType, defaultOption } from "../entrypoints/utils/option";
+import { customModelString, models, options, resolveConfiguredModel, servicesType, defaultOption } from "../entrypoints/utils/option";
 import { Config, normalizeConfig } from "@/entrypoints/utils/model";
 import { InfoFilled, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -863,7 +863,7 @@ const createServiceCompute = (serviceSource: ServiceSource) => ({
   showCustomModel: computed(
     () =>
       servicesType.isAI(serviceSource.value) &&
-      config.value.model[serviceSource.value] === '自定义模型',
+      config.value.model[serviceSource.value] === customModelString,
   ),
   filteredServices,
   showRobotId: computed(() => servicesType.isCoze(serviceSource.value)),

@@ -1,3 +1,5 @@
+import { customModelString } from '@/entrypoints/utils/option'
+
 export interface ServiceOption {
   value: string
   label: string
@@ -57,14 +59,24 @@ export function filterModels(modelOptions: string[], query: string) {
 }
 
 export function splitModelOptions(modelOptions: string[], selectedModel = '', visibleCount = 4) {
-  const common = modelOptions.slice(0, visibleCount)
+  // 自定义模型是一个输入入口，不应因为当前选中而被提到常用模型区。
+  // 即使调用方传入的列表顺序不稳定，也要保证它在完整列表的最后。
+  const regularModels = modelOptions.filter((model) => model !== customModelString)
+  const customModels = modelOptions.filter((model) => model === customModelString)
+  const orderedModels = [...regularModels, ...customModels]
+  const common = orderedModels.slice(0, visibleCount)
 
-  if (selectedModel && modelOptions.includes(selectedModel) && !common.includes(selectedModel)) {
+  if (
+    selectedModel
+    && selectedModel !== customModelString
+    && orderedModels.includes(selectedModel)
+    && !common.includes(selectedModel)
+  ) {
     common.splice(Math.max(visibleCount - 1, 0), 1, selectedModel)
   }
 
   return {
     common,
-    more: modelOptions.filter((model) => !common.includes(model)),
+    more: orderedModels.filter((model) => !common.includes(model)),
   }
 }

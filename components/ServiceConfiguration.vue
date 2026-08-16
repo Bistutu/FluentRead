@@ -174,7 +174,7 @@ const isValidAzureEndpoint = toRef(props, 'isValidAzureEndpoint')
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin: 0 1em 10px;
+  margin: 0 0 10px;
   padding: 12px 16px;
   border: 1px solid #edf0f5;
   border-radius: 16px;
