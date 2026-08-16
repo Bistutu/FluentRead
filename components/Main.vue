@@ -202,7 +202,7 @@
     <!-- 划词翻译模式选择 -->
     <el-row v-if="config.on" class="settings-control-row">
       <el-col :span="14" class="settings-control-label lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="选中文本后显示红点，鼠标移到红点上查看翻译结果。可选择关闭、双语显示或只显示译文" placement="top-start" :show-after="500">
+        <el-tooltip class="box-item" effect="dark" content="选中文本后显示翻译入口；不再依赖鼠标悬停，可选择直接弹出、显示图标或显示小点" placement="top-start" :show-after="500">
       <span class="popup-text popup-vertical-left">
         划词翻译
         <el-icon class="icon-margin">
@@ -216,6 +216,18 @@
           <el-option label="关闭" value="disabled" />
           <el-option label="双语显示" value="bilingual" />
           <el-option label="只显示译文" value="translation-only" />
+        </el-select>
+      </el-col>
+    </el-row>
+    <el-row v-if="config.on && config.selectionTranslatorMode !== 'disabled'" class="settings-control-row">
+      <el-col :span="14" class="settings-control-label lightblue rounded-corner">
+        <span class="popup-text popup-vertical-left">划词触发方式</span>
+      </el-col>
+      <el-col :span="10" class="settings-control-field flex-end">
+        <el-select v-model="config.selectionTranslatorTrigger" aria-label="划词翻译触发方式" placeholder="选择触发方式" size="small" style="width: 100%">
+          <el-option label="直接弹出" value="direct" />
+          <el-option label="显示图标" value="icon" />
+          <el-option label="显示小点" value="dot" />
         </el-select>
       </el-col>
     </el-row>
