@@ -182,6 +182,14 @@
           </span>
           <i :class="{ active: !config.disableImageTranslator }" />
         </button>
+        <button class="feature-card video-feature-card" data-feature="video-subtitle" type="button" :disabled="!config.on" @click="openDrawer('video')">
+          <span class="feature-icon teal">CC</span>
+          <span class="feature-copy">
+            <span class="feature-title"><strong>视频字幕</strong><em class="beta-badge">Beta 测试</em></span>
+            <small>{{ videoSummary }}</small>
+          </span>
+          <i :class="{ active: config.videoTranslationEnabled }" />
+        </button>
       </div>
     </section>
 
@@ -293,6 +301,21 @@
         </div>
       </div>
 
+      <div v-else-if="activeDrawer === 'video'" class="drawer-content">
+        <div class="video-beta-banner"><span class="feature-icon teal">CC</span><span><strong>FluentRead · YouTube 字幕翻译</strong><small>Beta 测试 · 只处理播放器已经提供的字幕文本</small></span></div>
+        <div class="setting-row">
+          <span><strong>启用视频字幕翻译</strong><small>在 YouTube 原生字幕下方显示中文译文</small></span>
+          <button class="switch compact" type="button" role="switch" :aria-checked="config.videoTranslationEnabled" aria-label="启用或关闭视频字幕翻译" @click="setVideoTranslationEnabled(!config.videoTranslationEnabled)"><i /></button>
+        </div>
+        <label class="select-row">
+          <span><strong>视频翻译服务</strong><small>与网页翻译服务独立保存</small></span>
+          <select v-model="config.videoService" :disabled="!config.videoTranslationEnabled">
+            <option v-for="item in videoServiceOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
+          </select>
+        </label>
+        <small class="drawer-hint">目前支持 YouTube；播放器内会显示 FluentRead 图标，可切换字幕模式、显示状态和下载 SRT。视频默认使用微软翻译；AI 服务会提前预取字幕，如切换 DeepLX，可在完整设置中配置服务地址。</small>
+      </div>
+
       <div v-else class="drawer-content">
         <div class="choice-block">
           <label>翻译模式</label>
@@ -334,8 +357,8 @@ import { options } from '@/entrypoints/utils/option';
 import { getMissingCredentialMessage } from '@/entrypoints/utils/configValidation';
 import ServiceIcon from '@/components/ServiceIcon.vue';
 
-type DrawerName = 'hover' | 'selection' | 'floating' | 'appearance' | 'image';
-type SettingsSection = 'settings-general' | 'settings-shortcuts' | 'settings-services';
+type DrawerName = 'hover' | 'selection' | 'floating' | 'appearance' | 'image' | 'video';
+type SettingsSection = 'settings-general' | 'settings-shortcuts' | 'settings-services' | 'settings-video';
 const CustomHotkeyInput = defineAsyncComponent(() => import('@/components/CustomHotkeyInput.vue'));
 const version = process.env.VUE_APP_VERSION;
 const config = ref(new Config());
@@ -364,10 +387,12 @@ const drawerSettingsSection: Record<DrawerName, SettingsSection> = {
   floating: 'settings-shortcuts',
   appearance: 'settings-general',
   image: 'settings-general',
+  video: 'settings-video',
 };
 const persistConfig = (value: unknown) => requestConfigSave(value, browser.runtime.sendMessage.bind(browser.runtime));
 
 const serviceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
+const videoServiceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
 const popularServiceValues = ['freeTranslation', 'microsoft', 'google', 'deepL', 'deeplx', 'deepseek', 'openai', 'gemini', 'claude'];
 const popularServiceOptions = computed(() => popularServiceValues
   .map(value => serviceOptions.value.find((item: any) => item.value === value))
@@ -376,6 +401,7 @@ const moreServiceOptions = computed(() => serviceOptions.value.filter((item: any
 const styleOptions = computed(() => options.styles.filter((item: any) => !item.disabled));
 const serviceLabel = computed(() => serviceOptions.value.find((item: any) => item.value === config.value.service)?.label || config.value.service);
 const credentialWarning = computed(() => getMissingCredentialMessage(config.value.service, config.value));
+const videoServiceLabel = computed(() => videoServiceOptions.value.find((item: any) => item.value === config.value.videoService)?.label || config.value.videoService);
 const styleLabel = computed(() => styleOptions.value.find((item: any) => item.value === config.value.style)?.label || '默认样式');
 const hoverKey = computed(() => config.value.hotkey === 'custom' ? (config.value.customHotkey || '自定义') : config.value.hotkey);
 const hoverSummary = computed(() => config.value.hotkey === 'none' ? '已关闭' : `${hoverKey.value} + 鼠标悬停`);
@@ -389,13 +415,15 @@ const selectionSummary = computed(() => ({ disabled: '已关闭', bilingual: '�
 const floatingSummary = computed(() => `${config.value.floatingBallPosition === 'left' ? '页面左侧' : '页面右侧'} · ${fullPageHotkey.value}`);
 const displaySummary = computed(() => config.value.display === 1 ? `双语 · ${styleLabel.value}` : '仅显示译文');
 const imageTranslationSummary = computed(() => config.value.disableImageTranslator ? '已关闭' : '悬停图片');
-const drawerTitle = computed(() => ({ hover: '鼠标悬停翻译设置', selection: '划词翻译设置', floating: '全文悬浮球设置', appearance: '译文显示设置', image: '图片翻译设置' }[activeDrawer.value]));
+const videoSummary = computed(() => config.value.videoTranslationEnabled ? `${videoServiceLabel.value} · YouTube` : '已关闭');
+const drawerTitle = computed(() => ({ hover: '鼠标悬停翻译设置', selection: '划词翻译设置', floating: '全文悬浮球设置', appearance: '译文显示设置', image: '图片翻译设置', video: '视频字幕设置' }[activeDrawer.value]));
 const drawerDescription = computed(() => ({
   hover: '把鼠标停在文本上，用轻量快捷键获取即时译文。',
   selection: '选中文字后，按你的偏好显示原文与译文。',
   floating: '把全文翻译入口固定在最顺手的位置。',
   appearance: '调整双语布局、译文样式与界面主题。',
   image: '把鼠标移到图片上，从图片右上角打开翻译入口。',
+  video: '在 YouTube 播放器中显示实时字幕译文。',
 }[activeDrawer.value]));
 const hoverChoices = [
   { value: 'Control', label: 'Ctrl' },
@@ -588,6 +616,9 @@ function setFloatingEnabled(enabled: boolean) {
 function setImageTranslatorEnabled(enabled: boolean) {
   config.value.disableImageTranslator = !enabled;
   void broadcast({ type: 'toggleImageTranslator', isEnabled: enabled });
+}
+function setVideoTranslationEnabled(enabled: boolean) {
+  config.value.videoTranslationEnabled = enabled;
 }
 function handleFloatingHotkeyChange() {
   if (config.value.floatingBallHotkey === 'custom' && !config.value.customFloatingBallHotkey) showCustomHotkeyDialog.value = true;

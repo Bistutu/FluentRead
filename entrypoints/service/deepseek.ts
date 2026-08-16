@@ -14,10 +14,11 @@ function useResponsesApi() {
 
 async function deepseek(message: any) {
     try {
+        const service = message.serviceOverride || config.service;
         const headers = new Headers({'Content-Type': 'application/json'});
-        appendOptionalBearer(headers, config.token[config.service]);
+        appendOptionalBearer(headers, config.token[service]);
 
-        const endpoint = config.proxy[config.service] || urls[config.service];
+        const endpoint = config.proxy[service] || urls[service];
         const isResponses = useResponsesApi();
         const url = buildDeepSeekEndpoint(endpoint, isResponses);
 
@@ -25,8 +26,8 @@ async function deepseek(message: any) {
             method: method.POST,
             headers,
             body: isResponses
-                ? deepseekResponsesMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt)
-                : deepseekMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt)
+                ? deepseekResponsesMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service)
+                : deepseekMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service)
         });
 
         if (!resp.ok) {

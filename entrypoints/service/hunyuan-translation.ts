@@ -2,6 +2,7 @@ import { method } from "../utils/constant";
 import { config } from "@/entrypoints/utils/config";
 import { detectlang } from "../utils/common";
 import { mergeCustomBody } from "../utils/custom-body";
+import { services } from "../utils/option";
 
 // 混元翻译大模型支持的语言代码映射
 const languageMap: Record<string, string> = {
@@ -106,6 +107,7 @@ export function buildHunyuanTranslationRequestBody(
 
 async function hunyuanTranslation(message: any) {
     try {
+        const service = message.serviceOverride || services.huanYuanTranslation;
         console.log('🔄 混元翻译开始处理:', message.origin);
         
         // 从配置中获取 SecretId 和 SecretKey
@@ -115,7 +117,7 @@ async function hunyuanTranslation(message: any) {
         console.log('🔑 密钥配置状态:', { 
             hasSecretId: !!secretId, 
             hasSecretKey: !!secretKey,
-            service: config.service 
+            service,
         });
         
         if (!secretId || !secretKey) {
@@ -158,14 +160,14 @@ async function hunyuanTranslation(message: any) {
         }
         
         // 获取模型配置，默认使用 hunyuan-translation
-        const model = config.model[config.service] || 'hunyuan-translation';
+        const model = config.model[service] || 'hunyuan-translation';
         
         // 自定义字段必须在序列化和签名前合并，否则签名内容会与实际请求体不一致。
         const requestBody = buildHunyuanTranslationRequestBody(
             message.origin,
             targetLang,
             model,
-            config.customBody?.[config.service],
+            config.customBody?.[service],
         );
         
         // 如果有配置领域信息，可以添加 Field 参数
@@ -185,7 +187,7 @@ async function hunyuanTranslation(message: any) {
         const authorization = await createHunyuanSignature(requestBodyStr, timestamp, secretId, secretKey);
         
         // 判断是否使用代理
-        const url = config.proxy[config.service] || 'https://hunyuan.tencentcloudapi.com/';
+        const url = config.proxy[service] || 'https://hunyuan.tencentcloudapi.com/';
         
         console.log('📤 混元翻译请求:', { url, requestBody, timestamp });
         

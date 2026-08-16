@@ -1,8 +1,9 @@
-import { currentModelIds, defaultModels, defaultOption, services } from "./option";
+import { currentModelIds, defaultModels, defaultOption, services, servicesType } from "./option";
 import { normalizeCustomBodyMapping } from "./custom-body";
 
 export type DeepSeekApiType = 'auto' | 'responses' | 'chat';
 export type DeepSeekThinkingMode = 'enabled' | 'disabled';
+export type VideoSubtitleDisplayMode = 'bilingual' | 'translation-only' | 'original-only';
 
 interface IMapping {
     [key: string]: string;
@@ -22,6 +23,11 @@ export class Config {
     style: number;
     display: number = 1;
     service: string;
+    videoTranslationEnabled: boolean; // 是否启用视频字幕翻译 Beta
+    videoService: string; // 视频字幕独立翻译服务
+    videoServiceDefaultMigrated: boolean; // 是否已迁移视频字幕默认服务
+    videoSubtitleVisible: boolean; // 是否显示 FluentRead 视频字幕
+    videoSubtitleDisplayMode: VideoSubtitleDisplayMode; // 视频字幕显示模式
     token: IMapping;
     requireApiKey: Record<string, boolean>; // 按服务和模型保存 API Key 校验开关
     ak: string;
@@ -73,6 +79,11 @@ export class Config {
         this.display = defaultOption.display;
         this.hotkey = defaultOption.hotkey;
         this.service = defaultOption.service;
+        this.videoTranslationEnabled = false; // Beta 功能默认关闭
+        this.videoService = services.microsoft; // 视频字幕默认使用微软翻译
+        this.videoServiceDefaultMigrated = true;
+        this.videoSubtitleVisible = true; // 默认显示视频译文
+        this.videoSubtitleDisplayMode = 'bilingual'; // 默认双语显示
         this.token = {};
         this.requireApiKey = {};
         this.ak = '';
@@ -203,6 +214,26 @@ export function normalizeConfig(value: unknown): Config {
     normalized.requireApiKey = isBooleanMapping(source.requireApiKey) ? {...source.requireApiKey} : {};
     normalized.customModel = isRecord(source.customModel) ? {...source.customModel} : {};
     normalized.customBody = normalizeCustomBodyMapping(source.customBody);
+
+    if (typeof normalized.videoTranslationEnabled !== 'boolean') {
+        normalized.videoTranslationEnabled = false;
+    }
+    // 早期 Beta 版本曾把 DeepLX 写成默认值。只对没有迁移标记的旧配置
+    // 执行一次迁移，避免覆盖用户在新版本中主动选择的 DeepLX。
+    const shouldMigrateLegacyVideoDefault = source.videoService === services.deeplx
+        && source.videoServiceDefaultMigrated !== true;
+    const supportsVideoService = servicesType.machine.has(normalized.videoService)
+        || servicesType.isAI(normalized.videoService);
+    if (shouldMigrateLegacyVideoDefault || !supportsVideoService) {
+        normalized.videoService = services.microsoft;
+    }
+    normalized.videoServiceDefaultMigrated = true;
+    if (typeof normalized.videoSubtitleVisible !== 'boolean') {
+        normalized.videoSubtitleVisible = true;
+    }
+    if (!['bilingual', 'translation-only', 'original-only'].includes(normalized.videoSubtitleDisplayMode)) {
+        normalized.videoSubtitleDisplayMode = 'bilingual';
+    }
 
     migrateModelIdentifiers(normalized.model);
 

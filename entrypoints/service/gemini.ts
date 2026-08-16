@@ -5,17 +5,18 @@ import {config} from "@/entrypoints/utils/config";
 
 
 async function gemini(message: any) {
+    const service = message.serviceOverride || config.service;
 
-    let model = config.model[config.service] === customModelString ? config.customModel[config.service] : config.model[config.service]
+    let model = config.model[service] === customModelString ? config.customModel[service] : config.model[service]
 
     // 判断是否使用代理
-    let url: string = config.proxy[config.service] ?
-        config.proxy[config.service] : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.token[config.service]}`;
+    let url: string = config.proxy[service] ?
+        config.proxy[service] : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.token[service]}`;
 
     const resp = await fetch(url, {
         method: method.POST,
         headers: {'Content-Type': 'application/json'},
-        body: geminiMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt),
+        body: geminiMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service),
     });
     if (resp.ok) {
         let result = await resp.json();

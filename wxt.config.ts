@@ -97,6 +97,7 @@ export default defineConfig({
             {
                 resources: ['icon/32.png', 'icon/48.png', 'icon/128.png'],
                 matches: ['<all_urls>'],
+                use_dynamic_url: true,
             },
         ],
     },

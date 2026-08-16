@@ -275,6 +275,17 @@ describe('所有 AI 请求模板的自定义请求体支持', () => {
         }
         expect(servicesType.isUseCustomBody(services.google)).toBe(false);
     });
+
+    it('视频服务覆盖参数不会读取网页翻译当前服务的模型或自定义请求体', () => {
+        mockConfig.service = services.microsoft;
+        mockConfig.model[services.openai] = 'video-model';
+        mockConfig.customBody = {[services.openai]: '{"video_request": true}'};
+
+        const body = JSON.parse(commonMsgTemplate('hello', undefined, undefined, undefined, services.openai));
+
+        expect(body.model).toBe('video-model');
+        expect(body.video_request).toBe(true);
+    });
 });
 
 describe('请求时旧模型编号兜底', () => {

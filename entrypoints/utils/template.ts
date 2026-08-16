@@ -7,15 +7,15 @@ import {migrateModelIdentifier} from "./model";
 export {mergeCustomBody};
 
 // 读取当前服务的自定义请求体（JSON 字符串）
-function currentCustomBody(): string | undefined {
-    return config.customBody?.[config.service];
+function currentCustomBody(service = config.service): string | undefined {
+    return config.customBody?.[service];
 }
 
-function buildUserPrompt(origin: string, context?: string, prompt?: string): string {
+function buildUserPrompt(origin: string, context?: string, prompt?: string, service = config.service): string {
     const normalizedPrompt = prompt?.trim();
     if (normalizedPrompt) return normalizedPrompt;
 
-    const user = (config.user_role[config.service] || defaultOption.user_role)
+    const user = (config.user_role[service] || defaultOption.user_role)
         .replace('{{to}}', config.to).replace('{{origin}}', origin);
     const normalizedContext = context?.trim();
     if (!normalizedContext) return user;
@@ -45,14 +45,15 @@ function currentConfiguredModel(service: string): string {
 }
 
 // openai 格式的消息模板（通用模板）
-export function commonMsgTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string) {
-    let model = currentConfiguredModel(config.service);
+export function commonMsgTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string, serviceOverride?: string) {
+    const service = serviceOverride || config.service;
+    let model = currentConfiguredModel(service);
 
     // 删除模型名称中的中文括号及其内容，如"gpt-4（推荐）" -> "gpt-4"
     model = model.replace(/（.*）/g, "");
 
-    let system = systemPrompt?.trim() || config.system_role[config.service] || defaultOption.system_role;
-    const user = buildUserPrompt(origin, context, prompt);
+    let system = systemPrompt?.trim() || config.system_role[service] || defaultOption.system_role;
+    const user = buildUserPrompt(origin, context, prompt, service);
 
     const payload: any = {
         'model': model,
@@ -62,12 +63,13 @@ export function commonMsgTemplate(origin: string, context?: string, prompt?: str
         ]
     };
 
-    return JSON.stringify(mergeCustomBody(payload, currentCustomBody()))
+    return JSON.stringify(mergeCustomBody(payload, currentCustomBody(service)))
 }
 
 // deepseek
-export function getCurrentModel(): string {
-    const selectedModel = currentConfiguredModel(config.service);
+export function getCurrentModel(serviceOverride?: string): string {
+    const service = serviceOverride || config.service;
+    const selectedModel = currentConfiguredModel(service);
     const normalizedModel = (selectedModel || '').replace(/（.*）/g, "");
 
     // 运行时兜底：后台脚本若早于配置迁移读取到旧值，仍使用可用的 V4 模型。
@@ -78,24 +80,26 @@ export function getCurrentModel(): string {
     return normalizedModel;
 }
 
-function getDeepSeekThinkingMode(): 'enabled' | 'disabled' {
-    const selectedModel = config.model[config.service];
+function getDeepSeekThinkingMode(serviceOverride?: string): 'enabled' | 'disabled' {
+    const service = serviceOverride || config.service;
+    const selectedModel = config.model[service];
     if (selectedModel === 'deepseek-reasoner') return 'enabled';
     if (selectedModel === 'deepseek-chat') return 'disabled';
     return config.deepseekThinkingMode === 'enabled' ? 'enabled' : 'disabled';
 }
 
-function deepseekPrompt(origin: string, context?: string, prompt?: string, systemPrompt?: string) {
+function deepseekPrompt(origin: string, context?: string, prompt?: string, systemPrompt?: string, serviceOverride?: string) {
+    const service = serviceOverride || config.service;
     return {
-        system: systemPrompt?.trim() || config.system_role[config.service] || defaultOption.system_role,
-        user: buildUserPrompt(origin, context, prompt),
+        system: systemPrompt?.trim() || config.system_role[service] || defaultOption.system_role,
+        user: buildUserPrompt(origin, context, prompt, service),
     };
 }
 
 // Responses API 格式供明确支持该协议的端点使用。
-export function deepseekResponsesMsgTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string) {
-    const model = getCurrentModel();
-    const {system, user} = deepseekPrompt(origin, context, prompt, systemPrompt);
+export function deepseekResponsesMsgTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string, serviceOverride?: string) {
+    const model = getCurrentModel(serviceOverride);
+    const {system, user} = deepseekPrompt(origin, context, prompt, systemPrompt, serviceOverride);
     const payload: any = {
         model,
         instructions: system,
@@ -106,10 +110,10 @@ export function deepseekResponsesMsgTemplate(origin: string, context?: string, p
 }
 
 // DeepSeek 官方 V4 Chat Completion 格式。
-export function deepseekMsgTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string) {
-    const model = getCurrentModel();
-    const {system, user} = deepseekPrompt(origin, context, prompt, systemPrompt);
-    const thinking = getDeepSeekThinkingMode();
+export function deepseekMsgTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string, serviceOverride?: string) {
+    const model = getCurrentModel(serviceOverride);
+    const {system, user} = deepseekPrompt(origin, context, prompt, systemPrompt, serviceOverride);
+    const thinking = getDeepSeekThinkingMode(serviceOverride);
     const payload: any = {
         model,
         messages: [
@@ -119,12 +123,13 @@ export function deepseekMsgTemplate(origin: string, context?: string, prompt?: s
         thinking: {type: thinking},
     };
 
-    return JSON.stringify(mergeCustomBody(payload, currentCustomBody()));
+    return JSON.stringify(mergeCustomBody(payload, currentCustomBody(serviceOverride || config.service)));
 }
 
 // gemini
-export function geminiMsgTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string) {
-    const userPrompt = buildUserPrompt(origin, context, prompt);
+export function geminiMsgTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string, serviceOverride?: string) {
+    const service = serviceOverride || config.service;
+    const userPrompt = buildUserPrompt(origin, context, prompt, service);
     const user = systemPrompt?.trim() ? `${systemPrompt.trim()}\n\n${userPrompt}` : userPrompt;
 
     const payload: any = {
@@ -133,15 +138,16 @@ export function geminiMsgTemplate(origin: string, context?: string, prompt?: str
         ]
     };
 
-    return JSON.stringify(mergeCustomBody(payload, currentCustomBody()))
+    return JSON.stringify(mergeCustomBody(payload, currentCustomBody(service)))
 }
 
 // claude
-export function claudeMsgTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string) {
-    const model = currentConfiguredModel(services.claude);
+export function claudeMsgTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string, serviceOverride?: string) {
+    const service = serviceOverride || services.claude;
+    const model = currentConfiguredModel(service);
 
-    let system = systemPrompt?.trim() || config.system_role[config.service] || defaultOption.system_role;
-    const user = buildUserPrompt(origin, context, prompt);
+    let system = systemPrompt?.trim() || config.system_role[service] || defaultOption.system_role;
+    const user = buildUserPrompt(origin, context, prompt, service);
 
     const payload: any = {
         model: model,
@@ -153,15 +159,16 @@ export function claudeMsgTemplate(origin: string, context?: string, prompt?: str
         ]
     };
 
-    return JSON.stringify(mergeCustomBody(payload, currentCustomBody()))
+    return JSON.stringify(mergeCustomBody(payload, currentCustomBody(service)))
 }
 
 // 通义千问
-export function tongyiMsgTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string) {
-    const model = currentConfiguredModel(config.service);
+export function tongyiMsgTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string, serviceOverride?: string) {
+    const service = serviceOverride || config.service;
+    const model = currentConfiguredModel(service);
     const normalTemplate = () => {
-        let system = systemPrompt?.trim() || config.system_role[config.service] || defaultOption.system_role;
-        const user = buildUserPrompt(origin, context, prompt);
+        let system = systemPrompt?.trim() || config.system_role[service] || defaultOption.system_role;
+        const user = buildUserPrompt(origin, context, prompt, service);
 
         const payload: any = {
             "model": model,
@@ -171,7 +178,7 @@ export function tongyiMsgTemplate(origin: string, context?: string, prompt?: str
                 {"role": "user", "content": user},
             ]
         };
-        return JSON.stringify(mergeCustomBody(payload, currentCustomBody()))
+        return JSON.stringify(mergeCustomBody(payload, currentCustomBody(service)))
     }
     // 翻译模型qwen-mt-plus和qwen-mt-turbo的格式和通用的不同
     const mtModelTemplate = () => {
@@ -195,23 +202,24 @@ export function tongyiMsgTemplate(origin: string, context?: string, prompt?: str
                 "target_lang": targetLang
             }
         };
-        return JSON.stringify(mergeCustomBody(payload, currentCustomBody()))
+        return JSON.stringify(mergeCustomBody(payload, currentCustomBody(service)))
     }
     return model.startsWith("qwen-mt") ? mtModelTemplate() : normalTemplate()
 
 }
 
-export function cozeTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string) {
+export function cozeTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string, serviceOverride?: string) {
+    const service = serviceOverride || config.service;
 
-    let system = systemPrompt?.trim() || config.system_role[config.service] || defaultOption.system_role;
-    const user = buildUserPrompt(origin, context, prompt);
+    let system = systemPrompt?.trim() || config.system_role[service] || defaultOption.system_role;
+    const user = buildUserPrompt(origin, context, prompt, service);
 
     const payload: any = {
-        bot_id: config.robot_id[config.service],
+        bot_id: config.robot_id[service],
         user: "FluentRead",
         query: system + user,
         stream: false
     };
 
-    return JSON.stringify(mergeCustomBody(payload, currentCustomBody()));
+    return JSON.stringify(mergeCustomBody(payload, currentCustomBody(service)));
 }
