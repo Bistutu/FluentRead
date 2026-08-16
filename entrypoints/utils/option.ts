@@ -441,7 +441,7 @@ export const defaultOption = {
     style: 1,
     display: 1,
     hotkey: "Control",
-    service: services.microsoft,
+    service: services.freeTranslation,
     custom: "http://localhost:11434/v1/chat/completions",
     deeplx: DEFAULT_DEEPLX_ENDPOINT,
     system_role:

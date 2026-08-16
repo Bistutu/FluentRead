@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { normalizeConfig } from '@/entrypoints/utils/model';
 import { tongyiTokenPlanUrl, urls } from '@/entrypoints/utils/constant';
-import { customModelString, models, options, services, servicesType } from '@/entrypoints/utils/option';
+import { customModelString, defaultOption, models, options, services, servicesType } from '@/entrypoints/utils/option';
 
 describe('AI 模型编号列表', () => {
     it('展示当前主流模型，并移除已退役或错误的预设编号', () => {
@@ -33,6 +33,7 @@ describe('AI 模型编号列表', () => {
         expect(options.services.find(option => option.value === services.freeTranslation)?.description)
             .toContain('微软翻译、DeepLX、谷歌翻译依次尝试');
         expect(servicesType.isMachine(services.freeTranslation)).toBe(true);
+        expect(defaultOption.service).toBe(services.freeTranslation);
     });
 
     it('不会把下拉列表中仍可选择的模型当成退役编号改写', () => {
