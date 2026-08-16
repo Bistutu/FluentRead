@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { reactive } from 'vue';
 import { normalizeConfig } from '@/entrypoints/utils/model';
 
 const storageMock = vi.hoisted(() => ({
@@ -128,6 +129,23 @@ describe('统一配置存储', () => {
             config: expect.objectContaining({ to: 'en' }),
         }));
         expect(storageMock.setItem).not.toHaveBeenCalled();
+    });
+
+    it('发送响应式配置时先转换为 Firefox 可结构化克隆的纯对象', async () => {
+        const configStore = await loadConfigModule(storedConfig);
+        await configStore.configReady;
+        const sendMessage = vi.fn().mockResolvedValue({ success: true });
+        const reactiveConfig = reactive({
+            ...configStore.config,
+            to: 'ja',
+            model: reactive({ openai: 'gpt-4o-mini' }),
+        });
+
+        await configStore.requestConfigSave(reactiveConfig, sendMessage);
+
+        const sentConfig = sendMessage.mock.calls[0][0].config;
+        expect(() => structuredClone(sentConfig)).not.toThrow();
+        expect(sentConfig).toMatchObject({ to: 'ja', model: { openai: 'gpt-4o-mini' } });
     });
 
     it('后台不可用时保留当前上下文的降级保存路径', async () => {
