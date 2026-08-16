@@ -47,13 +47,21 @@
     cursor: pointer;
 }
 
-/* 图片翻译覆盖层：保持原图不动，译文只在插件自己的固定层中显示。 */
+/* 图片翻译覆盖层：翻译完成后用同尺寸位图层覆盖原图，避免原文字从译文下面透出。 */
 .fluent-read-image-translation-overlay {
     position: fixed;
     z-index: 2147483646;
     pointer-events: none;
     overflow: hidden;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.fluent-read-image-translation-canvas {
+    position: absolute;
+    inset: 0;
+    display: none;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
 }
 
 .fluent-read-image-translation-button {
@@ -74,6 +82,7 @@
     opacity: 0.78;
     pointer-events: auto;
     transition: opacity 0.15s ease, transform 0.15s ease, background 0.15s ease;
+    z-index: 1;
 }
 
 .fluent-read-image-translation-button:hover,
@@ -90,23 +99,6 @@
 
 .fluent-read-image-translation-button[data-phase="error"] {
     background: rgba(185, 28, 28, 0.88);
-}
-
-.fluent-read-image-translation-line {
-    position: absolute;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    padding: 1px 4px;
-    box-sizing: border-box;
-    border-radius: 3px;
-    background: rgba(255, 255, 255, 0.9);
-    color: #111;
-    font-weight: 600;
-    text-align: center;
-    text-shadow: 0 1px rgba(255, 255, 255, 0.35);
-    pointer-events: none;
 }
 
 @keyframes fluent-read-image-translation-pulse {

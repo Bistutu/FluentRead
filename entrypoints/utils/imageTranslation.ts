@@ -16,11 +16,13 @@ type ImageTranslationPhase = 'idle' | 'loading' | 'translated' | 'error';
 interface ImageTranslationState {
     image: HTMLImageElement;
     overlay: HTMLDivElement;
+    canvas: HTMLCanvasElement;
     button: HTMLButtonElement;
     phase: ImageTranslationPhase;
     abortController: AbortController | null;
     hoverTimer: number | null;
-    lines: OcrLine[];
+    lines: Array<OcrLine & { backgroundColor: string }>;
+    sourceImage: HTMLImageElement | null;
 }
 
 let mounted = false;
@@ -72,9 +74,7 @@ function updateOverlayPosition(state: ImageTranslationState): void {
     state.overlay.style.top = `${rect.top}px`;
     state.overlay.style.width = `${rect.width}px`;
     state.overlay.style.height = `${rect.height}px`;
-    if (state.phase === 'translated') {
-        renderTranslatedLines(state, rect.width, rect.height);
-    }
+    if (state.phase === 'translated') renderTranslatedBitmap(state, rect.width, rect.height);
 }
 
 function createState(image: HTMLImageElement): ImageTranslationState {
@@ -105,17 +105,22 @@ function createState(image: HTMLImageElement): ImageTranslationState {
         }
     });
 
-    overlay.appendChild(button);
+    const canvas = document.createElement('canvas');
+    canvas.className = 'fluent-read-image-translation-canvas';
+    canvas.setAttribute('aria-hidden', 'true');
+    overlay.append(canvas, button);
     document.documentElement.appendChild(overlay);
 
     const state: ImageTranslationState = {
         image,
         overlay,
+        canvas,
         button,
         phase: 'idle',
         abortController: null,
         hoverTimer: null,
         lines: [],
+        sourceImage: null,
     };
     states.set(image, state);
     activeStates.add(state);
@@ -171,24 +176,179 @@ async function getImageData(image: HTMLImageElement): Promise<string> {
     }
 }
 
-function renderTranslatedLines(state: ImageTranslationState, renderedWidth: number, renderedHeight: number): void {
-    state.overlay.querySelectorAll('.fluent-read-image-translation-line').forEach(line => line.remove());
+function loadImage(dataUrl: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+        const source = new Image();
+        source.onload = () => resolve(source);
+        source.onerror = () => reject(new Error('图片数据无法解码'));
+        source.src = dataUrl;
+    });
+}
+
+function getBackgroundColor(
+    pixels: Uint8ClampedArray,
+    imageWidth: number,
+    imageHeight: number,
+    bbox: OcrLine['bbox'],
+): string {
+    const x0 = Math.max(0, Math.floor(bbox.x0));
+    const y0 = Math.max(0, Math.floor(bbox.y0));
+    const x1 = Math.min(imageWidth, Math.ceil(bbox.x1));
+    const y1 = Math.min(imageHeight, Math.ceil(bbox.y1));
+    const colors = new Map<string, number>();
+    const sample = (x: number, y: number) => {
+        if (x < 0 || y < 0 || x >= imageWidth || y >= imageHeight) return;
+        const offset = (y * imageWidth + x) * 4;
+        const red = Math.min(255, Math.round(pixels[offset] / 16) * 16);
+        const green = Math.min(255, Math.round(pixels[offset + 1] / 16) * 16);
+        const blue = Math.min(255, Math.round(pixels[offset + 2] / 16) * 16);
+        const key = `${red},${green},${blue}`;
+        colors.set(key, (colors.get(key) || 0) + 1);
+    };
+    for (let y = y0 - 4; y <= y1 + 3; y += 1) {
+        for (let x = x0 - 4; x <= x1 + 3; x += 1) {
+            if (x < x0 || x >= x1 || y < y0 || y >= y1) sample(x, y);
+        }
+    }
+    let best = '255,255,255';
+    let bestCount = 0;
+    colors.forEach((count, color) => {
+        if (count > bestCount) {
+            best = color;
+            bestCount = count;
+        }
+    });
+    return `rgb(${best})`;
+}
+
+async function addBackgroundColors(dataUrl: string, lines: OcrLine[]): Promise<{
+    source: HTMLImageElement;
+    lines: Array<OcrLine & { backgroundColor: string }>;
+}> {
+    const source = await loadImage(dataUrl);
+    const canvas = document.createElement('canvas');
+    canvas.width = source.naturalWidth || source.width;
+    canvas.height = source.naturalHeight || source.height;
+    const context = canvas.getContext('2d');
+    if (!context || !canvas.width || !canvas.height) {
+        return { source, lines: lines.map(line => ({ ...line, backgroundColor: 'rgb(255, 255, 255)' })) };
+    }
+    context.drawImage(source, 0, 0, canvas.width, canvas.height);
+    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    return {
+        source,
+        lines: lines.map(line => ({
+            ...line,
+            backgroundColor: getBackgroundColor(pixels, canvas.width, canvas.height, line.bbox),
+        })),
+    };
+}
+
+function getTextColor(backgroundColor: string): string {
+    const channels = backgroundColor.match(/\d+/g)?.map(Number) || [255, 255, 255];
+    const luminance = (channels[0] * 299 + channels[1] * 587 + channels[2] * 114) / 1000;
+    return luminance > 150 ? '#111827' : '#ffffff';
+}
+
+interface RenderedImageRect {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+}
+
+function getRenderedImageRect(image: HTMLImageElement, renderedWidth: number, renderedHeight: number): RenderedImageRect {
+    const imageWidth = image.naturalWidth;
+    const imageHeight = image.naturalHeight;
+    const style = getComputedStyle(image);
+    const objectFit = style.objectFit || 'fill';
+    let width = renderedWidth;
+    let height = renderedHeight;
+
+    if (objectFit === 'contain' || objectFit === 'scale-down') {
+        const scale = Math.min(renderedWidth / imageWidth, renderedHeight / imageHeight);
+        const downScale = objectFit === 'scale-down' ? Math.min(1, scale) : scale;
+        width = imageWidth * downScale;
+        height = imageHeight * downScale;
+    } else if (objectFit === 'cover') {
+        const scale = Math.max(renderedWidth / imageWidth, renderedHeight / imageHeight);
+        width = imageWidth * scale;
+        height = imageHeight * scale;
+    }
+
+    const [positionX = '50%', positionY = '50%'] = style.objectPosition.split(/\s+/);
+    const resolvePosition = (value: string, available: number): number => {
+        if (value.endsWith('%')) return available * Number.parseFloat(value) / 100;
+        if (value.endsWith('px')) return Number.parseFloat(value);
+        if (value === 'left' || value === 'top') return 0;
+        if (value === 'right' || value === 'bottom') return available;
+        return available / 2;
+    };
+    return {
+        left: resolvePosition(positionX, renderedWidth - width),
+        top: resolvePosition(positionY, renderedHeight - height),
+        width,
+        height,
+    };
+}
+
+function drawTranslatedText(
+    context: CanvasRenderingContext2D,
+    text: string,
+    left: number,
+    top: number,
+    width: number,
+    height: number,
+    backgroundColor: string,
+): void {
+    const horizontalPadding = Math.max(3, Math.round(height * 0.14));
+    let fontSize = Math.max(10, Math.min(30, height * 0.76));
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillStyle = getTextColor(backgroundColor);
+    context.font = `600 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+    while (fontSize > 10 && context.measureText(text).width > width - horizontalPadding * 2) {
+        fontSize -= 1;
+        context.font = `600 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+    }
+    context.fillText(text, left + width / 2, top + height / 2, Math.max(1, width - horizontalPadding * 2));
+}
+
+function renderTranslatedBitmap(state: ImageTranslationState, renderedWidth: number, renderedHeight: number): void {
     const imageWidth = state.image.naturalWidth;
     const imageHeight = state.image.naturalHeight;
-    if (!imageWidth || !imageHeight) return;
+    if (!imageWidth || !imageHeight || !state.sourceImage) return;
+
+    const pixelRatio = Math.min(2, window.devicePixelRatio || 1);
+    state.canvas.style.display = 'block';
+    state.canvas.width = Math.max(1, Math.round(renderedWidth * pixelRatio));
+    state.canvas.height = Math.max(1, Math.round(renderedHeight * pixelRatio));
+    state.canvas.style.width = `${renderedWidth}px`;
+    state.canvas.style.height = `${renderedHeight}px`;
+    const context = state.canvas.getContext('2d');
+    if (!context) return;
+    const imageRect = getRenderedImageRect(state.image, renderedWidth, renderedHeight);
+    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    context.clearRect(0, 0, renderedWidth, renderedHeight);
+    context.drawImage(state.sourceImage, imageRect.left, imageRect.top, imageRect.width, imageRect.height);
 
     state.lines.forEach(line => {
-        const box = scaleOcrBox(line.bbox, imageWidth, imageHeight, renderedWidth, renderedHeight);
-        const element = document.createElement('span');
-        element.className = 'fluent-read-image-translation-line';
-        element.textContent = line.text;
-        element.style.left = `${box.left}px`;
-        element.style.top = `${box.top}px`;
-        element.style.width = `${box.width}px`;
-        element.style.minHeight = `${box.height}px`;
-        element.style.fontSize = `${Math.max(12, Math.min(30, box.height * 0.78))}px`;
-        element.style.lineHeight = `${Math.max(1.1, Math.min(1.35, box.height / Math.max(12, box.height * 0.78)))}em`;
-        state.overlay.insertBefore(element, state.button);
+        const scaledBox = scaleOcrBox(line.bbox, imageWidth, imageHeight, imageRect.width, imageRect.height);
+        const box = {
+            left: scaledBox.left + imageRect.left,
+            top: scaledBox.top + imageRect.top,
+            width: scaledBox.width,
+            height: scaledBox.height,
+        };
+        const paddingX = Math.max(3, Math.round(box.height * 0.14));
+        const paddingY = Math.max(2, Math.round(box.height * 0.18));
+        const left = Math.max(0, box.left - paddingX);
+        const top = Math.max(0, box.top - paddingY);
+        const width = Math.min(renderedWidth - left, box.width + paddingX * 2);
+        const height = Math.min(renderedHeight - top, box.height + paddingY * 2);
+        context.fillStyle = line.backgroundColor;
+        context.fillRect(left, top, Math.max(1, width), Math.max(1, height));
+        drawTranslatedText(context, line.text, left, top, Math.max(1, width), Math.max(1, height), line.backgroundColor);
     });
 }
 
@@ -205,7 +365,10 @@ function restoreImageTranslation(state: ImageTranslationState): void {
     state.abortController?.abort();
     state.abortController = null;
     state.lines = [];
-    state.overlay.querySelectorAll('.fluent-read-image-translation-line').forEach(line => line.remove());
+    state.sourceImage = null;
+    state.canvas.width = 0;
+    state.canvas.height = 0;
+    state.canvas.style.display = 'none';
     setButtonState(state, 'idle', '翻译图片');
     updateOverlayPosition(state);
 }
@@ -229,10 +392,13 @@ async function translateImage(state: ImageTranslationState): Promise<void> {
         );
         if (controller.signal.aborted) return;
 
-        state.lines = lines.map((line, index) => ({
+        const translatedLines = lines.map((line, index) => ({
             ...line,
             text: translations[index] || line.text,
         }));
+        const prepared = await withTimeout(addBackgroundColors(imageData, translatedLines), IMAGE_READ_TIMEOUT_MS, '图片背景读取超时');
+        state.sourceImage = prepared.source;
+        state.lines = prepared.lines;
         setButtonState(state, 'translated', '恢复原图');
         updateOverlayPosition(state);
     } catch (error) {
