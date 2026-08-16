@@ -291,7 +291,7 @@ const drawerSettingsSection: Record<DrawerName, SettingsSection> = {
 };
 
 const serviceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
-const popularServiceValues = ['microsoft', 'google', 'deepL', 'deeplx', 'deepseek', 'openai', 'gemini', 'claude'];
+const popularServiceValues = ['freeTranslation', 'microsoft', 'google', 'deepL', 'deeplx', 'deepseek', 'openai', 'gemini', 'claude'];
 const popularServiceOptions = computed(() => popularServiceValues
   .map(value => serviceOptions.value.find((item: any) => item.value === value))
   .filter((item): item is any => Boolean(item)));

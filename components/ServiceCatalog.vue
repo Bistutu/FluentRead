@@ -52,6 +52,7 @@
               <h4>{{ selectedService?.label || '尚未配置服务' }}</h4>
               <span class="active-badge">{{ service === defaultService ? '当前默认' : '正在配置' }}</span>
             </div>
+            <p v-if="selectedService?.description">{{ selectedService.description }}</p>
           </div>
         </div>
 

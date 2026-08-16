@@ -296,8 +296,12 @@ export const options = {
     services: [
         // 机器翻译
         {value: "machine", label: "机器翻译", disabled: true},
+        {
+            value: services.freeTranslation,
+            label: "免费翻译服务",
+            description: "免费提供，按微软翻译、DeepLX、谷歌翻译依次尝试；翻译质量和可用性不作保证。",
+        },
         {value: services.microsoft, label: "微软翻译"},
-        {value: services.freeTranslation, label: "免费翻译服务"},
         {value: services.google, label: "谷歌翻译"},
         {value: services.deepL, label: "DeepL"},
         {value: services.deeplx, label: "DeepLX（免费非官方）"},
