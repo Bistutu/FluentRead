@@ -124,7 +124,7 @@
       <div class="feature-grid">
         <button class="feature-card" type="button" :disabled="!config.on" @click="openDrawer('hover')">
           <span class="feature-icon rose">↖</span>
-          <span><strong>悬停翻译</strong><small>{{ hoverSummary }}</small></span>
+          <span><strong>鼠标悬停翻译</strong><small>{{ hoverSummary }}</small></span>
           <i :class="{ active: config.hotkey !== 'none' }" />
         </button>
         <button class="feature-card" type="button" :disabled="!config.on" @click="openDrawer('selection')">
@@ -339,12 +339,12 @@ const styleOptions = computed(() => options.styles.filter((item: any) => !item.d
 const serviceLabel = computed(() => serviceOptions.value.find((item: any) => item.value === config.value.service)?.label || config.value.service);
 const styleLabel = computed(() => styleOptions.value.find((item: any) => item.value === config.value.style)?.label || '默认样式');
 const hoverKey = computed(() => config.value.hotkey === 'custom' ? (config.value.customHotkey || '自定义') : config.value.hotkey);
-const hoverSummary = computed(() => config.value.hotkey === 'none' ? '已关闭' : `${hoverKey.value} + 悬停`);
+const hoverSummary = computed(() => config.value.hotkey === 'none' ? '已关闭' : `${hoverKey.value} + 鼠标悬停`);
 const selectionSummary = computed(() => ({ disabled: '已关闭', bilingual: '双语显示', 'translation-only': '仅显示译文' }[config.value.selectionTranslatorMode] || '双语显示'));
 const floatingSummary = computed(() => `${config.value.floatingBallPosition === 'left' ? '页面左侧' : '页面右侧'} · ${config.value.floatingBallHotkey}`);
 const displaySummary = computed(() => config.value.display === 1 ? `双语 · ${styleLabel.value}` : '仅显示译文');
 const imageTranslationSummary = computed(() => config.value.disableImageTranslator ? '已关闭' : '悬停图片');
-const drawerTitle = computed(() => ({ hover: '悬停翻译设置', selection: '划词翻译设置', floating: '全文悬浮球设置', appearance: '译文显示设置', image: '图片翻译设置' }[activeDrawer.value]));
+const drawerTitle = computed(() => ({ hover: '鼠标悬停翻译设置', selection: '划词翻译设置', floating: '全文悬浮球设置', appearance: '译文显示设置', image: '图片翻译设置' }[activeDrawer.value]));
 const drawerDescription = computed(() => ({
   hover: '把鼠标停在文本上，用轻量快捷键获取即时译文。',
   selection: '选中文字后，按你的偏好显示原文与译文。',

@@ -67,6 +67,12 @@ export default defineConfig({
             'http://*/*',
             'https://*/*',
         ],
+        web_accessible_resources: [
+            {
+                resources: ['icon/32.png'],
+                matches: ['<all_urls>'],
+            },
+        ],
     },
 
 });
