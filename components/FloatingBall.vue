@@ -47,12 +47,13 @@
       @pointercancel="cancelPointerInteraction"
     >
       <svg class="floating-ball-mascot" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M6.8 13 7.8 6.5a.9.9 0 0 1 1.4-.6l5 2.8a9.3 9.3 0 0 1 3.6 0l5-2.8a.9.9 0 0 1 1.4.6l1 6.5A9.4 9.4 0 0 1 16 25.5 9.4 9.4 0 0 1 6.8 13Z" fill="#FFADC1" />
-        <path d="m9.2 7.8 3.7 2.1-3 1-.7-3.1Zm13.6 0-3.7 2.1 3 1 .7-3.1Z" fill="#FFE0E8" />
-        <path d="M11 15.8c.6-.7 1.5-.7 2.1 0M18.9 15.8c-.6-.7-1.5-.7-2.1 0" stroke="#B85C78" stroke-width="1.15" stroke-linecap="round" />
-        <circle cx="11.5" cy="18.5" r="1.25" fill="#FFCFDA" />
-        <circle cx="20.5" cy="18.5" r="1.25" fill="#FFCFDA" />
-        <path d="m15 18.1 1 .7 1-.7c0 .8-.4 1.2-1 1.2s-1-.4-1-1.2ZM16 20c.5.6 1 .8 1.6.3M16 20c-.5.6-1 .8-1.6.3" fill="#E87592" stroke="#B85C78" stroke-width=".7" stroke-linecap="round" stroke-linejoin="round" />
+        <path d="M6.8 13 7.8 6.5a.9.9 0 0 1 1.4-.6l5 2.8a9.3 9.3 0 0 1 3.6 0l5-2.8a.9.9 0 0 1 1.4.6l1 6.5A9.4 9.4 0 0 1 16 25.5 9.4 9.4 0 0 1 6.8 13Z" fill="#F5B6C6" stroke="#E6A1B3" stroke-width=".55" stroke-linejoin="round" />
+        <path d="m9.2 7.8 3.7 2.1-3 1-.7-3.1Zm13.6 0-3.7 2.1 3 1 .7-3.1Z" fill="#FFE4EA" />
+        <path d="M10.4 16c.8.7 1.8.7 2.6 0M18.9 16c.8.7 1.8.7 2.6 0" stroke="#B9788A" stroke-width="1.05" stroke-linecap="round" />
+        <circle cx="11.7" cy="18.5" r="1" fill="#FFD7DF" />
+        <circle cx="20.3" cy="18.5" r="1" fill="#FFD7DF" />
+        <path d="M14.9 18.7c.7-.5 1.5-.5 2.2 0-.1 1.1-.5 1.6-1.1 1.6s-1-.5-1.1-1.6Z" fill="#B96B7F" />
+        <path d="M15.6 19.8h.8" stroke="#F5B6C6" stroke-width=".5" stroke-linecap="round" />
       </svg>
       <span v-if="isTranslating" class="check-mark" aria-hidden="true" />
     </button>
