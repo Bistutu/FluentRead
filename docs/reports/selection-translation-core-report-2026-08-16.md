@@ -216,7 +216,7 @@ flowchart LR
 
 ## 5. 当前交付状态
 
-代码已提交在独立 worktree 的 `cc34f95`、`c3f64c7`，本轮 Edge TTS 改动待提交。尚未创建远程 PR，也没有执行合并。原因是推送到 GitHub 需要外部写权限，且后续网络检查出现 `Could not resolve host: github.com`；因此当前状态是“本地实现和验证完成，远程 PR 阶段被环境阻塞”。
+代码已提交在独立 worktree 的 `cc34f95`、`c3f64c7`、`153923f`。尚未创建远程 PR，也没有执行合并。原因是推送到 GitHub 需要外部写权限，且后续网络检查出现 `Could not resolve host: github.com`；因此当前状态是“本地实现和验证完成，远程 PR 阶段被环境阻塞”。
 
 后续若允许外部 Git 写操作，顺序应为：推送当前分支、创建 PR、等待审阅批准，再执行真实 GitHub merge commit。当前不应把本地提交视为已经合并到主分支。
 
@@ -242,3 +242,36 @@ flowchart LR
 
 - `/private/tmp/fluentread-selection-ui-evidence-indicator.png`
 - `/private/tmp/fluentread-selection-ui-evidence-tooltip.png`
+
+## 8. 当前实际运行链路
+
+```mermaid
+sequenceDiagram
+    participant U as 用户
+    participant C as SelectionTranslator.vue
+    participant B as background.ts
+    participant E as Edge TTS
+    participant A as Blob Audio
+
+    U->>C: 点击原文/译文播放按钮
+    C->>B: selectionTts(text, language)
+    B->>B: 语言映射与固定 voice 选择
+    B->>E: 获取 endpoint token
+    B->>E: 发送 SSML + voice + prosody
+    E-->>B: MP3 音频字节
+    B-->>C: Base64 音频与 contentType
+    C->>A: 创建 Blob URL 并播放
+    A-->>C: ended/error，清理 URL 和播放状态
+```
+
+### 当前 voice 规则
+
+| 语言 | 当前 voice |
+|---|---|
+| 英语 `en` / `en-US` | `en-US-AvaMultilingualNeural` |
+| 简体中文 `zh-Hans` / `zh-CN` | `zh-CN-XiaoxiaoMultilingualNeural` |
+| 繁体中文 `zh-Hant` / `zh-TW` | `zh-TW-YunJheMultilingualNeural` |
+| 日语 | `ja-JP-MasaruMultilingualNeural` |
+| 韩语 | `ko-KR-HyunsuMultilingualNeural` |
+
+当前不是直接把音频 URL 交给网页播放，而是由后台请求并转成 Blob 数据；这样可以避开网页 CSP 和跨域限制。Edge TTS 请求失败时，才进入浏览器原生语音和 Google TTS 回退路径。
