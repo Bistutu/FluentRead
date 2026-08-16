@@ -7,9 +7,12 @@
  */
 export type TranslationDisplayMode = "bilingual" | "single";
 export type TranslationPhase = "loading" | "translated" | "error";
+export type TranslationTargetKind = "content" | "control";
 
 export interface TranslationState {
     mode: TranslationDisplayMode;
+    /** 内容块使用上下双语；按钮等交互控件只替换内部可见文字。 */
+    kind: TranslationTargetKind;
     phase: TranslationPhase;
     generation: number;
     sourceText: string;
@@ -19,15 +22,21 @@ export interface TranslationState {
     originalStyleAttribute: string | null;
     /** 插件完成渲染后记录的 style 属性；undefined 表示尚未改动样式。 */
     renderedStyleAttribute?: string | null;
+    /** 插件完成渲染后记录的 class 属性，用于过滤自身添加 bilingual class 的 mutation。 */
+    renderedClassAttribute?: string | null;
     translatedHTML?: string;
     /**
      * 仅译文模式会暂时移除这些原始子节点。
      * 恢复时重新插入同一批节点，避免重建页面原有节点对象。
      */
     originalChildren: ChildNode[];
+    /** 控件翻译直接修改原 Text 节点；恢复时需要把节点内容写回原值。 */
+    originalTextValues: Array<{node: Text; value: string}>;
     controller: AbortController;
     spinner?: HTMLElement;
     bilingualContent?: HTMLElement;
+    /** 双语 wrapper 最后一次由插件写入的 HTML，用于区分宿主重绘和插件自身 mutation。 */
+    bilingualHTML?: string;
 }
 
 export interface TranslationAttempt {
@@ -49,14 +58,26 @@ export function getTranslationState(node: HTMLElement): TranslationState | undef
 export function beginTranslation(
     node: HTMLElement,
     mode: TranslationDisplayMode,
+    kind: TranslationTargetKind = "content",
 ): TranslationAttempt | null {
     const previous = states.get(node);
     if (previous?.phase === "loading") return null;
 
     previous?.controller.abort();
 
+    const originalTextValues: Array<{node: Text; value: string}> = [];
+    if (node.ownerDocument?.createTreeWalker) {
+        const textWalker = node.ownerDocument.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+        let textNode = textWalker.nextNode();
+        while (textNode) {
+            originalTextValues.push({node: textNode as Text, value: textNode.nodeValue ?? ""});
+            textNode = textWalker.nextNode();
+        }
+    }
+
     const state: TranslationState = {
         mode,
+        kind,
         phase: "loading",
         generation: (previous?.generation ?? 0) + 1,
         sourceText: node.textContent ?? "",
@@ -64,6 +85,7 @@ export function beginTranslation(
         sourceOuterHTML: node.outerHTML,
         originalStyleAttribute: node.getAttribute("style"),
         originalChildren: Array.from(node.childNodes),
+        originalTextValues,
         controller: new AbortController(),
     };
 
@@ -121,7 +143,10 @@ export function setSpinner(node: HTMLElement, spinner: HTMLElement): void {
 
 export function setBilingualContent(node: HTMLElement, content: HTMLElement): void {
     const state = states.get(node);
-    if (state) state.bilingualContent = content;
+    if (state) {
+        state.bilingualContent = content;
+        state.bilingualHTML = content.innerHTML;
+    }
 }
 
 /**
@@ -132,7 +157,10 @@ export function setBilingualContent(node: HTMLElement, content: HTMLElement): vo
  */
 export function setRenderedStyleAttribute(node: HTMLElement): void {
     const state = states.get(node);
-    if (state) state.renderedStyleAttribute = node.getAttribute("style");
+    if (state) {
+        state.renderedStyleAttribute = node.getAttribute("style");
+        state.renderedClassAttribute = node.getAttribute("class");
+    }
 }
 
 function removeExtensionNode(node: Node | undefined): void {
@@ -178,9 +206,14 @@ export function restoreTranslation(node: HTMLElement): boolean {
     removeExtensionNode(state.bilingualContent);
     removeRetryArtifacts(node);
 
-    if (state.mode === "single") {
+    if (state.mode === "single" || state.kind === "control") {
         // 站点在翻译完成后可能已经重渲染了目标；此时不能用旧快照覆盖站点内容。
         if (!state.translatedHTML || node.innerHTML === state.translatedHTML) {
+            if (state.kind === "control") {
+                state.originalTextValues.forEach(({node: textNode, value}) => {
+                    textNode.nodeValue = value;
+                });
+            }
             removeCurrentChildren(node);
             state.originalChildren.forEach((child) => node.appendChild(child));
         }

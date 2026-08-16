@@ -187,6 +187,22 @@ describe('旧模型编号兼容迁移', () => {
     });
 });
 
+describe('划词翻译配置兼容', () => {
+    it('为旧配置补齐可发现的触发方式，并清理非法值', () => {
+        expect(normalizeConfig({selectionTranslatorMode: 'bilingual'})).toMatchObject({
+            selectionTranslatorMode: 'bilingual',
+            selectionTranslatorTrigger: 'icon',
+            disableSelectionTranslator: false,
+        });
+
+        expect(normalizeConfig({selectionTranslatorMode: 'invalid', selectionTranslatorTrigger: 'invalid'})).toMatchObject({
+            selectionTranslatorMode: 'disabled',
+            selectionTranslatorTrigger: 'icon',
+            disableSelectionTranslator: true,
+        });
+    });
+});
+
 describe('OpenAI 兼容服务端点', () => {
     it('使用服务商当前公开的统一 Chat Completions 端点', () => {
         expect(urls[services.yiyan]).toBe('https://qianfan.bj.baidubce.com/v2/chat/completions');

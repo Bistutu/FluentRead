@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>FluentRead unified translation fixture</title>
+  <style>
+    body { margin: 0; font: 16px/1.6 sans-serif; }
+    main { width: 720px; margin: 32px auto; }
+    .toolbar { display: flex; gap: 8px; }
+    button { padding: 6px 12px; }
+    code { font-family: monospace; }
+  </style>
+</head>
+<body>
+  <header>This navigation header must stay unchanged.</header>
+  <nav>Home Documentation Pricing</nav>
+  <main>
+    <h1>Unified content block recognition</h1>
+    <p id="paragraph-one">
+      This paragraph contains <a href="https://example.com">a preserved link</a>
+      and <code>const value = 42</code> that should remain inside the translated block.
+    </p>
+    <p id="paragraph-two">The second paragraph is a neighbor and must be translated exactly once.</p>
+    <div class="toolbar">
+      <button id="save-button"><span aria-hidden="true">★</span><span>Save changes</span></button>
+      <button id="cancel-button">Cancel</button>
+    </div>
+    <section id="dynamic-container"></section>
+    <div id="shadow-host"></div>
+  </main>
+  <footer>This footer must stay unchanged.</footer>
+  <script>
+    const host = document.querySelector('#shadow-host');
+    const shadow = host.attachShadow({ mode: 'open' });
+    shadow.innerHTML = '<p id="shadow-paragraph">This paragraph lives inside an open shadow root.</p>';
+  </script>
+</body>
+</html>

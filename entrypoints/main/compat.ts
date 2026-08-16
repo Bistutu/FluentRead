@@ -318,7 +318,8 @@ export const selectCompatFn: SelectCompatFn = {
         if (userDescription) return userDescription;
         
         // 推文正文 - 但不包括用户名提及部分
-        const tweetText = findMatchingElement(node, 'div[data-testid="tweetText"]');
+        // X 新版前端已移除 tweetText test id，正文改用 article 内的 dir=auto。
+        const tweetText = findMatchingElement(node, 'div[data-testid="tweetText"], article div[dir="auto"]');
         if (tweetText) return tweetText;
         
         // 评论内容
@@ -572,6 +573,14 @@ export const selectCompatFn: SelectCompatFn = {
  * 判断是否应该跳过Twitter网站上的特定元素
  */
 function shouldSkipTwitterElement(node: any): boolean {
+    // button/role=button 由统一扫描器处理，双语模式下只替换其可见文字。
+    // 这里不能按祖先容器的 textContent 或登录链接直接跳过整棵子树，否则
+    // X 的 body/登录区会连同正文一起漏译。真正的弹窗仍作为站点噪声跳过。
+    if (node.closest?.('[role="dialog"], [aria-modal="true"]')) {
+        debugLog('Twitter', '弹窗区域跳过', node.textContent);
+        return true;
+    }
+
     // 检查是否为特殊内容（URL、邮箱、用户名等）
     if (node.textContent && isSpecialContent(node.textContent)) {
         debugLog('Twitter', '特殊内容', node.textContent);
@@ -650,12 +659,6 @@ function shouldSkipTwitterElement(node: any): boolean {
         // 检查是否为用户ID格式 
         if (textContent.startsWith('id@')) {
             debugLog('Twitter', '用户ID跳过', node.textContent);
-            return true;
-        }
-        
-        // 检查是否包含关注字样
-        if (textContent.includes('关注') || textContent.includes('Follow')) {
-            debugLog('Twitter', '关注按钮跳过', node.textContent);
             return true;
         }
         
