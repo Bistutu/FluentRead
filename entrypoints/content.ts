@@ -7,14 +7,11 @@ import { config, configReady } from "@/entrypoints/utils/config";
 import { mountFloatingBall, unmountFloatingBall, toggleFloatingBallPosition } from "@/entrypoints/utils/floatingBall";
 import { mountSelectionTranslator, unmountSelectionTranslator } from "@/entrypoints/utils/selectionTranslator";
 import { cancelAllTranslations, translateText } from "@/entrypoints/utils/translateApi";
-import TranslationStatus from '@/components/TranslationStatus.vue';
 import { mountNewApiComponent } from "@/entrypoints/utils/newApi";
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import { createShadowRootUi, type ShadowRootContentScriptUi } from 'wxt/utils/content-script-ui/shadow-root';
-import { createVueShadowUi, type VueShadowMount } from '@/entrypoints/utils/shadowUi';
 
 let contentScriptContext: ContentScriptContext | null = null;
-let translationStatusUi: ShadowRootContentScriptUi<VueShadowMount> | null = null;
 let inputTooltipUi: ShadowRootContentScriptUi<HTMLElement> | null = null;
 
 function installPageStyles(ctx: ContentScriptContext) {
@@ -68,11 +65,6 @@ export default defineContentScript({
             await mountSelectionTranslator(ctx);
         }
         
-        // 挂载翻译状态组件（可配置禁用）
-        if (config.translationStatus === true) {
-            await mountTranslationStatusComponent(ctx);
-        }
-
         mountNewApiComponent();
 
         cache.cleaner();    // 检测是否清理缓存
@@ -103,6 +95,7 @@ export default defineContentScript({
             if (message.type === 'updateSelectionTranslatorMode') {
                 // 更新配置
                 config.selectionTranslatorMode = message.mode;
+                config.disableSelectionTranslator = message.mode === 'disabled';
                 
                 if (message.mode === 'disabled') {
                     unmountSelectionTranslator();
@@ -150,8 +143,6 @@ export default defineContentScript({
             unmountFloatingBall();
             // 移除划词翻译组件
             unmountSelectionTranslator();
-            translationStatusUi?.remove();
-            translationStatusUi = null;
             removeExistingTooltip();
         });
     }
@@ -657,21 +648,6 @@ function clearAllTranslations() {
     cache.clean();
 
     console.log('已清除所有翻译缓存');
-}
-
-/**
- * 挂载翻译状态组件
- */
-async function mountTranslationStatusComponent(ctx: ContentScriptContext) {
-    if (translationStatusUi) return translationStatusUi.mounted?.instance;
-
-    translationStatusUi = await createVueShadowUi(ctx, {
-        name: 'fluent-read-translation-status-ui',
-        hostId: 'fluent-read-translation-status-container',
-        component: TranslationStatus,
-        zIndex: 2_147_483_645,
-    });
-    return translationStatusUi.mounted?.instance;
 }
 
 /**

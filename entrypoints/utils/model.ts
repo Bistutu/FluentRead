@@ -55,7 +55,6 @@ export class Config {
     tencentSecretKey: string; // 腾讯云 Secret Key
     azureOpenaiEndpoint: string; // Azure OpenAI 端点地址
     animations: boolean; // 是否启用动画效果
-    translationStatus: boolean; // 是否启用全文翻译进度面板
     inputBoxTranslationTrigger: string; // 输入框翻译触发方式
     inputBoxTranslationTarget: string; // 输入框翻译目标语言
     deepseekApiType: DeepSeekApiType; // DeepSeek API 格式
@@ -87,14 +86,14 @@ export class Config {
         this.count = 0;
         this.theme = 'auto';  // 默认跟随系统
         this.useCache = true; // 默认开启缓存
-        this.disableFloatingBall = false; // 默认启用悬浮球
+        this.disableFloatingBall = true; // 默认关闭悬浮球
         this.floatingBallPosition = 'right'; // 默认在右侧
         this.floatingBallHotkey = 'Alt+T'; // 默认快捷键为 Alt+T
         this.customFloatingBallHotkey = ''; // 自定义快捷键为空
         this.customHotkey = ''; // 自定义鼠标悬浮快捷键为空
-        this.disableSelectionTranslator = false; // 默认不禁用划词翻译
+        this.disableSelectionTranslator = true; // 默认关闭划词翻译
         this.deeplx = defaultOption.deeplx; // DeepLX 默认服务地址
-        this.selectionTranslatorMode = 'bilingual'; // 默认双语显示模式
+        this.selectionTranslatorMode = 'disabled'; // 默认关闭划词翻译
         this.newApiUrl = 'http://localhost:3000'; // NewAPI 默认地址
         this.maxConcurrentTranslations = 6; // 默认最大并发数为6
         this.youdaoAppKey = ''; // 有道翻译 App Key
@@ -103,7 +102,6 @@ export class Config {
         this.tencentSecretKey = ''; // 腾讯云 Secret Key
         this.azureOpenaiEndpoint = ''; // Azure OpenAI 端点地址
         this.animations = true; // 默认启用动画
-        this.translationStatus = true; // 默认启用翻译进度面板
         this.inputBoxTranslationTrigger = 'disabled'; // 默认关闭输入框翻译
         this.inputBoxTranslationTarget = 'en'; // 默认翻译成英文
         this.deepseekApiType = 'auto'; // DeepSeek 默认自动选择 API 格式
@@ -183,6 +181,7 @@ export function normalizeConfig(value: unknown): Config {
     const normalized = new Config();
     const source = value && typeof value === 'object' ? value as Partial<Config> : {};
     Object.assign(normalized, source);
+    delete (normalized as unknown as Record<string, unknown>).translationStatus;
 
     normalized.model = isRecord(source.model) ? {...source.model} : {};
     normalized.customModel = isRecord(source.customModel) ? {...source.customModel} : {};

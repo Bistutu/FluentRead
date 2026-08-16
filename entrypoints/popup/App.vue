@@ -449,6 +449,7 @@ function setHoverHotkey(value: string) {
 }
 function setSelectionMode(mode: string) {
   config.value.selectionTranslatorMode = mode;
+  config.value.disableSelectionTranslator = mode === 'disabled';
   void broadcast({ type: 'updateSelectionTranslatorMode', mode });
 }
 function setFloatingEnabled(enabled: boolean) {
