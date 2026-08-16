@@ -1,48 +1,96 @@
-# 流畅阅读 (FluentRead)
+<div align="center">
 
-> [English](https://github.com/Bistutu/FluentRead/blob/main/misc/README_EN.md) | 中文
+<img src="./public/icon/128.png" alt="FluentRead logo" width="96" />
 
-Open Immersive Translate 开源的沉浸式翻译。
+# FluentRead
 
-一款革命性的浏览器开源翻译插件，让所有人都能够拥有母语般的阅读体验。
+### Make every webpage feel native to read.
 
-1. [官方文档（必看）](https://fluent.thinkstu.com/)
-2. [B站视频介绍](https://www.bilibili.com/video/BV1ux4y1e73x/)
-3. [deepwiki 架构介绍](https://deepwiki.com/Bistutu/FluentRead)
+An open-source browser extension for bilingual webpages, instant selection translation, and flexible translation services.
 
-## 🌟 特性
+[![Latest version](https://img.shields.io/badge/version-0.0.29-6d5dfc?style=flat-square)](https://github.com/Bistutu/FluentRead/releases)
+[![License: GPL v3](https://img.shields.io/badge/license-GPL--3.0-22a06b?style=flat-square)](./LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/Bistutu/FluentRead?style=flat-square)](https://github.com/Bistutu/FluentRead)
 
-- **智能翻译**：支持 20+ 种翻译引擎，包括传统翻译和 AI 大模型。如：微软翻译、谷歌翻译、DeepL翻译、OpenAI、DeepSeek、Kimi、Ollama、自定义引擎等。
-- **双语对照**：支持原文与译文并列显示，让阅读更轻松。
-- **划词翻译**：选中任意文本，即可获得即时翻译结果，一键复制译文，提高阅读效率。
-- **全文翻译**：通过悬浮球一键翻译整个网页，无需刷新页面即可切换。
-- **隐私保护**：所有数据本地存储，代码开源透明。
-- **高度定制**：丰富的自定义选项，满足不同场景需求。
-- **完全免费**：开源免费，非商业化项目。
+<br />
 
-<kbd><img src="./misc/sample-git-1.gif" alt="sample-git-1.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
+**[Install](#install)** · **[Explore features](#what-you-can-do)** · **[Read the docs](https://fluent.thinkstu.com/)** · **[简体中文](./misc/README_ZH.md)**
 
-<kbd><img src="./misc/sample-git-4.gif" alt="sample-git-4.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
+</div>
 
-<kbd><img src="./misc/highlight_trans.png" alt="sample-git-4.gif" style="width: 80%; max-width: 100%;border: 1px solid black;"></kbd>
+<p align="center">
+  <img src="./misc/screenshots/translation.png" alt="A webpage translated into a clean bilingual layout" width="920" />
+</p>
 
-## 📦 安装
+FluentRead brings translation into the reading flow. Keep the original text beside the translation, translate only the sentence you need, or translate the whole page without opening another tab. Choose a traditional translation engine, an AI provider, or the built-in free fallback, then tune the experience to your reading habits.
 
-| 浏览器 | 安装方式 |
-|-------|---------|
-| Chrome | [Chrome 应用商店](https://chromewebstore.google.com/detail/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB/djnlaiohfaaifbibleebjggkghlmcpcj?hl=zh-CN&authuser=0) \| [国内镜像](https://www.crxsoso.com/webstore/detail/djnlaiohfaaifbibleebjggkghlmcpcj) |
-| Edge | [Edge 应用商店](https://microsoftedge.microsoft.com/addons/detail/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB/kakgmllfpjldjhcnkghpplmlbnmcoflp?hl=zh-CN) |
-| Firefox | [Firefox 附加组件商店](https://addons.mozilla.org/zh-CN/firefox/addon/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB/) |
+## What you can do
 
-## 📖 使用文档
+| Read naturally | Stay in control |
+| --- | --- |
+| **Bilingual pages** — Keep original text and translation together for study, research, and technical reading. | **Many translation services** — Use Microsoft Translator, Google Translate, DeepL, DeepLX, Chrome Translator, or AI providers such as OpenAI, DeepSeek, Gemini, Claude, Kimi, Ollama-compatible endpoints, and more. |
+| **Whole-page translation** — Use the floating ball, context menu, or a customizable shortcut to translate and restore a page in place. | **Custom models and endpoints** — Configure compatible APIs, models, prompts, request bodies, proxies, and credentials from the settings page. |
+| **Selection translation** — Select text and get a focused translation card with copy and speech actions. | **Local-first configuration** — Preferences and translation cache stay in the browser’s local storage. API keys are entered and used locally by the extension. |
+| **Hover and gesture triggers** — Translate with a hover shortcut, double click, long press, middle click, or touch gestures. | **Reader-friendly controls** — Choose translation styles, themes, animation, cache behavior, concurrency, and separate shortcuts for page and selection translation. |
 
-请直接访问 [流畅阅读官方文档](https://fluent.thinkstu.com/) 获取详细的：
-- 功能介绍
-- 配置指南
-- 使用教程
-- 常见问题
+### Also included
 
-# Star 历史记录
+- **Free Translation**: a built-in fallback chain that tries Microsoft first, then DeepLX, then Google when a service returns an error or empty result.
+- **Image translation (Beta)**: local OCR for text in images, with downloadable language packs and a reversible translated overlay.
+- **Translation cache**: reuse recent results for the same service, model, language pair, and request settings.
+- **Cross-browser support**: build targets for Chromium browsers and Firefox through WXT and Manifest V3.
+
+## See it in action
+
+### A small popup for everyday reading
+
+The popup keeps the most-used controls close: enable or pause the extension, choose languages and a default service, open the full settings page, and clear the local translation cache.
+
+<p align="center">
+  <img src="./misc/screenshots/popup.png" alt="FluentRead popup with language and translation controls" width="400" />
+</p>
+
+### Settings that scale with your workflow
+
+Use focused settings pages for reading preferences, services and models, shortcuts, image translation, advanced behavior, and configuration backup.
+
+<p align="center">
+  <img src="./misc/screenshots/settings-general.png" alt="FluentRead general settings page" width="920" />
+</p>
+
+<p align="center">
+  <img src="./misc/screenshots/settings-services.png" alt="FluentRead translation service catalog" width="920" />
+</p>
+
+## Install
+
+| Browser | Store |
+| --- | --- |
+| Chrome | [Chrome Web Store](https://chromewebstore.google.com/detail/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB/djnlaiohfaaifbibleebjggkghlmcpcj?hl=en) · [CrxSoso mirror](https://www.crxsoso.com/webstore/detail/djnlaiohfaaifbibleebjggkghlmcpcj) |
+| Edge | [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB/kakgmllfpjldjhcnkghpplmlbnmcoflp) |
+| Firefox | [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB/) |
+
+For a local build, install dependencies with pnpm and load the generated `./.output/chrome-mv3` directory as an unpacked extension. See the [official documentation](https://fluent.thinkstu.com/) for setup and configuration details.
+
+## Documentation and community
+
+- [Official documentation](https://fluent.thinkstu.com/) — features, setup, services, shortcuts, and FAQ.
+- [GitHub Discussions and Issues](https://github.com/Bistutu/FluentRead/issues) — report a problem or suggest an improvement.
+- [Bilibili introduction](https://www.bilibili.com/video/BV1ux4y1e73x/)
+- [DeepWiki architecture overview](https://deepwiki.com/Bistutu/FluentRead)
+
+## Development
+
+```bash
+pnpm install
+pnpm dev
+pnpm test
+pnpm compile
+pnpm build
+```
+
+FluentRead uses Vue 3, TypeScript, Element Plus, WXT, and Manifest V3. The project is licensed under [GPL-3.0](./LICENSE).
+
+## Star history
 
 [![Star History Chart](https://star-history.dera.page/svg?repos=Bistutu/FluentRead&type=Date)](https://star-history.dera.page/#Bistutu/FluentRead&Date)
-
