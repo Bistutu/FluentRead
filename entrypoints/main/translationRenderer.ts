@@ -8,8 +8,8 @@ import { smashTruncationStyle } from "@/entrypoints/main/dom";
  */
 const allowedTags = new Set([
     "a", "abbr", "b", "bdi", "bdo", "br", "cite", "em", "font",
-    "i", "mark", "q", "ruby", "small", "span", "strong", "sub", "sup",
-    "time", "u", "wbr",
+    "code", "i", "kbd", "mark", "q", "ruby", "samp", "small", "span",
+    "strong", "sub", "sup", "time", "u", "var", "wbr",
 ]);
 
 const blockedTags = new Set([
@@ -79,11 +79,19 @@ export function appendBilingualTranslation(node: HTMLElement, text: string): HTM
 
     const content = document.createElement("span");
     content.classList.add("fluent-read-bilingual-content");
+    content.setAttribute("data-fr-translation-owned", "true");
+    content.setAttribute("translate", "no");
+    content.lang = config.to || "";
+    content.dir = "auto";
 
     const style = options.styles.find((item) => item.value === config.style && !item.disabled);
     if (style?.class) content.classList.add(style.class);
 
-    content.textContent = text;
+    // 译文可能来自机器翻译的 HTML 或大模型的富文本响应。统一经过
+    // DOMParser + 白名单迁移，既保留链接/强调等行内结构，也不把服务响应
+    // 当作可信 HTML 直接写回网页。
+    const fragment = createSafeTranslationFragment(text);
+    content.appendChild(fragment);
     smashTruncationStyle(node);
     node.appendChild(content);
     return content;

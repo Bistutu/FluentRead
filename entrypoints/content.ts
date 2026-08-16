@@ -472,7 +472,6 @@ function setupFloatingBallHotkey() {
 
     // 添加全局键盘事件监听
     let hotkeysPressed = new Set<string>();
-    let lastKeyDownTime = 0; // 用于防止按键事件重复触发
     
     // 开发环境标志
     const isDev = process.env.NODE_ENV === 'development';
@@ -506,10 +505,9 @@ function setupFloatingBallHotkey() {
     
     // 监听按键按下事件
     document.addEventListener('keydown', (event) => {
-        // 防止事件重复触发（某些浏览器可能会重复触发keydown事件）
-        const now = Date.now();
-        if (now - lastKeyDownTime < 50) return;
-        lastKeyDownTime = now;
+        // 忽略长按产生的重复事件，但不能用全局时间窗口去重：
+        // Alt 和 T 本来就可能在 50ms 内连续到达，时间去重会吞掉合法组合键。
+        if (event.repeat) return;
         
         // 在 Mac 上禁止 cmd 键参与快捷键
         if (isMac && event.metaKey) {

@@ -14,13 +14,20 @@
    ```bash
    OLLAMA_ORIGINS="*" ollama serve
    ```
-   
+
  - Windows：打开系统环境变量（用户变量）新建 2 个变量，然后启动 App：
    - 变量名：`OLLAMA_HOST`，变量值：`0.0.0.0`
    - 变量名：`OLLAMA_ORIGINS`，变量值：`*`
 
-   ```bash
-   OLLAMA_ORIGINS="*" ollama serve
+   在命令提示符（CMD）中也可以临时设置后启动：
+   ```bat
+   set "OLLAMA_ORIGINS=*"
+   ollama serve
+   ```
+   如果使用 PowerShell，请执行：
+   ```powershell
+   $env:OLLAMA_ORIGINS = "*"
+   ollama serve
    ```
 
  - Linux：直接命令行启动。
@@ -86,4 +93,4 @@ http://localhost:11434/v1/chat/completions
 2. 已正确配置跨域访问，并在日志中确认生效
 3. 接口地址完全正确，包括 `/v1/chat/completions` 路径
 4. 本地已安装了相应的模型（可通过 `ollama list` 查看已安装模型）
-::: 
+:::

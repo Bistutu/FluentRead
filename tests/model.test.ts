@@ -1,10 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeConfig } from '@/entrypoints/utils/model';
+import { Config, normalizeConfig } from '@/entrypoints/utils/model';
 import { tongyiTokenPlanUrl, urls } from '@/entrypoints/utils/constant';
-import { customModelString, defaultOption, models, options, services, servicesType } from '@/entrypoints/utils/option';
+import { customModelString, defaultOption, models, options, resolveConfiguredModel, services, servicesType } from '@/entrypoints/utils/option';
 
 describe('AI 模型编号列表', () => {
+    it('AI 智能上下文默认关闭，并能从旧配置平滑补齐', () => {
+        expect(new Config().enableAIContext).toBe(false);
+        expect(normalizeConfig({}).enableAIContext).toBe(false);
+        expect(normalizeConfig({enableAIContext: true}).enableAIContext).toBe(true);
+        expect(servicesType.isUseAIContext(services.openai)).toBe(true);
+        expect(servicesType.isUseAIContext(services.microsoft)).toBe(false);
+        expect(servicesType.isUseAIContext(services.huanYuanTranslation)).toBe(false);
+        expect(servicesType.isUseAIContext(services.tongyi, 'qwen-mt-plus')).toBe(false);
+        expect(servicesType.isUseAIContext(services.tongyi, resolveConfiguredModel(customModelString, 'qwen-mt-plus'))).toBe(false);
+        expect(resolveConfiguredModel(customModelString, 'custom-model')).toBe('custom-model');
+    });
+
     it('展示当前主流模型，并移除已退役或错误的预设编号', () => {
         expect(models.get(services.openai)?.at(0)).toBe('gpt-5.6-sol');
         expect(models.get(services.openai)).not.toContain('gpt5');
@@ -179,6 +191,22 @@ describe('旧模型编号兼容迁移', () => {
         expect(chat.deepseekThinkingMode).toBe('disabled');
         expect(reasoner.model[services.deepseek]).toBe('deepseek-v4-flash');
         expect(reasoner.deepseekThinkingMode).toBe('enabled');
+    });
+});
+
+describe('划词翻译配置兼容', () => {
+    it('为旧配置补齐可发现的触发方式，并清理非法值', () => {
+        expect(normalizeConfig({selectionTranslatorMode: 'bilingual'})).toMatchObject({
+            selectionTranslatorMode: 'bilingual',
+            selectionTranslatorTrigger: 'icon',
+            disableSelectionTranslator: false,
+        });
+
+        expect(normalizeConfig({selectionTranslatorMode: 'invalid', selectionTranslatorTrigger: 'invalid'})).toMatchObject({
+            selectionTranslatorMode: 'disabled',
+            selectionTranslatorTrigger: 'icon',
+            disableSelectionTranslator: true,
+        });
     });
 });
 

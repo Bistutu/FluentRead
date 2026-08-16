@@ -39,6 +39,7 @@ export class Config {
     count: number;  // 翻译次数
     theme: string;  // 主题模式：'auto' | 'light' | 'dark'
     useCache: boolean; // 是否使用缓存
+    enableAIContext: boolean; // 是否为 AI 翻译附加网页上下文
     disableFloatingBall: boolean; // 是否禁用悬浮球
     floatingBallPosition: 'left' | 'right'; // 悬浮球位置
     floatingBallHotkey: string; // 悬浮球快捷键
@@ -48,6 +49,7 @@ export class Config {
     disableImageTranslator: boolean; // 是否禁用图片翻译
     deeplx: string; // DeepLX 服务地址
     selectionTranslatorMode: string; // 划词翻译显示模式: 'disabled' | 'bilingual' | 'translation-only'
+    selectionTranslatorTrigger: string; // 划词翻译触发方式: 'direct' | 'icon' | 'dot'
     newApiUrl: string; // NewAPI地址
     maxConcurrentTranslations: number; // 最大并发翻译数量
     youdaoAppKey: string; // 有道翻译 App Key
@@ -87,6 +89,7 @@ export class Config {
         this.count = 0;
         this.theme = 'auto';  // 默认跟随系统
         this.useCache = true; // 默认开启缓存
+        this.enableAIContext = false; // 默认关闭 AI 智能上下文，避免意外增加请求体和费用
         this.disableFloatingBall = true; // 默认关闭悬浮球
         this.floatingBallPosition = 'right'; // 默认在右侧
         this.floatingBallHotkey = 'Alt+T'; // 默认快捷键为 Alt+T
@@ -96,6 +99,7 @@ export class Config {
         this.disableImageTranslator = false; // 默认启用图片翻译
         this.deeplx = defaultOption.deeplx; // DeepLX 默认服务地址
         this.selectionTranslatorMode = 'disabled'; // 默认关闭划词翻译
+        this.selectionTranslatorTrigger = 'icon'; // 默认显示可发现的操作图标
         this.newApiUrl = 'http://localhost:3000'; // NewAPI 默认地址
         this.maxConcurrentTranslations = 6; // 默认最大并发数为6
         this.youdaoAppKey = ''; // 有道翻译 App Key
@@ -209,6 +213,14 @@ export function normalizeConfig(value: unknown): Config {
     if (!['auto', 'responses', 'chat'].includes(normalized.deepseekApiType)) {
         normalized.deepseekApiType = 'auto';
     }
+
+    if (!['disabled', 'bilingual', 'translation-only'].includes(normalized.selectionTranslatorMode)) {
+        normalized.selectionTranslatorMode = 'disabled';
+    }
+    if (!['direct', 'icon', 'dot'].includes(normalized.selectionTranslatorTrigger)) {
+        normalized.selectionTranslatorTrigger = 'icon';
+    }
+    normalized.disableSelectionTranslator = normalized.selectionTranslatorMode === 'disabled';
 
     return normalized;
 }

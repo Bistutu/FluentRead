@@ -13,7 +13,7 @@ async function custom(message: any) {
     const resp = await fetch(config.custom, {
         method: method.POST,
         headers: headers,
-        body: commonMsgTemplate(message.origin)
+        body: commonMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt)
     });
 
     if (resp.ok) {

@@ -54,7 +54,7 @@
         <el-tooltip class="box-item" effect="dark" content="选择双语模式下译文的显示样式，提供多种美观的效果" placement="top-start"
           :show-after="500">
           <span class="popup-text popup-vertical-left">译文样式<el-icon class="icon-margin">
-              <ChatDotRound />
+              <InfoFilled />
             </el-icon></span>
         </el-tooltip>
       </el-col>
@@ -123,7 +123,7 @@
         <span class="popup-text popup-vertical-left">
           鼠标悬浮快捷键
           <el-icon class="icon-margin">
-            <ChatDotRound />
+            <InfoFilled />
           </el-icon>
         </span>
         </el-tooltip>
@@ -164,7 +164,7 @@
         <span class="popup-text popup-vertical-left">
           全文翻译快捷键
           <el-icon class="icon-margin">
-            <ChatDotRound />
+            <InfoFilled />
           </el-icon>
         </span>
         </el-tooltip>
@@ -202,11 +202,11 @@
     <!-- 划词翻译模式选择 -->
     <el-row v-if="config.on" class="settings-control-row">
       <el-col :span="14" class="settings-control-label lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="选中文本后显示红点，鼠标移到红点上查看翻译结果。可选择关闭、双语显示或只显示译文" placement="top-start" :show-after="500">
+        <el-tooltip class="box-item" effect="dark" content="选中文本后显示翻译入口；不再依赖鼠标悬停，可选择直接弹出、显示图标或显示小点" placement="top-start" :show-after="500">
       <span class="popup-text popup-vertical-left">
         划词翻译
         <el-icon class="icon-margin">
-          <ChatDotRound />
+          <InfoFilled />
         </el-icon>
       </span>
         </el-tooltip>
@@ -216,6 +216,18 @@
           <el-option label="关闭" value="disabled" />
           <el-option label="双语显示" value="bilingual" />
           <el-option label="只显示译文" value="translation-only" />
+        </el-select>
+      </el-col>
+    </el-row>
+    <el-row v-if="config.on && config.selectionTranslatorMode !== 'disabled'" class="settings-control-row">
+      <el-col :span="14" class="settings-control-label lightblue rounded-corner">
+        <span class="popup-text popup-vertical-left">划词触发方式</span>
+      </el-col>
+      <el-col :span="10" class="settings-control-field flex-end">
+        <el-select v-model="config.selectionTranslatorTrigger" aria-label="划词翻译触发方式" placeholder="选择触发方式" size="small" style="width: 100%">
+          <el-option label="直接弹出" value="direct" />
+          <el-option label="显示图标" value="icon" />
+          <el-option label="显示小点" value="dot" />
         </el-select>
       </el-col>
     </el-row>
@@ -243,13 +255,31 @@
           <el-col :span="20" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark" content="开启缓存可以提高翻译速度，减少重复请求，但可能导致翻译结果不是最新的" placement="top-start" :show-after="500">
         <span class="popup-text popup-vertical-left">缓存翻译结果<el-icon class="icon-margin">
-            <ChatDotRound />
+            <InfoFilled />
           </el-icon></span>
             </el-tooltip>
           </el-col>
 
           <el-col :span="4" class="settings-control-field flex-end">
             <el-switch v-model="config.useCache" class="settings-toggle" aria-label="缓存翻译结果" />
+          </el-col>
+        </el-row>
+
+        <!-- AI 智能上下文 -->
+        <el-row class="settings-control-row">
+          <el-col :span="20" class="settings-control-label ai-context-label lightblue rounded-corner">
+            <el-tooltip class="box-item" effect="dark"
+                        content="开启后，AI 翻译会参考当前网页的标题、描述和相关正文片段；仅对大模型翻译服务生效。"
+                        placement="top-start" :show-after="500">
+              <span class="popup-text popup-vertical-left">AI 智能上下文<el-icon class="icon-margin">
+                  <InfoFilled />
+                </el-icon></span>
+            </el-tooltip>
+            <small class="settings-control-hint">提升术语和歧义表达的语境准确度；首次请求还会额外生成摘要并增加一次调用。</small>
+          </el-col>
+
+          <el-col :span="4" class="settings-control-field flex-end">
+            <el-switch v-model="config.enableAIContext" :disabled="!canUseAIContext" class="settings-toggle" aria-label="AI 智能上下文" />
           </el-col>
         </el-row>
 
@@ -260,7 +290,7 @@
           <span class="popup-text popup-vertical-left">
             全文翻译悬浮球
             <el-icon class="icon-margin">
-              <ChatDotRound />
+              <InfoFilled />
             </el-icon>
           </span>
           </el-tooltip>
@@ -279,7 +309,7 @@
                         content="动画效果（默认开）：禁用后将关闭加载/悬浮等动画，以节省GPU资源和电量。适合低配置设备或希望节省资源的用户。"
                         placement="top-start" :show-after="500">
               <span class="popup-text popup-vertical-left">动画效果<el-icon class="icon-margin">
-                  <ChatDotRound />
+                  <InfoFilled />
                 </el-icon></span>
             </el-tooltip>
           </el-col>
@@ -295,7 +325,7 @@
                         content="输入框翻译：在任何文本输入框中使用指定方式触发翻译当前输入的内容。"
                         placement="top-start" :show-after="500">
               <span class="popup-text popup-vertical-left">输入框翻译<el-icon class="icon-margin">
-                  <ChatDotRound />
+                  <InfoFilled />
                 </el-icon></span>
             </el-tooltip>
           </el-col>
@@ -326,7 +356,7 @@
             <el-tooltip class="box-item" effect="dark" content="控制同时进行的最大翻译任务数，数值越高翻译速度越快，但可能占用更多系统资源" placement="top-start"
                         :show-after="500">
           <span class="popup-text popup-vertical-left">翻译并发数<el-icon class="icon-margin">
-              <ChatDotRound />
+              <InfoFilled />
             </el-icon></span>
             </el-tooltip>
           </el-col>
@@ -349,7 +379,7 @@
             <el-tooltip class="box-item" effect="dark" content="使用代理可以解决网络无法访问的问题，如不熟悉代理设置请留空！" placement="top-start"
                         :show-after="500">
               <span class="popup-text popup-vertical-left">代理地址<el-icon class="icon-margin">
-                  <ChatDotRound />
+                  <InfoFilled />
                 </el-icon></span>
             </el-tooltip>
           </el-col>
@@ -364,7 +394,7 @@
             <el-tooltip class="box-item" effect="dark" content="以系统身份 system 发送的对话，常用于指定 AI 要扮演的角色"
               placement="top-start" :show-after="500">
               <span class="popup-text popup-vertical-left">system<el-icon class="icon-margin">
-                  <ChatDotRound />
+                  <InfoFilled />
                 </el-icon></span>
             </el-tooltip>
           </el-col>
@@ -379,7 +409,7 @@
               content="以用户身份 user 发送的对话，其中{{to}}表示目标语言，{{origin}}表示待翻译的文本内容，两者不可缺少。"
               placement="top-start" :show-after="500">
               <span class="popup-text popup-vertical-left">user<el-icon class="icon-margin">
-                  <ChatDotRound />
+                  <InfoFilled />
                 </el-icon></span>
             </el-tooltip>
           </el-col>
@@ -472,10 +502,10 @@
 
 // Main 处理配置信息
 import { computed, ref, watch, onUnmounted } from 'vue'
-import { models, options, servicesType, defaultOption } from "../entrypoints/utils/option";
+import { models, options, resolveConfiguredModel, servicesType, defaultOption } from "../entrypoints/utils/option";
 import { Config, normalizeConfig } from "@/entrypoints/utils/model";
 import { storage } from '@wxt-dev/storage';
-import { ChatDotRound, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
+import { InfoFilled, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import browser from 'webextension-polyfill';
 import { defineAsyncComponent } from 'vue';
@@ -560,6 +590,11 @@ const setConfigurationService = (value: string) => {
 type ServiceSource = { value: string };
 
 const actualService = computed(() => config.value.service);
+const aiContextModel = computed(() => resolveConfiguredModel(
+  config.value.model[config.value.service],
+  config.value.customModel[config.value.service],
+));
+const canUseAIContext = computed(() => servicesType.isUseAIContext(config.value.service, aiContextModel.value));
 const filteredServices = computed(() =>
   options.services.filter((item: any) =>
     !([item.google].includes(item.value) && config.value.display !== 1),
@@ -961,6 +996,8 @@ const saveImport = async () => {
 
 .settings-status-copy strong { color: #172033; font-size: 16px; }
 .settings-status-copy small { color: #737c8f; font-size: 11px; }
+.ai-context-label { flex-direction: column; align-items: flex-start !important; gap: 4px; }
+.ai-context-label small { color: #8b93a4; font-size: 10px; line-height: 1.45; }
 .settings-status-control { align-items: center; gap: 13px; }
 .settings-status-badge {
   display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border: 1px solid #e1e5ed;

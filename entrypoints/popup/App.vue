@@ -202,11 +202,22 @@
 
       <div v-else-if="activeDrawer === 'selection'" class="drawer-content">
         <div class="interaction-preview"><span class="selection-box">选择文字</span><span>＋</span><i class="pink-dot" /><span>＝</span><strong>翻译所选内容</strong></div>
+        <div class="setting-row">
+          <span><strong>启用划词翻译</strong><small>选中文字后显示可操作的翻译入口</small></span>
+          <button class="switch compact" type="button" role="switch" :aria-checked="config.selectionTranslatorMode !== 'disabled'" aria-label="启用或关闭划词翻译" @click="setSelectionMode(config.selectionTranslatorMode === 'disabled' ? 'bilingual' : 'disabled')"><i /></button>
+        </div>
         <div class="choice-block">
           <label>显示方式</label>
           <div class="chips three">
             <button v-for="item in selectionModes" :key="item.value" type="button" :class="{ selected: config.selectionTranslatorMode === item.value }" @click="setSelectionMode(item.value)">{{ item.label }}</button>
           </div>
+        </div>
+        <div class="choice-block">
+          <label>触发方式</label>
+          <div class="chips three">
+            <button v-for="item in selectionTriggers" :key="item.value" type="button" :class="{ selected: config.selectionTranslatorTrigger === item.value }" @click="setSelectionTrigger(item.value)">{{ item.label }}</button>
+          </div>
+          <small class="drawer-hint">图标和小点会固定显示在选区旁，不需要悬停才能发现。</small>
         </div>
       </div>
 
@@ -341,6 +352,11 @@ const selectionModes = [
   { value: 'bilingual', label: '双语显示' },
   { value: 'translation-only', label: '仅译文' },
 ];
+const selectionTriggers = [
+  { value: 'direct', label: '直接弹出' },
+  { value: 'icon', label: '显示图标' },
+  { value: 'dot', label: '显示小点' },
+];
 
 function applyTheme(theme: string) {
   document.documentElement.classList.toggle('dark', theme === 'dark' || (theme === 'auto' && darkMode.matches));
@@ -472,6 +488,9 @@ function setSelectionMode(mode: string) {
   config.value.selectionTranslatorMode = mode;
   config.value.disableSelectionTranslator = mode === 'disabled';
   void broadcast({ type: 'updateSelectionTranslatorMode', mode });
+}
+function setSelectionTrigger(trigger: string) {
+  config.value.selectionTranslatorTrigger = trigger;
 }
 function setFloatingEnabled(enabled: boolean) {
   config.value.disableFloatingBall = !enabled;
