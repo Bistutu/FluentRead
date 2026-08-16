@@ -9,12 +9,42 @@
         </div>
       </div>
       <div class="header-actions">
+        <button class="donation-button" type="button" title="赞赏流畅阅读" aria-label="打开赞赏页" @click="openDonation()">
+          <Coffee />
+          <span>赞赏</span>
+        </button>
         <button class="settings-button" type="button" title="完整设置" aria-label="打开完整设置" @click="openOptions()">
           <Setting />
           <span>设置</span>
         </button>
       </div>
     </header>
+
+    <Transition name="donation-fade">
+      <div
+        v-if="donationVisible"
+        class="donation-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="donation-title"
+        @click.self="closeDonation"
+      >
+        <section class="donation-card">
+          <button class="donation-close" type="button" aria-label="关闭赞赏页" @click="closeDonation">×</button>
+          <div class="donation-icon" aria-hidden="true"><Coffee /></div>
+          <span class="eyebrow">支持流畅阅读</span>
+          <h2 id="donation-title">如果它帮到了你</h2>
+          <p class="donation-description">欢迎请作者喝杯咖啡，让这段开源阅读之旅继续下去。</p>
+          <div class="donation-qr-frame">
+            <img src="/misc/approve.jpg" alt="流畅阅读赞赏码" />
+          </div>
+          <div class="donation-note">
+            <strong>微信扫一扫</strong>
+            <span>感谢你的支持与鼓励 ❤️</span>
+          </div>
+        </section>
+      </div>
+    </Transition>
 
     <section class="hero-card">
       <div class="hero-heading">
@@ -311,6 +341,7 @@ const activeDrawer = ref<DrawerName>('hover');
 const translating = ref(false);
 const pageTranslated = ref(false);
 const clearingCache = ref(false);
+const donationVisible = ref(false);
 const notice = ref('');
 const noticeType = ref<'success' | 'error'>('success');
 const showCustomHotkeyDialog = ref(false);
@@ -410,6 +441,11 @@ function closeServicePicker(event?: Event) {
   if (event && servicePicker.value?.contains(event.target as Node)) return;
   servicePickerOpen.value = false;
 }
+function openDonation() { donationVisible.value = true; }
+function closeDonation() { donationVisible.value = false; }
+function handleDonationKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && donationVisible.value) closeDonation();
+}
 function handleServicePickerKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') closeServicePicker();
 }
@@ -425,11 +461,13 @@ function selectService(value: string) {
 onMounted(() => {
   document.addEventListener('pointerdown', closeServicePicker);
   document.addEventListener('keydown', handleServicePickerKeydown);
+  document.addEventListener('keydown', handleDonationKeydown);
 });
 onUnmounted(() => {
   unsubscribeConfig();
   document.removeEventListener('pointerdown', closeServicePicker);
   document.removeEventListener('keydown', handleServicePickerKeydown);
+  document.removeEventListener('keydown', handleDonationKeydown);
   darkMode.onchange = null;
   if (noticeTimer) clearTimeout(noticeTimer);
 });
