@@ -1,6 +1,7 @@
 export interface ServiceOption {
   value: string
   label: string
+  description?: string
   disabled?: boolean
 }
 
@@ -43,7 +44,7 @@ export function filterServiceGroups(groups: ServiceGroup[], query: string) {
     .map((group) => ({
       ...group,
       items: group.items.filter((item) =>
-        `${item.label}${item.value}`.toLocaleLowerCase().includes(keyword),
+        `${item.label}${item.value}${item.description || ''}`.toLocaleLowerCase().includes(keyword),
       ),
     }))
     .filter((group) => group.items.length > 0)
