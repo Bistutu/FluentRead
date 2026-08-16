@@ -270,7 +270,7 @@ import browser from 'webextension-polyfill';
 import {
   config as runtimeConfig,
   configReady,
-  saveConfig,
+  requestConfigSave,
   subscribeConfig,
 } from '@/entrypoints/utils/config';
 import { Setting } from '@element-plus/icons-vue';
@@ -305,6 +305,7 @@ const drawerSettingsSection: Record<DrawerName, SettingsSection> = {
   floating: 'settings-shortcuts',
   appearance: 'settings-general',
 };
+const persistConfig = (value: unknown) => requestConfigSave(value, browser.runtime.sendMessage.bind(browser.runtime));
 
 const serviceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
 const popularServiceValues = ['freeTranslation', 'microsoft', 'google', 'deepL', 'deeplx', 'deepseek', 'openai', 'gemini', 'claude'];
@@ -369,8 +370,8 @@ watch(config, async value => {
   const serialized = JSON.stringify(value);
   if (serialized === lastSerialized) return;
   lastSerialized = serialized;
-  await saveConfig(value).catch((error) => console.warn('[FluentRead] 保存 popup 设置失败', error));
-}, { deep: true });
+  await persistConfig(value).catch((error) => console.warn('[FluentRead] 保存 popup 设置失败', error));
+}, { deep: true, flush: 'sync' });
 watch(() => config.value.theme, theme => applyTheme(theme || 'auto'));
 darkMode.onchange = () => { if (config.value.theme === 'auto') applyTheme('auto'); };
 
@@ -395,12 +396,20 @@ onMounted(() => {
   document.addEventListener('keydown', handleServicePickerKeydown);
 });
 onUnmounted(() => {
+  // Firefox 关闭 popup 会立即销毁页面，卸载前把当前快照交给后台再保存一次。
+  if (hydrated) void persistConfig(config.value).catch((error) => console.warn('[FluentRead] popup 关闭前保存设置失败', error));
+  window.removeEventListener('pagehide', saveOnPageHide);
   unsubscribeConfig();
   document.removeEventListener('pointerdown', closeServicePicker);
   document.removeEventListener('keydown', handleServicePickerKeydown);
   darkMode.onchange = null;
   if (noticeTimer) clearTimeout(noticeTimer);
 });
+
+function saveOnPageHide() {
+  if (hydrated) void persistConfig(config.value).catch((error) => console.warn('[FluentRead] popup pagehide 保存设置失败', error));
+}
+window.addEventListener('pagehide', saveOnPageHide);
 
 function showNotice(message: string, type: 'success' | 'error' = 'success') {
   notice.value = message;

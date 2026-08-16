@@ -37,6 +37,17 @@ function escapeExtensionNoncharacters() {
 // See https://wxt.dev/api/config.html
 export default defineConfig({
     modules: ['@wxt-dev/webextension-polyfill'],
+    // Firefox 的开发 runner 使用一次性 profile；预置启动参数，避免每轮 UI
+    // 回归都被 about:welcome 首次启动引导遮挡。仅影响 pnpm dev:firefox，
+    // 不会写入用户 Firefox profile，也不会进入扩展发布产物。
+    webExt: {
+        startUrls: ['about:blank'],
+        firefoxPref: {
+            'browser.aboutwelcome.enabled': false,
+            'browser.startup.homepage_override.mstone': 'ignore',
+            'browser.shell.checkDefaultBrowser': false,
+        },
+    },
     imports: {
         addons: {
             vueTemplate: true,

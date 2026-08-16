@@ -521,7 +521,7 @@ import { isConfigImportValid, sanitizeConfigForExport } from '@/entrypoints/util
 import {
   config as runtimeConfig,
   configReady,
-  saveConfig,
+  requestConfigSave,
   subscribeConfig,
 } from '@/entrypoints/utils/config';
 
@@ -548,6 +548,7 @@ function updateTheme(theme: string) {
 // 配置信息
 const config = ref(new Config());
 const selectedDeepLXPreset = ref('');
+const persistConfig = (value: unknown) => requestConfigSave(value, browser.runtime.sendMessage.bind(browser.runtime));
 
 const appendDeepLXPreset = (endpoint: string | undefined) => {
   if (!endpoint) {
@@ -575,8 +576,19 @@ void configReady
   .catch((error) => console.warn('[FluentRead] 无法读取本地配置', error));
 
 watch(config, (newValue) => {
-  if (hydrated) void saveConfig(newValue).catch((error) => console.warn('[FluentRead] 保存设置失败', error));
-}, { deep: true });
+  if (hydrated) void persistConfig(newValue).catch((error) => console.warn('[FluentRead] 保存设置失败', error));
+}, { deep: true, flush: 'sync' });
+
+// 设置页关闭前提交最新快照，避免 Firefox 销毁页面时丢失最后一次修改。
+onUnmounted(() => {
+  if (hydrated) void persistConfig(config.value).catch((error) => console.warn('[FluentRead] 设置页关闭前保存失败', error));
+  window.removeEventListener('pagehide', saveOnPageHide);
+});
+
+function saveOnPageHide() {
+  if (hydrated) void persistConfig(config.value).catch((error) => console.warn('[FluentRead] 设置页 pagehide 保存失败', error));
+}
+window.addEventListener('pagehide', saveOnPageHide);
 
 // 设置页左侧列表只切换正在编辑的服务，不改变网页翻译实际使用的默认服务。
 const configurationService = ref<string | null>(null);
@@ -945,7 +957,7 @@ const saveImport = async () => {
       });
       return;
     }
-    await saveConfig(normalizeConfig(parsedConfig));
+    await persistConfig(normalizeConfig(parsedConfig));
     ElMessage({
       message: '配置导入成功!',
       type: 'success',

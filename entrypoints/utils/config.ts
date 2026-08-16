@@ -2,6 +2,7 @@ import { storage } from '@wxt-dev/storage';
 import { Config, normalizeConfig } from '@/entrypoints/utils/model';
 
 export const CONFIG_STORAGE_KEY = 'local:config' as const;
+export const CONFIG_PERSIST_MESSAGE = 'persistConfig' as const;
 
 type ConfigListener = (nextConfig: Config) => void;
 
@@ -157,4 +158,37 @@ export async function saveConfig(value: unknown = config): Promise<void> {
     const serialized = serializeConfig(normalized);
     if (serializeConfig(config) !== serialized) applyConfig(normalized);
     await persistNormalizedConfig(normalized, serialized);
+}
+
+/**
+ * 从 popup/options 等短生命周期页面请求后台保存配置。
+ * Firefox 可能在 popup 关闭时销毁页面上下文，不能依赖页面内的异步 storage.set 完成。
+ */
+type ConfigMessageResponse = { success?: boolean; error?: string } | undefined;
+type ConfigMessageSender = (message: { type: typeof CONFIG_PERSIST_MESSAGE; config: Config }) => Promise<ConfigMessageResponse>;
+
+export async function requestConfigSave(value: unknown = config, sendMessage?: ConfigMessageSender): Promise<void> {
+    const normalized = normalizeConfig(value);
+
+    if (!sendMessage) {
+        await saveConfig(normalized);
+        return;
+    }
+
+    try {
+        const response = await sendMessage({
+            type: CONFIG_PERSIST_MESSAGE,
+            config: normalized,
+        });
+
+        if (response?.success === false) {
+            throw new Error(response.error || '后台保存配置失败');
+        }
+    } catch (error) {
+        // 保留非后台上下文和开发环境下的降级路径；正常扩展运行时由后台完成持久化。
+        await saveConfig(normalized);
+        if (error instanceof Error && !error.message.includes('Receiving end')) {
+            console.warn('[FluentRead] 后台保存配置失败，已回退到当前上下文', error);
+        }
+    }
 }

@@ -114,4 +114,33 @@ describe('统一配置存储', () => {
         expect(storageMock.setItem).not.toHaveBeenCalled();
         expect(listener).toHaveBeenCalledTimes(1);
     });
+
+    it('短生命周期页面通过后台提交规范化快照，而不是自行承担落盘', async () => {
+        const configStore = await loadConfigModule(storedConfig);
+        await configStore.configReady;
+        storageMock.setItem.mockClear();
+        const sendMessage = vi.fn().mockResolvedValue({ success: true });
+
+        await configStore.requestConfigSave({ ...configStore.config, to: 'en' }, sendMessage);
+
+        expect(sendMessage).toHaveBeenCalledWith({
+            type: configStore.CONFIG_PERSIST_MESSAGE,
+            config: expect.objectContaining({ to: 'en' }),
+        });
+        expect(storageMock.setItem).not.toHaveBeenCalled();
+    });
+
+    it('后台不可用时保留当前上下文的降级保存路径', async () => {
+        const configStore = await loadConfigModule(storedConfig);
+        await configStore.configReady;
+        storageMock.setItem.mockClear();
+        const sendMessage = vi.fn().mockRejectedValue(new Error('Receiving end does not exist'));
+
+        await configStore.requestConfigSave({ ...configStore.config, to: 'ja' }, sendMessage);
+
+        expect(storageMock.setItem).toHaveBeenCalledWith(
+            'local:config',
+            expect.objectContaining({ to: 'ja' }),
+        );
+    });
 });

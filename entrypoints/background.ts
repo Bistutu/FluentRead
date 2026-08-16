@@ -1,6 +1,6 @@
 import {_service} from "@/entrypoints/service/_service";
 import {translateMicrosoftTexts} from "@/entrypoints/service/microsoft";
-import {config, configReady} from "@/entrypoints/utils/config";
+import {config, configReady, CONFIG_PERSIST_MESSAGE, saveConfig} from "@/entrypoints/utils/config";
 import {CONTEXT_MENU_IDS} from "@/entrypoints/utils/constant";
 import {resolveConfiguredModel, servicesType} from "@/entrypoints/utils/option";
 import {synthesizeEdgeTts} from "@/entrypoints/utils/edgeTts";
@@ -487,6 +487,12 @@ export default defineBackground({
 
                     if (message.type === 'openOptionsPage') {
                         await browser.runtime.openOptionsPage();
+                        resolve({ success: true });
+                        return;
+                    }
+
+                    if (message.type === CONFIG_PERSIST_MESSAGE) {
+                        await saveConfig(message.config);
                         resolve({ success: true });
                         return;
                     }
