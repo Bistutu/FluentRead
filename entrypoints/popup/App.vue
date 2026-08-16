@@ -238,7 +238,7 @@
         </div>
         <div class="choice-block">
           <label>显示方式</label>
-          <div class="chips three">
+          <div class="chips two">
             <button v-for="item in selectionModes" :key="item.value" type="button" :class="{ selected: config.selectionTranslatorMode === item.value }" @click="setSelectionMode(item.value)">{{ item.label }}</button>
           </div>
         </div>
@@ -393,7 +393,6 @@ const hoverChoices = [
   { value: 'custom', label: '自定义' },
 ];
 const selectionModes = [
-  { value: 'disabled', label: '关闭' },
   { value: 'bilingual', label: '双语显示' },
   { value: 'translation-only', label: '仅译文' },
 ];
