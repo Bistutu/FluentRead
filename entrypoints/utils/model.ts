@@ -23,6 +23,7 @@ export class Config {
     display: number = 1;
     service: string;
     token: IMapping;
+    requireApiKey: Record<string, boolean>; // 按服务和模型保存 API Key 校验开关
     ak: string;
     sk: string;
     appid: string;
@@ -73,6 +74,7 @@ export class Config {
         this.hotkey = defaultOption.hotkey;
         this.service = defaultOption.service;
         this.token = {};
+        this.requireApiKey = {};
         this.ak = '';
         this.sk = '';
         this.appid = '';
@@ -198,6 +200,7 @@ export function normalizeConfig(value: unknown): Config {
     delete (normalized as unknown as Record<string, unknown>).__fluentConfigRevision;
 
     normalized.model = isRecord(source.model) ? {...source.model} : {};
+    normalized.requireApiKey = isBooleanMapping(source.requireApiKey) ? {...source.requireApiKey} : {};
     normalized.customModel = isRecord(source.customModel) ? {...source.customModel} : {};
     normalized.customBody = normalizeCustomBodyMapping(source.customBody);
 
@@ -265,6 +268,13 @@ export function migrateModelIdentifier(service: string, selectedModel: string): 
 
 function isRecord(value: unknown): value is Record<string, string> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isBooleanMapping(value: unknown): value is Record<string, boolean> {
+    return typeof value === 'object'
+        && value !== null
+        && !Array.isArray(value)
+        && Object.values(value).every((item) => typeof item === 'boolean');
 }
 
 // 构建所有服务的 system_role

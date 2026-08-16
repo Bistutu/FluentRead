@@ -2,12 +2,13 @@ import {Config} from "../utils/model";
 import {method, urls} from "../utils/constant";
 import {cozeTemplate} from "@/entrypoints/utils/template";
 import {config} from "@/entrypoints/utils/config";
+import {appendOptionalBearer} from './auth';
 
 async function coze( message: any) {
     // 构建请求头
     let headers = new Headers();
     headers.append('Content-Type', 'application/json');
-    headers.append('Authorization', `Bearer ${config.token[config.service]}`);
+    appendOptionalBearer(headers, config.token[config.service]);
 
     // 判断是否使用代理
     let url: string = config.proxy[config.service] ? config.proxy[config.service] : urls[config.service];

@@ -2,12 +2,13 @@ import {method, urls} from "../utils/constant";
 import {commonMsgTemplate} from "../utils/template";
 import {config} from "@/entrypoints/utils/config";
 import {contentPostHandler} from "@/entrypoints/utils/check";
+import {isApiKeyRequired} from "@/entrypoints/utils/configValidation";
 
 async function azureOpenai(message: any) {
     try {
         // 验证必要的配置
         const apiKey = config.token[config.service];
-        if (!apiKey || apiKey.trim() === '') {
+        if ((!apiKey || apiKey.trim() === '') && isApiKeyRequired(config.service, config)) {
             throw new Error('Azure OpenAI API Key 未配置，请在设置中输入有效的 API Key');
         }
 
@@ -21,10 +22,8 @@ async function azureOpenai(message: any) {
             throw new Error('Azure OpenAI 端点地址格式不正确，请确保包含正确的域名和路径');
         }
 
-        const headers = new Headers({
-            'Content-Type': 'application/json',
-            'api-key': apiKey
-        });
+        const headers = new Headers({'Content-Type': 'application/json'});
+        if (apiKey?.trim()) headers.set('api-key', apiKey.trim());
                 
         const resp = await fetch(endpoint, {
             method: method.POST,

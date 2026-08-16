@@ -3,14 +3,13 @@ import {commonMsgTemplate} from "../utils/template";
 import {config} from "@/entrypoints/utils/config";
 import {contentPostHandler} from "@/entrypoints/utils/check";
 import { services } from "../utils/option";
+import { appendOptionalBearer } from './auth';
 
 async function common(message: any) {
     try {
 
-        const headers = new Headers({
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${config.token[config.service]}`
-        });
+        const headers = new Headers({'Content-Type': 'application/json'});
+        appendOptionalBearer(headers, config.token[config.service]);
 
         if(config.service === services.openrouter){
             headers.append('HTTP-Referer', 'https://fluent.thinkstu.com');

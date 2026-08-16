@@ -130,6 +130,11 @@
         </div>
       </div>
 
+      <div v-if="credentialWarning" class="credential-warning" role="alert">
+        <span><strong>配置提醒</strong>{{ credentialWarning }}</span>
+        <button type="button" @click="openOptions('settings-services')">去设置</button>
+      </div>
+
       <button
         class="translate-button"
         :class="{ translated: pageTranslated }"
@@ -326,10 +331,11 @@ import {
 import { Setting } from '@element-plus/icons-vue';
 import { Config } from '@/entrypoints/utils/model';
 import { options } from '@/entrypoints/utils/option';
+import { getMissingCredentialMessage } from '@/entrypoints/utils/configValidation';
 import ServiceIcon from '@/components/ServiceIcon.vue';
 
 type DrawerName = 'hover' | 'selection' | 'floating' | 'appearance' | 'image';
-type SettingsSection = 'settings-general' | 'settings-shortcuts';
+type SettingsSection = 'settings-general' | 'settings-shortcuts' | 'settings-services';
 const CustomHotkeyInput = defineAsyncComponent(() => import('@/components/CustomHotkeyInput.vue'));
 const version = process.env.VUE_APP_VERSION;
 const config = ref(new Config());
@@ -369,6 +375,7 @@ const popularServiceOptions = computed(() => popularServiceValues
 const moreServiceOptions = computed(() => serviceOptions.value.filter((item: any) => !popularServiceValues.includes(item.value)));
 const styleOptions = computed(() => options.styles.filter((item: any) => !item.disabled));
 const serviceLabel = computed(() => serviceOptions.value.find((item: any) => item.value === config.value.service)?.label || config.value.service);
+const credentialWarning = computed(() => getMissingCredentialMessage(config.value.service, config.value));
 const styleLabel = computed(() => styleOptions.value.find((item: any) => item.value === config.value.style)?.label || '默认样式');
 const hoverKey = computed(() => config.value.hotkey === 'custom' ? (config.value.customHotkey || '自定义') : config.value.hotkey);
 const hoverSummary = computed(() => config.value.hotkey === 'none' ? '已关闭' : `${hoverKey.value} + 鼠标悬停`);
@@ -528,6 +535,11 @@ async function openOptions(section?: SettingsSection) {
 }
 
 async function togglePageTranslation() {
+  if (credentialWarning.value) {
+    showNotice(credentialWarning.value, 'error');
+    return;
+  }
+
   translating.value = true;
   const action = pageTranslated.value ? 'restore' : 'fullPage';
   try {
