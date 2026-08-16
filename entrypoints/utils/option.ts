@@ -163,6 +163,10 @@ export const servicesType = {
 
     isMachine: (service: string) => servicesType.machine.has(service),
     isAI: (service: string) => servicesType.AI.has(service),
+    isUseAIContext: (service: string, model = '') =>
+        servicesType.AI.has(service)
+        && service !== services.huanYuanTranslation
+        && !(service === services.tongyi && model.startsWith('qwen-mt')),
     isUseToken: (service: string) => servicesType.useToken.has(service),
     isUseProxy: (service: string) => servicesType.useProxy.has(service),
     isUseModel: (service: string) => servicesType.useModel.has(service),

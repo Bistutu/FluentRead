@@ -8,6 +8,8 @@ import browser from 'webextension-polyfill';
 import { config } from './config';
 import { detectlang } from './common';
 import { storage } from '@wxt-dev/storage';
+import { servicesType } from './option';
+import { getPageTranslationContext } from './pageContext';
 
 // 调试相关
 const isDev = process.env.NODE_ENV === 'development';
@@ -28,6 +30,7 @@ export async function translateText(origin: string, context: string = document.t
     timeout = 45000,
     useCache = config.useCache,
   } = options;
+  const pageContext = resolvePageContext(origin, options.pageContext);
 
   // 检查 origin 是否为空或只有空白字符
   const cleanedOrigin = origin?.replace(/[\s\u3000]/g, '') || '';
@@ -52,7 +55,7 @@ export async function translateText(origin: string, context: string = document.t
       try {
         // 发送翻译请求给background脚本处理
         const result = await Promise.race([
-          browser.runtime.sendMessage({ context, origin, useCache }),
+          browser.runtime.sendMessage({ context, pageContext, origin, useCache }),
           new Promise<never>((_, reject) => 
             setTimeout(() => reject(new Error('翻译请求超时')), timeout)
           )
@@ -102,6 +105,7 @@ export async function translateTextBatch(
     timeout = 45000,
     useCache = config.useCache,
   } = options;
+  const pageContext = resolvePageContext(origins[0] || '', options.pageContext);
 
   config.count++;
   storage.setItem('local:config', JSON.stringify(config));
@@ -110,7 +114,7 @@ export async function translateTextBatch(
     const translationTask = async (retryCount: number = 0): Promise<string[]> => {
       try {
         const result = await Promise.race([
-          browser.runtime.sendMessage({ context, origin: origins, useCache }),
+          browser.runtime.sendMessage({ context, pageContext, origin: origins, useCache }),
           new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error('翻译请求超时')), timeout)
           )
@@ -156,4 +160,11 @@ export interface TranslateOptions {
   timeout?: number;
   /** 是否使用缓存 */
   useCache?: boolean;
+  /** 发送给 LLM 的网页参考上下文；未提供时按当前页面自动提取。 */
+  pageContext?: string;
+}
+
+function resolvePageContext(origin: string, suppliedContext?: string): string | undefined {
+  if (!config.enableAIContext || !servicesType.isUseAIContext(config.service, config.model[config.service] || '')) return undefined;
+  return suppliedContext?.trim() || getPageTranslationContext(origin) || undefined;
 }

@@ -253,6 +253,24 @@
           </el-col>
         </el-row>
 
+        <!-- AI 智能上下文 -->
+        <el-row class="settings-control-row">
+          <el-col :span="20" class="settings-control-label ai-context-label lightblue rounded-corner">
+            <el-tooltip class="box-item" effect="dark"
+                        content="开启后，AI 翻译会参考当前网页的标题、描述和相关正文片段；仅对大模型翻译服务生效。"
+                        placement="top-start" :show-after="500">
+              <span class="popup-text popup-vertical-left">AI 智能上下文<el-icon class="icon-margin">
+                  <ChatDotRound />
+                </el-icon></span>
+            </el-tooltip>
+            <small class="settings-control-hint">提升术语和歧义表达的语境准确度，首次请求会增加输入长度与费用。</small>
+          </el-col>
+
+          <el-col :span="4" class="settings-control-field flex-end">
+            <el-switch v-model="config.enableAIContext" class="settings-toggle" aria-label="AI 智能上下文" />
+          </el-col>
+        </el-row>
+
         <!-- 悬浮球开关 -->
       <el-row v-if="config.on" class="settings-control-row">
         <el-col :span="20" class="settings-control-label lightblue rounded-corner">
@@ -961,6 +979,8 @@ const saveImport = async () => {
 
 .settings-status-copy strong { color: #172033; font-size: 16px; }
 .settings-status-copy small { color: #737c8f; font-size: 11px; }
+.ai-context-label { flex-direction: column; align-items: flex-start !important; gap: 4px; }
+.ai-context-label small { color: #8b93a4; font-size: 10px; line-height: 1.45; }
 .settings-status-control { align-items: center; gap: 13px; }
 .settings-status-badge {
   display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border: 1px solid #e1e5ed;

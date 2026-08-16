@@ -6,6 +6,7 @@ import { beautyHTML, getOpenShadowRoots, grabAllNode, LLMStandardHTML, resolveNo
 import { detectlang, throttle } from "@/entrypoints/utils/common";
 import { config } from "@/entrypoints/utils/config";
 import { translateText, translateTextBatch, cancelAllTranslations } from '@/entrypoints/utils/translateApi';
+import { getPageTranslationContext } from '@/entrypoints/utils/pageContext';
 import { appendBilingualTranslation, replaceWithSafeTranslation } from "@/entrypoints/main/translationRenderer";
 import {
     beginTranslation,
@@ -320,7 +321,9 @@ export function handleBilingualTranslation(node: unknown, slide: boolean): void 
     const spinner = insertLoadingSpinner(target);
     setSpinner(target, spinner);
 
-    void renderBilingualResult(target, attempt, translateText(origin, document.title));
+    void renderBilingualResult(target, attempt, translateText(origin, document.title, {
+        pageContext: getPageTranslationContext(origin),
+    }));
 }
 
 // 单语/仅译文翻译。
@@ -355,7 +358,9 @@ export function singleTranslate(node: unknown): void {
 
     const translation = config.service === services.microsoft
         ? translateMicrosoftHtml(target)
-        : translateText(origin, document.title);
+        : translateText(origin, document.title, {
+            pageContext: getPageTranslationContext(origin),
+        });
 
     // 先创建翻译请求，再插入 loading 节点。微软 HTML 翻译会克隆目标
     // 元素；如果顺序相反，loading 节点也会被带进服务响应和最终译文。
@@ -388,7 +393,9 @@ async function translateMicrosoftHtml(node: HTMLElement): Promise<string> {
 
     if (texts.length === 0) return clone.innerHTML;
 
-    const translations = await translateTextBatch(texts, document.title);
+    const translations = await translateTextBatch(texts, document.title, {
+        pageContext: getPageTranslationContext(texts.join(' ')),
+    });
     translations.forEach((translation, index) => {
         const textNodeInfo = textNodes[index];
         if (!textNodeInfo) return;
@@ -401,7 +408,9 @@ async function translateMicrosoftHtml(node: HTMLElement): Promise<string> {
 
 export const handleBtnTranslation = throttle((node: any) => {
     const origin = node.innerText;
-    translateText(origin, document.title)
+    translateText(origin, document.title, {
+        pageContext: getPageTranslationContext(origin),
+    })
         .then((text: string) => {
             node.innerText = text;
         }).catch((error: any) => console.error('调用失败:', error))

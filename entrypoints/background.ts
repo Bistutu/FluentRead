@@ -2,7 +2,7 @@ import {_service} from "@/entrypoints/service/_service";
 import {translateMicrosoftTexts} from "@/entrypoints/service/microsoft";
 import {config, configReady} from "@/entrypoints/utils/config";
 import {CONTEXT_MENU_IDS} from "@/entrypoints/utils/constant";
-import {customModelString} from "@/entrypoints/utils/option";
+import {customModelString, servicesType} from "@/entrypoints/utils/option";
 import {
     buildTranslationCacheKey,
     translationCache,
@@ -25,6 +25,7 @@ async function translateWithMicrosoftInBackground(text: string, targetLang: stri
 
 interface TranslationRequestMessageBase {
     context?: string;
+    pageContext?: string;
     useCache?: boolean;
 }
 
@@ -53,6 +54,7 @@ function getProviderEndpoint(service: string): string {
 function buildCacheKey(
     origin: string | string[],
     context: string,
+    pageContext: string,
     mode: CacheRequestMode,
 ): string {
     const service = config.service;
@@ -74,9 +76,10 @@ function buildCacheKey(
         userRole: config.user_role[service] || '',
         deepseekApiType: config.deepseekApiType,
         deepseekThinkingMode: config.deepseekThinkingMode,
-        // DeepL sends context to the provider. Other current adapters do not;
-        // omitting it there preserves cross-page cache hits.
+        // DeepL sends the title context to the provider. AI adapters send the
+        // bounded webpage context through their prompt templates.
         context: service === 'deepL' ? context : undefined,
+        pageContext: servicesType.isUseAIContext(service, getSelectedModel(service)) ? pageContext : undefined,
     });
 }
 
@@ -102,13 +105,14 @@ const pendingBatches = new Map<string, Promise<string[]>>();
 async function translateSingleWithCache(
     message: TranslationSingleRequestMessage,
     context: string,
+    pageContext: string,
     useCache: boolean,
 ): Promise<string> {
     if (!useCache) {
         return getTranslationService()(message);
     }
 
-    const key = buildCacheKey(message.origin, context, 'single');
+    const key = buildCacheKey(message.origin, context, pageContext, 'single');
     const existing = pendingTranslations.get(key);
     if (existing) return existing;
 
@@ -116,7 +120,7 @@ async function translateSingleWithCache(
         const cached = await translationCache.get(key);
         if (cached !== null) return cached;
 
-        const result = await getTranslationService()({...message, context});
+        const result = await getTranslationService()({...message, context, pageContext});
         if (isCacheableResult(message.origin, result)) {
             await translationCache.set(key, result);
         }
@@ -138,6 +142,7 @@ async function translateSingleWithCache(
 async function translateBatchWithCache(
     message: TranslationBatchRequestMessage,
     context: string,
+    pageContext: string,
     useCache: boolean,
 ): Promise<string[]> {
     if (!useCache) {
@@ -146,13 +151,13 @@ async function translateBatchWithCache(
         return result as string[];
     }
 
-    const batchKey = buildCacheKey(message.origin, context, 'batch');
+    const batchKey = buildCacheKey(message.origin, context, pageContext, 'batch');
     const existing = pendingBatches.get(batchKey);
     if (existing) return existing;
 
     const request = (async () => {
         const cached = await Promise.all(
-            message.origin.map((origin) => translationCache.get(buildCacheKey(origin, context, 'batch'))),
+            message.origin.map((origin) => translationCache.get(buildCacheKey(origin, context, pageContext, 'batch'))),
         );
         const missingIndexes = cached
             .map((value, index) => value === null ? index : -1)
@@ -169,7 +174,7 @@ async function translateBatchWithCache(
         const uniqueMissingOrigins = Array.from(
             new Map(
                 missingEntries.map(({origin}) => [
-                    buildCacheKey(origin, context, 'batch'),
+                    buildCacheKey(origin, context, pageContext, 'batch'),
                     origin,
                 ]),
             ).values(),
@@ -177,6 +182,7 @@ async function translateBatchWithCache(
         const translated = await getTranslationService()({
             ...message,
             context,
+            pageContext,
             origin: uniqueMissingOrigins,
         });
         if (!Array.isArray(translated) || translated.length !== uniqueMissingOrigins.length) {
@@ -186,15 +192,15 @@ async function translateBatchWithCache(
         const result = [...cached] as Array<string | null>;
         const translatedByKey = new Map(
             uniqueMissingOrigins.map((origin, index) => [
-                buildCacheKey(origin, context, 'batch'),
+                buildCacheKey(origin, context, pageContext, 'batch'),
                 translated[index],
             ]),
         );
         await Promise.all(missingEntries.map(async ({index, origin}) => {
-            const value = translatedByKey.get(buildCacheKey(origin, context, 'batch'));
+            const value = translatedByKey.get(buildCacheKey(origin, context, pageContext, 'batch'));
             result[index] = value as string;
             if (isCacheableResult(origin, value)) {
-                await translationCache.set(buildCacheKey(origin, context, 'batch'), value);
+                await translationCache.set(buildCacheKey(origin, context, pageContext, 'batch'), value);
             }
         }));
 
@@ -216,12 +222,13 @@ async function translateBatchWithCache(
 async function translateWithCache(message: TranslationRequestMessage): Promise<string | string[]> {
     await configReady;
     const context = typeof message.context === 'string' ? message.context : '';
+    const pageContext = typeof message.pageContext === 'string' ? message.pageContext : '';
     const useCache = isCacheEnabled(message);
 
     if (Array.isArray(message.origin)) {
-        return translateBatchWithCache(message as TranslationBatchRequestMessage, context, useCache);
+        return translateBatchWithCache(message as TranslationBatchRequestMessage, context, pageContext, useCache);
     }
-    return translateSingleWithCache(message as TranslationSingleRequestMessage, context, useCache);
+    return translateSingleWithCache(message as TranslationSingleRequestMessage, context, pageContext, useCache);
 }
 
 function setupTranslationCacheCleanup(): void {
