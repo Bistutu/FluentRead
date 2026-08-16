@@ -49,6 +49,7 @@ async function main() {
     const popup = await context.newPage();
     await popup.goto(`chrome-extension://${extensionId}/popup.html`, { waitUntil: 'domcontentloaded' });
     await popup.waitForSelector('[data-feature="video-subtitle"]', { timeout: 15000 });
+    await popup.waitForFunction(() => document.querySelectorAll('.feature-card').length === 6, null, { timeout: 10000 });
     await worker.evaluate(async () => {
       const stored = await chrome.storage.local.get('config');
       const config = stored.config || {};
@@ -69,9 +70,14 @@ async function main() {
       return {
         featurePresent: Boolean(document.querySelector('[data-feature="video-subtitle"]')),
         featureCount: document.querySelectorAll('.feature-card').length,
+        imageFeaturePresent: [...document.querySelectorAll('.feature-card')].some((node) => node.textContent?.includes('图片翻译')),
+        popupHeight: document.body.scrollHeight,
         config: stored.config,
       };
     });
+    if (popupState.featureCount !== 6 || !popupState.imageFeaturePresent) {
+      throw new Error(`Popup 快捷功能卡校验失败：数量=${popupState.featureCount}，图片翻译=${popupState.imageFeaturePresent}`);
+    }
     await popup.locator('[data-feature="video-subtitle"]').click();
     await popup.getByText('YouTube 字幕翻译').waitFor({ state: 'visible', timeout: 10000 });
     const videoDrawerState = await popup.evaluate(() => ({
@@ -153,6 +159,8 @@ async function main() {
       popupState: {
         featurePresent: popupState.featurePresent,
         featureCount: popupState.featureCount,
+        imageFeaturePresent: popupState.imageFeaturePresent,
+        popupHeight: popupState.popupHeight,
         textService: popupState.config.service,
         videoService: popupState.config.videoService,
         videoTranslationEnabled: popupState.config.videoTranslationEnabled,

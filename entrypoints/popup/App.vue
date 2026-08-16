@@ -296,6 +296,7 @@
           <span><strong>启用图片翻译</strong><small>在网页图片右上角显示“文”按钮</small></span>
           <button class="switch compact" type="button" role="switch" :aria-checked="!config.disableImageTranslator" aria-label="启用或关闭图片翻译" @click="setImageTranslatorEnabled(config.disableImageTranslator)"><i /></button>
         </div>
+      </div>
 
       <div v-else-if="activeDrawer === 'video'" class="drawer-content">
         <div class="video-beta-banner"><span class="feature-icon teal">CC</span><span><strong>YouTube 字幕翻译</strong><small>Beta · 只处理播放器已经提供的字幕文本</small></span></div>
