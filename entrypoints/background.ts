@@ -108,12 +108,15 @@ const PAGE_SUMMARY_CACHE_SIZE = 8;
 const PAGE_SUMMARY_LIMIT = 1200;
 
 function buildPageSummaryCacheKey(pageContext: string): string {
-    return JSON.stringify({
+    return buildTranslationCacheKey({
+        requestMode: 'page-summary',
+        sourceLanguage: config.from,
+        targetLanguage: '',
+        sourceText: pageContext,
         service: config.service,
         model: getSelectedModel(config.service),
         endpoint: getProviderEndpoint(config.service),
         customBody: config.customBody[config.service] || '',
-        pageContext,
     });
 }
 
@@ -146,6 +149,15 @@ async function addPageSummary(pageContext: string): Promise<string> {
 
     const request = (async () => {
         try {
+            // Keep summaries across MV3 service-worker restarts, matching Read
+            // Frog's article-summary cache. Cache failures are swallowed by
+            // translationCache and simply fall through to generation.
+            const persisted = await translationCache.get(key);
+            if (persisted !== null) {
+                cachePageSummary(key, persisted);
+                return persisted;
+            }
+
             const result = await getTranslationService()({
                 origin: '',
                 context: '',
@@ -161,6 +173,7 @@ async function addPageSummary(pageContext: string): Promise<string> {
 
             const summarizedContext = `Page summary (AI-generated reference):\n${summary}\n\n${pageContext}`.slice(0, 4000);
             cachePageSummary(key, summarizedContext);
+            await translationCache.set(key, summarizedContext);
             return summarizedContext;
         } catch (error) {
             console.warn('[FluentRead] page context summary failed; using extracted context:', error);
