@@ -3,6 +3,9 @@
  * 在 offscreen 环境中处理 Chrome Translation API 调用
  */
 
+import { downloadImageOcrLanguages, recognizeImage } from './imageOcr';
+import { translateImageInOffscreen } from './imageTranslation';
+
 // 语言代码映射
 const languageMap: { [key: string]: string } = {
     'zh-Hans': 'zh',
@@ -226,6 +229,48 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             });
         
         return true; // 保持消息通道开放以支持异步响应
+    }
+
+    if (message.type === 'FLUENT_READ_IMAGE_OCR_OFFSCREEN') {
+        recognizeImage(message.image, message.sourceLanguage)
+            .then(lines => sendResponse({ success: true, lines }))
+            .catch(error => {
+                console.error('图片 OCR 失败:', error);
+                sendResponse({
+                    success: false,
+                    error: error instanceof Error ? error.message : String(error),
+                });
+            });
+
+        return true;
+    }
+
+    if (message.type === 'FLUENT_READ_IMAGE_TRANSLATE_OFFSCREEN') {
+        translateImageInOffscreen(message.image, message.sourceLanguage, message.title || '')
+            .then(result => sendResponse({ success: true, ...result }))
+            .catch(error => {
+                console.error('图片翻译失败:', error);
+                sendResponse({
+                    success: false,
+                    error: error instanceof Error ? error.message : String(error),
+                });
+            });
+
+        return true;
+    }
+
+    if (message.type === 'FLUENT_READ_IMAGE_OCR_DOWNLOAD_OFFSCREEN') {
+        downloadImageOcrLanguages(message.languages || [])
+            .then(() => sendResponse({ success: true }))
+            .catch(error => {
+                console.error('图片 OCR 语言包下载失败:', error);
+                sendResponse({
+                    success: false,
+                    error: error instanceof Error ? error.message : String(error),
+                });
+            });
+
+        return true;
     }
     
     return false;

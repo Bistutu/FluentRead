@@ -34,6 +34,13 @@
 
 <img src="/sample-git-3.gif" alt="智能缓存" style="width: 60%; max-width: 20%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
 
+### 图片翻译
+将鼠标移到网页图片上，右上角会出现一个低调的“文”按钮。点击后，FluentRead 会在本地识别图片中的中英文或日文文字，先修复原文字区域，再把译文绘制到对应位置；再次点击按钮即可恢复原图，再次点击可以重新翻译。
+
+图片翻译不会修改原始 `<img>` 元素。OCR、逐行翻译、背景修复和译图生成统一在扩展 Offscreen Document 中完成；公开的跨域图片会由扩展后台读取，无法读取的图片仍需要先保存到本地后再翻译。复杂纹理图片会使用轻量级背景扩散兜底，效果可能不如服务端或 AI 修复模型。
+
+图片翻译默认关闭，是 Beta 功能。启用后如果尚未下载 OCR 语言包，会在图片入口上提示前往设置菜单的“图片翻译”页面下载；推荐下载“简体中文”和“English”，自动检测默认使用这两种语言，识别日文图片时再按需下载“日本語”。语言包只在首次使用或手动下载时从网络获取，并缓存到浏览器本地，不会打进扩展安装包。
+
 ## 操作方式
 
 <img src="/hotkey.png" alt="快捷键操作" style="width: 35%; max-width: 100%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
