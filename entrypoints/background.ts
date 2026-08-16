@@ -8,9 +8,16 @@ import {
     buildTranslationCacheKey,
     translationCache,
 } from "@/entrypoints/utils/translationCache";
-import { recognizeImageWithOffscreen } from "@/entrypoints/service/chrome-translator";
+import { downloadImageOcrLanguagesWithOffscreen, recognizeImageWithOffscreen } from "@/entrypoints/service/chrome-translator";
 import { imageBufferToDataUrl, MAX_REMOTE_IMAGE_BYTES, normalizeRemoteImageUrl } from "@/entrypoints/utils/imageFetch";
 import {buildPageSummaryPrompt, buildPageSummarySystemPrompt} from "@/entrypoints/utils/template";
+import {
+    getRequiredImageOcrLanguages,
+    IMAGE_OCR_LANGUAGE_PACKS,
+    IMAGE_OCR_LANGUAGE_STATE_KEY,
+    normalizeImageOcrLanguageCodes,
+    type ImageOcrLanguageCode,
+} from "@/entrypoints/utils/imageOcrLanguages";
 
 // 翻译状态管理
 let translationStateMap = new Map<number, boolean>(); // tabId -> isTranslated
@@ -43,6 +50,29 @@ interface TranslationRequestMessageBase {
 type TranslationSingleRequestMessage = TranslationRequestMessageBase & { origin: string };
 type TranslationBatchRequestMessage = TranslationRequestMessageBase & { origin: string[] };
 type TranslationRequestMessage = TranslationSingleRequestMessage | TranslationBatchRequestMessage;
+
+async function getDownloadedImageOcrLanguages(): Promise<ImageOcrLanguageCode[]> {
+    const stored = await browser.storage.local.get(IMAGE_OCR_LANGUAGE_STATE_KEY);
+    return normalizeImageOcrLanguageCodes(stored[IMAGE_OCR_LANGUAGE_STATE_KEY]);
+}
+
+async function markImageOcrLanguagesDownloaded(languages: ImageOcrLanguageCode[]): Promise<ImageOcrLanguageCode[]> {
+    const downloaded = new Set(await getDownloadedImageOcrLanguages());
+    languages.forEach(language => downloaded.add(language));
+    const next = normalizeImageOcrLanguageCodes([...downloaded]);
+    await browser.storage.local.set({ [IMAGE_OCR_LANGUAGE_STATE_KEY]: next });
+    return next;
+}
+
+async function assertImageOcrLanguagesDownloaded(sourceLanguage: string): Promise<void> {
+    const downloaded = new Set(await getDownloadedImageOcrLanguages());
+    const missing = getRequiredImageOcrLanguages(sourceLanguage).filter(language => !downloaded.has(language));
+    if (missing.length === 0) return;
+
+    const labels = new Map(IMAGE_OCR_LANGUAGE_PACKS.map(pack => [pack.code, pack.label]));
+    const missingLabels = missing.map(language => labels.get(language) || language).join('、');
+    throw new Error(`图片文字识别需要先下载${missingLabels}语言包，请前往设置 > 图片翻译下载`);
+}
 
 type CacheRequestMode = 'single' | 'batch';
 
@@ -529,8 +559,17 @@ export default defineBackground({
                     }
 
                     if (message.type === 'fluentReadImageOcr') {
+                        await assertImageOcrLanguagesDownloaded(message.sourceLanguage);
                         const lines = await recognizeImageWithOffscreen(message.image, message.sourceLanguage);
                         resolve({ success: true, lines });
+                        return;
+                    }
+
+                    if (message.type === 'fluentReadImageOcrDownload') {
+                        const languages = normalizeImageOcrLanguageCodes(message.languages);
+                        await downloadImageOcrLanguagesWithOffscreen(languages);
+                        const downloaded = await markImageOcrLanguagesDownloaded(languages);
+                        resolve({ success: true, languages: downloaded });
                         return;
                     }
 

@@ -1,3 +1,5 @@
+import { getRequiredImageOcrLanguages, type ImageOcrLanguageCode } from '@/entrypoints/utils/imageOcrLanguages';
+
 export interface OcrLine {
     text: string;
     bbox: {
@@ -28,13 +30,8 @@ export function selectChangedTranslations(lines: OcrLine[], translations: string
     });
 }
 
-const OCR_LANGUAGES = ['eng', 'chi_sim', 'jpn'] as const;
-
-export function getOcrLanguages(sourceLanguage: string): string[] {
-    if (sourceLanguage === 'en') return ['eng'];
-    if (sourceLanguage === 'zh-Hans') return ['chi_sim', 'eng'];
-    if (sourceLanguage === 'ja') return ['jpn', 'eng'];
-    return [...OCR_LANGUAGES];
+export function getOcrLanguages(sourceLanguage: string): ImageOcrLanguageCode[] {
+    return getRequiredImageOcrLanguages(sourceLanguage);
 }
 
 export function scaleOcrBox(

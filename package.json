@@ -22,9 +22,6 @@
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
     "@floating-ui/dom": "^1.7.4",
-    "@tesseract.js-data/chi_sim": "^1.0.0",
-    "@tesseract.js-data/eng": "^1.0.0",
-    "@tesseract.js-data/jpn": "^1.0.0",
     "@wxt-dev/storage": "^1.0.1",
     "crypto-js": "^4.2.0",
     "defuddle": "^0.19.2",

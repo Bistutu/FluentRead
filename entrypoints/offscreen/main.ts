@@ -3,7 +3,7 @@
  * 在 offscreen 环境中处理 Chrome Translation API 调用
  */
 
-import { recognizeImage } from './imageOcr';
+import { downloadImageOcrLanguages, recognizeImage } from './imageOcr';
 
 // 语言代码映射
 const languageMap: { [key: string]: string } = {
@@ -235,6 +235,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             .then(lines => sendResponse({ success: true, lines }))
             .catch(error => {
                 console.error('图片 OCR 失败:', error);
+                sendResponse({
+                    success: false,
+                    error: error instanceof Error ? error.message : String(error),
+                });
+            });
+
+        return true;
+    }
+
+    if (message.type === 'FLUENT_READ_IMAGE_OCR_DOWNLOAD_OFFSCREEN') {
+        downloadImageOcrLanguages(message.languages || [])
+            .then(() => sendResponse({ success: true }))
+            .catch(error => {
+                console.error('图片 OCR 语言包下载失败:', error);
                 sendResponse({
                     success: false,
                     error: error instanceof Error ? error.message : String(error),

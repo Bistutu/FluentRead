@@ -17,15 +17,6 @@ importers:
       '@floating-ui/dom':
         specifier: ^1.7.4
         version: 1.7.4
-      '@tesseract.js-data/chi_sim':
-        specifier: ^1.0.0
-        version: 1.0.0
-      '@tesseract.js-data/eng':
-        specifier: ^1.0.0
-        version: 1.0.0
-      '@tesseract.js-data/jpn':
-        specifier: ^1.0.0
-        version: 1.0.0
       '@wxt-dev/storage':
         specifier: ^1.0.1
         version: 1.0.1
@@ -795,15 +786,6 @@ packages:
 
   '@sxzz/popperjs-es@2.11.7':
     resolution: {integrity: sha512-Ccy0NlLkzr0Ex2FKvh2X+OyERHXJ88XJ1MXtsI9y9fGexlaXaVTPzBCRBwIxFkORuOb+uBqeu+RqnpgYTEZRUQ==}
-
-  '@tesseract.js-data/chi_sim@1.0.0':
-    resolution: {integrity: sha512-iuErURkPbECDUazgsLn/r3c+tU2y5o5S/w14d0A/YiagfsjYyZKgTo75RUpsGJ311qtu0dIX4hqnXAAjmqf2CA==}
-
-  '@tesseract.js-data/eng@1.0.0':
-    resolution: {integrity: sha512-mbTumm6KQPUHyzTPQaF3ObXYnx0SqqfV2nabqFVQBwD6Kl7PhGSLSzOlfFTWy0P3BjghaSKA2W9GB19Jk+ZcTg==}
-
-  '@tesseract.js-data/jpn@1.0.0':
-    resolution: {integrity: sha512-nUq2xHUjiWE6FRqkvLIIbByLZ39B8qNaBSOnVP4XIKGPKtZ1e0hiRnK7WhPfl8A+Fe7aNE1u/QoXXUym3TbSCA==}
 
   '@trysound/sax@0.2.0':
     resolution: {integrity: sha512-L7z9BgrNEcYyUYtF+HaEfiS5ebkh9jXqbszz7pC0hRBPaatV0XjSD3+eHrpqFemQfgwiFF0QPIarnIihIDn7OA==}
@@ -4868,12 +4850,6 @@ snapshots:
   '@sindresorhus/merge-streams@2.3.0': {}
 
   '@sxzz/popperjs-es@2.11.7': {}
-
-  '@tesseract.js-data/chi_sim@1.0.0': {}
-
-  '@tesseract.js-data/eng@1.0.0': {}
-
-  '@tesseract.js-data/jpn@1.0.0': {}
 
   '@trysound/sax@0.2.0': {}
 

@@ -2,13 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { imageBufferToDataUrl, normalizeRemoteImageUrl } from '@/entrypoints/utils/imageFetch';
 import { getOcrLanguages, normalizeOcrLines, scaleOcrBox, selectChangedTranslations } from '@/entrypoints/utils/imageTranslationCore';
 import { inpaintTextRegions } from '@/entrypoints/utils/imageInpainting';
+import { normalizeImageOcrLanguageCodes } from '@/entrypoints/utils/imageOcrLanguages';
 
 describe('图片翻译 OCR 工具', () => {
     it('按源语言选择最小 OCR 语言集', () => {
         expect(getOcrLanguages('en')).toEqual(['eng']);
         expect(getOcrLanguages('zh-Hans')).toEqual(['chi_sim', 'eng']);
         expect(getOcrLanguages('ja')).toEqual(['jpn', 'eng']);
-        expect(getOcrLanguages('auto')).toEqual(['eng', 'chi_sim', 'jpn']);
+        expect(getOcrLanguages('auto')).toEqual(['chi_sim', 'eng']);
+    });
+
+    it('只接受支持的语言包并去重，保证下载状态可持久化', () => {
+        expect(normalizeImageOcrLanguageCodes(['eng', 'jpn', 'eng', 'unsupported', null])).toEqual(['eng', 'jpn']);
+        expect(normalizeImageOcrLanguageCodes('eng')).toEqual([]);
     });
 
     it('把 OCR 坐标按图片显示尺寸缩放', () => {

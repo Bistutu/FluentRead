@@ -1,5 +1,6 @@
 import { createWorker, PSM, type Worker } from 'tesseract.js';
 import { getOcrLanguages, normalizeOcrLines, type OcrLine } from '@/entrypoints/utils/imageTranslationCore';
+import type { ImageOcrLanguageCode } from '@/entrypoints/utils/imageOcrLanguages';
 
 let workerPromise: Promise<Worker> | null = null;
 let workerLanguages = '';
@@ -9,8 +10,8 @@ function extensionAsset(path: string): string {
     return getRuntimeUrl(`/fluent-read-ocr/${path}`);
 }
 
-async function getOcrWorker(sourceLanguage: string): Promise<Worker> {
-    const languages = getOcrLanguages(sourceLanguage).join('+');
+async function getOcrWorkerForLanguages(languageCodes: string): Promise<Worker> {
+    const languages = languageCodes;
     if (workerPromise && workerLanguages === languages) return workerPromise;
 
     if (workerPromise) {
@@ -22,14 +23,22 @@ async function getOcrWorker(sourceLanguage: string): Promise<Worker> {
     workerPromise = createWorker(languages, 1, {
         workerPath: extensionAsset('worker/worker.min.js'),
         corePath: extensionAsset('core'),
-        langPath: extensionAsset('lang'),
         cachePath: 'fluent-read-image-ocr',
-        gzip: true,
+        // 不再把 traineddata 打进扩展；Tesseract.js 会从 jsDelivr 按需下载，
+        // 并将解压后的语言包缓存到 Offscreen Document 的 IndexedDB。
         // Offscreen 页面拥有扩展源，直接加载本地 worker 可避免 Blob Worker 的 CSP/源限制。
         workerBlobURL: false,
+    }).catch(error => {
+        workerPromise = null;
+        workerLanguages = '';
+        throw error;
     });
 
     return workerPromise;
+}
+
+async function getOcrWorker(sourceLanguage: string): Promise<Worker> {
+    return getOcrWorkerForLanguages(getOcrLanguages(sourceLanguage).join('+'));
 }
 
 export async function recognizeImage(image: string, sourceLanguage: string): Promise<OcrLine[]> {
@@ -42,4 +51,9 @@ export async function recognizeImage(image: string, sourceLanguage: string): Pro
     });
     const result = await worker.recognize(image, {}, { blocks: true });
     return normalizeOcrLines(result.data.blocks);
+}
+
+export async function downloadImageOcrLanguages(languages: ImageOcrLanguageCode[]): Promise<void> {
+    if (languages.length === 0) return;
+    await getOcrWorkerForLanguages(languages.join('+'));
 }

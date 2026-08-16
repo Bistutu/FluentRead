@@ -1,5 +1,6 @@
 import { config } from "@/entrypoints/utils/config";
 import type { OcrLine } from "@/entrypoints/utils/imageTranslationCore";
+import type { ImageOcrLanguageCode } from "@/entrypoints/utils/imageOcrLanguages";
 
 /**
  * Chrome 内置翻译 API 服务
@@ -95,6 +96,25 @@ export async function recognizeImageWithOffscreen(image: string, sourceLanguage:
 
     if (response?.success) return response.lines || [];
     throw new Error(response?.error || '图片 OCR 失败');
+}
+
+export async function downloadImageOcrLanguagesWithOffscreen(languages: ImageOcrLanguageCode[]): Promise<void> {
+    await ensureOffscreenDocument();
+
+    const response = await new Promise<any>((resolve, reject) => {
+        chrome.runtime.sendMessage({
+            type: 'FLUENT_READ_IMAGE_OCR_DOWNLOAD_OFFSCREEN',
+            languages,
+        }, (result: any) => {
+            if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+            } else {
+                resolve(result);
+            }
+        });
+    });
+
+    if (!response?.success) throw new Error(response?.error || '图片 OCR 语言包下载失败');
 }
 
 // 主翻译函数
