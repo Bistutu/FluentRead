@@ -2,6 +2,7 @@ import { config } from '@/entrypoints/utils/config';
 import { translateText } from '@/entrypoints/utils/translateApi';
 import { fetchImageInExtension, recognizeImageInExtension } from '@/entrypoints/utils/imageOcrClient';
 import { scaleOcrBox, type OcrLine } from '@/entrypoints/utils/imageTranslationCore';
+import { inpaintTextRegions } from '@/entrypoints/utils/imageInpainting';
 
 const IMAGE_TRANSLATION_OVERLAY = 'fluent-read-image-translation-overlay';
 const IMAGE_TRANSLATION_BUTTON = 'fluent-read-image-translation-button';
@@ -22,7 +23,7 @@ interface ImageTranslationState {
     abortController: AbortController | null;
     hoverTimer: number | null;
     lines: Array<OcrLine & { backgroundColor: string }>;
-    sourceImage: HTMLImageElement | null;
+    translatedImage: HTMLImageElement | null;
 }
 
 let mounted = false;
@@ -120,7 +121,7 @@ function createState(image: HTMLImageElement): ImageTranslationState {
         abortController: null,
         hoverTimer: null,
         lines: [],
-        sourceImage: null,
+        translatedImage: null,
     };
     states.set(image, state);
     activeStates.add(state);
@@ -221,8 +222,8 @@ function getBackgroundColor(
     return `rgb(${best})`;
 }
 
-async function addBackgroundColors(dataUrl: string, lines: OcrLine[]): Promise<{
-    source: HTMLImageElement;
+async function prepareTranslatedImage(dataUrl: string, lines: OcrLine[]): Promise<{
+    translated: HTMLImageElement;
     lines: Array<OcrLine & { backgroundColor: string }>;
 }> {
     const source = await loadImage(dataUrl);
@@ -231,12 +232,16 @@ async function addBackgroundColors(dataUrl: string, lines: OcrLine[]): Promise<{
     canvas.height = source.naturalHeight || source.height;
     const context = canvas.getContext('2d');
     if (!context || !canvas.width || !canvas.height) {
-        return { source, lines: lines.map(line => ({ ...line, backgroundColor: 'rgb(255, 255, 255)' })) };
+        return { translated: source, lines: lines.map(line => ({ ...line, backgroundColor: 'rgb(255, 255, 255)' })) };
     }
     context.drawImage(source, 0, 0, canvas.width, canvas.height);
-    const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+    const sourcePixels = context.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = inpaintTextRegions(sourcePixels.data, canvas.width, canvas.height, lines);
+    sourcePixels.data.set(pixels);
+    context.putImageData(sourcePixels, 0, 0);
+    const translated = await loadImage(canvas.toDataURL('image/png'));
     return {
-        source,
+        translated,
         lines: lines.map(line => ({
             ...line,
             backgroundColor: getBackgroundColor(pixels, canvas.width, canvas.height, line.bbox),
@@ -317,7 +322,7 @@ function drawTranslatedText(
 function renderTranslatedBitmap(state: ImageTranslationState, renderedWidth: number, renderedHeight: number): void {
     const imageWidth = state.image.naturalWidth;
     const imageHeight = state.image.naturalHeight;
-    if (!imageWidth || !imageHeight || !state.sourceImage) return;
+    if (!imageWidth || !imageHeight || !state.translatedImage) return;
 
     const pixelRatio = Math.min(2, window.devicePixelRatio || 1);
     state.canvas.style.display = 'block';
@@ -330,7 +335,7 @@ function renderTranslatedBitmap(state: ImageTranslationState, renderedWidth: num
     const imageRect = getRenderedImageRect(state.image, renderedWidth, renderedHeight);
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     context.clearRect(0, 0, renderedWidth, renderedHeight);
-    context.drawImage(state.sourceImage, imageRect.left, imageRect.top, imageRect.width, imageRect.height);
+    context.drawImage(state.translatedImage, imageRect.left, imageRect.top, imageRect.width, imageRect.height);
 
     state.lines.forEach(line => {
         const scaledBox = scaleOcrBox(line.bbox, imageWidth, imageHeight, imageRect.width, imageRect.height);
@@ -346,8 +351,6 @@ function renderTranslatedBitmap(state: ImageTranslationState, renderedWidth: num
         const top = Math.max(0, box.top - paddingY);
         const width = Math.min(renderedWidth - left, box.width + paddingX * 2);
         const height = Math.min(renderedHeight - top, box.height + paddingY * 2);
-        context.fillStyle = line.backgroundColor;
-        context.fillRect(left, top, Math.max(1, width), Math.max(1, height));
         drawTranslatedText(context, line.text, left, top, Math.max(1, width), Math.max(1, height), line.backgroundColor);
     });
 }
@@ -365,7 +368,7 @@ function restoreImageTranslation(state: ImageTranslationState): void {
     state.abortController?.abort();
     state.abortController = null;
     state.lines = [];
-    state.sourceImage = null;
+    state.translatedImage = null;
     state.canvas.width = 0;
     state.canvas.height = 0;
     state.canvas.style.display = 'none';
@@ -396,8 +399,8 @@ async function translateImage(state: ImageTranslationState): Promise<void> {
             ...line,
             text: translations[index] || line.text,
         }));
-        const prepared = await withTimeout(addBackgroundColors(imageData, translatedLines), IMAGE_READ_TIMEOUT_MS, '图片背景读取超时');
-        state.sourceImage = prepared.source;
+        const prepared = await withTimeout(prepareTranslatedImage(imageData, translatedLines), IMAGE_READ_TIMEOUT_MS, '图片背景修复超时');
+        state.translatedImage = prepared.translated;
         state.lines = prepared.lines;
         setButtonState(state, 'translated', '恢复原图');
         updateOverlayPosition(state);

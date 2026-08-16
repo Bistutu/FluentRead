@@ -236,10 +236,10 @@
       <div v-else-if="activeDrawer === 'image'" class="drawer-content">
         <div class="image-translation-preview">
           <div class="image-translation-preview-art"><span>文字</span><b>文</b></div>
-          <div><strong>悬停图片显示翻译入口</strong><small>点击图片右下角的小图标即可识别并翻译图片文字</small></div>
+          <div><strong>悬停图片显示翻译入口</strong><small>点击图片右上角的小图标即可识别并翻译图片文字</small></div>
         </div>
         <div class="setting-row">
-          <span><strong>启用图片翻译</strong><small>在网页图片右下角显示“文”按钮</small></span>
+          <span><strong>启用图片翻译</strong><small>在网页图片右上角显示“文”按钮</small></span>
           <button class="switch compact" type="button" role="switch" :aria-checked="!config.disableImageTranslator" aria-label="启用或关闭图片翻译" @click="setImageTranslatorEnabled(config.disableImageTranslator)"><i /></button>
         </div>
       </div>
