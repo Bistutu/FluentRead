@@ -27,7 +27,8 @@ import {
   ElButton,
   ElDialog,
   ElDivider,
-  ElInputNumber
+  ElInputNumber,
+  ElDrawer
 } from 'element-plus'
 
 const app = createApp(App);
@@ -55,7 +56,8 @@ const components = [
   ElButton,
   ElDialog,
   ElDivider,
-  ElInputNumber
+  ElInputNumber,
+  ElDrawer
 ]
 
 components.forEach(component => {

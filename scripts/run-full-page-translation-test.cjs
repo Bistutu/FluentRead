@@ -15,6 +15,9 @@ function parseArgs(argv) {
     browserPath: '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
     background: true,
     timeout: 120000,
+    // 当前 main 的默认服务是“免费翻译服务”，内部按微软、DeepLX、谷歌顺序回退。
+    // 需要验证单一服务时可通过 --service microsoft 等参数覆盖。
+    service: 'freeTranslation',
   };
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
@@ -212,10 +215,12 @@ async function main() {
     });
     const page = await context.newPage();
     await page.goto(args.url, { waitUntil: 'domcontentloaded', timeout: args.timeout });
-    await page.waitForSelector('#fluent-read-floating-ball-container', { state: 'attached', timeout: 45000 });
+    // 当前 main 默认关闭悬浮球，但悬浮/全文快捷键仍由 content script 独立监听；
+    // 不能把“悬浮球是否挂载”当作扩展已加载的判据。
+    await page.waitForTimeout(1000);
     const configResult = await readConfig(context, args.timeout);
     if (configResult.config?.floatingBallHotkey !== 'Alt+T') throw new Error(`全文快捷键不是 Alt+T：${configResult.config?.floatingBallHotkey}`);
-    if (configResult.config?.service !== 'microsoft') throw new Error(`预期微软翻译，实际为 ${configResult.config?.service}`);
+    if (configResult.config?.service !== args.service) throw new Error(`翻译服务不符：预期 ${args.service}，实际 ${configResult.config?.service}`);
     await page.bringToFront();
 
     await installShortcutDiagnostics(page);

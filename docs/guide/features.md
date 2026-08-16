@@ -30,7 +30,7 @@
 <img src="/sample-git-2.gif" alt="回译功能" style="width: 50%; max-width: 100%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
 
 ### 智能缓存
-智能缓存功能会自动保存已翻译的内容 24 小时，相同文本无需重复翻译，提高翻译效率，节省时间。
+智能缓存功能会在扩展后台保存已翻译的内容最多 24 小时，相同文本无需重复翻译，提高翻译效率，节省时间。缓存按翻译服务、模型、语言、请求格式和提示词等参数隔离，并在后台自动清理过期或过量记录。
 
 <img src="/sample-git-3.gif" alt="智能缓存" style="width: 60%; max-width: 20%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
 

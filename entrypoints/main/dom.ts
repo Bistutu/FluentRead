@@ -47,7 +47,6 @@ const semanticBlockTags = new Set([
 const extensionSelector = [
     '#fluent-read-floating-ball-container',
     '#fluent-read-selection-translator-container',
-    '#fluent-read-translation-status-container',
     '[class*="fluent-read-loading"]',
     '[class*="fluent-read-retry"]',
     '.fluent-read-bilingual-content',

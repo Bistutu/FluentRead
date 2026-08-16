@@ -1,12 +1,18 @@
-import { createApp } from 'vue';
 import FloatingBall from '@/components/FloatingBall.vue';
 import { config } from '@/entrypoints/utils/config';
 import browser from 'webextension-polyfill';
 import { storage } from '@wxt-dev/storage';
 import { autoTranslateEnglishPage, restoreOriginalContent } from '@/entrypoints/main/trans';
+import type { ContentScriptContext } from 'wxt/utils/content-script-context';
+import type { ShadowRootContentScriptUi } from 'wxt/utils/content-script-ui/shadow-root';
+import { createVueShadowUi, type VueShadowMount } from '@/entrypoints/utils/shadowUi';
 
 let floatingBallInstance: any = null;
 let app: any = null;
+let floatingBallUi: ShadowRootContentScriptUi<VueShadowMount> | null = null;
+let mountingPromise: Promise<any> | null = null;
+let mountRequestId = 0;
+let contentScriptContext: ContentScriptContext | null = null;
 let isTranslated = false; // 添加状态变量跟踪翻译状态
 
 /**
@@ -14,70 +20,82 @@ let isTranslated = false; // 添加状态变量跟踪翻译状态
  * @param position 悬浮球位置 'left' | 'right'，如果不传入则使用配置中的值
  * @returns 
  */
-export function mountFloatingBall(position?: 'left' | 'right') {
+export function mountFloatingBall(ctx?: ContentScriptContext, position?: 'left' | 'right') {
+  if (ctx) contentScriptContext = ctx;
+
   // 如果配置禁用了悬浮球或已存在实例，则不创建
-  if (config.disableFloatingBall || floatingBallInstance) {
-    return;
+  if (config.disableFloatingBall || floatingBallInstance || mountingPromise) {
+    return mountingPromise;
   }
+
+  if (!contentScriptContext) return;
 
   // 使用传入的位置参数或配置中的位置
   const ballPosition = position || config.floatingBallPosition || 'right';
+  const requestId = ++mountRequestId;
   // 更新配置
   config.floatingBallPosition = ballPosition;
 
-  // 创建容器元素
-  const container = document.createElement('div');
-  container.id = 'fluent-read-floating-ball-container';
-  document.body.appendChild(container);
+  mountingPromise = createVueShadowUi(contentScriptContext, {
+    name: 'fluent-read-floating-ball-ui',
+    hostId: 'fluent-read-floating-ball-container',
+    component: FloatingBall,
+    props: {
+      position: ballPosition,
+      showMenu: true,
+      onDocClick: () => {
+      },
+      onSettingsClick: () => {
+        browser.runtime.sendMessage({ type: 'openOptionsPage' });
+      },
+      // 添加位置变化事件监听
+      onPositionChanged: (newPosition: 'left' | 'right') => {
+        // 保存位置到配置
+        config.floatingBallPosition = newPosition;
 
-  // 创建 Vue 应用实例
-  app = createApp(FloatingBall, {
-    position: ballPosition,
-    showMenu: true,
-    onDocClick: () => {
-    },
-    onSettingsClick: () => {
-      browser.runtime.sendMessage({ type: 'openOptionsPage' });
-    },
-    // 添加位置变化事件监听
-    onPositionChanged: (newPosition: 'left' | 'right') => {
-      // 保存位置到配置
-      config.floatingBallPosition = newPosition;
-      
-      // 保存配置到存储
-      saveConfig();
+        // 保存配置到存储
+        saveConfig();
+      },
+      // 添加翻译状态变化事件监听
+      onTranslationToggle: (isTranslating: boolean) => {
+        if (isTranslating && !isTranslated) {
+          // 触发翻译开始事件
+          document.dispatchEvent(new CustomEvent('fluentread-translation-started'));
 
-    },
-    // 添加翻译状态变化事件监听
-    onTranslationToggle: (isTranslating: boolean) => {
-      if (isTranslating && !isTranslated) {
-        // 触发翻译开始事件
-        document.dispatchEvent(new CustomEvent('fluentread-translation-started'));
+          // 触发即时翻译
+          autoTranslateEnglishPage();
+          isTranslated = true;
+        } else if (!isTranslating && isTranslated) {
+          // 触发翻译结束事件
+          document.dispatchEvent(new CustomEvent('fluentread-translation-ended'));
 
-        // 触发即时翻译
-        autoTranslateEnglishPage();
-        isTranslated = true;
-      } else if (!isTranslating && isTranslated) {
-        // 触发翻译结束事件
-        document.dispatchEvent(new CustomEvent('fluentread-translation-ended'));
-        
-        // 恢复原文
-        restoreOriginalContent();
-        isTranslated = false;
-        
-        // 恢复后确保状态同步
-        floatingBallInstance.$el.classList.remove('is-translating');
-      }
+          // 恢复原文
+          restoreOriginalContent();
+          isTranslated = false;
+
+          // 恢复后确保状态同步
+          floatingBallInstance.$el.classList.remove('is-translating');
+        }
+      },
+    },
+  }).then((ui) => {
+    if (requestId !== mountRequestId || config.disableFloatingBall) {
+      ui.remove();
+      return null;
     }
+
+    floatingBallUi = ui;
+    app = ui.mounted?.app ?? null;
+    floatingBallInstance = ui.mounted?.instance ?? null;
+
+    // 监听自定义事件，用于通过快捷键触发悬浮球
+    document.addEventListener('fluentread-toggle-translation', toggleFloatingBallTranslation);
+    return floatingBallInstance;
+  }).finally(() => {
+    mountingPromise = null;
   });
 
-  // 挂载应用
-  floatingBallInstance = app.mount(container);
-  
-  // 监听自定义事件，用于通过快捷键触发悬浮球
-  document.addEventListener('fluentread-toggle-translation', toggleFloatingBallTranslation);
-
-  return floatingBallInstance;
+  return mountingPromise;
 }
 
 /**
@@ -199,22 +217,15 @@ function saveConfig() {
  * 卸载悬浮球
  */
 export function unmountFloatingBall() {
-  if (floatingBallInstance && app) {
+  mountRequestId++;
+  if (floatingBallUi || (floatingBallInstance && app)) {
     // 移除事件监听
     document.removeEventListener('fluentread-toggle-translation', toggleFloatingBallTranslation);
     
-    // 获取容器
-    const container = document.getElementById('fluent-read-floating-ball-container');
-    
-    // 卸载 Vue 应用
-    app.unmount();
+    floatingBallUi?.remove();
+    floatingBallUi = null;
     floatingBallInstance = null;
     app = null;
-    
-    // 移除容器
-    if (container) {
-      container.remove();
-    }
   }
 }
 
@@ -242,11 +253,11 @@ export function toggleFloatingBallPosition() {
   if (floatingBallInstance) {
     unmountFloatingBall();
     config.floatingBallPosition = newPosition;
-    mountFloatingBall(newPosition);
+    mountFloatingBall(undefined, newPosition);
   } else {
     config.floatingBallPosition = newPosition;
   }
   
   // 保存配置到存储
   saveConfig();
-} 
+}

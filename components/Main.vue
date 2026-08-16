@@ -1,12 +1,18 @@
 <template>
+  <section v-show="props.activeSection === 'settings-general'" id="settings-general" class="settings-section">
   <!-- 开关 -->
-  <el-row class="margin-bottom margin-left-2em">
-    <el-col :span="20" class="lightblue rounded-corner">
-      <span class="popup-text popup-vertical-left">插件状态</span>
+  <el-row class="margin-bottom margin-left-2em settings-status-row">
+    <el-col :span="18" class="lightblue rounded-corner">
+      <div class="settings-status-copy">
+        <span class="settings-status-kicker">{{ config.on ? '正在工作' : '已暂停' }}</span>
+        <strong>插件状态</strong>
+        <small>{{ config.on ? '网页翻译与快捷功能均已启用' : '重新启用后即可继续翻译网页' }}</small>
+      </div>
     </el-col>
 
-    <el-col :span="4" class="flex-end">
-      <el-switch v-model="config.on" inline-prompt active-text="开" inactive-text="关" @change="handlePluginStateChange" />
+    <el-col :span="6" class="flex-end settings-status-control">
+      <span class="settings-status-badge" :class="{ active: config.on }"><i />{{ config.on ? '已启用' : '已暂停' }}</span>
+      <el-switch class="settings-switch" v-model="config.on" aria-label="插件状态" size="large" @change="handlePluginStateChange" />
     </el-col>
   </el-row>
 
@@ -17,20 +23,33 @@
 
   <div v-show="config.on">
     <!--    翻译模式-->
-    <el-row class="margin-bottom margin-left-2em">
+    <el-row class="margin-bottom margin-left-2em settings-preference-row">
       <el-col :span="12" class="lightblue rounded-corner">
         <span class="popup-text popup-vertical-left">翻译模式</span>
       </el-col>
       <el-col :span="12">
-        <el-select v-model="config.display" placeholder="请选择翻译模式">
+        <el-select v-model="config.display" aria-label="翻译模式" placeholder="请选择翻译模式">
           <el-option class="select-left" v-for="item in options.display" :key="item.value" :label="item.label"
             :value="item.value" />
         </el-select>
       </el-col>
     </el-row>
 
+    <!-- 默认目标语言 -->
+    <el-row class="margin-bottom margin-left-2em settings-preference-row">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <span class="popup-text popup-vertical-left">默认目标语言</span>
+      </el-col>
+      <el-col :span="12">
+        <el-select v-model="config.to" aria-label="默认目标语言" placeholder="请选择目标语言">
+          <el-option class="select-left" v-for="item in options.to" :key="item.value" :label="item.label"
+            :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
+
     <!--    译文样式选择器-->
-    <el-row v-show="config.display === 1" class="margin-bottom margin-left-2em">
+    <el-row v-show="config.display === 1" class="margin-bottom margin-left-2em settings-preference-row">
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="选择双语模式下译文的显示样式，提供多种美观的效果" placement="top-start"
           :show-after="500">
@@ -40,7 +59,7 @@
         </el-tooltip>
       </el-col>
       <el-col :span="12">
-        <el-select v-model="config.style" placeholder="请选择译文显示样式">
+        <el-select v-model="config.style" aria-label="译文样式" placeholder="请选择译文显示样式">
           <el-option-group v-for="group in styleGroups" :key="group.value" :label="group.label">
             <el-option v-for="item in group.options" :key="item.value" :label="item.label" :value="item.value"
               :class="item.class" />
@@ -49,61 +68,57 @@
       </el-col>
     </el-row>
 
+    <section v-show="config.display === 1" class="style-preview-card" aria-live="polite">
+      <div class="style-preview-heading">
+        <div><span>实时预览</span><strong>译文样式</strong></div>
+      </div>
+      <div class="style-preview-example">
+        <p class="style-preview-source">Reading should feel calm and effortless.</p>
+        <p :key="config.style" class="style-preview-text" :class="currentStyleClass">阅读应该轻松、自然，不打断你的节奏。</p>
+      </div>
+      <small class="style-preview-note">切换上方选项即可预览译文在网页中的显示效果。</small>
+    </section>
+  </div>
+  </section>
+
+  <div v-if="!config.on && props.activeSection !== 'settings-general'" class="disabled-section">
+    <strong>插件当前已关闭</strong>
+    <p>请先在“通用设置”中启用插件，再调整该分类。</p>
+  </div>
+
+  <div v-show="config.on" class="settings-main-sections">
+
     <!-- 翻译服务 -->
-    <el-row class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="机器翻译：快速稳定，适合日常使用；AI翻译：更自然流畅，需要配置令牌" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">翻译服务<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <b>
-          <el-select v-model="config.service" placeholder="请选择翻译服务">
-            <el-option class="select-left" v-for="item in compute.filteredServices" :key="item.value"
-              :label="item.label" :value="item.value" :disabled="item.disabled"
-              :class="{ 'select-divider': item.disabled }" />
-          </el-select>
-        </b>
-      </el-col>
-    </el-row>
+    <section v-show="props.activeSection === 'settings-services'" id="settings-services" class="settings-section">
+      <ServiceCatalog
+        :service="selectedConfigurationService"
+        :default-service="config.service"
+        :selected-model="config.model[selectedConfigurationService]"
+        :services="configurationCompute.filteredServices"
+        :model-options="configurationCompute.model"
+        :show-model="configurationCompute.showModel"
+        @update:service="setConfigurationService"
+        @update:model="config.model[selectedConfigurationService] = $event"
+      >
+        <template #configuration>
+          <ServiceConfiguration
+            :config="config"
+            :service="selectedConfigurationService"
+            :compute="configurationCompute"
+            :options="options"
+            :is-valid-azure-endpoint="isValidAzureEndpoint"
+          />
+        </template>
+      </ServiceCatalog>
 
-    <!-- 免费翻译服务降级顺序 -->
-    <el-row v-show="compute.showFreeTranslation" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip
-          class="box-item"
-          effect="dark"
-          content="按微软翻译、DeepLX、谷歌翻译的顺序尝试。只有失败后才会继续下一个服务；DeepLX 地址使用 DeepLX 服务中的配置。"
-          placement="top-start"
-          :show-after="500"
-        >
-          <span class="popup-text popup-vertical-left">免费翻译降级顺序</span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12" class="free-translation-order">微软翻译 → DeepLX → 谷歌翻译</el-col>
-    </el-row>
-
-    <!-- 目标语言 -->
-    <el-row class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <span class="popup-text popup-vertical-left">目标语言</span>
-      </el-col>
-      <el-col :span="12">
-        <el-select v-model="config.to" placeholder="请选择目标语言">
-          <el-option class="select-left" v-for="item in options.to" :key="item.value" :label="item.label"
-            :value="item.value" />
-        </el-select>
-      </el-col>
-    </el-row>
+    </section>
 
 
 
     <!-- 鼠标悬浮快捷键 -->
-    <el-row class="margin-bottom margin-left-2em" :class="{ 'custom-hotkey-row': config.hotkey === 'custom' }">
-      <el-col :span="14" class="lightblue rounded-corner">
+    <section v-show="props.activeSection === 'settings-shortcuts'" id="settings-shortcuts" class="settings-section">
+    <el-row class="settings-control-row" :class="{ 'custom-hotkey-row': config.hotkey === 'custom' }">
+      <el-col :span="14" class="settings-control-label lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="按住指定快捷键并悬停在文本上进行翻译" placement="top-start" :show-after="500">
         <span class="popup-text popup-vertical-left">
           鼠标悬浮快捷键
@@ -113,10 +128,11 @@
         </span>
         </el-tooltip>
       </el-col>
-      <el-col :span="10" class="flex-end">
+      <el-col :span="10" class="settings-control-field flex-end">
         <div class="hotkey-config">
           <el-select 
             v-model="config.hotkey" 
+            aria-label="鼠标悬浮快捷键"
             placeholder="请选择快捷键" 
             size="small" 
             style="width: 100%"
@@ -142,11 +158,10 @@
     </el-row>
 
     <!-- 全文翻译快捷键选择 -->
-    <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em" :class="{ 'custom-hotkey-row': config.floatingBallHotkey === 'custom' }">
-      <el-col :span="14" class="lightblue rounded-corner">
+    <el-row v-if="config.on" class="settings-control-row" :class="{ 'custom-hotkey-row': config.floatingBallHotkey === 'custom' }">
+      <el-col :span="14" class="settings-control-label lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="（测试版）设置快捷键以便快速切换全文翻译状态，无需鼠标点击悬浮球" placement="top-start" :show-after="500">
         <span class="popup-text popup-vertical-left">
-          <!-- <span class="new-feature-badge">新</span> -->
           全文翻译快捷键
           <el-icon class="icon-margin">
             <ChatDotRound />
@@ -154,10 +169,11 @@
         </span>
         </el-tooltip>
       </el-col>
-      <el-col :span="10" class="flex-end">
+      <el-col :span="10" class="settings-control-field flex-end">
         <div class="hotkey-config">
           <el-select 
             v-model="config.floatingBallHotkey" 
+            aria-label="全文翻译快捷键"
             placeholder="选择快捷键" 
             size="small" 
             style="width: 100%"
@@ -184,11 +200,10 @@
 
 
     <!-- 划词翻译模式选择 -->
-    <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
-      <el-col :span="14" class="lightblue rounded-corner">
+    <el-row v-if="config.on" class="settings-control-row">
+      <el-col :span="14" class="settings-control-label lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="选中文本后显示红点，鼠标移到红点上查看翻译结果。可选择关闭、双语显示或只显示译文" placement="top-start" :show-after="500">
       <span class="popup-text popup-vertical-left">
-        <!-- <span class="new-feature-badge">新</span> -->
         划词翻译
         <el-icon class="icon-margin">
           <ChatDotRound />
@@ -196,316 +211,26 @@
       </span>
         </el-tooltip>
       </el-col>
-      <el-col :span="10" class="flex-end">
-        <el-select v-model="config.selectionTranslatorMode" placeholder="选择模式" size="small" style="width: 100%">
+      <el-col :span="10" class="settings-control-field flex-end">
+        <el-select v-model="config.selectionTranslatorMode" aria-label="划词翻译模式" placeholder="选择模式" size="small" style="width: 100%">
           <el-option label="关闭" value="disabled" />
           <el-option label="双语显示" value="bilingual" />
           <el-option label="只显示译文" value="translation-only" />
         </el-select>
       </el-col>
     </el-row>
+    </section>
 
     <!-- token -->
-    <el-row v-show="compute.showToken" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark"
-          content="API访问令牌仅保存在本地，用于访问翻译服务。获取方式请参考对应服务的官方文档；翻译服务为 ollama 时，token 可为任意值" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">访问令牌<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.token[config.service]" type="password" show-password placeholder="请输入API访问令牌" />
-      </el-col>
-    </el-row>
-
-    <!-- Azure OpenAI 端点配置 -->
-    <el-row v-show="compute.showAzureOpenaiEndpoint" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark"
-          content="Azure OpenAI 服务端点地址，必须包含完整的部署信息。格式：https://your-resource-name.openai.azure.com/openai/deployments/your-deployment-name/chat/completions?api-version=2024-02-15-preview" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">Azure 端点<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input
-          v-model="config.azureOpenaiEndpoint"
-          placeholder="https://your-resource.openai.azure.com/openai/deployments/your-model/chat/completions?api-version=2024-02-15-preview"
-          :class="{ 'input-error': config.azureOpenaiEndpoint && !isValidAzureEndpoint(config.azureOpenaiEndpoint) }"
-        />
-        <div v-if="config.azureOpenaiEndpoint && !isValidAzureEndpoint(config.azureOpenaiEndpoint)" class="error-text">
-          端点地址格式不正确，请确保包含 openai.azure.com 域名和 /chat/completions 路径
-        </div>
-      </el-col>
-    </el-row>
-
-    <!-- DeepLX URL 配置-->
-    <el-row v-show="compute.showDeepLX" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark"
-          content="DeepLX 是非官方免费服务。可填写多个地址，每行或逗号分隔；请求会按顺序故障转移。公共站点可能记录翻译文本，敏感内容建议使用本地或自建服务。"
-          placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">服务地址</span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input
-          v-model="config.deeplx"
-          type="textarea"
-          :rows="3"
-          resize="vertical"
-          placeholder="https://deeplx.1stg.me/translate&#10;http://localhost:1188/translate"
-        />
-        <div class="deeplx-hint">每行或逗号分隔，按顺序尝试；带 &#123;&#123;apiKey&#125;&#125; 的地址会使用上方访问令牌。</div>
-        <el-select
-          v-model="selectedDeepLXPreset"
-          class="deeplx-presets"
-          size="small"
-          clearable
-          placeholder="快速添加推荐站点"
-          @change="appendDeepLXPreset"
-        >
-          <el-option
-            v-for="preset in DEEPLX_ENDPOINT_PRESETS"
-            :key="preset.url"
-            :label="preset.label"
-            :value="preset.url"
-          />
-        </el-select>
-      </el-col>
-    </el-row>
-
-    <!-- 使用AkSk -->
-    <el-row v-show="compute.showAkSk" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="百度文心一言API密钥对，用于访问翻译服务" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">API Key<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.ak" placeholder="请输入Access Key" />
-      </el-col>
-    </el-row>
-    <el-row v-show="compute.showAkSk" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="百度文心一言API密钥对，用于访问翻译服务" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">Secret Key<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.sk" type="password" placeholder="请输入Secret Key" />
-      </el-col>
-    </el-row>
-
-    <!-- 有道翻译配置 -->
-    <el-row v-show="compute.showYoudao" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="有道智云翻译API应用ID，用于访问有道翻译服务。可在有道智云控制台获取" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">App Key<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.youdaoAppKey" placeholder="有道 AppKey" />
-      </el-col>
-    </el-row>
-    <el-row v-show="compute.showYoudao" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="有道智云翻译API应用密钥，用于访问有道翻译服务。可在有道智云控制台获取" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">App Secret<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.youdaoAppSecret" type="password" show-password placeholder="有道 AppSecret" />
-      </el-col>
-    </el-row>
-
-    <!-- 腾讯云机器翻译配置 -->
-    <el-row v-show="compute.showTencent" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="腾讯云API访问密钥ID，用于访问腾讯云机器翻译服务。可在腾讯云控制台的访问管理中获取" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">Secret ID<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.tencentSecretId" placeholder="腾讯云 SecretId" />
-      </el-col>
-    </el-row>
-    <el-row v-show="compute.showTencent" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="腾讯云API访问密钥，用于访问腾讯云机器翻译服务。可在腾讯云控制台的访问管理中获取" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">Secret Key<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.tencentSecretKey" type="password" show-password placeholder="腾讯云 SecretKey" />
-      </el-col>
-    </el-row>
-
-    <!--  Coze需显示 robot_id -->
-    <el-row v-show="compute.showRobotId" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="Coze机器人ID，可在Coze开发者文档中查看获取方式" placement="top-start"
-          :show-after="500">
-          <span class="popup-text popup-vertical-left">机器人ID<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.robot_id[config.service]" placeholder="请输入Coze机器人ID" />
-      </el-col>
-    </el-row>
-
-    <!-- 本地大模型配置 -->
-    <el-row v-show="compute.showCustom" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="目前仅支持OpenAI格式的请求接口，如http://localhost:3000/v1/chat/completions，其中 localhost:11434 可更换为任意值。
-                     ollama 配置请参考：https://fluent.thinkstu.com/guide/faq.html" placement="top-start" :show-after="500">
-          <span class="popup-text popup-vertical-left">自定义接口<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.custom" placeholder="请输入自定义接口地址" />
-      </el-col>
-    </el-row>
-
-    <!-- NewAPI 配置 -->
-    <el-row v-show="compute.showNewAPI" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="填写 New API 的访问地址，如：http://localhost:3000" placement="top-start" :show-after="500">
-          <span class="popup-text popup-vertical-left">NewAPI接口<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.newApiUrl" placeholder="请输入您的New API接口地址" />
-      </el-col>
-    </el-row>
-
-    <!--  模型 -->
-    <el-row v-show="compute.showModel" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <span class="popup-text popup-vertical-left">模型</span>
-      </el-col>
-      <el-col :span="12">
-        <el-select v-model="config.model[config.service]" placeholder="请选择模型">
-          <el-option class="select-left" v-for="item in compute.model" :key="item" :label="item" :value="item" />
-        </el-select>
-      </el-col>
-    </el-row>
-
-    <el-row v-show="compute.showCustomModel" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark"
-          :content="config.service === 'doubao' ? '豆包的model为接入点，获取方式见官方文档：https://console.volcengine.com/ark/region:ark+cn-beijing/endpoint' : '注意：自定义模型名称需要与服务商提供的模型名称一致，否则无法使用！'"
-          placement="top-start" :show-after="500">
-          <span class="popup-text popup-vertical-left">{{ config.service === 'doubao' ? '接入点' : '自定义模型' }}<el-icon
-              class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.customModel[config.service]" placeholder="例如：gemma:7b" />
-      </el-col>
-    </el-row>
-
-    <!-- DeepSeek API 格式 -->
-    <el-row v-show="compute.showDeepseekApiType" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark"
-          content="自动：使用 DeepSeek 官方 Chat Completion；仅当代理或网关明确支持 Responses API 时手动选择 Responses API"
-          placement="top-start" :show-after="500">
-          <span class="popup-text popup-vertical-left">API 格式<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-select v-model="config.deepseekApiType" placeholder="请选择 API 格式">
-          <el-option class="select-left" v-for="item in options.deepseekApiType" :key="item.value" :label="item.label"
-                     :value="item.value" />
-        </el-select>
-      </el-col>
-    </el-row>
-
-    <!-- DeepSeek 思考模式 -->
-    <el-row v-show="compute.showDeepseekThinkingMode" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark"
-          content="DeepSeek V4 Chat Completion 思考模式。翻译通常建议关闭以降低延迟；旧 deepseek-reasoner 配置会自动迁移为开启。"
-          placement="top-start" :show-after="500">
-          <span class="popup-text popup-vertical-left">思考模式<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-select v-model="config.deepseekThinkingMode" placeholder="请选择思考模式">
-          <el-option class="select-left" v-for="item in options.deepseekThinkingMode" :key="item.value"
-                     :label="item.label" :value="item.value" />
-        </el-select>
-      </el-col>
-    </el-row>
-
-    <!-- 自定义请求体 -->
-    <el-row v-show="compute.showCustomBody" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark"
-          content='以 JSON 对象形式追加到请求体（顶层合并，会覆盖同名默认字段）。'
-          placement="top-start" :show-after="500">
-          <span class="popup-text popup-vertical-left">自定义请求体<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12">
-        <el-input v-model="config.customBody[config.service]"
-          :class="{ 'input-error': !isValidCustomBody(config.customBody[config.service]) }"
-          placeholder='例如：{"thinking": {"type": "disabled"}}' />
-        <div v-if="!isValidCustomBody(config.customBody[config.service])" class="error-text">
-          请输入合法的 JSON 对象，否则该配置将被忽略
-        </div>
-      </el-col>
-    </el-row>
-
     <!-- 高级选项-->
-    <el-collapse class="margin-left-2em margin-bottom">
-      <el-collapse-item title="高级选项">
+    <section v-show="props.activeSection === 'settings-advanced'" id="settings-advanced" class="settings-section">
 
         <!-- 主题设置 -->
-        <el-row class="margin-bottom margin-left-2em margin-top-2em">
-          <el-col :span="12" class="lightblue rounded-corner">
+        <el-row class="settings-control-row">
+          <el-col :span="12" class="settings-control-label lightblue rounded-corner">
             <span class="popup-text popup-vertical-left">主题设置</span>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="12" class="settings-control-field">
             <el-select v-model="config.theme" placeholder="请选择主题模式">
               <el-option class="select-left" v-for="item in options.theme" :key="item.value" :label="item.label"
                          :value="item.value" />
@@ -514,8 +239,8 @@
         </el-row>
 
         <!-- 缓存开关 -->
-        <el-row class="margin-bottom margin-left-2em">
-          <el-col :span="20" class="lightblue rounded-corner">
+        <el-row class="settings-control-row">
+          <el-col :span="20" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark" content="开启缓存可以提高翻译速度，减少重复请求，但可能导致翻译结果不是最新的" placement="top-start" :show-after="500">
         <span class="popup-text popup-vertical-left">缓存翻译结果<el-icon class="icon-margin">
             <ChatDotRound />
@@ -523,17 +248,16 @@
             </el-tooltip>
           </el-col>
 
-          <el-col :span="4" class="flex-end">
-            <el-switch v-model="config.useCache" inline-prompt active-text="启用" inactive-text="禁用"/>
+          <el-col :span="4" class="settings-control-field flex-end">
+            <el-switch v-model="config.useCache" class="settings-toggle" aria-label="缓存翻译结果" />
           </el-col>
         </el-row>
 
         <!-- 悬浮球开关 -->
-      <el-row v-if="config.on" class="margin-bottom margin-left-2em margin-top-1em">
-        <el-col :span="20" class="lightblue rounded-corner">
+      <el-row v-if="config.on" class="settings-control-row">
+        <el-col :span="20" class="settings-control-label lightblue rounded-corner">
           <el-tooltip class="box-item" effect="dark" content="（测试版）控制是否显示屏幕边缘的即时翻译悬浮球，用于对整个网页进行翻译" placement="top-start" :show-after="500">
           <span class="popup-text popup-vertical-left">
-            <!-- <span class="new-feature-badge">新</span> -->
             全文翻译悬浮球
             <el-icon class="icon-margin">
               <ChatDotRound />
@@ -542,31 +266,15 @@
           </el-tooltip>
         </el-col>
 
-        <el-col :span="4" class="flex-end">
-          <el-switch v-model="floatingBallEnabled" inline-prompt active-text="启用" inactive-text="禁用" />
+        <el-col :span="4" class="settings-control-field flex-end">
+          <el-switch v-model="floatingBallEnabled" class="settings-toggle" aria-label="全文翻译悬浮球" />
         </el-col>
       </el-row>
 
 
-        <!-- 翻译进度面板 -->
-        <el-row class="margin-bottom margin-left-2em">
-          <el-col :span="20" class="lightblue rounded-corner">
-            <el-tooltip class="box-item" effect="dark"
-                        content="翻译进度面板（默认关）：关闭后将不再显示右下角的全文翻译进度面板，适合移动端或希望更少打扰的用户。"
-                        placement="top-start" :show-after="500">
-          <span class="popup-text popup-vertical-left">翻译进度面板<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-            </el-tooltip>
-          </el-col>
-          <el-col :span="4" class="flex-end">
-          <el-switch v-model="config.translationStatus" inline-prompt active-text="启动" inactive-text="禁用" />
-          </el-col>
-        </el-row>
-
         <!-- 禁用动画设置 -->
-        <el-row class="margin-bottom margin-left-2em">
-          <el-col :span="20" class="lightblue rounded-corner">
+        <el-row class="settings-control-row">
+          <el-col :span="20" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark"
                         content="动画效果（默认开）：禁用后将关闭加载/悬浮等动画，以节省GPU资源和电量。适合低配置设备或希望节省资源的用户。"
                         placement="top-start" :show-after="500">
@@ -575,14 +283,14 @@
                 </el-icon></span>
             </el-tooltip>
           </el-col>
-          <el-col :span="4" class="flex-end">
-            <el-switch v-model="config.animations" inline-prompt active-text="启动" inactive-text="禁用" />
+          <el-col :span="4" class="settings-control-field flex-end">
+            <el-switch v-model="config.animations" class="settings-toggle" aria-label="动画效果" />
           </el-col>
         </el-row>
 
         <!-- 输入框翻译功能 -->
-        <el-row class="margin-bottom margin-left-2em">
-          <el-col :span="12" class="lightblue rounded-corner">
+        <el-row class="settings-control-row">
+          <el-col :span="12" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark"
                         content="输入框翻译：在任何文本输入框中使用指定方式触发翻译当前输入的内容。"
                         placement="top-start" :show-after="500">
@@ -591,7 +299,7 @@
                 </el-icon></span>
             </el-tooltip>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="12" class="settings-control-field">
             <el-select v-model="config.inputBoxTranslationTrigger" placeholder="请选择触发方式">
               <el-option class="select-left" v-for="item in options.inputBoxTranslationTrigger" :key="item.value" 
                          :label="item.label" :value="item.value" />
@@ -600,11 +308,11 @@
         </el-row>
 
         <!-- 输入框翻译目标语言 -->
-        <el-row v-if="config.inputBoxTranslationTrigger !== 'disabled'" class="margin-bottom margin-left-2em">
-          <el-col :span="12" class="lightblue rounded-corner">
+        <el-row v-if="config.inputBoxTranslationTrigger !== 'disabled'" class="settings-control-row">
+          <el-col :span="12" class="settings-control-label lightblue rounded-corner">
             <span class="popup-text popup-vertical-left">翻译目标语言</span>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="12" class="settings-control-field">
             <el-select v-model="config.inputBoxTranslationTarget" placeholder="请选择目标语言">
               <el-option class="select-left" v-for="item in options.inputBoxTranslationTarget" :key="item.value" 
                          :label="item.label" :value="item.value" />
@@ -613,8 +321,8 @@
         </el-row>
 
         <!-- 翻译并发数 -->
-        <el-row class="margin-bottom margin-left-2em">
-          <el-col :span="12" class="lightblue rounded-corner">
+        <el-row class="settings-control-row">
+          <el-col :span="12" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark" content="控制同时进行的最大翻译任务数，数值越高翻译速度越快，但可能占用更多系统资源" placement="top-start"
                         :show-after="500">
           <span class="popup-text popup-vertical-left">翻译并发数<el-icon class="icon-margin">
@@ -622,7 +330,7 @@
             </el-icon></span>
             </el-tooltip>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="12" class="settings-control-field">
             <el-input-number
                 v-model="config.maxConcurrentTranslations"
                 :min="1"
@@ -636,8 +344,8 @@
         </el-row>
 
         <!-- 使用代理转发 -->
-        <el-row v-show="compute.showProxy" class="margin-bottom margin-left-2em">
-          <el-col :span="8" class="lightblue rounded-corner">
+        <el-row v-show="compute.showProxy" class="settings-control-row">
+          <el-col :span="8" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark" content="使用代理可以解决网络无法访问的问题，如不熟悉代理设置请留空！" placement="top-start"
                         :show-after="500">
               <span class="popup-text popup-vertical-left">代理地址<el-icon class="icon-margin">
@@ -645,14 +353,14 @@
                 </el-icon></span>
             </el-tooltip>
           </el-col>
-          <el-col :span="16">
+          <el-col :span="16" class="settings-control-field">
             <el-input v-model="config.proxy[config.service]" placeholder="默认不使用代理" />
           </el-col>
         </el-row>
 
         <!-- 角色和模板 -->
-        <el-row v-show="compute.showAI" class="margin-bottom margin-left-2em">
-          <el-col :span="8" class="lightblue rounded-corner">
+        <el-row v-show="compute.showAI" class="settings-control-row">
+          <el-col :span="8" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark" content="以系统身份 system 发送的对话，常用于指定 AI 要扮演的角色"
               placement="top-start" :show-after="500">
               <span class="popup-text popup-vertical-left">system<el-icon class="icon-margin">
@@ -660,13 +368,13 @@
                 </el-icon></span>
             </el-tooltip>
           </el-col>
-          <el-col :span="16">
+          <el-col :span="16" class="settings-control-field">
             <el-input type="textarea" v-model="config.system_role[config.service]" maxlength="8192"
               placeholder="system message " />
           </el-col>
         </el-row>
-        <el-row v-show="compute.showAI" class="margin-bottom margin-left-2em">
-          <el-col :span="8" class="lightblue rounded-corner">
+        <el-row v-show="compute.showAI" class="settings-control-row">
+          <el-col :span="8" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark"
               content="以用户身份 user 发送的对话，其中{{to}}表示目标语言，{{origin}}表示待翻译的文本内容，两者不可缺少。"
               placement="top-start" :show-after="500">
@@ -675,7 +383,7 @@
                 </el-icon></span>
             </el-tooltip>
           </el-col>
-          <el-col :span="16">
+          <el-col :span="16" class="settings-control-field">
             <el-input type="textarea" v-model="config.user_role[config.service]" maxlength="8192"
               placeholder="user message template" />
           </el-col>
@@ -692,6 +400,9 @@
           </el-col>
         </el-row>
 
+    </section>
+
+    <section v-show="props.activeSection === 'settings-data'" id="settings-data" class="settings-section data-section">
         <!-- 配置导入导出 -->
         <el-row class="margin-bottom margin-left-2em">
           <el-col :span="24">
@@ -733,8 +444,7 @@
             </div>
           </el-col>
         </el-row>
-      </el-collapse-item>
-    </el-collapse>
+    </section>
     <!--    -->
   </div>
 
@@ -762,20 +472,29 @@
 
 // Main 处理配置信息
 import { computed, ref, watch, onUnmounted } from 'vue'
-import { models, options, services, servicesType, defaultOption } from "../entrypoints/utils/option";
+import { models, options, servicesType, defaultOption } from "../entrypoints/utils/option";
 import { Config, normalizeConfig } from "@/entrypoints/utils/model";
 import { storage } from '@wxt-dev/storage';
 import { ChatDotRound, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox, ElInputNumber } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import browser from 'webextension-polyfill';
 import { defineAsyncComponent } from 'vue';
 const CustomHotkeyInput = defineAsyncComponent(() => import('@/components/CustomHotkeyInput.vue'));
+import ServiceCatalog from '@/components/ServiceCatalog.vue';
+import ServiceConfiguration from '@/components/ServiceConfiguration.vue';
 import { parseHotkey } from '@/entrypoints/utils/hotkey';
 import {
   isCustomBodyMapping,
   isValidCustomBody,
 } from '@/entrypoints/utils/custom-body';
 import {DEEPLX_ENDPOINT_PRESETS, parseDeepLXEndpoints} from '@/entrypoints/utils/deeplx';
+import { isConfigImportValid, sanitizeConfigForExport } from '@/entrypoints/utils/config-transfer';
+
+const props = withDefaults(defineProps<{
+  activeSection?: string
+}>(), {
+  activeSection: 'settings-general',
+})
 
 // 初始化深色模式媒体查询
 const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -784,10 +503,7 @@ const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
 function updateTheme(theme: string) {
   if (theme === 'auto') {
     // 自动模式下，直接使用系统主题
-    const isDark = darkModeMediaQuery.matches;
-    console.log('isDark', isDark);
-
-    document.documentElement.classList.toggle('dark', isDark);
+    document.documentElement.classList.toggle('dark', darkModeMediaQuery.matches);
   } else {
     // 手动模式下，使用选择的主题
     document.documentElement.classList.toggle('dark', theme === 'dark');
@@ -795,7 +511,7 @@ function updateTheme(theme: string) {
 }
 
 // 配置信息
-let config = ref(new Config());
+const config = ref(new Config());
 const selectedDeepLXPreset = ref('');
 
 const appendDeepLXPreset = (endpoint: string | undefined) => {
@@ -810,80 +526,79 @@ const appendDeepLXPreset = (endpoint: string | undefined) => {
   selectedDeepLXPreset.value = '';
 };
 
-// 从 storage 中获取本地配置
-storage.getItem('local:config').then((value: any) => {
-  if (typeof value === 'string' && value) {
-    const parsedConfig = JSON.parse(value);
-    Object.assign(config.value, normalizeConfig(parsedConfig));
-  }
-  // 初始应用主题
-  updateTheme(config.value.theme || 'auto');
-});
+function applyStoredConfig(value: unknown) {
+  if (typeof value !== 'string' || !value.trim()) return;
 
-// 监听 storage 中 'local:config' 的变化
-// 当其他页面修改了配置时,会触发这个监听器
-// newValue 是新的配置值,oldValue 是旧的配置值
-storage.watch('local:config', (newValue: any, oldValue: any) => {
-  // 检查 newValue 是否为非空字符串
-  if (typeof newValue === 'string' && newValue) {
-    // 将新的配置值解析为对象,并合并到当前的 config.value 中
-    // 这样可以保持所有页面的配置同步
-    Object.assign(config.value, normalizeConfig(JSON.parse(newValue)));
+  try {
+    Object.assign(config.value, normalizeConfig(JSON.parse(value)));
+  } catch (error) {
+    console.warn('[FluentRead] 无法读取设置页配置', error);
   }
-});
+}
 
-// 监听菜单栏配置变化
-// 当配置发生改变时,将新的配置序列化为 JSON 字符串并保存到 storage 中
-// deep: true 表示深度监听对象内部属性的变化
-watch(config, (newValue: any, oldValue: any) => {
-  // TODO 监听配置变化，显示刷新提示
-  storage.setItem('local:config', JSON.stringify(newValue));
+void storage.getItem('local:config')
+  .then((value) => applyStoredConfig(value))
+  .catch((error) => console.warn('[FluentRead] 无法读取本地配置', error))
+  .finally(() => updateTheme(config.value.theme || 'auto'));
+
+storage.watch('local:config', (newValue) => applyStoredConfig(newValue));
+
+watch(config, (newValue) => {
+  void storage.setItem('local:config', JSON.stringify(newValue));
 }, { deep: true });
 
-// 计算属性
-let compute = ref({
-  // 1、是否是AI服务
-  showAI: computed(() => servicesType.isAI(config.value.service)),
-  // 2、是否是机器翻译
-  showMachine: computed(() => servicesType.isMachine(config.value.service)),
-  // 3、是否显示代理
-  showProxy: computed(() => servicesType.isUseProxy(config.value.service)),
-  // 4、是否显示模型
-  showModel: computed(() => servicesType.isUseModel(config.value.service)),
-  // 4.5、是否支持自定义请求体
-  showCustomBody: computed(() => servicesType.isUseCustomBody(config.value.service)),
-  // 5、是否显示token
-  showToken: computed(() => servicesType.isUseToken(config.value.service)),
-  // 6、是否显示 AkSk
-  showAkSk: computed(() => servicesType.isUseAkSk(config.value.service)),
-  // 6.5、是否显示有道翻译配置
-  showYoudao: computed(() => servicesType.isYoudao(config.value.service)),
-  // 6.6、是否显示腾讯云机器翻译配置
-  showTencent: computed(() => servicesType.isTencent(config.value.service)),
-  // 7、获取模型列表
-  model: computed(() => models.get(config.value.service) || []),
-  // 8、是否需要自定义接口
-  showCustom: computed(() => servicesType.isCustom(config.value.service)),
-  // 9、是否显示 DeepLX URL 配置
-  showDeepLX: computed(() => config.value.service === 'deeplx'),
-  // 9.1、是否显示免费翻译服务的降级说明
-  showFreeTranslation: computed(() => config.value.service === services.freeTranslation),
-  // 10、是否自定义模型
-  showCustomModel: computed(() => servicesType.isAI(config.value.service) && config.value.model[config.value.service] === "自定义模型"),
-  // 11、判断是否为"双语模式"，控制一些翻译服务的显示
-  filteredServices: computed(() => options.services.filter((service: any) =>
-    !([service.google].includes(service.value) && config.value.display !== 1))
+// 设置页左侧列表只切换正在编辑的服务，不改变网页翻译实际使用的默认服务。
+const configurationService = ref<string | null>(null);
+const selectedConfigurationService = computed(
+  () => configurationService.value ?? config.value.service,
+);
+
+const setConfigurationService = (value: string) => {
+  configurationService.value = value;
+};
+
+type ServiceSource = { value: string };
+
+const actualService = computed(() => config.value.service);
+const filteredServices = computed(() =>
+  options.services.filter((item: any) =>
+    !([item.google].includes(item.value) && config.value.display !== 1),
   ),
-  // 12、判断是否为 coze
-  showRobotId: computed(() => servicesType.isCoze(config.value.service)),
-  // 13、是否显示New API配置
-  showNewAPI: computed(() => servicesType.isNewApi(config.value.service)),
-  // 14、是否显示Azure OpenAI端点配置
-  showAzureOpenaiEndpoint: computed(() => servicesType.isAzureOpenai(config.value.service)),
-  // 15、是否显示 DeepSeek API 格式配置
-  showDeepseekApiType: computed(() => config.value.service === 'deepseek'),
-  showDeepseekThinkingMode: computed(() => config.value.service === 'deepseek' && config.value.deepseekApiType !== 'responses'),
-})
+);
+
+// 两个页面都需要相同的服务能力判断，但数据源不同：实际翻译使用默认服务，
+// 设置页右侧表单使用正在配置的服务。统一从这里生成，避免两套逻辑继续漂移。
+const createServiceCompute = (serviceSource: ServiceSource) => ({
+  showAI: computed(() => servicesType.isAI(serviceSource.value)),
+  showMachine: computed(() => servicesType.isMachine(serviceSource.value)),
+  showProxy: computed(() => servicesType.isUseProxy(serviceSource.value)),
+  showModel: computed(() => servicesType.isUseModel(serviceSource.value)),
+  showCustomBody: computed(() => servicesType.isUseCustomBody(serviceSource.value)),
+  showToken: computed(() => servicesType.isUseToken(serviceSource.value)),
+  showAkSk: computed(() => servicesType.isUseAkSk(serviceSource.value)),
+  showYoudao: computed(() => servicesType.isYoudao(serviceSource.value)),
+  showTencent: computed(() => servicesType.isTencent(serviceSource.value)),
+  model: computed(() => models.get(serviceSource.value) || []),
+  showCustom: computed(() => servicesType.isCustom(serviceSource.value)),
+  showDeepLX: computed(() => serviceSource.value === 'deeplx'),
+  showCustomModel: computed(
+    () =>
+      servicesType.isAI(serviceSource.value) &&
+      config.value.model[serviceSource.value] === '自定义模型',
+  ),
+  filteredServices,
+  showRobotId: computed(() => servicesType.isCoze(serviceSource.value)),
+  showNewAPI: computed(() => servicesType.isNewApi(serviceSource.value)),
+  showAzureOpenaiEndpoint: computed(() => servicesType.isAzureOpenai(serviceSource.value)),
+  showDeepseekApiType: computed(() => serviceSource.value === 'deepseek'),
+  showDeepseekThinkingMode: computed(
+    () => serviceSource.value === 'deepseek' && config.value.deepseekApiType !== 'responses',
+  ),
+});
+
+const compute = ref(createServiceCompute(actualService));
+// config.service 仍表示实际默认翻译服务；这里仅用于设置页正在编辑的服务。
+const configurationCompute = ref(createServiceCompute(selectedConfigurationService));
 
 // 监听主题变化
 watch(() => config.value.theme, (newTheme) => {
@@ -910,6 +625,10 @@ const styleGroups = computed(() => {
     options: options.styles.filter(item => !item.disabled && item.group === group.value)
   }));
 });
+
+const currentStyleClass = computed(() =>
+  options.styles.find(item => item.value === config.value.style && !item.disabled)?.class || 'fluent-display-default'
+);
 
 // 恢复默认模板
 const resetTemplate = () => {
@@ -957,6 +676,7 @@ const floatingBallEnabled = computed({
 
 // 监听划词翻译模式变化
 watch(() => config.value.selectionTranslatorMode, (newMode) => {
+  config.value.disableSelectionTranslator = newMode === 'disabled';
   // 向所有激活的标签页发送消息
   browser.tabs.query({}).then(tabs => {
     tabs.forEach(tab => {
@@ -972,51 +692,26 @@ watch(() => config.value.selectionTranslatorMode, (newMode) => {
   });
 });
 
-// 监听开关变化
-const handleSwitchChange = () => {
-  showRefreshTip.value = true;
-};
-
 // 处理插件状态变化
 const handlePluginStateChange = (val: boolean) => {
-  // 如果插件被关闭，确保悬浮球和划词翻译也被关闭
-  if (!val) {
-    // 处理悬浮球
-    if (!config.value.disableFloatingBall) {
-      config.value.disableFloatingBall = true;
-      // 向所有激活的标签页发送消息，关闭悬浮球
-      browser.tabs.query({}).then(tabs => {
-        tabs.forEach(tab => {
-          if (tab.id) {
-            browser.tabs.sendMessage(tab.id, { 
-              type: 'toggleFloatingBall',
-              isEnabled: false
-            }).catch(() => {
-              // 忽略发送失败的错误（可能是页面未加载内容脚本）
-            });
-          }
-        });
+  // 总开关只控制当前运行状态，不覆盖用户对悬浮球和划词翻译的偏好。
+  browser.tabs.query({}).then(tabs => {
+    tabs.forEach(tab => {
+      if (!tab.id) return;
+      browser.tabs.sendMessage(tab.id, {
+        type: 'toggleFloatingBall',
+        isEnabled: val && !config.value.disableFloatingBall,
+      }).catch(() => {
+        // 忽略发送失败的错误（可能是页面未加载内容脚本）
       });
-    }
-    
-    // 处理划词翻译
-    if (config.value.selectionTranslatorMode !== 'disabled') {
-      config.value.selectionTranslatorMode = 'disabled';
-      // 向所有激活的标签页发送消息，关闭划词翻译
-      browser.tabs.query({}).then(tabs => {
-        tabs.forEach(tab => {
-          if (tab.id) {
-            browser.tabs.sendMessage(tab.id, { 
-              type: 'updateSelectionTranslatorMode',
-              mode: 'disabled'
-            }).catch(() => {
-              // 忽略发送失败的错误（可能是页面未加载内容脚本）
-            });
-          }
-        });
+      browser.tabs.sendMessage(tab.id, {
+        type: 'updateSelectionTranslatorMode',
+        mode: val ? config.value.selectionTranslatorMode : 'disabled',
+      }).catch(() => {
+        // 忽略发送失败的错误（可能是页面未加载内容脚本）
       });
-    }
-  }
+    });
+  });
 };
 
 // 处理悬浮球开关变化
@@ -1039,13 +734,6 @@ const toggleFloatingBall = (val: boolean) => {
 // 自定义快捷键相关
 const showCustomHotkeyDialog = ref(false);
 const showCustomMouseHotkeyDialog = ref(false);
-
-// 配置导入导出相关
-const showExportConfig = ref(false);
-const showImportConfig = ref(false);
-const exportedConfig = ref('');
-const importConfigText = ref('');
-const importLoading = ref(false);
 
 // 处理快捷键选择变化
 const handleHotkeyChange = (value: string) => {
@@ -1148,7 +836,7 @@ const getCustomMouseHotkeyDisplayName = () => {
 };
 
 // 处理并发数量变化
-const handleConcurrentChange = (currentValue: number | undefined, oldValue: number | undefined) => {
+const handleConcurrentChange = (currentValue: number | undefined) => {
   // 验证并发数量的有效性
   if (currentValue === undefined || currentValue < 1 || currentValue > 100) {
     ElMessage({
@@ -1161,26 +849,11 @@ const handleConcurrentChange = (currentValue: number | undefined, oldValue: numb
     return;
   }
   
-  // 显示设置已更新的提示
-  showRefreshTip.value = true;
-  
   ElMessage({
     message: `并发数量已更新为 ${currentValue}`,
     type: 'success',
     duration: 2000
   });
-};
-
-// 显示刷新提示
-const showRefreshTip = ref(false);
-
-// 刷新页面
-const refreshPage = async () => {
-  const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-  if (tabs[0]?.id) {
-    browser.tabs.reload(tabs[0].id);
-    showRefreshTip.value = false; // 刷新后隐藏提示
-  }
 };
 
 const showExportBox = ref(false);
@@ -1203,59 +876,26 @@ const isValidAzureEndpoint = (endpoint: string) => {
 };
 
 const handleExport = async () => {
-  const configStr = await storage.getItem('local:config');
-  if (!configStr) {
+  try {
+    const configStr = await storage.getItem('local:config');
+    if (typeof configStr !== 'string' || !configStr.trim()) {
+      ElMessage({ message: '没有找到配置信息', type: 'warning' });
+      return;
+    }
+
+    exportData.value = JSON.stringify(
+      sanitizeConfigForExport(JSON.parse(configStr)),
+      null,
+      2,
+    );
+    showExportBox.value = !showExportBox.value;
+    showImportBox.value = false;
+  } catch (error) {
     ElMessage({
-      message: '没有找到配置信息',
-      type: 'warning',
+      message: `导出配置失败：${error instanceof Error ? error.message : '配置格式错误'}`,
+      type: 'error',
     });
-    return;
   }
-
-  const configToExport = JSON.parse(configStr as string);
-
-  // Create a deep copy to avoid modifying the actual config
-  const cleanedConfig = JSON.parse(JSON.stringify(configToExport));
-
-  // Clean system_role and user_role if they are default
-  if (cleanedConfig.system_role) {
-    for (const service in cleanedConfig.system_role) {
-      if (cleanedConfig.system_role[service] === defaultOption.system_role) {
-        delete cleanedConfig.system_role[service];
-      }
-    }
-    if (Object.keys(cleanedConfig.system_role).length === 0) {
-      delete cleanedConfig.system_role;
-    }
-  }
-
-  if (cleanedConfig.user_role) {
-    for (const service in cleanedConfig.user_role) {
-      if (cleanedConfig.user_role[service] === defaultOption.user_role) {
-        delete cleanedConfig.user_role[service];
-      }
-    }
-    if (Object.keys(cleanedConfig.user_role).length === 0) {
-      delete cleanedConfig.user_role;
-    }
-  }
-
-  // Clean empty customBody entries
-  if (cleanedConfig.customBody) {
-    for (const service in cleanedConfig.customBody) {
-      const value = cleanedConfig.customBody[service];
-      if (!value || !String(value).trim()) {
-        delete cleanedConfig.customBody[service];
-      }
-    }
-    if (Object.keys(cleanedConfig.customBody).length === 0) {
-      delete cleanedConfig.customBody;
-    }
-  }
-
-  exportData.value = JSON.stringify(cleanedConfig, null, 2);
-  showExportBox.value = !showExportBox.value;
-  showImportBox.value = false;
 };
 
 const handleImport = () => {
@@ -1266,8 +906,7 @@ const handleImport = () => {
 const saveImport = async () => {
   try {
     const parsedConfig = JSON.parse(importData.value);
-    // Add validation here
-    if (!validateConfig(parsedConfig)) {
+    if (!isConfigImportValid(parsedConfig)) {
       ElMessage({
         message: '配置无效或格式不正确, 请检查!',
         type: 'error',
@@ -1290,181 +929,149 @@ const saveImport = async () => {
   }
 };
 
-
-// 切换导出配置显示
-const toggleExportConfig = async () => {
-  if (showExportConfig.value) {
-    // 如果已经显示，则隐藏
-    showExportConfig.value = false;
-    exportedConfig.value = '';
-  } else {
-    // 如果未显示，则显示并生成配置
-    try {
-      // 确保从storage获取最新的配置
-      const latestConfig = await storage.getItem('local:config');
-      let configToExport;
-
-      if (latestConfig && typeof latestConfig === 'string') {
-        // 使用storage中的最新配置
-        configToExport = JSON.parse(latestConfig);
-      } else {
-        // 如果storage中没有，使用当前config.value
-        configToExport = JSON.parse(JSON.stringify(config.value));
-      }
-
-      exportedConfig.value = JSON.stringify(configToExport, null, 2);
-      showExportConfig.value = true;
-
-      ElMessage({
-        message: '配置已生成，请复制保存',
-        type: 'success',
-        duration: 2000
-      });
-    } catch (error) {
-      ElMessage({
-         message: '导出配置失败：' + ((error as Error)?.message || '未知错误'),
-         type: 'error',
-         duration: 3000
-       });
-    }
-  }
-};
-
-// 复制导出的配置到剪贴板
-const copyExportedConfig = async () => {
-  try {
-    await navigator.clipboard.writeText(exportedConfig.value);
-    ElMessage({
-      message: '配置已复制到剪贴板',
-      type: 'success',
-      duration: 2000
-    });
-  } catch (error) {
-    ElMessage({
-      message: '复制失败，请手动复制',
-      type: 'warning',
-      duration: 2000
-    });
-  }
-};
-
-// 切换导入配置显示
-const toggleImportConfig = () => {
-  if (showImportConfig.value) {
-    // 如果已经显示，则隐藏并清空内容
-    showImportConfig.value = false;
-    importConfigText.value = '';
-  } else {
-    // 如果未显示，则显示
-    showImportConfig.value = true;
-    importConfigText.value = '';
-  }
-};
-
-// 取消导入
-const cancelImport = () => {
-  // 清空输入框并隐藏导入区域
-  importConfigText.value = '';
-  showImportConfig.value = false;
-  importLoading.value = false;
-};
-
-// 导入配置
-const importConfig = async () => {
-  if (!importConfigText.value.trim()) {
-    ElMessage({
-      message: '请输入配置内容',
-      type: 'warning',
-      duration: 2000
-    });
-    return;
-  }
-
-  importLoading.value = true;
-
-  try {
-    // 解析JSON配置
-    const importedConfig = JSON.parse(importConfigText.value);
-
-    // 验证配置格式
-    if (!validateConfig(importedConfig)) {
-      throw new Error('配置格式不正确');
-    }
-
-    // 确认导入
-    await ElMessageBox.confirm(
-      '导入配置将覆盖当前所有设置，确定要继续吗？',
-      '确认导入',
-      {
-        confirmButtonText: '确定导入',
-        cancelButtonText: '取消',
-        type: 'warning',
-      }
-    );
-
-    // 应用新配置
-    Object.assign(config.value, normalizeConfig(importedConfig));
-
-    // 保存到storage
-    await storage.setItem('local:config', JSON.stringify(config.value));
-
-    // 隐藏导入区域并清空输入
-    showImportConfig.value = false;
-    importConfigText.value = '';
-
-    ElMessage({
-      message: '配置导入成功',
-      type: 'success',
-      duration: 2000
-    });
-
-  } catch (error) {
-    if ((error as Error).message !== 'cancel') {
-      ElMessage({
-        message: '导入失败：' + ((error as Error).message || '配置格式错误'),
-        type: 'error',
-        duration: 3000
-      });
-    }
-  } finally {
-    importLoading.value = false;
-  }
-};
-
-// 验证配置格式
-const validateConfig = (configData: any): boolean => {
-  try {
-    // 检查是否是对象
-    if (typeof configData !== 'object' || configData === null) {
-      return false;
-    }
-
-    // 检查必要的配置字段
-    const requiredFields = ['on', 'service', 'display', 'from', 'to'];
-    for (const field of requiredFields) {
-      if (!(field in configData)) {
-        return false;
-      }
-    }
-
-    // 检查服务配置
-    if (typeof configData.service !== 'string') {
-      return false;
-    }
-
-    if ('customBody' in configData && !isCustomBodyMapping(configData.customBody)) {
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    return false;
-  }
-};
-
 </script>
 
 <style scoped>
+
+.settings-section {
+  min-width: 0;
+}
+
+.settings-status-row {
+  align-items: center;
+  min-height: 92px !important;
+  padding: 18px 20px !important;
+  border: 1px solid #e4e8f0;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fff8fa, #fff);
+}
+
+.settings-status-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-status-kicker {
+  color: #dc315f;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.settings-status-copy strong { color: #172033; font-size: 16px; }
+.settings-status-copy small { color: #737c8f; font-size: 11px; }
+.settings-status-control { align-items: center; gap: 13px; }
+.settings-status-badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 7px 10px; border: 1px solid #e1e5ed;
+  border-radius: 999px; color: #7b8496; background: #f7f8fb; font-size: 10px; font-weight: 750;
+}
+.settings-status-badge i { width: 7px; height: 7px; border-radius: 50%; background: #aab2c0; }
+.settings-status-badge.active { border-color: #bfead9; color: #18835d; background: #effbf6; }
+.settings-status-badge.active i { background: #25aa78; box-shadow: 0 0 0 4px rgba(37, 170, 120, .12); }
+.settings-switch { --el-switch-on-color: #ef4776; --el-switch-off-color: #cfd5df; }
+
+.style-preview-card {
+  margin: 6px 12px 24px;
+  padding: 18px;
+  border: 1px solid #e3e7ef;
+  border-radius: 18px;
+  background: linear-gradient(145deg, #fbfcff, #fff8fa);
+}
+.style-preview-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.style-preview-heading div { display: flex; flex-direction: column; gap: 4px; }
+.style-preview-heading span { color: #dc315f; font-size: 10px; font-weight: 800; letter-spacing: .08em; }
+.style-preview-heading strong { color: #172033; font-size: 14px; }
+.style-preview-example { margin-top: 14px; padding: 14px 16px; border: 1px solid #e5e8ef; border-radius: 14px; background: #fff; }
+.style-preview-source { margin: 0 0 8px; color: #7f889b; font-size: 11px; }
+.style-preview-text { margin: 0; color: #172033; font-size: 15px; line-height: 1.7; transition: all 160ms ease; }
+.style-preview-note { display: block; margin-top: 10px; color: #8b93a4; font-size: 10px; }
+.style-preview-text.fluent-display-default { color: #273247; }
+.style-preview-text.fluent-display-bold { font-weight: 800; }
+.style-preview-text.fluent-display-italic { font-style: italic; }
+.style-preview-text.fluent-display-text-shadow { text-shadow: 1px 2px 3px rgba(23, 32, 51, .22); }
+.style-preview-text.fluent-display-solid-underline { text-decoration: underline; text-decoration-color: #4d8eea; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+.style-preview-text.fluent-display-dot-underline { text-decoration: underline dotted #4d8eea 2px; text-underline-offset: 4px; }
+.style-preview-text.fluent-display-wavy { text-decoration: underline wavy #ef4776 2px; text-underline-offset: 4px; }
+.style-preview-text.fluent-display-card-mode { padding: 8px 10px; border-radius: 8px; background: #f4f6fb; }
+.style-preview-text.fluent-display-modern-card { padding: 8px 10px; border-radius: 8px; background: linear-gradient(90deg, #fff0f4, #f1f4ff); }
+.style-preview-text.fluent-display-paper { padding: 8px 10px; border: 1px solid #eadfca; background: #fffaf0; }
+.style-preview-text.fluent-display-learning-mode { padding: 2px 6px; background: #fff1a8; }
+.style-preview-text.fluent-display-marker { padding: 2px 6px; background: #d6f5b7; }
+.style-preview-text.fluent-display-highlight-fade { padding: 2px 6px; background: linear-gradient(90deg, #fff0b8, transparent); }
+.style-preview-text.fluent-display-lightyellow { padding: 4px 8px; background: #fff7db; }
+.style-preview-text.fluent-display-lightblue { padding: 4px 8px; background: #eaf4ff; }
+.style-preview-text.fluent-display-lightgray { padding: 4px 8px; background: #f1f3f5; }
+.style-preview-text.fluent-display-quote { padding-left: 10px; border-left: 3px solid #ef4776; }
+.style-preview-text.fluent-display-border { padding: 6px 9px; border: 1px solid #bfc8d8; border-radius: 6px; }
+.style-preview-text.fluent-display-focus { padding: 5px 8px; border-radius: 6px; box-shadow: 0 0 0 3px rgba(239, 71, 118, .12); }
+.style-preview-text.fluent-display-clean { border-bottom: 2px solid #ef4776; }
+.style-preview-text.fluent-display-tech { padding: 5px 8px; border-radius: 5px; color: #245070; background: #edf6fb; font-family: ui-monospace, SFMono-Regular, monospace; }
+.style-preview-text.fluent-display-elegant { font-family: Georgia, "Songti SC", serif; letter-spacing: .04em; }
+.style-preview-text.fluent-display-dimmed { opacity: .62; }
+.style-preview-text.fluent-display-transparent-mode { opacity: .82; }
+
+.disabled-section {
+  margin: 18px 12px 8px;
+  padding: 28px;
+  border: 1px dashed #d8dce6;
+  border-radius: 16px;
+  color: #677084;
+  background: #f8f9fb;
+  text-align: center;
+}
+
+.disabled-section strong {
+  color: #263044;
+  font-size: 15px;
+}
+
+.disabled-section p {
+  margin: 7px 0 0;
+  font-size: 11px;
+}
+
+.service-connection-section {
+  margin-top: 22px;
+  padding-top: 22px;
+  border-top: 1px solid #e8eaf0;
+}
+
+.subsection-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 12px 16px;
+}
+
+.subsection-heading > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.subsection-heading span {
+  color: #dc315f;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.subsection-heading strong {
+  margin-top: 4px;
+  color: #172033;
+  font-size: 17px;
+}
+
+.subsection-heading p {
+  margin: 0;
+  color: #7c8495;
+  font-size: 10px;
+}
+
+.data-section {
+  min-height: 260px;
+}
 
 .select-left {
   text-align: left;
@@ -1512,14 +1119,6 @@ const validateConfig = (configData: any): boolean => {
   margin-right: 1em;
 }
 
-.margin-top-2em {
-  margin-top: 1em;
-}
-
-.margin-top-1em {
-  margin-top: 0.5em;
-}
-
 /* 设置滚动条样式 */
 ::-webkit-scrollbar {
   width: 6px;
@@ -1534,57 +1133,6 @@ const validateConfig = (configData: any): boolean => {
 ::-webkit-scrollbar-track {
   background: #f5f5f5;
   border-radius: 3px;
-}
-
-.refresh-tip {
-  margin: 0 1em;
-}
-
-.refresh-button {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 0.5em 1em;
-  color: #fff;
-  background-color: #409eff;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background-color 0.3s, color 0.3s;
-}
-
-.refresh-button:hover {
-  background-color: #66b1ff;
-  color: #fff;
-}
-
-.new-feature-badge {
-  display: inline-block;
-  font-size: 12px;
-  background-color: #f56c6c;
-  color: white;
-  padding: 1px 6px;
-  border-radius: 10px;
-  margin-right: 8px;
-  font-weight: bold;
-  animation: bounce 1s infinite alternate;
-}
-
-@keyframes pulse-glow {
-  0% {
-    box-shadow: 0 2px 8px rgba(64, 158, 255, 0.1);
-  }
-  100% {
-    box-shadow: 0 2px 12px rgba(64, 158, 255, 0.5);
-  }
-}
-
-@keyframes bounce {
-  0% {
-    transform: translateY(0);
-  }
-  100% {
-    transform: translateY(-3px);
-  }
 }
 
 /* 自定义快捷键相关样式 */
@@ -1651,63 +1199,19 @@ const validateConfig = (configData: any): boolean => {
 
 /* 自定义快捷键行样式 */
 .custom-hotkey-row {
-  border-radius: 8px;
-  padding: 8px;
-  margin: 6px 0 !important;
-  background: linear-gradient(135deg, 
-    rgba(64, 158, 255, 0.03) 0%, 
-    rgba(64, 158, 255, 0.01) 50%, 
-    rgba(103, 194, 58, 0.02) 100%);
-  transition: all 0.3s ease;
-  position: relative;
-  border: 1px solid transparent;
-}
-
-.custom-hotkey-row::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, 
-    rgba(64, 158, 255, 0.2) 0%, 
-    rgba(64, 158, 255, 0.1) 30%,
-    rgba(103, 194, 58, 0.1) 70%,
-    rgba(103, 194, 58, 0.2) 100%);
-  border-radius: 8px;
-  z-index: -1;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.custom-hotkey-row::after {
-  content: '';
-  position: absolute;
-  top: -1px;
-  left: -1px;
-  right: -1px;
-  bottom: -1px;
-  background: linear-gradient(135deg, 
-    rgba(64, 158, 255, 0.3), 
-    rgba(103, 194, 58, 0.3));
-  border-radius: 8px;
-  z-index: -2;
-  opacity: 0.6;
+  border-color: #f2c2d0;
+  background: var(--brand-soft);
 }
 
 .custom-hotkey-row:hover {
-  background: linear-gradient(135deg, 
-    rgba(64, 158, 255, 0.05) 0%, 
-    rgba(64, 158, 255, 0.03) 50%, 
-    rgba(103, 194, 58, 0.04) 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.15);
+  border-color: #ef9ab1;
+  background: #fff;
+  transform: none;
+  box-shadow: 0 8px 22px rgba(239, 71, 118, .08);
 }
 
-.custom-hotkey-row:hover::before {
-  opacity: 0.1;
-}
+.custom-hotkey-row::before,
+.custom-hotkey-row::after { display: none; }
 
 /* 自定义标识徽章 */
 .custom-badge {

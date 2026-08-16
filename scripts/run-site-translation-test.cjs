@@ -343,7 +343,9 @@ async function main() {
     });
     const page = await context.newPage();
     await page.goto(args.url, {waitUntil: 'domcontentloaded', timeout: args.timeout});
-    await page.waitForSelector('#fluent-read-floating-ball-container', {state: 'attached', timeout: 45000});
+    // 当前 main 默认关闭悬浮球，但 Control/Alt+T 快捷键仍独立工作；
+    // 这里等待 content script 初始化，而不是要求 UI 浮球必须存在。
+    await page.waitForTimeout(1000);
     await waitForStableTarget(page, args.selector, args.timeout);
     const configResult = await readConfig(context, args.timeout);
     const config = configResult.config || {};

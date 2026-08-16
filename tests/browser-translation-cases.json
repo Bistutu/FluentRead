@@ -4,20 +4,20 @@
     "selector": "article div[dir=\"auto\"]",
     "hoverHotkey": "Control",
     "fullPageHotkey": "Alt+T",
-    "service": "microsoft"
+    "service": "freeTranslation"
   },
   "mdn-javascript-guide": {
     "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Grammar_and_types",
     "selector": "main p",
     "hoverHotkey": "Control",
     "fullPageHotkey": "Alt+T",
-    "service": "microsoft"
+    "service": "freeTranslation"
   },
   "example-com": {
     "url": "https://example.com",
     "selector": "p",
     "hoverHotkey": "Control",
     "fullPageHotkey": "Alt+T",
-    "service": "microsoft"
+    "service": "freeTranslation"
   }
 }
