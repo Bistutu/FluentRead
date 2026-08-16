@@ -2,6 +2,7 @@ import {method, urls} from "../utils/constant";
 import {commonMsgTemplate} from "../utils/template";
 import {config} from "@/entrypoints/utils/config";
 import {contentPostHandler} from "@/entrypoints/utils/check";
+import { appendOptionalBearer } from './auth';
 
 /**
  * Grok 服务实现
@@ -10,10 +11,8 @@ import {contentPostHandler} from "@/entrypoints/utils/check";
  */
 async function grok(message: any) {
     try {
-        const headers = new Headers({
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${config.token[config.service]}`
-        });
+        const headers = new Headers({'Content-Type': 'application/json'});
+        appendOptionalBearer(headers, config.token[config.service]);
 
         const url = config.proxy[config.service] || urls[config.service];
 

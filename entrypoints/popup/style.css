@@ -176,6 +176,15 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
 .translate-button.translated .translate-hotkey { border-color: rgba(255, 255, 255, .48); background: rgba(255, 255, 255, .18); }
 .spinner { width: 16px; height: 16px; border: 2px solid rgba(255, 255, 255, .45); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.credential-warning {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-top: 9px; padding: 9px 10px;
+  border: 1px solid #f3d19e; border-radius: 11px; color: #8a5a00; background: #fdf6ec; font-size: 10px; line-height: 1.45;
+}
+.credential-warning span { min-width: 0; }
+.credential-warning strong { margin-right: 4px; font-weight: 800; }
+.credential-warning button {
+  flex: 0 0 auto; padding: 0; border: 0; color: #b46b00; background: transparent; font: inherit; font-weight: 800; text-decoration: underline; cursor: pointer;
+}
 .notice { margin: 10px 0 -2px; color: #16855e; font-size: 10px; text-align: center; }
 .notice.error { color: #d9345e; }
 

@@ -2,12 +2,13 @@ import {services} from "../utils/option";
 import {method, urls} from "../utils/constant";
 import {claudeMsgTemplate} from "../utils/template";
 import {config} from "@/entrypoints/utils/config";
+import {appendOptionalHeader} from './auth';
 
 async function claude(message: any) {
     // 构建请求头
     let headers = new Headers();
     headers.append('Content-Type', 'application/json');
-    headers.append('x-api-key', config.token[services.claude]);
+    appendOptionalHeader(headers, 'x-api-key', config.token[services.claude]);
     headers.append('anthropic-version', '2023-06-01');
     headers.append('anthropic-dangerous-direct-browser-access', 'true');
 

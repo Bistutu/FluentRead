@@ -3,6 +3,7 @@ import {services} from "../utils/option";
 import {commonMsgTemplate} from "../utils/template";
 import CryptoJS from 'crypto-js';
 import {config, saveConfig} from "@/entrypoints/utils/config";
+import {isApiKeyRequired} from "@/entrypoints/utils/configValidation";
 
 
 // 文档参考：https://open.bigmodel.cn/dev/api#nosdk
@@ -11,7 +12,9 @@ async function zhipu(message: any) {
     let token = config.token[services.zhipu];
     let secret, expiration;
     config.extra[services.zhipu] && ({secret, expiration} = config.extra[services.zhipu]);
-    if (!secret || expiration <= Date.now()) {
+    if (!token?.trim() && !isApiKeyRequired(services.zhipu, config)) {
+        secret = undefined;
+    } else if (!secret || expiration <= Date.now()) {
         secret = generateToken(token);
         if (!secret) throw new Error('无法生成令牌');
         // 保存 secret 和 expiration
@@ -22,7 +25,7 @@ async function zhipu(message: any) {
     // 构建请求头
     let headers = new Headers();
     headers.append('Content-Type', 'application/json');
-    headers.append('Authorization', `Bearer ${secret}`);
+    if (secret) headers.append('Authorization', `Bearer ${secret}`);
 
     // 发起 fetch 请求
     const resp = await fetch(urls[services.zhipu], {

@@ -9,6 +9,7 @@ import {
     saveConfig,
 } from "@/entrypoints/utils/config";
 import {CONTEXT_MENU_IDS} from "@/entrypoints/utils/constant";
+import {getMissingCredentialMessage} from "@/entrypoints/utils/configValidation";
 import {resolveConfiguredModel, servicesType} from "@/entrypoints/utils/option";
 import {synthesizeEdgeTts} from "@/entrypoints/utils/edgeTts";
 import {
@@ -381,6 +382,8 @@ async function translateBatchWithCache(
 
 async function translateWithCache(message: TranslationRequestMessage): Promise<string | string[]> {
     await configReady;
+    const missingCredentialMessage = getMissingCredentialMessage(config.service, config);
+    if (missingCredentialMessage) throw new Error(missingCredentialMessage);
     const context = typeof message.context === 'string' ? message.context : '';
     const rawPageContext = typeof message.pageContext === 'string' ? message.pageContext : '';
     const pageContext = await addPageSummary(rawPageContext);

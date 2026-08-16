@@ -8,6 +8,18 @@
       <div><strong>连接参数</strong></div>
     </div>
 
+    <el-row v-show="compute.showAI && compute.showToken" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="默认要求填写 API Key。关闭后，当前服务的当前模型允许在没有 API Key 时发起请求，适用于本地模型或不需要鉴权的代理。" placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">需要 API Key<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12" class="credential-switch-field">
+        <el-switch v-model="compute.requireApiKey" aria-label="当前模型是否需要 API Key" active-text="需要" inactive-text="不需要" />
+        <small>当前模型：{{ config.model[service] || '未选择' }}</small>
+      </el-col>
+    </el-row>
+
     <el-row v-show="compute.showToken" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="API访问令牌仅保存在本地，用于访问翻译服务。获取方式请参考对应服务的官方文档；翻译服务为 ollama 时，token 可为任意值" placement="top-start" :show-after="500">
@@ -141,5 +153,18 @@ const isValidAzureEndpoint = toRef(props, 'isValidAzureEndpoint')
 .credential-warning strong {
   flex: 0 0 auto;
   font-weight: 750;
+}
+
+.credential-switch-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.credential-switch-field small {
+  flex-basis: 100%;
+  color: #909399;
+  font-size: 11px;
 }
 </style>
