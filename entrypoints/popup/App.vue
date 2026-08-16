@@ -320,6 +320,7 @@ import {
   config as runtimeConfig,
   configReady,
   saveConfig,
+  requestConfigSave,
   subscribeConfig,
 } from '@/entrypoints/utils/config';
 import { Setting } from '@element-plus/icons-vue';
@@ -347,6 +348,8 @@ const servicePickerOpen = ref(false);
 const moreServicesOpen = ref(false);
 const hydrated = ref(false);
 let lastSerialized = '';
+let applyingExternalConfig = false;
+let pageExitSaveStarted = false;
 let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 const darkMode = window.matchMedia('(prefers-color-scheme: dark)');
 const drawerSettingsSection: Record<DrawerName, SettingsSection> = {
@@ -356,6 +359,7 @@ const drawerSettingsSection: Record<DrawerName, SettingsSection> = {
   appearance: 'settings-general',
   image: 'settings-general',
 };
+const persistConfig = (value: unknown) => requestConfigSave(value, browser.runtime.sendMessage.bind(browser.runtime));
 
 const serviceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
 const popularServiceValues = ['freeTranslation', 'microsoft', 'google', 'deepL', 'deeplx', 'deepseek', 'openai', 'gemini', 'claude'];
@@ -419,16 +423,21 @@ const unsubscribeConfig = subscribeConfig((value) => {
   const serialized = JSON.stringify(value);
   if (serialized === lastSerialized) return;
   lastSerialized = serialized;
-  Object.assign(config.value, value);
+  applyingExternalConfig = true;
+  try {
+    Object.assign(config.value, value);
+  } finally {
+    applyingExternalConfig = false;
+  }
 });
 
 watch(config, async value => {
-  if (!hydrated.value) return;
+  if (!hydrated.value || applyingExternalConfig) return;
   const serialized = JSON.stringify(value);
   if (serialized === lastSerialized) return;
   lastSerialized = serialized;
-  await saveConfig(value).catch((error) => console.warn('[FluentRead] 保存 popup 设置失败', error));
-}, { deep: true });
+  await persistConfig(value).catch((error) => console.warn('[FluentRead] 保存 popup 设置失败', error));
+}, { deep: true, flush: 'sync' });
 watch(() => config.value.theme, theme => applyTheme(theme || 'auto'));
 darkMode.onchange = () => { if (config.value.theme === 'auto') applyTheme('auto'); };
 
@@ -459,6 +468,8 @@ onMounted(() => {
   document.addEventListener('keydown', handleDonationKeydown);
 });
 onUnmounted(() => {
+  persistOnPageExit();
+  window.removeEventListener('pagehide', saveOnPageHide);
   unsubscribeConfig();
   document.removeEventListener('pointerdown', closeServicePicker);
   document.removeEventListener('keydown', handleServicePickerKeydown);
@@ -466,6 +477,19 @@ onUnmounted(() => {
   darkMode.onchange = null;
   if (noticeTimer) clearTimeout(noticeTimer);
 });
+
+function saveOnPageHide() {
+  persistOnPageExit();
+}
+window.addEventListener('pagehide', saveOnPageHide);
+
+// Firefox 可能同时触发 pagehide 和 unmounted；只提交一次最新快照。
+function persistOnPageExit() {
+  if (!hydrated.value || pageExitSaveStarted) return;
+  pageExitSaveStarted = true;
+  void saveConfig(config.value).catch((error) => console.warn('[FluentRead] popup 关闭前本地保存设置失败', error));
+  void persistConfig(config.value).catch((error) => console.warn('[FluentRead] popup 关闭前后台保存设置失败', error));
+}
 
 function showNotice(message: string, type: 'success' | 'error' = 'success') {
   notice.value = message;

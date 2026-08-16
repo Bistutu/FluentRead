@@ -495,6 +495,55 @@
             <el-divider content-position="center">配置管理</el-divider>
           </el-col>
         </el-row>
+
+        <section class="config-history-panel" aria-label="最近配置">
+          <div class="config-history-heading">
+            <div>
+              <span class="config-history-kicker">配置版本</span>
+              <h3>最近 5 次配置</h3>
+              <p>修改会自动保存，保留最近的稳定快照，可随时恢复。</p>
+            </div>
+            <div class="config-history-actions">
+              <el-button
+                size="small"
+                :disabled="historyBusy || !canUndo"
+                aria-label="撤销配置恢复"
+                @click="runHistoryAction('undo')"
+              >撤销</el-button>
+              <el-button
+                size="small"
+                :disabled="historyBusy || !canRedo"
+                aria-label="重做配置恢复"
+                @click="runHistoryAction('redo')"
+              >重做</el-button>
+            </div>
+          </div>
+
+          <div v-if="historyEntries.length" class="config-history-list">
+            <article
+              v-for="entry in historyEntries"
+              :key="entry.version"
+              class="config-history-entry"
+              :class="{ current: entry.version === currentHistoryVersion }"
+            >
+              <div class="config-history-version"><b>v{{ entry.version }}</b><span v-if="entry.version === currentHistoryVersion">当前</span></div>
+              <div class="config-history-detail">
+                <strong>{{ historySummary(entry) }}</strong>
+                <small>{{ formatHistoryTime(entry.savedAt) }}</small>
+              </div>
+              <el-button
+                size="small"
+                text
+                type="primary"
+                :disabled="historyBusy || entry.version === currentHistoryVersion"
+                :aria-label="`恢复配置 v${entry.version}`"
+                @click="runHistoryAction('restore', entry.version)"
+              >恢复</el-button>
+            </article>
+          </div>
+          <div v-else class="config-history-empty">还没有可恢复的配置版本。</div>
+        </section>
+
         <el-row class="margin-bottom margin-left-2em">
           <el-col :span="12">
             <el-button type="primary" @click="handleExport">
@@ -584,9 +633,17 @@ import {
 } from '@/entrypoints/utils/imageOcrLanguages';
 import {
   config as runtimeConfig,
+  configHistoryReady,
   configReady,
+  getConfigHistorySnapshot,
+  requestConfigHistoryAction,
   saveConfig,
+  requestConfigSave,
+  subscribeConfigHistory,
   subscribeConfig,
+  type ConfigHistoryAction,
+  type ConfigHistoryEntry,
+  type ConfigHistoryState,
 } from '@/entrypoints/utils/config';
 
 const props = withDefaults(defineProps<{
@@ -612,6 +669,8 @@ function updateTheme(theme: string) {
 // 配置信息
 const config = ref(new Config());
 const selectedDeepLXPreset = ref('');
+const persistConfig = (value: unknown) => requestConfigSave(value, browser.runtime.sendMessage.bind(browser.runtime));
+let lastSerialized = '';
 const imageOcrLanguagePacks = IMAGE_OCR_LANGUAGE_PACKS;
 const imageOcrRecommendedCodes = IMAGE_OCR_RECOMMENDED_LANGUAGES;
 const imageOcrDownloadedCodes = ref<ImageOcrLanguageCode[]>([]);
@@ -665,21 +724,55 @@ const appendDeepLXPreset = (endpoint: string | undefined) => {
 };
 
 let hydrated = false;
+let applyingExternalConfig = false;
+let pageExitSaveStarted = false;
 const unsubscribeConfig = subscribeConfig((nextConfig) => {
-  Object.assign(config.value, nextConfig);
+  const serialized = JSON.stringify(nextConfig);
+  if (serialized === lastSerialized) return;
+  lastSerialized = serialized;
+  applyingExternalConfig = true;
+  try {
+    Object.assign(config.value, nextConfig);
+  } finally {
+    applyingExternalConfig = false;
+  }
 });
 
 void configReady
   .then(() => {
     Object.assign(config.value, runtimeConfig);
+    lastSerialized = JSON.stringify(config.value);
     hydrated = true;
     updateTheme(config.value.theme || 'auto');
   })
   .catch((error) => console.warn('[FluentRead] 无法读取本地配置', error));
 
 watch(config, (newValue) => {
-  if (hydrated) void saveConfig(newValue).catch((error) => console.warn('[FluentRead] 保存设置失败', error));
-}, { deep: true });
+  if (!hydrated || applyingExternalConfig) return;
+  const serialized = JSON.stringify(newValue);
+  if (serialized === lastSerialized) return;
+  lastSerialized = serialized;
+  void persistConfig(newValue).catch((error) => console.warn('[FluentRead] 保存设置失败', error));
+}, { deep: true, flush: 'sync' });
+
+// 设置页关闭前提交最新快照，避免 Firefox 销毁页面时丢失最后一次修改。
+// pagehide 和 unmounted 可能连续触发，只提交一次，避免重复写入和重复历史。
+function persistOnPageExit() {
+  if (!hydrated || pageExitSaveStarted) return;
+  pageExitSaveStarted = true;
+  void saveConfig(config.value).catch((error) => console.warn('[FluentRead] 设置页关闭前本地保存失败', error));
+  void persistConfig(config.value).catch((error) => console.warn('[FluentRead] 设置页关闭前后台保存失败', error));
+}
+
+onUnmounted(() => {
+  persistOnPageExit();
+  window.removeEventListener('pagehide', saveOnPageHide);
+});
+
+function saveOnPageHide() {
+  persistOnPageExit();
+}
+window.addEventListener('pagehide', saveOnPageHide);
 
 onMounted(() => {
   void refreshImageOcrLanguageState().catch(() => undefined);
@@ -760,6 +853,7 @@ darkModeMediaQuery.onchange = (e) => {
 onUnmounted(() => {
   darkModeMediaQuery.onchange = null;
   unsubscribeConfig();
+  unsubscribeHistory();
 });
 
 // 计算样式分组
@@ -1005,6 +1099,62 @@ const showExportBox = ref(false);
 const exportData = ref('');
 const showImportBox = ref(false);
 const importData = ref('');
+const configHistory = ref<ConfigHistoryState>(getConfigHistorySnapshot());
+const historyBusy = ref(false);
+const historyEntries = computed(() => [...configHistory.value.entries].reverse());
+const currentHistoryVersion = computed(() => configHistory.value.entries[configHistory.value.cursor]?.version ?? null);
+const canUndo = computed(() => configHistory.value.cursor > 0);
+const canRedo = computed(() => configHistory.value.cursor >= 0 && configHistory.value.cursor < configHistory.value.entries.length - 1);
+
+const formatHistoryTime = (savedAt: string): string => {
+  const date = new Date(savedAt);
+  if (Number.isNaN(date.getTime())) return '时间未知';
+  return new Intl.DateTimeFormat('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+};
+
+const historySummary = (entry: ConfigHistoryEntry): string => {
+  const target = options.to.find((item: any) => item.value === entry.config.to)?.label || entry.config.to;
+  const service = options.services.find((item: any) => item.value === entry.config.service)?.label || entry.config.service;
+  return `${target} · ${service}`;
+};
+
+void configHistoryReady.then(() => {
+  configHistory.value = getConfigHistorySnapshot();
+});
+const unsubscribeHistory = subscribeConfigHistory((nextHistory) => {
+  configHistory.value = nextHistory;
+});
+
+const runHistoryAction = async (action: ConfigHistoryAction, version?: number) => {
+  if (historyBusy.value) return;
+  historyBusy.value = true;
+  try {
+    const nextHistory = await requestConfigHistoryAction(
+      action,
+      version,
+      browser.runtime.sendMessage.bind(browser.runtime),
+    );
+    configHistory.value = nextHistory;
+    ElMessage({
+      message: action === 'restore' ? `已恢复配置 v${version}` : action === 'undo' ? '已撤销配置恢复' : '已重做配置恢复',
+      type: 'success',
+      duration: 1600,
+    });
+  } catch (error) {
+    ElMessage({
+      message: `配置历史操作失败：${error instanceof Error ? error.message : '请稍后重试'}`,
+      type: 'error',
+    });
+  } finally {
+    historyBusy.value = false;
+  }
+};
 
 // Azure OpenAI 端点地址验证函数
 const isValidAzureEndpoint = (endpoint: string) => {
@@ -1053,7 +1203,7 @@ const saveImport = async () => {
       });
       return;
     }
-    await saveConfig(normalizeConfig(parsedConfig));
+    await persistConfig(normalizeConfig(parsedConfig));
     ElMessage({
       message: '配置导入成功!',
       type: 'success',
@@ -1077,6 +1227,28 @@ const saveImport = async () => {
   min-width: 0;
 }
 
+.config-history-panel {
+  margin: 0 0 18px;
+  padding: 18px;
+  border: 1px solid #f0d2dc;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #fff8fa, #fff);
+}
+.config-history-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.config-history-kicker { display: block; margin-bottom: 4px; color: var(--brand-strong); font-size: 10px; font-weight: 800; letter-spacing: .1em; }
+.config-history-heading h3 { margin: 0 0 5px; color: var(--ink); font-size: 16px; }
+.config-history-heading p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+.config-history-actions { display: flex; flex: 0 0 auto; gap: 6px; }
+.config-history-list { display: grid; gap: 7px; margin-top: 15px; }
+.config-history-entry { display: grid; grid-template-columns: 62px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 52px; padding: 8px 10px; border: 1px solid #eceef4; border-radius: 13px; background: rgba(255, 255, 255, .82); }
+.config-history-entry.current { border-color: #efb4c4; background: #fff; box-shadow: 0 5px 16px rgba(239, 71, 118, .08); }
+.config-history-version { display: flex; align-items: center; gap: 5px; }
+.config-history-version b { color: var(--brand-strong); font-size: 12px; }
+.config-history-version span { padding: 2px 5px; border-radius: 999px; color: var(--brand-strong); background: var(--brand-soft); font-size: 9px; font-weight: 750; }
+.config-history-detail { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.config-history-detail strong { overflow: hidden; color: var(--ink); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.config-history-detail small { color: var(--muted); font-size: 10px; }
+.config-history-empty { margin-top: 14px; padding: 15px; border: 1px dashed #e3e6ee; border-radius: 12px; color: var(--muted); font-size: 11px; text-align: center; }
 .image-ocr-section {
   display: grid;
   gap: 16px;
@@ -1532,6 +1704,12 @@ const saveImport = async () => {
   align-items: center;
   color: var(--el-color-primary);
   font-weight: 600;
+}
+
+@media (max-width: 480px) {
+  .config-history-heading { align-items: stretch; flex-direction: column; }
+  .config-history-actions { justify-content: flex-start; }
+  .config-history-entry { grid-template-columns: 54px minmax(0, 1fr) auto; gap: 7px; padding-right: 7px; padding-left: 8px; }
 }
 
 @media (max-width: 700px) {

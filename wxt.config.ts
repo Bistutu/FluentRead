@@ -5,6 +5,9 @@ import fs from 'fs';
 
 
 const packageJson = JSON.parse(fs.readFileSync(resolve(__dirname, 'package.json'), 'utf-8'));
+const firefoxRunnerBinary = process.env.FLUENTREAD_FIREFOX_RUNNER_BINARY;
+const firefoxRunnerProfile = process.env.FLUENTREAD_FIREFOX_RUNNER_PROFILE;
+const firefoxRunnerStartUrl = process.env.FLUENTREAD_FIREFOX_RUNNER_START_URL;
 
 /**
  * Edge 的扩展内容脚本加载器会拒绝产物中的 Unicode 非字符 U+FFFE/U+FFFF，
@@ -37,6 +40,29 @@ function escapeExtensionNoncharacters() {
 // See https://wxt.dev/api/config.html
 export default defineConfig({
     modules: ['@wxt-dev/webextension-polyfill'],
+    // Firefox 的开发 runner 使用一次性 profile；预置启动参数，避免每轮 UI
+    // 回归都被 about:welcome 首次启动引导遮挡。仅影响 pnpm dev:firefox，
+    // 不会写入用户 Firefox profile，也不会进入扩展发布产物。
+    webExt: {
+        binaries: firefoxRunnerBinary ? {firefox: firefoxRunnerBinary} : undefined,
+        firefoxProfile: firefoxRunnerProfile || undefined,
+        startUrls: [firefoxRunnerStartUrl || 'about:blank'],
+        firefoxPref: {
+            'browser.aboutwelcome.enabled': false,
+            'browser.aboutwelcome.screens': '',
+            'browser.startup.homepage_override.mstone': 'ignore',
+            'browser.startup.homepage_override.buildID': 'ignore',
+            'startup.homepage_override_url': 'about:blank',
+            'startup.homepage_override_nimbus_disable_wnp': true,
+            'browser.messaging-system.whatsNewPanel.enabled': false,
+            'browser.startup.homepage': 'about:blank',
+            'startup.homepage_welcome_url': 'about:blank',
+            'startup.homepage_welcome_url.additional': '',
+            'trailhead.firstrun.didSeeAboutWelcome': true,
+            'trailhead.firstrun.branches': 'nofirstrun-exp',
+            'browser.shell.checkDefaultBrowser': false,
+        },
+    },
     imports: {
         addons: {
             vueTemplate: true,

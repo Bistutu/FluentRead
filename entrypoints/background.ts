@@ -1,6 +1,13 @@
 import {_service} from "@/entrypoints/service/_service";
 import {translateMicrosoftTexts} from "@/entrypoints/service/microsoft";
-import {config, configReady} from "@/entrypoints/utils/config";
+import {
+    applyConfigHistoryAction,
+    config,
+    configReady,
+    CONFIG_HISTORY_MESSAGE,
+    CONFIG_PERSIST_MESSAGE,
+    saveConfig,
+} from "@/entrypoints/utils/config";
 import {CONTEXT_MENU_IDS} from "@/entrypoints/utils/constant";
 import {resolveConfiguredModel, servicesType} from "@/entrypoints/utils/option";
 import {synthesizeEdgeTts} from "@/entrypoints/utils/edgeTts";
@@ -77,6 +84,8 @@ async function assertImageOcrLanguagesDownloaded(sourceLanguage: string): Promis
 type CacheRequestMode = 'single' | 'batch';
 
 const TRANSLATION_CACHE_CLEANUP_ALARM = 'fluentread-translation-cache-cleanup';
+let configPersistQueue: Promise<void> = Promise.resolve();
+const latestConfigSequenceByClient = new Map<string, number>();
 
 async function fetchImageForOcr(source: string): Promise<string> {
     const url = normalizeRemoteImageUrl(source);
@@ -524,7 +533,7 @@ export default defineBackground({
         });
 
         // 处理翻译请求
-        browser.runtime.onMessage.addListener((message: any) => {
+        browser.runtime.onMessage.addListener((message: any, sender: any) => {
             return new Promise(async (resolve, reject) => {
                 try {
                     // 处理输入框翻译请求
@@ -537,6 +546,42 @@ export default defineBackground({
                     if (message.type === 'openOptionsPage') {
                         await browser.runtime.openOptionsPage();
                         resolve({ success: true });
+                        return;
+                    }
+
+                    if (message.type === CONFIG_PERSIST_MESSAGE) {
+                        const clientId = typeof message.clientId === 'string'
+                            ? message.clientId
+                            : `${sender?.id || 'legacy'}:${sender?.tab?.id || 'extension'}:${sender?.frameId || 0}`;
+                        const sequence = Number.isSafeInteger(message.sequence) ? message.sequence : 0;
+                        const lastSequence = latestConfigSequenceByClient.get(clientId) || 0;
+                        if (sequence && sequence <= lastSequence) {
+                            resolve({ success: true });
+                            return;
+                        }
+                        if (sequence) latestConfigSequenceByClient.set(clientId, sequence);
+                        const persist = configPersistQueue
+                            .catch(() => undefined)
+                            .then(() => {
+                                if (sequence && latestConfigSequenceByClient.get(clientId) !== sequence) return;
+                                return saveConfig(message.config, {recordHistory: true});
+                            });
+                        configPersistQueue = persist.catch(() => undefined);
+                        await persist;
+                        resolve({ success: true });
+                        return;
+                    }
+
+                    if (message.type === CONFIG_HISTORY_MESSAGE) {
+                        const action = message.action === 'undo' || message.action === 'redo' || message.action === 'restore'
+                            ? message.action
+                            : null;
+                        if (!action) {
+                            resolve({success: false, error: '无效的配置历史操作'});
+                            return;
+                        }
+                        const history = await applyConfigHistoryAction(action, typeof message.version === 'number' ? message.version : undefined);
+                        resolve({success: true, history});
                         return;
                     }
 
