@@ -190,6 +190,8 @@ function hasStructuralIgnoreAncestor(node: Element): boolean {
 export function isTranslationContentBlock(node: Element): boolean {
     if (!node || isDocumentSurface(node) || isExtensionElement(node)) return false;
     if (isStructuralIgnoreElement(node) || skipSet.has(node.tagName.toLowerCase())) return false;
+    // 结构容器中的普通文案仍然不属于正文候选；控件会在扫描器的独立分支中处理。
+    if (hasStructuralIgnoreAncestor(node)) return false;
     if (isHiddenElement(node) || isNoTranslateElement(node) || isControlElement(node)) return false;
     if (!isBlockLayout(node) || !hasReadableText(node)) return false;
     if (hasReadableBlockChild(node)) return false;
@@ -215,7 +217,7 @@ function walkTranslationBlocks(
         const tag = node.tagName.toLowerCase();
         // html/body 是全文扫描的容器，不能因为它们属于 skipSet 就提前截断正文子树。
         // 其他 skip 元素仍然连同后代一起跳过，避免把脚本、代码块等内部文字送去翻译。
-        if ((skipSet.has(tag) && !isDocumentSurface(node)) || isStructuralIgnoreElement(node)) return;
+        if (skipSet.has(tag) && !isDocumentSurface(node)) return;
 
         // 控件必须先进入统一 control 分支。站点兼容规则不能把 button/role=button
         // 提前截断，否则双语模式会错误地保留英文按钮，也无法复用按钮恢复逻辑。
@@ -224,17 +226,24 @@ function walkTranslationBlocks(
             return;
         }
 
+        // header/footer/nav/aside 仍然是正文扫描的结构边界，但不能阻止继续遍历，
+        // 因为按钮和 role=button 控件可能嵌套在这些容器中。普通文案由
+        // isTranslationContentBlock 的结构祖先判断继续过滤，避免把导航标题送去翻译。
+        const insideStructuralContainer = isStructuralIgnoreElement(node) || hasStructuralIgnoreAncestor(node);
+
         // 站点兼容规则负责正文容器和站点特有的噪声过滤；例如 X 的推文正文
         // 位于 article 内的 div[dir="auto"]，而用户名/操作图标可以整棵跳过。
-        const compatNode = getCompatNode(node);
-        if (compatNode === 'skip') return;
-        if (compatNode instanceof Element && compatNode === node && hasReadableText(node)) {
-            result.push(node);
-            return;
-        }
-        if (isTranslationContentBlock(node)) {
-            result.push(node);
-            return;
+        if (!insideStructuralContainer) {
+            const compatNode = getCompatNode(node);
+            if (compatNode === 'skip') return;
+            if (compatNode instanceof Element && compatNode === node && hasReadableText(node)) {
+                result.push(node);
+                return;
+            }
+            if (isTranslationContentBlock(node)) {
+                result.push(node);
+                return;
+            }
         }
 
         for (const child of Array.from(node.children)) visit(child);
@@ -310,19 +319,23 @@ function resolveTranslatableElement(start: Element): Element | false {
         }
 
         const tag = current.tagName.toLowerCase();
-        if (skipSet.has(tag) || isStructuralIgnoreElement(current) ||
-            hasStructuralIgnoreAncestor(current) || isHiddenElement(current)) {
+        if (skipSet.has(tag) || isStructuralIgnoreElement(current) || isHiddenElement(current)) {
             return false;
         }
         if (isNoTranslateElement(current) || (current as HTMLElement).isContentEditable) return false;
 
+        // 先识别控件，再判断结构祖先。这样悬浮到结构容器内按钮的文字子节点时，
+        // 仍可向上找到按钮并复用按钮的替换/恢复逻辑。
         if (isTranslationControl(current)) return current;
 
-        const compatNode = getCompatNode(current);
-        if (compatNode === 'skip') return false;
-        if (compatNode && hasReadableText(compatNode)) return compatNode;
+        const insideStructuralContainer = hasStructuralIgnoreAncestor(current);
+        if (!insideStructuralContainer) {
+            const compatNode = getCompatNode(current);
+            if (compatNode === 'skip') return false;
+            if (compatNode && hasReadableText(compatNode)) return compatNode;
 
-        if (isTranslationContentBlock(current)) return current;
+            if (isTranslationContentBlock(current)) return current;
+        }
         current = current.parentElement;
     }
 
