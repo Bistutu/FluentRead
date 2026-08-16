@@ -18,14 +18,14 @@
 - 使用请求序号丢弃过期翻译结果，避免快速连续划词时旧结果覆盖新结果。
 - 默认显示可发现的操作图标；同时支持直接翻译、图标触发、圆点触发三种模式。
 - 原文和译文的播放按钮始终可见，不再依赖鼠标悬浮才能发现。
-- 语音优先使用浏览器 `SpeechSynthesis`，按源语言/目标语言选择声音；浏览器不支持时才回退到 Google Translate TTS URL。
+- 语音优先使用后台 Edge TTS 固定 voice，按源语言/目标语言选择声音；Edge TTS 不可用时才回退浏览器 `SpeechSynthesis` 和 Google Translate TTS URL。
 - 增加核心几何计算、文本规范化、语言规范化和配置兼容性测试。
 
 尚未完全闭环的部分：
 
-- 目前不是 Edge TTS 的完整高质量音色方案；还没有实现阅读蛙式的音色目录、分段流式播放和 offscreen 音频管线。
+- 目前已接入 Edge TTS 的固定高质量 voice 和短文本分段；还没有实现阅读蛙式完整的音色目录、可视化 voice 设置和 offscreen 播放管线。
 - 真实长页面滚动过程的自动化证据受隔离浏览器无法访问临时 localhost 服务影响，代码已实现 scroll/resize 重定位，但该场景仍需在可访问测试页面中复测。
-- 本次浏览器验证使用本地确定性缓存避免依赖外部翻译服务；已验证按钮、定位和语言参数逻辑，但没有把真实音频播放作为通过条件。
+- 本次浏览器验证使用本地确定性缓存避免依赖外部翻译服务；Edge TTS endpoint 已真实返回英文/中文音频并触发播放状态，但隔离窗口不作为人工听感验收环境。
 
 ## 1. 原实现的问题梳理
 
@@ -66,7 +66,7 @@
 
 ### 2.1 新的划词状态与事件管线
 
-核心文件：`components/SelectionTranslator.vue`、`entrypoints/utils/selectionTranslatorCore.ts`
+核心文件：`components/SelectionTranslator.vue`、`entrypoints/utils/edgeTts.ts`、`entrypoints/background.ts`
 
 新的处理流程如下：
 
@@ -114,11 +114,14 @@ flowchart LR
 - 原文播放使用配置中的 `config.from`；配置为 `auto` 时才使用 `detectlang` 结果。
 - 译文播放使用配置中的 `config.to`，不再重新根据译文短文本猜语言。
 - `normalizeSpeechLanguage()` 将 `zh-Hans`、`zh-Hant`、`en` 等配置统一映射到更适合浏览器语音接口的 BCP 47 语言标签，例如 `zh-CN`、`zh-TW`、`en-US`。
-- 优先使用 `window.speechSynthesis`，并按语言标签匹配可用 voice；新的播放会取消旧播放，避免两个声音重叠。
-- 浏览器没有可用语音合成能力时，才回退到 Google `translate_tts`，且 URL 中显式携带规范化语言参数。
+- 优先通过扩展后台调用 Edge TTS，英文默认使用 `en-US-AvaMultilingualNeural`，简体中文使用 `zh-CN-XiaoxiaoMultilingualNeural`；不再受本机第一个系统 voice 影响。
+- Edge TTS 使用 SSML 显式设置 locale、voice、rate、pitch、volume，并对文本做 XML 转义；超过单次字节限制时按语义边界分段。
+- 页面侧接收后台返回的音频字节并生成 Blob URL 播放；新的请求会停止旧播放，关闭页面或选区时释放音频 URL。
+- Edge TTS 网络请求失败时，才回退到浏览器 `SpeechSynthesis`；系统 voice 选择也增加了英文/中文的偏好排序，避免盲取第一个低沉 voice。
+- 最后才回退到 Google `translate_tts`，并显式携带规范化语言参数。
 - 原文和译文各有一个常驻播放按钮，按钮具有 `aria-label` 和 `title`，不需要悬浮才能发现。
 
-与参考项目的取舍：阅读蛙的完整方案更偏向 Edge TTS 的明确音色选择、音频分段和 offscreen 播放；简约翻译类方案更强调浏览器内置语音接口和语言标签规范化。本次先在 FluentRead 现有架构中落地稳定的语言选择、播放互斥和可发现入口，后续可以独立增加 Edge TTS 适配器，不把 provider 逻辑继续堆在组件里。
+与参考项目的取舍：阅读蛙使用 Edge TTS 的明确音色选择、音频分段和后台/offscreen 播放；简约翻译类方案强调浏览器内置语音接口和语言标签规范化。FluentRead 本次独立实现了 Edge TTS 的最小稳定链路，保留浏览器语音作为免费回退；后续再增加完整 voice 目录和 offscreen 播放即可，不直接复制参考项目代码。
 
 ### 2.4 设置与 UI 修改
 
@@ -158,6 +161,9 @@ flowchart LR
 |---|---|
 | `components/SelectionTranslator.vue` | 重写划词状态机、定位、入口、卡片、TTS 和清理逻辑 |
 | `entrypoints/utils/selectionTranslatorCore.ts` | 新增可单测的选区几何、文本和语言纯函数 |
+| `entrypoints/utils/edgeTts.ts` | 新增 Edge TTS voice 映射、签名、token、SSML、分段和音频合并 |
+| `entrypoints/background.ts` | 增加后台 Edge TTS 音频请求消息处理 |
+| `wxt.config.ts` | 增加 Edge TTS endpoint 的 host permissions |
 | `entrypoints/utils/model.ts` | 新增并归一化 `selectionTranslatorTrigger` |
 | `entrypoints/popup/App.vue` | 增加启用、显示模式和触发方式设置 |
 | `entrypoints/popup/style.css` | 增加设置提示样式 |
@@ -190,6 +196,9 @@ flowchart LR
 - 点击图标后翻译卡片正常打开。
 - 卡片位于 1280×900 视口内，没有越界。
 - 原文和译文两个播放按钮都直接可见。
+- 英文 Edge TTS 真实返回 voice `en-US-AvaMultilingualNeural` 的音频数据。
+- 中文 Edge TTS 真实返回 voice `zh-CN-XiaoxiaoMultilingualNeural` 的音频数据。
+- 点击原文播放按钮后显示“正在播放原文”，播放图标切换为暂停状态。
 
 截图证据：
 
@@ -203,18 +212,18 @@ flowchart LR
 
 - FluentRead 既有完整 UI 测试在悬浮球场景失败：`悬浮球关闭状态未更新`，失败位置在既有测试脚本的 floating drawer 断言。本次改动的自定义划词流程已通过，但不能据此宣称完整 UI 套件全绿。
 - 长页面 scroll/resize 的真实浏览器证据尚未完成；隔离浏览器无法访问临时 localhost 测试服务。实现层已经加入单帧重定位和视口夹紧，仍需要在可访问的长页面中复测。
-- TTS 实际发声没有作为自动化通过条件；当前已覆盖语言映射、voice 匹配、播放互斥和按钮可发现性，真实音色和网络回退仍需人工听感验收。
+- 自动化确认了 Edge TTS 音频响应和播放状态，但隔离浏览器位于屏幕外，无法替代人工听感；英文是否仍显得低沉，最终仍需用户在本机扬声器环境中验收。
 
 ## 5. 当前交付状态
 
-代码已提交在独立 worktree 的 `cc34f95`。尚未创建远程 PR，也没有执行合并。原因是推送到 GitHub 需要外部写权限，且后续网络检查出现 `Could not resolve host: github.com`；因此当前状态是“本地实现和验证完成，远程 PR 阶段被环境阻塞”。
+代码已提交在独立 worktree 的 `cc34f95`、`c3f64c7`，本轮 Edge TTS 改动待提交。尚未创建远程 PR，也没有执行合并。原因是推送到 GitHub 需要外部写权限，且后续网络检查出现 `Could not resolve host: github.com`；因此当前状态是“本地实现和验证完成，远程 PR 阶段被环境阻塞”。
 
 后续若允许外部 Git 写操作，顺序应为：推送当前分支、创建 PR、等待审阅批准，再执行真实 GitHub merge commit。当前不应把本地提交视为已经合并到主分支。
 
 ## 6. 后续建议
 
 1. 先在真实长文章和多栏页面复测 scroll、resize、反向选择、视口顶部/底部和页面 DOM 变化。
-2. 增加 TTS provider 抽象，接入 Edge TTS 音色目录、分段播放和 offscreen 音频管线，同时保留浏览器原生 TTS 作为免费/离线回退。
+2. 增加 Edge TTS voice 目录和设置项；视浏览器兼容性再把页面 Blob 播放迁移到 offscreen 音频管线。
 3. 将翻译请求也抽成可取消的任务接口，在 provider 层支持 AbortSignal，进一步降低连续划词时的无效网络工作。
 4. 修复或隔离既有 floating drawer UI 测试失败后，再进行完整扩展 UI 回归。
 5. 在 PR 审阅前重点检查 Shadow DOM、输入框/可编辑区域、PDF/iframe、`notranslate` 页面和选择清理行为；本次范围仍不包括圈选翻译。

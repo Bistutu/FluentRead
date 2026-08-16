@@ -5,6 +5,7 @@ import {
     normalizeSelectionText,
     normalizeSpeechLanguage,
 } from '@/entrypoints/utils/selectionTranslatorCore';
+import { buildEdgeTtsSsml, edgeTtsVoiceForLanguage } from '@/entrypoints/utils/edgeTts';
 
 describe('selection translator core geometry', () => {
     const rects = [
@@ -44,5 +45,17 @@ describe('selection translator text and speech language normalization', () => {
         expect(normalizeSpeechLanguage('en')).toBe('en-US');
         expect(normalizeSpeechLanguage('auto', 'zh-CN')).toBe('zh-CN');
         expect(normalizeSpeechLanguage('invalid value')).toBe('en-US');
+    });
+
+    it('uses stable Edge TTS voices instead of the first system voice', () => {
+        expect(edgeTtsVoiceForLanguage('en-US')).toBe('en-US-AvaMultilingualNeural');
+        expect(edgeTtsVoiceForLanguage('en')).toBe('en-US-AvaMultilingualNeural');
+        expect(edgeTtsVoiceForLanguage('zh-Hans')).toBe('zh-CN-XiaoxiaoMultilingualNeural');
+    });
+
+    it('escapes selection text before putting it into SSML', () => {
+        const ssml = buildEdgeTtsSsml('A < B & C', 'en-US-AvaMultilingualNeural');
+        expect(ssml).toContain('A &lt; B &amp; C');
+        expect(ssml).not.toContain('A < B & C');
     });
 });

@@ -42,6 +42,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import browser from 'webextension-polyfill';
 import { config } from '@/entrypoints/utils/config';
 import { translateText } from '@/entrypoints/utils/translateApi';
 import { detectlang } from '@/entrypoints/utils/common';
@@ -74,6 +75,7 @@ let translationRequestId = 0;
 let copyTimer: number | null = null;
 let audio: HTMLAudioElement | null = null;
 let utterance: SpeechSynthesisUtterance | null = null;
+let audioRequestId = 0;
 let isSelecting = false;
 let systemThemeMedia: MediaQueryList | null = null;
 
@@ -193,8 +195,16 @@ function speechLanguage(text: string, kind: AudioKind): string { return kind ===
 function selectVoice(language: string): SpeechSynthesisVoice | undefined {
   if (!('speechSynthesis' in window)) return undefined;
   const voices = window.speechSynthesis.getVoices();
-  const exact = voices.find(voice => voice.lang.toLowerCase() === language.toLowerCase());
-  if (exact) return exact;
+  const normalized = language.toLowerCase();
+  const exact = voices.filter(voice => voice.lang.toLowerCase() === normalized);
+  const preferredNames = normalized.startsWith('en-')
+    ? ['ava', 'aria', 'jenny', 'samantha', 'google us english', 'zira']
+    : normalized.startsWith('zh-')
+      ? ['xiaoxiao', 'ting-ting', 'tingting', 'huihui']
+      : [];
+  const preferred = exact.find(voice => preferredNames.some(name => voice.name.toLowerCase().includes(name)));
+  if (preferred) return preferred;
+  if (exact.length > 0) return exact[0];
   const base = language.split('-')[0]?.toLowerCase();
   return voices.find(voice => voice.lang.toLowerCase().startsWith(`${base}-`) || voice.lang.toLowerCase() === base);
 }
@@ -203,12 +213,44 @@ function isCurrentAudio(kind: AudioKind): boolean { return isPlaying.value && cu
 function audioLabel(kind: AudioKind): string { return isCurrentAudio(kind) ? `停止播放${kind === 'source' ? '原文' : '译文'}` : `播放${kind === 'source' ? '原文' : '译文'}`; }
 
 function stopAudio(): void {
+  audioRequestId += 1;
   if (audio) { audio.pause(); audio.removeAttribute('src'); audio = null; }
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   utterance = null;
   isPlaying.value = false;
   currentAudioKind.value = null;
   currentAudioText.value = '';
+}
+
+function base64ToBlobUrl(audioBase64: string, contentType: string): string {
+  const binary = atob(audioBase64);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index);
+  return URL.createObjectURL(new Blob([bytes], { type: contentType }));
+}
+
+async function playEdgeSpeech(text: string, language: string, kind: AudioKind, requestId: number): Promise<boolean> {
+  try {
+    const response = await browser.runtime.sendMessage({ type: 'selectionTts', text, language }) as {
+      success?: boolean;
+      audioBase64?: string;
+      contentType?: string;
+    };
+    if (requestId !== audioRequestId || !response?.success || !response.audioBase64) return requestId === audioRequestId ? false : true;
+    const audioUrl = base64ToBlobUrl(response.audioBase64, response.contentType || 'audio/mpeg');
+    const nextAudio = new Audio(audioUrl);
+    nextAudio.onended = () => { if (audio === nextAudio) stopAudio(); URL.revokeObjectURL(audioUrl); };
+    nextAudio.onerror = () => { if (audio === nextAudio) stopAudio(); URL.revokeObjectURL(audioUrl); };
+    audio = nextAudio;
+    currentAudioKind.value = kind;
+    currentAudioText.value = text;
+    isPlaying.value = true;
+    await nextAudio.play();
+    return true;
+  } catch (cause) {
+    if (requestId === audioRequestId) console.warn('Edge TTS unavailable, trying browser speech:', cause);
+    return requestId !== audioRequestId;
+  }
 }
 
 function playBrowserSpeech(text: string, language: string, kind: AudioKind): boolean {
@@ -241,12 +283,18 @@ function playGoogleFallback(text: string, language: string, kind: AudioKind): vo
   void nextAudio.play().catch(() => stopAudio());
 }
 
-function toggleAudio(text: string, kind: AudioKind): void {
+async function toggleAudio(text: string, kind: AudioKind): Promise<void> {
   const cleanText = text.trim();
   if (!cleanText) return;
   if (isCurrentAudio(kind) && currentAudioText.value === cleanText) { stopAudio(); return; }
   stopAudio();
   const language = speechLanguage(cleanText, kind);
+  const requestId = audioRequestId;
+  isPlaying.value = true;
+  currentAudioKind.value = kind;
+  currentAudioText.value = cleanText;
+  const edgeStarted = await playEdgeSpeech(cleanText, language, kind, requestId);
+  if (edgeStarted || requestId !== audioRequestId) return;
   if (!playBrowserSpeech(cleanText, language, kind)) playGoogleFallback(cleanText, language, kind);
 }
 
