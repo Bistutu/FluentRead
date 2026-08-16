@@ -2,6 +2,7 @@ import { method, urls } from "../utils/constant";
 import { deepseekMsgTemplate, deepseekResponsesMsgTemplate } from "../utils/template";
 import { config } from "@/entrypoints/utils/config";
 import { contentPostHandler } from "@/entrypoints/utils/check";
+import { appendOptionalBearer } from './auth';
 
 // 当前官方 V4 文档以 Chat Completion 为主；Responses API 仅在用户明确选择时启用，
 // 便于兼容已经支持该协议的代理或网关。
@@ -13,10 +14,8 @@ function useResponsesApi() {
 
 async function deepseek(message: any) {
     try {
-        const headers = new Headers({
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${config.token[config.service]}`
-        });
+        const headers = new Headers({'Content-Type': 'application/json'});
+        appendOptionalBearer(headers, config.token[config.service]);
 
         const endpoint = config.proxy[config.service] || urls[config.service];
         const isResponses = useResponsesApi();

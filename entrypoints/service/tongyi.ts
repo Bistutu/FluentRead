@@ -2,13 +2,14 @@ import {currentModelIds, services} from "../utils/option";
 import {method, tongyiTokenPlanUrl, urls} from "../utils/constant";
 import {tongyiMsgTemplate} from "../utils/template";
 import {config} from "@/entrypoints/utils/config";
+import {appendOptionalBearer} from './auth';
 
 // 文档：https://help.aliyun.com/zh/dashscope/developer-reference/tongyi-thousand-questions-metering-and-billing
 async function tongyi(message: any) {
     // 构建请求头
     let headers = new Headers();
     headers.append('Content-Type', 'application/json');
-    headers.append('Authorization', `Bearer ${config.token[services.tongyi]}`);
+    appendOptionalBearer(headers, config.token[services.tongyi]);
 
     // 判断是否使用代理
     const selectedModel = config.model[services.tongyi];

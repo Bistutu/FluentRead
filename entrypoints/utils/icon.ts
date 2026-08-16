@@ -85,8 +85,9 @@ function handleErrorClick(errMsg: string) {
 
 // 根据错误信息返回错误提示
 function getErrorMessage(errMsg: string): string {
-  if (errMsg.includes("auth failed") || errMsg.includes("API key")) {
-    return "Token 似乎有点问题，请前往设置页面重新配置后再试。";
+  const normalizedError = errMsg.toLowerCase();
+  if (normalizedError.includes("auth failed") || normalizedError.includes("api key") || errMsg.includes("访问令牌") || errMsg.includes("尚未配置")) {
+    return "当前翻译服务还没有配置 API Key，请前往设置页面填写后再试。";
   } else if (errMsg.includes("quota") || errMsg.includes("limit")) {
     const service = options.services.find((s: { value: string; label: string }) => s.value === config.service);
     return "你的请求频率过高，被【" + (service?.label || config.service) + "】拒绝了，请稍后再试吧~";

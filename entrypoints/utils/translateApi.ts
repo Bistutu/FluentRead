@@ -9,6 +9,7 @@ import { config, saveConfig } from './config';
 import { detectlang } from './common';
 import { resolveConfiguredModel, servicesType } from './option';
 import { getPageTranslationContext } from './pageContext';
+import { getMissingCredentialMessage } from './configValidation';
 
 // 调试相关
 const isDev = process.env.NODE_ENV === 'development';
@@ -34,6 +35,8 @@ export async function translateText(origin: string, context: string = document.t
   if (!cleanedOrigin || cleanedOrigin.length === 0) {
     return origin || '';
   }
+
+  assertTranslationCredentials();
 
   // 如果目标语言与当前文本语言相同，直接返回原文
   if (detectlang(origin.replace(/[\s\u3000]/g, '')) === config.to) {
@@ -98,6 +101,8 @@ export async function translateTextBatch(
 ): Promise<string[]> {
   if (origins.length === 0) return [];
 
+  assertTranslationCredentials();
+
   const {
     maxRetries = 3,
     retryDelay = 1000,
@@ -161,6 +166,11 @@ export interface TranslateOptions {
   useCache?: boolean;
   /** 发送给 LLM 的网页参考上下文；未提供时按当前页面自动提取。 */
   pageContext?: string;
+}
+
+function assertTranslationCredentials(): void {
+  const message = getMissingCredentialMessage(config.service, config);
+  if (message) throw new Error(message);
 }
 
 async function resolvePageContext(suppliedContext?: string): Promise<string | undefined> {
