@@ -51,7 +51,9 @@ async function main() {
     const source = Array.isArray(body) ? String(body[0] || '') : '';
     const translated = source === 'and the housing market took a hit.'
       ? '房地产市场受到了冲击。'
-      : `【译文】${source}`;
+      : source === 'understand from [music] the axioms and the basics.'
+        ? '从音乐中理解公理和基础。'
+        : `【译文】${source}`;
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -121,7 +123,7 @@ async function main() {
       container.style.cssText = 'position:absolute;left:0;right:0;top:66%;height:18%;z-index:4;text-align:center;color:#fff;font:600 30px/1.35 Arial,sans-serif;';
       const segment = document.createElement('span');
       segment.className = 'ytp-caption-segment';
-      segment.textContent = 'and the housing market took a hit.';
+      segment.textContent = '';
       container.appendChild(segment);
 
       const controls = document.createElement('div');
@@ -176,22 +178,61 @@ async function main() {
     await page.screenshot({ path: path.join(artifactsDir, 'video-subtitle-fixture-menu.png'), fullPage: false });
 
     const overlaySelector = '#fluent-read-video-subtitle';
-    await page.waitForFunction((selector) => Boolean(document.querySelector(selector)?.textContent?.match(/[\u3400-\u9fff]/)), overlaySelector, { timeout: 20000 });
+    const progressiveTexts = [
+      'understand',
+      'understand from',
+      'understand from [music]',
+      'understand from [music] the axioms and',
+      'understand from [music] the axioms and the basics.',
+    ];
+    const progressiveRequestStart = translationRequests;
+    for (const text of progressiveTexts) {
+      await page.evaluate((value) => {
+        const segment = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
+        if (segment) segment.textContent = value;
+      }, text);
+      await page.waitForTimeout(180);
+      const partialOverlay = await page.locator(overlaySelector).textContent();
+      if (partialOverlay?.trim()) {
+        throw new Error(`渐进字幕在稳定前提前显示译文：${JSON.stringify({ text, partialOverlay })}`);
+      }
+    }
+    await page.waitForFunction((selector) => document.querySelector(selector)?.textContent === '从音乐中理解公理和基础。', overlaySelector, { timeout: 20000 });
+    const progressiveTranslation = await page.locator(overlaySelector).textContent();
+    const progressiveRequests = translationRequests - progressiveRequestStart;
+    if (progressiveRequests !== 1) {
+      throw new Error(`渐进字幕没有合并为单次翻译请求：${JSON.stringify({ progressiveRequests, translationRequests })}`);
+    }
+
+    await page.evaluate(() => {
+      const segment = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
+      if (segment) segment.textContent = 'and the housing market took a hit.';
+    });
+    await page.waitForFunction((selector) => document.querySelector(selector)?.textContent === '房地产市场受到了冲击。', overlaySelector, { timeout: 20000 });
     const beforeRedraw = await page.locator(overlaySelector).textContent();
 
-    await page.evaluate(() => document.querySelector('#ytp-caption-window-container')?.replaceChildren());
+    await page.evaluate(() => {
+      const container = document.querySelector('#ytp-caption-window-container');
+      if (!container) return;
+      container.style.top = '0';
+      container.style.height = '0';
+      container.replaceChildren();
+    });
     await page.waitForTimeout(180);
     const duringRedraw = await page.evaluate(() => ({
       nativeCaptionEmpty: !(document.querySelector('#ytp-caption-window-container')?.textContent || '').trim(),
       overlay: document.querySelector('#fluent-read-video-subtitle')?.textContent || '',
+      overlayTop: document.querySelector('#fluent-read-video-subtitle')?.style.top || '',
     }));
-    if (!duringRedraw.nativeCaptionEmpty || !duringRedraw.overlay.trim()) {
+    if (!duringRedraw.nativeCaptionEmpty || !duringRedraw.overlay.trim() || Number.parseFloat(duringRedraw.overlayTop) <= 8) {
       throw new Error(`字幕重绘保留校验失败：${JSON.stringify(duringRedraw)}`);
     }
 
     await page.evaluate(() => {
       const container = document.querySelector('#ytp-caption-window-container');
       if (!container) return;
+      container.style.top = '66%';
+      container.style.height = '18%';
       const segment = document.createElement('span');
       segment.className = 'ytp-caption-segment';
       segment.textContent = 'and the housing market took a hit.';
@@ -200,6 +241,35 @@ async function main() {
     await page.waitForTimeout(600);
     const afterRedraw = await page.locator(overlaySelector).textContent();
     if (!afterRedraw?.trim()) throw new Error('字幕节点重建后译文没有恢复');
+
+    await page.evaluate(() => {
+      const container = document.querySelector('#ytp-caption-window-container');
+      if (!container) return;
+      container.style.top = '0';
+      container.style.height = '0';
+      container.replaceChildren();
+    });
+    await page.waitForTimeout(700);
+    const afterDisappearance = await page.evaluate(() => ({
+      nativeCaptionEmpty: !(document.querySelector('#ytp-caption-window-container')?.textContent || '').trim(),
+      overlay: document.querySelector('#fluent-read-video-subtitle')?.textContent || '',
+      overlayTop: document.querySelector('#fluent-read-video-subtitle')?.style.top || '',
+    }));
+    if (!afterDisappearance.nativeCaptionEmpty || afterDisappearance.overlay.trim() || Number.parseFloat(afterDisappearance.overlayTop) <= 8) {
+      throw new Error(`字幕完全消失后的译文清理或位置校验失败：${JSON.stringify(afterDisappearance)}`);
+    }
+
+    await page.evaluate(() => {
+      const container = document.querySelector('#ytp-caption-window-container');
+      if (!container) return;
+      container.style.top = '66%';
+      container.style.height = '18%';
+      const segment = document.createElement('span');
+      segment.className = 'ytp-caption-segment';
+      segment.textContent = 'and the housing market took a hit.';
+      container.appendChild(segment);
+    });
+    await page.waitForFunction((selector) => document.querySelector(selector)?.textContent === '房地产市场受到了冲击。', overlaySelector, { timeout: 20000 });
 
     await page.evaluate(() => {
       const segment = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
@@ -220,6 +290,9 @@ async function main() {
       beforeRedraw,
       duringRedraw,
       afterRedraw,
+      afterDisappearance,
+      progressiveTranslation,
+      progressiveRequests,
       secondTranslation,
       translationRequests,
       pageErrors,

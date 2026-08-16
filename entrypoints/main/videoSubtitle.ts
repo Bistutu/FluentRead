@@ -15,7 +15,7 @@ import {
 } from './youtubeSubtitleData';
 
 export const VIDEO_CAPTION_CONTAINER_SELECTOR = '#ytp-caption-window-container, .ytp-caption-window-container';
-export const VIDEO_CAPTION_SEGMENT_SELECTOR = '.ytp-caption-segment, .captions-text';
+export const VIDEO_CAPTION_SEGMENT_SELECTOR = '.ytp-caption-segment';
 export const VIDEO_TRANSLATION_OVERLAY_ID = 'fluent-read-video-subtitle';
 export const VIDEO_TRANSLATION_LAYER_ID = 'fluent-read-video-subtitle-layer';
 export const VIDEO_TRANSLATION_BUTTON_ID = 'fluent-read-video-subtitle-button';
@@ -39,6 +39,8 @@ const VIDEO_DISPLAY_MODE_LABELS: Record<VideoSubtitleDisplayMode, string> = {
 };
 
 const VIDEO_CAPTION_EMPTY_GRACE_MS = 420;
+const VIDEO_CAPTION_STABILITY_MS = 360;
+const VIDEO_CAPTION_FALLBACK_SEGMENT_SELECTOR = '.captions-text';
 
 export function normalizeVideoSubtitleDisplayMode(value: unknown): VideoSubtitleDisplayMode {
   if (value === 'translation-only' || value === 'original-only') return value;
@@ -95,12 +97,19 @@ export function isYouTubeVideoPage(locationLike: Pick<Location, 'hostname' | 'pa
 }
 
 /** 读取当前播放器可见的原生字幕，不读取插件自己的译文节点。 */
+function getVisibleCaptionSegments(container: Element): HTMLElement[] {
+  const nativeSegments = Array.from(container.querySelectorAll<HTMLElement>(VIDEO_CAPTION_SEGMENT_SELECTOR));
+  const candidates = nativeSegments.length > 0
+    ? nativeSegments
+    : Array.from(container.querySelectorAll<HTMLElement>(VIDEO_CAPTION_FALLBACK_SEGMENT_SELECTOR));
+
+  return candidates.filter((segment) => !candidates.some((candidate) => candidate !== segment && candidate.contains(segment)));
+}
+
 export function readVisibleCaptionText(container: Element | null): string {
   if (!container) return '';
 
-  const candidates = Array.from(container.querySelectorAll<HTMLElement>(VIDEO_CAPTION_SEGMENT_SELECTOR));
-  const segments = candidates
-    .filter((segment) => !candidates.some((candidate) => candidate !== segment && candidate.contains(segment)))
+  const segments = getVisibleCaptionSegments(container)
     .map((segment) => segment.textContent?.replace(/[\s\u3000]+/g, ' ').trim() || '')
     .filter(Boolean);
 
@@ -178,19 +187,18 @@ function syncTranslationOverlayPosition(container: HTMLElement | null): void {
   if (!overlay || !player) return;
 
   const playerRect = player.getBoundingClientRect();
-  const candidates = Array.from(container.querySelectorAll<HTMLElement>(VIDEO_CAPTION_SEGMENT_SELECTOR));
-  const anchors = candidates
-    .filter((element) => !candidates.some((candidate) => candidate !== element && candidate.contains(element)))
+  const anchors = getVisibleCaptionSegments(container)
     .map((element) => element.getBoundingClientRect())
     .filter((rect) => rect.width > 0 && rect.height > 0);
-  const anchor = anchors.length > 0
-    ? {
-        left: Math.min(...anchors.map((rect) => rect.left)),
-        right: Math.max(...anchors.map((rect) => rect.right)),
-        top: Math.min(...anchors.map((rect) => rect.top)),
-        bottom: Math.max(...anchors.map((rect) => rect.bottom)),
-      }
-    : container.getBoundingClientRect();
+  // YouTube 在字幕切换期间会短暂保留一个空的、甚至回到播放器顶部的容器。
+  // 没有真实字幕片段时保留上一次位置，避免译文被重新定位到顶部后闪过。
+  if (anchors.length === 0) return;
+  const anchor = {
+    left: Math.min(...anchors.map((rect) => rect.left)),
+    right: Math.max(...anchors.map((rect) => rect.right)),
+    top: Math.min(...anchors.map((rect) => rect.top)),
+    bottom: Math.max(...anchors.map((rect) => rect.bottom)),
+  };
   const playerWidth = playerRect.width || 960;
   const playerHeight = playerRect.height || 540;
   const width = Math.min(Math.max(anchor.right - anchor.left, 240), Math.max(playerWidth - 24, 240));
@@ -450,6 +458,9 @@ export function mountVideoSubtitleTranslation(): () => void {
   let pendingTranslationSource = '';
   let pendingTranslationOverlay: HTMLElement | null = null;
   let translationLoopRunning = false;
+  let stableCaptionTimer: ReturnType<typeof setTimeout> | undefined;
+  let stableCaptionSource = '';
+  let stableCaptionOverlay: HTMLElement | null = null;
   const capturedSubtitleTracks = new Map<string, { url: string; cues: VideoSubtitleCue[] }>();
 
   const clearRenderedTranslation = () => {
@@ -464,8 +475,16 @@ export function mountVideoSubtitleTranslation(): () => void {
     emptyCaptionTimer = undefined;
   };
 
+  const cancelStableCaption = () => {
+    if (stableCaptionTimer) clearTimeout(stableCaptionTimer);
+    stableCaptionTimer = undefined;
+    stableCaptionSource = '';
+    stableCaptionOverlay = null;
+  };
+
   const resetTranslationState = () => {
     cancelCaptionEmptyClear();
+    cancelStableCaption();
     generation += 1;
     lastSource = '';
     lastTranslatedSource = '';
@@ -795,55 +814,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     if (event.key === 'Escape') closeMenu();
   };
 
-  const updateCaption = () => {
-    if (destroyed) return;
-
-    const container = findCaptionContainer();
-    if (!container) {
-      captionObserver?.disconnect();
-      captionObserver = undefined;
-      observedContainer = null;
-      scheduleCaptionEmptyClear();
-      return;
-    }
-
-    container.classList.add('notranslate');
-    applyVideoDisplayState(container);
-    const displayMode = normalizeVideoSubtitleDisplayMode(config.videoSubtitleDisplayMode);
-    const canTranslate = config.on && config.videoTranslationEnabled && config.videoSubtitleVisible !== false && displayMode !== 'original-only';
-    if (!canTranslate) {
-      resetTranslationState();
-      return;
-    }
-
-    const player = findVideoPlayer();
-    if (!player) return;
-    const source = readVisibleCaptionText(container);
-    const overlay = getOrCreateTranslationOverlay(player);
-    syncTranslationOverlayPosition(container);
-
-    if (!source) {
-      scheduleCaptionEmptyClear();
-      return;
-    }
-
-    cancelCaptionEmptyClear();
-    if (source === lastSource) {
-      if (lastTranslatedSource === source && lastTranslatedText && overlay.textContent !== lastTranslatedText) {
-        overlay.textContent = lastTranslatedText;
-        syncTranslationOverlayPosition(container);
-      }
-      return;
-    }
-
-    lastSource = source;
-    ++generation;
-    lastTranslatedSource = '';
-    lastTranslatedText = '';
-    overlay.textContent = '';
-
-    pendingTranslationSource = source;
-    pendingTranslationOverlay = overlay;
+  const startTranslationLoop = () => {
     if (translationLoopRunning) return;
 
     translationLoopRunning = true;
@@ -875,6 +846,89 @@ export function mountVideoSubtitleTranslation(): () => void {
         translationLoopRunning = false;
       }
     })();
+  };
+
+  const commitStableCaption = (source: string, overlay: HTMLElement, container: HTMLElement) => {
+    if (destroyed || readVisibleCaptionText(container) !== source || source === lastSource) return;
+
+    lastSource = source;
+    ++generation;
+    lastTranslatedSource = '';
+    lastTranslatedText = '';
+    overlay.textContent = '';
+    syncTranslationOverlayPosition(container);
+
+    pendingTranslationSource = source;
+    pendingTranslationOverlay = overlay;
+    startTranslationLoop();
+  };
+
+  const scheduleStableCaption = (source: string, overlay: HTMLElement) => {
+    if (stableCaptionTimer && stableCaptionSource === source) return;
+
+    cancelStableCaption();
+    stableCaptionSource = source;
+    stableCaptionOverlay = overlay;
+    stableCaptionTimer = setTimeout(() => {
+      stableCaptionTimer = undefined;
+      const nextSource = stableCaptionSource;
+      const nextOverlay = stableCaptionOverlay;
+      stableCaptionSource = '';
+      stableCaptionOverlay = null;
+      if (destroyed || !nextSource) return;
+
+      const container = findCaptionContainer();
+      const player = findVideoPlayer();
+      if (!container || !player || readVisibleCaptionText(container) !== nextSource) return;
+      const currentOverlay = nextOverlay?.isConnected ? nextOverlay : getOrCreateTranslationOverlay(player);
+      commitStableCaption(nextSource, currentOverlay, container);
+    }, VIDEO_CAPTION_STABILITY_MS);
+  };
+
+  const updateCaption = () => {
+    if (destroyed) return;
+
+    const container = findCaptionContainer();
+    if (!container) {
+      captionObserver?.disconnect();
+      captionObserver = undefined;
+      observedContainer = null;
+      scheduleCaptionEmptyClear();
+      return;
+    }
+
+    container.classList.add('notranslate');
+    applyVideoDisplayState(container);
+    const displayMode = normalizeVideoSubtitleDisplayMode(config.videoSubtitleDisplayMode);
+    const canTranslate = config.on && config.videoTranslationEnabled && config.videoSubtitleVisible !== false && displayMode !== 'original-only';
+    if (!canTranslate) {
+      resetTranslationState();
+      return;
+    }
+
+    const player = findVideoPlayer();
+    if (!player) return;
+    const source = readVisibleCaptionText(container);
+    const overlay = getOrCreateTranslationOverlay(player);
+
+    if (!source) {
+      scheduleCaptionEmptyClear();
+      return;
+    }
+
+    cancelCaptionEmptyClear();
+    if (source === lastSource) {
+      syncTranslationOverlayPosition(container);
+      if (lastTranslatedSource === source && lastTranslatedText && overlay.textContent !== lastTranslatedText) {
+        overlay.textContent = lastTranslatedText;
+        syncTranslationOverlayPosition(container);
+      }
+      return;
+    }
+
+    // 自动字幕会先逐词写入 DOM；只有连续稳定一小段时间后才提交翻译请求。
+    // 在等待期间保留原生字幕，避免每个半句都触发译文闪烁。
+    scheduleStableCaption(source, overlay);
   };
 
   const scheduleUpdate = () => {
@@ -947,6 +1001,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     pendingTranslationOverlay = null;
     if (debounceTimer) clearTimeout(debounceTimer);
     cancelCaptionEmptyClear();
+    cancelStableCaption();
     if (uiSyncTimer !== undefined) window.clearInterval(uiSyncTimer);
     captionObserver?.disconnect();
     unsubscribeConfig();

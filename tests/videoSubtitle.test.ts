@@ -53,6 +53,16 @@ describe('YouTube 视频字幕识别', () => {
         expect(readVisibleCaptionText(container)).toBe('A subtitle.');
     });
 
+    it('存在原生字幕片段时忽略字幕设置等 captions-text 文本', () => {
+        const subtitle = { textContent: 'the axioms and the basics.', contains: () => false };
+        const settings = { textContent: '英语（自动生成）点击 查看设置', contains: () => false };
+        const container = {
+            querySelectorAll: (selector: string) => selector === VIDEO_CAPTION_SEGMENT_SELECTOR ? [subtitle] : [settings],
+        } as unknown as Element;
+
+        expect(readVisibleCaptionText(container)).toBe('the axioms and the basics.');
+    });
+
     it('保留播放器菜单需要的三种显示模式，并为服务显示用户可读名称', () => {
         expect(normalizeVideoSubtitleDisplayMode('translation-only')).toBe('translation-only');
         expect(normalizeVideoSubtitleDisplayMode('original-only')).toBe('original-only');
