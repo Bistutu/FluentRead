@@ -15,8 +15,8 @@ function parseArgs(argv) {
     browserPath: '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
     background: true,
     timeout: 120000,
-    // 当前 main 的默认服务是“免费翻译服务”，内部按微软、DeepLX、谷歌顺序回退。
-    // 需要验证单一服务时可通过 --service microsoft 等参数覆盖。
+    // 当前 main 的默认服务是“免费翻译服务”，内部按微软、DeepLX、谷歌顺序回退；
+    // --service 只用于断言已预置的隔离 profile 配置，不会偷偷修改服务选择。
     service: 'freeTranslation',
   };
   for (let index = 0; index < argv.length; index += 1) {
