@@ -67,7 +67,7 @@ export default defineContentScript({
         
         mountNewApiComponent();
         // 图片翻译使用独立覆盖层，不改写宿主页面的 img 元素；点击入口由事件委托处理动态图片。
-        mountImageTranslator();
+        if (config.disableImageTranslator !== true) mountImageTranslator();
 
         // background.ts
         browser.runtime.onMessage.addListener((message: { message: string; }, sender: any, sendResponse: () => void) => {
@@ -110,6 +110,21 @@ export default defineContentScript({
                     if (!document.getElementById('fluent-read-selection-translator-container')) {
                         void mountSelectionTranslator(ctx);
                     }
+                }
+                sendResponse();
+                return true;
+            }
+            return false;
+        });
+
+        // 处理图片翻译控制消息
+        browser.runtime.onMessage.addListener((message: any, sender: any, sendResponse: () => void) => {
+            if (message.type === 'toggleImageTranslator') {
+                config.disableImageTranslator = message.isEnabled !== true;
+                if (message.isEnabled === true) {
+                    mountImageTranslator();
+                } else {
+                    unmountImageTranslator();
                 }
                 sendResponse();
                 return true;

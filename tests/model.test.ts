@@ -46,6 +46,13 @@ describe('AI 模型编号列表', () => {
     });
 });
 
+describe('图片翻译配置', () => {
+    it('默认启用，并保留用户关闭状态', () => {
+        expect(normalizeConfig({}).disableImageTranslator).toBe(false);
+        expect(normalizeConfig({disableImageTranslator: true}).disableImageTranslator).toBe(true);
+    });
+});
+
 describe('旧模型编号兼容迁移', () => {
     it('迁移官方服务中已退役或错误的模型编号', () => {
         const normalized = normalizeConfig({

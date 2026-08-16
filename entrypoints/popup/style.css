@@ -161,27 +161,29 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
 .notice { margin: 10px 0 -2px; color: #16855e; font-size: 10px; text-align: center; }
 .notice.error { color: #d9345e; }
 
-.features { margin-top: 16px; }
+.features { margin-top: 12px; }
 .features-eyebrow { margin: 0 2px 10px; }
 footer button {
   padding: 0; border: 0; color: var(--brand-strong); background: none; font-size: 10px; font-weight: 700; cursor: pointer;
 }
-.feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
 .feature-card {
-  display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 9px; min-height: 64px; padding: 9px 11px;
+  display: grid; grid-template-columns: 32px 1fr auto; align-items: center; gap: 8px; min-height: 58px; padding: 7px 10px;
   border: 1px solid var(--line); border-radius: 16px; background: var(--surface); text-align: left; cursor: pointer;
   transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
 .feature-card:hover:not(:disabled) { border-color: rgba(239, 71, 118, .32); transform: translateY(-1px); box-shadow: 0 8px 20px rgba(25, 32, 50, .07); }
-.feature-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; font-size: 13px; font-weight: 750; }
+.feature-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; font-size: 13px; font-weight: 750; }
 .feature-icon.rose { color: #e73a6c; background: #fff0f4; font-size: 22px; }
 .feature-icon.violet { color: #6f55d9; background: #f1edff; font-family: Georgia, serif; font-size: 19px; }
 .feature-icon.blue { color: #2678c9; background: #eaf4ff; font-size: 18px; }
 .feature-icon.amber { color: #a75f16; background: #fff4df; }
+.feature-icon.teal { color: #087f82; background: #e4f8f6; font-size: 19px; }
 :root.dark .feature-icon.rose { background: rgba(231, 58, 108, .14); }
 :root.dark .feature-icon.violet { background: rgba(111, 85, 217, .17); }
 :root.dark .feature-icon.blue { background: rgba(38, 120, 201, .17); }
 :root.dark .feature-icon.amber { background: rgba(177, 104, 29, .17); }
+:root.dark .feature-icon.teal { background: rgba(8, 127, 130, .18); }
 .feature-card > span:nth-child(2) { display: flex; flex-direction: column; min-width: 0; }
 .feature-card strong { font-size: 11.5px; line-height: 1.4; }
 .feature-card small { margin-top: 2px; overflow: hidden; color: var(--muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
@@ -238,6 +240,22 @@ footer > button { justify-self: end; }
 .interaction-preview kbd { padding: 9px 13px; border-radius: 10px; color: #fff; background: #252832; box-shadow: 0 5px 10px rgba(0, 0, 0, .18); font-size: 11px; }
 .selection-box { padding: 7px 9px; border: 1px dashed var(--brand); color: var(--brand-strong); }
 .pink-dot { width: 18px; height: 18px; border-radius: 50%; background: var(--brand); }
+.image-translation-preview {
+  display: flex; align-items: center; gap: 12px; min-height: 86px; padding: 14px;
+  border: 1px solid var(--line); border-radius: 16px; background: var(--surface-soft);
+}
+.image-translation-preview-art {
+  position: relative; display: grid; place-items: center; width: 78px; height: 58px; flex: none;
+  overflow: hidden; border-radius: 10px; color: rgba(23, 32, 51, .72); background: linear-gradient(135deg, #d9eef1, #f3d9dc 55%, #f9efd1);
+  font-size: 10px; font-weight: 750;
+}
+.image-translation-preview-art b {
+  position: absolute; right: 5px; bottom: 5px; display: grid; place-items: center; width: 20px; height: 20px;
+  border: 1px solid rgba(255, 255, 255, .8); border-radius: 999px; color: #fff; background: rgba(20, 20, 20, .7); font-size: 11px;
+}
+.image-translation-preview > div:last-child { display: flex; flex-direction: column; gap: 4px; }
+.image-translation-preview strong { font-size: 11px; }
+.image-translation-preview small { color: var(--muted); font-size: 9.5px; line-height: 1.45; }
 .setting-row, .select-row {
   gap: 18px; min-height: 66px; margin-top: 12px; padding: 13px 14px;
   border: 1px solid var(--line); border-radius: 15px; background: var(--surface-soft);

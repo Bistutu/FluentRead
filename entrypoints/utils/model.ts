@@ -45,6 +45,7 @@ export class Config {
     customFloatingBallHotkey: string; // 自定义悬浮球快捷键
     customHotkey: string; // 自定义鼠标悬浮快捷键
     disableSelectionTranslator: boolean; // 是否禁用划词翻译
+    disableImageTranslator: boolean; // 是否禁用图片翻译
     deeplx: string; // DeepLX 服务地址
     selectionTranslatorMode: string; // 划词翻译显示模式: 'disabled' | 'bilingual' | 'translation-only'
     newApiUrl: string; // NewAPI地址
@@ -92,6 +93,7 @@ export class Config {
         this.customFloatingBallHotkey = ''; // 自定义快捷键为空
         this.customHotkey = ''; // 自定义鼠标悬浮快捷键为空
         this.disableSelectionTranslator = true; // 默认关闭划词翻译
+        this.disableImageTranslator = false; // 默认启用图片翻译
         this.deeplx = defaultOption.deeplx; // DeepLX 默认服务地址
         this.selectionTranslatorMode = 'disabled'; // 默认关闭划词翻译
         this.newApiUrl = 'http://localhost:3000'; // NewAPI 默认地址
