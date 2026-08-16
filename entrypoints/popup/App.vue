@@ -32,15 +32,11 @@
         <section class="donation-card">
           <button class="donation-close" type="button" aria-label="关闭赞赏页" @click="closeDonation">×</button>
           <div class="donation-icon" aria-hidden="true"><Coffee /></div>
-          <span class="eyebrow">支持流畅阅读</span>
-          <h2 id="donation-title">如果它帮到了你</h2>
-          <p class="donation-description">欢迎请作者喝杯咖啡，让这段开源阅读之旅继续下去。</p>
+          <span class="eyebrow">开源免费软件</span>
+          <h2 id="donation-title">想支持作者吗？</h2>
+          <p class="donation-qr-label">微信扫码赞赏</p>
           <div class="donation-qr-frame">
             <img src="/misc/approve.jpg" alt="流畅阅读赞赏码" />
-          </div>
-          <div class="donation-note">
-            <strong>微信扫一扫</strong>
-            <span>感谢你的支持与鼓励 ❤️</span>
           </div>
         </section>
       </div>
