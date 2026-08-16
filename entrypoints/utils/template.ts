@@ -56,7 +56,6 @@ export function commonMsgTemplate(origin: string, context?: string, prompt?: str
 
     const payload: any = {
         'model': model,
-        "temperature": 1.0,
         'messages': [
             {'role': 'system', 'content': system},
             {'role': 'user', 'content': user},
@@ -103,10 +102,6 @@ export function deepseekResponsesMsgTemplate(origin: string, context?: string, p
         input: user,
     };
 
-    if (getDeepSeekThinkingMode() === 'disabled') {
-        payload.temperature = 0.7;
-    }
-
     return JSON.stringify(payload);
 }
 
@@ -123,10 +118,6 @@ export function deepseekMsgTemplate(origin: string, context?: string, prompt?: s
         ],
         thinking: {type: thinking},
     };
-
-    if (thinking === 'disabled') {
-        payload.temperature = 0.7;
-    }
 
     return JSON.stringify(mergeCustomBody(payload, currentCustomBody()));
 }

@@ -24,6 +24,7 @@ import {
     buildPageSummaryPrompt,
     buildPageSummarySystemPrompt,
     deepseekMsgTemplate,
+    deepseekResponsesMsgTemplate,
     geminiMsgTemplate,
     tongyiMsgTemplate,
 } from '@/entrypoints/utils/template';
@@ -66,8 +67,8 @@ beforeEach(() => {
 
 describe('mergeCustomBody（纯函数）', () => {
     it('raw 为空字符串时，payload 原样返回', () => {
-        const payload = { model: 'x', temperature: 1 };
-        expect(mergeCustomBody(payload, '')).toEqual({ model: 'x', temperature: 1 });
+        const payload = { model: 'x', max_tokens: 128 };
+        expect(mergeCustomBody(payload, '')).toEqual({ model: 'x', max_tokens: 128 });
     });
 
     it('raw 为纯空白时，payload 原样返回', () => {
@@ -88,9 +89,9 @@ describe('mergeCustomBody（纯函数）', () => {
     });
 
     it('用户字段优先：覆盖同名的默认字段', () => {
-        const payload: any = { temperature: 1.0 };
-        const result = mergeCustomBody(payload, '{"temperature": 0.6}');
-        expect(result.temperature).toBe(0.6);
+        const payload: any = { model: 'default-model' };
+        const result = mergeCustomBody(payload, '{"model": "custom-model"}');
+        expect(result.model).toBe('custom-model');
     });
 
     it('支持嵌套对象（如 thinking 这类控制字段）', () => {
@@ -172,7 +173,6 @@ describe('commonMsgTemplate（集成）', () => {
         const body = JSON.parse(commonMsgTemplate('hello'));
         expect(body).toEqual({
             model: 'gpt-5.6-sol',
-            temperature: 1.0,
             messages: [
                 { role: 'system', content: 'You are a translator.' },
                 { role: 'user', content: 'Translate to zh-Hans: hello' },
@@ -221,13 +221,10 @@ describe('自定义请求体注入 thinking 字段（issue #213）', () => {
         expect(body.thinking).toEqual({ type: 'enabled' });
     });
 
-    it('可同时覆盖 temperature 并注入 thinking', () => {
-        mockConfig.customBody = {
-            openai: '{"thinking": {"type": "disabled"}, "temperature": 0.6}',
-        };
+    it('可注入 thinking', () => {
+        mockConfig.customBody = { openai: '{"thinking": {"type": "disabled"}}' };
         const body = JSON.parse(commonMsgTemplate('hi'));
         expect(body.thinking).toEqual({ type: 'disabled' });
-        expect(body.temperature).toBe(0.6);
     });
 
     it('带格式（缩进/换行）的 JSON 也能正确解析', () => {
@@ -252,6 +249,10 @@ describe('所有 AI 请求模板的自定义请求体支持', () => {
         [services.minimax, commonMsgTemplate],
         [services.cozecom, cozeTemplate],
     ] as const;
+    const temperatureTemplateCases = [
+        ...templateCases,
+        [services.deepseek, deepseekResponsesMsgTemplate],
+    ] as const;
 
     it.each(templateCases)('%s 模板会合并顶层自定义字段', (service, template) => {
         mockConfig.service = service;
@@ -259,6 +260,13 @@ describe('所有 AI 请求模板的自定义请求体支持', () => {
 
         const body = JSON.parse(template('hello'));
         expect(body.request_tag).toBe('custom');
+    });
+
+    it.each(temperatureTemplateCases)('%s 模板默认不发送 temperature', (service, template) => {
+        mockConfig.service = service;
+
+        const body = JSON.parse(template('hello'));
+        expect(body).not.toHaveProperty('temperature');
     });
 
     it('自定义请求体入口覆盖所有 AI 服务，但不覆盖机器翻译', () => {
