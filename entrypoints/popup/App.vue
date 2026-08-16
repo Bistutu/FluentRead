@@ -451,7 +451,7 @@ async function clearCache() {
     const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) throw new Error('No active tab');
     await browser.tabs.sendMessage(tab.id, { message: 'clearCache' });
-    showNotice('当前页面的翻译缓存已清除');
+    showNotice('全部翻译缓存已清除');
   } catch (error) {
     console.error(error);
     showNotice('缓存清除失败', 'error');

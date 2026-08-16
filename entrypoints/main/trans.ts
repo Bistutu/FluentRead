@@ -1,5 +1,4 @@
 import { checkConfig, skipNode } from "../utils/check";
-import { cache } from "../utils/cache";
 import { services, servicesType } from "../utils/option";
 import { insertFailedTip, insertLoadingSpinner } from "../utils/icon";
 import { styles } from "@/entrypoints/utils/constant";
@@ -201,20 +200,6 @@ function asTranslationNode(node: unknown): HTMLElement | null {
     return node instanceof HTMLElement ? node : null;
 }
 
-function getCachedInnerHTML(node: HTMLElement, cached: string): string {
-    // 旧缓存保存的是完整 outerHTML；新的渲染器只接受目标元素内部内容。
-    try {
-        const parsed = new DOMParser().parseFromString(cached, 'text/html');
-        const first = parsed.body.firstElementChild;
-        if (first && first.tagName.toLowerCase() === node.tagName.toLowerCase()) {
-            return first.innerHTML;
-        }
-    } catch {
-        // 缓存格式异常时按普通译文处理，后续白名单解析会继续保护 DOM。
-    }
-    return cached;
-}
-
 function markAttemptError(
     node: HTMLElement,
     attempt: ReturnType<typeof beginTranslation>,
@@ -267,7 +252,6 @@ async function renderSingleResult(
     attempt: NonNullable<ReturnType<typeof beginTranslation>>,
     origin: string,
     translation: Promise<string> | string,
-    fromCache: boolean,
 ): Promise<void> {
     const { state, generation } = attempt;
     const spinner = state.spinner;
@@ -276,8 +260,7 @@ async function renderSingleResult(
         let text = await translation;
         spinner?.remove();
 
-        if (fromCache) text = getCachedInnerHTML(node, text);
-        else text = beautyHTML(text);
+        text = beautyHTML(text);
 
         if (!text || text === origin) {
             discardTranslation(node, state);
@@ -291,7 +274,6 @@ async function renderSingleResult(
 
         replaceWithSafeTranslation(node, text);
         setTranslatedHTML(node, node.innerHTML);
-        cache.localSetDual(state.sourceOuterHTML, node.outerHTML);
     } catch (error) {
         markAttemptError(node, attempt, spinner, error);
     }
@@ -338,9 +320,7 @@ export function handleBilingualTranslation(node: unknown, slide: boolean): void 
     const spinner = insertLoadingSpinner(target);
     setSpinner(target, spinner);
 
-    const cached = cache.localGet(origin);
-    const translation = cached ?? translateText(origin, document.title);
-    void renderBilingualResult(target, attempt, translation);
+    void renderBilingualResult(target, attempt, translateText(origin, document.title));
 }
 
 // 单语/仅译文翻译。
@@ -373,19 +353,16 @@ export function singleTranslate(node: unknown): void {
     const attempt = beginTranslation(target, 'single');
     if (!attempt) return;
 
-    const cached = cache.localGet(attempt.state.sourceOuterHTML);
-    const translation = cached
-        ? Promise.resolve(cached)
-        : config.service === services.microsoft
-            ? translateMicrosoftHtml(target)
-            : translateText(origin, document.title);
+    const translation = config.service === services.microsoft
+        ? translateMicrosoftHtml(target)
+        : translateText(origin, document.title);
 
     // 先创建翻译请求，再插入 loading 节点。微软 HTML 翻译会克隆目标
     // 元素；如果顺序相反，loading 节点也会被带进服务响应和最终译文。
     const spinner = insertLoadingSpinner(target);
     setSpinner(target, spinner);
 
-    void renderSingleResult(target, attempt, origin, translation, Boolean(cached));
+    void renderSingleResult(target, attempt, origin, translation);
 }
 
 async function translateMicrosoftHtml(node: HTMLElement): Promise<string> {
@@ -411,7 +388,7 @@ async function translateMicrosoftHtml(node: HTMLElement): Promise<string> {
 
     if (texts.length === 0) return clone.innerHTML;
 
-    const translations = await translateTextBatch(texts, document.title, {useCache: false});
+    const translations = await translateTextBatch(texts, document.title);
     translations.forEach((translation, index) => {
         const textNodeInfo = textNodes[index];
         if (!textNodeInfo) return;
@@ -423,18 +400,9 @@ async function translateMicrosoftHtml(node: HTMLElement): Promise<string> {
 }
 
 export const handleBtnTranslation = throttle((node: any) => {
-    let origin = node.innerText;
-    let rs = cache.localGet(origin);
-    if (rs) {
-        node.innerText = rs;
-        return;
-    }
-
-    config.count++ && storage.setItem('local:config', JSON.stringify(config));
-
-    browser.runtime.sendMessage({ context: document.title, origin: origin })
+    const origin = node.innerText;
+    translateText(origin, document.title)
         .then((text: string) => {
-            cache.localSetDual(origin, text);
             node.innerText = text;
         }).catch((error: any) => console.error('调用失败:', error))
 }, 250)
