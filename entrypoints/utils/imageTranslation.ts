@@ -255,6 +255,12 @@ function getTextColor(backgroundColor: string): string {
     return luminance > 150 ? '#111827' : '#ffffff';
 }
 
+function normalizeTranslationComparison(text: string): string {
+    return text
+        .toLocaleLowerCase()
+        .replace(/[\s\p{P}\p{S}]+/gu, '');
+}
+
 interface RenderedImageRect {
     left: number;
     top: number;
@@ -311,12 +317,38 @@ function drawTranslatedText(
     context.textAlign = 'center';
     context.textBaseline = 'middle';
     context.fillStyle = getTextColor(backgroundColor);
-    context.font = `600 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-    while (fontSize > 10 && context.measureText(text).width > width - horizontalPadding * 2) {
-        fontSize -= 1;
+    const maxWidth = Math.max(1, width - horizontalPadding * 2);
+    const getTokens = () => /[\u2e80-\u9fff\u3040-\u30ff\uac00-\ud7af]/u.test(text)
+        ? Array.from(text.replace(/\s+/g, ''))
+        : text.trim().split(/\s+/).filter(Boolean);
+    const getLines = () => {
+        const lines: string[] = [];
+        let current = '';
+        getTokens().forEach(token => {
+            const candidate = current ? `${current}${/[\u2e80-\u9fff\u3040-\u30ff\uac00-\ud7af]/u.test(token) ? '' : ' '}${token}` : token;
+            if (current && context.measureText(candidate).width > maxWidth) {
+                lines.push(current);
+                current = token;
+            } else {
+                current = candidate;
+            }
+        });
+        if (current) lines.push(current);
+        return lines.length ? lines : [''];
+    };
+    let lines: string[] = [];
+    while (fontSize >= 10) {
         context.font = `600 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+        lines = getLines();
+        const lineHeight = fontSize * 1.14;
+        if (lines.length <= 3 && lines.length * lineHeight <= height - 2) break;
+        fontSize -= 1;
     }
-    context.fillText(text, left + width / 2, top + height / 2, Math.max(1, width - horizontalPadding * 2));
+    const lineHeight = fontSize * 1.14;
+    const firstLineTop = top + (height - lineHeight * lines.length) / 2 + lineHeight / 2;
+    lines.slice(0, 3).forEach((line, index) => {
+        context.fillText(line, left + width / 2, firstLineTop + index * lineHeight, maxWidth);
+    });
 }
 
 function renderTranslatedBitmap(state: ImageTranslationState, renderedWidth: number, renderedHeight: number): void {
@@ -395,10 +427,12 @@ async function translateImage(state: ImageTranslationState): Promise<void> {
         );
         if (controller.signal.aborted) return;
 
-        const translatedLines = lines.map((line, index) => ({
-            ...line,
-            text: translations[index] || line.text,
-        }));
+        const translatedLines = lines.flatMap((line, index) => {
+            const text = translations[index] || line.text;
+            return normalizeTranslationComparison(text) === normalizeTranslationComparison(line.text)
+                ? []
+                : [{ ...line, text }];
+        });
         const prepared = await withTimeout(prepareTranslatedImage(imageData, translatedLines), IMAGE_READ_TIMEOUT_MS, '图片背景修复超时');
         state.translatedImage = prepared.translated;
         state.lines = prepared.lines;
