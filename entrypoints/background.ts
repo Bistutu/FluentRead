@@ -2,6 +2,7 @@ import {_service} from "@/entrypoints/service/_service";
 import {translateMicrosoftTexts} from "@/entrypoints/service/microsoft";
 import {config, configReady} from "@/entrypoints/utils/config";
 import {CONTEXT_MENU_IDS} from "@/entrypoints/utils/constant";
+import {synthesizeEdgeTts} from "@/entrypoints/utils/edgeTts";
 import {customModelString} from "@/entrypoints/utils/option";
 import {
     buildTranslationCacheKey,
@@ -21,6 +22,13 @@ async function translateWithMicrosoftInBackground(text: string, targetLang: stri
         throw new Error('微软翻译未返回译文');
     }
     return translatedText;
+}
+
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (const byte of bytes) binary += String.fromCharCode(byte);
+    return btoa(binary);
 }
 
 interface TranslationRequestMessageBase {
@@ -378,6 +386,17 @@ export default defineBackground({
                     if (message.type === 'openOptionsPage') {
                         await browser.runtime.openOptionsPage();
                         resolve({ success: true });
+                        return;
+                    }
+
+                    if (message.type === 'selectionTts') {
+                        const result = await synthesizeEdgeTts(message.text, message.language);
+                        resolve({
+                            success: true,
+                            audioBase64: arrayBufferToBase64(result.audio),
+                            contentType: result.contentType,
+                            voice: result.voice,
+                        });
                         return;
                     }
 

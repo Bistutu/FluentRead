@@ -47,6 +47,7 @@ export class Config {
     disableSelectionTranslator: boolean; // 是否禁用划词翻译
     deeplx: string; // DeepLX 服务地址
     selectionTranslatorMode: string; // 划词翻译显示模式: 'disabled' | 'bilingual' | 'translation-only'
+    selectionTranslatorTrigger: string; // 划词翻译触发方式: 'direct' | 'icon' | 'dot'
     newApiUrl: string; // NewAPI地址
     maxConcurrentTranslations: number; // 最大并发翻译数量
     youdaoAppKey: string; // 有道翻译 App Key
@@ -94,6 +95,7 @@ export class Config {
         this.disableSelectionTranslator = true; // 默认关闭划词翻译
         this.deeplx = defaultOption.deeplx; // DeepLX 默认服务地址
         this.selectionTranslatorMode = 'disabled'; // 默认关闭划词翻译
+        this.selectionTranslatorTrigger = 'icon'; // 默认显示可发现的操作图标
         this.newApiUrl = 'http://localhost:3000'; // NewAPI 默认地址
         this.maxConcurrentTranslations = 6; // 默认最大并发数为6
         this.youdaoAppKey = ''; // 有道翻译 App Key
@@ -207,6 +209,14 @@ export function normalizeConfig(value: unknown): Config {
     if (!['auto', 'responses', 'chat'].includes(normalized.deepseekApiType)) {
         normalized.deepseekApiType = 'auto';
     }
+
+    if (!['disabled', 'bilingual', 'translation-only'].includes(normalized.selectionTranslatorMode)) {
+        normalized.selectionTranslatorMode = 'disabled';
+    }
+    if (!['direct', 'icon', 'dot'].includes(normalized.selectionTranslatorTrigger)) {
+        normalized.selectionTranslatorTrigger = 'icon';
+    }
+    normalized.disableSelectionTranslator = normalized.selectionTranslatorMode === 'disabled';
 
     return normalized;
 }
