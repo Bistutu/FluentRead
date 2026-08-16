@@ -23,6 +23,42 @@ export interface PopupPosition {
     placement: 'top' | 'bottom';
 }
 
+const languageAliases: Record<string, string> = {
+    cmn: 'zh',
+    zho: 'zh',
+    chi: 'zh',
+    eng: 'en',
+    jpn: 'ja',
+    kor: 'ko',
+    fra: 'fr',
+    fre: 'fr',
+    deu: 'de',
+    ger: 'de',
+    spa: 'es',
+    rus: 'ru',
+    ita: 'it',
+    por: 'pt',
+    ara: 'ar',
+    hin: 'hi',
+    tha: 'th',
+    vie: 'vi',
+    nld: 'nl',
+    dut: 'nl',
+    pol: 'pl',
+    tur: 'tr',
+};
+
+/** Compare detected and configured languages without depending on region/script details. */
+export function isSameLanguage(detectedLanguage: string | undefined, targetLanguage: string | undefined): boolean {
+    const detected = String(detectedLanguage ?? '').trim().replace(/_/g, '-').toLowerCase();
+    const target = String(targetLanguage ?? '').trim().replace(/_/g, '-').toLowerCase();
+    if (!detected || !target || ['auto', 'detect', 'unknown', 'und'].includes(detected) || ['auto', 'detect', 'unknown', 'und'].includes(target)) return false;
+
+    const detectedBase = languageAliases[detected] || detected.split('-')[0];
+    const targetBase = languageAliases[target] || target.split('-')[0];
+    return Boolean(detectedBase && targetBase && detectedBase === targetBase);
+}
+
 const DEFAULT_PADDING = 12;
 const DEFAULT_GAP = 10;
 
