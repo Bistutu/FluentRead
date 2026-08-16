@@ -48,11 +48,16 @@
       @pointercancel="cancelPointerInteraction"
     >
       <svg class="floating-ball-mascot" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M7.2 11.8 8.4 5.3l5.1 3.1a9.5 9.5 0 0 1 5 0l5.1-3.1 1.2 6.5A9.4 9.4 0 0 1 16 25.2a9.4 9.4 0 0 1-8.8-13.4Z" fill="#F45B87" />
-        <circle cx="12.2" cy="15.2" r="1.45" fill="white" />
-        <circle cx="19.8" cy="15.2" r="1.45" fill="white" />
-        <path d="M13.1 19.1c.8.9 1.8 1.4 2.9 1.4s2.1-.5 2.9-1.4" stroke="white" stroke-width="1.45" stroke-linecap="round" />
-        <circle cx="16" cy="17.8" r=".85" fill="#FFB0C6" />
+        <path d="M6.6 12.7 7.9 5.1a1 1 0 0 1 1.5-.6l5.3 3.3a9.6 9.6 0 0 1 2.6 0l5.3-3.3a1 1 0 0 1 1.5.6l1.3 7.6A9.6 9.6 0 0 1 16 25.8a9.6 9.6 0 0 1-9.4-13.1Z" fill="#FF7FA3" stroke="#D94E76" stroke-width=".8" />
+        <path d="m9.1 7 4.2 2.6-3.4 1.1L9.1 7Zm13.8 0-4.2 2.6 3.4 1.1.8-3.7Z" fill="#FFC4D3" />
+        <ellipse cx="12.2" cy="15.4" rx="1.5" ry="1.8" fill="#633548" />
+        <ellipse cx="19.8" cy="15.4" rx="1.5" ry="1.8" fill="#633548" />
+        <circle cx="12.7" cy="14.8" r=".45" fill="white" />
+        <circle cx="20.3" cy="14.8" r=".45" fill="white" />
+        <ellipse cx="13.8" cy="19.2" rx="2.4" ry="1.7" fill="#FFD5DF" />
+        <ellipse cx="18.2" cy="19.2" rx="2.4" ry="1.7" fill="#FFD5DF" />
+        <path d="m15 18.4 1 .8 1-.8c.1 1-.3 1.5-1 1.5s-1.1-.5-1-1.5Z" fill="#D94E76" />
+        <path d="M16 20.1c.5.8 1.3 1.1 2.1.4M16 20.1c-.5.8-1.3 1.1-2.1.4M10.9 18.7l-4.2-.6M10.9 20l-4 .8M21.1 18.7l4.2-.6M21.1 20l4 .8" stroke="#D94E76" stroke-width=".75" stroke-linecap="round" />
       </svg>
       <span v-if="isTranslating" class="check-mark" aria-hidden="true" />
     </button>
