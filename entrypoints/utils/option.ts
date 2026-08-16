@@ -235,7 +235,7 @@ export const models = new Map<string, Array<string>>([
     [services.huanYuanTranslation, ["hunyuan-translation", "hunyuan-translation-lite", customModelString]],
     [services.newapi, [currentModelIds.openai, "gpt-5.4-mini", "gemini-3.6-flash", "gemini-3.5-flash-lite", currentModelIds.claude, currentModelIds.deepseek, "kimi-k2.7-code", customModelString]],
     [services.grok, [currentModelIds.grok, "grok-4.3", customModelString]],
-    [services.doubao, [customModelString]],
+    [services.doubao, ["doubao-seed-1-6-250615", customModelString]],
 
     // mix model
     [services.siliconCloud, ["deepseek-ai/DeepSeek-V4-Pro", "deepseek-ai/DeepSeek-V4-Flash", "zai-org/GLM-5.2", "Qwen/Qwen3.6-27B", "Qwen/Qwen3.6-35B-A3B", "deepseek-ai/DeepSeek-V3.2", "deepseek-ai/DeepSeek-R1", customModelString]],
@@ -243,6 +243,14 @@ export const models = new Map<string, Array<string>>([
     [services.groq, [currentModelIds.groqLarge, currentModelIds.groqSmall, "qwen/qwen3.6-27b", customModelString]],
     [services.openrouter, ["openrouter/auto", "openai/gpt-5.6-sol", "google/gemini-3.6-flash", "anthropic/claude-fable-5", "anthropic/claude-opus-5", "x-ai/grok-4.5", "deepseek/deepseek-v4-pro", "moonshotai/kimi-k3", "z-ai/glm-5.2", customModelString]]
 ]);
+
+// 每个需要模型选择的 AI 服务都把列表第一项作为开箱即用的默认模型。
+// 统一从模型列表生成，避免设置页、配置初始化和请求模板各自维护一份默认值。
+export const defaultModels = new Map<string, string>(
+    Array.from(models.entries())
+        .map(([service, modelOptions]) => [service, modelOptions[0] || ""] as [string, string])
+        .filter(([, model]) => Boolean(model)),
+);
 
 export const options = {
     on: [
