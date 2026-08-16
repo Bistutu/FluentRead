@@ -66,6 +66,13 @@ describe('service catalog helpers', () => {
     })
   })
 
+  it('keeps the custom model as the last option when it is selected', () => {
+    expect(splitModelOptions(['one', 'two', 'three', customModelString, 'four'], customModelString)).toEqual({
+      common: ['one', 'two', 'three', 'four'],
+      more: [customModelString],
+    })
+  })
+
   it('does not create a more group for a short model list', () => {
     expect(splitModelOptions(['one', 'two'], 'two')).toEqual({
       common: ['one', 'two'],

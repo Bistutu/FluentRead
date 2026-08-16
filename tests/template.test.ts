@@ -35,7 +35,7 @@ import {
     normalizeCustomBodyMapping,
 } from '@/entrypoints/utils/custom-body';
 import { buildHunyuanTranslationRequestBody } from '@/entrypoints/service/hunyuan-translation';
-import { services, servicesType } from '@/entrypoints/utils/option';
+import { customModelString, services, servicesType } from '@/entrypoints/utils/option';
 
 beforeEach(() => {
     // 每个用例前重置 mock 配置，避免相互污染
@@ -181,10 +181,18 @@ describe('commonMsgTemplate（集成）', () => {
     });
 
     it('选择“自定义模型”时使用 customModel 的值', () => {
-        mockConfig.model = { openai: '自定义模型' };
+        mockConfig.model = { openai: customModelString };
         mockConfig.customModel = { openai: 'gpt-4o-mini' };
         const body = JSON.parse(commonMsgTemplate('hello'));
         expect(body.model).toBe('gpt-4o-mini');
+    });
+
+    it('自定义接口选择自定义模型时使用 customModel 的值', () => {
+        mockConfig.service = services.custom;
+        mockConfig.model = { [services.custom]: customModelString };
+        mockConfig.customModel = { [services.custom]: 'local/translation-model' };
+        const body = JSON.parse(commonMsgTemplate('hello'));
+        expect(body.model).toBe('local/translation-model');
     });
 
     it('非法的自定义请求体被忽略，标准请求体保持完整', () => {
