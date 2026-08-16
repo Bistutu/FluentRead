@@ -3,6 +3,8 @@
  * 在 offscreen 环境中处理 Chrome Translation API 调用
  */
 
+import { recognizeImage } from './imageOcr';
+
 // 语言代码映射
 const languageMap: { [key: string]: string } = {
     'zh-Hans': 'zh',
@@ -226,6 +228,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             });
         
         return true; // 保持消息通道开放以支持异步响应
+    }
+
+    if (message.type === 'FLUENT_READ_IMAGE_OCR_OFFSCREEN') {
+        recognizeImage(message.image, message.sourceLanguage)
+            .then(lines => sendResponse({ success: true, lines }))
+            .catch(error => {
+                console.error('图片 OCR 失败:', error);
+                sendResponse({
+                    success: false,
+                    error: error instanceof Error ? error.message : String(error),
+                });
+            });
+
+        return true;
     }
     
     return false;

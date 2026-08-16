@@ -7,6 +7,7 @@ import {
     buildTranslationCacheKey,
     translationCache,
 } from "@/entrypoints/utils/translationCache";
+import { recognizeImageWithOffscreen } from "@/entrypoints/service/chrome-translator";
 
 // 翻译状态管理
 let translationStateMap = new Map<number, boolean>(); // tabId -> isTranslated
@@ -384,6 +385,12 @@ export default defineBackground({
                     if (message.type === 'clearTranslationCache') {
                         await translationCache.clear();
                         resolve({ success: true });
+                        return;
+                    }
+
+                    if (message.type === 'fluentReadImageOcr') {
+                        const lines = await recognizeImageWithOffscreen(message.image, message.sourceLanguage);
+                        resolve({ success: true, lines });
                         return;
                     }
 

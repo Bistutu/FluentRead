@@ -34,6 +34,11 @@
 
 <img src="/sample-git-3.gif" alt="智能缓存" style="width: 60%; max-width: 20%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
 
+### 图片翻译
+将鼠标移到网页图片上，右下角会出现一个低调的“文”按钮。点击后，FluentRead 会在本地识别图片中的中英文或日文文字，并把译文覆盖在对应文字位置；再次点击按钮即可恢复原图，再次点击可以重新翻译。
+
+图片翻译不会修改原始 `<img>` 元素。出于隐私和浏览器安全限制，无法读取的跨域图片需要先保存到本地后再翻译。
+
 ## 操作方式
 
 <img src="/hotkey.png" alt="快捷键操作" style="width: 35%; max-width: 100%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />

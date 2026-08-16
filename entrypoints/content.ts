@@ -7,6 +7,7 @@ import { mountFloatingBall, unmountFloatingBall, toggleFloatingBallPosition } fr
 import { mountSelectionTranslator, unmountSelectionTranslator } from "@/entrypoints/utils/selectionTranslator";
 import { cancelAllTranslations, translateText } from "@/entrypoints/utils/translateApi";
 import { mountNewApiComponent } from "@/entrypoints/utils/newApi";
+import { mountImageTranslator, unmountImageTranslator } from "@/entrypoints/utils/imageTranslation";
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import { createShadowRootUi, type ShadowRootContentScriptUi } from 'wxt/utils/content-script-ui/shadow-root';
 
@@ -65,6 +66,8 @@ export default defineContentScript({
         }
         
         mountNewApiComponent();
+        // 图片翻译使用独立覆盖层，不改写宿主页面的 img 元素；点击入口由事件委托处理动态图片。
+        mountImageTranslator();
 
         // background.ts
         browser.runtime.onMessage.addListener((message: { message: string; }, sender: any, sendResponse: () => void) => {
@@ -146,6 +149,7 @@ export default defineContentScript({
             unmountFloatingBall();
             // 移除划词翻译组件
             unmountSelectionTranslator();
+            unmountImageTranslator();
             removeExistingTooltip();
         });
     }

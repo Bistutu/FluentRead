@@ -1,4 +1,5 @@
 import { config } from "@/entrypoints/utils/config";
+import type { OcrLine } from "@/entrypoints/utils/imageTranslationCore";
 
 /**
  * Chrome 内置翻译 API 服务
@@ -72,6 +73,28 @@ async function ensureOffscreenDocument() {
         console.error('创建 offscreen 文档失败:', error);
         throw new Error('无法创建 offscreen 文档');
     }
+}
+
+// 在 offscreen 页面中运行本地 OCR，避免内容脚本从网页源启动扩展 worker 时被浏览器拦截。
+export async function recognizeImageWithOffscreen(image: string, sourceLanguage: string): Promise<OcrLine[]> {
+    await ensureOffscreenDocument();
+
+    const response = await new Promise<any>((resolve, reject) => {
+        chrome.runtime.sendMessage({
+            type: 'FLUENT_READ_IMAGE_OCR_OFFSCREEN',
+            image,
+            sourceLanguage,
+        }, (result: any) => {
+            if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+            } else {
+                resolve(result);
+            }
+        });
+    });
+
+    if (response?.success) return response.lines || [];
+    throw new Error(response?.error || '图片 OCR 失败');
 }
 
 // 主翻译函数
