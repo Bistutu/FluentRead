@@ -1,6 +1,13 @@
 import {_service} from "@/entrypoints/service/_service";
 import {translateMicrosoftTexts} from "@/entrypoints/service/microsoft";
-import {config, configReady, CONFIG_PERSIST_MESSAGE, saveConfig} from "@/entrypoints/utils/config";
+import {
+    applyConfigHistoryAction,
+    config,
+    configReady,
+    CONFIG_HISTORY_MESSAGE,
+    CONFIG_PERSIST_MESSAGE,
+    saveConfig,
+} from "@/entrypoints/utils/config";
 import {CONTEXT_MENU_IDS} from "@/entrypoints/utils/constant";
 import {resolveConfiguredModel, servicesType} from "@/entrypoints/utils/option";
 import {synthesizeEdgeTts} from "@/entrypoints/utils/edgeTts";
@@ -508,11 +515,24 @@ export default defineBackground({
                             .catch(() => undefined)
                             .then(() => {
                                 if (sequence && latestConfigSequenceByClient.get(clientId) !== sequence) return;
-                                return saveConfig(message.config);
+                                return saveConfig(message.config, {recordHistory: true});
                             });
                         configPersistQueue = persist.catch(() => undefined);
                         await persist;
                         resolve({ success: true });
+                        return;
+                    }
+
+                    if (message.type === CONFIG_HISTORY_MESSAGE) {
+                        const action = message.action === 'undo' || message.action === 'redo' || message.action === 'restore'
+                            ? message.action
+                            : null;
+                        if (!action) {
+                            resolve({success: false, error: '无效的配置历史操作'});
+                            return;
+                        }
+                        const history = await applyConfigHistoryAction(action, typeof message.version === 'number' ? message.version : undefined);
+                        resolve({success: true, history});
                         return;
                     }
 

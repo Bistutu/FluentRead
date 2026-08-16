@@ -218,4 +218,60 @@ describe('统一配置存储', () => {
 
         expect(configStore.config.to).toBe('ja');
     });
+
+    it('记录配置版本、时间，并限制为最近五条快照', async () => {
+        const configStore = await loadConfigModule(storedConfig);
+        await Promise.all([configStore.configReady, configStore.configHistoryReady]);
+
+        for (const to of ['en', 'ja', 'ko', 'fr', 'ru', 'de']) {
+            await configStore.saveConfig({ ...configStore.config, to }, {recordHistory: true, immediateHistory: true});
+        }
+
+        const history = configStore.getConfigHistorySnapshot();
+        expect(history.entries).toHaveLength(5);
+        expect(history.cursor).toBe(4);
+        expect(history.entries.at(-1)).toMatchObject({
+            version: expect.any(Number),
+            savedAt: expect.any(String),
+            config: expect.objectContaining({to: 'de'}),
+        });
+        expect(history.entries.map((entry) => entry.version)).toEqual(
+            [...history.entries].sort((left, right) => left.version - right.version).map((entry) => entry.version),
+        );
+    });
+
+    it('支持撤销、重做和按版本恢复，并保持配置与历史游标一致', async () => {
+        const configStore = await loadConfigModule(storedConfig);
+        await Promise.all([configStore.configReady, configStore.configHistoryReady]);
+        await configStore.saveConfig({ ...configStore.config, to: 'en' }, {recordHistory: true, immediateHistory: true});
+        await configStore.saveConfig({ ...configStore.config, to: 'ja' }, {recordHistory: true, immediateHistory: true});
+
+        const beforeUndo = configStore.getConfigHistorySnapshot();
+        const undo = await configStore.applyConfigHistoryAction('undo');
+        expect(configStore.config.to).toBe('en');
+        expect(undo.cursor).toBe(beforeUndo.cursor - 1);
+
+        const redo = await configStore.applyConfigHistoryAction('redo');
+        expect(configStore.config.to).toBe('ja');
+        expect(redo.cursor).toBe(beforeUndo.cursor);
+
+        const baselineVersion = beforeUndo.entries[0].version;
+        const restored = await configStore.applyConfigHistoryAction('restore', baselineVersion);
+        expect(configStore.config.to).toBe('zh-Hans');
+        expect(restored.entries[restored.cursor].version).toBe(baselineVersion);
+    });
+
+    it('配置历史操作优先通过后台消息传递，后台不可用时安全回退', async () => {
+        const configStore = await loadConfigModule(storedConfig);
+        await Promise.all([configStore.configReady, configStore.configHistoryReady]);
+        const sendMessage = vi.fn().mockResolvedValue({success: true, history: configStore.getConfigHistorySnapshot()});
+
+        await configStore.requestConfigHistoryAction('undo', undefined, sendMessage);
+
+        expect(sendMessage).toHaveBeenCalledWith({
+            type: configStore.CONFIG_HISTORY_MESSAGE,
+            action: 'undo',
+            version: undefined,
+        });
+    });
 });
