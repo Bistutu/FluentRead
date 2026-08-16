@@ -24,7 +24,7 @@ import {
   ElTooltip,
 } from 'element-plus'
 import {
-  ChatDotRound,
+  InfoFilled,
   CircleCheckFilled,
   Coffee,
   Download,
@@ -62,7 +62,7 @@ const components = [
 ]
 
 components.forEach((component) => component.name && app.component(component.name, component))
-app.component('ChatDotRound', ChatDotRound)
+app.component('InfoFilled', InfoFilled)
 app.component('CircleCheckFilled', CircleCheckFilled)
 app.component('Coffee', Coffee)
 app.component('Download', Download)
