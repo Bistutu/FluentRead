@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { Config, normalizeConfig } from '@/entrypoints/utils/model';
 import { tongyiTokenPlanUrl, urls } from '@/entrypoints/utils/constant';
-import { customModelString, defaultOption, models, options, services, servicesType } from '@/entrypoints/utils/option';
+import { customModelString, defaultOption, models, options, resolveConfiguredModel, services, servicesType } from '@/entrypoints/utils/option';
 
 describe('AI 模型编号列表', () => {
     it('AI 智能上下文默认关闭，并能从旧配置平滑补齐', () => {
@@ -13,6 +13,8 @@ describe('AI 模型编号列表', () => {
         expect(servicesType.isUseAIContext(services.microsoft)).toBe(false);
         expect(servicesType.isUseAIContext(services.huanYuanTranslation)).toBe(false);
         expect(servicesType.isUseAIContext(services.tongyi, 'qwen-mt-plus')).toBe(false);
+        expect(servicesType.isUseAIContext(services.tongyi, resolveConfiguredModel(customModelString, 'qwen-mt-plus'))).toBe(false);
+        expect(resolveConfiguredModel(customModelString, 'custom-model')).toBe('custom-model');
     });
 
     it('展示当前主流模型，并移除已退役或错误的预设编号', () => {

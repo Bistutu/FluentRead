@@ -185,6 +185,11 @@ export const servicesType = {
 
 export const customModelString = "自定义模型";
 
+/** Resolve the model that is actually sent to a provider. */
+export function resolveConfiguredModel(selectedModel?: string, customModel?: string): string {
+    return selectedModel === customModelString ? customModel || '' : selectedModel || '';
+}
+
 // 当前官方模型编号的单一来源，同时供列表和旧配置迁移使用。
 export const currentModelIds = {
     openai: "gpt-5.6-sol",

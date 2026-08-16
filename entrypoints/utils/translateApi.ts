@@ -8,7 +8,7 @@ import browser from 'webextension-polyfill';
 import { config } from './config';
 import { detectlang } from './common';
 import { storage } from '@wxt-dev/storage';
-import { servicesType } from './option';
+import { resolveConfiguredModel, servicesType } from './option';
 import { getPageTranslationContext } from './pageContext';
 
 // 调试相关
@@ -165,6 +165,7 @@ export interface TranslateOptions {
 }
 
 async function resolvePageContext(suppliedContext?: string): Promise<string | undefined> {
-  if (!config.enableAIContext || !servicesType.isUseAIContext(config.service, config.model[config.service] || '')) return undefined;
+  const selectedModel = resolveConfiguredModel(config.model[config.service], config.customModel[config.service]);
+  if (!config.enableAIContext || !servicesType.isUseAIContext(config.service, selectedModel)) return undefined;
   return suppliedContext?.trim().slice(0, 4000) || await getPageTranslationContext() || undefined;
 }

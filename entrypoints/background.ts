@@ -2,7 +2,7 @@ import {_service} from "@/entrypoints/service/_service";
 import {translateMicrosoftTexts} from "@/entrypoints/service/microsoft";
 import {config, configReady} from "@/entrypoints/utils/config";
 import {CONTEXT_MENU_IDS} from "@/entrypoints/utils/constant";
-import {customModelString, servicesType} from "@/entrypoints/utils/option";
+import {resolveConfiguredModel, servicesType} from "@/entrypoints/utils/option";
 import {
     buildTranslationCacheKey,
     translationCache,
@@ -39,9 +39,11 @@ type CacheRequestMode = 'single' | 'batch';
 const TRANSLATION_CACHE_CLEANUP_ALARM = 'fluentread-translation-cache-cleanup';
 
 function getSelectedModel(service: string): string {
-    return config.model[service] === customModelString
-        ? config.customModel[service] || ''
-        : config.model[service] || '';
+    return resolveConfiguredModel(config.model[service], config.customModel[service]);
+}
+
+function isAIContextEnabled(): boolean {
+    return config.enableAIContext && servicesType.isUseAIContext(config.service, getSelectedModel(config.service));
 }
 
 function getProviderEndpoint(service: string): string {
@@ -80,7 +82,7 @@ function buildCacheKey(
         // DeepL sends the title context to the provider. AI adapters send the
         // bounded webpage context through their prompt templates.
         context: service === 'deepL' ? context : undefined,
-        pageContext: servicesType.isUseAIContext(service, getSelectedModel(service)) ? pageContext : undefined,
+        pageContext: isAIContextEnabled() && service === config.service ? pageContext : undefined,
     });
 }
 
@@ -136,8 +138,8 @@ function cachePageSummary(key: string, value: string): void {
  * still useful and the ordinary translation must continue.
  */
 async function addPageSummary(pageContext: string): Promise<string> {
-    if (!pageContext.trim() || !servicesType.isUseAIContext(config.service, getSelectedModel(config.service))) {
-        return pageContext;
+    if (!isAIContextEnabled() || !pageContext.trim()) {
+        return '';
     }
 
     const key = buildPageSummaryCacheKey(pageContext);
