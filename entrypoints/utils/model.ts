@@ -3,6 +3,7 @@ import { normalizeCustomBodyMapping } from "./custom-body";
 
 export type DeepSeekApiType = 'auto' | 'responses' | 'chat';
 export type DeepSeekThinkingMode = 'enabled' | 'disabled';
+export type VideoSubtitleDisplayMode = 'bilingual' | 'translation-only' | 'original-only';
 
 interface IMapping {
     [key: string]: string;
@@ -24,6 +25,8 @@ export class Config {
     service: string;
     videoTranslationEnabled: boolean; // 是否启用视频字幕翻译 Beta
     videoService: string; // 视频字幕独立翻译服务
+    videoSubtitleVisible: boolean; // 是否显示 FluentRead 视频字幕
+    videoSubtitleDisplayMode: VideoSubtitleDisplayMode; // 视频字幕显示模式
     token: IMapping;
     requireApiKey: Record<string, boolean>; // 按服务和模型保存 API Key 校验开关
     ak: string;
@@ -77,6 +80,8 @@ export class Config {
         this.service = defaultOption.service;
         this.videoTranslationEnabled = true; // Beta 功能默认开启
         this.videoService = services.deeplx; // 视频字幕默认使用 DeepLX
+        this.videoSubtitleVisible = true; // 默认显示视频译文
+        this.videoSubtitleDisplayMode = 'bilingual'; // 默认双语显示
         this.token = {};
         this.requireApiKey = {};
         this.ak = '';
@@ -213,6 +218,12 @@ export function normalizeConfig(value: unknown): Config {
     }
     if (!servicesType.machine.has(normalized.videoService)) {
         normalized.videoService = services.deeplx;
+    }
+    if (typeof normalized.videoSubtitleVisible !== 'boolean') {
+        normalized.videoSubtitleVisible = true;
+    }
+    if (!['bilingual', 'translation-only', 'original-only'].includes(normalized.videoSubtitleDisplayMode)) {
+        normalized.videoSubtitleDisplayMode = 'bilingual';
     }
 
     migrateModelIdentifiers(normalized.model);

@@ -310,7 +310,7 @@
             <option v-for="item in videoServiceOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
           </select>
         </label>
-        <small class="drawer-hint">目前支持 YouTube；需要先打开 YouTube 的原生字幕。DeepLX 默认地址可在完整设置中配置。</small>
+        <small class="drawer-hint">目前支持 YouTube；播放器内会显示“译”按钮，可切换字幕模式、显示状态和下载 SRT。需要先打开 YouTube 的原生字幕；DeepLX 默认地址可在完整设置中配置。</small>
       </div>
 
       <div v-else class="drawer-content">

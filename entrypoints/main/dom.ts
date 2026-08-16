@@ -46,6 +46,8 @@ const semanticBlockTags = new Set([
 const extensionSelector = [
     '#fluent-read-floating-ball-container',
     '#fluent-read-selection-translator-container',
+    '.fluent-read-video-ui',
+    '[data-fluent-read-ui="video-subtitle"]',
     '[class*="fluent-read-loading"]',
     '[class*="fluent-read-retry"]',
     '.fluent-read-bilingual-content',
@@ -143,7 +145,7 @@ function isHiddenElement(node: Element): boolean {
 function isNoTranslateElement(node: Element): boolean {
     return Boolean(
         node.classList.contains('notranslate') ||
-        node.matches('#ytp-caption-window-container, .ytp-caption-window-container, .fluent-read-video-subtitle') ||
+        node.matches('#ytp-caption-window-container, .ytp-caption-window-container, .fluent-read-video-subtitle, .fluent-read-video-ui') ||
         node.getAttribute('translate') === 'no' ||
         node.getAttribute('data-notranslate') === 'true',
     );

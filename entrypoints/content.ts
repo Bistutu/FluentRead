@@ -144,6 +144,7 @@ export default defineContentScript({
         setupInputBoxTranslation(pageEventController.signal);
         // 视频字幕 Beta 只在 YouTube 播放页监听原生字幕，不采集音频或视频内容。
         unmountVideoSubtitleTranslation = mountVideoSubtitleTranslation();
+        // 保留播放器内的 Beta 状态入口，即使网页翻译总开关被关闭，用户仍能看到并管理视频字幕状态。
         if (config.on === false) return; // 其他网页翻译能力遵循总开关
         // 添加手动翻译事件监听器
         setupManualTranslationTriggers(pageEventController.signal);

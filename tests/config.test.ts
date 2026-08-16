@@ -73,6 +73,8 @@ describe('统一配置存储', () => {
 
         expect(configStore.config.videoTranslationEnabled).toBe(true);
         expect(configStore.config.videoService).toBe('deeplx');
+        expect(configStore.config.videoSubtitleVisible).toBe(true);
+        expect(configStore.config.videoSubtitleDisplayMode).toBe('bilingual');
     });
 
     it('非法的视频服务回退到机器翻译默认服务', async () => {
@@ -81,6 +83,19 @@ describe('统一配置存储', () => {
         await configStore.configReady;
 
         expect(configStore.config.videoService).toBe('deeplx');
+    });
+
+    it('非法的视频字幕显示配置回退到双语和显示状态', async () => {
+        const configStore = await loadConfigModule({
+            ...storedConfig,
+            videoSubtitleVisible: 'yes',
+            videoSubtitleDisplayMode: 'side-by-side',
+        });
+
+        await configStore.configReady;
+
+        expect(configStore.config.videoSubtitleVisible).toBe(true);
+        expect(configStore.config.videoSubtitleDisplayMode).toBe('bilingual');
     });
 
     it('存储内容损坏时回退到默认配置，并保持初始化 Promise 可用', async () => {

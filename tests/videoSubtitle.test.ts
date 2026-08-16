@@ -11,7 +11,9 @@ vi.mock('webextension-polyfill', () => ({
     default: { runtime: { sendMessage: vi.fn() } },
 }));
 import {
+    getVideoServiceLabel,
     isYouTubeVideoPage,
+    normalizeVideoSubtitleDisplayMode,
     readVisibleCaptionText,
     VIDEO_CAPTION_SEGMENT_SELECTOR,
 } from '@/entrypoints/main/videoSubtitle';
@@ -39,5 +41,13 @@ describe('YouTube 视频字幕识别', () => {
 
         expect(readVisibleCaptionText(container)).toBe('This is a test.');
         expect(readVisibleCaptionText(null)).toBe('');
+    });
+
+    it('保留播放器菜单需要的三种显示模式，并为服务显示用户可读名称', () => {
+        expect(normalizeVideoSubtitleDisplayMode('translation-only')).toBe('translation-only');
+        expect(normalizeVideoSubtitleDisplayMode('original-only')).toBe('original-only');
+        expect(normalizeVideoSubtitleDisplayMode('unknown')).toBe('bilingual');
+        expect(getVideoServiceLabel('microsoft')).toBe('微软翻译');
+        expect(getVideoServiceLabel('custom-service')).toBe('custom-service');
     });
 });
