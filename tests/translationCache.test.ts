@@ -6,6 +6,7 @@ import {
   buildTranslationCacheKey,
   canonicalize,
   translationCache,
+  translationCacheDb,
 } from '@/entrypoints/utils/translationCache';
 
 describe('translation cache identity', () => {
@@ -46,6 +47,22 @@ describe('translation cache persistence policy', () => {
     await expect(translationCache.set(key, '译文', createdAt)).resolves.toBe(true);
     await expect(translationCache.get(key, createdAt + TRANSLATION_CACHE_TTL_MS - 1)).resolves.toBe('译文');
     await expect(translationCache.get(key, createdAt + TRANSLATION_CACHE_TTL_MS)).resolves.toBeNull();
+  });
+
+  it('cleans legacy records according to createdAt and the current 24-hour TTL', async () => {
+    const createdAt = 1_000;
+    await translationCacheDb.entries.put({
+      key: 'legacy-ttl',
+      translation: '旧译文',
+      createdAt,
+      lastAccessedAt: createdAt,
+      // Simulate a record written before the TTL was reduced from 7 days.
+      expiresAt: createdAt + 7 * TRANSLATION_CACHE_TTL_MS,
+      byteSize: 20,
+    });
+
+    await translationCache.cleanup(createdAt + TRANSLATION_CACHE_TTL_MS);
+    await expect(translationCacheDb.entries.get('legacy-ttl')).resolves.toBeUndefined();
   });
 
   it('does not persist entries larger than the per-entry limit', async () => {

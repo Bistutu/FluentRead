@@ -2,7 +2,7 @@ import CryptoJS from 'crypto-js';
 import Dexie, { type Table } from 'dexie';
 
 export const TRANSLATION_CACHE_VERSION = 1;
-export const TRANSLATION_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+export const TRANSLATION_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 export const TRANSLATION_CACHE_MAX_ENTRIES = 2_000;
 export const TRANSLATION_CACHE_MAX_BYTES = 5 * 1024 * 1024;
 export const TRANSLATION_CACHE_MAX_ENTRY_BYTES = 256 * 1024;
@@ -77,7 +77,10 @@ class FluentReadCacheDatabase extends Dexie {
   constructor() {
     super('FluentReadTranslationCache');
     this.version(1).stores({
-      entries: '&key, expiresAt, lastAccessedAt',
+      entries: '&key, createdAt, expiresAt, lastAccessedAt',
+    });
+    this.version(2).stores({
+      entries: '&key, createdAt, expiresAt, lastAccessedAt',
     });
   }
 }
@@ -85,7 +88,7 @@ class FluentReadCacheDatabase extends Dexie {
 export const translationCacheDb = new FluentReadCacheDatabase();
 
 function isExpired(record: TranslationCacheRecord, now: number): boolean {
-  return record.expiresAt <= now;
+  return record.expiresAt <= now || record.createdAt + TRANSLATION_CACHE_TTL_MS <= now;
 }
 
 /**
@@ -197,6 +200,12 @@ class TranslationCache {
   async cleanup(now = Date.now()): Promise<void> {
     try {
       await translationCacheDb.entries.where('expiresAt').belowOrEqual(now).delete();
+      // Use createdAt as the authoritative age check so records written by an
+      // older TTL policy are also removed after the current 24-hour window.
+      await translationCacheDb.entries
+        .where('createdAt')
+        .belowOrEqual(now - TRANSLATION_CACHE_TTL_MS)
+        .delete();
       for (const [key, record] of this.memory) {
         if (isExpired(record, now)) this.memory.delete(key);
       }
