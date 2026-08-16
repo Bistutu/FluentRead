@@ -66,12 +66,12 @@ describe('统一配置存储', () => {
         expect((history.entries[1].config as unknown as Record<string, unknown>).__fluentConfigRevision).toBeUndefined();
     });
 
-    it('为旧配置补齐默认开启的视频字幕 Beta 与独立微软翻译服务', async () => {
+    it('为旧配置补齐默认关闭的视频字幕 Beta 与独立微软翻译服务', async () => {
         const configStore = await loadConfigModule(storedConfig);
 
         await configStore.configReady;
 
-        expect(configStore.config.videoTranslationEnabled).toBe(true);
+        expect(configStore.config.videoTranslationEnabled).toBe(false);
         expect(configStore.config.videoService).toBe('microsoft');
         expect(configStore.config.videoSubtitleVisible).toBe(true);
         expect(configStore.config.videoSubtitleDisplayMode).toBe('bilingual');

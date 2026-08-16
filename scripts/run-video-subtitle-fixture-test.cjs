@@ -85,6 +85,16 @@ async function main() {
     const control = await context.newPage();
     await control.goto(`chrome-extension://${extensionId}/popup.html`, { waitUntil: 'domcontentloaded' });
     await control.waitForTimeout(500);
+    const initialPopupVideoState = await control.evaluate(() => {
+      const card = document.querySelector('[data-feature="video-subtitle"]');
+      return {
+        enabled: Boolean(card?.querySelector('i.active')),
+        summary: card?.querySelector('small')?.textContent?.trim() || '',
+      };
+    });
+    if (initialPopupVideoState.enabled) {
+      throw new Error(`新配置的视频字幕翻译应默认关闭：${JSON.stringify(initialPopupVideoState)}`);
+    }
     await control.evaluate(async () => {
       const stored = await chrome.storage.local.get('config');
       await chrome.storage.local.set({ config: {
@@ -246,6 +256,24 @@ async function main() {
     }
     await page.waitForFunction((selector) => document.querySelector(selector)?.textContent === '从音乐中理解公理和基础。', overlaySelector, { timeout: 20000 });
     const progressiveTranslation = await page.locator(overlaySelector).textContent();
+    const translationPlacement = await page.evaluate(() => {
+      const native = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
+      const overlay = document.querySelector('#fluent-read-video-subtitle');
+      const nativeRect = native?.getBoundingClientRect();
+      const overlayRect = overlay?.getBoundingClientRect();
+      const style = overlay ? getComputedStyle(overlay) : null;
+      return {
+        nativeTop: nativeRect?.top ?? null,
+        overlayBottom: overlayRect?.bottom ?? null,
+        gap: nativeRect && overlayRect ? nativeRect.top - overlayRect.bottom : null,
+        fontFamily: style?.fontFamily || '',
+        strokeWidth: style?.webkitTextStrokeWidth || '',
+        textShadow: style?.textShadow || '',
+      };
+    });
+    if (translationPlacement.gap === null || translationPlacement.gap < 4 || !translationPlacement.fontFamily.includes('PingFang SC') || translationPlacement.strokeWidth === '0px') {
+      throw new Error(`译文没有稳定显示在原字幕上方或字体清晰度样式未生效：${JSON.stringify(translationPlacement)}`);
+    }
     const progressiveRequests = translationRequests - progressiveRequestStart;
     if (progressiveRequests !== 1) {
       throw new Error(`渐进字幕没有合并为单次翻译请求：${JSON.stringify({ progressiveRequests, translationRequests })}`);
@@ -407,6 +435,7 @@ async function main() {
       playerUi,
       menu,
       popupFeature,
+      initialPopupVideoState,
       popupDrawerBeta,
       popupVideoServiceOptions,
       beforeRedraw,
@@ -414,6 +443,7 @@ async function main() {
       afterRedraw,
       afterDisappearance,
       progressiveTranslation,
+      translationPlacement,
       progressiveRequests,
       secondTranslation,
       prefetchRequests,

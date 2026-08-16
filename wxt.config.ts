@@ -79,6 +79,14 @@ export default defineConfig({
         content_security_policy: {
             extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
         },
+        // YouTube 页面中的播放器控件由内容脚本创建，需要显式允许页面加载扩展图标。
+        web_accessible_resources: [
+            {
+                resources: ['icon/128.png'],
+                matches: ['<all_urls>'],
+                use_dynamic_url: true,
+            },
+        ],
         host_permissions: [
             'https://translate.google.com/*',
             'https://translate.google.co.uk/*',

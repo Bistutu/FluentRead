@@ -208,24 +208,20 @@ function syncTranslationOverlayPosition(container: HTMLElement | null): void {
     bottom: Math.max(...anchors.map((rect) => rect.bottom)),
   };
   const playerWidth = playerRect.width || 960;
-  const playerHeight = playerRect.height || 540;
   const width = Math.min(Math.max(anchor.right - anchor.left, 240), Math.max(playerWidth - 24, 240));
   const center = (anchor.left + anchor.right) / 2;
   const left = Math.min(
     Math.max(center - width / 2 - playerRect.left, 12),
     Math.max(playerWidth - width - 12, 12),
   );
-  let top = anchor.bottom - playerRect.top + 6;
+  // 译文始终固定在原字幕上方；只有播放器顶部空间不足时才贴近顶部，
+  // 不回落到原字幕下方，避免观看过程中上下跳动。
+  const overlayHeight = overlay.getBoundingClientRect().height;
+  const top = anchor.top - playerRect.top - overlayHeight - 6;
 
   overlay.style.left = `${left}px`;
   overlay.style.width = `${width}px`;
   overlay.style.top = `${Math.max(top, 8)}px`;
-
-  const overlayHeight = overlay.getBoundingClientRect().height;
-  if (overlayHeight > 0 && top + overlayHeight > playerHeight - 8) {
-    top = anchor.top - playerRect.top - overlayHeight - 6;
-    overlay.style.top = `${Math.max(top, 8)}px`;
-  }
 }
 
 function applyVideoDisplayState(container: HTMLElement): void {
@@ -264,9 +260,11 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       margin: 0 !important;
       padding: 0.08em 0.24em !important;
       color: #ffe45c !important;
-      font: 600 clamp(16px, 2.2vw, 30px)/1.35 Arial, sans-serif !important;
+      font: 700 clamp(16px, 2.2vw, 30px)/1.28 Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
       text-align: center !important;
-      text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 2px 4px rgba(0, 0, 0, .75) !important;
+      -webkit-text-stroke: 1px #000 !important;
+      paint-order: stroke fill !important;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, .72) !important;
       white-space: pre-wrap !important;
       pointer-events: none !important;
       user-select: none !important;

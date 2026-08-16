@@ -79,7 +79,7 @@ export class Config {
         this.display = defaultOption.display;
         this.hotkey = defaultOption.hotkey;
         this.service = defaultOption.service;
-        this.videoTranslationEnabled = true; // Beta 功能默认开启
+        this.videoTranslationEnabled = false; // Beta 功能默认关闭
         this.videoService = services.microsoft; // 视频字幕默认使用微软翻译
         this.videoServiceDefaultMigrated = true;
         this.videoSubtitleVisible = true; // 默认显示视频译文
@@ -216,7 +216,7 @@ export function normalizeConfig(value: unknown): Config {
     normalized.customBody = normalizeCustomBodyMapping(source.customBody);
 
     if (typeof normalized.videoTranslationEnabled !== 'boolean') {
-        normalized.videoTranslationEnabled = true;
+        normalized.videoTranslationEnabled = false;
     }
     // 早期 Beta 版本曾把 DeepLX 写成默认值。只对没有迁移标记的旧配置
     // 执行一次迁移，避免覆盖用户在新版本中主动选择的 DeepLX。
