@@ -6,6 +6,12 @@ interface ImageOcrResponse {
     error?: string;
 }
 
+interface ImageFetchResponse {
+    success: boolean;
+    image?: string;
+    error?: string;
+}
+
 export async function recognizeImageInExtension(image: string, sourceLanguage: string): Promise<OcrLine[]> {
     const response = await browser.runtime.sendMessage({
         type: 'fluentReadImageOcr',
@@ -18,4 +24,17 @@ export async function recognizeImageInExtension(image: string, sourceLanguage: s
     }
 
     return response.lines || [];
+}
+
+export async function fetchImageInExtension(imageUrl: string): Promise<string> {
+    const response = await browser.runtime.sendMessage({
+        type: 'fluentReadImageFetch',
+        url: imageUrl,
+    }) as ImageFetchResponse | undefined;
+
+    if (!response?.success || !response.image) {
+        throw new Error(response?.error || '无法读取远程图片');
+    }
+
+    return response.image;
 }

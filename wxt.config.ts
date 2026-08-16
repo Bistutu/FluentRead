@@ -32,6 +32,8 @@ export default defineConfig({
             'https://api.deeplx.org/*',
             'http://localhost/*',
             'http://127.0.0.1/*',
+            'http://*/*',
+            'https://*/*',
         ],
     },
 

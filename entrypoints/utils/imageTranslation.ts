@@ -1,12 +1,15 @@
 import { config } from '@/entrypoints/utils/config';
 import { translateText } from '@/entrypoints/utils/translateApi';
-import { recognizeImageInExtension } from '@/entrypoints/utils/imageOcrClient';
+import { fetchImageInExtension, recognizeImageInExtension } from '@/entrypoints/utils/imageOcrClient';
 import { scaleOcrBox, type OcrLine } from '@/entrypoints/utils/imageTranslationCore';
 
 const IMAGE_TRANSLATION_OVERLAY = 'fluent-read-image-translation-overlay';
 const IMAGE_TRANSLATION_BUTTON = 'fluent-read-image-translation-button';
 const MIN_IMAGE_WIDTH = 80;
 const MIN_IMAGE_HEIGHT = 40;
+const IMAGE_READ_TIMEOUT_MS = 15_000;
+const IMAGE_OCR_TIMEOUT_MS = 90_000;
+const IMAGE_TRANSLATION_TIMEOUT_MS = 90_000;
 
 type ImageTranslationPhase = 'idle' | 'loading' | 'translated' | 'error';
 
@@ -24,6 +27,20 @@ let mounted = false;
 let removeListeners: (() => void) | null = null;
 const states = new WeakMap<HTMLImageElement, ImageTranslationState>();
 const activeStates = new Set<ImageTranslationState>();
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+    let timer: number | undefined;
+    try {
+        return await Promise.race([
+            promise,
+            new Promise<T>((_, reject) => {
+                timer = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+            }),
+        ]);
+    } finally {
+        if (timer !== undefined) window.clearTimeout(timer);
+    }
+}
 
 function clearHoverTimer(state: ImageTranslationState): void {
     if (state.hoverTimer !== null) {
@@ -55,9 +72,6 @@ function updateOverlayPosition(state: ImageTranslationState): void {
     state.overlay.style.top = `${rect.top}px`;
     state.overlay.style.width = `${rect.width}px`;
     state.overlay.style.height = `${rect.height}px`;
-    // 长图的真实右下角可能在视口外；悬停时把入口约束到当前可见区域的底部。
-    state.button.style.bottom = `${Math.max(8, rect.bottom - window.innerHeight + 8)}px`;
-
     if (state.phase === 'translated') {
         renderTranslatedLines(state, rect.width, rect.height);
     }
@@ -118,7 +132,7 @@ function getState(image: HTMLImageElement): ImageTranslationState {
 }
 
 function showImageButton(image: HTMLImageElement): void {
-    if (!mounted || !config.on || image.closest(`[${IMAGE_TRANSLATION_OVERLAY}]`)) return;
+    if (!mounted || !config.on || image.closest(`[${IMAGE_TRANSLATION_OVERLAY}]`) || image.closest('video')) return;
     const state = getState(image);
     clearHoverTimer(state);
     updateOverlayPosition(state);
@@ -133,7 +147,7 @@ function hideImageButton(image: HTMLImageElement): void {
     }, 180);
 }
 
-function getImageData(image: HTMLImageElement): string {
+async function getImageData(image: HTMLImageElement): Promise<string> {
     const width = image.naturalWidth;
     const height = image.naturalHeight;
     if (!width || !height) throw new Error('图片尚未加载完成');
@@ -150,7 +164,10 @@ function getImageData(image: HTMLImageElement): string {
         context.getImageData(0, 0, 1, 1);
         return canvas.toDataURL('image/png');
     } catch {
-        throw new Error('跨域图片无法在本地 OCR，请尝试保存图片后翻译');
+        const source = image.currentSrc || image.src;
+        if (!source) throw new Error('图片地址不可用');
+        // 网页 canvas 受 CORS 限制时，改由扩展后台按网页地址抓取图片。
+        return fetchImageInExtension(source);
     }
 }
 
@@ -176,10 +193,11 @@ function renderTranslatedLines(state: ImageTranslationState, renderedWidth: numb
 }
 
 function setButtonState(state: ImageTranslationState, phase: ImageTranslationPhase, message: string): void {
+    const userMessage = phase === 'error' ? '图片无法读取，请尝试保存图片后翻译' : message;
     state.phase = phase;
     state.button.textContent = phase === 'translated' ? '↶' : phase === 'error' ? '!' : '文';
-    state.button.title = message;
-    state.button.setAttribute('aria-label', message);
+    state.button.title = userMessage;
+    state.button.setAttribute('aria-label', userMessage);
     state.button.dataset.phase = phase;
 }
 
@@ -200,11 +218,15 @@ async function translateImage(state: ImageTranslationState): Promise<void> {
     state.abortController = controller;
     setButtonState(state, 'loading', '正在识别图片文字');
     try {
-        const imageData = getImageData(state.image);
-        const lines = await recognizeImageInExtension(imageData, config.from);
+        const imageData = await withTimeout(getImageData(state.image), IMAGE_READ_TIMEOUT_MS, '图片读取超时');
+        const lines = await withTimeout(recognizeImageInExtension(imageData, config.from), IMAGE_OCR_TIMEOUT_MS, '图片文字识别超时');
         if (controller.signal.aborted) return;
         if (lines.length === 0) throw new Error('没有识别到图片文字');
-        const translations = await Promise.all(lines.map(line => translateText(line.text, document.title)));
+        const translations = await withTimeout(
+            Promise.all(lines.map(line => translateText(line.text, document.title))),
+            IMAGE_TRANSLATION_TIMEOUT_MS,
+            '图片翻译超时',
+        );
         if (controller.signal.aborted) return;
 
         state.lines = lines.map((line, index) => ({
@@ -215,6 +237,7 @@ async function translateImage(state: ImageTranslationState): Promise<void> {
         updateOverlayPosition(state);
     } catch (error) {
         if (controller.signal.aborted) return;
+        controller.abort();
         const message = error instanceof Error ? error.message : String(error);
         setButtonState(state, 'error', `图片翻译失败：${message}`);
         window.setTimeout(() => {

@@ -8,6 +8,7 @@ import {
     translationCache,
 } from "@/entrypoints/utils/translationCache";
 import { recognizeImageWithOffscreen } from "@/entrypoints/service/chrome-translator";
+import { imageBufferToDataUrl, MAX_REMOTE_IMAGE_BYTES, normalizeRemoteImageUrl } from "@/entrypoints/utils/imageFetch";
 
 // 翻译状态管理
 let translationStateMap = new Map<number, boolean>(); // tabId -> isTranslated
@@ -36,6 +37,23 @@ type TranslationRequestMessage = TranslationSingleRequestMessage | TranslationBa
 type CacheRequestMode = 'single' | 'batch';
 
 const TRANSLATION_CACHE_CLEANUP_ALARM = 'fluentread-translation-cache-cleanup';
+
+async function fetchImageForOcr(source: string): Promise<string> {
+    const url = normalizeRemoteImageUrl(source);
+    const response = await fetch(url, { credentials: 'omit', redirect: 'follow' });
+    if (!response.ok) {
+        throw new Error(`图片服务器返回 ${response.status}`);
+    }
+
+    const contentType = response.headers.get('content-type') || '';
+    const contentLength = Number(response.headers.get('content-length') || 0);
+    if (contentLength > MAX_REMOTE_IMAGE_BYTES) {
+        throw new Error('图片文件过大');
+    }
+
+    const buffer = await response.arrayBuffer();
+    return imageBufferToDataUrl(buffer, contentType);
+}
 
 function getSelectedModel(service: string): string {
     return config.model[service] === customModelString
@@ -391,6 +409,12 @@ export default defineBackground({
                     if (message.type === 'fluentReadImageOcr') {
                         const lines = await recognizeImageWithOffscreen(message.image, message.sourceLanguage);
                         resolve({ success: true, lines });
+                        return;
+                    }
+
+                    if (message.type === 'fluentReadImageFetch') {
+                        const image = await fetchImageForOcr(message.url);
+                        resolve({ success: true, image });
                         return;
                     }
 
