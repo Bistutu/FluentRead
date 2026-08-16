@@ -24,10 +24,18 @@ export default defineBackground({
     },
     main() {
         const isContextMenuSupported = !!browser.contextMenus
+        let contextMenusReady = false
 
-        // 创建右键菜单项
-        if (isContextMenuSupported) {
+        // 开发模式会多次重载后台脚本。先清理本扩展已有菜单，避免重复 ID。
+        const setupContextMenus = async () => {
+            if (!isContextMenuSupported) {
+                console.log("不支持右键菜单")
+                return
+            }
+
             try {
+                await browser.contextMenus.removeAll()
+
                 // 创建父菜单
                 browser.contextMenus.create({
                     id: 'fluentread-parent',
@@ -51,68 +59,70 @@ export default defineBackground({
                     contexts: ['page', 'selection'],
                     enabled: false, // 初始状态为禁用
                 });
-
-                // 监听右键菜单点击事件
-                browser.contextMenus.onClicked.addListener((info: any, tab: any) => {
-                    if (!tab?.id) return;
-
-                    if (info.menuItemId === CONTEXT_MENU_IDS.TRANSLATE_FULL_PAGE) {
-                        // 发送消息到内容脚本触发全文翻译
-                        browser.tabs.sendMessage(tab.id, {
-                            type: 'contextMenuTranslate',
-                            action: 'fullPage'
-                        }).then(() => {
-                            // 更新翻译状态
-                            translationStateMap.set(tab.id!, true);
-                            updateContextMenus(tab.id!);
-                        }).catch((error: any) => {
-                            console.error('Failed to send message to content script:', error);
-                        });
-                    } else if (info.menuItemId === CONTEXT_MENU_IDS.RESTORE_ORIGINAL) {
-                        // 发送消息到内容脚本撤销翻译
-                        browser.tabs.sendMessage(tab.id, {
-                            type: 'contextMenuTranslate',
-                            action: 'restore'
-                        }).then(() => {
-                            // 更新翻译状态
-                            translationStateMap.set(tab.id!, false);
-                            updateContextMenus(tab.id!);
-                        }).catch((error: any) => {
-                            console.error('Failed to send message to content script:', error);
-                        });
-                    }
-                });
-
+                contextMenusReady = true
             } catch (error) {
+                contextMenusReady = false
                 console.error('Error setting up context menu:', error);
             }
-        } else {
-            console.log("不支持右键菜单")
         }
 
+        void setupContextMenus()
+
         // 更新右键菜单状态
-        const updateContextMenus = (tabId: number) => {
+        const updateContextMenus = async (tabId: number) => {
+            if (!contextMenusReady) return
             const isTranslated = translationStateMap.get(tabId) || false;
 
             try {
                 // 更新全文翻译菜单项
-                browser.contextMenus.update(CONTEXT_MENU_IDS.TRANSLATE_FULL_PAGE, {
-                    enabled: !isTranslated,
-                    title: isTranslated ? '全文翻译 (已翻译)' : '全文翻译'
-                });
-                // 更新撤销翻译菜单项
-                browser.contextMenus.update(CONTEXT_MENU_IDS.RESTORE_ORIGINAL, {
-                    enabled: isTranslated,
-                    title: isTranslated ? '撤销翻译' : '撤销翻译 (无翻译)'
-                });
+                await Promise.all([
+                    browser.contextMenus.update(CONTEXT_MENU_IDS.TRANSLATE_FULL_PAGE, {
+                        enabled: !isTranslated,
+                        title: isTranslated ? '全文翻译 (已翻译)' : '全文翻译'
+                    }),
+                    // 更新撤销翻译菜单项
+                    browser.contextMenus.update(CONTEXT_MENU_IDS.RESTORE_ORIGINAL, {
+                        enabled: isTranslated,
+                        title: isTranslated ? '撤销翻译' : '撤销翻译 (无翻译)'
+                    })
+                ]);
             } catch (error) {
                 console.error('Failed to update context menus:', error);
             }
         };
 
+        // 监听右键菜单点击事件
+        if (isContextMenuSupported) {
+            browser.contextMenus.onClicked.addListener((info: any, tab: any) => {
+                if (!tab?.id) return;
+
+                if (info.menuItemId === CONTEXT_MENU_IDS.TRANSLATE_FULL_PAGE) {
+                    browser.tabs.sendMessage(tab.id, {
+                        type: 'contextMenuTranslate',
+                        action: 'fullPage'
+                    }).then(() => {
+                        translationStateMap.set(tab.id!, true);
+                        void updateContextMenus(tab.id!);
+                    }).catch((error: any) => {
+                        console.error('Failed to send message to content script:', error);
+                    });
+                } else if (info.menuItemId === CONTEXT_MENU_IDS.RESTORE_ORIGINAL) {
+                    browser.tabs.sendMessage(tab.id, {
+                        type: 'contextMenuTranslate',
+                        action: 'restore'
+                    }).then(() => {
+                        translationStateMap.set(tab.id!, false);
+                        void updateContextMenus(tab.id!);
+                    }).catch((error: any) => {
+                        console.error('Failed to send message to content script:', error);
+                    });
+                }
+            });
+        }
+
         // 监听标签页切换事件，更新菜单状态
         browser.tabs.onActivated.addListener((activeInfo: any) => {
-            if (isContextMenuSupported) updateContextMenus(activeInfo.tabId);
+            if (isContextMenuSupported) void updateContextMenus(activeInfo.tabId);
         });
 
         // 监听标签页更新事件（页面刷新等）
@@ -120,7 +130,7 @@ export default defineBackground({
             if (changeInfo.status === 'complete') {
                 // 页面加载完成，重置翻译状态
                 translationStateMap.set(tabId, false);
-                if (isContextMenuSupported) updateContextMenus(tabId);
+                if (isContextMenuSupported) void updateContextMenus(tabId);
             }
         });
 
@@ -137,6 +147,12 @@ export default defineBackground({
                     if (message.type === 'inputBoxTranslation') {
                         const translatedText = await translateWithMicrosoftInBackground(message.text, message.targetLang);
                         resolve({ success: true, translatedText });
+                        return;
+                    }
+
+                    if (message.type === 'openOptionsPage') {
+                        await browser.runtime.openOptionsPage();
+                        resolve({ success: true });
                         return;
                     }
 
