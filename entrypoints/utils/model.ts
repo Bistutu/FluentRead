@@ -1,4 +1,4 @@
-import { currentModelIds, defaultOption, services } from "./option";
+import { currentModelIds, defaultModels, defaultOption, services } from "./option";
 import { normalizeCustomBodyMapping } from "./custom-body";
 
 export type DeepSeekApiType = 'auto' | 'responses' | 'chat';
@@ -46,6 +46,7 @@ export class Config {
     customFloatingBallHotkey: string; // 自定义悬浮球快捷键
     customHotkey: string; // 自定义鼠标悬浮快捷键
     disableSelectionTranslator: boolean; // 是否禁用划词翻译
+    disableImageTranslator: boolean; // 是否禁用图片翻译
     deeplx: string; // DeepLX 服务地址
     selectionTranslatorMode: string; // 划词翻译显示模式: 'disabled' | 'bilingual' | 'translation-only'
     selectionTranslatorTrigger: string; // 划词翻译触发方式: 'direct' | 'icon' | 'dot'
@@ -76,7 +77,7 @@ export class Config {
         this.sk = '';
         this.appid = '';
         this.key = '';
-        this.model = {};
+        this.model = Object.fromEntries(defaultModels);
         this.customModel = {};
         this.customBody = {};
         this.proxy = {};
@@ -95,6 +96,7 @@ export class Config {
         this.customFloatingBallHotkey = ''; // 自定义快捷键为空
         this.customHotkey = ''; // 自定义鼠标悬浮快捷键为空
         this.disableSelectionTranslator = true; // 默认关闭划词翻译
+        this.disableImageTranslator = true; // 默认关闭图片翻译，避免首次安装后扫描网页图片
         this.deeplx = defaultOption.deeplx; // DeepLX 默认服务地址
         this.selectionTranslatorMode = 'disabled'; // 默认关闭划词翻译
         this.selectionTranslatorTrigger = 'icon'; // 默认显示可发现的操作图标
@@ -200,6 +202,11 @@ export function normalizeConfig(value: unknown): Config {
     normalized.customBody = normalizeCustomBodyMapping(source.customBody);
 
     migrateModelIdentifiers(normalized.model);
+
+    // 旧配置可能没有保存过模型选择；为所有 AI 服务补齐各自的默认模型。
+    defaultModels.forEach((defaultModel, service) => {
+        if (!normalized.model[service]) normalized.model[service] = defaultModel;
+    });
 
     const selectedModel = normalized.model[services.deepseek];
     const configuredThinkingMode = source.deepseekThinkingMode;

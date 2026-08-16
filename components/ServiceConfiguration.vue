@@ -1,5 +1,9 @@
 <template>
   <section class="settings-section service-connection-section">
+    <div v-if="compute.credentialWarning" class="credential-warning" role="alert">
+      <strong>配置提醒</strong>
+      <span>{{ compute.credentialWarning }}</span>
+    </div>
     <div class="subsection-heading">
       <div><strong>连接参数</strong></div>
     </div>
@@ -118,3 +122,24 @@ const compute = toRef(props, 'compute')
 const options = toRef(props, 'options')
 const isValidAzureEndpoint = toRef(props, 'isValidAzureEndpoint')
 </script>
+
+<style scoped>
+.credential-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 11px 13px;
+  border: 1px solid #f3d19e;
+  border-radius: 10px;
+  color: #8a5a00;
+  background: #fdf6ec;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.credential-warning strong {
+  flex: 0 0 auto;
+  font-weight: 750;
+}
+</style>

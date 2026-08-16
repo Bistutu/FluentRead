@@ -76,6 +76,9 @@ export default defineConfig({
     }),
     manifest: {
         permissions: ['storage', 'alarms', 'contextMenus', 'offscreen'],
+        content_security_policy: {
+            extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
+        },
         host_permissions: [
             'https://translate.google.com/*',
             'https://translate.google.co.uk/*',
@@ -87,6 +90,14 @@ export default defineConfig({
             'https://api.deeplx.org/*',
             'http://localhost/*',
             'http://127.0.0.1/*',
+            'http://*/*',
+            'https://*/*',
+        ],
+        web_accessible_resources: [
+            {
+                resources: ['icon/32.png'],
+                matches: ['<all_urls>'],
+            },
         ],
     },
 

@@ -224,7 +224,6 @@ let LLMFormat = {
     getStdData(origin, option) {
         return JSON.stringify({
             'model': option,
-            "temperature": 0.3,
             'messages': [
                 {'role': 'system', 'content': chatMgs.getSystemMsg()},
                 {'role': 'user', 'content': chatMgs.getUserMsg('hello')},
@@ -237,7 +236,6 @@ let LLMFormat = {
         return JSON.stringify({
             'model': option,
             "stream": false,
-            "temperature": 0.1,
             'messages': [
                 {'role': 'system', 'content': chatMgs.getSystemMsg()},
                 {'role': 'user', 'content': chatMgs.getUserMsg(origin)},
@@ -1292,7 +1290,6 @@ function yiyan(origin) {
                 headers: {"Content-Type": "application/json"},
                 system: chatMgs.getSystemMsg(),
                 data: JSON.stringify({
-                    'temperature': 0.3, // 随机度
                     'disable_search': true, // 禁用搜索
                     'messages': [
                         {"role": "user", "content": chatMgs.getUserMsg("hello")},

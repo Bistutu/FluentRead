@@ -1,4 +1,5 @@
 import { customModelString, services, servicesType } from "./option";
+import { getMissingCredentialMessage } from "./configValidation";
 import { sendErrorMessage } from "./tip";
 import { config } from "@/entrypoints/utils/config";
 
@@ -7,18 +8,10 @@ export function checkConfig(): boolean {
     // 1. Check if the plugin is enabled
     if (!config.on) return false;
 
-    // 2. Check if the token is provided for services that require it
-    if (servicesType.isUseToken(config.service) && !config.token[config.service]) {
-        // DeepLX 的令牌是可选的，不需要强制检查
-        if (config.service === services.deeplx) {
-        } else {
-            sendErrorMessage("令牌尚未配置，请前往设置页配置");
-            return false;
-        }
-    }
-    // Special case for Tencent Cloud service (requires both SecretId and SecretKey)
-    if (config.service === services.tencent && (!config.tencentSecretId || !config.tencentSecretKey)) {
-        sendErrorMessage("腾讯云机器翻译密钥尚未配置，请前往设置页配置SecretId和SecretKey");
+    // 2. Check if the service credentials are provided.
+    const missingCredentialMessage = getMissingCredentialMessage(config.service, config);
+    if (missingCredentialMessage) {
+        sendErrorMessage(missingCredentialMessage);
         return false;
     }
 

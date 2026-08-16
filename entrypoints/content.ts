@@ -7,6 +7,15 @@ import { mountFloatingBall, unmountFloatingBall, toggleFloatingBallPosition } fr
 import { mountSelectionTranslator, unmountSelectionTranslator } from "@/entrypoints/utils/selectionTranslator";
 import { cancelAllTranslations, translateText } from "@/entrypoints/utils/translateApi";
 import { mountNewApiComponent } from "@/entrypoints/utils/newApi";
+import { mountImageTranslator, unmountImageTranslator } from "@/entrypoints/utils/imageTranslation";
+import {
+    getDeepActiveElement,
+    getInputBoxText,
+    isInputElement,
+    matchesInputBoxTrigger,
+    removeTriggerSymbols,
+    type InputBoxTrigger,
+} from "@/entrypoints/utils/inputBox";
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import { createShadowRootUi, type ShadowRootContentScriptUi } from 'wxt/utils/content-script-ui/shadow-root';
 
@@ -32,6 +41,7 @@ export default defineContentScript({
         contentScriptContext = ctx;
         installPageStyles(ctx);
         await configReady // 等待配置加载完成
+        setupInputBoxTranslation();
         if (config.on === false) return; // 如果配置关闭，则不执行任何操作
         // 添加手动翻译事件监听器
         setupManualTranslationTriggers();
@@ -65,6 +75,8 @@ export default defineContentScript({
         }
         
         mountNewApiComponent();
+        // 图片翻译使用独立覆盖层，不改写宿主页面的 img 元素；点击入口由事件委托处理动态图片。
+        if (config.disableImageTranslator !== true) mountImageTranslator();
 
         // background.ts
         browser.runtime.onMessage.addListener((message: { message: string; }, sender: any, sendResponse: () => void) => {
@@ -117,6 +129,21 @@ export default defineContentScript({
             }
             return false;
         });
+
+        // 处理图片翻译控制消息
+        browser.runtime.onMessage.addListener((message: any, sender: any, sendResponse: () => void) => {
+            if (message.type === 'toggleImageTranslator') {
+                config.disableImageTranslator = message.isEnabled !== true;
+                if (message.isEnabled === true) {
+                    mountImageTranslator();
+                } else {
+                    unmountImageTranslator();
+                }
+                sendResponse();
+                return true;
+            }
+            return false;
+        });
         
         // 处理右键菜单触发的全文翻译和撤销
         browser.runtime.onMessage.addListener((message: any, sender: any, sendResponse: (response?: any) => void) => {
@@ -150,6 +177,7 @@ export default defineContentScript({
             unmountFloatingBall();
             // 移除划词翻译组件
             unmountSelectionTranslator();
+            unmountImageTranslator();
             removeExistingTooltip();
         });
     }
@@ -638,26 +666,36 @@ function autoTranslationEvent() {
  */
 function setupInputBoxTranslation() {
     let keyPressCount = 0;
-    let keyPressTimer: NodeJS.Timeout | null = null;
-    let lastTriggerKey = '';
+    let keyPressTimer: ReturnType<typeof setTimeout> | null = null;
+    let lastInputElement: HTMLElement | null = null;
     const TRIPLE_KEY_TIMEOUT = 1000; // 1秒内连续按三下才生效
-    
-    // 监听键盘事件
-    document.addEventListener('keydown', async (event) => {
+
+    const resetKeyPresses = () => {
+        keyPressCount = 0;
+        lastInputElement = null;
+        if (keyPressTimer) {
+            clearTimeout(keyPressTimer);
+            keyPressTimer = null;
+        }
+    };
+
+    const handleKeyDown = async (event: KeyboardEvent) => {
         // 检查功能是否启用
-        if (config.inputBoxTranslationTrigger === 'disabled') {
+        if (config.on === false || config.inputBoxTranslationTrigger === 'disabled') {
+            resetKeyPresses();
             return;
         }
-        
-        // 检查当前焦点元素是否为输入框
-        const activeElement = document.activeElement as HTMLElement;
+
+        // 从 Shadow DOM 中找到真正的焦点元素，而不是只看宿主节点。
+        const activeElement = getDeepActiveElement();
         if (!isInputElement(activeElement)) {
+            resetKeyPresses();
             return;
         }
-        
+
         // 处理不同的触发方式
         const triggerType = config.inputBoxTranslationTrigger;
-        
+
         if (triggerType === 'ctrl_enter') {
             // Ctrl+Enter 触发
             if (event.ctrlKey && event.key === 'Enter') {
@@ -667,125 +705,44 @@ function setupInputBoxTranslation() {
             }
         } else if (triggerType === 'triple_space' || triggerType === 'triple_equal' || triggerType === 'triple_dash') {
             // 连按三次触发
-            let targetKey = '';
-            switch (triggerType) {
-                case 'triple_space':
-                    targetKey = ' ';
-                    break;
-                case 'triple_equal':
-                    targetKey = '=';
-                    break;
-                case 'triple_dash':
-                    targetKey = '-';
-                    break;
-            }
-            
-            // 只响应目标按键
-            if (event.key !== targetKey) {
+            if (event.repeat || !matchesInputBoxTrigger(event, triggerType as InputBoxTrigger)) {
                 // 如果按的不是目标键，重置计数器
-                keyPressCount = 0;
-                lastTriggerKey = '';
-                if (keyPressTimer) {
-                    clearTimeout(keyPressTimer);
-                    keyPressTimer = null;
-                }
+                resetKeyPresses();
                 return;
             }
-            
-            // 检查是否是同一个按键的连续按下
-            if (lastTriggerKey !== targetKey) {
+
+            // 切换输入框后必须重新开始计数，避免把两个输入框的按键拼成一次触发。
+            if (lastInputElement !== activeElement) {
                 keyPressCount = 1;
-                lastTriggerKey = targetKey;
+                lastInputElement = activeElement;
             } else {
                 keyPressCount++;
             }
-            
+
             // 如果是第三次按下目标键
             if (keyPressCount === 3) {
                 event.preventDefault(); // 阻止默认输入
+                resetKeyPresses();
                 await handleInputBoxTranslation(activeElement);
-                keyPressCount = 0; // 重置计数器
-                lastTriggerKey = '';
+                return;
             }
-            
+
             // 设置超时，如果在指定时间内没有连续按满三次，就重置计数器
             if (keyPressTimer) {
                 clearTimeout(keyPressTimer);
             }
             keyPressTimer = setTimeout(() => {
-                keyPressCount = 0;
-                lastTriggerKey = '';
+                resetKeyPresses();
             }, TRIPLE_KEY_TIMEOUT);
         }
+    };
+
+    // 使用捕获阶段，兼容会在冒泡阶段停止传播键盘事件的富文本编辑器。
+    document.addEventListener('keydown', handleKeyDown, true);
+    contentScriptContext?.onInvalidated(() => {
+        document.removeEventListener('keydown', handleKeyDown, true);
+        resetKeyPresses();
     });
-}
-
-/**
- * 检查元素是否为输入元素
- */
-function isInputElement(element: HTMLElement): boolean {
-    if (!element) return false;
-    
-    const tagName = element.tagName.toLowerCase();
-    const isInput = tagName === 'input';
-    const isTextarea = tagName === 'textarea';
-    const isContentEditable = element.contentEditable === 'true';
-    
-    // 对于input元素，还需要检查type属性
-    if (isInput) {
-        const inputType = (element as HTMLInputElement).type.toLowerCase();
-        const textInputTypes = ['text', 'search', 'url', 'email', 'password'];
-        return textInputTypes.includes(inputType);
-    }
-    
-    return isTextarea || isContentEditable;
-}
-
-/**
- * 获取输入框中的文本
- */
-function getInputBoxText(element: HTMLElement): string {
-    const tagName = element.tagName.toLowerCase();
-    
-    if (tagName === 'input' || tagName === 'textarea') {
-        return (element as HTMLInputElement | HTMLTextAreaElement).value.trim();
-    } else if (element.contentEditable === 'true') {
-        return element.innerText.trim();
-    }
-    
-    return '';
-}
-
-/**
- * 根据触发方式去除末尾的触发符号
- */
-function removeTriggerSymbols(text: string, triggerType: string): string {
-    if (!text || triggerType === 'disabled' || triggerType === 'ctrl_enter') {
-        return text;
-    }
-    
-    let triggerSymbol = '';
-    switch (triggerType) {
-        case 'triple_space':
-            triggerSymbol = ' ';
-            break;
-        case 'triple_equal':
-            triggerSymbol = '=';
-            break;
-        case 'triple_dash':
-            triggerSymbol = '-';
-            break;
-        default:
-            return text;
-    }
-    
-    // 去除末尾所有的触发符号
-    let cleanedText = text;
-    while (cleanedText.endsWith(triggerSymbol)) {
-        cleanedText = cleanedText.slice(0, -1);
-    }
-    
-    return cleanedText.trim();
 }
 
 /**
@@ -801,7 +758,7 @@ function setInputBoxText(element: HTMLElement, text: string): void {
         // 触发input事件，以便网页能感知到值的变化
         inputElement.dispatchEvent(new Event('input', { bubbles: true }));
         inputElement.dispatchEvent(new Event('change', { bubbles: true }));
-    } else if (element.contentEditable === 'true') {
+    } else if (isInputElement(element)) {
         element.innerText = text;
         
         // 触发input事件
@@ -1052,6 +1009,3 @@ async function handleInputBoxTranslation(element: HTMLElement): Promise<void> {
         setTimeout(() => removeExistingTooltip(), 3000);
     }
 }
-
-// 初始化输入框翻译功能
-setupInputBoxTranslation();
