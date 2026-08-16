@@ -6,7 +6,6 @@
 import { enqueueTranslation, clearTranslationQueue, getQueueStatus } from './translateQueue';
 import browser from 'webextension-polyfill';
 import { config } from './config';
-import { cache } from './cache';
 import { detectlang } from './common';
 import { storage } from '@wxt-dev/storage';
 
@@ -41,17 +40,6 @@ export async function translateText(origin: string, context: string = document.t
     return origin;
   }
 
-  // 检查缓存
-  if (useCache) {
-    const cachedResult = cache.localGet(origin);
-    if (cachedResult) {
-      if (isDev) {
-        console.log('[翻译API] 命中缓存，直接返回缓存结果');
-      }
-      return cachedResult;
-    }
-  }
-
   // 增加翻译计数
   config.count++;
   // 保存配置以确保计数持久化
@@ -64,7 +52,7 @@ export async function translateText(origin: string, context: string = document.t
       try {
         // 发送翻译请求给background脚本处理
         const result = await Promise.race([
-          browser.runtime.sendMessage({ context, origin }),
+          browser.runtime.sendMessage({ context, origin, useCache }),
           new Promise<never>((_, reject) => 
             setTimeout(() => reject(new Error('翻译请求超时')), timeout)
           )
@@ -73,11 +61,6 @@ export async function translateText(origin: string, context: string = document.t
         // 如果翻译结果为空或与原文完全相同，直接返回原文
         if (!result || result === origin) {
           return origin;
-        }
-
-        // 缓存翻译结果
-        if (useCache) {
-          cache.localSet(origin, result);
         }
 
         return result;
@@ -117,6 +100,7 @@ export async function translateTextBatch(
     maxRetries = 3,
     retryDelay = 1000,
     timeout = 45000,
+    useCache = config.useCache,
   } = options;
 
   config.count++;
@@ -126,7 +110,7 @@ export async function translateTextBatch(
     const translationTask = async (retryCount: number = 0): Promise<string[]> => {
       try {
         const result = await Promise.race([
-          browser.runtime.sendMessage({ context, origin: origins }),
+          browser.runtime.sendMessage({ context, origin: origins, useCache }),
           new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error('翻译请求超时')), timeout)
           )
