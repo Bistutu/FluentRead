@@ -52,6 +52,23 @@ describe('统一配置存储', () => {
         expect(configStore.config).toMatchObject(storedConfig);
     });
 
+    it('为旧配置补齐默认开启的视频字幕 Beta 与独立 DeepLX 服务', async () => {
+        const configStore = await loadConfigModule(storedConfig);
+
+        await configStore.configReady;
+
+        expect(configStore.config.videoTranslationEnabled).toBe(true);
+        expect(configStore.config.videoService).toBe('deeplx');
+    });
+
+    it('非法的视频服务回退到机器翻译默认服务', async () => {
+        const configStore = await loadConfigModule({ ...storedConfig, videoService: 'openai' });
+
+        await configStore.configReady;
+
+        expect(configStore.config.videoService).toBe('deeplx');
+    });
+
     it('存储内容损坏时回退到默认配置，并保持初始化 Promise 可用', async () => {
         const configStore = await loadConfigModule('{not-json');
 

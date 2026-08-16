@@ -44,6 +44,12 @@ export const navigationGroups: NavigationGroup[] = [
         kicker: '操作方式', title: '交互与快捷键', detail: '为高频动作选择容易记忆且不冲突的触发方式。',
         searchDescription: '鼠标悬停、划词翻译、全文翻译与自定义按键',
       },
+      {
+        id: 'settings-video', icon: 'CC', label: '视频字幕 Beta', description: 'YouTube 边看边译', group: '阅读工具',
+        heading: '边看边译视频字幕', summary: '在 YouTube 原生字幕下方显示译文，并独立选择视频翻译服务。',
+        kicker: '视频翻译 Beta', title: 'YouTube 视频字幕', detail: '只处理播放器已经提供的字幕文本，不上传音频或视频内容。',
+        searchDescription: 'YouTube、视频字幕、视频翻译服务、DeepLX、微软翻译',
+      },
     ],
   },
   {

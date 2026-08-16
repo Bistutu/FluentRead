@@ -144,6 +144,7 @@ function isHiddenElement(node: Element): boolean {
 function isNoTranslateElement(node: Element): boolean {
     return Boolean(
         node.classList.contains('notranslate') ||
+        node.matches('#ytp-caption-window-container, .ytp-caption-window-container, .fluent-read-video-subtitle') ||
         node.getAttribute('translate') === 'no' ||
         node.getAttribute('data-notranslate') === 'true',
     );

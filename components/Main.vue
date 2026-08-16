@@ -48,6 +48,33 @@
       </el-col>
     </el-row>
 
+    <!-- 文本与视频使用独立的翻译服务 -->
+    <el-row class="margin-bottom margin-left-2em settings-preference-row">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="网页、划词和悬停翻译使用的默认服务。视频字幕服务可以单独选择。" placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">文本翻译服务<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-select v-model="config.service" aria-label="文本翻译服务" placeholder="请选择文本翻译服务">
+          <el-option class="select-left" v-for="item in options.services" :key="item.value" :label="item.label" :value="item.value" :disabled="item.disabled" />
+        </el-select>
+      </el-col>
+    </el-row>
+
+    <el-row class="margin-bottom margin-left-2em settings-preference-row">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="YouTube 原生字幕下方显示的译文使用此服务，与文本翻译服务互不影响。" placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">视频翻译服务<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-select v-model="config.videoService" aria-label="视频翻译服务" placeholder="请选择视频翻译服务">
+          <el-option class="select-left" v-for="item in videoServiceOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
+
     <!--    译文样式选择器-->
     <el-row v-show="config.display === 1" class="margin-bottom margin-left-2em settings-preference-row">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -111,6 +138,32 @@
         </template>
       </ServiceCatalog>
 
+    </section>
+
+    <!-- 视频字幕 Beta -->
+    <section v-show="props.activeSection === 'settings-video'" id="settings-video" class="settings-section">
+      <div class="video-settings-hero">
+        <div><span class="eyebrow">Beta 功能</span><h2>YouTube 视频字幕</h2><p>边看边译 YouTube 原生字幕；不上传音频，不改变播放器时间轴。</p></div>
+        <el-switch v-model="config.videoTranslationEnabled" class="settings-switch" aria-label="视频字幕翻译" />
+      </div>
+
+      <el-row class="settings-control-row">
+        <el-col :span="12" class="settings-control-label lightblue rounded-corner">
+          <el-tooltip class="box-item" effect="dark" content="视频字幕独立使用机器翻译服务，默认 DeepLX；网页翻译仍使用上方的文本翻译服务。" placement="top-start" :show-after="500">
+            <span class="popup-text popup-vertical-left">视频翻译服务<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
+          </el-tooltip>
+        </el-col>
+        <el-col :span="12" class="settings-control-field">
+          <el-select v-model="config.videoService" aria-label="视频字幕翻译服务" :disabled="!config.videoTranslationEnabled" placeholder="请选择服务">
+            <el-option class="select-left" v-for="item in videoServiceOptions" :key="item.value" :label="item.label" :value="item.value" />
+          </el-select>
+        </el-col>
+      </el-row>
+
+      <div class="video-settings-note">
+        <strong>使用方式</strong>
+        <p>打开 YouTube 视频的原生字幕后，FluentRead 会在字幕下方显示译文。字幕变化时自动更新；切换视频或关闭此功能会清理译文。</p>
+      </div>
     </section>
 
 
@@ -596,6 +649,9 @@ const aiContextModel = computed(() => resolveConfiguredModel(
   config.value.customModel[config.value.service],
 ));
 const canUseAIContext = computed(() => servicesType.isUseAIContext(config.value.service, aiContextModel.value));
+const videoServiceOptions = computed(() => options.services.filter((item: any) =>
+  !item.disabled && servicesType.machine.has(item.value),
+));
 const filteredServices = computed(() =>
   options.services.filter((item: any) =>
     !([item.google].includes(item.value) && config.value.display !== 1),
@@ -977,6 +1033,23 @@ const saveImport = async () => {
   border-radius: 18px;
   background: linear-gradient(135deg, #fff8fa, #fff);
 }
+
+.video-settings-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 12px 20px;
+  padding: 20px;
+  border: 1px solid #cceee9;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f1fbf9, #fff);
+}
+.video-settings-hero h2 { margin: 5px 0 6px; color: #172033; font-size: 21px; }
+.video-settings-hero p { margin: 0; color: #737c8f; font-size: 11px; }
+.video-settings-note { margin: 18px 12px; padding: 16px 18px; border: 1px dashed #cfe7e5; border-radius: 14px; color: #6d788b; background: #f8fcfc; font-size: 11px; line-height: 1.6; }
+.video-settings-note strong { color: #087f80; }
+.video-settings-note p { margin: 6px 0 0; }
 
 .settings-status-copy {
   display: flex;

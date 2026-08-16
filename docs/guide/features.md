@@ -34,6 +34,11 @@
 
 <img src="/sample-git-3.gif" alt="智能缓存" style="width: 60%; max-width: 20%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />
 
+### YouTube 视频字幕翻译（Beta）
+视频字幕翻译默认开启。在 YouTube 打开原生字幕后，FluentRead 会在播放器字幕下方显示译文，并随着字幕变化自动更新；它只处理 YouTube 已提供的字幕文本，不上传音频，也不改变播放器时间轴。
+
+视频翻译服务与网页文本翻译服务独立配置：可以在“通用设置”或弹窗的“视频字幕 Beta”卡片中单独选择机器翻译服务，例如网页使用微软翻译、视频使用 DeepLX。完整设置中的“视频字幕 Beta”页面可以关闭该功能；当前版本仅处理 YouTube 的 `/watch` 和 `/shorts` 页面。
+
 ## 操作方式
 
 <img src="/hotkey.png" alt="快捷键操作" style="width: 35%; max-width: 100%;border: 1px solid #eee;border-radius: 4px;box-shadow: 0 1px 2px rgba(0,0,0,0.05);" />

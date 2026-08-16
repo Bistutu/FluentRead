@@ -9,9 +9,11 @@ import { cancelAllTranslations, translateText } from "@/entrypoints/utils/transl
 import { mountNewApiComponent } from "@/entrypoints/utils/newApi";
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import { createShadowRootUi, type ShadowRootContentScriptUi } from 'wxt/utils/content-script-ui/shadow-root';
+import { mountVideoSubtitleTranslation } from './main/videoSubtitle';
 
 let contentScriptContext: ContentScriptContext | null = null;
 let inputTooltipUi: ShadowRootContentScriptUi<HTMLElement> | null = null;
+let unmountVideoSubtitleTranslation: (() => void) | null = null;
 
 function installPageStyles(ctx: ContentScriptContext) {
     const existing = document.getElementById('fluent-read-page-styles');
@@ -33,6 +35,8 @@ export default defineContentScript({
         installPageStyles(ctx);
         await configReady // 等待配置加载完成
         if (config.on === false) return; // 如果配置关闭，则不执行任何操作
+        // 视频字幕 Beta 只在 YouTube 播放页监听原生字幕，不采集音频或视频内容。
+        unmountVideoSubtitleTranslation = mountVideoSubtitleTranslation();
         // 添加手动翻译事件监听器
         setupManualTranslationTriggers();
         // 添加悬浮球快捷键事件监听器
@@ -150,6 +154,8 @@ export default defineContentScript({
             unmountFloatingBall();
             // 移除划词翻译组件
             unmountSelectionTranslator();
+            unmountVideoSubtitleTranslation?.();
+            unmountVideoSubtitleTranslation = null;
             removeExistingTooltip();
         });
     }

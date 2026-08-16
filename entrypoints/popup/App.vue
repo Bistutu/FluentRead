@@ -142,6 +142,11 @@
           <span><strong>译文显示</strong><small>{{ displaySummary }}</small></span>
           <b>›</b>
         </button>
+        <button class="feature-card video-feature-card" data-feature="video-subtitle" type="button" :disabled="!config.on" @click="openDrawer('video')">
+          <span class="feature-icon teal">CC</span>
+          <span><strong>视频字幕 <em>Beta</em></strong><small>{{ videoSummary }}</small></span>
+          <i :class="{ active: config.videoTranslationEnabled }" />
+        </button>
       </div>
     </section>
 
@@ -239,6 +244,21 @@
         </button>
       </div>
 
+      <div v-else-if="activeDrawer === 'video'" class="drawer-content">
+        <div class="video-beta-banner"><span class="feature-icon teal">CC</span><span><strong>YouTube 字幕翻译</strong><small>Beta · 只处理播放器已经提供的字幕文本</small></span></div>
+        <div class="setting-row">
+          <span><strong>启用视频字幕翻译</strong><small>在 YouTube 原生字幕下方显示中文译文</small></span>
+          <button class="switch compact" type="button" role="switch" :aria-checked="config.videoTranslationEnabled" aria-label="启用或关闭视频字幕翻译" @click="setVideoTranslationEnabled(!config.videoTranslationEnabled)"><i /></button>
+        </div>
+        <label class="select-row">
+          <span><strong>视频翻译服务</strong><small>与网页翻译服务独立保存</small></span>
+          <select v-model="config.videoService" :disabled="!config.videoTranslationEnabled">
+            <option v-for="item in videoServiceOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
+          </select>
+        </label>
+        <small class="drawer-hint">目前支持 YouTube；需要先打开 YouTube 的原生字幕。DeepLX 默认地址可在完整设置中配置。</small>
+      </div>
+
       <div v-else class="drawer-content">
         <div class="choice-block">
           <label>翻译模式</label>
@@ -275,11 +295,11 @@ import {
 } from '@/entrypoints/utils/config';
 import { Setting } from '@element-plus/icons-vue';
 import { Config } from '@/entrypoints/utils/model';
-import { options } from '@/entrypoints/utils/option';
+import { options, servicesType } from '@/entrypoints/utils/option';
 import ServiceIcon from '@/components/ServiceIcon.vue';
 
-type DrawerName = 'hover' | 'selection' | 'floating' | 'appearance';
-type SettingsSection = 'settings-general' | 'settings-shortcuts';
+type DrawerName = 'hover' | 'selection' | 'floating' | 'appearance' | 'video';
+type SettingsSection = 'settings-general' | 'settings-shortcuts' | 'settings-video';
 const CustomHotkeyInput = defineAsyncComponent(() => import('@/components/CustomHotkeyInput.vue'));
 const version = process.env.VUE_APP_VERSION;
 const config = ref(new Config());
@@ -304,9 +324,11 @@ const drawerSettingsSection: Record<DrawerName, SettingsSection> = {
   selection: 'settings-shortcuts',
   floating: 'settings-shortcuts',
   appearance: 'settings-general',
+  video: 'settings-video',
 };
 
 const serviceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
+const videoServiceOptions = computed(() => options.services.filter((item: any) => !item.disabled && servicesType.machine.has(item.value)));
 const popularServiceValues = ['freeTranslation', 'microsoft', 'google', 'deepL', 'deeplx', 'deepseek', 'openai', 'gemini', 'claude'];
 const popularServiceOptions = computed(() => popularServiceValues
   .map(value => serviceOptions.value.find((item: any) => item.value === value))
@@ -314,18 +336,21 @@ const popularServiceOptions = computed(() => popularServiceValues
 const moreServiceOptions = computed(() => serviceOptions.value.filter((item: any) => !popularServiceValues.includes(item.value)));
 const styleOptions = computed(() => options.styles.filter((item: any) => !item.disabled));
 const serviceLabel = computed(() => serviceOptions.value.find((item: any) => item.value === config.value.service)?.label || config.value.service);
+const videoServiceLabel = computed(() => videoServiceOptions.value.find((item: any) => item.value === config.value.videoService)?.label || config.value.videoService);
 const styleLabel = computed(() => styleOptions.value.find((item: any) => item.value === config.value.style)?.label || '默认样式');
 const hoverKey = computed(() => config.value.hotkey === 'custom' ? (config.value.customHotkey || '自定义') : config.value.hotkey);
 const hoverSummary = computed(() => config.value.hotkey === 'none' ? '已关闭' : `${hoverKey.value} + 悬停`);
 const selectionSummary = computed(() => ({ disabled: '已关闭', bilingual: '双语显示', 'translation-only': '仅显示译文' }[config.value.selectionTranslatorMode] || '双语显示'));
 const floatingSummary = computed(() => `${config.value.floatingBallPosition === 'left' ? '页面左侧' : '页面右侧'} · ${config.value.floatingBallHotkey}`);
 const displaySummary = computed(() => config.value.display === 1 ? `双语 · ${styleLabel.value}` : '仅显示译文');
-const drawerTitle = computed(() => ({ hover: '悬停翻译设置', selection: '划词翻译设置', floating: '全文悬浮球设置', appearance: '译文显示设置' }[activeDrawer.value]));
+const videoSummary = computed(() => config.value.videoTranslationEnabled ? `${videoServiceLabel.value} · YouTube` : '已关闭');
+const drawerTitle = computed(() => ({ hover: '悬停翻译设置', selection: '划词翻译设置', floating: '全文悬浮球设置', appearance: '译文显示设置', video: '视频字幕设置' }[activeDrawer.value]));
 const drawerDescription = computed(() => ({
   hover: '把鼠标停在文本上，用轻量快捷键获取即时译文。',
   selection: '选中文字后，按你的偏好显示原文与译文。',
   floating: '把全文翻译入口固定在最顺手的位置。',
   appearance: '调整双语布局、译文样式与界面主题。',
+  video: '在 YouTube 播放器中显示实时字幕译文。',
 }[activeDrawer.value]));
 const hoverChoices = [
   { value: 'Control', label: 'Ctrl' },
@@ -481,6 +506,9 @@ function setSelectionTrigger(trigger: string) {
 function setFloatingEnabled(enabled: boolean) {
   config.value.disableFloatingBall = !enabled;
   void broadcast({ type: 'toggleFloatingBall', isEnabled: enabled });
+}
+function setVideoTranslationEnabled(enabled: boolean) {
+  config.value.videoTranslationEnabled = enabled;
 }
 function handleFloatingHotkeyChange() {
   if (config.value.floatingBallHotkey === 'custom' && !config.value.customFloatingBallHotkey) showCustomHotkeyDialog.value = true;

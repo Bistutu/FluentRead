@@ -3,17 +3,18 @@ import {services} from "../utils/option";
 import {config} from "@/entrypoints/utils/config";
 
 async function deepl(message: any) {
+    const service = message.serviceOverride || config.service;
     // deepl 不支持 zh-Hans，需要转换为 zh
     let targetLang = config.to === 'zh-Hans' ? 'zh' : config.to;
 
     // 判断是否使用代理
-    let url: string = config.proxy[config.service] ? config.proxy[config.service] : urls[services.deepL]
+    let url: string = config.proxy[service] ? config.proxy[service] : urls[services.deepL]
 
     const resp = await fetch(url, {
         method: method.POST,
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'DeepL-Auth-Key ' + config.token[services.deepL]
+            'Authorization': 'DeepL-Auth-Key ' + config.token[service]
         },
         body: JSON.stringify({
             text: [message.origin],
@@ -34,4 +35,3 @@ async function deepl(message: any) {
 }
 
 export default deepl;
-

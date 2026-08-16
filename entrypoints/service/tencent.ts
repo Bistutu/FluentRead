@@ -123,7 +123,8 @@ async function tencent(message: any) {
         const authorization = await createTencentSignature(requestBody, timestamp, secretId, secretKey);
         
         // 判断是否使用代理
-        const url = config.proxy[config.service] || 'https://tmt.tencentcloudapi.com/';
+        const service = message.serviceOverride || config.service;
+        const url = config.proxy[service] || 'https://tmt.tencentcloudapi.com/';
         
         const response = await fetch(url, {
             method: method.POST,

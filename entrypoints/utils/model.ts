@@ -1,4 +1,4 @@
-import { currentModelIds, defaultOption, services } from "./option";
+import { currentModelIds, defaultOption, services, servicesType } from "./option";
 import { normalizeCustomBodyMapping } from "./custom-body";
 
 export type DeepSeekApiType = 'auto' | 'responses' | 'chat';
@@ -22,6 +22,8 @@ export class Config {
     style: number;
     display: number = 1;
     service: string;
+    videoTranslationEnabled: boolean; // 是否启用视频字幕翻译 Beta
+    videoService: string; // 视频字幕独立翻译服务
     token: IMapping;
     ak: string;
     sk: string;
@@ -71,6 +73,8 @@ export class Config {
         this.display = defaultOption.display;
         this.hotkey = defaultOption.hotkey;
         this.service = defaultOption.service;
+        this.videoTranslationEnabled = true; // Beta 功能默认开启
+        this.videoService = services.deeplx; // 视频字幕默认使用 DeepLX
         this.token = {};
         this.ak = '';
         this.sk = '';
@@ -190,6 +194,13 @@ export function normalizeConfig(value: unknown): Config {
     normalized.model = isRecord(source.model) ? {...source.model} : {};
     normalized.customModel = isRecord(source.customModel) ? {...source.customModel} : {};
     normalized.customBody = normalizeCustomBodyMapping(source.customBody);
+
+    if (typeof normalized.videoTranslationEnabled !== 'boolean') {
+        normalized.videoTranslationEnabled = true;
+    }
+    if (!servicesType.machine.has(normalized.videoService)) {
+        normalized.videoService = services.deeplx;
+    }
 
     migrateModelIdentifiers(normalized.model);
 
