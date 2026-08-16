@@ -8,17 +8,21 @@
       <div><strong>连接参数</strong></div>
     </div>
 
-    <el-row v-show="compute.showAI && compute.showToken" class="margin-bottom margin-left-2em">
-      <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="默认要求填写 API Key。关闭后，当前服务的当前模型允许在没有 API Key 时发起请求，适用于本地模型或不需要鉴权的代理。" placement="top-start" :show-after="500">
-          <span class="popup-text popup-vertical-left">需要 API Key<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
-        </el-tooltip>
-      </el-col>
-      <el-col :span="12" class="credential-switch-field">
-        <el-switch v-model="compute.requireApiKey" aria-label="当前模型是否需要 API Key" active-text="需要" inactive-text="不需要" />
-        <small>当前模型：{{ config.model[service] || '未选择' }}</small>
-      </el-col>
-    </el-row>
+    <div v-show="compute.showAI && compute.showToken" class="api-key-policy">
+      <div class="api-key-policy-copy">
+        <div class="api-key-policy-title">
+          <strong>API Key 鉴权</strong>
+          <el-tooltip class="box-item" effect="dark" content="关闭后，当前模型可在没有 API Key 时发起请求。" placement="top-start" :show-after="500">
+            <el-icon aria-label="API Key 鉴权说明"><InfoFilled /></el-icon>
+          </el-tooltip>
+          <span class="api-key-policy-status" :class="{ 'is-off': !compute.requireApiKey }">
+            {{ compute.requireApiKey ? '需要' : '免 Key' }}
+          </span>
+        </div>
+        <small class="api-key-policy-model">{{ config.model[service] || '未选择' }}</small>
+      </div>
+      <el-switch v-model="compute.requireApiKey" aria-label="当前模型是否需要 API Key" size="small" />
+    </div>
 
     <el-row v-show="compute.showToken" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -148,6 +152,7 @@ const isValidAzureEndpoint = toRef(props, 'isValidAzureEndpoint')
   background: #fdf6ec;
   font-size: 12px;
   line-height: 1.5;
+  animation: credential-warning-breathe 2.8s ease-in-out infinite;
 }
 
 .credential-warning strong {
@@ -155,16 +160,90 @@ const isValidAzureEndpoint = toRef(props, 'isValidAzureEndpoint')
   font-weight: 750;
 }
 
-.credential-switch-field {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+@keyframes credential-warning-breathe {
+  0%, 100% { border-color: #f3d19e; box-shadow: 0 0 0 0 rgba(243, 209, 158, 0); }
+  50% { border-color: #e8b468; box-shadow: 0 0 0 4px rgba(243, 209, 158, .2); }
 }
 
-.credential-switch-field small {
-  flex-basis: 100%;
+@media (prefers-reduced-motion: reduce) {
+  .credential-warning { animation: none; }
+}
+
+.api-key-policy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 1em 10px;
+  padding: 12px 16px;
+  border: 1px solid #edf0f5;
+  border-radius: 16px;
+  background: #fbfcfe;
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+
+.api-key-policy:hover {
+  border-color: #e5b4c2;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(31, 40, 61, .04);
+}
+
+.api-key-policy-copy {
+  min-width: 0;
+}
+
+.api-key-policy-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: #172033;
+  font-size: 13px;
+}
+
+.api-key-policy-title strong {
+  font-weight: 650;
+}
+
+.api-key-policy-title .el-icon {
+  color: #8b93a4;
+  font-size: 13px;
+}
+
+.api-key-policy-status {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 3px;
+  padding: 2px 7px;
+  border: 1px solid #f4c5d2;
+  border-radius: 999px;
+  color: #c52f58;
+  background: #fff2f5;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+.api-key-policy-status.is-off {
+  border-color: #dfe3eb;
+  color: #687286;
+  background: #f5f6f8;
+}
+
+.api-key-policy-model {
+  display: block;
+  max-width: 100%;
+  margin-top: 4px;
+  overflow: hidden;
   color: #909399;
   font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.api-key-policy :deep(.el-switch) {
+  flex: 0 0 auto;
+  --el-switch-on-color: #ef4776;
+  --el-switch-off-color: #cfd5df;
 }
 </style>
