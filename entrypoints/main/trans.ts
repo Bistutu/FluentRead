@@ -344,19 +344,69 @@ function observeFullPageRoot(session: FullPageSession, root: Node): void {
         subtree: true,
         characterData: true,
         characterDataOldValue: true,
+        attributes: true,
+        attributeFilter: ["style", "class", "hidden", "aria-hidden", "translate", "data-notranslate"],
     });
 }
 
+function resolveStatefulMutationTarget(element: Element): HTMLElement | false {
+    let current: Element | null = element;
+    while (current) {
+        if (current instanceof HTMLElement && getTranslationState(current)) return current;
+        const candidate = grabNode(current);
+        if (candidate instanceof HTMLElement && getTranslationState(candidate)) return candidate;
+        current = current.parentElement;
+    }
+    return false;
+}
+
 function isOwnMutation(mutation: MutationRecord): boolean {
-    if (isTranslationArtifact(mutation.target)) return true;
+    // 不能用“位于任意插件节点内”作为判断：站点可能直接改写双语 wrapper
+    // 的文本，必须让这类 mutation 进入 stale/retranslate 分支。加载/错误节点
+    // 没有宿主正文，才可以直接视为插件自身变化。
+    if (mutation.target instanceof Element &&
+        mutation.target.matches(".fluent-read-loading, .fluent-read-retry-wrapper")) return true;
     const mutationElement = mutation.target instanceof Element ? mutation.target : mutation.target.parentElement;
-    const resolvedTarget = mutationElement ? grabNode(mutationElement) : false;
-    const target = resolvedTarget instanceof HTMLElement ? resolvedTarget : mutationElement;
+    const target = mutationElement ? resolveStatefulMutationTarget(mutationElement) : false;
     const state = target ? getTranslationState(target as HTMLElement) : undefined;
-    if (!state || state.phase !== "translated") return false;
+    if (!target || !state || state.phase !== "translated") return false;
     if (state.kind === "control" && state.translatedHTML === (target as Element)?.innerHTML) return true;
     if (state.mode === "single" && state.translatedHTML === (target as Element)?.innerHTML) return true;
-    if (state.bilingualContent?.isConnected) return true;
+    if (state.bilingualContent?.isConnected) {
+        const wrapper = state.bilingualContent;
+        const mutationParent = mutation.target instanceof Element
+            ? mutation.target
+            : mutation.target.parentElement;
+
+        // wrapper 内部的变化只有在内容仍等于插件最后写入的快照时才算插件自身；
+        // 如果站点脚本改写了译文，必须让后续分支恢复并重新排队。
+        if (mutationParent && (mutationParent === wrapper || wrapper.contains(mutationParent))) {
+            return wrapper.innerHTML === state.bilingualHTML;
+        }
+
+        // 插件会先插入 loading，完成后再移除 loading 并插入译文 wrapper。
+        // 这两类 childList mutation 都可能落在宿主节点上；只要所有增删节点
+        // 都是扩展 artifact，且插件自己的最终快照仍然存在，就不能触发重译。
+        // 若 wrapper 已被宿主移除，则保留 false，让后续逻辑恢复并重新排队。
+        if (mutation.type === "childList") {
+            const changedNodes = [...Array.from(mutation.addedNodes), ...Array.from(mutation.removedNodes)];
+            if (changedNodes.length > 0 && changedNodes.every(isTranslationArtifact)) {
+                if (state.kind === "control" || state.mode === "single") {
+                    return state.translatedHTML === target.innerHTML;
+                }
+                return state.bilingualContent?.isConnected === true &&
+                    state.bilingualContent.innerHTML === state.bilingualHTML;
+            }
+        }
+
+        // 双语渲染会临时修改宿主节点的 style；只有值仍是插件记录的值时才忽略。
+        if (mutation.type === "attributes" && mutation.attributeName === "style") {
+            return target.getAttribute("style") === state.renderedStyleAttribute;
+        }
+        if (mutation.type === "attributes" && mutation.attributeName === "class") {
+            return target.getAttribute("class") === state.renderedClassAttribute;
+        }
+    }
     return mutation.addedNodes.length > 0 && Array.from(mutation.addedNodes).every(isTranslationArtifact);
 }
 
@@ -370,7 +420,7 @@ function attachFullPageMutationHandling(session: FullPageSession): void {
                 const mutationElement = mutation.target instanceof Element
                     ? mutation.target
                     : mutation.target.parentElement;
-                const changedTarget = mutationElement ? grabNode(mutationElement) : false;
+                const changedTarget = mutationElement ? resolveStatefulMutationTarget(mutationElement) : false;
                 const changedState = changedTarget instanceof HTMLElement
                     ? getTranslationState(changedTarget)
                     : undefined;
@@ -394,13 +444,32 @@ function attachFullPageMutationHandling(session: FullPageSession): void {
                 }
                 if (mutation.addedNodes.length > 0) scheduleFullPageDrain(session);
             } else if (mutation.type === "characterData") {
-                const target = grabNode(mutation.target.parentElement);
+                const target = mutation.target.parentElement
+                    ? resolveStatefulMutationTarget(mutation.target.parentElement)
+                    : false;
                 if (target instanceof HTMLElement) {
                     const state = getTranslationState(target);
                     if (state?.phase === "translated") restoreTranslation(target);
                     session.scheduled.delete(target);
                     session.pending.add(target);
                     session.observer.observe(target);
+                    scheduleFullPageDrain(session);
+                }
+            } else if (mutation.type === "attributes") {
+                const mutationElement = mutation.target instanceof Element ? mutation.target : null;
+                if (!mutationElement) continue;
+
+                const target = resolveStatefulMutationTarget(mutationElement);
+                if (target) {
+                    const state = getTranslationState(target);
+                    if (state?.phase === "translated") restoreTranslation(target);
+                    session.scheduled.delete(target);
+                    session.pending.add(target);
+                    session.observer.observe(target);
+                    scheduleFullPageDrain(session);
+                } else {
+                    // hidden/aria-hidden/style/class 变化可能让原先被屏蔽的子树重新可见。
+                    addFullPageBlocks(session, mutationElement);
                     scheduleFullPageDrain(session);
                 }
             }

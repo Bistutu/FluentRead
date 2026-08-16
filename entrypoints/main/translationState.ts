@@ -22,6 +22,8 @@ export interface TranslationState {
     originalStyleAttribute: string | null;
     /** 插件完成渲染后记录的 style 属性；undefined 表示尚未改动样式。 */
     renderedStyleAttribute?: string | null;
+    /** 插件完成渲染后记录的 class 属性，用于过滤自身添加 bilingual class 的 mutation。 */
+    renderedClassAttribute?: string | null;
     translatedHTML?: string;
     /**
      * 仅译文模式会暂时移除这些原始子节点。
@@ -33,6 +35,8 @@ export interface TranslationState {
     controller: AbortController;
     spinner?: HTMLElement;
     bilingualContent?: HTMLElement;
+    /** 双语 wrapper 最后一次由插件写入的 HTML，用于区分宿主重绘和插件自身 mutation。 */
+    bilingualHTML?: string;
 }
 
 export interface TranslationAttempt {
@@ -139,7 +143,10 @@ export function setSpinner(node: HTMLElement, spinner: HTMLElement): void {
 
 export function setBilingualContent(node: HTMLElement, content: HTMLElement): void {
     const state = states.get(node);
-    if (state) state.bilingualContent = content;
+    if (state) {
+        state.bilingualContent = content;
+        state.bilingualHTML = content.innerHTML;
+    }
 }
 
 /**
@@ -150,7 +157,10 @@ export function setBilingualContent(node: HTMLElement, content: HTMLElement): vo
  */
 export function setRenderedStyleAttribute(node: HTMLElement): void {
     const state = states.get(node);
-    if (state) state.renderedStyleAttribute = node.getAttribute("style");
+    if (state) {
+        state.renderedStyleAttribute = node.getAttribute("style");
+        state.renderedClassAttribute = node.getAttribute("class");
+    }
 }
 
 function removeExtensionNode(node: Node | undefined): void {

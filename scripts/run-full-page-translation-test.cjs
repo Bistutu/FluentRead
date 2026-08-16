@@ -18,6 +18,9 @@ function parseArgs(argv) {
     // 当前 main 的默认服务是“免费翻译服务”，内部按微软、DeepLX、谷歌顺序回退；
     // --service 只用于断言已预置的隔离 profile 配置，不会偷偷修改服务选择。
     service: 'freeTranslation',
+    // 仅在本次临时 profile 中写入服务，便于把“回退服务慢”和“全文机制问题”分开。
+    // 不传此参数时，脚本不会修改任何配置。
+    configureService: null,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const token = argv[index];
@@ -72,7 +75,7 @@ async function waitFor(page, predicate, timeout, description) {
   if (description) return description;
 }
 
-async function readConfig(context, timeout) {
+async function readConfig(context, timeout, updates = null) {
   const workers = context.serviceWorkers();
   const worker = workers[0] || await context.waitForEvent('serviceworker', { timeout: Math.min(timeout, 30000) });
   const match = worker.url().match(/^chrome-extension:\/\/([^/]+)/);
@@ -81,7 +84,18 @@ async function readConfig(context, timeout) {
   try {
     await popup.goto(`chrome-extension://${match[1]}/popup.html`, { waitUntil: 'domcontentloaded', timeout: 30000 });
     const stored = await popup.evaluate(() => chrome.storage.local.get('config'));
-    const config = typeof stored.config === 'string' ? JSON.parse(stored.config) : stored.config;
+    let config = typeof stored.config === 'string' ? JSON.parse(stored.config) : stored.config;
+    if (updates && Object.keys(updates).length > 0) {
+      config = { ...(config || {}), ...updates };
+      // 只写入当前脚本创建的临时 profile；不会触碰用户正在使用的配置。
+      await popup.evaluate((nextConfig) => new Promise((resolve, reject) => {
+        chrome.storage.local.set({ config: JSON.stringify(nextConfig) }, () => {
+          const error = chrome.runtime.lastError;
+          if (error) reject(new Error(error.message));
+          else resolve();
+        });
+      }), config);
+    }
     return { extensionId: match[1], config };
   } finally {
     await popup.close();
@@ -146,6 +160,7 @@ async function pageState(page) {
     return {
       paragraphOne: count('#paragraph-one'),
       paragraphTwo: count('#paragraph-two'),
+      paragraphTwoText: get('#paragraph-two')?.textContent?.trim() || '',
       heading: count('h1'),
       dynamic: count('#dynamic-paragraph'),
       shadow: shadowParagraph?.querySelectorAll('.fluent-read-bilingual-content').length || 0,
@@ -167,6 +182,9 @@ function assertTranslated(state, label) {
   if (state.paragraphOne !== 1 || state.paragraphTwo !== 1 || state.heading !== 1 || state.dynamic !== 1 || state.shadow !== 1) {
     throw new Error(`${label} 内容块翻译数量不正确：${JSON.stringify(state)}`);
   }
+  if (!state.paragraphTwoText.includes('changed after full-page translation')) {
+    throw new Error(`${label} 没有响应宿主页面的动态文本更新：${JSON.stringify(state)}`);
+  }
   if (state.header !== 0 || state.nav !== 0 || state.footer !== 0) throw new Error(`${label} 导航/页脚被误翻译`);
   if (state.buttonBilingualCount !== 0 || state.cancelButtonBilingualCount !== 0 ||
       !/[\u3400-\u9fff]/u.test(state.buttonText) || !/[\u3400-\u9fff]/u.test(state.cancelButtonText) ||
@@ -181,6 +199,9 @@ function assertTranslated(state, label) {
 function assertRestored(state) {
   if (state.paragraphOne || state.paragraphTwo || state.heading || state.dynamic || state.shadow) {
     throw new Error(`全文恢复后仍残留译文：${JSON.stringify(state)}`);
+  }
+  if (!state.paragraphTwoText.includes('changed after full-page translation')) {
+    throw new Error(`全文恢复覆盖了宿主页面更新：${JSON.stringify(state)}`);
   }
   if (state.buttonText !== '★Save changes' || state.cancelButtonText !== 'Cancel' ||
       !state.buttonIconPresent || state.buttonBilingualCount !== 0 || state.cancelButtonBilingualCount !== 0) {
@@ -213,7 +234,34 @@ async function main() {
         '--no-default-browser-check',
       ],
     });
+    if (args.configureService) {
+      await readConfig(context, args.timeout, { service: args.configureService });
+    }
     const page = await context.newPage();
+    const networkEvents = [];
+    let omittedNetworkEvents = 0;
+    const recordNetworkEvent = (event) => {
+      if (networkEvents.length < 20) networkEvents.push(event);
+      else omittedNetworkEvents += 1;
+    };
+    const recordFailedRequest = (request) => {
+      if (/translate|translatetext|deeplx|google/i.test(request.url())) {
+        recordNetworkEvent({ type: 'requestfailed', url: request.url(), error: request.failure()?.errorText || 'unknown' });
+      }
+    };
+    const recordResponse = (response) => {
+      if (/translate|translatetext|deeplx|google/i.test(response.url())) {
+        recordNetworkEvent({ type: 'response', url: response.url(), status: response.status() });
+      }
+    };
+    // 翻译请求由扩展 service worker 发出，BrowserContext 级监听比 page 级更完整。
+    context.on('requestfailed', recordFailedRequest);
+    context.on('response', recordResponse);
+    page.on('requestfailed', recordFailedRequest);
+    page.on('response', recordResponse);
+    page.on('console', (message) => {
+      if (message.type() === 'error') recordNetworkEvent({ type: 'console-error', text: message.text() });
+    });
     await page.goto(args.url, { waitUntil: 'domcontentloaded', timeout: args.timeout });
     // 当前 main 默认关闭悬浮球，但悬浮/全文快捷键仍由 content script 独立监听；
     // 不能把“悬浮球是否挂载”当作扩展已加载的判据。
@@ -232,7 +280,7 @@ async function main() {
         /[\u3400-\u9fff]/u.test(document.querySelector('#cancel-button')?.textContent || ''), args.timeout);
     } catch (error) {
       const diagnostics = await readShortcutDiagnostics(page);
-      throw new Error(`${error.message}\n全文快捷键诊断：${JSON.stringify(diagnostics)}`);
+      throw new Error(`${error.message}\n全文快捷键诊断：${JSON.stringify(diagnostics)}\n翻译请求诊断：${JSON.stringify({ events: networkEvents, omitted: omittedNetworkEvents })}`);
     }
 
     // 在会话已经启动后再插入节点，确认 MutationObserver 能把新内容纳入全文队列。
@@ -244,6 +292,18 @@ async function main() {
       container.appendChild(paragraph);
     });
     await waitFor(page, () => document.querySelector('#dynamic-paragraph .fluent-read-bilingual-content'), args.timeout);
+
+    // React/Vue 页面可能在译文已插入后重建原文节点。确认全文观察器不会把
+    // 这次宿主 characterData/childList mutation 当成插件自身写入而留下旧译文。
+    await page.evaluate(() => {
+      const paragraph = document.querySelector('#paragraph-two');
+      if (paragraph) paragraph.textContent = 'The second paragraph changed after full-page translation.';
+    });
+    await waitFor(page, () => {
+      const paragraph = document.querySelector('#paragraph-two');
+      return paragraph?.textContent?.includes('changed after full-page translation') &&
+        Boolean(paragraph.querySelector('.fluent-read-bilingual-content'));
+    }, args.timeout);
     const translated = await pageState(page);
     assertTranslated(translated, '第一次全文翻译');
     if (artifactsDir) await page.screenshot({ path: path.join(artifactsDir, 'full-page-translated.png'), fullPage: true });
