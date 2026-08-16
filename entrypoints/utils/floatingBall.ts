@@ -42,8 +42,6 @@ export function mountFloatingBall(ctx?: ContentScriptContext, position?: 'left' 
     props: {
       position: ballPosition,
       showMenu: true,
-      onDocClick: () => {
-      },
       onSettingsClick: () => {
         browser.runtime.sendMessage({ type: 'openOptionsPage' });
       },
@@ -57,24 +55,17 @@ export function mountFloatingBall(ctx?: ContentScriptContext, position?: 'left' 
       },
       // 添加翻译状态变化事件监听
       onTranslationToggle: (isTranslating: boolean) => {
-        if (isTranslating && !isTranslated) {
-          // 触发翻译开始事件
-          document.dispatchEvent(new CustomEvent('fluentread-translation-started'));
+        if (isTranslating === isTranslated) return;
 
-          // 触发即时翻译
-          autoTranslateEnglishPage();
-          isTranslated = true;
-        } else if (!isTranslating && isTranslated) {
-          // 触发翻译结束事件
-          document.dispatchEvent(new CustomEvent('fluentread-translation-ended'));
-
-          // 恢复原文
+        document.dispatchEvent(new CustomEvent(
+          isTranslating ? 'fluentread-translation-started' : 'fluentread-translation-ended',
+        ));
+        if (isTranslating) {
+          void autoTranslateEnglishPage();
+        } else {
           restoreOriginalContent();
-          isTranslated = false;
-
-          // 恢复后确保状态同步
-          floatingBallInstance.$el.classList.remove('is-translating');
         }
+        isTranslated = isTranslating;
       },
     },
   }).then((ui) => {
@@ -87,8 +78,6 @@ export function mountFloatingBall(ctx?: ContentScriptContext, position?: 'left' 
     app = ui.mounted?.app ?? null;
     floatingBallInstance = ui.mounted?.instance ?? null;
 
-    // 监听自定义事件，用于通过快捷键触发悬浮球
-    document.addEventListener('fluentread-toggle-translation', toggleFloatingBallTranslation);
     return floatingBallInstance;
   }).finally(() => {
     mountingPromise = null;
@@ -103,103 +92,9 @@ export function mountFloatingBall(ctx?: ContentScriptContext, position?: 'left' 
  */
 export function toggleFloatingBallTranslation() {
   if (!floatingBallInstance) return;
-
-  const currentState = floatingBallInstance.isTranslating;
-  const newState = !currentState;
-  
-  // 触发对应的自定义事件
-  if (newState) {
-    document.dispatchEvent(new CustomEvent('fluentread-translation-started'));
-  } else {
-    document.dispatchEvent(new CustomEvent('fluentread-translation-ended'));
-  }
-  
-  // 更新悬浮球状态
-  floatingBallInstance.isTranslating = newState;
-  
-  // 更新UI状态 - 使用Vue实例的$el属性
-  if (floatingBallInstance.$el) {
-    if (newState) {
-      floatingBallInstance.$el.classList.add('fluent-read-floating-ball-active');
-      // 开始翻译
-      autoTranslateEnglishPage();
-    } else {
-      floatingBallInstance.$el.classList.remove('fluent-read-floating-ball-active');
-      // 恢复原文
-      restoreOriginalContent();
-    }
-  }
-}
-
-/**
- * 处理悬浮球点击事件
- */
-function handleFloatingBallClick() {
-  if (!floatingBallInstance) return;
-  
-  // 切换悬浮球翻译状态
-  const newState = !floatingBallInstance.isTranslating;
-  floatingBallInstance.isTranslating = newState;
-  
-  // 触发对应的自定义事件
-  if (newState) {
-    document.dispatchEvent(new CustomEvent('fluentread-translation-started'));
-  } else {
-    document.dispatchEvent(new CustomEvent('fluentread-translation-ended'));
-  }
-  
-  // 更新UI状态 - 使用Vue实例的$el属性
-  if (floatingBallInstance.$el) {
-    if (newState) {
-      floatingBallInstance.$el.classList.add('fluent-read-floating-ball-active');
-      // 开始翻译
-      autoTranslateEnglishPage();
-    } else {
-      floatingBallInstance.$el.classList.remove('fluent-read-floating-ball-active');
-      // 恢复原文
-      restoreOriginalContent();
-    }
-  }
-}
-
-// 悬浮球动画效果
-function addFloatingBallAnimation(type: 'translate' | 'restore') {
-  if (!floatingBallInstance) return;
-  
-  const ball = floatingBallInstance.element;
-  const originalBackground = ball.style.background;
-  const originalTransition = ball.style.transition;
-  
-  // 设置过渡效果
-  ball.style.transition = 'all 0.3s ease';
-  
-  // 根据类型设置不同动画
-  if (type === 'translate') {
-    // 翻译激活动画
-    ball.style.transform = 'scale(1.2)';
-    ball.style.boxShadow = '0 0 15px rgba(0, 128, 255, 0.8)';
-    ball.style.background = '#4285f4';
-  } else {
-    // 恢复原文动画
-    ball.style.transform = 'scale(1.2)';
-    ball.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.8)';
-    ball.style.background = '#4caf50';
-  }
-  
-  // 恢复原状
-  setTimeout(() => {
-    if (!floatingBallInstance) return;
-    ball.style.transform = '';
-    ball.style.boxShadow = '';
-    ball.style.background = originalBackground;
-    
-    // 恢复原来的过渡设置
-    setTimeout(() => {
-      if (floatingBallInstance) {
-        ball.style.transition = originalTransition;
-      }
-    }, 300);
-  }, 300);
+  // 快捷键与鼠标点击必须复用组件的同一条状态切换路径。
+  // 组件会负责更新 aria-pressed、展开提示和回调翻译生命周期。
+  document.dispatchEvent(new CustomEvent('fluentread-toggle-translation'));
 }
 
 /**
@@ -208,9 +103,11 @@ function addFloatingBallAnimation(type: 'translate' | 'restore') {
 export function unmountFloatingBall() {
   mountRequestId++;
   if (floatingBallUi || (floatingBallInstance && app)) {
-    // 移除事件监听
-    document.removeEventListener('fluentread-toggle-translation', toggleFloatingBallTranslation);
-    
+    if (isTranslated) {
+      document.dispatchEvent(new CustomEvent('fluentread-translation-ended'));
+      restoreOriginalContent();
+      isTranslated = false;
+    }
     floatingBallUi?.remove();
     floatingBallUi = null;
     floatingBallInstance = null;
