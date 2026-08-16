@@ -1,4 +1,4 @@
-import { createWorker, type Worker } from 'tesseract.js';
+import { createWorker, PSM, type Worker } from 'tesseract.js';
 import { getOcrLanguages, normalizeOcrLines, type OcrLine } from '@/entrypoints/utils/imageTranslationCore';
 
 let workerPromise: Promise<Worker> | null = null;
@@ -34,6 +34,12 @@ async function getOcrWorker(sourceLanguage: string): Promise<Worker> {
 
 export async function recognizeImage(image: string, sourceLanguage: string): Promise<OcrLine[]> {
     const worker = await getOcrWorker(sourceLanguage);
+    // 图片文字通常是分散在画面各处的气泡/标签，不是连续的网页段落。
+    // Sparse text 能减少 Tesseract 把相邻控件合并成一个超大行框的情况。
+    await worker.setParameters({
+        tessedit_pageseg_mode: PSM.SPARSE_TEXT,
+        preserve_interword_spaces: '1',
+    });
     const result = await worker.recognize(image, {}, { blocks: true });
     return normalizeOcrLines(result.data.blocks);
 }
