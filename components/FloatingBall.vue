@@ -27,9 +27,9 @@
       @click.stop="toggleTranslation"
     >
       <svg class="translation-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <text x="1" y="12" fill="currentColor" font-size="11.5" font-weight="700" font-family="Arial, sans-serif">A</text>
-        <text x="12" y="12" fill="currentColor" font-size="11" font-weight="700" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">文</text>
-        <path d="M4 16h16M4 16l2-2M4 16l2 2M20 16l-2-2M20 16l-2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+        <text x="0.8" y="12.5" fill="currentColor" font-size="12" font-weight="700" font-family="Arial, sans-serif">A</text>
+        <text x="11.8" y="12.5" fill="currentColor" font-size="11.5" font-weight="700" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">文</text>
+        <path d="M4 16h16M4 16l2-2M4 16l2 2M20 16l-2-2M20 16l-2 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
       <span v-if="isTranslating" class="check-mark" aria-hidden="true" />
     </button>
@@ -401,15 +401,15 @@ watch(() => props.position, (newPosition) => {
 
 .floating-ball-mascot {
   display: block;
-  width: 48px;
-  height: 48px;
+  width: 42px;
+  height: 42px;
   pointer-events: none;
   image-rendering: pixelated;
 }
 
 .translation-icon {
-  width: 17px;
-  height: 17px;
+  width: 21px;
+  height: 21px;
 }
 
 .floating-ball-tool {
@@ -478,8 +478,8 @@ watch(() => props.position, (newPosition) => {
 }
 
 .floating-ball-settings svg {
-  width: 17px;
-  height: 17px;
+  width: 21px;
+  height: 21px;
 }
 
 .shortcut-tooltip {
