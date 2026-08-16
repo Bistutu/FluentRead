@@ -27,9 +27,9 @@
       @click.stop="toggleTranslation"
     >
       <svg class="translation-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <text x="2.5" y="10.5" fill="currentColor" font-size="8" font-weight="700" font-family="Arial, sans-serif">A</text>
-        <text x="13.3" y="10.5" fill="currentColor" font-size="7.5" font-weight="700" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">文</text>
-        <path d="M4 16h16M4 16l2-2M4 16l2 2M20 16l-2-2M20 16l-2 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" />
+        <text x="1" y="12" fill="currentColor" font-size="11.5" font-weight="700" font-family="Arial, sans-serif">A</text>
+        <text x="12" y="12" fill="currentColor" font-size="11" font-weight="700" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">文</text>
+        <path d="M4 16h16M4 16l2-2M4 16l2 2M20 16l-2-2M20 16l-2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
       <span v-if="isTranslating" class="check-mark" aria-hidden="true" />
     </button>
@@ -47,13 +47,7 @@
       @pointercancel="cancelPointerInteraction"
     >
       <svg class="floating-ball-mascot" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <path d="M6.8 13 7.8 6.5a.9.9 0 0 1 1.4-.6l5 2.8a9.3 9.3 0 0 1 3.6 0l5-2.8a.9.9 0 0 1 1.4.6l1 6.5A9.4 9.4 0 0 1 16 25.5 9.4 9.4 0 0 1 6.8 13Z" fill="#F5B6C6" stroke="#E6A1B3" stroke-width=".55" stroke-linejoin="round" />
-        <path d="m9.2 7.8 3.7 2.1-3 1-.7-3.1Zm13.6 0-3.7 2.1 3 1 .7-3.1Z" fill="#FFE4EA" />
-        <path d="M10.4 16c.8.7 1.8.7 2.6 0M18.9 16c.8.7 1.8.7 2.6 0" stroke="#B9788A" stroke-width="1.05" stroke-linecap="round" />
-        <circle cx="11.7" cy="18.5" r="1" fill="#FFD7DF" />
-        <circle cx="20.3" cy="18.5" r="1" fill="#FFD7DF" />
-        <path d="M14.9 18.7c.7-.5 1.5-.5 2.2 0-.1 1.1-.5 1.6-1.1 1.6s-1-.5-1.1-1.6Z" fill="#B96B7F" />
-        <path d="M15.6 19.8h.8" stroke="#F5B6C6" stroke-width=".5" stroke-linecap="round" />
+        <image v-if="logoUrl" :href="logoUrl" x="0" y="0" width="32" height="32" preserveAspectRatio="none" image-rendering="pixelated" />
       </svg>
       <span v-if="isTranslating" class="check-mark" aria-hidden="true" />
     </button>
@@ -67,7 +61,7 @@
       @pointerdown.stop
       @click.stop="handleSettingsClick"
     >
-      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <svg viewBox="6 5 16 15" fill="none" aria-hidden="true">
         <path d="m19.43 12.98 1.25.98-1.5 2.6-1.5-.6a7.3 7.3 0 0 1-1.69.98L15.77 18h-3l-.22-1.06a7.3 7.3 0 0 1-1.69-.98l-1.5.6-1.5-2.6 1.25-.98a6.7 6.7 0 0 1 0-1.96l-1.25-.98 1.5-2.6 1.5.6a7.3 7.3 0 0 1 1.69-.98L12.77 6h3l.22 1.06c.6.24 1.16.57 1.69.98l1.5-.6 1.5 2.6-1.25.98a6.7 6.7 0 0 1 0 1.96Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" />
         <circle cx="14.27" cy="12" r="2.4" stroke="currentColor" stroke-width="1.7" />
       </svg>
@@ -94,6 +88,10 @@ const props = defineProps({
   showMenu: {
     type: Boolean,
     default: true,
+  },
+  logoUrl: {
+    type: String,
+    default: '',
   },
   onSettingsClick: {
     type: Function as PropType<(event: MouseEvent) => void>,
@@ -405,6 +403,7 @@ watch(() => props.position, (newPosition) => {
   width: 30px;
   height: 30px;
   pointer-events: none;
+  image-rendering: pixelated;
 }
 
 .translation-icon {
