@@ -1,24 +1,28 @@
 import { getMainDomain, selectCompatFn } from "@/entrypoints/main/compat";
 import { html } from 'js-beautify';
 
-// 直接翻译的标签集合（块级元素）
+// 语义块标签只用于识别候选内容块；真正的块级判断还会结合 computed style。
 const directSet = new Set([
-    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',  // 标题
-    'p', 'li', 'dd', 'blockquote',       // 段落和列表
-    'figcaption'                         // 图片说明
+    'address', 'article', 'blockquote', 'dd', 'div', 'dt', 'figcaption',
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'main', 'p', 'section',
+    'td', 'th',
 ]);
 
-// 需要跳过的标签
+// 这些元素及其子树不能成为网页正文翻译目标。
 const skipSet = new Set([
-    'html', 'body', 'script', 'style', 'noscript', 'iframe',
-    'input', 'textarea', 'select', 'button', 'code', 'pre',
+    'html', 'head', 'body', 'script', 'style', 'noscript', 'iframe',
+    'input', 'textarea', 'select', 'option', 'code', 'pre', 'kbd', 'samp',
+    'var', 'math', 'svg', 'canvas', 'audio', 'video', 'object', 'template',
 ]);
+
+const structuralIgnoreSet = new Set(['header', 'footer', 'nav', 'aside']);
+const controlSet = new Set(['button']);
 
 // 内联元素集合（可以包含在其他元素内的元素）
 export const inlineSet = new Set([
     'a', 'b', 'strong', 'span', 'em', 'i', 'u', 'small', 'sub', 'sup',
     'font', 'mark', 'cite', 'q', 'abbr', 'time', 'ruby', 'bdi', 'bdo',
-    'img', 'br', 'wbr', 'svg'
+    'code', 'kbd', 'samp', 'var', 'img', 'br', 'wbr', 'svg'
 ]);
 
 const inlineDisplays = new Set([
@@ -30,11 +34,14 @@ const inlineDisplays = new Set([
     'ruby',
     'ruby-base',
     'ruby-text',
+    'ruby-base-container',
+    'ruby-text-container',
 ]);
 
 const semanticBlockTags = new Set([
-    'article', 'aside', 'dd', 'div', 'dt', 'figcaption', 'li', 'main',
-    'nav', 'section', 'td', 'th', 'label',
+    'address', 'article', 'blockquote', 'dd', 'div', 'dt', 'figcaption',
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'main', 'p', 'section',
+    'table', 'tbody', 'td', 'tfoot', 'th', 'thead', 'tr', 'ul', 'ol',
 ]);
 
 const extensionSelector = [
@@ -42,6 +49,8 @@ const extensionSelector = [
     '#fluent-read-selection-translator-container',
     '[class*="fluent-read-loading"]',
     '[class*="fluent-read-retry"]',
+    '.fluent-read-bilingual-content',
+    '[data-fr-translation-owned="true"]',
 ].join(',');
 
 /**
@@ -97,121 +106,169 @@ export function getOpenShadowRoots(rootNode: Node): ShadowRoot[] {
     return roots;
 }
 
-// 传入父节点，返回所有需要翻译的 DOM 元素数组
-export function grabAllNode(rootNode: Node): Element[] {
-    return grabAllNodeInternal(rootNode, new Set<ShadowRoot>());
+function safeTextContent(node: Element): string {
+    // 翻译结果 wrapper 是插件自己的内容，不能重新参与识别。
+    const clone = node.cloneNode(true) as Element;
+    clone.querySelectorAll(extensionSelector).forEach((child) => child.remove());
+    return clone.textContent?.replace(/[\s\u3000]+/g, ' ').trim() || '';
 }
 
-/**
- * 扫描一个 DOM 根，并递归扫描其中的开放 ShadowRoot。
- * visitedRoots 防止嵌套 Shadow DOM 在递归过程中被重复处理。
- */
-function grabAllNodeInternal(rootNode: Node, visitedRoots: Set<ShadowRoot>): Element[] {
-    if (!rootNode) return [];
-
-    const result: Element[] = [];
-
-    const walker = document.createTreeWalker(
-        rootNode,
-        NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
-        {
-            acceptNode: (node: Node): number => {
-                if (node instanceof Text) {
-                    // 检查文本节点是否有实际内容（去除空白后）
-                    const textContent = node.textContent?.replace(/[\s\u3000]/g, '') || '';
-                    return textContent.length > 0 ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP;
-                }
-
-                if (!(node instanceof Element)) return NodeFilter.FILTER_SKIP;
-
-                const tag = node.tagName.toLowerCase();
-
-                // 插件自身的 UI 不属于网页正文，直接跳过整个子树。
-                if (isExtensionElement(node)) return NodeFilter.FILTER_REJECT;
-
-                // 跳过黑名单标签
-                if (skipSet.has(tag) ||
-                    node.classList?.contains('sr-only') ||
-                    node.classList?.contains('notranslate')) {
-                    return NodeFilter.FILTER_REJECT;
-                }
-
-                // 在初始全局翻译时 跳过header与footer
-                if (tag === 'header' || tag === 'footer') {
-                    return NodeFilter.FILTER_REJECT;
-                }
-
-                // 检查是否只包含有效文本内容
-                let hasText = false;
-                let hasElement = false;
-                let hasNonEmptyElement = false;
-
-                for (const child of node.childNodes) {
-                    if (child.nodeType === Node.ELEMENT_NODE) {
-                        hasElement = true;
-                        // 检查子元素是否包含文本（去除空白后）
-                        const childText = child.textContent?.replace(/[\s\u3000]/g, '') || '';
-                        if (childText.length > 0) {
-                            hasNonEmptyElement = true;
-                        }
-                    }
-                    if (child.nodeType === Node.TEXT_NODE) {
-                        const textContent = child.textContent?.replace(/[\s\u3000]/g, '') || '';
-                        if (textContent.length > 0) {
-                            hasText = true;
-                        }
-                    }
-                }
-
-                // 如果有非空子元素，跳过当前节点
-                if (hasNonEmptyElement) {
-                    return NodeFilter.FILTER_SKIP;
-                }
-
-                if (hasText && !hasElement) {
-                    return NodeFilter.FILTER_ACCEPT;
-                }
-
-                // 如果有子元素，继续遍历
-                if (node.childNodes.length > 0) {
-                    return NodeFilter.FILTER_SKIP;
-                }
-
-                return NodeFilter.FILTER_REJECT;
-            }
-        }
-    );
-
-    // 遍历出所有可翻译的节点
-    let currentNode: Node | null;
-    while (currentNode = walker.nextNode()) {
-        const translateNode = grabNode(currentNode as Element | Text);
-        if (translateNode) {
-            result.push(translateNode);
-            // 跳过已确定要翻译的节点的所有子节点
-            walker.currentNode = currentNode.nextSibling || currentNode;
-        }
-    }
-
-    // TreeWalker 不会穿透 Shadow DOM，需要显式扫描每个开放根。
-    for (const shadowRoot of getImmediateOpenShadowRoots(rootNode)) {
-        if (visitedRoots.has(shadowRoot)) continue;
-        visitedRoots.add(shadowRoot);
-        result.push(...grabAllNodeInternal(shadowRoot, visitedRoots));
-    }
-
-    return Array.from(new Set(result));
+function hasReadableText(node: Element): boolean {
+    const text = safeTextContent(node);
+    if (!text || isMainlyNumericContent(node)) return false;
+    return text.length > 1;
 }
 
-function isInlineLayout(node: Element): boolean {
-    const tag = node.tagName.toLowerCase();
-    if (inlineSet.has(tag)) return true;
+function hasReadableBlockChild(node: Element): boolean {
+    return Array.from(node.children).some((child) => {
+        if (isExtensionElement(child)) return false;
+        if (isControlElement(child)) return true;
+        return isBlockLayout(child) && hasReadableText(child);
+    });
+}
 
+function isHiddenElement(node: Element): boolean {
+    const element = node as HTMLElement;
+    if (element.hidden || element.getAttribute('aria-hidden') === 'true') return true;
+    if (element.classList.contains('sr-only') || element.classList.contains('visually-hidden')) {
+        return true;
+    }
     try {
-        return inlineDisplays.has(getComputedStyle(node).display);
+        const style = getComputedStyle(element);
+        return style.display === 'none' || style.visibility === 'hidden';
     } catch {
         return false;
     }
+}
+
+function isNoTranslateElement(node: Element): boolean {
+    return Boolean(
+        node.classList.contains('notranslate') ||
+        node.getAttribute('translate') === 'no' ||
+        node.getAttribute('data-notranslate') === 'true',
+    );
+}
+
+function isControlElement(node: Element): boolean {
+    const tag = node.tagName.toLowerCase();
+    return controlSet.has(tag) || node.getAttribute('role') === 'button';
+}
+
+function isBlockLayout(node: Element): boolean {
+    const tag = node.tagName.toLowerCase();
+    if (inlineSet.has(tag)) return false;
+    if (semanticBlockTags.has(tag) || directSet.has(tag)) return true;
+
+    try {
+        const display = getComputedStyle(node).display.trim().toLowerCase();
+        if (!display || display === 'contents') return false;
+        return !inlineDisplays.has(display) && !display.startsWith('inline');
+    } catch {
+        return false;
+    }
+}
+
+function isStructuralIgnoreElement(node: Element): boolean {
+    return structuralIgnoreSet.has(node.tagName.toLowerCase());
+}
+
+function hasStructuralIgnoreAncestor(node: Element): boolean {
+    let ancestor = node.parentElement;
+    while (ancestor && !isDocumentSurface(ancestor)) {
+        if (isStructuralIgnoreElement(ancestor)) return true;
+        ancestor = ancestor.parentElement;
+    }
+    return false;
+}
+
+/**
+ * 判断一个元素是否可以作为一个完整内容块。
+ * 关键约束是：有可翻译块子节点时，父节点不再成为候选，避免全文翻译把
+ * 一个 article/div 和其中所有 p 重复翻译；没有块子节点时则保留内部的
+ * a、strong、code 外的行内结构，保证一句话不会被拆成多个请求。
+ */
+export function isTranslationContentBlock(node: Element): boolean {
+    if (!node || isDocumentSurface(node) || isExtensionElement(node)) return false;
+    if (isStructuralIgnoreElement(node) || skipSet.has(node.tagName.toLowerCase())) return false;
+    if (isHiddenElement(node) || isNoTranslateElement(node) || isControlElement(node)) return false;
+    if (!isBlockLayout(node) || !hasReadableText(node)) return false;
+    if (hasReadableBlockChild(node)) return false;
+    return true;
+}
+
+export function isTranslationControl(node: Element): boolean {
+    if (!node || isExtensionElement(node) || isHiddenElement(node) || isNoTranslateElement(node)) {
+        return false;
+    }
+    if (!isControlElement(node)) return false;
+    const text = safeTextContent(node);
+    return text.length > 1 && !isMainlyNumericContent(node);
+}
+
+function walkTranslationBlocks(
+    rootNode: Node,
+    result: Element[],
+    visitedRoots: Set<ShadowRoot>,
+): void {
+    const visit = (node: Element) => {
+        if (isExtensionElement(node) || isHiddenElement(node) || isNoTranslateElement(node)) return;
+        const tag = node.tagName.toLowerCase();
+        // html/body 是全文扫描的容器，不能因为它们属于 skipSet 就提前截断正文子树。
+        // 其他 skip 元素仍然连同后代一起跳过，避免把脚本、代码块等内部文字送去翻译。
+        if ((skipSet.has(tag) && !isDocumentSurface(node)) || isStructuralIgnoreElement(node)) return;
+
+        // 控件必须先进入统一 control 分支。站点兼容规则不能把 button/role=button
+        // 提前截断，否则双语模式会错误地保留英文按钮，也无法复用按钮恢复逻辑。
+        if (isTranslationControl(node)) {
+            result.push(node);
+            return;
+        }
+
+        // 站点兼容规则负责正文容器和站点特有的噪声过滤；例如 X 的推文正文
+        // 位于 article 内的 div[dir="auto"]，而用户名/操作图标可以整棵跳过。
+        const compatNode = getCompatNode(node);
+        if (compatNode === 'skip') return;
+        if (compatNode instanceof Element && compatNode === node && hasReadableText(node)) {
+            result.push(node);
+            return;
+        }
+        if (isTranslationContentBlock(node)) {
+            result.push(node);
+            return;
+        }
+
+        for (const child of Array.from(node.children)) visit(child);
+        if (node.shadowRoot && !visitedRoots.has(node.shadowRoot)) {
+            visitedRoots.add(node.shadowRoot);
+            walkTranslationBlocks(node.shadowRoot, result, visitedRoots);
+        }
+    };
+
+    if (rootNode instanceof Element) {
+        visit(rootNode);
+    } else {
+        const children = "children" in rootNode
+            ? Array.from((rootNode as Document | ShadowRoot).children)
+            : [];
+        for (const child of children) visit(child);
+    }
+}
+
+/**
+ * 统一的全文/悬浮翻译候选扫描。返回的是最小可读内容块，而不是每个叶子
+ * 文本节点；因此全文翻译和鼠标悬浮会使用同一套边界。
+ */
+export function grabAllNode(rootNode: Node): Element[] {
+    if (!rootNode) return [];
+    const result: Element[] = [];
+    const visitedRoots = new Set<ShadowRoot>();
+    walkTranslationBlocks(rootNode, result, visitedRoots);
+    for (const shadowRoot of getOpenShadowRoots(rootNode)) {
+        if (visitedRoots.has(shadowRoot)) continue;
+        visitedRoots.add(shadowRoot);
+        walkTranslationBlocks(shadowRoot, result, visitedRoots);
+    }
+    return Array.from(new Set(result));
 }
 
 function isDocumentSurface(node: Element): boolean {
@@ -232,49 +289,44 @@ function getCompatNode(node: Element): Element | 'skip' | false {
     return result instanceof Element ? result : false;
 }
 
-function getParentElement(node: Element): Element | null {
-    return node.parentElement;
-}
-
 /**
- * 从一个元素向上归一为语义文本块。
- * 这个函数只负责选择，不发送请求、不插入 spinner、不改写 DOM。
+ * 从鼠标命中的元素向上归一为统一内容块。
+ * 这里不发送请求、不插入 spinner，也不依赖“全文翻译已经先扫描过”这一前提，
+ * 所以悬浮翻译和全文翻译在新页面、SPA 路由和动态节点上使用完全相同的边界。
  */
 function resolveTranslatableElement(start: Element): Element | false {
     let current: Element | null = start;
-    let lastInlineCandidate: Element | false = false;
 
     while (current && !isDocumentSurface(current)) {
+        const translatedContent = current.closest('.fluent-read-bilingual-content');
+        if (translatedContent instanceof Element) {
+            const source = translatedContent.parentElement;
+            return source && !isDocumentSurface(source) ? source : false;
+        }
+
         if (isExtensionElement(current)) {
-            const translatedTarget = current.closest('.fluent-read-bilingual');
-            if (translatedTarget instanceof Element) return translatedTarget;
-            current = getParentElement(current);
+            current = current.parentElement;
             continue;
         }
 
         const tag = current.tagName.toLowerCase();
-        if (shouldSkipNode(current, tag) || isButton(current, tag)) return false;
+        if (skipSet.has(tag) || isStructuralIgnoreElement(current) ||
+            hasStructuralIgnoreAncestor(current) || isHiddenElement(current)) {
+            return false;
+        }
+        if (isNoTranslateElement(current) || (current as HTMLElement).isContentEditable) return false;
+
+        if (isTranslationControl(current)) return current;
 
         const compatNode = getCompatNode(current);
         if (compatNode === 'skip') return false;
-        if (compatNode) return compatNode;
+        if (compatNode && hasReadableText(compatNode)) return compatNode;
 
-        if (directSet.has(tag)) return current;
-
-        if (isInlineLayout(current)) {
-            lastInlineCandidate = current;
-            current = getParentElement(current);
-            continue;
-        }
-
-        if (semanticBlockTags.has(tag) || !lastInlineCandidate) {
-            return current.textContent?.trim() ? current : false;
-        }
-
-        return lastInlineCandidate;
+        if (isTranslationContentBlock(current)) return current;
+        current = current.parentElement;
     }
 
-    return lastInlineCandidate;
+    return false;
 }
 
 // 返回最终应该翻译的父节点或 false。
@@ -330,30 +382,6 @@ function resolveShadowTarget(
 export function resolveNodeAtPoint(mouseX: number, mouseY: number): Element | false {
     if (typeof document === 'undefined') return false;
     return resolveShadowTarget(document, mouseX, mouseY);
-}
-
-// 检查是否应该跳过节点
-function shouldSkipNode(node: any, tag: string): boolean {
-    // 1. 判断标签是否在 skipSet 内
-    // 2. 检查是否具有 notranslate 类
-    // 3. 判断节点是否可编辑
-    // 4. 判断文本是否过长
-    // 5. 判断文本是否为纯数字或标准数字格式（仅当节点内容几乎全是数字时才跳过）
-    return skipSet.has(tag) ||
-        node.classList?.contains('notranslate') ||
-        node.isContentEditable ||
-        checkTextSize(node) ||
-        isMainlyNumericContent(node);
-}
-
-// 检查文本长度
-function checkTextSize(node: any): boolean {
-    // 1. 若文本内容长度超过 3072
-    // 2. 或者 outerHTML 长度超过 4096，都视为过长
-    // 3. 少于3个字符
-    return node.textContent.length > 3072 ||
-        (node.outerHTML && node.outerHTML.length > 4096) ||
-        node.textContent.length < 3;
 }
 
 // 检查节点内容是否主要为数字
@@ -412,8 +440,8 @@ function isUserIdentifier(text: string): boolean {
     // 检查是否包含"关注"相关内容
     if (/关注.*\w+/.test(trimmedText) || /Follow.*\w+/.test(trimmedText)) return true;
     
-    // 检查是否为纯粹的用户名格式（字母、数字、下划线组合）
-    if (/^[A-Za-z0-9_]{1,15}$/.test(trimmedText)) return true;
+    // 纯字母短词也可能是正文或按钮文案，只有带数字/下划线时才按无须翻译的用户名处理。
+    if (/^(?=.*(?:\d|_))[A-Za-z0-9_]{1,15}$/.test(trimmedText)) return true;
     
     // 特殊格式：带点击动作的用户名
     if (/点击.*\w+/.test(trimmedText) && trimmedText.length < 50) return true;
@@ -496,14 +524,6 @@ function isNumericContent(text: string): boolean {
     if (/^#[\d]+$/.test(trimmedText)) return true;
 
     return false;
-}
-
-// 检查是否为按钮
-function isButton(node: any, tag: string): boolean {
-    // 1. 若当前标签就是 button
-    // 2. 或者当前标签为 span 并且其父节点为 button，则视为按钮
-    return tag === 'button' ||
-        (tag === 'span' && node.parentNode?.tagName.toLowerCase() === 'button');
 }
 
 // 仅译文模式下获取 LLM 应当翻译的标准 HTML
