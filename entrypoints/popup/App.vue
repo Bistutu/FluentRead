@@ -32,9 +32,9 @@
         <section class="donation-card">
           <button class="donation-close" type="button" aria-label="关闭赞赏页" @click="closeDonation">×</button>
           <div class="donation-icon" aria-hidden="true"><Coffee /></div>
-          <span class="eyebrow">开源免费软件</span>
-          <h2 id="donation-title">想支持作者吗？</h2>
-          <p class="donation-qr-label">微信扫码赞赏</p>
+          <span class="eyebrow">软件开源免费</span>
+          <h2 id="donation-title">如果你喜欢这款软件，</h2>
+          <p class="donation-description">可以扫描微信赞赏码支持作者，感谢鼓励。</p>
           <div class="donation-qr-frame">
             <img src="/misc/approve.jpg" alt="流畅阅读赞赏码" />
           </div>
