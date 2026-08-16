@@ -30,8 +30,6 @@ export async function translateText(origin: string, context: string = document.t
     timeout = 45000,
     useCache = config.useCache,
   } = options;
-  const pageContext = resolvePageContext(origin, options.pageContext);
-
   // 检查 origin 是否为空或只有空白字符
   const cleanedOrigin = origin?.replace(/[\s\u3000]/g, '') || '';
   if (!cleanedOrigin || cleanedOrigin.length === 0) {
@@ -42,6 +40,8 @@ export async function translateText(origin: string, context: string = document.t
   if (detectlang(origin.replace(/[\s\u3000]/g, '')) === config.to) {
     return origin;
   }
+
+  const pageContext = resolvePageContext(origin, options.pageContext);
 
   // 增加翻译计数
   config.count++;
@@ -166,5 +166,5 @@ export interface TranslateOptions {
 
 function resolvePageContext(origin: string, suppliedContext?: string): string | undefined {
   if (!config.enableAIContext || !servicesType.isUseAIContext(config.service, config.model[config.service] || '')) return undefined;
-  return suppliedContext?.trim() || getPageTranslationContext(origin) || undefined;
+  return suppliedContext?.trim().slice(0, 4000) || getPageTranslationContext(origin) || undefined;
 }
