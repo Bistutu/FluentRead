@@ -61,7 +61,6 @@ async function main() {
         to: 'zh-Hans',
         service: 'deeplx',
         videoTranslationEnabled: true,
-        videoService: 'microsoft',
         useCache: false,
       }});
     });
@@ -75,7 +74,7 @@ async function main() {
         config: stored.config,
       };
     });
-    if (popupState.featureCount !== 6 || !popupState.imageFeaturePresent) {
+    if (popupState.featureCount !== 6 || !popupState.imageFeaturePresent || popupState.config.videoService !== 'microsoft') {
       throw new Error(`Popup 快捷功能卡校验失败：数量=${popupState.featureCount}，图片翻译=${popupState.imageFeaturePresent}`);
     }
     await popup.locator('[data-feature="video-subtitle"]').click();
@@ -134,7 +133,7 @@ async function main() {
       bilingualSelected: document.querySelector('#fluent-read-video-subtitle-menu [data-mode="bilingual"]')?.getAttribute('aria-checked') === 'true',
       service: document.querySelector('#fluent-read-video-subtitle-menu [data-service-label]')?.textContent,
     }));
-    if (playerMenuState.modeCount !== 3 || !playerMenuState.downloadPresent || !playerMenuState.bilingualSelected) {
+    if (playerMenuState.modeCount !== 3 || !playerMenuState.downloadPresent || !playerMenuState.bilingualSelected || playerMenuState.service !== '微软翻译') {
       throw new Error(`播放器字幕翻译菜单校验失败：${JSON.stringify(playerMenuState)}`);
     }
     await page.screenshot({ path: path.join(artifactsDir, 'youtube-video-subtitle-menu.png'), fullPage: false });

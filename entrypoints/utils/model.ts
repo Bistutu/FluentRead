@@ -25,6 +25,7 @@ export class Config {
     service: string;
     videoTranslationEnabled: boolean; // 是否启用视频字幕翻译 Beta
     videoService: string; // 视频字幕独立翻译服务
+    videoServiceDefaultMigrated: boolean; // 是否已迁移视频字幕默认服务
     videoSubtitleVisible: boolean; // 是否显示 FluentRead 视频字幕
     videoSubtitleDisplayMode: VideoSubtitleDisplayMode; // 视频字幕显示模式
     token: IMapping;
@@ -79,7 +80,8 @@ export class Config {
         this.hotkey = defaultOption.hotkey;
         this.service = defaultOption.service;
         this.videoTranslationEnabled = true; // Beta 功能默认开启
-        this.videoService = services.deeplx; // 视频字幕默认使用 DeepLX
+        this.videoService = services.microsoft; // 视频字幕默认使用微软翻译
+        this.videoServiceDefaultMigrated = true;
         this.videoSubtitleVisible = true; // 默认显示视频译文
         this.videoSubtitleDisplayMode = 'bilingual'; // 默认双语显示
         this.token = {};
@@ -216,9 +218,14 @@ export function normalizeConfig(value: unknown): Config {
     if (typeof normalized.videoTranslationEnabled !== 'boolean') {
         normalized.videoTranslationEnabled = true;
     }
-    if (!servicesType.machine.has(normalized.videoService)) {
-        normalized.videoService = services.deeplx;
+    // 早期 Beta 版本曾把 DeepLX 写成默认值。只对没有迁移标记的旧配置
+    // 执行一次迁移，避免覆盖用户在新版本中主动选择的 DeepLX。
+    const shouldMigrateLegacyVideoDefault = source.videoService === services.deeplx
+        && source.videoServiceDefaultMigrated !== true;
+    if (shouldMigrateLegacyVideoDefault || !servicesType.machine.has(normalized.videoService)) {
+        normalized.videoService = services.microsoft;
     }
+    normalized.videoServiceDefaultMigrated = true;
     if (typeof normalized.videoSubtitleVisible !== 'boolean') {
         normalized.videoSubtitleVisible = true;
     }

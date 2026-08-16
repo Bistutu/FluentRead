@@ -66,13 +66,13 @@ describe('统一配置存储', () => {
         expect((history.entries[1].config as unknown as Record<string, unknown>).__fluentConfigRevision).toBeUndefined();
     });
 
-    it('为旧配置补齐默认开启的视频字幕 Beta 与独立 DeepLX 服务', async () => {
+    it('为旧配置补齐默认开启的视频字幕 Beta 与独立微软翻译服务', async () => {
         const configStore = await loadConfigModule(storedConfig);
 
         await configStore.configReady;
 
         expect(configStore.config.videoTranslationEnabled).toBe(true);
-        expect(configStore.config.videoService).toBe('deeplx');
+        expect(configStore.config.videoService).toBe('microsoft');
         expect(configStore.config.videoSubtitleVisible).toBe(true);
         expect(configStore.config.videoSubtitleDisplayMode).toBe('bilingual');
     });
@@ -82,7 +82,20 @@ describe('统一配置存储', () => {
 
         await configStore.configReady;
 
-        expect(configStore.config.videoService).toBe('deeplx');
+        expect(configStore.config.videoService).toBe('microsoft');
+    });
+
+    it('把早期 Beta 写入的 DeepLX 默认值一次迁移为微软翻译', async () => {
+        const configStore = await loadConfigModule({ ...storedConfig, videoService: 'deeplx' });
+
+        await configStore.configReady;
+
+        expect(configStore.config.videoService).toBe('microsoft');
+        expect(configStore.config.videoServiceDefaultMigrated).toBe(true);
+        expect(storageMock.setItem).toHaveBeenCalledWith(
+            'local:config',
+            expect.objectContaining({ videoService: 'microsoft', videoServiceDefaultMigrated: true }),
+        );
     });
 
     it('非法的视频字幕显示配置回退到双语和显示状态', async () => {

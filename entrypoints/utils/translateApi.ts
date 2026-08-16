@@ -13,6 +13,18 @@ import { getMissingCredentialMessage } from './configValidation';
 
 // 调试相关
 const isDev = process.env.NODE_ENV === 'development';
+const VIDEO_COUNT_SAVE_INTERVAL = 10_000;
+let videoCountSaveTimer: ReturnType<typeof setTimeout> | undefined;
+
+function scheduleVideoCountSave(): void {
+  config.count++;
+  if (videoCountSaveTimer) return;
+
+  videoCountSaveTimer = setTimeout(() => {
+    videoCountSaveTimer = undefined;
+    void saveConfig().catch((error) => console.error('[FluentRead] 保存视频翻译计数失败:', error));
+  }, VIDEO_COUNT_SAVE_INTERVAL);
+}
 
 /**
  * 翻译API的统一入口
@@ -150,9 +162,9 @@ export async function translateVideoText(origin: string): Promise<string> {
   const cleanedOrigin = origin?.replace(/[\s\u3000]/g, '') || '';
   if (!cleanedOrigin) return origin || '';
 
-  config.count++;
-  void saveConfig().catch((error) => console.error('[FluentRead] 保存视频翻译计数失败:', error));
-
+  // 视频字幕是高频、短文本请求。计数保留在内存中，并合并为低频写入，避免
+  // storage 写入和配置订阅回调把播放器主线程拖入高频循环。
+  scheduleVideoCountSave();
   return enqueueTranslation(async () => {
     return Promise.race([
       browser.runtime.sendMessage({

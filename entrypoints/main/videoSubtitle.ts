@@ -336,11 +336,14 @@ export function mountVideoSubtitleTranslation(): () => void {
   let generation = 0;
   let lastSource = '';
   let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+  let uiSyncTimer: number | undefined;
   let captionObserver: MutationObserver | undefined;
-  let pageObserver: MutationObserver | undefined;
   let observedContainer: HTMLElement | null = null;
   let menuElement: HTMLElement | null = null;
   let buttonElement: HTMLButtonElement | null = null;
+  let pendingTranslationSource = '';
+  let pendingTranslationOverlay: HTMLElement | null = null;
+  let translationLoopRunning = false;
   const capturedSubtitleTracks = new Map<string, { url: string; cues: VideoSubtitleCue[] }>();
 
   const clearRenderedTranslation = () => {
@@ -393,10 +396,6 @@ export function mountVideoSubtitleTranslation(): () => void {
       const selected = item.dataset.mode === mode;
       item.setAttribute('aria-checked', String(selected));
     });
-  };
-
-  const applyDisplayStateToCaptionContainers = () => {
-    document.querySelectorAll<HTMLElement>(VIDEO_CAPTION_CONTAINER_SELECTOR).forEach(applyVideoDisplayState);
   };
 
   const persistVideoConfig = (patch: VideoConfigPatch) => {
@@ -645,7 +644,13 @@ export function mountVideoSubtitleTranslation(): () => void {
 
     const container = findCaptionContainer();
     if (!container) {
+      captionObserver?.disconnect();
+      captionObserver = undefined;
+      generation += 1;
+      lastSource = '';
       observedContainer = null;
+      pendingTranslationSource = '';
+      pendingTranslationOverlay = null;
       clearRenderedTranslation();
       return;
     }
@@ -657,6 +662,8 @@ export function mountVideoSubtitleTranslation(): () => void {
     if (!canTranslate) {
       generation += 1;
       lastSource = '';
+      pendingTranslationSource = '';
+      pendingTranslationOverlay = null;
       clearRenderedTranslation();
       return;
     }
@@ -666,58 +673,101 @@ export function mountVideoSubtitleTranslation(): () => void {
 
     if (source === lastSource) return;
     lastSource = source;
-    const currentGeneration = ++generation;
+    ++generation;
     overlay.textContent = '';
-    if (!source) return;
+    if (!source) {
+      pendingTranslationSource = '';
+      pendingTranslationOverlay = null;
+      return;
+    }
 
-    void translateVideoText(source).then((translated) => {
-      if (destroyed || currentGeneration !== generation || source !== lastSource) return;
-      const result = typeof translated === 'string' ? translated.trim() : '';
-      if (result && result !== source) overlay.textContent = result;
-    }).catch((error) => {
-      if (!destroyed && currentGeneration === generation) {
-        console.warn('[FluentRead] 视频字幕翻译失败', error);
+    pendingTranslationSource = source;
+    pendingTranslationOverlay = overlay;
+    if (translationLoopRunning) return;
+
+    translationLoopRunning = true;
+    void (async () => {
+      try {
+        while (!destroyed && pendingTranslationSource) {
+          const nextSource = pendingTranslationSource;
+          const nextOverlay = pendingTranslationOverlay;
+          pendingTranslationSource = '';
+          pendingTranslationOverlay = null;
+          const requestGeneration = generation;
+          try {
+            const translated = await translateVideoText(nextSource);
+            if (!nextOverlay || destroyed || requestGeneration !== generation || nextSource !== lastSource) continue;
+            const result = typeof translated === 'string' ? translated.trim() : '';
+            if (result && result !== nextSource) nextOverlay.textContent = result;
+          } catch (error) {
+            if (!destroyed && requestGeneration === generation) {
+              console.warn('[FluentRead] 视频字幕翻译失败', error);
+            }
+          }
+        }
+      } finally {
+        translationLoopRunning = false;
       }
-    });
+    })();
   };
 
   const scheduleUpdate = () => {
     if (debounceTimer) clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(updateCaption, 80);
+    debounceTimer = setTimeout(updateCaption, 120);
   };
 
   const observeCaptionContainer = () => {
     const container = findCaptionContainer();
-    if (!container || container === observedContainer) return;
+    if (!container) {
+      captionObserver?.disconnect();
+      captionObserver = undefined;
+      generation += 1;
+      lastSource = '';
+      observedContainer = null;
+      pendingTranslationSource = '';
+      pendingTranslationOverlay = null;
+      return;
+    }
+    if (container === observedContainer && container.isConnected) {
+      applyVideoDisplayState(container);
+      return;
+    }
 
     captionObserver?.disconnect();
+    if (observedContainer && observedContainer !== container) {
+      generation += 1;
+      lastSource = '';
+      pendingTranslationSource = '';
+      pendingTranslationOverlay = null;
+    }
     observedContainer = container;
     container.classList.add('notranslate');
+    applyVideoDisplayState(container);
     captionObserver = new MutationObserver(scheduleUpdate);
     captionObserver.observe(container, { childList: true, subtree: true, characterData: true });
     scheduleUpdate();
   };
 
-  pageObserver = new MutationObserver(() => {
+  const syncPlayerUi = () => {
+    if (destroyed) return;
     ensurePlayerUi();
     observeCaptionContainer();
-    applyDisplayStateToCaptionContainers();
-    scheduleUpdate();
-  });
-  pageObserver.observe(document.documentElement, { childList: true, subtree: true });
+  };
 
   document.addEventListener('click', handleDocumentClick, true);
   document.addEventListener('keydown', handleDocumentKeydown, true);
   window.addEventListener('message', handleTimedTextMessage);
-  ensurePlayerUi();
-  observeCaptionContainer();
+  syncPlayerUi();
+  uiSyncTimer = window.setInterval(syncPlayerUi, 1000);
 
   const unsubscribeConfig = subscribeConfig((nextConfig) => {
     updatePlayerUiState();
-    applyDisplayStateToCaptionContainers();
+    if (observedContainer) applyVideoDisplayState(observedContainer);
     if (!nextConfig.on || !nextConfig.videoTranslationEnabled || nextConfig.videoSubtitleVisible === false || normalizeVideoSubtitleDisplayMode(nextConfig.videoSubtitleDisplayMode) === 'original-only') {
       generation += 1;
       lastSource = '';
+      pendingTranslationSource = '';
+      pendingTranslationOverlay = null;
       clearRenderedTranslation();
       return;
     }
@@ -728,9 +778,11 @@ export function mountVideoSubtitleTranslation(): () => void {
   return () => {
     destroyed = true;
     generation += 1;
+    pendingTranslationSource = '';
+    pendingTranslationOverlay = null;
     if (debounceTimer) clearTimeout(debounceTimer);
+    if (uiSyncTimer !== undefined) window.clearInterval(uiSyncTimer);
     captionObserver?.disconnect();
-    pageObserver?.disconnect();
     unsubscribeConfig();
     document.removeEventListener('click', handleDocumentClick, true);
     document.removeEventListener('keydown', handleDocumentKeydown, true);
