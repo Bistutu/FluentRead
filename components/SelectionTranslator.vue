@@ -46,7 +46,7 @@ import browser from 'webextension-polyfill';
 import { config } from '@/entrypoints/utils/config';
 import { translateText } from '@/entrypoints/utils/translateApi';
 import { detectlang } from '@/entrypoints/utils/common';
-import { calculateSelectionPopupPosition, chooseSelectionRect, normalizeSelectionText, normalizeSpeechLanguage, type SelectionRect } from '@/entrypoints/utils/selectionTranslatorCore';
+import { calculateSelectionPopupPosition, chooseSelectionRect, isSameLanguage, normalizeSelectionText, normalizeSpeechLanguage, type SelectionRect } from '@/entrypoints/utils/selectionTranslatorCore';
 
 type SelectionTrigger = 'direct' | 'icon' | 'dot';
 type AudioKind = 'source' | 'translation';
@@ -115,8 +115,13 @@ function scheduleSelectionRead(): void {
   selectionFrame = window.requestAnimationFrame(() => { selectionFrame = null; if (!isSelecting) applySelection(readSelectionSnapshot()); });
 }
 
+function isSelectionInTargetLanguage(text: string): boolean {
+  return isSameLanguage(detectlang(text), config.to);
+}
+
 function applySelection(next: SelectionSnapshot | null): void {
   if (!next) { if (!isSelecting) hideAll(); return; }
+  if (isSelectionInTargetLanguage(next.text)) { hideAll(); return; }
   const changedText = selectedText.value !== next.text;
   snapshot.value = next;
   selectedText.value = next.text;
@@ -152,7 +157,7 @@ function schedulePositionUpdate(): void {
 }
 
 function openTooltip(): void {
-  if (!snapshot.value) return;
+  if (!snapshot.value || isSelectionInTargetLanguage(snapshot.value.text)) { hideAll(); return; }
   showIndicator.value = true;
   showTooltip.value = true;
   void requestTranslation(snapshot.value.text);
@@ -321,9 +326,10 @@ onMounted(() => {
   document.addEventListener('keydown', handleKeydown, true);
   window.addEventListener('scroll', schedulePositionUpdate, true);
   window.addEventListener('resize', schedulePositionUpdate);
-  watch(() => [config.theme, config.selectionTranslatorTrigger] as const, () => {
+  watch(() => [config.theme, config.selectionTranslatorTrigger, config.to] as const, () => {
     updateTheme();
     if (snapshot.value) {
+      if (isSelectionInTargetLanguage(snapshot.value.text)) { hideAll(); return; }
       showIndicator.value = triggerMode.value !== 'direct';
       showTooltip.value = triggerMode.value === 'direct';
       if (showTooltip.value) void requestTranslation(snapshot.value.text);
