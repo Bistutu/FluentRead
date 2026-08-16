@@ -270,6 +270,7 @@ import browser from 'webextension-polyfill';
 import {
   config as runtimeConfig,
   configReady,
+  saveConfig,
   requestConfigSave,
   subscribeConfig,
 } from '@/entrypoints/utils/config';
@@ -297,6 +298,7 @@ const servicePickerOpen = ref(false);
 const moreServicesOpen = ref(false);
 const hydrated = ref(false);
 let lastSerialized = '';
+let applyingExternalConfig = false;
 let noticeTimer: ReturnType<typeof setTimeout> | undefined;
 const darkMode = window.matchMedia('(prefers-color-scheme: dark)');
 const drawerSettingsSection: Record<DrawerName, SettingsSection> = {
@@ -362,11 +364,16 @@ const unsubscribeConfig = subscribeConfig((value) => {
   const serialized = JSON.stringify(value);
   if (serialized === lastSerialized) return;
   lastSerialized = serialized;
-  Object.assign(config.value, value);
+  applyingExternalConfig = true;
+  try {
+    Object.assign(config.value, value);
+  } finally {
+    applyingExternalConfig = false;
+  }
 });
 
 watch(config, async value => {
-  if (!hydrated.value) return;
+  if (!hydrated.value || applyingExternalConfig) return;
   const serialized = JSON.stringify(value);
   if (serialized === lastSerialized) return;
   lastSerialized = serialized;
@@ -397,7 +404,10 @@ onMounted(() => {
 });
 onUnmounted(() => {
   // Firefox 关闭 popup 会立即销毁页面，卸载前把当前快照交给后台再保存一次。
-  if (hydrated) void persistConfig(config.value).catch((error) => console.warn('[FluentRead] popup 关闭前保存设置失败', error));
+  if (hydrated) {
+    void saveConfig(config.value).catch((error) => console.warn('[FluentRead] popup 关闭前本地保存设置失败', error));
+    void persistConfig(config.value).catch((error) => console.warn('[FluentRead] popup 关闭前后台保存设置失败', error));
+  }
   window.removeEventListener('pagehide', saveOnPageHide);
   unsubscribeConfig();
   document.removeEventListener('pointerdown', closeServicePicker);
@@ -407,7 +417,10 @@ onUnmounted(() => {
 });
 
 function saveOnPageHide() {
-  if (hydrated) void persistConfig(config.value).catch((error) => console.warn('[FluentRead] popup pagehide 保存设置失败', error));
+  if (hydrated) {
+    void saveConfig(config.value).catch((error) => console.warn('[FluentRead] popup pagehide 本地保存设置失败', error));
+    void persistConfig(config.value).catch((error) => console.warn('[FluentRead] popup pagehide 后台保存设置失败', error));
+  }
 }
 window.addEventListener('pagehide', saveOnPageHide);
 

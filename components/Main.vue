@@ -521,6 +521,7 @@ import { isConfigImportValid, sanitizeConfigForExport } from '@/entrypoints/util
 import {
   config as runtimeConfig,
   configReady,
+  saveConfig,
   requestConfigSave,
   subscribeConfig,
 } from '@/entrypoints/utils/config';
@@ -549,6 +550,7 @@ function updateTheme(theme: string) {
 const config = ref(new Config());
 const selectedDeepLXPreset = ref('');
 const persistConfig = (value: unknown) => requestConfigSave(value, browser.runtime.sendMessage.bind(browser.runtime));
+let lastSerialized = '';
 
 const appendDeepLXPreset = (endpoint: string | undefined) => {
   if (!endpoint) {
@@ -563,30 +565,50 @@ const appendDeepLXPreset = (endpoint: string | undefined) => {
 };
 
 let hydrated = false;
+let applyingExternalConfig = false;
 const unsubscribeConfig = subscribeConfig((nextConfig) => {
-  Object.assign(config.value, nextConfig);
+  const serialized = JSON.stringify(nextConfig);
+  if (serialized === lastSerialized) return;
+  lastSerialized = serialized;
+  applyingExternalConfig = true;
+  try {
+    Object.assign(config.value, nextConfig);
+  } finally {
+    applyingExternalConfig = false;
+  }
 });
 
 void configReady
   .then(() => {
     Object.assign(config.value, runtimeConfig);
+    lastSerialized = JSON.stringify(config.value);
     hydrated = true;
     updateTheme(config.value.theme || 'auto');
   })
   .catch((error) => console.warn('[FluentRead] 无法读取本地配置', error));
 
 watch(config, (newValue) => {
-  if (hydrated) void persistConfig(newValue).catch((error) => console.warn('[FluentRead] 保存设置失败', error));
+  if (!hydrated || applyingExternalConfig) return;
+  const serialized = JSON.stringify(newValue);
+  if (serialized === lastSerialized) return;
+  lastSerialized = serialized;
+  void persistConfig(newValue).catch((error) => console.warn('[FluentRead] 保存设置失败', error));
 }, { deep: true, flush: 'sync' });
 
 // 设置页关闭前提交最新快照，避免 Firefox 销毁页面时丢失最后一次修改。
 onUnmounted(() => {
-  if (hydrated) void persistConfig(config.value).catch((error) => console.warn('[FluentRead] 设置页关闭前保存失败', error));
+  if (hydrated) {
+    void saveConfig(config.value).catch((error) => console.warn('[FluentRead] 设置页关闭前本地保存失败', error));
+    void persistConfig(config.value).catch((error) => console.warn('[FluentRead] 设置页关闭前后台保存失败', error));
+  }
   window.removeEventListener('pagehide', saveOnPageHide);
 });
 
 function saveOnPageHide() {
-  if (hydrated) void persistConfig(config.value).catch((error) => console.warn('[FluentRead] 设置页 pagehide 保存失败', error));
+  if (hydrated) {
+    void saveConfig(config.value).catch((error) => console.warn('[FluentRead] 设置页 pagehide 本地保存失败', error));
+    void persistConfig(config.value).catch((error) => console.warn('[FluentRead] 设置页 pagehide 后台保存失败', error));
+  }
 }
 window.addEventListener('pagehide', saveOnPageHide);
 

@@ -123,10 +123,10 @@ describe('统一配置存储', () => {
 
         await configStore.requestConfigSave({ ...configStore.config, to: 'en' }, sendMessage);
 
-        expect(sendMessage).toHaveBeenCalledWith({
+        expect(sendMessage).toHaveBeenCalledWith(expect.objectContaining({
             type: configStore.CONFIG_PERSIST_MESSAGE,
             config: expect.objectContaining({ to: 'en' }),
-        });
+        }));
         expect(storageMock.setItem).not.toHaveBeenCalled();
     });
 
@@ -142,5 +142,62 @@ describe('统一配置存储', () => {
             'local:config',
             expect.objectContaining({ to: 'ja' }),
         );
+    });
+
+    it('连续请求按页面顺序发送，避免旧快照覆盖最新快照', async () => {
+        const configStore = await loadConfigModule(storedConfig);
+        await configStore.configReady;
+        const sent: string[] = [];
+        let releaseFirst!: () => void;
+        const firstFinished = new Promise<void>((resolve) => { releaseFirst = resolve; });
+        const sendMessage = vi.fn(async ({ config }: { config: { to: string } }) => {
+            sent.push(config.to);
+            if (sent.length === 1) await firstFinished;
+            return { success: true };
+        });
+
+        const first = configStore.requestConfigSave({ ...configStore.config, to: 'en' }, sendMessage);
+        const latest = configStore.requestConfigSave({ ...configStore.config, to: 'ja' }, sendMessage);
+        await vi.waitFor(() => expect(sent).toEqual(['en', 'ja']));
+        releaseFirst();
+        await Promise.all([first, latest]);
+
+        expect(sent).toEqual(['en', 'ja']);
+    });
+
+    it('本地存在更新请求时忽略旧 storage 回声', async () => {
+        const configStore = await loadConfigModule(storedConfig);
+        await configStore.configReady;
+        let release!: () => void;
+        const pending = new Promise<void>((resolve) => { release = resolve; });
+        const sendMessage = vi.fn(async () => {
+            await pending;
+            return { success: true };
+        });
+        const latest = { ...configStore.config, to: 'ja' };
+        const request = configStore.requestConfigSave(latest, sendMessage);
+        const listener = vi.fn();
+        const unsubscribe = configStore.subscribeConfig(listener);
+        listener.mockClear();
+        const watchCallback = storageMock.watch.mock.calls[0][1];
+
+        watchCallback({ ...storedConfig, to: 'en' }, storedConfig);
+
+        expect(configStore.config.to).toBe('zh-Hans');
+        expect(listener).not.toHaveBeenCalled();
+        release();
+        await request;
+        unsubscribe();
+    });
+
+    it('迟到的旧版本 storage 快照不会回滚已同步的新版本', async () => {
+        const configStore = await loadConfigModule({ ...storedConfig, __fluentConfigRevision: 5 });
+        await configStore.configReady;
+        const watchCallback = storageMock.watch.mock.calls[0][1];
+
+        watchCallback({ ...storedConfig, to: 'ja', __fluentConfigRevision: 7 }, storedConfig);
+        watchCallback({ ...storedConfig, to: 'en', __fluentConfigRevision: 6 }, storedConfig);
+
+        expect(configStore.config.to).toBe('ja');
     });
 });

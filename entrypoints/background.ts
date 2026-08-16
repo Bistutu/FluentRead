@@ -45,6 +45,8 @@ type TranslationRequestMessage = TranslationSingleRequestMessage | TranslationBa
 type CacheRequestMode = 'single' | 'batch';
 
 const TRANSLATION_CACHE_CLEANUP_ALARM = 'fluentread-translation-cache-cleanup';
+let configPersistQueue: Promise<void> = Promise.resolve();
+const latestConfigSequenceByClient = new Map<string, number>();
 
 function getSelectedModel(service: string): string {
     return resolveConfiguredModel(config.model[service], config.customModel[service]);
@@ -475,7 +477,7 @@ export default defineBackground({
         });
 
         // 处理翻译请求
-        browser.runtime.onMessage.addListener((message: any) => {
+        browser.runtime.onMessage.addListener((message: any, sender: any) => {
             return new Promise(async (resolve, reject) => {
                 try {
                     // 处理输入框翻译请求
@@ -492,7 +494,24 @@ export default defineBackground({
                     }
 
                     if (message.type === CONFIG_PERSIST_MESSAGE) {
-                        await saveConfig(message.config);
+                        const clientId = typeof message.clientId === 'string'
+                            ? message.clientId
+                            : `${sender?.id || 'legacy'}:${sender?.tab?.id || 'extension'}:${sender?.frameId || 0}`;
+                        const sequence = Number.isSafeInteger(message.sequence) ? message.sequence : 0;
+                        const lastSequence = latestConfigSequenceByClient.get(clientId) || 0;
+                        if (sequence && sequence <= lastSequence) {
+                            resolve({ success: true });
+                            return;
+                        }
+                        if (sequence) latestConfigSequenceByClient.set(clientId, sequence);
+                        const persist = configPersistQueue
+                            .catch(() => undefined)
+                            .then(() => {
+                                if (sequence && latestConfigSequenceByClient.get(clientId) !== sequence) return;
+                                return saveConfig(message.config);
+                            });
+                        configPersistQueue = persist.catch(() => undefined);
+                        await persist;
                         resolve({ success: true });
                         return;
                     }
