@@ -1,7 +1,7 @@
 import { config } from '@/entrypoints/utils/config';
 import { translateText } from '@/entrypoints/utils/translateApi';
 import { fetchImageInExtension, recognizeImageInExtension } from '@/entrypoints/utils/imageOcrClient';
-import { scaleOcrBox, type OcrLine } from '@/entrypoints/utils/imageTranslationCore';
+import { scaleOcrBox, selectChangedTranslations, type OcrLine } from '@/entrypoints/utils/imageTranslationCore';
 import { inpaintTextRegions } from '@/entrypoints/utils/imageInpainting';
 
 const IMAGE_TRANSLATION_OVERLAY = 'fluent-read-image-translation-overlay';
@@ -255,12 +255,6 @@ function getTextColor(backgroundColor: string): string {
     return luminance > 150 ? '#111827' : '#ffffff';
 }
 
-function normalizeTranslationComparison(text: string): string {
-    return text
-        .toLocaleLowerCase()
-        .replace(/[\s\p{P}\p{S}]+/gu, '');
-}
-
 interface RenderedImageRect {
     left: number;
     top: number;
@@ -427,12 +421,10 @@ async function translateImage(state: ImageTranslationState): Promise<void> {
         );
         if (controller.signal.aborted) return;
 
-        const translatedLines = lines.flatMap((line, index) => {
-            const text = translations[index] || line.text;
-            return normalizeTranslationComparison(text) === normalizeTranslationComparison(line.text)
-                ? []
-                : [{ ...line, text }];
-        });
+        const translatedLines = selectChangedTranslations(lines, translations);
+        if (translatedLines.length === 0) {
+            throw new Error('图片中没有需要翻译的文字');
+        }
         const prepared = await withTimeout(prepareTranslatedImage(imageData, translatedLines), IMAGE_READ_TIMEOUT_MS, '图片背景修复超时');
         state.translatedImage = prepared.translated;
         state.lines = prepared.lines;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { imageBufferToDataUrl, normalizeRemoteImageUrl } from '@/entrypoints/utils/imageFetch';
-import { getOcrLanguages, normalizeOcrLines, scaleOcrBox } from '@/entrypoints/utils/imageTranslationCore';
+import { getOcrLanguages, normalizeOcrLines, scaleOcrBox, selectChangedTranslations } from '@/entrypoints/utils/imageTranslationCore';
 import { inpaintTextRegions } from '@/entrypoints/utils/imageInpainting';
 
 describe('图片翻译 OCR 工具', () => {
@@ -34,6 +34,18 @@ describe('图片翻译 OCR 工具', () => {
         ]);
 
         expect(lines).toEqual([{ text: 'Hello world', bbox: { x0: 0, y0: 0, x1: 20, y1: 10 } }]);
+    });
+
+    it('不为微软原样返回的 OCR 行生成翻译覆盖层', () => {
+        const lines = [
+            { text: '中文标题', bbox: { x0: 0, y0: 0, x1: 40, y1: 12 } },
+            { text: 'Hello world', bbox: { x0: 0, y0: 20, x1: 80, y1: 32 } },
+        ];
+
+        expect(selectChangedTranslations(lines, ['中文标题', '你好世界'])).toEqual([{
+            text: '你好世界',
+            bbox: { x0: 0, y0: 20, x1: 80, y1: 32 },
+        }]);
     });
 
     it('优先使用紧凑的 OCR word 框，避免整行控件被合并成一个大框', () => {

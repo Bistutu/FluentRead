@@ -8,6 +8,26 @@ export interface OcrLine {
     };
 }
 
+function normalizeTranslationComparison(text: string): string {
+    return text
+        .toLocaleLowerCase()
+        .replace(/[\s\p{P}\p{S}]+/gu, '');
+}
+
+/**
+ * 只保留实际发生变化的 OCR 行。
+ * 这样中文原文、品牌名或微软原样返回的内容不会被重新绘制成一张
+ * 看似“已翻译”但实际没有变化的覆盖层。
+ */
+export function selectChangedTranslations(lines: OcrLine[], translations: string[]): OcrLine[] {
+    return lines.flatMap((line, index) => {
+        const text = translations[index] || line.text;
+        return normalizeTranslationComparison(text) === normalizeTranslationComparison(line.text)
+            ? []
+            : [{ ...line, text }];
+    });
+}
+
 const OCR_LANGUAGES = ['eng', 'chi_sim', 'jpn'] as const;
 
 export function getOcrLanguages(sourceLanguage: string): string[] {
