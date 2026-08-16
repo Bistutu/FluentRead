@@ -54,7 +54,7 @@
         <el-tooltip class="box-item" effect="dark" content="选择双语模式下译文的显示样式，提供多种美观的效果" placement="top-start"
           :show-after="500">
           <span class="popup-text popup-vertical-left">译文样式<el-icon class="icon-margin">
-              <ChatDotRound />
+              <InfoFilled />
             </el-icon></span>
         </el-tooltip>
       </el-col>
@@ -123,7 +123,7 @@
         <span class="popup-text popup-vertical-left">
           鼠标悬浮快捷键
           <el-icon class="icon-margin">
-            <ChatDotRound />
+            <InfoFilled />
           </el-icon>
         </span>
         </el-tooltip>
@@ -164,7 +164,7 @@
         <span class="popup-text popup-vertical-left">
           全文翻译快捷键
           <el-icon class="icon-margin">
-            <ChatDotRound />
+            <InfoFilled />
           </el-icon>
         </span>
         </el-tooltip>
@@ -206,7 +206,7 @@
       <span class="popup-text popup-vertical-left">
         划词翻译
         <el-icon class="icon-margin">
-          <ChatDotRound />
+          <InfoFilled />
         </el-icon>
       </span>
         </el-tooltip>
@@ -255,7 +255,7 @@
           <el-col :span="20" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark" content="开启缓存可以提高翻译速度，减少重复请求，但可能导致翻译结果不是最新的" placement="top-start" :show-after="500">
         <span class="popup-text popup-vertical-left">缓存翻译结果<el-icon class="icon-margin">
-            <ChatDotRound />
+            <InfoFilled />
           </el-icon></span>
             </el-tooltip>
           </el-col>
@@ -272,7 +272,7 @@
                         content="开启后，AI 翻译会参考当前网页的标题、描述和相关正文片段；仅对大模型翻译服务生效。"
                         placement="top-start" :show-after="500">
               <span class="popup-text popup-vertical-left">AI 智能上下文<el-icon class="icon-margin">
-                  <ChatDotRound />
+                  <InfoFilled />
                 </el-icon></span>
             </el-tooltip>
             <small class="settings-control-hint">提升术语和歧义表达的语境准确度；首次请求还会额外生成摘要并增加一次调用。</small>
@@ -290,7 +290,7 @@
           <span class="popup-text popup-vertical-left">
             全文翻译悬浮球
             <el-icon class="icon-margin">
-              <ChatDotRound />
+              <InfoFilled />
             </el-icon>
           </span>
           </el-tooltip>
@@ -309,7 +309,7 @@
                         content="动画效果（默认开）：禁用后将关闭加载/悬浮等动画，以节省GPU资源和电量。适合低配置设备或希望节省资源的用户。"
                         placement="top-start" :show-after="500">
               <span class="popup-text popup-vertical-left">动画效果<el-icon class="icon-margin">
-                  <ChatDotRound />
+                  <InfoFilled />
                 </el-icon></span>
             </el-tooltip>
           </el-col>
@@ -325,7 +325,7 @@
                         content="输入框翻译：在任何文本输入框中使用指定方式触发翻译当前输入的内容。"
                         placement="top-start" :show-after="500">
               <span class="popup-text popup-vertical-left">输入框翻译<el-icon class="icon-margin">
-                  <ChatDotRound />
+                  <InfoFilled />
                 </el-icon></span>
             </el-tooltip>
           </el-col>
@@ -356,7 +356,7 @@
             <el-tooltip class="box-item" effect="dark" content="控制同时进行的最大翻译任务数，数值越高翻译速度越快，但可能占用更多系统资源" placement="top-start"
                         :show-after="500">
           <span class="popup-text popup-vertical-left">翻译并发数<el-icon class="icon-margin">
-              <ChatDotRound />
+              <InfoFilled />
             </el-icon></span>
             </el-tooltip>
           </el-col>
@@ -379,7 +379,7 @@
             <el-tooltip class="box-item" effect="dark" content="使用代理可以解决网络无法访问的问题，如不熟悉代理设置请留空！" placement="top-start"
                         :show-after="500">
               <span class="popup-text popup-vertical-left">代理地址<el-icon class="icon-margin">
-                  <ChatDotRound />
+                  <InfoFilled />
                 </el-icon></span>
             </el-tooltip>
           </el-col>
@@ -394,7 +394,7 @@
             <el-tooltip class="box-item" effect="dark" content="以系统身份 system 发送的对话，常用于指定 AI 要扮演的角色"
               placement="top-start" :show-after="500">
               <span class="popup-text popup-vertical-left">system<el-icon class="icon-margin">
-                  <ChatDotRound />
+                  <InfoFilled />
                 </el-icon></span>
             </el-tooltip>
           </el-col>
@@ -409,7 +409,7 @@
               content="以用户身份 user 发送的对话，其中{{to}}表示目标语言，{{origin}}表示待翻译的文本内容，两者不可缺少。"
               placement="top-start" :show-after="500">
               <span class="popup-text popup-vertical-left">user<el-icon class="icon-margin">
-                  <ChatDotRound />
+                  <InfoFilled />
                 </el-icon></span>
             </el-tooltip>
           </el-col>
@@ -505,7 +505,7 @@ import { computed, ref, watch, onUnmounted } from 'vue'
 import { models, options, resolveConfiguredModel, servicesType, defaultOption } from "../entrypoints/utils/option";
 import { Config, normalizeConfig } from "@/entrypoints/utils/model";
 import { storage } from '@wxt-dev/storage';
-import { ChatDotRound, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
+import { InfoFilled, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import browser from 'webextension-polyfill';
 import { defineAsyncComponent } from 'vue';
