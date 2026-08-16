@@ -28,9 +28,9 @@ describe('YouTube 视频字幕识别', () => {
 
     it('按播放器中的字幕片段合并文本，并忽略空片段', () => {
         const segments = [
-            { textContent: '  This is ' },
-            { textContent: 'a test.\n' },
-            { textContent: '' },
+            { textContent: '  This is ', contains: () => false },
+            { textContent: 'a test.\n', contains: () => false },
+            { textContent: '', contains: () => false },
         ];
         const container = {
             querySelectorAll: (selector: string) => {
@@ -41,6 +41,16 @@ describe('YouTube 视频字幕识别', () => {
 
         expect(readVisibleCaptionText(container)).toBe('This is a test.');
         expect(readVisibleCaptionText(null)).toBe('');
+    });
+
+    it('优先读取叶子字幕片段，避免 YouTube 嵌套节点重复拼接', () => {
+        const child = { textContent: 'A subtitle.', contains: () => false };
+        const parent = { textContent: 'A subtitle.', contains: (node: unknown) => node === child };
+        const container = {
+            querySelectorAll: () => [parent, child],
+        } as unknown as Element;
+
+        expect(readVisibleCaptionText(container)).toBe('A subtitle.');
     });
 
     it('保留播放器菜单需要的三种显示模式，并为服务显示用户可读名称', () => {

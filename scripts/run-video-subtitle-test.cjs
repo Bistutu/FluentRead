@@ -124,7 +124,13 @@ async function main() {
       throw new Error(`播放器字幕翻译入口校验失败：${JSON.stringify(playerUiState)}`);
     }
 
-    await page.locator('#fluent-read-video-subtitle-button').click({ force: true });
+    const clickVideoTranslationButton = () => page.evaluate(() => {
+      const button = document.querySelector('#fluent-read-video-subtitle-button');
+      if (!(button instanceof HTMLElement)) throw new Error('找不到播放器字幕翻译入口');
+      button.click();
+    });
+
+    await clickVideoTranslationButton();
     await page.locator('#fluent-read-video-subtitle-menu').waitFor({ state: 'visible', timeout: 10000 });
     const playerMenuState = await page.evaluate(() => ({
       title: document.querySelector('#fluent-read-video-subtitle-menu .fluent-read-video-menu-title')?.textContent?.replace(/\s+/g, ' ').trim(),
@@ -132,8 +138,9 @@ async function main() {
       downloadPresent: Boolean(document.querySelector('#fluent-read-video-subtitle-menu [data-action="download-subtitles"]')),
       bilingualSelected: document.querySelector('#fluent-read-video-subtitle-menu [data-mode="bilingual"]')?.getAttribute('aria-checked') === 'true',
       service: document.querySelector('#fluent-read-video-subtitle-menu [data-service-label]')?.textContent,
+      brand: document.querySelector('#fluent-read-video-subtitle-menu .fluent-read-video-menu-brand')?.textContent,
     }));
-    if (playerMenuState.modeCount !== 3 || !playerMenuState.downloadPresent || !playerMenuState.bilingualSelected || playerMenuState.service !== '微软翻译') {
+    if (playerMenuState.modeCount !== 3 || !playerMenuState.downloadPresent || !playerMenuState.bilingualSelected || playerMenuState.service !== '微软翻译' || playerMenuState.brand !== 'FluentRead') {
       throw new Error(`播放器字幕翻译菜单校验失败：${JSON.stringify(playerMenuState)}`);
     }
     await page.screenshot({ path: path.join(artifactsDir, 'youtube-video-subtitle-menu.png'), fullPage: false });
@@ -159,7 +166,7 @@ async function main() {
       await page.waitForTimeout(5000);
     }
     const nativeSubtitle = await page.locator('.ytp-caption-segment').first().count();
-    await page.locator('#fluent-read-video-subtitle-button').click({ force: true });
+    await clickVideoTranslationButton();
     await page.locator('#fluent-read-video-subtitle-menu').waitFor({ state: 'visible', timeout: 10000 });
     await page.evaluate(() => {
       window.postMessage({
@@ -206,6 +213,31 @@ async function main() {
     const first = await page.locator('#fluent-read-video-subtitle').textContent();
 
     await page.evaluate(() => {
+      document.querySelector('#ytp-caption-window-container, .ytp-caption-window-container')?.replaceChildren();
+    });
+    await page.waitForTimeout(180);
+    const duringCaptionRedraw = await page.evaluate(() => ({
+      nativeCaptionEmpty: !(document.querySelector('#ytp-caption-window-container, .ytp-caption-window-container')?.textContent || '').trim(),
+      overlay: document.querySelector('#fluent-read-video-subtitle')?.textContent || '',
+    }));
+    if (!duringCaptionRedraw.nativeCaptionEmpty || !duringCaptionRedraw.overlay.trim()) {
+      throw new Error(`字幕节点短暂重绘时译文被清除：${JSON.stringify(duringCaptionRedraw)}`);
+    }
+    await page.evaluate(() => {
+      const container = document.querySelector('#ytp-caption-window-container, .ytp-caption-window-container');
+      if (!container) return;
+      const segment = document.createElement('span');
+      segment.className = 'ytp-caption-segment';
+      segment.textContent = 'This is a FluentRead video subtitle test.';
+      container.appendChild(segment);
+    });
+    await page.waitForTimeout(600);
+    const afterCaptionRedraw = await page.locator('#fluent-read-video-subtitle').textContent();
+    if (!afterCaptionRedraw?.trim()) {
+      throw new Error('字幕节点重建后译文没有恢复');
+    }
+
+    await page.evaluate(() => {
       const segment = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
       if (segment) segment.textContent = 'The second subtitle updates correctly.';
     });
@@ -217,7 +249,7 @@ async function main() {
     const overlayCount = await page.locator('#fluent-read-video-subtitle').count();
 
     await page.waitForFunction(() => !document.querySelector('#fluent-read-video-subtitle-menu [data-action="download-subtitles"]')?.hasAttribute('disabled'), null, { timeout: 10000 });
-    await page.locator('#fluent-read-video-subtitle-button').click({ force: true });
+    await clickVideoTranslationButton();
     await page.locator('#fluent-read-video-subtitle-menu').waitFor({ state: 'visible', timeout: 10000 });
     await page.locator('#fluent-read-video-subtitle-menu [data-mode="translation-only"]').click({ force: true });
     await page.waitForFunction(() => document.querySelector('#ytp-caption-window-container')?.classList.contains('fluent-read-video-display-translation-only'), null, { timeout: 10000 });
@@ -281,7 +313,7 @@ async function main() {
       throw new Error(`播放器页面出现扩展脚本异常：${extensionPageErrors.join('\n')}`);
     }
 
-    await page.locator('#fluent-read-video-subtitle-button').click({ force: true });
+    await clickVideoTranslationButton();
     await page.screenshot({ path: path.join(artifactsDir, 'youtube-video-subtitle-final.png'), fullPage: false });
 
     console.log(JSON.stringify({
@@ -305,6 +337,8 @@ async function main() {
       nativeSubtitle,
       injected,
       firstTranslation: first,
+      duringCaptionRedraw,
+      afterCaptionRedraw,
       secondTranslation: second,
       overlayCount,
       translationOnly,

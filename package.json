@@ -13,6 +13,7 @@
     "zip:firefox": "wxt zip -b firefox",
     "compile": "vue-tsc --noEmit",
     "test": "vitest run",
+    "test:video:fixture": "node scripts/run-video-subtitle-fixture-test.cjs",
     "test:watch": "vitest",
     "postinstall": "wxt prepare",
     "docs:dev": "vitepress dev docs",

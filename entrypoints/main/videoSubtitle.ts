@@ -17,6 +17,7 @@ import {
 export const VIDEO_CAPTION_CONTAINER_SELECTOR = '#ytp-caption-window-container, .ytp-caption-window-container';
 export const VIDEO_CAPTION_SEGMENT_SELECTOR = '.ytp-caption-segment, .captions-text';
 export const VIDEO_TRANSLATION_OVERLAY_ID = 'fluent-read-video-subtitle';
+export const VIDEO_TRANSLATION_LAYER_ID = 'fluent-read-video-subtitle-layer';
 export const VIDEO_TRANSLATION_BUTTON_ID = 'fluent-read-video-subtitle-button';
 export const VIDEO_TRANSLATION_MENU_ID = 'fluent-read-video-subtitle-menu';
 
@@ -36,6 +37,8 @@ const VIDEO_DISPLAY_MODE_LABELS: Record<VideoSubtitleDisplayMode, string> = {
   'translation-only': '仅译文',
   'original-only': '仅原文',
 };
+
+const VIDEO_CAPTION_EMPTY_GRACE_MS = 420;
 
 export function normalizeVideoSubtitleDisplayMode(value: unknown): VideoSubtitleDisplayMode {
   if (value === 'translation-only' || value === 'original-only') return value;
@@ -95,7 +98,9 @@ export function isYouTubeVideoPage(locationLike: Pick<Location, 'hostname' | 'pa
 export function readVisibleCaptionText(container: Element | null): string {
   if (!container) return '';
 
-  const segments = Array.from(container.querySelectorAll(VIDEO_CAPTION_SEGMENT_SELECTOR))
+  const candidates = Array.from(container.querySelectorAll<HTMLElement>(VIDEO_CAPTION_SEGMENT_SELECTOR));
+  const segments = candidates
+    .filter((segment) => !candidates.some((candidate) => candidate !== segment && candidate.contains(segment)))
     .map((segment) => segment.textContent?.replace(/[\s\u3000]+/g, ' ').trim() || '')
     .filter(Boolean);
 
@@ -108,6 +113,15 @@ function findCaptionContainer(): HTMLElement | null {
 
 function findVideoPlayer(): HTMLElement | null {
   return document.querySelector(VIDEO_PLAYER_SELECTOR);
+}
+
+function getYouTubeVideoPageKey(): string {
+  try {
+    const url = new URL(window.location.href);
+    return `${url.pathname}:${url.searchParams.get('v') || ''}`;
+  } catch {
+    return window.location.href;
+  }
 }
 
 function markVideoUi(element: HTMLElement): void {
@@ -127,8 +141,18 @@ function createTextElement<K extends keyof HTMLElementTagNameMap>(
   return element;
 }
 
-function getOrCreateTranslationOverlay(container: HTMLElement): HTMLElement {
-  const existing = container.querySelector<HTMLElement>(`#${VIDEO_TRANSLATION_OVERLAY_ID}`);
+function getOrCreateTranslationOverlay(player: HTMLElement): HTMLElement {
+  let layer = player.querySelector<HTMLElement>(`#${VIDEO_TRANSLATION_LAYER_ID}`);
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.id = VIDEO_TRANSLATION_LAYER_ID;
+    layer.className = 'fluent-read-video-subtitle-layer fluent-read-video-ui notranslate';
+    layer.setAttribute('data-fluent-read-ui', 'video-subtitle');
+    layer.setAttribute('translate', 'no');
+    player.appendChild(layer);
+  }
+
+  const existing = layer.querySelector<HTMLElement>(`#${VIDEO_TRANSLATION_OVERLAY_ID}`);
   if (existing) return existing;
 
   const overlay = document.createElement('div');
@@ -138,12 +162,54 @@ function getOrCreateTranslationOverlay(container: HTMLElement): HTMLElement {
   overlay.setAttribute('translate', 'no');
   overlay.setAttribute('aria-live', 'polite');
   overlay.setAttribute('aria-label', 'FluentRead 视频字幕译文');
-  container.appendChild(overlay);
+  layer.appendChild(overlay);
   return overlay;
 }
 
 function removeTranslationOverlay(): void {
+  document.querySelectorAll(`#${VIDEO_TRANSLATION_LAYER_ID}`).forEach((node) => node.remove());
   document.querySelectorAll(`#${VIDEO_TRANSLATION_OVERLAY_ID}`).forEach((node) => node.remove());
+}
+
+function syncTranslationOverlayPosition(container: HTMLElement | null): void {
+  if (!container) return;
+  const overlay = document.getElementById(VIDEO_TRANSLATION_OVERLAY_ID);
+  const player = findVideoPlayer();
+  if (!overlay || !player) return;
+
+  const playerRect = player.getBoundingClientRect();
+  const candidates = Array.from(container.querySelectorAll<HTMLElement>(VIDEO_CAPTION_SEGMENT_SELECTOR));
+  const anchors = candidates
+    .filter((element) => !candidates.some((candidate) => candidate !== element && candidate.contains(element)))
+    .map((element) => element.getBoundingClientRect())
+    .filter((rect) => rect.width > 0 && rect.height > 0);
+  const anchor = anchors.length > 0
+    ? {
+        left: Math.min(...anchors.map((rect) => rect.left)),
+        right: Math.max(...anchors.map((rect) => rect.right)),
+        top: Math.min(...anchors.map((rect) => rect.top)),
+        bottom: Math.max(...anchors.map((rect) => rect.bottom)),
+      }
+    : container.getBoundingClientRect();
+  const playerWidth = playerRect.width || 960;
+  const playerHeight = playerRect.height || 540;
+  const width = Math.min(Math.max(anchor.right - anchor.left, 240), Math.max(playerWidth - 24, 240));
+  const center = (anchor.left + anchor.right) / 2;
+  const left = Math.min(
+    Math.max(center - width / 2 - playerRect.left, 12),
+    Math.max(playerWidth - width - 12, 12),
+  );
+  let top = anchor.bottom - playerRect.top + 6;
+
+  overlay.style.left = `${left}px`;
+  overlay.style.width = `${width}px`;
+  overlay.style.top = `${Math.max(top, 8)}px`;
+
+  const overlayHeight = overlay.getBoundingClientRect().height;
+  if (overlayHeight > 0 && top + overlayHeight > playerHeight - 8) {
+    top = anchor.top - playerRect.top - overlayHeight - 6;
+    overlay.style.top = `${Math.max(top, 8)}px`;
+  }
 }
 
 function applyVideoDisplayState(container: HTMLElement): void {
@@ -152,6 +218,10 @@ function applyVideoDisplayState(container: HTMLElement): void {
   container.classList.toggle(VIDEO_DISPLAY_ORIGINAL_ONLY_CLASS, mode === 'original-only');
   container.classList.toggle(VIDEO_DISPLAY_HIDDEN_CLASS, config.videoSubtitleVisible === false);
   container.setAttribute('data-fluent-read-video-display-mode', mode);
+  const layer = document.getElementById(VIDEO_TRANSLATION_LAYER_ID);
+  layer?.classList.toggle(VIDEO_DISPLAY_ORIGINAL_ONLY_CLASS, mode === 'original-only');
+  layer?.classList.toggle(VIDEO_DISPLAY_HIDDEN_CLASS, config.videoSubtitleVisible === false);
+  layer?.setAttribute('data-fluent-read-video-display-mode', mode);
 }
 
 function installVideoSubtitleStyle(): HTMLStyleElement {
@@ -161,27 +231,41 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
   const style = document.createElement('style');
   style.id = 'fluent-read-video-subtitle-style';
   style.textContent = `
+    #${VIDEO_TRANSLATION_LAYER_ID} {
+      position: absolute !important;
+      inset: 0 !important;
+      z-index: 2147483645 !important;
+      overflow: visible !important;
+      pointer-events: none !important;
+      visibility: visible !important;
+    }
     #${VIDEO_TRANSLATION_OVERLAY_ID} {
       display: block !important;
-      position: relative !important;
+      position: absolute !important;
       z-index: 2 !important;
       box-sizing: border-box !important;
-      max-width: min(92vw, 960px) !important;
-      margin: 0.24em auto 0 !important;
+      max-width: calc(100% - 24px) !important;
+      margin: 0 !important;
       padding: 0.08em 0.24em !important;
       color: #ffe45c !important;
-      font: 600 0.82em/1.35 Arial, sans-serif !important;
+      font: 600 clamp(16px, 2.2vw, 30px)/1.35 Arial, sans-serif !important;
       text-align: center !important;
       text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 0 2px 4px rgba(0, 0, 0, .75) !important;
       white-space: pre-wrap !important;
       pointer-events: none !important;
       user-select: none !important;
+      visibility: visible !important;
     }
     #${VIDEO_TRANSLATION_OVERLAY_ID}:empty { display: none !important; }
+    #${VIDEO_TRANSLATION_LAYER_ID}.${VIDEO_DISPLAY_ORIGINAL_ONLY_CLASS},
+    #${VIDEO_TRANSLATION_LAYER_ID}.${VIDEO_DISPLAY_HIDDEN_CLASS} {
+      visibility: hidden !important;
+    }
     #${VIDEO_TRANSLATION_BUTTON_ID} {
       display: inline-flex !important;
       align-items: center !important;
       justify-content: center !important;
+      align-self: center !important;
       width: 48px !important;
       height: 48px !important;
       margin: 0 !important;
@@ -191,6 +275,8 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       color: #fff !important;
       cursor: pointer !important;
       font: inherit !important;
+      line-height: 1 !important;
+      vertical-align: middle !important;
       opacity: .9 !important;
     }
     #${VIDEO_TRANSLATION_BUTTON_ID}:hover,
@@ -205,6 +291,8 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       background: rgba(255, 255, 255, .18) !important;
       color: #fff !important;
       font: 700 15px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+      line-height: 1 !important;
+      transform: translateY(0) !important;
     }
     #${VIDEO_TRANSLATION_BUTTON_ID}.${VIDEO_TRANSLATION_ACTIVE_CLASS} .fluent-read-video-subtitle-button-icon {
       background: #ec4899 !important;
@@ -233,6 +321,20 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       padding: 4px 8px 8px !important;
       color: rgba(255, 255, 255, .92) !important;
       font-weight: 700 !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-heading {
+      display: inline-flex !important;
+      align-items: baseline !important;
+      gap: 6px !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-brand {
+      color: #ff8fbd !important;
+      font-size: 10px !important;
+      letter-spacing: .02em !important;
+      font-weight: 800 !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-title-text {
+      color: rgba(255, 255, 255, .92) !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-beta {
       color: #ff8fbd !important;
@@ -335,7 +437,11 @@ export function mountVideoSubtitleTranslation(): () => void {
   let destroyed = false;
   let generation = 0;
   let lastSource = '';
+  let lastTranslatedSource = '';
+  let lastTranslatedText = '';
+  let videoPageKey = getYouTubeVideoPageKey();
   let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+  let emptyCaptionTimer: ReturnType<typeof setTimeout> | undefined;
   let uiSyncTimer: number | undefined;
   let captionObserver: MutationObserver | undefined;
   let observedContainer: HTMLElement | null = null;
@@ -352,17 +458,45 @@ export function mountVideoSubtitleTranslation(): () => void {
     });
   };
 
+  const cancelCaptionEmptyClear = () => {
+    if (!emptyCaptionTimer) return;
+    clearTimeout(emptyCaptionTimer);
+    emptyCaptionTimer = undefined;
+  };
+
+  const resetTranslationState = () => {
+    cancelCaptionEmptyClear();
+    generation += 1;
+    lastSource = '';
+    lastTranslatedSource = '';
+    lastTranslatedText = '';
+    pendingTranslationSource = '';
+    pendingTranslationOverlay = null;
+    clearRenderedTranslation();
+  };
+
+  const scheduleCaptionEmptyClear = () => {
+    if (emptyCaptionTimer) return;
+    emptyCaptionTimer = setTimeout(() => {
+      emptyCaptionTimer = undefined;
+      if (destroyed || readVisibleCaptionText(findCaptionContainer())) return;
+      resetTranslationState();
+    }, VIDEO_CAPTION_EMPTY_GRACE_MS);
+  };
+
   const closeMenu = () => {
-    const menu = menuElement || document.getElementById(VIDEO_TRANSLATION_MENU_ID);
-    const button = buttonElement || document.getElementById(VIDEO_TRANSLATION_BUTTON_ID);
+    const menu = menuElement?.isConnected ? menuElement : document.getElementById(VIDEO_TRANSLATION_MENU_ID);
+    const button = buttonElement?.isConnected ? buttonElement : document.getElementById(VIDEO_TRANSLATION_BUTTON_ID);
     if (menu) menu.hidden = true;
     button?.setAttribute('aria-expanded', 'false');
   };
 
   const updatePlayerUiState = () => {
-    const button = buttonElement || document.getElementById(VIDEO_TRANSLATION_BUTTON_ID);
-    const menu = menuElement || document.getElementById(VIDEO_TRANSLATION_MENU_ID);
+    const button = buttonElement?.isConnected ? buttonElement : document.getElementById(VIDEO_TRANSLATION_BUTTON_ID);
+    const menu = menuElement?.isConnected ? menuElement : document.getElementById(VIDEO_TRANSLATION_MENU_ID);
     if (!button || !menu) return;
+    if (button instanceof HTMLButtonElement) buttonElement = button;
+    if (menu instanceof HTMLElement) menuElement = menu;
 
     const enabled = config.on && config.videoTranslationEnabled;
     const mode = normalizeVideoSubtitleDisplayMode(config.videoSubtitleDisplayMode);
@@ -374,8 +508,8 @@ export function mountVideoSubtitleTranslation(): () => void {
     button.classList.toggle(VIDEO_TRANSLATION_ACTIVE_CLASS, enabled);
     button.setAttribute('aria-pressed', String(enabled));
     button.setAttribute('aria-expanded', String(!menu.hidden));
-    button.setAttribute('aria-label', `字幕翻译：${status}`);
-    button.title = `字幕翻译：${status}`;
+    button.setAttribute('aria-label', `FluentRead 字幕翻译：${status}`);
+    button.title = `FluentRead 字幕翻译：${status}`;
 
     const toggle = menu.querySelector<HTMLButtonElement>('[data-action="toggle-translation"]');
     if (toggle) {
@@ -516,13 +650,19 @@ export function mountVideoSubtitleTranslation(): () => void {
     menu.className = 'fluent-read-video-subtitle-menu fluent-read-video-ui notranslate';
     menu.hidden = true;
     menu.setAttribute('role', 'menu');
-    menu.setAttribute('aria-label', '视频字幕翻译菜单');
+    menu.setAttribute('aria-label', 'FluentRead 视频字幕翻译菜单');
     markVideoUi(menu);
 
     const title = document.createElement('div');
     title.className = 'fluent-read-video-menu-title';
+    const heading = document.createElement('span');
+    heading.className = 'fluent-read-video-menu-heading';
+    heading.append(
+      createTextElement('span', 'fluent-read-video-menu-brand', 'FluentRead'),
+      createTextElement('span', 'fluent-read-video-menu-title-text', '视频字幕翻译'),
+    );
     title.append(
-      createTextElement('span', '', '视频字幕翻译'),
+      heading,
       createTextElement('span', 'fluent-read-video-menu-beta', 'Beta'),
     );
     menu.appendChild(title);
@@ -562,19 +702,33 @@ export function mountVideoSubtitleTranslation(): () => void {
     settings.querySelector('[data-state]')?.remove();
     menu.appendChild(settings);
     player.appendChild(menu);
-    menu.addEventListener('click', handleMenuClick);
+    bindMenuClick(menu);
     return menu;
   };
 
   const handleButtonClick = (event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    if (!menuElement) return;
-    menuElement.hidden = !menuElement.hidden;
+    const menu = menuElement?.isConnected ? menuElement : document.getElementById(VIDEO_TRANSLATION_MENU_ID);
+    if (!(menu instanceof HTMLElement)) return;
+    menuElement = menu;
+    menu.hidden = !menu.hidden;
     updatePlayerUiState();
-    if (!menuElement.hidden) {
-      menuElement.querySelector<HTMLButtonElement>('[data-action="toggle-translation"]')?.focus();
+    if (!menu.hidden) {
+      menu.querySelector<HTMLButtonElement>('[data-action="toggle-translation"]')?.focus();
     }
+  };
+
+  const bindButtonClick = (button: HTMLButtonElement) => {
+    if (button.dataset.fluentReadClickBound === 'true') return;
+    button.dataset.fluentReadClickBound = 'true';
+    button.addEventListener('click', handleButtonClick);
+  };
+
+  const bindMenuClick = (menu: HTMLElement) => {
+    if (menu.dataset.fluentReadClickBound === 'true') return;
+    menu.dataset.fluentReadClickBound = 'true';
+    menu.addEventListener('click', handleMenuClick);
   };
 
   const createPlayerButton = (): HTMLButtonElement => {
@@ -585,13 +739,13 @@ export function mountVideoSubtitleTranslation(): () => void {
     button.setAttribute('role', 'button');
     button.setAttribute('aria-pressed', 'false');
     button.setAttribute('aria-expanded', 'false');
-    button.setAttribute('aria-label', '字幕翻译：已关闭');
-    button.title = '字幕翻译：已关闭';
+    button.setAttribute('aria-label', 'FluentRead 字幕翻译：已关闭');
+    button.title = 'FluentRead 字幕翻译：已关闭';
     const icon = createTextElement('span', 'fluent-read-video-subtitle-button-icon', '译');
     icon.setAttribute('aria-hidden', 'true');
     button.appendChild(icon);
     markVideoUi(button);
-    button.addEventListener('click', handleButtonClick);
+    bindButtonClick(button);
     return button;
   };
 
@@ -605,6 +759,7 @@ export function mountVideoSubtitleTranslation(): () => void {
       button = createPlayerButton();
     }
     const playerButton = button as HTMLButtonElement;
+    bindButtonClick(playerButton);
     if (playerButton.parentElement !== controls) {
       const rightControlsGroup = Array.from(controls.children)
         .find((child) => child.matches('.ytp-right-controls-right, .ytp-settings-button')) || null;
@@ -623,6 +778,7 @@ export function mountVideoSubtitleTranslation(): () => void {
       player.appendChild(menu);
     }
     menuElement = menu;
+    bindMenuClick(menu);
     markVideoUi(playerButton);
     markVideoUi(menu);
     updatePlayerUiState();
@@ -646,12 +802,8 @@ export function mountVideoSubtitleTranslation(): () => void {
     if (!container) {
       captionObserver?.disconnect();
       captionObserver = undefined;
-      generation += 1;
-      lastSource = '';
       observedContainer = null;
-      pendingTranslationSource = '';
-      pendingTranslationOverlay = null;
-      clearRenderedTranslation();
+      scheduleCaptionEmptyClear();
       return;
     }
 
@@ -660,26 +812,35 @@ export function mountVideoSubtitleTranslation(): () => void {
     const displayMode = normalizeVideoSubtitleDisplayMode(config.videoSubtitleDisplayMode);
     const canTranslate = config.on && config.videoTranslationEnabled && config.videoSubtitleVisible !== false && displayMode !== 'original-only';
     if (!canTranslate) {
-      generation += 1;
-      lastSource = '';
-      pendingTranslationSource = '';
-      pendingTranslationOverlay = null;
-      clearRenderedTranslation();
+      resetTranslationState();
       return;
     }
 
+    const player = findVideoPlayer();
+    if (!player) return;
     const source = readVisibleCaptionText(container);
-    const overlay = getOrCreateTranslationOverlay(container);
+    const overlay = getOrCreateTranslationOverlay(player);
+    syncTranslationOverlayPosition(container);
 
-    if (source === lastSource) return;
+    if (!source) {
+      scheduleCaptionEmptyClear();
+      return;
+    }
+
+    cancelCaptionEmptyClear();
+    if (source === lastSource) {
+      if (lastTranslatedSource === source && lastTranslatedText && overlay.textContent !== lastTranslatedText) {
+        overlay.textContent = lastTranslatedText;
+        syncTranslationOverlayPosition(container);
+      }
+      return;
+    }
+
     lastSource = source;
     ++generation;
+    lastTranslatedSource = '';
+    lastTranslatedText = '';
     overlay.textContent = '';
-    if (!source) {
-      pendingTranslationSource = '';
-      pendingTranslationOverlay = null;
-      return;
-    }
 
     pendingTranslationSource = source;
     pendingTranslationOverlay = overlay;
@@ -698,7 +859,12 @@ export function mountVideoSubtitleTranslation(): () => void {
             const translated = await translateVideoText(nextSource);
             if (!nextOverlay || destroyed || requestGeneration !== generation || nextSource !== lastSource) continue;
             const result = typeof translated === 'string' ? translated.trim() : '';
-            if (result && result !== nextSource) nextOverlay.textContent = result;
+            lastTranslatedSource = nextSource;
+            lastTranslatedText = result && result !== nextSource ? result : '';
+            const currentContainer = findCaptionContainer();
+            if (!lastTranslatedText || !currentContainer || readVisibleCaptionText(currentContainer) !== nextSource) continue;
+            nextOverlay.textContent = lastTranslatedText;
+            syncTranslationOverlayPosition(currentContainer);
           } catch (error) {
             if (!destroyed && requestGeneration === generation) {
               console.warn('[FluentRead] 视频字幕翻译失败', error);
@@ -721,11 +887,8 @@ export function mountVideoSubtitleTranslation(): () => void {
     if (!container) {
       captionObserver?.disconnect();
       captionObserver = undefined;
-      generation += 1;
-      lastSource = '';
       observedContainer = null;
-      pendingTranslationSource = '';
-      pendingTranslationOverlay = null;
+      scheduleCaptionEmptyClear();
       return;
     }
     if (container === observedContainer && container.isConnected) {
@@ -734,12 +897,6 @@ export function mountVideoSubtitleTranslation(): () => void {
     }
 
     captionObserver?.disconnect();
-    if (observedContainer && observedContainer !== container) {
-      generation += 1;
-      lastSource = '';
-      pendingTranslationSource = '';
-      pendingTranslationOverlay = null;
-    }
     observedContainer = container;
     container.classList.add('notranslate');
     applyVideoDisplayState(container);
@@ -750,8 +907,17 @@ export function mountVideoSubtitleTranslation(): () => void {
 
   const syncPlayerUi = () => {
     if (destroyed) return;
+    const nextVideoPageKey = getYouTubeVideoPageKey();
+    if (nextVideoPageKey !== videoPageKey) {
+      videoPageKey = nextVideoPageKey;
+      captionObserver?.disconnect();
+      captionObserver = undefined;
+      observedContainer = null;
+      resetTranslationState();
+    }
     ensurePlayerUi();
     observeCaptionContainer();
+    syncTranslationOverlayPosition(observedContainer);
   };
 
   document.addEventListener('click', handleDocumentClick, true);
@@ -762,13 +928,12 @@ export function mountVideoSubtitleTranslation(): () => void {
 
   const unsubscribeConfig = subscribeConfig((nextConfig) => {
     updatePlayerUiState();
-    if (observedContainer) applyVideoDisplayState(observedContainer);
+    if (observedContainer) {
+      applyVideoDisplayState(observedContainer);
+      syncTranslationOverlayPosition(observedContainer);
+    }
     if (!nextConfig.on || !nextConfig.videoTranslationEnabled || nextConfig.videoSubtitleVisible === false || normalizeVideoSubtitleDisplayMode(nextConfig.videoSubtitleDisplayMode) === 'original-only') {
-      generation += 1;
-      lastSource = '';
-      pendingTranslationSource = '';
-      pendingTranslationOverlay = null;
-      clearRenderedTranslation();
+      resetTranslationState();
       return;
     }
     observeCaptionContainer();
@@ -781,6 +946,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     pendingTranslationSource = '';
     pendingTranslationOverlay = null;
     if (debounceTimer) clearTimeout(debounceTimer);
+    cancelCaptionEmptyClear();
     if (uiSyncTimer !== undefined) window.clearInterval(uiSyncTimer);
     captionObserver?.disconnect();
     unsubscribeConfig();

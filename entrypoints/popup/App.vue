@@ -299,7 +299,7 @@
       </div>
 
       <div v-else-if="activeDrawer === 'video'" class="drawer-content">
-        <div class="video-beta-banner"><span class="feature-icon teal">CC</span><span><strong>YouTube 字幕翻译</strong><small>Beta · 只处理播放器已经提供的字幕文本</small></span></div>
+        <div class="video-beta-banner"><span class="feature-icon teal">CC</span><span><strong>FluentRead · YouTube 字幕翻译</strong><small>Beta · 只处理播放器已经提供的字幕文本</small></span></div>
         <div class="setting-row">
           <span><strong>启用视频字幕翻译</strong><small>在 YouTube 原生字幕下方显示中文译文</small></span>
           <button class="switch compact" type="button" role="switch" :aria-checked="config.videoTranslationEnabled" aria-label="启用或关闭视频字幕翻译" @click="setVideoTranslationEnabled(!config.videoTranslationEnabled)"><i /></button>
