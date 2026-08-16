@@ -272,22 +272,6 @@
       </el-row>
 
 
-        <!-- 翻译进度面板 -->
-        <el-row class="settings-control-row">
-          <el-col :span="20" class="settings-control-label lightblue rounded-corner">
-            <el-tooltip class="box-item" effect="dark"
-                        content="翻译进度面板（默认关）：关闭后将不再显示右下角的全文翻译进度面板，适合移动端或希望更少打扰的用户。"
-                        placement="top-start" :show-after="500">
-          <span class="popup-text popup-vertical-left">翻译进度面板<el-icon class="icon-margin">
-              <ChatDotRound />
-            </el-icon></span>
-            </el-tooltip>
-          </el-col>
-          <el-col :span="4" class="settings-control-field flex-end">
-          <el-switch v-model="config.translationStatus" class="settings-toggle" aria-label="翻译进度面板" />
-          </el-col>
-        </el-row>
-
         <!-- 禁用动画设置 -->
         <el-row class="settings-control-row">
           <el-col :span="20" class="settings-control-label lightblue rounded-corner">
@@ -692,6 +676,7 @@ const floatingBallEnabled = computed({
 
 // 监听划词翻译模式变化
 watch(() => config.value.selectionTranslatorMode, (newMode) => {
+  config.value.disableSelectionTranslator = newMode === 'disabled';
   // 向所有激活的标签页发送消息
   browser.tabs.query({}).then(tabs => {
     tabs.forEach(tab => {

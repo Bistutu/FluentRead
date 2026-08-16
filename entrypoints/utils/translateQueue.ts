@@ -81,21 +81,6 @@ export function clearTranslationQueue() {
 }
 
 /**
- * 获取队列状态
- * @returns 返回当前队列状态对象
- */
-export function getQueueStatus() {
-  const maxConcurrent = getMaxConcurrentTranslations();
-  return {
-    activeTranslations,
-    pendingTranslations: pendingTranslations.length,
-    maxConcurrent: maxConcurrent,
-    isQueueFull: activeTranslations >= maxConcurrent,
-    totalTasksInProcess: activeTranslations + pendingTranslations.length
-  };
-}
-
-/**
  * 检查是否可以添加更多任务
  * 当快速扫描页面，判断是否需要暂停扫描时使用
  */

@@ -3,7 +3,7 @@
  * 整合翻译队列管理，作为翻译函数和后台翻译服务之间的中间层
  */
 
-import { enqueueTranslation, clearTranslationQueue, getQueueStatus } from './translateQueue';
+import { enqueueTranslation, clearTranslationQueue } from './translateQueue';
 import browser from 'webextension-polyfill';
 import { config } from './config';
 import { cache } from './cache';
@@ -158,14 +158,6 @@ export function cancelAllTranslations() {
     console.log('[翻译API] 取消所有等待中的翻译任务');
   }
   clearTranslationQueue();
-}
-
-/**
- * 获取当前翻译队列的状态
- * 可用于UI显示翻译进度等
- */
-export function getTranslationStatus() {
-  return getQueueStatus();
 }
 
 /**
