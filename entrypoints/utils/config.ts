@@ -1,59 +1,160 @@
-import { Config, normalizeConfig } from "@/entrypoints/utils/model";
+import { storage } from '@wxt-dev/storage';
+import { Config, normalizeConfig } from '@/entrypoints/utils/model';
 
-// 声明 config 类型, new Config() 会设置好所有默认值
-export let config: Config = new Config();
-export const configReady = loadConfig();
+export const CONFIG_STORAGE_KEY = 'local:config' as const;
 
-// 检查从存储中解析出的对象是否是有效的Config对象
-function isConfigObjectValid(obj: any): obj is Config {
-    if (typeof obj !== 'object' || obj === null) {
-        return false;
-    }
-    // 检查一些关键属性是否存在，以判断配置是否有效
-    return 'on' in obj && 'service' in obj && 'from' in obj && 'to' in obj;
+type ConfigListener = (nextConfig: Config) => void;
+
+const listeners = new Set<ConfigListener>();
+let storageRevision = 0;
+let initialized = false;
+let lastPersistedSerialized = '';
+let writeRevision = 0;
+let writeQueue: Promise<void> = Promise.resolve();
+
+// 所有运行时模块共享同一个可变配置对象；存储层负责把跨上下文变更同步进来。
+export const config = new Config();
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-// 异步加载配置并应用
-async function loadConfig() {
+export function parseStoredConfig(value: unknown): Record<string, unknown> | null {
+    let parsed = value;
+
+    if (typeof parsed === 'string') {
+        if (!parsed.trim()) return null;
+        try {
+            parsed = JSON.parse(parsed);
+        } catch {
+            return null;
+        }
+    }
+
+    if (!isRecord(parsed)) return null;
+    if (!['on', 'service', 'from', 'to'].every((key) => key in parsed)) return null;
+    return parsed;
+}
+
+export function serializeConfig(value: unknown): string {
+    return JSON.stringify(value);
+}
+
+function notifyListeners(nextConfig: Config): void {
+    const snapshot = normalizeConfig(nextConfig);
+    listeners.forEach((listener) => listener(snapshot));
+}
+
+function applyConfig(nextConfig: Config): void {
+    Object.assign(config, nextConfig);
+    notifyListeners(config);
+}
+
+function queueStorageWrite(nextConfig: Config, serialized: string, revision: number): Promise<void> {
+    writeQueue = writeQueue
+        .catch(() => undefined)
+        .then(async () => {
+            // 只写最后一次快照，避免连续输入或多个页面初始化时排队回写旧配置。
+            if (revision !== writeRevision || lastPersistedSerialized !== serialized) return;
+            try {
+                await storage.setItem<Config>(CONFIG_STORAGE_KEY, nextConfig);
+            } catch (error) {
+                if (lastPersistedSerialized === serialized) lastPersistedSerialized = '';
+                throw error;
+            }
+        });
+    return writeQueue;
+}
+
+async function persistNormalizedConfig(nextConfig: Config, serialized = serializeConfig(nextConfig)): Promise<void> {
+    if (serialized === lastPersistedSerialized) return;
+
+    lastPersistedSerialized = serialized;
+    const revision = ++writeRevision;
+    await queueStorageWrite(nextConfig, serialized, revision);
+}
+
+function handleStoredConfigChange(value: unknown): void {
+    storageRevision += 1;
+    const parsed = parseStoredConfig(value);
+    if (!parsed) return;
+
+    const normalized = normalizeConfig(parsed);
+    const serialized = serializeConfig(normalized);
+    if (serialized === lastPersistedSerialized) return;
+
+    // 外部上下文已经产生了新快照，使尚未写入的旧快照失效。
+    writeRevision += 1;
+    lastPersistedSerialized = serialized;
+    applyConfig(normalized);
+}
+
+// 在首次读取前注册监听，避免设置页打开期间丢失其他上下文的更新。
+storage.watch(CONFIG_STORAGE_KEY, handleStoredConfigChange);
+
+async function initializeConfig(): Promise<void> {
     try {
-        const value = await storage.getItem('local:config');
-        if (typeof value === 'string' && value.trim().length > 0) {
-            const parsedConfig = JSON.parse(value);
-            if (isConfigObjectValid(parsedConfig)) {
-                const normalizedConfig = normalizeConfig(parsedConfig);
-                Object.assign(config, normalizedConfig);
-                if (JSON.stringify(parsedConfig) !== JSON.stringify(normalizedConfig)) {
-                    await storage.setItem('local:config', JSON.stringify(normalizedConfig));
-                }
-                return; // 加载成功，直接返回
-            }
+        let storedValue: unknown = null;
+
+        // 读取过程中若收到 storage.onChanged，重新读取一次，避免旧读结果覆盖新配置。
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+            const revisionAtRead = storageRevision;
+            storedValue = await storage.getItem<unknown>(CONFIG_STORAGE_KEY);
+            if (revisionAtRead === storageRevision) break;
         }
-        // 如果存储中没有配置、配置为空或无效，则将当前带有默认值的 config 对象存入存储
-        await storage.setItem('local:config', JSON.stringify(config));
+
+        const parsed = parseStoredConfig(storedValue);
+        const normalized = parsed ? normalizeConfig(parsed) : new Config();
+        const serialized = serializeConfig(normalized);
+
+        initialized = true;
+        applyConfig(normalized);
+
+        // 兼容旧版 JSON 字符串、缺失字段和模型迁移；迁移只在初始化时写回一次。
+        const storedSerialized = isRecord(storedValue) ? serializeConfig(storedValue) : '';
+        if (!parsed || typeof storedValue === 'string' || storedSerialized !== serialized) {
+            lastPersistedSerialized = '';
+            await persistNormalizedConfig(normalized, serialized);
+        } else {
+            lastPersistedSerialized = serialized;
+        }
     } catch (error) {
-        console.error('Error loading or validating config:', error);
-        // 出错时也尝试保存一次默认配置
+        // 存储 API 暂时不可用时仍提供默认配置，避免 Firefox 设置页因初始化 rejection 反复重载。
+        console.error('[FluentRead] 配置读取失败，使用默认配置', error);
+        const fallback = new Config();
+        const serialized = serializeConfig(fallback);
+        initialized = true;
+        lastPersistedSerialized = '';
+        applyConfig(fallback);
         try {
-            await storage.setItem('local:config', JSON.stringify(new Config()));
+            await persistNormalizedConfig(fallback, serialized);
         } catch (saveError) {
-            console.error('Failed to save default config after an error:', saveError);
+            console.error('[FluentRead] 默认配置保存失败', saveError);
         }
     }
 }
 
-// 监控配置变化并更新 config
-storage.watch('local:config', (newValue: any, oldValue: any) => {
-    if (typeof newValue === 'string' && newValue.trim().length > 0) {
-        try {
-            const parsedConfig = JSON.parse(newValue);
-            if (isConfigObjectValid(parsedConfig)) {
-                // 如果新的配置有效，更新 config
-                Object.assign(config, normalizeConfig(parsedConfig));
-            } else {
-                console.warn('An invalid configuration was detected in storage.watch. Ignoring.');
-            }
-        } catch (error) {
-            console.error('Error parsing new config in storage.watch:', error);
-        }
-    }
-});
+export const configReady = initializeConfig();
+
+export function subscribeConfig(listener: ConfigListener): () => void {
+    listeners.add(listener);
+    if (initialized) listener(normalizeConfig(config));
+    return () => listeners.delete(listener);
+}
+
+export function getConfigSnapshot(): Config {
+    return normalizeConfig(config);
+}
+
+/**
+ * 配置唯一写入口。调用方可以传入编辑中的快照，也可以省略参数保存运行时配置。
+ * 写入前会归一化、去重，并串行淘汰旧快照，避免设置页和 popup 互相回灌。
+ */
+export async function saveConfig(value: unknown = config): Promise<void> {
+    await configReady;
+
+    const normalized = normalizeConfig(value);
+    const serialized = serializeConfig(normalized);
+    if (serializeConfig(config) !== serialized) applyConfig(normalized);
+    await persistNormalizedConfig(normalized, serialized);
+}

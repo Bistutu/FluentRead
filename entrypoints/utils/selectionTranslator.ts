@@ -1,6 +1,5 @@
 import SelectionTranslator from '@/components/SelectionTranslator.vue';
-import { config } from '@/entrypoints/utils/config';
-import { storage } from '@wxt-dev/storage';
+import { config, saveConfig } from '@/entrypoints/utils/config';
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import type { ShadowRootContentScriptUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { createVueShadowUi, type VueShadowMount } from '@/entrypoints/utils/shadowUi';
@@ -74,15 +73,7 @@ export function toggleSelectionTranslator() {
   }
   
   // 保存配置到存储
-  saveConfig();
-}
-
-/**
- * 保存配置到存储
- */
-function saveConfig() {
-  // 使用插件提供的存储API保存配置
-  storage.setItem('local:config', JSON.stringify(config)).catch((error) => {
+  void saveConfig().catch((error) => {
     console.error('Failed to save config:', error);
   });
 }

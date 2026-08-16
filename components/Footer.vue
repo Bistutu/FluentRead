@@ -45,11 +45,11 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, reactive, ref } from 'vue';
+import { computed, onUnmounted, reactive, ref } from 'vue';
 import { Star, Loading, Coffee } from "@element-plus/icons-vue";
 import { Config } from "../entrypoints/utils/model";
-import { storage } from '@wxt-dev/storage';
 import browser from 'webextension-polyfill';
+import { config, configReady, subscribeConfig } from '@/entrypoints/utils/config';
 
 // 实际上是 el-link 而不是 el-button
 const buttonDisabled = ref(false);
@@ -94,16 +94,11 @@ async function clearCache() {
   }
 }
 
-// 获取配置，用于显示翻译次数
-let localConfig = reactive(new Config());
-
-storage.getItem('local:config').then((value) => {
-  if (typeof value === 'string' && value) Object.assign(localConfig, JSON.parse(value));
-});
-
-storage.watch('local:config', (newValue, oldValue) => {
-  if (typeof newValue === 'string' && newValue) Object.assign(localConfig, JSON.parse(newValue));
-});
+// 只订阅统一配置状态，避免 Footer 再注册一套独立的存储读取和监听。
+const localConfig = reactive(new Config());
+void configReady.then(() => Object.assign(localConfig, config));
+const unsubscribeConfig = subscribeConfig((nextConfig) => Object.assign(localConfig, nextConfig));
+onUnmounted(unsubscribeConfig);
 
 const computedCount = computed(() => localConfig.count);
 
