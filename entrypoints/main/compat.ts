@@ -2,10 +2,7 @@
 
 import {findMatchingElement} from "@/entrypoints/utils/common";
 
-type ReplaceFunction = (node: any, text: any) => any;
 type SelectFunction = (node: any) => any | {skip: boolean} | false;
-
-const parser = new DOMParser();
 
 // 调试相关
 const isDev = process.env.NODE_ENV === 'development';
@@ -52,10 +49,6 @@ function debugLog(type: string, message: string, ...args: any[]): void {
     // 常规日志输出
     console.log(prefix, color, message, ...args);
   }
-}
-
-interface ReplaceCompatFn {
-    [domain: string]: ReplaceFunction;
 }
 
 interface SelectCompatFn {
@@ -157,52 +150,6 @@ function isSpecialContent(text: string): boolean {
     
     return false;
 }
-
-// 文本替换环节的兼容函数，主域名 : 兼容函数
-export const replaceCompatFn: ReplaceCompatFn = {
-    ["youtube.com"]: (node: any, text: any) => {
-        // 使用DOMParser解析翻译后的HTML
-        const doc = parser.parseFromString(text, 'text/html');
-        const newNode = doc.body.firstChild as HTMLElement;
-        
-        // 针对YouTube特有的格式化字符串进行特殊处理
-        if (node.tagName.toLowerCase() === 'yt-formatted-string') {
-            // 尝试保留原有的属性和样式
-            if (node.hasAttribute('has-link-only_')) {
-                node.innerHTML = newNode.innerHTML;
-                return;
-            }
-            
-            // 处理具有特殊格式的内容
-            if (node.querySelector('a') || node.querySelector('span')) {
-                // 尝试保留链接和格式，但更新文本内容
-                const links = node.querySelectorAll('a');
-                const spans = node.querySelectorAll('span');
-                
-                if (links.length > 0 || spans.length > 0) {
-                    // 创建临时元素存储新文本
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = newNode.innerHTML;
-                    
-                    // 保留原有的链接和格式元素
-                    node.childNodes.forEach((child: Node) => {
-                        if (child.nodeType === Node.ELEMENT_NODE) {
-                            // 保留原有的HTML元素
-                            if (child.nodeName.toLowerCase() === 'a' || child.nodeName.toLowerCase() === 'span') {
-                                // 更新元素内容，但保留属性
-                                (child as HTMLElement).textContent = tempDiv.textContent || '';
-                            }
-                        }
-                    });
-                    return;
-                }
-            }
-        }
-        
-        // 默认处理：直接替换innerHTML
-        node.innerHTML = newNode.innerHTML;
-    }
-};
 
 // 元素 node 选择环节的兼容函数
 export const selectCompatFn: SelectCompatFn = {

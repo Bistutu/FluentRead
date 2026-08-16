@@ -617,11 +617,6 @@ const CustomHotkeyInput = defineAsyncComponent(() => import('@/components/Custom
 import ServiceCatalog from '@/components/ServiceCatalog.vue';
 import ServiceConfiguration from '@/components/ServiceConfiguration.vue';
 import { parseHotkey } from '@/entrypoints/utils/hotkey';
-import {
-  isCustomBodyMapping,
-  isValidCustomBody,
-} from '@/entrypoints/utils/custom-body';
-import {DEEPLX_ENDPOINT_PRESETS, parseDeepLXEndpoints} from '@/entrypoints/utils/deeplx';
 import { isConfigImportValid, sanitizeConfigForExport } from '@/entrypoints/utils/config-transfer';
 import { getApiKeyRequirementKey, getMissingCredentialMessage, isApiKeyRequired } from '@/entrypoints/utils/configValidation';
 import {
@@ -668,7 +663,6 @@ function updateTheme(theme: string) {
 
 // 配置信息
 const config = ref(new Config());
-const selectedDeepLXPreset = ref('');
 const persistConfig = (value: unknown) => requestConfigSave(value, browser.runtime.sendMessage.bind(browser.runtime));
 let lastSerialized = '';
 const imageOcrLanguagePacks = IMAGE_OCR_LANGUAGE_PACKS;
@@ -710,18 +704,6 @@ async function downloadImageOcrLanguages(languages: ImageOcrLanguageCode[]) {
     imageOcrDownloadingCodes.value = imageOcrDownloadingCodes.value.filter(code => !pending.includes(code));
   }
 }
-
-const appendDeepLXPreset = (endpoint: string | undefined) => {
-  if (!endpoint) {
-    return;
-  }
-
-  const endpoints = parseDeepLXEndpoints(config.value.deeplx);
-  if (!endpoints.includes(endpoint)) {
-    config.value.deeplx = [...endpoints, endpoint].join('\n');
-  }
-  selectedDeepLXPreset.value = '';
-};
 
 let hydrated = false;
 let applyingExternalConfig = false;
@@ -849,7 +831,7 @@ watch(() => config.value.theme, (newTheme) => {
 });
 
 // 使用 onchange 监听系统主题变化
-darkModeMediaQuery.onchange = (e) => {
+darkModeMediaQuery.onchange = () => {
   if (config.value.theme === 'auto') {
     updateTheme('auto');
   }
@@ -955,23 +937,6 @@ const handlePluginStateChange = (val: boolean) => {
       }).catch(() => {
         // 忽略发送失败的错误（可能是页面未加载内容脚本）
       });
-    });
-  });
-};
-
-// 处理悬浮球开关变化
-const toggleFloatingBall = (val: boolean) => {
-  // 向所有激活的标签页发送消息
-  browser.tabs.query({}).then(tabs => {
-    tabs.forEach(tab => {
-      if (tab.id) {
-        browser.tabs.sendMessage(tab.id, { 
-          type: 'toggleFloatingBall',
-          isEnabled: val 
-        }).catch(() => {
-          // 忽略发送失败的错误（可能是页面未加载内容脚本）
-        });
-      }
     });
   });
 };

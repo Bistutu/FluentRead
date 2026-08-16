@@ -7,10 +7,7 @@ import { config } from './config';
 
 // 队列状态
 let activeTranslations = 0; // 当前活跃的翻译任务数量
-let pendingTranslations: Array<() => Promise<any>> = []; // 等待执行的翻译任务队列
-
-// 调试相关
-const isDev = process.env.NODE_ENV === 'development';
+let pendingTranslations: Array<() => Promise<unknown>> = []; // 等待执行的翻译任务队列
 
 // 获取最大并发翻译数量
 function getMaxConcurrentTranslations(): number {
@@ -47,7 +44,7 @@ export function enqueueTranslation<T>(translationTask: () => Promise<T>): Promis
     if (activeTranslations < getMaxConcurrentTranslations()) {
       // 直接执行任务
       activeTranslations++;
-      taskWrapper();
+      void taskWrapper().catch(() => undefined);
     } else {
       pendingTranslations.push(taskWrapper);
     }
@@ -78,14 +75,4 @@ export function clearTranslationQueue() {
   
   pendingTranslations = [];
   // 不重置activeTranslations，让活跃的翻译任务自然完成
-}
-
-/**
- * 检查是否可以添加更多任务
- * 当快速扫描页面，判断是否需要暂停扫描时使用
- */
-export function canAcceptMoreTasks(): boolean {
-  // 如果等待队列太长，返回false表示需要暂停扫描
-  const MAX_QUEUE_LENGTH = getMaxConcurrentTranslations() * 3;
-  return pendingTranslations.length < MAX_QUEUE_LENGTH;
 }

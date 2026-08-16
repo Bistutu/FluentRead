@@ -7,7 +7,7 @@ import {
 } from "@/entrypoints/main/trans";
 import { config } from "@/entrypoints/utils/config";
 import { styles } from "@/entrypoints/utils/constant";
-import { services, options } from "./option";
+import { options } from "./option";
 
 const icon = {
   retry: `<svg fill="none" viewBox="0 0 40 40" height="40" width="40" style="display: inline; align-items: center; justify-content: center; width: 1em; height: 1em; margin-left: 1em; pointer-events: none;">

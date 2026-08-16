@@ -69,21 +69,6 @@ export function hasRetryTag(node: Node): boolean {
     return false;
 }
 
-// Search for a node with a specific class name
-export function searchClassName(node: Node, className: string): Node | null {
-    if (node instanceof Element && node.classList.contains(className)) return node;
-
-    // Check children only if the node is an Element
-    if (node instanceof Element) {
-        for (let child of node.children) {
-            let result = searchClassName(child, className);
-            if (result) return result;
-        }
-    }
-
-    return null;
-}
-
 export function contentPostHandler(text: string) {
     // Never render model reasoning tags in translated page content.
     return text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();

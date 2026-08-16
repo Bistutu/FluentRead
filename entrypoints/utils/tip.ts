@@ -6,7 +6,7 @@ function isCredentialMessage(message: string): boolean {
     return /API Key|访问令牌/.test(message);
 }
 
-function getNoticeTitle(message: string, type: 'error' | 'success', credential: boolean): string {
+function getNoticeTitle(type: 'error' | 'success', credential: boolean): string {
     if (credential) return '配置提醒';
     return type === 'success' ? '操作完成' : '翻译提醒';
 }
@@ -26,7 +26,7 @@ function createNoticeContent(message: string, type: 'error' | 'success', credent
         h('span', {class: 'fluent-read-notice-heading'}, [
             h('strong', {class: 'fluent-read-notice-brand'}, '流畅阅读'),
             h('span', {class: 'fluent-read-notice-divider', 'aria-hidden': 'true'}, '·'),
-            h('span', {class: 'fluent-read-notice-title'}, getNoticeTitle(message, type, credential)),
+            h('span', {class: 'fluent-read-notice-title'}, getNoticeTitle(type, credential)),
         ]),
         h('span', {class: 'fluent-read-notice-body'}, [
             h('span', {class: 'fluent-read-notice-detail'}, detail),
@@ -67,10 +67,5 @@ function _sendErrorMessage(message: string) {
     sendMessage(message, 'error');
 }
 
-function _sendSuccessMessage(message: string) {
-    sendMessage(message, 'success');
-}
-
 // 使用防抖函数包装，1s 内只能发送一次消息
 export const sendErrorMessage = throttle(_sendErrorMessage, 1000);
-export const sendSuccessMessage = throttle(_sendSuccessMessage, 1000);

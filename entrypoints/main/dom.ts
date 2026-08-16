@@ -1,5 +1,4 @@
 import { getMainDomain, selectCompatFn } from "@/entrypoints/main/compat";
-import { html } from 'js-beautify';
 
 // 语义块标签只用于识别候选内容块；真正的块级判断还会结合 computed style。
 const directSet = new Set([
@@ -19,7 +18,7 @@ const structuralIgnoreSet = new Set(['header', 'footer', 'nav', 'aside']);
 const controlSet = new Set(['button']);
 
 // 内联元素集合（可以包含在其他元素内的元素）
-export const inlineSet = new Set([
+const inlineSet = new Set([
     'a', 'b', 'strong', 'span', 'em', 'i', 'u', 'small', 'sub', 'sup',
     'font', 'mark', 'cite', 'q', 'abbr', 'time', 'ruby', 'bdi', 'bdo',
     'code', 'kbd', 'samp', 'var', 'img', 'br', 'wbr', 'svg'
@@ -561,49 +560,17 @@ export function LLMStandardHTML(node: any) {
     return text;
 }
 
-export function beautyHTML(text: string): string {
-    // 1. 先替换 SVG 中的大小写敏感词
-    // 2. 再使用 js-beautify 格式化 HTML
-    text = replaceSensitiveWords(text);
-    return html(text)
-}
-
-// 替换 svg 标签中的一些大小写敏感的词（html 不区分大小写，但 svg 标签区分大小写）
-function replaceSensitiveWords(text: string): string {
-    // 1. 使用正则匹配大小写敏感词
-    // 2. 逐个替换为正确大小写形式
-    return text.replace(/viewbox|preserveaspectratio|clippathunits|gradienttransform|patterncontentunits|lineargradient|clippath/gi, (match) => {
-        switch (match.toLowerCase()) {
-            case 'viewbox':
-                return 'viewBox';
-            case 'preserveaspectratio':
-                return 'preserveAspectRatio';
-            case 'clippathunits':
-                return 'clipPathUnits';
-            case 'gradienttransform':
-                return 'gradientTransform';
-            case 'patterncontentunits':
-                return 'patternContentUnits';
-            case 'lineargradient':
-                return 'linearGradient';
-            case 'clippath':
-                return 'clipPath';
-            default:
-                return match;
-        }
-    });
-}
-
 // 移除特定样式
-export function checkAndRemoveStyle(node: any, styleProperty: any) {
+function checkAndRemoveStyle(node: HTMLElement, styleProperty: string) {
     // 1. 若节点存在样式且对应属性不为 undefined，则清空该属性
-    if (node.style && node.style[styleProperty] !== undefined) {
-        node.style[styleProperty] = '';
+    const style = node.style as unknown as Record<string, string | undefined>;
+    if (style[styleProperty] !== undefined) {
+        style[styleProperty] = '';
     }
 }
 
 // 移除截断样式
-export function smashTruncationStyle(node: any) {
+export function smashTruncationStyle(node: HTMLElement) {
     // 1. 先调用 checkAndRemoveStyle 移除 webkitLineClamp 属性
     // 2. 将节点的相关样式设为 'unset'
     checkAndRemoveStyle(node, 'webkitLineClamp');
