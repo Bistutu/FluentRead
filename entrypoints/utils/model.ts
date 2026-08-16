@@ -191,6 +191,9 @@ export function normalizeConfig(value: unknown): Config {
         : {};
     Object.assign(normalized, source);
     delete (normalized as unknown as Record<string, unknown>).translationStatus;
+    // __fluentConfigRevision 只用于 storage 的写入顺序判断，不能进入运行时
+    // 配置或历史快照，否则默认配置与同值的页面快照会因内部字段不同而无法去重。
+    delete (normalized as unknown as Record<string, unknown>).__fluentConfigRevision;
 
     normalized.model = isRecord(source.model) ? {...source.model} : {};
     normalized.customModel = isRecord(source.customModel) ? {...source.customModel} : {};

@@ -224,6 +224,9 @@ async function main() {
         };
 
         await selectLanguage('英语');
+        // 让一个离散设置完成历史防抖，再执行下一次离散修改；快速关闭场景
+        // 仍在后面单独验证，避免把两个用户明确选择误合并为一条历史。
+        await sleep(500);
         await selectLanguage('日语');
         const beforeClose = await selectedFrame(client);
         result.persistenceCases.optionsLabel = await evaluateJson(client, beforeClose.frame, `document.querySelector('[aria-label="默认目标语言"]')?.parentElement?.parentElement?.querySelector('.el-select__selected-item:not(.el-select__input-wrapper)')?.textContent?.trim() || null`);
@@ -263,17 +266,54 @@ async function main() {
         result.historyCases = await evaluateJson(client, historyPanel.current.frame, `(() => {
             const entries = [...document.querySelectorAll('.config-history-entry')];
             const current = document.querySelector('.config-history-entry.current .config-history-version b')?.textContent?.trim() || null;
+            const undoButton = document.querySelector('[aria-label="撤销配置恢复"]');
+            const redoButton = document.querySelector('[aria-label="重做配置恢复"]');
             return {
                 count: entries.length,
                 versions: entries.map(entry => entry.querySelector('.config-history-version b')?.textContent?.trim() || null),
                 timestamps: entries.map(entry => entry.querySelector('.config-history-detail small')?.textContent?.trim() || null),
                 current,
-                canUndo: !(document.querySelector('[aria-label="撤销配置恢复"]') instanceof HTMLButtonElement) || !document.querySelector('[aria-label="撤销配置恢复"]')?.disabled,
-                canRedo: !(document.querySelector('[aria-label="重做配置恢复"]') instanceof HTMLButtonElement) || !document.querySelector('[aria-label="重做配置恢复"]')?.disabled,
+                hasUndo: undoButton instanceof HTMLButtonElement,
+                hasRedo: redoButton instanceof HTMLButtonElement,
+                canUndo: undoButton instanceof HTMLButtonElement && !undoButton.disabled,
+                canRedo: redoButton instanceof HTMLButtonElement && !redoButton.disabled,
             };
         })()`);
-        if (result.historyCases.count < 1 || result.historyCases.count > 5) throw new Error(`Firefox 配置历史条目数量异常: ${JSON.stringify(result.historyCases)}`);
+        if (result.historyCases.count < 3 || result.historyCases.count > 5) throw new Error(`Firefox 配置历史条目数量异常: ${JSON.stringify(result.historyCases)}`);
+        if (!result.historyCases.hasUndo || !result.historyCases.hasRedo || !result.historyCases.canUndo || result.historyCases.canRedo) {
+            throw new Error(`Firefox 配置历史撤销/重做按钮状态异常: ${JSON.stringify(result.historyCases)}`);
+        }
+        if (new Set(result.historyCases.versions).size !== result.historyCases.count || result.historyCases.versions.some(value => !/^v\d+$/.test(value))) {
+            throw new Error(`Firefox 配置历史版本号异常: ${JSON.stringify(result.historyCases)}`);
+        }
         if (result.historyCases.timestamps.some(value => !value)) throw new Error('Firefox 配置历史缺少时间');
+
+        const persistedHistory = await evaluateAsyncJson(client, (await selectedFrame(client)).frame, `browser.storage.local.get(null).then(all => {
+            const history = all.configHistory || all['local:configHistory'];
+            return {
+                cursor: history?.cursor ?? null,
+                entries: Array.isArray(history?.entries) ? history.entries.map(entry => ({
+                    version: entry.version,
+                    savedAt: entry.savedAt,
+                    config: {
+                        on: entry.config?.on,
+                        from: entry.config?.from,
+                        to: entry.config?.to,
+                        service: entry.config?.service,
+                        style: entry.config?.style,
+                        display: entry.config?.display,
+                        theme: entry.config?.theme,
+                    },
+                })) : [],
+            };
+        })`);
+        const currentIndex = persistedHistory?.cursor;
+        result.historyCases.storageEntries = persistedHistory?.entries || [];
+        const restoreIndex = persistedHistory?.entries?.findIndex(entry => entry.config?.to === 'en') ?? -1;
+        const restoreEntry = restoreIndex >= 0 ? persistedHistory.entries[restoreIndex] : null;
+        if (!restoreEntry || typeof restoreEntry.version !== 'number' || !persistedHistory.entries.some(entry => entry.config?.to === 'ja')) {
+            throw new Error(`Firefox 配置历史未记录本次用户配置快照: ${JSON.stringify({entries: persistedHistory?.entries || [], currentIndex})}`);
+        }
 
         const historyClick = async (selector, label) => {
             const before = await selectedFrame(client);
@@ -287,15 +327,36 @@ async function main() {
             await sleep(450);
         };
         const currentVersion = result.historyCases.current;
-        await historyClick('[aria-label^="恢复配置 v"]:not([disabled])', 'restore');
+        await historyClick(`[aria-label="恢复配置 v${restoreEntry.version}"]`, 'restore');
         const restoredVersion = await evaluateJson(client, (await selectedFrame(client)).frame, `document.querySelector('.config-history-entry.current .config-history-version b')?.textContent?.trim() || null`);
+        const restoredStorage = await evaluateAsyncJson(client, (await selectedFrame(client)).frame, `browser.storage.local.get(null).then(all => {
+            const value = all.config || all['local:config'];
+            return {on: value?.on, from: value?.from, to: value?.to, service: value?.service, style: value?.style, display: value?.display, theme: value?.theme};
+        })`);
         if (!restoredVersion || restoredVersion === currentVersion) throw new Error('Firefox 配置历史恢复没有改变当前版本');
+        if (JSON.stringify(restoredStorage) !== JSON.stringify(restoreEntry.config)) throw new Error(`Firefox 配置恢复未写入目标配置: ${JSON.stringify({expected: restoreEntry.config, actual: restoredStorage})}`);
         await historyClick('[aria-label="撤销配置恢复"]', 'undo');
         const undoneVersion = await evaluateJson(client, (await selectedFrame(client)).frame, `document.querySelector('.config-history-entry.current .config-history-version b')?.textContent?.trim() || null`);
+        const undoneStorage = await evaluateAsyncJson(client, (await selectedFrame(client)).frame, `browser.storage.local.get(null).then(all => {
+            const value = all.config || all['local:config'];
+            return {on: value?.on, from: value?.from, to: value?.to, service: value?.service, style: value?.style, display: value?.display, theme: value?.theme};
+        })`);
         await historyClick('[aria-label="重做配置恢复"]', 'redo');
         const redoneVersion = await evaluateJson(client, (await selectedFrame(client)).frame, `document.querySelector('.config-history-entry.current .config-history-version b')?.textContent?.trim() || null`);
+        const redoneStorage = await evaluateAsyncJson(client, (await selectedFrame(client)).frame, `browser.storage.local.get(null).then(all => {
+            const value = all.config || all['local:config'];
+            return {on: value?.on, from: value?.from, to: value?.to, service: value?.service, style: value?.style, display: value?.display, theme: value?.theme};
+        })`);
         result.historyCases.restore = {before: currentVersion, restored: restoredVersion, undone: undoneVersion, redone: redoneVersion};
-        if (redoneVersion !== restoredVersion || undoneVersion === restoredVersion) throw new Error(`Firefox 配置历史撤销/重做结果异常: ${JSON.stringify(result.historyCases)}`);
+        result.historyCases.storageAfterActions = {
+            restoredTo: restoredStorage?.to || null,
+            undoneTo: undoneStorage?.to || null,
+            redoneTo: redoneStorage?.to || null,
+        };
+        const undoEntry = persistedHistory?.entries?.[restoreIndex - 1];
+        if (redoneVersion !== restoredVersion || undoneVersion === restoredVersion || !undoEntry || JSON.stringify(undoneStorage) !== JSON.stringify(undoEntry.config) || JSON.stringify(redoneStorage) !== JSON.stringify(restoreEntry.config)) {
+            throw new Error(`Firefox 配置历史撤销/重做结果异常: ${JSON.stringify(result.historyCases)}`);
+        }
         result.evidence.push({step: 'config-history', url: (await selectedFrame(client)).frame.url, history: result.historyCases});
 
         result.ok = true;

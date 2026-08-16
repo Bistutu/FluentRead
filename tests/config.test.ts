@@ -53,6 +53,19 @@ describe('统一配置存储', () => {
         expect(configStore.config).toMatchObject(storedConfig);
     });
 
+    it('内部 storage revision 不进入运行时配置或历史快照', async () => {
+        const configStore = await loadConfigModule({...storedConfig, __fluentConfigRevision: 5});
+        await Promise.all([configStore.configReady, configStore.configHistoryReady]);
+
+        expect((configStore.config as unknown as Record<string, unknown>).__fluentConfigRevision).toBeUndefined();
+        await configStore.saveConfig({ ...configStore.config, to: 'en' }, {recordHistory: true, immediateHistory: true});
+
+        const history = configStore.getConfigHistorySnapshot();
+        expect(history.entries).toHaveLength(2);
+        expect((history.entries[0].config as unknown as Record<string, unknown>).__fluentConfigRevision).toBeUndefined();
+        expect((history.entries[1].config as unknown as Record<string, unknown>).__fluentConfigRevision).toBeUndefined();
+    });
+
     it('存储内容损坏时回退到默认配置，并保持初始化 Promise 可用', async () => {
         const configStore = await loadConfigModule('{not-json');
 
@@ -273,5 +286,70 @@ describe('统一配置存储', () => {
             action: 'undo',
             version: undefined,
         });
+    });
+
+    it('快速连续编辑只保留最后一个防抖历史快照', async () => {
+        const configStore = await loadConfigModule(storedConfig);
+        await Promise.all([configStore.configReady, configStore.configHistoryReady]);
+
+        await configStore.saveConfig({ ...configStore.config, to: 'en' }, {recordHistory: true});
+        await configStore.saveConfig({ ...configStore.config, to: 'ja' }, {recordHistory: true});
+        await configStore.flushConfigHistory();
+
+        const history = configStore.getConfigHistorySnapshot();
+        expect(history.entries).toHaveLength(2);
+        expect(history.entries.at(-1)?.config.to).toBe('ja');
+    });
+
+    it('配置历史 storage 外部更新会通知订阅者并保留版本结构', async () => {
+        const configStore = await loadConfigModule(storedConfig);
+        await Promise.all([configStore.configReady, configStore.configHistoryReady]);
+        const listener = vi.fn();
+        const unsubscribe = configStore.subscribeConfigHistory(listener);
+        listener.mockClear();
+
+        const current = configStore.getConfigHistorySnapshot();
+        const external = {
+            ...current,
+            entries: [
+                ...current.entries,
+                {
+                    version: current.nextVersion,
+                    savedAt: new Date().toISOString(),
+                    config: {...storedConfig, to: 'en'},
+                },
+            ],
+            cursor: current.entries.length,
+            nextVersion: current.nextVersion + 1,
+        };
+        const historyWatchCallback = storageMock.watch.mock.calls[1][1];
+        historyWatchCallback(external);
+
+        expect(listener).toHaveBeenCalledWith(expect.objectContaining({
+            entries: expect.arrayContaining([expect.objectContaining({config: expect.objectContaining({to: 'en'})})]),
+        }));
+        expect(configStore.getConfigHistorySnapshot().entries.at(-1)?.config.to).toBe('en');
+        unsubscribe();
+    });
+
+    it('配置历史后台操作失败时回退到本地，并实际保存目标配置', async () => {
+        const configStore = await loadConfigModule(storedConfig);
+        await Promise.all([configStore.configReady, configStore.configHistoryReady]);
+        await configStore.saveConfig({ ...configStore.config, to: 'en' }, {recordHistory: true, immediateHistory: true});
+        await configStore.saveConfig({ ...configStore.config, to: 'ja' }, {recordHistory: true, immediateHistory: true});
+        storageMock.setItem.mockClear();
+
+        const sendMessage = vi.fn().mockRejectedValue(new Error('Receiving end does not exist'));
+        await configStore.requestConfigHistoryAction('undo', undefined, sendMessage);
+
+        expect(configStore.config.to).toBe('en');
+        expect(storageMock.setItem).toHaveBeenCalledWith(
+            'local:config',
+            expect.objectContaining({to: 'en'}),
+        );
+        expect(storageMock.setItem).toHaveBeenCalledWith(
+            'local:configHistory',
+            expect.objectContaining({cursor: 1}),
+        );
     });
 });
