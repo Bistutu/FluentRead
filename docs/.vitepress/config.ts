@@ -61,12 +61,6 @@ export default defineConfig({
             { text: '常见问题', link: '/guide/faq' },
           ],
         },
-        {
-          text: '开发者文档',
-          items: [
-            { text: '浏览器自动化测试', link: '/guide/codex-browser-testing' },
-          ],
-        },
       ],
       '/config/': [
         {

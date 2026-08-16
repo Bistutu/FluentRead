@@ -124,7 +124,9 @@
 
 .doc-screenshot {
   display: block;
-  width: min(100%, 980px);
+  width: auto;
+  max-width: 100%;
+  height: auto;
   margin: 1.4rem auto 1.8rem;
   border: 1px solid var(--vp-c-divider);
   border-radius: 16px;
