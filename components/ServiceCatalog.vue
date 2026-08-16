@@ -73,7 +73,13 @@
               <strong>{{ modelQuery ? '搜索结果' : moreModelsOpen ? '全部模型' : '常用模型' }}</strong>
               <span>{{ displayedModels.length }}</span>
             </div>
-            <div id="model-options" class="model-grid" role="listbox" aria-label="可用模型">
+            <div
+              id="model-options"
+              class="model-grid"
+              :class="{ expanded: moreModelsOpen || modelQuery }"
+              role="listbox"
+              aria-label="可用模型"
+            >
               <button
                 v-for="model in displayedModels"
                 :key="model"
@@ -219,6 +225,7 @@ watch(modelQuery, () => {
 .model-list-heading strong { font-size: 12px; }
 .model-list-heading span { font-size: 11px; }
 .model-grid { display: grid; min-height: 0; max-height: 246px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-content: start; overflow-y: auto; padding: 1px 4px 4px 1px; }
+.model-grid.expanded { max-height: none; overflow-y: visible; }
 .model-item { display: grid; grid-template-columns: 30px minmax(0, 1fr) 16px; align-items: center; gap: 9px; min-width: 0; padding: 10px; border: 1px solid #e4e7ee; border-radius: 12px; color: #172033; background: #fff; text-align: left; cursor: pointer; transition: 150ms ease; }
 .model-item:hover { border-color: #f0a9bc; transform: translateY(-1px); }
 .model-item.active { border-color: #ef4776; background: #fff4f7; box-shadow: 0 7px 16px rgba(214, 50, 96, .08); }
