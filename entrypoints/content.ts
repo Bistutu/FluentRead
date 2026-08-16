@@ -1,5 +1,4 @@
 import { handleTranslation, autoTranslateEnglishPage, restoreOriginalContent } from "./main/trans";
-import { cache } from "./utils/cache";
 import { constants } from "@/entrypoints/utils/constant";
 import { getCenterPoint } from "@/entrypoints/utils/common";
 import pageStyles from './style.css?inline';
@@ -67,12 +66,16 @@ export default defineContentScript({
         
         mountNewApiComponent();
 
-        cache.cleaner();    // 检测是否清理缓存
-
         // background.ts
         browser.runtime.onMessage.addListener((message: { message: string; }, sender: any, sendResponse: () => void) => {
-            if (message.message === 'clearCache') cache.clean()
-            sendResponse();
+            if (message.message !== 'clearCache') {
+                sendResponse();
+                return true;
+            }
+
+            browser.runtime.sendMessage({ type: 'clearTranslationCache' })
+                .then(() => sendResponse())
+                .catch(() => sendResponse());
             return true;
         });
         
@@ -626,28 +629,6 @@ function setupFloatingBallHotkey() {
 function autoTranslationEvent() {
     // 自动翻译英文页面
     autoTranslateEnglishPage();
-}
-
-// 清除所有翻译的函数
-function clearAllTranslations() {
-    // 1. 移除所有翻译结果元素
-    document.querySelectorAll('.fluent-read-translation').forEach(el => el.remove());
-
-    // 2. 移除所有加载状态
-    document.querySelectorAll('.fluent-read-loading').forEach(el => el.remove());
-
-    // 3. 移除所有错误状态
-    document.querySelectorAll('.fluent-read-failure').forEach(el => el.remove());
-
-    // 4. 移除所有翻译相关的类名
-    document.querySelectorAll('.fluent-read-processed').forEach(el => {
-        el.classList.remove('fluent-read-processed');
-    });
-
-    // 5. 清除内存中的缓存
-    cache.clean();
-
-    console.log('已清除所有翻译缓存');
 }
 
 /**
