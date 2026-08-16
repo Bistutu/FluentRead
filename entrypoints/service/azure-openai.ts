@@ -1,4 +1,4 @@
-import {method, urls} from "../utils/constant";
+import {method} from "../utils/constant";
 import {commonMsgTemplate} from "../utils/template";
 import {config} from "@/entrypoints/utils/config";
 import {contentPostHandler} from "@/entrypoints/utils/check";

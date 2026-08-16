@@ -33,12 +33,6 @@ import {
     setTranslatedHTML,
 } from "@/entrypoints/main/translationState";
 
-/**
- * 兼容旧调用方保留的导出。新的实现不再使用 innerHTML 字符串作为节点身份，
- * 实际恢复由 translationState 的 WeakMap + 原始 ChildNode 快照负责。
- */
-export const originalContents = new Map<string, string>();
-
 const TRANSLATION_ARTIFACT_SELECTOR = [
     ".fluent-read-bilingual-content",
     ".fluent-read-loading",
@@ -495,7 +489,6 @@ export function restoreOriginalContent(): void {
     stopFullPageSession();
     cancelAllTranslations();
     restoreAllTranslations();
-    originalContents.clear();
 
     // 兼容升级前遗留的 wrapper/属性；新状态机不会依赖这些标记，但旧页面
     // 不应在扩展热更新后留下半截译文。
@@ -574,8 +567,4 @@ export function handleSingleTranslation(node: unknown, slide: boolean): void {
     const target = asHTMLElement(node);
     if (!target) return;
     void translateTarget(target, "single", slide);
-}
-
-export function singleTranslate(node: unknown): void {
-    handleSingleTranslation(node, false);
 }

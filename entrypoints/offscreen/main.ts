@@ -214,7 +214,7 @@ async function handleTranslationRequest(data: any): Promise<string> {
 }
 
 // 监听来自 background script 的消息
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     // console.log('Offscreen 收到消息:', message);
     
     if (message.type === 'CHROME_TRANSLATE_OFFSCREEN') {

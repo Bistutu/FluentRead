@@ -1,4 +1,3 @@
-import {Config} from "../utils/model";
 import {method, urls} from "../utils/constant";
 import {cozeTemplate} from "@/entrypoints/utils/template";
 import {config} from "@/entrypoints/utils/config";

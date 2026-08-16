@@ -269,8 +269,6 @@ export function validateHotkeyConflicts(parsedHotkey: ParsedHotkey): {
   }
 
   const { modifiers, key } = parsedHotkey;
-  const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
-
   // 常见的系统快捷键冲突检测
   const commonConflicts = [
     // Windows/Linux 系统快捷键
@@ -324,24 +322,3 @@ export function validateHotkeyConflicts(parsedHotkey: ParsedHotkey): {
 
   return { hasConflict: false };
 }
-
-/**
- * 预设的快捷键选项
- */
-export const PRESET_HOTKEYS = [
-  { value: "Alt+T", label: "Alt+T / Option+T" },
-  { value: "Alt+A", label: "Alt+A / Option+A" },
-  { value: "Alt+S", label: "Alt+S / Option+S" },
-  { value: "Alt+D", label: "Alt+D / Option+D" },
-  { value: "Alt+Q", label: "Alt+Q / Option+Q" },
-  { value: "Ctrl+Alt+T", label: "Ctrl+Alt+T / Control+Option+T" },
-  { value: "Ctrl+Alt+A", label: "Ctrl+Alt+A / Control+Option+A" },
-  { value: "Ctrl+Shift+T", label: "Ctrl+Shift+T / Control+Shift+T" },
-  { value: "Ctrl+Shift+A", label: "Ctrl+Shift+A / Control+Shift+A" },
-  { value: "F9", label: "F9" },
-  { value: "F10", label: "F10" },
-  { value: "F11", label: "F11" },
-  { value: "F12", label: "F12" },
-  { value: "none", label: "禁用快捷键" },
-  { value: "custom", label: "自定义快捷键..." },
-];

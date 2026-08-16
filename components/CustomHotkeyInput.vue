@@ -104,9 +104,9 @@
 
 <script setup lang="ts" name="CustomHotkeyInput">
 import { ref, computed, nextTick, watch } from 'vue';
-import { ElDialog, ElButton, ElText, ElIcon, ElCollapse, ElCollapseItem } from 'element-plus';
+import { ElDialog, ElButton, ElText, ElIcon } from 'element-plus';
 import { Loading, WarningFilled, Warning, CircleCheckFilled } from '@element-plus/icons-vue';
-import { parseHotkey, matchesHotkey, validateHotkeyConflicts, type ParsedHotkey } from '@/entrypoints/utils/hotkey';
+import { parseHotkey, validateHotkeyConflicts, type ParsedHotkey } from '@/entrypoints/utils/hotkey';
 
 // Props
 interface Props {

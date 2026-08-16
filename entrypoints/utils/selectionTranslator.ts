@@ -1,5 +1,5 @@
 import SelectionTranslator from '@/components/SelectionTranslator.vue';
-import { config, saveConfig } from '@/entrypoints/utils/config';
+import { config } from '@/entrypoints/utils/config';
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import type { ShadowRootContentScriptUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { createVueShadowUi, type VueShadowMount } from '@/entrypoints/utils/shadowUi';
@@ -58,22 +58,4 @@ export function unmountSelectionTranslator() {
     selectionTranslatorInstance = null;
     app = null;
   }
-}
-
-/**
- * 切换选词翻译组件的启用状态
- */
-export function toggleSelectionTranslator() {
-  if (selectionTranslatorInstance) {
-    unmountSelectionTranslator();
-    config.disableSelectionTranslator = true;
-  } else {
-    config.disableSelectionTranslator = false;
-    mountSelectionTranslator();
-  }
-  
-  // 保存配置到存储
-  void saveConfig().catch((error) => {
-    console.error('Failed to save config:', error);
-  });
 }

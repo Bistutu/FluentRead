@@ -3,10 +3,10 @@ import { constants } from "@/entrypoints/utils/constant";
 import { getCenterPoint } from "@/entrypoints/utils/common";
 import pageStyles from './style.css?inline';
 import { config, configReady } from "@/entrypoints/utils/config";
-import { mountFloatingBall, unmountFloatingBall, toggleFloatingBallPosition } from "@/entrypoints/utils/floatingBall";
+import { mountFloatingBall, unmountFloatingBall } from "@/entrypoints/utils/floatingBall";
 import { mountSelectionTranslator, unmountSelectionTranslator } from "@/entrypoints/utils/selectionTranslator";
-import { cancelAllTranslations, translateText } from "@/entrypoints/utils/translateApi";
-import { mountNewApiComponent } from "@/entrypoints/utils/newApi";
+import { cancelAllTranslations } from "@/entrypoints/utils/translateApi";
+import { mountNewApiComponent, unmountNewApiComponent } from "@/entrypoints/utils/newApi";
 import { mountImageTranslator, unmountImageTranslator } from "@/entrypoints/utils/imageTranslation";
 import {
     getDeepActiveElement,
@@ -33,6 +33,80 @@ function installPageStyles(ctx: ContentScriptContext) {
     ctx.onInvalidated(() => style.remove());
 }
 
+function handleRuntimeMessage(
+    message: unknown,
+    ctx: ContentScriptContext,
+    sendResponse: (response?: unknown) => void,
+): boolean {
+    if (!message || typeof message !== 'object') return false;
+    const payload = message as Record<string, unknown>;
+
+    if (payload.message === 'clearCache') {
+        browser.runtime.sendMessage({ type: 'clearTranslationCache' })
+            .then(() => sendResponse())
+            .catch(() => sendResponse());
+        return true;
+    }
+
+    if (payload.type === 'toggleFloatingBall') {
+        const isEnabled = payload.isEnabled === true;
+        config.disableFloatingBall = !isEnabled;
+        if (isEnabled) {
+            void mountFloatingBall(ctx);
+        } else {
+            unmountFloatingBall();
+        }
+        sendResponse();
+        return true;
+    }
+
+    if (payload.type === 'updateSelectionTranslatorMode') {
+        const mode = payload.mode;
+        if (mode !== 'disabled' && mode !== 'bilingual' && mode !== 'translation-only') return false;
+
+        config.selectionTranslatorMode = mode;
+        config.disableSelectionTranslator = mode === 'disabled';
+        if (mode === 'disabled') {
+            unmountSelectionTranslator();
+        } else if (!document.getElementById('fluent-read-selection-translator-container')) {
+            void mountSelectionTranslator(ctx);
+        }
+        sendResponse();
+        return true;
+    }
+
+    if (payload.type === 'toggleImageTranslator') {
+        const isEnabled = payload.isEnabled === true;
+        config.disableImageTranslator = !isEnabled;
+        if (isEnabled) {
+            mountImageTranslator();
+        } else {
+            unmountImageTranslator();
+        }
+        sendResponse();
+        return true;
+    }
+
+    if (payload.type === 'contextMenuTranslate') {
+        if (config.on === false) {
+            sendResponse({ status: 'disabled' });
+            return true;
+        }
+        if (payload.action === 'fullPage') {
+            autoTranslateEnglishPage();
+            sendResponse({ status: 'success', action: 'translated' });
+            return true;
+        }
+        if (payload.action === 'restore') {
+            restoreOriginalContent();
+            sendResponse({ status: 'success', action: 'restored' });
+            return true;
+        }
+    }
+
+    return false;
+}
+
 export default defineContentScript({
     matches: ['<all_urls>'],  // 匹配所有页面
     runAt: 'document_end',  // 在页面加载完成后运行
@@ -40,13 +114,35 @@ export default defineContentScript({
     async main(ctx) {
         contentScriptContext = ctx;
         installPageStyles(ctx);
-        await configReady // 等待配置加载完成
-        setupInputBoxTranslation();
+        await configReady; // 等待配置加载完成
+
+        const pageEventController = new AbortController();
+        let runtimeMessageListener: ((message: unknown, sender: unknown, sendResponse: (response?: unknown) => void) => boolean) | null = null;
+        let cleanedUp = false;
+        const cleanup = () => {
+            if (cleanedUp) return;
+            cleanedUp = true;
+            pageEventController.abort();
+            if (runtimeMessageListener) {
+                browser.runtime.onMessage.removeListener(runtimeMessageListener);
+            }
+            cancelAllTranslations();
+            unmountFloatingBall();
+            unmountSelectionTranslator();
+            unmountImageTranslator();
+            unmountNewApiComponent();
+            removeExistingTooltip();
+            contentScriptContext = null;
+        };
+        ctx.onInvalidated(cleanup);
+        window.addEventListener('beforeunload', cleanup, { once: true });
+
+        setupInputBoxTranslation(pageEventController.signal);
         if (config.on === false) return; // 如果配置关闭，则不执行任何操作
         // 添加手动翻译事件监听器
-        setupManualTranslationTriggers();
+        setupManualTranslationTriggers(pageEventController.signal);
         // 添加悬浮球快捷键事件监听器
-        setupFloatingBallHotkey();
+        setupFloatingBallHotkey(pageEventController.signal);
         // 当悬浮球关闭时，仍然允许使用快捷键进行全文翻译的独立开关
         let isFullPageTranslating = false;
         document.addEventListener('fluentread-toggle-translation', () => {
@@ -59,132 +155,38 @@ export default defineContentScript({
                     restoreOriginalContent();
                 }
             }
-        });
+        }, { signal: pageEventController.signal });
         // 添加自动翻译事件监听器
-        if (config.autoTranslate) autoTranslationEvent();
+        if (config.autoTranslate) autoTranslateEnglishPage();
 
         // 挂载悬浮球（如果配置未禁用）
         if (config.disableFloatingBall !== true) {
             // 使用配置中的位置
             await mountFloatingBall(ctx);
+            if (cleanedUp) return;
         }
         
         // 挂载划词翻译组件（如果配置未禁用）
         if (config.disableSelectionTranslator !== true) {
             await mountSelectionTranslator(ctx);
+            if (cleanedUp) return;
         }
         
         mountNewApiComponent();
         // 图片翻译使用独立覆盖层，不改写宿主页面的 img 元素；点击入口由事件委托处理动态图片。
         if (config.disableImageTranslator !== true) mountImageTranslator();
 
-        // background.ts
-        browser.runtime.onMessage.addListener((message: { message: string; }, sender: any, sendResponse: () => void) => {
-            if (message.message !== 'clearCache') {
-                sendResponse();
-                return true;
-            }
-
-            browser.runtime.sendMessage({ type: 'clearTranslationCache' })
-                .then(() => sendResponse())
-                .catch(() => sendResponse());
-            return true;
-        });
-        
-        // 处理悬浮球控制消息
-        browser.runtime.onMessage.addListener((message: any, sender: any, sendResponse: () => void) => {
-            if (message.type === 'toggleFloatingBall') {
-                // 弹窗修改的是存储配置，当前内容脚本还持有旧的内存配置。
-                // 先同步状态，否则启用时 mountFloatingBall 会被旧的禁用标记直接拦截。
-                const isEnabled = message.isEnabled === true;
-                config.disableFloatingBall = !isEnabled;
-                if (isEnabled) {
-                    void mountFloatingBall(ctx);
-                } else {
-                    unmountFloatingBall();
-                }
-                sendResponse();
-                return true;
-            }
-            return false;
-        });
-        
-        // 处理划词翻译控制消息
-        browser.runtime.onMessage.addListener((message: any, sender: any, sendResponse: () => void) => {
-            if (message.type === 'updateSelectionTranslatorMode') {
-                // 更新配置
-                config.selectionTranslatorMode = message.mode;
-                config.disableSelectionTranslator = message.mode === 'disabled';
-                
-                if (message.mode === 'disabled') {
-                    unmountSelectionTranslator();
-                } else {
-                    // 如果之前没有挂载，现在挂载
-                    if (!document.getElementById('fluent-read-selection-translator-container')) {
-                        void mountSelectionTranslator(ctx);
-                    }
-                }
-                sendResponse();
-                return true;
-            }
-            return false;
-        });
-
-        // 处理图片翻译控制消息
-        browser.runtime.onMessage.addListener((message: any, sender: any, sendResponse: () => void) => {
-            if (message.type === 'toggleImageTranslator') {
-                config.disableImageTranslator = message.isEnabled !== true;
-                if (message.isEnabled === true) {
-                    mountImageTranslator();
-                } else {
-                    unmountImageTranslator();
-                }
-                sendResponse();
-                return true;
-            }
-            return false;
-        });
-        
-        // 处理右键菜单触发的全文翻译和撤销
-        browser.runtime.onMessage.addListener((message: any, sender: any, sendResponse: (response?: any) => void) => {
-            if (message.type === 'contextMenuTranslate') {
-                // 检查插件是否已启用
-                if (config.on === false) {
-                    sendResponse({ status: 'disabled' });
-                    return true;
-                }
-                
-                if (message.action === 'fullPage') {
-                    // 触发全文翻译
-                    autoTranslateEnglishPage();
-                    sendResponse({ status: 'success', action: 'translated' });
-                    return true;
-                } else if (message.action === 'restore') {
-                    // 撤销翻译，恢复原文
-                    restoreOriginalContent();
-                    sendResponse({ status: 'success', action: 'restored' });
-                    return true;
-                }
-            }
-            return false;
-        });
-        
-        // 在页面卸载时清理资源
-        window.addEventListener('beforeunload', () => {
-            // 取消所有待处理的翻译任务
-            cancelAllTranslations();
-            // 移除悬浮球
-            unmountFloatingBall();
-            // 移除划词翻译组件
-            unmountSelectionTranslator();
-            unmountImageTranslator();
-            removeExistingTooltip();
-        });
+        runtimeMessageListener = (
+            message: unknown,
+            _sender: unknown,
+            sendResponse: (response?: unknown) => void,
+        ) => handleRuntimeMessage(message, ctx, sendResponse);
+        browser.runtime.onMessage.addListener(runtimeMessageListener);
     }
 })
 
 // 注册所有手动翻译触发事件监听器
-function setupManualTranslationTriggers() {
+function setupManualTranslationTriggers(signal: AbortSignal) {
     const screen = { mouseX: 0, mouseY: 0, hotkeyPressed: false, otherKeyPressed: false, hasSlideTranslation: false };
     let mouseHotkeysPressed = new Set<string>();
     
@@ -235,7 +237,7 @@ function setupManualTranslationTriggers() {
         screen.otherKeyPressed = false;
         screen.hasSlideTranslation = false;
         mouseHotkeysPressed.clear();
-    });
+    }, { signal });
 
     // 2. 按下按键时
     window.addEventListener('keydown', event => {
@@ -299,7 +301,7 @@ function setupManualTranslationTriggers() {
         } else if (screen.hotkeyPressed) {
             screen.otherKeyPressed = true;
         }
-    });
+    }, { signal });
 
     // 3. 抬起按键时
     window.addEventListener('keyup', event => {
@@ -343,9 +345,6 @@ function setupManualTranslationTriggers() {
         if (!event.metaKey) mouseHotkeysPressed.delete('control');
         if (!event.shiftKey) mouseHotkeysPressed.delete('shift');
         
-        // 获取当前配置的快捷键
-        const hotkeyParts = getConfiguredMouseHotkeyParts();
-        
         // 如果当前按键集合为空，且之前激活了快捷键，且配置的快捷键不包含当前释放的键，则触发翻译
         if (screen.hotkeyPressed && mouseHotkeysPressed.size === 0 && !screen.otherKeyPressed && !screen.hasSlideTranslation) {
             // 检查插件是否开启
@@ -360,7 +359,7 @@ function setupManualTranslationTriggers() {
             screen.otherKeyPressed = false;
             screen.hasSlideTranslation = false;
         }
-    });
+    }, { signal });
 
     // 4. 鼠标移动时更新位置，并根据 hotkeyPressed 决定是否触发翻译
     document.body.addEventListener('mousemove', event => {
@@ -370,7 +369,7 @@ function setupManualTranslationTriggers() {
             screen.hasSlideTranslation = true;
             handleTranslation(screen.mouseX, screen.mouseY, 50)
         }
-    });
+    }, { signal });
 
     // 5、手机端触摸事件，取中心点翻译
     document.body.addEventListener('touchstart', event => {
@@ -393,7 +392,7 @@ function setupManualTranslationTriggers() {
         if (config.on) {
             handleTranslation(coordinate!.x, coordinate!.y);
         }
-    });
+    }, { signal });
 
     // 6、双击鼠标翻译事件
     document.body.addEventListener('dblclick', event => {
@@ -404,12 +403,12 @@ function setupManualTranslationTriggers() {
             // 调用 handleTranslation 函数进行翻译
             handleTranslation(mouseX, mouseY);
         }
-    });
+    }, { signal });
 
     // 7、长按鼠标翻译事件（长按事件时鼠标不能移动）
     let timer: number;
     let startPos = { x: 0, y: 0 }; // startPos 记录鼠标按下时的位置
-    document.body.addEventListener('mouseup', () => clearTimeout(timer));
+    document.body.addEventListener('mouseup', () => clearTimeout(timer), { signal });
     document.body.addEventListener('mousedown', event => {
         if (config.hotkey === constants.LongPress) {
             clearTimeout(timer); // 清除之前的计时器
@@ -423,22 +422,13 @@ function setupManualTranslationTriggers() {
                 }
             }, 500) as unknown as number;
         }
-    });
+    }, { signal });
     document.body.addEventListener('mousemove', event => {
         // 如果鼠标移动超过10像素，取消长按事件
         if (Math.abs(event.clientX - startPos.x) > 10 || Math.abs(event.clientY - startPos.y) > 10) {
             clearTimeout(timer);
         }
-    });
-    document.body.addEventListener('mousemove', event => {
-        // 检测鼠标是否移动，如果鼠标移动超过10像素，取消长按事件
-        if (config.hotkey === constants.LongPress
-            && Math.abs(event.clientX - startPos.x) > 10 || Math.abs(event.clientY - startPos.y) > 10) {
-            clearTimeout(timer);
-        }
-    });
-
-
+    }, { signal });
     // 8、鼠标中键翻译事件
     document.body.addEventListener('mousedown', event => {
         if (config.hotkey === constants.MiddleClick && config.on) {
@@ -448,7 +438,7 @@ function setupManualTranslationTriggers() {
                 handleTranslation(mouseX, mouseY);
             }
         }
-    });
+    }, { signal });
 
 
     // 9、触屏设备双击/三击翻译事件
@@ -475,11 +465,16 @@ function setupManualTranslationTriggers() {
                 handleTranslation(event.touches[0].clientX, event.touches[0].clientY);
             }
         }
-    });
+    }, { signal });
+
+    signal.addEventListener('abort', () => {
+        clearTimeout(timer);
+        clearTimeout(touchTimer);
+    }, { once: true });
 }
 
-        // 设置全文翻译快捷键（与悬浮球解耦）
-function setupFloatingBallHotkey() {
+// 设置全文翻译快捷键（与悬浮球解耦）
+function setupFloatingBallHotkey(signal: AbortSignal) {
     // 如果快捷键设置为 "none"，则禁用快捷键
     if (config.floatingBallHotkey === 'none') return;
 
@@ -604,7 +599,7 @@ function setupFloatingBallHotkey() {
                 console.log(`[FluentRead] 触发悬浮球翻译，快捷键: ${activeHotkey}`);
             }
         }
-    });
+    }, { signal });
     
     // 监听按键释放事件
     document.addEventListener('keyup', (event) => {
@@ -647,24 +642,18 @@ function setupFloatingBallHotkey() {
         if (!event.ctrlKey) hotkeysPressed.delete('control');
         if (!event.metaKey) hotkeysPressed.delete('control');
         if (!event.shiftKey) hotkeysPressed.delete('shift');
-    });
+    }, { signal });
     
     // 页面失焦或切换标签页时，清除所有按键状态
     window.addEventListener('blur', () => {
         hotkeysPressed.clear();
-    });
-}
-
-// 注册自动翻译事件
-function autoTranslationEvent() {
-    // 自动翻译英文页面
-    autoTranslateEnglishPage();
+    }, { signal });
 }
 
 /**
  * 输入框翻译功能
  */
-function setupInputBoxTranslation() {
+function setupInputBoxTranslation(signal: AbortSignal) {
     let keyPressCount = 0;
     let keyPressTimer: ReturnType<typeof setTimeout> | null = null;
     let lastInputElement: HTMLElement | null = null;
@@ -738,11 +727,8 @@ function setupInputBoxTranslation() {
     };
 
     // 使用捕获阶段，兼容会在冒泡阶段停止传播键盘事件的富文本编辑器。
-    document.addEventListener('keydown', handleKeyDown, true);
-    contentScriptContext?.onInvalidated(() => {
-        document.removeEventListener('keydown', handleKeyDown, true);
-        resetKeyPresses();
-    });
+    document.addEventListener('keydown', handleKeyDown, { capture: true, signal });
+    signal.addEventListener('abort', resetKeyPresses, { once: true });
 }
 
 /**
@@ -940,8 +926,6 @@ async function translateWithMicrosoft(text: string, targetLang: string): Promise
  * 处理输入框翻译
  */
 async function handleInputBoxTranslation(element: HTMLElement): Promise<void> {
-    let tooltip: HTMLElement | null = null;
-    
     try {
         const originalText = getInputBoxText(element);
         
@@ -958,7 +942,7 @@ async function handleInputBoxTranslation(element: HTMLElement): Promise<void> {
         
         // 显示翻译中的动画和提示
         addInputBoxAnimation(element, 'translating');
-        tooltip = await createTranslationTooltip(element, '微软翻译中', 'translating');
+        await createTranslationTooltip(element, '微软翻译中', 'translating');
         
         try {
             // 直接调用微软翻译API，不使用缓存
@@ -974,20 +958,20 @@ async function handleInputBoxTranslation(element: HTMLElement): Promise<void> {
                 // 显示成功动画和提示
                 addInputBoxAnimation(element, 'success');
                 removeExistingTooltip();
-                tooltip = await createTranslationTooltip(element, '翻译成功', 'success');
+                await createTranslationTooltip(element, '翻译成功', 'success');
             } else {
                 // 翻译结果与原文相同或为空
                 element.classList.remove('fluent-input-translating');
                 addInputBoxAnimation(element, 'error');
                 removeExistingTooltip();
-                tooltip = await createTranslationTooltip(element, '内容无需翻译', 'error');
+                await createTranslationTooltip(element, '内容无需翻译', 'error');
             }
         } catch (translationError) {
             // 翻译失败
             element.classList.remove('fluent-input-translating');
             addInputBoxAnimation(element, 'error');
             removeExistingTooltip();
-            tooltip = await createTranslationTooltip(element, '微软翻译失败', 'error');
+            await createTranslationTooltip(element, '微软翻译失败', 'error');
             console.error('微软翻译失败:', translationError);
         }
         
@@ -1003,7 +987,7 @@ async function handleInputBoxTranslation(element: HTMLElement): Promise<void> {
         // 显示错误动画和提示
         addInputBoxAnimation(element, 'error');
         removeExistingTooltip();
-        tooltip = await createTranslationTooltip(element, '翻译服务暂时不可用', 'error');
+        await createTranslationTooltip(element, '翻译服务暂时不可用', 'error');
         
         // 自动隐藏错误提示
         setTimeout(() => removeExistingTooltip(), 3000);

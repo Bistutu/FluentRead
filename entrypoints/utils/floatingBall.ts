@@ -14,12 +14,8 @@ let mountRequestId = 0;
 let contentScriptContext: ContentScriptContext | null = null;
 let isTranslated = false; // 添加状态变量跟踪翻译状态
 
-/**
- * 创建并挂载悬浮球
- * @param position 悬浮球位置 'left' | 'right'，如果不传入则使用配置中的值
- * @returns 
- */
-export function mountFloatingBall(ctx?: ContentScriptContext, position?: 'left' | 'right') {
+/** 创建并挂载悬浮球 */
+export function mountFloatingBall(ctx?: ContentScriptContext) {
   if (ctx) contentScriptContext = ctx;
 
   // 如果配置禁用了悬浮球或已存在实例，则不创建
@@ -29,8 +25,7 @@ export function mountFloatingBall(ctx?: ContentScriptContext, position?: 'left' 
 
   if (!contentScriptContext) return;
 
-  // 使用传入的位置参数或配置中的位置
-  const ballPosition = position || config.floatingBallPosition || 'right';
+  const ballPosition = config.floatingBallPosition || 'right';
   const requestId = ++mountRequestId;
   // 更新配置
   config.floatingBallPosition = ballPosition;
@@ -88,17 +83,6 @@ export function mountFloatingBall(ctx?: ContentScriptContext, position?: 'left' 
 }
 
 /**
- * 切换悬浮球翻译状态
- * 通过键盘快捷键触发时使用
- */
-export function toggleFloatingBallTranslation() {
-  if (!floatingBallInstance) return;
-  // 快捷键与鼠标点击必须复用组件的同一条状态切换路径。
-  // 组件会负责更新 aria-pressed、展开提示和回调翻译生命周期。
-  document.dispatchEvent(new CustomEvent('fluentread-toggle-translation'));
-}
-
-/**
  * 卸载悬浮球
  */
 export function unmountFloatingBall() {
@@ -114,37 +98,4 @@ export function unmountFloatingBall() {
     floatingBallInstance = null;
     app = null;
   }
-}
-
-/**
- * 切换悬浮球可见性
- */
-export function toggleFloatingBall() {
-  if (floatingBallInstance) {
-    unmountFloatingBall();
-    config.disableFloatingBall = true;
-  } else {
-    config.disableFloatingBall = false;
-    mountFloatingBall();
-  }
-  
-  // 保存配置到存储
-  void saveConfig().catch((error) => console.error('Failed to save config:', error));
-}
-
-/**
- * 切换悬浮球位置
- */
-export function toggleFloatingBallPosition() {
-  const newPosition = config.floatingBallPosition === 'left' ? 'right' : 'left';
-  if (floatingBallInstance) {
-    unmountFloatingBall();
-    config.floatingBallPosition = newPosition;
-    mountFloatingBall(undefined, newPosition);
-  } else {
-    config.floatingBallPosition = newPosition;
-  }
-  
-  // 保存配置到存储
-  void saveConfig().catch((error) => console.error('Failed to save config:', error));
 }
