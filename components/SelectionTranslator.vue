@@ -102,8 +102,7 @@ function readSelectionSnapshot(): SelectionSnapshot | null {
 
   const range = selection.getRangeAt(0).cloneRange();
   const rects = Array.from(range.getClientRects()).map(toSelectionRect).filter(rect => rect.width > 0 || rect.height > 0);
-  const fallbackRect = toSelectionRect(range.getBoundingClientRect());
-  const visualRects = rects.length > 0 ? rects : [fallbackRect];
+  const visualRects = rects.length > 0 ? rects : [toSelectionRect(range.getBoundingClientRect())];
   const isForward = selection.anchorNode === range.startContainer && selection.anchorOffset === range.startOffset;
   const anchor = chooseSelectionRect(visualRects, isForward);
   if (!anchor || (anchor.width === 0 && anchor.height === 0)) return null;
@@ -111,6 +110,7 @@ function readSelectionSnapshot(): SelectionSnapshot | null {
 }
 
 function scheduleSelectionRead(): void {
+  if (isSelecting) return;
   if (selectionFrame !== null) return;
   selectionFrame = window.requestAnimationFrame(() => { selectionFrame = null; if (!isSelecting) applySelection(readSelectionSnapshot()); });
 }
@@ -119,24 +119,38 @@ function isSelectionInTargetLanguage(text: string): boolean {
   return isSameLanguage(detectlang(text), config.to);
 }
 
+function isSameSelection(left: SelectionSnapshot | null, right: SelectionSnapshot): boolean {
+  if (!left || left.text !== right.text) return false;
+  return left.range.startContainer === right.range.startContainer
+    && left.range.startOffset === right.range.startOffset
+    && left.range.endContainer === right.range.endContainer
+    && left.range.endOffset === right.range.endOffset;
+}
+
 function applySelection(next: SelectionSnapshot | null): void {
   if (!next) { if (!isSelecting) hideAll(); return; }
+  if (isSameSelection(snapshot.value, next)) return;
   if (isSelectionInTargetLanguage(next.text)) { hideAll(); return; }
+  const hadActiveSelection = snapshot.value !== null;
   const changedText = selectedText.value !== next.text;
   snapshot.value = next;
   selectedText.value = next.text;
   showIndicator.value = triggerMode.value !== 'direct';
   showTooltip.value = triggerMode.value === 'direct';
   if (changedText) { translationResult.value = ''; error.value = ''; }
-  updatePosition();
-  if (showTooltip.value) void requestTranslation(next.text);
+  updatePosition(false);
+  if (showTooltip.value && (!hadActiveSelection || changedText)) void requestTranslation(next.text);
 }
 
-function updatePosition(): void {
+function updatePosition(refreshSelection = true): void {
   const current = snapshot.value;
   if (!current) return;
-  const rects = Array.from(current.range.getClientRects()).map(toSelectionRect).filter(rect => rect.width > 0 || rect.height > 0);
-  const anchor = chooseSelectionRect(rects.length > 0 ? rects : [current.anchor], current.isForward);
+  const rects = refreshSelection
+    ? Array.from(current.range.getClientRects()).map(toSelectionRect).filter(rect => rect.width > 0 || rect.height > 0)
+    : [];
+  const anchor = refreshSelection
+    ? chooseSelectionRect(rects.length > 0 ? rects : [current.anchor], current.isForward)
+    : current.anchor;
   if (!anchor) return;
   current.anchor = anchor;
   indicatorStyle.value = { left: `${anchor.right}px`, top: `${anchor.bottom}px` };
