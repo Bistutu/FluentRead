@@ -1,4 +1,5 @@
 import type { OcrLine } from '@/entrypoints/utils/imageTranslationCore';
+import { areaRectToImageCrop, type AreaTranslationSelection } from '@/entrypoints/utils/areaTranslationCore';
 import { inpaintTextRegions } from '@/entrypoints/utils/imageInpainting';
 import { recognizeImage } from './imageOcr';
 
@@ -130,6 +131,20 @@ async function translateTexts(texts: string[], title: string): Promise<string[]>
     return response.translations;
 }
 
+async function cropImage(dataUrl: string, selection: AreaTranslationSelection): Promise<string> {
+    const source = await loadImage(dataUrl);
+    const imageWidth = source.naturalWidth || source.width;
+    const imageHeight = source.naturalHeight || source.height;
+    const crop = areaRectToImageCrop(selection, imageWidth, imageHeight);
+    const canvas = document.createElement('canvas');
+    canvas.width = crop.width;
+    canvas.height = crop.height;
+    const context = canvas.getContext('2d');
+    if (!context || !canvas.width || !canvas.height) throw new Error('浏览器不支持区域截图处理');
+    context.drawImage(source, crop.left, crop.top, crop.width, crop.height, 0, 0, crop.width, crop.height);
+    return canvas.toDataURL('image/png');
+}
+
 async function prepareTranslatedImage(
     dataUrl: string,
     lines: OcrLine[],
@@ -195,4 +210,14 @@ export async function translateImageInOffscreen(
     if (lines.length === 0) throw new Error('没有识别到图片文字');
     const translations = await translateTexts(lines.map(line => line.text), title);
     return prepareTranslatedImage(image, lines, translations);
+}
+
+export async function translateAreaInOffscreen(
+    image: string,
+    sourceLanguage: string,
+    title: string,
+    selection: AreaTranslationSelection,
+): Promise<OffscreenImageTranslationResult> {
+    const croppedImage = await cropImage(image, selection);
+    return translateImageInOffscreen(croppedImage, sourceLanguage, title);
 }

@@ -991,6 +991,12 @@ const handlePluginStateChange = (val: boolean) => {
       }).catch(() => {
         // 忽略发送失败的错误（可能是页面未加载内容脚本）
       });
+      browser.tabs.sendMessage(tab.id, {
+        type: 'toggleSelectionAreaTranslator',
+        isEnabled: val && config.value.selectionAreaEnabled,
+      }).catch(() => {
+        // 忽略发送失败的错误（可能是页面未加载内容脚本）
+      });
     });
   });
 };

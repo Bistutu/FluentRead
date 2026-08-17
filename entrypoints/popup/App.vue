@@ -162,7 +162,7 @@
         <button class="feature-card" type="button" :disabled="!config.on" @click="openDrawer('selection')">
           <span class="feature-icon violet">I</span>
           <span><strong>划词翻译</strong><small>{{ selectionSummary }}</small></span>
-          <i :class="{ active: config.selectionTranslatorMode !== 'disabled' }" />
+          <i :class="{ active: config.selectionTranslatorMode !== 'disabled' || config.selectionAreaEnabled }" />
         </button>
         <button class="feature-card" type="button" :disabled="!config.on" @click="openDrawer('floating')">
           <span class="feature-icon blue">◉</span>
@@ -244,23 +244,44 @@
       </div>
 
       <div v-else-if="activeDrawer === 'selection'" class="drawer-content">
-        <div class="interaction-preview"><span class="selection-box">选择文字</span><span>＋</span><i class="pink-dot" /><span>＝</span><strong>翻译所选内容</strong></div>
-        <div class="setting-row">
-          <span><strong>启用划词翻译</strong><small>选中文字后显示可操作的翻译入口</small></span>
-          <button class="switch compact" type="button" role="switch" :aria-checked="config.selectionTranslatorMode !== 'disabled'" aria-label="启用或关闭划词翻译" @click="setSelectionMode(config.selectionTranslatorMode === 'disabled' ? 'bilingual' : 'disabled')"><i /></button>
+        <div class="selection-mode-tabs" role="tablist" aria-label="翻译方式">
+          <button class="selection-mode-tab" :class="{ selected: selectionDrawerTab === 'text' }" type="button" role="tab" :aria-selected="selectionDrawerTab === 'text'" aria-controls="selection-text-panel" @click="selectionDrawerTab = 'text'">划词翻译</button>
+          <button class="selection-mode-tab" :class="{ selected: selectionDrawerTab === 'area' }" type="button" role="tab" :aria-selected="selectionDrawerTab === 'area'" aria-controls="selection-area-panel" @click="selectionDrawerTab = 'area'">圈选翻译</button>
         </div>
-        <div class="choice-block">
-          <label>显示方式</label>
-          <div class="chips two">
-            <button v-for="item in selectionModes" :key="item.value" type="button" :class="{ selected: config.selectionTranslatorMode === item.value }" @click="setSelectionMode(item.value)">{{ item.label }}</button>
+
+        <div v-if="selectionDrawerTab === 'text'" id="selection-text-panel" role="tabpanel">
+          <div class="interaction-preview"><span class="selection-box">选择文字</span><span>＋</span><i class="pink-dot" /><span>＝</span><strong>翻译所选内容</strong></div>
+          <div class="setting-row">
+            <span><strong>启用划词翻译</strong><small>选中文字后显示可操作的翻译入口</small></span>
+            <button class="switch compact" type="button" role="switch" :aria-checked="config.selectionTranslatorMode !== 'disabled'" aria-label="启用或关闭划词翻译" @click="setSelectionMode(config.selectionTranslatorMode === 'disabled' ? 'bilingual' : 'disabled')"><i /></button>
+          </div>
+          <div class="choice-block">
+            <label>显示方式</label>
+            <div class="chips two">
+              <button v-for="item in selectionModes" :key="item.value" type="button" :class="{ selected: config.selectionTranslatorMode === item.value }" @click="setSelectionMode(item.value)">{{ item.label }}</button>
+            </div>
+          </div>
+          <div class="choice-block">
+            <label>触发方式</label>
+            <div class="chips three">
+              <button v-for="item in selectionTriggers" :key="item.value" type="button" :class="{ selected: config.selectionTranslatorTrigger === item.value }" @click="setSelectionTrigger(item.value)">{{ item.label }}</button>
+            </div>
+            <small class="drawer-hint">图标和小点会固定显示在选区旁，不需要悬停才能发现。</small>
           </div>
         </div>
-        <div class="choice-block">
-          <label>触发方式</label>
-          <div class="chips three">
-            <button v-for="item in selectionTriggers" :key="item.value" type="button" :class="{ selected: config.selectionTranslatorTrigger === item.value }" @click="setSelectionTrigger(item.value)">{{ item.label }}</button>
+
+        <div v-else id="selection-area-panel" class="selection-area-panel" role="tabpanel">
+          <div class="area-translation-block">
+            <div class="area-translation-heading">
+              <div>
+                <strong>启用圈选翻译</strong>
+                <small>翻译图片或无法直接选中的页面文字</small>
+              </div>
+              <button class="switch compact" type="button" role="switch" :aria-checked="config.selectionAreaEnabled" aria-label="启用或关闭圈选翻译" @click="setAreaEnabled(!config.selectionAreaEnabled)"><i /></button>
+            </div>
+            <div class="area-translation-preview" aria-keyshortcuts="Shift+Z"><div class="area-hotkey"><kbd>Shift</kbd><kbd>Z</kbd></div><span>＋</span><i class="area-ring" /><span>＝</span><strong>翻译选中区域</strong></div>
+            <small class="drawer-hint">按住 Shift + Z 拖拽页面区域，释放鼠标后识别并翻译；结果会覆盖在当前区域上，按 Esc 可关闭。</small>
           </div>
-          <small class="drawer-hint">图标和小点会固定显示在选区旁，不需要悬停才能发现。</small>
         </div>
       </div>
 
@@ -364,6 +385,7 @@ const version = process.env.VUE_APP_VERSION;
 const config = ref(new Config());
 const drawerVisible = ref(false);
 const activeDrawer = ref<DrawerName>('hover');
+const selectionDrawerTab = ref<'text' | 'area'>('text');
 const translating = ref(false);
 const pageTranslated = ref(false);
 const clearingCache = ref(false);
@@ -411,7 +433,11 @@ const fullPageHotkey = computed(() => {
     : config.value.floatingBallHotkey;
   return hotkey && hotkey !== 'none' ? hotkey : '未设置';
 });
-const selectionSummary = computed(() => ({ disabled: '已关闭', bilingual: '双语显示', 'translation-only': '仅显示译文' }[config.value.selectionTranslatorMode] || '双语显示'));
+const selectionSummary = computed(() => {
+  const textSummary = ({ disabled: '已关闭', bilingual: '双语显示', 'translation-only': '仅显示译文' }[config.value.selectionTranslatorMode] || '双语显示');
+  if (!config.value.selectionAreaEnabled) return textSummary;
+  return textSummary === '已关闭' ? '圈选翻译已启用' : `${textSummary} · 圈选翻译`;
+});
 const floatingSummary = computed(() => `${config.value.floatingBallPosition === 'left' ? '页面左侧' : '页面右侧'} · ${fullPageHotkey.value}`);
 const displaySummary = computed(() => config.value.display === 1 ? `双语 · ${styleLabel.value}` : '仅显示译文');
 const imageTranslationSummary = computed(() => config.value.disableImageTranslator ? '已关闭' : '悬停图片');
@@ -419,7 +445,7 @@ const videoSummary = computed(() => config.value.videoTranslationEnabled ? `${vi
 const drawerTitle = computed(() => ({ hover: '鼠标悬停翻译设置', selection: '划词翻译设置', floating: '全文悬浮球设置', appearance: '译文显示设置', image: '图片翻译设置', video: '视频字幕设置' }[activeDrawer.value]));
 const drawerDescription = computed(() => ({
   hover: '把鼠标停在文本上，用轻量快捷键获取即时译文。',
-  selection: '选中文字后，按你的偏好显示原文与译文。',
+  selection: '选中文字或圈选页面区域，按你的偏好获取译文。',
   floating: '把全文翻译入口固定在最顺手的位置。',
   appearance: '调整双语布局、译文样式与界面主题。',
   image: '把鼠标移到图片上，从图片右上角打开翻译入口。',
@@ -543,12 +569,14 @@ function setPluginEnabled(enabled: boolean) {
   if (!enabled) {
     void broadcast({ type: 'toggleFloatingBall', isEnabled: false });
     void broadcast({ type: 'updateSelectionTranslatorMode', mode: 'disabled' });
+    void broadcast({ type: 'toggleSelectionAreaTranslator', isEnabled: false });
     void broadcast({ type: 'toggleImageTranslator', isEnabled: false });
     return;
   }
 
   void broadcast({ type: 'toggleFloatingBall', isEnabled: !config.value.disableFloatingBall });
   void broadcast({ type: 'updateSelectionTranslatorMode', mode: config.value.selectionTranslatorMode });
+  void broadcast({ type: 'toggleSelectionAreaTranslator', isEnabled: config.value.selectionAreaEnabled });
   void broadcast({ type: 'toggleImageTranslator', isEnabled: !config.value.disableImageTranslator });
 }
 
@@ -608,6 +636,10 @@ function setSelectionMode(mode: string) {
 }
 function setSelectionTrigger(trigger: string) {
   config.value.selectionTranslatorTrigger = trigger;
+}
+function setAreaEnabled(enabled: boolean) {
+  config.value.selectionAreaEnabled = enabled;
+  void broadcast({ type: 'toggleSelectionAreaTranslator', isEnabled: enabled });
 }
 function setFloatingEnabled(enabled: boolean) {
   config.value.disableFloatingBall = !enabled;

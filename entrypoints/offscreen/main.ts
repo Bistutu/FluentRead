@@ -4,7 +4,7 @@
  */
 
 import { downloadImageOcrLanguages, recognizeImage } from './imageOcr';
-import { translateImageInOffscreen } from './imageTranslation';
+import { translateAreaInOffscreen, translateImageInOffscreen } from './imageTranslation';
 
 // 语言代码映射
 const languageMap: { [key: string]: string } = {
@@ -250,6 +250,20 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
             .then(result => sendResponse({ success: true, ...result }))
             .catch(error => {
                 console.error('图片翻译失败:', error);
+                sendResponse({
+                    success: false,
+                    error: error instanceof Error ? error.message : String(error),
+                });
+            });
+
+        return true;
+    }
+
+    if (message.type === 'FLUENT_READ_AREA_TRANSLATE_OFFSCREEN') {
+        translateAreaInOffscreen(message.image, message.sourceLanguage, message.title || '', message.selection)
+            .then(result => sendResponse({ success: true, ...result }))
+            .catch(error => {
+                console.error('圈选翻译失败:', error);
                 sendResponse({
                     success: false,
                     error: error instanceof Error ? error.message : String(error),

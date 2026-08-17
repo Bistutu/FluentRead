@@ -67,6 +67,15 @@ describe('图片翻译配置', () => {
     });
 });
 
+describe('圈选翻译配置', () => {
+    it('默认关闭，并保留用户主动启用的状态', () => {
+        expect(new Config().selectionAreaEnabled).toBe(false);
+        expect(normalizeConfig({}).selectionAreaEnabled).toBe(false);
+        expect(normalizeConfig({selectionAreaEnabled: true}).selectionAreaEnabled).toBe(true);
+        expect(normalizeConfig({selectionAreaEnabled: 'true'}).selectionAreaEnabled).toBe(false);
+    });
+});
+
 describe('旧模型编号兼容迁移', () => {
     it('迁移官方服务中已退役或错误的模型编号', () => {
         const normalized = normalizeConfig({
