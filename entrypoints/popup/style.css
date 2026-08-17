@@ -324,6 +324,17 @@ footer > button { justify-self: end; }
   color: var(--muted); background: var(--surface-soft); font-size: 24px; font-weight: 300; cursor: pointer;
 }
 .drawer-content { margin-top: 16px; }
+.selection-mode-tabs {
+  display: flex; gap: 4px; margin-bottom: 16px; padding: 4px; border-radius: 16px; background: var(--surface-soft);
+}
+.selection-mode-tab {
+  flex: 1; min-height: 54px; padding: 0 8px; border: 0; border-radius: 12px; color: var(--muted); background: transparent;
+  font-size: 12px; font-weight: 750; cursor: pointer; transition: color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+.selection-mode-tab.selected {
+  color: var(--ink); background: var(--surface); box-shadow: 0 8px 18px rgba(27, 36, 57, .08);
+}
+.selection-mode-tab:hover:not(.selected) { color: var(--brand-strong); }
 .interaction-preview {
   display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 86px; padding: 15px;
   border: 1px solid var(--line); border-radius: 16px; background: var(--surface-soft); font-size: 13px;
@@ -340,6 +351,9 @@ footer > button { justify-self: end; }
 .area-translation-heading small { color: var(--muted); font-size: 9.5px; line-height: 1.4; }
 .area-translation-preview { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 68px; margin-top: 11px; padding: 10px; border: 1px dashed rgba(239, 75, 134, .38); border-radius: 12px; color: var(--muted); font-size: 12px; }
 .area-translation-preview kbd { min-width: 42px; padding: 9px 12px; border-radius: 9px; color: #fff; background: #252832; box-shadow: 0 5px 10px rgba(0, 0, 0, .18); font-size: 11px; text-align: center; }
+.area-hotkey { display: flex; align-items: center; gap: 5px; }
+.area-hotkey kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 42px; }
+.area-hotkey kbd:first-child { min-width: 58px; }
 .area-translation-preview strong { color: var(--ink); font-size: 11px; }
 .area-ring { width: 23px; height: 17px; border: 3px solid var(--brand); border-radius: 50%; transform: rotate(-13deg); box-shadow: 0 0 0 5px rgba(239, 75, 134, .08); }
 .area-translation-block .drawer-hint { margin-left: 0; margin-right: 0; }

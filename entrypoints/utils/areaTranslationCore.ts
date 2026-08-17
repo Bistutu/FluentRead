@@ -22,12 +22,27 @@ export interface ImageCropRect {
     height: number;
 }
 
+interface AreaKeyboardEvent {
+    code: string;
+    key: string;
+    shiftKey: boolean;
+}
+
 function finiteOrZero(value: number): number {
     return Number.isFinite(value) ? value : 0;
 }
 
 function clamp(value: number, min: number, max: number): number {
     return Math.min(max, Math.max(min, value));
+}
+
+export function isAreaZKey(event: Pick<AreaKeyboardEvent, 'code' | 'key'>): boolean {
+    return event.code === 'KeyZ' || (event.key.length === 1 && event.key.toLowerCase() === 'z');
+}
+
+/** 圈选翻译使用 Shift+Z，避免单独输入 z 时意外开始截图。 */
+export function isAreaHotkey(event: AreaKeyboardEvent): boolean {
+    return event.shiftKey === true && isAreaZKey(event);
 }
 
 /** 将拖拽起点和终点规范化为不超出视口的矩形。 */

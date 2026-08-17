@@ -32,7 +32,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { config } from '@/entrypoints/utils/config';
 import { captureVisibleAreaInExtension, translateCapturedAreaInExtension } from '@/entrypoints/utils/areaTranslationClient';
-import { isUsableAreaRect, normalizeAreaRect, type AreaPoint, type AreaRect } from '@/entrypoints/utils/areaTranslationCore';
+import { isAreaHotkey, isAreaZKey, isUsableAreaRect, normalizeAreaRect, type AreaPoint, type AreaRect } from '@/entrypoints/utils/areaTranslationCore';
 
 type AreaPhase = 'idle' | 'selecting' | 'loading' | 'translated' | 'error';
 
@@ -70,10 +70,6 @@ function errorStyle(rect: AreaRect): Record<string, string> {
 
 function updateTheme(): void {
   isDarkTheme.value = config.theme === 'dark' || (config.theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-}
-
-function isAreaHotkey(event: KeyboardEvent): boolean {
-  return event.code === 'KeyZ' || (event.key.length === 1 && event.key.toLowerCase() === 'z');
 }
 
 function isInsideExtensionUi(target: EventTarget | null): boolean {
@@ -127,7 +123,7 @@ function handleKeydown(event: KeyboardEvent): void {
 }
 
 function handleKeyup(event: KeyboardEvent): void {
-  if (!isAreaHotkey(event)) return;
+  if (!isAreaZKey(event)) return;
   areaHotkeyPressed = false;
   if (isSelecting.value && !pointerDown) finishSelection();
 }

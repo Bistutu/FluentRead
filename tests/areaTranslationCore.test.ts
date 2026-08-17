@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { areaRectToImageCrop, isUsableAreaRect, normalizeAreaRect } from '@/entrypoints/utils/areaTranslationCore';
+import { areaRectToImageCrop, isAreaHotkey, isAreaZKey, isUsableAreaRect, normalizeAreaRect } from '@/entrypoints/utils/areaTranslationCore';
+
+describe('圈选翻译快捷键', () => {
+    it('只接受 Shift+Z，不拦截单独的 Z', () => {
+        expect(isAreaHotkey({ code: 'KeyZ', key: 'Z', shiftKey: true })).toBe(true);
+        expect(isAreaHotkey({ code: 'KeyZ', key: 'z', shiftKey: false })).toBe(false);
+        expect(isAreaHotkey({ code: 'KeyX', key: 'X', shiftKey: true })).toBe(false);
+    });
+
+    it('释放 Z 时即使 Shift 已先释放也能清理状态', () => {
+        expect(isAreaZKey({ code: 'KeyZ', key: 'z' })).toBe(true);
+        expect(isAreaZKey({ code: 'KeyA', key: 'a' })).toBe(false);
+    });
+});
 
 describe('圈选翻译区域几何', () => {
     it('支持从任意方向拖拽，并把矩形限制在视口内', () => {

@@ -244,34 +244,44 @@
       </div>
 
       <div v-else-if="activeDrawer === 'selection'" class="drawer-content">
-        <div class="interaction-preview"><span class="selection-box">选择文字</span><span>＋</span><i class="pink-dot" /><span>＝</span><strong>翻译所选内容</strong></div>
-        <div class="setting-row">
-          <span><strong>启用划词翻译</strong><small>选中文字后显示可操作的翻译入口</small></span>
-          <button class="switch compact" type="button" role="switch" :aria-checked="config.selectionTranslatorMode !== 'disabled'" aria-label="启用或关闭划词翻译" @click="setSelectionMode(config.selectionTranslatorMode === 'disabled' ? 'bilingual' : 'disabled')"><i /></button>
+        <div class="selection-mode-tabs" role="tablist" aria-label="翻译方式">
+          <button class="selection-mode-tab" :class="{ selected: selectionDrawerTab === 'text' }" type="button" role="tab" :aria-selected="selectionDrawerTab === 'text'" aria-controls="selection-text-panel" @click="selectionDrawerTab = 'text'">划词翻译</button>
+          <button class="selection-mode-tab" :class="{ selected: selectionDrawerTab === 'area' }" type="button" role="tab" :aria-selected="selectionDrawerTab === 'area'" aria-controls="selection-area-panel" @click="selectionDrawerTab = 'area'">圈选翻译</button>
         </div>
-        <div class="choice-block">
-          <label>显示方式</label>
-          <div class="chips two">
-            <button v-for="item in selectionModes" :key="item.value" type="button" :class="{ selected: config.selectionTranslatorMode === item.value }" @click="setSelectionMode(item.value)">{{ item.label }}</button>
+
+        <div v-if="selectionDrawerTab === 'text'" id="selection-text-panel" role="tabpanel">
+          <div class="interaction-preview"><span class="selection-box">选择文字</span><span>＋</span><i class="pink-dot" /><span>＝</span><strong>翻译所选内容</strong></div>
+          <div class="setting-row">
+            <span><strong>启用划词翻译</strong><small>选中文字后显示可操作的翻译入口</small></span>
+            <button class="switch compact" type="button" role="switch" :aria-checked="config.selectionTranslatorMode !== 'disabled'" aria-label="启用或关闭划词翻译" @click="setSelectionMode(config.selectionTranslatorMode === 'disabled' ? 'bilingual' : 'disabled')"><i /></button>
           </div>
-        </div>
-        <div class="choice-block">
-          <label>触发方式</label>
-          <div class="chips three">
-            <button v-for="item in selectionTriggers" :key="item.value" type="button" :class="{ selected: config.selectionTranslatorTrigger === item.value }" @click="setSelectionTrigger(item.value)">{{ item.label }}</button>
-          </div>
-          <small class="drawer-hint">图标和小点会固定显示在选区旁，不需要悬停才能发现。</small>
-        </div>
-        <div class="area-translation-block">
-          <div class="area-translation-heading">
-            <div>
-              <strong>圈选翻译</strong>
-              <small>翻译图片或无法直接选中的页面文字</small>
+          <div class="choice-block">
+            <label>显示方式</label>
+            <div class="chips two">
+              <button v-for="item in selectionModes" :key="item.value" type="button" :class="{ selected: config.selectionTranslatorMode === item.value }" @click="setSelectionMode(item.value)">{{ item.label }}</button>
             </div>
-            <button class="switch compact" type="button" role="switch" :aria-checked="config.selectionAreaEnabled" aria-label="启用或关闭圈选翻译" @click="setAreaEnabled(!config.selectionAreaEnabled)"><i /></button>
           </div>
-          <div class="area-translation-preview"><kbd>Z</kbd><span>＋</span><i class="area-ring" /><span>＝</span><strong>翻译选中区域</strong></div>
-          <small class="drawer-hint">按住 Z 拖拽页面区域，释放鼠标后识别并翻译；结果会覆盖在当前区域上，按 Esc 可关闭。</small>
+          <div class="choice-block">
+            <label>触发方式</label>
+            <div class="chips three">
+              <button v-for="item in selectionTriggers" :key="item.value" type="button" :class="{ selected: config.selectionTranslatorTrigger === item.value }" @click="setSelectionTrigger(item.value)">{{ item.label }}</button>
+            </div>
+            <small class="drawer-hint">图标和小点会固定显示在选区旁，不需要悬停才能发现。</small>
+          </div>
+        </div>
+
+        <div v-else id="selection-area-panel" class="selection-area-panel" role="tabpanel">
+          <div class="area-translation-block">
+            <div class="area-translation-heading">
+              <div>
+                <strong>启用圈选翻译</strong>
+                <small>翻译图片或无法直接选中的页面文字</small>
+              </div>
+              <button class="switch compact" type="button" role="switch" :aria-checked="config.selectionAreaEnabled" aria-label="启用或关闭圈选翻译" @click="setAreaEnabled(!config.selectionAreaEnabled)"><i /></button>
+            </div>
+            <div class="area-translation-preview" aria-keyshortcuts="Shift+Z"><div class="area-hotkey"><kbd>Shift</kbd><kbd>Z</kbd></div><span>＋</span><i class="area-ring" /><span>＝</span><strong>翻译选中区域</strong></div>
+            <small class="drawer-hint">按住 Shift + Z 拖拽页面区域，释放鼠标后识别并翻译；结果会覆盖在当前区域上，按 Esc 可关闭。</small>
+          </div>
         </div>
       </div>
 
@@ -375,6 +385,7 @@ const version = process.env.VUE_APP_VERSION;
 const config = ref(new Config());
 const drawerVisible = ref(false);
 const activeDrawer = ref<DrawerName>('hover');
+const selectionDrawerTab = ref<'text' | 'area'>('text');
 const translating = ref(false);
 const pageTranslated = ref(false);
 const clearingCache = ref(false);
