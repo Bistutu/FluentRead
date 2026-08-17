@@ -16,8 +16,9 @@ import {
     buildTranslationCacheKey,
     translationCache,
 } from "@/entrypoints/utils/translationCache";
-import { downloadImageOcrLanguagesWithOffscreen, recognizeImageWithOffscreen, translateImageWithOffscreen } from "@/entrypoints/service/chrome-translator";
+import { downloadImageOcrLanguagesWithOffscreen, recognizeImageWithOffscreen, translateAreaWithOffscreen, translateImageWithOffscreen } from "@/entrypoints/service/chrome-translator";
 import { imageBufferToDataUrl, MAX_REMOTE_IMAGE_BYTES, normalizeRemoteImageUrl } from "@/entrypoints/utils/imageFetch";
+import type { AreaTranslationSelection } from "@/entrypoints/utils/areaTranslationCore";
 import {buildPageSummaryPrompt, buildPageSummarySystemPrompt} from "@/entrypoints/utils/template";
 import {
     getRequiredImageOcrLanguages,
@@ -82,6 +83,16 @@ async function assertImageOcrLanguagesDownloaded(sourceLanguage: string): Promis
     const labels = new Map(IMAGE_OCR_LANGUAGE_PACKS.map(pack => [pack.code, pack.label]));
     const missingLabels = missing.map(language => labels.get(language) || language).join('、');
     throw new Error(`图片文字识别需要先下载${missingLabels}语言包，请前往设置 > 图片翻译下载`);
+}
+
+function isAreaTranslationSelection(value: unknown): value is AreaTranslationSelection {
+    if (!value || typeof value !== 'object') return false;
+    const selection = value as Record<string, unknown>;
+    return ['left', 'top', 'width', 'height', 'viewportWidth', 'viewportHeight'].every(key => typeof selection[key] === 'number' && Number.isFinite(selection[key]))
+        && Number(selection.width) >= 12
+        && Number(selection.height) >= 12
+        && Number(selection.viewportWidth) > 0
+        && Number(selection.viewportHeight) > 0;
 }
 
 type CacheRequestMode = 'single' | 'batch';
@@ -619,6 +630,32 @@ export default defineBackground({
                         await translationCache.clear();
                         pageSummaryCache.clear();
                         resolve({ success: true });
+                        return;
+                    }
+
+                    if (message.type === 'fluentReadAreaCapture') {
+                        const windowId = sender?.tab?.windowId;
+                        if (typeof windowId !== 'number') throw new Error('无法确定当前页面窗口');
+                        const image = await browser.tabs.captureVisibleTab(windowId, { format: 'png' });
+                        if (!image) throw new Error('当前页面截图为空');
+                        resolve({ success: true, image });
+                        return;
+                    }
+
+                    if (message.type === 'fluentReadAreaTranslateCapture') {
+                        if (typeof message.image !== 'string' || !message.image.startsWith('data:image/')) {
+                            throw new Error('圈选截图数据无效');
+                        }
+                        if (!isAreaTranslationSelection(message.selection)) throw new Error('圈选区域无效');
+                        const sourceLanguage = typeof message.sourceLanguage === 'string' ? message.sourceLanguage : config.from;
+                        await assertImageOcrLanguagesDownloaded(sourceLanguage);
+                        const result = await translateAreaWithOffscreen(
+                            message.image,
+                            sourceLanguage,
+                            typeof message.title === 'string' ? message.title : '',
+                            message.selection,
+                        );
+                        resolve({ success: true, ...result });
                         return;
                     }
 

@@ -1,5 +1,6 @@
 import { config } from "@/entrypoints/utils/config";
 import type { OcrLine } from "@/entrypoints/utils/imageTranslationCore";
+import type { AreaTranslationSelection } from "@/entrypoints/utils/areaTranslationCore";
 import type { ImageOcrLanguageCode } from "@/entrypoints/utils/imageOcrLanguages";
 import type { OffscreenImageTranslationResult } from "@/entrypoints/offscreen/imageTranslation";
 
@@ -123,6 +124,34 @@ export async function translateImageWithOffscreen(
 
     if (response?.success) return response;
     throw new Error(response?.error || '图片翻译失败');
+}
+
+export async function translateAreaWithOffscreen(
+    image: string,
+    sourceLanguage: string,
+    title: string,
+    selection: AreaTranslationSelection,
+): Promise<OffscreenImageTranslationResult> {
+    await ensureOffscreenDocument();
+
+    const response = await new Promise<any>((resolve, reject) => {
+        chrome.runtime.sendMessage({
+            type: 'FLUENT_READ_AREA_TRANSLATE_OFFSCREEN',
+            image,
+            sourceLanguage,
+            title,
+            selection,
+        }, (result: any) => {
+            if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+            } else {
+                resolve(result);
+            }
+        });
+    });
+
+    if (response?.success) return response;
+    throw new Error(response?.error || '圈选翻译失败');
 }
 
 export async function downloadImageOcrLanguagesWithOffscreen(languages: ImageOcrLanguageCode[]): Promise<void> {

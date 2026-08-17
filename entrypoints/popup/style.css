@@ -333,6 +333,16 @@ footer > button { justify-self: end; }
 .interaction-preview kbd { padding: 9px 13px; border-radius: 10px; color: #fff; background: #252832; box-shadow: 0 5px 10px rgba(0, 0, 0, .18); font-size: 11px; }
 .selection-box { padding: 7px 9px; border: 1px dashed var(--brand); color: var(--brand-strong); }
 .pink-dot { width: 18px; height: 18px; border-radius: 50%; background: var(--brand); }
+.area-translation-block { margin-top: 16px; padding: 14px; border: 1px solid rgba(239, 75, 134, .24); border-radius: 16px; background: linear-gradient(145deg, var(--surface-soft), rgba(239, 75, 134, .05)); }
+.area-translation-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.area-translation-heading > div { display: flex; flex: 1; flex-direction: column; gap: 4px; }
+.area-translation-heading strong { font-size: 12px; }
+.area-translation-heading small { color: var(--muted); font-size: 9.5px; line-height: 1.4; }
+.area-translation-preview { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 68px; margin-top: 11px; padding: 10px; border: 1px dashed rgba(239, 75, 134, .38); border-radius: 12px; color: var(--muted); font-size: 12px; }
+.area-translation-preview kbd { min-width: 42px; padding: 9px 12px; border-radius: 9px; color: #fff; background: #252832; box-shadow: 0 5px 10px rgba(0, 0, 0, .18); font-size: 11px; text-align: center; }
+.area-translation-preview strong { color: var(--ink); font-size: 11px; }
+.area-ring { width: 23px; height: 17px; border: 3px solid var(--brand); border-radius: 50%; transform: rotate(-13deg); box-shadow: 0 0 0 5px rgba(239, 75, 134, .08); }
+.area-translation-block .drawer-hint { margin-left: 0; margin-right: 0; }
 .image-translation-preview {
   display: flex; align-items: center; gap: 12px; min-height: 86px; padding: 14px;
   border: 1px solid var(--line); border-radius: 16px; background: var(--surface-soft);

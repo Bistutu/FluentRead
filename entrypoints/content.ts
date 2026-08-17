@@ -5,6 +5,7 @@ import pageStyles from './style.css?inline';
 import { config, configReady } from "@/entrypoints/utils/config";
 import { mountFloatingBall, unmountFloatingBall } from "@/entrypoints/utils/floatingBall";
 import { mountSelectionTranslator, unmountSelectionTranslator } from "@/entrypoints/utils/selectionTranslator";
+import { mountAreaTranslator, unmountAreaTranslator } from "@/entrypoints/utils/areaTranslator";
 import { cancelAllTranslations } from "@/entrypoints/utils/translateApi";
 import { mountNewApiComponent, unmountNewApiComponent } from "@/entrypoints/utils/newApi";
 import { mountImageTranslator, unmountImageTranslator } from "@/entrypoints/utils/imageTranslation";
@@ -77,6 +78,18 @@ function handleRuntimeMessage(
         return true;
     }
 
+    if (payload.type === 'toggleSelectionAreaTranslator') {
+        const isEnabled = payload.isEnabled === true;
+        config.selectionAreaEnabled = isEnabled;
+        if (isEnabled) {
+            void mountAreaTranslator(ctx);
+        } else {
+            unmountAreaTranslator();
+        }
+        sendResponse();
+        return true;
+    }
+
     if (payload.type === 'toggleImageTranslator') {
         const isEnabled = payload.isEnabled === true;
         config.disableImageTranslator = !isEnabled;
@@ -131,6 +144,7 @@ export default defineContentScript({
             cancelAllTranslations();
             unmountFloatingBall();
             unmountSelectionTranslator();
+            unmountAreaTranslator();
             unmountImageTranslator();
             unmountVideoSubtitleTranslation?.();
             unmountVideoSubtitleTranslation = null;
@@ -144,6 +158,12 @@ export default defineContentScript({
         setupInputBoxTranslation(pageEventController.signal);
         // 视频字幕 Beta 只在 YouTube 播放页监听原生字幕，不采集音频或视频内容。
         unmountVideoSubtitleTranslation = mountVideoSubtitleTranslation();
+        runtimeMessageListener = (
+            message: unknown,
+            _sender: unknown,
+            sendResponse: (response?: unknown) => void,
+        ) => handleRuntimeMessage(message, ctx, sendResponse);
+        browser.runtime.onMessage.addListener(runtimeMessageListener);
         // 保留播放器内的 Beta 状态入口，即使网页翻译总开关被关闭，用户仍能看到并管理视频字幕状态。
         if (config.on === false) return; // 其他网页翻译能力遵循总开关
         // 添加手动翻译事件监听器
@@ -178,17 +198,15 @@ export default defineContentScript({
             await mountSelectionTranslator(ctx);
             if (cleanedUp) return;
         }
+        if (config.selectionAreaEnabled === true) {
+            await mountAreaTranslator(ctx);
+            if (cleanedUp) return;
+        }
         
         mountNewApiComponent();
         // 图片翻译使用独立覆盖层，不改写宿主页面的 img 元素；点击入口由事件委托处理动态图片。
         if (config.disableImageTranslator !== true) mountImageTranslator();
 
-        runtimeMessageListener = (
-            message: unknown,
-            _sender: unknown,
-            sendResponse: (response?: unknown) => void,
-        ) => handleRuntimeMessage(message, ctx, sendResponse);
-        browser.runtime.onMessage.addListener(runtimeMessageListener);
     }
 })
 

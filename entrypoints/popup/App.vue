@@ -162,7 +162,7 @@
         <button class="feature-card" type="button" :disabled="!config.on" @click="openDrawer('selection')">
           <span class="feature-icon violet">I</span>
           <span><strong>划词翻译</strong><small>{{ selectionSummary }}</small></span>
-          <i :class="{ active: config.selectionTranslatorMode !== 'disabled' }" />
+          <i :class="{ active: config.selectionTranslatorMode !== 'disabled' || config.selectionAreaEnabled }" />
         </button>
         <button class="feature-card" type="button" :disabled="!config.on" @click="openDrawer('floating')">
           <span class="feature-icon blue">◉</span>
@@ -261,6 +261,17 @@
             <button v-for="item in selectionTriggers" :key="item.value" type="button" :class="{ selected: config.selectionTranslatorTrigger === item.value }" @click="setSelectionTrigger(item.value)">{{ item.label }}</button>
           </div>
           <small class="drawer-hint">图标和小点会固定显示在选区旁，不需要悬停才能发现。</small>
+        </div>
+        <div class="area-translation-block">
+          <div class="area-translation-heading">
+            <div>
+              <strong>圈选翻译</strong>
+              <small>翻译图片或无法直接选中的页面文字</small>
+            </div>
+            <button class="switch compact" type="button" role="switch" :aria-checked="config.selectionAreaEnabled" aria-label="启用或关闭圈选翻译" @click="setAreaEnabled(!config.selectionAreaEnabled)"><i /></button>
+          </div>
+          <div class="area-translation-preview"><kbd>Z</kbd><span>＋</span><i class="area-ring" /><span>＝</span><strong>翻译选中区域</strong></div>
+          <small class="drawer-hint">按住 Z 拖拽页面区域，释放鼠标后识别并翻译；结果会覆盖在当前区域上，按 Esc 可关闭。</small>
         </div>
       </div>
 
@@ -411,7 +422,11 @@ const fullPageHotkey = computed(() => {
     : config.value.floatingBallHotkey;
   return hotkey && hotkey !== 'none' ? hotkey : '未设置';
 });
-const selectionSummary = computed(() => ({ disabled: '已关闭', bilingual: '双语显示', 'translation-only': '仅显示译文' }[config.value.selectionTranslatorMode] || '双语显示'));
+const selectionSummary = computed(() => {
+  const textSummary = ({ disabled: '已关闭', bilingual: '双语显示', 'translation-only': '仅显示译文' }[config.value.selectionTranslatorMode] || '双语显示');
+  if (!config.value.selectionAreaEnabled) return textSummary;
+  return textSummary === '已关闭' ? '圈选翻译已启用' : `${textSummary} · 圈选翻译`;
+});
 const floatingSummary = computed(() => `${config.value.floatingBallPosition === 'left' ? '页面左侧' : '页面右侧'} · ${fullPageHotkey.value}`);
 const displaySummary = computed(() => config.value.display === 1 ? `双语 · ${styleLabel.value}` : '仅显示译文');
 const imageTranslationSummary = computed(() => config.value.disableImageTranslator ? '已关闭' : '悬停图片');
@@ -419,7 +434,7 @@ const videoSummary = computed(() => config.value.videoTranslationEnabled ? `${vi
 const drawerTitle = computed(() => ({ hover: '鼠标悬停翻译设置', selection: '划词翻译设置', floating: '全文悬浮球设置', appearance: '译文显示设置', image: '图片翻译设置', video: '视频字幕设置' }[activeDrawer.value]));
 const drawerDescription = computed(() => ({
   hover: '把鼠标停在文本上，用轻量快捷键获取即时译文。',
-  selection: '选中文字后，按你的偏好显示原文与译文。',
+  selection: '选中文字或圈选页面区域，按你的偏好获取译文。',
   floating: '把全文翻译入口固定在最顺手的位置。',
   appearance: '调整双语布局、译文样式与界面主题。',
   image: '把鼠标移到图片上，从图片右上角打开翻译入口。',
@@ -543,12 +558,14 @@ function setPluginEnabled(enabled: boolean) {
   if (!enabled) {
     void broadcast({ type: 'toggleFloatingBall', isEnabled: false });
     void broadcast({ type: 'updateSelectionTranslatorMode', mode: 'disabled' });
+    void broadcast({ type: 'toggleSelectionAreaTranslator', isEnabled: false });
     void broadcast({ type: 'toggleImageTranslator', isEnabled: false });
     return;
   }
 
   void broadcast({ type: 'toggleFloatingBall', isEnabled: !config.value.disableFloatingBall });
   void broadcast({ type: 'updateSelectionTranslatorMode', mode: config.value.selectionTranslatorMode });
+  void broadcast({ type: 'toggleSelectionAreaTranslator', isEnabled: config.value.selectionAreaEnabled });
   void broadcast({ type: 'toggleImageTranslator', isEnabled: !config.value.disableImageTranslator });
 }
 
@@ -608,6 +625,10 @@ function setSelectionMode(mode: string) {
 }
 function setSelectionTrigger(trigger: string) {
   config.value.selectionTranslatorTrigger = trigger;
+}
+function setAreaEnabled(enabled: boolean) {
+  config.value.selectionAreaEnabled = enabled;
+  void broadcast({ type: 'toggleSelectionAreaTranslator', isEnabled: enabled });
 }
 function setFloatingEnabled(enabled: boolean) {
   config.value.disableFloatingBall = !enabled;
