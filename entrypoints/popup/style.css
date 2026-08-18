@@ -180,18 +180,15 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
 .translate-button.translated .translate-hotkey { border-color: rgba(255, 255, 255, .48); background: rgba(255, 255, 255, .18); }
 .ai-context-toggle {
   display: flex; flex: 0 0 91px; align-items: center; justify-content: center; gap: 6px; height: 42px; padding: 0 8px;
-  border: 1px solid rgba(239, 71, 118, .28); border-radius: 14px; color: var(--brand-strong); background: var(--brand-soft);
-  box-shadow: 0 8px 18px rgba(233, 50, 103, .1); cursor: pointer;
+  border: 1px solid rgba(120, 128, 145, .26); border-radius: 14px; color: var(--muted); background: rgba(120, 128, 145, .16);
+  box-shadow: none; cursor: pointer;
   transition: border-color 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
 }
-.ai-context-toggle:hover:not(:disabled) { border-color: rgba(239, 71, 118, .55); background: #ffe5ed; box-shadow: 0 10px 22px rgba(233, 50, 103, .15); }
+.ai-context-toggle:hover:not(:disabled) { border-color: rgba(120, 128, 145, .48); background: rgba(120, 128, 145, .24); }
 .ai-context-toggle:disabled { cursor: not-allowed; opacity: .58; }
 .ai-context-copy { min-width: 0; overflow: hidden; font-size: 11px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
-.ai-context-toggle > i { position: relative; display: block; width: 25px; height: 14px; flex: none; border-radius: 999px; background: rgba(220, 49, 95, .22); transition: background 160ms ease; }
-.ai-context-toggle > i::after { position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(20, 26, 39, .2); content: ''; transition: transform 180ms ease; }
-.ai-context-toggle[aria-checked="true"] { border-color: transparent; color: #fff; background: linear-gradient(135deg, #f35482, #e93267); box-shadow: 0 10px 22px rgba(233, 50, 103, .24); }
-.ai-context-toggle[aria-checked="true"] > i { background: rgba(255, 255, 255, .5); }
-.ai-context-toggle[aria-checked="true"] > i::after { background: #fff; transform: translateX(11px); }
+.ai-context-toggle[aria-pressed="true"] { border-color: transparent; color: #fff; background: linear-gradient(135deg, #f35482, #e93267); box-shadow: 0 10px 22px rgba(233, 50, 103, .24); }
+.ai-context-toggle[aria-pressed="true"]:hover:not(:disabled) { border-color: transparent; background: linear-gradient(135deg, #f35482, #e93267); box-shadow: 0 13px 26px rgba(233, 50, 103, .3); }
 .spinner { width: 16px; height: 16px; border: 2px solid rgba(255, 255, 255, .45); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .credential-warning {

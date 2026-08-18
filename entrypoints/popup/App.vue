@@ -160,15 +160,13 @@
           v-if="canUseAIContext"
           class="ai-context-toggle"
           type="button"
-          role="switch"
-          :aria-checked="config.enableAIContext"
+          :aria-pressed="config.enableAIContext"
           :aria-label="config.enableAIContext ? '关闭 AI精翻' : '开启 AI精翻'"
           :title="config.enableAIContext ? '关闭 AI精翻' : '开启 AI精翻'"
           :disabled="!config.on || translating"
           @click="toggleAIContext"
         >
           <span class="ai-context-copy">AI精翻</span>
-          <i aria-hidden="true" />
         </button>
       </div>
       <p v-if="notice" class="notice" :class="noticeType">{{ notice }}</p>
