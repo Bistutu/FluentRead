@@ -72,6 +72,15 @@ let hoverTimer: ReturnType<typeof setTimeout> | undefined;
 let fullPageSession: FullPageSession | null = null;
 let sessionSequence = 0;
 
+function notifyFullPageTranslationState(isTranslated: boolean): void {
+    void browser.runtime.sendMessage({
+        type: "fullPageTranslationState",
+        isTranslated,
+    }).catch(() => {
+        // 后台可能正在重载；页面内的翻译状态不应因此失败。
+    });
+}
+
 function asHTMLElement(node: unknown): HTMLElement | null {
     return node instanceof HTMLElement ? node : null;
 }
@@ -498,6 +507,7 @@ export function restoreOriginalContent(): void {
         root.querySelectorAll?.(".fluent-read-bilingual-content, .fluent-read-loading, .fluent-read-retry-wrapper").forEach((element) => element.remove());
         root.querySelectorAll?.(".fluent-read-bilingual").forEach((element) => element.classList.remove("fluent-read-bilingual"));
     }
+    notifyFullPageTranslationState(false);
 }
 
 /**
@@ -541,6 +551,7 @@ export function autoTranslateEnglishPage(): void {
     observeFullPageRoot(session, root);
     addFullPageBlocks(session, root);
     for (const shadowRoot of getOpenShadowRoots(root)) observeFullPageRoot(session, shadowRoot);
+    notifyFullPageTranslationState(true);
 }
 
 /**
