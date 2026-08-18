@@ -314,6 +314,7 @@ function syncTranslationOverlayPosition(container: HTMLElement | null): void {
   const active = Boolean(overlay.textContent?.trim() || normalizedOverlay?.textContent?.trim());
   panel.classList.toggle(VIDEO_SUBTITLE_PANEL_ACTIVE_CLASS, active);
   panel.style.width = 'max-content';
+  panel.style.removeProperty('--fluent-read-video-subtitle-bottom');
   if (!active) return;
 
   // 背景只包住双语文本，并以播放器中心为锚点。长字幕仍受播放器宽度限制，
@@ -323,6 +324,23 @@ function syncTranslationOverlayPosition(container: HTMLElement | null): void {
   const width = Math.min(Math.max(measuredWidth, 0), availableWidth);
   const left = Math.max(12, Math.min((playerWidth - width) / 2, playerWidth - width - 12));
   panel.style.left = `${left}px`;
+
+  // 双语模式下原生字幕仍然可见时，译文面板要放在原生字幕上方，不能用固定底部
+  // 位置压住 YouTube 的分段字幕。逐词合并已经显示整段原文时，原文在同一个面板内，
+  // 则继续使用固定底部锚点，避免随着原生 DOM 的词宽变化上下跳动。
+  const layer = document.getElementById(VIDEO_TRANSLATION_LAYER_ID);
+  const displayMode = normalizeVideoSubtitleDisplayMode(config.videoSubtitleDisplayMode);
+  const normalizedCaptionActive = layer?.classList.contains(VIDEO_NORMALIZED_CAPTION_ACTIVE_CLASS) === true;
+  if (displayMode === 'bilingual' && !normalizedCaptionActive) {
+    const playerHeight = playerRect.height || 540;
+    const nativeCaptionTop = Math.min(...visibleCaptionSegments.map((rect) => rect.top - playerRect.top));
+    const panelHeight = panel.getBoundingClientRect().height;
+    const fallbackBottom = Math.min(Math.max(playerHeight * .1, 52), 96);
+    const maxBottom = Math.max(12, playerHeight - panelHeight - 12);
+    const requestedBottom = playerHeight - nativeCaptionTop + 8;
+    const bottom = Math.max(fallbackBottom, Math.min(requestedBottom, maxBottom));
+    panel.style.setProperty('--fluent-read-video-subtitle-bottom', `${bottom}px`);
+  }
 }
 
 function applyVideoDisplayState(container: HTMLElement): void {
@@ -358,7 +376,7 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       z-index: 2 !important;
       box-sizing: border-box !important;
       max-width: calc(100% - 24px) !important;
-      bottom: clamp(52px, 10%, 96px) !important;
+      bottom: var(--fluent-read-video-subtitle-bottom, clamp(52px, 10%, 96px)) !important;
       margin: 0 !important;
       padding: 5px 8px 6px !important;
       border: 1px solid rgba(255, 255, 255, .1) !important;

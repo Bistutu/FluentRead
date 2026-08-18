@@ -476,6 +476,24 @@ async function main() {
       if (segment) segment.textContent = 'and the housing market took a hit.';
     });
     await page.waitForFunction((selector) => document.querySelector(selector)?.textContent === '房地产市场受到了冲击。', overlaySelector, { timeout: 20000 });
+    const nativeCaptionPlacement = await page.evaluate(() => {
+      const native = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
+      const panel = document.querySelector('#fluent-read-video-subtitle-panel');
+      const player = document.querySelector('#movie_player, .html5-video-player');
+      const nativeRect = native?.getBoundingClientRect();
+      const panelRect = panel?.getBoundingClientRect();
+      const playerRect = player?.getBoundingClientRect();
+      return {
+        nativeTop: nativeRect?.top ?? null,
+        panelBottom: panelRect?.bottom ?? null,
+        panelNativeGap: nativeRect && panelRect ? nativeRect.top - panelRect.bottom : null,
+        playerBottom: playerRect?.bottom ?? null,
+        panelBottomStyle: panel ? getComputedStyle(panel).bottom : '',
+      };
+    });
+    if (nativeCaptionPlacement.panelNativeGap === null || nativeCaptionPlacement.panelNativeGap < 4) {
+      throw new Error(`整段原生字幕被译文面板覆盖：${JSON.stringify(nativeCaptionPlacement)}`);
+    }
     const beforeRedraw = await page.locator(overlaySelector).textContent();
 
     await page.evaluate(() => {
@@ -709,6 +727,7 @@ async function main() {
       popupVideoFontSizeOptions,
       popupVideoFontSizePersisted,
       beforeRedraw,
+      nativeCaptionPlacement,
       duringRedraw,
       afterRedraw,
       afterDisappearance,
