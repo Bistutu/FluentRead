@@ -5,6 +5,7 @@ import fs from 'fs';
 
 
 const packageJson = JSON.parse(fs.readFileSync(resolve(__dirname, 'package.json'), 'utf-8'));
+const googleClientId = process.env.WXT_GOOGLE_CLIENT_ID || '';
 const firefoxRunnerBinary = process.env.FLUENTREAD_FIREFOX_RUNNER_BINARY;
 const firefoxRunnerProfile = process.env.FLUENTREAD_FIREFOX_RUNNER_PROFILE;
 const firefoxRunnerStartUrl = process.env.FLUENTREAD_FIREFOX_RUNNER_START_URL;
@@ -72,10 +73,11 @@ export default defineConfig({
         plugins: [vue(), escapeExtensionNoncharacters()],
         define: {
             'process.env.VUE_APP_VERSION': JSON.stringify(packageJson.version),
+            'process.env.WXT_GOOGLE_CLIENT_ID': JSON.stringify(googleClientId),
         }
     }),
     manifest: {
-        permissions: ['storage', 'alarms', 'contextMenus', 'offscreen'],
+        permissions: ['storage', 'alarms', 'contextMenus', 'offscreen', 'identity'],
         content_security_policy: {
             extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
         },
@@ -83,6 +85,8 @@ export default defineConfig({
             'https://translate.google.com/*',
             'https://translate.google.co.uk/*',
             'https://translate.googleapis.com/*',
+            'https://accounts.google.com/*',
+            'https://www.googleapis.com/*',
             'https://dev.microsofttranslator.com/*',
             'https://*.tts.speech.microsoft.com/*',
             'https://deeplx.1stg.me/*',

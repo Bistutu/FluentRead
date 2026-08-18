@@ -68,10 +68,10 @@ export const navigationGroups: NavigationGroup[] = [
         searchDescription: '缓存、动画、并发、悬浮球、输入框、代理与提示词',
       },
       {
-        id: 'settings-data', icon: '⇅', label: '配置管理', description: '导入与导出', group: '系统与数据',
-        heading: '备份与迁移配置', summary: '导出当前设置，或从已有配置恢复你的使用习惯。',
+        id: 'settings-data', icon: '⇅', label: '配置管理', description: '云端同步与导入导出', group: '系统与数据',
+        heading: '备份与同步配置', summary: '使用 Google Drive 云端同步，或导出当前设置完成本地备份与迁移。',
         kicker: '数据工具', title: '配置管理', detail: '通过 JSON 完成配置备份、迁移与恢复。',
-        searchDescription: '备份、迁移、导出与导入 JSON 配置',
+        searchDescription: 'Google Drive 云端同步、备份、迁移、导出与导入 JSON 配置',
       },
     ],
   },
