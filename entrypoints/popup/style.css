@@ -159,7 +159,7 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
 .service-more-meta b { color: var(--muted); font-size: 15px; line-height: .7; font-weight: 500; transform: translateY(-1px); transition: transform 160ms ease; }
 .service-more-meta b.open { transform: translateY(1px) rotate(180deg); }
 
-.translate-action { display: flex; align-items: stretch; gap: 7px; margin-top: 11px; }
+.translate-action { display: flex; align-items: center; gap: 7px; margin-top: 11px; }
 .translate-button {
   display: flex; flex: 1 1 auto; align-items: center; justify-content: center; gap: 9px; min-width: 0; height: 42px;
   border: 0; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #f35482, #e93267);
@@ -179,16 +179,26 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
 .translate-hotkey.disabled { opacity: .72; }
 .translate-button.translated .translate-hotkey { border-color: rgba(255, 255, 255, .48); background: rgba(255, 255, 255, .18); }
 .ai-context-toggle {
-  display: flex; flex: 0 0 91px; align-items: center; justify-content: center; gap: 6px; height: 42px; padding: 0 8px;
-  border: 1px solid rgba(120, 128, 145, .26); border-radius: 14px; color: var(--muted); background: rgba(120, 128, 145, .16);
-  box-shadow: none; cursor: pointer;
-  transition: border-color 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+  display: flex; flex: 0 0 78px; align-items: center; justify-content: center; height: 36px; padding: 0 6px;
+  border: 1px solid rgba(255, 255, 255, .3); border-radius: 12px; color: #fff; background: linear-gradient(135deg, #f35482, #e93267);
+  box-shadow: 0 8px 18px rgba(233, 50, 103, .2); cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
 }
-.ai-context-toggle:hover:not(:disabled) { border-color: rgba(120, 128, 145, .48); background: rgba(120, 128, 145, .24); }
+.ai-context-toggle:hover:not(:disabled) { border-color: rgba(255, 255, 255, .7); box-shadow: 0 10px 20px rgba(233, 50, 103, .26); transform: translateY(-1px); }
 .ai-context-toggle:disabled { cursor: not-allowed; opacity: .58; }
-.ai-context-copy { min-width: 0; overflow: hidden; font-size: 11px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
-.ai-context-toggle[aria-pressed="true"] { border-color: transparent; color: #fff; background: linear-gradient(135deg, #f35482, #e93267); box-shadow: 0 10px 22px rgba(233, 50, 103, .24); }
-.ai-context-toggle[aria-pressed="true"]:hover:not(:disabled) { border-color: transparent; background: linear-gradient(135deg, #f35482, #e93267); box-shadow: 0 13px 26px rgba(233, 50, 103, .3); }
+.ai-context-copy { min-width: 0; overflow: hidden; font-size: 10px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.ai-context-toggle[aria-pressed="false"] {
+  border-color: rgba(255, 255, 255, .28); color: rgba(255, 255, 255, .9);
+  background: linear-gradient(rgba(148, 158, 171, .18), rgba(148, 158, 171, .18)), linear-gradient(135deg, #f35482, #e93267);
+  box-shadow: 0 7px 16px rgba(233, 50, 103, .14);
+}
+.ai-context-toggle[aria-pressed="false"]:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, .52);
+  background: linear-gradient(rgba(148, 158, 171, .24), rgba(148, 158, 171, .24)), linear-gradient(135deg, #f35482, #e93267);
+  box-shadow: 0 9px 18px rgba(233, 50, 103, .2);
+}
+.ai-context-toggle[aria-pressed="true"] { border-color: transparent; color: #fff; background: linear-gradient(135deg, #f35482, #e93267); box-shadow: 0 8px 18px rgba(233, 50, 103, .2); }
+.ai-context-toggle[aria-pressed="true"]:hover:not(:disabled) { border-color: transparent; background: linear-gradient(135deg, #f35482, #e93267); box-shadow: 0 10px 20px rgba(233, 50, 103, .26); }
 .spinner { width: 16px; height: 16px; border: 2px solid rgba(255, 255, 255, .45); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .credential-warning {
