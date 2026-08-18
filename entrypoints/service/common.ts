@@ -1,9 +1,10 @@
-import {method, urls} from "../utils/constant";
+import {method, MINIMAX_ENDPOINTS, urls} from "../utils/constant";
 import {commonMsgTemplate} from "../utils/template";
 import {config} from "@/entrypoints/utils/config";
 import {contentPostHandler} from "@/entrypoints/utils/check";
 import { services } from "../utils/option";
 import { appendOptionalBearer } from './auth';
+import {formatServiceError} from '@/entrypoints/utils/serviceError';
 
 async function common(message: any) {
     try {
@@ -17,7 +18,12 @@ async function common(message: any) {
             headers.append('X-Title', 'FluentRead');
         }
                 
-        const url = config.proxy[service] || urls[service];
+        const url = config.proxy[service]
+            || (service === services.minimax
+                ? MINIMAX_ENDPOINTS[
+                    config.minimaxBillingPlan === 'token-plan' ? 'token-plan' : 'payg'
+                ][config.minimaxRegion === 'cn' ? 'cn' : 'global']
+                : urls[service]);
 
         const resp = await fetch(url, {
             method: method.POST,
@@ -26,7 +32,10 @@ async function common(message: any) {
         });
 
         if (!resp.ok) {
-            throw new Error(`翻译失败: ${resp.status} ${resp.statusText} body: ${await resp.text()}`);
+            throw new Error(formatServiceError(
+                service,
+                `翻译失败: ${resp.status} ${resp.statusText} body: ${await resp.text()}`,
+            ));
         }
 
         const result = await resp.json();

@@ -260,6 +260,7 @@ watch(modelQuery, () => {
   .model-heading { align-items: stretch; flex-direction: column; }
   .model-search { width: 100%; }
   .service-detail { min-height: 520px; margin: 0; padding: 18px; border: 0; border-radius: 0; overflow: visible; }
+  .detail-hero { flex-wrap: wrap; }
   .model-grid { max-height: 400px; }
   .service-configuration-slot { max-height: none; overflow: visible; }
 }

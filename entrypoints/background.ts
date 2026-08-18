@@ -8,7 +8,7 @@ import {
     CONFIG_PERSIST_MESSAGE,
     saveConfig,
 } from "@/entrypoints/utils/config";
-import {CONTEXT_MENU_IDS} from "@/entrypoints/utils/constant";
+import {CONNECTION_TEST_MESSAGE, CONTEXT_MENU_IDS} from "@/entrypoints/utils/constant";
 import {getMissingCredentialMessage} from "@/entrypoints/utils/configValidation";
 import {resolveConfiguredModel, servicesType} from "@/entrypoints/utils/option";
 import {synthesizeEdgeTts} from "@/entrypoints/utils/edgeTts";
@@ -18,6 +18,10 @@ import {
 } from "@/entrypoints/utils/translationCache";
 import { downloadImageOcrLanguagesWithOffscreen, recognizeImageWithOffscreen, translateAreaWithOffscreen, translateImageWithOffscreen } from "@/entrypoints/service/chrome-translator";
 import { imageBufferToDataUrl, MAX_REMOTE_IMAGE_BYTES, normalizeRemoteImageUrl } from "@/entrypoints/utils/imageFetch";
+import {
+    formatConnectionTestError,
+    runTranslationServiceConnectionTest,
+} from "@/entrypoints/service/connection-test";
 import type { AreaTranslationSelection } from "@/entrypoints/utils/areaTranslationCore";
 import {buildPageSummaryPrompt, buildPageSummarySystemPrompt} from "@/entrypoints/utils/template";
 import {
@@ -602,6 +606,14 @@ export default defineBackground({
                         return;
                     }
 
+                    if (message.type === CONNECTION_TEST_MESSAGE) {
+                        const service = typeof message.service === 'string' ? message.service : '';
+                        await configReady;
+                        const result = await runTranslationServiceConnectionTest(service);
+                        resolve({ success: true, ...result });
+                        return;
+                    }
+
                     if (message.type === CONFIG_HISTORY_MESSAGE) {
                         const action = message.action === 'undo' || message.action === 'redo' || message.action === 'restore'
                             ? message.action
@@ -712,7 +724,13 @@ export default defineBackground({
                         .then(resp => resolve(resp))    // 成功
                         .catch(error => reject(error)); // 失败
                 } catch (error) {
-                    resolve({ success: false, error: error instanceof Error ? error.message : String(error) });
+                    const errorMessage = message?.type === CONNECTION_TEST_MESSAGE
+                        ? formatConnectionTestError(
+                            typeof message.service === 'string' ? message.service : '',
+                            error,
+                        )
+                        : error instanceof Error ? error.message : String(error);
+                    resolve({ success: false, error: errorMessage });
                 }
             });
         });

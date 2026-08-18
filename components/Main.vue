@@ -660,7 +660,7 @@
 
 // Main 处理配置信息
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
-import { customModelString, models, options, resolveConfiguredModel, servicesType, defaultOption } from "../entrypoints/utils/option";
+import { customModelString, models, options, resolveConfiguredModel, services, servicesType, defaultOption } from "../entrypoints/utils/option";
 import { Config, normalizeConfig } from "@/entrypoints/utils/model";
 import { InfoFilled, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -860,6 +860,7 @@ const createServiceCompute = (serviceSource: ServiceSource) => ({
   model: computed(() => models.get(serviceSource.value) || []),
   showCustom: computed(() => servicesType.isCustom(serviceSource.value)),
   showDeepLX: computed(() => serviceSource.value === 'deeplx'),
+  showMiniMaxRegion: computed(() => serviceSource.value === services.minimax),
   showCustomModel: computed(
     () =>
       servicesType.isAI(serviceSource.value) &&
