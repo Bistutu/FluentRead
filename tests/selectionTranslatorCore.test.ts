@@ -3,6 +3,7 @@ import {
     calculateSelectionPopupPosition,
     chooseSelectionRect,
     isSameLanguage,
+    isSelectionExcludedTagName,
     normalizeSelectionText,
     normalizeSpeechLanguage,
 } from '@/entrypoints/utils/selectionTranslatorCore';
@@ -47,6 +48,14 @@ describe('selection translator text and speech language normalization', () => {
 
     it('normalizes browser whitespace without changing words', () => {
         expect(normalizeSelectionText('  hello\u00a0  world\n   again  ')).toBe('hello world\nagain');
+    });
+
+    it('classifies atomic and interactive elements as non-text selections', () => {
+        for (const tagName of ['img', 'svg', 'video', 'canvas', 'button', 'input', 'textarea', 'select', 'code', 'pre']) {
+            expect(isSelectionExcludedTagName(tagName)).toBe(true);
+        }
+        expect(isSelectionExcludedTagName('p')).toBe(false);
+        expect(isSelectionExcludedTagName('span')).toBe(false);
     });
 
     it('maps translation language codes to browser speech language codes', () => {
