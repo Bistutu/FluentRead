@@ -114,7 +114,6 @@ interface FullPageSession {
     unchangedCandidates: WeakMap<Node, FullPageLifecycleRetry>;
     /** Candidate keys currently consuming one of the full-page concurrency slots. */
     inFlightCandidates: Map<Node, TranslationCandidate>;
-    inFlight: number;
     draining: boolean;
     flushTimer: number | null;
     dirtyRoots: Set<Node>;
@@ -137,8 +136,6 @@ const FULL_PAGE_LIFECYCLE_RETRY_LIMIT = 2;
 
 let hoverTimer: ReturnType<typeof setTimeout> | undefined;
 let fullPageSession: FullPageSession | null = null;
-/** Exact direct children owned by one materialized inline-run request, before its spinner is appended. */
-const loadingSyntheticSourceNodes = new WeakMap<TranslationState, readonly ChildNode[]>();
 
 function isElementNode(node: Node | null | undefined): node is Element {
     return Boolean(node && node.nodeType === 1 && typeof (node as Element).matches === "function");
@@ -148,6 +145,17 @@ function asHTMLElement(node: unknown): HTMLElement | null {
     if (!node || typeof node !== "object" || (node as Node).nodeType !== 1) return null;
     const element = node as HTMLElement;
     return typeof element.tagName === "string" && typeof element.style === "object" ? element : null;
+}
+
+function currentTranslationDisplayMode(): "bilingual" | "single" {
+    return config.display === styles.bilingualTranslation ? "bilingual" : "single";
+}
+
+function translateNode(node: unknown, displayMode: "bilingual" | "single", slide: boolean): void {
+    const target = asHTMLElement(node);
+    if (!target) return;
+    const candidate = resolveTranslationCandidate(target);
+    if (candidate) void translateTarget(candidate, displayMode, slide);
 }
 
 function mutationTargetElement(node: Node): Element | null {
@@ -433,7 +441,7 @@ function markFailedTranslation(
     const retryWrapper = insertFailedTip(
         node,
         error instanceof Error ? error.message : String(error || "翻译失败"),
-        spinner,
+        () => translateNode(node, currentTranslationDisplayMode(), false),
     );
     setRetryWrapper(node, retryWrapper);
     setRenderedStyleAttribute(node);
@@ -576,7 +584,7 @@ function hasIntersectionLayoutBox(element: HTMLElement): boolean {
  * act as an anchor the caller queues the candidate directly; concurrency is
  * still enforced by the normal full-page drain.
  */
-export function resolveFullPageVisibilityAnchor(candidate: HTMLElement): HTMLElement | null {
+function resolveFullPageVisibilityAnchor(candidate: HTMLElement): HTMLElement | null {
     if (hasIntersectionLayoutBox(candidate)) return candidate;
 
     const pending: Element[] = [];
@@ -810,8 +818,6 @@ async function translateTarget(
         if (synthetic) node.replaceWith(...Array.from(node.childNodes));
         return {status: "owned"};
     }
-    if (synthetic) loadingSyntheticSourceNodes.set(attempt.state, Array.from(node.childNodes));
-
     // 请求必须在 spinner 插入前创建；微软 HTML 克隆和文本节点快照不能把
     // 插件自己的 loading 元素送到服务端。
     const queueSession = createTranslationQueueSession();
@@ -981,7 +987,7 @@ function drainFullPage(session: FullPageSession): void {
     session.draining = true;
     const maxConcurrent = 3;
 
-    while (session.active && session.inFlight < maxConcurrent && session.pending.size > 0) {
+    while (session.active && session.inFlightCandidates.size < maxConcurrent && session.pending.size > 0) {
         let entry: [Node, TranslationCandidate] | undefined;
         for (const pendingEntry of session.pending.entries()) {
             if (!session.inFlightCandidates.has(pendingEntry[0])) {
@@ -993,21 +999,10 @@ function drainFullPage(session: FullPageSession): void {
         const [key, candidate] = entry;
         session.pending.delete(key);
         session.inFlightCandidates.set(key, candidate);
-        session.inFlight += 1;
-        void translateTarget(candidate, config.display === styles.bilingualTranslation ? "bilingual" : "single", true, session)
+        void translateTarget(candidate, currentTranslationDisplayMode(), true, session)
             .then(
-                (outcome) => {
-                    session.inFlight -= 1;
-                    if (session.inFlightCandidates.get(key) === candidate) {
-                        session.inFlightCandidates.delete(key);
-                    }
-                    finalizeFullPageCandidate(session, candidate, outcome);
-                },
+                (outcome) => finalizeFullPageCandidate(session, candidate, outcome),
                 () => {
-                    session.inFlight -= 1;
-                    if (session.inFlightCandidates.get(key) === candidate) {
-                        session.inFlightCandidates.delete(key);
-                    }
                     // Unexpected runtime failures retain the historical terminal
                     // behavior; provider failures are represented explicitly by
                     // translateTarget and render their retry UI before this point.
@@ -1015,6 +1010,9 @@ function drainFullPage(session: FullPageSession): void {
                 },
             )
             .finally(() => {
+                if (session.inFlightCandidates.get(key) === candidate) {
+                    session.inFlightCandidates.delete(key);
+                }
                 if (session.active) scheduleFullPageDrain(session);
             });
     }
@@ -1285,7 +1283,7 @@ function isIntactLoadingSyntheticChildList(
         return false;
     }
 
-    const expectedSourceNodes = loadingSyntheticSourceNodes.get(state);
+    const expectedSourceNodes = state.syntheticSourceNodes;
     if (!expectedSourceNodes) return false;
     const currentSourceNodes = Array.from(target.childNodes).filter((node) => node !== spinner);
     if (currentSourceNodes.length !== expectedSourceNodes.length ||
@@ -1583,9 +1581,12 @@ function resolveStatefulMutationTargets(
     return [...targets];
 }
 
-function attachFullPageMutationHandling(session: FullPageSession): void {
-    session.mutationObserver = new MutationObserver((mutations) => {
-        if (!session.active) return;
+function createFullPageMutationObserver(
+    getSession: () => FullPageSession,
+): MutationObserver {
+    return new MutationObserver((mutations) => {
+        const session = getSession();
+        if (!session.active || fullPageSession !== session) return;
         scheduleDisconnectedCandidatePrune(session);
         const core = getCurrentTranslationCore();
         // Materializing a wide inline run can enqueue one childList record per
@@ -1686,32 +1687,89 @@ function attachFullPageMutationHandling(session: FullPageSession): void {
     });
 }
 
+function createFullPageSession(root: HTMLElement): FullPageSession {
+    let session!: FullPageSession;
+    const observer = new IntersectionObserver((entries) => {
+        if (!session.active || fullPageSession !== session) return;
+        for (const entry of entries) {
+            const node = entry.target as HTMLElement;
+            if (!entry.isIntersecting) continue;
+            const candidates = session.observedCandidates.get(node);
+            candidates?.forEach((candidate, key) => session.pending.set(key, candidate));
+        }
+        scheduleFullPageDrain(session);
+    }, {
+        root: null,
+        rootMargin: "600px 0px",
+        threshold: 0.01,
+    });
+    const mutationObserver = createFullPageMutationObserver(() => session);
+
+    session = {
+        active: true,
+        observer,
+        mutationObserver,
+        shadowEventController: new AbortController(),
+        roots: new Set(),
+        pending: new Map(),
+        scheduled: new Map(),
+        observedCandidates: new Map(),
+        candidateAnchors: new Map(),
+        candidateOwnerKeys: new Map(),
+        statefulTargetsByAncestor: new Map(),
+        statefulAncestorsByTarget: new WeakMap(),
+        lifecycleRetries: new WeakMap(),
+        unchangedCandidates: new WeakMap(),
+        inFlightCandidates: new Map(),
+        draining: false,
+        flushTimer: null,
+        dirtyRoots: new Set(),
+        mutationFlushTimer: null,
+        activeDiscovery: null,
+        broadRescanRoots: new WeakSet([root]),
+        broadRescanCooldowns: new WeakMap(),
+        dirtyRootsBroadMode: false,
+        pruneTimer: null,
+        pruneIterator: null,
+        pruneRequested: false,
+        statefulAttributeTimers: new Map(),
+        statefulAttributeRescanTargets: new WeakSet(),
+    };
+    return session;
+}
+
+function disposeFullPageSession(session: FullPageSession): void {
+    session.active = false;
+    if (session.flushTimer !== null) window.clearTimeout(session.flushTimer);
+    if (session.mutationFlushTimer !== null) window.clearTimeout(session.mutationFlushTimer);
+    if (session.pruneTimer !== null) window.clearTimeout(session.pruneTimer);
+    session.statefulAttributeTimers.forEach((timer) => window.clearTimeout(timer));
+    session.observer.disconnect();
+    session.mutationObserver.disconnect();
+    session.shadowEventController.abort();
+    session.roots.clear();
+    session.pending.clear();
+    session.scheduled.clear();
+    session.observedCandidates.clear();
+    session.candidateAnchors.clear();
+    session.candidateOwnerKeys.clear();
+    session.statefulTargetsByAncestor.clear();
+    session.statefulAncestorsByTarget = new WeakMap();
+    session.inFlightCandidates.clear();
+    session.dirtyRoots.clear();
+    session.dirtyRootsBroadMode = false;
+    session.activeDiscovery = null;
+    session.pruneIterator = null;
+    session.pruneRequested = false;
+    session.statefulAttributeTimers.clear();
+    session.statefulAttributeRescanTargets = new WeakSet();
+}
+
 function stopFullPageSession(): void {
-    if (!fullPageSession) return;
-    fullPageSession.active = false;
-    if (fullPageSession.flushTimer !== null) window.clearTimeout(fullPageSession.flushTimer);
-    if (fullPageSession.mutationFlushTimer !== null) window.clearTimeout(fullPageSession.mutationFlushTimer);
-    if (fullPageSession.pruneTimer !== null) window.clearTimeout(fullPageSession.pruneTimer);
-    fullPageSession.statefulAttributeTimers.forEach((timer) => window.clearTimeout(timer));
-    fullPageSession.observer.disconnect();
-    fullPageSession.mutationObserver.disconnect();
-    fullPageSession.shadowEventController.abort();
-    fullPageSession.pending.clear();
-    fullPageSession.scheduled.clear();
-    fullPageSession.observedCandidates.clear();
-    fullPageSession.candidateAnchors.clear();
-    fullPageSession.candidateOwnerKeys.clear();
-    fullPageSession.statefulTargetsByAncestor.clear();
-    fullPageSession.statefulAncestorsByTarget = new WeakMap();
-    fullPageSession.inFlightCandidates.clear();
-    fullPageSession.dirtyRoots.clear();
-    fullPageSession.dirtyRootsBroadMode = false;
-    fullPageSession.activeDiscovery = null;
-    fullPageSession.pruneIterator = null;
-    fullPageSession.pruneRequested = false;
-    fullPageSession.statefulAttributeTimers.clear();
-    fullPageSession.statefulAttributeRescanTargets = new WeakSet();
+    const session = fullPageSession;
+    if (!session) return;
     fullPageSession = null;
+    disposeFullPageSession(session);
 }
 
 /**
@@ -1760,63 +1818,16 @@ export function autoTranslateEnglishPage(): void {
     const root = document.documentElement;
     if (!root) return;
 
-    const observer = new IntersectionObserver((entries) => {
-        const session = fullPageSession;
-        if (!session?.active) return;
-        for (const entry of entries) {
-            const node = entry.target as HTMLElement;
-            if (!entry.isIntersecting) continue;
-            const candidates = session.observedCandidates.get(node);
-            candidates?.forEach((candidate, key) => session.pending.set(key, candidate));
-        }
-        scheduleFullPageDrain(session);
-    }, {
-        root: null,
-        rootMargin: "600px 0px",
-        threshold: 0.01,
-    });
-
-    const session: FullPageSession = {
-        active: true,
-        observer,
-        mutationObserver: new MutationObserver(() => undefined),
-        shadowEventController: new AbortController(),
-        roots: new Set(),
-        pending: new Map(),
-        scheduled: new Map(),
-        observedCandidates: new Map(),
-        candidateAnchors: new Map(),
-        candidateOwnerKeys: new Map(),
-        statefulTargetsByAncestor: new Map(),
-        statefulAncestorsByTarget: new WeakMap(),
-        lifecycleRetries: new WeakMap(),
-        unchangedCandidates: new WeakMap(),
-        inFlightCandidates: new Map(),
-        inFlight: 0,
-        draining: false,
-        flushTimer: null,
-        dirtyRoots: new Set(),
-        mutationFlushTimer: null,
-        activeDiscovery: null,
-        broadRescanRoots: new WeakSet([root]),
-        broadRescanCooldowns: new WeakMap(),
-        dirtyRootsBroadMode: false,
-        pruneTimer: null,
-        pruneIterator: null,
-        pruneRequested: false,
-        statefulAttributeTimers: new Map(),
-        statefulAttributeRescanTargets: new WeakSet(),
-    };
+    const session = createFullPageSession(root);
     fullPageSession = session;
     document.addEventListener('fluentread-open-shadow-root', (event) => {
-        if (!session.active) return;
+        if (!session.active || fullPageSession !== session) return;
         const host = isElementNode(event.target as Node) ? event.target as Element : null;
         const shadowRoot = host?.shadowRoot;
         if (!shadowRoot) return;
         observeFullPageRoot(session, shadowRoot);
         enqueueFullPageRescan(session, shadowRoot);
     }, {capture: true, signal: session.shadowEventController.signal});
-    attachFullPageMutationHandling(session);
     observeFullPageRoot(session, root);
     enqueueFullPageRescan(session, root);
 }
@@ -1835,20 +1846,10 @@ export function handleTranslation(mouseX: number, mouseY: number, delayTime = 0)
     hoverTimer = setTimeout(() => {
         const candidate = resolveTranslationCandidateAtPoint(mouseX, mouseY);
         if (!candidate) return;
-        void translateTarget(candidate, config.display === styles.bilingualTranslation ? "bilingual" : "single", delayTime > 0);
+        void translateTarget(candidate, currentTranslationDisplayMode(), delayTime > 0);
     }, delayTime);
 }
 
 export function handleBilingualTranslation(node: unknown, slide: boolean): void {
-    const target = asHTMLElement(node);
-    if (!target) return;
-    const candidate = resolveTranslationCandidate(target);
-    if (candidate) void translateTarget(candidate, "bilingual", slide);
-}
-
-export function handleSingleTranslation(node: unknown, slide: boolean): void {
-    const target = asHTMLElement(node);
-    if (!target) return;
-    const candidate = resolveTranslationCandidate(target);
-    if (candidate) void translateTarget(candidate, "single", slide);
+    translateNode(node, "bilingual", slide);
 }

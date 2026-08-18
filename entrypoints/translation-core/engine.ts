@@ -6,9 +6,10 @@ import {
     findNodeAtPoint,
     getComposedParent,
     isDocumentSurface,
-    isExtensionElement,
+    isExtensionElementSelf,
     maxComposedAncestorDepth,
 } from './dom';
+import type {HardGuardResult} from './dom';
 import {
     classifyGenericCandidate,
     getDirectInlineRuns,
@@ -27,13 +28,45 @@ import type {TranslationTextProtectionCache} from './text';
 import type {
     AdapterContext,
     AdapterDecision,
-    DecisionTraceEntry,
     TranslationCandidate,
     TranslationCoreOptions,
     TranslationSiteAdapter,
 } from './types';
 
 const maxHoverBarrierDiscoverySteps = 256;
+
+interface AdapterDecisionResult {
+    decision: AdapterDecision;
+    adapterId?: string;
+}
+
+interface AdapterPrunedAncestor {
+    reason: string;
+    adapterId?: string;
+}
+
+/** Caches that are valid only for one synchronous hover/inspection call. */
+interface ResolutionEvaluationContext {
+    textProtectionCache: TranslationTextProtectionCache;
+    hardGuards: WeakMap<Element, HardGuardResult>;
+    adapterDecisions: WeakMap<Element, AdapterDecisionResult>;
+    adapterPrunedAncestors: WeakMap<Element, AdapterPrunedAncestor | null>;
+    extensionElements: WeakMap<Element, boolean>;
+    structuralContainers: WeakMap<Element, boolean>;
+    structuralAncestors: WeakMap<Element, boolean>;
+}
+
+function createResolutionEvaluationContext(): ResolutionEvaluationContext {
+    return {
+        textProtectionCache: createTranslationTextProtectionCache(),
+        hardGuards: new WeakMap(),
+        adapterDecisions: new WeakMap(),
+        adapterPrunedAncestors: new WeakMap(),
+        extensionElements: new WeakMap(),
+        structuralContainers: new WeakMap(),
+        structuralAncestors: new WeakMap(),
+    };
+}
 
 function isElementNode(node: Node | null | undefined): node is Element {
     return Boolean(node && node.nodeType === 1 && typeof (node as Element).matches === 'function');
@@ -55,7 +88,6 @@ function currentURL(fallbackDocument?: Document): URL {
 
 export interface TranslationCoreInspection {
     candidate: TranslationCandidate | null;
-    trace: DecisionTraceEntry[];
 }
 
 export interface TranslationDiscoveryStep {
@@ -121,16 +153,28 @@ export class TranslationCandidateCore {
         this.context = {url: this.url};
     }
 
-    private adapterDecision(element: Element): {decision: AdapterDecision; adapterId?: string} {
+    private adapterDecision(
+        element: Element,
+        evaluationContext?: ResolutionEvaluationContext,
+    ): AdapterDecisionResult {
+        const cached = evaluationContext?.adapterDecisions.get(element);
+        if (cached) return cached;
+
         for (const adapter of this.adapters) {
             try {
                 const decision = adapter.decide(element, this.context);
-                if (decision.kind !== 'pass') return {decision, adapterId: adapter.id};
+                if (decision.kind !== 'pass') {
+                    const result = {decision, adapterId: adapter.id};
+                    evaluationContext?.adapterDecisions.set(element, result);
+                    return result;
+                }
             } catch {
                 // A stale third-party adapter must not abort generic discovery.
             }
         }
-        return {decision: {kind: 'pass'}};
+        const result: AdapterDecisionResult = {decision: {kind: 'pass'}};
+        evaluationContext?.adapterDecisions.set(element, result);
+        return result;
     }
 
     shouldStayOriginal = (element: Element): boolean => this.adapters.some((adapter) => {
@@ -149,42 +193,147 @@ export class TranslationCandidateCore {
         }
     });
 
-    private hasAdapterPrunedAncestor(element: Element): {reason: string; adapterId?: string} | null {
+    private hasAdapterPrunedAncestor(
+        element: Element,
+        evaluationContext?: ResolutionEvaluationContext,
+    ): AdapterPrunedAncestor | null {
+        if (evaluationContext?.adapterPrunedAncestors.has(element)) {
+            return evaluationContext.adapterPrunedAncestors.get(element) ?? null;
+        }
+
+        const inspected: Element[] = [];
         let depth = 0;
         for (const ancestor of composedAncestors(element)) {
             depth += 1;
-            if (depth > maxComposedAncestorDepth) return {reason: 'ancestor-depth-limit'};
-            const {decision, adapterId} = this.adapterDecision(ancestor);
-            if (decision.kind === 'prune-subtree') return {reason: decision.reason, adapterId};
+            if (depth > maxComposedAncestorDepth) {
+                const result = {reason: 'ancestor-depth-limit'};
+                evaluationContext?.adapterPrunedAncestors.set(element, result);
+                return result;
+            }
+            inspected.push(ancestor);
+            const {decision, adapterId} = this.adapterDecision(ancestor, evaluationContext);
+            if (decision.kind === 'prune-subtree') {
+                const result = {reason: decision.reason, adapterId};
+                evaluationContext?.adapterPrunedAncestors.set(element, result);
+                return result;
+            }
         }
+        inspected.forEach((ancestor) => evaluationContext?.adapterPrunedAncestors.set(ancestor, null));
         return null;
     }
 
+    private primeResolutionAncestry(
+        element: Element,
+        evaluationContext: ResolutionEvaluationContext,
+    ): void {
+        if (evaluationContext.hardGuards.has(element) &&
+            evaluationContext.structuralAncestors.has(element)) return;
+
+        const chain: Element[] = [];
+        let current: Element | null = element;
+        while (current && chain.length < maxComposedAncestorDepth) {
+            chain.push(current);
+            current = getComposedParent(current);
+        }
+        // Keep the existing bounded fallback for over-deep ancestry rather
+        // than evaluating or persisting a partial prefix.
+        if (current) return;
+
+        const ownGuards = chain.map((item) => evaluateElementHardGuard(item));
+        let inheritedGuard: HardGuardResult = {prune: false};
+        for (let index = chain.length - 1; index >= 0; index -= 1) {
+            const item = chain[index]!;
+            const ownGuard = ownGuards[index]!;
+            inheritedGuard = ownGuard.prune ? ownGuard : inheritedGuard;
+            evaluationContext.hardGuards.set(item, inheritedGuard);
+
+            const parent = getComposedParent(item);
+            const hasStructuralAncestor = Boolean(parent && !isDocumentSurface(parent) && (
+                this.isStructuralContainerForResolution(parent, evaluationContext) ||
+                evaluationContext.structuralAncestors.get(parent) === true
+            ));
+            evaluationContext.structuralAncestors.set(item, hasStructuralAncestor);
+        }
+    }
+
+    private hardGuard(
+        element: Element,
+        evaluationContext?: ResolutionEvaluationContext,
+    ): HardGuardResult {
+        if (!evaluationContext) return evaluateHardGuard(element);
+        this.primeResolutionAncestry(element, evaluationContext);
+        return evaluationContext.hardGuards.get(element) ?? evaluateHardGuard(element);
+    }
+
+    private isExtensionElementForResolution(
+        element: Element,
+        evaluationContext: ResolutionEvaluationContext,
+    ): boolean {
+        if (evaluationContext.extensionElements.has(element)) {
+            return evaluationContext.extensionElements.get(element) === true;
+        }
+        const chain: Element[] = [];
+        let current: Element | null = element;
+        while (current && !evaluationContext.extensionElements.has(current)) {
+            chain.push(current);
+            // Element.closest(), used by the previous implementation, does not
+            // cross a ShadowRoot. Keep that exact ownership boundary here.
+            current = current.parentElement;
+        }
+        let inherited = current ? evaluationContext.extensionElements.get(current) === true : false;
+        for (let index = chain.length - 1; index >= 0; index -= 1) {
+            inherited = inherited || isExtensionElementSelf(chain[index]!);
+            evaluationContext.extensionElements.set(chain[index]!, inherited);
+        }
+        return evaluationContext.extensionElements.get(element) === true;
+    }
+
+    private isStructuralContainerForResolution(
+        element: Element,
+        evaluationContext: ResolutionEvaluationContext,
+    ): boolean {
+        const cached = evaluationContext.structuralContainers.get(element);
+        if (cached !== undefined) return cached;
+        const result = isStructuralContainer(element);
+        evaluationContext.structuralContainers.set(element, result);
+        return result;
+    }
+
+    private hasStructuralAncestorForResolution(
+        element: Element,
+        evaluationContext: ResolutionEvaluationContext,
+    ): boolean {
+        this.primeResolutionAncestry(element, evaluationContext);
+        return evaluationContext.structuralAncestors.get(element) ?? hasStructuralAncestor(element);
+    }
+
     inspect(element: Element): TranslationCoreInspection {
-        return this.inspectWithTextProtectionCache(element, createTranslationTextProtectionCache());
+        const evaluationContext = createResolutionEvaluationContext();
+        return this.inspectWithTextProtectionCache(
+            element,
+            evaluationContext.textProtectionCache,
+            evaluationContext,
+        );
     }
 
     private inspectWithTextProtectionCache(
         element: Element,
         textProtectionCache: TranslationTextProtectionCache,
+        evaluationContext?: ResolutionEvaluationContext,
     ): TranslationCoreInspection {
-        const trace: DecisionTraceEntry[] = [];
-        const hardGuard = evaluateHardGuard(element);
+        const hardGuard = this.hardGuard(element, evaluationContext);
         if (hardGuard.prune) {
-            trace.push({element, action: 'hard-prune', reason: hardGuard.reason ?? 'hard-guard'});
-            return {candidate: null, trace};
+            return {candidate: null};
         }
 
-        const pruned = this.hasAdapterPrunedAncestor(element);
+        const pruned = this.hasAdapterPrunedAncestor(element, evaluationContext);
         if (pruned) {
-            trace.push({element, action: 'prune-subtree', reason: pruned.reason, adapterId: pruned.adapterId});
-            return {candidate: null, trace};
+            return {candidate: null};
         }
 
-        const {decision, adapterId} = this.adapterDecision(element);
+        const {decision, adapterId} = this.adapterDecision(element, evaluationContext);
         if (decision.kind === 'skip-self') {
-            trace.push({element, action: decision.kind, reason: decision.reason, adapterId});
-            return {candidate: null, trace};
+            return {candidate: null};
         }
         if (decision.kind === 'force-target') {
             const target = asHTMLElement(decision.target ?? element);
@@ -193,9 +342,8 @@ export class TranslationCandidateCore {
                 this.shouldStayOriginal,
                 textProtectionCache,
             ) ||
-                evaluateHardGuard(target).prune) {
-                trace.push({element, action: 'continue', reason: 'forced-target-empty-or-protected', adapterId});
-                return {candidate: null, trace};
+                this.hardGuard(target, evaluationContext).prune) {
+                return {candidate: null};
             }
             const candidate: TranslationCandidate = {
                 element: target,
@@ -203,27 +351,29 @@ export class TranslationCandidateCore {
                 reason: decision.reason,
                 adapterId,
             };
-            trace.push({element: target, action: decision.kind, reason: decision.reason, adapterId});
-            return {candidate, trace};
+            return {candidate};
         }
 
+        if (evaluationContext &&
+            this.hasStructuralAncestorForResolution(element, evaluationContext) &&
+            !isSemanticHeadingElement(element)) {
+            return {candidate: null};
+        }
         const classification = classifyGenericCandidate(
             element,
             this.shouldStayOriginal,
-            false,
+            evaluationContext !== undefined,
             textProtectionCache,
         );
         if (!classification) {
-            trace.push({element, action: 'continue', reason: 'generic-not-a-boundary'});
-            return {candidate: null, trace};
+            return {candidate: null};
         }
         const candidate: TranslationCandidate = {
             element: element as HTMLElement,
             kind: classification.kind,
             reason: classification.reason,
         };
-        trace.push({element, action: 'generic-target', reason: classification.reason});
-        return {candidate, trace};
+        return {candidate};
     }
 
     private inlineRunCandidates(
@@ -231,13 +381,14 @@ export class TranslationCandidateCore {
         skipStructuralAncestorCheck = false,
         textProtectionCache = createTranslationTextProtectionCache(),
         candidateChildBarriers?: ReadonlySet<Element>,
+        evaluationContext?: ResolutionEvaluationContext,
     ): TranslationCandidate[] {
         const candidates: TranslationCandidate[] = [];
         const atomicTargetCache = new WeakMap<Element, boolean>();
         const isAtomicAdapterTarget = (candidate: Element): boolean => {
             const cached = atomicTargetCache.get(candidate);
             if (cached !== undefined) return cached;
-            const decision = this.adapterDecision(candidate).decision;
+            const decision = this.adapterDecision(candidate, evaluationContext).decision;
             const target = decision.kind === 'force-target' ? decision.target ?? candidate : null;
             const result = decision.kind === 'force-target' && decision.atomic !== false && target === candidate;
             atomicTargetCache.set(candidate, result);
@@ -309,10 +460,13 @@ export class TranslationCandidateCore {
     private resolveInlineRun(
         element: Element,
         start: Node,
-        textProtectionCache: TranslationTextProtectionCache,
+        evaluationContext: ResolutionEvaluationContext,
     ): TranslationCandidate | null {
-        if (isDocumentSurface(element) || isStructuralContainer(element) ||
-            hasStructuralAncestor(element) || !isBlockBoundary(element) || element.children.length === 0) {
+        if (isDocumentSurface(element) ||
+            this.isStructuralContainerForResolution(element, evaluationContext) ||
+            this.hasStructuralAncestorForResolution(element, evaluationContext) ||
+            !isBlockBoundary(element) ||
+            element.children.length === 0) {
             return null;
         }
         // Use post-order ownership barriers from full discovery as probe
@@ -321,12 +475,13 @@ export class TranslationCandidateCore {
         // unbounded subtree walk in pointer handling.
         const candidates = this.inlineRunCandidates(
             element,
-            false,
-            textProtectionCache,
+            true,
+            evaluationContext.textProtectionCache,
             this.probeHoverCandidateChildBarriers(
                 element,
                 this.discoveredCandidateChildBarriers.get(element),
             ),
+            evaluationContext,
         );
         if (candidates.length === 0) return null;
         let direct: Node | null = start;
@@ -385,7 +540,8 @@ export class TranslationCandidateCore {
     resolve(start: Node | null | undefined): TranslationCandidate | null {
         if (!start) return null;
         const hit = start;
-        const textProtectionCache = createTranslationTextProtectionCache();
+        const evaluationContext = createResolutionEvaluationContext();
+        const textProtectionCache = evaluationContext.textProtectionCache;
         let current: Element | null = start.nodeType === 3
             ? (start as Text).parentElement
             : isElementNode(start) ? start : null;
@@ -399,32 +555,40 @@ export class TranslationCandidateCore {
                 current = current.parentElement;
                 continue;
             }
-            if (isExtensionElement(current)) {
+            if (this.isExtensionElementForResolution(current, evaluationContext)) {
                 current = getComposedParent(current);
                 continue;
             }
             // Inherited hard guards apply to every possible ancestor candidate.
             // Stop immediately instead of repeatedly climbing an extreme tree.
-            if (evaluateHardGuard(current).reason === 'ancestor-depth-limit') return null;
+            if (this.hardGuard(current, evaluationContext).reason === 'ancestor-depth-limit') return null;
             // Full-page discovery prunes adapter-owned controlled subtrees before
             // walking their children. Hover resolution must apply the same
             // inherited prune decision before trying a generic inline run;
             // otherwise a hit inside (for example) GitHub Quick Search can
             // resolve its dialog ancestor even though discover() excludes it.
-            if (this.hasAdapterPrunedAncestor(current)) return null;
-            const ownDecision = this.adapterDecision(current).decision;
+            if (this.hasAdapterPrunedAncestor(current, evaluationContext)) return null;
+            const ownDecision = this.adapterDecision(current, evaluationContext).decision;
             if (ownDecision.kind === 'force-target' && ownDecision.atomic !== false) {
-                const exact = this.inspectWithTextProtectionCache(current, textProtectionCache).candidate;
+                const exact = this.inspectWithTextProtectionCache(
+                    current,
+                    textProtectionCache,
+                    evaluationContext,
+                ).candidate;
                 if (exact) return exact;
             }
             // Mixed direct content must resolve to the same run emitted by the
             // full-page walk. This also keeps ordinary text next to an atomic
             // adapter target from falling back to the whole parent container.
-            const inlineRun = this.resolveInlineRun(current, hit, textProtectionCache);
+            const inlineRun = this.resolveInlineRun(current, hit, evaluationContext);
             if (inlineRun) return inlineRun;
-            const inspection = this.inspectWithTextProtectionCache(current, textProtectionCache);
+            const inspection = this.inspectWithTextProtectionCache(
+                current,
+                textProtectionCache,
+                evaluationContext,
+            );
             if (inspection.candidate) return inspection.candidate;
-            if (isStructuralContainer(current)) return null;
+            if (this.isStructuralContainerForResolution(current, evaluationContext)) return null;
             current = getComposedParent(current);
         }
         return null;
@@ -437,7 +601,6 @@ export class TranslationCandidateCore {
      */
     *discoverSteps(root: Node): Generator<TranslationDiscoveryStep> {
         const visited = new Set<Element>();
-        const visitedRoots = new Set<Node>();
         const textProtectionCache = createTranslationTextProtectionCache();
         const roots: Element[] = [];
         if (isElementNode(root)) roots.push(root);
@@ -448,8 +611,6 @@ export class TranslationCandidateCore {
                 if (child) roots.push(child);
             }
         }
-        visitedRoots.add(root);
-
         for (const rootElement of roots) {
             const stack: DiscoveryFrame[] = [{
                 element: rootElement,
@@ -524,7 +685,6 @@ export class TranslationCandidateCore {
                     }
 
                     const shadowRoot = frame.shadowRoot;
-                    if (shadowRoot && !visitedRoots.has(shadowRoot)) visitedRoots.add(shadowRoot);
                     const shadowChild = shadowRoot?.children.item(frame.shadowIndex) ?? null;
                     if (shadowChild) {
                         frame.shadowIndex += 1;

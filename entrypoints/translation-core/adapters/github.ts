@@ -115,5 +115,3 @@ export const githubAdapter = createDeclarativeAdapter({
         },
     ],
 });
-
-export default githubAdapter;

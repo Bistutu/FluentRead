@@ -35,13 +35,6 @@ export interface TranslationCandidate {
     adapterId?: string;
 }
 
-export interface DecisionTraceEntry {
-    element: Element;
-    action: AdapterDecision['kind'] | 'hard-prune' | 'generic-target' | 'continue';
-    reason: string;
-    adapterId?: string;
-}
-
 export interface TranslationCoreOptions {
     url?: URL;
     adapters?: readonly TranslationSiteAdapter[];

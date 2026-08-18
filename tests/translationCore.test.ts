@@ -404,6 +404,54 @@ describe('translation candidate core', () => {
         expect(protectionChecks).toBeLessThan(depth * 4);
     });
 
+    it('shares hover guard and adapter ancestry across one deep candidate miss', () => {
+        const depth = 450;
+        const {document} = parseHTML('<html><body><header id="root"></header></body></html>');
+        const view = document.defaultView!;
+        const originalStyleDescriptor = Object.getOwnPropertyDescriptor(view, 'getComputedStyle');
+        let styleChecks = 0;
+        Object.defineProperty(view, 'getComputedStyle', {
+            configurable: true,
+            value: () => {
+                styleChecks += 1;
+                return {display: 'inline', visibility: 'visible'};
+            },
+        });
+
+        let parent = document.querySelector('#root')!;
+        for (let index = 0; index < depth; index += 1) {
+            const child = document.createElement('span');
+            parent.appendChild(child);
+            parent = child;
+        }
+        parent.textContent = 'x';
+
+        let adapterDecisions = 0;
+        const core = createTranslationCore({
+            url: new URL('https://example.test'),
+            adapters: [{
+                id: 'hover-ancestry-counter',
+                matches: () => true,
+                decide: () => {
+                    adapterDecisions += 1;
+                    return {kind: 'pass'} as const;
+                },
+            }],
+        });
+
+        try {
+            expect(core.resolve(parent.firstChild)).toBeNull();
+        } finally {
+            if (originalStyleDescriptor) {
+                Object.defineProperty(view, 'getComputedStyle', originalStyleDescriptor);
+            } else {
+                Reflect.deleteProperty(view, 'getComputedStyle');
+            }
+        }
+        expect(adapterDecisions).toBeLessThanOrEqual(depth + 3);
+        expect(styleChecks).toBeLessThanOrEqual(depth * 2 + 6);
+    });
+
     it('does not climb from structural chrome into an app-shell container', () => {
         const {document, core} = page(`
             <main id="app-shell"><header><p id="page-description">A header description.</p></header>

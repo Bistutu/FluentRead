@@ -61,7 +61,7 @@ function sanitizeNode(node: Node): Node[] {
  * 将服务响应解析为安全的 DocumentFragment。
  * DOMParser 使用独立文档解析，随后只迁移白名单节点和安全属性。
  */
-export function createSafeTranslationFragment(text: string): DocumentFragment {
+function createSafeTranslationFragment(text: string): DocumentFragment {
     const parsed = new DOMParser().parseFromString(text || "", "text/html");
     const fragment = document.createDocumentFragment();
     Array.from(parsed.body.childNodes)

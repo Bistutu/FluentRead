@@ -5,9 +5,9 @@
  * outerHTML 会因为属性、站点重渲染或相同段落而产生身份冲突；
  * 节点状态则可以准确绑定到本次用户操作的目标。
  */
-export type TranslationDisplayMode = "bilingual" | "single";
-export type TranslationPhase = "loading" | "translated" | "error";
-export type TranslationTargetKind = "content" | "control";
+type TranslationDisplayMode = "bilingual" | "single";
+type TranslationPhase = "loading" | "translated" | "error";
+type TranslationTargetKind = "content" | "control";
 
 export interface TranslationState {
     mode: TranslationDisplayMode;
@@ -21,6 +21,8 @@ export interface TranslationState {
     sourceHTML: string;
     /** Runtime-only wrapper around a direct inline run; removed on every exit path. */
     syntheticSegment: boolean;
+    /** Exact direct children captured before the loading spinner is appended. */
+    syntheticSourceNodes?: readonly ChildNode[];
     /** 翻译开始前的内联 style 属性，用于可条件恢复。 */
     originalStyleAttribute: string | null;
     /** 翻译开始前的 class 属性；恢复时避免留下空 class。 */
@@ -46,7 +48,7 @@ export interface TranslationState {
     bilingualHTML?: string;
 }
 
-export interface TranslationAttempt {
+interface TranslationAttempt {
     state: TranslationState;
     generation: number;
 }
@@ -152,6 +154,7 @@ export function beginTranslation(
         sourceTextNodes: sourceTextNodes ? [...sourceTextNodes] : undefined,
         sourceHTML: node.innerHTML,
         syntheticSegment,
+        syntheticSourceNodes: syntheticSegment ? Array.from(node.childNodes) : undefined,
         originalStyleAttribute: node.getAttribute("style"),
         originalClassAttribute: node.getAttribute("class"),
         originalTextValues,
@@ -189,11 +192,7 @@ export function markTranslationComplete(
     generation: number,
     validateSourceHTML = true,
 ): boolean {
-    if (!isCurrentTranslation(node, state, generation, validateSourceHTML)) return false;
-    state.phase = "translated";
-    state.spinner = undefined;
-    refreshOwnershipIndex(node, state);
-    return true;
+    return transitionPhase(node, state, generation, "translated", validateSourceHTML);
 }
 
 export function markTranslationError(
@@ -204,36 +203,48 @@ export function markTranslationError(
 ): boolean {
     // 失败结果也不能覆盖站点在请求期间写入的新内容。
     // 调用方会先移除插件自己的 spinner，再进行这次快照校验。
+    return transitionPhase(node, state, generation, "error", validateSourceHTML);
+}
+
+function transitionPhase(
+    node: HTMLElement,
+    state: TranslationState,
+    generation: number,
+    phase: Extract<TranslationPhase, "translated" | "error">,
+    validateSourceHTML: boolean,
+): boolean {
     if (!isCurrentTranslation(node, state, generation, validateSourceHTML)) return false;
-    state.phase = "error";
+    state.phase = phase;
     state.spinner = undefined;
     refreshOwnershipIndex(node, state);
     return true;
 }
 
-export function setSpinner(node: HTMLElement, spinner: HTMLElement): void {
+type TranslationArtifactKey = "spinner" | "bilingualContent" | "retryWrapper";
+
+function setArtifact(
+    node: HTMLElement,
+    key: TranslationArtifactKey,
+    artifact: HTMLElement,
+): void {
     const state = states.get(node);
-    if (state) {
-        state.spinner = spinner;
-        refreshOwnershipIndex(node, state);
-    }
+    if (!state) return;
+    state[key] = artifact;
+    refreshOwnershipIndex(node, state);
+}
+
+export function setSpinner(node: HTMLElement, spinner: HTMLElement): void {
+    setArtifact(node, "spinner", spinner);
 }
 
 export function setBilingualContent(node: HTMLElement, content: HTMLElement): void {
+    setArtifact(node, "bilingualContent", content);
     const state = states.get(node);
-    if (state) {
-        state.bilingualContent = content;
-        state.bilingualHTML = content.innerHTML;
-        refreshOwnershipIndex(node, state);
-    }
+    if (state) state.bilingualHTML = content.innerHTML;
 }
 
 export function setRetryWrapper(node: HTMLElement, wrapper: HTMLElement): void {
-    const state = states.get(node);
-    if (state) {
-        state.retryWrapper = wrapper;
-        refreshOwnershipIndex(node, state);
-    }
+    setArtifact(node, "retryWrapper", wrapper);
 }
 
 /**
@@ -327,14 +338,35 @@ function restoreOriginalClass(node: HTMLElement, state: TranslationState): void 
 export function restoreTranslation(node: HTMLElement): boolean {
     const state = states.get(node);
     if (!state) return false;
+    teardownAttempt(node, state, true);
+    return true;
+}
 
+/**
+ * 丢弃一个已经失效的请求，但保留站点在请求期间写入的内容。
+ * 这与 restoreTranslation 不同：它只适用于翻译结果尚未写回页面的情况。
+ */
+export function discardTranslation(
+    node: HTMLElement,
+    state: TranslationState,
+): boolean {
+    if (states.get(node) !== state) return false;
+    teardownAttempt(node, state, false);
+    return true;
+}
+
+function teardownAttempt(
+    node: HTMLElement,
+    state: TranslationState,
+    restoreTextSlots: boolean,
+): void {
     state.generation += 1;
     state.controller.abort();
     removeExtensionNode(state.spinner);
     removeExtensionNode(state.bilingualContent);
     removeRetryArtifacts(node);
 
-    if (state.textSlotsApplied) {
+    if (restoreTextSlots && state.textSlotsApplied) {
         state.originalTextValues.forEach(({node: textNode, value}) => {
             if (!node.contains(textNode)) return;
             const translatedValue = state.translatedTextValues?.get(textNode);
@@ -348,29 +380,6 @@ export function restoreTranslation(node: HTMLElement): boolean {
     restoreOriginalClass(node, state);
     clearState(node);
     unwrapSyntheticSegment(node, state);
-    return true;
-}
-
-/**
- * 丢弃一个已经失效的请求，但保留站点在请求期间写入的内容。
- * 这与 restoreTranslation 不同：它只适用于翻译结果尚未写回页面的情况。
- */
-export function discardTranslation(
-    node: HTMLElement,
-    state: TranslationState,
-): boolean {
-    if (states.get(node) !== state) return false;
-
-    state.generation += 1;
-    state.controller.abort();
-    removeExtensionNode(state.spinner);
-    removeExtensionNode(state.bilingualContent);
-    removeRetryArtifacts(node);
-    restoreOriginalStyle(node, state);
-    restoreOriginalClass(node, state);
-    clearState(node);
-    unwrapSyntheticSegment(node, state);
-    return true;
 }
 
 export function setTextSlotsApplied(

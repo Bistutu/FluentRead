@@ -30,5 +30,3 @@ export const hackerNewsAdapter = createDeclarativeAdapter({
         },
     ],
 });
-
-export default hackerNewsAdapter;

@@ -40,5 +40,3 @@ export const xAdapter = createDeclarativeAdapter({
         },
     ],
 });
-
-export default xAdapter;

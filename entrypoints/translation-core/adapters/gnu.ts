@@ -23,5 +23,3 @@ export const gnuManualAdapter = createDeclarativeAdapter({
         },
     ],
 });
-
-export default gnuManualAdapter;

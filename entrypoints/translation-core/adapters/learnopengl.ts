@@ -17,5 +17,3 @@ export const learnOpenGLAdapter = createDeclarativeAdapter({
         },
     ],
 });
-
-export default learnOpenGLAdapter;

@@ -19,7 +19,6 @@ const {
   normalizeCoverageRules,
   normalizeHoverTargets,
   normalizeInteractionScenarios,
-  reconcileDynamicCoverageSnapshot,
   reconcileForbiddenContractState,
   resolveHoverTarget,
   resolveForbiddenMustExistSelectors,
@@ -30,7 +29,10 @@ const {
   validateMutableForbiddenSelectors,
   waitForCoverageReady,
   withMandatoryHeadingCoverage,
-} = require('../scripts/run-site-translation-test.cjs') as {
+} = {
+  ...require('../scripts/run-site-translation-test.cjs'),
+  ...require('../scripts/site-translation/case-config.cjs'),
+} as {
   COVERAGE_EXCLUDED_ANCESTORS: string;
   COVERAGE_PROTECTED_DESCENDANTS: string;
   COVERAGE_TRACKER_KEY: string;
@@ -98,11 +100,6 @@ const {
     closeKey: string;
     closeAttempts: number;
   }>;
-  reconcileDynamicCoverageSnapshot: (
-    record: Record<string, unknown>,
-    next: {key: string; sourceText: string; initialStructure: string},
-    trackDynamic: boolean,
-  ) => Record<string, unknown>;
   reconcileForbiddenContractState: (
     initial: Record<string, unknown>,
     current: Record<string, unknown>,
@@ -183,7 +180,18 @@ const {
     requiresPhrase?: boolean;
   }>;
 };
-const {computeJobTimeoutMs, runChildWithWatchdog, validateMatrix} = require('../scripts/run-site-translation-matrix.cjs') as {
+const {
+  MATRIX_REQUIREMENTS,
+  computeJobTimeoutMs,
+  runChildWithWatchdog,
+  validateMatrix,
+} = require('../scripts/run-site-translation-matrix.cjs') as {
+  MATRIX_REQUIREMENTS: {
+    total: number;
+    required: number;
+    requiredHosts: number;
+    quarantine: number;
+  };
   computeJobTimeoutMs: (pageTimeout: number, mode: string, override?: number) => number;
   runChildWithWatchdog: (
     command: string,
@@ -196,7 +204,7 @@ const {computeJobTimeoutMs, runChildWithWatchdog, validateMatrix} = require('../
       killProcessGroupImpl?: (child: EventEmitter & {pid?: number}, signal: string) => boolean;
     },
   ) => Promise<{ok: boolean; timedOut: boolean; signal: string | null}>;
-  validateMatrix: () => {
+  validateMatrix: (caseConfigs?: Record<string, unknown>) => {
     entries: Array<[string, unknown]>;
     required: Array<[string, unknown]>;
     quarantine: Array<[string, unknown]>;
@@ -544,11 +552,16 @@ describe('site translation coverage contract', () => {
       }]);
       await installCoverageTracker(page, rules);
       const tracker = (window as unknown as Record<string, {
-        report: () => Array<{translatedCount: number; missedSamples: string[]}>;
+        report: () => Array<{
+          seenCount: number;
+          dynamicSeenCount: number;
+          translatedCount: number;
+          missedSamples: string[];
+        }>;
         snapshotMissing: () => Array<{source: string}>;
         stop: () => void;
       }>)[COVERAGE_TRACKER_KEY];
-      expect(tracker.report()[0]).toMatchObject({translatedCount: 1});
+      expect(tracker.report()[0]).toMatchObject({seenCount: 1, dynamicSeenCount: 0, translatedCount: 1});
 
       const sourceNode = target.firstChild!;
       sourceNode.nodeValue = 'The replacement natural paragraph requires a fresh translation.';
@@ -558,7 +571,7 @@ describe('site translation coverage contract', () => {
         addedNodes: [] as unknown as NodeList,
         removedNodes: [] as unknown as NodeList,
       } as unknown as MutationRecord]);
-      expect(tracker.report()[0]).toMatchObject({translatedCount: 0});
+      expect(tracker.report()[0]).toMatchObject({seenCount: 1, dynamicSeenCount: 1, translatedCount: 0});
       expect(tracker.snapshotMissing()).toEqual([
         expect.objectContaining({source: 'The replacement natural paragraph requires a fresh translation.'}),
       ]);
@@ -575,7 +588,12 @@ describe('site translation coverage contract', () => {
         addedNodes: [newWrapper] as unknown as NodeList,
         removedNodes: [oldWrapper] as unknown as NodeList,
       } as unknown as MutationRecord]);
-      expect(tracker.report()[0]).toMatchObject({translatedCount: 1, missedSamples: []});
+      expect(tracker.report()[0]).toMatchObject({
+        seenCount: 1,
+        dynamicSeenCount: 1,
+        translatedCount: 1,
+        missedSamples: [],
+      });
       tracker.stop();
     } finally {
       for (const [name, descriptor] of previous) {
@@ -1238,31 +1256,6 @@ describe('site translation coverage contract', () => {
     expect(() => assertCoverageReport(rules, report, 'test')).toThrow('仅翻译 2/3 个节点');
   });
 
-  it('refreshes one dynamic node record in place when its host text changes but keeps static baselines strict', () => {
-    const original = {
-      key: 'P\nold\n#0',
-      sourceText: 'old',
-      initialStructure: '["p",["#text"]]',
-      translatedEver: true,
-      firstSeenAfterStart: false,
-    };
-    const next = {
-      key: 'P\nnew\n#0',
-      sourceText: 'new',
-      initialStructure: '["p",["#text",["em",["#text"]]]]',
-    };
-    const staticOriginal = {...original};
-    const refreshed = reconcileDynamicCoverageSnapshot(original, next, true);
-    expect(refreshed).toBe(original);
-    expect(refreshed).toEqual({
-      ...next,
-      translatedEver: false,
-      firstSeenAfterStart: true,
-    });
-    expect(reconcileDynamicCoverageSnapshot(staticOriginal, next, false)).toBe(staticOriginal);
-    expect(staticOriginal.sourceText).toBe('old');
-  });
-
   it('fails the old seven-wrapper PR 4038 baseline', () => {
     const pr = cases['github-immersive-pr-4038'];
     const rules = normalizeCoverageRules(pr.coverageRules);
@@ -1355,9 +1348,43 @@ describe('site translation coverage contract', () => {
 describe('real-site translation matrix gates', () => {
   it('contains enough required real sites and validates every explicit coverage rule', () => {
     const matrix = validateMatrix();
-    expect(matrix.entries.length).toBeGreaterThanOrEqual(35);
-    expect(matrix.required.length).toBeGreaterThanOrEqual(27);
-    expect(matrix.requiredHosts.size).toBeGreaterThanOrEqual(23);
+    expect(matrix.entries.length).toBeGreaterThanOrEqual(MATRIX_REQUIREMENTS.total);
+    expect(matrix.required.length).toBeGreaterThanOrEqual(MATRIX_REQUIREMENTS.required);
+    expect(matrix.requiredHosts.size).toBeGreaterThanOrEqual(MATRIX_REQUIREMENTS.requiredHosts);
+    expect(matrix.quarantine.length).toBeGreaterThanOrEqual(MATRIX_REQUIREMENTS.quarantine);
+  });
+
+  it('collects an invalid URL as a named matrix error instead of throwing during host aggregation', () => {
+    expect(() => validateMatrix({
+      'invalid-url': {
+        url: 'not a valid url',
+        tier: 'quarantine',
+        quarantineReason: 'invalid fixture',
+        selector: 'main p',
+        requiredSelectors: ['main p'],
+        forbiddenSelectors: ['pre, code'],
+        optionalForbiddenSelectors: [''],
+        interactionSelectors: ['main a[href]'],
+        coverageRules: [{name: 'body', selector: 'main p', kind: 'content', minInitial: 1}],
+        hoverTargets: [{name: 'body', selector: 'main p', index: 0}],
+        modes: ['hover', 'full'],
+      },
+    })).toThrow(/invalid-url 的 url 无效：not a valid url[\s\S]*optionalForbiddenSelectors/u);
+  });
+
+  it('rejects an empty raw required selector instead of normalizing it away', () => {
+    const invalidCases = structuredClone(cases) as unknown as Record<string, Record<string, unknown>>;
+    const config = invalidCases['bambu-dual-nozzles'];
+    config.requiredSelectors = [...config.requiredSelectors as string[], '   '];
+    expect(() => validateMatrix(invalidCases)).toThrow(
+      'bambu-dual-nozzles 必须配置 requiredSelectors 或旧版 selector',
+    );
+  });
+
+  it('requires forbiddenSelectors to be a non-empty raw array', () => {
+    const invalidCases = structuredClone(cases) as unknown as Record<string, Record<string, unknown>>;
+    invalidCases['bambu-dual-nozzles'].forbiddenSelectors = 'header svg';
+    expect(() => validateMatrix(invalidCases)).toThrow('bambu-dual-nozzles 缺少 forbiddenSelectors');
   });
 
   it('gives each browser child a bounded multi-stage budget and terminates a hung process', async () => {

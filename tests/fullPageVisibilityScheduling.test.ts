@@ -12,6 +12,7 @@ const runtime = vi.hoisted(() => ({
     requests: vi.fn<(origins: readonly string[]) => Promise<string[]>>(async (origins) =>
         origins.map((origin) => `译:${origin}`),
     ),
+    retryCallbacks: [] as Array<() => void>,
     config: {service: "microsoft", display: 0, to: "zh"},
 }));
 
@@ -41,7 +42,10 @@ vi.mock("@/entrypoints/utils/icon", () => ({
         node.appendChild(spinner);
         return spinner;
     },
-    insertFailedTip: (node: HTMLElement) => node.ownerDocument.createElement("span"),
+    insertFailedTip: (node: HTMLElement, _message: string, onRetry: () => void) => {
+        runtime.retryCallbacks.push(onRetry);
+        return node.ownerDocument.createElement("span");
+    },
 }));
 vi.mock("@/entrypoints/main/translationRenderer", () => ({
     appendBilingualTranslation: (node: HTMLElement, text: string) => {
@@ -217,6 +221,7 @@ describe("全文翻译可见性锚点", () => {
         runtime.candidates = [];
         runtime.requests.mockReset();
         runtime.requests.mockImplementation(async (origins) => origins.map((origin) => `译:${origin}`));
+        runtime.retryCallbacks = [];
         runtime.config.display = 0;
         TestIntersectionObserver.instances = [];
         TestMutationObserver.instances = [];
@@ -362,6 +367,45 @@ describe("全文翻译可见性锚点", () => {
         expect(title.textContent).toBe("译:Text-only heading");
     });
 
+    it("inFlightCandidates 是唯一并发计数，并在 settle 后释放下一候选", async () => {
+        document.body.innerHTML = ["One", "Two", "Three", "Four"]
+            .map((label, index) => `<p id="candidate-${index}">${label}</p>`)
+            .join("");
+        const candidates = Array.from(document.querySelectorAll<HTMLElement>("p"));
+        candidates.forEach((candidate) => setLayoutBox(candidate, 400, 40));
+        runtime.candidates = candidates.map((element) => ({
+            element,
+            kind: "content" as const,
+            reason: "paragraph",
+        }));
+        const requests = candidates.map(() => deferred<string[]>());
+        let nextRequest = 0;
+        runtime.requests.mockImplementation(() => requests[nextRequest++]!.promise);
+
+        autoTranslateEnglishPage();
+        await vi.advanceTimersByTimeAsync(50);
+        const observer = TestIntersectionObserver.instances[0]!;
+        candidates.forEach((candidate) => observer.emit(candidate, true));
+        await vi.advanceTimersByTimeAsync(1);
+        await Promise.resolve();
+
+        expect(runtime.requests).toHaveBeenCalledTimes(3);
+
+        requests[0]!.resolve(["译:One"]);
+        await vi.advanceTimersByTimeAsync(1);
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(runtime.requests).toHaveBeenCalledTimes(4);
+
+        requests[1]!.resolve(["译:Two"]);
+        requests[2]!.resolve(["译:Three"]);
+        requests[3]!.resolve(["译:Four"]);
+        await finishScheduledWork();
+        expect(candidates.map((candidate) => candidate.textContent)).toEqual([
+            "译:One", "译:Two", "译:Three", "译:Four",
+        ]);
+    });
+
     it("不会把扩展生成的布局节点当成候选可见性锚点", async () => {
         document.body.innerHTML = `
             <h1 id="title">
@@ -417,6 +461,59 @@ describe("全文翻译可见性锚点", () => {
         observer.emit(label, true);
         await finishScheduledWork();
         expect(runtime.requests).not.toHaveBeenCalled();
+    });
+
+    it("旧 IntersectionObserver 的排队 callback 不会把新会话候选送入队列", async () => {
+        document.body.innerHTML = '<h1 id="title">Shared title across sessions</h1>';
+        const title = document.querySelector<HTMLElement>("#title")!;
+        setLayoutBox(title, 320, 48);
+        runtime.candidates = [{element: title, kind: "content", reason: "heading"}];
+
+        autoTranslateEnglishPage();
+        await vi.advanceTimersByTimeAsync(50);
+        const oldObserver = TestIntersectionObserver.instances[0]!;
+        expect(oldObserver.observe).toHaveBeenCalledWith(title);
+
+        restoreOriginalContent();
+        autoTranslateEnglishPage();
+        await vi.advanceTimersByTimeAsync(50);
+        const newObserver = TestIntersectionObserver.instances[1]!;
+        expect(newObserver.observe).toHaveBeenCalledWith(title);
+
+        // Browser delivery can race disconnect(). Even if an already-queued old
+        // callback carries a target observed again by the new session, it still
+        // belongs to the disposed session and must not consult the new maps.
+        oldObserver.emit(title, true);
+        await finishScheduledWork();
+        expect(runtime.requests).not.toHaveBeenCalled();
+
+        newObserver.emit(title, true);
+        await finishScheduledWork();
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+        expect(runtime.requests).toHaveBeenCalledWith(["Shared title across sessions"]);
+    });
+
+    it("失败 UI 注入的重试回调会按点击时的当前显示模式重新解析候选", async () => {
+        runtime.config.display = 1;
+        document.body.innerHTML = '<p id="prose">Retry with the latest display mode.</p>';
+        const paragraph = document.querySelector<HTMLElement>("#prose")!;
+        runtime.candidates = [{element: paragraph, kind: "content", reason: "paragraph"}];
+        runtime.requests.mockRejectedValueOnce(new Error("provider unavailable"));
+
+        handleBilingualTranslation(paragraph, false);
+        await finishScheduledWork();
+
+        expect(getTranslationState(paragraph)?.phase).toBe("error");
+        expect(runtime.retryCallbacks).toHaveLength(1);
+
+        runtime.config.display = 0;
+        runtime.retryCallbacks[0]!();
+        await finishScheduledWork();
+
+        expect(runtime.requests).toHaveBeenCalledTimes(2);
+        expect(getTranslationState(paragraph)).toMatchObject({phase: "translated", mode: "single"});
+        expect(paragraph.querySelector(".fluent-read-bilingual-content")).toBeNull();
+        expect(paragraph.textContent).toBe("译:Retry with the latest display mode.");
     });
 
     it.each(["translate-no", "hidden"] as const)(

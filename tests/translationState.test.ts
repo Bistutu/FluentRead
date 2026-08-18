@@ -93,6 +93,24 @@ describe("指定节点翻译状态机", () => {
         expect(attempt?.state.sourceTextNodes).toEqual([]);
     });
 
+    it("synthetic source children 在 spinner 插入前归档到同一代状态", () => {
+        const firstSource = {type: "first-source"};
+        const secondSource = {type: "second-source"};
+        node.childNodes = [firstSource, secondSource];
+
+        const attempt = beginTranslation(
+            node as unknown as HTMLElement,
+            "bilingual",
+            "content",
+            true,
+        );
+        const spinner = {type: "spinner"};
+        node.appendChild(spinner);
+
+        expect(attempt?.state.syntheticSourceNodes).toEqual([firstSource, secondSource]);
+        expect(attempt?.state.syntheticSourceNodes).not.toContain(spinner);
+    });
+
     it("旧一代请求在重新开始后不再被视为当前请求", () => {
         const first = beginTranslation(node as unknown as HTMLElement, "bilingual");
         expect(first).not.toBeNull();

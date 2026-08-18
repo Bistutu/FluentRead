@@ -10,17 +10,15 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const {createRequire} = require('node:module');
-
-const CASES = JSON.parse(fs.readFileSync(
-  path.join(__dirname, '..', 'tests', 'browser-translation-cases.json'),
-  'utf8',
-));
+const {
+  CASES,
+  collectBaseCaseConfigErrors,
+  normalizeCaseConfig,
+} = require('./site-translation/case-config.cjs');
 
 const PRODUCTION_SOURCE_ROOTS = ['entrypoints', 'components', 'public', 'styles'];
 const PRODUCTION_CONFIG_FILES = ['package.json', 'pnpm-lock.yaml', 'wxt.config.ts', 'tsconfig.json'];
-const MAX_INTERACTION_CLOSE_ATTEMPTS = 3;
 const INTERACTION_CLOSE_ATTEMPT_TIMEOUT = 1500;
-const HOST_MUTABLE_FORBIDDEN_SELECTORS = new Set(['.MathJax_Display']);
 const SINGLE_TOKEN_TECHNICAL_WORDS = new Set([
   'accept', 'api', 'authorization', 'cookie', 'css', 'etag', 'host', 'html', 'http', 'https', 'json',
   'referer', 'referrer', 'sql', 'tcp', 'tls', 'udp', 'uri', 'url', 'user-agent', 'xml',
@@ -72,19 +70,6 @@ function evaluateProductionBuildFreshness({extensionDir, manifestMtimeMs, latest
     latestSource,
     manifestMtimeMs,
   };
-}
-
-function reconcileDynamicCoverageSnapshot(record, nextSnapshot, trackDynamic) {
-  if (!record || !trackDynamic ||
-      (record.sourceText === nextSnapshot.sourceText &&
-        record.initialStructure === nextSnapshot.initialStructure)) return record;
-  return Object.assign(record, {
-    key: nextSnapshot.key,
-    sourceText: nextSnapshot.sourceText,
-    initialStructure: nextSnapshot.initialStructure,
-    translatedEver: false,
-    firstSeenAfterStart: true,
-  });
 }
 
 function assertFreshProductionExtension(extensionDir, projectRoot = path.join(__dirname, '..')) {
@@ -144,218 +129,18 @@ function parseArgs(argv) {
   if (!args.playwrightRoot) throw new Error('必须传入 --playwright-root');
 
   const caseConfig = CASES[args.case];
-  const tier = caseConfig.tier || 'required';
-  const requiredSelectors = normalizeSelectorList(caseConfig.requiredSelectors, caseConfig.selector);
-  const forbiddenSelectors = normalizeSelectorList(caseConfig.forbiddenSelectors);
-  const optionalForbiddenSelectors = normalizeSelectorList(caseConfig.optionalForbiddenSelectors);
-  const configuredForbiddenMustExistSelectors = normalizeSelectorList(caseConfig.forbiddenMustExistSelectors);
-  const forbiddenMustExistSelectors = resolveForbiddenMustExistSelectors(
-    tier,
-    forbiddenSelectors,
-    configuredForbiddenMustExistSelectors,
-    optionalForbiddenSelectors,
-  );
-  const dynamicForbiddenSelectors = normalizeSelectorList(caseConfig.dynamicForbiddenSelectors);
-  const mutableForbiddenSelectors = normalizeSelectorList(caseConfig.mutableForbiddenSelectors);
-  const fullCoverageSelectors = normalizeSelectorList(caseConfig.fullCoverageSelectors);
-  const coverageRules = normalizeCoverageRules(caseConfig.coverageRules, fullCoverageSelectors);
-  const hoverTargets = normalizeHoverTargets(caseConfig.hoverTargets, {
-    fallbackSelector: caseConfig.hoverSelector || caseConfig.selector || requiredSelectors[0],
-    coverageRules,
-  });
-  const interactionSelectors = normalizeSelectorList(caseConfig.interactionSelectors);
-  const interactionScenarios = normalizeInteractionScenarios(caseConfig.interactionScenarios);
-  const modes = Array.isArray(caseConfig.modes) ? caseConfig.modes : ['hover', 'full'];
-  if (requiredSelectors.length === 0) {
-    throw new Error(`case ${args.case} 必须配置 requiredSelectors 或旧版 selector`);
+  const normalized = normalizeCaseConfig(args.case, caseConfig);
+  const configErrors = collectBaseCaseConfigErrors(args.case, caseConfig, normalized);
+  if (configErrors.length > 0) {
+    throw new Error(`case ${args.case} 配置无效：\n- ${configErrors.join('\n- ')}`);
   }
-  if (dynamicForbiddenSelectors.some((selector) => !forbiddenSelectors.includes(selector))) {
-    throw new Error(`case ${args.case} 的 dynamicForbiddenSelectors 必须同时列入 forbiddenSelectors`);
-  }
-  if (optionalForbiddenSelectors.some((selector) => !forbiddenSelectors.includes(selector))) {
-    throw new Error(`case ${args.case} 的 optionalForbiddenSelectors 必须同时列入 forbiddenSelectors`);
-  }
-  validateMutableForbiddenSelectors(
-    args.case,
-    forbiddenSelectors,
-    dynamicForbiddenSelectors,
-    mutableForbiddenSelectors,
-  );
-  if (forbiddenMustExistSelectors.some((selector) => !forbiddenSelectors.includes(selector))) {
-    throw new Error(`case ${args.case} 的 forbiddenMustExistSelectors 必须同时列入 forbiddenSelectors`);
-  }
-  const coverageErrors = validateCoverageRules(args.case, coverageRules, {
-    requireExplicit: tier === 'required',
-    explicitRules: caseConfig.coverageRules,
-  });
-  if (coverageErrors.length > 0) {
-    throw new Error(`case ${args.case} 的 coverageRules 无效：\n- ${coverageErrors.join('\n- ')}`);
-  }
-  if (hoverTargets.length === 0) throw new Error(`case ${args.case} 至少需要一个 hover target`);
-  if (!modes.includes(args.mode)) throw new Error(`case ${args.case} 不支持 ${args.mode} 模式`);
+  if (!normalized.modes.includes(args.mode)) throw new Error(`case ${args.case} 不支持 ${args.mode} 模式`);
 
   return {
     ...caseConfig,
     ...args,
-    selector: caseConfig.hoverSelector || caseConfig.selector || requiredSelectors[0],
-    requiredSelectors,
-    forbiddenSelectors,
-    optionalForbiddenSelectors,
-    forbiddenMustExistSelectors,
-    dynamicForbiddenSelectors,
-    mutableForbiddenSelectors,
-    fullCoverageSelectors,
-    coverageRules,
-    hoverTargets,
-    interactionSelectors,
-    interactionScenarios,
-    modes,
-    tier,
+    ...normalized,
   };
-}
-
-function normalizeSelectorList(value, fallback) {
-  const raw = Array.isArray(value) ? value : value ? [value] : fallback ? [fallback] : [];
-  return [...new Set(raw.map((selector) => String(selector).trim()).filter(Boolean))];
-}
-
-function validateMutableForbiddenSelectors(caseName, forbiddenSelectors, dynamicForbiddenSelectors, mutableSelectors) {
-  const invalid = mutableSelectors.filter((selector) =>
-    !HOST_MUTABLE_FORBIDDEN_SELECTORS.has(selector) ||
-    !forbiddenSelectors.includes(selector) || !dynamicForbiddenSelectors.includes(selector));
-  if (invalid.length > 0) {
-    throw new Error(`case ${caseName} 的 mutableForbiddenSelectors 必须同时是` +
-      `允许列表、dynamicForbiddenSelectors 与 forbiddenSelectors 的子集：${invalid.join(', ')}`);
-  }
-}
-
-function resolveForbiddenMustExistSelectors(
-  tier,
-  forbiddenSelectors,
-  configuredSelectors = [],
-  optionalSelectors = [],
-) {
-  const optional = new Set(optionalSelectors);
-  const required = tier === 'required' ? forbiddenSelectors : configuredSelectors;
-  return required.filter((selector) => !optional.has(selector));
-}
-
-function normalizeHoverTargets(value, options = {}) {
-  const legacyFallback = typeof options === 'string' ? options : options.fallbackSelector;
-  const coverageRules = Array.isArray(options?.coverageRules) ? options.coverageRules : [];
-  const source = Array.isArray(value) && value.length > 0
-    ? value
-    : legacyFallback
-      ? [{name: 'primary', selector: legacyFallback, index: 0}]
-      : [];
-  const normalized = source.map((target, index) => {
-    const selector = String(target?.selector || '').trim();
-    const matchingRule = coverageRules.find((rule) => rule.selector === selector);
-    const sourceIncludes = Object.prototype.hasOwnProperty.call(target || {}, 'sourceIncludes')
-      ? normalizeSelectorList(target.sourceIncludes)
-      : normalizeSelectorList(matchingRule?.sourceIncludes).slice(0, 1);
-    return {
-      name: String(target?.name || `target-${index + 1}`).trim(),
-      selector,
-      index: target?.index === undefined ? 0 : Number(target.index),
-      sourceIncludes,
-    };
-  }).filter((target) => target.name && target.selector && Number.isInteger(target.index) && target.index >= 0);
-  const selectors = new Set(normalized.map(({selector}) => selector));
-  for (const rule of coverageRules) {
-    if (selectors.has(rule.selector)) continue;
-    normalized.push({
-      name: `coverage-${rule.name}`,
-      selector: rule.selector,
-      index: 0,
-      sourceIncludes: rule.sourceIncludes.slice(0, 1),
-    });
-    selectors.add(rule.selector);
-  }
-  return normalized;
-}
-
-function normalizeInteractionScenarios(value) {
-  if (!Array.isArray(value)) return [];
-  const normalized = value.map((scenario, index) => ({
-    name: String(scenario?.name || `scenario-${index + 1}`).trim(),
-    triggerSelector: String(scenario?.triggerSelector || '').trim(),
-    openKey: String(scenario?.openKey || '').trim(),
-    dialogSelector: String(scenario?.dialogSelector || '').trim(),
-    comboboxSelector: String(scenario?.comboboxSelector || '[role="combobox"]').trim(),
-    listboxSelector: String(scenario?.listboxSelector || '[role="listbox"]').trim(),
-    inputText: String(scenario?.inputText || '').trim(),
-    closeKey: String(scenario?.closeKey || 'Escape').trim(),
-    closeAttempts: scenario?.closeAttempts === undefined ? 1 : Number(scenario.closeAttempts),
-  })).filter((scenario) => scenario.name && scenario.triggerSelector && scenario.openKey && scenario.dialogSelector);
-  const invalid = normalized.find(({closeAttempts}) =>
-    !Number.isInteger(closeAttempts) || closeAttempts < 1 || closeAttempts > MAX_INTERACTION_CLOSE_ATTEMPTS);
-  if (invalid) {
-    throw new Error(`interaction scenario ${invalid.name} 的 closeAttempts 必须是 1-${MAX_INTERACTION_CLOSE_ATTEMPTS} 的整数`);
-  }
-  return normalized;
-}
-
-function normalizeCoverageRules(value, legacySelectors = []) {
-  const source = Array.isArray(value) && value.length > 0
-    ? value
-    : normalizeSelectorList(legacySelectors).map((selector, index) => ({
-      name: `legacy-${index + 1}`,
-      selector,
-      kind: 'content',
-      minInitial: 1,
-      minSeen: 1,
-      trackDynamic: false,
-    }));
-  return source.map((rule, index) => ({
-    name: String(rule?.name || `coverage-${index + 1}`).trim(),
-    selector: String(rule?.selector || '').trim(),
-    kind: rule?.kind || 'content',
-    minInitial: rule?.minInitial === undefined ? 1 : Number(rule.minInitial),
-    minSeen: rule?.minSeen === undefined
-      ? (rule?.minInitial === undefined ? 1 : Number(rule.minInitial))
-      : Number(rule.minSeen),
-    trackDynamic: rule?.trackDynamic === true,
-    sourceIncludes: normalizeSelectorList(rule?.sourceIncludes),
-  }));
-}
-
-function validateCoverageRules(caseName, rules, options = {}) {
-  const errors = [];
-  if (options.requireExplicit && (!Array.isArray(options.explicitRules) || options.explicitRules.length === 0)) {
-    errors.push(`${caseName} 的 required case 必须显式配置 coverageRules`);
-  }
-  if (!Array.isArray(rules) || rules.length === 0) {
-    errors.push(`${caseName} 至少需要一条 coverageRules`);
-    return errors;
-  }
-  const names = new Set();
-  for (const [index, rule] of rules.entries()) {
-    const label = `${caseName}.coverageRules[${index}]`;
-    if (!rule.name) errors.push(`${label} 缺少 name`);
-    if (names.has(rule.name)) errors.push(`${label} name 重复：${rule.name}`);
-    names.add(rule.name);
-    if (!rule.selector) errors.push(`${label} 缺少 selector`);
-    // 每条规则必须描述一个清晰的语义区域。禁止用逗号把标题、正文和列表
-    // 混成一个 selector，否则“只命中 union 中的一个节点”仍可能误通过。
-    if (rule.selector.includes(',')) errors.push(`${label} selector 不得包含逗号，请拆成独立覆盖规则`);
-    if (!['heading', 'content', 'list', 'control'].includes(rule.kind)) {
-      errors.push(`${label} kind 必须是 heading/content/list/control`);
-    }
-    if (!Number.isInteger(rule.minInitial) || rule.minInitial < 1) {
-      errors.push(`${label} minInitial 必须是正整数`);
-    }
-    if (!Number.isInteger(rule.minSeen) || rule.minSeen < rule.minInitial) {
-      errors.push(`${label} minSeen 必须是大于等于 minInitial 的整数`);
-    }
-    if (rule.kind === 'heading' && !/\bh[1-6]\b/iu.test(rule.selector)) {
-      errors.push(`${label} heading 规则必须显式选择 h1-h6`);
-    }
-    if (rule.sourceIncludes.some((value) => !value.trim())) {
-      errors.push(`${label} sourceIncludes 不得包含空字符串`);
-    }
-  }
-  return errors;
 }
 
 function assertCoverageReport(rules, report, phase) {
@@ -419,29 +204,7 @@ function withMandatoryHeadingCoverage(rules) {
 }
 
 const COVERAGE_TRACKER_KEY = '__fluentReadSiteCoverageTrackerV1';
-const COVERAGE_PROTECTED_DESCENDANTS = [
-  '[hidden]',
-  '[aria-hidden="true"]',
-  '[inert]',
-  '[translate="no"]',
-  '.notranslate',
-  '.sr-only',
-  '.visually-hidden',
-  'script',
-  'pre',
-  'code',
-  'math',
-  'svg',
-  '.MathJax_Display',
-  '.MathJax_Preview',
-  '.MathJax',
-  'mjx-container',
-  '.katex',
-  'dialog',
-  '[role="dialog"]',
-  '[contenteditable]:not([contenteditable="false"])',
-].join(', ');
-const COVERAGE_EXCLUDED_ANCESTORS = [
+const COVERAGE_EXCLUDED_SELECTOR_LIST = [
   '[hidden]',
   '[aria-hidden="true"]',
   '[inert]',
@@ -460,7 +223,9 @@ const COVERAGE_EXCLUDED_ANCESTORS = [
   'dialog',
   '[role="dialog"]',
   '[contenteditable]:not([contenteditable="false"])',
-].join(', ');
+];
+const COVERAGE_EXCLUDED_ANCESTORS = COVERAGE_EXCLUDED_SELECTOR_LIST.join(', ');
+const COVERAGE_PROTECTED_DESCENDANTS = [...COVERAGE_EXCLUDED_SELECTOR_LIST, 'math', 'svg'].join(', ');
 
 async function waitForCoverageReady(page, rules, timeout) {
   try {
@@ -606,8 +371,7 @@ async function installCoverageTracker(page, rules) {
     const states = coverageRules.map((rule, ruleIndex) => ({
       rule,
       ruleIndex,
-      records: new Set(),
-      recordsByKey: new Map(),
+      recordsById: new Map(),
       recordsByNode: new WeakMap(),
       recordsByIdentity: new Map(),
       nextRecordId: 0,
@@ -656,16 +420,13 @@ async function installCoverageTracker(page, rules) {
       if (record && phase === 'dynamic' &&
           (record.identity !== identity || record.initialStructure !== snapshot.structure)) {
         removeIdentity(state, record);
-        state.recordsByKey.delete(record.key);
         record.identity = identity;
-        record.key = `${identity}\n#${record.recordId}`;
         record.sourceText = snapshot.sourceText;
         record.initialStructure = snapshot.structure;
         record.translatedEver = false;
         record.firstSeenAfterStart = true;
         record.generation += 1;
         addIdentity(state, record);
-        state.recordsByKey.set(record.key, record);
       }
       if (!record && phase === 'dynamic') {
         record = [...(state.recordsByIdentity.get(identity) || [])]
@@ -676,7 +437,6 @@ async function installCoverageTracker(page, rules) {
         record = {
           recordId,
           identity,
-          key: `${identity}\n#${recordId}`,
           node,
           sourceText: snapshot.sourceText,
           initialStructure: snapshot.structure,
@@ -686,8 +446,7 @@ async function installCoverageTracker(page, rules) {
           firstSeenAfterStart: afterStart,
           generation: 0,
         };
-        state.records.add(record);
-        state.recordsByKey.set(record.key, record);
+        state.recordsById.set(recordId, record);
         addIdentity(state, record);
       }
       if (record.node && record.node !== node) record.generation += 1;
@@ -707,7 +466,7 @@ async function installCoverageTracker(page, rules) {
     };
     const cheapRefresh = () => {
       metrics.cheapRefreshCount += 1;
-      for (const state of states) for (const record of state.records) refreshTranslated(state, record);
+      for (const state of states) for (const record of state.recordsById.values()) refreshTranslated(state, record);
     };
     const elementFor = (node) => node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
     const isWithin = (node, selector) => {
@@ -839,7 +598,7 @@ async function installCoverageTracker(page, rules) {
       const generation = Number(rawGeneration);
       const state = states[ruleIndex];
       if (!state || !Number.isInteger(recordId) || !Number.isInteger(generation)) return null;
-      const record = [...state.records].find((candidate) => candidate.recordId === recordId);
+      const record = state.recordsById.get(recordId);
       return record ? {state, record, generationMatches: record.generation === generation} : null;
     };
 
@@ -849,8 +608,7 @@ async function installCoverageTracker(page, rules) {
       reset() {
         activatedMissing.clear();
         for (const state of states) {
-          state.records.clear();
-          state.recordsByKey.clear();
+          state.recordsById.clear();
           state.recordsByNode = new WeakMap();
           state.recordsByIdentity.clear();
           state.nextRecordId = 0;
@@ -861,7 +619,7 @@ async function installCoverageTracker(page, rules) {
         cheapRefresh();
         const missing = [];
         for (const state of states) {
-          for (const record of state.records) {
+          for (const record of state.recordsById.values()) {
             const token = recordToken(state, record);
             const status = statusFor(state, record, token);
             if (status.connected && status.eligible && !status.translated) missing.push(status);
@@ -898,8 +656,8 @@ async function installCoverageTracker(page, rules) {
       report() {
         cheapRefresh();
         return states.map((state) => {
-          const {rule, records} = state;
-          const values = [...records];
+          const {rule, recordsById} = state;
+          const values = [...recordsById.values()];
           // 对仍连接的节点必须看到“当前”归属于它的 wrapper；translatedEver
           // 只用于虚拟列表中已经移除的动态节点，不能让旧译文冒充重译成功。
           const missed = values.filter((record) => record.node?.isConnected
@@ -920,8 +678,8 @@ async function installCoverageTracker(page, rules) {
       },
       restorationReport() {
         cheapRefresh();
-        return states.map(({rule, records}) => {
-          const values = [...records];
+        return states.map(({rule, recordsById}) => {
+          const values = [...recordsById.values()];
           const connected = values.filter((record) => record.node?.isConnected);
           const restored = connected.map((record) => ({
             record,
@@ -2101,6 +1859,93 @@ async function runHoverCase(page, hoverTargets, requiredSelectors, pageContract,
   };
 }
 
+async function runFullTranslationPass(context, pass) {
+  const {
+    page,
+    selector,
+    requiredSelectors,
+    runtimeCoverageRules,
+    fullCoverageSelectors,
+    pageContract,
+    interactionScenarios,
+    controlSelector,
+    scrollContainer,
+    timeout,
+    artifactsDir,
+    initialUrl,
+  } = context;
+  const first = pass === 'first';
+  const phase = first ? '全文首次翻译' : '全文再次翻译';
+
+  await toggleFull(page);
+  reportProgress(first ? '已触发首次全文翻译' : '已触发第二次全文翻译');
+  await revealFullPageTarget(page, selector);
+  try {
+    await page.waitForFunction(
+      (targetSelector) => (document.querySelector(targetSelector)
+        ?.querySelectorAll('.fluent-read-bilingual-content').length || 0) >= 1,
+      selector,
+      {timeout},
+    );
+  } catch (error) {
+    if (!first) throw error;
+    const diagnostics = await page.evaluate((targetSelector) => {
+      const targetNode = document.querySelector(targetSelector);
+      return {
+        totalBilingual: document.querySelectorAll('.fluent-read-bilingual-content').length,
+        targetText: targetNode?.textContent?.trim() || '',
+        targetBilingual: targetNode?.querySelectorAll('.fluent-read-bilingual-content').length || 0,
+        targetLoading: targetNode?.querySelectorAll('.fluent-read-loading').length || 0,
+        targetRetry: targetNode?.querySelectorAll('.fluent-read-retry-wrapper').length || 0,
+        translatedNodes: [...document.querySelectorAll('.fluent-read-bilingual-content')].map((node) => ({
+          text: node.textContent?.trim() || '',
+          parent: node.parentElement?.outerHTML.slice(0, 500) || '',
+        })),
+        bodyText: (document.body?.innerText || '').slice(0, 1000),
+      };
+    }, selector);
+    throw new Error(`${error.message}\n全文 case 诊断：${JSON.stringify(diagnostics)}`);
+  }
+
+  const target = await readTargetState(page, selector);
+  if (first) reportProgress('首次目标已翻译，开始滚动页面主滚动面');
+  if (target.bilingualCount < 1 || !target.translationTexts.every((text) => /[\u3400-\u9fff]/u.test(text))) {
+    throw new Error(`${first ? '全文首次翻译状态异常' : '全文再次翻译状态异常'}：${JSON.stringify(target)}`);
+  }
+  await scrollAndWaitFullPage(page, timeout, scrollContainer, selector);
+  const pageState = await readFullPageState(
+    page,
+    selector,
+    requiredSelectors,
+    fullCoverageSelectors,
+    controlSelector,
+  );
+  const coverage = await readCoverageReport(page);
+  reportProgress(`${first ? '首次全文稳定' : '第二次全文稳定'}：${pageState.totalBilingual} 个 wrapper`);
+  if (pageState.targetBilingual < 1 || pageState.totalBilingual < 1 ||
+      pageState.uniqueWrapperParents !== pageState.totalBilingual ||
+      pageState.requiredBilingual.some((item) => item.bilingualCount < 1 ||
+        item.translationTexts.some((text) => !/[\u3400-\u9fff]/u.test(text))) ||
+      pageState.fullCoverage.some((item) => item.visibleCount < 1 || item.translatedCount !== item.visibleCount)) {
+    const message = first ? '全文滚动后状态异常' : '全文再次滚动后状态异常';
+    throw new Error(`${message}：${JSON.stringify(pageState)}`);
+  }
+  assertCoverageReport(runtimeCoverageRules, coverage, phase);
+  await assertWrapperUniqueness(page, null, phase);
+  await assertPageContract(page, pageContract, requiredSelectors, initialUrl, phase);
+  const interactions = await runInteractionScenarios(page, interactionScenarios, timeout, phase);
+  if (controlSelector && (pageState.controlTexts.length === 0 ||
+      pageState.controlTexts.some((text) => !/[\u3400-\u9fff]/u.test(text)))) {
+    const message = first ? '全文按钮没有统一替换为译文' : '全文再次翻译按钮没有统一替换为译文';
+    throw new Error(`${message}：${JSON.stringify(pageState.controlTexts)}`);
+  }
+  if (artifactsDir) {
+    await captureEvidence(page, path.join(artifactsDir,
+      first ? 'full-first-translation.png' : 'full-final-translation.png'));
+  }
+  return {target, pageState, coverage, interactions};
+}
+
 async function runFullCase(
   page,
   selector,
@@ -2123,69 +1968,21 @@ async function runFullCase(
   );
   const runtimeCoverageRules = withMandatoryHeadingCoverage(coverageRules);
   await installCoverageTracker(page, runtimeCoverageRules);
-  await toggleFull(page);
-  reportProgress('已触发首次全文翻译');
-  await revealFullPageTarget(page, selector);
-  try {
-    await page.waitForFunction(
-      (targetSelector) => (document.querySelector(targetSelector)?.querySelectorAll('.fluent-read-bilingual-content').length || 0) >= 1,
-      selector,
-      {timeout},
-    );
-  } catch (error) {
-    const diagnostics = await page.evaluate((targetSelector) => {
-      const targetNode = document.querySelector(targetSelector);
-      return {
-        totalBilingual: document.querySelectorAll('.fluent-read-bilingual-content').length,
-        targetText: targetNode?.textContent?.trim() || '',
-        targetBilingual: targetNode?.querySelectorAll('.fluent-read-bilingual-content').length || 0,
-        targetLoading: targetNode?.querySelectorAll('.fluent-read-loading').length || 0,
-        targetRetry: targetNode?.querySelectorAll('.fluent-read-retry-wrapper').length || 0,
-        translatedNodes: [...document.querySelectorAll('.fluent-read-bilingual-content')].map((node) => ({
-          text: node.textContent?.trim() || '',
-          parent: node.parentElement?.outerHTML.slice(0, 500) || '',
-        })),
-        bodyText: (document.body?.innerText || '').slice(0, 1000),
-      };
-    }, selector);
-    throw new Error(`${error.message}\n全文 case 诊断：${JSON.stringify(diagnostics)}`);
-  }
-  const translated = await readTargetState(page, selector);
-  reportProgress('首次目标已翻译，开始滚动页面主滚动面');
-  if (translated.bilingualCount < 1 || !translated.translationTexts.every((text) => /[\u3400-\u9fff]/u.test(text))) {
-    throw new Error(`全文首次翻译状态异常：${JSON.stringify(translated)}`);
-  }
-  await scrollAndWaitFullPage(page, timeout, scrollContainer, selector);
-  const translatedPage = await readFullPageState(
+  const passContext = {
     page,
     selector,
     requiredSelectors,
+    runtimeCoverageRules,
     fullCoverageSelectors,
-    controlSelector,
-  );
-  const coverage = await readCoverageReport(page);
-  reportProgress(`首次全文稳定：${translatedPage.totalBilingual} 个 wrapper`);
-  if (translatedPage.targetBilingual < 1 || translatedPage.totalBilingual < 1 ||
-      translatedPage.uniqueWrapperParents !== translatedPage.totalBilingual ||
-      translatedPage.requiredBilingual.some((item) => item.bilingualCount < 1 ||
-        item.translationTexts.some((text) => !/[\u3400-\u9fff]/u.test(text))) ||
-      translatedPage.fullCoverage.some((item) => item.visibleCount < 1 || item.translatedCount !== item.visibleCount)) {
-    throw new Error(`全文滚动后状态异常：${JSON.stringify(translatedPage)}`);
-  }
-  assertCoverageReport(runtimeCoverageRules, coverage, '全文首次翻译');
-  await assertWrapperUniqueness(page, null, '全文首次翻译');
-  await assertPageContract(page, pageContract, requiredSelectors, initialUrl, '全文首次翻译');
-  const firstInteractionScenarios = await runInteractionScenarios(
-    page,
+    pageContract,
     interactionScenarios,
+    controlSelector,
+    scrollContainer,
     timeout,
-    '全文首次翻译',
-  );
-  if (controlSelector && (translatedPage.controlTexts.length === 0 ||
-      translatedPage.controlTexts.some((text) => !/[\u3400-\u9fff]/u.test(text)))) {
-    throw new Error(`全文按钮没有统一替换为译文：${JSON.stringify(translatedPage.controlTexts)}`);
-  }
-  if (artifactsDir) await captureEvidence(page, path.join(artifactsDir, 'full-first-translation.png'));
+    artifactsDir,
+    initialUrl,
+  };
+  const firstPass = await runFullTranslationPass(passContext, 'first');
 
   await toggleFull(page);
   reportProgress('已触发全文恢复');
@@ -2210,62 +2007,20 @@ async function runFullCase(
   await resetCoverageTracker(page);
   reportProgress('全文恢复完成');
 
-  await toggleFull(page);
-  reportProgress('已触发第二次全文翻译');
-  await revealFullPageTarget(page, selector);
-  await page.waitForFunction(
-    (targetSelector) => (document.querySelector(targetSelector)?.querySelectorAll('.fluent-read-bilingual-content').length || 0) >= 1,
-    selector,
-    {timeout},
-  );
-  const retranslated = await readTargetState(page, selector);
-  if (retranslated.bilingualCount < 1 || !retranslated.translationTexts.every((text) => /[\u3400-\u9fff]/u.test(text))) {
-    throw new Error(`全文再次翻译状态异常：${JSON.stringify(retranslated)}`);
-  }
-  await scrollAndWaitFullPage(page, timeout, scrollContainer, selector);
-  const retranslatedPage = await readFullPageState(
-    page,
-    selector,
-    requiredSelectors,
-    fullCoverageSelectors,
-    controlSelector,
-  );
-  const retranslatedCoverage = await readCoverageReport(page);
-  reportProgress(`第二次全文稳定：${retranslatedPage.totalBilingual} 个 wrapper`);
-  if (retranslatedPage.targetBilingual < 1 || retranslatedPage.totalBilingual < 1 ||
-      retranslatedPage.uniqueWrapperParents !== retranslatedPage.totalBilingual ||
-      retranslatedPage.requiredBilingual.some((item) => item.bilingualCount < 1 ||
-        item.translationTexts.some((text) => !/[\u3400-\u9fff]/u.test(text))) ||
-      retranslatedPage.fullCoverage.some((item) => item.visibleCount < 1 || item.translatedCount !== item.visibleCount)) {
-    throw new Error(`全文再次滚动后状态异常：${JSON.stringify(retranslatedPage)}`);
-  }
-  assertCoverageReport(runtimeCoverageRules, retranslatedCoverage, '全文再次翻译');
-  await assertWrapperUniqueness(page, null, '全文再次翻译');
-  await assertPageContract(page, pageContract, requiredSelectors, initialUrl, '全文再次翻译');
-  const secondInteractionScenarios = await runInteractionScenarios(
-    page,
-    interactionScenarios,
-    timeout,
-    '全文再次翻译',
-  );
-  if (controlSelector && (retranslatedPage.controlTexts.length === 0 ||
-      retranslatedPage.controlTexts.some((text) => !/[\u3400-\u9fff]/u.test(text)))) {
-    throw new Error(`全文再次翻译按钮没有统一替换为译文：${JSON.stringify(retranslatedPage.controlTexts)}`);
-  }
-  if (artifactsDir) await captureEvidence(page, path.join(artifactsDir, 'full-final-translation.png'));
+  const secondPass = await runFullTranslationPass(passContext, 'second');
   return {
-    translated,
-    translatedPage,
-    coverage,
+    translated: firstPass.target,
+    translatedPage: firstPass.pageState,
+    coverage: firstPass.coverage,
     baselineInteractionScenarios,
-    firstInteractionScenarios,
+    firstInteractionScenarios: firstPass.interactions,
     restored,
     restoredCoverage,
     restoredInteractionScenarios,
-    retranslated,
-    retranslatedPage,
-    retranslatedCoverage,
-    secondInteractionScenarios,
+    retranslated: secondPass.target,
+    retranslatedPage: secondPass.pageState,
+    retranslatedCoverage: secondPass.coverage,
+    secondInteractionScenarios: secondPass.interactions,
   };
 }
 
@@ -2404,18 +2159,11 @@ module.exports = {
   installCoverageTracker,
   isNaturalLanguageText,
   newestFile,
-  normalizeCoverageRules,
-  normalizeHoverTargets,
-  normalizeInteractionScenarios,
-  reconcileDynamicCoverageSnapshot,
   reconcileForbiddenContractState,
   resolveHoverTarget,
-  resolveForbiddenMustExistSelectors,
   settleCoverageByReveal,
   closeInteractionDialog,
   validateCoverageRevealStatuses,
-  validateCoverageRules,
-  validateMutableForbiddenSelectors,
   waitForCoverageReady,
   withMandatoryHeadingCoverage,
 };

@@ -3,19 +3,16 @@
 // 顺序运行真实站点矩阵。默认只运行 required case，并对每个 case 依次执行
 // hover/full；每个子进程仍由 run-site-translation-test.cjs 创建独立 profile。
 
-const fs = require('node:fs');
 const path = require('node:path');
 const {spawn} = require('node:child_process');
 const {
-  normalizeCoverageRules,
-  normalizeHoverTargets,
-  validateCoverageRules,
-} = require('./run-site-translation-test.cjs');
+  CASES,
+  MATRIX_REQUIREMENTS,
+  collectBaseCaseConfigErrors,
+  normalizeCaseConfig,
+} = require('./site-translation/case-config.cjs');
 
-const CASES_PATH = path.join(__dirname, '..', 'tests', 'browser-translation-cases.json');
 const CASE_RUNNER = path.join(__dirname, 'run-site-translation-test.cjs');
-const CASES = JSON.parse(fs.readFileSync(CASES_PATH, 'utf8'));
-const HOST_MUTABLE_FORBIDDEN_SELECTORS = new Set(['.MathJax_Display']);
 
 function parseArgs(argv) {
   const args = {
@@ -71,129 +68,91 @@ function parseArgs(argv) {
   return args;
 }
 
-function normalizeSelectors(config) {
-  const selectors = config.requiredSelectors || (config.selector ? [config.selector] : []);
-  return Array.isArray(selectors) ? selectors : [selectors];
-}
-
-function validateMatrix() {
-  const entries = Object.entries(CASES);
+function validateMatrix(caseConfigs = CASES) {
+  const entries = Object.entries(caseConfigs);
   const required = entries.filter(([, config]) => (config.tier || 'required') === 'required');
   const quarantine = entries.filter(([, config]) => config.tier === 'quarantine');
   const urls = new Set(entries.map(([, config]) => config.url));
-  const requiredHosts = new Set(required.map(([, config]) => new URL(config.url).hostname));
-  const requiredCoverageRules = required.flatMap(([name, config]) =>
-    normalizeCoverageRules(config.coverageRules).map((rule) => ({...rule, caseName: name})));
+  const requiredHosts = new Set();
+  const requiredCoverageRules = [];
+  const normalizedByName = new Map();
   const errors = [];
 
-  if (required.length < 25) errors.push(`required case 不足 25 个：${required.length}`);
-  if (requiredHosts.size < 22) errors.push(`required 独立域名不足 22 个：${requiredHosts.size}`);
-  if (quarantine.length < 2) errors.push(`quarantine case 不足 2 个：${quarantine.length}`);
-  if (urls.size !== entries.length) errors.push(`URL 不唯一：${urls.size}/${entries.length}`);
-  if (requiredCoverageRules.filter((rule) => rule.kind === 'heading' && /\bh1\b/iu.test(rule.selector)).length < 8) {
-    errors.push('required 矩阵至少需要 8 个独立 H1 全覆盖契约');
-  }
-  if (requiredCoverageRules.filter((rule) => rule.trackDynamic).length < 3) {
-    errors.push('required 矩阵至少需要 3 个动态节点覆盖契约');
-  }
-
   for (const [name, config] of entries) {
-    const selectors = normalizeSelectors(config);
-    const forbiddenSelectors = Array.isArray(config.forbiddenSelectors) ? config.forbiddenSelectors : [];
-    const optionalForbiddenSelectors = Array.isArray(config.optionalForbiddenSelectors)
-      ? config.optionalForbiddenSelectors
-      : [];
-    const dynamicForbiddenSelectors = Array.isArray(config.dynamicForbiddenSelectors)
-      ? config.dynamicForbiddenSelectors
-      : [];
-    const mutableForbiddenSelectors = Array.isArray(config.mutableForbiddenSelectors)
-      ? config.mutableForbiddenSelectors
-      : [];
-    const requiredForbiddenSelectors = forbiddenSelectors.filter(
-      (selector) => !optionalForbiddenSelectors.includes(selector),
+    const tier = config.tier || 'required';
+    if (typeof config.url !== 'string' || !config.url.trim()) {
+      errors.push(`${name} 缺少 url`);
+    } else {
+      try {
+        const parsedUrl = new URL(config.url);
+        if (tier === 'required') requiredHosts.add(parsedUrl.hostname);
+      } catch (error) {
+        errors.push(`${name} 的 url 无效：${config.url}（${error.message}）`);
+      }
+    }
+
+    let normalized;
+    try {
+      normalized = normalizeCaseConfig(name, config);
+      normalizedByName.set(name, normalized);
+      errors.push(...collectBaseCaseConfigErrors(name, config, normalized));
+    } catch (error) {
+      errors.push(`${name} 配置规范化失败：${error.message}`);
+      continue;
+    }
+
+    const requiredForbiddenSelectors = normalized.forbiddenSelectors.filter(
+      (selector) => !normalized.optionalForbiddenSelectors.includes(selector),
     );
-    if (!config.url) errors.push(`${name} 缺少 url`);
-    if (selectors.length === 0 || selectors.some((selector) => !String(selector).trim())) {
-      errors.push(`${name} 缺少 requiredSelectors/selector`);
+    if (tier === 'required') {
+      requiredCoverageRules.push(...normalized.coverageRules.map((rule) => ({...rule, caseName: name})));
     }
     if (!config.hoverSelector && !config.selector) errors.push(`${name} 缺少 hoverSelector/selector`);
-    if (config.hoverTargets && (!Array.isArray(config.hoverTargets) || config.hoverTargets.length === 0 ||
-        config.hoverTargets.some((target) => !target?.name || !target?.selector ||
-          (target.index !== undefined && (!Number.isInteger(target.index) || target.index < 0))))) {
-      errors.push(`${name} 的 hoverTargets 必须是包含 name/selector/非负 index 的非空数组`);
-    }
-    if (forbiddenSelectors.length === 0) {
-      errors.push(`${name} 缺少 forbiddenSelectors`);
-    }
-    if (config.optionalForbiddenSelectors && (!Array.isArray(config.optionalForbiddenSelectors) ||
-        config.optionalForbiddenSelectors.length === 0 ||
-        config.optionalForbiddenSelectors.some((selector) => !forbiddenSelectors.includes(selector)))) {
-      errors.push(`${name} 的 optionalForbiddenSelectors 必须是 forbiddenSelectors 的非空子集`);
-    }
-    if ((config.tier || 'required') === 'required' && config.forbiddenMustExistSelectors &&
+    if (tier === 'required' && Array.isArray(config.forbiddenMustExistSelectors) &&
         JSON.stringify([...new Set(config.forbiddenMustExistSelectors)]) !==
           JSON.stringify([...new Set(requiredForbiddenSelectors)])) {
       errors.push(`${name} 是 required case，forbiddenMustExistSelectors 如显式配置必须覆盖全部非可选 forbiddenSelectors`);
     }
-    if (config.dynamicForbiddenSelectors && (!Array.isArray(config.dynamicForbiddenSelectors) ||
-        config.dynamicForbiddenSelectors.some((selector) => !forbiddenSelectors.includes(selector)))) {
-      errors.push(`${name} 的 dynamicForbiddenSelectors 必须是 forbiddenSelectors 的子集`);
-    }
-    if (config.mutableForbiddenSelectors && (!Array.isArray(config.mutableForbiddenSelectors) ||
-        config.mutableForbiddenSelectors.length === 0 ||
-        mutableForbiddenSelectors.some((selector) => !HOST_MUTABLE_FORBIDDEN_SELECTORS.has(selector) ||
-          !forbiddenSelectors.includes(selector) ||
-          !dynamicForbiddenSelectors.includes(selector)))) {
-      errors.push(`${name} 的 mutableForbiddenSelectors 必须是允许列表、dynamicForbiddenSelectors 与 ` +
-        'forbiddenSelectors 的非空子集');
-    }
-    if (config.forbiddenMustExistSelectors && (!Array.isArray(config.forbiddenMustExistSelectors) ||
-        config.forbiddenMustExistSelectors.length === 0 ||
-        config.forbiddenMustExistSelectors.some((selector) => !forbiddenSelectors.includes(selector)))) {
-      errors.push(`${name} 的 forbiddenMustExistSelectors 必须是 forbiddenSelectors 的非空子集`);
-    }
-    if (config.interactionScenarios && (!Array.isArray(config.interactionScenarios) ||
-        config.interactionScenarios.length === 0 || config.interactionScenarios.some((scenario) =>
-          !scenario?.name || !scenario?.triggerSelector || !scenario?.openKey || !scenario?.dialogSelector ||
-          !scenario?.comboboxSelector || !scenario?.listboxSelector || !scenario?.inputText ||
-          (scenario.closeAttempts !== undefined && (!Number.isInteger(scenario.closeAttempts) ||
-            scenario.closeAttempts < 1 || scenario.closeAttempts > 3))))) {
-      errors.push(`${name} 的 interactionScenarios 必须声明 trigger/dialog/combobox/listbox/inputText，` +
-        '且 closeAttempts 必须是 1-3 的整数');
-    }
-    if (config.fullCoverageSelectors && (!Array.isArray(config.fullCoverageSelectors) ||
-        config.fullCoverageSelectors.length === 0)) {
-      errors.push(`${name} 的 fullCoverageSelectors 必须是非空数组`);
-    }
-    const coverageRules = normalizeCoverageRules(config.coverageRules, config.fullCoverageSelectors);
-    errors.push(...validateCoverageRules(name, coverageRules, {
-      requireExplicit: (config.tier || 'required') === 'required',
-      explicitRules: config.coverageRules,
-    }));
-    if ((config.tier || 'required') === 'required' && config.fullCoverageSelectors) {
+    if (tier === 'required' && config.fullCoverageSelectors) {
       errors.push(`${name} 不得再使用 fullCoverageSelectors；请迁移到 coverageRules`);
     }
-    const hoverTargets = normalizeHoverTargets(config.hoverTargets, {
-      fallbackSelector: config.hoverSelector || config.selector || selectors[0],
-      coverageRules,
-    });
-    const hoverSelectors = new Set(hoverTargets.map(({selector}) => selector));
-    const missingHoverSelectors = coverageRules
+    const hoverSelectors = new Set(normalized.hoverTargets.map(({selector}) => selector));
+    const missingHoverSelectors = normalized.coverageRules
       .map(({selector}) => selector)
       .filter((selector) => !hoverSelectors.has(selector));
-    if ((config.tier || 'required') === 'required' && missingHoverSelectors.length > 0) {
+    if (tier === 'required' && missingHoverSelectors.length > 0) {
       errors.push(`${name} 的 hoverTargets 未覆盖 coverageRules：${missingHoverSelectors.join(', ')}`);
     }
-    if (!Array.isArray(config.interactionSelectors) || config.interactionSelectors.length === 0) {
-      errors.push(`${name} 缺少 interactionSelectors`);
+    if (!normalized.modes.includes('hover') || !normalized.modes.includes('full')) {
+      errors.push(`${name} 必须同时支持 hover/full`);
     }
-    const modes = Array.isArray(config.modes) ? config.modes : ['hover', 'full'];
-    if (!modes.includes('hover') || !modes.includes('full')) errors.push(`${name} 必须同时支持 hover/full`);
     if (config.tier === 'quarantine' && !config.quarantineReason) errors.push(`${name} 缺少 quarantineReason`);
   }
 
-  const pr4038 = CASES['github-immersive-pr-4038'];
-  const pr4038Rules = normalizeCoverageRules(pr4038?.coverageRules);
+  if (entries.length < MATRIX_REQUIREMENTS.total) {
+    errors.push(`case 总数不足 ${MATRIX_REQUIREMENTS.total} 个：${entries.length}`);
+  }
+  if (required.length < MATRIX_REQUIREMENTS.required) {
+    errors.push(`required case 不足 ${MATRIX_REQUIREMENTS.required} 个：${required.length}`);
+  }
+  if (requiredHosts.size < MATRIX_REQUIREMENTS.requiredHosts) {
+    errors.push(`required 独立域名不足 ${MATRIX_REQUIREMENTS.requiredHosts} 个：${requiredHosts.size}`);
+  }
+  if (quarantine.length < MATRIX_REQUIREMENTS.quarantine) {
+    errors.push(`quarantine case 不足 ${MATRIX_REQUIREMENTS.quarantine} 个：${quarantine.length}`);
+  }
+  if (urls.size !== entries.length) errors.push(`URL 不唯一：${urls.size}/${entries.length}`);
+  if (requiredCoverageRules.filter((rule) => rule.kind === 'heading' && /\bh1\b/iu.test(rule.selector)).length <
+      MATRIX_REQUIREMENTS.h1CoverageRules) {
+    errors.push(`required 矩阵至少需要 ${MATRIX_REQUIREMENTS.h1CoverageRules} 个独立 H1 全覆盖契约`);
+  }
+  if (requiredCoverageRules.filter((rule) => rule.trackDynamic).length <
+      MATRIX_REQUIREMENTS.dynamicCoverageRules) {
+    errors.push(`required 矩阵至少需要 ${MATRIX_REQUIREMENTS.dynamicCoverageRules} 个动态节点覆盖契约`);
+  }
+
+  const pr4038 = caseConfigs['github-immersive-pr-4038'];
+  const pr4038Rules = normalizedByName.get('github-immersive-pr-4038')?.coverageRules || [];
   if (!pr4038 || (pr4038.tier || 'required') !== 'required') {
     errors.push('缺少 required 的 github-immersive-pr-4038 回归页');
   } else if (!pr4038Rules.some((rule) => rule.kind === 'heading' && /\bh1\b/iu.test(rule.selector)) ||
@@ -353,7 +312,7 @@ async function main() {
         tier: config.tier || 'required',
         url: config.url,
         modes: config.modes || ['hover', 'full'],
-        coverageRules: normalizeCoverageRules(config.coverageRules, config.fullCoverageSelectors),
+        coverageRules: normalizeCaseConfig(name, config).coverageRules,
         quarantineReason: config.quarantineReason || null,
       })),
     }, null, 2)}\n`);
@@ -400,4 +359,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = {computeJobTimeoutMs, runChildWithWatchdog, validateMatrix};
+module.exports = {MATRIX_REQUIREMENTS, computeJobTimeoutMs, runChildWithWatchdog, validateMatrix};

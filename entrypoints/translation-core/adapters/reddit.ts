@@ -57,5 +57,3 @@ export const redditAdapter = createDeclarativeAdapter({
         },
     ],
 });
-
-export default redditAdapter;

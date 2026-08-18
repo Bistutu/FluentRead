@@ -58,5 +58,3 @@ export const youtubeAdapter = createDeclarativeAdapter({
         },
     ],
 });
-
-export default youtubeAdapter;
