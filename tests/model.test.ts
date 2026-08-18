@@ -84,6 +84,15 @@ describe('圈选翻译配置', () => {
     });
 });
 
+describe('右键全文翻译配置', () => {
+    it('默认开启，并保留用户主动关闭的状态', () => {
+        expect(new Config().contextMenuEnabled).toBe(true);
+        expect(normalizeConfig({}).contextMenuEnabled).toBe(true);
+        expect(normalizeConfig({contextMenuEnabled: false}).contextMenuEnabled).toBe(false);
+        expect(normalizeConfig({contextMenuEnabled: 'false'}).contextMenuEnabled).toBe(true);
+    });
+});
+
 describe('旧模型编号兼容迁移', () => {
     it('迁移官方服务中已退役或错误的模型编号', () => {
         const normalized = normalizeConfig({

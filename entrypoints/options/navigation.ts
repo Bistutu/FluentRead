@@ -42,7 +42,7 @@ export const navigationGroups: NavigationGroup[] = [
         id: 'settings-shortcuts', icon: '⌘', label: '交互与快捷键', description: '悬停、划词、全文', group: '阅读工具',
         heading: '让翻译顺手发生', summary: '统一设置鼠标悬停、划词和全文翻译的触发习惯。',
         kicker: '操作方式', title: '交互与快捷键', detail: '为高频动作选择容易记忆且不冲突的触发方式。',
-        searchDescription: '鼠标悬停、划词翻译、全文翻译与自定义按键',
+        searchDescription: '鼠标悬停、划词翻译、全文翻译、右键全文翻译与自定义按键',
       },
       {
         id: 'settings-image-translation', icon: '图', label: '图片翻译', description: 'OCR 与语言包', group: '阅读工具',
