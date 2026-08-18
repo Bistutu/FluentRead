@@ -185,6 +185,20 @@ export const servicesType = {
 
 export const customModelString = "自定义模型";
 
+export const minimaxBillingPlans = [
+    {value: "payg", label: "按量付费（API）"},
+    {value: "token-plan", label: "Token Plan（套餐/积分）"},
+] as const;
+
+export type MiniMaxBillingPlan = typeof minimaxBillingPlans[number]["value"];
+
+export const minimaxRegions = [
+    {value: "cn", label: "中国版（api.minimaxi.com）"},
+    {value: "global", label: "全球版（api.minimax.io）"},
+] as const;
+
+export type MiniMaxRegion = typeof minimaxRegions[number]["value"];
+
 /** Resolve the model that is actually sent to a provider. */
 export function resolveConfiguredModel(selectedModel?: string, customModel?: string): string {
     return selectedModel === customModelString ? customModel || '' : selectedModel || '';
@@ -253,6 +267,8 @@ export const defaultModels = new Map<string, string>(
 );
 
 export const options = {
+    minimaxBillingPlan: minimaxBillingPlans,
+    minimaxRegion: minimaxRegions,
     on: [
         {value: true, label: "开启"},
         {value: false, label: "关闭"},

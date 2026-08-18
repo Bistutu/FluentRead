@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { Config, normalizeConfig } from '@/entrypoints/utils/model';
-import { tongyiTokenPlanUrl, urls } from '@/entrypoints/utils/constant';
+import { MINIMAX_ENDPOINTS, tongyiTokenPlanUrl, urls } from '@/entrypoints/utils/constant';
 import { customModelString, defaultOption, models, options, resolveConfiguredModel, services, servicesType } from '@/entrypoints/utils/option';
 
 describe('AI 模型编号列表', () => {
@@ -224,10 +224,24 @@ describe('划词翻译配置兼容', () => {
 describe('OpenAI 兼容服务端点', () => {
     it('使用服务商当前公开的统一 Chat Completions 端点', () => {
         expect(urls[services.yiyan]).toBe('https://qianfan.bj.baidubce.com/v2/chat/completions');
-        expect(urls[services.minimax]).toBe('https://api.minimax.io/v1/chat/completions');
+        expect(urls[services.minimax]).toBe('https://api.minimaxi.com/v1/chat/completions');
+        expect(MINIMAX_ENDPOINTS.payg.cn).toBe('https://api.minimaxi.com/v1/chat/completions');
+        expect(MINIMAX_ENDPOINTS['token-plan'].global).toBe('https://api.minimax.io/v1/chat/completions');
         expect(urls[services.infini]).toBe('https://cloud.infini-ai.com/maas/v1/chat/completions');
         expect(urls[services.huanYuan]).toBe('https://api.tokenhub.tencent.com/v1/chat/completions');
         expect(tongyiTokenPlanUrl).toBe('https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions');
+    });
+
+    it('MiniMax 区域配置只接受全球版或中国版', () => {
+        expect(new Config().minimaxRegion).toBe('cn');
+        expect(normalizeConfig({minimaxRegion: 'cn'}).minimaxRegion).toBe('cn');
+        expect(normalizeConfig({minimaxRegion: 'unknown'}).minimaxRegion).toBe('cn');
+    });
+
+    it('MiniMax 计费方式只接受按量付费或 Token Plan', () => {
+        expect(new Config().minimaxBillingPlan).toBe('payg');
+        expect(normalizeConfig({minimaxBillingPlan: 'token-plan'}).minimaxBillingPlan).toBe('token-plan');
+        expect(normalizeConfig({minimaxBillingPlan: 'unknown'}).minimaxBillingPlan).toBe('payg');
     });
 
     it('文心一言使用 Bearer Token，不再要求旧 AK/SK', () => {

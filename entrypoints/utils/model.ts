@@ -1,4 +1,5 @@
 import { currentModelIds, defaultModels, defaultOption, services, servicesType } from "./option";
+import type { MiniMaxBillingPlan, MiniMaxRegion } from "./option";
 import { normalizeCustomBodyMapping } from "./custom-body";
 
 export type DeepSeekApiType = 'auto' | 'responses' | 'chat';
@@ -30,6 +31,8 @@ export class Config {
     videoSubtitleDisplayMode: VideoSubtitleDisplayMode; // 视频字幕显示模式
     token: IMapping;
     requireApiKey: Record<string, boolean>; // 按服务和模型保存 API Key 校验开关
+    minimaxBillingPlan: MiniMaxBillingPlan; // MiniMax 计费方案
+    minimaxRegion: MiniMaxRegion; // MiniMax API 区域
     ak: string;
     sk: string;
     appid: string;
@@ -87,6 +90,8 @@ export class Config {
         this.videoSubtitleDisplayMode = 'bilingual'; // 默认双语显示
         this.token = {};
         this.requireApiKey = {};
+        this.minimaxBillingPlan = 'payg';
+        this.minimaxRegion = 'cn';
         this.ak = '';
         this.sk = '';
         this.appid = '';
@@ -261,6 +266,14 @@ export function normalizeConfig(value: unknown): Config {
 
     if (!['auto', 'responses', 'chat'].includes(normalized.deepseekApiType)) {
         normalized.deepseekApiType = 'auto';
+    }
+
+    if (!['payg', 'token-plan'].includes(normalized.minimaxBillingPlan)) {
+        normalized.minimaxBillingPlan = 'payg';
+    }
+
+    if (!['global', 'cn'].includes(normalized.minimaxRegion)) {
+        normalized.minimaxRegion = 'cn';
     }
 
     if (!['disabled', 'bilingual', 'translation-only'].includes(normalized.selectionTranslatorMode)) {

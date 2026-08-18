@@ -1,5 +1,19 @@
 import { services } from "./option";
+import type { MiniMaxBillingPlan, MiniMaxRegion } from "./option";
 import {DEFAULT_DEEPLX_ENDPOINT} from "./deeplx";
+
+// MiniMax 的 OpenAI 兼容地址目前按区域区分；计费方案单独建模，用于
+// Key/权益校验，也为未来两套方案出现不同端点保留明确的配置维度。
+export const MINIMAX_ENDPOINTS: Record<MiniMaxBillingPlan, Record<MiniMaxRegion, string>> = {
+    payg: {
+        global: "https://api.minimax.io/v1/chat/completions",
+        cn: "https://api.minimaxi.com/v1/chat/completions",
+    },
+    "token-plan": {
+        global: "https://api.minimax.io/v1/chat/completions",
+        cn: "https://api.minimaxi.com/v1/chat/completions",
+    },
+};
 
 // 常量工具类
 export const urls: any = {
@@ -19,7 +33,7 @@ export const urls: any = {
     [services.lingyi]: "https://api.lingyiwanwu.com/v1/chat/completions",
     [services.deepseek]: "https://api.deepseek.com/chat/completions",
     [services.infini]: "https://cloud.infini-ai.com/maas/v1/chat/completions",
-    [services.minimax]: "https://api.minimax.io/v1/chat/completions",
+    [services.minimax]: MINIMAX_ENDPOINTS.payg.cn,
     [services.jieyue]: "https://api.stepfun.com/v1/chat/completions",
     [services.yiyan]: "https://qianfan.bj.baidubce.com/v2/chat/completions",
     [services.groq]: "https://api.groq.com/openai/v1/chat/completions",
@@ -37,6 +51,8 @@ export const urls: any = {
 }
 
 export const method = {POST: "POST", GET: "GET",};
+
+export const CONNECTION_TEST_MESSAGE = 'testTranslationService' as const;
 
 // qwen3.8 预览模型属于百炼 Token Plan，使用独立的 OpenAI 兼容端点。
 export const tongyiTokenPlanUrl = "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions";

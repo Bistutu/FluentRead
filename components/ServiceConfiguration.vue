@@ -5,7 +5,34 @@
       <span>{{ compute.credentialWarning }}</span>
     </div>
     <div class="subsection-heading">
-      <div><strong>连接参数</strong></div>
+      <div>
+        <strong>连接参数</strong>
+        <small class="connection-test-hint">会发送一条很短的测试请求，可能产生少量用量。</small>
+      </div>
+    </div>
+
+    <Teleport defer to=".detail-hero">
+      <button
+        type="button"
+        class="connection-test-button"
+        data-connection-test-button
+        :disabled="connectionTestBusy"
+        @click="testConnection"
+      >
+        {{ connectionTestBusy ? '检查中…' : '检查连接' }}
+      </button>
+    </Teleport>
+
+    <div
+      v-if="connectionTestMessage"
+      class="connection-test-result"
+      :class="`is-${connectionTestState}`"
+      data-connection-test-status
+      role="status"
+      aria-live="polite"
+    >
+      <strong>{{ connectionTestState === 'testing' ? '检查中' : connectionTestState === 'success' ? '连接正常' : '连接失败' }}</strong>
+      <span>{{ connectionTestMessage }}</span>
     </div>
 
     <div v-show="compute.showAI && compute.showToken" class="api-key-policy">
@@ -32,6 +59,40 @@
       </el-col>
       <el-col :span="12"><el-input v-model="config.token[service]" type="password" show-password placeholder="请输入API访问令牌" /></el-col>
     </el-row>
+    <p v-if="compute.showMiniMaxRegion && minimaxKeyMismatch" class="minimax-key-note is-warning">
+      {{ minimaxKeyMismatch }}
+    </p>
+
+    <el-row v-show="compute.showMiniMaxRegion" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="按量付费和 Token Plan 使用不同的账户权益；请按控制台中 Key 的来源选择。" placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">MiniMax 计费方式<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-select v-model="config.minimaxBillingPlan" aria-label="MiniMax 计费方式" placeholder="请选择 MiniMax 计费方式">
+          <el-option class="select-left" v-for="item in options.minimaxBillingPlan" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
+
+    <el-row v-show="compute.showMiniMaxRegion" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="选择与 MiniMax Key 来源一致的 API 区域。Token Plan Key（sk-cp-）和按量付费 Key 不能互换。" placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">MiniMax 区域<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-select v-model="config.minimaxRegion" aria-label="MiniMax API 区域" placeholder="请选择 MiniMax API 区域">
+          <el-option class="select-left" v-for="item in options.minimaxRegion" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
+
+    <div v-show="compute.showMiniMaxRegion" class="minimax-endpoint" data-minimax-endpoint>
+      <span>当前 API 地址</span>
+      <code>{{ minimaxEndpoint }}</code>
+    </div>
 
     <el-row v-show="compute.showAzureOpenaiEndpoint" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
@@ -118,11 +179,14 @@
 </template>
 
 <script setup lang="ts">
-import { toRef } from 'vue'
+import { computed, ref, toRef, watch } from 'vue'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { Config } from '@/entrypoints/utils/model'
 import { options as optionConfig } from '@/entrypoints/utils/option'
 import { isValidCustomBody } from '@/entrypoints/utils/custom-body'
+import browser from 'webextension-polyfill'
+import { requestConfigSave } from '@/entrypoints/utils/config'
+import { CONNECTION_TEST_MESSAGE, MINIMAX_ENDPOINTS } from '@/entrypoints/utils/constant'
 
 const props = defineProps<{
   config: Config
@@ -137,6 +201,71 @@ const service = toRef(props, 'service')
 const compute = toRef(props, 'compute')
 const options = toRef(props, 'options')
 const isValidAzureEndpoint = toRef(props, 'isValidAzureEndpoint')
+
+const minimaxKeyKind = computed(() => {
+  const token = config.value.token[service.value]?.trim() || ''
+  return token.startsWith('sk-cp-') ? 'token-plan' : token ? 'other' : 'empty'
+})
+
+const minimaxKeyMismatch = computed(() => {
+  if (minimaxKeyKind.value === 'empty') return ''
+  if (config.value.minimaxBillingPlan === 'token-plan' && minimaxKeyKind.value !== 'token-plan') {
+    return '当前选择的是 Token Plan，但 Key 不是 sk-cp- 开头；请确认 Key 来源，Token Plan 订阅必须有效。'
+  }
+  if (config.value.minimaxBillingPlan === 'payg' && minimaxKeyKind.value === 'token-plan') {
+    return '当前选择的是按量付费，但检测到 sk-cp- Token Plan Key；两类 Key 不能互换，请切换计费方式或更换 Key。'
+  }
+  return config.value.minimaxBillingPlan === 'token-plan'
+    ? '当前使用 Token Plan Key；请确认 Token Plan 订阅有效。'
+    : ''
+})
+
+const minimaxEndpoint = computed(() => {
+  const plan = config.value.minimaxBillingPlan === 'token-plan' ? 'token-plan' : 'payg'
+  const region = config.value.minimaxRegion === 'cn' ? 'cn' : 'global'
+  return MINIMAX_ENDPOINTS[plan][region]
+})
+
+type ConnectionTestState = 'idle' | 'testing' | 'success' | 'error'
+
+const connectionTestBusy = ref(false)
+const connectionTestState = ref<ConnectionTestState>('idle')
+const connectionTestMessage = ref('')
+
+function resetConnectionTest(): void {
+  connectionTestState.value = 'idle'
+  connectionTestMessage.value = ''
+}
+
+async function testConnection(): Promise<void> {
+  if (connectionTestBusy.value) return
+
+  connectionTestBusy.value = true
+  connectionTestState.value = 'testing'
+  connectionTestMessage.value = '正在保存当前配置并请求服务…'
+
+  try {
+    await requestConfigSave(config.value, browser.runtime.sendMessage.bind(browser.runtime))
+    const response = await browser.runtime.sendMessage({
+      type: CONNECTION_TEST_MESSAGE,
+      service: service.value,
+    }) as {success?: boolean; durationMs?: number; error?: string} | undefined
+
+    if (!response?.success) {
+      throw new Error(response?.error || '连接测试失败')
+    }
+
+    connectionTestState.value = 'success'
+    connectionTestMessage.value = `已完成真实翻译请求${typeof response.durationMs === 'number' ? `（${response.durationMs} ms）` : ''}。`
+  } catch (error) {
+    connectionTestState.value = 'error'
+    connectionTestMessage.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    connectionTestBusy.value = false
+  }
+}
+
+watch(service, resetConnectionTest)
 </script>
 
 <style scoped>
@@ -153,6 +282,129 @@ const isValidAzureEndpoint = toRef(props, 'isValidAzureEndpoint')
   font-size: 12px;
   line-height: 1.5;
   animation: credential-warning-breathe 2.8s ease-in-out infinite;
+}
+
+.subsection-heading {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+}
+
+.subsection-heading > div:first-child {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.connection-test-hint {
+  color: #9098a8;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+.connection-test-button {
+  flex: 0 0 auto;
+  align-self: flex-start;
+  margin-left: auto;
+  padding: 8px 14px;
+  border: 1px solid #ef4776;
+  border-radius: 9px;
+  color: #c52f58;
+  background: #fff4f7;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 160ms ease;
+}
+
+.connection-test-button:hover:not(:disabled) {
+  color: #fff;
+  background: #ef4776;
+  box-shadow: 0 6px 14px rgba(214, 50, 96, .18);
+}
+
+.connection-test-button:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
+.connection-test-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border: 1px solid #dfe3eb;
+  border-radius: 10px;
+  color: #667187;
+  background: #f7f8fa;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.connection-test-result.is-testing {
+  border-color: #c9d9f3;
+  color: #45628c;
+  background: #f2f7ff;
+}
+
+.connection-test-result.is-success {
+  border-color: #b8e0cb;
+  color: #287447;
+  background: #effaf3;
+}
+
+.connection-test-result.is-error {
+  border-color: #f2c0ca;
+  color: #a52c48;
+  background: #fff1f4;
+}
+
+.minimax-key-note {
+  margin: -8px 0 14px 2em;
+  color: #6d7890;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.minimax-key-note.is-warning {
+  color: #a52c48;
+}
+
+.minimax-endpoint {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: -4px 0 14px 2em;
+  color: #8993a5;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.minimax-endpoint code {
+  overflow-wrap: anywhere;
+  color: #59657b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (max-width: 700px) {
+  .subsection-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .subsection-heading > div:first-child {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .connection-test-button {
+    width: 100%;
+    margin-left: 0;
+  }
 }
 
 .credential-warning strong {
