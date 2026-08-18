@@ -74,11 +74,18 @@
           :disabled="!config.on"
           aria-haspopup="listbox"
           :aria-expanded="servicePickerOpen"
-          aria-label="翻译服务"
+          :aria-label="servicePickerAriaLabel"
+          :data-selected-model="serviceModelLabel || undefined"
           @click="toggleServicePicker"
         >
           <ServiceIcon :service="config.service" :label="serviceLabel" />
-          <span class="service-copy"><small>翻译服务</small><strong>{{ serviceLabel }}</strong></span>
+          <span class="service-copy">
+            <small>翻译服务</small>
+            <span class="service-value">
+              <strong>{{ serviceLabel }}</strong>
+              <em v-if="serviceModelLabel" class="service-model">{{ serviceModelLabel }}</em>
+            </span>
+          </span>
           <span class="chevron" :class="{ open: servicePickerOpen }">⌄</span>
         </button>
 
@@ -376,6 +383,7 @@ import { Setting } from '@element-plus/icons-vue';
 import { Config } from '@/entrypoints/utils/model';
 import { options } from '@/entrypoints/utils/option';
 import { getMissingCredentialMessage } from '@/entrypoints/utils/configValidation';
+import { getSelectedModelLabel } from '@/entrypoints/utils/serviceCatalog';
 import ServiceIcon from '@/components/ServiceIcon.vue';
 
 type DrawerName = 'hover' | 'selection' | 'floating' | 'appearance' | 'image' | 'video';
@@ -422,6 +430,10 @@ const popularServiceOptions = computed(() => popularServiceValues
 const moreServiceOptions = computed(() => serviceOptions.value.filter((item: any) => !popularServiceValues.includes(item.value)));
 const styleOptions = computed(() => options.styles.filter((item: any) => !item.disabled));
 const serviceLabel = computed(() => serviceOptions.value.find((item: any) => item.value === config.value.service)?.label || config.value.service);
+const serviceModelLabel = computed(() => getSelectedModelLabel(config.value.service, config.value.model, config.value.customModel));
+const servicePickerAriaLabel = computed(() => serviceModelLabel.value
+  ? `翻译服务：${serviceLabel.value}，当前模型：${serviceModelLabel.value}`
+  : `翻译服务：${serviceLabel.value}`);
 const credentialWarning = computed(() => getMissingCredentialMessage(config.value.service, config.value));
 const videoServiceLabel = computed(() => videoServiceOptions.value.find((item: any) => item.value === config.value.videoService)?.label || config.value.videoService);
 const styleLabel = computed(() => styleOptions.value.find((item: any) => item.value === config.value.style)?.label || '默认样式');
