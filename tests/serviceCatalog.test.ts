@@ -4,6 +4,7 @@ import {
   cleanServiceLabel,
   filterModels,
   filterServiceGroups,
+  getSelectedModelLabel,
   splitModelOptions,
 } from '@/entrypoints/utils/serviceCatalog'
 import { customModelString, defaultModels, models, servicesType } from '@/entrypoints/utils/option'
@@ -78,6 +79,14 @@ describe('service catalog helpers', () => {
       common: ['one', 'two'],
       more: [],
     })
+  })
+
+  it('shows the effective model only for services that use model selection', () => {
+    expect(getSelectedModelLabel('microsoft', { microsoft: 'ignored' }, {})).toBe('')
+    expect(getSelectedModelLabel('openai', { openai: 'gpt-5-mini' }, {})).toBe('gpt-5-mini')
+    expect(getSelectedModelLabel('openai', { openai: customModelString }, { openai: 'local-model' })).toBe('local-model')
+    expect(getSelectedModelLabel('openai', { openai: customModelString }, {})).toBe(customModelString)
+    expect(getSelectedModelLabel('openai', {}, {})).toBe('未选择模型')
   })
 
   it('为所有需要模型的 AI 服务提供自定义模型入口', () => {
