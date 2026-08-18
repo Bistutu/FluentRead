@@ -210,7 +210,7 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
 .ai-context-toggle[aria-pressed="false"]:hover:not(:disabled) .ai-context-indicator { opacity: .72; box-shadow: 0 0 0 3px rgba(239, 71, 118, .14); }
 .ai-context-toggle[aria-pressed="true"] { border-color: transparent; color: #fff; background: linear-gradient(135deg, #f35482, #e93267); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .24), 0 7px 15px rgba(233, 50, 103, .18); }
 .ai-context-toggle[aria-pressed="true"]:hover:not(:disabled) { border-color: transparent; background: linear-gradient(135deg, #f35482, #e93267); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .32), 0 10px 19px rgba(233, 50, 103, .25); }
-.ai-context-toggle[aria-pressed="true"] .ai-context-indicator { opacity: 1; background: #fff; box-shadow: 0 0 0 3px rgba(255, 255, 255, .18), 0 0 8px rgba(255, 255, 255, .72); }
+.ai-context-toggle[aria-pressed="true"] .ai-context-indicator { opacity: 1; background: #24b47e; box-shadow: 0 0 0 3px rgba(36, 180, 126, .14), 0 0 8px rgba(36, 180, 126, .3); }
 .spinner { width: 16px; height: 16px; border: 2px solid rgba(255, 255, 255, .45); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .credential-warning {
