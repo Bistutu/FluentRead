@@ -38,6 +38,7 @@ FluentRead brings translation into the reading flow. Keep the original text besi
 - **Free Translation**: a built-in fallback chain that tries Microsoft first, then DeepLX, then Google when a service returns an error or empty result.
 - **Image translation (Beta)**: local OCR for text in images, with downloadable language packs and a reversible translated overlay.
 - **Translation cache**: reuse recent results for the same service, model, language pair, and request settings.
+- **Google Drive sync (optional)**: sync configuration through Drive’s private `appDataFolder`, with field-level conflict choices when two profiles changed the same settings.
 - **Cross-browser support**: build targets for Chromium browsers and Firefox through WXT and Manifest V3.
 
 ## See it in action
@@ -70,7 +71,7 @@ Use focused settings pages for reading preferences, services and models, shortcu
 | Edge | [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons/detail/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB/kakgmllfpjldjhcnkghpplmlbnmcoflp) |
 | Firefox | [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/%E6%B5%81%E7%95%85%E9%98%85%E8%AF%BB/) |
 
-For a local build, install dependencies with pnpm and load the generated `./.output/chrome-mv3` directory as an unpacked extension. See the [official documentation](https://fluent.thinkstu.com/) for setup and configuration details.
+For a local build, install dependencies with pnpm and load the generated `./.output/chrome-mv3` directory as an unpacked extension. To enable Google Drive sync, set `WXT_GOOGLE_CLIENT_ID` to a Google OAuth client ID whose extension redirect URI matches the build ID. See the [official documentation](https://fluent.thinkstu.com/) for setup and configuration details.
 
 ## Documentation and community
 

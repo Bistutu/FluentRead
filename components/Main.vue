@@ -559,6 +559,8 @@
     </section>
 
     <section v-show="props.activeSection === 'settings-data'" id="settings-data" class="settings-section data-section">
+        <GoogleDriveSync />
+
         <!-- 配置导入导出 -->
         <el-row class="margin-bottom margin-left-2em">
           <el-col :span="24">
@@ -686,6 +688,7 @@ import { defineAsyncComponent } from 'vue';
 const CustomHotkeyInput = defineAsyncComponent(() => import('@/components/CustomHotkeyInput.vue'));
 import ServiceCatalog from '@/components/ServiceCatalog.vue';
 import ServiceConfiguration from '@/components/ServiceConfiguration.vue';
+import GoogleDriveSync from '@/components/GoogleDriveSync.vue';
 import { parseHotkey } from '@/entrypoints/utils/hotkey';
 import { isConfigImportValid, sanitizeConfigForExport } from '@/entrypoints/utils/config-transfer';
 import { getApiKeyRequirementKey, getMissingCredentialMessage, isApiKeyRequired } from '@/entrypoints/utils/configValidation';
