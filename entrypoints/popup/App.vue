@@ -83,7 +83,7 @@
             <small>翻译服务</small>
             <span class="service-value">
               <strong>{{ serviceLabel }}</strong>
-              <em v-if="serviceModelLabel" class="service-model">{{ serviceModelLabel }}</em>
+              <em v-if="serviceModelLabel" class="service-model" :title="serviceModelLabel">{{ serviceModelLabel }}</em>
             </span>
           </span>
           <span class="chevron" :class="{ open: servicePickerOpen }">⌄</span>
