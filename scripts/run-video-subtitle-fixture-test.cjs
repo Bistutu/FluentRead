@@ -19,6 +19,10 @@ function loadPlaywright(root) {
   }
 }
 
+const OFFLINE_YOUTUBE_FIXTURE_HTML = `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>YouTube subtitle fixture</title></head>
+<body><main><div id="movie_player" class="html5-video-player"></div></main></body></html>`;
+
 async function main() {
   const extensionDir = path.resolve(arg('extension-dir', '.output/chrome-mv3'));
   const playwrightRoot = arg('playwright-root', process.env.PLAYWRIGHT_ROOT);
@@ -47,6 +51,7 @@ async function main() {
   let translationRequests = 0;
   const translationSources = [];
   const aiTranslationSources = [];
+  let navigationMode = 'live-youtube';
   await context.route('https://edge.microsoft.com/translate/translatetext**', async (route) => {
     translationRequests += 1;
     const body = route.request().postDataJSON();
@@ -129,10 +134,26 @@ async function main() {
     }
     await control.screenshot({ path: path.join(artifactsDir, 'popup-video-beta-test.png'), fullPage: true });
 
-    const page = await context.newPage();
+    let page = await context.newPage();
     const pageErrors = [];
-    page.on('pageerror', (error) => pageErrors.push(error.stack || error.message));
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    const collectPageError = (error) => pageErrors.push(error.stack || error.message);
+    page.on('pageerror', collectPageError);
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!/ERR_CONNECTION_CLOSED|ERR_TIMED_OUT|ERR_FAILED|chrome-error|interrupted by another navigation/.test(message)) throw error;
+      navigationMode = 'offline-youtube-fixture';
+      await page.close();
+      page = await context.newPage();
+      page.on('pageerror', collectPageError);
+      await page.route(url, (route) => route.fulfill({
+        status: 200,
+        contentType: 'text/html',
+        body: OFFLINE_YOUTUBE_FIXTURE_HTML,
+      }), { times: 1 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    }
     await page.waitForTimeout(2500);
 
     await page.evaluate(() => {
@@ -335,11 +356,27 @@ async function main() {
         nativeVisibility: document.querySelector('#ytp-caption-window-container .ytp-caption-segment')
           ? getComputedStyle(document.querySelector('#ytp-caption-window-container .ytp-caption-segment')).visibility
           : '',
+        panelRect: document.querySelector('#fluent-read-video-subtitle-panel')?.getBoundingClientRect().toJSON() || null,
       }));
-      progressiveVisibleTexts.push({ source: text, original: partialState.original, translation: partialState.translation, nativeVisibility: partialState.nativeVisibility });
+      progressiveVisibleTexts.push({
+        source: text,
+        original: partialState.original,
+        translation: partialState.translation,
+        nativeVisibility: partialState.nativeVisibility,
+        panelRect: partialState.panelRect,
+      });
     }
     if (progressiveVisibleTexts.some(({ original, translation, nativeVisibility }) => original !== progressiveSource || translation !== progressiveExpectedTranslation || nativeVisibility !== 'hidden')) {
       throw new Error(`逐词字幕没有被合并为完整原文并保留黄色译文：${JSON.stringify({ progressiveVisibleTexts })}`);
+    }
+    const panelBottoms = progressiveVisibleTexts
+      .map(({ panelRect }) => panelRect?.bottom)
+      .filter((bottom) => typeof bottom === 'number');
+    const panelBottomRange = panelBottoms.length > 1
+      ? Math.max(...panelBottoms) - Math.min(...panelBottoms)
+      : Number.POSITIVE_INFINITY;
+    if (panelBottomRange > 1.5) {
+      throw new Error(`字幕面板底部随逐词输出发生跳动：${JSON.stringify({ panelBottomRange, progressiveVisibleTexts })}`);
     }
     await page.evaluate((value) => {
       const segment = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
@@ -351,15 +388,28 @@ async function main() {
       const native = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
       const normalized = document.querySelector('#fluent-read-video-subtitle-original');
       const overlay = document.querySelector('#fluent-read-video-subtitle');
+      const panel = document.querySelector('#fluent-read-video-subtitle-panel');
+      const player = document.querySelector('#movie_player, .html5-video-player');
       const nativeRect = native?.getBoundingClientRect();
       const normalizedRect = normalized?.getBoundingClientRect();
       const overlayRect = overlay?.getBoundingClientRect();
+      const panelRect = panel?.getBoundingClientRect();
+      const playerRect = player?.getBoundingClientRect();
       const style = overlay ? getComputedStyle(overlay) : null;
+      const panelStyle = panel ? getComputedStyle(panel) : null;
       return {
         nativeTop: nativeRect?.top ?? null,
         normalizedTop: normalizedRect?.top ?? null,
         overlayBottom: overlayRect?.bottom ?? null,
         gap: normalizedRect && overlayRect ? normalizedRect.top - overlayRect.bottom : null,
+        panelTop: panelRect?.top ?? null,
+        panelBottom: panelRect?.bottom ?? null,
+        panelBottomGap: panelRect && playerRect ? playerRect.bottom - panelRect.bottom : null,
+        panelWidth: panelRect?.width ?? null,
+        panelBottomStyle: panelStyle?.bottom || '',
+        panelBackground: panelStyle?.backgroundColor || '',
+        panelShadow: panelStyle?.boxShadow || '',
+        panelRadius: panelStyle?.borderRadius || '',
         fontFamily: style?.fontFamily || '',
         color: style?.color || '',
         strokeWidth: style?.webkitTextStrokeWidth || '',
@@ -367,7 +417,11 @@ async function main() {
       };
     });
     if (translationPlacement.gap === null || translationPlacement.gap < 4 || !translationPlacement.fontFamily.includes('PingFang SC')
-      || translationPlacement.color !== 'rgb(255, 228, 92)' || translationPlacement.strokeWidth === '0px') {
+      || translationPlacement.color !== 'rgb(255, 228, 92)' || translationPlacement.strokeWidth === '0px'
+      || translationPlacement.panelWidth <= 0 || translationPlacement.panelBackground === 'rgba(0, 0, 0, 0)'
+      || translationPlacement.panelShadow === 'none' || translationPlacement.panelRadius === '0px'
+      || translationPlacement.panelBottomGap === null || translationPlacement.panelBottomGap < 48
+      || translationPlacement.panelBottomGap > 100 || translationPlacement.panelBottomStyle === 'auto') {
       throw new Error(`译文没有稳定显示在原字幕上方或字体清晰度样式未生效：${JSON.stringify(translationPlacement)}`);
     }
     const progressiveRequests = translationSources.filter((source) => source === progressiveSource).length - progressiveRequestStart;
@@ -524,10 +578,12 @@ async function main() {
       throw new Error(`AI 已前置翻译的字幕再次显示时重复请求：${JSON.stringify({ aiTranslationSources })}`);
     }
 
+    await page.locator('#fluent-read-video-subtitle-panel').screenshot({ path: path.join(artifactsDir, 'video-subtitle-panel.png') });
     await page.screenshot({ path: path.join(artifactsDir, 'video-subtitle-fixture-player.png'), fullPage: false });
     console.log(JSON.stringify({
       ok: pageErrors.length === 0,
       url,
+      navigationMode,
       playerUi,
       menu,
       disabledMenu,
@@ -541,6 +597,7 @@ async function main() {
       afterDisappearance,
       progressiveTranslation,
       progressiveVisibleTexts,
+      panelBottomRange,
       normalizedCaptionSelector,
       translationPlacement,
       progressiveRequests,

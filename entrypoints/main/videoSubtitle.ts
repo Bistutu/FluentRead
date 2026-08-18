@@ -18,6 +18,7 @@ export const VIDEO_CAPTION_CONTAINER_SELECTOR = '#ytp-caption-window-container, 
 export const VIDEO_CAPTION_SEGMENT_SELECTOR = '.ytp-caption-segment';
 export const VIDEO_TRANSLATION_OVERLAY_ID = 'fluent-read-video-subtitle';
 export const VIDEO_NORMALIZED_CAPTION_OVERLAY_ID = 'fluent-read-video-subtitle-original';
+export const VIDEO_SUBTITLE_PANEL_ID = 'fluent-read-video-subtitle-panel';
 export const VIDEO_TRANSLATION_LAYER_ID = 'fluent-read-video-subtitle-layer';
 export const VIDEO_TRANSLATION_BUTTON_ID = 'fluent-read-video-subtitle-button';
 export const VIDEO_TRANSLATION_MENU_ID = 'fluent-read-video-subtitle-menu';
@@ -30,6 +31,7 @@ const VIDEO_DISPLAY_ORIGINAL_ONLY_CLASS = 'fluent-read-video-display-original-on
 const VIDEO_DISPLAY_HIDDEN_CLASS = 'fluent-read-video-display-hidden';
 const VIDEO_NORMALIZED_CAPTION_CLASS = 'fluent-read-video-normalized-caption';
 const VIDEO_NORMALIZED_CAPTION_ACTIVE_CLASS = 'fluent-read-video-normalized-caption-active';
+const VIDEO_SUBTITLE_PANEL_ACTIVE_CLASS = 'fluent-read-video-subtitle-panel-active';
 
 const YOUTUBE_HOST_PATTERN = /(^|\.)youtube\.com$/i;
 const YOUTUBE_MOBILE_HOST_PATTERN = /(^|\.)youtube-nocookie\.com$/i;
@@ -221,11 +223,29 @@ function getOrCreateVideoSubtitleLayer(player: HTMLElement): HTMLElement {
   return layer;
 }
 
-function getOrCreateTranslationOverlay(player: HTMLElement): HTMLElement {
+function getOrCreateVideoSubtitlePanel(player: HTMLElement): HTMLElement {
   const layer = getOrCreateVideoSubtitleLayer(player);
-
-  const existing = layer.querySelector<HTMLElement>(`#${VIDEO_TRANSLATION_OVERLAY_ID}`);
+  const existing = layer.querySelector<HTMLElement>(`#${VIDEO_SUBTITLE_PANEL_ID}`);
   if (existing) return existing;
+
+  const panel = document.createElement('div');
+  panel.id = VIDEO_SUBTITLE_PANEL_ID;
+  panel.className = 'fluent-read-video-subtitle-panel fluent-read-video-ui notranslate';
+  panel.setAttribute('data-fluent-read-ui', 'video-subtitle');
+  panel.setAttribute('translate', 'no');
+  panel.setAttribute('aria-label', 'FluentRead 双语视频字幕');
+  layer.appendChild(panel);
+  return panel;
+}
+
+function getOrCreateTranslationOverlay(player: HTMLElement): HTMLElement {
+  const panel = getOrCreateVideoSubtitlePanel(player);
+
+  const existing = document.getElementById(VIDEO_TRANSLATION_OVERLAY_ID);
+  if (existing instanceof HTMLElement) {
+    if (existing.parentElement !== panel) panel.appendChild(existing);
+    return existing;
+  }
 
   const overlay = document.createElement('div');
   overlay.id = VIDEO_TRANSLATION_OVERLAY_ID;
@@ -234,14 +254,17 @@ function getOrCreateTranslationOverlay(player: HTMLElement): HTMLElement {
   overlay.setAttribute('translate', 'no');
   overlay.setAttribute('aria-live', 'polite');
   overlay.setAttribute('aria-label', 'FluentRead 视频字幕译文');
-  layer.appendChild(overlay);
+  panel.appendChild(overlay);
   return overlay;
 }
 
 function getOrCreateNormalizedCaptionOverlay(player: HTMLElement): HTMLElement {
-  const layer = getOrCreateVideoSubtitleLayer(player);
-  const existing = layer.querySelector<HTMLElement>(`#${VIDEO_NORMALIZED_CAPTION_OVERLAY_ID}`);
-  if (existing) return existing;
+  const panel = getOrCreateVideoSubtitlePanel(player);
+  const existing = document.getElementById(VIDEO_NORMALIZED_CAPTION_OVERLAY_ID);
+  if (existing instanceof HTMLElement) {
+    if (existing.parentElement !== panel) panel.appendChild(existing);
+    return existing;
+  }
 
   const overlay = document.createElement('div');
   overlay.id = VIDEO_NORMALIZED_CAPTION_OVERLAY_ID;
@@ -250,7 +273,7 @@ function getOrCreateNormalizedCaptionOverlay(player: HTMLElement): HTMLElement {
   overlay.setAttribute('translate', 'no');
   overlay.setAttribute('aria-live', 'polite');
   overlay.setAttribute('aria-label', 'YouTube 整段原文字幕');
-  layer.appendChild(overlay);
+  panel.appendChild(overlay);
   return overlay;
 }
 
@@ -264,50 +287,37 @@ function syncTranslationOverlayPosition(container: HTMLElement | null): void {
   if (!container) return;
   const overlay = document.getElementById(VIDEO_TRANSLATION_OVERLAY_ID);
   const normalizedOverlay = document.getElementById(VIDEO_NORMALIZED_CAPTION_OVERLAY_ID);
+  const panel = document.getElementById(VIDEO_SUBTITLE_PANEL_ID);
   const player = findVideoPlayer();
-  if (!overlay || !player) return;
+  if (!overlay || !panel || !player) return;
 
   const playerRect = player.getBoundingClientRect();
-  const anchors = getVisibleCaptionSegments(container)
+  const visibleCaptionSegments = getVisibleCaptionSegments(container)
     .map((element) => element.getBoundingClientRect())
     .filter((rect) => rect.width > 0 && rect.height > 0);
   // YouTube 在字幕切换期间会短暂保留一个空的、甚至回到播放器顶部的容器。
   // 没有真实字幕片段时保留上一次位置，避免译文被重新定位到顶部后闪过。
-  if (anchors.length === 0) return;
-  const anchor = {
-    left: Math.min(...anchors.map((rect) => rect.left)),
-    right: Math.max(...anchors.map((rect) => rect.right)),
-    top: Math.min(...anchors.map((rect) => rect.top)),
-    bottom: Math.max(...anchors.map((rect) => rect.bottom)),
-  };
+  if (visibleCaptionSegments.length === 0) return;
+
+  // 原字幕的矩形会随着逐词输出、换行和 YouTube 重绘而变化；面板使用播放器比例计算固定宽度，
+  // 不再跟随当前词的宽度左右移动或改变换行方式。
   const playerWidth = playerRect.width || 960;
-  const width = Math.min(Math.max(anchor.right - anchor.left, 240), Math.max(playerWidth - 24, 240));
-  const center = (anchor.left + anchor.right) / 2;
+  const availableWidth = Math.max(playerWidth - 24, 160);
+  const minimumWidth = Math.min(260, availableWidth);
+  const width = Math.min(Math.max(playerWidth * .72, minimumWidth), availableWidth);
   const left = Math.min(
-    Math.max(center - width / 2 - playerRect.left, 12),
+    Math.max((playerWidth - width) / 2, 12),
     Math.max(playerWidth - width - 12, 12),
   );
 
-  const nativeTop = anchor.top - playerRect.top;
-  if (normalizedOverlay instanceof HTMLElement && normalizedOverlay.textContent?.trim()) {
-    normalizedOverlay.style.left = `${left}px`;
-    normalizedOverlay.style.width = `${width}px`;
-    normalizedOverlay.style.top = `${Math.max(nativeTop, 8)}px`;
-  }
-
-  // 译文始终固定在原字幕上方；若已接管逐词字幕，则以整段原文 overlay 的顶部为锚点，
-  // 不回落到原字幕下方，避免观看过程中上下跳动。
-  overlay.style.left = `${left}px`;
-  overlay.style.width = `${width}px`;
-  const overlayHeight = overlay.getBoundingClientRect().height;
-  const normalizedRect = normalizedOverlay?.textContent?.trim()
-    ? normalizedOverlay.getBoundingClientRect()
-    : null;
-  const visibleNormalizedRect = normalizedRect && normalizedRect.height > 0 ? normalizedRect : null;
-  const anchorTop = visibleNormalizedRect?.top || anchor.top;
-  const top = anchorTop - playerRect.top - overlayHeight - 6;
-
-  overlay.style.top = `${Math.max(top, 8)}px`;
+  // 双语面板固定在播放器底部安全区上方；字幕内容变化只会改变面板向上的高度，
+  // 不会把整组字幕重新锚定到不同的 top。
+  panel.style.left = `${left}px`;
+  panel.style.width = `${width}px`;
+  panel.classList.toggle(
+    VIDEO_SUBTITLE_PANEL_ACTIVE_CLASS,
+    Boolean(overlay.textContent?.trim() || normalizedOverlay?.textContent?.trim()),
+  );
 }
 
 function applyVideoDisplayState(container: HTMLElement): void {
@@ -337,14 +347,39 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       pointer-events: none !important;
       visibility: visible !important;
     }
-    #${VIDEO_TRANSLATION_OVERLAY_ID} {
-      display: block !important;
+    #${VIDEO_SUBTITLE_PANEL_ID} {
+      display: none !important;
       position: absolute !important;
       z-index: 2 !important;
       box-sizing: border-box !important;
       max-width: calc(100% - 24px) !important;
+      bottom: clamp(52px, 10%, 96px) !important;
       margin: 0 !important;
-      padding: 0.08em 0.24em !important;
+      padding: 6px 12px 7px !important;
+      border: 1px solid rgba(255, 255, 255, .1) !important;
+      border-radius: 6px !important;
+      background: rgba(12, 15, 22, .56) !important;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, .28), 0 0 0 1px rgba(0, 0, 0, .08) !important;
+      backdrop-filter: blur(2px) !important;
+      flex-direction: column !important;
+      align-items: stretch !important;
+      gap: 6px !important;
+      overflow: visible !important;
+      pointer-events: none !important;
+      user-select: none !important;
+      text-align: center !important;
+    }
+    #${VIDEO_SUBTITLE_PANEL_ID}.${VIDEO_SUBTITLE_PANEL_ACTIVE_CLASS} {
+      display: flex !important;
+    }
+    #${VIDEO_TRANSLATION_OVERLAY_ID} {
+      display: block !important;
+      position: relative !important;
+      z-index: 2 !important;
+      box-sizing: border-box !important;
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
       color: #ffe45c !important;
       font: 700 clamp(16px, 2.2vw, 30px)/1.28 Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
       text-align: center !important;
@@ -359,12 +394,12 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
     #${VIDEO_TRANSLATION_OVERLAY_ID}:empty { display: none !important; }
     #${VIDEO_NORMALIZED_CAPTION_OVERLAY_ID} {
       display: none !important;
-      position: absolute !important;
+      position: relative !important;
       z-index: 1 !important;
       box-sizing: border-box !important;
-      max-width: calc(100% - 24px) !important;
+      width: 100% !important;
       margin: 0 !important;
-      padding: .08em .24em !important;
+      padding: 0 !important;
       color: #fff !important;
       font: 600 clamp(16px, 2.2vw, 30px)/1.28 Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
       text-align: center !important;
