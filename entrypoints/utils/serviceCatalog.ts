@@ -1,4 +1,4 @@
-import { customModelString } from '@/entrypoints/utils/option'
+import { customModelString, resolveConfiguredModel, servicesType } from '@/entrypoints/utils/option'
 
 export interface ServiceOption {
   value: string
@@ -56,6 +56,18 @@ export function filterModels(modelOptions: string[], query: string) {
   const keyword = query.trim().toLocaleLowerCase()
   if (!keyword) return modelOptions
   return modelOptions.filter((model) => model.toLocaleLowerCase().includes(keyword))
+}
+
+export function getSelectedModelLabel(
+  service: string,
+  selectedModels: Record<string, string>,
+  customModels: Record<string, string>,
+) {
+  if (!servicesType.isUseModel(service)) return ''
+
+  const selectedModel = selectedModels[service]
+  const configuredModel = resolveConfiguredModel(selectedModel, customModels[service])
+  return configuredModel || (selectedModel === customModelString ? customModelString : '未选择模型')
 }
 
 export function splitModelOptions(modelOptions: string[], selectedModel = '', visibleCount = 4) {
