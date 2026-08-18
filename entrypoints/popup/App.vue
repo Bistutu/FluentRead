@@ -145,7 +145,7 @@
       <div class="translate-action">
         <button
           class="translate-button"
-          :class="{ translated: pageTranslated, 'has-ai-context': canUseAIContext }"
+          :class="{ translated: pageTranslated }"
           type="button"
           :disabled="!config.on || translating"
           :aria-pressed="pageTranslated"
@@ -162,12 +162,12 @@
           type="button"
           role="switch"
           :aria-checked="config.enableAIContext"
-          :aria-label="config.enableAIContext ? '关闭 AI 智能上下文' : '开启 AI 智能上下文'"
-          :title="config.enableAIContext ? '关闭 AI 智能上下文' : '开启 AI 智能上下文'"
+          :aria-label="config.enableAIContext ? '关闭 AI精翻' : '开启 AI精翻'"
+          :title="config.enableAIContext ? '关闭 AI精翻' : '开启 AI精翻'"
           :disabled="!config.on || translating"
           @click="toggleAIContext"
         >
-          <span class="ai-context-copy"><strong>AI 智能</strong><small>上下文</small></span>
+          <span class="ai-context-copy">AI精翻</span>
           <i aria-hidden="true" />
         </button>
       </div>
