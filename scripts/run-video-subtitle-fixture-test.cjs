@@ -227,14 +227,62 @@ async function main() {
       beta: document.querySelector('#fluent-read-video-subtitle-menu .fluent-read-video-menu-beta')?.textContent || '',
       service: document.querySelector('#fluent-read-video-subtitle-menu [data-service-label]')?.textContent || '',
       bilingual: document.querySelector('#fluent-read-video-subtitle-menu [data-mode="bilingual"]')?.getAttribute('aria-checked') === 'true',
+      enableAction: document.querySelector('#fluent-read-video-subtitle-menu [data-action="toggle-translation"]')?.className || '',
+      enableActionState: document.querySelector('#fluent-read-video-subtitle-menu [data-action="toggle-translation"] [data-state]')?.textContent || '',
+      enableActionBackground: document.querySelector('#fluent-read-video-subtitle-menu [data-action="toggle-translation"]')
+        ? getComputedStyle(document.querySelector('#fluent-read-video-subtitle-menu [data-action="toggle-translation"]')).backgroundImage
+        : '',
+      enableActionBackgroundColor: document.querySelector('#fluent-read-video-subtitle-menu [data-action="toggle-translation"]')
+        ? getComputedStyle(document.querySelector('#fluent-read-video-subtitle-menu [data-action="toggle-translation"]')).backgroundColor
+        : '',
+      enableActionBorder: document.querySelector('#fluent-read-video-subtitle-menu [data-action="toggle-translation"]')
+        ? getComputedStyle(document.querySelector('#fluent-read-video-subtitle-menu [data-action="toggle-translation"]')).borderTopColor
+        : '',
+      enableActionMinHeight: document.querySelector('#fluent-read-video-subtitle-menu [data-action="toggle-translation"]')
+        ? getComputedStyle(document.querySelector('#fluent-read-video-subtitle-menu [data-action="toggle-translation"]')).minHeight
+        : '',
       rect: document.querySelector('#fluent-read-video-subtitle-menu')?.getBoundingClientRect().toJSON() || null,
     }));
-    if (menu.brand !== '流畅阅读' || menu.beta !== 'Beta 测试' || menu.service !== '微软翻译' || !menu.bilingual || !menu.rect || menu.rect.width <= 0 || menu.rect.height <= 0) {
+    if (menu.brand !== '流畅阅读' || menu.beta !== 'Beta 测试' || menu.service !== '微软翻译' || !menu.bilingual
+      || !menu.enableAction.includes('fluent-read-video-menu-primary-action') || menu.enableActionState !== '已开启'
+      || menu.enableActionMinHeight !== '42px' || menu.enableActionBorder === 'rgba(0, 0, 0, 0)'
+      || !menu.rect || menu.rect.width <= 0 || menu.rect.height <= 0) {
       throw new Error(`播放器菜单校验失败：${JSON.stringify(menu)}`);
     }
-    await page.screenshot({ path: path.join(artifactsDir, 'video-subtitle-fixture-menu.png'), fullPage: false });
+    await page.evaluate(() => {
+      const action = document.querySelector('#fluent-read-video-subtitle-menu [data-action="toggle-translation"]');
+      if (action instanceof HTMLElement) action.click();
+    });
+    await page.waitForFunction(() => {
+      const action = document.querySelector('#fluent-read-video-subtitle-menu [data-action="toggle-translation"]');
+      return action?.getAttribute('aria-checked') === 'false'
+        && action.querySelector('[data-state]')?.textContent === '立即开启';
+    }, null, { timeout: 10000 });
+    const disabledMenu = await page.evaluate(() => {
+      const action = document.querySelector('#fluent-read-video-subtitle-menu [data-action="toggle-translation"]');
+      const style = action ? getComputedStyle(action) : null;
+      return {
+        className: action?.className || '',
+        state: action?.querySelector('[data-state]')?.textContent || '',
+        backgroundColor: style?.backgroundColor || '',
+        border: style?.borderTopColor || '',
+        minHeight: style?.minHeight || '',
+      };
+    });
+    if (!disabledMenu.className.includes('fluent-read-video-menu-primary-action') || disabledMenu.state !== '立即开启'
+      || disabledMenu.minHeight !== '42px' || disabledMenu.border === 'rgba(0, 0, 0, 0)') {
+      throw new Error(`关闭状态的字幕翻译入口不够醒目：${JSON.stringify(disabledMenu)}`);
+    }
+    await page.locator('#fluent-read-video-subtitle-menu').screenshot({ path: path.join(artifactsDir, 'video-subtitle-fixture-menu-disabled.png') });
+    await page.evaluate(() => {
+      const action = document.querySelector('#fluent-read-video-subtitle-menu [data-action="toggle-translation"]');
+      if (action instanceof HTMLElement) action.click();
+    });
+    await page.waitForFunction(() => document.querySelector('#fluent-read-video-subtitle-menu [data-action="toggle-translation"] [data-state]')?.textContent === '已开启', null, { timeout: 10000 });
+    await page.locator('#fluent-read-video-subtitle-menu').screenshot({ path: path.join(artifactsDir, 'video-subtitle-fixture-menu.png') });
 
     const overlaySelector = '#fluent-read-video-subtitle';
+    const normalizedCaptionSelector = '#fluent-read-video-subtitle-original';
     const progressiveSource = 'understand from [music] the axioms and the basics.';
     const progressiveExpectedTranslation = '从音乐中理解公理和基础。';
     const progressiveRequestStart = translationSources.filter((source) => source === progressiveSource).length;
@@ -266,27 +314,32 @@ async function main() {
       'understand from [music] the axioms and',
     ];
     const progressiveVisibleTexts = [];
-    let previousProgressiveTranslation = '';
     for (const text of progressiveTexts) {
       await page.evaluate((value) => {
         const segment = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
         if (segment) segment.textContent = value;
       }, text);
-      await page.waitForFunction(({ value, expected, previous }) => {
-        const overlayText = document.querySelector('#fluent-read-video-subtitle')?.textContent?.trim() || '';
-        return value === expected
-          ? overlayText === expected
-          : Boolean(overlayText) && overlayText !== expected && overlayText !== previous;
-      }, { value: text, expected: progressiveExpectedTranslation, previous: previousProgressiveTranslation }, { timeout: 10000 });
-      const partialOverlay = await page.locator(overlaySelector).textContent();
-      if (!partialOverlay?.trim() || partialOverlay.trim() === progressiveExpectedTranslation) {
-        throw new Error(`渐进字幕没有按原字幕前缀逐步显示：${JSON.stringify({ text, partialOverlay })}`);
-      }
-      progressiveVisibleTexts.push({ source: text, translation: partialOverlay.trim() });
-      previousProgressiveTranslation = partialOverlay.trim();
+      await page.waitForFunction(({ expected, expectedTranslation }) => {
+        const original = document.querySelector('#fluent-read-video-subtitle-original')?.textContent?.trim() || '';
+        const translated = document.querySelector('#fluent-read-video-subtitle')?.textContent?.trim() || '';
+        const native = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
+        return original === expected
+          && translated === expectedTranslation
+          && native instanceof HTMLElement
+          && getComputedStyle(native).visibility === 'hidden'
+          && document.querySelector('#ytp-caption-window-container')?.classList.contains('fluent-read-video-normalized-caption');
+      }, { expected: progressiveSource, expectedTranslation: progressiveExpectedTranslation }, { timeout: 10000 });
+      const partialState = await page.evaluate(() => ({
+        original: document.querySelector('#fluent-read-video-subtitle-original')?.textContent?.trim() || '',
+        translation: document.querySelector('#fluent-read-video-subtitle')?.textContent?.trim() || '',
+        nativeVisibility: document.querySelector('#ytp-caption-window-container .ytp-caption-segment')
+          ? getComputedStyle(document.querySelector('#ytp-caption-window-container .ytp-caption-segment')).visibility
+          : '',
+      }));
+      progressiveVisibleTexts.push({ source: text, original: partialState.original, translation: partialState.translation, nativeVisibility: partialState.nativeVisibility });
     }
-    if (new Set(progressiveVisibleTexts.map(({ translation }) => translation)).size !== progressiveVisibleTexts.length) {
-      throw new Error(`渐进字幕的译文没有随原字幕前缀增长：${JSON.stringify({ progressiveVisibleTexts })}`);
+    if (progressiveVisibleTexts.some(({ original, translation, nativeVisibility }) => original !== progressiveSource || translation !== progressiveExpectedTranslation || nativeVisibility !== 'hidden')) {
+      throw new Error(`逐词字幕没有被合并为完整原文并保留黄色译文：${JSON.stringify({ progressiveVisibleTexts })}`);
     }
     await page.evaluate((value) => {
       const segment = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
@@ -296,20 +349,25 @@ async function main() {
     const progressiveTranslation = await page.locator(overlaySelector).textContent();
     const translationPlacement = await page.evaluate(() => {
       const native = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
+      const normalized = document.querySelector('#fluent-read-video-subtitle-original');
       const overlay = document.querySelector('#fluent-read-video-subtitle');
       const nativeRect = native?.getBoundingClientRect();
+      const normalizedRect = normalized?.getBoundingClientRect();
       const overlayRect = overlay?.getBoundingClientRect();
       const style = overlay ? getComputedStyle(overlay) : null;
       return {
         nativeTop: nativeRect?.top ?? null,
+        normalizedTop: normalizedRect?.top ?? null,
         overlayBottom: overlayRect?.bottom ?? null,
-        gap: nativeRect && overlayRect ? nativeRect.top - overlayRect.bottom : null,
+        gap: normalizedRect && overlayRect ? normalizedRect.top - overlayRect.bottom : null,
         fontFamily: style?.fontFamily || '',
+        color: style?.color || '',
         strokeWidth: style?.webkitTextStrokeWidth || '',
         textShadow: style?.textShadow || '',
       };
     });
-    if (translationPlacement.gap === null || translationPlacement.gap < 4 || !translationPlacement.fontFamily.includes('PingFang SC') || translationPlacement.strokeWidth === '0px') {
+    if (translationPlacement.gap === null || translationPlacement.gap < 4 || !translationPlacement.fontFamily.includes('PingFang SC')
+      || translationPlacement.color !== 'rgb(255, 228, 92)' || translationPlacement.strokeWidth === '0px') {
       throw new Error(`译文没有稳定显示在原字幕上方或字体清晰度样式未生效：${JSON.stringify(translationPlacement)}`);
     }
     const progressiveRequests = translationSources.filter((source) => source === progressiveSource).length - progressiveRequestStart;
@@ -472,6 +530,7 @@ async function main() {
       url,
       playerUi,
       menu,
+      disabledMenu,
       popupFeature,
       initialPopupVideoState,
       popupDrawerBeta,
@@ -482,6 +541,7 @@ async function main() {
       afterDisappearance,
       progressiveTranslation,
       progressiveVisibleTexts,
+      normalizedCaptionSelector,
       translationPlacement,
       progressiveRequests,
       secondTranslation,

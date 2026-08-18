@@ -189,7 +189,15 @@
           </span>
           <i :class="{ active: !config.disableImageTranslator }" />
         </button>
-        <button class="feature-card video-feature-card" data-feature="video-subtitle" type="button" :disabled="!config.on" @click="openDrawer('video')">
+        <button
+          class="feature-card video-feature-card"
+          :class="{ 'needs-enable': !config.videoTranslationEnabled }"
+          data-feature="video-subtitle"
+          type="button"
+          :disabled="!config.on"
+          :aria-label="config.videoTranslationEnabled ? '打开视频字幕设置，当前已开启' : '打开视频字幕设置，点击开启字幕翻译'"
+          @click="openDrawer('video')"
+        >
           <span class="feature-icon teal">CC</span>
           <span class="feature-copy">
             <span class="feature-title"><strong>视频字幕</strong><em class="beta-badge">Beta 测试</em></span>
@@ -331,8 +339,8 @@
 
       <div v-else-if="activeDrawer === 'video'" class="drawer-content">
         <div class="video-beta-banner"><span class="feature-icon teal">CC</span><span><strong>FluentRead · YouTube 字幕翻译</strong><small>Beta 测试 · 只处理播放器已经提供的字幕文本</small></span></div>
-        <div class="setting-row">
-          <span><strong>启用视频字幕翻译</strong><small>在 YouTube 原生字幕下方显示中文译文</small></span>
+        <div class="setting-row video-enable-row" :class="{ 'needs-enable': !config.videoTranslationEnabled }">
+          <span><strong>{{ config.videoTranslationEnabled ? '视频字幕翻译已开启' : '开启字幕翻译' }}</strong><small>{{ config.videoTranslationEnabled ? '正在 YouTube 原生字幕下方显示中文译文' : '点击右侧开关，在 YouTube 播放器中显示中文译文' }}</small></span>
           <button class="switch compact" type="button" role="switch" :aria-checked="config.videoTranslationEnabled" aria-label="启用或关闭视频字幕翻译" @click="setVideoTranslationEnabled(!config.videoTranslationEnabled)"><i /></button>
         </div>
         <label class="select-row">
@@ -453,7 +461,7 @@ const selectionSummary = computed(() => {
 const floatingSummary = computed(() => `${config.value.floatingBallPosition === 'left' ? '页面左侧' : '页面右侧'} · ${fullPageHotkey.value}`);
 const displaySummary = computed(() => config.value.display === 1 ? `双语 · ${styleLabel.value}` : '仅显示译文');
 const imageTranslationSummary = computed(() => config.value.disableImageTranslator ? '已关闭' : '悬停图片');
-const videoSummary = computed(() => config.value.videoTranslationEnabled ? `${videoServiceLabel.value} · YouTube` : '已关闭');
+const videoSummary = computed(() => config.value.videoTranslationEnabled ? `${videoServiceLabel.value} · YouTube` : '点击开启 · YouTube');
 const drawerTitle = computed(() => ({ hover: '鼠标悬停翻译设置', selection: '划词翻译设置', floating: '全文悬浮球设置', appearance: '译文显示设置', image: '图片翻译设置', video: '视频字幕设置' }[activeDrawer.value]));
 const drawerDescription = computed(() => ({
   hover: '把鼠标停在文本上，用轻量快捷键获取即时译文。',

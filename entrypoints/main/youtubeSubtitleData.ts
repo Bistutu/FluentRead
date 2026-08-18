@@ -149,6 +149,147 @@ function numericValue(value: unknown): number | null {
   return Number.isFinite(number) ? number : null;
 }
 
+const WORD_STREAM_JOIN_GAP_MS = 700;
+const WORD_STREAM_MAX_CUE_SPAN_MS = 8000;
+const WORD_STREAM_MAX_WORDS = 14;
+
+function normalizeCueComparisonText(value: string): string {
+  return value.replace(/[\s\u3000]+/g, ' ').trim();
+}
+
+function countCueWords(value: string): number {
+  const normalized = normalizeCueComparisonText(value);
+  if (!normalized) return 0;
+  return normalized.split(' ').filter(Boolean).length;
+}
+
+function hasCueTerminalPunctuation(value: string): boolean {
+  return /[.!?。！？；;：:…]$/.test(normalizeCueComparisonText(value));
+}
+
+/** 自动字幕逐词流通常以短词、短间隔事件连续写入 timedtext。 */
+function isWordStreamCue(cue: VideoSubtitleCue): boolean {
+  const text = normalizeCueComparisonText(cue.text);
+  return text.length > 0
+    && text.length <= 32
+    && countCueWords(text) <= 2
+    && !hasCueTerminalPunctuation(text);
+}
+
+function cueGapMs(previous: VideoSubtitleCue, next: VideoSubtitleCue): number {
+  return next.startMs - (previous.startMs + Math.max(previous.durationMs, 500));
+}
+
+function canJoinWordStreamCues(previous: VideoSubtitleCue, next: VideoSubtitleCue): boolean {
+  return next.startMs >= previous.startMs
+    && next.startMs - previous.startMs <= 1800
+    && cueGapMs(previous, next) <= WORD_STREAM_JOIN_GAP_MS;
+}
+
+function joinCueText(previous: string, next: string): string {
+  const left = previous.trim();
+  const right = next.trim();
+  if (!left) return right;
+  if (!right) return left;
+  const needsSpace = /[A-Za-z0-9]$/.test(left) && /^[A-Za-z0-9]/.test(right);
+  return `${left}${needsSpace ? ' ' : ''}${right}`;
+}
+
+function isPrefixPair(left: string, right: string): boolean {
+  const first = normalizeCueComparisonText(left).toLocaleLowerCase();
+  const second = normalizeCueComparisonText(right).toLocaleLowerCase();
+  return first === second || first.startsWith(second) || second.startsWith(first);
+}
+
+/** 同一时间点的增量 cue 只保留最长版本，避免短词抢先命中并阻断完整句预翻译。 */
+function collapseIncrementalCues(cues: VideoSubtitleCue[]): VideoSubtitleCue[] {
+  const result: VideoSubtitleCue[] = [];
+  cues.forEach((cue) => {
+    const previous = result[result.length - 1];
+    const sameStart = previous && Math.abs(previous.startMs - cue.startMs) <= 120;
+    if (!previous || !sameStart || !isPrefixPair(previous.text, cue.text)) {
+      result.push(cue);
+      return;
+    }
+
+    const previousTextLength = Array.from(normalizeCueComparisonText(previous.text)).length;
+    const currentTextLength = Array.from(normalizeCueComparisonText(cue.text)).length;
+    const winner = currentTextLength >= previousTextLength ? cue : previous;
+    const endMs = Math.max(
+      previous.startMs + previous.durationMs,
+      cue.startMs + cue.durationMs,
+    );
+    result[result.length - 1] = {
+      ...winner,
+      durationMs: Math.max(winner.durationMs, endMs - winner.startMs),
+    };
+  });
+  return result;
+}
+
+function hasWordStreamRun(cues: VideoSubtitleCue[], startIndex: number): boolean {
+  let wordCueCount = 0;
+  let previous: VideoSubtitleCue | undefined;
+  for (let index = startIndex; index < Math.min(cues.length, startIndex + 4); index += 1) {
+    const cue = cues[index];
+    if (previous && !canJoinWordStreamCues(previous, cue)) return false;
+    if (isWordStreamCue(cue)) {
+      wordCueCount += 1;
+    } else if (!previous || !hasCueTerminalPunctuation(cue.text)) {
+      return false;
+    }
+    previous = cue;
+    if (wordCueCount >= 3) return true;
+  }
+  return false;
+}
+
+/** 将明确的逐词 timedtext 合并为播放器可直接显示的短句，普通整段 cue 保持原样。 */
+function mergeWordStreamCues(cues: VideoSubtitleCue[]): VideoSubtitleCue[] {
+  const result: VideoSubtitleCue[] = [];
+  let index = 0;
+  while (index < cues.length) {
+    if (!hasWordStreamRun(cues, index)) {
+      result.push(cues[index]);
+      index += 1;
+      continue;
+    }
+
+    const first = cues[index];
+    let last = first;
+    let endIndex = index;
+    let text = first.text;
+    let wordCount = countCueWords(text);
+    let endMs = first.startMs + Math.max(first.durationMs, 500);
+
+    while (endIndex + 1 < cues.length) {
+      const next = cues[endIndex + 1];
+      if (!canJoinWordStreamCues(last, next)) break;
+      const nextIsWordCue = isWordStreamCue(next);
+      if (!nextIsWordCue && !hasCueTerminalPunctuation(next.text)) break;
+
+      const nextWordCount = countCueWords(next.text);
+      const nextEndMs = next.startMs + Math.max(next.durationMs, 500);
+      if (wordCount + nextWordCount > WORD_STREAM_MAX_WORDS || nextEndMs - first.startMs > WORD_STREAM_MAX_CUE_SPAN_MS) break;
+
+      text = joinCueText(text, next.text);
+      wordCount += nextWordCount;
+      endMs = Math.max(endMs, nextEndMs);
+      last = next;
+      endIndex += 1;
+      if (hasCueTerminalPunctuation(next.text)) break;
+    }
+
+    result.push({
+      startMs: first.startMs,
+      durationMs: Math.max(500, endMs - first.startMs),
+      text: normalizeCueComparisonText(text),
+    });
+    index = endIndex + 1;
+  }
+  return result;
+}
+
 function parseJson3Events(value: unknown): VideoSubtitleCue[] {
   if (!value || typeof value !== 'object') return [];
   const events = (value as { events?: YoutubeTimedTextEvent[] }).events;
@@ -211,16 +352,18 @@ export function finalizeVideoSubtitleCues(cues: VideoSubtitleCue[]): VideoSubtit
   const ordered = [...cues]
     .filter((cue) => Number.isFinite(cue.startMs) && cue.text.trim())
     .sort((left, right) => left.startMs - right.startMs);
-  const result: VideoSubtitleCue[] = [];
+  const withDurations: VideoSubtitleCue[] = [];
   ordered.forEach((cue, index) => {
     const nextStart = ordered[index + 1]?.startMs;
     const inferredDuration = nextStart !== undefined ? nextStart - cue.startMs : 2000;
     const durationMs = cue.durationMs > 0 ? cue.durationMs : Math.max(500, Math.min(8000, inferredDuration));
-    const previous = result[result.length - 1];
-    if (previous && previous.startMs === cue.startMs && previous.text === cue.text) return;
-    result.push({ ...cue, durationMs });
+    withDurations.push({ ...cue, durationMs });
   });
-  return result;
+  const collapsed = collapseIncrementalCues(withDurations).filter((cue, index, all) => {
+    const previous = all[index - 1];
+    return !previous || previous.startMs !== cue.startMs || previous.text !== cue.text;
+  });
+  return mergeWordStreamCues(collapsed);
 }
 
 function formatSrtTimestamp(milliseconds: number): string {
