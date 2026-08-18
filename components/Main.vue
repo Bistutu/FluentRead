@@ -562,9 +562,52 @@
         <GoogleDriveSync />
 
         <!-- 配置导入导出 -->
-        <el-row class="margin-bottom margin-left-2em">
+        <el-row class="margin-bottom margin-left-2em config-transfer-heading">
           <el-col :span="24">
-            <el-divider content-position="center">配置管理</el-divider>
+            <el-divider content-position="center">本地导入与导出</el-divider>
+          </el-col>
+        </el-row>
+
+        <el-row class="margin-bottom margin-left-2em config-transfer-actions">
+          <el-col :span="12">
+            <el-button type="primary" @click="handleExport">
+              <el-icon>
+                <Download />
+              </el-icon>
+              导出配置
+            </el-button>
+          </el-col>
+          <el-col :span="12">
+            <el-button type="success" @click="handleImport">
+              <el-icon>
+                <Upload />
+              </el-icon>
+              导入配置
+            </el-button>
+          </el-col>
+        </el-row>
+
+        <!-- 导出配置 -->
+        <el-row v-if="showExportBox" class="margin-bottom margin-left-2em">
+          <el-col :span="24">
+            <el-input v-model="exportData" type="textarea" :rows="8" readonly />
+          </el-col>
+        </el-row>
+
+        <!-- 导入配置 -->
+        <el-row v-if="showImportBox" class="margin-bottom margin-left-2em">
+          <el-col :span="24">
+            <el-input v-model="importData" type="textarea" :rows="8" placeholder="请在此处粘贴您的JSON配置" />
+            <div style="margin-top: 10px; text-align: right;">
+              <el-button @click="saveImport">保存</el-button>
+            </div>
+          </el-col>
+        </el-row>
+
+        <!-- 配置历史 -->
+        <el-row class="margin-bottom margin-left-2em config-history-heading-row">
+          <el-col :span="24">
+            <el-divider content-position="center">配置历史</el-divider>
           </el-col>
         </el-row>
 
@@ -616,41 +659,6 @@
           <div v-else class="config-history-empty">还没有可恢复的配置版本。</div>
         </section>
 
-        <el-row class="margin-bottom margin-left-2em">
-          <el-col :span="12">
-            <el-button type="primary" @click="handleExport">
-              <el-icon>
-                <Download />
-              </el-icon>
-              导出配置
-            </el-button>
-          </el-col>
-          <el-col :span="12">
-            <el-button type="success" @click="handleImport">
-              <el-icon>
-                <Upload />
-              </el-icon>
-              导入配置
-            </el-button>
-          </el-col>
-        </el-row>
-
-        <!-- 导出配置 -->
-        <el-row v-if="showExportBox" class="margin-bottom margin-left-2em">
-          <el-col :span="24">
-            <el-input v-model="exportData" type="textarea" :rows="8" readonly />
-          </el-col>
-        </el-row>
-
-        <!-- 导入配置 -->
-        <el-row v-if="showImportBox" class="margin-bottom margin-left-2em">
-          <el-col :span="24">
-            <el-input v-model="importData" type="textarea" :rows="8" placeholder="请在此处粘贴您的JSON配置" />
-            <div style="margin-top: 10px; text-align: right;">
-              <el-button @click="saveImport">保存</el-button>
-            </div>
-          </el-col>
-        </el-row>
     </section>
     <!--    -->
   </div>
