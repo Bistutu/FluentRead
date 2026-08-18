@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { Config, normalizeConfig } from '@/entrypoints/utils/model';
 import { MINIMAX_ENDPOINTS, tongyiTokenPlanUrl, urls } from '@/entrypoints/utils/constant';
-import { customModelString, defaultOption, models, options, resolveConfiguredModel, services, servicesType } from '@/entrypoints/utils/option';
+import { customModelString, defaultModelIds, defaultModels, defaultOption, models, options, resolveConfiguredModel, services, servicesType } from '@/entrypoints/utils/option';
 
 describe('AI 模型编号列表', () => {
     it('AI 智能上下文默认关闭，并能从旧配置平滑补齐', () => {
@@ -18,16 +18,17 @@ describe('AI 模型编号列表', () => {
     });
 
     it('展示当前主流模型，并移除已退役或错误的预设编号', () => {
-        expect(models.get(services.openai)?.at(0)).toBe('gpt-5.6-sol');
+        expect(models.get(services.openai)?.at(0)).toBe('gpt-5.6-luna');
+        expect(models.get(services.openai)).toContain('gpt-5.6-sol');
         expect(models.get(services.openai)).not.toContain('gpt5');
         expect(models.get(services.gemini)).toContain('gemini-3.6-flash');
         expect(models.get(services.claude)).toContain('claude-fable-5');
         expect(models.get(services.claude)).toContain('claude-sonnet-5');
         expect(models.get(services.claude)?.at(-1)).toBe(customModelString);
-        expect(models.get(services.tongyi)?.at(0)).toBe('qwen3.8-max-preview');
+        expect(models.get(services.tongyi)?.at(0)).toBe('qwen3.6-flash');
         expect(models.get(services.tongyi)).toContain('qwen3.7-max');
         expect(models.get(services.tongyi)).not.toContain('qwen3.7-flash');
-        expect(models.get(services.zhipu)?.at(0)).toBe('glm-5.3');
+        expect(models.get(services.zhipu)?.at(0)).toBe('glm-4.5-flash');
         expect(models.get(services.zhipu)).toContain('glm-5.2');
         expect(models.get(services.infini)).toContain('glm-5.2');
         expect(models.get(services.infini)).not.toContain('glm-5.3');
@@ -47,6 +48,13 @@ describe('AI 模型编号列表', () => {
         expect(options.services.every(option => !/[🌟⭐★]/u.test(option.label))).toBe(true);
         expect(servicesType.isMachine(services.freeTranslation)).toBe(true);
         expect(defaultOption.service).toBe(services.freeTranslation);
+    });
+
+    it('所有需要模型的 AI 服务默认使用推荐模型档位', () => {
+        for (const [service, defaultModel] of Object.entries(defaultModelIds)) {
+            expect(defaultModels.get(service), `${service} 默认模型`).toBe(defaultModel);
+            expect(models.get(service)?.at(0), `${service} 模型列表首项`).toBe(defaultModel);
+        }
     });
 
     it('不会把下拉列表中仍可选择的模型当成退役编号改写', () => {
@@ -89,7 +97,7 @@ describe('旧模型编号兼容迁移', () => {
         });
 
         expect(normalized.model).toMatchObject({
-            [services.openai]: 'gpt-5.6-sol',
+            [services.openai]: 'gpt-5.6-luna',
             [services.zhipu]: 'glm-4.5-flash',
             [services.moonshot]: 'kimi-k3',
             [services.claude]: 'claude-sonnet-5',
