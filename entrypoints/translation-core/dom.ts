@@ -92,6 +92,21 @@ function hasContentEditableMarker(element: Element): boolean {
 }
 
 /**
+ * MathJax v2/v3 and KaTeX render formulas into ordinary spans/divs rather than
+ * native MathML. Their generated trees must remain atomic host-owned content:
+ * translating or materializing an inner span can make restore remove the
+ * visible formula while leaving only the hidden TeX source script behind.
+ */
+export function isMathRendererElement(element: Element): boolean {
+    const tagName = element.tagName.toLowerCase();
+    return tagName === 'mjx-container' ||
+        element.classList.contains('MathJax_Display') ||
+        element.classList.contains('MathJax') ||
+        element.classList.contains('MathJax_Preview') ||
+        element.classList.contains('katex');
+}
+
+/**
  * Descendant text guards are intentionally local. A protected inline child
  * must stay out of provider payloads without rejecting the readable paragraph
  * that contains it.
@@ -102,6 +117,7 @@ export function isProtectedDescendantElement(
 ): boolean {
     return (!ignoreExtensionSelf && isExtensionElementSelf(element)) ||
         isProtectedTextElement(element) ||
+        isMathRendererElement(element) ||
         hasNoTranslateMarker(element) ||
         hasContentEditableMarker(element) ||
         hasHiddenMarker(element);
@@ -115,6 +131,7 @@ export interface HardGuardResult {
 export function evaluateElementHardGuard(element: Element): HardGuardResult {
     if (isExtensionElementSelf(element)) return {prune: true, reason: 'fluentread-owned'};
     if (isHardPruneTag(element)) return {prune: true, reason: `protected-tag:${element.tagName.toLowerCase()}`};
+    if (isMathRendererElement(element)) return {prune: true, reason: 'math-renderer'};
     if (hasNoTranslateMarker(element)) return {prune: true, reason: 'inherited-no-translate'};
     if (hasContentEditableMarker(element)) return {prune: true, reason: 'contenteditable'};
     if (hasHiddenMarker(element)) return {prune: true, reason: 'hidden'};

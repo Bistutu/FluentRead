@@ -41,6 +41,20 @@ const inlineDisplays = new Set([
 ]);
 
 const structuralTags = new Set(['aside', 'footer', 'header', 'nav']);
+const semanticHeadingTags = new Set(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']);
+const embeddedAsideClassTokens = new Set([
+    'admonition', 'callout', 'caution', 'important', 'note', 'notice', 'tip', 'warning',
+]);
+
+/**
+ * Headings are explicit author-provided content landmarks. A page may place
+ * its title in a semantic <header> (or even a navigation shell), so structural
+ * ancestry must not suppress the heading itself. Hard guards and site prune
+ * decisions still take precedence.
+ */
+export function isSemanticHeadingElement(element: Element): boolean {
+    return semanticHeadingTags.has(element.tagName.toLowerCase());
+}
 
 export function getElementDisplay(element: Element): string {
     try {
@@ -68,8 +82,56 @@ export function isBlockBoundary(element: Element): boolean {
     return semanticBlockTags.has(tag);
 }
 
+function hasComposedAncestor(
+    element: Element,
+    predicate: (ancestor: Element) => boolean,
+): boolean {
+    let current: Element | null = getComposedParent(element);
+    let depth = 0;
+    while (current && !isDocumentSurface(current)) {
+        depth += 1;
+        // Do not grant a content-context exception when ancestry is too deep
+        // to classify safely. Discovery applies the same hard depth bound.
+        if (depth > maxComposedAncestorDepth) return false;
+        if (predicate(current)) return true;
+        current = getComposedParent(current);
+    }
+    return false;
+}
+
+function hasArticleAncestor(element: Element): boolean {
+    return hasComposedAncestor(element, (ancestor) =>
+        ancestor.tagName.toLowerCase() === 'article' ||
+        ancestor.getAttribute('role')?.trim().toLowerCase() === 'article');
+}
+
+function hasMainAncestor(element: Element): boolean {
+    return hasComposedAncestor(element, (ancestor) =>
+        ancestor.tagName.toLowerCase() === 'main' ||
+        ancestor.getAttribute('role')?.trim().toLowerCase() === 'main');
+}
+
+function isEmbeddedContentAside(element: Element): boolean {
+    if (hasArticleAncestor(element)) return true;
+    if (!hasMainAncestor(element)) return false;
+    if (element.getAttribute('role')?.trim().toLowerCase() === 'note') return true;
+    return Array.from(element.classList).some((token) =>
+        embeddedAsideClassTokens.has(token.toLowerCase()));
+}
+
 export function isStructuralContainer(element: Element): boolean {
-    return structuralTags.has(element.tagName.toLowerCase());
+    const tag = element.tagName.toLowerCase();
+    if (!structuralTags.has(tag)) return false;
+    // Navigation remains chrome even when mounted inside article content.
+    if (tag === 'nav') return true;
+    // An article owns its related asides. Documentation engines also emit
+    // note/callout asides below <main> without an <article> (Swift DocC uses
+    // <aside class="note">). Keep generic main-level asides structural because
+    // they commonly contain related-tools chrome. Header/footer remain chrome:
+    // article headers frequently mix a readable H1 with metadata/edit tools;
+    // the H1 exception is classified separately.
+    if (tag === 'aside' && isEmbeddedContentAside(element)) return false;
+    return true;
 }
 
 export function hasStructuralAncestor(element: Element): boolean {
@@ -175,8 +237,9 @@ export function classifyGenericCandidate(
     skipStructuralAncestorCheck = false,
     protectionCache?: TranslationTextProtectionCache,
 ): GenericClassification | null {
+    const semanticHeading = isSemanticHeadingElement(element);
     if (isDocumentSurface(element) || isStructuralContainer(element) ||
-        (!skipStructuralAncestorCheck && hasStructuralAncestor(element))) {
+        (!skipStructuralAncestorCheck && hasStructuralAncestor(element) && !semanticHeading)) {
         return null;
     }
     if (shouldStayOriginal?.(element) || isProtectedTextElement(element)) return null;

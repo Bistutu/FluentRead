@@ -13,6 +13,8 @@ import {
     classifyGenericCandidate,
     getDirectInlineRuns,
     hasStructuralAncestor,
+    isBlockBoundary,
+    isSemanticHeadingElement,
     isStructuralContainer,
     isTranslationControlElement,
 } from './layout';
@@ -30,6 +32,8 @@ import type {
     TranslationCoreOptions,
     TranslationSiteAdapter,
 } from './types';
+
+const maxHoverBarrierDiscoverySteps = 256;
 
 function isElementNode(node: Node | null | undefined): node is Element {
     return Boolean(node && node.nodeType === 1 && typeof (node as Element).matches === 'function');
@@ -67,6 +71,7 @@ interface DiscoveryFrame {
     shadowIndex: number;
     shadowRoot: ShadowRoot | null;
     descendantHasCandidate: boolean;
+    candidateChildBarriers: Set<Element>;
     ownAdapter?: ReturnType<TranslationCandidateCore['adapterDecision']>;
     forcedCandidate?: TranslationCandidate;
     forcedAtomic?: boolean;
@@ -97,6 +102,7 @@ export class TranslationCandidateCore {
     readonly url: URL;
     readonly adapters: readonly TranslationSiteAdapter[];
     private readonly context: AdapterContext;
+    private readonly discoveredCandidateChildBarriers = new WeakMap<Element, ReadonlySet<Element>>();
 
     constructor(options: TranslationCoreOptions = {}) {
         this.url = options.url ?? currentURL();
@@ -224,6 +230,7 @@ export class TranslationCandidateCore {
         element: Element,
         skipStructuralAncestorCheck = false,
         textProtectionCache = createTranslationTextProtectionCache(),
+        candidateChildBarriers?: ReadonlySet<Element>,
     ): TranslationCandidate[] {
         const candidates: TranslationCandidate[] = [];
         const atomicTargetCache = new WeakMap<Element, boolean>();
@@ -236,11 +243,14 @@ export class TranslationCandidateCore {
             atomicTargetCache.set(candidate, result);
             return result;
         };
+        const isDirectRunBarrier = (candidate: Element): boolean =>
+            candidateChildBarriers?.has(candidate) === true ||
+            isAtomicAdapterTarget(candidate) || isTranslationControlElement(candidate);
         for (const run of getDirectInlineRuns(
             element,
             this.shouldStayOriginal,
             skipStructuralAncestorCheck,
-            isAtomicAdapterTarget,
+            isDirectRunBarrier,
             textProtectionCache,
         )) {
             let current: ChildNode[] = [];
@@ -261,10 +271,11 @@ export class TranslationCandidateCore {
             };
 
             for (const node of run) {
-                if (isElementNode(node) && isAtomicAdapterTarget(node)) {
-                    // The exact adapter candidate is scheduled separately.
-                    // Treat it as a run barrier so the generic parent never
-                    // reparents the target into a synthetic span.
+                if (isElementNode(node) && isDirectRunBarrier(node)) {
+                    // Descendant-owned subtrees, exact adapter targets, and
+                    // interactive controls are scheduled separately. Keep them
+                    // out of the surrounding run so no selected DOM is moved
+                    // into a second synthetic candidate.
                     flush();
                     continue;
                 }
@@ -280,7 +291,7 @@ export class TranslationCandidateCore {
         insideStructural: boolean,
         textProtectionCache: TranslationTextProtectionCache,
     ): TranslationCandidate | null {
-        if (insideStructural) return null;
+        if (insideStructural && !isSemanticHeadingElement(element)) return null;
         const classification = classifyGenericCandidate(
             element,
             this.shouldStayOriginal,
@@ -300,12 +311,75 @@ export class TranslationCandidateCore {
         start: Node,
         textProtectionCache: TranslationTextProtectionCache,
     ): TranslationCandidate | null {
-        const candidates = this.inlineRunCandidates(element, false, textProtectionCache);
+        if (isDocumentSurface(element) || isStructuralContainer(element) ||
+            hasStructuralAncestor(element) || !isBlockBoundary(element) || element.children.length === 0) {
+            return null;
+        }
+        // Use post-order ownership barriers from full discovery as probe
+        // priority, then revalidate every inline child within one strict
+        // budget. This preserves parity after live mutations without an
+        // unbounded subtree walk in pointer handling.
+        const candidates = this.inlineRunCandidates(
+            element,
+            false,
+            textProtectionCache,
+            this.probeHoverCandidateChildBarriers(
+                element,
+                this.discoveredCandidateChildBarriers.get(element),
+            ),
+        );
         if (candidates.length === 0) return null;
         let direct: Node | null = start;
         while (direct && direct !== element && direct.parentNode !== element) direct = direct.parentNode;
         if (!direct || direct === element) return candidates[0] ?? null;
         return candidates.find((candidate) => candidate.nodes?.includes(direct as ChildNode)) ?? null;
+    }
+
+    private probeHoverCandidateChildBarriers(
+        element: Element,
+        discoveredBarriers?: ReadonlySet<Element>,
+    ): ReadonlySet<Element> {
+        const barriers = new Set<Element>();
+        let remainingSteps = maxHoverBarrierDiscoverySteps;
+        const children = Array.from(element.children);
+        // Revalidate previous barriers first. They are the only children whose
+        // stale ownership can otherwise make hover diverge from a fresh dirty
+        // subtree discovery; unknown children still share the same total cap.
+        const orderedChildren = discoveredBarriers
+            ? [
+                ...children.filter((child) => discoveredBarriers.has(child)),
+                ...children.filter((child) => !discoveredBarriers.has(child)),
+            ]
+            : children;
+
+        for (const child of orderedChildren) {
+            // Native block boundaries already split direct runs in layout.ts.
+            if (isBlockBoundary(child)) continue;
+            if (remainingSteps <= 0) {
+                // Never reparent an uninspected subtree merely because the
+                // bounded hover probe ran out of budget. Previously discovered
+                // barriers must remain conservative too, but they are not
+                // trusted once the live subtree can be revalidated below.
+                barriers.add(child);
+                continue;
+            }
+
+            let ownsCandidate = false;
+            let exhausted = false;
+            for (const step of this.discoverSteps(child)) {
+                remainingSteps -= 1;
+                if (step.candidate) {
+                    ownsCandidate = true;
+                    break;
+                }
+                if (remainingSteps <= 0) {
+                    exhausted = true;
+                    break;
+                }
+            }
+            if (ownsCandidate || exhausted) barriers.add(child);
+        }
+        return barriers;
     }
 
     resolve(start: Node | null | undefined): TranslationCandidate | null {
@@ -332,6 +406,12 @@ export class TranslationCandidateCore {
             // Inherited hard guards apply to every possible ancestor candidate.
             // Stop immediately instead of repeatedly climbing an extreme tree.
             if (evaluateHardGuard(current).reason === 'ancestor-depth-limit') return null;
+            // Full-page discovery prunes adapter-owned controlled subtrees before
+            // walking their children. Hover resolution must apply the same
+            // inherited prune decision before trying a generic inline run;
+            // otherwise a hit inside (for example) GitHub Quick Search can
+            // resolve its dialog ancestor even though discover() excludes it.
+            if (this.hasAdapterPrunedAncestor(current)) return null;
             const ownDecision = this.adapterDecision(current).decision;
             if (ownDecision.kind === 'force-target' && ownDecision.atomic !== false) {
                 const exact = this.inspectWithTextProtectionCache(current, textProtectionCache).candidate;
@@ -378,6 +458,7 @@ export class TranslationCandidateCore {
                 shadowIndex: 0,
                 shadowRoot: null,
                 descendantHasCandidate: false,
+                candidateChildBarriers: new Set(),
                 exitIndex: 0,
                 checkAncestors: true,
                 insideStructural: hasStructuralAncestor(rootElement),
@@ -433,6 +514,7 @@ export class TranslationCandidateCore {
                             shadowIndex: 0,
                             shadowRoot: null,
                             descendantHasCandidate: false,
+                            candidateChildBarriers: new Set(),
                             exitIndex: 0,
                             checkAncestors: false,
                             insideStructural: frame.insideStructural || isStructuralContainer(frame.element),
@@ -453,6 +535,7 @@ export class TranslationCandidateCore {
                             shadowIndex: 0,
                             shadowRoot: null,
                             descendantHasCandidate: false,
+                            candidateChildBarriers: new Set(),
                             exitIndex: 0,
                             checkAncestors: false,
                             insideStructural: frame.insideStructural || isStructuralContainer(frame.element),
@@ -466,7 +549,12 @@ export class TranslationCandidateCore {
                 if (!frame.exitCandidates) {
                     if (frame.forcedCandidate) {
                         frame.exitCandidates = frame.forcedAtomic === false && frame.descendantHasCandidate
-                            ? this.inlineRunCandidates(frame.element, true, textProtectionCache)
+                            ? this.inlineRunCandidates(
+                                frame.element,
+                                true,
+                                textProtectionCache,
+                                frame.candidateChildBarriers,
+                            )
                             : [frame.forcedCandidate];
                     } else if (frame.ownAdapter?.decision.kind === 'skip-self' ||
                         frame.ownAdapter?.decision.kind === 'prune-subtree' ||
@@ -475,7 +563,12 @@ export class TranslationCandidateCore {
                     } else if (frame.descendantHasCandidate) {
                         frame.exitCandidates = frame.insideStructural
                             ? []
-                            : this.inlineRunCandidates(frame.element, true, textProtectionCache);
+                            : this.inlineRunCandidates(
+                                frame.element,
+                                true,
+                                textProtectionCache,
+                                frame.candidateChildBarriers,
+                            );
                     } else {
                         const candidate = this.genericCandidateForDiscovery(
                             frame.element,
@@ -484,6 +577,10 @@ export class TranslationCandidateCore {
                         );
                         frame.exitCandidates = candidate ? [candidate] : [];
                     }
+                    this.discoveredCandidateChildBarriers.set(
+                        frame.element,
+                        frame.candidateChildBarriers,
+                    );
                 }
 
                 const candidate = frame.exitCandidates[frame.exitIndex];
@@ -493,7 +590,15 @@ export class TranslationCandidateCore {
                     const hasCandidate = frame.descendantHasCandidate || frame.exitCandidates.length > 0;
                     stack.pop();
                     const parent = stack[stack.length - 1];
-                    if (parent && hasCandidate) parent.descendantHasCandidate = true;
+                    if (parent && hasCandidate) {
+                        parent.descendantHasCandidate = true;
+                        // Discovery is post-order: once a direct child subtree
+                        // owns any candidate, an ancestor synthetic inline run
+                        // must not move that subtree into a second candidate.
+                        if (frame.element.parentElement === parent.element) {
+                            parent.candidateChildBarriers.add(frame.element);
+                        }
+                    }
                 }
                 yield candidate
                     ? {element: frame.element, phase: 'exit', candidate}

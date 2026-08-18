@@ -15,7 +15,12 @@ export {
     TranslationCandidateCore,
 } from './engine';
 export type {TranslationDiscoveryStep} from './engine';
-export {getOpenShadowRoots} from './dom';
+export {
+    evaluateHardGuard,
+    getComposedParent,
+    getOpenShadowRoots,
+    isProtectedDescendantElement,
+} from './dom';
 export {
     extractTranslationText,
     extractTranslationTextFromNodes,

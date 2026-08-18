@@ -8,10 +8,13 @@ import {
     applyTranslationsToSnapshot,
     collectLiveTranslationTextSlots,
     createTranslationSourceSnapshot,
+    evaluateHardGuard,
+    getComposedParent,
     getCurrentTranslationCore,
     getOpenShadowRoots,
     getTranslationCandidateKey,
     isClearlyTargetLanguage,
+    isProtectedDescendantElement,
     parseTranslationSlots,
     resolveTranslationCandidate,
     resolveTranslationCandidateAtPoint,
@@ -55,6 +58,24 @@ const TRANSLATION_ARTIFACT_SELECTOR = [
 
 type TranslationResult = SnapshotTranslationResult | LiveTextTranslationResult;
 
+type TranslationTargetOutcome =
+    | {status: "committed" | "failed" | "owned"}
+    | {status: "unchanged"; source: string; attemptNode?: HTMLElement}
+    | {
+        status: "stale" | "not-current" | "empty";
+        retryRoot?: Node;
+        /** Attempt owner used to reject retries after a newer generation took over. */
+        attemptNode?: HTMLElement;
+    };
+
+interface FullPageLifecycleRetry {
+    owner: HTMLElement;
+    source: string;
+    kind: TranslationCandidate["kind"];
+    reason: string;
+    attempts: number;
+}
+
 interface SnapshotTranslationResult {
     kind: "snapshot";
     sources: readonly string[];
@@ -63,6 +84,7 @@ interface SnapshotTranslationResult {
 
 interface LiveTextTranslationResult {
     kind: "live-text";
+    complete: boolean;
     changed: boolean;
     nodes: readonly Text[];
     apply: () => void;
@@ -76,7 +98,22 @@ interface FullPageSession {
     roots: Set<Node>;
     pending: Map<Node, TranslationCandidate>;
     scheduled: Map<Node, TranslationCandidate>;
+    /** Visibility anchor -> candidates waiting for that anchor to enter the viewport. */
     observedCandidates: Map<HTMLElement, Map<Node, TranslationCandidate>>;
+    /** Candidate key -> its actual IntersectionObserver target (which can be a descendant). */
+    candidateAnchors: Map<Node, HTMLElement>;
+    /** Candidate element -> candidate keys, kept separate from visibility anchors for cleanup. */
+    candidateOwnerKeys: Map<HTMLElement, Set<Node>>;
+    /** Host owner/ancestor -> active translation targets below it, avoiding a global state scan on mutations. */
+    statefulTargetsByAncestor: Map<Element, Set<HTMLElement>>;
+    /** Active target -> the exact ancestor keys registered above. */
+    statefulAncestorsByTarget: WeakMap<HTMLElement, readonly Element[]>;
+    /** Bounded immediate retries for candidates invalidated while a provider request is in flight. */
+    lifecycleRetries: WeakMap<Node, FullPageLifecycleRetry>;
+    /** Explicit provider/language no-change decisions, scoped to this full-page session. */
+    unchangedCandidates: WeakMap<Node, FullPageLifecycleRetry>;
+    /** Candidate keys currently consuming one of the full-page concurrency slots. */
+    inFlightCandidates: Map<Node, TranslationCandidate>;
     inFlight: number;
     draining: boolean;
     flushTimer: number | null;
@@ -96,9 +133,12 @@ interface FullPageSession {
 const BROAD_RESCAN_COOLDOWN_MS = 1_000;
 const CANDIDATE_PRUNE_BUDGET_MS = 4;
 const STATEFUL_ATTRIBUTE_DEBOUNCE_MS = 500;
+const FULL_PAGE_LIFECYCLE_RETRY_LIMIT = 2;
 
 let hoverTimer: ReturnType<typeof setTimeout> | undefined;
 let fullPageSession: FullPageSession | null = null;
+/** Exact direct children owned by one materialized inline-run request, before its spinner is appended. */
+const loadingSyntheticSourceNodes = new WeakMap<TranslationState, readonly ChildNode[]>();
 
 function isElementNode(node: Node | null | undefined): node is Element {
     return Boolean(node && node.nodeType === 1 && typeof (node as Element).matches === "function");
@@ -144,6 +184,47 @@ function currentStateTextNodes(node: HTMLElement, state: TranslationState): Text
         getCurrentTranslationCore().shouldStayOriginal,
         stateProtectionBoundary(node, state),
     ).map((slot) => slot.node);
+}
+
+function statefulSourceAndTextSlotsAreCurrent(
+    node: HTMLElement,
+    state: TranslationState,
+): boolean {
+    const currentNodes = currentStateTextNodes(node, state);
+    const previousNodes = state.translatedTextNodes ?? state.sourceTextNodes ?? [];
+    if (currentNodes.length !== previousNodes.length ||
+        currentNodes.some((textNode, index) => textNode !== previousNodes[index])) return false;
+
+    // single/control replace the live Text values themselves. Their logical
+    // source is still current only while every captured slot keeps both its
+    // identity and the exact value written by this generation.
+    if ((state.kind === "control" || state.mode === "single") && state.textSlotsApplied) {
+        return currentNodes.every((textNode) =>
+            state.translatedTextValues?.get(textNode) === (textNode.nodeValue ?? ""));
+    }
+
+    return normalizeComparableText(currentStateSourceText(node, state)) ===
+        normalizeComparableText(state.sourceText);
+}
+
+function mutationTouchesCurrentTranslationArtifact(
+    mutation: MutationRecord,
+    state: TranslationState,
+): boolean {
+    const artifacts = [state.spinner, state.bilingualContent, state.retryWrapper]
+        .filter((node): node is HTMLElement => Boolean(node));
+    if (artifacts.length === 0) return false;
+
+    // The stateful host necessarily contains its current artifact, so containment
+    // in this direction must only apply to added/removed subtrees. For the
+    // mutation target itself, only the artifact or one of its descendants is a
+    // tamper; an ordinary direct-host childList is not.
+    if (artifacts.some((artifact) =>
+        mutation.target === artifact || artifact.contains(mutation.target))) return true;
+    return [...Array.from(mutation.addedNodes), ...Array.from(mutation.removedNodes)]
+        .some((node) => artifacts.some((artifact) =>
+            node === artifact || artifact.contains(node) ||
+            (isElementNode(node) && node.contains(artifact))));
 }
 
 function isTranslationArtifact(node: Node): boolean {
@@ -280,6 +361,7 @@ async function translateLiveText(
     const parts = collectLiveTranslationTextSlots(node, getCurrentTranslationCore().shouldStayOriginal);
     if (parts.length === 0) return {
         kind: "live-text",
+        complete: false,
         changed: false,
         nodes: [],
         apply: () => undefined,
@@ -293,6 +375,7 @@ async function translateLiveText(
 
     return {
         kind: "live-text",
+        complete: translations.length === origins.length,
         changed,
         nodes: parts.map((part) => part.node),
         apply: () => {
@@ -325,18 +408,10 @@ function attemptSourceIsCurrent(node: HTMLElement, state: TranslationState): boo
 function discardStaleAttempt(
     node: HTMLElement,
     state: TranslationState,
-    owner?: FullPageSession,
-): void {
-    if (getTranslationState(node) !== state) return;
+): Node | undefined {
     const rescanRoot = state.syntheticSegment ? node.parentElement : node;
-    const waitsForAttributeDebounce = owner?.statefulAttributeTimers.has(node) === true;
-    discardTranslation(node, state);
-    if (!owner?.active || !rescanRoot?.isConnected) return;
-    if (waitsForAttributeDebounce) {
-        owner.statefulAttributeRescanTargets.add(node);
-    } else {
-        enqueueFullPageRescan(owner, rescanRoot);
-    }
+    if (getTranslationState(node) === state) discardTranslation(node, state);
+    return rescanRoot?.isConnected ? rescanRoot : undefined;
 }
 
 function markFailedTranslation(
@@ -344,14 +419,16 @@ function markFailedTranslation(
     attempt: NonNullable<ReturnType<typeof beginTranslation>>,
     spinner: HTMLElement | undefined,
     error: unknown,
-    owner?: FullPageSession,
-): void {
+): TranslationTargetOutcome {
     spinner?.remove();
     if (!node.isConnected ||
         !attemptSourceIsCurrent(node, attempt.state) ||
         !markTranslationError(node, attempt.state, attempt.generation, false)) {
-        discardStaleAttempt(node, attempt.state, owner);
-        return;
+        return {
+            status: "stale",
+            retryRoot: discardStaleAttempt(node, attempt.state),
+            attemptNode: node,
+        };
     }
     const retryWrapper = insertFailedTip(
         node,
@@ -360,52 +437,68 @@ function markFailedTranslation(
     );
     setRetryWrapper(node, retryWrapper);
     setRenderedStyleAttribute(node);
+    return {status: "failed"};
 }
 
 async function renderTranslation(
     node: HTMLElement,
+    candidate: TranslationCandidate,
     attempt: NonNullable<ReturnType<typeof beginTranslation>>,
     request: Promise<TranslationResult>,
-    owner?: FullPageSession,
-): Promise<void> {
+): Promise<TranslationTargetOutcome> {
     const { state, generation } = attempt;
     const spinner = state.spinner;
+
+    const staleOutcome = (): TranslationTargetOutcome => ({
+        status: "stale",
+        retryRoot: discardStaleAttempt(node, state),
+        attemptNode: node,
+    });
 
     try {
         const result = await request;
         spinner?.remove();
 
-        if (!node.isConnected || !attemptSourceIsCurrent(node, state)) {
-            discardStaleAttempt(node, state, owner);
-            return;
-        }
+        // A target can keep identical text while class/role/visibility changes
+        // move ownership to a different semantic block. Revalidate the original
+        // owner before committing; synthetic inline runs are validated by their
+        // exact Text-node identities below because materialization moved them.
+        if (!node.isConnected || !attemptSourceIsCurrent(node, state) ||
+            (!candidate.nodes?.length && !candidateIsCurrent(candidate))) return staleOutcome();
 
         if (result.kind === "live-text") {
             const liveResult = result;
+            if (!liveResult.complete) {
+                discardTranslation(node, state);
+                return {status: "empty", retryRoot: node.isConnected ? node : undefined, attemptNode: node};
+            }
             if (!liveResult.changed) {
                 discardTranslation(node, state);
-                return;
+                return liveResult.nodes.length === 0
+                    ? {status: "empty", retryRoot: node.isConnected ? node : undefined, attemptNode: node}
+                    : {status: "unchanged", source: state.sourceText, attemptNode: node};
             }
             const currentNodes = currentStateTextNodes(node, state);
             if (currentNodes.length !== liveResult.nodes.length ||
                 currentNodes.some((textNode, index) => textNode !== liveResult.nodes[index])) {
-                discardStaleAttempt(node, state, owner);
-                return;
+                return staleOutcome();
             }
             if (!markTranslationComplete(node, state, generation, false)) {
-                discardStaleAttempt(node, state, owner);
-                return;
+                return staleOutcome();
             }
             liveResult.apply();
             setTextSlotsApplied(node, liveResult.nodes);
-            return;
+            return {status: "committed"};
         }
 
-        if (result.sources.length === 0 || result.translations.length !== result.sources.length ||
-            !result.translations.some((translation, index) =>
-                normalizeComparableText(translation) !== normalizeComparableText(result.sources[index] ?? ""))) {
+        if (result.sources.length === 0 || result.translations.length !== result.sources.length) {
             discardTranslation(node, state);
-            return;
+            return {status: "empty", retryRoot: node.isConnected ? node : undefined, attemptNode: node};
+        }
+        if (!result.translations.some((translation, index) =>
+            normalizeComparableText(translation) !== normalizeComparableText(result.sources[index] ?? ""))) {
+            discardTranslation(node, state);
+            return {status: "unchanged", source: state.sourceText, attemptNode: node};
         }
 
         // Build the output skeleton at commit time. Host attributes and safe
@@ -421,20 +514,19 @@ async function renderTranslation(
         const freshSources = freshSnapshot.slots.map((slot) => slot.source);
         if (freshSources.length !== result.sources.length ||
             freshSources.some((source, index) => source !== result.sources[index])) {
-            discardStaleAttempt(node, state, owner);
-            return;
+            return staleOutcome();
         }
         const translatedText = applyTranslationsToSnapshot(freshSnapshot, result.translations);
         if (!markTranslationComplete(node, state, generation, false)) {
-            discardStaleAttempt(node, state, owner);
-            return;
+            return staleOutcome();
         }
 
         const content = appendBilingualTranslation(node, translatedText);
         setBilingualContent(node, content);
         setRenderedStyleAttribute(node);
+        return {status: "committed"};
     } catch (error) {
-        markFailedTranslation(node, attempt, spinner, error, owner);
+        return markFailedTranslation(node, attempt, spinner, error);
     }
 }
 
@@ -463,17 +555,156 @@ function materializeCandidate(candidate: TranslationCandidate): {node: HTMLEleme
     return {node: wrapper, synthetic: true};
 }
 
+function hasIntersectionLayoutBox(element: HTMLElement): boolean {
+    if (typeof element.getClientRects !== "function") return false;
+    try {
+        const rects = element.getClientRects();
+        for (let index = 0; index < rects.length; index += 1) {
+            const rect = rects[index];
+            if (rect && rect.width > 0 && rect.height > 0) return true;
+        }
+    } catch {
+        // Detached/custom elements can throw while their layout is being rebuilt.
+    }
+    return false;
+}
+
+/**
+ * IntersectionObserver cannot reliably wake targets which generate no layout
+ * box (notably `display: contents`). Prefer the candidate itself when it has a
+ * box, then walk non-extension descendants in document order. If no element can
+ * act as an anchor the caller queues the candidate directly; concurrency is
+ * still enforced by the normal full-page drain.
+ */
+export function resolveFullPageVisibilityAnchor(candidate: HTMLElement): HTMLElement | null {
+    if (hasIntersectionLayoutBox(candidate)) return candidate;
+
+    const pending: Element[] = [];
+    const pushChildrenInReverse = (container: ParentNode) => {
+        for (let index = container.children.length - 1; index >= 0; index -= 1) {
+            const child = container.children.item(index);
+            if (child) pending.push(child);
+        }
+    };
+    pushChildrenInReverse(candidate);
+
+    while (pending.length > 0) {
+        const element = pending.pop();
+        if (!element || element.matches(TRANSLATION_ARTIFACT_SELECTOR)) continue;
+        const htmlElement = asHTMLElement(element);
+        if (htmlElement && hasIntersectionLayoutBox(htmlElement)) return htmlElement;
+
+        // Open shadow content participates in full-page translation as its own
+        // observed root, but it can also be the only rendered box of a host.
+        // Push light children first so shadow children are visited first by LIFO.
+        pushChildrenInReverse(element);
+        if (element.shadowRoot) pushChildrenInReverse(element.shadowRoot);
+    }
+    return null;
+}
+
+function removeCandidateObservation(session: FullPageSession, key: Node): void {
+    const anchor = session.candidateAnchors.get(key);
+    if (!anchor) return;
+    session.candidateAnchors.delete(key);
+    const observed = session.observedCandidates.get(anchor);
+    observed?.delete(key);
+    if (observed?.size === 0) {
+        session.observedCandidates.delete(anchor);
+        session.observer.unobserve(anchor);
+    }
+}
+
+function addCandidateOwnerKey(session: FullPageSession, owner: HTMLElement, key: Node): void {
+    let keys = session.candidateOwnerKeys.get(owner);
+    if (!keys) {
+        keys = new Set();
+        session.candidateOwnerKeys.set(owner, keys);
+    }
+    keys.add(key);
+}
+
+function removeCandidateOwnerKey(session: FullPageSession, owner: HTMLElement, key: Node): void {
+    const keys = session.candidateOwnerKeys.get(owner);
+    keys?.delete(key);
+    if (keys?.size === 0) session.candidateOwnerKeys.delete(owner);
+}
+
+function unregisterSessionStatefulTarget(session: FullPageSession | undefined, target: HTMLElement): void {
+    if (!session) return;
+    const ancestors = session.statefulAncestorsByTarget.get(target);
+    if (!ancestors) return;
+    session.statefulAncestorsByTarget.delete(target);
+    for (const ancestor of ancestors) {
+        const targets = session.statefulTargetsByAncestor.get(ancestor);
+        targets?.delete(target);
+        if (targets?.size === 0) session.statefulTargetsByAncestor.delete(ancestor);
+    }
+}
+
+function registerSessionStatefulTarget(
+    session: FullPageSession | undefined,
+    candidateOwner: HTMLElement,
+    target: HTMLElement,
+): void {
+    if (!session?.active) return;
+    unregisterSessionStatefulTarget(session, target);
+    const ancestors: Element[] = [];
+    let current: Element | null = candidateOwner;
+    let depth = 0;
+    while (current && depth < 512) {
+        depth += 1;
+        ancestors.push(current);
+        let targets = session.statefulTargetsByAncestor.get(current);
+        if (!targets) {
+            targets = new Set();
+            session.statefulTargetsByAncestor.set(current, targets);
+        }
+        targets.add(target);
+        current = getComposedParent(current);
+    }
+    session.statefulAncestorsByTarget.set(target, ancestors);
+}
+
+function refreshCandidateVisibilityBinding(
+    session: FullPageSession,
+    key: Node,
+    candidate: TranslationCandidate,
+): void {
+    const target = asHTMLElement(candidate.element);
+    const nextAnchor = target?.isConnected ? resolveFullPageVisibilityAnchor(target) : null;
+    const currentAnchor = session.candidateAnchors.get(key) ?? null;
+
+    if (currentAnchor === nextAnchor && (nextAnchor !== null || session.pending.has(key))) return;
+    removeCandidateObservation(session, key);
+
+    if (!nextAnchor) {
+        // Keep an already-visible candidate pending while its display:contents
+        // subtree is being rebuilt. If it was still waiting on the old anchor,
+        // direct scheduling is the only visibility-safe fallback.
+        if (!session.pending.has(key)) session.pending.set(key, candidate);
+        scheduleFullPageDrain(session);
+        return;
+    }
+
+    let observed = session.observedCandidates.get(nextAnchor);
+    if (!observed) {
+        observed = new Map();
+        session.observedCandidates.set(nextAnchor, observed);
+    }
+    observed.set(key, candidate);
+    session.candidateAnchors.set(key, nextAnchor);
+    session.observer.observe(nextAnchor);
+}
+
 function forgetCandidate(session: FullPageSession | undefined, candidate: TranslationCandidate): void {
     if (!session) return;
     const key = getTranslationCandidateKey(candidate);
-    session.pending.delete(key);
+    if (session.pending.get(key) === candidate) session.pending.delete(key);
+    if (session.scheduled.get(key) !== candidate) return;
     session.scheduled.delete(key);
-    const observed = session.observedCandidates.get(candidate.element);
-    observed?.delete(key);
-    if (observed?.size === 0) {
-        session.observedCandidates.delete(candidate.element);
-        session.observer.unobserve(candidate.element);
-    }
+    removeCandidateObservation(session, key);
+    removeCandidateOwnerKey(session, candidate.element, key);
 }
 
 async function translateTarget(
@@ -481,19 +712,24 @@ async function translateTarget(
     displayMode: "bilingual" | "single",
     slide: boolean,
     owner?: FullPageSession,
-): Promise<void> {
+): Promise<TranslationTargetOutcome> {
     if (!candidate.element.isConnected) {
-        forgetCandidate(owner, candidate);
-        return;
+        return {status: "not-current"};
     }
 
+    const statefulSession = owner?.active
+        ? owner
+        : fullPageSession?.active ? fullPageSession : undefined;
     const existingNode = candidate.nodes?.length ? null : candidate.element;
     const current = existingNode ? getTranslationState(existingNode) : undefined;
-    if (current?.phase === "loading") return;
+    if (current?.phase === "loading") return {status: "owned"};
     if (current?.phase === "translated") {
         // 滑动触发只对当前鼠标下的新目标翻译，不在移动过程中反复恢复原文。
-        if (!slide && existingNode) restoreTranslation(existingNode);
-        return;
+        if (!slide && existingNode) {
+            unregisterSessionStatefulTarget(statefulSession, existingNode);
+            restoreTranslation(existingNode);
+        }
+        return {status: "committed"};
     }
     if (current?.phase === "error" && existingNode) {
         if (current.syntheticSegment) {
@@ -503,48 +739,65 @@ async function translateTarget(
             const sourceAnchor = sourceNodes.find((node) =>
                 normalizeComparableText(node.textContent ?? node.nodeValue ?? "").length > 0,
             ) ?? sourceNodes[0];
+            const retryRoot = existingNode.parentElement ?? undefined;
+            unregisterSessionStatefulTarget(statefulSession, existingNode);
             restoreTranslation(existingNode);
-            if (!sourceAnchor?.isConnected) return;
+            if (!sourceAnchor?.isConnected) return {status: "not-current", retryRoot};
             const refreshedCandidate = getCurrentTranslationCore().resolve(sourceAnchor);
-            if (!refreshedCandidate) return;
-            await translateTarget(refreshedCandidate, displayMode, slide, owner);
-            return;
+            if (!refreshedCandidate) return {status: "not-current", retryRoot};
+            return translateTarget(refreshedCandidate, displayMode, slide, owner);
         }
+        unregisterSessionStatefulTarget(statefulSession, existingNode);
         restoreTranslation(existingNode);
     }
 
     if (!candidateIsCurrent(candidate)) {
-        forgetCandidate(owner, candidate);
-        return;
+        return {
+            status: "not-current",
+            retryRoot: candidate.element.isConnected ? candidate.element : undefined,
+        };
     }
 
     const core = getCurrentTranslationCore();
     const sourceText = candidate.nodes?.length
         ? extractTranslationTextFromNodes(candidate.nodes, core.shouldStayOriginal)
         : extractTranslationText(candidate.element, core.shouldStayOriginal);
-    if (!normalizeComparableText(sourceText)) return;
+    if (!normalizeComparableText(sourceText)) {
+        return {
+            status: "empty",
+            retryRoot: candidate.element.isConnected ? candidate.element : undefined,
+        };
+    }
 
     // 短 UI 文案只做确定性的 script 判断；统计检测至少需要一段可读文本，
     // 否则 GitHub 的短标题/按钮很容易被 franc 误判后静默漏译。
-    if (isClearlyTargetLanguage(sourceText, config.to)) return;
+    if (isClearlyTargetLanguage(sourceText, config.to)) return {status: "unchanged", source: sourceText};
     try {
         const detected = sourceText.length >= 20 ? detectlang(normalizeComparableText(sourceText)) : '';
-        if (detected && detected === config.to) return;
+        if (detected && detected === config.to) return {status: "unchanged", source: sourceText};
     } catch {
         // 语言检测只是优化，不影响正常翻译流程。
     }
 
     const materialized = materializeCandidate(candidate);
     if (!materialized) {
-        forgetCandidate(owner, candidate);
-        return;
+        return {
+            status: "not-current",
+            retryRoot: candidate.element.isConnected ? candidate.element : undefined,
+        };
     }
     const {node, synthetic} = materialized;
 
     const kind = candidate.kind;
-    const sourceTextNodes = kind === "control" || displayMode === "single"
-        ? collectLiveTranslationTextSlots(node, core.shouldStayOriginal).map((slot) => slot.node)
-        : undefined;
+    // Capture every candidate's exact translatable Text-node identities. A
+    // renderer can replace only a protected MathJax/KaTeX child after commit;
+    // source equality alone cannot distinguish that harmless transaction from
+    // a same-text host/link replacement which makes the rendered snapshot old.
+    const sourceTextNodes = collectLiveTranslationTextSlots(
+        node,
+        core.shouldStayOriginal,
+        synthetic ? node : undefined,
+    ).map((slot) => slot.node);
     const attempt = beginTranslation(
         node,
         displayMode,
@@ -555,8 +808,9 @@ async function translateTarget(
     );
     if (!attempt) {
         if (synthetic) node.replaceWith(...Array.from(node.childNodes));
-        return;
+        return {status: "owned"};
     }
+    if (synthetic) loadingSyntheticSourceNodes.set(attempt.state, Array.from(node.childNodes));
 
     // 请求必须在 spinner 插入前创建；微软 HTML 克隆和文本节点快照不能把
     // 插件自己的 loading 元素送到服务端。
@@ -569,7 +823,149 @@ async function translateTarget(
     if (synthetic) node.setAttribute('data-fr-translation-segment', 'true');
     const spinner = insertLoadingSpinner(node);
     setSpinner(node, spinner);
-    await renderTranslation(node, attempt, request, owner);
+    registerSessionStatefulTarget(statefulSession, candidate.element, node);
+    const outcome = await renderTranslation(node, candidate, attempt, request);
+    if (outcome.status === "stale" || outcome.status === "not-current" ||
+        outcome.status === "empty" || outcome.status === "unchanged") {
+        unregisterSessionStatefulTarget(statefulSession, node);
+    }
+    return outcome;
+}
+
+function candidateLifecycleSource(candidate: TranslationCandidate): string {
+    try {
+        const core = getCurrentTranslationCore();
+        return normalizeComparableText(candidate.nodes?.length
+            ? extractTranslationTextFromNodes(candidate.nodes, core.shouldStayOriginal)
+            : extractTranslationText(candidate.element, core.shouldStayOriginal));
+    } catch {
+        return normalizeComparableText(candidate.element.textContent ?? "");
+    }
+}
+
+function createLifecycleRetry(
+    candidate: TranslationCandidate,
+    source: string,
+    attempts: number,
+): FullPageLifecycleRetry {
+    return {
+        owner: candidate.element,
+        source: normalizeComparableText(source),
+        kind: candidate.kind,
+        reason: candidate.reason,
+        attempts,
+    };
+}
+
+function sameLifecycleRetry(
+    previous: FullPageLifecycleRetry | undefined,
+    candidate: TranslationCandidate,
+    source: string,
+): boolean {
+    return Boolean(previous &&
+        previous.owner === candidate.element &&
+        previous.source === source &&
+        previous.kind === candidate.kind &&
+        previous.reason === candidate.reason);
+}
+
+function resolveFullPageRetryCandidate(
+    candidate: TranslationCandidate,
+    retryRoot?: Node,
+): TranslationCandidate | null {
+    const core = getCurrentTranslationCore();
+    const key = getTranslationCandidateKey(candidate);
+    const starts = [retryRoot, key, candidate.element];
+    const visited = new Set<Node>();
+
+    for (const start of starts) {
+        if (!start || visited.has(start) || !start.isConnected) continue;
+        visited.add(start);
+        const fresh = core.resolve(start);
+        if (fresh?.element.isConnected) return fresh;
+    }
+
+    if (!candidate.element.isConnected) return null;
+    return core.inspect(candidate.element).candidate ?? null;
+}
+
+function finalizeFullPageCandidate(
+    session: FullPageSession,
+    candidate: TranslationCandidate,
+    outcome: TranslationTargetOutcome,
+): void {
+    const originalKey = getTranslationCandidateKey(candidate);
+
+    // A mutation restart or a newer discovery generation may already have
+    // replaced this scheduled entry. The old provider completion cannot delete
+    // or enqueue work for that newer owner.
+    if (!session.active || fullPageSession !== session || session.scheduled.get(originalKey) !== candidate) return;
+
+    if (outcome.status !== "stale" && outcome.status !== "not-current" && outcome.status !== "empty") {
+        session.lifecycleRetries.delete(originalKey);
+        if (outcome.status === "unchanged") {
+            if (outcome.attemptNode && session.statefulAttributeTimers.has(outcome.attemptNode)) {
+                session.statefulAttributeRescanTargets.add(outcome.attemptNode);
+            }
+            session.unchangedCandidates.set(
+                originalKey,
+                createLifecycleRetry(candidate, outcome.source, 0),
+            );
+        } else {
+            session.unchangedCandidates.delete(originalKey);
+        }
+        forgetCandidate(session, candidate);
+        return;
+    }
+
+    session.unchangedCandidates.delete(originalKey);
+
+    // A new hover/full generation owns the same node already. Its own completion
+    // is authoritative, so the stale generation must not issue a duplicate.
+    if (outcome.attemptNode && getTranslationState(outcome.attemptNode)) {
+        session.lifecycleRetries.delete(originalKey);
+        forgetCandidate(session, candidate);
+        return;
+    }
+
+    // Class/style changes are deliberately debounced by the mutation pipeline.
+    // Preserve that single rescan instead of racing it with an immediate retry.
+    if (outcome.attemptNode && session.statefulAttributeTimers.has(outcome.attemptNode)) {
+        session.statefulAttributeRescanTargets.add(outcome.attemptNode);
+        forgetCandidate(session, candidate);
+        return;
+    }
+
+    const fresh = resolveFullPageRetryCandidate(candidate, outcome.retryRoot);
+    const retryCandidate = fresh ?? candidate;
+    const retryKey = fresh ? getTranslationCandidateKey(fresh) : originalKey;
+    const source = candidateLifecycleSource(retryCandidate);
+    const previous = session.lifecycleRetries.get(retryKey) ?? session.lifecycleRetries.get(originalKey);
+    const attempts = sameLifecycleRetry(previous, retryCandidate, source)
+        ? previous!.attempts + 1
+        : 1;
+    const retryState = createLifecycleRetry(retryCandidate, source, attempts);
+
+    if (retryKey !== originalKey) session.lifecycleRetries.delete(originalKey);
+    session.unchangedCandidates.delete(retryKey);
+    session.lifecycleRetries.set(retryKey, retryState);
+    forgetCandidate(session, candidate);
+
+    if (attempts > FULL_PAGE_LIFECYCLE_RETRY_LIMIT) return;
+
+    if (fresh) {
+        scheduleDiscoveredCandidate(session, fresh);
+        if (session.scheduled.get(retryKey) === fresh) {
+            // The original candidate has already crossed the visibility gate.
+            // Retry the freshly resolved owner directly; observing it again can
+            // otherwise wait forever when IntersectionObserver does not re-emit.
+            session.pending.set(retryKey, fresh);
+            scheduleFullPageDrain(session);
+        }
+        return;
+    }
+
+    if (outcome.retryRoot?.isConnected) enqueueFullPageRescan(session, outcome.retryRoot);
 }
 
 function scheduleFullPageDrain(session: FullPageSession): void {
@@ -586,16 +982,39 @@ function drainFullPage(session: FullPageSession): void {
     const maxConcurrent = 3;
 
     while (session.active && session.inFlight < maxConcurrent && session.pending.size > 0) {
-        const iterator = session.pending.entries().next();
-        const entry = iterator.value as [Node, TranslationCandidate] | undefined;
+        let entry: [Node, TranslationCandidate] | undefined;
+        for (const pendingEntry of session.pending.entries()) {
+            if (!session.inFlightCandidates.has(pendingEntry[0])) {
+                entry = pendingEntry;
+                break;
+            }
+        }
         if (!entry) break;
         const [key, candidate] = entry;
         session.pending.delete(key);
+        session.inFlightCandidates.set(key, candidate);
         session.inFlight += 1;
         void translateTarget(candidate, config.display === styles.bilingualTranslation ? "bilingual" : "single", true, session)
+            .then(
+                (outcome) => {
+                    session.inFlight -= 1;
+                    if (session.inFlightCandidates.get(key) === candidate) {
+                        session.inFlightCandidates.delete(key);
+                    }
+                    finalizeFullPageCandidate(session, candidate, outcome);
+                },
+                () => {
+                    session.inFlight -= 1;
+                    if (session.inFlightCandidates.get(key) === candidate) {
+                        session.inFlightCandidates.delete(key);
+                    }
+                    // Unexpected runtime failures retain the historical terminal
+                    // behavior; provider failures are represented explicitly by
+                    // translateTarget and render their retry UI before this point.
+                    forgetCandidate(session, candidate);
+                },
+            )
             .finally(() => {
-                forgetCandidate(session, candidate);
-                session.inFlight -= 1;
                 if (session.active) scheduleFullPageDrain(session);
             });
     }
@@ -607,6 +1026,11 @@ function scheduleDiscoveredCandidate(session: FullPageSession, candidate: Transl
     if (!session.active || !target || !target.isConnected) return;
     const targetState = getTranslationState(target);
     if (targetState) {
+        // Hover can commit this state before the full-page session exists. Add
+        // it to this session's observer-only ancestor index without replacing
+        // the state's generation/controller ownership, so ancestor hard guards
+        // still restore it and normal session teardown can drop the index.
+        registerSessionStatefulTarget(session, candidate.element, target);
         // An ancestor class/style mutation can change which label inside a
         // translated target is visible. Discovery still reaches the same
         // candidate; schedule a debounced source/slot check instead of silently
@@ -618,12 +1042,22 @@ function scheduleDiscoveredCandidate(session: FullPageSession, candidate: Transl
     }
     const key = getTranslationCandidateKey(candidate);
 
+    const unchanged = session.unchangedCandidates.get(key);
+    const cappedRetry = session.lifecycleRetries.get(key);
+    if (unchanged || (cappedRetry && cappedRetry.attempts > FULL_PAGE_LIFECYCLE_RETRY_LIMIT)) {
+        const source = candidateLifecycleSource(candidate);
+        if (sameLifecycleRetry(unchanged ?? cappedRetry, candidate, source)) return;
+        session.unchangedCandidates.delete(key);
+        session.lifecycleRetries.delete(key);
+    }
+
     // The exact descendant may already have finished while a very large
     // ancestor is still being discovered in later frame slices. Its scheduled
     // entry is intentionally forgotten after completion, so also consult the
     // state attached to the shared key before accepting a late generic run.
     const keyedTarget = asHTMLElement(key);
     if (keyedTarget && getTranslationState(keyedTarget)) {
+        registerSessionStatefulTarget(session, candidate.element, keyedTarget);
         scheduleStatefulAttributeReevaluation(session, keyedTarget);
         return;
     }
@@ -635,23 +1069,20 @@ function scheduleDiscoveredCandidate(session: FullPageSession, candidate: Transl
     // its translation wrapper.
     const existing = session.scheduled.get(key);
     if (existing) {
-        if (selectPreferredTranslationCandidate(existing, candidate) === existing) return;
-        const previousObserved = session.observedCandidates.get(existing.element);
-        previousObserved?.delete(key);
-        if (previousObserved?.size === 0) {
-            session.observedCandidates.delete(existing.element);
-            session.observer.unobserve(existing.element);
+        if (selectPreferredTranslationCandidate(existing, candidate) === existing) {
+            // A stable candidate can outlive the rendered descendant used as
+            // its IO target. Hydration and display changes must refresh that
+            // anchor without replacing scheduled/pending ownership.
+            refreshCandidateVisibilityBinding(session, key, existing);
+            return;
         }
+        removeCandidateObservation(session, key);
+        removeCandidateOwnerKey(session, existing.element, key);
         if (session.pending.has(key)) session.pending.set(key, candidate);
     }
     session.scheduled.set(key, candidate);
-    let observed = session.observedCandidates.get(target);
-    if (!observed) {
-        observed = new Map();
-        session.observedCandidates.set(target, observed);
-    }
-    observed.set(key, candidate);
-    session.observer.observe(target);
+    addCandidateOwnerKey(session, target, key);
+    refreshCandidateVisibilityBinding(session, key, candidate);
 }
 
 function nodeContains(ancestor: Node, descendant: Node): boolean {
@@ -751,7 +1182,14 @@ function flushMutationRescans(session: FullPageSession): void {
         if (step.value.element.shadowRoot) observeFullPageRoot(session, step.value.element.shadowRoot);
         if (step.value.phase === "enter") {
             const statefulStepTarget = asHTMLElement(step.value.element);
-            if (statefulStepTarget && getTranslationState(statefulStepTarget)) {
+            const statefulStepState = statefulStepTarget
+                ? getTranslationState(statefulStepTarget)
+                : undefined;
+            if (statefulStepTarget && statefulStepState) {
+                const candidateOwner = statefulStepState.syntheticSegment
+                    ? asHTMLElement(statefulStepTarget.parentElement) ?? statefulStepTarget
+                    : statefulStepTarget;
+                registerSessionStatefulTarget(session, candidateOwner, statefulStepTarget);
                 // Synthetic owners are intentionally hard-pruned from normal
                 // candidate discovery. Still re-evaluate their live source on
                 // an ancestor class/style rescan so label visibility changes
@@ -800,11 +1238,81 @@ function resolveStatefulMutationTarget(element: Element): HTMLElement | false {
     return false;
 }
 
-function isOwnMutation(mutation: MutationRecord): boolean {
+/**
+ * Renderer/code/no-translate descendants are atomic host-owned regions. Their
+ * internal churn must not invalidate the translated prose ancestor. Attribute
+ * changes intentionally exclude the mutation target itself: adding/removing a
+ * protection marker must restore/reclassify the old translation, while style
+ * churn on an already-protected root reaches the debounced source-slot check.
+ * Extension artifacts are deliberately excluded: isOwnMutation runs first,
+ * and host tampering inside a wrapper must continue through the stale path.
+ */
+function isCoreProtectedDescendantMutation(
+    node: Node,
+    core: ReturnType<typeof getCurrentTranslationCore>,
+    includeSelf = true,
+): boolean {
+    const element = mutationTargetElement(node);
+    if (!element || isTranslationArtifact(element)) return false;
+    const statefulTarget = resolveStatefulMutationTarget(element);
+    if (statefulTarget === element) return false;
+    if (evaluateHardGuard(element).reason === 'ancestor-depth-limit') return true;
+
+    let current: Element | null = includeSelf ? element : getComposedParent(element);
+    while (current && current !== statefulTarget) {
+        if (isProtectedDescendantElement(current) || core.shouldStayOriginal(current)) return true;
+        current = getComposedParent(current);
+    }
+    return false;
+}
+
+/**
+ * Materializing an inline run moves its source nodes into a synthetic span and
+ * then appends one loading spinner. Those real childList records are delivered
+ * after beginTranslation, while an asynchronous provider is still pending.
+ * Accept them only while the exact source ownership, HTML and Text-slot
+ * identities captured for this generation remain intact. A host insertion --
+ * including a lookalike FluentRead artifact -- necessarily fails one of these
+ * checks and continues through the stale/restart path.
+ */
+function isIntactLoadingSyntheticChildList(
+    target: HTMLElement,
+    state: TranslationState,
+): boolean {
+    if (!state.syntheticSegment || !target.matches('[data-fr-translation-segment="true"]')) return false;
+    const spinner = state.spinner;
+    if (!spinner || spinner.parentNode !== target || !spinner.matches('[data-fr-translation-owned="true"]')) {
+        return false;
+    }
+
+    const expectedSourceNodes = loadingSyntheticSourceNodes.get(state);
+    if (!expectedSourceNodes) return false;
+    const currentSourceNodes = Array.from(target.childNodes).filter((node) => node !== spinner);
+    if (currentSourceNodes.length !== expectedSourceNodes.length ||
+        currentSourceNodes.some((node, index) => node !== expectedSourceNodes[index])) return false;
+
+    const artifacts = Array.from(target.querySelectorAll(TRANSLATION_ARTIFACT_SELECTOR));
+    if (artifacts.length !== 1 || artifacts[0] !== spinner) return false;
+
+    const sourceClone = target.cloneNode(false) as HTMLElement;
+    currentSourceNodes.forEach((node) => sourceClone.appendChild(node.cloneNode(true)));
+    if (sourceClone.innerHTML !== state.sourceHTML) return false;
+
+    const expectedTextNodes = state.sourceTextNodes ?? [];
+    const currentTextNodes = currentStateTextNodes(target, state);
+    return currentTextNodes.length === expectedTextNodes.length &&
+        currentTextNodes.every((node, index) => node === expectedTextNodes[index]);
+}
+
+function isOwnMutation(
+    mutation: MutationRecord,
+    loadingSyntheticChecks: WeakMap<TranslationState, boolean>,
+): boolean {
     // 不能用“位于任意插件节点内”作为判断：站点可能直接改写双语 wrapper
     // 的文本，必须让这类 mutation 进入 stale/retranslate 分支。加载/错误节点
     // 没有宿主正文，才可以直接视为插件自身变化。
-    if (isElementNode(mutation.target) &&
+    if (mutation.type !== "childList" &&
+        isElementNode(mutation.target) &&
         mutation.target.matches('[data-fr-translation-owned="true"]') &&
         !mutation.target.matches('.fluent-read-bilingual-content')) return true;
     const mutationElement = mutationTargetElement(mutation.target);
@@ -825,6 +1333,7 @@ function isOwnMutation(mutation: MutationRecord): boolean {
             const changedNodes = [...Array.from(mutation.addedNodes), ...Array.from(mutation.removedNodes)];
             return changedNodes.length > 0 &&
                 changedNodes.every(isTranslationArtifact) &&
+                mutationElement === target &&
                 state.retryWrapper?.parentNode === target;
         }
         return false;
@@ -838,6 +1347,13 @@ function isOwnMutation(mutation: MutationRecord): boolean {
         }
         if (mutation.type === "attributes" && mutation.attributeName === "style") {
             return target.getAttribute("style") === state.originalStyleAttribute;
+        }
+        if (mutation.type === "childList" && mutationElement === target) {
+            const cached = loadingSyntheticChecks.get(state);
+            if (cached !== undefined) return cached;
+            const intact = isIntactLoadingSyntheticChildList(target, state);
+            loadingSyntheticChecks.set(state, intact);
+            return intact;
         }
         return false;
     }
@@ -888,9 +1404,11 @@ function removeScheduledForStateTarget(session: FullPageSession, target: HTMLEle
     const candidateElements = new Set<HTMLElement>([target]);
     if (host) candidateElements.add(host);
     for (const element of candidateElements) {
-        const candidates = session.observedCandidates.get(element);
-        if (!candidates) continue;
-        for (const candidate of Array.from(candidates.values())) {
+        const keys = session.candidateOwnerKeys.get(element);
+        if (!keys) continue;
+        for (const key of Array.from(keys)) {
+            const candidate = session.scheduled.get(key);
+            if (!candidate) continue;
             const matches = candidate.element === target || candidate.element === host ||
                 Boolean(candidate.nodes?.some((node) => target.contains(node)));
             if (matches) forgetCandidate(session, candidate);
@@ -919,6 +1437,12 @@ function runDisconnectedCandidatePrune(session: FullPageSession): void {
         const candidate = next.value;
         if (!candidate.element.isConnected || candidate.nodes?.some((node) => !node.isConnected)) {
             forgetCandidate(session, candidate);
+        } else {
+            const key = getTranslationCandidateKey(candidate);
+            const anchor = session.candidateAnchors.get(key);
+            if (anchor && !anchor.isConnected) {
+                refreshCandidateVisibilityBinding(session, key, candidate);
+            }
         }
         if (performance.now() - startedAt >= CANDIDATE_PRUNE_BUDGET_MS) break;
     }
@@ -954,7 +1478,10 @@ function discardOwnersRemovedByHost(
     });
     owners.forEach((owner) => {
         const state = getTranslationState(owner);
-        if (!state) return;
+        if (!state) {
+            unregisterSessionStatefulTarget(session, owner);
+            return;
+        }
         const removedOnlyFailureUi = state.phase === "error" &&
             owner.isConnected &&
             Boolean(state.retryWrapper) &&
@@ -974,6 +1501,7 @@ function discardOwnersRemovedByHost(
             detachFailedTranslationUi(owner, state);
             return;
         }
+        unregisterSessionStatefulTarget(session, owner);
         shouldRescan = true;
         removeScheduledForStateTarget(session, owner);
         // A host removal is authoritative. Clear our state/artifacts without
@@ -990,6 +1518,7 @@ function restartStatefulTarget(session: FullPageSession, target: HTMLElement): b
         session.statefulAttributeTimers.delete(target);
     }
     session.statefulAttributeRescanTargets.delete(target);
+    unregisterSessionStatefulTarget(session, target);
     const state = getTranslationState(target);
     if (!state) return false;
     const rescanRoot = state.syntheticSegment ? target.parentElement : target;
@@ -1027,24 +1556,31 @@ function scheduleStatefulAttributeReevaluation(
         session.statefulAttributeRescanTargets.delete(target);
         if (!target.isConnected) return;
 
-        // single/control 已经把部分宿主 Text 节点替换成译文，不能按当前
-        // 文本值和原文比较；但必须识别 Play/Pause 这类仅靠 class/style
-        // 切换两个 label 的控件。比较当前可译 Text 节点身份集合，只有集合
-        // 真正变化才恢复/重扫，纯动画 class churn 不会重复请求。
-        if (state.kind === "control" || state.mode === "single") {
-            const currentNodes = currentStateTextNodes(target, state);
-            const previousNodes = state.translatedTextNodes ?? state.sourceTextNodes ?? [];
-            if (currentNodes.length === previousNodes.length &&
-                currentNodes.every((node, index) => node === previousNodes[index])) return;
-            restartStatefulTarget(session, target);
-            return;
-        }
-
-        const currentSourceText = currentStateSourceText(target, state);
-        if (normalizeComparableText(currentSourceText) === normalizeComparableText(state.sourceText)) return;
+        // Compare both the logical source and exact slot identities. This keeps
+        // pure class/style churn cheap while still detecting same-text label or
+        // inline-link replacement. Live single/control slots are compared with
+        // the values written by this generation rather than their old source.
+        if (statefulSourceAndTextSlotsAreCurrent(target, state)) return;
         restartStatefulTarget(session, target);
     }, STATEFUL_ATTRIBUTE_DEBOUNCE_MS);
     session.statefulAttributeTimers.set(target, timer);
+}
+
+function resolveStatefulMutationTargets(
+    session: FullPageSession,
+    element: Element,
+): HTMLElement[] {
+    const targets = new Set<HTMLElement>();
+    const direct = resolveStatefulMutationTarget(element);
+    if (direct) targets.add(direct);
+    const descendants = session.statefulTargetsByAncestor.get(element);
+    if (descendants) {
+        for (const target of Array.from(descendants)) {
+            if (getTranslationState(target)) targets.add(target);
+            else unregisterSessionStatefulTarget(session, target);
+        }
+    }
+    return [...targets];
 }
 
 function attachFullPageMutationHandling(session: FullPageSession): void {
@@ -1052,9 +1588,19 @@ function attachFullPageMutationHandling(session: FullPageSession): void {
         if (!session.active) return;
         scheduleDisconnectedCandidatePrune(session);
         const core = getCurrentTranslationCore();
+        // Materializing a wide inline run can enqueue one childList record per
+        // moved source node. Its exact snapshot is stable for this callback, so
+        // validate each loading generation once instead of cloning O(records).
+        const loadingSyntheticChecks = new WeakMap<TranslationState, boolean>();
+        // MathJax v2 can emit hundreds of direct-parent records in one callback.
+        // The live DOM is already at the callback's final state, so compare each
+        // stateful source/slot snapshot once instead of walking a long P for
+        // every Preview <-> staging-span record.
+        const statefulChildListChecks = new WeakMap<TranslationState, boolean>();
         for (const mutation of mutations) {
-            if (isOwnMutation(mutation)) continue;
+            if (isOwnMutation(mutation, loadingSyntheticChecks)) continue;
             const mutationElement = mutationTargetElement(mutation.target);
+            if (isCoreProtectedDescendantMutation(mutation.target, core, mutation.type !== "attributes")) continue;
             const removedOwners = mutation.type === "childList"
                 ? discardOwnersRemovedByHost(session, Array.from(mutation.removedNodes))
                 : {removedAny: false, shouldRescan: false};
@@ -1063,21 +1609,43 @@ function attachFullPageMutationHandling(session: FullPageSession): void {
 
             if (mutation.type === "childList") {
                 const changedNodes = [...Array.from(mutation.addedNodes), ...Array.from(mutation.removedNodes)];
-                if (changedNodes.length > 0 && changedNodes.every((node) => {
-                    if (isTranslationArtifact(node)) return true;
-                    const element = isElementNode(node) ? node : node.parentElement;
-                    return Boolean(element && core.shouldIgnoreMutation(element));
-                })) continue;
+                // Normal extension insertion/removal targets the host owner. If
+                // the mutation target is inside an artifact, isOwnMutation has
+                // already compared every available state snapshot; treating its
+                // newly appended children as artifacts again would hide host
+                // tampering inside bilingual/loading/retry wrappers.
+                if (!isTranslationArtifact(mutation.target) &&
+                    changedNodes.length > 0 && changedNodes.every((node) => {
+                        if (isTranslationArtifact(node)) return true;
+                        const element = isElementNode(node) ? node : node.parentElement;
+                        return isCoreProtectedDescendantMutation(node, core) ||
+                            Boolean(element && core.shouldIgnoreMutation(element));
+                    })) continue;
             }
 
             if (mutation.type === "childList") {
                 const changedTarget = mutationElement ? resolveStatefulMutationTarget(mutationElement) : false;
                 const changedState = changedTarget ? getTranslationState(changedTarget) : undefined;
 
-                // React/Vue 等页面可能在翻译完成后重建控件或内容块。若 DOM
-                // 已不再等于插件写入的译文，先放弃旧节点快照，再把新节点
-                // 重新排入全文队列，避免按钮短暂翻译后又恢复成英文。
-                if (changedTarget && changedState) restartStatefulTarget(session, changedTarget);
+                // A direct host childList may be only a protected renderer
+                // transaction. Preserve loading/error/translated ownership when
+                // the translatable source and exact Text slots are unchanged;
+                // the old behavior removed a committed wrapper after MathJax v2
+                // swapped a detached, classless staging span at the parent P.
+                // Mutations inside or removing our current artifact remain
+                // authoritative host tampering and restart immediately.
+                if (changedTarget && changedState) {
+                    const touchesArtifact = isTranslationArtifact(mutation.target) ||
+                        mutationTouchesCurrentTranslationArtifact(mutation, changedState);
+                    let sourceAndSlotsCurrent = statefulChildListChecks.get(changedState);
+                    if (sourceAndSlotsCurrent === undefined) {
+                        sourceAndSlotsCurrent = statefulSourceAndTextSlotsAreCurrent(changedTarget, changedState);
+                        statefulChildListChecks.set(changedState, sourceAndSlotsCurrent);
+                    }
+                    if (touchesArtifact || !sourceAndSlotsCurrent) {
+                        restartStatefulTarget(session, changedTarget);
+                    }
+                }
 
                 // A pure removal can turn a former structural container into a
                 // valid paragraph. Reclassify the mutation target in all cases.
@@ -1100,12 +1668,14 @@ function attachFullPageMutationHandling(session: FullPageSession): void {
             } else if (mutation.type === "attributes") {
                 if (!mutationElement) continue;
 
-                const target = resolveStatefulMutationTarget(mutationElement);
-                if (target) {
-                    if (mutation.attributeName === "class" || mutation.attributeName === "style") {
-                        scheduleStatefulAttributeReevaluation(session, target);
-                    } else {
-                        restartStatefulTarget(session, target);
+                const targets = resolveStatefulMutationTargets(session, mutationElement);
+                if (targets.length > 0) {
+                    for (const target of targets) {
+                        if (mutation.attributeName === "class" || mutation.attributeName === "style") {
+                            scheduleStatefulAttributeReevaluation(session, target);
+                        } else {
+                            restartStatefulTarget(session, target);
+                        }
                     }
                 } else {
                     // hidden/aria-hidden/style/class 变化可能让原先被屏蔽的子树重新可见。
@@ -1129,6 +1699,11 @@ function stopFullPageSession(): void {
     fullPageSession.pending.clear();
     fullPageSession.scheduled.clear();
     fullPageSession.observedCandidates.clear();
+    fullPageSession.candidateAnchors.clear();
+    fullPageSession.candidateOwnerKeys.clear();
+    fullPageSession.statefulTargetsByAncestor.clear();
+    fullPageSession.statefulAncestorsByTarget = new WeakMap();
+    fullPageSession.inFlightCandidates.clear();
     fullPageSession.dirtyRoots.clear();
     fullPageSession.dirtyRootsBroadMode = false;
     fullPageSession.activeDiscovery = null;
@@ -1210,6 +1785,13 @@ export function autoTranslateEnglishPage(): void {
         pending: new Map(),
         scheduled: new Map(),
         observedCandidates: new Map(),
+        candidateAnchors: new Map(),
+        candidateOwnerKeys: new Map(),
+        statefulTargetsByAncestor: new Map(),
+        statefulAncestorsByTarget: new WeakMap(),
+        lifecycleRetries: new WeakMap(),
+        unchangedCandidates: new WeakMap(),
+        inFlightCandidates: new Map(),
         inFlight: 0,
         draining: false,
         flushTimer: null,

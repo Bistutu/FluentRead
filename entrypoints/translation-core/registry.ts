@@ -5,6 +5,7 @@ import {redditAdapter} from './adapters/reddit';
 import {hackerNewsAdapter} from './adapters/hackernews';
 import {youtubeAdapter} from './adapters/youtube';
 import {gnuManualAdapter} from './adapters/gnu';
+import {learnOpenGLAdapter} from './adapters/learnopengl';
 
 const declaredAdapters = [
     githubAdapter,
@@ -13,6 +14,7 @@ const declaredAdapters = [
     hackerNewsAdapter,
     youtubeAdapter,
     gnuManualAdapter,
+    learnOpenGLAdapter,
 ] as const satisfies readonly TranslationSiteAdapter[];
 
 /** Sort by descending priority while retaining declaration order for ties. */

@@ -105,6 +105,178 @@ describe('translation candidate core', () => {
         expect(candidates.some((candidate) => candidate.nodes?.includes(paragraph as ChildNode))).toBe(false);
     });
 
+    it('keeps an inline direct-child subtree out of an ancestor run when its descendant owns a candidate', () => {
+        const {document, core} = page(`
+            <main><div id="theorem">
+                <h6 id="definition">Definition 2.4.</h6>
+                <div id="paragraph-shell"><p id="statement">
+                    A bounded operator has a unique continuous extension.
+                </p></div>
+            </div></main>
+        `);
+        const view = document.defaultView!;
+        Object.defineProperty(view, 'getComputedStyle', {
+            configurable: true,
+            value: (element: Element) => ({
+                display: ['paragraph-shell', 'statement'].includes(element.id)
+                    ? 'inline'
+                    : ['MAIN', 'DIV', 'H6'].includes(element.tagName) ? 'block' : 'inline',
+            }),
+        });
+        const theorem = document.querySelector('#theorem')!;
+        const paragraphShell = document.querySelector('#paragraph-shell')!;
+        const statement = document.querySelector('#statement')!;
+        const candidates = core.discover(document);
+
+        expect(candidates.find((candidate) => candidate.element === statement)).toBeDefined();
+        expect(candidates.some((candidate) => candidate.element === theorem &&
+            candidate.nodes?.some((node) => node === paragraphShell ||
+                (node.nodeType === 1 && (node as Element).contains(statement))))).toBe(false);
+        expect(candidates.map((candidate) => candidate.element.id)).toEqual(['definition', 'statement']);
+    });
+
+    it('resolves parent direct text to the same run that full discovery splits around a candidate subtree', () => {
+        const {document, core} = page(`
+            <main><div id="theorem">
+                <h6 id="definition">Definition 2.4.</h6>
+                Context before
+                <div id="paragraph-shell"><p id="statement">
+                    A bounded operator has a unique continuous extension.
+                </p></div>
+                Context after
+            </div></main>
+        `);
+        const view = document.defaultView!;
+        Object.defineProperty(view, 'getComputedStyle', {
+            configurable: true,
+            value: (element: Element) => ({
+                display: ['paragraph-shell', 'statement', 'added-shell', 'added-statement'].includes(element.id)
+                    ? 'inline'
+                    : ['MAIN', 'DIV', 'H6'].includes(element.tagName) ? 'block' : 'inline',
+            }),
+        });
+        const theorem = document.querySelector('#theorem')!;
+        const paragraphShell = document.querySelector('#paragraph-shell')!;
+        const statement = document.querySelector('#statement')!;
+        const contextBefore = Array.from(theorem.childNodes).find((node) =>
+            node.nodeType === 3 && node.textContent?.includes('Context before'))!;
+        const contextAfter = Array.from(theorem.childNodes).find((node) =>
+            node.nodeType === 3 && node.textContent?.includes('Context after'))!;
+        const parentHoverBeforeDiscovery = core.resolve(contextBefore);
+        const childHoverBeforeDiscovery = core.resolve(statement.firstChild);
+        const fullRuns = core.discover(document).filter((candidate) =>
+            candidate.element === theorem && candidate.nodes);
+        const parentHoverBefore = core.resolve(contextBefore);
+        const parentHoverAfter = core.resolve(contextAfter);
+
+        expect(fullRuns.map((candidate) => candidate.nodes?.map((node) => node.textContent).join('').trim()))
+            .toEqual(['Context before', 'Context after']);
+        expect(parentHoverBeforeDiscovery?.nodes).toEqual(fullRuns[0]?.nodes);
+        expect(parentHoverBeforeDiscovery?.nodes).not.toContain(paragraphShell);
+        expect(childHoverBeforeDiscovery)
+            .toMatchObject({element: statement, reason: 'generic-readable-block'});
+        expect(parentHoverBefore).toMatchObject({element: theorem, reason: 'generic-inline-run'});
+        expect(parentHoverBefore?.nodes).toEqual(fullRuns[0]?.nodes);
+        expect(parentHoverAfter?.nodes).toEqual(fullRuns[1]?.nodes);
+        expect(parentHoverBefore?.nodes).not.toContain(paragraphShell);
+
+        const addedShell = document.createElement('div');
+        addedShell.id = 'added-shell';
+        const addedStatement = document.createElement('p');
+        addedStatement.id = 'added-statement';
+        addedStatement.textContent = 'A dynamically inserted statement remains independently translatable.';
+        addedShell.append(addedStatement);
+        theorem.append(addedShell);
+
+        const parentHoverAfterMutation = core.resolve(contextAfter);
+        expect(parentHoverAfterMutation?.nodes).toEqual(fullRuns[1]?.nodes);
+        expect(parentHoverAfterMutation?.nodes).not.toContain(addedShell);
+    });
+
+    it('revalidates stale child barriers before resolving a mutated inline run', () => {
+        const {document, core} = page(`
+            <main><div id="parent">
+                Before
+                <span id="changed-shell"><p id="changed-candidate">
+                    The first nested paragraph starts as its own candidate.
+                </p></span>
+                Middle
+                <span id="live-shell"><p id="live-candidate">
+                    The second nested paragraph remains independently translatable.
+                </p></span>
+                After
+            </div></main>
+        `);
+        const view = document.defaultView!;
+        Object.defineProperty(view, 'getComputedStyle', {
+            configurable: true,
+            value: (element: Element) => ({
+                display: element.tagName === 'SPAN' ? 'inline' : 'block',
+            }),
+        });
+        const parent = document.querySelector('#parent')!;
+        const changedShell = document.querySelector('#changed-shell')!;
+        const liveShell = document.querySelector('#live-shell')!;
+        const liveCandidate = document.querySelector('#live-candidate')!;
+
+        expect(core.discover(document).map((candidate) => candidate.element.id)).toEqual([
+            'changed-candidate',
+            'live-candidate',
+            'parent',
+            'parent',
+            'parent',
+        ]);
+
+        changedShell.textContent = 'The first subtree is now ordinary inline prose.';
+        const changedText = changedShell.firstChild!;
+        const hover = core.resolve(changedText);
+
+        expect(hover).toMatchObject({element: parent, reason: 'generic-inline-run'});
+        expect(hover?.nodes).toContain(changedShell);
+        expect(hover?.nodes).not.toContain(liveShell);
+        expect(
+            hover?.nodes?.some((node) => node.nodeType === 1 && (node as Element).contains(liveCandidate)),
+            'The refreshed parent run must not overlap the still-live descendant candidate',
+        ).toBe(false);
+
+        const dirtyCandidates = core.discover(parent);
+        const dirtyRun = dirtyCandidates.find((candidate) =>
+            candidate.element === parent && candidate.nodes?.includes(changedShell));
+        expect(dirtyCandidates.find((candidate) => candidate.element === liveCandidate)).toBeDefined();
+        expect(dirtyRun).toMatchObject({element: parent, reason: 'generic-inline-run'});
+        expect(dirtyRun?.nodes).toEqual(hover?.nodes);
+        expect(core.resolve(changedText)?.nodes).toEqual(dirtyRun?.nodes);
+    });
+
+    it('bounds the hover-only candidate-subtree probe before conservatively splitting a run', () => {
+        const nested = `${'<span>'.repeat(600)}Deep inline text${'</span>'.repeat(600)}`;
+        const {document} = parseHTML(`<html><body><main><div id="parent">
+            Direct parent text <span id="deep-wrapper">${nested}</span>
+        </div></main></body></html>`);
+        let decisions = 0;
+        const core = createTranslationCore({
+            url: new URL('https://example.test'),
+            adapters: [{
+                id: 'hover-budget',
+                matches: () => true,
+                decide: () => {
+                    decisions += 1;
+                    return {kind: 'pass'} as const;
+                },
+            }],
+        });
+        const parent = document.querySelector('#parent')!;
+        const wrapper = document.querySelector('#deep-wrapper')!;
+        const directText = Array.from(parent.childNodes).find((node) =>
+            node.nodeType === 3 && node.textContent?.includes('Direct parent text'))!;
+        const candidate = core.resolve(directText);
+
+        expect(candidate).toMatchObject({element: parent, reason: 'generic-inline-run'});
+        expect(candidate?.nodes).toEqual([directText]);
+        expect(candidate?.nodes).not.toContain(wrapper);
+        expect(decisions).toBeLessThan(400);
+    });
+
     it.each(['main', 'article', 'section', 'div'])('never reparents display:contents <%s> regions', (tag) => {
         const {document, core} = page(`
             <div id="layout">Parent before
@@ -264,6 +436,70 @@ describe('translation candidate core', () => {
         expect(core.discover(document).map((item) => item.element)).toContain(paragraph);
         expect(extractTranslationText(paragraph, core.shouldStayOriginal)).toBe('Set to enable the feature safely.');
         expect(core.resolve(document.querySelector('code'))?.element).toBe(paragraph);
+    });
+
+    it('keeps MathJax and KaTeX render trees atomic while translating surrounding prose', () => {
+        const {document, core} = page(`
+            <main><p id="prose">
+                Projection prose remains translatable.
+                <span id="preview" class="MathJax_Preview">FORMULA_PREVIEW</span>
+                <span id="display" class="MathJax_Display" role="math">
+                    <span id="mathjax" class="MathJax"><span id="glyph">out=(x/w,y/w,z/w)</span></span>
+                </span>
+                <script id="tex-source" type="math/tex; mode=display">out = \\begin{pmatrix} x/w \\ y/w \\ z/w \\end{pmatrix}</script>
+                <mjx-container id="mathjax-v3"><span>V_clip=M_projection V_local</span></mjx-container>
+                <span id="katex" class="katex"><span>KATEX_RENDERED_FORMULA</span></span>
+                The explanation continues.
+            </p></main>
+        `);
+        const prose = document.querySelector('#prose') as HTMLElement;
+        const protectedNodes = [
+            document.querySelector('#preview')!,
+            document.querySelector('#display')!,
+            document.querySelector('#mathjax')!,
+            document.querySelector('#mathjax-v3')!,
+            document.querySelector('#katex')!,
+            document.querySelector('#tex-source')!,
+        ];
+        const originalParents = protectedNodes.map((node) => node.parentNode);
+        const candidates = core.discover(document);
+        const full = candidates.find((candidate) => candidate.element === prose);
+
+        expect(full).toBeDefined();
+        expect(full?.nodes).toBeUndefined();
+        expect(candidates.filter((candidate) => protectedNodes.includes(candidate.element))).toEqual([]);
+        expect(core.resolve(document.querySelector('#glyph'))?.element).toBe(prose);
+        expect(evaluateHardGuard(document.querySelector('#glyph')!).reason).toBe('math-renderer');
+        expect(evaluateHardGuard(document.querySelector('#mathjax-v3 span')!).reason).toBe('math-renderer');
+        expect(evaluateHardGuard(document.querySelector('#katex span')!).reason).toBe('math-renderer');
+        expect(evaluateHardGuard(document.querySelector('#tex-source')!).reason).toBe('protected-tag:script');
+
+        const readable = extractTranslationText(prose, core.shouldStayOriginal).replace(/\s+/gu, ' ').trim();
+        const liveSlots = collectLiveTranslationTextSlots(prose, core.shouldStayOriginal);
+        const snapshot = createTranslationSourceSnapshot(prose, core.shouldStayOriginal);
+        const payload = snapshot.slots.map((slot) => slot.source).join(' ');
+
+        expect(readable).toBe('Projection prose remains translatable. The explanation continues.');
+        expect(liveSlots.map((slot) => slot.source).join(' ')).not.toMatch(
+            /FORMULA_PREVIEW|out=|begin\{pmatrix\}|V_clip|KATEX_RENDERED_FORMULA/u,
+        );
+        expect(payload).not.toMatch(/FORMULA_PREVIEW|out=|begin\{pmatrix\}|V_clip|KATEX_RENDERED_FORMULA/u);
+
+        const rendered = applyTranslationsToSnapshot(
+            snapshot,
+            snapshot.slots.map((slot) => `译:${slot.source}`),
+        );
+        const {document: renderedDocument} = parseHTML(`<html><body><p>${rendered}</p></body></html>`);
+        expect(renderedDocument.querySelector('#display')?.textContent).toContain('out=(x/w,y/w,z/w)');
+        expect(renderedDocument.querySelector('#tex-source')?.textContent).toContain('begin{pmatrix}');
+        expect(renderedDocument.querySelector('#mathjax-v3')?.textContent).toBe('V_clip=M_projection V_local');
+        expect(renderedDocument.querySelector('#katex')?.textContent).toBe('KATEX_RENDERED_FORMULA');
+
+        // Snapshot/render work is clone-only: live math renderer identities and
+        // parents remain untouched for restore and a second translation pass.
+        expect(protectedNodes.map((node) => document.getElementById(node.id))).toEqual(protectedNodes);
+        expect(protectedNodes.map((node) => node.parentNode)).toEqual(originalParents);
+        expect(core.discover(document).find((candidate) => candidate.element === prose)?.nodes).toBeUndefined();
     });
 
     it('keeps every nested opt-out subtree out of provider text slots', () => {
@@ -472,6 +708,68 @@ describe('translation candidate core', () => {
         const ids = core.discover(document).map((item) => item.element.id);
         expect(ids).not.toContain('search-result');
         expect(ids).toContain('body-copy');
+        expect(core.resolve(document.querySelector('#search-result')?.firstChild)).toBeNull();
+    });
+
+    it('translates GitHub markdown prose inside live-updatable conversation containers', () => {
+        const {document, core} = page(`
+            <main>
+                <div class="js-socket-channel js-updatable-content">
+                    <div class="comment-body markdown-body">
+                        <h2 id="change-heading">What changed</h2>
+                        <ul><li id="change-item">Preserve Quick Search during translation.</li></ul>
+                        <p id="change-reason">GitHub mounts the search interface dynamically.</p>
+                    </div>
+                </div>
+            </main>
+        `, 'https://github.com/immersive-translate/immersive-translate/pull/4038');
+
+        const candidates = core.discover(document);
+        const ids = candidates.map((item) => item.element.id);
+        expect(ids).toEqual(expect.arrayContaining(['change-heading', 'change-item', 'change-reason']));
+        expect(candidates.filter((item) => item.adapterId === 'github')).toHaveLength(3);
+        expect(core.shouldStayOriginal(document.querySelector('#change-heading')!)).toBe(false);
+        expect(core.shouldIgnoreMutation(document.querySelector('#change-heading')!)).toBe(false);
+    });
+
+    it.each(['header', 'nav', 'aside', 'footer'])(
+        'keeps a linked H1 translatable inside structural <%s> chrome',
+        (containerTag) => {
+            const {document, core} = page(`
+                <${containerTag}>
+                    <h1 id="page-heading"><a href="/guide"><span>Project setup guide</span></a></h1>
+                    <p id="chrome-copy">Account navigation copy.</p>
+                </${containerTag}>
+            `, 'https://example.test/docs');
+            const heading = document.querySelector('#page-heading')!;
+
+            expect(core.discover(document)).toEqual([
+                expect.objectContaining({element: heading, reason: 'generic-readable-block'}),
+            ]);
+            expect(core.resolve(document.querySelector('#page-heading span')?.firstChild)).toMatchObject({
+                element: heading,
+                reason: 'generic-readable-block',
+            });
+            expect(core.resolve(document.querySelector('#chrome-copy')?.firstChild)).toBeNull();
+        },
+    );
+
+    it('keeps heading text beside an interactive control as its own inline run', () => {
+        const {document, core} = page(`
+            <main>
+                <h1 id="page-heading">Install FluentRead <button id="copy-button">Copy</button></h1>
+            </main>
+        `, 'https://example.test/docs');
+        const headingText = document.querySelector('#page-heading')?.firstChild;
+        const button = document.querySelector('#copy-button')!;
+        const candidates = core.discover(document);
+        const heading = candidates.find((candidate) => candidate.element.id === 'page-heading');
+
+        expect(candidates.map((candidate) => candidate.element.id)).toEqual(['copy-button', 'page-heading']);
+        expect(heading?.nodes).toEqual([headingText]);
+        expect(heading?.nodes).not.toContain(button);
+        expect(core.resolve(headingText)).toMatchObject({element: document.querySelector('#page-heading')});
+        expect(core.resolve(button)).toMatchObject({element: button, kind: 'control'});
     });
 
     it('keeps mutation exclusion separate from translation exclusion', () => {
@@ -692,5 +990,77 @@ describe('translation candidate core', () => {
         expect(isClearlyTargetLanguage('Pull requests', 'zh-CN')).toBe(false);
         expect(isClearlyTargetLanguage('API', 'zh-CN')).toBe(false);
         expect(isClearlyTargetLanguage('Settings', 'en')).toBe(true);
+    });
+});
+
+describe('embedded semantic chrome classification', () => {
+    it('discovers and hover-resolves both Swift DocC note paragraphs without admitting a top-level aside', () => {
+        const {document, core} = page(`
+            <aside id="global-aside">
+                <p id="global-aside-copy">Related documentation and page tools.</p>
+            </aside>
+            <main id="app-main">
+                <div class="doc-content-wrapper">
+                    <div class="primary-content">
+                        <div class="content">
+                            <aside class="note">
+                                <p id="note-label">Note</p>
+                                <p id="note-copy">The remainder operator <code>%</code> keeps the sign of the first value.</p>
+                            </aside>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        `, 'https://docs.swift.org/swift-book/documentation/the-swift-programming-language/basicoperators/');
+        const noteLabel = document.querySelector('#note-label')!;
+        const noteCopy = document.querySelector('#note-copy')!;
+        const globalCopy = document.querySelector('#global-aside-copy')!;
+        const candidates = core.discover(document);
+
+        expect(
+            candidates.map((candidate) => candidate.element.id),
+            'Swift DocC callouts must expose both the note label and prose during full-document discovery',
+        ).toEqual(['note-label', 'note-copy']);
+        expect(core.resolve(noteLabel.firstChild), 'Hover must resolve the Swift note label').toMatchObject({
+            element: noteLabel,
+            reason: 'generic-readable-block',
+        });
+        expect(core.resolve(noteCopy.firstChild), 'Hover must resolve the Swift note prose').toMatchObject({
+            element: noteCopy,
+            reason: 'generic-readable-block',
+        });
+        expect(
+            core.resolve(globalCopy.firstChild),
+            'A body-level related-tools aside must remain structural chrome',
+        ).toBeNull();
+    });
+
+    it('keeps article-owned asides and role=main notes while nav and metadata chrome remain structural', () => {
+        const {document, core} = page(`
+            <article>
+                <header><p id="article-header-copy">A contextual introduction for this chapter.</p></header>
+                <aside><p id="article-aside-copy">A related explanation owned by this article.</p></aside>
+                <nav><p id="article-nav-copy">Previous and next chapter links.</p></nav>
+                <footer><p id="article-footer-copy">A contextual conclusion for this chapter.</p></footer>
+            </article>
+            <div role="main">
+                <aside role="note"><p id="role-main-note-copy">A semantic note inside the main reading surface.</p></aside>
+                <aside><p id="role-main-tools-copy">Related tools outside the prose flow.</p></aside>
+            </div>
+        `);
+        const ids = core.discover(document).map((candidate) => candidate.element.id);
+
+        expect(ids, 'Article-owned asides and role=main notes must remain readable').toEqual([
+            'article-aside-copy',
+            'role-main-note-copy',
+        ]);
+        for (const chromeId of [
+            'article-header-copy',
+            'article-nav-copy',
+            'article-footer-copy',
+            'role-main-tools-copy',
+        ]) {
+            expect(ids, `${chromeId} must remain structural chrome`).not.toContain(chromeId);
+        }
     });
 });

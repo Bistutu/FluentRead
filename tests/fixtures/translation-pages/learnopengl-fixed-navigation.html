@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Synthetic LearnOpenGL translation fixture</title></head>
+<body>
+<div id="nav" data-testid="legacy-navigation">
+    <ol>
+        <li><a data-testid="navigation-link" href="/Introduction">Introduction</a></li>
+        <li>
+            <span class="closed" data-testid="navigation-toggle">Getting started</span>
+            <ol><li><a href="/Getting-started/Coordinate-Systems">Coordinate Systems</a></li></ol>
+        </li>
+    </ol>
+</div>
+<div id="content">
+    <h1 data-testid="coordinate-title">Coordinate Systems</h1>
+    <p data-testid="coordinate-intro">Transform each vertex through a sequence of coordinate spaces.</p>
+    <h2 data-testid="projection-heading">Perspective projection</h2>
+    <p data-testid="projection-copy">
+        Perspective projection makes distant objects appear smaller.
+        <span class="MathJax_Preview">FORMULA_PREVIEW_SECRET</span>
+        <span class="MathJax_Display"><span class="MathJax">FORMULA_RENDERER_SECRET</span></span>
+        <script type="math/tex; mode=display">FORMULA_SOURCE_SECRET</script>
+        The prose remains one readable paragraph.
+    </p>
+    <pre data-testid="code-sample"><code>gl_Position = projection * view * model * position;</code></pre>
+</div>
+</body>
+</html>
