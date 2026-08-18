@@ -7,6 +7,7 @@ import {
     getComposedParent,
     isDocumentSurface,
     isExtensionElement,
+    maxComposedAncestorDepth,
 } from './dom';
 import {
     classifyGenericCandidate,
@@ -15,7 +16,12 @@ import {
     isStructuralContainer,
     isTranslationControlElement,
 } from './layout';
-import {hasMeaningfulTranslationTextInNodes} from './text';
+import {
+    createTranslationTextProtectionCache,
+    hasMeaningfulTranslationTextInNodes,
+    isTranslationTextElementProtected,
+} from './text';
+import type {TranslationTextProtectionCache} from './text';
 import type {
     AdapterContext,
     AdapterDecision,
@@ -138,7 +144,10 @@ export class TranslationCandidateCore {
     });
 
     private hasAdapterPrunedAncestor(element: Element): {reason: string; adapterId?: string} | null {
+        let depth = 0;
         for (const ancestor of composedAncestors(element)) {
+            depth += 1;
+            if (depth > maxComposedAncestorDepth) return {reason: 'ancestor-depth-limit'};
             const {decision, adapterId} = this.adapterDecision(ancestor);
             if (decision.kind === 'prune-subtree') return {reason: decision.reason, adapterId};
         }
@@ -146,6 +155,13 @@ export class TranslationCandidateCore {
     }
 
     inspect(element: Element): TranslationCoreInspection {
+        return this.inspectWithTextProtectionCache(element, createTranslationTextProtectionCache());
+    }
+
+    private inspectWithTextProtectionCache(
+        element: Element,
+        textProtectionCache: TranslationTextProtectionCache,
+    ): TranslationCoreInspection {
         const trace: DecisionTraceEntry[] = [];
         const hardGuard = evaluateHardGuard(element);
         if (hardGuard.prune) {
@@ -166,7 +182,11 @@ export class TranslationCandidateCore {
         }
         if (decision.kind === 'force-target') {
             const target = asHTMLElement(decision.target ?? element);
-            if (!target || !hasMeaningfulTranslationTextInNodes([target], this.shouldStayOriginal) ||
+            if (!target || !hasMeaningfulTranslationTextInNodes(
+                [target],
+                this.shouldStayOriginal,
+                textProtectionCache,
+            ) ||
                 evaluateHardGuard(target).prune) {
                 trace.push({element, action: 'continue', reason: 'forced-target-empty-or-protected', adapterId});
                 return {candidate: null, trace};
@@ -181,7 +201,12 @@ export class TranslationCandidateCore {
             return {candidate, trace};
         }
 
-        const classification = classifyGenericCandidate(element, this.shouldStayOriginal);
+        const classification = classifyGenericCandidate(
+            element,
+            this.shouldStayOriginal,
+            false,
+            textProtectionCache,
+        );
         if (!classification) {
             trace.push({element, action: 'continue', reason: 'generic-not-a-boundary'});
             return {candidate: null, trace};
@@ -195,7 +220,11 @@ export class TranslationCandidateCore {
         return {candidate, trace};
     }
 
-    private inlineRunCandidates(element: Element, skipStructuralAncestorCheck = false): TranslationCandidate[] {
+    private inlineRunCandidates(
+        element: Element,
+        skipStructuralAncestorCheck = false,
+        textProtectionCache = createTranslationTextProtectionCache(),
+    ): TranslationCandidate[] {
         const candidates: TranslationCandidate[] = [];
         const atomicTargetCache = new WeakMap<Element, boolean>();
         const isAtomicAdapterTarget = (candidate: Element): boolean => {
@@ -212,10 +241,15 @@ export class TranslationCandidateCore {
             this.shouldStayOriginal,
             skipStructuralAncestorCheck,
             isAtomicAdapterTarget,
+            textProtectionCache,
         )) {
             let current: ChildNode[] = [];
             const flush = () => {
-                if (current.length > 0 && hasMeaningfulTranslationTextInNodes(current, this.shouldStayOriginal)) {
+                if (current.length > 0 && hasMeaningfulTranslationTextInNodes(
+                    current,
+                    this.shouldStayOriginal,
+                    textProtectionCache,
+                )) {
                     candidates.push({
                         element: element as HTMLElement,
                         nodes: current,
@@ -241,9 +275,18 @@ export class TranslationCandidateCore {
         return candidates;
     }
 
-    private genericCandidateForDiscovery(element: Element, insideStructural: boolean): TranslationCandidate | null {
+    private genericCandidateForDiscovery(
+        element: Element,
+        insideStructural: boolean,
+        textProtectionCache: TranslationTextProtectionCache,
+    ): TranslationCandidate | null {
         if (insideStructural) return null;
-        const classification = classifyGenericCandidate(element, this.shouldStayOriginal, true);
+        const classification = classifyGenericCandidate(
+            element,
+            this.shouldStayOriginal,
+            true,
+            textProtectionCache,
+        );
         if (!classification) return null;
         return {
             element: element as HTMLElement,
@@ -252,8 +295,12 @@ export class TranslationCandidateCore {
         };
     }
 
-    private resolveInlineRun(element: Element, start: Node): TranslationCandidate | null {
-        const candidates = this.inlineRunCandidates(element);
+    private resolveInlineRun(
+        element: Element,
+        start: Node,
+        textProtectionCache: TranslationTextProtectionCache,
+    ): TranslationCandidate | null {
+        const candidates = this.inlineRunCandidates(element, false, textProtectionCache);
         if (candidates.length === 0) return null;
         let direct: Node | null = start;
         while (direct && direct !== element && direct.parentNode !== element) direct = direct.parentNode;
@@ -264,6 +311,7 @@ export class TranslationCandidateCore {
     resolve(start: Node | null | undefined): TranslationCandidate | null {
         if (!start) return null;
         const hit = start;
+        const textProtectionCache = createTranslationTextProtectionCache();
         let current: Element | null = start.nodeType === 3
             ? (start as Text).parentElement
             : isElementNode(start) ? start : null;
@@ -281,17 +329,20 @@ export class TranslationCandidateCore {
                 current = getComposedParent(current);
                 continue;
             }
+            // Inherited hard guards apply to every possible ancestor candidate.
+            // Stop immediately instead of repeatedly climbing an extreme tree.
+            if (evaluateHardGuard(current).reason === 'ancestor-depth-limit') return null;
             const ownDecision = this.adapterDecision(current).decision;
             if (ownDecision.kind === 'force-target' && ownDecision.atomic !== false) {
-                const exact = this.inspect(current).candidate;
+                const exact = this.inspectWithTextProtectionCache(current, textProtectionCache).candidate;
                 if (exact) return exact;
             }
             // Mixed direct content must resolve to the same run emitted by the
             // full-page walk. This also keeps ordinary text next to an atomic
             // adapter target from falling back to the whole parent container.
-            const inlineRun = this.resolveInlineRun(current, hit);
+            const inlineRun = this.resolveInlineRun(current, hit, textProtectionCache);
             if (inlineRun) return inlineRun;
-            const inspection = this.inspect(current);
+            const inspection = this.inspectWithTextProtectionCache(current, textProtectionCache);
             if (inspection.candidate) return inspection.candidate;
             if (isStructuralContainer(current)) return null;
             current = getComposedParent(current);
@@ -307,6 +358,7 @@ export class TranslationCandidateCore {
     *discoverSteps(root: Node): Generator<TranslationDiscoveryStep> {
         const visited = new Set<Element>();
         const visitedRoots = new Set<Node>();
+        const textProtectionCache = createTranslationTextProtectionCache();
         const roots: Element[] = [];
         if (isElementNode(root)) roots.push(root);
         else if ('children' in root) {
@@ -342,6 +394,11 @@ export class TranslationCandidateCore {
                         continue;
                     }
                     visited.add(frame.element);
+                    isTranslationTextElementProtected(
+                        frame.element,
+                        this.shouldStayOriginal,
+                        textProtectionCache,
+                    );
                     const hardGuard = frame.checkAncestors
                         ? evaluateHardGuard(frame.element)
                         : evaluateElementHardGuard(frame.element);
@@ -354,7 +411,10 @@ export class TranslationCandidateCore {
                         : 'children';
 
                     if (ownAdapter.decision.kind === 'force-target' && !hardGuard.prune) {
-                        frame.forcedCandidate = this.inspect(frame.element).candidate ?? undefined;
+                        frame.forcedCandidate = this.inspectWithTextProtectionCache(
+                            frame.element,
+                            textProtectionCache,
+                        ).candidate ?? undefined;
                         frame.forcedAtomic = ownAdapter.decision.atomic !== false;
                         if (frame.forcedCandidate && ownAdapter.decision.atomic !== false) frame.phase = 'exit';
                     }
@@ -406,7 +466,7 @@ export class TranslationCandidateCore {
                 if (!frame.exitCandidates) {
                     if (frame.forcedCandidate) {
                         frame.exitCandidates = frame.forcedAtomic === false && frame.descendantHasCandidate
-                            ? this.inlineRunCandidates(frame.element, true)
+                            ? this.inlineRunCandidates(frame.element, true, textProtectionCache)
                             : [frame.forcedCandidate];
                     } else if (frame.ownAdapter?.decision.kind === 'skip-self' ||
                         frame.ownAdapter?.decision.kind === 'prune-subtree' ||
@@ -415,9 +475,13 @@ export class TranslationCandidateCore {
                     } else if (frame.descendantHasCandidate) {
                         frame.exitCandidates = frame.insideStructural
                             ? []
-                            : this.inlineRunCandidates(frame.element, true);
+                            : this.inlineRunCandidates(frame.element, true, textProtectionCache);
                     } else {
-                        const candidate = this.genericCandidateForDiscovery(frame.element, frame.insideStructural);
+                        const candidate = this.genericCandidateForDiscovery(
+                            frame.element,
+                            frame.insideStructural,
+                            textProtectionCache,
+                        );
                         frame.exitCandidates = candidate ? [candidate] : [];
                     }
                 }

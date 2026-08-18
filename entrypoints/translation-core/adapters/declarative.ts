@@ -40,16 +40,42 @@ function selectors(value: SelectorList): readonly string[] {
     return typeof value === 'string' ? [value] : value;
 }
 
+const combinedSelectorsByDocument = new WeakMap<Document, Map<string, string | null>>();
+
+function combinedSelector(element: Element, value: SelectorList): string | null {
+    const document = element.ownerDocument;
+    if (!document) return null;
+    const items = selectors(value);
+    const cacheKey = items.join('\u0000');
+    let documentCache = combinedSelectorsByDocument.get(document);
+    if (!documentCache) {
+        documentCache = new Map();
+        combinedSelectorsByDocument.set(document, documentCache);
+    }
+    if (documentCache.has(cacheKey)) return documentCache.get(cacheKey) ?? null;
+
+    const probe = document.createElement('div');
+    const valid = items.filter((item) => {
+        try {
+            probe.matches(item);
+            return true;
+        } catch {
+            return false;
+        }
+    });
+    const combined = valid.length > 0 ? valid.join(',') : null;
+    documentCache.set(cacheKey, combined);
+    return combined;
+}
+
 function matchesSelector(element: Element, selector: SelectorList): boolean {
-    return selectors(selector).some((item) => safeMatches(element, item));
+    const combined = combinedSelector(element, selector);
+    return combined ? safeMatches(element, combined) : false;
 }
 
 function closestSelector(element: Element, selector: SelectorList): Element | null {
-    for (const item of selectors(selector)) {
-        const match = safeClosest(element, item);
-        if (match) return match;
-    }
-    return null;
+    const combined = combinedSelector(element, selector);
+    return combined ? safeClosest(element, combined) : null;
 }
 
 function normalizeHostname(hostname: string): string {

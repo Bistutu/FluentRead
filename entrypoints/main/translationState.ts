@@ -16,6 +16,8 @@ export interface TranslationState {
     phase: TranslationPhase;
     generation: number;
     sourceText: string;
+    /** Text-slot identities visible at request creation, before any live replacement. */
+    sourceTextNodes?: readonly Text[];
     sourceHTML: string;
     /** Runtime-only wrapper around a direct inline run; removed on every exit path. */
     syntheticSegment: boolean;
@@ -33,9 +35,13 @@ export interface TranslationState {
     originalTextValues: Array<{node: Text; value: string}>;
     /** Exact values written by the live text-slot renderer. */
     translatedTextValues?: WeakMap<Text, string>;
+    /** Text nodes that were visible/translatable when single/control rendering ran. */
+    translatedTextNodes?: readonly Text[];
     controller: AbortController;
     spinner?: HTMLElement;
     bilingualContent?: HTMLElement;
+    /** 失败态的重试控件；用于区分扩展写入与宿主移除。 */
+    retryWrapper?: HTMLElement;
     /** 双语 wrapper 最后一次由插件写入的 HTML，用于区分宿主重绘和插件自身 mutation。 */
     bilingualHTML?: string;
 }
@@ -48,6 +54,8 @@ export interface TranslationAttempt {
 const states = new WeakMap<HTMLElement, TranslationState>();
 const activeNodeRefs = new Set<WeakRef<HTMLElement>>();
 const activeRefsByNode = new WeakMap<HTMLElement, WeakRef<HTMLElement>>();
+const ownersByIndexedNode = new WeakMap<Node, Set<HTMLElement>>();
+const indexedNodesByOwner = new WeakMap<HTMLElement, Set<Node>>();
 
 function forEachActiveNode(callback: (node: HTMLElement, state: TranslationState) => void): void {
     for (const ref of activeNodeRefs) {
@@ -72,6 +80,38 @@ function trackActiveNode(node: HTMLElement): void {
     activeNodeRefs.add(ref);
 }
 
+function clearOwnershipIndex(owner: HTMLElement): void {
+    const indexedNodes = indexedNodesByOwner.get(owner);
+    if (!indexedNodes) return;
+
+    indexedNodes.forEach((indexedNode) => {
+        const owners = ownersByIndexedNode.get(indexedNode);
+        owners?.delete(owner);
+        if (owners?.size === 0) ownersByIndexedNode.delete(indexedNode);
+    });
+    indexedNodesByOwner.delete(owner);
+}
+
+function refreshOwnershipIndex(owner: HTMLElement, state: TranslationState): void {
+    clearOwnershipIndex(owner);
+    const indexedNodes = new Set<Node>([
+        owner,
+        ...(state.spinner ? [state.spinner] : []),
+        ...(state.bilingualContent ? [state.bilingualContent] : []),
+        ...(state.retryWrapper ? [state.retryWrapper] : []),
+    ]);
+    indexedNodesByOwner.set(owner, indexedNodes);
+
+    indexedNodes.forEach((indexedNode) => {
+        let owners = ownersByIndexedNode.get(indexedNode);
+        if (!owners) {
+            owners = new Set<HTMLElement>();
+            ownersByIndexedNode.set(indexedNode, owners);
+        }
+        owners.add(owner);
+    });
+}
+
 export function getTranslationState(node: HTMLElement): TranslationState | undefined {
     return states.get(node);
 }
@@ -85,6 +125,8 @@ export function beginTranslation(
     mode: TranslationDisplayMode,
     kind: TranslationTargetKind = "content",
     syntheticSegment = false,
+    sourceText = node.textContent ?? "",
+    sourceTextNodes?: readonly Text[],
 ): TranslationAttempt | null {
     const previous = states.get(node);
     if (previous?.phase === "loading") return null;
@@ -106,7 +148,8 @@ export function beginTranslation(
         kind,
         phase: "loading",
         generation: (previous?.generation ?? 0) + 1,
-        sourceText: node.textContent ?? "",
+        sourceText,
+        sourceTextNodes: sourceTextNodes ? [...sourceTextNodes] : undefined,
         sourceHTML: node.innerHTML,
         syntheticSegment,
         originalStyleAttribute: node.getAttribute("style"),
@@ -117,6 +160,7 @@ export function beginTranslation(
 
     states.set(node, state);
     trackActiveNode(node);
+    refreshOwnershipIndex(node, state);
     return { state, generation: state.generation };
 }
 
@@ -128,13 +172,14 @@ export function isCurrentTranslation(
     node: HTMLElement,
     state: TranslationState,
     generation: number,
+    validateSourceHTML = true,
 ): boolean {
     return (
         states.get(node) === state &&
         state.generation === generation &&
         !state.controller.signal.aborted &&
         node.isConnected &&
-        node.innerHTML === state.sourceHTML
+        (!validateSourceHTML || node.innerHTML === state.sourceHTML)
     );
 }
 
@@ -142,10 +187,12 @@ export function markTranslationComplete(
     node: HTMLElement,
     state: TranslationState,
     generation: number,
+    validateSourceHTML = true,
 ): boolean {
-    if (!isCurrentTranslation(node, state, generation)) return false;
+    if (!isCurrentTranslation(node, state, generation, validateSourceHTML)) return false;
     state.phase = "translated";
     state.spinner = undefined;
+    refreshOwnershipIndex(node, state);
     return true;
 }
 
@@ -153,18 +200,23 @@ export function markTranslationError(
     node: HTMLElement,
     state: TranslationState,
     generation: number,
+    validateSourceHTML = true,
 ): boolean {
     // 失败结果也不能覆盖站点在请求期间写入的新内容。
     // 调用方会先移除插件自己的 spinner，再进行这次快照校验。
-    if (!isCurrentTranslation(node, state, generation)) return false;
+    if (!isCurrentTranslation(node, state, generation, validateSourceHTML)) return false;
     state.phase = "error";
     state.spinner = undefined;
+    refreshOwnershipIndex(node, state);
     return true;
 }
 
 export function setSpinner(node: HTMLElement, spinner: HTMLElement): void {
     const state = states.get(node);
-    if (state) state.spinner = spinner;
+    if (state) {
+        state.spinner = spinner;
+        refreshOwnershipIndex(node, state);
+    }
 }
 
 export function setBilingualContent(node: HTMLElement, content: HTMLElement): void {
@@ -172,7 +224,36 @@ export function setBilingualContent(node: HTMLElement, content: HTMLElement): vo
     if (state) {
         state.bilingualContent = content;
         state.bilingualHTML = content.innerHTML;
+        refreshOwnershipIndex(node, state);
     }
+}
+
+export function setRetryWrapper(node: HTMLElement, wrapper: HTMLElement): void {
+    const state = states.get(node);
+    if (state) {
+        state.retryWrapper = wrapper;
+        refreshOwnershipIndex(node, state);
+    }
+}
+
+/**
+ * The host removed only our failure UI. Keep an error tombstone so generic
+ * discovery cannot turn a permanent provider failure into automatic retries;
+ * a real source mutation or an explicit user action can still clear it.
+ */
+export function detachFailedTranslationUi(
+    node: HTMLElement,
+    state: TranslationState,
+): boolean {
+    if (states.get(node) !== state || state.phase !== "error") return false;
+    removeExtensionNode(state.retryWrapper);
+    state.retryWrapper = undefined;
+    restoreOriginalStyle(node, state);
+    restoreOriginalClass(node, state);
+    state.renderedStyleAttribute = node.getAttribute("style");
+    state.renderedClassAttribute = node.getAttribute("class");
+    refreshOwnershipIndex(node, state);
+    return true;
 }
 
 /**
@@ -200,6 +281,7 @@ function removeRetryArtifacts(node: HTMLElement): void {
 
 function clearState(node: HTMLElement): void {
     states.delete(node);
+    clearOwnershipIndex(node);
     const ref = activeRefsByNode.get(node);
     if (ref) activeNodeRefs.delete(ref);
     activeRefsByNode.delete(node);
@@ -291,40 +373,53 @@ export function discardTranslation(
     return true;
 }
 
-export function setTextSlotsApplied(node: HTMLElement): void {
+export function setTextSlotsApplied(
+    node: HTMLElement,
+    translatedTextNodes?: readonly Text[],
+): void {
     const state = states.get(node);
     if (state) {
         state.textSlotsApplied = true;
+        state.translatedTextNodes = translatedTextNodes
+            ? [...translatedTextNodes]
+            : state.originalTextValues.map(({node: textNode}) => textNode);
         state.translatedTextValues = new WeakMap(
             state.originalTextValues.map(({node: textNode}) => [textNode, textNode.nodeValue ?? ""]),
         );
     }
 }
 
-function containsNode(ancestor: Node, descendant: Node): boolean {
-    if (ancestor === descendant) return true;
-    try {
-        return typeof ancestor.contains === "function" && ancestor.contains(descendant);
-    } catch {
-        return false;
-    }
-}
-
 /**
  * Find states owned by a node that the host removed. This includes a removed
  * translated target and a removed spinner/bilingual wrapper whose owner stays
- * connected. The runtime uses this before its generic artifact filter.
+ * connected. Walk only the removed subtree and consult the incrementally
+ * maintained ownership index; unrelated active translations are never scanned.
+ * The runtime uses this before its generic artifact filter.
  */
 export function getTranslationOwnersForRemovedNode(removed: Node): HTMLElement[] {
-    const owners: HTMLElement[] = [];
-    forEachActiveNode((owner, state) => {
-        if (containsNode(removed, owner) ||
-            (state.spinner && containsNode(removed, state.spinner)) ||
-            (state.bilingualContent && containsNode(removed, state.bilingualContent))) {
-            owners.push(owner);
+    const owners = new Set<HTMLElement>();
+    const stack: Node[] = [removed];
+
+    while (stack.length > 0) {
+        const current = stack.pop();
+        if (!current) continue;
+
+        ownersByIndexedNode.get(current)?.forEach((owner) => {
+            if (states.has(owner)) owners.add(owner);
+        });
+
+        if (current.nodeType === 1) {
+            const shadowRoot = (current as Element).shadowRoot;
+            if (shadowRoot) stack.push(shadowRoot);
         }
-    });
-    return owners;
+
+        for (let index = current.childNodes.length - 1; index >= 0; index -= 1) {
+            const child = current.childNodes.item(index);
+            if (child) stack.push(child);
+        }
+    }
+
+    return [...owners];
 }
 
 /**

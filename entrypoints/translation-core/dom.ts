@@ -22,6 +22,13 @@ const protectedTextTags = new Set([
     'pre', 'code', 'kbd', 'samp', 'var',
 ]);
 
+/**
+ * Host pages can construct adversarially deep trees. Ancestor-dependent safety
+ * checks run synchronously, so cap one lookup and conservatively prune beyond
+ * the limit instead of blocking the renderer for hundreds of milliseconds.
+ */
+export const maxComposedAncestorDepth = 512;
+
 export function getComposedParent(element: Element): Element | null {
     if (element.parentElement) return element.parentElement;
     const root = element.getRootNode?.() as {host?: Element};
@@ -89,8 +96,11 @@ function hasContentEditableMarker(element: Element): boolean {
  * must stay out of provider payloads without rejecting the readable paragraph
  * that contains it.
  */
-export function isProtectedDescendantElement(element: Element): boolean {
-    return isExtensionElementSelf(element) ||
+export function isProtectedDescendantElement(
+    element: Element,
+    ignoreExtensionSelf = false,
+): boolean {
+    return (!ignoreExtensionSelf && isExtensionElementSelf(element)) ||
         isProtectedTextElement(element) ||
         hasNoTranslateMarker(element) ||
         hasContentEditableMarker(element) ||
@@ -116,7 +126,12 @@ export function evaluateElementHardGuard(element: Element): HardGuardResult {
  * open Shadow DOM. Site adapters cannot override these safety boundaries.
  */
 export function evaluateHardGuard(element: Element): HardGuardResult {
+    let depth = 0;
     for (const current of composedAncestors(element)) {
+        depth += 1;
+        if (depth > maxComposedAncestorDepth) {
+            return {prune: true, reason: 'ancestor-depth-limit'};
+        }
         const guard = evaluateElementHardGuard(current);
         if (guard.prune) return guard;
     }

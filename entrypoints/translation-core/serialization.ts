@@ -87,29 +87,23 @@ export function parseTranslationSlots(
     return translated.slice(cursor).trim() ? null : results;
 }
 
-function nodePath(root: Node, node: Node): number[] | null {
-    const path: number[] = [];
-    let current: Node | null = node;
-    while (current && current !== root) {
-        const parent: ParentNode | null = current.parentNode;
-        if (!parent) return null;
-        const index = Array.prototype.indexOf.call(parent.childNodes, current) as number;
-        if (index < 0) return null;
-        path.push(index);
-        current = parent;
-    }
-    return current === root ? path.reverse() : null;
-}
+type TranslationTextSlotParts = Omit<TranslationTextSlot, 'node'>;
 
-function nodeAtPath(root: Node, path: readonly number[]): Node | null {
-    let current: Node | null = root;
-    for (const index of path) current = current?.childNodes[index] ?? null;
-    return current;
+function translationTextSlotParts(
+    node: Text,
+    shouldStayOriginal?: (element: Element) => boolean,
+    ignoredExtensionElement?: Element,
+): TranslationTextSlotParts | null {
+    const value = node.nodeValue ?? '';
+    const match = value.match(/^(\s*)([\s\S]*?\S)(\s*)$/u);
+    if (!match || isTranslationTextNodeProtected(node, shouldStayOriginal, ignoredExtensionElement)) return null;
+    return {prefix: match[1], source: match[2], suffix: match[3]};
 }
 
 function collectSlots(
     root: HTMLElement,
     shouldStayOriginal?: (element: Element) => boolean,
+    ignoredExtensionElement?: Element,
 ): TranslationTextSlot[] {
     const slots: TranslationTextSlot[] = [];
     const document = root.ownerDocument;
@@ -118,12 +112,39 @@ function collectSlots(
     let current = walker.nextNode();
     while (current) {
         const node = current as Text;
-        const value = node.nodeValue ?? '';
-        const match = value.match(/^(\s*)([\s\S]*?\S)(\s*)$/u);
-        if (match && !isTranslationTextNodeProtected(node, shouldStayOriginal)) {
-            slots.push({node, prefix: match[1], source: match[2], suffix: match[3]});
-        }
+        const parts = translationTextSlotParts(node, shouldStayOriginal, ignoredExtensionElement);
+        if (parts) slots.push({node, ...parts});
         current = walker.nextNode();
+    }
+    return slots;
+}
+
+function collectSnapshotSlots(
+    liveRoot: HTMLElement,
+    cloneRoot: HTMLElement,
+    shouldStayOriginal?: (element: Element) => boolean,
+    ignoredExtensionElement?: Element,
+): TranslationTextSlot[] {
+    const document = liveRoot.ownerDocument;
+    if (!document?.createTreeWalker) return [];
+
+    // cloneNode(true) preserves text-node document order. Walking both trees in
+    // lockstep maps each live slot to its clone in O(number of text nodes),
+    // without rebuilding a sibling-index path for every slot.
+    const liveWalker = document.createTreeWalker(liveRoot, 4);
+    const cloneWalker = document.createTreeWalker(cloneRoot, 4);
+    const slots: TranslationTextSlot[] = [];
+    let liveNode = liveWalker.nextNode();
+    let cloneNode = cloneWalker.nextNode();
+    while (liveNode && cloneNode) {
+        const parts = translationTextSlotParts(
+            liveNode as Text,
+            shouldStayOriginal,
+            ignoredExtensionElement,
+        );
+        if (parts) slots.push({node: cloneNode as Text, ...parts});
+        liveNode = liveWalker.nextNode();
+        cloneNode = cloneWalker.nextNode();
     }
     return slots;
 }
@@ -136,19 +157,14 @@ function collectSlots(
 export function createTranslationSourceSnapshot(
     node: HTMLElement,
     shouldStayOriginal?: (element: Element) => boolean,
+    ignoredExtensionElement?: Element,
 ): TranslationSourceSnapshot {
-    // Decide every slot against the live composed tree before cloning. A
-    // detached clone no longer has external ancestors needed by site selectors,
-    // inherited contenteditable, or CSS visibility rules.
-    const liveSlots = collectSlots(node, shouldStayOriginal);
     const clone = node.cloneNode(true) as HTMLElement;
-    const slots = liveSlots.flatMap((slot) => {
-        const path = nodePath(node, slot.node);
-        if (!path) return [];
-        const cloneNode = nodeAtPath(clone, path);
-        if (!cloneNode || cloneNode.nodeType !== 3) return [];
-        return [{...slot, node: cloneNode as Text}];
-    });
+    // Decide every slot against the live composed tree. The detached clone no
+    // longer has external ancestors needed by site selectors, inherited
+    // contenteditable, or CSS visibility rules; it is used only as the mapped
+    // output skeleton.
+    const slots = collectSnapshotSlots(node, clone, shouldStayOriginal, ignoredExtensionElement);
     clone.querySelectorAll(translationArtifactSelector).forEach((child) => child.remove());
     return {clone, slots};
 }
@@ -156,8 +172,9 @@ export function createTranslationSourceSnapshot(
 export function collectLiveTranslationTextSlots(
     node: HTMLElement,
     shouldStayOriginal?: (element: Element) => boolean,
+    ignoredExtensionElement?: Element,
 ): TranslationTextSlot[] {
-    return collectSlots(node, shouldStayOriginal);
+    return collectSlots(node, shouldStayOriginal, ignoredExtensionElement);
 }
 
 export function applyTranslationsToSnapshot(

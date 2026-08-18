@@ -25,6 +25,7 @@ import {
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import { createShadowRootUi, type ShadowRootContentScriptUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { mountVideoSubtitleTranslation } from './main/videoSubtitle';
+import {resetPageTranslationContextCache} from '@/entrypoints/utils/pageContext';
 
 let contentScriptContext: ContentScriptContext | null = null;
 let inputTooltipUi: ShadowRootContentScriptUi<HTMLElement> | null = null;
@@ -137,6 +138,9 @@ export default defineContentScript({
         await configReady; // 等待配置加载完成
 
         const pageEventController = new AbortController();
+        document.addEventListener('fluentread-route-change', resetPageTranslationContextCache, {
+            signal: pageEventController.signal,
+        });
         let runtimeMessageListener: ((message: unknown, sender: unknown, sendResponse: (response?: unknown) => void) => boolean) | null = null;
         let cleanedUp = false;
         const cleanup = () => {

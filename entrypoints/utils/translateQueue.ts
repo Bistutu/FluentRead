@@ -5,74 +5,226 @@
 
 import { config } from './config';
 
-// 队列状态
-let activeTranslations = 0; // 当前活跃的翻译任务数量
-let pendingTranslations: Array<() => Promise<unknown>> = []; // 等待执行的翻译任务队列
+const DEFAULT_MAX_CONCURRENT_TRANSLATIONS = 6;
+const COMPACTION_HEAD_THRESHOLD = 1024;
 
-// 获取最大并发翻译数量
+export interface TranslationQueueSession {
+  readonly generation: number;
+}
+
+/**
+ * A task may stop waiting before the transport it started has actually
+ * settled (for example when the translated DOM is restored). Holding the
+ * queue lease keeps that real transport inside the configured concurrency
+ * limit without delaying the caller-facing cancellation result.
+ */
+export interface TranslationQueueLease {
+  holdUntil(settlement: PromiseLike<unknown>): void;
+}
+
+interface TranslationQueueSessionState {
+  cancelled: boolean;
+  cancellationError?: TranslationQueueCancelledError;
+}
+
+interface PendingTranslation {
+  session: TranslationQueueSession;
+  status: 'pending' | 'running' | 'cancelled';
+  execute: () => Promise<void>;
+  cancel: (error: TranslationQueueCancelledError) => void;
+}
+
+export class TranslationQueueCancelledError extends Error {
+  readonly code = 'TRANSLATION_QUEUE_CANCELLED';
+
+  constructor(message = '翻译任务已取消') {
+    super(message);
+    this.name = 'TranslationQueueCancelledError';
+  }
+}
+
+let activeTranslations = 0;
+let pendingTranslations: Array<PendingTranslation | undefined> = [];
+let pendingHead = 0;
+let queueGeneration = 0;
+const sessionStates = new WeakMap<TranslationQueueSession, TranslationQueueSessionState>();
+
+function createSession(): TranslationQueueSession {
+  const session = Object.freeze({generation: queueGeneration});
+  sessionStates.set(session, {cancelled: false});
+  return session;
+}
+
+let defaultSession = createSession();
+
 function getMaxConcurrentTranslations(): number {
-  return config.maxConcurrentTranslations || 6; // 默认值为6
+  return config.maxConcurrentTranslations || DEFAULT_MAX_CONCURRENT_TRANSLATIONS;
 }
 
-/**
- * 添加翻译任务到队列
- * @param translationTask 翻译任务函数, 需要返回Promise
- * @returns 返回一个Promise，当任务执行完成时resolve
- */
-export function enqueueTranslation<T>(translationTask: () => Promise<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    // 创建任务包装器，在任务完成后处理队列状态
-    const taskWrapper = async () => {
-      
-      try {
-        // 执行实际的翻译任务
-        const result = await translationTask();
-        resolve(result);
-        return result;
-      } catch (error) {
-        reject(error);
-        throw error;
-      } finally {
-        // 无论成功失败，都需要减少活跃任务计数并处理队列
-        activeTranslations--;
-        processQueue();
-        
-      }
-    };
-
-    // 将任务添加到队列
-    if (activeTranslations < getMaxConcurrentTranslations()) {
-      // 直接执行任务
-      activeTranslations++;
-      void taskWrapper().catch(() => undefined);
-    } else {
-      pendingTranslations.push(taskWrapper);
-    }
-  });
+function normalizeCancellationError(reason?: unknown): TranslationQueueCancelledError {
+  if (reason instanceof TranslationQueueCancelledError) return reason;
+  if (reason instanceof Error) return new TranslationQueueCancelledError(reason.message);
+  return new TranslationQueueCancelledError(typeof reason === 'string' ? reason : undefined);
 }
 
-/**
- * 处理队列中的下一个任务
- */
-function processQueue() {
-  // 如果有等待的任务，并且活跃任务数量未达到上限，执行下一个任务
-  if (pendingTranslations.length > 0 && activeTranslations < getMaxConcurrentTranslations()) {
-    const nextTask = pendingTranslations.shift();
-    if (nextTask) {
-      activeTranslations++;
-      nextTask().catch(() => {
-        // 错误已在任务内部处理，这里仅防止未捕获的Promise异常
-      });
+function getSessionCancellationError(session: TranslationQueueSession): TranslationQueueCancelledError | null {
+  const state = sessionStates.get(session);
+  if (!state) throw new TypeError('无效的翻译队列会话');
+  if (state.cancelled) return state.cancellationError ?? new TranslationQueueCancelledError();
+  if (session.generation !== queueGeneration) return new TranslationQueueCancelledError('翻译队列会话已过期');
+  return null;
+}
+
+function compactPendingQueue(force = false): void {
+  if (pendingHead === 0) return;
+  if (pendingHead >= pendingTranslations.length) {
+    pendingTranslations = [];
+    pendingHead = 0;
+    return;
+  }
+  if (force || (pendingHead >= COMPACTION_HEAD_THRESHOLD && pendingHead * 2 >= pendingTranslations.length)) {
+    pendingTranslations = pendingTranslations.slice(pendingHead);
+    pendingHead = 0;
+  }
+}
+
+function dequeuePendingTranslation(): PendingTranslation | undefined {
+  while (pendingHead < pendingTranslations.length) {
+    const entry = pendingTranslations[pendingHead];
+    pendingTranslations[pendingHead] = undefined;
+    pendingHead += 1;
+    compactPendingQueue();
+    if (entry?.status === 'pending') return entry;
+  }
+  compactPendingQueue(true);
+  return undefined;
+}
+
+function processQueue(): void {
+  const maxConcurrent = getMaxConcurrentTranslations();
+  while (activeTranslations < maxConcurrent) {
+    const entry = dequeuePendingTranslation();
+    if (!entry) return;
+
+    const cancellationError = getSessionCancellationError(entry.session);
+    if (cancellationError) {
+      entry.cancel(cancellationError);
+      continue;
     }
+
+    entry.status = 'running';
+    activeTranslations += 1;
+    void entry.execute().finally(() => {
+      activeTranslations -= 1;
+      processQueue();
+    });
   }
 }
 
 /**
- * 清空翻译队列
- * 当页面切换或用户手动停止翻译时调用
+ * 创建一个可单独取消的队列会话。取消只会阻止尚未开始的任务；已经发送的
+ * 请求仍会自然结束，真正中止网络请求需要调用方额外接入 AbortSignal。
  */
-export function clearTranslationQueue() {
-  
+export function createTranslationQueueSession(): TranslationQueueSession {
+  return createSession();
+}
+
+/** 取消指定会话中所有尚未开始的任务。 */
+export function cancelTranslationQueueSession(session: TranslationQueueSession, reason?: unknown): void {
+  const state = sessionStates.get(session);
+  if (!state) throw new TypeError('无效的翻译队列会话');
+  if (state.cancelled) return;
+
+  const error = normalizeCancellationError(reason);
+  state.cancelled = true;
+  state.cancellationError = error;
+  for (let index = pendingHead; index < pendingTranslations.length; index += 1) {
+    const entry = pendingTranslations[index];
+    if (entry?.session !== session || entry.status !== 'pending') continue;
+    pendingTranslations[index] = undefined;
+    entry.cancel(error);
+  }
+  compactPendingQueue(true);
+}
+
+/**
+ * 添加翻译任务到队列。
+ * @param translationTask 翻译任务函数，需要返回 Promise
+ * @param session 可选的取消会话；默认使用当前全局队列 generation
+ */
+export function enqueueTranslation<T>(
+  translationTask: (lease: TranslationQueueLease) => Promise<T>,
+  session: TranslationQueueSession = defaultSession,
+): Promise<T> {
+  try {
+    const cancellationError = getSessionCancellationError(session);
+    if (cancellationError) return Promise.reject(cancellationError);
+  } catch (error) {
+    return Promise.reject(error);
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    const entry: PendingTranslation = {
+      session,
+      status: 'pending',
+      cancel: (error) => {
+        if (entry.status !== 'pending') return;
+        entry.status = 'cancelled';
+        reject(error);
+      },
+      execute: async () => {
+        const heldSettlements: Promise<void>[] = [];
+        let acceptsHolds = true;
+        const lease: TranslationQueueLease = {
+          holdUntil: (settlement) => {
+            if (!acceptsHolds) {
+              throw new Error('翻译队列任务已结束，无法继续占用并发槽');
+            }
+            heldSettlements.push(Promise.resolve(settlement).then(
+              () => undefined,
+              () => undefined,
+            ));
+          },
+        };
+        try {
+          resolve(await translationTask(lease));
+        } catch (error) {
+          reject(error);
+        } finally {
+          acceptsHolds = false;
+          // The caller may already have received an AbortError, but the queue
+          // slot remains occupied until every transport started by this task
+          // has either settled or reached its transport timeout.
+          await Promise.all(heldSettlements);
+        }
+      },
+    };
+
+    pendingTranslations.push(entry);
+    processQueue();
+  });
+}
+
+/**
+ * 清空所有等待中的任务并推进全局 generation。活跃任务保持原有语义，仍会
+ * 自然完成；之后入队的任务使用新的 generation，不会被旧会话误取消。
+ */
+export function clearTranslationQueue(): void {
+  const error = new TranslationQueueCancelledError('翻译队列已清空');
+  const defaultState = sessionStates.get(defaultSession);
+  if (defaultState) {
+    defaultState.cancelled = true;
+    defaultState.cancellationError = error;
+  }
+
+  queueGeneration += 1;
+  for (let index = pendingHead; index < pendingTranslations.length; index += 1) {
+    const entry = pendingTranslations[index];
+    if (!entry || entry.status !== 'pending') continue;
+    pendingTranslations[index] = undefined;
+    entry.cancel(error);
+  }
   pendingTranslations = [];
-  // 不重置activeTranslations，让活跃的翻译任务自然完成
+  pendingHead = 0;
+  defaultSession = createSession();
 }

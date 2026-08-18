@@ -1,4 +1,9 @@
-import {composedAncestors, getComposedParent, isProtectedDescendantElement} from './dom';
+import {
+    composedAncestors,
+    getComposedParent,
+    isProtectedDescendantElement,
+    maxComposedAncestorDepth,
+} from './dom';
 
 const identifierPatterns = [
     /^https?:\/\/\S+$/iu,
@@ -30,11 +35,15 @@ export function isMeaningfulTranslationText(value: string): boolean {
 export function isTranslationTextNodeProtected(
     node: Text,
     shouldStayOriginal?: (element: Element) => boolean,
+    ignoredExtensionElement?: Element,
 ): boolean {
     const parent = node.parentElement;
     if (!parent) return true;
+    let depth = 0;
     for (const ancestor of composedAncestors(parent)) {
-        if (isProtectedDescendantElement(ancestor)) return true;
+        depth += 1;
+        if (depth > maxComposedAncestorDepth) return true;
+        if (isProtectedDescendantElement(ancestor, ancestor === ignoredExtensionElement)) return true;
         if (shouldStayOriginal?.(ancestor)) return true;
     }
     return false;
@@ -43,12 +52,13 @@ export function isTranslationTextNodeProtected(
 function collectReadableText(
     roots: readonly Node[],
     shouldStayOriginal?: (element: Element) => boolean,
+    ignoredExtensionElement?: Element,
 ): string {
     const parts: string[] = [];
     for (const root of roots) {
         if (root.nodeType === 3) {
             const textNode = root as Text;
-            if (!isTranslationTextNodeProtected(textNode, shouldStayOriginal)) {
+            if (!isTranslationTextNodeProtected(textNode, shouldStayOriginal, ignoredExtensionElement)) {
                 const value = normalizeTranslationText(textNode.nodeValue ?? '');
                 if (value) parts.push(value);
             }
@@ -62,7 +72,7 @@ function collectReadableText(
         let current = walker.nextNode();
         while (current) {
             const textNode = current as Text;
-            if (!isTranslationTextNodeProtected(textNode, shouldStayOriginal)) {
+            if (!isTranslationTextNodeProtected(textNode, shouldStayOriginal, ignoredExtensionElement)) {
                 const value = normalizeTranslationText(textNode.nodeValue ?? '');
                 if (value) parts.push(value);
             }
@@ -74,6 +84,61 @@ function collectReadableText(
 
 const discoveryTextNodeBudget = 256;
 const discoveryCharacterBudget = 8192;
+const discoveryVisitedNodeBudget = 2048;
+
+interface TranslationTextProtectionState {
+    depth: number;
+    protected: boolean;
+}
+
+export type TranslationTextProtectionCache = WeakMap<Element, TranslationTextProtectionState>;
+
+export function createTranslationTextProtectionCache(): TranslationTextProtectionCache {
+    return new WeakMap<Element, TranslationTextProtectionState>();
+}
+
+/**
+ * Cache inherited text protection for one hover/discovery operation. When the
+ * caller walks from an ancestor to its children, every lookup after the root is
+ * O(1). A dirty subtree whose external ancestry is already adversarially deep
+ * is conservatively marked protected after one bounded lookup.
+ */
+export function isTranslationTextElementProtected(
+    element: Element,
+    shouldStayOriginal: ((element: Element) => boolean) | undefined,
+    protectionCache: TranslationTextProtectionCache,
+): boolean {
+    const cached = protectionCache.get(element);
+    if (cached) return cached.protected;
+
+    const chain: Element[] = [];
+    let current: Element | null = element;
+    while (current && !protectionCache.has(current)) {
+        if (chain.length >= maxComposedAncestorDepth) {
+            protectionCache.set(element, {
+                depth: maxComposedAncestorDepth + 1,
+                protected: true,
+            });
+            return true;
+        }
+        chain.push(current);
+        current = getComposedParent(current);
+    }
+
+    const inherited = current ? protectionCache.get(current) : undefined;
+    let depth = inherited?.depth ?? 0;
+    let protectedByAncestor = inherited?.protected ?? false;
+    for (let index = chain.length - 1; index >= 0; index -= 1) {
+        const item = chain[index]!;
+        depth += 1;
+        protectedByAncestor = protectedByAncestor ||
+            depth > maxComposedAncestorDepth ||
+            isProtectedDescendantElement(item) ||
+            shouldStayOriginal?.(item) === true;
+        protectionCache.set(item, {depth, protected: protectedByAncestor});
+    }
+    return protectionCache.get(element)?.protected === true;
+}
 
 /**
  * A bounded readability probe for discovery. Rendering still takes an exact
@@ -83,36 +148,44 @@ const discoveryCharacterBudget = 8192;
 export function hasMeaningfulTranslationTextInNodes(
     roots: readonly Node[],
     shouldStayOriginal?: (element: Element) => boolean,
+    protectionCache = createTranslationTextProtectionCache(),
 ): boolean {
-    const stack = [...roots].reverse();
+    const stack: Array<{node: Node; nextChildIndex: number; entered: boolean}> = [];
     const parts: string[] = [];
-    const protectionCache = new WeakMap<Element, boolean>();
     let textNodes = 0;
     let characters = 0;
+    let visitedNodes = 0;
+    let rootIndex = 0;
 
-    const elementIsProtected = (element: Element): boolean => {
-        const cached = protectionCache.get(element);
-        if (cached !== undefined) return cached;
-        const chain: Element[] = [];
-        let current: Element | null = element;
-        while (current && protectionCache.get(current) === undefined) {
-            chain.push(current);
-            current = getComposedParent(current);
-        }
-        let protectedByAncestor = current ? protectionCache.get(current) === true : false;
-        for (let index = chain.length - 1; index >= 0; index -= 1) {
-            const item = chain[index]!;
-            protectedByAncestor = protectedByAncestor ||
-                isProtectedDescendantElement(item) || shouldStayOriginal?.(item) === true;
-            protectionCache.set(item, protectedByAncestor);
-        }
-        return protectionCache.get(element) === true;
-    };
+    const elementIsProtected = (element: Element): boolean =>
+        isTranslationTextElementProtected(element, shouldStayOriginal, protectionCache);
 
-    while (stack.length > 0 && textNodes < discoveryTextNodeBudget && characters < discoveryCharacterBudget) {
-        const current = stack.pop();
-        if (!current) break;
+    while (textNodes < discoveryTextNodeBudget && characters < discoveryCharacterBudget) {
+        if (stack.length === 0) {
+            if (rootIndex >= roots.length) break;
+            const root = roots[rootIndex];
+            rootIndex += 1;
+            if (root) stack.push({node: root, nextChildIndex: 0, entered: false});
+            continue;
+        }
+
+        const frame = stack[stack.length - 1];
+        if (!frame) break;
+        if (!frame.entered) {
+            frame.entered = true;
+            visitedNodes += 1;
+            // Preserve whatever evidence has already been collected, but do
+            // not turn a huge text-free subtree into a translation target. A
+            // false positive would merely move the unbounded walk to exact
+            // source extraction immediately before the provider request.
+            if (visitedNodes > discoveryVisitedNodeBudget) {
+                return isMeaningfulTranslationText(parts.join(' '));
+            }
+        }
+
+        const current = frame.node;
         if (current.nodeType === 3) {
+            stack.pop();
             const textNode = current as Text;
             if (!textNode.parentElement || elementIsProtected(textNode.parentElement)) continue;
             textNodes += 1;
@@ -123,12 +196,21 @@ export function hasMeaningfulTranslationTextInNodes(
             characters += value.length;
             continue;
         }
-        if (current.nodeType !== 1) continue;
+        if (current.nodeType !== 1) {
+            stack.pop();
+            continue;
+        }
         const element = current as Element;
-        if (elementIsProtected(element)) continue;
-        for (let index = current.childNodes.length - 1; index >= 0; index -= 1) {
-            const child = current.childNodes[index];
-            if (child) stack.push(child);
+        if (elementIsProtected(element)) {
+            stack.pop();
+            continue;
+        }
+        const child = current.childNodes[frame.nextChildIndex];
+        frame.nextChildIndex += 1;
+        if (child) {
+            stack.push({node: child, nextChildIndex: 0, entered: false});
+        } else {
+            stack.pop();
         }
     }
 
@@ -138,16 +220,18 @@ export function hasMeaningfulTranslationTextInNodes(
 export function extractTranslationTextFromNodes(
     nodes: readonly Node[],
     shouldStayOriginal?: (element: Element) => boolean,
+    ignoredExtensionElement?: Element,
 ): string {
-    return collectReadableText(nodes, shouldStayOriginal);
+    return collectReadableText(nodes, shouldStayOriginal, ignoredExtensionElement);
 }
 
 /** Extract readable host-page text without cloning the candidate subtree. */
 export function extractTranslationText(
     element: Element,
     shouldStayOriginal?: (element: Element) => boolean,
+    ignoredExtensionElement?: Element,
 ): string {
-    return collectReadableText([element], shouldStayOriginal);
+    return collectReadableText([element], shouldStayOriginal, ignoredExtensionElement);
 }
 
 const hanPattern = /\p{Script=Han}/gu;

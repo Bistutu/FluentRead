@@ -1,8 +1,9 @@
 import {parseHTML} from 'linkedom';
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
 
 import {
     applyTranslationsToSnapshot,
+    collectLiveTranslationTextSlots,
     createDeclarativeAdapter,
     createTranslationCore,
     createTranslationSourceSnapshot,
@@ -12,6 +13,8 @@ import {
     selectPreferredTranslationCandidate,
     serializeTranslationSlots,
 } from '@/entrypoints/translation-core/public';
+import {evaluateHardGuard, maxComposedAncestorDepth} from '@/entrypoints/translation-core/dom';
+import {hasMeaningfulTranslationTextInNodes} from '@/entrypoints/translation-core/text';
 
 function page(html: string, url = 'https://example.test/article') {
     const {document} = parseHTML(`<html><head></head><body>${html}</body></html>`);
@@ -102,6 +105,44 @@ describe('translation candidate core', () => {
         expect(candidates.some((candidate) => candidate.nodes?.includes(paragraph as ChildNode))).toBe(false);
     });
 
+    it.each(['main', 'article', 'section', 'div'])('never reparents display:contents <%s> regions', (tag) => {
+        const {document, core} = page(`
+            <div id="layout">Parent before
+                <${tag} id="semantic" style="display:contents">
+                    Semantic before <strong id="direct">direct text</strong>
+                    <p id="child">Nested paragraph.</p>
+                    Semantic after
+                </${tag}>
+                Parent after <p id="sibling">Sibling paragraph.</p>
+            </div>
+        `);
+        const view = document.defaultView!;
+        Object.defineProperty(view, 'getComputedStyle', {
+            configurable: true,
+            value: (element: Element) => ({
+                display: element.getAttribute('style')?.includes('display:contents') ? 'contents' :
+                    ['P', 'DIV'].includes(element.tagName) ? 'block' : 'inline',
+            }),
+        });
+        const semantic = document.querySelector('#semantic')!;
+        const child = document.querySelector('#child')!;
+        const direct = document.querySelector('#direct')!;
+        const layout = document.querySelector('#layout')!;
+        const candidates = core.discover(document);
+        const semanticRuns = candidates.filter((candidate) => candidate.element === semantic && candidate.nodes);
+        const layoutRuns = candidates.filter((candidate) => candidate.element === layout && candidate.nodes);
+
+        expect(candidates.some((candidate) => candidate.nodes?.includes(semantic as ChildNode))).toBe(false);
+        expect(candidates.find((candidate) => candidate.element === child)).toBeDefined();
+        expect(layoutRuns.map((candidate) => candidate.nodes?.map((node) => node.textContent).join('').trim()))
+            .toEqual(['Parent before', 'Parent after']);
+        expect(semanticRuns).toHaveLength(2);
+        expect(semanticRuns.map((candidate) => candidate.nodes?.map((node) => node.textContent).join('').trim()))
+            .toEqual(['Semantic before direct text', 'Semantic after']);
+        expect(core.resolve(direct)?.nodes).toEqual(semanticRuns[0]?.nodes);
+        expect(core.resolve(child)?.element).toBe(child);
+    });
+
     it('offers lazy discovery steps with the same candidates as synchronous discovery', () => {
         const {document} = parseHTML(`<html><body><main>${Array.from({length: 200}, (_, index) =>
             `<p id="p-${index}">Readable paragraph number ${index} for incremental discovery.</p>`).join('')}</main></body></html>`);
@@ -128,6 +169,67 @@ describe('translation candidate core', () => {
             .flatMap((step) => step?.candidate ? [step.candidate.element.id] : []);
         expect(incremental).toEqual(core.discover(document).map((candidate) => candidate.element.id));
         expect(incremental).toHaveLength(200);
+    });
+
+    it('bounds one readability probe on an extremely wide subtree', () => {
+        const {document} = parseHTML(`<html><body><div id="wide">${
+            Array.from({length: 5_000}, () => '<span></span>').join('')
+        }</div></body></html>`);
+        const wide = document.querySelector('#wide')!;
+        let inspectedElements = 0;
+
+        expect(hasMeaningfulTranslationTextInNodes([wide], () => {
+            inspectedElements += 1;
+            return false;
+        })).toBe(false);
+        expect(inspectedElements).toBeLessThanOrEqual(2_100);
+    });
+
+    it('conservatively prunes adversarial ancestor depth without climbing the entire tree', () => {
+        const {document} = parseHTML('<html><body><main id="root"></main></body></html>');
+        const root = document.querySelector('#root')!;
+        let parent = root;
+        for (let index = 0; index < maxComposedAncestorDepth + 100; index += 1) {
+            const child = document.createElement('div');
+            parent.appendChild(child);
+            parent = child;
+        }
+        parent.textContent = 'Readable text at an adversarial depth.';
+        const core = createTranslationCore({url: new URL('https://example.test')});
+
+        expect(evaluateHardGuard(parent)).toMatchObject({
+            prune: true,
+            reason: 'ancestor-depth-limit',
+        });
+        expect(core.resolve(parent.firstChild)).toBeNull();
+    });
+
+    it('shares text ancestor protection across one adversarially deep discovery', () => {
+        const {document} = parseHTML('<html><body><main id="root"></main></body></html>');
+        const depth = maxComposedAncestorDepth + 100;
+        let parent = document.querySelector('#root')!;
+        for (let index = 0; index < depth; index += 1) {
+            const child = document.createElement('div');
+            parent.appendChild(child);
+            parent = child;
+        }
+        parent.textContent = 'Readable text beyond the conservative depth limit.';
+        let protectionChecks = 0;
+        const core = createTranslationCore({
+            url: new URL('https://example.test'),
+            adapters: [{
+                id: 'protection-counter',
+                matches: () => true,
+                decide: () => ({kind: 'pass'}),
+                shouldStayOriginal: () => {
+                    protectionChecks += 1;
+                    return false;
+                },
+            }],
+        });
+
+        expect(core.discover(document)).toEqual([]);
+        expect(protectionChecks).toBeLessThan(depth * 4);
     });
 
     it('does not climb from structural chrome into an app-shell container', () => {
@@ -192,6 +294,47 @@ describe('translation candidate core', () => {
         const {document: renderedDocument} = parseHTML(`<html><body><p>${rendered}</p></body></html>`);
         expect(renderedDocument.querySelector('code')?.textContent).toBe('npm publish --token SECRET');
         expect(renderedDocument.querySelector('a')?.getAttribute('href')).toBe('/original');
+    });
+
+    it('can re-evaluate a synthetic owner without disabling descendant safety guards', () => {
+        const {document, core} = page(`
+            <span id="synthetic" data-fr-translation-segment="true">
+                Visible source
+                <span hidden>HIDDEN_TEXT</span>
+                <span translate="no">PROTECTED_TEXT</span>
+            </span>
+        `);
+        const synthetic = document.querySelector('#synthetic') as HTMLElement;
+
+        expect(collectLiveTranslationTextSlots(synthetic, core.shouldStayOriginal)).toEqual([]);
+        const slots = collectLiveTranslationTextSlots(
+            synthetic,
+            core.shouldStayOriginal,
+            synthetic,
+        );
+
+        expect(slots.map((slot) => slot.source)).toEqual(['Visible source']);
+        expect(extractTranslationText(synthetic, core.shouldStayOriginal, synthetic)).toBe('Visible source');
+    });
+
+    it('applies provider slots to a fresh safe snapshot so current link attributes win', () => {
+        const {document, core} = page(`
+            <p id="target">Read <a href="/a">the current guide</a>.</p>
+        `);
+        const target = document.querySelector('#target') as HTMLElement;
+        const initial = createTranslationSourceSnapshot(target, core.shouldStayOriginal);
+        const sources = initial.slots.map((slot) => slot.source);
+
+        target.querySelector('a')!.setAttribute('href', '/b');
+        const fresh = createTranslationSourceSnapshot(target, core.shouldStayOriginal);
+        const rendered = applyTranslationsToSnapshot(
+            fresh,
+            sources.map((source) => `译:${source}`),
+        );
+        const {document: renderedDocument} = parseHTML(`<html><body>${rendered}</body></html>`);
+
+        expect(fresh.slots.map((slot) => slot.source)).toEqual(sources);
+        expect(renderedDocument.querySelector('a')?.getAttribute('href')).toBe('/b');
     });
 
     it('evaluates provider slots against live external ancestors before cloning', () => {
@@ -379,6 +522,47 @@ describe('translation candidate core', () => {
         const core = createTranslationCore({url: new URL('https://example.test'), adapters: [adapter]});
 
         expect(core.discover(document).map((item) => item.element.id)).toEqual(['safe']);
+    });
+
+    it('drops one invalid selector without disabling valid selectors in the same rule', () => {
+        const {document} = parseHTML('<html><body><main><p id="safe">Readable fallback prose.</p></main></body></html>');
+        const adapter = createDeclarativeAdapter({
+            id: 'partially-broken-selector',
+            hosts: ['example.test'],
+            targets: [{
+                selector: [':not(', '#safe'],
+                reason: 'valid-selector-survives',
+            }],
+        });
+        const core = createTranslationCore({url: new URL('https://example.test'), adapters: [adapter]});
+
+        expect(core.discover(document)[0]).toMatchObject({
+            element: document.querySelector('#safe'),
+            adapterId: 'partially-broken-selector',
+            reason: 'valid-selector-survives',
+        });
+    });
+
+    it('combines selector lists so a generic adapter miss does not repeat ancestor walks', () => {
+        const {document} = parseHTML('<html><body><main><p id="safe">Readable fallback prose.</p></main></body></html>');
+        const adapter = createDeclarativeAdapter({
+            id: 'selector-cost',
+            hosts: ['example.test'],
+            prune: [{
+                selector: Array.from({length: 20}, (_, index) => `.never-prune-${index}`),
+                reason: 'never-prune',
+            }],
+            targets: [{
+                selector: Array.from({length: 20}, (_, index) => `.never-target-${index}`),
+                reason: 'never-target',
+                match: 'closest',
+            }],
+        });
+        const target = document.querySelector('#safe')!;
+        const closest = vi.spyOn(target, 'closest');
+
+        expect(adapter.decide(target, {url: new URL('https://example.test')})).toEqual({kind: 'pass'});
+        expect(closest).toHaveBeenCalledTimes(2);
     });
 
     it('isolates faulty adapters and preserves registration order for equal priorities', () => {

@@ -23,7 +23,7 @@ export function insertFailedTip(
   node: HTMLElement,
   errMsg: string,
   spinner?: HTMLElement
-) {
+): HTMLElement {
   spinner?.remove(); // 取消转圈动画
 
   // 创建包装元素
@@ -53,6 +53,7 @@ export function insertFailedTip(
   // 将所有元素批量添加到 wrapper
   wrapper.append(retryElement, retryBtn, warnElement, errorTip);
   node.appendChild(wrapper);
+  return wrapper;
 }
 
 // 处理重试按钮点击事件
