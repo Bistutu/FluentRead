@@ -5,6 +5,14 @@ import { normalizeCustomBodyMapping } from "./custom-body";
 export type DeepSeekApiType = 'auto' | 'responses' | 'chat';
 export type DeepSeekThinkingMode = 'enabled' | 'disabled';
 export type VideoSubtitleDisplayMode = 'bilingual' | 'translation-only' | 'original-only';
+export const DEFAULT_VIDEO_SUBTITLE_FONT_SIZE = 100;
+export const VIDEO_SUBTITLE_FONT_SIZE_OPTIONS = [80, 90, 100, 110, 120, 140, 160] as const;
+
+export function normalizeVideoSubtitleFontSize(value: unknown): number {
+    const number = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(number)) return DEFAULT_VIDEO_SUBTITLE_FONT_SIZE;
+    return Math.min(160, Math.max(80, Math.round(number / 10) * 10));
+}
 
 interface IMapping {
     [key: string]: string;
@@ -29,6 +37,7 @@ export class Config {
     videoServiceDefaultMigrated: boolean; // 是否已迁移视频字幕默认服务
     videoSubtitleVisible: boolean; // 是否显示 FluentRead 视频字幕
     videoSubtitleDisplayMode: VideoSubtitleDisplayMode; // 视频字幕显示模式
+    videoSubtitleFontSize: number; // 视频字幕字号百分比
     token: IMapping;
     requireApiKey: Record<string, boolean>; // 按服务和模型保存 API Key 校验开关
     minimaxBillingPlan: MiniMaxBillingPlan; // MiniMax 计费方案
@@ -88,6 +97,7 @@ export class Config {
         this.videoServiceDefaultMigrated = true;
         this.videoSubtitleVisible = true; // 默认显示视频译文
         this.videoSubtitleDisplayMode = 'bilingual'; // 默认双语显示
+        this.videoSubtitleFontSize = DEFAULT_VIDEO_SUBTITLE_FONT_SIZE; // 默认字幕字号
         this.token = {};
         this.requireApiKey = {};
         this.minimaxBillingPlan = 'payg';
@@ -241,6 +251,7 @@ export function normalizeConfig(value: unknown): Config {
     if (!['bilingual', 'translation-only', 'original-only'].includes(normalized.videoSubtitleDisplayMode)) {
         normalized.videoSubtitleDisplayMode = 'bilingual';
     }
+    normalized.videoSubtitleFontSize = normalizeVideoSubtitleFontSize(normalized.videoSubtitleFontSize);
 
     migrateModelIdentifiers(normalized.model);
 

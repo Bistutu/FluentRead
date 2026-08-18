@@ -21,6 +21,7 @@ import {
     revealVideoSubtitleTranslation,
     VIDEO_CAPTION_SEGMENT_SELECTOR,
 } from '@/entrypoints/main/videoSubtitle';
+import { normalizeVideoSubtitleFontSize } from '@/entrypoints/utils/model';
 
 describe('YouTube 视频字幕识别', () => {
     it('只把 YouTube 视频页识别为视频字幕目标', () => {
@@ -75,6 +76,10 @@ describe('YouTube 视频字幕识别', () => {
         expect(getVideoServiceLabel('custom-service')).toBe('custom-service');
         expect(getVideoPretranslationWindowMs('microsoft')).toBe(10_000);
         expect(getVideoPretranslationWindowMs('openai')).toBe(30_000);
+        expect(normalizeVideoSubtitleFontSize(undefined)).toBe(100);
+        expect(normalizeVideoSubtitleFontSize(125)).toBe(130);
+        expect(normalizeVideoSubtitleFontSize(10)).toBe(80);
+        expect(normalizeVideoSubtitleFontSize(200)).toBe(160);
     });
 
     it('按原生字幕已经显示的前缀揭示完整 cue 的译文，并保留一次性完整字幕的整句结果', () => {

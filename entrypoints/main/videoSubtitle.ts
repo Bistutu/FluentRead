@@ -1,7 +1,11 @@
 import browser from 'webextension-polyfill';
 import { config, saveConfig, subscribeConfig } from '@/entrypoints/utils/config';
 import { options, servicesType } from '@/entrypoints/utils/option';
-import type { Config, VideoSubtitleDisplayMode } from '@/entrypoints/utils/model';
+import {
+  normalizeVideoSubtitleFontSize,
+  type Config,
+  type VideoSubtitleDisplayMode,
+} from '@/entrypoints/utils/model';
 import { translateVideoText } from '@/entrypoints/utils/translateApi';
 import {
   buildYoutubeTimedTextUrl,
@@ -299,25 +303,26 @@ function syncTranslationOverlayPosition(container: HTMLElement | null): void {
   // 没有真实字幕片段时保留上一次位置，避免译文被重新定位到顶部后闪过。
   if (visibleCaptionSegments.length === 0) return;
 
-  // 原字幕的矩形会随着逐词输出、换行和 YouTube 重绘而变化；面板使用播放器比例计算固定宽度，
-  // 不再跟随当前词的宽度左右移动或改变换行方式。
   const playerWidth = playerRect.width || 960;
   const availableWidth = Math.max(playerWidth - 24, 160);
-  const minimumWidth = Math.min(260, availableWidth);
-  const width = Math.min(Math.max(playerWidth * .72, minimumWidth), availableWidth);
-  const left = Math.min(
-    Math.max((playerWidth - width) / 2, 12),
-    Math.max(playerWidth - width - 12, 12),
-  );
+  const baseFontSize = Math.min(Math.max(playerWidth * .022, 16), 30);
+  const fontScale = normalizeVideoSubtitleFontSize(config.videoSubtitleFontSize) / 100;
+  panel.style.setProperty('--fluent-read-video-subtitle-font-size', `${baseFontSize * fontScale}px`);
 
   // 双语面板固定在播放器底部安全区上方；字幕内容变化只会改变面板向上的高度，
   // 不会把整组字幕重新锚定到不同的 top。
+  const active = Boolean(overlay.textContent?.trim() || normalizedOverlay?.textContent?.trim());
+  panel.classList.toggle(VIDEO_SUBTITLE_PANEL_ACTIVE_CLASS, active);
+  panel.style.width = 'max-content';
+  if (!active) return;
+
+  // 背景只包住双语文本，并以播放器中心为锚点。长字幕仍受播放器宽度限制，
+  // 超出时在面板内部换行，而不是把半透明背景铺满整行。
+  panel.style.left = '12px';
+  const measuredWidth = panel.getBoundingClientRect().width;
+  const width = Math.min(Math.max(measuredWidth, 0), availableWidth);
+  const left = Math.max(12, Math.min((playerWidth - width) / 2, playerWidth - width - 12));
   panel.style.left = `${left}px`;
-  panel.style.width = `${width}px`;
-  panel.classList.toggle(
-    VIDEO_SUBTITLE_PANEL_ACTIVE_CLASS,
-    Boolean(overlay.textContent?.trim() || normalizedOverlay?.textContent?.trim()),
-  );
 }
 
 function applyVideoDisplayState(container: HTMLElement): void {
@@ -355,14 +360,14 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       max-width: calc(100% - 24px) !important;
       bottom: clamp(52px, 10%, 96px) !important;
       margin: 0 !important;
-      padding: 6px 12px 7px !important;
+      padding: 5px 8px 6px !important;
       border: 1px solid rgba(255, 255, 255, .1) !important;
       border-radius: 6px !important;
       background: rgba(12, 15, 22, .56) !important;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, .28), 0 0 0 1px rgba(0, 0, 0, .08) !important;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .24), 0 0 0 1px rgba(0, 0, 0, .08) !important;
       backdrop-filter: blur(2px) !important;
       flex-direction: column !important;
-      align-items: stretch !important;
+      align-items: center !important;
       gap: 6px !important;
       overflow: visible !important;
       pointer-events: none !important;
@@ -377,11 +382,15 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       position: relative !important;
       z-index: 2 !important;
       box-sizing: border-box !important;
-      width: 100% !important;
+      width: auto !important;
+      max-width: 100% !important;
       margin: 0 !important;
       padding: 0 !important;
       color: #ffe45c !important;
-      font: 700 clamp(16px, 2.2vw, 30px)/1.28 Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
+      font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
+      font-size: var(--fluent-read-video-subtitle-font-size, clamp(16px, 2.2vw, 30px)) !important;
+      font-weight: 700 !important;
+      line-height: 1.28 !important;
       text-align: center !important;
       -webkit-text-stroke: 1px #000 !important;
       paint-order: stroke fill !important;
@@ -397,11 +406,15 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       position: relative !important;
       z-index: 1 !important;
       box-sizing: border-box !important;
-      width: 100% !important;
+      width: auto !important;
+      max-width: 100% !important;
       margin: 0 !important;
       padding: 0 !important;
       color: #fff !important;
-      font: 600 clamp(16px, 2.2vw, 30px)/1.28 Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
+      font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
+      font-size: var(--fluent-read-video-subtitle-font-size, clamp(16px, 2.2vw, 30px)) !important;
+      font-weight: 600 !important;
+      line-height: 1.28 !important;
       text-align: center !important;
       text-shadow: 0 1px 2px rgba(0, 0, 0, .9), 0 0 4px rgba(0, 0, 0, .8) !important;
       white-space: pre-wrap !important;
@@ -611,7 +624,7 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
   return style;
 }
 
-type VideoConfigPatch = Partial<Pick<Config, 'videoTranslationEnabled' | 'videoSubtitleVisible' | 'videoSubtitleDisplayMode'>>;
+type VideoConfigPatch = Partial<Pick<Config, 'videoTranslationEnabled' | 'videoSubtitleVisible' | 'videoSubtitleDisplayMode' | 'videoSubtitleFontSize'>>;
 
 /**
  * 挂载 YouTube 播放器内的字幕翻译入口和原生字幕监听器。
@@ -771,6 +784,15 @@ export function mountVideoSubtitleTranslation(): () => void {
     return request;
   };
 
+  const getCurrentVideoTimeMs = (): number => {
+    const player = findVideoPlayer();
+    const currentVideo = player?.querySelector<HTMLVideoElement>('video.html5-main-video, video') || observedVideo;
+    const currentTime = currentVideo?.currentTime;
+    return typeof currentTime === 'number' && Number.isFinite(currentTime)
+      ? currentTime * 1000
+      : Number.NaN;
+  };
+
   const findProgressiveCue = (source: string): VideoSubtitleCue | null => {
     const normalizedSource = normalizeVideoCaptionText(source);
     if (!normalizedSource || pretranslationCues.length === 0) return null;
@@ -780,7 +802,7 @@ export function mountVideoSubtitleTranslation(): () => void {
       const fullSource = normalizeVideoCaptionText(cue.text).toLocaleLowerCase();
       return fullSource === foldedSource || fullSource.startsWith(foldedSource);
     });
-    const currentMs = observedVideo ? observedVideo.currentTime * 1000 : Number.NaN;
+    const currentMs = getCurrentVideoTimeMs();
     const sourceLength = Array.from(normalizedSource).length;
     const getTimeDistance = (cue: VideoSubtitleCue): number => {
       const endMs = cue.startMs + Math.max(cue.durationMs, 500);
@@ -826,6 +848,43 @@ export function mountVideoSubtitleTranslation(): () => void {
     return sortCandidates(activeRelated);
   };
 
+  const getProgressiveCueKey = (cue: VideoSubtitleCue): string =>
+    `${cue.startMs}:${cue.durationMs}:${normalizeVideoCaptionText(cue.text)}`;
+
+  const isCueActiveAtTime = (cue: VideoSubtitleCue, currentMs: number): boolean => {
+    const endMs = cue.startMs + Math.max(cue.durationMs, 500);
+    return currentMs >= cue.startMs && currentMs < endMs;
+  };
+
+  const findActiveProgressiveCue = (): VideoSubtitleCue | null => {
+    const currentMs = getCurrentVideoTimeMs();
+    if (!Number.isFinite(currentMs) || pretranslationCues.length === 0) return null;
+
+    return [...pretranslationCues]
+      .filter((cue) => isCueActiveAtTime(cue, currentMs))
+      .sort((left, right) => right.startMs - left.startMs)[0] || null;
+  };
+
+  const selectProgressiveCue = (source: string): VideoSubtitleCue | null => {
+    const matchedCue = findProgressiveCue(source);
+    const activeCue = findActiveProgressiveCue();
+    const currentMs = getCurrentVideoTimeMs();
+    if (!activeCue) return matchedCue;
+    // 没有任何文本匹配时不要凭时间轴猜测原生字幕内容；YouTube 可能刚切换
+    // 字幕轨道，而 DOM 已经先显示了新文本，此时应回退到普通实时翻译。
+    if (!matchedCue) return null;
+
+    // 原生字幕 DOM 可能还停在上一条 cue，但播放器时间已经进入下一条。
+    // 时间轴是此时唯一稳定的“当前字幕”信号，优先切换到 active cue，避免译文落后一整句。
+    if (Number.isFinite(currentMs)
+      && activeCue.startMs > matchedCue.startMs
+      && !isCueActiveAtTime(matchedCue, currentMs)) {
+      return activeCue;
+    }
+    if (activeCue.startMs > matchedCue.startMs && Number.isFinite(currentMs)) return activeCue;
+    return matchedCue;
+  };
+
   const renderProgressiveCaption = (source: string, overlay: HTMLElement, container: HTMLElement) => {
     if (!progressiveCue || !progressiveTranslation) return;
 
@@ -838,11 +897,11 @@ export function mountVideoSubtitleTranslation(): () => void {
   };
 
   const updateProgressiveCaption = (source: string, overlay: HTMLElement, container: HTMLElement): boolean => {
-    const cue = findProgressiveCue(source);
+    const cue = selectProgressiveCue(source);
     if (!cue) return false;
 
     cancelStableCaption();
-    const cueKey = `${cue.startMs}:${cue.durationMs}:${normalizeVideoCaptionText(cue.text)}`;
+    const cueKey = getProgressiveCueKey(cue);
     if (cueKey !== progressiveCueKey) {
       deactivateNormalizedCaption();
       progressiveCueKey = cueKey;
@@ -888,10 +947,8 @@ export function mountVideoSubtitleTranslation(): () => void {
 
       const currentContainer = findCaptionContainer();
       const currentSource = readVisibleCaptionText(currentContainer);
-      const currentCue = currentSource ? findProgressiveCue(currentSource) : null;
-      const currentCueKey = currentCue
-        ? `${currentCue.startMs}:${currentCue.durationMs}:${normalizeVideoCaptionText(currentCue.text)}`
-        : '';
+      const currentCue = currentSource ? selectProgressiveCue(currentSource) : findActiveProgressiveCue();
+      const currentCueKey = currentCue ? getProgressiveCueKey(currentCue) : '';
       if (!currentContainer || !currentSource || currentCueKey !== requestCueKey) return;
       lastSource = currentSource;
       renderProgressiveCaption(currentSource, overlay, currentContainer);
@@ -1018,7 +1075,12 @@ export function mountVideoSubtitleTranslation(): () => void {
     videoTimeListener = undefined;
     if (!observedVideo) return;
 
-    videoTimeListener = () => schedulePretranslation();
+    videoTimeListener = () => {
+      schedulePretranslation();
+      // YouTube 的原生字幕 DOM 有时会落后于播放器时间轴；时间变化也要触发一次
+      // 当前 cue 选择，让已经预取好的下一句可以立即替换掉旧译文。
+      scheduleUpdate();
+    };
     ['timeupdate', 'seeking', 'loadedmetadata', 'durationchange', 'play', 'ratechange'].forEach((eventName) => {
       observedVideo?.addEventListener(eventName, videoTimeListener!);
     });
@@ -1483,6 +1545,14 @@ export function mountVideoSubtitleTranslation(): () => void {
     debounceTimer = setTimeout(updateCaption, 120);
   };
 
+  const videoTimelineEventNames = ['timeupdate', 'seeking', 'loadedmetadata', 'durationchange', 'play', 'ratechange'];
+  const handleVideoTimelineEvent = (event: Event) => {
+    const target = event.target as Element | null;
+    if (!target || target.tagName !== 'VIDEO') return;
+    schedulePretranslation();
+    scheduleUpdate();
+  };
+
   const observeCaptionContainer = () => {
     const container = findCaptionContainer();
     if (!container) {
@@ -1530,12 +1600,16 @@ export function mountVideoSubtitleTranslation(): () => void {
     observeCaptionContainer();
     syncVideoElement();
     ensurePretranslationTrack();
+    // YouTube 某些播放器实现不会稳定派发 timeupdate；复用已有的播放器同步
+    // 周期校正当前 cue，避免原生字幕 DOM 落后一整句时译文一直停留在旧句。
+    scheduleUpdate();
     schedulePretranslation();
     syncTranslationOverlayPosition(observedContainer);
   };
 
   document.addEventListener('click', handleDocumentClick, true);
   document.addEventListener('keydown', handleDocumentKeydown, true);
+  videoTimelineEventNames.forEach((eventName) => document.addEventListener(eventName, handleVideoTimelineEvent, true));
   window.addEventListener('message', handleTimedTextMessage);
   syncPlayerUi();
   uiSyncTimer = window.setInterval(syncPlayerUi, 1000);
@@ -1577,6 +1651,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     unsubscribeConfig();
     document.removeEventListener('click', handleDocumentClick, true);
     document.removeEventListener('keydown', handleDocumentKeydown, true);
+    videoTimelineEventNames.forEach((eventName) => document.removeEventListener(eventName, handleVideoTimelineEvent, true));
     window.removeEventListener('message', handleTimedTextMessage);
     closeMenu();
     document.querySelectorAll(`#${VIDEO_TRANSLATION_BUTTON_ID}, #${VIDEO_TRANSLATION_MENU_ID}`).forEach((node) => node.remove());

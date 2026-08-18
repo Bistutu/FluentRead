@@ -23,6 +23,21 @@ const OFFLINE_YOUTUBE_FIXTURE_HTML = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>YouTube subtitle fixture</title></head>
 <body><main><div id="movie_player" class="html5-video-player"></div></main></body></html>`;
 
+
+const FIXTURE_NATIVE_VIDEO_DATA_URL = [
+  'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAOCbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAF3AAAQAAAQAA',
+  'AAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAq10cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAF3AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAA',
+  'AAAAAAAAAAAAAABAAAAAAAIAAAACAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAABdwAACAAAABAAAAAAIlbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAABgABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAAB0G1p',
+  'bmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAZBzdGJsAAAAwHN0c2QAAAAAAAAAAQAAALBhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAIAAgBIAAAASAAAAAAAAAABFUxhdmM2MS4xOS4xMDEgbGli',
+  'eDI2NAAAAAAAAAAAAAAAGP//AAAANmF2Y0MBZAAK/+EAGWdkAAqs2V+IiMBEAAADAAQAAAMACDxIllgBAAZo6+PLIsD9+PgAAAAAEHBhc3AAAAABAAAAAQAAABRidHJ0AAAAAAAABAkAAAAAAAAAGHN0dHMAAAAAAAAAAQAAAAYAAEAAAAAAFHN0c3MAAAAAAAAAAQAAAAEAAABAY3R0cwAAAAAAAAAGAAAAAQAAgAAAAAABAAFAAAAAAAEAAIAAAAAAAQAAAAAAAAABAABAAAAAAAEAAIAAAAAAHHN0c2MA',
+  'AAAAAAAAAQAAAAEAAAAGAAAAAQAAACxzdHN6AAAAAAAAAAAAAAAGAAACxQAAAAwAAAAMAAAADAAAAAwAAAASAAAAFHN0Y28AAAAAAAAAAQAAA7IAAABhdWR0YQAAAFltZXRhAAAAAAAAACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAACxpbHN0AAAAJKl0',
+  'b28AAAAcZGF0YQAAAAEAAAAATGF2ZjYxLjcuMTAwAAAACGZyZWUAAAMPbWRhdAAAAq0GBf//qdxF6b3m2Ui3lizYINkj7u94MjY0IC0gY29yZSAxNjQgcjMxMDggMzFlMTlmOSAtIEguMjY0L01QRUctNCBBVkMgY29kZWMgLSBDb3B5bGVmdCAyMDAzLTIwMjMgLSBodHRwOi8vd3d3LnZpZGVvbGFuLm9yZy94MjY0Lmh0bWwgLSBvcHRpb25zOiBjYWJhYz0xIHJlZj0zIGRlYmxvY2s9MTowOjAgYW5h',
+  'bHlzZT0weDM6MHgxMTMgbWU9aGV4IHN1Ym1lPTcgcHN5PTEgcHN5X3JkPTEuMDA6MC4wMCBtaXhlZF9yZWY9MSBtZV9yYW5nZT0xNiBjaHJvbWFfbWU9MSB0cmVsbGlzPTEgOHg4ZGN0PTEgY3FtPTAgZGVhZHpvbmU9MjEsMTEgZmFzdF9wc2tpcD0xIGNocm9tYV9x',
+  'cF9vZmZzZXQ9LTIgdGhyZWFkcz0xIGxvb2thaGVhZF90aHJlYWRzPTEgc2xpY2VkX3RocmVhZHM9MCBucj0wIGRlY2ltYXRlPTEgaW50ZXJsYWNlZD0wIGJsdXJheV9jb21wYXQ9MCBjb25zdHJhaW5lZF9pbnRyYT0wIGJmcmFtZXM9MyBiX3B5cmFtaWQ9MiBiX2Fk',
+  'YXB0PTEgYl9iaWFzPTAgZGlyZWN0PTEgd2VpZ2h0Yj0xIG9wZW5fZ29wPTAgd2VpZ2h0cD0yIGtleWludD0yNTAga2V5aW50X21pbj0xIHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFj',
+  'b21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAAEGWIhAAX//731LfMsu4HI4EAAAAIQZokbEFv/vAAAAAIQZ5CeILfjIEAAAAIAZ5hdEFfkoAAAAAIAZ5jakFfkoEAAAAOQZplSahBaJlMCCv//vE=',
+].join('');
+
 async function main() {
   const extensionDir = path.resolve(arg('extension-dir', '.output/chrome-mv3'));
   const playwrightRoot = arg('playwright-root', process.env.PLAYWRIGHT_ROOT);
@@ -61,6 +76,8 @@ async function main() {
       ? '房地产市场受到了冲击。'
       : source === 'understand from [music] the axioms and the basics.'
         ? '从音乐中理解公理和基础。'
+        : source === 'Timeline subtitle catches up.'
+          ? '时间轴已追上字幕。'
         : source === 'This subtitle was translated in advance.'
           ? '预先翻译的字幕。'
         : `【译文】${source}`;
@@ -132,6 +149,19 @@ async function main() {
     if (!popupVideoServiceOptions.includes('OpenAI') || !popupVideoServiceOptions.includes('微软翻译')) {
       throw new Error(`Popup 视频翻译服务没有同时提供机器翻译和 AI 服务：${JSON.stringify(popupVideoServiceOptions)}`);
     }
+    const popupVideoFontSizeOptions = await control.locator('.drawer-content select[aria-label="视频字幕字号"] option').allTextContents();
+    if (!popupVideoFontSizeOptions.includes('默认') || !popupVideoFontSizeOptions.includes('80%') || !popupVideoFontSizeOptions.includes('160%')) {
+      throw new Error(`Popup 视频字幕字号选项不完整：${JSON.stringify(popupVideoFontSizeOptions)}`);
+    }
+    await control.locator('.drawer-content select[aria-label="视频字幕字号"]').selectOption('140');
+    await control.waitForTimeout(350);
+    const popupVideoFontSizePersisted = await control.evaluate(async () => {
+      const stored = await chrome.storage.local.get('config');
+      return stored.config?.videoSubtitleFontSize;
+    });
+    if (popupVideoFontSizePersisted !== 140) {
+      throw new Error(`Popup 视频字幕字号没有持久化：${JSON.stringify({ popupVideoFontSizePersisted })}`);
+    }
     await control.screenshot({ path: path.join(artifactsDir, 'popup-video-beta-test.png'), fullPage: true });
 
     let page = await context.newPage();
@@ -156,7 +186,7 @@ async function main() {
     }
     await page.waitForTimeout(2500);
 
-    await page.evaluate(() => {
+    await page.evaluate((videoDataUrl) => {
       const player = document.querySelector('#movie_player, .html5-video-player');
       if (!(player instanceof HTMLElement)) throw new Error('找不到 YouTube 播放器容器');
 
@@ -185,7 +215,10 @@ async function main() {
       const video = document.createElement('video');
       video.className = 'html5-main-video';
       video.muted = true;
+      video.preload = 'auto';
+      video.src = videoDataUrl;
       video.style.cssText = 'position:absolute;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;';
+      video.load();
 
       const container = document.createElement('div');
       container.id = 'ytp-caption-window-container';
@@ -211,7 +244,12 @@ async function main() {
       controls.append(existingTranslationButton, settings);
 
       player.append(surface, video, container, controls);
-    });
+    }, FIXTURE_NATIVE_VIDEO_DATA_URL);
+
+    await page.waitForFunction(() => {
+      const video = document.querySelector('video.html5-main-video');
+      return Boolean(video && video.readyState >= 1 && Number.isFinite(video.duration) && video.duration >= 5);
+    }, null, { timeout: 15000 });
 
     await page.waitForFunction(() => {
       const button = document.querySelector('#fluent-read-video-subtitle-button');
@@ -406,6 +444,7 @@ async function main() {
         panelBottom: panelRect?.bottom ?? null,
         panelBottomGap: panelRect && playerRect ? playerRect.bottom - panelRect.bottom : null,
         panelWidth: panelRect?.width ?? null,
+        playerWidth: playerRect?.width ?? null,
         panelBottomStyle: panelStyle?.bottom || '',
         panelBackground: panelStyle?.backgroundColor || '',
         panelShadow: panelStyle?.boxShadow || '',
@@ -414,14 +453,17 @@ async function main() {
         color: style?.color || '',
         strokeWidth: style?.webkitTextStrokeWidth || '',
         textShadow: style?.textShadow || '',
+        fontSize: style?.fontSize || '',
       };
     });
     if (translationPlacement.gap === null || translationPlacement.gap < 4 || !translationPlacement.fontFamily.includes('PingFang SC')
       || translationPlacement.color !== 'rgb(255, 228, 92)' || translationPlacement.strokeWidth === '0px'
       || translationPlacement.panelWidth <= 0 || translationPlacement.panelBackground === 'rgba(0, 0, 0, 0)'
+      || translationPlacement.playerWidth === null || translationPlacement.panelWidth >= translationPlacement.playerWidth - 24
       || translationPlacement.panelShadow === 'none' || translationPlacement.panelRadius === '0px'
       || translationPlacement.panelBottomGap === null || translationPlacement.panelBottomGap < 48
-      || translationPlacement.panelBottomGap > 100 || translationPlacement.panelBottomStyle === 'auto') {
+      || translationPlacement.panelBottomGap > 100 || translationPlacement.panelBottomStyle === 'auto'
+      || Number.parseFloat(translationPlacement.fontSize) <= 24) {
       throw new Error(`译文没有稳定显示在原字幕上方或字体清晰度样式未生效：${JSON.stringify(translationPlacement)}`);
     }
     const progressiveRequests = translationSources.filter((source) => source === progressiveSource).length - progressiveRequestStart;
@@ -578,6 +620,79 @@ async function main() {
       throw new Error(`AI 已前置翻译的字幕再次显示时重复请求：${JSON.stringify({ aiTranslationSources })}`);
     }
 
+    // 模拟 YouTube 原生字幕 DOM 仍停在上一句，但播放器时间已经进入下一条 cue。
+    // 翻译层应按时间轴立即追上，并用整段原文覆盖短暂落后的原生字幕。
+    await control.evaluate(async () => {
+      const stored = await chrome.storage.local.get('config');
+      await chrome.storage.local.set({ config: {
+        ...(stored.config || {}),
+        videoService: 'microsoft',
+        videoServiceDefaultMigrated: true,
+        useCache: false,
+      }});
+    });
+    await page.waitForFunction(() => document.querySelector('#fluent-read-video-subtitle-menu [data-service-label]')?.textContent === '微软翻译', null, { timeout: 10000 });
+    const timelineOldSource = 'Timeline subtitle is still visible.';
+    const timelineNextSource = 'Timeline subtitle catches up.';
+    await page.evaluate(({ oldSource, nextSource }) => {
+      const video = document.querySelector('video.html5-main-video');
+      if (video) {
+        video.currentTime = 0;
+        video.dispatchEvent(new Event('timeupdate'));
+      }
+      const segment = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
+      if (segment) segment.textContent = oldSource;
+      window.postMessage({
+        source: 'fluent-read',
+        type: 'fluent-read-youtube-timedtext',
+        url: 'https://www.youtube.com/api/timedtext?v=fixture-timeline&lang=en',
+        responseText: JSON.stringify({ events: [
+          { tStartMs: 0, dDurationMs: 1800, segs: [{ utf8: oldSource }] },
+          { tStartMs: 2000, dDurationMs: 3000, segs: [{ utf8: nextSource }] },
+        ] }),
+      }, window.location.origin);
+    }, { oldSource: timelineOldSource, nextSource: timelineNextSource });
+    await page.waitForFunction((expected) => document.querySelector('#fluent-read-video-subtitle')?.textContent === `【译文】${expected}`, timelineOldSource, { timeout: 20000 });
+    await page.evaluate(() => {
+      const video = document.querySelector('video.html5-main-video');
+      if (video) {
+        video.currentTime = 2.2;
+        video.dispatchEvent(new Event('timeupdate'));
+      }
+    });
+    try {
+      await page.waitForFunction(() => document.querySelector('#fluent-read-video-subtitle')?.textContent === '时间轴已追上字幕。'
+        && document.querySelector('#fluent-read-video-subtitle-original')?.textContent === 'Timeline subtitle catches up.', null, { timeout: 20000 });
+    } catch (error) {
+      await page.evaluate(() => {
+        const segment = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
+        if (segment) segment.textContent = `${segment.textContent || ''} `;
+      });
+      await page.waitForTimeout(500);
+      const timelineDebug = await page.evaluate((recentTranslationSources) => {
+        const video = document.querySelector('video.html5-main-video');
+        const overlay = document.querySelector('#fluent-read-video-subtitle');
+        const normalized = document.querySelector('#fluent-read-video-subtitle-original');
+        const container = document.querySelector('#ytp-caption-window-container');
+        return {
+          currentTime: video?.currentTime,
+          native: container?.textContent || '',
+          overlay: overlay?.textContent || '',
+          normalized: normalized?.textContent || '',
+          normalizedActive: document.querySelector('#fluent-read-video-subtitle-layer')?.classList.contains('fluent-read-video-normalized-caption-active'),
+          nativeHidden: container?.classList.contains('fluent-read-video-normalized-caption'),
+          recoveredAfterNativeMutation: document.querySelector('#fluent-read-video-subtitle')?.textContent === '时间轴已追上字幕。',
+          recentTranslationSources,
+        };
+      }, translationSources.slice(-8));
+      throw new Error(`时间轴字幕追赶断言失败：${JSON.stringify(timelineDebug)}`);
+    }
+    const timelineCatchUp = await page.evaluate(() => ({
+      translation: document.querySelector('#fluent-read-video-subtitle')?.textContent || '',
+      normalized: document.querySelector('#fluent-read-video-subtitle-original')?.textContent || '',
+      native: document.querySelector('#ytp-caption-window-container .ytp-caption-segment')?.textContent || '',
+    }));
+
     await page.locator('#fluent-read-video-subtitle-panel').screenshot({ path: path.join(artifactsDir, 'video-subtitle-panel.png') });
     await page.screenshot({ path: path.join(artifactsDir, 'video-subtitle-fixture-player.png'), fullPage: false });
     console.log(JSON.stringify({
@@ -591,6 +706,8 @@ async function main() {
       initialPopupVideoState,
       popupDrawerBeta,
       popupVideoServiceOptions,
+      popupVideoFontSizeOptions,
+      popupVideoFontSizePersisted,
       beforeRedraw,
       duringRedraw,
       afterRedraw,
@@ -607,6 +724,7 @@ async function main() {
       displayedPrefetchRequests,
       aiDisplayedPrefetchTranslation,
       aiTranslationRequests: aiPrefetchRequests.length,
+      timelineCatchUp,
       translationRequests,
       translationSources,
       pageErrors,

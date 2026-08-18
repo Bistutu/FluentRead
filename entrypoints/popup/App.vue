@@ -349,6 +349,12 @@
             <option v-for="item in videoServiceOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
           </select>
         </label>
+        <label class="select-row">
+          <span><strong>字幕字号</strong><small>只调整 FluentRead 显示的原文和译文</small></span>
+          <select v-model.number="config.videoSubtitleFontSize" aria-label="视频字幕字号" :disabled="!config.videoTranslationEnabled">
+            <option v-for="size in videoSubtitleFontSizeOptions" :key="size" :value="size">{{ size === 100 ? '默认' : `${size}%` }}</option>
+          </select>
+        </label>
         <small class="drawer-hint">目前支持 YouTube；播放器内会显示 FluentRead 图标，可切换字幕模式、显示状态和下载 SRT。视频默认使用微软翻译；AI 服务会提前预取字幕，如切换 DeepLX，可在完整设置中配置服务地址。</small>
       </div>
 
@@ -388,7 +394,7 @@ import {
   subscribeConfig,
 } from '@/entrypoints/utils/config';
 import { Setting } from '@element-plus/icons-vue';
-import { Config } from '@/entrypoints/utils/model';
+import { Config, VIDEO_SUBTITLE_FONT_SIZE_OPTIONS } from '@/entrypoints/utils/model';
 import { options } from '@/entrypoints/utils/option';
 import { getMissingCredentialMessage } from '@/entrypoints/utils/configValidation';
 import { getSelectedModelLabel } from '@/entrypoints/utils/serviceCatalog';
@@ -431,6 +437,7 @@ const persistConfig = (value: unknown) => requestConfigSave(value, browser.runti
 
 const serviceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
 const videoServiceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
+const videoSubtitleFontSizeOptions = VIDEO_SUBTITLE_FONT_SIZE_OPTIONS;
 const popularServiceValues = ['freeTranslation', 'microsoft', 'google', 'deepL', 'deeplx', 'deepseek', 'openai', 'gemini', 'claude'];
 const popularServiceOptions = computed(() => popularServiceValues
   .map(value => serviceOptions.value.find((item: any) => item.value === value))

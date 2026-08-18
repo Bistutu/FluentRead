@@ -66,7 +66,7 @@ describe('统一配置存储', () => {
         expect((history.entries[1].config as unknown as Record<string, unknown>).__fluentConfigRevision).toBeUndefined();
     });
 
-    it('为旧配置补齐默认关闭的视频字幕 Beta 与独立微软翻译服务', async () => {
+    it('为旧配置补齐默认关闭的视频字幕 Beta、独立微软翻译服务和默认字号', async () => {
         const configStore = await loadConfigModule(storedConfig);
 
         await configStore.configReady;
@@ -75,6 +75,7 @@ describe('统一配置存储', () => {
         expect(configStore.config.videoService).toBe('microsoft');
         expect(configStore.config.videoSubtitleVisible).toBe(true);
         expect(configStore.config.videoSubtitleDisplayMode).toBe('bilingual');
+        expect(configStore.config.videoSubtitleFontSize).toBe(100);
     });
 
     it('保留用户选择的视频 AI 服务，并将未知服务回退到微软翻译', async () => {
@@ -109,12 +110,14 @@ describe('统一配置存储', () => {
             ...storedConfig,
             videoSubtitleVisible: 'yes',
             videoSubtitleDisplayMode: 'side-by-side',
+            videoSubtitleFontSize: 'huge',
         });
 
         await configStore.configReady;
 
         expect(configStore.config.videoSubtitleVisible).toBe(true);
         expect(configStore.config.videoSubtitleDisplayMode).toBe('bilingual');
+        expect(configStore.config.videoSubtitleFontSize).toBe(100);
     });
 
     it('存储内容损坏时回退到默认配置，并保持初始化 Promise 可用', async () => {

@@ -216,6 +216,19 @@
         </el-col>
       </el-row>
 
+      <el-row class="settings-control-row">
+        <el-col :span="12" class="settings-control-label lightblue rounded-corner">
+          <el-tooltip class="box-item" effect="dark" content="只调整 FluentRead 在播放器中显示的原文和译文字号，不改变 YouTube 原生字幕设置。" placement="top-start" :show-after="500">
+            <span class="popup-text popup-vertical-left">字幕字号<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
+          </el-tooltip>
+        </el-col>
+        <el-col :span="12" class="settings-control-field">
+          <el-select v-model="config.videoSubtitleFontSize" aria-label="视频字幕字号" :disabled="!config.videoTranslationEnabled" placeholder="请选择字号">
+            <el-option class="select-left" v-for="size in videoSubtitleFontSizeOptions" :key="size" :label="size === 100 ? '默认' : `${size}%`" :value="size" />
+          </el-select>
+        </el-col>
+      </el-row>
+
       <div class="video-settings-note">
         <strong>使用方式</strong>
         <p>打开 YouTube 视频的原生字幕后，FluentRead 会在字幕下方显示译文。机器翻译约提前 10 秒、AI 服务约提前 30 秒准备字幕；切换视频或关闭此功能会清理译文。</p>
@@ -661,7 +674,7 @@
 // Main 处理配置信息
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { customModelString, models, options, resolveConfiguredModel, services, servicesType, defaultOption } from "../entrypoints/utils/option";
-import { Config, normalizeConfig } from "@/entrypoints/utils/model";
+import { Config, normalizeConfig, VIDEO_SUBTITLE_FONT_SIZE_OPTIONS } from "@/entrypoints/utils/model";
 import { InfoFilled, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import browser from 'webextension-polyfill';
@@ -832,6 +845,7 @@ const aiContextModel = computed(() => resolveConfiguredModel(
 ));
 const canUseAIContext = computed(() => servicesType.isUseAIContext(config.value.service, aiContextModel.value));
 const videoServiceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
+const videoSubtitleFontSizeOptions = VIDEO_SUBTITLE_FONT_SIZE_OPTIONS;
 const filteredServices = computed(() =>
   options.services.filter((item: any) =>
     !([item.google].includes(item.value) && config.value.display !== 1),
