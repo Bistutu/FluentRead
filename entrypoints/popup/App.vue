@@ -167,6 +167,7 @@
           @click="toggleAIContext"
         >
           <span class="ai-context-copy">AI精翻</span>
+          <span class="ai-context-state">{{ config.enableAIContext ? '已开启' : '已关闭' }}</span>
         </button>
       </div>
       <p v-if="notice" class="notice" :class="noticeType">{{ notice }}</p>
