@@ -29,6 +29,7 @@ export function insertFailedTip(
   // 创建包装元素
   const wrapper = document.createElement("span");
   wrapper.classList.add("fluent-read-retry-wrapper");
+  wrapper.setAttribute("data-fr-translation-owned", "true");
 
   // 创建重试按钮
   const retryBtn = document.createElement("span");
@@ -116,6 +117,7 @@ export function insertLoadingSpinner(
 ): HTMLElement {
   const spinner = document.createElement("span");
   spinner.className = "fluent-read-loading";
+  spinner.setAttribute("data-fr-translation-owned", "true");
   if (isCache) spinner.style.borderTop = "3px solid green"; // 存在缓存时改为绿色
   
   // 异步检查动画配置

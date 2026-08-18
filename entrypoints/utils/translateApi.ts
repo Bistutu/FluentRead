@@ -41,6 +41,7 @@ export async function translateText(origin: string, context: string = document.t
     retryDelay = 1000, 
     timeout = 45000,
     useCache = config.useCache,
+    skipLanguageDetection = false,
   } = options;
   // 检查 origin 是否为空或只有空白字符
   const cleanedOrigin = origin?.replace(/[\s\u3000]/g, '') || '';
@@ -51,7 +52,7 @@ export async function translateText(origin: string, context: string = document.t
   assertTranslationCredentials();
 
   // 如果目标语言与当前文本语言相同，直接返回原文
-  if (detectlang(origin.replace(/[\s\u3000]/g, '')) === config.to) {
+  if (!skipLanguageDetection && detectlang(origin.replace(/[\s\u3000]/g, '')) === config.to) {
     return origin;
   }
 
@@ -202,6 +203,8 @@ export interface TranslateOptions {
   useCache?: boolean;
   /** 发送给 LLM 的网页参考上下文；未提供时按当前页面自动提取。 */
   pageContext?: string;
+  /** Internal structured packets contain ASCII sentinels that must not affect source-language detection. */
+  skipLanguageDetection?: boolean;
 }
 
 function assertTranslationCredentials(): void {

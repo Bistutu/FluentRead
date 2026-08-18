@@ -17,21 +17,22 @@ export interface TranslationState {
     generation: number;
     sourceText: string;
     sourceHTML: string;
-    sourceOuterHTML: string;
+    /** Runtime-only wrapper around a direct inline run; removed on every exit path. */
+    syntheticSegment: boolean;
     /** 翻译开始前的内联 style 属性，用于可条件恢复。 */
     originalStyleAttribute: string | null;
+    /** 翻译开始前的 class 属性；恢复时避免留下空 class。 */
+    originalClassAttribute: string | null;
     /** 插件完成渲染后记录的 style 属性；undefined 表示尚未改动样式。 */
     renderedStyleAttribute?: string | null;
     /** 插件完成渲染后记录的 class 属性，用于过滤自身添加 bilingual class 的 mutation。 */
     renderedClassAttribute?: string | null;
-    translatedHTML?: string;
-    /**
-     * 仅译文模式会暂时移除这些原始子节点。
-     * 恢复时重新插入同一批节点，避免重建页面原有节点对象。
-     */
-    originalChildren: ChildNode[];
+    /** Translation changed only the original Text nodes; DOM structure stayed live. */
+    textSlotsApplied?: boolean;
     /** 控件翻译直接修改原 Text 节点；恢复时需要把节点内容写回原值。 */
     originalTextValues: Array<{node: Text; value: string}>;
+    /** Exact values written by the live text-slot renderer. */
+    translatedTextValues?: WeakMap<Text, string>;
     controller: AbortController;
     spinner?: HTMLElement;
     bilingualContent?: HTMLElement;
@@ -45,7 +46,31 @@ export interface TranslationAttempt {
 }
 
 const states = new WeakMap<HTMLElement, TranslationState>();
-const activeNodes = new Set<HTMLElement>();
+const activeNodeRefs = new Set<WeakRef<HTMLElement>>();
+const activeRefsByNode = new WeakMap<HTMLElement, WeakRef<HTMLElement>>();
+
+function forEachActiveNode(callback: (node: HTMLElement, state: TranslationState) => void): void {
+    for (const ref of activeNodeRefs) {
+        const node = ref.deref();
+        if (!node) {
+            activeNodeRefs.delete(ref);
+            continue;
+        }
+        const state = states.get(node);
+        if (!state) {
+            activeNodeRefs.delete(ref);
+            continue;
+        }
+        callback(node, state);
+    }
+}
+
+function trackActiveNode(node: HTMLElement): void {
+    if (activeRefsByNode.has(node)) return;
+    const ref = new WeakRef(node);
+    activeRefsByNode.set(node, ref);
+    activeNodeRefs.add(ref);
+}
 
 export function getTranslationState(node: HTMLElement): TranslationState | undefined {
     return states.get(node);
@@ -59,6 +84,7 @@ export function beginTranslation(
     node: HTMLElement,
     mode: TranslationDisplayMode,
     kind: TranslationTargetKind = "content",
+    syntheticSegment = false,
 ): TranslationAttempt | null {
     const previous = states.get(node);
     if (previous?.phase === "loading") return null;
@@ -66,8 +92,8 @@ export function beginTranslation(
     previous?.controller.abort();
 
     const originalTextValues: Array<{node: Text; value: string}> = [];
-    if (node.ownerDocument?.createTreeWalker) {
-        const textWalker = node.ownerDocument.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+    if ((mode === "single" || kind === "control") && node.ownerDocument?.createTreeWalker) {
+        const textWalker = node.ownerDocument.createTreeWalker(node, 4);
         let textNode = textWalker.nextNode();
         while (textNode) {
             originalTextValues.push({node: textNode as Text, value: textNode.nodeValue ?? ""});
@@ -82,15 +108,15 @@ export function beginTranslation(
         generation: (previous?.generation ?? 0) + 1,
         sourceText: node.textContent ?? "",
         sourceHTML: node.innerHTML,
-        sourceOuterHTML: node.outerHTML,
+        syntheticSegment,
         originalStyleAttribute: node.getAttribute("style"),
-        originalChildren: Array.from(node.childNodes),
+        originalClassAttribute: node.getAttribute("class"),
         originalTextValues,
         controller: new AbortController(),
     };
 
     states.set(node, state);
-    activeNodes.add(node);
+    trackActiveNode(node);
     return { state, generation: state.generation };
 }
 
@@ -168,17 +194,22 @@ function removeExtensionNode(node: Node | undefined): void {
 }
 
 function removeRetryArtifacts(node: HTMLElement): void {
-    node.querySelectorAll('.fluent-read-retry-wrapper, .fluent-read-loading')
+    node.querySelectorAll('[data-fr-translation-owned="true"]')
         .forEach((child) => child.remove());
 }
 
 function clearState(node: HTMLElement): void {
     states.delete(node);
-    activeNodes.delete(node);
+    const ref = activeRefsByNode.get(node);
+    if (ref) activeNodeRefs.delete(ref);
+    activeRefsByNode.delete(node);
 }
 
-function removeCurrentChildren(node: HTMLElement): void {
-    while (node.firstChild) node.removeChild(node.firstChild);
+function unwrapSyntheticSegment(node: HTMLElement, state: TranslationState): void {
+    if (!state.syntheticSegment || !node.parentNode) return;
+    const parent = node.parentNode;
+    while (node.firstChild) parent.insertBefore(node.firstChild, node);
+    parent.removeChild(node);
 }
 
 function restoreOriginalStyle(node: HTMLElement, state: TranslationState): void {
@@ -192,9 +223,24 @@ function restoreOriginalStyle(node: HTMLElement, state: TranslationState): void 
     }
 }
 
+function restoreOriginalClass(node: HTMLElement, state: TranslationState): void {
+    if (state.renderedClassAttribute === undefined) return;
+    if (node.getAttribute("class") === state.renderedClassAttribute) {
+        if (state.originalClassAttribute === null) node.removeAttribute("class");
+        else node.setAttribute("class", state.originalClassAttribute);
+        return;
+    }
+
+    node.classList.remove("fluent-read-bilingual", "fluent-read-failure");
+    if (state.originalClassAttribute === null && node.getAttribute("class") === "") {
+        node.removeAttribute("class");
+    }
+}
+
 /**
  * 恢复单个节点并清理状态。
- * 双语模式只移除译文节点；仅译文模式重新插入原始 ChildNode 对象。
+ * 双语模式只移除译文节点；single/control 只恢复仍保持插件译值的 Text。
+ * 宿主在翻译期间写入的新 DOM 或新文本永远不会被旧快照覆盖。
  */
 export function restoreTranslation(node: HTMLElement): boolean {
     const state = states.get(node);
@@ -206,23 +252,20 @@ export function restoreTranslation(node: HTMLElement): boolean {
     removeExtensionNode(state.bilingualContent);
     removeRetryArtifacts(node);
 
-    if (state.mode === "single" || state.kind === "control") {
-        // 站点在翻译完成后可能已经重渲染了目标；此时不能用旧快照覆盖站点内容。
-        if (!state.translatedHTML || node.innerHTML === state.translatedHTML) {
-            if (state.kind === "control") {
-                state.originalTextValues.forEach(({node: textNode, value}) => {
-                    textNode.nodeValue = value;
-                });
+    if (state.textSlotsApplied) {
+        state.originalTextValues.forEach(({node: textNode, value}) => {
+            if (!node.contains(textNode)) return;
+            const translatedValue = state.translatedTextValues?.get(textNode);
+            if (translatedValue === undefined || textNode.nodeValue === translatedValue) {
+                textNode.nodeValue = value;
             }
-            removeCurrentChildren(node);
-            state.originalChildren.forEach((child) => node.appendChild(child));
-        }
+        });
     }
 
     restoreOriginalStyle(node, state);
-
-    node.classList.remove("fluent-read-bilingual", "fluent-read-failure");
+    restoreOriginalClass(node, state);
     clearState(node);
+    unwrapSyntheticSegment(node, state);
     return true;
 }
 
@@ -241,14 +284,47 @@ export function discardTranslation(
     removeExtensionNode(state.spinner);
     removeExtensionNode(state.bilingualContent);
     removeRetryArtifacts(node);
-    node.classList.remove("fluent-read-bilingual", "fluent-read-failure");
+    restoreOriginalStyle(node, state);
+    restoreOriginalClass(node, state);
     clearState(node);
+    unwrapSyntheticSegment(node, state);
     return true;
 }
 
-export function setTranslatedHTML(node: HTMLElement, translatedHTML: string): void {
+export function setTextSlotsApplied(node: HTMLElement): void {
     const state = states.get(node);
-    if (state) state.translatedHTML = translatedHTML;
+    if (state) {
+        state.textSlotsApplied = true;
+        state.translatedTextValues = new WeakMap(
+            state.originalTextValues.map(({node: textNode}) => [textNode, textNode.nodeValue ?? ""]),
+        );
+    }
+}
+
+function containsNode(ancestor: Node, descendant: Node): boolean {
+    if (ancestor === descendant) return true;
+    try {
+        return typeof ancestor.contains === "function" && ancestor.contains(descendant);
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Find states owned by a node that the host removed. This includes a removed
+ * translated target and a removed spinner/bilingual wrapper whose owner stays
+ * connected. The runtime uses this before its generic artifact filter.
+ */
+export function getTranslationOwnersForRemovedNode(removed: Node): HTMLElement[] {
+    const owners: HTMLElement[] = [];
+    forEachActiveNode((owner, state) => {
+        if (containsNode(removed, owner) ||
+            (state.spinner && containsNode(removed, state.spinner)) ||
+            (state.bilingualContent && containsNode(removed, state.bilingualContent))) {
+            owners.push(owner);
+        }
+    });
+    return owners;
 }
 
 /**
@@ -256,5 +332,7 @@ export function setTranslatedHTML(node: HTMLElement, translatedHTML: string): vo
  * Set 只用于可枚举生命周期；真正的状态仍然存储在 WeakMap 中。
  */
 export function restoreAllTranslations(): void {
-    Array.from(activeNodes).forEach((node) => restoreTranslation(node));
+    const nodes: HTMLElement[] = [];
+    forEachActiveNode((node) => nodes.push(node));
+    nodes.forEach((node) => restoreTranslation(node));
 }

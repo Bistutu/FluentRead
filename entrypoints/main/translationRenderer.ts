@@ -1,6 +1,6 @@
 import { options } from "@/entrypoints/utils/option";
 import { config } from "@/entrypoints/utils/config";
-import { smashTruncationStyle } from "@/entrypoints/main/dom";
+import {removeTranslationTruncation} from "@/entrypoints/translation-core/public";
 
 /**
  * 译文允许保留的内联元素。
@@ -92,17 +92,7 @@ export function appendBilingualTranslation(node: HTMLElement, text: string): HTM
     // 当作可信 HTML 直接写回网页。
     const fragment = createSafeTranslationFragment(text);
     content.appendChild(fragment);
-    smashTruncationStyle(node);
+    removeTranslationTruncation(node);
     node.appendChild(content);
     return content;
-}
-
-/**
- * 仅译文模式：只替换目标元素的子节点，不替换目标元素本身。
- * 状态机已经保存原始 ChildNode，因而恢复时可以重新插入原节点对象。
- */
-export function replaceWithSafeTranslation(node: HTMLElement, text: string): string {
-    const fragment = createSafeTranslationFragment(text);
-    node.replaceChildren(fragment);
-    return node.innerHTML;
 }

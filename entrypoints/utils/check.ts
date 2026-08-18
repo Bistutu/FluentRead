@@ -34,41 +34,6 @@ export function checkConfig(): boolean {
     return true;
 }
 
-// Check if the node needs to be translated
-export function skipNode(node: Node): boolean {
-    return !node || !node.textContent?.trim() || hasLoadingSpinner(node) || hasRetryTag(node);
-}
-
-// Check if the node or any of its children contains a loading spinner
-export function hasLoadingSpinner(node: Node): boolean {
-    if (node.nodeType === Node.TEXT_NODE) return false;
-
-    // Type guard to check if the node is an Element
-    if (node instanceof Element && node.classList.contains('fluent-read-loading')) return true;
-
-    // Check children only if the node is an Element
-    if (node instanceof Element) {
-        return Array.from(node.children).some(child => hasLoadingSpinner(child));
-    }
-
-    return false;
-}
-
-// Check if the node or any of its children contains a retry tag
-export function hasRetryTag(node: Node): boolean {
-    if (node.nodeType === Node.TEXT_NODE) return false;
-
-    // Type guard to check if the node is an Element
-    if (node instanceof Element && node.classList.contains('fluent-read-failure')) return true;
-
-    // Check children only if the node is an Element
-    if (node instanceof Element) {
-        return Array.from(node.children).some(child => hasRetryTag(child));
-    }
-
-    return false;
-}
-
 export function contentPostHandler(text: string) {
     // Never render model reasoning tags in translated page content.
     return text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();

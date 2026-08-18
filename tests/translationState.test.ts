@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import {parseHTML} from "linkedom";
 import {
     beginTranslation,
+    getTranslationOwnersForRemovedNode,
     getTranslationState,
     isCurrentTranslation,
     markTranslationError,
     restoreTranslation,
+    setBilingualContent,
     setRenderedStyleAttribute,
+    setTextSlotsApplied,
 } from "@/entrypoints/main/translationState";
 
 /**
@@ -93,15 +97,10 @@ describe("指定节点翻译状态机", () => {
         )).toBe(true);
     });
 
-    it("仅译文模式恢复原始 ChildNode 对象，而不是重建 HTML", () => {
+    it("single 在尚未写入译文时恢复，不会断开宿主子节点", () => {
         const originalChild = node.childNodes[0];
         const attempt = beginTranslation(node as unknown as HTMLElement, "single");
         expect(attempt).not.toBeNull();
-
-        node.childNodes = [{ type: "translated-child" }];
-        node.innerHTML = "Translated text";
-        attempt!.state.phase = "translated";
-        attempt!.state.translatedHTML = node.innerHTML;
 
         expect(restoreTranslation(node as unknown as HTMLElement)).toBe(true);
         expect(node.childNodes).toEqual([originalChild]);
@@ -109,8 +108,7 @@ describe("指定节点翻译状态机", () => {
         expect(attempt!.state.controller.signal.aborted).toBe(true);
     });
 
-    it("站点在异步请求期间重渲染时，不覆盖站点的新节点", () => {
-        const originalChild = node.childNodes[0];
+    it("站点在异步请求期间重渲染时，全局恢复也不覆盖站点的新节点", () => {
         const attempt = beginTranslation(node as unknown as HTMLElement, "single");
         expect(attempt).not.toBeNull();
 
@@ -118,11 +116,10 @@ describe("指定节点翻译状态机", () => {
         node.childNodes = [hostChild];
         node.innerHTML = "Host rerendered text";
         attempt!.state.phase = "translated";
-        attempt!.state.translatedHTML = "Translated text";
 
         expect(restoreTranslation(node as unknown as HTMLElement)).toBe(true);
         expect(node.childNodes).toEqual([hostChild]);
-        expect(node.childNodes).not.toContain(originalChild);
+        expect(getTranslationState(node as unknown as HTMLElement)).toBeUndefined();
     });
 
     it("站点在请求期间重渲染时，不把失败状态写入新内容", () => {
@@ -174,5 +171,39 @@ describe("指定节点翻译状态机", () => {
 
         expect(restoreTranslation(node as unknown as HTMLElement)).toBe(true);
         expect(node.getAttribute("style")).toBeNull();
+    });
+
+    it("live text 恢复保留节点身份，并且不覆盖宿主更新后的文本", () => {
+        const {document} = parseHTML('<html><body><p id="target">Open <a href="/guide">the guide</a>.</p></body></html>');
+        const target = document.querySelector('#target') as HTMLElement;
+        const link = target.querySelector('a')!;
+        const attempt = beginTranslation(target, 'single');
+        expect(attempt).not.toBeNull();
+        const originalNodes = attempt!.state.originalTextValues.map(({node: textNode}) => textNode);
+
+        originalNodes[0]!.nodeValue = '打开 ';
+        originalNodes[1]!.nodeValue = '指南';
+        setTextSlotsApplied(target);
+        originalNodes[1]!.nodeValue = 'Host updated link';
+
+        expect(restoreTranslation(target)).toBe(true);
+        expect(target.firstChild).toBe(originalNodes[0]);
+        expect(target.querySelector('a')).toBe(link);
+        expect(originalNodes[0]!.nodeValue).toBe('Open ');
+        expect(originalNodes[1]!.nodeValue).toBe('Host updated link');
+    });
+
+    it("能在宿主移除双语 wrapper 后找到并清理其 owner", () => {
+        const {document} = parseHTML('<html><body><p id="target">Readable paragraph.</p></body></html>');
+        const target = document.querySelector('#target') as HTMLElement;
+        const attempt = beginTranslation(target, 'bilingual');
+        expect(attempt).not.toBeNull();
+        const wrapper = document.createElement('span');
+        wrapper.setAttribute('data-fr-translation-owned', 'true');
+        target.appendChild(wrapper);
+        setBilingualContent(target, wrapper);
+        wrapper.remove();
+
+        expect(getTranslationOwnersForRemovedNode(wrapper)).toEqual([target]);
     });
 });
