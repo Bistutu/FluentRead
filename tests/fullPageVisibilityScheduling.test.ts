@@ -350,6 +350,49 @@ describe("全文翻译可见性锚点", () => {
         expect(runtime.requests).toHaveBeenCalledTimes(1);
     });
 
+    it("宿主因样式或布局重绘重挂同一段原文时复用全文结果，不重复请求", async () => {
+        runtime.config.display = 1;
+        const source = "The same paragraph survives a layout remount.";
+        document.body.innerHTML = `<p id="prose">${source}</p>`;
+        const firstParagraph = document.querySelector<HTMLElement>("#prose")!;
+        setLayoutBox(firstParagraph, 620, 90);
+        runtime.candidates = [{element: firstParagraph, kind: "content", reason: "paragraph"}];
+
+        autoTranslateEnglishPage();
+        await vi.advanceTimersByTimeAsync(50);
+        const observer = TestIntersectionObserver.instances[0]!;
+        observer.emit(firstParagraph, true);
+        await finishScheduledWork();
+
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+        const firstWrapper = firstParagraph.querySelector<HTMLElement>(".fluent-read-bilingual-content")!;
+        expect(firstWrapper).toBeTruthy();
+
+        // A page framework can replace the translated owner after a class/style
+        // pass. The new node is a new DOM identity but the same source slot.
+        const replacement = document.createElement("p");
+        replacement.id = "prose-remounted";
+        replacement.textContent = source;
+        setLayoutBox(replacement, 620, 90);
+        firstParagraph.replaceWith(replacement);
+        runtime.candidates = [{element: replacement, kind: "content", reason: "paragraph"}];
+        TestMutationObserver.instances.at(-1)!.emit([{
+            type: "childList",
+            target: document.body,
+            addedNodes: [replacement] as unknown as NodeList,
+            removedNodes: [firstParagraph] as unknown as NodeList,
+        } as unknown as MutationRecord]);
+        await vi.advanceTimersByTimeAsync(50);
+
+        observer.emit(replacement, true);
+        await finishScheduledWork();
+
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+        expect(firstParagraph.isConnected).toBe(false);
+        expect(replacement.querySelectorAll(".fluent-read-bilingual-content")).toHaveLength(1);
+        expect(replacement.textContent).toContain(`译:${source}`);
+    });
+
     it("没有任何布局锚点的 H1 仍直接进入受控翻译队列", async () => {
         document.body.innerHTML = '<h1 id="title">Text-only heading</h1>';
         const title = document.querySelector<HTMLElement>("#title")!;

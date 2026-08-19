@@ -76,6 +76,11 @@ interface FullPageLifecycleRetry {
     attempts: number;
 }
 
+interface FullPageTranslationCacheEntry {
+    promise: Promise<string | undefined>;
+    settled: boolean;
+}
+
 interface SnapshotTranslationResult {
     kind: "snapshot";
     sources: readonly string[];
@@ -114,6 +119,12 @@ interface FullPageSession {
     unchangedCandidates: WeakMap<Node, FullPageLifecycleRetry>;
     /** Candidate keys currently consuming one of the full-page concurrency slots. */
     inFlightCandidates: Map<Node, TranslationCandidate>;
+    /**
+     * Translation results already requested by this full-page session. Host
+     * frameworks can remount the same prose after a style/layout mutation;
+     * keep that lifecycle churn from issuing the same provider request again.
+     */
+    translationSlotCache: Map<string, FullPageTranslationCacheEntry>;
     draining: boolean;
     flushTimer: number | null;
     dirtyRoots: Set<Node>;
@@ -133,6 +144,7 @@ const BROAD_RESCAN_COOLDOWN_MS = 1_000;
 const CANDIDATE_PRUNE_BUDGET_MS = 4;
 const STATEFUL_ATTRIBUTE_DEBOUNCE_MS = 500;
 const FULL_PAGE_LIFECYCLE_RETRY_LIMIT = 2;
+const FULL_PAGE_TRANSLATION_CACHE_LIMIT = 512;
 
 let hoverTimer: ReturnType<typeof setTimeout> | undefined;
 let fullPageSession: FullPageSession | null = null;
@@ -320,15 +332,104 @@ async function translateSlotsIndividually(
     }
 }
 
+function createFullPageTranslationCacheKey(origin: string): string {
+    return JSON.stringify({
+        service: config.service,
+        from: config.from,
+        to: config.to,
+        origin,
+    });
+}
+
+function rememberFullPageTranslation(
+    session: FullPageSession,
+    key: string,
+    result: Promise<string | undefined>,
+): void {
+    if (!session.active) return;
+    const entry: FullPageTranslationCacheEntry = {promise: result, settled: false};
+    session.translationSlotCache.delete(key);
+    session.translationSlotCache.set(key, entry);
+    while (session.translationSlotCache.size > FULL_PAGE_TRANSLATION_CACHE_LIMIT) {
+        const oldestKey = session.translationSlotCache.keys().next().value as string | undefined;
+        if (!oldestKey) break;
+        session.translationSlotCache.delete(oldestKey);
+    }
+    void result.then(
+        () => {
+            if (session.translationSlotCache.get(key) === entry) entry.settled = true;
+        },
+        () => {
+            if (session.translationSlotCache.get(key) === entry) session.translationSlotCache.delete(key);
+        },
+    );
+}
+
 async function translateTextSlots(
     origins: readonly string[],
     signal?: AbortSignal,
     queueSession?: TranslationQueueSession,
+    fullPageSession?: FullPageSession,
 ): Promise<string[]> {
     if (origins.length === 0) return [];
     throwIfAborted(signal);
     if (isBatchFriendlyService()) {
-        return translateTextBatch([...origins], document.title, {useCache: false, signal, queueSession});
+        if (!fullPageSession?.active) {
+            return translateTextBatch([...origins], document.title, {useCache: false, signal, queueSession});
+        }
+
+        // React/Vue pages can remove a translated subtree and mount the same
+        // prose again after a layout/style pass. Cache each source slot only
+        // for this active full-page session, so that remounts reuse the result
+        // without turning repeated text on different pages into a global cache
+        // hit or changing the user's persistent-cache setting.
+        const resultPromises = new Array<Promise<string | undefined>>(origins.length);
+        const missing = new Map<string, {origin: string; indexes: number[]}>();
+        for (const [index, origin] of origins.entries()) {
+            const key = createFullPageTranslationCacheKey(origin);
+            const cached = fullPageSession.translationSlotCache.get(key);
+            if (cached?.settled) {
+                resultPromises[index] = cached.promise;
+                continue;
+            }
+            const entry = missing.get(key);
+            if (entry) entry.indexes.push(index);
+            else missing.set(key, {origin, indexes: [index]});
+        }
+
+        if (missing.size > 0) {
+            const entries = [...missing.values()];
+            const providerRequest = translateTextBatch(
+                entries.map(({origin}) => origin),
+                document.title,
+                // The session cache handles host remounts immediately; the
+                // normal background cache also prevents a later rescan from
+                // sending an already translated slot back to the provider.
+                {useCache: config.useCache, signal, queueSession},
+            ).then((translations) =>
+                Array.isArray(translations) && translations.length === entries.length &&
+                translations.every((translation) => typeof translation === "string")
+                    ? translations
+                    : null,
+            );
+            entries.forEach(({origin, indexes}, entryIndex) => {
+                const key = createFullPageTranslationCacheKey(origin);
+                const result = providerRequest.then((translations) => {
+                    return translations?.[entryIndex];
+                });
+                rememberFullPageTranslation(fullPageSession, key, result);
+                indexes.forEach((index) => {
+                    resultPromises[index] = result;
+                });
+            });
+        }
+
+        const translations = await Promise.all(resultPromises);
+        if (translations.some((translation) => typeof translation !== "string")) {
+            fullPageSession.translationSlotCache.clear();
+            return [];
+        }
+        return translations as string[];
     }
     if (origins.length === 1) {
         return [await translateText(origins[0] ?? '', document.title, {signal, queueSession})];
@@ -357,13 +458,14 @@ async function translateElementHTML(
     node: HTMLElement,
     signal?: AbortSignal,
     queueSession?: TranslationQueueSession,
+    fullPageSession?: FullPageSession,
 ): Promise<SnapshotTranslationResult> {
     const core = getCurrentTranslationCore();
     const slots = collectLiveTranslationTextSlots(node, core.shouldStayOriginal);
     if (slots.length === 0) return {kind: "snapshot", sources: [], translations: []};
 
     const origins = slots.map((part) => part.source);
-    const translations = await translateTextSlots(origins, signal, queueSession);
+    const translations = await translateTextSlots(origins, signal, queueSession, fullPageSession);
     return {kind: "snapshot", sources: origins, translations};
 }
 
@@ -375,6 +477,7 @@ async function translateLiveText(
     node: HTMLElement,
     signal?: AbortSignal,
     queueSession?: TranslationQueueSession,
+    fullPageSession?: FullPageSession,
 ): Promise<LiveTextTranslationResult> {
     const parts = collectLiveTranslationTextSlots(node, getCurrentTranslationCore().shouldStayOriginal);
     if (parts.length === 0) return {
@@ -386,7 +489,7 @@ async function translateLiveText(
     };
 
     const origins = parts.map((part) => part.source);
-    const translations = await translateTextSlots(origins, signal, queueSession);
+    const translations = await translateTextSlots(origins, signal, queueSession, fullPageSession);
     const changed = translations.some((translation, index) =>
         normalizeComparableText(translation) !== normalizeComparableText(origins[index] || ""),
     );
@@ -413,9 +516,12 @@ async function createTranslationRequest(
     mode: "bilingual" | "single",
     signal?: AbortSignal,
     queueSession?: TranslationQueueSession,
+    fullPageSession?: FullPageSession,
 ): Promise<TranslationResult> {
-    if (kind === "control" || mode === "single") return translateLiveText(node, signal, queueSession);
-    return translateElementHTML(node, signal, queueSession);
+    if (kind === "control" || mode === "single") {
+        return translateLiveText(node, signal, queueSession, fullPageSession);
+    }
+    return translateElementHTML(node, signal, queueSession, fullPageSession);
 }
 
 function attemptSourceIsCurrent(node: HTMLElement, state: TranslationState): boolean {
@@ -834,7 +940,14 @@ async function translateTarget(
     const signal = attempt.state.controller.signal;
     const cancelQueuedRequest = () => cancelTranslationQueueSession(queueSession, createAbortError());
     signal.addEventListener('abort', cancelQueuedRequest, {once: true});
-    const request = createTranslationRequest(node, kind, displayMode, signal, queueSession)
+    const request = createTranslationRequest(
+        node,
+        kind,
+        displayMode,
+        signal,
+        queueSession,
+        owner?.active ? owner : undefined,
+    )
         .finally(() => signal.removeEventListener('abort', cancelQueuedRequest));
     if (synthetic) node.setAttribute('data-fr-translation-segment', 'true');
     const spinner = insertLoadingSpinner(node);
@@ -953,6 +1066,16 @@ function finalizeFullPageCandidate(
     }
 
     const fresh = resolveFullPageRetryCandidate(candidate, outcome.retryRoot);
+    if (fresh && candidate.element.isConnected && (
+        fresh.element !== candidate.element ||
+        fresh.kind !== candidate.kind ||
+        getTranslationCandidateKey(fresh) !== originalKey
+    )) {
+        // The same live DOM subtree changed semantic ownership. This is a
+        // genuine new generation, unlike a disconnected host remount where
+        // the session cache is precisely what prevents a duplicate request.
+        session.translationSlotCache.clear();
+    }
     const retryCandidate = fresh ?? candidate;
     const retryKey = fresh ? getTranslationCandidateKey(fresh) : originalKey;
     const source = candidateLifecycleSource(retryCandidate);
@@ -1529,6 +1652,9 @@ function restartStatefulTarget(session: FullPageSession, target: HTMLElement): b
     unregisterSessionStatefulTarget(session, target);
     const state = getTranslationState(target);
     if (!state) return false;
+    // An explicit source/structure mutation is a new translation generation;
+    // do not let the remount-dedupe cache hide a real host edit.
+    session.translationSlotCache.clear();
     const rescanRoot = state.syntheticSegment ? target.parentElement : target;
     removeScheduledForStateTarget(session, target);
 
@@ -1731,6 +1857,7 @@ function createFullPageSession(root: HTMLElement): FullPageSession {
         lifecycleRetries: new WeakMap(),
         unchangedCandidates: new WeakMap(),
         inFlightCandidates: new Map(),
+        translationSlotCache: new Map(),
         draining: false,
         flushTimer: null,
         dirtyRoots: new Set(),
@@ -1766,6 +1893,7 @@ function disposeFullPageSession(session: FullPageSession): void {
     session.statefulTargetsByAncestor.clear();
     session.statefulAncestorsByTarget = new WeakMap();
     session.inFlightCandidates.clear();
+    session.translationSlotCache.clear();
     session.dirtyRoots.clear();
     session.dirtyRootsBroadMode = false;
     session.activeDiscovery = null;
