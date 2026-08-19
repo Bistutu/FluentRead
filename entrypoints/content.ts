@@ -167,7 +167,7 @@ export default defineContentScript({
         window.addEventListener('beforeunload', cleanup, { once: true });
 
         setupInputBoxTranslation(pageEventController.signal);
-        // 视频字幕 Beta 只在 YouTube 播放页监听原生字幕，不采集音频或视频内容。
+        // 视频字幕 Beta 监听 YouTube / X 播放页；只有用户主动请求 X AI 字幕时才把短音频分片交给扩展内本地 Whisper。
         unmountVideoSubtitleTranslation = mountVideoSubtitleTranslation();
         runtimeMessageListener = (
             message: unknown,

@@ -64,7 +64,7 @@
 
     <el-row class="margin-bottom margin-left-2em settings-preference-row">
       <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="YouTube 原生字幕下方显示的译文使用此服务，与文本翻译服务互不影响。" placement="top-start" :show-after="500">
+        <el-tooltip class="box-item" effect="dark" content="YouTube 和 X 视频字幕的译文使用此服务，与文本翻译服务互不影响；X 的 AI 字幕识别在扩展内使用本地 Whisper 完成。" placement="top-start" :show-after="500">
           <span class="popup-text popup-vertical-left">视频翻译服务<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
         </el-tooltip>
       </el-col>
@@ -199,26 +199,39 @@
     <!-- 视频字幕 Beta -->
     <section v-show="props.activeSection === 'settings-video'" id="settings-video" class="settings-section">
       <div class="video-settings-hero">
-        <div><span class="eyebrow">Beta 功能</span><h2>YouTube 视频字幕</h2><p>边看边译 YouTube 原生字幕；不上传音频，不改变播放器时间轴。</p></div>
+        <div><span class="eyebrow">Beta 功能</span><h2>YouTube / X 视频字幕</h2><p>有原生字幕就直接翻译；X 没有字幕时可主动请求 AI 字幕。</p></div>
         <el-switch v-model="config.videoTranslationEnabled" class="settings-switch" aria-label="视频字幕翻译" />
       </div>
 
       <el-row class="settings-control-row">
         <el-col :span="12" class="settings-control-label lightblue rounded-corner">
-          <el-tooltip class="box-item" effect="dark" content="视频字幕独立选择翻译服务，默认微软翻译；AI 服务会提前预取字幕，网页翻译仍使用上方的文本翻译服务。" placement="top-start" :show-after="500">
+          <el-tooltip class="box-item" effect="dark" content="视频原生字幕和本地 AI 生成字幕得到文字后，都使用这里选择的翻译服务；AI 识别本身在扩展内本地完成。" placement="top-start" :show-after="500">
             <span class="popup-text popup-vertical-left">视频翻译服务<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
           </el-tooltip>
         </el-col>
         <el-col :span="12" class="settings-control-field">
           <el-select v-model="config.videoService" aria-label="视频字幕翻译服务" :disabled="!config.videoTranslationEnabled" placeholder="请选择服务">
-            <el-option class="select-left" v-for="item in videoServiceOptions" :key="item.value" :label="item.label" :value="item.value" />
+          <el-option class="select-left" v-for="item in videoServiceOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
+
+      <el-row class="settings-control-row">
+        <el-col :span="12" class="settings-control-label lightblue rounded-corner">
+          <el-tooltip class="box-item" effect="dark" content="首次请求时下载并缓存 Whisper 模型；识别音频只在扩展的 offscreen 页面内运行，不上传到云端。" placement="top-start" :show-after="500">
+            <span class="popup-text popup-vertical-left">本地 AI 字幕模型<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
+          </el-tooltip>
+        </el-col>
+        <el-col :span="12" class="settings-control-field">
+          <el-select v-model="config.videoLocalModel" aria-label="本地 AI 字幕模型" :disabled="!config.videoTranslationEnabled" placeholder="请选择本地模型">
+            <el-option class="select-left" v-for="item in videoLocalModelOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-col>
       </el-row>
 
       <el-row class="settings-control-row">
         <el-col :span="12" class="settings-control-label lightblue rounded-corner">
-          <el-tooltip class="box-item" effect="dark" content="只调整 FluentRead 在播放器中显示的原文和译文字号，不改变 YouTube 原生字幕设置。" placement="top-start" :show-after="500">
+          <el-tooltip class="box-item" effect="dark" content="只调整 FluentRead 在播放器中显示的原文和译文字号，不改变站点原生字幕设置。" placement="top-start" :show-after="500">
             <span class="popup-text popup-vertical-left">字幕字号<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
           </el-tooltip>
         </el-col>
@@ -231,7 +244,7 @@
 
       <div class="video-settings-note">
         <strong>使用方式</strong>
-        <p>打开 YouTube 视频的原生字幕后，FluentRead 会在字幕下方显示译文。机器翻译约提前 10 秒、AI 服务约提前 30 秒准备字幕；切换视频或关闭此功能会清理译文。</p>
+        <p>YouTube 或 X 有原生字幕时，FluentRead 会在播放器中显示译文；X 没有字幕时，打开播放器菜单的“请求 AI 字幕”会按约 5 秒音频分片，在扩展内部用本地 Whisper 生成字幕，再沿用同一套字幕翻译。模型首次使用时下载并缓存，音频不会上传。</p>
       </div>
     </section>
 
@@ -692,6 +705,7 @@
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { customModelString, models, options, resolveConfiguredModel, services, servicesType, defaultOption } from "../entrypoints/utils/option";
 import { Config, normalizeConfig, VIDEO_SUBTITLE_FONT_SIZE_OPTIONS } from "@/entrypoints/utils/model";
+import { VIDEO_LOCAL_TRANSCRIPTION_MODELS } from "@/entrypoints/utils/videoTranscription";
 import { InfoFilled, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import browser from 'webextension-polyfill';
@@ -862,6 +876,7 @@ const aiContextModel = computed(() => resolveConfiguredModel(
 ));
 const canUseAIContext = computed(() => servicesType.isUseAIContext(config.value.service, aiContextModel.value));
 const videoServiceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
+const videoLocalModelOptions = VIDEO_LOCAL_TRANSCRIPTION_MODELS;
 const videoSubtitleFontSizeOptions = VIDEO_SUBTITLE_FONT_SIZE_OPTIONS;
 const filteredServices = computed(() =>
   options.services.filter((item: any) =>

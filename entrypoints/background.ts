@@ -17,7 +17,7 @@ import {
     buildTranslationCacheKey,
     translationCache,
 } from "@/entrypoints/utils/translationCache";
-import { downloadImageOcrLanguagesWithOffscreen, recognizeImageWithOffscreen, translateAreaWithOffscreen, translateImageWithOffscreen } from "@/entrypoints/service/chrome-translator";
+import { downloadImageOcrLanguagesWithOffscreen, recognizeImageWithOffscreen, transcribeVideoAudioWithOffscreen, translateAreaWithOffscreen, translateImageWithOffscreen } from "@/entrypoints/service/chrome-translator";
 import { imageBufferToDataUrl, MAX_REMOTE_IMAGE_BYTES, normalizeRemoteImageUrl } from "@/entrypoints/utils/imageFetch";
 import {
     formatConnectionTestError,
@@ -32,6 +32,12 @@ import {
     normalizeImageOcrLanguageCodes,
     type ImageOcrLanguageCode,
 } from "@/entrypoints/utils/imageOcrLanguages";
+import {
+    buildVideoTranscriptionEndpoint,
+    getVideoTranscriptionModel,
+    normalizeVideoTranscriptionLanguage,
+    supportsVideoTranscription,
+} from "@/entrypoints/utils/videoTranscription";
 
 // 翻译状态管理
 let translationStateMap = new Map<number, boolean>(); // tabId -> isTranslated
@@ -53,6 +59,90 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
     let binary = '';
     for (const byte of bytes) binary += String.fromCharCode(byte);
     return btoa(binary);
+}
+
+function normalizeAudioBuffer(value: unknown): ArrayBuffer | null {
+    if (typeof value === 'string') {
+        try {
+            const binary = atob(value);
+            const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+            return bytes.buffer;
+        } catch {
+            return null;
+        }
+    }
+    if (value instanceof ArrayBuffer) return value;
+    if (ArrayBuffer.isView(value)) {
+        const bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+        return bytes.slice().buffer;
+    }
+    if (Array.isArray(value) && value.every((item) => Number.isInteger(item))) {
+        return Uint8Array.from(value as number[]).buffer;
+    }
+    return null;
+}
+
+async function transcribeVideoAudio(message: any): Promise<{ text: string }> {
+    await configReady;
+    const service = typeof message.serviceOverride === 'string' && message.serviceOverride
+        ? message.serviceOverride
+        : config.videoService;
+    if (!supportsVideoTranscription(service)) {
+        throw new Error('当前视频翻译服务不支持 AI 字幕，请在视频字幕设置中选择 OpenAI、Groq 或 OpenAI 兼容接口');
+    }
+
+    const missingCredentialMessage = getMissingCredentialMessage(service, config);
+    if (missingCredentialMessage) throw new Error(missingCredentialMessage);
+
+    const audio = normalizeAudioBuffer(message.audioBase64 ?? message.audio);
+    if (!audio || audio.byteLength === 0) throw new Error('没有捕获到视频音频');
+    if (audio.byteLength > 15 * 1024 * 1024) throw new Error('单段视频音频过大，请缩短字幕分片后重试');
+
+    const endpoint = buildVideoTranscriptionEndpoint(service, {
+        proxy: config.proxy[service],
+        custom: config.custom,
+        newApiUrl: config.newApiUrl,
+    });
+    if (!endpoint) throw new Error('当前视频翻译服务没有可用的音频转写地址');
+
+    const mimeType = typeof message.mimeType === 'string' && message.mimeType.includes('/')
+        ? message.mimeType
+        : 'audio/webm';
+    const extension = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+    const form = new FormData();
+    form.append('file', new Blob([audio], { type: mimeType }), `fluentread-video.${extension}`);
+    form.append('model', getVideoTranscriptionModel(service));
+    form.append('response_format', 'json');
+    const language = normalizeVideoTranscriptionLanguage(
+        typeof message.sourceLanguage === 'string' ? message.sourceLanguage : config.from,
+    );
+    if (language) form.append('language', language);
+
+    const headers = new Headers();
+    const token = config.token[service]?.trim();
+    if (token) headers.set('Authorization', `Bearer ${token}`);
+    const response = await fetch(endpoint, { method: 'POST', headers, body: form });
+    const raw = await response.text();
+    let payload: any = null;
+    try {
+        payload = raw ? JSON.parse(raw) : null;
+    } catch {
+        payload = null;
+    }
+    if (!response.ok) {
+        const detail = typeof payload?.error?.message === 'string'
+            ? payload.error.message
+            : raw.slice(0, 300);
+        throw new Error(`AI 字幕请求失败（${response.status}）${detail ? `：${detail}` : ''}`);
+    }
+
+    const text = typeof payload?.text === 'string'
+        ? payload.text.trim()
+        : typeof payload?.data?.text === 'string'
+            ? payload.data.text.trim()
+            : '';
+    if (!text) throw new Error('AI 字幕接口没有返回文字');
+    return { text };
 }
 
 interface TranslationRequestMessageBase {
@@ -571,6 +661,22 @@ export default defineBackground({
                             await browser.runtime.openOptionsPage();
                         }
                         resolve({ success: true });
+                        return;
+                    }
+
+                    if (message.type === 'fluentReadTranscribeVideoAudio') {
+                        const result = await transcribeVideoAudio(message);
+                        resolve({ success: true, ...result });
+                        return;
+                    }
+
+                    if (message.type === 'fluentReadTranscribeLocalVideoAudio') {
+                        const result = await transcribeVideoAudioWithOffscreen({
+                            audioBase64: typeof message.audioBase64 === 'string' ? message.audioBase64 : '',
+                            model: message.model,
+                            sourceLanguage: message.sourceLanguage,
+                        });
+                        resolve({ success: true, ...result });
                         return;
                     }
 

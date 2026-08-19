@@ -353,15 +353,21 @@
       </div>
 
       <div v-else-if="activeDrawer === 'video'" class="drawer-content">
-        <div class="video-beta-banner"><span class="feature-icon teal">CC</span><span><strong>FluentRead · YouTube 字幕翻译</strong><small>Beta 测试 · 只处理播放器已经提供的字幕文本</small></span></div>
+        <div class="video-beta-banner"><span class="feature-icon teal">CC</span><span><strong>FluentRead · YouTube / X 字幕翻译</strong><small>Beta 测试 · 原生字幕直接翻译，X 可主动请求 AI 字幕</small></span></div>
         <div class="setting-row video-enable-row" :class="{ 'needs-enable': !config.videoTranslationEnabled }">
-          <span><strong>{{ config.videoTranslationEnabled ? '视频字幕翻译已开启' : '开启字幕翻译' }}</strong><small>{{ config.videoTranslationEnabled ? '正在 YouTube 原生字幕下方显示中文译文' : '点击右侧开关，在 YouTube 播放器中显示中文译文' }}</small></span>
+          <span><strong>{{ config.videoTranslationEnabled ? '视频字幕翻译已开启' : '开启字幕翻译' }}</strong><small>{{ config.videoTranslationEnabled ? '在 YouTube / X 播放器中显示中文译文' : '点击右侧开关，在视频播放器中显示中文译文' }}</small></span>
           <button class="switch compact" type="button" role="switch" :aria-checked="config.videoTranslationEnabled" aria-label="启用或关闭视频字幕翻译" @click="setVideoTranslationEnabled(!config.videoTranslationEnabled)"><i /></button>
         </div>
         <label class="select-row">
-          <span><strong>视频翻译服务</strong><small>与网页翻译服务独立保存</small></span>
+          <span><strong>视频翻译服务</strong><small>字幕文字的译文服务，与网页翻译独立保存</small></span>
           <select v-model="config.videoService" :disabled="!config.videoTranslationEnabled">
             <option v-for="item in videoServiceOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
+          </select>
+        </label>
+        <label class="select-row">
+          <span><strong>本地 AI 字幕模型</strong><small>首次使用下载并缓存，音频不上传</small></span>
+          <select v-model="config.videoLocalModel" :disabled="!config.videoTranslationEnabled">
+            <option v-for="item in videoLocalModelOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
           </select>
         </label>
         <label class="select-row">
@@ -370,7 +376,7 @@
             <option v-for="size in videoSubtitleFontSizeOptions" :key="size" :value="size">{{ size === 100 ? '默认' : `${size}%` }}</option>
           </select>
         </label>
-        <small class="drawer-hint">目前支持 YouTube；播放器内会显示 FluentRead 图标，可切换字幕模式、显示状态和下载 SRT。视频默认使用微软翻译；AI 服务会提前预取字幕，如切换 DeepLX，可在完整设置中配置服务地址。</small>
+        <small class="drawer-hint">目前支持 YouTube 和 X；播放器内会显示 FluentRead 图标，可切换字幕模式、显示状态和下载 SRT。X 没有字幕时可请求扩展内本地 Whisper AI 字幕。</small>
       </div>
 
       <div v-else class="drawer-content">
@@ -410,6 +416,7 @@ import {
 } from '@/entrypoints/utils/config';
 import { Setting } from '@element-plus/icons-vue';
 import { Config, VIDEO_SUBTITLE_FONT_SIZE_OPTIONS } from '@/entrypoints/utils/model';
+import { VIDEO_LOCAL_TRANSCRIPTION_MODELS } from '@/entrypoints/utils/videoTranscription';
 import { options, resolveConfiguredModel, servicesType } from '@/entrypoints/utils/option';
 import { getMissingCredentialMessage } from '@/entrypoints/utils/configValidation';
 import { getSelectedModelLabel } from '@/entrypoints/utils/serviceCatalog';
@@ -452,6 +459,7 @@ const persistConfig = (value: unknown) => requestConfigSave(value, browser.runti
 
 const serviceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
 const videoServiceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
+const videoLocalModelOptions = VIDEO_LOCAL_TRANSCRIPTION_MODELS;
 const videoSubtitleFontSizeOptions = VIDEO_SUBTITLE_FONT_SIZE_OPTIONS;
 const popularServiceValues = ['freeTranslation', 'microsoft', 'google', 'deepL', 'deeplx', 'deepseek', 'openai', 'gemini', 'claude'];
 const popularServiceOptions = computed(() => popularServiceValues
@@ -488,7 +496,7 @@ const selectionSummary = computed(() => {
 const floatingSummary = computed(() => `${config.value.floatingBallPosition === 'left' ? '页面左侧' : '页面右侧'} · ${fullPageHotkey.value}`);
 const displaySummary = computed(() => config.value.display === 1 ? `双语 · ${styleLabel.value}` : '仅显示译文');
 const imageTranslationSummary = computed(() => config.value.disableImageTranslator ? '已关闭' : '悬停图片');
-const videoSummary = computed(() => config.value.videoTranslationEnabled ? `${videoServiceLabel.value} · YouTube` : '点击开启 · YouTube');
+const videoSummary = computed(() => config.value.videoTranslationEnabled ? `${videoServiceLabel.value} · YouTube / X` : '点击开启 · YouTube / X');
 const drawerTitle = computed(() => ({ hover: '鼠标悬停翻译设置', selection: '划词翻译设置', floating: '全文悬浮球设置', appearance: '译文显示设置', image: '图片翻译设置', video: '视频字幕设置' }[activeDrawer.value]));
 const drawerDescription = computed(() => ({
   hover: '把鼠标停在文本上，用轻量快捷键获取即时译文。',
@@ -496,7 +504,7 @@ const drawerDescription = computed(() => ({
   floating: '把全文翻译入口固定在最顺手的位置。',
   appearance: '调整双语布局、译文样式与界面主题。',
   image: '把鼠标移到图片上，从图片右上角打开翻译入口。',
-  video: '在 YouTube 播放器中显示实时字幕译文。',
+  video: '在 YouTube / X 播放器中显示字幕译文。',
 }[activeDrawer.value]));
 const hoverChoices = [
   { value: 'Control', label: 'Ctrl' },

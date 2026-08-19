@@ -16,6 +16,7 @@
     "test:translation-core": "vitest run tests/translationCore.test.ts tests/translationState.test.ts tests/serializationPerformance.test.ts tests/translateApiPerformance.test.ts tests/translateQueue.test.ts tests/pageContext.test.ts tests/pageContextDefuddle.test.ts",
     "test:translation-sites": "node scripts/run-site-translation-matrix.cjs",
     "test:video:fixture": "node scripts/run-video-subtitle-fixture-test.cjs",
+    "test:video:x-fixture": "node scripts/run-x-video-subtitle-fixture-test.cjs",
     "test:watch": "vitest",
     "postinstall": "wxt prepare",
     "docs:dev": "vitepress dev docs",
@@ -24,6 +25,7 @@
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
+    "@huggingface/transformers": "3.8.1",
     "@wxt-dev/storage": "^1.0.1",
     "crypto-js": "^4.2.0",
     "defuddle": "^0.19.2",
