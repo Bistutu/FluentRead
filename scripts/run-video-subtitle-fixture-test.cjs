@@ -185,6 +185,12 @@ async function main() {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
     }
     await page.waitForTimeout(2500);
+    await page.evaluate(() => {
+      const description = document.querySelector('meta[name="description"]') || document.createElement('meta');
+      description.setAttribute('name', 'description');
+      description.setAttribute('content', 'FluentRead fixture context: this video explains orbital habitat economics and launch terminology.');
+      if (!description.isConnected) document.head.append(description);
+    });
 
     await page.evaluate((videoDataUrl) => {
       const player = document.querySelector('#movie_player, .html5-video-player');
@@ -603,6 +609,7 @@ async function main() {
         ...(stored.config || {}),
         videoService: 'openai',
         videoServiceDefaultMigrated: true,
+        enableAIContext: true,
         useCache: false,
         token: { ...(stored.config?.token || {}), openai: 'fixture-token' },
         model: { ...(stored.config?.model || {}), openai: 'fixture-model' },
@@ -627,6 +634,10 @@ async function main() {
     const aiPrefetchRequests = aiTranslationSources.filter((source) => source.includes(aiPretranslatedSource));
     if (aiPrefetchRequests.length !== 1) {
       throw new Error(`AI 字幕没有按 30 秒窗口前置翻译：${JSON.stringify({ aiTranslationSources })}`);
+    }
+    const aiContextRequests = aiTranslationSources.filter((source) => source.includes('FluentRead fixture context: this video explains orbital habitat economics and launch terminology.'));
+    if (aiContextRequests.length === 0) {
+      throw new Error(`AI 字幕请求没有注入页面上下文：${JSON.stringify({ aiTranslationSources })}`);
     }
     await page.evaluate((source) => {
       const segment = document.querySelector('#ytp-caption-window-container .ytp-caption-segment');
@@ -743,6 +754,7 @@ async function main() {
       displayedPrefetchRequests,
       aiDisplayedPrefetchTranslation,
       aiTranslationRequests: aiPrefetchRequests.length,
+      aiContextRequests: aiContextRequests.length,
       timelineCatchUp,
       translationRequests,
       translationSources,
