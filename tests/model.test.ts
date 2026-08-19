@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { Config, normalizeConfig } from '@/entrypoints/utils/model';
+import {
+    Config,
+    DEFAULT_MOUSE_HOVER_TRANSLATION_DELAY,
+    MOUSE_HOVER_TRANSLATION_DELAY_MAX,
+    MOUSE_HOVER_TRANSLATION_DELAY_MIN,
+    normalizeConfig,
+} from '@/entrypoints/utils/model';
 import { getMimoEndpoint, MIMO_ENDPOINTS, MINIMAX_ENDPOINTS, tongyiTokenPlanUrl, urls } from '@/entrypoints/utils/constant';
 import { customModelString, defaultModelIds, defaultModels, defaultOption, models, options, resolveConfiguredModel, services, servicesType } from '@/entrypoints/utils/option';
 
@@ -118,6 +124,24 @@ describe('右键全文翻译配置', () => {
         expect(normalizeConfig({}).contextMenuEnabled).toBe(true);
         expect(normalizeConfig({contextMenuEnabled: false}).contextMenuEnabled).toBe(false);
         expect(normalizeConfig({contextMenuEnabled: 'false'}).contextMenuEnabled).toBe(true);
+    });
+});
+
+describe('鼠标悬浮翻译延迟配置', () => {
+    it('默认保留现有 50ms 行为，并归一化用户设置', () => {
+        expect(new Config().mouseHoverTranslationDelay).toBe(DEFAULT_MOUSE_HOVER_TRANSLATION_DELAY);
+        expect(normalizeConfig({}).mouseHoverTranslationDelay).toBe(DEFAULT_MOUSE_HOVER_TRANSLATION_DELAY);
+        expect(normalizeConfig({mouseHoverTranslationDelay: 235}).mouseHoverTranslationDelay).toBe(240);
+        expect(normalizeConfig({mouseHoverTranslationDelay: '120'}).mouseHoverTranslationDelay).toBe(120);
+    });
+
+    it('将越界或非法值限制在安全范围内', () => {
+        expect(normalizeConfig({mouseHoverTranslationDelay: -100}).mouseHoverTranslationDelay)
+            .toBe(MOUSE_HOVER_TRANSLATION_DELAY_MIN);
+        expect(normalizeConfig({mouseHoverTranslationDelay: 99999}).mouseHoverTranslationDelay)
+            .toBe(MOUSE_HOVER_TRANSLATION_DELAY_MAX);
+        expect(normalizeConfig({mouseHoverTranslationDelay: 'invalid'}).mouseHoverTranslationDelay)
+            .toBe(DEFAULT_MOUSE_HOVER_TRANSLATION_DELAY);
     });
 });
 

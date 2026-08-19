@@ -8,11 +8,25 @@ export type VideoSubtitleDisplayMode = 'bilingual' | 'translation-only' | 'origi
 export const DEFAULT_VIDEO_SUBTITLE_FONT_SIZE = 100;
 export const DEFAULT_NEW_API_URL = 'http://localhost:3000';
 export const VIDEO_SUBTITLE_FONT_SIZE_OPTIONS = [80, 90, 100, 110, 120, 140, 160] as const;
+export const DEFAULT_MOUSE_HOVER_TRANSLATION_DELAY = 50;
+export const MOUSE_HOVER_TRANSLATION_DELAY_MIN = 0;
+export const MOUSE_HOVER_TRANSLATION_DELAY_MAX = 2000;
+export const MOUSE_HOVER_TRANSLATION_DELAY_STEP = 10;
 
 export function normalizeVideoSubtitleFontSize(value: unknown): number {
     const number = typeof value === 'number' ? value : Number(value);
     if (!Number.isFinite(number)) return DEFAULT_VIDEO_SUBTITLE_FONT_SIZE;
     return Math.min(160, Math.max(80, Math.round(number / 10) * 10));
+}
+
+export function normalizeMouseHoverTranslationDelay(value: unknown): number {
+    const number = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(number)) return DEFAULT_MOUSE_HOVER_TRANSLATION_DELAY;
+    const rounded = Math.round(number / MOUSE_HOVER_TRANSLATION_DELAY_STEP) * MOUSE_HOVER_TRANSLATION_DELAY_STEP;
+    return Math.min(
+        MOUSE_HOVER_TRANSLATION_DELAY_MAX,
+        Math.max(MOUSE_HOVER_TRANSLATION_DELAY_MIN, rounded),
+    );
 }
 
 interface IMapping {
@@ -68,6 +82,7 @@ export class Config {
     floatingBallHotkey: string; // 悬浮球快捷键
     customFloatingBallHotkey: string; // 自定义悬浮球快捷键
     customHotkey: string; // 自定义鼠标悬浮快捷键
+    mouseHoverTranslationDelay: number; // 鼠标悬浮翻译触发延迟（毫秒）
     disableSelectionTranslator: boolean; // 是否禁用划词翻译
     selectionAreaEnabled: boolean; // 是否启用圈选翻译
     disableImageTranslator: boolean; // 是否禁用图片翻译
@@ -131,6 +146,7 @@ export class Config {
         this.floatingBallHotkey = 'Alt+T'; // 默认快捷键为 Alt+T
         this.customFloatingBallHotkey = ''; // 自定义快捷键为空
         this.customHotkey = ''; // 自定义鼠标悬浮快捷键为空
+        this.mouseHoverTranslationDelay = DEFAULT_MOUSE_HOVER_TRANSLATION_DELAY;
         this.disableSelectionTranslator = true; // 默认关闭划词翻译
         this.selectionAreaEnabled = false; // 圈选翻译需要用户主动开启，避免意外截图
         this.disableImageTranslator = true; // 默认关闭图片翻译，避免首次安装后扫描网页图片
@@ -315,6 +331,10 @@ export function normalizeConfig(value: unknown): Config {
     if (!['cn', 'sgp', 'ams'].includes(normalized.mimoRegion)) {
         normalized.mimoRegion = 'cn';
     }
+
+    normalized.mouseHoverTranslationDelay = normalizeMouseHoverTranslationDelay(
+        source.mouseHoverTranslationDelay,
+    );
 
     if (!['disabled', 'bilingual', 'translation-only'].includes(normalized.selectionTranslatorMode)) {
         normalized.selectionTranslatorMode = 'disabled';

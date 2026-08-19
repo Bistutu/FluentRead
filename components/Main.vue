@@ -280,6 +280,30 @@
       </el-col>
     </el-row>
 
+    <!-- 鼠标悬浮翻译延迟 -->
+    <el-row class="settings-control-row">
+      <el-col :span="14" class="settings-control-label lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="按住鼠标悬浮快捷键并移动鼠标后，等待指定时间再翻译；调高可以减少 Ctrl+C 等组合键带来的误触。松开快捷键触发的单次翻译不受影响。" placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">
+            悬浮翻译延迟
+            <el-icon class="icon-margin"><InfoFilled /></el-icon>
+          </span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="10" class="settings-control-field flex-end hover-delay-field">
+        <el-input-number
+          v-model="config.mouseHoverTranslationDelay"
+          aria-label="悬浮翻译延迟"
+          :min="MOUSE_HOVER_TRANSLATION_DELAY_MIN"
+          :max="MOUSE_HOVER_TRANSLATION_DELAY_MAX"
+          :step="MOUSE_HOVER_TRANSLATION_DELAY_STEP"
+          controls-position="right"
+          @change="handleMouseHoverTranslationDelayChange"
+        />
+        <span class="input-suffix">ms</span>
+      </el-col>
+    </el-row>
+
     <!-- 全文翻译快捷键选择 -->
     <el-row v-if="config.on" class="settings-control-row" :class="{ 'custom-hotkey-row': config.floatingBallHotkey === 'custom' }">
       <el-col :span="14" class="settings-control-label lightblue rounded-corner">
@@ -692,7 +716,15 @@
 // Main 处理配置信息
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { customModelString, models, options, resolveConfiguredModel, services, servicesType, defaultOption } from "../entrypoints/utils/option";
-import { Config, normalizeConfig, VIDEO_SUBTITLE_FONT_SIZE_OPTIONS } from "@/entrypoints/utils/model";
+import {
+  Config,
+  MOUSE_HOVER_TRANSLATION_DELAY_MAX,
+  MOUSE_HOVER_TRANSLATION_DELAY_MIN,
+  MOUSE_HOVER_TRANSLATION_DELAY_STEP,
+  VIDEO_SUBTITLE_FONT_SIZE_OPTIONS,
+  normalizeConfig,
+  normalizeMouseHoverTranslationDelay,
+} from "@/entrypoints/utils/model";
 import { InfoFilled, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import browser from 'webextension-polyfill';
@@ -1125,6 +1157,10 @@ const handleCustomMouseHotkeyCancel = () => {
   if (!config.value.customHotkey) {
     config.value.hotkey = 'Control';
   }
+};
+
+const handleMouseHoverTranslationDelayChange = (value: number | undefined) => {
+  config.value.mouseHoverTranslationDelay = normalizeMouseHoverTranslationDelay(value);
 };
 
 // 获取自定义鼠标悬浮快捷键显示名称
@@ -1605,6 +1641,21 @@ const saveImport = async () => {
 .flex-end {
   display: flex;
   justify-content: flex-end;
+}
+
+.hover-delay-field {
+  align-items: center;
+  gap: 6px;
+}
+
+.hover-delay-field :deep(.el-input-number) {
+  width: 100%;
+}
+
+.input-suffix {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .select-divider {
