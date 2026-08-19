@@ -76,10 +76,11 @@ const VIDEO_DISPLAY_MODE_LABELS: Record<VideoSubtitleDisplayMode, string> = {
 const VIDEO_CAPTION_EMPTY_GRACE_MS = 420;
 const VIDEO_CAPTION_STABILITY_MS = 360;
 export const VIDEO_AI_CUE_EARLY_TOLERANCE_MS = 80;
-export const VIDEO_AI_CUE_LATE_GRACE_MS = 420;
-export const VIDEO_AI_CAPTURE_SLICE_MS = 3_200;
-const VIDEO_AI_CUE_MIN_DURATION_MS = 400;
-const VIDEO_AI_CUE_MERGE_GAP_MS = 450;
+export const VIDEO_AI_CUE_LATE_GRACE_MS = 600;
+export const VIDEO_AI_CAPTURE_SLICE_MS = 2_400;
+const VIDEO_AI_CUE_MIN_DURATION_MS = 500;
+const VIDEO_AI_CUE_MERGE_GAP_MS = 500;
+const VIDEO_AI_CUE_GAP_FILL_MS = 560;
 const VIDEO_CAPTION_FALLBACK_SEGMENT_SELECTOR = '.captions-text';
 export const VIDEO_PRETRANSLATION_MACHINE_WINDOW_MS = 10_000;
 export const VIDEO_PRETRANSLATION_AI_WINDOW_MS = 30_000;
@@ -171,6 +172,12 @@ export function mergeVideoAiSubtitleCues(cues: VideoSubtitleCue[]): VideoSubtitl
       continue;
     }
 
+    const gapMs = cue.startMs - previousEndMs;
+    if (gapMs > 0 && gapMs <= VIDEO_AI_CUE_GAP_FILL_MS) {
+      // Whisper 的短分片间隙通常是时间戳量化误差，不应该让字幕层
+      // 短暂清空后又切回下一句；让上一 cue 覆盖到下一 cue 开始即可。
+      previous.durationMs = Math.max(VIDEO_AI_CUE_MIN_DURATION_MS, cue.startMs - previous.startMs);
+    }
     if (cue.startMs > previous.startMs && cue.startMs < previousEndMs) {
       previous.durationMs = Math.max(VIDEO_AI_CUE_MIN_DURATION_MS, cue.startMs - previous.startMs);
     }
@@ -657,13 +664,17 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
     #${VIDEO_TRANSLATION_BUTTON_ID}:focus-visible { opacity: 1 !important; }
     #${VIDEO_TRANSLATION_BUTTON_ID} .fluent-read-video-subtitle-button-icon {
       display: block !important;
-      width: 20px !important;
-      height: 20px !important;
-      border-radius: 5px !important;
+      width: 16px !important;
+      height: 16px !important;
+      border-radius: 4px !important;
       background: transparent !important;
       object-fit: cover !important;
       overflow: hidden !important;
       transform: translateY(0) !important;
+    }
+    #${VIDEO_TRANSLATION_BUTTON_ID}.fluent-read-video-subtitle-x-button {
+      width: 28px !important;
+      height: 28px !important;
     }
     #${VIDEO_TRANSLATION_BUTTON_ID}.${VIDEO_TRANSLATION_ACTIVE_CLASS} .fluent-read-video-subtitle-button-icon {
       background: #ec4899 !important;
@@ -689,16 +700,16 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       right: 8px !important;
       bottom: 40px !important;
       z-index: 2147483646 !important;
-      width: min(236px, calc(100% - 12px)) !important;
-      max-height: min(244px, calc(100% - 44px)) !important;
+      width: min(216px, calc(100% - 10px)) !important;
+      max-height: min(224px, calc(100% - 44px)) !important;
       box-sizing: border-box !important;
-      padding: 5px !important;
+      padding: 4px !important;
       border: 1px solid rgba(255, 255, 255, .12) !important;
       border-radius: 9px !important;
       background: rgba(30, 30, 30, .97) !important;
       box-shadow: 0 8px 28px rgba(0, 0, 0, .42) !important;
       color: #fff !important;
-      font: 11px/1.28 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+      font: 10px/1.25 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
       overflow-y: auto !important;
       overscroll-behavior: contain !important;
     }
@@ -707,18 +718,18 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       display: flex !important;
       align-items: center !important;
       justify-content: space-between !important;
-      padding: 2px 5px 4px !important;
+      padding: 2px 4px 3px !important;
       color: rgba(255, 255, 255, .92) !important;
       font-weight: 700 !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-heading {
       display: inline-flex !important;
       align-items: baseline !important;
-      gap: 5px !important;
+      gap: 4px !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-brand {
       color: #ff8fbd !important;
-      font-size: 9px !important;
+      font-size: 8px !important;
       letter-spacing: .02em !important;
       font-weight: 800 !important;
     }
@@ -727,7 +738,7 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-beta {
       color: #ff8fbd !important;
-      font-size: 9px !important;
+      font-size: 8px !important;
       font-weight: 700 !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-item,
@@ -735,10 +746,10 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       display: flex !important;
       align-items: center !important;
       width: 100% !important;
-      min-height: 25px !important;
+      min-height: 23px !important;
       box-sizing: border-box !important;
       margin: 1px 0 !important;
-      padding: 3px 5px !important;
+      padding: 2px 4px !important;
       border: 0 !important;
       border-radius: 7px !important;
       background: transparent !important;
@@ -759,8 +770,8 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       opacity: .55 !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-primary-action {
-      min-height: 30px !important;
-      margin: 2px 0 4px !important;
+      min-height: 28px !important;
+      margin: 2px 0 3px !important;
       border: 1px solid rgba(236, 72, 153, .42) !important;
       background: linear-gradient(135deg, rgba(236, 72, 153, .26), rgba(236, 72, 153, .12)) !important;
       color: #fff !important;
@@ -777,25 +788,25 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-check {
       display: inline-block !important;
-      width: 14px !important;
+      width: 13px !important;
       color: #ff8fbd !important;
       font-weight: 800 !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-label { flex: 1 !important; }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-value {
       color: rgba(255, 255, 255, .58) !important;
-      font-size: 9px !important;
+      font-size: 8px !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-divider {
       height: 1px !important;
-      margin: 4px 5px !important;
+      margin: 3px 4px !important;
       background: rgba(255, 255, 255, .12) !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-caption {
       display: block !important;
-      padding: 2px 5px 1px !important;
+      padding: 2px 4px 1px !important;
       color: rgba(255, 255, 255, .52) !important;
-      font-size: 9px !important;
+      font-size: 8px !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-mode {
       width: auto !important;
@@ -880,7 +891,9 @@ export function mountVideoSubtitleTranslation(): () => void {
   let normalizedCaptionActive = false;
   let aiCaptureRecorder: MediaRecorder | null = null;
   let aiCaptureStream: MediaStream | null = null;
-  let aiCaptureQueue: Promise<void> = Promise.resolve();
+  type AiAudioChunk = { blob: Blob; startMs: number; durationMs: number; session: number };
+  let aiPendingChunk: AiAudioChunk | null = null;
+  let aiCaptureProcessing = false;
   let aiCaptureNextStartMs = 0;
   let aiCaptureSession = 0;
   let aiCaptureSliceTimer: number | undefined;
@@ -1471,7 +1484,7 @@ export function mountVideoSubtitleTranslation(): () => void {
       // 让已经在 offscreen 中解码的旧分片安全丢弃，避免停止、seek 或切页后
       // 旧时间轴又写回当前播放器。
       aiCaptureSession += 1;
-      aiCaptureQueue = Promise.resolve();
+      aiPendingChunk = null;
     }
     const recorder = aiCaptureRecorder;
     aiCaptureRecorder = null;
@@ -1494,47 +1507,57 @@ export function mountVideoSubtitleTranslation(): () => void {
     updatePlayerUiState();
   };
 
-  const queueAiAudioChunk = (blob: Blob, startMs: number, durationMs: number, session: number) => {
-    aiCaptureQueue = aiCaptureQueue
-      .catch(() => undefined)
-      .then(async () => {
-        if (destroyed || blob.size === 0 || session !== aiCaptureSession) return;
-        const response = await browser.runtime.sendMessage({
-          type: 'fluentReadTranscribeLocalVideoAudio',
-          audioBase64: encodeVideoAudioBase64(await blob.arrayBuffer()),
-          model: normalizeVideoLocalTranscriptionModel(config.videoLocalModel),
-          sourceLanguage: config.from,
-        }) as {
-          success?: boolean;
-          text?: string;
-          segments?: Array<{ startMs?: number; endMs?: number; text?: string }>;
-          error?: string;
-        } | undefined;
-        if (!response?.success) {
-          throw new Error(response?.error || 'AI 字幕接口没有返回文字');
-        }
-        if (session !== aiCaptureSession) return;
-        const segments = Array.isArray(response.segments)
-          ? response.segments.filter((segment) => typeof segment.text === 'string' && segment.text.trim())
-          : [];
-        if (segments.length > 0) {
-          segments.forEach((segment) => {
-            const relativeStartMs = typeof segment.startMs === 'number' && Number.isFinite(segment.startMs)
-              ? Math.max(0, segment.startMs)
-              : 0;
-            const relativeEndMs = typeof segment.endMs === 'number' && Number.isFinite(segment.endMs)
-              ? Math.max(relativeStartMs + 400, segment.endMs)
-              : durationMs;
-            appendAiSubtitleCue(
-              startMs + relativeStartMs,
-              Math.min(Math.max(relativeEndMs - relativeStartMs, 400), durationMs),
-              segment.text!,
-            );
-          });
-        } else if (response.text) {
-          appendAiSubtitleCue(startMs, durationMs, response.text);
-        }
-      })
+  const transcribeAiAudioChunk = async (chunk: AiAudioChunk) => {
+    if (destroyed || chunk.blob.size === 0 || chunk.session !== aiCaptureSession) return;
+    const response = await browser.runtime.sendMessage({
+      type: 'fluentReadTranscribeLocalVideoAudio',
+      audioBase64: encodeVideoAudioBase64(await chunk.blob.arrayBuffer()),
+      model: normalizeVideoLocalTranscriptionModel(config.videoLocalModel),
+      sourceLanguage: config.from,
+    }) as {
+      success?: boolean;
+      text?: string;
+      segments?: Array<{ startMs?: number; endMs?: number; text?: string }>;
+      error?: string;
+    } | undefined;
+    if (!response?.success) {
+      throw new Error(response?.error || 'AI 字幕接口没有返回文字');
+    }
+    if (chunk.session !== aiCaptureSession) return;
+    const segments = Array.isArray(response.segments)
+      ? response.segments.filter((segment) => typeof segment.text === 'string' && segment.text.trim())
+      : [];
+    if (segments.length > 0) {
+      segments.forEach((segment) => {
+        const relativeStartMs = typeof segment.startMs === 'number' && Number.isFinite(segment.startMs)
+          ? Math.max(0, segment.startMs)
+          : 0;
+        const relativeEndMs = typeof segment.endMs === 'number' && Number.isFinite(segment.endMs)
+          ? Math.max(relativeStartMs + VIDEO_AI_CUE_MIN_DURATION_MS, segment.endMs)
+          : chunk.durationMs;
+        appendAiSubtitleCue(
+          chunk.startMs + relativeStartMs,
+          Math.min(Math.max(relativeEndMs - relativeStartMs, VIDEO_AI_CUE_MIN_DURATION_MS), chunk.durationMs),
+          segment.text!,
+        );
+      });
+    } else if (response.text) {
+      appendAiSubtitleCue(chunk.startMs, chunk.durationMs, response.text);
+    }
+  };
+
+  const drainAiAudioQueue = () => {
+    if (destroyed || aiCaptureProcessing) return;
+    const chunk = aiPendingChunk;
+    if (!chunk) return;
+    aiPendingChunk = null;
+    if (chunk.session !== aiCaptureSession) {
+      drainAiAudioQueue();
+      return;
+    }
+
+    aiCaptureProcessing = true;
+    void transcribeAiAudioChunk(chunk)
       .catch((error) => {
         if (destroyed) return;
         const message = error instanceof Error ? error.message : String(error);
@@ -1543,7 +1566,21 @@ export function mountVideoSubtitleTranslation(): () => void {
           : message;
         stopAiSubtitleCapture(true);
         console.warn('[FluentRead] X AI 字幕请求失败', error);
+      })
+      .finally(() => {
+        aiCaptureProcessing = false;
+        // 识别慢于播放时只处理最新待处理分片，避免请求队列无限积压，
+        // 让字幕延迟保持有界；过期分片不会在稍后突然闪回播放器。
+        if (!destroyed && aiPendingChunk) drainAiAudioQueue();
       });
+  };
+
+  const queueAiAudioChunk = (blob: Blob, startMs: number, durationMs: number, session: number) => {
+    if (destroyed || blob.size === 0 || session !== aiCaptureSession) return;
+    // 如果模型还在处理上一片，只保留最新一片。中间分片宁可丢弃，
+    // 也不能让字幕随着串行 Promise 队列持续落后于真实播放位置。
+    aiPendingChunk = { blob, startMs, durationMs, session };
+    drainAiAudioQueue();
   };
 
   const startAiSubtitleCapture = () => {
@@ -1667,7 +1704,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     if (!aiCaptureRunning) return;
     const shouldResume = !video.paused && !video.ended;
     aiCaptureSession += 1;
-    aiCaptureQueue = Promise.resolve();
+    aiPendingChunk = null;
     aiCues = [];
     stopAiSubtitleCapture(false);
     setPretranslationTrack('ai:capture', { url: 'ai:capture', cues: [] });
@@ -2047,6 +2084,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     }
     const playerButton = button as HTMLButtonElement;
     bindButtonClick(playerButton);
+    playerButton.classList.toggle('fluent-read-video-subtitle-x-button', isXVideoPage());
     const firstControl = controls.firstElementChild;
     if (insertBefore?.parentElement === controls) {
       if (playerButton.parentElement !== controls || playerButton.nextElementSibling !== insertBefore) {

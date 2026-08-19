@@ -288,7 +288,7 @@
 
       <div class="video-settings-note">
         <strong>使用方式</strong>
-        <p>YouTube 或 X 有原生字幕时，FluentRead 会在播放器中显示译文；X 没有字幕时，打开播放器菜单的“请求 AI 字幕”会按约 5 秒音频分片，在扩展内部用本地 Whisper 生成字幕，再沿用同一套字幕翻译。模型首次使用时下载并缓存，音频不会上传。</p>
+        <p>YouTube 或 X 有原生字幕时，FluentRead 会在播放器中显示译文；X 没有字幕时，打开播放器菜单的“请求 AI 字幕”会按约 2–3 秒音频分片，在扩展内部用本地 Whisper 生成字幕，再沿用同一套字幕翻译。模型首次使用时下载并缓存，音频不会上传。</p>
       </div>
     </section>
 

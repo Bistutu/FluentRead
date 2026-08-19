@@ -194,6 +194,7 @@ async function main() {
       controlClass: document.querySelector('#fluent-read-video-subtitle-button')?.parentElement?.className || '',
       buttonWidth: document.querySelector('#fluent-read-video-subtitle-button')?.getBoundingClientRect().width || 0,
       iconWidth: document.querySelector('#fluent-read-video-subtitle-button-icon')?.getBoundingClientRect().width || document.querySelector('#fluent-read-video-subtitle-button .fluent-read-video-subtitle-button-icon')?.getBoundingClientRect().width || 0,
+      iconHeight: document.querySelector('#fluent-read-video-subtitle-button .fluent-read-video-subtitle-button-icon')?.getBoundingClientRect().height || 0,
       settingsWidth: document.querySelector('[data-testid="videoPlayer"] button[aria-label="Settings"]')?.getBoundingClientRect().width || 0,
       buttonBeforeSettings: (() => {
         const button = document.querySelector('#fluent-read-video-subtitle-button');
@@ -204,7 +205,7 @@ async function main() {
       pageUrl: location.href,
     }));
     if (buttonState.host !== 'videoPlayer' || !buttonState.buttonBeforeSettings
-      || buttonState.buttonWidth > 32.5 || buttonState.iconWidth > 20.5
+      || buttonState.buttonWidth > 28.5 || buttonState.iconWidth > 16.5 || buttonState.iconHeight > 16.5
       || Math.abs(buttonState.buttonWidth - buttonState.settingsWidth) > 6) {
       throw new Error(`X 播放器设置齿轮旁控件校验失败：${JSON.stringify(buttonState)}`);
     }
@@ -231,7 +232,7 @@ async function main() {
       };
     });
     if (menuState.brand !== '流畅阅读' || menuState.aiLabel !== '请求 AI 字幕' || menuState.aiDisabled || menuState.aiState !== '点击请求'
-      || menuState.width > 236.5 || menuState.height > 244.5 || menuState.responsiveHeight > 136) {
+      || menuState.width > 216.5 || menuState.height > 224.5 || menuState.responsiveHeight > 136) {
       throw new Error(`X AI 字幕菜单校验失败：${JSON.stringify(menuState)}`);
     }
 
@@ -248,7 +249,7 @@ async function main() {
     await control.evaluate(() => chrome.storage.local.set({ fluentReadVideoLocalTranscriptionModels: ['tiny'] }));
 
     await page.locator('[data-action="toggle-ai-subtitle"]').click();
-    // 让首个 5 秒音频分片完整落盘后暂停播放。这样断言的是当前 cue，
+    // 让首个短音频分片完整落盘后暂停播放。这样断言的是当前 cue，
     // 不会因为 fixture 视频先自然播放到结尾而把严格时间轴误判成空字幕。
     await page.waitForTimeout(5200);
     await page.evaluate(() => {

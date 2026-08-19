@@ -121,6 +121,19 @@ describe('YouTube 视频字幕识别', () => {
         expect(cues[0]).toMatchObject({ startMs: 0, text: 'Hello world' });
         expect(cues[0].durationMs).toBe(2400);
         expect(getVisibleVideoAiCue(cues, 2450)?.text).toBe('Next sentence');
-        expect(getVisibleVideoAiCue(cues, 3850)).toBeNull();
+        expect(getVisibleVideoAiCue(cues, 4050)).toBeNull();
+    });
+
+    it('填补短时间戳空隙，并让后一句在重叠处稳定接管', () => {
+        const cues = mergeVideoAiSubtitleCues([
+            { startMs: 0, durationMs: 900, text: 'First sentence' },
+            { startMs: 1_300, durationMs: 900, text: 'Second sentence' },
+            { startMs: 1_600, durationMs: 700, text: 'Third sentence' },
+        ]);
+
+        expect(cues[0]).toMatchObject({ startMs: 0, durationMs: 1_300, text: 'First sentence' });
+        expect(cues[1]).toMatchObject({ startMs: 1_300, durationMs: 500, text: 'Second sentence' });
+        expect(getVisibleVideoAiCue(cues, 1_200)?.text).toBe('First sentence');
+        expect(getVisibleVideoAiCue(cues, 1_650)?.text).toBe('Third sentence');
     });
 });
