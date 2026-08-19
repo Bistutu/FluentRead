@@ -109,6 +109,33 @@ describe('图片翻译配置', () => {
     });
 });
 
+describe('翻译中心配置', () => {
+    it('默认使用服务列表，保存后保留去重后的服务顺序和语言选择', () => {
+        expect(new Config().translationCenterServices).toEqual([]);
+        expect(normalizeConfig({
+            translationCenterServices: ['google', 'openai', 'google', ' ', 12],
+            translationCenterSourceLanguage: ' en ',
+            translationCenterTargetLanguage: ' ja ',
+        })).toMatchObject({
+            translationCenterServices: ['google', 'openai'],
+            translationCenterSourceLanguage: 'en',
+            translationCenterTargetLanguage: 'ja',
+        });
+    });
+
+    it('旧配置或非法值安全回退为空服务配置', () => {
+        expect(normalizeConfig({
+            translationCenterServices: 'google',
+            translationCenterSourceLanguage: 12,
+            translationCenterTargetLanguage: null,
+        })).toMatchObject({
+            translationCenterServices: [],
+            translationCenterSourceLanguage: '',
+            translationCenterTargetLanguage: '',
+        });
+    });
+});
+
 describe('圈选翻译配置', () => {
     it('默认关闭，并保留用户主动启用的状态', () => {
         expect(new Config().selectionAreaEnabled).toBe(false);

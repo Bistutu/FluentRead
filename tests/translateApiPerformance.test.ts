@@ -88,6 +88,28 @@ describe('translation API request lifecycle performance', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it('sends service and language overrides without changing the default request config', async () => {
+    mocks.sendMessage.mockResolvedValue('请求级译文');
+
+    await expect(translateText('Readable source', 'Context', {
+      maxRetries: 0,
+      useCache: false,
+      serviceOverride: 'mock-ai',
+      sourceLanguage: 'en',
+      targetLanguage: 'ja',
+    })).resolves.toBe('请求级译文');
+
+    expect(mocks.config.service).toBe('mock');
+    expect(mocks.config.to).toBe('zh-CN');
+    expect(mocks.sendMessage).toHaveBeenCalledWith(expect.objectContaining({
+      origin: 'Readable source',
+      serviceOverride: 'mock-ai',
+      sourceLanguage: 'en',
+      targetLanguage: 'ja',
+      useCache: false,
+    }));
+  });
+
   it('aborts a retry delay without sending another runtime request', async () => {
     mocks.sendMessage.mockRejectedValue(new Error('temporary failure'));
     const controller = new AbortController();

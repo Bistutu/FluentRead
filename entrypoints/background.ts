@@ -39,6 +39,7 @@ import {
     normalizeImageOcrLanguageCodes,
     type ImageOcrLanguageCode,
 } from "@/entrypoints/utils/imageOcrLanguages";
+import {getTranslationLanguages, type TranslationLanguageOverride} from "@/entrypoints/utils/translationLanguage";
 
 // 翻译状态管理
 let translationStateMap = new Map<number, boolean>(); // tabId -> isTranslated
@@ -68,6 +69,9 @@ interface TranslationRequestMessageBase {
     useCache?: boolean;
     /** 视频字幕使用的独立翻译服务；普通网页请求不设置。 */
     serviceOverride?: string;
+    /** 翻译中心仅对当前请求使用的语言，不改变全局设置。 */
+    sourceLanguage?: string;
+    targetLanguage?: string;
 }
 
 type TranslationSingleRequestMessage = TranslationRequestMessageBase & { origin: string };
@@ -194,14 +198,16 @@ function buildCacheKey(
     pageContext: string,
     mode: CacheRequestMode,
     serviceOverride?: string,
+    languageOverride?: TranslationLanguageOverride,
 ): string {
     const service = serviceOverride || config.service;
+    const {sourceLanguage, targetLanguage} = getTranslationLanguages(languageOverride);
 
     return buildTranslationCacheKey({
         requestMode: mode,
         sourceText: origin,
-        sourceLanguage: config.from,
-        targetLanguage: config.to,
+        sourceLanguage,
+        targetLanguage,
         service,
         model: getSelectedModel(service),
         endpoint: getProviderEndpoint(service),
@@ -343,7 +349,7 @@ async function translateSingleWithCache(
         return getTranslationService(service)({...message, context, pageContext});
     }
 
-    const key = buildCacheKey(message.origin, context, pageContext, 'single', service);
+    const key = buildCacheKey(message.origin, context, pageContext, 'single', service, message);
     const existing = pendingTranslations.get(key);
     if (existing) return existing;
 
@@ -383,13 +389,13 @@ async function translateBatchWithCache(
         return result as string[];
     }
 
-    const batchKey = buildCacheKey(message.origin, context, pageContext, 'batch', service);
+    const batchKey = buildCacheKey(message.origin, context, pageContext, 'batch', service, message);
     const existing = pendingBatches.get(batchKey);
     if (existing) return existing;
 
     const request = (async () => {
         const cached = await Promise.all(
-            message.origin.map((origin) => translationCache.get(buildCacheKey(origin, context, pageContext, 'batch', service))),
+            message.origin.map((origin) => translationCache.get(buildCacheKey(origin, context, pageContext, 'batch', service, message))),
         );
         const missingIndexes = cached
             .map((value, index) => value === null ? index : -1)
@@ -406,7 +412,7 @@ async function translateBatchWithCache(
         const uniqueMissingOrigins = Array.from(
             new Map(
                 missingEntries.map(({origin}) => [
-                    buildCacheKey(origin, context, pageContext, 'batch', service),
+                    buildCacheKey(origin, context, pageContext, 'batch', service, message),
                     origin,
                 ]),
             ).values(),
@@ -424,15 +430,15 @@ async function translateBatchWithCache(
         const result = [...cached] as Array<string | null>;
         const translatedByKey = new Map(
             uniqueMissingOrigins.map((origin, index) => [
-                buildCacheKey(origin, context, pageContext, 'batch', service),
+                buildCacheKey(origin, context, pageContext, 'batch', service, message),
                 translated[index],
             ]),
         );
         await Promise.all(missingEntries.map(async ({index, origin}) => {
-            const value = translatedByKey.get(buildCacheKey(origin, context, pageContext, 'batch', service));
+            const value = translatedByKey.get(buildCacheKey(origin, context, pageContext, 'batch', service, message));
             result[index] = value as string;
             if (isCacheableResult(origin, value)) {
-                await translationCache.set(buildCacheKey(origin, context, pageContext, 'batch', service), value);
+                await translationCache.set(buildCacheKey(origin, context, pageContext, 'batch', service, message), value);
             }
         }));
 

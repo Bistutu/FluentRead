@@ -81,6 +81,15 @@ h1 { margin-bottom: 6px; font-size: 28px; line-height: 1.25; letter-spacing: -.0
 .settings-card.services-view .service-configuration-slot .service-connection-section { margin-top: 0; padding-top: 0; border-top: 0; }
 .settings-card.services-view .service-configuration-slot .subsection-heading { margin-right: 0; margin-left: 0; }
 .settings-card.services-view .service-configuration-slot .el-row { margin-right: 0 !important; margin-left: 0 !important; }
+.settings-card.translation-center-view {
+  display: flex; width: calc(100% + 88px); margin-right: -44px; margin-left: -44px; padding: 0; border-right: 0; border-left: 0; border-radius: 0;
+  flex-direction: column; overflow: hidden;
+}
+.settings-card.translation-center-view > .settings-main-sections { display: none !important; }
+.settings-card.translation-center-view > #settings-translation-center {
+  display: flex !important; min-height: 0; height: 100%; flex: 1 1 auto; align-items: flex-start; justify-content: center; overflow: hidden;
+}
+.settings-card.translation-center-view .translation-center { width: min(100%, 1480px); height: auto; max-height: 100%; overflow-y: auto; }
 .card-intro { margin: 0 16px 25px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
 .card-intro h2 { margin-bottom: 6px; font-size: 21px; }
 .settings-card > div:last-child > .el-row,
@@ -284,6 +293,7 @@ h1 { margin-bottom: 6px; font-size: 28px; line-height: 1.25; letter-spacing: -.0
   .sidebar { flex-basis: 210px; width: 210px; }
   .workspace { width: auto; padding: 28px 28px 20px; }
   .settings-card.services-view { width: calc(100% + 56px); margin-right: -28px; margin-left: -28px; }
+  .settings-card.translation-center-view { width: calc(100% + 56px); margin-right: -28px; margin-left: -28px; }
   .topbar { align-items: stretch; flex-direction: column; }
   .search-box { width: 100%; }
 }
@@ -313,6 +323,7 @@ h1 { margin-bottom: 6px; font-size: 28px; line-height: 1.25; letter-spacing: -.0
   .search-box { height: 44px; }
   .settings-card { padding: 20px 8px 14px; border-radius: 20px; }
   .settings-card.services-view { display: flex; width: 100%; margin-right: 0; margin-left: 0; border-right: 1px solid var(--line); border-left: 1px solid var(--line); border-radius: 20px; overflow: hidden; }
+  .settings-card.translation-center-view { display: flex; width: 100%; margin-right: 0; margin-left: 0; border-right: 1px solid var(--line); border-left: 1px solid var(--line); border-radius: 20px; overflow: hidden; }
   .settings-card.services-view .service-catalog { height: 100% !important; min-height: 0 !important; flex: 1 1 auto; }
   .settings-card.services-view .service-catalog .catalog-layout { display: flex; min-height: 0; flex: 1 1 auto; flex-direction: column; overflow: hidden; }
   .settings-card.services-view .service-catalog .service-rail { min-height: 0; max-height: 190px; flex: 0 0 190px; overflow-y: auto; }

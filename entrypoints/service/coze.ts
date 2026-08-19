@@ -17,7 +17,7 @@ async function coze( message: any) {
     const resp = await fetch(url, {
         method: method.POST,
         headers: headers,
-        body: cozeTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service)
+        body: cozeTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service, message.targetLanguage)
     });
 
     if (resp.ok) {

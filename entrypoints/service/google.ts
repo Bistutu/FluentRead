@@ -1,4 +1,5 @@
-import {config} from "@/entrypoints/utils/config";
+import {getTranslationLanguages} from "@/entrypoints/utils/translationLanguage";
+import type {TranslationLanguageOverride} from "@/entrypoints/utils/translationLanguage";
 
 const GOOGLE_TRANSLATE_RPC_ID = 'MkEWBc';
 const GOOGLE_TRANSLATE_BATCH_URLS = [
@@ -247,11 +248,12 @@ export async function translateGoogleText(
     throw new Error(`谷歌翻译所有匿名接口均失败：${failureSummary}`);
 }
 
-async function google(message: {origin: string}) {
+async function google(message: TranslationLanguageOverride & {origin: string}) {
     if (typeof message.origin !== 'string') {
         throw new Error('谷歌翻译仅支持单条文本');
     }
-    return translateGoogleText(message.origin, config.from, config.to);
+    const {sourceLanguage, targetLanguage} = getTranslationLanguages(message);
+    return translateGoogleText(message.origin, sourceLanguage, targetLanguage);
 }
 
 export default google;

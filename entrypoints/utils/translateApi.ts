@@ -144,6 +144,9 @@ export async function translateText(origin: string, context: string = document.t
     timeout = 45000,
     useCache = config.useCache,
     skipLanguageDetection = false,
+    serviceOverride,
+    sourceLanguage,
+    targetLanguage,
     signal,
     queueSession,
   } = options;
@@ -154,14 +157,14 @@ export async function translateText(origin: string, context: string = document.t
     return origin || '';
   }
 
-  assertTranslationCredentials();
+  assertTranslationCredentials(serviceOverride || config.service);
 
   // 如果目标语言与当前文本语言相同，直接返回原文
-  if (!skipLanguageDetection && detectlang(origin.replace(/[\s\u3000]/g, '')) === config.to) {
+  if (!skipLanguageDetection && detectlang(origin.replace(/[\s\u3000]/g, '')) === (targetLanguage || config.to)) {
     return origin;
   }
 
-  const pageContext = await resolvePageContext(options.pageContext);
+  const pageContext = await resolvePageContext(options.pageContext, serviceOverride || config.service);
   throwIfAborted(signal);
 
   // 同一富文本回退可能产生多个短请求；合并持久化写入，避免每个 slot
@@ -176,7 +179,15 @@ export async function translateText(origin: string, context: string = document.t
       try {
         // 发送翻译请求给background脚本处理
         const result = await waitForRequest(
-          browser.runtime.sendMessage({ context, pageContext, origin, useCache }),
+          browser.runtime.sendMessage({
+            context,
+            pageContext,
+            origin,
+            useCache,
+            serviceOverride,
+            sourceLanguage,
+            targetLanguage,
+          }),
           timeout,
           signal,
           lease,
@@ -221,18 +232,20 @@ export async function translateTextBatch(
 ): Promise<string[]> {
   if (origins.length === 0) return [];
 
-  assertTranslationCredentials();
-
   const {
     maxRetries = 3,
     retryDelay = 1000,
     timeout = 45000,
     useCache = config.useCache,
+    serviceOverride,
+    sourceLanguage,
+    targetLanguage,
     signal,
     queueSession,
   } = options;
+  assertTranslationCredentials(serviceOverride || config.service);
   throwIfAborted(signal);
-  const pageContext = await resolvePageContext(options.pageContext);
+  const pageContext = await resolvePageContext(options.pageContext, serviceOverride || config.service);
   throwIfAborted(signal);
 
   scheduleTranslationCountSave();
@@ -242,7 +255,15 @@ export async function translateTextBatch(
       throwIfAborted(signal);
       try {
         const result = await waitForRequest(
-          browser.runtime.sendMessage({ context, pageContext, origin: origins, useCache }),
+          browser.runtime.sendMessage({
+            context,
+            pageContext,
+            origin: origins,
+            useCache,
+            serviceOverride,
+            sourceLanguage,
+            targetLanguage,
+          }),
           timeout,
           signal,
           lease,
@@ -315,6 +336,12 @@ export interface TranslateOptions {
   timeout?: number;
   /** 是否使用缓存 */
   useCache?: boolean;
+  /** 仅对当前请求使用的翻译服务，不改变网页翻译默认服务。 */
+  serviceOverride?: string;
+  /** 仅对当前请求使用的源语言，不改变通用设置。 */
+  sourceLanguage?: string;
+  /** 仅对当前请求使用的目标语言，不改变通用设置。 */
+  targetLanguage?: string;
   /** 发送给 LLM 的网页参考上下文；未提供时按当前页面自动提取。 */
   pageContext?: string;
   /** Internal structured packets contain ASCII sentinels that must not affect source-language detection. */
@@ -325,8 +352,8 @@ export interface TranslateOptions {
   queueSession?: TranslationQueueSession;
 }
 
-function assertTranslationCredentials(): void {
-  const message = getMissingCredentialMessage(config.service, config);
+function assertTranslationCredentials(service = config.service): void {
+  const message = getMissingCredentialMessage(service, config);
   if (message) throw new Error(message);
 }
 
