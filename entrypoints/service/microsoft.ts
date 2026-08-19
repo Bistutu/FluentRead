@@ -1,4 +1,5 @@
-import {config} from "@/entrypoints/utils/config";
+import {getTranslationLanguages} from "@/entrypoints/utils/translationLanguage";
+import type {TranslationLanguageOverride} from "@/entrypoints/utils/translationLanguage";
 
 const MICROSOFT_TRANSLATE_URL = "https://edge.microsoft.com/translate/translatetext";
 
@@ -64,11 +65,12 @@ export async function translateMicrosoftTexts(
     });
 }
 
-async function microsoft(message: {origin: string | string[]}) {
+async function microsoft(message: TranslationLanguageOverride & {origin: string | string[]}) {
     const origin = message.origin;
     const isSingleText = typeof origin === 'string';
     const texts: string[] = typeof origin === 'string' ? [origin] : origin;
-    const translations = await translateMicrosoftTexts(texts, config.from, config.to);
+    const {sourceLanguage, targetLanguage} = getTranslationLanguages(message);
+    const translations = await translateMicrosoftTexts(texts, sourceLanguage, targetLanguage);
     if (!isSingleText) return translations;
 
     const translatedText = translations[0];

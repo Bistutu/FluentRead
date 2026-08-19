@@ -16,7 +16,7 @@ async function gemini(message: any) {
     const resp = await fetch(url, {
         method: method.POST,
         headers: {'Content-Type': 'application/json'},
-        body: geminiMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service),
+        body: geminiMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service, message.targetLanguage),
     });
     if (resp.ok) {
         let result = await resp.json();

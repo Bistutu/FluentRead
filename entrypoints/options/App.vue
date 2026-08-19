@@ -44,8 +44,8 @@
       </div>
       <div v-else-if="query" class="search-empty">没有找到“{{ query }}”相关设置</div>
 
-      <section class="settings-card" :class="{ 'services-view': activeSection === 'settings-services' }" :aria-label="activeItem.heading">
-        <div v-if="!['settings-services', 'settings-about'].includes(activeSection)" class="card-intro">
+      <section class="settings-card" :class="{ 'services-view': activeSection === 'settings-services', 'translation-center-view': activeSection === 'settings-translation-center' }" :aria-label="activeItem.heading">
+        <div v-if="!['settings-services', 'settings-about', 'settings-translation-center'].includes(activeSection)" class="card-intro">
           <span class="eyebrow">{{ activeItem.kicker }}</span>
           <h2>{{ activeItem.title }}</h2>
           <p>{{ activeItem.detail }}</p>

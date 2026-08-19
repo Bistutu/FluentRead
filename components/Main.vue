@@ -108,10 +108,14 @@
   </div>
   </section>
 
-  <div v-if="!config.on && !['settings-general', 'settings-image-translation'].includes(props.activeSection)" class="disabled-section">
+  <div v-if="!config.on && !['settings-general', 'settings-image-translation', 'settings-translation-center'].includes(props.activeSection)" class="disabled-section">
     <strong>插件当前已关闭</strong>
     <p>请先在“通用设置”中启用插件，再调整该分类。</p>
   </div>
+
+  <section v-show="props.activeSection === 'settings-translation-center'" id="settings-translation-center" class="settings-section translation-center-section">
+    <TranslationCenter />
+  </section>
 
   <div v-show="config.on" class="settings-main-sections">
 
@@ -732,6 +736,7 @@ import { defineAsyncComponent } from 'vue';
 const CustomHotkeyInput = defineAsyncComponent(() => import('@/components/CustomHotkeyInput.vue'));
 import ServiceCatalog from '@/components/ServiceCatalog.vue';
 import ServiceConfiguration from '@/components/ServiceConfiguration.vue';
+import TranslationCenter from '@/components/TranslationCenter.vue';
 import { parseHotkey } from '@/entrypoints/utils/hotkey';
 import { isConfigImportValid, sanitizeConfigForExport } from '@/entrypoints/utils/config-transfer';
 import { getApiKeyRequirementKey, getMissingCredentialMessage, isApiKeyRequired } from '@/entrypoints/utils/configValidation';

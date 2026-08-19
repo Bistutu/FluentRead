@@ -1,6 +1,7 @@
 import {services} from "../utils/option";
 import {config} from "@/entrypoints/utils/config";
 import {getDeepLXEndpoints} from "@/entrypoints/utils/deeplx";
+import {getTranslationLanguages, type TranslationLanguageOverride} from "@/entrypoints/utils/translationLanguage";
 
 const DEEPLX_TOTAL_TIMEOUT_MS = 20_000;
 const DEEPLX_ATTEMPT_TIMEOUT_MS = 8_000;
@@ -112,6 +113,7 @@ export function getDeepLXRequestLanguages(from: string, to: string): {sourceLang
 export async function translateDeepLXText(
     text: string,
     serviceKey: string = services.deeplx,
+    languageOverride?: TranslationLanguageOverride,
 ): Promise<string> {
     if (typeof text !== "string") {
         throw new Error("DeepLX 翻译仅支持单条文本");
@@ -123,7 +125,8 @@ export async function translateDeepLXText(
         config.proxy[serviceKey],
         token,
     );
-    const {sourceLang, targetLang} = getDeepLXRequestLanguages(config.from, config.to);
+    const {sourceLanguage, targetLanguage} = getTranslationLanguages(languageOverride);
+    const {sourceLang, targetLang} = getDeepLXRequestLanguages(sourceLanguage, targetLanguage);
     const deadline = Date.now() + DEEPLX_TOTAL_TIMEOUT_MS;
     const failures: string[] = [];
 
@@ -151,12 +154,12 @@ export async function translateDeepLXText(
     throw new Error(`DeepLX 所有备用站点均失败：${failureSummary}`);
 }
 
-async function deeplx(message: {origin: string}) {
+async function deeplx(message: {origin: string; sourceLanguage?: string; targetLanguage?: string}) {
     if (typeof message.origin !== "string") {
         throw new Error("DeepLX 翻译仅支持单条文本");
     }
 
-    return translateDeepLXText(message.origin, services.deeplx);
+    return translateDeepLXText(message.origin, services.deeplx, message);
 }
 
 export default deeplx;

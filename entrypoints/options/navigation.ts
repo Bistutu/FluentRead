@@ -36,6 +36,17 @@ export const navigationGroups: NavigationGroup[] = [
     ],
   },
   {
+    label: '翻译工具',
+    items: [
+      {
+        id: 'settings-translation-center', icon: '译', label: '翻译中心', description: '多服务对比', group: '翻译工具',
+        heading: '比较不同翻译服务', summary: '输入一句话，同时查看多个翻译服务的结果，并支持重复翻译。',
+        kicker: '翻译工具', title: '翻译中心', detail: '用同一句话比较不同服务的译文表现。',
+        searchDescription: '多服务翻译、翻译对比、重复翻译、句子翻译',
+      },
+    ],
+  },
+  {
     label: '阅读工具',
     items: [
       {

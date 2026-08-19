@@ -1,6 +1,7 @@
 import { method } from "../utils/constant";
 import { config } from "@/entrypoints/utils/config";
 import CryptoJS from 'crypto-js';
+import {getTranslationLanguages} from "@/entrypoints/utils/translationLanguage";
 
 interface YoudaoResponse {
   errorCode: string;
@@ -96,8 +97,9 @@ async function youdao(message: any): Promise<string> {
     'yue': 'yue'
   };
 
-  const fromLang = langMap[config.from] || 'auto';
-  const toLang = langMap[config.to] || 'zh-CHS';
+  const {sourceLanguage, targetLanguage} = getTranslationLanguages(message);
+  const fromLang = langMap[sourceLanguage] || 'auto';
+  const toLang = langMap[targetLanguage] || 'zh-CHS';
 
   const sign = generateSign(appKey, query, salt, curtime, appSecret);
 

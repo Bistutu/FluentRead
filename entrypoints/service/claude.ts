@@ -19,7 +19,7 @@ async function claude(message: any) {
         const resp = await fetch(url, {
             method: method.POST,
             headers,
-            body: claudeMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service)
+            body: claudeMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service, message.targetLanguage)
         });
 
         if (!resp.ok) {

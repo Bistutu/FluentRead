@@ -11,12 +11,18 @@ function currentCustomBody(service = config.service): string | undefined {
     return config.customBody?.[service];
 }
 
-function buildUserPrompt(origin: string, context?: string, prompt?: string, service = config.service): string {
+function buildUserPrompt(
+    origin: string,
+    context?: string,
+    prompt?: string,
+    service = config.service,
+    targetLanguage = config.to,
+): string {
     const normalizedPrompt = prompt?.trim();
     if (normalizedPrompt) return normalizedPrompt;
 
     const user = (config.user_role[service] || defaultOption.user_role)
-        .replace('{{to}}', config.to).replace('{{origin}}', origin);
+        .replace('{{to}}', targetLanguage).replace('{{origin}}', origin);
     const normalizedContext = context?.trim();
     if (!normalizedContext) return user;
 
@@ -45,7 +51,14 @@ function currentConfiguredModel(service: string): string {
 }
 
 // openai 格式的消息模板（通用模板）
-export function commonMsgTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string, serviceOverride?: string) {
+export function commonMsgTemplate(
+    origin: string,
+    context?: string,
+    prompt?: string,
+    systemPrompt?: string,
+    serviceOverride?: string,
+    targetLanguage = config.to,
+) {
     const service = serviceOverride || config.service;
     let model = currentConfiguredModel(service);
 
@@ -53,7 +66,7 @@ export function commonMsgTemplate(origin: string, context?: string, prompt?: str
     model = model.replace(/（.*）/g, "");
 
     let system = systemPrompt?.trim() || config.system_role[service] || defaultOption.system_role;
-    const user = buildUserPrompt(origin, context, prompt, service);
+    const user = buildUserPrompt(origin, context, prompt, service, targetLanguage);
 
     const payload: any = {
         'model': model,
@@ -88,18 +101,32 @@ function getDeepSeekThinkingMode(serviceOverride?: string): 'enabled' | 'disable
     return config.deepseekThinkingMode === 'enabled' ? 'enabled' : 'disabled';
 }
 
-function deepseekPrompt(origin: string, context?: string, prompt?: string, systemPrompt?: string, serviceOverride?: string) {
+function deepseekPrompt(
+    origin: string,
+    context?: string,
+    prompt?: string,
+    systemPrompt?: string,
+    serviceOverride?: string,
+    targetLanguage = config.to,
+) {
     const service = serviceOverride || config.service;
     return {
         system: systemPrompt?.trim() || config.system_role[service] || defaultOption.system_role,
-        user: buildUserPrompt(origin, context, prompt, service),
+        user: buildUserPrompt(origin, context, prompt, service, targetLanguage),
     };
 }
 
 // Responses API 格式供明确支持该协议的端点使用。
-export function deepseekResponsesMsgTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string, serviceOverride?: string) {
+export function deepseekResponsesMsgTemplate(
+    origin: string,
+    context?: string,
+    prompt?: string,
+    systemPrompt?: string,
+    serviceOverride?: string,
+    targetLanguage = config.to,
+) {
     const model = getCurrentModel(serviceOverride);
-    const {system, user} = deepseekPrompt(origin, context, prompt, systemPrompt, serviceOverride);
+    const {system, user} = deepseekPrompt(origin, context, prompt, systemPrompt, serviceOverride, targetLanguage);
     const payload: any = {
         model,
         instructions: system,
@@ -110,9 +137,16 @@ export function deepseekResponsesMsgTemplate(origin: string, context?: string, p
 }
 
 // DeepSeek 官方 V4 Chat Completion 格式。
-export function deepseekMsgTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string, serviceOverride?: string) {
+export function deepseekMsgTemplate(
+    origin: string,
+    context?: string,
+    prompt?: string,
+    systemPrompt?: string,
+    serviceOverride?: string,
+    targetLanguage = config.to,
+) {
     const model = getCurrentModel(serviceOverride);
-    const {system, user} = deepseekPrompt(origin, context, prompt, systemPrompt, serviceOverride);
+    const {system, user} = deepseekPrompt(origin, context, prompt, systemPrompt, serviceOverride, targetLanguage);
     const thinking = getDeepSeekThinkingMode(serviceOverride);
     const payload: any = {
         model,
@@ -127,9 +161,16 @@ export function deepseekMsgTemplate(origin: string, context?: string, prompt?: s
 }
 
 // gemini
-export function geminiMsgTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string, serviceOverride?: string) {
+export function geminiMsgTemplate(
+    origin: string,
+    context?: string,
+    prompt?: string,
+    systemPrompt?: string,
+    serviceOverride?: string,
+    targetLanguage = config.to,
+) {
     const service = serviceOverride || config.service;
-    const userPrompt = buildUserPrompt(origin, context, prompt, service);
+    const userPrompt = buildUserPrompt(origin, context, prompt, service, targetLanguage);
     const user = systemPrompt?.trim() ? `${systemPrompt.trim()}\n\n${userPrompt}` : userPrompt;
 
     const payload: any = {
@@ -142,12 +183,19 @@ export function geminiMsgTemplate(origin: string, context?: string, prompt?: str
 }
 
 // claude
-export function claudeMsgTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string, serviceOverride?: string) {
+export function claudeMsgTemplate(
+    origin: string,
+    context?: string,
+    prompt?: string,
+    systemPrompt?: string,
+    serviceOverride?: string,
+    targetLanguage = config.to,
+) {
     const service = serviceOverride || services.claude;
     const model = currentConfiguredModel(service);
 
     let system = systemPrompt?.trim() || config.system_role[service] || defaultOption.system_role;
-    const user = buildUserPrompt(origin, context, prompt, service);
+    const user = buildUserPrompt(origin, context, prompt, service, targetLanguage);
 
     const payload: any = {
         model: model,
@@ -163,12 +211,19 @@ export function claudeMsgTemplate(origin: string, context?: string, prompt?: str
 }
 
 // 通义千问
-export function tongyiMsgTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string, serviceOverride?: string) {
+export function tongyiMsgTemplate(
+    origin: string,
+    context?: string,
+    prompt?: string,
+    systemPrompt?: string,
+    serviceOverride?: string,
+    targetLanguage = config.to,
+) {
     const service = serviceOverride || config.service;
     const model = currentConfiguredModel(service);
     const normalTemplate = () => {
         let system = systemPrompt?.trim() || config.system_role[service] || defaultOption.system_role;
-        const user = buildUserPrompt(origin, context, prompt, service);
+        const user = buildUserPrompt(origin, context, prompt, service, targetLanguage);
 
         const payload: any = {
             "model": model,
@@ -190,7 +245,7 @@ export function tongyiMsgTemplate(origin: string, context?: string, prompt?: str
             {value: "fr"},
             {value: "ru"},
         ]
-        let targetItem = langMap.find(i => i.value === config.to) || langMap[0]
+        let targetItem = langMap.find(i => i.value === targetLanguage) || langMap[0]
         let targetLang = targetItem.target || targetItem.value
         const payload: any = {
             "model": model,
@@ -208,11 +263,18 @@ export function tongyiMsgTemplate(origin: string, context?: string, prompt?: str
 
 }
 
-export function cozeTemplate(origin: string, context?: string, prompt?: string, systemPrompt?: string, serviceOverride?: string) {
+export function cozeTemplate(
+    origin: string,
+    context?: string,
+    prompt?: string,
+    systemPrompt?: string,
+    serviceOverride?: string,
+    targetLanguage = config.to,
+) {
     const service = serviceOverride || config.service;
 
     let system = systemPrompt?.trim() || config.system_role[service] || defaultOption.system_role;
-    const user = buildUserPrompt(origin, context, prompt, service);
+    const user = buildUserPrompt(origin, context, prompt, service, targetLanguage);
 
     const payload: any = {
         bot_id: config.robot_id[service],

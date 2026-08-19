@@ -3,6 +3,7 @@ import { config } from "@/entrypoints/utils/config";
 import { detectlang } from "../utils/common";
 import { mergeCustomBody } from "../utils/custom-body";
 import { services } from "../utils/option";
+import {getTranslationLanguages} from "@/entrypoints/utils/translationLanguage";
 
 // 混元翻译大模型支持的语言代码映射
 const languageMap: Record<string, string> = {
@@ -131,31 +132,32 @@ async function hunyuanTranslation(message: any) {
         
         // 转换语言代码
         // 对于自动检测，使用FluentRead内置的语言检测
+        const {sourceLanguage, targetLanguage} = getTranslationLanguages(message);
         let sourceLang: string;
-        if (config.from === 'auto') {
+        if (sourceLanguage === 'auto') {
             const detectedLang = detectlang(message.origin.replace(/[\s\u3000]/g, ''));
             sourceLang = languageMap[detectedLang] || detectedLang;
             console.log('🔍 语言检测结果:', { detectedLang, mappedSource: sourceLang });
         } else {
-            sourceLang = languageMap[config.from] || config.from;
+            sourceLang = languageMap[sourceLanguage] || sourceLanguage;
         }
         
-        const targetLang = languageMap[config.to] || config.to;
+        const mappedTargetLang = languageMap[targetLanguage] || targetLanguage;
         
         console.log('🌐 语言映射结果:', { 
-            originalFrom: config.from, 
+            originalFrom: sourceLanguage,
             mappedSource: sourceLang,
-            originalTo: config.to, 
-            mappedTarget: targetLang 
+            originalTo: targetLanguage,
+            mappedTarget: mappedTargetLang
         });
         
         // 如果源语言和目标语言相同，直接返回原文
-        if (sourceLang === targetLang) {
+        if (sourceLang === mappedTargetLang) {
             console.log('⚠️ 源语言与目标语言相同，返回原文');
             return message.origin;
         }
         
-        if (!targetLang) {
+        if (!mappedTargetLang) {
             throw new Error('混元翻译不支持该目标语言');
         }
         
@@ -165,7 +167,7 @@ async function hunyuanTranslation(message: any) {
         // 自定义字段必须在序列化和签名前合并，否则签名内容会与实际请求体不一致。
         const requestBody = buildHunyuanTranslationRequestBody(
             message.origin,
-            targetLang,
+            mappedTargetLang,
             model,
             config.customBody?.[service],
         );
