@@ -1,12 +1,7 @@
 // 失败时展示的图标
 import { sendErrorMessage } from "./tip";
 import "element-plus/es/components/message/style/css";
-import {
-  handleBilingualTranslation,
-  handleSingleTranslation,
-} from "@/entrypoints/main/trans";
 import { config } from "@/entrypoints/utils/config";
-import { styles } from "@/entrypoints/utils/constant";
 import { options } from "./option";
 
 const icon = {
@@ -22,19 +17,18 @@ const icon = {
 export function insertFailedTip(
   node: HTMLElement,
   errMsg: string,
-  spinner?: HTMLElement
-) {
-  spinner?.remove(); // 取消转圈动画
-
+  onRetry: () => void,
+): HTMLElement {
   // 创建包装元素
   const wrapper = document.createElement("span");
   wrapper.classList.add("fluent-read-retry-wrapper");
+  wrapper.setAttribute("data-fr-translation-owned", "true");
 
   // 创建重试按钮
   const retryBtn = document.createElement("span");
   retryBtn.innerText = "重试";
   retryBtn.classList.add("fluent-read-retry");
-  retryBtn.addEventListener("click", handleRetryClick(node, wrapper));
+  retryBtn.addEventListener("click", handleRetryClick(node, wrapper, onRetry));
 
   // 添加失败标记
   node.classList.add("fluent-read-failure");
@@ -52,10 +46,11 @@ export function insertFailedTip(
   // 将所有元素批量添加到 wrapper
   wrapper.append(retryElement, retryBtn, warnElement, errorTip);
   node.appendChild(wrapper);
+  return wrapper;
 }
 
 // 处理重试按钮点击事件
-function handleRetryClick(node: HTMLElement, wrapper: HTMLElement) {
+function handleRetryClick(node: HTMLElement, wrapper: HTMLElement, onRetry: () => void) {
   return (event: MouseEvent) => {
     event.preventDefault();
     event.stopPropagation();
@@ -63,12 +58,7 @@ function handleRetryClick(node: HTMLElement, wrapper: HTMLElement) {
     wrapper.remove(); // 移除错误提示元素，重新翻译
     node.classList.remove("fluent-read-failure"); // 移除失败标记
 
-    // 根据当前配置的翻译模式决定使用哪种翻译方式
-    if (config.display === styles.bilingualTranslation) {
-      handleBilingualTranslation(node, false);
-    } else {
-      handleSingleTranslation(node, false);
-    }
+    onRetry();
   };
 }
 
@@ -116,15 +106,11 @@ export function insertLoadingSpinner(
 ): HTMLElement {
   const spinner = document.createElement("span");
   spinner.className = "fluent-read-loading";
+  spinner.setAttribute("data-fr-translation-owned", "true");
   if (isCache) spinner.style.borderTop = "3px solid green"; // 存在缓存时改为绿色
   
-  // 异步检查动画配置
-  import('@/entrypoints/utils/config').then(({ config }) => {
-    if (!config.animations && !spinner.classList.contains('static')) {
-      spinner.classList.add('static');
-    }
-  }).catch(() => {
-    // 忽略错误，使用默认动画
+  void Promise.resolve().then(() => {
+    if (!config.animations) spinner.classList.add('static');
   });
   
   node.appendChild(spinner);

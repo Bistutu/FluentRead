@@ -1,0 +1,35 @@
+<!doctype html>
+<!-- Synthetic dynamic application shell for dirty-subtree, Shadow DOM, and body replacement tests. -->
+<html lang="en">
+<head><title>Dynamic document fixture</title></head>
+<body data-testid="initial-body">
+    <header>
+        <h1 data-testid="live-page-title">Live document updates</h1>
+        <p data-testid="live-header-copy">Application controls and status</p>
+    </header>
+
+    <main data-testid="initial-main">
+        <p data-testid="initial-copy">The initial document contains readable application guidance.</p>
+        <section data-testid="dynamic-panel">
+            <p data-testid="dynamic-copy">This panel can receive another readable paragraph.</p>
+        </section>
+        <live-article data-testid="initial-shadow-host"></live-article>
+    </main>
+
+    <template data-testid="replacement-body-template">
+        <header>
+            <nav aria-label="Replacement navigation">
+                <h1 data-testid="replacement-nav-title">Replacement document guide</h1>
+                <p data-testid="replacement-nav-copy">Replacement navigation controls</p>
+            </nav>
+        </header>
+        <main data-testid="replacement-main">
+            <p data-testid="replacement-copy">The replacement body contains current readable guidance.</p>
+            <live-article data-testid="replacement-shadow-host"></live-article>
+            <section translate="no">
+                <p data-testid="replacement-protected-copy">This subtree must remain unchanged.</p>
+            </section>
+        </main>
+    </template>
+</body>
+</html>

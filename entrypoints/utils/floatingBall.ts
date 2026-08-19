@@ -1,7 +1,11 @@
 import FloatingBall from '@/components/FloatingBall.vue';
 import { config, saveConfig } from '@/entrypoints/utils/config';
 import browser from 'webextension-polyfill';
-import { autoTranslateEnglishPage, restoreOriginalContent } from '@/entrypoints/main/trans';
+import {
+  autoTranslateEnglishPage,
+  isFullPageTranslationActive,
+  restoreOriginalContent,
+} from '@/entrypoints/main/trans';
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import type { ShadowRootContentScriptUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { createVueShadowUi, type VueShadowMount } from '@/entrypoints/utils/shadowUi';
@@ -12,7 +16,6 @@ let floatingBallUi: ShadowRootContentScriptUi<VueShadowMount> | null = null;
 let mountingPromise: Promise<any> | null = null;
 let mountRequestId = 0;
 let contentScriptContext: ContentScriptContext | null = null;
-let isTranslated = false; // 添加状态变量跟踪翻译状态
 
 /** 创建并挂载悬浮球 */
 export function mountFloatingBall(ctx?: ContentScriptContext) {
@@ -51,7 +54,7 @@ export function mountFloatingBall(ctx?: ContentScriptContext) {
       },
       // 添加翻译状态变化事件监听
       onTranslationToggle: (isTranslating: boolean) => {
-        if (isTranslating === isTranslated) return;
+        if (isTranslating === isFullPageTranslationActive()) return;
 
         document.dispatchEvent(new CustomEvent(
           isTranslating ? 'fluentread-translation-started' : 'fluentread-translation-ended',
@@ -61,7 +64,6 @@ export function mountFloatingBall(ctx?: ContentScriptContext) {
         } else {
           restoreOriginalContent();
         }
-        isTranslated = isTranslating;
       },
     },
   }).then((ui) => {
@@ -88,10 +90,9 @@ export function mountFloatingBall(ctx?: ContentScriptContext) {
 export function unmountFloatingBall() {
   mountRequestId++;
   if (floatingBallUi || (floatingBallInstance && app)) {
-    if (isTranslated) {
+    if (isFullPageTranslationActive()) {
       document.dispatchEvent(new CustomEvent('fluentread-translation-ended'));
       restoreOriginalContent();
-      isTranslated = false;
     }
     floatingBallUi?.remove();
     floatingBallUi = null;

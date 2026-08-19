@@ -60,6 +60,9 @@ importers:
       fake-indexeddb:
         specifier: ^6.0.0
         version: 6.2.5
+      linkedom:
+        specifier: 0.18.12
+        version: 0.18.12
       typescript:
         specifier: ^5.7.3
         version: 5.7.3

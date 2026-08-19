@@ -1,4 +1,9 @@
-import { handleTranslation, autoTranslateEnglishPage, restoreOriginalContent } from "./main/trans";
+import {
+    handleTranslation,
+    autoTranslateEnglishPage,
+    isFullPageTranslationActive,
+    restoreOriginalContent,
+} from "./main/trans";
 import { constants } from "@/entrypoints/utils/constant";
 import { getCenterPoint } from "@/entrypoints/utils/common";
 import pageStyles from './style.css?inline';
@@ -20,6 +25,7 @@ import {
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import { createShadowRootUi, type ShadowRootContentScriptUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { mountVideoSubtitleTranslation } from './main/videoSubtitle';
+import {resetPageTranslationContextCache} from '@/entrypoints/utils/pageContext';
 
 let contentScriptContext: ContentScriptContext | null = null;
 let inputTooltipUi: ShadowRootContentScriptUi<HTMLElement> | null = null;
@@ -132,15 +138,20 @@ export default defineContentScript({
         await configReady; // 等待配置加载完成
 
         const pageEventController = new AbortController();
+        document.addEventListener('fluentread-route-change', resetPageTranslationContextCache, {
+            signal: pageEventController.signal,
+        });
         let runtimeMessageListener: ((message: unknown, sender: unknown, sendResponse: (response?: unknown) => void) => boolean) | null = null;
         let cleanedUp = false;
         const cleanup = () => {
             if (cleanedUp) return;
             cleanedUp = true;
             pageEventController.abort();
+            document.dispatchEvent(new CustomEvent('fluentread-shadow-bridge-dispose'));
             if (runtimeMessageListener) {
                 browser.runtime.onMessage.removeListener(runtimeMessageListener);
             }
+            restoreOriginalContent();
             cancelAllTranslations();
             unmountFloatingBall();
             unmountSelectionTranslator();
@@ -164,48 +175,42 @@ export default defineContentScript({
             sendResponse: (response?: unknown) => void,
         ) => handleRuntimeMessage(message, ctx, sendResponse);
         browser.runtime.onMessage.addListener(runtimeMessageListener);
-        // 保留播放器内的 Beta 状态入口，即使网页翻译总开关被关闭，用户仍能看到并管理视频字幕状态。
-        if (config.on === false) return; // 其他网页翻译能力遵循总开关
-        // 添加手动翻译事件监听器
+        // 监听器始终注册并在触发时读取实时配置。这样扩展在当前页面由关闭
+        // 切换为开启后，无需刷新页面就能恢复 Control/Alt+T。
         setupManualTranslationTriggers(pageEventController.signal);
-        // 添加悬浮球快捷键事件监听器
         setupFloatingBallHotkey(pageEventController.signal);
-        // 当悬浮球关闭时，仍然允许使用快捷键进行全文翻译的独立开关
-        let isFullPageTranslating = false;
         document.addEventListener('fluentread-toggle-translation', () => {
             // 仅在悬浮球被禁用（未挂载）时由内容脚本接管快捷键
-            if (config.disableFloatingBall === true) {
-                isFullPageTranslating = !isFullPageTranslating;
-                if (isFullPageTranslating) {
-                    autoTranslateEnglishPage();
-                } else {
-                    restoreOriginalContent();
-                }
+            if (config.on === false || config.disableFloatingBall !== true) return;
+            if (isFullPageTranslationActive()) {
+                restoreOriginalContent();
+            } else {
+                autoTranslateEnglishPage();
             }
         }, { signal: pageEventController.signal });
         // 添加自动翻译事件监听器
-        if (config.autoTranslate) autoTranslateEnglishPage();
+        if (config.on && config.autoTranslate) autoTranslateEnglishPage();
 
         // 挂载悬浮球（如果配置未禁用）
-        if (config.disableFloatingBall !== true) {
+        if (config.on && config.disableFloatingBall !== true) {
             // 使用配置中的位置
             await mountFloatingBall(ctx);
             if (cleanedUp) return;
         }
         
         // 挂载划词翻译组件（如果配置未禁用）
-        if (config.disableSelectionTranslator !== true) {
+        if (config.on && config.disableSelectionTranslator !== true) {
             await mountSelectionTranslator(ctx);
             if (cleanedUp) return;
         }
-        if (config.selectionAreaEnabled === true) {
+        if (config.on && config.selectionAreaEnabled === true) {
             await mountAreaTranslator(ctx);
             if (cleanedUp) return;
         }
         
         mountNewApiComponent();
         // 图片翻译使用独立覆盖层，不改写宿主页面的 img 元素；点击入口由事件委托处理动态图片。
-        if (config.disableImageTranslator !== true) mountImageTranslator();
+        if (config.on && config.disableImageTranslator !== true) mountImageTranslator();
 
     }
 })
@@ -323,10 +328,14 @@ function setupManualTranslationTriggers(signal: AbortSignal) {
         if (checkMouseHotkey()) {
             screen.hotkeyPressed = true;
             screen.otherKeyPressed = false;
+            if (config.on) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
         } else if (screen.hotkeyPressed) {
             screen.otherKeyPressed = true;
         }
-    }, { signal });
+    }, { signal, capture: true });
 
     // 3. 抬起按键时
     window.addEventListener('keyup', event => {
@@ -374,6 +383,8 @@ function setupManualTranslationTriggers(signal: AbortSignal) {
         if (screen.hotkeyPressed && mouseHotkeysPressed.size === 0 && !screen.otherKeyPressed && !screen.hasSlideTranslation) {
             // 检查插件是否开启
             if (config.on) {
+                event.preventDefault();
+                event.stopPropagation();
                 handleTranslation(screen.mouseX, screen.mouseY);
             }
         }
@@ -384,7 +395,7 @@ function setupManualTranslationTriggers(signal: AbortSignal) {
             screen.otherKeyPressed = false;
             screen.hasSlideTranslation = false;
         }
-    }, { signal });
+    }, { signal, capture: true });
 
     // 4. 鼠标移动时更新位置，并根据 hotkeyPressed 决定是否触发翻译
     document.body.addEventListener('mousemove', event => {
@@ -417,7 +428,7 @@ function setupManualTranslationTriggers(signal: AbortSignal) {
         if (config.on) {
             handleTranslation(coordinate!.x, coordinate!.y);
         }
-    }, { signal });
+    }, { signal, capture: true });
 
     // 6、双击鼠标翻译事件
     document.body.addEventListener('dblclick', event => {
@@ -500,9 +511,6 @@ function setupManualTranslationTriggers(signal: AbortSignal) {
 
 // 设置全文翻译快捷键（与悬浮球解耦）
 function setupFloatingBallHotkey(signal: AbortSignal) {
-    // 如果快捷键设置为 "none"，则禁用快捷键
-    if (config.floatingBallHotkey === 'none') return;
-
     // 添加全局键盘事件监听
     let hotkeysPressed = new Set<string>();
     
@@ -624,7 +632,7 @@ function setupFloatingBallHotkey(signal: AbortSignal) {
                 console.log(`[FluentRead] 触发悬浮球翻译，快捷键: ${activeHotkey}`);
             }
         }
-    }, { signal });
+    }, { signal, capture: true });
     
     // 监听按键释放事件
     document.addEventListener('keyup', (event) => {
@@ -667,7 +675,7 @@ function setupFloatingBallHotkey(signal: AbortSignal) {
         if (!event.ctrlKey) hotkeysPressed.delete('control');
         if (!event.metaKey) hotkeysPressed.delete('control');
         if (!event.shiftKey) hotkeysPressed.delete('shift');
-    }, { signal });
+    }, { signal, capture: true });
     
     // 页面失焦或切换标签页时，清除所有按键状态
     window.addEventListener('blur', () => {

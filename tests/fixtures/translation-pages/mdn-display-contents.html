@@ -1,0 +1,42 @@
+<!doctype html>
+<!-- Synthetic MDN-like document. Test copy is original and intentionally short. -->
+<html lang="en">
+<head><title>Display contents fixture</title></head>
+<body>
+    <header class="top-navigation">
+        <nav aria-label="Primary">
+            <p data-testid="mdn-navigation-copy">References and guides</p>
+        </nav>
+    </header>
+
+    <main data-testid="mdn-main" style="display: contents">
+        <article>
+            <header class="document-page-header">
+                <h1 data-testid="mdn-title"><a href="/docs/Web/API/Example">Example interface</a></h1>
+                <p data-testid="mdn-header-metadata">Updated documentation metadata</p>
+            </header>
+
+            <section data-testid="mdn-semantic-section" style="display: contents">
+                <h2 data-testid="syntax-heading">Syntax overview</h2>
+                <p data-testid="syntax-copy">
+                    Read the <a data-testid="syntax-link" href="/docs/guide">complete guide</a> before using this interface.
+                </p>
+                <p data-testid="protected-inline-copy">
+                    Call <code data-testid="inline-code">example.connect()</code> with
+                    <span data-testid="inline-notranslate" translate="no">API_TOKEN</span> after setup.
+                </p>
+                <pre data-testid="standalone-code"><code>const connected = true;</code></pre>
+            </section>
+
+            <section>
+                <h2 data-testid="notes-heading">Notes</h2>
+                <p data-testid="notes-copy">A semantic section remains readable even when its layout box is transparent.</p>
+            </section>
+        </article>
+
+        <aside>
+            <p data-testid="mdn-aside-copy">Related topics and page tools</p>
+        </aside>
+    </main>
+</body>
+</html>

@@ -1,7 +1,402 @@
 {
-  "x-status": {
-    "url": "https://x.com/elonmusk/status/2088484972965298489",
-    "selector": "article div[dir=\"auto\"]",
+  "bambu-dual-nozzles": {
+    "url": "https://wiki.bambulab.com/en/software/bambu-studio/manual/dual-nozzles-slicing-filament-grouping",
+    "hoverSelector": ".contents p",
+    "requiredSelectors": [".contents h2", ".contents p", ".contents li"],
+    "coverageRules": [
+      {"name": "section-headings", "selector": ".contents h2", "kind": "heading", "minInitial": 1},
+      {"name": "instructions", "selector": ".contents p", "kind": "content", "minInitial": 3},
+      {"name": "instruction-lists", "selector": ".contents li", "kind": "list", "minInitial": 2}
+    ],
+    "forbiddenSelectors": ["header svg"],
+    "interactionSelectors": [".contents a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "github-fluentread-pr": {
+    "url": "https://github.com/FluentRead/FluentRead/pull/292",
+    "hoverSelector": "main h1",
+    "requiredSelectors": ["main h1"],
+    "coverageRules": [
+      {"name": "pull-request-title", "selector": "main h1", "kind": "heading", "minInitial": 1, "trackDynamic": true}
+    ],
+    "forbiddenSelectors": ["main svg.octicon"],
+    "interactionSelectors": ["main a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "github-microsoft-repositories": {
+    "url": "https://github.com/orgs/microsoft/repositories?q=TypeScript&type=all&language=&sort=",
+    "hoverSelector": "li:has(a[href='/microsoft/TypeScript']) [itemprop='description']",
+    "requiredSelectors": ["li:has(a[href='/microsoft/TypeScript']) [itemprop='description']"],
+    "coverageRules": [
+      {"name": "typescript-description", "selector": "li:has(a[href='/microsoft/TypeScript']) [itemprop='description']", "kind": "content", "minInitial": 1, "trackDynamic": true, "sourceIncludes": ["TypeScript"]}
+    ],
+    "forbiddenSelectors": ["main svg.octicon"],
+    "interactionSelectors": ["main a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "github-immersive-pulls": {
+    "url": "https://github.com/immersive-translate/immersive-translate/pulls",
+    "hoverSelector": ".markdown-title",
+    "requiredSelectors": [".markdown-title"],
+    "coverageRules": [
+      {"name": "pull-request-list-titles", "selector": ".markdown-title", "kind": "content", "minInitial": 2, "trackDynamic": true}
+    ],
+    "forbiddenSelectors": ["button[aria-haspopup='dialog'][aria-label*='search' i]"],
+    "interactionSelectors": ["main a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "notes": "Issue #293 的核心回归页：PR 列表标题必须由 hover/full 同一候选规则覆盖。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "github-immersive-pr-4038": {
+    "url": "https://github.com/immersive-translate/immersive-translate/pull/4038",
+    "hoverSelector": "main h1",
+    "hoverTargets": [
+      {"name": "pr-title-h1", "selector": "main h1"},
+      {"name": "body-heading-h2", "selector": ".markdown-body h2"},
+      {"name": "body-paragraph", "selector": ".markdown-body p"},
+      {"name": "body-list-item", "selector": ".markdown-body li"}
+    ],
+    "requiredSelectors": ["main h1", ".markdown-body h2", ".markdown-body p", ".markdown-body li"],
+    "coverageRules": [
+      {
+        "name": "pull-request-title",
+        "selector": "main h1",
+        "kind": "heading",
+        "minInitial": 1,
+        "trackDynamic": true,
+        "sourceIncludes": ["fix(github): preserve quick search during translation"]
+      },
+      {
+        "name": "body-headings",
+        "selector": ".markdown-body h2",
+        "kind": "heading",
+        "minInitial": 3,
+        "trackDynamic": true,
+        "sourceIncludes": ["What changed", "Why", "Validation"]
+      },
+      {
+        "name": "body-paragraphs",
+        "selector": ".markdown-body p",
+        "kind": "content",
+        "minInitial": 2,
+        "trackDynamic": true,
+        "sourceIncludes": ["GitHub mounts its global search UI dynamically"]
+      },
+      {
+        "name": "body-list-items",
+        "selector": ".markdown-body li",
+        "kind": "list",
+        "minInitial": 7,
+        "trackDynamic": true,
+        "sourceIncludes": ["Exclude GitHub's global search trigger"]
+      }
+    ],
+    "forbiddenSelectors": ["button[aria-haspopup='dialog'][aria-label*='search' i]"],
+    "forbiddenMustExistSelectors": ["button[aria-haspopup='dialog'][aria-label*='search' i]"],
+    "interactionSelectors": ["main a[href]"],
+    "interactionScenarios": [
+      {
+        "name": "github-quick-search-dialog",
+        "triggerSelector": "button[aria-haspopup='dialog'][aria-label*='search' i]",
+        "openKey": "click",
+        "dialogSelector": "[role='dialog'][aria-modal='true']",
+        "comboboxSelector": "[role='combobox']",
+        "listboxSelector": "[role='listbox']",
+        "inputText": "issues",
+        "closeKey": "Escape",
+        "closeAttempts": 2
+      }
+    ],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "notes": "用户截图中的主回归页：H1、正文分节、段落和列表必须分别达到 100% 覆盖；旧的 7-wrapper 单点基线必须失败。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "hacker-news-8863": {
+    "url": "https://news.ycombinator.com/item?id=8863",
+    "hoverSelector": ".comment > .commtext",
+    "requiredSelectors": [".titleline > a", ".comment > .commtext"],
+    "coverageRules": [
+      {"name": "story-title", "selector": ".titleline > a", "kind": "content", "minInitial": 1},
+      {"name": "discussion-comments", "selector": ".comment > .commtext", "kind": "content", "minInitial": 5}
+    ],
+    "forbiddenSelectors": ["img[src*=y18]"],
+    "interactionSelectors": [".titleline > a"],
+    "modes": ["hover", "full"],
+    "tier": "quarantine",
+    "quarantineReason": "Hacker News 在当前隔离自动化网络中稳定只返回 Sorry.，无法取得评论正文。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "darklyrics-gris": {
+    "url": "https://www.darklyrics.com/lyrics/gris/iltaitunefort.html#2",
+    "hoverSelector": ".lyrics",
+    "requiredSelectors": [".lyrics"],
+    "coverageRules": [
+      {"name": "lyrics-body", "selector": ".lyrics", "kind": "content", "minInitial": 1}
+    ],
+    "forbiddenSelectors": ["head meta[name=viewport]"],
+    "interactionSelectors": ["a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "quarantine",
+    "quarantineReason": "该站点在当前验证网络中持续 ERR_CONNECTION_CLOSED；保留为联网环境观察样本。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "learnopengl-coordinate-systems": {
+    "url": "https://learnopengl.com/Getting-started/Coordinate-Systems",
+    "hoverSelector": "#content p",
+    "requiredSelectors": ["#content h1", "#content h2", "#content p"],
+    "coverageRules": [
+      {"name": "page-title", "selector": "#content h1", "kind": "heading", "minInitial": 1},
+      {"name": "section-headings", "selector": "#content h2", "kind": "heading", "minInitial": 2},
+      {"name": "guide-paragraphs", "selector": "#content p", "kind": "content", "minInitial": 5}
+    ],
+    "forbiddenSelectors": ["#content pre, #content code", ".MathJax_Display", "script[type^='math/tex']", "#nav"],
+    "optionalForbiddenSelectors": [".MathJax_Display"],
+    "dynamicForbiddenSelectors": [".MathJax_Display"],
+    "mutableForbiddenSelectors": [".MathJax_Display"],
+    "interactionSelectors": ["#content a[href], #nav a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "qt-qobject-threads": {
+    "url": "https://doc.qt.io/qt-5/threads-qobject.html",
+    "hoverSelector": "article p:not(.naviNextPrevious):not(:empty)",
+    "requiredSelectors": ["article p:not(.naviNextPrevious):not(:empty)"],
+    "coverageRules": [
+      {"name": "page-title", "selector": "article h1", "kind": "heading", "minInitial": 1},
+      {"name": "documentation-paragraphs", "selector": "article p:not(.naviNextPrevious):not(:empty)", "kind": "content", "minInitial": 5}
+    ],
+    "forbiddenSelectors": ["article pre, article code"],
+    "interactionSelectors": ["article a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "wikipedia-united-states": {
+    "url": "https://en.wikipedia.org/wiki/United_States",
+    "hoverSelector": "#mw-content-text p:not(.mw-empty-elt):not(:empty)",
+    "requiredSelectors": ["#mw-content-text p:not(.mw-empty-elt):not(:empty)"],
+    "coverageRules": [
+      {"name": "article-title", "selector": "h1#firstHeading", "kind": "heading", "minInitial": 1},
+      {"name": "article-paragraphs", "selector": "#mw-content-text p:not(.mw-empty-elt):not(:empty)", "kind": "content", "minInitial": 8}
+    ],
+    "forbiddenSelectors": ["input[name=search]"],
+    "interactionSelectors": ["#mw-content-text a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "mkdocs-material-home": {
+    "url": "https://squidfunk.github.io/mkdocs-material/",
+    "hoverSelector": ".md-content__inner p",
+    "requiredSelectors": [".md-content__inner h1", ".md-content__inner h2", ".md-content__inner p"],
+    "coverageRules": [
+      {"name": "page-title", "selector": ".md-content__inner h1", "kind": "heading", "minInitial": 1},
+      {"name": "section-headings", "selector": ".md-content__inner h2", "kind": "heading", "minInitial": 2},
+      {"name": "page-paragraphs", "selector": ".md-content__inner p", "kind": "content", "minInitial": 3}
+    ],
+    "forbiddenSelectors": [".md-content__inner pre, .md-content__inner code"],
+    "interactionSelectors": [".md-content__inner a[href]"],
+    "scrollContainer": ".mdx-parallax",
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "brown-pl-introduction": {
+    "url": "https://cs.brown.edu/courses/cs173/2012/book/Introduction.html",
+    "hoverSelector": "body p",
+    "requiredSelectors": ["body h3", "body h4", "body p"],
+    "coverageRules": [
+      {"name": "chapter-title", "selector": "body h3", "kind": "heading", "minInitial": 1, "sourceIncludes": ["Introduction"]},
+      {"name": "section-headings", "selector": "body h4", "kind": "heading", "minInitial": 3},
+      {"name": "chapter-paragraphs", "selector": "body p", "kind": "content", "minInitial": 5}
+    ],
+    "forbiddenSelectors": ["table.RktBlk"],
+    "interactionSelectors": ["body a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "roadmap-frontend": {
+    "url": "https://roadmap.sh/frontend",
+    "hoverSelector": "main p",
+    "requiredSelectors": ["main h1", "main h2", "main p"],
+    "coverageRules": [
+      {"name": "page-title", "selector": "main h1", "kind": "heading", "minInitial": 1, "trackDynamic": true},
+      {"name": "section-headings", "selector": "main h2", "kind": "heading", "minInitial": 1, "trackDynamic": true},
+      {"name": "roadmap-paragraphs", "selector": "main p", "kind": "content", "minInitial": 3, "trackDynamic": true}
+    ],
+    "forbiddenSelectors": ["header svg"],
+    "interactionSelectors": ["main a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "steam-changelog": {
+    "url": "https://steamcommunity.com/sharedfiles/filedetails/changelog/3241130652",
+    "hoverSelector": ".detailBox p[id]",
+    "requiredSelectors": [".detailBox p[id]"],
+    "coverageRules": [
+      {"name": "changelog-entries", "selector": ".detailBox p[id]", "kind": "content", "minInitial": 2}
+    ],
+    "forbiddenSelectors": ["head meta[name=viewport]"],
+    "interactionSelectors": [".detailBox a[href], a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "reddit-chatgpt-thread": {
+    "url": "https://www.reddit.com/r/ChatGPT/comments/1m0fr3u",
+    "hoverSelector": "shreddit-post [slot=title]",
+    "requiredSelectors": [
+      "shreddit-post [slot=title]",
+      "shreddit-comment [id$='-comment-rtjson-content'] p"
+    ],
+    "coverageRules": [
+      {"name": "post-title", "selector": "shreddit-post [slot=title]", "kind": "content", "minInitial": 1, "trackDynamic": true},
+      {"name": "visible-comments", "selector": "shreddit-comment [id$='-comment-rtjson-content'] p", "kind": "content", "minInitial": 1, "minSeen": 2, "trackDynamic": true}
+    ],
+    "forbiddenSelectors": ["faceplate-timeago"],
+    "dynamicForbiddenSelectors": ["faceplate-timeago"],
+    "interactionSelectors": ["shreddit-post a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "quarantine",
+    "quarantineReason": "Reddit 在当前隔离自动化环境中返回 blocked by network security，保留为动态 Web Component 联网观察样本。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "cachyos-features": {
+    "url": "https://cachyos.org/",
+    "hoverSelector": "#features p",
+    "requiredSelectors": ["#features h2", "#features h3", "#features p"],
+    "coverageRules": [
+      {"name": "features-heading", "selector": "#features h2", "kind": "heading", "minInitial": 1, "trackDynamic": true},
+      {"name": "feature-titles", "selector": "#features h3", "kind": "heading", "minInitial": 2, "trackDynamic": true},
+      {"name": "feature-descriptions", "selector": "#features p", "kind": "content", "minInitial": 3, "trackDynamic": true}
+    ],
+    "forbiddenSelectors": ["#features svg, header svg"],
+    "interactionSelectors": ["#features a[href], main a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "rfc-4251": {
+    "url": "https://www.rfc-editor.org/rfc/rfc4251.html",
+    "hoverSelector": "pre",
+    "requiredSelectors": ["pre"],
+    "coverageRules": [
+      {"name": "formatted-rfc", "selector": "pre", "kind": "content", "minInitial": 1}
+    ],
+    "forbiddenSelectors": ["head meta"],
+    "interactionSelectors": ["a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "quarantine",
+    "quarantineReason": "格式化 PRE 需要按双换行做专用语义分段；通用核心安全策略仍默认保护 PRE。",
+    "notes": "记录 Issue #212 的格式化文本场景，待独立 formatted-text capability 后转 required。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "ubuntu-apt-manpage": {
+    "url": "https://manpages.ubuntu.com/manpages/noble/en/man8/apt.8.html",
+    "hoverSelector": "pre",
+    "requiredSelectors": ["pre"],
+    "coverageRules": [
+      {"name": "formatted-manpage", "selector": "pre", "kind": "content", "minInitial": 1}
+    ],
+    "forbiddenSelectors": ["head meta"],
+    "interactionSelectors": ["a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "quarantine",
+    "quarantineReason": "manpage 的 PRE 同时混合自然语言、命令与列布局，需要专用分段能力。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "ar5iv-2106-03753": {
+    "url": "https://ar5iv.labs.arxiv.org/html/2106.03753",
+    "hoverSelector": "#abstract1 .ltx_p",
+    "requiredSelectors": ["h1.ltx_title_document", ".ltx_abstract .ltx_p", ".ltx_para > .ltx_p"],
+    "coverageRules": [
+      {"name": "paper-title", "selector": "h1.ltx_title_document", "kind": "heading", "minInitial": 1},
+      {"name": "abstract", "selector": ".ltx_abstract .ltx_p", "kind": "content", "minInitial": 1},
+      {"name": "paper-paragraphs", "selector": ".ltx_para > .ltx_p", "kind": "content", "minInitial": 5}
+    ],
+    "forbiddenSelectors": ["math, .ltx_Math"],
+    "interactionSelectors": [".ltx_para a[href], article a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "dart-language": {
+    "url": "https://dart.dev/language",
+    "hoverSelector": "main article section.content > p",
+    "requiredSelectors": ["main article section.content > p"],
+    "coverageRules": [
+      {"name": "page-title", "selector": "main article h1", "kind": "heading", "minInitial": 1},
+      {"name": "language-overview", "selector": "main article section.content > p", "kind": "content", "minInitial": 3}
+    ],
+    "forbiddenSelectors": ["main article pre, main article code"],
+    "interactionSelectors": ["main article a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "pubdev-provider": {
+    "url": "https://pub.dev/packages/provider",
+    "hoverSelector": "p.detail-lead-text",
+    "requiredSelectors": ["p.detail-lead-text"],
+    "coverageRules": [
+      {"name": "package-summary", "selector": "p.detail-lead-text", "kind": "content", "minInitial": 1, "trackDynamic": true}
+    ],
+    "forbiddenSelectors": [".markdown-body pre, .markdown-body code"],
+    "interactionSelectors": ["main a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "quarantine",
+    "quarantineReason": "当前隔离 Edge 在 pub.dev 客户端渲染阶段发生进程级无输出退出；保留为浏览器稳定性观察样本。",
     "hoverHotkey": "Control",
     "fullPageHotkey": "Alt+T",
     "service": "freeTranslation"
@@ -9,6 +404,17 @@
   "mdn-javascript-guide": {
     "url": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Grammar_and_types",
     "selector": "main p",
+    "requiredSelectors": ["main p"],
+    "coverageRules": [
+      {"name": "guide-title", "selector": "main h1", "kind": "heading", "minInitial": 1},
+      {"name": "guide-sections", "selector": "main h2", "kind": "heading", "minInitial": 2},
+      {"name": "guide-paragraphs", "selector": "main p", "kind": "content", "minInitial": 5}
+    ],
+    "forbiddenSelectors": ["main pre, main code"],
+    "interactionSelectors": ["main a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "notes": "保留旧 selector 字段，覆盖向后兼容路径。",
     "hoverHotkey": "Control",
     "fullPageHotkey": "Alt+T",
     "service": "freeTranslation"
@@ -16,6 +422,297 @@
   "example-com": {
     "url": "https://example.com",
     "selector": "p",
+    "requiredSelectors": ["p"],
+    "coverageRules": [
+      {"name": "example-title", "selector": "main h1", "kind": "heading", "minInitial": 1, "sourceIncludes": ["Example Domain"]},
+      {"name": "example-paragraphs", "selector": "main p", "kind": "content", "minInitial": 2}
+    ],
+    "forbiddenSelectors": ["head meta[name=viewport]"],
+    "interactionSelectors": ["main a[href], body a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "notes": "保留最小静态页，并通过 selector 字段验证旧配置仍可运行。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "talkclassical-shostakovich": {
+    "url": "https://www.talkclassical.com/threads/shostakovich-string-quartets.60000/",
+    "hoverSelector": "article.message-body .bbWrapper",
+    "requiredSelectors": ["article.message-body .bbWrapper"],
+    "coverageRules": [
+      {"name": "forum-posts", "selector": "article.message-body .bbWrapper", "kind": "content", "minInitial": 2, "trackDynamic": true}
+    ],
+    "forbiddenSelectors": [".message-userDetails, .message-attribution"],
+    "interactionSelectors": ["article.message-body a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "quarantine",
+    "quarantineReason": "超长论坛线程在当前隔离 Edge 环境中发生进程级无输出退出；保留为大页面压力观察样本。",
+    "notes": "Immersive Translate Issue #212 的论坛正文误判场景。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "gnu-bash-manual": {
+    "url": "https://www.gnu.org/software/bash/manual/html_node/What-is-Bash_003f.html",
+    "hoverSelector": ".section-level-extent > p",
+    "requiredSelectors": [".section-level-extent > p"],
+    "coverageRules": [
+      {"name": "manual-paragraphs", "selector": ".section-level-extent > p", "kind": "content", "minInitial": 2}
+    ],
+    "forbiddenSelectors": [".nav-panel"],
+    "interactionSelectors": [".section-level-extent a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "python-tutorial-introduction": {
+    "url": "https://docs.python.org/3/tutorial/introduction.html",
+    "hoverSelector": "#an-informal-introduction-to-python > p",
+    "requiredSelectors": ["#an-informal-introduction-to-python > p", "#numbers > p", "#text > p"],
+    "coverageRules": [
+      {"name": "chapter-title", "selector": "#an-informal-introduction-to-python > h1", "kind": "heading", "minInitial": 1},
+      {"name": "introduction-paragraphs", "selector": "#an-informal-introduction-to-python > p", "kind": "content", "minInitial": 2},
+      {"name": "numbers-paragraphs", "selector": "#numbers > p", "kind": "content", "minInitial": 2},
+      {"name": "text-paragraphs", "selector": "#text > p", "kind": "content", "minInitial": 2}
+    ],
+    "forbiddenSelectors": ["pre, code.notranslate"],
+    "interactionSelectors": ["#an-informal-introduction-to-python a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "notes": "验证正文中的 inline notranslate/code 保持原样且父段仍可翻译。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "go-tutorial-getting-started": {
+    "url": "https://go.dev/doc/tutorial/getting-started",
+    "hoverSelector": "#main-content p",
+    "requiredSelectors": ["#main-content h1", "#main-content p", "#main-content li"],
+    "coverageRules": [
+      {"name": "tutorial-title", "selector": "#main-content h1", "kind": "heading", "minInitial": 1},
+      {"name": "tutorial-paragraphs", "selector": "#main-content p", "kind": "content", "minInitial": 3},
+      {"name": "tutorial-steps", "selector": "#main-content li", "kind": "list", "minInitial": 2}
+    ],
+    "forbiddenSelectors": ["#main-content pre, #main-content code"],
+    "interactionSelectors": ["#main-content a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "notes": "Go 官方教程；验证带代码与命令示例的文档正文。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "rust-book-getting-started": {
+    "url": "https://doc.rust-lang.org/book/ch01-00-getting-started.html",
+    "hoverSelector": "#mdbook-content main p",
+    "requiredSelectors": ["#mdbook-content main h1", "#mdbook-content main p", "#mdbook-content main li"],
+    "coverageRules": [
+      {"name": "chapter-title", "selector": "#mdbook-content main h1", "kind": "heading", "minInitial": 1},
+      {"name": "chapter-paragraphs", "selector": "#mdbook-content main p", "kind": "content", "minInitial": 1, "sourceIncludes": ["Let’s start your Rust journey"]},
+      {"name": "chapter-list-items", "selector": "#mdbook-content main li", "kind": "list", "minInitial": 1}
+    ],
+    "forbiddenSelectors": ["#mdbook-content pre, #mdbook-content code"],
+    "interactionSelectors": ["#mdbook-content main a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "notes": "Rust 官方 mdBook；验证 inline code 保真与正文列表。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "steam-workshop-discussion-3246316298": {
+    "url": "https://steamcommunity.com/workshop/filedetails/discussion/3246316298/4334231305373971730/",
+    "hoverSelector": ".forum_op .content",
+    "requiredSelectors": [".forum_op .content", ".commentthread_comment_text"],
+    "coverageRules": [
+      {"name": "original-post", "selector": ".forum_op .content", "kind": "content", "minInitial": 1},
+      {"name": "discussion-replies", "selector": ".commentthread_comment_text", "kind": "content", "minInitial": 1, "trackDynamic": true}
+    ],
+    "forbiddenSelectors": ["head meta[name=viewport]"],
+    "interactionSelectors": ["a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "quarantine",
+    "quarantineReason": "FluentRead Issue #49 的原始 Steam 讨论已被删除，站点只返回 item does not exist，保留为历史来源回归。",
+    "notes": "FluentRead Issue #49 的真实英文论坛样本，覆盖原帖、动态回复和长论坛 DOM。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "swift-basic-operators": {
+    "url": "https://docs.swift.org/swift-book/documentation/the-swift-programming-language/basicoperators/",
+    "hoverSelector": "main p",
+    "requiredSelectors": ["main h1", "main h2", "main p", "main li"],
+    "coverageRules": [
+      {"name": "chapter-title", "selector": "main h1", "kind": "heading", "minInitial": 1, "sourceIncludes": ["Basic Operators"]},
+      {"name": "section-headings", "selector": "main h2", "kind": "heading", "minInitial": 2},
+      {"name": "chapter-paragraphs", "selector": "main p", "kind": "content", "minInitial": 5},
+      {"name": "chapter-list-items", "selector": "main li", "kind": "list", "minInitial": 2}
+    ],
+    "forbiddenSelectors": ["main pre, main code"],
+    "interactionSelectors": ["main a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "notes": "FluentRead Issue #42 的 Swift DocC 页面，标题、正文、列表必须翻译，inline code 必须保真。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "w3c-accessibility-introduction": {
+    "url": "https://www.w3.org/WAI/fundamentals/accessibility-intro/",
+    "hoverSelector": "main p",
+    "requiredSelectors": ["main h1", "main h2", "main p"],
+    "coverageRules": [
+      {"name": "page-title", "selector": "main h1", "kind": "heading", "minInitial": 1},
+      {"name": "section-headings", "selector": "main h2", "kind": "heading", "minInitial": 2},
+      {"name": "article-paragraphs", "selector": "main p", "kind": "content", "minInitial": 5}
+    ],
+    "forbiddenSelectors": ["main code, main svg"],
+    "interactionSelectors": ["main a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "quarantine",
+    "quarantineReason": "W3C 当前对隔离自动化浏览器返回 Cloudflare security interstitial，无法稳定取得正文。",
+    "notes": "W3C 长文档样本；站点解除自动化挑战后重新转回 required。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "postgresql-tutorial": {
+    "url": "https://www.postgresql.org/docs/current/tutorial-sql-intro.html",
+    "hoverSelector": "#docContent p",
+    "requiredSelectors": ["#docContent h2.title", "#docContent p"],
+    "coverageRules": [
+      {"name": "tutorial-title", "selector": "#docContent h2.title", "kind": "heading", "minInitial": 1, "sourceIncludes": ["Introduction"]},
+      {"name": "tutorial-paragraphs", "selector": "#docContent p", "kind": "content", "minInitial": 5}
+    ],
+    "forbiddenSelectors": ["#docContent pre, #docContent code"],
+    "interactionSelectors": ["#docContent a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "notes": "PostgreSQL 官方静态文档，用于验证标题、导航链接和代码混排正文。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "nginx-beginners-guide": {
+    "url": "https://nginx.org/en/docs/beginners_guide.html",
+    "hoverSelector": "#content p",
+    "requiredSelectors": ["#content h2", "#content h4", "#content p"],
+    "coverageRules": [
+      {"name": "guide-title", "selector": "#content h2", "kind": "heading", "minInitial": 1, "sourceIncludes": ["Beginner’s Guide"]},
+      {"name": "guide-sections", "selector": "#content h4", "kind": "heading", "minInitial": 5},
+      {"name": "guide-paragraphs", "selector": "#content p", "kind": "content", "minInitial": 20}
+    ],
+    "forbiddenSelectors": ["#content pre, #content code"],
+    "interactionSelectors": ["#content a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "notes": "NGINX 官方静态教程；覆盖大量代码混排正文、章节标题和恢复。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "curl-http-scripting": {
+    "url": "https://curl.se/docs/httpscripting.html",
+    "hoverSelector": ".contents p",
+    "requiredSelectors": [".contents h1", ".contents h2", ".contents p"],
+    "coverageRules": [
+      {"name": "document-titles", "selector": ".contents h1", "kind": "heading", "minInitial": 8, "sourceIncludes": ["The Art Of Scripting HTTP Requests Using curl"]},
+      {"name": "section-headings", "selector": ".contents h2", "kind": "heading", "minInitial": 20},
+      {"name": "document-paragraphs", "selector": ".contents p", "kind": "content", "minInitial": 60}
+    ],
+    "forbiddenSelectors": [".contents pre, .contents code"],
+    "interactionSelectors": [".contents a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "notes": "curl 官方长篇静态文档；覆盖多级标题、长正文、inline code 与大量 pre。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "sqlite-select-language": {
+    "url": "https://www.sqlite.org/lang_select.html",
+    "hoverSelector": ".fancy > p:not(:has(> b:first-child > a[href^='syntax/']))",
+    "requiredSelectors": [".fancy > h1", ".fancy > h2", ".fancy > p:not(:has(> b:first-child > a[href^='syntax/']))"],
+    "coverageRules": [
+      {"name": "major-sections", "selector": ".fancy > h1", "kind": "heading", "minInitial": 8, "sourceIncludes": ["Overview"]},
+      {"name": "subsections", "selector": ".fancy > h2", "kind": "heading", "minInitial": 8},
+      {"name": "reference-paragraphs", "selector": ".fancy > p:not(:has(> b:first-child > a[href^='syntax/']))", "kind": "content", "minInitial": 30, "sourceIncludes": ["The SELECT statement is used to query the database."]}
+    ],
+    "forbiddenSelectors": [".fancy svg, .fancy pre"],
+    "interactionSelectors": [".fancy a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "notes": "SQLite 官方 SQL 参考；覆盖超大 SVG 语法图旁的正文和多级章节，SVG 必须完全跳过。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "git-book-version-control": {
+    "url": "https://git-scm.com/book/en/v2/Getting-Started-About-Version-Control",
+    "hoverSelector": "#main p",
+    "requiredSelectors": ["#main h1", "#main h2", "#main h3", "#main p"],
+    "coverageRules": [
+      {"name": "chapter-title", "selector": "#main h1", "kind": "heading", "minInitial": 1, "sourceIncludes": ["About Version Control"]},
+      {"name": "section-heading", "selector": "#main h2", "kind": "heading", "minInitial": 1},
+      {"name": "subsection-headings", "selector": "#main h3", "kind": "heading", "minInitial": 3},
+      {"name": "chapter-paragraphs", "selector": "#main p", "kind": "content", "minInitial": 8}
+    ],
+    "forbiddenSelectors": ["#main pre, #main code"],
+    "interactionSelectors": ["#main a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "required",
+    "notes": "Pro Git 官方静态章节；覆盖层级标题、长段落和图片说明周围的正文。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "appinn-home-layout": {
+    "url": "https://www.appinn.com/",
+    "hoverSelector": "main article h2",
+    "requiredSelectors": ["main article h2"],
+    "coverageRules": [
+      {"name": "article-headings", "selector": "main article h2", "kind": "heading", "minInitial": 2, "trackDynamic": true}
+    ],
+    "forbiddenSelectors": ["header svg"],
+    "interactionSelectors": ["main article a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "quarantine",
+    "quarantineReason": "FluentRead Issue #121 是中文目标语言下的布局不变性负例；现有 runner 以必须生成中文译文为通过条件，需后续独立 no-op/layout 模式后转 required。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "science-direct-article": {
+    "url": "https://www.sciencedirect.com/science/article/pii/S1569843225001013",
+    "hoverSelector": "main p, article p",
+    "requiredSelectors": ["main p, article p"],
+    "coverageRules": [
+      {"name": "article-paragraphs", "selector": "article p", "kind": "content", "minInitial": 2, "trackDynamic": true}
+    ],
+    "forbiddenSelectors": ["main svg, article svg, head meta[name=viewport]"],
+    "interactionSelectors": ["main a[href], article a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "quarantine",
+    "quarantineReason": "站点可能返回机构登录墙、人机验证或区域化内容。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation"
+  },
+  "kaggle-booleans": {
+    "url": "https://www.kaggle.com/code/colinmorris/booleans-and-conditionals",
+    "hoverSelector": "main p, article p",
+    "requiredSelectors": ["main p, article p"],
+    "coverageRules": [
+      {"name": "notebook-paragraphs", "selector": "main p", "kind": "content", "minInitial": 2, "trackDynamic": true}
+    ],
+    "forbiddenSelectors": ["main pre, main code, head meta[name=viewport]"],
+    "interactionSelectors": ["main a[href], article a[href]"],
+    "modes": ["hover", "full"],
+    "tier": "quarantine",
+    "quarantineReason": "Notebook 内容依赖客户端渲染，并可能要求登录或触发机器人验证。",
     "hoverHotkey": "Control",
     "fullPageHotkey": "Alt+T",
     "service": "freeTranslation"
