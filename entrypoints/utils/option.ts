@@ -185,6 +185,20 @@ export const servicesType = {
 
 export const customModelString = "自定义模型";
 
+export const minimaxBillingPlans = [
+    {value: "payg", label: "按量付费（API）"},
+    {value: "token-plan", label: "Token Plan（套餐/积分）"},
+] as const;
+
+export type MiniMaxBillingPlan = typeof minimaxBillingPlans[number]["value"];
+
+export const minimaxRegions = [
+    {value: "cn", label: "中国版（api.minimaxi.com）"},
+    {value: "global", label: "全球版（api.minimax.io）"},
+] as const;
+
+export type MiniMaxRegion = typeof minimaxRegions[number]["value"];
+
 /** Resolve the model that is actually sent to a provider. */
 export function resolveConfiguredModel(selectedModel?: string, customModel?: string): string {
     return selectedModel === customModelString ? customModel || '' : selectedModel || '';
@@ -192,7 +206,7 @@ export function resolveConfiguredModel(selectedModel?: string, customModel?: str
 
 // 当前官方模型编号的单一来源，同时供列表和旧配置迁移使用。
 export const currentModelIds = {
-    openai: "gpt-5.6-sol",
+    openai: "gpt-5.6-luna",
     zhipu: "glm-5.3",
     zhipuFlash: "glm-4.5-flash",
     tongyiTokenPlan: "qwen3.8-max-preview",
@@ -215,33 +229,61 @@ export const currentModelIds = {
     infiniGeneral: "qwen3.6-27b",
 } as const;
 
+// 各 AI 服务的开箱默认模型优先选择近期、低延迟或低成本档位。
+// currentModelIds 仍作为官方编号与旧配置迁移的单一来源；用户仍可在模型列表中主动选择更大的模型。
+export const defaultModelIds = {
+    [services.openai]: currentModelIds.openai,
+    [services.azureOpenai]: currentModelIds.openai,
+    [services.gemini]: "gemini-3.6-flash",
+    [services.yiyan]: currentModelIds.yiyanFast,
+    [services.tongyi]: "qwen3.6-flash",
+    [services.zhipu]: currentModelIds.zhipuFlash,
+    [services.moonshot]: currentModelIds.moonshotCompatible,
+    [services.claude]: currentModelIds.claudeHaiku,
+    [services.custom]: currentModelIds.openai,
+    [services.infini]: currentModelIds.deepseek,
+    [services.baichuan]: "Baichuan-M3",
+    [services.lingyi]: "yi-lightning",
+    [services.deepseek]: currentModelIds.deepseek,
+    [services.minimax]: "MiniMax-M2.7-highspeed",
+    [services.jieyue]: currentModelIds.jieyue,
+    [services.huanYuan]: currentModelIds.huanYuan,
+    [services.huanYuanTranslation]: "hunyuan-translation-lite",
+    [services.newapi]: currentModelIds.openai,
+    [services.grok]: "grok-4.3",
+    [services.doubao]: "doubao-seed-1-6-250615",
+    [services.siliconCloud]: "deepseek-ai/DeepSeek-V4-Flash",
+    [services.groq]: currentModelIds.groqSmall,
+    [services.openrouter]: "google/gemini-3.6-flash",
+} as const;
+
 export const models = new Map<string, Array<string>>([
-    [services.openai, [currentModelIds.openai, "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5-mini", "gpt-5-nano", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", customModelString]],
-    [services.azureOpenai, [currentModelIds.openai, "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5", "gpt-5.4-mini", "gpt-5.4-nano", "gpt-5-mini", "gpt-5-nano", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", customModelString]],
-    [services.gemini, ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro", customModelString]],
-    [services.yiyan, [currentModelIds.yiyan, "ernie-5.0-thinking-preview", "ernie-x1.1-preview", "ernie-4.5-turbo-128k", "ernie-4.5-21b-a3b", currentModelIds.yiyanFast, customModelString]],
-    [services.tongyi, [currentModelIds.tongyiTokenPlan, "qwen3.7-max", "qwen3.7-plus", "qwen3.6-flash", "qwen-mt-plus", "qwen-mt-turbo", "qwen-mt-flash", "qwen-mt-lite", "qwen-long-latest", customModelString]],
-    [services.zhipu, [currentModelIds.zhipu, "glm-5.2", "glm-5.1", "glm-5-turbo", "glm-5", "glm-4.7", currentModelIds.zhipuFlash, customModelString]],
-    [services.moonshot, [currentModelIds.moonshot, "kimi-k2.7-code-highspeed", "kimi-k2.7-code", currentModelIds.moonshotCompatible, "kimi-k2.5", customModelString]],
-    [services.claude, [currentModelIds.claude, currentModelIds.claudeOpus, currentModelIds.claudeSonnet, currentModelIds.claudeHaiku, "claude-opus-4-8", "claude-sonnet-4-6", customModelString]],
-    [services.custom, [currentModelIds.openai, "gpt-5.4-mini", "gemini-3.6-flash", currentModelIds.claude, currentModelIds.deepseek, "gemma:7b", "llama2:7b", "mistral:7b", customModelString]],
-    [services.infini, [currentModelIds.deepseek, "deepseek-v4-pro", currentModelIds.infiniZhipu, "kimi-k2.7-code", currentModelIds.infiniGeneral, "qwen3.6-35b-a3b", customModelString]],
-    [services.baichuan, ["Baichuan-M3-Plus", "Baichuan-M3", "Baichuan4-Air", "Baichuan4-Turbo", "Baichuan4", customModelString]],
-    [services.lingyi, ["yi-lightning", customModelString]],
+    [services.openai, [currentModelIds.openai, "gpt-5.4-mini", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.5", "gpt-5.4-nano", "gpt-5-mini", "gpt-5-nano", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", customModelString]],
+    [services.azureOpenai, [currentModelIds.openai, "gpt-5.4-mini", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.5", "gpt-5.4-nano", "gpt-5-mini", "gpt-5-nano", "gpt-4.1", "gpt-4.1-mini", "gpt-4.1-nano", customModelString]],
+    [services.gemini, [defaultModelIds[services.gemini], "gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro", customModelString]],
+    [services.yiyan, [defaultModelIds[services.yiyan], currentModelIds.yiyan, "ernie-5.0-thinking-preview", "ernie-x1.1-preview", "ernie-4.5-turbo-128k", "ernie-4.5-21b-a3b", customModelString]],
+    [services.tongyi, [defaultModelIds[services.tongyi], currentModelIds.tongyiTokenPlan, "qwen3.7-max", "qwen3.7-plus", "qwen-mt-plus", "qwen-mt-turbo", "qwen-mt-flash", "qwen-mt-lite", "qwen-long-latest", customModelString]],
+    [services.zhipu, [defaultModelIds[services.zhipu], currentModelIds.zhipu, "glm-5.2", "glm-5.1", "glm-5-turbo", "glm-5", "glm-4.7", customModelString]],
+    [services.moonshot, [defaultModelIds[services.moonshot], currentModelIds.moonshot, "kimi-k2.7-code-highspeed", "kimi-k2.7-code", "kimi-k2.5", customModelString]],
+    [services.claude, [defaultModelIds[services.claude], currentModelIds.claude, currentModelIds.claudeOpus, currentModelIds.claudeSonnet, "claude-opus-4-8", "claude-sonnet-4-6", customModelString]],
+    [services.custom, [currentModelIds.openai, "gpt-5.4-mini", "gpt-5.6-sol", "gemini-3.6-flash", currentModelIds.claude, currentModelIds.deepseek, "gemma:7b", "llama2:7b", "mistral:7b", customModelString]],
+    [services.infini, [defaultModelIds[services.infini], "deepseek-v4-pro", currentModelIds.infiniZhipu, "kimi-k2.7-code", currentModelIds.infiniGeneral, "qwen3.6-35b-a3b", customModelString]],
+    [services.baichuan, [defaultModelIds[services.baichuan], "Baichuan-M3-Plus", "Baichuan4-Air", "Baichuan4-Turbo", "Baichuan4", customModelString]],
+    [services.lingyi, [defaultModelIds[services.lingyi], customModelString]],
     [services.deepseek, [currentModelIds.deepseek, "deepseek-v4-pro", customModelString]],
-    [services.minimax, [currentModelIds.minimax, "MiniMax-M2.7-highspeed", "MiniMax-M2.5", "MiniMax-M2.5-highspeed", customModelString]],
+    [services.minimax, [defaultModelIds[services.minimax], currentModelIds.minimax, "MiniMax-M2.5", "MiniMax-M2.5-highspeed", customModelString]],
     [services.jieyue, [currentModelIds.jieyue, "step-3", "step-2", customModelString]],
     [services.huanYuan, [currentModelIds.huanYuan, "hy3-preview", customModelString]],
-    [services.huanYuanTranslation, ["hunyuan-translation", "hunyuan-translation-lite", customModelString]],
-    [services.newapi, [currentModelIds.openai, "gpt-5.4-mini", "gemini-3.6-flash", "gemini-3.5-flash-lite", currentModelIds.claude, currentModelIds.deepseek, "kimi-k2.7-code", customModelString]],
-    [services.grok, [currentModelIds.grok, "grok-4.3", customModelString]],
+    [services.huanYuanTranslation, [defaultModelIds[services.huanYuanTranslation], "hunyuan-translation", customModelString]],
+    [services.newapi, [currentModelIds.openai, "gpt-5.4-mini", "gpt-5.6-sol", "gemini-3.6-flash", "gemini-3.5-flash-lite", currentModelIds.claude, currentModelIds.deepseek, "kimi-k2.7-code", customModelString]],
+    [services.grok, [defaultModelIds[services.grok], currentModelIds.grok, customModelString]],
     [services.doubao, ["doubao-seed-1-6-250615", customModelString]],
 
     // mix model
-    [services.siliconCloud, ["deepseek-ai/DeepSeek-V4-Pro", "deepseek-ai/DeepSeek-V4-Flash", "zai-org/GLM-5.2", "Qwen/Qwen3.6-27B", "Qwen/Qwen3.6-35B-A3B", "deepseek-ai/DeepSeek-V3.2", "deepseek-ai/DeepSeek-R1", customModelString]],
+    [services.siliconCloud, [defaultModelIds[services.siliconCloud], "deepseek-ai/DeepSeek-V4-Pro", "zai-org/GLM-5.2", "Qwen/Qwen3.6-27B", "Qwen/Qwen3.6-35B-A3B", "deepseek-ai/DeepSeek-V3.2", "deepseek-ai/DeepSeek-R1", customModelString]],
 
-    [services.groq, [currentModelIds.groqLarge, currentModelIds.groqSmall, "qwen/qwen3.6-27b", customModelString]],
-    [services.openrouter, ["openrouter/auto", "openai/gpt-5.6-sol", "google/gemini-3.6-flash", "anthropic/claude-fable-5", "anthropic/claude-opus-5", "x-ai/grok-4.5", "deepseek/deepseek-v4-pro", "moonshotai/kimi-k3", "z-ai/glm-5.2", customModelString]]
+    [services.groq, [defaultModelIds[services.groq], currentModelIds.groqLarge, "qwen/qwen3.6-27b", customModelString]],
+    [services.openrouter, [defaultModelIds[services.openrouter], "openrouter/auto", "openai/gpt-5.6-luna", "openai/gpt-5.6-sol", "anthropic/claude-fable-5", "anthropic/claude-opus-5", "x-ai/grok-4.5", "deepseek/deepseek-v4-pro", "moonshotai/kimi-k3", "z-ai/glm-5.2", customModelString]]
 ]);
 
 // 每个需要模型选择的 AI 服务都把列表第一项作为开箱即用的默认模型。
@@ -253,6 +295,8 @@ export const defaultModels = new Map<string, string>(
 );
 
 export const options = {
+    minimaxBillingPlan: minimaxBillingPlans,
+    minimaxRegion: minimaxRegions,
     on: [
         {value: true, label: "开启"},
         {value: false, label: "关闭"},

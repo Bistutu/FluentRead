@@ -1,4 +1,5 @@
 import { currentModelIds, defaultModels, defaultOption, services, servicesType } from "./option";
+import type { MiniMaxBillingPlan, MiniMaxRegion } from "./option";
 import { normalizeCustomBodyMapping } from "./custom-body";
 
 export type DeepSeekApiType = 'auto' | 'responses' | 'chat';
@@ -30,6 +31,8 @@ export class Config {
     videoSubtitleDisplayMode: VideoSubtitleDisplayMode; // 视频字幕显示模式
     token: IMapping;
     requireApiKey: Record<string, boolean>; // 按服务和模型保存 API Key 校验开关
+    minimaxBillingPlan: MiniMaxBillingPlan; // MiniMax 计费方案
+    minimaxRegion: MiniMaxRegion; // MiniMax API 区域
     ak: string;
     sk: string;
     appid: string;
@@ -47,6 +50,7 @@ export class Config {
     theme: string;  // 主题模式：'auto' | 'light' | 'dark'
     useCache: boolean; // 是否使用缓存
     enableAIContext: boolean; // 是否为 AI 翻译附加网页上下文
+    contextMenuEnabled: boolean; // 是否显示右键全文翻译菜单
     disableFloatingBall: boolean; // 是否禁用悬浮球
     floatingBallPosition: 'left' | 'right'; // 悬浮球位置
     floatingBallHotkey: string; // 悬浮球快捷键
@@ -87,6 +91,8 @@ export class Config {
         this.videoSubtitleDisplayMode = 'bilingual'; // 默认双语显示
         this.token = {};
         this.requireApiKey = {};
+        this.minimaxBillingPlan = 'payg';
+        this.minimaxRegion = 'cn';
         this.ak = '';
         this.sk = '';
         this.appid = '';
@@ -104,6 +110,7 @@ export class Config {
         this.theme = 'auto';  // 默认跟随系统
         this.useCache = true; // 默认开启缓存
         this.enableAIContext = false; // 默认关闭 AI 智能上下文，避免意外增加请求体和费用
+        this.contextMenuEnabled = true; // 默认显示右键全文翻译入口
         this.disableFloatingBall = true; // 默认关闭悬浮球
         this.floatingBallPosition = 'right'; // 默认在右侧
         this.floatingBallHotkey = 'Alt+T'; // 默认快捷键为 Alt+T
@@ -263,6 +270,14 @@ export function normalizeConfig(value: unknown): Config {
         normalized.deepseekApiType = 'auto';
     }
 
+    if (!['payg', 'token-plan'].includes(normalized.minimaxBillingPlan)) {
+        normalized.minimaxBillingPlan = 'payg';
+    }
+
+    if (!['global', 'cn'].includes(normalized.minimaxRegion)) {
+        normalized.minimaxRegion = 'cn';
+    }
+
     if (!['disabled', 'bilingual', 'translation-only'].includes(normalized.selectionTranslatorMode)) {
         normalized.selectionTranslatorMode = 'disabled';
     }
@@ -272,6 +287,9 @@ export function normalizeConfig(value: unknown): Config {
     normalized.disableSelectionTranslator = normalized.selectionTranslatorMode === 'disabled';
     if (typeof normalized.selectionAreaEnabled !== 'boolean') {
         normalized.selectionAreaEnabled = false;
+    }
+    if (typeof normalized.contextMenuEnabled !== 'boolean') {
+        normalized.contextMenuEnabled = true;
     }
 
     return normalized;

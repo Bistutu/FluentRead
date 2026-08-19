@@ -141,6 +141,16 @@ function isElementNode(node: Node | null | undefined): node is Element {
     return Boolean(node && node.nodeType === 1 && typeof (node as Element).matches === "function");
 }
 
+function notifyFullPageTranslationState(isTranslated: boolean): void {
+    if (typeof browser === "undefined" || !browser.runtime?.sendMessage) return;
+    void browser.runtime.sendMessage({
+        type: "fullPageTranslationState",
+        isTranslated,
+    }).catch(() => {
+        // 后台可能正在重载；页面内的翻译状态不应因此失败。
+    });
+}
+
 function asHTMLElement(node: unknown): HTMLElement | null {
     if (!node || typeof node !== "object" || (node as Node).nodeType !== 1) return null;
     const element = node as HTMLElement;
@@ -1806,6 +1816,7 @@ export function restoreOriginalContent(): void {
             segment.replaceWith(...Array.from(segment.childNodes));
         });
     }
+    notifyFullPageTranslationState(false);
 }
 
 /**
@@ -1830,6 +1841,8 @@ export function autoTranslateEnglishPage(): void {
     }, {capture: true, signal: session.shadowEventController.signal});
     observeFullPageRoot(session, root);
     enqueueFullPageRescan(session, root);
+    for (const shadowRoot of getOpenShadowRoots(root)) observeFullPageRoot(session, shadowRoot);
+    notifyFullPageTranslationState(true);
 }
 
 export function isFullPageTranslationActive(): boolean {

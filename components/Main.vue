@@ -307,6 +307,23 @@
       </el-col>
     </el-row>
 
+    <!-- 右键全文翻译开关 -->
+    <el-row v-if="config.on" class="settings-control-row">
+      <el-col :span="20" class="settings-control-label lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="在网页右键菜单中显示“流畅阅读翻译”或“流畅阅读取消翻译”入口；关闭后不会影响全文翻译快捷键和悬浮球" placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">
+            右键全文翻译
+            <el-icon class="icon-margin">
+              <InfoFilled />
+            </el-icon>
+          </span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="4" class="settings-control-field flex-end">
+        <el-switch v-model="config.contextMenuEnabled" class="settings-toggle" aria-label="右键全文翻译" />
+      </el-col>
+    </el-row>
+
 
     <!-- 划词翻译模式选择 -->
     <el-row v-if="config.on" class="settings-control-row">
@@ -660,7 +677,7 @@
 
 // Main 处理配置信息
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
-import { customModelString, models, options, resolveConfiguredModel, servicesType, defaultOption } from "../entrypoints/utils/option";
+import { customModelString, models, options, resolveConfiguredModel, services, servicesType, defaultOption } from "../entrypoints/utils/option";
 import { Config, normalizeConfig } from "@/entrypoints/utils/model";
 import { InfoFilled, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -860,6 +877,7 @@ const createServiceCompute = (serviceSource: ServiceSource) => ({
   model: computed(() => models.get(serviceSource.value) || []),
   showCustom: computed(() => servicesType.isCustom(serviceSource.value)),
   showDeepLX: computed(() => serviceSource.value === 'deeplx'),
+  showMiniMaxRegion: computed(() => serviceSource.value === services.minimax),
   showCustomModel: computed(
     () =>
       servicesType.isAI(serviceSource.value) &&

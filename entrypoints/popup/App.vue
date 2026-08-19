@@ -74,11 +74,18 @@
           :disabled="!config.on"
           aria-haspopup="listbox"
           :aria-expanded="servicePickerOpen"
-          aria-label="翻译服务"
+          :aria-label="servicePickerAriaLabel"
+          :data-selected-model="serviceModelLabel || undefined"
           @click="toggleServicePicker"
         >
           <ServiceIcon :service="config.service" :label="serviceLabel" />
-          <span class="service-copy"><small>翻译服务</small><strong>{{ serviceLabel }}</strong></span>
+          <span class="service-copy">
+            <small>翻译服务</small>
+            <span class="service-value">
+              <strong>{{ serviceLabel }}</strong>
+              <em v-if="serviceModelLabel" class="service-model" :title="serviceModelLabel">{{ serviceModelLabel }}</em>
+            </span>
+          </span>
           <span class="chevron" :class="{ open: servicePickerOpen }">⌄</span>
         </button>
 
@@ -135,19 +142,34 @@
         <button type="button" @click="openOptions('settings-services')">去设置</button>
       </div>
 
-      <button
-        class="translate-button"
-        :class="{ translated: pageTranslated }"
-        type="button"
-        :disabled="!config.on || translating"
-        :aria-pressed="pageTranslated"
-        @click="togglePageTranslation"
-      >
-        <span v-if="translating" class="spinner" />
-        <span v-else class="translate-glyph">A↔译</span>
-        <span class="translate-label">{{ pageTranslated ? '恢复当前网页' : '翻译当前网页' }}</span>
-        <kbd class="translate-hotkey" :class="{ disabled: fullPageHotkey === '未设置' }">{{ fullPageHotkey }}</kbd>
-      </button>
+      <div class="translate-action">
+        <button
+          class="translate-button"
+          :class="{ translated: pageTranslated }"
+          type="button"
+          :disabled="!config.on || translating"
+          :aria-pressed="pageTranslated"
+          @click="togglePageTranslation"
+        >
+          <span v-if="translating" class="spinner" />
+          <span v-else class="translate-glyph">A↔译</span>
+          <span class="translate-label">{{ pageTranslated ? '恢复当前网页' : '翻译当前网页' }}</span>
+          <kbd class="translate-hotkey" :class="{ disabled: fullPageHotkey === '未设置' }">{{ fullPageHotkey }}</kbd>
+        </button>
+        <button
+          v-if="canUseAIContext"
+          class="ai-context-toggle"
+          type="button"
+          :aria-pressed="config.enableAIContext"
+          :aria-label="config.enableAIContext ? '关闭 AI精翻' : '开启 AI精翻'"
+          :title="config.enableAIContext ? '关闭 AI精翻' : '开启 AI精翻'"
+          :disabled="!config.on || translating"
+          @click="toggleAIContext"
+        >
+          <span class="ai-context-copy">AI精翻</span>
+          <span class="ai-context-indicator" aria-hidden="true" />
+        </button>
+      </div>
       <p v-if="notice" class="notice" :class="noticeType">{{ notice }}</p>
     </section>
 
@@ -374,8 +396,9 @@ import {
 } from '@/entrypoints/utils/config';
 import { Setting } from '@element-plus/icons-vue';
 import { Config } from '@/entrypoints/utils/model';
-import { options } from '@/entrypoints/utils/option';
+import { options, resolveConfiguredModel, servicesType } from '@/entrypoints/utils/option';
 import { getMissingCredentialMessage } from '@/entrypoints/utils/configValidation';
+import { getSelectedModelLabel } from '@/entrypoints/utils/serviceCatalog';
 import ServiceIcon from '@/components/ServiceIcon.vue';
 
 type DrawerName = 'hover' | 'selection' | 'floating' | 'appearance' | 'image' | 'video';
@@ -422,6 +445,15 @@ const popularServiceOptions = computed(() => popularServiceValues
 const moreServiceOptions = computed(() => serviceOptions.value.filter((item: any) => !popularServiceValues.includes(item.value)));
 const styleOptions = computed(() => options.styles.filter((item: any) => !item.disabled));
 const serviceLabel = computed(() => serviceOptions.value.find((item: any) => item.value === config.value.service)?.label || config.value.service);
+const serviceModelLabel = computed(() => getSelectedModelLabel(config.value.service, config.value.model, config.value.customModel));
+const aiContextModel = computed(() => resolveConfiguredModel(
+  config.value.model[config.value.service],
+  config.value.customModel[config.value.service],
+));
+const canUseAIContext = computed(() => servicesType.isUseAIContext(config.value.service, aiContextModel.value));
+const servicePickerAriaLabel = computed(() => serviceModelLabel.value
+  ? `翻译服务：${serviceLabel.value}，当前模型：${serviceModelLabel.value}`
+  : `翻译服务：${serviceLabel.value}`);
 const credentialWarning = computed(() => getMissingCredentialMessage(config.value.service, config.value));
 const videoServiceLabel = computed(() => videoServiceOptions.value.find((item: any) => item.value === config.value.videoService)?.label || config.value.videoService);
 const styleLabel = computed(() => styleOptions.value.find((item: any) => item.value === config.value.style)?.label || '默认样式');
@@ -522,6 +554,10 @@ function toggleServicePicker() {
 function selectService(value: string) {
   config.value.service = value;
   servicePickerOpen.value = false;
+}
+function toggleAIContext() {
+  if (!canUseAIContext.value || !config.value.on || translating.value) return;
+  config.value.enableAIContext = !config.value.enableAIContext;
 }
 onMounted(() => {
   document.addEventListener('pointerdown', closeServicePicker);
