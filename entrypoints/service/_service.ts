@@ -44,6 +44,7 @@ export const _service: ServiceMap = {
     [services.claude]: claude,
     [services.infini]: common,
     [services.minimax]: common,
+    [services.mimo]: common,
     [services.cozecom]: coze,
     [services.cozecn]: coze,
     [services.deepseek]: deepseek,

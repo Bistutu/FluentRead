@@ -1,5 +1,5 @@
 import { currentModelIds, defaultModels, defaultOption, services, servicesType } from "./option";
-import type { MiniMaxBillingPlan, MiniMaxRegion } from "./option";
+import type { MiniMaxBillingPlan, MiniMaxRegion, MiMoBillingPlan, MiMoRegion } from "./option";
 import { normalizeCustomBodyMapping } from "./custom-body";
 
 export type DeepSeekApiType = 'auto' | 'responses' | 'chat';
@@ -42,6 +42,8 @@ export class Config {
     requireApiKey: Record<string, boolean>; // 按服务和模型保存 API Key 校验开关
     minimaxBillingPlan: MiniMaxBillingPlan; // MiniMax 计费方案
     minimaxRegion: MiniMaxRegion; // MiniMax API 区域
+    mimoBillingPlan: MiMoBillingPlan; // MiMo 计费方案
+    mimoRegion: MiMoRegion; // MiMo Token Plan API 集群
     ak: string;
     sk: string;
     appid: string;
@@ -103,6 +105,8 @@ export class Config {
         this.requireApiKey = {};
         this.minimaxBillingPlan = 'payg';
         this.minimaxRegion = 'cn';
+        this.mimoBillingPlan = 'payg';
+        this.mimoRegion = 'cn';
         this.ak = '';
         this.sk = '';
         this.appid = '';
@@ -287,6 +291,14 @@ export function normalizeConfig(value: unknown): Config {
 
     if (!['global', 'cn'].includes(normalized.minimaxRegion)) {
         normalized.minimaxRegion = 'cn';
+    }
+
+    if (!['payg', 'token-plan'].includes(normalized.mimoBillingPlan)) {
+        normalized.mimoBillingPlan = 'payg';
+    }
+
+    if (!['cn', 'sgp', 'ams'].includes(normalized.mimoRegion)) {
+        normalized.mimoRegion = 'cn';
     }
 
     if (!['disabled', 'bilingual', 'translation-only'].includes(normalized.selectionTranslatorMode)) {
