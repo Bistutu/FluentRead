@@ -85,7 +85,10 @@ const selectionShortcutTriggers = new Set(['Control', 'Alt', 'Shift', 'custom'])
 const selectionShortcutConfig = computed(() => selectionShortcutTriggers.has(config.selectionTranslatorTrigger)
   ? config.selectionTranslatorTrigger
   : config.selectionTranslatorHotkey);
-const selectionShortcut = computed(() => resolveConfiguredHotkey(selectionShortcutConfig.value, config.customSelectionTranslatorHotkey));
+const selectionShortcut = computed(() => {
+  const resolved = resolveConfiguredHotkey(selectionShortcutConfig.value, config.customSelectionTranslatorHotkey);
+  return resolved === 'none' ? '' : resolved;
+});
 const triggerMode = computed<SelectionTrigger>(() => {
   if (selectionShortcut.value) return 'shortcut';
   if (config.selectionTranslatorTrigger === 'direct' || config.selectionTranslatorTrigger === 'dot') return config.selectionTranslatorTrigger;
