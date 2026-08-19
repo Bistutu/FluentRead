@@ -27,6 +27,7 @@ export const services = {
     lingyi: "lingyi",
     deepseek: "deepseek",
     minimax: "minimax",
+    mimo: "mimo", // 小米 MiMo
     jieyue: "jieyue", // 阶跃星辰
     groq: "groq",
     cozecom: "cozecom", // coze 支持机器人不支持模型
@@ -57,6 +58,7 @@ export const servicesType = {
         services.deepseek,
         services.lingyi,
         services.minimax,
+        services.mimo,
         services.jieyue,
         services.groq,
         services.cozecom,
@@ -87,6 +89,7 @@ export const servicesType = {
         services.deepseek,
         services.lingyi,
         services.minimax,
+        services.mimo,
         services.jieyue,
         services.groq,
         services.custom,
@@ -115,6 +118,7 @@ export const servicesType = {
         services.deepseek,
         services.lingyi,
         services.minimax,
+        services.mimo,
         services.jieyue,
         services.groq,
         services.huanYuan,
@@ -142,6 +146,7 @@ export const servicesType = {
         services.baichuan,
         services.deepseek,
         services.lingyi,
+        services.mimo,
         services.jieyue,
         services.groq,
         services.cozecom,
@@ -199,6 +204,21 @@ export const minimaxRegions = [
 
 export type MiniMaxRegion = typeof minimaxRegions[number]["value"];
 
+export const mimoBillingPlans = [
+    {value: "payg", label: "按量付费（API）"},
+    {value: "token-plan", label: "Token Plan（套餐/积分）"},
+] as const;
+
+export type MiMoBillingPlan = typeof mimoBillingPlans[number]["value"];
+
+export const mimoRegions = [
+    {value: "cn", label: "中国集群（token-plan-cn.xiaomimimo.com）"},
+    {value: "sgp", label: "新加坡集群（token-plan-sgp.xiaomimimo.com）"},
+    {value: "ams", label: "欧洲集群（token-plan-ams.xiaomimimo.com）"},
+] as const;
+
+export type MiMoRegion = typeof mimoRegions[number]["value"];
+
 /** Resolve the model that is actually sent to a provider. */
 export function resolveConfiguredModel(selectedModel?: string, customModel?: string): string {
     return selectedModel === customModelString ? customModel || '' : selectedModel || '';
@@ -218,6 +238,7 @@ export const currentModelIds = {
     claudeHaiku: "claude-haiku-4-5",
     deepseek: "deepseek-v4-flash",
     minimax: "MiniMax-M2.7",
+    mimo: "mimo-v2.5-pro",
     jieyue: "step-3.5-flash",
     huanYuan: "hy3",
     grok: "grok-4.5",
@@ -246,6 +267,7 @@ export const defaultModelIds = {
     [services.lingyi]: "yi-lightning",
     [services.deepseek]: currentModelIds.deepseek,
     [services.minimax]: "MiniMax-M2.7-highspeed",
+    [services.mimo]: "mimo-v2.5",
     [services.jieyue]: currentModelIds.jieyue,
     [services.huanYuan]: currentModelIds.huanYuan,
     [services.huanYuanTranslation]: "hunyuan-translation-lite",
@@ -272,6 +294,7 @@ export const models = new Map<string, Array<string>>([
     [services.lingyi, [defaultModelIds[services.lingyi], customModelString]],
     [services.deepseek, [currentModelIds.deepseek, "deepseek-v4-pro", customModelString]],
     [services.minimax, [defaultModelIds[services.minimax], currentModelIds.minimax, "MiniMax-M2.5", "MiniMax-M2.5-highspeed", customModelString]],
+    [services.mimo, [defaultModelIds[services.mimo], currentModelIds.mimo, customModelString]],
     [services.jieyue, [currentModelIds.jieyue, "step-3", "step-2", customModelString]],
     [services.huanYuan, [currentModelIds.huanYuan, "hy3-preview", customModelString]],
     [services.huanYuanTranslation, [defaultModelIds[services.huanYuanTranslation], "hunyuan-translation", customModelString]],
@@ -297,6 +320,8 @@ export const defaultModels = new Map<string, string>(
 export const options = {
     minimaxBillingPlan: minimaxBillingPlans,
     minimaxRegion: minimaxRegions,
+    mimoBillingPlan: mimoBillingPlans,
+    mimoRegion: mimoRegions,
     on: [
         {value: true, label: "开启"},
         {value: false, label: "关闭"},
@@ -389,6 +414,7 @@ export const options = {
         {value: services.baichuan, label: "百川智能"},
         {value: services.lingyi, label: "零一万物"},
         {value: services.minimax, label: "MiniMax"},
+        {value: services.mimo, label: "小米 MiMo"},
         {value: services.jieyue, label: "阶跃星辰"},
         {value: services.infini, label: "无向芯穹"},
         {value: services.cozecom, label: "Coze国际"},

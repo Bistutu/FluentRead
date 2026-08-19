@@ -98,6 +98,41 @@
       <code>{{ minimaxEndpoint }}</code>
     </div>
 
+    <p v-if="compute.showMiMoRegion && mimoKeyMismatch" class="mimo-key-note is-warning">
+      {{ mimoKeyMismatch }}
+    </p>
+
+    <el-row v-show="compute.showMiMoRegion" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="按量付费和 Token Plan 使用不同的账户权益；请按小米 MiMo 控制台中 Key 的来源选择。" placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">小米 MiMo 计费方式<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-select v-model="config.mimoBillingPlan" aria-label="小米 MiMo 计费方式" placeholder="请选择小米 MiMo 计费方式">
+          <el-option class="select-left" v-for="item in options.mimoBillingPlan" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
+
+    <el-row v-show="compute.showMiMoRegion" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="Token Plan 必须使用购买页面提供的集群地址；中国、新加坡和欧洲集群的 tp- Key 不能混用。按量付费统一使用 api.xiaomimimo.com。" placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">MiMo API 集群<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-select v-model="config.mimoRegion" aria-label="小米 MiMo API 集群" placeholder="请选择小米 MiMo API 集群">
+          <el-option class="select-left" v-for="item in options.mimoRegion" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
+
+    <div v-show="compute.showMiMoRegion" class="mimo-endpoint" data-mimo-endpoint>
+      <span>当前 API 地址</span>
+      <code>{{ mimoEndpoint }}</code>
+    </div>
+
     <el-row v-show="compute.showAzureOpenaiEndpoint" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="Azure OpenAI 服务端点地址，必须包含完整的部署信息。" placement="top-start" :show-after="500">
@@ -227,7 +262,7 @@ import { defaultOption, options as optionConfig } from '@/entrypoints/utils/opti
 import { isValidCustomBody } from '@/entrypoints/utils/custom-body'
 import browser from 'webextension-polyfill'
 import { requestConfigSave } from '@/entrypoints/utils/config'
-import { CONNECTION_TEST_MESSAGE, MINIMAX_ENDPOINTS } from '@/entrypoints/utils/constant'
+import { CONNECTION_TEST_MESSAGE, getMimoEndpoint, MINIMAX_ENDPOINTS } from '@/entrypoints/utils/constant'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const props = defineProps<{
@@ -266,6 +301,33 @@ const minimaxEndpoint = computed(() => {
   const plan = config.value.minimaxBillingPlan === 'token-plan' ? 'token-plan' : 'payg'
   const region = config.value.minimaxRegion === 'cn' ? 'cn' : 'global'
   return MINIMAX_ENDPOINTS[plan][region]
+})
+
+const mimoKeyKind = computed(() => {
+  const token = config.value.token[service.value]?.trim() || ''
+  if (token.startsWith('tp-')) return 'token-plan'
+  if (token.startsWith('sk-')) return 'payg'
+  return token ? 'other' : 'empty'
+})
+
+const mimoKeyMismatch = computed(() => {
+  if (mimoKeyKind.value === 'empty') return ''
+  if (config.value.mimoBillingPlan === 'token-plan' && mimoKeyKind.value !== 'token-plan') {
+    return '当前选择的是 MiMo Token Plan，但 Key 不是 tp- 开头；请确认 Key 来源和订阅状态。'
+  }
+  if (config.value.mimoBillingPlan === 'payg' && mimoKeyKind.value === 'token-plan') {
+    return '当前选择的是 MiMo 按量付费，但检测到 tp- Token Plan Key；两类 Key 不能互换，请切换计费方式或更换 Key。'
+  }
+  if (config.value.mimoBillingPlan === 'payg' && mimoKeyKind.value === 'other') {
+    return 'MiMo 按量付费 Key 通常以 sk- 开头；请确认 Key 来自 API Keys 页面。'
+  }
+  return config.value.mimoBillingPlan === 'token-plan'
+    ? '当前使用 MiMo Token Plan Key；请确认订阅仍在有效期内。'
+    : ''
+})
+
+const mimoEndpoint = computed(() => {
+  return getMimoEndpoint(config.value.mimoBillingPlan, config.value.mimoRegion)
 })
 
 type ConnectionTestState = 'idle' | 'testing' | 'success' | 'error'
@@ -457,7 +519,18 @@ watch(service, resetConnectionTest)
   line-height: 1.5;
 }
 
+.mimo-key-note {
+  margin: -8px 0 14px 2em;
+  color: #6d7890;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .minimax-key-note.is-warning {
+  color: #a52c48;
+}
+
+.mimo-key-note.is-warning {
   color: #a52c48;
 }
 
@@ -472,6 +545,22 @@ watch(service, resetConnectionTest)
 }
 
 .minimax-endpoint code {
+  overflow-wrap: anywhere;
+  color: #59657b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.mimo-endpoint {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: -4px 0 14px 2em;
+  color: #8993a5;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.mimo-endpoint code {
   overflow-wrap: anywhere;
   color: #59657b;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;

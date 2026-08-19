@@ -56,6 +56,16 @@ MiniMax 同时提供按量付费 API 和 Token Plan 两类权益。两类 Key �
 
 如果看到 `401` 或错误码 `2049`，优先检查计费方式、区域和 Key 是否来自同一套 MiniMax 账户权益；不要把截图或完整 Key 发到 Issue、聊天记录或仓库。
 
+## 小米 MiMo
+
+小米 MiMo 提供独立的按量付费 API 和 Token Plan。按量付费 Key 通常以 `sk-` 开头，Token Plan Key 以 `tp-` 开头，两类 Key 不能互换。FluentRead 会在 MiMo 服务配置中分别保存计费方式和集群，避免误用 MiniMax 的配置。
+
+- 按量付费：使用 `https://api.xiaomimimo.com/v1/chat/completions`。
+- Token Plan：中国集群使用 `token-plan-cn.xiaomimimo.com`，新加坡集群使用 `token-plan-sgp.xiaomimimo.com`，欧洲集群使用 `token-plan-ams.xiaomimimo.com`；应以 Token Plan 页面实际提供的 Base URL 为准。
+- 当前支持文本翻译的预设模型包括 `mimo-v2.5` 和 `mimo-v2.5-pro`，也可以填写自定义模型标识。
+
+如果遇到 `401`，先确认 Key 前缀、Token Plan 是否仍在有效期内，以及所选集群是否与购买页面提供的地址一致。
+
 ## Ollama 本地模型
 
 Ollama 适合希望在本机处理文本的用户。你需要在本机运行 Ollama、准备一个可用模型，并让浏览器扩展可以访问本地接口。
