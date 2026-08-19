@@ -352,12 +352,12 @@ footer > button { justify-self: end; }
 
 .popup-drawer-modal { background: rgba(17, 20, 29, .48) !important; backdrop-filter: blur(2px); }
 .popup-drawer {
-  width: 400px !important; min-height: 260px !important; max-height: 88vh;
-  margin: 0 auto !important; padding: 8px 20px 18px; overflow: auto;
+  width: 400px !important; min-height: 260px !important; max-height: 100vh;
+  margin: 0 auto !important; padding: 8px 20px 18px; overflow: hidden;
   border-radius: 24px 24px 0 0 !important; background: var(--surface) !important;
   box-shadow: 0 -18px 46px rgba(13, 17, 28, .18);
 }
-.popup-drawer .el-drawer__body { padding: 0; overflow: visible; color: var(--ink); }
+.popup-drawer .el-drawer__body { min-height: 0; padding: 0; overflow-x: hidden; overflow-y: auto; color: var(--ink); }
 .drawer-handle { width: 36px; height: 4px; margin: 2px auto 14px; border-radius: 99px; background: var(--line); }
 .drawer-header { align-items: flex-start; gap: 16px; }
 .drawer-header h2 { font-size: 19px; }
@@ -434,6 +434,7 @@ footer > button { justify-self: end; }
 .chips { display: grid; gap: 8px; }
 .chips.two { grid-template-columns: repeat(2, 1fr); }
 .chips.three { grid-template-columns: repeat(3, 1fr); }
+.selection-trigger-chips { grid-template-columns: repeat(4, 1fr); }
 .selection-trigger-chips button { padding-inline: 5px; }
 .chips button {
   min-height: 40px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 11px;

@@ -293,7 +293,7 @@
           </div>
           <div class="choice-block">
             <label>触发方式</label>
-            <div class="chips three selection-trigger-chips">
+            <div class="chips selection-trigger-chips">
               <button v-for="item in selectionTriggers" :key="item.value" type="button" :class="{ selected: config.selectionTranslatorTrigger === item.value }" @click="setSelectionTrigger(item.value)">{{ item.label }}</button>
             </div>
             <button v-if="config.selectionTranslatorTrigger === 'custom'" class="secondary-action" type="button" @click="showCustomSelectionHotkeyDialog = true">
