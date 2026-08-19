@@ -296,7 +296,7 @@
             <div class="chips three">
               <button v-for="item in selectionTriggers" :key="item.value" type="button" :class="{ selected: config.selectionTranslatorTrigger === item.value }" @click="setSelectionTrigger(item.value)">{{ item.label }}</button>
             </div>
-            <small class="drawer-hint">图标和小点会固定显示在选区旁，不需要悬停才能发现。</small>
+            <small class="drawer-hint">图标和小点会固定显示在选区旁，不需要悬停才能发现；选中单个英文单词时会自动显示音标、发音、词性、释义和例句。</small>
           </div>
           <div class="choice-block">
             <label>语音回退顺序</label>

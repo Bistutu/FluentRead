@@ -15,6 +15,17 @@ FluentRead 不把翻译能力锁定在单一供应商上。你可以在设置页
 
 公共免费服务可能受到流量、区域、频率和维护状态影响；它适合入门和临时使用，不适合作为关键工作流的唯一依赖。
 
+## 单词学习卡片的数据来源
+
+选中单个英文单词时，划词翻译会请求学习卡片所需的结构化词典数据。扩展后台按以下顺序尝试，并在响应缺少必要字段时继续使用后备服务：
+
+1. [Free Dictionary API](https://dictionaryapi.dev/)：音标、音频、词性、释义和例句。
+2. [WiktApi](https://wiktapi.dev/)：基于 Wiktionary/Kaikki 的结构化释义、例句和发音数据，支持自托管。
+3. [Wiktionary REST API](https://en.wiktionary.org/api/rest_v1/)：官方 Wiktionary 释义回退。
+4. [Datamuse](https://www.datamuse.com/api/)：词性、释义和 IPA 元数据回退。
+
+这些服务均不需要在 FluentRead 中配置 API Key；公共服务的可用性、频率限制、数据质量和许可条款仍由各自维护者决定。词典卡片会显示数据来源链接；Wiktionary 内容遵循其页面标注的开放许可，使用或再分发时请保留相应署名。Datamuse 官方说明当前免费无密钥额度将于 2027 年 1 月 1 日调整为需要 API Key，因此它不是唯一依赖。
+
 ## 通用配置流程
 
 1. 打开设置页的“翻译服务”。
