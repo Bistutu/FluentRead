@@ -15,7 +15,7 @@
     <div class="translation-center-toolbar">
       <div class="language-picker-group">
         <label for="translation-center-source">源语言</label>
-        <select id="translation-center-source" v-model="sourceLanguage" aria-label="翻译中心源语言">
+        <select id="translation-center-source" v-model="sourceLanguage" aria-label="翻译中心源语言" @change="persistTranslationCenterConfig">
           <option v-for="item in sourceLanguageOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
         </select>
       </div>
@@ -33,7 +33,7 @@
 
       <div class="language-picker-group">
         <label for="translation-center-target">目标语言</label>
-        <select id="translation-center-target" v-model="targetLanguage" aria-label="翻译中心目标语言">
+        <select id="translation-center-target" v-model="targetLanguage" aria-label="翻译中心目标语言" @change="persistTranslationCenterConfig">
           <option v-for="item in targetLanguageOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
         </select>
       </div>
@@ -43,27 +43,51 @@
           class="add-service-button"
           type="button"
           :aria-expanded="servicePickerOpen"
-          aria-haspopup="listbox"
+          aria-haspopup="dialog"
           @click.stop="servicePickerOpen = !servicePickerOpen"
         >
           <span>＋</span>
-          添加翻译服务
+          更多服务
           <b>{{ cards.length }}</b>
           <span class="add-service-chevron">⌄</span>
         </button>
-        <div v-if="servicePickerOpen" class="service-picker-menu" role="listbox" aria-label="添加翻译服务">
-          <button
-            v-for="item in availableServiceOptions"
-            :key="item.value"
-            type="button"
-            role="option"
-            @click="addService(item.value)"
-          >
-            <ServiceIcon :service="item.value" :label="item.label" size="small" />
-            <span>{{ item.label }}</span>
-            <b>添加</b>
-          </button>
-          <p v-if="availableServiceOptions.length === 0">所有服务都已加入对比</p>
+        <div v-if="servicePickerOpen" class="service-picker-popover" role="dialog" aria-label="添加更多翻译服务">
+          <header class="service-picker-header">
+            <div>
+              <span class="service-picker-kicker">翻译服务</span>
+              <strong>添加更多服务</strong>
+              <small>选择后会加入右侧对比列表，并自动保存。</small>
+            </div>
+            <button type="button" class="service-picker-close" aria-label="关闭更多服务" @click="servicePickerOpen = false">×</button>
+          </header>
+          <label class="service-picker-search">
+            <span aria-hidden="true">⌕</span>
+            <input v-model.trim="serviceSearchQuery" type="search" placeholder="搜索服务名称" aria-label="搜索翻译服务" />
+          </label>
+          <div class="service-picker-groups">
+            <section v-for="group in filteredServiceGroups" :key="group.key" class="service-picker-group">
+              <div class="service-picker-group-heading">
+                <strong>{{ group.label }}</strong>
+                <span>{{ group.items.length }}</span>
+              </div>
+              <button
+                v-for="item in group.items"
+                :key="item.value"
+                type="button"
+                class="service-picker-option"
+                @click="addService(item.value)"
+              >
+                <ServiceIcon :service="item.value" :label="item.label" size="small" />
+                <span class="service-picker-option-copy">
+                  <strong>{{ item.label }}</strong>
+                  <small>{{ serviceDescription(item.value) }}</small>
+                </span>
+                <b aria-hidden="true">＋</b>
+              </button>
+            </section>
+            <p v-if="filteredServiceGroups.length === 0">没有找到可添加的翻译服务</p>
+          </div>
+          <footer class="service-picker-footer">已选 {{ cards.length }} 个服务 · 右侧卡片可拖动排序</footer>
         </div>
       </div>
     </div>
@@ -107,14 +131,17 @@
             <span class="translation-panel-kicker">对比结果</span>
             <h3 id="translation-results-title">{{ cards.length }} 个翻译服务</h3>
           </div>
-          <button
-            class="copy-all-button"
-            type="button"
-            :disabled="successfulCards.length === 0"
-            @click="copyAllResults"
-          >
-            {{ copiedService === 'all' ? '已复制' : '复制全部' }}
-          </button>
+          <div class="results-heading-actions">
+            <span class="results-order-hint">⠿ 拖动卡片可排序</span>
+            <button
+              class="copy-all-button"
+              type="button"
+              :disabled="successfulCards.length === 0"
+              @click="copyAllResults"
+            >
+              {{ copiedService === 'all' ? '已复制' : '复制全部' }}
+            </button>
+          </div>
         </div>
 
         <div class="translation-result-list">
@@ -124,9 +151,22 @@
             class="translation-result-card"
             :data-service="card.service"
             :data-status="card.status"
+            :class="{ 'is-dragging': draggingService === card.service, 'is-drag-over': dragOverService === card.service }"
           >
             <header class="translation-result-card-header">
               <div class="translation-result-service-name">
+                <button
+                  class="drag-handle"
+                  type="button"
+                  :aria-label="`拖动${serviceLabel(card.service)}调整顺序`"
+                  title="拖动调整顺序，也可用 Alt+↑/↓"
+                  tabindex="0"
+                  @pointerdown.prevent.stop="startPointerDrag(card.service, $event)"
+                  @keydown.alt.arrow-up.prevent="moveCard(card.service, -1)"
+                  @keydown.alt.arrow-down.prevent="moveCard(card.service, 1)"
+                >
+                  ⠿
+                </button>
                 <ServiceIcon :service="card.service" :label="serviceLabel(card.service)" size="medium" />
                 <div>
                   <strong>{{ serviceLabel(card.service) }}</strong>
@@ -173,12 +213,6 @@
         </div>
       </section>
     </div>
-
-    <footer class="translation-center-note">
-      <span>提示</span>
-      <p>翻译中心不会改变网页翻译的默认服务。每次点击“再次翻译”都会重新请求服务，不复用上一轮结果。</p>
-      <button type="button" @click="openServiceSettings">前往服务设置</button>
-    </footer>
   </section>
 </template>
 
@@ -186,8 +220,8 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import browser from 'webextension-polyfill'
 import ServiceIcon from './ServiceIcon.vue'
-import { options } from '@/entrypoints/utils/option'
-import { config, configReady } from '@/entrypoints/utils/config'
+import { options, servicesType } from '@/entrypoints/utils/option'
+import { config, configReady, requestConfigSave, subscribeConfig } from '@/entrypoints/utils/config'
 import { translateText } from '@/entrypoints/utils/translateApi'
 
 type TranslationCardStatus = 'idle' | 'loading' | 'success' | 'error'
@@ -201,6 +235,13 @@ type TranslationCard = {
   run: number
 }
 
+type ServiceOption = {
+  value: string
+  label: string
+  description?: string
+  disabled?: boolean
+}
+
 const DEFAULT_COMPARISON_SERVICES = ['freeTranslation', 'google', 'openai', 'deepseek', 'gemini', 'deeplx']
 const MAX_TEXT_LENGTH = 5000
 
@@ -210,33 +251,58 @@ const targetLanguage = ref('zh-Hans')
 const runCount = ref(0)
 const isRunning = ref(false)
 const servicePickerOpen = ref(false)
+const serviceSearchQuery = ref('')
 const copiedService = ref('')
 const servicePicker = ref<HTMLElement | null>(null)
 const cards = ref<TranslationCard[]>([])
+const draggingService = ref('')
+const dragOverService = ref('')
 let activeController: AbortController | null = null
 let activeRunId = 0
 let copiedTimer: ReturnType<typeof setTimeout> | undefined
+let unsubscribeConfig: (() => void) | undefined
+let configHydrated = false
+let pointerDrag: { service: string; pointerId: number } | null = null
 
-const serviceOptions = computed(() => options.services.filter((item: any) => !item.disabled))
+const serviceOptions = computed<ServiceOption[]>(() => options.services.filter((item: any) => !item.disabled) as ServiceOption[])
 const selectedServiceValues = computed(() => new Set(cards.value.map(card => card.service)))
-const availableServiceOptions = computed(() => serviceOptions.value.filter((item: any) => !selectedServiceValues.value.has(item.value)))
+const availableServiceOptions = computed(() => serviceOptions.value.filter(item => !selectedServiceValues.value.has(item.value)))
 const successfulCards = computed(() => cards.value.filter(card => card.status === 'success' && card.result))
 const sourceLanguageOptions = computed(() => [
   { value: 'auto', label: '自动检测' },
   ...options.to,
 ])
 const targetLanguageOptions = computed(() => options.to)
+const filteredServiceGroups = computed(() => {
+  const keyword = serviceSearchQuery.value.toLocaleLowerCase()
+  const filterItems = (items: ServiceOption[]) => items.filter(item => {
+    if (!keyword) return true
+    return `${item.label}${item.description || ''}`.toLocaleLowerCase().includes(keyword)
+  })
+  return [
+    {
+      key: 'machine',
+      label: '机器翻译',
+      items: filterItems(availableServiceOptions.value.filter(item => servicesType.isMachine(item.value))),
+    },
+    {
+      key: 'ai',
+      label: 'AI 翻译',
+      items: filterItems(availableServiceOptions.value.filter(item => servicesType.isAI(item.value))),
+    },
+  ].filter(group => group.items.length > 0)
+})
 
 function createCard(service: string): TranslationCard {
   return { service, status: 'idle', result: '', error: '', duration: 0, run: 0 }
 }
 
 function serviceLabel(service: string): string {
-  return serviceOptions.value.find((item: any) => item.value === service)?.label || service
+  return serviceOptions.value.find(item => item.value === service)?.label || service
 }
 
 function serviceDescription(service: string): string {
-  const option = serviceOptions.value.find((item: any) => item.value === service) as any
+  const option = serviceOptions.value.find(item => item.value === service)
   if (option?.description) return option.description.split('；')[0]
   return service === 'freeTranslation' ? '无需密钥，自动尝试多个免费接口' : '使用设置中已保存的连接配置'
 }
@@ -246,15 +312,63 @@ function languageLabel(value: string): string {
   return targetLanguageOptions.value.find(item => item.value === value)?.label || value
 }
 
+function getValidServiceOrder(value: unknown): string[] {
+  const availableValues = new Set(serviceOptions.value.map(item => item.value))
+  if (!Array.isArray(value)) return []
+  return [...new Set(value.filter((item): item is string => typeof item === 'string' && availableValues.has(item)))]
+}
+
+function getDefaultServiceOrder(): string[] {
+  const configured = DEFAULT_COMPARISON_SERVICES.filter(service => serviceOptions.value.some(item => item.value === service))
+  return configured.length ? configured : [serviceOptions.value[0]?.value].filter(Boolean) as string[]
+}
+
+function getCurrentServiceOrder(): string[] {
+  return cards.value.map(card => card.service)
+}
+
+function applyServiceOrder(order: string[]): void {
+  cards.value = order.map(createCard)
+}
+
+function hasSameOrder(left: string[], right: string[]): boolean {
+  return left.length === right.length && left.every((service, index) => service === right[index])
+}
+
+function persistTranslationCenterConfig(): void {
+  if (!configHydrated) return
+  config.translationCenterServices = getCurrentServiceOrder()
+  config.translationCenterSourceLanguage = sourceLanguage.value
+  config.translationCenterTargetLanguage = targetLanguage.value
+  void requestConfigSave(config, browser.runtime.sendMessage.bind(browser.runtime)).catch(error => {
+    console.warn('[FluentRead] 翻译中心配置保存失败', error)
+  })
+}
+
+function hydrateTranslationCenterConfig(nextConfig = config): void {
+  const storedOrder = getValidServiceOrder(nextConfig.translationCenterServices)
+  const nextOrder = storedOrder.length ? storedOrder : getDefaultServiceOrder()
+  if (!hasSameOrder(getCurrentServiceOrder(), nextOrder)) applyServiceOrder(nextOrder)
+  const storedSource = nextConfig.translationCenterSourceLanguage || nextConfig.from || 'auto'
+  const storedTarget = nextConfig.translationCenterTargetLanguage || nextConfig.to || 'zh-Hans'
+  const nextSource = sourceLanguageOptions.value.some(item => item.value === storedSource) ? storedSource : 'auto'
+  const nextTarget = targetLanguageOptions.value.some(item => item.value === storedTarget) ? storedTarget : 'zh-Hans'
+  if (sourceLanguage.value !== nextSource) sourceLanguage.value = nextSource
+  if (targetLanguage.value !== nextTarget) targetLanguage.value = nextTarget
+}
+
 function addService(service: string): void {
   if (selectedServiceValues.value.has(service)) return
   cards.value.push(createCard(service))
+  persistTranslationCenterConfig()
+  serviceSearchQuery.value = ''
   servicePickerOpen.value = false
 }
 
 function removeService(service: string): void {
   if (cards.value.length <= 1) return
   cards.value = cards.value.filter(card => card.service !== service)
+  persistTranslationCenterConfig()
 }
 
 function swapLanguages(): void {
@@ -262,6 +376,65 @@ function swapLanguages(): void {
   const nextSource = sourceLanguage.value
   sourceLanguage.value = targetLanguage.value
   targetLanguage.value = nextSource
+  persistTranslationCenterConfig()
+}
+
+function reorderCards(fromService: string, targetService: string): void {
+  const fromIndex = cards.value.findIndex(card => card.service === fromService)
+  const targetIndex = cards.value.findIndex(card => card.service === targetService)
+  if (fromIndex < 0 || targetIndex < 0 || fromIndex === targetIndex) return
+
+  const nextCards = [...cards.value]
+  const [movedCard] = nextCards.splice(fromIndex, 1)
+  nextCards.splice(targetIndex, 0, movedCard)
+  cards.value = nextCards
+  persistTranslationCenterConfig()
+}
+
+function startPointerDrag(service: string, event: PointerEvent): void {
+  if (event.button !== 0) return
+  pointerDrag = { service, pointerId: event.pointerId }
+  draggingService.value = service
+  dragOverService.value = ''
+  document.body.style.userSelect = 'none'
+  document.addEventListener('pointermove', handlePointerMove)
+  document.addEventListener('pointerup', finishPointerDrag)
+  document.addEventListener('pointercancel', finishPointerDrag)
+}
+
+function handlePointerMove(event: PointerEvent): void {
+  if (!pointerDrag || event.pointerId !== pointerDrag.pointerId) return
+  const target = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('.translation-result-card')
+  const service = target?.dataset.service || ''
+  dragOverService.value = service && service !== pointerDrag.service ? service : ''
+}
+
+function finishPointerDrag(event: PointerEvent): void {
+  if (!pointerDrag || event.pointerId !== pointerDrag.pointerId) return
+  const targetService = dragOverService.value
+  if (targetService) reorderCards(pointerDrag.service, targetService)
+  endCardDrag()
+}
+
+function moveCard(service: string, offset: number): void {
+  const fromIndex = cards.value.findIndex(card => card.service === service)
+  const targetIndex = fromIndex + offset
+  if (fromIndex < 0 || targetIndex < 0 || targetIndex >= cards.value.length) return
+  const nextCards = [...cards.value]
+  const [movedCard] = nextCards.splice(fromIndex, 1)
+  nextCards.splice(targetIndex, 0, movedCard)
+  cards.value = nextCards
+  persistTranslationCenterConfig()
+}
+
+function endCardDrag(): void {
+  pointerDrag = null
+  document.removeEventListener('pointermove', handlePointerMove)
+  document.removeEventListener('pointerup', finishPointerDrag)
+  document.removeEventListener('pointercancel', finishPointerDrag)
+  document.body.style.userSelect = ''
+  draggingService.value = ''
+  dragOverService.value = ''
 }
 
 function formatError(error: unknown): string {
@@ -366,13 +539,10 @@ async function retryService(service: string): Promise<void> {
   }
 }
 
-function openServiceSettings(): void {
-  void browser.tabs.create({ url: `${browser.runtime.getURL('options.html')}#settings-services` })
-}
-
 function closeServicePicker(event: Event): void {
   if (servicePicker.value?.contains(event.target as Node)) return
   servicePickerOpen.value = false
+  serviceSearchQuery.value = ''
 }
 
 function handleKeydown(event: KeyboardEvent): void {
@@ -381,16 +551,20 @@ function handleKeydown(event: KeyboardEvent): void {
 
 onMounted(async () => {
   await configReady
-  sourceLanguage.value = config.from || 'auto'
-  targetLanguage.value = config.to || 'zh-Hans'
-  const configuredServices = DEFAULT_COMPARISON_SERVICES.filter(service => serviceOptions.value.some(item => item.value === service))
-  cards.value = (configuredServices.length ? configuredServices : [serviceOptions.value[0]?.value].filter(Boolean) as string[]).map(createCard)
+  hydrateTranslationCenterConfig()
+  configHydrated = true
+  unsubscribeConfig = subscribeConfig(nextConfig => {
+    if (!configHydrated || draggingService.value) return
+    hydrateTranslationCenterConfig(nextConfig)
+  })
   document.addEventListener('pointerdown', closeServicePicker)
   document.addEventListener('keydown', handleKeydown)
 })
 
 onUnmounted(() => {
   activeController?.abort()
+  endCardDrag()
+  unsubscribeConfig?.()
   document.removeEventListener('pointerdown', closeServicePicker)
   document.removeEventListener('keydown', handleKeydown)
   if (copiedTimer) clearTimeout(copiedTimer)
@@ -410,8 +584,7 @@ onUnmounted(() => {
 .translation-center-hero,
 .translation-center-toolbar,
 .translation-input-panel,
-.translation-results-panel,
-.translation-center-note {
+.translation-results-panel {
   border: 1px solid var(--line);
   background: var(--surface);
   box-shadow: 0 10px 30px rgba(31, 40, 61, .045);
@@ -516,26 +689,46 @@ onUnmounted(() => {
 .add-service-button > span:first-child { color: var(--brand); font-size: 18px; font-weight: 400; }
 .add-service-button b { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; color: #fff; background: var(--ink); font-size: 10px; }
 .add-service-chevron { color: var(--muted); font-size: 16px; }
-.service-picker-menu {
+.service-picker-popover {
   position: absolute;
   z-index: 8;
   top: calc(100% + 8px);
   right: 0;
-  display: grid;
-  width: 260px;
-  max-height: 330px;
-  padding: 7px;
-  overflow-y: auto;
+  display: flex;
+  width: min(370px, calc(100vw - 32px));
+  max-height: min(480px, calc(100vh - 150px));
+  flex-direction: column;
+  overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 16px;
   background: var(--surface);
-  box-shadow: 0 16px 36px rgba(31, 40, 61, .15);
+  box-shadow: 0 18px 44px rgba(31, 40, 61, .18);
 }
-.service-picker-menu button { display: flex; align-items: center; gap: 9px; padding: 9px; border: 0; border-radius: 9px; color: var(--ink); background: transparent; cursor: pointer; text-align: left; }
-.service-picker-menu button:hover { background: var(--surface-soft); }
-.service-picker-menu button span { flex: 1; font-size: 12px; font-weight: 650; }
-.service-picker-menu button b { color: var(--brand-strong); font-size: 10px; }
-.service-picker-menu p { margin: 12px 8px; color: var(--muted); font-size: 11px; text-align: center; }
+.service-picker-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px 16px 12px; border-bottom: 1px solid var(--line); }
+.service-picker-header > div { display: grid; gap: 3px; min-width: 0; }
+.service-picker-kicker { color: var(--brand-strong); font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.service-picker-header strong { color: var(--ink); font-size: 15px; }
+.service-picker-header small { color: var(--muted); font-size: 10px; line-height: 1.5; }
+.service-picker-close { display: grid; place-items: center; width: 26px; height: 26px; flex: none; border: 0; border-radius: 8px; color: var(--muted); background: transparent; cursor: pointer; font-size: 20px; line-height: 1; }
+.service-picker-close:hover { color: var(--brand-strong); background: var(--brand-soft); }
+.service-picker-search { display: flex; align-items: center; gap: 8px; margin: 12px 14px 8px; padding: 0 10px; height: 36px; border: 1px solid #e1e5ee; border-radius: 10px; color: var(--muted); background: var(--surface-soft); }
+.service-picker-search:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(239, 71, 118, .1); }
+.service-picker-search span { font-size: 18px; }
+.service-picker-search input { width: 100%; min-width: 0; border: 0; outline: 0; color: var(--ink); background: transparent; font: inherit; font-size: 12px; }
+.service-picker-search input::placeholder { color: #a2a8b5; }
+.service-picker-groups { min-height: 0; flex: 1 1 auto; overflow-y: auto; padding: 0 9px 8px; }
+.service-picker-group + .service-picker-group { margin-top: 8px; }
+.service-picker-group-heading { display: flex; align-items: center; justify-content: space-between; padding: 7px 7px 5px; color: var(--muted); font-size: 10px; }
+.service-picker-group-heading strong { color: var(--ink); font-size: 10px; }
+.service-picker-group-heading span { display: inline-grid; min-width: 18px; height: 18px; place-items: center; border-radius: 999px; background: var(--surface-soft); font-size: 9px; }
+.service-picker-option { display: flex; align-items: center; width: 100%; min-height: 49px; gap: 10px; padding: 7px; border: 0; border-radius: 10px; color: var(--ink); background: transparent; cursor: pointer; text-align: left; }
+.service-picker-option:hover { background: var(--surface-soft); }
+.service-picker-option-copy { display: grid; min-width: 0; flex: 1; gap: 3px; }
+.service-picker-option-copy strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.service-picker-option-copy small { overflow: hidden; color: var(--muted); font-size: 9px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.service-picker-option > b { display: grid; place-items: center; width: 23px; height: 23px; flex: none; border-radius: 7px; color: var(--brand-strong); background: var(--brand-soft); font-size: 16px; font-weight: 400; }
+.service-picker-groups > p { margin: 28px 8px; color: var(--muted); font-size: 11px; text-align: center; }
+.service-picker-footer { padding: 10px 15px; border-top: 1px solid var(--line); color: var(--muted); background: var(--surface-soft); font-size: 9px; }
 
 .translation-center-layout { display: grid; grid-template-columns: minmax(300px, .88fr) minmax(420px, 1.12fr); gap: 18px; min-height: 0; }
 .translation-input-panel,
@@ -570,14 +763,22 @@ onUnmounted(() => {
 .translate-primary-button small { padding-left: 10px; border-left: 1px solid rgba(255,255,255,.35); font-size: 10px; font-weight: 600; }
 
 .results-heading { margin-bottom: 10px; }
+.results-heading-actions { display: flex; align-items: center; gap: 9px; }
+.results-order-hint { color: var(--muted); font-size: 9px; white-space: nowrap; }
 .copy-all-button { min-height: 30px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; color: var(--brand-strong); background: var(--surface); cursor: pointer; font-size: 10px; font-weight: 700; }
 .copy-all-button:hover:not(:disabled) { border-color: #ef9ab1; background: var(--brand-soft); }
 .copy-all-button:disabled { cursor: not-allowed; color: #b4bac5; }
 .translation-result-list { display: grid; gap: 10px; min-height: 0; overflow-y: auto; padding: 2px 3px 3px 0; }
-.translation-result-card { padding: 13px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.translation-result-card { padding: 13px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); cursor: grab; transition: border-color .16s ease, box-shadow .16s ease, opacity .16s ease, transform .16s ease; }
+.translation-result-card:active { cursor: grabbing; }
+.translation-result-card.is-dragging { opacity: .5; transform: scale(.985); }
+.translation-result-card.is-drag-over { border-color: #ef9ab1; box-shadow: 0 -4px 0 -2px var(--brand); }
 .translation-result-card[data-status='success'] { border-color: #ecd8df; }
 .translation-result-card-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .translation-result-service-name { display: flex; align-items: center; min-width: 0; gap: 10px; }
+.drag-handle { display: grid; place-items: center; width: 18px; height: 28px; flex: none; padding: 0; border: 0; border-radius: 6px; color: #a6adba; background: transparent; cursor: grab; font-size: 18px; letter-spacing: -4px; line-height: 1; }
+.drag-handle:hover, .drag-handle:focus-visible { color: var(--brand-strong); background: var(--brand-soft); outline: none; }
+.drag-handle:active { cursor: grabbing; }
 .translation-result-service-name > div { display: grid; min-width: 0; gap: 3px; }
 .translation-result-service-name strong { overflow: hidden; color: var(--ink); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
 .translation-result-service-name small { overflow: hidden; max-width: 300px; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
@@ -605,11 +806,6 @@ onUnmounted(() => {
 .translation-result-error button { flex: none; padding: 4px 7px; border: 1px solid #efb1c1; border-radius: 7px; color: #a43755; background: transparent; cursor: pointer; font-size: 10px; font-weight: 700; }
 .translation-result-error button:disabled { cursor: not-allowed; opacity: .45; }
 
-.translation-center-note { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 13px; color: var(--muted); background: var(--surface-soft); font-size: 10px; }
-.translation-center-note > span { padding: 4px 7px; border-radius: 6px; color: var(--brand-strong); background: var(--brand-soft); font-weight: 800; }
-.translation-center-note p { flex: 1; margin: 0; line-height: 1.5; }
-.translation-center-note button { padding: 0; border: 0; color: var(--brand-strong); background: transparent; cursor: pointer; font-size: 10px; font-weight: 750; white-space: nowrap; }
-
 @media (max-width: 1050px) {
   .translation-center { padding: 24px 28px 20px; }
   .translation-center-layout { grid-template-columns: minmax(270px, .8fr) minmax(360px, 1.2fr); }
@@ -626,14 +822,11 @@ onUnmounted(() => {
   .language-swap-button { align-self: flex-end; }
   .translation-center-service-picker { width: 100%; margin-left: 0; }
   .add-service-button { width: 100%; justify-content: center; }
-  .service-picker-menu { left: 0; right: 0; width: auto; }
+  .service-picker-popover { left: 0; right: 0; width: auto; }
   .translation-center-layout { grid-template-columns: 1fr; }
   .translation-input-panel { min-height: 330px; }
   .translation-results-panel { min-height: 360px; }
   .translation-result-service-name small { max-width: 160px; }
-  .translation-center-note { align-items: flex-start; flex-wrap: wrap; }
-  .translation-center-note p { flex-basis: calc(100% - 42px); }
-  .translation-center-note button { margin-left: 42px; }
 }
 
 @media (max-width: 480px) {
@@ -642,5 +835,6 @@ onUnmounted(() => {
   .translation-input-panel textarea { min-height: 220px; font-size: 17px; }
   .translation-result-service-name small { display: none; }
   .translation-result-card-actions .result-state { display: none; }
+  .results-order-hint { display: none; }
 }
 </style>

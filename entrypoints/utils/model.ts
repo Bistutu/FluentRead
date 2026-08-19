@@ -103,6 +103,9 @@ export class Config {
     inputBoxTranslationTarget: string; // 输入框翻译目标语言
     deepseekApiType: DeepSeekApiType; // DeepSeek API 格式
     deepseekThinkingMode: DeepSeekThinkingMode; // DeepSeek Chat Completion 思考模式
+    translationCenterServices: string[]; // 翻译中心已选服务及其展示顺序
+    translationCenterSourceLanguage: string; // 翻译中心源语言
+    translationCenterTargetLanguage: string; // 翻译中心目标语言
 
     constructor() {
         this.on = true;
@@ -168,6 +171,9 @@ export class Config {
         this.inputBoxTranslationTarget = 'en'; // 默认翻译成英文
         this.deepseekApiType = 'auto'; // DeepSeek 默认自动选择 API 格式
         this.deepseekThinkingMode = 'disabled'; // 翻译默认关闭思考模式，降低延迟和输出噪音
+        this.translationCenterServices = [];
+        this.translationCenterSourceLanguage = '';
+        this.translationCenterTargetLanguage = '';
     }
 }
 
@@ -353,6 +359,9 @@ export function normalizeConfig(value: unknown): Config {
     if (typeof normalized.contextMenuEnabled !== 'boolean') {
         normalized.contextMenuEnabled = true;
     }
+    normalized.translationCenterServices = normalizeStringList(source.translationCenterServices);
+    normalized.translationCenterSourceLanguage = normalizeConfigLanguage(source.translationCenterSourceLanguage);
+    normalized.translationCenterTargetLanguage = normalizeConfigLanguage(source.translationCenterTargetLanguage);
 
     return normalized;
 }
@@ -391,6 +400,18 @@ function normalizeStringMapping(value: unknown): IMapping {
     return Object.fromEntries(
         Object.entries(value).filter(([, item]) => typeof item === 'string'),
     );
+}
+
+function normalizeStringList(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+    return [...new Set(value
+        .filter((item): item is string => typeof item === 'string')
+        .map(item => item.trim())
+        .filter(Boolean))];
+}
+
+function normalizeConfigLanguage(value: unknown): string {
+    return typeof value === 'string' ? value.trim() : '';
 }
 
 function isBooleanMapping(value: unknown): value is Record<string, boolean> {
