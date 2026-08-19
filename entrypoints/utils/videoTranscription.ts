@@ -6,15 +6,36 @@ export const VIDEO_LOCAL_TRANSCRIPTION_MODELS = [
     value: 'tiny',
     label: 'Whisper Tiny（本地，速度优先）',
     modelId: 'onnx-community/whisper-tiny',
+    description: '体积更小，适合边播边识别',
   },
   {
     value: 'base',
     label: 'Whisper Base（本地，准确度优先）',
     modelId: 'onnx-community/whisper-base',
+    description: '识别更稳，首次下载和推理更慢',
   },
 ] as const;
 
 export type VideoLocalTranscriptionModel = typeof VIDEO_LOCAL_TRANSCRIPTION_MODELS[number]['value'];
+
+/**
+ * 只记录“模型已经由扩展成功初始化过”的状态；模型文件本身仍由
+ * Transformers.js 放在浏览器 Cache API 中。状态用于在 X 播放器里给出
+ * 清晰的引导，避免用户第一次点“请求 AI 字幕”时才遇到一串解码错误。
+ */
+export const VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY = 'fluentReadVideoLocalTranscriptionModels';
+
+export function normalizeVideoLocalTranscriptionModels(value: unknown): VideoLocalTranscriptionModel[] {
+  if (!Array.isArray(value)) return [];
+  const supported = new Set(VIDEO_LOCAL_TRANSCRIPTION_MODELS.map((item) => item.value));
+  return [...new Set(value.filter((model): model is VideoLocalTranscriptionModel =>
+    typeof model === 'string' && supported.has(model as VideoLocalTranscriptionModel)))];
+}
+
+export function getVideoLocalTranscriptionModelDescription(value: unknown): string {
+  const model = normalizeVideoLocalTranscriptionModel(value);
+  return VIDEO_LOCAL_TRANSCRIPTION_MODELS.find((item) => item.value === model)!.description;
+}
 
 export function normalizeVideoLocalTranscriptionModel(value: unknown): VideoLocalTranscriptionModel {
   return VIDEO_LOCAL_TRANSCRIPTION_MODELS.some((item) => item.value === value)

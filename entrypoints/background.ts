@@ -17,7 +17,7 @@ import {
     buildTranslationCacheKey,
     translationCache,
 } from "@/entrypoints/utils/translationCache";
-import { downloadImageOcrLanguagesWithOffscreen, recognizeImageWithOffscreen, transcribeVideoAudioWithOffscreen, translateAreaWithOffscreen, translateImageWithOffscreen } from "@/entrypoints/service/chrome-translator";
+import { downloadImageOcrLanguagesWithOffscreen, prepareVideoTranscriptionModelWithOffscreen, recognizeImageWithOffscreen, transcribeVideoAudioWithOffscreen, translateAreaWithOffscreen, translateImageWithOffscreen } from "@/entrypoints/service/chrome-translator";
 import { imageBufferToDataUrl, MAX_REMOTE_IMAGE_BYTES, normalizeRemoteImageUrl } from "@/entrypoints/utils/imageFetch";
 import {
     formatConnectionTestError,
@@ -35,6 +35,9 @@ import {
 import {
     buildVideoTranscriptionEndpoint,
     getVideoTranscriptionModel,
+    normalizeVideoLocalTranscriptionModel,
+    normalizeVideoLocalTranscriptionModels,
+    VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY,
     normalizeVideoTranscriptionLanguage,
     supportsVideoTranscription,
 } from "@/entrypoints/utils/videoTranscription";
@@ -677,6 +680,17 @@ export default defineBackground({
                             sourceLanguage: message.sourceLanguage,
                         });
                         resolve({ success: true, ...result });
+                        return;
+                    }
+
+                    if (message.type === 'fluentReadPrepareLocalVideoModel') {
+                        const model = normalizeVideoLocalTranscriptionModel(message.model);
+                        const preparedModel = await prepareVideoTranscriptionModelWithOffscreen(model);
+                        const stored = await browser.storage.local.get(VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY);
+                        const downloadedModels = normalizeVideoLocalTranscriptionModels(stored[VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY]);
+                        const nextModels = normalizeVideoLocalTranscriptionModels([...downloadedModels, preparedModel]);
+                        await browser.storage.local.set({ [VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY]: nextModels });
+                        resolve({ success: true, model: preparedModel, models: nextModels });
                         return;
                     }
 

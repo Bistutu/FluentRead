@@ -126,7 +126,7 @@ async function main() {
         customModel: { ...(previous.customModel || {}), custom: 'fixture-model' },
         token: { ...(previous.token || {}), custom: '' },
         requireApiKey: { ...(previous.requireApiKey || {}), 'custom:fixture-model': false },
-      }});
+      }, fluentReadVideoLocalTranscriptionModels: ['tiny'] });
     }, `http://127.0.0.1:${port}/v1/chat/completions`);
 
     const page = await context.newPage();
@@ -157,7 +157,28 @@ async function main() {
       video.src = videoDataUrl;
       video.style.cssText = 'position:absolute;left:0;top:0;width:2px;height:2px;opacity:0;pointer-events:none;';
       video.load();
-      player.append(label, video);
+
+      // 模拟 X 播放器右下角的原生控制组：FluentRead 应插入设置齿轮左侧，
+      // 而不是再创建一个偏大的独立浮层。
+      const controls = document.createElement('div');
+      controls.style.cssText = 'position:absolute;right:8px;bottom:8px;z-index:2;display:flex;align-items:center;gap:2px;padding:2px;border-radius:6px;background:rgba(0,0,0,.28);';
+      const play = document.createElement('button');
+      play.type = 'button';
+      play.textContent = '▶';
+      play.setAttribute('aria-label', 'Play');
+      const settings = document.createElement('button');
+      settings.type = 'button';
+      settings.textContent = '⚙';
+      settings.setAttribute('aria-label', 'Settings');
+      const fullscreen = document.createElement('button');
+      fullscreen.type = 'button';
+      fullscreen.textContent = '⛶';
+      fullscreen.setAttribute('aria-label', 'Fullscreen');
+      [play, settings, fullscreen].forEach((button) => {
+        button.style.cssText = 'width:28px;height:28px;padding:0;border:0;color:#fff;background:transparent;font:16px/1 Arial;';
+      });
+      controls.append(play, settings, fullscreen);
+      player.append(label, video, controls);
       document.body.appendChild(player);
       void video.play().catch(() => undefined);
     }, fixtureVideoDataUrl);
@@ -171,28 +192,62 @@ async function main() {
     const buttonState = await page.evaluate(() => ({
       host: document.querySelector('#fluent-read-video-subtitle-button')?.closest('[data-testid="videoPlayer"]')?.getAttribute('data-testid') || '',
       controlClass: document.querySelector('#fluent-read-video-subtitle-button')?.parentElement?.className || '',
+      buttonBeforeSettings: (() => {
+        const button = document.querySelector('#fluent-read-video-subtitle-button');
+        const settings = document.querySelector('[data-testid="videoPlayer"] button[aria-label="Settings"]');
+        return Boolean(button && settings && button.parentElement === settings.parentElement
+          && button.nextElementSibling === settings);
+      })(),
       pageUrl: location.href,
     }));
-    if (buttonState.host !== 'videoPlayer' || !buttonState.controlClass.includes('fluent-read-video-controls')) {
-      throw new Error(`X 播放器 fallback 控件校验失败：${JSON.stringify(buttonState)}`);
+    if (buttonState.host !== 'videoPlayer' || !buttonState.buttonBeforeSettings) {
+      throw new Error(`X 播放器设置齿轮旁控件校验失败：${JSON.stringify(buttonState)}`);
     }
 
     await page.locator('#fluent-read-video-subtitle-button').click();
     await page.waitForFunction(() => document.querySelector('#fluent-read-video-subtitle-menu')?.hidden === false, null, { timeout: 10000 });
     const menuState = await page.evaluate(() => {
       const ai = document.querySelector('[data-action="toggle-ai-subtitle"]');
+      const player = document.querySelector('[data-testid="videoPlayer"]');
+      const menu = document.querySelector('#fluent-read-video-subtitle-menu');
+      const originalHeight = player instanceof HTMLElement ? player.style.height : '';
+      if (player instanceof HTMLElement) player.style.height = '180px';
+      const responsiveHeight = menu instanceof HTMLElement ? menu.getBoundingClientRect().height : 0;
+      if (player instanceof HTMLElement) player.style.height = originalHeight;
       return {
         brand: document.querySelector('.fluent-read-video-menu-brand')?.textContent || '',
         aiLabel: ai?.querySelector('.fluent-read-video-menu-label')?.textContent || '',
         aiState: ai?.querySelector('[data-state]')?.textContent || '',
         aiDisabled: ai instanceof HTMLButtonElement ? ai.disabled : true,
+        responsiveHeight,
       };
     });
-    if (menuState.brand !== '流畅阅读' || menuState.aiLabel !== '请求 AI 字幕' || menuState.aiDisabled || menuState.aiState !== '点击请求') {
+    if (menuState.brand !== '流畅阅读' || menuState.aiLabel !== '请求 AI 字幕' || menuState.aiDisabled || menuState.aiState !== '点击请求'
+      || menuState.responsiveHeight > 136) {
       throw new Error(`X AI 字幕菜单校验失败：${JSON.stringify(menuState)}`);
     }
 
+    // 首次使用未下载模型时，应给出可执行的设置引导，而不是把底层解码
+    // 异常直接展示给用户；随后恢复已下载状态，继续验证真实本地推理链路。
+    await control.evaluate(() => chrome.storage.local.remove('fluentReadVideoLocalTranscriptionModels'));
+    const settingsPagePromise = context.waitForEvent('page', { timeout: 10000 });
     await page.locator('[data-action="toggle-ai-subtitle"]').click();
+    await page.waitForFunction(() => document.querySelector('[data-action="toggle-ai-subtitle"] [data-state]')?.textContent === '请先下载模型', null, { timeout: 10000 });
+    const settingsPage = await settingsPagePromise;
+    await settingsPage.close();
+    await page.screenshot({ path: path.join(artifactsDir, 'x-video-subtitle-model-prompt.png'), fullPage: true });
+    const modelPromptState = await page.locator('[data-action="toggle-ai-subtitle"] [data-state]').textContent();
+    await control.evaluate(() => chrome.storage.local.set({ fluentReadVideoLocalTranscriptionModels: ['tiny'] }));
+
+    await page.locator('[data-action="toggle-ai-subtitle"]').click();
+    // 让首个 5 秒音频分片完整落盘后暂停播放。这样断言的是当前 cue，
+    // 不会因为 fixture 视频先自然播放到结尾而把严格时间轴误判成空字幕。
+    await page.waitForTimeout(5200);
+    await page.evaluate(() => {
+      const video = document.querySelector('video');
+      video?.pause();
+      video?.dispatchEvent(new Event('timeupdate'));
+    });
     try {
       await page.waitForFunction(() => {
         const container = document.querySelector('#fluent-read-video-ai-caption-container');
@@ -280,6 +335,7 @@ async function main() {
 
     const result = await page.evaluate(() => ({
       localAiResult: null,
+      modelPromptState: '',
       localAiSource: document.querySelector('#fluent-read-video-ai-caption-container')?.getAttribute('data-fluent-read-caption-source') || '',
       original: document.querySelector('#fluent-read-video-subtitle-original')?.textContent?.trim() || '',
       translation: document.querySelector('#fluent-read-video-subtitle')?.textContent?.trim() || '',
@@ -287,6 +343,7 @@ async function main() {
       menuState: document.querySelector('[data-action="toggle-ai-subtitle"] [data-state]')?.textContent || '',
     }));
     result.localAiResult = localAiResult;
+    result.modelPromptState = modelPromptState;
     await page.screenshot({ path: path.join(artifactsDir, 'x-video-subtitle-fixture.png'), fullPage: true });
     if (pageErrors.length > 0) throw new Error(`X fixture 页面异常：${JSON.stringify(pageErrors)}`);
     if (requestLog.some((entry) => entry.url?.endsWith('/audio/transcriptions'))

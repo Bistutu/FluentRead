@@ -3,9 +3,11 @@ import {
   buildVideoTranscriptionEndpoint,
   getVideoLocalTranscriptionModelId,
   getVideoLocalTranscriptionModelLabel,
+  getVideoLocalTranscriptionModelDescription,
   getVideoTranscriptionModel,
   normalizeVideoTranscriptionLanguage,
   normalizeVideoLocalTranscriptionModel,
+  normalizeVideoLocalTranscriptionModels,
   resampleToWhisperAudio,
   supportsVideoTranscription,
 } from '@/entrypoints/utils/videoTranscription';
@@ -39,6 +41,8 @@ describe('视频 AI 字幕转写配置', () => {
     expect(normalizeVideoLocalTranscriptionModel('unknown')).toBe('tiny');
     expect(getVideoLocalTranscriptionModelId('base')).toBe('onnx-community/whisper-base');
     expect(getVideoLocalTranscriptionModelLabel('tiny')).toContain('本地');
+    expect(getVideoLocalTranscriptionModelDescription('base')).toContain('更稳');
+    expect(normalizeVideoLocalTranscriptionModels(['tiny', 'base', 'unknown', 'tiny'])).toEqual(['tiny', 'base']);
   });
 
   it('将多声道音频重采样为单声道 PCM', () => {

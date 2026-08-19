@@ -370,6 +370,7 @@
             <option v-for="item in videoLocalModelOptions" :key="item.value" :value="item.value">{{ item.label }}</option>
           </select>
         </label>
+        <button class="video-model-settings-link" type="button" @click="openOptions('settings-video')">打开完整设置下载 Tiny / Base 模型 →</button>
         <label class="select-row">
           <span><strong>字幕字号</strong><small>只调整 FluentRead 显示的原文和译文</small></span>
           <select v-model.number="config.videoSubtitleFontSize" aria-label="视频字幕字号" :disabled="!config.videoTranslationEnabled">

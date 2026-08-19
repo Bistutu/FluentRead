@@ -24,7 +24,9 @@ import {
 } from './xVideoSubtitleData';
 import {
   getVideoLocalTranscriptionModelLabel,
+  normalizeVideoLocalTranscriptionModels,
   normalizeVideoLocalTranscriptionModel,
+  VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY,
 } from '@/entrypoints/utils/videoTranscription';
 
 export const VIDEO_AI_CAPTION_CONTAINER_ID = 'fluent-read-video-ai-caption-container';
@@ -40,6 +42,13 @@ export const VIDEO_TRANSLATION_MENU_ID = 'fluent-read-video-subtitle-menu';
 const VIDEO_PLAYER_SELECTOR = '#movie_player, .html5-video-player, [data-testid="videoPlayer"]';
 const VIDEO_RIGHT_CONTROLS_SELECTOR = '.ytp-right-controls';
 const VIDEO_FALLBACK_CONTROLS_CLASS = 'fluent-read-video-controls';
+const VIDEO_X_SETTINGS_CONTROL_SELECTOR = [
+  '[data-testid="videoPlayer"] button[aria-label*="Settings" i]',
+  '[data-testid="videoPlayer"] button[aria-label*="设置"]',
+  '[data-testid="videoPlayer"] button[title*="Settings" i]',
+  '[data-testid="videoPlayer"] [data-testid*="settings" i]',
+  '[data-testid="videoPlayer"] [data-testid*="setting" i]',
+].join(', ');
 const VIDEO_TRANSLATION_ACTIVE_CLASS = 'fluent-read-video-subtitle-active';
 const VIDEO_DISPLAY_TRANSLATION_ONLY_CLASS = 'fluent-read-video-display-translation-only';
 const VIDEO_DISPLAY_ORIGINAL_ONLY_CLASS = 'fluent-read-video-display-original-only';
@@ -61,6 +70,8 @@ const VIDEO_DISPLAY_MODE_LABELS: Record<VideoSubtitleDisplayMode, string> = {
 
 const VIDEO_CAPTION_EMPTY_GRACE_MS = 420;
 const VIDEO_CAPTION_STABILITY_MS = 360;
+const VIDEO_AI_CUE_EARLY_TOLERANCE_MS = 120;
+const VIDEO_AI_CUE_LATE_GRACE_MS = 1_600;
 const VIDEO_CAPTION_FALLBACK_SEGMENT_SELECTOR = '.captions-text';
 export const VIDEO_PRETRANSLATION_MACHINE_WINDOW_MS = 10_000;
 export const VIDEO_PRETRANSLATION_AI_WINDOW_MS = 30_000;
@@ -230,6 +241,22 @@ function findVideoPlayer(): HTMLElement | null {
     if (rect.width >= 240 && rect.height >= 120) return current;
   }
   return video?.parentElement || null;
+}
+
+function findXSettingsControl(player: HTMLElement): HTMLElement | null {
+  if (!isXVideoPage()) return null;
+  return player.querySelector<HTMLElement>(VIDEO_X_SETTINGS_CONTROL_SELECTOR);
+}
+
+/** X 的控制栏没有固定 class；从设置齿轮向上找最近的按钮组。 */
+function findXNativeControls(player: HTMLElement, settingsControl: HTMLElement): HTMLElement | null {
+  let candidate = settingsControl.parentElement;
+  while (candidate && candidate !== player) {
+    const interactiveCount = candidate.querySelectorAll('button, [role="button"]').length;
+    if (interactiveCount >= 2) return candidate;
+    candidate = candidate.parentElement;
+  }
+  return settingsControl.parentElement;
 }
 
 function getVideoPageKey(): string {
@@ -523,8 +550,8 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       align-items: center !important;
       justify-content: center !important;
       align-self: center !important;
-      width: 48px !important;
-      height: 48px !important;
+      width: 32px !important;
+      height: 32px !important;
       margin: 0 !important;
       padding: 0 !important;
       border: 0 !important;
@@ -540,9 +567,9 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
     #${VIDEO_TRANSLATION_BUTTON_ID}:focus-visible { opacity: 1 !important; }
     #${VIDEO_TRANSLATION_BUTTON_ID} .fluent-read-video-subtitle-button-icon {
       display: block !important;
-      width: 28px !important;
-      height: 28px !important;
-      border-radius: 7px !important;
+      width: 20px !important;
+      height: 20px !important;
+      border-radius: 5px !important;
       background: transparent !important;
       object-fit: cover !important;
       overflow: hidden !important;
@@ -563,31 +590,34 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       z-index: 2147483646 !important;
       display: flex !important;
       align-items: center !important;
-      min-height: 48px !important;
-      border-radius: 8px !important;
-      background: rgba(0, 0, 0, .28) !important;
+      min-height: 32px !important;
+      border-radius: 6px !important;
+      background: rgba(0, 0, 0, .22) !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} {
       position: absolute !important;
-      right: 12px !important;
-      bottom: 52px !important;
+      right: 8px !important;
+      bottom: 40px !important;
       z-index: 2147483646 !important;
-      width: 286px !important;
+      width: min(252px, calc(100% - 12px)) !important;
+      max-height: min(292px, calc(100% - 44px)) !important;
       box-sizing: border-box !important;
-      padding: 10px !important;
+      padding: 6px !important;
       border: 1px solid rgba(255, 255, 255, .12) !important;
-      border-radius: 12px !important;
+      border-radius: 9px !important;
       background: rgba(30, 30, 30, .97) !important;
       box-shadow: 0 8px 28px rgba(0, 0, 0, .42) !important;
       color: #fff !important;
-      font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+      font: 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+      overflow-y: auto !important;
+      overscroll-behavior: contain !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID}[hidden] { display: none !important; }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-title {
       display: flex !important;
       align-items: center !important;
       justify-content: space-between !important;
-      padding: 4px 8px 8px !important;
+      padding: 3px 6px 5px !important;
       color: rgba(255, 255, 255, .92) !important;
       font-weight: 700 !important;
     }
@@ -615,10 +645,10 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       display: flex !important;
       align-items: center !important;
       width: 100% !important;
-      min-height: 34px !important;
+      min-height: 28px !important;
       box-sizing: border-box !important;
       margin: 1px 0 !important;
-      padding: 6px 8px !important;
+      padding: 4px 6px !important;
       border: 0 !important;
       border-radius: 7px !important;
       background: transparent !important;
@@ -639,8 +669,8 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       opacity: .55 !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-primary-action {
-      min-height: 42px !important;
-      margin: 4px 0 8px !important;
+      min-height: 34px !important;
+      margin: 3px 0 5px !important;
       border: 1px solid rgba(236, 72, 153, .42) !important;
       background: linear-gradient(135deg, rgba(236, 72, 153, .26), rgba(236, 72, 153, .12)) !important;
       color: #fff !important;
@@ -657,31 +687,31 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-check {
       display: inline-block !important;
-      width: 20px !important;
+      width: 16px !important;
       color: #ff8fbd !important;
       font-weight: 800 !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-label { flex: 1 !important; }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-value {
       color: rgba(255, 255, 255, .58) !important;
-      font-size: 11px !important;
+      font-size: 10px !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-divider {
       height: 1px !important;
-      margin: 7px 8px !important;
+      margin: 5px 6px !important;
       background: rgba(255, 255, 255, .12) !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-caption {
       display: block !important;
-      padding: 4px 8px 2px !important;
+      padding: 3px 6px 1px !important;
       color: rgba(255, 255, 255, .52) !important;
-      font-size: 11px !important;
+      font-size: 10px !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-mode {
       width: auto !important;
       flex: 1 !important;
       justify-content: center !important;
-      padding: 5px 7px !important;
+      padding: 4px 6px !important;
       color: rgba(255, 255, 255, .65) !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-mode[aria-checked="true"] {
@@ -691,7 +721,7 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-mode-group {
       display: flex !important;
       gap: 3px !important;
-      padding: 2px 4px 4px !important;
+      padding: 1px 3px 3px !important;
     }
     #ytp-caption-window-container.${VIDEO_DISPLAY_TRANSLATION_ONLY_CLASS} .ytp-caption-segment,
     #ytp-caption-window-container.${VIDEO_DISPLAY_TRANSLATION_ONLY_CLASS} .captions-text,
@@ -762,11 +792,11 @@ export function mountVideoSubtitleTranslation(): () => void {
   let aiCaptureStream: MediaStream | null = null;
   let aiCaptureQueue: Promise<void> = Promise.resolve();
   let aiCaptureNextStartMs = 0;
+  let aiCaptureSession = 0;
   let aiCaptureSliceTimer: number | undefined;
   let aiCaptureRunning = false;
   let aiCaptureError = '';
   let aiCues: VideoSubtitleCue[] = [];
-  let aiLastResultAt = 0;
   const xSubtitleVisitedResources = new Set<string>();
   let xSubtitleResourceCount = 0;
   const xSubtitleTrackKey = 'x:captions';
@@ -800,6 +830,17 @@ export function mountVideoSubtitleTranslation(): () => void {
       .sort((left, right) => right.startMs - left.startMs)[0] || null;
   };
 
+  const getVisibleAiCueAtTime = (currentMs: number): VideoSubtitleCue | null => {
+    if (!Number.isFinite(currentMs)) return null;
+    return [...aiCues]
+      .filter((cue) => {
+        const startMs = cue.startMs - VIDEO_AI_CUE_EARLY_TOLERANCE_MS;
+        const endMs = cue.startMs + Math.max(cue.durationMs, 700) + VIDEO_AI_CUE_LATE_GRACE_MS;
+        return currentMs >= startMs && currentMs < endMs;
+      })
+      .sort((left, right) => right.startMs - left.startMs)[0] || null;
+  };
+
   /** 将 X 的 TextTrack / sidecar / AI cue 统一映射到既有字幕翻译观察器。 */
   const syncXVideoCaptionSource = (): HTMLElement | null => {
     if (!isXVideoPage()) return null;
@@ -807,9 +848,19 @@ export function mountVideoSubtitleTranslation(): () => void {
     const container = getOrCreateSyntheticCaptionContainer();
     if (!container) return null;
 
+    const currentMs = video && Number.isFinite(video.currentTime) ? video.currentTime * 1000 : Number.NaN;
     let text = '';
     let sourceKind = 'none';
-    if (video) {
+
+    // 用户主动请求 AI 字幕后，整个播放头由 AI 时间轴接管。不要在推理
+    // 延迟期间偷偷切回 X 的原生/sidecar 文本，否则原文和译文会来回跳。
+    if (aiCaptureRunning) {
+      const activeAiCue = getVisibleAiCueAtTime(currentMs);
+      if (activeAiCue) {
+        text = activeAiCue.text;
+        sourceKind = 'ai';
+      }
+    } else if (video) {
       const tracks = Array.from(video.textTracks).sort((left, right) => {
         const preferred = (track: TextTrack) => {
           const language = `${track.language} ${track.label}`.toLowerCase();
@@ -835,23 +886,17 @@ export function mountVideoSubtitleTranslation(): () => void {
       }
     }
 
-    const currentMs = video && Number.isFinite(video.currentTime) ? video.currentTime * 1000 : Number.NaN;
-    if (!text && pretranslationTrackKey.startsWith('x:')) {
+    if (!aiCaptureRunning && !text && pretranslationTrackKey.startsWith('x:')) {
       const activeCue = getActiveCueAtTime(pretranslationCues, currentMs);
       if (activeCue) {
         text = activeCue.text;
         sourceKind = 'sidecar';
       }
     }
-    if (!text && aiCues.length > 0) {
+    if (!aiCaptureRunning && !text && aiCues.length > 0) {
       const activeCue = getActiveCueAtTime(aiCues, currentMs);
       if (activeCue) {
         text = activeCue.text;
-        sourceKind = 'ai';
-      } else if (Date.now() - aiLastResultAt < 10_000) {
-        // WASM 推理通常晚于音频片段的原始时间轴返回；在短暂的延迟窗口
-        // 内保留最近一句，避免字幕刚生成就因播放头前进而不可见。
-        text = aiCues[aiCues.length - 1].text;
         sourceKind = 'ai';
       }
     }
@@ -1329,11 +1374,16 @@ export function mountVideoSubtitleTranslation(): () => void {
   const appendAiSubtitleCue = (startMs: number, durationMs: number, text: string) => {
     const cleaned = normalizeVideoCaptionText(text);
     if (!cleaned) return;
+    const normalizedText = cleaned.toLocaleLowerCase();
+    const duplicate = aiCues.some((cue) =>
+      Math.abs(cue.startMs - startMs) <= 180
+      && normalizeVideoCaptionText(cue.text).toLocaleLowerCase() === normalizedText);
+    if (duplicate) return;
+
     aiCues = finalizeVideoSubtitleCues([
       ...aiCues,
-      { startMs, durationMs: Math.max(durationMs, 1200), text: cleaned },
+      { startMs: Math.max(0, startMs), durationMs: Math.max(durationMs, 900), text: cleaned },
     ]).slice(-4000);
-    aiLastResultAt = Date.now();
     setPretranslationTrack('ai:capture', { url: 'ai:capture', cues: aiCues });
     aiCaptureError = '';
     syncXVideoCaptionSource();
@@ -1357,14 +1407,16 @@ export function mountVideoSubtitleTranslation(): () => void {
     }
     aiCaptureStream?.getTracks().forEach((track) => track.stop());
     aiCaptureStream = null;
+    syncXVideoCaptionSource();
+    scheduleUpdate();
     updatePlayerUiState();
   };
 
-  const queueAiAudioChunk = (blob: Blob, startMs: number, durationMs: number) => {
+  const queueAiAudioChunk = (blob: Blob, startMs: number, durationMs: number, session: number) => {
     aiCaptureQueue = aiCaptureQueue
       .catch(() => undefined)
       .then(async () => {
-        if (destroyed || blob.size === 0) return;
+        if (destroyed || blob.size === 0 || session !== aiCaptureSession) return;
         const response = await browser.runtime.sendMessage({
           type: 'fluentReadTranscribeLocalVideoAudio',
           audioBase64: encodeVideoAudioBase64(await blob.arrayBuffer()),
@@ -1379,6 +1431,7 @@ export function mountVideoSubtitleTranslation(): () => void {
         if (!response?.success) {
           throw new Error(response?.error || 'AI 字幕接口没有返回文字');
         }
+        if (session !== aiCaptureSession) return;
         const segments = Array.isArray(response.segments)
           ? response.segments.filter((segment) => typeof segment.text === 'string' && segment.text.trim())
           : [];
@@ -1402,7 +1455,10 @@ export function mountVideoSubtitleTranslation(): () => void {
       })
       .catch((error) => {
         if (destroyed) return;
-        aiCaptureError = error instanceof Error ? error.message : String(error);
+        const message = error instanceof Error ? error.message : String(error);
+        aiCaptureError = /decode|解码|audio data/i.test(message)
+          ? '当前视频音频格式暂不支持，请重试或使用桌面版 Chrome/Edge'
+          : message;
         stopAiSubtitleCapture();
         console.warn('[FluentRead] X AI 字幕请求失败', error);
       });
@@ -1443,9 +1499,9 @@ export function mountVideoSubtitleTranslation(): () => void {
       const mimeType = supportedMimeTypes.find((candidate) =>
         typeof MediaRecorder.isTypeSupported !== 'function' || MediaRecorder.isTypeSupported(candidate));
       aiCues = [];
-      aiLastResultAt = 0;
       aiCaptureError = '';
       aiCaptureRunning = true;
+      const captureSession = ++aiCaptureSession;
       aiCaptureStream = audioStream;
       aiCaptureNextStartMs = Number.isFinite(video.currentTime) ? video.currentTime * 1000 : 0;
       setPretranslationTrack('ai:capture', { url: 'ai:capture', cues: [] });
@@ -1463,17 +1519,21 @@ export function mountVideoSubtitleTranslation(): () => void {
           stopAiSubtitleCapture();
           return;
         }
-        const startMs = aiCaptureNextStartMs;
+        const startMs = Number.isFinite(video.currentTime)
+          ? Math.max(0, video.currentTime * 1000)
+          : aiCaptureNextStartMs;
         aiCaptureRecorder = recorder;
         recorder.addEventListener('dataavailable', (event) => {
           const currentMs = Number.isFinite(video.currentTime) ? video.currentTime * 1000 : Number.NaN;
           const durationMs = Number.isFinite(currentMs) && currentMs > startMs
             ? Math.min(Math.max(currentMs - startMs, 1000), 8000)
             : 5000;
-          aiCaptureNextStartMs = startMs + durationMs;
+          aiCaptureNextStartMs = Number.isFinite(currentMs) && currentMs > startMs
+            ? currentMs
+            : startMs + durationMs;
           void event.data.arrayBuffer().then((buffer) => {
-            if (buffer.byteLength > 0) {
-              queueAiAudioChunk(new Blob([buffer], { type: event.data.type || mimeType || 'audio/webm' }), startMs, durationMs);
+            if (buffer.byteLength > 0 && captureSession === aiCaptureSession) {
+              queueAiAudioChunk(new Blob([buffer], { type: event.data.type || mimeType || 'audio/webm' }), startMs, durationMs, captureSession);
             }
           });
         });
@@ -1584,7 +1644,7 @@ export function mountVideoSubtitleTranslation(): () => void {
       aiToggle.querySelector<HTMLElement>('[data-state]')!.textContent = !available
         ? '仅 X 视频'
         : aiCaptureError
-          ? aiCaptureError.slice(0, 28)
+          ? aiCaptureError.includes('下载') ? '请先下载模型' : aiCaptureError.slice(0, 24)
           : aiCaptureRunning
             ? '生成中，点击停止'
             : '点击请求';
@@ -1657,6 +1717,22 @@ export function mountVideoSubtitleTranslation(): () => void {
     return { languageCode: track.languageCode, cues };
   };
 
+  const ensureLocalVideoModelReady = async (): Promise<boolean> => {
+    const model = normalizeVideoLocalTranscriptionModel(config.videoLocalModel);
+    try {
+      const stored = await browser.storage.local.get(VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY);
+      const downloaded = normalizeVideoLocalTranscriptionModels(stored[VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY]);
+      if (downloaded.includes(model)) return true;
+    } catch {
+      // 读取状态失败时仍按未下载处理，给用户一个可执行的设置入口。
+    }
+
+    aiCaptureError = '请先打开视频字幕设置下载本地模型';
+    updatePlayerUiState();
+    void browser.runtime.sendMessage({ type: 'openOptionsPage', section: 'settings-video' }).catch(() => undefined);
+    return false;
+  };
+
   const handleMenuClick = async (event: MouseEvent) => {
     const menu = menuElement;
     if (!menu || !(event.target instanceof Element)) return;
@@ -1674,7 +1750,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     }
     if (target.dataset.action === 'toggle-ai-subtitle') {
       if (aiCaptureRunning) stopAiSubtitleCapture();
-      else startAiSubtitleCapture();
+      else if (await ensureLocalVideoModelReady()) startAiSubtitleCapture();
       updatePlayerUiState();
       return;
     }
@@ -1786,7 +1862,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     const download = createMenuItem('download-subtitles', '下载字幕');
     download.querySelector('[data-check]')?.remove();
     menu.appendChild(download);
-    const settings = createMenuItem('open-settings', '打开视频翻译设置');
+    const settings = createMenuItem('open-settings', '打开设置下载模型');
     settings.querySelector('[data-check]')?.remove();
     settings.querySelector('[data-state]')?.remove();
     menu.appendChild(settings);
@@ -1844,6 +1920,14 @@ export function mountVideoSubtitleTranslation(): () => void {
   const ensurePlayerUi = () => {
     const player = findVideoPlayer();
     let controls = player?.querySelector<HTMLElement>(VIDEO_RIGHT_CONTROLS_SELECTOR);
+    let insertBefore: Element | null = null;
+    if (!controls && player && isXVideoPage()) {
+      const settingsControl = findXSettingsControl(player);
+      if (settingsControl) {
+        controls = findXNativeControls(player, settingsControl);
+        insertBefore = settingsControl;
+      }
+    }
     if (!controls && player && isXVideoPage()) {
       controls = player.querySelector<HTMLElement>(`.${VIDEO_FALLBACK_CONTROLS_CLASS}`);
       if (!controls) {
@@ -1862,7 +1946,11 @@ export function mountVideoSubtitleTranslation(): () => void {
     const playerButton = button as HTMLButtonElement;
     bindButtonClick(playerButton);
     const firstControl = controls.firstElementChild;
-    if (playerButton.parentElement !== controls || firstControl !== playerButton) {
+    if (insertBefore?.parentElement === controls) {
+      if (playerButton.parentElement !== controls || playerButton.nextElementSibling !== insertBefore) {
+        controls.insertBefore(playerButton, insertBefore);
+      }
+    } else if (playerButton.parentElement !== controls || firstControl !== playerButton) {
       controls.insertBefore(playerButton, firstControl);
     }
     buttonElement = playerButton;
@@ -2040,7 +2128,20 @@ export function mountVideoSubtitleTranslation(): () => void {
   const handleVideoTimelineEvent = (event: Event) => {
     const target = event.target as Element | null;
     if (!target || target.tagName !== 'VIDEO') return;
-    if (isXVideoPage()) syncXVideoCaptionSource();
+    if (isXVideoPage()) {
+      if (event.type === 'seeking' && aiCaptureRunning) {
+        // 丢弃 seek 前仍在队列中的推理结果，避免旧时间轴在新位置闪回。
+        aiCaptureSession += 1;
+        aiCaptureQueue = Promise.resolve();
+        aiCues = [];
+        aiCaptureNextStartMs = Number.isFinite((target as HTMLVideoElement).currentTime)
+          ? (target as HTMLVideoElement).currentTime * 1000
+          : 0;
+        setPretranslationTrack('ai:capture', { url: 'ai:capture', cues: [] });
+        resetTranslationState();
+      }
+      syncXVideoCaptionSource();
+    }
     schedulePretranslation();
     scheduleUpdate();
   };
@@ -2088,7 +2189,6 @@ export function mountVideoSubtitleTranslation(): () => void {
       xSubtitleResourceCount = 0;
       xSubtitleCues = [];
       aiCues = [];
-      aiLastResultAt = 0;
       stopAiSubtitleCapture();
       clearPretranslationState(true);
       resetTranslationState();

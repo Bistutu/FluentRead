@@ -111,6 +111,27 @@ export async function transcribeVideoAudioWithOffscreen(message: {
     throw new Error(response?.error || '本地视频 AI 字幕失败');
 }
 
+/** 预下载并初始化扩展内 Whisper 模型，成功后模型文件会留在浏览器本地缓存。 */
+export async function prepareVideoTranscriptionModelWithOffscreen(model?: string): Promise<string> {
+    await ensureOffscreenDocument();
+
+    const response = await new Promise<any>((resolve, reject) => {
+        chrome.runtime.sendMessage({
+            type: 'FLUENT_READ_LOCAL_VIDEO_PREPARE_OFFSCREEN',
+            model,
+        }, (result: any) => {
+            if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+            } else {
+                resolve(result);
+            }
+        });
+    });
+
+    if (response?.success && typeof response.model === 'string') return response.model;
+    throw new Error(response?.error || '本地视频 AI 字幕模型下载失败');
+}
+
 // 在 offscreen 页面中运行本地 OCR，避免内容脚本从网页源启动扩展 worker 时被浏览器拦截。
 export async function recognizeImageWithOffscreen(image: string, sourceLanguage: string): Promise<OcrLine[]> {
     await ensureOffscreenDocument();

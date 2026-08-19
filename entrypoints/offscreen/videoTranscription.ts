@@ -86,6 +86,15 @@ async function getLocalTranscriber(model: unknown): Promise<LocalTranscriber> {
   return transcriberPromise;
 }
 
+/** 预热并缓存模型；不需要捕获音频，也不会启动一次实际转写。 */
+export async function prepareLocalVideoTranscriptionModel(model?: unknown): Promise<{
+  model: ReturnType<typeof normalizeVideoLocalTranscriptionModel>;
+}> {
+  const normalizedModel = normalizeVideoLocalTranscriptionModel(model);
+  await getLocalTranscriber(normalizedModel);
+  return { model: normalizedModel };
+}
+
 function normalizeTimestamp(value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 }
