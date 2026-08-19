@@ -293,10 +293,13 @@
           </div>
           <div class="choice-block">
             <label>触发方式</label>
-            <div class="chips three">
+            <div class="chips three selection-trigger-chips">
               <button v-for="item in selectionTriggers" :key="item.value" type="button" :class="{ selected: config.selectionTranslatorTrigger === item.value }" @click="setSelectionTrigger(item.value)">{{ item.label }}</button>
             </div>
-            <small class="drawer-hint">图标和小点会固定显示在选区旁，不需要悬停才能发现。</small>
+            <button v-if="config.selectionTranslatorTrigger === 'custom'" class="secondary-action" type="button" @click="showCustomSelectionHotkeyDialog = true">
+              {{ config.customSelectionTranslatorHotkey ? `当前：${config.customSelectionTranslatorHotkey}` : '录制自定义快捷键' }}
+            </button>
+            <small class="drawer-hint">快捷键与图标、小点是并列的触发方式；选择快捷键后，选区旁不会再显示图标或小点。</small>
           </div>
         </div>
 
@@ -395,6 +398,7 @@
 
     <CustomHotkeyInput v-model="showCustomHotkeyDialog" :current-value="config.customFloatingBallHotkey" @confirm="confirmFloatingHotkey" @cancel="cancelFloatingHotkey" />
     <CustomHotkeyInput v-model="showCustomMouseHotkeyDialog" :current-value="config.customHotkey" @confirm="confirmMouseHotkey" @cancel="cancelMouseHotkey" />
+    <CustomHotkeyInput v-model="showCustomSelectionHotkeyDialog" :current-value="config.customSelectionTranslatorHotkey" @confirm="confirmSelectionHotkey" @cancel="cancelSelectionHotkey" />
   </main>
 </template>
 
@@ -431,6 +435,7 @@ const notice = ref('');
 const noticeType = ref<'success' | 'error'>('success');
 const showCustomHotkeyDialog = ref(false);
 const showCustomMouseHotkeyDialog = ref(false);
+const showCustomSelectionHotkeyDialog = ref(false);
 const servicePicker = ref<HTMLElement | null>(null);
 const servicePickerOpen = ref(false);
 const moreServicesOpen = ref(false);
@@ -482,8 +487,10 @@ const fullPageHotkey = computed(() => {
 });
 const selectionSummary = computed(() => {
   const textSummary = ({ disabled: '已关闭', bilingual: '双语显示', 'translation-only': '仅显示译文' }[config.value.selectionTranslatorMode] || '双语显示');
-  if (!config.value.selectionAreaEnabled) return textSummary;
-  return textSummary === '已关闭' ? '圈选翻译已启用' : `${textSummary} · 圈选翻译`;
+  const triggerSummary = selectionTriggers.find(item => item.value === config.value.selectionTranslatorTrigger)?.label || '显示图标';
+  const selectionTextSummary = `${textSummary} · ${triggerSummary}`;
+  if (!config.value.selectionAreaEnabled) return selectionTextSummary;
+  return textSummary === '已关闭' ? '圈选翻译已启用' : `${selectionTextSummary} · 圈选翻译`;
 });
 const floatingSummary = computed(() => `${config.value.floatingBallPosition === 'left' ? '页面左侧' : '页面右侧'} · ${fullPageHotkey.value}`);
 const displaySummary = computed(() => config.value.display === 1 ? `双语 · ${styleLabel.value}` : '仅显示译文');
@@ -508,11 +515,7 @@ const selectionModes = [
   { value: 'bilingual', label: '双语显示' },
   { value: 'translation-only', label: '仅译文' },
 ];
-const selectionTriggers = [
-  { value: 'direct', label: '直接弹出' },
-  { value: 'icon', label: '显示图标' },
-  { value: 'dot', label: '显示小点' },
-];
+const selectionTriggers = options.selectionTranslatorTriggers;
 
 function applyTheme(theme: string) {
   document.documentElement.classList.toggle('dark', theme === 'dark' || (theme === 'auto' && darkMode.matches));
@@ -685,8 +688,12 @@ function setSelectionMode(mode: string) {
   config.value.disableSelectionTranslator = mode === 'disabled';
   void broadcast({ type: 'updateSelectionTranslatorMode', mode });
 }
+const selectionShortcutTriggers = new Set(['Control', 'Alt', 'Shift', 'custom']);
 function setSelectionTrigger(trigger: string) {
   config.value.selectionTranslatorTrigger = trigger;
+  config.value.selectionTranslatorHotkey = selectionShortcutTriggers.has(trigger) ? trigger : 'none';
+  if (trigger === 'custom' && !config.value.customSelectionTranslatorHotkey) showCustomSelectionHotkeyDialog.value = true;
+  broadcastSelectionTranslatorSettings();
 }
 function setAreaEnabled(enabled: boolean) {
   config.value.selectionAreaEnabled = enabled;
@@ -710,4 +717,25 @@ function confirmFloatingHotkey(hotkey: string) { config.value.customFloatingBall
 function cancelFloatingHotkey() { if (!config.value.customFloatingBallHotkey) config.value.floatingBallHotkey = 'Alt+T'; }
 function confirmMouseHotkey(hotkey: string) { config.value.customHotkey = hotkey; config.value.hotkey = 'custom'; }
 function cancelMouseHotkey() { if (!config.value.customHotkey) config.value.hotkey = 'Control'; }
+function confirmSelectionHotkey(hotkey: string) {
+  config.value.customSelectionTranslatorHotkey = hotkey;
+  config.value.selectionTranslatorTrigger = 'custom';
+  config.value.selectionTranslatorHotkey = 'custom';
+  broadcastSelectionTranslatorSettings();
+}
+function cancelSelectionHotkey() {
+  if (!config.value.customSelectionTranslatorHotkey) {
+    config.value.selectionTranslatorTrigger = 'icon';
+    config.value.selectionTranslatorHotkey = 'none';
+    broadcastSelectionTranslatorSettings();
+  }
+}
+function broadcastSelectionTranslatorSettings() {
+  void broadcast({
+    type: 'updateSelectionTranslatorSettings',
+    trigger: config.value.selectionTranslatorTrigger,
+    hotkey: config.value.selectionTranslatorHotkey,
+    customHotkey: config.value.customSelectionTranslatorHotkey,
+  });
+}
 </script>

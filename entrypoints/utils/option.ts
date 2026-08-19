@@ -379,6 +379,16 @@ export const options = {
         
         {value: "custom", label: "自定义快捷键（测试版）"},
     ],
+    // 划词翻译互斥触发方式。快捷键选择后，不再显示选区旁的图标或小点。
+    selectionTranslatorTriggers: [
+        {value: "direct", label: "直接弹出"},
+        {value: "icon", label: "显示图标"},
+        {value: "dot", label: "显示小点"},
+        {value: "Control", label: "Ctrl"},
+        {value: "Alt", label: "Alt / Option"},
+        {value: "Shift", label: "Shift"},
+        {value: "custom", label: "自定义"},
+    ],
     services: [
         // 机器翻译
         {value: "machine", label: "机器翻译", disabled: true},

@@ -27,6 +27,7 @@ import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import { createShadowRootUi, type ShadowRootContentScriptUi } from 'wxt/utils/content-script-ui/shadow-root';
 import { mountVideoSubtitleTranslation } from './main/videoSubtitle';
 import {resetPageTranslationContextCache} from '@/entrypoints/utils/pageContext';
+import { matchesConfiguredHotkey } from '@/entrypoints/utils/hotkey';
 
 let contentScriptContext: ContentScriptContext | null = null;
 let inputTooltipUi: ShadowRootContentScriptUi<HTMLElement> | null = null;
@@ -81,6 +82,33 @@ function handleRuntimeMessage(
         } else if (!document.getElementById('fluent-read-selection-translator-container')) {
             void mountSelectionTranslator(ctx);
         }
+        sendResponse();
+        return true;
+    }
+
+    if (payload.type === 'updateSelectionTranslatorSettings') {
+        const trigger = payload.trigger;
+        const hotkey = payload.hotkey;
+        const customHotkey = payload.customHotkey;
+        if (trigger !== 'direct' && trigger !== 'icon' && trigger !== 'dot' && trigger !== 'Control' && trigger !== 'Alt' && trigger !== 'Shift' && trigger !== 'custom') return false;
+        if (hotkey !== undefined && hotkey !== 'none' && hotkey !== 'Control' && hotkey !== 'Alt' && hotkey !== 'Shift' && hotkey !== 'custom') return false;
+        if (customHotkey !== undefined && typeof customHotkey !== 'string') return false;
+
+        // 接受旧版 Popup 的分离字段，同时让运行时保存单一的互斥触发方式。
+        const isVisualTrigger = trigger === 'direct' || trigger === 'icon' || trigger === 'dot';
+        const hasLegacyShortcut = hotkey !== undefined && hotkey !== 'none';
+        const hasUsableCustomHotkey = typeof customHotkey === 'string'
+            && customHotkey.trim() !== ''
+            && customHotkey !== 'none';
+        const resolvedTrigger = isVisualTrigger && hasLegacyShortcut
+            && (hotkey !== 'custom' || hasUsableCustomHotkey)
+            ? hotkey
+            : trigger;
+        config.selectionTranslatorTrigger = resolvedTrigger;
+        config.selectionTranslatorHotkey = resolvedTrigger === 'Control' || resolvedTrigger === 'Alt' || resolvedTrigger === 'Shift' || resolvedTrigger === 'custom'
+            ? resolvedTrigger
+            : 'none';
+        config.customSelectionTranslatorHotkey = typeof customHotkey === 'string' ? customHotkey : '';
         sendResponse();
         return true;
     }
@@ -220,6 +248,22 @@ export default defineContentScript({
 function setupManualTranslationTriggers(signal: AbortSignal) {
     const screen = { mouseX: 0, mouseY: 0, hotkeyPressed: false, otherKeyPressed: false, hasSlideTranslation: false };
     let mouseHotkeysPressed = new Set<string>();
+
+    const getConfiguredSelectionHotkey = () => {
+        const trigger = config.selectionTranslatorTrigger;
+        return ['Control', 'Alt', 'Shift', 'custom'].includes(trigger)
+            ? trigger
+            : config.selectionTranslatorHotkey;
+    };
+
+    const shouldReserveSelectionShortcut = (event: KeyboardEvent): boolean => {
+        if (!config.on || config.selectionTranslatorMode === 'disabled' || config.disableSelectionTranslator) return false;
+        return matchesConfiguredHotkey(
+            event,
+            getConfiguredSelectionHotkey(),
+            config.customSelectionTranslatorHotkey,
+        );
+    };
     
     // 获取当前配置的鼠标悬浮快捷键
     const getConfiguredMouseHotkeyParts = () => {
@@ -279,6 +323,17 @@ function setupManualTranslationTriggers(signal: AbortSignal) {
         // 在 Mac 上禁止 cmd 键参与快捷键
         const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
         if (isMac && event.metaKey) {
+            return;
+        }
+
+        // 划词快捷键与悬停快捷键可能使用同一个修饰键。划词触发方式是
+        // 互斥入口，因此先释放悬停监听器的状态，让 SelectionTranslator
+        // 在 document 阶段接收这次按键；没有选区时它会自然忽略。
+        if (shouldReserveSelectionShortcut(event)) {
+            screen.hotkeyPressed = false;
+            screen.otherKeyPressed = true;
+            screen.hasSlideTranslation = false;
+            mouseHotkeysPressed.clear();
             return;
         }
         

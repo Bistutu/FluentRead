@@ -434,6 +434,7 @@ footer > button { justify-self: end; }
 .chips { display: grid; gap: 8px; }
 .chips.two { grid-template-columns: repeat(2, 1fr); }
 .chips.three { grid-template-columns: repeat(3, 1fr); }
+.selection-trigger-chips button { padding-inline: 5px; }
 .chips button {
   min-height: 40px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 11px;
   background: var(--surface); font-size: 11px; cursor: pointer;

@@ -46,9 +46,10 @@ import browser from 'webextension-polyfill';
 import { config } from '@/entrypoints/utils/config';
 import { translateText } from '@/entrypoints/utils/translateApi';
 import { detectlang } from '@/entrypoints/utils/common';
+import { matchesConfiguredHotkey, matchesModifierOnlyHotkey, resolveConfiguredHotkey } from '@/entrypoints/utils/hotkey';
 import { calculateSelectionPopupPosition, chooseSelectionRect, isSameLanguage, normalizeSelectionText, normalizeSpeechLanguage, shouldIgnoreSelection, type SelectionRect } from '@/entrypoints/utils/selectionTranslatorCore';
 
-type SelectionTrigger = 'direct' | 'icon' | 'dot';
+type SelectionTrigger = 'direct' | 'icon' | 'dot' | 'shortcut';
 type AudioKind = 'source' | 'translation';
 interface SelectionSnapshot { text: string; range: Range; anchor: SelectionRect; isForward: boolean; }
 
@@ -77,9 +78,19 @@ let audio: HTMLAudioElement | null = null;
 let utterance: SpeechSynthesisUtterance | null = null;
 let audioRequestId = 0;
 let isSelecting = false;
+let pendingSelectionShortcut = false;
 let systemThemeMedia: MediaQueryList | null = null;
 
-const triggerMode = computed<SelectionTrigger>(() => config.selectionTranslatorTrigger === 'direct' || config.selectionTranslatorTrigger === 'dot' ? config.selectionTranslatorTrigger : 'icon');
+const selectionShortcutTriggers = new Set(['Control', 'Alt', 'Shift', 'custom']);
+const selectionShortcutConfig = computed(() => selectionShortcutTriggers.has(config.selectionTranslatorTrigger)
+  ? config.selectionTranslatorTrigger
+  : config.selectionTranslatorHotkey);
+const selectionShortcut = computed(() => resolveConfiguredHotkey(selectionShortcutConfig.value, config.customSelectionTranslatorHotkey));
+const triggerMode = computed<SelectionTrigger>(() => {
+  if (selectionShortcut.value) return 'shortcut';
+  if (config.selectionTranslatorTrigger === 'direct' || config.selectionTranslatorTrigger === 'dot') return config.selectionTranslatorTrigger;
+  return 'icon';
+});
 
 function updateTheme(): void {
   isDarkTheme.value = config.theme === 'dark' || (config.theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -110,10 +121,16 @@ function readSelectionSnapshot(): SelectionSnapshot | null {
   return { text, range, anchor, isForward };
 }
 
-function scheduleSelectionRead(): void {
+function scheduleSelectionRead(shortcutTriggered = false): void {
+  if (shortcutTriggered) pendingSelectionShortcut = true;
   if (isSelecting) return;
   if (selectionFrame !== null) return;
-  selectionFrame = window.requestAnimationFrame(() => { selectionFrame = null; if (!isSelecting) applySelection(readSelectionSnapshot()); });
+  selectionFrame = window.requestAnimationFrame(() => {
+    selectionFrame = null;
+    const shouldTriggerShortcut = pendingSelectionShortcut;
+    pendingSelectionShortcut = false;
+    if (!isSelecting) applySelection(readSelectionSnapshot(), shouldTriggerShortcut);
+  });
 }
 
 function isSelectionInTargetLanguage(text: string): boolean {
@@ -128,19 +145,24 @@ function isSameSelection(left: SelectionSnapshot | null, right: SelectionSnapsho
     && left.range.endOffset === right.range.endOffset;
 }
 
-function applySelection(next: SelectionSnapshot | null): void {
+function applySelection(next: SelectionSnapshot | null, shortcutTriggered = false): void {
   if (!next) { if (!isSelecting) hideAll(); return; }
-  if (isSameSelection(snapshot.value, next)) return;
+  if (isSameSelection(snapshot.value, next)) {
+    if (shortcutTriggered) openTooltip();
+    return;
+  }
   if (isSelectionInTargetLanguage(next.text)) { hideAll(); return; }
   const hadActiveSelection = snapshot.value !== null;
   const changedText = selectedText.value !== next.text;
   snapshot.value = next;
   selectedText.value = next.text;
-  showIndicator.value = triggerMode.value !== 'direct';
-  showTooltip.value = triggerMode.value === 'direct';
+  const shouldOpenImmediately = shortcutTriggered || triggerMode.value === 'direct';
+  const waitingForShortcut = triggerMode.value === 'shortcut' && Boolean(selectionShortcut.value) && !shortcutTriggered;
+  showIndicator.value = !shouldOpenImmediately && !waitingForShortcut;
+  showTooltip.value = shouldOpenImmediately;
   if (changedText) { translationResult.value = ''; error.value = ''; }
   updatePosition(false);
-  if (showTooltip.value && (!hadActiveSelection || changedText)) void requestTranslation(next.text);
+  if (showTooltip.value && (!hadActiveSelection || changedText || shortcutTriggered)) void requestTranslation(next.text);
 }
 
 function updatePosition(refreshSelection = true): void {
@@ -173,9 +195,10 @@ function schedulePositionUpdate(): void {
 
 function openTooltip(): void {
   if (!snapshot.value || isSelectionInTargetLanguage(snapshot.value.text)) { hideAll(); return; }
+  const wasVisible = showTooltip.value;
   showIndicator.value = true;
   showTooltip.value = true;
-  void requestTranslation(snapshot.value.text);
+  if (!wasVisible || error.value) void requestTranslation(snapshot.value.text);
   schedulePositionUpdate();
 }
 
@@ -319,17 +342,50 @@ async function toggleAudio(text: string, kind: AudioKind): Promise<void> {
 }
 
 function closeTooltip(): void { hideAll(); }
-function hideAll(): void { translationRequestId++; showIndicator.value = false; showTooltip.value = false; snapshot.value = null; stopAudio(); }
+function hideAll(): void { translationRequestId++; showIndicator.value = false; showTooltip.value = false; snapshot.value = null; pendingSelectionShortcut = false; stopAudio(); }
 function isInsideUi(target: EventTarget | null): boolean {
   const node = target instanceof Node ? target : null;
   if (!node) return false;
   const host = document.getElementById('fluent-read-selection-translator-container');
   return Boolean(node === host || host?.contains(node) || node.getRootNode() instanceof ShadowRoot);
 }
-function handlePointerDown(event: PointerEvent): void { if (isInsideUi(event.target)) return; isSelecting = true; if (showTooltip.value) hideAll(); }
-function handlePointerUp(event: PointerEvent): void { if (isInsideUi(event.target)) return; isSelecting = false; scheduleSelectionRead(); }
+function matchesSelectionModifierOnPointer(event: PointerEvent): boolean {
+  const shortcut = selectionShortcut.value;
+  if (!['Control', 'Alt', 'Shift'].includes(shortcut)) return false;
+  const modifierState = {
+    ctrlKey: event.ctrlKey,
+    altKey: event.altKey,
+    shiftKey: event.shiftKey,
+    metaKey: event.metaKey,
+    key: shortcut === 'Control' ? 'Control' : shortcut === 'Alt' ? 'Alt' : 'Shift',
+  };
+  return matchesModifierOnlyHotkey(modifierState, shortcut);
+}
+function handlePointerDown(event: PointerEvent): void {
+  if (isInsideUi(event.target)) return;
+  isSelecting = true;
+  pendingSelectionShortcut = false;
+  if (showTooltip.value) hideAll();
+}
+function handlePointerUp(event: PointerEvent): void {
+  if (isInsideUi(event.target)) return;
+  isSelecting = false;
+  scheduleSelectionRead(matchesSelectionModifierOnPointer(event));
+}
 function handleSelectionChange(): void { scheduleSelectionRead(); }
-function handleKeydown(event: KeyboardEvent): void { if (event.key === 'Escape' && (showIndicator.value || showTooltip.value)) hideAll(); }
+function handleKeydown(event: KeyboardEvent): void {
+  if (event.key === 'Escape' && (showIndicator.value || showTooltip.value)) { hideAll(); return; }
+  if (isInsideUi(event.target) || event.repeat) return;
+  if (!matchesConfiguredHotkey(event, selectionShortcutConfig.value, config.customSelectionTranslatorHotkey)) return;
+  if (!snapshot.value) {
+    pendingSelectionShortcut = true;
+    scheduleSelectionRead(true);
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  openTooltip();
+}
 
 onMounted(() => {
   updateTheme();
@@ -341,11 +397,12 @@ onMounted(() => {
   document.addEventListener('keydown', handleKeydown, true);
   window.addEventListener('scroll', schedulePositionUpdate, true);
   window.addEventListener('resize', schedulePositionUpdate);
-  watch(() => [config.theme, config.selectionTranslatorTrigger, config.to] as const, () => {
+  watch(() => [config.theme, config.selectionTranslatorTrigger, config.selectionTranslatorHotkey, config.customSelectionTranslatorHotkey, config.to] as const, () => {
     updateTheme();
     if (snapshot.value) {
       if (isSelectionInTargetLanguage(snapshot.value.text)) { hideAll(); return; }
-      showIndicator.value = triggerMode.value !== 'direct';
+      const waitingForShortcut = triggerMode.value === 'shortcut' && Boolean(selectionShortcut.value);
+      showIndicator.value = triggerMode.value !== 'direct' && !waitingForShortcut;
       showTooltip.value = triggerMode.value === 'direct';
       if (showTooltip.value) void requestTranslation(snapshot.value.text);
       schedulePositionUpdate();

@@ -88,7 +88,9 @@ export class Config {
     disableImageTranslator: boolean; // 是否禁用图片翻译
     deeplx: string; // DeepLX 服务地址
     selectionTranslatorMode: string; // 划词翻译显示模式: 'disabled' | 'bilingual' | 'translation-only'
-    selectionTranslatorTrigger: string; // 划词翻译触发方式: 'direct' | 'icon' | 'dot'
+    selectionTranslatorTrigger: string; // 划词翻译互斥触发方式: 'direct' | 'icon' | 'dot' | 'Control' | 'Alt' | 'Shift' | 'custom'
+    selectionTranslatorHotkey: string; // 旧版快捷键字段；与 selectionTranslatorTrigger 中的快捷键选项保持镜像
+    customSelectionTranslatorHotkey: string; // 自定义划词翻译快捷键
     newApiUrl: string; // NewAPI地址
     maxConcurrentTranslations: number; // 最大并发翻译数量
     youdaoAppKey: string; // 有道翻译 App Key
@@ -153,6 +155,8 @@ export class Config {
         this.deeplx = defaultOption.deeplx; // DeepLX 默认服务地址
         this.selectionTranslatorMode = 'disabled'; // 默认关闭划词翻译
         this.selectionTranslatorTrigger = 'icon'; // 默认显示可发现的操作图标
+        this.selectionTranslatorHotkey = 'none'; // 默认不增加额外快捷键，保持原有划词行为
+        this.customSelectionTranslatorHotkey = ''; // 自定义划词翻译快捷键为空
         this.newApiUrl = DEFAULT_NEW_API_URL; // NewAPI 默认地址
         this.maxConcurrentTranslations = 6; // 默认最大并发数为6
         this.youdaoAppKey = ''; // 有道翻译 App Key
@@ -339,8 +343,32 @@ export function normalizeConfig(value: unknown): Config {
     if (!['disabled', 'bilingual', 'translation-only'].includes(normalized.selectionTranslatorMode)) {
         normalized.selectionTranslatorMode = 'disabled';
     }
-    if (!['direct', 'icon', 'dot'].includes(normalized.selectionTranslatorTrigger)) {
+    const selectionTriggerValues = ['direct', 'icon', 'dot', 'Control', 'Alt', 'Shift', 'custom'];
+    const selectionShortcutValues = ['Control', 'Alt', 'Shift', 'custom'];
+    if (!selectionTriggerValues.includes(normalized.selectionTranslatorTrigger)) {
         normalized.selectionTranslatorTrigger = 'icon';
+    }
+    if (!['none', 'Control', 'Alt', 'Shift', 'custom'].includes(normalized.selectionTranslatorHotkey)) {
+        normalized.selectionTranslatorHotkey = 'none';
+    }
+    if (typeof normalized.customSelectionTranslatorHotkey !== 'string') {
+        normalized.customSelectionTranslatorHotkey = '';
+    }
+    // 兼容上一版“触发方式 + 可选快捷键”配置，并将最终状态收敛为单一触发方式。
+    if (['direct', 'icon', 'dot'].includes(normalized.selectionTranslatorTrigger)
+        && normalized.selectionTranslatorHotkey !== 'none') {
+        normalized.selectionTranslatorTrigger = normalized.selectionTranslatorHotkey;
+    }
+    if (selectionShortcutValues.includes(normalized.selectionTranslatorTrigger)) {
+        if (normalized.selectionTranslatorTrigger === 'custom'
+            && (!normalized.customSelectionTranslatorHotkey.trim() || normalized.customSelectionTranslatorHotkey === 'none')) {
+            normalized.selectionTranslatorTrigger = 'icon';
+            normalized.selectionTranslatorHotkey = 'none';
+        } else {
+            normalized.selectionTranslatorHotkey = normalized.selectionTranslatorTrigger;
+        }
+    } else {
+        normalized.selectionTranslatorHotkey = 'none';
     }
     normalized.disableSelectionTranslator = normalized.selectionTranslatorMode === 'disabled';
     if (typeof normalized.selectionAreaEnabled !== 'boolean') {

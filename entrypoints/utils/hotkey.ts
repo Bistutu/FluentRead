@@ -173,7 +173,8 @@ export function parseHotkey(hotkeyString: string): ParsedHotkey {
  * @returns 显示名称
  */
 function generateDisplayName(modifiers: string[], key: string): string {
-  const isMac = /Mac|iPod|iPhone|iPad/.test(navigator.platform);
+  const platform = typeof navigator !== 'undefined' ? navigator.platform : '';
+  const isMac = /Mac|iPod|iPhone|iPad/.test(platform);
   const modifierDisplayNames: Record<string, string> = isMac ? 
     {
       ctrl: 'Control',
@@ -253,6 +254,45 @@ export function matchesHotkey(event: KeyboardEvent, parsedHotkey: ParsedHotkey):
 
   // 符号键直接比较
   return eventKey === parsedHotkey.key;
+}
+
+type HotkeyModifierState = Pick<KeyboardEvent, 'ctrlKey' | 'altKey' | 'shiftKey' | 'metaKey'> & {
+  key?: string;
+};
+
+const modifierOnlyHotkeys: Record<string, { eventKey: string; modifier: keyof Pick<KeyboardEvent, 'ctrlKey' | 'altKey' | 'shiftKey' | 'metaKey'> }> = {
+  Control: { eventKey: 'control', modifier: 'ctrlKey' },
+  Alt: { eventKey: 'alt', modifier: 'altKey' },
+  Shift: { eventKey: 'shift', modifier: 'shiftKey' },
+};
+
+/** Resolve a preset-or-custom configuration into the shortcut string used at runtime. */
+export function resolveConfiguredHotkey(configuredHotkey: string | undefined, customHotkey: string | undefined): string {
+  const configured = typeof configuredHotkey === 'string' ? configuredHotkey.trim() : '';
+  if (configured === 'custom') return typeof customHotkey === 'string' ? customHotkey.trim() : '';
+  return configured;
+}
+
+/** Match the Ctrl/Alt/Shift-only shortcuts used as selection modifiers. */
+export function matchesModifierOnlyHotkey(event: HotkeyModifierState, hotkey: string): boolean {
+  const definition = modifierOnlyHotkeys[hotkey];
+  if (!definition || event.key?.toLowerCase() !== definition.eventKey) return false;
+
+  const actualModifiers = [
+    event.ctrlKey ? 'ctrlKey' : '',
+    event.altKey ? 'altKey' : '',
+    event.shiftKey ? 'shiftKey' : '',
+    event.metaKey ? 'metaKey' : '',
+  ].filter(Boolean);
+  return actualModifiers.length === 1 && actualModifiers[0] === definition.modifier;
+}
+
+/** Match a selection shortcut, including preset modifier-only keys and custom combinations. */
+export function matchesConfiguredHotkey(event: KeyboardEvent, configuredHotkey: string | undefined, customHotkey = ''): boolean {
+  const resolvedHotkey = resolveConfiguredHotkey(configuredHotkey, customHotkey);
+  if (!resolvedHotkey || resolvedHotkey === 'none') return false;
+  if (matchesModifierOnlyHotkey(event, resolvedHotkey)) return true;
+  return matchesHotkey(event, parseHotkey(resolvedHotkey));
 }
 
 /**

@@ -8,6 +8,7 @@ import {
     normalizeSpeechLanguage,
 } from '@/entrypoints/utils/selectionTranslatorCore';
 import { buildEdgeTtsSsml, edgeTtsVoiceForLanguage } from '@/entrypoints/utils/edgeTts';
+import { matchesConfiguredHotkey } from '@/entrypoints/utils/hotkey';
 
 describe('selection translator core geometry', () => {
     const rects = [
@@ -75,5 +76,21 @@ describe('selection translator text and speech language normalization', () => {
         const ssml = buildEdgeTtsSsml('A < B & C', 'en-US-AvaMultilingualNeural');
         expect(ssml).toContain('A &lt; B &amp; C');
         expect(ssml).not.toContain('A < B & C');
+    });
+
+    it('matches preset modifier-only selection shortcuts', () => {
+        const controlDown = {key: 'Control', ctrlKey: true, altKey: false, shiftKey: false, metaKey: false} as KeyboardEvent;
+        const altDown = {key: 'Alt', ctrlKey: false, altKey: true, shiftKey: false, metaKey: false} as KeyboardEvent;
+        expect(matchesConfiguredHotkey(controlDown, 'Control')).toBe(true);
+        expect(matchesConfiguredHotkey(altDown, 'Control')).toBe(false);
+        expect(matchesConfiguredHotkey(altDown, 'Alt')).toBe(true);
+    });
+
+    it('matches custom selection combinations without accepting extra modifiers', () => {
+        const shortcut = {key: 'y', code: 'KeyY', ctrlKey: true, altKey: false, shiftKey: true, metaKey: false} as KeyboardEvent;
+        const extraModifier = {...shortcut, altKey: true} as KeyboardEvent;
+        expect(matchesConfiguredHotkey(shortcut, 'custom', 'Ctrl+Shift+Y')).toBe(true);
+        expect(matchesConfiguredHotkey(extraModifier, 'custom', 'Ctrl+Shift+Y')).toBe(false);
+        expect(matchesConfiguredHotkey(shortcut, 'none', 'Ctrl+Shift+Y')).toBe(false);
     });
 });

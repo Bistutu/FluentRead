@@ -288,6 +288,30 @@ describe('划词翻译配置兼容', () => {
             disableSelectionTranslator: true,
         });
     });
+
+    it('将划词触发方式规范化为互斥触发选项，并兼容旧快捷键配置', () => {
+        expect(new Config().selectionTranslatorTrigger).toBe('icon');
+        expect(new Config().selectionTranslatorHotkey).toBe('none');
+        expect(new Config().customSelectionTranslatorHotkey).toBe('');
+        expect(normalizeConfig({selectionTranslatorTrigger: 'Control'})).toMatchObject({
+            selectionTranslatorTrigger: 'Control',
+            selectionTranslatorHotkey: 'Control',
+        });
+        expect(normalizeConfig({selectionTranslatorTrigger: 'icon', selectionTranslatorHotkey: 'Control'})).toMatchObject({
+            selectionTranslatorTrigger: 'Control',
+            selectionTranslatorHotkey: 'Control',
+        });
+        expect(normalizeConfig({selectionTranslatorTrigger: 'custom', selectionTranslatorHotkey: 'custom', customSelectionTranslatorHotkey: 'Ctrl+Shift+Y'})).toMatchObject({
+            selectionTranslatorTrigger: 'custom',
+            selectionTranslatorHotkey: 'custom',
+            customSelectionTranslatorHotkey: 'Ctrl+Shift+Y',
+        });
+        expect(normalizeConfig({selectionTranslatorTrigger: 'invalid', selectionTranslatorHotkey: 'invalid', customSelectionTranslatorHotkey: 42})).toMatchObject({
+            selectionTranslatorTrigger: 'icon',
+            selectionTranslatorHotkey: 'none',
+            customSelectionTranslatorHotkey: '',
+        });
+    });
 });
 
 describe('OpenAI 兼容服务端点', () => {
