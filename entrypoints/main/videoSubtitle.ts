@@ -48,6 +48,11 @@ const VIDEO_X_SETTINGS_CONTROL_SELECTOR = [
   '[data-testid="videoPlayer"] button[title*="Settings" i]',
   '[data-testid="videoPlayer"] [data-testid*="settings" i]',
   '[data-testid="videoPlayer"] [data-testid*="setting" i]',
+  'button[aria-label*="Settings" i]',
+  'button[aria-label*="设置"]',
+  'button[title*="Settings" i]',
+  '[role="button"][aria-label*="Settings" i]',
+  '[role="button"][aria-label*="设置"]',
 ].join(', ');
 const VIDEO_TRANSLATION_ACTIVE_CLASS = 'fluent-read-video-subtitle-active';
 const VIDEO_DISPLAY_TRANSLATION_ONLY_CLASS = 'fluent-read-video-display-translation-only';
@@ -70,8 +75,11 @@ const VIDEO_DISPLAY_MODE_LABELS: Record<VideoSubtitleDisplayMode, string> = {
 
 const VIDEO_CAPTION_EMPTY_GRACE_MS = 420;
 const VIDEO_CAPTION_STABILITY_MS = 360;
-const VIDEO_AI_CUE_EARLY_TOLERANCE_MS = 120;
-const VIDEO_AI_CUE_LATE_GRACE_MS = 1_600;
+export const VIDEO_AI_CUE_EARLY_TOLERANCE_MS = 80;
+export const VIDEO_AI_CUE_LATE_GRACE_MS = 420;
+export const VIDEO_AI_CAPTURE_SLICE_MS = 3_200;
+const VIDEO_AI_CUE_MIN_DURATION_MS = 400;
+const VIDEO_AI_CUE_MERGE_GAP_MS = 450;
 const VIDEO_CAPTION_FALLBACK_SEGMENT_SELECTOR = '.captions-text';
 export const VIDEO_PRETRANSLATION_MACHINE_WINDOW_MS = 10_000;
 export const VIDEO_PRETRANSLATION_AI_WINDOW_MS = 30_000;
@@ -104,6 +112,88 @@ function encodeVideoAudioBase64(buffer: ArrayBuffer): string {
 
 export function normalizeVideoCaptionText(value: string): string {
   return value.replace(/[\s\u3000]+/g, ' ').trim();
+}
+
+function getAiCueEndMs(cue: VideoSubtitleCue): number {
+  const durationMs = Number.isFinite(cue.durationMs)
+    ? Math.max(cue.durationMs, VIDEO_AI_CUE_MIN_DURATION_MS)
+    : VIDEO_AI_CUE_MIN_DURATION_MS;
+  return cue.startMs + durationMs;
+}
+
+function isRelatedAiCueText(left: string, right: string): boolean {
+  const first = normalizeVideoCaptionText(left).toLocaleLowerCase();
+  const second = normalizeVideoCaptionText(right).toLocaleLowerCase();
+  return Boolean(first && second && (
+    first === second
+    || first.startsWith(second)
+    || second.startsWith(first)
+  ));
+}
+
+/**
+ * 合并本地 Whisper 分片返回的时间轴，避免分片边界重复显示同一句。
+ * 不改变 cue 的原始时间顺序；不同文本发生重叠时，后一个 cue 从其真实
+ * startMs 接管，避免两个结果在同一播放时刻来回抢占字幕层。
+ */
+export function mergeVideoAiSubtitleCues(cues: VideoSubtitleCue[]): VideoSubtitleCue[] {
+  const ordered = [...cues]
+    .filter((cue) => Number.isFinite(cue.startMs) && typeof cue.text === 'string' && cue.text.trim())
+    .map((cue) => ({
+      ...cue,
+      startMs: Math.max(0, cue.startMs),
+      durationMs: Number.isFinite(cue.durationMs)
+        ? Math.max(VIDEO_AI_CUE_MIN_DURATION_MS, cue.durationMs)
+        : VIDEO_AI_CUE_MIN_DURATION_MS,
+      text: normalizeVideoCaptionText(cue.text),
+    }))
+    .sort((left, right) => left.startMs - right.startMs);
+
+  const result: VideoSubtitleCue[] = [];
+  for (const cue of ordered) {
+    const previous = result[result.length - 1];
+    if (!previous) {
+      result.push(cue);
+      continue;
+    }
+
+    const previousEndMs = getAiCueEndMs(previous);
+    const relatedText = isRelatedAiCueText(previous.text, cue.text);
+    if (relatedText && cue.startMs <= previousEndMs + VIDEO_AI_CUE_MERGE_GAP_MS) {
+      const startMs = Math.min(previous.startMs, cue.startMs);
+      const endMs = Math.max(previousEndMs, getAiCueEndMs(cue));
+      const winner = Array.from(cue.text).length >= Array.from(previous.text).length ? cue : previous;
+      result[result.length - 1] = {
+        ...winner,
+        startMs,
+        durationMs: Math.max(VIDEO_AI_CUE_MIN_DURATION_MS, endMs - startMs),
+      };
+      continue;
+    }
+
+    if (cue.startMs > previous.startMs && cue.startMs < previousEndMs) {
+      previous.durationMs = Math.max(VIDEO_AI_CUE_MIN_DURATION_MS, cue.startMs - previous.startMs);
+    }
+    result.push(cue);
+  }
+
+  return result.slice(-4000);
+}
+
+export function getVisibleVideoAiCue(
+  cues: VideoSubtitleCue[],
+  currentMs: number,
+  earlyToleranceMs = VIDEO_AI_CUE_EARLY_TOLERANCE_MS,
+  lateGraceMs = VIDEO_AI_CUE_LATE_GRACE_MS,
+): VideoSubtitleCue | null {
+  if (!Number.isFinite(currentMs)) return null;
+  return [...cues]
+    .filter((cue) => {
+      const startMs = cue.startMs - earlyToleranceMs;
+      const endMs = getAiCueEndMs(cue) + lateGraceMs;
+      return currentMs >= startMs && currentMs < endMs;
+    })
+    .sort((left, right) => right.startMs - left.startMs)[0] || null;
 }
 
 export function isIncrementalVideoCaption(visibleSource: string, fullSource: string): boolean {
@@ -599,16 +689,16 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       right: 8px !important;
       bottom: 40px !important;
       z-index: 2147483646 !important;
-      width: min(252px, calc(100% - 12px)) !important;
-      max-height: min(292px, calc(100% - 44px)) !important;
+      width: min(236px, calc(100% - 12px)) !important;
+      max-height: min(244px, calc(100% - 44px)) !important;
       box-sizing: border-box !important;
-      padding: 6px !important;
+      padding: 5px !important;
       border: 1px solid rgba(255, 255, 255, .12) !important;
       border-radius: 9px !important;
       background: rgba(30, 30, 30, .97) !important;
       box-shadow: 0 8px 28px rgba(0, 0, 0, .42) !important;
       color: #fff !important;
-      font: 12px/1.3 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+      font: 11px/1.28 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
       overflow-y: auto !important;
       overscroll-behavior: contain !important;
     }
@@ -617,18 +707,18 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       display: flex !important;
       align-items: center !important;
       justify-content: space-between !important;
-      padding: 3px 6px 5px !important;
+      padding: 2px 5px 4px !important;
       color: rgba(255, 255, 255, .92) !important;
       font-weight: 700 !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-heading {
       display: inline-flex !important;
       align-items: baseline !important;
-      gap: 6px !important;
+      gap: 5px !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-brand {
       color: #ff8fbd !important;
-      font-size: 10px !important;
+      font-size: 9px !important;
       letter-spacing: .02em !important;
       font-weight: 800 !important;
     }
@@ -637,7 +727,7 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-beta {
       color: #ff8fbd !important;
-      font-size: 10px !important;
+      font-size: 9px !important;
       font-weight: 700 !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-item,
@@ -645,10 +735,10 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       display: flex !important;
       align-items: center !important;
       width: 100% !important;
-      min-height: 28px !important;
+      min-height: 25px !important;
       box-sizing: border-box !important;
       margin: 1px 0 !important;
-      padding: 4px 6px !important;
+      padding: 3px 5px !important;
       border: 0 !important;
       border-radius: 7px !important;
       background: transparent !important;
@@ -669,8 +759,8 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       opacity: .55 !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-primary-action {
-      min-height: 34px !important;
-      margin: 3px 0 5px !important;
+      min-height: 30px !important;
+      margin: 2px 0 4px !important;
       border: 1px solid rgba(236, 72, 153, .42) !important;
       background: linear-gradient(135deg, rgba(236, 72, 153, .26), rgba(236, 72, 153, .12)) !important;
       color: #fff !important;
@@ -687,25 +777,25 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-check {
       display: inline-block !important;
-      width: 16px !important;
+      width: 14px !important;
       color: #ff8fbd !important;
       font-weight: 800 !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-label { flex: 1 !important; }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-value {
       color: rgba(255, 255, 255, .58) !important;
-      font-size: 10px !important;
+      font-size: 9px !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-divider {
       height: 1px !important;
-      margin: 5px 6px !important;
+      margin: 4px 5px !important;
       background: rgba(255, 255, 255, .12) !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-caption {
       display: block !important;
-      padding: 3px 6px 1px !important;
+      padding: 2px 5px 1px !important;
       color: rgba(255, 255, 255, .52) !important;
-      font-size: 10px !important;
+      font-size: 9px !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-mode {
       width: auto !important;
@@ -830,16 +920,8 @@ export function mountVideoSubtitleTranslation(): () => void {
       .sort((left, right) => right.startMs - left.startMs)[0] || null;
   };
 
-  const getVisibleAiCueAtTime = (currentMs: number): VideoSubtitleCue | null => {
-    if (!Number.isFinite(currentMs)) return null;
-    return [...aiCues]
-      .filter((cue) => {
-        const startMs = cue.startMs - VIDEO_AI_CUE_EARLY_TOLERANCE_MS;
-        const endMs = cue.startMs + Math.max(cue.durationMs, 700) + VIDEO_AI_CUE_LATE_GRACE_MS;
-        return currentMs >= startMs && currentMs < endMs;
-      })
-      .sort((left, right) => right.startMs - left.startMs)[0] || null;
-  };
+  const getVisibleAiCueAtTime = (currentMs: number): VideoSubtitleCue | null =>
+    getVisibleVideoAiCue(aiCues, currentMs);
 
   /** 将 X 的 TextTrack / sidecar / AI cue 统一映射到既有字幕翻译观察器。 */
   const syncXVideoCaptionSource = (): HTMLElement | null => {
@@ -1374,23 +1456,23 @@ export function mountVideoSubtitleTranslation(): () => void {
   const appendAiSubtitleCue = (startMs: number, durationMs: number, text: string) => {
     const cleaned = normalizeVideoCaptionText(text);
     if (!cleaned) return;
-    const normalizedText = cleaned.toLocaleLowerCase();
-    const duplicate = aiCues.some((cue) =>
-      Math.abs(cue.startMs - startMs) <= 180
-      && normalizeVideoCaptionText(cue.text).toLocaleLowerCase() === normalizedText);
-    if (duplicate) return;
-
-    aiCues = finalizeVideoSubtitleCues([
+    aiCues = mergeVideoAiSubtitleCues([
       ...aiCues,
-      { startMs: Math.max(0, startMs), durationMs: Math.max(durationMs, 900), text: cleaned },
-    ]).slice(-4000);
+      { startMs: Math.max(0, startMs), durationMs: Math.max(durationMs, VIDEO_AI_CUE_MIN_DURATION_MS), text: cleaned },
+    ]);
     setPretranslationTrack('ai:capture', { url: 'ai:capture', cues: aiCues });
     aiCaptureError = '';
     syncXVideoCaptionSource();
     scheduleUpdate();
   };
 
-  const stopAiSubtitleCapture = () => {
+  const stopAiSubtitleCapture = (invalidatePending = false) => {
+    if (invalidatePending) {
+      // 让已经在 offscreen 中解码的旧分片安全丢弃，避免停止、seek 或切页后
+      // 旧时间轴又写回当前播放器。
+      aiCaptureSession += 1;
+      aiCaptureQueue = Promise.resolve();
+    }
     const recorder = aiCaptureRecorder;
     aiCaptureRecorder = null;
     aiCaptureRunning = false;
@@ -1459,7 +1541,7 @@ export function mountVideoSubtitleTranslation(): () => void {
         aiCaptureError = /decode|解码|audio data/i.test(message)
           ? '当前视频音频格式暂不支持，请重试或使用桌面版 Chrome/Edge'
           : message;
-        stopAiSubtitleCapture();
+        stopAiSubtitleCapture(true);
         console.warn('[FluentRead] X AI 字幕请求失败', error);
       });
   };
@@ -1516,7 +1598,7 @@ export function mountVideoSubtitleTranslation(): () => void {
           recorder = new MediaRecorder(aiCaptureStream, mimeType ? { mimeType } : undefined);
         } catch (error) {
           aiCaptureError = error instanceof Error ? error.message : '浏览器音频采集失败';
-          stopAiSubtitleCapture();
+          stopAiSubtitleCapture(true);
           return;
         }
         const startMs = Number.isFinite(video.currentTime)
@@ -1527,7 +1609,7 @@ export function mountVideoSubtitleTranslation(): () => void {
           const currentMs = Number.isFinite(video.currentTime) ? video.currentTime * 1000 : Number.NaN;
           const durationMs = Number.isFinite(currentMs) && currentMs > startMs
             ? Math.min(Math.max(currentMs - startMs, 1000), 8000)
-            : 5000;
+            : VIDEO_AI_CAPTURE_SLICE_MS;
           aiCaptureNextStartMs = Number.isFinite(currentMs) && currentMs > startMs
             ? currentMs
             : startMs + durationMs;
@@ -1539,7 +1621,7 @@ export function mountVideoSubtitleTranslation(): () => void {
         });
         recorder.addEventListener('error', () => {
           aiCaptureError = '浏览器音频采集失败';
-          stopAiSubtitleCapture();
+          stopAiSubtitleCapture(true);
         }, { once: true });
         recorder.addEventListener('stop', () => {
           aiCaptureRecorder = null;
@@ -1548,17 +1630,17 @@ export function mountVideoSubtitleTranslation(): () => void {
           } else if (aiCaptureRunning) {
             // 视频自然结束后，保留已经排队的最后一片转写，但不要再对已结束
             // 的 MediaStream 创建新的 MediaRecorder。
-            stopAiSubtitleCapture();
+            stopAiSubtitleCapture(false);
           }
         }, { once: true });
         try {
           recorder.start();
         } catch (error) {
           if (video.ended || !aiCaptureStream.getAudioTracks().some((track) => track.readyState === 'live')) {
-            stopAiSubtitleCapture();
+            stopAiSubtitleCapture(true);
           } else {
             aiCaptureError = error instanceof Error ? error.message : '浏览器音频采集失败';
-            stopAiSubtitleCapture();
+            stopAiSubtitleCapture(true);
           }
           return;
         }
@@ -1571,13 +1653,32 @@ export function mountVideoSubtitleTranslation(): () => void {
               // 关闭页面或音轨结束时可能已经自动停止。
             }
           }
-        }, 5000);
+        }, VIDEO_AI_CAPTURE_SLICE_MS);
       };
       recordNextSlice();
       updatePlayerUiState();
     } catch (error) {
       aiCaptureError = error instanceof Error ? error.message : String(error);
-      stopAiSubtitleCapture();
+      stopAiSubtitleCapture(true);
+    }
+  };
+
+  const resetAiSubtitleAfterSeek = (video: HTMLVideoElement) => {
+    if (!aiCaptureRunning) return;
+    const shouldResume = !video.paused && !video.ended;
+    aiCaptureSession += 1;
+    aiCaptureQueue = Promise.resolve();
+    aiCues = [];
+    stopAiSubtitleCapture(false);
+    setPretranslationTrack('ai:capture', { url: 'ai:capture', cues: [] });
+    resetTranslationState();
+
+    if (shouldResume) {
+      window.setTimeout(() => {
+        if (!destroyed && observedVideo === video && !video.paused && !video.ended && !aiCaptureRunning) {
+          startAiSubtitleCapture();
+        }
+      }, 0);
     }
   };
 
@@ -1745,11 +1846,12 @@ export function mountVideoSubtitleTranslation(): () => void {
     if (target.dataset.action === 'toggle-translation') {
       const nextEnabled = !config.videoTranslationEnabled;
       persistVideoConfig({ videoTranslationEnabled: nextEnabled });
+      if (!nextEnabled && aiCaptureRunning) stopAiSubtitleCapture(true);
       if (nextEnabled) ensureNativeCaptions();
       return;
     }
     if (target.dataset.action === 'toggle-ai-subtitle') {
-      if (aiCaptureRunning) stopAiSubtitleCapture();
+      if (aiCaptureRunning) stopAiSubtitleCapture(true);
       else if (await ensureLocalVideoModelReady()) startAiSubtitleCapture();
       updatePlayerUiState();
       return;
@@ -2130,15 +2232,9 @@ export function mountVideoSubtitleTranslation(): () => void {
     if (!target || target.tagName !== 'VIDEO') return;
     if (isXVideoPage()) {
       if (event.type === 'seeking' && aiCaptureRunning) {
-        // 丢弃 seek 前仍在队列中的推理结果，避免旧时间轴在新位置闪回。
-        aiCaptureSession += 1;
-        aiCaptureQueue = Promise.resolve();
-        aiCues = [];
-        aiCaptureNextStartMs = Number.isFinite((target as HTMLVideoElement).currentTime)
-          ? (target as HTMLVideoElement).currentTime * 1000
-          : 0;
-        setPretranslationTrack('ai:capture', { url: 'ai:capture', cues: [] });
-        resetTranslationState();
+        // seek 会让当前 MediaRecorder 继续录到新位置，却仍携带旧 session；
+        // 彻底重建录音器，避免旧时间轴在新位置闪回或字幕停止更新。
+        resetAiSubtitleAfterSeek(target as HTMLVideoElement);
       }
       syncXVideoCaptionSource();
     }
@@ -2189,7 +2285,7 @@ export function mountVideoSubtitleTranslation(): () => void {
       xSubtitleResourceCount = 0;
       xSubtitleCues = [];
       aiCues = [];
-      stopAiSubtitleCapture();
+      stopAiSubtitleCapture(true);
       clearPretranslationState(true);
       resetTranslationState();
     }
@@ -2222,6 +2318,7 @@ export function mountVideoSubtitleTranslation(): () => void {
       syncTranslationOverlayPosition(observedContainer);
     }
     if (!nextConfig.on || !nextConfig.videoTranslationEnabled || nextConfig.videoSubtitleVisible === false || normalizeVideoSubtitleDisplayMode(nextConfig.videoSubtitleDisplayMode) === 'original-only') {
+      if (aiCaptureRunning) stopAiSubtitleCapture(true);
       clearPretranslationState(false);
       resetTranslationState();
       return;
@@ -2254,7 +2351,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     videoTimelineEventNames.forEach((eventName) => document.removeEventListener(eventName, handleVideoTimelineEvent, true));
     window.removeEventListener('message', handleTimedTextMessage);
     window.removeEventListener('message', handleXSubtitleResourceMessage);
-    stopAiSubtitleCapture();
+    stopAiSubtitleCapture(true);
     document.getElementById(VIDEO_AI_CAPTION_CONTAINER_ID)?.remove();
     closeMenu();
     document.querySelectorAll(`#${VIDEO_TRANSLATION_BUTTON_ID}, #${VIDEO_TRANSLATION_MENU_ID}`).forEach((node) => node.remove());

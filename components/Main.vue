@@ -226,14 +226,22 @@
           <el-select v-model="config.videoLocalModel" aria-label="本地 AI 字幕模型" :disabled="!config.videoTranslationEnabled" placeholder="请选择本地模型">
             <el-option class="select-left" v-for="item in videoLocalModelOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
+          <div class="video-model-selector-hint">
+            <span :class="{ ready: selectedVideoLocalModelReady }">
+              {{ selectedVideoLocalModelReady ? '当前模型已下载，可直接请求' : '当前模型尚未下载' }}
+            </span>
+            <button type="button" @click="focusVideoModelDownloadPanel">
+              {{ selectedVideoLocalModelReady ? '管理模型' : '去下载模型' }} →
+            </button>
+          </div>
         </el-col>
       </el-row>
 
-      <div class="video-model-download-panel">
+      <div ref="videoModelDownloadPanel" class="video-model-download-panel" aria-label="本地 Whisper 模型下载">
         <div class="video-model-download-heading">
           <div>
-            <strong>下载本地 Whisper 模型</strong>
-            <p>点击后下载到浏览器本地缓存。音频只在扩展内识别，不会上传。</p>
+            <strong>第 1 步 · 下载本地 Whisper 模型</strong>
+            <p>先下载 Tiny 或 Base，再回到 X 播放器点击“请求 AI 字幕”。模型保存在浏览器本地，音频不会上传。</p>
           </div>
           <span class="video-model-local-badge">离线识别</span>
         </div>
@@ -811,6 +819,7 @@ const imageOcrDownloadError = ref('');
 const videoLocalModelDownloaded = ref<VideoLocalTranscriptionModel[]>([]);
 const videoLocalModelDownloading = ref<VideoLocalTranscriptionModel[]>([]);
 const videoLocalModelDownloadError = ref('');
+const videoModelDownloadPanel = ref<HTMLElement | null>(null);
 
 const imageOcrRecommendedReady = computed(() =>
   imageOcrRecommendedCodes.every(code => imageOcrDownloadedCodes.value.includes(code)),
@@ -870,6 +879,13 @@ async function downloadVideoLocalModel(model: VideoLocalTranscriptionModel) {
   } finally {
     videoLocalModelDownloading.value = videoLocalModelDownloading.value.filter((item) => item !== model);
   }
+}
+
+function focusVideoModelDownloadPanel() {
+  videoModelDownloadPanel.value?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  window.setTimeout(() => {
+    videoModelDownloadPanel.value?.querySelector<HTMLButtonElement>('.video-model-download-button:not(:disabled)')?.focus();
+  }, 180);
 }
 
 let hydrated = false;
@@ -948,6 +964,9 @@ const aiContextModel = computed(() => resolveConfiguredModel(
 const canUseAIContext = computed(() => servicesType.isUseAIContext(config.value.service, aiContextModel.value));
 const videoServiceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
 const videoLocalModelOptions = VIDEO_LOCAL_TRANSCRIPTION_MODELS;
+const selectedVideoLocalModelReady = computed(() =>
+  videoLocalModelDownloaded.value.includes(config.value.videoLocalModel as VideoLocalTranscriptionModel),
+);
 const videoSubtitleFontSizeOptions = VIDEO_SUBTITLE_FONT_SIZE_OPTIONS;
 const filteredServices = computed(() =>
   options.services.filter((item: any) =>
@@ -1530,7 +1549,8 @@ const saveImport = async () => {
 :root.dark .video-model-download-heading strong,
 :root.dark .video-model-title strong { color: #f4f5f8; }
 :root.dark .video-model-download-heading p,
-:root.dark .video-model-copy small { color: #a7adba; }
+:root.dark .video-model-copy small,
+:root.dark .video-model-selector-hint { color: #a7adba; }
 :root.dark .video-model-card { border-color: #363a44; background: rgba(37, 40, 48, .9); }
 
 .settings-status-row {
@@ -1567,6 +1587,10 @@ const saveImport = async () => {
 .video-model-download-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .video-model-download-heading strong { color: #172033; font-size: 14px; }
 .video-model-download-heading p { margin: 5px 0 0; color: #737c8f; font-size: 11px; line-height: 1.5; }
+.video-model-selector-hint { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; color: #9aa2b1; font-size: 9px; line-height: 1.35; }
+.video-model-selector-hint span { display: block; min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.video-model-selector-hint span.ready { color: #18835d; }
+.video-model-selector-hint button { padding: 0; border: 0; color: #087f80; background: transparent; font-size: 9px; font-weight: 750; cursor: pointer; white-space: nowrap; }
 .video-model-local-badge,
 .video-model-selected { display: inline-flex; flex: none; align-items: center; border-radius: 999px; font-size: 9px; font-weight: 750; white-space: nowrap; }
 .video-model-local-badge { padding: 6px 9px; border: 1px solid #bfe5de; color: #087f80; background: #effbf8; }

@@ -21,6 +21,8 @@ import {
     normalizeVideoCaptionText,
     readVisibleCaptionText,
     revealVideoSubtitleTranslation,
+    mergeVideoAiSubtitleCues,
+    getVisibleVideoAiCue,
     VIDEO_CAPTION_SEGMENT_SELECTOR,
 } from '@/entrypoints/main/videoSubtitle';
 import { normalizeVideoSubtitleFontSize } from '@/entrypoints/utils/model';
@@ -106,5 +108,19 @@ describe('YouTube 视频字幕识别', () => {
         expect(isIncrementalVideoCaption('understand from', 'understand from [music] the axioms and the basics.')).toBe(true);
         expect(isIncrementalVideoCaption('understand from [music] the axioms and the basics.', 'understand from [music] the axioms and the basics.')).toBe(false);
         expect(isIncrementalVideoCaption('unrelated subtitle', 'understand from [music] the axioms and the basics.')).toBe(false);
+    });
+
+    it('合并 Whisper 分片边界的重复 cue，并在真实时间轴外及时清除', () => {
+        const cues = mergeVideoAiSubtitleCues([
+            { startMs: 0, durationMs: 1800, text: 'Hello world' },
+            { startMs: 1700, durationMs: 800, text: 'Hello world' },
+            { startMs: 2400, durationMs: 1000, text: 'Next sentence' },
+        ]);
+
+        expect(cues).toHaveLength(2);
+        expect(cues[0]).toMatchObject({ startMs: 0, text: 'Hello world' });
+        expect(cues[0].durationMs).toBe(2400);
+        expect(getVisibleVideoAiCue(cues, 2450)?.text).toBe('Next sentence');
+        expect(getVisibleVideoAiCue(cues, 3850)).toBeNull();
     });
 });

@@ -192,6 +192,9 @@ async function main() {
     const buttonState = await page.evaluate(() => ({
       host: document.querySelector('#fluent-read-video-subtitle-button')?.closest('[data-testid="videoPlayer"]')?.getAttribute('data-testid') || '',
       controlClass: document.querySelector('#fluent-read-video-subtitle-button')?.parentElement?.className || '',
+      buttonWidth: document.querySelector('#fluent-read-video-subtitle-button')?.getBoundingClientRect().width || 0,
+      iconWidth: document.querySelector('#fluent-read-video-subtitle-button-icon')?.getBoundingClientRect().width || document.querySelector('#fluent-read-video-subtitle-button .fluent-read-video-subtitle-button-icon')?.getBoundingClientRect().width || 0,
+      settingsWidth: document.querySelector('[data-testid="videoPlayer"] button[aria-label="Settings"]')?.getBoundingClientRect().width || 0,
       buttonBeforeSettings: (() => {
         const button = document.querySelector('#fluent-read-video-subtitle-button');
         const settings = document.querySelector('[data-testid="videoPlayer"] button[aria-label="Settings"]');
@@ -200,7 +203,9 @@ async function main() {
       })(),
       pageUrl: location.href,
     }));
-    if (buttonState.host !== 'videoPlayer' || !buttonState.buttonBeforeSettings) {
+    if (buttonState.host !== 'videoPlayer' || !buttonState.buttonBeforeSettings
+      || buttonState.buttonWidth > 32.5 || buttonState.iconWidth > 20.5
+      || Math.abs(buttonState.buttonWidth - buttonState.settingsWidth) > 6) {
       throw new Error(`X 播放器设置齿轮旁控件校验失败：${JSON.stringify(buttonState)}`);
     }
 
@@ -210,6 +215,7 @@ async function main() {
       const ai = document.querySelector('[data-action="toggle-ai-subtitle"]');
       const player = document.querySelector('[data-testid="videoPlayer"]');
       const menu = document.querySelector('#fluent-read-video-subtitle-menu');
+      const menuRect = menu instanceof HTMLElement ? menu.getBoundingClientRect() : { width: 0, height: 0 };
       const originalHeight = player instanceof HTMLElement ? player.style.height : '';
       if (player instanceof HTMLElement) player.style.height = '180px';
       const responsiveHeight = menu instanceof HTMLElement ? menu.getBoundingClientRect().height : 0;
@@ -219,11 +225,13 @@ async function main() {
         aiLabel: ai?.querySelector('.fluent-read-video-menu-label')?.textContent || '',
         aiState: ai?.querySelector('[data-state]')?.textContent || '',
         aiDisabled: ai instanceof HTMLButtonElement ? ai.disabled : true,
+        width: menuRect.width,
+        height: menuRect.height,
         responsiveHeight,
       };
     });
     if (menuState.brand !== '流畅阅读' || menuState.aiLabel !== '请求 AI 字幕' || menuState.aiDisabled || menuState.aiState !== '点击请求'
-      || menuState.responsiveHeight > 136) {
+      || menuState.width > 236.5 || menuState.height > 244.5 || menuState.responsiveHeight > 136) {
       throw new Error(`X AI 字幕菜单校验失败：${JSON.stringify(menuState)}`);
     }
 
