@@ -1,7 +1,11 @@
 import browser from 'webextension-polyfill';
 import { config, saveConfig, subscribeConfig } from '@/entrypoints/utils/config';
 import { options, servicesType } from '@/entrypoints/utils/option';
-import type { Config, VideoSubtitleDisplayMode } from '@/entrypoints/utils/model';
+import {
+  normalizeVideoSubtitleFontSize,
+  type Config,
+  type VideoSubtitleDisplayMode,
+} from '@/entrypoints/utils/model';
 import { translateVideoText } from '@/entrypoints/utils/translateApi';
 import {
   buildYoutubeTimedTextUrl,
@@ -17,6 +21,8 @@ import {
 export const VIDEO_CAPTION_CONTAINER_SELECTOR = '#ytp-caption-window-container, .ytp-caption-window-container';
 export const VIDEO_CAPTION_SEGMENT_SELECTOR = '.ytp-caption-segment';
 export const VIDEO_TRANSLATION_OVERLAY_ID = 'fluent-read-video-subtitle';
+export const VIDEO_NORMALIZED_CAPTION_OVERLAY_ID = 'fluent-read-video-subtitle-original';
+export const VIDEO_SUBTITLE_PANEL_ID = 'fluent-read-video-subtitle-panel';
 export const VIDEO_TRANSLATION_LAYER_ID = 'fluent-read-video-subtitle-layer';
 export const VIDEO_TRANSLATION_BUTTON_ID = 'fluent-read-video-subtitle-button';
 export const VIDEO_TRANSLATION_MENU_ID = 'fluent-read-video-subtitle-menu';
@@ -27,6 +33,9 @@ const VIDEO_TRANSLATION_ACTIVE_CLASS = 'fluent-read-video-subtitle-active';
 const VIDEO_DISPLAY_TRANSLATION_ONLY_CLASS = 'fluent-read-video-display-translation-only';
 const VIDEO_DISPLAY_ORIGINAL_ONLY_CLASS = 'fluent-read-video-display-original-only';
 const VIDEO_DISPLAY_HIDDEN_CLASS = 'fluent-read-video-display-hidden';
+const VIDEO_NORMALIZED_CAPTION_CLASS = 'fluent-read-video-normalized-caption';
+const VIDEO_NORMALIZED_CAPTION_ACTIVE_CLASS = 'fluent-read-video-normalized-caption-active';
+const VIDEO_SUBTITLE_PANEL_ACTIVE_CLASS = 'fluent-read-video-subtitle-panel-active';
 
 const YOUTUBE_HOST_PATTERN = /(^|\.)youtube\.com$/i;
 const YOUTUBE_MOBILE_HOST_PATTERN = /(^|\.)youtube-nocookie\.com$/i;
@@ -62,6 +71,12 @@ export function getVideoServiceLabel(service: string): string {
 
 export function normalizeVideoCaptionText(value: string): string {
   return value.replace(/[\s\u3000]+/g, ' ').trim();
+}
+
+export function isIncrementalVideoCaption(visibleSource: string, fullSource: string): boolean {
+  const visible = normalizeVideoCaptionText(visibleSource).toLocaleLowerCase();
+  const full = normalizeVideoCaptionText(fullSource).toLocaleLowerCase();
+  return Boolean(visible && full && visible !== full && full.startsWith(visible));
 }
 
 function getVideoCaptionPrefixProgress(visibleSource: string, fullSource: string): number | null {
@@ -199,7 +214,7 @@ function createTextElement<K extends keyof HTMLElementTagNameMap>(
   return element;
 }
 
-function getOrCreateTranslationOverlay(player: HTMLElement): HTMLElement {
+function getOrCreateVideoSubtitleLayer(player: HTMLElement): HTMLElement {
   let layer = player.querySelector<HTMLElement>(`#${VIDEO_TRANSLATION_LAYER_ID}`);
   if (!layer) {
     layer = document.createElement('div');
@@ -209,9 +224,32 @@ function getOrCreateTranslationOverlay(player: HTMLElement): HTMLElement {
     layer.setAttribute('translate', 'no');
     player.appendChild(layer);
   }
+  return layer;
+}
 
-  const existing = layer.querySelector<HTMLElement>(`#${VIDEO_TRANSLATION_OVERLAY_ID}`);
+function getOrCreateVideoSubtitlePanel(player: HTMLElement): HTMLElement {
+  const layer = getOrCreateVideoSubtitleLayer(player);
+  const existing = layer.querySelector<HTMLElement>(`#${VIDEO_SUBTITLE_PANEL_ID}`);
   if (existing) return existing;
+
+  const panel = document.createElement('div');
+  panel.id = VIDEO_SUBTITLE_PANEL_ID;
+  panel.className = 'fluent-read-video-subtitle-panel fluent-read-video-ui notranslate';
+  panel.setAttribute('data-fluent-read-ui', 'video-subtitle');
+  panel.setAttribute('translate', 'no');
+  panel.setAttribute('aria-label', 'FluentRead 双语视频字幕');
+  layer.appendChild(panel);
+  return panel;
+}
+
+function getOrCreateTranslationOverlay(player: HTMLElement): HTMLElement {
+  const panel = getOrCreateVideoSubtitlePanel(player);
+
+  const existing = document.getElementById(VIDEO_TRANSLATION_OVERLAY_ID);
+  if (existing instanceof HTMLElement) {
+    if (existing.parentElement !== panel) panel.appendChild(existing);
+    return existing;
+  }
 
   const overlay = document.createElement('div');
   overlay.id = VIDEO_TRANSLATION_OVERLAY_ID;
@@ -220,49 +258,89 @@ function getOrCreateTranslationOverlay(player: HTMLElement): HTMLElement {
   overlay.setAttribute('translate', 'no');
   overlay.setAttribute('aria-live', 'polite');
   overlay.setAttribute('aria-label', 'FluentRead 视频字幕译文');
-  layer.appendChild(overlay);
+  panel.appendChild(overlay);
+  return overlay;
+}
+
+function getOrCreateNormalizedCaptionOverlay(player: HTMLElement): HTMLElement {
+  const panel = getOrCreateVideoSubtitlePanel(player);
+  const existing = document.getElementById(VIDEO_NORMALIZED_CAPTION_OVERLAY_ID);
+  if (existing instanceof HTMLElement) {
+    if (existing.parentElement !== panel) panel.appendChild(existing);
+    return existing;
+  }
+
+  const overlay = document.createElement('div');
+  overlay.id = VIDEO_NORMALIZED_CAPTION_OVERLAY_ID;
+  overlay.className = 'fluent-read-video-subtitle-original notranslate';
+  overlay.setAttribute('data-fluent-read-ui', 'video-subtitle');
+  overlay.setAttribute('translate', 'no');
+  overlay.setAttribute('aria-live', 'polite');
+  overlay.setAttribute('aria-label', 'YouTube 整段原文字幕');
+  panel.appendChild(overlay);
   return overlay;
 }
 
 function removeTranslationOverlay(): void {
   document.querySelectorAll(`#${VIDEO_TRANSLATION_LAYER_ID}`).forEach((node) => node.remove());
   document.querySelectorAll(`#${VIDEO_TRANSLATION_OVERLAY_ID}`).forEach((node) => node.remove());
+  document.querySelectorAll(`#${VIDEO_NORMALIZED_CAPTION_OVERLAY_ID}`).forEach((node) => node.remove());
 }
 
 function syncTranslationOverlayPosition(container: HTMLElement | null): void {
   if (!container) return;
   const overlay = document.getElementById(VIDEO_TRANSLATION_OVERLAY_ID);
+  const normalizedOverlay = document.getElementById(VIDEO_NORMALIZED_CAPTION_OVERLAY_ID);
+  const panel = document.getElementById(VIDEO_SUBTITLE_PANEL_ID);
   const player = findVideoPlayer();
-  if (!overlay || !player) return;
+  if (!overlay || !panel || !player) return;
 
   const playerRect = player.getBoundingClientRect();
-  const anchors = getVisibleCaptionSegments(container)
+  const visibleCaptionSegments = getVisibleCaptionSegments(container)
     .map((element) => element.getBoundingClientRect())
     .filter((rect) => rect.width > 0 && rect.height > 0);
   // YouTube 在字幕切换期间会短暂保留一个空的、甚至回到播放器顶部的容器。
   // 没有真实字幕片段时保留上一次位置，避免译文被重新定位到顶部后闪过。
-  if (anchors.length === 0) return;
-  const anchor = {
-    left: Math.min(...anchors.map((rect) => rect.left)),
-    right: Math.max(...anchors.map((rect) => rect.right)),
-    top: Math.min(...anchors.map((rect) => rect.top)),
-    bottom: Math.max(...anchors.map((rect) => rect.bottom)),
-  };
-  const playerWidth = playerRect.width || 960;
-  const width = Math.min(Math.max(anchor.right - anchor.left, 240), Math.max(playerWidth - 24, 240));
-  const center = (anchor.left + anchor.right) / 2;
-  const left = Math.min(
-    Math.max(center - width / 2 - playerRect.left, 12),
-    Math.max(playerWidth - width - 12, 12),
-  );
-  // 译文始终固定在原字幕上方；只有播放器顶部空间不足时才贴近顶部，
-  // 不回落到原字幕下方，避免观看过程中上下跳动。
-  const overlayHeight = overlay.getBoundingClientRect().height;
-  const top = anchor.top - playerRect.top - overlayHeight - 6;
+  if (visibleCaptionSegments.length === 0) return;
 
-  overlay.style.left = `${left}px`;
-  overlay.style.width = `${width}px`;
-  overlay.style.top = `${Math.max(top, 8)}px`;
+  const playerWidth = playerRect.width || 960;
+  const availableWidth = Math.max(playerWidth - 24, 160);
+  const baseFontSize = Math.min(Math.max(playerWidth * .022, 16), 30);
+  const fontScale = normalizeVideoSubtitleFontSize(config.videoSubtitleFontSize) / 100;
+  panel.style.setProperty('--fluent-read-video-subtitle-font-size', `${baseFontSize * fontScale}px`);
+
+  // 双语面板固定在播放器底部安全区上方；字幕内容变化只会改变面板向上的高度，
+  // 不会把整组字幕重新锚定到不同的 top。
+  const active = Boolean(overlay.textContent?.trim() || normalizedOverlay?.textContent?.trim());
+  panel.classList.toggle(VIDEO_SUBTITLE_PANEL_ACTIVE_CLASS, active);
+  panel.style.width = 'max-content';
+  panel.style.removeProperty('--fluent-read-video-subtitle-bottom');
+  if (!active) return;
+
+  // 背景只包住双语文本，并以播放器中心为锚点。长字幕仍受播放器宽度限制，
+  // 超出时在面板内部换行，而不是把半透明背景铺满整行。
+  panel.style.left = '12px';
+  const measuredWidth = panel.getBoundingClientRect().width;
+  const width = Math.min(Math.max(measuredWidth, 0), availableWidth);
+  const left = Math.max(12, Math.min((playerWidth - width) / 2, playerWidth - width - 12));
+  panel.style.left = `${left}px`;
+
+  // 双语模式下原生字幕仍然可见时，译文面板要放在原生字幕上方，不能用固定底部
+  // 位置压住 YouTube 的分段字幕。逐词合并已经显示整段原文时，原文在同一个面板内，
+  // 则继续使用固定底部锚点，避免随着原生 DOM 的词宽变化上下跳动。
+  const layer = document.getElementById(VIDEO_TRANSLATION_LAYER_ID);
+  const displayMode = normalizeVideoSubtitleDisplayMode(config.videoSubtitleDisplayMode);
+  const normalizedCaptionActive = layer?.classList.contains(VIDEO_NORMALIZED_CAPTION_ACTIVE_CLASS) === true;
+  if (displayMode === 'bilingual' && !normalizedCaptionActive) {
+    const playerHeight = playerRect.height || 540;
+    const nativeCaptionTop = Math.min(...visibleCaptionSegments.map((rect) => rect.top - playerRect.top));
+    const panelHeight = panel.getBoundingClientRect().height;
+    const fallbackBottom = Math.min(Math.max(playerHeight * .1, 52), 96);
+    const maxBottom = Math.max(12, playerHeight - panelHeight - 12);
+    const requestedBottom = playerHeight - nativeCaptionTop + 8;
+    const bottom = Math.max(fallbackBottom, Math.min(requestedBottom, maxBottom));
+    panel.style.setProperty('--fluent-read-video-subtitle-bottom', `${bottom}px`);
+  }
 }
 
 function applyVideoDisplayState(container: HTMLElement): void {
@@ -292,16 +370,45 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       pointer-events: none !important;
       visibility: visible !important;
     }
-    #${VIDEO_TRANSLATION_OVERLAY_ID} {
-      display: block !important;
+    #${VIDEO_SUBTITLE_PANEL_ID} {
+      display: none !important;
       position: absolute !important;
       z-index: 2 !important;
       box-sizing: border-box !important;
       max-width: calc(100% - 24px) !important;
+      bottom: var(--fluent-read-video-subtitle-bottom, clamp(52px, 10%, 96px)) !important;
       margin: 0 !important;
-      padding: 0.08em 0.24em !important;
+      padding: 5px 8px 6px !important;
+      border: 1px solid rgba(255, 255, 255, .1) !important;
+      border-radius: 6px !important;
+      background: rgba(12, 15, 22, .56) !important;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .24), 0 0 0 1px rgba(0, 0, 0, .08) !important;
+      backdrop-filter: blur(2px) !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      gap: 6px !important;
+      overflow: visible !important;
+      pointer-events: none !important;
+      user-select: none !important;
+      text-align: center !important;
+    }
+    #${VIDEO_SUBTITLE_PANEL_ID}.${VIDEO_SUBTITLE_PANEL_ACTIVE_CLASS} {
+      display: flex !important;
+    }
+    #${VIDEO_TRANSLATION_OVERLAY_ID} {
+      display: block !important;
+      position: relative !important;
+      z-index: 2 !important;
+      box-sizing: border-box !important;
+      width: auto !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
       color: #ffe45c !important;
-      font: 700 clamp(16px, 2.2vw, 30px)/1.28 Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
+      font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
+      font-size: var(--fluent-read-video-subtitle-font-size, clamp(16px, 2.2vw, 30px)) !important;
+      font-weight: 700 !important;
+      line-height: 1.28 !important;
       text-align: center !important;
       -webkit-text-stroke: 1px #000 !important;
       paint-order: stroke fill !important;
@@ -312,7 +419,45 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       visibility: visible !important;
     }
     #${VIDEO_TRANSLATION_OVERLAY_ID}:empty { display: none !important; }
-    #${VIDEO_TRANSLATION_LAYER_ID}.${VIDEO_DISPLAY_ORIGINAL_ONLY_CLASS},
+    #${VIDEO_NORMALIZED_CAPTION_OVERLAY_ID} {
+      display: none !important;
+      position: relative !important;
+      z-index: 1 !important;
+      box-sizing: border-box !important;
+      width: auto !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      color: #fff !important;
+      font-family: Arial, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif !important;
+      font-size: var(--fluent-read-video-subtitle-font-size, clamp(16px, 2.2vw, 30px)) !important;
+      font-weight: 600 !important;
+      line-height: 1.28 !important;
+      text-align: center !important;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, .9), 0 0 4px rgba(0, 0, 0, .8) !important;
+      white-space: pre-wrap !important;
+      pointer-events: none !important;
+      user-select: none !important;
+      visibility: visible !important;
+    }
+    #${VIDEO_NORMALIZED_CAPTION_OVERLAY_ID}:empty { display: none !important; }
+    #${VIDEO_TRANSLATION_LAYER_ID}.${VIDEO_NORMALIZED_CAPTION_ACTIVE_CLASS} #${VIDEO_NORMALIZED_CAPTION_OVERLAY_ID} {
+      display: block !important;
+    }
+    #${VIDEO_TRANSLATION_LAYER_ID}.${VIDEO_DISPLAY_TRANSLATION_ONLY_CLASS} #${VIDEO_NORMALIZED_CAPTION_OVERLAY_ID},
+    #${VIDEO_TRANSLATION_LAYER_ID}.${VIDEO_DISPLAY_ORIGINAL_ONLY_CLASS} #${VIDEO_TRANSLATION_OVERLAY_ID},
+    #${VIDEO_TRANSLATION_LAYER_ID}.${VIDEO_DISPLAY_HIDDEN_CLASS} {
+      visibility: hidden !important;
+    }
+    #${VIDEO_TRANSLATION_LAYER_ID}.${VIDEO_DISPLAY_TRANSLATION_ONLY_CLASS} #${VIDEO_NORMALIZED_CAPTION_OVERLAY_ID} {
+      display: none !important;
+    }
+    #ytp-caption-window-container.${VIDEO_NORMALIZED_CAPTION_CLASS} .ytp-caption-segment,
+    #ytp-caption-window-container.${VIDEO_NORMALIZED_CAPTION_CLASS} .captions-text,
+    .ytp-caption-window-container.${VIDEO_NORMALIZED_CAPTION_CLASS} .ytp-caption-segment,
+    .ytp-caption-window-container.${VIDEO_NORMALIZED_CAPTION_CLASS} .captions-text {
+      visibility: hidden !important;
+    }
     #${VIDEO_TRANSLATION_LAYER_ID}.${VIDEO_DISPLAY_HIDDEN_CLASS} {
       visibility: hidden !important;
     }
@@ -349,6 +494,10 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
     #${VIDEO_TRANSLATION_BUTTON_ID}.${VIDEO_TRANSLATION_ACTIVE_CLASS} .fluent-read-video-subtitle-button-icon {
       background: #ec4899 !important;
       box-shadow: 0 0 0 1px rgba(255, 255, 255, .16), 0 2px 8px rgba(236, 72, 153, .42) !important;
+    }
+    #${VIDEO_TRANSLATION_BUTTON_ID}:not(.${VIDEO_TRANSLATION_ACTIVE_CLASS}) .fluent-read-video-subtitle-button-icon {
+      background: rgba(236, 72, 153, .16) !important;
+      box-shadow: 0 0 0 1px rgba(236, 72, 153, .62), 0 2px 8px rgba(236, 72, 153, .2) !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} {
       position: absolute !important;
@@ -421,6 +570,23 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
       cursor: not-allowed !important;
       opacity: .55 !important;
     }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-primary-action {
+      min-height: 42px !important;
+      margin: 4px 0 8px !important;
+      border: 1px solid rgba(236, 72, 153, .42) !important;
+      background: linear-gradient(135deg, rgba(236, 72, 153, .26), rgba(236, 72, 153, .12)) !important;
+      color: #fff !important;
+      font-weight: 800 !important;
+      box-shadow: 0 4px 12px rgba(236, 72, 153, .16) !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-primary-action[aria-checked="true"] {
+      border-color: rgba(92, 211, 163, .42) !important;
+      background: rgba(36, 180, 126, .16) !important;
+      box-shadow: none !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-primary-action:not([aria-checked="true"]) .fluent-read-video-menu-check {
+      color: #ff8fbd !important;
+    }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-check {
       display: inline-block !important;
       width: 20px !important;
@@ -476,7 +642,7 @@ function installVideoSubtitleStyle(): HTMLStyleElement {
   return style;
 }
 
-type VideoConfigPatch = Partial<Pick<Config, 'videoTranslationEnabled' | 'videoSubtitleVisible' | 'videoSubtitleDisplayMode'>>;
+type VideoConfigPatch = Partial<Pick<Config, 'videoTranslationEnabled' | 'videoSubtitleVisible' | 'videoSubtitleDisplayMode' | 'videoSubtitleFontSize'>>;
 
 /**
  * 挂载 YouTube 播放器内的字幕翻译入口和原生字幕监听器。
@@ -521,6 +687,8 @@ export function mountVideoSubtitleTranslation(): () => void {
   let progressiveCueKey = '';
   let progressiveCue: VideoSubtitleCue | null = null;
   let progressiveTranslation = '';
+  let normalizedCaptionCueKey = '';
+  let normalizedCaptionActive = false;
 
   const clearRenderedTranslation = () => {
     document.querySelectorAll(`#${VIDEO_TRANSLATION_OVERLAY_ID}`).forEach((node) => {
@@ -528,10 +696,25 @@ export function mountVideoSubtitleTranslation(): () => void {
     });
   };
 
+  const deactivateNormalizedCaption = () => {
+    document.querySelectorAll(VIDEO_CAPTION_CONTAINER_SELECTOR).forEach((node) => {
+      node.classList.remove(VIDEO_NORMALIZED_CAPTION_CLASS);
+    });
+    document.querySelectorAll(`#${VIDEO_TRANSLATION_LAYER_ID}`).forEach((node) => {
+      node.classList.remove(VIDEO_NORMALIZED_CAPTION_ACTIVE_CLASS);
+    });
+    document.querySelectorAll(`#${VIDEO_NORMALIZED_CAPTION_OVERLAY_ID}`).forEach((node) => {
+      node.textContent = '';
+    });
+    normalizedCaptionCueKey = '';
+    normalizedCaptionActive = false;
+  };
+
   const clearProgressiveCaption = () => {
     progressiveCueKey = '';
     progressiveCue = null;
     progressiveTranslation = '';
+    deactivateNormalizedCaption();
   };
 
   const cancelCaptionEmptyClear = () => {
@@ -619,6 +802,15 @@ export function mountVideoSubtitleTranslation(): () => void {
     return request;
   };
 
+  const getCurrentVideoTimeMs = (): number => {
+    const player = findVideoPlayer();
+    const currentVideo = player?.querySelector<HTMLVideoElement>('video.html5-main-video, video') || observedVideo;
+    const currentTime = currentVideo?.currentTime;
+    return typeof currentTime === 'number' && Number.isFinite(currentTime)
+      ? currentTime * 1000
+      : Number.NaN;
+  };
+
   const findProgressiveCue = (source: string): VideoSubtitleCue | null => {
     const normalizedSource = normalizeVideoCaptionText(source);
     if (!normalizedSource || pretranslationCues.length === 0) return null;
@@ -628,30 +820,30 @@ export function mountVideoSubtitleTranslation(): () => void {
       const fullSource = normalizeVideoCaptionText(cue.text).toLocaleLowerCase();
       return fullSource === foldedSource || fullSource.startsWith(foldedSource);
     });
-    if (matches.length === 0) return null;
-
-    const currentMs = observedVideo ? observedVideo.currentTime * 1000 : Number.NaN;
+    const currentMs = getCurrentVideoTimeMs();
     const sourceLength = Array.from(normalizedSource).length;
-    const score = (cue: VideoSubtitleCue): number[] => {
-      const fullSource = normalizeVideoCaptionText(cue.text);
-      const exact = fullSource.toLocaleLowerCase() === foldedSource ? 0 : 1;
+    const getTimeDistance = (cue: VideoSubtitleCue): number => {
       const endMs = cue.startMs + Math.max(cue.durationMs, 500);
-      const timeDistance = Number.isFinite(currentMs)
+      return Number.isFinite(currentMs)
         ? currentMs < cue.startMs
           ? cue.startMs - currentMs
           : currentMs > endMs
             ? currentMs - endMs
             : 0
         : 0;
+    };
+    const score = (cue: VideoSubtitleCue): number[] => {
+      const fullSource = normalizeVideoCaptionText(cue.text);
+      const exact = fullSource.toLocaleLowerCase() === foldedSource ? 0 : 1;
       return [
+        getTimeDistance(cue),
         exact,
-        timeDistance,
         Math.abs(Array.from(fullSource).length - sourceLength),
         cue.startMs,
       ];
     };
 
-    return [...matches].sort((left, right) => {
+    const sortCandidates = (candidates: VideoSubtitleCue[]): VideoSubtitleCue | null => [...candidates].sort((left, right) => {
       const leftScore = score(left);
       const rightScore = score(right);
       for (let index = 0; index < leftScore.length; index += 1) {
@@ -659,28 +851,77 @@ export function mountVideoSubtitleTranslation(): () => void {
       }
       return 0;
     })[0] || null;
+
+    if (matches.length > 0) return sortCandidates(matches);
+
+    // 部分 YouTube 版本只把“当前词”写入 DOM，而不是写入完整前缀。
+    // 此时用播放器时间轴和当前词反查完整 cue，避免一直等不到稳定句子。
+    if (!Number.isFinite(currentMs) || normalizedSource.length < 3) return null;
+    const activeRelated = pretranslationCues.filter((cue) => {
+      if (getTimeDistance(cue) > 1200) return false;
+      const fullSource = normalizeVideoCaptionText(cue.text).toLocaleLowerCase();
+      return fullSource.includes(foldedSource) || foldedSource.includes(fullSource);
+    });
+    if (activeRelated.length === 0) return null;
+    return sortCandidates(activeRelated);
+  };
+
+  const getProgressiveCueKey = (cue: VideoSubtitleCue): string =>
+    `${cue.startMs}:${cue.durationMs}:${normalizeVideoCaptionText(cue.text)}`;
+
+  const isCueActiveAtTime = (cue: VideoSubtitleCue, currentMs: number): boolean => {
+    const endMs = cue.startMs + Math.max(cue.durationMs, 500);
+    return currentMs >= cue.startMs && currentMs < endMs;
+  };
+
+  const findActiveProgressiveCue = (): VideoSubtitleCue | null => {
+    const currentMs = getCurrentVideoTimeMs();
+    if (!Number.isFinite(currentMs) || pretranslationCues.length === 0) return null;
+
+    return [...pretranslationCues]
+      .filter((cue) => isCueActiveAtTime(cue, currentMs))
+      .sort((left, right) => right.startMs - left.startMs)[0] || null;
+  };
+
+  const selectProgressiveCue = (source: string): VideoSubtitleCue | null => {
+    const matchedCue = findProgressiveCue(source);
+    const activeCue = findActiveProgressiveCue();
+    const currentMs = getCurrentVideoTimeMs();
+    if (!activeCue) return matchedCue;
+    // 没有任何文本匹配时不要凭时间轴猜测原生字幕内容；YouTube 可能刚切换
+    // 字幕轨道，而 DOM 已经先显示了新文本，此时应回退到普通实时翻译。
+    if (!matchedCue) return null;
+
+    // 原生字幕 DOM 可能还停在上一条 cue，但播放器时间已经进入下一条。
+    // 时间轴是此时唯一稳定的“当前字幕”信号，优先切换到 active cue，避免译文落后一整句。
+    if (Number.isFinite(currentMs)
+      && activeCue.startMs > matchedCue.startMs
+      && !isCueActiveAtTime(matchedCue, currentMs)) {
+      return activeCue;
+    }
+    if (activeCue.startMs > matchedCue.startMs && Number.isFinite(currentMs)) return activeCue;
+    return matchedCue;
   };
 
   const renderProgressiveCaption = (source: string, overlay: HTMLElement, container: HTMLElement) => {
     if (!progressiveCue || !progressiveTranslation) return;
 
-    const revealed = revealVideoSubtitleTranslation(
-      progressiveTranslation,
-      source,
-      progressiveCue.text,
-    );
+    const revealed = normalizedCaptionActive
+      ? progressiveTranslation.trim()
+      : revealVideoSubtitleTranslation(progressiveTranslation, source, progressiveCue.text);
     if (!revealed) return;
     overlay.textContent = revealed;
     syncTranslationOverlayPosition(container);
   };
 
   const updateProgressiveCaption = (source: string, overlay: HTMLElement, container: HTMLElement): boolean => {
-    const cue = findProgressiveCue(source);
+    const cue = selectProgressiveCue(source);
     if (!cue) return false;
 
     cancelStableCaption();
-    const cueKey = `${cue.startMs}:${cue.durationMs}:${normalizeVideoCaptionText(cue.text)}`;
+    const cueKey = getProgressiveCueKey(cue);
     if (cueKey !== progressiveCueKey) {
+      deactivateNormalizedCaption();
       progressiveCueKey = cueKey;
       progressiveCue = cue;
       progressiveTranslation = '';
@@ -690,6 +931,22 @@ export function mountVideoSubtitleTranslation(): () => void {
       overlay.textContent = '';
     } else {
       progressiveCue = cue;
+    }
+
+    const captionDiffersFromCue = normalizeVideoCaptionText(source) !== normalizeVideoCaptionText(cue.text);
+    if (cueKey === normalizedCaptionCueKey || captionDiffersFromCue) {
+      normalizedCaptionActive = normalizedCaptionActive || captionDiffersFromCue;
+    }
+    if (normalizedCaptionActive) {
+      normalizedCaptionCueKey = cueKey;
+      const player = findVideoPlayer();
+      const normalizedOverlay = player ? getOrCreateNormalizedCaptionOverlay(player) : null;
+      const layer = player?.querySelector<HTMLElement>(`#${VIDEO_TRANSLATION_LAYER_ID}`);
+      if (normalizedOverlay && layer) {
+        normalizedOverlay.textContent = cue.text;
+        layer.classList.add(VIDEO_NORMALIZED_CAPTION_ACTIVE_CLASS);
+        container.classList.add(VIDEO_NORMALIZED_CAPTION_CLASS);
+      }
     }
     lastSource = source;
 
@@ -708,10 +965,8 @@ export function mountVideoSubtitleTranslation(): () => void {
 
       const currentContainer = findCaptionContainer();
       const currentSource = readVisibleCaptionText(currentContainer);
-      const currentCue = currentSource ? findProgressiveCue(currentSource) : null;
-      const currentCueKey = currentCue
-        ? `${currentCue.startMs}:${currentCue.durationMs}:${normalizeVideoCaptionText(currentCue.text)}`
-        : '';
+      const currentCue = currentSource ? selectProgressiveCue(currentSource) : findActiveProgressiveCue();
+      const currentCueKey = currentCue ? getProgressiveCueKey(currentCue) : '';
       if (!currentContainer || !currentSource || currentCueKey !== requestCueKey) return;
       lastSource = currentSource;
       renderProgressiveCaption(currentSource, overlay, currentContainer);
@@ -838,7 +1093,12 @@ export function mountVideoSubtitleTranslation(): () => void {
     videoTimeListener = undefined;
     if (!observedVideo) return;
 
-    videoTimeListener = () => schedulePretranslation();
+    videoTimeListener = () => {
+      schedulePretranslation();
+      // YouTube 的原生字幕 DOM 有时会落后于播放器时间轴；时间变化也要触发一次
+      // 当前 cue 选择，让已经预取好的下一句可以立即替换掉旧译文。
+      scheduleUpdate();
+    };
     ['timeupdate', 'seeking', 'loadedmetadata', 'durationchange', 'play', 'ratechange'].forEach((eventName) => {
       observedVideo?.addEventListener(eventName, videoTimeListener!);
     });
@@ -886,7 +1146,9 @@ export function mountVideoSubtitleTranslation(): () => void {
       toggle.disabled = !config.on;
       toggle.setAttribute('aria-checked', String(enabled));
       toggle.querySelector<HTMLElement>('[data-check]')!.textContent = enabled ? '✓' : '';
-      toggle.querySelector<HTMLElement>('[data-state]')!.textContent = status;
+      toggle.querySelector<HTMLElement>('[data-state]')!.textContent = config.on
+        ? (enabled ? '已开启' : '立即开启')
+        : status;
     }
     const service = menu.querySelector<HTMLElement>('[data-service-label]');
     if (service) service.textContent = getVideoServiceLabel(config.videoService);
@@ -1008,7 +1270,7 @@ export function mountVideoSubtitleTranslation(): () => void {
   const createMenuItem = (action: string, label: string): HTMLButtonElement => {
     const item = document.createElement('button');
     item.type = 'button';
-    item.className = 'fluent-read-video-menu-item';
+    item.className = `fluent-read-video-menu-item${action === 'toggle-translation' ? ' fluent-read-video-menu-primary-action' : ''}`;
     item.dataset.action = action;
     item.setAttribute('role', action === 'toggle-translation' || action === 'toggle-visible' ? 'menuitemcheckbox' : 'menuitem');
     const check = createTextElement('span', 'fluent-read-video-menu-check', '');
@@ -1301,6 +1563,14 @@ export function mountVideoSubtitleTranslation(): () => void {
     debounceTimer = setTimeout(updateCaption, 120);
   };
 
+  const videoTimelineEventNames = ['timeupdate', 'seeking', 'loadedmetadata', 'durationchange', 'play', 'ratechange'];
+  const handleVideoTimelineEvent = (event: Event) => {
+    const target = event.target as Element | null;
+    if (!target || target.tagName !== 'VIDEO') return;
+    schedulePretranslation();
+    scheduleUpdate();
+  };
+
   const observeCaptionContainer = () => {
     const container = findCaptionContainer();
     if (!container) {
@@ -1348,12 +1618,16 @@ export function mountVideoSubtitleTranslation(): () => void {
     observeCaptionContainer();
     syncVideoElement();
     ensurePretranslationTrack();
+    // YouTube 某些播放器实现不会稳定派发 timeupdate；复用已有的播放器同步
+    // 周期校正当前 cue，避免原生字幕 DOM 落后一整句时译文一直停留在旧句。
+    scheduleUpdate();
     schedulePretranslation();
     syncTranslationOverlayPosition(observedContainer);
   };
 
   document.addEventListener('click', handleDocumentClick, true);
   document.addEventListener('keydown', handleDocumentKeydown, true);
+  videoTimelineEventNames.forEach((eventName) => document.addEventListener(eventName, handleVideoTimelineEvent, true));
   window.addEventListener('message', handleTimedTextMessage);
   syncPlayerUi();
   uiSyncTimer = window.setInterval(syncPlayerUi, 1000);
@@ -1395,12 +1669,13 @@ export function mountVideoSubtitleTranslation(): () => void {
     unsubscribeConfig();
     document.removeEventListener('click', handleDocumentClick, true);
     document.removeEventListener('keydown', handleDocumentKeydown, true);
+    videoTimelineEventNames.forEach((eventName) => document.removeEventListener(eventName, handleVideoTimelineEvent, true));
     window.removeEventListener('message', handleTimedTextMessage);
     closeMenu();
     document.querySelectorAll(`#${VIDEO_TRANSLATION_BUTTON_ID}, #${VIDEO_TRANSLATION_MENU_ID}`).forEach((node) => node.remove());
     removeTranslationOverlay();
     document.querySelectorAll(VIDEO_CAPTION_CONTAINER_SELECTOR).forEach((node) => {
-      node.classList.remove('notranslate', VIDEO_DISPLAY_TRANSLATION_ONLY_CLASS, VIDEO_DISPLAY_ORIGINAL_ONLY_CLASS, VIDEO_DISPLAY_HIDDEN_CLASS);
+      node.classList.remove('notranslate', VIDEO_DISPLAY_TRANSLATION_ONLY_CLASS, VIDEO_DISPLAY_ORIGINAL_ONLY_CLASS, VIDEO_DISPLAY_HIDDEN_CLASS, VIDEO_NORMALIZED_CAPTION_CLASS);
       node.removeAttribute('data-fluent-read-video-display-mode');
     });
     style.remove();
