@@ -892,6 +892,7 @@ const createServiceCompute = (serviceSource: ServiceSource) => ({
   showCustom: computed(() => servicesType.isCustom(serviceSource.value)),
   showDeepLX: computed(() => serviceSource.value === 'deeplx'),
   showMiniMaxRegion: computed(() => serviceSource.value === services.minimax),
+  showMiMoRegion: computed(() => serviceSource.value === services.mimo),
   showCustomModel: computed(
     () =>
       servicesType.isAI(serviceSource.value) &&

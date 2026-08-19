@@ -95,6 +95,10 @@
     <svg v-else-if="service === 'minimax'" viewBox="0 0 24 24" role="img">
       <path d="M4.5 17V7l4 5 3.5-5v10M13 17V7l3.2 4.2L19.5 7v10" />
     </svg>
+    <svg v-else-if="service === 'mimo'" viewBox="0 0 24 24" role="img">
+      <path d="M4.5 17V8l3.8 4.3L12 8v9M12 17V8l3.7 4.3L19.5 8v9" />
+      <circle cx="12" cy="4.5" r="1.2" />
+    </svg>
     <svg v-else-if="service === 'jieyue'" viewBox="0 0 24 24" role="img">
       <path d="m12 3 1.7 6.3L20 11l-6.3 1.7L12 19l-1.7-6.3L4 11l6.3-1.7L12 3Z" />
       <path d="M17.5 16.5 20 19" />
@@ -185,6 +189,7 @@ const fallbackGlyph = computed(() => {
     deepseek: 'DS',
     lingyi: '01',
     minimax: 'MM',
+    mimo: 'Mi',
     jieyue: '阶',
     groq: 'G',
     cozecom: 'C',
@@ -325,6 +330,7 @@ const fallbackGlyph = computed(() => {
 }
 
 .service-brand-icon[data-service='minimax'],
+.service-brand-icon[data-service='mimo'],
 .service-brand-icon[data-service='jieyue'],
 .service-brand-icon[data-service='huanYuan'],
 .service-brand-icon[data-service='huanYuanTranslation'] {

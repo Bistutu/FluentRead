@@ -9,9 +9,9 @@ import {
     saveConfig,
     subscribeConfig,
 } from "@/entrypoints/utils/config";
-import {CONNECTION_TEST_MESSAGE, CONTEXT_MENU_IDS} from "@/entrypoints/utils/constant";
+import {CONNECTION_TEST_MESSAGE, CONTEXT_MENU_IDS, getMimoEndpoint, MINIMAX_ENDPOINTS} from "@/entrypoints/utils/constant";
 import {getMissingCredentialMessage} from "@/entrypoints/utils/configValidation";
-import {resolveConfiguredModel, servicesType} from "@/entrypoints/utils/option";
+import {resolveConfiguredModel, services, servicesType} from "@/entrypoints/utils/option";
 import {synthesizeEdgeTts} from "@/entrypoints/utils/edgeTts";
 import {
     buildTranslationCacheKey,
@@ -136,6 +136,14 @@ function getProviderEndpoint(service: string): string {
     if (service === 'custom') return config.custom;
     if (service === 'deeplx') return config.deeplx;
     if (service === 'newapi') return config.newApiUrl;
+    if (service === services.minimax) {
+        const plan = config.minimaxBillingPlan === 'token-plan' ? 'token-plan' : 'payg';
+        const region = config.minimaxRegion === 'cn' ? 'cn' : 'global';
+        return MINIMAX_ENDPOINTS[plan][region];
+    }
+    if (service === services.mimo) {
+        return getMimoEndpoint(config.mimoBillingPlan, config.mimoRegion);
+    }
     return '';
 }
 

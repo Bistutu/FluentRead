@@ -1,5 +1,5 @@
 import { services } from "./option";
-import type { MiniMaxBillingPlan, MiniMaxRegion } from "./option";
+import type { MiniMaxBillingPlan, MiniMaxRegion, MiMoBillingPlan, MiMoRegion } from "./option";
 import {DEFAULT_DEEPLX_ENDPOINT} from "./deeplx";
 
 // MiniMax 的 OpenAI 兼容地址目前按区域区分；计费方案单独建模，用于
@@ -14,6 +14,27 @@ export const MINIMAX_ENDPOINTS: Record<MiniMaxBillingPlan, Record<MiniMaxRegion,
         cn: "https://api.minimaxi.com/v1/chat/completions",
     },
 };
+
+// MiMo 按量付费使用统一 API 地址；Token Plan 的 Base URL 必须使用购买页面
+// 返回的集群地址，且不同集群的 Token Plan Key 不能互换。
+export const MIMO_ENDPOINTS: Record<MiMoBillingPlan, Record<MiMoRegion, string>> = {
+    payg: {
+        cn: "https://api.xiaomimimo.com/v1/chat/completions",
+        sgp: "https://api.xiaomimimo.com/v1/chat/completions",
+        ams: "https://api.xiaomimimo.com/v1/chat/completions",
+    },
+    "token-plan": {
+        cn: "https://token-plan-cn.xiaomimimo.com/v1/chat/completions",
+        sgp: "https://token-plan-sgp.xiaomimimo.com/v1/chat/completions",
+        ams: "https://token-plan-ams.xiaomimimo.com/v1/chat/completions",
+    },
+};
+
+export function getMimoEndpoint(billingPlan: string, region: string): string {
+    const plan = billingPlan === 'token-plan' ? 'token-plan' : 'payg';
+    const normalizedRegion = region === 'sgp' || region === 'ams' ? region : 'cn';
+    return MIMO_ENDPOINTS[plan][normalizedRegion];
+}
 
 // 常量工具类
 export const urls: any = {
@@ -34,6 +55,7 @@ export const urls: any = {
     [services.deepseek]: "https://api.deepseek.com/chat/completions",
     [services.infini]: "https://cloud.infini-ai.com/maas/v1/chat/completions",
     [services.minimax]: MINIMAX_ENDPOINTS.payg.cn,
+    [services.mimo]: MIMO_ENDPOINTS.payg.cn,
     [services.jieyue]: "https://api.stepfun.com/v1/chat/completions",
     [services.yiyan]: "https://qianfan.bj.baidubce.com/v2/chat/completions",
     [services.groq]: "https://api.groq.com/openai/v1/chat/completions",

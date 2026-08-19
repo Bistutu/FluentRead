@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { Config, normalizeConfig } from '@/entrypoints/utils/model';
-import { MINIMAX_ENDPOINTS, tongyiTokenPlanUrl, urls } from '@/entrypoints/utils/constant';
+import { getMimoEndpoint, MIMO_ENDPOINTS, MINIMAX_ENDPOINTS, tongyiTokenPlanUrl, urls } from '@/entrypoints/utils/constant';
 import { customModelString, defaultModelIds, defaultModels, defaultOption, models, options, resolveConfiguredModel, services, servicesType } from '@/entrypoints/utils/option';
 
 describe('AI 模型编号列表', () => {
@@ -35,6 +35,7 @@ describe('AI 模型编号列表', () => {
         expect(models.get(services.moonshot)).toContain('kimi-k2.7-code');
         expect(models.get(services.yiyan)).toContain('ernie-5.1');
         expect(models.get(services.minimax)).toContain('MiniMax-M2.7');
+        expect(models.get(services.mimo)).toContain('mimo-v2.5-pro');
         expect(models.get(services.jieyue)).toContain('step-3.5-flash');
         expect(models.get(services.huanYuan)).toContain('hy3');
         expect(models.get(services.grok)).toContain('grok-4.5');
@@ -45,6 +46,7 @@ describe('AI 模型编号列表', () => {
         expect(options.services[1]?.value).toBe(services.freeTranslation);
         expect(options.services.find(option => option.value === services.freeTranslation)?.description)
             .toContain('微软翻译、DeepLX、谷歌翻译依次尝试');
+        expect(options.services.find(option => option.value === services.mimo)?.label).toBe('小米 MiMo');
         expect(options.services.every(option => !/[🌟⭐★]/u.test(option.label))).toBe(true);
         expect(servicesType.isMachine(services.freeTranslation)).toBe(true);
         expect(defaultOption.service).toBe(services.freeTranslation);
@@ -259,6 +261,28 @@ describe('OpenAI 兼容服务端点', () => {
         expect(new Config().minimaxBillingPlan).toBe('payg');
         expect(normalizeConfig({minimaxBillingPlan: 'token-plan'}).minimaxBillingPlan).toBe('token-plan');
         expect(normalizeConfig({minimaxBillingPlan: 'unknown'}).minimaxBillingPlan).toBe('payg');
+    });
+
+    it('MiMo 配置独立处理 Token Plan 集群并清理非法值', () => {
+        expect(new Config().mimoBillingPlan).toBe('payg');
+        expect(new Config().mimoRegion).toBe('cn');
+        expect(normalizeConfig({mimoBillingPlan: 'token-plan', mimoRegion: 'sgp'})).toMatchObject({
+            mimoBillingPlan: 'token-plan',
+            mimoRegion: 'sgp',
+        });
+        expect(normalizeConfig({mimoBillingPlan: 'unknown', mimoRegion: 'unknown'})).toMatchObject({
+            mimoBillingPlan: 'payg',
+            mimoRegion: 'cn',
+        });
+    });
+
+    it('MiMo 按量付费与三套 Token Plan 集群使用不同端点', () => {
+        expect(MIMO_ENDPOINTS.payg.cn).toBe('https://api.xiaomimimo.com/v1/chat/completions');
+        expect(getMimoEndpoint('token-plan', 'cn')).toBe('https://token-plan-cn.xiaomimimo.com/v1/chat/completions');
+        expect(getMimoEndpoint('token-plan', 'sgp')).toBe('https://token-plan-sgp.xiaomimimo.com/v1/chat/completions');
+        expect(getMimoEndpoint('token-plan', 'ams')).toBe('https://token-plan-ams.xiaomimimo.com/v1/chat/completions');
+        expect(getMimoEndpoint('payg', 'ams')).toBe('https://api.xiaomimimo.com/v1/chat/completions');
+        expect(getMimoEndpoint('token-plan', 'invalid')).toBe('https://token-plan-cn.xiaomimimo.com/v1/chat/completions');
     });
 
     it('文心一言使用 Bearer Token，不再要求旧 AK/SK', () => {
