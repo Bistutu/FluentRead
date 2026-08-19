@@ -5,7 +5,9 @@ import {
     mergeWordCardData,
     normalizeEnglishWord,
     parseDatamuseWord,
+    parseEcdictEntry,
     parseFreeDictionaryEntry,
+    parseYoudaoResponse,
     parseWiktApiEntry,
     selectPronunciations,
 } from '@/entrypoints/utils/wordDictionary';
@@ -57,7 +59,7 @@ describe('word dictionary provider adapters', () => {
             word: 'single',
             phonetics: [
                 { text: '/ˈsɪŋɡəl/', audio: 'https://api.example.test/single-us.mp3' },
-                { text: '/ˈsɪŋɡəl/', audio: 'https://api.example.test/single-uk.mp3' },
+                { text: '/ˈsɪŋɡəl/', audio: 'https://api.example.test/single-us-alt.mp3' },
             ],
         }, 'single');
 
@@ -104,14 +106,90 @@ describe('word dictionary provider adapters', () => {
             definitions: [{ definition: 'A greeting.' }, { definition: 'A salutation.' }],
         });
     });
+
+    it('parses the no-key China-first dictionary response with bilingual glosses', () => {
+        const card = parseYoudaoResponse({
+            ec: {
+                word: {
+                    usphone: 'həˈloʊ',
+                    ukphone: 'həˈləʊ',
+                    trs: [{ pos: 'int.', tran: '喂，你好' }],
+                },
+            },
+            simple: [{
+                multiPhone: {
+                    uk: [{
+                        phone: 'həˈləʊ',
+                        speech: 'hello&phonetic=həˈləʊ&type=1',
+                    }],
+                },
+            }],
+        }, 'hello');
+
+        expect(card.phonetics).toEqual([
+            { text: '/həˈloʊ/', audio: 'https://dict.youdao.com/dictvoice?audio=hello&type=2', label: '美式' },
+            { text: '/həˈləʊ/', audio: 'https://dict.youdao.com/dictvoice?hello&phonetic=h%C9%99%CB%88l%C9%99%CA%8A&type=1', label: '英式' },
+        ]);
+        expect(card.meanings[0]).toEqual({
+            partOfSpeech: '感叹词',
+            definitions: [{ definition: '喂，你好', translatedDefinition: '喂，你好' }],
+        });
+    });
+
+    it('keeps both regional rows when American and British IPA are identical', () => {
+        const card = parseYoudaoResponse({
+            ec: {
+                word: {
+                    usphone: 'juː; jʊ',
+                    ukphone: 'juː; jʊ',
+                },
+            },
+            simple: [{
+                multiPhone: {
+                    uk: [{
+                        phone: 'juː',
+                        speech: 'you&phonetic=juː&type=1',
+                    }],
+                },
+            }],
+        }, 'you');
+
+        expect(card.phonetics).toEqual([
+            { text: '/juː/', audio: 'https://dict.youdao.com/dictvoice?audio=you&type=2', label: '美式' },
+            { text: '/juː/', audio: 'https://dict.youdao.com/dictvoice?you&phonetic=ju%CB%90&type=1', label: '英式' },
+        ]);
+    });
+
+    it('parses a local ECDICT entry without requiring network data', () => {
+        const card = parseEcdictEntry({
+            w: 'you',
+            p: 'ju:',
+            d: 'dat. & obj. The pronoun of the second person.\\n   dative, and objective case.',
+            t: 'pron. 你, 你们',
+            pos: 'pron.',
+        }, 'you');
+
+        expect(card.meanings[0]).toEqual({
+            partOfSpeech: '代词',
+            definitions: [
+                { definition: 'The pronoun of the second person.', translatedDefinition: '你, 你们' },
+                { definition: 'dative, and objective case.' },
+            ],
+        });
+        expect(card.phonetics[0]?.text).toBe('/ju:/');
+        expect(card.sources[0]?.id).toBe('ecdict-local');
+    });
 });
 
 describe('word dictionary fallback chain', () => {
-    it('continues from a failed primary provider to WiktApi', async () => {
+    it('continues through all no-key backups to WiktApi as the last resort', async () => {
         const warningSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
         const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
             const url = String(input);
+            if (url.includes('dict.youdao.com')) return response({ message: 'unavailable' }, false);
             if (url.includes('dictionaryapi.dev')) return response({ message: 'unavailable' }, false);
+            if (url.includes('api.datamuse.com')) return response({ message: 'unavailable' }, false);
+            if (url.includes('en.wiktionary.org')) return response({ message: 'unavailable' }, false);
             if (url.includes('api.wiktapi.dev')) {
                 return response({
                     word: 'fallbackword',
@@ -132,8 +210,8 @@ describe('word dictionary fallback chain', () => {
         expect(card?.meanings[0]?.definitions[0]?.definition).toBe('a fallback definition');
         expect(card?.phonetics[0]?.text).toBe('/ˈfɔːlbæk/');
         expect(card?.sources.map(item => item.id)).toEqual(['wiktapi']);
-        expect(fetchMock).toHaveBeenCalledTimes(2);
-        expect(warningSpy).toHaveBeenCalledOnce();
+        expect(fetchMock).toHaveBeenCalledTimes(5);
+        expect(warningSpy).toHaveBeenCalledTimes(4);
     });
 
     it('merges missing pronunciation fields from a backup without duplicating definitions', () => {

@@ -17,12 +17,14 @@ FluentRead 不把翻译能力锁定在单一供应商上。你可以在设置页
 
 ## 单词学习卡片的数据来源
 
-选中单个英文单词时，划词翻译会请求学习卡片所需的结构化词典数据。扩展后台按以下顺序尝试，并在响应缺少必要字段时继续使用后备服务：
+选中单个英文单词时，划词翻译会请求学习卡片所需的结构化词典数据。扩展后台按以下顺序尝试，并在响应缺少必要字段时继续使用后备服务。优先使用中国境内更容易直连的无 Key 公共接口；所有网络服务都只是可替换的 Backup，不能假设任何单一域名永久可用：
 
-1. [Free Dictionary API](https://dictionaryapi.dev/)：音标、音频、词性、释义和例句。
-2. [WiktApi](https://wiktapi.dev/)：基于 Wiktionary/Kaikki 的结构化释义、例句和发音数据，支持自托管。
-3. [Wiktionary REST API](https://en.wiktionary.org/api/rest_v1/)：官方 Wiktionary 释义回退。
-4. [Datamuse](https://www.datamuse.com/api/)：词性、释义和 IPA 元数据回退。
+1. [ECDICT 本地词库](https://github.com/skywind3000/ECDICT)：扩展内置的高频英汉词条，完全离线，不需要网络或 Key。
+2. [有道词典公共查询接口](https://dict.youdao.com/)：中国境内优先的无 Key 词性、中文释义和英美音；这是网页查询接口，不依赖用户凭据，接口格式可能随站点调整。
+3. [Free Dictionary API](https://dictionaryapi.dev/)：音标、音频、词性、英文释义和例句。
+4. [Datamuse](https://www.datamuse.com/api/)：词性、英文释义和 IPA 元数据回退。
+5. [Wiktionary REST API](https://en.wiktionary.org/api/rest_v1/)：官方 Wiktionary 英文释义回退。
+6. [WiktApi](https://wiktapi.dev/)：基于 Wiktionary/Kaikki 的结构化释义、例句和发音数据，作为最后 Backup；中国境内不可用时会快速超时并继续后备链。
 
 这些服务均不需要在 FluentRead 中配置 API Key；公共服务的可用性、频率限制、数据质量和许可条款仍由各自维护者决定。词典卡片会显示数据来源链接；Wiktionary 内容遵循其页面标注的开放许可，使用或再分发时请保留相应署名。Datamuse 官方说明当前免费无密钥额度将于 2027 年 1 月 1 日调整为需要 API Key，因此它不是唯一依赖。
 
