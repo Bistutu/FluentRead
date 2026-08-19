@@ -87,9 +87,9 @@ h1 { margin-bottom: 6px; font-size: 28px; line-height: 1.25; letter-spacing: -.0
 }
 .settings-card.translation-center-view > .settings-main-sections { display: none !important; }
 .settings-card.translation-center-view > #settings-translation-center {
-  display: block !important; min-height: 0; height: 100%; flex: 1 1 auto; overflow: hidden;
+  display: flex !important; min-height: 0; height: 100%; flex: 1 1 auto; align-items: flex-start; justify-content: center; overflow: hidden;
 }
-.settings-card.translation-center-view .translation-center { height: 100%; overflow-y: auto; }
+.settings-card.translation-center-view .translation-center { width: min(100%, 1480px); height: auto; max-height: 100%; overflow-y: auto; }
 .card-intro { margin: 0 16px 25px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
 .card-intro h2 { margin-bottom: 6px; font-size: 21px; }
 .settings-card > div:last-child > .el-row,
