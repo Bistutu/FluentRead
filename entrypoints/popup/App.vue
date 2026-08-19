@@ -142,19 +142,34 @@
         <button type="button" @click="openOptions('settings-services')">去设置</button>
       </div>
 
-      <button
-        class="translate-button"
-        :class="{ translated: pageTranslated }"
-        type="button"
-        :disabled="!config.on || translating"
-        :aria-pressed="pageTranslated"
-        @click="togglePageTranslation"
-      >
-        <span v-if="translating" class="spinner" />
-        <span v-else class="translate-glyph">A↔译</span>
-        <span class="translate-label">{{ pageTranslated ? '恢复当前网页' : '翻译当前网页' }}</span>
-        <kbd class="translate-hotkey" :class="{ disabled: fullPageHotkey === '未设置' }">{{ fullPageHotkey }}</kbd>
-      </button>
+      <div class="translate-action">
+        <button
+          class="translate-button"
+          :class="{ translated: pageTranslated }"
+          type="button"
+          :disabled="!config.on || translating"
+          :aria-pressed="pageTranslated"
+          @click="togglePageTranslation"
+        >
+          <span v-if="translating" class="spinner" />
+          <span v-else class="translate-glyph">A↔译</span>
+          <span class="translate-label">{{ pageTranslated ? '恢复当前网页' : '翻译当前网页' }}</span>
+          <kbd class="translate-hotkey" :class="{ disabled: fullPageHotkey === '未设置' }">{{ fullPageHotkey }}</kbd>
+        </button>
+        <button
+          v-if="canUseAIContext"
+          class="ai-context-toggle"
+          type="button"
+          :aria-pressed="config.enableAIContext"
+          :aria-label="config.enableAIContext ? '关闭 AI精翻' : '开启 AI精翻'"
+          :title="config.enableAIContext ? '关闭 AI精翻' : '开启 AI精翻'"
+          :disabled="!config.on || translating"
+          @click="toggleAIContext"
+        >
+          <span class="ai-context-copy">AI精翻</span>
+          <span class="ai-context-indicator" aria-hidden="true" />
+        </button>
+      </div>
       <p v-if="notice" class="notice" :class="noticeType">{{ notice }}</p>
     </section>
 
@@ -395,7 +410,7 @@ import {
 } from '@/entrypoints/utils/config';
 import { Setting } from '@element-plus/icons-vue';
 import { Config, VIDEO_SUBTITLE_FONT_SIZE_OPTIONS } from '@/entrypoints/utils/model';
-import { options } from '@/entrypoints/utils/option';
+import { options, resolveConfiguredModel, servicesType } from '@/entrypoints/utils/option';
 import { getMissingCredentialMessage } from '@/entrypoints/utils/configValidation';
 import { getSelectedModelLabel } from '@/entrypoints/utils/serviceCatalog';
 import ServiceIcon from '@/components/ServiceIcon.vue';
@@ -446,6 +461,11 @@ const moreServiceOptions = computed(() => serviceOptions.value.filter((item: any
 const styleOptions = computed(() => options.styles.filter((item: any) => !item.disabled));
 const serviceLabel = computed(() => serviceOptions.value.find((item: any) => item.value === config.value.service)?.label || config.value.service);
 const serviceModelLabel = computed(() => getSelectedModelLabel(config.value.service, config.value.model, config.value.customModel));
+const aiContextModel = computed(() => resolveConfiguredModel(
+  config.value.model[config.value.service],
+  config.value.customModel[config.value.service],
+));
+const canUseAIContext = computed(() => servicesType.isUseAIContext(config.value.service, aiContextModel.value));
 const servicePickerAriaLabel = computed(() => serviceModelLabel.value
   ? `翻译服务：${serviceLabel.value}，当前模型：${serviceModelLabel.value}`
   : `翻译服务：${serviceLabel.value}`);
@@ -549,6 +569,10 @@ function toggleServicePicker() {
 function selectService(value: string) {
   config.value.service = value;
   servicePickerOpen.value = false;
+}
+function toggleAIContext() {
+  if (!canUseAIContext.value || !config.value.on || translating.value) return;
+  config.value.enableAIContext = !config.value.enableAIContext;
 }
 onMounted(() => {
   document.addEventListener('pointerdown', closeServicePicker);

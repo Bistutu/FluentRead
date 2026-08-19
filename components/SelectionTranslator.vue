@@ -46,7 +46,7 @@ import browser from 'webextension-polyfill';
 import { config } from '@/entrypoints/utils/config';
 import { translateText } from '@/entrypoints/utils/translateApi';
 import { detectlang } from '@/entrypoints/utils/common';
-import { calculateSelectionPopupPosition, chooseSelectionRect, isSameLanguage, normalizeSelectionText, normalizeSpeechLanguage, type SelectionRect } from '@/entrypoints/utils/selectionTranslatorCore';
+import { calculateSelectionPopupPosition, chooseSelectionRect, isSameLanguage, normalizeSelectionText, normalizeSpeechLanguage, shouldIgnoreSelection, type SelectionRect } from '@/entrypoints/utils/selectionTranslatorCore';
 
 type SelectionTrigger = 'direct' | 'icon' | 'dot';
 type AudioKind = 'source' | 'translation';
@@ -101,6 +101,7 @@ function readSelectionSnapshot(): SelectionSnapshot | null {
   if (!text || text.length > 4096) return null;
 
   const range = selection.getRangeAt(0).cloneRange();
+  if (shouldIgnoreSelection(range)) return null;
   const rects = Array.from(range.getClientRects()).map(toSelectionRect).filter(rect => rect.width > 0 || rect.height > 0);
   const visualRects = rects.length > 0 ? rects : [toSelectionRect(range.getBoundingClientRect())];
   const isForward = selection.anchorNode === range.startContainer && selection.anchorOffset === range.startOffset;
@@ -370,11 +371,11 @@ onBeforeUnmount(() => {
 <style scoped>
 .fr-selection-translator-root { position: fixed; inset: 0; z-index: 2147483647; width: 100vw; height: 100vh; pointer-events: none; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #25252a; }
 .fr-selection-indicator, .fr-translation-tooltip, .fr-copy-success-toast { pointer-events: auto; }
-.fr-selection-indicator { position: fixed; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; transform: translate(-50%, -50%); background: #ef4b86; color: #fff; box-shadow: 0 3px 10px rgba(204, 40, 104, .3), 0 0 0 2px rgba(255, 255, 255, .94); cursor: pointer; transition: transform .14s ease, box-shadow .14s ease; }
-.fr-selection-indicator--dot { width: 10px; height: 10px; }
+.fr-selection-indicator { position: fixed; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; transform: translate(-50%, -50%); background: #ef4b86; color: #fff; box-shadow: 0 2px 7px rgba(204, 40, 104, .28), 0 0 0 2px rgba(255, 255, 255, .94); cursor: pointer; transition: transform .14s ease, box-shadow .14s ease; }
+.fr-selection-indicator--dot { width: 8px; height: 8px; }
 .fr-selection-indicator--dot .fr-selection-indicator-glyph { display: none; }
 .fr-selection-indicator:hover, .fr-selection-indicator:focus-visible { transform: translate(-50%, -50%) scale(1.1); box-shadow: 0 4px 14px rgba(204, 40, 104, .4), 0 0 0 3px rgba(255, 255, 255, .95); outline: none; }
-.fr-selection-indicator-glyph { font-size: 12px; font-weight: 700; line-height: 1; }
+.fr-selection-indicator-glyph { font-size: 10px; font-weight: 700; line-height: 1; }
 .fr-translation-tooltip { position: fixed; width: min(344px, calc(100vw - 20px)); max-height: min(480px, calc(100vh - 20px)); overflow: hidden; border: 1px solid rgba(28, 28, 36, .08); border-radius: 16px; background: rgba(255, 255, 255, .98); box-shadow: 0 14px 34px rgba(30, 28, 40, .16), 0 2px 8px rgba(30, 28, 40, .07); backdrop-filter: blur(16px); }
 .fr-tooltip-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #f0f0f3; font-size: 14px; font-weight: 700; }
 .fr-tooltip-title { display: flex; align-items: baseline; gap: 6px; }
