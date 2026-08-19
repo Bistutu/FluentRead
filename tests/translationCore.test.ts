@@ -680,6 +680,30 @@ describe('translation candidate core', () => {
         expect(core.resolve(title)?.element).toBe(title);
     });
 
+    it('keeps X usernames out of full and hover translation candidates', () => {
+        const {document, core} = page(`
+            <main>
+                <article>
+                    <div id="user-name" data-testid="User-Name">
+                        <a href="/example-user">
+                            <span>Example User</span>
+                            <span>@example_user</span>
+                        </a>
+                    </div>
+                    <div id="tweet-text" data-testid="tweetText">Translate this X post.</div>
+                </article>
+            </main>
+        `, 'https://x.com/home');
+        const userName = document.querySelector('#user-name')!;
+        const tweetText = document.querySelector('#tweet-text')!;
+
+        expect(core.discover(document).map((candidate) => candidate.element.id)).toEqual(['tweet-text']);
+        expect(core.discover(document).find((candidate) => candidate.element === tweetText))
+            .toMatchObject({adapterId: 'x', reason: 'x-post-text'});
+        expect(core.resolve(userName.querySelector('span')?.firstChild)).toBeNull();
+        expect(core.resolve(tweetText.firstChild)?.element).toBe(tweetText);
+    });
+
     it('keeps an exact adapter target out of an ancestor inline run', () => {
         const {document, core} = page(`
             <main><div id="row">
