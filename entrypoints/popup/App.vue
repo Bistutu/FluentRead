@@ -298,6 +298,28 @@
             </div>
             <small class="drawer-hint">图标和小点会固定显示在选区旁，不需要悬停才能发现。</small>
           </div>
+          <div class="choice-block">
+            <label>语音回退顺序</label>
+            <el-select
+              v-model="config.selectionTtsVoices"
+              class="selection-tts-voice-select"
+              multiple
+              filterable
+              collapse-tags
+              collapse-tags-tooltip
+              aria-label="划词翻译语音回退顺序"
+              placeholder="自动按语言选择"
+              no-data-text="没有可用音色"
+            >
+              <el-option
+                v-for="item in selectionTtsVoiceOptions"
+                :key="item.value"
+                :label="`${item.label} · ${item.locale}`"
+                :value="item.value"
+              />
+            </el-select>
+            <small class="drawer-hint">留空时按当前语言自动尝试多个免费 Edge 音色；选中多个后按此顺序回退，不需要 API Key。</small>
+          </div>
         </div>
 
         <div v-else id="selection-area-panel" class="selection-area-panel" role="tabpanel">
@@ -413,6 +435,7 @@ import { Config, VIDEO_SUBTITLE_FONT_SIZE_OPTIONS } from '@/entrypoints/utils/mo
 import { options, resolveConfiguredModel, servicesType } from '@/entrypoints/utils/option';
 import { getMissingCredentialMessage } from '@/entrypoints/utils/configValidation';
 import { getSelectedModelLabel } from '@/entrypoints/utils/serviceCatalog';
+import { SELECTION_TTS_VOICE_OPTIONS } from '@/entrypoints/utils/selectionTtsConfig';
 import ServiceIcon from '@/components/ServiceIcon.vue';
 
 type DrawerName = 'hover' | 'selection' | 'floating' | 'appearance' | 'image' | 'video';
@@ -508,6 +531,7 @@ const selectionModes = [
   { value: 'bilingual', label: '双语显示' },
   { value: 'translation-only', label: '仅译文' },
 ];
+const selectionTtsVoiceOptions = SELECTION_TTS_VOICE_OPTIONS;
 const selectionTriggers = [
   { value: 'direct', label: '直接弹出' },
   { value: 'icon', label: '显示图标' },

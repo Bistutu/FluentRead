@@ -17,7 +17,14 @@ import {
     buildTranslationCacheKey,
     translationCache,
 } from "@/entrypoints/utils/translationCache";
-import { downloadImageOcrLanguagesWithOffscreen, recognizeImageWithOffscreen, translateAreaWithOffscreen, translateImageWithOffscreen } from "@/entrypoints/service/chrome-translator";
+import {
+    downloadImageOcrLanguagesWithOffscreen,
+    playSelectionTtsWithOffscreen,
+    recognizeImageWithOffscreen,
+    stopSelectionTtsWithOffscreen,
+    translateAreaWithOffscreen,
+    translateImageWithOffscreen,
+} from "@/entrypoints/service/chrome-translator";
 import { imageBufferToDataUrl, MAX_REMOTE_IMAGE_BYTES, normalizeRemoteImageUrl } from "@/entrypoints/utils/imageFetch";
 import {
     formatConnectionTestError,
@@ -105,6 +112,40 @@ type CacheRequestMode = 'single' | 'batch';
 const TRANSLATION_CACHE_CLEANUP_ALARM = 'fluentread-translation-cache-cleanup';
 let configPersistQueue: Promise<void> = Promise.resolve();
 const latestConfigSequenceByClient = new Map<string, number>();
+
+interface ActiveSelectionTts {
+    tabId: number;
+    requestId: number;
+}
+
+let activeSelectionTts: ActiveSelectionTts | null = null;
+
+async function stopActiveSelectionTts(): Promise<void> {
+    const active = activeSelectionTts;
+    activeSelectionTts = null;
+    if (!active) return;
+    await stopSelectionTtsWithOffscreen(active.requestId).catch(() => undefined);
+}
+
+function googleSelectionTtsUrl(text: string, language: string): string {
+    return `https://translate.google.com/translate_tts?ie=UTF-8&tl=${encodeURIComponent(language)}&client=tw-ob&q=${encodeURIComponent(text)}`;
+}
+
+async function forwardSelectionTtsState(message: any): Promise<void> {
+    const tabId = Number.isInteger(message.tabId) ? message.tabId : null;
+    const requestId = Number.isInteger(message.requestId) ? message.requestId : null;
+    if (tabId === null || requestId === null) return;
+    const active = activeSelectionTts;
+    if (active && active.tabId === tabId && active.requestId === requestId) {
+        activeSelectionTts = null;
+    }
+    await browser.tabs.sendMessage(tabId, {
+        type: 'selectionTtsState',
+        requestId,
+        state: message.state,
+        error: typeof message.error === 'string' ? message.error : undefined,
+    }).catch(() => undefined);
+}
 
 async function fetchImageForOcr(source: string): Promise<string> {
     const url = normalizeRemoteImageUrl(source);
@@ -637,14 +678,82 @@ export default defineBackground({
                         return;
                     }
 
+                    if (message.type === 'selectionTtsPlaybackState') {
+                        await forwardSelectionTtsState(message);
+                        resolve({ success: true });
+                        return;
+                    }
+
+                    if (message.type === 'selectionTtsStop') {
+                        const requestId = Number.isSafeInteger(message.requestId) ? message.requestId : undefined;
+                        if (activeSelectionTts && (requestId === undefined || activeSelectionTts.requestId === requestId)) {
+                            await stopActiveSelectionTts();
+                        }
+                        resolve({ success: true });
+                        return;
+                    }
+
                     if (message.type === 'selectionTts') {
-                        const result = await synthesizeEdgeTts(message.text, message.language);
+                        const tabId = Number.isInteger(sender?.tab?.id) ? sender.tab.id : null;
+                        const requestId = Number.isSafeInteger(message.requestId) ? message.requestId : Date.now();
+                        await stopActiveSelectionTts();
+                        const result = await synthesizeEdgeTts(message.text, message.language, config.selectionTtsVoices);
+
+                        if (tabId !== null) {
+                            activeSelectionTts = { tabId, requestId };
+                            try {
+                                await playSelectionTtsWithOffscreen({
+                                    audioBase64: arrayBufferToBase64(result.audio),
+                                    contentType: result.contentType,
+                                    tabId,
+                                    requestId,
+                                });
+                                resolve({ success: true, transport: 'offscreen', voice: result.voice });
+                                return;
+                            } catch (offscreenError) {
+                                if (activeSelectionTts?.tabId === tabId && activeSelectionTts.requestId === requestId) {
+                                    activeSelectionTts = null;
+                                }
+                                console.warn('Offscreen TTS playback unavailable, returning page audio:', offscreenError);
+                            }
+                        }
                         resolve({
                             success: true,
                             audioBase64: arrayBufferToBase64(result.audio),
                             contentType: result.contentType,
                             voice: result.voice,
+                            transport: 'page',
                         });
+                        return;
+                    }
+
+                    if (message.type === 'selectionTtsGoogle') {
+                        const tabId = Number.isInteger(sender?.tab?.id) ? sender.tab.id : null;
+                        const requestId = Number.isSafeInteger(message.requestId) ? message.requestId : Date.now();
+                        const text = typeof message.text === 'string' ? message.text.trim() : '';
+                        const language = typeof message.language === 'string' ? message.language : 'en-US';
+                        if (!text) throw new Error('TTS 文本为空');
+
+                        await stopActiveSelectionTts();
+                        if (tabId === null) {
+                            resolve({ success: false, error: '无法确定当前标签页' });
+                            return;
+                        }
+
+                        activeSelectionTts = { tabId, requestId };
+                        try {
+                            await playSelectionTtsWithOffscreen({
+                                sourceUrl: googleSelectionTtsUrl(text, language),
+                                tabId,
+                                requestId,
+                            });
+                            resolve({ success: true, transport: 'offscreen' });
+                        } catch (offscreenError) {
+                            if (activeSelectionTts?.tabId === tabId && activeSelectionTts.requestId === requestId) {
+                                activeSelectionTts = null;
+                            }
+                            resolve({ success: false, error: offscreenError instanceof Error ? offscreenError.message : String(offscreenError) });
+                        }
                         return;
                     }
 

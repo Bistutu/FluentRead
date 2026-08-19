@@ -288,6 +288,19 @@ describe('划词翻译配置兼容', () => {
             disableSelectionTranslator: true,
         });
     });
+
+    it('normalizes and persists the optional TTS voice fallback order', () => {
+        expect(new Config().selectionTtsVoices).toEqual([]);
+        expect(normalizeConfig({selectionTtsVoices: [
+            'en-US-JennyNeural',
+            'invalid',
+            'en-US-JennyNeural',
+            'zh-CN-XiaoyiNeural',
+        ]}).selectionTtsVoices).toEqual([
+            'en-US-JennyNeural',
+            'zh-CN-XiaoyiNeural',
+        ]);
+    });
 });
 
 describe('OpenAI 兼容服务端点', () => {

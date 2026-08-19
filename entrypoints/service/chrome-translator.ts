@@ -11,6 +11,28 @@ import type { OffscreenImageTranslationResult } from "@/entrypoints/offscreen/im
  * 使用 Chrome Offscreen API 在独立的 DOM 环境中运行翻译功能
  */
 
+let creatingOffscreenDocument: Promise<void> | null = null;
+
+interface SelectionTtsOffscreenPayload {
+    audioBase64?: string;
+    contentType?: string;
+    sourceUrl?: string;
+    tabId: number;
+    requestId: number;
+}
+
+async function sendOffscreenMessage(message: Record<string, unknown>): Promise<any> {
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({target: 'offscreen', ...message}, (response: any) => {
+            if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+            } else {
+                resolve(response);
+            }
+        });
+    });
+}
+
 // 在 background script 中使用 offscreen API 处理翻译
 async function translateWithOffscreen(message: any): Promise<any> {
     try {
@@ -18,22 +40,14 @@ async function translateWithOffscreen(message: any): Promise<any> {
         await ensureOffscreenDocument();
 
         // 向 offscreen 文档发送翻译请求
-        const response = await new Promise((resolve, reject) => {
-            chrome.runtime.sendMessage({
+        const response = await sendOffscreenMessage({
                 type: 'CHROME_TRANSLATE_OFFSCREEN',
                 data: {
                     text: message.origin,
                     from: config.from,
                     to: config.to
                 }
-            }, (response: any) => {
-                if (chrome.runtime.lastError) {
-                    reject(new Error(chrome.runtime.lastError.message));
-                } else {
-                    resolve(response);
-                }
             });
-        });
 
         // 检查响应
         if (response && typeof response === 'object' && 'success' in response) {
@@ -52,10 +66,17 @@ async function translateWithOffscreen(message: any): Promise<any> {
     }
 }
 
-// 确保 offscreen 文档存在
-async function ensureOffscreenDocument() {
+// 确保 offscreen 文档存在；OCR 和音频共享同一个静态文档。
+export async function ensureOffscreenDocument(): Promise<void> {
+    if (!chrome.offscreen || typeof chrome.offscreen.createDocument !== 'function') {
+        throw new Error('当前浏览器不支持扩展 Offscreen 文档');
+    }
+
     try {
         // 检查是否已经有 offscreen 文档
+        if (typeof chrome.runtime.getContexts !== 'function') {
+            throw new Error('当前浏览器不支持查询 Offscreen 文档');
+        }
         const existingContexts = await chrome.runtime.getContexts({
             contextTypes: ['OFFSCREEN_DOCUMENT']
         });
@@ -64,18 +85,38 @@ async function ensureOffscreenDocument() {
             return; // 已经存在
         }
 
-        // 创建 offscreen 文档
-        await chrome.offscreen.createDocument({
-            url: 'offscreen.html',
-            reasons: ['DOM_SCRAPING'], // 使用 DOM_SCRAPING 原因来访问 Translation API
-            justification: 'Chrome Translation API requires DOM context'
-        });
+        if (!creatingOffscreenDocument) {
+            creatingOffscreenDocument = chrome.offscreen.createDocument({
+                url: 'offscreen.html',
+                reasons: ['DOM_SCRAPING', 'AUDIO_PLAYBACK'],
+                justification: 'FluentRead needs an extension-owned DOM for Translation API, OCR, and CSP-independent TTS playback',
+            }).finally(() => {
+                creatingOffscreenDocument = null;
+            });
+        }
+        await creatingOffscreenDocument;
 
         console.log('Offscreen 文档创建成功');
     } catch (error) {
         console.error('创建 offscreen 文档失败:', error);
         throw new Error('无法创建 offscreen 文档');
     }
+}
+
+export async function playSelectionTtsWithOffscreen(payload: SelectionTtsOffscreenPayload): Promise<void> {
+    await ensureOffscreenDocument();
+    const response = await sendOffscreenMessage({
+        type: 'PLAY_SELECTION_TTS',
+        ...payload,
+    });
+    if (!response?.success) throw new Error(response?.error || 'Offscreen TTS 播放失败');
+}
+
+export async function stopSelectionTtsWithOffscreen(requestId?: number): Promise<void> {
+    if (!chrome.offscreen || typeof chrome.runtime.getContexts !== 'function') return;
+    const existingContexts = await chrome.runtime.getContexts({contextTypes: ['OFFSCREEN_DOCUMENT']});
+    if (existingContexts.length === 0) return;
+    await sendOffscreenMessage({type: 'STOP_SELECTION_TTS', requestId});
 }
 
 // 在 offscreen 页面中运行本地 OCR，避免内容脚本从网页源启动扩展 worker 时被浏览器拦截。
