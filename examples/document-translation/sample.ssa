@@ -1,0 +1,6 @@
+[Script Info]
+Title: SSA document translation example
+
+[Events]
+Format: Marked, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: Marked=0,0:00:01.00,0:00:03.00,Default,,0,0,0,,{\i1}Hello SSA subtitle

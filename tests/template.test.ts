@@ -180,6 +180,13 @@ describe('commonMsgTemplate（集成）', () => {
         });
     });
 
+    it('文档入口可以覆盖模型而不改写网页翻译模型', () => {
+        const body = JSON.parse(commonMsgTemplate('hello', undefined, undefined, undefined, services.openai, 'gpt-document-model'));
+
+        expect(body.model).toBe('gpt-document-model');
+        expect(mockConfig.model.openai).toBe('gpt-5.6-luna');
+    });
+
     it('选择“自定义模型”时使用 customModel 的值', () => {
         mockConfig.model = { openai: customModelString };
         mockConfig.customModel = { openai: 'gpt-4o-mini' };

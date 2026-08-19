@@ -47,6 +47,9 @@ export class Config {
     style: number;
     display: number = 1;
     service: string;
+    documentService: string; // 文档翻译独立翻译服务
+    documentModel: IMapping; // 文档翻译按服务保存的独立模型选择
+    documentCustomModel: IMapping; // 文档翻译按服务保存的独立自定义模型
     videoTranslationEnabled: boolean; // 是否启用视频字幕翻译 Beta
     videoService: string; // 视频字幕独立翻译服务
     videoServiceDefaultMigrated: boolean; // 是否已迁移视频字幕默认服务
@@ -111,6 +114,9 @@ export class Config {
         this.display = defaultOption.display;
         this.hotkey = defaultOption.hotkey;
         this.service = defaultOption.service;
+        this.documentService = defaultOption.service;
+        this.documentModel = Object.fromEntries(defaultModels);
+        this.documentCustomModel = {};
         this.videoTranslationEnabled = false; // Beta 功能默认关闭
         this.videoService = services.microsoft; // 视频字幕默认使用微软翻译
         this.videoServiceDefaultMigrated = true;
@@ -252,8 +258,10 @@ export function normalizeConfig(value: unknown): Config {
 
     normalized.token = normalizeStringMapping(source.token);
     normalized.model = normalizeStringMapping(source.model);
+    normalized.documentModel = normalizeStringMapping(source.documentModel);
     normalized.requireApiKey = isBooleanMapping(source.requireApiKey) ? {...source.requireApiKey} : {};
     normalized.customModel = normalizeStringMapping(source.customModel);
+    normalized.documentCustomModel = normalizeStringMapping(source.documentCustomModel);
     normalized.proxy = normalizeStringMapping(source.proxy);
     normalized.robot_id = normalizeStringMapping(source.robot_id);
     normalized.system_role = {
@@ -268,6 +276,12 @@ export function normalizeConfig(value: unknown): Config {
 
     if (typeof normalized.custom !== 'string') normalized.custom = defaultOption.custom;
     if (typeof normalized.newApiUrl !== 'string') normalized.newApiUrl = DEFAULT_NEW_API_URL;
+
+    const supportsDocumentService = servicesType.machine.has(normalized.documentService)
+        || servicesType.isAI(normalized.documentService);
+    if (!supportsDocumentService) {
+        normalized.documentService = defaultOption.service;
+    }
 
     if (typeof normalized.videoTranslationEnabled !== 'boolean') {
         normalized.videoTranslationEnabled = false;
@@ -291,10 +305,12 @@ export function normalizeConfig(value: unknown): Config {
     normalized.videoSubtitleFontSize = normalizeVideoSubtitleFontSize(normalized.videoSubtitleFontSize);
 
     migrateModelIdentifiers(normalized.model);
+    migrateModelIdentifiers(normalized.documentModel);
 
     // 旧配置可能没有保存过模型选择；为所有 AI 服务补齐各自的默认模型。
     defaultModels.forEach((defaultModel, service) => {
         if (!normalized.model[service]) normalized.model[service] = defaultModel;
+        if (!normalized.documentModel[service]) normalized.documentModel[service] = defaultModel;
     });
 
     const selectedModel = normalized.model[services.deepseek];

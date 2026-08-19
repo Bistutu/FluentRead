@@ -88,6 +88,22 @@ describe('translation API request lifecycle performance', () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it('发送独立入口的服务和模型覆盖，不修改网页模型配置', async () => {
+    mocks.sendMessage.mockResolvedValue('文档译文');
+
+    await expect(translateText('Document source', 'Document context', {
+      serviceOverride: 'mock-ai',
+      modelOverride: 'document-model',
+      maxRetries: 0,
+    })).resolves.toBe('文档译文');
+
+    expect(mocks.sendMessage).toHaveBeenCalledWith(expect.objectContaining({
+      serviceOverride: 'mock-ai',
+      modelOverride: 'document-model',
+    }));
+    expect(mocks.config.model['mock-ai']).toBe('mock-ai-model');
+  });
+
   it('aborts a retry delay without sending another runtime request', async () => {
     mocks.sendMessage.mockRejectedValue(new Error('temporary failure'));
     const controller = new AbortController();

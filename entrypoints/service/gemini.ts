@@ -7,7 +7,8 @@ import {config} from "@/entrypoints/utils/config";
 async function gemini(message: any) {
     const service = message.serviceOverride || config.service;
 
-    let model = config.model[service] === customModelString ? config.customModel[service] : config.model[service]
+    let model = message.modelOverride
+        || (config.model[service] === customModelString ? config.customModel[service] : config.model[service]);
 
     // 判断是否使用代理
     let url: string = config.proxy[service] ?

@@ -160,7 +160,7 @@ async function hunyuanTranslation(message: any) {
         }
         
         // 获取模型配置，默认使用 hunyuan-translation
-        const model = config.model[service] || 'hunyuan-translation';
+        const model = message.modelOverride || config.model[service] || 'hunyuan-translation';
         
         // 自定义字段必须在序列化和签名前合并，否则签名内容会与实际请求体不一致。
         const requestBody = buildHunyuanTranslationRequestBody(

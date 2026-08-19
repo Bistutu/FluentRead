@@ -146,6 +146,8 @@ export async function translateText(origin: string, context: string = document.t
     skipLanguageDetection = false,
     signal,
     queueSession,
+    serviceOverride,
+    modelOverride,
   } = options;
   throwIfAborted(signal);
   // 检查 origin 是否为空或只有空白字符
@@ -154,14 +156,15 @@ export async function translateText(origin: string, context: string = document.t
     return origin || '';
   }
 
-  assertTranslationCredentials();
+  const service = serviceOverride || config.service;
+  assertTranslationCredentials(service, modelOverride);
 
   // 如果目标语言与当前文本语言相同，直接返回原文
   if (!skipLanguageDetection && detectlang(origin.replace(/[\s\u3000]/g, '')) === config.to) {
     return origin;
   }
 
-  const pageContext = await resolvePageContext(options.pageContext);
+  const pageContext = await resolvePageContext(options.pageContext, service, modelOverride);
   throwIfAborted(signal);
 
   // 同一富文本回退可能产生多个短请求；合并持久化写入，避免每个 slot
@@ -176,7 +179,14 @@ export async function translateText(origin: string, context: string = document.t
       try {
         // 发送翻译请求给background脚本处理
         const result = await waitForRequest(
-          browser.runtime.sendMessage({ context, pageContext, origin, useCache }),
+          browser.runtime.sendMessage({
+            context,
+            pageContext,
+            origin,
+            useCache,
+            ...(serviceOverride ? {serviceOverride} : {}),
+            ...(modelOverride ? {modelOverride} : {}),
+          }),
           timeout,
           signal,
           lease,
@@ -221,8 +231,6 @@ export async function translateTextBatch(
 ): Promise<string[]> {
   if (origins.length === 0) return [];
 
-  assertTranslationCredentials();
-
   const {
     maxRetries = 3,
     retryDelay = 1000,
@@ -230,9 +238,13 @@ export async function translateTextBatch(
     useCache = config.useCache,
     signal,
     queueSession,
+    serviceOverride,
+    modelOverride,
   } = options;
+  const service = serviceOverride || config.service;
+  assertTranslationCredentials(service, modelOverride);
   throwIfAborted(signal);
-  const pageContext = await resolvePageContext(options.pageContext);
+  const pageContext = await resolvePageContext(options.pageContext, service, modelOverride);
   throwIfAborted(signal);
 
   scheduleTranslationCountSave();
@@ -242,7 +254,14 @@ export async function translateTextBatch(
       throwIfAborted(signal);
       try {
         const result = await waitForRequest(
-          browser.runtime.sendMessage({ context, pageContext, origin: origins, useCache }),
+          browser.runtime.sendMessage({
+            context,
+            pageContext,
+            origin: origins,
+            useCache,
+            ...(serviceOverride ? {serviceOverride} : {}),
+            ...(modelOverride ? {modelOverride} : {}),
+          }),
           timeout,
           signal,
           lease,
@@ -323,16 +342,27 @@ export interface TranslateOptions {
   signal?: AbortSignal;
   /** Queue scope used to reject work that has not started when one DOM attempt is cancelled. */
   queueSession?: TranslationQueueSession;
+  /** 为文档等独立入口覆盖当前请求使用的翻译服务。 */
+  serviceOverride?: string;
+  /** 为文档等独立入口覆盖当前请求的实际模型，不改写网页翻译配置。 */
+  modelOverride?: string;
 }
 
-function assertTranslationCredentials(): void {
-  const message = getMissingCredentialMessage(config.service, config);
+function assertTranslationCredentials(service = config.service, modelOverride?: string): void {
+  const credentialConfig = modelOverride
+    ? {
+      ...config,
+      model: {...config.model, [service]: modelOverride},
+      customModel: {...config.customModel, [service]: modelOverride},
+    }
+    : config;
+  const message = getMissingCredentialMessage(service, credentialConfig);
   if (message) throw new Error(message);
 }
 
-async function resolvePageContext(suppliedContext?: string, serviceOverride = config.service): Promise<string | undefined> {
+async function resolvePageContext(suppliedContext?: string, serviceOverride = config.service, modelOverride?: string): Promise<string | undefined> {
   const service = serviceOverride || config.service;
-  const selectedModel = resolveConfiguredModel(config.model[service], config.customModel[service]);
+  const selectedModel = resolveConfiguredModel(modelOverride || config.model[service], modelOverride || config.customModel[service]);
   if (!config.enableAIContext || !servicesType.isUseAIContext(service, selectedModel)) return undefined;
   return suppliedContext?.trim().slice(0, 4000) || await getPageTranslationContext() || undefined;
 }

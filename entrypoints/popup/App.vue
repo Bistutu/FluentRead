@@ -220,6 +220,21 @@
           </span>
           <i :class="{ active: config.videoTranslationEnabled }" />
         </button>
+        <button
+          class="feature-card document-feature-card"
+          data-feature="document-translation"
+          type="button"
+          :disabled="!config.on"
+          aria-label="打开文档翻译，Beta 测试"
+          @click="openDocumentTranslation()"
+        >
+          <span class="feature-icon blue">文</span>
+          <span class="feature-copy">
+            <span class="feature-title"><strong>文档翻译</strong><em class="beta-badge">Beta 测试</em></span>
+            <small>HTML / TXT / Markdown / 字幕 / JSON</small>
+          </span>
+          <b>›</b>
+        </button>
       </div>
     </section>
 
@@ -638,6 +653,11 @@ async function openOptions(section?: SettingsSection) {
   } else {
     await browser.runtime.openOptionsPage();
   }
+  window.close();
+}
+
+async function openDocumentTranslation() {
+  await browser.tabs.create({ url: browser.runtime.getURL('document.html') });
   window.close();
 }
 

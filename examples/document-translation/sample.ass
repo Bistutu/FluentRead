@@ -1,0 +1,6 @@
+[Script Info]
+Title: Document translation example
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:01.00,0:00:03.00,Default,,0,0,0,,{\i1}Hello ASS subtitle

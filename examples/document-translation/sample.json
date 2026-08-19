@@ -1,0 +1,8 @@
+{
+  "title": "Document translation example",
+  "description": "Translate only string values.",
+  "meta": {
+    "keepNumber": 42,
+    "items": ["First item", "Second item"]
+  }
+}

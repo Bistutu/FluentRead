@@ -78,6 +78,30 @@ describe('统一配置存储', () => {
         expect(configStore.config.videoSubtitleFontSize).toBe(100);
     });
 
+    it('为文档翻译补齐独立服务和模型，并保留网页模型选择', async () => {
+        const configStore = await loadConfigModule({
+            ...storedConfig,
+            service: 'openai',
+            model: {openai: 'web-model'},
+            documentService: 'openai',
+            documentModel: {openai: 'document-model'},
+        });
+
+        await configStore.configReady;
+
+        expect(configStore.config.documentService).toBe('openai');
+        expect(configStore.config.documentModel.openai).toBe('document-model');
+        expect(configStore.config.model.openai).toBe('web-model');
+    });
+
+    it('文档翻译遇到未知服务时回退到免费翻译服务', async () => {
+        const configStore = await loadConfigModule({...storedConfig, documentService: 'unknown-service'});
+
+        await configStore.configReady;
+
+        expect(configStore.config.documentService).toBe('freeTranslation');
+    });
+
     it('保留用户选择的视频 AI 服务，并将未知服务回退到微软翻译', async () => {
         const aiConfigStore = await loadConfigModule({ ...storedConfig, videoService: 'openai' });
 

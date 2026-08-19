@@ -1,0 +1,4 @@
+Document translation example
+
+This line should be translated.
+Keep the line structure intact.

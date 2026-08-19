@@ -1,0 +1,8 @@
+1
+00:00:01,000 --> 00:00:03,000
+<i>Hello subtitle</i>
+Second subtitle line
+
+2
+00:00:04,000 --> 00:00:05,500
+Keep the timing intact.

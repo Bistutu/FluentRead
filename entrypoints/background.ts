@@ -59,8 +59,10 @@ interface TranslationRequestMessageBase {
     context?: string;
     pageContext?: string;
     useCache?: boolean;
-    /** 视频字幕使用的独立翻译服务；普通网页请求不设置。 */
+    /** 视频字幕、文档等独立入口使用的翻译服务；普通网页请求不设置。 */
     serviceOverride?: string;
+    /** 文档等独立入口使用的实际模型；普通网页请求不设置。 */
+    modelOverride?: string;
 }
 
 type TranslationSingleRequestMessage = TranslationRequestMessageBase & { origin: string };
@@ -123,12 +125,12 @@ async function fetchImageForOcr(source: string): Promise<string> {
     return imageBufferToDataUrl(buffer, contentType);
 }
 
-function getSelectedModel(service: string): string {
-    return resolveConfiguredModel(config.model[service], config.customModel[service]);
+function getSelectedModel(service: string, modelOverride?: string): string {
+    return resolveConfiguredModel(modelOverride || config.model[service], modelOverride || config.customModel[service]);
 }
 
-function isAIContextEnabled(service = config.service): boolean {
-    return config.enableAIContext && servicesType.isUseAIContext(service, getSelectedModel(service));
+function isAIContextEnabled(service = config.service, modelOverride?: string): boolean {
+    return config.enableAIContext && servicesType.isUseAIContext(service, getSelectedModel(service, modelOverride));
 }
 
 function getProviderEndpoint(service: string): string {
@@ -153,6 +155,7 @@ function buildCacheKey(
     pageContext: string,
     mode: CacheRequestMode,
     serviceOverride?: string,
+    modelOverride?: string,
 ): string {
     const service = serviceOverride || config.service;
 
@@ -162,7 +165,7 @@ function buildCacheKey(
         sourceLanguage: config.from,
         targetLanguage: config.to,
         service,
-        model: getSelectedModel(service),
+        model: getSelectedModel(service, modelOverride),
         endpoint: getProviderEndpoint(service),
         azureOpenaiEndpoint: service === 'azureOpenai' ? config.azureOpenaiEndpoint : undefined,
         robotId: service === 'cozecom' || service === 'cozecn'
@@ -176,7 +179,7 @@ function buildCacheKey(
         // DeepL sends the title context to the provider. AI adapters send the
         // bounded webpage context through their prompt templates.
         context: service === 'deepL' ? context : undefined,
-        pageContext: isAIContextEnabled(service) ? pageContext : undefined,
+        pageContext: isAIContextEnabled(service, modelOverride) ? pageContext : undefined,
     });
 }
 
@@ -203,14 +206,14 @@ const pendingPageSummaries = new Map<string, Promise<string>>();
 const PAGE_SUMMARY_CACHE_SIZE = 8;
 const PAGE_SUMMARY_LIMIT = 1200;
 
-function buildPageSummaryCacheKey(pageContext: string, service = config.service): string {
+function buildPageSummaryCacheKey(pageContext: string, service = config.service, modelOverride?: string): string {
     return buildTranslationCacheKey({
         requestMode: 'page-summary',
         sourceLanguage: config.from,
         targetLanguage: '',
         sourceText: pageContext,
         service,
-        model: getSelectedModel(service),
+        model: getSelectedModel(service, modelOverride),
         endpoint: getProviderEndpoint(service),
         customBody: config.customBody[service] || '',
     });
@@ -231,12 +234,12 @@ function cachePageSummary(key: string, value: string): void {
  * A summary failure is deliberately non-fatal: the raw readable context is
  * still useful and the ordinary translation must continue.
  */
-async function addPageSummary(pageContext: string, service = config.service): Promise<string> {
-    if (!isAIContextEnabled(service) || !pageContext.trim()) {
+async function addPageSummary(pageContext: string, service = config.service, modelOverride?: string): Promise<string> {
+    if (!isAIContextEnabled(service, modelOverride) || !pageContext.trim()) {
         return '';
     }
 
-    const key = buildPageSummaryCacheKey(pageContext, service);
+    const key = buildPageSummaryCacheKey(pageContext, service, modelOverride);
     const cached = pageSummaryCache.get(key);
     if (cached) return cached;
 
@@ -261,6 +264,7 @@ async function addPageSummary(pageContext: string, service = config.service): Pr
                 summaryPrompt: buildPageSummaryPrompt(pageContext),
                 summarySystemPrompt: buildPageSummarySystemPrompt(),
                 serviceOverride: service,
+                modelOverride,
             });
             const summary = typeof result === 'string' ? result.trim().slice(0, PAGE_SUMMARY_LIMIT) : '';
             if (!summary) {
@@ -302,7 +306,7 @@ async function translateSingleWithCache(
         return getTranslationService(service)({...message, context, pageContext});
     }
 
-    const key = buildCacheKey(message.origin, context, pageContext, 'single', service);
+    const key = buildCacheKey(message.origin, context, pageContext, 'single', service, message.modelOverride);
     const existing = pendingTranslations.get(key);
     if (existing) return existing;
 
@@ -342,13 +346,13 @@ async function translateBatchWithCache(
         return result as string[];
     }
 
-    const batchKey = buildCacheKey(message.origin, context, pageContext, 'batch', service);
+    const batchKey = buildCacheKey(message.origin, context, pageContext, 'batch', service, message.modelOverride);
     const existing = pendingBatches.get(batchKey);
     if (existing) return existing;
 
     const request = (async () => {
         const cached = await Promise.all(
-            message.origin.map((origin) => translationCache.get(buildCacheKey(origin, context, pageContext, 'batch', service))),
+            message.origin.map((origin) => translationCache.get(buildCacheKey(origin, context, pageContext, 'batch', service, message.modelOverride))),
         );
         const missingIndexes = cached
             .map((value, index) => value === null ? index : -1)
@@ -365,7 +369,7 @@ async function translateBatchWithCache(
         const uniqueMissingOrigins = Array.from(
             new Map(
                 missingEntries.map(({origin}) => [
-                    buildCacheKey(origin, context, pageContext, 'batch', service),
+                    buildCacheKey(origin, context, pageContext, 'batch', service, message.modelOverride),
                     origin,
                 ]),
             ).values(),
@@ -383,15 +387,15 @@ async function translateBatchWithCache(
         const result = [...cached] as Array<string | null>;
         const translatedByKey = new Map(
             uniqueMissingOrigins.map((origin, index) => [
-                buildCacheKey(origin, context, pageContext, 'batch', service),
+                buildCacheKey(origin, context, pageContext, 'batch', service, message.modelOverride),
                 translated[index],
             ]),
         );
         await Promise.all(missingEntries.map(async ({index, origin}) => {
-            const value = translatedByKey.get(buildCacheKey(origin, context, pageContext, 'batch', service));
+            const value = translatedByKey.get(buildCacheKey(origin, context, pageContext, 'batch', service, message.modelOverride));
             result[index] = value as string;
             if (isCacheableResult(origin, value)) {
-                await translationCache.set(buildCacheKey(origin, context, pageContext, 'batch', service), value);
+                await translationCache.set(buildCacheKey(origin, context, pageContext, 'batch', service, message.modelOverride), value);
             }
         }));
 
@@ -414,14 +418,21 @@ async function translateWithCache(message: TranslationRequestMessage): Promise<s
     await configReady;
     const serviceOverride = message.serviceOverride;
     const selectedService = serviceOverride || config.service;
-    const missingCredentialMessage = getMissingCredentialMessage(selectedService, config);
+    const credentialConfig = message.modelOverride
+        ? {
+            ...config,
+            model: {...config.model, [selectedService]: message.modelOverride},
+            customModel: {...config.customModel, [selectedService]: message.modelOverride},
+        }
+        : config;
+    const missingCredentialMessage = getMissingCredentialMessage(selectedService, credentialConfig);
     if (missingCredentialMessage) throw new Error(missingCredentialMessage);
     if (serviceOverride && !servicesType.machine.has(serviceOverride) && !servicesType.isAI(serviceOverride)) {
-        throw new Error('视频字幕翻译服务不可用，请在设置中选择已配置的机器翻译或 AI 服务');
+        throw new Error('独立翻译服务不可用，请选择已配置的机器翻译或 AI 服务');
     }
     const context = typeof message.context === 'string' ? message.context : '';
     const rawPageContext = typeof message.pageContext === 'string' ? message.pageContext : '';
-    const pageContext = await addPageSummary(rawPageContext, selectedService);
+    const pageContext = await addPageSummary(rawPageContext, selectedService, message.modelOverride);
     const useCache = isCacheEnabled(message);
 
     if (Array.isArray(message.origin)) {
