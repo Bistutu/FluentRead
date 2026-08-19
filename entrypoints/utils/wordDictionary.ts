@@ -3,7 +3,7 @@
  *
  * 这里不把大型词典打进扩展包，而是调用公开的结构化词典服务，并把
  * 不同服务的响应归一化为同一份小数据结构。服务不可用时按顺序尝试
- * 中国境内优先的无 Key 公共词典接口，以及 Free Dictionary API、Datamuse、
+ * 中国境内优先的公共词典接口，以及 Free Dictionary API、Datamuse、
  * Wiktionary REST 和 WiktApi；这样单个免费服务的区域限制、限流或维护不会
  * 直接让划词卡片失效。
  */
@@ -127,7 +127,7 @@ const SOURCE_INFO: Record<WordDictionaryProviderId, WordDictionarySource> = {
     },
     'youdao-web': {
         id: 'youdao-web',
-        label: '有道词典（无 Key 公共接口）',
+        label: '有道词典',
         url: 'https://dict.youdao.com/',
     },
     'free-dictionary': {
