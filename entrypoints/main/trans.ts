@@ -1787,10 +1787,7 @@ function stopFullPageSession(): void {
  * data-fr-node-id + innerHTML 覆盖页面，也能处理 Shadow DOM 和动态节点。
  */
 export function restoreOriginalContent(): void {
-    if (hoverTimer) {
-        clearTimeout(hoverTimer);
-        hoverTimer = undefined;
-    }
+    cancelPendingHoverTranslation();
     stopFullPageSession();
     restoreAllTranslations();
 
@@ -1849,14 +1846,21 @@ export function isFullPageTranslationActive(): boolean {
     return fullPageSession?.active === true;
 }
 
+export function cancelPendingHoverTranslation(): void {
+    if (hoverTimer === undefined) return;
+    clearTimeout(hoverTimer);
+    hoverTimer = undefined;
+}
+
 /**
  * 处理鼠标悬浮/快捷键翻译。坐标只负责找到内容块，真正的翻译调用与全文
  * 会话共用 translateTarget，因此按钮、富文本和恢复行为不会出现两套规则。
  */
 export function handleTranslation(mouseX: number, mouseY: number, delayTime = 0): void {
     if (!checkConfig()) return;
-    if (hoverTimer) clearTimeout(hoverTimer);
+    cancelPendingHoverTranslation();
     hoverTimer = setTimeout(() => {
+        hoverTimer = undefined;
         const candidate = resolveTranslationCandidateAtPoint(mouseX, mouseY);
         if (!candidate) return;
         void translateTarget(candidate, currentTranslationDisplayMode(), delayTime > 0);
