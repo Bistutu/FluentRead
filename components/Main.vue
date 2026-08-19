@@ -123,6 +123,7 @@
         :selected-model="config.model[selectedConfigurationService]"
         :services="configurationCompute.filteredServices"
         :model-options="configurationCompute.model"
+        :custom-models="config.customModel"
         :show-model="configurationCompute.showModel"
         @update:service="setConfigurationService"
         @update:model="config.model[selectedConfigurationService] = $event"
@@ -513,7 +514,7 @@
         </el-row>
 
         <!-- 使用代理转发 -->
-        <el-row v-show="compute.showProxy" class="settings-control-row">
+        <el-row v-show="compute.showProxy && !compute.showCustom" class="settings-control-row">
           <el-col :span="8" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark" content="使用代理可以解决网络无法访问的问题，如不熟悉代理设置请留空！" placement="top-start"
                         :show-after="500">
@@ -528,7 +529,7 @@
         </el-row>
 
         <!-- 角色和模板 -->
-        <el-row v-show="compute.showAI" class="settings-control-row">
+        <el-row v-show="compute.showAI && !compute.showCustom" class="settings-control-row">
           <el-col :span="8" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark" content="以系统身份 system 发送的对话，常用于指定 AI 要扮演的角色"
               placement="top-start" :show-after="500">
@@ -542,7 +543,7 @@
               placeholder="system message " />
           </el-col>
         </el-row>
-        <el-row v-show="compute.showAI" class="settings-control-row">
+        <el-row v-show="compute.showAI && !compute.showCustom" class="settings-control-row">
           <el-col :span="8" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark"
               content="以用户身份 user 发送的对话，其中{{to}}表示目标语言，{{origin}}表示待翻译的文本内容，两者不可缺少。"
@@ -558,7 +559,7 @@
           </el-col>
         </el-row>
         <!-- 恢夏默认模板按钮 -->
-        <el-row v-show="compute.showAI" class="margin-bottom margin-left-2em">
+        <el-row v-show="compute.showAI && !compute.showCustom" class="margin-bottom margin-left-2em">
           <el-col :span="24" style="text-align: right;">
             <el-button type="primary" link @click="resetTemplate">
               <el-icon>

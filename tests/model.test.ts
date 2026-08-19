@@ -57,6 +57,32 @@ describe('AI 模型编号列表', () => {
         }
     });
 
+    it('保留自定义接口的地址、模型和其他按服务配置', () => {
+        const normalized = normalizeConfig({
+            service: services.custom,
+            custom: 'http://127.0.0.1:11434/v1/chat/completions',
+            model: {[services.custom]: customModelString},
+            customModel: {[services.custom]: 'local/translation-model'},
+            token: {[services.custom]: 'local-token'},
+            proxy: {[services.custom]: 'http://127.0.0.1:8080'},
+            system_role: {[services.custom]: 'Translate safely.'},
+            user_role: {[services.custom]: 'Translate {{origin}} into {{to}}.'},
+            customBody: {[services.custom]: '{"stream":false}'},
+        });
+
+        expect(normalized).toMatchObject({
+            service: services.custom,
+            custom: 'http://127.0.0.1:11434/v1/chat/completions',
+            model: {[services.custom]: customModelString},
+            customModel: {[services.custom]: 'local/translation-model'},
+            token: {[services.custom]: 'local-token'},
+            proxy: {[services.custom]: 'http://127.0.0.1:8080'},
+            system_role: {[services.custom]: 'Translate safely.'},
+            user_role: {[services.custom]: 'Translate {{origin}} into {{to}}.'},
+            customBody: {[services.custom]: '{"stream":false}'},
+        });
+    });
+
     it('不会把下拉列表中仍可选择的模型当成退役编号改写', () => {
         for (const [service, selectableModels] of models) {
             for (const selectedModel of selectableModels) {

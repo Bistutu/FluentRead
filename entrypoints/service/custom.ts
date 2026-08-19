@@ -7,12 +7,17 @@ import {appendOptionalBearer} from './auth';
 
 async function custom(message: any) {
     const service = message.serviceOverride || services.custom;
+    const url = config.proxy[service] || config.custom;
+
+    if (!url?.trim()) {
+        throw new Error('自定义接口地址未配置');
+    }
 
     let headers = new Headers();
     headers.append('Content-Type', 'application/json');
     appendOptionalBearer(headers, config.token[service]);
 
-    const resp = await fetch(config.custom, {
+    const resp = await fetch(url, {
         method: method.POST,
         headers: headers,
         body: commonMsgTemplate(message.origin, message.pageContext, message.summaryPrompt, message.summarySystemPrompt, service)

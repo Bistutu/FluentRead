@@ -6,6 +6,7 @@ export type DeepSeekApiType = 'auto' | 'responses' | 'chat';
 export type DeepSeekThinkingMode = 'enabled' | 'disabled';
 export type VideoSubtitleDisplayMode = 'bilingual' | 'translation-only' | 'original-only';
 export const DEFAULT_VIDEO_SUBTITLE_FONT_SIZE = 100;
+export const DEFAULT_NEW_API_URL = 'http://localhost:3000';
 export const VIDEO_SUBTITLE_FONT_SIZE_OPTIONS = [80, 90, 100, 110, 120, 140, 160] as const;
 
 export function normalizeVideoSubtitleFontSize(value: unknown): number {
@@ -132,7 +133,7 @@ export class Config {
         this.deeplx = defaultOption.deeplx; // DeepLX 默认服务地址
         this.selectionTranslatorMode = 'disabled'; // 默认关闭划词翻译
         this.selectionTranslatorTrigger = 'icon'; // 默认显示可发现的操作图标
-        this.newApiUrl = 'http://localhost:3000'; // NewAPI 默认地址
+        this.newApiUrl = DEFAULT_NEW_API_URL; // NewAPI 默认地址
         this.maxConcurrentTranslations = 6; // 默认最大并发数为6
         this.youdaoAppKey = ''; // 有道翻译 App Key
         this.youdaoAppSecret = ''; // 有道翻译 App Secret
@@ -229,10 +230,24 @@ export function normalizeConfig(value: unknown): Config {
     // 配置或历史快照，否则默认配置与同值的页面快照会因内部字段不同而无法去重。
     delete (normalized as unknown as Record<string, unknown>).__fluentConfigRevision;
 
-    normalized.model = isRecord(source.model) ? {...source.model} : {};
+    normalized.token = normalizeStringMapping(source.token);
+    normalized.model = normalizeStringMapping(source.model);
     normalized.requireApiKey = isBooleanMapping(source.requireApiKey) ? {...source.requireApiKey} : {};
-    normalized.customModel = isRecord(source.customModel) ? {...source.customModel} : {};
+    normalized.customModel = normalizeStringMapping(source.customModel);
+    normalized.proxy = normalizeStringMapping(source.proxy);
+    normalized.robot_id = normalizeStringMapping(source.robot_id);
+    normalized.system_role = {
+        ...systemRoleFactory(),
+        ...normalizeStringMapping(source.system_role),
+    };
+    normalized.user_role = {
+        ...userRoleFactory(),
+        ...normalizeStringMapping(source.user_role),
+    };
     normalized.customBody = normalizeCustomBodyMapping(source.customBody);
+
+    if (typeof normalized.custom !== 'string') normalized.custom = defaultOption.custom;
+    if (typeof normalized.newApiUrl !== 'string') normalized.newApiUrl = DEFAULT_NEW_API_URL;
 
     if (typeof normalized.videoTranslationEnabled !== 'boolean') {
         normalized.videoTranslationEnabled = false;
@@ -333,6 +348,13 @@ export function migrateModelIdentifier(service: string, selectedModel: string): 
 
 function isRecord(value: unknown): value is Record<string, string> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function normalizeStringMapping(value: unknown): IMapping {
+    if (!isRecord(value)) return {};
+    return Object.fromEntries(
+        Object.entries(value).filter(([, item]) => typeof item === 'string'),
+    );
 }
 
 function isBooleanMapping(value: unknown): value is Record<string, boolean> {
