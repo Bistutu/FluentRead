@@ -429,6 +429,7 @@ footer > button { justify-self: end; }
 .setting-row > span, .select-row > span { display: flex; flex: 1; flex-direction: column; }
 .setting-row strong, .select-row strong { font-size: 12px; }
 .setting-row small, .select-row small { margin-top: 3px; color: var(--muted); font-size: 9.5px; line-height: 1.4; }
+.video-model-settings-link { margin: 8px 3px 0; padding: 0; border: 0; color: var(--brand-strong); background: transparent; font-size: 10px; font-weight: 750; text-align: left; cursor: pointer; }
 .choice-block { margin-top: 16px; }
 .drawer-hint { display: block; margin: 8px 3px 0; color: var(--muted); font-size: 9.5px; line-height: 1.45; }
 .chips { display: grid; gap: 8px; }

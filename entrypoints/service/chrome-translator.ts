@@ -53,7 +53,7 @@ async function translateWithOffscreen(message: any): Promise<any> {
 }
 
 // 确保 offscreen 文档存在
-async function ensureOffscreenDocument() {
+export async function ensureOffscreenDocument() {
     try {
         // 检查是否已经有 offscreen 文档
         const existingContexts = await chrome.runtime.getContexts({
@@ -76,6 +76,60 @@ async function ensureOffscreenDocument() {
         console.error('创建 offscreen 文档失败:', error);
         throw new Error('无法创建 offscreen 文档');
     }
+}
+
+/** 在扩展自己的 offscreen 页面中运行浏览器内 Whisper，不把音频发送到云端。 */
+export async function transcribeVideoAudioWithOffscreen(message: {
+    audioBase64: string;
+    model?: string;
+    sourceLanguage?: string;
+}): Promise<{ text: string; segments?: Array<{ startMs: number; endMs: number; text: string }>; model?: string }> {
+    await ensureOffscreenDocument();
+
+    const response = await new Promise<any>((resolve, reject) => {
+        chrome.runtime.sendMessage({
+            type: 'FLUENT_READ_LOCAL_VIDEO_TRANSCRIBE_OFFSCREEN',
+            audioBase64: message.audioBase64,
+            model: message.model,
+            sourceLanguage: message.sourceLanguage,
+        }, (result: any) => {
+            if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+            } else {
+                resolve(result);
+            }
+        });
+    });
+
+    if (response?.success) {
+        return {
+            text: typeof response.text === 'string' ? response.text : '',
+            segments: Array.isArray(response.segments) ? response.segments : [],
+            model: response.model,
+        };
+    }
+    throw new Error(response?.error || '本地视频 AI 字幕失败');
+}
+
+/** 预下载并初始化扩展内 Whisper 模型，成功后模型文件会留在浏览器本地缓存。 */
+export async function prepareVideoTranscriptionModelWithOffscreen(model?: string): Promise<string> {
+    await ensureOffscreenDocument();
+
+    const response = await new Promise<any>((resolve, reject) => {
+        chrome.runtime.sendMessage({
+            type: 'FLUENT_READ_LOCAL_VIDEO_PREPARE_OFFSCREEN',
+            model,
+        }, (result: any) => {
+            if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message));
+            } else {
+                resolve(result);
+            }
+        });
+    });
+
+    if (response?.success && typeof response.model === 'string') return response.model;
+    throw new Error(response?.error || '本地视频 AI 字幕模型下载失败');
 }
 
 // 在 offscreen 页面中运行本地 OCR，避免内容脚本从网页源启动扩展 worker 时被浏览器拦截。

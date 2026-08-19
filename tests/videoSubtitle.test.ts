@@ -14,6 +14,8 @@ import {
     getVideoServiceLabel,
     getVideoPretranslationWindowMs,
     isYouTubeVideoPage,
+    isXVideoPage,
+    isSupportedVideoPage,
     isIncrementalVideoCaption,
     normalizeVideoSubtitleDisplayMode,
     normalizeVideoCaptionText,
@@ -29,6 +31,13 @@ describe('YouTube 视频字幕识别', () => {
         expect(isYouTubeVideoPage({ hostname: 'youtube-nocookie.com', pathname: '/watch' })).toBe(true);
         expect(isYouTubeVideoPage({ hostname: 'www.youtube.com', pathname: '/results' })).toBe(false);
         expect(isYouTubeVideoPage({ hostname: 'example.com', pathname: '/watch' })).toBe(false);
+    });
+
+    it('识别 X/Twitter status 视频页，同时拒绝普通时间线', () => {
+        expect(isXVideoPage({ hostname: 'x.com', pathname: '/cerebras/status/2089870131291943228' })).toBe(true);
+        expect(isXVideoPage({ hostname: 'twitter.com', pathname: '/cerebras/status/2089870131291943228/' })).toBe(true);
+        expect(isXVideoPage({ hostname: 'x.com', pathname: '/home' })).toBe(false);
+        expect(isSupportedVideoPage({ hostname: 'x.com', pathname: '/cerebras/status/2089870131291943228' })).toBe(true);
     });
 
     it('按播放器中的字幕片段合并文本，并忽略空片段', () => {

@@ -286,6 +286,40 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
         return true;
     }
+
+    if (message.type === 'FLUENT_READ_LOCAL_VIDEO_TRANSCRIBE_OFFSCREEN') {
+        import('./videoTranscription')
+            .then(({ transcribeLocalVideoAudio }) => transcribeLocalVideoAudio({
+                audioBase64: message.audioBase64,
+                model: message.model,
+                sourceLanguage: message.sourceLanguage,
+            }))
+            .then(result => sendResponse({ success: true, ...result }))
+            .catch(error => {
+                console.error('本地视频 AI 字幕失败:', error);
+                sendResponse({
+                    success: false,
+                    error: error instanceof Error ? error.message : String(error),
+                });
+            });
+
+        return true;
+    }
+
+    if (message.type === 'FLUENT_READ_LOCAL_VIDEO_PREPARE_OFFSCREEN') {
+        import('./videoTranscription')
+            .then(({ prepareLocalVideoTranscriptionModel }) => prepareLocalVideoTranscriptionModel(message.model))
+            .then(result => sendResponse({ success: true, ...result }))
+            .catch(error => {
+                console.error('本地视频 AI 字幕模型下载失败:', error);
+                sendResponse({
+                    success: false,
+                    error: error instanceof Error ? error.message : String(error),
+                });
+            });
+
+        return true;
+    }
     
     return false;
 });

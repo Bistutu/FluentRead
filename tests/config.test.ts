@@ -73,6 +73,7 @@ describe('统一配置存储', () => {
 
         expect(configStore.config.videoTranslationEnabled).toBe(false);
         expect(configStore.config.videoService).toBe('microsoft');
+        expect(configStore.config.videoLocalModel).toBe('tiny');
         expect(configStore.config.videoSubtitleVisible).toBe(true);
         expect(configStore.config.videoSubtitleDisplayMode).toBe('bilingual');
         expect(configStore.config.videoSubtitleFontSize).toBe(100);
@@ -118,6 +119,14 @@ describe('统一配置存储', () => {
         expect(configStore.config.videoSubtitleVisible).toBe(true);
         expect(configStore.config.videoSubtitleDisplayMode).toBe('bilingual');
         expect(configStore.config.videoSubtitleFontSize).toBe(100);
+    });
+
+    it('非法的本地视频 Whisper 模型回退到 Tiny', async () => {
+        const configStore = await loadConfigModule({ ...storedConfig, videoLocalModel: 'large' });
+
+        await configStore.configReady;
+
+        expect(configStore.config.videoLocalModel).toBe('tiny');
     });
 
     it('存储内容损坏时回退到默认配置，并保持初始化 Promise 可用', async () => {

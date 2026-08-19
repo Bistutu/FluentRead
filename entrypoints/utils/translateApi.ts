@@ -269,7 +269,7 @@ export async function translateTextBatch(
 
 /**
  * 翻译视频字幕。视频字幕使用独立的服务配置，但仍通过 background
- * 统一请求、缓存和错误边界；只发送 YouTube 已提供的纯文本字幕内容。
+ * 统一请求、缓存和错误边界；原生字幕和用户主动请求的 AI 字幕最终都只以纯文本进入翻译链。
  */
 export async function translateVideoText(origin: string): Promise<string> {
   const cleanedOrigin = origin?.replace(/[\s\u3000]/g, '') || '';
@@ -280,7 +280,7 @@ export async function translateVideoText(origin: string): Promise<string> {
   scheduleVideoCountSave();
   return enqueueTranslation(async (lease) => {
     return waitForRequest(browser.runtime.sendMessage({
-        context: `YouTube 视频字幕：${document.title}`,
+        context: `视频字幕（YouTube / X）：${document.title}`,
         origin,
         useCache: config.useCache,
         serviceOverride: config.videoService,

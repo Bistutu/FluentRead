@@ -79,7 +79,7 @@ async function main() {
       throw new Error(`Popup 快捷功能卡校验失败：数量=${popupState.featureCount}，图片翻译=${popupState.imageFeaturePresent}`);
     }
     await popup.locator('[data-feature="video-subtitle"]').click();
-    await popup.getByText('YouTube 字幕翻译').waitFor({ state: 'visible', timeout: 10000 });
+    await popup.getByText('视频翻译服务').waitFor({ state: 'visible', timeout: 10000 });
     const videoDrawerState = await popup.evaluate(() => ({
       drawerVisible: Boolean([...document.querySelectorAll('.drawer-content')].find((node) => node.textContent?.includes('视频翻译服务'))),
       providerCount: document.querySelectorAll('.drawer-content select option').length,
@@ -95,8 +95,11 @@ async function main() {
       activeNav: document.querySelector('.sidebar button.active')?.textContent?.replace(/\s+/g, ' ').trim(),
       videoSection: Boolean(document.querySelector('#settings-video')),
       providerControl: Boolean(document.querySelector('[aria-label="视频字幕翻译服务"]')),
+      localModelCards: document.querySelectorAll('.video-model-card').length,
+      localModelDownloadButtons: document.querySelectorAll('.video-model-download-button').length,
     }));
-    if (!optionsState.activeNav?.includes('视频字幕 Beta 测试') || !optionsState.videoSection || !optionsState.providerControl) {
+    if (!optionsState.activeNav?.includes('视频字幕 Beta 测试') || !optionsState.videoSection || !optionsState.providerControl
+      || optionsState.localModelCards !== 2 || optionsState.localModelDownloadButtons !== 2) {
       throw new Error(`视频字幕设置导航校验失败：${JSON.stringify(optionsState)}`);
     }
     await options.screenshot({ path: path.join(artifactsDir, 'options-video-subtitle.png'), fullPage: true });

@@ -1,4 +1,5 @@
 import { currentModelIds, defaultModels, defaultOption, services, servicesType } from "./option";
+import { normalizeVideoLocalTranscriptionModel } from './videoTranscription';
 import type { MiniMaxBillingPlan, MiniMaxRegion } from "./option";
 import { normalizeCustomBodyMapping } from "./custom-body";
 
@@ -34,6 +35,7 @@ export class Config {
     service: string;
     videoTranslationEnabled: boolean; // 是否启用视频字幕翻译 Beta
     videoService: string; // 视频字幕独立翻译服务
+    videoLocalModel: string; // X 无字幕时使用的本地 Whisper 模型
     videoServiceDefaultMigrated: boolean; // 是否已迁移视频字幕默认服务
     videoSubtitleVisible: boolean; // 是否显示 FluentRead 视频字幕
     videoSubtitleDisplayMode: VideoSubtitleDisplayMode; // 视频字幕显示模式
@@ -95,6 +97,7 @@ export class Config {
         this.service = defaultOption.service;
         this.videoTranslationEnabled = false; // Beta 功能默认关闭
         this.videoService = services.microsoft; // 视频字幕默认使用微软翻译
+        this.videoLocalModel = 'tiny'; // 本地 AI 字幕默认使用轻量模型
         this.videoServiceDefaultMigrated = true;
         this.videoSubtitleVisible = true; // 默认显示视频译文
         this.videoSubtitleDisplayMode = 'bilingual'; // 默认双语显示
@@ -237,6 +240,7 @@ export function normalizeConfig(value: unknown): Config {
     if (typeof normalized.videoTranslationEnabled !== 'boolean') {
         normalized.videoTranslationEnabled = false;
     }
+    normalized.videoLocalModel = normalizeVideoLocalTranscriptionModel(normalized.videoLocalModel);
     // 早期 Beta 版本曾把 DeepLX 写成默认值。只对没有迁移标记的旧配置
     // 执行一次迁移，避免覆盖用户在新版本中主动选择的 DeepLX。
     const shouldMigrateLegacyVideoDefault = source.videoService === services.deeplx

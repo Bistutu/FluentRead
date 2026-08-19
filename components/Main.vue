@@ -64,7 +64,7 @@
 
     <el-row class="margin-bottom margin-left-2em settings-preference-row">
       <el-col :span="12" class="lightblue rounded-corner">
-        <el-tooltip class="box-item" effect="dark" content="YouTube 原生字幕下方显示的译文使用此服务，与文本翻译服务互不影响。" placement="top-start" :show-after="500">
+        <el-tooltip class="box-item" effect="dark" content="YouTube 和 X 视频字幕的译文使用此服务，与文本翻译服务互不影响；X 的 AI 字幕识别在扩展内使用本地 Whisper 完成。" placement="top-start" :show-after="500">
           <span class="popup-text popup-vertical-left">视频翻译服务<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
         </el-tooltip>
       </el-col>
@@ -199,26 +199,75 @@
     <!-- 视频字幕 Beta -->
     <section v-show="props.activeSection === 'settings-video'" id="settings-video" class="settings-section">
       <div class="video-settings-hero">
-        <div><span class="eyebrow">Beta 功能</span><h2>YouTube 视频字幕</h2><p>边看边译 YouTube 原生字幕；不上传音频，不改变播放器时间轴。</p></div>
+        <div><span class="eyebrow">Beta 功能</span><h2>YouTube / X 视频字幕</h2><p>有原生字幕就直接翻译；X 没有字幕时可主动请求 AI 字幕。</p></div>
         <el-switch v-model="config.videoTranslationEnabled" class="settings-switch" aria-label="视频字幕翻译" />
       </div>
 
       <el-row class="settings-control-row">
         <el-col :span="12" class="settings-control-label lightblue rounded-corner">
-          <el-tooltip class="box-item" effect="dark" content="视频字幕独立选择翻译服务，默认微软翻译；AI 服务会提前预取字幕，网页翻译仍使用上方的文本翻译服务。" placement="top-start" :show-after="500">
+          <el-tooltip class="box-item" effect="dark" content="视频原生字幕和本地 AI 生成字幕得到文字后，都使用这里选择的翻译服务；AI 识别本身在扩展内本地完成。" placement="top-start" :show-after="500">
             <span class="popup-text popup-vertical-left">视频翻译服务<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
           </el-tooltip>
         </el-col>
         <el-col :span="12" class="settings-control-field">
           <el-select v-model="config.videoService" aria-label="视频字幕翻译服务" :disabled="!config.videoTranslationEnabled" placeholder="请选择服务">
-            <el-option class="select-left" v-for="item in videoServiceOptions" :key="item.value" :label="item.label" :value="item.value" />
+          <el-option class="select-left" v-for="item in videoServiceOptions" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
+
+      <el-row class="settings-control-row">
+        <el-col :span="12" class="settings-control-label lightblue rounded-corner">
+          <el-tooltip class="box-item" effect="dark" content="首次请求时下载并缓存 Whisper 模型；识别音频只在扩展的 offscreen 页面内运行，不上传到云端。" placement="top-start" :show-after="500">
+            <span class="popup-text popup-vertical-left">本地 AI 字幕模型<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
+          </el-tooltip>
+        </el-col>
+        <el-col :span="12" class="settings-control-field">
+          <el-select v-model="config.videoLocalModel" aria-label="本地 AI 字幕模型" :disabled="!config.videoTranslationEnabled" placeholder="请选择本地模型">
+            <el-option class="select-left" v-for="item in videoLocalModelOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-col>
       </el-row>
 
+      <div class="video-model-download-panel">
+        <div class="video-model-download-heading">
+          <div>
+            <strong>下载本地 Whisper 模型</strong>
+            <p>点击后下载到浏览器本地缓存。音频只在扩展内识别，不会上传。</p>
+          </div>
+          <span class="video-model-local-badge">离线识别</span>
+        </div>
+        <div class="video-model-list">
+          <article v-for="item in videoLocalModelOptions" :key="item.value" class="video-model-card">
+            <div class="video-model-icon">{{ item.value === 'tiny' ? 'T' : 'B' }}</div>
+            <div class="video-model-copy">
+              <div class="video-model-title">
+                <strong>{{ item.value === 'tiny' ? 'Whisper Tiny' : 'Whisper Base' }}</strong>
+                <span v-if="item.value === config.videoLocalModel" class="video-model-selected">当前选择</span>
+              </div>
+              <small>{{ item.description }} · {{ item.modelId }}</small>
+            </div>
+            <div class="video-model-action">
+              <span :class="['video-model-status', { ready: videoLocalModelDownloaded.includes(item.value) }]">
+                {{ videoLocalModelDownloaded.includes(item.value) ? '已下载' : videoLocalModelDownloading.includes(item.value) ? '下载中…' : '未下载' }}
+              </span>
+              <button
+                type="button"
+                class="video-model-download-button"
+                :disabled="videoLocalModelDownloaded.includes(item.value) || videoLocalModelDownloading.includes(item.value)"
+                @click="downloadVideoLocalModel(item.value)"
+              >
+                {{ videoLocalModelDownloaded.includes(item.value) ? '已就绪' : videoLocalModelDownloading.includes(item.value) ? '请稍候' : '下载' }}
+              </button>
+            </div>
+          </article>
+        </div>
+        <p v-if="videoLocalModelDownloadError" class="video-model-error">{{ videoLocalModelDownloadError }}</p>
+      </div>
+
       <el-row class="settings-control-row">
         <el-col :span="12" class="settings-control-label lightblue rounded-corner">
-          <el-tooltip class="box-item" effect="dark" content="只调整 FluentRead 在播放器中显示的原文和译文字号，不改变 YouTube 原生字幕设置。" placement="top-start" :show-after="500">
+          <el-tooltip class="box-item" effect="dark" content="只调整 FluentRead 在播放器中显示的原文和译文字号，不改变站点原生字幕设置。" placement="top-start" :show-after="500">
             <span class="popup-text popup-vertical-left">字幕字号<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
           </el-tooltip>
         </el-col>
@@ -231,7 +280,7 @@
 
       <div class="video-settings-note">
         <strong>使用方式</strong>
-        <p>打开 YouTube 视频的原生字幕后，FluentRead 会在字幕下方显示译文。机器翻译约提前 10 秒、AI 服务约提前 30 秒准备字幕；切换视频或关闭此功能会清理译文。</p>
+        <p>YouTube 或 X 有原生字幕时，FluentRead 会在播放器中显示译文；X 没有字幕时，打开播放器菜单的“请求 AI 字幕”会按约 5 秒音频分片，在扩展内部用本地 Whisper 生成字幕，再沿用同一套字幕翻译。模型首次使用时下载并缓存，音频不会上传。</p>
       </div>
     </section>
 
@@ -692,6 +741,12 @@
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { customModelString, models, options, resolveConfiguredModel, services, servicesType, defaultOption } from "../entrypoints/utils/option";
 import { Config, normalizeConfig, VIDEO_SUBTITLE_FONT_SIZE_OPTIONS } from "@/entrypoints/utils/model";
+import {
+  VIDEO_LOCAL_TRANSCRIPTION_MODELS,
+  VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY,
+  normalizeVideoLocalTranscriptionModels,
+  type VideoLocalTranscriptionModel,
+} from "@/entrypoints/utils/videoTranscription";
 import { InfoFilled, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import browser from 'webextension-polyfill';
@@ -753,6 +808,9 @@ const imageOcrRecommendedCodes = IMAGE_OCR_RECOMMENDED_LANGUAGES;
 const imageOcrDownloadedCodes = ref<ImageOcrLanguageCode[]>([]);
 const imageOcrDownloadingCodes = ref<ImageOcrLanguageCode[]>([]);
 const imageOcrDownloadError = ref('');
+const videoLocalModelDownloaded = ref<VideoLocalTranscriptionModel[]>([]);
+const videoLocalModelDownloading = ref<VideoLocalTranscriptionModel[]>([]);
+const videoLocalModelDownloadError = ref('');
 
 const imageOcrRecommendedReady = computed(() =>
   imageOcrRecommendedCodes.every(code => imageOcrDownloadedCodes.value.includes(code)),
@@ -785,6 +843,32 @@ async function downloadImageOcrLanguages(languages: ImageOcrLanguageCode[]) {
       : '语言包下载失败，请检查网络后重试。';
   } finally {
     imageOcrDownloadingCodes.value = imageOcrDownloadingCodes.value.filter(code => !pending.includes(code));
+  }
+}
+
+async function refreshVideoLocalModelState() {
+  const stored = await browser.storage.local.get(VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY);
+  videoLocalModelDownloaded.value = normalizeVideoLocalTranscriptionModels(stored[VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY]);
+}
+
+async function downloadVideoLocalModel(model: VideoLocalTranscriptionModel) {
+  if (videoLocalModelDownloaded.value.includes(model) || videoLocalModelDownloading.value.includes(model)) return;
+
+  videoLocalModelDownloadError.value = '';
+  videoLocalModelDownloading.value = [...new Set([...videoLocalModelDownloading.value, model])];
+  try {
+    const response = await browser.runtime.sendMessage({
+      type: 'fluentReadPrepareLocalVideoModel',
+      model,
+    }) as { success?: boolean; models?: unknown; error?: string } | undefined;
+    if (!response?.success) throw new Error(response?.error || '模型下载失败');
+    videoLocalModelDownloaded.value = normalizeVideoLocalTranscriptionModels(response.models);
+  } catch (error) {
+    videoLocalModelDownloadError.value = error instanceof Error
+      ? `${error.message}。请检查网络后重试。`
+      : '模型下载失败，请检查网络后重试。';
+  } finally {
+    videoLocalModelDownloading.value = videoLocalModelDownloading.value.filter((item) => item !== model);
   }
 }
 
@@ -841,6 +925,7 @@ window.addEventListener('pagehide', saveOnPageHide);
 
 onMounted(() => {
   void refreshImageOcrLanguageState().catch(() => undefined);
+  void refreshVideoLocalModelState().catch(() => undefined);
 });
 
 // 设置页左侧列表只切换正在编辑的服务，不改变网页翻译实际使用的默认服务。
@@ -862,6 +947,7 @@ const aiContextModel = computed(() => resolveConfiguredModel(
 ));
 const canUseAIContext = computed(() => servicesType.isUseAIContext(config.value.service, aiContextModel.value));
 const videoServiceOptions = computed(() => options.services.filter((item: any) => !item.disabled));
+const videoLocalModelOptions = VIDEO_LOCAL_TRANSCRIPTION_MODELS;
 const videoSubtitleFontSizeOptions = VIDEO_SUBTITLE_FONT_SIZE_OPTIONS;
 const filteredServices = computed(() =>
   options.services.filter((item: any) =>
@@ -1440,6 +1526,12 @@ const saveImport = async () => {
 :root.dark .image-ocr-recommendation,
 :root.dark .image-ocr-pack-card { border-color: #30333c; background: #252830; }
 :root.dark .image-ocr-recommendation { background: linear-gradient(135deg, rgba(239, 71, 118, .12), #252830); }
+:root.dark .video-model-download-panel { border-color: #294542; background: linear-gradient(135deg, rgba(14, 80, 78, .24), #252830); }
+:root.dark .video-model-download-heading strong,
+:root.dark .video-model-title strong { color: #f4f5f8; }
+:root.dark .video-model-download-heading p,
+:root.dark .video-model-copy small { color: #a7adba; }
+:root.dark .video-model-card { border-color: #363a44; background: rgba(37, 40, 48, .9); }
 
 .settings-status-row {
   align-items: center;
@@ -1463,6 +1555,36 @@ const saveImport = async () => {
 }
 .video-settings-hero h2 { margin: 5px 0 6px; color: #172033; font-size: 21px; }
 .video-settings-hero p { margin: 0; color: #737c8f; font-size: 11px; }
+.video-model-download-panel {
+  display: grid;
+  gap: 12px;
+  margin: 0 12px 16px;
+  padding: 16px 18px;
+  border: 1px solid #d7ecea;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f7fcfc, #fff);
+}
+.video-model-download-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.video-model-download-heading strong { color: #172033; font-size: 14px; }
+.video-model-download-heading p { margin: 5px 0 0; color: #737c8f; font-size: 11px; line-height: 1.5; }
+.video-model-local-badge,
+.video-model-selected { display: inline-flex; flex: none; align-items: center; border-radius: 999px; font-size: 9px; font-weight: 750; white-space: nowrap; }
+.video-model-local-badge { padding: 6px 9px; border: 1px solid #bfe5de; color: #087f80; background: #effbf8; }
+.video-model-list { display: grid; gap: 8px; }
+.video-model-card { display: flex; align-items: center; gap: 11px; min-height: 62px; padding: 10px 12px; border: 1px solid #e6ebf0; border-radius: 14px; background: rgba(255, 255, 255, .82); }
+.video-model-icon { display: grid; place-items: center; width: 34px; height: 34px; flex: none; border-radius: 10px; color: #087f80; background: #e5f7f3; font-size: 14px; font-weight: 850; }
+.video-model-card:nth-child(2) .video-model-icon { color: #8b55c7; background: #f3ebff; }
+.video-model-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 4px; }
+.video-model-title { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.video-model-title strong { color: #172033; font-size: 12px; }
+.video-model-selected { padding: 3px 6px; color: #087f80; background: #e7f7f3; font-size: 8px; }
+.video-model-copy small { overflow: hidden; color: #7b8494; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.video-model-action { display: flex; align-items: center; gap: 9px; flex: none; }
+.video-model-status { color: #9aa2b1; font-size: 10px; }
+.video-model-status.ready { color: #18835d; }
+.video-model-download-button { min-width: 58px; min-height: 29px; padding: 0 10px; border: 0; border-radius: 9px; color: #fff; background: #087f80; font-size: 10px; font-weight: 750; cursor: pointer; }
+.video-model-download-button:disabled { color: #18835d; background: #effbf6; cursor: default; }
+.video-model-error { margin: 0; color: #d9345e; font-size: 11px; line-height: 1.5; }
 .video-settings-note { margin: 18px 12px; padding: 16px 18px; border: 1px dashed #cfe7e5; border-radius: 14px; color: #6d788b; background: #f8fcfc; font-size: 11px; line-height: 1.6; }
 .video-settings-note strong { color: #087f80; }
 .video-settings-note p { margin: 6px 0 0; }

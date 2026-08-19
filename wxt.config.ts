@@ -1,6 +1,7 @@
 import {defineConfig} from 'wxt';
 import vue from '@vitejs/plugin-vue';
-import {resolve} from 'path';
+import type {Plugin} from 'vite';
+import {basename, resolve} from 'path';
 import fs from 'fs';
 
 
@@ -31,6 +32,31 @@ function escapeExtensionNoncharacters() {
 
                 const escaped = escapeActualNoncharacters(chunk.code);
                 if (escaped !== chunk.code) chunk.code = escaped;
+            }
+        },
+    };
+}
+
+/** 将 Transformers.js 的 ONNX Runtime WASM loader 随扩展一起发布。 */
+let localOnnxWasmEmitted = false;
+
+function bundleLocalOnnxWasm(): Plugin {
+    const wasmFiles = [
+        resolve(__dirname, 'node_modules/@huggingface/transformers/dist/ort-wasm-simd-threaded.jsep.mjs'),
+        resolve(__dirname, 'node_modules/@huggingface/transformers/dist/ort-wasm-simd-threaded.jsep.wasm'),
+    ];
+
+    return {
+        name: 'bundle-local-onnx-wasm',
+        generateBundle() {
+            if (localOnnxWasmEmitted) return;
+            localOnnxWasmEmitted = true;
+            for (const file of wasmFiles) {
+                this.emitFile({
+                    type: 'asset',
+                    fileName: `fluent-read-ai/${basename(file)}`,
+                    source: fs.readFileSync(file),
+                });
             }
         },
     };
@@ -69,7 +95,7 @@ export default defineConfig({
         },
     },
     vite: () => ({
-        plugins: [vue(), escapeExtensionNoncharacters()],
+        plugins: [vue(), escapeExtensionNoncharacters(), bundleLocalOnnxWasm()],
         define: {
             'process.env.VUE_APP_VERSION': JSON.stringify(packageJson.version),
         }
