@@ -213,9 +213,116 @@ async function handleTranslationRequest(data: any): Promise<string> {
     }
 }
 
+interface SelectionTtsPlaybackMessage {
+    audioBase64?: string;
+    contentType?: string;
+    sourceUrl?: string;
+    tabId: number;
+    requestId: number;
+}
+
+let selectionAudio: HTMLAudioElement | null = null;
+let selectionAudioUrl = '';
+let selectionAudioRequestId: number | null = null;
+
+function decodeAudioBase64(audioBase64: string): Uint8Array {
+    const binary = atob(audioBase64);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return bytes;
+}
+
+function releaseSelectionAudio(audio: HTMLAudioElement | null = selectionAudio): void {
+    if (audio) {
+        audio.pause();
+        audio.removeAttribute('src');
+        audio.load();
+    }
+    if (selectionAudioUrl) URL.revokeObjectURL(selectionAudioUrl);
+    selectionAudio = null;
+    selectionAudioUrl = '';
+    selectionAudioRequestId = null;
+}
+
+function notifySelectionAudioState(message: SelectionTtsPlaybackMessage, state: 'ended' | 'stopped' | 'error', error?: unknown): void {
+    void chrome.runtime.sendMessage({
+        type: 'selectionTtsPlaybackState',
+        tabId: message.tabId,
+        requestId: message.requestId,
+        state,
+        error: error instanceof Error ? error.message : error ? String(error) : undefined,
+    }).catch(() => undefined);
+}
+
+function stopSelectionAudio(notify = true): void {
+    if (!selectionAudio || selectionAudioRequestId === null) return;
+    const activeMessage: SelectionTtsPlaybackMessage = {
+        tabId: Number(selectionAudio.dataset.fluentReadTabId),
+        requestId: selectionAudioRequestId,
+    };
+    releaseSelectionAudio();
+    if (notify && Number.isInteger(activeMessage.tabId)) notifySelectionAudioState(activeMessage, 'stopped');
+}
+
+async function playSelectionAudio(message: SelectionTtsPlaybackMessage): Promise<void> {
+    stopSelectionAudio();
+    if (!Number.isInteger(message.tabId) || !Number.isInteger(message.requestId)) throw new Error('TTS 播放上下文无效');
+    if (!message.sourceUrl && !message.audioBase64) throw new Error('TTS 音频数据为空');
+
+    const nextAudio = new Audio();
+    nextAudio.preload = 'auto';
+    nextAudio.dataset.fluentReadTabId = String(message.tabId);
+    if (message.sourceUrl) {
+        nextAudio.src = message.sourceUrl;
+    } else {
+        selectionAudioUrl = URL.createObjectURL(new Blob([decodeAudioBase64(message.audioBase64!)], {
+            type: message.contentType || 'audio/mpeg',
+        }));
+        nextAudio.src = selectionAudioUrl;
+    }
+
+    selectionAudio = nextAudio;
+    selectionAudioRequestId = message.requestId;
+    nextAudio.onended = () => {
+        if (selectionAudio !== nextAudio) return;
+        releaseSelectionAudio(nextAudio);
+        notifySelectionAudioState(message, 'ended');
+    };
+    nextAudio.onerror = () => {
+        if (selectionAudio !== nextAudio) return;
+        releaseSelectionAudio(nextAudio);
+        notifySelectionAudioState(message, 'error', new Error('扩展音频解码或播放失败'));
+    };
+
+    try {
+        await nextAudio.play();
+    } catch (error) {
+        if (selectionAudio === nextAudio) releaseSelectionAudio(nextAudio);
+        notifySelectionAudioState(message, 'error', error);
+        throw error;
+    }
+}
+
 // 监听来自 background script 的消息
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     // console.log('Offscreen 收到消息:', message);
+
+    if (message.type === 'PLAY_SELECTION_TTS' && message.target === 'offscreen') {
+        playSelectionAudio(message)
+            .then(() => sendResponse({ success: true }))
+            .catch(error => sendResponse({
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+            }));
+        return true;
+    }
+
+    if (message.type === 'STOP_SELECTION_TTS' && message.target === 'offscreen') {
+        const requestId = typeof message.requestId === 'number' ? message.requestId : undefined;
+        if (requestId === undefined || selectionAudioRequestId === requestId) stopSelectionAudio();
+        sendResponse({ success: true });
+        return true;
+    }
     
     if (message.type === 'CHROME_TRANSLATE_OFFSCREEN') {
         handleTranslationRequest(message.data)

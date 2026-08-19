@@ -31,7 +31,7 @@
               <svg v-else viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z" /><path d="M16 9.5a4.5 4.5 0 0 1 0 5M18.5 7a8 8 0 0 1 0 10" /></svg>
             </button>
           </div>
-          <div v-if="isPlaying" class="fr-playing-status"><span>正在播放{{ currentAudioKind === 'source' ? '原文' : '译文' }}</span><button type="button" aria-label="停止播放" title="停止播放" @click="stopAudio">停止</button></div>
+          <div v-if="isPlaying" class="fr-playing-status"><span>正在播放{{ currentAudioKind === 'source' ? '原文' : '译文' }}</span><button type="button" aria-label="停止播放" title="停止播放" @click="stopAudioFromUi">停止</button></div>
         </div>
       </div>
     </section>
@@ -74,8 +74,12 @@ let positionFrame: number | null = null;
 let translationRequestId = 0;
 let copyTimer: number | null = null;
 let audio: HTMLAudioElement | null = null;
+let audioUrl = '';
 let utterance: SpeechSynthesisUtterance | null = null;
 let audioRequestId = 0;
+let remoteAudioActive = false;
+let remoteAudioRequestId: number | null = null;
+let pendingRemoteAudioRequestId: number | null = null;
 let isSelecting = false;
 let systemThemeMedia: MediaQueryList | null = null;
 
@@ -232,15 +236,31 @@ function selectVoice(language: string): SpeechSynthesisVoice | undefined {
 function isCurrentAudio(kind: AudioKind): boolean { return isPlaying.value && currentAudioKind.value === kind; }
 function audioLabel(kind: AudioKind): string { return isCurrentAudio(kind) ? `停止播放${kind === 'source' ? '原文' : '译文'}` : `播放${kind === 'source' ? '原文' : '译文'}`; }
 
-function stopAudio(): void {
-  audioRequestId += 1;
+function releasePageAudio(): void {
   if (audio) { audio.pause(); audio.removeAttribute('src'); audio = null; }
+  if (audioUrl) URL.revokeObjectURL(audioUrl);
+  audioUrl = '';
+}
+
+function stopAudio(notifyRemote = true): void {
+  const stoppedRemoteRequestId = remoteAudioRequestId;
+  const shouldNotifyRemote = notifyRemote && remoteAudioActive && stoppedRemoteRequestId !== null;
+  remoteAudioActive = false;
+  remoteAudioRequestId = null;
+  pendingRemoteAudioRequestId = null;
+  audioRequestId += 1;
+  releasePageAudio();
   if ('speechSynthesis' in window) window.speechSynthesis.cancel();
   utterance = null;
   isPlaying.value = false;
   currentAudioKind.value = null;
   currentAudioText.value = '';
+  if (shouldNotifyRemote) {
+    void browser.runtime.sendMessage({ type: 'selectionTtsStop', requestId: stoppedRemoteRequestId }).catch(() => undefined);
+  }
 }
+
+function stopAudioFromUi(): void { stopAudio(); }
 
 function base64ToBlobUrl(audioBase64: string, contentType: string): string {
   const binary = atob(audioBase64);
@@ -250,24 +270,56 @@ function base64ToBlobUrl(audioBase64: string, contentType: string): string {
 }
 
 async function playEdgeSpeech(text: string, language: string, kind: AudioKind, requestId: number): Promise<boolean> {
+  pendingRemoteAudioRequestId = requestId;
   try {
-    const response = await browser.runtime.sendMessage({ type: 'selectionTts', text, language }) as {
+    const response = await browser.runtime.sendMessage({ type: 'selectionTts', text, language, requestId }) as {
       success?: boolean;
       audioBase64?: string;
       contentType?: string;
+      transport?: 'offscreen' | 'page';
     };
-    if (requestId !== audioRequestId || !response?.success || !response.audioBase64) return requestId === audioRequestId ? false : true;
-    const audioUrl = base64ToBlobUrl(response.audioBase64, response.contentType || 'audio/mpeg');
-    const nextAudio = new Audio(audioUrl);
-    nextAudio.onended = () => { if (audio === nextAudio) stopAudio(); URL.revokeObjectURL(audioUrl); };
-    nextAudio.onerror = () => { if (audio === nextAudio) stopAudio(); URL.revokeObjectURL(audioUrl); };
+    if (requestId !== audioRequestId || !response?.success) return requestId === audioRequestId ? false : true;
+    pendingRemoteAudioRequestId = null;
+    if (response.transport === 'offscreen') {
+      remoteAudioActive = true;
+      remoteAudioRequestId = requestId;
+      currentAudioKind.value = kind;
+      currentAudioText.value = text;
+      isPlaying.value = true;
+      return true;
+    }
+    if (!response.audioBase64) return false;
+    const nextAudioUrl = base64ToBlobUrl(response.audioBase64, response.contentType || 'audio/mpeg');
+    const nextAudio = new Audio(nextAudioUrl);
+    nextAudio.preload = 'auto';
+    nextAudio.onended = () => { if (audio === nextAudio) { releasePageAudio(); stopAudio(); } };
+    nextAudio.onerror = () => {
+      if (audio !== nextAudio) return;
+      releasePageAudio();
+      isPlaying.value = false;
+      currentAudioKind.value = null;
+      currentAudioText.value = '';
+    };
     audio = nextAudio;
+    audioUrl = nextAudioUrl;
     currentAudioKind.value = kind;
     currentAudioText.value = text;
     isPlaying.value = true;
-    await nextAudio.play();
-    return true;
+    try {
+      await nextAudio.play();
+      return true;
+    } catch (cause) {
+      if (audio === nextAudio) releasePageAudio();
+      if (requestId === audioRequestId) {
+        isPlaying.value = false;
+        currentAudioKind.value = null;
+        currentAudioText.value = '';
+      }
+      if (requestId === audioRequestId) console.warn('Page audio unavailable, trying browser speech:', cause);
+      return false;
+    }
   } catch (cause) {
+    if (pendingRemoteAudioRequestId === requestId) pendingRemoteAudioRequestId = null;
     if (requestId === audioRequestId) console.warn('Edge TTS unavailable, trying browser speech:', cause);
     return requestId !== audioRequestId;
   }
@@ -291,16 +343,50 @@ function playBrowserSpeech(text: string, language: string, kind: AudioKind): boo
   } catch (cause) { console.warn('Browser speech synthesis unavailable:', cause); return false; }
 }
 
-function playGoogleFallback(text: string, language: string, kind: AudioKind): void {
+async function playGoogleFallback(text: string, language: string, kind: AudioKind): Promise<void> {
+  const requestId = audioRequestId;
+  pendingRemoteAudioRequestId = requestId;
+  try {
+    const response = await browser.runtime.sendMessage({ type: 'selectionTtsGoogle', text, language, requestId }) as {
+      success?: boolean;
+      transport?: 'offscreen' | 'page';
+    };
+    if (requestId !== audioRequestId) return;
+    pendingRemoteAudioRequestId = null;
+    if (response?.success && response.transport === 'offscreen') {
+      remoteAudioActive = true;
+      remoteAudioRequestId = requestId;
+      currentAudioKind.value = kind;
+      currentAudioText.value = text;
+      isPlaying.value = true;
+      return;
+    }
+  } catch (cause) {
+    if (pendingRemoteAudioRequestId === requestId) pendingRemoteAudioRequestId = null;
+    if (requestId === audioRequestId) console.warn('Offscreen Google TTS unavailable, trying page audio:', cause);
+  }
+
+  if (requestId !== audioRequestId) return;
   const speechUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${encodeURIComponent(language)}&client=tw-ob&q=${encodeURIComponent(text)}`;
   const nextAudio = new Audio(speechUrl);
-  nextAudio.onended = stopAudio;
-  nextAudio.onerror = () => { console.warn('Fallback speech audio failed'); stopAudio(); };
+  nextAudio.preload = 'auto';
+  nextAudio.onended = () => { if (audio === nextAudio) { releasePageAudio(); stopAudio(); } };
+  nextAudio.onerror = () => {
+    if (audio !== nextAudio) return;
+    console.warn('Fallback speech audio failed');
+    releasePageAudio();
+    stopAudio(false);
+  };
   audio = nextAudio;
   currentAudioKind.value = kind;
   currentAudioText.value = text;
   isPlaying.value = true;
-  void nextAudio.play().catch(() => stopAudio());
+  try {
+    await nextAudio.play();
+  } catch {
+    if (audio === nextAudio) releasePageAudio();
+    if (requestId === audioRequestId) stopAudio(false);
+  }
 }
 
 async function toggleAudio(text: string, kind: AudioKind): Promise<void> {
@@ -315,7 +401,27 @@ async function toggleAudio(text: string, kind: AudioKind): Promise<void> {
   currentAudioText.value = cleanText;
   const edgeStarted = await playEdgeSpeech(cleanText, language, kind, requestId);
   if (edgeStarted || requestId !== audioRequestId) return;
-  if (!playBrowserSpeech(cleanText, language, kind)) playGoogleFallback(cleanText, language, kind);
+  if (!playBrowserSpeech(cleanText, language, kind)) await playGoogleFallback(cleanText, language, kind);
+}
+
+function handleSelectionTtsState(message: unknown): true | undefined {
+  if (!message || typeof message !== 'object') return undefined;
+  const payload = message as { type?: string; requestId?: number; state?: string };
+  if (payload.type !== 'selectionTtsState' || (payload.requestId !== remoteAudioRequestId && payload.requestId !== pendingRemoteAudioRequestId)) return undefined;
+
+  const text = currentAudioText.value;
+  const kind = currentAudioKind.value;
+  const language = kind && text ? speechLanguage(text, kind) : '';
+  if (payload.state === 'ended' || payload.state === 'stopped') {
+    stopAudio(false);
+    return true;
+  }
+  if (payload.state === 'error') {
+    stopAudio(false);
+    if (text && kind && !playBrowserSpeech(text, language, kind)) void playGoogleFallback(text, language, kind);
+    return true;
+  }
+  return undefined;
 }
 
 function closeTooltip(): void { hideAll(); }
@@ -339,6 +445,7 @@ onMounted(() => {
   document.addEventListener('pointerup', handlePointerUp, true);
   document.addEventListener('selectionchange', handleSelectionChange);
   document.addEventListener('keydown', handleKeydown, true);
+  browser.runtime.onMessage.addListener(handleSelectionTtsState);
   window.addEventListener('scroll', schedulePositionUpdate, true);
   window.addEventListener('resize', schedulePositionUpdate);
   watch(() => [config.theme, config.selectionTranslatorTrigger, config.to] as const, () => {
@@ -362,6 +469,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('pointerup', handlePointerUp, true);
   document.removeEventListener('selectionchange', handleSelectionChange);
   document.removeEventListener('keydown', handleKeydown, true);
+  browser.runtime.onMessage.removeListener(handleSelectionTtsState);
   window.removeEventListener('scroll', schedulePositionUpdate, true);
   window.removeEventListener('resize', schedulePositionUpdate);
   stopAudio();

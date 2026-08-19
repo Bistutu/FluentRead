@@ -1,9 +1,12 @@
 /**
  * FluentRead 的轻量 Edge TTS 适配器。
  *
- * 只在扩展后台调用 Microsoft 的公开 consumer TTS endpoint，页面侧拿到
- * 音频字节后再用 Blob URL 播放，避免网页 CSP 和跨域策略影响语音。
+ * 只在扩展后台调用 Microsoft 的公开 consumer TTS endpoint。音色按用户
+ * 选择和当前语言形成有序候选链；播放端优先交给扩展 Offscreen 文档，
+ * 避免把 Blob 音频交给宿主网页的 CSP。
  */
+
+import { normalizeSelectionTtsVoiceOrder, selectionTtsVoiceLocale } from './selectionTtsConfig';
 
 export interface EdgeTtsAudio {
   audio: ArrayBuffer;
@@ -19,18 +22,18 @@ const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 const MAX_CHUNK_BYTES = 1800;
 const MAX_CHUNKS = 8;
 
-const VOICE_BY_LANGUAGE: Record<string, string> = {
-  'en-US': 'en-US-AvaMultilingualNeural',
-  'en-GB': 'en-GB-SoniaNeural',
-  'zh-CN': 'zh-CN-XiaoxiaoMultilingualNeural',
-  'zh-TW': 'zh-TW-YunJheMultilingualNeural',
-  'ja-JP': 'ja-JP-MasaruMultilingualNeural',
-  'ko-KR': 'ko-KR-HyunsuMultilingualNeural',
-  'fr-FR': 'fr-FR-RemyMultilingualNeural',
-  'de-DE': 'de-DE-FlorianMultilingualNeural',
-  'es-ES': 'es-ES-TristanMultilingualNeural',
-  'it-IT': 'it-IT-AlessioMultilingualNeural',
-  'pt-BR': 'pt-BR-MacerioMultilingualNeural',
+const VOICE_CANDIDATES_BY_LANGUAGE: Record<string, string[]> = {
+  'en-US': ['en-US-AvaMultilingualNeural', 'en-US-AriaNeural', 'en-US-JennyNeural', 'en-US-GuyNeural'],
+  'en-GB': ['en-GB-SoniaNeural', 'en-GB-RyanNeural'],
+  'zh-CN': ['zh-CN-XiaoxiaoMultilingualNeural', 'zh-CN-XiaoyiNeural', 'zh-CN-YunxiNeural', 'zh-CN-YunyangNeural'],
+  'zh-TW': ['zh-TW-YunJheMultilingualNeural', 'zh-TW-HsiaoChenNeural', 'zh-TW-HsiaoYuNeural'],
+  'ja-JP': ['ja-JP-MasaruMultilingualNeural', 'ja-JP-NanamiNeural'],
+  'ko-KR': ['ko-KR-HyunsuMultilingualNeural', 'ko-KR-SunHiNeural'],
+  'fr-FR': ['fr-FR-RemyMultilingualNeural'],
+  'de-DE': ['de-DE-FlorianMultilingualNeural'],
+  'es-ES': ['es-ES-TristanMultilingualNeural'],
+  'it-IT': ['it-IT-AlessioMultilingualNeural'],
+  'pt-BR': ['pt-BR-MacerioMultilingualNeural'],
 };
 
 interface EndpointToken {
@@ -42,7 +45,7 @@ interface EndpointToken {
 let endpointToken: EndpointToken | null = null;
 
 function normalizeLanguage(language: string): string {
-  const normalized = String(language || '').replace('_', '-').trim();
+  const normalized = String(language || '').replaceAll('_', '-').trim();
   if (!normalized || normalized === 'auto' || normalized === 'detect') return 'en-US';
   if (normalized.toLowerCase() === 'zh-hans') return 'zh-CN';
   if (normalized.toLowerCase() === 'zh-hant') return 'zh-TW';
@@ -50,12 +53,19 @@ function normalizeLanguage(language: string): string {
   return normalized;
 }
 
-export function edgeTtsVoiceForLanguage(language: string): string | null {
+export function edgeTtsVoiceCandidatesForLanguage(language: string, preferredVoices: unknown = []): string[] {
   const normalized = normalizeLanguage(language);
-  if (VOICE_BY_LANGUAGE[normalized]) return VOICE_BY_LANGUAGE[normalized];
   const base = normalized.split('-')[0];
-  const fallback = Object.entries(VOICE_BY_LANGUAGE).find(([locale]) => locale.startsWith(`${base}-`));
-  return fallback?.[1] ?? null;
+  const automatic = VOICE_CANDIDATES_BY_LANGUAGE[normalized]
+    || Object.entries(VOICE_CANDIDATES_BY_LANGUAGE).find(([locale]) => locale.startsWith(`${base}-`))?.[1]
+    || [];
+  const preferred = normalizeSelectionTtsVoiceOrder(preferredVoices)
+    .filter((voice) => selectionTtsVoiceLocale(voice) === normalized);
+  return [...new Set([...preferred, ...automatic])];
+}
+
+export function edgeTtsVoiceForLanguage(language: string): string | null {
+  return edgeTtsVoiceCandidatesForLanguage(language)[0] ?? null;
 }
 
 function base64ToBytes(base64: string): Uint8Array {
@@ -164,12 +174,9 @@ function concatBuffers(buffers: ArrayBuffer[]): ArrayBuffer {
   return output.buffer;
 }
 
-export async function synthesizeEdgeTts(text: string, language: string): Promise<EdgeTtsAudio> {
-  const voice = edgeTtsVoiceForLanguage(language);
-  if (!voice || !text.trim()) throw new Error('Edge TTS voice is unavailable for this language');
-  const endpoint = await getEndpointToken();
+async function synthesizeWithVoice(voice: string, endpoint: EndpointToken, chunks: string[]): Promise<EdgeTtsAudio> {
   const audioBuffers: ArrayBuffer[] = [];
-  for (const chunk of splitText(text)) {
+  for (const chunk of chunks) {
     const response = await fetch(`https://${endpoint.region}.tts.speech.microsoft.com/cognitiveservices/v1`, {
       method: 'POST',
       headers: {
@@ -184,4 +191,23 @@ export async function synthesizeEdgeTts(text: string, language: string): Promise
     audioBuffers.push(await response.arrayBuffer());
   }
   return { audio: concatBuffers(audioBuffers), contentType: 'audio/mpeg', voice };
+}
+
+export async function synthesizeEdgeTts(text: string, language: string, preferredVoices: unknown = []): Promise<EdgeTtsAudio> {
+  if (!text.trim()) throw new Error('Edge TTS 文本为空');
+  const voices = edgeTtsVoiceCandidatesForLanguage(language, preferredVoices);
+  if (voices.length === 0) throw new Error('Edge TTS voice is unavailable for this language');
+
+  const endpoint = await getEndpointToken();
+  const chunks = splitText(text);
+  const failures: string[] = [];
+  for (const voice of voices) {
+    try {
+      return await synthesizeWithVoice(voice, endpoint, chunks);
+    } catch (error) {
+      failures.push(`${voice}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  throw new Error(`Edge TTS 音色均不可用（${failures.join('；')}）`);
 }

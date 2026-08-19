@@ -430,6 +430,8 @@ footer > button { justify-self: end; }
 .setting-row strong, .select-row strong { font-size: 12px; }
 .setting-row small, .select-row small { margin-top: 3px; color: var(--muted); font-size: 9.5px; line-height: 1.4; }
 .choice-block { margin-top: 16px; }
+.selection-tts-voice-select { width: 100%; }
+.selection-tts-voice-select .el-select__wrapper { min-height: 39px; border-radius: 11px; background: var(--surface-soft); box-shadow: 0 0 0 1px var(--line) inset; }
 .drawer-hint { display: block; margin: 8px 3px 0; color: var(--muted); font-size: 9.5px; line-height: 1.45; }
 .chips { display: grid; gap: 8px; }
 .chips.two { grid-template-columns: repeat(2, 1fr); }

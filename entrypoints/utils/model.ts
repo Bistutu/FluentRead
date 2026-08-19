@@ -1,6 +1,7 @@
 import { currentModelIds, defaultModels, defaultOption, services, servicesType } from "./option";
 import type { MiniMaxBillingPlan, MiniMaxRegion } from "./option";
 import { normalizeCustomBodyMapping } from "./custom-body";
+import { normalizeSelectionTtsVoiceOrder } from "./selectionTtsConfig";
 
 export type DeepSeekApiType = 'auto' | 'responses' | 'chat';
 export type DeepSeekThinkingMode = 'enabled' | 'disabled';
@@ -71,6 +72,7 @@ export class Config {
     deeplx: string; // DeepLX 服务地址
     selectionTranslatorMode: string; // 划词翻译显示模式: 'disabled' | 'bilingual' | 'translation-only'
     selectionTranslatorTrigger: string; // 划词翻译触发方式: 'direct' | 'icon' | 'dot'
+    selectionTtsVoices: string[]; // 划词朗读的 Edge TTS 音色回退顺序
     newApiUrl: string; // NewAPI地址
     maxConcurrentTranslations: number; // 最大并发翻译数量
     youdaoAppKey: string; // 有道翻译 App Key
@@ -132,6 +134,7 @@ export class Config {
         this.deeplx = defaultOption.deeplx; // DeepLX 默认服务地址
         this.selectionTranslatorMode = 'disabled'; // 默认关闭划词翻译
         this.selectionTranslatorTrigger = 'icon'; // 默认显示可发现的操作图标
+        this.selectionTtsVoices = []; // 默认按当前语言使用内置音色回退顺序
         this.newApiUrl = 'http://localhost:3000'; // NewAPI 默认地址
         this.maxConcurrentTranslations = 6; // 默认最大并发数为6
         this.youdaoAppKey = ''; // 有道翻译 App Key
@@ -295,6 +298,7 @@ export function normalizeConfig(value: unknown): Config {
     if (!['direct', 'icon', 'dot'].includes(normalized.selectionTranslatorTrigger)) {
         normalized.selectionTranslatorTrigger = 'icon';
     }
+    normalized.selectionTtsVoices = normalizeSelectionTtsVoiceOrder(normalized.selectionTtsVoices);
     normalized.disableSelectionTranslator = normalized.selectionTranslatorMode === 'disabled';
     if (typeof normalized.selectionAreaEnabled !== 'boolean') {
         normalized.selectionAreaEnabled = false;
