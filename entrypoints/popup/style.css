@@ -352,7 +352,7 @@ footer > button { justify-self: end; }
 
 .popup-drawer-modal { background: rgba(17, 20, 29, .48) !important; backdrop-filter: blur(2px); }
 .popup-drawer {
-  width: 400px !important; min-height: 260px !important; max-height: 100vh;
+  width: 400px !important; min-height: 260px !important; max-height: 88vh;
   margin: 0 auto !important; padding: 8px 20px 18px; overflow: hidden;
   border-radius: 24px 24px 0 0 !important; background: var(--surface) !important;
   box-shadow: 0 -18px 46px rgba(13, 17, 28, .18);
