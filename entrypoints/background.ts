@@ -13,6 +13,7 @@ import {CONNECTION_TEST_MESSAGE, CONTEXT_MENU_IDS, getMimoEndpoint, MINIMAX_ENDP
 import {getMissingCredentialMessage} from "@/entrypoints/utils/configValidation";
 import {resolveConfiguredModel, services, servicesType} from "@/entrypoints/utils/option";
 import {synthesizeEdgeTts} from "@/entrypoints/utils/edgeTts";
+import {lookupWord, type WordCardData} from "@/entrypoints/utils/wordDictionary";
 import {
     buildTranslationCacheKey,
     translationCache,
@@ -477,6 +478,61 @@ async function translateWithCache(message: TranslationRequestMessage): Promise<s
     return translateSingleWithCache(message as TranslationSingleRequestMessage, context, pageContext, useCache);
 }
 
+interface WordDefinitionTranslationSlot {
+    meaningIndex: number;
+    definitionIndex: number;
+    field: 'translatedDefinition' | 'translatedExample';
+    original: string;
+}
+
+function cloneWordCard(card: WordCardData): WordCardData {
+    return {
+        ...card,
+        phonetics: card.phonetics.map(pronunciation => ({...pronunciation})),
+        meanings: card.meanings.map(meaning => ({
+            ...meaning,
+            definitions: meaning.definitions.map(definition => ({...definition})),
+        })),
+        sources: card.sources.map(source => ({...source})),
+    };
+}
+
+/** Translate only the visible dictionary fields; no page context is sent for this learning card. */
+async function translateWordCard(card: WordCardData): Promise<WordCardData> {
+    const slots: WordDefinitionTranslationSlot[] = [];
+    for (const [meaningIndex, meaning] of card.meanings.slice(0, 4).entries()) {
+        for (const [definitionIndex, definition] of meaning.definitions.slice(0, 4).entries()) {
+            if (definition.definition) slots.push({meaningIndex, definitionIndex, field: 'translatedDefinition', original: definition.definition});
+            if (definition.example) slots.push({meaningIndex, definitionIndex, field: 'translatedExample', original: definition.example});
+        }
+    }
+    if (slots.length === 0) return card;
+
+    const uniqueOrigins = [...new Set(slots.map(slot => slot.original))];
+    try {
+        const translated = await translateWithCache({
+            origin: uniqueOrigins,
+            context: '',
+            pageContext: '',
+            useCache: true,
+        });
+        if (!Array.isArray(translated) || translated.length !== uniqueOrigins.length) return card;
+
+        const translatedByOrigin = new Map(uniqueOrigins.map((origin, index) => [origin, translated[index]]));
+        const result = cloneWordCard(card);
+        for (const slot of slots) {
+            const value = translatedByOrigin.get(slot.original);
+            if (typeof value !== 'string' || !value.trim() || value.trim() === slot.original) continue;
+            const definition = result.meanings[slot.meaningIndex]?.definitions[slot.definitionIndex];
+            if (definition) definition[slot.field] = value.trim();
+        }
+        return result;
+    } catch (error) {
+        console.warn('[FluentRead] word definition translation unavailable; keeping dictionary text', error);
+        return card;
+    }
+}
+
 function setupTranslationCacheCleanup(): void {
     void translationCache.cleanup();
     browser.alarms.onAlarm.addListener((alarm) => {
@@ -760,6 +816,13 @@ export default defineBackground({
                             }
                             resolve({ success: false, error: offscreenError instanceof Error ? offscreenError.message : String(offscreenError) });
                         }
+                        return;
+                    }
+
+                    if (message.type === 'selectionWordLookup') {
+                        const word = typeof message.word === 'string' ? message.word : '';
+                        const result = await lookupWord(word);
+                        resolve({ success: true, data: result ? await translateWordCard(result) : result });
                         return;
                     }
 
