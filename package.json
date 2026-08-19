@@ -14,6 +14,7 @@
     "compile": "vue-tsc --noEmit",
     "test": "vitest run",
     "test:translation-core": "vitest run tests/translationCore.test.ts tests/translationState.test.ts tests/serializationPerformance.test.ts tests/translateApiPerformance.test.ts tests/translateQueue.test.ts tests/pageContext.test.ts tests/pageContextDefuddle.test.ts",
+    "test:selection-triggers": "node scripts/run-selection-trigger-test.cjs",
     "test:translation-sites": "node scripts/run-site-translation-matrix.cjs",
     "test:video:fixture": "node scripts/run-video-subtitle-fixture-test.cjs",
     "test:watch": "vitest",

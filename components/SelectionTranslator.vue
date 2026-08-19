@@ -17,14 +17,14 @@
         <div v-if="isLoading" class="fr-loading-state"><span :class="['fr-loading-spinner', { 'fr-static': !config.animations }]" aria-hidden="true" /><span>正在翻译…</span></div>
         <div v-else-if="error" class="fr-error-state"><span>{{ error }}</span><button type="button" @click="retryTranslation">重试</button></div>
         <div v-else class="fr-translation-container">
-          <div v-if="config.selectionTranslatorMode === 'bilingual'" class="fr-text-block fr-original-text">
+          <div v-if="selectionSettings.mode === 'bilingual'" class="fr-text-block fr-original-text">
             <div class="fr-text-label">原文</div><pre>{{ selectedText }}</pre>
             <button class="fr-text-audio-btn" type="button" :aria-label="audioLabel('source')" :title="audioLabel('source')" @click="toggleAudio(selectedText, 'source')">
               <svg v-if="isCurrentAudio('source')" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6v12M16 6v12" /></svg>
               <svg v-else viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4Z" /><path d="M16 9.5a4.5 4.5 0 0 1 0 5M18.5 7a8 8 0 0 1 0 10" /></svg>
             </button>
           </div>
-          <div v-if="config.selectionTranslatorMode === 'bilingual' || config.selectionTranslatorMode === 'translation-only'" class="fr-text-block fr-translation-result">
+          <div v-if="selectionSettings.mode === 'bilingual' || selectionSettings.mode === 'translation-only'" class="fr-text-block fr-translation-result">
             <div class="fr-text-label">译文</div><pre>{{ translationResult }}</pre>
             <button class="fr-text-audio-btn" type="button" :aria-label="audioLabel('translation')" :title="audioLabel('translation')" @click="toggleAudio(translationResult, 'translation')">
               <svg v-if="isCurrentAudio('translation')" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6v12M16 6v12" /></svg>
@@ -80,18 +80,31 @@ let audioRequestId = 0;
 let isSelecting = false;
 let pendingSelectionShortcut = false;
 let systemThemeMedia: MediaQueryList | null = null;
+const selectionConfigVersion = ref(0);
 
 const selectionShortcutTriggers = new Set(['Control', 'Alt', 'Shift', 'custom']);
-const selectionShortcutConfig = computed(() => selectionShortcutTriggers.has(config.selectionTranslatorTrigger)
-  ? config.selectionTranslatorTrigger
-  : config.selectionTranslatorHotkey);
+const selectionSettings = computed(() => {
+  // `config` is shared with the content-script runtime and is mutated outside
+  // Vue. Keep a local reactive version so Popup/Options changes refresh the
+  // active selection UI without requiring a page reload.
+  selectionConfigVersion.value;
+  return {
+    trigger: config.selectionTranslatorTrigger,
+    hotkey: config.selectionTranslatorHotkey,
+    customHotkey: config.customSelectionTranslatorHotkey,
+    mode: config.selectionTranslatorMode,
+  };
+});
+const selectionShortcutConfig = computed(() => selectionShortcutTriggers.has(selectionSettings.value.trigger)
+  ? selectionSettings.value.trigger
+  : selectionSettings.value.hotkey);
 const selectionShortcut = computed(() => {
-  const resolved = resolveConfiguredHotkey(selectionShortcutConfig.value, config.customSelectionTranslatorHotkey);
+  const resolved = resolveConfiguredHotkey(selectionShortcutConfig.value, selectionSettings.value.customHotkey);
   return resolved === 'none' ? '' : resolved;
 });
 const triggerMode = computed<SelectionTrigger>(() => {
   if (selectionShortcut.value) return 'shortcut';
-  if (config.selectionTranslatorTrigger === 'direct' || config.selectionTranslatorTrigger === 'dot') return config.selectionTranslatorTrigger;
+  if (selectionSettings.value.trigger === 'direct' || selectionSettings.value.trigger === 'dot') return selectionSettings.value.trigger;
   return 'icon';
 });
 
@@ -379,7 +392,15 @@ function handleSelectionChange(): void { scheduleSelectionRead(); }
 function handleKeydown(event: KeyboardEvent): void {
   if (event.key === 'Escape' && (showIndicator.value || showTooltip.value)) { hideAll(); return; }
   if (isInsideUi(event.target) || event.repeat) return;
-  if (!matchesConfiguredHotkey(event, selectionShortcutConfig.value, config.customSelectionTranslatorHotkey)) return;
+  const matchesSelectionShortcut = matchesConfiguredHotkey(event, selectionShortcutConfig.value, selectionSettings.value.customHotkey);
+  if (!matchesSelectionShortcut) return;
+  const currentSelection = readSelectionSnapshot();
+  if (currentSelection) {
+    event.preventDefault();
+    event.stopPropagation();
+    applySelection(currentSelection, true);
+    return;
+  }
   if (!snapshot.value) {
     pendingSelectionShortcut = true;
     scheduleSelectionRead(true);
@@ -390,17 +411,32 @@ function handleKeydown(event: KeyboardEvent): void {
   openTooltip();
 }
 
+function handleSelectionSettingsMessage(message: unknown): undefined {
+  if (!message || typeof message !== 'object') return undefined;
+  const type = (message as { type?: unknown }).type;
+  if (type !== 'updateSelectionTranslatorSettings' && type !== 'updateSelectionTranslatorMode') return undefined;
+  selectionConfigVersion.value += 1;
+  return undefined;
+}
+
+function handleConfigStorageChange(changes: Record<string, unknown>, areaName: string): void {
+  if (areaName !== 'local' || !Object.prototype.hasOwnProperty.call(changes, 'config')) return;
+  selectionConfigVersion.value += 1;
+}
+
 onMounted(() => {
   updateTheme();
   systemThemeMedia = window.matchMedia('(prefers-color-scheme: dark)');
   systemThemeMedia.addEventListener('change', updateTheme);
+  browser.runtime.onMessage.addListener(handleSelectionSettingsMessage);
+  browser.storage.onChanged.addListener(handleConfigStorageChange);
   document.addEventListener('pointerdown', handlePointerDown, true);
   document.addEventListener('pointerup', handlePointerUp, true);
   document.addEventListener('selectionchange', handleSelectionChange);
   document.addEventListener('keydown', handleKeydown, true);
   window.addEventListener('scroll', schedulePositionUpdate, true);
   window.addEventListener('resize', schedulePositionUpdate);
-  watch(() => [config.theme, config.selectionTranslatorTrigger, config.selectionTranslatorHotkey, config.customSelectionTranslatorHotkey, config.to] as const, () => {
+  watch(() => [config.theme, selectionSettings.value.trigger, selectionSettings.value.hotkey, selectionSettings.value.customHotkey, selectionSettings.value.mode, config.to] as const, () => {
     updateTheme();
     if (snapshot.value) {
       if (isSelectionInTargetLanguage(snapshot.value.text)) { hideAll(); return; }
@@ -418,6 +454,8 @@ onBeforeUnmount(() => {
   if (positionFrame !== null) window.cancelAnimationFrame(positionFrame);
   if (copyTimer !== null) window.clearTimeout(copyTimer);
   systemThemeMedia?.removeEventListener('change', updateTheme);
+  browser.runtime.onMessage.removeListener(handleSelectionSettingsMessage);
+  browser.storage.onChanged.removeListener(handleConfigStorageChange);
   document.removeEventListener('pointerdown', handlePointerDown, true);
   document.removeEventListener('pointerup', handlePointerUp, true);
   document.removeEventListener('selectionchange', handleSelectionChange);

@@ -8,7 +8,7 @@ import {
     normalizeSpeechLanguage,
 } from '@/entrypoints/utils/selectionTranslatorCore';
 import { buildEdgeTtsSsml, edgeTtsVoiceForLanguage } from '@/entrypoints/utils/edgeTts';
-import { matchesConfiguredHotkey } from '@/entrypoints/utils/hotkey';
+import { matchesConfiguredHotkey, matchesModifierOnlyHotkey, resolveConfiguredHotkey } from '@/entrypoints/utils/hotkey';
 
 describe('selection translator core geometry', () => {
     const rects = [
@@ -78,12 +78,25 @@ describe('selection translator text and speech language normalization', () => {
         expect(ssml).not.toContain('A < B & C');
     });
 
-    it('matches preset modifier-only selection shortcuts', () => {
-        const controlDown = {key: 'Control', ctrlKey: true, altKey: false, shiftKey: false, metaKey: false} as KeyboardEvent;
-        const altDown = {key: 'Alt', ctrlKey: false, altKey: true, shiftKey: false, metaKey: false} as KeyboardEvent;
-        expect(matchesConfiguredHotkey(controlDown, 'Control')).toBe(true);
-        expect(matchesConfiguredHotkey(altDown, 'Control')).toBe(false);
-        expect(matchesConfiguredHotkey(altDown, 'Alt')).toBe(true);
+    it('resolves preset and custom selection shortcuts consistently', () => {
+        expect(resolveConfiguredHotkey('Control', 'Ctrl+Shift+Y')).toBe('Control');
+        expect(resolveConfiguredHotkey('custom', ' Ctrl+Shift+Y ')).toBe('Ctrl+Shift+Y');
+        expect(resolveConfiguredHotkey('none', 'Ctrl+Shift+Y')).toBe('none');
+        expect(resolveConfiguredHotkey('custom', ' ')).toBe('');
+
+        const modifierCases = [
+            ['Control', {key: 'Control', ctrlKey: true, altKey: false, shiftKey: false, metaKey: false}],
+            ['Alt', {key: 'Alt', ctrlKey: false, altKey: true, shiftKey: false, metaKey: false}],
+            ['Shift', {key: 'Shift', ctrlKey: false, altKey: false, shiftKey: true, metaKey: false}],
+        ] as const;
+        for (const [hotkey, event] of modifierCases) {
+            expect(matchesModifierOnlyHotkey(event, hotkey)).toBe(true);
+            expect(matchesConfiguredHotkey(event as KeyboardEvent, hotkey)).toBe(true);
+        }
+
+        const controlWithExtraModifier = {key: 'Control', ctrlKey: true, altKey: true, shiftKey: false, metaKey: false} as KeyboardEvent;
+        expect(matchesConfiguredHotkey(controlWithExtraModifier, 'Control')).toBe(false);
+        expect(matchesConfiguredHotkey(controlWithExtraModifier, 'none')).toBe(false);
     });
 
     it('matches custom selection combinations without accepting extra modifiers', () => {

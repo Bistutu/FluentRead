@@ -312,6 +312,25 @@ describe('划词翻译配置兼容', () => {
             customSelectionTranslatorHotkey: '',
         });
     });
+
+    it('保留三种视觉触发方式，并为每个预设快捷键镜像字段', () => {
+        for (const trigger of ['direct', 'icon', 'dot']) {
+            expect(normalizeConfig({selectionTranslatorTrigger: trigger, selectionTranslatorHotkey: 'Control'})).toMatchObject({
+                selectionTranslatorTrigger: 'Control',
+                selectionTranslatorHotkey: 'Control',
+            });
+            expect(normalizeConfig({selectionTranslatorTrigger: trigger, selectionTranslatorHotkey: 'none'})).toMatchObject({
+                selectionTranslatorTrigger: trigger,
+                selectionTranslatorHotkey: 'none',
+            });
+        }
+        for (const trigger of ['Alt', 'Shift']) {
+            expect(normalizeConfig({selectionTranslatorTrigger: trigger})).toMatchObject({
+                selectionTranslatorTrigger: trigger,
+                selectionTranslatorHotkey: trigger,
+            });
+        }
+    });
 });
 
 describe('OpenAI 兼容服务端点', () => {
