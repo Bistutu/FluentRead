@@ -394,8 +394,8 @@ watch(() => props.position, (newPosition) => {
 
 .floating-ball-mascot {
   display: block;
-  width: 36px;
-  height: 36px;
+  width: 24px;
+  height: 24px;
   pointer-events: none;
   image-rendering: auto;
 }
