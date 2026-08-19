@@ -60,7 +60,7 @@
           <div class="model-heading">
             <div>
               <span>模型列表</span>
-              <strong>{{ selectedModel || '尚未选择模型' }}</strong>
+              <strong>{{ selectedModelLabel || '尚未选择模型' }}</strong>
             </div>
             <label v-if="modelOptions.length > commonModelCount" class="model-search">
               <span aria-hidden="true">⌕</span>
@@ -139,6 +139,7 @@ import {
   buildServiceGroups,
   filterModels,
   filterServiceGroups,
+  getSelectedModelLabel,
   splitModelOptions,
   type ServiceOption,
 } from '@/entrypoints/utils/serviceCatalog'
@@ -149,6 +150,7 @@ const props = defineProps<{
   selectedModel?: string
   services: ServiceOption[]
   modelOptions: string[]
+  customModels: Record<string, string>
   showModel: boolean
 }>()
 
@@ -168,6 +170,11 @@ const filteredGroups = computed(() => filterServiceGroups(groups.value, serviceQ
 const filteredModels = computed(() => filterModels(props.modelOptions, modelQuery.value))
 const modelGroups = computed(() => splitModelOptions(props.modelOptions, props.selectedModel, commonModelCount))
 const moreModels = computed(() => modelGroups.value.more)
+const selectedModelLabel = computed(() => getSelectedModelLabel(
+  props.service,
+  {[props.service]: props.selectedModel || ''},
+  props.customModels,
+))
 const displayedModels = computed(() => modelQuery.value
   ? filteredModels.value
   : moreModelsOpen.value ? [...modelGroups.value.common, ...moreModels.value] : modelGroups.value.common)

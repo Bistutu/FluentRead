@@ -44,6 +44,10 @@ AI 翻译更适合需要上下文、术语一致性或风格控制的内容。�
 
 不同供应商对兼容接口的实现并不完全相同。如果请求失败，先用服务商官方示例验证地址、模型和密钥，再回到 FluentRead 检查配置。
 
+### 自定义接口
+
+如果服务商提供 OpenAI Chat Completions 兼容接口，可以选择“自定义接口”并填写接口地址、API Key 和“自定义模型”。还可以为该接口单独设置代理、system/user 模板和附加请求体；这些内容会自动保存到浏览器本地配置，不会改变其他服务的模型或凭据。填写完成后使用右上角“检查连接”发送一条最小请求确认配置。
+
 首次配置 AI 服务时，FluentRead 会按服务选择近期的推荐档位：除 OpenAI 兼容服务默认使用 GPT-5.6 Luna 外，其他服务优先采用成本友好的小型档位（例如 mini、flash、haiku 或 lite）；你仍可以在“模型列表”中手动切换模型。
 
 ## MiniMax
@@ -51,6 +55,16 @@ AI 翻译更适合需要上下文、术语一致性或风格控制的内容。�
 MiniMax 同时提供按量付费 API 和 Token Plan 两类权益。两类 Key 不能互换；Token Plan Key 通常以 `sk-cp-` 开头，并且要求对应订阅仍然有效。在 MiniMax 服务配置中分别选择“按量付费（API）”或“Token Plan（套餐/积分）”，再选择 Key 所属的“中国版”或“全球版”（默认中国版）。FluentRead 会根据区域使用对应的 OpenAI 兼容 Chat Completions 地址，并在页面显示当前地址。
 
 如果看到 `401` 或错误码 `2049`，优先检查计费方式、区域和 Key 是否来自同一套 MiniMax 账户权益；不要把截图或完整 Key 发到 Issue、聊天记录或仓库。
+
+## 小米 MiMo
+
+小米 MiMo 提供独立的按量付费 API 和 Token Plan。按量付费 Key 通常以 `sk-` 开头，Token Plan Key 以 `tp-` 开头，两类 Key 不能互换。FluentRead 会在 MiMo 服务配置中分别保存计费方式和集群，避免误用 MiniMax 的配置。
+
+- 按量付费：使用 `https://api.xiaomimimo.com/v1/chat/completions`。
+- Token Plan：中国集群使用 `token-plan-cn.xiaomimimo.com`，新加坡集群使用 `token-plan-sgp.xiaomimimo.com`，欧洲集群使用 `token-plan-ams.xiaomimimo.com`；应以 Token Plan 页面实际提供的 Base URL 为准。
+- 当前支持文本翻译的预设模型包括 `mimo-v2.5` 和 `mimo-v2.5-pro`，也可以填写自定义模型标识。
+
+如果遇到 `401`，先确认 Key 前缀、Token Plan 是否仍在有效期内，以及所选集群是否与购买页面提供的地址一致。
 
 ## Ollama 本地模型
 

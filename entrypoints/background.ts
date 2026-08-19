@@ -9,9 +9,9 @@ import {
     saveConfig,
     subscribeConfig,
 } from "@/entrypoints/utils/config";
-import {CONNECTION_TEST_MESSAGE, CONTEXT_MENU_IDS} from "@/entrypoints/utils/constant";
+import {CONNECTION_TEST_MESSAGE, CONTEXT_MENU_IDS, getMimoEndpoint, MINIMAX_ENDPOINTS} from "@/entrypoints/utils/constant";
 import {getMissingCredentialMessage} from "@/entrypoints/utils/configValidation";
-import {resolveConfiguredModel, servicesType} from "@/entrypoints/utils/option";
+import {resolveConfiguredModel, services, servicesType} from "@/entrypoints/utils/option";
 import {synthesizeEdgeTts} from "@/entrypoints/utils/edgeTts";
 import {
     buildTranslationCacheKey,
@@ -177,6 +177,14 @@ function getProviderEndpoint(service: string): string {
     if (service === 'custom') return config.custom;
     if (service === 'deeplx') return config.deeplx;
     if (service === 'newapi') return config.newApiUrl;
+    if (service === services.minimax) {
+        const plan = config.minimaxBillingPlan === 'token-plan' ? 'token-plan' : 'payg';
+        const region = config.minimaxRegion === 'cn' ? 'cn' : 'global';
+        return MINIMAX_ENDPOINTS[plan][region];
+    }
+    if (service === services.mimo) {
+        return getMimoEndpoint(config.mimoBillingPlan, config.mimoRegion);
+    }
     return '';
 }
 
@@ -236,16 +244,16 @@ const pendingPageSummaries = new Map<string, Promise<string>>();
 const PAGE_SUMMARY_CACHE_SIZE = 8;
 const PAGE_SUMMARY_LIMIT = 1200;
 
-function buildPageSummaryCacheKey(pageContext: string): string {
+function buildPageSummaryCacheKey(pageContext: string, service = config.service): string {
     return buildTranslationCacheKey({
         requestMode: 'page-summary',
         sourceLanguage: config.from,
         targetLanguage: '',
         sourceText: pageContext,
-        service: config.service,
-        model: getSelectedModel(config.service),
-        endpoint: getProviderEndpoint(config.service),
-        customBody: config.customBody[config.service] || '',
+        service,
+        model: getSelectedModel(service),
+        endpoint: getProviderEndpoint(service),
+        customBody: config.customBody[service] || '',
     });
 }
 
@@ -264,12 +272,12 @@ function cachePageSummary(key: string, value: string): void {
  * A summary failure is deliberately non-fatal: the raw readable context is
  * still useful and the ordinary translation must continue.
  */
-async function addPageSummary(pageContext: string): Promise<string> {
-    if (!isAIContextEnabled() || !pageContext.trim()) {
+async function addPageSummary(pageContext: string, service = config.service): Promise<string> {
+    if (!isAIContextEnabled(service) || !pageContext.trim()) {
         return '';
     }
 
-    const key = buildPageSummaryCacheKey(pageContext);
+    const key = buildPageSummaryCacheKey(pageContext, service);
     const cached = pageSummaryCache.get(key);
     if (cached) return cached;
 
@@ -287,12 +295,13 @@ async function addPageSummary(pageContext: string): Promise<string> {
                 return persisted;
             }
 
-            const result = await getTranslationService()({
+            const result = await getTranslationService(service)({
                 origin: '',
                 context: '',
                 pageContext: '',
                 summaryPrompt: buildPageSummaryPrompt(pageContext),
                 summarySystemPrompt: buildPageSummarySystemPrompt(),
+                serviceOverride: service,
             });
             const summary = typeof result === 'string' ? result.trim().slice(0, PAGE_SUMMARY_LIMIT) : '';
             if (!summary) {
@@ -453,7 +462,7 @@ async function translateWithCache(message: TranslationRequestMessage): Promise<s
     }
     const context = typeof message.context === 'string' ? message.context : '';
     const rawPageContext = typeof message.pageContext === 'string' ? message.pageContext : '';
-    const pageContext = await addPageSummary(rawPageContext);
+    const pageContext = await addPageSummary(rawPageContext, selectedService);
     const useCache = isCacheEnabled(message);
 
     if (Array.isArray(message.origin)) {

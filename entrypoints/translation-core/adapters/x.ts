@@ -15,6 +15,13 @@ export const xAdapter = createDeclarativeAdapter({
             ],
             reason: 'x-composer',
         },
+        {
+            selector: [
+                '[data-testid="User-Name"]',
+                '[data-testid="UserName"]',
+            ],
+            reason: 'x-user-name',
+        },
     ],
     targets: [
         {

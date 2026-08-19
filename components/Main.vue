@@ -123,6 +123,7 @@
         :selected-model="config.model[selectedConfigurationService]"
         :services="configurationCompute.filteredServices"
         :model-options="configurationCompute.model"
+        :custom-models="config.customModel"
         :show-model="configurationCompute.showModel"
         @update:service="setConfigurationService"
         @update:model="config.model[selectedConfigurationService] = $event"
@@ -276,6 +277,30 @@
             </el-button>
           </div>
         </div>
+      </el-col>
+    </el-row>
+
+    <!-- 鼠标悬浮翻译延迟 -->
+    <el-row class="settings-control-row">
+      <el-col :span="14" class="settings-control-label lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="按住鼠标悬浮快捷键并移动鼠标后，等待指定时间再翻译；调高可以减少 Ctrl+C 等组合键带来的误触。松开快捷键触发的单次翻译不受影响。" placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">
+            悬浮翻译延迟
+            <el-icon class="icon-margin"><InfoFilled /></el-icon>
+          </span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="10" class="settings-control-field flex-end hover-delay-field">
+        <el-input-number
+          v-model="config.mouseHoverTranslationDelay"
+          aria-label="悬浮翻译延迟"
+          :min="MOUSE_HOVER_TRANSLATION_DELAY_MIN"
+          :max="MOUSE_HOVER_TRANSLATION_DELAY_MAX"
+          :step="MOUSE_HOVER_TRANSLATION_DELAY_STEP"
+          controls-position="right"
+          @change="handleMouseHoverTranslationDelayChange"
+        />
+        <span class="input-suffix">ms</span>
       </el-col>
     </el-row>
 
@@ -513,7 +538,7 @@
         </el-row>
 
         <!-- 使用代理转发 -->
-        <el-row v-show="compute.showProxy" class="settings-control-row">
+        <el-row v-show="compute.showProxy && !compute.showCustom" class="settings-control-row">
           <el-col :span="8" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark" content="使用代理可以解决网络无法访问的问题，如不熟悉代理设置请留空！" placement="top-start"
                         :show-after="500">
@@ -528,7 +553,7 @@
         </el-row>
 
         <!-- 角色和模板 -->
-        <el-row v-show="compute.showAI" class="settings-control-row">
+        <el-row v-show="compute.showAI && !compute.showCustom" class="settings-control-row">
           <el-col :span="8" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark" content="以系统身份 system 发送的对话，常用于指定 AI 要扮演的角色"
               placement="top-start" :show-after="500">
@@ -542,7 +567,7 @@
               placeholder="system message " />
           </el-col>
         </el-row>
-        <el-row v-show="compute.showAI" class="settings-control-row">
+        <el-row v-show="compute.showAI && !compute.showCustom" class="settings-control-row">
           <el-col :span="8" class="settings-control-label lightblue rounded-corner">
             <el-tooltip class="box-item" effect="dark"
               content="以用户身份 user 发送的对话，其中{{to}}表示目标语言，{{origin}}表示待翻译的文本内容，两者不可缺少。"
@@ -558,7 +583,7 @@
           </el-col>
         </el-row>
         <!-- 恢夏默认模板按钮 -->
-        <el-row v-show="compute.showAI" class="margin-bottom margin-left-2em">
+        <el-row v-show="compute.showAI && !compute.showCustom" class="margin-bottom margin-left-2em">
           <el-col :span="24" style="text-align: right;">
             <el-button type="primary" link @click="resetTemplate">
               <el-icon>
@@ -691,7 +716,15 @@
 // Main 处理配置信息
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { customModelString, models, options, resolveConfiguredModel, services, servicesType, defaultOption } from "../entrypoints/utils/option";
-import { Config, normalizeConfig, VIDEO_SUBTITLE_FONT_SIZE_OPTIONS } from "@/entrypoints/utils/model";
+import {
+  Config,
+  MOUSE_HOVER_TRANSLATION_DELAY_MAX,
+  MOUSE_HOVER_TRANSLATION_DELAY_MIN,
+  MOUSE_HOVER_TRANSLATION_DELAY_STEP,
+  VIDEO_SUBTITLE_FONT_SIZE_OPTIONS,
+  normalizeConfig,
+  normalizeMouseHoverTranslationDelay,
+} from "@/entrypoints/utils/model";
 import { InfoFilled, Refresh, Edit, Upload, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import browser from 'webextension-polyfill';
@@ -892,6 +925,7 @@ const createServiceCompute = (serviceSource: ServiceSource) => ({
   showCustom: computed(() => servicesType.isCustom(serviceSource.value)),
   showDeepLX: computed(() => serviceSource.value === 'deeplx'),
   showMiniMaxRegion: computed(() => serviceSource.value === services.minimax),
+  showMiMoRegion: computed(() => serviceSource.value === services.mimo),
   showCustomModel: computed(
     () =>
       servicesType.isAI(serviceSource.value) &&
@@ -1123,6 +1157,10 @@ const handleCustomMouseHotkeyCancel = () => {
   if (!config.value.customHotkey) {
     config.value.hotkey = 'Control';
   }
+};
+
+const handleMouseHoverTranslationDelayChange = (value: number | undefined) => {
+  config.value.mouseHoverTranslationDelay = normalizeMouseHoverTranslationDelay(value);
 };
 
 // 获取自定义鼠标悬浮快捷键显示名称
@@ -1603,6 +1641,21 @@ const saveImport = async () => {
 .flex-end {
   display: flex;
   justify-content: flex-end;
+}
+
+.hover-delay-field {
+  align-items: center;
+  gap: 6px;
+}
+
+.hover-delay-field :deep(.el-input-number) {
+  width: 100%;
+}
+
+.input-suffix {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 11px;
 }
 
 .select-divider {

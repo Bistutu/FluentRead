@@ -275,15 +275,19 @@ export async function translateVideoText(origin: string): Promise<string> {
   const cleanedOrigin = origin?.replace(/[\s\u3000]/g, '') || '';
   if (!cleanedOrigin) return origin || '';
 
+  const service = config.videoService;
+  const pageContext = await resolvePageContext(undefined, service);
+
   // 视频字幕是高频、短文本请求。计数保留在内存中，并合并为低频写入，避免
   // storage 写入和配置订阅回调把播放器主线程拖入高频循环。
   scheduleVideoCountSave();
   return enqueueTranslation(async (lease) => {
     return waitForRequest(browser.runtime.sendMessage({
-        context: `YouTube 视频字幕：${document.title}`,
+        context: `YouTube 视频字幕：${typeof document === 'undefined' ? '' : document.title}`,
+        pageContext,
         origin,
         useCache: config.useCache,
-        serviceOverride: config.videoService,
+        serviceOverride: service,
       }), 20_000, undefined, lease) as Promise<string>;
   });
 }
@@ -326,8 +330,9 @@ function assertTranslationCredentials(): void {
   if (message) throw new Error(message);
 }
 
-async function resolvePageContext(suppliedContext?: string): Promise<string | undefined> {
-  const selectedModel = resolveConfiguredModel(config.model[config.service], config.customModel[config.service]);
-  if (!config.enableAIContext || !servicesType.isUseAIContext(config.service, selectedModel)) return undefined;
+async function resolvePageContext(suppliedContext?: string, serviceOverride = config.service): Promise<string | undefined> {
+  const service = serviceOverride || config.service;
+  const selectedModel = resolveConfiguredModel(config.model[service], config.customModel[service]);
+  if (!config.enableAIContext || !servicesType.isUseAIContext(service, selectedModel)) return undefined;
   return suppliedContext?.trim().slice(0, 4000) || await getPageTranslationContext() || undefined;
 }

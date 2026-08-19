@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { Config, normalizeConfig } from '@/entrypoints/utils/model';
-import { MINIMAX_ENDPOINTS, tongyiTokenPlanUrl, urls } from '@/entrypoints/utils/constant';
+import {
+    Config,
+    DEFAULT_MOUSE_HOVER_TRANSLATION_DELAY,
+    MOUSE_HOVER_TRANSLATION_DELAY_MAX,
+    MOUSE_HOVER_TRANSLATION_DELAY_MIN,
+    normalizeConfig,
+} from '@/entrypoints/utils/model';
+import { getMimoEndpoint, MIMO_ENDPOINTS, MINIMAX_ENDPOINTS, tongyiTokenPlanUrl, urls } from '@/entrypoints/utils/constant';
 import { customModelString, defaultModelIds, defaultModels, defaultOption, models, options, resolveConfiguredModel, services, servicesType } from '@/entrypoints/utils/option';
 
 describe('AI 模型编号列表', () => {
@@ -35,6 +41,7 @@ describe('AI 模型编号列表', () => {
         expect(models.get(services.moonshot)).toContain('kimi-k2.7-code');
         expect(models.get(services.yiyan)).toContain('ernie-5.1');
         expect(models.get(services.minimax)).toContain('MiniMax-M2.7');
+        expect(models.get(services.mimo)).toContain('mimo-v2.5-pro');
         expect(models.get(services.jieyue)).toContain('step-3.5-flash');
         expect(models.get(services.huanYuan)).toContain('hy3');
         expect(models.get(services.grok)).toContain('grok-4.5');
@@ -45,6 +52,7 @@ describe('AI 模型编号列表', () => {
         expect(options.services[1]?.value).toBe(services.freeTranslation);
         expect(options.services.find(option => option.value === services.freeTranslation)?.description)
             .toContain('微软翻译、DeepLX、谷歌翻译依次尝试');
+        expect(options.services.find(option => option.value === services.mimo)?.label).toBe('小米 MiMo');
         expect(options.services.every(option => !/[🌟⭐★]/u.test(option.label))).toBe(true);
         expect(servicesType.isMachine(services.freeTranslation)).toBe(true);
         expect(defaultOption.service).toBe(services.freeTranslation);
@@ -55,6 +63,32 @@ describe('AI 模型编号列表', () => {
             expect(defaultModels.get(service), `${service} 默认模型`).toBe(defaultModel);
             expect(models.get(service)?.at(0), `${service} 模型列表首项`).toBe(defaultModel);
         }
+    });
+
+    it('保留自定义接口的地址、模型和其他按服务配置', () => {
+        const normalized = normalizeConfig({
+            service: services.custom,
+            custom: 'http://127.0.0.1:11434/v1/chat/completions',
+            model: {[services.custom]: customModelString},
+            customModel: {[services.custom]: 'local/translation-model'},
+            token: {[services.custom]: 'local-token'},
+            proxy: {[services.custom]: 'http://127.0.0.1:8080'},
+            system_role: {[services.custom]: 'Translate safely.'},
+            user_role: {[services.custom]: 'Translate {{origin}} into {{to}}.'},
+            customBody: {[services.custom]: '{"stream":false}'},
+        });
+
+        expect(normalized).toMatchObject({
+            service: services.custom,
+            custom: 'http://127.0.0.1:11434/v1/chat/completions',
+            model: {[services.custom]: customModelString},
+            customModel: {[services.custom]: 'local/translation-model'},
+            token: {[services.custom]: 'local-token'},
+            proxy: {[services.custom]: 'http://127.0.0.1:8080'},
+            system_role: {[services.custom]: 'Translate safely.'},
+            user_role: {[services.custom]: 'Translate {{origin}} into {{to}}.'},
+            customBody: {[services.custom]: '{"stream":false}'},
+        });
     });
 
     it('不会把下拉列表中仍可选择的模型当成退役编号改写', () => {
@@ -90,6 +124,24 @@ describe('右键全文翻译配置', () => {
         expect(normalizeConfig({}).contextMenuEnabled).toBe(true);
         expect(normalizeConfig({contextMenuEnabled: false}).contextMenuEnabled).toBe(false);
         expect(normalizeConfig({contextMenuEnabled: 'false'}).contextMenuEnabled).toBe(true);
+    });
+});
+
+describe('鼠标悬浮翻译延迟配置', () => {
+    it('默认保留现有 50ms 行为，并归一化用户设置', () => {
+        expect(new Config().mouseHoverTranslationDelay).toBe(DEFAULT_MOUSE_HOVER_TRANSLATION_DELAY);
+        expect(normalizeConfig({}).mouseHoverTranslationDelay).toBe(DEFAULT_MOUSE_HOVER_TRANSLATION_DELAY);
+        expect(normalizeConfig({mouseHoverTranslationDelay: 235}).mouseHoverTranslationDelay).toBe(240);
+        expect(normalizeConfig({mouseHoverTranslationDelay: '120'}).mouseHoverTranslationDelay).toBe(120);
+    });
+
+    it('将越界或非法值限制在安全范围内', () => {
+        expect(normalizeConfig({mouseHoverTranslationDelay: -100}).mouseHoverTranslationDelay)
+            .toBe(MOUSE_HOVER_TRANSLATION_DELAY_MIN);
+        expect(normalizeConfig({mouseHoverTranslationDelay: 99999}).mouseHoverTranslationDelay)
+            .toBe(MOUSE_HOVER_TRANSLATION_DELAY_MAX);
+        expect(normalizeConfig({mouseHoverTranslationDelay: 'invalid'}).mouseHoverTranslationDelay)
+            .toBe(DEFAULT_MOUSE_HOVER_TRANSLATION_DELAY);
     });
 });
 
@@ -272,6 +324,28 @@ describe('OpenAI 兼容服务端点', () => {
         expect(new Config().minimaxBillingPlan).toBe('payg');
         expect(normalizeConfig({minimaxBillingPlan: 'token-plan'}).minimaxBillingPlan).toBe('token-plan');
         expect(normalizeConfig({minimaxBillingPlan: 'unknown'}).minimaxBillingPlan).toBe('payg');
+    });
+
+    it('MiMo 配置独立处理 Token Plan 集群并清理非法值', () => {
+        expect(new Config().mimoBillingPlan).toBe('payg');
+        expect(new Config().mimoRegion).toBe('cn');
+        expect(normalizeConfig({mimoBillingPlan: 'token-plan', mimoRegion: 'sgp'})).toMatchObject({
+            mimoBillingPlan: 'token-plan',
+            mimoRegion: 'sgp',
+        });
+        expect(normalizeConfig({mimoBillingPlan: 'unknown', mimoRegion: 'unknown'})).toMatchObject({
+            mimoBillingPlan: 'payg',
+            mimoRegion: 'cn',
+        });
+    });
+
+    it('MiMo 按量付费与三套 Token Plan 集群使用不同端点', () => {
+        expect(MIMO_ENDPOINTS.payg.cn).toBe('https://api.xiaomimimo.com/v1/chat/completions');
+        expect(getMimoEndpoint('token-plan', 'cn')).toBe('https://token-plan-cn.xiaomimimo.com/v1/chat/completions');
+        expect(getMimoEndpoint('token-plan', 'sgp')).toBe('https://token-plan-sgp.xiaomimimo.com/v1/chat/completions');
+        expect(getMimoEndpoint('token-plan', 'ams')).toBe('https://token-plan-ams.xiaomimimo.com/v1/chat/completions');
+        expect(getMimoEndpoint('payg', 'ams')).toBe('https://api.xiaomimimo.com/v1/chat/completions');
+        expect(getMimoEndpoint('token-plan', 'invalid')).toBe('https://token-plan-cn.xiaomimimo.com/v1/chat/completions');
     });
 
     it('文心一言使用 Bearer Token，不再要求旧 AK/SK', () => {

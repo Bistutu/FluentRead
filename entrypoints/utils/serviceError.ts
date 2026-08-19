@@ -12,6 +12,10 @@ export function formatServiceError(service: string, error: unknown): string {
         return 'MiniMax API Key 无效（错误码 2049）。如果 Key 以 sk-cp- 开头，它是 Token Plan Key：请确认订阅仍有效，并选择与 Key 来源匹配的区域；中国版使用 api.minimaxi.com，全球版使用 api.minimax.io。Token Plan Key 与按量付费 API Key 不能互换。';
     }
 
+    if (service === services.mimo && (/401|unauthorized|invalid api key/i.test(message))) {
+        return '小米 MiMo API Key 无效或集群不匹配。按量付费 Key 通常以 sk- 开头，Token Plan Key 以 tp- 开头；Token Plan 还必须选择购买页面对应的中国、新加坡或欧洲集群。';
+    }
+
     if (/failed to fetch|networkerror|网络错误|请求超时/i.test(message)) {
         return `网络连接失败：${message}`;
     }

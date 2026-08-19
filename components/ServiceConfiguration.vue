@@ -1,5 +1,9 @@
 <template>
-  <section class="settings-section service-connection-section">
+  <section
+    class="settings-section service-connection-section"
+    :data-service-configuration-service="service"
+    :data-custom-service-configuration="compute.showCustom ? 'true' : 'false'"
+  >
     <div v-if="compute.credentialWarning" class="credential-warning" role="alert">
       <strong>配置提醒</strong>
       <span>{{ compute.credentialWarning }}</span>
@@ -7,7 +11,7 @@
     <div class="subsection-heading">
       <div>
         <strong>连接参数</strong>
-        <small class="connection-test-hint">会发送一条很短的测试请求，可能产生少量用量。</small>
+        <small class="connection-test-hint">修改会自动保存到本地配置；检查连接会发送一条很短的测试请求，可能产生少量用量。</small>
       </div>
     </div>
 
@@ -94,6 +98,41 @@
       <code>{{ minimaxEndpoint }}</code>
     </div>
 
+    <p v-if="compute.showMiMoRegion && mimoKeyMismatch" class="mimo-key-note is-warning">
+      {{ mimoKeyMismatch }}
+    </p>
+
+    <el-row v-show="compute.showMiMoRegion" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="按量付费和 Token Plan 使用不同的账户权益；请按小米 MiMo 控制台中 Key 的来源选择。" placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">小米 MiMo 计费方式<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-select v-model="config.mimoBillingPlan" aria-label="小米 MiMo 计费方式" placeholder="请选择小米 MiMo 计费方式">
+          <el-option class="select-left" v-for="item in options.mimoBillingPlan" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
+
+    <el-row v-show="compute.showMiMoRegion" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner">
+        <el-tooltip class="box-item" effect="dark" content="Token Plan 必须使用购买页面提供的集群地址；中国、新加坡和欧洲集群的 tp- Key 不能混用。按量付费统一使用 api.xiaomimimo.com。" placement="top-start" :show-after="500">
+          <span class="popup-text popup-vertical-left">MiMo API 集群<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
+        </el-tooltip>
+      </el-col>
+      <el-col :span="12">
+        <el-select v-model="config.mimoRegion" aria-label="小米 MiMo API 集群" placeholder="请选择小米 MiMo API 集群">
+          <el-option class="select-left" v-for="item in options.mimoRegion" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
+      </el-col>
+    </el-row>
+
+    <div v-show="compute.showMiMoRegion" class="mimo-endpoint" data-mimo-endpoint>
+      <span>当前 API 地址</span>
+      <code>{{ mimoEndpoint }}</code>
+    </div>
+
     <el-row v-show="compute.showAzureOpenaiEndpoint" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner">
         <el-tooltip class="box-item" effect="dark" content="Azure OpenAI 服务端点地址，必须包含完整的部署信息。" placement="top-start" :show-after="500">
@@ -149,6 +188,11 @@
       <el-col :span="12" class="lightblue rounded-corner"><el-tooltip effect="dark" content="填写兼容翻译请求的自定义接口地址。" placement="top-start" :show-after="300"><span class="popup-text popup-vertical-left">自定义接口<el-icon class="icon-margin"><InfoFilled /></el-icon></span></el-tooltip></el-col>
       <el-col :span="12"><el-input v-model="config.custom" placeholder="请输入自定义接口地址" /></el-col>
     </el-row>
+
+    <el-row v-show="compute.showCustom" class="margin-bottom margin-left-2em">
+      <el-col :span="12" class="lightblue rounded-corner"><el-tooltip effect="dark" content="可选的代理地址；填写后，自定义接口请求会优先发送到这里。" placement="top-start" :show-after="300"><span class="popup-text popup-vertical-left">代理地址<el-icon class="icon-margin"><InfoFilled /></el-icon></span></el-tooltip></el-col>
+      <el-col :span="12"><el-input v-model="config.proxy[service]" placeholder="默认直连自定义接口" /></el-col>
+    </el-row>
     <el-row v-show="compute.showNewAPI" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner"><el-tooltip effect="dark" content="填写 New API 服务的接口地址。" placement="top-start" :show-after="300"><span class="popup-text popup-vertical-left">NewAPI接口<el-icon class="icon-margin"><InfoFilled /></el-icon></span></el-tooltip></el-col>
       <el-col :span="12"><el-input v-model="config.newApiUrl" placeholder="请输入您的New API接口地址" /></el-col>
@@ -158,6 +202,38 @@
       <el-col :span="12" class="lightblue rounded-corner"><el-tooltip effect="dark" content="填写服务商支持的模型标识；选择自定义模型后，网页翻译会使用这里的值。" placement="top-start" :show-after="300"><span class="popup-text popup-vertical-left">{{ service === 'doubao' ? '接入点' : '自定义模型' }}<el-icon class="icon-margin"><InfoFilled /></el-icon></span></el-tooltip></el-col>
       <el-col :span="12"><el-input v-model="config.customModel[service]" placeholder="例如：gemma:7b" /></el-col>
     </el-row>
+
+    <template v-if="compute.showCustom">
+      <div class="custom-template-heading">
+        <div>
+          <strong>请求模板</strong>
+          <small>按 OpenAI Chat Completions 格式发送；修改会保存到当前自定义接口配置。</small>
+        </div>
+        <el-button type="primary" link size="small" @click="resetCustomTemplate">恢复默认模板</el-button>
+      </div>
+
+      <el-row class="settings-control-row">
+        <el-col :span="8" class="settings-control-label lightblue rounded-corner">
+          <el-tooltip effect="dark" content="以 system 身份发送的对话内容。" placement="top-start" :show-after="300">
+            <span class="popup-text popup-vertical-left">system<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
+          </el-tooltip>
+        </el-col>
+        <el-col :span="16" class="settings-control-field">
+          <el-input v-model="config.system_role[service]" type="textarea" maxlength="8192" placeholder="system message" />
+        </el-col>
+      </el-row>
+
+      <el-row class="settings-control-row">
+        <el-col :span="8" class="settings-control-label lightblue rounded-corner">
+          <el-tooltip effect="dark" content="以 user 身份发送的对话模板；{{to}} 表示目标语言，{{origin}} 表示待翻译文本。" placement="top-start" :show-after="300">
+            <span class="popup-text popup-vertical-left">user<el-icon class="icon-margin"><InfoFilled /></el-icon></span>
+          </el-tooltip>
+        </el-col>
+        <el-col :span="16" class="settings-control-field">
+          <el-input v-model="config.user_role[service]" type="textarea" maxlength="8192" placeholder="user message template" />
+        </el-col>
+      </el-row>
+    </template>
 
     <el-row v-show="compute.showDeepseekApiType" class="margin-bottom margin-left-2em">
       <el-col :span="12" class="lightblue rounded-corner"><el-tooltip effect="dark" content="选择 DeepSeek 接口使用的 API 格式。" placement="top-start" :show-after="300"><span class="popup-text popup-vertical-left">API 格式<el-icon class="icon-margin"><InfoFilled /></el-icon></span></el-tooltip></el-col>
@@ -182,11 +258,12 @@
 import { computed, ref, toRef, watch } from 'vue'
 import { InfoFilled } from '@element-plus/icons-vue'
 import type { Config } from '@/entrypoints/utils/model'
-import { options as optionConfig } from '@/entrypoints/utils/option'
+import { defaultOption, options as optionConfig } from '@/entrypoints/utils/option'
 import { isValidCustomBody } from '@/entrypoints/utils/custom-body'
 import browser from 'webextension-polyfill'
 import { requestConfigSave } from '@/entrypoints/utils/config'
-import { CONNECTION_TEST_MESSAGE, MINIMAX_ENDPOINTS } from '@/entrypoints/utils/constant'
+import { CONNECTION_TEST_MESSAGE, getMimoEndpoint, MINIMAX_ENDPOINTS } from '@/entrypoints/utils/constant'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const props = defineProps<{
   config: Config
@@ -224,6 +301,33 @@ const minimaxEndpoint = computed(() => {
   const plan = config.value.minimaxBillingPlan === 'token-plan' ? 'token-plan' : 'payg'
   const region = config.value.minimaxRegion === 'cn' ? 'cn' : 'global'
   return MINIMAX_ENDPOINTS[plan][region]
+})
+
+const mimoKeyKind = computed(() => {
+  const token = config.value.token[service.value]?.trim() || ''
+  if (token.startsWith('tp-')) return 'token-plan'
+  if (token.startsWith('sk-')) return 'payg'
+  return token ? 'other' : 'empty'
+})
+
+const mimoKeyMismatch = computed(() => {
+  if (mimoKeyKind.value === 'empty') return ''
+  if (config.value.mimoBillingPlan === 'token-plan' && mimoKeyKind.value !== 'token-plan') {
+    return '当前选择的是 MiMo Token Plan，但 Key 不是 tp- 开头；请确认 Key 来源和订阅状态。'
+  }
+  if (config.value.mimoBillingPlan === 'payg' && mimoKeyKind.value === 'token-plan') {
+    return '当前选择的是 MiMo 按量付费，但检测到 tp- Token Plan Key；两类 Key 不能互换，请切换计费方式或更换 Key。'
+  }
+  if (config.value.mimoBillingPlan === 'payg' && mimoKeyKind.value === 'other') {
+    return 'MiMo 按量付费 Key 通常以 sk- 开头；请确认 Key 来自 API Keys 页面。'
+  }
+  return config.value.mimoBillingPlan === 'token-plan'
+    ? '当前使用 MiMo Token Plan Key；请确认订阅仍在有效期内。'
+    : ''
+})
+
+const mimoEndpoint = computed(() => {
+  return getMimoEndpoint(config.value.mimoBillingPlan, config.value.mimoRegion)
 })
 
 type ConnectionTestState = 'idle' | 'testing' | 'success' | 'error'
@@ -265,6 +369,24 @@ async function testConnection(): Promise<void> {
   }
 }
 
+function resetCustomTemplate(): void {
+  void ElMessageBox.confirm(
+    '确定要恢复自定义接口的默认 system 和 user 模板吗？此操作会覆盖当前模板。',
+    '恢复默认模板',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    },
+  ).then(() => {
+    config.value.system_role[service.value] = defaultOption.system_role
+    config.value.user_role[service.value] = defaultOption.user_role
+    ElMessage.success('已恢复自定义接口默认模板')
+  }).catch(() => {
+    // 用户取消操作，不做任何处理。
+  })
+}
+
 watch(service, resetConnectionTest)
 </script>
 
@@ -302,6 +424,34 @@ watch(service, resetConnectionTest)
   color: #9098a8;
   font-size: 11px;
   font-weight: 400;
+}
+
+.custom-template-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 0 10px;
+  padding-top: 14px;
+  border-top: 1px solid #eceef3;
+}
+
+.custom-template-heading > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.custom-template-heading strong {
+  color: #46526a;
+  font-size: 12px;
+}
+
+.custom-template-heading small {
+  color: #9098a8;
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .connection-test-button {
@@ -369,7 +519,18 @@ watch(service, resetConnectionTest)
   line-height: 1.5;
 }
 
+.mimo-key-note {
+  margin: -8px 0 14px 2em;
+  color: #6d7890;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .minimax-key-note.is-warning {
+  color: #a52c48;
+}
+
+.mimo-key-note.is-warning {
   color: #a52c48;
 }
 
@@ -384,6 +545,22 @@ watch(service, resetConnectionTest)
 }
 
 .minimax-endpoint code {
+  overflow-wrap: anywhere;
+  color: #59657b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.mimo-endpoint {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: -4px 0 14px 2em;
+  color: #8993a5;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.mimo-endpoint code {
   overflow-wrap: anywhere;
   color: #59657b;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -404,6 +581,11 @@ watch(service, resetConnectionTest)
   .connection-test-button {
     width: 100%;
     margin-left: 0;
+  }
+
+  .custom-template-heading {
+    align-items: stretch;
+    flex-direction: column;
   }
 }
 

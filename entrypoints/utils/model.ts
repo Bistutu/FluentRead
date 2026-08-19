@@ -1,5 +1,5 @@
 import { currentModelIds, defaultModels, defaultOption, services, servicesType } from "./option";
-import type { MiniMaxBillingPlan, MiniMaxRegion } from "./option";
+import type { MiniMaxBillingPlan, MiniMaxRegion, MiMoBillingPlan, MiMoRegion } from "./option";
 import { normalizeCustomBodyMapping } from "./custom-body";
 import { normalizeSelectionTtsVoiceOrder } from "./selectionTtsConfig";
 
@@ -7,12 +7,27 @@ export type DeepSeekApiType = 'auto' | 'responses' | 'chat';
 export type DeepSeekThinkingMode = 'enabled' | 'disabled';
 export type VideoSubtitleDisplayMode = 'bilingual' | 'translation-only' | 'original-only';
 export const DEFAULT_VIDEO_SUBTITLE_FONT_SIZE = 100;
+export const DEFAULT_NEW_API_URL = 'http://localhost:3000';
 export const VIDEO_SUBTITLE_FONT_SIZE_OPTIONS = [80, 90, 100, 110, 120, 140, 160] as const;
+export const DEFAULT_MOUSE_HOVER_TRANSLATION_DELAY = 50;
+export const MOUSE_HOVER_TRANSLATION_DELAY_MIN = 0;
+export const MOUSE_HOVER_TRANSLATION_DELAY_MAX = 2000;
+export const MOUSE_HOVER_TRANSLATION_DELAY_STEP = 10;
 
 export function normalizeVideoSubtitleFontSize(value: unknown): number {
     const number = typeof value === 'number' ? value : Number(value);
     if (!Number.isFinite(number)) return DEFAULT_VIDEO_SUBTITLE_FONT_SIZE;
     return Math.min(160, Math.max(80, Math.round(number / 10) * 10));
+}
+
+export function normalizeMouseHoverTranslationDelay(value: unknown): number {
+    const number = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(number)) return DEFAULT_MOUSE_HOVER_TRANSLATION_DELAY;
+    const rounded = Math.round(number / MOUSE_HOVER_TRANSLATION_DELAY_STEP) * MOUSE_HOVER_TRANSLATION_DELAY_STEP;
+    return Math.min(
+        MOUSE_HOVER_TRANSLATION_DELAY_MAX,
+        Math.max(MOUSE_HOVER_TRANSLATION_DELAY_MIN, rounded),
+    );
 }
 
 interface IMapping {
@@ -43,6 +58,8 @@ export class Config {
     requireApiKey: Record<string, boolean>; // 按服务和模型保存 API Key 校验开关
     minimaxBillingPlan: MiniMaxBillingPlan; // MiniMax 计费方案
     minimaxRegion: MiniMaxRegion; // MiniMax API 区域
+    mimoBillingPlan: MiMoBillingPlan; // MiMo 计费方案
+    mimoRegion: MiMoRegion; // MiMo Token Plan API 集群
     ak: string;
     sk: string;
     appid: string;
@@ -66,6 +83,7 @@ export class Config {
     floatingBallHotkey: string; // 悬浮球快捷键
     customFloatingBallHotkey: string; // 自定义悬浮球快捷键
     customHotkey: string; // 自定义鼠标悬浮快捷键
+    mouseHoverTranslationDelay: number; // 鼠标悬浮翻译触发延迟（毫秒）
     disableSelectionTranslator: boolean; // 是否禁用划词翻译
     selectionAreaEnabled: boolean; // 是否启用圈选翻译
     disableImageTranslator: boolean; // 是否禁用图片翻译
@@ -105,6 +123,8 @@ export class Config {
         this.requireApiKey = {};
         this.minimaxBillingPlan = 'payg';
         this.minimaxRegion = 'cn';
+        this.mimoBillingPlan = 'payg';
+        this.mimoRegion = 'cn';
         this.ak = '';
         this.sk = '';
         this.appid = '';
@@ -128,6 +148,7 @@ export class Config {
         this.floatingBallHotkey = 'Alt+T'; // 默认快捷键为 Alt+T
         this.customFloatingBallHotkey = ''; // 自定义快捷键为空
         this.customHotkey = ''; // 自定义鼠标悬浮快捷键为空
+        this.mouseHoverTranslationDelay = DEFAULT_MOUSE_HOVER_TRANSLATION_DELAY;
         this.disableSelectionTranslator = true; // 默认关闭划词翻译
         this.selectionAreaEnabled = false; // 圈选翻译需要用户主动开启，避免意外截图
         this.disableImageTranslator = true; // 默认关闭图片翻译，避免首次安装后扫描网页图片
@@ -135,7 +156,7 @@ export class Config {
         this.selectionTranslatorMode = 'disabled'; // 默认关闭划词翻译
         this.selectionTranslatorTrigger = 'icon'; // 默认显示可发现的操作图标
         this.selectionTtsVoices = []; // 默认按当前语言使用内置音色回退顺序
-        this.newApiUrl = 'http://localhost:3000'; // NewAPI 默认地址
+        this.newApiUrl = DEFAULT_NEW_API_URL; // NewAPI 默认地址
         this.maxConcurrentTranslations = 6; // 默认最大并发数为6
         this.youdaoAppKey = ''; // 有道翻译 App Key
         this.youdaoAppSecret = ''; // 有道翻译 App Secret
@@ -232,10 +253,24 @@ export function normalizeConfig(value: unknown): Config {
     // 配置或历史快照，否则默认配置与同值的页面快照会因内部字段不同而无法去重。
     delete (normalized as unknown as Record<string, unknown>).__fluentConfigRevision;
 
-    normalized.model = isRecord(source.model) ? {...source.model} : {};
+    normalized.token = normalizeStringMapping(source.token);
+    normalized.model = normalizeStringMapping(source.model);
     normalized.requireApiKey = isBooleanMapping(source.requireApiKey) ? {...source.requireApiKey} : {};
-    normalized.customModel = isRecord(source.customModel) ? {...source.customModel} : {};
+    normalized.customModel = normalizeStringMapping(source.customModel);
+    normalized.proxy = normalizeStringMapping(source.proxy);
+    normalized.robot_id = normalizeStringMapping(source.robot_id);
+    normalized.system_role = {
+        ...systemRoleFactory(),
+        ...normalizeStringMapping(source.system_role),
+    };
+    normalized.user_role = {
+        ...userRoleFactory(),
+        ...normalizeStringMapping(source.user_role),
+    };
     normalized.customBody = normalizeCustomBodyMapping(source.customBody);
+
+    if (typeof normalized.custom !== 'string') normalized.custom = defaultOption.custom;
+    if (typeof normalized.newApiUrl !== 'string') normalized.newApiUrl = DEFAULT_NEW_API_URL;
 
     if (typeof normalized.videoTranslationEnabled !== 'boolean') {
         normalized.videoTranslationEnabled = false;
@@ -292,6 +327,18 @@ export function normalizeConfig(value: unknown): Config {
         normalized.minimaxRegion = 'cn';
     }
 
+    if (!['payg', 'token-plan'].includes(normalized.mimoBillingPlan)) {
+        normalized.mimoBillingPlan = 'payg';
+    }
+
+    if (!['cn', 'sgp', 'ams'].includes(normalized.mimoRegion)) {
+        normalized.mimoRegion = 'cn';
+    }
+
+    normalized.mouseHoverTranslationDelay = normalizeMouseHoverTranslationDelay(
+        source.mouseHoverTranslationDelay,
+    );
+
     if (!['disabled', 'bilingual', 'translation-only'].includes(normalized.selectionTranslatorMode)) {
         normalized.selectionTranslatorMode = 'disabled';
     }
@@ -337,6 +384,13 @@ export function migrateModelIdentifier(service: string, selectedModel: string): 
 
 function isRecord(value: unknown): value is Record<string, string> {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function normalizeStringMapping(value: unknown): IMapping {
+    if (!isRecord(value)) return {};
+    return Object.fromEntries(
+        Object.entries(value).filter(([, item]) => typeof item === 'string'),
+    );
 }
 
 function isBooleanMapping(value: unknown): value is Record<string, boolean> {

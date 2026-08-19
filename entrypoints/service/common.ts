@@ -1,4 +1,4 @@
-import {method, MINIMAX_ENDPOINTS, urls} from "../utils/constant";
+import {getMimoEndpoint, method, MINIMAX_ENDPOINTS, urls} from "../utils/constant";
 import {commonMsgTemplate} from "../utils/template";
 import {config} from "@/entrypoints/utils/config";
 import {contentPostHandler} from "@/entrypoints/utils/check";
@@ -23,6 +23,8 @@ async function common(message: any) {
                 ? MINIMAX_ENDPOINTS[
                     config.minimaxBillingPlan === 'token-plan' ? 'token-plan' : 'payg'
                 ][config.minimaxRegion === 'cn' ? 'cn' : 'global']
+                : service === services.mimo
+                    ? getMimoEndpoint(config.mimoBillingPlan, config.mimoRegion)
                 : urls[service]);
 
         const resp = await fetch(url, {

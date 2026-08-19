@@ -1,4 +1,5 @@
 import {
+    cancelPendingHoverTranslation,
     handleTranslation,
     autoTranslateEnglishPage,
     isFullPageTranslationActive,
@@ -267,6 +268,7 @@ function setupManualTranslationTriggers(signal: AbortSignal) {
         screen.otherKeyPressed = false;
         screen.hasSlideTranslation = false;
         mouseHotkeysPressed.clear();
+        cancelPendingHoverTranslation();
     }, { signal });
 
     // 2. 按下按键时
@@ -334,6 +336,8 @@ function setupManualTranslationTriggers(signal: AbortSignal) {
             }
         } else if (screen.hotkeyPressed) {
             screen.otherKeyPressed = true;
+            // Ctrl+C 等组合键不应执行鼠标移动时已经排队的悬浮翻译。
+            cancelPendingHoverTranslation();
         }
     }, { signal, capture: true });
 
@@ -403,7 +407,7 @@ function setupManualTranslationTriggers(signal: AbortSignal) {
         screen.mouseY = event.clientY;
         if (screen.hotkeyPressed && config.on) {
             screen.hasSlideTranslation = true;
-            handleTranslation(screen.mouseX, screen.mouseY, 50)
+            handleTranslation(screen.mouseX, screen.mouseY, config.mouseHoverTranslationDelay)
         }
     }, { signal });
 

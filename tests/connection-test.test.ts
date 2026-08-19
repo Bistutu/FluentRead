@@ -48,4 +48,15 @@ describe('翻译服务连接测试', () => {
         expect(message).toContain('api.minimax.io');
         expect(message).toContain('不能互换');
     });
+
+    it('将 MiMo 鉴权错误转换为 Key 前缀和集群提示', () => {
+        const message = formatServiceError(
+            services.mimo,
+            new Error('翻译失败: 401 Unauthorized body: {"message":"invalid api key"}'),
+        );
+
+        expect(message).toContain('sk-');
+        expect(message).toContain('tp-');
+        expect(message).toContain('中国、新加坡或欧洲集群');
+    });
 });

@@ -2,12 +2,13 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   sendMessage: vi.fn(),
+  getPageTranslationContext: vi.fn(),
   saveConfig: vi.fn(async () => undefined),
   config: {
     count: 0,
     maxConcurrentTranslations: 6,
-    model: {mock: 'mock-model'} as Record<string, string>,
-    customModel: {mock: ''} as Record<string, string>,
+    model: {mock: 'mock-model', 'mock-ai': 'mock-ai-model'} as Record<string, string>,
+    customModel: {mock: '', 'mock-ai': ''} as Record<string, string>,
     service: 'mock',
     to: 'zh-CN',
     useCache: true,
@@ -26,13 +27,15 @@ vi.mock('@/entrypoints/utils/config', () => ({
 vi.mock('@/entrypoints/utils/common', () => ({detectlang: () => 'eng'}));
 vi.mock('@/entrypoints/utils/option', () => ({
   resolveConfiguredModel: (model: string) => model,
-  servicesType: {isUseAIContext: () => false},
+  servicesType: {isUseAIContext: (service: string) => service === 'mock-ai'},
 }));
-vi.mock('@/entrypoints/utils/pageContext', () => ({getPageTranslationContext: vi.fn()}));
+vi.mock('@/entrypoints/utils/pageContext', () => ({getPageTranslationContext: mocks.getPageTranslationContext}));
 vi.mock('@/entrypoints/utils/configValidation', () => ({getMissingCredentialMessage: () => null}));
 
-import {cancelAllTranslations, translateText} from '@/entrypoints/utils/translateApi';
+import {cancelAllTranslations, translateText, translateVideoText} from '@/entrypoints/utils/translateApi';
 import {clearTranslationQueue} from '@/entrypoints/utils/translateQueue';
+
+const originalDocument = globalThis.document;
 
 function deferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void;
@@ -48,15 +51,24 @@ describe('translation API request lifecycle performance', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     mocks.sendMessage.mockReset();
+    mocks.getPageTranslationContext.mockReset();
     mocks.saveConfig.mockClear();
     mocks.config.count = 0;
     mocks.config.maxConcurrentTranslations = 6;
+    mocks.config.enableAIContext = false;
+    mocks.config.service = 'mock';
+    mocks.config.videoService = 'mock';
+    Object.defineProperty(globalThis, 'document', {
+      value: {title: 'Fixture video title'},
+      configurable: true,
+    });
   });
 
   afterEach(async () => {
     clearTranslationQueue();
     await vi.runAllTimersAsync();
     vi.useRealTimers();
+    Object.defineProperty(globalThis, 'document', {value: originalDocument, configurable: true});
   });
 
   it('clears successful request timeouts and coalesces count persistence', async () => {
@@ -160,5 +172,24 @@ describe('translation API request lifecycle performance', () => {
     firstTransport.reject(new Error('late transport rejection'));
     await Promise.resolve();
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('uses the video AI service when resolving and sending page context', async () => {
+    mocks.config.enableAIContext = true;
+    mocks.config.videoService = 'mock-ai';
+    const pageContext = 'Page title: Fixture video title\nReadable page context for subtitle terminology.';
+    mocks.getPageTranslationContext.mockResolvedValue(pageContext);
+    mocks.sendMessage.mockResolvedValue('字幕译文');
+
+    await expect(translateVideoText('A subtitle source')).resolves.toBe('字幕译文');
+
+    expect(mocks.getPageTranslationContext).toHaveBeenCalledTimes(1);
+    expect(mocks.sendMessage).toHaveBeenCalledWith({
+      context: 'YouTube 视频字幕：Fixture video title',
+      pageContext,
+      origin: 'A subtitle source',
+      useCache: true,
+      serviceOverride: 'mock-ai',
+    });
   });
 });
