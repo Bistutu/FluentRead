@@ -195,7 +195,8 @@ import { createSelectionTtsContentController } from '@/src/features/selection-tr
 import { setSelectionContextMenuHandler } from '@/src/features/selection-translation/content/contextMenuBridge';
 import {normalizeSelectionPageZoom, SELECTION_PAGE_ZOOM_CHANGED, SELECTION_PAGE_ZOOM_REQUEST} from '@/src/features/selection-translation/pageZoom';
 import { VOCABULARY_BOOK_CHANGED_MESSAGE, VOCABULARY_BOOK_MESSAGE, type VocabularyBookResponse } from '@/src/features/vocabulary/protocol';
-import {ReadingPanel, captureReadingSelection, createReadingEvidenceAnchor, type ReadingEvidenceAnchor, type ReadingSelection} from '@/src/features/reading-assistant/public';
+import {ReadingPanel} from '@/src/features/reading-assistant/ui/panel/public';
+import {captureReadingSelection, createReadingEvidenceAnchor, type ReadingEvidenceAnchor, type ReadingSelection} from '@/src/features/reading-assistant/public';
 import {HARNESS_ACTIONS, getHarnessModelCacheKey, isReadingActionSupported, isReadingService, normalizeHarnessPreferences, type HarnessActionId} from '@/src/core/config/harness';
 import {services} from '@/src/core/config/catalog';
 import {useUiI18n} from '@/src/ui/i18n';

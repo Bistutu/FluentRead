@@ -37,6 +37,8 @@ vi.mock('@/src/platform/http/runtime', async original => ({...await original<typ
 vi.mock('@/src/features/share-card/public', () => ({isShareCardMounted: () => false, openShareCard: vi.fn()}));
 vi.mock('@/src/features/reading-assistant/public', () => ({
     captureReadingSelection: (_range: Range, text: string) => ({text, context: '', fingerprint: text}),
+}));
+vi.mock('@/src/features/reading-assistant/ui/panel/public', () => ({
     ReadingPanel: {props: ['sourceLanguage', 'targetLanguage'], render(this: any) {
         return h('div', {'data-reading-source': this.sourceLanguage, 'data-reading-target': this.targetLanguage});
     }},

@@ -102,7 +102,7 @@ async function mountBook(honorAbort = true) {
         '@/src/ui/components/UiIcon.vue': {default: Slot}, '@/src/ui/components/FeatureEnableCard.vue': {default: Slot},
         '@/src/ui/components/UiSelect.vue': {default: Slot}, '@/src/ui/interfaceAppearance': {applyInterfaceTheme: vi.fn()},
         './VocabularyStudy.vue': {default: Inactive}, './SavedExplanation.vue': {default: Inactive},
-        '@/src/features/reading-assistant/public': {ReadingAnswer: Inactive}, '@/src/core/i18n': i18n,
+        '@/src/features/reading-assistant/ui/answer/public': {ReadingAnswer: Inactive}, '@/src/core/i18n': i18n,
         '@/src/platform/browser/capabilities': {browserCapabilities: {browser: 'chrome'}},
         '@/src/features/selection-translation/speech/public': speech,
         '@/src/services/config/store': {config, configReady: Promise.resolve(), requestConfigPatch: vi.fn(), subscribeConfig: () => () => {}},

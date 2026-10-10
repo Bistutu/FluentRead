@@ -1347,6 +1347,30 @@ describe('options UI composition architecture', () => {
     expect(serviceConfiguration).toContain("chromeDownloadFraction.value = status.phase === 'downloading' ? status.loaded : undefined")
   })
 
+  it('keeps writing preferences and reading answers separate from runtime panels', () => {
+    const writingSettings = source('src/features/settings/ui/WritingSettings.vue')
+    expect(writingSettings).toContain("@/src/features/writing-assistant/ui/public")
+    expect(writingSettings).not.toContain("@/src/features/writing-assistant/public")
+    expect(sourceBody('src/features/writing-assistant/ui/public.ts').trim()).toBe("export {default as WritingChoices} from './WritingChoices.vue';")
+
+    const readingPublic = sourceBody('src/features/reading-assistant/public.ts')
+    expect(readingPublic).not.toContain('.vue')
+    expect(readingPublic).toContain("from './client'")
+    expect(source('src/features/settings/ui/LearningMemoryManager.vue')).toContain("@/src/features/reading-assistant/public")
+    expect(sourceBody('src/features/reading-assistant/answer/public.ts')).toContain("from '../answerFormat'")
+    expect(sourceBody('src/features/reading-assistant/answer/public.ts')).not.toMatch(/\.vue|client/)
+    expect(source('src/features/writing-assistant/markdown.ts')).toContain("@/src/features/reading-assistant/answer/public")
+    expect(sourceBody('src/features/reading-assistant/ui/answer/public.ts').trim()).toBe("export {default as ReadingAnswer} from '../ReadingAnswer.vue';")
+    expect(sourceBody('src/features/reading-assistant/ui/panel/public.ts').trim()).toBe("export {default as ReadingPanel} from '../ReadingPanel.vue';")
+    for (const file of ['src/features/settings/ui/HarnessSettings.vue', 'src/features/settings/ui/SelectionSettings.vue',
+      'src/features/vocabulary/ui/VocabularyBook.vue', 'src/features/vocabulary/ui/ReencounterPanel.vue',
+      'src/features/vocabulary/ui/VocabularyStudy.vue', 'src/features/writing-assistant/ui/WritingPanel.vue']) {
+      expect(source(file), file).toContain("@/src/features/reading-assistant/ui/answer/public")
+    }
+    expect(source('src/features/selection-translation/ui/SelectionTranslator.vue')).toContain("@/src/features/reading-assistant/ui/panel/public")
+    expect(sourceBody('src/features/reading-assistant/ui/public.ts').trim()).toBe("export {default as HarnessReadingHistory} from './HarnessReadingHistory.vue';")
+  })
+
   it('keeps feature pages on the shared label-left rows instead of bespoke grids', () => {
     const manga = source('src/features/image-translation/ui/MangaSettings.vue')
     const writing = source('src/features/settings/ui/WritingSettings.vue')

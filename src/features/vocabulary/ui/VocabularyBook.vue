@@ -160,7 +160,7 @@ import VocabularyStudy from './VocabularyStudy.vue';
 import CollectionEntry from './CollectionEntry.vue';
 import VocabularySource from './VocabularySource.vue';
 import {vocabularySourceContext, vocabularySourceLink} from '../source';
-import {ReadingAnswer} from '@/src/features/reading-assistant/public';
+import {ReadingAnswer} from '@/src/features/reading-assistant/ui/answer/public';
 import {ElMessageBox} from 'element-plus';
 import browser from 'webextension-polyfill';
 import {normalizeUiLanguage, translate, translateLegacyText, type TranslationParams} from '@/src/core/i18n';

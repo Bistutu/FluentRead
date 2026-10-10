@@ -52,7 +52,8 @@
 import {useUiI18n} from "@/src/ui/i18n";
 const {t} = useUiI18n();
 import {computed, onBeforeUnmount, ref, watch} from 'vue';
-import {ReadingAnswer, streamReading} from '@/src/features/reading-assistant/public';
+import {ReadingAnswer} from '@/src/features/reading-assistant/ui/answer/public';
+import {streamReading} from '@/src/features/reading-assistant/public';
 import {config, subscribeConfig} from '@/src/services/config/store';
 import browser from 'webextension-polyfill';
 import SavedExplanation from './SavedExplanation.vue';

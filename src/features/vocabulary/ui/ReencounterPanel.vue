@@ -36,7 +36,8 @@ import {config, subscribeConfig} from '@/src/services/config/store';
 import {getInterfaceSkinOption} from '@/src/core/config/interfaceAppearance';
 import {useUiI18n} from '@/src/ui/i18n';
 import UiIcon from '@/src/ui/components/UiIcon.vue';
-import {ReadingAnswer, streamReading} from '@/src/features/reading-assistant/public';
+import {ReadingAnswer} from '@/src/features/reading-assistant/ui/answer/public';
+import {streamReading} from '@/src/features/reading-assistant/public';
 import type {ReencounterState} from '../content/reencounterState';
 import type {ReencounterOccurrence} from '../content/readingText';
 

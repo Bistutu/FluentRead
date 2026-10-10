@@ -47,7 +47,7 @@ async function mountStudy(overrides: Partial<VocabularyEntry> = {}) {
     resolveId(id) {
       if (id === 'webextension-polyfill') return '\0study-browser';
       if (/(?:@\/src|\/src)\/services\/config\/store(?:\.ts)?$/u.test(id)) return '\0study-config';
-      if (/(?:@\/src|\/src)\/features\/reading-assistant\/public(?:\.ts)?$/u.test(id)) return '\0study-reading';
+      if (/(?:@\/src|\/src)\/features\/reading-assistant\/(?:ui\/answer\/)?public(?:\.ts)?$/u.test(id)) return '\0study-reading';
       if (/(?:@\/src|\/src)\/ui\/i18n(?:\.ts)?$/u.test(id)) return '\0study-i18n';
       return null;
     },
