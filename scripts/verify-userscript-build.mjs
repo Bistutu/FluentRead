@@ -23,9 +23,14 @@ const artifactBytes = Buffer.byteLength(source);
 // 失败摘要、受限局部重试及对应文案增加 7,324 字节（0.3722%）：
 // 同依赖独立基线 ce36085f7 为 1,967,852，候选为 1,975,176；预算增加 8 KB。
 // 实测与重现步骤见 docs/reports/reading-reliability-experience-20261010/。
-// 文档字面量/行内标记校验及当前文档批量、导出提示整合后实测 1,979,813 字节；
-// 相对上述 main 产物增加 4,637 字节，仅把预算再增加 5 KB。
-const MAX_USERSCRIPT_BYTES = 1_981_000;
+// Google 合批、共享请求节奏与 429 退避增加 2,536 字节（0.1284%）：
+// 同依赖独立基线 f3f6016e8 为 1,975,252，候选为 1,977,788；预算增加 3 KB。
+// 实测与重现步骤见 docs/reports/google-batching-backoff-20261010/。
+// 原生数组完整校验、同预算逐段恢复、实体拒收与 AI 会话隔离另增加 6 KB 预算；
+// 同依赖独立基线 36952b0fe 与增量证据见 docs/reports/native-batch-translation-20261010/。
+// 文档字面量/行内标记及当前文档批量、导出提示相对旧 main 增加 4,637 字节；
+// 整合上述原生批量后继续仅追加 5 KB，实际产物仍由此守门校验。
+const MAX_USERSCRIPT_BYTES = 1_990_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);
