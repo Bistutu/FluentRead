@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/services/binary.ts
  * 文件职责：处理 PDF、EPUB 与 DOCX 二进制文档的受限解析和导出，把压缩包或页面文本转换为统一 ParsedDocument，并生成可下载的双语产物。
- * 主要内容：相同译文回退原文；Word 段落记下表格单元格供阅读视图排版；按实际字节限制导入、按需加载二进制依赖，包含归档安全上限、可取消 PDF 提取与译文回填；PDF 默认逐页原版左右对照，保留旋转裁剪、直接嵌入 JPEG 并保存溢出译文批注，显式重排端口才生成续页；ePub/DOCX 导出让出主线程并使用可取消归档流，ePub 保持首项 mimetype 无压缩及 XHTML 章节格式；未改资源保留原压缩方式，文本导出直接使用 core 的回退规则避免重复规范化。
+ * 主要内容：相同译文回退原文；Word 段落记下表格单元格供阅读视图排版；按实际字节限制导入、按需加载二进制依赖，包含归档安全上限、可取消 PDF 提取与译文回填；PDF 零宽文字项使用受限同行位置估算，不把组合标记当作额外字形；默认逐页原版左右对照，保留旋转裁剪、直接嵌入 JPEG 并保存溢出译文批注，显式重排端口才生成续页；ePub/DOCX 导出让出主线程并使用可取消归档流，ePub 保持首项 mimetype 无压缩及 XHTML 章节格式；未改资源保留原压缩方式，文本导出直接使用 core 的回退规则避免重复规范化。
  * 模块边界：此服务可以依赖 JSZip、pdf-lib 和二进制 I/O，但不负责调用翻译服务或渲染设置页；文本格式规则归 core/document，浏览器 Canvas 光栅实现由 ui/pdfPreview 通过接口注入。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -326,7 +326,7 @@ export function pdfTextAtoms(
     viewport: {width: number; height: number; transform: number[]},
     includeLineDetails = false,
 ): PdfTextAtom[] {
-    return items.flatMap((item) => {
+    return items.flatMap((item, index) => {
         const text = item.str.replace(/\u0000/gu, '').replace(/[\t\u00a0 ]+/gu, ' ').trim();
         if (!text) return [];
         // 六元仿射矩阵相乘；坐标处理保持同步，无需为这一纯运算加载整个 PDF.js。
@@ -349,11 +349,30 @@ export function pdfTextAtoms(
                 : 0.8;
         const x = transform[4];
         const y = transform[5] - fontHeight * ascent;
+        let width = Math.max(fontHeight * 0.2, Math.abs(item.width));
+        if (!Number.isFinite(item.width) || item.width === 0) {
+            // PDF.js 的多码点字形（如含 variation selector 的数学字母）可能丢失 advance。
+            // 只在此时估算：组合/格式字符不占额外 em；孤立组合符沿用原来的小矩形。
+            width = fontHeight * Math.max(0.2, Array.from(text.replace(/[\p{M}\p{Cf}\s]/gu, '')).length);
+            // 前后各四项的物理右邻起点给出更紧的范围，兼容 RTL 提取顺序；不跨行或借用远栏。
+            for (let neighbour = Math.max(0, index - 4); neighbour <= Math.min(items.length - 1, index + 4); neighbour += 1) {
+                if (neighbour === index) continue;
+                const next = items[neighbour];
+                if (!next.str.replace(/[\p{M}\p{Cf}\u0000\s]/gu, '')
+                    && !(/^\s+$/u.test(next.str) && Number.isFinite(next.width) && next.width !== 0)) continue;
+                const matrix = next.transform as number[];
+                if (matrix.length < 6 || !matrix.slice(0, 6).every(Number.isFinite)) continue;
+                if (Math.abs(Math.atan2(a[1] * matrix[0] + a[3] * matrix[1], a[0] * matrix[0] + a[2] * matrix[1])) > 0.12) continue;
+                const gap = a[0] * matrix[4] + a[2] * matrix[5] + a[4] - x;
+                const baseline = a[1] * matrix[4] + a[3] * matrix[5] + a[5];
+                if (gap > fontHeight * 0.2 && gap < width && Math.abs(baseline - transform[5]) <= fontHeight * 0.6) width = gap;
+            }
+        }
         return [{
             text,
             x,
             y,
-            width: Math.max(fontHeight * 0.2, Math.abs(item.width || 0)),
+            width,
             height: fontHeight,
             fontFamily: style.fontFamily || 'sans-serif',
             ...(includeLineDetails ? {baseline: transform[5], fontSize: fontHeight} : {}),

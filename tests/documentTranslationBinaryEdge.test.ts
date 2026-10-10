@@ -152,6 +152,104 @@ describe('binary document low-level contracts', () => {
         expect(atoms.map(atom => atom.y)).toEqual([13.5, 13, 12]);
     });
 
+    it('covers the actual zero-width variation-selector math glyph without increasing erase padding', () => {
+        // Public PDF source page 24: PDF.js reports width=0 for V+VS, while its
+        // showText outline extends 7.26pt right; the following subscript begins 6.30307pt right.
+        const items = [
+            pdfItem({str: 'An equivalence on', width: 101.63610058799995, transform: [11, 0, 0, 11, 407.221760196, 634.4063]}),
+            pdfItem({str: ' 𝒱︀', width: 0, transform: [11, 0, 0, 11, 512.8165, 634.4063]}),
+            pdfItem({str: ' ', width: 10.261709215999929, height: 0, transform: [11, 0, 0, 11, 508.857860784, 634.4063]}),
+            pdfItem({str: '𝑘', width: 4.6739, height: 7.7, transform: [7.7, 0, 0, 7.7, 519.11957, 631.68933]}),
+        ];
+        const before = items.map(item => ({...item, transform: [...item.transform]}));
+        const atoms = pdfTextAtoms(items, {body: {ascent: .806}},
+            {width: 595.2756, height: 841.8898, transform: [1, 0, 0, -1, 0, 841.8898]}, true);
+        expect(atoms.map(atom => atom.text)).toEqual(['An equivalence on', '𝒱︀', '𝑘']);
+        expect(items).toEqual(before);
+        const letter = atoms[1], subscript = atoms[2], padding = 1.2;
+        expect(letter.width).toBeCloseTo(6.30307, 8);
+        // These actual outline points remained visible outside the old 2.2pt rectangle.
+        for (const ink of [{x: 520.0765, y: 201.2575}, {x: 518.9325, y: 199.9595}]) {
+            expect(ink.x).toBeGreaterThanOrEqual(letter.x - padding);
+            expect(ink.x).toBeLessThanOrEqual(letter.x + letter.width + padding);
+            expect(ink.y).toBeGreaterThanOrEqual(letter.y - padding);
+            expect(ink.y).toBeLessThanOrEqual(letter.y + letter.height + padding);
+        }
+        expect(letter.x + letter.width + padding).toBeLessThan(520.4);
+        expect(subscript).toMatchObject({x: 519.11957, y: 203.99427, width: 4.6739, height: 7.7, baseline: 210.20047});
+    });
+
+    it.each([0, -0, NaN, Infinity, -Infinity])('estimates only absent/nonfinite PDF advances: %s', width => {
+        const atoms = pdfTextAtoms([pdfItem({str: '𝒱︀', width}),
+            pdfItem({str: 'k', width: 4, transform: [1, 0, 0, 7, 16.3, 22.7]})], {},
+            {width: 500, height: 500, transform: [1, 0, 0, 1, 0, 0]});
+        expect(atoms[0]).toMatchObject({text: '𝒱︀', x: 10, y: 12, height: 10});
+        expect(atoms[0].width).toBeCloseTo(6.3, 8);
+    });
+
+    it.each([.5, -1, 30, -30])('preserves the previous finite nonzero advance semantics: %s', width => {
+        const atoms = pdfTextAtoms([pdfItem({width}), pdfItem({transform: [1, 0, 0, 10, 15, 20]})], {},
+            {width: 100, height: 100, transform: [1, 0, 0, 1, 0, 0]});
+        expect(atoms[0].width).toBe(Math.max(2, Math.abs(width)));
+    });
+
+    it('uses physical positions for RTL order and keeps raised/rotated neighbours in the same coordinate frame', () => {
+        const viewport = {width: 500, height: 500, transform: [1, 0, 0, 1, 0, 0]};
+        const rtl = pdfTextAtoms([pdfItem({str: 'right', dir: 'rtl', transform: [1, 0, 0, 10, 116.3, 20]}),
+            pdfItem({str: 'ש', dir: 'rtl', width: 0, transform: [1, 0, 0, 10, 110, 20]})], {}, viewport);
+        expect(rtl[1]).toMatchObject({text: 'ש', x: 110});
+        expect(rtl[1].width).toBeCloseTo(6.3, 8);
+        const raised = pdfTextAtoms([pdfItem({str: '𝒱︀', width: 0}),
+            pdfItem({str: 'i', height: 7, transform: [1, 0, 0, 7, 16, 14.5]})], {}, viewport);
+        expect(raised[0].width).toBe(6);
+        const rotated = pdfTextAtoms([pdfItem({str: '𝒱︀', width: 0, transform: [0, -1, 10, 0, 20, 30]}),
+            pdfItem({str: 'k', width: 4, transform: [0, -1, 7, 0, 22.7, 23.7]})], {},
+            {width: 500, height: 500, transform: [0, 1, -1, 0, 200, 0]}, true);
+        expect(rotated[0]).toMatchObject({x: 170, y: 12, height: 10, baseline: 20});
+        expect(rotated[0].width).toBeCloseTo(6.3, 8);
+        expect(rotated[1]).toMatchObject({x: 176.3, height: 7, baseline: 22.7});
+    });
+
+    it('does not borrow another line/column, duplicate origin or invalid/vertical/invisible neighbour', () => {
+        const origin = pdfItem({str: '𝒱︀', width: 0});
+        const rejected = [
+            pdfItem({transform: [1, 0, 0, 10, 400, 20]}),
+            pdfItem({transform: [1, 0, 0, 10, 16, 30]}),
+            pdfItem({transform: [1, 0, 0, 10, 10, 20]}),
+            pdfItem({transform: [1, 0, 0, 10, 10.0000000001, 20]}),
+            pdfItem({transform: [1, 0, 0, 10, 11.9, 20]}),
+            pdfItem({transform: [1, 0, 0, 10, 12, 20]}),
+            pdfItem({transform: [0, 1, -10, 0, 16, 20]}),
+            pdfItem({transform: [1, 0, 0, 10]}),
+            pdfItem({transform: [1, 0, 0, 10, NaN, 20]}),
+            pdfItem({transform: [1, 0, 0, 10, 16, '20']}),
+            ...['', '\u0301', '\ufe00', '\u200d', '\u0000', ' \u0301 '].map(str => pdfItem({str, transform: [1, 0, 0, 10, 16, 20]})),
+        ];
+        for (const neighbour of rejected) {
+            expect(pdfTextAtoms([origin, neighbour], {}, {width: 500, height: 500, transform: [1, 0, 0, 1, 0, 0]})[0])
+                .toMatchObject({text: '𝒱︀', width: 10});
+        }
+    });
+
+    it('bounds the neighbour window and allows only real space items to locate the next position', () => {
+        const viewport = {width: 500, height: 500, transform: [1, 0, 0, 1, 0, 0]};
+        const origin = pdfItem({str: '𝒱︀', width: 0});
+        expect(pdfTextAtoms([origin, pdfItem({str: ' ', width: 2, transform: [1, 0, 0, 10, 17, 20]})], {}, viewport)[0].width).toBe(7);
+        for (const width of [0, NaN, Infinity]) {
+            expect(pdfTextAtoms([origin, pdfItem({str: ' ', width, transform: [1, 0, 0, 10, 17, 20]})], {}, viewport)[0].width).toBe(10);
+        }
+        const duplicates = Array.from({length: 4}, () => pdfItem({transform: [1, 0, 0, 10, 10, 20]}));
+        expect(pdfTextAtoms([origin, ...duplicates, pdfItem({transform: [1, 0, 0, 10, 16, 20]})], {}, viewport)[0].width).toBe(10);
+    });
+
+    it('counts base codepoints without normalizing source bytes or enlarging isolated marks', () => {
+        const source = ['𝒱︀', 'A\u0301', '\u0301', '\ufe00', '\u200d', '中文'];
+        const atoms = pdfTextAtoms(source.map(str => pdfItem({str, width: 0})), {},
+            {width: 500, height: 500, transform: [1, 0, 0, 1, 0, 0]});
+        expect(atoms.map(atom => atom.text)).toEqual(source);
+        expect(atoms.map(atom => atom.width)).toEqual([10, 10, 2, 2, 2, 20]);
+    });
+
     it('将同一行原子按标点、连字符和栏间距组合', () => {
         expect(pdfTextLines([], 300)).toEqual([]);
         const lines = pdfTextLines([

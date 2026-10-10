@@ -108,8 +108,10 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
                 const blocks = (sources ?? []).map((source, position) => {
                     const id = segments.length;
                     segments.push({id, source});
-                    return {segmentIndex: id, x: 5, y: 10 + position * 35, width: 90, height: 12, fontSize: 11,
-                        lineHeight: 12, lineCount: 1, fontFamily: 'sans-serif', fontWeight: 400 as const, textAlign: 'left' as const};
+                    const run = {text: source, x: 5, y: 10 + position * 35, width: 90, height: 12};
+                    return {segmentIndex: id, x: run.x, y: run.y, width: run.width, height: run.height, fontSize: 11,
+                        lineHeight: 12, lineCount: 1, fontFamily: 'sans-serif', fontWeight: 400 as const, textAlign: 'left' as const,
+                        lines: [{...run, runs: [{...run}]}]};
                 });
                 return {pageNumber: index + 1, width: 100, height: 100, blocks, segmentIndexes: blocks.map(block => block.segmentIndex),
                     ...(sources === null ? {scanned: true} : {layoutBoundaries: [{x: 5, y: 30, width: 90, height: 1}]}),
@@ -117,12 +119,19 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
             });
             return {...base, segments, binary: {kind: 'pdf' as const, bytes, pages}};
         };
-        const fresh = makeDocument(['New native title', 'Stable native']);
+        const fresh = makeDocument(format === 'mixed' ? ['Stable native', 'New native title'] : ['New native title', 'Stable native']);
         const oldNative = format === 'mixed-removed-duplicate' ? ['Old native title', 'Stable native', 'Repeated OCR'] : ['Old native title', 'Stable native'];
         const old = await ports.actualRecognize(makeDocument(oldNative), async ({pageNumber}: {pageNumber: number}) => [
             {text: 'Repeated OCR', x: 5, y: 10, width: 90, height: 12},
             {text: `Page ${pageNumber} paragraph`, x: 5, y: 55, width: 90, height: 12},
         ], {startPage: 1});
+        if (format === 'mixed') {
+            // Version 11 native snapshots may contain underestimated glyph rectangles. They must be reparsed,
+            // while recognized scanned pages and exact-source revisions remain recoverable.
+            for (const block of old.binary.pages[0].blocks) {
+                block.lines = block.lines?.map((line: any) => ({...line, width: 0, runs: line.runs?.map((run: any) => ({...run, width: 0}))}));
+            }
+        }
         let repeat = 0;
         const edits = old.segments.map(({source, id}: {source: string; id: number}) => format === 'mixed-removed-duplicate' && id === 2 ? '文字页重复原文校订不能占用扫描校订'
             : source === 'Repeated OCR' ? `第 ${++repeat} 次独立校订`
@@ -131,7 +140,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         const id = await documentHistoryId(bytes);
         const factory = new IDBFactory();
         const history = createDocumentHistory(factory);
-        const oldVersion = format === 'scanned' ? 10 : format === 'mixed-removed-duplicate' ? 7 : 6;
+        const oldVersion = format === 'scanned' ? 10 : format === 'mixed-removed-duplicate' ? 7 : 11;
         await history.save({id, name: 'history.pdf', format: 'pdf', size: bytes.length, total: old.segments.length,
             completed: edits.filter((value: string) => value.trim()).length, updatedAt: 1, bytes, mimeType: 'application/pdf',
             translations: edits, fingerprint: 'old-settings', parsed: old, parsedVersion: oldVersion});
@@ -147,24 +156,32 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect((await history.load(id))?.translations).toEqual(edits);
         expect((await history.load(id))?.parsedVersion).toBe(oldVersion);
         parsing.resolve(fresh); await opening; await flush();
-        const expectedSources = old.segments.filter(({id}: {id: number}) => format !== 'mixed-removed-duplicate' || id !== 2)
-            .map(({source}: {source: string}) => source === 'Old native title' ? 'New native title' : source);
-        const expectedTranslations = edits.map((value: string, index: number) => old.segments[index].source === 'Old native title' ? '' : value)
-            .filter((_value: string, index: number) => format !== 'mixed-removed-duplicate' || index !== 2);
+        const oldScannedOffset = format === 'scanned' ? 0 : oldNative.length;
+        const expectedSources = [...fresh.segments.map((segment: any) => segment.source),
+            ...old.segments.slice(oldScannedOffset).map((segment: any) => segment.source)];
+        const expectedTranslations = [...fresh.segments.map((segment: any) => segment.source === 'Stable native' ? '未变文字页校订' : ''),
+            ...edits.slice(oldScannedOffset)];
         expect(state.parsedDocument.segments.map((segment: any) => segment.source)).toEqual(expectedSources);
         expect(state.translatedSegments).toEqual(expectedTranslations);
         expect(state.needsOcr).toBe(false);
         expect(state.parsedDocument.binary.bytes).toBe(bytes);
         expect(state.parsedDocument.binary.pages.map((page: any) => page.pageNumber)).toEqual(fresh.binary.pages.map(page => page.pageNumber));
         expect(state.parsedDocument.binary.pages.at(-1)).toMatchObject({scanned: false, sourceRotation: 90});
-        if (format !== 'scanned') expect(state.parsedDocument.binary.pages[0].layoutBoundaries).toEqual(fresh.binary.pages[0].layoutBoundaries);
+        if (format !== 'scanned') {
+            expect(state.parsedDocument.binary.pages[0].layoutBoundaries).toEqual(fresh.binary.pages[0].layoutBoundaries);
+            expect(state.parsedDocument.binary.pages[0].blocks.map((block: any) => block.lines)).toEqual(fresh.binary.pages[0].blocks.map(block => block.lines));
+        }
+        if (format === 'mixed') {
+            expect(state.parsedDocument.binary.pages[0].blocks[0].lines[0].runs[0].width).toBe(90);
+            expect(old.binary.pages[0].blocks[0].lines[0].runs[0].width).toBe(0);
+        }
         for (const page of state.parsedDocument.binary.pages) {
             expect(page.blocks.filter((block: any) => block.segmentIndex >= 0).map((block: any) => block.segmentIndex)).toEqual(page.segmentIndexes);
             expect(page.segmentIndexes.every((index: number) => state.parsedDocument.segments[index].id === index)).toBe(true);
         }
         await vi.waitFor(async () => {
             const saved = await history.load(id);
-            expect(saved?.parsedVersion).toBe(11);
+            expect(saved?.parsedVersion).toBe(12);
             expect(saved?.translations).toEqual(expectedTranslations);
             expect((saved?.parsed as any).segments.map((segment: any) => segment.source)).toEqual(expectedSources);
             expect(saved?.parsed).not.toHaveProperty('segmentOrigins');
@@ -173,6 +190,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         await state.openHistory({id}); await flush();
         expect(state.translatedSegments).toEqual(expectedTranslations);
         expect(state.needsOcr).toBe(false);
+        if (format !== 'scanned') expect(state.parsedDocument.binary.pages[0].blocks.map((block: any) => block.lines)).toEqual(fresh.binary.pages[0].blocks.map(block => block.lines));
         expect(parse).toHaveBeenCalledOnce();
         expect(ports.recognize).not.toHaveBeenCalled();
         expect(ports.createRecognizer).not.toHaveBeenCalled();
