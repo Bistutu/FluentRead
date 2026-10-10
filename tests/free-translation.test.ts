@@ -79,6 +79,38 @@ beforeEach(async () => {
 afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('免费翻译服务', () => {
+    it.each(['', ' \u200b\u2060\ufe0f '])('文档候选保留编号却把文字移出%s空节点时换线，术语豁免不隐藏空节点', async empty => {
+        mockConfig.freeTranslationOrder = ['youdaoFree', 'google'];
+        const token = '__FRTERM_123456789abc_0__', source = `The reader should choose <g1>${token}</g1> before importing the document.`;
+        const invalid = `读者应选择 ${token}<g1>${empty}</g1> 再导入文档。`, valid = `读者应选择 <g1>${token}</g1> 再导入文档。`;
+        chineseMock.mockResolvedValue(invalid); googleMock.mockResolvedValue(valid);
+        const current = createTranslationProviderConfigSnapshot({...mockConfig, glossaryProtectedTokens: [token],
+            glossaryMatchContext: {context: 'document', sourceLanguage: 'en', targetLanguage: 'zh-hans'}} as unknown as TranslationConfigSource);
+        await expect(settle(freeTranslation(attachTranslationProviderConfig({origin: source}, current)))).resolves.toBe(valid);
+        expect(chineseMock).toHaveBeenCalledOnce(); expect(googleMock).toHaveBeenCalledOnce();
+        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'youdaoFree')?.status).toBe('ready');
+        // 无文档 context 的既有纯文本/网页调用不引入格式占用约束。
+        await expect(settle(translateFreeText(source))).resolves.toBe(invalid);
+        const page = Object.freeze({...current, freeTranslationOrder: Object.freeze(['youdaoFree'] as const),
+            glossaryMatchContext: {...current.glossaryMatchContext!, context: 'page' as const}});
+        await expect(settle(freeTranslation(attachTranslationProviderConfig({origin: source}, page)))).resolves.toBe(invalid);
+        expect(chineseMock).toHaveBeenCalledTimes(3); expect(googleMock).toHaveBeenCalledOnce();
+    });
+
+    it('一个原生批次槽的空强调节点拒绝整组，下一线路保持原槽顺序和文字', async () => {
+        mockConfig.freeTranslationOrder = ['microsoft', 'google'];
+        const origins = Array.from({length: 9}, (_, index) => `The reader should choose <g1>Search</g1> before importing document ${index}.`);
+        const target = (text: string) => `读者应选择 <g1>搜索</g1> 再导入文档 ${text.match(/document (\d+)/u)![1]}。`;
+        microsoftMock.mockImplementation(async (texts: string[]) => texts.map((text, index) => index === 2
+            ? target(text).replace('<g1>搜索</g1>', '搜索<g1></g1>') : target(text)));
+        googleOwnerMock.mockImplementation(async (texts: string[]) => texts.map(target));
+        const request = attachTranslationProviderConfig({origin: origins}, createTranslationProviderConfigSnapshot({...mockConfig,
+            glossaryMatchContext: {context: 'document', sourceLanguage: 'en', targetLanguage: 'zh-hans'}} as unknown as TranslationConfigSource));
+        await expect(settle(freeTranslation(request))).resolves.toEqual(origins.map(target));
+        expect(microsoftMock).toHaveBeenCalledOnce(); expect(googleOwnerMock).toHaveBeenCalledTimes(2); expect(googleMock).not.toHaveBeenCalled();
+        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
+    });
+
     it('真实文档正文已译但行内菜单原样英文时在胜出前换线，不冷却该服务或增加小请求', async () => {
         mockConfig.freeTranslationOrder = ['microsoft', 'google'];
         const source = 'For an online PDF, open the extension menu and choose <g1>Open PDF reader</g1> or <g2>Document translation</g2>.';

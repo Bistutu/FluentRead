@@ -510,7 +510,7 @@ describe('translation broker', () => {
         await expect(translateWithCache(request('document'))).resolves.toEqual(updated);
         expect(mocks.service).toHaveBeenCalledTimes(2);
         const newIdentities = translationCacheIdentities().slice(oldIdentities.length);
-        expect(newIdentities.every(identity => JSON.stringify(identity.documentTranslationPolicy) === '{"version":1}')).toBe(true);
+        expect(newIdentities.every(identity => JSON.stringify(identity.documentTranslationPolicy) === '{"version":2}')).toBe(true);
         await expect(translateWithCache(request('document'))).resolves.toEqual(updated);
         await expect(translateWithCache(request('page'))).resolves.toEqual(previous);
         expect(mocks.service).toHaveBeenCalledTimes(2);

@@ -1,17 +1,18 @@
 /**
  * @file tests/documentLiteralProtection.test.ts
  * 文件职责：验证真实文档中行内语法、根号标识、URL、邮箱、代码式专名及 GNMT+RL 的自动原样保护边界。
- * 主要内容：检验带引号的 HTML、根号、希腊变量、带空白组合模型名和专名保护；原文回显仅对具有完整原句外语证据的普通行内多词正文拒收，覆盖目标语言覆盖和用户英文译法；内部 g 原样送翻并逐槽验证编号、配对、嵌套、实体/全角与自闭合，强调文字可译、用户短词不改语法；覆盖缓存身份及文档/网页边界。
+ * 主要内容：回放真实 guide 空行内节点失败，验证单段/数组/slot、嵌套和重复编号的可见正文数量；检验 HTML、根号、希腊变量和专名保护；原文回显覆盖实际目标语言及用户英文译法；内部 g 原样送翻并校验结构，强调文字可译；覆盖无效结果不缓存、文档 v2 与网页缓存隔离。
  * 模块边界：纯规则及保护链测试，实际免费服务结果由隔离浏览器测试另行验证。
  */
 import {describe, expect, it, vi} from 'vitest';
-import {documentInlineMarkerRanges, findDocumentLiteralTerms, normalizeDocumentInlineMarkers, serializeTranslationSlots, validateDocumentInlineMarkers} from '@/src/core/translation/public';
+import {DocumentInlineMarkerError, documentInlineMarkerRanges, findDocumentLiteralTerms, normalizeDocumentInlineMarkers, serializeTranslationSlots, validateDocumentInlineMarkers} from '@/src/core/translation/public';
 import {validateGlossaryProtectedTokens} from '@/src/core/glossary';
 import {Config} from '@/src/core/config/model';
 import {resolveConfiguredModel, servicesType} from '@/src/core/config/catalog';
 import {createTranslationBroker} from '@/src/services/translation/broker';
 import {prepareGlossaryRequest, getGlossaryProtectionEntries, isGlossaryOnlyResult, validateDocumentTranslationResult} from '@/src/services/translation/glossaryProtection';
 import {createTranslationProviderConfigSnapshot, getTranslationGlossaryTerms, getTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
+import type {TranslationRequestMessage} from '@/src/services/translation/types';
 import {parseDocument, renderDocument} from '@/src/features/document-translation/core/document';
 import {isLikelyUntranslatedInlineResponse, isLikelyUntranslatedResponse} from '@/src/core/translation/resultValidation';
 
@@ -21,6 +22,75 @@ const documentConfig = () => ({...createTranslationProviderConfigSnapshot(new Co
     glossaryMatchContext: {context: 'document' as const, sourceLanguage: 'en', targetLanguage: 'zh-hans'}});
 
 describe('document literal protection', () => {
+    it('rejects the exact live guide paragraph 31 whose translated menu labels were moved outside empty paired nodes', () => {
+        const source = 'PDFs default to the <g1>Original layout</g1>, side by side: each translated paragraph is placed back at the position and size of its source paragraph and appears as it arrives, while waiting paragraphs show the loading style chosen in your interface settings. Formulas, figures and numeric table cells stay as they are; table headers, text cells and captions are translated. Hover a long translation to expand it; hovering also highlights the matching source paragraph (switch it off under <g2>Translation style</g2>). Translation starts from the page you are reading, retries automatically for up to two minutes when a service is briefly unavailable, and reports the reason if it still fails. Switch to <g3>Reflowed text</g3> for complete paragraphs at a fixed size. The toolbar also offers <g4>Search</g4> across source and translation, an <g5>Outline</g5> in the sidebar, and <g6>Focus reading</g6>.';
+        const returned = 'PDF默认为<g1>原始布局</g1>，并排：每个翻译后的段落会被放回其源段落的位置和大小，并在到达时显示，而等待段落会显示在界面设置中选择的加载样式。公式，数字和数字表格单元格保持原样;表格标题，文本单元格和标题会被翻译。悬停长翻译以展开它;悬停还会突出显示匹配的源段落（在翻译样式下关闭它<g2></g2>）。翻译从您正在阅读的页面开始，在服务暂时不可用时自动重试最多两分钟，如果仍然失败，则报告原因。切换到<g3>“回流文本</g3>”以获取固定大小的完整段落。工具栏还提供<g4></g4>跨源和翻译的搜索、侧<g5></g5>边栏中的大纲以及<g6>聚焦阅读</g6>。';
+        const restored = returned.replace('在翻译样式下关闭它<g2></g2>', '在<g2>翻译样式</g2>下关闭它')
+            .replace('<g4></g4>跨源和翻译的搜索', '跨源和翻译的<g4>搜索</g4>').replace('侧<g5></g5>边栏中的大纲', '侧边栏中的<g5>大纲</g5>');
+        const current = documentConfig();
+        const origins = [source, '<g1/>'], targets = [returned, '<g1/>'], valid = [restored, '<g1/>'];
+        for (const [origin, invalid, translated] of [[source, returned, restored], [origins, targets, valid],
+            [serializeTranslationSlots(origins, 'guide_31').payload, serializeTranslationSlots(targets, 'guide_31').payload, serializeTranslationSlots(valid, 'guide_31').payload]] as const) {
+            const message: TranslationRequestMessage = Array.isArray(origin) ? {origin} : {origin};
+            const request = prepareGlossaryRequest(message, current);
+            expect(() => request.restore(invalid)).toThrow(DocumentInlineMarkerError);
+            expect(request.restore(translated)).toEqual(translated);
+        }
+        expect(validateDocumentInlineMarkers(source, returned)).toBe(returned);
+        const page = {...current, glossaryMatchContext: {...current.glossaryMatchContext, context: 'page' as const}};
+        expect(validateDocumentTranslationResult(page, source, returned)).toBe(returned);
+    });
+
+    it('requires visible text before glossary or target-language exemptions, without changing candidate text', () => {
+        const source = 'Choose <g1>Search</g1>.', token = '__FRTERM_123456789abc_0__';
+        const contexts = [{targetLanguage: 'zh-Hans'}, {targetLanguage: 'en'}, {targetLanguage: 'auto'}, {targetLanguage: 'zh-Hans', protectedTokens: [token]}];
+        for (const context of contexts) for (const empty of ['', ' \t\r\n\u00a0', '\0\u0001\u007f', '\u200b\u200c\u200d\u2060\ufeff\ufe0f', '&nbsp;&#160;&#x00A0;&#8203;&#x200D;']) {
+            expect(() => validateDocumentInlineMarkers(source, `搜索<g1>${empty}</g1>。`, context)).toThrow(DocumentInlineMarkerError);
+        }
+        expect(() => validateDocumentInlineMarkers(`<g1>${token}</g1>`, `${token}<g1></g1>`, contexts[3])).toThrow(DocumentInlineMarkerError);
+        for (const target of ['<g1>搜索</g1>', '<g1> \u200b搜索\u200d </g1>', `<g1>${token}</g1>`, '<g1>😀\ufe0f</g1>', '<g1>&#65;</g1>', '<g1>&#x0041;</g1>', '<g1>&#99999999999999999999;</g1>']) {
+            expect(validateDocumentInlineMarkers('<g1>Search</g1>', target, contexts[3])).toBe(target);
+        }
+        for (const empty of ['', ' \u200b', '&nbsp;&#x200b;']) {
+            expect(validateDocumentInlineMarkers(`<g1>${empty}</g1>`, '<g1></g1>', contexts[0])).toBe('<g1></g1>');
+        }
+        expect(validateDocumentInlineMarkers('<g1/>', '<g1> \t</g1>', contexts[0])).toBe('<g1/>');
+        expect(validateDocumentInlineMarkers(source, '搜索<g1></g1>。')).toBe('搜索<g1></g1>。');
+    });
+
+    it('recognizes named whitespace/invisible entities without decoding visible or unknown entity spellings', () => {
+        const context = {targetLanguage: 'zh-Hans'};
+        for (const empty of ['&ensp;&emsp;&emsp13;&emsp14;&numsp;&puncsp;', '&thinsp;&hairsp;&shy;&ZeroWidthSpace;',
+            '&NonBreakingSpace;&Tab;&NewLine;&ThinSpace;&VeryThinSpace;&MediumSpace;&ThickSpace;',
+            '&NegativeVeryThinSpace;&NegativeThinSpace;&NegativeMediumSpace;&NegativeThickSpace;',
+            '&zwnj;&zwj;&lrm;&rlm;&NoBreak;&ApplyFunction;&af;&InvisibleTimes;&it;&InvisibleComma;&ic;']) {
+            expect(() => validateDocumentInlineMarkers('<g1>Search</g1>', `<g1>${empty}</g1>`, context)).toThrow(DocumentInlineMarkerError);
+            expect(validateDocumentInlineMarkers(`<g1>${empty}</g1>`, '<g1></g1>', context)).toBe('<g1></g1>');
+        }
+        // HTML 命名实体区分大小写；未知实体及被转义的实体仍有可见字面正文。
+        for (const text of ['&unknown;', '&THINSP;', '&amp;nbsp;', '&amp;', '&#65;'])
+            expect(validateDocumentInlineMarkers('<g1>Search</g1>', `<g1>${text}</g1>`, context)).toBe(`<g1>${text}</g1>`);
+    });
+
+    it('counts visible paired occurrences by structural identity for nested and repeated ids', () => {
+        const context = {targetLanguage: 'zh-Hans'};
+        for (const [source, valid, invalid] of [
+            ['<g1>outer <g2>bold</g2></g1>', '<g1><g2>粗体</g2></g1>', '<g1>粗体<g2></g2></g1>'],
+            ['<g1><g2>bold</g2></g1>', '<g1><g2>粗体</g2></g1>', '<g1><g2>\u200b</g2></g1>粗体'],
+            ['<g1>first</g1><g1>second</g1>', '<g1>第二</g1><g1>第一</g1>', '<g1>第一和第二</g1><g1></g1>'],
+            ['<g1><g3>first</g3></g1><g2><g3></g3></g2>', '<g2><g3></g3></g2><g1><g3>第一</g3></g1>', '<g1><g3></g3></g1><g2><g3>第一</g3></g2>'],
+            ['<g1><g1>first</g1></g1>', '<g1><g1>第一</g1></g1>', '<g1>第一<g1></g1></g1>'],
+            ['<g1>first<g2/></g1>', '<g1>第一<g2/></g1>', '第一<g1><g2/></g1>'],
+        ]) {
+            expect(validateDocumentInlineMarkers(source, valid, context)).toBe(valid);
+            expect(() => validateDocumentInlineMarkers(source, invalid, context)).toThrow(DocumentInlineMarkerError);
+        }
+        // 空源对仍能重排/获得文字；对子节点没有可见正文的父节点也无需凭空增加文字。
+        expect(validateDocumentInlineMarkers('<g1>first</g1><g1></g1>', '<g1></g1><g1>第一</g1>', context)).toBe('<g1></g1><g1>第一</g1>');
+        expect(validateDocumentInlineMarkers('<g1><g2/></g1>', '<g1><g2/></g1>', context)).toBe('<g1><g2/></g1>');
+        expect(validateDocumentInlineMarkers('<g1></g1>', '<g1>新增</g1>', context)).toBe('<g1>新增</g1>');
+    });
+
     it('rejects the real English menu-label echo only with the document paragraph evidence and actual Chinese target', () => {
         const source = 'For an online PDF, open the extension menu and choose <g1>Open PDF reader</g1> or <g2>Document translation</g2>.';
         const echoed = '对于在线PDF，打开扩展菜单选择 <g1>Open PDF reader</g1> 或 <g2>Document translation</g2>。';
@@ -280,6 +350,39 @@ describe('document literal protection', () => {
         expect(isGlossaryOnlyResult(current, emphasized, emphasized)).toBe(true);
         expect(isGlossaryOnlyResult(current, `<g1>${userSource} extra</g1>`, `<g1>${userSource} extra</g1>`)).toBe(false);
         expect(isGlossaryOnlyResult({...current, glossaryMatchContext: {...current.glossaryMatchContext, context: 'page'}}, emphasized, emphasized)).toBe(false);
+    });
+
+    it.each([false, true])('never caches empty inline candidates or reuses policy-v1 document entries, array=%s', async array => {
+        const config = Object.assign(new Config(), {service: 'microsoft', from: 'en', to: 'zh-Hans', useCache: true});
+        const source = 'The reader should choose <g1>Search</g1> before importing the document.';
+        const invalid = '读者应选择搜索<g1></g1>再导入文档。', valid = '读者应选择<g1>搜索</g1>再导入文档。';
+        const cache = new Map<string, string>(), writes = vi.fn(async (key: string, value: string) => {cache.set(key, value); return true;});
+        const identities: Record<string, unknown>[] = [], oldKeys = new Set<string>();
+        const provider = vi.fn().mockResolvedValueOnce(array ? [invalid] : invalid).mockResolvedValue(array ? [valid] : valid);
+        const broker = createTranslationBroker({ready: Promise.resolve(), getConfig: () => config, providers: {microsoft: provider},
+            cache: {get: async key => cache.get(key) ?? null, set: writes, clear: async () => {cache.clear();}, cleanup: async () => {}},
+            serviceTypes: servicesType, resolveConfiguredModel, getMissingCredentialMessage: () => null,
+            endpointResolver: {resolveOpenAICompatibleEndpoint: () => ({endpoint: 'https://fixture.invalid/v1'}), aiSdkTransportProfile: 'fixture'},
+            promptBuilder: {buildPageSummaryPrompt: text => text, buildPageSummarySystemPrompt: () => ''},
+            getTranslationLanguages: () => ({sourceLanguage: 'en', targetLanguage: 'zh-Hans'}),
+            buildTranslationCacheKey: identity => {
+                identities.push(identity);
+                const oldKey = JSON.stringify({...identity, documentTranslationPolicy: {version: 1}});
+                cache.set(oldKey, array ? JSON.stringify([invalid]) : invalid); oldKeys.add(oldKey);
+                return JSON.stringify(identity);
+            }, logger: {warn: vi.fn()},
+        });
+        const origin = array ? [source] : source;
+        const request: TranslationRequestMessage = Array.isArray(origin)
+            ? {origin, glossaryContext: 'document'} : {origin, glossaryContext: 'document'};
+        await expect(broker.translateWithCache(request)).rejects.toThrow(DocumentInlineMarkerError);
+        expect(writes).not.toHaveBeenCalled(); expect(provider).toHaveBeenCalledOnce();
+        await expect(broker.translateWithCache(request)).resolves.toEqual(array ? [valid] : valid);
+        expect(writes).toHaveBeenCalledOnce(); expect(provider).toHaveBeenCalledTimes(2);
+        await expect(broker.translateWithCache(request)).resolves.toEqual(array ? [valid] : valid);
+        expect(provider).toHaveBeenCalledTimes(2);
+        expect(identities.every(identity => JSON.stringify(identity.documentTranslationPolicy) === '{"version":2}')).toBe(true);
+        for (const oldKey of oldKeys) expect(cache.get(oldKey)).toBe(array ? JSON.stringify([invalid]) : invalid);
     });
 
     it('keeps URLs, emails, code-style product names and compound model names with exact spelling', () => {
