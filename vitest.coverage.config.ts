@@ -1071,6 +1071,7 @@ export default defineConfig({
                 'src/core/translation/font.ts',
                 'src/core/translation/result.ts',
                 'src/core/translation/documentLiterals.ts',
+                'src/core/translation/documentInlineMarkers.ts',
                 'src/core/translation/engine.ts',
                 'src/core/translation/internal.ts',
                 'src/core/translation/layout.ts',

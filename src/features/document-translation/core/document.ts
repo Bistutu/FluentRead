@@ -5,6 +5,8 @@
  * 模块边界：该文件不读取 File、不解析 PDF/EPUB/DOCX 二进制，也不发起翻译请求；文件 I/O 与压缩包处理归 services/binary，批处理归 services/translation，展示归 preview/presentation。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
+// 归一规则与服务候选验证共用，避免导出与免费线路接受不同的编号标签写法。
+import {normalizeDocumentInlineMarkers} from '@/src/core/translation/public';
 export const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
 /** 带插图的论文与扫描件常超过 10 MB；PDF 按页解析、译文量只取决于文字，单独放宽上限。 */
 export const PDF_MAX_BYTES = 50 * 1024 * 1024;
@@ -456,8 +458,7 @@ const MARKDOWN_PLACEHOLDER = /<\s*\/?\s*g\s*\d+\s*\/?\s*>/iu;
 function renderMarkdownTranslation(part: SegmentPart, translation: string): string {
     const tokens = part.markdownTokens;
     if (!tokens) return translation;
-    const normalized = translation.replace(/(?:&lt;|[＜〈（(])\s*([\/／]?)\s*g\s*(\d+)\s*([\/／]?)\s*(?:&gt;|[＞〉）)])/giu,
-        (_, open: string, id: string, close: string) => `<${open ? '/' : ''}g${id}${close ? '/' : ''}>`);
+    const normalized = normalizeDocumentInlineMarkers(translation);
     const pieces = normalized.split(/(<\s*\/?\s*g\s*\d+\s*\/?\s*>)/iu);
     const marker = (piece: string) => /^<\s*(\/?)\s*g\s*(\d+)\s*(\/?)\s*>$/iu.exec(piece);
     const seen = new Set<number>();
@@ -922,7 +923,7 @@ function renderHtmlTranslation(part: SegmentPart, translation: string): string {
     const tags = part.htmlTags;
     if (!tags) return escapeHtml(translation);
     // 有的翻译服务会把占位符的尖括号转成实体（&lt;g1&gt;）、全角尖括号或括号（（g1）、(g1)）再返回，先还原成占位符。
-    const pieces = translation.replace(/(?:&lt;|[＜〈（(])\s*([\/／]?)\s*g\s*(\d+)\s*(?:&gt;|[＞〉）)])/giu, (_, slash: string, id: string) => `<${slash ? '/' : ''}g${id}>`).split(/(<\s*\/?\s*g\s*\d+\s*>)/iu);
+    const pieces = normalizeDocumentInlineMarkers(translation).split(/(<\s*\/?\s*g\s*\d+\s*>)/iu);
     const stack: number[] = [];
     const seen = new Set<number>();
     let valid = true;

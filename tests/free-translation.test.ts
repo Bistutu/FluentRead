@@ -86,18 +86,42 @@ describe('免费翻译服务', () => {
         const document = parseDocument('sample.md', 'Translate this paragraph and keep **bold** text.', {markdownSentences: true});
         const packet = prepareGlossaryRequest({origin: document.segments[0].source},
             createTranslationProviderConfigSnapshot({...mockConfig, glossaryMatchContext: {context: 'document', sourceLanguage: 'en', targetLanguage: 'zh-hans'}} as unknown as TranslationConfigSource));
-        const tokens = readSnapshot(packet.message).glossaryProtectedTokens!;
-        expect(tokens).toHaveLength(2);
-        expect(packet.message.origin).not.toContain('<g1>');
-        chineseMock.mockImplementation(async (_id: string, text: string) => `译文:${kind === 'missing' ? text.replace(tokens[0], '')
-            : text + (kind === 'duplicate' ? tokens[0] : '__FRTERM_foreign_0__')}`);
-        googleMock.mockImplementation(async (source: string) => `译文:${source.replace('bold', '粗体')}`);
+        expect(readSnapshot(packet.message).glossaryProtectedTokens).toBeUndefined();
+        expect(packet.message.origin).toBe('Translate this paragraph and keep <g1>bold</g1> text.');
+        chineseMock.mockImplementation(async (_id: string, text: string) => `译文:${kind === 'missing' ? text.replace('<g1>', '')
+            : text + (kind === 'duplicate' ? '<g1>重复</g1>' : '<g2/>')}`);
+        // 此句是实际匿名 Transmart A/B 返回；单测复用记录值验证请求和 Markdown 恢复，网络证据另存 /private/tmp。
+        googleMock.mockResolvedValue('翻译这一段，并保留<g1>粗体</g1>文本。');
         const result = await settle(freeTranslation(packet.message));
         expect(renderDocument(document, [packet.restore(result) as string], 'translated'))
-            .toBe('译文:Translate this paragraph and keep **粗体** text.');
+            .toBe('翻译这一段，并保留**粗体**文本。');
         expect(chineseMock).toHaveBeenCalledOnce();
         expect(googleMock).toHaveBeenCalledOnce();
         expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'youdaoFree')?.status).toBe('ready');
+    });
+
+    it('文档候选必须保留嵌套父子关系，并把合法全角和实体恢复为canonical标签', async () => {
+        mockConfig.freeTranslationOrder = ['youdaoFree', 'google'];
+        const source = 'Keep <g1>outer <g2>bold</g2></g1> and <g3/>.';
+        const request = attachTranslationProviderConfig({origin: source}, createTranslationProviderConfigSnapshot({...mockConfig,
+            glossaryMatchContext: {context: 'document', sourceLanguage: 'en', targetLanguage: 'zh-hans'}} as unknown as TranslationConfigSource));
+        chineseMock.mockResolvedValue('<g1>外层</g1><g2>粗体</g2><g3/>');
+        googleMock.mockResolvedValue('保留（g1）外层&lt;g2&gt;粗体&lt;/g2&gt;（/g1）和 <g3></g3>。');
+        await expect(settle(freeTranslation(request))).resolves.toBe('保留<g1>外层<g2>粗体</g2></g1>和 <g3/>。');
+        expect(chineseMock).toHaveBeenCalledOnce(); expect(googleMock).toHaveBeenCalledOnce();
+        await expect(settle(translateFreeText(source))).resolves.toBe('<g1>外层</g1><g2>粗体</g2><g3/>');
+        expect(chineseMock).toHaveBeenCalledTimes(2);
+    });
+
+    it('原生分组逐槽拒绝未知文档编号并归一每槽实体，同编号重新起算不串用外层结构', async () => {
+        mockConfig.freeTranslationOrder = ['microsoft', 'google'];
+        const origins = Array.from({length: 9}, (_, index) => `Keep <g1>bold ${index}</g1> with <g${index + 2}/>.`);
+        microsoftMock.mockImplementation(async (texts: string[]) => texts.map(text => `译文:${text}<g99/>`));
+        googleOwnerMock.mockImplementation(async (texts: string[]) => texts.map(text => `译文:${text.replace('bold', '粗体').replace(/</gu, '&lt;').replace(/>/gu, '&gt;')}`));
+        const request = attachTranslationProviderConfig({origin: origins}, createTranslationProviderConfigSnapshot({...mockConfig,
+            glossaryMatchContext: {context: 'document', sourceLanguage: 'en', targetLanguage: 'zh-hans'}} as unknown as TranslationConfigSource));
+        await expect(settle(freeTranslation(request))).resolves.toEqual(origins.map(text => `译文:${text.replace('bold', '粗体')}`));
+        expect(googleOwnerMock).toHaveBeenCalled(); expect(googleMock).not.toHaveBeenCalled();
     });
 
     it('候选损坏术语标记时在免费池内部换线，只影响当前文字', async () => {

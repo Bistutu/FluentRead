@@ -83,3 +83,4 @@ export {
 } from './current';
 export type * from './types';
 export {findDocumentLiteralTerms} from './documentLiterals';
+export {DocumentInlineMarkerError, documentInlineMarkerRanges, normalizeDocumentInlineMarkers, validateDocumentInlineMarkers} from './documentInlineMarkers';

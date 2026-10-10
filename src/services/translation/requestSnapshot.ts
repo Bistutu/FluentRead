@@ -2,7 +2,7 @@
  * @file src/services/translation/requestSnapshot.ts
  *
  * 文件职责：冻结翻译消息的可编辑字段与数组，并附加只读 provider 配置快照，消除异步缓存读取期间全局配置变化造成的请求身份错配。
- * 主要内容：在入口一次读取消息字段并复制原文/术语数组，保留内部 symbol 描述符；定义配置快照、剩余预算、内部取消、线路观察与可信术语来源，冻结术语规则并从完整文本槽协议恢复纯匹配原文；以线性首尾边界扫描确定命名空间和最终外层槽数，保留来源中的字面标记和自定义命名空间，重复、交错与缺项仍由同一严格解析器拒绝。
+ * 主要内容：在入口一次读取消息字段并复制原文/术语数组，保留内部 symbol 描述符；定义配置快照、剩余预算、内部取消、线路观察与可信术语来源，冻结术语规则并从完整文本槽协议恢复纯匹配原文及供文档逐槽结构校验复用的协议快照；以线性首尾边界扫描确定命名空间和最终外层槽数，保留来源中的字面标记和自定义命名空间，重复、交错与缺项仍由同一严格解析器拒绝。
  * 模块边界：本文件位于翻译 application service 层，负责用例编排和端口契约；不挂载页面 UI，且不应把某家供应商的网络细节扩散到 feature，具体 HTTP 协议由 providers/platform 实现。
  */
 
@@ -19,7 +19,7 @@ import {normalizeApiKeyRecoveryMs} from '@/src/core/config/scheduling';
 import type {CustomOpenAIProvider} from '@/src/core/config/customOpenAI';
 import {normalizeDeepLApiPlan} from '@/src/core/config/deepl';
 import {resolveGlossaryEntries} from '@/src/core/glossary';
-import {findDocumentLiteralTerms, parseTranslationSlots} from '@/src/core/translation/public';
+import {findDocumentLiteralTerms, parseTranslationSlots, type SerializedTranslationSlots} from '@/src/core/translation/public';
 import type {TranslationRequestScheduler, TranslationRequestIdentity} from './requestScheduler';
 
 /** 在入口第一次等待前复制用户可编辑的数组与消息字段，同时保留不可枚举的内部 symbol。 */
@@ -124,24 +124,31 @@ function slotNamespaceFromBoundaries(origin: string, finalOrdinalOffset: number)
 }
 
 /** 仅解析完整的内部槽协议，避免哨兵下划线破坏词边界或被当成用户术语；其他文本原样匹配。 */
-export function getTranslationGlossarySourceText(origin: string | string[]): string | string[] {
-    if (Array.isArray(origin)) return origin.flatMap(getTranslationGlossarySourceText);
+export function getTranslationGlossarySourceSlots(origin: string): {packet: SerializedTranslationSlots; texts: string[]} | undefined {
     // 普通正文不扫描尾部，也不分配协议边界数组。
-    if (!origin.startsWith('___FLUENTREAD_')) return origin;
+    if (typeof origin !== 'string' || !origin.startsWith('___FLUENTREAD_')) return undefined;
     const finalMarker = origin.match(/_(0|[1-9]\d*)_END___\s*$/u);
-    if (!finalMarker) return origin;
+    if (!finalMarker) return undefined;
     // 最后一槽正文中的 index=N 仍是字面内容，不能由所有 BEGIN 数量推断槽数。
     const count = Number(finalMarker[1]) + 1;
-    if (!Number.isSafeInteger(count)) return origin;
+    if (!Number.isSafeInteger(count)) return undefined;
     const nonce = slotNamespaceFromBoundaries(origin, finalMarker.index!);
-    if (!nonce) return origin;
+    if (!nonce) return undefined;
     // nonce 的白名单只允许字母、数字、下划线和连字符，可直接组成字面正则片段。
     const observedStarts = [...origin.matchAll(new RegExp(`___FLUENTREAD_${nonce}_(?:0|[1-9]\\d*)_BEGIN___`, 'gu'))].length;
     // 先验证实际输入规模，不能按不可信尾部整数分配无限数组。
-    if (count > observedStarts) return origin;
+    if (count > observedStarts) return undefined;
     const starts = Array.from({length: count}, (_, index) => `___FLUENTREAD_${nonce}_${index}_BEGIN___`);
     const ends = starts.map(marker => marker.replace(/_BEGIN___$/u, '_END___'));
-    return parseTranslationSlots({payload: origin, starts, ends}, origin) ?? origin;
+    const packet = {payload: origin, starts, ends};
+    const texts = parseTranslationSlots(packet, origin);
+    return texts ? {packet, texts} : undefined;
+}
+
+/** 与文档行内格式校验共用已验证的槽快照；普通或残缺协议仍按原文本匹配。 */
+export function getTranslationGlossarySourceText(origin: string | string[]): string | string[] {
+    if (Array.isArray(origin)) return origin.flatMap(getTranslationGlossarySourceText);
+    return getTranslationGlossarySourceSlots(origin)?.texts ?? origin;
 }
 
 /** 同一批次逐条发送时仍只外发该条原文真正命中的术语，摘要由模板显式跳过。 */

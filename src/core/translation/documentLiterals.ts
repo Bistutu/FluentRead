@@ -1,7 +1,7 @@
 /**
  * @file src/core/translation/documentLiterals.ts
  * 文件职责：识别文档正文中需要逐字保留的地址、行内语法、代码式名称与组合模型名，防止机器翻译改写这些字面值。
- * 主要内容：扫描带引号属性的 HTML/g 标签、√ASCII 标识、URL、邮箱、CamelCase 名称及 GNMT+RL，去重后交给现有术语占位符链；正文仍翻译，不推断领域术语的中文译名。
+ * 主要内容：扫描带引号属性的 HTML 标签、√ASCII 标识、URL、邮箱、CamelCase 名称及 GNMT+RL，去重后交给现有术语占位符链；内部 g 标签原样送翻并独立验证结构，正文仍翻译，不推断领域术语的中文译名。
  * 模块边界：纯文本规则，不读取配置或调用翻译；调用方只在文档入口启用，语法标签不让给短词，其他字面值仍按既有用户词库规则优先匹配。
  */
 import {findGlossaryMatches} from '@/src/core/glossary';
@@ -18,6 +18,7 @@ export function findDocumentLiteralTerms(origin: string | readonly string[], use
         const conflicts = new Map<string, boolean>();
         for (const match of text.matchAll(pattern)) {
             const source = match[0].replace(/[.,;!?，。；！？]+$/u, '');
+            if (/^<\/?g[1-9]\d*\/?\s*>$/u.test(source)) continue;
             if (occupied.length && !source.startsWith('<')) {
                 const key = source.normalize('NFC');
                 if (!conflicts.has(key)) conflicts.set(key, findGlossaryMatches(normalized, [{source: key, target: source, caseSensitive: true}])

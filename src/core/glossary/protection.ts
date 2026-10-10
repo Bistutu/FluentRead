@@ -1,7 +1,7 @@
 /**
  * @file src/core/glossary/protection.ts
  * 文件职责：把原文命中的术语保护为独立占位符，并在翻译结果中原位填回指定译法。
- * 主要内容：共享词边界与大小写规则，规范写法只用于定位并映射回原文，保留未命中字符与空译法的原始写法；长词优先、重复出现独立编号，避开内部槽标记，严格检查丢失、重复和未知占位符。
+ * 主要内容：共享词边界与大小写规则，规范写法只用于定位并映射回原文，保留未命中字符与空译法的原始写法；长词优先、重复出现独立编号，避开内部槽标记及调用方指定的语法范围，严格检查丢失、重复和未知占位符。
  * 模块边界：纯文本转换，不接触宿主 DOM、存储或翻译服务；译法按字面填入，不再次参与替换。
  */
 import {findGlossaryMatches} from './match';
@@ -68,6 +68,7 @@ export function protectGlossaryText(
     original: string,
     entries: readonly {source: string; target: string; caseSensitive: boolean}[],
     namespace = '0',
+    excludedRanges: readonly {start: number; end: number}[] = [],
 ) {
     const text = original;
     let prefix = `__FRTERM_${sha256Hex(namespace + '\0' + text).slice(0, 12)}_`;
@@ -76,7 +77,10 @@ export function protectGlossaryText(
     const tokenPieces = new Map<string, number>();
     // 槽标记两侧的下划线不属于正文；拆开后短语仍可命中槽的首尾。
     const pieces = text.split(/(___FLUENTREAD_[a-z0-9_-]+?_\d+_(?:BEGIN|END)___)/giu);
+    let offset = 0;
     const protectedText = pieces.map((piece, index) => {
+        const pieceOffset = offset;
+        offset += piece.length;
         if (index % 2) return piece;
         const normalized = normalizeMatchText(piece);
         const occupied = findGlossaryMatches(normalized.text, entries);
@@ -86,6 +90,7 @@ export function protectGlossaryText(
             const start = normalized.offsets ? normalized.offsets[range.start] : range.start;
             const end = normalized.offsets ? normalized.offsets[range.end] : range.end;
             if (start === undefined || end === undefined) continue;
+            if (excludedRanges.some(range => pieceOffset + start < range.end && range.start < pieceOffset + end)) continue;
             const token = `${prefix}${values.size}__`;
             values.set(token, range.entry.target || piece.slice(start, end));
             tokenPieces.set(token, index);
