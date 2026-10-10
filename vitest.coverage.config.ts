@@ -924,6 +924,7 @@ export default defineConfig({
                 'src/app/translation/check.ts',
                 'src/core/hotkey/index.ts',
                 'src/core/language/detect.ts',
+                'src/core/language/confidence.ts',
                 'src/core/language/localTranslation.ts',
                 'src/core/language/catalog.ts',
                 'src/core/language/chinese.ts',

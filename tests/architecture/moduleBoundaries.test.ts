@@ -422,6 +422,28 @@ describe('architecture module boundaries', () => {
         expect(violations).toEqual([]);
     });
 
+    it('服务配置与固定自检不拉入正文检测依赖', () => {
+        for (const owner of [
+            'src/features/settings/ui/services/ServiceConfiguration.vue',
+            'src/features/settings/model/chromeTranslationPreparation.ts',
+        ]) {
+            const visited = new Set<string>();
+            const pending = [projectPath(owner)];
+            while (pending.length) {
+                const file = pending.pop()!;
+                if (visited.has(file)) continue;
+                visited.add(file);
+                for (const specifier of importSpecifiers(readSource(file))) {
+                    const dependency = resolveProjectImport(file, specifier);
+                    if (dependency) pending.push(dependency);
+                }
+            }
+            const bodyDetection = [...visited].map(relativePath).filter(path =>
+                /^src\/core\/language\/(?:detect|identify|chineseText|chineseVariants|statistical|lexicon|functionWordData|scripts|technicalTokens)\.ts$/u.test(path));
+            expect(bodyDetection, owner).toEqual([]);
+        }
+    });
+
     it('历史巨型文件不得继续增长，后续迁移只降低债务上限', () => {
         const growth = Object.entries(COMPLEXITY_DEBT_CEILINGS)
             .map(([path, ceiling]) => ({path, lines: lineCount(path), ceiling}))

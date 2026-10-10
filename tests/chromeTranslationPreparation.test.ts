@@ -1,4 +1,5 @@
 import {describe, expect, it, vi} from 'vitest';
+import {detectChineseScript} from '@/src/core/language/detect';
 import {
     CHROME_TRANSLATION_PREPARATION_LANGUAGES,
     ChromeTranslationPreparationError,
@@ -585,5 +586,73 @@ describe('Chrome 简繁体准备对', () => {
         const environment = readyEnvironment('zh');
         await expect(prepareChromeTranslationInPage({from, to}, environment)).resolves.toMatchObject({sourceLanguage, targetLanguage, detectedLanguage});
         expect(environment.Translator!.create).toHaveBeenCalledWith(expect.objectContaining({sourceLanguage, targetLanguage}));
+    });
+});
+
+describe('Chrome 固定校验样例的语言合约', () => {
+    it.each(CHROME_TRANSLATION_PREPARATION_LANGUAGES)('$value 的泛中文结果与真实样例检测一致', async ({value: from}) => {
+        const to = from === 'en' ? 'fr' : 'en';
+        const pair = resolveChromeTranslationPreparationPair(from, to);
+        const script = detectChineseScript(pair.sampleText);
+        for (const nativeCode of ['zh', 'ZH']) {
+            const destroyDetector = vi.fn(), destroyTranslator = vi.fn();
+            const environment = readyEnvironment(nativeCode, 'Ready', destroyDetector, destroyTranslator);
+            const preparation = prepareChromeTranslationInPage({from, to}, environment);
+            if (script) {
+                await expect(preparation).resolves.toMatchObject({
+                    ...pair,
+                    detectedLanguage: `zh-${script}`,
+                });
+            } else {
+                await expect(preparation).rejects.toMatchObject({
+                    code: 'detection-mismatch',
+                    params: {expectedLanguage: pair.sourceLanguage, detectedLanguage: nativeCode},
+                });
+            }
+            expect(destroyDetector).toHaveBeenCalledOnce();
+            expect(destroyTranslator).toHaveBeenCalledOnce();
+        }
+    });
+
+    it.each([
+        'zh-CN', 'zh-SG', 'zh-Hans', 'zh-TW', 'zh-HK', 'zh-MO',
+        'zh-Hans-HK', 'zh-Hant-CN', 'zh-Latn', 'zh-foo',
+    ])('%s 的泛中文结果依据公开解析取得的固定样例', async from => {
+        const pair = resolveChromeTranslationPreparationPair(from, 'en');
+        const script = detectChineseScript(pair.sampleText);
+        expect(script).toBeDefined();
+        await expect(prepareChromeTranslationInPage({from, to: 'en'}, readyEnvironment('zh')))
+            .resolves.toMatchObject({...pair, detectedLanguage: `zh-${script}`});
+    });
+
+    it.each([
+        ['zh-Hans-HK', 'zh-Hant'],
+        ['zh-Hant-CN', 'zh-Hans'],
+    ])('%s 不接受明确相反的检测脚本 %s', async (from, detectedLanguage) => {
+        const pair = resolveChromeTranslationPreparationPair(from, 'en');
+        const destroyDetector = vi.fn(), destroyTranslator = vi.fn();
+        const environment = readyEnvironment(detectedLanguage, 'Ready', destroyDetector, destroyTranslator);
+        await expect(prepareChromeTranslationInPage({from, to: 'en'}, environment)).rejects.toMatchObject({
+            code: 'detection-mismatch',
+            params: {expectedLanguage: pair.sourceLanguage, detectedLanguage},
+        });
+        expect(destroyDetector).toHaveBeenCalledOnce();
+        expect(destroyTranslator).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+        [0.399, false], [0.4, true], [1, true], [1.01, false],
+    ])('固定样例置信度 %s 的接受结果保持为 %s', async (confidence, accepted) => {
+        const destroyDetector = vi.fn(), destroyTranslator = vi.fn();
+        const environment = readyEnvironment('fr', 'Ready', destroyDetector, destroyTranslator);
+        vi.mocked(environment.LanguageDetector!.create).mockResolvedValue({
+            detect: vi.fn(async () => [{detectedLanguage: 'fr', confidence}]),
+            destroy: destroyDetector,
+        });
+        const preparation = prepareChromeTranslationInPage({from: 'fr', to: 'en'}, environment);
+        if (accepted) await expect(preparation).resolves.toMatchObject({detectedLanguage: 'fr'});
+        else await expect(preparation).rejects.toMatchObject({code: 'invalid-detection'});
+        expect(destroyDetector).toHaveBeenCalledOnce();
+        expect(destroyTranslator).toHaveBeenCalledOnce();
     });
 });
