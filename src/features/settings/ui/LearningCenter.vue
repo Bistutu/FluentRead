@@ -25,7 +25,7 @@
 <script setup lang="ts">
 import {computed, onBeforeUnmount, ref, watch} from 'vue'
 import {VocabularyBook} from '@/src/features/vocabulary/ui/public'
-import {HarnessReadingHistory} from '@/src/features/reading-assistant/public'
+import {HarnessReadingHistory} from '@/src/features/reading-assistant/ui/public'
 import {useUiI18n} from '@/src/ui/i18n'
 import SegmentedControl from './components/SegmentedControl.vue'
 import UiIcon from '@/src/ui/components/UiIcon.vue'

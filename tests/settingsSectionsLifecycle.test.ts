@@ -8,12 +8,12 @@ const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
 const key = '__frSettingsSectionsLifecycle';
 let server: ViteDevServer | undefined, app: import('vue').App | undefined;
 afterEach(async () => {app?.unmount(); app = undefined; await server?.close();server = undefined;
-    delete (globalThis as Record<string, unknown>)[key];vi.unstubAllGlobals();vi.useRealTimers();});
+    delete (globalThis as Record<string, unknown>)[key];vi.restoreAllMocks();vi.unstubAllGlobals();vi.useRealTimers();});
 
 function deferred<T>() {let resolve!: (value: T) => void, reject!: (error: unknown) => void;
     const promise = new Promise<T>((yes, no) => {resolve = yes;reject = no;});return {promise, resolve, reject};}
 async function settle() {await runtime.nextTick();for (let i = 0; i < 8; i++) await Promise.resolve();await runtime.nextTick();}
-async function mountSections({ready = Promise.resolve()} = {}) {
+async function mountSections({ready = Promise.resolve(), configSnapshot}: {ready?: Promise<void>; configSnapshot?: Record<string, unknown>} = {}) {
     const frames = new Map<number, FrameRequestCallback>();let nextFrame = 0;
     const query = vi.fn((_options: Record<string, unknown>) => Promise.resolve([] as {id?: number}[]));
     const send = vi.fn((_id: number, _message: {type: string; isEnabled?: boolean; mode?: string}) => Promise.resolve());
@@ -24,7 +24,14 @@ async function mountSections({ready = Promise.resolve()} = {}) {
         requestAnimationFrame: (fn: FrameRequestCallback) => {frames.set(++nextFrame, fn);return nextFrame;},
         cancelAnimationFrame: (id: number) => frames.delete(id)}));
     const findTarget = vi.fn(() => null as HTMLElement | null);vi.stubGlobal('document', {querySelector: findTarget});
-    const data = {config: {}, configReady: ready, subscribeConfig: () => unsubscribe, requestConfigPatch: patch,
+    let notifyConfig: (value: unknown) => void = () => {};
+    const data = {config: configSnapshot ?? {}, configReady: ready,
+        subscribeConfig: (listener: (value: unknown) => void) => {
+            notifyConfig = listener;
+            if (configSnapshot) listener(configSnapshot);
+            return unsubscribe;
+        },
+        requestConfigPatch: patch,
         handoffPendingConfigPatches: vi.fn(() => Promise.resolve()), theme,
         browser: {runtime: {sendMessage: vi.fn(() => Promise.resolve())}, tabs: {query, sendMessage: send}}};
     (globalThis as Record<string, unknown>)[key] = data;
@@ -63,7 +70,8 @@ async function mountSections({ready = Promise.resolve()} = {}) {
         : runtime.h({render: () => null}, {key: 'other'})})});
     app.provide(runtime.ssrContextKey, {modules: new Set<string>()});app.config.warnHandler = () => {};
     app.mount({});await settle();
-    return {state, props, visible, query, send, patch, theme, unsubscribe, frames, findTarget, location, data};
+    return {state, props, visible, query, send, patch, theme, unsubscribe, frames, findTarget, location, data,
+        notifyConfig: (value: unknown) => notifyConfig(value)};
 }
 
 describe('设置主表单实际组件异步归属', () => {
@@ -102,6 +110,67 @@ describe('设置主表单实际组件异步归属', () => {
         const ready = deferred<void>();const {theme, patch, unsubscribe} = await mountSections({ready: ready.promise});
         app?.unmount();app = undefined;ready.resolve();await settle();
         expect(theme).not.toHaveBeenCalled();expect(patch).not.toHaveBeenCalled();expect(unsubscribe).toHaveBeenCalledOnce();
+    });
+    it('同步订阅与后续批量水合只扫描完整草稿两次，随后编辑仍同步保存', async () => {
+        const {state, patch, notifyConfig} = await mountSections({configSnapshot: {to: 'en', theme: 'dark'}});
+        expect(state.config.to).toBe('en');expect(state.config.theme).toBe('dark');expect(patch).not.toHaveBeenCalled();
+        const stringify = JSON.stringify;
+        let draftScans = 0;
+        vi.spyOn(JSON, 'stringify').mockImplementation((value, replacer, space) => {
+            if (value === state.config) draftScans++;
+            return stringify(value, replacer, space);
+        });
+        notifyConfig({...state.config, to: 'ja', theme: 'light', hotkey: 'Shift', customHotkey: 'Alt+J'});
+        expect(draftScans).toBe(2);
+        expect(patch).not.toHaveBeenCalled();expect(state.config.to).toBe('ja');
+        state.config.to = 'fr';
+        expect(patch).toHaveBeenCalledOnce();expect(patch).toHaveBeenCalledWith(expect.objectContaining({to: 'fr'}), expect.any(Function));
+        state.config.harness.enabled = true;
+        expect(patch).toHaveBeenCalledTimes(2);
+        expect(patch).toHaveBeenLastCalledWith(expect.objectContaining({harness: expect.objectContaining({enabled: true})}), expect.any(Function));
+    });
+    it('水合结束后立即关闭捕获最新编辑，后续编辑仍允许另一轮关闭交接', async () => {
+        const {state, patch, data, notifyConfig} = await mountSections({configSnapshot: {to: 'en'}});
+        notifyConfig({...state.config, to: 'ja'});expect(patch).not.toHaveBeenCalled();
+        state.config.to = 'fr';expect(patch).toHaveBeenCalledOnce();
+        window.dispatchEvent(new Event('beforeunload'));
+        expect(patch).toHaveBeenLastCalledWith(expect.objectContaining({to: 'fr'}), expect.any(Function));
+        expect(data.handoffPendingConfigPatches).toHaveBeenCalledOnce();
+        window.dispatchEvent(new Event('pagehide'));expect(data.handoffPendingConfigPatches).toHaveBeenCalledOnce();
+        state.config.to = 'de';window.dispatchEvent(new Event('beforeunload'));
+        expect(data.handoffPendingConfigPatches).toHaveBeenCalledTimes(2);
+        expect(patch).toHaveBeenLastCalledWith(expect.objectContaining({to: 'de'}), expect.any(Function));
+    });
+    it('配置就绪失败仍禁止自动保存和关闭交接，卸载后的订阅通知不能改旧草稿', async () => {
+        const ready = deferred<void>();const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const {state, patch, data, notifyConfig} = await mountSections({ready: ready.promise, configSnapshot: {to: 'en'}});
+        state.config.to = 'ja';window.dispatchEvent(new Event('beforeunload'));
+        expect(patch).not.toHaveBeenCalled();expect(data.handoffPendingConfigPatches).not.toHaveBeenCalled();
+        ready.reject(new Error('fixture hydration failed'));await settle();
+        expect(warning).toHaveBeenCalledWith('[FluentRead] 无法读取本地配置', expect.any(Error));
+        app?.unmount();app = undefined;notifyConfig({to: 'de'});
+        expect(state.config.to).toBe('ja');expect(patch).not.toHaveBeenCalled();expect(data.handoffPendingConfigPatches).not.toHaveBeenCalled();
+    });
+    it.each(['normalize', 'serialize'])('批量水合的 %s 失败后释放暂停与水合 guard，下一次编辑仍同步保存', async failure => {
+        const {state, patch, notifyConfig} = await mountSections({configSnapshot: {to: 'en'}});
+        const error = new Error('fixture draft hydration failure');
+        if (failure === 'normalize') {
+            const invalid = Object.defineProperty({}, 'to', {enumerable: true, get: () => {throw error;}});
+            expect(() => state.hydrateConfigDraft(invalid)).toThrow(error);
+            expect(state.config.to).toBe('en');
+        } else {
+            const stringify = JSON.stringify;let rejectDraft = true;
+            vi.spyOn(JSON, 'stringify').mockImplementation((value, replacer, space) => {
+                if (value === state.config && rejectDraft) {rejectDraft = false;throw error;}
+                return stringify(value, replacer, space);
+            });
+            expect(() => notifyConfig({...state.config, to: 'ja'})).toThrow(error);
+            expect(state.config.to).toBe('ja');
+        }
+        expect(patch).not.toHaveBeenCalled();
+        state.config.to = 'fr';expect(patch).toHaveBeenCalledOnce();
+        expect(patch).toHaveBeenLastCalledWith(expect.objectContaining({to: 'fr'}), expect.any(Function));
+        state.config.harness.enabled = true;expect(patch).toHaveBeenCalledTimes(2);
     });
     it('快速设置更新共用一次标签页查询，发送最新状态，过滤非法 ID', async () => {
         const {state, query, send} = await mountSections();const tabs = deferred<{id?: number}[]>();query.mockReturnValueOnce(tabs.promise);

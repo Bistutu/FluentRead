@@ -2648,10 +2648,10 @@ describe('统一配置存储', () => {
         const exit = parsed.statements.find(statement => ts.isFunctionDeclaration(statement) && statement.name?.text === 'persistOnPageExit');
         expect(exit).toBeDefined();
         const exitBody = ts.transpileModule(exit!.getText(parsed), {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText;
-        const autosave = parsed.statements.find(statement => ts.isExpressionStatement(statement)
-            && ts.isCallExpression(statement.expression) && statement.expression.expression.getText(parsed) === 'watch'
-            && statement.expression.arguments[0].getText(parsed).includes('JSON.stringify(config.value)')) as ts.ExpressionStatement;
-        const callback = (autosave.expression as ts.CallExpression).arguments[1].getText(parsed);
+        const autosave = parsed.statements.flatMap(statement => ts.isVariableStatement(statement)
+            ? statement.declarationList.declarations : []).find(declaration => declaration.name.getText(parsed) === 'autosaveWatcher');
+        expect(autosave?.initializer && ts.isCallExpression(autosave.initializer)).toBe(true);
+        const callback = (autosave!.initializer as ts.CallExpression).arguments[1].getText(parsed);
         const autosaveBody = ts.transpileModule(`const onDraftChange = ${callback};`, {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText;
         const warnings = {warn: vi.fn()};
         const createExit = (hydrated: boolean) => new Function(

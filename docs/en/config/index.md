@@ -34,7 +34,7 @@ The setting applies to automatic and manual full-page translation, hover transla
 
 ## Appearance and menu layout
 
-The first section of **Interface style** is [Translation style](/en/guide/features#translation-style): pick how bilingual translations look, customize text and independent background colors and exact font size, or enter CSS declarations and preview and save your own style. Then choose a light or dark theme and an interface style. In menu layout, drag sections or shortcut cards in the preview, hide unused entries, and add them back later. The list also offers ordering controls.
+The first section of **Interface style** is [Translation style](/en/guide/features#translation-style): pick how bilingual translations look, customize text and independent background colors and exact font size, or enter CSS declarations and preview and save your own style. Then choose a light or dark theme and an interface style. Press Tab to focus the selected style, use arrow keys to change it, or Home and End to select the first and last styles. Your selection saves automatically; press Tab again to leave the group. In menu layout, drag sections or shortcut cards in the preview, hide unused entries, and add them back later. The list also offers ordering controls.
 
 The menu shows the default translation service and its configured model. Select the service summary to inspect and change assignments for individual features. Configuration reminders keep a direct settings action.
 

@@ -922,7 +922,89 @@ describe('图片入口独立开关与右键身份', () => {
         env.click(); await flush(); expect(env.bitmap()).toBeTruthy(); expect(client.translate).toHaveBeenCalledOnce();
     });
 
-    it('同一目标且仍在当前图片内时不重复扫描，跨相邻图片、pointerout 和卸载后仍重新定位', () => {
+    it.each([
+        {name: '指针未覆盖图片', point: {clientX: 600, clientY: 300}, hidden: false},
+        {name: '图片覆盖指针但不可见', point: {clientX: 100, clientY: 100}, hidden: true},
+    ])('$name 时四层嵌套容器每张图片只读取一次几何与必要样式', ({point, hidden}) => {
+        const env = setup();
+        let scope: Element = env.parent;
+        for (let depth = 0; depth < 3; depth++) {
+            const wrapper = document.createElement('div');
+            scope.parentNode!.insertBefore(wrapper, scope);
+            wrapper.append(scope);
+            scope = wrapper;
+        }
+        const imageRect = env.image.getBoundingClientRect;
+        const rectReads = [vi.spyOn(env.image, 'getBoundingClientRect')];
+        for (let index = 1; index < 64; index++) {
+            const image = document.createElement('img') as HTMLImageElement;
+            const readRect = vi.fn(imageRect);
+            image.getBoundingClientRect = readRect;
+            rectReads.push(readRect);
+            env.parent.append(image);
+            if (hidden) env.extraStyles.set(image, {visibility: 'hidden', display: 'block'});
+        }
+        if (hidden) env.imageStyle.visibility = 'hidden';
+        const styleReads = vi.fn(globalThis.getComputedStyle);
+        vi.stubGlobal('getComputedStyle', styleReads);
+        env.dispatch(env.parent, 'pointermove', true, point); env.runFrames();
+        expect(rectReads.reduce((total, read) => total + read.mock.calls.length, 0)).toBe(64);
+        expect(styleReads).toHaveBeenCalledTimes(hidden ? 64 : 0);
+        vi.advanceTimersByTime(600);
+        expect(env.roots).toHaveLength(0);
+    });
+
+    it('命中缓存只属于一次检查，下一帧重新读取位置和显隐变化', () => {
+        const env = setup();
+        const wrapper = document.createElement('div');
+        env.parent.parentNode!.insertBefore(wrapper, env.parent); wrapper.append(env.parent);
+        const rectReads = vi.spyOn(env.image, 'getBoundingClientRect');
+        env.dispatch(env.parent, 'pointermove', true, {clientX: 600, clientY: 100}); env.runFrames();
+        expect(rectReads).toHaveBeenCalledOnce();
+        env.dispatch(env.parent, 'pointermove', true, {clientX: 600, clientY: 100}); env.runFrames();
+        expect(rectReads).toHaveBeenCalledTimes(2);
+        env.setRect({left: 500, top: 40, width: 400, height: 200, right: 900, bottom: 240});
+        env.imageStyle.visibility = 'hidden';
+        env.dispatch(env.parent, 'pointermove', true, {clientX: 600, clientY: 100}); env.runFrames();
+        expect(rectReads).toHaveBeenCalledTimes(3);
+        env.imageStyle.visibility = 'visible';
+        env.dispatch(env.parent, 'pointermove', true, {clientX: 600, clientY: 100}); env.runFrames();
+        vi.advanceTimersByTime(600);
+        expect(env.button()).toBeTruthy();
+    });
+
+    it('多图重叠时第二个命中立即停止几何和样式读取，保持不显示入口', () => {
+        const env = setup();
+        const imageRect = env.image.getBoundingClientRect;
+        const rectReads = [vi.spyOn(env.image, 'getBoundingClientRect')];
+        for (let index = 1; index < 64; index++) {
+            const readRect = vi.fn(imageRect);
+            addSecondHoverImage(env, readRect);
+            rectReads.push(readRect);
+        }
+        const styleReads = vi.fn(globalThis.getComputedStyle);
+        vi.stubGlobal('getComputedStyle', styleReads);
+        env.dispatch(env.parent, 'pointermove', true, {clientX: 100, clientY: 100}); env.runFrames();
+        expect(rectReads.reduce((total, read) => total + read.mock.calls.length, 0)).toBe(2);
+        expect(styleReads).toHaveBeenCalledTimes(2);
+        vi.advanceTimersByTime(600);
+        expect(env.roots).toHaveLength(0);
+    });
+
+    it('同一目标下一帧新增重叠图片时取消入口，解除歧义后重新显示', () => {
+        const env = setup();
+        env.dispatch(env.parent, 'pointermove', true, {clientX: 100, clientY: 100}); env.runFrames();
+        const overlapping = addSecondHoverImage(env, env.image.getBoundingClientRect);
+        env.dispatch(env.parent, 'pointermove', true, {clientX: 100, clientY: 100}); env.runFrames();
+        vi.advanceTimersByTime(600);
+        expect(env.roots).toHaveLength(0);
+        overlapping.remove();
+        env.dispatch(env.parent, 'pointermove', true, {clientX: 100, clientY: 100}); env.runFrames();
+        vi.advanceTimersByTime(600);
+        expect(env.button()).toBeTruthy();
+    });
+
+    it('同一帧的指针事件合并扫描，跨相邻图片、pointerout 和卸载后重新定位', () => {
         const env = setup();
         env.dispatch(env.parent, 'pointermove', true, {clientX: 100, clientY: 100});
         env.dispatch(env.parent, 'pointermove', true, {clientX: 110, clientY: 110});
