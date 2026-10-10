@@ -925,6 +925,7 @@ export default defineConfig({
                 'src/core/language/localTranslation.ts',
                 'src/core/language/catalog.ts',
                 'src/core/language/chinese.ts',
+                'src/core/language/chineseText.ts',
                 'src/core/language/chineseVariants.ts',
                 'src/core/language/codes.ts',
                 'src/core/language/identify.ts',

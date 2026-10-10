@@ -3,9 +3,11 @@ import {resolve} from 'node:path';
 import vue from '@vitejs/plugin-vue';
 import {createServer, type Plugin, type ViteDevServer} from 'vite';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import type {TranslationParams, UiLanguage} from '../src/core/i18n';
 
 const TEST_KEY = '__frOptionsNavigationLifecycle';
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
+type ActualUiI18n = {language: import('vue').Ref<UiLanguage>; t: (key: string, params?: TranslationParams) => string; translateLegacy: (text: string) => string};
 type FixtureScope = {active: boolean; server?: ViteDevServer; closing?: Promise<void>; unmount?: () => void};
 let current: FixtureScope | undefined;
 let unmount: (() => void) | undefined;
@@ -65,7 +67,7 @@ function createFixtureServer(browser = 'chrome') {
     },
     load(id) {
       if (id === '\0options-child-component') return 'export default {render: () => null};';
-      if (id === '\0options-i18n') return 'export const useUiI18n = () => ({t: key => key === "informationHighlight.title" ? "Smart Highlighting" : key, translateLegacy: text => text});';
+      if (id === '\0options-i18n') return `export const useUiI18n = () => globalThis.${TEST_KEY}.i18n ?? ({t: key => key === "informationHighlight.title" ? "Smart Highlighting" : key, translateLegacy: text => text});`;
       if (id === '\0options-config') return `export const {config, configReady, subscribeConfig} = globalThis.${TEST_KEY};`;
       if (id === '\0options-appearance') return `export const {theme: applyInterfaceTheme, skin: applyInterfaceSkin, font: applyInterfaceFont, registerAppearance: registerInterfaceAppearanceRoot} = globalThis.${TEST_KEY};`;
       if (id === '\0options-capabilities') return `export const {browserCapabilities} = globalThis.${TEST_KEY};`;
@@ -80,7 +82,7 @@ function createFixtureServer(browser = 'chrome') {
   });
 }
 
-async function mountOptions(hash = '#settings-selection', ready = Promise.resolve(), appearanceRoot?: HTMLElement, load?: (server: ViteDevServer) => Promise<Record<string, any>>, browser = 'chrome') {
+async function mountOptions(hash = '#settings-selection', ready = Promise.resolve(), appearanceRoot?: HTMLElement, load?: (server: ViteDevServer) => Promise<Record<string, any>>, browser = 'chrome', uiLanguage?: UiLanguage) {
   const scope = current;
   if (!scope || !owns(scope) || !scope.server) throw inactive();
   const ownedServer = scope.server;
@@ -111,8 +113,21 @@ async function mountOptions(hash = '#settings-selection', ready = Promise.resolv
     theme, skin, font, registerAppearance,
     browserCapabilities: {browser},
   };
+  let i18n: ActualUiI18n | undefined;
   let loaded: Record<string, any>;
   try {
+    if (uiLanguage) {
+      const [core, english, patterns] = await Promise.all([
+        ownedServer.ssrLoadModule('/src/core/i18n/index.ts'),
+        ownedServer.ssrLoadModule('/src/core/i18n/messages/en-US.ts'),
+        ownedServer.ssrLoadModule('/src/core/i18n/messages/legacy-patterns.ts'),
+      ]);
+      if (!owns(scope)) throw inactive();
+      core.registerUiLanguageBundle('en-US', {messages: english.enUSMessages, legacyText: english.enUSLegacyText, legacyPatterns: patterns.createLegacyPatternSet('en-US')});
+      const language = runtime.ref<UiLanguage>(uiLanguage);
+      i18n = {language, t: (key, params) => core.translate(key, language.value, params), translateLegacy: text => core.translateLegacyText(text, language.value)};
+      ((globalThis as Record<string, unknown>)[TEST_KEY] as {i18n?: ActualUiI18n}).i18n = i18n;
+    }
     loaded = await (load ? load(ownedServer) : ownedServer.ssrLoadModule('/src/app/options/OptionsApp.vue'));
     if (!owns(scope)) throw inactive();
   } catch (error) {
@@ -151,8 +166,94 @@ async function mountOptions(hash = '#settings-selection', ready = Promise.resolv
     windowEvents.dispatchEvent(new Event('hashchange'));
     await runtime.nextTick();
   };
-  return {state, location, navigateHash, replaceState, scrollTo, windowScrollTo, addEventListener, removeEventListener, mediaAdd, mediaRemove, unsubscribeConfig, theme, skin, font, registerAppearance, releaseAppearance};
+  return {state, location, navigateHash, replaceState, scrollTo, windowScrollTo, addEventListener, removeEventListener, mediaAdd, mediaRemove, unsubscribeConfig, theme, skin, font, registerAppearance, releaseAppearance, i18n};
 }
+
+describe('OptionsApp language recovery search with actual UI messages', () => {
+  const englishLanguageSuffix = ['settings-translation/excluded-languages', 'settings-translation', 'settings-image-translation', 'settings-writing', 'settings-glossary'];
+  it.each(['zh-CN', 'en-US'] as const)('prioritizes language aliases and focuses the existing selector in %s', async language => {
+    const {state, location} = await mountOptions('#settings-selection', Promise.resolve(), undefined, undefined, 'chrome', language);
+    const control = {scrollIntoView: vi.fn(), focus: vi.fn()};
+    const querySelector = vi.fn(() => control);
+    vi.stubGlobal('document', {querySelector});
+    for (const query of ['language', 'Language', 'lang']) {
+      state.query = query;
+      expect(state.filteredResults.map(result => result.id)).toEqual(['settings-general', ...(language === 'en-US' ? englishLanguageSuffix : [])]);
+      expect(state.filteredResults[0]).toEqual({
+        id: 'settings-general', sectionId: 'settings-general',
+        label: language === 'en-US' ? 'App language / Language' : '软件语言 / Language',
+        searchDescription: language === 'en-US' ? 'Choose the language used across FluentRead.' : '选择 FluentRead 所有界面使用的语言',
+      });
+      await state.selectResult(state.filteredResults[0]);
+      expect(state.activeSection).toBe('settings-general');
+      expect(state.query).toBe('');
+      expect(location.hash).toBe('#settings-general');
+      expect(querySelector).toHaveBeenLastCalledWith('[data-testid="ui-language-select"] input');
+      expect(control.scrollIntoView).toHaveBeenLastCalledWith({block: 'center'});
+    }
+    expect(control.focus).toHaveBeenCalledTimes(3);
+  });
+
+  it('preserves non-language result content and panel/target/section ordering', async () => {
+    const {state, i18n} = await mountOptions('#settings-selection', Promise.resolve(), undefined, undefined, 'chrome', 'zh-CN');
+    state.query = '翻译';
+    expect(state.filteredResults.map(result => result.id)).toEqual([
+      'settings-translation-stats/overview', 'settings-translation/page', 'settings-translation/section-translation',
+      'settings-translation/excluded-languages', 'settings-sites/rules', 'settings-video/general', 'settings-advanced/cache',
+      'feature-services', 'floating-ball-toggle', 'floating-ball-settings', 'translation-sentence-highlight',
+      'settings-general', 'settings-services', 'settings-translation', 'settings-interface', 'settings-selection',
+      'settings-image-translation', 'settings-video', 'settings-translation-center', 'settings-sites', 'settings-translation-stats',
+    ]);
+    state.query = 'OpenAI';
+    expect(state.filteredResults).toMatchInlineSnapshot(`
+      [
+        {
+          "id": "settings-services",
+          "label": "翻译服务",
+          "searchDescription": "服务与模型",
+          "sectionId": "settings-services",
+        },
+        {
+          "id": "settings-translation-stats",
+          "label": "翻译统计",
+          "searchDescription": "请求规模、耗时与服务表现",
+          "sectionId": "settings-translation-stats",
+        },
+      ]
+    `);
+    i18n!.language.value = 'en-US';
+    expect(state.filteredResults.map(result => result.id)).toEqual(['settings-services', 'settings-translation-stats']);
+    state.query = '';
+    expect(state.filteredResults).toEqual([]);
+  });
+
+  it('recomputes language recovery and localized results when the UI language changes', async () => {
+    const {state, i18n} = await mountOptions('#settings-selection', Promise.resolve(), undefined, undefined, 'chrome', 'zh-CN');
+    state.query = 'language';
+    expect(state.filteredResults.map(result => result.id)).toEqual(['settings-general']);
+    expect(state.filteredResults[0].label).toBe('软件语言 / Language');
+    i18n!.language.value = 'en-US';
+    expect(state.filteredResults.map(result => result.id)).toEqual(['settings-general', ...englishLanguageSuffix]);
+    expect(state.filteredResults[0].label).toBe('App language / Language');
+    i18n!.language.value = 'zh-CN';
+    expect(state.filteredResults.map(result => result.id)).toEqual(['settings-general']);
+    expect(state.filteredResults[0].label).toBe('软件语言 / Language');
+  });
+
+  it('keeps language recovery available while filtering unsupported userscript controls', async () => {
+    const {state, i18n} = await mountOptions('#settings-selection', Promise.resolve(), undefined, undefined, 'userscript', 'en-US');
+    state.query = 'lang';
+    expect(state.filteredResults.map(result => result.id)).toEqual(['settings-general', ...englishLanguageSuffix]);
+    for (const language of ['en-US', 'zh-CN'] as const) {
+      i18n!.language.value = language;
+      for (const query of ['智能高亮', 'Smart Highlighting', '意外度', 'surprisal', '关键词']) {
+        state.query = query;
+        expect(state.filteredResults).toEqual([]);
+      }
+      expect(state.sectionPanels.map(panel => panel.id)).not.toContain('information-highlight');
+    }
+  });
+});
 
 describe('OptionsApp mounted hash navigation', () => {
   it('registers the explicit appearance root and releases only its returned handle once', async () => {

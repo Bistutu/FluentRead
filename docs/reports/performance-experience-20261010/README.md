@@ -1,6 +1,6 @@
 # 体积、共享配置与页面交互优化（2026-10-10）
 
-本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 完成。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，继续使用该集成基线对照。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
+本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 持续进行。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，第四批为 `97e92defe`；第五批继续使用同一集成基线，并另与第四批冻结产物比较。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
 
 ## 改动与测量
 
@@ -115,6 +115,8 @@
 
 最终生产 Chrome 的 popup/options 静态依赖图均已没有 franc 语料；统计检测仍在按需模块、后台和内容脚本中。真实 Edge 各五次新文档采样测得实际 JavaScript 读取量分别为 popup 1,117,613 → 972,729 B、options 1,269,509 → 1,124,617 B，减少约 145 KB。DOM 节点、配置序列化计数与首屏 CSS 不变。ready 中位数分别为 90.3 → 69.4 ms、287.5 → 256.5 ms；content 为 198.6 → 197.9 ms，基本不变。这些是本机描述性采样，同机其他任务与缓存可能影响耗时，不声称跨设备保证，也不从原始 heap 推断统一内存收益。
 
+为排除首组采样与编译构建重叠的影响，全部构建结束后另用两个冻结包顺序各测五次。JavaScript 字节完全复现；popup/options 的脚本耗时中位数为 18.733 → 14.101 ms、17.737 → 12.823 ms，ready 为 73.0 → 71.4 ms、277.4 → 242.0 ms。popup ready 的收益明显小于首组，不能把首组的 20.9 ms 差值描述为稳定提升；设置页两组均下降，仍限于本机描述性证据。content ready 为 194.9 → 193.1 ms、脚本耗时 118.03 → 118.48 ms，基本不变。补测报告位于 `round4-idle-startup-*`。
+
 完整产物相对第三批额外减少 72,301 B，其中 JS 减少 56,160 B、CSS 减少 16,293 B，HTML 增加 152 B。累计口径仍为冻结的 `55d1219bd`：
 
 | 产物 | 集成基线 | 四批优化后 | 累计减少 |
@@ -126,6 +128,33 @@
 
 生产写作 `compact` 专项在隔离 Edge 中通过：实际设置、关闭重开保存、独立服务编辑、GitHub/Gmail 合成结构中的双语答案和插入契约、桌面/390px 阅读空间与深色呈现。两种宽度均无横向溢出，控制台与清理错误为零，临时 profile 已删除；十三份原始截图经联系表及关键窄屏/深色原图人工复核。测试仅使用本地合成流响应，不包含真实账号、发送动作、模型质量或 Firefox 实机验收。报告位于 `round4-writing-compact/report.json`；首屏采样和整包对照分别位于 `round4-startup-*`、`round4-bundle-comparison.json` 与 `round4-zip-comparison.json`。
 
+## 第五批：轻量语言标签、字幕协议与共享锚点（2026-10-11）
+
+中文标签归一化和正文字形证据原先在同一模块，配置与语言目录也会初始化三份字符表、正则和集合。现在 `chinese.ts` 只解析标签，正文识别通过 `chineseText.ts` 使用原规则；不增加反向兼容出口。原有 7,367 B 算法逐字节相同；403 条文本、12,540 个字符、65 个标签及视频模型归一化输入的 847,048 B 输出与冻结第四批相同。纯字幕 `domain/public.ts` 复用模型和缓存消息原定义，视频模型设置不再经播放器运行时取得元数据，Userscript 根入口的原空能力契约保持。
+
+生产 Chrome 的 popup/options 静态依赖图分别减少 52,576 / 52,457 B，首屏不再含中文正文字符表；识别规则仍在按需检测模块、后台和内容脚本中。真实设置页首次访问视频模型区域的请求也已不再包含翻译 client、detect、compiler 与播放器 registry。模板、卡片和模型选项保持原有实现，未下载或运行模型。
+
+按两包同一浏览序列捕获的脚本请求路径，进入视频前的独有资源为 **1,124,617 → 1,072,148 B**；进入视频后扣除先前已请求的共享脚本，新增 12 → 8 个文件、**308,603 → 47,284 B**，减少 **261,319 B**。其中移除的四个运行时脚本占 261,199 B，模型设置组件本身另减 120 B。这里统计请求对应文件的原始资源预算，不是 HTTP transferSize，也不把已缓存的共享资源重复计入。逐路径证据位于 `chinese-video-boundary/round5-request-bytes.json`。
+
+全部构建结束后，用第四、第五批冻结包顺序各测五次真实新文档。popup/options 实际 JavaScript 资源预算为 **972,729 → 920,153 B**、**1,124,617 → 1,072,148 B**；ready 中位数为 71.4 → 61.9 ms、252.0 → 249.9 ms，脚本耗时为 13.154 → 10.647 ms、13.371 → 12.072 ms。设置页就绪时间仅略降，首开反而从 276.5 增到 291.4 ms，不将本机采样当作统一速度保证。content 增加 67 B，ready 均为 191.7 ms；节点数、配置序列化和首屏 CSS 不变。原始 heap 受 GC 时点影响，不作为内存优化结论。两组错误数组均为空，报告位于 `round5-startup-*`。
+
+全文队列在一次同步只读收集内按锚点复用成功且有限的位置，不缓存异常或非有限值，断开连接及 API 检查仍先执行，下一计划重新测量。执行真实翻译 core 发现候选后，100 个候选共用一个锚点时布局读取 **100 → 1 次**，20 个锚点时 **100 → 20 次**，100 个独立锚点仍为 **100 次**；新计划中的位置变化、断开、失败恢复、排序身份与等待序号均有回归。这里减少的是布局 API 调用次数，不能等同为强制重排次数或固定耗时下降。
+
+设置搜索复用原语言识别 helper，在面板、锚点和导航结果合并后将软件语言移到首项。真实英文资源下 `language`、`Language`、`lang` 原先将“不翻译的语言”排在前面；中文“语言”也存在相同顺序。修正仅移动既有软件语言对象，其他结果的内容和相对顺序保留；点击复用原有语言选择器定位和焦点。未为微小检索耗时引入新索引、观察器或缓存。
+
+第五批全部文件为 **65,714,760 B**，较第四批增加 **128 B**，均为 JS；样式、语言资源、字体及模型引擎资源总量不变。这批主要降低首载与模型设置的依赖成本，不声称整包继续减少。固定日期 ZIP 为 **23,707,720 B**，较第四批减少 **2,977 B**。累计对冻结 `55d1219bd`：
+
+| 产物 | 集成基线 | 五批优化后 | 累计减少 |
+| --- | ---: | ---: | ---: |
+| 构建目录全部文件 | 67,375,068 B | 65,714,760 B | 1,660,308 B（2.464%） |
+| 同口径 ZIP | 24,181,275 B | 23,707,720 B | 473,555 B（1.958%） |
+
+五组互不重复文件的针对性回归合计 **37 文件 / 3,642 项**：语言 14 / 1,875，字幕与模型设置 13 / 312，全文调度 4 / 473，搜索 2 / 46，架构 4 / 936（含 901 项源码长头）。中文标签、正文算法及字符表的适用维度均 100%；全文队列 170 条语句、76 个分支、14 个函数四维覆盖率 100%。新正文模块已登记到严格覆盖率，纯导出协议没有新增可执行算法。分类审计 636 文件 / 10,334 个声明用例通过，声明数不等于全量执行数。
+
+隔离后台 Edge 的第四批对照与第五批最终包均通过四种语言查询、真实选择器焦点、Tiny/Base/Small 卡片、无横向溢出检查；控制台错误和外部请求均为空，临时 profile 已清理，八份原始截图已检查。报告为 `round5-search-baseline-corrected`、`round5-search-final`。最初 runner 错把现有“软件语言”文案当作“界面语言”，并传入不支持新版 guarded close 的旧技能 helper；诊断报告保留，已改用仓库 helper 和真实文案后两包均成功，没有据此修改产品。该次旧 helper 的临时目录因 close 返回异常而保留，未把清理失败报告为已删除。
+
+类型检查、顺序 Chrome/Firefox 生产构建、Userscript 构建及其 1,962,235 B 产物 verifier、MV3/MV2 清单检查通过。文档构建后顺序构建 Storybook，再检查 81 页面和 28 stories，全部通过。独立只读复核未发现本批可操作缺陷；证据仍不涵盖在线供应商、真实模型识别质量、Firefox 实机或所有网站。
+
 ## 复核入口
 
 ```sh
@@ -136,6 +165,7 @@ node scripts/testing/run-interface-skin-keyboard-test.cjs --extension-dir .outpu
 node scripts/testing/run-platform-caption-layout-test.cjs --artifacts-dir /private/tmp/fluentread-caption-layout
 node scripts/testing/run-page-context-structure-test.cjs --artifacts-dir /private/tmp/fluentread-page-context
 node scripts/testing/run-config-persistence-test.cjs --extension-dir .output/chrome-mv3 --artifacts-dir /private/tmp/fluentread-config-persistence
+node scripts/testing/run-settings-search-priority-test.cjs --extension-dir .output/chrome-mv3 --artifacts-dir /private/tmp/fluentread-settings-search
 pnpm test:coverage -- tests/pageContextMarkdown.test.ts tests/pageContextDefuddle.test.ts --coverage.include=src/services/translation/context/markdown.ts
 pnpm test:coverage -- tests/sameTargetLanguageSlots.test.ts tests/sameTargetLanguageClient.test.ts tests/sameTargetLanguageRegression.test.ts tests/liveTextTranslation.test.ts tests/translationSlotEchoRegression.test.ts tests/fullPageVisibilityScheduling.test.ts --coverage.include=src/features/full-page-translation/content/translationRequest.ts
 node scripts/testing/analyze-bundle-size.mjs .output/chrome-mv3 /path/to/baseline-chrome
@@ -145,6 +175,6 @@ node scripts/testing/analyze-bundle-size.mjs .output/chrome-mv3 /path/to/baselin
 
 ## 后续候选
 
-模型目录与语言检测、写作设置与阅读卡片的职责拆分已在第四批完成。继续审计其他公开出口和高频全文/悬浮/选区路径，只对能复现的重复工作做最小优化。
+模型目录与语言检测、写作设置与阅读卡片的职责拆分已在第四批完成，第五批补齐轻量中文标签和字幕模型协议。继续审计其他公开出口和高频全文/悬浮/选区路径，只对能复现的重复工作做最小优化。
 
 原生字幕 cue 查询仍按原语义线性扫描，后续索引需要先证明重叠字幕、seek、动态轨变化和偏移的一致性。frame CSS 的剩余重复资源仍遵循 WXT 同名入口路径，未直接删掉文件或改变资源引用。
