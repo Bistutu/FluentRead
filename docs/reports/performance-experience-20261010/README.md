@@ -1,6 +1,6 @@
 # 体积、共享配置与页面交互优化（2026-10-10）
 
-本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 持续进行。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，第四批为 `97e92defe`，第五批为 `7e8ffe952`，第六批为 `621a1c2a2`，第七批为 `adbcfe428`，第八批为 `5e554d7fa`，第九批为 `85c29dffe`，第十批为 `626e4652e`，第十一批为 `80e2db0c5`，第十二批为 `d4c9b0a66`，第十三批为 `6312bbbfd`，第十四批为 `c420f6728`；后续继续使用同一集成基线，并与上一批冻结产物比较。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
+本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 持续进行。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，第四批为 `97e92defe`，第五批为 `7e8ffe952`，第六批为 `621a1c2a2`，第七批为 `adbcfe428`，第八批为 `5e554d7fa`，第九批为 `85c29dffe`，第十批为 `626e4652e`，第十一批为 `80e2db0c5`，第十二批为 `d4c9b0a66`，第十三批为 `6312bbbfd`，第十四批为 `c420f6728`，第十五批为 `391c4683c`；后续继续使用同一集成基线，并与上一批冻结产物比较。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
 
 ## 改动与测量
 
@@ -320,6 +320,18 @@ X 原生字幕 `sync` 原先先判时间轴，再为正文重新复制、筛选�
 类型检查、Chrome→Firefox→Userscript 顺序构建、双 manifest 和 Userscript verifier 通过，Userscript **1,962,644 → 1,962,688 B**，增加 **44 B**。文档→Storybook 顺序构建及 **81 页面 / 28 stories**检查通过。完整 Chrome **65,614,959 → 65,615,179 B**，增加 **220 B**；同口径固定日期内存 ZIP **23,695,047 → 23,694,938 B**，减少 **109 B**。累计对冻结 `55d1219bd`，原始产物减少 **1,759,889 B**、ZIP 减少 **486,337 B**。两包全部 860 条文件账本独立复算一致；298 非 JS/MJS/HTML 静态文件及两个固定 MJS path/SHA 全同。两 CSS 仅 content 的三十处、LearningCenter 的三十四处 scope 替换，分别 95,006 / 35,364 B，实际 JS 的新标识匹配。JS 增量为后台 +44、content +163、i18n chunk +131、LearningCenter -118 B，合计 +220；未把后台压缩标识符变化归因于算法。证据为 `round15-source-freeze.json`、`round15-static-ledger.json`、`round15-package-comparison.json` 及验证日志。没有资源、语言或功能裁剪，没有新增依赖或参考实现，全部仅本地保存；未验证在线 provider、原生焦点布局、Firefox 实机或低端设备。
 
 下一批字幕单轮选择候选暂未改生产。无条件复用在两次时间读取跨越 cue 边界时会选错；保守方案保留第二次时间读取，只在本轮 cues/source/time 相同才复用，异步、偏移和后续帧重新选择。实际私有函数探针证明长时间轴的重复遍历可减少，但对象分配次数未净减少，stale/人工命中/NaN 等路径还有一个短寿命对象成本。公共 mount 草稿已复现 100 次更新的 200 次选择，以及时间跨界、偏移、换轨与迟到结果边界；NaN 和人工轨公共探针补齐后继续审查。Linkedom 将未订阅 attributes 错送给 childList observer 的偏差通过临时标准端口过滤，合法偏移夹具修正单项复验，原失败/收口记录保留。这里只记录候选可行性，不计入本批正式测试、收益或产物。
+
+## 第十六批：字幕单轮选择复用（2026-10-11）
+
+YouTube 原生字幕先判断旧字幕是否过期，随后为渐进展示再次选择相同时间轴。现在仅在同一次同步更新内传递首次结果，并保留第二次媒体时间读取；字幕数组身份、原文及时间全同才复用。两次时钟跨句界、NaN、偏移、后续帧和异步回写仍按原路径选择。参数求值保持先读取 cues 再读取时钟，人工字幕命中先返回，空档才进入渐进展示；没有持久缓存、轨道索引、新模块或运行时依赖。短寿命 hint 会带来对象成本，普通稳定路径的分配次数没有净减少，人工命中、stale 和时间漂移等路径没有扫描收益。
+
+正式归属仍为既有 `tests/videoSubtitleTrackPriorityRuntime.test.ts`，原 X describe 正文逐字相同。新增六个真实公共 mount 用例，合计二十一声明展开 **29 项**；旧源 RED **27 通过 / 2 预算失败**，最终 GREEN **29 通过**。普通 100 次媒体更新的实际 selector **200 → 100**；实际人工目标轨 loader 命中为 **1 → 1**，时间空档回退为 **2 → 1**，NaN 为 **2 → 2**。译文、provider 和人工轨 fetch 断言先于次数断言，时钟跨界仍读取两次并选择后句，合法偏移、空档、新 timedtext、seek、迟到结果与卸载均通过。旧 RED、行数调整前 GREEN 和最终 GREEN 各保留，不把 87 次执行实例计作新增用例。证据为 `round16-runtime-audit/official-runtime-results.json`、`OFFICIAL-FREEZE.json` 和日志。
+
+新 YouTube 夹具只修正 Linkedom 将未订阅 attributes 发给 childList observer 的端口偏差，保留真实 DOM 记录与业务 callback；旧 X 仍使用原 observer。所有场景检查订阅和计时器归零、观察器预算不超限，命名 call-through spy 在 finally 恢复，未替换业务 selector/controller/人工轨算法。它不是完整原生 MutationObserver 仿真，尤其 takeRecords、隐式 attributes、移除子树的临时订阅与真实投递时序仍有限制；原 X 控制端口的既有 stderr 保留，没有声称零警告或浏览器播放验收。
+
+最终三个函数与局部类型在按原顺序展开同一 const 的声明后，与冻结保守提案 AST 全等；旧异步调用未携带 hint。上批冻结私有函数/实际纯 selector 的补充计数中，6,000 cue 时间轴的 100 次稳定更新，遍历 **1,200,000 → 600,000**；这是受控操作量，不是实际设备 CPU、heap、GC 或时延测量。第一次架构检查因声明布局使 header 外行数达到 1,893、超过原上限 1,887，失败日志保留；收紧类型布局并合并两个同序 const 后为 1,887，最终四文件 **938 项**通过，未提高债务上限。关联纯逻辑/loader/调度/缓存/控制器六文件 **59 项**、公共 mount 一文件 **29 项**互不重叠，合计 **11 文件 / 1,026 项**；分类审计 **638 文件 / 10,424 个声明**，没有新增登记、豁免或改变覆盖阈值，未执行全量套件。
+
+类型检查、Chrome→Firefox→Userscript 顺序构建、双 manifest 和 Userscript verifier 通过，Userscript 保持 **1,962,688 B**；文档→Storybook 顺序构建及 **81 页面 / 28 stories**检查通过。完整 Chrome **65,615,179 → 65,615,306 B**，增加 **127 B**；同口径固定日期内存 ZIP **23,694,938 → 23,695,042 B**，增加 **104 B**。累计对冻结 `55d1219bd`，原始产物减少 **1,759,762 B**、ZIP 减少 **486,233 B**。两包全部 860 条账本独立复算一致，300 非 JS/MJS/HTML 静态资源、两个固定 MJS 和 manifest 全等；无路径增删，仅 content JS +171 B、background -44 B，其余 428 文件 SHA 全等。未把后台压缩标识符波动归因为业务优化。证据为 `round16-source-freeze.json`、`round16-static-ledger.json`、`round16-package-comparison.json` 与验证日志。收益是减少正常更新中的重复扫描，接受小量包成本；未验证真实 YouTube/provider、Firefox 实机或低端设备，全部仍仅本地保存。
 
 ## 复核入口
 

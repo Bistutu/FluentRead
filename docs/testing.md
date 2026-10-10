@@ -296,6 +296,8 @@ node scripts/testing/run-webdav-backup-ui-test.cjs \
 
 `tests/videoTranslationScheduler.test.ts` 验证三路满载的重复当前句请求不枚举等待队列，仍合并同一 Promise、提升优先级并在完成后保留同级顺序；清理后不响应 abort 的旧传输仍占原名额，其迟到 finally 可启动同 key 的新请求。两路预取保留第三路的原行为继续回归，操作计数不代表播放器或供应商耗时。
 
+`tests/videoSubtitleTrackPriorityRuntime.test.ts` 从实际公共 mount 验证 YouTube 同轮选择、两次时钟跨界、NaN、seek、字幕偏移、换轨、迟到结果及人工目标轨命中后回退。只在同步媒体事件窗口对真实 selector 作 call-through 计数，先检查原译文及翻译请求不变；不模拟业务算法。YouTube 夹具按订阅过滤 Linkedom 错发的 attributes，保留真实 childList 与业务回调，并断言观察器预算、订阅和计时器清理；既有 X 夹具继续使用原观察器。这是受控 DOM/媒体/fetch 端口验证，不代表原生浏览器布局、在线字幕服务或设备耗时。
+
 `node scripts/run-video-caption-prefetch-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <focus-safe-browser.cjs路径> --artifacts-dir /private/tmp/fluentread-caption-prefetch` 在临时 Edge profile 的第二屏后台窗口中，以固定 500ms 翻译响应检查 YouTube/X 的预取和首次显示：重复原生条目不能占满后续句子的名额，轨道加入后立即启动预取，缓存命中的原文与译文在同一次 DOM 更新中显示。报告记录请求启动时间、两行首次显示的间隔和焦点隔离信息；页面与供应商均为受控夹具，不代表真实账号或在线翻译服务的端到端延迟。
 
 同一专项还覆盖滚动字幕的上一句残留、窗口裁切的旧行、连续每 40ms 增词、无时间轴的请求启动延迟与缓存重播。报告中的 `dispatchMs` 只度量原文变化到请求发出的等待，不包含真实供应商耗时；译文仍使用确定性响应，不能据此声称真实视频端到端零延迟。

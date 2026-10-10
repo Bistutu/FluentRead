@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/runtime.ts
  * 文件职责：装配视频及会议字幕运行时，并协调 YouTube/X 原生字幕、目标语言人工轨、逐条翻译、校时、菜单、完整句学习与下载。
- * 主要内容：挂载可关闭的原句学习面板与带时间点来源恢复，媒体切换和配置变化清理控制；相同译文保留原文且不重复展示；协调字幕校时、预翻译与补译导出确认，并为可选的逐字高亮提供当前句时间；X 分片加载尊重原生轨道优先级，播放器内换模型必须确认且保留取消焦点，完整 AI 识别提前展示稳定句，完成后才缓存和导出。
+ * 主要内容：挂载可关闭的原句学习面板与带时间点来源恢复，媒体切换和配置变化清理控制；相同译文保留原文且不重复展示；YouTube 同轮相同输入复用字幕选择并保留第二次时钟读取；协调字幕校时、预翻译与补译导出确认，并为可选的逐字高亮提供当前句时间；X 分片加载尊重原生轨道优先级，播放器内换模型必须确认且保留取消焦点，完整 AI 识别提前展示稳定句，完成后才缓存和导出。
  * 模块边界：本文件只在 content 页面编排，不拦截 fetch/XHR 也不实现翻译 provider；MAIN-world bridge 在独立模块捕获 timedtext，解析算法在 youtubeSubtitleData，翻译经 app client。
  */
 import {createApp, h, shallowReactive} from 'vue';
@@ -396,9 +396,15 @@ export function mountVideoSubtitleTranslation(): () => void {
     `${(cue as VideoSubtitleCue & { cueId?: string }).cueId || cue.startMs}:${normalizeVideoCaptionText(cue.text)}`;
 
   const findActiveProgressiveCue = () => findActiveVideoCaptionCue(pretranslationCues, getCurrentVideoTimeMs());
-  const selectProgressiveCue = (source: string): VideoSubtitleCue | null => {
+  type YoutubeCueSelection = ReturnType<typeof selectYoutubeCaptionCue> & {cues: readonly VideoSubtitleCue[]; source: string; currentMs: number};
+  const selectProgressiveCue = (source: string, selection?: YoutubeCueSelection): VideoSubtitleCue | null => {
     if (hasAdjustedTimeline()) return getAdjustedCaptionCue();
-    if (isYouTubeVideoPage()) return selectYoutubeCaptionCue(pretranslationCues, source, getCurrentVideoTimeMs()).cue;
+    if (isYouTubeVideoPage()) {
+      // 播放时钟可能在同轮跨过句界；输入全同才复用，不保留跨帧或异步结果。
+      const cues = pretranslationCues, currentMs = getCurrentVideoTimeMs();
+      if (selection && selection.cues === cues && selection.source === source && selection.currentMs === currentMs) return selection.cue;
+      return selectYoutubeCaptionCue(cues, source, currentMs).cue;
+    }
     return selectProgressiveVideoCaptionCue(pretranslationCues, source, getCurrentVideoTimeMs());
   };
 
@@ -423,8 +429,8 @@ export function mountVideoSubtitleTranslation(): () => void {
     syncTranslationOverlayPosition(container);
   };
 
-  const updateProgressiveCaption = (source: string, overlay: HTMLElement, container: HTMLElement): boolean => {
-    const cue = selectProgressiveCue(source);
+  const updateProgressiveCaption = (source: string, overlay: HTMLElement, container: HTMLElement, selection?: YoutubeCueSelection): boolean => {
+    const cue = selectProgressiveCue(source, selection);
     if (!cue) return false;
 
     cancelStableCaption();
@@ -1517,7 +1523,12 @@ export function mountVideoSubtitleTranslation(): () => void {
       return;
     }
 
-    if (isYouTubeVideoPage() && !hasAdjustedTimeline() && selectYoutubeCaptionCue(pretranslationCues, source, getCurrentVideoTimeMs()).stale) {
+    let youtubeSelection: YoutubeCueSelection | undefined;
+    if (isYouTubeVideoPage() && !hasAdjustedTimeline()) {
+      const cues = pretranslationCues, currentMs = getCurrentVideoTimeMs();
+      youtubeSelection = {...selectYoutubeCaptionCue(cues, source, currentMs), cues, source, currentMs};
+    }
+    if (youtubeSelection?.stale) {
       resetTranslationState();
       return;
     }
@@ -1535,7 +1546,7 @@ export function mountVideoSubtitleTranslation(): () => void {
       return;
     }
     if (humanCaptionKey) resetTranslationState();
-    if (updateProgressiveCaption(source, overlay, container)) return;
+    if (updateProgressiveCaption(source, overlay, container, youtubeSelection)) return;
 
     if (progressiveCueKey) {
       clearProgressiveCaption();
