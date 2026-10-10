@@ -1,7 +1,7 @@
 <!--
 @file src/features/settings/ui/LocalDataManagement.vue
 文件职责：在备份与恢复页提供唯一的 FluentRead 数据迁移入口。
-主要内容：将设置、单词本和模型用量导出为一份版本化备份，自动识别完整备份与旧版单项文件，并在导入前预览影响。
+主要内容：将设置、单词本和模型用量导出为一份版本化备份，确认期随页面活跃归属失效；已接受并开始读取的导出继续下载，迟到提示与焦点归还仍核对归属。自动识别完整备份与旧版单项文件，并在导入前预览影响。
 模块边界：组件只编排 runtime 协议和文件交互；各领域仓库继续拥有校验与合并规则，Anki 与清空等单词本操作留在单词本页。
 -->
 <template>
@@ -160,6 +160,7 @@ import {
   usesExactCredentialReplacement,
 } from '@/src/features/settings/model/dataBackup';
 import {buildCredentialPreviewChanges} from '@/src/features/settings/model/credentialPreview';
+import {useSettingsActionContext} from '@/src/features/settings/model/useSettingsActionContext';
 import {
   VOCABULARY_BOOK_MESSAGE,
   type VocabularyBookExport,
@@ -175,7 +176,8 @@ import SettingsGroup from './components/SettingsGroup.vue';
 import {useUiI18n} from '@/src/ui/i18n';
 
 const {t} = useUiI18n();
-const props = defineProps<{config: Config}>();
+const props = withDefaults(defineProps<{config: Config; active?: boolean}>(), {active: true});
+const exportContext = useSettingsActionContext(() => props.active, () => []);
 const importInput = useTemplateRef<HTMLInputElement>('data-import-input');
 const busy = ref(false);
 const restoreSourceVisible = ref(false);
@@ -251,10 +253,11 @@ async function modelUsageExport(): Promise<ModelUsageTransferDocument> {
 }
 
 async function exportCompleteBackup(event?: MouseEvent): Promise<void> {
-  if (busy.value) return;
+  if (!exportContext.active.value || busy.value) return;
   const trigger = eventTarget(event);
+  const isCurrent = exportContext.capture();
   const includePrivateContext = await chooseBackupContext();
-  if (includePrivateContext === null) return;
+  if (includePrivateContext === null || !isCurrent()) return;
   busy.value = true;
   try {
     const [configSnapshot, vocabulary, modelUsage] = await Promise.all([
@@ -268,12 +271,12 @@ async function exportCompleteBackup(event?: MouseEvent): Promise<void> {
       modelUsage,
     });
     downloadFile(`fluentread-backup-${dateStamp()}.json`, JSON.stringify(backup, null, 2), 'application/json;charset=utf-8');
-    ElMessage.success(`备份已导出：${vocabulary.entries.length} 个词条，${modelUsage.events.length} 条用量记录`);
+    if (isCurrent()) ElMessage.success(`备份已导出：${vocabulary.entries.length} 个词条，${modelUsage.events.length} 条用量记录`);
   } catch (error) {
-    ElMessage.error(`导出失败：${errorMessage(error)}`);
+    if (isCurrent()) ElMessage.error(`导出失败：${errorMessage(error)}`);
   } finally {
     busy.value = false;
-    await focusTriggerAfterBusy(trigger);
+    await focusTriggerAfterBusy(trigger, isCurrent);
   }
 }
 

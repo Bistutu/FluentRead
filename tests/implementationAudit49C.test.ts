@@ -20,7 +20,7 @@ const ports = vi.hoisted(() => ({
     config: {} as any, listeners: new Set<(config: any) => void>(), storageListeners: new Set<(changes: any, area: string) => void>(),
     history: {} as any, historyListeners: new Set<(history: any) => void>(), messages: vi.fn(),
     delayDialogClosed: false, pendingDialogClosed: new Set<() => void>(),
-    send: vi.fn(), patch: vi.fn(), confirm: vi.fn(), get: vi.fn(),
+    send: vi.fn(), patch: vi.fn(), confirm: vi.fn(), get: vi.fn(), exportConfig: vi.fn(),
     browserCapabilities: {extensionDom: true},
     renderedEvents: [] as Array<{tag: unknown; props: any; node: any}>,
 }));
@@ -56,6 +56,7 @@ vi.mock('@/src/services/config/store', async () => ({
     getConfigHistorySnapshot: () => structuredClone(ports.history),
     subscribeConfigHistory: (listener: (history: any) => void) => {ports.historyListeners.add(listener); return () => ports.historyListeners.delete(listener);},
     requestConfigPatch: (...args: unknown[]) => ports.patch(...args),
+    prepareHydratedConfigForExport: () => ports.exportConfig(),
     subscribeConfig: (listener: (config: any) => void) => {ports.listeners.add(listener); return () => ports.listeners.delete(listener);},
 }));
 vi.mock('element-plus', async () => {
@@ -92,7 +93,7 @@ vi.mock('element-plus', async () => {
 vi.mock('@/src/features/settings/ui/CloudConfigBackup.vue', () => ({default: {render: () => null}}));
 vi.mock('@/src/features/settings/ui/LocalDataManagement.vue', () => ({default: {render: () => null}}));
 
-import {createApp, h, nextTick, reactive, type App, type Component} from 'vue';
+import {createApp, defineComponent, h, KeepAlive, nextTick, reactive, ref, type App, type Component, type PropType} from 'vue';
 import browser from 'webextension-polyfill';
 import GlossarySettings from '@/src/features/glossary/ui/GlossarySettings.vue';
 import LocalTtsSettings from '@/src/features/settings/ui/LocalTtsSettings.vue';
@@ -100,6 +101,7 @@ import LearningMemoryManager from '@/src/features/settings/ui/LearningMemoryMana
 import HarnessReadingHistory from '@/src/features/reading-assistant/ui/HarnessReadingHistory.vue';
 import VideoLocalModelSettings from '@/src/features/settings/ui/VideoLocalModelSettings.vue';
 import ConfigManagement from '@/src/features/settings/ui/ConfigManagement.vue';
+import LocalDataManagementStub from '@/src/features/settings/ui/LocalDataManagement.vue';
 import TranslationCacheSettings from '@/src/features/settings/ui/TranslationCacheSettings.vue';
 import {normalizeConfig, type Config} from '@/src/core/config/model';
 import {createGlossaryLibrary} from '@/src/core/glossary';
@@ -119,6 +121,13 @@ import {downloadProgressKey, videoModelDownloadId} from '@/src/core/download/pro
 import {appendConfigHistorySnapshot, toRestorableConfig} from '@/src/services/config/history';
 import {appendConfigAutoBackup} from '@/src/services/config/autoBackup';
 import {getConfigAutoBackupsSnapshot} from '@/src/services/config/autoBackupStore';
+import {prepareConfigForExport} from '@/src/core/config/transfer';
+import {VOCABULARY_BOOK_MESSAGE} from '@/src/features/vocabulary/public';
+
+// 此组绕过恢复页原有的子页面 stub，执行真实本机备份 SFC；确认遮罩、下载和 IO 端口受控。
+const ActualLocalDataManagement = (await vi.importActual<typeof import('@/src/features/settings/ui/LocalDataManagement.vue')>(
+    '@/src/features/settings/ui/LocalDataManagement.vue',
+)).default;
 
 const apps = new Set<App>();
 function deferred<T>() {
@@ -133,6 +142,8 @@ async function mount(component: Component, props: Record<string, unknown> = {}) 
     const elementPlus = await import('element-plus');
     app.component('el-select', elementPlus.ElSelect); app.component('el-option', elementPlus.ElOption); app.component('el-dialog', elementPlus.ElDialog);
     app.component('el-button', elementPlus.ElButton); app.component('el-input-number', elementPlus.ElInputNumber); app.component('el-switch', elementPlus.ElSwitch);
+    // LocalData 的恢复对话框在本组始终关闭；仅注册不参与导出路径的输入端口，避免解析警告。
+    app.component('el-input', {render: () => null});
     apps.add(app); app.mount(host); await settle();
     return {host, state, stop: () => {app.unmount(); apps.delete(app);}};
 }
@@ -146,6 +157,7 @@ beforeEach(() => {
     // WXT supplies this auto-import to the real progress watcher in the extension.
     vi.stubGlobal('browser', browser);
     ports.send.mockReset(); ports.patch.mockReset(); ports.confirm.mockReset(); ports.get.mockReset(); ports.messages.mockReset();
+    ports.exportConfig.mockReset();
     ports.delayDialogClosed = false;
     ports.browserCapabilities.extensionDom = true; ports.renderedEvents.length = 0;
     for (const key of Object.keys(ports.config)) delete ports.config[key];
@@ -978,5 +990,151 @@ describe('audit49C single-site preferences public preview', () => {
         expect(outputs[0]).toEqual({url: 'https://docs.site7.com/article', domain: 'site7.com', extension: 'enabled', translation: 'site', floatingBall: 'hidden-site'});
         expect(outputSHA256).toBe('0d6eb2f1949a7aee972ecce47af20ed2376dbe72847748e369ad8f09ecbd6829');
         expect(comparisons).toBe(0);
+    });
+});
+
+// 实际 Vue client renderer + 受控 MessageBox/下载；active 改变证明装配归属，非原生遮罩下鼠标离区。
+describe('audit49C local backup confirmation ownership', () => {
+    async function fixture(defaultActive = false) {
+        vi.useFakeTimers();
+        const blobs = new Map<string, Blob>();
+        let nextUrl = 0;
+        const create = vi.spyOn(URL, 'createObjectURL').mockImplementation(blob => {
+            const url = `blob:owned-backup-${++nextUrl}`; blobs.set(url, blob as Blob); return url;
+        });
+        const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(url => {blobs.delete(url);});
+        const download = vi.spyOn(window.HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+        const activeDescriptor = Object.getOwnPropertyDescriptor(dom.document, 'activeElement');
+        Object.defineProperty(dom.document, 'activeElement', {configurable: true, value: dom.document.body});
+        const shown = ref(true);
+        const Empty = {render: () => null};
+        const Owner = defineComponent({props: {
+            config: {type: Object as PropType<Config>, required: true},
+            active: {type: Boolean, default: undefined},
+        }, setup: props => () => h(KeepAlive, null, {
+            default: () => shown.value ? h(ActualLocalDataManagement, {config: props.config, ...defaultActive ? {} : {active: props.active}}) : h(Empty),
+        })});
+        ports.exportConfig.mockImplementation(async () => prepareConfigForExport(ports.config as Config));
+        ports.send.mockImplementation(async (message: {type: string; action: string; options?: {includePrivateContext: boolean}}) => {
+            if (message.action === 'exportData') return {success: true, data: {format: 'fluentread-vocabulary-book', version: 1,
+                exportedAt: 1, includesPrivateContext: message.options?.includePrivateContext, entries: [], reviewLogs: []}};
+            if (message.type === 'modelUsage' && message.action === 'export') return {success: true, data: {
+                format: 'fluentread-model-usage', version: 1, exportedAt: 1, events: [],
+            }};
+            throw new Error('Unexpected backup IO port');
+        });
+        const page = await mount(Owner, {config: ports.config, ...defaultActive ? {} : {active: true}});
+        const button = () => page.host.querySelector<HTMLButtonElement>('.transfer-actions button')!;
+        const focus = vi.spyOn(button(), 'focus').mockImplementation(() => undefined);
+        let stopped = false;
+        const stop = () => {if (!stopped) {stopped = true; page.stop();}};
+        const leave = async (kind: 'inactive' | 'reopen' | 'keepalive' | 'unmount') => {
+            if (kind === 'unmount') stop();
+            else if (kind === 'keepalive') shown.value = false;
+            else page.state.active = false;
+            await settle();
+            if (kind === 'reopen') {page.state.active = true; await settle();}
+        };
+        const reactivate = async () => {page.state.active = true; shown.value = true; await settle();};
+        return {page, button, focus, create, revoke, download, blobs, leave, reactivate, stop, async close() {
+            try {
+                stop(); await settle(); vi.runOnlyPendingTimers();
+                expect(blobs.size).toBe(0); expect(vi.getTimerCount()).toBe(0);
+            } finally {
+                focus.mockRestore(); download.mockRestore(); create.mockRestore(); revoke.mockRestore();
+                if (activeDescriptor) Object.defineProperty(dom.document, 'activeElement', activeDescriptor);
+                else Reflect.deleteProperty(dom.document, 'activeElement');
+                vi.useRealTimers();
+            }
+        }};
+    }
+
+    it.each(['confirm', 'cancel', 'close'] as const)('preserves the %s privacy choice with default-true active compatibility', async choice => {
+        const f = await fixture(true);
+        try {
+            if (choice !== 'confirm') ports.confirm.mockRejectedValueOnce(choice);
+            f.button().click(); await settle();
+            expect(ports.confirm).toHaveBeenCalledOnce();
+            expect(ports.confirm.mock.calls[0][2]).toMatchObject({confirmButtonText: '不包含并导出', cancelButtonText: '包含并导出', distinguishCancelAndClose: true});
+            expect(f.create).toHaveBeenCalledTimes(choice === 'close' ? 0 : 1);
+            expect(f.download).toHaveBeenCalledTimes(choice === 'close' ? 0 : 1);
+            expect(ports.exportConfig).toHaveBeenCalledTimes(choice === 'close' ? 0 : 1);
+            if (choice === 'close') expect(ports.send).not.toHaveBeenCalled();
+            else {
+                expect(ports.send.mock.calls.map(([message]) => [message.type, message.action])).toEqual([[VOCABULARY_BOOK_MESSAGE, 'exportData'], ['modelUsage', 'export']]);
+                const backup = JSON.parse(await [...f.blobs.values()][0].text());
+                expect(backup).toMatchObject({format: 'fluentread-data-backup', version: 2, configCredentialMode: 'exact-replace',
+                    vocabulary: {includesPrivateContext: choice === 'cancel'}, modelUsage: {events: []}});
+                expect(ports.messages).toHaveBeenCalledOnce(); expect(f.focus).toHaveBeenCalledOnce();
+            }
+            expect(f.button().disabled).toBe(false);
+        } finally {await f.close();}
+    });
+
+    it.each(['inactive', 'reopen', 'keepalive', 'unmount'] as const)('rejects a late privacy confirmation after controlled %s and permits a fresh active export', async kind => {
+        const f = await fixture(); const confirmation = deferred<void>();
+        ports.confirm.mockImplementationOnce(() => confirmation.promise);
+        try {
+            f.button().click(); await settle(); expect(ports.confirm).toHaveBeenCalledOnce();
+            await f.leave(kind); confirmation.resolve(); await settle();
+            expect(ports.exportConfig).not.toHaveBeenCalled(); expect(ports.send).not.toHaveBeenCalled();
+            expect(f.download).not.toHaveBeenCalled(); expect(ports.messages).not.toHaveBeenCalled(); expect(f.focus).not.toHaveBeenCalled();
+            if (kind !== 'unmount') {
+                await f.reactivate(); f.button().click(); await settle();
+                expect(ports.confirm).toHaveBeenCalledTimes(2); expect(f.download).toHaveBeenCalledOnce();
+                expect(f.button().disabled).toBe(false);
+            }
+        } finally {confirmation.resolve(); await settle(); await f.close();}
+    });
+
+    it.each(['inactive', 'keepalive', 'unmount'] as const)('finishes an accepted export after controlled %s while withholding stale toast and focus', async kind => {
+        const f = await fixture(); const io = deferred<Record<string, unknown>>();
+        ports.exportConfig.mockImplementationOnce(() => io.promise);
+        try {
+            f.button().click(); await settle();
+            expect(ports.exportConfig).toHaveBeenCalledOnce(); expect(ports.send).toHaveBeenCalledTimes(2);
+            expect(f.button().disabled).toBe(true);
+            // The loading/disabled native button must not start another confirmation after acceptance.
+            f.button().click(); await settle(); expect(ports.confirm).toHaveBeenCalledOnce();
+            await f.leave(kind); io.resolve(prepareConfigForExport(ports.config as Config)); await settle();
+            expect(f.download).toHaveBeenCalledOnce(); expect(ports.messages).not.toHaveBeenCalled(); expect(f.focus).not.toHaveBeenCalled();
+            if (kind !== 'unmount') {
+                await f.reactivate(); expect(f.button().disabled).toBe(false);
+                f.button().click(); await settle(); expect(f.download).toHaveBeenCalledTimes(2); expect(ports.messages).toHaveBeenCalledOnce();
+            }
+        } finally {io.resolve(prepareConfigForExport(ports.config as Config)); await settle(); await f.close();}
+    });
+
+    it('releases busy after a stale accepted IO failure and allows a fresh export on reactivation', async () => {
+        const f = await fixture(); const io = deferred<Record<string, unknown>>();
+        ports.exportConfig.mockImplementationOnce(() => io.promise);
+        try {
+            f.button().click(); await settle(); await f.leave('inactive'); io.reject(new Error('Owned export fixture failure')); await settle();
+            expect(f.download).not.toHaveBeenCalled(); expect(ports.messages).not.toHaveBeenCalled(); expect(f.focus).not.toHaveBeenCalled();
+            await f.reactivate(); expect(f.button().disabled).toBe(false); f.button().click(); await settle(); expect(f.download).toHaveBeenCalledOnce();
+        } finally {io.resolve(prepareConfigForExport(ports.config as Config)); await settle(); await f.close();}
+    });
+
+    it('keeps a pending choice valid across unrelated config replacement and exports the accepted authoritative snapshot', async () => {
+        const f = await fixture(); const confirmation = deferred<void>();
+        ports.confirm.mockImplementationOnce(() => confirmation.promise);
+        try {
+            f.button().click(); await settle();
+            f.page.state.config = normalizeConfig({...ports.config, on: false, count: 123, theme: 'dark'}); await settle();
+            confirmation.resolve(); await settle(); expect(f.download).toHaveBeenCalledOnce();
+            const backup = JSON.parse(await [...f.blobs.values()][0].text());
+            expect(backup.config).toEqual(prepareConfigForExport(ports.config as Config));
+        } finally {confirmation.resolve(); await settle(); await f.close();}
+    });
+
+    it('forwards the actual data-page and backup-panel availability without remounting the local backup child', async () => {
+        const page = await mount(ConfigManagement, {config: ports.config, active: true});
+        const latest = () => [...ports.renderedEvents].reverse().find(event => event.tag === LocalDataManagementStub)!;
+        const initial = latest().node;
+        expect(latest().props.active).toBe(true);
+        page.state.active = false; await settle(); expect(latest().props.active).toBe(false);
+        page.state.active = true; page.state.activePanel = 'history'; await settle(); expect(latest().props.active).toBe(false);
+        page.state.activePanel = 'backup'; await settle(); expect(latest().props.active).toBe(true);
+        expect(latest().node.component).toBe(initial.component);
     });
 });
