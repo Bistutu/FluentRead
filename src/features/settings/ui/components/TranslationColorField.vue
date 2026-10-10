@@ -2,7 +2,7 @@
 @file src/features/settings/ui/components/TranslationColorField.vue
 文件职责：为译文颜色、独立背景、线条颜色和标记底色提供统一的色板选择行，支持“默认”、精选色、取色器和精确输入。
 主要内容：以 radiogroup 语义渲染默认选项与色块，支持方向键、Home、End 的漫游焦点；选中色板以外的颜色时点亮彩虹取色器并显示该色，
-取色器和颜色名、RGB、十六进制输入统一归一为小写六位十六进制，非法输入留在编辑框并显示错误，不写入配置；取色器菜单保留在原 Shadow Root，仅保留最后一次待聚焦帧，色板替换、缓存停用与卸载时取消。
+取色器和颜色名、RGB、十六进制输入统一归一为小写六位十六进制，非法输入留在编辑框并显示错误，不写入配置；取色器菜单保留在原 Shadow Root，仅保留最后一次待聚焦帧，先登记帧再发出选择，仅在控件仍连接、原焦点归属与颜色有效时同步焦点，色板替换、缓存停用与卸载时取消。
 模块边界：只通过 v-model 发出颜色字符串，不读写配置，也不决定颜色如何作用到网页；色板与归一化规则来自 core/config/translationAppearance。
 -->
 <template>
@@ -114,6 +114,10 @@ const focusIndex = computed(() => Math.max(0, props.swatches.findIndex((swatch) 
 
 function select(value: string | null | undefined): void {
   cancelPendingFocus()
+  applyColorSelection(value)
+}
+
+function applyColorSelection(value: string | null | undefined): void {
   const normalized = normalizeTranslationColor(value ?? '')
   colorDraft.value = normalized
   invalidColor.value = false
@@ -132,19 +136,24 @@ function commitColorDraft(): void {
 
 function handleKeydown(event: KeyboardEvent, currentIndex: number): void {
   if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) return
+  cancelPendingFocus()
   event.preventDefault()
   const count = props.swatches.length + 1
   const nextIndex = event.key === 'Home' ? 0
     : event.key === 'End' ? count - 1
       : (currentIndex + (event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1) + count) % count
   const value = nextIndex === 0 ? '' : props.swatches[nextIndex - 1].value
-  select(value)
+  const group = groupElement.value!
+  const focusRoot = group.getRootNode() as Document | ShadowRoot
+  const origin = event.currentTarget
   pendingFocus = requestAnimationFrame(() => {
     pendingFocus = null
-    // 父级可能已替换颜色，旧按键不能把焦点带回不再选中的色块。
-    if (props.modelValue !== value) return
-    groupElement.value?.querySelector<HTMLButtonElement>(`button[data-choice-index="${nextIndex}"]`)?.focus()
+    // 用户离开色板或父级替换颜色后，旧按键不能把焦点带回原控件。
+    if (!group.isConnected || focusRoot.activeElement !== origin || props.modelValue !== value) return
+    group.querySelector<HTMLButtonElement>(`button[data-choice-index="${nextIndex}"]`)?.focus()
   })
+  // 先登记待清理帧，再发出选择，使同步父级卸载也能取消它。
+  applyColorSelection(value)
 }
 </script>
 

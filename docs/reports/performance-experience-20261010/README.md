@@ -1,6 +1,6 @@
 # 体积、共享配置与页面交互优化（2026-10-10）
 
-本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 持续进行。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，第四批为 `97e92defe`，第五批为 `7e8ffe952`；第六批继续使用同一集成基线，并另与第五批冻结产物比较。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
+本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 持续进行。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，第四批为 `97e92defe`，第五批为 `7e8ffe952`，第六批为 `621a1c2a2`，第七批为 `adbcfe428`；后续继续使用同一集成基线，并与上一批冻结产物比较。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
 
 ## 改动与测量
 
@@ -191,6 +191,20 @@
 
 类型检查、Chrome→Firefox 生产构建、Userscript 构建及 1,962,229 B 产物 verifier、MV3/MV2 清单验证通过；文档→Storybook 顺序构建后，81 页面及 28 stories 检查通过。独立只读复核再次对 Git 冻结提交核对正文、函数、配置和消费者 AST，没有遗漏消费者或反向兼容出口。首载测量脚本默认改用仓库拥有的 focus-safe helper，避免依赖个人技能安装路径，实际后台测试复验不抢前台。未修改参考仓库或新增依赖；证据不覆盖在线模型质量、真实供应商、Firefox 实机和所有网站。
 
+## 第八批：共享色板的焦点归属（2026-10-11）
+
+译文样式的四个颜色字段和逐句高亮的两个字段共用 `TranslationColorField`。原按键回调只核对当前颜色，用户在帧执行前移到输入框、取色器或其他按钮时会把焦点带回色板；同步父级卸载还发生在帧登记之前，清理钩子无法取消随后登记的任务。现在先登记帧再发出选择，回调核对原控件连接状态、原根的焦点归属与当前颜色。点击、取色器和输入继续复用原归一化步骤；默认色、空色板、重排、KeepAlive、卸载及非法草稿处理保持原规则，模板与样式逐字相同。
+
+真实共享 SFC 的新增回归在冻结第七批为 **53 通过 / 7 失败**，修复后为 **60 / 60 通过**。六个离开焦点场景涵盖 Document 与关闭的 Shadow Root；同步卸载后剩余帧 **1 → 0**，选择事件仍为一次。100 次按键仍发出 100 次选择且只保留一个待聚焦帧，没有把连续选择合并为一次保存。组件层的 focus、RAF 与 Element Plus 端口受控，另由生产浏览器验证原生行为。
+
+独占临时后台 Edge 的冻结第七批与修复包分别通过六字段 **48 次正常方向键/Home/End/循环、6 次原生 Tab、30 组颜色输入、6 个字段权威配置保存及重载**。非法输入保留草稿及错误，颜色配置和 revision 不变；`red`、RGB、简写十六进制及清空按原规则保存。两个真实设置消费者各向输入框、真实取色器的可聚焦外层或外部按钮移动焦点，短时捕获本页面 RAF 后执行：基线六例均拉回色板，修复六例均保留新的焦点，选择和保存值相同。该专项运行实际 Vue 生产组件及原生 DOM，RAF 调度被夹具控制，不能推断自然竞态的发生频率、用户按键速度或其他设备表现。
+
+两包控制台和外部请求数组均为空，后台窗口未抢前台，临时 profile 均已删除；八份桌面/390px深色原图已检查，无横向溢出。报告位于 `round8-color-focus-baseline-corrected` 与 `round8-color-focus-final`。首次 runner 错将取色器内部装饰层当作 Tab 目标，实际 Element Plus 的焦点位于外层 `DIV[tabindex=0]`；核对安装源码后仅校正两个测试选择器，保留初次失败报告并确认其 profile 已清理，未为该夹具错误修改产品。
+
+互不重复的针对性回归为 **8 文件 / 1,082 项**：共享组件及消费者 4 / 145、架构 4 / 937（含 902 项源码长头）。分类审计为 636 文件 / 10,357 个声明用例。独立只读复核确认颜色数据路径、同步卸载顺序和焦点保护一致。类型检查、Chrome→Firefox、Userscript 构建及 **1,962,273 B** 产物 verifier、双 manifest 验证通过；文档→Storybook 顺序构建后，81 页面与 28 stories 检查通过。
+
+完整 Chrome 文件为 **65,715,660 B**，较第七批增加 **38 B**；固定日期 ZIP 为 **23,710,151 B**，减少 **6 B**，安装包基本不变。本批收益是共享控件的交互可靠性，不报告时间或内存改善。累计对冻结 `55d1219bd`，原始产物减少 **1,659,408 B**、ZIP 减少 **471,124 B**。证据不覆盖 Firefox 实机、在线供应商、真实 closed Shadow Root 浏览器挂载或低端设备。
+
 ## 复核入口
 
 ```sh
@@ -205,6 +219,7 @@ node scripts/testing/run-settings-search-priority-test.cjs --extension-dir .outp
 node scripts/testing/run-onboarding-keyboard-and-provider-dialog-test.cjs --extension-dir .output/chrome-mv3 --expect optimized --artifacts-dir /private/tmp/fluentread-onboarding-provider
 node scripts/testing/run-onboarding-keyboard-and-provider-dialog-test.cjs --extension-dir .output/chrome-mv3 --expect optimized --service-rules absent --prompt-defaults /path/to/frozen-prompt-defaults.json --artifacts-dir /private/tmp/fluentread-prompt-service
 node scripts/testing/run-caption-segment-filter-test.cjs --source-root . --expect optimized --artifacts-dir /private/tmp/fluentread-caption-filter
+node scripts/testing/run-color-field-focus-test.cjs --extension-dir .output/chrome-mv3 --expect optimized --artifacts-dir /private/tmp/fluentread-color-focus
 pnpm test:coverage -- tests/pageContextMarkdown.test.ts tests/pageContextDefuddle.test.ts --coverage.include=src/services/translation/context/markdown.ts
 pnpm test:coverage -- tests/sameTargetLanguageSlots.test.ts tests/sameTargetLanguageClient.test.ts tests/sameTargetLanguageRegression.test.ts tests/liveTextTranslation.test.ts tests/translationSlotEchoRegression.test.ts tests/fullPageVisibilityScheduling.test.ts --coverage.include=src/features/full-page-translation/content/translationRequest.ts
 node scripts/testing/analyze-bundle-size.mjs .output/chrome-mv3 /path/to/baseline-chrome

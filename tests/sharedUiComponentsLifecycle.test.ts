@@ -325,45 +325,79 @@ describe('shared UI actual client SFC lifecycle', () => {
     ports.pickers[0].emit('update:modelValue', undefined);await settle();expect(update).toHaveBeenLastCalledWith('');
   });
   it('supports radio arrows, Home, End and wraparound with one live focus frame', async () => {
-    let mounted: Awaited<ReturnType<typeof mount>>;mounted = await mount(TranslationColorField, colorProps(), {listeners: {'onUpdate:modelValue': (value: string) => {mounted.props.modelValue = value;}}});
-    const radios = () => [...mounted.root.querySelectorAll('[role="radio"]')];
+    let mounted: Awaited<ReturnType<typeof mount>>;const update = vi.fn((value: string) => {mounted.props.modelValue = value;});
+    mounted = await mount(TranslationColorField, colorProps(), {listeners: {'onUpdate:modelValue': update}});
+    const radios = () => [...mounted.root.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
     event(radios()[1], 'click');await settle();expect(mounted.props.modelValue).toBe('#ff0000');event(radios()[0], 'click');await settle();expect(mounted.props.modelValue).toBe('');
+    update.mockClear();
     for (const [from, keyName, expected] of [[0, 'ArrowRight', '#ff0000'], [1, 'ArrowDown', '#0000ff'], [2, 'ArrowUp', '#ff0000'], [1, 'ArrowLeft', ''], [0, 'End', '#0000ff'], [2, 'Home', ''], [0, 'ArrowLeft', '#0000ff'] ] as const) {
-      key(radios()[from], keyName);await settle();dom.flush();expect(mounted.props.modelValue).toBe(expected);expect(dom.document.activeElement?.getAttribute('data-color')).toBe(expected || null);
+      radios()[from].focus();const pressed = key(radios()[from], keyName);await settle();dom.flush();
+      expect(pressed.defaultPrevented).toBe(true);expect(mounted.props.modelValue).toBe(expected);expect(update).toHaveBeenLastCalledWith(expected);
+      expect(dom.document.activeElement?.getAttribute('data-color')).toBe(expected || null);expect(radios().filter(radio => radio.getAttribute('tabindex') === '0')).toHaveLength(1);
     }
+    expect(update).toHaveBeenCalledTimes(7);update.mockClear();
     const ignored = key(radios()[0], 'Tab');expect(ignored.defaultPrevented).toBe(false);
+    expect(update).not.toHaveBeenCalled();radios()[0].focus();
     for (let index = 0; index < 100; index++) key(radios()[0], 'ArrowRight');
-    await settle();console.info(JSON.stringify({sharedUiOperationEvidence: 'color-keyboard', keydowns: 100, pendingFrames: dom.frames.size, output: mounted.props.modelValue}));
+    await settle();console.info(JSON.stringify({sharedUiOperationEvidence: 'color-keyboard', keydowns: 100, pendingFrames: dom.frames.size, output: mounted.props.modelValue, emittedSelections: update.mock.calls.length}));
+    expect(update).toHaveBeenCalledTimes(100);expect(update.mock.calls.every(([value]) => value === '#ff0000')).toBe(true);
     expect(dom.frames.size).toBe(1);mounted.unmount();expect(dom.frames.size).toBe(0);
+  });
+  it.each([[false, 'input'], [false, 'picker'], [false, 'outside'], ['closed', 'input'], ['closed', 'picker'], ['closed', 'outside']] as const)(
+    'does not steal color focus after it leaves the owning group, shadow=%s destination=%s', async (shadow, departure) => {
+      let mounted: Awaited<ReturnType<typeof mount>>;const update = vi.fn((value: string) => {mounted.props.modelValue = value;});
+      mounted = await mount(TranslationColorField, colorProps(), {shadow, listeners: {'onUpdate:modelValue': update}});
+      const origin = mounted.root.querySelector<HTMLButtonElement>('[role="radio"]')!;origin.focus();key(origin, 'ArrowRight');await settle();
+      expect(update).toHaveBeenCalledOnce();expect(mounted.props.modelValue).toBe('#ff0000');expect(dom.frames.size).toBe(1);
+      let destination: HTMLElement;
+      if (departure === 'input') destination = mounted.root.querySelector<HTMLInputElement>('input')!;
+      else if (departure === 'picker') destination = mounted.root.querySelector<HTMLButtonElement>('[data-color-picker-port]')!;
+      else {destination = dom.document.createElement('button');destination.textContent = 'Outside';dom.document.body.append(destination);}
+      destination.focus();const focus = vi.spyOn(dom.window.HTMLElement.prototype, 'focus');dom.flush();
+      expect(focus).not.toHaveBeenCalled();expect(dom.document.activeElement).toBe(destination);expect(dom.frames.size).toBe(0);expect(update).toHaveBeenCalledOnce();
+      origin.focus();key(origin, 'End');await settle();dom.flush();
+      expect(update).toHaveBeenCalledTimes(2);expect(update).toHaveBeenLastCalledWith('#0000ff');
+      const focusRoot = origin.getRootNode() as Document | ShadowRoot;expect(focusRoot.activeElement?.getAttribute('data-color')).toBe('#0000ff');
+    });
+  it('releases a color frame when the synchronous parent update unmounts the child', async () => {
+    let mounted: Awaited<ReturnType<typeof mount>>;let registeredBeforeUpdate = 0;
+    const update = vi.fn(() => {registeredBeforeUpdate = dom.frames.size;mounted.unmount();});
+    mounted = await mount(TranslationColorField, colorProps(), {listeners: {'onUpdate:modelValue': update}});
+    const origin = mounted.root.querySelector<HTMLButtonElement>('[role="radio"]')!;origin.focus();key(origin, 'End');
+    console.info(JSON.stringify({sharedUiOperationEvidence: 'color-synchronous-parent-unmount', registeredBeforeUpdate, pendingFramesAfterUnmount: dom.frames.size, emittedSelections: update.mock.calls.length}));
+    expect(update).toHaveBeenCalledOnce();expect(registeredBeforeUpdate).toBe(1);expect(dom.frames.size).toBe(0);
+    const focus = vi.spyOn(dom.window.HTMLElement.prototype, 'focus');await settle();dom.flush();expect(focus).not.toHaveBeenCalled();expect(mounted.root.childElementCount).toBe(0);
   });
   it('cancels pending color focus on swatch replacement and cache deactivation and rejects obsolete external color focus', async () => {
     let mounted: Awaited<ReturnType<typeof mount>>;mounted = await mount(TranslationColorField, colorProps(), {keepAlive: true, listeners: {'onUpdate:modelValue': (value: string) => {mounted.props.modelValue = value;}}});
-    const radio = () => mounted.root.querySelector('[role="radio"]')!;
-    key(radio(), 'End');await settle();mounted.props.swatches = [swatches[0]];await settle();expect(dom.frames.size).toBe(0);
-    key(radio(), 'End');await settle();mounted.visible.value = false;await settle();expect(dom.frames.size).toBe(0);mounted.visible.value = true;await settle();
-    const focus = vi.spyOn(dom.window.HTMLElement.prototype, 'focus');key(radio(), 'End');await settle();mounted.props.modelValue = '#abcdef';await settle();dom.flush();expect(focus).not.toHaveBeenCalled();
+    const radio = () => mounted.root.querySelector<HTMLButtonElement>('[role="radio"]')!;
+    radio().focus();key(radio(), 'End');await settle();mounted.props.swatches = [swatches[0]];await settle();expect(dom.frames.size).toBe(0);
+    radio().focus();key(radio(), 'End');await settle();mounted.visible.value = false;await settle();expect(dom.frames.size).toBe(0);mounted.visible.value = true;await settle();
+    radio().focus();const focus = vi.spyOn(dom.window.HTMLElement.prototype, 'focus');key(radio(), 'End');await settle();mounted.props.modelValue = '#abcdef';await settle();dom.flush();expect(focus).not.toHaveBeenCalled();
+    radio().focus();focus.mockClear();key(radio(), 'End');await settle();dom.flush();expect(focus).toHaveBeenCalledOnce();expect(mounted.props.modelValue).toBe('#ff0000');expect(dom.document.activeElement?.getAttribute('data-color')).toBe('#ff0000');
   });
   it('does not restore obsolete keyboard focus after an external model update', async () => {
     let mounted: Awaited<ReturnType<typeof mount>>;mounted = await mount(TranslationColorField, colorProps(), {listeners: {'onUpdate:modelValue': (value: string) => {mounted.props.modelValue = value;}}});
-    const focus = vi.spyOn(dom.window.HTMLElement.prototype, 'focus');key(mounted.root.querySelector('[role="radio"]')!, 'End');await settle();mounted.props.modelValue = '#abcdef';await settle();dom.flush();expect(focus).not.toHaveBeenCalled();
+    const origin = mounted.root.querySelector<HTMLButtonElement>('[role="radio"]')!;origin.focus();
+    const focus = vi.spyOn(dom.window.HTMLElement.prototype, 'focus');key(origin, 'End');await settle();mounted.props.modelValue = '#abcdef';await settle();dom.flush();expect(focus).not.toHaveBeenCalled();
   });
   it('releases a color keyboard frame on unmount before the browser executes it', async () => {
-    const mounted = await mount(TranslationColorField, colorProps());key(mounted.root.querySelector('[role="radio"]')!, 'End');expect(dom.frames.size).toBe(1);mounted.unmount();expect(dom.frames.size).toBe(0);
+    const mounted = await mount(TranslationColorField, colorProps());const origin = mounted.root.querySelector<HTMLButtonElement>('[role="radio"]')!;origin.focus();key(origin, 'End');expect(dom.frames.size).toBe(1);mounted.unmount();expect(dom.frames.size).toBe(0);
   });
   it('releases a color keyboard frame while a component stays cached and inactive', async () => {
-    const mounted = await mount(TranslationColorField, colorProps(), {keepAlive: true});key(mounted.root.querySelector('[role="radio"]')!, 'End');expect(dom.frames.size).toBe(1);mounted.visible.value = false;await settle();expect(dom.frames.size).toBe(0);
+    const mounted = await mount(TranslationColorField, colorProps(), {keepAlive: true});const origin = mounted.root.querySelector<HTMLButtonElement>('[role="radio"]')!;origin.focus();key(origin, 'End');expect(dom.frames.size).toBe(1);mounted.visible.value = false;await settle();expect(dom.frames.size).toBe(0);
   });
   it('keeps custom color and empty palette accessible with one radio tab stop', async () => {
     const mounted = await mount(TranslationColorField, {...colorProps(), modelValue: '#abcdef', hint: 'Hint'});
     expect(mounted.root.querySelector('.translation-color-custom.selected')).not.toBeNull();expect(mounted.root.querySelector('[tabindex="0"]')!.getAttribute('data-choice-index')).toBe('0');
-    mounted.props.swatches = [];await settle();key(mounted.root.querySelector('[role="radio"]')!, 'End');await settle();dom.flush();expect(mounted.root.querySelectorAll('[role="radio"]')).toHaveLength(1);
+    mounted.props.swatches = [];await settle();const origin = mounted.root.querySelector<HTMLButtonElement>('[role="radio"]')!;origin.focus();key(origin, 'End');await settle();dom.flush();expect(mounted.root.querySelectorAll('[role="radio"]')).toHaveLength(1);
   });
   it('cancels prior keyboard focus after a same-color click, picker update or in-place palette reorder', async () => {
     let mounted: Awaited<ReturnType<typeof mount>>;mounted = await mount(TranslationColorField, colorProps(), {listeners: {'onUpdate:modelValue': (value: string) => {mounted.props.modelValue = value;}}});
-    const radios = () => [...mounted.root.querySelectorAll('[role="radio"]')];
-    key(radios()[0], 'ArrowRight');await settle();event(radios()[1], 'click');expect(dom.frames.size).toBe(0);
-    key(radios()[0], 'ArrowRight');await settle();ports.pickers[0].emit('update:modelValue', '#ff0000');expect(dom.frames.size).toBe(0);
-    key(radios()[0], 'ArrowRight');await settle();mounted.props.swatches.reverse();await settle();expect(dom.frames.size).toBe(0);
+    const radios = () => [...mounted.root.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
+    radios()[0].focus();key(radios()[0], 'ArrowRight');await settle();event(radios()[1], 'click');expect(dom.frames.size).toBe(0);
+    radios()[0].focus();key(radios()[0], 'ArrowRight');await settle();ports.pickers[0].emit('update:modelValue', '#ff0000');expect(dom.frames.size).toBe(0);
+    radios()[0].focus();key(radios()[0], 'ArrowRight');await settle();mounted.props.swatches.reverse();await settle();expect(dom.frames.size).toBe(0);
   });
   it('keeps help Teleports inside a closed shadow root and preserves body teleport on extension pages', async () => {
     const help = await mount(FieldHelp, {content: 'Help'}, {shadow: 'closed'});
