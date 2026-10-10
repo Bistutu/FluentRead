@@ -1,6 +1,6 @@
 # 体积、共享配置与页面交互优化（2026-10-10）
 
-本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 持续进行。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，第四批为 `97e92defe`；第五批继续使用同一集成基线，并另与第四批冻结产物比较。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
+本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 持续进行。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，第四批为 `97e92defe`，第五批为 `7e8ffe952`；第六批继续使用同一集成基线，并另与第五批冻结产物比较。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
 
 ## 改动与测量
 
@@ -155,6 +155,24 @@
 
 类型检查、顺序 Chrome/Firefox 生产构建、Userscript 构建及其 1,962,235 B 产物 verifier、MV3/MV2 清单检查通过。文档构建后顺序构建 Storybook，再检查 81 页面和 28 stories，全部通过。独立只读复核未发现本批可操作缺陷；证据仍不涵盖在线供应商、真实模型识别质量、Firefox 实机或所有网站。
 
+## 第六批：字幕父链筛选与首次界面操作（2026-10-11）
+
+原生字幕每个候选原先对其他候选逐一执行 `contains`，现在每次读取建立候选身份集合，仅沿当前父链检查候选祖先。保留外层全文、DOM 顺序、原生优先及 fallback，容器和候选集外祖先不参与排除；没有跨调用节点缓存，滚动裁剪继续读取当时位置。真实生产函数打包后在独立 Edge DOM 运行：200 个平铺片段的包含调用 **39,800 → 0 次**；200 个单包装片段改为 200 次集合查询；100 个嵌套外层的包含调用 **29,900 → 0 次**，集合查询 200 次。动态重挂后立即使用新关系；滚动前后均保留原结果和 20 次位置读取。这是操作数证据，不能换算为真实网站固定耗时提升。
+
+首启语言单选卡片现在只有所选项进入 Tab 序列，四个方向键和 Home/End 改变预览并同步焦点，首尾循环；确认才保存。沿用已有步骤、活跃上下文和焦点代次保护，不夺取已移出的焦点，不接受忙时或旧事件。生产扩展实际八次按键、Tab 到确认和 Shift+Tab 返回所选项、预览未保存及确认日语后权威配置一致均通过；基线七个 Tab 入口且八次按键不改变选择，优化后始终一个入口。浅色 320px、深色 390px 无横向溢出，沿用原布局与样式。
+
+自定义兼容服务弹窗原先在通用设置的隐藏状态也启动异步加载，现在首次请求打开才挂载，此后保留实例和关闭动画。真实生产包通用设置的该脚本请求 **1 → 0 次**，首次打开各加载一次；独有 JS 5,065 B、CSS 1,468 B 延后到实际使用。取消重开清空草稿、空保存三项校验、无密钥虚构服务的实际保存及重载后可达通过，没有发起连接测试。分区切换、KeepAlive 失活、卸载、迟到加载与旧回调仍受原保护。
+
+全部构建完成后，两包各采样五次设置新文档：实际 JS 预算 **1,072,148 → 1,067,134 B**，CSS **285,911 → 284,443 B**；新的挂载判断增加 51 B，所以首屏 JS 净减 5,014 B。隐藏组件节点减少四个，完整配置序列化仍为七次。ready 中位数 300.9 → 272.4 ms，脚本耗时 13.170 → 11.708 ms；首开 337.5 → 326.2 ms。耗时限于本机描述性采样，不把延后约 6.5 KB 资源推断为稳定的跨设备提升。两组错误数组为空，首屏截图已检查，报告位于 `round6-options-startup-*`。
+
+本批完整 Chrome 文件为 **65,715,250 B**，较第五批增加 **490 B**；同口径 ZIP 为 **23,707,874 B**，增加 **154 B**。新增键盘交互和筛选代码有小幅体积成本，本批不声称整包继续缩小。累计对冻结 `55d1219bd`，原始产物减少 **1,659,818 B（2.464%）**，固定日期 ZIP 减少 **473,401 B（1.958%）**，仍只在内存中测量安装包。
+
+四组互不重复的针对性回归为 **20 文件 / 1,350 项**：字幕 4 / 105、首启语言 1 / 44、服务与设置 11 / 265、架构 4 / 936（含 901 项源码长头）；额外重复执行的设置静态契约和独立复核不累加。分类审计为 636 文件 / 10,352 个声明用例。新增优化断言在旧代码上先复现失败，实际 SFC 回归验证生命周期；初次新增异步 loader 夹具未等待宏任务启动造成超时，改为等待真实 loader 开始后变更上下文；卸载快照断言按原有交接行为校正，未修改生产保存逻辑。
+
+字幕 `ui.ts` 继续属于现有 DOM 接线验证归属，不新增 coverage 排除。刻意把整文件纳入严格覆盖率诊断时，优化前后均未达到门槛（语句 26.35% / 26.67%），不能报告整文件严格覆盖率通过；被修改筛选函数本身前后适用语句、分支和函数均全覆盖。其他既有 UI 创建代码未在此专项完整执行，范围由目标测试、双浏览器构建及生产函数 DOM 专项共同证明。
+
+类型检查、顺序 Chrome/Firefox 构建、Userscript 构建及 1,962,279 B 产物 verifier、双清单验证通过；文档后顺序构建 Storybook，两类检查为 81 页面、28 stories。独立只读复核字幕的十类场景与 400 棵生成树、服务 latch 生命周期均通过。生产 UI 两包对照与字幕 DOM 两组报告错误数组为空，临时 profile 均已清理；六份 UI 截图和两份字幕滚动原图已检查。报告位于 `round6-ui-*-browser`、`round6-caption-browser-*`、`round6-*-comparison.json`。字幕专项执行精确生产模块及夹具配置端口，UI 专项运行 WXT 生产扩展；不扩展为真实视频站点、在线服务、Firefox 实机或模型质量验收。
+
 ## 复核入口
 
 ```sh
@@ -166,6 +184,8 @@ node scripts/testing/run-platform-caption-layout-test.cjs --artifacts-dir /priva
 node scripts/testing/run-page-context-structure-test.cjs --artifacts-dir /private/tmp/fluentread-page-context
 node scripts/testing/run-config-persistence-test.cjs --extension-dir .output/chrome-mv3 --artifacts-dir /private/tmp/fluentread-config-persistence
 node scripts/testing/run-settings-search-priority-test.cjs --extension-dir .output/chrome-mv3 --artifacts-dir /private/tmp/fluentread-settings-search
+node scripts/testing/run-onboarding-keyboard-and-provider-dialog-test.cjs --extension-dir .output/chrome-mv3 --expect optimized --artifacts-dir /private/tmp/fluentread-onboarding-provider
+node scripts/testing/run-caption-segment-filter-test.cjs --source-root . --expect optimized --artifacts-dir /private/tmp/fluentread-caption-filter
 pnpm test:coverage -- tests/pageContextMarkdown.test.ts tests/pageContextDefuddle.test.ts --coverage.include=src/services/translation/context/markdown.ts
 pnpm test:coverage -- tests/sameTargetLanguageSlots.test.ts tests/sameTargetLanguageClient.test.ts tests/sameTargetLanguageRegression.test.ts tests/liveTextTranslation.test.ts tests/translationSlotEchoRegression.test.ts tests/fullPageVisibilityScheduling.test.ts --coverage.include=src/features/full-page-translation/content/translationRequest.ts
 node scripts/testing/analyze-bundle-size.mjs .output/chrome-mv3 /path/to/baseline-chrome

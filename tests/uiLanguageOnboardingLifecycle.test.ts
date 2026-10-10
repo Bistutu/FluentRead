@@ -1,7 +1,7 @@
 /**
  * @file tests/uiLanguageOnboardingLifecycle.test.ts
  * 文件职责：执行实际语言组件的缓存客户端模板，验证存储等待、旧回调和 Vue 生命周期归属。
- * 主要内容：保留真实 Vue/KeepAlive、模板事件和语言规则，存储提交/回滚、焦点与过渡完成为可控端口。
+ * 主要内容：保留真实 Vue/KeepAlive、模板事件和语言规则，验证七语单一 Tab 入口、循环键盘预览及确认后保存；存储提交/回滚、焦点与过渡完成为可控端口。
  * 模块边界：不调用浏览器或真实存储，不证明 CSS 动画、Element Plus Teleport 或操作系统焦点；每项清理计时器与组件。
  */
 import {readFileSync} from 'node:fs'
@@ -95,10 +95,92 @@ async function mount(values: Record<string, any> = {}) {
 
 async function languageStep() {callback(button('[data-testid="onboarding-language-next"]'))();await settle()}
 function choose(value: string) {return callback(button(`[data-language="${value}"]`))}
+function keyboardAction(value: string) {return callback(button(`[data-language="${value}"]`), 'onKeydown')}
+function press(action: (event: {key: string; preventDefault: () => void}) => void, key: string) {const event = {key, preventDefault: vi.fn()};action(event);return event}
 function confirmAction() {return callback(button('.onboarding-form > .onboarding-confirm'))}
 function componentTimers() {return vi.getTimerCount() - port.backgroundTimers}
 
 describe('UiLanguageOnboarding 实际保存与生命周期', () => {
+  it('七种语言任一被选中时，单选组均只保留该卡片一个 Tab 入口', async () => {
+    await mount({initialLanguage: 'ja-JP'});await languageStep()
+    for (const {value} of languageRules.UI_LANGUAGE_OPTIONS) {
+      choose(value)();await settle()
+      const radios = [...document.querySelectorAll('[role="radio"]')]
+      expect(radios).toHaveLength(7)
+      expect(radios.filter(element => element.getAttribute('tabindex') === '0')).toEqual([button(`[data-language="${value}"]`)])
+      expect(radios.filter(element => element.getAttribute('tabindex') === '-1')).toHaveLength(6)
+      expect(button(`[data-language="${value}"]`).getAttribute('aria-checked')).toBe('true')
+    }
+    expect(setLanguage).not.toHaveBeenCalled()
+  })
+  it('四方向键与 Home/End 循环切换预览及焦点，Tab/Enter/空格保留原生行为', async () => {
+    await mount({initialLanguage: 'ja-JP'});await languageStep()
+    const sequence = [['ArrowRight', 'ko-KR'], ['ArrowDown', 'fr-FR'], ['ArrowLeft', 'ko-KR'], ['ArrowUp', 'ja-JP'],
+      ['Home', 'zh-CN'], ['ArrowLeft', 'es-ES'], ['ArrowRight', 'zh-CN'], ['End', 'es-ES'], ['ArrowDown', 'zh-CN'], ['ArrowUp', 'es-ES']] as const
+    for (const [key, value] of sequence) {
+      focus.mockClear();const event = press(keyboardAction(state.selectedLanguage), key);await settle()
+      expect(event.preventDefault).toHaveBeenCalledOnce();expect(state.selectedLanguage).toBe(value)
+      expect(document.documentElement.lang).toBe(value);expect(focused).toBe(button(`[data-language="${value}"]`))
+      expect(focus).toHaveBeenCalledOnce();expect(focus.mock.calls[0][1]).toEqual({preventScroll: true})
+      expect(document.querySelectorAll('[role="radio"][tabindex="0"]')).toHaveLength(1)
+    }
+    focus.mockClear()
+    for (const key of ['Tab', 'Enter', ' ', 'Escape']) expect(press(keyboardAction('es-ES'), key).preventDefault).not.toHaveBeenCalled()
+    await settle();expect(focus).not.toHaveBeenCalled();expect(setLanguage).not.toHaveBeenCalled();expect(state.selectedLanguage).toBe('es-ES')
+  })
+  it('键盘仅预览，确认一次保存最后选择，等待及成功阶段旧键盘回调均不再操作', async () => {
+    await mount({initialLanguage: 'en-US'});await languageStep()
+    press(keyboardAction('en-US'), 'End');await settle();press(keyboardAction('es-ES'), 'ArrowLeft');await settle()
+    expect(state.selectedLanguage).toBe('ru-RU');expect(setLanguage).not.toHaveBeenCalled()
+    const oldKey = keyboardAction('ru-RU'), pending = confirmAction()();await settle();focus.mockClear()
+    expect(press(oldKey, 'Home').preventDefault).not.toHaveBeenCalled()
+    expect(press(keyboardAction('ru-RU'), 'ArrowRight').preventDefault).not.toHaveBeenCalled()
+    expect(state.selectedLanguage).toBe('ru-RU');expect(setLanguage).toHaveBeenCalledOnce();expect(requests.map(request => request.value)).toEqual(['ru-RU'])
+    requests[0].gate.resolve();await pending;await settle()
+    expect(press(oldKey, 'End').preventDefault).not.toHaveBeenCalled();expect(focus).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1200)
+    expect(stored).toBe('ru-RU');expect(saved).toHaveBeenCalledOnce();expect(saved).toHaveBeenCalledWith('ru-RU')
+    expect(confirmed).toHaveBeenCalledOnce();expect(confirmed).toHaveBeenCalledWith('ru-RU')
+  })
+  it('保存失败后新键盘回调恢复，选择清除错误并可确认最终语言一次', async () => {
+    await mount({initialLanguage: 'en-US'});await languageStep();press(keyboardAction('en-US'), 'End');await settle()
+    const oldKey = keyboardAction('es-ES'), pending = confirmAction()();requests[0].gate.reject(new Error('storage failed'));await pending;await settle()
+    expect(state.errorMessage).not.toBe('');expect(press(oldKey, 'Home').preventDefault).not.toHaveBeenCalled()
+    press(keyboardAction('es-ES'), 'Home');await settle();expect(state.selectedLanguage).toBe('zh-CN');expect(state.errorMessage).toBe('')
+    const retry = confirmAction()();requests[1].gate.resolve();await retry;await settle();await vi.advanceTimersByTimeAsync(1200)
+    expect(requests.map(request => request.value)).toEqual(['es-ES', 'zh-CN']);expect(stored).toBe('zh-CN')
+    expect(saved).toHaveBeenCalledOnce();expect(confirmed).toHaveBeenCalledOnce();expect(confirmed).toHaveBeenCalledWith('zh-CN')
+  })
+  it.each(['selection', 'props', 'step', 'cached', 'pagehide', 'unmount'])('%s 改变后旧键盘回调不复活、不改预览或抢焦点', async reason => {
+    await mount({initialLanguage: 'ja-JP'});await languageStep();const oldKey = keyboardAction('ja-JP')
+    if (reason === 'selection') choose('en-US')()
+    else if (reason === 'props') source.initialLanguage = 'en-US'
+    else if (reason === 'step') callback(button('.onboarding-back'))()
+    else invalidate(reason)
+    await settle()
+    if (reason === 'cached') {shown.value = true;await settle()}
+    const selected = state.selectedLanguage, preview = document.documentElement.lang;focus.mockClear()
+    expect(press(oldKey, 'End').preventDefault).not.toHaveBeenCalled();await settle()
+    expect(state.selectedLanguage).toBe(selected);expect(document.documentElement.lang).toBe(preview);expect(focus).not.toHaveBeenCalled();expect(setLanguage).not.toHaveBeenCalled()
+    if (reason === 'cached') {
+      press(keyboardAction('ja-JP'), 'End');await settle();expect(state.selectedLanguage).toBe('es-ES');expect(focused).toBe(button('[data-language="es-ES"]'))
+    }
+    if (reason === 'step') {
+      await languageStep();press(keyboardAction('ja-JP'), 'Home');await settle();expect(state.selectedLanguage).toBe('zh-CN');expect(focused).toBe(button('[data-language="zh-CN"]'))
+    }
+  })
+  it.each(['cached', 'pagehide', 'unmount', 'props', 'selection', 'step', 'outside', 'busy'])('键盘选择后渲染前 %s，取消排队的旧卡片焦点', async reason => {
+    await mount({initialLanguage: 'ja-JP'});await languageStep();press(keyboardAction('ja-JP'), 'ArrowRight');focus.mockClear()
+    let pending: Promise<void> | undefined
+    if (reason === 'props') componentProps.initialLanguage = 'en-US'
+    else if (reason === 'selection') state.selectedLanguage = 'fr-FR'
+    else if (reason === 'step') state.step = 'welcome'
+    else if (reason === 'outside') {const outside = document.createElement('button');document.body.append(outside);focused = outside}
+    else if (reason === 'busy') pending = state.confirm()
+    else invalidate(reason)
+    await settle();expect(focus).not.toHaveBeenCalled()
+    if (pending) {requests[0].gate.resolve();await pending;await settle();expect(focus).not.toHaveBeenCalled()}
+  })
   it('共享 i18n 返回已被取代时，不宣布保存或创建成功 timer', async () => {
     await mount({initialLanguage:'en-US'});await languageStep();setLanguage.mockImplementationOnce(async()=>false);await confirmAction()();await settle()
     expect(saved).not.toHaveBeenCalled();expect(confirmed).not.toHaveBeenCalled();expect(componentTimers()).toBe(0);expect(button('.onboarding-form > .onboarding-confirm').hasAttribute('disabled')).toBe(false)
