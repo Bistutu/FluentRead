@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { getHarnessModelCacheKey, resolveHarnessModel, HARNESS_ACTIONS, DEFAULT_HARNESS_ACTION_PROMPTS, DEFAULT_HARNESS_SYSTEM_PROMPT, HARNESS_PROMPT_MAX_LENGTH, isHarnessService, isReadingService, isReadingActionSupported, isReadingFollowUpSupported, normalizeHarnessPreferences } from '@/src/core/config/harness'
+import { getHarnessModelCacheKey, getHarnessRequestConfigKey, resolveHarnessModel, HARNESS_ACTIONS, DEFAULT_HARNESS_ACTION_PROMPTS, DEFAULT_HARNESS_SYSTEM_PROMPT, HARNESS_PROMPT_MAX_LENGTH, isHarnessService, isReadingService, isReadingActionSupported, isReadingFollowUpSupported, normalizeHarnessPreferences } from '@/src/core/config/harness'
 import {UI_LANGUAGE_OPTIONS} from '@/src/core/i18n/language'
 import {getDefaultHarnessPrompt, resolveHarnessPrompt, renderHarnessPrompt} from '@/src/core/harness/prompts'
 import {type HarnessPromptKind} from '@/src/core/harness/promptDefaults'
 import { Config, normalizeConfig } from '@/src/core/config/model'
 import {customModelString, services, servicesType} from '@/src/core/config/catalog'
 import {BILIBILI_FREE_TRANSLATION_MODEL} from '@/src/core/config/freeTranslation'
+import {getApiKeyRequirementKey, isApiKeyRequired} from '@/src/core/config/validation'
 
 describe('Harness config contract', () => {
   it('纯配置默认值与规范化不初始化多语言提示词数据或 resolver', async () => {
@@ -283,6 +284,34 @@ describe('reading model cache identity', () => {
 });
 
 // 统一入口迁移必须是一次性的，不能在关闭划词后被旧学习开关重新开启。
+describe('explicit learning request configuration identity', () => {
+  it('retains request identity through unrelated notifications and identical normalized snapshots', () => {
+    const config = new Config();
+    const original = getHarnessRequestConfigKey(config);
+    config.count += 1; config.theme = config.theme === 'dark' ? 'light' : 'dark';
+    config.animations = !config.animations; config.glossaryEnabled = !config.glossaryEnabled;
+    expect(getHarnessRequestConfigKey(config)).toBe(original);
+    expect(getHarnessRequestConfigKey(normalizeConfig(config))).toBe(original);
+  });
+
+  const requestOnlyChanges: Array<[string, (config: Config) => void]> = [
+    ['target language', config => {config.to = 'ja';}],
+    ['learning preferences', config => {config.harness.learningLevel = 'advanced';}],
+    ['credential recovery', config => {config.apiKeyRecoveryMs += 60000;}],
+    ['credential requirement', config => {config.requireApiKey[getApiKeyRequirementKey('deepseek',config)] = false;}],
+    ['request header rules', config => {config.requestHeaderRules = [{domain:'synthetic.test',removeOrigin:true,removeReferer:false}];}],
+  ];
+  it.each(requestOnlyChanges)('invalidates a %s change while preserving the existing model key scope', (name, change) => {
+    const config = new Config(); config.service = 'deepseek';
+    const original = getHarnessRequestConfigKey(config), modelKey = getHarnessModelCacheKey(config);
+    if (name === 'credential requirement') expect(isApiKeyRequired('deepseek',config)).toBe(true);
+    change(config);
+    if (name === 'credential requirement') expect(isApiKeyRequired('deepseek',config)).toBe(false);
+    expect(getHarnessRequestConfigKey(config)).not.toBe(original);
+    expect(getHarnessModelCacheKey(config)).toBe(modelKey);
+  });
+});
+
 describe('unified selection preferences', () => {
   it('uses one card presentation while preserving activation and legacy preferences', () => {
     expect(normalizeConfig({}).selectionTranslatorPresentation).toBe('card');

@@ -1,7 +1,7 @@
 /**
  * @file src/core/config/harness.ts
  * 文件职责：定义 Harness 学习辅助功能的动作注册表、配置类型、默认值与纯规范化规则。
- * 主要内容：提供 HarnessActionId/HarnessPreferences、动作注册表、通用AI与阅读专用服务判断和规范化函数，限制触发方式、快捷键、悬停延迟、服务/模型覆盖和动作白名单、上下文长度和学习难度；B站仅开放读懂与用法，不支持语法、练习、多轮追问或通用AI写作，统一解析固定模型，让缓存身份只包含实际使用的配置，保留完整AI服务的全部阅读动作、追问、请求头及多 Key 凭据标识。 并定义可编辑提示词的中文默认数据；多语言正文解析、旧模板迁移与变量替换由 core/harness/prompts 专属模块负责。
+ * 主要内容：提供 HarnessActionId/HarnessPreferences、动作注册表、通用AI与阅读专用服务判断和规范化函数，限制触发方式、快捷键、悬停延迟、服务/模型覆盖和动作白名单、上下文长度和学习难度；B站仅开放读懂与用法，不支持语法、练习、多轮追问或通用AI写作，统一解析固定模型，让缓存身份只包含实际使用的配置，保留完整AI服务的全部阅读动作、追问、请求头及多 Key 凭据标识。 并定义可编辑提示词的中文默认数据及两个学习视图共用的讲解配置比较；多语言正文解析、旧模板迁移与变量替换由 core/harness/prompts 专属模块负责。
  * 模块边界：本文件只处理领域数据，不读取浏览器存储、不发起 AI 请求，也不决定选区或网页生命周期。
  */
 import {DEFAULT_HARNESS_ACTION_PROMPTS, DEFAULT_HARNESS_SYSTEM_PROMPT, HARNESS_PROMPT_MAX_LENGTH} from '../harness/promptDefaults';
@@ -10,6 +10,7 @@ import {parseHotkey} from '../hotkey';
 import {customModelString, resolveConfiguredModel, services, servicesType} from './catalog';
 import {isConfiguredCustomOpenAIProvider, isCustomOpenAIProviderId, type CustomOpenAIProvider} from './customOpenAI';
 import {BILIBILI_FREE_TRANSLATION_MODEL} from './freeTranslation';
+import type {RequestHeaderRule} from './requestHeaders';
 
 export const HARNESS_ACTIONS = [
     {id: 'meaning', label: '读懂', description: '解释这段内容在说什么。'},
@@ -168,5 +169,19 @@ export function getHarnessModelCacheKey(config: {
         config.azureOpenaiEndpoint, config.deepseekApiType, config.minimaxBillingPlan,
         config.minimaxRegion, config.mimoBillingPlan, config.mimoRegion,
         config.apiKeys?.[service], config.apiKeyRotationEnabled?.[service], config.customHeaders?.[service],
+    ]);
+}
+
+/** 学习视图的保守请求配置比较；只在内存使用，不展示、记录或持久化含凭据的标识。 */
+export function getHarnessRequestConfigKey(config: Parameters<typeof getHarnessModelCacheKey>[0] & {
+    harness: HarnessPreferences;
+    to: string;
+    apiKeyRecoveryMs: number;
+    requireApiKey: Readonly<Record<string, boolean>>;
+    requestHeaderRules: readonly RequestHeaderRule[];
+}): string {
+    return JSON.stringify([
+        config.on, config.to, config.harness, getHarnessModelCacheKey(config),
+        config.apiKeyRecoveryMs, config.requireApiKey, config.requestHeaderRules,
     ]);
 }

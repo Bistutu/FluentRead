@@ -55,7 +55,7 @@ import {computed, onBeforeUnmount, ref, watch} from 'vue';
 import {ReadingAnswer} from '@/src/features/reading-assistant/ui/answer/public';
 import {streamReading} from '@/src/features/reading-assistant/public';
 import {config, subscribeConfig} from '@/src/services/config/store';
-import {getHarnessModelCacheKey} from '@/src/core/config/harness';
+import {getHarnessRequestConfigKey} from '@/src/core/config/harness';
 import browser from 'webextension-polyfill';
 import SavedExplanation from './SavedExplanation.vue';
 import VocabularySource from './VocabularySource.vue';
@@ -138,15 +138,11 @@ function run(nextMode: 'understand' | 'use'): void {
 }
 watch([() => props.entry.id, () => props.entry.term, () => props.entry.kind, () => JSON.stringify(props.entry.contexts), () => JSON.stringify(props.entry.translations)], reset);
 // 只比较讲解输入；计数和界面更新不打断当前回答，相关设置变化后仍等待下一次明确操作。
-const studyRevision = (next: typeof config) => JSON.stringify([
-  next.on, next.to, next.harness, getHarnessModelCacheKey(next),
-  next.apiKeyRecoveryMs, next.requireApiKey, next.requestHeaderRules,
-]);
-let revision = studyRevision(config);
+let revision = getHarnessRequestConfigKey(config);
 const unsubscribe = subscribeConfig(next => {
   enabled.value = next.on && next.harness.enabled;
   contextAllowed.value = next.harness.contextMode === 'paragraph';
-  const nextRevision = studyRevision(next);
+  const nextRevision = getHarnessRequestConfigKey(next);
   if (revision !== nextRevision) { stop(); notice.value = '设置已更新，下次讲解会使用新的设置。'; revision = nextRevision; }
 });
 onBeforeUnmount(() => { active = false; stop(); unsubscribe(); });

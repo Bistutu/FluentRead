@@ -330,6 +330,8 @@ X 另覆盖未预取句子等待原译文成对显示、seek 后迟到结果丢�
 
 `tests/vocabularyStudyLifecycle.test.ts` 执行真实收藏学习组件 setup，验证计数、主题、动画与翻译术语库通知保留当前回答和待保存解释；启用、目标语言、完整学习偏好、模型与 transport 设置变化继续取消旧回答，迟到结果不覆盖当前归属。配置夹具使用真实规范化与模型比较，流式消息和保存端口受控；不把 setup 生命周期回归当作真实模型、原生布局或在线服务验收。
 
+`tests/vocabularyReencounterPanelLifecycle.test.ts` 同样执行真实浮层 setup，回归五种无关通知（含同值快照）保留流式回答、十七种真实输入变化拒绝旧响应，以及明确操作、当前命中切换与卸载清理。共享讲解配置比较与旧模型标识的语义差异由 `tests/configHarness.test.ts` 验证；请求与 DOM 端口受控，原内容入口的功能停用和隐私资格仍由 `tests/vocabularyReencounterLifecycle.test.ts` / `tests/contentRuntimeLifecycle.test.ts` 负责。
+
 `tests/usageDashboardLifecycle.test.ts` 另执行实际 Model setup 的速度和秒/分钟格式函数：核对七种界面语言、单位阈值、负零与异常值、组件实例隔离和构造失败重试；共享固定规则及八语言缓存淘汰由 `tests/numberFormat.test.ts` 覆盖。
 
 `tests/dateFormatLifecycle.test.ts` 运行真实 Vue 更新、KeepAlive 和 SSR 生命周期，验证日期列表同轮惰性复用、下一轮重新解析语言和默认时区、独立组件与 SSR 请求隔离，以及构造失败重试。系统默认地区和时区通过原生 `Intl` 的受控端口切换，不表示已做真实操作系统变更或设备性能验收。
