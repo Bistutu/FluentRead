@@ -6,6 +6,7 @@
  * 文件职责：在独立生产 Edge 配置中真实验证免费服务翻译普通文档、PDF 阅读与左右对照导出。
  * 主要内容：复用后台焦点保护启动器与原生激活事件观察器，只设置免费服务与英译中公开选项；按输入文件逐份导入、真实翻译、阅读、下载，保存完整段落、状态、脱敏网络统计和截图。PDF 用 PDF.js 重开校验页数、左右对照尺寸与页序，再用 Poppler 渲染；--readable-pdf-first 在首份 PDF 同次真实译文上另验可复制重排导出、逐段中文文字层及首页/尾页图片。普通格式重新解析下载文件，DOCX/ePub 解包核对译文、结构与图片。默认运行实际 Attention 15 页、仓库八种普通格式及英文产品指南，--inputs 可缩小范围。Markdown 严格核对代码、链接、译文强调及指南容器、组件标记，以 VitePress 已有 markdown-it 的标准强调节点核对实际下载（先扣除原文节点，不能只数星号或用产品预览证明译文格式），并按源文本与同一标签检查两项已确认的内部英文残留回归；仅读取这些内容，不执行组件。
  * 交互验证：--exercise-pdf-ui 在首份实际 PDF 上保存首页扫描说明，经 CDP 键盘 Tab/Enter/Space 选择原生菜单按钮，验证受控 Ctrl/Cmd wheel 的文档缩放、指针锚点及键盘复位；真实译文完成后切换显示方式，恢复原版对照和适合整页，再执行既有小屏阅读与下载验收。这些事件不代表物理触控板实测。
+ * 诊断收尾：响应 JSON 观察每条最多等五秒，记录超时/失败并拒绝晚到正文回填；文档失败先保存状态，批次诊断与最终清理各有截止，不让未完成的响应正文阻塞自有浏览器和焦点观察器关闭。
  * 模块边界：不创建请求路由、不替换 fetch、不伪造译文、不配置付费账户，不读取或输出任何凭据；只使用本次新建的临时浏览器配置，不操作用户浏览器。中文及无测试标记只能证明实际结果，译文质量和排版需结合保存的数据与图片人工复核。
  */
 const assert = require('node:assert/strict');
@@ -26,7 +27,10 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const compact = value => value.normalize('NFKC').replace(/\s+/gu, '').toLowerCase();
 const MOCK_MARKER = /BENCH_[a-f\d]|___FLUENTREAD_|__FRTERM_|SOURCE_BEGIN|SOURCE_END|测试译文[：:]/u;
 const FREE_DOMAINS = ['microsoft.com', 'google.com', 'google.co.uk', 'googleapis.com', 'bilibili.com', 'qq.com', 'volcengine.com', 'volces.com', 'youdao.com', 'iciba.com', 'yandex.net', 'yandex.com', 'translated.net', 'sogou.com', 'reverso.net', 'apertium.org', 'alibaba.com', 'modernmt.com', 'laratranslate.com', 'lingvanex.com'];
-const isProviderDomain = host => FREE_DOMAINS.some(domain => host === domain || host.endsWith(`.${domain}`));
+const isProviderDomain = host => host === 'api-b2b.backenster.com' || FREE_DOMAINS.some(domain => host === domain || host.endsWith(`.${domain}`));
+const shouldObserveResponseBody = (record, response) => record.providerCandidate
+  && !/csrf|token|auth/iu.test(new URL(response.url()).pathname)
+  && /json/iu.test(response.headers()['content-type'] || '');
 
 function directoryFingerprint(directory) {
   const entries = [];
@@ -80,6 +84,58 @@ function responseTranslationEvidence(value) {
   };
   if (Array.isArray(value)) value.forEach(entry); else entry(value);
   return [...new Set(texts)].map(text => ({sha256: sha(text), chars: text.length, tail: text.slice(-64)}));
+}
+
+/** 只收集已完成的翻译响应证据；读取截止后，原始 promise 的晚结果不得回填旧记录或下一份文档。 */
+function createResponseBodyObserver({timeoutMs = 5000} = {}) {
+  assert(Number.isFinite(timeoutMs) && timeoutMs > 0, 'Response observation requires a finite deadline');
+  const pending = new Map();
+  const stats = {timeoutMs, started: 0, completed: 0, timedOut: 0, failed: 0, active: 0, drainTimeouts: 0};
+  const observe = (response, record) => {
+    const observation = {state: 'pending', startedAt: Date.now(), timeoutMs}; record.bodyObservation = observation;
+    stats.started++; stats.active++;
+    let timer, settled = false, resolve;
+    const completion = new Promise(done => {resolve = done;});
+    const finish = (state, value, reason) => {
+      if (settled) return;
+      settled = true; clearTimeout(timer);
+      try {
+        if (state === 'completed') {
+          const evidence = responseTranslationEvidence(value); if (evidence.length) record.translations = evidence;
+          if (Array.isArray(value?.choices)) record.finishReasons = value.choices.map(choice => choice.finish_reason);
+        }
+      } catch (error) {state = 'failed'; value = error;}
+      observation.state = state; observation.elapsedMs = Date.now() - observation.startedAt;
+      if (state === 'timedOut') observation.reason = reason;
+      if (state === 'failed') observation.errorName = value?.name || 'ResponseBodyReadError';
+      stats[state]++; stats.active--; pending.delete(completion); resolve();
+    };
+    pending.set(completion, () => finish('timedOut', undefined, 'drain-deadline'));
+    timer = setTimeout(() => finish('timedOut', undefined, 'body-deadline'), timeoutMs);
+    Promise.resolve().then(() => response.json()).then(value => finish('completed', value), error => finish('failed', error));
+    return completion;
+  };
+  const drain = async ({timeoutMs: drainTimeoutMs = timeoutMs + 250} = {}) => {
+    assert(Number.isFinite(drainTimeoutMs) && drainTimeoutMs > 0, 'Response drain requires a finite deadline');
+    const entries = [...pending.entries()]; if (!entries.length) return;
+    const timer = setTimeout(() => {
+      const active = entries.filter(([promise]) => pending.has(promise));
+      if (active.length) {stats.drainTimeouts++; for (const [, finish] of active) finish();}
+    }, drainTimeoutMs);
+    try {await Promise.allSettled(entries.map(([promise]) => promise));} finally {clearTimeout(timer);}
+  };
+  return {observe, drain, stats};
+}
+
+/** 已确认自有实例仍通过原 guarded close 关闭；诊断 promise 与关闭失败不能跳过原生观察器收尾。 */
+async function closeLiveSession({launched, focusMonitor, profileDir, launchAttempted, report, responseObserver}) {
+  let closed = false;
+  if (launched) {try {await launched.close(); closed = true;} catch (error) {report.cleanupErrors.push(String(error));}}
+  try {
+    if (closed) fs.rmSync(profileDir, {recursive: true, force: true}); else if (!launchAttempted) fs.rmdirSync(profileDir); else report.retainedProfile = profileDir;
+  } catch (error) {report.retainedProfile = profileDir; report.cleanupErrors.push(String(error));}
+  try {await responseObserver?.drain({timeoutMs: 1000});} catch (error) {report.cleanupErrors.push(String(error));}
+  if (focusMonitor) {try {await focusMonitor.stop();} catch (error) {report.cleanupErrors.push(String(error));}}
 }
 
 async function inspectPdf(bytes, requireRepo) {
@@ -519,6 +575,7 @@ async function main() {
     evidenceBoundary: `Real credential-free ${service} requests and actual document UI; no routes, fetch replacements, proxy, paid credentials or synthetic responses. Chinese/no-marker checks and two targeted inline-text regression assertions are evidence, not a general translation-quality score. Optional PDF UI coverage uses CDP keyboard and Ctrl/Cmd wheel against the actual document, not physical trackpad gestures. First-PDF narrow screenshots/geometry cover only 820x960 and 390x844. Review saved paragraphs and screenshots manually.`,
     documents: [], screenshots: [], network: [], consoleErrors: [], cleanupErrors: [], focusEvents: [], focusChecks: []};
   let launched, page, launchAttempted = false, focusMonitor, ownedPid, focusFailure;
+  const responseObserver = createResponseBodyObserver(); report.responseBodyObservations = responseObserver.stats;
   const persist = () => fs.writeFileSync(path.join(artifactsDir, 'report.json'), JSON.stringify(report, null, 2));
   const stopForFocus = error => {
     focusFailure ||= error; report.focusFailure ||= error.message; persist();
@@ -554,7 +611,7 @@ async function main() {
     if (report.focusEvents.some(event => event.pid === ownedPid)) stopForFocus(new Error(`Owned Edge ${ownedPid} activation during launch`));
     assert.equal(report.launchMode, 'macos-background-cdp'); assert.equal(report.focusPolicy, 'launchservices-no-foreground'); assert.equal(report.windowPlacement.browserFrontmost, false);
     await checkFocus('initialization');
-    const context = launched.context, requests = new Map(), pendingResponses = new Set();
+    const context = launched.context, requests = new Map();
     context.on('request', request => {
       const url = new URL(request.url()); if (url.protocol !== 'https:') return;
       const record = {id: report.network.length + 1, document: report.currentDocument ?? null, domain: url.hostname,
@@ -566,13 +623,8 @@ async function main() {
       const record = requests.get(response.request()); if (!record) return;
       record.status = response.status(); record.elapsedMs = Date.now() - record.startedAt;
       // Only translation responses are read; temporary authentication/CSRF responses are never retained or inspected.
-      const pathname = new URL(response.url()).pathname;
-      if (!record.providerCandidate || /csrf|token|auth/iu.test(pathname) || !/json/iu.test(response.headers()['content-type'] || '')) return;
-      const pending = response.json().then(value => {
-        const evidence = responseTranslationEvidence(value); if (evidence.length) record.translations = evidence;
-        if (Array.isArray(value?.choices)) record.finishReasons = value.choices.map(choice => choice.finish_reason);
-      }).catch(() => {}).finally(() => pendingResponses.delete(pending));
-      pendingResponses.add(pending);
+      if (!shouldObserveResponseBody(record, response)) return;
+      responseObserver.observe(response, record);
     });
     context.on('requestfailed', request => {const record = requests.get(request); if (record) {record.failure = request.failure()?.errorText ?? 'request failed'; record.elapsedMs = Date.now() - record.startedAt;}});
     const worker = context.serviceWorkers()[0] || await context.waitForEvent('serviceworker', {timeout: 30000});
@@ -678,7 +730,7 @@ async function main() {
         result.translationChecks = {allSegmentsCompleted: completed.length === snapshot.segments.length, chineseSegments: chinese.length,
           noProtocolOrMockMarkers: snapshot.segments.every(segment => !MOCK_MARKER.test(segment.translation)),
           distinctSegments: completed.filter(segment => compact(segment.source) !== compact(segment.translation)).length};
-        await Promise.allSettled([...pendingResponses]);
+        await responseObserver.drain();
         snapshot.segments.forEach(segment => {
           segment.sourceSha256 = sha(segment.source); segment.translationSha256 = sha(segment.translation);
           segment.upstreamMatches = report.network.filter(request => request.document === name && request.translations?.some(translation => translation.sha256 === segment.translationSha256)).map(request => ({request: request.id, domain: request.domain, status: request.status}));
@@ -832,15 +884,18 @@ async function main() {
         await checkFocus('document-finished');
       } catch (error) {
         result.state = 'failed'; result.error = diagnostic(error.stack || String(error));
+        persist();
         const pauseButton = page.locator('.pause-button'); if (await pauseButton.isVisible().catch(() => false)) await pauseButton.click().catch(() => {});
         result.screenshots.push(await shot(`${prefix}-failure`).catch(() => null));
         const snapshot = await historySnapshot(page, name).catch(() => null);
         if (snapshot && !result.segmentData) {result.segmentData = path.join(artifactsDir, `${prefix}-segments.json`); fs.writeFileSync(result.segmentData, JSON.stringify(snapshot, null, 2));}
         if (focusFailure) throw focusFailure;
       }
-      await Promise.allSettled([...pendingResponses]);
+      await responseObserver.drain();
       const requestsForDocument = report.network.filter(request => request.document === name && request.providerCandidate);
       result.providerNetwork = {requests: requestsForDocument.length, successful: requestsForDocument.filter(request => request.status >= 200 && request.status < 300).length,
+        bodyObservations: Object.fromEntries(['pending', 'completed', 'timedOut', 'failed'].map(state => [state,
+          requestsForDocument.filter(request => request.bodyObservation?.state === state).length])),
         byDomain: Object.fromEntries([...new Set(requestsForDocument.map(request => request.domain))].map(domain => [domain, {requests: requestsForDocument.filter(request => request.domain === domain).length,
           statuses: requestsForDocument.filter(request => request.domain === domain).map(request => request.status ?? request.failure ?? 'pending') }]))};
       if (result.state === 'complete' && !result.providerNetwork.successful) {result.state = 'failed'; result.error = 'No successful live free-provider requests observed; network evidence is required';}
@@ -858,14 +913,12 @@ async function main() {
     report.failure = String(error.stack || error).replace(/https?:\/\/[^\s]+/gu, '[url]');
     if (page) await page.screenshot({path: path.join(artifactsDir, 'failure.png')}).catch(() => {}); process.exitCode = 1;
   } finally {
-    let closed = false;
-    if (launched) {try {await launched.close(); closed = true;} catch (error) {report.cleanupErrors.push(String(error));}}
-    if (closed) fs.rmSync(profileDir, {recursive: true, force: true}); else if (!launchAttempted) fs.rmdirSync(profileDir); else report.retainedProfile = profileDir;
-    if (focusMonitor) {try {await focusMonitor.stop();} catch (error) {report.cleanupErrors.push(String(error));}}
+    await closeLiveSession({launched, focusMonitor, profileDir, launchAttempted, report, responseObserver});
     if (focusFailure) {report.ok = false; process.exitCode = 1;}
     if (report.cleanupErrors.length) {report.ok = false; process.exitCode = 1;}
     persist(); console.log(JSON.stringify({ok: report.ok, report: path.join(artifactsDir, 'report.json'), documents: report.documents.map(({name, state}) => ({name, state})), failure: report.failure}));
   }
 }
 
-main().catch(error => {console.error(error.stack || error); process.exitCode = 1;});
+module.exports = {createResponseBodyObserver, closeLiveSession, isProviderDomain, shouldObserveResponseBody};
+if (require.main === module) main().catch(error => {console.error(error.stack || error); process.exitCode = 1;});

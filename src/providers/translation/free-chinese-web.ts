@@ -1,10 +1,11 @@
 /**
  * @file src/providers/translation/free-chinese-web.ts
  * 文件职责：适配有道网页普通翻译和金山词霸匿名网页翻译接口。
- * 主要内容：生成公开网页协议所需签名，解密词霸响应，限制支持的中英方向；有道按安全长度分块，避免匿名接口静默截去长段落末尾，同时保留文本槽、换行、边缘空白、取消和结构化失败分类。
+ * 主要内容：按码点预算且不切术语标记，生成公开网页协议所需签名，解密词霸响应，限制支持的中英方向；有道按安全长度分块，避免匿名接口静默截去长段落末尾，同时保留文本槽、换行、边缘空白、取消和结构化失败分类。
  * 模块边界：本文件只负责固定匿名 HTTP provider；不读取账号、Cookie、用户密钥、代理或存储，不负责免费服务编排、重试和并发。
  */
 import AES from 'crypto-js/aes';
+import {translateFreeTextChunks} from './freeTextChunks';
 import encUtf8 from 'crypto-js/enc-utf8';
 import MD5 from 'crypto-js/md5';
 import modeECB from 'crypto-js/mode-ecb';
@@ -140,39 +141,8 @@ async function fetchJson(provider: FreeChineseWebProvider, query: string, from: 
 }
 
 async function translatePlain(provider: FreeChineseWebProvider, text: string, from: string, to: string, signal?: AbortSignal): Promise<string> {
-    let output = '';
-    const maxChunkCodepoints = provider === 'youdaoFree' ? YOUDAO_MAX_CHUNK_CODEPOINTS : ICIBA_MAX_CHUNK_CODEPOINTS;
-    for (const line of text.split(/([\r\n]+)/u)) {
-        const points = Array.from(line);
-        for (let start = 0; start < points.length;) {
-            if (signal?.aborted) throw abortErrorFromSignal(signal);
-            const end = provider === 'youdaoFree' ? youdaoChunkEnd(points, start) : Math.min(points.length, start + maxChunkCodepoints);
-            const chunk = points.slice(start, end).join('');
-            start = end;
-            const content = chunk.trim();
-            if (!content) { output += chunk; continue; }
-            const prefix = chunk.slice(0, chunk.indexOf(content));
-            const suffix = chunk.slice(prefix.length + content.length);
-            output += prefix + await fetchJson(provider, content, from, to, signal) + suffix;
-        }
-    }
-    return output;
-}
-
-/** 在安全长度后半段优先句末、其次空白，避免把英文单词切成两次独立翻译；无边界时仍按完整码点推进。 */
-function youdaoChunkEnd(points: readonly string[], start: number): number {
-    const end = Math.min(points.length, start + YOUDAO_MAX_CHUNK_CODEPOINTS);
-    if (end === points.length) return end;
-    let sentence = 0;
-    let word = 0;
-    for (let index = start + YOUDAO_MAX_CHUNK_CODEPOINTS / 2; index < end; index++) {
-        const point = points[index]!;
-        if (/\s/u.test(point)) {
-            word = index + 1;
-            if (/[.!?]/u.test(points[index - 1]!)) sentence = word;
-        } else if (/[。！？]/u.test(point)) sentence = index + 1;
-    }
-    return sentence || word || end;
+    const limit = provider === 'youdaoFree' ? YOUDAO_MAX_CHUNK_CODEPOINTS : ICIBA_MAX_CHUNK_CODEPOINTS;
+    return translateFreeTextChunks(text, limit, chunk => fetchJson(provider, chunk, from, to, signal), signal, provider === 'youdaoFree');
 }
 
 export async function translateFreeChineseWebText(provider: FreeChineseWebProvider, text: string, source: string, target: string, signal?: AbortSignal): Promise<string> {

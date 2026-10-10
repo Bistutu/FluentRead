@@ -1,3 +1,4 @@
+import {protectedDocumentLongMathParagraph} from './fixtures/documentLongMathParagraph';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {translateExtraFreeWebText, isKnownUnsupportedApertiumDirection} from '@/src/providers/translation/free-extra-web';
 import {setRuntimeFetch} from '@/src/platform/http/runtime';
@@ -11,6 +12,18 @@ function home() { return new Response('<script>window.__INITIAL_STATE__={"common
 function result(text: string) { return Response.json({status: 0, data: {translate: {dit: `译:${text}`}}}); }
 
 describe('extra anonymous web providers', () => {
+    it('Reverso sends the actual long mathematical paragraph with complete protection tokens per request', async () => {
+        const packet = protectedDocumentLongMathParagraph(), observed: string[] = [];
+        fetchMock.mockImplementation(async (_url, init) => {
+            const text = JSON.parse(String(init?.body)).input;
+            observed.push(text); return Response.json({translation: [text]});
+        });
+        const slots = serializeTranslationSlots([packet.text, 'tail'], 'protected-extra');
+        expect(parseTranslationSlots(slots, await translateExtraFreeWebText('reversoFree', slots.payload, 'en', 'zh-Hans'))).toEqual([packet.text, 'tail']);
+        expect(observed.every(text => [...text].length <= 1000 && !text.includes('___FLUENTREAD'))).toBe(true);
+        for (const token of packet.tokens) expect(observed.filter(text => text.includes(token))).toHaveLength(1);
+    });
+
     it('uses the current Sogou page secret and signed text protocol', async () => {
         fetchMock.mockResolvedValueOnce(home()).mockResolvedValueOnce(result('Hello'));
         await expect(translateExtraFreeWebText('sogouFree', 'Hello', 'en', 'zh-Hans')).resolves.toBe('译:Hello');

@@ -1,10 +1,11 @@
 /**
  * @file src/providers/translation/free-extra-web.ts
  * 文件职责：适配搜狗、Reverso、Lingva 和 Apertium 四个匿名网页翻译候选。
- * 主要内容：读取搜狗网页参数并识别内层业务错误，构造 Reverso 请求，明确 Lingva 公共实例的访问限制，调用 Apertium 动态语言对；仅短期记忆有效语言列表确认的不支持方向，不共享在途请求或取消信号；保留文本槽/换行/边缘空白并响应取消。
+ * 主要内容：按码点预算且不切术语标记，读取搜狗网页参数并识别内层业务错误，构造 Reverso 请求，明确 Lingva 公共实例的访问限制，调用 Apertium 动态语言对；仅短期记忆有效语言列表确认的不支持方向，不共享在途请求或取消信号；保留文本槽/换行/边缘空白并响应取消。
  * 模块边界：不读取用户 Cookie、凭据或代理；免费链的超时、冷却和并发由上层编排负责。
  */
 import MD5 from 'crypto-js/md5';
+import {translateFreeTextChunks} from './freeTextChunks';
 import {serializeTranslationSlots} from '@/src/core/translation/serialization';
 import {getTranslationGlossarySourceText} from '@/src/services/translation/requestSnapshot';
 import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
@@ -234,21 +235,7 @@ async function translateApertiumChunk(text: string, source: string, target: stri
 type ChunkTranslator = (text: string, source: string, target: string, signal?: AbortSignal) => Promise<string>;
 
 async function translatePlain(text: string, source: string, target: string, signal: AbortSignal | undefined, translator: ChunkTranslator): Promise<string> {
-    let result = '';
-    for (const line of text.split(/([\r\n]+)/u)) {
-        const points = Array.from(line);
-        for (let start = 0; start < points.length; start += MAX_CHUNK_CODEPOINTS) {
-            checkAbort(signal);
-            const chunk = points.slice(start, start + MAX_CHUNK_CODEPOINTS).join('');
-            const content = chunk.trim();
-            if (!content) { result += chunk; continue; }
-            const prefix = chunk.slice(0, chunk.indexOf(content));
-            const suffix = chunk.slice(prefix.length + content.length);
-            const translated = await translator(content, source, target, signal);
-            result += prefix + translated + suffix;
-        }
-    }
-    return result;
+    return translateFreeTextChunks(text, MAX_CHUNK_CODEPOINTS, chunk => translator(chunk, source, target, signal), signal);
 }
 
 export async function translateExtraFreeWebText(

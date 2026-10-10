@@ -4,6 +4,7 @@
  * 主要内容：使用可替换 runtime fetch 检查请求不带凭据，构造词霸 AES 响应，并覆盖边缘空白、换行、多槽和失败分支。
  * 模块边界：测试 provider 适配器，不把 mock 响应当作真实服务可用性或浏览器扩展端到端证据。
  */
+import {protectedDocumentLongMathParagraph} from './fixtures/documentLongMathParagraph';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import AES from 'crypto-js/aes';
 import encUtf8 from 'crypto-js/enc-utf8';
@@ -22,6 +23,19 @@ beforeEach(() => { fetchMock.mockReset(); setRuntimeFetch(fetchMock); });
 afterEach(() => setRuntimeFetch());
 
 describe('free Chinese web providers', () => {
+    it.each(['youdaoFree', 'icibaFree'] as const)('%s sends all 52 actual tokens within its codepoint budget', async provider => {
+        const packet = protectedDocumentLongMathParagraph(), observed: string[] = [];
+        fetchMock.mockImplementation(async (input, init) => {
+            const text = provider === 'youdaoFree' ? new URL(String(input)).searchParams.get('q')! : new URLSearchParams(String(init?.body)).get('q')!;
+            observed.push(text);
+            return provider === 'youdaoFree' ? Response.json({fanyi: {tran: text}}) : icibaResponse({err_no: 0, out: text});
+        });
+        const slots = serializeTranslationSlots([packet.text, 'tail'], 'protected-chinese');
+        expect(parseTranslationSlots(slots, await translateFreeChineseWebText(provider, slots.payload, 'en', 'zh-Hans'))).toEqual([packet.text, 'tail']);
+        expect(observed.every(text => [...text].length <= (provider === 'youdaoFree' ? 500 : 1000) && !text.includes('___FLUENTREAD'))).toBe(true);
+        for (const token of packet.tokens) expect(observed.filter(text => text.includes(token))).toHaveLength(1);
+    });
+
     it('uses anonymous Youdao GET query data and reads fanyi.tran', async () => {
         fetchMock.mockResolvedValue(Response.json({fanyi: {tran: '译文'}}));
         await expect(translateFreeChineseWebText('youdaoFree', ' Hello ', 'en', 'zh-Hans')).resolves.toBe(' 译文 ');
