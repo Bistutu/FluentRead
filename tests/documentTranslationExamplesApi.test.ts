@@ -45,6 +45,20 @@ beforeEach(() => {
 });
 
 describe('document translation examples API regression', () => {
+    it.each(['microsoft', 'google', 'deepL', 'azureTranslator', 'googleCloudTranslation', 'freeTranslation'])('%s uses native-capable document batches by default and single calls when disabled', async service => {
+        mocks.config.service = service;
+        mocks.translateText.mockImplementation(async source => `Translated: ${source}`);
+        const segments = [{id: 0, source: 'First paragraph'}, {id: 1, source: 'Second paragraph'}];
+        await expect(translateDocumentSegments(segments, {fileName: 'capability.txt'})).resolves.toEqual(segments.map(segment => `Translated: ${segment.source}`));
+        expect(mocks.translateTextBatch).toHaveBeenCalledOnce();
+        expect(mocks.translateTextBatch.mock.calls[0]![2]).toMatchObject({serviceOverride: service, documentBatch: true});
+        mocks.translateTextBatch.mockClear();
+        await translateDocumentSegments(segments, {fileName: 'disabled.txt', batchTranslation: false});
+        expect(mocks.translateText).toHaveBeenCalledTimes(2);
+        expect(mocks.translateText.mock.calls.every(call => call[2].documentBatch === undefined)).toBe(true);
+        expect(mocks.translateTextBatch).not.toHaveBeenCalled();
+        expect(mocks.config.enableAIMultiSegment).toBe(false);
+    });
     it('enables document AI batching without writing global settings and freezes the configured model', async () => {
         mocks.config.service = 'openai';
         mocks.config.model.openai = 'first-model';

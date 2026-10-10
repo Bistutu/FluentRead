@@ -323,7 +323,7 @@ describe('document translation transient AI batching', () => {
         const result = await createAITranslator(() => model)(segments, options);
         expect(mocks.translateTextBatch.mock.calls.map(call => call[0].length)).toEqual([16, 16, 16, 5]);
         for (const call of mocks.translateTextBatch.mock.calls) {
-            expect(call[2]).toMatchObject({aiMultiSegment: true, serviceOverride: 'openai', modelOverride: 'first-model'});
+            expect(call[2]).toMatchObject({documentBatch: true, aiMultiSegment: true, serviceOverride: 'openai', modelOverride: 'first-model'});
         }
         expect(result).toEqual(translated(segments.map(segment => segment.source)));
         expect(mocks.translateText).not.toHaveBeenCalled();
@@ -340,9 +340,11 @@ describe('document translation transient AI batching', () => {
         const short = segments.slice(0, 4);
         expect(await translate(short, {fileName: 'disabled.pdf', batchTranslation: false})).toEqual(translated(short.map(segment => segment.source)));
         expect(mocks.translateText).toHaveBeenCalledTimes(4);
+        expect(mocks.translateText.mock.calls.every(call => call[2].documentBatch === undefined)).toBe(true);
         expect(mocks.translateTextBatch).not.toHaveBeenCalled();
         await translate(short, {fileName: 'next.pdf'});
         expect(mocks.translateTextBatch).toHaveBeenCalledOnce();
+        expect(mocks.translateTextBatch.mock.calls[0][2].documentBatch).toBe(true);
         expect(mocks.translateTextBatch.mock.calls[0][2].aiMultiSegment).toBe(service === 'openai' ? true : undefined);
     });
 

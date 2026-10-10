@@ -1234,3 +1234,164 @@ describe('owner-local bounded high-slot free batches', () => {
         expect(vi.getTimerCount()).toBe(0);
     });
 });
+
+describe('document-only mixed free-pool batching', () => {
+    const sources = (count: number) => Array.from({length: count}, (_, index) => `Source passage ${index}`);
+    const valid = (texts: readonly string[]) => texts.map(text => `译:${text}`);
+
+    it.each([2, 8])('default full pool sends %s short document slots in one Microsoft array transport via controlled fetch', async count => {
+        const actual = await vi.importActual<typeof import('@/src/providers/translation/microsoft')>('@/src/providers/translation/microsoft');
+        microsoftMock.mockImplementation(actual.translateMicrosoftTexts);
+        mockConfig.freeTranslationOrder = undefined;
+        const originals = sources(count);
+        const fetchMock = vi.fn(async (_url, init) => Response.json(JSON.parse(String(init.body))
+            .map((text: string) => ({translations: [{text: `译:${text}`}]}))));
+        vi.stubGlobal('fetch', fetchMock);
+        await expect(settle(freeTranslation({origin: originals, documentBatch: true}))).resolves.toEqual(valid(originals));
+        expect(fetchMock).toHaveBeenCalledOnce();
+        expect(JSON.parse(String(fetchMock.mock.calls[0]![1]!.body))).toEqual(originals);
+        expect(bilibiliMock).not.toHaveBeenCalled();
+        expect(googleOwnerMock).not.toHaveBeenCalled();
+    });
+
+    it('a scalar winner consumes only the first raw source, then an available native candidate consumes the remainder', async () => {
+        mockConfig.freeTranslationOrder = ['alibabaFree', 'microsoft', 'google'];
+        officialMock.mockImplementation(async (_id, request) => `译:${request.origin}`);
+        microsoftMock.mockImplementation(async (texts: string[]) => valid(texts));
+        const {attachTranslationRouteObserver} = await import('@/src/services/translation/requestSnapshot');
+        const observed: Array<{route: string; chars: number}> = [];
+        const originals = sources(4);
+        await expect(settle(freeTranslation(attachTranslationRouteObserver({origin: originals, documentBatch: true}, event => observed.push(event)))))
+            .resolves.toEqual(valid(originals));
+        expect(officialMock).toHaveBeenCalledOnce();
+        expect(officialMock.mock.calls[0]![1].origin).toBe(originals[0]);
+        expect(microsoftMock.mock.calls.map(call => call[0])).toEqual([originals.slice(1)]);
+        expect(observed).toEqual([{route: 'alibabaFree', chars: originals[0]!.length, outcome: 'success', durationMs: 0},
+            {route: 'microsoft', chars: originals.slice(1).join('').length, outcome: 'success', durationMs: 0}]);
+        expect(mockConfig.freeTranslationOrder).toEqual(['alibabaFree', 'microsoft', 'google']);
+    });
+
+    it('a scalar-only pool preserves independent duplicates, whitespace and source order while continuing every untouched slot', async () => {
+        mockConfig.freeTranslationOrder = ['alibabaFree'];
+        officialMock.mockImplementation(async (_id, request) => `译:${request.origin}`);
+        const originals = ['First source', ' ', 'First source', 'Second source', '\n'];
+        await expect(settle(freeTranslation({origin: originals, documentBatch: true})))
+            .resolves.toEqual(['译:First source', ' ', '译:First source', '译:Second source', '\n']);
+        expect(officialMock.mock.calls.map(call => call[1].origin)).toEqual(['First source', 'First source', 'Second source']);
+        expect(officialMock.mock.calls.every(call => !call[1].origin.includes('___FLUENTREAD_'))).toBe(true);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('a malformed native group falls back once, then uses scalar candidates within the group without quadratic retransmission or global cooling', async () => {
+        mockConfig.freeTranslationOrder = ['microsoft', 'alibabaFree'];
+        microsoftMock.mockResolvedValueOnce(['译:missing slots']).mockImplementation(async (texts: string[]) => valid(texts));
+        officialMock.mockImplementation(async (_id, request) => `译:${request.origin}`);
+        const originals = sources(4);
+        const before = [...originals];
+        const {attachTranslationRouteObserver} = await import('@/src/services/translation/requestSnapshot');
+        const observed: Array<{route: string; chars: number}> = [];
+        await expect(settle(freeTranslation(attachTranslationRouteObserver({origin: originals, documentBatch: true}, event => observed.push(event)))))
+            .resolves.toEqual(valid(originals));
+        expect(microsoftMock.mock.calls.map(call => call[0])).toEqual([originals, ...originals.slice(1).map(source => [source])]);
+        expect(officialMock.mock.calls.map(call => call[1].origin)).toEqual([originals[0]]);
+        expect(observed.map(event => event.chars)).toEqual([originals.join('').length, ...originals.map(source => source.length)]);
+        expect(originals).toEqual(before);
+        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
+        microsoftMock.mockClear();
+        await vi.advanceTimersByTimeAsync(200);
+        await expect(settle(freeTranslation({origin: originals, documentBatch: true}))).resolves.toEqual(valid(originals));
+        expect(microsoftMock.mock.calls.map(call => call[0])).toEqual([originals]);
+    });
+
+    it('document groups use Google owner arrays even when a scalar service remains enabled', async () => {
+        mockConfig.freeTranslationOrder = ['google', 'alibabaFree'];
+        googleOwnerMock.mockImplementation(async (texts: string[]) => valid(texts));
+        const originals = sources(3);
+        await expect(settle(freeTranslation({origin: originals, documentBatch: true}))).resolves.toEqual(valid(originals));
+        expect(googleOwnerMock).toHaveBeenCalledWith(originals, 'auto', 'zh-Hans', expect.any(AbortSignal));
+        expect(googleMock).not.toHaveBeenCalled();
+        expect(officialMock).not.toHaveBeenCalled();
+    });
+
+    it('bounds groups by escaped characters and eight slots, preserves singleton long sources and out-of-order completion', async () => {
+        mockConfig.freeTranslationOrder = ['microsoft'];
+        const originals = ['&'.repeat(400), ...sources(9)];
+        microsoftMock.mockImplementation((texts: string[]) => new Promise(resolve => {
+            setTimeout(() => resolve(valid(texts)), texts[0]!.startsWith('&') ? 500 : 0);
+        }));
+        await expect(settle(freeTranslation({origin: originals, documentBatch: true}))).resolves.toEqual(valid(originals));
+        expect(microsoftMock.mock.calls.map(call => call[0])).toEqual([[originals[0]], originals.slice(1, 9), originals.slice(9)]);
+    });
+
+    it.each(['resolve', 'reject'] as const)('cancelled scalar continuation returns immediately and ignores late %s without starting other slots', async late => {
+        mockConfig.freeTranslationOrder = ['alibabaFree'];
+        let resolve!: (value: string) => void;
+        let reject!: (error: Error) => void;
+        officialMock.mockReturnValue(new Promise<string>((res, rej) => {resolve = res; reject = rej;}));
+        const controller = new AbortController();
+        const reason = new Error('Document cancelled');
+        const request = freeTranslation({origin: sources(3), documentBatch: true, abortSignal: controller.signal});
+        const assertion = expect(request).rejects.toBe(reason);
+        await flush();
+        expect(officialMock).toHaveBeenCalledOnce();
+        controller.abort(reason);
+        await assertion;
+        if (late === 'resolve') resolve('迟到译文'); else reject(new Error('Late provider rejection'));
+        await flush();
+        await vi.advanceTimersByTimeAsync(2_000);
+        expect(officialMock).toHaveBeenCalledOnce();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('single-slot continuation shares the original deadline instead of giving later slots fresh time', async () => {
+        mockConfig.freeTranslationOrder = ['alibabaFree'];
+        officialMock.mockImplementation(async (_id, request) => `译:${request.origin}`);
+        const request = freeTranslation({origin: sources(3), documentBatch: true, requestTimeoutMs: 250});
+        const assertion = expect(request).rejects.toThrow('超时');
+        await vi.advanceTimersByTimeAsync(400);
+        await assertion;
+        expect(officialMock).toHaveBeenCalledOnce();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('disabled document intent leaves the legacy mixed-pool scalar transport unchanged', async () => {
+        mockConfig.freeTranslationOrder = ['microsoft', 'alibabaFree'];
+        microsoftMock.mockImplementation(async (texts: string[]) => valid(texts));
+        const originals = sources(3);
+        await expect(settle(freeTranslation({origin: originals, documentBatch: false}))).resolves.toEqual(valid(originals));
+        expect(microsoftMock.mock.calls).toHaveLength(3);
+        expect(microsoftMock.mock.calls.every(call => call[0].length === 1)).toBe(true);
+    });
+
+    it('document whitespace remains local and a caller cancelled before dispatch starts no candidate', async () => {
+        await expect(freeTranslation({origin: [' ', '\n', ''], documentBatch: true})).resolves.toEqual([' ', '\n', '']);
+        const controller = new AbortController();
+        controller.abort(new Error('Already cancelled'));
+        await expect(freeTranslation({origin: sources(2), documentBatch: true, abortSignal: controller.signal})).rejects.toBe(controller.signal.reason);
+        for (const mock of [microsoftMock, googleOwnerMock, officialMock, bilibiliMock, myMemoryMock, webMock]) expect(mock).not.toHaveBeenCalled();
+    });
+
+    it('the owner rejects an intermediate-size packet instead of claiming partially translated untouched slots', async () => {
+        const {translateDocumentFreeGroups} = await import('@/src/providers/translation/documentFreeBatch');
+        const original = sources(4), packet = serializeTranslationSlots(original);
+        const nonce = packet.starts[0]!.slice('___FLUENTREAD_'.length, -'_0_BEGIN___'.length);
+        const translate = vi.fn(async () => serializeTranslationSlots(valid(original.slice(0, 2)), nonce).payload);
+        await expect(translateDocumentFreeGroups(original, [{indexes: [0, 1, 2, 3], sources: original}], 1, undefined, translate))
+            .rejects.toThrow('文档槽位不完整');
+        expect(translate).toHaveBeenCalledOnce();
+    });
+
+    it('late native validation failures after cancellation cannot change the group fallback strategy', async () => {
+        const {runDocumentFreeNativeCandidate} = await import('@/src/providers/translation/documentFreeBatch');
+        const controller = new AbortController(), scalarProviders = new Set<string>();
+        let reject!: (error: Error) => void;
+        const result = runDocumentFreeNativeCandidate('microsoft', controller.signal, scalarProviders,
+            () => new Promise<string>((_resolve, rej) => {reject = rej;}));
+        const error = Object.assign(new Error('Late invalid group'), {freeFailure: 'request'});
+        const assertion = expect(result).rejects.toBe(error);
+        controller.abort();
+        reject(error);
+        await assertion;
+        expect(scalarProviders.size).toBe(0);
+    });
+});

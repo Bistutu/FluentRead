@@ -16,15 +16,11 @@ import {createDocumentSegmentTranslator} from '@/src/features/document-translati
 import {acquirePdfDocument, renderPdfReadingPages, rasterizePdfTranslationPage, renderPdfPageImage} from '@/src/features/document-translation/ui/pdfPreview';
 import type {PdfPageRecognizer} from '@/src/features/document-translation/services/pdfOcr';
 import {config, configReady} from '@/src/services/config/store';
+import {supportsNativeTranslationBatch} from '@/src/services/translation/capabilities';
 import type {
     DocumentRenderMode,
     ParsedDocument,
 } from '@/src/features/document-translation/core/document';
-
-const BATCH_DOCUMENT_SERVICES = new Set<string>([
-    services.microsoft,
-    services.freeTranslation,
-]);
 
 /** WXT 组合根：把运行时配置和翻译 API 注入纯文档业务服务。 */
 export const translateDocumentSegments = createDocumentSegmentTranslator({
@@ -35,7 +31,7 @@ export const translateDocumentSegments = createDocumentSegmentTranslator({
     waitUntilReady: () => configReady,
     getDefaultService: () => config.service,
     getDefaultModel: (service) => resolveConfiguredModel(config.model?.[service], config.customModel?.[service]),
-    supportsBatch: (service) => BATCH_DOCUMENT_SERVICES.has(service),
+    supportsBatch: (service) => service === services.freeTranslation || supportsNativeTranslationBatch(service),
     supportsAIMultiSegment: (service, model) => servicesType.isUseAIContext(service, model),
     translateText,
     translateTextBatch,

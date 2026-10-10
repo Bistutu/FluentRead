@@ -32,6 +32,8 @@ export interface TranslationRequestMessageBase {
     useCache?: boolean;
     /** 全文翻译内部标记；仅允许通用提示词型 AI 把数组合并为一次上游请求。 */
     aiMultiSegment?: boolean;
+    /** 文档数组请求的合批意图；后台必须根据真实文档入口验证，不能从网页或单条请求启用。 */
+    documentBatch?: boolean;
     /** 全文内部的单条槽协议；broker 按冻结术语配置逐槽校验，沿用本次请求的截止时间。 */
     validateTranslationSlots?: boolean;
     /** 视频字幕、文档等独立入口使用的翻译服务；普通网页请求不设置。 */

@@ -57,6 +57,8 @@ export interface DocumentTranslationRequestOptions {
     maxRetries?: number;
     /** 显式使用翻译客户端已有的 AI 多段槽协议；只有具备该能力的服务批次携带此标记。 */
     aiMultiSegment?: boolean;
+    /** 当前文档开启多段时才发送；后台校验入口，免费池按真实线路能力消费槽位。 */
+    documentBatch?: boolean;
 }
 
 /**
@@ -330,6 +332,7 @@ export function createDocumentSegmentTranslator(
                         context,
                         {
                             ...requestOptions,
+                            documentBatch: true,
                             ...(aiMultiSegment ? {aiMultiSegment: true} : {}),
                         },
                     );
