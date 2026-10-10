@@ -6,7 +6,7 @@
  * 文件职责：在独立生产 Edge 配置中真实验证免费服务翻译普通文档、PDF 阅读与左右对照导出。
  * 主要内容：复用后台焦点保护启动器与原生激活事件观察器，只设置免费服务与英译中公开选项；按输入文件逐份导入、真实翻译、阅读、下载，保存完整段落、状态、脱敏网络统计和截图。PDF 用 PDF.js 重开校验页数、左右对照尺寸与页序，再用 Poppler 渲染；--readable-pdf-first 在首份 PDF 同次真实译文上另验可复制重排导出、逐段中文文字层及首页/尾页图片。普通格式重新解析下载文件，DOCX/ePub 解包核对译文、结构与图片。默认运行实际 Attention 15 页、仓库八种普通格式及英文产品指南，--inputs 可缩小范围。Markdown 严格核对代码、链接、译文强调及指南容器、组件标记，以 VitePress 已有 markdown-it 的标准强调节点核对实际下载（先扣除原文节点，不能只数星号或用产品预览证明译文格式），并按源文本与同一标签检查两项已确认的内部英文残留回归；仅读取这些内容，不执行组件。
  * 交互验证：--exercise-pdf-ui 在首份实际 PDF 上保存首页扫描说明，经 CDP 键盘 Tab/Enter/Space 选择原生菜单按钮，验证受控 Ctrl/Cmd wheel 的文档缩放、指针锚点及键盘复位；真实译文完成后切换显示方式，恢复原版对照和适合整页，再执行既有小屏阅读与下载验收。这些事件不代表物理触控板实测。
- * 诊断收尾：响应 JSON 观察每条最多等五秒，记录超时/失败并拒绝晚到正文回填；文档失败先保存状态，批次诊断与最终清理各有截止，不让未完成的响应正文阻塞自有浏览器和焦点观察器关闭。
+ * 诊断收尾：响应正文观察每条最多等五秒，记录超时/失败并拒绝晚到正文回填；文档失败先保存状态，批次诊断与最终清理各有截止。HTTP 证据按固定翻译端点辨认 Microsoft/Google 有序原生槽位、单文本与未知请求；仅完整多槽响应进入已完成合批统计，不把同域 2xx 或背景消息数组当作合批。
  * 模块边界：不创建请求路由、不替换 fetch、不伪造译文、不配置付费账户，不读取或输出任何凭据；只使用本次新建的临时浏览器配置，不操作用户浏览器。中文及无测试标记只能证明实际结果，译文质量和排版需结合保存的数据与图片人工复核。
  */
 const assert = require('node:assert/strict');
@@ -19,6 +19,7 @@ const {execFile} = require('node:child_process');
 const {promisify} = require('node:util');
 const {launchFocusSafePersistentContext, newPageWithoutForeground, activateExtensionTabWithoutForeground, queryMacFrontmostApplication, startFocusEventMonitor} = require('./focus-safe-browser.cjs');
 const {getGuardedBrowserPid} = require('./owned-browser-close.cjs');
+const {decodeHttpTranslationRequest, decodeHttpTranslationResponse, summarizeHttpEvidence} = require('./document-live-http-evidence.cjs');
 
 const arg = (name, fallback) => {const at = process.argv.indexOf(`--${name}`); return at < 0 ? fallback : process.argv[at + 1];};
 const sha = value => crypto.createHash('sha256').update(value).digest('hex');
@@ -30,7 +31,8 @@ const FREE_DOMAINS = ['microsoft.com', 'google.com', 'google.co.uk', 'googleapis
 const isProviderDomain = host => host === 'api-b2b.backenster.com' || FREE_DOMAINS.some(domain => host === domain || host.endsWith(`.${domain}`));
 const shouldObserveResponseBody = (record, response) => record.providerCandidate
   && !/csrf|token|auth/iu.test(new URL(response.url()).pathname)
-  && /json/iu.test(response.headers()['content-type'] || '');
+  && (/json/iu.test(response.headers()['content-type'] || '')
+    || record.httpEvidence?.endpoint === 'google-rpc' && /text\/plain/iu.test(response.headers()['content-type'] || ''));
 
 function directoryFingerprint(directory) {
   const entries = [];
@@ -63,7 +65,7 @@ function requestSourceHashes(request) {
       }
     }
   }
-  return [...new Set(sources)].map(value => ({sha256: sha(value), chars: value.length}));
+  return sources.map(value => ({sha256: sha(value), chars: value.length}));
 }
 
 function responseTranslationEvidence(value) {
@@ -101,7 +103,14 @@ function createResponseBodyObserver({timeoutMs = 5000} = {}) {
       settled = true; clearTimeout(timer);
       try {
         if (state === 'completed') {
-          const evidence = responseTranslationEvidence(value); if (evidence.length) record.translations = evidence;
+          let evidence;
+          if (record.httpEvidence?.endpoint) {
+            const decoded = decodeHttpTranslationResponse(record.httpEvidence, value);
+            record.httpEvidence.response = {complete: decoded.complete, classification: decoded.classification,
+              slotCount: decoded.slots.length, reason: decoded.reason};
+            evidence = decoded.slots.map(slot => ({slot: slot.id, sha256: sha(slot.text), chars: slot.text.length, tail: slot.text.slice(-64)}));
+          } else evidence = responseTranslationEvidence(value);
+          if (evidence.length) record.translations = evidence;
           if (Array.isArray(value?.choices)) record.finishReasons = value.choices.map(choice => choice.finish_reason);
         }
       } catch (error) {state = 'failed'; value = error;}
@@ -112,7 +121,8 @@ function createResponseBodyObserver({timeoutMs = 5000} = {}) {
     };
     pending.set(completion, () => finish('timedOut', undefined, 'drain-deadline'));
     timer = setTimeout(() => finish('timedOut', undefined, 'body-deadline'), timeoutMs);
-    Promise.resolve().then(() => response.json()).then(value => finish('completed', value), error => finish('failed', error));
+    Promise.resolve().then(() => record.httpEvidence?.endpoint === 'google-rpc' ? response.text() : response.json())
+      .then(value => finish('completed', value), error => finish('failed', error));
     return completion;
   };
   const drain = async ({timeoutMs: drainTimeoutMs = timeoutMs + 250} = {}) => {
@@ -563,6 +573,7 @@ async function main() {
   const pdftoppm = arg('pdftoppm', 'pdftoppm');
   const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fluentread-document-live-'));
   const report = {ok: false, artifactKind: 'production', extensionDir, artifactsDir, nodeVersion: process.version, driverSha256: sha(fs.readFileSync(__filename)),
+    httpEvidenceDecoderSha256: sha(fs.readFileSync(require.resolve('./document-live-http-evidence.cjs'))),
     build: directoryFingerprint(extensionDir), manifestSha256: sha(fs.readFileSync(path.join(extensionDir, 'manifest.json'))), declaredBuildCommit: arg('build-commit', null),
     sourceSha256: Object.fromEntries(['src/app/document-translation/DocumentApp.vue', 'src/features/document-translation/services/binary.ts', 'src/features/document-translation/services/archive.ts',
       'src/features/document-translation/core/document.ts', 'src/features/document-translation/core/pdfLayoutAnalysis.ts', 'src/features/document-translation/ui/PdfReader.vue',
@@ -616,7 +627,12 @@ async function main() {
       const url = new URL(request.url()); if (url.protocol !== 'https:') return;
       const record = {id: report.network.length + 1, document: report.currentDocument ?? null, domain: url.hostname,
         providerCandidate: isProviderDomain(url.hostname), method: request.method(), startedAt: Date.now(), resourceType: request.resourceType()};
-      if (record.providerCandidate) record.sources = requestSourceHashes(request);
+      if (record.providerCandidate) {
+        const decoded = decodeHttpTranslationRequest({url: request.url(), method: request.method(), postData: request.postData()});
+        record.httpEvidence = {endpoint: decoded.endpoint, classification: decoded.classification, reason: decoded.reason,
+          requestSlotCount: decoded.slots.length, slots: decoded.slots.map(slot => ({id: slot.id, sha256: sha(slot.text), chars: slot.text.length}))};
+        record.sources = decoded.slots.length ? record.httpEvidence.slots.map(({sha256, chars}) => ({sha256, chars})) : requestSourceHashes(request);
+      }
       requests.set(request, record); report.network.push(record);
     });
     context.on('response', response => {
@@ -894,6 +910,7 @@ async function main() {
       await responseObserver.drain();
       const requestsForDocument = report.network.filter(request => request.document === name && request.providerCandidate);
       result.providerNetwork = {requests: requestsForDocument.length, successful: requestsForDocument.filter(request => request.status >= 200 && request.status < 300).length,
+        httpEvidence: summarizeHttpEvidence(requestsForDocument),
         bodyObservations: Object.fromEntries(['pending', 'completed', 'timedOut', 'failed'].map(state => [state,
           requestsForDocument.filter(request => request.bodyObservation?.state === state).length])),
         byDomain: Object.fromEntries([...new Set(requestsForDocument.map(request => request.domain))].map(domain => [domain, {requests: requestsForDocument.filter(request => request.domain === domain).length,
