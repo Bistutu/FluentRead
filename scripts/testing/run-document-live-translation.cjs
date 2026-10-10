@@ -307,6 +307,38 @@ async function historySnapshot(page, name) {
   }, name);
 }
 
+/** 下载事件与可见产品错误同时观察；明确报错不能被当成仍在生成文件的性能等待。 */
+async function waitForDocumentDownload(page, dialog, {timeout, click, assertActive, onProductError}) {
+  let download, clickFailure;
+  const onDownload = value => {download = value;};
+  page.on('download', onDownload);
+  const deadline = Date.now() + timeout;
+  try {
+    assertActive();
+    // 先注册事件再触发下载。点击失败始终被接收，即使页面报错或焦点守卫先结束等待。
+    void Promise.resolve().then(click).catch(error => {clickFailure = error;});
+    while (true) {
+      assertActive();
+      const errorText = await dialog.locator('.notice.error,[role="alert"]').evaluateAll(elements => elements
+        .filter(element => element.getClientRects().length && getComputedStyle(element).visibility !== 'hidden')
+        .map(element => element.textContent.trim()).filter(Boolean).join('\n'));
+      assertActive();
+      if (errorText) {
+        await onProductError(errorText);
+        assertActive();
+        throw new Error(`Document export reported a product error: ${errorText}`);
+      }
+      if (download) return download;
+      if (clickFailure) throw clickFailure;
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) throw new Error(`Document export produced neither a download nor a visible product error within ${timeout}ms`);
+      await pause(Math.min(100, remaining));
+    }
+  } finally {
+    page.off('download', onDownload);
+  }
+}
+
 async function main() {
   const repository = path.resolve(__dirname, '../..'), requireRepo = createRequire(path.join(repository, 'package.json'));
   const examples = path.resolve(arg('example-dir', path.join(repository, 'examples/document-translation')));
@@ -419,6 +451,24 @@ async function main() {
     assert.equal(report.config.service, service);
     await page.reload({waitUntil: 'domcontentloaded'}); await page.locator('.file-drop-zone').waitFor();
     const shot = async name => {const file = path.join(artifactsDir, `${name}.png`); await page.screenshot({path: file, animations: 'disabled'}); report.screenshots.push(file); return file;};
+    const downloadFromDialog = (dialog, result, prefix, phase) => waitForDocumentDownload(page, dialog, {
+      timeout: exportTimeout,
+      click: () => dialog.locator('.translate-document-button').click(),
+      assertActive: () => {
+        if (focusFailure) throw focusFailure;
+        if (page.isClosed()) throw new Error(`Document page closed during ${phase}`);
+      },
+      onProductError: async text => {
+        result.downloadFailure = {kind: 'product-error', phase, observedAt: Date.now(), text: diagnostic(text), screenshot: null};
+        persist();
+        if (focusFailure) throw focusFailure;
+        result.downloadFailure.screenshot = await shot(`${prefix}-${phase}-product-error`).catch(error => {
+          result.downloadFailure.screenshotError = diagnostic(error.message); return null;
+        });
+        if (result.downloadFailure.screenshot) result.screenshots.push(result.downloadFailure.screenshot);
+        persist();
+      },
+    });
     const clearForImport = async () => {
       const openDownload = page.locator('.download-dialog[open]'); if (await openDownload.count()) await openDownload.getByRole('button', {name: '返回文档', exact: true}).click();
       const sidebar = page.locator('aside.document-sidebar'); if (!await sidebar.isVisible()) await page.locator('.sidebar-toggle').click();
@@ -535,10 +585,9 @@ async function main() {
         await checkFocus('export-dialog');
         await page.locator('.download-button').click(); const dialog = page.locator('.download-dialog[open]'); await dialog.waitFor();
         await dialog.locator('.export-options button').first().click();
-        const downloadPromise = page.waitForEvent('download', {timeout: exportTimeout});
         await checkFocus('export-download');
         const exportStart = Date.now();
-        await dialog.locator('.translate-document-button').click(); const download = await downloadPromise;
+        const download = await downloadFromDialog(dialog, result, prefix, 'export-download');
         const output = path.join(artifactsDir, `${prefix}-bilingual${path.extname(input)}`); await download.saveAs(output);
         const exportMs = Date.now() - exportStart;
         await checkFocus('export-validation');
@@ -562,10 +611,9 @@ async function main() {
               await page.locator('.download-button').click();
               const readableDialog = page.locator('.download-dialog[open]'); await readableDialog.waitFor();
               await readableDialog.locator('.export-options button').filter({hasText: '仅译文'}).click();
-              const readableDownloadPromise = page.waitForEvent('download', {timeout: exportTimeout});
               await checkFocus('readable-export-download');
               const readableStart = Date.now();
-              await readableDialog.locator('.translate-document-button').click(); const readableDownload = await readableDownloadPromise;
+              const readableDownload = await downloadFromDialog(readableDialog, result, prefix, 'readable-export-download');
               const readableOutput = path.join(artifactsDir, `${prefix}-readable-translated.pdf`); await readableDownload.saveAs(readableOutput);
               result.readableExport = {output: readableOutput, suggestedFilename: readableDownload.suggestedFilename(),
                 exportMs: Date.now() - readableStart, bytes: fs.statSync(readableOutput).size, presentation: 'readable', mode: 'translated', previews: []}; persist();

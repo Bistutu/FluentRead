@@ -133,6 +133,12 @@ describe('real PDF structural parsing', () => {
         const embedding = document.binary.pages[4].segmentIndexes.map(index => document.segments[index].source).find(source => source.startsWith('Similarly to other sequence transduction models,'))!;
         expect(embedding).toContain('the pre-softmax linear transformation');
         expect(embedding).toMatch(/weights by √dmodel\.$/u);
+        const embeddingBlock = document.binary.pages[4].blocks.find(block => block.segmentIndex >= 0 && document.segments[block.segmentIndex].source === embedding)!;
+        const radical = embeddingBlock.lines!.flatMap(line => line.runs ?? []).find(run => run.text === '√')!;
+        const radicand = embeddingBlock.lines!.flatMap(line => line.runs ?? []).find(run => run.text === 'd' && Math.abs(run.x - 480.185) < .01)!;
+        expect(radical).toMatchObject({x: 471.882, y: 704.82005, width: 8.30183458});
+        expect(radical.y + radical.height).toBeGreaterThanOrEqual(radicand.y + radicand.height);
+        expect(radical.y + radical.height).toBeGreaterThan(712.292 + 9.9626 * .96);
         expect(document.binary.pages[4].blocks.filter(block => block.kind === 'formula').every(block => block.preserveSource)).toBe(true);
         expect(bytes).toEqual(before);
     });

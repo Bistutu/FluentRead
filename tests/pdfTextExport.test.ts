@@ -54,7 +54,7 @@ describe('visible Unicode PDF reading export', () => {
     it('retains every visible glyph outline after subsetting, including odd-length Chinese/Latin records', async () => {
         const font = fontkit.create(fontBytes);
         const subset = font.createSubset();
-        const glyphs = font.layout('中文译文标题 Mixed English 123，标点。éü①②', {liga: false}).glyphs;
+        const glyphs = font.layout('中文译文标题 Mixed English 123，标点。éü①② ∗ϵŁłĐđɃɐἀὯ∀∑∫≠⊗⋆⨀⩽𝒜𝜖𝟟', {liga: false}).glyphs;
         const pairs = glyphs.map(glyph => ({original: glyph, index: subset.includeGlyph(glyph)}));
         const bytes = await new Promise<Uint8Array>((resolve, reject) => {
             const parts: Uint8Array[] = [];
@@ -63,6 +63,18 @@ describe('visible Unicode PDF reading export', () => {
         });
         const embedded = fontkit.create(bytes);
         for (const {original, index} of pairs) expect(embedded.getGlyph(index).path.toSVG()).toBe(original.path.toSVG());
+    });
+    it('covers complete Latin Extended A/B and mathematical operator ranges and retains Unicode identities when copied', async () => {
+        const font = fontkit.create(fontBytes);
+        const supported = new Set(font.characterSet);
+        const full = [[0x0100, 0x024F], [0x2200, 0x22FF], [0x2A00, 0x2AFF]].flatMap(([lo, hi]) =>
+            Array.from({length: hi - lo + 1}, (_, index) => String.fromCodePoint(lo + index)));
+        expect(full.every(character => supported.has(character.codePointAt(0)!))).toBe(true);
+        const translations = ['扩展字符与数学符号', full.join('') + ' ∗ϵŁł ἀὯ𝒜𝜖𝟟 中文唯一尾部：完。'];
+        const download = await createDocumentDownload(await fixture(), translations, 'translated', textOnlyOptions);
+        const extracted = await extract(download.data as Uint8Array);
+        expect(compact(extracted.join(''))).toBe(compact(translations.join('')));
+        expect(extracted.at(-1)).toContain('中文唯一尾部：完。');
     });
     it('writes Chinese, Latin, punctuation and tabs as actual extractable text with a small font subset', async () => {
         const translations = ['中文译文标题', '中文译文可直接复制和搜索。Mixed English 123\t中英混合，标点：？！“引号”《书名》；①②。·• 兀兀'];

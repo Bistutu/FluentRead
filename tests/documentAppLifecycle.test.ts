@@ -131,7 +131,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         const id = await documentHistoryId(bytes);
         const factory = new IDBFactory();
         const history = createDocumentHistory(factory);
-        const oldVersion = format === 'mixed-removed-duplicate' ? 7 : 6;
+        const oldVersion = format === 'scanned' ? 10 : format === 'mixed-removed-duplicate' ? 7 : 6;
         await history.save({id, name: 'history.pdf', format: 'pdf', size: bytes.length, total: old.segments.length,
             completed: edits.filter((value: string) => value.trim()).length, updatedAt: 1, bytes, mimeType: 'application/pdf',
             translations: edits, fingerprint: 'old-settings', parsed: old, parsedVersion: oldVersion});
@@ -164,7 +164,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         }
         await vi.waitFor(async () => {
             const saved = await history.load(id);
-            expect(saved?.parsedVersion).toBe(10);
+            expect(saved?.parsedVersion).toBe(11);
             expect(saved?.translations).toEqual(expectedTranslations);
             expect((saved?.parsed as any).segments.map((segment: any) => segment.source)).toEqual(expectedSources);
             expect(saved?.parsed).not.toHaveProperty('segmentOrigins');

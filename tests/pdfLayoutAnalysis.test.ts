@@ -1,7 +1,7 @@
 /**
  * @file tests/pdfLayoutAnalysis.test.ts
  * 文件职责：验证 PDF 阅读分析不会把分栏、表格、公式、上下标或插图误当作一个可覆盖的正文框。
- * 主要内容：使用真实绘图操作语义和可复现字形几何验证矩阵、裁剪、行关联、语义边界与阅读顺序，并覆盖长文的几何读取上限。
+ * 主要内容：使用真实绘图操作语义和可复现字形几何验证矩阵、裁剪、行关联、已关联根号的下伸擦除范围、语义边界与阅读顺序，并覆盖长文的几何读取上限。
  * 模块边界：测试纯分析模块；真实 PDF 提取和来源字节不变由 PDF 解析集成测试补充。
  */
 import {describe, expect, it} from 'vitest';
@@ -94,15 +94,34 @@ describe('PDF baseline and structural reading analysis', () => {
         const items = [atom('the two embedding layers and the pre-softmax', 108, 709.091, 396, 9.9626),
             atom('linear transformation; we multiply those weights by', 108, 720, 361.5, 9.9626),
             {...atom('√', 471.882, 712.292, 8.30183458, 9.9626), y: 704.82005},
-            atom('d', 480.185, 720, 5.1855, 9.9626), atom('model', 485.37, 721.494, 17.4345, 6.9738), atom('.', 503.303, 720, 2.44, 9.9626)];
+            {...atom('d', 480.185, 720, 5.1855333, 9.9626), y: 713.0859556},
+            {...atom('model', 485.37, 721.494, 17.4345, 6.9738), y: 716.7657636}, atom('.', 503.303, 720, 2.44, 9.9626)];
         const before = structuredClone(items), result = analyze(items);
         expect(result.blocks).toHaveLength(1);
         expect(result.blocks[0].source).toBe('the two embedding layers and the pre-softmax linear transformation; we multiply those weights by √dmodel.');
         expect(result.blocks[0]).toMatchObject({kind: 'text', preserveSource: false, lineCount: 2});
-        expect(result.blocks[0].lines![1].runs!.find(run => run.text === '√')).toMatchObject({x: 471.882, y: 704.82005});
+        const radical = result.blocks[0].lines![1].runs!.find(run => run.text === '√')!;
+        expect(radical).toMatchObject({x: 471.882, y: 704.82005, width: 8.30183458, baseline: 720});
+        expect(radical.y + radical.height).toBeCloseTo(723.0485556, 7);
+        // 原件 Page5 的 PDF.js 字形路径最低点为 -0.96 em，真实笔画到达 y721.856096。
+        expect(radical.y + radical.height).toBeGreaterThan(712.292 + 9.9626 * .96);
         const equation = analyze([atom('f(x) =', 200, 120, 40), atom('√', 243, 120, 8), atom('x', 251, 120, 5)]);
         expect(equation.blocks[0]).toMatchObject({source: 'f(x) = √x', kind: 'formula', preserveSource: true});
         expect(items).toEqual(before);
+    });
+    it('does not shrink an associated radical or expand an unassociated radical across a gap', () => {
+        const tall = {...atom('√', 471.882, 712.292, 8.30183458, 9.9626), y: 704.82005, height: 30};
+        const radicand = {...atom('d', 480.185, 720, 5.1855333, 9.9626), y: 713.0859556};
+        const linked = pdfLayoutLines([tall, radicand]).flatMap(line => line.runs).find(run => run.text === '√')!;
+        expect(linked).toMatchObject({...tall, baseline: radicand.baseline});
+        const separate = {...tall, height: 9.9626};
+        const distant = {...radicand, x: 500};
+        const unlinked = pdfLayoutLines([separate, distant]).flatMap(line => line.runs).find(run => run.text === '√');
+        expect(unlinked).toEqual(separate);
+        const equationAtoms = [atom('f(x) =', 200, 120, 40), atom('√', 243, 120, 8), atom('x', 251, 120, 5)];
+        const equation = analyze(equationAtoms);
+        expect(equation.blocks[0]).toMatchObject({source: 'f(x) = √x', kind: 'formula', preserveSource: true});
+        expect(equation.blocks[0].lines![0].runs!.find(run => run.text === '√')).toEqual(equationAtoms[1]);
     });
     it('keeps author/email columns independent and reads regular column bands left to right', () => {
         const authors = [atom('Alice', 60, 100, 40), atom('Bob', 230, 100, 30), atom('Carol', 400, 100, 40), atom('alice@example.org', 50, 112, 110), atom('bob@example.org', 210, 112, 100), atom('carol@example.org', 380, 112, 110)];

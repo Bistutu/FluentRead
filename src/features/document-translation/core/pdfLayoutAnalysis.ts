@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/core/pdfLayoutAnalysis.ts
  * 文件职责：从 PDF 原始字形和绘图操作推导阅读顺序、段落与必须保留的公式、表格、插图区域。
- * 主要内容：在未旋转内容坐标中追踪绘图矩阵；按相邻行共同让出的竖带识别栏间距，松散的两端对齐行不被拆散；页眉页脚、数字/罗马数字/字母编号的标题、中英文题注与公式碎片分别归类，分栏由并排的正文段落确定、同栏内缩进不同的块按上下顺序阅读，图形在题注处断开，幻灯片内容框、段落底色和标题色带这类装文字的容器不算插图，原位重复描画的文字只读一次，表格按单元格切分且含词语的单元格可以翻译；按基线关联上下标，先识别图表和独立公式，再按列与段落边界组织正文；保留逐行字形几何供阅读和导出使用。
+ * 主要内容：在未旋转内容坐标中追踪绘图矩阵；按相邻行共同让出的竖带识别栏间距，松散的两端对齐行不被拆散；页眉页脚、数字/罗马数字/字母编号的标题、中英文题注与公式碎片分别归类，分栏由并排的正文段落确定、同栏内缩进不同的块按上下顺序阅读，图形在题注处断开，幻灯片内容框、段落底色和标题色带这类装文字的容器不算插图，原位重复描画的文字只读一次，表格按单元格切分且含词语的单元格可以翻译；按基线关联上下标，已关联根号的下伸矩形覆盖相邻被开方字符，先识别图表和独立公式，再按列与段落边界组织正文；保留逐行字形几何供阅读和导出使用。
  * 模块边界：纯几何分析，不加载 PDF.js、不访问 Canvas、网络或 DOM，不修改来源文字或文件。
  */
 import type {PdfDocumentBlock, PdfDocumentLine, PdfDocumentRun, PdfPreservedRegion} from './document';
@@ -90,14 +90,15 @@ export function pdfLayoutLines(atoms: readonly PdfLayoutAtom[], verticalDividers
         if (bucket) bucket.push(atom); else drawn.set(key, [atom]);
         return true;
     });
-    // TeX 根号字形的基线可能抬高到上一行；被开方字形紧贴根号右端，按它的基线归行，字形矩形仍保持原样。
+    // TeX 根号字形的基线可能抬高到上一行；被开方字形紧贴根号右端，按它的基线归行。
     const associated = unique.map(atom => {
         if (atom.text !== '√') return atom;
         const next = unique.filter(other => other !== atom && /^[\p{L}\d(]/u.test(other.text)
             && Math.abs(other.x - right(atom)) <= atom.fontSize * 0.35 && other.fontSize >= atom.fontSize * 0.8
             && other.baseline - atom.baseline > atom.fontSize * 0.35 && other.baseline - atom.baseline <= atom.fontSize)
             .sort((a, b) => Math.abs(a.x - right(atom)) - Math.abs(b.x - right(atom)) || a.baseline - b.baseline)[0];
-        return next ? {...atom, baseline: next.baseline} : atom;
+        // 字体的通用 ascent 会低估根号下伸笔画；只在已有相邻字符证据时扩展底边，不移动原字形。
+        return next ? {...atom, baseline: next.baseline, height: Math.max(bottom(atom), bottom(next)) - atom.y} : atom;
     });
     for (const atom of associated.sort((a, b) => a.baseline - b.baseline || a.x - b.x)) {
         const row = rows.at(-1);

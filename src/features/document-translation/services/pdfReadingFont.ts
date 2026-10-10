@@ -1,13 +1,13 @@
 /**
  * @file src/features/document-translation/services/pdfReadingFont.ts
  * 文件职责：仅在导出可读 PDF 时加载随扩展提供的开放字体，嵌入可见文字及 Unicode 映射。
- * 主要内容：按需读取固定 Noto CJK 字体，使用 pdf-lib 官方 fontkit 子集机制；提前拒绝缺字，避免生成外观方框、复制乱码的下载文件。不保存字体解析器或导出文档的全局引用。
+ * 主要内容：按需读取固定 Noto CJK 字体，包含离线补充的拉丁扩展、希腊文与数学符号；使用 pdf-lib 官方 fontkit 子集机制，提前拒绝仍未覆盖的字形，避免方框或复制乱码。不保存字体解析器或导出文档的全局引用。
  * 模块边界：属于文档二进制服务，不进入内容脚本字体或界面字体下载链路，不请求第三方网络。
  */
 import type {PDFDocument, PDFFont} from 'pdf-lib';
 
 export const PDF_READING_FONT_PATH = '/pdf-fonts/FluentReadNotoSansSC-Regular.woff2';
-export const PDF_READING_FONT_BYTES = 4_977_684;
+export const PDF_READING_FONT_BYTES = 5_109_624;
 
 export async function loadPdfReadingFontBytes(signal?: AbortSignal): Promise<Uint8Array> {
     signal?.throwIfAborted();
