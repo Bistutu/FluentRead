@@ -15,7 +15,8 @@ vi.mock('ai', () => ({streamText: streamResult, tool: (definition: unknown) => d
 vi.mock('@/src/services/harness/modelGateway', () => ({createHarnessLanguageModel: createModel, normalizeHarnessModelError: normalizeError}));
 
 import {UI_LANGUAGE_OPTIONS} from '@/src/core/i18n/language';
-import {HARNESS_ACTIONS, getDefaultHarnessPrompt, renderHarnessPrompt} from '@/src/core/config/harness';
+import {HARNESS_ACTIONS} from '@/src/core/config/harness';
+import {getDefaultHarnessPrompt, renderHarnessPrompt} from '@/src/core/harness/prompts';
 import {Config} from '@/src/core/config/model';
 import {createApiKeyRequirementKey} from '@/src/core/config/validation';
 import {createHarnessRuntime} from '@/src/services/harness/runtime';

@@ -2,8 +2,8 @@
  * @file src/services/translation/types.ts
  *
  * 文件职责：定义翻译 broker、缓存和 provider 之间的端口与消息契约，约束单条、批量、语言和配置快照的数据形状。
- * 主要内容：包含 TranslationRequestMessage、runtime 请求/取消协议、ProviderRegistry、CachePort、ConfigSnapshot、ProviderConfigFields 及含模型用量与翻译统计端口的 BrokerDependencies/Broker 等接口，并允许 Chrome 内置翻译携带不含结构哨兵的源语言检测样本，为依赖注入和测试替身提供稳定边界。 可核对的公开符号包括 TranslationRequestMessageBase、TranslationRuntimeRequestMessage、TranslationCancelMessage、TranslationProvider、TranslationProviderRegistry、TranslationLanguageOverride、TranslationLanguages。
- * 模块边界：本文件位于翻译 application service 层，负责用例编排和端口契约；不挂载页面 UI，且不应把某家供应商的网络细节扩散到 feature，具体 HTTP 协议由 providers/platform 实现。
+ * 主要内容：包含 TranslationRequestMessage、runtime 请求/取消协议、识图探测与取消的唯一消息名称、ProviderRegistry、CachePort、ConfigSnapshot、ProviderConfigFields 及含模型用量与翻译统计端口的 BrokerDependencies/Broker 等接口，并允许 Chrome 内置翻译携带不含结构哨兵的源语言检测样本，为依赖注入和测试替身提供稳定边界。 可核对的公开符号包括 TranslationRequestMessageBase、TranslationRuntimeRequestMessage、TranslationCancelMessage、VISION_PROBE_MESSAGE、VISION_PROBE_CANCEL_MESSAGE、TranslationProvider、TranslationProviderRegistry、TranslationLanguageOverride、TranslationLanguages。
+ * 模块边界：本文件位于翻译 application service 层，只提供纯类型与消息字面量；所有依赖均为 type-only，导入契约不初始化探测实现、正文候选或供应商；不挂载页面 UI，具体 HTTP 协议由 providers/platform 实现。
  */
 
 import type {CustomOpenAIProvider} from '@/src/core/config/customOpenAI';
@@ -63,6 +63,9 @@ export type TranslationRequestMessage = TranslationSingleRequestMessage | Transl
 export type TranslationRuntimeRequestMessage = TranslationRequestMessage & {clientRequestId: string};
 
 export const TRANSLATION_CANCEL_MESSAGE_TYPE = 'fluentReadTranslationCancel' as const;
+/** 设置页与后台共用纯消息契约，读取名称不加载探测实现。 */
+export const VISION_PROBE_MESSAGE = 'fluentReadModelVisionProbe';
+export const VISION_PROBE_CANCEL_MESSAGE = 'fluentReadModelVisionProbeCancel';
 export interface TranslationCancelMessage {
     readonly type: typeof TRANSLATION_CANCEL_MESSAGE_TYPE;
     readonly clientRequestId?: unknown;

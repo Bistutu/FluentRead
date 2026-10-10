@@ -1,7 +1,7 @@
 /**
  * @file scripts/testing/run-onboarding-keyboard-and-provider-dialog-test.cjs
  * 文件职责：在独占临时后台 Edge 验证首启语言单选组与自定义服务弹窗的首次加载。
- * 主要内容：对冻结基线或优化包检查真实方向键、Home/End、Tab、选择确认、取消再开和服务配置持久化，保存截图与弹窗脚本请求时机。
+ * 主要内容：对冻结基线或优化包检查真实方向键、Home/End、Tab、选择确认、取消再开和服务配置持久化，保存截图与弹窗脚本请求时机；可检查服务首开资源及冻结默认提示词的中英文呈现、原样自定义正文、清空与恢复。
  * 模块边界：只操作本次临时配置，接口使用保留测试域名且不测试连接，不写密钥、不下载模型、不访问用户浏览器或运行全量设置套件。
  */
 'use strict';
@@ -15,6 +15,10 @@ const extensionDir = path.resolve(arg('extension-dir', '.output/chrome-mv3'));
 const artifactsDir = path.resolve(arg('artifacts-dir', '/private/tmp/fluentread-onboarding-provider-ui'));
 const expected = arg('expect', 'optimized');
 assert(['baseline', 'optimized'].includes(expected));
+const expectedServiceRules = arg('service-rules', undefined);
+assert(expectedServiceRules === undefined || ['present', 'absent'].includes(expectedServiceRules));
+const promptDefaultsPath = arg('prompt-defaults', undefined);
+const promptDefaults = promptDefaultsPath === undefined ? undefined : JSON.parse(fs.readFileSync(path.resolve(promptDefaultsPath), 'utf8'));
 const helper = require(path.resolve(arg('focus-safe-helper', path.join(__dirname, 'focus-safe-browser.cjs'))));
 const {chromium} = require(path.join(arg('playwright-root', '/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules'), 'playwright'));
 const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, 'manifest.json'), 'utf8'));
@@ -102,7 +106,18 @@ async function noOverflow() {assert.equal(await page.evaluate(() => document.doc
     // Three browser frames allow the existing closed async component to start its loader without a fixed wall-clock sleep.
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve)))));
     report.providerInitialRequests = providerRequests().length;assert.equal(report.providerInitialRequests, expected === 'optimized' ? 0 : 1);
+    const beforeServices = new Set(report.scriptRequests.slice(report.optionsRequestStart));
     await page.locator('button[data-section="settings-services"]').click();await page.getByTestId('custom-service-add').waitFor();
+    await page.locator('[data-service-configuration-service]').waitFor();
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve)))));
+    report.serviceNewScripts = [...new Set(report.scriptRequests.slice(report.optionsRequestStart))].filter(file => !beforeServices.has(file));
+    report.serviceNewScriptBytes = report.serviceNewScripts.reduce((total, file) => total + fs.statSync(path.join(extensionDir, file)).size, 0);
+    if (expectedServiceRules !== undefined) {
+      report.serviceRuleScripts = report.serviceNewScripts.filter(file => /\/(?:compiler|registry)-[^/]+\.js$/u.test(file));
+      report.serviceDetectorScripts = report.serviceNewScripts.filter(file => /\/detect-[^/]+\.js$/u.test(file));
+      assert.equal(report.serviceRuleScripts.length, expectedServiceRules === 'present' ? 2 : 0);
+      assert.equal(report.serviceDetectorScripts.length, 1);
+    }
     await page.getByTestId('custom-service-add').click();const dialog = page.getByTestId('custom-service-dialog');await dialog.waitFor();
     await page.waitForFunction(() => document.activeElement?.getAttribute('data-testid') === 'custom-service-name');
     assert.equal(providerRequests().length, 1);report.providerFirstOpenRequests = 1;
@@ -120,6 +135,34 @@ async function noOverflow() {assert.equal(await page.evaluate(() => document.doc
     assert.deepEqual(provider.models, ['fixture-model']);assert.equal(provider.endpoint, 'https://fixture.invalid/v1');
     report.providerPersisted = true;await page.reload();await page.getByTestId('custom-service-add').waitFor();
     assert.equal(await page.locator(`[data-service-value="${provider.id}"]`).count(), 1);report.providerReopened = true;
+    if (promptDefaults) {
+      await page.locator('button[data-section="settings-selection"]').click();
+      const editor = page.locator('#settings-selection .harness-prompts textarea');await editor.waitFor();
+      const choices = page.locator('#settings-selection .harness-prompts [role="radio"]');
+      const kinds = ['system', 'meaning', 'grammar', 'usage', 'practice'];assert.equal(await choices.count(), kinds.length);
+      report.promptDefaults = [];
+      for (const locale of ['zh-CN', 'en-US']) {
+        await patchConfig({uiLanguage: locale});
+        for (let index = 0; index < kinds.length; index++) {
+          const kind = kinds[index], text = promptDefaults[locale][kind];assert.equal(typeof text, 'string');
+          await choices.nth(index).click();
+          await page.waitForFunction(text => document.querySelector('#settings-selection .harness-prompts textarea')?.value === text, text);
+          report.promptDefaults.push({locale, kind, characters: text.length});
+        }
+      }
+      await choices.first().click();const custom = '  Keep custom {{to}}\nlocal fixture  ';
+      const waitStoredPrompt = text => page.waitForFunction(async text => {
+        const r = await chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'});
+        const c = typeof r.value === 'string' ? JSON.parse(r.value) : r.value;return c.harness?.systemPrompt === text;
+      }, text);
+      await editor.fill(custom);await waitStoredPrompt(custom);await patchConfig({uiLanguage: 'zh-CN'});
+      assert.equal(await editor.inputValue(), custom);report.promptCustomPreserved = true;
+      await editor.fill('');await waitStoredPrompt('');
+      assert.equal(await editor.getAttribute('placeholder'), promptDefaults['zh-CN'].system);report.promptEmptyPreserved = true;
+      await page.locator('#settings-selection .harness-prompt-toolbar button').click();await waitStoredPrompt(promptDefaults['zh-CN'].system);
+      assert.equal(await editor.inputValue(), promptDefaults['zh-CN'].system);report.promptRestorePersisted = true;
+      await noOverflow();await shot('prompt-defaults-restored');
+    }
     assert.deepEqual(report.consoleErrors, []);assert.deepEqual(report.externalRequests, []);report.ok = true;
   } catch (error) {
     report.error = error.stack;process.exitCode = 1;

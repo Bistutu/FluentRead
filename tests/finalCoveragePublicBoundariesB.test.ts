@@ -98,7 +98,7 @@ describe('final boundary B provider composition public routing', () => {
     it('allows exact options-page query/hash URLs and sends the current frozen config to the vision port', async () => {
         const fixture = await providerComposition();
         const {createVisionProbeIdentity} = await import('@/src/core/config/visionProbe');
-        const {VISION_PROBE_MESSAGE} = await import('@/src/services/translation/visionProbe');
+        const {VISION_PROBE_MESSAGE} = await import('@/src/services/translation/types');
         fixture.ready.resolve();
         const identity = createVisionProbeIdentity(fixture.source, 'openai', 'gpt-4o');
         for (const [index, suffix] of ['?service=openai#settings', '#settings'].entries()) {
@@ -117,7 +117,7 @@ describe('final boundary B provider composition public routing', () => {
 
     it('rejects lookalike paths and foreign origins before the vision provider runs', async () => {
         const fixture = await providerComposition();
-        const {VISION_PROBE_MESSAGE, VISION_PROBE_CANCEL_MESSAGE} = await import('@/src/services/translation/visionProbe');
+        const {VISION_PROBE_MESSAGE, VISION_PROBE_CANCEL_MESSAGE} = await import('@/src/services/translation/types');
         fixture.ready.resolve();
         for (const url of ['chrome-extension://boundary-b/options.html.evil', 'chrome-extension://other/options.html', 'https://fixture.invalid/options.html']) {
             for (const type of [VISION_PROBE_MESSAGE, VISION_PROBE_CANCEL_MESSAGE]) {

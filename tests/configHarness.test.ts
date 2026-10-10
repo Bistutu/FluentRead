@@ -1,12 +1,30 @@
-import { describe, expect, it } from 'vitest'
-import { getHarnessModelCacheKey, resolveHarnessModel, HARNESS_ACTIONS, DEFAULT_HARNESS_ACTION_PROMPTS, DEFAULT_HARNESS_SYSTEM_PROMPT, HARNESS_PROMPT_MAX_LENGTH, getDefaultHarnessPrompt, resolveHarnessPrompt, renderHarnessPrompt, isHarnessService, isReadingService, isReadingActionSupported, isReadingFollowUpSupported, normalizeHarnessPreferences } from '@/src/core/config/harness'
+import { describe, expect, it, vi } from 'vitest'
+import { getHarnessModelCacheKey, resolveHarnessModel, HARNESS_ACTIONS, DEFAULT_HARNESS_ACTION_PROMPTS, DEFAULT_HARNESS_SYSTEM_PROMPT, HARNESS_PROMPT_MAX_LENGTH, isHarnessService, isReadingService, isReadingActionSupported, isReadingFollowUpSupported, normalizeHarnessPreferences } from '@/src/core/config/harness'
 import {UI_LANGUAGE_OPTIONS} from '@/src/core/i18n/language'
-import {type HarnessPromptKind} from '@/src/core/harness/prompts'
+import {getDefaultHarnessPrompt, resolveHarnessPrompt, renderHarnessPrompt} from '@/src/core/harness/prompts'
+import {type HarnessPromptKind} from '@/src/core/harness/promptDefaults'
 import { Config, normalizeConfig } from '@/src/core/config/model'
 import {customModelString, services, servicesType} from '@/src/core/config/catalog'
 import {BILIBILI_FREE_TRANSLATION_MODEL} from '@/src/core/config/freeTranslation'
 
 describe('Harness config contract', () => {
+  it('纯配置默认值与规范化不初始化多语言提示词数据或 resolver', async () => {
+    const locales = vi.fn(() => {throw new Error('pure configuration initialized locale prompts');});
+    const resolver = vi.fn(() => {throw new Error('pure configuration initialized prompt resolver');});
+    vi.resetModules();
+    vi.doMock('@/src/core/harness/promptLocales', locales);
+    vi.doMock('@/src/core/harness/prompts', resolver);
+    try {
+      const {Config, normalizeConfig} = await import('@/src/core/config/model');
+      expect(new Config().harness.systemPrompt).toBe(DEFAULT_HARNESS_SYSTEM_PROMPT);
+      const normalized = normalizeConfig({uiLanguage: 'en-US', harness: {systemPrompt: '', actionPrompts: {meaning: '  custom {{to}}  ', grammar: ''}}});
+      expect(normalized.harness).toMatchObject({systemPrompt: '', actionPrompts: {meaning: '  custom {{to}}  ', grammar: '', usage: DEFAULT_HARNESS_ACTION_PROMPTS.usage}});
+      expect(locales).not.toHaveBeenCalled();expect(resolver).not.toHaveBeenCalled();
+    } finally {
+      vi.doUnmock('@/src/core/harness/promptLocales');vi.doUnmock('@/src/core/harness/prompts');vi.resetModules();
+    }
+  });
+
   it('defaults to quiet dismissal while preserving an explicit opt-out and trigger choice', () => {
     expect(new Config().selectionTranslatorAutoDismiss).toBe(true);
     for (const value of [undefined, null, 'false', 0, true]) {
@@ -165,6 +183,17 @@ describe('Harness config contract', () => {
 
 
 describe('翻译卡片提示词配置', () => {
+  it('默认数据边界保留空白和自定义正文，系统与各动作只按4000字符截断', () => {
+    for (const value of ['', ' \n\t ', '  custom {{to}} {{unknown}}  ', '😀'.repeat(1999), 'x'.repeat(3999), 'x'.repeat(4000), 'x'.repeat(4001)]) {
+      const expected = value.slice(0, HARNESS_PROMPT_MAX_LENGTH);
+      const actionPrompts = Object.fromEntries(HARNESS_ACTIONS.map(({id}) => [id, value]));
+      for (const preferences of [normalizeHarnessPreferences({systemPrompt: value, actionPrompts}), normalizeConfig({harness: {systemPrompt: value, actionPrompts}}).harness]) {
+        expect(preferences.systemPrompt).toBe(expected);
+        for (const {id} of HARNESS_ACTIONS) expect(preferences.actionPrompts[id]).toBe(expected);
+      }
+    }
+  });
+
   it('旧配置使用实际默认提示词，非法类型回退且动作白名单和长度限制生效', () => {
     for (const actionPrompts of [undefined, null, [], false, 'bad']) {
       expect(normalizeHarnessPreferences({systemPrompt: 123, actionPrompts})).toMatchObject({systemPrompt: DEFAULT_HARNESS_SYSTEM_PROMPT, actionPrompts: DEFAULT_HARNESS_ACTION_PROMPTS});

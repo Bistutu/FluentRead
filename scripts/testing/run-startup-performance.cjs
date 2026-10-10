@@ -19,7 +19,7 @@ assert(kinds.length > 0 && new Set(kinds).size === kinds.length && kinds.every(k
 const {chromium} = require(path.join(arg('playwright-root',
   '/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules'), 'playwright'));
 const {launchFocusSafePersistentContext, newPageWithoutForeground} = require(arg('focus-safe-helper',
-  '/Users/thinkstu/.codex/skills/fluentread-extension-ui-test/scripts/focus-safe-browser.cjs'));
+  path.join(__dirname, 'focus-safe-browser.cjs')));
 const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, 'manifest.json'), 'utf8'));
 const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fluentread-startup-performance-'));
 const report = {extensionDir, version: manifest.version, runs, kinds,

@@ -862,6 +862,7 @@ export default defineConfig({
                 'src/core/harness/evidence.ts',
                 'src/features/reading-assistant/evidenceAnchor.ts',
                 'src/core/harness/loop.ts',
+                'src/core/harness/promptDefaults.ts',
                 'src/core/harness/prompts.ts',
                 'src/core/harness/promptLocales.ts',
                 'src/core/harness/surface.ts',

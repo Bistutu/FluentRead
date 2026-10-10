@@ -173,6 +173,24 @@
 
 类型检查、顺序 Chrome/Firefox 构建、Userscript 构建及 1,962,279 B 产物 verifier、双清单验证通过；文档后顺序构建 Storybook，两类检查为 81 页面、28 stories。独立只读复核字幕的十类场景与 400 棵生成树、服务 latch 生命周期均通过。生产 UI 两包对照与字幕 DOM 两组报告错误数组为空，临时 profile 均已清理；六份 UI 截图和两份字幕滚动原图已检查。报告位于 `round6-ui-*-browser`、`round6-caption-browser-*`、`round6-*-comparison.json`。字幕专项执行精确生产模块及夹具配置端口，UI 专项运行 WXT 生产扩展；不扩展为真实视频站点、在线服务、Firefox 实机或模型质量验收。
 
+## 第七批：消息契约与提示词默认数据（2026-10-11）
+
+识图设置只为读取两条消息名称而导入完整探测实现，经请求快照进入正文候选和站点适配。现在消息名称在已有 `services/translation/types.ts` 定义，设置与后台直接使用同一来源，删除实现和 handler 的旧再出口。名称、字面值、请求编号、配置身份、来源校验、缓存、取消和预算均保持原规则；除导入与常量迁移外，四份生产文件的 AST 语句与基线相同。实际组件加载图、同一编号的探测及取消消息与迟到响应回归通过。
+
+冻结第六批的服务设置首开确实会执行一次站点适配初始化，编译 192 条规则；它不是 Vue 编译器或供应商 registry。最终真实扩展在相同通用设置→服务设置序列下，新增脚本 **13 → 12 个、494,336 → 391,439 B**，减少 **102,897 B**。两项 compiler/core registry 请求消失，新增轻量消息契约；Chrome 准备路径独立需要的 detect 保留，未把它的 195,448 B 计入收益，也未在用户点击后的 Chrome API 前增加异步 import。原规则模块仍供真正需要的运行时使用，不删除功能。
+
+配置规范化原先为中文默认正文导入六语阅读助手提示词。新增纯 `promptDefaults.ts` 持有原中文默认数据、共享语法格式、长度和变量；多语 resolver 与旧格式识别留在原 `prompts.ts` / `promptLocales.ts`，提示词编辑和请求组装直接使用，配置不再反向导出 resolver。默认数据 initializer、六语完整表、三个 resolver 与三个配置函数的原文逐字相同。35 份默认正文、1,650 组解析、53 组偏好规范化、53 份完整 Config、70 组变量替换的 **5,743,602 B** 输出与 `621a1c2a2` 逐字节一致。保留空白、自定义前后空格、合法字符串按 4,000 字符截断、旧语法格式精确迁移，以及替换值含 token 时不递归展开。
+
+所有构建结束后，两包各采样五次 popup/options 新文档。实际 JS 预算分别为 **920,153 → 901,093 B**、**1,067,134 → 1,048,102 B**，减少 19,060 / 19,032 B；CSS、节点和配置序列化数相同。popup ready 中位数 71.7 → 66.1 ms，脚本耗时 11.163 → 11.116 ms，脚本时间基本不变；options ready **268.2 → 277.7 ms**、脚本 11.634 → 12.065 ms，未改善，首开也从 282.3 增到 309.2 ms。因此本批不宣称所有入口更快，收益由已确认的资源延后、避免无关初始化与职责边界证明。本机时间受调度与缓存影响；错误数组为空，四份首屏截图已检查，报告位于 `round7-startup-*`。
+
+实际生产 UI 使用冻结默认全文核对中英文各五个模板，原样自定义、切换语言、清空保存与占位默认、恢复后持久化均通过；没有请求模型。首启键盘和自定义服务保存同时复验通过。两包报告控制台和外部请求数组为空，临时 profile 已清理，八份截图已检查，位于 `round7-prompt-service-{baseline,final}`。
+
+完整 Chrome 产物为 **65,715,622 B**，较第六批增加 **372 B**；同口径 ZIP 为 **23,710,157 B**，增加 **2,283 B**。本批选择清楚的单一消息契约与按实际使用加载的提示词，接受分块的少量成本，不声称安装包继续下降。累计对冻结 `55d1219bd`，原始产物减少 **1,659,446 B**，ZIP 减少 **471,118 B**。
+
+互不重复的针对性回归为 **15 文件 / 1,247 项**：识图 5 / 79、提示词及配置/阅读 6 / 231、架构 4 / 937（含 902 项源码长头）；限定覆盖率重复执行不累加。识图的三个既有 TS 模块四维 100%；同一小范围基线未执行纯契约里的通用翻译取消常量，语句/行 99.31%，这是限定选择的诊断，不解释为产品回归。提示词四模块为 162 条语句、82 个分支、7 个函数，适用维度均 100%；新纯默认模块 20 条语句全部覆盖，没有函数或分支项，已登记到原严格配置。测试分类审计为 636 文件 / 10,355 个声明用例。
+
+类型检查、Chrome→Firefox 生产构建、Userscript 构建及 1,962,229 B 产物 verifier、MV3/MV2 清单验证通过；文档→Storybook 顺序构建后，81 页面及 28 stories 检查通过。独立只读复核再次对 Git 冻结提交核对正文、函数、配置和消费者 AST，没有遗漏消费者或反向兼容出口。首载测量脚本默认改用仓库拥有的 focus-safe helper，避免依赖个人技能安装路径，实际后台测试复验不抢前台。未修改参考仓库或新增依赖；证据不覆盖在线模型质量、真实供应商、Firefox 实机和所有网站。
+
 ## 复核入口
 
 ```sh
@@ -185,6 +203,7 @@ node scripts/testing/run-page-context-structure-test.cjs --artifacts-dir /privat
 node scripts/testing/run-config-persistence-test.cjs --extension-dir .output/chrome-mv3 --artifacts-dir /private/tmp/fluentread-config-persistence
 node scripts/testing/run-settings-search-priority-test.cjs --extension-dir .output/chrome-mv3 --artifacts-dir /private/tmp/fluentread-settings-search
 node scripts/testing/run-onboarding-keyboard-and-provider-dialog-test.cjs --extension-dir .output/chrome-mv3 --expect optimized --artifacts-dir /private/tmp/fluentread-onboarding-provider
+node scripts/testing/run-onboarding-keyboard-and-provider-dialog-test.cjs --extension-dir .output/chrome-mv3 --expect optimized --service-rules absent --prompt-defaults /path/to/frozen-prompt-defaults.json --artifacts-dir /private/tmp/fluentread-prompt-service
 node scripts/testing/run-caption-segment-filter-test.cjs --source-root . --expect optimized --artifacts-dir /private/tmp/fluentread-caption-filter
 pnpm test:coverage -- tests/pageContextMarkdown.test.ts tests/pageContextDefuddle.test.ts --coverage.include=src/services/translation/context/markdown.ts
 pnpm test:coverage -- tests/sameTargetLanguageSlots.test.ts tests/sameTargetLanguageClient.test.ts tests/sameTargetLanguageRegression.test.ts tests/liveTextTranslation.test.ts tests/translationSlotEchoRegression.test.ts tests/fullPageVisibilityScheduling.test.ts --coverage.include=src/features/full-page-translation/content/translationRequest.ts
