@@ -74,10 +74,11 @@ fs.mkdirSync(artifactsDir, {recursive: true});
       await check(options[index]);
       report.checks.push({key, selected: options[index], focusFollowsSelection: true, singleTabStop: true});
     }
-    await page.screenshot({path: path.join(artifactsDir, 'skin-keyboard-light.png')});
     // 真实编辑后立即销毁文档，随后独立重开核对后台最终配置。
     await selected().press('Home');
     await check(options[0]);
+    await page.waitForFunction(() => !document.documentElement.classList.contains('dark'));
+    await page.screenshot({path: path.join(artifactsDir, 'skin-keyboard-light.png')});
     await page.close();
     page = await open();
     await page.locator(`.interface-skin-picker [data-skin="${options[0]}"][aria-checked="true"]`).waitFor();
@@ -89,8 +90,8 @@ fs.mkdirSync(artifactsDir, {recursive: true});
     report.crossPageUpdate = true;
     await page.setViewportSize({width: 390, height: 900});
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    await page.screenshot({path: path.join(artifactsDir, 'skin-keyboard-dark-390.png')});
     await selected().focus();
+    await page.screenshot({path: path.join(artifactsDir, 'skin-keyboard-dark-390.png')});
     await selected().press('ArrowDown');
     await check(options[(options.indexOf('default') + 1) % options.length]);
     report.dark390 = {noOverflow: true, keyboardWorks: true};

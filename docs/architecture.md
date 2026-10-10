@@ -346,6 +346,7 @@ userscript 没有跨站点共享的原子后台，因此计数采用每个顶层
 
 - 全局颜色、间距、层级进入 `src/ui/styles/tokens.css`。
 - extension page 的布局样式跟随对应 page/feature。
+- 仅设置页使用的组件从 feature 的 `ui/public.ts` 导出；网页运行入口不重导出这些组件，避免 Vue 的样式副作用把设置样式带入内容脚本。
 - content overlay 的 CSS 跟随 feature，并继续通过 Shadow DOM 或 WXT UI 工具隔离。
 - 可复用无业务组件进入 `src/ui/components`；只服务一个 feature 的组件留在 feature 的 `ui/`。
 - Vue 页面只负责组合和交互，不直接实现翻译、存储或消息业务规则。
