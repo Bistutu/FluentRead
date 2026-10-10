@@ -1457,7 +1457,11 @@ describe('视频预览不自动显示图片翻译', () => {
         const pages=[env.image];
         for(let i=1;i<count;i++){const image=addSecondHoverImage(env,()=>rect(i));image.src+=`?${i}`;image.className='zao-image';pages.push(image);}
         const scroll=()=>{for(const [name,callback] of env.windowObject.addEventListener.mock.calls)if(name==='scroll')(callback as EventListener)(new Event('scroll'));env.runFrames();};
-        return {pages, visit:async(index:number,near=-1)=>{current=index;nearby=near;scroll();await flush();env.runFrames();await flush();}, near:(index:number)=>{nearby=index;scroll();}};
+        const arrive = async (index: number, near = -1) => {current=index;nearby=near;scroll();await flush();env.runFrames();await flush();};
+        // visit 表示到达后停稳；同检查点返页与附近预合成仍使用 arrive/near，不推进阅读器的停留窗口。
+        return {pages, arrive, visit:async(index:number,near=-1)=>{
+            await arrive(index,near);vi.advanceTimersByTime(180);env.runFrames();await flush();
+        }, near:(index:number)=>{nearby=index;scroll();}};
     }
     it.each([
         ['https://mangalib.me/ru/1--title/read/v22/c129?p=2','ru','<div data-reader-mode="vertical"><main data-reader-info-visible="true"><div><div data-page="2" data-target></div></div></main></div>'],
@@ -1690,7 +1694,7 @@ describe('视频预览不自动显示图片翻译', () => {
         toggleMangaTranslation(); await flush(); await chapter.visit(3); await chapter.visit(6); await chapter.visit(9);
         const pending = deferred<{width: number; height: number; close: ReturnType<typeof vi.fn>}>(); decode.mockReturnValueOnce(pending.promise);
         chapter.near(0); await flush(); const before = decode.mock.calls.length;
-        chapter.near(-1); const returned = chapter.visit(0); await returned;
+        chapter.near(-1); const returned = chapter.arrive(0); await returned;
         const late = {width: 10, height: 20, close: vi.fn()}; pending.resolve(late); await flush();
         expect(chapter.pages[0].style.opacity).toBe('0'); expect(decode).toHaveBeenCalledTimes(before + 1);
         expect(client.translate).toHaveBeenCalledTimes(4);
@@ -1754,6 +1758,7 @@ describe('视频预览不自动显示图片翻译', () => {
         const scroll=()=>{for(const [name,callback] of env.windowObject.addEventListener.mock.calls)if(name==='scroll')(callback as EventListener)(new Event('scroll'));env.runFrames();};
         toggleMangaTranslation();await flush();expect(env.bitmap()).toBeNull();
         env.setRect({left:-600,right:-200,top:40,bottom:240,width:400,height:200});secondLeft=20;scroll();await flush();
+        expect(client.translate).toHaveBeenCalledOnce();vi.advanceTimersByTime(180);env.runFrames();await flush();
         env.setRect({left:20,right:420,top:40,bottom:240,width:400,height:200});secondLeft=1400;scroll();await flush();
         expect(client.translate).toHaveBeenCalledTimes(2);expect(env.bitmap()).toBeNull();
         expect(env.image.style.opacity).not.toBe('0');
@@ -1787,7 +1792,11 @@ describe('视频预览不自动显示图片翻译', () => {
         const scroll=()=>{for(const [name,callback] of env.windowObject.addEventListener.mock.calls) if(name==='scroll') (callback as EventListener)(new Event('scroll'));env.runFrames();};
         toggleMangaTranslation();await flush();expect(env.image.style.opacity).toBe('0');
         const pending=deferred<typeof result>();client.translate.mockReturnValueOnce(pending.promise);
+        const decodedBeforeScroll=env.decoded.length;
         env.setRect({left:20,right:420,top:-300,bottom:-100,width:400,height:200});secondTop=40;scroll();await flush();
+        vi.advanceTimersByTime(179);env.runFrames();await flush();
+        expect(client.translate).toHaveBeenCalledOnce();expect(env.decoded).toHaveLength(decodedBeforeScroll);
+        vi.advanceTimersByTime(1);env.runFrames();await flush();
         expect(client.translate).toHaveBeenCalledTimes(2);
         for(const stage of ['preparing','recognizing','translating','cleaning','rendering'] as const) {
             env.setRect({left:20,right:420,top:40,bottom:240,width:400,height:200});secondTop=1000;scroll();await flush();
@@ -1806,6 +1815,7 @@ describe('视频预览不自动显示图片翻译', () => {
         toggleMangaTranslation();await flush();const bitmap=env.bitmap();
         const pending=deferred<typeof result>();client.translate.mockReturnValueOnce(pending.promise);
         env.setRect({left:20,right:420,top:-300,bottom:-100,width:400,height:200});secondTop=40;scroll();await flush();
+        expect(client.translate).toHaveBeenCalledOnce();vi.advanceTimersByTime(180);env.runFrames();await flush();
         expect(client.translate).toHaveBeenCalledTimes(2);
         env.setRect({left:20,right:420,top:40,bottom:240,width:400,height:200});secondTop=1000;scroll();await flush();
         expect(env.image.style.opacity).toBe('0');expect(env.bitmap()).toBe(bitmap);expect(client.translate).toHaveBeenCalledTimes(2);
@@ -1819,6 +1829,7 @@ describe('视频预览不自动显示图片翻译', () => {
         toggleMangaTranslation();await flush();
         const pending=deferred<typeof result>(),fresh=deferred<typeof result>();client.translate.mockReturnValueOnce(pending.promise).mockReturnValue(fresh.promise);
         env.setRect({left:20,right:420,top:-300,bottom:-100,width:400,height:200});secondTop=40;scroll();await flush();
+        expect(client.translate).toHaveBeenCalledOnce();vi.advanceTimersByTime(180);env.runFrames();await flush();
         if(change==='source')env.image.src+='?new-source';
         if(change==='language')settings.to='en';
         if(change==='cache')settings.useCache=false;

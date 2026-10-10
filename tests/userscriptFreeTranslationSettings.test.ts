@@ -31,8 +31,15 @@ describe('userscript free translation settings', () => {
             freeTranslationBilibiliDefaultApplied: true,
         });
         expect(normalized.freeTranslationMode).toBe('balanced');
-        expect(normalized.freeTranslationOrder).toEqual(['sogouFree']);
+        expect(normalized.freeTranslationOrder).toEqual(['bilibiliFree', 'sogouFree']);
+        expect(normalized.freeTranslationBilibiliDefaultApplied).toBe(true);
         expect(normalized).not.toHaveProperty('freeTranslationWeights');
         expect(new Config().freeTranslationMode).toBe('balanced');
+
+        const saved = normalizeConfig({
+            ...normalized,
+            freeTranslationOrder: ['unknown', 'sogouFree', null, 'sogouFree', 42],
+        });
+        expect(saved.freeTranslationOrder).toEqual(['sogouFree']);
     });
 });

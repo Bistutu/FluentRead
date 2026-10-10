@@ -607,6 +607,23 @@ describe('shared UI actual client SFC lifecycle', () => {
     for (const service of cases) {mounted.props.service = service;await settle();expect(mounted.root.querySelector('svg')).not.toBeNull();expect(mounted.root.querySelector('span')!.getAttribute('aria-hidden')).toBe('true');}
     mounted.props.label = 'Display label';mounted.props.size = 'small';await settle();expect(mounted.root.querySelector('span')!.getAttribute('title')).toBe('Display label');expect(mounted.root.querySelector('.service-brand-icon--small')).not.toBeNull();
   });
+  it('shares the local Bilibili SVG with its free provider and updates fallback decoration reactively', async () => {
+    const mounted = await mount(ServiceIcon, {service: 'bilibili', label: 'Bilibili', size: 'small'});
+    const svg = mounted.root.querySelector('svg')!.outerHTML;
+    expect(mounted.root.querySelectorAll('svg path')).toHaveLength(2);
+    expect(mounted.root.querySelector('[data-service-icon-fallback]')).toBeNull();
+    mounted.props.service = 'bilibiliFree'; mounted.props.label = 'Free Bilibili'; await settle();
+    const icon = mounted.root.querySelector('.service-brand-icon')!;
+    expect(mounted.root.querySelector('svg')!.outerHTML).toBe(svg);
+    expect(icon.getAttribute('data-service')).toBe('bilibiliFree');
+    expect(icon.getAttribute('title')).toBe('Free Bilibili');
+    expect(icon.getAttribute('aria-hidden')).toBe('true');
+    expect(icon.classList.contains('service-brand-icon--small')).toBe(true);
+    mounted.props.service = 'unknown'; mounted.props.label = ''; await settle();
+    expect(mounted.root.querySelector('[data-service-icon-fallback]')).not.toBeNull();
+    expect(icon.getAttribute('title')).toBe('unknown');
+    expect(icon.getAttribute('aria-hidden')).toBe('true');
+  });
   it('falls back to info for all unknown icon names including inherited object keys', async () => {
     const mounted = await mount(UiIcon, {name: 'info'});const path = mounted.root.querySelector('path')!.getAttribute('d');
     for (const name of ['unknown', 'constructor', '__proto__', 'toString']) {mounted.props.name = name;await settle();expect(mounted.root.querySelector('path')!.getAttribute('d')).toBe(path);}

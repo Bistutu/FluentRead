@@ -995,6 +995,21 @@ describe('translation candidate core', () => {
         expect(outside?.allowTopLevelApplicationShell).toBeUndefined();
     });
 
+    it('无适配器的正文同步解析接受文本，空与非元素命中不污染后续候选', () => {
+        const {document} = parseHTML('<html><body><main><p>Readable paragraph for synchronous resolution.</p></main></body></html>');
+        const paragraph = document.querySelector('p')!;
+        const core = new TranslationCandidateCore({scope: 'content', adapters: []});
+        const resolve = core.createSynchronousResolver();
+        expect(resolve(undefined)).toBeNull();
+        expect(resolve(null)).toBeNull();
+        expect(resolve(document.createComment('not readable text'))).toBeNull();
+        expect(resolve(document.createTextNode('Detached readable text.'))).toBeNull();
+        expect(resolve(paragraph.firstChild)?.element).toBe(paragraph);
+        expect(resolve(paragraph)?.element).toBe(paragraph);
+        expect(resolve(document)).toBeNull();
+        expect(paragraph.textContent).toBe('Readable paragraph for synchronous resolution.');
+    });
+
     it('当前文档的同批解析按范围隔离核心，下一批反映新保护属性', () => {
         const {document} = parseHTML('<html><body><main><p>Readable article source.</p></main><nav><p>Readable navigation source.</p></nav></body></html>');
         const article = document.querySelector('main p')!;
@@ -1383,6 +1398,33 @@ describe('translation candidate core', () => {
             .flatMap((step) => step?.candidate ? [step.candidate.element.id] : []);
         expect(incremental).toEqual(core.discover(document).map((candidate) => candidate.element.id));
         expect(incremental).toHaveLength(200);
+    });
+
+    it.each(['content', 'all'] as const)('增量 %s 发现暂停时重挂 ShadowRoot 根节点，每个原文节点只访问和产出一次', scope => {
+        const {document} = parseHTML('<html><body><main><article-host></article-host></main></body></html>');
+        const shadow = document.querySelector('article-host')!.attachShadow({mode: 'open'});
+        shadow.innerHTML = '<section><p id="first">First readable source paragraph.</p></section><p id="moved">Second readable source paragraph.</p>';
+        const section = shadow.querySelector('section')!;
+        const firstParagraph = shadow.querySelector('#first')!;
+        const moved = shadow.querySelector('#moved')!;
+        const core = new TranslationCandidateCore({scope, adapters: []});
+        const steps = core.discoverSteps(shadow);
+        const first = steps.next();
+        expect(first.done).toBe(false);
+        expect(first.value).toMatchObject({element: section, phase: 'enter'});
+        // 根列表已取快照；真实 DOM 在帧预算让出后把另一个根移入当前子树。
+        section.appendChild(moved);
+        const observed = [first.value, ...steps];
+        for (const element of [firstParagraph, moved]) {
+            expect(observed.filter(step => step?.element === element && step.phase === 'enter')).toHaveLength(1);
+            expect(observed.filter(step => step?.candidate?.element === element)).toHaveLength(1);
+        }
+        expect(observed.flatMap(step => step?.candidate ? [step.candidate.element] : []))
+            .toEqual([firstParagraph, moved]);
+        expect(section.children).toHaveLength(2);
+        expect(moved.parentNode).toBe(section);
+        expect(firstParagraph.textContent).toBe('First readable source paragraph.');
+        expect(moved.textContent).toBe('Second readable source paragraph.');
     });
 
     it('bounds one readability probe on an extremely wide subtree', () => {

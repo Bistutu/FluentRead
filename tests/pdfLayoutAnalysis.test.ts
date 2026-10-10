@@ -985,6 +985,15 @@ describe('PDF layout analysis on real paper typography', () => {
         const straddling = analyze([atom('A two line note that straddles the gutter between both of the columns', 150, 60, 310), atom('and continues on a second line of exactly the same width as before', 150, 72, 310), ...body('Left', 54, 100), ...body('Right', 318, 100), ...body('Left again', 54, 160), ...body('Right again', 318, 160)]);
         expect(straddling.blocks.map(block => block.source.split(' ').slice(0, 2).join(' '))).toEqual(['A two', 'Left body', 'Left again', 'Right body', 'Right again']);
     });
+    it('preserves detached small words inside captions but leaves words overlapping a wrapped heading translatable', () => {
+        const body = [atom('Body text sets the page size and is long enough to be a real sentence here.', 60, 300, 420), atom('More body text follows on the next line of the same body paragraph.', 60, 312, 420)];
+        const caption = analyze([atom('Figure 1. Observations collected from the experiment', 60, 100, 420), atom('and shown with their corresponding measurements.', 60, 112, 420), atom('word', 300, 106, 14, 6), ...body]);
+        expect(caption.blocks.find(block => block.kind === 'caption')).toMatchObject({lineCount: 2});
+        expect(caption.blocks.find(block => block.source === 'word')).toMatchObject({kind: 'formula', preserveSource: true});
+        const heading = analyze([atom('1. Main Results', 60, 100, 300), atom('and discussion', 60, 112, 110), atom('word', 300, 106, 14, 6), ...body]);
+        expect(heading.blocks.find(block => block.kind === 'heading')).toMatchObject({source: '1. Main Results and discussion', lineCount: 2});
+        expect(heading.blocks.find(block => block.source === 'word')).toMatchObject({kind: 'text', preserveSource: false});
+    });
     it('keeps radical-bar ligature runs as formula fragments and splits merged table cells that collide with a neighbour', () => {
         const radical = analyze([atom('pkffiffiffiffiffiffiffiffi', 60, 100, 60), atom('Body text sets the page size and is long enough to be a real sentence here.', 60, 300, 420), atom('More body text follows on the next line of the very same body paragraph.', 60, 312, 420)]);
         expect(radical.blocks.find(block => block.source.startsWith('pkffi'))).toMatchObject({kind: 'formula', preserveSource: true});
