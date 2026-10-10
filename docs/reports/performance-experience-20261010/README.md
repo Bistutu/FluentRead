@@ -1,6 +1,6 @@
 # 体积、共享配置与页面交互优化（2026-10-10）
 
-本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 持续进行。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，第四批为 `97e92defe`，第五批为 `7e8ffe952`，第六批为 `621a1c2a2`，第七批为 `adbcfe428`，第八批为 `5e554d7fa`，第九批为 `85c29dffe`；后续继续使用同一集成基线，并与上一批冻结产物比较。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
+本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 持续进行。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，第四批为 `97e92defe`，第五批为 `7e8ffe952`，第六批为 `621a1c2a2`，第七批为 `adbcfe428`，第八批为 `5e554d7fa`，第九批为 `85c29dffe`，第十批为 `626e4652e`；后续继续使用同一集成基线，并与上一批冻结产物比较。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
 
 ## 改动与测量
 
@@ -243,6 +243,24 @@ X 原生字幕 `sync` 原先先判时间轴，再为正文重新复制、筛选�
 
 同口径内存 ZIP 为 **23,694,101 B**，较第九批减少 **584 B**；累计对冻结 `55d1219bd`，原始文件减少 **1,761,929 B**、ZIP 减少 **487,174 B**。类型检查、Chrome→Firefox 构建、双 manifest 验证、Userscript 构建与 **1,962,302 B** 产物 verifier 通过，Userscript 字节与第九批相同；文档→Storybook 顺序构建和 81 页面、28 stories 检查通过。收益是加载职责与重复操作减少，没有功能、语言、UI 样式或模型资源裁剪。
 
+## 第十一批：同轮日期格式复用与确认归属（2026-10-11）
+
+学习笔记、阅读记录、阅读面板与翻译统计的同步模板原先每行构造原生日期格式器。现在共用轻量 `src/ui/dateFormat.ts`：每个组件 setup 持有固定格式规则，首次日期调用才构造，同轮复用，组件更新前丢弃。下一轮仍读取原来的界面语言或系统默认地区、时区，不缓存日期字符串或业务值；不供 computed、异步回调或子组件 slot 调用，没有跨组件、SSR 请求缓存或新增系统监听。统计页两个原有日期标题函数保持原样。四份模板和样式内容逐字相同。
+
+真实 Vue SFC 对冻结 `626e4652e`：200 条笔记每轮构造 **200 → 1**；统计 100 行包含两个原有标题为 **102 → 3**；阅读记录加载更多两轮 **[20, 40] → [1, 1]**，合计 **60 → 2**；100 轮问答详情两次更新合计 **141 → 2**。阅读面板初始 20 条为 **20 → 1**，加载更多合计 **60 → 2**，后续 40 条更新 **40 → 1**。原生 Intl 输出、渲染次数、默认地区与时区切换后的下一轮、界面语言切换、KeepAlive、构造异常重试及独立 SSR 初值均核对；非预期错误为空，八项主动注入构造失败单独记录。探针执行真实组件与共享 helper，消息、UI 控件和系统默认值为受控端口，不将构造次数解释为设备耗时改善。最终报告为 `round11-date-render/actual-shared-report.json`。
+
+生产扩展的冻结第十包与第十一包各在独占后台 Edge 执行真实 options→学习中心→笔记及阅读记录。200 条合成笔记的初始、搜索和受控默认地区/时区变更后的下一轮，实际构造均为 **200 → 1**；阅读记录初始 **20 → 1**，点击加载更多的两个同步批次 **[20,40] → [1,1]**。五阶段的完整日期行与原生独立期望、两包文本逐项相同，宽度与滚动宽度均为 1,432 px。控制台错误、警告、外部请求、禁止消息、夹具写入均为空，模型请求零次；十次焦点检查均未抢前台，两个专用 profile 已清理，八份原图已检查。报告为 `round11-date-browser/{baseline,final}/report.json`。统计与阅读卡由前述 SFC 验证，此浏览器专项未覆盖它们，也未变更真实操作系统默认值或读取用户历史。
+
+另外复现阅读记录页确认尚未结束时卸载，迟到确认仍会发出清空请求。现在清空前后核对原页面仍挂载，迟到的成功、错误和 finally 也不再写旧页面状态；正常取消和挂载期间清空保持原规则，已交给后台的操作不撤回，KeepAlive 失活不等于卸载。新增两个实际组件用例的旧代码为 **96 通过 / 1 失败**，修复后既有文件 **97 项通过**；原学习笔记的确认归属回归同时通过。
+
+新增日期生命周期文件 14 项，使用真实 Vue renderer、更新、KeepAlive 与 SSR，覆盖空列表惰性、同轮复用、下一轮系统/显式语言、独立 owner、子组件单独更新、构造失败同栈与下轮重试、非法日期错误、卸载和 SSR 隔离。临时逐调用工厂红阶段 **11 失败 / 3 通过**只用于新增 helper 契约复现；四个旧实际组件的基线次数另由 SFC 与生产浏览器证明。新 helper 严格范围为语句 7、分支 4、函数 1、行 7，四维 100%，没有新增排除。五个日期/确认/阅读/统计回归文件去重 **150 项**，架构四文件 **938 项**（含 903 项源码长头），合计 **9 文件 / 1,088 项**。分类审计为 637 文件 / 10,385 个声明，未声称全量执行。初次类型检查发现测试 spy 的 this 类型不匹配，改为从实际 factory 推断，最终类型检查通过；未修改运行逻辑或放宽类型。
+
+同时审计提前执行 Range 相交检查的划词候选。深层无相交 fixture 的属性读取明显减少，但浅层相交且 role 可排除的原生 fixture 将原零次相交读取变为 100 次，九轮交替样本中位数 **0.3457 → 0.3728 ms**。因此未采用提前相交的重排，selection core 源码 SHA 与第十批完全相同；微小合成样本不代表真实网站或设备。证据为 `round11-selection-intersection/`，不把被拒绝候选列为已交付优化。
+
+完整 Chrome 文件 **65,613,139 → 65,613,689 B**，增加 **550 B**；固定日期同口径内存 ZIP **23,694,101 → 23,694,548 B**，增加 **447 B**。累计对冻结 `55d1219bd`，原始文件减少 **1,761,379 B**，ZIP 减少 **486,727 B**。Background SHA 与 2,040,309 B 相同；296 个其他非 JS/HTML 静态文件路径/SHA 不变，六项 CSS 只有四个组件 scope hash（包括 scoped keyframe）更新，按配对 hash 替换后字节、规则与声明顺序完全相同，证据 `round11-css-scope-comparison.json`。本批接受轻量共享 helper 的小量分块成本，收益是确定的重复构造减少与确认安全性，不宣称安装包缩小。
+
+类型检查、Chrome→Firefox 顺序构建、双 manifest 验证、Userscript 构建及 **1,962,383 B** 产物 verifier 通过，Userscript 增加 81 B；文档→Storybook 顺序构建后，81 页面与 28 stories 检查通过。没有新增依赖、改变日期规则、裁剪语言/功能或修改参考仓库；证据不覆盖真实 provider、Firefox 实机与低端设备。
+
 ## 复核入口
 
 ```sh
@@ -258,6 +276,7 @@ node scripts/testing/run-onboarding-keyboard-and-provider-dialog-test.cjs --exte
 node scripts/testing/run-onboarding-keyboard-and-provider-dialog-test.cjs --extension-dir .output/chrome-mv3 --expect optimized --service-rules absent --prompt-defaults /path/to/frozen-prompt-defaults.json --artifacts-dir /private/tmp/fluentread-prompt-service
 node scripts/testing/run-caption-segment-filter-test.cjs --source-root . --expect optimized --artifacts-dir /private/tmp/fluentread-caption-filter
 node scripts/testing/run-color-field-focus-test.cjs --extension-dir .output/chrome-mv3 --expect optimized --artifacts-dir /private/tmp/fluentread-color-focus
+pnpm test tests/dateFormatLifecycle.test.ts tests/implementationAudit49C.test.ts tests/readingPanelStreamingResize.test.ts tests/readingPanelLifecycle.test.ts tests/usageDashboardLifecycle.test.ts
 pnpm test tests/xCaptionSource.test.ts tests/xVideoSubtitleData.test.ts tests/videoPretranslationController.test.ts tests/videoSubtitleTrackPriorityRuntime.test.ts
 pnpm test tests/selectionTranslatorCore.test.ts tests/readingAssistantPresentation.test.ts tests/translationCore.test.ts tests/documentSelectionRuntime.test.ts
 pnpm test:coverage -- tests/pageContextMarkdown.test.ts tests/pageContextDefuddle.test.ts --coverage.include=src/services/translation/context/markdown.ts

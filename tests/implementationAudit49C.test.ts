@@ -97,6 +97,7 @@ import browser from 'webextension-polyfill';
 import GlossarySettings from '@/src/features/glossary/ui/GlossarySettings.vue';
 import LocalTtsSettings from '@/src/features/settings/ui/LocalTtsSettings.vue';
 import LearningMemoryManager from '@/src/features/settings/ui/LearningMemoryManager.vue';
+import HarnessReadingHistory from '@/src/features/reading-assistant/ui/HarnessReadingHistory.vue';
 import VideoLocalModelSettings from '@/src/features/settings/ui/VideoLocalModelSettings.vue';
 import ConfigManagement from '@/src/features/settings/ui/ConfigManagement.vue';
 import TranslationCacheSettings from '@/src/features/settings/ui/TranslationCacheSettings.vue';
@@ -371,6 +372,34 @@ describe('audit49C learning-memory confirmation lifetime', () => {
         expect(ports.send.mock.calls.map(([message]) => message.action)).not.toContain('memory-clear');
         findClear().click(); await settle(); expect(ports.send.mock.calls.map(([message]) => message.action)).toContain('memory-clear');
         expect(host.textContent).not.toContain('Retained fixture'); expect(host.textContent).toContain('learning.memoryCleared');
+    });
+});
+
+describe('audit49C reading-history confirmation lifetime', () => {
+    const history = () => ({success: true, sessions: [{id: 'session-fixture', text: 'Retained reading fixture', intent: 'meaning', updatedAt: 1, turnCount: 1}], hasMore: false});
+    const findClear = (host: HTMLElement) => Array.from(host.querySelectorAll<HTMLButtonElement>('button')).find(button => button.textContent === '清空记录')!;
+
+    it('keeps reading history when a pending confirmation resolves after its owner unmounts', async () => {
+        const confirm = deferred<void>(); ports.confirm.mockImplementationOnce(() => confirm.promise);
+        ports.send.mockResolvedValue(history());
+        const {host, stop} = await mount(HarnessReadingHistory);
+        expect(host.textContent).toContain('Retained reading fixture');
+        findClear(host).click(); await settle();
+        expect(ports.confirm).toHaveBeenCalledTimes(1);
+        stop(); confirm.resolve(); await settle();
+        expect(ports.send.mock.calls.map(([message]) => message.action)).not.toContain('sessions-clear');
+    });
+
+    it('preserves cancellation and clears the list after confirmation while its owner is mounted', async () => {
+        ports.send.mockResolvedValue(history());
+        const {host} = await mount(HarnessReadingHistory);
+        ports.confirm.mockRejectedValueOnce('cancel'); findClear(host).click(); await settle();
+        expect(host.textContent).toContain('Retained reading fixture');
+        expect(ports.send.mock.calls.map(([message]) => message.action)).not.toContain('sessions-clear');
+        findClear(host).click(); await settle();
+        expect(ports.send.mock.calls.map(([message]) => message.action).filter(action => action === 'sessions-clear')).toHaveLength(1);
+        expect(host.textContent).not.toContain('Retained reading fixture');
+        expect(host.textContent).toContain('还没有阅读记录');
     });
 });
 

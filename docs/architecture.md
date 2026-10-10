@@ -366,6 +366,7 @@ userscript 没有跨站点共享的原子后台，因此计数采用每个顶层
 - 仅设置页使用的组件从 feature 的 `ui/public.ts` 导出；网页运行入口不重导出这些组件，避免 Vue 的样式副作用把设置样式带入内容脚本。
 - content overlay 的 CSS 跟随 feature，并继续通过 Shadow DOM 或 WXT UI 工具隔离。
 - 可复用无业务组件进入 `src/ui/components`；只服务一个 feature 的组件留在 feature 的 `ui/`。
+- 本组件同步模板中的日期列表通过 `src/ui/dateFormat.ts` 复用同一轮渲染的原生格式器。组件更新前丢弃上一轮实例，首次日期调用再读取语言与系统默认时区；不把格式器或日期字符串缓存到跨组件、异步回调、子组件 slot 或 SSR 请求中。
 - Vue 页面只负责组合和交互，不直接实现翻译、存储或消息业务规则。
 
 ## 注释规范

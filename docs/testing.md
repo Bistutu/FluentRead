@@ -324,6 +324,10 @@ X 另覆盖未预取句子等待原译文成对显示、seek 后迟到结果丢�
 
 专项只检查普通译文页的学习方式均未选中、点击一次进入对应回答、历史默认折叠、按轮次和问题摘要逐条展开、键盘收起、展开不发请求且不改变当前问答、长问题在 390px 深色界面中换行、返回译文时清除选中状态、缓存动作切换和恢复已保存记录。使用第二屏后台隔离 Edge 与本地确定性响应，不代表在线模型质量或 Firefox 运行时验证。`tests/readingPanelLifecycle.test.ts` 另覆盖空记录返回后点击默认动作，以及历史展开不改变追问上下文。
 
+`tests/implementationAudit49C.test.ts` 通过真实学习笔记与阅读记录组件、确认弹窗和后台消息的受控端口，验证取消保留数据、挂载期间确认清空，以及确认尚未结束就卸载页面时不会发送清空请求。已经交给后台的清空操作不在此时撤回。
+
+`tests/dateFormatLifecycle.test.ts` 运行真实 Vue 更新、KeepAlive 和 SSR 生命周期，验证日期列表同轮惰性复用、下一轮重新解析语言和默认时区、独立组件与 SSR 请求隔离，以及构造失败重试。系统默认地区和时区通过原生 `Intl` 的受控端口切换，不表示已做真实操作系统变更或设备性能验收。
+
 ## 阅读卡深色主题（issue #574）
 
 生产扩展构建后运行 `node scripts/run-harness-reading-test.cjs --theme-only --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <focus-safe-browser.cjs路径> --artifacts-dir /private/tmp/fluentread-reading-theme`。
