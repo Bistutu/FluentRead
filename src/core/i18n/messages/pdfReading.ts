@@ -1,11 +1,14 @@
 /**
  * @file src/core/i18n/messages/pdfReading.ts
- * 文件职责：维护 PDF 在线导入、分页阅读、各格式阅读缩放手势、当前文档批量开关、导出配对与可复制重排提示、划词提示和扫描件文字识别的七种界面语言文案。
- * 主要内容：按稳定语义键组织状态和操作名称，动态页码与字节进度使用占位符。
+ * 文件职责：维护文档本地处理与换文件提醒、PDF 在线导入、分页阅读、各格式阅读缩放手势、当前文档批量开关、导出配对与可复制重排提示、划词提示和扫描件文字识别的七种界面语言文案。
+ * 主要内容：按稳定语义键组织状态和操作名称，动态页码与字节进度使用占位符；本机历史说明不承诺未保存结果一定可恢复。
  * 模块边界：仅提供静态资源，不读取文档、网络或用户配置。
  */
 export const pdfReadingMessages = {
     'zh-CN': {
+        "document.localProcessingNote": "文件在本地解析，待译文字发送至所选翻译服务。扫描版 PDF 在开始翻译时先识别文字。",
+        "document.changeDocument.historyHint": "需要保留当前翻译和校订时，建议先下载。本机“最近翻译”中已有的记录也可以重新打开。",
+        "document.changeDocument.downloadHint": "需要保留当前翻译和校订时，请先下载。",
         "document.batchTranslation.label": "多段合并翻译",
         "document.batchTranslation.hint": "仅用于当前文档，默认开启；减少请求次数，可随时在这里关闭。",
         "document.readerZoom.label": "文档缩放",
@@ -70,6 +73,9 @@ export const pdfReadingMessages = {
         "document.pdfReading.retryPage": "重试本页",
     },
     'en-US': {
+        "document.localProcessingNote": "Files are parsed locally. Text to translate is sent to the selected service. Scanned PDFs have their text recognized when translation starts.",
+        "document.changeDocument.historyHint": "Download first if you need to keep the current translation and edits. You can also reopen existing entries in Recent translations on this device.",
+        "document.changeDocument.downloadHint": "Download first if you need to keep the current translation and edits.",
         "document.batchTranslation.label": "Translate multiple passages together",
         "document.batchTranslation.hint": "Enabled for this document only to reduce requests. Turn it off here when needed.",
         "document.readerZoom.label": "Document zoom",
@@ -134,6 +140,9 @@ export const pdfReadingMessages = {
         "document.pdfReading.retryPage": "Retry page",
     },
     'ja-JP': {
+        "document.localProcessingNote": "ファイルは端末で解析し、翻訳する文章を選択したサービスに送信します。スキャン PDF は翻訳開始時に文字を認識します。",
+        "document.changeDocument.historyHint": "現在の翻訳と校訂を残すには、先にダウンロードしてください。この端末の「最近の翻訳」にある記録も開き直せます。",
+        "document.changeDocument.downloadHint": "現在の翻訳と校訂を残すには、先にダウンロードしてください。",
         "document.batchTranslation.label": "複数の段落をまとめて翻訳",
         "document.batchTranslation.hint": "この文書だけで有効です。リクエストを減らします。ここで無効にできます。",
         "document.readerZoom.label": "文書のズーム",
@@ -198,6 +207,9 @@ export const pdfReadingMessages = {
         "document.pdfReading.retryPage": "このページを再試行",
     },
     'ko-KR': {
+        "document.localProcessingNote": "파일은 기기에서 분석하고 번역할 텍스트는 선택한 서비스로 전송합니다. 스캔 PDF는 번역을 시작할 때 텍스트를 인식합니다.",
+        "document.changeDocument.historyHint": "현재 번역과 수정 내용을 보관하려면 먼저 다운로드하세요. 이 기기의 최근 번역에 있는 기록도 다시 열 수 있습니다.",
+        "document.changeDocument.downloadHint": "현재 번역과 수정 내용을 보관하려면 먼저 다운로드하세요.",
         "document.batchTranslation.label": "여러 문단 함께 번역",
         "document.batchTranslation.hint": "이 문서에만 기본으로 켜져 요청을 줄입니다. 여기서 끌 수 있습니다.",
         "document.readerZoom.label": "문서 확대/축소",
@@ -262,6 +274,9 @@ export const pdfReadingMessages = {
         "document.pdfReading.retryPage": "이 페이지 다시 시도",
     },
     'fr-FR': {
+        "document.localProcessingNote": "Les fichiers sont analysés localement. Le texte à traduire est envoyé au service choisi. Le texte des PDF numérisés est reconnu au démarrage de la traduction.",
+        "document.changeDocument.historyHint": "Téléchargez d’abord la traduction et vos corrections pour les conserver. Vous pouvez aussi rouvrir les entrées existantes des traductions récentes sur cet appareil.",
+        "document.changeDocument.downloadHint": "Téléchargez d’abord la traduction et vos corrections pour les conserver.",
         "document.batchTranslation.label": "Traduire plusieurs passages ensemble",
         "document.batchTranslation.hint": "Activé uniquement pour ce document afin de réduire les requêtes. Désactivez-le ici si nécessaire.",
         "document.readerZoom.label": "Zoom du document",
@@ -326,6 +341,9 @@ export const pdfReadingMessages = {
         "document.pdfReading.retryPage": "Réessayer cette page",
     },
     'es-ES': {
+        "document.localProcessingNote": "Los archivos se analizan localmente. El texto que se va a traducir se envía al servicio elegido. El texto de los PDF escaneados se reconoce al iniciar la traducción.",
+        "document.changeDocument.historyHint": "Descarga primero la traducción y tus correcciones para conservarlas. También puedes volver a abrir las entradas existentes de las traducciones recientes de este dispositivo.",
+        "document.changeDocument.downloadHint": "Descarga primero la traducción y tus correcciones para conservarlas.",
         "document.batchTranslation.label": "Traducir varios pasajes juntos",
         "document.batchTranslation.hint": "Activado solo para este documento para reducir solicitudes. Puedes desactivarlo aquí.",
         "document.readerZoom.label": "Zoom del documento",
@@ -390,6 +408,9 @@ export const pdfReadingMessages = {
         "document.pdfReading.retryPage": "Reintentar esta página",
     },
     'ru-RU': {
+        "document.localProcessingNote": "Файлы разбираются на устройстве. Текст для перевода отправляется выбранному сервису. Текст сканированных PDF распознаётся при запуске перевода.",
+        "document.changeDocument.historyHint": "Чтобы сохранить текущий перевод и правки, сначала скачайте файл. Можно также открыть существующие записи недавних переводов на этом устройстве.",
+        "document.changeDocument.downloadHint": "Чтобы сохранить текущий перевод и правки, сначала скачайте файл.",
         "document.batchTranslation.label": "Переводить несколько фрагментов вместе",
         "document.batchTranslation.hint": "Включено только для этого документа, чтобы сократить число запросов. Можно отключить здесь.",
         "document.readerZoom.label": "Масштаб документа",

@@ -763,7 +763,7 @@ describe('PDF reader actual Vue component reading interaction', () => {
         expect(root.querySelector('select')).toBeNull(); expect(menu().querySelector('.pdf-menu-list')).toBeNull();
         expect(menu().querySelector('.pdf-menu-button')!.textContent).toBe('document.pdfReading.layoutPresentation');
         click(menu().querySelector('.pdf-menu-button')); await componentFlush();
-        expect([...menu().querySelectorAll('ul.pdf-menu-list[role="listbox"] > li[role="option"]')].map(option => option.getAttribute('data-value'))).toEqual(['layout', 'readable']);
+        expect([...menu().querySelectorAll('ul.pdf-menu-list[role="listbox"] > li > button[role="option"]')].map(option => option.getAttribute('data-value'))).toEqual(['layout', 'readable']);
         click(menu().querySelector('.pdf-menu-button')); await componentFlush(); expect(menu().querySelector('.pdf-menu-list')).toBeNull();
         // 仅译文：译文画布就是页面画布，没有原文栏与原文文字层；放不下的长译文标记溢出但文字完整。
         expect(root.querySelector('[data-pdf-resource="source"]')).toBeNull(); expect(root.querySelector('[data-fluentread-pdf-text]')).toBeNull(); expect(root.querySelectorAll('.pdf-page-column')).toHaveLength(root.querySelectorAll('.pdf-page-column.translated').length);
@@ -775,7 +775,7 @@ describe('PDF reader actual Vue component reading interaction', () => {
         state.jumpTo(3); await componentFlush(); state.jumpTo(3); await componentFlush();
         expect(pageChanges).toEqual([1, 3]); expect(state.currentPage).toBe(3);
         state.jumpTo(1); await componentFlush(); expect(pageChanges).toEqual([1, 3, 1]);
-        const choose = async (value: string) => {click(menu().querySelector('.pdf-menu-button')); await componentFlush(); click(menu().querySelector(`li[data-value="${value}"]`)); await componentFlush(); flushFrames(); await componentFlush(); expect(menu().querySelector('.pdf-menu-list')).toBeNull();};
+        const choose = async (value: string) => {click(menu().querySelector('.pdf-menu-button')); await componentFlush(); click(menu().querySelector(`button[data-value="${value}"]`)); await componentFlush(); flushFrames(); await componentFlush(); expect(menu().querySelector('.pdf-menu-list')).toBeNull();};
         // 选择当前已选的显示方式只收起菜单，不重复发出事件。
         await choose('layout'); expect(presentations).toEqual([]);
         await choose('readable'); expect(menu().querySelector('.pdf-menu-button')!.textContent).toBe('document.pdfReading.readablePresentation');
@@ -827,10 +827,10 @@ describe('PDF reader actual Vue component reading interaction', () => {
         input.value = '3'; input.dispatchEvent(new document.defaultView!.Event('input')); input.dispatchEvent(new document.defaultView!.Event('change'));
         await componentFlush(); expect(state.currentPage).toBe(3);
         const menu = root.querySelector('.pdf-zoom-control .pdf-menu') as HTMLElement; const menuButton = menu.querySelector('.pdf-menu-button') as HTMLElement;
-        const pick = async (value: string) => {click(menuButton); await componentFlush(); click(menu.querySelector(`li[data-value="${value}"]`)); await componentFlush();};
+        const pick = async (value: string) => {click(menuButton); await componentFlush(); click(menu.querySelector(`button[data-value="${value}"]`)); await componentFlush();};
         expect(root.querySelector('select')).toBeNull(); expect(menu.querySelector('.pdf-menu-list')).toBeNull(); expect(menuButton.getAttribute('aria-label')).toBe('document.pdfReading.zoomLabel');
         click(menuButton); await componentFlush();
-        expect([...menu.querySelectorAll('ul.pdf-menu-list[role="listbox"] > li[role="option"]')].map(option => option.getAttribute('data-value'))).toEqual(['fit', 'page', '0.5', '0.75', '1', '1.25', '1.5', '2', '3']);
+        expect([...menu.querySelectorAll('ul.pdf-menu-list[role="listbox"] > li > button[role="option"]')].map(option => option.getAttribute('data-value'))).toEqual(['fit', 'page', '0.5', '0.75', '1', '1.25', '1.5', '2', '3']);
         click(menuButton); await componentFlush(); expect(menu.querySelector('.pdf-menu-list')).toBeNull();
         expect(root.querySelector('.pdf-selection-hint')).toBeNull(); expect(root.querySelector('.pdf-presentation-control')).toBeNull(); expect(root.querySelector('.pdf-style')).toBeNull();
         // 适合宽度：(920 − 24) / 612 ≈ 1.46；＋ 进到下一档 150%，− 退到 125%；适合页面受 600px 视口高度限制。
@@ -936,6 +936,29 @@ describe('PDF reader actual Vue component reading interaction', () => {
         expect(disconnect).toHaveBeenCalledOnce(); expect(canvases.every(canvas => canvas.width === 0 && canvas.height === 0)).toBe(true);
         document.dispatchEvent(new document.defaultView!.Event('selectionchange')); expect(frames.size).toBe(0);
     });
+    it('exposes native focusable menu options and returns focus to their trigger after activation or Escape', async () => {
+        const {root, state, presentations} = mountReader(model(), 'bilingual', ['译文']); await componentFlush();
+        const zoom = root.querySelector('.pdf-zoom-control .pdf-menu') as HTMLElement;
+        const presentation = root.querySelector('.pdf-presentation-control.pdf-menu') as HTMLElement;
+        const zoomTrigger = zoom.querySelector('.pdf-menu-button') as HTMLButtonElement;
+        const presentationTrigger = presentation.querySelector('.pdf-menu-button') as HTMLButtonElement;
+        const zoomFocus = vi.spyOn(zoomTrigger, 'focus'), presentationFocus = vi.spyOn(presentationTrigger, 'focus');
+        click(zoomTrigger); await componentFlush();
+        const options = [...zoom.querySelectorAll('[role="option"]')];
+        expect(options.every(option => option.tagName === 'BUTTON' && option.getAttribute('type') === 'button' && !option.hasAttribute('tabindex'))).toBe(true);
+        expect(zoom.querySelectorAll('li[data-value], li[role="option"]')).toHaveLength(0);
+        (zoom.querySelector('[data-value="page"]') as HTMLButtonElement).click(); await componentFlush();
+        expect(state.zoom).toBe('page'); expect(zoom.querySelector('.pdf-menu-list')).toBeNull(); expect(zoomFocus).toHaveBeenCalledOnce();
+        click(presentationTrigger); await componentFlush();
+        const readable = presentation.querySelector('[data-value="readable"]') as HTMLButtonElement;
+        expect(readable.tagName).toBe('BUTTON'); expect(readable.getAttribute('type')).toBe('button');
+        readable.click(); await componentFlush();
+        expect(presentations).toEqual(['readable']); expect(presentation.querySelector('.pdf-menu-list')).toBeNull(); expect(presentationFocus).toHaveBeenCalledOnce();
+        click(presentationTrigger); await componentFlush();
+        document.dispatchEvent(Object.assign(new document.defaultView!.Event('keydown', {bubbles: true}), {key: 'Escape'}));
+        await componentFlush(); expect(presentation.querySelector('.pdf-menu-list')).toBeNull(); expect(presentationFocus).toHaveBeenCalledTimes(2);
+    });
+
     it('opens one toolbar menu at a time and closes it on an outside pointerdown or Escape, never on a press inside the menu', async () => {
         const {root, state} = mountReader(model(), 'bilingual', ['译文']); await componentFlush();
         const zoom = root.querySelector('.pdf-zoom-control .pdf-menu') as HTMLElement; const presentation = root.querySelector('.pdf-presentation-control.pdf-menu') as HTMLElement;
@@ -946,16 +969,16 @@ describe('PDF reader actual Vue component reading interaction', () => {
         expect(open()).toEqual([]); expect(root.querySelectorAll('.pdf-menu-list, .pdf-menu-panel')).toHaveLength(0); expect(zoomButton.getAttribute('aria-expanded')).toBe('false');
         click(zoomButton); await componentFlush();
         expect(open()).toEqual(['zoom']); expect(zoomButton.getAttribute('aria-expanded')).toBe('true'); expect(zoom.querySelector('.pdf-menu-list')!.getAttribute('aria-label')).toBe('document.pdfReading.zoomLabel');
-        const selected = () => [...zoom.querySelectorAll('li')].filter(option => option.getAttribute('aria-selected') === 'true' && classes(option).includes('selected')).map(option => option.getAttribute('data-value'));
+        const selected = () => [...zoom.querySelectorAll('button[role="option"]')].filter(option => option.getAttribute('aria-selected') === 'true' && classes(option).includes('selected')).map(option => option.getAttribute('data-value'));
         expect(selected()).toEqual(['fit']); expect([...zoom.querySelectorAll('li')].map(option => option.textContent)).toEqual(['document.pdfReading.fitWidth', 'document.pdfReading.fitPage', '50%', '75%', '100%', '125%', '150%', '200%', '300%']);
         click(presentationButton); await componentFlush();
         expect(open()).toEqual(['presentation']); expect(zoom.querySelector('.pdf-menu-list')).toBeNull(); expect(root.querySelectorAll('.pdf-menu-list')).toHaveLength(1);
-        expect([...presentation.querySelectorAll('li')].filter(option => option.getAttribute('aria-selected') === 'true').map(option => option.getAttribute('data-value'))).toEqual(['layout']);
+        expect([...presentation.querySelectorAll('button[role="option"]')].filter(option => option.getAttribute('aria-selected') === 'true').map(option => option.getAttribute('data-value'))).toEqual(['layout']);
         click(root.querySelector('.pdf-search .pdf-tool-button')); await componentFlush(); expect(open()).toEqual(['search']); expect(root.querySelector('.pdf-search-panel')).toBeTruthy(); expect(root.querySelector('.pdf-menu-list')).toBeNull();
         click(root.querySelector('.pdf-style .pdf-tool-button')); await componentFlush(); expect(open()).toEqual(['style']); expect(root.querySelector('.pdf-style-panel')).toBeTruthy(); expect(root.querySelector('.pdf-search-panel')).toBeNull();
         click(zoomButton); await componentFlush(); expect(open()).toEqual(['zoom']);
         // 菜单内部的按下不收起；按下阅读区或页面其他位置才收起。
-        press(zoom.querySelector('li[data-value="2"]')!); await componentFlush(); expect(open()).toEqual(['zoom']);
+        press(zoom.querySelector('button[data-value="2"]')!); await componentFlush(); expect(open()).toEqual(['zoom']);
         press(zoomButton); await componentFlush(); expect(open()).toEqual(['zoom']);
         key('Enter'); await componentFlush(); expect(open()).toEqual(['zoom']);
         press(root.querySelector('[data-pdf-scroll]')!); await componentFlush(); expect(open()).toEqual([]); expect(root.querySelector('.pdf-menu-list')).toBeNull(); expect(state.zoom).toBe('fit');
@@ -963,7 +986,7 @@ describe('PDF reader actual Vue component reading interaction', () => {
         press(document.body); await componentFlush(); expect(open()).toEqual([]);
         click(zoomButton); await componentFlush(); key('Escape'); await componentFlush(); expect(open()).toEqual([]); expect(zoomButton.getAttribute('aria-expanded')).toBe('false');
         key('Escape'); press(document.body); await componentFlush(); expect(open()).toEqual([]);
-        click(zoomButton); await componentFlush(); click(zoom.querySelector('li[data-value="2"]')); await componentFlush();
+        click(zoomButton); await componentFlush(); click(zoom.querySelector('button[data-value="2"]')); await componentFlush();
         expect(open()).toEqual([]); expect(state.zoom).toBe('2'); expect(state.scale).toBe(2); expect(zoomButton.textContent).toBe('200%');
         click(zoomButton); await componentFlush(); expect(selected()).toEqual(['2']);
         mountedApp.unmount(); mountedApp = undefined; key('Escape'); press(document.body);

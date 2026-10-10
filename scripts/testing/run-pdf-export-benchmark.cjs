@@ -4,10 +4,12 @@
 /**
  * @file scripts/testing/run-pdf-export-benchmark.cjs
  * 文件职责：用生产扩展和严格焦点守卫验证大 PDF 的本机 fixture 导出压力、取消和页序。
- * 主要内容：记录实际导出点击到下载事件的耗时，导出前冻结产品持久化的最终译文及源/译快照 SHA；
+ * 主要内容：mock 输入在任何浏览器/服务器启动前必须至少 300 页，--mock-min-pages 只能提高此下限；
+ * 记录实际导出点击到下载事件的耗时，导出前冻结产品持久化的最终译文及源/译快照 SHA；
  * 未保护响应逐字保持，保护响应必须完整恢复原字面值，PDF 全文批注再逐字等于最终译文。
+ * 导出前/取消后/完成后三阶段记录 DOM 画布及可用的 JS 堆快照，不代表 OS RAM 或峰值。
  * 模块边界：仅大文档压力允许 mock，不证明在线翻译质量；原生激活事件永久失败并只关闭所属浏览器，
- * 不恢复或改变用户焦点。--self-test-expectations 只执行离线预期回归，不启动服务器或浏览器。
+ * 不恢复或改变用户焦点。--preflight-only / --self-test-expectations 仅执行离线预检/回归。
  */
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
@@ -25,6 +27,29 @@ const sha = value => crypto.createHash('sha256').update(value).digest('hex');
 const tight = value => value.normalize('NFKC').replace(/\s+/gu, '').toLowerCase();
 const FIXTURE_MARKER = /^BENCH_[a-f0-9]{12}/u;
 const PROTECTED_TOKEN = /__FRTERM_[a-f0-9]{12}_\d+__/gu;
+const MINIMUM_MOCK_PAGES = 300;
+
+function mockPolicy(pageCounts, minimumPages) {
+  assert(Number.isInteger(minimumPages) && minimumPages >= MINIMUM_MOCK_PAGES,
+    '--mock-min-pages must be an integer >=300; ordinary documents require run-document-live-translation.cjs');
+  const inputs = pageCounts.map(input => ({...input, approved: input.pages >= minimumPages}));
+  return {purpose: 'Extreme-load PDF export, cancellation and page-integrity testing only; ordinary documents must use actual free-provider translation',
+    minimumPages, hardMinimumPages: MINIMUM_MOCK_PAGES, approved: inputs.every(input => input.approved), inputs,
+    rejectedInputGuidance: 'Mock is restricted to PDFs with at least 300 pages. Use scripts/testing/run-document-live-translation.cjs for ordinary documents.'};
+}
+
+async function preflightMockInputs(inputs, requireRepo, minimumPages) {
+  mockPolicy([], minimumPages);
+  const {getDocument} = await import(requireRepo.resolve('pdfjs-dist/legacy/build/pdf.mjs'));
+  const facts = [];
+  for (const input of inputs) {
+    const bytes = fs.readFileSync(input);
+    const task = getDocument({data: new Uint8Array(bytes), disableFontFace: true, isEvalSupported: false, useWorkerFetch: false, verbosity: 0});
+    try {facts.push({input, sha256: sha(bytes), bytes: bytes.length, pages: (await task.promise).numPages});}
+    finally {await task.destroy();}
+  }
+  return mockPolicy(facts, minimumPages);
+}
 
 async function historySnapshot(page, name) {
   return page.evaluate(async name => {
@@ -44,6 +69,22 @@ async function historySnapshot(page, name) {
           translation: record.translations[segment.id ?? index] ?? ''}))};
     } finally {database.close();}
   }, name);
+}
+
+/** Three lightweight snapshots only: DOM-resident canvases and browser JS heap, never OS RAM or a peak profile. */
+async function resourceSnapshot(page, phase) {
+  return page.evaluate(phase => {
+    const root = document.querySelector('.pdf-layout-viewer');
+    const canvases = [...document.querySelectorAll('canvas')], pdfCanvases = root ? [...root.querySelectorAll('canvas')] : [];
+    const pixels = values => values.reduce((sum, canvas) => sum + canvas.width * canvas.height, 0);
+    const memory = performance.memory;
+    return {phase, time: Date.now(), pdfReaderPresent: Boolean(root), pdfPresentation: root?.dataset.pdfPresentation ?? null,
+      pdfRowsInDom: root?.querySelectorAll('.pdf-page-row').length ?? 0,
+      renderedPdfRowsInDom: root?.querySelectorAll('.pdf-page-row[data-render-state="ready"]').length ?? 0,
+      pdfCanvasesInDom: pdfCanvases.length, allCanvasesInDom: canvases.length, pdfCanvasPixels: pixels(pdfCanvases),
+      allCanvasPixels: pixels(canvases), domCanvasRgbaByteEstimate: pixels(canvases) * 4,
+      jsHeap: memory ? {usedJSHeapSize: memory.usedJSHeapSize, totalJSHeapSize: memory.totalJSHeapSize, jsHeapSizeLimit: memory.jsHeapSizeLimit} : null};
+  }, phase);
 }
 
 /** Align transport placeholders with the complete original source, retaining all surrounding bytes. */
@@ -174,7 +215,8 @@ function validateOutput(sourcePages, outputPages, fixture, mode, layout, finalEx
   const sourceTexts = sourcePages.map(page => tight(page.text)), outputTexts = outputPages.map(page => tight(page.text));
   const fingerprints = sourceTexts.map((text, index) => {
     const candidates = [];
-    for (const fraction of [0, .15, .33, .5, .7, .9]) {
+    // Include the final text: repeated synthetic pages carry unique bottom-margin page tags.
+    for (const fraction of [0, .15, .33, .5, .7, .9, 1]) {
       const start = Math.max(0, Math.min(Math.floor(text.length * fraction), text.length - 70));
       const snippet = text.slice(start, start + 70);
       if (snippet.length >= 24 && !sourceTexts.some((other, otherIndex) => otherIndex !== index && other.includes(snippet)) && !candidates.includes(snippet)) candidates.push(snippet);
@@ -282,6 +324,16 @@ function selfTestExpectations() {
       assert.equal(result.checks.annotationFullText, false); assert.equal(result.semanticOk, false);
     }
   });
+  run('unique trailing page tags detect reordered repeated synthetic source pages', () => {
+    const value = protectedSample(), expected = freezeFinalExpectations(value.snapshot, value.fixture);
+    const repeated = 'Repeated public source text and mathematics. '.repeat(30);
+    const sourcePages = [1, 2].map(number => ({number, width: 100, height: 200, text: `${repeated}STRESS PAGE 00${number} / SOURCE 01`}));
+    const output = sourcePages.map(page => ({...page, width: 208, annotations: [{contents: value.target, rect: [105, 5, 119, 19], flags: 0}]}));
+    const ordered = validateOutput(sourcePages, output, value.fixture, 'bilingual', 'side-by-side', expected);
+    assert(ordered.semanticOk); assert.equal(ordered.sourcePagesWithoutUniqueFingerprint.length, 0);
+    const swapped = output.map((page, index) => ({...page, text: output[1 - index].text}));
+    assert.equal(validateOutput(sourcePages, swapped, value.fixture, 'bilingual', 'side-by-side', expected).checks.originalPageOrder, false);
+  });
   return {ok: true, scope: 'Offline fixture/final-target/PDF-annotation expectation regression; no browser or HTTP server', cases};
 }
 
@@ -290,9 +342,23 @@ async function main() {
   const repository = path.resolve(__dirname, '../..'), requireRepo = createRequire(path.join(repository, 'package.json'));
   const inputs = arg('inputs', '').split(',').filter(Boolean).map(file => path.resolve(file));
   assert(inputs.length && inputs.every(file => fs.existsSync(file)), '--inputs requires comma-separated existing real PDF files');
+  const label = arg('label', 'fixed'), layout = arg('layout', 'side-by-side');
+  const minimumMockPages = Number(arg('mock-min-pages', MINIMUM_MOCK_PAGES));
+  // Reject ordinary documents before creating any profile, native focus observer, server or browser.
+  const policy = await preflightMockInputs(inputs, requireRepo, minimumMockPages);
+  if (process.argv.includes('--preflight-only')) {
+    console.log(JSON.stringify({ok: policy.approved, scope: 'Offline mock-page-count policy preflight only', browserStarted: false, mockPolicy: policy}, null, 2));
+    if (!policy.approved) process.exitCode = 1;
+    return;
+  }
+  if (!policy.approved) {
+    const artifactsDir = path.resolve(arg('artifacts-dir', `/private/tmp/fluentread-pdf-export-${label}`)); fs.mkdirSync(artifactsDir, {recursive: true});
+    fs.writeFileSync(path.join(artifactsDir, 'report.json'), JSON.stringify({ok: false, label, declaredBuildCommit: arg('build-commit', null),
+      browserStarted: false, mockPolicy: policy, failure: policy.rejectedInputGuidance}, null, 2));
+    throw new Error(policy.rejectedInputGuidance);
+  }
   const extensionDir = path.resolve(arg('extension-dir', path.join(repository, '.output/chrome-mv3')));
   assert(fs.existsSync(path.join(extensionDir, 'manifest.json')) && !/-dev$/u.test(extensionDir), 'Use a built production extension');
-  const label = arg('label', 'fixed'), layout = arg('layout', 'side-by-side');
   assert(['observe', 'side-by-side'].includes(layout));
   const modes = arg('modes', 'bilingual').split(','); assert(modes.length && modes.every(mode => ['bilingual', 'translated'].includes(mode)));
   const packages = arg('playwright-root'); assert(packages, '--playwright-root required');
@@ -304,6 +370,8 @@ async function main() {
   const exportTimeout = Number(arg('export-timeout-ms', 180000)), translationTimeout = Number(arg('translation-timeout-ms', 600000)), cancelTimeout = Number(arg('cancel-timeout-ms', 5000));
   assert(Number.isInteger(overflowRepeat) && overflowRepeat >= 1 && Number.isInteger(cancelAfterPages) && cancelAfterPages >= 1);
   const report = {ok: false, label, declaredBuildCommit: arg('build-commit', null), extensionDir, build: buildFingerprint(extensionDir), artifactsDir,
+    mockPolicy: policy,
+    resourceMeasurementContract: 'Three phase snapshots of DOM-resident canvases/pixels and Chromium performance.memory (JS heap only, nullable). DOM excludes detached export canvases; RGBA byte count is an estimate, not OS RAM or peak memory. No forced GC or heap profiling.',
     parameters: {modes, layout, overflowRepeat, cancelAfterPages, exportTimeout, translationTimeout, cancelTimeout, fixtureDelayMs: 0, documentBatchTranslation: 'default true when available', viewport: {width: 1440, height: 960}},
     timingContract: 'exportMs: actual export UI click to Playwright download event; excludes import, translation, saveAs, reopening and screenshots',
     limitations: ['Deterministic loopback translation, not an online provider.', 'Cancellation invokes the visible UI button from a progress observer; heartbeat measures main-thread responsiveness.', 'Source text fingerprints validate order/completeness; rendering requires visual inspection.'],
@@ -431,6 +499,7 @@ async function main() {
         }};
       await checkFocus('translation-evidence');
       await shot(`${label}-${name}-translated`);
+      evidence.resourceSnapshots = [await resourceSnapshot(page, 'before-cancel-export')];
       await checkFocus('cancel-export');
       const cancelDialog = await openDialog(modes[0]); await startMonitor(true);
       const cancellationDownloads = []; const onCanceledDownload = download => cancellationDownloads.push(download.suggestedFilename()); page.on('download', onCanceledDownload);
@@ -440,6 +509,7 @@ async function main() {
       const cancellation = await stopMonitor(); page.off('download', onCanceledDownload);
       Object.assign(cancellation, {error: cancelError, downloads: cancellationDownloads, responsive: cancellation.cancelLatencyMs !== null && cancellation.cancelLatencyMs <= cancelTimeout, retryEnabled: await page.locator('.download-dialog[open] .translate-document-button').isEnabled().catch(() => false)});
       evidence.cancellation = cancellation; await shot(`${label}-${name}-canceled`);
+      evidence.resourceSnapshots.push(await resourceSnapshot(page, 'after-canceled-export'));
       console.log(JSON.stringify({stage: 'canceled', label, name, cancelLatencyMs: cancellation.cancelLatencyMs, heartbeatGapMs: cancellation.maxHeartbeatGapMs, responsive: cancellation.responsive}));
       if (layout === 'side-by-side') {assert(cancellation.responsive, `Cancellation did not complete within ${cancelTimeout}ms: ${JSON.stringify(cancellation)}`); assert.equal(cancellationDownloads.length, 0); assert(cancellation.retryEnabled);}
       if (cancelError) throw new Error(`Cancellation attempt did not settle: ${cancelError}`);
@@ -454,6 +524,7 @@ async function main() {
         let downloaded;
         try {downloaded = await downloadPromise;} catch (error) {result.error = error.message; result.monitor = await stopMonitor(); await shot(`${label}-${name}-${mode}-timeout`); throw error;}
         result.monitor = await stopMonitor(); result.exportMs = downloaded.at - result.monitor.startedAt;
+        result.resourceSnapshot = await resourceSnapshot(page, 'after-complete-export');
         console.log(JSON.stringify({stage: 'exported', label, name, mode, exportMs: result.exportMs, heartbeatGapMs: result.monitor.maxHeartbeatGapMs}));
         await checkFocus('save-download');
         const saveStart = Date.now(), output = path.join(artifactsDir, `${label}-${name.replace(/\.pdf$/iu, '')}-${mode}.pdf`);

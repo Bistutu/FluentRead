@@ -115,7 +115,7 @@
         <div class="format-list" aria-label="支持的文件格式">
           <span v-for="item in formatCards" :key="item.code" class="format-card"><b :class="item.tone">{{ item.code }}</b>{{ item.label }}</span>
         </div>
-        <p class="local-processing-note">文件在本地解析，待译文字会发送给你选择的翻译服务。扫描版 PDF 暂不支持文字识别。</p>
+        <p class="local-processing-note">{{ t('document.localProcessingNote') }}</p>
         <details class="document-samples"><summary>没有文件？先用范例试试</summary>
           <div><p>导入后确认设置，再开始翻译。范例也可以校订和下载。</p></div>
           <div class="sample-buttons"><button v-for="sample in DOCUMENT_QUICK_SAMPLES" :key="sample.name" type="button" :disabled="queueBusy" @click="loadSample(sample)"><strong>{{ sample.label }}<span aria-hidden="true"> ↗</span></strong><small>{{ sample.description }}</small></button></div>
@@ -387,7 +387,7 @@
     </dialog>
     <dialog ref="confirmDialog" class="document-dialog" aria-labelledby="confirm-document-heading" @close="clearConfirmation">
       <h2 id="confirm-document-heading">{{ pendingAction === 'remove' ? t('document.batch.removeTitle') : pendingAction === 'reset' ? (documentQueue.length > 1 ? t('document.batch.clearTitle') : '打开另一份文档？') : '重新翻译这份文档？' }}</h2>
-      <p>{{ pendingAction === 'remove' ? t('document.batch.removeWarning') : pendingAction === 'reset' ? (documentQueue.length > 1 ? t('document.batch.clearWarning') : '当前翻译和校订结果只保留在本页，离开后无法恢复。建议先下载需要的结果。') : '重新翻译会替换现有译文和人工校订。你也可以返回并先下载当前结果。' }}</p>
+      <p>{{ pendingAction === 'remove' ? t('document.batch.removeWarning') : pendingAction === 'reset' ? (documentQueue.length > 1 ? t('document.batch.clearWarning') : t(historyAvailable ? 'document.changeDocument.historyHint' : 'document.changeDocument.downloadHint')) : '重新翻译会替换现有译文和人工校订。你也可以返回并先下载当前结果。' }}</p>
       <div class="dialog-actions"><button class="ghost-button" type="button" autofocus @click="confirmDialog?.close()">返回文档</button><button class="translate-document-button" type="button" @click="confirmAction">{{ pendingAction === 'remove' ? t('document.batch.remove') : pendingAction === 'reset' ? (documentQueue.length > 1 ? t('document.batch.clear') : '打开新文件') : '重新翻译' }}</button></div>
     </dialog>
     <dialog ref="downloadDialog" class="document-dialog download-dialog" aria-labelledby="download-document-heading" :aria-busy="preparingDownload" @close="downloadOpen = false" @cancel="preparingDownload && $event.preventDefault()">
@@ -657,6 +657,7 @@ function selectDocument(item: DocumentQueueItem): void {
   if (!item.document || item.id === activeDocumentId.value) return;
   saveActiveDocument();
   releaseDocumentPreview(parsedDocument.value);
+  recognitionProgress.value = '';
   activeDocumentId.value = item.id;
   documentBatchTranslation.value = item.batchTranslation !== false;
   rememberOpenDocument(item.historyId);
@@ -1003,7 +1004,7 @@ const sameAsSource = computed(() => {
   const unchanged = segments.filter(segment => !hasDistinctTranslation(segment.source, translatedSegments.value[segment.id])).length;
   return unchanged >= segments.length * 0.9;
 });
-const statusLabel = computed(() => recognitionProgress.value ? recognitionProgress.value : needsOcr.value ? t('document.pdfReading.scanned') : isPdfDocument.value && !parsedDocument.value?.segments.length ? t('document.pdfReading.selectableSource') : translating.value ? '正在翻译' : translationComplete.value ? (sameAsSource.value ? '译文与原文相同，可换目标语言' : '翻译完成') : runState.value === 'paused' ? '已暂停' : runState.value === 'failed' ? '翻译中断' : hasTranslation.value ? '部分完成' : '准备就绪');
+const statusLabel = computed(() => translating.value ? recognitionProgress.value || '正在翻译' : runState.value === 'paused' ? '已暂停' : runState.value === 'failed' ? '翻译中断' : needsOcr.value ? t('document.pdfReading.scanned') : isPdfDocument.value && !parsedDocument.value?.segments.length ? t('document.pdfReading.selectableSource') : translationComplete.value ? (sameAsSource.value ? '译文与原文相同，可换目标语言' : '翻译完成') : hasTranslation.value ? '部分完成' : '准备就绪');
 const hasUnsavedWork = computed(() => translating.value || batchRunning.value || openingFile.value || editRevision.value > downloadedRevision.value
   || documentQueue.value.some(item => item.id !== activeDocumentId.value && item.revision > item.downloaded));
 const isPdfDocument = computed(() => parsedDocument.value?.binary?.kind === 'pdf');
@@ -1534,6 +1535,7 @@ function handleDrop(event: DragEvent): void {
 
 function resetDocument(): void {
   persistHistory();
+  recognitionProgress.value = '';
   if (downloadNoticeTimer !== undefined) {clearTimeout(downloadNoticeTimer); downloadNoticeTimer = undefined;}
   cancelImport();
   releaseDocumentPreview(parsedDocument.value);
@@ -1625,6 +1627,7 @@ function clearConfirmation(): void {
 
 function pauseTranslation(): void {
   retryNotice.value = '';
+  recognitionProgress.value = '';
   batchGeneration += 1;
   batchRunning.value = false;
   translationRequestId += 1;

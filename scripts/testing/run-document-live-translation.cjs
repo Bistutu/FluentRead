@@ -5,6 +5,7 @@
  * @file scripts/testing/run-document-live-translation.cjs
  * 文件职责：在独立生产 Edge 配置中真实验证免费服务翻译普通文档、PDF 阅读与左右对照导出。
  * 主要内容：复用后台焦点保护启动器与原生激活事件观察器，只设置免费服务与英译中公开选项；按输入文件逐份导入、真实翻译、阅读、下载，保存完整段落、状态、脱敏网络统计和截图。PDF 用 PDF.js 重开校验页数、左右对照尺寸与页序，再用 Poppler 渲染；--readable-pdf-first 在首份 PDF 同次真实译文上另验可复制重排导出、逐段中文文字层及首页/尾页图片。普通格式重新解析下载文件，DOCX/ePub 解包核对译文、结构与图片。默认运行实际 Attention 15 页、仓库八种普通格式及英文产品指南，--inputs 可缩小范围。Markdown 严格核对代码、链接、译文强调及指南容器、组件标记，以 VitePress 已有 markdown-it 的标准强调节点核对实际下载（先扣除原文节点，不能只数星号或用产品预览证明译文格式），并按源文本与同一标签检查两项已确认的内部英文残留回归；仅读取这些内容，不执行组件。
+ * 交互验证：--exercise-pdf-ui 在首份实际 PDF 上保存首页扫描说明，经 CDP 键盘 Tab/Enter/Space 选择原生菜单按钮，验证受控 Ctrl/Cmd wheel 的文档缩放、指针锚点及键盘复位；真实译文完成后切换显示方式，恢复原版对照和适合整页，再执行既有小屏阅读与下载验收。这些事件不代表物理触控板实测。
  * 模块边界：不创建请求路由、不替换 fetch、不伪造译文、不配置付费账户，不读取或输出任何凭据；只使用本次新建的临时浏览器配置，不操作用户浏览器。中文及无测试标记只能证明实际结果，译文质量和排版需结合保存的数据与图片人工复核。
  */
 const assert = require('node:assert/strict');
@@ -385,6 +386,101 @@ async function waitForDocumentDownload(page, dialog, {timeout, click, assertActi
   }
 }
 
+const waitPdfFrames = page => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+
+async function assertBrowserScale(page) {
+  const result = await page.evaluate(async () => {const tab = await chrome.tabs.getCurrent(); return {tabZoom: await chrome.tabs.getZoom(tab.id), visualViewportScale: window.visualViewport?.scale ?? 1};});
+  assert.equal(result.tabZoom, 1, 'Document interactions must retain browser tab zoom 100%');
+  assert.equal(result.visualViewportScale, 1, 'Document interactions must retain the outer viewport scale');
+  return result;
+}
+
+/** 焦点只移到网页控件；选项完全通过 CDP 键盘遍历和原生按钮激活，不派发合成 DOM 事件。 */
+async function choosePdfOptionByKeyboard(page, selector, value, activation, checkFocus) {
+  await checkFocus(`pdf-ui-menu-${value}-${activation.toLowerCase()}`);
+  const control = page.locator(selector), trigger = control.locator('.pdf-menu-button');
+  await trigger.focus(); await page.keyboard.press('Enter');
+  const options = control.locator('.pdf-menu-list [role="option"]'); await options.first().waitFor();
+  const choices = await options.evaluateAll(elements => elements.map(element => ({value: element.dataset.value, label: element.textContent.trim(), tagName: element.tagName, type: element.getAttribute('type')})));
+  assert(choices.length && choices.every(option => option.tagName === 'BUTTON' && option.type === 'button'), 'PDF options must be native buttons reachable by keyboard');
+  assert(choices.some(option => option.value === value), `Missing PDF option ${value}`);
+  let active;
+  for (let tabs = 0; tabs <= choices.length + 2; tabs++) {
+    active = await page.evaluate(selector => {const node = document.activeElement; return {inMenu: Boolean(node?.closest(selector)?.querySelector('.pdf-menu-list')?.contains(node)), value: node?.getAttribute('data-value'), role: node?.getAttribute('role'), tagName: node?.tagName, label: node?.textContent.trim()};}, selector);
+    if (active.inMenu && active.value === value && active.role === 'option') break;
+    await page.keyboard.press('Tab');
+  }
+  assert(active?.inMenu && active.value === value && active.tagName === 'BUTTON', `Tab cannot reach PDF option ${value}: ${JSON.stringify(active)}`);
+  await page.keyboard.press(activation);
+  await control.locator('.pdf-menu-list').waitFor({state: 'hidden'});
+  assert.equal(await trigger.evaluate(element => document.activeElement === element), true, 'Selecting a PDF option must restore trigger focus');
+  return {selector, value, label: active.label, activation, input: 'CDP keyboard: Enter opens, Tab traverses, native button activates', options: choices};
+}
+
+const pdfZoomMetrics = page => page.locator('[data-pdf-scroll]').evaluate(element => ({scale: Number(element.dataset.readerZoom), scrollTop: element.scrollTop, scrollLeft: element.scrollLeft, scrollHeight: element.scrollHeight, clientHeight: element.clientHeight}));
+const pdfPointerAnchor = (page, point) => page.evaluate(point => {
+  const viewport = document.querySelector('[data-pdf-scroll]'), frame = viewport.querySelector('.pdf-page-column:not(.translated) .pdf-page-frame');
+  const rect = frame.getBoundingClientRect(), bounds = viewport.getBoundingClientRect();
+  const anchor = point || {clientX: (Math.max(rect.left, bounds.left + 8) + Math.min(rect.right, bounds.right - 8)) / 2,
+    clientY: (Math.max(rect.top, bounds.top + 8) + Math.min(rect.bottom, bounds.bottom - 8)) / 2};
+  return {point: anchor, page: frame.closest('[data-page-number]').dataset.pageNumber, x: (anchor.clientX - rect.left) / rect.width, y: (anchor.clientY - rect.top) / rect.height, width: rect.width, height: rect.height};
+}, point);
+
+/** 首份实际文件的源文视口：复用旧缩放验收的受控事件机制，不引入其网络 fixture。 */
+async function exercisePdfZoomUi(page, {result, prefix, shot, checkFocus, persist}) {
+  const evidence = result.pdfUi = {scope: 'First actual PDF only; source viewport before live translation, then translated presentation menus',
+    inputMode: 'CDP keyboard and Ctrl/Cmd wheel; no synthetic WheelEvent and no physical trackpad validation', menus: [], wheel: []};
+  evidence.menus.push(await choosePdfOptionByKeyboard(page, '.pdf-zoom-control', '1', 'Enter', checkFocus)); persist();
+  await page.waitForFunction(() => Number(document.querySelector('[data-pdf-scroll]').dataset.readerZoom) === 1);
+  await page.waitForFunction(() => {const canvas = document.querySelector('.pdf-page-column:not(.translated) canvas'); return canvas && Math.abs(canvas.getBoundingClientRect().width - canvas.width / devicePixelRatio) < 2;});
+  await page.locator('[data-pdf-scroll]').evaluate(element => {element.scrollTop = 120; element.scrollLeft = 40;}); await waitPdfFrames(page);
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    for (const [name, modifiers] of [['Ctrl', 2], ['Cmd', 4]]) {
+      await checkFocus(`pdf-ui-${name.toLowerCase()}-wheel`);
+      const before = await pdfZoomMetrics(page), anchorBefore = await pdfPointerAnchor(page), point = {x: anchorBefore.point.clientX, y: anchorBefore.point.clientY};
+      await cdp.send('Input.dispatchMouseEvent', {type: 'mouseMoved', ...point});
+      await cdp.send('Input.dispatchMouseEvent', {type: 'mouseWheel', ...point, deltaX: 0, deltaY: -70, modifiers});
+      await page.waitForFunction(before => Number(document.querySelector('[data-pdf-scroll]').dataset.readerZoom) > before, before.scale); await waitPdfFrames(page);
+      const after = await pdfZoomMetrics(page), anchorAfter = await pdfPointerAnchor(page, anchorBefore.point);
+      const drift = {x: Math.abs(anchorAfter.x - anchorBefore.x) * anchorAfter.width, y: Math.abs(anchorAfter.y - anchorBefore.y) * anchorAfter.height};
+      evidence.wheel.push({modifier: name, deltaY: -70, before, after, anchorBefore, anchorAfter, drift, browserScale: await assertBrowserScale(page)}); persist();
+      assert.equal(anchorAfter.page, anchorBefore.page, 'Zoom must retain the visible source page');
+      assert(drift.x < 3 && drift.y < 3, `Actual PDF pointer anchor drifted: ${JSON.stringify(drift)}`);
+    }
+    await checkFocus('pdf-ui-keyboard-zoom');
+    await page.locator('[data-pdf-scroll]').focus();
+    const before = await pdfZoomMetrics(page); await page.keyboard.press('Control+='); await waitPdfFrames(page);
+    const plus = await pdfZoomMetrics(page); assert(plus.scale > before.scale, 'Ctrl plus must enlarge the document');
+    await page.keyboard.press('Meta+-'); await waitPdfFrames(page);
+    const minus = await pdfZoomMetrics(page); assert(minus.scale < plus.scale, 'Cmd minus must reduce the document');
+    await page.keyboard.press('Control+0'); await waitPdfFrames(page);
+    const reset = await pdfZoomMetrics(page), resetLabel = await page.locator('.pdf-zoom-control .pdf-menu-button').innerText();
+    assert.match(resetLabel, /适合宽度|Fit width/u);
+    evidence.keyboard = {before, plus, minus, reset, resetLabel, browserScale: await assertBrowserScale(page)};
+    const screenshot = await shot(`${prefix}-pdf-ui-source-keyboard-and-wheel`); result.screenshots.push(screenshot); evidence.sourceScreenshot = screenshot; persist();
+    evidence.menus.push(await choosePdfOptionByKeyboard(page, '.pdf-zoom-control', 'page', 'Space', checkFocus));
+    await page.locator('[data-pdf-scroll]').evaluate(element => {element.scrollTop = 0; element.scrollLeft = 0;});
+    evidence.preTranslationRestore = {presentation: await page.locator('.pdf-layout-viewer').getAttribute('data-pdf-presentation'),
+      zoomOption: 'page', label: await page.locator('.pdf-zoom-control .pdf-menu-button').innerText(), browserScale: await assertBrowserScale(page)};
+    assert.equal(evidence.preTranslationRestore.presentation, 'layout'); assert.match(evidence.preTranslationRestore.label, /适合整页|Fit page/u); persist();
+  } finally {await cdp.detach();}
+}
+
+async function exercisePdfPresentationUi(page, {result, prefix, shot, checkFocus, persist}) {
+  const evidence = result.pdfUi;
+  evidence.menus.push(await choosePdfOptionByKeyboard(page, '.pdf-presentation-control', 'readable', 'Space', checkFocus));
+  await page.locator('.pdf-layout-viewer[data-pdf-presentation="readable"]').waitFor();
+  await page.waitForFunction(() => [...document.querySelectorAll('.pdf-reading-paragraph')].some(element => /\p{Script=Han}/u.test(element.textContent)));
+  await waitPdfFrames(page);
+  const screenshot = await shot(`${prefix}-pdf-ui-actual-translated-readable`); result.screenshots.push(screenshot); evidence.readableScreenshot = screenshot; persist();
+  evidence.menus.push(await choosePdfOptionByKeyboard(page, '.pdf-presentation-control', 'layout', 'Enter', checkFocus));
+  await page.locator('.pdf-layout-viewer[data-pdf-presentation="layout"]').waitFor();
+  evidence.menus.push(await choosePdfOptionByKeyboard(page, '.pdf-zoom-control', 'page', 'Space', checkFocus));
+  const label = await page.locator('.pdf-zoom-control .pdf-menu-button').innerText(); assert.match(label, /适合整页|Fit page/u);
+  evidence.finalRestore = {presentation: 'layout', zoomOption: 'page', label, browserScale: await assertBrowserScale(page)}; evidence.ok = true; persist();
+}
+
 async function main() {
   const repository = path.resolve(__dirname, '../..'), requireRepo = createRequire(path.join(repository, 'package.json'));
   const examples = path.resolve(arg('example-dir', path.join(repository, 'examples/document-translation')));
@@ -392,6 +488,8 @@ async function main() {
     ...['pdf', 'docx', 'html', 'epub', 'md', 'txt', 'srt', 'json'].map(extension => path.join(examples, `sample.${extension}`)),
     path.join(repository, 'docs/en/guide/document-translation.md')];
   const inputs = arg('inputs', defaults.join(',')).split(',').map(file => path.resolve(file.trim())).filter(Boolean);
+  const exercisePdfUi = process.argv.includes('--exercise-pdf-ui');
+  assert(!exercisePdfUi || inputs.some(file => /\.pdf$/iu.test(file)), '--exercise-pdf-ui requires an actual PDF input');
   assert(inputs.length && inputs.every(file => fs.existsSync(file) && fs.statSync(file).isFile()), '--inputs must name existing files (comma separated)');
   assert.equal(new Set(inputs.map(file => path.basename(file))).size, inputs.length, 'Input basenames must be unique for unambiguous history evidence');
   const extensionDir = path.resolve(arg('extension-dir', path.join(repository, '.output/chrome-mv3')));
@@ -413,11 +511,12 @@ async function main() {
     sourceSha256: Object.fromEntries(['src/app/document-translation/DocumentApp.vue', 'src/features/document-translation/services/binary.ts', 'src/features/document-translation/services/archive.ts',
       'src/features/document-translation/core/document.ts', 'src/features/document-translation/core/pdfLayoutAnalysis.ts', 'src/features/document-translation/ui/PdfReader.vue',
       'src/providers/translation/free-chinese-web.ts', 'src/providers/translation/free-translation.ts', 'src/core/translation/documentLiterals.ts',
-      'src/services/translation/broker.ts', 'src/services/translation/glossaryProtection.ts'].map(file => [file, sha(fs.readFileSync(path.join(repository, file)))])),
+      'src/services/translation/broker.ts', 'src/services/translation/glossaryProtection.ts', 'src/features/document-translation/ui/documentZoom.ts',
+      'src/core/i18n/messages/pdfReading.ts'].map(file => [file, sha(fs.readFileSync(path.join(repository, file)))])),
     parameters: {service, sourceLanguage: 'en', targetLanguage: 'zh-Hans', translationTimeout, exportTimeout, samplePages,
-      shortPdfAllPages: !process.argv.includes('--pdf-pages'), readablePdfFirst: process.argv.includes('--readable-pdf-first'),
+      shortPdfAllPages: !process.argv.includes('--pdf-pages'), readablePdfFirst: process.argv.includes('--readable-pdf-first'), exercisePdfUi,
       viewport: {width: 1440, height: 960}, narrowViewports: [{width: 820, height: 960}, {width: 390, height: 844}]},
-    evidenceBoundary: `Real credential-free ${service} requests and actual document UI; no routes, fetch replacements, proxy, paid credentials or synthetic responses. Chinese/no-marker checks and two targeted inline-text regression assertions are evidence, not a general translation-quality score. First-PDF narrow screenshots/geometry cover only 820x960 and 390x844; physical trackpad gestures are not verified. Review saved paragraphs and screenshots manually.`,
+    evidenceBoundary: `Real credential-free ${service} requests and actual document UI; no routes, fetch replacements, proxy, paid credentials or synthetic responses. Chinese/no-marker checks and two targeted inline-text regression assertions are evidence, not a general translation-quality score. Optional PDF UI coverage uses CDP keyboard and Ctrl/Cmd wheel against the actual document, not physical trackpad gestures. First-PDF narrow screenshots/geometry cover only 820x960 and 390x844. Review saved paragraphs and screenshots manually.`,
     documents: [], screenshots: [], network: [], consoleErrors: [], cleanupErrors: [], focusEvents: [], focusChecks: []};
   let launched, page, launchAttempted = false, focusMonitor, ownedPid, focusFailure;
   const persist = () => fs.writeFileSync(path.join(artifactsDir, 'report.json'), JSON.stringify(report, null, 2));
@@ -497,6 +596,16 @@ async function main() {
     assert.equal(report.config.service, service);
     await page.reload({waitUntil: 'domcontentloaded'}); await page.locator('.file-drop-zone').waitFor();
     const shot = async name => {const file = path.join(artifactsDir, `${name}.png`); await page.screenshot({path: file, animations: 'disabled'}); report.screenshots.push(file); return file;};
+    if (exercisePdfUi) {
+      await checkFocus('pdf-ui-homepage-ocr-note');
+      const note = page.locator('.landing-section .local-processing-note'); await note.waitFor();
+      const text = (await note.innerText()).trim();
+      report.pdfUiHomepage = {text, html: await note.evaluate(element => element.outerHTML),
+        screenshot: await shot('pdf-ui-homepage-ocr-note'), scope: 'Landing page before importing the actual PDF; no OCR request is started'}; persist();
+      assert.match(text, /文件在本地解析/u); assert.match(text, /待译文字.*发送.*翻译服务/u);
+      assert.match(text, /扫描版\s*PDF.*开始翻译时先识别文字/u);
+      assert(!/暂不支持|不支持文字识别/u.test(text), 'Landing page must not claim scanned PDF OCR is unavailable');
+    }
     const downloadFromDialog = (dialog, result, prefix, phase) => waitForDocumentDownload(page, dialog, {
       timeout: exportTimeout,
       click: () => dialog.locator('.translate-document-button').click(),
@@ -523,6 +632,7 @@ async function main() {
       const confirmation = page.locator('dialog[open]').filter({has: page.locator('#confirm-document-heading')}); if (await confirmation.count()) await confirmation.locator('.translate-document-button').click();
       await page.locator('.file-drop-zone').waitFor();
     };
+    let exercisedPdfUi = false;
     for (const [index, input] of inputs.entries()) {
       const name = path.basename(input), prefix = `${index + 1}-${slug(name)}`, isPdf = /\.pdf$/iu.test(name), bytes = fs.readFileSync(input);
       report.currentDocument = name;
@@ -537,6 +647,10 @@ async function main() {
         result.importMs = Date.now() - importStart;
         result.documentBatchTranslation = await page.locator('.document-batch-translation input').isChecked();
         assert.equal(result.documentBatchTranslation, true, 'New documents should use the default transient batching');
+        if (exercisePdfUi && isPdf && !exercisedPdfUi) {
+          exercisedPdfUi = true;
+          await exercisePdfZoomUi(page, {result, prefix, shot, checkFocus, persist});
+        }
         const started = Date.now(); result.state = 'translating';
         await checkFocus('translation');
         await page.locator('.taskbar-actions .translate-document-button').filter({hasText: '开始翻译'}).click();
@@ -577,6 +691,7 @@ async function main() {
         await page.getByRole('group', {name: '阅读方式', exact: true}).getByRole('button', {name: '双语', exact: true}).click();
         if (isPdf) {
           assert.equal(await page.locator('.pdf-layout-viewer').getAttribute('data-pdf-presentation'), 'layout', 'Each ordinary PDF case must start with the default layout presentation');
+          if (result.pdfUi) await exercisePdfPresentationUi(page, {result, prefix, shot, checkFocus, persist});
           await page.locator('.pdf-zoom-control .pdf-menu-button').click(); await page.locator('.pdf-zoom-control [data-value="page"]').click();
           if (index === 0) {
             result.responsive = [];
@@ -615,6 +730,13 @@ async function main() {
             } finally {
               await page.setViewportSize(report.parameters.viewport);
               await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+            }
+            if (result.pdfUi) {
+              await checkFocus('pdf-ui-responsive-restored');
+              result.pdfUi.responsiveRestore = {viewport: report.parameters.viewport, browserScale: await assertBrowserScale(page),
+                presentation: await page.locator('.pdf-layout-viewer').getAttribute('data-pdf-presentation'),
+                zoomLabel: await page.locator('.pdf-zoom-control .pdf-menu-button').innerText()};
+              assert.equal(result.pdfUi.responsiveRestore.presentation, 'layout'); assert.match(result.pdfUi.responsiveRestore.zoomLabel, /适合整页|Fit page/u); persist();
             }
           }
           for (const number of capturePages(sourcePages.length)) {

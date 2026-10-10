@@ -20,7 +20,7 @@
           <div class="pdf-menu" :class="{open: openMenu === 'zoom'}">
             <button type="button" class="pdf-menu-button" aria-haspopup="listbox" :aria-expanded="openMenu === 'zoom'" :aria-label="t('document.pdfReading.zoomLabel')" @click="openMenu = openMenu === 'zoom' ? null : 'zoom'">{{ zoomLabel }}<i aria-hidden="true" /></button>
             <ul v-if="openMenu === 'zoom'" class="pdf-menu-list" role="listbox" :aria-label="t('document.pdfReading.zoomLabel')">
-              <li v-for="option in zoomOptions" :key="option.value" role="option" :aria-selected="zoom === option.value" :class="{selected: zoom === option.value}" :data-value="option.value" @click="chooseZoom(option.value); openMenu = null">{{ option.label }}</li>
+              <li v-for="option in zoomOptions" :key="option.value" role="presentation" :class="{selected: zoom === option.value}"><button type="button" role="option" :aria-selected="zoom === option.value" :class="{selected: zoom === option.value}" :data-value="option.value" @click="chooseZoom(option.value); closeMenu(true)">{{ option.label }}</button></li>
             </ul>
           </div>
           <button type="button" :aria-label="t('document.pdfReading.zoomIn')" :title="t('document.pdfReading.zoomIn')" :disabled="scale >= ZOOM_STEPS[ZOOM_STEPS.length - 1]" @click="stepZoom(1)">+</button>
@@ -28,7 +28,7 @@
         <div v-if="mode !== 'source'" class="pdf-presentation-control pdf-menu" :class="{open: openMenu === 'presentation'}">
           <button type="button" class="pdf-menu-button" aria-haspopup="listbox" :aria-expanded="openMenu === 'presentation'" :aria-label="t('document.pdfReading.presentationLabel')" @click="openMenu = openMenu === 'presentation' ? null : 'presentation'">{{ t(presentation === 'layout' ? 'document.pdfReading.layoutPresentation' : 'document.pdfReading.readablePresentation') }}<i aria-hidden="true" /></button>
           <ul v-if="openMenu === 'presentation'" class="pdf-menu-list" role="listbox" :aria-label="t('document.pdfReading.presentationLabel')">
-            <li v-for="value in PRESENTATIONS" :key="value" role="option" :aria-selected="presentation === value" :class="{selected: presentation === value}" :data-value="value" @click="choosePresentation(value)">{{ t(value === 'layout' ? 'document.pdfReading.layoutPresentation' : 'document.pdfReading.readablePresentation') }}</li>
+            <li v-for="value in PRESENTATIONS" :key="value" role="presentation" :class="{selected: presentation === value}"><button type="button" role="option" :aria-selected="presentation === value" :class="{selected: presentation === value}" :data-value="value" @click="choosePresentation(value)">{{ t(value === 'layout' ? 'document.pdfReading.layoutPresentation' : 'document.pdfReading.readablePresentation') }}</button></li>
           </ul>
         </div>
         <div class="pdf-menu pdf-search" :class="{open: openMenu === 'search'}">
@@ -243,10 +243,15 @@ function toggleSearch(): void {
 watch(searchQuery, () => {searchIndex.value = 0; showSearchHit();});
 const zoomOptions = computed(() => [{value: 'fit', label: t('document.pdfReading.fitWidth')}, {value: 'page', label: t('document.pdfReading.fitPage')}, ...ZOOM_STEPS.map(step => ({value: String(step), label: `${Math.round(step * 100)}%`}))]);
 const zoomLabel = computed(() => zoomOptions.value.find(option => option.value === zoom.value)?.label ?? `${Math.round(Number(zoom.value) * 100)}%`);
-function choosePresentation(value: PdfReadingPresentation): void {openMenu.value = null; if (presentation.value === value) return; presentation.value = value; emit('update:presentation', value);}
+function closeMenu(restoreFocus = false): void {
+  if (restoreFocus) toolbar.value?.querySelector<HTMLButtonElement>('.pdf-menu.open > .pdf-menu-button')?.focus();
+  openMenu.value = null;
+}
+function choosePresentation(value: PdfReadingPresentation): void {closeMenu(true); if (presentation.value === value) return; presentation.value = value; emit('update:presentation', value);}
 function closeMenus(event: Event): void {
   if (!openMenu.value) return;
-  if (event.type === 'keydown' ? (event as KeyboardEvent).key === 'Escape' : !(event.target as Element | null)?.closest?.('.pdf-menu')) openMenu.value = null;
+  if (event.type === 'keydown') {if ((event as KeyboardEvent).key === 'Escape') closeMenu(true);}
+  else if (!(event.target as Element | null)?.closest?.('.pdf-menu')) closeMenu();
 }
 const pageInput = ref(1);
 const currentPage = ref(1);
@@ -887,7 +892,9 @@ onBeforeUnmount(() => {
 .pdf-menu-button i {width: 6px; height: 6px; margin: -3px 2px 0; border: solid var(--muted); border-width: 0 1.4px 1.4px 0; transform: rotate(45deg); transition: transform .15s;}
 .pdf-menu.open .pdf-menu-button i {margin-top: 3px; transform: rotate(225deg);}
 .pdf-menu-list {position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; min-width: 100%; max-width: calc(100vw - 16px); box-sizing: border-box; max-height: min(360px, 50dvh); overflow: auto; margin: 0; padding: 5px; list-style: none; border: 1px solid var(--line); border-radius: 11px; background: var(--surface); box-shadow: 0 12px 32px #10182826;}
-.pdf-menu-list li {padding: 7px 12px; border-radius: 7px; color: var(--ink); font-size: 12px; white-space: nowrap; cursor: pointer;}
+.pdf-menu-list li {border-radius: 7px; color: var(--ink); font-size: 12px; white-space: nowrap;}
+.pdf-viewer-toolbar .pdf-menu-list button {display: block; width: 100%; height: auto; padding: 7px 12px; border: 0; border-radius: 7px; color: inherit; background: transparent; font: inherit; line-height: 1.4; text-align: left; white-space: nowrap;}
+.pdf-viewer-toolbar .pdf-menu-list button:focus-visible {outline: 2px solid var(--brand); outline-offset: -2px; background: var(--surface-soft);}
 .pdf-menu-list li:hover {background: var(--surface-soft);}
 .pdf-menu-list li.selected {color: var(--brand-strong); background: var(--brand-soft); font-weight: 650;}
 .pdf-reader-body {display: flex; flex: 1; min-height: 0; min-width: 0;}

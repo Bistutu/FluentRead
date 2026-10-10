@@ -28,6 +28,8 @@ The sidebar lists your files and, for PDFs and for Markdown, HTML, ePub, and Wor
 
 Every format supports trackpad pinch to zoom over the document, or Ctrl with the mouse wheel. Two-finger panning scrolls normally. Click the document, then use **Ctrl/Cmd +**, **Ctrl/Cmd −**, or **Ctrl/Cmd 0** to zoom in, zoom out, or reset; the toolbar offers the same controls. Non-PDF documents zoom from 50% to 300%, and clicking the percentage restores 100%. PDF reset fits the width, and zoom in the original layout aims to keep the page position under your pointer. Zoom changes the reading preview; proofreading inputs and downloaded files keep their usual layout.
 
+PDF zoom and view menus also work with the keyboard: use Tab to reach an option, Enter or Space to select it, and Esc to close the menu and return to its button.
+
 URLs, email addresses, code-style names such as `FluentRead`, and compound identifiers such as `GNMT+RL` are kept as written in document text. Free services can use different translations for technical terms; choose a suitable glossary and review key passages in the proofreading view.
 
 In HTML, ePub, and Markdown, a sentence that contains links, bold, italics, or inline code is translated as one sentence: links and emphasis stay on the matching words, and in Markdown the link text is translated while link targets, inline code, and URLs are kept as they are. If a service loses or damages these markers, that result is neither displayed nor cached. The free service pool tries other routes; if the formatting still cannot be preserved, it asks you to retry or switch services.

@@ -284,6 +284,71 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(download.mock.calls.every(([, , , options]) => options?.pdfPresentation === 'layout')).toBe(true);
     });
 
+    it.each(['pause', 'switch', 'reset'] as const)('clears an in-flight OCR status on %s and ignores progress from the abandoned request', async action => {
+        await state.loadFiles([file('scanned.pdf'), file('other.txt', 'Other document')]);
+        const original = state.parsedDocument;
+        const scanned = markRaw({...original, segments: [], binary: {...original.binary,
+            pages: original.binary.pages.map((page: any) => ({...page, scanned: true, segmentIndexes: [], blocks: []})),
+        }});
+        state.parsedDocument = scanned; state.documentQueue[0].document = scanned;
+        const recognizing = deferred<any>();
+        ports.recognize.mockReturnValue(recognizing.promise);
+        const running = state.startTranslation();
+        await vi.waitFor(() => expect(ports.recognize).toHaveBeenCalledOnce());
+        const options = ports.recognize.mock.calls[0][2];
+        options.onProgress({completed: 1, total: 3}); await flush();
+        expect(state.statusLabel).toBe('document.pdfReading.recognizing');
+        if (action === 'reset') {
+            state.resetDocument();
+            await state.loadFiles([file('replacement.txt', 'Replacement document')]);
+        } else {
+            state.pauseTranslation();
+            expect(state.statusLabel).toBe('已暂停');
+            if (action === 'switch') state.selectDocument(state.documentQueue[1]);
+        }
+        await flush();
+        const current = state.parsedDocument;
+        expect(state.recognitionProgress).toBe('');
+        expect(state.statusLabel).toBe(action === 'pause' ? '已暂停' : '准备就绪');
+        expect(options.signal.aborted).toBe(true);
+        options.onProgress({completed: 2, total: 3});
+        recognizing.resolve({...scanned, segments: [{id: 0, source: 'Late OCR result'}]});
+        await running; await flush();
+        expect(state.parsedDocument).toBe(current);
+        expect(state.recognitionProgress).toBe('');
+        expect(state.statusLabel).toBe(action === 'pause' ? '已暂停' : '准备就绪');
+        expect(ports.batch).not.toHaveBeenCalled(); expect(ports.translate).not.toHaveBeenCalled();
+    });
+
+    it('shows an OCR failure and a retry action instead of the static scanned-document status', async () => {
+        await state.loadFiles([file('scanned.pdf')]);
+        const original = state.parsedDocument;
+        const scanned = markRaw({...original, segments: [], binary: {...original.binary,
+            pages: original.binary.pages.map((page: any) => ({...page, scanned: true, segmentIndexes: [], blocks: []})),
+        }});
+        state.parsedDocument = scanned; state.documentQueue[0].document = scanned;
+        const recognizing = deferred<any>(); ports.recognize.mockReturnValue(recognizing.promise);
+        const running = state.startTranslation();
+        await vi.waitFor(() => expect(ports.recognize).toHaveBeenCalledOnce());
+        ports.recognize.mock.calls[0][2].onProgress({completed: 1, total: 3}); await flush();
+        recognizing.reject(new Error('OCR temporarily unavailable')); await running; await flush();
+        expect(state.statusLabel).toBe('翻译中断'); expect(state.recognitionProgress).toBe('');
+        expect(state.errorMessage).toBe('OCR temporarily unavailable'); expect(state.translationActionLabel).toBe('重试翻译');
+        expect(state.needsOcr).toBe(true);
+    });
+
+    it.each([false, true])('uses accurate import and change-file guidance with local history available=%s', async available => {
+        app.unmount(); vi.stubGlobal('indexedDB', available ? new IDBFactory() : undefined);
+        root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = (app._instance as any).setupState;
+        await flush();
+        const walk = (entry: HostNode): HostNode[] => [entry, ...entry.children.flatMap(walk)];
+        expect(walk(root).find(entry => entry.props.class === 'local-processing-note')?.text).toBe('document.localProcessingNote');
+        await state.loadFiles([file('guide.txt', 'Source paragraph')]);
+        state.editSegment(0, '人工校订'); state.changeDocument(); await flush();
+        expect(state.pendingAction).toBe('reset');
+        expect(walk(root).some(entry => entry.text === `document.changeDocument.${available ? 'historyHint' : 'downloadHint'}`)).toBe(true);
+    });
+
     it('keeps the task language, service, model and document batch snapshot across delayed scanned-PDF OCR and external settings updates', async () => {
         const initial = JSON.parse(JSON.stringify(ports.config));
         Object.assign(initial, {from: 'en', to: 'zh-CN', documentService: 'openai', enableAIMultiSegment: false});
