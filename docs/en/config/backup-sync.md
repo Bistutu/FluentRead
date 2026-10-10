@@ -45,6 +45,8 @@ Open **Settings → Backup & restore**, export a full data backup, and save the 
 
 Before exporting, choose whether to include saved word context. Closing the confirmation cancels the export. If you switch to another settings section or the learning center before confirming, return and start the export again. A backup already being prepared after confirmation continues to download.
 
+If you switch to another settings section or the learning center during large-file confirmation or file reading, a late result will not open an import preview. Return and select the file again.
+
 A full backup can contain API keys, provider credentials, and saved original text. Keep it private. Earlier backups remain importable according to the import preview.
 
 The learning center also offers [Anki export](/en/guide/vocabulary-book#keep-your-collection-safe).

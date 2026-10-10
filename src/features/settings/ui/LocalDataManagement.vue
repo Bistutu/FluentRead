@@ -1,7 +1,7 @@
 <!--
 @file src/features/settings/ui/LocalDataManagement.vue
 文件职责：在备份与恢复页提供唯一的 FluentRead 数据迁移入口。
-主要内容：将设置、单词本和模型用量导出为一份版本化备份，确认期随页面活跃归属失效；已接受并开始读取的导出继续下载，迟到提示与焦点归还仍核对归属。自动识别完整备份与旧版单项文件，并在导入前预览影响。
+主要内容：将设置、单词本和模型用量导出为一份版本化备份，确认期随页面活跃归属失效；已接受并开始读取的导出继续下载，迟到提示与焦点归还仍核对归属。文件导入的读取确认与文本等待也复验活跃归属，失效后不再启动读取或解析、展示迟到预览；自动识别完整备份与旧版单项文件，并在导入前预览影响。
 模块边界：组件只编排 runtime 协议和文件交互；各领域仓库继续拥有校验与合并规则，Anki 与清空等单词本操作留在单词本页。
 -->
 <template>
@@ -177,7 +177,7 @@ import {useUiI18n} from '@/src/ui/i18n';
 
 const {t} = useUiI18n();
 const props = withDefaults(defineProps<{config: Config; active?: boolean}>(), {active: true});
-const exportContext = useSettingsActionContext(() => props.active, () => []);
+const localDataContext = useSettingsActionContext(() => props.active, () => []);
 const importInput = useTemplateRef<HTMLInputElement>('data-import-input');
 const busy = ref(false);
 const restoreSourceVisible = ref(false);
@@ -253,9 +253,9 @@ async function modelUsageExport(): Promise<ModelUsageTransferDocument> {
 }
 
 async function exportCompleteBackup(event?: MouseEvent): Promise<void> {
-  if (!exportContext.active.value || busy.value) return;
+  if (!localDataContext.active.value || busy.value) return;
   const trigger = eventTarget(event);
-  const isCurrent = exportContext.capture();
+  const isCurrent = localDataContext.capture();
   const includePrivateContext = await chooseBackupContext();
   if (includePrivateContext === null || !isCurrent()) return;
   busy.value = true;
@@ -320,9 +320,10 @@ async function readImportFile(event: Event): Promise<void> {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
   input.value = '';
-  if (!file || busy.value) return;
+  if (!file || busy.value || !localDataContext.active.value) return;
   const trigger = restoreActionTrigger;
   restoreActionTrigger = null;
+  const isCurrent = localDataContext.capture();
   busy.value = true;
   try {
     if (vocabularyImportNeedsConfirmation(file.size)) {
@@ -336,13 +337,16 @@ async function readImportFile(event: Event): Promise<void> {
         return;
       }
     }
-    const parsed = parseLocalDataImport(JSON.parse(await file.text()));
+    if (!isCurrent()) return;
+    const text = await file.text();
+    if (!isCurrent()) return;
+    const parsed = parseLocalDataImport(JSON.parse(text));
     showImportPreview(parsed, file.name, file.size);
   } catch (error) {
-    ElMessage.error(`无法读取备份：${errorMessage(error)}`);
+    if (isCurrent()) ElMessage.error(`无法读取备份：${errorMessage(error)}`);
   } finally {
     busy.value = false;
-    await focusTriggerAfterBusy(trigger, () => restoreSourceVisible.value && !importPreviewVisible.value);
+    await focusTriggerAfterBusy(trigger, () => isCurrent() && restoreSourceVisible.value && !importPreviewVisible.value);
   }
 }
 

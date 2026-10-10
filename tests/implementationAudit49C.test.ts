@@ -142,7 +142,7 @@ async function mount(component: Component, props: Record<string, unknown> = {}) 
     const elementPlus = await import('element-plus');
     app.component('el-select', elementPlus.ElSelect); app.component('el-option', elementPlus.ElOption); app.component('el-dialog', elementPlus.ElDialog);
     app.component('el-button', elementPlus.ElButton); app.component('el-input-number', elementPlus.ElInputNumber); app.component('el-switch', elementPlus.ElSwitch);
-    // LocalData 的恢复对话框在本组始终关闭；仅注册不参与导出路径的输入端口，避免解析警告。
+    // 本组不操作粘贴输入；文件读取与导出路径只需注册此输入端口，避免解析警告。
     app.component('el-input', {render: () => null});
     apps.add(app); app.mount(host); await settle();
     return {host, state, stop: () => {app.unmount(); apps.delete(app);}};
@@ -1026,6 +1026,21 @@ describe('audit49C local backup confirmation ownership', () => {
         const page = await mount(Owner, {config: ports.config, ...defaultActive ? {} : {active: true}});
         const button = () => page.host.querySelector<HTMLButtonElement>('.transfer-actions button')!;
         const focus = vi.spyOn(button(), 'focus').mockImplementation(() => undefined);
+        const fileFocusRestorers: Array<() => void> = [];
+        const chooseFile = async (file: Pick<File, 'name' | 'size' | 'text'>) => {
+            if (!page.host.querySelector('[data-testid="restore-source-dialog"]')) {
+                page.host.querySelectorAll<HTMLButtonElement>('.transfer-actions button')[1].click(); await settle();
+            }
+            const choose = page.host.querySelector<HTMLButtonElement>('[data-testid="restore-source-dialog"] button')!;
+            expect(choose.disabled).toBe(false);
+            const fileFocus = vi.spyOn(choose, 'focus').mockImplementation(() => undefined);
+            fileFocusRestorers.push(() => fileFocus.mockRestore());
+            choose.click();
+            const input = page.host.querySelector<HTMLInputElement>('input[type="file"]')!;
+            Object.defineProperty(input, 'files', {configurable: true, value: [file]});
+            input.dispatchEvent(new Event('change', {bubbles: true})); await settle();
+            return {input, focus: fileFocus};
+        };
         let stopped = false;
         const stop = () => {if (!stopped) {stopped = true; page.stop();}};
         const leave = async (kind: 'inactive' | 'reopen' | 'keepalive' | 'unmount') => {
@@ -1036,11 +1051,12 @@ describe('audit49C local backup confirmation ownership', () => {
             if (kind === 'reopen') {page.state.active = true; await settle();}
         };
         const reactivate = async () => {page.state.active = true; shown.value = true; await settle();};
-        return {page, button, focus, create, revoke, download, blobs, leave, reactivate, stop, async close() {
+        return {page, button, focus, create, revoke, download, blobs, chooseFile, leave, reactivate, stop, async close() {
             try {
                 stop(); await settle(); vi.runOnlyPendingTimers();
                 expect(blobs.size).toBe(0); expect(vi.getTimerCount()).toBe(0);
             } finally {
+                for (const restore of fileFocusRestorers) restore();
                 focus.mockRestore(); download.mockRestore(); create.mockRestore(); revoke.mockRestore();
                 if (activeDescriptor) Object.defineProperty(dom.document, 'activeElement', activeDescriptor);
                 else Reflect.deleteProperty(dom.document, 'activeElement');
@@ -1136,5 +1152,119 @@ describe('audit49C local backup confirmation ownership', () => {
         page.state.active = true; page.state.activePanel = 'history'; await settle(); expect(latest().props.active).toBe(false);
         page.state.activePanel = 'backup'; await settle(); expect(latest().props.active).toBe(true);
         expect(latest().node.component).toBe(initial.component);
+    });
+
+    // 使用真实隐藏 file input 的 change 事件；文件、确认和活跃状态是受控端口，非原生文件选择器。
+    const fileJson = () => JSON.stringify({...prepareConfigForExport(ports.config as Config), round22FileMarker: 'controlled-local-import'});
+    const filePort = (text: () => Promise<string>, size = 100): Pick<File, 'name' | 'size' | 'text'> => ({name: 'controlled-local-import.json', size, text});
+    const preview = (host: HTMLElement) => host.querySelector('[data-testid="local-data-import-dialog"]');
+
+    it('continues a confirmed large file in its current view and previews it before any imported write', async () => {
+        const f = await fixture(); const confirmation = deferred<void>(); const payload = fileJson();
+        const text = vi.fn(async () => payload); const parse = vi.spyOn(JSON, 'parse');
+        ports.confirm.mockImplementationOnce(() => confirmation.promise);
+        try {
+            const selected = await f.chooseFile(filePort(text, 20 * 1024 * 1024 + 1));
+            expect(selected.input.value).toBe(''); expect(ports.confirm).toHaveBeenCalledOnce(); expect(text).not.toHaveBeenCalled();
+            expect(f.button().disabled).toBe(true); confirmation.resolve(); await settle();
+            expect(text).toHaveBeenCalledOnce(); expect(parse.mock.calls.filter(([value]) => value === payload).length).toBe(1);
+            expect(preview(f.page.host)?.textContent).toContain('controlled-local-import.json'); expect(f.button().disabled).toBe(false);
+            expect(ports.send).not.toHaveBeenCalled(); expect(ports.messages).not.toHaveBeenCalled(); expect(f.download).not.toHaveBeenCalled();
+        } finally {confirmation.resolve(); await settle(); parse.mockRestore(); await f.close();}
+    });
+
+    it.each(['inactive', 'reopen', 'keepalive', 'unmount'] as const)('does not start reading a large file after its confirmation owner becomes %s', async kind => {
+        const f = await fixture(); const confirmation = deferred<void>(); const text = vi.fn(async () => fileJson());
+        ports.confirm.mockImplementationOnce(() => confirmation.promise);
+        try {
+            const selected = await f.chooseFile(filePort(text, 20 * 1024 * 1024 + 1));
+            expect(selected.input.value).toBe(''); expect(ports.confirm).toHaveBeenCalledOnce(); expect(text).not.toHaveBeenCalled();
+            expect(f.button().disabled).toBe(true);
+            await f.leave(kind); confirmation.resolve(); await settle();
+            expect(text).not.toHaveBeenCalled(); expect(preview(f.page.host)).toBeNull();
+            expect(ports.messages).not.toHaveBeenCalled(); expect(selected.focus).not.toHaveBeenCalled(); expect(ports.send).not.toHaveBeenCalled();
+            if (kind !== 'unmount') {
+                await f.reactivate(); expect(f.button().disabled).toBe(false);
+                const fresh = vi.fn(async () => fileJson()); await f.chooseFile(filePort(fresh));
+                expect(fresh).toHaveBeenCalledOnce(); expect(preview(f.page.host)).not.toBeNull();
+            }
+        } finally {confirmation.resolve(); await settle(); await f.close();}
+    });
+
+    it.each([
+        ['inactive', 'resolve'], ['reopen', 'resolve'], ['keepalive', 'resolve'], ['unmount', 'resolve'],
+        ['inactive', 'reject'], ['reopen', 'reject'], ['keepalive', 'reject'], ['unmount', 'reject'],
+    ] as const)('discards a pending file %s/%s continuation before parse, preview, toast or focus', async (kind, outcome) => {
+        const f = await fixture(); const pending = deferred<string>(); const payload = fileJson();
+        const text = vi.fn(() => pending.promise);
+        // 透传原生 JSON.parse，仅对唯一 synthetic 文件字符串计数；不替换生产校验或解析算法。
+        const parse = vi.spyOn(JSON, 'parse');
+        const parseCount = () => parse.mock.calls.filter(([value]) => value === payload).length;
+        try {
+            const selected = await f.chooseFile(filePort(text)); expect(text).toHaveBeenCalledOnce(); expect(parseCount()).toBe(0);
+            expect(f.button().disabled).toBe(true); await f.leave(kind);
+            if (outcome === 'resolve') pending.resolve(payload); else pending.reject(new Error('Controlled file read failure'));
+            await settle();
+            expect(parseCount()).toBe(0); expect(preview(f.page.host)).toBeNull(); expect(ports.messages).not.toHaveBeenCalled();
+            expect(selected.focus).not.toHaveBeenCalled(); expect(ports.send).not.toHaveBeenCalled();
+            if (kind !== 'unmount') {
+                await f.reactivate(); expect(f.button().disabled).toBe(false);
+                const fresh = vi.fn(async () => payload); await f.chooseFile(filePort(fresh));
+                expect(fresh).toHaveBeenCalledOnce(); expect(parseCount()).toBe(1); expect(preview(f.page.host)).not.toBeNull();
+            }
+        } finally {pending.resolve(payload); await settle(); parse.mockRestore(); await f.close();}
+    });
+
+    it.each(['cancel', 'close'] as const)('keeps large-file %s at zero reads and permits another file selection', async action => {
+        const f = await fixture(); const text = vi.fn(async () => fileJson());
+        ports.confirm.mockRejectedValueOnce(action);
+        try {
+            const selected = await f.chooseFile(filePort(text, 20 * 1024 * 1024 + 1));
+            expect(selected.input.value).toBe(''); expect(text).not.toHaveBeenCalled(); expect(preview(f.page.host)).toBeNull();
+            expect(ports.messages).not.toHaveBeenCalled(); expect(f.button().disabled).toBe(false);
+            await f.chooseFile(filePort(text)); expect(text).toHaveBeenCalledOnce(); expect(preview(f.page.host)).not.toBeNull();
+        } finally {await f.close();}
+    });
+
+    it('shows a valid file preview with omitted active and does not write any imported data before confirmation', async () => {
+        const f = await fixture(true); const payload = fileJson(); const parse = vi.spyOn(JSON, 'parse');
+        try {
+            const selected = await f.chooseFile(filePort(vi.fn(async () => payload)));
+            expect(selected.input.value).toBe(''); expect(parse.mock.calls.filter(([value]) => value === payload).length).toBe(1);
+            expect(preview(f.page.host)?.textContent).toContain('controlled-local-import.json'); expect(f.button().disabled).toBe(false);
+            expect(ports.confirm).not.toHaveBeenCalled(); expect(ports.send).not.toHaveBeenCalled(); expect(f.download).not.toHaveBeenCalled();
+        } finally {parse.mockRestore(); await f.close();}
+    });
+
+    it('keeps an in-flight file valid across unrelated config replacement', async () => {
+        const f = await fixture(); const pending = deferred<string>(); const payload = fileJson();
+        try {
+            await f.chooseFile(filePort(vi.fn(() => pending.promise)));
+            f.page.state.config = normalizeConfig({...ports.config, count: 123, theme: 'dark'}); await settle();
+            pending.resolve(payload); await settle();
+            expect(preview(f.page.host)).not.toBeNull(); expect(f.button().disabled).toBe(false); expect(ports.messages).not.toHaveBeenCalled();
+        } finally {pending.resolve(payload); await settle(); await f.close();}
+    });
+
+    it('retains current malformed-file errors and lost-focus return while releasing busy for retry', async () => {
+        const f = await fixture(); const payload = 'round22 malformed JSON'; const parse = vi.spyOn(JSON, 'parse');
+        try {
+            const selected = await f.chooseFile(filePort(vi.fn(async () => payload)));
+            expect(parse.mock.calls.filter(([value]) => value === payload).length).toBe(1); expect(preview(f.page.host)).toBeNull();
+            expect(ports.messages).toHaveBeenCalledWith('error', expect.stringMatching(/^无法读取备份：/u));
+            expect(selected.focus).toHaveBeenCalledOnce(); expect(f.button().disabled).toBe(false);
+            await f.chooseFile(filePort(vi.fn(async () => fileJson()))); expect(preview(f.page.host)).not.toBeNull();
+        } finally {parse.mockRestore(); await f.close();}
+    });
+
+    it('rejects a controlled file change already outside the active view and allows a fresh active read', async () => {
+        const f = await fixture(); const text = vi.fn(async () => fileJson());
+        try {
+            f.page.state.active = false; await settle();
+            const selected = await f.chooseFile(filePort(text, 20 * 1024 * 1024 + 1));
+            expect(selected.input.value).toBe(''); expect(ports.confirm).not.toHaveBeenCalled(); expect(text).not.toHaveBeenCalled();
+            expect(f.button().disabled).toBe(false); await f.reactivate();
+            await f.chooseFile(filePort(text)); expect(text).toHaveBeenCalledOnce(); expect(preview(f.page.host)).not.toBeNull();
+        } finally {await f.close();}
     });
 });
