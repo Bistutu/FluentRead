@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 import * as ts from 'typescript';
 import { Config, normalizeConfig } from '@/src/core/config/model';
+import {GLOSSARY_LIMITS} from '@/src/core/glossary';
 describe('单图本地识别方式配置', () => {
     it('新配置、缺失和非法值默认 PaddleOCR，显式引擎选择可往返且不改变漫画开关', () => {
         expect(new Config().imageTranslationOcrEngine).toBe('paddle');
@@ -148,6 +149,23 @@ async function loadConfigModule(value: unknown = null, options: LoadConfigOption
         return () => storageWatchers.delete(key);
     });
     return import('@/src/services/config/store');
+}
+
+function createMaximumGlossaryLibraries() {
+    return Array.from({length: GLOSSARY_LIMITS.totalEntries / GLOSSARY_LIMITS.entriesPerLibrary}, (_, library) => ({
+        id: `patch-library-${library}`,
+        name: `Patch library ${library}`,
+        enabled: true,
+        sourceLanguage: 'en',
+        targetLanguage: 'zh-Hans',
+        domains: ['example.com'],
+        entries: Array.from({length: GLOSSARY_LIMITS.entriesPerLibrary}, (_, entry) => ({
+            id: `entry-${entry}`,
+            source: `source-${library}-${entry}`,
+            target: `target-${library}-${entry}`,
+            caseSensitive: false,
+        })),
+    }));
 }
 
 describe('统一配置存储', () => {
@@ -1813,6 +1831,85 @@ describe('统一配置存储', () => {
         expect(extensionPrepared).not.toHaveProperty('persistCredentials');
         expect(extensionPrepared.count).toBe(42);
         expect(extensionPrepared.videoServiceDefaultMigrated).toBe(true);
+    });
+
+    it('公共单字段补丁复用大型术语基线，保留公共归一化与结果嵌套隔离', async () => {
+        const configStore = await loadConfigModule(storedConfig);
+        await configStore.configReady;
+        const model = await import('@/src/core/config/model');
+        const current = model.normalizeConfig({glossaryLibraries: createMaximumGlossaryLibraries()});
+        const normalize = vi.spyOn(model, 'normalizeConfig');
+        try {
+            const trusted = configStore.prepareConfigPatchRequest({theme: 'dark'}, {theme: current.theme}, current, true);
+            // current、候选 patch、目的地绑定及最终独立副本各扫描一次，普通 patch 不重复生成 token 候选。
+            expect(normalize).toHaveBeenCalledTimes(4);
+            normalize.mockClear();
+            const untrusted = configStore.prepareConfigPatchRequest({theme: 'dark'}, {theme: current.theme}, current, false);
+            expect(normalize).toHaveBeenCalledTimes(3);
+            expect(trusted.glossaryLibraries.reduce((count, library) => count + library.entries.length, 0)).toBe(GLOSSARY_LIMITS.totalEntries);
+            expect(trusted.glossaryLibraries).toEqual(current.glossaryLibraries);
+            expect(untrusted.glossaryLibraries).toEqual(current.glossaryLibraries);
+            trusted.glossaryLibraries[0].entries[0].target = 'edited-result';
+            trusted.glossaryLibraries[0].domains.push('result.example');
+            expect(current.glossaryLibraries[0].entries[0].target).toBe('target-0-0');
+            expect(current.glossaryLibraries[0].domains).toEqual(['example.com']);
+            expect(untrusted.glossaryLibraries[0].entries[0].target).toBe('target-0-0');
+            current.glossaryLibraries[1].entries[0].target = 'edited-source';
+            expect(trusted.glossaryLibraries[1].entries[0].target).toBe('target-1-0');
+            const malformedCurrent = {...current, videoSubtitleVisible: 'invalid-boolean'};
+            const normalizedPublicInput = configStore.prepareConfigPatchRequest({videoSubtitleVisible: false}, {videoSubtitleVisible: true}, malformedCurrent, false);
+            expect(normalizedPublicInput.videoSubtitleVisible).toBe(false);
+            expect(malformedCurrent.videoSubtitleVisible).toBe('invalid-boolean');
+        } finally {
+            normalize.mockRestore();
+        }
+    });
+
+    it('客户端单字段补丁同步阶段只扫描七次大型术语配置，仍先乐观更新并在失败后回滚', async () => {
+        const canonical = sanitizeConfigCredentials(normalizeConfig({
+            ...storedConfig,
+            glossaryLibraries: createMaximumGlossaryLibraries(),
+        }));
+        const configStore = await loadConfigModule({...canonical, __fluentConfigRevision: 4}, {writeOwner: false});
+        await configStore.configReady;
+        const model = await import('@/src/core/config/model');
+        const normalize = vi.spyOn(model, 'normalizeConfig');
+        let request!: Promise<void>;
+        try {
+            request = configStore.requestConfigPatch({theme: 'dark'}, async () => ({success: false, error: 'fixture-patch-rejected'}));
+            expect(normalize).toHaveBeenCalledTimes(7);
+            expect(configStore.config.theme).toBe('dark');
+            expect(configStore.config.glossaryLibraries.reduce((count, library) => count + library.entries.length, 0)).toBe(GLOSSARY_LIMITS.totalEntries);
+            (canonical.glossaryLibraries as Config['glossaryLibraries'])[0].entries[0].target = 'edited-storage-input';
+            expect(configStore.config.glossaryLibraries[0].entries[0].target).toBe('target-0-0');
+        } finally {
+            normalize.mockRestore();
+            await expect(request).rejects.toThrow('fixture-patch-rejected');
+        }
+        expect(configStore.config.theme).toBe('auto');
+        expect(configStore.getConfigRevision()).toBe(4);
+    });
+
+    it('旧 token 候选复用只跳过未派生变更，轮换清空和多 Key 仍遵循显式字段 CAS', async () => {
+        const configStore = await loadConfigModule(storedConfig);
+        await configStore.configReady;
+        const current = normalizeConfig({apiKeys: {openai: ['fixture-first', 'fixture-second']}});
+        const rotated = configStore.prepareConfigPatchRequest(
+            {token: {openai: 'fixture-rotated'}},
+            {token: current.token},
+            current,
+            true,
+        );
+        expect(rotated).toMatchObject({token: {openai: 'fixture-rotated'}, apiKeys: {openai: ['fixture-rotated']}});
+        const cleared = configStore.prepareConfigPatchRequest({token: {}}, {token: current.token}, current, true);
+        expect(cleared).toMatchObject({token: {}, apiKeys: {}});
+        const explicitMultiKey = {token: {...current.token}, apiKeys: {openai: ['fixture-first', 'fixture-second']}};
+        const retained = configStore.prepareConfigPatchRequest(explicitMultiKey, {token: current.token, apiKeys: current.apiKeys}, current, true);
+        expect(retained.apiKeys.openai).toEqual(['fixture-first', 'fixture-second']);
+        expect(retained.apiKeys).not.toBe(explicitMultiKey.apiKeys);
+        expect(() => configStore.prepareConfigPatchRequest({token: {}}, {token: {}}, current, true)).toThrow('token');
+        expect(() => configStore.prepareConfigPatchRequest(explicitMultiKey, {token: current.token}, current, true)).toThrow('apiKeys');
+        expect(current.apiKeys.openai).toEqual(['fixture-first', 'fixture-second']);
     });
 
     it('字段补丁只接受已知目标字段，并保留最新配置、统计、迁移状态与 content 凭据边界', async () => {

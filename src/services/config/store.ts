@@ -2,7 +2,7 @@
  * @file src/services/config/store.ts
  *
  * 文件职责：协调 FluentRead 配置、凭据与历史记录在后台加密配置仓库中的读取、订阅、保存和并发持久化。
- * 主要内容：维护 config 响应式状态和监听器，区分公开配置与加密持久凭据，串行发送整份替换或字段级 patch，在页面关闭前把尚未确认的补丁链交给后台，并保护在途凭据编辑免受旧广播覆盖，处理乐观更新回滚、revision 冲突、旧会话凭据迁移、历史按需初始化、debounce 及 undo/redo 请求。
+ * 主要内容：维护 config 响应式状态和监听器，区分公开配置与加密持久凭据，串行发送整份替换或字段级 patch，在页面关闭前把尚未确认的补丁链交给后台，并保护在途凭据编辑免受旧广播覆盖；在内部同步 patch 路径复用已归一化独立快照，保留外部输入归一化、字段 CAS 与凭据目的地绑定，处理乐观更新回滚、revision 冲突、旧会话凭据迁移、历史按需初始化、debounce 及 undo/redo 请求。
  * 模块边界：本文件位于配置 application service 层，可协调 core 规则与浏览器存储端口；不包含设置页面组件，也不实现具体翻译供应商协议，调用方应通过公开服务 API 订阅或提交配置。
  */
 
@@ -967,14 +967,14 @@ function configPatchValuesEqual(left: unknown, right: unknown): boolean {
     return true;
 }
 
+/** currentConfig 必须是本模块刚归一化的独立快照；只读基线，但仍完整归一化每个候选 patch。 */
 function createConfigPatch(
     value: unknown,
-    currentValue: unknown,
+    currentConfig: Config,
     allowCredentialUpdates: boolean,
     omitUnchanged = true,
 ): Record<string, unknown> {
     if (!isConfigObject(value)) return {};
-    const currentConfig = normalizeConfig(currentValue);
     const requestedFields = Object.fromEntries(
         Object.entries(value).filter(([key]) => (
             CONFIG_KNOWN_FIELDS.has(key)
@@ -1000,11 +1000,11 @@ function createConfigPatch(
     );
 }
 
+/** expected 只在同步请求准备中引用独立快照；后续队列信封仍按原流程复制，不能传入运行时可变 config。 */
 function createConfigPatchExpectedValues(
     patch: Record<string, unknown>,
-    currentValue: unknown,
+    currentConfig: Config,
 ): Record<string, unknown> {
-    const currentConfig = normalizeConfig(currentValue);
     return Object.fromEntries(
         Object.keys(patch).map((key) => [key, currentConfig[key as keyof Config]]),
     );
@@ -1183,7 +1183,16 @@ export function prepareConfigPatchRequest(
     currentValue: unknown = config,
     allowCredentialUpdates = false,
 ): Config {
-    const currentConfig = normalizeConfig(currentValue);
+    return prepareConfigPatchFromSnapshot(value, expectedValue, normalizeConfig(currentValue), allowCredentialUpdates);
+}
+
+/** 仅接受本模块已归一化且独立的当前快照；公开入口仍先规范化未知输入，内部不缓存可变配置。 */
+function prepareConfigPatchFromSnapshot(
+    value: unknown,
+    expectedValue: unknown,
+    currentConfig: Config,
+    allowCredentialUpdates: boolean,
+): Config {
     // 后台必须对 wire patch 中每个合法字段执行 CAS；即使别的页面已经写成
     // 相同目标值，也不能先按“当前无变化”删掉该字段并绕过 expected 校验。
     const explicitPatch = createConfigPatch(value, currentConfig, allowCredentialUpdates, false);
@@ -1195,7 +1204,11 @@ export function prepareConfigPatchRequest(
     if (conflicts.length > 0) {
         throw new Error(`配置字段已更新，请同步后重试：${conflicts.join(', ')}`);
     }
-    const synchronizedPatch = createConfigPatch(synchronizeLegacyTokenPatch(value), currentConfig, allowCredentialUpdates, false);
+    const synchronizedInput = synchronizeLegacyTokenPatch(value);
+    // 无旧 token 派生变更时兼容函数原样返回输入，候选字段与已校验 CAS 的 explicitPatch 完全相同。
+    const synchronizedPatch = synchronizedInput === value
+        ? explicitPatch
+        : createConfigPatch(synchronizedInput, currentConfig, allowCredentialUpdates, false);
     for (const field of ['apiKeys'] as const) {
         if (Object.prototype.hasOwnProperty.call(synchronizedPatch, field)
             && !Object.prototype.hasOwnProperty.call(explicitPatch, field)) {
@@ -1632,7 +1645,7 @@ async function requestConfigMutation(
                         lastKnownCommittedCredentials!,
                     ));
                 }
-                const patched = prepareConfigPatchRequest(
+                const patched = prepareConfigPatchFromSnapshot(
                     messageConfig,
                     createConfigPatchExpectedValues(
                         messageConfig as unknown as Record<string, unknown>,
@@ -1892,7 +1905,7 @@ export async function requestConfigPatch(value: unknown, sendMessage?: ConfigMes
     );
     if (Object.keys(patch).length === 0) return;
     const expected = createConfigPatchExpectedValues(patch, previousConfig);
-    const normalized = prepareConfigPatchRequest(
+    const normalized = prepareConfigPatchFromSnapshot(
         patch,
         expected,
         previousConfig,
