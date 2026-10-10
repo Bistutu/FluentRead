@@ -3,12 +3,12 @@
  *
  * 文件职责：提供 FluentRead 简体中文语义资源，作为默认界面语言与缺失翻译的回退目录。
  * 主要内容：维护语言选择、popup、设置导航、通知和工具页面使用的稳定 message key，保证
- * 现有中文用户在切换或升级配置后仍看到兼容文案。
+ * 现有中文用户在切换或升级配置后仍看到兼容文案；共享七语目录只引用可独立裁剪的中文常量。
  * 模块边界：资源只描述扩展自己的界面文本；翻译服务的源文本、目标文本和用户内容不属于这里。
  */
 import videoLearningText from './video-learning/zh-CN.json';
-import {pdfReadingMessages} from './pdfReading';
-import {informationHighlightMessages} from './informationHighlight';
+import {pdfReadingChineseMessages} from './pdfReading';
+import {informationHighlightChineseMessages} from './informationHighlight';
 import reencounterText from './reencounter/zh-CN.json';
 import settingsCopyText from './settings-copy/zh-CN.json';
 import brandTaglines from './brand-taglines.json';
@@ -25,8 +25,8 @@ export const zhCNMessages = {
     "popup.compact.translate": "翻译",
     "popup.compact.restore": "还原",
     ...videoLearningText,
-    ...pdfReadingMessages['zh-CN'],
-    ...informationHighlightMessages['zh-CN'],
+    ...pdfReadingChineseMessages,
+    ...informationHighlightChineseMessages,
     ...reencounterText,
     ...settingsCopyText.messages,
     "settings.headers.title": "移除来源请求头",

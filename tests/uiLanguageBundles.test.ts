@@ -1,4 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {readFileSync} from 'node:fs';
+import {resolve} from 'node:path';
 
 type I18nModule = typeof import('@/src/core/i18n');
 type BundlesModule = typeof import('@/src/core/i18n/bundles');
@@ -67,6 +69,38 @@ describe('界面语言注册表', () => {
             expect(i18n.hasUiLanguageBundle(language as keyof typeof bundles.UI_LANGUAGE_BUNDLES)).toBe(true);
         }
         expect(i18n.translate('common.brand', 'en-US')).toBe(bundles.UI_LANGUAGE_BUNDLES['en-US'].messages['common.brand']);
+    });
+
+    it('默认中文入口只消费 PDF 阅读和信息高亮的独立中文常量', () => {
+        const source = readFileSync(resolve('src/core/i18n/messages/zh-CN.ts'), 'utf8');
+        expect(source).toContain("import {pdfReadingChineseMessages} from './pdfReading'");
+        expect(source).toContain("import {informationHighlightChineseMessages} from './informationHighlight'");
+        expect(source).not.toMatch(/\b(?:pdfReadingMessages|informationHighlightMessages)\b/u);
+    });
+
+    it('独立的七语常量保持完整目录和资源生成的语言映射一致', async () => {
+        const [pdf, highlight, chinese] = await Promise.all([
+            import('@/src/core/i18n/messages/pdfReading'),
+            import('@/src/core/i18n/messages/informationHighlight'),
+            import('@/src/core/i18n/messages/zh-CN'),
+        ]);
+        const languages = [
+            ['zh-CN', pdf.pdfReadingChineseMessages, highlight.informationHighlightChineseMessages],
+            ['en-US', pdf.pdfReadingEnglishMessages, highlight.informationHighlightEnglishMessages],
+            ['ja-JP', pdf.pdfReadingJapaneseMessages, highlight.informationHighlightJapaneseMessages],
+            ['ko-KR', pdf.pdfReadingKoreanMessages, highlight.informationHighlightKoreanMessages],
+            ['fr-FR', pdf.pdfReadingFrenchMessages, highlight.informationHighlightFrenchMessages],
+            ['ru-RU', pdf.pdfReadingRussianMessages, highlight.informationHighlightRussianMessages],
+            ['es-ES', pdf.pdfReadingSpanishMessages, highlight.informationHighlightSpanishMessages],
+        ] as const;
+        for (const [language, pdfMessages, highlightMessages] of languages) {
+            expect(pdf.pdfReadingMessages[language]).toBe(pdfMessages);
+            expect(highlight.informationHighlightMessages[language]).toBe(highlightMessages);
+            const catalog = language === 'zh-CN' ? chinese.zhCNMessages : bundles.UI_LANGUAGE_BUNDLES[language].messages;
+            for (const [key, value] of Object.entries({...pdfMessages, ...highlightMessages})) {
+                expect(catalog[key as keyof typeof catalog], `${language}: ${key}`).toBe(value);
+            }
+        }
     });
 });
 
