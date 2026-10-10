@@ -88,6 +88,24 @@ async function flushMicrotasks(times = 8): Promise<void> {
   for (let index = 0; index < times; index += 1) await Promise.resolve();
 }
 
+type ContextClient = 'single' | 'batch' | 'video';
+
+function contextGateRequest(
+  kind: ContextClient,
+  signal?: AbortSignal,
+  contextOptions: {pageContext?: string; enableAIContext?: boolean} = {},
+): Promise<string | string[]> {
+  return kind === 'video' ? translateVideoText('Context gate source', signal)
+    : kind === 'batch' ? translateTextBatch(['Context gate source'], 'Page', {signal, maxRetries: 0, ...contextOptions})
+      : translateText('Context gate source', 'Page', {signal, maxRetries: 0, ...contextOptions});
+}
+
+function enableContextGate(): void {
+  mocks.config.service = 'mock-ai';
+  mocks.config.videoService = 'mock-ai';
+  mocks.config.enableAIContext = true;
+}
+
 describe('translation API request lifecycle performance', () => {
   beforeEach(() => {
     vi.useFakeTimers();
@@ -571,6 +589,288 @@ describe('translation API request lifecycle performance', () => {
     cancelAllTranslations();
     expect(mocks.persistCountIncrement).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each(['single', 'batch', 'video'].flatMap(kind => (
+    ['success', 'failure'].map(late => ({kind: kind as ContextClient, late}))
+  )))('$kind 在自动上下文 gate 尚未放行时立即取消，并观察迟到的 $late', async ({kind, late}) => {
+    enableContextGate();
+    const gate = deferred<string>();
+    mocks.getPageTranslationContext.mockReturnValue(gate.promise);
+    mocks.sendMessage.mockResolvedValue(kind === 'batch' ? ['译文'] : '译文');
+    const controller = new AbortController();
+    const added = vi.spyOn(controller.signal, 'addEventListener');
+    const removed = vi.spyOn(controller.signal, 'removeEventListener');
+    const observed = vi.fn();
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    const outcome = contextGateRequest(kind, controller.signal).then(
+      value => {observed('fulfilled', value);return value;},
+      error => {observed('rejected', error);return error;},
+    );
+    try {
+      await flushMicrotasks();
+      expect(mocks.getPageTranslationContext).toHaveBeenCalledOnce();
+      controller.abort();
+      await flushMicrotasks();
+      expect(mocks.sendMessage).not.toHaveBeenCalled();
+      expect(mocks.persistCountIncrement).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+      // 先断言 caller 收口；finally 才释放 gate，旧实现失败也不会悬挂测试。
+      expect(observed).toHaveBeenCalledWith('rejected', expect.objectContaining({name: 'AbortError', message: '翻译已取消'}));
+      for (const [type, listener] of added.mock.calls) {
+        if (type === 'abort') expect(removed).toHaveBeenCalledWith('abort', listener);
+      }
+    } finally {
+      if (late === 'failure') gate.reject(new Error('Late page context failure'));
+      else gate.resolve('Late page context');
+      await outcome;
+      await flushMicrotasks();
+      await vi.advanceTimersByTimeAsync(0);
+      process.off('unhandledRejection', unhandled);
+    }
+    expect(observed).toHaveBeenCalledTimes(1);
+    expect(unhandled).not.toHaveBeenCalled();
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    expect(mocks.persistCountIncrement).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each(['single', 'batch', 'video'] as const)('%s 的 context gate 取消不影响共享 gate 的另一 caller', async kind => {
+    enableContextGate();
+    mocks.config.maxConcurrentTranslations = 1;
+    const gate = deferred<string>();
+    mocks.getPageTranslationContext.mockReturnValue(gate.promise);
+    mocks.sendMessage.mockResolvedValue(kind === 'batch' ? ['译文'] : '译文');
+    const controller = new AbortController();
+    const observed = vi.fn();
+    const first = contextGateRequest(kind, controller.signal).then(
+      value => {observed('fulfilled', value);return value;},
+      error => {observed('rejected', error);return error;},
+    );
+    let secondSettled = false;
+    const second = contextGateRequest(kind).then(value => {secondSettled = true;return value;});
+    try {
+      await flushMicrotasks();
+      controller.abort();
+      await flushMicrotasks();
+      expect(observed).toHaveBeenCalledWith('rejected', expect.objectContaining({name: 'AbortError', message: '翻译已取消'}));
+      expect(secondSettled).toBe(false);
+      expect(mocks.sendMessage).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      gate.resolve('Shared page context');
+      await Promise.all([first, second]);
+    }
+    expect(mocks.sendMessage).toHaveBeenCalledTimes(1);
+    expect(mocks.sendMessage).toHaveBeenCalledWith(expect.objectContaining({pageContext: 'Shared page context'}));
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(mocks.persistCountIncrement).toHaveBeenCalledTimes(1);
+    expect(mocks.persistCountIncrement.mock.calls[0]?.[0]).toBe(1);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each(['single', 'batch', 'video'] as const)('%s 的提前取消不提取自动上下文或发送消息', async kind => {
+    enableContextGate();
+    const controller = new AbortController();
+    controller.abort();
+    await expect(contextGateRequest(kind, controller.signal)).rejects.toMatchObject({name: 'AbortError', message: '翻译已取消'});
+    expect(mocks.getPageTranslationContext).not.toHaveBeenCalled();
+    expect(mocks.sendMessage).not.toHaveBeenCalled();
+    expect(mocks.persistCountIncrement).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it.each(['single', 'batch'].flatMap(kind => (
+    ['explicit', 'disabled'].map(mode => ({kind: kind as 'single' | 'batch', mode}))
+  )))('$kind 的 $mode 上下文不启动自动 gate，原 transport listener 仍清理', async ({kind, mode}) => {
+    enableContextGate();
+    const gate = deferred<string>();
+    mocks.getPageTranslationContext.mockReturnValue(gate.promise);
+    mocks.sendMessage.mockResolvedValue(kind === 'batch' ? ['译文'] : '译文');
+    const controller = new AbortController();
+    const added = vi.spyOn(controller.signal, 'addEventListener');
+    const removed = vi.spyOn(controller.signal, 'removeEventListener');
+    const supplied = `  ${'context '.repeat(600)}  `;
+    const request = contextGateRequest(kind, controller.signal, mode === 'explicit'
+      ? {pageContext: supplied} : {enableAIContext: false});
+    try {
+      await flushMicrotasks(16);
+      expect(mocks.getPageTranslationContext).not.toHaveBeenCalled();
+      await expect(request).resolves.toEqual(kind === 'batch' ? ['译文'] : '译文');
+      expect(mocks.sendMessage).toHaveBeenCalledWith(expect.objectContaining({
+        pageContext: mode === 'explicit' ? supplied.trim().slice(0, 4000) : undefined,
+      }));
+      for (const [type, listener] of added.mock.calls) {
+        if (type === 'abort') expect(removed).toHaveBeenCalledWith('abort', listener);
+      }
+      controller.abort();
+      await flushMicrotasks();
+      expect(mocks.sendMessage).toHaveBeenCalledTimes(1);
+    } finally {
+      gate.resolve('Unused page context');
+      await request.catch(() => undefined);
+    }
+  });
+
+  it.each(['single', 'batch', 'video'] as const)('%s 无 signal 的自动上下文仍正常等待与完成', async kind => {
+    enableContextGate();
+    const gate = deferred<string>();
+    mocks.getPageTranslationContext.mockReturnValue(gate.promise);
+    mocks.sendMessage.mockResolvedValue(kind === 'batch' ? ['译文'] : '译文');
+    let settled = false;
+    const request = contextGateRequest(kind).then(value => {settled = true;return value;});
+    try {
+      await flushMicrotasks();
+      expect(settled).toBe(false);
+      expect(mocks.sendMessage).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      gate.resolve('Uncancelled page context');
+      await request;
+    }
+    expect(mocks.sendMessage).toHaveBeenCalledTimes(1);
+    expect(mocks.sendMessage).toHaveBeenCalledWith(expect.objectContaining({pageContext: 'Uncancelled page context'}));
+  });
+
+  it.each(['single', 'batch', 'video'] as const)('%s 不支持 AI 上下文的服务不启动 gate', async kind => {
+    mocks.config.enableAIContext = true;
+    const gate = deferred<string>();
+    mocks.getPageTranslationContext.mockReturnValue(gate.promise);
+    mocks.sendMessage.mockResolvedValue(kind === 'batch' ? ['译文'] : '译文');
+    const request = contextGateRequest(kind);
+    try {
+      await flushMicrotasks(16);
+      expect(mocks.getPageTranslationContext).not.toHaveBeenCalled();
+      await expect(request).resolves.toEqual(kind === 'batch' ? ['译文'] : '译文');
+    } finally {
+      gate.resolve('Unused page context');
+      await request.catch(() => undefined);
+    }
+    expect(mocks.sendMessage).toHaveBeenCalledWith(expect.objectContaining({pageContext: undefined}));
+  });
+
+  it.each(['single', 'batch', 'video'].flatMap(kind => (
+    ['abort-first', 'context-first'].flatMap(order => (
+      ['success', 'failure'].map(settlement => ({kind: kind as ContextClient, order, settlement}))
+    ))
+  )))('$kind 的 $order/$settlement 同轮 settle/abort 仅取消一次且不启动 transport', async ({kind, order, settlement}) => {
+    enableContextGate();
+    const gate = deferred<string>();
+    mocks.getPageTranslationContext.mockReturnValue(gate.promise);
+    const controller = new AbortController();
+    const added = vi.spyOn(controller.signal, 'addEventListener');
+    const removed = vi.spyOn(controller.signal, 'removeEventListener');
+    const observed = vi.fn();
+    const outcome = contextGateRequest(kind, controller.signal).catch(error => {observed(error);return error;});
+    try {
+      await flushMicrotasks();
+      const settle = () => settlement === 'failure' ? gate.reject(new Error('Page context failed in same job'))
+        : gate.resolve('Settled page context');
+      if (order === 'abort-first') {controller.abort();settle();}
+      else {settle();controller.abort();}
+      await expect(outcome).resolves.toMatchObject({name: 'AbortError', message: '翻译已取消'});
+      expect(observed).toHaveBeenCalledTimes(1);
+      for (const [type, listener] of added.mock.calls) {
+        if (type === 'abort') expect(removed).toHaveBeenCalledWith('abort', listener);
+      }
+      expect(mocks.sendMessage).not.toHaveBeenCalled();
+      expect(mocks.persistCountIncrement).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      gate.resolve('Cleanup page context');
+      await outcome;
+    }
+  });
+
+  it.each(['single', 'batch', 'video'] as const)('%s 的 context extractor 同步取消后返回的 promise 仍观察迟到失败', async kind => {
+    enableContextGate();
+    const gate = deferred<string>();
+    const controller = new AbortController();
+    mocks.getPageTranslationContext.mockImplementation(() => {controller.abort();return gate.promise;});
+    const observed = vi.fn();
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    const outcome = contextGateRequest(kind, controller.signal).catch(error => {observed(error);return error;});
+    try {
+      await flushMicrotasks();
+      expect(observed).toHaveBeenCalledWith(expect.objectContaining({name: 'AbortError', message: '翻译已取消'}));
+      expect(mocks.sendMessage).not.toHaveBeenCalled();
+      expect(mocks.persistCountIncrement).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      gate.reject(new Error('Late synchronous-abort context failure'));
+      await outcome;
+      await flushMicrotasks();
+      await vi.advanceTimersByTimeAsync(0);
+      process.off('unhandledRejection', unhandled);
+    }
+    expect(unhandled).not.toHaveBeenCalled();
+    expect(observed).toHaveBeenCalledTimes(1);
+  });
+
+  it('自动上下文和 transport 正常完成后移除各自 signal listener', async () => {
+    enableContextGate();
+    const gate = deferred<string>();
+    const transport = deferred<string>();
+    mocks.getPageTranslationContext.mockReturnValue(gate.promise);
+    mocks.sendMessage.mockReturnValue(transport.promise);
+    const controller = new AbortController();
+    const added = vi.spyOn(controller.signal, 'addEventListener');
+    const removed = vi.spyOn(controller.signal, 'removeEventListener');
+    const request = contextGateRequest('single', controller.signal);
+    try {
+      await flushMicrotasks();
+      const contextListeners = [...added.mock.calls];
+      gate.resolve('Resolved page context');
+      await flushMicrotasks(16);
+      expect(mocks.sendMessage).toHaveBeenCalledTimes(1);
+      for (const [type, listener] of contextListeners) {
+        if (type === 'abort') expect(removed).toHaveBeenCalledWith('abort', listener);
+      }
+      transport.resolve('译文');
+      await expect(request).resolves.toBe('译文');
+      for (const [type, listener] of added.mock.calls) {
+        if (type === 'abort') expect(removed).toHaveBeenCalledWith('abort', listener);
+      }
+      controller.abort();
+      await flushMicrotasks();
+      expect(mocks.sendMessage).toHaveBeenCalledTimes(1);
+    } finally {
+      gate.resolve('Cleanup page context');
+      transport.resolve('Cleanup translation');
+      await request.catch(() => undefined);
+    }
+  });
+
+  it('未取消 caller 的自动上下文失败保留原错误并清理 signal listener', async () => {
+    enableContextGate();
+    const gate = deferred<string>();
+    mocks.getPageTranslationContext.mockReturnValue(gate.promise);
+    const controller = new AbortController();
+    const added = vi.spyOn(controller.signal, 'addEventListener');
+    const removed = vi.spyOn(controller.signal, 'removeEventListener');
+    const observed = vi.fn();
+    const outcome = contextGateRequest('single', controller.signal).catch(error => {observed(error);return error;});
+    const error = new Error('Page context unavailable');
+    try {
+      await flushMicrotasks();
+      gate.reject(error);
+      await expect(outcome).resolves.toBe(error);
+      controller.abort();
+      await flushMicrotasks();
+      expect(observed).toHaveBeenCalledTimes(1);
+      expect(observed).toHaveBeenCalledWith(error);
+      for (const [type, listener] of added.mock.calls) {
+        if (type === 'abort') expect(removed).toHaveBeenCalledWith('abort', listener);
+      }
+      expect(mocks.sendMessage).not.toHaveBeenCalled();
+      expect(mocks.persistCountIncrement).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      gate.resolve('Cleanup page context');
+      await outcome;
+    }
   });
 
   it.each(['chrome-text', 'text', 'batch', 'video'])('%s abort 发送精确 cancel，中止后台 broker signal 并及时释放前台队列', async (client) => {

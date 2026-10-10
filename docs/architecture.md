@@ -165,7 +165,7 @@ WXT 会把 `entrypoints/` 下零层或一层的入口作为构建输入，并在
 - 不使用运行时扫描目录或未知动态 import 自动发现 feature。
 - background、content、popup/options、offscreen 分别拥有静态注册表；不能创建一个会把所有上下文代码打进同一 bundle 的万能 barrel。
 - content 和仅包含 popup/options/unlisted-page 的构建组将配置存储解析为远端运行时，Dexie、加密仓库和旧配置迁移由 background 持有；配置写入仍经过后台权威持久化协议。包含 background 的构建组不进行替换，保留 Firefox MV2 后台页面的数据库能力。非中文界面语言包（含 legacy 精确文案与动态模板）作为 `i18n/<lang>.json` 按需 fetch，不进入 content 主包。内容脚本不能 `import()` 以 `use_dynamic_url` 暴露的扩展脚本：动态 ID 地址不满足隔离环境的 `script-src 'self'`，而固定地址会让网页探测扩展，因此 Defuddle 仍随内容脚本打包。
-- 页面上下文使用 Defuddle core 提取已清洗的脱离文档，由独立 Markdown 适配器复用 Turndown 与 MathML 转换；不为文本上下文引入公式渲染器。复杂表格和无法转换的公式保留结构，资源地址继续移除。捕获预算、失效代次、缓存和失败回退由 browser 适配器持有，投影模块不读取 live DOM、配置或网络。
+- 页面上下文使用 Defuddle core 提取已清洗的脱离文档，由独立 Markdown 适配器复用 Turndown 与 MathML 转换；不为文本上下文引入公式渲染器。复杂表格和无法转换的公式保留结构，资源地址继续移除。捕获预算、失效代次、缓存和失败回退由 browser 适配器持有，投影模块不读取 live DOM、配置或网络。翻译客户端的调用信号只结束本调用对自动上下文的等待，不取消共享提取或缓存；取消、成功、失败均移除本监听并消费迟到结果，未开始请求不发送后台取消消息，不提前释放传输队列租约。
 - 默认中文目录从多语言模块直接引用独立中文常量，避免对完整七语对象取属性使其他语言进入内容脚本和首屏共享包；完整七语汇总只用于其他语言目录、构建期资源与 Userscript 全集。语言键、回退和按需 fetch 契约保持一致。
 - 本地翻译的模型目录、下载状态和静态元数据位于 `core/config/localTranslation.ts`，不导入语言检测；指定与自动语言解析位于 `core/language/localTranslation.ts`，只由本地翻译 offscreen 运行路径调用。设置与配置初始化无需加载统计语料，模型语言映射和识别算法保持同一来源。
 - 中文语言标签与正文证据分离：`core/language/chinese.ts` 只归一化标签与解析书写体系，`chineseText.ts` 持有原有字形规则并由统一识别器消费。配置、语言目录和供应商标签映射无需初始化正文字符表、正则或集合；两者不建立反向导出。

@@ -541,6 +541,8 @@ node scripts/testing/run-google-backoff-browser-test.cjs \
 
 ## 翻译核心稳定性回归
 
+`tests/translateApiPerformance.test.ts` 通过实际客户端与受控页面上下文 gate，验证单条、批量和视频在 gate 未放行时随调用信号结束等待、另一调用继续、迟到成功/失败被消费，以及 signal 监听清理、同轮 settle/abort 和提取入口内同步取消。未取消的提取失败保留原错误；同轮失败尚未被观察而调用已取消时返回既有 AbortError。原显式上下文 trim/4,000 字符、禁用、不支持服务与无 signal 路径保留；无 signal 的全局取消和仅 queueSession 取消不在即时等待承诺内。`tests/pageContextDefuddle.test.ts` 继续验证共享提取、敏感节点清洗、SPA 代次和失败回退，`tests/translateQueue.test.ts` 验证实际传输结束前仍持有租约。同步 DOM 捕获或解析不能抢占中止，不据此宣称堆内存或真实设备耗时改善。
+
 OpenRouter 模型卡片曾在解除内部两行截断后仍保持外层 `height:176px`，使居中的双语内容覆盖相邻卡片。`translationHeightLayout.test.ts` 检查插入后由内向外测量、共享高度租约、宿主样式更新、窗口 resize、滚动/定位边界和移除清理；`translationTruncation.test.ts` 检查几何判断与安全边界。
 
 Factorio 模组列表的描述同时使用 `-webkit-line-clamp`、`height:4em` 与 `overflow:hidden`。旧逻辑虽已创建译文节点，却只解除行数限制，长描述的中文仍被固定高度裁掉。`translationTruncation.test.ts` 覆盖 owner 自身的高度租约、重复布局复核和恢复原样式；Issue #209 的实时页面专项只检查前三条描述的全文翻译、恢复与再次翻译，并以截图核对译文可见性。
