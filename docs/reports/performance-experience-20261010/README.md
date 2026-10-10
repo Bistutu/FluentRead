@@ -1,6 +1,6 @@
 # 体积、共享配置与页面交互优化（2026-10-10）
 
-本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 持续进行。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，第四批为 `97e92defe`，第五批为 `7e8ffe952`，第六批为 `621a1c2a2`，第七批为 `adbcfe428`，第八批为 `5e554d7fa`，第九批为 `85c29dffe`，第十批为 `626e4652e`，第十一批为 `80e2db0c5`，第十二批为 `d4c9b0a66`；后续继续使用同一集成基线，并与上一批冻结产物比较。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
+本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 持续进行。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，第四批为 `97e92defe`，第五批为 `7e8ffe952`，第六批为 `621a1c2a2`，第七批为 `adbcfe428`，第八批为 `5e554d7fa`，第九批为 `85c29dffe`，第十批为 `626e4652e`，第十一批为 `80e2db0c5`，第十二批为 `d4c9b0a66`，第十三批为 `6312bbbfd`；后续继续使用同一集成基线，并与上一批冻结产物比较。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
 
 ## 改动与测量
 
@@ -289,6 +289,22 @@ X 原生字幕 `sync` 原先先判时间轴，再为正文重新复制、筛选�
 
 类型检查、Chrome→Firefox→Userscript 顺序构建、双 manifest 及 Userscript verifier 通过；Userscript 为 **1,962,688 B**，增加 **305 B**。文档→Storybook 顺序构建后，**81 页面 / 28 stories**检查通过。本地报告目录在 VitePress `srcExclude` 中，不进入文档站点产物。完整 Chrome **65,613,812 → 65,614,875 B**，增加 **1,063 B**；同口径固定日期内存 ZIP **23,694,612 → 23,694,991 B**，增加 **379 B**。累计对冻结 `55d1219bd`，原始文件减少 **1,760,193 B**、ZIP 减少 **486,284 B**。300 个非 JS/MJS/HTML 静态文件与两个固定 MJS 的路径、大小和 SHA 均相同，没有界面样式或功能资源裁剪。证据为 `round13-static-ledger.json`、`round13-package-comparison.json` 与各构建/验证日志。收益是取消可及时收口、避免已取消的视频无效入队，接受小量产物成本；未验证在线 provider、Firefox 实机或低端设备，全部改动仅在本地。
 
+## 第十四批：满载字幕调度与讲解配置归属（2026-10-11）
+
+字幕调度器原先在三路真实在途已满时仍为每次重复请求枚举、过滤和排序等待队列，随后因无法启动任务退出。现在仅在该条件提前返回；当前句提升优先级仍发生在调用 pump 之前，传输结束后的 finally 继续原排序及调度。两路预取仍保留第三路，轻负载行为不变；clear 取消旧请求但不提前归还仍未结束的 provider 占用，同 key 新任务也不会被旧 finally 删除。没有新增状态、队列缓存、调度 helper 或并发协议。
+
+实际 cache→scheduler 的原/最终 SSR 对照各六组，共 **12 场景组**：当前句加八个后续句的播放窗口、三个在途及八个等待的合成夹具中，100 次满载重复更新的 pump 条目访问 **1,100 → 0**、排序 **700 → 0**。保留窗口的扫描仍为 1,100 次，两者合计 **2,200 → 1,100**，不能称所有队列遍历清零。仅两路预取的 100 次重复请求阶段保留原 300 次访问，没有报告该路径收益。seek 剔除旧预取、优先级提升、同级顺序、失败后续调度与不响应 abort 的旧传输均保留原结果、启动和错误归属。十一项队列大小是该夹具的状态，不是一般队列上限。真实生产 AST 与已验证最小候选相同，所有 gate、公共 Promise、队列、监听和两台 Vite server 已收口；证据为 `round14-runtime-audit/ACTUAL-FREEZE.json` 与 `actual-production-comparison.json`。
+
+收藏学习页原先比较整个配置快照，翻译计数、主题、动画或翻译术语库通知也会停止当前 AI 讲解，并使待保存解释的迟到界面结果失去归属。现在复用已有轻量 `getHarnessModelCacheKey`，局部补齐开关、目标语言、完整学习偏好、凭据要求、密钥轮换恢复及全局请求头规则；启用与原句授权仍实时更新，真实输入变化继续停止旧讲解，下一次明确操作才重新请求。模型比较仍保守包含多服务设置，没有声称这是最小的全局模型键。stop/reset/save、词条 watch、代次与卸载清理以及模板、样式逐字保留；已交给后台的 updateNote mutation 不会被撤回，保存测试只证明迟到界面事件和提示的归属。
+
+真实 SFC setup、实际 streamReading、配置规范化与完整提取的拥有者通知函数对照为 **42 行场景结果**，不是正式测试数。四个无关更新均从取消一次变为零次，最终回答可完成；十七个相关输入变化仍各取消一次。凭据要求夹具经复核改用当前模型的规范键，并在通知前后由实际 `isApiKeyRequired` 证明 **true → false**；最初裸 service 映射仅证明整个映射变化的失效，原证据保留。400 条合成术语的一次无关通知中，完整配置序列化 **1 → 0**，采样序列化输入 **68,731–68,733 → 4,388 B**；全部 JSON 调用 **2 → 3**，不能称总调用减少，也不能推断堆内存、耗时、配置存储量或网络量。实际 source/proposal AST、模板/样式和清理核对为 `round14-ux-audit/FREEZE.md`、`study-config-final-report.json` 与 `production-equivalence.json`。端口与 renderer 受控，未运行原生布局、真实服务、存储初始化或跨页面持久化。
+
+原四个 scheduler 测试保留，新增两项；旧源红阶段 **1 失败 / 5 通过**，只复现满载的 100 次无用 Map.values 枚举；最终六项通过。既有 scheduler 的 63 条语句、31 个分支、5 个函数、63 行严格覆盖率均 **100%**，无阈值降低或新增排除。学习页原三项保留，新增七个声明展开为 28 项；红阶段 **6 失败 / 25 通过**，复现四种无关更新取消与 count/theme 待保存归属丢失。最终 **31 项**通过，凭据夹具加强后再次通过并重跑类型检查。关联功能七文件 / 120 项、scheduler 六项和架构四文件 / 938 项去重合计 **12 文件 / 1,064 项**；重复运行不累加。分类审计为 **637 文件 / 10,410 个声明**，不代表全量执行。两位只读复核确认实际输入边界、旧用例与清理，没有剩余可操作缺陷。
+
+两项候选未采用：页面上下文 warm 路径只重新规范化短标题/描述并拼接已裁至 2,000 字符的正文，正常 300 次调用共处理 38,400 个元数据字符，没有再次清洗大正文；增加每个活跃快照至多 4,000 个逻辑字符的派生缓存不足以由正常收益证明。Tab 查询的简单 in-flight 合并会改变既有“新读取取代旧读取”的归属，实际 badge/menu 调用均强制刷新，未证明可用收益；reset 后简单命中 pending map 还可能复用旧文档。两处生产源码未修改，证据为 `round14-context-projection-audit/DELIVERY.md` 与 `round14-tab-query-audit/report.json`，未声称未执行的竞态、内存或浏览器表现。
+
+类型检查、Chrome→Firefox→Userscript 顺序构建、双 manifest 与 Userscript verifier 通过，Userscript **1,962,688 → 1,962,644 B**，减少 **44 B**。文档→Storybook 顺序构建及 **81 页面 / 28 stories**检查通过。完整 Chrome **65,614,875 → 65,614,959 B**，增加 **84 B**；同口径固定日期内存 ZIP **23,694,991 → 23,695,047 B**，增加 **56 B**。累计对冻结 `55d1219bd`，原始产物减少 **1,760,109 B**、ZIP 减少 **486,228 B**。299 个非 JS/MJS/HTML 静态文件及两个固定 MJS 路径/SHA 全等，唯一 LearningCenter CSS 为 scope hash 更新，35,364 B 与替换该 hash 后的全部字节一致；独立复算两包全部 860 条 path/bytes/SHA 与账本无差异，34 处 scope 替换与实际 JS 引用一致。增量为 content +25 B、LearningCenter JS +103 B、background -44 B，其余文件长度相同；后台压缩标识符广泛重命名，未将 44 B 具体归因于语义优化。证据为 `round14-source-freeze.json`、`round14-static-ledger.json`、`round14-package-comparison.json` 与构建/验证日志。收益是减少满载无用整理及避免无关通知打断讲解，接受小量包成本；没有新增依赖、公共模块、豁免或参考实现，全部改动仍仅在本地。未验证在线 provider、Firefox 实机或低端设备。
+
 ## 复核入口
 
 ```sh
@@ -307,6 +323,7 @@ node scripts/testing/run-color-field-focus-test.cjs --extension-dir .output/chro
 pnpm test tests/dateFormatLifecycle.test.ts tests/implementationAudit49C.test.ts tests/readingPanelStreamingResize.test.ts tests/readingPanelLifecycle.test.ts tests/usageDashboardLifecycle.test.ts
 pnpm test tests/usageDashboardLifecycle.test.ts tests/numberFormat.test.ts tests/modelUsageTokenFormat.test.ts tests/optionsAppNavigationLifecycle.test.ts tests/optionsNavigation.test.ts
 pnpm test tests/translateApiPerformance.test.ts tests/pageContextDefuddle.test.ts tests/pageContextMarkdown.test.ts tests/pageContextPolicy.test.ts tests/pageContext.test.ts tests/translateQueue.test.ts tests/sameTargetLanguageSlots.test.ts tests/sameTargetLanguageClient.test.ts tests/fullPageVisibilityScheduling.test.ts
+pnpm test tests/vocabularyStudyLifecycle.test.ts tests/vocabularyBookComponentLifecycle.test.ts tests/configHarness.test.ts tests/vocabularyLearningModel.test.ts tests/videoTranslationScheduler.test.ts tests/videoTranslationCache.test.ts tests/videoPretranslationController.test.ts tests/readingAssistantClient.test.ts
 pnpm test tests/xCaptionSource.test.ts tests/xVideoSubtitleData.test.ts tests/videoPretranslationController.test.ts tests/videoSubtitleTrackPriorityRuntime.test.ts
 pnpm test tests/selectionTranslatorCore.test.ts tests/readingAssistantPresentation.test.ts tests/translationCore.test.ts tests/documentSelectionRuntime.test.ts
 pnpm test:coverage -- tests/pageContextMarkdown.test.ts tests/pageContextDefuddle.test.ts --coverage.include=src/services/translation/context/markdown.ts

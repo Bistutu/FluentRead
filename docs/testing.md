@@ -294,6 +294,8 @@ node scripts/testing/run-webdav-backup-ui-test.cjs \
 
 ## YouTube 全屏与字幕同步
 
+`tests/videoTranslationScheduler.test.ts` 验证三路满载的重复当前句请求不枚举等待队列，仍合并同一 Promise、提升优先级并在完成后保留同级顺序；清理后不响应 abort 的旧传输仍占原名额，其迟到 finally 可启动同 key 的新请求。两路预取保留第三路的原行为继续回归，操作计数不代表播放器或供应商耗时。
+
 `node scripts/run-video-caption-prefetch-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <focus-safe-browser.cjs路径> --artifacts-dir /private/tmp/fluentread-caption-prefetch` 在临时 Edge profile 的第二屏后台窗口中，以固定 500ms 翻译响应检查 YouTube/X 的预取和首次显示：重复原生条目不能占满后续句子的名额，轨道加入后立即启动预取，缓存命中的原文与译文在同一次 DOM 更新中显示。报告记录请求启动时间、两行首次显示的间隔和焦点隔离信息；页面与供应商均为受控夹具，不代表真实账号或在线翻译服务的端到端延迟。
 
 同一专项还覆盖滚动字幕的上一句残留、窗口裁切的旧行、连续每 40ms 增词、无时间轴的请求启动延迟与缓存重播。报告中的 `dispatchMs` 只度量原文变化到请求发出的等待，不包含真实供应商耗时；译文仍使用确定性响应，不能据此声称真实视频端到端零延迟。
@@ -325,6 +327,8 @@ X 另覆盖未预取句子等待原译文成对显示、seek 后迟到结果丢�
 专项只检查普通译文页的学习方式均未选中、点击一次进入对应回答、历史默认折叠、按轮次和问题摘要逐条展开、键盘收起、展开不发请求且不改变当前问答、长问题在 390px 深色界面中换行、返回译文时清除选中状态、缓存动作切换和恢复已保存记录。使用第二屏后台隔离 Edge 与本地确定性响应，不代表在线模型质量或 Firefox 运行时验证。`tests/readingPanelLifecycle.test.ts` 另覆盖空记录返回后点击默认动作，以及历史展开不改变追问上下文。
 
 `tests/implementationAudit49C.test.ts` 通过真实学习笔记与阅读记录组件、确认弹窗和后台消息的受控端口，验证取消保留数据、挂载期间确认清空，以及确认尚未结束就卸载页面时不会发送清空请求。已经交给后台的清空操作不在此时撤回。
+
+`tests/vocabularyStudyLifecycle.test.ts` 执行真实收藏学习组件 setup，验证计数、主题、动画与翻译术语库通知保留当前回答和待保存解释；启用、目标语言、完整学习偏好、模型与 transport 设置变化继续取消旧回答，迟到结果不覆盖当前归属。配置夹具使用真实规范化与模型比较，流式消息和保存端口受控；不把 setup 生命周期回归当作真实模型、原生布局或在线服务验收。
 
 `tests/usageDashboardLifecycle.test.ts` 另执行实际 Model setup 的速度和秒/分钟格式函数：核对七种界面语言、单位阈值、负零与异常值、组件实例隔离和构造失败重试；共享固定规则及八语言缓存淘汰由 `tests/numberFormat.test.ts` 覆盖。
 
