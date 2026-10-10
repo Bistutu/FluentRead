@@ -460,6 +460,71 @@ it.each(['epub', 'docx'] as const)('documentbinaryAudit preserves cancellation r
     pending.resolve(new JSZip());
 });
 
+async function archiveExportDocument(extension: 'epub' | 'docx'): Promise<ParsedDocument> {
+    if (extension === 'epub') return parseBinaryDocument('reviewed.epub', await epub());
+    const zip = new JSZip().file('[Content_Types].xml', '<Types/>').file('word/document.xml',
+        '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body><w:p><w:r><w:t>Original text</w:t></w:r></w:p></w:body></w:document>');
+    return parseBinaryDocument('reviewed.docx', await generateDocumentArchive(zip));
+}
+
+it.each(['epub', 'docx'] as const)('documentbinaryAudit stops a pending %s export ZIP load before late completion and permits a real retry', async extension => {
+    const document = await archiveExportDocument(extension);
+    const bytes = document.binary!.bytes;
+    const lateZip = await JSZip.loadAsync(bytes);
+    const encodeArchive = vi.spyOn(lateZip, 'generateInternalStream');
+    const pending = deferred<JSZip>();
+    const load = vi.spyOn(JSZip, 'loadAsync').mockReturnValueOnce(pending.promise);
+    const controller = new AbortController(), reason = new Error('export ZIP load stopped');
+    const progress = vi.fn(), settled = vi.fn();
+    const translations = document.segments.map(() => '取消后保留的校订译文');
+    const work = createDocumentDownload(document, translations, 'bilingual', {signal: controller.signal, onArchiveProgress: progress});
+    const observed = work.then(value => settled('download', value), error => settled('canceled', error));
+    await vi.waitFor(() => expect(load).toHaveBeenCalledOnce());
+    controller.abort(reason);
+    // The export must settle from abort alone, while the underlying ZIP Promise is still unresolved.
+    for (let turn = 0; turn < 6; turn += 1) await Promise.resolve();
+    expect(settled).toHaveBeenCalledOnce();
+    expect(settled).toHaveBeenCalledWith('canceled', reason);
+    pending.resolve(lateZip);
+    await observed;
+    await new Promise<void>(resolve => setImmediate(resolve));
+    expect(settled).toHaveBeenCalledOnce();
+    expect(encodeArchive).not.toHaveBeenCalled();
+    expect(progress).not.toHaveBeenCalled();
+    load.mockRestore();
+    const retry = await createDocumentDownload(document, translations, 'bilingual');
+    const reopened = await JSZip.loadAsync(retry.data as Uint8Array);
+    const path = extension === 'epub' ? 'OPS/ch.xhtml' : 'word/document.xml';
+    expect(await reopened.file(path)!.async('string')).toContain('取消后保留的校订译文');
+    expect(document.binary!.bytes).toBe(bytes);
+});
+
+it.each(['epub', 'docx'] as const)('documentbinaryAudit consumes a late %s export ZIP rejection after cancellation', async extension => {
+    const document = await archiveExportDocument(extension);
+    const pending = deferred<JSZip>();
+    const load = vi.spyOn(JSZip, 'loadAsync').mockReturnValueOnce(pending.promise);
+    const controller = new AbortController(), reason = new Error('cancel before ZIP rejection');
+    const progress = vi.fn(), settled = vi.fn(), unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+    try {
+        const work = createDocumentDownload(document, ['保留译文'], 'translated', {signal: controller.signal, onArchiveProgress: progress});
+        const observed = work.then(value => settled('download', value), error => settled('canceled', error));
+        await vi.waitFor(() => expect(load).toHaveBeenCalledOnce());
+        controller.abort(reason);
+        for (let turn = 0; turn < 6; turn += 1) await Promise.resolve();
+        expect(settled).toHaveBeenCalledOnce();
+        expect(settled).toHaveBeenCalledWith('canceled', reason);
+        pending.reject(new Error('late ZIP decoding failure'));
+        await observed;
+        await new Promise<void>(resolve => setImmediate(resolve));
+        expect(settled).toHaveBeenCalledOnce();
+        expect(progress).not.toHaveBeenCalled();
+        expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+        process.removeListener('unhandledRejection', unhandled);
+    }
+});
+
 it('documentbinaryAudit rejects synchronously canceled File reads before interpreting their returned text', async () => {
     const controller = new AbortController();
     const file = {name: 'sync.txt', text: () => {controller.abort('sync stop'); return Promise.resolve('not committed');}, arrayBuffer: vi.fn()};

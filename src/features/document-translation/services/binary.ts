@@ -1160,7 +1160,9 @@ async function renderPdf(
 async function renderEpub(document: ParsedDocument, translations: readonly string[], mode: DocumentRenderMode, options: CreateDocumentDownloadOptions): Promise<Uint8Array> {
     if (document.binary?.kind !== 'epub') throw new Error('ePub 文档状态无效，请重新打开文件');
     const {default: JSZip} = await import('jszip');
-    const zip = await JSZip.loadAsync(document.binary.bytes);
+    options.signal?.throwIfAborted();
+    const zip = await awaitDocumentRead(JSZip.loadAsync(document.binary.bytes), options.signal);
+    options.signal?.throwIfAborted();
     assertArchiveSafety(zip, 'ePub');
     preserveStoredDocumentEntries(zip, document.binary.bytes, new Set(document.binary.chapters.map(chapter => chapter.path)));
     for (const chapter of document.binary.chapters) {
@@ -1231,7 +1233,9 @@ export function renderDocxPart(
 async function renderDocx(document: ParsedDocument, translations: readonly string[], mode: DocumentRenderMode, options: CreateDocumentDownloadOptions): Promise<Uint8Array> {
     if (document.binary?.kind !== 'docx') throw new Error('DOCX 文档状态无效，请重新打开文件');
     const {default: JSZip} = await import('jszip');
-    const zip = await JSZip.loadAsync(document.binary.bytes);
+    options.signal?.throwIfAborted();
+    const zip = await awaitDocumentRead(JSZip.loadAsync(document.binary.bytes), options.signal);
+    options.signal?.throwIfAborted();
     assertArchiveSafety(zip, 'DOCX');
     preserveStoredDocumentEntries(zip, document.binary.bytes, new Set(document.binary.parts.map(part => part.path)));
     for (const part of document.binary.parts) {
