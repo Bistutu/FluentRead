@@ -123,6 +123,7 @@ import {appendConfigAutoBackup} from '@/src/services/config/autoBackup';
 import {getConfigAutoBackupsSnapshot} from '@/src/services/config/autoBackupStore';
 import {prepareConfigForExport} from '@/src/core/config/transfer';
 import {VOCABULARY_BOOK_MESSAGE} from '@/src/features/vocabulary/public';
+import {createFluentReadDataBackup} from '@/src/features/settings/model/dataBackup';
 
 // 此组绕过恢复页原有的子页面 stub，执行真实本机备份 SFC；确认遮罩、下载和 IO 端口受控。
 const ActualLocalDataManagement = (await vi.importActual<typeof import('@/src/features/settings/ui/LocalDataManagement.vue')>(
@@ -1026,6 +1027,7 @@ describe('audit49C local backup confirmation ownership', () => {
         const page = await mount(Owner, {config: ports.config, ...defaultActive ? {} : {active: true}});
         const button = () => page.host.querySelector<HTMLButtonElement>('.transfer-actions button')!;
         const focus = vi.spyOn(button(), 'focus').mockImplementation(() => undefined);
+        const restoreFocus = vi.spyOn(page.host.querySelectorAll<HTMLButtonElement>('.transfer-actions button')[1], 'focus').mockImplementation(() => undefined);
         const fileFocusRestorers: Array<() => void> = [];
         const chooseFile = async (file: Pick<File, 'name' | 'size' | 'text'>) => {
             if (!page.host.querySelector('[data-testid="restore-source-dialog"]')) {
@@ -1051,13 +1053,13 @@ describe('audit49C local backup confirmation ownership', () => {
             if (kind === 'reopen') {page.state.active = true; await settle();}
         };
         const reactivate = async () => {page.state.active = true; shown.value = true; await settle();};
-        return {page, button, focus, create, revoke, download, blobs, chooseFile, leave, reactivate, stop, async close() {
+        return {page, button, focus, restoreFocus, create, revoke, download, blobs, chooseFile, leave, reactivate, stop, async close() {
             try {
                 stop(); await settle(); vi.runOnlyPendingTimers();
                 expect(blobs.size).toBe(0); expect(vi.getTimerCount()).toBe(0);
             } finally {
                 for (const restore of fileFocusRestorers) restore();
-                focus.mockRestore(); download.mockRestore(); create.mockRestore(); revoke.mockRestore();
+                restoreFocus.mockRestore(); focus.mockRestore(); download.mockRestore(); create.mockRestore(); revoke.mockRestore();
                 if (activeDescriptor) Object.defineProperty(dom.document, 'activeElement', activeDescriptor);
                 else Reflect.deleteProperty(dom.document, 'activeElement');
                 vi.useRealTimers();
@@ -1265,6 +1267,263 @@ describe('audit49C local backup confirmation ownership', () => {
             expect(selected.input.value).toBe(''); expect(ports.confirm).not.toHaveBeenCalled(); expect(text).not.toHaveBeenCalled();
             expect(f.button().disabled).toBe(false); await f.reactivate();
             await f.chooseFile(filePort(text)); expect(text).toHaveBeenCalledOnce(); expect(preview(f.page.host)).not.toBeNull();
+        } finally {await f.close();}
+    });
+
+    // 实际预览 footer 的确认 click 已接受领域写入；只控制领域 runtime 回执，不取消半恢复。
+    const modelReceipt = {success: true, data: {receivedCount: 0, importedCount: 0, duplicateCount: 0}};
+    const vocabularyReceipt = {success: true, data: {inserted: 0, updated: 0, skipped: 0}};
+    type ImportOutcome = 'success' | 'model-failure' | 'vocabulary-failure' | 'config-failure';
+    let completionRevision = 1000;
+    async function completionFixture(outcome: ImportOutcome = 'success', delaySourceClosed = false) {
+        const f = await fixture(); const model = deferred<unknown>(); const vocabulary = deferred<unknown>();
+        const importedConfig = prepareConfigForExport(normalizeConfig({...ports.config, to: 'ja',
+            token: {deepseek: 'synthetic-import-primary'}, apiKeys: {deepseek: ['synthetic-import-primary', 'synthetic-import-secondary']}}));
+        const backup = createFluentReadDataBackup({config: importedConfig,
+            vocabulary: {format: 'fluentread-vocabulary-book', version: 1, exportedAt: 1, includesPrivateContext: false, entries: [], reviewLogs: []},
+            modelUsage: {format: 'fluentread-model-usage', version: 1, exportedAt: 1, events: []}, exportedAt: 1});
+        ports.send.mockImplementation(async (message: {type: string; action?: string; config?: Config; baseRevision?: number}) => {
+            if (message.type === 'modelUsage' && message.action === 'import') return model.promise;
+            if (message.type === VOCABULARY_BOOK_MESSAGE && message.action === 'importData') return vocabulary.promise;
+            if (message.type === 'persistConfig') return outcome === 'config-failure'
+                ? {success: false, error: 'Controlled CAS conflict'} : {success: true, revision: ++completionRevision};
+            throw new Error('Unexpected accepted import IO port');
+        });
+        ports.delayDialogClosed = delaySourceClosed;
+        await f.chooseFile(filePort(async () => JSON.stringify(backup)));
+        const confirm = () => namedButton(preview(f.page.host) as HTMLElement, '确认导入');
+        const calls = () => ports.send.mock.calls.map(([message]) => [message.type, message.action ?? 'replace']);
+        const finishModel = async () => {model.resolve(outcome === 'model-failure' ? {success: false, error: 'Controlled model import failure'} : modelReceipt); await settle();};
+        const finishVocabulary = async () => {vocabulary.resolve(outcome === 'vocabulary-failure' ? {success: false, error: {message: 'Controlled vocabulary import failure'}} : vocabularyReceipt); await settle();};
+        return {...f, backup, confirm, calls, finishModel, finishVocabulary, async close() {
+            model.resolve(modelReceipt); vocabulary.resolve(vocabularyReceipt); await settle(); await f.close();
+        }};
+    }
+
+    it.each(['success', 'model-failure', 'vocabulary-failure', 'config-failure'] as const)('finishes current complete import %s through all real client domains and releases its preview', async outcome => {
+        const f = await completionFixture(outcome);
+        try {
+            const confirm = f.confirm(); confirm.click(); await settle();
+            expect(f.calls()).toEqual([['modelUsage', 'import']]); expect(confirm.disabled).toBe(true);
+            confirm.click(); await settle(); expect(f.calls()).toHaveLength(1);
+            await f.finishModel(); expect(f.calls()).toEqual([['modelUsage', 'import'], [VOCABULARY_BOOK_MESSAGE, 'importData']]);
+            await f.finishVocabulary();
+            expect(f.calls()).toEqual([['modelUsage', 'import'], [VOCABULARY_BOOK_MESSAGE, 'importData'], ['persistConfig', 'replace']]);
+            const saved = ports.send.mock.calls.find(([message]) => message.type === 'persistConfig')![0];
+            expect(saved.config).toMatchObject({to: 'ja', apiKeys: {deepseek: ['synthetic-import-primary', 'synthetic-import-secondary']}});
+            expect(Number.isSafeInteger(saved.baseRevision)).toBe(true); expect(saved.baseRevision).toBeGreaterThanOrEqual(0);
+            expect(saved.sequence).toBeGreaterThan(0); expect(saved.clientId).toEqual(expect.any(String));
+            expect(ports.messages).toHaveBeenCalledOnce(); expect(ports.messages.mock.calls[0][0]).toBe(outcome === 'success' ? 'success' : 'error');
+            expect(ports.messages.mock.calls[0][1]).toContain(outcome === 'success' ? '导入完成' : '导入完成但有失败项');
+            expect(preview(f.page.host)).toBeNull(); expect(f.button().disabled).toBe(false); expect(f.restoreFocus).toHaveBeenCalledOnce();
+        } finally {await f.close();}
+    });
+
+    it.each([
+        ['inactive', 'model', 'success'], ['reopen', 'model', 'success'], ['keepalive', 'model', 'success'], ['unmount', 'model', 'success'],
+        ['inactive', 'vocabulary', 'model-failure'], ['reopen', 'vocabulary', 'vocabulary-failure'], ['keepalive', 'vocabulary', 'config-failure'], ['unmount', 'vocabulary', 'vocabulary-failure'],
+    ] as const)('completes accepted %s/%s/%s writes without a stale completion toast or focus', async (kind, gate, outcome) => {
+        const f = await completionFixture(outcome);
+        try {
+            f.confirm().click(); await settle(); expect(f.calls()).toEqual([['modelUsage', 'import']]);
+            if (gate === 'vocabulary') await f.finishModel();
+            await f.leave(kind);
+            if (gate === 'model') await f.finishModel();
+            await f.finishVocabulary();
+            expect(f.calls()).toEqual([['modelUsage', 'import'], [VOCABULARY_BOOK_MESSAGE, 'importData'], ['persistConfig', 'replace']]);
+            expect.soft(ports.messages).not.toHaveBeenCalled(); expect.soft(f.restoreFocus).not.toHaveBeenCalled();
+            if (kind !== 'unmount') {
+                await f.reactivate(); expect(f.button().disabled).toBe(false); expect(preview(f.page.host)).toBeNull();
+                await f.chooseFile({...filePort(async () => fileJson()), name: 'fresh-after-accepted.json'});
+                expect(preview(f.page.host)?.textContent).toContain('fresh-after-accepted.json'); expect(f.confirm().disabled).toBe(false);
+            }
+        } finally {await f.close();}
+    });
+
+    it.each(['count', 'theme'] as const)('retains the complete config fingerprint contract when %s changes during accepted IO', async field => {
+        const f = await completionFixture();
+        try {
+            f.confirm().click(); await settle();
+            f.page.state.config = normalizeConfig({...ports.config, ...field === 'count' ? {count: 123} : {theme: 'dark'}}); await settle();
+            await f.finishModel(); await f.finishVocabulary();
+            expect(f.calls()).toEqual([['modelUsage', 'import'], [VOCABULARY_BOOK_MESSAGE, 'importData'], ...field === 'count' ? [['persistConfig', 'replace']] : []]);
+            if (field === 'count') {
+                expect(ports.send.mock.calls.find(([message]) => message.type === 'persistConfig')![0].config.count).toBe(123);
+                expect(ports.messages).toHaveBeenCalledWith('success', expect.stringContaining('设置已应用'));
+            } else expect(ports.messages).toHaveBeenCalledWith('error', expect.stringContaining('设置在导入期间已被其他页面修改'));
+            expect(f.button().disabled).toBe(false); expect(preview(f.page.host)).toBeNull();
+        } finally {await f.close();}
+    });
+
+    it('retires the accepted target before delayed closed so its retained footer cannot import it twice', async () => {
+        const f = await completionFixture();
+        try {
+            ports.delayDialogClosed = true;
+            const confirm = f.confirm(); confirm.click(); await settle(); await f.finishModel(); await f.finishVocabulary();
+            expect(preview(f.page.host)?.getAttribute('data-dialog-visible')).toBe('false'); expect(ports.pendingDialogClosed.size).toBe(1);
+            expect.soft(confirm.disabled).toBe(true); confirm.click(); await settle();
+            expect(f.calls()).toEqual([['modelUsage', 'import'], [VOCABULARY_BOOK_MESSAGE, 'importData'], ['persistConfig', 'replace']]);
+            for (const closed of [...ports.pendingDialogClosed]) closed(); await settle();
+            expect(preview(f.page.host)).toBeNull(); expect(f.button().disabled).toBe(false);
+        } finally {await f.close();}
+    });
+
+    it('keeps a fresh preview and focus intact when an old accepted preview delivers its captured closed callback', async () => {
+        const f = await completionFixture();
+        try {
+            ports.delayDialogClosed = true; f.confirm().click(); await settle(); await f.finishModel(); await f.finishVocabulary();
+            expect(ports.pendingDialogClosed.size).toBe(1);
+            // 捕获 SFC 交给公开 render API 的事件；只迟到递送 handler，不让端口旧帧关闭新 DOM。
+            const oldClosed = [...ports.renderedEvents].reverse().find(event => event.props['data-testid'] === 'local-data-import-dialog')!.props.onClosed as () => void;
+            expect(oldClosed).toEqual(expect.any(Function));
+            await f.chooseFile({...filePort(async () => fileJson()), name: 'fresh-owned-preview.json'});
+            expect(preview(f.page.host)?.textContent).toContain('fresh-owned-preview.json');
+            const calls = f.calls(); const focusCalls = f.restoreFocus.mock.calls.length;
+            oldClosed(); await settle();
+            expect.soft(preview(f.page.host)?.textContent).toContain('fresh-owned-preview.json');
+            expect.soft(f.confirm().disabled).toBe(false); expect(f.calls()).toEqual(calls);
+            expect(f.restoreFocus.mock.calls.length).toBe(focusCalls);
+        } finally {await f.close();}
+    });
+
+    it('withholds a captured source closed focus after an accepted import leaves and returns to the view', async () => {
+        const f = await completionFixture('success', true);
+        try {
+            const oldClosed = [...ports.renderedEvents].reverse().find(event => event.props['data-testid'] === 'restore-source-dialog')!.props.onClosed as () => void;
+            expect(oldClosed).toEqual(expect.any(Function));
+            f.confirm().click(); await settle(); await f.leave('reopen'); await f.finishModel(); await f.finishVocabulary();
+            expect(f.calls()).toEqual([['modelUsage', 'import'], [VOCABULARY_BOOK_MESSAGE, 'importData'], ['persistConfig', 'replace']]);
+            expect(f.restoreFocus).not.toHaveBeenCalled(); oldClosed(); await settle();
+            expect(f.restoreFocus).not.toHaveBeenCalled();
+        } finally {await f.close();}
+    });
+
+    it('returns normal accepted focus once after the dialog closed receipt and consumes duplicate receipts', async () => {
+        const f = await completionFixture();
+        try {
+            ports.delayDialogClosed = true; f.confirm().click(); await settle(); await f.finishModel(); await f.finishVocabulary();
+            const closed = [...ports.renderedEvents].reverse().find(event => event.props['data-testid'] === 'local-data-import-dialog')!.props.onClosed as () => void;
+            expect(f.restoreFocus).not.toHaveBeenCalled(); expect(ports.messages).toHaveBeenCalledOnce();
+            for (const receipt of [...ports.pendingDialogClosed]) receipt(); await settle();
+            expect(f.restoreFocus).toHaveBeenCalledOnce(); expect(preview(f.page.host)).toBeNull();
+            closed(); await settle(); expect(f.restoreFocus).toHaveBeenCalledOnce();
+        } finally {await f.close();}
+    });
+
+    it('returns current cancelled-preview focus once and allows a fresh preview without accepted writes', async () => {
+        const f = await completionFixture();
+        try {
+            namedButton(preview(f.page.host) as HTMLElement, '取消').click(); await settle();
+            expect(preview(f.page.host)).toBeNull(); expect(f.restoreFocus).toHaveBeenCalledOnce(); expect(ports.send).not.toHaveBeenCalled();
+            await f.chooseFile({...filePort(async () => fileJson()), name: 'fresh-after-cancel.json'});
+            expect(preview(f.page.host)?.textContent).toContain('fresh-after-cancel.json'); expect(f.confirm().disabled).toBe(false);
+        } finally {await f.close();}
+    });
+
+    it('disowns the old preview closed receipt when a new source is opened before another file is selected', async () => {
+        const f = await completionFixture();
+        try {
+            ports.delayDialogClosed = true; f.confirm().click(); await settle(); await f.finishModel(); await f.finishVocabulary();
+            const oldClosed = [...ports.renderedEvents].reverse().find(event => event.props['data-testid'] === 'local-data-import-dialog')!.props.onClosed as () => void;
+            f.page.host.querySelectorAll<HTMLButtonElement>('.transfer-actions button')[1].click(); await settle();
+            oldClosed(); await settle(); expect(f.restoreFocus).not.toHaveBeenCalled();
+            expect(f.page.host.querySelector('[data-testid="restore-source-dialog"]')?.getAttribute('data-dialog-visible')).toBe('true');
+            await f.chooseFile({...filePort(async () => fileJson()), name: 'fresh-source-selection.json'});
+            expect(preview(f.page.host)?.textContent).toContain('fresh-source-selection.json'); expect(f.confirm().disabled).toBe(false);
+        } finally {await f.close();}
+    });
+
+    it('rechecks preview focus ownership after nextTick when another source opens in the same job', async () => {
+        const f = await completionFixture();
+        try {
+            ports.delayDialogClosed = true; f.confirm().click(); await settle(); await f.finishModel(); await f.finishVocabulary();
+            const oldClosed = [...ports.renderedEvents].reverse().find(event => event.props['data-testid'] === 'local-data-import-dialog')!.props.onClosed as () => void;
+            oldClosed(); f.page.host.querySelectorAll<HTMLButtonElement>('.transfer-actions button')[1].click(); await settle();
+            expect(f.restoreFocus).not.toHaveBeenCalled();
+            expect(f.page.host.querySelector('[data-testid="restore-source-dialog"]')?.getAttribute('data-dialog-visible')).toBe('true');
+        } finally {await f.close();}
+    });
+
+    it('preserves external focus acquired before a current preview closed focus continuation runs', async () => {
+        const f = await completionFixture();
+        try {
+            ports.delayDialogClosed = true; f.confirm().click(); await settle(); await f.finishModel(); await f.finishVocabulary();
+            const closed = [...ports.renderedEvents].reverse().find(event => event.props['data-testid'] === 'local-data-import-dialog')!.props.onClosed as () => void;
+            closed();
+            const outside = dom.document.createElement('button'); dom.document.body.append(outside);
+            Object.defineProperty(dom.document, 'activeElement', {configurable: true, value: outside}); await settle();
+            expect(f.restoreFocus).not.toHaveBeenCalled(); expect(dom.document.activeElement).toBe(outside);
+        } finally {await f.close();}
+    });
+
+    it('refuses inactive preview confirmation but permits an explicitly accepted fresh preview on return', async () => {
+        const f = await completionFixture();
+        try {
+            await f.leave('inactive'); f.confirm().click(); await settle(); expect(ports.send).not.toHaveBeenCalled();
+            await f.reactivate(); namedButton(preview(f.page.host) as HTMLElement, '取消').click(); await settle();
+            await f.chooseFile({...filePort(async () => JSON.stringify(f.backup)), name: 'fresh-after-inactive.json'});
+            f.confirm().click(); await settle(); await f.finishModel(); await f.finishVocabulary();
+            expect(f.calls()).toEqual([['modelUsage', 'import'], [VOCABULARY_BOOK_MESSAGE, 'importData'], ['persistConfig', 'replace']]);
+            expect(ports.messages).toHaveBeenCalledWith('success', expect.stringContaining('导入完成')); expect(f.restoreFocus).toHaveBeenCalledOnce();
+        } finally {await f.close();}
+    });
+
+    it('rechecks source closed focus after nextTick and preserves the next source normal close', async () => {
+        const f = await fixture();
+        try {
+            ports.delayDialogClosed = true;
+            const open = f.page.host.querySelectorAll<HTMLButtonElement>('.transfer-actions button')[1]; open.click(); await settle();
+            const source = [...ports.renderedEvents].reverse().find(event => event.props['data-testid'] === 'restore-source-dialog')!;
+            (source.props['onUpdate:modelValue'] as (value: boolean) => void)(false); await settle();
+            (source.props.onClosed as () => void)(); open.click(); await settle();
+            expect(f.restoreFocus).not.toHaveBeenCalled();
+            expect(f.page.host.querySelector('[data-testid="restore-source-dialog"]')?.getAttribute('data-dialog-visible')).toBe('true');
+            const current = [...ports.renderedEvents].reverse().find(event => event.props['data-testid'] === 'restore-source-dialog')!;
+            (current.props['onUpdate:modelValue'] as (value: boolean) => void)(false); await settle();
+            for (const closed of [...ports.pendingDialogClosed]) closed(); await settle();
+            expect(f.restoreFocus).toHaveBeenCalledOnce(); expect(ports.send).not.toHaveBeenCalled();
+        } finally {await f.close();}
+    });
+
+    it('retires a cancelled target when a new source opens and closes without choosing another file', async () => {
+        const f = await completionFixture();
+        try {
+            ports.delayDialogClosed = true;
+            const confirm = f.confirm();
+            const oldClosed = [...ports.renderedEvents].reverse().find(event => event.props['data-testid'] === 'local-data-import-dialog')!.props.onClosed as () => void;
+            namedButton(preview(f.page.host) as HTMLElement, '取消').click(); await settle();
+            f.page.host.querySelectorAll<HTMLButtonElement>('.transfer-actions button')[1].click(); await settle();
+            expect(confirm.disabled).toBe(true); expect(preview(f.page.host)?.querySelector('.import-file-summary')).toBeNull();
+            const source = [...ports.renderedEvents].reverse().find(event => event.props['data-testid'] === 'restore-source-dialog')!;
+            (source.props['onUpdate:modelValue'] as (value: boolean) => void)(false); await settle();
+            for (const closed of [...ports.pendingDialogClosed]) closed(); await settle();
+            expect(preview(f.page.host)).toBeNull(); expect(f.restoreFocus).toHaveBeenCalledOnce();
+            oldClosed(); await settle(); expect(f.restoreFocus).toHaveBeenCalledOnce();
+            expect(ports.send).not.toHaveBeenCalled(); expect(f.button().disabled).toBe(false);
+        } finally {await f.close();}
+    });
+
+    it('preserves normal focus through two complete preview cycles and rejects their old closed receipts in a fresh source', async () => {
+        const f = await completionFixture();
+        try {
+            const oldClosed: (() => void)[] = [];
+            for (let cycle = 0; cycle < 2; cycle++) {
+                if (cycle) await f.chooseFile({...filePort(async () => JSON.stringify(f.backup)), name: 'second-complete-preview.json'});
+                oldClosed.push([...ports.renderedEvents].reverse().find(event => event.props['data-testid'] === 'local-data-import-dialog')!.props.onClosed as () => void);
+                f.confirm().click(); await settle(); await f.finishModel(); await f.finishVocabulary();
+                expect(preview(f.page.host)).toBeNull(); expect(f.button().disabled).toBe(false);
+                expect(f.restoreFocus).toHaveBeenCalledTimes(cycle + 1);
+                expect(ports.messages).toHaveBeenCalledTimes(cycle + 1);
+            }
+            expect(f.calls()).toEqual(Array.from({length: 2}, () => [['modelUsage', 'import'], [VOCABULARY_BOOK_MESSAGE, 'importData'], ['persistConfig', 'replace']]).flat());
+            f.page.host.querySelectorAll<HTMLButtonElement>('.transfer-actions button')[1].click(); await settle();
+            for (const closed of oldClosed) closed(); await settle();
+            expect(f.restoreFocus).toHaveBeenCalledTimes(2);
+            expect(f.page.host.querySelector('[data-testid="restore-source-dialog"]')?.getAttribute('data-dialog-visible')).toBe('true');
+            const source = [...ports.renderedEvents].reverse().find(event => event.props['data-testid'] === 'restore-source-dialog')!;
+            (source.props['onUpdate:modelValue'] as (value: boolean) => void)(false); await settle();
+            expect(f.restoreFocus).toHaveBeenCalledTimes(3); expect(ports.send).toHaveBeenCalledTimes(6);
+            expect(ports.messages).toHaveBeenCalledTimes(2);
         } finally {await f.close();}
     });
 });

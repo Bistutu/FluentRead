@@ -47,6 +47,8 @@ Before exporting, choose whether to include saved word context. Closing the conf
 
 If you switch to another settings section or the learning center during large-file confirmation or file reading, a late result will not open an import preview. Return and select the file again.
 
+Once you confirm an import, restoration already in progress continues to completion. After you leave the section, a late result will not show a notification or move focus back to the original button.
+
 A full backup can contain API keys, provider credentials, and saved original text. Keep it private. Earlier backups remain importable according to the import preview.
 
 The learning center also offers [Anki export](/en/guide/vocabulary-book#keep-your-collection-safe).
