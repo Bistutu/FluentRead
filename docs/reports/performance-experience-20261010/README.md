@@ -1,6 +1,6 @@
 # 体积、共享配置与页面交互优化（2026-10-10）
 
-本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 持续进行。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，第四批为 `97e92defe`，第五批为 `7e8ffe952`，第六批为 `621a1c2a2`，第七批为 `adbcfe428`，第八批为 `5e554d7fa`；后续继续使用同一集成基线，并与上一批冻结产物比较。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
+本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 持续进行。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，第四批为 `97e92defe`，第五批为 `7e8ffe952`，第六批为 `621a1c2a2`，第七批为 `adbcfe428`，第八批为 `5e554d7fa`，第九批为 `85c29dffe`；后续继续使用同一集成基线，并与上一批冻结产物比较。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
 
 ## 改动与测量
 
@@ -225,6 +225,24 @@ Broker 和请求快照原先通过 DOM 候选的 `core/translation/public.ts` �
 
 类型检查、Chrome→Firefox 顺序构建、双 manifest 验证、Userscript 构建与 **1,962,302 B** 产物 verifier 均通过；Userscript 较第八批增加 29 B。文档→Storybook 顺序构建后，81 页面与 28 stories 的静态检查通过。未新增依赖、公共模块或严格覆盖率排除，参考仓库未修改。
 
+## 第十批：DOM 守卫依赖与单轮原生字幕选轨（2026-10-11）
+
+学习中心原先通过阅读数据和朗读客户端进入划词纯算法，仅为取得标签读取和应用外壳判断，又导入整套 DOM 翻译候选。现在划词算法从已有 `translation/dom.ts` 使用同两个 helper，原候选总出口仍重导出相同函数。除这一条 import 与职责长头外，生产 AST 完全相同；DOM 守卫、公开总出口、站点 registry/compiler/catalog 源码 SHA 保持不变。实际模块探针的划词导入规则编译 **1 次 / 192 条 → 0 次**，显式导入候选入口后仍编译一次；两个 helper 引用身份、朗读语言规范化和摘要输出相同。没有新增数据出口、算法包装或配置缓存。
+
+冻结第九、十包在两个独占临时后台 Edge 中，按真实 options 通用页→侧栏学习中心→学习笔记的同序列运行。首次点击学习中心新增的唯一 JavaScript 文件原始字节为 **397,112 → 295,079 B**，减少 **102,033 B**；CSS 均为 **42,451 B**。旧包 registry 语句实际嵌在 core chunk，不能因物理 registry 文件不再请求便判断未初始化：CDP 在真实顶层编译语句短暂停顿并立即恢复，旧包命中一次，新包零次且未请求/解析 compiler。两个通用页阶段均未初始化规则，core 在新学习页仍按实际需要加载。该计数限定此页面 realm，断点只证明语句执行，没有把带断点的时间作为性能证据。
+
+两包实际词书空状态及笔记空状态可达，均发出一次成功的本机 `memory-list`、返回零条，没有模型或朗读请求。控制台错误、警告和外部请求为空，页面无横向溢出；正常后台第二屏不抢前台，两个专用 profile 已删除，四份原图已检查。报告为 `round10-learning-{baseline,final}/report.json`，临时 runner SHA 为 `36d2db9252f7019658db45bfe13915a53826842459e4c6022d570d747316f1d9`。这里的文件字节不是 gzip、网络传输或安装包大小，也未验证真实用户历史、TTS/provider、Firefox 实机或其他设备。
+
+X 原生字幕 `sync` 原先先判时间轴，再为正文重新复制、筛选、排序同一组轨道。现在保留全部 mode 写入与当前时间读取，在原时间轴位置选一次轨道，供同一轮判定和正文使用。下一轮仍读取新语言、宿主 mode、动态列表与 cue；完整导出独立选轨。没有使用隐藏前列表，没有 cue 索引或跨轮缓存，原生时间轴空档、sidecar/AI 回退、AI 主动接管等待和关闭恢复均保持原路径。
+
+实际生产 X 模块与冻结源码的 Vite SSR 对照，100 次原生 sync 的完整选轨为 **200 → 100 次**、live 列表读取 **300 → 200 次**；AI 仍为 100 / 200 次，关闭均为零。正文、来源、display、mode、恢复后 mode 及新完整导出逐项相同。新增五个声明/五个用例，红阶段 **4 失败 / 7 通过**仅复现重复选轨次数；后续语言、轨道增删、mode 变化、可变 cue 与 seek、隐藏写入时引入新轨道、时间轴增删、静音空档均有真实方法回归。探针的 TextTrack 和 DOM 端口为合成夹具，不据此推断真实 X 播放耗时；当前运行时读取为同步纯状态，没有中间 await 或回调，任意非标准、自行改变状态的 cues getter 同轮重入不在全等证明内。证据为 `round10-x-native-selection/`。
+
+互不重复的针对性回归合计 **12 文件 / 1,280 项**：X 四文件 / 50、划词/阅读/文档四文件 / 293、架构四文件 / 937（含 902 项源码长头）。单独 strict 的划词 66 项包含在前述 293 内，既有 selection core 为 363 条语句、233 个分支、37 个函数，四维 100%；未声称整个 translation core/dom 全覆盖。X 继续沿用原 DOM/TextTrack 验证归属，没有新增豁免或改变根 strict 配置。分类审计 636 文件 / 10,369 个声明用例通过，不把声明数当作全部执行。两位独立只读复核均未发现可操作缺陷。
+
+完整 Chrome 文件 **65,613,550 → 65,613,139 B**，减少 **411 B**；302 个非 JS/HTML 静态文件路径与 SHA 相同，background 仍为 2,040,309 B 且 SHA 不变。原独立 compiler chunk 迁入实际需要它的 `siteAdaptationEditor`，完整 192 条数据与编译行为仍在，真正站点设置/预览及三个 DOM 内容脚本均保留相同规则；没有删除站点适配。学习中心静态闭包减少 102,048 B，与实际新增请求的 102,033 B 属不同口径，分别保留账本而不混算。证据为 `selection-dom-boundary/round10-built-module-ledger.json` 与 `round10-built-learning-and-owners.json`。
+
+同口径内存 ZIP 为 **23,694,101 B**，较第九批减少 **584 B**；累计对冻结 `55d1219bd`，原始文件减少 **1,761,929 B**、ZIP 减少 **487,174 B**。类型检查、Chrome→Firefox 构建、双 manifest 验证、Userscript 构建与 **1,962,302 B** 产物 verifier 通过，Userscript 字节与第九批相同；文档→Storybook 顺序构建和 81 页面、28 stories 检查通过。收益是加载职责与重复操作减少，没有功能、语言、UI 样式或模型资源裁剪。
+
 ## 复核入口
 
 ```sh
@@ -240,6 +258,8 @@ node scripts/testing/run-onboarding-keyboard-and-provider-dialog-test.cjs --exte
 node scripts/testing/run-onboarding-keyboard-and-provider-dialog-test.cjs --extension-dir .output/chrome-mv3 --expect optimized --service-rules absent --prompt-defaults /path/to/frozen-prompt-defaults.json --artifacts-dir /private/tmp/fluentread-prompt-service
 node scripts/testing/run-caption-segment-filter-test.cjs --source-root . --expect optimized --artifacts-dir /private/tmp/fluentread-caption-filter
 node scripts/testing/run-color-field-focus-test.cjs --extension-dir .output/chrome-mv3 --expect optimized --artifacts-dir /private/tmp/fluentread-color-focus
+pnpm test tests/xCaptionSource.test.ts tests/xVideoSubtitleData.test.ts tests/videoPretranslationController.test.ts tests/videoSubtitleTrackPriorityRuntime.test.ts
+pnpm test tests/selectionTranslatorCore.test.ts tests/readingAssistantPresentation.test.ts tests/translationCore.test.ts tests/documentSelectionRuntime.test.ts
 pnpm test:coverage -- tests/pageContextMarkdown.test.ts tests/pageContextDefuddle.test.ts --coverage.include=src/services/translation/context/markdown.ts
 pnpm test:coverage -- tests/sameTargetLanguageSlots.test.ts tests/sameTargetLanguageClient.test.ts tests/sameTargetLanguageRegression.test.ts tests/liveTextTranslation.test.ts tests/translationSlotEchoRegression.test.ts tests/fullPageVisibilityScheduling.test.ts --coverage.include=src/features/full-page-translation/content/translationRequest.ts
 node scripts/testing/analyze-bundle-size.mjs .output/chrome-mv3 /path/to/baseline-chrome

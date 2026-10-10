@@ -2,8 +2,8 @@
   @file src/core/translation/README.md
 
   文件职责：记录翻译候选核心的职责、处理管线、适配器决策模型与验证契约，帮助维护者理解 DOM 到候选文本的统一政策。
-  主要内容：说明 dom、registry、engine、text、serialization 的协作顺序与独立文本槽协议，解释安全守卫、Shadow DOM、站点适配优先级，以及单元与真实站点回归的覆盖要求。
-  模块边界：该文档只描述 core/translation 的维护契约，不充当运行时代码；DOM 候选使用 public.ts，纯协议消费者直接使用 slotProtocol.ts，feature 调度和 provider 边界继续受架构测试约束。
+  主要内容：说明 dom、registry、engine、text、serialization 的协作顺序、独立文本槽协议与基础 DOM 守卫，解释安全守卫、Shadow DOM、站点适配优先级，以及单元与真实站点回归的覆盖要求。
+  模块边界：该文档只描述 core/translation 的维护契约，不充当运行时代码；候选使用 public.ts，纯协议与基础 DOM 判断分别直接使用 slotProtocol.ts、dom.ts，feature 调度和 provider 边界继续受架构测试约束。
 -->
 
 # Translation core
@@ -11,7 +11,9 @@
 This directory owns FluentRead's DOM-to-translation-candidate policy. Candidate
 callers outside the directory import `public.ts`. Consumers that only encode or
 parse text slots import `slotProtocol.ts` directly, without initializing DOM
-candidate dependencies or the site-adaptation registry. WXT treats a directory-level
+candidate dependencies or the site-adaptation registry. Consumers that only need
+basic DOM guards import `dom.ts`, whose functions read supplied DOM without
+loading candidate engines or compiling site rules. WXT treats a directory-level
 `index.ts` as an entrypoint, so this package intentionally has no `index.ts`.
 
 ## Text slot protocol
@@ -27,6 +29,12 @@ The protocol keeps deterministic marker identities, collision avoidance, literal
 marker handling and strict rejection of missing, duplicated or crossed slots.
 Changing a consumer's import does not create a second implementation or change
 cache identities.
+
+The same ownership rule applies to `getElementTagName` and
+`isTopLevelApplicationShell`: selection algorithms use their existing `dom.ts`
+definitions directly. The candidate public entry still re-exports those exact
+functions. Reading or speech clients that need selection helpers should not
+initialize the site-rule pack merely by loading those clients.
 
 ## Pipeline
 
