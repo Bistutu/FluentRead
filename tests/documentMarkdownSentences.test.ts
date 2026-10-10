@@ -1,11 +1,15 @@
 /**
  * @file tests/documentMarkdownSentences.test.ts
  * 文件职责：验证文档翻译页面的 Markdown 整句方式：一行作为一个片段翻译，链接文字参与翻译而地址保留，行内代码、网址与标签原样保护，并在导出时还原。
- * 主要内容：链接写成成对占位符、图片与双链等写成单个占位符；只有受保护内容的行不产生片段；占位符的各种返回写法都能还原；丢失、重复、错位或未知的占位符退回整句并把没放回句中的代码与网址补在句末；与原文相同的译文保留原行；默认方式（未启用整句）保持按受保护内容切分。
+ * 主要内容：通过项目已有 VitePress 内的标准 markdown-it 验证服务边缘空白移到强调分隔符之外后实际产生 strong/em 节点，已确认的指南括号+CJK、underscore 词内与 Unicode 符号边界只补必要空格，保留内部空白、空正文、链接/代码、嵌套和 invalid fallback；链接写成成对占位符、图片与双链等写成单个占位符；只有受保护内容的行不产生片段；占位符的各种返回写法都能还原；丢失、重复、错位或未知的占位符退回整句并把没放回句中的代码与网址补在句末；与原文相同的译文保留原行；默认方式（未启用整句）保持按受保护内容切分。
  * 模块边界：只测试纯解析与渲染；Obsidian 等其他调用方使用默认方式，由各自的测试覆盖。
  */
-import {describe, expect, it} from 'vitest';
+import {beforeAll, describe, expect, it} from 'vitest';
+import {createMarkdownRenderer} from 'vitepress';
 import {documentSegmentMarkupSources, parseDocument, renderDocument} from '@/src/features/document-translation/core/document';
+
+let standardMarkdown: Awaited<ReturnType<typeof createMarkdownRenderer>>;
+beforeAll(async () => {standardMarkdown = await createMarkdownRenderer(process.cwd(), {highlight: value => value});});
 
 const parse = (markdown: string) => parseDocument('note.md', markdown, {markdownSentences: true});
 const sources = (markdown: string) => parse(markdown).segments.map(segment => segment.source);
@@ -56,11 +60,68 @@ describe('Markdown whole-sentence translation', () => {
         const line = 'Keep **bold** and __strong__ with *italic* and _emphasis_, `**code**` and snake_case.';
         expect(sources(line)).toEqual(['Keep <g1>bold</g1> and <g2>strong</g2> with <g3>italic</g3> and <g4>emphasis</g4>, <g5/> and snake_case.']);
         expect(output(line, ['保留<g1>粗体</g1>和<g2>强调</g2>、<g3>斜体</g3>、<g4>重点</g4>，<g5/>与 snake_case。']))
-            .toBe('保留**粗体**和__强调__、*斜体*、_重点_，`**code**`与 snake_case。');
+            .toBe('保留**粗体**和 __强调__、*斜体*、_重点_，`**code**`与 snake_case。');
         expect(sources(String.raw`Literal \*stars\* and unclosed **marker`)).toEqual([String.raw`Literal \*stars\* and unclosed **marker`]);
         const document = parse('Translate this paragraph and keep **bold** text.');
         expect(documentSegmentMarkupSources(document).get(0)).toBe('Translate this paragraph and keep **bold** text.');
         expect(output('**B**', ['<g1>粗</g1>'])).toBe('**粗**');
+    });
+
+    it.each(['**', '__', '*', '_'])('adds only necessary CommonMark flanking gaps for %s, including the real guide ZIP label', marker => {
+        const tag = marker.length === 2 ? 'strong' : 'em';
+        const line = `Click ${marker}Download completed files (ZIP)${marker} to continue.`;
+        const translated = output(line, ['点击<g1>下载已完成文件（ZIP）</g1>即可继续。']);
+        const before = marker.startsWith('_') ? ' ' : '';
+        expect(translated).toBe(`点击${before}${marker}下载已完成文件（ZIP）${marker} 即可继续。`);
+        expect(standardMarkdown.renderInline(translated)).toContain(`<${tag}>下载已完成文件（ZIP）</${tag}>`);
+        for (const symbol of ['（', '$', '😀', '\u{10100}']) {
+            const withSymbols = output(line, [`甲<g1>${symbol}内容${symbol}</g1>乙`]);
+            expect(withSymbols).toBe(`甲 ${marker}${symbol}内容${symbol}${marker} 乙`);
+            expect(standardMarkdown.renderInline(withSymbols)).toContain(`<${tag}>${symbol}内容${symbol}</${tag}>`);
+        }
+        // 已有外侧空白/标点、文件首尾边界无需再补；丢标记时退回的正文也不带新增间隔。
+        expect(output(line, ['甲 <g1>（内容）</g1> 乙'])).toBe(`甲 ${marker}（内容）${marker} 乙`);
+        expect(output(line, ['（<g1>（内容）</g1>）'])).toBe(`（${marker}（内容）${marker}）`);
+        expect(output(line, ['<g1>（内容）</g1>'])).toBe(`${marker}（内容）${marker}`);
+        expect(output(line, ['甲<g1>（内容）</g1>乙<g99/>'])).toBe('甲（内容）乙');
+    });
+
+    it.each(['**', '__', '*', '_'])('moves provider edge whitespace outside %s so standard Markdown parses the translated style', marker => {
+        const line = `Read ${marker}bold words${marker} now.`;
+        const translated = output(line, ['阅读 <g1> \t正文  内部\u00a0 </g1>。']);
+        expect(translated).toBe(`阅读  \t${marker}正文  内部${marker}\u00a0 。`);
+        const tag = marker.length === 2 ? 'strong' : 'em';
+        expect(standardMarkdown.renderInline(`${marker} 粗体 ${marker}`)).not.toContain(`<${tag}>`);
+        expect(standardMarkdown.renderInline(translated)).toContain(`<${tag}>正文  内部</${tag}>`);
+        expect(output(line, ['阅读 <g1>正文  内部</g1>。'])).toBe(`阅读 ${marker}正文  内部${marker}。`);
+        for (const blank of ['', ' \t\u00a0']) expect(output(line, [`阅读 <g1>${blank}</g1>。`])).toBe(`阅读 ${marker}${blank}${marker}。`);
+        expect(output(line, ['阅读 <g1>\n\f\r正文\n\f\r</g1>。'])).toBe(`阅读 \n\f\r${marker}正文${marker}\n\f\r。`);
+    });
+
+    it('preserves non-emphasis whitespace, source nesting and invalid fallback while moving emphasis boundaries conservatively', () => {
+        // 实际解析器只生成外层 g，内层使用另一种原生强调语法；不允许服务把原先平级的 g 改成嵌套。
+        const line = 'Read **outer _inner_**, [link](https://example.com), and `**code**`.';
+        const document = parse(line);
+        expect(document.segments[0].source).toBe('Read <g1>outer _inner_</g1>, <g2>link</g2>, and <g3/>.');
+        const nested = '阅读<g1> 外层 _内层_ </g1>、<g2> 链接 </g2>与<g3/>。';
+        const translated = renderDocument(document, [nested], 'translated');
+        expect(translated).toBe('阅读 **外层 _内层_** 、[ 链接 ](https://example.com)与`**code**`。');
+        expect(standardMarkdown.renderInline(translated)).toContain('<strong>外层 <em>内层</em></strong>');
+        expect(output('Use **bold** and `code` now.', ['甲<g1> 乙 </g1>丙<g99/> <g2/>']))
+            .toBe('甲 乙 丙 `code`');
+        expect(output('Use **bold** now.', ['甲<g1> 乙'])).toBe('甲 乙');
+        expect(output('Use **bold** now.', ['甲<g1/>乙'])).toBe('甲乙');
+        expect(output('Use **bold** now.', ['甲<g1> 外层<g99> 内层 </g99> </g1>。'])).toBe('甲 外层 内层 。');
+        expect(output('Use **bold** now.', ['甲<g1> 乙 </g1><g1> 丙 </g1>。'])).toBe('甲 乙 丙 。');
+        expect(output('Read [link](https://example.com).', ['阅读<g1> 链接 </g1>。']))
+            .toBe('阅读[ 链接 ](https://example.com)。');
+        expect(output('Read <strong>bold</strong>.', ['阅读<strong> 粗体 </strong>。']))
+            .toBe('阅读<strong> 粗体 </strong>。');
+        const punctuation = output('Read **bold**.', ['阅读（<g1> 粗体 </g1>）。']);
+        expect(punctuation).toBe('阅读（ **粗体** ）。');
+        expect(standardMarkdown.renderInline(punctuation)).toContain('<strong>粗体</strong>');
+        // VT 不属于 CommonMark 空白：保留控制字符，而不是用 JavaScript \s 全部去掉。
+        expect(output('Read **bold**.', ['阅读<g1>\v粗体\v</g1>。'])).toBe('阅读**\v粗体\v**。');
     });
 
     it('preserves guide container directives once while translating their body, including quoted and nested containers', () => {

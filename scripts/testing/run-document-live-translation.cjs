@@ -4,7 +4,7 @@
 /**
  * @file scripts/testing/run-document-live-translation.cjs
  * 文件职责：在独立生产 Edge 配置中真实验证免费服务翻译普通文档、PDF 阅读与左右对照导出。
- * 主要内容：复用后台焦点保护启动器与原生激活事件观察器，只设置免费服务与英译中公开选项；按输入文件逐份导入、真实翻译、阅读、下载，保存完整段落、状态、脱敏网络统计和截图。PDF 用 PDF.js 重开校验页数、左右对照尺寸与页序，再用 Poppler 渲染；--readable-pdf-first 在首份 PDF 同次真实译文上另验可复制重排导出、逐段中文文字层及首页/尾页图片。普通格式重新解析下载文件，DOCX/ePub 解包核对译文、结构与图片。默认运行实际 Attention 15 页、仓库八种普通格式及英文产品指南，--inputs 可缩小范围。Markdown 严格核对代码、链接、译文强调及指南容器、组件标记，并按源文本与同一标签检查两项已确认的内部英文残留回归；仅读取这些内容，不执行组件。
+ * 主要内容：复用后台焦点保护启动器与原生激活事件观察器，只设置免费服务与英译中公开选项；按输入文件逐份导入、真实翻译、阅读、下载，保存完整段落、状态、脱敏网络统计和截图。PDF 用 PDF.js 重开校验页数、左右对照尺寸与页序，再用 Poppler 渲染；--readable-pdf-first 在首份 PDF 同次真实译文上另验可复制重排导出、逐段中文文字层及首页/尾页图片。普通格式重新解析下载文件，DOCX/ePub 解包核对译文、结构与图片。默认运行实际 Attention 15 页、仓库八种普通格式及英文产品指南，--inputs 可缩小范围。Markdown 严格核对代码、链接、译文强调及指南容器、组件标记，以 VitePress 已有 markdown-it 的标准强调节点核对实际下载（先扣除原文节点，不能只数星号或用产品预览证明译文格式），并按源文本与同一标签检查两项已确认的内部英文残留回归；仅读取这些内容，不执行组件。
  * 模块边界：不创建请求路由、不替换 fetch、不伪造译文、不配置付费账户，不读取或输出任何凭据；只使用本次新建的临时浏览器配置，不操作用户浏览器。中文及无测试标记只能证明实际结果，译文质量和排版需结合保存的数据与图片人工复核。
  */
 const assert = require('node:assert/strict');
@@ -226,6 +226,33 @@ async function validateOtherDownload(sourceBytes, outputBytes, snapshot, require
       const refs = [...source.matchAll(/\]\(([^)]*)\)/gu)].map(match => match[1]); refs.forEach(value => assert(text.includes(`](${value})`), 'Markdown destination changed'));
       const sourceEmphasis = [...source.matchAll(/(?<![\\*])(\*\*|\*)(?![\s*])([^*\n]*?\S)\1(?!\*)|(?<![\\\p{L}\p{N}])(__|_)(?![\s_])([^_\n]*?\S)\3(?![\p{L}\p{N}_])/gu)].map(match => match[0]);
       sourceEmphasis.forEach(value => assert(text.includes(value), 'Markdown source emphasis changed'));
+      // 使用仓库已有的标准 markdown-it，不执行 HTML/Vue 或代码高亮。按实际节点及正文计数，
+      // 从双语输出扣除原文的同类型/同正文节点后，剩余节点才可证明真实译文的强调有效。
+      const {createMarkdownRenderer} = await import(requireRepo.resolve('vitepress'));
+      const markdown = await createMarkdownRenderer(process.cwd(), {highlight: value => value, linkify: false});
+      const inlineText = tokens => tokens.filter(token => ['text', 'code_inline', 'softbreak', 'hardbreak'].includes(token.type))
+        .map(token => ['softbreak', 'hardbreak'].includes(token.type) ? '\n' : token.content).join('');
+      const plainInline = value => markdown.parseInline(value, {}).map(token => inlineText(token.children || [])).join('');
+      const styles = value => markdown.parse(value, {}).flatMap(token => {
+        const nodes = [], active = [];
+        for (const child of token.children || []) {
+          if (['strong_open', 'em_open'].includes(child.type)) active.push({type: child.type.slice(0, -5), text: ''});
+          else if (['strong_close', 'em_close'].includes(child.type)) nodes.push(active.pop());
+          else for (const node of active) node.text += inlineText([child]);
+        }
+        return nodes;
+      });
+      const styleKey = (type, value) => `${type}:${compact(value)}`;
+      const counts = nodes => nodes.reduce((values, node) => {
+        const key = styleKey(node.type, node.text); values.set(key, (values.get(key) || 0) + 1); return values;
+      }, new Map());
+      const sourceStyles = styles(source), outputStyles = styles(text), eligibleStyles = counts(sourceStyles), translatedStyles = counts(outputStyles);
+      for (const [key, count] of eligibleStyles) {
+        const actual = translatedStyles.get(key) || 0;
+        assert(actual >= count, `Standard Markdown lost an original emphasis node: ${key}`);
+        translatedStyles.set(key, actual - count);
+      }
+      const standardStyleChecks = [];
       let translatedEmphasis = 0, translatedHtmlTokens = 0;
       const translatedContent = compact(canonicalEntities(text)), inlineTextRegressions = [];
       for (const part of snapshot.markdownParts || []) {
@@ -242,6 +269,17 @@ async function validateOtherDownload(sourceBytes, outputBytes, snapshot, require
           // 只机械检查这次真实发现的两项回归，不能证明一般语义质量。按源词和同一标签匹配，
           // 不依赖章节/段落 id；代码自闭合槽位、产品标识和 Reference 等名称允许保留英文。
           const original = emphasis ? marker.exec(canonicalSlots(canonicalEntities(segment.source))) : null;
+          if (original) {
+            const type = token.open.length === 2 ? 'strong' : 'em', originalKey = styleKey(type, plainInline(original[1]));
+            // 只要求原文中已被标准解析器识别的样式；不把原有无效 Markdown 升级为新语法。
+            if ((eligibleStyles.get(originalKey) || 0) > 0) {
+              eligibleStyles.set(originalKey, eligibleStyles.get(originalKey) - 1);
+              const body = plainInline(translated[1]), translatedKey = styleKey(type, body), count = translatedStyles.get(translatedKey) || 0;
+              assert(count > 0, `Standard Markdown lost translated ${type} in segment ${part.segmentIndex}, marker ${id}: ${body}`);
+              translatedStyles.set(translatedKey, count - 1);
+              standardStyleChecks.push({segment: part.segmentIndex, marker: id, type, body, chineseBody: /\p{Script=Han}/u.test(body)});
+            }
+          }
           if (original && ['bold', 'documenttranslation'].includes(compact(original[1]))) {
             assert(compact(translated[1]) !== compact(original[1]) && /\p{Script=Han}/u.test(translated[1]),
               `Live service left ordinary Markdown emphasis untranslated in segment ${part.segmentIndex}, marker ${id}: ${original[1]}`);
@@ -267,6 +305,14 @@ async function validateOtherDownload(sourceBytes, outputBytes, snapshot, require
       structure.forEach(value => assert(text.includes(value), 'Markdown HTML container changed'));
       checks.fencedCodeBlocks = code.length; checks.inlineCodeSpans = inlineCode.length; checks.linkDestinations = refs.length;
       checks.sourceEmphasis = sourceEmphasis.length; checks.translatedEmphasis = translatedEmphasis;
+      checks.standardMarkdown = {
+        parser: 'VitePress bundled markdown-it; standard emphasis delimiter rules; parsed text only',
+        sourceStrong: sourceStyles.filter(node => node.type === 'strong').length, sourceEm: sourceStyles.filter(node => node.type === 'em').length,
+        outputStrong: outputStyles.filter(node => node.type === 'strong').length, outputEm: outputStyles.filter(node => node.type === 'em').length,
+        translatedStrong: standardStyleChecks.filter(node => node.type === 'strong').length, translatedEm: standardStyleChecks.filter(node => node.type === 'em').length,
+        nodes: standardStyleChecks,
+        boundary: 'Mechanical formatting regression check against actual saved target bodies; valid style and Chinese text do not establish general semantic quality.',
+      };
       checks.inlineTextRegressions = inlineTextRegressions;
       checks.translatedHtmlTokens = translatedHtmlTokens; checks.rawHtmlSegments = rawHtmlSegments;
       checks.translatedBlockPrefixes = translatedBlockPrefixes;
