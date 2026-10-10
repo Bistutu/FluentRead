@@ -187,11 +187,35 @@ describe('PDF translation painter rotated geometry', () => {
             lines: [{x: 10, y: 20, width: 30, height: 12, text: 'Source'}]};
         const original = structuredClone(cell);
         paintPdfTranslation(canvas, {...input(), rotation, width: canvas.width, height: canvas.height, blocks: [cell], translations: ['译文']});
-        expect(context.fillRect).toHaveBeenCalledWith(9.5, 20, 31, 10);
+        expect(context.fillRect).toHaveBeenCalledWith(10, 20, 30, 10);
         expect(context.rect).toHaveBeenCalledWith(10, 20, 30, 10);
         expect(context.fillText).toHaveBeenCalledOnce();
         expect(context.restore.mock.calls.length).toBe(context.save.mock.calls.length);
         expect(cell).toEqual(original);
+    });
+    it.each([0, 90, 180, 270] as const)('fully erases descender edge pixels at rotation %s without crossing table borders', rotation => {
+        const quarterTurn = rotation === 90 || rotation === 270;
+        const canvas = document.createElement('canvas'); canvas.width = quarterTurn ? 1900 : 1469; canvas.height = quarterTurn ? 1469 : 1900;
+        const context = canvases[0].getContext();
+        // Actual source-page 58 monospace `target`: the g outline fits geometrically,
+        // but the old fractional bottom leaves only 0.13 physical pixels of margin.
+        const run = {x: 420.76614, y: 611.61159875, width: 28.8984384, height: 8, text: 'target'};
+        const cell = {x: 410, y: 607, width: 100, height: 17.53738};
+        const source = {...block, x: run.x, y: run.y, width: 60, height: 8, fontSize: 8, lineHeight: 8,
+            kind: 'table' as const, cellBounds: cell, lines: [{...run, runs: [run]}]};
+        const original = structuredClone(source);
+        paintPdfTranslation(canvas, {...input(), rotation, width: quarterTurn ? 792 : 612, height: quarterTurn ? 612 : 792,
+            blocks: [source], translations: ['译文']});
+        const [left, top, width, height] = context.fillRect.mock.calls[0];
+        const scaleX = 1469 / 612, scaleY = 1900 / 792;
+        const outlineBottom = 620.75613 * scaleY;
+        expect([left, top, width, height].every(Number.isInteger)).toBe(true);
+        expect(top + height).toBeGreaterThanOrEqual(Math.ceil(outlineBottom));
+        expect(left).toBeGreaterThanOrEqual((cell.x + 0.5) * scaleX);
+        expect(left + width).toBeLessThanOrEqual((cell.x + cell.width - 0.5) * scaleX);
+        expect(top).toBeGreaterThanOrEqual((cell.y + 0.5) * scaleY);
+        expect(top + height).toBeLessThanOrEqual((cell.y + cell.height - 0.5) * scaleY);
+        expect(source).toEqual(original);
     });
     it.each([{width: 8, x: 10}, {width: 30, x: 99}])('replaces prose even at a narrow page-edge box $width/$x', geometry => {
         const canvas = document.createElement('canvas'); canvas.width = 100; canvas.height = 200;

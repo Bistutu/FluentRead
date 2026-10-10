@@ -387,10 +387,11 @@ function* paintPdfTranslationSteps(
             const erase = rectangles?.length ? rectangles.map(rect => ({x: rect.x * scaleX, y: rect.y * scaleY, width: rect.width * scaleX, height: rect.height * scaleY})) : [{x, y, width: block.width * scaleX, height: block.height * scaleY}];
             const cell = block.cellBounds;
             erase.forEach(rect => {
-                const left = Math.max(0, rect.x - padding, cell ? (cell.x + 0.5) * scaleX : 0);
-                const top = Math.max(0, rect.y - padding, cell ? (cell.y + 0.5) * scaleY : 0);
-                const right = Math.min(virtualWidth, rect.x + rect.width + padding, cell ? (cell.x + cell.width - 0.5) * scaleX : virtualWidth);
-                const bottom = Math.min(virtualHeight, rect.y + rect.height + padding, cell ? (cell.y + cell.height - 0.5) * scaleY : virtualHeight);
+                // 分数像素的 fillRect 边缘会混入原字形的抗锯齿颜色；向外覆盖整像素，单元格边界仍向内约束以保留表格线。
+                const left = Math.max(0, Math.floor(rect.x - padding), cell ? Math.ceil((cell.x + 0.5) * scaleX) : 0);
+                const top = Math.max(0, Math.floor(rect.y - padding), cell ? Math.ceil((cell.y + 0.5) * scaleY) : 0);
+                const right = Math.min(virtualWidth, Math.ceil(rect.x + rect.width + padding), cell ? Math.floor((cell.x + cell.width - 0.5) * scaleX) : virtualWidth);
+                const bottom = Math.min(virtualHeight, Math.ceil(rect.y + rect.height + padding), cell ? Math.floor((cell.y + cell.height - 0.5) * scaleY) : virtualHeight);
                 if (right > left && bottom > top) context.fillRect(left, top, right - left, bottom - top);
             });
             if ((index + 1) % 16 === 0) yield;
