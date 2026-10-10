@@ -493,6 +493,30 @@ describe('translation broker', () => {
         delete (policy as Partial<typeof policy>).freeTranslationOrder;
     });
 
+    it.each([false, true])('separates pre-validation document caches without clearing page caches, batch=%s', async batch => {
+        const source = 'Choose <g1>Document translation</g1> from the menu to open and read the file.';
+        const oldTranslation = '从菜单选择 <g1>Document translation</g1> 打开并阅读文件。';
+        const translation = '从菜单选择 <g1>文档翻译</g1> 打开并阅读文件。';
+        const request = (glossaryContext: 'page' | 'document'): TranslationRequestMessage => batch
+            ? {origin: [source], glossaryContext} : {origin: source, glossaryContext};
+        const previous = batch ? [oldTranslation] : oldTranslation;
+        const updated = batch ? [translation] : translation;
+        mocks.service.mockResolvedValueOnce(previous).mockResolvedValueOnce(updated);
+        // 旧文档契约没有内容政策字段；没有自动字面量的同源 page 请求复现该身份。
+        await expect(translateWithCache(request('page'))).resolves.toEqual(previous);
+        const oldIdentities = translationCacheIdentities().map(identity => ({...identity}));
+        expect(oldIdentities.every(identity => !('documentTranslationPolicy' in identity))).toBe(true);
+        const oldRecords = [...mocks.cacheStore.entries()];
+        await expect(translateWithCache(request('document'))).resolves.toEqual(updated);
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        const newIdentities = translationCacheIdentities().slice(oldIdentities.length);
+        expect(newIdentities.every(identity => JSON.stringify(identity.documentTranslationPolicy) === '{"version":1}')).toBe(true);
+        await expect(translateWithCache(request('document'))).resolves.toEqual(updated);
+        await expect(translateWithCache(request('page'))).resolves.toEqual(previous);
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        for (const [key, value] of oldRecords) expect(mocks.cacheStore.get(key)).toBe(value);
+    });
+
     it.each([
         ['freeTranslation', false], ['freeTranslation', true],
         ['myMemory', false], ['myMemory', true],

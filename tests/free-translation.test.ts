@@ -79,6 +79,55 @@ beforeEach(async () => {
 afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('免费翻译服务', () => {
+    it('真实文档正文已译但行内菜单原样英文时在胜出前换线，不冷却该服务或增加小请求', async () => {
+        mockConfig.freeTranslationOrder = ['microsoft', 'google'];
+        const source = 'For an online PDF, open the extension menu and choose <g1>Open PDF reader</g1> or <g2>Document translation</g2>.';
+        const echoed = '对于在线PDF，打开扩展菜单选择 <g1>Open PDF reader</g1> 或 <g2>Document translation</g2>。';
+        const translated = '对于在线PDF，打开扩展菜单选择 <g1>打开PDF阅读器</g1> 或 <g2>文档翻译</g2>。';
+        microsoftMock.mockResolvedValue([echoed]);
+        googleMock.mockResolvedValue(translated);
+        const current = createTranslationProviderConfigSnapshot({...mockConfig,
+            glossaryMatchContext: {context: 'document', sourceLanguage: 'en', targetLanguage: 'zh-hans'}} as unknown as TranslationConfigSource);
+        await expect(settle(freeTranslation(attachTranslationProviderConfig({origin: source}, current)))).resolves.toBe(translated);
+        expect(microsoftMock).toHaveBeenCalledOnce(); expect(googleMock).toHaveBeenCalledOnce();
+        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
+        microsoftMock.mockResolvedValue(['下一段有效译文']);
+        await expect(settle(translateFreeText('The next paragraph should use the same provider.'))).resolves.toBe('下一段有效译文');
+        expect(microsoftMock).toHaveBeenCalledTimes(2); expect(googleMock).toHaveBeenCalledOnce();
+    });
+
+    it('行内正文校验使用本次目标语言覆盖，英文目标和显式术语仍允许英文', async () => {
+        mockConfig.freeTranslationOrder = ['microsoft', 'google'];
+        mockConfig.to = 'en';
+        const source = 'The reader should choose <g1>Document translation</g1> before importing the document.';
+        const echoed = '读者应选择 <g1>Document translation</g1> 再导入文档。';
+        microsoftMock.mockResolvedValue([echoed]); googleMock.mockResolvedValue('读者应选择 <g1>文档翻译</g1> 再导入文档。');
+        const current = createTranslationProviderConfigSnapshot({...mockConfig,
+            glossaryMatchContext: {context: 'document', sourceLanguage: 'en', targetLanguage: 'zh-hans'}} as unknown as TranslationConfigSource);
+        await expect(settle(freeTranslation(attachTranslationProviderConfig({origin: source, targetLanguage: 'zh-Hans'}, current))))
+            .resolves.toBe('读者应选择 <g1>文档翻译</g1> 再导入文档。');
+        await expect(settle(freeTranslation(attachTranslationProviderConfig({origin: source, targetLanguage: 'en'}, current)))).resolves.toBe(echoed);
+        const token = '__FRTERM_123456789abc_0__', protectedSource = source.replace('Document translation', token);
+        microsoftMock.mockResolvedValue([echoed.replace('Document translation', token)]);
+        await expect(settle(freeTranslation(attachTranslationProviderConfig({origin: protectedSource, targetLanguage: 'zh-Hans'},
+            Object.freeze({...current, glossaryProtectedTokens: [token]}))))).resolves.toBe(echoed.replace('Document translation', token));
+        expect(microsoftMock).toHaveBeenCalledTimes(3); expect(googleMock).toHaveBeenCalledOnce();
+    });
+
+    it('原生组逐槽拒绝行内正文回显，保留槽顺序与每槽重新起算的编号', async () => {
+        mockConfig.freeTranslationOrder = ['microsoft', 'google'];
+        const origins = Array.from({length: 9}, (_, index) => `The reader should choose <g1>Document translation</g1> before importing document ${index}.`);
+        const target = (text: string) => `读者应选择 <g1>文档翻译</g1> 再导入文档 ${text.match(/document (\d+)/u)![1]}。`;
+        microsoftMock.mockImplementation(async (texts: string[]) => texts.map(text => target(text).replace('文档翻译', 'Document translation')));
+        googleOwnerMock.mockImplementation(async (texts: string[]) => texts.map(target));
+        googleMock.mockImplementation(async (text: string) => target(text));
+        const request = attachTranslationProviderConfig({origin: origins}, createTranslationProviderConfigSnapshot({...mockConfig,
+            glossaryMatchContext: {context: 'document', sourceLanguage: 'en', targetLanguage: 'zh-hans'}} as unknown as TranslationConfigSource));
+        await expect(settle(freeTranslation(request))).resolves.toEqual(origins.map(target));
+        expect(microsoftMock).toHaveBeenCalledOnce(); expect(googleOwnerMock).toHaveBeenCalledTimes(2); expect(googleMock).not.toHaveBeenCalled();
+        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'microsoft')?.status).toBe('ready');
+    });
+
     it.each(['missing', 'duplicate', 'foreign'])('文档强调标记被候选%s时在获胜前换线，恢复后仍为原始Markdown语法', async kind => {
         mockConfig.freeTranslationOrder = ['youdaoFree', 'google'];
         const {prepareGlossaryRequest} = await import('@/src/services/translation/glossaryProtection');

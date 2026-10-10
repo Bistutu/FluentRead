@@ -1,7 +1,7 @@
 /**
  * @file tests/documentLiteralProtection.test.ts
  * 文件职责：验证真实文档中行内语法、根号标识、URL、邮箱、代码式专名及 GNMT+RL 的自动原样保护边界。
- * 主要内容：检验带引号的 HTML、根号和专名保护；内部 g 原样送翻并逐槽验证编号、配对、嵌套、实体/全角与自闭合，强调文字可译、用户短词不改语法；覆盖缓存身份及文档/网页边界。
+ * 主要内容：检验带引号的 HTML、根号、希腊变量、带空白组合模型名和专名保护；原文回显仅对具有完整原句外语证据的普通行内多词正文拒收，覆盖目标语言覆盖和用户英文译法；内部 g 原样送翻并逐槽验证编号、配对、嵌套、实体/全角与自闭合，强调文字可译、用户短词不改语法；覆盖缓存身份及文档/网页边界。
  * 模块边界：纯规则及保护链测试，实际免费服务结果由隔离浏览器测试另行验证。
  */
 import {describe, expect, it, vi} from 'vitest';
@@ -13,6 +13,7 @@ import {createTranslationBroker} from '@/src/services/translation/broker';
 import {prepareGlossaryRequest, getGlossaryProtectionEntries, isGlossaryOnlyResult, validateDocumentTranslationResult} from '@/src/services/translation/glossaryProtection';
 import {createTranslationProviderConfigSnapshot, getTranslationGlossaryTerms, getTranslationProviderConfig} from '@/src/services/translation/requestSnapshot';
 import {parseDocument, renderDocument} from '@/src/features/document-translation/core/document';
+import {isLikelyUntranslatedInlineResponse, isLikelyUntranslatedResponse} from '@/src/core/translation/resultValidation';
 
 vi.mock('@/src/services/config/store', () => ({config: {to: 'zh-Hans'}}));
 
@@ -20,6 +21,83 @@ const documentConfig = () => ({...createTranslationProviderConfigSnapshot(new Co
     glossaryMatchContext: {context: 'document' as const, sourceLanguage: 'en', targetLanguage: 'zh-hans'}});
 
 describe('document literal protection', () => {
+    it('rejects the real English menu-label echo only with the document paragraph evidence and actual Chinese target', () => {
+        const source = 'For an online PDF, open the extension menu and choose <g1>Open PDF reader</g1> or <g2>Document translation</g2>.';
+        const echoed = '对于在线PDF，打开扩展菜单选择 <g1>Open PDF reader</g1> 或 <g2>Document translation</g2>。';
+        expect(isLikelyUntranslatedResponse('Document translation', 'Document translation', 'zh-Hans')).toBe(false);
+        expect(isLikelyUntranslatedResponse('Open PDF reader', 'Open PDF reader', 'zh-Hans')).toBe(false);
+        expect(() => validateDocumentInlineMarkers(source, echoed, {targetLanguage: 'zh-Hans'}))
+            .toThrow('未翻译文档行内正文：Open PDF reader');
+        expect(() => validateDocumentInlineMarkers(source, echoed.replace('Open PDF reader', '打开PDF阅读器'), {targetLanguage: 'zh-Hans'}))
+            .toThrow('未翻译文档行内正文：Document translation');
+        expect(validateDocumentInlineMarkers(source, echoed.replace('Open PDF reader', '打开PDF阅读器').replace('Document translation', '文档翻译'), {targetLanguage: 'zh-Hans'}))
+            .toBe('对于在线PDF，打开扩展菜单选择 <g1>打开PDF阅读器</g1> 或 <g2>文档翻译</g2>。');
+        expect(validateDocumentInlineMarkers(source, echoed, {targetLanguage: 'en'})).toBe(echoed);
+        expect(validateDocumentInlineMarkers(source, echoed)).toBe(echoed);
+        const current = documentConfig();
+        expect(() => prepareGlossaryRequest({origin: source}, current).restore(echoed)).toThrow('未翻译文档行内正文');
+        expect(prepareGlossaryRequest({origin: source, targetLanguage: ' en '}, current).restore(echoed)).toBe(echoed);
+        expect(() => prepareGlossaryRequest({origin: source, targetLanguage: ' '}, current).restore(echoed)).toThrow();
+        const englishConfig = {...current, to: 'en'};
+        expect(() => prepareGlossaryRequest({origin: source, targetLanguage: 'zh-CN'}, englishConfig).restore(echoed)).toThrow();
+        expect(prepareGlossaryRequest({origin: source}, englishConfig).restore(echoed)).toBe(echoed);
+    });
+
+    it('keeps proper names, technical nodes, same-language text, nested and repeated ids conservative', () => {
+        const paragraph = 'The user should open the extension menu and read the document.';
+        expect(isLikelyUntranslatedInlineResponse('The reader opens the complete document.', 'The reader opens the complete document.', 'zh-Hans', paragraph)).toBe(true);
+        for (const [origin, result, target, context] of [
+            ['Document translation', '文档翻译', 'zh-Hans', paragraph],
+            ['Document translation', 'Document translation', 'zh-Hans', '请打开文档翻译页面。'],
+            ['Document translation', 'Document translation', 'en', '这是中文正文，标签已经是目标英文。'],
+            ['New York', 'New York', 'zh-Hans', paragraph],
+            ['van Gogh', 'van Gogh', 'zh-Hans', paragraph],
+            ['Jean-Luc Picard', 'Jean-Luc Picard', 'zh-Hans', paragraph],
+            ['Document Translation', 'Document Translation', 'zh-Hans', paragraph],
+            ['Open', 'Open', 'zh-Hans', paragraph],
+            ['234 + 567', '234 + 567', 'zh-Hans', paragraph],
+            ['API v1', 'API v1', 'zh-Hans', paragraph],
+        ] as const) expect(isLikelyUntranslatedInlineResponse(origin, result, target, context), origin).toBe(false);
+        for (const markers of ['<g1>New York</g1>', '<g1>van Gogh</g1>', '<g1>Jean-Luc Picard</g1>', '<g1/>',
+            '<g1>outer <g2>Document translation</g2></g1>', '<g1>Document translation</g1><g1>Document translation</g1>']) {
+            const source = `${paragraph} ${markers}`;
+            expect(validateDocumentInlineMarkers(source, `用户应打开扩展菜单。${markers}`, {targetLanguage: 'zh-Hans'})).toBe(`用户应打开扩展菜单。${markers}`);
+        }
+    });
+
+    it('exempts explicit user-English terms in paired nodes without letting an unrelated protected name hide ordinary echo', () => {
+        const source = 'The reader should choose <g1>Document translation</g1> before importing the document.';
+        const current = {...documentConfig(), glossaryEnabled: true, glossaryTerms: [{source: 'Document translation', target: 'Document translation'}],
+            glossaryLibraries: [{id: 'user', name: 'User', enabled: true, sourceLanguage: '', targetLanguage: 'zh-hans', domains: [],
+                entries: [{id: 'label', source: 'Document translation', target: 'Document translation', caseSensitive: true}]}]};
+        const packet = prepareGlossaryRequest({origin: source}, current);
+        expect(packet.message.origin).not.toContain('Document translation');
+        expect(packet.restore(String(packet.message.origin).replace('The reader should choose', '读者应选择').replace('before importing the document.', '再导入文档。')))
+            .toBe('读者应选择 <g1>Document translation</g1> 再导入文档。');
+        const token = '__FRTERM_123456789abc_0__';
+        const protectedSource = source.replace('Document translation', token), protectedTarget = `读者应选择 <g1>${token}</g1>。`;
+        expect(validateDocumentInlineMarkers(protectedSource, protectedTarget, {targetLanguage: 'zh-Hans', protectedTokens: [token]})).toBe(protectedTarget);
+        expect(validateDocumentInlineMarkers(source, protectedTarget, {targetLanguage: 'zh-Hans', protectedTokens: [token]})).toBe(protectedTarget);
+        expect(() => validateDocumentInlineMarkers(source, '读者应选择 <g1>Document translation</g1>。', {targetLanguage: 'zh-Hans', protectedTokens: [token]})).toThrow();
+        const targets = ['读者应选择 <g1>Document translation</g1>。', '<g2/>'];
+        expect(() => validateDocumentTranslationResult(documentConfig(), [source, '<g2/>'], targets, 'zh-Hans')).toThrow();
+        expect(validateDocumentTranslationResult(documentConfig(), [source, '<g2/>'], targets, 'en')).toEqual(targets);
+        const slotSource = serializeTranslationSlots([source, '<g2/>'], 'inline_language');
+        const slotTarget = serializeTranslationSlots(targets, 'inline_language');
+        expect(() => validateDocumentTranslationResult(documentConfig(), slotSource.payload, slotTarget.payload, 'zh-Hans')).toThrow();
+        expect(validateDocumentTranslationResult(documentConfig(), slotSource.payload, slotTarget.payload, 'en')).toBe(slotTarget.payload);
+    });
+
+    it('preserves spaced model combinations and Greek-ASCII variables exactly while respecting user terms and boundaries', () => {
+        for (const source of ['GNMT + RL', 'GNMT\u00a0+\u00a0RL', 'GNMT\t+\tRL', 'GNMT\n+\nRL', 'ϵls', 'θmodel', 'αbeta'])
+            expect(findDocumentLiteralTerms(`${source} [38]`)).toEqual([{source, target: source, caseSensitive: true}]);
+        expect(findDocumentLiteralTerms('GNMT + RL', [{source: 'RL', target: '用户译法', caseSensitive: true}])).toEqual([]);
+        expect(findDocumentLiteralTerms('ϵls', [{source: 'ϵls', target: '用户符号', caseSensitive: true}])).toEqual([]);
+        expect(findDocumentLiteralTerms('ϵ + ϵls', [{source: 'ϵ', target: '用户符号', caseSensitive: true}]))
+            .toEqual([{source: 'ϵls', target: 'ϵls', caseSensitive: true}]);
+        for (const source of ['A + b', 'xGNMT + RL', 'καbeta', 'αλφα', 'αβ', 'xαbeta', 'xϵls', 'ϵlsSuffixα']) expect(findDocumentLiteralTerms(source), source).toEqual([]);
+    });
+
     it('keeps paired, nested and self-closing syntax exactly while leaving the words between tags translatable', () => {
         const tag = `<details title="1 > 0" data-kind='a > b'>`;
         const source = `${tag}Expand <g1>nested <g2>bold</g2></g1><g3/> now.</details>`;

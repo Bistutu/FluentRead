@@ -30,9 +30,9 @@ Every format supports trackpad pinch to zoom over the document, or Ctrl with the
 
 URLs, email addresses, code-style names such as `FluentRead`, and compound identifiers such as `GNMT+RL` are kept as written in document text. Free services can use different translations for technical terms; choose a suitable glossary and review key passages in the proofreading view.
 
-In HTML, ePub, and Markdown, a sentence that contains links, bold, italics, or inline code is translated as one sentence: links and emphasis stay on the matching words, and in Markdown the link text is translated while link targets, inline code, and URLs are kept as they are. If a service does not keep those markers, you still get the complete sentence, with code and URLs appended at its end.
+In HTML, ePub, and Markdown, a sentence that contains links, bold, italics, or inline code is translated as one sentence: links and emphasis stay on the matching words, and in Markdown the link text is translated while link targets, inline code, and URLs are kept as they are. If a service loses or damages these markers, that result is neither displayed nor cached. The free service pool tries other routes; if the formatting still cannot be preserved, it asks you to retry or switch services.
 
-Markdown keeps heading levels, list numbers, container directives, and standalone HTML/component tags locally. The free service pool checks inline formatting markers and tries another route if they are changed or lost, so a successful translation retains emphasis, links, and code positions in the download.
+Markdown keeps heading levels, list numbers, container directives, and standalone HTML/component tags locally. The free service pool checks inline formatting and clear cases of untranslated inline text, trying another route when it finds a problem. Names, code, and user glossary choices keep their existing preservation rules.
 
 Pause a long job if needed. Completed passages remain available after a pause or request failure; continuing processes the remainder. Changing languages, services, models, or glossary settings requires a fresh translation, with a prompt first.
 

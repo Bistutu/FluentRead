@@ -1,9 +1,26 @@
 /**
  * @file src/core/translation/documentInlineMarkers.ts
  * 文件职责：保留文档整句翻译的编号行内标签，让标签中的文字正常参与翻译。
- * 主要内容：共享实体、全角和空白写法归一，逐槽检查每个编号的次数、配对、自闭合和嵌套父子关系；允许兄弟节点随译句重排，兼容自闭合标记被写成空标签对。
- * 模块边界：纯文本协议，不读取配置或调用服务；只由文档入口启用，不验证正文译意，也无法识别两个结构相同槽的正文被交换。
+ * 主要内容：共享实体、全角和空白写法归一，逐槽检查每个编号的次数、配对、自闭合和嵌套父子关系；允许兄弟节点随译句重排，兼容自闭合标记被写成空标签对；在实际目标语言下拒绝唯一平级节点的普通正文原样返回，显式术语、代码、专名及歧义嵌套保持保守。
+ * 模块边界：纯文本协议，不读取配置或调用服务；只由文档入口启用，不评价一般语义质量，也无法识别两个结构相同槽的正文被交换。
  */
+import {isLikelyUntranslatedInlineResponse} from './resultValidation';
+
+export interface DocumentInlineValidationContext {
+    targetLanguage: string;
+    protectedTokens?: readonly string[];
+}
+
+export class DocumentInlineTextError extends Error {
+    readonly kind = 'response';
+    readonly code = 'DOCUMENT_INLINE_TEXT_UNTRANSLATED';
+    readonly retryable = false;
+    constructor(text: string) {
+        super(`翻译服务未翻译文档行内正文：${text.slice(0, 80)}`);
+        this.name = 'DocumentInlineTextError';
+    }
+}
+
 export class DocumentInlineMarkerError extends Error {
     readonly code = 'DOCUMENT_INLINE_MARKER_INVALID';
     readonly retryable = false;
@@ -43,7 +60,7 @@ function structure(text: string): {counts: Map<string, number>; selfClosingIds: 
 }
 
 /** 源文不是完整内部协议时保留字面写法；合法文档协议必须在候选胜出前完整保留。 */
-export function validateDocumentInlineMarkers(origin: string, result: unknown): unknown {
+export function validateDocumentInlineMarkers(origin: string, result: unknown, context?: DocumentInlineValidationContext): unknown {
     const expected = structure(origin);
     if (!expected?.counts.size) return result;
     if (typeof result !== 'string') throw new DocumentInlineMarkerError();
@@ -52,5 +69,17 @@ export function validateDocumentInlineMarkers(origin: string, result: unknown): 
     const actual = structure(normalized);
     if (!actual || actual.counts.size !== expected.counts.size
         || [...expected.counts].some(([key, count]) => actual.counts.get(key) !== count)) throw new DocumentInlineMarkerError();
+    if (context) {
+        const paired = (text: string) => new Map([...text.matchAll(/<g(\d+)>([\s\S]*?)<\/g\1>/gu)].map(match => [match[1]!, match[2]!]));
+        const translations = paired(normalized);
+        for (const [id, source] of paired(origin)) {
+            // 重复编号或嵌套正文缺少唯一的独立节点身份，不猜测哪处文字应当翻译。
+            if ([...expected.counts].filter(([key]) => key.startsWith(`${id}:`)).reduce((sum, [, count]) => sum + count, 0) !== 1
+                || /<\/?g\d+\/?\s*>/u.test(source)) continue;
+            const target = translations.get(id)!;
+            if (context.protectedTokens?.some(token => source.includes(token) || target.includes(token))) continue;
+            if (isLikelyUntranslatedInlineResponse(source, target, context.targetLanguage, origin)) throw new DocumentInlineTextError(source);
+        }
+    }
     return normalized;
 }

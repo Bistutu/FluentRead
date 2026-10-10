@@ -90,7 +90,7 @@ function validateProtectedResult(origin: string, result: unknown, message: Trans
     try {
         const current = getTranslationProviderConfig(message, config);
         validateGlossaryProtectedTokens(origin, result, current.glossaryProtectedTokens);
-        return validateDocumentTranslationResult(current, origin, result);
+        return validateDocumentTranslationResult(current, origin, result, message.targetLanguage);
     } catch (error) {
         throw Object.assign(error as Error, {freeFailure: 'request'});
     }
