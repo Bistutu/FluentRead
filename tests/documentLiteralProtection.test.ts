@@ -150,10 +150,12 @@ describe('document literal protection', () => {
                 entries: [{id: 'api', source: 'API', target: '接口', caseSensitive: true}]}]};
         expect(getGlossaryProtectionEntries({...current, glossaryMatchContext: undefined}, 'API')).toEqual([]);
         expect(getGlossaryProtectionEntries({...current, glossaryLibraries: undefined}, 'API')).toEqual([]);
-        const packet = prepareGlossaryRequest({origin: ['API'], summaryPrompt: ''}, current);
+        const emptySummary = {origin: ['API'], summaryPrompt: ''};
+        const packet = prepareGlossaryRequest(emptySummary, current);
         expect(packet.restore(packet.message.origin)).toEqual(['接口']);
         for (const result of [null, []]) expect(() => packet.restore(result)).toThrow('未完整保留术语');
-        const summary = prepareGlossaryRequest({origin: 'API', summaryPrompt: 'Summarize'}, current);
+        const summaryRequest = {origin: 'API', summaryPrompt: 'Summarize'};
+        const summary = prepareGlossaryRequest(summaryRequest, current);
         expect(summary.message.origin).toBe('API');
         expect(summary.restore('摘要')).toBe('摘要');
     });

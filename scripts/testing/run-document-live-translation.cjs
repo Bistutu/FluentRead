@@ -4,7 +4,7 @@
 /**
  * @file scripts/testing/run-document-live-translation.cjs
  * 文件职责：在独立生产 Edge 配置中真实验证免费服务翻译普通文档、PDF 阅读与左右对照导出。
- * 主要内容：复用后台焦点保护启动器与原生激活事件观察器，只设置免费服务与英译中公开选项；按输入文件逐份导入、真实翻译、阅读、下载，保存完整段落、状态、脱敏网络统计和截图。PDF 用 PDF.js 重开校验页数、左右对照尺寸与页序，再用 Poppler 渲染；普通格式重新解析下载文件，DOCX/ePub 解包核对译文、结构与图片。默认运行实际 Attention 15 页、仓库八种普通格式及英文产品指南，--inputs 可缩小范围。Markdown 严格核对代码、链接、译文强调及指南容器、组件标记，并按源文本与同一标签检查两项已确认的内部英文残留回归；仅读取这些内容，不执行组件。
+ * 主要内容：复用后台焦点保护启动器与原生激活事件观察器，只设置免费服务与英译中公开选项；按输入文件逐份导入、真实翻译、阅读、下载，保存完整段落、状态、脱敏网络统计和截图。PDF 用 PDF.js 重开校验页数、左右对照尺寸与页序，再用 Poppler 渲染；--readable-pdf-first 在首份 PDF 同次真实译文上另验可复制重排导出、逐段中文文字层及首页/尾页图片。普通格式重新解析下载文件，DOCX/ePub 解包核对译文、结构与图片。默认运行实际 Attention 15 页、仓库八种普通格式及英文产品指南，--inputs 可缩小范围。Markdown 严格核对代码、链接、译文强调及指南容器、组件标记，并按源文本与同一标签检查两项已确认的内部英文残留回归；仅读取这些内容，不执行组件。
  * 模块边界：不创建请求路由、不替换 fetch、不伪造译文、不配置付费账户，不读取或输出任何凭据；只使用本次新建的临时浏览器配置，不操作用户浏览器。中文及无测试标记只能证明实际结果，译文质量和排版需结合保存的数据与图片人工复核。
  */
 const assert = require('node:assert/strict');
@@ -114,6 +114,21 @@ function validatePdf(source, output) {
   });
   return {ok: source.length === output.length && evidence.every(page => page.sourceOrderOk && page.dimensionsOk),
     oneOutputPagePerSource: source.length === output.length, sourcePages: source.length, outputPages: output.length, pages: evidence};
+}
+
+/** 只验证本次实际中文译段可从 PDF 文字层完整按顺序提取，不据此评价译意或图中公式。 */
+function validateReadableCopyText(snapshot, pages) {
+  const content = pages.map(page => compact(page.text)).join(''), matches = [];
+  let offset = 0;
+  for (const segment of snapshot.segments) {
+    if (!/\p{Script=Han}/u.test(segment.translation) || compact(segment.source) === compact(segment.translation)) continue;
+    const target = compact(segment.translation), at = content.indexOf(target, offset);
+    matches.push({segment: segment.id, chars: segment.translation.length, translationSha256: sha(segment.translation), found: at >= 0, offset: at});
+    if (at >= 0) offset = at + target.length;
+  }
+  return {ok: pages.length > 0 && matches.length > 0 && matches.every(match => match.found), outputPages: pages.length,
+    expectedChineseSegments: matches.length, copiedChineseSegments: matches.filter(match => match.found).length, matches,
+    boundary: 'Exact saved target text, ignoring whitespace/NFKC presentation, in source segment order; formula/figure pixels and general semantic quality are not checked.'};
 }
 
 /** 独立重开实际下载，不调用产品导出函数计算“预期输出”。 */
@@ -322,7 +337,8 @@ async function main() {
       'src/providers/translation/free-chinese-web.ts', 'src/providers/translation/free-translation.ts', 'src/core/translation/documentLiterals.ts',
       'src/services/translation/broker.ts', 'src/services/translation/glossaryProtection.ts'].map(file => [file, sha(fs.readFileSync(path.join(repository, file)))])),
     parameters: {service, sourceLanguage: 'en', targetLanguage: 'zh-Hans', translationTimeout, exportTimeout, samplePages,
-      shortPdfAllPages: !process.argv.includes('--pdf-pages'), viewport: {width: 1440, height: 960}, narrowViewports: [{width: 820, height: 960}, {width: 390, height: 844}]},
+      shortPdfAllPages: !process.argv.includes('--pdf-pages'), readablePdfFirst: process.argv.includes('--readable-pdf-first'),
+      viewport: {width: 1440, height: 960}, narrowViewports: [{width: 820, height: 960}, {width: 390, height: 844}]},
     evidenceBoundary: `Real credential-free ${service} requests and actual document UI; no routes, fetch replacements, proxy, paid credentials or synthetic responses. Chinese/no-marker checks and two targeted inline-text regression assertions are evidence, not a general translation-quality score. First-PDF narrow screenshots/geometry cover only 820x960 and 390x844; physical trackpad gestures are not verified. Review saved paragraphs and screenshots manually.`,
     documents: [], screenshots: [], network: [], consoleErrors: [], cleanupErrors: [], focusEvents: [], focusChecks: []};
   let launched, page, launchAttempted = false, focusMonitor, ownedPid, focusFailure;
@@ -464,6 +480,7 @@ async function main() {
         await checkFocus('reading');
         await page.getByRole('group', {name: '阅读方式', exact: true}).getByRole('button', {name: '双语', exact: true}).click();
         if (isPdf) {
+          assert.equal(await page.locator('.pdf-layout-viewer').getAttribute('data-pdf-presentation'), 'layout', 'Each ordinary PDF case must start with the default layout presentation');
           await page.locator('.pdf-zoom-control .pdf-menu-button').click(); await page.locator('.pdf-zoom-control [data-value="page"]').click();
           if (index === 0) {
             result.responsive = [];
@@ -535,6 +552,54 @@ async function main() {
             result.export.previews.push({page: number, path: `${target}.png`});
           }
           assert(result.export.validation.ok, `PDF reopening/page-order/dimensions failed: ${JSON.stringify(result.export.validation)}`);
+          if (index === 0 && report.parameters.readablePdfFirst) {
+            if (await dialog.count()) await dialog.getByRole('button', {name: '返回文档', exact: true}).click();
+            try {
+              await checkFocus('readable-presentation');
+              await page.locator('.pdf-presentation-control > .pdf-menu-button').click();
+              await page.locator('.pdf-presentation-control [role="option"][data-value="readable"]').click();
+              await page.locator('.pdf-layout-viewer[data-pdf-presentation="readable"]').waitFor();
+              await page.locator('.download-button').click();
+              const readableDialog = page.locator('.download-dialog[open]'); await readableDialog.waitFor();
+              await readableDialog.locator('.export-options button').filter({hasText: '仅译文'}).click();
+              const readableDownloadPromise = page.waitForEvent('download', {timeout: exportTimeout});
+              await checkFocus('readable-export-download');
+              const readableStart = Date.now();
+              await readableDialog.locator('.translate-document-button').click(); const readableDownload = await readableDownloadPromise;
+              const readableOutput = path.join(artifactsDir, `${prefix}-readable-translated.pdf`); await readableDownload.saveAs(readableOutput);
+              result.readableExport = {output: readableOutput, suggestedFilename: readableDownload.suggestedFilename(),
+                exportMs: Date.now() - readableStart, bytes: fs.statSync(readableOutput).size, presentation: 'readable', mode: 'translated', previews: []}; persist();
+              await checkFocus('readable-export-validation');
+              const readablePages = await inspectPdf(fs.readFileSync(readableOutput), requireRepo);
+              result.readableExport.validation = validateReadableCopyText(snapshot, readablePages);
+              result.readableExport.extraction = path.join(artifactsDir, `${prefix}-readable-text-extraction.json`);
+              fs.writeFileSync(result.readableExport.extraction, JSON.stringify({validation: result.readableExport.validation, pages: readablePages}, null, 2)); persist();
+              for (const number of [...new Set([1, readablePages.length])]) {
+                const target = path.join(artifactsDir, `${prefix}-readable-export-page-${number}`);
+                await promisify(execFile)(pdftoppm, ['-f', String(number), '-l', String(number), '-singlefile', '-scale-to', '2200', '-png', readableOutput, target], {timeout: 60000, maxBuffer: 1024 * 1024});
+                result.readableExport.previews.push({page: number, path: `${target}.png`});
+              }
+              assert(result.readableExport.validation.ok, `Readable PDF Chinese copy text is incomplete or reordered: ${JSON.stringify(result.readableExport.validation)}`);
+            } finally {
+              // 显式恢复阅读与下载的双语原版对照，后续样本不得继承首份的重排状态。
+              if (!focusFailure && !page.isClosed()) {
+                await checkFocus('readable-restore-defaults');
+                const restoreDialog = page.locator('.download-dialog[open]');
+                if (await restoreDialog.count()) await restoreDialog.getByRole('button', {name: '返回文档', exact: true}).click();
+                await page.getByRole('group', {name: '阅读方式', exact: true}).getByRole('button', {name: '双语', exact: true}).click();
+                if (await page.locator('.pdf-layout-viewer').getAttribute('data-pdf-presentation') !== 'layout') {
+                  await page.locator('.pdf-presentation-control > .pdf-menu-button').click();
+                  await page.locator('.pdf-presentation-control [role="option"][data-value="layout"]').click();
+                  await page.locator('.pdf-layout-viewer[data-pdf-presentation="layout"]').waitFor();
+                }
+                await page.locator('.download-button').click(); await restoreDialog.waitFor();
+                await restoreDialog.locator('.export-options button').first().click();
+                assert.equal(await restoreDialog.locator('.export-options button').first().getAttribute('aria-pressed'), 'true');
+                await restoreDialog.getByRole('button', {name: '返回文档', exact: true}).click();
+                result.readableRestore = {presentation: 'layout', previewMode: 'bilingual', outputMode: 'bilingual'}; persist();
+              }
+            }
+          }
         } else {
           result.export.validation = await validateOtherDownload(bytes, fs.readFileSync(output), snapshot, requireRepo);
           await checkFocus('export-reopen');

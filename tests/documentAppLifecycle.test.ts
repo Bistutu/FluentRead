@@ -232,13 +232,14 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         } finally {reader.release();}
     });
 
-    it.each(['unchanged', 'custom-layout', 'custom-readable'] as const)('does not preload a browser PDF worker for %s output', async kind => {
+    it.each(['unchanged', 'custom-layout', 'custom-readable', 'custom-text-readable'] as const)('does not preload a browser PDF worker for %s output', async kind => {
         await state.loadFiles([file('custom.pdf')]);
         const document = state.parsedDocument;
         const translations = kind === 'unchanged' ? document.segments.map((segment: any) => segment.source) : ['独立端口译文'];
         const options: binaryService.CreateDocumentDownloadOptions = kind === 'custom-layout'
             ? {pdfPresentation: 'layout', pdfPageRasterizer: async () => new Uint8Array([1])}
-            : kind === 'custom-readable' ? {pdfPresentation: 'readable', pdfReadingRasterizer: async function* () {yield {bytes: new Uint8Array([1]), width: 612, height: 792};}} : {};
+            : kind === 'custom-readable' ? {pdfPresentation: 'readable', pdfReadingRasterizer: async function* () {yield {bytes: new Uint8Array([1]), width: 612, height: 792};}}
+                : kind === 'custom-text-readable' ? {pdfPresentation: 'readable', pdfReadingRenderer: async function* () {yield {items: [], width: 612, height: 792};}} : {};
         const encoding = deferred<binaryService.DocumentDownload>();
         vi.spyOn(binaryService, 'createDocumentDownload').mockReturnValueOnce(encoding.promise);
         const running = createRuntimeDownload(document, translations, 'translated', options);
@@ -248,6 +249,39 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         await running; await flush();
         expect(workerCount).toBe(0);
         expect(ports.tasks.filter(task => task.role === 'preview')).toHaveLength(0);
+    });
+
+    it.each(['layout', 'readable'] as const)('downloads the selected %s PDF presentation with matching dialog guidance', async presentation => {
+        await state.loadFiles([file('presentation.pdf')]);
+        state.editSegment(0, '可复制的实际校订文字');
+        if (presentation === 'readable') state.pdfPresentation = presentation;
+        state.openDownload(); await flush();
+        const walk = (entry: HostNode): HostNode[] => [entry, ...entry.children.flatMap(walk)];
+        const text = (entry: HostNode): string => (entry.text || '') + entry.children.map(text).join('');
+        const dialog = walk(root).find(entry => entry.type === 'dialog' && entry.props['aria-labelledby'] === 'download-document-heading')!;
+        const summary = walk(dialog).find(entry => entry.props.class === 'pdf-export-summary')!;
+        expect(summary.props['data-pdf-export-presentation']).toBe(presentation);
+        expect(text(dialog)).toContain(presentation === 'readable' ? 'document.pdfReading.exportReadableHint' : 'document.pdfReading.exportHint');
+        if (presentation === 'readable') {
+            expect(text(dialog)).toContain('document.pdfReading.exportReadableBilingualHint');
+            expect(text(summary)).toContain('document.pdfReading.exportReadablePageHint');
+            expect(text(dialog)).not.toContain('document.pdfReading.exportPageCount');
+            expect(text(dialog)).not.toContain('document.pdfReading.exportHint');
+            expect(walk(summary).some(entry => String(entry.props.class).includes('pdf-export-page-pair'))).toBe(false);
+        } else expect(text(summary)).toContain('document.pdfReading.exportPageCount');
+        const download = vi.spyOn(binaryService, 'createDocumentDownload').mockResolvedValueOnce({data: new Uint8Array([1]), fileName: 'presentation.pdf', mimeType: 'application/pdf'});
+        await state.downloadDocument(); await flush();
+        expect(download).toHaveBeenCalledWith(state.parsedDocument, ['可复制的实际校订文字'], 'bilingual', expect.objectContaining({pdfPresentation: presentation}));
+    });
+
+    it('keeps batch PDF downloads in layout presentation after selecting readable for the current file', async () => {
+        await state.loadFiles([file('first.pdf'), file('second.pdf')]);
+        for (const item of [...state.documentQueue]) {state.selectDocument(item); state.editSegment(0, `译文 ${item.name}`);}
+        state.pdfPresentation = 'readable';
+        const download = vi.spyOn(binaryService, 'createDocumentDownload').mockResolvedValue({data: new Uint8Array([1]), fileName: 'paired.pdf', mimeType: 'application/pdf'});
+        await state.downloadBatch(); await flush();
+        expect(download).toHaveBeenCalledTimes(2);
+        expect(download.mock.calls.every(([, , , options]) => options?.pdfPresentation === 'layout')).toBe(true);
     });
 
     it('keeps the task language, service, model and document batch snapshot across delayed scanned-PDF OCR and external settings updates', async () => {

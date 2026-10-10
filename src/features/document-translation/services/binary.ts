@@ -11,6 +11,7 @@ import pdfWorkerUrl from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import {generateDocumentArchive, preserveStoredDocumentEntries} from './archive';
 import {analyzePdfPageLayout, extractPdfGraphicsShapes, type PdfLayoutAtom, type PdfLayoutBlock} from '../core/pdfLayoutAnalysis';
 import {buildPdfReadingPlan, type PdfReadingPlan, type PdfReadingPresentation} from '../core/pdfReadingPlan';
+import type {PdfReadingOutputPage, PdfTextMeasure} from '../core/pdfTextLayout';
 
 import {
     getDocumentMaxBytes,
@@ -168,10 +169,15 @@ export interface PdfRasterPageResult {
 export type PdfPageRasterizer = (input: PdfRasterPageInput) => Promise<Uint8Array | PdfRasterPageResult>;
 export interface PdfReadingRasterPage {bytes: Uint8Array; width: number; height: number; format?: 'png' | 'jpeg'}
 export type PdfReadingRasterizer = (input: PdfRasterPageInput & {plan: PdfReadingPlan}) => AsyncIterable<PdfReadingRasterPage>;
+/** 可见文字由 PDF 字体绘制；PNG 只承载公式/图表等需要保留的原图区域。 */
+export interface PdfReadingRenderedPage extends PdfReadingOutputPage {regionImage?: Uint8Array}
+export type PdfReadingRenderer = (input: PdfRasterPageInput & {plan: PdfReadingPlan; measureText: PdfTextMeasure}) => AsyncIterable<PdfReadingRenderedPage>;
 
 export interface CreateDocumentDownloadOptions {
     pdfPageRasterizer?: PdfPageRasterizer;
     pdfReadingRasterizer?: PdfReadingRasterizer;
+    pdfReadingRenderer?: PdfReadingRenderer;
+    pdfFontLoader?: (signal?: AbortSignal) => Promise<Uint8Array>;
     pdfPresentation?: PdfReadingPresentation;
     signal?: AbortSignal;
     onPdfProgress?: (progress: PdfExportProgress) => void;
@@ -942,7 +948,7 @@ async function renderPdf(
     options: CreateDocumentDownloadOptions,
 ): Promise<Uint8Array> {
     const binary = document.binary as Extract<NonNullable<ParsedDocument['binary']>, {kind: 'pdf'}>;
-    const {PDFDocument, PDFHexString, degrees} = await import('pdf-lib');
+    const {PDFDocument, PDFHexString, degrees, rgb} = await import('pdf-lib');
     options.signal?.throwIfAborted();
     const outputPdf = await PDFDocument.create();
     outputPdf.setTitle(`${document.fileName} - FluentRead`);
@@ -970,7 +976,8 @@ async function renderPdf(
         });
     };
     // 默认下载与原版对照阅读一致，一张原页对应一张译页；重排续页仅供显式阅读导出端口使用。
-    const readingExport = Boolean(options.pdfReadingRasterizer && (options.pdfPresentation === 'readable' || !options.pdfPageRasterizer));
+    const readingExport = Boolean((options.pdfReadingRenderer || options.pdfReadingRasterizer)
+        && (options.pdfPresentation === 'readable' || !options.pdfPageRasterizer));
     const changedPages = binary.pages.map(page => page.segmentIndexes.some(segmentIndex =>
         hasDistinctTranslation(document.segments[segmentIndex]?.source ?? '', translations[segmentIndex])));
     if (mode === 'bilingual' || changedPages.some(changed => !changed)) {
@@ -1051,6 +1058,19 @@ async function renderPdf(
     // 导出进行中页面可能释放已解析的片段；找不到片段时按“没有原文”处理，不能让下载中断。
     const visibleTranslations = translations.map((translation, segmentIndex) =>
         hasDistinctTranslation(document.segments[segmentIndex]?.source ?? '', translation) ? translation : '');
+    // 延迟到需要文字页时加载；没有变化的双语文档只复制原页，不准备字体。
+    let readingFont: Awaited<ReturnType<typeof import('./pdfReadingFont')['embedPdfReadingFont']>> | undefined;
+    const prepareReadingFont = async () => {
+        if (!readingFont) {
+            const {embedPdfReadingFont, loadPdfReadingFontBytes} = await import('./pdfReadingFont');
+            const bytes = await awaitDocumentRead((options.pdfFontLoader ?? loadPdfReadingFontBytes)(options.signal), options.signal);
+            options.signal?.throwIfAborted();
+            readingFont = await awaitDocumentRead(embedPdfReadingFont(outputPdf, bytes, options.signal), options.signal);
+            await yieldToBrowser();
+            options.signal?.throwIfAborted();
+        }
+        return readingFont;
+    };
     for (const [index, pageData] of binary.pages.entries()) {
         options.signal?.throwIfAborted();
         const pageChanged = changedPages[index];
@@ -1082,6 +1102,32 @@ async function renderPdf(
                 if (source) drawSourcePage(page, source, pageData);
             }
             const plan = buildPdfReadingPlan(document, pageData, translations);
+            if (options.pdfReadingRenderer) {
+                const embedded = await prepareReadingFont();
+                for (const entry of plan.entries) if (entry.kind === 'text') embedded.assertSupported(entry.text);
+                for await (const rendered of options.pdfReadingRenderer({...rasterInput, plan,
+                    measureText: (text, font) => embedded.font.widthOfTextAtSize(text.replace(/\t/gu, ' '), font.size),
+                })) {
+                    options.signal?.throwIfAborted();
+                    const page = outputPdf.addPage([rendered.width, rendered.height]);
+                    if (rendered.regionImage) {
+                        const image = await embedImage(rendered.regionImage, 'png');
+                        page.drawImage(image, {x: 0, y: 0, width: rendered.width, height: rendered.height});
+                    }
+                    for (const item of rendered.items) if (item.kind === 'text' && item.text) {
+                        options.signal?.throwIfAborted();
+                        page.drawText(item.text.replace(/\t/gu, ' '), {font: embedded.font, size: item.font.size,
+                            x: item.x, y: rendered.height - item.y - embedded.font.heightAtSize(item.font.size, {descender: false}),
+                            color: rgb(0.094, 0.129, 0.184),
+                        });
+                    }
+                    await yieldToBrowser();
+                    options.signal?.throwIfAborted();
+                }
+                options.onPdfProgress?.({phase: 'rendering', completedPages: index + 1, totalPages});
+                await yieldToBrowser();
+                continue;
+            }
             for await (const rendered of options.pdfReadingRasterizer!({...rasterInput, plan})) {
                 options.signal?.throwIfAborted();
                 const image = await embedImage(rendered.bytes, rendered.format);
@@ -1216,7 +1262,7 @@ export async function createDocumentDownload(
     let data: string | Uint8Array;
     if (document.format === 'pdf') {
         if (document.binary?.kind !== 'pdf') throw new Error('PDF 文档状态无效，请重新打开文件');
-        if (!options.pdfPageRasterizer && !options.pdfReadingRasterizer) {
+        if (!options.pdfPageRasterizer && !options.pdfReadingRasterizer && !options.pdfReadingRenderer) {
             throw new Error('当前环境未提供 PDF 页面渲染器，请在浏览器扩展中下载');
         }
         data = await renderPdf(document, resolved, mode, options);

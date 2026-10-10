@@ -1,7 +1,7 @@
 /**
  * @file src/app/document-translation/runtime.ts
  * 文件职责：把通用翻译客户端、配置 store 与文档 feature 的纯服务连接起来，为页面提供可直接调用的分段翻译和文件下载适配器。
- * 主要内容：标记支持原生批量请求的机器服务并按固定服务和模型提供 AI 多段槽能力，不读取或改写全局 AI 多段开关，利用 createDocumentSegmentTranslator 组装本次文档默认批量、可关闭的翻译流程；为扫描版 PDF 组装“渲染页面 → 文字识别 → 换算坐标”的页面识别器；生成下载时注入 PDF 原版排版与阅读续页栅格化器，并持有、释放本次导出的 PDF.js 租约。
+ * 主要内容：按固定服务和模型提供文档默认批量、可关闭的翻译流程，不改写全局 AI 多段开关；为扫描版 PDF 组装“渲染页面 → 文字识别 → 换算坐标”的页面识别器；为默认原版导出注入 JPEG 绘制器，为显式重排导出注入可复制文字与图表端口，并持有、释放本次导出的 PDF.js 租约。
  * 模块边界：本文件是 app adapter，不解析源文件、不维护页面进度，也不实现 PDF/EPUB/DOCX 编码；业务算法归 document-translation feature，网络请求归 translation client。
  */
 import {translateText, translateTextBatch} from '@/src/app/translation/client';
@@ -13,7 +13,7 @@ import {
     type CreateDocumentDownloadOptions,
 } from '@/src/features/document-translation/services/binary';
 import {createDocumentSegmentTranslator} from '@/src/features/document-translation/services/translation';
-import {acquirePdfDocument, rasterizePdfReadingPages, rasterizePdfTranslationPage, renderPdfPageImage} from '@/src/features/document-translation/ui/pdfPreview';
+import {acquirePdfDocument, renderPdfReadingPages, rasterizePdfTranslationPage, renderPdfPageImage} from '@/src/features/document-translation/ui/pdfPreview';
 import type {PdfPageRecognizer} from '@/src/features/document-translation/services/pdfOcr';
 import {config, configReady} from '@/src/services/config/store';
 import type {
@@ -47,7 +47,7 @@ export const translateDocumentSegments = createDocumentSegmentTranslator({
  */
 export const documentRetryBackoff: {maxWaitMs: number; sleep?: (milliseconds: number, signal?: AbortSignal) => Promise<void>} = {maxWaitMs: 120_000};
 
-/** 浏览器组合根为 PDF 下载注入 Canvas rasterizer；其他格式仍走同一纯二进制服务。 */
+/** 默认原版导出使用 Canvas；显式重排导出保留可复制文字，其他格式仍走纯二进制服务。 */
 export async function createDocumentDownload(
     document: ParsedDocument,
     translations: readonly string[],
@@ -55,7 +55,7 @@ export async function createDocumentDownload(
     options: CreateDocumentDownloadOptions = {},
 ) {
     const usesBrowserRasterizer = options.pdfPresentation === 'readable'
-        ? !options.pdfReadingRasterizer : !options.pdfPageRasterizer;
+        ? !options.pdfReadingRenderer && !options.pdfReadingRasterizer : !options.pdfPageRasterizer;
     const lease = document.binary?.kind === 'pdf' && usesBrowserRasterizer
         && translations.some((translation, index) => hasDistinctTranslation(document.segments[index]?.source ?? '', translation))
         ? acquirePdfDocument(document.binary.bytes) : undefined;
@@ -65,7 +65,7 @@ export async function createDocumentDownload(
         return await createDocumentDownloadWithAdapters(document, translations, mode, {
             ...options,
             pdfPageRasterizer: options.pdfPageRasterizer ?? rasterizePdfTranslationPage,
-            pdfReadingRasterizer: options.pdfReadingRasterizer ?? rasterizePdfReadingPages,
+            pdfReadingRenderer: options.pdfReadingRenderer ?? (options.pdfReadingRasterizer ? undefined : renderPdfReadingPages),
         });
     } finally {
         lease?.release();

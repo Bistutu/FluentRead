@@ -393,13 +393,13 @@
     <dialog ref="downloadDialog" class="document-dialog download-dialog" aria-labelledby="download-document-heading" :aria-busy="preparingDownload" @close="downloadOpen = false" @cancel="preparingDownload && $event.preventDefault()">
       <h2 id="download-document-heading">下载翻译结果</h2><p>按原格式另存一份文件。下载内容包含你的校订。</p>
       <div class="export-options" role="group" aria-label="下载内容">
-        <button type="button" :disabled="queueBusy" :aria-pressed="outputMode === 'bilingual'" :class="{ selected: outputMode === 'bilingual' }" @click="outputMode = 'bilingual'"><strong>双语对照</strong><span>{{ isPdfDocument ? t('document.pdfReading.exportBilingualHint') : '同时保留原文和译文' }}</span></button>
+        <button type="button" :disabled="queueBusy" :aria-pressed="outputMode === 'bilingual'" :class="{ selected: outputMode === 'bilingual' }" @click="outputMode = 'bilingual'"><strong>双语对照</strong><span>{{ isPdfDocument ? t(pdfReadableExport ? 'document.pdfReading.exportReadableBilingualHint' : 'document.pdfReading.exportBilingualHint') : '同时保留原文和译文' }}</span></button>
         <button type="button" :disabled="queueBusy" :aria-pressed="outputMode === 'translated'" :class="{ selected: outputMode === 'translated' }" @click="outputMode = 'translated'"><strong>仅译文</strong><span>适合直接阅读和分享</span></button>
       </div>
       <p class="export-file-name" data-i18n-ignore>{{ downloadFileName }}</p>
-      <section v-if="downloadOpen && isPdfDocument" class="pdf-export-summary" :aria-label="t('document.pdfReading.layoutPresentation')">
-        <div class="pdf-export-page-pair" :class="{single: outputMode === 'translated'}" aria-hidden="true"><div v-if="outputMode === 'bilingual'" class="pdf-export-page"><span>{{ t('document.pdfReading.original') }}</span><i /><i /><i /><i /></div><div class="pdf-export-page translated"><span>{{ t('document.pdfReading.translated') }}</span><i /><i /><i /><i /></div></div>
-        <div><strong>{{ outputMode === 'bilingual' ? t('document.pdfReading.exportBilingualHint') : t('document.pdfReading.layoutPresentation') }}</strong><p>{{ t('document.pdfReading.exportPageCount', {count: pdfExportPageCount}) }}</p></div>
+      <section v-if="downloadOpen && isPdfDocument" class="pdf-export-summary" :data-pdf-export-presentation="pdfPresentation" :aria-label="t(pdfReadableExport ? 'document.pdfReading.readablePresentation' : 'document.pdfReading.layoutPresentation')">
+        <div v-if="!pdfReadableExport" class="pdf-export-page-pair" :class="{single: outputMode === 'translated'}" aria-hidden="true"><div v-if="outputMode === 'bilingual'" class="pdf-export-page"><span>{{ t('document.pdfReading.original') }}</span><i /><i /><i /><i /></div><div class="pdf-export-page translated"><span>{{ t('document.pdfReading.translated') }}</span><i /><i /><i /><i /></div></div>
+        <div><strong>{{ pdfReadableExport ? t('document.pdfReading.readablePresentation') : outputMode === 'bilingual' ? t('document.pdfReading.exportBilingualHint') : t('document.pdfReading.layoutPresentation') }}</strong><p>{{ pdfReadableExport ? t('document.pdfReading.exportReadablePageHint') : t('document.pdfReading.exportPageCount', {count: pdfExportPageCount}) }}</p></div>
       </section>
       <section v-else-if="downloadOpen" class="export-preview" aria-label="文件内容预览">
         <strong>{{ parsedDocument && isDocumentExportExcerpt(parsedDocument) ? '文字摘录 · 下载时保留原文件格式' : '文件内容预览' }}</strong><pre data-i18n-ignore>{{ downloadPreview }}</pre>
@@ -408,7 +408,7 @@
       <label v-if="!translationComplete" class="partial-export"><input v-model="partialExportAcknowledged" type="checkbox" :disabled="queueBusy" />我已了解，下载当前结果</label>
       <p v-if="settingsChanged" class="notice warning">设置已更改，本次下载仍是当前保留的译文。</p>
       <p v-if="isSubtitleDocument" class="export-note">保留字幕序号和时间轴。仅译文替换字幕文字，双语在同一时间段内保留原文和译文。</p>
-      <p v-if="isPdfDocument" class="export-note">{{ t('document.pdfReading.exportHint') }}</p>
+      <p v-if="isPdfDocument" class="export-note">{{ t(pdfReadableExport ? 'document.pdfReading.exportReadableHint' : 'document.pdfReading.exportHint') }}</p>
       <div v-if="downloadProgress" class="export-progress"><p class="notice" role="status" aria-live="polite">{{ downloadProgress }}</p><progress v-if="downloadPdfProgress" :value="downloadPdfProgress.phase === 'rendering' ? downloadPdfProgress.completedPages : undefined" :max="downloadPdfProgress.totalPages || 1" :aria-label="downloadProgress" /></div>
       <p v-if="downloadError" class="notice error" role="alert">{{ downloadError }}</p>
       <div class="dialog-actions"><button v-if="preparingDownload" class="ghost-button" type="button" :disabled="cancelingDownload" @click="cancelDownload">{{ t(cancelingDownload ? 'document.export.canceling' : 'document.export.cancel') }}</button><button v-else class="ghost-button" type="button" :disabled="queueBusy" @click="downloadDialog?.close()">返回文档</button><button class="translate-document-button" type="button" :disabled="queueBusy || !hasTranslation || (!translationComplete && !partialExportAcknowledged)" @click="downloadDocument">{{ preparingDownload ? '正在生成文件…' : `下载${outputMode === 'bilingual' ? '双语' : '译文'}文件` }}</button></div>
@@ -1008,6 +1008,7 @@ const hasUnsavedWork = computed(() => translating.value || batchRunning.value ||
   || documentQueue.value.some(item => item.id !== activeDocumentId.value && item.revision > item.downloaded));
 const isPdfDocument = computed(() => parsedDocument.value?.binary?.kind === 'pdf');
 const pdfExportPageCount = computed(() => parsedDocument.value?.binary?.kind === 'pdf' ? parsedDocument.value.binary.pages.length : 0);
+const pdfReadableExport = computed(() => isPdfDocument.value && pdfPresentation.value === 'readable');
 const isEpubDocument = computed(() => parsedDocument.value?.binary?.kind === 'epub');
 const isDocxDocument = computed(() => parsedDocument.value?.binary?.kind === 'docx');
 const isSubtitleDocument = computed(() => isSubtitleDocumentFormat(parsedDocument.value?.format));
@@ -1776,7 +1777,7 @@ async function downloadDocument(): Promise<void> {
   const requestId = translationRequestId;
   try {
     const download = await createDocumentDownload(document, [...translatedSegments.value], outputMode.value, {
-      pdfPresentation: 'layout',
+      pdfPresentation: pdfPresentation.value,
       signal: controller.signal,
       onPdfProgress: progress => { if (!controller.signal.aborted && downloadController === controller) {downloadPdfProgress.value = progress; downloadProgress.value = pdfExportProgress(progress);} },
       onArchiveProgress: percent => { if (!controller.signal.aborted && downloadController === controller) downloadProgress.value = archiveExportProgress(percent); },

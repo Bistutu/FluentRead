@@ -18,9 +18,14 @@ const artifactBytes = Buffer.byteLength(source);
 // 相对 main 的 1,960,000 字节预算增加 4 KB，继续校验协议、体积和运行边界。
 // 智能高亮的共享偏好（快捷键、开关、配色与浓度的归一化）使脚本增至 1,964,630 字节；功能本身不进入脚本。
 // 为保持与扩展的配置导入导出兼容，预算再放宽 1 KB。
-// 文档字面值校验及免费线路分段共用 provider 代码，产物实测 1,966,476 字节；
-// 预算增加 3 KB 容纳这次修复，保留所有协议与兼容性检查。
-const MAX_USERSCRIPT_BYTES = 1_968_000;
+// 时间展示过滤与动态来源交接增加 2,939 字节：同依赖下基线 e754aa680 为 1,964,913，修复后为 1,967,852。
+// 预算仅增加 3 KB，保留体积守门；独立基线与构建记录见 docs/reports/time-changing-source-20261010/。
+// 失败摘要、受限局部重试及对应文案增加 7,324 字节（0.3722%）：
+// 同依赖独立基线 ce36085f7 为 1,967,852，候选为 1,975,176；预算增加 8 KB。
+// 实测与重现步骤见 docs/reports/reading-reliability-experience-20261010/。
+// 文档字面量/行内标记校验及当前文档批量、导出提示整合后实测 1,979,813 字节；
+// 相对上述 main 产物增加 4,637 字节，仅把预算再增加 5 KB。
+const MAX_USERSCRIPT_BYTES = 1_981_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);
@@ -62,6 +67,8 @@ const assertions = [
   [!source.includes('fluent-read-area-translator-container'), 'area translator must be excluded from userscript'],
   [!source.includes('fluent-read-image-translation-root'), 'image translator must be excluded from userscript'],
   [!source.includes('fluent-read-video-subtitle-style'), 'video subtitle runtime must be excluded from userscript'],
+  [!source.includes('onnx-community/Qwen3-0.6B-ONNX') && !source.includes('onnx-community/Qwen2.5-0.5B'), 'highlight model artifacts must be excluded from userscript while retaining preference compatibility'],
+  [!source.includes('90ad34e62bb47572a06e0235696076976d59e9fcf5ab173d9a44689ba01b7d52') && !source.includes('8a04114ba59cc42b47d804d35d1d5c61d746ae4634f41f796768c6e302d39b9e'), 'highlight artifact manifests must be removed when only model preferences are used'],
   [!source.includes('fluent-read-writing-assistant'), 'writing assistant runtime must be excluded from userscript'],
   [!source.includes('fluent-read-vocabulary-reencounter'), 'vocabulary reencounter runtime must be excluded from userscript'],
   [!source.includes('fluent-read-sentence-actions'), 'sentence actions runtime must be excluded from userscript'],

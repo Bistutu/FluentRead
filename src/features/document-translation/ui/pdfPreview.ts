@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/ui/pdfPreview.ts
- * 文件职责：在浏览器 Canvas 环境中为 PDF 文档生成页面预览与保留原版排版的译页，并为显式重排导出提供固定字号续页。
- * 主要内容：按需共用 PDF.js 与有界单页 Canvas；每页一次像素读回取得段落颜色，复用阅读器的空白借用、保护筛选和有界拟合，超长译文绘制可读摘录并返回完整批注内容；下载分批绘制且优先浏览器 JPEG 编码，避免 PNG 解码与重复压缩；预览仍用无损 PNG，显式阅读输出按统一计划续页；取消、失败与完成释放画布，租约隔离阅读器与单页取消，迟到加载不能复活已释放资源。
+ * 文件职责：在浏览器 Canvas 环境中生成 PDF 预览和原版译页；显式重排导出按嵌入字体分页，仅公式图表编码为图像，由二进制服务绘制可复制文字。
+ * 主要内容：共用 PDF.js 与有界单页 Canvas；每页一次像素读回复用阅读器的保护筛选、表格裁剪和有界拟合，超长译文返回完整批注；下载分批绘制并优先 JPEG 编码，预览和重排图表使用 PNG；取消、失败与完成释放画布，租约隔离阅读器与导出，迟到加载不能复活已释放资源。
  * 模块边界：这里负责视觉光栅化而不决定片段翻译或文件结构；PDF 文本块来自 binary 服务，领域类型来自 core，Canvas/PDF.js 仅应在文档 UI 环境调用，不能进入通用纯算法层。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -18,8 +18,9 @@ import type {
     PdfReadingRasterizer,
     PdfOverflowNote,
     PdfRasterPageResult,
+    PdfReadingRenderer,
 } from '@/src/features/document-translation/services/binary';
-import {paginatePdfReadingPlan} from '../core/pdfTextLayout';
+import {paginatePdfReadingPlan, type PdfReadingRegionDraw} from '../core/pdfTextLayout';
 import {fitPdfBlockText, pdfOverlayBlocks} from '../core/pdfBlockFit';
 
 export type {PdfPageRasterizer, PdfRasterPageInput};
@@ -551,6 +552,64 @@ export const rasterizePdfReadingPages: PdfReadingRasterizer = async function* (i
         }
     } finally {
         canvas.width = canvas.height = 0;
+        if (source) source.width = source.height = 0;
+    }
+};
+
+function paintPdfReadingRegion(context: CanvasRenderingContext2D, source: HTMLCanvasElement, item: PdfReadingRegionDraw, input: PdfRasterPageInput): void {
+    const r = item.sourceRect, rotation = input.rotation ?? 0;
+    const sx = source.width / input.width, sy = source.height / input.height;
+    const sample = rotation === 90 ? {x: input.width - r.y - r.height, y: r.x, width: r.height, height: r.width}
+        : rotation === 180 ? {x: input.width - r.x - r.width, y: input.height - r.y - r.height, width: r.width, height: r.height}
+            : rotation === 270 ? {x: r.y, y: input.height - r.x - r.width, width: r.height, height: r.width} : r;
+    context.save();
+    try {
+        context.translate(item.x, item.y);
+        if (rotation === 90) {context.translate(0, item.height); context.rotate(-Math.PI / 2);}
+        else if (rotation === 180) {context.translate(item.width, item.height); context.rotate(Math.PI);}
+        else if (rotation === 270) {context.translate(item.width, 0); context.rotate(Math.PI / 2);}
+        const quarterTurn = rotation === 90 || rotation === 270;
+        context.drawImage(source, sample.x * sx, sample.y * sy, sample.width * sx, sample.height * sy,
+            0, 0, quarterTurn ? item.height : item.width, quarterTurn ? item.width : item.height);
+    } finally {context.restore();}
+}
+
+/** 可见文字保留为 PDF 布局数据，仅公式/图表经过 Canvas；每次最多一张源页和一张图像页。 */
+export const renderPdfReadingPages: PdfReadingRenderer = async function* (input) {
+    input.signal?.throwIfAborted();
+    const pages = paginatePdfReadingPlan(input.plan, input.measureText);
+    let canvas: HTMLCanvasElement | undefined;
+    let source: HTMLCanvasElement | undefined;
+    try {
+        for (const page of pages) {
+            input.signal?.throwIfAborted();
+            const regions = page.items.filter((item): item is PdfReadingRegionDraw => item.kind === 'region');
+            let regionImage: Uint8Array | undefined;
+            if (regions.length) {
+                if (typeof globalThis.document === 'undefined') throw new Error('当前环境无法保留 PDF 公式图表，请在浏览器扩展中下载');
+                source ??= await renderPdfSourceCanvas(input.sourceBytes, input.pageNumber, input.width, input.signal);
+                canvas ??= document.createElement('canvas');
+                canvas.width = page.width * 2;
+                canvas.height = page.height * 2;
+                const context = canvas.getContext('2d', {alpha: false});
+                if (!context) throw new Error('浏览器 Canvas 初始化失败');
+                context.fillStyle = '#ffffff';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                context.save();
+                try {
+                    context.scale(2, 2);
+                    for (const item of regions) paintPdfReadingRegion(context, source, item, input);
+                } finally {context.restore();}
+                regionImage = await canvasToImageBytes(canvas, input.signal);
+                input.signal?.throwIfAborted();
+                canvas.width = canvas.height = 0;
+            }
+            yield {...page, ...(regionImage ? {regionImage} : {})};
+            input.signal?.throwIfAborted();
+            await new Promise<void>(resolve => setTimeout(resolve, 0));
+        }
+    } finally {
+        if (canvas) canvas.width = canvas.height = 0;
         if (source) source.width = source.height = 0;
     }
 };

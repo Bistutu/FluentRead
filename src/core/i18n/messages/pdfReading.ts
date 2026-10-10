@@ -1,6 +1,6 @@
 /**
  * @file src/core/i18n/messages/pdfReading.ts
- * 文件职责：维护 PDF 在线导入、分页阅读、各格式阅读缩放手势、当前文档批量开关、导出配对提示、划词提示和扫描件文字识别的七种界面语言文案。
+ * 文件职责：维护 PDF 在线导入、分页阅读、各格式阅读缩放手势、当前文档批量开关、导出配对与可复制重排提示、划词提示和扫描件文字识别的七种界面语言文案。
  * 主要内容：按稳定语义键组织状态和操作名称，动态页码与字节进度使用占位符。
  * 模块边界：仅提供静态资源，不读取文档、网络或用户配置。
  */
@@ -19,6 +19,9 @@ export const pdfReadingMessages = {
         "document.pdfReading.exportHint": "保留原版排版、公式和图表。较长译文的全文保存在 PDF 批注中；译页为图像。",
         "document.pdfReading.layoutExportHint": "每页对应同一原文页，页序保持一致。",
         "document.pdfReading.exportPageCount": "{count} 页 · 保留原版排版",
+        "document.pdfReading.exportReadableBilingualHint": "原页后附完整译文",
+        "document.pdfReading.exportReadablePageHint": "可复制文字 · 自动续页",
+        "document.pdfReading.exportReadableHint": "译文可复制和搜索，长段自动续页；公式和图表保留为图像。",
         "document.pdfReading.startHint": "开始翻译后，即可清晰阅读并下载 PDF。",
         "document.pdfReading.presentationLabel": "显示方式",
         "document.pdfReading.readablePresentation": "重排阅读",
@@ -80,6 +83,9 @@ export const pdfReadingMessages = {
         "document.pdfReading.exportHint": "Keeps the layout, formulas, and figures. PDF comments contain the full text of longer passages; translated pages are images.",
         "document.pdfReading.layoutExportHint": "Each exported page corresponds to the same original page, in order.",
         "document.pdfReading.exportPageCount": "{count} pages · Original layout",
+        "document.pdfReading.exportReadableBilingualHint": "Original page followed by the complete translation",
+        "document.pdfReading.exportReadablePageHint": "Copyable text · Automatic continuation pages",
+        "document.pdfReading.exportReadableHint": "Translation text can be copied and searched. Long passages continue on extra pages; formulas and figures remain images.",
         "document.pdfReading.startHint": "Start translation to read and download the complete PDF.",
         "document.pdfReading.presentationLabel": "View",
         "document.pdfReading.readablePresentation": "Reflowed text",
@@ -141,6 +147,9 @@ export const pdfReadingMessages = {
         "document.pdfReading.exportHint": "元のレイアウト・数式・図を保持します。長い訳文の全文は PDF の注釈に保存されます。訳文ページは画像です。",
         "document.pdfReading.layoutExportHint": "各ページが同じ原文ページに対応し、順番を保持します。",
         "document.pdfReading.exportPageCount": "{count} ページ · 元のレイアウト",
+        "document.pdfReading.exportReadableBilingualHint": "原文ページの後に訳文全文を掲載",
+        "document.pdfReading.exportReadablePageHint": "コピー可能なテキスト · 自動改ページ",
+        "document.pdfReading.exportReadableHint": "訳文はコピー・検索できます。長い文章は次のページに続き、数式と図は画像で保持します。",
         "document.pdfReading.startHint": "翻訳開始で全文を読みやすく表示し、PDF を保存できます。",
         "document.pdfReading.presentationLabel": "表示方法",
         "document.pdfReading.readablePresentation": "リフロー表示",
@@ -202,6 +211,9 @@ export const pdfReadingMessages = {
         "document.pdfReading.exportHint": "원본 배치, 수식, 그림을 유지합니다. 긴 번역 전문은 PDF 주석에 저장되며 번역 페이지는 이미지입니다.",
         "document.pdfReading.layoutExportHint": "각 페이지가 같은 원문 페이지에 대응하며 순서를 유지합니다.",
         "document.pdfReading.exportPageCount": "{count}페이지 · 원본 레이아웃",
+        "document.pdfReading.exportReadableBilingualHint": "원본 페이지 뒤에 전체 번역 제공",
+        "document.pdfReading.exportReadablePageHint": "복사 가능한 텍스트 · 자동 페이지 추가",
+        "document.pdfReading.exportReadableHint": "번역문을 복사하고 검색할 수 있습니다. 긴 문장은 다음 페이지로 이어지며 수식과 그림은 이미지로 유지됩니다.",
         "document.pdfReading.startHint": "번역을 시작하면 전체 텍스트를 읽고 PDF를 내려받을 수 있습니다.",
         "document.pdfReading.presentationLabel": "표시 방식",
         "document.pdfReading.readablePresentation": "재배열 읽기",
@@ -263,6 +275,9 @@ export const pdfReadingMessages = {
         "document.pdfReading.exportHint": "Conserve la mise en page, les formules et les figures. Les commentaires PDF contiennent les passages longs en entier ; les pages traduites sont des images.",
         "document.pdfReading.layoutExportHint": "Chaque page correspond à la même page originale, dans le même ordre.",
         "document.pdfReading.exportPageCount": "{count} pages · Mise en page originale",
+        "document.pdfReading.exportReadableBilingualHint": "Page originale suivie de la traduction complète",
+        "document.pdfReading.exportReadablePageHint": "Texte copiable · Pages supplémentaires automatiques",
+        "document.pdfReading.exportReadableHint": "Le texte traduit peut être copié et recherché. Les longs passages continuent sur des pages supplémentaires ; les formules et figures restent des images.",
         "document.pdfReading.startHint": "Lancez la traduction pour lire le texte complet et télécharger le PDF.",
         "document.pdfReading.presentationLabel": "Présentation",
         "document.pdfReading.readablePresentation": "Texte recomposé",
@@ -324,6 +339,9 @@ export const pdfReadingMessages = {
         "document.pdfReading.exportHint": "Conserva el diseño, las fórmulas y las figuras. Los comentarios PDF incluyen los pasajes largos completos; las páginas traducidas son imágenes.",
         "document.pdfReading.layoutExportHint": "Cada página corresponde a la misma página original y mantiene el orden.",
         "document.pdfReading.exportPageCount": "{count} páginas · Diseño original",
+        "document.pdfReading.exportReadableBilingualHint": "Página original seguida de la traducción completa",
+        "document.pdfReading.exportReadablePageHint": "Texto copiable · Páginas adicionales automáticas",
+        "document.pdfReading.exportReadableHint": "El texto traducido se puede copiar y buscar. Los pasajes largos continúan en páginas adicionales; las fórmulas y figuras se conservan como imágenes.",
         "document.pdfReading.startHint": "Inicia la traducción para leer el texto completo y descargar el PDF.",
         "document.pdfReading.presentationLabel": "Presentación",
         "document.pdfReading.readablePresentation": "Texto recompuesto",
@@ -385,6 +403,9 @@ export const pdfReadingMessages = {
         "document.pdfReading.exportHint": "Сохраняет макет, формулы и рисунки. Полный текст длинных фрагментов хранится в комментариях PDF; переведённые страницы являются изображениями.",
         "document.pdfReading.layoutExportHint": "Каждая страница соответствует той же исходной странице с сохранением порядка.",
         "document.pdfReading.exportPageCount": "{count} страниц · Исходный макет",
+        "document.pdfReading.exportReadableBilingualHint": "Исходная страница и полный перевод после неё",
+        "document.pdfReading.exportReadablePageHint": "Копируемый текст · Автоматическое продолжение на новых страницах",
+        "document.pdfReading.exportReadableHint": "Перевод можно копировать и искать. Длинные фрагменты продолжаются на новых страницах; формулы и рисунки сохраняются как изображения.",
         "document.pdfReading.startHint": "Начните перевод, чтобы прочитать полный текст и скачать PDF.",
         "document.pdfReading.presentationLabel": "Вид",
         "document.pdfReading.readablePresentation": "Перекомпоновка",
