@@ -16,7 +16,7 @@ export interface FloatingBallPresentation {
   clickAction: FloatingBallClickAction;
   /** 是否使用更小的悬浮球尺寸。 */
   compact: boolean;
-  /** 是否显示打开设置页的入口按钮。 */
+  /** 是否显示设置入口按钮；扩展打开快捷面板，用户脚本打开设置页。 */
   settingsEntryVisible: boolean;
   /** 收起状态下的不透明度百分比（20-100）。 */
   collapsedOpacity: number;

@@ -88,6 +88,7 @@ function pendingUi(): {promise: Promise<MockUi>; resolve: (value: MockUi) => voi
 }
 
 beforeEach(() => {
+  vi.stubEnv('BROWSER', 'chrome');
   const parsed = parseHTML('<!doctype html><html><body></body></html>');
   vi.stubGlobal('window', parsed.window);
   vi.stubGlobal('document', parsed.document);
@@ -137,7 +138,7 @@ beforeEach(() => {
   mocks.subscribeConfig.mockReturnValue(mocks.unsubscribeConfig);
 });
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {vi.unstubAllGlobals(); vi.unstubAllEnvs();});
 
 describe('悬浮球 content runtime', () => {
   it('在没有上下文或功能被禁用时不创建 UI', async () => {
@@ -199,7 +200,7 @@ describe('悬浮球 content runtime', () => {
     options.props.onSettingsClick();
     options.props.onPositionChanged('left', 0.25);
     await Promise.resolve();
-    expect(mocks.sendMessage).toHaveBeenCalledWith({type: 'openOptionsPage'});
+    expect(mocks.sendMessage).toHaveBeenCalledWith({type: 'openPopup'});
     expect(mocks.config.floatingBallPosition).toBe('left');
     expect(mocks.config.floatingBallVerticalPosition).toBe(0.25);
     expect(mocks.requestConfigPatch).toHaveBeenCalledWith({
@@ -374,6 +375,39 @@ describe('悬浮球 content runtime', () => {
     else Reflect.set(globalThis, 'location', originalLocation);
   });
 
+  it('userscript 悬浮球继续打开脚本设置入口', async () => {
+    vi.stubEnv('BROWSER', 'userscript');
+    mocks.createVueShadowUi.mockResolvedValueOnce(ui({toggleTranslation: vi.fn()}));
+    const runtime = await import('@/src/features/floating-ball/content/runtime');
+    await runtime.mountFloatingBall({} as never);
+    mocks.createVueShadowUi.mock.calls[0][1].props.onSettingsClick();
+    await Promise.resolve();
+    expect(mocks.sendMessage).toHaveBeenCalledWith({type: 'openOptionsPage'});
+    runtime.unmountFloatingBall();
+  });
+
+  it('悬浮球记录后台 popup 失败回复，后续点击可以重试', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    mocks.createVueShadowUi.mockResolvedValueOnce(ui({toggleTranslation: vi.fn()}));
+    const runtime = await import('@/src/features/floating-ball/content/runtime');
+    await runtime.mountFloatingBall({} as never);
+    const click = mocks.createVueShadowUi.mock.calls[0][1].props.onSettingsClick;
+    for (const response of [{success: false, error: 'popup denied'}, {success: false}]) {
+      mocks.sendMessage.mockResolvedValueOnce(response);
+      click();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(consoleError).toHaveBeenLastCalledWith('[FluentRead] 打开扩展快捷面板失败', expect.any(Error));
+    }
+    mocks.sendMessage.mockResolvedValueOnce({success: true});
+    click();
+    await Promise.resolve();
+    expect(mocks.sendMessage).toHaveBeenLastCalledWith({type: 'openPopup'});
+    expect(consoleError).toHaveBeenCalledTimes(2);
+    runtime.unmountFloatingBall();
+    consoleError.mockRestore();
+  });
+
   it('隔离设置、保存和挂载失败，并允许重试', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     mocks.createVueShadowUi
@@ -395,7 +429,7 @@ describe('悬浮球 content runtime', () => {
     await Promise.resolve();
 
     expect(consoleError).toHaveBeenCalledWith('[FluentRead] 悬浮球挂载失败', expect.any(Error));
-    expect(consoleError).toHaveBeenCalledWith('[FluentRead] 打开设置页失败', expect.any(Error));
+    expect(consoleError).toHaveBeenCalledWith('[FluentRead] 打开扩展快捷面板失败', expect.any(Error));
     expect(consoleError).toHaveBeenCalledWith('Failed to save config:', expect.any(Error));
     runtime.unmountFloatingBall();
     consoleError.mockRestore();

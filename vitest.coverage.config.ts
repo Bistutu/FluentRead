@@ -89,6 +89,7 @@ export default defineConfig({
             'tests/imageTargetLanguage.test.ts',
             'tests/targetLanguageAdversarial.test.ts',
             'tests/targetLanguageReleaseCorpus.test.ts',
+            'tests/popupAppLifecycle.test.ts',
             'tests/informationHighlightArtifacts.test.ts',
             'tests/informationHighlightBackend.test.ts',
             'tests/informationHighlightComposition.test.ts',
@@ -620,6 +621,9 @@ export default defineConfig({
             reportsDirectory: 'coverage/core',
             reporter: ['text', 'json-summary', 'html'],
             include: [
+                'src/features/floating-ball/background/popupHandler.ts',
+                'src/app/popup/sourceTab.ts',
+                'src/app/background/popupNavigation.ts',
                 'src/app/background/localModelMessageRuntime.ts',
                 'src/app/content/informationHighlight.ts',
                 'src/app/content/informationHighlightScorePort.ts',

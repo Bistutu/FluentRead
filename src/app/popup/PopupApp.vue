@@ -2,7 +2,7 @@
  @file src/app/popup/PopupApp.vue
  文件职责：实现浏览器 Popup 的主交互界面，连接当前标签页状态、翻译配置、可插拔皮肤、功能抽屉和高频操作，让现场开关与显示操作保持简短，将长期偏好引导到对应设置页。
  主要内容：在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型，保留版本、赞赏、网页翻译与恢复、局部选择及站点开关；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次语言引导独占内容；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效。
- 模块边界：组件编排 UI、浏览器导航事件与生命周期；页面消息归属由 pageActions 管理，不实现翻译 provider、缓存存储或 content 挂载；公共配置由 services/store 管理。
+ 模块边界：组件编排 UI、浏览器导航事件与生命周期；兼容小窗通过 sourceTab 固定发起网页，页面消息归属由 pageActions 管理，不实现翻译 provider、缓存存储或 content 挂载；公共配置由 services/store 管理。
 -->
 <!-- Popup 页面归 app 层所有；WXT 入口只负责调用挂载函数。 -->
 <template>
@@ -384,6 +384,7 @@ import {
 } from '@/src/core/config/interfaceAppearance';
 import { resolveAIContextPresentation } from '@/src/ui/view-model/aiContext';
 import {createPopupPageActions, type PopupPageState} from './pageActions';
+import {createPopupTabSource} from './sourceTab';
 import {useSettingsActionContext} from '@/src/features/settings/model/useSettingsActionContext';
 import {applyInterfaceFont, applyInterfaceSkin} from '@/src/ui/interfaceAppearance';
 import { requestTranslationCacheClear } from './cache';
@@ -705,8 +706,11 @@ const pageContext = useSettingsActionContext(() => popupContext.active.value, ()
   config.value.from, config.value.to, config.value.display, config.value.model[config.value.service],
   config.value.customModel[config.value.service], config.value.disabledExtensionDomains.join(','), config.value.alwaysTranslateDomains.join(','), config.value.autoTranslate, credentialWarning.value]);
 const cacheContext = useSettingsActionContext(() => popupContext.active.value, () => []);
+const tabSource = createPopupTabSource(window.location?.search || '', {
+  get: id => browser.tabs.get(id), query: () => browser.tabs.query({active: true, currentWindow: true}),
+});
 const pageActions = createPopupPageActions({state: pageState, config: () => config.value, active: () => pageContext.active.value,
-  warning: () => credentialWarning.value || '', getTab: async () => (await browser.tabs.query({active: true, currentWindow: true}))[0],
+  warning: () => credentialWarning.value || '', getTab: tabSource.getTab,
   openPdf: source => browser.tabs.create({url: createPdfReaderUrl(browser.runtime.getURL('document.html'), source)}),
   send: (id, message) => browser.tabs.sendMessage(id, message), notice: showNotice, close: () => window.close(), translate: t, thunderbird: isThunderbird});
 const {hydrate: hydrateCurrentSite, toggle: togglePageTranslation, section: startSectionTranslation,
@@ -864,13 +868,14 @@ function toggleAIContext() {
 }
 function handleTabUpdated(tabId: number, change: Tabs.OnUpdatedChangeInfoType, tab: Tabs.Tab) {
   if (popupContext.active.value && (typeof change.url === 'string' || change.status === 'loading')
-    && (tabId === currentTabId.value || (tab.active && (pageState.windowId === undefined || tab.windowId === pageState.windowId)))) void hydrateCurrentSite();
+    && (tabSource.fixed ? tabId === tabSource.sourceTabId
+      : tabId === currentTabId.value || (tab.active && (pageState.windowId === undefined || tab.windowId === pageState.windowId)))) void hydrateCurrentSite();
 }
 function handleTabActivated(info: Tabs.OnActivatedActiveInfoType) {
-  if (popupContext.active.value && (pageState.windowId === undefined || info.windowId === pageState.windowId) && info.tabId !== currentTabId.value) void hydrateCurrentSite();
+  if (!tabSource.fixed && popupContext.active.value && (pageState.windowId === undefined || info.windowId === pageState.windowId) && info.tabId !== currentTabId.value) void hydrateCurrentSite();
 }
 function handleTabRemoved(tabId: number) {
-  if (popupContext.active.value && tabId === currentTabId.value) void hydrateCurrentSite();
+  if (popupContext.active.value && tabId === (tabSource.fixed ? tabSource.sourceTabId : currentTabId.value)) void hydrateCurrentSite();
 }
 onMounted(() => {
   document.addEventListener('keydown', handleDonationKeydown);
@@ -939,7 +944,7 @@ async function openDocumentTranslation() {
   if (!popupContext.active.value || !config.value.on) return;
   const current = popupContext.capture();
   try {
-    const tab = (await browser.tabs.query({active: true, currentWindow: true}))[0];
+    const tab = await tabSource.getTab();
     if (!current()) return;
     const source = getPdfSourceUrl(tab?.pendingUrl || tab?.url || '');
     const readerUrl = browser.runtime.getURL('document.html');

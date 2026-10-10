@@ -13,10 +13,11 @@ import {compileScript, compileTemplate, parse} from 'vue/compiler-sfc'
 import ts from 'typescript'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
+import {createPopupTabSource} from '@/src/app/popup/sourceTab'
 
 const runtime=createRequire(import.meta.url)('vue') as typeof import('vue')
 let server:ViteDevServer,app:import('vue').App,document:Document,win:any,state:Record<string,any>,focused:Element|null,shown:import('vue').Ref<boolean>,events:Map<Element,Record<string,any>>
-const close=vi.fn(),noticeFocus=vi.fn(),patches=vi.fn(),getTab=vi.fn(),send=vi.fn(),createTab=vi.fn(),openOptions=vi.fn(),runtimeSend=vi.fn()
+const close=vi.fn(),noticeFocus=vi.fn(),patches=vi.fn(),getTab=vi.fn(),getSourceTab=vi.fn(),send=vi.fn(),createTab=vi.fn(),openOptions=vi.fn(),runtimeSend=vi.fn()
 let config:Config,subscribe:(value:Config)=>void,tabEvents:Record<string,Set<(...args:any[])=>void>>
 function tabEvent(name:string,...args:any[]){for(const listener of tabEvents[name])listener(...args)}
 function deferred<T=unknown>() {let resolve!: (value:T)=>void,reject!: (error:unknown)=>void;const promise=new Promise<T>((yes,no)=>{resolve=yes;reject=no});return {promise,resolve,reject}}
@@ -27,12 +28,14 @@ function eventOf(el:Element,name='onClick'){const fn=events.get(el)?.[name];expe
 function button(name:string){return document.querySelector(`[data-testid="${name}"]`)!}
 function commands(){return send.mock.calls.filter(call=>call[1].type==='contextMenuTranslate')}
 beforeEach(async()=>{
-  vi.clearAllMocks();for(const mock of [getTab,send,createTab,openOptions,runtimeSend,patches])mock.mockReset();events=new Map();tabEvents={onUpdated:new Set(),onActivated:new Set(),onRemoved:new Set()};const parsed=parseHTML('<html><body><div id="app"></div></body></html>');win=parsed.window;document=win.document;focused=document.body
+  vi.clearAllMocks();for(const mock of [getTab,getSourceTab,send,createTab,openOptions,runtimeSend,patches])mock.mockReset();events=new Map();tabEvents={onUpdated:new Set(),onActivated:new Set(),onRemoved:new Set()};const parsed=parseHTML('<html><body><div id="app"></div></body></html>');win=parsed.window;document=win.document;focused=document.body
+  vi.stubGlobal('location',{search:''})
   Object.defineProperty(document,'activeElement',{configurable:true,get:()=>focused});win.close=close;win.matchMedia=()=>({matches:false,onchange:null})
   for(const [key,value]of Object.entries({document,window:win,HTMLElement:win.HTMLElement,Event:win.Event,Node:win.Node,navigator:{languages:['zh-CN']}}))vi.stubGlobal(key,value)
   config=new Config();config.uiLanguageSetupCompleted=true;config.on=true;config.service='google';config.alwaysTranslateDomains=[];config.disabledExtensionDomains=[]
   getTab.mockResolvedValue([{id:7,windowId:3,url:'https://example.com/a'}]);send.mockImplementation(async(_id,message)=>message.type==='getFullPageTranslationState'?{isTranslated:false}:{status:'success',isTranslated:message.action==='fullPage'});createTab.mockResolvedValue({id:8});openOptions.mockResolvedValue(undefined);runtimeSend.mockResolvedValue({success:true})
-  ;(globalThis as any).__popupFixture={config,getTab,send,createTab,openOptions,runtimeSend,patches,tabEvents,subscribe:(fn:typeof subscribe)=>{subscribe=fn},runtime,capabilities:runtime.reactive({browser:'chrome',areaTranslation:true,imageTranslation:true})}
+  getSourceTab.mockResolvedValue({id:7,windowId:3,url:'https://example.com/a'})
+  ;(globalThis as any).__popupFixture={config,getTab,getSourceTab,send,createTab,openOptions,runtimeSend,patches,tabEvents,subscribe:(fn:typeof subscribe)=>{subscribe=fn},runtime,capabilities:runtime.reactive({browser:'chrome',areaTranslation:true,imageTranslation:true})}
   server=await createServer({root:process.cwd(),configFile:false,appType:'custom',logLevel:'silent',resolve:{alias:{'@':process.cwd()}},ssr:{noExternal:['webextension-polyfill']},plugins:[{name:'popup-owned-client',enforce:'pre',resolveId(id){
     if(/(?:\/|^)Popup(?:App|SiteRule)\.vue$/u.test(id))return resolve('src/app/popup',id.split('/').at(-1)!)+'.owned.ts'
     if(id==='webextension-polyfill')return '\0popup-browser'
@@ -52,7 +55,7 @@ beforeEach(async()=>{
       const code=script.content.replace('export default','const fixtureComponent =')+'\n'+template.code+'\nfixtureComponent.render=render;export default fixtureComponent;'
       return ts.transpileModule(code,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ESNext}}).outputText
     }
-    if(id==='\0popup-browser')return "const f=globalThis.__popupFixture;export default {tabs:{query:f.getTab,sendMessage:f.send,create:f.createTab,...Object.fromEntries(Object.entries(f.tabEvents).map(([name,set])=>[name,{addListener:fn=>set.add(fn),removeListener:fn=>set.delete(fn)}]))},runtime:{getManifest:()=>({version:'0.0.35'}),getURL:p=>'extension://'+p,sendMessage:f.runtimeSend,openOptionsPage:f.openOptions}}"
+    if(id==='\0popup-browser')return "const f=globalThis.__popupFixture;export default {tabs:{query:f.getTab,get:f.getSourceTab,sendMessage:f.send,create:f.createTab,...Object.fromEntries(Object.entries(f.tabEvents).map(([name,set])=>[name,{addListener:fn=>set.add(fn),removeListener:fn=>set.delete(fn)}]))},runtime:{getManifest:()=>({version:'0.0.35'}),getURL:p=>'extension://'+p,sendMessage:f.runtimeSend,openOptionsPage:f.openOptions}}"
     if(id==='\0popup-config')return "const f=globalThis.__popupFixture;export const config=f.config;export const subscribeConfig=fn=>{f.subscribe(fn);return()=>{}};export const requestConfigPatch=async value=>f.patches(value);export const handoffPendingConfigPatches=async()=>{}"
     if(id==='\0popup-i18n')return "export const useUiI18n=()=>({t:key=>key,translateLegacy:text=>text})"
     if(id==='\0popup-appearance')return 'export const applyInterfaceFont=()=>{},applyInterfaceSkin=()=>{}'
@@ -72,6 +75,30 @@ async function mount(){
   app=renderer.createApp({setup:()=>()=>runtime.h(runtime.KeepAlive,null,{default:()=>shown.value?runtime.h(component,{ref:(vm:any)=>{if(vm)state=vm.$.setupState}}):runtime.h({render:()=>null},{key:'other'})})});app.component('OwnedTransition',{setup:(_:unknown,{slots}:any)=>()=>slots.default?.()});app.config.warnHandler=()=>{};app.mount(document.getElementById('app')!);await drain()
 }
 describe('实际 Popup 缓存模板与页面操作',()=>{
+  it('Popup 来源解析接受零和安全整数，无参数继续查询活动网页',async()=>{
+    const query=vi.fn(async()=>[{id:99}]),get=vi.fn(async(id:number)=>({id}));const normal=createPopupTabSource('?other=1',{query,get})
+    expect(normal).toMatchObject({fixed:false,sourceTabId:null});await expect(normal.getTab()).resolves.toEqual({id:99});query.mockResolvedValueOnce([]);await expect(normal.getTab()).resolves.toBeUndefined()
+    for(const id of [0,7,Number.MAX_SAFE_INTEGER]){const source=createPopupTabSource(`?sourceTabId=${id}`,{query,get});expect(source).toMatchObject({fixed:true,sourceTabId:id});await expect(source.getTab()).resolves.toEqual({id})}
+    expect(query).toHaveBeenCalledTimes(2)
+  })
+  it('错误或重复的来源参数与失效来源不回退到活动网页',async()=>{
+    const query=vi.fn(async()=>[{id:99}]),get=vi.fn(async(_id:number)=>({id:7}));for(const search of ['?sourceTabId=','?sourceTabId=-1','?sourceTabId=1.5','?sourceTabId=Infinity','?sourceTabId=NaN','?sourceTabId=00','?sourceTabId=9007199254740992','?sourceTabId=7&sourceTabId=8']){const source=createPopupTabSource(search,{query,get});expect(source).toMatchObject({fixed:true,sourceTabId:null});await expect(source.getTab()).rejects.toThrow('无效的 Popup 来源标签页')}
+    expect(get).not.toHaveBeenCalled();get.mockRejectedValueOnce(new Error('closed source'));await expect(createPopupTabSource('?sourceTabId=7',{query,get}).getTab()).rejects.toThrow('closed source');expect(query).not.toHaveBeenCalled()
+  })
+  it('兼容小窗固定来源网页，翻译/恢复不受其它窗口或活动标签页影响',async()=>{
+    win.location.search='?sourceTabId=7';getTab.mockResolvedValue([{id:99,windowId:10,url:'extension://popup.html'}]);await mount()
+    expect(state.currentSiteDomain).toBe('example.com');expect(getTab).not.toHaveBeenCalled();expect(getSourceTab).toHaveBeenCalledWith(7)
+    const reads=getSourceTab.mock.calls.length;tabEvent('onActivated',{tabId:8,windowId:3});tabEvent('onActivated',{tabId:99,windowId:10});tabEvent('onUpdated',8,{status:'loading'},{id:8,windowId:3,active:true});tabEvent('onRemoved',8);await drain();expect(getSourceTab).toHaveBeenCalledTimes(reads)
+    await eventOf(button('page-translation'))();await drain();await eventOf(button('page-translation'))();await drain()
+    expect(commands().map(call=>[call[0],call[1].action])).toEqual([[7,'fullPage'],[7,'restore']]);expect(getTab).not.toHaveBeenCalled()
+    getSourceTab.mockResolvedValue({id:7,windowId:4,url:'https://example.net/b'});tabEvent('onUpdated',7,{url:'https://example.net/b'},{id:7,windowId:4,active:false});await drain();expect(state.currentSiteDomain).toBe('example.net')
+  })
+  it('兼容小窗文档入口读取来源 PDF，源网页关闭后不切换到其它网页',async()=>{
+    win.location.search='?sourceTabId=7';getSourceTab.mockResolvedValue({id:7,windowId:3,url:'https://example.com/paper.pdf'});await mount()
+    await eventOf(document.querySelector('[data-feature="document-translation"]')!)();expect(createTab).toHaveBeenCalledWith({url:'extension://document.html#pdf=https%3A%2F%2Fexample.com%2Fpaper.pdf'});expect(getTab).not.toHaveBeenCalled()
+    createTab.mockClear();close.mockClear();const warn=vi.spyOn(console,'warn').mockImplementation(()=>{});getSourceTab.mockRejectedValue(new Error('source removed'));tabEvent('onRemoved',7);await drain();expect(state.currentTabId).toBeNull();expect(state.currentSiteDomain).toBe('')
+    await eventOf(document.querySelector('[data-feature="document-translation"]')!)();expect(createTab).not.toHaveBeenCalled();expect(close).not.toHaveBeenCalled();expect(getTab).not.toHaveBeenCalled();warn.mockRestore()
+  })
   it.each(['keywords','surprisal-local'] as const)('信息高亮 %s 偏好与旧入口配置不进入 Popup，也不启动页面或模型消息',async mode=>{
     config.informationHighlight.mode=mode;Object.assign(config.popupQuickFeatureVisibility,{highlight:true});(config.popupQuickFeatureOrder as string[]).push('highlight')
     vi.useFakeTimers({toFake:['setInterval','clearInterval']});await mount()
@@ -138,6 +165,6 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     await mount();const cached=eventOf(document.querySelector('.donation-button')!),pending=cached();state.donationVisible=false;await pending;expect(focused).toBe(document.body);await drain();await eventOf(document.querySelector('.donation-button')!)();const before=focused;shown.value=false;await drain();shown.value=true;await drain();cached();await drain();expect(state.donationVisible).toBe(false);expect(focused).toBe(before)
   })
   it.each(['settings','document'])('%s 的 API 失败可恢复，关闭后旧成功不关闭新会话',async target=>{
-    await mount();const selector=target==='settings'?'.settings-button':'[data-feature="document-translation"]',api=target==='settings'?openOptions:createTab;api.mockRejectedValueOnce(new Error('fixture'));await eventOf(document.querySelector(selector)!)();expect(state.noticeType).toBe('error');expect(close).not.toHaveBeenCalled();const reply=deferred();api.mockReturnValueOnce(reply.promise);const cached=eventOf(document.querySelector(selector)!),pending=cached();shown.value=false;await drain();shown.value=true;await drain();reply.resolve(undefined);await pending;cached();expect(api).toHaveBeenCalledTimes(2);expect(close).not.toHaveBeenCalled();await eventOf(document.querySelector(selector)!)();expect(close).toHaveBeenCalledOnce()
+    await mount();const selector=target==='settings'?'.settings-button':'[data-feature="document-translation"]',api=target==='settings'?openOptions:createTab;api.mockRejectedValueOnce(new Error('fixture'));await eventOf(document.querySelector(selector)!)();expect(state.noticeType).toBe('error');expect(close).not.toHaveBeenCalled();const reply=deferred();api.mockReturnValueOnce(reply.promise);const cached=eventOf(document.querySelector(selector)!),pending=cached();await drain();expect(api).toHaveBeenCalledTimes(2);shown.value=false;await drain();shown.value=true;await drain();reply.resolve(undefined);await pending;cached();expect(api).toHaveBeenCalledTimes(2);expect(close).not.toHaveBeenCalled();await eventOf(document.querySelector(selector)!)();expect(close).toHaveBeenCalledOnce()
   })
 })
