@@ -4,7 +4,7 @@
 /**
  * @file scripts/testing/run-document-live-translation.cjs
  * 文件职责：在独立生产 Edge 配置中真实验证免费服务翻译普通文档、PDF 阅读与左右对照导出。
- * 主要内容：复用后台焦点保护启动器与原生激活事件观察器，只设置免费服务与英译中公开选项；按输入文件逐份导入、真实翻译、阅读、下载，保存完整段落、状态、脱敏网络统计和截图。PDF 用 PDF.js 重开校验页数、左右对照尺寸与页序，再用 Poppler 渲染；普通格式重新解析下载文件，DOCX/ePub 解包核对译文、结构与图片。默认运行实际 Attention 15 页、仓库八种普通格式及英文产品指南，--inputs 可缩小范围。Markdown 严格核对代码、链接、译文强调及指南容器、组件标记，仅读取这些内容，不执行组件。
+ * 主要内容：复用后台焦点保护启动器与原生激活事件观察器，只设置免费服务与英译中公开选项；按输入文件逐份导入、真实翻译、阅读、下载，保存完整段落、状态、脱敏网络统计和截图。PDF 用 PDF.js 重开校验页数、左右对照尺寸与页序，再用 Poppler 渲染；普通格式重新解析下载文件，DOCX/ePub 解包核对译文、结构与图片。默认运行实际 Attention 15 页、仓库八种普通格式及英文产品指南，--inputs 可缩小范围。Markdown 严格核对代码、链接、译文强调及指南容器、组件标记，并按源文本与同一标签检查两项已确认的内部英文残留回归；仅读取这些内容，不执行组件。
  * 模块边界：不创建请求路由、不替换 fetch、不伪造译文、不配置付费账户，不读取或输出任何凭据；只使用本次新建的临时浏览器配置，不操作用户浏览器。中文及无测试标记只能证明实际结果，译文质量和排版需结合保存的数据与图片人工复核。
  */
 const assert = require('node:assert/strict');
@@ -122,12 +122,14 @@ async function validateOtherDownload(sourceBytes, outputBytes, snapshot, require
   const decode = bytes => new TextDecoder('utf-8', {fatal: true}).decode(bytes);
   const canonicalSlots = text => text.replace(/(?:&lt;|[＜〈（(])\s*([\/／]?)\s*g\s*(\d+)\s*([\/／]?)\s*(?:&gt;|[＞〉）)])/giu,
     (_match, open, id, close) => `<${open ? '/' : ''}g${id}${close ? '/' : ''}>`);
+  // 保留真实标签字符，只解码一层实体，兼容服务返回的转义标签与文字实体；不执行 HTML。
+  const canonicalEntities = text => parseHTML(`<html><body>${text.replace(/</gu, '&lt;').replace(/>/gu, '&gt;')}</body></html>`).document.body.textContent;
   const withoutSlots = text => text.replace(/<\/?g\d+\s*\/?>/gu, '');
   const markdownText = text => text.replace(/\[([^\]]+)\]\([^)]*\)/gu, '$1').replace(/(?:^|\n)\s*(?:#{1,6}\s+|>\s*)/gu, '\n').replace(/[*_`]/gu, '');
-  const visible = text => {
+  const visible = (text, decoded = false) => {
     // 字幕导出会把服务返回的转义样式还原为真实标签；只归一允许的样式，不把普通正文实体当成 markup。
     const styled = format === 'srt' ? text.replace(/&lt;(\/?(?:i|b|u|em|strong|font|span)\b[^&]*?)&gt;/giu, '<$1>') : text;
-    return compact(markdownText(withoutSlots(canonicalSlots(styled)).replace(/<\/?(?:i|b|u|em|strong|font|span)\b[^>]*>/gu, '')));
+    return compact(markdownText(withoutSlots(canonicalSlots(decoded ? styled : canonicalEntities(styled))).replace(/<\/?(?:i|b|u|em|strong|font|span)\b[^>]*>/gu, '')));
   };
   const xmlText = xml => {
     let text = ''; const parser = new SaxesParser({xmlns: true});
@@ -210,6 +212,7 @@ async function validateOtherDownload(sourceBytes, outputBytes, snapshot, require
       const sourceEmphasis = [...source.matchAll(/(?<![\\*])(\*\*|\*)(?![\s*])([^*\n]*?\S)\1(?!\*)|(?<![\\\p{L}\p{N}])(__|_)(?![\s_])([^_\n]*?\S)\3(?![\p{L}\p{N}_])/gu)].map(match => match[0]);
       sourceEmphasis.forEach(value => assert(text.includes(value), 'Markdown source emphasis changed'));
       let translatedEmphasis = 0, translatedHtmlTokens = 0;
+      const translatedContent = compact(canonicalEntities(text)), inlineTextRegressions = [];
       for (const part of snapshot.markdownParts || []) {
         const segment = snapshot.segments.find(segment => segment.id === part.segmentIndex);
         assert(segment, `Markdown metadata has no source segment ${part.segmentIndex}`);
@@ -217,9 +220,18 @@ async function validateOtherDownload(sourceBytes, outputBytes, snapshot, require
           const emphasis = ['*', '**', '_', '__'].includes(token.open) && token.close === token.open;
           const html = /^<[A-Za-z][^<>]*>$/u.test(token.open) && /^<\/[A-Za-z][^<>]*>$/u.test(token.close || '');
           if (!emphasis && !html) continue;
-          const id = index + 1, translated = new RegExp(`<\\s*g\\s*${id}\\s*>([\\s\\S]*?)<\\s*\\/\\s*g\\s*${id}\\s*>`, 'iu').exec(canonicalSlots(segment.translation));
+          const id = index + 1, marker = new RegExp(`<\\s*g\\s*${id}\\s*>([\\s\\S]*?)<\\s*\\/\\s*g\\s*${id}\\s*>`, 'iu');
+          const translated = marker.exec(canonicalSlots(canonicalEntities(segment.translation)));
           assert(translated, `Live service dropped Markdown ${emphasis ? 'emphasis' : 'HTML'} in segment ${part.segmentIndex}, marker ${id}`);
-          assert(compact(text).includes(compact(`${token.open}${translated[1]}${token.close}`)), `Markdown export lost translated ${emphasis ? 'emphasis' : 'HTML'} in segment ${part.segmentIndex}, marker ${id}`);
+          assert(translatedContent.includes(compact(`${token.open}${translated[1]}${token.close}`)), `Markdown export lost translated ${emphasis ? 'emphasis' : 'HTML'} in segment ${part.segmentIndex}, marker ${id}`);
+          // 只机械检查这次真实发现的两项回归，不能证明一般语义质量。按源词和同一标签匹配，
+          // 不依赖章节/段落 id；代码自闭合槽位、产品标识和 Reference 等名称允许保留英文。
+          const original = emphasis ? marker.exec(canonicalSlots(canonicalEntities(segment.source))) : null;
+          if (original && ['bold', 'documenttranslation'].includes(compact(original[1]))) {
+            assert(compact(translated[1]) !== compact(original[1]) && /\p{Script=Han}/u.test(translated[1]),
+              `Live service left ordinary Markdown emphasis untranslated in segment ${part.segmentIndex}, marker ${id}: ${original[1]}`);
+            inlineTextRegressions.push({segment: part.segmentIndex, marker: id, source: original[1], target: translated[1]});
+          }
           if (emphasis) translatedEmphasis++; else translatedHtmlTokens++;
         }
       }
@@ -240,6 +252,7 @@ async function validateOtherDownload(sourceBytes, outputBytes, snapshot, require
       structure.forEach(value => assert(text.includes(value), 'Markdown HTML container changed'));
       checks.fencedCodeBlocks = code.length; checks.inlineCodeSpans = inlineCode.length; checks.linkDestinations = refs.length;
       checks.sourceEmphasis = sourceEmphasis.length; checks.translatedEmphasis = translatedEmphasis;
+      checks.inlineTextRegressions = inlineTextRegressions;
       checks.translatedHtmlTokens = translatedHtmlTokens; checks.rawHtmlSegments = rawHtmlSegments;
       checks.translatedBlockPrefixes = translatedBlockPrefixes;
       checks.originalLinesPreserved = true; checks.guideComponents = components.length; checks.directives = directives(source); checks.htmlContainerTags = structure.length;
@@ -249,7 +262,7 @@ async function validateOtherDownload(sourceBytes, outputBytes, snapshot, require
   const content = visible(text);
   for (const segment of snapshot.segments) {
     // 单个 g 标记在导出中会还原成代码/网址；按这些插入位置核对译文连续片段，不能要求插入前后相邻。
-    const pieces = canonicalSlots(segment.translation).split(/<\s*g\s*\d+\s*\/\s*>/iu).map(visible).filter(Boolean);
+    const pieces = canonicalSlots(canonicalEntities(segment.translation)).split(/<\s*g\s*\d+\s*\/\s*>/iu).map(piece => visible(piece, true)).filter(Boolean);
     assert(pieces.length, `Actual download has no translated text for segment ${segment.id}`);
     let offset = 0;
     for (const piece of pieces) {
@@ -309,8 +322,8 @@ async function main() {
       'src/providers/translation/free-chinese-web.ts', 'src/providers/translation/free-translation.ts', 'src/core/translation/documentLiterals.ts',
       'src/services/translation/broker.ts', 'src/services/translation/glossaryProtection.ts'].map(file => [file, sha(fs.readFileSync(path.join(repository, file)))])),
     parameters: {service, sourceLanguage: 'en', targetLanguage: 'zh-Hans', translationTimeout, exportTimeout, samplePages,
-      shortPdfAllPages: !process.argv.includes('--pdf-pages'), viewport: {width: 1440, height: 960}},
-    evidenceBoundary: `Real credential-free ${service} requests and actual document UI; no routes, fetch replacements, proxy, paid credentials or synthetic responses. Chinese/no-marker checks are evidence, not a translation-quality score. Review saved paragraphs and screenshots manually.`,
+      shortPdfAllPages: !process.argv.includes('--pdf-pages'), viewport: {width: 1440, height: 960}, narrowViewports: [{width: 820, height: 960}, {width: 390, height: 844}]},
+    evidenceBoundary: `Real credential-free ${service} requests and actual document UI; no routes, fetch replacements, proxy, paid credentials or synthetic responses. Chinese/no-marker checks and two targeted inline-text regression assertions are evidence, not a general translation-quality score. First-PDF narrow screenshots/geometry cover only 820x960 and 390x844; physical trackpad gestures are not verified. Review saved paragraphs and screenshots manually.`,
     documents: [], screenshots: [], network: [], consoleErrors: [], cleanupErrors: [], focusEvents: [], focusChecks: []};
   let launched, page, launchAttempted = false, focusMonitor, ownedPid, focusFailure;
   const persist = () => fs.writeFileSync(path.join(artifactsDir, 'report.json'), JSON.stringify(report, null, 2));
@@ -452,6 +465,45 @@ async function main() {
         await page.getByRole('group', {name: '阅读方式', exact: true}).getByRole('button', {name: '双语', exact: true}).click();
         if (isPdf) {
           await page.locator('.pdf-zoom-control .pdf-menu-button').click(); await page.locator('.pdf-zoom-control [data-value="page"]').click();
+          if (index === 0) {
+            result.responsive = [];
+            try {
+              for (const viewport of report.parameters.narrowViewports) {
+                await checkFocus(`responsive-${viewport.width}`);
+                await page.setViewportSize(viewport);
+                await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+                const geometry = await page.evaluate(() => {
+                  const bar = document.querySelector('.document-taskbar');
+                  const visible = element => Boolean(element?.getClientRects().length && getComputedStyle(element).visibility !== 'hidden');
+                  const rect = element => {const bounds = element.getBoundingClientRect(); return {x: bounds.x, y: bounds.y, right: bounds.right, bottom: bounds.bottom};};
+                  const controls = [...bar.querySelectorAll('button,.el-select__wrapper,.pdf-page-navigation input')].filter(element => visible(element) && !element.closest('.taskbar-notices'))
+                    .map(element => ({name: element.getAttribute('aria-label') || element.textContent.trim() || element.className, ...rect(element)}));
+                  const overlaps = [];
+                  for (let at = 0; at < controls.length; at++) for (let next = at + 1; next < controls.length; next++) {
+                    const a = controls[at], b = controls[next];
+                    if (Math.min(a.right, b.right) - Math.max(a.x, b.x) > 1 && Math.min(a.bottom, b.bottom) - Math.max(a.y, b.y) > 1) overlaps.push([a.name, b.name]);
+                  }
+                  const pdfGroups = [...bar.querySelector('.pdf-viewer-toolbar').children].map(element => ({name: element.className, visible: visible(element), ...rect(element)}));
+                  return {width: innerWidth, height: innerHeight, bodyWidth: document.documentElement.scrollWidth, controls, overlaps, pdfGroups,
+                    outside: controls.filter(item => item.x < -1 || item.right > innerWidth + 1 || item.y < -1 || item.bottom > innerHeight + 1),
+                    readEditButtons: [...bar.querySelectorAll('.reader-tabs button')].filter(visible).length,
+                    readingModeButtons: [...bar.querySelectorAll('[aria-label="阅读方式"] button')].filter(visible).length,
+                    settingsVisible: visible(bar.querySelector('.toolbar-settings-toggle')),
+                    downloadVisible: visible(bar.querySelector('.download-button'))};
+                });
+                const screenshot = await shot(`${prefix}-reader-responsive-${viewport.width}x${viewport.height}`);
+                result.screenshots.push(screenshot); result.responsive.push({...geometry, screenshot}); persist();
+                assert(geometry.bodyWidth <= viewport.width + 1 && !geometry.outside.length, `Actual translated toolbar exceeds ${viewport.width}px: ${JSON.stringify(geometry.outside)}`);
+                assert.equal(geometry.overlaps.length, 0, `Actual translated toolbar controls overlap: ${JSON.stringify(geometry.overlaps)}`);
+                assert(geometry.pdfGroups.length && geometry.pdfGroups.every(group => group.visible && group.x >= -1 && group.right <= viewport.width + 1), 'Complete PDF control groups must remain visible and inside the viewport');
+                assert.equal(geometry.readEditButtons, 2); assert.equal(geometry.readingModeButtons, 3);
+                assert(geometry.settingsVisible && geometry.downloadVisible, 'Narrow layouts must retain translation settings and download entry points');
+              }
+            } finally {
+              await page.setViewportSize(report.parameters.viewport);
+              await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+            }
+          }
           for (const number of capturePages(sourcePages.length)) {
             await checkFocus(`reading-page-${number}`);
             const navigation = page.locator('.pdf-page-navigation input'); await navigation.fill(String(number)); await navigation.press('Enter');
