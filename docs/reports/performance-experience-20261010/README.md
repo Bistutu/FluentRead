@@ -1,6 +1,6 @@
-# 体积、设置同步与图片悬浮优化（2026-10-10）
+# 体积、共享配置与页面交互优化（2026-10-10）
 
-本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 完成。先冻结 `a95a9f9e0` 作对照，优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。未修改参考项目，也未借用参考实现。
+本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 完成。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，继续使用该集成基线对照。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
 
 ## 改动与测量
 
@@ -29,6 +29,8 @@
 
 集成 `55d1219bd` 后，另从该提交导出干净源码快照并使用相同依赖重建基线：Chrome 全部文件为 **67,375,068 → 67,086,447 B**，减少 **288,621 B（0.428%）**。这个对照包含最新主分支新增的 PDF 字体和导出能力，不能与上表的旧基线直接比较来归因本轮优化。
 
+同一集成对照按固定文件日期、排序路径和 JSZip 3.10.1 / DEFLATE level 6 在内存中压缩，得到 **24,181,275 → 24,111,591 B**，减少 **69,684 B**。这是可重复的安装包大小对照，没有生成或上传发布包。
+
 启动采样中，设置页 ready 中位数为 359.5 → 312.4 ms，网页为 228.0 → 228.4 ms；设置页脚本时间和堆内存没有稳定下降。样本只描述本机五次打开，运行期间存在其他任务的资源竞争，不能把这些时间当作跨设备提升保证。结论以确定的操作数和实际产物字节数为主。
 
 ## 验证范围
@@ -42,6 +44,69 @@
 
 原始图片运行时整文件测试存在 16 个漫画预合成/缓存用例失败；未优化的基线也复现同样 16 个失败。这些不是本轮新增的悬浮命中回归。没有运行全量测试，没有验证 Firefox 实机、在线翻译供应商、所有站点或低端设备。
 
+## 持续优化：共享配置快照与字幕布局
+
+第二轮继续基于上述集成版本，检查共享模块内的数据流。配置补丁的公共入口仍先把未知输入归一化；内部创建候选、CAS 比较和回包重建复用本次调用内的独立快照，不缓存可变配置，也不跳过候选字段的完整归一化。旧 token 兼容函数原样返回输入时复用已检查的候选；派生多 Key 或清空请求仍走原有兼容与凭据目的地绑定流程。
+
+| 改动 | 优化前 | 优化后 | 口径 |
+| --- | ---: | ---: | --- |
+| 单字段设置补丁的客户端同步归一化 | 13 次 | 7 次 | 执行真实配置 store；0/500/5,000 条术语结果一致 |
+| 后台可信补丁准备的完整归一化 | 7 次 | 4 次 | 公开准备入口，仍保留 CAS 与凭据解绑 |
+| 后台非可信补丁准备的完整归一化 | 6 次 | 3 次 | content 等调用不能修改凭据 |
+| 64 个播放器的选择位置读取 | 1,256 次 | 64 次 | 精确生产函数，同样选择播放中且面积最大的对象 |
+| 稳定长字幕四次轮询的高度读取 | 40 次 | 0 次 | 精确生产挂载；源文、译文与布局输入保持不变 |
+| 设置导航无关样式变化导致的数组提交与重绘 | 20 次 | 0 次 | 20 帧、10 个入口；显隐与位置读取次数不变 |
+
+5,000 条合成术语的 Node 探针中，单字段后台准备中位数为 80.12 → 43.83 ms，客户端同步阶段单次为 152.94 → 83.12 ms。计数是确定性证据，时间是本机合成配置测量，不能推断为浏览器或所有用户的响应时间。
+
+字幕仅复用当轮视频位置，下一轮继续读取新位置。适配输入包含文本、显示模式、宽高、字体、行距和失败重试控件；译文异步到达、失败、清空、缩放、全屏和字体加载都会重新适配。原有字幕域字号适配函数继续复用，没有建立全局布局缓存或修改原生 cue 查询语义。
+
+隔离 Edge 中的真实 DOM 布局对照也测得稳定字幕 40 → 0 次高度读取，适配字号均为 12.15px；同句随播放器移动、变窄后重新适配、合法行距变化、失败提示与卸载恢复均通过。这里运行生产模块，翻译结果和媒体就绪状态由本地夹具提供，不属于真实 Udemy、会议平台或在线供应商验收。
+
+正文上下文的归一化现在保留嵌套列表与续行缩进、两个空格硬换行，避免把父子关系压平。长空白段采用一次匹配处理；100,000 字符行尾空白探针约 0.145 ms，没有引入回溯开销。仍保留原来的 DOM 捕获和最终上下文长度预算。
+
+设置页同页导航比较当前入口的元素、ID、标签和翻译键；内容不变时不重新提交数组。观察范围、几何读取、懒挂载、折叠展开、滚动定位和卸载清理保持原逻辑。六项真实 SFC 回归及十八个探针场景覆盖样式、祖先显隐、布局变化和入口重排；这项收益是减少 Vue 更新，不是减少显隐检查。
+
+## 正文提取依赖与结构边界
+
+正文识别继续使用锁定版本的 Defuddle core，Markdown 投影复用同一锁文件中已有的 Turndown 7.2.4 与 mathml-to-latex 1.8.0，并将两者登记为直接依赖。替换 `defuddle/full` 后，不再为发送给模型的文本引入公式渲染器；标题、嵌套列表、引用和转义仍交给成熟转换库，补充数据表格、合并表格 HTML、提示块、脚注和公式关系。转换失败的 MathML 保留结构，矩阵和复杂表格不退化为拼接文本。投影模块仅接收已经清洗的脱离文档，继续移除资源地址；现有隐私清洗、大小预算、缓存代次和失败回退没有放宽。
+
+二十份人工构造的文章夹具执行真实 core，另有专属投影分支回归。新投影模块在项目严格覆盖率配置中登记，62 项关联测试下 statements、branches、functions、lines 均为 100%。真实 Edge 的六份虚构文章通过嵌套列表、MathJax、数据表格、合并表格公式、脚注和混合语言检查，live DOM 保持不变、结果缓存稳定、上下文保持 4,000 字符预算。这些证据不代表所有真实网站或 Firefox 实机兼容；浏览器夹具执行打包成 IIFE 的生产模块，不验证 WXT 动态分块失败。
+
+完整 Chrome 产物对照如下，基线仍为独立重建的 `55d1219bd`，未混入后续主分支改动：
+
+| 产物 | 集成基线 | 两批优化后 | 累计减少 |
+| --- | ---: | ---: | ---: |
+| 构建目录全部文件 | 67,375,068 B | 66,199,953 B | 1,175,115 B（1.744%） |
+| 固定日期、排序路径、DEFLATE level 6 ZIP | 24,181,275 B | 23,855,946 B | 325,329 B（1.345%） |
+
+第二批相对第一批集成产物额外减少 886,494 B。ZIP 在内存中测量，沿用 JSZip 默认目录条目；未生成发布包或上传代码。体积收益由完整产物字节数证明，不将小型依赖实验的比例套用于整个扩展。
+
+第二批类型检查、Chrome/Firefox/Userscript 构建和两类 verifier 已通过，文档与 Storybook 构建及各自静态检查也通过。两组互不重复的针对性回归共 21 文件 / 1,522 项通过，其中包含 894 项源码长头检查；严格覆盖率的 62 项已包含在前述回归中。分类审计为 636 文件 / 10,318 个声明用例，不能把声明数当作已执行数。
+
+最终生产扩展的真实 UI 持久化专项覆盖八次实际修改：popup 的图片开关、目标语言、网页服务、划词抽屉模式，以及 options 的总开关、目标语言、网页服务、划词模式。每次界面反馈后立即请求关闭，没有等待 storage 或 ACK，独立新文档重开后的控件及后台权威值一致；options 到已打开与独立重开的 popup 同步通过，连续 `de → ja` 修改最终保持 `ja`。控制台无错误或警告，临时 profile 已清理。成功报告位于 `round2-config-ui-success/report.json`；原始 `round2-config-ui` 保留启动被沙箱 LaunchServices 拒绝、零用例的诊断，不能当作产品失败或通过结果。截图已人工检查。
+
+## 第三批：语言资源裁剪与逐槽键复用（2026-10-11）
+
+默认中文入口原先通过整份七语对象取中文资源，导致非中文 PDF 阅读和信息高亮文案重复进入 background、三个内容脚本和共享界面 chunk。现在各语言独立导出常量，中文入口只引用中文常量；完整七语汇总仍供资源生成与 Userscript 使用。未删除语言或改动文案。冻结 `21ea24ef0` 后，对所有七语 messages、legacyText、patterns 的完整输出逐字节对照，共 3,439,997 B，SHA-256 为 `51e93fef70e84341724abec13ff98a1c7260fabfa3f2a9bd146cb1a05a7e2c2a`，全部相同。
+
+全文批译已在调用入口复制原文和请求配置；缺失条目现在携带该次快照首次生成的 key，结果登记直接复用。键的维度、512 条容量、译文索引、供应商请求数、取消归属和重试流程保持原逻辑。真实请求入口下，100 个不同原文序列化为 **200 → 100 次**；100 个输入含 50 个重复原文或 50 个已结算命中时，均为 **150 → 100 次**。独立生产路径探针还核对配置变更、调用者同步修改输入、清空在途、重叠取消、容量上限和异常响应重试。
+
+冻结第三批代码后，完整 Chrome 构建相对第二批减少 **413,020 B**。累计结果：
+
+| 产物 | 集成基线 | 三批优化后 | 累计减少 |
+| --- | ---: | ---: | ---: |
+| 构建目录全部文件 | 67,375,068 B | 65,786,933 B | 1,588,135 B（2.357%） |
+| 同口径 ZIP | 24,181,275 B | 23,751,817 B | 429,458 B（1.776%） |
+
+真实 Edge 分别在第二批与第三批生产扩展上采样五次 popup、options、content 启动。每个入口实际读取的 JavaScript 分别减少 82,591 / 82,591 / 82,598 B；DOM 节点与完整配置序列化数保持一致。ready 中位数分别为 popup 79.7 → 72.5 ms、options 271.9 → 277.5 ms、content 198.2 → 192.4 ms。设置页时间没有改善，原始 heap 受垃圾回收时点影响波动明显，不将字节减少解释成统一的启动或内存改善。报告保留全部样本与本机测量口径。
+
+因原始 options heap 在两组中均有较大波动，另对该页面各采样三次，并在启动采样之后调用 CDP `HeapProfiler.collectGarbage` 排除回收时点差异。GC 后中位数为 18,013,340 → 17,951,532 B，未复现原始读数中的大幅增长。补充探针仅用于核对保留内存，不改变产品 GC 策略，也不作为常规启动时间证据。
+
+语言相关 9 文件 / 181 项测试通过；全文请求相关 6 文件 / 465 项通过，全文请求模块四维覆盖率为 100%，修改前基线也为 100%。三个静态文案目录的语句和行全部覆盖，函数和分支为空。最终架构与源码长头 3 文件 / 923 项通过，类型检查、Chrome、Firefox、Userscript 构建及 verifier 通过；分类审计为 636 文件 / 10,321 个声明用例。上述结果没有把重叠执行的用例相加，也不代表 Firefox 实机或在线服务验收。
+
+第三批最终生产扩展复验皮肤组：八次方向键、Home/End 与循环选择均保持焦点跟随及单一 Tab 入口；快速关闭保存、跨页同步、深色 390px 布局无横向溢出通过，控制台无错误。浅色与窄屏深色截图已人工检查，报告位于 `round3-skin/report.json`。
+
 ## 复核入口
 
 ```sh
@@ -49,6 +114,11 @@ pnpm test tests/settingsSectionsLifecycle.test.ts tests/interfaceSettingsLifecyc
 pnpm test -- tests/imageTranslationRuntime.test.ts -t '图片入口独立开关与右键身份'
 node scripts/testing/run-startup-performance.cjs --kinds options,content --runs 5 --extension-dir .output/chrome-mv3 --artifacts-dir /private/tmp/fluentread-startup
 node scripts/testing/run-interface-skin-keyboard-test.cjs --extension-dir .output/chrome-mv3 --artifacts-dir /private/tmp/fluentread-skin
+node scripts/testing/run-platform-caption-layout-test.cjs --artifacts-dir /private/tmp/fluentread-caption-layout
+node scripts/testing/run-page-context-structure-test.cjs --artifacts-dir /private/tmp/fluentread-page-context
+node scripts/testing/run-config-persistence-test.cjs --extension-dir .output/chrome-mv3 --artifacts-dir /private/tmp/fluentread-config-persistence
+pnpm test:coverage -- tests/pageContextMarkdown.test.ts tests/pageContextDefuddle.test.ts --coverage.include=src/services/translation/context/markdown.ts
+pnpm test:coverage -- tests/sameTargetLanguageSlots.test.ts tests/sameTargetLanguageClient.test.ts tests/sameTargetLanguageRegression.test.ts tests/liveTextTranslation.test.ts tests/translationSlotEchoRegression.test.ts tests/fullPageVisibilityScheduling.test.ts --coverage.include=src/features/full-page-translation/content/translationRequest.ts
 node scripts/testing/analyze-bundle-size.mjs .output/chrome-mv3 /path/to/baseline-chrome
 ```
 
@@ -56,4 +126,8 @@ node scripts/testing/analyze-bundle-size.mjs .output/chrome-mv3 /path/to/baselin
 
 ## 后续候选
 
-`defuddle/full` 的数学与 Markdown 依赖被多个内容脚本重复打包，但直接换基础包会改变标题、列表和表格上下文。后续应先建立真实脱敏 HTML 语料和结构对照，再评估精简；本轮保留正文提取语义。frame CSS 的剩余重复资源仍遵循 WXT 同名入口路径，未直接删掉文件或改变资源引用。
+已确认配置模型目录通过 `localTranslation.ts → language/detect → franc-min` 让 popup/options 首屏提前加载约 102 KB 检测数据并初始化统计字典；实际自动检测 resolver 仅由 offscreen 翻译调用。下一轮可把该 resolver 与静态模型元数据分开，核对首屏加载、语言语料与本地翻译，不改变识别算法。
+
+写作设置仅使用 `WritingChoices`，但当前 root barrel 带入写作卡片和阅读面板样式：WritingSettings CSS 内约 16 KB 为 runtime 卡片规则，并预加载约 18 KB ReadingPanel CSS。下一轮可继续按公开职责分开 UI、client 和答案格式出口，核对真实卡片与 Userscript 样式。这两项是已审计候选，尚未实施。
+
+原生字幕 cue 查询仍按原语义线性扫描，后续索引需要先证明重叠字幕、seek、动态轨变化和偏移的一致性。frame CSS 的剩余重复资源仍遵循 WXT 同名入口路径，未直接删掉文件或改变资源引用。
