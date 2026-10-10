@@ -1394,4 +1394,139 @@ describe('document-only mixed free-pool batching', () => {
         await assertion;
         expect(scalarProviders.size).toBe(0);
     });
+
+    it('a scalar response colliding with this group namespace is rejected before any slot is consumed', async () => {
+        const {serializeDocumentFreeFirstSlot} = await import('@/src/providers/translation/documentFreeBatch');
+        const original = sources(2), packet = serializeTranslationSlots(original);
+        expect(() => serializeDocumentFreeFirstSlot(original, `译文包含 ${packet.starts[0]}`))
+            .toThrow('首段槽位异常');
+        expect(original).toEqual(sources(2));
+    });
+
+    it('the group owner receiving an already cancelled caller starts no translation port', async () => {
+        const {translateDocumentFreeGroups} = await import('@/src/providers/translation/documentFreeBatch');
+        const original = sources(2), controller = new AbortController(), reason = new Error('Owner cancelled before dispatch');
+        controller.abort(reason);
+        const translate = vi.fn();
+        await expect(translateDocumentFreeGroups(original, [{indexes: [0, 1], sources: original}], 1, controller.signal, translate))
+            .rejects.toBe(reason);
+        expect(translate).not.toHaveBeenCalled();
+    });
+
+    it('the owner rejects a late success from a port ignoring cancellation and never claims another group', async () => {
+        const {translateDocumentFreeGroups} = await import('@/src/providers/translation/documentFreeBatch');
+        const original = sources(4), controller = new AbortController(), reason = new Error('Owner cancelled while pending');
+        Object.freeze(original);
+        let resolve!: (translated: string) => void;
+        const translate = vi.fn(() => new Promise<string>(res => {resolve = res;}));
+        const first = original.slice(0, 2), second = original.slice(2), packet = serializeTranslationSlots(first);
+        const nonce = packet.starts[0]!.slice('___FLUENTREAD_'.length, -'_0_BEGIN___'.length);
+        const result = translateDocumentFreeGroups(original, [{indexes: [0, 1], sources: first}, {indexes: [2, 3], sources: second}],
+            1, controller.signal, translate);
+        const assertion = expect(result).rejects.toBe(reason);
+        expect(translate).toHaveBeenCalledOnce();
+        controller.abort(reason);
+        resolve(serializeTranslationSlots(valid(first), nonce).payload);
+        await assertion;
+        expect(translate).toHaveBeenCalledOnce();
+        expect(original).toEqual(sources(4));
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it.each(['microsoft', 'google'] as const)('a %s-only document pool recovers a malformed array through paced scalar attempts within the same budget', async provider => {
+        mockConfig.freeTranslationOrder = [provider];
+        const originals = sources(2), expected = valid(originals);
+        Object.freeze(originals);
+        const starts: number[] = [];
+        if (provider === 'microsoft') {
+            microsoftMock.mockImplementation(async (texts: string[]) => {
+                starts.push(Date.now());
+                return valid(texts.length > 1 ? texts.slice(0, 1) : texts);
+            });
+        } else {
+            googleOwnerMock.mockImplementation(async (texts: string[]) => {
+                starts.push(Date.now());
+                return valid(texts.slice(0, 1));
+            });
+            googleMock.mockImplementation(async (text: string) => {starts.push(Date.now()); return `译:${text}`;});
+        }
+        const {attachTranslationRouteObserver} = await import('@/src/services/translation/requestSnapshot');
+        const observed: Array<{route: string; chars: number}> = [];
+        await expect(settle(freeTranslation(attachTranslationRouteObserver({origin: originals, documentBatch: true}, event => observed.push(event)))))
+            .resolves.toEqual(expected);
+        if (provider === 'microsoft') expect(microsoftMock.mock.calls.map(call => call[0])).toEqual([originals, [originals[0]], [originals[1]]]);
+        else {
+            expect(googleOwnerMock).toHaveBeenCalledOnce();
+            expect(googleMock.mock.calls.map(call => call[0])).toEqual(originals);
+        }
+        expect(starts.map(time => time - starts[0]!)).toEqual(provider === 'microsoft' ? [0, 100, 200] : [0, 300, 600]);
+        expect(observed.map(event => event.chars)).toEqual([originals.join('').length, ...originals.map(source => source.length)]);
+        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === provider)?.status).toBe('ready');
+        expect(originals).toEqual(sources(2));
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('scalar recovery that also returns invalid content stops after its one bounded retry', async () => {
+        mockConfig.freeTranslationOrder = ['microsoft'];
+        const originals = sources(2);
+        microsoftMock.mockImplementation(async (texts: string[]) => texts.length > 1 ? valid(texts.slice(0, 1)) : ['']);
+        await expect(settle(freeTranslation({origin: originals, documentBatch: true}))).rejects.toThrow('免费翻译服务均不可用');
+        expect(microsoftMock.mock.calls.map(call => call[0])).toEqual([originals, [originals[0]]]);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('native-to-scalar recovery uses the original deadline and cannot start the next source beyond it', async () => {
+        mockConfig.freeTranslationOrder = ['microsoft'];
+        const originals = sources(2);
+        microsoftMock.mockImplementation(async (texts: string[]) => valid(texts.length > 1 ? texts.slice(0, 1) : texts));
+        const request = freeTranslation({origin: originals, documentBatch: true, requestTimeoutMs: 150});
+        const assertion = expect(request).rejects.toThrow('超时');
+        await vi.advanceTimersByTimeAsync(200);
+        await assertion;
+        expect(microsoftMock.mock.calls.map(call => call[0])).toEqual([originals, [originals[0]]]);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it.each(['resolve', 'reject'] as const)('abort during the native-only scalar recovery ignores late %s and starts no later slot', async late => {
+        mockConfig.freeTranslationOrder = ['microsoft'];
+        let resolve!: (value: string[]) => void;
+        let reject!: (error: Error) => void;
+        microsoftMock.mockImplementation((texts: string[]) => texts.length > 1 ? Promise.resolve(valid(texts.slice(0, 1)))
+            : new Promise<string[]>((res, rej) => {resolve = res; reject = rej;}));
+        const controller = new AbortController(), reason = new Error('Cancel scalar recovery');
+        const originals = sources(2);
+        const request = freeTranslation({origin: originals, documentBatch: true, abortSignal: controller.signal});
+        const assertion = expect(request).rejects.toBe(reason);
+        await vi.advanceTimersByTimeAsync(100);
+        expect(microsoftMock.mock.calls.map(call => call[0])).toEqual([originals, [originals[0]]]);
+        controller.abort(reason);
+        await assertion;
+        if (late === 'resolve') resolve(['迟到译文']); else reject(new Error('Late recovery rejection'));
+        await flush();
+        await vi.advanceTimersByTimeAsync(1_000);
+        expect(microsoftMock).toHaveBeenCalledTimes(2);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('HTTP failure without a new native validation marker is not retried as scalar recovery', async () => {
+        mockConfig.freeTranslationOrder = ['microsoft'];
+        microsoftMock.mockRejectedValue(httpFailure(503));
+        await expect(settle(freeTranslation({origin: sources(2), documentBatch: true}))).rejects.toThrow('HTTP 503');
+        expect(microsoftMock).toHaveBeenCalledOnce();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('an attempt timeout without a new validation marker does not recover, even when an invalid array arrives late', async () => {
+        mockConfig.freeTranslationOrder = ['microsoft'];
+        let resolve!: (value: string[]) => void;
+        microsoftMock.mockReturnValue(new Promise<string[]>(res => {resolve = res;}));
+        const request = freeTranslation({origin: sources(2), documentBatch: true});
+        const assertion = expect(request).rejects.toThrow('超时');
+        await vi.advanceTimersByTimeAsync(1_000);
+        await assertion;
+        resolve(['迟到的缺槽译文']);
+        await flush();
+        expect(microsoftMock).toHaveBeenCalledOnce();
+        expect(vi.getTimerCount()).toBe(0);
+    });
 });

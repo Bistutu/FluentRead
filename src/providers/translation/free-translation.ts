@@ -273,7 +273,19 @@ async function translateFreeBatch(texts: string[], message: PreparedRequest): Pr
     if (message.abortSignal?.aborted) throw abortErrorFromSignal(message.abortSignal);
     if (import.meta.env.BROWSER !== 'userscript' && message.documentBatch === true) {
         return translateDocumentFreeGroups(texts, groupFreeSlots(texts), FREE_TRANSLATION_BATCH_CONCURRENCY, message.abortSignal,
-            (sources, signal, scalarProviders) => translatePreparedText(serializeTranslationSlots(sources).payload, {...message, abortSignal: signal}, sources, scalarProviders));
+            async (sources, signal, scalarProviders) => {
+                const previousFailures = scalarProviders.size;
+                const translate = () => translatePreparedText(serializeTranslationSlots(sources).payload, {...message, abortSignal: signal}, sources, scalarProviders);
+                try {
+                    return await translate();
+                } catch (error) {
+                    // 本轮全池失败且新发现原生协议不兼容时，重入一次原调度器实施已记录的逐段降级。
+                    // 第二轮直接传播失败，不延长预算、不绕过线路间隔，也不重跑没有新标记的 HTTP 错误。
+                    if (signal.aborted || scalarProviders.size <= previousFailures
+                        || Date.now() >= (message[FREE_TRANSLATION_DEADLINE] ?? 0)) throw error;
+                    return translate();
+                }
+            });
     }
     const enabled = normalizeFreeTranslationOrder(getTranslationProviderConfig(message, config).freeTranslationOrder);
     // 按冻结的完整启用池决定；不能借健康/方向过滤把混合池提升为原生分组池。

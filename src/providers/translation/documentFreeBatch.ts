@@ -73,7 +73,6 @@ export async function translateDocumentFreeGroups(
                     const packet = serializeTranslationSlots(sources);
                     const translated = await translate(sources, controller.signal, scalarProviders);
                     throwIfAborted();
-                    if (stopped) return;
                     const values = parseTranslationSlots(packet, translated)
                         ?? parseTranslationSlots({...packet, starts: packet.starts.slice(0, 1), ends: packet.ends.slice(0, 1)}, translated);
                     if (!values || !values.length || values.some(value => !value.trim())) {
