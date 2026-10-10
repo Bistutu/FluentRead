@@ -1,7 +1,7 @@
 <!--
  @file src/app/options/OptionsApp.vue
  文件职责：实现扩展 Options 页的顶层布局，组织设置导航、全局搜索结果和学习中心入口，并把选中分区交给对应 feature UI。
- 主要内容：侧栏展示品牌与多语言宣传语；关于页以随界面语言显示产品名的宽幅品牌介绍、项目链接卡片、开源项目下方的微信交流按钮和独立赞赏区组织内容，联系二维码与赞赏码在当前页弹窗展示；渲染默认展开的分组侧栏、窄屏分类选择和全局搜索，语言恢复查询优先展示现有软件语言入口并定位选择控件；普通设置连续展示并提供顶部滚动定位导航，统计保留任务视图切换，智能高亮锚点及搜索入口随脚本版能力隐藏，服务目录使用完整工作区，复用 settingsNavigation 的项目解析/过滤逻辑，在 SettingsSections 与 LearningCenter 之间切换并重置内容区滚动，同步 URL hash 的深链接与前进后退导航，兼容模型用量迁入翻译统计后的旧链接；界面根节点注册在卸载时只释放本页面句柄。
+ 主要内容：侧栏展示品牌与多语言宣传语；关于页以随界面语言显示产品名的宽幅品牌介绍、项目链接卡片、开源项目下方的微信交流按钮和独立赞赏区组织内容，联系二维码与赞赏码在当前页弹窗展示；渲染默认展开的分组侧栏、窄屏分类选择和全局搜索，搜索只在同次派生内复用原始查询的小写值和语言入口判断，语言恢复查询优先展示现有软件语言入口并定位选择控件；普通设置连续展示并提供顶部滚动定位导航，统计保留任务视图切换，智能高亮锚点及搜索入口随脚本版能力隐藏，服务目录使用完整工作区，复用 settingsNavigation 的项目解析/过滤逻辑，在 SettingsSections 与 LearningCenter 之间切换并重置内容区滚动，同步 URL hash 的深链接与前进后退导航，兼容模型用量迁入翻译统计后的旧链接；界面根节点注册在卸载时只释放本页面句柄。
  模块边界：组件负责页面壳、导航状态和主题、界面皮肤根属性同步，不定义具体配置字段、不直接写 browser.storage，也不实现词汇仓库；设置表单、收藏与阅读记录业务由各 feature 组件拥有。
 -->
 <template>
@@ -356,29 +356,32 @@ void configReady
 
 type SearchResult = {id: string; sectionId: string; targetId?: string; panelId?: string; label: string; searchDescription: string}
 const filteredResults = computed<SearchResult[]>(() => {
+  const searchQuery = query.value
+  const keyword = searchQuery ? searchQuery.toLocaleLowerCase() : ''
+  const languageSearch = isUiLanguageSearch(searchQuery)
   const results: SearchResult[] = [
     ...Object.entries(settingsPagePanels).flatMap(([sectionId, panels]) => panels
-      .filter(panel => isAvailableSettingsEntry(panel) && query.value && `${t(panel.labelKey)} ${panel.searchTerms}`.toLocaleLowerCase().includes(query.value.toLocaleLowerCase()))
+      .filter(panel => isAvailableSettingsEntry(panel) && searchQuery && `${t(panel.labelKey)} ${panel.searchTerms}`.toLocaleLowerCase().includes(keyword))
       .map(panel => ({id: `${sectionId}/${panel.id}`, sectionId, panelId: panel.id, label: t(panel.labelKey), searchDescription: localizedNavigationItems.value.find(item => item.id === sectionId)?.label ?? ''}))),
-    ...filterSettingsSearchTargets(query.value, localizedSearchTargets.value).map(target => ({
+    ...filterSettingsSearchTargets(searchQuery, localizedSearchTargets.value).map(target => ({
       id: target.id,
       sectionId: target.sectionId,
       targetId: target.targetId,
       label: target.label,
       searchDescription: target.description,
     })),
-    ...filterNavigationItems(query.value, localizedNavigationItems.value).map(item => ({
+    ...filterNavigationItems(searchQuery, localizedNavigationItems.value).map(item => ({
       id: item.id,
       sectionId: item.id,
-      label: item.id === 'settings-general' && isUiLanguageSearch(query.value)
+      label: item.id === 'settings-general' && languageSearch
         ? `${t('language.selectorLabel')} / Language`
         : item.label,
-      searchDescription: item.id === 'settings-general' && isUiLanguageSearch(query.value)
+      searchDescription: item.id === 'settings-general' && languageSearch
         ? t('language.settingsDescription')
         : item.description,
     })),
   ]
-  if (isUiLanguageSearch(query.value)) {
+  if (languageSearch) {
     const languageIndex = results.findIndex(result => result.id === 'settings-general')
     if (languageIndex > 0) results.unshift(...results.splice(languageIndex, 1))
   }

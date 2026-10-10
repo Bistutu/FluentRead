@@ -1,6 +1,6 @@
 # 体积、共享配置与页面交互优化（2026-10-10）
 
-本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 持续进行。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，第四批为 `97e92defe`，第五批为 `7e8ffe952`，第六批为 `621a1c2a2`，第七批为 `adbcfe428`，第八批为 `5e554d7fa`，第九批为 `85c29dffe`，第十批为 `626e4652e`；后续继续使用同一集成基线，并与上一批冻结产物比较。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
+本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 持续进行。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，第四批为 `97e92defe`，第五批为 `7e8ffe952`，第六批为 `621a1c2a2`，第七批为 `adbcfe428`，第八批为 `5e554d7fa`，第九批为 `85c29dffe`，第十批为 `626e4652e`，第十一批为 `80e2db0c5`；后续继续使用同一集成基线，并与上一批冻结产物比较。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
 
 ## 改动与测量
 
@@ -261,6 +261,20 @@ X 原生字幕 `sync` 原先先判时间轴，再为正文重新复制、筛选�
 
 类型检查、Chrome→Firefox 顺序构建、双 manifest 验证、Userscript 构建及 **1,962,383 B** 产物 verifier 通过，Userscript 增加 81 B；文档→Storybook 顺序构建后，81 页面与 28 stories 检查通过。没有新增依赖、改变日期规则、裁剪语言/功能或修改参考仓库；证据不覆盖真实 provider、Firefox 实机与低端设备。
 
+## 第十二批：固定数字规则与同次搜索派生（2026-10-11）
+
+模型用量页原先逐行重新构造速度、秒与分钟格式器。现在在组件 setup 内直接使用已有 `core/i18n/numberFormat.ts`，三套固定规则各有最多八种语言的有界实例，首次有效数值才构造；不缓存数值或输出，也不跨组件或 SSR setup 共用。原有日期、整数、Token 格式器以及单位阈值不变，负零、非法值、59,999.5 ms 与 60,000 ms 的不同路径均保留。没有新模块、依赖、语言裁剪或模块初始化时的 Intl 构造。
+
+设置搜索在一次 computed 计算内复用原查询、小写值与语言入口判断。Chrome 的 29 个、Userscript 的 28 个分类仍匹配原始查询；公共导航自身的 trim/NFKC 语义保留，语言入口标签和优先级使用同一个判断。资源到达仍使同查询重新计算，点击旧结果仍读取最新查询，没有跨查询结果缓存。实际 Options SFC 对照的 76 个状态、结果字段和顺序相同；Chrome 软件语言查询的小写操作 **35 → 5 次**，语言判断 **4 → 2 次**，普通查询 **33 → 5 次**，空查询 **3 → 3 次**。这些是受控操作计数，不解释为实际输入延迟。
+
+真实 Model SFC 对冻结 `80e2db0c5`，100 行/八组单轮三套构造 **198 → 3 次**，修改跳页输入的下一轮 **198 → 0 次**；展开十组为 **204 → 0 次**，新语言为三次，返回已用语言为零。21 个 DOM 阶段、161 个格式边界输入与七种语言的行、分组 ARIA 和摘要文字全等；独立 SSR setup、KeepAlive、卸载及三套构造失败重试也验证，非预期错误为空。报告为 `round12-model-number-format/actual-production-report.json`，设置探针为 `round12-settings-search-audit/`。
+
+冻结第十一包与第十二包的真实生产扩展在两个独占后台 Edge 中验证九个搜索状态，包括真实 CDP 输入法组合/提交、Esc、点击语言定位、中英文及空白/大小写。合成 200 条记录的八个统计阶段核对全部行日期/速度/单位、分组、摘要、分页、跳页及宽度，三套格式器构造合计 **1,957 → 6 次**：初始 20 行 **75 → 3**，切换 100 行 **331 → 0**，展开十组与修改跳页输入各 **221 → 0**，第二页 **443 → 0**，切英文 **222 → 3**，英文输入与返回中文各 **222 → 0**。异步阶段可包含多个 Vue render，不把它们声称为每点击单轮。控制台错误/警告、外部请求、禁止写消息、夹具写入均为空，模型调用零次；两包各十次焦点检查未抢前台，profile 已清理。八份成功原图和首失败原图均已检查。初次夹具遗漏配置 schema 必填 `on/service/from/to`，只修正临时 runner，并保留失败报告；比较明确使用 `baseline-retry1`。证据为 `round12-browser/DELIVERY.md` 与 `comparison.json`，不将浏览器中英文验证扩展为七语实机或设备耗时结论。
+
+实际 Model setup 新增回归红阶段 **6 失败 / 10 通过**，修复后 16 项通过；Options/导航新增回归红阶段 **2 失败 / 47 通过**，修复后两文件 49 项通过。两个原有数字/Token 纯模块九项回归与四维 100% strict 检查通过；架构四文件 938 项通过（含 903 项源码长头）。互不重复合计 **9 文件 / 1,012 项**，分类审计 **637 文件 / 10,391 个声明**，未声称全量执行。模板与样式内容逐字不变，独立只读复核未发现可操作缺陷，没有改变覆盖率配置或排除项。
+
+类型检查、Chrome→Firefox 顺序构建、双 manifest 验证、Userscript 构建及 **1,962,383 B** 产物 verifier 通过，Userscript 与第十一批字节相同；文档→Storybook 顺序构建后，81 页面及 28 stories 检查通过。完整 Chrome 为 **65,613,812 B**，较第十一批增加 **123 B**；同口径固定日期内存 ZIP 为 **23,694,612 B**，增加 **64 B**。累计对冻结 `55d1219bd`，原始文件减少 **1,761,256 B**、ZIP 减少 **486,663 B**。301 个非 JS/HTML 静态文件路径/SHA 相同，唯一 CSS 为 Model scope hash 更新，42,568 B 与配对 hash 替换后的全部字节/顺序相同；background 为 2,040,353 B，增加 44 B，未声称其字节不变。账本为 `round12-static-module-ledger.json` 与 `round12-package-comparison.json`。未借鉴或修改参考仓库；未上传发布包，证据不覆盖在线 provider、Firefox 实机或低端设备。
+
 ## 复核入口
 
 ```sh
@@ -277,6 +291,7 @@ node scripts/testing/run-onboarding-keyboard-and-provider-dialog-test.cjs --exte
 node scripts/testing/run-caption-segment-filter-test.cjs --source-root . --expect optimized --artifacts-dir /private/tmp/fluentread-caption-filter
 node scripts/testing/run-color-field-focus-test.cjs --extension-dir .output/chrome-mv3 --expect optimized --artifacts-dir /private/tmp/fluentread-color-focus
 pnpm test tests/dateFormatLifecycle.test.ts tests/implementationAudit49C.test.ts tests/readingPanelStreamingResize.test.ts tests/readingPanelLifecycle.test.ts tests/usageDashboardLifecycle.test.ts
+pnpm test tests/usageDashboardLifecycle.test.ts tests/numberFormat.test.ts tests/modelUsageTokenFormat.test.ts tests/optionsAppNavigationLifecycle.test.ts tests/optionsNavigation.test.ts
 pnpm test tests/xCaptionSource.test.ts tests/xVideoSubtitleData.test.ts tests/videoPretranslationController.test.ts tests/videoSubtitleTrackPriorityRuntime.test.ts
 pnpm test tests/selectionTranslatorCore.test.ts tests/readingAssistantPresentation.test.ts tests/translationCore.test.ts tests/documentSelectionRuntime.test.ts
 pnpm test:coverage -- tests/pageContextMarkdown.test.ts tests/pageContextDefuddle.test.ts --coverage.include=src/services/translation/context/markdown.ts

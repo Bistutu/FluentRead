@@ -108,7 +108,7 @@ node scripts/run-selection-trigger-test.cjs --context-menu-only \
 
 生产扩展构建后，运行 `node scripts/testing/run-settings-reading-menu-ui-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <扩展界面测试技能>/scripts/focus-safe-browser.cjs --artifacts-dir <证据目录>`。专项使用第二屏上的临时 Edge 后台窗口，检查阅读辅助左侧预览与右侧设置、完整说明、虚线、高亮联动与样式跳转，右键菜单左侧单一虚拟菜单与右侧紧凑选项、所有启用入口的实时增删、功能前置条件禁用、总开关禁用和重开后保存；覆盖七种语言的桌面与 390px 布局、深色主题和其他设置分组标题。浏览器范围为 Edge，不代表 Firefox 实机或外部翻译服务。
 
-`run-settings-section-navigation-test.cjs` 检查连续表单中的完整导航、搜索、跨页定位、折叠、键盘与滚动高亮。翻译设置分别登记右键菜单、悬浮球进阶设置、段落复制、局部翻译与不翻译的语言；最后一组较短时，滚动到底仍应高亮其入口。元数据与既有直达链接由 `tests/optionsNavigation.test.ts` 和 `tests/optionsAppNavigationLifecycle.test.ts` 验证。
+`run-settings-section-navigation-test.cjs` 检查连续表单中的完整导航、搜索、跨页定位、折叠、键盘与滚动高亮。翻译设置分别登记右键菜单、悬浮球进阶设置、段落复制、局部翻译与不翻译的语言；最后一组较短时，滚动到底仍应高亮其入口。元数据与既有直达链接由 `tests/optionsNavigation.test.ts` 和 `tests/optionsAppNavigationLifecycle.test.ts` 验证。实际 Options SFC 回归另覆盖单次查询的派生复用、原空白/全角匹配规则、同查询的迟到语言资源更新，以及旧搜索项点击时读取最新查询；不把操作计数当作真实输入延迟。
 
 ## 设置布局与控件交互
 
@@ -325,6 +325,8 @@ X 另覆盖未预取句子等待原译文成对显示、seek 后迟到结果丢�
 专项只检查普通译文页的学习方式均未选中、点击一次进入对应回答、历史默认折叠、按轮次和问题摘要逐条展开、键盘收起、展开不发请求且不改变当前问答、长问题在 390px 深色界面中换行、返回译文时清除选中状态、缓存动作切换和恢复已保存记录。使用第二屏后台隔离 Edge 与本地确定性响应，不代表在线模型质量或 Firefox 运行时验证。`tests/readingPanelLifecycle.test.ts` 另覆盖空记录返回后点击默认动作，以及历史展开不改变追问上下文。
 
 `tests/implementationAudit49C.test.ts` 通过真实学习笔记与阅读记录组件、确认弹窗和后台消息的受控端口，验证取消保留数据、挂载期间确认清空，以及确认尚未结束就卸载页面时不会发送清空请求。已经交给后台的清空操作不在此时撤回。
+
+`tests/usageDashboardLifecycle.test.ts` 另执行实际 Model setup 的速度和秒/分钟格式函数：核对七种界面语言、单位阈值、负零与异常值、组件实例隔离和构造失败重试；共享固定规则及八语言缓存淘汰由 `tests/numberFormat.test.ts` 覆盖。
 
 `tests/dateFormatLifecycle.test.ts` 运行真实 Vue 更新、KeepAlive 和 SSR 生命周期，验证日期列表同轮惰性复用、下一轮重新解析语言和默认时区、独立组件与 SSR 请求隔离，以及构造失败重试。系统默认地区和时区通过原生 `Intl` 的受控端口切换，不表示已做真实操作系统变更或设备性能验收。
 

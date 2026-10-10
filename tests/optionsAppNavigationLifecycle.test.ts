@@ -171,6 +171,106 @@ async function mountOptions(hash = '#settings-selection', ready = Promise.resolv
 
 describe('OptionsApp language recovery search with actual UI messages', () => {
   const englishLanguageSuffix = ['settings-translation/excluded-languages', 'settings-translation', 'settings-image-translation', 'settings-writing', 'settings-glossary'];
+
+  it.each(['chrome', 'userscript'])('shares query work within each actual search evaluation in %s', async browser => {
+    const {state} = await mountOptions('#settings-selection', Promise.resolve(), undefined, undefined, browser, 'en-US');
+    // Initialize the page's existing localized computed values before counting query work.
+    expect(state.filteredResults).toEqual([]);
+    const readSearch = (query: string) => {
+      state.query = query;
+      const queryForms = new Set([query, query.trim(), query.trim().normalize('NFKC')]);
+      let lowercaseCalls = 0, normalizationCalls = 0;
+      const lowercase = String.prototype.toLocaleLowerCase;
+      const normalize = String.prototype.normalize;
+      const lowercaseSpy = vi.spyOn(String.prototype, 'toLocaleLowerCase').mockImplementation(function(this: string, ...args) {
+        if (queryForms.has(String(this))) lowercaseCalls += 1;
+        return lowercase.apply(this, args);
+      });
+      const normalizeSpy = vi.spyOn(String.prototype, 'normalize').mockImplementation(function(this: string, ...args) {
+        if (queryForms.has(String(this))) normalizationCalls += 1;
+        return normalize.apply(this, args);
+      });
+      try {
+        const results = state.filteredResults;
+        const repeatedResults = state.filteredResults;
+        return {results, repeatedResults, lowercaseCalls, normalizationCalls};
+      } finally {
+        lowercaseSpy.mockRestore();
+        normalizeSpy.mockRestore();
+      }
+    };
+    for (const [query, expectedIds] of [
+      ['Language', ['settings-general', ...englishLanguageSuffix]],
+      ['OpenAI', ['settings-services', 'settings-translation-stats']],
+      ['Ｌａｎｇｕａｇｅ', ['settings-general']],
+      [' language ', ['settings-general', 'settings-translation', 'settings-image-translation', 'settings-writing', 'settings-glossary']],
+      ['UnmatchedAbC'.repeat(10_000), []],
+      ['Language', ['settings-general', ...englishLanguageSuffix]],
+    ] as const) {
+      const {results, repeatedResults, lowercaseCalls, normalizationCalls} = readSearch(query);
+      expect(results.map(result => result.id)).toEqual(expectedIds);
+      expect(repeatedResults).toBe(results);
+      expect(lowercaseCalls).toBe(5);
+      expect(normalizationCalls).toBe(2);
+    }
+    const empty = readSearch('');
+    expect(empty.results).toEqual([]);
+    expect(empty.lowercaseCalls).toBe(3);
+    expect(empty.normalizationCalls).toBe(1);
+    // Panels deliberately match the raw query, unlike trimmed navigation/control helpers.
+    const space = readSearch(' ');
+    expect(space.results[0].id).toBe('settings-translation-stats/overview');
+    expect(space.results.at(-1)?.id).toBe('settings-data/history');
+    expect(space.results.every(result => result.panelId)).toBe(true);
+    expect(space.results.some(result => result.panelId === 'information-highlight')).toBe(browser === 'chrome');
+    expect(space.lowercaseCalls).toBe(4);
+    expect(space.normalizationCalls).toBe(1);
+  });
+
+  it('refreshes the same query when its actual language bundle arrives and reads the latest query on click', async () => {
+    const scope = current!;
+    const language = runtime.ref<UiLanguage>('en-US');
+    const bundleRevision = runtime.ref(0);
+    let core!: typeof import('../src/core/i18n');
+    const {state} = await mountOptions('#settings-selection', Promise.resolve(), undefined, async ownedServer => {
+      core = await ownedServer.ssrLoadModule('/src/core/i18n/index.ts') as typeof import('../src/core/i18n');
+      if (!owns(scope)) throw inactive();
+      ((globalThis as Record<string, unknown>)[TEST_KEY] as {i18n: ActualUiI18n}).i18n = {
+        language,
+        // Match the production i18n context's reactive resource-arrival dependency.
+        t: (key, params) => {void bundleRevision.value; return core.translate(key, language.value, params);},
+        translateLegacy: text => {void bundleRevision.value; return core.translateLegacyText(text, language.value);},
+      };
+      return ownedServer.ssrLoadModule('/src/app/options/OptionsApp.vue');
+    });
+    state.query = 'Language';
+    const fallback = state.filteredResults;
+    expect(fallback.map(result => result.id)).toEqual(['settings-general']);
+    expect(fallback[0].label).toBe('软件语言 / Language');
+    const [english, patterns] = await Promise.all([
+      scope.server!.ssrLoadModule('/src/core/i18n/messages/en-US.ts'),
+      scope.server!.ssrLoadModule('/src/core/i18n/messages/legacy-patterns.ts'),
+    ]);
+    if (!owns(scope)) throw inactive();
+    core.registerUiLanguageBundle('en-US', {messages: english.enUSMessages, legacyText: english.enUSLegacyText, legacyPatterns: patterns.createLegacyPatternSet('en-US')});
+    bundleRevision.value += 1;
+    expect(state.query).toBe('Language');
+    expect(state.filteredResults.map(result => result.id)).toEqual(['settings-general', ...englishLanguageSuffix]);
+    expect(state.filteredResults[0]).toEqual({id: 'settings-general', sectionId: 'settings-general', label: 'App language / Language', searchDescription: 'Choose the language used across FluentRead.'});
+    language.value = 'zh-CN';
+    expect(state.filteredResults).toEqual(fallback);
+    language.value = 'en-US';
+    const oldLanguageResult = state.filteredResults[0];
+    state.query = 'OpenAI';
+    expect(state.filteredResults.map(result => result.id)).toEqual(['settings-services', 'settings-translation-stats']);
+    const querySelector = vi.fn();
+    vi.stubGlobal('document', {querySelector});
+    await state.selectResult(oldLanguageResult);
+    expect(state.activeSection).toBe('settings-general');
+    expect(state.query).toBe('');
+    expect(querySelector).not.toHaveBeenCalled();
+  });
+
   it.each(['zh-CN', 'en-US'] as const)('prioritizes language aliases and focuses the existing selector in %s', async language => {
     const {state, location} = await mountOptions('#settings-selection', Promise.resolve(), undefined, undefined, 'chrome', language);
     const control = {scrollIntoView: vi.fn(), focus: vi.fn()};
