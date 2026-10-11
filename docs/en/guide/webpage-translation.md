@@ -2,11 +2,15 @@
 
 ## Personal corrections
 
-Hover a bilingual translated paragraph and select **校订译文** (Edit translation), or press **Alt + Shift + E**. Edit the draft, preview the affected exact sentences, and confirm the scope before saving. Material scope is the default. A project applies only to materials you explicitly join to it.
+Personal corrections are off by default. Enable **个人校订** (Personal corrections) under **Settings → Translation → Reading assistance** when you need them. Hover a bilingual translated paragraph and select **校订译文** (Edit translation), or press **Alt + Shift + E**. Edit the draft, preview the affected exact sentences, and confirm the scope before saving. The default scope is **仅当前网页** (Only this webpage); different addresses, including query parameters and fragments, have separate records. A project is a group of related webpages and applies only to webpages you explicitly join to it.
 
-Exact reuse requires the same original text, source/target languages, and nearest heading context. Automatic source detection is separate from an explicitly selected language. Similar sentences and conflicting translations remain reviewable suggestions; choosing one only changes the draft. Personal output carries a provenance badge and bypasses the provider cache.
+Hover or focus the information icon beside the scope selector to read the scope and reuse rules. Press **Escape** to dismiss the tooltip while keeping the editor open. The ordinary editor shows a compact project creation entry, and successful saves show **已保存** (Saved).
+
+Exact reuse requires the same original text, source/target languages, and nearest heading context, including exact case, numbers, punctuation and whitespace. Automatic source detection is separate from an explicitly selected language. Similar sentences show the saved and current originals for review; choosing a suggestion only changes the draft and still requires preview and confirmation. Conflicting confirmed translations prevent automatic reuse until you edit or remove the conflicting records. Personal output carries a small **个人校订** (Personal correction) source label without a border or background, stays out of copied text, and bypasses the provider cache.
 
 Manage, edit, delete, and undo saved corrections from the editor. Undo refuses to overwrite a later change. Removing a correction restores the previous provider output when available; a paragraph generated directly from memory returns to its original until translated again. Records remain local, outside glossary, document history, cloud sync and configuration backups. This release supports safely flattened bilingual webpage paragraphs; protected code/formula units, translation-only display, PDF, subtitles and userscripts retain their existing behavior.
+
+Turning personal corrections off closes the editor and restores the provider output or original text while preserving saved records. Turning them back on makes those records available for later translations; it does not automatically replace existing page translations. Heading changes or a changed webpage address invalidate an already displayed personal result.
 
 Translate an article or a selected section, compare both languages, and return to the original.
 
