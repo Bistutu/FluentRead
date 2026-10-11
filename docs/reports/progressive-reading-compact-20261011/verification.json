@@ -1,0 +1,264 @@
+{
+  "date": "2026-10-11",
+  "generatedAtUtc": "2026-10-11T12:13:39.191627+00:00",
+  "branch": "codex/progressive-reading-20261011",
+  "verifiedWorktree": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011",
+  "preChangeHead": "294826d4046dc1cdb429d43c8783ac491ca0459a",
+  "integratedMainCommit": "1e414ea8c2db6074343fb438bf7633af10a142a2",
+  "pr": "https://github.com/FluentRead/FluentRead/pull/949",
+  "sourceSha256": {
+    "docs/en/guide/webpage-translation.md": "7f3ef4abd5509e42fd6ddf07440099f6f646847d67ff984030042a0976c08e48",
+    "docs/guide/webpage-translation.md": "5348b59f985ea8690fb9f2f4bad0a25d235dbd735859317f878a4d63cd3d2dd5",
+    "docs/reports/progressive-reading-compact-20261011.md": "4ac000251532f2cc9c835f902cfc924c064f8da9eea32d8fd022a38fccdcbbe9",
+    "docs/reports/progressive-reading-speech-20261011.md": "1e0b172324a15cc511dae55bef9d98d51e751f1b30445a7eeeb4d35e1d024afa",
+    "package.json": "0432029a38881fe76dab24d56aec362e66fe6fbbce305fffe85c7e47517bd1cc",
+    "pnpm-lock.yaml": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
+    "scripts/run-progressive-reading-test.cjs": "99c9c4baed52d619c0595b8a46019b6bdaec13eb023ca6f203ced97c25fbc318",
+    "scripts/testing/focus-safe-browser.cjs": "06d94068ba1ae538b3c8a5675108ce75704dcde16e223d6164df9db971739739",
+    "src/app/content/learningFeatures.ts": "7c03bc2ddb6211b20b46f465ba811213e4530c5b1d8a6294536d4b3ba648514c",
+    "src/app/content/messageRuntime.ts": "260bac5fa5a5eead9c3b84d164466f3716d2779fee2b11a1166f3084d960c6c3",
+    "src/app/popup/PopupApp.vue": "ffb308e7d4445e86100e91779350b1bc1e88d1e7967cff23f35f75475c350851",
+    "src/app/popup/pageActions.ts": "11e40d0f9a3ddafe27ec449c8af57f0f6298bff2613d17f77329f47c6366254a",
+    "src/core/config/progressiveReading.ts": "270254c4fe57059c1bd51df11c3f82fb5b466cd6899d98df49201b7cbe8b792e",
+    "src/core/i18n/messages/en-US.ts": "7af240c20cf38c34e80f1c4361850464ffaf6ffe8238afd1ab5846f1897b4175",
+    "src/core/i18n/messages/es-ES.ts": "ba856480c6d5788b1b8e12982895bbf657e7d8957f0bf448423f8939fb307c16",
+    "src/core/i18n/messages/fr-FR.ts": "80af7b60cda976221003e4c0a52cf1b0bfb4d2226d9141d13c38b2372fd580c6",
+    "src/core/i18n/messages/ja-JP.ts": "466bce75fcfc5efcb4535cc290cc6d28646c95326b9cc812bd8379fc8da593d6",
+    "src/core/i18n/messages/ko-KR.ts": "20ba871c7a1061f5654792c3c6f7fdde6622f268819b331fef5dc6ae19a2f5af",
+    "src/core/i18n/messages/ru-RU.ts": "83e0a1f52d9d35417e0c5b8c61ede22aee82f22dc6e095742b6497a8aebfd979",
+    "src/core/i18n/messages/zh-CN.ts": "3621020bc3df5bad30585b1307c3396dcf4404ac798f751f7078f08f16be3d51",
+    "src/core/tts/speechProgress.ts": "721874a0182c696b223ca812c71a8485d70071b7a38653245d1c777a03eb1155",
+    "src/features/progressive-reading/README.md": "5270fc278c8974ecafc1ea2b4aeadc9180311d2e1ff53c8c441026839341ed8a",
+    "src/features/progressive-reading/content.ts": "f1e64a9a54c552918949a59eddedea41a1f817380169530bcdf413356512e77a",
+    "src/features/progressive-reading/hints.ts": "5ccd30b4c94e77ec34ec134b3c1b393ec7cf7d499937b8a8305f36d21344a4d3",
+    "src/features/progressive-reading/session.ts": "255be282307675f9de68d37441a4bd6a97245a5ae6225396803e516a34fad904",
+    "src/features/progressive-reading/source.ts": "431f6950074deac346ca26b22da238e7a785fddf1cffbce952fe94c9bb7acb83",
+    "src/features/progressive-reading/speech.ts": "c45392d66407e08bb7a454c401d0f8e7eaf0a48bff14a66e91c615b66d100805",
+    "src/features/progressive-reading/ui/ProgressiveReading.vue": "e26076426c07f295876ccfea8271315ed5a0a8df2ab4c25197b29927f824f823",
+    "src/features/selection-translation/background/ttsHandler.ts": "526b10f5985c771b7aa32f81d7ab65554b92b052b67f37ff94a1094d77aaaea3",
+    "src/features/settings/ui/useTranslationShortcutSettings.ts": "670e5fa178bea8d4057e4e8dfd74c18859fed15a95a1ec1c44dca0891dee266a",
+    "src/features/vocabulary/background/handler.ts": "10f258e1fe469487f224217c2e2de6023a7ba9a4f27d12eb07afaf38803b27ff",
+    "src/features/vocabulary/domain/readingHints.ts": "cc981b2d27a2216bc9fe2aa374a3d0dcb58ce3c897069db66899329890d5957d",
+    "tests/progressiveReadingSpeechUi.test.ts": "4e358cf55c5c10bc460223a3f61424164616ed00851c7eb1ede9d27f6b21bce6",
+    "wxt.config.ts": "6fd77267d4c39dd7daae66e1d4648c5da817d29cc536bbf0341e3b5a2dcffc2d"
+  },
+  "manifests": [
+    {
+      "target": "chrome-mv3",
+      "manifestVersion": 3,
+      "version": "0.0.37",
+      "sha256": "961d10d94833c621d25cd57c2668613840b1b5ff2fc8aa96628448b12a767924",
+      "byteIdenticalToPriorSpeechBuild": true,
+      "permissionsUnchanged": true,
+      "hostPermissionsUnchanged": true
+    },
+    {
+      "target": "firefox-mv2",
+      "manifestVersion": 2,
+      "version": "0.0.37",
+      "sha256": "205907f75626b559ff0211fc4ebcd1c5798f952a7f9b7076a549416c0911492a",
+      "byteIdenticalToPriorSpeechBuild": true,
+      "permissionsUnchanged": true,
+      "hostPermissionsUnchanged": true
+    }
+  ],
+  "artifacts": {
+    "chrome-mv3ContentSha256": "daf0f5e665e1e276d2a84e160b736757ef10566d91e9d10310eaee0b09b99ff3",
+    "firefox-mv2ContentSha256": "f0dc4412e8694eefd1ed4d1a87d99bed623e6800f4e7866a81105557feacd044"
+  },
+  "gates": {
+    "speechUi": {
+      "passed": 33,
+      "failed": 0,
+      "log": "ui.log",
+      "uiSha256": "e26076426c07f295876ccfea8271315ed5a0a8df2ab4c25197b29927f824f823",
+      "testSha256": "4e358cf55c5c10bc460223a3f61424164616ed00851c7eb1ede9d27f6b21bce6"
+    },
+    "browser": {
+      "passed": 29,
+      "speechGroups": 8,
+      "consoleErrors": 0,
+      "report": "browser-report.json",
+      "log": "browser.log",
+      "runnerSha256": "99c9c4baed52d619c0595b8a46019b6bdaec13eb023ca6f203ced97c25fbc318",
+      "focusSamples": 324,
+      "focusGuardPassed": true,
+      "ownedBrowserClosed": true,
+      "profileRemoved": true,
+      "redundantActiveTabUpdatesSkipped": 31
+    },
+    "i18n": {
+      "passed": 57,
+      "failed": 1,
+      "log": "final-checks.log",
+      "baselineProof": "retained-proof.json",
+      "missingRecords": 195,
+      "uniqueSources": 39,
+      "sameRecordsAsMainBaseline": true,
+      "reason": "Inherited main personal-corrections localization omissions; both owning Vue files byte-identical to integrated main. No progressive-reading/Popup missing sources. This remains a failure."
+    },
+    "userscriptLanguageProjection": {
+      "passed": 3,
+      "log": "final-checks.log"
+    },
+    "architecture": {
+      "passed": 985,
+      "files": 3,
+      "executions": [
+        {
+          "passed": 969,
+          "files": 2,
+          "log": "final-checks.log"
+        },
+        {
+          "passed": 16,
+          "files": 1,
+          "log": "ownership.log"
+        }
+      ]
+    },
+    "testAudit": {
+      "files": 682,
+      "cases": 11483,
+      "log": "audit.log"
+    },
+    "compile": {
+      "passed": true,
+      "log": "compile.log"
+    },
+    "chromeBuild": {
+      "passed": true,
+      "log": "chrome-build.log"
+    },
+    "firefoxBuild": {
+      "passed": true,
+      "log": "firefox-build.log"
+    },
+    "manifests": {
+      "passed": true,
+      "log": "manifests.log"
+    },
+    "docsBuild": {
+      "passed": true,
+      "log": "docs-build.log"
+    }
+  },
+  "retainedCoverage": {
+    "modules": 14,
+    "allSourceHashesUnchanged": true,
+    "allFourDimensions100": true,
+    "proof": "retained-proof.json",
+    "source": "../progressive-reading-speech-20261011/verification.json",
+    "scope": "5 previous fresh plus 9 retained pure-module results; not rerun during this UI revision. Popup/direct-consumer/userscript build results are historical, not fresh."
+  },
+  "compactLayoutComparison": {
+    "baselinePath": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/docs/reports/progressive-reading-speech-20261011/browser-report.json",
+    "baselineSha256": "70f2a933b2660e645f003ebc1fd565b27c53b010e60b5e50238e61a6ebbc0b16",
+    "baselineCommit": "294826d4046dc1cdb429d43c8783ac491ca0459a",
+    "baselineMetric": "layout.speech-390",
+    "source": "The latest source has no automatic speech.",
+    "sourceSha256": "465a124db21b1f1b0d97bbeab1c417757b164b4372743652ae74ae62ad79b74d",
+    "previous": {
+      "width": 366,
+      "height": 387.234375,
+      "viewportWidth": 390,
+      "viewportHeight": 800
+    },
+    "current": {
+      "width": 366,
+      "height": 173,
+      "sourceStartOffset": 86,
+      "chromeHeight": 146,
+      "bodyVisibleArea": 9342
+    },
+    "heightReduction": 214.234375,
+    "measurementBoundary": "Historical layout was sampled before keyboard playback with this short source; the accompanying screenshot is paused. Current idle geometry matches that phase. Baseline has no body/source rectangles, so prior source offset, chrome-only height or visible-area improvement is not claimed. Source typography changes from inherited 14px/1.65 to current measured text styling; total-height change includes typography and layout. Local DOM geometry does not establish overall page speed or reading benefit."
+  },
+  "lowHeightRegression": {
+    "viewport": {
+      "width": 390,
+      "height": 320
+    },
+    "beforeReport": "before-short-height-report.json",
+    "beforeSourceUiSha256": "69dcc3939cd3fd272d5e6604d50c3ace08bf9bb9c53550ff8ef42a4f30d26261",
+    "beforeBodyHeight": 0,
+    "beforeAudioVisible": false,
+    "afterBodyHeight": 54,
+    "afterAudioVisible": true,
+    "afterErrorScrollTop": 66.5,
+    "afterErrorLastLineVisible": true,
+    "errorTextUnchanged": true,
+    "inputBoundary": "Real controlled TTS503 error, trusted PageDown/End; no temporary tabindex, injected error state or direct error.scrollTop assignment."
+  },
+  "discardedAttempts": [
+    {
+      "path": "/private/tmp/fluentread-progressive-reading-compact-final",
+      "passedBeforeFailure": 17,
+      "reason": "Empty-reopen fixture retained valid host selection; corrected fixture precondition. Not final pass."
+    },
+    {
+      "path": "/private/tmp/fluentread-progressive-reading-compact-layout",
+      "passedBeforeFailure": 25,
+      "reason": "Foreground guard stopped/cleaned test browser during short viewport disclosure. Cause unproven, not accepted."
+    },
+    {
+      "path": "/private/tmp/fluentread-progressive-reading-compact-safe-layout",
+      "passedBeforeFailure": 25,
+      "reason": "Actual zero-height/overflow regression, archived; fixed in final UI. Focus guard passed."
+    },
+    {
+      "path": "/private/tmp/fluentread-progressive-reading-compact-release",
+      "passedBeforeFailure": 18,
+      "reason": "Focus guard stopped/closed owned browser during reopen; context-closed was secondary. Not accepted; final runner retains focusError as primary."
+    }
+  ],
+  "boundaries": [
+    "Real production extension, real selection, DOM, trusted CDP keyboard/mouse and Vue Shadow UI in an isolated Edge browser. Local deterministic HTTP translation transport, Popup active-tab lookup and toolbar-close capture are fixtures. No live-provider, Firefox runtime, native-toolbar or human-comprehension claim.",
+    "Silent zero-PCM WAV response fixture at the Microsoft token/synthesis transport boundary. Production selectionTts playback:page routing and native page Audio decode, clock, pause/resume, rate, seek and loop remain real. Audio output is muted; no human audition, live TTS provider, voice quality or exact word alignment claim.",
+    "DOM select value/change through the actual Vue/native-select binding; OS picker and trusted keyboard selection are not tested.",
+    "Firefox build only; no Firefox runtime or mobile hardware proof. No human voice audition, voice-quality, exact word alignment, whole-page performance or learning-benefit claim.",
+    "No userscript rebuild or reference repository changes. Logs normalized only for trailing whitespace/EOF blank lines; original raw log hashes in retained-proof.json differ from normalized archival hashes."
+  ],
+  "evidenceSha256": {
+    "390-dark-phrases.png": "fead49bd51b290bb779bcc093894c5ecdc480b7ab307eef2e9326967e47e06c1",
+    "390-keyboard-bilingual.png": "d21cd24e2a25fd1711ac33394b1f0e2a6fc15181af09cdcd84ec9846836c8323",
+    "390-light-phrases.png": "eae1687b95d4c5a3df7bc2d8c52265a7852887c3129ae790c371941747c9d46a",
+    "audit.log": "b2b0d99f96202c0d1bb8135dfe84d4e617c4be54e84fce1e4b71cc38c07ffd76",
+    "before-short-height-report.json": "08181e5a272afdc079e92165f670c208cd160efc3b89b510c9331951dd9ebff7",
+    "before-short-height.log": "2a46f9fbed31c98b72b2ce98061c00525ed4838bdee261521a0eda9513e6b43e",
+    "before-short-height.png": "71672c417520a971957b50f80aacd59f406337abb62cfd4024a32ef9f1a2128a",
+    "browser-report.json": "83f94b3ef5f168cae99d9a8c0f56d48f161e891bdf8289b88d91f79a9913ba58",
+    "browser.log": "df7b1e50e6b2901f9a952dcadeb104973dc0c0aecbca36417ac6a68d90c4c707",
+    "chrome-build.log": "ef5275084b202747f9e018c10a4674640c8c880884339c781dc2fa3ca47d8f24",
+    "compile.log": "2c1b0886d432adb4c8d977b0807bc013462d0ffa7dde3dee665cdaff5d86810e",
+    "desktop-bilingual.png": "8e82115a877bfa4253ebdafaf7253dcd6dc285c0e3747b23b7467b16d8575f9e",
+    "docs-build.log": "cf98c192a19f4f38be8b165dea56b9b0c41bdd69e8d70abf597ce6d3cddf4e41",
+    "final-checks.log": "23f19948a0a8f830093f63674ca02d5f8b2b04a108f61b19b562fd2bc7bbfd39",
+    "firefox-build.log": "b7276760f2fe32024d6d566e509d703cb35d84f06aa7c2859eae206a43566101",
+    "learning-settings-default.png": "7f567f710372f49c9c10fc8d9aec61e5e5641ac06013ed3a07bcb9f9aa9a6454",
+    "manifests.log": "61f64113e1a4f9baf6d347065aaf8652fce57dfbe9c88eee15ef4427c48e26f0",
+    "ownership.log": "aba46ece2982af8c8898e12c90e7911487dd3062b6eee8aadc87bca37c3361bc",
+    "panel-bilingual.png": "344365a84c04cd588a589f93b703db73be0d017364602bd701801ac87d17d6bf",
+    "panel-logic.png": "c2878ca9941c369a3d1e532374e37c354946179f9258350e70a7cb385eddc6c9",
+    "panel-original.png": "a61c378e0c56d6beb27993b8b3e40f386897eb611d75ae77baf83fbad144c8cd",
+    "panel-phrases.png": "9876f6273ce6b197296b766390564a1cceffd6b97ea424f469e9098e39f20356",
+    "popup-320-long-hotkey.png": "94fe1f0893099d7e6c6ff1f558c0e946a7758e34eaae4e8cdbd91fd5a4ff7d9e",
+    "popup-320-progressive-entry.png": "68f0debb82975b1ee09c49b665a7645162c8c16141615d3c23314e6bc384f65d",
+    "popup-400-long-hotkey.png": "36efaba4a069332d145c00efaa6f04092003250c26e4d3cd597aecff27b66050",
+    "popup-400-progressive-entry.png": "c08f51de67044d437f4f85edb71ad3488c3aed50fd2cfe01a1ddd1d395c6ce43",
+    "popup-learning-help.png": "e558577d83fb0bd3b6ac90a23ffcd3830d45cc34d5ef5d9002b7e9646344b49d",
+    "retained-proof.json": "4d00cddf9ebc1c3bac2bc9ceda814017d33eb082c7bb74489703ac012cedd772",
+    "speech-390-long-source-bottom-controls.png": "4ef613fc4311966334911509a4e42c9bbc20a171b21a4a223f4724f6586decbf",
+    "speech-390-long-source-keyboard-scroll.png": "36e687f3e534858a06a432430f939d990f0467b3828d4c5c767e012ab72579c7",
+    "speech-390-more-collapsed.png": "fca3e36d96dc5fb5645a197473f8e5fb5ed6e21610eb43d67168e8c0805767ad",
+    "speech-390-more-expanded.png": "90facdad22405404365e8baec2885a2ce67dd47ba5840eca62f477bb69361fde",
+    "speech-390-paused.png": "1a274546dd7da3a905ca6e1409c7e05ba1a64f796c3638db041ff082e34a313c",
+    "speech-390x320-error-collapsed.png": "e824ab02e3ab5fab1e4f66b952f7abf268be90616cfb8728d947a31f727958d9",
+    "speech-390x320-error-last-line.png": "5845fe9c169c1348e4426b080b17a86faab73f6c2b75cdde4f96bdb34c27500a",
+    "speech-390x320-error-more.png": "ae7b63f8c53b6123c9e5ebd949cf9de4f74219740c32dfa55690e9a487ba905f",
+    "speech-original-paused.png": "4f58cd35198d751f58e28f8a4d3458c9e73e35269c4e5f8960a4060145713aac",
+    "speech-original-playing.png": "34d259fb50a31de4cfc749f77b67644a6acd0760ab7336e36cb69eb015cf10f2",
+    "speech-translation-playing.png": "e4df8ff8d132d6dced635b38e06ee22689b214a6d96d578895d17cf214dba638",
+    "ui.log": "5538524b95fe523495692932f0c5002950c455026edf9c8dcbd351ab13df302c"
+  }
+}

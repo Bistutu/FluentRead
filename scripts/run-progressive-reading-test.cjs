@@ -5,6 +5,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
+const {createHash} = require('node:crypto');
 const {createRequire} = require('node:module');
 const {execFile} = require('node:child_process');
 const {promisify} = require('node:util');
@@ -40,6 +41,7 @@ const wait = milliseconds => new Promise(resolve => setTimeout(resolve, millisec
 const record = (name, details = {}) => {report.cases.push({...details, name}); console.log(`PASS ${name}`);};
 let session, context, control, popup, page, origin, fixtureInfo, browserPid, tabId, speechWorker;
 let launchAttempted = false, monitor, monitorTask, monitorBusy = false, stopping = false, focusError;
+let focusOperation = 'between-actions', readingOpenNumber = 0, selectionNumber = 0;
 let demoTarget, demoSurface, demoStepLabel, demoCaptureTask, demoCaptureError, demoCapturing = false;
 const cdpSessions = new WeakMap(), ownedCdpSessions = new Set();
 const speechContexts = new WeakMap();
@@ -156,6 +158,24 @@ async function stoppedSpeech(label) {
 async function speechSource(value) {
     await page.evaluate(value => {document.querySelector('#primary').textContent = value;}, value);
     await capture(value);
+    assert.equal((await speechOptionsState()).expanded, false, 'Recapturing source must fold advanced audio options');
+}
+async function speechOptionsState() {
+    return ui(function() {
+        const more = this.querySelector('[data-reading-audio-more]'), options = this.querySelector('#fr-reading-audio-options');
+        return {expanded: more?.getAttribute('aria-expanded') === 'true', controls: more?.getAttribute('aria-controls'), optionsPresent: !!options,
+            extraControls: ['data-reading-restart', 'data-reading-stop', 'data-reading-loop'].map(attribute => !!this.querySelector(`[${attribute}]`))};
+    });
+}
+async function speechOptions(expanded, label) {
+    const before = await speechOptionsState();
+    assert.equal(before.controls, 'fr-reading-audio-options', 'More must expose its real controlled region');
+    if (before.expanded !== expanded) await click(has('data-reading-audio-more'), label);
+    await until(async () => {const state = await speechOptionsState(); return state.expanded === expanded && state.optionsPresent === expanded && state.extraControls.every(present => present === expanded);}, label);
+}
+async function clickSpeechExtra(attribute, label) {
+    await speechOptions(true, `${label}: open advanced audio options`);
+    await click(has(attribute), label);
 }
 async function speechRate(value) {
     assert([.75, 1, 1.25, 1.5].includes(value));
@@ -182,6 +202,7 @@ async function runSpeechFlow(worker) {
     assert.equal((await speechCalls(worker)).length, 0); await noSpeech('No selected source creates no Audio');
     await capture(SOURCE); assert.equal((await speechCalls(worker)).length, 0, 'Capturing text must not start TTS');
     assert.equal((await speechUi()).status, 'idle');
+    await speechOptions(false, 'Advanced audio options start folded');
     assert(await ui(function() {return this.querySelector('[data-reading-listen="translation"]').disabled;}), 'Translation speech must wait for an actual translation');
     const htmlBefore = await page.locator('article').innerHTML();
     await click(has('data-reading-play'), 'explicitly play selected original'); await awaitSpeech('playing', 'Speech enters playing after decoding');
@@ -215,23 +236,23 @@ async function runSpeechFlow(worker) {
     const forward = (await speechSample('forward five seconds')).audio[0]; assert(Math.abs(forward.currentTime - Math.min(beforeSeek.duration, beforeSeek.currentTime + 5)) < .08);
     await click(node => attr(node, 'data-reading-seek') === '-5', 'rewind five seconds');
     const backward = (await speechSample('rewind five seconds')).audio[0]; assert(Math.abs(backward.currentTime - Math.max(0, forward.currentTime - 5)) < .08);
-    await click(has('data-reading-restart'), 'restart cached original');
+    await clickSpeechExtra('data-reading-restart', 'restart cached original');
     await until(async () => (await nativeSpeechAudio())[0]?.currentTime < 1.5, 'Restart resets the real audio position');
-    await click(has('data-reading-stop'), 'stop before listening to cached original again'); await stoppedSpeech('Cached relisten preparation is quiet');
+    await clickSpeechExtra('data-reading-stop', 'stop before listening to cached original again'); await stoppedSpeech('Cached relisten preparation is quiet');
     await click(node => attr(node, 'data-reading-listen') === 'source', 'listen to cached original again');
     assert.equal((await speechUi()).status, 'idle'); await click(has('data-reading-play'), 'explicit cached relisten');
     await activeSpeech('relisten cached original'); assert.equal((await speechCalls(worker)).length, callsBeforePause);
     speechRecord('Native rate, five-second seeks, restart and listening to the same original reuse synthesized audio', {beforeSeek, forward, backward});
 
-    await click(has('data-reading-stop'), 'stop before loop fixture'); await stoppedSpeech('Explicit stop silences native Audio');
+    await clickSpeechExtra('data-reading-stop', 'stop before loop fixture'); await stoppedSpeech('Explicit stop silences native Audio');
     const loopGeneration = await setSpeechFixture(worker, {duration: 3}); await speechSource('This selected sentence is the silent loop fixture.');
-    await click(has('data-reading-loop'), 'enable repeat'); await click(has('data-reading-play'), 'play repeating silent WAV');
+    await clickSpeechExtra('data-reading-loop', 'enable repeat'); await click(has('data-reading-play'), 'play repeating silent WAV');
     const loopStart = await activeSpeech('loop playback begins'); assert.equal(loopStart.duration, 3);
     await until(async () => (await nativeSpeechAudio())[0]?.currentTime > 2.15, 'Loop reaches the actual media end', 8000);
     await until(async () => {const audio = (await nativeSpeechAudio())[0]; return audio && !audio.paused && audio.currentTime < .9;}, 'Native playback crosses the end and loops to the beginning', 8000);
     const looped = (await speechSample('loop crossed native end')).audio[0];
     assert.equal((await speechCalls(worker)).filter(call => call.generation === loopGeneration).length, 1, 'Repeating native Audio must not synthesize again');
-    await click(has('data-reading-loop'), 'disable repeat');
+    await clickSpeechExtra('data-reading-loop', 'disable repeat');
     await until(async () => (await nativeSpeechAudio()).length === 0 || (await nativeSpeechAudio())[0]?.ended, 'Disabling repeat permits the real next media end', 8000);
     speechRecord('Repeat crosses the real WAV end and returns to the beginning without another synthesis', {loopStart, looped});
 
@@ -251,8 +272,9 @@ async function runSpeechFlow(worker) {
     await setSpeechFixture(worker, {error: true}); await speechSource('This controlled synthesis must fail before a successful retry.');
     await click(has('data-reading-play'), 'controlled synthesis error'); await awaitSpeech('error', 'Speech exposes controlled provider failure');
     assert((await speechUi()).error, 'Speech error must be visible'); await noSpeech('Failed synthesis does not retain Audio');
+    await shortViewportSpeechError(worker);
     await setSpeechFixture(worker); await click(has('data-reading-play'), 'retry controlled synthesis'); await activeSpeech('retry succeeds with real decoder');
-    await click(has('data-reading-stop'), 'stop retry'); await stoppedSpeech('Retry stop silences Audio');
+    await clickSpeechExtra('data-reading-stop', 'stop retry'); await stoppedSpeech('Retry stop silences Audio');
 
     const cancelCases = [
         {name: 'preparing cancel', text: 'Cancel this preparing silent speech request.'},
@@ -285,6 +307,8 @@ async function runSpeechFlow(worker) {
     speechRecord('Original and translation selection stays quiet until play; failure retry and delayed preparation, close, source, route, disable and language cleanup reject stale playback', {cancellationScenarios: cancelCases.map(item => item.name)});
 
     await page.setViewportSize({width: 390, height: 800}); await geometry('speech-390');
+    const compactIdle = await contentGeometry('speech-390-compact-idle');
+    compareCompactBaseline(compactIdle);
     await focus(node => attr(node, 'data-reading-listen') === 'source', 'keyboard original speech entry');
     let reachedPlay = false;
     for (let index = 0; index < 12; index += 1) {
@@ -306,14 +330,36 @@ async function runSpeechFlow(worker) {
             left: box.left, right: box.right, viewportWidth: innerWidth};
     });
     await shot('speech-390-paused', true);
+    await contentGeometry('speech-390-compact-paused');
     assert(!narrow.horizontalOverflow && narrow.left >= 0 && narrow.right <= 391, 'The 390px speech group must fit the viewport');
     assert(narrow.controls.every(item => item.left >= narrow.left - 1 && item.right <= narrow.right + 1), 'Speech controls must not be horizontally clipped');
-    await click(has('data-reading-stop'), 'stop after keyboard pause'); await stoppedSpeech('Keyboard stop silences cached Audio');
+    const audioBeforeMore = (await nativeSpeechAudio())[0], callsBeforeMore = (await speechCalls(worker)).length;
+    await speechOptions(true, 'Show advanced controls after keyboard pause');
+    await contentGeometry('speech-390-more-expanded'); await shot('speech-390-more-expanded', true);
+    await speechOptions(false, 'Fold advanced controls after keyboard pause');
+    await contentGeometry('speech-390-more-collapsed'); await shot('speech-390-more-collapsed', true);
+    assert.equal((await nativeSpeechAudio())[0]?.src, audioBeforeMore.src, 'Folding audio controls must preserve the actual cached Audio');
+    assert((await nativeSpeechAudio())[0]?.paused, 'Opening and folding advanced controls must not start playback');
+    assert.equal((await speechCalls(worker)).length, callsBeforeMore, 'Opening and folding advanced controls must not synthesize');
+    await clickSpeechExtra('data-reading-stop', 'stop after keyboard pause'); await stoppedSpeech('Keyboard stop silences cached Audio');
+    // 长正文仍从宿主真实拖选；在桌面宽度捕获后缩至 390px，避免拖选终点落到窄屏面板上。
+    await page.setViewportSize({width: 1200, height: 850});
+    const longSource = Array(6).fill(SOURCE).join(' ');
+    await speechSource(longSource); await noSpeech('Long source capture does not start Audio');
+    await page.setViewportSize({width: 390, height: 800});
+    const longBeforeScroll = await contentGeometry('speech-390-long-source');
+    assert(longBeforeScroll.body.scrollHeight > longBeforeScroll.body.clientHeight + 8, 'The real long source must exceed its independent body viewport');
+    await scrollReadingBody('Long original body scrolls while audio controls remain visible');
+    const longAfterScroll = await contentGeometry('speech-390-long-source-scrolled');
+    assert(longAfterScroll.body.scrollTop > 0, 'Trusted wheel must scroll the actual reading body');
+    assert(Math.abs(longAfterScroll.audio.top - longBeforeScroll.audio.top) <= 1 && Math.abs(longAfterScroll.audio.bottom - longBeforeScroll.audio.bottom) <= 1, 'Body scrolling must leave the audio toolbar fixed inside the panel');
+    await shot('speech-390-long-source-bottom-controls', true);
+    await keyboardReadingBody();
     await click(has('data-reading-close'), 'close speech final panel'); await until(async () => !(await snapshot()).host, 'Speech final panel removed');
     await noSpeech('Final close releases cached Audio');
     assert.deepEqual(await vocabulary('list'), learningBefore, 'Speech listening and controls must not alter learning records');
     report.speech.fixtureRequests = await speechCalls(worker); report.speech.layout = narrow;
-    speechRecord('390px speech controls fit without horizontal overflow and trusted Tab/Enter start and pause real Audio without modifying learning records', {narrow});
+    speechRecord('390px trusted Tab/Enter controls real Audio; advanced controls fold without synthesis and long original text scrolls independently above visible audio controls', {narrow, compactIdle, longBeforeScroll, longAfterScroll});
     await page.setViewportSize({width: 1200, height: 850});
 }
 
@@ -327,19 +373,53 @@ async function until(predicate, label, timeout = 15000) {
     throw new Error(`${label}: timeout`);
 }
 async function focusSample(label) {
-    const {stdout} = await execFileAsync('/usr/bin/osascript', ['-l', 'JavaScript', '-e',
-        "ObjC.import('AppKit'); const app=$.NSWorkspace.sharedWorkspace.frontmostApplication; JSON.stringify({pid:Number(app.processIdentifier),name:ObjC.unwrap(app.localizedName)});"], {timeout: 5000});
-    const foreground = JSON.parse(stdout.trim());
-    report.focusSamples.push({label, ...foreground});
-    assert(Number.isSafeInteger(browserPid) && browserPid > 0 && Number.isSafeInteger(foreground.pid) && foreground.pid > 0, 'Missing browser ownership or foreground PID');
-    assert.notEqual(foreground.pid, browserPid, `${label}: owned test browser became the foreground app`);
+    if (focusError) throw focusError;
+    const operation = focusOperation, probeStartedAt = Date.now();
+    try {
+        const {stdout} = await execFileAsync('/usr/bin/osascript', ['-l', 'JavaScript', '-e',
+            "ObjC.import('AppKit'); const app=$.NSWorkspace.sharedWorkspace.frontmostApplication; JSON.stringify({pid:Number(app.processIdentifier),name:ObjC.unwrap(app.localizedName)});"], {timeout: 5000});
+        const foreground = JSON.parse(stdout.trim());
+        const sample = {label, at: Date.now(), probeStartedAt, operation, ...foreground};
+        report.focusSamples.push(sample);
+        assert(Number.isSafeInteger(browserPid) && browserPid > 0 && Number.isSafeInteger(foreground.pid) && foreground.pid > 0, 'Missing browser ownership or foreground PID');
+        if (foreground.pid === browserPid) report.windowPlacement.browserFrontmost = true;
+        assert.notEqual(foreground.pid, browserPid, `${label}: owned test browser became the foreground app`);
+    } catch (error) {
+        focusError ||= error;
+        report.focusError ||= {...errorDetails(focusError), at: Date.now(), probeStartedAt, operation, sample: report.focusSamples.at(-1)};
+        report.ok = false; process.exitCode = 1;
+        throw focusError;
+    }
+}
+function errorDetails(error) {return {message: error.message, stack: error.stack, code: error.code};}
+async function focusGuardedStep(label, operation) {
+    const previous = focusOperation; focusOperation = label;
+    try {
+        await focusSample(`${label}:before`);
+        const value = await operation();
+        await focusSample(`${label}:after`);
+        return value;
+    } finally {focusOperation = previous;}
+}
+async function activateFixtureTabIfNeeded(label) {
+    return focusGuardedStep(`${label}:fixture-tab`, async () => {
+        // control 是未注入 Popup active-tab 夹具的扩展页；此处读取真实 chrome.tabs 状态。
+        const before = await control.evaluate(id => chrome.tabs.get(id), tabId);
+        assert.equal(before.id, tabId, 'The native tab lookup must identify the owned fixture');
+        const activation = {label, at: Date.now(), tabId, windowId: before.windowId, wasActive: before.active, didUpdate: !before.active};
+        (report.fixtureTabActivations ||= []).push(activation);
+        if (!before.active) await focusGuardedStep(`${label}:activate-fixture-tab`, () => helper.activateExtensionTabWithoutForeground(context, page));
+        const after = await control.evaluate(id => chrome.tabs.get(id), tabId);
+        activation.activeAfter = after.active;
+        assert.equal(after.active, true, 'The fixture must be the real active tab before trusted reading interaction');
+    });
 }
 function monitorFocus() {
     monitor = setInterval(() => {
         if (monitorBusy || stopping) return;
         monitorBusy = true;
         monitorTask = focusSample('continuous').catch(async error => {
-            focusError = error; report.windowPlacement.browserFrontmost = true;
+            focusError ||= error;
             clearInterval(monitor);
             await session.close().catch(closeError => {report.focusCloseError = closeError.message;});
         }).finally(() => {monitorBusy = false;});
@@ -421,7 +501,7 @@ async function sourceText() {return ui(function() {return this.querySelector('[d
 async function translationText() {return ui(function() {return this.querySelector('[data-reading-translation]')?.textContent?.trim() || '';});}
 async function phraseTerms() {const state = await snapshot(); return findAll(state.panel, has('data-reading-phrase')).map(node => ({term: attr(node, 'data-reading-term') || attr(node, 'data-reading-phrase') || text(node).trim(), text: text(node).trim()}));}
 async function selectPrimary(expected, slowDrag = false) {
-    await helper.activateExtensionTabWithoutForeground(context, page);
+    await activateFixtureTabIfNeeded(`select-primary-${++selectionNumber}`);
     await page.locator('#primary').scrollIntoViewIfNeeded();
     // 先结束前一次 Shadow UI 的焦点/选区，再用可信鼠标重新开始宿主选择；准备步骤不伪造 selectionchange 或键盘事件。
     await page.mouse.click(20, 20);
@@ -446,6 +526,8 @@ async function capture(expected) {
     await selectPrimary(expected); await click(has('data-reading-use-selection'), 'use selected webpage text');
     await until(async () => (await sourceText()) === expected, 'selected source snapshot');
     assert.equal(await selectedMode(), 'original', 'Explicitly recapturing a source must restore original mode for this session');
+    assert.equal(findAll((await snapshot()).panel, has('data-reading-mode')).length, 4, 'An explicitly captured source must offer four direct help modes');
+    assert.equal(findAll((await snapshot()).panel, has('data-reading-full')).length, 1, 'Complete bilingual must have one direct mode action');
 }
 async function openPopup() {
     const target = await helper.newPageWithoutForeground(context, 30000); observe(target);
@@ -468,16 +550,18 @@ async function openPopup() {
     return target;
 }
 async function openReading() {
-    // 先激活夹具页再装载 Popup，避免真实 tabs.onActivated 与首个操作争用水合归属。
-    await helper.activateExtensionTabWithoutForeground(context, page);
-    await popup.reload({waitUntil: 'domcontentloaded'});
-    await popup.locator('.popup-shell[data-config-ready="true"]').waitFor();
-    await popup.locator('[data-testid="progressive-reading"]').click();
-    await until(async () => Boolean((await snapshot()).panel), 'Popup opens progressive reading');
-    await until(async () => await popup.evaluate(() => window.__progressivePopupCloseInvocations) === 1, 'Successful reading reply requests Popup closure');
+    const label = `open-reading-${++readingOpenNumber}`;
+    // 仅在真实正文 tab 尚未激活时切换；逐步记录激活、重载、水合与入口动作的焦点证据。
+    await activateFixtureTabIfNeeded(label);
+    await focusGuardedStep(`${label}:popup-reload`, () => popup.reload({waitUntil: 'domcontentloaded'}));
+    await focusGuardedStep(`${label}:popup-hydration`, () => popup.locator('.popup-shell[data-config-ready="true"]').waitFor());
+    await focusGuardedStep(`${label}:popup-entry`, () => popup.locator('[data-testid="progressive-reading"]').click());
+    await focusGuardedStep(`${label}:panel-mount`, () => until(async () => Boolean((await snapshot()).panel), 'Popup opens progressive reading'));
+    await focusGuardedStep(`${label}:popup-close-reply`, () => until(async () => await popup.evaluate(() => window.__progressivePopupCloseInvocations) === 1, 'Successful reading reply requests Popup closure'));
     assert.equal(await page.locator('#fluent-read-progressive-reading').count(), 1, 'Reopening must not duplicate the Shadow host');
     assert.equal(await popup.evaluate(() => window.__progressivePopupCloseInvocations), 1, 'Successful reading action must request Popup closure');
-    assert.equal(findAll((await snapshot()).host, node => attr(node, 'data-reading-mode') !== undefined).length, 4, 'The panel must offer four direct help modes');
+    const source = await sourceText();
+    assert.equal(findAll((await snapshot()).host, has('data-reading-mode')).length, source ? 4 : 0, 'Help modes appear only after explicitly capturing source');
 }
 async function popupEntryVariant(width, label, longShortcut = false) {
     await popup.setViewportSize({width, height: 650});
@@ -696,7 +780,15 @@ async function shot(name, panelOnly = false) {
         const bounds = this.getBoundingClientRect();
         return {x: Math.max(0, bounds.left), y: Math.max(0, bounds.top), width: Math.min(bounds.width, innerWidth - bounds.left), height: Math.min(bounds.height, innerHeight - bounds.top)};
     }) : undefined;
+    const metadata = (await snapshot()).panel ? await ui(function() {
+        const rect = node => {if (!node) return null; const box = node.getBoundingClientRect(); return {left: box.left, top: box.top, width: box.width, height: box.height};};
+        return {panel: rect(this), body: rect(this.querySelector('.fr-reading-body')), source: rect(this.querySelector('[data-reading-source]')), audio: rect(this.querySelector('[data-reading-speech]')),
+            bodyScrollTop: this.querySelector('.fr-reading-body')?.scrollTop ?? null, advancedExpanded: this.querySelector('[data-reading-audio-more]')?.getAttribute('aria-expanded') === 'true',
+            mode: this.querySelector('[data-reading-mode][aria-pressed="true"]')?.getAttribute('data-reading-mode') ?? null,
+            viewport: {width: innerWidth, height: innerHeight, devicePixelRatio}};
+    }) : {viewport: await page.evaluate(() => ({width: innerWidth, height: innerHeight, devicePixelRatio}))};
     await page.screenshot({path: file, ...(clip ? {clip} : {})}); report.screenshots.push(file);
+    report.screenshotMetadata ||= []; report.screenshotMetadata.push({name, file, panelOnly, clip: clip || null, ...metadata});
     await focusSample(`${name}:after-screenshot`);
 }
 async function palette(label, expectedScheme) {
@@ -730,20 +822,190 @@ async function geometry(label) {
     assert(metrics.controls.every(control => control.left >= metrics.left - 1 && control.right <= metrics.right + 1), `${label}: horizontally clipped control`);
     report.layout ||= {}; report.layout[label] = metrics;
 }
+async function contentGeometry(label) {
+    const metrics = await ui(function() {
+        const body = this.querySelector('.fr-reading-body'), source = this.querySelector('[data-reading-source]'), audio = this.querySelector('[data-reading-speech]');
+        if (!body || !source || !audio) throw new Error('Missing real content-first reading regions');
+        const box = node => {const rect = node.getBoundingClientRect(); return {left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom, width: rect.width, height: rect.height};};
+        const panelBox = box(this), bodyBox = box(body), sourceBox = box(source), audioBox = box(audio), sourceStyle = getComputedStyle(source), error = this.querySelector('[data-reading-audio-error]');
+        const within = rect => rect.left >= panelBox.left - 1 && rect.right <= panelBox.right + 1 && rect.top >= panelBox.top - 1 && rect.bottom <= panelBox.bottom + 1;
+        const visibleSourceHeight = Math.max(0, Math.min(sourceBox.bottom, bodyBox.bottom) - Math.max(sourceBox.top, bodyBox.top));
+        const errorRange = document.createRange(); if (error) errorRange.selectNodeContents(error);
+        const errorBox = error ? box(error) : null, errorRects = error ? [...errorRange.getClientRects()].filter(rect => rect.width > 0 && rect.height > 0) : [];
+        const errorWithin = rect => within(rect) && rect.left >= errorBox.left - 1 && rect.right <= errorBox.right + 1 && rect.top >= errorBox.top - 1 && rect.bottom <= errorBox.bottom + 1;
+        const lastErrorRect = errorRects.at(-1), lastErrorLine = lastErrorRect ? errorRects.filter(rect => Math.abs(rect.top - lastErrorRect.top) <= 1 && Math.abs(rect.bottom - lastErrorRect.bottom) <= 1) : [];
+        return {panel: {...panelBox, scrollTop: this.scrollTop, overflowY: getComputedStyle(this).overflowY},
+            body: {...bodyBox, scrollTop: body.scrollTop, clientHeight: body.clientHeight, scrollHeight: body.scrollHeight, overflowY: getComputedStyle(body).overflowY},
+            source: {...sourceBox, text: source.textContent.trim(), fontSize: sourceStyle.fontSize, lineHeight: sourceStyle.lineHeight, fontFamily: sourceStyle.fontFamily,
+                visibleHeight: visibleSourceHeight, visibleArea: visibleSourceHeight * Math.min(sourceBox.width, bodyBox.width)},
+            audio: {...audioBox, visible: within(audioBox), controls: [...audio.querySelectorAll('button,select,input')].filter(node => node.getClientRects().length).map(node => ({label: node.getAttribute('aria-label') || node.closest('label')?.textContent.trim() || node.textContent.trim(), ...box(node), visible: within(box(node))}))},
+            modes: [...this.querySelectorAll('[data-reading-mode]')].map(node => ({mode: node.getAttribute('data-reading-mode'), ...box(node), visible: within(box(node))})),
+            error: error ? {...errorBox, text: error.textContent.trim(), role: error.getAttribute('role'), visible: within(errorBox), textVisible: errorRects.every(errorWithin),
+                scrollTop: error.scrollTop, clientHeight: error.clientHeight, scrollHeight: error.scrollHeight, overflowY: getComputedStyle(error).overflowY,
+                lastLine: lastErrorRect ? {left: lastErrorRect.left, right: lastErrorRect.right, top: lastErrorRect.top, bottom: lastErrorRect.bottom, height: lastErrorRect.height} : null,
+                lastLineVisible: lastErrorLine.length > 0 && lastErrorLine.every(errorWithin),
+                horizontalOverflow: error.scrollWidth > error.clientWidth + 1, verticalOverflow: error.scrollHeight > error.clientHeight + 1} : null,
+            sourceStartOffset: sourceBox.top - panelBox.top + body.scrollTop,
+            chromeHeight: panelBox.height - bodyBox.height, bodyVisibleArea: bodyBox.width * bodyBox.height, bodyHeightFraction: bodyBox.height / panelBox.height,
+            sourcePrecedesAudio: body.contains(source) && !!(body.compareDocumentPosition(audio) & Node.DOCUMENT_POSITION_FOLLOWING),
+            mode: this.querySelector('[data-reading-mode][aria-pressed="true"]')?.getAttribute('data-reading-mode'),
+            advancedExpanded: this.querySelector('[data-reading-audio-more]')?.getAttribute('aria-expanded') === 'true',
+            viewport: {width: innerWidth, height: innerHeight, devicePixelRatio}, footerCount: this.querySelectorAll('footer').length,
+            fullActions: this.querySelectorAll('[data-reading-full]').length};
+    });
+    metrics.source.sha256 = createHash('sha256').update(metrics.source.text).digest('hex');
+    report.contentLayout ||= {}; report.contentLayout[label] = metrics;
+    assert.equal(metrics.panel.overflowY, 'hidden', `${label}: the outer panel must not be the scroll container`);
+    assert.equal(metrics.panel.scrollTop, 0, `${label}: scrolling content must not move the outer panel`);
+    assert(['auto', 'scroll'].includes(metrics.body.overflowY) && metrics.body.height > 0, `${label}: the actual body must own readable scrolling space`);
+    assert(metrics.sourcePrecedesAudio && metrics.body.bottom <= metrics.audio.top + 1, `${label}: original/help text must precede the audio toolbar`);
+    assert(metrics.sourceStartOffset >= 0 && metrics.sourceStartOffset <= 120, `${label}: controls before the source consume too much height: ${metrics.sourceStartOffset}`);
+    assert(metrics.audio.visible && metrics.audio.controls.length >= 6 && metrics.audio.controls.every(control => control.visible), `${label}: common and expanded audio controls must remain visible`);
+    assert.equal(metrics.modes.length, 4, `${label}: four help modes remain available`);
+    assert(metrics.modes.every(mode => mode.visible), `${label}: help modes must remain fully visible`);
+    assert.equal(metrics.footerCount, 0, `${label}: the duplicate footer must stay removed`);
+    assert.equal(metrics.fullActions, 1, `${label}: full bilingual must use one stable action`);
+    return metrics;
+}
+async function shortViewportSpeechError(worker) {
+    const errorText = (await speechUi()).error, callsBefore = (await speechCalls(worker)).length;
+    assert(errorText, 'Short-viewport review must use the existing controlled TTS failure');
+    await focusSample('speech-390x320:before-resize');
+    await page.setViewportSize({width: 390, height: 320});
+    try {
+        await focusSample('speech-390x320:after-resize');
+        // 在任何输入前保留真实布局并拒绝已裁切的界面；低高度不使用自动滚动后的屏幕点击坐标。
+        const collapsed = await contentGeometry('speech-390x320-error-collapsed');
+        const collapsedLineHeight = parseFloat(collapsed.source.lineHeight);
+        assert(Number.isFinite(collapsedLineHeight) && collapsed.body.height >= collapsedLineHeight - 1 && collapsed.source.visibleHeight >= collapsedLineHeight - 1, '390x320 collapsed error state must leave at least one complete original-text line readable before any input');
+        await shot('speech-390x320-error-collapsed', true);
+        await keyboardSpeechOptions(true, 'speech-390x320-expand-more');
+        await shot('speech-390x320-error-more', true);
+        const metrics = await contentGeometry('speech-390x320-error-more');
+        const lineHeight = parseFloat(metrics.source.lineHeight);
+        assert(Number.isFinite(lineHeight) && metrics.body.height >= lineHeight - 1 && metrics.source.visibleHeight >= lineHeight - 1, '390x320 error plus expanded controls must leave at least one complete original-text line readable');
+        assert(metrics.error && metrics.error.text === errorText && metrics.error.role === 'alert' && metrics.error.visible && !metrics.error.horizontalOverflow, 'The bounded synthesis-error region must be fully visible and retain the complete original error');
+        let errorAfterScroll = metrics;
+        if (metrics.error.verticalOverflow) {
+            assert(['auto', 'scroll'].includes(metrics.error.overflowY), 'Overflowing error text must have its own real scrollable region');
+            await focus(has('data-reading-audio-error'), 'keyboard focus for complete real synthesis error');
+            assert(await ui(function() {return this.getRootNode().activeElement === this.querySelector('[data-reading-audio-error]');}), 'The real error region must own keyboard focus');
+            await page.keyboard.press('PageDown');
+            await until(async () => await ui(function() {return this.querySelector('[data-reading-audio-error]').scrollTop > 0;}), 'Trusted PageDown scrolls the full synthesis error');
+            await page.keyboard.press('End');
+            await until(async () => await ui(function() {const error = this.querySelector('[data-reading-audio-error]'); return error.scrollHeight - error.clientHeight - error.scrollTop <= 2;}), 'Trusted End reaches the final error line');
+            errorAfterScroll = await contentGeometry('speech-390x320-error-last-line');
+            assert(errorAfterScroll.error.scrollTop > 0 && errorAfterScroll.error.lastLineVisible, 'The complete final error line must become visible through trusted keyboard scrolling');
+            assert.equal(errorAfterScroll.error.text, errorText, 'Keyboard scrolling must retain every character of the real provider error');
+            assert(Math.abs(errorAfterScroll.source.top - metrics.source.top) <= 1 && Math.abs(errorAfterScroll.body.top - metrics.body.top) <= 1
+                && Math.abs(errorAfterScroll.body.bottom - metrics.body.bottom) <= 1 && errorAfterScroll.source.visibleHeight >= lineHeight - 1, 'Error scrolling must preserve the original reading area and at least one readable source line');
+            assert(Math.abs(errorAfterScroll.audio.top - metrics.audio.top) <= 1 && Math.abs(errorAfterScroll.audio.bottom - metrics.audio.bottom) <= 1,
+                'Error scrolling must keep common and advanced audio controls stationary');
+            assert(errorAfterScroll.modes.every((mode, index) => Math.abs(mode.top - metrics.modes[index].top) <= 1 && Math.abs(mode.bottom - metrics.modes[index].bottom) <= 1), 'Error scrolling must leave every help mode stationary');
+            await shot('speech-390x320-error-last-line', true);
+        } else assert(metrics.error.textVisible && metrics.error.lastLineVisible, 'A fitting error must show its complete text and final line without scrolling');
+        await focus(has('data-reading-audio-more'), 'keyboard advanced controls in short viewport');
+        const navigation = [];
+        for (let index = 0; index < 5; index += 1) {
+            await page.keyboard.press('Tab');
+            const focused = await ui(function() {
+                const active = this.getRootNode().activeElement, rect = active?.getBoundingClientRect(), panel = this.getBoundingClientRect();
+                return {loop: !!active?.hasAttribute('data-reading-loop'), stop: !!active?.hasAttribute('data-reading-stop'),
+                    label: active?.getAttribute('aria-label') || active?.closest('label')?.textContent.trim() || active?.textContent.trim(),
+                    visible: !!rect && rect.width > 0 && rect.height > 0 && rect.left >= panel.left - 1 && rect.right <= panel.right + 1 && rect.top >= panel.top - 1 && rect.bottom <= panel.bottom + 1};
+            });
+            navigation.push(focused); if (focused.loop) break;
+        }
+        assert(navigation.some(item => item.stop && item.visible) && navigation.some(item => item.loop && item.visible), 'Trusted Tab must reach visible enabled Stop and Loop controls in the short error viewport');
+        assert.equal((await speechCalls(worker)).length, callsBefore, 'Error layout and advanced navigation must not synthesize again');
+        assert.equal((await nativeSpeechAudio()).length, 0, 'Error layout and advanced navigation must remain silent');
+        speechRecord('390x320 real TTS failure keeps one original line and all controls visible; trusted keyboard scrolling reaches the full bounded error without moving reading or audio regions', {collapsed, metrics, errorAfterScroll, navigation});
+        await keyboardSpeechOptions(false, 'speech-390x320-fold-more');
+    } catch (error) {
+        await shot('speech-390x320-error-failure', true).catch(() => undefined); throw error;
+    } finally {await page.setViewportSize({width: 1200, height: 850});}
+}
+async function keyboardSpeechOptions(expanded, label) {
+    const state = await speechOptionsState();
+    assert.equal(state.controls, 'fr-reading-audio-options');
+    if (state.expanded !== expanded) {
+        const target = await ui(function() {
+            const more = this.querySelector('[data-reading-audio-more]'), rect = more?.getBoundingClientRect(), panel = this.getBoundingClientRect();
+            return {enabled: !!more && !more.disabled, visible: !!rect && rect.width > 0 && rect.height > 0
+                && rect.left >= Math.max(0, panel.left) - 1 && rect.right <= Math.min(innerWidth, panel.right) + 1
+                && rect.top >= Math.max(0, panel.top) - 1 && rect.bottom <= Math.min(innerHeight, panel.bottom) + 1};
+        });
+        assert(target.enabled && target.visible, `${label}: the real More button must be fully visible before keyboard input`);
+        await focusSample(`${label}:before-dom-focus`);
+        await focus(has('data-reading-audio-more'), `${label}: focus actual button`);
+        assert(await ui(function() {return this.getRootNode().activeElement === this.querySelector('[data-reading-audio-more]');}), `${label}: real More button must own keyboard focus`);
+        await focusSample(`${label}:after-dom-focus`);
+        await page.keyboard.press('Enter');
+        await focusSample(`${label}:after-trusted-enter`);
+    }
+    await until(async () => {const next = await speechOptionsState(); return next.expanded === expanded && next.optionsPresent === expanded && next.extraControls.every(present => present === expanded);}, `${label}: actual keyboard toggle`);
+}
+async function keyboardReadingBody() {
+    const focused = await ui(function() {
+        const body = this.querySelector('.fr-reading-body'); body.scrollTop = 0; body.focus({preventScroll: true});
+        return {bodyOwnsFocus: this.getRootNode().activeElement === body, tabIndex: body.tabIndex, scrollTop: body.scrollTop};
+    });
+    report.speech.bodyKeyboardFocus = focused;
+    assert(focused.bodyOwnsFocus, 'The real scrollable original body must accept focus for keyboard scrolling; no temporary tabindex is injected');
+    const before = await contentGeometry('speech-390-long-source-before-keyboard');
+    await page.keyboard.press('PageDown');
+    await until(async () => await ui(function() {return this.querySelector('.fr-reading-body').scrollTop > 10;}), 'Trusted PageDown must scroll the actual long original body');
+    const after = await contentGeometry('speech-390-long-source-after-keyboard');
+    assert(after.body.scrollTop > before.body.scrollTop + 10, 'Trusted keyboard must advance actual original-body scroll position');
+    assert(Math.abs(after.audio.top - before.audio.top) <= 1 && Math.abs(after.audio.bottom - before.audio.bottom) <= 1, 'Keyboard body scrolling must keep the audio toolbar fixed');
+    assert(after.modes.every((mode, index) => Math.abs(mode.top - before.modes[index].top) <= 1 && Math.abs(mode.bottom - before.modes[index].bottom) <= 1), 'Keyboard body scrolling must keep every mode tab fixed');
+    await shot('speech-390-long-source-keyboard-scroll', true);
+    speechRecord('Trusted PageDown scrolls the focused real long original body while help tabs and audio controls remain visible and stationary', {focused, before, after});
+}
+async function scrollReadingBody(label) {
+    const bounds = await ui(function() {const rect = this.querySelector('.fr-reading-body').getBoundingClientRect(); return {x: rect.left + rect.width / 2, y: rect.top + Math.min(rect.height / 2, 100)};});
+    await page.mouse.move(bounds.x, bounds.y); await page.mouse.wheel(0, 900);
+    await until(async () => await ui(function() {return this.querySelector('.fr-reading-body').scrollTop > 0;}), label);
+}
+function compareCompactBaseline(metrics) {
+    const baselinePath = path.resolve(arg('layout-baseline', path.join(__dirname, '../docs/reports/progressive-reading-speech-20261011/browser-report.json')));
+    const bytes = fs.readFileSync(baselinePath), baseline = JSON.parse(bytes), previous = baseline.layout?.['speech-390'];
+    const expectedSource = 'The latest source has no automatic speech.';
+    const lastSpeechRequest = baseline.speech?.fixtureRequests?.at(-1);
+    assert(baseline.ok && previous && lastSpeechRequest?.source === expectedSource, 'Historical compact baseline must retain its verified short source');
+    assert.equal(metrics.source.text, expectedSource, 'Compact comparison must use the historical short source, not the SOURCE constant');
+    assert.equal(metrics.mode, 'original'); assert.equal(metrics.advancedExpanded, false);
+    assert.equal(metrics.viewport.width, previous.viewportWidth); assert.equal(metrics.viewport.height, previous.viewportHeight);
+    assert(Math.abs(metrics.panel.width - previous.width) <= 1, 'Historical/current compact panels must have the same width');
+    const heightReduction = previous.height - metrics.panel.height;
+    assert(heightReduction >= 16, `Same-source compact panel must materially reduce total height: ${heightReduction}px`);
+    report.compactLayoutComparison = {baselinePath, baselineSha256: createHash('sha256').update(bytes).digest('hex'), baselineCommit: '294826d4046dc1cdb429d43c8783ac491ca0459a',
+        baselineMetric: 'layout.speech-390', source: expectedSource, sourceSha256: metrics.source.sha256, previous: {width: previous.width, height: previous.height, viewportWidth: previous.viewportWidth, viewportHeight: previous.viewportHeight},
+        current: {width: metrics.panel.width, height: metrics.panel.height, sourceStartOffset: metrics.sourceStartOffset, chromeHeight: metrics.chromeHeight, bodyVisibleArea: metrics.bodyVisibleArea}, heightReduction,
+        measurementBoundary: 'Historical layout was sampled before keyboard playback with this short source; the accompanying screenshot is paused. Current idle geometry matches that phase. Baseline has no body/source rectangles, so prior source offset, chrome-only height or visible-area improvement is not claimed. Source typography changes from inherited 14px/1.65 to current measured text styling; total-height change includes typography and layout. Local DOM geometry does not establish overall page speed or reading benefit.'};
+}
 async function narrowKeyboardFull() {
     await focus(mode('original'), 'narrow keyboard start');
-    for (let index = 0; index < 30; index += 1) {
+    for (let index = 0; index < 4; index += 1) {
         await page.keyboard.press('Tab');
         const focused = await ui(function() {
             const active = this.getRootNode().activeElement, panel = this.getBoundingClientRect(), rect = active?.getBoundingClientRect();
             return {full: !!active?.hasAttribute('data-reading-full'), visible: !!rect && rect.top >= panel.top - 1 && rect.bottom <= panel.bottom + 1 && rect.left >= panel.left - 1 && rect.right <= panel.right + 1,
-                name: active?.getAttribute('aria-label') || active?.textContent?.trim(), scrollTop: this.scrollTop};
+                name: active?.getAttribute('aria-label') || active?.textContent?.trim(), panelScrollTop: this.scrollTop, bodyScrollTop: this.querySelector('.fr-reading-body')?.scrollTop};
         });
         if (!focused.full) continue;
         assert(focused.visible, `The narrow full-translation action is keyboard-focused but clipped: ${JSON.stringify(focused)}`);
-        assert(focused.scrollTop > 0, 'The test must reach the action through the actual scrollable narrow panel');
+        assert.equal(focused.panelScrollTop, 0, 'The top bilingual action must not require scrolling the outer panel');
+        assert.equal(await ui(function() {const full = this.querySelector('[data-reading-full]'); return full?.getAttribute('data-reading-mode') === 'bilingual' && !full.closest('.fr-reading-body');}), true, 'The sole full action must be the direct top bilingual mode');
+        const beforeScroll = await contentGeometry('390-phrases-before-body-scroll');
+        const scrollRequired = beforeScroll.body.scrollHeight > beforeScroll.body.clientHeight + 8;
+        if (scrollRequired) await scrollReadingBody('Overflowing phrase body accepts trusted wheel scrolling');
+        const afterScroll = await contentGeometry('390-phrases-after-body-scroll');
+        assert(Math.abs(beforeScroll.audio.top - afterScroll.audio.top) <= 1, 'Scrolling phrases must not move the common audio controls');
         await page.keyboard.press('Enter'); await until(async () => (await selectedMode()) === 'bilingual', 'narrow full-translation keyboard action');
-        record('390px trusted Tab scrolls the long phrase list to a visible full-translation action; Enter activates it', {steps: index + 1, ...focused});
+        await until(async () => Boolean(await translationText()), 'narrow direct bilingual translation');
+        await contentGeometry('390-keyboard-bilingual');
+        record('390px trusted Tab reaches the visible top bilingual action; the body owns scrolling above fixed audio controls and Enter activates complete bilingual', {steps: index + 1, ...focused, scrollRequired, beforeScroll, afterScroll});
         return;
     }
     throw new Error('Narrow keyboard navigation never reached the complete-translation action');
@@ -805,12 +1067,14 @@ async function main() {
         await learningShortcutFlow(entriesBefore);
         await openReading();
         assert.equal(await sourceText(), ''); assert.equal(fixture.requests.length, 0);
-        assert(await ui(function() {return [...this.querySelectorAll('[data-reading-mode]')].every(button => button.disabled);}), 'Help modes must wait for an explicitly selected source');
-        record('Popup entry opens four modes without fabricating a source or requesting translation');
+        assert.equal(await ui(function() {return this.querySelectorAll('[data-reading-mode]').length;}), 0, 'Help modes must wait for an explicitly selected source');
+        assert.equal(await ui(function() {return this.querySelectorAll('[data-reading-use-selection]').length;}), 1, 'An empty panel must provide one explicit source-capture action');
+        record('Popup entry waits for explicit source capture without fabricating text, help modes or a translation request');
         await capture(SOURCE); await click(mode('original'), 'original'); assert.equal(await selectedMode(), 'original');
         assert.equal(fixture.requests.length, 0); assert.equal(await page.locator('article').innerHTML(), originalHtml);
         assert.equal(await ui(function() {return getComputedStyle(this.querySelector('[data-reading-source]')).userSelect;}), 'text');
         record('Original source remains readable, selectable and unchanged, with no automatic provider call');
+        await contentGeometry('source-original');
         await shot('panel-original', true);
         await click(mode('phrases'), 'phrases');
         await until(async () => (await phraseTerms()).some(item => item.term.toLowerCase() === 'bank'), 'saved learning hints including the unfamiliar bank usage');
@@ -854,7 +1118,7 @@ async function main() {
         await until(async () => (await translationText()).includes(TRANSLATION), 'reuse complete translation');
         assert.equal(fixture.requests.length, afterFull);
         record('One click reaches complete bilingual from logic and mode switches reuse the same reading-session translation', {requests: fixture.requests.slice()});
-        await geometry('desktop'); await shot('desktop-bilingual'); await shot('panel-bilingual', true);
+        await geometry('desktop'); await contentGeometry('source-bilingual'); await shot('desktop-bilingual'); await shot('panel-bilingual', true);
         await focus(mode('original'), 'original keyboard start'); await page.keyboard.press('Enter');
         assert.equal(await selectedMode(), 'original'); await page.keyboard.press('Tab'); await page.keyboard.press('Enter');
         assert.equal(await selectedMode(), 'phrases');
@@ -899,8 +1163,16 @@ async function main() {
         record('Host links and buttons remain usable; replacing a selected DOM node permits explicit recapture with the new source');
         record('Closing during a deterministic delayed request prevents its old answer from appearing after reopening');
         await click(has('data-reading-close'), 'close'); await until(async () => !(await snapshot()).host, 'close removes mounted host');
+        // open() 会主动读取仍有效的宿主选区；本例先结束选区，才能验证真正无正文的重开空态。
+        await page.mouse.click(5, 5); await page.evaluate(() => getSelection()?.removeAllRanges());
+        assert.equal(await page.evaluate(() => getSelection()?.toString().trim() || ''), '', 'The empty-reopen fixture must have no remaining host selection');
         await openReading();
-        assert.equal(findAll((await snapshot()).host, node => attr(node, 'data-reading-mode') !== undefined).length, 4);
+        assert.equal(await sourceText(), '', 'An empty reopen must not restore the previous source');
+        assert.equal(await translationText(), '', 'An empty reopen must not restore the previous translation');
+        assert.equal(findAll((await snapshot()).host, has('data-reading-mode')).length, 0, 'Reopening without captured source must not retain old help modes');
+        assert.equal(await ui(function() {return this.querySelectorAll('[data-reading-use-selection]').length;}), 1, 'An empty reopen must offer one real selection action');
+        assert.equal(await ui(function() {return this.querySelector('[data-reading-speech]');}), null, 'An empty reopen must not expose speech for a previous source');
+        if (speechMode) assert.equal((await nativeSpeechAudio()).length, 0, 'An empty reopen must not retain native Audio');
         await focus(has('data-reading-close'), 'Escape from the panel'); await page.keyboard.press('Escape');
         await until(async () => !(await snapshot()).host, 'Escape closes panel');
         record('Close, reopen and trusted Escape remove the panel without duplicate hosts');
@@ -939,7 +1211,8 @@ async function main() {
         assert.equal(report.consoleErrors.length, 0, JSON.stringify(report.consoleErrors));
         await focusSample('completed'); report.ok = true;
     } catch (error) {
-        report.error = {message: error.message, stack: error.stack};
+        report.error = errorDetails(focusError || error);
+        if (focusError && error !== focusError) report.interruptedOperationError = errorDetails(error);
         if (page && !page.isClosed() && !focusError) {
             await snapshot().then(state => {report.failureUi = {text: text(state.panel), phrases: findAll(state.panel, has('data-reading-phrase')).map(node => attr(node, 'data-reading-term'))};}).catch(() => {});
         }
@@ -949,6 +1222,11 @@ async function main() {
         await stopDemoCapture().catch(error => {report.demoStopError = error.message; report.ok = false; process.exitCode = 1;});
         if (speechWorker && report.speech) report.speech.fixtureRequests = await speechCalls(speechWorker).catch(error => ({readError: error.message}));
         stopping = true; clearInterval(monitor); if (monitorTask) await monitorTask.catch(() => {});
+        // 监控可以晚于主流程 catch 完成；焦点失败始终优先，浏览器关闭造成的操作异常仅作次因。
+        if (focusError) {
+            if (report.error && report.error.message !== focusError.message && !report.interruptedOperationError) report.interruptedOperationError = report.error;
+            report.error = errorDetails(focusError); report.ok = false; process.exitCode = 1;
+        }
         for (const cdp of ownedCdpSessions) await cdp.detach().catch(() => {});
         let closed = false;
         if (session) {

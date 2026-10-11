@@ -85,6 +85,8 @@ Learning has no shortcut by default and opens by clicking. Hover over or focus *
 
 The **Listen** toolbar reads the original. Once full bilingual text is available, choose the translation and press play to hear it. Nothing plays automatically; it uses your existing selection speech source and voice settings. Controls include real pause/resume, **back/forward 5 seconds**, replay from the start, **0.75× / 1× / 1.25× / 1.5×** speed and looping the current passage. These controls reuse the current audio without repeating synthesis. Selecting another passage or switching the audio text stops and releases the previous audio. The loop covers the original or translation displayed in the panel, including paragraph context retained when reading the selection. Follow text is estimated from media/cue durations. Closing, invalidating the source or disabling the extension stops playback.
 
+The passage comes first and scrolls independently when long. Once text is loaded, **Read selection** beside the title reads a new selection; the four compact tabs switch help levels, with one direct bilingual entry. Play, five-second seeking and speed stay visible below the passage. Open **⋯** for replay, stop and loop; collapsing these options does not interrupt playback.
+
 Phrase hints first use local and saved references. Translation is requested only when you ask for an expression or full bilingual text. Switching modes, lingering or scrolling does not write learning records. Closing cancels pending requests. This entry is available on ordinary webpages; native PDF pages, userscripts and Thunderbird do not offer it.
 
 <details class="guide-details">

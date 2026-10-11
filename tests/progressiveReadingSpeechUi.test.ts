@@ -1,7 +1,7 @@
 /**
  * @file tests/progressiveReadingSpeechUi.test.ts
  * 文件职责：挂载真实渐进阅读客户端模板，验证朗读动作、语言配置与页面资源的生命周期。
- * 主要内容：以真实 speech 控制器、公开语言与跟读展示执行原文/译文选择、暂停续播、跳转变速循环、配置换文取消、错误重试和关闭卸载；检查迟到响应不播放及 Blob 逐一释放。
+ * 主要内容：验证正文优先、空态与标题选文、唯一双语重试入口和按需朗读控件；以真实 speech 控制器执行对象选择、暂停续播、跳转变速循环、配置换文取消、错误重试和关闭卸载，检查折叠不打断音频及 Blob 逐一释放。
  * 模块边界：仅注入 runtime 合成响应、配置订阅与 Audio/URL 媒体端口，不复制组件方法，不访问私有 setup 状态，也不把 linkedom 验证声称为真实浏览器播放。
  */
 import {createRequire} from 'node:module';
@@ -168,10 +168,78 @@ describe('学习面板真实朗读控件与生命周期', () => {
   it('没有选文时隐藏朗读工具栏，打开和读取选择不会自动合成', async () => {
     const f = await mount({source: '', translation: ''});
     expect(f.document.querySelector('[data-reading-speech]')).toBeNull();
+    expect(f.document.querySelector('[data-reading-mode]')).toBeNull();
+    expect(f.get('[data-reading-use-selection]').textContent).toBe('读取选中正文');
+    expect(f.get('[data-reading-use-selection]').closest('header')).toBeNull();
+    const pointer = new f.window.Event('pointerdown', {bubbles: true, cancelable: true});
+    f.get('[data-reading-use-selection]').dispatchEvent(pointer); expect(pointer.defaultPrevented).toBe(true);
     await f.click('[data-reading-use-selection]'); expect(f.useSelection).toHaveBeenCalledOnce();
     f.state.source = source; await settle();
+    expect(f.document.querySelectorAll('[data-reading-use-selection]')).toHaveLength(1);
+    expect(f.get('[data-reading-use-selection]').closest('header')).not.toBeNull();
+    expect(f.get('[data-reading-use-selection]').textContent).toBe('读取选文');
+    expect(f.get('[data-reading-use-selection]').getAttribute('aria-label')).toBe('读取选中正文');
+    const loadedPointer = new f.window.Event('pointerdown', {bubbles: true, cancelable: true});
+    f.get('[data-reading-use-selection]').dispatchEvent(loadedPointer); expect(loadedPointer.defaultPrevented).toBe(true);
+    await f.click('[data-reading-use-selection]'); expect(f.useSelection).toHaveBeenCalledTimes(2);
     expect(f.get('[data-reading-speech]').getAttribute('data-status')).toBe('idle');
     expect(f.jobs).toHaveLength(0); expect(f.audios).toHaveLength(0); expect(f.createUrl).not.toHaveBeenCalled();
+  });
+  it('原文先于朗读呈现，四档只保留一个完整双语动作且没有常驻说明或重复页脚', async () => {
+    const f = await mount();
+    const contentOrder = Array.from(f.document.querySelectorAll('[data-reading-source], [data-reading-speech]'));
+    expect(contentOrder).toEqual([f.get('[data-reading-source]'), f.get('[data-reading-speech]')]);
+    expect(f.get('.fr-reading-body').getAttribute('tabindex')).toBe('0');
+    expect(f.document.querySelector('.fr-reading-intro')).toBeNull(); expect(f.document.querySelector('footer')).toBeNull();
+    expect(f.document.querySelector('.fr-reading-label')).toBeNull();
+    expect(f.get('.fr-reading').getAttribute('aria-description')).toContain('选择正文后');
+    const group = f.get('.fr-reading-modes'); expect(group.getAttribute('role')).toBe('group');
+    expect(group.getAttribute('aria-label')).toBe('帮助强度');
+    expect(f.document.querySelectorAll('[data-reading-mode]')).toHaveLength(4);
+    expect(f.document.querySelectorAll('[data-reading-full]')).toHaveLength(1);
+    expect(f.get('[data-reading-full]').getAttribute('data-reading-mode')).toBe('bilingual');
+    await f.click('[data-reading-full]'); expect(f.assistance).toHaveBeenLastCalledWith('bilingual');
+    expect(f.get('[data-reading-full]').getAttribute('aria-pressed')).toBe('true');
+    expect(f.document.querySelectorAll('.fr-reading-label')).toHaveLength(2);
+    expect(f.get('[data-reading-translation]').textContent).toBe(translated);
+    expect(f.get('[data-reading-translation]').hasAttribute('data-i18n-ignore')).toBe(true);
+    expect(f.jobs).toHaveLength(0);
+  });
+  it('唯一双语标签在等待时禁用，失败时仍能重试且不触发朗读', async () => {
+    const f = await mount({translation: ''});
+    await f.click('[data-reading-full]'); expect(f.assistance).toHaveBeenCalledOnce();
+    f.state.loading = true; await settle();
+    expect(f.get('[data-reading-full]').hasAttribute('disabled')).toBe(true);
+    expect(f.get('[role="status"]').textContent).toBe('正在读取完整译文…');
+    await f.click('[data-reading-full]'); expect(f.assistance).toHaveBeenCalledOnce();
+    f.state.loading = false; f.state.error = '翻译暂时失败，请重试。'; await settle();
+    expect(f.get('[role="alert"]').textContent).toBe('翻译暂时失败，请重试。');
+    expect(f.get('.fr-reading-body').contains(f.get('[role="alert"]'))).toBe(true);
+    expect(f.get('[data-reading-full]').textContent).toBe('重试完整双语');
+    expect(f.get('[data-reading-full]').hasAttribute('disabled')).toBe(false);
+    await f.click('[data-reading-full]'); expect(f.assistance).toHaveBeenCalledTimes(2);
+    expect(f.assistance).toHaveBeenLastCalledWith('bilingual');
+    expect(f.jobs).toHaveLength(0); expect(f.audios).toHaveLength(0);
+  });
+  it('更多朗读选项默认折叠，展开入口有完整可访问关系且不生成音频', async () => {
+    const f = await mount(), more = f.get('[data-reading-audio-more]');
+    expect(more.getAttribute('type')).toBe('button'); expect(more.getAttribute('aria-label')).toBe('更多朗读选项');
+    expect(more.getAttribute('aria-controls')).toBe('fr-reading-audio-options');
+    expect(more.getAttribute('aria-expanded')).toBe('false');
+    expect(f.document.querySelector('#fr-reading-audio-options')).toBeNull();
+    for (const action of ['restart', 'stop', 'loop']) expect(f.document.querySelector(`[data-reading-${action}]`)).toBeNull();
+    for (const selector of ['[data-reading-audio-kind]', '[data-reading-play]', '[data-reading-seek="-5"]', '[data-reading-seek="5"]', '[data-reading-rate]', '[data-reading-audio-time]']) expect(f.document.querySelector(selector)).not.toBeNull();
+    await f.click('[data-reading-audio-more]'); expect(more.getAttribute('aria-expanded')).toBe('true');
+    const options = f.get('#fr-reading-audio-options');
+    expect(options.contains(f.get('[data-reading-restart]'))).toBe(true);
+    expect(f.get('[data-reading-restart]').getAttribute('aria-label')).toBe('从头重听');
+    expect(f.get('[data-reading-restart]').hasAttribute('disabled')).toBe(true);
+    expect(f.get('[data-reading-stop]').getAttribute('aria-label')).toBe('停止朗读');
+    expect(f.get('[data-reading-stop]').hasAttribute('disabled')).toBe(true);
+    expect(f.get('[data-reading-loop]').closest('label')?.textContent).toBe('循环');
+    await f.click('[data-reading-audio-more]'); expect(more.getAttribute('aria-expanded')).toBe('false');
+    expect(f.document.querySelector('#fr-reading-audio-options')).toBeNull();
+    expect(f.jobs).toHaveLength(0); expect(f.audios).toHaveLength(0);
   });
   it('原文/译文只选择对象，按钮的可访问名称随选择变化且从不自动播放', async () => {
     const f = await mount();
@@ -206,6 +274,7 @@ describe('学习面板真实朗读控件与生命周期', () => {
     await f.click('[data-reading-play]'); expect(audio.pause).toHaveBeenCalledOnce();
     expect(f.get('[data-reading-play]').getAttribute('aria-label')).toBe('继续朗读');
     await f.click('[data-reading-play]'); expect(audio.currentTime).toBe(6); expect(audio.play).toHaveBeenCalledTimes(2);
+    await f.click('[data-reading-audio-more]');
     await f.click('[data-reading-stop]'); expect(audio.currentTime).toBe(0);
     expect(f.get('[data-reading-speech]').getAttribute('data-status')).toBe('idle');
     expect(f.document.querySelector('.fr-speech-current')).toBeNull();
@@ -226,15 +295,53 @@ describe('学习面板真实朗读控件与生命周期', () => {
       Array.from(rate.options).find(child => Number(child.value) === option)!.selected = true;
       rate.dispatchEvent(new f.window.Event('change')); await settle(); expect(audio.playbackRate).toBe(option);
     }
+    await f.click('[data-reading-audio-more]');
     const loop = f.get<HTMLInputElement>('[data-reading-loop]'); loop.checked = true;
     loop.dispatchEvent(new f.window.Event('change')); await settle(); expect(audio.loop).toBe(true);
     await f.click('[data-reading-restart]'); expect(audio.currentTime).toBe(0); expect(audio.play).toHaveBeenCalledTimes(2);
     expect(f.jobs).toHaveLength(1); expect(f.audios).toHaveLength(1);
   });
+  it('折叠和再展开保留正在播放的循环音频，常用暂停与跳转仍可操作', async () => {
+    const f = await mount(), audio = await f.play(); audio.currentTime = 4; audio.fire('timeupdate'); await settle();
+    await f.click('[data-reading-audio-more]');
+    const loop = f.get<HTMLInputElement>('[data-reading-loop]'); loop.checked = true;
+    loop.dispatchEvent(new f.window.Event('change')); await settle(); expect(audio.loop).toBe(true);
+    const more = f.get('[data-reading-audio-more]');
+    expect(more.getAttribute('aria-label')).toBe('更多朗读选项 · 循环已开启');
+    await f.click('[data-reading-audio-more]');
+    expect(f.document.querySelector('[data-reading-loop]')).toBeNull(); expect(more.getAttribute('aria-expanded')).toBe('false');
+    expect(f.get('[data-reading-speech]').getAttribute('data-status')).toBe('playing');
+    expect(audio.currentTime).toBe(4); expect(audio.loop).toBe(true);
+    await f.click('[data-reading-seek="5"]'); expect(audio.currentTime).toBe(9);
+    await f.click('[data-reading-audio-more]'); expect(f.get<HTMLInputElement>('[data-reading-loop]').checked).toBe(true);
+    expect(audio.play).toHaveBeenCalledOnce(); expect(audio.pause).not.toHaveBeenCalled();
+    expect(f.stops).toHaveLength(0); expect(f.jobs).toHaveLength(1); expect(f.audios).toHaveLength(1);
+    expect(f.revokeUrl).not.toHaveBeenCalled();
+    await f.click('[data-reading-audio-more]'); await f.click('[data-reading-play]');
+    expect(f.get('[data-reading-speech]').getAttribute('data-status')).toBe('paused'); expect(audio.pause).toHaveBeenCalledOnce();
+    expect(audio.loop).toBe(true);
+  });
+  it('未知时长保持朗读而不报错，元数据到达后恢复实际跳转和重听', async () => {
+    const f = await mount(), audio = await f.play(); audio.duration = NaN; audio.fire('loadedmetadata'); await settle();
+    expect(f.get('[data-reading-audio-time]').textContent).toBe('朗读');
+    expect(f.get('[data-reading-speech]').getAttribute('data-status')).toBe('playing');
+    for (const offset of [-5, 5]) expect(f.get(`[data-reading-seek="${offset}"]`).hasAttribute('disabled')).toBe(true);
+    await f.click('[data-reading-audio-more]'); expect(f.get('[data-reading-restart]').hasAttribute('disabled')).toBe(true);
+    expect(f.document.querySelector('[data-reading-audio-error]')).toBeNull();
+    audio.duration = 14; audio.currentTime = 3; audio.fire('durationchange'); await settle();
+    expect(f.get('[data-reading-audio-time]').textContent).toBe('0:03 / 0:14');
+    for (const offset of [-5, 5]) expect(f.get(`[data-reading-seek="${offset}"]`).hasAttribute('disabled')).toBe(false);
+    expect(f.get('[data-reading-restart]').hasAttribute('disabled')).toBe(false);
+    await f.click('[data-reading-seek="5"]'); expect(audio.currentTime).toBe(8);
+    expect(f.jobs).toHaveLength(1); expect(f.audios).toHaveLength(1); expect(audio.pause).not.toHaveBeenCalled();
+  });
   it('生成中的再次点击取消请求，迟到响应不创建 Audio，重试有独立请求归属', async () => {
     const f = await mount(); await f.click('[data-reading-play]');
     expect(f.get('[data-reading-speech]').getAttribute('aria-busy')).toBe('true');
     expect(f.get('[data-reading-play]').getAttribute('aria-label')).toBe('取消生成');
+    await f.click('[data-reading-audio-more]'); await f.click('[data-reading-audio-more]');
+    expect(f.get('[data-reading-speech]').getAttribute('data-status')).toBe('preparing');
+    expect(f.stops).toHaveLength(0); expect(f.jobs).toHaveLength(1);
     await f.click('[data-reading-play]'); expect(f.stops).toEqual(['reading-ui-1']);
     await f.click('[data-reading-play]'); expect(f.jobs).toHaveLength(2);
     await f.complete(0); expect(f.audios).toHaveLength(0);
@@ -284,7 +391,10 @@ describe('学习面板真实朗读控件与生命周期', () => {
   });
   it('新原文释放旧音频且恢复原文对象；旧媒体回调不能污染新的选文', async () => {
     const f = await mount(); await f.click('[data-reading-listen="translation"]'); const audio = await f.play();
+    await f.click('[data-reading-audio-more]'); expect(f.get('[data-reading-audio-more]').getAttribute('aria-expanded')).toBe('true');
     const stale = audio.ontimeupdate!; f.state.source = 'A new paragraph replaces the previous captured selection.'; await settle();
+    expect(f.get('[data-reading-audio-more]').getAttribute('aria-expanded')).toBe('false');
+    expect(f.document.querySelector('#fr-reading-audio-options')).toBeNull();
     expect(f.get('[data-reading-listen="source"]').getAttribute('aria-pressed')).toBe('true');
     expect(f.revokeUrl).toHaveBeenCalledWith(audio.src); audio.currentTime = 10; stale(new f.window.Event('timeupdate')); await settle();
     expect(f.get('[data-reading-audio-time]').textContent).toBe('朗读'); expect(f.document.querySelector('.fr-speech-current')).toBeNull();
@@ -307,12 +417,29 @@ describe('学习面板真实朗读控件与生命周期', () => {
   });
   it.each(['close', 'unmount'] as const)('%s 播放中的面板移除音源、释放 Blob，迟到回调不恢复播放', async action => {
     const f = await mount(), audio = await f.play(), stale = audio.onended!;
+    await f.click('[data-reading-audio-more]');
     if (action === 'close') await f.click('[data-reading-close]'); else await f.unmount();
     expect(audio.pause).toHaveBeenCalledOnce(); expect(audio.removeAttribute).toHaveBeenCalledWith('src');
     expect(audio.load).toHaveBeenCalledOnce(); expect(f.revokeUrl).toHaveBeenCalledWith(audio.src);
     expect(f.stops).toEqual(['reading-ui-1']); stale(new f.window.Event('ended')); await settle();
     expect(f.document.querySelector('[data-reading-speech]')).toBeNull(); expect(audio.play).toHaveBeenCalledOnce();
+    expect(f.document.querySelector('#fr-reading-audio-options')).toBeNull();
     if (action === 'unmount') {expect(f.mediaListeners.size).toBe(0); expect(f.unsubscribed).toHaveBeenCalledOnce();}
+  });
+  it('原文失效回到清晰读取入口，清理展开的音频控制后新选文保持折叠静默', async () => {
+    const f = await mount(), audio = await f.play(); await f.click('[data-reading-audio-more]');
+    f.state.source = ''; f.state.translation = ''; f.state.error = '网页原文已变化，请重新选择正文。'; await settle();
+    expect(f.document.querySelector('[data-reading-speech]')).toBeNull();
+    expect(f.document.querySelector('[data-reading-mode]')).toBeNull();
+    expect(f.get('[role="alert"]').textContent).toBe('网页原文已变化，请重新选择正文。');
+    expect(f.get('[data-reading-use-selection]').textContent).toBe('读取选中正文');
+    await f.click('[data-reading-use-selection]'); expect(f.useSelection).toHaveBeenCalledOnce();
+    expect(audio.pause).toHaveBeenCalledOnce(); expect(f.revokeUrl).toHaveBeenCalledWith(audio.src);
+    f.state.source = 'A fresh selection.'; f.state.error = ''; await settle();
+    expect(f.get('[data-reading-audio-more]').getAttribute('aria-expanded')).toBe('false');
+    expect(f.document.querySelector('#fr-reading-audio-options')).toBeNull();
+    expect(f.get('[data-reading-speech]').getAttribute('data-status')).toBe('idle');
+    expect(f.jobs).toHaveLength(1); expect(f.audios).toHaveLength(1); expect(audio.play).toHaveBeenCalledOnce();
   });
   it.each(['close', 'unmount', 'newSource', 'translationGone'] as const)('%s 撤销待合成请求，迟到供应商响应不创建 URL 或播放', async action => {
     const f = await mount();
@@ -325,10 +452,12 @@ describe('学习面板真实朗读控件与生命周期', () => {
     expect(f.stops).toEqual(['reading-ui-1']); await f.complete();
     expect(f.createUrl).not.toHaveBeenCalled(); expect(f.audios).toHaveLength(0);
   });
-  it('合成错误可见且可明确重试，成功后清理错误并使用新的 UUID', async () => {
-    const f = await mount(); await f.click('[data-reading-play]'); await f.complete(0, {success: false, error: '本地语音模型尚未下载'});
-    expect(f.get('[data-reading-audio-error]').textContent).toBe('本地语音模型尚未下载');
+  it('合成长错误保留完整文本且可聚焦重试，成功后清理错误并使用新的 UUID', async () => {
+    const detailedError = '语音服务暂时不可用：' + '上游返回 503，请稍后重试。'.repeat(35);
+    const f = await mount(); await f.click('[data-reading-play]'); await f.complete(0, {success: false, error: detailedError});
+    expect(f.get('[data-reading-audio-error]').textContent).toBe(detailedError);
     expect(f.get('[data-reading-audio-error]').getAttribute('role')).toBe('alert');
+    expect(f.get('[data-reading-audio-error]').getAttribute('tabindex')).toBe('0');
     expect(f.get('[data-reading-play]').getAttribute('aria-label')).toBe('播放原文');
     await f.play(); expect(f.jobs[1].message.clientRequestId).toBe('reading-ui-2');
     expect(f.document.querySelector('[data-reading-audio-error]')).toBeNull(); expect(f.audios[0].play).toHaveBeenCalledOnce();

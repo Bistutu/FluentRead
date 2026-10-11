@@ -7,6 +7,8 @@
 
 # 渐进阅读朗读：2026-10-11
 
+此报告保存提交 `294826d40` 的朗读界面与验证证据；随后正文优先的紧凑布局见[学习面板更新](./progressive-reading-compact-20261011.md)。
+
 本次为学习面板增加原文和译文朗读，保持主动选文、按需查看帮助的流程。「学习」继续放在 Popup「局部」右侧，默认无快捷键，可以在设置中录入。生产构建、隔离浏览器结果及截图由[验证摘要](./progressive-reading-speech-20261011/verification.json)归档。[此前的渐进阅读报告](./progressive-reading-20261011.md)保留其历史证据。
 
 ![原文播放与紧凑工具栏](./progressive-reading-speech-20261011/speech-original-playing.png)

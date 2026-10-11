@@ -1,0 +1,1880 @@
+{
+  "generatedAtUtc": "2026-10-11T11:59:09.155261+00:00",
+  "scope": "Read-only source hash and integrated-main attribution of supplied coverage/i18n evidence. No tests, builds, source edits or isolated-main runtime executed. Only this temporary proof artifact is written.",
+  "worktree": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011",
+  "currentHead": "294826d4046dc1cdb429d43c8783ac491ca0459a",
+  "integratedMainCommit": "1e414ea8c2db6074343fb438bf7633af10a142a2",
+  "coverageEvidence": {
+    "verification": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/docs/reports/progressive-reading-speech-20261011/verification.json",
+    "verificationSha256": "c913f84e2087ef7d0c3c726e94201fd4a3a7c80ff7c1e81f1f557e86bc5d68b2",
+    "retainedVerification": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/docs/reports/progressive-reading-20261011/verification.json",
+    "modules": 14,
+    "freshModules": 5,
+    "retainedModules": 9,
+    "allSourceHashesUnchanged": true,
+    "allRecordedFourDimensions100": true,
+    "sourceHashes": [
+      {
+        "file": "src/features/progressive-reading/speech.ts",
+        "evidence": "fresh-in-speech-verification",
+        "expectedSha256": "c45392d66407e08bb7a454c401d0f8e7eaf0a48bff14a66e91c615b66d100805",
+        "currentSha256": "c45392d66407e08bb7a454c401d0f8e7eaf0a48bff14a66e91c615b66d100805",
+        "unchanged": true,
+        "percentages": {
+          "statements": 100,
+          "branches": 100,
+          "functions": 100,
+          "lines": 100
+        },
+        "coverageReport": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/docs/reports/progressive-reading-speech-20261011/speech-coverage.json",
+        "log": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/docs/reports/progressive-reading-speech-20261011/speech-coverage.log"
+      },
+      {
+        "file": "src/features/selection-translation/background/ttsHandler.ts",
+        "evidence": "fresh-in-speech-verification",
+        "expectedSha256": "526b10f5985c771b7aa32f81d7ab65554b92b052b67f37ff94a1094d77aaaea3",
+        "currentSha256": "526b10f5985c771b7aa32f81d7ab65554b92b052b67f37ff94a1094d77aaaea3",
+        "unchanged": true,
+        "percentages": {
+          "statements": 100,
+          "branches": 100,
+          "functions": 100,
+          "lines": 100
+        },
+        "coverageReport": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/docs/reports/progressive-reading-speech-20261011/tts-handler-coverage.json",
+        "log": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/docs/reports/progressive-reading-speech-20261011/tts-handler-coverage.log"
+      },
+      {
+        "file": "src/core/tts/speechProgress.ts",
+        "evidence": "fresh-in-speech-verification",
+        "expectedSha256": "721874a0182c696b223ca812c71a8485d70071b7a38653245d1c777a03eb1155",
+        "currentSha256": "721874a0182c696b223ca812c71a8485d70071b7a38653245d1c777a03eb1155",
+        "unchanged": true,
+        "percentages": {
+          "statements": 100,
+          "branches": 100,
+          "functions": 100,
+          "lines": 100
+        },
+        "coverageReport": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/docs/reports/progressive-reading-speech-20261011/speech-progress-coverage.json",
+        "log": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/docs/reports/progressive-reading-speech-20261011/speech-progress-coverage.log"
+      },
+      {
+        "file": "src/app/content/learningFeatures.ts",
+        "evidence": "fresh-in-speech-verification",
+        "expectedSha256": "7c03bc2ddb6211b20b46f465ba811213e4530c5b1d8a6294536d4b3ba648514c",
+        "currentSha256": "7c03bc2ddb6211b20b46f465ba811213e4530c5b1d8a6294536d4b3ba648514c",
+        "unchanged": true,
+        "percentages": {
+          "statements": 100,
+          "branches": 100,
+          "functions": 100,
+          "lines": 100
+        },
+        "coverageReport": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/docs/reports/progressive-reading-speech-20261011/learning-integration-coverage.json",
+        "log": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/docs/reports/progressive-reading-speech-20261011/learning-integration-coverage.log"
+      },
+      {
+        "file": "src/core/config/progressiveReading.ts",
+        "evidence": "fresh-in-speech-verification",
+        "expectedSha256": "270254c4fe57059c1bd51df11c3f82fb5b466cd6899d98df49201b7cbe8b792e",
+        "currentSha256": "270254c4fe57059c1bd51df11c3f82fb5b466cd6899d98df49201b7cbe8b792e",
+        "unchanged": true,
+        "percentages": {
+          "statements": 100,
+          "branches": 100,
+          "functions": 100,
+          "lines": 100
+        },
+        "coverageReport": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/docs/reports/progressive-reading-speech-20261011/hotkey-integration-coverage.json",
+        "log": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/docs/reports/progressive-reading-speech-20261011/hotkey-integration-coverage.log"
+      },
+      {
+        "file": "src/features/progressive-reading/hints.ts",
+        "evidence": "retained-from-prior-verification",
+        "expectedSha256": "5ccd30b4c94e77ec34ec134b3c1b393ec7cf7d499937b8a8305f36d21344a4d3",
+        "currentSha256": "5ccd30b4c94e77ec34ec134b3c1b393ec7cf7d499937b8a8305f36d21344a4d3",
+        "unchanged": true,
+        "percentages": {
+          "statements": 100,
+          "branches": 100,
+          "functions": 100,
+          "lines": 100
+        },
+        "coverageReport": "/private/tmp/fluentread-progressive-reading-core-coverage/coverage-final.json",
+        "log": null
+      },
+      {
+        "file": "src/features/progressive-reading/session.ts",
+        "evidence": "retained-from-prior-verification",
+        "expectedSha256": "255be282307675f9de68d37441a4bd6a97245a5ae6225396803e516a34fad904",
+        "currentSha256": "255be282307675f9de68d37441a4bd6a97245a5ae6225396803e516a34fad904",
+        "unchanged": true,
+        "percentages": {
+          "statements": 100,
+          "branches": 100,
+          "functions": 100,
+          "lines": 100
+        },
+        "coverageReport": "/private/tmp/fluentread-progressive-reading-core-coverage/coverage-final.json",
+        "log": null
+      },
+      {
+        "file": "src/features/vocabulary/background/handler.ts",
+        "evidence": "retained-from-prior-verification",
+        "expectedSha256": "10f258e1fe469487f224217c2e2de6023a7ba9a4f27d12eb07afaf38803b27ff",
+        "currentSha256": "10f258e1fe469487f224217c2e2de6023a7ba9a4f27d12eb07afaf38803b27ff",
+        "unchanged": true,
+        "percentages": {
+          "statements": 100,
+          "branches": 100,
+          "functions": 100,
+          "lines": 100
+        },
+        "coverageReport": "/private/tmp/fluentread-progressive-vocabulary-coverage/coverage-final.json",
+        "log": null
+      },
+      {
+        "file": "src/features/vocabulary/domain/readingHints.ts",
+        "evidence": "retained-from-prior-verification",
+        "expectedSha256": "cc981b2d27a2216bc9fe2aa374a3d0dcb58ce3c897069db66899329890d5957d",
+        "currentSha256": "cc981b2d27a2216bc9fe2aa374a3d0dcb58ce3c897069db66899329890d5957d",
+        "unchanged": true,
+        "percentages": {
+          "statements": 100,
+          "branches": 100,
+          "functions": 100,
+          "lines": 100
+        },
+        "coverageReport": "/private/tmp/fluentread-progressive-vocabulary-coverage/coverage-final.json",
+        "log": null
+      },
+      {
+        "file": "src/app/content/messageRuntime.ts",
+        "evidence": "retained-from-prior-verification",
+        "expectedSha256": "260bac5fa5a5eead9c3b84d164466f3716d2779fee2b11a1166f3084d960c6c3",
+        "currentSha256": "260bac5fa5a5eead9c3b84d164466f3716d2779fee2b11a1166f3084d960c6c3",
+        "unchanged": true,
+        "percentages": {
+          "statements": 100,
+          "branches": 100,
+          "functions": 100,
+          "lines": 100
+        },
+        "coverageReport": "/private/tmp/fluentread-progressive-reading-entry-merge-coverage/coverage-final.json",
+        "log": "/private/tmp/fluentread-progressive-reading-entry-merge-coverage.log"
+      },
+      {
+        "file": "src/app/popup/pageActions.ts",
+        "evidence": "retained-from-prior-verification",
+        "expectedSha256": "11e40d0f9a3ddafe27ec449c8af57f0f6298bff2613d17f77329f47c6366254a",
+        "currentSha256": "11e40d0f9a3ddafe27ec449c8af57f0f6298bff2613d17f77329f47c6366254a",
+        "unchanged": true,
+        "percentages": {
+          "statements": 100,
+          "branches": 100,
+          "functions": 100,
+          "lines": 100
+        },
+        "coverageReport": "/private/tmp/fluentread-progressive-reading-entry-merge-coverage/coverage-final.json",
+        "log": "/private/tmp/fluentread-progressive-reading-entry-merge-coverage.log"
+      },
+      {
+        "file": "src/features/progressive-reading/content.ts",
+        "evidence": "retained-from-prior-verification",
+        "expectedSha256": "f1e64a9a54c552918949a59eddedea41a1f817380169530bcdf413356512e77a",
+        "currentSha256": "f1e64a9a54c552918949a59eddedea41a1f817380169530bcdf413356512e77a",
+        "unchanged": true,
+        "percentages": {
+          "statements": 100,
+          "branches": 100,
+          "functions": 100,
+          "lines": 100
+        },
+        "coverageReport": "/private/tmp/fluentread-progressive-content-shortcut-coverage/coverage-final.json",
+        "log": "/private/tmp/fluentread-progressive-content-shortcut-coverage.log"
+      },
+      {
+        "file": "src/features/progressive-reading/source.ts",
+        "evidence": "retained-from-prior-verification",
+        "expectedSha256": "431f6950074deac346ca26b22da238e7a785fddf1cffbce952fe94c9bb7acb83",
+        "currentSha256": "431f6950074deac346ca26b22da238e7a785fddf1cffbce952fe94c9bb7acb83",
+        "unchanged": true,
+        "percentages": {
+          "statements": 100,
+          "branches": 100,
+          "functions": 100,
+          "lines": 100
+        },
+        "coverageReport": "/private/tmp/fluentread-progressive-content-shortcut-coverage/coverage-final.json",
+        "log": "/private/tmp/fluentread-progressive-content-shortcut-coverage.log"
+      },
+      {
+        "file": "src/features/settings/ui/useTranslationShortcutSettings.ts",
+        "evidence": "retained-from-prior-verification",
+        "expectedSha256": "670e5fa178bea8d4057e4e8dfd74c18859fed15a95a1ec1c44dca0891dee266a",
+        "currentSha256": "670e5fa178bea8d4057e4e8dfd74c18859fed15a95a1ec1c44dca0891dee266a",
+        "unchanged": true,
+        "percentages": {
+          "statements": 100,
+          "branches": 100,
+          "functions": 100,
+          "lines": 100
+        },
+        "coverageReport": "/private/tmp/progressive-reading-hotkey-coverage/coverage-final.json",
+        "log": "/private/tmp/progressive-reading-hotkey-coverage.log"
+      }
+    ]
+  },
+  "i18n": {
+    "currentLog": "/private/tmp/progressive-reading-compact-final-checks.log",
+    "currentLogSha256": "6069e4b955622cc421acb23a66a95d51af67820192d202b53ed3ba38b1fb0f84",
+    "baselineEvidence": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/docs/reports/progressive-reading-speech-20261011/main-i18n-baseline.json",
+    "baselineEvidenceSha256": "8d98fbaed09096b4acea875e2a55b778fe03024f3726762a154c688a9f4b8857",
+    "failureCases": [
+      "tests/i18n.test.ts > i18n 全量界面扫描 > Vue 文案和展示注册表在非中文界面有本地化结果"
+    ],
+    "failureCaseCount": 1,
+    "i18nPassed": 57,
+    "i18nFailed": 1,
+    "userscriptLanguageBundlesPassed": 3,
+    "combinedPassed": 1029,
+    "combinedFailed": 1,
+    "recordCount": 195,
+    "uniqueSourceCount": 39,
+    "bySourceFile": {
+      "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue": {
+        "recordCount": 190,
+        "uniqueSourceCount": 38,
+        "locales": [
+          "en-US",
+          "es-ES",
+          "fr-FR",
+          "ko-KR",
+          "ru-RU"
+        ]
+      },
+      "src/features/settings/ui/ReadingAssistanceSettings.vue": {
+        "recordCount": 5,
+        "uniqueSourceCount": 1,
+        "locales": [
+          "en-US",
+          "es-ES",
+          "fr-FR",
+          "ko-KR",
+          "ru-RU"
+        ]
+      }
+    },
+    "sameFailureCaseAsBaseline": true,
+    "failureRecordsMatchBaselineExactlyIgnoringLogLine": true,
+    "newRecordsRelativeToBaseline": [],
+    "removedRecordsRelativeToBaseline": [],
+    "progressiveReadingSourceRecords": 0,
+    "popupSourceRecords": 0,
+    "owningVueFiles": [
+      {
+        "file": "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue",
+        "currentSha256": "e68231bbba12cf8e83a803146de4d5abc026a4b46862f4859e5e23a25af6ad0c",
+        "integratedMainSha256": "e68231bbba12cf8e83a803146de4d5abc026a4b46862f4859e5e23a25af6ad0c",
+        "byteIdenticalToIntegratedMain": true
+      },
+      {
+        "file": "src/features/settings/ui/ReadingAssistanceSettings.vue",
+        "currentSha256": "4d8a76e622f7f98683852758284c6aa0164bf517b83882d1254d204db72784d3",
+        "integratedMainSha256": "4d8a76e622f7f98683852758284c6aa0164bf517b83882d1254d204db72784d3",
+        "byteIdenticalToIntegratedMain": true
+      }
+    ],
+    "allFailureOwnersByteIdenticalToIntegratedMain": true,
+    "failureRecords": [
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "已保存的校订",
+        "logLine": 32
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "已保存的校订",
+        "logLine": 33
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "已保存的校订",
+        "logLine": 34
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "已保存的校订",
+        "logLine": 35
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "已保存的校订",
+        "logLine": 36
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "关闭校订",
+        "logLine": 37
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "关闭校订",
+        "logLine": 38
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "关闭校订",
+        "logLine": 39
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "关闭校订",
+        "logLine": 40
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "关闭校订",
+        "logLine": 41
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "编辑译文",
+        "logLine": 42
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "编辑译文",
+        "logLine": 43
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "编辑译文",
+        "logLine": 44
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "编辑译文",
+        "logLine": 45
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "编辑译文",
+        "logLine": 46
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "校订视图",
+        "logLine": 47
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "校订视图",
+        "logLine": 48
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "校订视图",
+        "logLine": 49
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "校订视图",
+        "logLine": 50
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "校订视图",
+        "logLine": 51
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "正在读取个人校订…",
+        "logLine": 52
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "正在读取个人校订…",
+        "logLine": 53
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "正在读取个人校订…",
+        "logLine": 54
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "正在读取个人校订…",
+        "logLine": 55
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "正在读取个人校订…",
+        "logLine": 56
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "确认采用的译文",
+        "logLine": 57
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "确认采用的译文",
+        "logLine": 58
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "确认采用的译文",
+        "logLine": 59
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "确认采用的译文",
+        "logLine": 60
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "确认采用的译文",
+        "logLine": 61
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "将当前网页加入此项目",
+        "logLine": 62
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "将当前网页加入此项目",
+        "logLine": 63
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "将当前网页加入此项目",
+        "logLine": 64
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "将当前网页加入此项目",
+        "logLine": 65
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "将当前网页加入此项目",
+        "logLine": 66
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前网页已加入项目：",
+        "logLine": 67
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前网页已加入项目：",
+        "logLine": 68
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前网页已加入项目：",
+        "logLine": 69
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前网页已加入项目：",
+        "logLine": 70
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前网页已加入项目：",
+        "logLine": 71
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "退出项目",
+        "logLine": 72
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "退出项目",
+        "logLine": 73
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "退出项目",
+        "logLine": 74
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "退出项目",
+        "logLine": 75
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "退出项目",
+        "logLine": 76
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "这个原句保存了不同译法",
+        "logLine": 77
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "这个原句保存了不同译法",
+        "logLine": 78
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "这个原句保存了不同译法",
+        "logLine": 79
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "这个原句保存了不同译法",
+        "logLine": 80
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "这个原句保存了不同译法",
+        "logLine": 81
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "不会自动采用。可以编辑已有译法，或在“已保存的校订”中删除不再使用的译法。",
+        "logLine": 82
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "不会自动采用。可以编辑已有译法，或在“已保存的校订”中删除不再使用的译法。",
+        "logLine": 83
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "不会自动采用。可以编辑已有译法，或在“已保存的校订”中删除不再使用的译法。",
+        "logLine": 84
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "不会自动采用。可以编辑已有译法，或在“已保存的校订”中删除不再使用的译法。",
+        "logLine": 85
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "不会自动采用。可以编辑已有译法，或在“已保存的校订”中删除不再使用的译法。",
+        "logLine": 86
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "相近原句的参考译文（不会自动替换）",
+        "logLine": 87
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "相近原句的参考译文（不会自动替换）",
+        "logLine": 88
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "相近原句的参考译文（不会自动替换）",
+        "logLine": 89
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "相近原句的参考译文（不会自动替换）",
+        "logLine": 90
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "相近原句的参考译文（不会自动替换）",
+        "logLine": 91
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "已保存的原句",
+        "logLine": 92
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "已保存的原句",
+        "logLine": 93
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "已保存的原句",
+        "logLine": 94
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "已保存的原句",
+        "logLine": 95
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "已保存的原句",
+        "logLine": 96
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前原句",
+        "logLine": 97
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前原句",
+        "logLine": 98
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前原句",
+        "logLine": 99
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前原句",
+        "logLine": 100
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前原句",
+        "logLine": 101
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "选作草稿，再预览确认",
+        "logLine": 102
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "选作草稿，再预览确认",
+        "logLine": 103
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "选作草稿，再预览确认",
+        "logLine": 104
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "选作草稿，再预览确认",
+        "logLine": 105
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "选作草稿，再预览确认",
+        "logLine": 106
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "确认预览",
+        "logLine": 107
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "确认预览",
+        "logLine": 108
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "确认预览",
+        "logLine": 109
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "确认预览",
+        "logLine": 110
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "确认预览",
+        "logLine": 111
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前译文",
+        "logLine": 112
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前译文",
+        "logLine": 113
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前译文",
+        "logLine": 114
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前译文",
+        "logLine": 115
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前译文",
+        "logLine": 116
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "采用校订后",
+        "logLine": 117
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "采用校订后",
+        "logLine": 118
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "采用校订后",
+        "logLine": 119
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "采用校订后",
+        "logLine": 120
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "采用校订后",
+        "logLine": 121
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前网页有 12 处相同原句。出现不同的已保存译法时，不会自动采用。",
+        "logLine": 122
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前网页有 12 处相同原句。出现不同的已保存译法时，不会自动采用。",
+        "logLine": 123
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前网页有 12 处相同原句。出现不同的已保存译法时，不会自动采用。",
+        "logLine": 124
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前网页有 12 处相同原句。出现不同的已保存译法时，不会自动采用。",
+        "logLine": 125
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前网页有 12 处相同原句。出现不同的已保存译法时，不会自动采用。",
+        "logLine": 126
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "受影响句子",
+        "logLine": 127
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "受影响句子",
+        "logLine": 128
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "受影响句子",
+        "logLine": 129
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "受影响句子",
+        "logLine": 130
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "受影响句子",
+        "logLine": 131
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "这里只保存你确认过的原句和译文。修改或删除后，旧译文会立即停止使用。",
+        "logLine": 132
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "这里只保存你确认过的原句和译文。修改或删除后，旧译文会立即停止使用。",
+        "logLine": 133
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "这里只保存你确认过的原句和译文。修改或删除后，旧译文会立即停止使用。",
+        "logLine": 134
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "这里只保存你确认过的原句和译文。修改或删除后，旧译文会立即停止使用。",
+        "logLine": 135
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "这里只保存你确认过的原句和译文。修改或删除后，旧译文会立即停止使用。",
+        "logLine": 136
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "尚未保存个人校订。",
+        "logLine": 137
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "尚未保存个人校订。",
+        "logLine": 138
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "尚未保存个人校订。",
+        "logLine": 139
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "尚未保存个人校订。",
+        "logLine": 140
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "尚未保存个人校订。",
+        "logLine": 141
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "所在章节",
+        "logLine": 142
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "所在章节",
+        "logLine": 143
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "所在章节",
+        "logLine": 144
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "所在章节",
+        "logLine": 145
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "所在章节",
+        "logLine": 146
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "打开对应网页后可编辑。",
+        "logLine": 147
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "打开对应网页后可编辑。",
+        "logLine": 148
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "打开对应网页后可编辑。",
+        "logLine": 149
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "打开对应网页后可编辑。",
+        "logLine": 150
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "打开对应网页后可编辑。",
+        "logLine": 151
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "撤销上次操作",
+        "logLine": 152
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "撤销上次操作",
+        "logLine": 153
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "撤销上次操作",
+        "logLine": 154
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "撤销上次操作",
+        "logLine": 155
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "撤销上次操作",
+        "logLine": 156
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "使用范围",
+        "logLine": 157
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "使用范围",
+        "logLine": 158
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "使用范围",
+        "logLine": 159
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "使用范围",
+        "logLine": 160
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "使用范围",
+        "logLine": 161
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "仅当前网页",
+        "logLine": 162
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "仅当前网页",
+        "logLine": 163
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "仅当前网页",
+        "logLine": 164
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "仅当前网页",
+        "logLine": 165
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "仅当前网页",
+        "logLine": 166
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "使用范围说明",
+        "logLine": 167
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "使用范围说明",
+        "logLine": 168
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "使用范围说明",
+        "logLine": 169
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "使用范围说明",
+        "logLine": 170
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "使用范围说明",
+        "logLine": 171
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "新建项目",
+        "logLine": 172
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "新建项目",
+        "logLine": 173
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "新建项目",
+        "logLine": 174
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "新建项目",
+        "logLine": 175
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "新建项目",
+        "logLine": 176
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "项目名称",
+        "logLine": 177
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "项目名称",
+        "logLine": 178
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "项目名称",
+        "logLine": 179
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "项目名称",
+        "logLine": 180
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "项目名称",
+        "logLine": 181
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "例如：某篇论文的相关网页",
+        "logLine": 182
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "例如：某篇论文的相关网页",
+        "logLine": 183
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "例如：某篇论文的相关网页",
+        "logLine": 184
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "例如：某篇论文的相关网页",
+        "logLine": 185
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "例如：某篇论文的相关网页",
+        "logLine": 186
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "创建",
+        "logLine": 187
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "创建",
+        "logLine": 188
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "创建",
+        "logLine": 189
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "创建",
+        "logLine": 190
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "创建",
+        "logLine": 191
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "预览受影响句子",
+        "logLine": 192
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "预览受影响句子",
+        "logLine": 193
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "预览受影响句子",
+        "logLine": 194
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "预览受影响句子",
+        "logLine": 195
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "预览受影响句子",
+        "logLine": 196
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "确认保存",
+        "logLine": 197
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "确认保存",
+        "logLine": 198
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "确认保存",
+        "logLine": 199
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "确认保存",
+        "logLine": 200
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "确认保存",
+        "logLine": 201
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "默认只在当前网页使用。项目是一组相关网页，只有主动加入同一项目的网页，才会使用其中保存的译文。",
+        "logLine": 202
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "默认只在当前网页使用。项目是一组相关网页，只有主动加入同一项目的网页，才会使用其中保存的译文。",
+        "logLine": 203
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "默认只在当前网页使用。项目是一组相关网页，只有主动加入同一项目的网页，才会使用其中保存的译文。",
+        "logLine": 204
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "默认只在当前网页使用。项目是一组相关网页，只有主动加入同一项目的网页，才会使用其中保存的译文。",
+        "logLine": 205
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "默认只在当前网页使用。项目是一组相关网页，只有主动加入同一项目的网页，才会使用其中保存的译文。",
+        "logLine": 206
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "原句、翻译语言（源语言和目标语言）及所在章节标题须完全相同。同一项目的其他网页会在下次翻译时使用校订。",
+        "logLine": 207
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "原句、翻译语言（源语言和目标语言）及所在章节标题须完全相同。同一项目的其他网页会在下次翻译时使用校订。",
+        "logLine": 208
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "原句、翻译语言（源语言和目标语言）及所在章节标题须完全相同。同一项目的其他网页会在下次翻译时使用校订。",
+        "logLine": 209
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "原句、翻译语言（源语言和目标语言）及所在章节标题须完全相同。同一项目的其他网页会在下次翻译时使用校订。",
+        "logLine": 210
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "原句、翻译语言（源语言和目标语言）及所在章节标题须完全相同。同一项目的其他网页会在下次翻译时使用校订。",
+        "logLine": 211
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前章节",
+        "logLine": 212
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前章节",
+        "logLine": 213
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前章节",
+        "logLine": 214
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前章节",
+        "logLine": 215
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "当前章节",
+        "logLine": 216
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "项目",
+        "logLine": 217
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "项目",
+        "logLine": 218
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "项目",
+        "logLine": 219
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "项目",
+        "logLine": 220
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue"
+        ],
+        "source": "项目",
+        "logLine": 221
+      },
+      {
+        "locale": "en-US",
+        "files": [
+          "src/features/settings/ui/ReadingAssistanceSettings.vue"
+        ],
+        "source": "修改网页译文，并在你确认的范围内复用。默认关闭。",
+        "logLine": 222
+      },
+      {
+        "locale": "ko-KR",
+        "files": [
+          "src/features/settings/ui/ReadingAssistanceSettings.vue"
+        ],
+        "source": "修改网页译文，并在你确认的范围内复用。默认关闭。",
+        "logLine": 223
+      },
+      {
+        "locale": "fr-FR",
+        "files": [
+          "src/features/settings/ui/ReadingAssistanceSettings.vue"
+        ],
+        "source": "修改网页译文，并在你确认的范围内复用。默认关闭。",
+        "logLine": 224
+      },
+      {
+        "locale": "ru-RU",
+        "files": [
+          "src/features/settings/ui/ReadingAssistanceSettings.vue"
+        ],
+        "source": "修改网页译文，并在你确认的范围内复用。默认关闭。",
+        "logLine": 225
+      },
+      {
+        "locale": "es-ES",
+        "files": [
+          "src/features/settings/ui/ReadingAssistanceSettings.vue"
+        ],
+        "source": "修改网页译文，并在你确认的范围内复用。默认关闭。",
+        "logLine": 226
+      }
+    ],
+    "i18nAndBundlePassed": 60,
+    "i18nAndBundleFailed": 1,
+    "finalLogGates": {
+      "filesReported": 4,
+      "passed": 1029,
+      "failed": 1,
+      "total": 1030,
+      "i18n": {
+        "passed": 57,
+        "failed": 1,
+        "total": 58
+      },
+      "userscriptLanguageBundles": {
+        "passed": 3,
+        "failed": 0
+      },
+      "sourceFileHeaders": {
+        "passed": 956,
+        "failed": 0
+      },
+      "moduleBoundaries": {
+        "passed": 13,
+        "failed": 0
+      },
+      "moduleVerificationOwnership": "Not reported in this supplied log. Separate root-run evidence is outside this i18n attribution."
+    }
+  },
+  "boundary": "The existing 100% pure-module results are retained by exact source identity. The single i18n failure is attributed to identical inherited main Vue sources and identical missing-source records; it remains a failure and is not claimed as a fresh isolated-main test result."
+}
