@@ -7,7 +7,7 @@ import vue from '@vitejs/plugin-vue';
 import ts from 'typescript';
 import {defineConfig, normalizePath, transformWithEsbuild, type Plugin} from 'vite';
 import {createUserscriptMetadata} from './metadata';
-import {createUserscriptCharacterDataCompressionPlugin} from './characterDataPlugin';
+import {createUserscriptCharacterDataCompressionPlugin, readUserscriptCharacterDataResource} from './characterDataPlugin';
 import {createUserscriptTldtsDataCompressionPlugin} from './tldtsDataPlugin';
 import {UI_LANGUAGE_BUNDLES, zhCNMessages} from './languageBundles';
 
@@ -30,6 +30,8 @@ const vendorGlobals: Record<string, string> = {
     ai: 'FluentReadUserscriptVendor.ai',
     '@ai-sdk/openai-compatible': 'FluentReadUserscriptVendor.openAICompatible',
     'crypto-js/sha256': 'FluentReadUserscriptVendor.sha256',
+    '@noble/hashes/sha2': 'FluentReadUserscriptVendor.vendorNobleSha2',
+    '@noble/hashes/utils': 'FluentReadUserscriptVendor.vendorNobleUtils',
     'crypto-js/md5': 'FluentReadUserscriptVendor.md5',
     'crypto-js/hmac-sha256': 'FluentReadUserscriptVendor.hmacSha256',
     'crypto-js/aes': 'FluentReadUserscriptVendor.aes',
@@ -38,6 +40,7 @@ const vendorGlobals: Record<string, string> = {
     'crypto-js/mode-ecb': 'FluentReadUserscriptVendor.modeEcb',
     'crypto-js/pad-pkcs7': 'FluentReadUserscriptVendor.padPkcs7',
     'dexie/dist/dexie.min.js': 'FluentReadUserscriptVendor.Dexie',
+    '@ctrl/tinycolor': 'FluentReadUserscriptVendor.vendorTinycolor',
     'franc-min': 'FluentReadUserscriptVendor.francMin',
 };
 function installedVersion(name: string): string {
@@ -112,12 +115,44 @@ const compressedServiceIconsId = '\0fluentread-userscript-service-icons.js';
 const serviceIconsPath = resolve(root, 'src/ui/assets/serviceBrandPaths.json');
 const serviceIconsConsumer = normalizePath(resolve(root, 'src/ui/components/ServiceIcon.vue'));
 
-/** 无损压缩站点规则、中文文案与 standalone 服务 SVG 数据；产品逻辑仍留在可审查的 userscript 主文件中。 */
+// GF 只外置这六份原生 CSS ?inline 字符串；路径、消费者和查询均不扩大到其他资源。
+const externalInlineStylesPrefix = '\0fluentread-userscript-inline-style:';
+const inlineStyleFiles = [
+    ['translationDisplayStyles', 'src/ui/styles/translation-display.css', ['src/app/content/pageStyles.ts']],
+    ['pageStyles', 'src/app/content/page.css', ['src/app/content/pageStyles.ts']],
+    ['sentenceHighlightStyles', 'src/ui/styles/bilingual-sentence-highlight.css', ['src/app/content/pageStyles.ts']],
+    ['reencounterStyles', 'src/ui/styles/vocabulary-reencounter.css', ['src/app/content/pageStyles.ts', 'src/features/vocabulary/content/scanner.ts']],
+    ['noticeStyles', 'src/features/page-notice/content/notice.css', ['src/features/page-notice/content/notice.ts']],
+    ['pickerStyles', 'src/features/section-translation/content/picker.css', ['src/features/section-translation/content/picker.ts']],
+] as const;
+
+/** 明文资源按固定键顺序保留完整原字符串；需要 CSS 预处理的新依赖必须先经过 Vite 校验。 */
+export function readUserscriptInlineStylesResource(): Record<string, string> {
+    return Object.fromEntries(inlineStyleFiles.map(([name, path]) => {
+        const contents = fs.readFileSync(resolve(root, path), 'utf8');
+        if (contents.startsWith('\uFEFF') || /@import\b|url\s*\(|@apply\b/iu.test(contents)) {
+            throw new Error(`Userscript inline CSS requires Vite preprocessing: ${path}`);
+        }
+        return [name, contents];
+    }));
+}
+
+/** 无损压缩站点规则、中文文案与 standalone 服务 SVG 数据，并引用 GF 明文样式；产品逻辑仍留在主文件中。 */
 export function createUserscriptCatalogCompressionPlugin(): Plugin {
     return {
         name: 'compress-userscript-site-catalog',
         enforce: 'pre',
         resolveId(source, importer) {
+            if (greasyForkSource && importer && source.endsWith('.css?inline')
+                && source.indexOf('?') === source.length - '?inline'.length) {
+                const sourcePath = source.startsWith('@/')
+                    ? resolve(root, source.slice(2, -'?inline'.length))
+                    : resolve(dirname(importer), source.slice(0, -'?inline'.length));
+                const style = inlineStyleFiles.find(([, path, consumers]) =>
+                    normalizePath(sourcePath) === normalizePath(resolve(root, path))
+                    && consumers.some(consumer => normalizePath(importer) === normalizePath(resolve(root, consumer))));
+                if (style) return `${externalInlineStylesPrefix}${style[0]}.js`;
+            }
             // 只替换完整单文件出口的私有 default JSON 消费者；其他模式和 query 保留原模块。
             if (bundleLibraries && !greasyForkSource && !source.includes('?')
                 && importer && normalizePath(importer.split('?')[0]) === serviceIconsConsumer
@@ -131,6 +166,16 @@ export function createUserscriptCatalogCompressionPlugin(): Plugin {
             return siteCatalogFiles.has(sourcePath) ? `${compressedCatalogPrefix}${sourcePath}.js` : null;
         },
         load(id) {
+            if (greasyForkSource && id.startsWith(externalInlineStylesPrefix)) {
+                const style = inlineStyleFiles.find(([name]) => id === `${externalInlineStylesPrefix}${name}.js`);
+                if (!style) throw new Error(`Unexpected userscript inline style: ${id}`);
+                this.addWatchFile(resolve(root, style[1]));
+                return [
+                    `const style = globalThis.__FLUENTREAD_USERSCRIPT_DATA__?.inlineStyles?.${style[0]};`,
+                    `if (typeof style !== 'string') throw new Error('Missing pinned userscript inline style: ${style[0]}');`,
+                    'export default style;',
+                ].join('\n');
+            }
             if (bundleLibraries && !greasyForkSource && id === compressedServiceIconsId) {
                 this.addWatchFile(serviceIconsPath);
                 // 不排序、不投影、不重写路径或属性，按原 JSON 顺序保留全部 SVG 值。
@@ -414,13 +459,16 @@ function bundleUserscriptCss(): Plugin {
                     english: UI_LANGUAGE_BUNDLES['en-US'],
                     zhCNMessages,
                     siteCatalogs: siteCatalogData,
+                    characterData: readUserscriptCharacterDataResource(root),
+                    inlineStyles: readUserscriptInlineStylesResource(),
                     css,
                 };
                 this.emitFile({
                     type: 'asset',
                     fileName: 'fluentread-data.v1.js',
                     source: [
-                        '/* FluentRead non-code data: UI translations, site rules and CSS. */',
+                        '/* FluentRead non-code data: UI translations, site rules, character tables and CSS. */',
+                        unicodeNotice,
                         `globalThis.__FLUENTREAD_USERSCRIPT_DATA__=${JSON.stringify(data)};`,
                     ].join('\n'),
                 });
@@ -528,7 +576,7 @@ export const userscriptAliases = [
 export default defineConfig({
     root,
     publicDir: false,
-    plugins: [unwrapWxtEntrypoints(), createUserscriptCatalogCompressionPlugin(), createUserscriptCharacterDataCompressionPlugin(root, !greasyForkSource), createUserscriptTldtsDataCompressionPlugin(root, bundleLibraries && !greasyForkSource), injectUserscriptBrowserShim(), vue(), bundleUserscriptCss()],
+    plugins: [unwrapWxtEntrypoints(), createUserscriptCatalogCompressionPlugin(), createUserscriptCharacterDataCompressionPlugin(root, greasyForkSource ? 'resource' : true), createUserscriptTldtsDataCompressionPlugin(root, bundleLibraries && !greasyForkSource), injectUserscriptBrowserShim(), vue(), bundleUserscriptCss()],
     resolve: {
         alias: userscriptAliases,
     },

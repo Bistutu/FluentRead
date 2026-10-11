@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
-import {resolve} from 'node:path';
+import {dirname, relative, resolve} from 'node:path';
 import {gunzipSync} from 'node:zlib';
 import {runInNewContext} from 'node:vm';
 import {describe, expect, it, vi} from 'vitest';
@@ -13,12 +13,13 @@ import {installInformationHighlight} from '@/userscript/informationHighlight';
 import {inflateWithPako} from '@/userscript/pakoRuntime';
 import * as chineseCharacterData from '@/src/core/language/chineseVariants';
 import * as functionWordData from '@/src/core/language/functionWordData';
-import {createUserscriptCharacterDataCompressionPlugin} from '@/userscript/characterDataPlugin';
+import {createUserscriptCharacterDataCompressionPlugin, readUserscriptCharacterDataResource} from '@/userscript/characterDataPlugin';
 import {
     default as userscriptConfig,
     executionGuardEnd,
     executionGuardStart,
     createUserscriptCatalogCompressionPlugin,
+    readUserscriptInlineStylesResource,
     findDexieGlobalRegistration,
     findFreeBrowserGlobals,
     injectUserscriptBrowserImports,
@@ -55,8 +56,12 @@ describe('authoritative site catalogs with an external pinned data asset', () =>
         const vm = await vi.importActual<typeof import('node:vm')>('node:vm');
         const authoritative = JSON.parse(readFileSync(resolve(process.cwd(), 'src/core/site-adaptation/catalog/established.json'), 'utf8'));
         const data = vm.runInNewContext(readFileSync(resolve(process.cwd(), 'userscript/resources/fluentread-data.v1.js'), 'utf8'), {}, {timeout: 5000});
-        if (variant === 'unchanged' || variant === 'reordered' || variant === 'removed-rule') {
-            data.siteCatalogs.established = structuredClone(authoritative);
+        // 用固定缺失规则构造旧资源，避免测试依赖仓库当前缓存是否已经重新生成。
+        data.siteCatalogs.established = structuredClone(authoritative);
+        if (variant === 'old-asset' || variant === 'missing-runtime-rule') {
+            data.siteCatalogs.established = data.siteCatalogs.established.filter((rule: {id: string}) =>
+                !['github-code-lines', 'video-native-captions'].includes(rule.id));
+            expect(data.siteCatalogs.established.length).toBeLessThan(authoritative.length);
         }
         if (variant === 'reordered') data.siteCatalogs.established.reverse();
         if (variant === 'removed-rule') data.siteCatalogs.established.push({id: 'removed-pinned-rule', match: {hosts: ['removed.invalid']}});
@@ -506,6 +511,306 @@ describe('standalone service SVG static data and license', () => {
             const source = kind === 'query source' ? alias + '?raw' : kind === 'other asset' ? alias.replace('serviceBrandPaths', 'other') : alias;
             const importer = kind === 'missing importer' ? undefined : kind === 'other importer' ? consumer.replace('ServiceIcon', 'Other') : consumer;
             expect(await Reflect.apply(resolveId, {}, [source, importer])).toBeNull();
+        });
+    });
+});
+
+
+describe('GF plain character data resources', () => {
+    const root = process.cwd();
+    const chinesePath = resolve(root, 'src/core/language/chineseVariants.ts');
+    const wordsPath = resolve(root, 'src/core/language/functionWordData.ts');
+    const expectedChineseOrder = ["simplifiedOnlyCharacters", "traditionalOnlyCharacters", "simplifiedChineseEvidenceCharacters"];
+    const expectedWordsOrder = ["latinEnWords", "latinFrWords", "latinDeWords", "latinEsWords", "latinPtWords", "latinItWords", "latinNlWords", "latinPlWords", "latinCsWords", "latinSkWords", "latinRoWords", "latinHuWords", "latinTrWords", "latinViWords", "latinIdWords", "latinMsWords", "latinFilWords", "latinSwWords", "latinSvWords", "latinDaWords", "latinNbWords", "latinNnWords", "latinFiWords", "latinEtWords", "latinLvWords", "latinLtWords", "latinSlWords", "latinHrWords", "latinBsWords", "latinSrLatnWords", "latinCaWords", "latinGlWords", "latinAfWords", "cyrillicRuWords", "cyrillicUkWords", "cyrillicBgWords", "cyrillicSrWords", "cyrillicBeWords", "cyrillicKkWords", "cyrillicMkWords", "arabicArWords", "arabicFaWords", "arabicUrWords", "devanagariHiWords", "devanagariMrWords", "devanagariNeWords"];
+    type Resource = ReturnType<typeof readUserscriptCharacterDataResource>;
+    const transform = (mode: boolean | 'resource', source: string, id: string) => {
+        const hook = createUserscriptCharacterDataCompressionPlugin(root, mode).transform as
+            (code: string, id: string) => {code: string; map: null} | null;
+        return hook(source, id);
+    };
+    function restore(source: string, resource: unknown, names: readonly string[]) {
+        const body = source.replace(/export const /gu, 'const ');
+        return runInNewContext('String.fromCodePoint = undefined;\n' + body + '\n({' + names.join(',') + '})',
+            {__FLUENTREAD_USERSCRIPT_DATA__: resource}, {timeout: 5000});
+    }
+
+    describe('GF character data resource exact export contract', () => {
+        it('serializes all 49 real exports as plain JSON and restores complete original strings in declaration order', () => {
+            const original = readUserscriptCharacterDataResource(root);
+            expect(Object.keys(original)).toEqual(['chineseVariants', 'functionWordData']);
+            expect(Object.keys(original.chineseVariants)).toEqual(expectedChineseOrder);
+            expect(Object.keys(original.functionWordData)).toEqual(expectedWordsOrder);
+            expect(original.chineseVariants).toEqual({...chineseCharacterData});
+            expect(original.functionWordData).toEqual({...functionWordData});
+            const decoded = JSON.parse(JSON.stringify(original)) as Resource;
+            expect(Object.keys(decoded.chineseVariants)).toEqual(expectedChineseOrder);
+            expect(Object.keys(decoded.functionWordData)).toEqual(expectedWordsOrder);
+            for (const [id, key] of [[chinesePath, 'chineseVariants'], [wordsPath, 'functionWordData']] as const) {
+                const module = transform('resource', readFileSync(id, 'utf8'), id)!;
+                expect(module.code).not.toMatch(/\b(?:atob|inflateWithPako|characterTables)\b/u);
+                expect(module.code).not.toMatch(/^import /mu);
+                const restored = restore(module.code, {characterData: decoded}, Object.keys(original[key]));
+                expect(Object.keys(restored)).toEqual(Object.keys(original[key]));
+                expect(restored).toEqual(original[key]);
+                for (const name of Object.keys(original[key])) {
+                    expect(Buffer.from(restored[name], 'utf8')).toEqual(Buffer.from(original[key][name], 'utf8'));
+                }
+            }
+        });
+
+        it.each([[chinesePath, 'chineseVariants'], [wordsPath, 'functionWordData']] as const)
+        ('preserves full UTF-16 units and codepoint sequence for %s', (id, key) => {
+            const values = {zeta: 'A𱊯A\0\ud800\udfff\ud800', alpha: 'é𠮷\n\t\\"\u2028\u2029', empty: ''};
+            const source = Object.entries(values).map(([name, value]) => `export const ${name} = ${JSON.stringify(value)};`).join('\n');
+            const plain = JSON.parse(JSON.stringify({characterData: {[key]: values}}));
+            const module = transform('resource', source, id)!;
+            const restored = restore(module.code, plain, Object.keys(values));
+            expect(Object.keys(restored)).toEqual(['zeta', 'alpha', 'empty']);
+            expect(restored).toEqual(values);
+            for (const [name, value] of Object.entries(values)) {
+                expect(Array.from({length: restored[name].length}, (_, index) => restored[name].charCodeAt(index)))
+                    .toEqual(Array.from({length: value.length}, (_, index) => value.charCodeAt(index)));
+                expect(Array.from(restored[name] as string, char => char.codePointAt(0)))
+                    .toEqual(Array.from(value, char => char.codePointAt(0)));
+            }
+        });
+
+        it.each([
+            ['function declaration', 'export function makeData() { return "data"; }'],
+            ['computed value', 'export const data = "a" + "b";'],
+            ['called expression', 'export const data = makeData();'],
+            ['interpolated template', 'export const data = `a${"b"}`;'],
+            ['duplicate export', 'export const data = "a"; export const data = "b";'],
+            ['mutable declaration', 'export let data = "a";'],
+            ['private declaration', 'const data = "a";'],
+            ['syntax damage', 'export const data = "unterminated;'],
+            ['empty data', '/* no declarations */'],
+        ])('rejects %s using the shared whitelist in compressed and resource modes', (_label, source) => {
+            for (const mode of [true, 'resource'] as const) {
+                for (const id of [chinesePath, wordsPath]) {
+                    expect(() => transform(mode, source, id)).toThrow('only exported const strings');
+                }
+            }
+        });
+
+        it.each([
+            ['absent namespace', undefined],
+            ['missing group', {characterData: {}}],
+            ['missing named export', {characterData: {chineseVariants: {other: 'value'}}}],
+            ['non-string named export', {characterData: {chineseVariants: {sample: 1}}}],
+        ])('fails clearly for %s instead of exporting undefined', (_label, resource) => {
+            const module = transform('resource', 'export const sample = "value";', chinesePath)!;
+            expect(() => restore(module.code, resource, ['sample']))
+                .toThrow('Missing pinned userscript character data: chineseVariants');
+        });
+
+        it('keeps disabled mode and non-whitelisted modules unchanged', () => {
+            const source = 'export const sample = "value";';
+            for (const id of [chinesePath, wordsPath]) expect(transform(false, source, id)).toBeNull();
+            for (const mode of [true, false, 'resource'] as const) {
+                expect(transform(mode, source, resolve(root, 'src/core/language/identify.ts'))).toBeNull();
+                expect(transform(mode, source, chinesePath + '.backup')).toBeNull();
+            }
+        });
+    });
+
+    describe('GF character data mode isolation in the real Vite config', () => {
+        it.each(['standard', 'standalone', 'greasyfork'] as const)
+        ('uses plain character resources only in %s when GF is selected', async mode => {
+            vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', mode === 'standalone' ? '1' : '0');
+            vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', mode === 'greasyfork' ? '1' : '0');
+            vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');
+            vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
+            try {
+                vi.resetModules();
+                const {default: config} = await import('@/userscript/vite.config');
+                const plugins = (config as {plugins: Array<{name?: string; transform?: Function; generateBundle?: {handler?: Function}}>} ).plugins;
+                const characterPlugin = plugins.find(plugin => plugin.name === 'compress-userscript-character-data')!;
+                for (const id of [chinesePath, wordsPath]) {
+                    const module = Reflect.apply(characterPlugin.transform!, {}, [readFileSync(id, 'utf8'), id]);
+                    if (mode === 'greasyfork') {
+                        expect(module.code).toContain('__FLUENTREAD_USERSCRIPT_DATA__?.characterData');
+                        expect(module.code).not.toContain('inflateWithPako');
+                    } else {
+                        expect(module.code).toContain('inflateWithPako');
+                        expect(module.code).toContain('atob(');
+                        expect(module.code).not.toContain('__FLUENTREAD_USERSCRIPT_DATA__');
+                    }
+                }
+                if (mode === 'greasyfork') {
+                    const cssPlugin = plugins.find(plugin => plugin.name === 'bundle-userscript-css')!;
+                    const emitted: Array<{fileName: string; source: string}> = [];
+                    const entry = {type: 'chunk', isEntry: true, fileName: 'fluent-read.user.js', code: 'const ENTRY_SENTINEL=1;', moduleIds: []};
+                    await Reflect.apply(cssPlugin.generateBundle!.handler!, {emitFile: (asset: any) => emitted.push(asset)}, [{}, {'fluent-read.user.js': entry}]);
+                    expect(emitted).toHaveLength(1);
+                    expect(emitted[0].fileName).toBe('fluentread-data.v1.js');
+                    const data = runInNewContext(emitted[0].source, {}, {timeout: 5000});
+                    expect(Object.keys(data.characterData)).toEqual(['chineseVariants', 'functionWordData']);
+                    expect(data.characterData).toEqual(readUserscriptCharacterDataResource(root));
+                    expect(data.characterData.chineseVariants).toEqual({...chineseCharacterData});
+                    expect(data.characterData.functionWordData).toEqual({...functionWordData});
+                    expect(entry.code).toContain(readFileSync(resolve(root, 'public/third-party-notices/unicode-17.0.0.txt'), 'utf8'));
+                expect(emitted[0].source).toContain(readFileSync(resolve(root, 'public/third-party-notices/unicode-17.0.0.txt'), 'utf8'));
+                }
+            } finally {
+                vi.unstubAllEnvs();
+                vi.resetModules();
+            }
+        });
+    });
+});
+
+
+describe('GF plain inline CSS resources', () => {
+    const root = process.cwd();
+    const styles = [
+        ['translationDisplayStyles', 'src/ui/styles/translation-display.css', ['src/app/content/pageStyles.ts']],
+        ['pageStyles', 'src/app/content/page.css', ['src/app/content/pageStyles.ts']],
+        ['sentenceHighlightStyles', 'src/ui/styles/bilingual-sentence-highlight.css', ['src/app/content/pageStyles.ts']],
+        ['reencounterStyles', 'src/ui/styles/vocabulary-reencounter.css', ['src/app/content/pageStyles.ts', 'src/features/vocabulary/content/scanner.ts']],
+        ['noticeStyles', 'src/features/page-notice/content/notice.css', ['src/features/page-notice/content/notice.ts']],
+        ['pickerStyles', 'src/features/section-translation/content/picker.css', ['src/features/section-translation/content/picker.ts']],
+    ] as const;
+    const keys = styles.map(([name]) => name);
+    const prefix = '\0fluentread-userscript-inline-style:';
+    async function inMode(mode: 'standard' | 'standalone' | 'greasyfork', check: (module: typeof import('@/userscript/vite.config')) => Promise<void> | void) {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', mode === 'standalone' ? '1' : '0');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', mode === 'greasyfork' ? '1' : '0');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
+        try {
+            vi.resetModules();
+            await check(await import('@/userscript/vite.config'));
+        } finally {vi.unstubAllEnvs();vi.resetModules();}
+    }
+    function hooks(plugin: ReturnType<typeof createUserscriptCatalogCompressionPlugin>) {
+        return {
+            resolveId: typeof plugin.resolveId === 'function' ? plugin.resolveId : plugin.resolveId!.handler,
+            load: typeof plugin.load === 'function' ? plugin.load : plugin.load!.handler,
+        };
+    }
+    function restore(moduleSource: string, data: unknown) {
+        return runInNewContext(moduleSource.replace('export default style;', 'globalThis.result = style;'),
+            {__FLUENTREAD_USERSCRIPT_DATA__: data}, {timeout: 5000});
+    }
+
+    it.each(['standard', 'standalone', 'greasyfork'] as const)
+    ('externalizes exactly six inline CSS resources only in %s when GF is selected', async mode => {
+        await inMode(mode, async ({default: config, createUserscriptCatalogCompressionPlugin: createPlugin}) => {
+            const {resolveId, load} = hooks(createPlugin());
+            for (const [name, path, consumers] of styles) {
+                for (const consumer of consumers) {
+                    const id = await Reflect.apply(resolveId, {}, ['@/' + path + '?inline', resolve(root, consumer)]);
+                    if (mode === 'greasyfork') expect(id).toBe(prefix + name + '.js');
+                    else expect(id).toBeNull();
+                }
+                if (mode !== 'greasyfork') expect(await Reflect.apply(load, {}, [prefix + name + '.js'])).toBeNull();
+            }
+            const plugin = (config.plugins as Array<{name?: string; generateBundle?: {handler?: Function}}>)
+                .find(item => item.name === 'bundle-userscript-css')!;
+            const emitted: Array<{fileName: string; source: string}> = [];
+            const entry = {type: 'chunk', isEntry: true, fileName: 'fluent-read.user.js', code: 'const ENTRY_SENTINEL=1;', moduleIds: []};
+            await Reflect.apply(plugin.generateBundle!.handler!, {emitFile: (asset: any) => emitted.push(asset)}, [{}, {'fluent-read.user.js': entry}]);
+            if (mode === 'greasyfork') {
+                expect(emitted).toHaveLength(1);
+                expect(Object.keys(runInNewContext(emitted[0].source, {}, {timeout: 5000}).inlineStyles)).toEqual(keys);
+            } else expect(emitted).toHaveLength(0);
+        });
+    });
+
+    it('accepts only the seven real consumer edges and preserves complete strings from aliases, absolute and relative paths', async () => {
+        await inMode('greasyfork', async ({createUserscriptCatalogCompressionPlugin: createPlugin, readUserscriptInlineStylesResource: readStyles}) => {
+            const resource = readStyles();
+            expect(Object.keys(resource)).toEqual(keys);
+            const {resolveId, load} = hooks(createPlugin());
+            for (const [name, path, consumers] of styles) {
+                for (const consumer of consumers) {
+                    const importer = resolve(root, consumer), sourcePath = resolve(root, path);
+                    for (const source of ['@/' + path, sourcePath, './' + relative(dirname(importer), sourcePath)]) {
+                        const id = await Reflect.apply(resolveId, {}, [source + '?inline', importer]);
+                        expect(id).toBe(prefix + name + '.js');
+                        const watched: string[] = [];
+                        const module = await Reflect.apply(load, {addWatchFile: (file: string) => watched.push(file)}, [id]);
+                        expect(watched).toEqual([sourcePath]);
+                        expect(module).not.toMatch(/\b(?:atob|inflateWithPako|fetch)\b/u);
+                        expect(restore(module, {inlineStyles: JSON.parse(JSON.stringify(resource))})).toBe(readFileSync(sourcePath, 'utf8'));
+                    }
+                }
+            }
+        });
+    });
+
+    it('keeps other paths, assets, queries and importers on their ordinary Vite path', async () => {
+        await inMode('greasyfork', async ({createUserscriptCatalogCompressionPlugin: createPlugin}) => {
+            const {resolveId, load} = hooks(createPlugin());
+            const source = '@/src/ui/styles/translation-display.css', importer = resolve(root, 'src/app/content/pageStyles.ts');
+            const rejected: Array<[string, string | undefined]> = [
+                [source, importer], [source + '?raw', importer], [source + '?inline&raw', importer],
+                [source + '?inline&lang.css', importer], [source + '?raw?inline', importer],
+                [source + '?inline#fragment', importer], [source + '.backup?inline', importer],
+                ['@/src/ui/styles/other.css?inline', importer], ['@/public/icon/64.png?inline', importer],
+                [source + '?inline', undefined], [source + '?inline', importer + '?vue&type=script'],
+                [source + '?inline', resolve(root, 'src/app/content/runtime.ts')],
+                ['@/src/features/page-notice/content/notice.css?inline', importer],
+            ];
+            for (const [request, consumer] of rejected) expect(await Reflect.apply(resolveId, {}, [request, consumer])).toBeNull();
+            expect(await Reflect.apply(load, {}, ['\0unrelated-inline-style.js'])).toBeNull();
+            expect(() => Reflect.apply(load, {addWatchFile: vi.fn()}, [prefix + 'unknown.js']))
+                .toThrow('Unexpected userscript inline style');
+        });
+    });
+
+    it.each([
+        ['missing namespace', undefined], ['missing map', {}], ['missing style', {inlineStyles: {}}],
+        ['non-string style', {inlineStyles: {translationDisplayStyles: 42}}],
+    ])('fails explicitly for %s instead of exporting undefined', async (_label, data) => {
+        await inMode('greasyfork', async ({createUserscriptCatalogCompressionPlugin: createPlugin}) => {
+            const {load} = hooks(createPlugin());
+            const module = await Reflect.apply(load, {addWatchFile: vi.fn()}, [prefix + 'translationDisplayStyles.js']);
+            expect(() => restore(module, data)).toThrow('Missing pinned userscript inline style: translationDisplayStyles');
+        });
+    });
+
+    it('preserves the six whole strings through the locked Vite GF CSS preprocessing path', async () => {
+        const {resolveConfig, preprocessCSS} = await import('vite');
+        // Same unminified CSS settings as GF, no server/network, artifact or production-module execution.
+        const config = await resolveConfig({root, configFile: false, envFile: false, build: {minify: false}}, 'build', 'production');
+        expect(config.build.cssMinify).toBe(false);
+        const resource = readUserscriptInlineStylesResource();
+        for (const [name, path] of styles) {
+            const source = readFileSync(resolve(root, path), 'utf8');
+            expect(source).not.toMatch(/@import\b|url\s*\(|@apply\b/iu);
+            const processed = await preprocessCSS(source, resolve(root, path), config);
+            expect(processed.code).toBe(source);
+            expect(resource[name]).toBe(processed.code);
+            expect(Buffer.from(resource[name], 'utf8')).toEqual(Buffer.from(source, 'utf8'));
+            expect(Array.from(resource[name], character => character.codePointAt(0))).toEqual(Array.from(source, character => character.codePointAt(0)));
+        }
+    });
+
+    it('emits a complete plain string map without changing the existing English, character, catalog and generated CSS fields', async () => {
+        await inMode('greasyfork', async ({default: config, readUserscriptInlineStylesResource: readStyles}) => {
+            const plugin = (config.plugins as Array<{name?: string; generateBundle?: {handler?: Function}}>)
+                .find(item => item.name === 'bundle-userscript-css')!;
+            const emitted: Array<{fileName: string; source: string}> = [];
+            const css = '/* fixture CSS */ .fluent-read-sentinel { color: #f00; }\n';
+            const entry = {type: 'chunk', isEntry: true, fileName: 'fluent-read.user.js', code: 'const ENTRY_SENTINEL=1;', moduleIds: []};
+            const bundle = {'fluent-read.user.js': entry, 'style.css': {type: 'asset', fileName: 'style.css', source: css}};
+            await Reflect.apply(plugin.generateBundle!.handler!, {emitFile: (asset: any) => emitted.push(asset)}, [{}, bundle]);
+            expect(emitted.map(asset => asset.fileName)).toEqual(['fluentread-data.v1.js']);
+            const data = runInNewContext(emitted[0].source, {}, {timeout: 5000});
+            expect(Object.keys(data.inlineStyles)).toEqual(keys);
+            expect(data.inlineStyles).toEqual(readStyles());
+            expect(data.english).toEqual(UI_LANGUAGE_BUNDLES['en-US']);
+            expect(data.zhCNMessages).toEqual(zhCNMessages);
+            expect(data.characterData).toEqual(readUserscriptCharacterDataResource(root));
+            for (const file of ['established', 'websites', 'profiles']) expect(data.siteCatalogs[file])
+                .toEqual(JSON.parse(readFileSync(resolve(root, 'src/core/site-adaptation/catalog/' + file + '.json'), 'utf8')));
+            expect(data.css).toBe(css);
+            expect(Object.keys(bundle)).toEqual(['fluent-read.user.js']);
+            for (const [name, path] of styles) expect(data.inlineStyles[name]).toBe(readFileSync(resolve(root, path), 'utf8'));
+            expect(emitted[0].source).toContain(readFileSync(resolve(root, 'public/third-party-notices/unicode-17.0.0.txt'), 'utf8'));
+            expect(entry.code).toContain('ENTRY_SENTINEL');
         });
     });
 });

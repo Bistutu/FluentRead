@@ -60,6 +60,8 @@ declare global {
         english: UiLanguageBundle;
         zhCNMessages: Record<string, unknown>;
         siteCatalogs: Record<string, unknown>;
+        characterData?: Record<'chineseVariants' | 'functionWordData', Record<string, string>>;
+        inlineStyles?: Record<'translationDisplayStyles' | 'pageStyles' | 'sentenceHighlightStyles' | 'reencounterStyles' | 'noticeStyles' | 'pickerStyles', string>;
         css: string;
     } | undefined;
     var pako: {ungzip(data: Uint8Array, options?: {to?: string}): string | Uint8Array} | undefined;
