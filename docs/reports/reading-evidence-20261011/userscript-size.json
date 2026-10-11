@@ -59,5 +59,21 @@
     "languageResourceCommit": "1e9e80dd49530aac9c7610b51a935357f4099c19",
     "finalBuildLog": "/private/tmp/fluentread-evidence-integration-userscript.log",
     "finalVerifyLog": "/private/tmp/fluentread-evidence-integration-userscript-verify.log"
+  },
+  "topbarFollowUp": {
+    "baselineCommit": "69d41e5e1050e5004d4656963d5105f24df9d8ed",
+    "baselineBytes": 2026916,
+    "previousCandidateBytes": 2041173,
+    "candidateBytes": 2043066,
+    "candidateSha256": "4135da3b843486c73c4701e15688bdf1b108796834e2e43c9ac2c07babc698eb",
+    "deltaFromPreviousCandidateBytes": 1893,
+    "deltaFromMainBytes": 16150,
+    "deltaFromMainPercent": 0.796777,
+    "minimumBudgetBytes": 2044000,
+    "budgetHeadroomBytes": 934,
+    "verifierPassed": true,
+    "buildLog": "/private/tmp/fluentread-evidence-topbar-delivery-userscript.log",
+    "verifyLog": "/private/tmp/fluentread-evidence-topbar-delivery-userscript-verify.log",
+    "languageResourceCommit": "1e9e80dd49530aac9c7610b51a935357f4099c19"
   }
 }

@@ -25,16 +25,16 @@
 | --- | --- |
 | 引用协议、Harness 后台、答案格式 | 3 文件，79 项通过；3 模块 statements / branches / functions / lines 均 100% |
 | DOM 锚点 | 34 项通过；模块四维均 100% |
-| 阅读卡、流式布局、划词生命周期及引用 UI | 19 / 14 / 118 / 2 项通过 |
+| 阅读卡、流式布局、划词生命周期及引用 UI | 19 / 17 / 120 / 2 项通过 |
 | 模块边界、源码头、验证归属 | 13 / 917 / 16 项通过 |
 | 七种界面语言 | 58 项通过 |
 | 油猴构建配置与语言资源 | 35 项通过；固定提交含准确资源内容 |
 | 测试矩阵审计 | 通过；新增测试已归入矩阵与严格覆盖边界 |
 | `pnpm compile` | 通过 |
 | Chrome 与 Firefox 生产构建、清单验证 | 通过 |
-| 油猴构建与产物验证 | 通过；2,041,173 字节，包含五种远程语言的固定提交验证 |
+| 油猴构建与产物验证 | 通过；2,043,066 字节，包含五种远程语言的固定提交验证 |
 | 文档生产构建、`git diff --check` | 通过 |
-| 隔离 Edge 生产扩展验收 | 23/23 项通过，包含 4 项初始化契约与 19 项依据流程；控制台与 HTTP 错误均为 0 |
+| 隔离 Edge 生产扩展验收 | 30/30 项通过，包含 4 项初始化契约、19 项依据流程与 7 项顶栏菜单检查；控制台与 HTTP 错误均为 0 |
 
 最终整合后重新运行 4 个核心测试文件共 113 项，四维仍为 100%；界面、语言配置与架构 9 个文件共 1,189 项及单独语言资源 3 项均通过。日志分别在 `/private/tmp/fluentread-evidence-integration-core.log`、`/private/tmp/fluentread-evidence-integration-ui.log` 与 `/private/tmp/fluentread-evidence-integration-language.log`。严格覆盖率使用仓库原有配置和 100% 阈值，只收窄目标模块；没有降低阈值或新增排除。复制和学习笔记导出保留可读引文与本地化状态，不泄露内部来源 ID 或协议。命令见 [测试文档](../testing.md#ai-阅读解释的原文依据)，摘要见 [coverage-summary.json](./reading-evidence-20261011/coverage-summary.json)。普通测试失败后的修正局限于真实新增依赖的夹具与带 scope 属性的 HTML 断言，相关项重跑通过。
 
@@ -42,9 +42,11 @@
 
 最终运行报告为 [browser-report.json](./reading-evidence-20261011/browser-report.json)。`launchMode=macos-background-cdp`、`focusPolicy=launchservices-no-foreground`、`browserFrontmost=false`；结束后清理临时 profile。点击第一处依据实际滚动 535px，CSS Highlight 中的真实 Range 属于 `#target` 的英文原句，没有跳到远处重复段落。Enter 定位第二句，Space 定位第一句；真实全文翻译产生中文双语节点后，高亮仍属于英文原文。
 
-源码摘要为 `4a2e4f2a5d4a78fd90b32e3eb5e75ccc230142599e2822d2b310bc697a1e29f3`，Chrome 产物摘要为 `e1acdf712189a9c6900881dd54990ab3aeb44daa0177f83957be71084409a9f2`。报告 HEAD 为集成提交 `1e9e80dd49530aac9c7610b51a935357f4099c19`，摘要绑定当时真实源码和产物内容。逐文件摘要见 [build-provenance.json](./reading-evidence-20261011/build-provenance.json)。
+最终顶栏验收的源码与运行器摘要为 `3d8e3a603fc799ad9a3a7da80e4296d4ff57baa614c16a0a92a18308638b38ef`，Chrome 产物摘要为 `fd5320238db2dcebae560202a110ef63cbced2ef3ca2dd4f83f24586bfcaf52a`。捕获时 HEAD 为 `14b81343a6f1bf69592673024479a192469cb2ab`，工作树已包含本次顶栏改动；摘要绑定真实源码和产物内容，验收结束后逐文件复核均未变化。详见 [build-provenance.json](./reading-evidence-20261011/build-provenance.json)。
 
-![解释旁的紧凑依据按钮与已定位原句](./reading-evidence-20261011/reading-evidence-located.png)
+![更多操作位于记录右侧，解释正文不再保留工具占位](./reading-evidence-20261011/reading-menu-light-closed.png)
+
+[原句定位截图](./reading-evidence-20261011/reading-evidence-located.png) · [浅色菜单](./reading-evidence-20261011/reading-menu-light-wide-open.png) · [深色菜单](./reading-evidence-20261011/reading-menu-dark-wide-open.png) · [浅色窄卡片](./reading-evidence-20261011/reading-menu-light-narrow-open.png) · [深色窄卡片](./reading-evidence-20261011/reading-menu-dark-narrow-open.png)。以上均为生产扩展在本地测试页面的直接截图，卡片截图使用浏览器原生 clip 参数。
 
 原文 DOM 与卡片 DOM 分别保存为 [reading-evidence-source.html](./reading-evidence-20261011/reading-evidence-source.html) 和 [reading-evidence-closed-shadow.json](./reading-evidence-20261011/reading-evidence-closed-shadow.json)。这些内容均来自本地虚构夹具。
 
@@ -56,7 +58,17 @@
 
 最终对最新主线 `69d41e5e` 再次使用干净快照和同一依赖独立重建，基线为 2,026,916 字节，主线预算仅余 84 字节。整合后候选为 2,041,173 字节，增加 14,257 字节（0.7034%），按实测最小将预算增加 15 KB 至 2,042,000，余 827 字节；原有校验全部通过。
 
+顶栏菜单改动在整合候选上增加 1,893 字节；最终产物为 2,043,066 字节，相对最新主线增加 16,150 字节（0.7968%）。按实测最小再增加 2 KB，预算为 2,044,000 字节、余 934 字节；所有原有产物校验通过。
+
 对照与散列见 [userscript-size.json](./reading-evidence-20261011/userscript-size.json)。精简后的五种远程语言资源生成后先提交，再将构建在整合网站导航新文案后固定到 `1e9e80dd49530aac9c7610b51a935357f4099c19`；定向测试逐文件核对该提交内容与构建资源一致。
+
+## 顶栏更多操作
+
+“更多操作”（⋯）移到顶部“记录”右侧的固定位置，正文移除原来的浮动工具占位。查看原文、重新生成、朗读原文等菜单内容保持原有权限和状态判断，已有流式回答时的停止入口也在顶栏。标签仍可单独横向滚动，菜单叠加展开，正文与卡片尺寸保持稳定。
+
+菜单使用既有阅读卡的浅色、深色及键盘焦点配色；展开时按窗口剩余空间和卡片缩放限制高度，必要时向上打开。点击菜单外或按 Escape 可关闭，翻译、记录及卸载时释放入口和临时监听。窗口尺寸变化先收起菜单，再重新夹边定位卡片。
+
+本次界面补充验证共 156 项：阅读卡 19 项、流式布局 17 项、划词生命周期 120 项，均通过。重点覆盖真实 Teleport 目标、菜单尺寸、焦点转移、释放临时监听，以及生成中进入记录再返回当前阅读时复用原请求。顶栏菜单浏览器检查包含浅色、深色及 300px 窄窗口、入口位置、展开不增加卡片/正文高度、可点击范围和键盘/外点关闭。
 
 ## 限制与后续
 

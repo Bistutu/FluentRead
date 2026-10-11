@@ -1,10 +1,19 @@
 <!--
  * @file src/features/reading-assistant/ui/ReadingPanel.vue
- * 文件职责：在划词卡内以内容为主呈现学习回答，复用父卡片导航、提供紧凑操作栏、按需展开的原文译文对照与连续追问。
+ * 文件职责：在划词卡内以内容为主呈现学习回答，复用父卡片导航、把次级操作送入顶栏固定槽、按需展开的原文译文对照与连续追问。
  * 主要内容：相同译文保留原文且不重复展示；按原文与配置复用各学习动作的已完成回答，显式重新生成；历史问答按轮次与问题摘要逐条展开，区分当前问答与旧回答，切换回答时收起历史；统一导航的学习卡默认收起原文与匹配译文，查看原文后可返回当前阅读，短回答不再保留一屏空白；独立面板仍在滚动区顶部展示对照内容，进入回答时滚过原文，译文晚到时保持回答位置，关闭局部浏览器滚动锚定以避免流式格式变化移动阅读位置；流式正文只更新内部滚动内容，回答出现或消失及状态变化才通知父卡片检查布局；重复点击当前动作保留位置和待发送追问；把原文朗读和 30 天问答记录收进次级操作，在回答下方区分原文收藏与学习笔记；原文收藏仅保存对应译文，笔记保存不依赖 AI 参考开关，让多语言动作标签按空间换行，统一呈现 Markdown，以局部主题变量保持正文、状态和操作文字的对比度，并以代次隔离过期请求；冻结每轮许可原文身份，显示就近引用和来源状态，历史恢复保留引文而不授予当前网页定位权限，回写前核查页面归属。
  * 模块边界：不持有模型密钥、不扫描页面、不直接请求供应商；记录由后台会话仓库保存，父划词组件负责选区、位置和 Shadow UI 生命周期。
  -->
 <template>
+  <Teleport v-if="externalNavigation && toolsTarget && active && !showRecords" :to="toolsTarget">
+    <div class="fr-reading-controls">
+      <template v-if="busy && answer">
+        <span class="fr-reading-accessible-status" role="status" data-i18n-ignore>{{ t("reading.generatingAction", {action: translateLegacy(actionLabel)}) }}</span>
+        <button type="button" class="fr-reading-inline-stop" :aria-label="translateLegacy('停止')" :title="translateLegacy('停止')" @click="stop">停止</button>
+      </template>
+      <ReadingTools />
+    </div>
+  </Teleport>
   <div class="fr-reading" data-reading-panel @pointerdown="dismissToolsOutside" @focusin="dismissToolsOutside">
     <div v-if="showRecords" class="fr-reading-navigation">
       <button type="button" aria-label="返回当前阅读" @click="closeRecords">‹ 返回当前阅读</button>
@@ -42,13 +51,6 @@
         </div>
       </section>
       <div ref="answerBody" class="fr-reading-body" :class="{'fr-reading-body-external': externalNavigation}">
-      <div v-if="externalNavigation" class="fr-reading-inline-controls">
-        <template v-if="busy && answer">
-          <span class="fr-reading-accessible-status" role="status" data-i18n-ignore>{{ t("reading.generatingAction", {action: translateLegacy(actionLabel)}) }}</span>
-          <button type="button" class="fr-reading-inline-stop" :aria-label="translateLegacy('停止')" :title="translateLegacy('停止')" @click="stop">停止</button>
-        </template>
-        <ReadingTools />
-      </div>
       <details v-if="priorAnswers.length" ref="historyDetails" class="fr-reading-session-detail">
         <summary data-i18n-ignore>{{ t("reading.priorTurns", {count: priorAnswers.length}) }}</summary>
         <div class="fr-reading-turn-list">
@@ -137,6 +139,7 @@ const props = defineProps<{
   initialAction?: HarnessActionId;
   historyOnly?: boolean;
   externalNavigation?: boolean;
+  toolsTarget?: HTMLElement | null;
   targetLanguage: string;
   vocabularyEnabled: boolean;
   privateContext: boolean;
@@ -271,7 +274,38 @@ watch(activeTranslation, () => {
   });
 });
 const toolsMenu = ref<HTMLDetailsElement>();
+let toolsWindow: Window | undefined;
+// 菜单位于卡片滚动区外；按实际缩放和可见窗口限制高度，短卡也能读完整菜单。
+function fitToolsMenu(): void {
+  const details = toolsMenu.value;
+  if (!details?.open || !props.externalNavigation) return;
+  const summary = details.querySelector('summary');
+  const menu = details.querySelector<HTMLElement>('.fr-reading-tool-list');
+  const view = details.ownerDocument.defaultView;
+  if (!summary || !menu || !view) return;
+  const rect = summary.getBoundingClientRect();
+  const scale = rect.height > 0 ? rect.height / (summary.offsetHeight || rect.height) : 1;
+  const below = Math.max(0, view.innerHeight - rect.bottom - 8);
+  const above = Math.max(0, rect.top - 8);
+  const upward = below < Math.min(310, menu.scrollHeight) * scale && above > below;
+  menu.style.width = `${Math.min(204, Math.max(0, (view.innerWidth - 24) / scale))}px`;
+  menu.style.top = upward ? 'auto' : `${summary.offsetHeight + 4}px`;
+  menu.style.bottom = upward ? `${summary.offsetHeight + 4}px` : 'auto';
+  menu.style.maxHeight = `${Math.min(310, Math.max(0, (upward ? above : below) / scale - 4))}px`;
+}
+function stopToolsSizing(): void {
+  toolsWindow?.removeEventListener('resize', fitToolsMenu);
+  toolsWindow = undefined;
+}
+function toggleTools(): void {
+  stopToolsSizing();
+  if (!toolsMenu.value?.open || !props.externalNavigation) return;
+  toolsWindow = toolsMenu.value.ownerDocument.defaultView || undefined;
+  toolsWindow?.addEventListener('resize', fitToolsMenu);
+  fitToolsMenu();
+}
 function closeTools(restoreFocus = false): void {
+  stopToolsSizing();
   if (!toolsMenu.value) return;
   toolsMenu.value.open = false;
   if (restoreFocus) toolsMenu.value.querySelector('summary')?.focus({preventScroll: true});
@@ -281,17 +315,17 @@ function dismissTools(): boolean {
   closeTools(true);
   return true;
 }
-defineExpose({dismissTools, stop});
+defineExpose({dismissTools, dismissToolsOutside, closeTools, stop});
 function dismissToolsOutside(event: Event): void {
   if (toolsMenu.value?.open && !toolsMenu.value.contains(event.target as Node)) closeTools();
 }
 function closeToolsAfterAction(event: MouseEvent): void {
-  if ((event.target as Element).closest('button')) closeTools(true);
+  if (toolsMenu.value?.open && (event.target as Element).closest('button')) closeTools(true);
 }
-// 两种布局共用同一组工具；统一导航将入口放在回答右侧，独立面板保留原有工具栏。
+// 两种布局共用同一组工具；统一导航将入口传送到父卡片顶栏固定槽，独立面板保留原有工具栏。
 const ReadingTools = () => {
   const button = (label: string, onClick: () => unknown, attrs: Record<string, unknown> = {}) => h('button', {type: 'button', onClick, ...attrs}, translateLegacy(label));
-  return h('details', {ref: toolsMenu, class: 'fr-reading-tools', onKeydown: withKeys(withModifiers(() => closeTools(true), ['stop', 'prevent']), ['esc'])}, [
+  return h('details', {ref: toolsMenu, class: 'fr-reading-tools', onToggle: toggleTools, onKeydown: withKeys(withModifiers(() => closeTools(true), ['stop', 'prevent']), ['esc'])}, [
     h('summary', {'aria-label': translateLegacy('更多操作'), title: translateLegacy('更多操作')}, [
       h('svg', {viewBox: '0 0 24 24', width: 18, height: 18, fill: 'currentColor', 'aria-hidden': 'true'}, [5, 12, 19].map(cx => h('circle', {cx, cy: 12, r: 1.7}))),
     ]),
@@ -475,12 +509,13 @@ function chooseAction(action: HarnessActionId): void {
   if (action !== intent.value || !currentTurnKey.value) startAction(action);
 }
 function startAction(action: HarnessActionId, preserveHistory = true): void {
+  closeTools();
   if (!props.preferences.actions.includes(action)) return;
+  showRecords.value = false;
   if (preserveHistory && action === intent.value && busy.value) return;
   if (preserveHistory) archiveAnswer();
   cancelRequest();
   intent.value = action;
-  showRecords.value = false;
   question.value = '';
   const cached = preserveHistory ? actionCache.get(action) : undefined;
   if (cached) { restoreAnswer(cached); return; }
@@ -633,6 +668,7 @@ async function loadMoreSessions(): Promise<void> {
   finally { if (token === recordsGeneration) recordsLoading.value = false; }
 }
 function openRecords(): void {
+  closeTools();
   props.clearEvidence?.();
   cancelReadingPosition();
   restoreEpoch += 1;
@@ -648,11 +684,14 @@ onMounted(() => {
   if (props.historyOnly) openRecords();
   else startAction(intent.value);
 });
-onBeforeUnmount(() => { recordsGeneration += 1; restoreEpoch += 1; cancelRequest(); emit('source-change', ''); clearTimeout(copyTimer); history.splice(0); actionCache.clear(); });
+watch(() => [props.toolsTarget, props.externalNavigation], () => closeTools());
+onBeforeUnmount(() => { closeTools(); recordsGeneration += 1; restoreEpoch += 1; cancelRequest(); emit('source-change', ''); clearTimeout(copyTimer); history.splice(0); actionCache.clear(); });
 </script>
 
 <style scoped>
-.fr-reading { --fr-reading-line: #eee8ec; --fr-reading-muted: #756a74; --fr-reading-button: #826573; --fr-reading-soft: #faf7f9; display: flex; flex-direction: column; height: 100%; min-height: 0; box-sizing: border-box; padding: 6px 14px 10px; overflow: hidden; color: #35333c; font: 13px/1.7 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+.fr-reading, .fr-reading-controls { --fr-reading-line: #eee8ec; --fr-reading-muted: #756a74; --fr-reading-button: #826573; --fr-reading-soft: #faf7f9; color: #35333c; font: 13px/1.7 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+.fr-reading { display: flex; flex-direction: column; height: 100%; min-height: 0; box-sizing: border-box; padding: 6px 14px 10px; overflow: hidden; }
+.fr-reading-controls { display: flex; align-items: center; gap: 3px; }
 .fr-reading-navigation { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 8px; color: var(--fr-reading-muted); font-size: 11px; }
 .fr-reading-navigation button { color: #a64b6e; }
 .fr-reading-scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; scrollbar-gutter: stable; padding: 2px 5px 4px 0; }
@@ -681,31 +720,26 @@ onBeforeUnmount(() => { recordsGeneration += 1; restoreEpoch += 1; cancelRequest
 .fr-reading-turn-answer { padding: 10px; border-top: 1px solid var(--fr-reading-line); user-select: text; }
 .fr-reading-role { display: block; margin-bottom: 4px; color: var(--fr-reading-muted); font-size: 10px; }
 .fr-reading-current-label { margin: 0 0 8px; color: var(--fr-reading-muted); font-size: 11px; font-weight: 600; }
-.fr-reading button, .fr-reading input, .fr-reading-tools :deep(button) { font: inherit; }
-.fr-reading button, .fr-reading-tools :deep(button) { cursor: pointer; border: 0; background: none; color: var(--fr-reading-button); padding: 3px 6px; border-radius: 6px; }
-.fr-reading button:focus-visible, .fr-reading input:focus-visible, .fr-reading-tools :deep(button:focus-visible) { outline: 2px solid #cd527f; outline-offset: 2px; }
-.fr-reading button:disabled, .fr-reading-tools :deep(button:disabled) { opacity: .5; cursor: default; }
+.fr-reading button, .fr-reading input, .fr-reading-controls > button, .fr-reading-tools :deep(button) { font: inherit; }
+.fr-reading button, .fr-reading-controls > button, .fr-reading-tools :deep(button) { cursor: pointer; border: 0; background: none; color: var(--fr-reading-button); padding: 3px 6px; border-radius: 6px; }
+.fr-reading button:focus-visible, .fr-reading input:focus-visible, .fr-reading-controls > button:focus-visible, .fr-reading-tools :deep(button:focus-visible) { outline: 2px solid #cd527f; outline-offset: 2px; }
+.fr-reading button:disabled, .fr-reading-controls > button:disabled, .fr-reading-tools :deep(button:disabled) { opacity: .5; cursor: default; }
 .fr-reading-toolbar { display: flex; align-items: center; gap: 8px; flex-shrink: 0; padding-bottom: 8px; }
 .fr-reading-actions { display: flex; flex-wrap: wrap; flex: 1; min-width: 0; gap: 4px; border-bottom: 1px solid var(--fr-reading-line); }
 .fr-reading-actions button { flex: 1 1 auto; min-width: 0; max-width: 100%; min-height: 32px; padding: 4px 6px; border-radius: 0; border-bottom: 2px solid transparent; color: var(--fr-reading-muted); font-size: 12px; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
 .fr-reading-actions button[aria-pressed='true'] { border-bottom-color: #b85579; color: #9d3e61; font-weight: 600; }
 .fr-reading-actions button:hover, .fr-reading-tools :deep(summary:hover) { background: var(--fr-reading-soft); }
 .fr-reading-tools { position: relative; flex: 0 0 auto; }
-.fr-reading-inline-controls { float: right; display: flex; align-items: start; gap: 4px; margin: 0 0 4px 8px; }
-.fr-reading .fr-reading-inline-stop { flex: 0 0 32px; width: 32px; height: 32px; padding: 0; font-size: 12px; }
+.fr-reading-controls > .fr-reading-inline-stop { flex: 0 0 32px; width: 32px; height: 32px; padding: 0; font-size: 12px; }
 .fr-reading-accessible-status { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.fr-reading-inline-controls:has(.fr-reading-tools[open]) { float: none; display: block; margin: 0 0 8px; }
-.fr-reading-inline-controls:has(.fr-reading-tools[open]) > .fr-reading-inline-stop { float: right; margin-inline-start: 4px; }
-.fr-reading-inline-controls .fr-reading-tools[open] :deep(> summary) { margin-inline-start: auto; }
 .fr-reading-tools :deep(summary) { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 6px; list-style: none; cursor: pointer; color: var(--fr-reading-muted); }
 .fr-reading-tools :deep(summary::-webkit-details-marker) { display: none; }
 .fr-reading summary:focus-visible, .fr-reading-tools :deep(summary:focus-visible) { outline: 2px solid #cd527f; outline-offset: 2px; }
-.fr-reading-tools :deep(.fr-reading-tool-list) { position: absolute; z-index: 2; inset-inline-end: 0; top: 36px; width: 204px; max-height: min(310px, 55vh); overflow: auto; overscroll-behavior: contain; padding: 5px; background: var(--fr-reading-menu, #fff); border: 1px solid var(--fr-reading-line); border-radius: 9px; box-shadow: 0 5px 18px #0002; }
+.fr-reading-tools :deep(.fr-reading-tool-list) { position: absolute; z-index: 3; inset-inline-end: 0; top: 36px; width: min(204px, calc(100vw - 24px)); box-sizing: border-box; max-height: min(310px, 55vh); overflow: auto; overscroll-behavior: contain; padding: 5px; background: var(--fr-reading-menu, #fff); border: 1px solid var(--fr-reading-line); border-radius: 9px; box-shadow: 0 5px 18px #0002; }
 .fr-reading-tools :deep(.fr-reading-tool-list button) { display: block; width: 100%; min-height: 30px; text-align: start; font-size: 12px; padding: 4px 8px; color: inherit; }
 .fr-reading-tools :deep(.fr-reading-tool-list button:hover) { background: var(--fr-reading-soft); }
 .fr-reading-tools :deep(.fr-reading-tool-list p) { border-top: 1px solid var(--fr-reading-line); margin: 4px 0 0; padding: 6px 8px 3px; color: var(--fr-reading-muted); font-size: 10px; overflow-wrap: anywhere; }
 .fr-reading-tools :deep(.fr-reading-tool-list p span) { display: block; }
-.fr-reading-inline-controls .fr-reading-tools :deep(.fr-reading-tool-list) { position: static; width: auto; max-height: none; margin-top: 4px; }
 .fr-reading-source { margin: 0 0 10px; color: var(--fr-reading-muted); font-size: 12px; }
 .fr-reading .fr-reading-source-return { display: block; margin-bottom: 6px; padding-inline-start: 0; }
 .fr-reading-source > span { font-size: 11px; }
@@ -731,7 +765,7 @@ onBeforeUnmount(() => { recordsGeneration += 1; restoreEpoch += 1; cancelRequest
 .fr-reading-followup input { min-width: 0; flex: 1; width: 100%; border: 0; outline: none; color: inherit; background: transparent; font-size: 12px; user-select: text; }
 .fr-reading-followup input::placeholder { color: var(--fr-reading-muted); font-size: 11px; }
 .fr-reading-followup button { background: #b85579; color: white; width: 28px; height: 28px; line-height: 20px; }
-.fr-dark-theme .fr-reading { --fr-reading-line: #514651; --fr-reading-muted: #b6a9b5; --fr-reading-button: #e4a0bc; --fr-reading-soft: #352f38; --fr-reading-menu: #29242d; color: #e6e0e8; }
+.fr-dark-theme .fr-reading, .fr-dark-theme .fr-reading-controls { --fr-reading-line: #514651; --fr-reading-muted: #b6a9b5; --fr-reading-button: #e4a0bc; --fr-reading-soft: #352f38; --fr-reading-menu: #29242d; color: #e6e0e8; }
 .fr-dark-theme .fr-reading-actions button { color: #bdb0c1; }
 .fr-dark-theme .fr-reading-actions button[aria-pressed='true'] { border-bottom-color: #e4a0bc; color: #f1b6ce; }
 .fr-dark-theme .fr-reading-followup { border-color: #554651; }

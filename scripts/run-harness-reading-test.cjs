@@ -147,7 +147,7 @@ async function clickShadowButton(page, label) { const { host, session } = await 
     collect(child); }; collect(host); const button = find(host, n => n.nodeName?.toLowerCase() === 'button' && (attr(n, 'aria-label') === label || text(n).trim() === label)); assert(button?.nodeId, `找不到闭合 Shadow 按钮: ${label}; buttons=${JSON.stringify(buttons)}`); const box = await session.send('DOM.getBoxModel', { nodeId: button.nodeId }); const quad = box.model?.content || box.model?.border; assert(quad?.length >= 8, `按钮没有可点击几何位置: ${label}; box=${JSON.stringify(box)}`); const x = (quad[0] + quad[2] + quad[4] + quad[6]) / 4; const y = (quad[1] + quad[3] + quad[5] + quad[7]) / 4; await session.send('DOM.focus', { nodeId: button.nodeId }).catch(() => { }); await session.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: 'none' }); await session.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', clickCount: 1 }); await session.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 }); return { buttons, x, y }; }
 async function fillShadowInput(page, label, value) { const { host, session } = await shadowSnapshot(page); const input = find(host, n => n.nodeName?.toLowerCase() === 'input' && attr(n, 'aria-label') === label); assert(input?.nodeId, `找不到闭合 Shadow 输入框: ${label}`); const resolved = await session.send('DOM.resolveNode', { nodeId: input.nodeId }); try {await session.send('Runtime.callFunctionOn', { objectId: resolved.object.objectId, functionDeclaration: `function(value) { this.focus(); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; setter.call(this, value); this.dispatchEvent(new Event('input', {bubbles: true})); }`, arguments: [{ value }] });} finally {await session.send('Runtime.releaseObject', {objectId: resolved.object.objectId}).catch(() => {});} }
 async function clickShadowFirstSession(page) { const { host, session } = await shadowSnapshot(page); const node = find(host, n => n.nodeName?.toLowerCase() === 'button' && attr(n, 'class').split(' ').includes('fr-reading-session')); assert(node?.nodeId, '最近会话列表没有可恢复的历史按钮'); const box = await session.send('DOM.getBoxModel', { nodeId: node.nodeId }); const quad = box.model?.content || box.model?.border; assert(quad?.length >= 8, '最近会话按钮没有可点击几何位置'); const x = (quad[0] + quad[2] + quad[4] + quad[6]) / 4; const y = (quad[1] + quad[3] + quad[5] + quad[7]) / 4; await session.send('Input.dispatchMouseEvent', {type: 'mousePressed', x, y, button: 'left', clickCount: 1}); await session.send('Input.dispatchMouseEvent', {type: 'mouseReleased', x, y, button: 'left', clickCount: 1}); }
-async function clickShadowSummary(page, label) { const {host, session} = await shadowSnapshot(page); const node = find(host, n => n.nodeName?.toLowerCase() === 'summary' && text(n).trim() === label); assert(node?.nodeId, `找不到闭合 Shadow summary: ${label}`); const box = await session.send('DOM.getBoxModel', {nodeId: node.nodeId}); const quad = box.model?.content || box.model?.border; assert(quad?.length >= 8, `summary 没有可点击几何位置: ${label}`); const x = (quad[0] + quad[2] + quad[4] + quad[6]) / 4; const y = (quad[1] + quad[3] + quad[5] + quad[7]) / 4; await session.send('Input.dispatchMouseEvent', {type: 'mousePressed', x, y, button: 'left', clickCount: 1}); await session.send('Input.dispatchMouseEvent', {type: 'mouseReleased', x, y, button: 'left', clickCount: 1}); }
+async function clickShadowSummary(page, label) { const {host, session} = await shadowSnapshot(page); const node = find(host, n => n.nodeName?.toLowerCase() === 'summary' && (text(n).trim() === label || attr(n, 'aria-label') === label)); assert(node?.nodeId, `找不到闭合 Shadow summary: ${label}`); const box = await session.send('DOM.getBoxModel', {nodeId: node.nodeId}); const quad = box.model?.content || box.model?.border; assert(quad?.length >= 8, `summary 没有可点击几何位置: ${label}`); const x = (quad[0] + quad[2] + quad[4] + quad[6]) / 4; const y = (quad[1] + quad[3] + quad[5] + quad[7]) / 4; await session.send('DOM.focus', {nodeId: node.nodeId}); await session.send('Input.dispatchMouseEvent', {type: 'mousePressed', x, y, button: 'left', clickCount: 1}); await session.send('Input.dispatchMouseEvent', {type: 'mouseReleased', x, y, button: 'left', clickCount: 1}); }
 function findAll(node, predicate, out = []) { if (!node) return out; if (predicate(node)) out.push(node); for (const child of cdpChildren(node)) findAll(child, predicate, out); return out; }
 async function currentReadingAnswer(page) {
     const snapshot = await shadowSnapshot(page);
@@ -220,6 +220,132 @@ async function openEvidenceReading(page) {
     }, '划词卡片没有完成真实可见定位');
     await clickShadowButton(page, '读懂');
 }
+async function readingMenuLayout(page) {
+    const {host, session} = await shadowSnapshot(page);
+    const card = find(host, node => attr(node, 'class').split(' ').includes('fr-translation-tooltip'));
+    assert(card?.nodeId, '更多菜单布局检查缺少真实卡片');
+    const {object} = await session.send('DOM.resolveNode', {nodeId: card.nodeId});
+    try {
+        const response = await session.send('Runtime.callFunctionOn', {objectId: object.objectId, returnByValue: true, functionDeclaration: `function() {
+            const root = this.getRootNode();
+            const rect = node => {if (!node) return null; const r = node.getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
+            const navigation = this.querySelector('.fr-study-navigation');
+            const toolbar = this.querySelector('.fr-study-toolbar');
+            const record = [...(toolbar?.querySelectorAll('button') || [])].find(button => button.textContent.trim() === '记录');
+            const tools = root.querySelector('.fr-reading-tools');
+            const trigger = tools?.querySelector('summary') || root.querySelector('[aria-label="更多操作"]');
+            const menu = root.querySelector('.fr-reading-tool-list');
+            const body = this.querySelector('.fr-reading-body');
+            const answer = this.querySelector('.fr-reading-answer');
+            const samples = menu && tools?.open ? [[.5,.1],[.1,.5],[.9,.5],[.5,.9]].map(([x,y]) => {
+                const r = menu.getBoundingClientRect(), px = r.x+r.width*x, py=r.y+r.height*y;
+                const hit = root.elementFromPoint(px,py); return {x:px,y:py,reachable:Boolean(hit && (menu === hit || menu.contains(hit))),hit:hit?.className || hit?.tagName};
+            }) : [];
+            const triggerRect = rect(trigger), triggerHit = triggerRect ? root.elementFromPoint(triggerRect.x+triggerRect.width/2,triggerRect.y+triggerRect.height/2) : null;
+            return {card:rect(this),navigation:rect(navigation),toolbar:rect(toolbar),record:rect(record),trigger:triggerRect,menu:rect(menu),body:rect(body),answer:rect(answer),bodyScrollHeight:body?.scrollHeight,bodyMoreCount:body?.querySelectorAll('.fr-reading-controls,.fr-reading-inline-controls,.fr-reading-tools,[aria-label="更多操作"]').length || 0,toolsInNavigation:Boolean(trigger?.closest('.fr-study-navigation')),toolsOutsideScroller:Boolean(trigger?.closest('.fr-study-reading-tools') && !trigger?.closest('.fr-study-toolbar')),triggerReachable:Boolean(triggerHit && (trigger === triggerHit || trigger?.contains(triggerHit))),open:Boolean(tools?.open),dark:this.classList.contains('fr-dark-theme'),menuBackground:menu ? getComputedStyle(menu).backgroundColor : '',menuColor:menu ? getComputedStyle(menu).color : '',samples,viewport:{width:innerWidth,height:innerHeight}};
+        }`});
+        assert(!response.exceptionDetails, `更多菜单几何检查失败: ${JSON.stringify(response.exceptionDetails)}`);
+        return response.result.value;
+    } finally {await session.send('Runtime.releaseObject', {objectId: object.objectId}).catch(() => {});}
+}
+async function resizeReadingCard(page, width) {
+    const before = await readingMenuLayout(page);
+    const {host, session} = await shadowSnapshot(page);
+    const edge = find(host, node => attr(node, 'data-resize-edge') === 'e');
+    assert(edge?.nodeId, '没有真实卡片右侧缩放边缘');
+    const {model} = await session.send('DOM.getBoxModel', {nodeId: edge.nodeId});
+    const q = model.border, x = (q[0]+q[2]+q[4]+q[6])/4, y = (q[1]+q[3]+q[5]+q[7])/4;
+    await page.mouse.move(x,y); await page.mouse.down();
+    await page.mouse.move(x + width - before.card.width,y,{steps:8}); await page.mouse.up();
+    await waitUntil(async () => Math.abs((await readingMenuLayout(page)).card.width - width) <= 2, '真实卡片缩放没有达到所需布局宽度');
+}
+async function focusReadingRecordWithoutOpening(page) {
+    const {host, session} = await shadowSnapshot(page);
+    const toolbar = find(host, node => attr(node, 'class').split(' ').includes('fr-study-toolbar'));
+    const record = find(toolbar, node => node.nodeName === 'BUTTON' && text(node).trim() === '记录');
+    assert(record?.nodeId, '顶栏缺少记录');
+    await session.send('DOM.focus', {nodeId: record.nodeId});
+    await page.waitForTimeout(100);
+}
+async function clickReadingBodyOutsideMenu(page) {
+    const {host, session} = await shadowSnapshot(page);
+    const answer = find(host, node => attr(node, 'class').split(' ').includes('fr-reading-answer'));
+    const paragraph = find(answer, node => node.nodeName === 'P');
+    assert(paragraph?.nodeId, '外点关闭检查缺少正文段落');
+    const {model} = await session.send('DOM.getBoxModel', {nodeId: paragraph.nodeId});
+    const q=model.content, x=q[0]+8, y=q[1]+10;
+    await session.send('Input.dispatchMouseEvent', {type:'mousePressed',x,y,button:'left',clickCount:1});
+    await session.send('Input.dispatchMouseEvent', {type:'mouseReleased',x,y,button:'left',clickCount:1});
+}
+async function verifyReadingMoreMenu({page, configPage, requests, record, args, result}) {
+    const beforeRequests=requests.length, beforeAnswer=await currentReadingAnswer(page);
+    await focusReadingRecordWithoutOpening(page);
+    const layout=await readingMenuLayout(page), wideWidth=layout.card.width;
+    const verifyNavigation=state=>{
+        assert(state.toolsInNavigation && state.toolsOutsideScroller && state.trigger && state.record && state.navigation, `更多入口没有进入顶部导航固定位置: ${JSON.stringify(state)}`);
+        assert(state.record.x>=state.toolbar.x-1 && state.record.right<=state.toolbar.right+1,'聚焦记录后仍被导航滚动区剪裁');
+        assert(state.trigger.x>=state.record.right-1 && Math.abs(state.trigger.y-state.record.y)<10,'更多入口没有位于记录右侧同一导航行');
+        assert(state.trigger.x>=state.navigation.x-1 && state.trigger.right<=state.navigation.right+1 && state.trigger.y>=state.navigation.y-1 && state.trigger.bottom<=state.navigation.bottom+1 && state.triggerReachable,'更多固定入口被导航剪裁或不可点击');
+    };
+    verifyNavigation(layout);
+    assert(layout.bodyMoreCount === 0, '正文中仍保留更多入口或占位');
+    record('reading-menu.topbar-position-without-body-slot','passed',layout);
+    const capture=async (name, opened) => {
+        if (!opened) {
+            const {host,session}=await shadowSnapshot(page);
+            const content=find(host,node=>attr(node,'class').split(' ').includes('fr-reading-result') && attr(node,'tabindex')==='-1');
+            assert(content?.nodeId,'关闭菜单截图缺少可真实聚焦的阅读结果');
+            await session.send('DOM.focus',{nodeId:content.nodeId});
+            const {object}=await session.send('DOM.resolveNode',{nodeId:content.nodeId});
+            try {await session.send('Runtime.callFunctionOn',{objectId:object.objectId,functionDeclaration:'function() { this.blur(); }'});}
+            finally {await session.send('Runtime.releaseObject',{objectId:object.objectId}).catch(()=>{});}
+        }
+        const current=await readingMenuLayout(page), r=current.card;
+        await page.mouse.move(current.body.x+12,current.body.y+4);
+        const boxes=opened && current.menu ? [r,current.menu] : [r];
+        const x=Math.max(0,Math.floor(Math.min(...boxes.map(box=>box.x))-8)), y=Math.max(0,Math.floor(Math.min(...boxes.map(box=>box.y))-8));
+        const right=Math.min(current.viewport.width,Math.ceil(Math.max(...boxes.map(box=>box.right))+8)), bottom=Math.min(current.viewport.height,Math.ceil(Math.max(...boxes.map(box=>box.bottom))+8));
+        const screenshot=path.join(args.artifactsDir,`${name}.png`);
+        await page.screenshot({path:screenshot,clip:{x,y,width:right-x,height:bottom-y}}); result.screenshots.push(screenshot);
+    };
+    const verifyOpen=async (theme, width) => {
+        await persistConfig(configPage,{theme});
+        if (Math.abs((await readingMenuLayout(page)).card.width-width)>2) await resizeReadingCard(page,width);
+        await focusReadingRecordWithoutOpening(page);
+        const closed=await readingMenuLayout(page);
+        verifyNavigation(closed);
+        await clickShadowSummary(page,'更多操作');
+        await waitUntil(async () => (await readingMenuLayout(page)).open,'点击顶栏更多没有实际打开菜单');
+        const opened=await readingMenuLayout(page);
+        assert(opened.samples.length && opened.samples.every(point=>point.reachable),`更多菜单被祖先或正文剪裁: ${JSON.stringify(opened)}`);
+        assert(opened.menu.x>=0 && opened.menu.y>=0 && opened.menu.right<=opened.viewport.width+1 && opened.menu.bottom<=opened.viewport.height+1,'更多菜单超出视口');
+        assert(Math.abs(opened.card.height-closed.card.height)<=2 && Math.abs(opened.body.height-closed.body.height)<=2 && Math.abs(opened.bodyScrollHeight-closed.bodyScrollHeight)<=2,'打开更多菜单撑高了卡片或正文');
+        assert(opened.dark === (theme==='dark'),'更多菜单未跟随卡片主题');
+        const rgb=opened.menuBackground.match(/[\d.]+/g)?.slice(0,3).map(Number) || [];
+        assert(rgb.length===3 && (theme==='dark' ? Math.max(...rgb)<130 : Math.min(...rgb)>180),`更多菜单主题背景错误: ${opened.menuBackground}`);
+        record(`reading-menu.${theme}-${width<wideWidth-20?'narrow':'wide'}-overlay-unclipped`,'passed',{closed,opened});
+        await capture(`reading-menu-${theme}-${width<wideWidth-20?'narrow':'wide'}-open`,true);
+        return opened;
+    };
+    await persistConfig(configPage,{theme:'light'});
+    await capture('reading-menu-light-closed',false);
+    await verifyOpen('light',wideWidth);
+    await page.keyboard.press('Escape');
+    await waitUntil(async () => !(await readingMenuLayout(page)).open,'Escape没有关闭更多菜单');
+    assert(await currentReadingAnswer(page)===beforeAnswer,'Escape关闭菜单时关闭了当前回答');
+    record('reading-menu.escape-closes-only-menu','passed');
+    await clickShadowSummary(page,'更多操作');
+    await clickReadingBodyOutsideMenu(page);
+    await waitUntil(async () => !(await readingMenuLayout(page)).open,'正文外点没有关闭更多菜单');
+    assert(await currentReadingAnswer(page)===beforeAnswer,'正文外点关闭了阅读卡片');
+    record('reading-menu.outside-body-click-closes-only-menu','passed');
+    await verifyOpen('dark',wideWidth); await page.keyboard.press('Escape');
+    const narrowWidth=Math.min(300,wideWidth-50);
+    await verifyOpen('dark',narrowWidth); await page.keyboard.press('Escape');
+    await verifyOpen('light',narrowWidth); await page.keyboard.press('Escape');
+    await resizeReadingCard(page,wideWidth);
+    assert(requests.length===beforeRequests && await currentReadingAnswer(page)===beforeAnswer,'菜单布局或主题检查额外调用模型或改变回答');
+}
 async function verifyReadingEvidence({page, configPage, requests, record, args, result, evidenceControl}) {
     result.modelVerification = {provider: 'local deterministic OpenAI HTTP fixture', liveModelVerified: false, sourceMappingOnly: true};
     const waitEvidence = async (state, index = 0) => waitUntil(async () => (await evidenceSnapshot(page)).evidence[index]?.state === state, `原文依据没有变为 ${state}`);
@@ -251,6 +377,7 @@ async function verifyReadingEvidence({page, configPage, requests, record, args, 
     assert(requests.every(request => !JSON.stringify(request).includes('PRIVATE_NAVIGATION') && !JSON.stringify(request).includes('PRIVATE_FORM')), '请求读取了选区之外的未允许导航或表单');
     assert(snapshot.text.includes('外部背景'), '外部背景没有与来自页面的依据区分');
     record('evidence.actual-sources-multiple-sentences-and-background', 'passed', {evidence: snapshot.evidence, sourceCount: supplied.length});
+    await verifyReadingMoreMenu({page, configPage, requests, record, args, result});
     await page.evaluate(() => {document.querySelector('main').style.paddingTop = '1300px';});
     await activateReadingEvidence(page);
     await waitEvidence('located');

@@ -79,6 +79,852 @@
       "sourceCount": 6
     },
     {
+      "id": "reading-menu.topbar-position-without-body-slot",
+      "status": "passed",
+      "card": {
+        "x": 266.671875,
+        "y": 156.5,
+        "width": 388,
+        "height": 315.6328125,
+        "right": 654.671875,
+        "bottom": 472.1328125
+      },
+      "navigation": {
+        "x": 267.671875,
+        "y": 194.5,
+        "width": 386,
+        "height": 41,
+        "right": 653.671875,
+        "bottom": 235.5
+      },
+      "toolbar": {
+        "x": 275.671875,
+        "y": 202,
+        "width": 335,
+        "height": 25,
+        "right": 610.671875,
+        "bottom": 227
+      },
+      "record": {
+        "x": 513.671875,
+        "y": 202,
+        "width": 38,
+        "height": 25,
+        "right": 551.671875,
+        "bottom": 227
+      },
+      "trigger": {
+        "x": 613.671875,
+        "y": 198.5,
+        "width": 32,
+        "height": 32,
+        "right": 645.671875,
+        "bottom": 230.5
+      },
+      "menu": {
+        "x": 441.671875,
+        "y": 266.5,
+        "width": 204,
+        "height": 240,
+        "right": 645.671875,
+        "bottom": 506.5
+      },
+      "body": {
+        "x": 281.671875,
+        "y": 243.5,
+        "width": 338,
+        "height": 213.6328125,
+        "right": 619.671875,
+        "bottom": 457.1328125
+      },
+      "answer": {
+        "x": 281.671875,
+        "y": 243.5,
+        "width": 338,
+        "height": 138.9375,
+        "right": 619.671875,
+        "bottom": 382.4375
+      },
+      "bodyScrollHeight": 214,
+      "bodyMoreCount": 0,
+      "toolsInNavigation": true,
+      "toolsOutsideScroller": true,
+      "triggerReachable": true,
+      "open": false,
+      "dark": false,
+      "menuBackground": "rgb(255, 255, 255)",
+      "menuColor": "rgb(53, 51, 60)",
+      "samples": [],
+      "viewport": {
+        "width": 1272,
+        "height": 816
+      }
+    },
+    {
+      "id": "reading-menu.light-wide-overlay-unclipped",
+      "status": "passed",
+      "closed": {
+        "card": {
+          "x": 266.671875,
+          "y": 156.5,
+          "width": 388,
+          "height": 315.6328125,
+          "right": 654.671875,
+          "bottom": 472.1328125
+        },
+        "navigation": {
+          "x": 267.671875,
+          "y": 194.5,
+          "width": 386,
+          "height": 41,
+          "right": 653.671875,
+          "bottom": 235.5
+        },
+        "toolbar": {
+          "x": 275.671875,
+          "y": 202,
+          "width": 335,
+          "height": 25,
+          "right": 610.671875,
+          "bottom": 227
+        },
+        "record": {
+          "x": 513.671875,
+          "y": 202,
+          "width": 38,
+          "height": 25,
+          "right": 551.671875,
+          "bottom": 227
+        },
+        "trigger": {
+          "x": 613.671875,
+          "y": 198.5,
+          "width": 32,
+          "height": 32,
+          "right": 645.671875,
+          "bottom": 230.5
+        },
+        "menu": {
+          "x": 441.671875,
+          "y": 266.5,
+          "width": 204,
+          "height": 240,
+          "right": 645.671875,
+          "bottom": 506.5
+        },
+        "body": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 338,
+          "height": 213.6328125,
+          "right": 619.671875,
+          "bottom": 457.1328125
+        },
+        "answer": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 338,
+          "height": 138.9375,
+          "right": 619.671875,
+          "bottom": 382.4375
+        },
+        "bodyScrollHeight": 214,
+        "bodyMoreCount": 0,
+        "toolsInNavigation": true,
+        "toolsOutsideScroller": true,
+        "triggerReachable": true,
+        "open": false,
+        "dark": false,
+        "menuBackground": "rgb(255, 255, 255)",
+        "menuColor": "rgb(53, 51, 60)",
+        "samples": [],
+        "viewport": {
+          "width": 1272,
+          "height": 816
+        }
+      },
+      "opened": {
+        "card": {
+          "x": 266.671875,
+          "y": 156.5,
+          "width": 388,
+          "height": 315.6328125,
+          "right": 654.671875,
+          "bottom": 472.1328125
+        },
+        "navigation": {
+          "x": 267.671875,
+          "y": 194.5,
+          "width": 386,
+          "height": 41,
+          "right": 653.671875,
+          "bottom": 235.5
+        },
+        "toolbar": {
+          "x": 275.671875,
+          "y": 202,
+          "width": 335,
+          "height": 25,
+          "right": 610.671875,
+          "bottom": 227
+        },
+        "record": {
+          "x": 513.671875,
+          "y": 202,
+          "width": 38,
+          "height": 25,
+          "right": 551.671875,
+          "bottom": 227
+        },
+        "trigger": {
+          "x": 613.671875,
+          "y": 198.5,
+          "width": 32,
+          "height": 32,
+          "right": 645.671875,
+          "bottom": 230.5
+        },
+        "menu": {
+          "x": 441.671875,
+          "y": 234.5,
+          "width": 204,
+          "height": 240,
+          "right": 645.671875,
+          "bottom": 474.5
+        },
+        "body": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 338,
+          "height": 213.6328125,
+          "right": 619.671875,
+          "bottom": 457.1328125
+        },
+        "answer": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 338,
+          "height": 138.9375,
+          "right": 619.671875,
+          "bottom": 382.4375
+        },
+        "bodyScrollHeight": 214,
+        "bodyMoreCount": 0,
+        "toolsInNavigation": true,
+        "toolsOutsideScroller": true,
+        "triggerReachable": true,
+        "open": true,
+        "dark": false,
+        "menuBackground": "rgb(255, 255, 255)",
+        "menuColor": "rgb(53, 51, 60)",
+        "samples": [
+          {
+            "x": 543.671875,
+            "y": 258.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 462.071875,
+            "y": 354.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 625.271875,
+            "y": 354.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 543.671875,
+            "y": 450.5,
+            "reachable": true,
+            "hit": "SPAN"
+          }
+        ],
+        "viewport": {
+          "width": 1272,
+          "height": 816
+        }
+      }
+    },
+    {
+      "id": "reading-menu.escape-closes-only-menu",
+      "status": "passed"
+    },
+    {
+      "id": "reading-menu.outside-body-click-closes-only-menu",
+      "status": "passed"
+    },
+    {
+      "id": "reading-menu.dark-wide-overlay-unclipped",
+      "status": "passed",
+      "closed": {
+        "card": {
+          "x": 266.671875,
+          "y": 156.5,
+          "width": 388,
+          "height": 315.6328125,
+          "right": 654.671875,
+          "bottom": 472.1328125
+        },
+        "navigation": {
+          "x": 267.671875,
+          "y": 194.5,
+          "width": 386,
+          "height": 41,
+          "right": 653.671875,
+          "bottom": 235.5
+        },
+        "toolbar": {
+          "x": 275.671875,
+          "y": 202,
+          "width": 335,
+          "height": 25,
+          "right": 610.671875,
+          "bottom": 227
+        },
+        "record": {
+          "x": 513.671875,
+          "y": 202,
+          "width": 38,
+          "height": 25,
+          "right": 551.671875,
+          "bottom": 227
+        },
+        "trigger": {
+          "x": 613.671875,
+          "y": 198.5,
+          "width": 32,
+          "height": 32,
+          "right": 645.671875,
+          "bottom": 230.5
+        },
+        "menu": {
+          "x": 441.671875,
+          "y": 266.5,
+          "width": 204,
+          "height": 240,
+          "right": 645.671875,
+          "bottom": 506.5
+        },
+        "body": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 338,
+          "height": 213.6328125,
+          "right": 619.671875,
+          "bottom": 457.1328125
+        },
+        "answer": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 338,
+          "height": 138.9375,
+          "right": 619.671875,
+          "bottom": 382.4375
+        },
+        "bodyScrollHeight": 214,
+        "bodyMoreCount": 0,
+        "toolsInNavigation": true,
+        "toolsOutsideScroller": true,
+        "triggerReachable": true,
+        "open": false,
+        "dark": true,
+        "menuBackground": "rgb(41, 36, 45)",
+        "menuColor": "rgb(230, 224, 232)",
+        "samples": [],
+        "viewport": {
+          "width": 1272,
+          "height": 816
+        }
+      },
+      "opened": {
+        "card": {
+          "x": 266.671875,
+          "y": 156.5,
+          "width": 388,
+          "height": 315.6328125,
+          "right": 654.671875,
+          "bottom": 472.1328125
+        },
+        "navigation": {
+          "x": 267.671875,
+          "y": 194.5,
+          "width": 386,
+          "height": 41,
+          "right": 653.671875,
+          "bottom": 235.5
+        },
+        "toolbar": {
+          "x": 275.671875,
+          "y": 202,
+          "width": 335,
+          "height": 25,
+          "right": 610.671875,
+          "bottom": 227
+        },
+        "record": {
+          "x": 513.671875,
+          "y": 202,
+          "width": 38,
+          "height": 25,
+          "right": 551.671875,
+          "bottom": 227
+        },
+        "trigger": {
+          "x": 613.671875,
+          "y": 198.5,
+          "width": 32,
+          "height": 32,
+          "right": 645.671875,
+          "bottom": 230.5
+        },
+        "menu": {
+          "x": 441.671875,
+          "y": 234.5,
+          "width": 204,
+          "height": 240,
+          "right": 645.671875,
+          "bottom": 474.5
+        },
+        "body": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 338,
+          "height": 213.6328125,
+          "right": 619.671875,
+          "bottom": 457.1328125
+        },
+        "answer": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 338,
+          "height": 138.9375,
+          "right": 619.671875,
+          "bottom": 382.4375
+        },
+        "bodyScrollHeight": 214,
+        "bodyMoreCount": 0,
+        "toolsInNavigation": true,
+        "toolsOutsideScroller": true,
+        "triggerReachable": true,
+        "open": true,
+        "dark": true,
+        "menuBackground": "rgb(41, 36, 45)",
+        "menuColor": "rgb(230, 224, 232)",
+        "samples": [
+          {
+            "x": 543.671875,
+            "y": 258.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 462.071875,
+            "y": 354.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 625.271875,
+            "y": 354.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 543.671875,
+            "y": 450.5,
+            "reachable": true,
+            "hit": "SPAN"
+          }
+        ],
+        "viewport": {
+          "width": 1272,
+          "height": 816
+        }
+      }
+    },
+    {
+      "id": "reading-menu.dark-narrow-overlay-unclipped",
+      "status": "passed",
+      "closed": {
+        "card": {
+          "x": 266.671875,
+          "y": 156.5,
+          "width": 300,
+          "height": 315.6328125,
+          "right": 566.671875,
+          "bottom": 472.1328125
+        },
+        "navigation": {
+          "x": 267.671875,
+          "y": 194.5,
+          "width": 298,
+          "height": 41,
+          "right": 565.671875,
+          "bottom": 235.5
+        },
+        "toolbar": {
+          "x": 275.671875,
+          "y": 202,
+          "width": 247,
+          "height": 25,
+          "right": 522.671875,
+          "bottom": 227
+        },
+        "record": {
+          "x": 484.671875,
+          "y": 202,
+          "width": 38,
+          "height": 25,
+          "right": 522.671875,
+          "bottom": 227
+        },
+        "trigger": {
+          "x": 525.671875,
+          "y": 198.5,
+          "width": 32,
+          "height": 32,
+          "right": 557.671875,
+          "bottom": 230.5
+        },
+        "menu": {
+          "x": 353.671875,
+          "y": 266.5,
+          "width": 204,
+          "height": 240,
+          "right": 557.671875,
+          "bottom": 506.5
+        },
+        "body": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 250,
+          "height": 236.3828125,
+          "right": 531.671875,
+          "bottom": 479.8828125
+        },
+        "answer": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 250,
+          "height": 161.6875,
+          "right": 531.671875,
+          "bottom": 405.1875
+        },
+        "bodyScrollHeight": 236,
+        "bodyMoreCount": 0,
+        "toolsInNavigation": true,
+        "toolsOutsideScroller": true,
+        "triggerReachable": true,
+        "open": false,
+        "dark": true,
+        "menuBackground": "rgb(41, 36, 45)",
+        "menuColor": "rgb(230, 224, 232)",
+        "samples": [],
+        "viewport": {
+          "width": 1272,
+          "height": 816
+        }
+      },
+      "opened": {
+        "card": {
+          "x": 266.671875,
+          "y": 156.5,
+          "width": 300,
+          "height": 315.6328125,
+          "right": 566.671875,
+          "bottom": 472.1328125
+        },
+        "navigation": {
+          "x": 267.671875,
+          "y": 194.5,
+          "width": 298,
+          "height": 41,
+          "right": 565.671875,
+          "bottom": 235.5
+        },
+        "toolbar": {
+          "x": 275.671875,
+          "y": 202,
+          "width": 247,
+          "height": 25,
+          "right": 522.671875,
+          "bottom": 227
+        },
+        "record": {
+          "x": 484.671875,
+          "y": 202,
+          "width": 38,
+          "height": 25,
+          "right": 522.671875,
+          "bottom": 227
+        },
+        "trigger": {
+          "x": 525.671875,
+          "y": 198.5,
+          "width": 32,
+          "height": 32,
+          "right": 557.671875,
+          "bottom": 230.5
+        },
+        "menu": {
+          "x": 353.671875,
+          "y": 234.5,
+          "width": 204,
+          "height": 240,
+          "right": 557.671875,
+          "bottom": 474.5
+        },
+        "body": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 250,
+          "height": 236.3828125,
+          "right": 531.671875,
+          "bottom": 479.8828125
+        },
+        "answer": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 250,
+          "height": 161.6875,
+          "right": 531.671875,
+          "bottom": 405.1875
+        },
+        "bodyScrollHeight": 236,
+        "bodyMoreCount": 0,
+        "toolsInNavigation": true,
+        "toolsOutsideScroller": true,
+        "triggerReachable": true,
+        "open": true,
+        "dark": true,
+        "menuBackground": "rgb(41, 36, 45)",
+        "menuColor": "rgb(230, 224, 232)",
+        "samples": [
+          {
+            "x": 455.671875,
+            "y": 258.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 374.071875,
+            "y": 354.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 537.271875,
+            "y": 354.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 455.671875,
+            "y": 450.5,
+            "reachable": true,
+            "hit": "SPAN"
+          }
+        ],
+        "viewport": {
+          "width": 1272,
+          "height": 816
+        }
+      }
+    },
+    {
+      "id": "reading-menu.light-narrow-overlay-unclipped",
+      "status": "passed",
+      "closed": {
+        "card": {
+          "x": 266.671875,
+          "y": 156.5,
+          "width": 300,
+          "height": 315.6328125,
+          "right": 566.671875,
+          "bottom": 472.1328125
+        },
+        "navigation": {
+          "x": 267.671875,
+          "y": 194.5,
+          "width": 298,
+          "height": 41,
+          "right": 565.671875,
+          "bottom": 235.5
+        },
+        "toolbar": {
+          "x": 275.671875,
+          "y": 202,
+          "width": 247,
+          "height": 25,
+          "right": 522.671875,
+          "bottom": 227
+        },
+        "record": {
+          "x": 484.671875,
+          "y": 202,
+          "width": 38,
+          "height": 25,
+          "right": 522.671875,
+          "bottom": 227
+        },
+        "trigger": {
+          "x": 525.671875,
+          "y": 198.5,
+          "width": 32,
+          "height": 32,
+          "right": 557.671875,
+          "bottom": 230.5
+        },
+        "menu": {
+          "x": 353.671875,
+          "y": 266.5,
+          "width": 204,
+          "height": 240,
+          "right": 557.671875,
+          "bottom": 506.5
+        },
+        "body": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 250,
+          "height": 236.3828125,
+          "right": 531.671875,
+          "bottom": 479.8828125
+        },
+        "answer": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 250,
+          "height": 161.6875,
+          "right": 531.671875,
+          "bottom": 405.1875
+        },
+        "bodyScrollHeight": 236,
+        "bodyMoreCount": 0,
+        "toolsInNavigation": true,
+        "toolsOutsideScroller": true,
+        "triggerReachable": true,
+        "open": false,
+        "dark": false,
+        "menuBackground": "rgb(255, 255, 255)",
+        "menuColor": "rgb(53, 51, 60)",
+        "samples": [],
+        "viewport": {
+          "width": 1272,
+          "height": 816
+        }
+      },
+      "opened": {
+        "card": {
+          "x": 266.671875,
+          "y": 156.5,
+          "width": 300,
+          "height": 315.6328125,
+          "right": 566.671875,
+          "bottom": 472.1328125
+        },
+        "navigation": {
+          "x": 267.671875,
+          "y": 194.5,
+          "width": 298,
+          "height": 41,
+          "right": 565.671875,
+          "bottom": 235.5
+        },
+        "toolbar": {
+          "x": 275.671875,
+          "y": 202,
+          "width": 247,
+          "height": 25,
+          "right": 522.671875,
+          "bottom": 227
+        },
+        "record": {
+          "x": 484.671875,
+          "y": 202,
+          "width": 38,
+          "height": 25,
+          "right": 522.671875,
+          "bottom": 227
+        },
+        "trigger": {
+          "x": 525.671875,
+          "y": 198.5,
+          "width": 32,
+          "height": 32,
+          "right": 557.671875,
+          "bottom": 230.5
+        },
+        "menu": {
+          "x": 353.671875,
+          "y": 234.5,
+          "width": 204,
+          "height": 240,
+          "right": 557.671875,
+          "bottom": 474.5
+        },
+        "body": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 250,
+          "height": 236.3828125,
+          "right": 531.671875,
+          "bottom": 479.8828125
+        },
+        "answer": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 250,
+          "height": 161.6875,
+          "right": 531.671875,
+          "bottom": 405.1875
+        },
+        "bodyScrollHeight": 236,
+        "bodyMoreCount": 0,
+        "toolsInNavigation": true,
+        "toolsOutsideScroller": true,
+        "triggerReachable": true,
+        "open": true,
+        "dark": false,
+        "menuBackground": "rgb(255, 255, 255)",
+        "menuColor": "rgb(53, 51, 60)",
+        "samples": [
+          {
+            "x": 455.671875,
+            "y": 258.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 374.071875,
+            "y": 354.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 537.271875,
+            "y": 354.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 455.671875,
+            "y": 450.5,
+            "reachable": true,
+            "hit": "SPAN"
+          }
+        ],
+        "viewport": {
+          "width": 1272,
+          "height": 816
+        }
+      }
+    },
+    {
       "id": "evidence.click-locates-original-not-duplicate",
       "status": "passed",
       "ranges": [
@@ -349,6 +1195,852 @@
       ],
       "sourceCount": 6
     },
+    "reading-menu.topbar-position-without-body-slot": {
+      "id": "reading-menu.topbar-position-without-body-slot",
+      "status": "passed",
+      "card": {
+        "x": 266.671875,
+        "y": 156.5,
+        "width": 388,
+        "height": 315.6328125,
+        "right": 654.671875,
+        "bottom": 472.1328125
+      },
+      "navigation": {
+        "x": 267.671875,
+        "y": 194.5,
+        "width": 386,
+        "height": 41,
+        "right": 653.671875,
+        "bottom": 235.5
+      },
+      "toolbar": {
+        "x": 275.671875,
+        "y": 202,
+        "width": 335,
+        "height": 25,
+        "right": 610.671875,
+        "bottom": 227
+      },
+      "record": {
+        "x": 513.671875,
+        "y": 202,
+        "width": 38,
+        "height": 25,
+        "right": 551.671875,
+        "bottom": 227
+      },
+      "trigger": {
+        "x": 613.671875,
+        "y": 198.5,
+        "width": 32,
+        "height": 32,
+        "right": 645.671875,
+        "bottom": 230.5
+      },
+      "menu": {
+        "x": 441.671875,
+        "y": 266.5,
+        "width": 204,
+        "height": 240,
+        "right": 645.671875,
+        "bottom": 506.5
+      },
+      "body": {
+        "x": 281.671875,
+        "y": 243.5,
+        "width": 338,
+        "height": 213.6328125,
+        "right": 619.671875,
+        "bottom": 457.1328125
+      },
+      "answer": {
+        "x": 281.671875,
+        "y": 243.5,
+        "width": 338,
+        "height": 138.9375,
+        "right": 619.671875,
+        "bottom": 382.4375
+      },
+      "bodyScrollHeight": 214,
+      "bodyMoreCount": 0,
+      "toolsInNavigation": true,
+      "toolsOutsideScroller": true,
+      "triggerReachable": true,
+      "open": false,
+      "dark": false,
+      "menuBackground": "rgb(255, 255, 255)",
+      "menuColor": "rgb(53, 51, 60)",
+      "samples": [],
+      "viewport": {
+        "width": 1272,
+        "height": 816
+      }
+    },
+    "reading-menu.light-wide-overlay-unclipped": {
+      "id": "reading-menu.light-wide-overlay-unclipped",
+      "status": "passed",
+      "closed": {
+        "card": {
+          "x": 266.671875,
+          "y": 156.5,
+          "width": 388,
+          "height": 315.6328125,
+          "right": 654.671875,
+          "bottom": 472.1328125
+        },
+        "navigation": {
+          "x": 267.671875,
+          "y": 194.5,
+          "width": 386,
+          "height": 41,
+          "right": 653.671875,
+          "bottom": 235.5
+        },
+        "toolbar": {
+          "x": 275.671875,
+          "y": 202,
+          "width": 335,
+          "height": 25,
+          "right": 610.671875,
+          "bottom": 227
+        },
+        "record": {
+          "x": 513.671875,
+          "y": 202,
+          "width": 38,
+          "height": 25,
+          "right": 551.671875,
+          "bottom": 227
+        },
+        "trigger": {
+          "x": 613.671875,
+          "y": 198.5,
+          "width": 32,
+          "height": 32,
+          "right": 645.671875,
+          "bottom": 230.5
+        },
+        "menu": {
+          "x": 441.671875,
+          "y": 266.5,
+          "width": 204,
+          "height": 240,
+          "right": 645.671875,
+          "bottom": 506.5
+        },
+        "body": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 338,
+          "height": 213.6328125,
+          "right": 619.671875,
+          "bottom": 457.1328125
+        },
+        "answer": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 338,
+          "height": 138.9375,
+          "right": 619.671875,
+          "bottom": 382.4375
+        },
+        "bodyScrollHeight": 214,
+        "bodyMoreCount": 0,
+        "toolsInNavigation": true,
+        "toolsOutsideScroller": true,
+        "triggerReachable": true,
+        "open": false,
+        "dark": false,
+        "menuBackground": "rgb(255, 255, 255)",
+        "menuColor": "rgb(53, 51, 60)",
+        "samples": [],
+        "viewport": {
+          "width": 1272,
+          "height": 816
+        }
+      },
+      "opened": {
+        "card": {
+          "x": 266.671875,
+          "y": 156.5,
+          "width": 388,
+          "height": 315.6328125,
+          "right": 654.671875,
+          "bottom": 472.1328125
+        },
+        "navigation": {
+          "x": 267.671875,
+          "y": 194.5,
+          "width": 386,
+          "height": 41,
+          "right": 653.671875,
+          "bottom": 235.5
+        },
+        "toolbar": {
+          "x": 275.671875,
+          "y": 202,
+          "width": 335,
+          "height": 25,
+          "right": 610.671875,
+          "bottom": 227
+        },
+        "record": {
+          "x": 513.671875,
+          "y": 202,
+          "width": 38,
+          "height": 25,
+          "right": 551.671875,
+          "bottom": 227
+        },
+        "trigger": {
+          "x": 613.671875,
+          "y": 198.5,
+          "width": 32,
+          "height": 32,
+          "right": 645.671875,
+          "bottom": 230.5
+        },
+        "menu": {
+          "x": 441.671875,
+          "y": 234.5,
+          "width": 204,
+          "height": 240,
+          "right": 645.671875,
+          "bottom": 474.5
+        },
+        "body": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 338,
+          "height": 213.6328125,
+          "right": 619.671875,
+          "bottom": 457.1328125
+        },
+        "answer": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 338,
+          "height": 138.9375,
+          "right": 619.671875,
+          "bottom": 382.4375
+        },
+        "bodyScrollHeight": 214,
+        "bodyMoreCount": 0,
+        "toolsInNavigation": true,
+        "toolsOutsideScroller": true,
+        "triggerReachable": true,
+        "open": true,
+        "dark": false,
+        "menuBackground": "rgb(255, 255, 255)",
+        "menuColor": "rgb(53, 51, 60)",
+        "samples": [
+          {
+            "x": 543.671875,
+            "y": 258.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 462.071875,
+            "y": 354.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 625.271875,
+            "y": 354.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 543.671875,
+            "y": 450.5,
+            "reachable": true,
+            "hit": "SPAN"
+          }
+        ],
+        "viewport": {
+          "width": 1272,
+          "height": 816
+        }
+      }
+    },
+    "reading-menu.escape-closes-only-menu": {
+      "id": "reading-menu.escape-closes-only-menu",
+      "status": "passed"
+    },
+    "reading-menu.outside-body-click-closes-only-menu": {
+      "id": "reading-menu.outside-body-click-closes-only-menu",
+      "status": "passed"
+    },
+    "reading-menu.dark-wide-overlay-unclipped": {
+      "id": "reading-menu.dark-wide-overlay-unclipped",
+      "status": "passed",
+      "closed": {
+        "card": {
+          "x": 266.671875,
+          "y": 156.5,
+          "width": 388,
+          "height": 315.6328125,
+          "right": 654.671875,
+          "bottom": 472.1328125
+        },
+        "navigation": {
+          "x": 267.671875,
+          "y": 194.5,
+          "width": 386,
+          "height": 41,
+          "right": 653.671875,
+          "bottom": 235.5
+        },
+        "toolbar": {
+          "x": 275.671875,
+          "y": 202,
+          "width": 335,
+          "height": 25,
+          "right": 610.671875,
+          "bottom": 227
+        },
+        "record": {
+          "x": 513.671875,
+          "y": 202,
+          "width": 38,
+          "height": 25,
+          "right": 551.671875,
+          "bottom": 227
+        },
+        "trigger": {
+          "x": 613.671875,
+          "y": 198.5,
+          "width": 32,
+          "height": 32,
+          "right": 645.671875,
+          "bottom": 230.5
+        },
+        "menu": {
+          "x": 441.671875,
+          "y": 266.5,
+          "width": 204,
+          "height": 240,
+          "right": 645.671875,
+          "bottom": 506.5
+        },
+        "body": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 338,
+          "height": 213.6328125,
+          "right": 619.671875,
+          "bottom": 457.1328125
+        },
+        "answer": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 338,
+          "height": 138.9375,
+          "right": 619.671875,
+          "bottom": 382.4375
+        },
+        "bodyScrollHeight": 214,
+        "bodyMoreCount": 0,
+        "toolsInNavigation": true,
+        "toolsOutsideScroller": true,
+        "triggerReachable": true,
+        "open": false,
+        "dark": true,
+        "menuBackground": "rgb(41, 36, 45)",
+        "menuColor": "rgb(230, 224, 232)",
+        "samples": [],
+        "viewport": {
+          "width": 1272,
+          "height": 816
+        }
+      },
+      "opened": {
+        "card": {
+          "x": 266.671875,
+          "y": 156.5,
+          "width": 388,
+          "height": 315.6328125,
+          "right": 654.671875,
+          "bottom": 472.1328125
+        },
+        "navigation": {
+          "x": 267.671875,
+          "y": 194.5,
+          "width": 386,
+          "height": 41,
+          "right": 653.671875,
+          "bottom": 235.5
+        },
+        "toolbar": {
+          "x": 275.671875,
+          "y": 202,
+          "width": 335,
+          "height": 25,
+          "right": 610.671875,
+          "bottom": 227
+        },
+        "record": {
+          "x": 513.671875,
+          "y": 202,
+          "width": 38,
+          "height": 25,
+          "right": 551.671875,
+          "bottom": 227
+        },
+        "trigger": {
+          "x": 613.671875,
+          "y": 198.5,
+          "width": 32,
+          "height": 32,
+          "right": 645.671875,
+          "bottom": 230.5
+        },
+        "menu": {
+          "x": 441.671875,
+          "y": 234.5,
+          "width": 204,
+          "height": 240,
+          "right": 645.671875,
+          "bottom": 474.5
+        },
+        "body": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 338,
+          "height": 213.6328125,
+          "right": 619.671875,
+          "bottom": 457.1328125
+        },
+        "answer": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 338,
+          "height": 138.9375,
+          "right": 619.671875,
+          "bottom": 382.4375
+        },
+        "bodyScrollHeight": 214,
+        "bodyMoreCount": 0,
+        "toolsInNavigation": true,
+        "toolsOutsideScroller": true,
+        "triggerReachable": true,
+        "open": true,
+        "dark": true,
+        "menuBackground": "rgb(41, 36, 45)",
+        "menuColor": "rgb(230, 224, 232)",
+        "samples": [
+          {
+            "x": 543.671875,
+            "y": 258.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 462.071875,
+            "y": 354.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 625.271875,
+            "y": 354.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 543.671875,
+            "y": 450.5,
+            "reachable": true,
+            "hit": "SPAN"
+          }
+        ],
+        "viewport": {
+          "width": 1272,
+          "height": 816
+        }
+      }
+    },
+    "reading-menu.dark-narrow-overlay-unclipped": {
+      "id": "reading-menu.dark-narrow-overlay-unclipped",
+      "status": "passed",
+      "closed": {
+        "card": {
+          "x": 266.671875,
+          "y": 156.5,
+          "width": 300,
+          "height": 315.6328125,
+          "right": 566.671875,
+          "bottom": 472.1328125
+        },
+        "navigation": {
+          "x": 267.671875,
+          "y": 194.5,
+          "width": 298,
+          "height": 41,
+          "right": 565.671875,
+          "bottom": 235.5
+        },
+        "toolbar": {
+          "x": 275.671875,
+          "y": 202,
+          "width": 247,
+          "height": 25,
+          "right": 522.671875,
+          "bottom": 227
+        },
+        "record": {
+          "x": 484.671875,
+          "y": 202,
+          "width": 38,
+          "height": 25,
+          "right": 522.671875,
+          "bottom": 227
+        },
+        "trigger": {
+          "x": 525.671875,
+          "y": 198.5,
+          "width": 32,
+          "height": 32,
+          "right": 557.671875,
+          "bottom": 230.5
+        },
+        "menu": {
+          "x": 353.671875,
+          "y": 266.5,
+          "width": 204,
+          "height": 240,
+          "right": 557.671875,
+          "bottom": 506.5
+        },
+        "body": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 250,
+          "height": 236.3828125,
+          "right": 531.671875,
+          "bottom": 479.8828125
+        },
+        "answer": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 250,
+          "height": 161.6875,
+          "right": 531.671875,
+          "bottom": 405.1875
+        },
+        "bodyScrollHeight": 236,
+        "bodyMoreCount": 0,
+        "toolsInNavigation": true,
+        "toolsOutsideScroller": true,
+        "triggerReachable": true,
+        "open": false,
+        "dark": true,
+        "menuBackground": "rgb(41, 36, 45)",
+        "menuColor": "rgb(230, 224, 232)",
+        "samples": [],
+        "viewport": {
+          "width": 1272,
+          "height": 816
+        }
+      },
+      "opened": {
+        "card": {
+          "x": 266.671875,
+          "y": 156.5,
+          "width": 300,
+          "height": 315.6328125,
+          "right": 566.671875,
+          "bottom": 472.1328125
+        },
+        "navigation": {
+          "x": 267.671875,
+          "y": 194.5,
+          "width": 298,
+          "height": 41,
+          "right": 565.671875,
+          "bottom": 235.5
+        },
+        "toolbar": {
+          "x": 275.671875,
+          "y": 202,
+          "width": 247,
+          "height": 25,
+          "right": 522.671875,
+          "bottom": 227
+        },
+        "record": {
+          "x": 484.671875,
+          "y": 202,
+          "width": 38,
+          "height": 25,
+          "right": 522.671875,
+          "bottom": 227
+        },
+        "trigger": {
+          "x": 525.671875,
+          "y": 198.5,
+          "width": 32,
+          "height": 32,
+          "right": 557.671875,
+          "bottom": 230.5
+        },
+        "menu": {
+          "x": 353.671875,
+          "y": 234.5,
+          "width": 204,
+          "height": 240,
+          "right": 557.671875,
+          "bottom": 474.5
+        },
+        "body": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 250,
+          "height": 236.3828125,
+          "right": 531.671875,
+          "bottom": 479.8828125
+        },
+        "answer": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 250,
+          "height": 161.6875,
+          "right": 531.671875,
+          "bottom": 405.1875
+        },
+        "bodyScrollHeight": 236,
+        "bodyMoreCount": 0,
+        "toolsInNavigation": true,
+        "toolsOutsideScroller": true,
+        "triggerReachable": true,
+        "open": true,
+        "dark": true,
+        "menuBackground": "rgb(41, 36, 45)",
+        "menuColor": "rgb(230, 224, 232)",
+        "samples": [
+          {
+            "x": 455.671875,
+            "y": 258.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 374.071875,
+            "y": 354.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 537.271875,
+            "y": 354.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 455.671875,
+            "y": 450.5,
+            "reachable": true,
+            "hit": "SPAN"
+          }
+        ],
+        "viewport": {
+          "width": 1272,
+          "height": 816
+        }
+      }
+    },
+    "reading-menu.light-narrow-overlay-unclipped": {
+      "id": "reading-menu.light-narrow-overlay-unclipped",
+      "status": "passed",
+      "closed": {
+        "card": {
+          "x": 266.671875,
+          "y": 156.5,
+          "width": 300,
+          "height": 315.6328125,
+          "right": 566.671875,
+          "bottom": 472.1328125
+        },
+        "navigation": {
+          "x": 267.671875,
+          "y": 194.5,
+          "width": 298,
+          "height": 41,
+          "right": 565.671875,
+          "bottom": 235.5
+        },
+        "toolbar": {
+          "x": 275.671875,
+          "y": 202,
+          "width": 247,
+          "height": 25,
+          "right": 522.671875,
+          "bottom": 227
+        },
+        "record": {
+          "x": 484.671875,
+          "y": 202,
+          "width": 38,
+          "height": 25,
+          "right": 522.671875,
+          "bottom": 227
+        },
+        "trigger": {
+          "x": 525.671875,
+          "y": 198.5,
+          "width": 32,
+          "height": 32,
+          "right": 557.671875,
+          "bottom": 230.5
+        },
+        "menu": {
+          "x": 353.671875,
+          "y": 266.5,
+          "width": 204,
+          "height": 240,
+          "right": 557.671875,
+          "bottom": 506.5
+        },
+        "body": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 250,
+          "height": 236.3828125,
+          "right": 531.671875,
+          "bottom": 479.8828125
+        },
+        "answer": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 250,
+          "height": 161.6875,
+          "right": 531.671875,
+          "bottom": 405.1875
+        },
+        "bodyScrollHeight": 236,
+        "bodyMoreCount": 0,
+        "toolsInNavigation": true,
+        "toolsOutsideScroller": true,
+        "triggerReachable": true,
+        "open": false,
+        "dark": false,
+        "menuBackground": "rgb(255, 255, 255)",
+        "menuColor": "rgb(53, 51, 60)",
+        "samples": [],
+        "viewport": {
+          "width": 1272,
+          "height": 816
+        }
+      },
+      "opened": {
+        "card": {
+          "x": 266.671875,
+          "y": 156.5,
+          "width": 300,
+          "height": 315.6328125,
+          "right": 566.671875,
+          "bottom": 472.1328125
+        },
+        "navigation": {
+          "x": 267.671875,
+          "y": 194.5,
+          "width": 298,
+          "height": 41,
+          "right": 565.671875,
+          "bottom": 235.5
+        },
+        "toolbar": {
+          "x": 275.671875,
+          "y": 202,
+          "width": 247,
+          "height": 25,
+          "right": 522.671875,
+          "bottom": 227
+        },
+        "record": {
+          "x": 484.671875,
+          "y": 202,
+          "width": 38,
+          "height": 25,
+          "right": 522.671875,
+          "bottom": 227
+        },
+        "trigger": {
+          "x": 525.671875,
+          "y": 198.5,
+          "width": 32,
+          "height": 32,
+          "right": 557.671875,
+          "bottom": 230.5
+        },
+        "menu": {
+          "x": 353.671875,
+          "y": 234.5,
+          "width": 204,
+          "height": 240,
+          "right": 557.671875,
+          "bottom": 474.5
+        },
+        "body": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 250,
+          "height": 236.3828125,
+          "right": 531.671875,
+          "bottom": 479.8828125
+        },
+        "answer": {
+          "x": 281.671875,
+          "y": 243.5,
+          "width": 250,
+          "height": 161.6875,
+          "right": 531.671875,
+          "bottom": 405.1875
+        },
+        "bodyScrollHeight": 236,
+        "bodyMoreCount": 0,
+        "toolsInNavigation": true,
+        "toolsOutsideScroller": true,
+        "triggerReachable": true,
+        "open": true,
+        "dark": false,
+        "menuBackground": "rgb(255, 255, 255)",
+        "menuColor": "rgb(53, 51, 60)",
+        "samples": [
+          {
+            "x": 455.671875,
+            "y": 258.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 374.071875,
+            "y": 354.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 537.271875,
+            "y": 354.5,
+            "reachable": true,
+            "hit": "BUTTON"
+          },
+          {
+            "x": 455.671875,
+            "y": 450.5,
+            "reachable": true,
+            "hit": "SPAN"
+          }
+        ],
+        "viewport": {
+          "width": 1272,
+          "height": 816
+        }
+      }
+    },
     "evidence.click-locates-original-not-duplicate": {
       "id": "evidence.click-locates-original-not-duplicate",
       "status": "passed",
@@ -572,7 +2264,12 @@
     }
   },
   "screenshots": [
-    "/private/tmp/fluentread-reading-evidence-20261011-integrated-final/reading-evidence-located.png"
+    "/private/tmp/fluentread-reading-evidence-20261011-topbar-delivery-final/reading-menu-light-closed.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-topbar-delivery-final/reading-menu-light-wide-open.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-topbar-delivery-final/reading-menu-dark-wide-open.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-topbar-delivery-final/reading-menu-dark-narrow-open.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-topbar-delivery-final/reading-menu-light-narrow-open.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-topbar-delivery-final/reading-evidence-located.png"
   ],
   "consoleErrors": [],
   "httpErrors": [],
@@ -1347,8 +3044,8 @@
     "sourceMappingOnly": true
   },
   "domArtifacts": [
-    "/private/tmp/fluentread-reading-evidence-20261011-integrated-final/reading-evidence-source.html",
-    "/private/tmp/fluentread-reading-evidence-20261011-integrated-final/reading-evidence-closed-shadow.json"
+    "/private/tmp/fluentread-reading-evidence-20261011-topbar-delivery-final/reading-evidence-source.html",
+    "/private/tmp/fluentread-reading-evidence-20261011-topbar-delivery-final/reading-evidence-closed-shadow.json"
   ],
   "fixture": {
     "page": "local current paragraph with one second supporting sentence and distant duplicate",
