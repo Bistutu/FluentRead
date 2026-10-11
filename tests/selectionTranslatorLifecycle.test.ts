@@ -1,7 +1,7 @@
 /**
  * @file tests/selectionTranslatorLifecycle.test.ts
  * 文件职责：执行划词组件的实际挂载与卸载回调，验证扩展消息端口撤销不会留下宿主页面资源。
- * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理。
+ * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、免费讲解明确启用及保存确认、用户 AI 偏好保护、关闭/换区/卸载后的迟到保存隔离、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理。
  * 模块边界：编译真实 Vue setup 并替换浏览器和渲染依赖，不模拟完整 UI 或声称真实浏览器验证。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -15,6 +15,7 @@ import * as Vue from 'vue';
 import {Config} from '@/src/core/config/model';
 import * as selectionCore from '@/src/features/selection-translation/core';
 import * as harness from '@/src/core/config/harness';
+import {services} from '@/src/core/config/catalog';
 import * as runtimeMessages from '@/src/platform/browser/runtimeMessages';
 import * as detect from '@/src/core/language/detect';
 import * as wordNormalization from '@/src/features/selection-translation/services/wordNormalization';
@@ -43,7 +44,7 @@ function compileForTarget(target: SelectionBuildTarget): string {
 let app: Vue.App | undefined;
 afterEach(() => { app?.unmount(); app = undefined; vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
-function mountSelection(privateContext = false, selectionAdapter?: Record<string, unknown>, browserTarget: SelectionBuildTarget = 'chrome') {
+function mountSelection(privateContext = false, selectionAdapter?: Record<string, unknown>, browserTarget: SelectionBuildTarget = 'chrome', configReady: Promise<void> = Promise.resolve()) {
     vi.useFakeTimers();
     const config = Object.assign(new Config(), {
         disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual', theme: 'light',
@@ -78,6 +79,9 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         extension: {inIncognitoContext: privateContext},
     };
     const unsubscribeConfig = vi.fn(), releaseContextMenu = vi.fn();
+    let configListener: (() => void) | undefined;
+    const notifyConfig = () => configListener?.();
+    const requestConfigPatch = vi.fn().mockImplementation(async patch => { Object.assign(config, patch); notifyConfig(); });
     let contextMenuHandler = (_selectionText?: string): boolean => false;
     const registerContextMenu = vi.fn((handler: typeof contextMenuHandler) => {
         contextMenuHandler = handler;
@@ -94,11 +98,12 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         vue: {...Vue, useTemplateRef: () => Vue.ref(null)},
         'webextension-polyfill': browser,
         '@/src/platform/browser/runtimeMessages': runtimeMessages,
-        '@/src/services/config/store': {config, subscribeConfig: () => unsubscribeConfig},
+        '@/src/services/config/store': {config, configReady, requestConfigPatch, subscribeConfig: (listener: () => void) => { configListener = listener; return unsubscribeConfig; }},
         '@/src/app/translation/client': {translateText, translateTextBatch},
         '@/src/features/selection-translation/core': selectionCore,
         '@/src/features/selection-translation/services/wordNormalization': wordNormalization,
         '@/src/core/config/harness': harness,
+        '@/src/core/config/catalog': {services},
         '@/src/core/language/detect': detect,
         '@/src/features/vocabulary/protocol': vocabularyProtocol,
         '@/src/core/hotkey': hotkey,
@@ -136,10 +141,354 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
     app = currentApp;
     const vm = currentApp.mount({});
     const state = (vm.$ as any).setupState as Record<string, any>;
-    return {state, event, browser, config, listeners, window, document, unsubscribeConfig, releaseContextMenu, translateText, translateTextBatch, stopTts: stopTts!,
+    return {state, event, browser, config, listeners, window, document, unsubscribeConfig, requestConfigPatch, notifyConfig, releaseContextMenu, translateText, translateTextBatch, stopTts: stopTts!,
         registerContextMenu, get contextMenuHandler() {return contextMenuHandler;},
         lifecycleErrors, unmount: () => { currentApp.unmount(); app = undefined; }};
 }
+
+describe('explicit free selection explanation', () => {
+    function prepare(configReady?: Promise<void>, browserTarget: SelectionBuildTarget = 'chrome') {
+        const text = 'Practice makes progress.';
+        const captureReading = vi.fn(() => ({text, context: text, sentence: text}));
+        const fixture = mountSelection(false, {acceptsRange: () => true, captureReading}, browserTarget, configReady);
+        const select = () => {
+            fixture.state.snapshot = {text, range: {}, parts: [{kind: 'text', text}]};
+            fixture.state.selectedText = text;
+            fixture.state.showTooltip = true;
+            fixture.state.translationResult = '练习带来进步。';
+            fixture.state.activeContentRequest = {text, generation: 1, sourceLanguage: 'auto', targetLanguage: 'zh-Hans'};
+        };
+        select();
+        return {...fixture, text, captureReading, select};
+    }
+
+    it.each([
+        ['chrome', services.microsoft], ['chrome', services.bilibili],
+        ['userscript', services.microsoft], ['userscript', services.bilibili],
+    ] as const)('offers free enablement only with an extension stream port (%s, %s)', async (target, service) => {
+        const fixture = prepare(undefined, target);
+        fixture.config.service = service;
+        fixture.notifyConfig();
+        expect(fixture.state.canEnableFreeReading).toBe(target === 'chrome');
+        await fixture.state.enableFreeReading();
+        expect(fixture.requestConfigPatch).toHaveBeenCalledTimes(target === 'chrome' ? 1 : 0);
+        expect(fixture.captureReading).toHaveBeenCalledTimes(target === 'chrome' ? 1 : 0);
+        expect(fixture.config.harness.enabled).toBe(target === 'chrome');
+        expect(fixture.state.readingMode).toBe(target === 'chrome');
+        expect(fixture.state.freeReadingPending).toBe(false);
+        expect(fixture.config.service).toBe(service);
+    });
+
+    it.each([services.deepseek, services.bilibili])('keeps existing enabled userscript reading preferences and UI (%s)', async service => {
+        const fixture = prepare(undefined, 'userscript');
+        fixture.config.harness = {...fixture.config.harness, enabled: true, service, defaultAction: 'grammar'};
+        const stored = JSON.stringify(fixture.config.harness);
+        fixture.notifyConfig();
+        expect(fixture.state.canEnableFreeReading).toBe(false);
+        expect(fixture.state.readingEnabled).toBe(true);
+        expect(fixture.state.readingActions.map((action: any) => action.id)).toEqual(service === services.bilibili
+            ? ['meaning', 'usage'] : ['meaning', 'grammar', 'usage', 'practice']);
+        await fixture.state.enableFreeReading();
+        expect(fixture.requestConfigPatch).not.toHaveBeenCalled();
+        expect(JSON.stringify(fixture.config.harness)).toBe(stored);
+        // 外部配置更新仍关闭旧选区；下一次选区继续使用已有阅读界面与偏好。
+        fixture.select();
+        fixture.state.openReading();
+        expect(fixture.state.readingMode).toBe(true);
+        expect(fixture.captureReading).toHaveBeenCalledOnce();
+        expect(fixture.state.readingInitialAction).toBe(service === services.bilibili ? 'meaning' : 'grammar');
+    });
+
+    it('leaves explanation disabled until clicked, preserves selection on its own config echo, and opens meaning after confirmed save', async () => {
+        const fixture = prepare();
+        let confirm!: () => void;
+        fixture.requestConfigPatch.mockImplementation(patch => {
+            Object.assign(fixture.config, patch);
+            fixture.notifyConfig();
+            return new Promise<void>(resolve => { confirm = resolve; });
+        });
+        const selection = fixture.state.snapshot;
+        expect(fixture.state.canEnableFreeReading).toBe(true);
+        expect(fixture.config.harness.enabled).toBe(false);
+        expect(fixture.requestConfigPatch).not.toHaveBeenCalled();
+        const pending = fixture.state.enableFreeReading();
+        await Vue.nextTick();
+        expect(fixture.state.snapshot).toBe(selection);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.state.freeReadingPending).toBe(true);
+        expect(fixture.state.readingEnabled).toBe(false);
+        expect(fixture.state.readingMode).toBe(false);
+        expect(fixture.captureReading).not.toHaveBeenCalled();
+        await fixture.state.enableFreeReading();
+        expect(fixture.requestConfigPatch).toHaveBeenCalledTimes(1);
+        expect(fixture.requestConfigPatch.mock.calls[0][0].harness).toMatchObject({enabled: true, service: services.bilibili, model: ''});
+        confirm();
+        await pending;
+        expect(fixture.state.freeReadingPending).toBe(false);
+        expect(fixture.state.readingMode).toBe(true);
+        expect(fixture.state.readingInitialAction).toBe('meaning');
+        expect(fixture.captureReading).toHaveBeenCalledTimes(1);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['service', 'model', 'inherited', 'enabled', 'disabled-selection'] as const)('protects existing choice: %s', async kind => {
+        const fixture = prepare();
+        if (kind === 'service') fixture.config.harness.service = services.deepseek;
+        if (kind === 'model') fixture.config.harness.model = 'chosen-model';
+        if (kind === 'inherited') fixture.config.service = services.deepseek;
+        if (kind === 'enabled') fixture.config.harness.enabled = true;
+        if (kind === 'disabled-selection') fixture.config.selectionTranslatorMode = 'disabled';
+        fixture.notifyConfig();
+        expect(fixture.state.canEnableFreeReading).toBe(false);
+        await fixture.state.enableFreeReading();
+        expect(fixture.requestConfigPatch).not.toHaveBeenCalled();
+        expect(fixture.captureReading).not.toHaveBeenCalled();
+    });
+
+    it('allows one-click explanation when translation already defaults to Bilibili without changing translation preferences', async () => {
+        const fixture = prepare();
+        fixture.config.service = services.bilibili;
+        const selectionService = fixture.config.selectionTranslationService;
+        const translationModel = fixture.config.model[services.bilibili];
+        fixture.notifyConfig();
+        await Vue.nextTick();
+        expect(fixture.state.canEnableFreeReading).toBe(true);
+        expect(fixture.config.harness.enabled).toBe(false);
+        await fixture.state.enableFreeReading();
+        expect(fixture.requestConfigPatch).toHaveBeenCalledTimes(1);
+        expect(Object.keys(fixture.requestConfigPatch.mock.calls[0][0])).toEqual(['harness']);
+        expect(fixture.config.harness).toMatchObject({enabled: true, service: services.bilibili, model: ''});
+        expect(fixture.config.service).toBe(services.bilibili);
+        expect(fixture.config.selectionTranslationService).toBe(selectionService);
+        expect(fixture.config.model[services.bilibili]).toBe(translationModel);
+        expect(fixture.state.readingMode).toBe(true);
+        expect(fixture.state.readingInitialAction).toBe('meaning');
+        expect(fixture.captureReading).toHaveBeenCalledTimes(1);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('does not open or request an explanation after a failed save', async () => {
+        const fixture = prepare();
+        fixture.requestConfigPatch.mockRejectedValue(new Error('storage failed'));
+        await fixture.state.enableFreeReading();
+        expect(fixture.state.freeReadingPending).toBe(false);
+        expect(fixture.state.readingMode).toBe(false);
+        expect(fixture.captureReading).not.toHaveBeenCalled();
+        expect(fixture.state.noticeMessage).toContain('失败');
+        expect(fixture.translateText).not.toHaveBeenCalled();
+    });
+
+    it('opens usage from usage-only preferences and preserves the normalized user action choices', async () => {
+        const fixture = prepare();
+        fixture.config.harness.actions = ['usage'];
+        fixture.config.harness.defaultAction = 'usage';
+        const {actions, defaultAction} = harness.normalizeHarnessPreferences(fixture.config.harness);
+        fixture.notifyConfig();
+        await Vue.nextTick();
+        fixture.state.snapshot = {text: fixture.text, range: {}, parts: [{kind: 'text', text: fixture.text}]};
+        fixture.state.selectedText = fixture.text;
+        fixture.state.showTooltip = true;
+        fixture.state.translationResult = '练习带来进步。';
+        fixture.state.activeContentRequest = {text: fixture.text, generation: 1, sourceLanguage: 'auto', targetLanguage: 'zh-Hans'};
+        await fixture.state.enableFreeReading();
+        expect(fixture.requestConfigPatch).toHaveBeenCalledTimes(1);
+        expect(fixture.requestConfigPatch.mock.calls[0][0].harness).toMatchObject({actions, defaultAction});
+        expect(fixture.config.harness.actions).toEqual(actions);
+        expect(fixture.config.harness.defaultAction).toBe(defaultAction);
+        expect(fixture.state.readingMode).toBe(true);
+        expect(fixture.state.readingInitialAction).toBe('usage');
+        expect(fixture.captureReading).toHaveBeenCalledTimes(1);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('temporarily falls back from grammar when free explanation is enabled without changing saved actions or default', async () => {
+        const fixture = prepare();
+        fixture.config.harness.defaultAction = 'grammar';
+        const storedActions = [...fixture.config.harness.actions];
+        fixture.notifyConfig();
+        await Vue.nextTick();
+        fixture.state.snapshot = {text: fixture.text, range: {}, parts: [{kind: 'text', text: fixture.text}]};
+        fixture.state.selectedText = fixture.text;
+        fixture.state.showTooltip = true;
+        fixture.state.translationResult = '练习带来进步。';
+        fixture.state.activeContentRequest = {text: fixture.text, generation: 1, sourceLanguage: 'auto', targetLanguage: 'zh-Hans'};
+        await fixture.state.enableFreeReading();
+        expect(fixture.config.harness.defaultAction).toBe('grammar');
+        expect(fixture.config.harness.actions).toEqual(storedActions);
+        expect(fixture.state.readingActions.map((action: {id: string}) => action.id)).toEqual(['meaning', 'usage']);
+        expect(fixture.state.readingMode).toBe(true);
+        expect(fixture.state.readingInitialAction).toBe('meaning');
+        expect(fixture.captureReading).toHaveBeenCalledTimes(1);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('filters an inherited Bilibili service and restores all saved actions and default after switching to a general AI', async () => {
+        const fixture = prepare();
+        fixture.config.service = services.bilibili;
+        fixture.config.harness.enabled = true;
+        fixture.config.harness.defaultAction = 'grammar';
+        const storedActions = [...fixture.config.harness.actions];
+        fixture.notifyConfig();
+        await Vue.nextTick();
+        expect(fixture.state.readingService).toBe(services.bilibili);
+        expect(fixture.state.readingActions.map((action: {id: string}) => action.id)).toEqual(['meaning', 'usage']);
+        expect(fixture.state.readingDefaultAction).toBe('meaning');
+        fixture.state.snapshot = {text: fixture.text, range: {}, parts: [{kind: 'text', text: fixture.text}]};
+        fixture.state.selectedText = fixture.text;
+        fixture.state.showTooltip = true;
+        fixture.state.openReading('grammar');
+        expect(fixture.state.readingMode).toBe(false);
+        expect(fixture.captureReading).not.toHaveBeenCalled();
+        fixture.config.service = services.deepseek;
+        fixture.notifyConfig();
+        await Vue.nextTick();
+        expect(fixture.state.readingActions.map((action: {id: string}) => action.id)).toEqual(['meaning', 'grammar', 'usage', 'practice']);
+        expect(fixture.state.readingDefaultAction).toBe('grammar');
+        expect(fixture.config.harness.defaultAction).toBe('grammar');
+        expect(fixture.config.harness.actions).toEqual(storedActions);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('preserves the selected card and reports failure after its optimistic config is rolled back before rejection', async () => {
+        const fixture = prepare();
+        const originalPreferences = fixture.config.harness;
+        const selection = fixture.state.snapshot;
+        let reject!: (error: Error) => void;
+        fixture.requestConfigPatch.mockImplementation(patch => {
+            Object.assign(fixture.config, patch);
+            fixture.notifyConfig();
+            return new Promise<void>((_resolve, fail) => { reject = fail; });
+        });
+        const pending = fixture.state.enableFreeReading();
+        await Vue.nextTick();
+        expect(fixture.config.harness.enabled).toBe(true);
+        expect(fixture.state.freeReadingPending).toBe(true);
+        fixture.config.harness = originalPreferences;
+        fixture.notifyConfig();
+        await Vue.nextTick();
+        expect(fixture.state.snapshot).toBe(selection);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.state.readingMode).toBe(false);
+        reject(new Error('storage failed'));
+        await pending;
+        expect(fixture.config.harness.enabled).toBe(false);
+        expect(fixture.state.snapshot).toBe(selection);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.state.freeReadingPending).toBe(false);
+        expect(fixture.state.readingMode).toBe(false);
+        expect(fixture.state.noticeMessage).toContain('失败');
+        expect(fixture.captureReading).not.toHaveBeenCalled();
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('waits for initial config hydration and keeps the restored inherited AI service', async () => {
+        let hydrate!: () => void;
+        const fixture = prepare(new Promise<void>(resolve => { hydrate = resolve; }));
+        const pending = fixture.state.enableFreeReading();
+        await Vue.nextTick();
+        expect(fixture.requestConfigPatch).not.toHaveBeenCalled();
+        fixture.config.service = services.deepseek;
+        fixture.notifyConfig();
+        hydrate();
+        await pending;
+        expect(fixture.requestConfigPatch).not.toHaveBeenCalled();
+        expect(fixture.config.service).toBe(services.deepseek);
+        expect(fixture.config.harness.enabled).toBe(false);
+        expect(fixture.state.readingMode).toBe(false);
+        expect(fixture.captureReading).not.toHaveBeenCalled();
+        expect(fixture.state.freeReadingPending).toBe(false);
+    });
+
+    it.each([false, true])('builds the patch from restored preferences and keeps selection whether the hydration echo flushes first (%s)', async echoBeforeReady => {
+        let hydrate!: () => void;
+        const fixture = prepare(new Promise<void>(resolve => { hydrate = resolve; }));
+        const selection = fixture.state.snapshot;
+        const pending = fixture.state.enableFreeReading();
+        await Vue.nextTick();
+        const restored = harness.normalizeHarnessPreferences({...fixture.config.harness,
+            actions: ['meaning', 'usage'], defaultAction: 'usage', contextMode: 'selection', learningLevel: 'advanced',
+            explanationDepth: 'detailed', systemPrompt: 'Restored system prompt', actionPrompts: {...fixture.config.harness.actionPrompts, usage: 'Restored usage prompt'},
+        });
+        fixture.config.harness = restored;
+        fixture.notifyConfig();
+        if (echoBeforeReady) await Vue.nextTick();
+        expect(fixture.state.snapshot).toBe(selection);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.state.freeReadingPending).toBe(true);
+        expect(fixture.requestConfigPatch).not.toHaveBeenCalled();
+        expect(fixture.captureReading).not.toHaveBeenCalled();
+        hydrate();
+        await pending;
+        expect(fixture.requestConfigPatch).toHaveBeenCalledTimes(1);
+        expect(fixture.requestConfigPatch.mock.calls[0][0].harness).toEqual({...restored, enabled: true, service: services.bilibili, model: ''});
+        expect(fixture.config.harness).toEqual({...restored, enabled: true, service: services.bilibili, model: ''});
+        expect(fixture.state.snapshot).toBe(selection);
+        expect(fixture.state.readingMode).toBe(true);
+        expect(fixture.state.readingInitialAction).toBe('usage');
+        expect(fixture.captureReading).toHaveBeenCalledTimes(1);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['service', 'model', 'enabled'] as const)('does not overwrite a protected %s choice restored during hydration', async kind => {
+        let hydrate!: () => void;
+        const fixture = prepare(new Promise<void>(resolve => { hydrate = resolve; }));
+        const pending = fixture.state.enableFreeReading();
+        await Vue.nextTick();
+        if (kind === 'service') fixture.config.harness.service = services.deepseek;
+        if (kind === 'model') fixture.config.harness.model = 'Restored paid model';
+        if (kind === 'enabled') fixture.config.harness.enabled = true;
+        fixture.notifyConfig();
+        const restored = JSON.stringify(fixture.config.harness);
+        await Vue.nextTick();
+        hydrate();
+        await pending;
+        expect(fixture.requestConfigPatch).not.toHaveBeenCalled();
+        expect(JSON.stringify(fixture.config.harness)).toBe(restored);
+        expect(fixture.state.readingMode).toBe(false);
+        expect(fixture.captureReading).not.toHaveBeenCalled();
+        expect(fixture.state.freeReadingPending).toBe(false);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['close', 'selection', 'unmount', 'external-preference'] as const)('rejects a delayed save after %s', async reason => {
+        const fixture = prepare();
+        let confirm!: () => void;
+        fixture.requestConfigPatch.mockImplementation(patch => {
+            Object.assign(fixture.config, patch);
+            fixture.notifyConfig();
+            return new Promise<void>(resolve => { confirm = resolve; });
+        });
+        const pending = fixture.state.enableFreeReading();
+        await Vue.nextTick();
+        if (reason === 'close') fixture.state.hideAll();
+        if (reason === 'selection') {
+            fixture.state.snapshot = {...fixture.state.snapshot, text: 'A new selected sentence.'};
+            fixture.state.selectedText = 'A new selected sentence.';
+        }
+        if (reason === 'unmount') fixture.unmount();
+        if (reason === 'external-preference') {
+            fixture.config.harness.explanationDepth = 'detailed';
+            fixture.notifyConfig();
+            await Vue.nextTick();
+        }
+        expect(fixture.state.freeReadingPending).toBe(true);
+        if (reason === 'selection') {
+            fixture.state.openReading('meaning');
+            expect(fixture.state.readingMode).toBe(false);
+            expect(fixture.captureReading).not.toHaveBeenCalled();
+        }
+        confirm();
+        await pending;
+        expect(fixture.state.freeReadingPending).toBe(false);
+        expect(fixture.state.readingMode).toBe(false);
+        expect(fixture.captureReading).not.toHaveBeenCalled();
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+});
 
 describe('selection card language configuration without header switches', () => {
     it.each([

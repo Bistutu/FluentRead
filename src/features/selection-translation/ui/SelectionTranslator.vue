@@ -1,6 +1,6 @@
 <!--
  * @file src/features/selection-translation/ui/SelectionTranslator.vue
- * 文件职责：实现划词翻译的主要页面组件，覆盖选区捕获、图标/小点/悬停/快捷键/仅右键菜单/直接弹出、原生菜单可信选区恢复与重复请求复用、翻译与词卡展示、朗读、收藏选中的单词/表达/句子、双语分享卡片、重试和关闭。
+ * 文件职责：实现划词翻译的主要页面组件，覆盖选区捕获、图标/小点/悬停/快捷键/仅右键菜单/直接弹出、原生菜单可信选区恢复与重复请求复用、翻译与词卡展示、免费 AI 讲解的显式启用、朗读、收藏选中的单词/表达/句子、双语分享卡片、重试和关闭。
  * 主要内容：相同译文保留原文且不重复展示；组件管理可信手势、已关闭选区与选择丢失宽限、继续阅读或复制原文时自动收起、请求 token、行内代码保护与纯文本安全渲染、按标签页页面缩放补偿的弹窗定位、空白拖动、边角缩放、主题；普通译文先于完整原文，单行可横向滚动的导航与右侧固定分享、收藏、关闭及更多操作把高度留给正文，次级菜单按可见窗口覆盖显示；指针移动按帧合并并在结束时提交最后位置，已定位卡片不重复读取选区几何；富文本 UTF-16 跟读偏移一次计算并复用；默认过滤同语言选区，按配置开放中英反向入口，翻译方向始终按现有语言配置判断；统一卡片默认显示翻译并以同一导航进入学习；首次定位后保持弹窗锚点，手动尺寸下内容与播放状态变化只影响内部布局；闲置语音栏不占空间，自动卡生成与播放期间用独立临时高度保持外框，停止恢复自然尺寸；学习短回答自然收拢、长回答受高度上限约束，完整原文和译文按需对照并允许翻译继续完成；单词先展示原文与可用词卡，再补充辅助释义，以紧凑状态提示等待、未命中与网络失败；关闭或更换选区取消等待并阻止旧响应覆盖新结果；区分语音生成和播放，按实际音频时钟或浏览器词边界显示完整词高亮，并提供真实音频时间与前后 5 秒跳转。
  * 模块边界：组件只通过公共客户端和 runtime 消息触达后台，不直接持有 provider、IndexedDB 或 Offscreen 资源；纯选区算法在 core，活动 Range 通过回调交给 content/runtime 管理 modal 挂载所有权；扩展 PDF 文档页通过可选来源适配器复用同一卡片、标题和阅读上下文，来源失效时取消当前请求，词书协议独立维护；阅读依据的 DOM 锚点只属于当前选区，关闭、换区或卸载释放临时绘制和监听。
  -->
@@ -12,12 +12,14 @@
 
     <section v-if="showTooltip" ref="tooltip-ref" class="fr-translation-tooltip" :class="{ 'fr-dark-theme': isDarkTheme, 'fr-reading-tooltip': readingMode, 'fr-popup-manipulating': popupManipulating }" :data-placement="popupPlacement" :style="[tooltipScaleStyle, tooltipStyle]" role="dialog" aria-label="划词翻译结果" data-presentation="card" @pointerdown.stop="beginPopupGesture" @pointermove="movePopupGesture" @pointerup="stopPopupGesture" @pointercancel="stopPopupGesture" @lostpointercapture="stopPopupGesture">
       <div class="fr-study-navigation">
+        <img class="fr-tooltip-brand-icon" :src="selectionTranslatorIconUrl" alt="" aria-hidden="true" draggable="false" />
         <div class="fr-study-toolbar" role="group" aria-label="划词卡片内容" :title="isWordSelection ? '词典释义 · 按词性分类' : '先看译文，按需深入'" @focusin="handleStudyToolbarFocus">
           <button type="button" :aria-pressed="!readingMode" @click="openTooltip()">翻译</button>
           <template v-if="readingEnabled">
             <button v-for="action in readingActions" :key="action.id" type="button" :title="action.description" :aria-pressed="readingMode && !readingHistoryOnly && readingInitialAction === action.id" @click="openReading(action.id)">{{ action.id === 'grammar' ? '词性与句法' : action.label }}</button>
             <button v-if="!isPrivateContext" type="button" :aria-pressed="readingMode && readingHistoryOnly" @click="openReadingHistory">记录</button>
           </template>
+          <button v-else-if="canEnableFreeReading || freeReadingPending" type="button" :disabled="freeReadingPending" title="B站免费基础读懂/用法，无需 API Key；完整语法、练习和追问可切换 AI 服务" @click="enableFreeReading">{{ freeReadingPending ? '正在启用…' : '免费 AI 讲解' }}</button>
           <button v-else type="button" @click="openSelectionSettings">配置 AI 讲解</button>
         </div>
         <div ref="reading-tools-target" v-show="readingMode && !readingHistoryOnly" class="fr-study-reading-tools" />
@@ -38,7 +40,7 @@
         </div>
       </div>
       <div v-if="readingSelection" v-show="readingMode" class="fr-tooltip-content fr-reading-content">
-        <ReadingPanel ref="reading-panel-ref" :external-navigation="true" :tools-target="readingToolsTarget" @view-change="syncReadingView" :selection="readingSelection" :locate-evidence="locateReadingEvidence" :clear-evidence="clearReadingEvidence" :source-revision="readingSourceRevision" :check-evidence="checkReadingEvidence" :source-translation="{source: selectedText, text: translationResult, pending: isLoading, error}" :preferences="readingPreferences" :active="readingMode" :initial-action="readingInitialAction" :history-only="readingHistoryOnly" :source-language="effectiveSourceLanguage" :target-language="effectiveTargetLanguage" :playing-source-text="isPlaying && currentAudioKind === 'source' ? currentAudioText : ''" :model-revision="readingModelRevision" :vocabulary-enabled="config.vocabularyBookEnabled" :private-context="isPrivateContext" :animations="config.animations" @play-source="toggleAudio($event, 'source')" @source-change="stopAudio()" @resize="schedulePositionUpdate" />
+        <ReadingPanel ref="reading-panel-ref" :external-navigation="true" :tools-target="readingToolsTarget" @view-change="syncReadingView" :selection="readingSelection" :locate-evidence="locateReadingEvidence" :clear-evidence="clearReadingEvidence" :source-revision="readingSourceRevision" :check-evidence="checkReadingEvidence" :source-translation="{source: selectedText, text: translationResult, pending: isLoading, error}" :preferences="readingPreferences" :service="readingService" :active="readingMode" :initial-action="readingInitialAction" :history-only="readingHistoryOnly" :source-language="effectiveSourceLanguage" :target-language="effectiveTargetLanguage" :playing-source-text="isPlaying && currentAudioKind === 'source' ? currentAudioText : ''" :model-revision="readingModelRevision" :vocabulary-enabled="config.vocabularyBookEnabled" :private-context="isPrivateContext" :animations="config.animations" @play-source="toggleAudio($event, 'source')" @source-change="stopAudio()" @resize="schedulePositionUpdate" />
       </div>
       <div v-show="!readingMode" class="fr-tooltip-content" aria-live="polite">
         <div v-if="isLoading && !translationResult && !wordCard && !wordCardError && !isWordSelection" class="fr-loading-state"><span :class="['fr-loading-spinner', { 'fr-static': !config.animations }]" aria-hidden="true" /><span>正在查询…</span></div>
@@ -178,7 +180,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, wa
 import browser from 'webextension-polyfill';
 import {addRuntimeMessageListener} from '@/src/platform/browser/runtimeMessages';
 import {openShareCard, isShareCardMounted} from '@/src/features/share-card/public';
-import { config, subscribeConfig } from '@/src/services/config/store';
+import { config, configReady, requestConfigPatch, subscribeConfig } from '@/src/services/config/store';
 import { translateText, translateTextBatch } from '@/src/app/translation/client';
 import {detectlang, shouldSkipChineseSelection, shouldSkipTranslationForTarget} from '@/src/core/language/detect';
 import { matchesConfiguredHotkey, matchesModifierOnlyHotkey, resolveConfiguredHotkey } from '@/src/core/hotkey';
@@ -194,7 +196,8 @@ import { setSelectionContextMenuHandler } from '@/src/features/selection-transla
 import {normalizeSelectionPageZoom, SELECTION_PAGE_ZOOM_CHANGED, SELECTION_PAGE_ZOOM_REQUEST} from '@/src/features/selection-translation/pageZoom';
 import { VOCABULARY_BOOK_CHANGED_MESSAGE, VOCABULARY_BOOK_MESSAGE, type VocabularyBookResponse } from '@/src/features/vocabulary/protocol';
 import {ReadingPanel, captureReadingSelection, createReadingEvidenceAnchor, type ReadingEvidenceAnchor, type ReadingSelection} from '@/src/features/reading-assistant/public';
-import {HARNESS_ACTIONS, getHarnessModelCacheKey, normalizeHarnessPreferences, type HarnessActionId} from '@/src/core/config/harness';
+import {HARNESS_ACTIONS, getHarnessModelCacheKey, isReadingActionSupported, isReadingService, normalizeHarnessPreferences, type HarnessActionId} from '@/src/core/config/harness';
+import {services} from '@/src/core/config/catalog';
 import {useUiI18n} from '@/src/ui/i18n';
 
 const props = defineProps<{
@@ -221,6 +224,7 @@ interface ContextMenuSelection { snapshot: SelectionSnapshot; rangeText: string;
 const tooltipRef = useTemplateRef<HTMLElement>('tooltip-ref');
 const readingPanelRef = useTemplateRef<InstanceType<typeof ReadingPanel>>('reading-panel-ref');
 const readingToolsTarget = useTemplateRef<HTMLElement>('reading-tools-target');
+const selectionTranslatorIconUrl = browser.runtime.getURL('/icon/128.png');
 const selectedText = ref('');
 const manuallyRequestedSelection = ref(false);
 const activeContentRequest = ref<SelectionContentRequest | null>(null);
@@ -236,6 +240,14 @@ const readingMode = ref(false);
 const readingInitialAction = ref<HarnessActionId>();
 const readingHistoryOnly = ref(false);
 const readingSelection = ref<ReadingSelection | null>(null);
+const freeReadingPending = ref(false);
+let componentDisposed = false;
+let freeReadingEnable: {selection: SelectionSnapshot; text: string; previousPreferences: string; nextPreferences: string; cancelled: boolean} | undefined;
+function cancelFreeReadingEnable(): void { freeReadingEnable = undefined; freeReadingPending.value = false; }
+function invalidateFreeReadingEnable(): void {
+  // 保存不能取消，但失去选区所有权立即阻止迟到打开；确认前仍锁住乐观启用的讲解入口。
+  if (freeReadingEnable) freeReadingEnable.cancelled = true;
+}
 let readingEvidenceAnchor: ReadingEvidenceAnchor | undefined;
 const readingSourceRevision = ref(0);
 let readingEvidenceScrollFrame: number | undefined;
@@ -273,6 +285,9 @@ const tooltipScaleStyle = computed(() => ({
   maxHeight: `${Math.min(520, Math.max(1, viewportSize.value.height - 20) / popupScale.value)}px`,
 }));
 const snapshot = ref<SelectionSnapshot | null>(null);
+watch(snapshot, current => {
+  if (freeReadingEnable && current !== freeReadingEnable.selection) invalidateFreeReadingEnable();
+}, {flush: 'sync'});
 const isPlaying = ref(false);
 const isPreparingAudio = ref(false);
 const audioProgress = ref<SpeechProgress | null>(null);
@@ -368,8 +383,22 @@ watch(() => {
   selectionConfigVersion.value;
   return getHarnessModelCacheKey(config);
 }, () => { readingModelRevision.value += 1; });
-const readingEnabled = computed(() => selectionSettings.value.mode !== 'disabled' && readingPreferences.value.enabled);
-const readingActions = computed(() => HARNESS_ACTIONS.filter(action => readingPreferences.value.actions.includes(action.id)));
+const readingEnabled = computed(() => selectionSettings.value.mode !== 'disabled' && readingPreferences.value.enabled && !freeReadingPending.value);
+const canEnableFreeReading = computed(() => {
+  selectionConfigVersion.value;
+  // 新免费入口依赖扩展流式端口；不改 userscript 已有阅读配置。显式 AI 偏好不能被替换，默认B站可启用同一服务。
+  return import.meta.env.BROWSER !== 'userscript' && selectionSettings.value.mode !== 'disabled' && !readingPreferences.value.enabled
+    && !config.harness.service.trim() && !config.harness.model.trim()
+    && (config.service === services.bilibili || !isReadingService(config.service, config.customOpenAIProviders));
+});
+const readingService = computed(() => {
+  selectionConfigVersion.value;
+  return readingPreferences.value.service || config.service;
+});
+const readingActions = computed(() => HARNESS_ACTIONS.filter(action => readingPreferences.value.actions.includes(action.id) && isReadingActionSupported(readingService.value, action.id)));
+// 仅临时选择当前服务可用的动作；切换服务不会改写用户保存的动作和默认值。
+const readingDefaultAction = computed(() => readingActions.value.find(action => action.id === readingPreferences.value.defaultAction)?.id
+  || readingActions.value.find(action => action.id === 'meaning')?.id || readingActions.value[0]?.id || 'meaning');
 
 watch(() => snapshot.value?.range ?? null, (range) => {
   props.onSelectionRangeChange?.(range);
@@ -973,13 +1002,41 @@ async function openSelectionSettings(): Promise<void> {
   catch { showNotice('请从扩展设置进入划词翻译'); }
 }
 
+async function enableFreeReading(): Promise<void> {
+  if (componentDisposed || freeReadingPending.value || !canEnableFreeReading.value || !snapshot.value || !showTooltip.value) return;
+  const operation = {selection: snapshot.value, text: snapshot.value.text, previousPreferences: '', nextPreferences: '', cancelled: false};
+  freeReadingEnable = operation;
+  freeReadingPending.value = true;
+  const isCurrent = () => !componentDisposed && !operation.cancelled && freeReadingEnable === operation
+    && snapshot.value === operation.selection && snapshot.value.text === operation.text
+    && selectedText.value === operation.text && showTooltip.value;
+  try {
+    // 初次水合可能带回用户已有的 AI 选择；读取完成后再确认资格，不能用默认草稿覆盖它。
+    await configReady;
+    if (!isCurrent() || !canEnableFreeReading.value) return;
+    const preferences = normalizeHarnessPreferences({...config.harness, enabled: true, service: services.bilibili, model: ''}, config.customOpenAIProviders);
+    operation.previousPreferences = JSON.stringify(readingPreferences.value);
+    operation.nextPreferences = JSON.stringify(preferences);
+    await requestConfigPatch({harness: preferences}, browser.runtime.sendMessage.bind(browser.runtime));
+    await nextTick();
+    if (!isCurrent() || JSON.stringify(readingPreferences.value) !== operation.nextPreferences) return;
+    // 乐观配置期间不能触发讲解；确认成功且选区仍归本次操作所有才打开用户默认学习动作。
+    cancelFreeReadingEnable();
+    openReading(readingDefaultAction.value);
+  } catch {
+    if (isCurrent()) showNotice('启用免费 AI 讲解失败，请重试或从设置配置');
+  } finally {
+    if (freeReadingEnable === operation) cancelFreeReadingEnable();
+  }
+}
+
 function syncReadingView(view: {action: HarnessActionId; history: boolean}): void {
   readingInitialAction.value = view.action;
   readingHistoryOnly.value = view.history;
 }
 
-function openReading(action: HarnessActionId = readingPreferences.value.defaultAction): void {
-  if (!readingPreferences.value.actions.includes(action)) return;
+function openReading(action: HarnessActionId = readingDefaultAction.value): void {
+  if (!readingActions.value.some(item => item.id === action)) return;
   readingHistoryOnly.value = false;
   readingInitialAction.value = action;
   openReadingCard();
@@ -1760,6 +1817,7 @@ function translateSelectionFromContextMenu(selectionText?: string): boolean {
 
 function closeTooltip(): void { hideAll(); }
 function hideAll(): void {
+  invalidateFreeReadingEnable();
   if (import.meta.env.BROWSER !== 'userscript') clearContextMenuSelection();
   resetPopupGeometry();
   // 保留关闭时的选区身份，避免按钮保留原生选区时 pointerup / selectionchange 再次打开卡片。
@@ -2057,7 +2115,15 @@ onMounted(() => {
     tooltipResizeObserver = new ResizeObserver(schedulePositionUpdate);
     tooltipResizeObserver.observe(tooltip);
   }, { flush: 'post' });
-  watch(() => JSON.stringify(readingPreferences.value), () => { hideAll(); });
+  watch(() => JSON.stringify(readingPreferences.value), (nextPreferences, previousPreferences) => {
+    // 水合时使用最新且仍有资格的偏好；保存的准确回声与失败回滚保留选区，其他偏好更新关闭旧请求。
+    const operation = freeReadingEnable;
+    if (operation && !operation.cancelled && showTooltip.value && snapshot.value === operation.selection
+      && ((!operation.nextPreferences && canEnableFreeReading.value)
+        || (previousPreferences === operation.previousPreferences && nextPreferences === operation.nextPreferences)
+        || (previousPreferences === operation.nextPreferences && nextPreferences === operation.previousPreferences))) return;
+    hideAll();
+  });
   watch(() => [
     selectionSettings.value.theme,
     selectionSettings.value.trigger,
@@ -2119,6 +2185,8 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  componentDisposed = true;
+  invalidateFreeReadingEnable();
   disposeReadingEvidence();
   zoomRequestGeneration += 1;
   releaseContextMenuHandler?.();
@@ -2187,6 +2255,7 @@ onBeforeUnmount(() => {
 .fr-reading-content > :deep(.fr-reading) { flex: 1; height: auto; }
 .fr-pos-label { display:flex; gap:6px; align-items:center; }
 .fr-study-navigation { flex: none; display: flex; align-items: center; gap: 3px; padding: 4px 8px; border-bottom: 1px solid var(--fr-border, #eeedf0); }
+.fr-tooltip-brand-icon { display:block; flex:none; width:18px; height:18px; border-radius:4px; object-fit:contain; opacity:1; pointer-events:none; }
 .fr-study-toolbar { flex: 1; min-width: 0; display: flex; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior: contain; scrollbar-width: thin; gap: 3px; }
 .fr-study-reading-tools { flex: none; }
 .fr-study-toolbar button { flex:none; white-space:nowrap; font:inherit; font-size:11px; border:0; background:transparent; color:#62616c; border-radius:5px; padding:5px 8px; cursor:pointer; }

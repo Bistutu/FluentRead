@@ -7,7 +7,7 @@
 import {config} from '@/src/services/config/store';
 import {translateFreeTextChunks} from './freeTextChunks';
 import {resolveTranslationLanguages} from '@/src/core/translation/languages';
-import {BILIBILI_FREE_TRANSLATION_DOMAIN} from '@/src/core/config/freeTranslation';
+import {BILIBILI_FREE_TRANSLATION_DOMAIN, BILIBILI_FREE_TRANSLATION_MODEL} from '@/src/core/config/freeTranslation';
 import {translationLanguageOptions} from '@/src/core/language/catalog';
 import {serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
 import {getTranslationGlossarySourceText, getTranslationProviderConfig, type TranslationProviderRequest} from '@/src/services/translation/requestSnapshot';
@@ -15,7 +15,7 @@ import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
 import {createHttpStatusError, readJsonResponse} from '@/src/platform/http/errors';
 
 export const BILIBILI_FREE_TRANSLATION_URL = `https://${BILIBILI_FREE_TRANSLATION_DOMAIN}/v1/chat/completions`;
-export const BILIBILI_FREE_TRANSLATION_MODEL = 'Index-Translate-35B-A3B';
+export {BILIBILI_FREE_TRANSLATION_MODEL};
 const MAX_CHUNK_CODEPOINTS = 2000;
 
 function checkAbort(signal?: AbortSignal): void {

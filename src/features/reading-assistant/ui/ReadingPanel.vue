@@ -2,7 +2,7 @@
  * @file src/features/reading-assistant/ui/ReadingPanel.vue
  * 文件职责：在划词卡内以内容为主呈现学习回答，复用父卡片导航、把次级操作送入顶栏固定槽、按需展开的原文译文对照与连续追问。
  * 主要内容：相同译文保留原文且不重复展示；按原文与配置复用各学习动作的已完成回答，显式重新生成；历史问答按轮次与问题摘要逐条展开，区分当前问答与旧回答，切换回答时收起历史；统一导航的学习卡默认收起原文与匹配译文，查看原文后可返回当前阅读，短回答不再保留一屏空白；独立面板仍在滚动区顶部展示对照内容，进入回答时滚过原文，译文晚到时保持回答位置，关闭局部浏览器滚动锚定以避免流式格式变化移动阅读位置；流式正文只更新内部滚动内容，回答出现或消失及状态变化才通知父卡片检查布局；重复点击当前动作保留位置和待发送追问；把原文朗读和 30 天问答记录收进次级操作，在回答下方区分原文收藏与学习笔记；原文收藏仅保存对应译文，笔记保存不依赖 AI 参考开关，让多语言动作标签按空间换行，统一呈现 Markdown，以局部主题变量保持正文、状态和操作文字的对比度，并以代次隔离过期请求；冻结每轮许可原文身份，显示就近引用和来源状态，历史恢复保留引文而不授予当前网页定位权限，回写前核查页面归属。
- * 模块边界：不持有模型密钥、不扫描页面、不直接请求供应商；记录由后台会话仓库保存，父划词组件负责选区、位置和 Shadow UI 生命周期。
+ * 模块边界：不持有模型密钥、不扫描页面、不直接请求供应商；双布局复用追问节点而不加容器，保留父 scoped 样式、Vue 输入法指令及键盘边界；按有效服务限制B站为基础读懂/用法，隐藏且拒绝未验证的追问，临时默认动作不改保存偏好；历史回答保留原动作与追问，按当前服务限制重试/再生成，父导航回写不重新请求；记录由后台会话仓库保存，父划词组件负责选区、位置和 Shadow UI 生命周期。
  -->
 <template>
   <Teleport v-if="externalNavigation && toolsTarget && active && !showRecords" :to="toolsTarget">
@@ -79,9 +79,9 @@
       <p v-if="busy && (!externalNavigation || !answer)" class="fr-reading-status" role="status"><span class="fr-reading-pulse" :class="{'fr-reading-static': !animations}" aria-hidden="true" /><span data-i18n-ignore>{{ t("reading.generatingAction", {action: translateLegacy(actionLabel)}) }}</span><button type="button" @click="stop">停止</button></p>
       <div v-if="error" class="fr-reading-error" role="alert">
         <p>{{ error }}</p>
-        <div><button type="button" @click="retry">重试</button><button type="button" @click="openSettings('settings-services')">设置模型</button></div>
+        <div><button type="button" :disabled="!retrySupported" :title="retrySupported ? undefined : generationHint" @click="retry">重试</button><button type="button" @click="openSettings('settings-services')">设置模型</button></div>
       </div>
-      <p v-if="stopped && !busy" class="fr-reading-status" role="status">已停止<button type="button" @click="retry">继续生成</button></p>
+      <p v-if="stopped && !busy" class="fr-reading-status" role="status">已停止<button type="button" :disabled="!retrySupported" :title="retrySupported ? undefined : generationHint" @click="retry">继续生成</button></p>
       <div v-if="answer" class="fr-reading-answer" :aria-busy="busy">
         <ReadingAnswer :text="answer" :source-text="activeText" :evidence-sources="evidenceSources" :locate-evidence="evidenceLocator" :evidence-state="evidenceState" />
       </div>
@@ -93,24 +93,11 @@
       <button v-if="!privateContext && !stopped && !error" type="button" data-i18n-ignore :disabled="remembering || remembered" :title="t('reading.saveNoteTitle')" @click="rememberLearning">{{ t(remembered ? 'reading.noteSavedButton' : 'reading.saveNote') }}</button>
       <button v-if="remembered" type="button" data-i18n-ignore @click="openLearningMemory">{{ t('reading.viewNotes') }}</button>
     </footer>
-      <template v-if="externalNavigation">
-        <form class="fr-reading-followup" @submit.prevent="ask">
-          <input v-model="question" :disabled="busy" maxlength="1000" aria-label="继续追问" :placeholder="intent === 'practice' ? '写下你的练习答案…' : '继续问这句话…'" @keydown.stop @keyup.stop @input="feedback = ''" />
-          <button type="submit" :disabled="busy || !question.trim()" aria-label="发送追问" title="发送追问">↑</button>
-        </form>
-        <p v-if="feedback" class="fr-reading-feedback" role="status">{{ feedback }}</p>
-        <p v-if="sessionWarning" class="fr-reading-feedback" role="status">{{ sessionWarning }}</p>
-      </template>
+      <ReadingFollowUp v-if="externalNavigation" />
       </div>
     </div>
-    <template v-if="!externalNavigation">
-    <form class="fr-reading-followup" @submit.prevent="ask">
-      <input v-model="question" :disabled="busy" maxlength="1000" aria-label="继续追问" :placeholder="intent === 'practice' ? '写下你的练习答案…' : '继续问这句话…'" @keydown.stop @keyup.stop @input="feedback = ''" />
-      <button type="submit" :disabled="busy || !question.trim()" aria-label="发送追问" title="发送追问">↑</button>
-    </form>
-    <p v-if="feedback" class="fr-reading-feedback" role="status">{{ feedback }}</p>
-    <p v-if="sessionWarning" class="fr-reading-feedback" role="status">{{ sessionWarning }}</p>
-    </template>
+    <ReadingFollowUp v-if="!externalNavigation" />
+    <p v-if="!followUpSupported || !actionSupported" class="fr-reading-feedback">{{ generationHint }}<button type="button" @click="openSettings()">{{ followUpSupported ? '设置' : '切换服务' }}</button></p>
     </template>
   </div>
 </template>
@@ -119,9 +106,9 @@
 import {hasDistinctTranslation} from '@/src/core/translation/result';
 import {useUiI18n} from "@/src/ui/i18n";
 const {t, translateLegacy} = useUiI18n();
-import {computed, h, nextTick, onBeforeUnmount, onMounted, ref, watch, withKeys, withModifiers} from 'vue';
+import {computed, getCurrentInstance, h, nextTick, onBeforeUnmount, onMounted, ref, vModelText, watch, withCtx, withDirectives, withKeys, withModifiers, type VNodeChild} from 'vue';
 import browser from 'webextension-polyfill';
-import {HARNESS_ACTIONS, type HarnessActionId, type HarnessPreferences} from '@/src/core/config/harness';
+import {HARNESS_ACTIONS, isReadingActionSupported, isReadingFollowUpSupported, type HarnessActionId, type HarnessPreferences} from '@/src/core/config/harness';
 import ReadingAnswer from './ReadingAnswer.vue';
 import type {ReadingSelection, ReadingTurn} from '../types';
 import {buildReadingEvidence, readingEvidenceText, type ReadingEvidenceSource} from '@/src/core/harness/evidence';
@@ -135,6 +122,7 @@ import {detectlang} from '@/src/core/language/detect';
 const props = defineProps<{
   selection: ReadingSelection;
   preferences: HarnessPreferences;
+  service?: string;
   active: boolean;
   initialAction?: HarnessActionId;
   historyOnly?: boolean;
@@ -154,7 +142,16 @@ const props = defineProps<{
   sourceTranslation?: {source: string; text: string; pending?: boolean; error?: string};
 }>();
 const emit = defineEmits<{resize: []; 'play-source': [text: string]; 'source-change': [text: string]; 'view-change': [view: {action: HarnessActionId; history: boolean}]}>();
-const intent = ref<HarnessActionId>(props.initialAction || props.preferences.defaultAction);
+const effectiveService = computed(() => props.service || props.preferences.service);
+const actions = computed(() => HARNESS_ACTIONS.filter(action => props.preferences.actions.includes(action.id) && isReadingActionSupported(effectiveService.value, action.id)));
+const effectiveDefaultAction = computed(() => actions.value.find(action => action.id === props.preferences.defaultAction)?.id
+  || actions.value.find(action => action.id === 'meaning')?.id || actions.value[0]?.id || 'meaning');
+const followUpSupported = computed(() => isReadingFollowUpSupported(effectiveService.value));
+const basicReadingHint = 'B站仅提供基础讲解，完整语法、练习和追问可切换 AI 服务';
+const availableInitialAction = (action?: HarnessActionId) => actions.value.some(item => item.id === action) ? action! : effectiveDefaultAction.value;
+const intent = ref<HarnessActionId>(availableInitialAction(props.initialAction));
+const actionSupported = computed(() => actions.value.some(action => action.id === intent.value));
+const generationHint = computed(() => !actionSupported.value && isReadingActionSupported(effectiveService.value, intent.value) ? '当前动作未启用，请在设置中开启。' : basicReadingHint);
 const wholeSentence = ref(false);
 const historicalText = ref('');
 const historicalContext = ref('');
@@ -174,10 +171,10 @@ watch(() => props.sourceRevision, () => { props.clearEvidence?.(); if (busy.valu
 const activeTranslation = computed(() => props.sourceTranslation
   && props.sourceTranslation.source.replace(/\s+/gu, ' ').trim() === activeText.value.replace(/\s+/gu, ' ').trim()
   ? props.sourceTranslation : undefined);
-const actions = computed(() => HARNESS_ACTIONS.filter(action => props.preferences.actions.includes(action.id)));
 const actionLabel = computed(() => HARNESS_ACTIONS.find(action => action.id === intent.value)?.label ?? '理解');
 const question = ref('');
 const currentQuestion = ref('');
+const retrySupported = computed(() => actionSupported.value && (!currentQuestion.value || followUpSupported.value));
 const answer = ref('');
 const busy = ref(false);
 const stopped = ref(false);
@@ -331,7 +328,7 @@ const ReadingTools = () => {
     ]),
     h('div', {class: 'fr-reading-tool-list', onClick: closeToolsAfterAction}, [
       button(t('reading.viewSource'), showSource, {'data-i18n-ignore': '', onClick: (event: MouseEvent) => { event.stopPropagation(); showSource(); }}),
-      button('重新生成', regenerate, {disabled: busy.value}),
+      button('重新生成', regenerate, {disabled: busy.value || !actionSupported.value, title: actionSupported.value ? undefined : generationHint.value}),
       button(props.playingSourceText === activeText.value ? '停止朗读' : '朗读原文', () => emit('play-source', activeText.value), {'aria-pressed': props.playingSourceText === activeText.value}),
       !historicalText.value && props.selection.sentence !== props.selection.text && !wholeSentence.value ? button('理解整句', expandSentence) : null,
       canSaveWord.value && (busy.value || !answer.value) ? button(saved.value ? '已收藏原文' : '收藏原文', saveWord, {disabled: saving.value || saved.value, title: t('reading.saveSourceTitle')}) : null,
@@ -343,6 +340,18 @@ const ReadingTools = () => {
     ]),
   ]);
 };
+// 两种布局只挂载一组追问节点；沿用父渲染上下文，保留 Fragment 子节点的 scoped 样式与 v-model 输入法行为。
+const ReadingFollowUp = withCtx(() => {
+  const stopKey = (event: Event) => event.stopPropagation();
+  const feedbackLine = (text: string) => text ? h('p', {class: 'fr-reading-feedback', role: 'status'}, text) : null;
+  return [followUpSupported.value ? h('form', {class: 'fr-reading-followup', onSubmit: withModifiers(ask, ['prevent'])}, [
+    withDirectives(h('input', {
+      'onUpdate:modelValue': (value: string) => { question.value = value; }, disabled: busy.value || !actionSupported.value, maxlength: '1000', 'aria-label': '继续追问',
+      placeholder: intent.value === 'practice' ? '写下你的练习答案…' : '继续问这句话…', onKeydown: stopKey, onKeyup: stopKey, onInput: () => { feedback.value = ''; },
+    }), [[vModelText, question.value]]),
+    h('button', {type: 'submit', disabled: busy.value || !actionSupported.value || !question.value.trim(), 'aria-label': '发送追问', title: '发送追问'}, '↑'),
+  ]) : null, feedbackLine(feedback.value), feedbackLine(sessionWarning.value)];
+}, getCurrentInstance()) as () => VNodeChild;
 const previousAnswers = ref<Array<ReadingTurn & {id: string; intent: HarnessActionId; status: HarnessStoredTurnStatus; evidenceSources?: readonly ReadingEvidenceSource[]}>>([]);
 const currentTurnKey = ref('');
 const priorAnswers = computed(() => previousAnswers.value.filter(turn => turn.id !== currentTurnKey.value));
@@ -438,6 +447,7 @@ function restoreAnswer(cached: CachedAnswer): void {
   resetReadingPosition();
 }
 async function run(prompt: string, turns: ReadingTurn[], retrying = false): Promise<void> {
+  if (!actionSupported.value || (prompt && !followUpSupported.value)) { feedback.value = generationHint.value; return; }
   const requestAnchor = prompt ? (retrying ? lastAnchorTurnId : anchorTurnId) : '';
   if (!retrying) archiveAnswer();
   cancelRequest();
@@ -510,7 +520,7 @@ function chooseAction(action: HarnessActionId): void {
 }
 function startAction(action: HarnessActionId, preserveHistory = true): void {
   closeTools();
-  if (!props.preferences.actions.includes(action)) return;
+  if (!actions.value.some(item => item.id === action)) return;
   showRecords.value = false;
   if (preserveHistory && action === intent.value && busy.value) return;
   if (preserveHistory) archiveAnswer();
@@ -547,8 +557,7 @@ async function restoreSession(id: string): Promise<void> {
   // 仓库存的动作名称用于记录展示，不能在重试时变成用户的追问。
   currentQuestion.value = latest?.question === actionLabelFor(latest?.intent || session.intent) ? '' : latest?.question || '';
   answer.value = latest?.answer || '';
-  const restoredIntent = latest?.intent || session.intent;
-  intent.value = props.preferences.actions.includes(restoredIntent) ? restoredIntent : props.preferences.defaultAction;
+  intent.value = latest?.intent || session.intent;
   model.value = latest?.model || '';
   memoryCount.value = 0;
   remembered.value = false;
@@ -563,16 +572,17 @@ async function restoreSession(id: string): Promise<void> {
     const before = session.turns.slice(0, index).filter(item => item.answer.trim()).slice(-4).map(item => ({question: item.question, answer: item.answer}));
     actionCache.set(turn.intent, {evidenceSources: evidenceSources.value, id: turn.id, answer: turn.answer, question: turn.question === actionLabelFor(turn.intent) ? '' : turn.question, model: turn.model, history: [...before, {question: turn.question, answer: turn.answer}].slice(-4), lastHistory: before, memoryCount: 0, anchorTurnId: turn.id, lastAnchorTurnId: session.turns.slice(0, index).findLast(item => item.intent === turn.intent && item.answer.trim())?.id || ''});
   }
-  error.value = latest?.status === 'error' ? '上次生成失败，已保留收到的内容，可以重试。' : '';
+  error.value = latest?.status === 'error' ? '上次生成失败，已保留收到的内容' + (retrySupported.value ? '，可以重试。' : '。') : '';
   stopped.value = latest?.status === 'stopped' || latest?.status === 'streaming'; saved.value = false;
-  feedback.value = '已打开上次的问答，可以继续追问。';
+  feedback.value = followUpSupported.value && actionSupported.value ? '已打开上次的问答，可以继续追问。' : '已打开上次的问答。';
   recordsError.value = ''; showRecords.value = false;
   resetReadingPosition();
 }
 function expandSentence(): void { wholeSentence.value = true; sessionId = ''; historicalText.value = ''; saved.value = false; startAction(intent.value, false); }
 function ask(): void {
   const prompt = question.value.trim();
-  if (!prompt || busy.value) return;
+  if (!followUpSupported.value || !prompt || busy.value) return;
+  if (!actionSupported.value) { feedback.value = generationHint.value; return; }
   question.value = '';
   void run(prompt, history.map(turn => ({...turn})));
 }
@@ -632,7 +642,7 @@ async function saveWord(): Promise<void> {
   } catch (failure) { if (activeText.value === savingText) feedback.value = failure instanceof Error ? failure.message : '收藏失败，请重试。'; }
   finally { saving.value = false; }
 }
-watch(() => JSON.stringify([props.preferences, props.targetLanguage, props.sourceLanguage, props.modelRevision]), () => { actionCache.clear(); cancelRequest(); stopped.value = true; feedback.value = '设置已更新，重新生成可使用新的设置。'; });
+watch(() => JSON.stringify([props.preferences, effectiveService.value, props.targetLanguage, props.sourceLanguage, props.modelRevision]), () => { actionCache.clear(); cancelRequest(); stopped.value = true; feedback.value = '设置已更新，重新生成可使用新的设置。'; });
 watch(() => JSON.stringify(props.selection), () => {
   actionCache.clear(); cancelRequest(); restoreEpoch += 1;
   sourceExpanded.value = false;
@@ -645,10 +655,12 @@ watch(() => JSON.stringify(props.selection), () => {
 });
 watch(activeText, text => { sourceExpanded.value = false; closeTools(); saved.value = false; emit('source-change', text); });
 watch(() => [props.initialAction, props.historyOnly, props.active] as const, ([action, only, active], [oldAction, oldOnly, oldActive]) => {
+  // 父导航回写当前视图只同步标签，不能把历史动作改为默认动作或重复生成。
+  if (active === oldActive && action === intent.value && Boolean(only) === showRecords.value) return;
   restoreEpoch += 1;
   if (!active) { props.clearEvidence?.(); closeTools(); emit('source-change', ''); if (busy.value) stop(); return; }
   if (only) openRecords();
-  else if (action !== oldAction || oldOnly || !oldActive) startAction(action || props.preferences.defaultAction);
+  else if (action !== oldAction || oldOnly || !oldActive) startAction(availableInitialAction(action));
 });
 // 面板和正文滚动区由父卡片约束高度；回答增长只改变 scrollHeight，
 // 首次出现、清空和生成状态仍通知父卡片，连续文本块不重复要求父卡片读取选区与卡片尺寸。
@@ -678,7 +690,7 @@ function openRecords(): void {
   sessions.value = []; sessionOffset.value = 0; hasMoreSessions.value = false;
   void loadMoreSessions();
 }
-function closeRecords(): void { restoreEpoch += 1; showRecords.value = false; recordsError.value = ''; resetReadingPosition(); }
+function closeRecords(): void { restoreEpoch += 1; showRecords.value = false; recordsError.value = ''; if (!currentTurnKey.value && !answer.value && !busy.value && props.active) startAction(availableInitialAction(props.initialAction)); else resetReadingPosition(); }
 onMounted(() => {
   if (!props.active) return;
   if (props.historyOnly) openRecords();

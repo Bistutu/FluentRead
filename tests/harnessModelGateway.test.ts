@@ -10,8 +10,10 @@ import {z} from 'zod';
 import {reactive} from 'vue';
 import {Config} from '@/src/core/config/model';
 import {currentModelIds, services} from '@/src/core/config/catalog';
-import {createHarnessLanguageModel, normalizeHarnessModelError, sanitizeHarnessModelMessage} from '@/src/services/harness/modelGateway';
+import {createHarnessLanguageModel, getHarnessModelInputKey, normalizeHarnessModelError, sanitizeHarnessModelMessage} from '@/src/services/harness/modelGateway';
+import {BILIBILI_FREE_TRANSLATION_DOMAIN, BILIBILI_FREE_TRANSLATION_MODEL} from '@/src/core/config/freeTranslation';
 import {setRuntimeFetch} from '@/src/platform/http/runtime';
+import {createHarnessRuntime} from '@/src/services/harness/runtime';
 
 function response(body: unknown): Response {
   return new Response(JSON.stringify(body), {status: 200, headers: {'content-type': 'application/json'}});
@@ -20,6 +22,75 @@ function response(body: unknown): Response {
 describe('harness model gateway', () => {
   afterEach(() => {
     setRuntimeFetch();
+  });
+
+  it('uses the fixed anonymous Bilibili endpoint without residual keys, proxy, tools or model overrides', async () => {
+    const config = new Config();
+    config.token[services.bilibili] = 'must-not-send';
+    config.apiKeys[services.bilibili] = ['must-not-send', 'another-secret'];
+    config.proxy[services.bilibili] = 'https://untrusted.fixture/v1';
+    config.customHeaders[services.bilibili] = '{"Authorization":"private"}';
+    const key = getHarnessModelInputKey(config, services.bilibili, 'untrusted-model');
+    setRuntimeFetch(async (input, init) => {
+      expect(String(input)).toBe(`https://${BILIBILI_FREE_TRANSLATION_DOMAIN}/v1/chat/completions`);
+      expect(init?.credentials).toBe('omit');
+      expect(init?.redirect).toBe('error');
+      expect(new Headers(init?.headers).has('authorization')).toBe(false);
+      const body = JSON.parse(String(init?.body));
+      expect(body).toMatchObject({model: BILIBILI_FREE_TRANSLATION_MODEL, temperature: 0, chat_template_kwargs: {enable_thinking: false}});
+      expect(body.messages).toEqual([{role: 'system', content: 'Explain in Chinese'}, {role: 'user', content: 'Source only'}]);
+      expect(body).not.toHaveProperty('tools');
+      expect(JSON.stringify(init)).not.toContain('must-not-send');
+      return response({choices: [{message: {role: 'assistant', content: '免费讲解'}, finish_reason: 'stop'}]});
+    });
+    const model = createHarnessLanguageModel(config, services.bilibili, 'untrusted-model');
+    expect((await generateText({model, system: 'Explain in Chinese', prompt: 'Source only', tools: {lookup: tool({inputSchema: z.object({q: z.string()})})}})).text).toBe('免费讲解');
+    config.token[services.bilibili] = 'changed';
+    config.proxy[services.bilibili] = 'https://changed.fixture';
+    expect(getHarnessModelInputKey(config, services.bilibili, 'changed-model')).toBe(key);
+  });
+
+  it('streams Bilibili responses and preserves HTTP failures and cancellation without retries', async () => {
+    const config = new Config();
+    const signal = new AbortController().signal;
+    setRuntimeFetch(async (_input, init) => {
+      expect(init?.signal).toBe(signal);
+      expect(JSON.parse(String(init?.body)).stream).toBe(true);
+      return new Response('data: {"id":"bili","choices":[{"index":0,"delta":{"role":"assistant","content":"讲解"},"finish_reason":null}]}\n\ndata: {"id":"bili","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n', {headers: {'content-type': 'text/event-stream'}});
+    });
+    expect(await streamText({model: createHarnessLanguageModel(config, services.bilibili, ''), prompt: 'Explain', abortSignal: signal, maxRetries: 0}).text).toBe('讲解');
+    const failed = vi.fn(async () => new Response('{"error":{"message":"rate limited"}}', {status: 429}));
+    setRuntimeFetch(failed);
+    await expect(generateText({model: createHarnessLanguageModel(config, services.bilibili, ''), prompt: 'Explain', maxRetries: 0})).rejects.toMatchObject({statusCode: 429});
+    expect(failed).toHaveBeenCalledOnce();
+    setRuntimeFetch(async () => { throw new DOMException('Aborted', 'AbortError'); });
+    await expect(generateText({model: createHarnessLanguageModel(config, services.bilibili, ''), prompt: 'Explain', abortSignal: signal, maxRetries: 0})).rejects.toThrow('Aborted');
+  });
+
+  it('keeps actual SDK transport errors out of the runtime console and still reports sanitized failures', async () => {
+    const config = new Config(); config.on = true; config.harness.enabled = true; config.harness.service = services.bilibili;
+    const secret = 'sk-fixture-private-123456';
+    const source = 'FIXTURE_PRIVATE_SOURCE';
+    const failed = vi.fn(async () => new Response(JSON.stringify({error: {message: `authorization: ${secret}`}}), {status: 400, headers: {'content-type': 'application/json'}}));
+    setRuntimeFetch(failed);
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      // 对照真实 SDK 默认行为，确保该错误确实会触发原始控制台日志。
+      const baseline = streamText({model: createHarnessLanguageModel(config, services.bilibili, ''), prompt: source, maxRetries: 0});
+      let rawError: unknown;
+      for await (const part of baseline.fullStream) if (part.type === 'error') rawError = part.error;
+      expect(rawError).toMatchObject({statusCode: 400});
+      expect(consoleError).toHaveBeenCalledWith(rawError);
+      consoleError.mockClear();
+      const record = vi.fn();
+      const result = await createHarnessRuntime(() => config, () => record).run({type: 'fluentReadHarness', action: 'run', requestId: 'actual-sdk-no-raw-log', intent: 'meaning', question: '', selection: {text: source, context: 'FIXTURE_PRIVATE_CONTEXT', sentence: ''}}, new AbortController().signal);
+      expect(result).toMatchObject({success: false, error: expect.stringContaining('HTTP 400')});
+      expect(JSON.stringify(result)).not.toContain(secret);
+      expect(JSON.stringify(result)).not.toContain(source);
+      expect(consoleError).not.toHaveBeenCalled();
+      expect(record).toHaveBeenCalledWith(expect.objectContaining({outcome: 'error', serviceId: services.bilibili}));
+      expect(failed).toHaveBeenCalledTimes(2);
+    } finally { consoleError.mockRestore(); }
   });
 
   it('keeps custom endpoint query, model, messages and tools', async () => {

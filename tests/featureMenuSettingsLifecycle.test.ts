@@ -1,7 +1,7 @@
 /**
  * @file tests/featureMenuSettingsLifecycle.test.ts
  * 文件职责：验证实际功能服务分配和右键菜单设置的旧事件归属、值校验、预览与凭据读取范围。
- * 主要内容：执行真实缓存客户端模板，覆盖隐藏、缓存、配置替换、选项权限变化、九种功能模型和五项菜单入口。
+ * 主要内容：执行真实缓存客户端模板，覆盖隐藏、缓存、配置替换、选项权限变化、九种功能模型和五项菜单入口；验证B站免费阅读选择、固定模型及写作能力边界。
  * 模块边界：Linkedom 保留实际节点树，展示控件与焦点为受控端口；不调用翻译或验证系统输入法。
  */
 import {createRequire} from 'node:module'
@@ -15,6 +15,7 @@ import ts from 'typescript'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
 import {createApiKeyRequirementKey} from '@/src/core/config/validation'
+import {BILIBILI_FREE_TRANSLATION_MODEL} from '@/src/core/config/freeTranslation'
 
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
 let server: ViteDevServer, app: import('vue').App, document: Document, win: any, focused: Element | null
@@ -89,6 +90,27 @@ async function mountFeature(config = runtime.reactive(new Config()), values: Rec
 async function mountMenu(config: Config = runtime.reactive(Object.assign(new Config(), {disableImageTranslator: false, disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual'})), values: Record<string, unknown> = {}) {await mount(menuPath, {config, ...values})}
 
 describe('功能服务分配实际缓存模板归属', () => {
+  it('B站可分配给阅读并显示固定模型免密钥，写作选择事件不能越过能力限制', async () => {
+    const config = runtime.reactive(new Config()); config.service = 'openai'; config.harness.model = 'unused-reader'
+    await mountFeature(config, {serviceOptions: [...services, {value: 'bilibili', label: 'B站翻译'}]})
+    expect(state.rows.find((row: any) => row.feature.id === 'reading').choices.some((item: any) => item.value === 'bilibili')).toBe(true)
+    expect(state.rows.find((row: any) => row.feature.id === 'writing').choices.some((item: any) => item.value === 'bilibili')).toBe(false)
+    eventOf(featureControl('writing'))('bilibili'); expect(config.writing.service).toBe('')
+    eventOf(featureControl('reading'))('bilibili'); await settle()
+    expect(config.harness.service).toBe('bilibili'); expect(config.harness.model).toBe('')
+    expect(featureControl('reading').closest('[data-feature-service]')?.parentElement?.querySelector('.feature-service-model')?.textContent).toBe(BILIBILI_FREE_TRANSLATION_MODEL)
+    expect(document.querySelector('[data-feature-service="reading"] .feature-service-warning')).toBeNull()
+  })
+  it('默认B站可直接继承阅读，写作继承和残留独立B站选择显示能力警告并能恢复AI', async () => {
+    const config = runtime.reactive(new Config()); config.service = 'bilibili'
+    await mountFeature(config, {serviceOptions: [...services, {value: 'bilibili', label: 'B站翻译'}]})
+    expect(document.querySelector('[data-feature-service="reading"] .feature-service-warning')).toBeNull()
+    expect(document.querySelector('[data-feature-service="writing"] .feature-service-warning')?.textContent).toBe('featureServices.writing · featureServices.aiOnly')
+    config.writing.service = 'bilibili'; await settle()
+    expect(state.rows.find((row: any) => row.feature.id === 'writing').choices.find((item: any) => item.value === 'bilibili')?.disabled).toBe(true)
+    eventOf(featureControl('writing'))('openai'); await settle(); expect(config.writing.service).toBe('openai')
+    expect(document.querySelector('[data-feature-service="writing"] .feature-service-warning')?.textContent).toContain('API Key')
+  })
   it.each(['hidden', 'cached', 'unmount', 'config'])('%s 后旧选择和配置连接事件失效', async reason => {
     await mountFeature();const choose = eventOf(featureControl('input')), connect = eventOf(document.querySelector('[data-feature-service="input"] button')!, 'onClick');invalidate(reason);await settle();const before = snapshot(props.config)
     choose('openai');connect();expect(snapshot(props.config)).toEqual(before);expect(updates).not.toHaveBeenCalled()

@@ -1,10 +1,37 @@
 import {describe, expect, it} from 'vitest';
 import {Config, normalizeConfig} from '@/src/core/config/model';
 import {customModelString} from '@/src/core/config/catalog';
-import {featureServiceDefinitions, getFeatureService, getFeatureModel, setFeatureService} from '@/src/core/config/featureServices';
+import {featureServiceDefinitions, getFeatureService, getFeatureModel, setFeatureService, isFeatureServiceSupported} from '@/src/core/config/featureServices';
+import {BILIBILI_FREE_TRANSLATION_MODEL} from '@/src/core/config/freeTranslation';
 
 const feature = (id: string) => featureServiceDefinitions.find(item => item.id === id)!;
 describe('按功能分配翻译服务', () => {
+    it('免费B站仅扩展阅读能力，写作仍拒绝机器服务并保留已配置自定义AI', () => {
+        expect(isFeatureServiceSupported(feature('reading'), 'bilibili')).toBe(true);
+        expect(isFeatureServiceSupported(feature('writing'), 'bilibili')).toBe(false);
+        expect(isFeatureServiceSupported(feature('selection'), 'bilibili')).toBe(true);
+        expect(isFeatureServiceSupported(feature('reading'), 'microsoft')).toBe(false);
+        expect(isFeatureServiceSupported(feature('writing'), 'microsoft')).toBe(false);
+        for (const id of ['reading', 'writing']) {
+            expect(isFeatureServiceSupported(feature(id), 'openai')).toBe(true);
+            expect(isFeatureServiceSupported(feature(id), 'custom:study')).toBe(false);
+            expect(isFeatureServiceSupported(feature(id), 'custom:study', [{id: 'custom:study', name: 'Study', endpoint: 'https://custom.test/v1', models: ['reader']}])).toBe(true);
+        }
+    });
+    it('阅读继承或独立选择B站都展示实际固定模型，不采用残留专项或默认模型', () => {
+        const config = new Config(); config.service = 'bilibili';
+        config.model.bilibili = 'unused-default'; config.customModel.bilibili = 'unused-custom'; config.harness.model = 'unused-reading';
+        expect(getFeatureModel(config, feature('reading'))).toBe(BILIBILI_FREE_TRANSLATION_MODEL);
+        config.harness.service = 'bilibili'; config.service = 'openai';
+        expect(getFeatureModel(config, feature('reading'))).toBe(BILIBILI_FREE_TRANSLATION_MODEL);
+        setFeatureService(config, feature('reading'), 'openai');
+        expect(getFeatureModel(config, feature('reading'))).toBe(config.model.openai);
+    });
+    it('归一化允许显式免费阅读选择，同时拒绝旧配置中的未支持B站写作', () => {
+        const config = normalizeConfig({harness: {service: 'bilibili', enabled: true} as Config['harness'], writing: {service: 'bilibili', enabled: true} as Config['writing']});
+        expect(config.harness.service).toBe('bilibili');
+        expect(config.writing.service).toBe('');
+    });
     it('新配置及缺失字段统一继承，持久化后切换默认服务和模型仍联动', () => {
         for (const config of [new Config(), normalizeConfig({}), normalizeConfig(JSON.parse(JSON.stringify(new Config())))]) {
             for (const item of featureServiceDefinitions) {
