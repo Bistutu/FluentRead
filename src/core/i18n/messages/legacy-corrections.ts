@@ -12,6 +12,7 @@ type LegacyCorrectionRow = readonly [source: string, enUS: string, jaJP: string,
 
 /** 设置页、弹窗、文档页和各功能面板中的标签、按钮与说明。 */
 const correctionRows: readonly LegacyCorrectionRow[] = [
+    ["完整句学习外观", "Sentence learning appearance", "文単位学習の表示", "문장 학습 모양", "Apparence de l’apprentissage par phrase", "Оформление изучения предложений", "Apariencia del aprendizaje por frases"],
     ["官方网页接口，无需密钥", "Official web endpoint, no API key required", "公式ウェブ用インターフェース、API キー不要", "공식 웹 인터페이스, API 키 불필요", "Interface web officielle, sans clé API", "Официальный веб-интерфейс, ключ API не нужен", "Interfaz web oficial, sin clave API"],
     ["阿里翻译", "Alibaba Translate", "Alibaba 翻訳", "Alibaba 번역", "Traduction Alibaba", "Перевод Alibaba", "Traductor Alibaba"],
 

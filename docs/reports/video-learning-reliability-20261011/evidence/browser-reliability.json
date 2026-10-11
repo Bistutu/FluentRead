@@ -1,0 +1,689 @@
+{
+  "success": true,
+  "startedAt": "2026-10-11T15:37:12.969Z",
+  "evidence": "Production extension; real local MP4 clock; original timed-caption fixtures; deterministic translation; actual live probes reported separately",
+  "fixtureCases": [
+    {
+      "platform": "youtube",
+      "scenario": "reported-keyboard-fullscreen-layout-reliability",
+      "checks": [
+        {
+          "name": "Sentence learning is a labelled button with an evident interactive affordance",
+          "pass": true,
+          "details": {
+            "text": "开始完整句学习",
+            "role": "BUTTON",
+            "border": "solid",
+            "background": "rgba(239, 71, 118, 0.2)",
+            "width": 266
+          }
+        },
+        {
+          "name": "Trusted shortcuts after clicking the video control learning without host speed changes or jumps to video zero",
+          "pass": true,
+          "details": {
+            "text": "完整句学习?3 / 4 · 0:06–0:07它们生活在海洋里。固定此句回到当前句译文编辑正在翻译…播放辅助关闭循环本句句末暂停前后语境They use rocks to open shells.它们生活在海洋里。A quiet final sentence.重播原句查看解释收藏此句",
+            "sentenceId": "sentence:4:6000:7000:ik76cc",
+            "index": "2",
+            "startMs": "6000",
+            "endMs": "7000",
+            "paused": true,
+            "time": 6,
+            "rate": 1,
+            "seeking": true,
+            "loop": "false",
+            "pauseAtEnd": "true",
+            "pinned": "true",
+            "translation": "正在翻译…"
+          }
+        },
+        {
+          "name": "Editing text keeps ordinary letter keys in the editor without changing playback assistance or speed",
+          "pass": true
+        },
+        {
+          "name": "Help is in normal document flow and leaves the original sentence readable",
+          "pass": true,
+          "details": {
+            "help": {
+              "x": 629,
+              "y": 390.6171875,
+              "width": 334,
+              "height": 70.78125,
+              "top": 390.6171875,
+              "right": 963,
+              "bottom": 461.3984375,
+              "left": 629
+            },
+            "original": {
+              "x": 629,
+              "y": 180.4765625,
+              "width": 334,
+              "height": 24.6484375,
+              "top": 180.4765625,
+              "right": 963,
+              "bottom": 205.125,
+              "left": 629
+            },
+            "overlap": false
+          }
+        },
+        {
+          "name": "Opening at compact player size and enlarging preserves reachable navigation, the panel and current edited draft",
+          "pass": true,
+          "details": {
+            "screenshot": "/private/tmp/fluentread-video-learning-reliability-reliability-d1166-final/youtube-reliability-compact.png",
+            "compactBounds": {
+              "bodyHeight": 69,
+              "bodyScrollable": true,
+              "headerNavigationCount": 0,
+              "controls": [
+                {
+                  "action": "previous",
+                  "count": 1,
+                  "bounds": {
+                    "x": 57,
+                    "y": 225.234375,
+                    "width": 32,
+                    "height": 32,
+                    "top": 225.234375,
+                    "right": 89,
+                    "bottom": 257.234375,
+                    "left": 57
+                  },
+                  "withinCard": true,
+                  "hitTest": true
+                },
+                {
+                  "action": "play",
+                  "count": 1,
+                  "bounds": {
+                    "x": 95,
+                    "y": 225.234375,
+                    "width": 262,
+                    "height": 32,
+                    "top": 225.234375,
+                    "right": 357,
+                    "bottom": 257.234375,
+                    "left": 95
+                  },
+                  "withinCard": true,
+                  "hitTest": true
+                },
+                {
+                  "action": "next",
+                  "count": 1,
+                  "bounds": {
+                    "x": 363,
+                    "y": 225.234375,
+                    "width": 32,
+                    "height": 32,
+                    "top": 225.234375,
+                    "right": 395,
+                    "bottom": 257.234375,
+                    "left": 363
+                  },
+                  "withinCard": true,
+                  "hitTest": true
+                },
+                {
+                  "action": "explain",
+                  "count": 1,
+                  "bounds": {
+                    "x": 57,
+                    "y": 264.234375,
+                    "width": 166,
+                    "height": 30,
+                    "top": 264.234375,
+                    "right": 223,
+                    "bottom": 294.234375,
+                    "left": 57
+                  },
+                  "withinCard": true,
+                  "hitTest": true
+                },
+                {
+                  "action": "save",
+                  "count": 1,
+                  "bounds": {
+                    "x": 229,
+                    "y": 264.234375,
+                    "width": 166,
+                    "height": 30,
+                    "top": 264.234375,
+                    "right": 395,
+                    "bottom": 294.234375,
+                    "left": 229
+                  },
+                  "withinCard": true,
+                  "hitTest": true
+                }
+              ]
+            },
+            "state": {
+              "text": "完整句学习?2 / 4 · 0:03–0:05They use rocks to open shells.固定此句回到当前句译文编辑操作回归草稿。播放辅助关闭循环本句句末暂停前后语境Sea otters have strong teeth.They use rocks to open shells.它们生活在海洋里。重播原句查看解释收藏此句",
+              "sentenceId": "sentence:2,3:3000:5500:lnr9ia",
+              "index": "1",
+              "startMs": "3000",
+              "endMs": "5500",
+              "paused": true,
+              "time": 3,
+              "rate": 1,
+              "seeking": false,
+              "loop": "false",
+              "pauseAtEnd": "true",
+              "pinned": "true",
+              "translation": "操作回归草稿。"
+            }
+          }
+        },
+        {
+          "name": "Arrow keys focused inside the subtitle menu keep menu ownership without stepping the learning sentence or changing its draft",
+          "pass": true
+        },
+        {
+          "name": "The subtitle menu opens and switches display mode in actual fullscreen without changing the selected source range or draft",
+          "pass": true,
+          "details": {
+            "text": "完整句学习?2 / 4 · 0:03–0:05They use rocks to open shells.固定此句回到当前句译文编辑操作回归草稿。播放辅助关闭循环本句句末暂停前后语境Sea otters have strong teeth.They use rocks to open shells.它们生活在海洋里。重播原句查看解释收藏此句",
+            "sentenceId": "sentence:2,3:3000:5500:lnr9ia",
+            "index": "1",
+            "startMs": "3000",
+            "endMs": "5500",
+            "paused": true,
+            "time": 3,
+            "rate": 1,
+            "seeking": false,
+            "loop": "false",
+            "pauseAtEnd": "true",
+            "pinned": "true",
+            "translation": "操作回归草稿。"
+          }
+        },
+        {
+          "name": "Body focus during fullscreen keeps learning shortcuts scoped to its fullscreen media without reaching conflicting host shortcuts",
+          "pass": true
+        },
+        {
+          "name": "Actual fullscreen preserves the draft and drag position; trusted Escape exits fullscreen before closing learning",
+          "pass": true,
+          "details": {
+            "dragged": {
+              "x": 376,
+              "y": 207.8359375,
+              "width": 360,
+              "height": 368.3828125
+            },
+            "afterFullscreen": {
+              "x": 376,
+              "y": 207.8359375,
+              "width": 360,
+              "height": 368.3828125
+            }
+          }
+        },
+        {
+          "name": "Outside fullscreen Escape closes the open subtitle menu first and keeps the learning panel and draft",
+          "pass": true
+        },
+        {
+          "name": "A same-media inner fullscreen host reparents the existing learning instance and keeps drafts",
+          "pass": true
+        },
+        {
+          "name": "Outside fullscreen Escape closes learning and releases host keyboard ownership",
+          "pass": true
+        },
+        {
+          "name": "Selecting loop or end pause arms the current original range without seeking to time zero",
+          "pass": true,
+          "details": {
+            "text": "完整句学习?4 / 4 · 0:08–0:09A quiet final sentence.固定此句回到当前句译文编辑安静的最后一句。播放辅助关闭循环本句句末暂停前后语境它们生活在海洋里。A quiet final sentence.重播原句查看解释收藏此句",
+            "sentenceId": "sentence:5:8000:9000:1fl4yhp",
+            "index": "3",
+            "startMs": "8000",
+            "endMs": "9000",
+            "paused": true,
+            "time": 8.3,
+            "rate": 1,
+            "seeking": false,
+            "loop": "false",
+            "pauseAtEnd": "true",
+            "pinned": "true",
+            "translation": "安静的最后一句。"
+          }
+        },
+        {
+          "name": "Closing learning cancels range ownership and leaves normal 1x playback advancing",
+          "pass": true,
+          "details": {
+            "paused": false,
+            "time": 9.217958,
+            "rate": 1,
+            "seeking": false
+          }
+        },
+        {
+          "name": "The panel style entry opens the dedicated interface-center section with preview left and controls right",
+          "pass": true,
+          "details": {
+            "url": "chrome-extension://djnlaiohfaaifbibleebjggkghlmcpcj/options.html?target=video-sentence-learning-appearance#settings-interface",
+            "layout": {
+              "example": {
+                "x": 275,
+                "y": 218.171875,
+                "width": 459,
+                "height": 497,
+                "top": 218.171875,
+                "right": 734,
+                "bottom": 715.171875,
+                "left": 275
+              },
+              "controls": {
+                "x": 758,
+                "y": 218.171875,
+                "width": 459,
+                "height": 497,
+                "top": 218.171875,
+                "right": 1217,
+                "bottom": 715.171875,
+                "left": 758
+              }
+            }
+          }
+        },
+        {
+          "name": "Trusted style controls persist layout, opacity, font scale, width and position without losing an open draft or reissuing translation",
+          "pass": true,
+          "details": {
+            "appearance": {
+              "layout": "comfortable",
+              "backgroundOpacity": 72,
+              "fontScale": 110,
+              "width": 400,
+              "position": "bottom-left"
+            },
+            "screenshot": "/private/tmp/fluentread-video-learning-reliability-reliability-d1166-final/learning-appearance-settings.png"
+          }
+        },
+        {
+          "name": "A fresh video document restores the saved appearance and default bottom-left position while session drag stays local",
+          "pass": true,
+          "details": {
+            "host": {
+              "x": 32,
+              "y": 125.6796875,
+              "width": 400,
+              "height": 456.5546875,
+              "top": 125.6796875,
+              "right": 432,
+              "bottom": 582.234375,
+              "left": 32
+            },
+            "player": {
+              "x": 24,
+              "y": 98.234375,
+              "width": 960,
+              "height": 540,
+              "top": 98.234375,
+              "right": 984,
+              "bottom": 638.234375,
+              "left": 24
+            },
+            "layout": "comfortable",
+            "background": "rgba(24, 24, 28, 0.72)",
+            "originalFontSize": "20.9px",
+            "translationFontSize": "14.3px"
+          }
+        }
+      ],
+      "captures": [
+        {
+          "screenshot": "/private/tmp/fluentread-video-learning-reliability-reliability-d1166-final/youtube-reliability-video-menu.png",
+          "dom": "/private/tmp/fluentread-video-learning-reliability-reliability-d1166-final/youtube-reliability-video-menu.html"
+        },
+        {
+          "screenshot": "/private/tmp/fluentread-video-learning-reliability-reliability-d1166-final/youtube-learning-default-panel.png",
+          "scope": "Initially opened default panel; original and translation; unedited and unsaved"
+        },
+        {
+          "screenshot": "/private/tmp/fluentread-video-learning-reliability-reliability-d1166-final/youtube-reliability-fullscreen.png",
+          "dom": "/private/tmp/fluentread-video-learning-reliability-reliability-d1166-final/youtube-reliability-fullscreen.html"
+        },
+        {
+          "screenshot": "/private/tmp/fluentread-video-learning-reliability-reliability-d1166-final/youtube-reliability-comfortable.png",
+          "dom": "/private/tmp/fluentread-video-learning-reliability-reliability-d1166-final/youtube-reliability-comfortable.html"
+        }
+      ],
+      "success": true
+    },
+    {
+      "platform": "x",
+      "scenario": "reported-keyboard-fullscreen-layout-reliability",
+      "checks": [
+        {
+          "name": "Sentence learning is a labelled button with an evident interactive affordance",
+          "pass": true,
+          "details": {
+            "text": "开始完整句学习",
+            "role": "BUTTON",
+            "border": "solid",
+            "background": "rgba(239, 71, 118, 0.2)",
+            "width": 266
+          }
+        },
+        {
+          "name": "Trusted shortcuts after clicking the video control learning without host speed changes or jumps to video zero",
+          "pass": true,
+          "details": {
+            "text": "完整句学习?3 / 4 · 0:06–0:07它们生活在海洋里。固定此句回到当前句译文编辑正在翻译…播放辅助关闭循环本句句末暂停前后语境They use rocks to open shells.它们生活在海洋里。A quiet final sentence.重播原句查看解释收藏此句",
+            "sentenceId": "sentence:4:6000:7000:ik76cc",
+            "index": "2",
+            "startMs": "6000",
+            "endMs": "7000",
+            "paused": true,
+            "time": 6,
+            "rate": 1,
+            "seeking": true,
+            "loop": "false",
+            "pauseAtEnd": "true",
+            "pinned": "true",
+            "translation": "正在翻译…",
+            "sourceStatus": "已加载字幕 · 6 条"
+          }
+        },
+        {
+          "name": "Editing text keeps ordinary letter keys in the editor without changing playback assistance or speed",
+          "pass": true
+        },
+        {
+          "name": "Help is in normal document flow and leaves the original sentence readable",
+          "pass": true,
+          "details": {
+            "help": {
+              "x": 629,
+              "y": 415.6171875,
+              "width": 334,
+              "height": 70.78125,
+              "top": 415.6171875,
+              "right": 963,
+              "bottom": 486.3984375,
+              "left": 629
+            },
+            "original": {
+              "x": 629,
+              "y": 205.4765625,
+              "width": 334,
+              "height": 24.6484375,
+              "top": 205.4765625,
+              "right": 963,
+              "bottom": 230.125,
+              "left": 629
+            },
+            "overlap": false
+          }
+        },
+        {
+          "name": "Opening at compact player size and enlarging preserves reachable navigation, the panel and current edited draft",
+          "pass": true,
+          "details": {
+            "screenshot": "/private/tmp/fluentread-video-learning-reliability-reliability-d1166-final/x-reliability-compact.png",
+            "compactBounds": {
+              "bodyHeight": 69,
+              "bodyScrollable": true,
+              "headerNavigationCount": 0,
+              "controls": [
+                {
+                  "action": "previous",
+                  "count": 1,
+                  "bounds": {
+                    "x": 57,
+                    "y": 250.234375,
+                    "width": 32,
+                    "height": 32,
+                    "top": 250.234375,
+                    "right": 89,
+                    "bottom": 282.234375,
+                    "left": 57
+                  },
+                  "withinCard": true,
+                  "hitTest": true
+                },
+                {
+                  "action": "play",
+                  "count": 1,
+                  "bounds": {
+                    "x": 95,
+                    "y": 250.234375,
+                    "width": 262,
+                    "height": 32,
+                    "top": 250.234375,
+                    "right": 357,
+                    "bottom": 282.234375,
+                    "left": 95
+                  },
+                  "withinCard": true,
+                  "hitTest": true
+                },
+                {
+                  "action": "next",
+                  "count": 1,
+                  "bounds": {
+                    "x": 363,
+                    "y": 250.234375,
+                    "width": 32,
+                    "height": 32,
+                    "top": 250.234375,
+                    "right": 395,
+                    "bottom": 282.234375,
+                    "left": 363
+                  },
+                  "withinCard": true,
+                  "hitTest": true
+                },
+                {
+                  "action": "explain",
+                  "count": 1,
+                  "bounds": {
+                    "x": 57,
+                    "y": 289.234375,
+                    "width": 166,
+                    "height": 30,
+                    "top": 289.234375,
+                    "right": 223,
+                    "bottom": 319.234375,
+                    "left": 57
+                  },
+                  "withinCard": true,
+                  "hitTest": true
+                },
+                {
+                  "action": "save",
+                  "count": 1,
+                  "bounds": {
+                    "x": 229,
+                    "y": 289.234375,
+                    "width": 166,
+                    "height": 30,
+                    "top": 289.234375,
+                    "right": 395,
+                    "bottom": 319.234375,
+                    "left": 229
+                  },
+                  "withinCard": true,
+                  "hitTest": true
+                }
+              ]
+            },
+            "state": {
+              "text": "完整句学习?2 / 4 · 0:03–0:05They use rocks to open shells.固定此句回到当前句译文编辑操作回归草稿。播放辅助关闭循环本句句末暂停前后语境Sea otters have strong teeth.They use rocks to open shells.它们生活在海洋里。重播原句查看解释收藏此句",
+              "sentenceId": "sentence:2,3:3000:5500:lnr9ia",
+              "index": "1",
+              "startMs": "3000",
+              "endMs": "5500",
+              "paused": true,
+              "time": 3,
+              "rate": 1,
+              "seeking": false,
+              "loop": "false",
+              "pauseAtEnd": "true",
+              "pinned": "true",
+              "translation": "操作回归草稿。",
+              "sourceStatus": "已加载字幕 · 6 条"
+            }
+          }
+        },
+        {
+          "name": "Arrow keys focused inside the subtitle menu keep menu ownership without stepping the learning sentence or changing its draft",
+          "pass": true
+        },
+        {
+          "name": "The subtitle menu opens and switches display mode in actual fullscreen without changing the selected source range or draft",
+          "pass": true,
+          "details": {
+            "text": "完整句学习?2 / 4 · 0:03–0:05They use rocks to open shells.固定此句回到当前句译文编辑操作回归草稿。播放辅助关闭循环本句句末暂停前后语境Sea otters have strong teeth.They use rocks to open shells.它们生活在海洋里。重播原句查看解释收藏此句",
+            "sentenceId": "sentence:2,3:3000:5500:lnr9ia",
+            "index": "1",
+            "startMs": "3000",
+            "endMs": "5500",
+            "paused": true,
+            "time": 3,
+            "rate": 1,
+            "seeking": false,
+            "loop": "false",
+            "pauseAtEnd": "true",
+            "pinned": "true",
+            "translation": "操作回归草稿。",
+            "sourceStatus": "已加载字幕 · 6 条"
+          }
+        },
+        {
+          "name": "Body focus during fullscreen keeps learning shortcuts scoped to its fullscreen media without reaching conflicting host shortcuts",
+          "pass": true
+        },
+        {
+          "name": "Actual fullscreen preserves the draft and drag position; trusted Escape exits fullscreen before closing learning",
+          "pass": true,
+          "details": {
+            "dragged": {
+              "x": 376,
+              "y": 232.8359375,
+              "width": 360,
+              "height": 368.3828125
+            },
+            "afterFullscreen": {
+              "x": 376,
+              "y": 232.8359375,
+              "width": 360,
+              "height": 368.3828125
+            }
+          }
+        },
+        {
+          "name": "Outside fullscreen Escape closes the open subtitle menu first and keeps the learning panel and draft",
+          "pass": true
+        },
+        {
+          "name": "A same-media inner fullscreen host reparents the existing learning instance and keeps drafts",
+          "pass": true
+        },
+        {
+          "name": "Outside fullscreen Escape closes learning and releases host keyboard ownership",
+          "pass": true
+        },
+        {
+          "name": "Selecting loop or end pause arms the current original range without seeking to time zero",
+          "pass": true,
+          "details": {
+            "text": "完整句学习?4 / 4 · 0:08–0:09A quiet final sentence.固定此句回到当前句译文编辑安静的最后一句。播放辅助关闭循环本句句末暂停前后语境它们生活在海洋里。A quiet final sentence.重播原句查看解释收藏此句",
+            "sentenceId": "sentence:5:8000:9000:1fl4yhp",
+            "index": "3",
+            "startMs": "8000",
+            "endMs": "9000",
+            "paused": true,
+            "time": 8.3,
+            "rate": 1,
+            "seeking": false,
+            "loop": "false",
+            "pauseAtEnd": "true",
+            "pinned": "true",
+            "translation": "安静的最后一句。",
+            "sourceStatus": "已加载字幕 · 6 条"
+          }
+        },
+        {
+          "name": "Closing learning cancels range ownership and leaves normal 1x playback advancing",
+          "pass": true,
+          "details": {
+            "paused": false,
+            "time": 9.217519,
+            "rate": 1,
+            "seeking": false,
+            "sourceStatus": "已加载字幕 · 6 条"
+          }
+        }
+      ],
+      "captures": [
+        {
+          "screenshot": "/private/tmp/fluentread-video-learning-reliability-reliability-d1166-final/x-reliability-video-menu.png",
+          "dom": "/private/tmp/fluentread-video-learning-reliability-reliability-d1166-final/x-reliability-video-menu.html"
+        },
+        {
+          "screenshot": "/private/tmp/fluentread-video-learning-reliability-reliability-d1166-final/x-reliability-fullscreen.png",
+          "dom": "/private/tmp/fluentread-video-learning-reliability-reliability-d1166-final/x-reliability-fullscreen.html"
+        }
+      ],
+      "success": true
+    }
+  ],
+  "liveCases": [],
+  "pageErrors": [],
+  "cleanup": {
+    "browserClosed": true,
+    "profileRemoved": true
+  },
+  "artifact": {
+    "contentSha256": "d1166be072fa5682add0e7d4c468f0f0b0a0e4258931ccc0f7481a3d5b696943",
+    "version": "0.0.37"
+  },
+  "focusObserver": {
+    "monitorPid": 80595,
+    "time": 1791733037021.635,
+    "monotonicMs": 3158328938.687292
+  },
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 212,
+      "top": -990,
+      "width": 1280,
+      "height": 900
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 64770,
+      "name": "ChatGPT"
+    },
+    "frontmostAfter": {
+      "pid": 64770,
+      "name": "ChatGPT"
+    }
+  },
+  "fixturePageErrors": [],
+  "finalBrowserFrontmost": false,
+  "focusEvents": {
+    "nativeObserver": true,
+    "browserActivations": 0,
+    "observerClosed": true
+  },
+  "finishedAt": "2026-10-11T15:37:31.401Z"
+}

@@ -7,9 +7,13 @@ export default defineConfig({
     test: {
         ...base.test,
         include: [
+            'tests/videoSentenceLearningAppearance.test.ts',
+            'tests/videoSentenceLearningAppearanceSettingsLifecycle.test.ts',
             'tests/videoSentenceTimeline.test.ts',
             'tests/videoSentencePlayback.test.ts',
             'tests/videoSentenceLearningHost.test.ts',
+            'tests/videoSentenceLearningSession.test.ts',
+            'tests/videoSentenceLearningPlacement.test.ts',
             'tests/vocabularyVideoSource.test.ts',
             'tests/vocabularyVideoSourceUi.test.ts',
         ],
@@ -17,9 +21,13 @@ export default defineConfig({
             provider: 'v8',
             all: true,
             include: [
+                'src/core/config/videoSentenceLearningAppearance.ts',
+                'src/features/settings/ui/VideoSentenceLearningAppearanceSettings.vue',
                 'src/features/video-subtitle/content/sentenceTimeline.ts',
                 'src/features/video-subtitle/content/sentencePlayback.ts',
                 'src/features/video-subtitle/content/sentenceLearningHost.ts',
+                'src/features/video-subtitle/content/sentenceLearningSession.ts',
+                'src/features/video-subtitle/content/sentenceLearningPlacement.ts',
                 'src/features/vocabulary/source.ts',
             ],
             reporter: ['text', 'json-summary'],

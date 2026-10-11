@@ -14,6 +14,7 @@ import {inflateWithPako} from '@/userscript/pakoRuntime';
 import * as chineseCharacterData from '@/src/core/language/chineseVariants';
 import * as functionWordData from '@/src/core/language/functionWordData';
 import {createUserscriptCharacterDataCompressionPlugin} from '@/userscript/characterDataPlugin';
+import {createUserscriptInlineCssCompressionPlugin} from '@/userscript/inlineCssPlugin';
 import {
     default as userscriptConfig,
     executionGuardEnd,
@@ -29,6 +30,47 @@ import {
 const entrypointId = resolve(process.cwd(), 'entrypoints/userscript-injection-fixture.ts');
 const sourceModuleId = resolve(process.cwd(), 'src/app/content/runtime.ts');
 const vueScriptModuleId = `${resolve(process.cwd(), 'src/features/selection-translation/ui/SelectionTranslator.vue')}?vue&type=script&setup=true&lang.ts`;
+
+describe('userscript inline CSS compression', () => {
+    const root = process.cwd();
+    const id = `${resolve(root, 'src/app/content/page.css')}?inline`;
+    const plugin = createUserscriptInlineCssCompressionPlugin(root);
+    const transform = (code: string, moduleId = id) => Reflect.apply((plugin.transform as {handler: Function}).handler, {}, [code, moduleId]);
+
+    it.each(['quoted', 'template'] as const)('restores exact Unicode, escaped content and CSS order from %s exports synchronously', kind => {
+        const css = '.first::after{content:"中文 🦦 \\" \\\\ \\n"}\n@media(max-width:390px){.first{color:var(--theme)}}\n'.repeat(80);
+        const code = kind === 'quoted' ? `export default ${JSON.stringify(css)};` : 'export default `' + css.replace(/\\/gu, '\\\\').replace(/`/gu, '\\`') + '`;';
+        const result = transform(code);
+        expect(result.map).toBeNull(); expect(Buffer.byteLength(result.code)).toBeLessThan(Buffer.byteLength(code));
+        const base64 = JSON.parse(result.code.match(/atob\(("[^"]+")\)/u)![1]);
+        expect(gunzipSync(Buffer.from(base64, 'base64')).toString('utf8')).toBe(css);
+        vi.stubGlobal('pako', {ungzip});
+        try {
+            const realm = {inflateWithPako, Uint8Array, atob, restored: undefined};
+            runInNewContext(result.code.replace(/^import[^\n]+\n/u, '').replace('export default ', 'restored = '), realm);
+            expect(realm.restored).toBe(css);
+        } finally {vi.unstubAllGlobals();}
+    });
+
+    it.each([
+        ['small CSS', 'export default ".a{color:red}";', id],
+        ['raw CSS before Vite', '.a{color:red}', id],
+        ['executable module', 'const value = readCss(); export default value;', id],
+        ['non-export statement', 'const value = "css";', id],
+        ['non-string export', 'export default 42;', id],
+        ['export equals', 'export = "css";', id],
+        ['plain CSS import', 'export default "css";', id.split('?')[0]],
+        ['non-CSS module', 'export default "css";', id.replace('.css', '.ts')],
+        ['external dependency', 'export default "css";', `${resolve(root, 'node_modules/vendor/style.css')}?inline`],
+    ])('leaves %s unchanged', (_name, code, moduleId) => {expect(transform(code, moduleId)).toBeNull();});
+
+    it('keeps Greasy Fork source readable and runs only after Vite CSS conversion', () => {
+        const source = 'export default ' + JSON.stringify('.repeat{color:red}'.repeat(80)) + ';';
+        const disabled = createUserscriptInlineCssCompressionPlugin(root, false);
+        expect(Reflect.apply((disabled.transform as {handler: Function}).handler, {}, [source, id])).toBeNull();
+        expect(plugin.enforce).toBe('post'); expect((plugin.transform as {order: string}).order).toBe('post');
+    });
+});
 
 describe('authoritative site catalogs with an external pinned data asset', () => {
     it.each(['unchanged', 'old-asset', 'reordered', 'removed-rule', 'missing-runtime-rule'] as const)

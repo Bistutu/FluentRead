@@ -15,7 +15,7 @@
   "video.learning.save": "Save sentence",
   "video.learning.library": "Learning center",
   "video.learning.explanation": "Confirm explanation (editable)",
-  "video.learning.hint": "← / → change sentence, R loops, Q pauses at the end, Esc closes. Choose playback assistance, then replay; seeking manually turns assistance off. Editing pins the sentence. Drafts are kept when you switch sentences during this session.",
+  "video.learning.hint": "In the player: ← / → change sentence, R loops, Q pauses at the end. Esc exits fullscreen or closes learning outside fullscreen. Choose assistance, then replay to start; seeking manually releases assistance. Drag the title to move the panel. Editing pins the sentence and keeps your drafts.",
   "video.learning.empty": "No timeline yet. Enable original video captions and retry after loading.",
   "video.learning.translationFailed": "Sentence translation failed. Retry.",
   "video.learning.playFailed": "Playback blocked. Use the video play button.",
@@ -44,5 +44,8 @@
   "video.learning.expand": "Expand",
   "video.learning.stopped": "Explanation stopped. Edit it or generate it again.",
   "video.learning.stoppedShort": "Stopped",
-  "video.learning.explanationAgain": "Explain again"
+  "video.learning.explanationAgain": "Explain again",
+  "video.learning.start": "Start sentence learning",
+  "video.learning.appearance": "Customize learning panel",
+  "video.learning.drag": "Drag the title to move the panel"
 }

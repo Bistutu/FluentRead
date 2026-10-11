@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/videoPlayerBinding.ts
  * 文件职责：把字幕入口和菜单绑定到定位器选中的视频播放器，并在信息流、全屏及原生控件重挂载时保持稳定。
- * 主要内容：以画中画和全屏控件为锚点维护入口顺序，忽略播放器纯文本突变，管理 fallback 控件、进度徽标和禁用状态下的节点清理。
+ * 主要内容：以画中画和全屏控件为锚点维护入口顺序，按真实控件结构变化绑定入口，忽略字幕与 tooltip 内容更新，管理 fallback 控件、进度徽标和禁用状态下的节点清理。
  * 模块边界：只管理 FluentRead 播放器节点的挂载位置与事件；按钮行为、菜单内容和字幕业务由调用方注入。
  */
 
@@ -272,6 +272,7 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
     if (!element || typeof (element as {tagName?: unknown}).tagName !== 'string') return;
     const selected = target;
     if (!selected || (element !== selected.player && !selected.player.contains(element as Node))) return;
+    if (activePlayers.has(selected.player) === active) return;
     if (active) activePlayers.add(selected.player);
     else activePlayers.delete(selected.player);
     sync();
@@ -280,12 +281,15 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
   const onPointerOver = (event: Event) => markInteraction(event, true);
   const onPointerOut = (event: Event) => {
     const related = (event as MouseEvent).relatedTarget;
-    if (related && typeof (event.target as {contains?: unknown})?.contains === 'function'
-      && (event.target as Node).contains(related as Node)) return;
+    if (related && target?.player.contains(related as Node)) return;
     markInteraction(event, false);
   };
   const onFocusIn = (event: Event) => markInteraction(event, true);
-  const onFocusOut = (event: Event) => markInteraction(event, false);
+  const onFocusOut = (event: Event) => {
+    const related = (event as FocusEvent).relatedTarget;
+    if (related && target?.player.contains(related as Node)) return;
+    markInteraction(event, false);
+  };
 
   document.addEventListener('pointerover', onPointerOver, true);
   document.addEventListener('pointerout', onPointerOut, true);
@@ -303,10 +307,23 @@ export function createVideoPlayerBinding(options: VideoPlayerBindingOptions): Vi
     if (playerRecords.length === 0) return;
     const isOwned = (node: Node) => node instanceof Element && Boolean(node.closest('.fluent-read-video-ui'));
     const correctlyPlaced = button?.parentElement === host && button?.nextElementSibling === before;
-    if (playerRecords.every(record => isOwned(record.target)
-      || (record.type === 'childList' && [...record.addedNodes, ...record.removedNodes].every(node => node.nodeType === 3))
-      || (record.type !== 'attributes' && correctlyPlaced
-        && [...record.addedNodes, ...record.removedNodes].every(isOwned)))) return;
+    const controlSelector = [VIDEO_RIGHT_CONTROLS_SELECTOR, FULLSCREEN_CONTROL_SELECTOR,
+      PICTURE_IN_PICTURE_CONTROL_SELECTOR, VIDEO_X_SETTINGS_CONTROL_SELECTOR].join(', ');
+    const affectsControls = (node: Node): boolean => {
+      if (!(node instanceof Element) || isOwned(node)) return false;
+      if (node === host || Boolean(host && node.contains(host))) return true;
+      if (node.matches(controlSelector) || node.querySelector(controlSelector)) return true;
+      return Boolean(host?.contains(node) && (node.matches('button, [role="button"]')
+        || node.querySelector('button, [role="button"]')));
+    };
+    if (playerRecords.every(record => {
+      if (isOwned(record.target)) return true;
+      if (record.type === 'attributes') return !affectsControls(record.target);
+      const nodes = [...record.addedNodes, ...record.removedNodes];
+      if (nodes.every(node => node.nodeType === 3)) return true;
+      if (!correctlyPlaced && nodes.some(isOwned)) return false;
+      return !nodes.some(affectsControls);
+    })) return;
     sync();
   }) : null;
   controlsObserver?.observe(document, {childList: true, subtree: true, attributes: true, attributeFilter: ['aria-label', 'title', 'data-testid']});

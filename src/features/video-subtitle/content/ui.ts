@@ -943,6 +943,24 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
       stroke-linejoin: round !important;
     }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-icon-sparkle { fill: currentColor !important; stroke-width: 1 !important; }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-learning {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      gap: 9px !important;
+      width: 100% !important;
+      padding: 9px 11px !important;
+      border: 1px solid rgba(239, 71, 118, .3) !important;
+      border-radius: 9px !important;
+      color: var(--fr-video-menu-brand-text) !important;
+      background: var(--fr-video-menu-brand-soft) !important;
+      font-weight: 600 !important;
+      text-align: left !important;
+    }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-learning:hover { background: rgba(239, 71, 118, .28) !important; }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-learning:disabled { opacity: .45 !important; cursor: default !important; }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-learning-label { flex: 1 !important; }
+    #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-learning .fluent-read-video-menu-icon-next { width: 16px !important; height: 16px !important; }
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-main,
     #${VIDEO_TRANSLATION_MENU_ID} .fluent-read-video-menu-section {
       display: grid !important;

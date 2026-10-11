@@ -15,7 +15,7 @@
   "video.learning.save": "Enregistrer la phrase",
   "video.learning.library": "Centre d’apprentissage",
   "video.learning.explanation": "Confirmer l’explication (modifiable)",
-  "video.learning.hint": "← / → change de phrase, R répète, Q met en pause à la fin, Esc ferme. Choisissez une aide à la lecture, puis relancez la phrase. Déplacer manuellement la lecture désactive l’aide. La modification épingle la phrase ; les brouillons sont conservés pendant cette session lorsque vous changez de phrase.",
+  "video.learning.hint": "Dans le lecteur : ← / → change de phrase, R répète, Q met en pause à la fin. Esc quitte le plein écran ou ferme l’apprentissage en affichage normal. Choisissez une aide puis relancez la phrase pour commencer ; une recherche manuelle désactive l’aide. Faites glisser le titre pour déplacer le panneau. La modification épingle la phrase et conserve vos brouillons.",
   "video.learning.empty": "Aucune chronologie. Activez les sous-titres originaux et réessayez après chargement.",
   "video.learning.translationFailed": "Échec de traduction. Réessayez.",
   "video.learning.playFailed": "Utilisez le bouton de lecture de la vidéo.",
@@ -44,5 +44,8 @@
   "video.learning.expand": "Développer",
   "video.learning.stopped": "L’explication a été arrêtée. Vous pouvez la modifier ou la régénérer.",
   "video.learning.stoppedShort": "Arrêtée",
-  "video.learning.explanationAgain": "Expliquer à nouveau"
+  "video.learning.explanationAgain": "Expliquer à nouveau",
+  "video.learning.start": "Commencer l’apprentissage des phrases",
+  "video.learning.appearance": "Personnaliser le panneau d’apprentissage",
+  "video.learning.drag": "Déplacer le panneau en faisant glisser le titre"
 }

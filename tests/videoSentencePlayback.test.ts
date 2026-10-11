@@ -56,6 +56,71 @@ function harness() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('视频单句播放器控制器', () => {
+  it('在已结束或尚未开始的固定句上启用辅助只准备模式，不跳回视频开头或隐式播放', () => {
+    const h = harness();
+    const first = {...h.sentence, startMs: 0, endMs: 1000};
+    h.media.currentTime = 25;
+    h.controller.select(first, 'loop', false);
+    for (let i = 0; i < 10; i++) h.media.dispatchEvent(new Event('timeupdate'));
+    expect(h.media.currentTime).toBe(25); expect(h.callbacks.size).toBe(0);
+    h.controller.setMode('pause'); h.media.dispatchEvent(new Event('timeupdate'));
+    expect(h.media.pause).not.toHaveBeenCalled(); expect(h.media.currentTime).toBe(25);
+    h.controller.setMode('loop'); h.media.dispatchEvent(new Event('ended'));
+    expect(h.media.play).not.toHaveBeenCalled(); expect(h.controller.getState().mode).toBe('off');
+    h.media.currentTime = 0;
+    h.controller.select(h.sentence, 'loop', false);
+    expect(h.callbacks.size).toBe(0);
+    h.media.currentTime = 1.5; h.media.dispatchEvent(new Event('timeupdate'));
+    expect(h.callbacks.size).toBe(1);
+    h.media.currentTime = 3; h.frame(); expect(h.media.currentTime).toBe(1);
+    expect(h.media.playbackRate).toBe(1.75);
+    h.controller.destroy();
+  });
+
+  it('等待异步 seek 落地期间不重复写入 currentTime；错误落点解除而不争抢播放器', () => {
+    const h = harness();
+    let time = 5; let requested = 0; const writes = vi.fn((value: number) => {requested = value;});
+    Object.defineProperty(h.media, 'currentTime', {get: () => time, set: writes});
+    h.controller.select(h.sentence, 'loop');
+    expect(writes).toHaveBeenCalledOnce(); expect(requested).toBe(1); expect(h.callbacks.size).toBe(0);
+    for (let i = 0; i < 30; i++) h.media.dispatchEvent(new Event('timeupdate'));
+    expect(writes).toHaveBeenCalledOnce(); expect(h.callbacks.size).toBe(0);
+    h.media.dispatchEvent(new Event('ended')); expect(writes).toHaveBeenCalledOnce(); expect(h.media.play).not.toHaveBeenCalled();
+    time = 1; h.media.dispatchEvent(new Event('timeupdate'));
+    expect(h.callbacks.size).toBe(1);
+    h.media.dispatchEvent(new Event('seeked'));
+    expect(h.callbacks.size).toBe(1);
+    time = 3; h.frame(); expect(writes).toHaveBeenCalledTimes(2); expect(h.callbacks.size).toBe(0);
+    time = 9; h.media.dispatchEvent(new Event('seeked'));
+    expect(h.controller.getState().mode).toBe('off'); expect(writes).toHaveBeenCalledTimes(2);
+    h.controller.destroy();
+  });
+
+  it('重播已在起点的暂停媒体不产生多余 seek，准备中的非有限时间不创建循环', () => {
+    const h = harness(); const setter = vi.spyOn(h.media, 'currentTime', 'set');
+    h.media.currentTime = 1; setter.mockClear(); h.media.paused = true;
+    h.controller.select(h.sentence, 'loop'); expect(setter).not.toHaveBeenCalled();
+    expect(h.callbacks.size).toBe(0);
+    h.media.paused = false; h.media.dispatchEvent(new Event('play')); h.frame();
+    expect(h.callbacks.size).toBe(1);
+    h.media.currentTime = NaN; h.controller.select(h.sentence, 'loop', false);
+    h.media.dispatchEvent(new Event('timeupdate')); expect(h.callbacks.size).toBe(0); expect(Number.isNaN(h.media.currentTime)).toBe(true);
+    h.controller.destroy();
+  });
+
+  it('快速换句自己的 seek 尚未落地时切辅助模式保留 seek 归属和范围，不重复写入', () => {
+    const h = harness(); let time = 20; const write = vi.fn();
+    Object.defineProperty(h.media, 'currentTime', {get: () => time, set: write});
+    h.controller.select(h.sentence, 'off');
+    h.controller.setMode('loop'); expect(h.callbacks.size).toBe(0); expect(write).toHaveBeenCalledOnce();
+    time = 1; h.media.seeking = true; h.media.dispatchEvent(new Event('seeking'));
+    expect(h.controller.getState().mode).toBe('loop');
+    h.media.seeking = false; h.media.dispatchEvent(new Event('seeked'));
+    expect(h.callbacks.size).toBe(1); expect(write).toHaveBeenCalledOnce();
+    time = 3; h.frame(); expect(write).toHaveBeenCalledTimes(2); expect(write).toHaveBeenLastCalledWith(1);
+    h.controller.destroy();
+  });
+
   it('未选句及停止后的播放事件不读取媒体状态或重复通知，已有选句仍在脱离页面时解除', () => {
     const h = harness();
     const connected = vi.fn(() => false);
@@ -226,7 +291,7 @@ describe('视频单句播放器控制器', () => {
     h.media.failSeek = false;
     h.media.paused = false;
     h.controller.select(h.sentence, 'pause');
-    h.media.currentTime = 3;
+    h.media.currentTime = 3.1;
     h.media.failSeek = true;
     h.frame();
     expect(h.controller.getState().mode).toBe('off');

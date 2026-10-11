@@ -13,7 +13,7 @@ import {buildConfigDiff} from '@/src/core/config/diff';
 describe('keyless free translation configuration', () => {
     it('migrates old settings while keeping explicit opt-outs and never automatically adding paid-capable accounts', () => {
         expect(new Config().freeTranslationOrder).toEqual(DEFAULT_FREE_TRANSLATION_ORDER);
-        expect(new Config().freeTranslationOrder).toEqual(FREE_TRANSLATION_PROVIDERS.filter(provider => provider.id !== 'doubaoWeb').map(provider => provider.id));
+        expect(new Config().freeTranslationOrder).toEqual(FREE_TRANSLATION_PROVIDERS.map(provider => provider.id));
         for (const value of [undefined, null, 'myMemory', [], ['untrusted', 42]]) {
             expect(normalizeFreeTranslationOrder(value)).toEqual(DEFAULT_FREE_TRANSLATION_ORDER);
         }
@@ -26,10 +26,11 @@ describe('keyless free translation configuration', () => {
         expect(normalizeFreeTranslationOrder(['azureTranslator', 'deepL'])).toEqual(DEFAULT_FREE_TRANSLATION_ORDER);
     });
 
-    it('豆包网页节点默认关闭，明确的启用列表在重读和备份恢复时保持不变', () => {
-        expect(new Config().freeTranslationOrder).not.toContain('doubaoWeb');
+    it('豆包网页节点默认开启，明确的启用列表在重读和备份恢复时保持不变', () => {
+        expect(new Config().freeTranslationOrder).toContain('doubaoWeb');
+        expect(normalizeConfig({}).freeTranslationOrder).toContain('doubaoWeb');
         expect(FREE_TRANSLATION_PROVIDERS.find(provider => provider.id === 'doubaoWeb')).toMatchObject({
-            label: '豆包网页翻译', description: '实验性免密钥网页接口，默认关闭；匿名访问失败会换线', defaultWeight: 1, defaultEnabled: false,
+            label: '豆包网页翻译', description: '实验性免密钥网页接口，默认开启；匿名访问失败会换线', defaultWeight: 1,
         });
         const previous = normalizeConfig({freeTranslationOrder: ['google', 'myMemory'], freeTranslationBilibiliDefaultApplied: true});
         expect(previous.freeTranslationOrder).toEqual(['google', 'myMemory']);

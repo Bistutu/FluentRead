@@ -5,7 +5,9 @@
  * 模块边界：本文件只在 content 页面编排，不拦截 fetch/XHR 也不实现翻译 provider；MAIN-world bridge 在独立模块捕获 timedtext，解析算法在 youtubeSubtitleData，翻译经 app client。
  */
 import {createApp, h, shallowReactive} from 'vue';
-import {createVideoSentenceLearningHost, createSavedVideoPositionRestorer, getVideoLearningSource, type MutableVideoSentenceLearningProps} from './sentenceLearningHost';
+import {createSavedVideoPositionRestorer, getVideoLearningSource, type MutableVideoSentenceLearningProps} from './sentenceLearningHost';
+import {createVideoSentenceLearningSession} from './sentenceLearningSession';
+import {createVideoLearningPlacementOwner} from './sentenceLearningPlacement';
 import sentenceLearningStyles from '../ui/videoSentenceLearning.css?inline';
 import {hasDistinctTranslation} from '@/src/core/translation/result';
 import browser from 'webextension-polyfill';
@@ -176,12 +178,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     ? Promise.resolve(text)
     : translateVideoText(text, signal, isXVideoPage() ? config.videoSourceLanguage : undefined));
   let observedVideo: HTMLVideoElement | null = null;
-  let learningGeneration = 0;
-  let learningComponent: typeof import('../ui/VideoSentenceLearning.vue')['default'];
-  const learning = createVideoSentenceLearningHost({markUi: markVideoUi, mount: (host, props) => {
-    const app = createApp({render: () => h(learningComponent, props)}); app.mount(host); return () => app.unmount();
-  }});
-  const closeSentenceLearning = () => { learningGeneration++; learning.close(); };
+  const learningPlacement = createVideoLearningPlacementOwner(() => config.videoSentenceLearningAppearance, subscribeConfig);
   const restorePosition = createSavedVideoPositionRestorer();
   const restoreSavedVideoPosition = () => { if (isXVideoPage() && observedVideo) restorePosition.restore(observedVideo, window.location, document); };
   const getLearningCues = () => {
@@ -193,19 +190,19 @@ export function mountVideoSubtitleTranslation(): () => void {
     const nativeLanguage = pretranslationTrackKey.startsWith('x:native:') ? pretranslationTrackKey.slice('x:native:'.length) : '';
     return nativeLanguage && nativeLanguage !== 'original' ? nativeLanguage : config.videoSourceLanguage;
   };
-  const openSentenceLearning = async () => {
-    const video = observedVideo; const player = playerLocator.getTarget()?.player;
-    if (!video || !player || !canReadVideo() || (isAiCaptureActive() && aiFullPhase !== 'ready')) return;
-    closeSentenceLearning(); const owner = learningGeneration;
-    learningComponent = (await import('../ui/VideoSentenceLearning.vue')).default;
-    if (destroyed || owner !== learningGeneration || video !== observedVideo || player !== playerLocator.getTarget()?.player || !canReadVideo()) return;
-    const source = getVideoLearningSource(video, window.location, document);
-    learning.open(player, shallowReactive<MutableVideoSentenceLearningProps>({...source, video, cues: getLearningCues(),
-      sourceLanguage: getLearningLanguage() || config.from, targetLanguage: config.to, onClose: closeSentenceLearning,
+  const learning = createVideoSentenceLearningSession({markUi: markVideoUi, place: learningPlacement.place,
+    load: async () => (await import('../ui/VideoSentenceLearning.vue')).default,
+    mount: (view, host, props) => {const app = createApp({render: () => h(view, props)}); app.mount(host); return () => app.unmount();},
+    readTarget: () => {const target = playerLocator.getTarget(); return target?.video === observedVideo ? target : null;},
+    canOpen: () => !destroyed && canReadVideo() && (!isAiCaptureActive() || aiFullPhase === 'ready'),
+    readProps: ({video}, onClose) => shallowReactive<MutableVideoSentenceLearningProps>({...getVideoLearningSource(video, window.location, document), video, cues: getLearningCues(),
+      sourceLanguage: getLearningLanguage() || config.from, targetLanguage: config.to, onClose,
       translate: (text, signal) => isVideoSubtitleInTargetLanguage(text, config.to)
         ? Promise.resolve(text) : translateVideoText(text, signal, getLearningLanguage() || undefined),
-    }));
-  };
+    }),
+  });
+  const closeSentenceLearning = learning.close;
+  const openSentenceLearning = learning.open;
   let layoutPlayer: HTMLElement | null = null;
   let layoutVideo: HTMLVideoElement | null = null;
   let layoutFrame: number | undefined;
@@ -214,6 +211,8 @@ export function mountVideoSubtitleTranslation(): () => void {
     layoutFrame = window.requestAnimationFrame(() => {
       layoutFrame = undefined;
       if (destroyed) return;
+      const target = playerLocator.getTarget();
+      if (learning.isOpen() && target?.video === observedVideo) learning.syncPlayer(target.player, target.video);
       if (menuElement?.isConnected) syncVideoPlayerMenuLayout(menuElement);
       syncTranslationOverlayPosition(observedContainer);
     });
@@ -442,6 +441,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     } else {
       progressiveCue = cue;
     }
+    startCaptionClock();
 
     const syntheticCaptionActive = container.id === VIDEO_AI_CAPTION_CONTAINER_ID;
     const captionDiffersFromCue = normalizeVideoCaptionText(source) !== normalizeVideoCaptionText(cue.text);
@@ -630,8 +630,8 @@ export function mountVideoSubtitleTranslation(): () => void {
 
   const syncVideoElement = (confirmMissing = false) => {
     const nextVideo = playerLocator.sync()?.video || null;
-    if (!nextVideo && observedVideo && isXVideoPage() && (observedVideo.isConnected || !confirmMissing)) {
-      // 悬浮/页面布局可能暂时隐藏仍连接的播放器；候选不可见不等于媒体离开。
+    if (!nextVideo && observedVideo && (observedVideo.isConnected || !confirmMissing)) {
+      // 全屏切换和布局动画可能暂时隐藏仍连接的播放器；候选不可见不等于换媒体。
       if (observedVideo.isConnected) { if (mediaMissingTimer) clearTimeout(mediaMissingTimer); mediaMissingTimer = undefined; return; }
       mediaMissingTimer ??= setTimeout(() => { mediaMissingTimer = undefined; syncVideoElement(true); }, 1500);
       return;
@@ -1277,7 +1277,6 @@ export function mountVideoSubtitleTranslation(): () => void {
     event.stopPropagation();
     const menu = menuElement?.isConnected ? menuElement : document.getElementById(VIDEO_TRANSLATION_MENU_ID);
     if (!(menu instanceof HTMLElement)) return;
-    closeSentenceLearning();
     menuElement = menu;
     menu.hidden = !menu.hidden;
     updatePlayerUiState();
@@ -1345,7 +1344,8 @@ export function mountVideoSubtitleTranslation(): () => void {
   const handleDocumentKeydown = (event: KeyboardEvent) => {
     if (!event.isTrusted) return;
     if (event.key !== 'Escape' || !menuElement || menuElement.hidden) return;
-    event.preventDefault();
+    // 全屏 Escape 属于浏览器；菜单可以同时收尾，但不能阻止退出全屏。
+    if (!document.fullscreenElement) event.preventDefault();
     event.stopPropagation();
     // 导出/模型确认先退回原菜单，再按一次才关闭整个菜单。
     if (menuElement.dataset.view === 'export-prompt') { downloads.cancel(); return; }
@@ -1585,6 +1585,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     const video = observedVideo;
     if (!config.on || !config.videoTranslationEnabled || config.videoSubtitleVisible === false
       || !video || video.paused || video.ended || captionFrame !== undefined
+      || (!isXVideoPage() && !hasAdjustedTimeline() && !progressiveCue)
       || typeof video.requestVideoFrameCallback !== 'function') return;
     captionFrameVideo = video;
     captionFrame = video.requestVideoFrameCallback(() => {
@@ -1717,7 +1718,6 @@ export function mountVideoSubtitleTranslation(): () => void {
     }
     videoPageKey = nextVideoPageKey;
     if (!canReadVideo()) closeSentenceLearning();
-    if (learning.isOpen() && !learning.isConnected(playerLocator.getTarget()?.player)) closeSentenceLearning();
     if (!isSupportedVideoPage() || !config.on) {
       humanCaptions.clear();
       observeSubtitleLayout(null, null);
@@ -1732,6 +1732,8 @@ export function mountVideoSubtitleTranslation(): () => void {
     }
     syncPretranslationConfig();
     syncVideoElement();
+    const learningTarget = playerLocator.getTarget();
+    if (learning.isOpen() && (learningTarget ? !learning.syncPlayer(learningTarget.player, learningTarget.video) : !learning.isConnected())) closeSentenceLearning();
     restoreSavedVideoPosition();
     startCaptionClock();
     ensurePlayerUi();
@@ -1831,7 +1833,8 @@ export function mountVideoSubtitleTranslation(): () => void {
   });
 
   return () => {
-    closeSentenceLearning();
+    learning.destroy();
+    learningPlacement.dispose();
     destroyed = true; aiModelSetup.reset(); karaoke.destroy();
     humanCaptions.clear();
     downloads.destroy();

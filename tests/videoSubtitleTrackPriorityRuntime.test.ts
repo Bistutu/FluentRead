@@ -188,6 +188,37 @@ function clickMenu(f: ReturnType<typeof fixture>, selector: string) {
 }
 
 describe('public mounted X subtitle track priority and lifecycle', () => {
+  it('does not run an empty frame clock on ordinary YouTube; a later progressive cue starts and releases the clock at its boundary', async () => {
+    const f = fixture();
+    // 本例只验证媒体帧调度；原生字幕由下面的真实消息/媒体事件驱动。
+    // linkedom 的 observer 与浏览器对样式 DOM 的通知不同，避免混入无关的模拟微任务循环。
+    vi.stubGlobal('MutationObserver', class {observe() {} disconnect() {}});
+    defineBrowserPort(f.window, 'location', {configurable: true, value: new URL('https://www.youtube.com/watch?v=dQw4w9WgXcQ')});
+    f.player.id = 'movie_player';
+    f.player.insertAdjacentHTML('beforeend', '<button class="ytp-subtitles-button" aria-pressed="true"></button><div id="ytp-caption-window-container"><span class="ytp-caption-segment">A bounded caption sentence.</span></div>');
+    Object.assign(f.video, {paused: false});
+    let callback: (() => void) | undefined;
+    const request = vi.fn((next: () => void) => {callback = next; return request.mock.calls.length;});
+    const cancel = vi.fn();
+    Object.assign(f.video, {requestVideoFrameCallback: request, cancelVideoFrameCallback: cancel});
+    const dispose = f.start(); await settle();
+    expect(request).not.toHaveBeenCalled();
+    f.emitVideo('timeupdate'); f.emitVideo('play'); await vi.advanceTimersByTimeAsync(1000);
+    expect(request).not.toHaveBeenCalled();
+    const message = new f.window.Event('message');
+    Object.defineProperties(message, {source: {value: f.window}, origin: {value: f.window.location.origin},
+      data: {value: {source: 'fluent-read', type: 'fluent-read-youtube-timedtext',
+        url: 'https://www.youtube.com/api/timedtext?v=dQw4w9WgXcQ&lang=en&fmt=json3',
+        responseText: JSON.stringify({events: [{tStartMs: 0, dDurationMs: 3000, segs: [{utf8: 'A bounded caption sentence.'}]}]})}}});
+    f.window.dispatchEvent(message); await settle();
+    expect(request).toHaveBeenCalledOnce();
+    f.video.currentTime = 2; callback!(); expect(request).toHaveBeenCalledTimes(2);
+    f.video.currentTime = 3.5; callback!(); expect(request).toHaveBeenCalledTimes(2);
+    f.emitVideo('timeupdate'); expect(request).toHaveBeenCalledTimes(2);
+    expect(f.video.playbackRate).toBe(1);
+    dispose();
+  });
+
   it('opens the model selector with the configured cached model and cancels without replacing ready captions', async () => {
     const saved = 'Ready captions should remain until confirmation.';
     ports.send.mockImplementation(async (message: {type: string}) => {
@@ -588,6 +619,7 @@ describe('public mounted X subtitle track priority and lifecycle', () => {
     expect(f.callsFor('Old instance resource.')).toBe(0); expect(f.callsFor('Old instance cached cue.')).toBe(0);
     expect(f.callsFor('New mounted native cue.')).toBe(1);
     expect(f.document.querySelectorAll('#' + VIDEO_TRANSLATION_LAYER_ID)).toHaveLength(1);
-    expect(ports.subscribers.size).toBe(1); expect(f.document.getElementById('host')?.textContent).toBe('host original');
+    // 当前 runtime 与独立学习外观 owner 各一条；前面已验证旧实例全部解除到零。
+    expect(ports.subscribers.size).toBe(2); expect(f.document.getElementById('host')?.textContent).toBe('host original');
   });
 });

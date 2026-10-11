@@ -1,0 +1,26 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: node scripts/run-video-sentence-learning-test.cjs --compact-probe-only --platforms youtube --extension-dir .output/chrome-mv3 --playwright-root /Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules --artifacts-dir /private/tmp/fluentread-video-learning-reliability-small-player-d1166-final
+Video sentence validation started at 2026-10-11T15:36:03.113Z
+youtube: Measured actual 390×260 control bounds and hit tests
+youtube: Measured actual 320×180 control bounds and hit tests
+{
+  "success": true,
+  "fixtureCases": [
+    {
+      "platform": "youtube",
+      "scenario": "small-player-controls-bounds-probe",
+      "success": true,
+      "checks": 2
+    }
+  ],
+  "liveCases": [],
+  "focusEvents": {
+    "nativeObserver": true,
+    "browserActivations": 0,
+    "observerClosed": true
+  },
+  "cleanup": {
+    "browserClosed": true,
+    "profileRemoved": true
+  },
+  "report": "/private/tmp/fluentread-video-learning-reliability-small-player-d1166-final/report.json"
+}

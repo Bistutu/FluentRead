@@ -251,6 +251,7 @@
       "tests/videoAiModelMenu.test.ts",
       "tests/videoUiI18n.test.ts",
       "tests/videoSubtitleAppearance.test.ts",
+      "tests/videoSentenceLearningAppearance.test.ts",
       "tests/videoAiBackground.test.ts",
       "tests/videoAiCapture.test.ts",
       "tests/videoAiFullCapture.test.ts",
@@ -569,6 +570,7 @@
       "tests/visionProbeStatusLifecycle.test.ts",
       "tests/interfaceAppearanceLifecycle.test.ts",
       "tests/interfaceSettingsLifecycle.test.ts",
+      "tests/videoSentenceLearningAppearanceSettingsLifecycle.test.ts",
       "tests/modelVisionSettingsLifecycle.test.ts",
       "tests/serviceConfigurationLifecycle.test.ts",
       "tests/serviceEditorLifecycle.test.ts",
@@ -645,6 +647,8 @@
       "tests/readingEvidenceUi.test.ts",
       "tests/videoSentencePlayback.test.ts",
       "tests/videoSentenceLearningHost.test.ts",
+      "tests/videoSentenceLearningSession.test.ts",
+      "tests/videoSentenceLearningPlacement.test.ts",
       "tests/vocabularyVideoSourceUi.test.ts"
     ],
     "regression": [

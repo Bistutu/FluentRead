@@ -46,6 +46,7 @@ export const prepareImageOcrLanguages = async (): Promise<void> => undefined;
 export {
     VIDEO_LOCAL_TRANSCRIPTION_MODELS,
     VIDEO_LOCAL_TRANSCRIPTION_STATE_KEY,
+    VIDEO_LOCAL_TRANSCRIPTION_STATE_MESSAGE,
     VIDEO_LOCAL_TRANSCRIPTION_RECOMMENDED_MODEL,
     normalizeVideoLocalTranscriptionModels,
 } from '@/src/features/video-subtitle/transcription';
