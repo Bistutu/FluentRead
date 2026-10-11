@@ -16,7 +16,7 @@ function parseArgs(argv) {
         playwrightRoot: arg(argv, 'playwright-root', process.env.PLAYWRIGHT_ROOT),
         artifactsDir: path.resolve(arg(argv, 'artifacts-dir', path.join(os.tmpdir(), 'fluentread-harness-reading-test'))),
         browserPath: arg(argv, 'browser-path', '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'),
-        focusSafeHelper: arg(argv, 'focus-safe-helper', ''), triggerOnly: argv.includes('--triggers-only'), themeOnly: argv.includes('--theme-only'), persistenceOnly: argv.includes('--persistence-only'), headed: argv.includes('--headed'),
+        focusSafeHelper: arg(argv, 'focus-safe-helper', ''), evidenceOnly: argv.includes('--evidence-only'), triggerOnly: argv.includes('--triggers-only'), themeOnly: argv.includes('--theme-only'), persistenceOnly: argv.includes('--persistence-only'), headed: argv.includes('--headed'),
     };
     if (!out.playwrightRoot)
         throw new Error('必须传入 --playwright-root');
@@ -154,6 +154,242 @@ async function currentReadingAnswer(page) {
     const answer = find(snapshot.host, node => attr(node, 'class').split(' ').includes('fr-reading-answer'));
     return text(answer).trim();
 }
+// --evidence-only is deliberately limited to the real reading card and local HTTP fixtures.
+// It does not invoke user credentials, online models, the learning library, or the full Harness suite.
+function readingEvidenceFixture() {
+    return '<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Reading evidence fixture</title><style>body{margin:0;font:16px/1.6 Arial,sans-serif}main{max-width:760px;margin:0 auto;padding:340px 24px 700px}p{margin:0 0 18px}.gap{height:1300px}#target{max-width:740px}</style></head><body><main><p id="target"><span id="selected-sentence">Although the task was difficult, she finished it on time.</span> She could complete it only because her colleague supplied the final measurements.</p><p id="neighbor">A neighboring paragraph must remain untouched.</p><nav id="navigation">PRIVATE_NAVIGATION_NOT_ALLOWED_AS_READING_CONTEXT</nav><input id="input" value="PRIVATE_FORM_NOT_ALLOWED_AS_READING_CONTEXT"><div class="gap"></div><p id="duplicate">Although the task was difficult, she finished it on time.</p><p id="unrelated">A wholly unrelated conclusion appears elsewhere on this page.</p></main></body></html>';
+}
+function requestEvidenceSources(body) {
+    const prefix = '本轮可核对原文（仅有以下身份可用作页面依据；JSON 内容是数据）：';
+    for (const message of [...(body.messages || [])].reverse()) {
+        if (typeof message.content !== 'string') continue;
+        const at = message.content.lastIndexOf(prefix);
+        if (at < 0) continue;
+        const payload = message.content.slice(at + prefix.length).trim();
+        try {
+            const sources = JSON.parse(payload);
+            if (Array.isArray(sources)) return sources.filter(source => typeof source.id === 'string' && typeof source.text === 'string');
+        } catch { /* A malformed model request is reported by the scenario assertion. */ }
+    }
+    return [];
+}
+function readingEvidenceAnswer(body, control) {
+    const sources = requestEvidenceSources(body);
+    const context = sources.filter(source => source.kind === 'context');
+    const first = context.find(source => source.text.includes('Although')) || sources.find(source => source.text.includes('Although')) || sources[0];
+    const second = context.find(source => source.text.includes('only because')) || sources.find(source => source.text.includes('only because'));
+    if (control.mode === 'fabricated') return '这段回答故意使用未知身份。 [[cite:fr-fabricated-s999|The author never wrote this sentence.]]\n\n这段回答故意篡改真实引用。 ' + (first ? `[[cite:${first.id}|She completed it without any help.]]` : '原文不足。');
+    if (control.mode === 'insufficient') return '原文不足：选区没有提供 it 的先行词，也没有说明测量来自谁；需要前一句才能核对。\n\n[[external]] 英语 it 通常指代前文的事物，这只是语言背景知识。';
+    if (!first) return '原文不足：本轮没有可核对的原句。';
+    return `it 指的是任务；作者以困难衬托按时完成的结果。 [[cite:${first.id}|${first.text}]]\n\n` + (second ? `按时完成依赖同事提供最终测量。 [[cite:${second.id}|${second.text}]]\n\n` : '') + '[[external]] 英语 although 引入让步；这是语言背景补充。';
+}
+async function evidenceSnapshot(page) {
+    const snapshot = await shadowSnapshot(page);
+    const answer = find(snapshot.host, node => attr(node, 'class').split(' ').includes('fr-reading-answer'));
+    const nodes = findAll(answer, node => attr(node, 'class').split(' ').includes('fr-reading-evidence') || attr(node, 'data-evidence-state') === 'unverified');
+    return {...snapshot, nodes, evidence: nodes.map(node => ({tag: node.nodeName, text: text(node).trim(), quote: attr(node, 'data-evidence-quote') || attr(node, 'title') || text(node).trim(), state: attr(node, 'data-evidence-state'), identity: attr(node, 'data-reading-evidence'), disabled: attr(node, 'disabled') !== '' || (node.attributes || []).includes('disabled')}))};
+}
+async function activateReadingEvidence(page, index = 0, key) {
+    const {nodes, session} = await evidenceSnapshot(page);
+    const node = nodes[index];
+    assert(node?.nodeId && node.nodeName === 'BUTTON', `没有可操作的真实原文依据: ${index}`);
+    await session.send('DOM.scrollIntoViewIfNeeded', {nodeId: node.nodeId});
+    await session.send('DOM.focus', {nodeId: node.nodeId});
+    if (key) {await page.keyboard.press(key); return;}
+    const {model} = await session.send('DOM.getBoxModel', {nodeId: node.nodeId});
+    const quad = model.content;
+    const x = (quad[0] + quad[2] + quad[4] + quad[6]) / 4;
+    const y = (quad[1] + quad[3] + quad[5] + quad[7]) / 4;
+    await session.send('Input.dispatchMouseEvent', {type: 'mousePressed', x, y, button: 'left', clickCount: 1});
+    await session.send('Input.dispatchMouseEvent', {type: 'mouseReleased', x, y, button: 'left', clickCount: 1});
+}
+async function readingEvidenceHighlights(page) {
+    return page.evaluate(() => {
+        const highlights = globalThis.CSS?.highlights;
+        const ranges = highlights ? [...highlights.entries()].filter(([name]) => name.startsWith('fluentread-reading-evidence-')).flatMap(([name, highlight]) => [...highlight].map(range => ({name, text: range.toString(), parentId: (range.commonAncestorContainer.nodeType === 1 ? range.commonAncestorContainer : range.commonAncestorContainer.parentElement)?.closest('p')?.id || ''}))) : [];
+        return {ranges, scrollY, targetTop: document.querySelector('#target')?.getBoundingClientRect().top, duplicateTop: document.querySelector('#duplicate')?.getBoundingClientRect().top};
+    });
+}
+async function openEvidenceReading(page) {
+    const snapshot = await shadowSnapshot(page);
+    if (find(snapshot.host, node => node.nodeName === 'BUTTON' && attr(node, 'aria-label') === '打开划词翻译')) await clickShadowButton(page, '打开划词翻译');
+    await waitUntil(async () => {
+        const {host} = await shadowSnapshot(page);
+        const card = find(host, node => attr(node, 'class').split(' ').includes('fr-translation-tooltip'));
+        return Boolean(card && !/visibility\s*:\s*hidden/.test(attr(card, 'style')));
+    }, '划词卡片没有完成真实可见定位');
+    await clickShadowButton(page, '读懂');
+}
+async function verifyReadingEvidence({page, configPage, requests, record, args, result, evidenceControl}) {
+    result.modelVerification = {provider: 'local deterministic OpenAI HTTP fixture', liveModelVerified: false, sourceMappingOnly: true};
+    const waitEvidence = async (state, index = 0) => waitUntil(async () => (await evidenceSnapshot(page)).evidence[index]?.state === state, `原文依据没有变为 ${state}`);
+    const highlighted = async (quote, parentId = 'target') => {
+        await waitUntil(async () => (await readingEvidenceHighlights(page)).ranges.some(range => range.text.includes(quote) && range.parentId === parentId), '真实引用没有点亮对应正文原句');
+        const details = await readingEvidenceHighlights(page);
+        assert(!details.ranges.some(range => range.parentId === 'duplicate'), '引用跳到了相同文字的其他段落');
+        return details;
+    };
+    const clean = async () => {
+        await waitUntil(async () => !(await readingEvidenceHighlights(page)).ranges.length, '阅读卡临时原文高亮没有清理');
+        return readingEvidenceHighlights(page);
+    };
+    const answer = async () => {await waitForReadingComplete(page); return evidenceSnapshot(page);};
+    const reopen = async () => {
+        await page.locator('#selected-sentence').scrollIntoViewIfNeeded();
+        await page.locator('#selected-sentence').click({position: {x: 1, y: 12}});
+        await selectFixtureSentence(page);
+        await openEvidenceReading(page);
+        return answer();
+    };
+    await openEvidenceReading(page);
+    let snapshot = await answer();
+    assert(snapshot.evidence.length >= 2 && snapshot.evidence.every(item => item.tag === 'BUTTON' && item.state === 'ready'), `真实多句依据没有成为按钮: ${JSON.stringify(snapshot.evidence)}`);
+    assert(!snapshot.text.includes('[[cite:'), '引用协议原始标记泄露到阅读回答');
+    const supplied = requests.flatMap(requestEvidenceSources);
+    assert(supplied.some(source => snapshot.evidence[0].quote.includes(source.text)), '第一处可点击引用不是实际提供的原文');
+    assert(supplied.some(source => source.text.includes('only because')), '允许的当前段落没有提供第二句条件');
+    assert(requests.every(request => !JSON.stringify(request).includes('PRIVATE_NAVIGATION') && !JSON.stringify(request).includes('PRIVATE_FORM')), '请求读取了选区之外的未允许导航或表单');
+    assert(snapshot.text.includes('外部背景'), '外部背景没有与来自页面的依据区分');
+    record('evidence.actual-sources-multiple-sentences-and-background', 'passed', {evidence: snapshot.evidence, sourceCount: supplied.length});
+    await page.evaluate(() => {document.querySelector('main').style.paddingTop = '1300px';});
+    await activateReadingEvidence(page);
+    await waitEvidence('located');
+    const located = await highlighted('Although');
+    assert(located.scrollY > 0 && located.targetTop >= 0 && located.targetTop < 900, '点击依据没有把离开视口的原句滚动回来');
+    record('evidence.click-locates-original-not-duplicate', 'passed', located);
+    const screenshot = path.join(args.artifactsDir, 'reading-evidence-located.png');
+    await page.screenshot({path: screenshot}); result.screenshots.push(screenshot);
+    const sourceDom = path.join(args.artifactsDir, 'reading-evidence-source.html');
+    const cardDom = path.join(args.artifactsDir, 'reading-evidence-closed-shadow.json');
+    fs.writeFileSync(sourceDom, await page.content());
+    fs.writeFileSync(cardDom, JSON.stringify((await shadowSnapshot(page)).host, null, 2));
+    result.domArtifacts = [sourceDom, cardDom];
+    await activateReadingEvidence(page, 1, 'Enter');
+    await waitEvidence('located', 1);
+    record('evidence.keyboard-enter-second-sentence', 'passed', await highlighted('only because'));
+    await activateReadingEvidence(page, 0, 'Space');
+    record('evidence.keyboard-space-first-sentence', 'passed', await highlighted('Although'));
+
+    // Exercise the extension's real page DOM translation/restore path while retaining this card.
+    const fullPageShortcut = async () => {await page.keyboard.down('Alt'); await page.keyboard.press('t'); await page.keyboard.up('Alt');};
+    const beforePageTranslation = requests.length;
+    await fullPageShortcut();
+    await waitUntil(async () => await page.locator('#target .fluent-read-bilingual-content').count() > 0, '真实 Alt+T 没有为当前原文产生双语 DOM');
+    await activateReadingEvidence(page); await waitEvidence('located');
+    record('evidence.real-full-page-bilingual-retains-original-anchor', 'passed', {...await highlighted('Although'), translation: await page.locator('#target .fluent-read-bilingual-content').allTextContents(), provider: 'local deterministic broker HTTP fixture', brokerRequestCount: requests.length - beforePageTranslation});
+    await fullPageShortcut();
+    await waitUntil(async () => await page.locator('#target .fluent-read-bilingual-content').count() === 0, '真实 Alt+T 恢复没有移除当前译文');
+    await activateReadingEvidence(page); await waitEvidence('located');
+    record('evidence.real-full-page-restore-retains-original-anchor', 'passed', await highlighted('Although'));
+
+    // Separately simulate translation nodes to check the anchor's exclusion and visibility rules.
+    await page.evaluate(() => {
+        const translation = document.createElement('span'); translation.className = 'fluent-read-bilingual-content'; translation.textContent = '虽然任务很难，她还是按时完成了。';
+        document.querySelector('#target').append(translation);
+    });
+    await activateReadingEvidence(page);
+    record('evidence.original-plus-bilingual-source-remains-original', 'passed', await highlighted('Although'));
+    await page.evaluate(() => {document.querySelector('#selected-sentence').style.display = 'none';});
+    await activateReadingEvidence(page); await waitEvidence('unavailable'); await clean();
+    record('evidence.hidden-original-keeps-snapshot-with-unavailable-state', 'passed', {evidence: (await evidenceSnapshot(page)).evidence[0]});
+    await page.evaluate(() => {document.querySelector('#selected-sentence').style.removeProperty('display');});
+    await activateReadingEvidence(page); await waitEvidence('located');
+    record('evidence.visible-original-restores-locating', 'passed', await highlighted('Although'));
+    await page.evaluate(() => document.querySelector('.fluent-read-bilingual-content')?.remove());
+    await activateReadingEvidence(page);
+    record('evidence.original-restored-source-remains-original', 'passed', await highlighted('Although'));
+
+    await page.evaluate(() => {const target = document.querySelector('#target'); target.innerHTML = '<span id="selected-sentence">Although the task was difficult, she finished it on time.</span> She could complete it only because her colleague supplied the final measurements.';});
+    await activateReadingEvidence(page);
+    await waitEvidence('located');
+    record('evidence.equivalent-dom-rebuild-recovers-anchor', 'passed', await highlighted('Although'));
+    await fillShadowInput(page, '继续追问', '这里的 it 指谁，结论有哪些条件？');
+    const beforeFollowup = requests.length;
+    await clickShadowButton(page, '发送追问');
+    snapshot = await answer();
+    assert(requests.length > beforeFollowup && snapshot.evidence.length >= 2, '连续追问没有保留可核对引用');
+    assert(requests.slice(beforeFollowup).some(body => body.messages?.some(message => message.role === 'assistant' && String(message.content).includes('it 指的是任务'))), '连续追问没有携带前一轮真实回答');
+    await activateReadingEvidence(page, 1);
+    record('evidence.followup-can-verify-same-allowed-corpus', 'passed', await highlighted('only because'));
+
+    await page.evaluate(() => {document.querySelector('#target').textContent = 'The host page has rewritten the paragraph into a different claim.';});
+    const beforeChanged = await page.evaluate(() => scrollY);
+    await activateReadingEvidence(page);
+    await waitEvidence('changed');
+    await clean();
+    const changed = await evidenceSnapshot(page);
+    assert(changed.evidence[0].quote.includes('Although'), '正文改写时丢失保存的原句');
+    assert(await page.evaluate(() => scrollY) === beforeChanged, '失效依据仍滚动页面');
+    record('evidence.rewritten-source-keeps-snapshot-and-does-not-jump', 'passed', {evidence: changed.evidence[0], scrollY: beforeChanged});
+    await clickShadowButton(page, '关闭翻译结果');
+    await clean();
+
+    await page.reload({waitUntil: 'domcontentloaded'}); await page.waitForTimeout(700);
+    snapshot = await reopen();
+    await activateReadingEvidence(page);
+    await highlighted('Although');
+    await page.evaluate(() => history.pushState({}, '', '/fixture?spa=next'));
+    await clean();
+    const beforeNavigation = await page.evaluate(() => scrollY);
+    await activateReadingEvidence(page);
+    await waitEvidence('navigated');
+    assert(await page.evaluate(() => scrollY) === beforeNavigation, 'SPA 导航后引用定位了旧页面');
+    record('evidence.spa-navigation-invalidates-old-document', 'passed', {evidence: (await evidenceSnapshot(page)).evidence[0]});
+    await clickShadowButton(page, '关闭翻译结果');
+    await clean();
+
+    await page.goto(page.url().replace(/\?.*$/, ''), {waitUntil: 'domcontentloaded'}); await page.waitForTimeout(700);
+    snapshot = await reopen();
+    await activateReadingEvidence(page); await highlighted('Although');
+    await clickShadowButton(page, '关闭翻译结果'); await clean();
+    record('evidence.close-clears-temporary-highlight', 'passed');
+    evidenceControl.mode = 'fabricated';
+    snapshot = await reopen();
+    assert(snapshot.evidence.length >= 2 && snapshot.evidence.every(item => item.tag !== 'BUTTON' || item.disabled || ['unavailable', 'unverified'].includes(item.state)), `虚构身份或篡改原句仍可点击: ${JSON.stringify(snapshot.evidence)}`);
+    await clean();
+    record('evidence.fabricated-identity-and-text-rejected', 'passed', {evidence: snapshot.evidence});
+    await clickShadowButton(page, '关闭翻译结果');
+
+    evidenceControl.mode = 'insufficient';
+    await persistConfig(configPage, {harness: {...(await readConfig(configPage)).harness, contextMode: 'selection'}});
+    await page.reload({waitUntil: 'domcontentloaded'}); await page.waitForTimeout(700);
+    await page.evaluate(() => {document.querySelector('#target').innerHTML = '<span id="selected-sentence">It was successful.</span>';});
+    const beforeInsufficient = requests.length;
+    snapshot = await reopen();
+    assert(snapshot.text.includes('原文不足') && snapshot.text.includes('外部背景') && !snapshot.evidence.some(item => item.tag === 'BUTTON'), '原文不足没有明确说明，或提供了不应可点的页面依据');
+    assert(requests.slice(beforeInsufficient).flatMap(requestEvidenceSources).every(source => source.kind === 'selection' && source.text.includes('It was successful.')), '仅选区模式提供了额外段落上下文');
+    record('evidence.insufficient-source-and-selection-only-privacy', 'passed', {answer: await currentReadingAnswer(page)});
+    await clickShadowButton(page, '关闭翻译结果');
+
+    evidenceControl.mode = 'valid'; evidenceControl.delayMs = 150;
+    await persistConfig(configPage, {harness: {...(await readConfig(configPage)).harness, contextMode: 'paragraph'}});
+    await page.reload({waitUntil: 'domcontentloaded'}); await page.waitForTimeout(700);
+    await page.locator('#selected-sentence').click({position: {x: 1, y: 12}}); await selectFixtureSentence(page);
+    await openEvidenceReading(page);
+    await waitForShadowButton(page, '停止');
+    await waitUntil(async () => Boolean(await currentReadingAnswer(page)), '取消测试没有等到真实流式首段');
+    await clickShadowButton(page, '停止');
+    await clean();
+    const stoppedAnswer = await currentReadingAnswer(page);
+    await page.waitForTimeout(1500);
+    assert(!(await evidenceSnapshot(page)).text.includes('正在'), '停止后迟到结果仍维持生成状态');
+    assert(await currentReadingAnswer(page) === stoppedAnswer, '停止后迟到流式文字继续改变回答');
+    record('evidence.cancel-cleans-highlight-and-rejects-late-stream', 'passed');
+    await clickShadowButton(page, '关闭翻译结果'); await clean();
+    await page.locator('#selected-sentence').click({position: {x: 1, y: 12}}); await selectFixtureSentence(page);
+    await openEvidenceReading(page);
+    await waitForShadowButton(page, '停止');
+    await waitUntil(async () => Boolean(await currentReadingAnswer(page)), '导航取消测试没有等到真实流式首段');
+    await page.evaluate(() => history.pushState({}, '', '/fixture?spa=during-stream'));
+    await clean();
+    await waitUntil(async () => !(await evidenceSnapshot(page)).text.includes('正在'), 'SPA 导航没有结束旧页面生成状态', 1000);
+    const navigationAnswer = await currentReadingAnswer(page);
+    await page.waitForTimeout(1000);
+    assert(!(await evidenceSnapshot(page)).text.includes('正在') && await currentReadingAnswer(page) === navigationAnswer, 'SPA 导航没有取消迟到流式回答');
+    record('evidence.spa-navigation-cancels-inflight-stream', 'passed');
+    await clickShadowButton(page, '关闭翻译结果'); await clean();
+    result.fixture = {page: 'local current paragraph with one second supporting sentence and distant duplicate', selection: '#target / #selected-sentence', evidenceSelector: '.fr-reading-evidence', evidenceStateAttribute: 'data-evidence-state', backgroundMarker: '[[external]]'};
+}
 async function verifyReadingTheme({page, configPage, requests, record, args, result}) {
     const inspect = async (id, expectedDark) => {
         const {host, session} = await shadowSnapshot(page);
@@ -245,7 +481,7 @@ async function waitForShadowButton(page, label, timeout = 10000) {
     throw new Error(`没有等到阅读卡按钮: ${label}`);
 }
 async function selectFixtureSentence(page) {
-    const box = await page.locator('#target').boundingBox();
+    const box = await page.locator(await page.locator('#selected-sentence').count() ? '#selected-sentence' : '#target').boundingBox();
     assert(box, '原文没有可选择的几何位置');
     await page.mouse.move(box.x + 1, box.y + box.height / 2);
     await page.mouse.down();
@@ -572,9 +808,11 @@ async function main() {
     let context;
     let close = async () => context?.close();
     let newPage = () => context.newPage();
+    let activatePageWithoutForeground = async () => {};
     const requests = [];
     const ttsRequests = [];
     let responseDelayMs = 0;
+    const evidenceControl = {mode: 'valid', delayMs: 0};
     const server = http.createServer(async (req, res) => {
         if (req.method === 'GET' && req.url === '/favicon.ico') {
             res.writeHead(204).end();
@@ -582,6 +820,7 @@ async function main() {
         }
         if (req.method === 'GET' && req.url === '/fixture') {
             res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+            if (args.evidenceOnly) { res.end(readingEvidenceFixture()); return; }
             res.end('<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Harness fixture</title><style>body{margin:0;font:16px/1.6 Arial,sans-serif}main{max-width:760px;margin:0 auto;padding:340px 24px 700px}p{margin:0 0 18px}#navigation{margin-bottom:16px}</style></head><body><main><p id="target">Although the task was difficult, she finished it on time.</p><p id="neighbor">A neighboring paragraph must remain untouched.</p><nav id="navigation">Hidden navigation metadata</nav><input id="input" value="form text"></main></body></html>');
             return;
         }
@@ -598,6 +837,16 @@ async function main() {
         }
         catch { }
         requests.push(body);
+        if (args.evidenceOnly && body.stream !== true) {
+            // The selection card also asks its existing translation broker for a local translation.
+            // Keep that dependency local without pretending the fixture is a live translation service.
+            const user = [...(body.messages || [])].reverse().find(message => message.role === 'user')?.content || '';
+            const slots = typeof user === 'string' ? [...user.matchAll(/(___FLUENTREAD_[A-Za-z0-9-]+_\d+_BEGIN___)[\s\S]*?(___FLUENTREAD_[A-Za-z0-9-]+_\d+_END___)/gu)] : [];
+            const translated = slots.length ? slots.map(match => `${match[1]}\n虽然任务很难，她仍然按时完成了。\n${match[2]}`).join('\n') : '虽然任务很难，她仍然按时完成了。';
+            res.writeHead(200, {'content-type': 'application/json; charset=utf-8', 'access-control-allow-origin': '*'});
+            res.end(JSON.stringify({id: 'reading-translation-fixture', choices: [{index: 0, message: {role: 'assistant', content: translated}, finish_reason: 'stop'}]}));
+            return;
+        }
         const requestDelayMs = responseDelayMs;
         const hasTools = Array.isArray(body.tools) && body.tools.length > 0;
         const toolRound = hasTools && !body.messages?.some(item => item.role === 'tool');
@@ -618,10 +867,11 @@ async function main() {
             };
             const intent = system.includes('### 主干') ? 'grammar' : system.includes('### 怎么用') ? 'usage' : system.includes('### 试一试') ? 'practice' : 'meaning';
             const themeAnswer = '### 大意\n这句话表示：虽然任务很难，她仍然按时完成了。\n\n### 关键点\n- **Although** 表示让步，`on time` 表示按时。\n\n> The task was difficult.\n\n```text\nShe finished on time.\n```\n\n| 表达 | 含义 |\n| --- | --- |\n| on time | 按时 |';
-            const answer = requestDelayMs ? '迟到的旧回答不应覆盖当前卡片内容。' : args.themeOnly ? themeAnswer : answers[intent];
+            const evidenceAnswer = args.evidenceOnly ? readingEvidenceAnswer(body, evidenceControl) : null;
+            const answer = evidenceAnswer || (requestDelayMs ? '迟到的旧回答不应覆盖当前卡片内容。' : args.themeOnly ? themeAnswer : answers[intent]);
             const chunks = answer.match(requestDelayMs ? /[\s\S]{1,8}/gu : /[\s\S]{1,12}/gu) || [answer];
             for (const [index, chunk] of chunks.entries()) {
-                if (index > 0) await wait(requestDelayMs ? Math.max(180, Math.floor(requestDelayMs / 3)) : 70);
+                if (index > 0) await wait(args.evidenceOnly ? evidenceControl.delayMs || 18 : requestDelayMs ? Math.max(180, Math.floor(requestDelayMs / 3)) : 70);
                 send({id: 'harness-fixture', choices: [{index: 0, delta: {content: chunk}, finish_reason: null}]});
             }
             send({id: 'harness-fixture', choices: [{index: 0, delta: {}, finish_reason: 'stop'}], usage: {prompt_tokens: 12, completion_tokens: 9, total_tokens: 21}});
@@ -641,6 +891,7 @@ async function main() {
             context = session.context;
             close = session.close;
             newPage = () => helper.newPageWithoutForeground(context);
+            activatePageWithoutForeground = page => helper.activateExtensionTabWithoutForeground(context, page);
             Object.assign(result, { launchMode: session.launchMode, focusPolicy: session.focusPolicy, windowPlacement: session.windowPlacement });
         }
         else {
@@ -682,12 +933,13 @@ async function main() {
         await configPage.goto(`chrome-extension://${extensionId}/options.html#settings-harness`, { waitUntil: 'domcontentloaded' });
         await configPage.waitForTimeout(1200);
         const fixtureUrl = `http://127.0.0.1:${port}/fixture`;
-        await persistConfig(configPage, { service: 'openai', vocabularyBookEnabled: true, customOpenAIProviders: [{ id: 'custom:fixture', name: 'Local fixture', endpoint: `http://127.0.0.1:${port}/v1/chat/completions`, models: ['learning-fixture'] }], token: { 'custom:fixture': 'fixture-token' }, model: { 'custom:fixture': 'learning-fixture' }, harness: { enabled: false, service: 'custom:fixture', model: 'learning-fixture', defaultAction: 'meaning', actions: ['meaning', 'grammar', 'usage', 'practice'], contextMode: 'paragraph', maxContextChars: 1500, explanationDepth: 'concise', learningLevel: 'intermediate' } });
+        await persistConfig(configPage, { service: args.evidenceOnly ? 'custom:fixture' : 'openai', vocabularyBookEnabled: true, customOpenAIProviders: [{ id: 'custom:fixture', name: 'Local fixture', endpoint: `http://127.0.0.1:${port}/v1/chat/completions`, models: ['learning-fixture'] }], token: { 'custom:fixture': 'fixture-token' }, model: { 'custom:fixture': 'learning-fixture' }, harness: { enabled: false, service: 'custom:fixture', model: 'learning-fixture', defaultAction: 'meaning', actions: ['meaning', 'grammar', 'usage', 'practice'], contextMode: 'paragraph', maxContextChars: 1500, explanationDepth: 'concise', learningLevel: 'intermediate' } });
         const page = await newPage();
         page.on('pageerror', e => result.consoleErrors.push(e.message));
         page.on('console', m => { if (m.type() === 'error' && !m.text().includes('favicon.ico'))
             result.consoleErrors.push(m.text()); });
         await page.goto(fixtureUrl, { waitUntil: 'domcontentloaded' });
+        if (args.evidenceOnly) await activatePageWithoutForeground(page);
         await page.waitForTimeout(700);
         if (!args.persistenceOnly) {
         const disabled = await shadowSnapshot(page);
@@ -695,11 +947,11 @@ async function main() {
         const config = await readConfig(configPage);
         assert(config.harness.memoryEnabled === false, '新配置默认开启了长期学习记忆');
         record('memory-disabled-by-default', 'passed');
-        await persistConfig(configPage, { harness: { ...config.harness, enabled: true, service: 'custom:fixture', model: 'learning-fixture' } });
+        await persistConfig(configPage, { ...(args.evidenceOnly ? {selectionTranslatorMode: 'bilingual', disableSelectionTranslator: false, selectionTranslatorTrigger: 'icon'} : {}), harness: { ...config.harness, enabled: true, service: 'custom:fixture', model: 'learning-fixture' } });
         await page.reload({ waitUntil: 'domcontentloaded' });
         await page.waitForTimeout(700);
         const beforeSelection = requests.length;
-        const targetBox = await page.locator('#target').boundingBox();
+        const targetBox = await page.locator(args.evidenceOnly ? '#selected-sentence' : '#target').boundingBox();
         assert(targetBox && targetBox.width > 20 && targetBox.height > 10, '目标段落没有有效几何位置');
         await page.mouse.move(targetBox.x + 8, targetBox.y + targetBox.height / 2);
         await page.mouse.down();
@@ -711,13 +963,14 @@ async function main() {
         const selected = await shadowSnapshot(page);
         assert(selected.host, '启用翻译卡片 后没有 closed Shadow UI');
         assert(requests.length === beforeSelection, '仅选择文本就发起了 Harness 请求');
-        const actionToolbar = find(selected.host, node => attr(node, 'class').split(' ').includes('fr-reading-indicator'));
+        if (args.evidenceOnly) await clickShadowButton(page, '打开划词翻译');
+        const actionToolbar = find((args.evidenceOnly ? await shadowSnapshot(page) : selected).host, node => attr(node, 'class').split(' ').includes(args.evidenceOnly ? 'fr-study-toolbar' : 'fr-reading-indicator'));
         const toolbarLabels = findAll(actionToolbar, node => node.nodeName?.toLowerCase() === 'button').map(node => text(node).trim());
-        assert(['读懂', '拆句', '用法', '练习'].every(label => toolbarLabels.includes(label)) && toolbarLabels.includes('记录'), `网页浮条未显示已启用的学习动作与阅读记录: ${toolbarLabels}`);
+        assert(['读懂', args.evidenceOnly ? '词性与句法' : '拆句', '用法', '练习'].every(label => toolbarLabels.includes(label)) && toolbarLabels.includes('记录'), `网页浮条未显示已启用的学习动作与阅读记录: ${toolbarLabels}`);
         record('selection-toolbar-enabled-actions', 'passed', {actions: toolbarLabels});
         record('selection-entry-visible-no-request', 'passed', { selectedText: actualSelection });
-        if (args.triggerOnly || args.themeOnly) {
-            await (args.themeOnly ? verifyReadingTheme : verifyCardTriggers)({page, configPage, requests, record, args, result});
+        if (args.triggerOnly || args.themeOnly || args.evidenceOnly) {
+            await (args.evidenceOnly ? verifyReadingEvidence : args.themeOnly ? verifyReadingTheme : verifyCardTriggers)({page, configPage, requests, record, args, result, evidenceControl});
             result.ok = result.consoleErrors.length === 0 && result.httpErrors.length === 0;
             fs.writeFileSync(path.join(args.artifactsDir, 'report.json'), `${JSON.stringify(result, null, 2)}\n`);
             process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
@@ -1348,6 +1601,13 @@ async function main() {
                 await target.screenshot({path: failurePath, timeout: 5000});
                 result.screenshots.push(failurePath);
                 result.failureSurfaces.push({url: target.url(), screenshot: failurePath});
+                if (args.evidenceOnly && /^http:\/\/127\.0\.0\.1:\d+\/fixture/.test(target.url())) {
+                    const source = path.join(args.artifactsDir, 'reading-evidence-failure-source.html');
+                    const card = path.join(args.artifactsDir, 'reading-evidence-failure-shadow.json');
+                    fs.writeFileSync(source, await target.content());
+                    fs.writeFileSync(card, JSON.stringify((await shadowSnapshot(target)).host, null, 2));
+                    result.domArtifacts = [...(result.domArtifacts || []), source, card];
+                }
             } catch (captureError) {
                 result.failureSurfaces.push({url: target.url(), captureError: captureError.message});
             }

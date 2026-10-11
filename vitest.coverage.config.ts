@@ -85,6 +85,8 @@ export default defineConfig({
         // 按真实规则内容验证共享词书样式，与普通测试配置一致。
         css: {include: [/(?:src\/app\/content\/page|src\/ui\/styles\/(?:translation-display|bilingual-sentence-highlight|vocabulary-reencounter))\.css(?:\?|$)/]},
         include: [
+            'tests/readingEvidence.test.ts',
+            'tests/readingEvidenceAnchor.test.ts',
             'tests/targetLanguageDetector.test.ts',
             'tests/targetTranslationResult.test.ts',
             'tests/imageTargetLanguage.test.ts',
@@ -801,6 +803,8 @@ export default defineConfig({
                 'src/features/full-page-translation/content/frameSession.ts',
                 'src/features/full-page-translation/content/stateNotification.ts',
                 'src/core/config/harness.ts',
+                'src/core/harness/evidence.ts',
+                'src/features/reading-assistant/evidenceAnchor.ts',
                 'src/core/harness/loop.ts',
                 'src/core/harness/prompts.ts',
                 'src/core/harness/promptLocales.ts',

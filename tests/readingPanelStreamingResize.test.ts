@@ -12,6 +12,7 @@ import ts from 'typescript';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {DEFAULT_HARNESS_PREFERENCES, HARNESS_ACTIONS} from '@/src/core/config/harness';
 import {hasDistinctTranslation} from '@/src/core/translation/result';
+import {buildReadingEvidence, readingEvidenceText} from '@/src/core/harness/evidence';
 import type {ReadingProgress, ReadingRequest, ReadingResponse} from '@/src/features/reading-assistant/types';
 
 const runtime=createRequire(import.meta.url)('vue') as typeof import('vue');
@@ -30,17 +31,19 @@ async function mountPanel(overrides:Record<string,unknown>={}) {
   vi.stubGlobal('cancelAnimationFrame',(id:number)=>frames.delete(id));
   const calls:StreamCall[]=[],resize=vi.fn(),errors=vi.fn();
   const sendMessage=vi.fn(async()=>({success:true})),writeClipboard=vi.fn(async(_text:string)=>undefined),playSource=vi.fn();
+  const saveLearningMemory=vi.fn(async(_memory: {kind: string; content: string})=>({}));
   const translateLegacy=vi.fn((text:string)=>text);
   vi.stubGlobal('navigator',{clipboard:{writeText:writeClipboard}});
   const modules:Record<string,unknown>={
     vue:runtime,
     '@/src/core/translation/result':{hasDistinctTranslation},
+    '@/src/core/harness/evidence':{buildReadingEvidence, readingEvidenceText},
     '@/src/ui/i18n':{useUiI18n:()=>({t:(key:string)=>key,translateLegacy})},
     'webextension-polyfill':{default:{runtime:{sendMessage}}},
     '@/src/core/config/harness':{HARNESS_ACTIONS},
     './ReadingAnswer.vue':{default:runtime.defineComponent({props:['text'],setup:props=>()=>runtime.h('div',{'data-reading-answer':''},props.text)})},
     '../client':{streamReading:(request:ReadingRequest,callbacks:StreamCall['callbacks'])=>{const call={request,callbacks,cancel:vi.fn()};calls.push(call);return {cancel:call.cancel};},
-      getHarnessSession:async()=>null,listHarnessSessions:async()=>({sessions:[],hasMore:false}),saveLearningMemory:async()=>({})},
+      getHarnessSession:async()=>null,listHarnessSessions:async()=>({sessions:[],hasMore:false}),saveLearningMemory},
     '@/src/features/vocabulary/public':{normalizeLearningSourceText:(text:string)=>text.trim()},
     '@/src/features/vocabulary/protocol':{VOCABULARY_BOOK_MESSAGE:'fixture-vocabulary'},
     '@/src/core/language/detect':{detectlang:()=> 'en'},
@@ -96,8 +99,26 @@ async function mountPanel(overrides:Record<string,unknown>={}) {
   const viewport=host.querySelector('.fr-reading-result') as unknown as HTMLElement;
   if(viewport){Object.defineProperty(viewport,'scrollTop',{configurable:true,writable:true,value:0});Object.defineProperty(panel.answerBody,'offsetTop',{configurable:true,value:100});}
   const finish=(text:string,call=calls.at(-1)!)=>call.callbacks.result({success:true,text,service:'deepseek',model:'fixture-model'});
-  return {host,panel,props,calls,resize,viewport,finish,errors,window,sendMessage,writeClipboard,playSource,translateLegacy,styles:styles.code,unmount:()=>{dispose?.();dispose=undefined;}};
+  return {host,panel,props,calls,resize,viewport,finish,errors,window,sendMessage,writeClipboard,playSource,translateLegacy,saveLearningMemory,styles:styles.code,unmount:()=>{dispose?.();dispose=undefined;}};
 }
+
+it('copies and saves readable source quotes without leaking model citation IDs or external markers', async () => {
+  const {panel,calls,finish,writeClipboard,saveLearningMemory}=await mountPanel();
+  const source=buildReadingEvidence(calls[0].request.selection.text,calls[0].request.selection.context)[0];
+  finish(`It helps. [[cite:${source.id}|Practice helps.]]\n\n[[external]] Background. [[cite:invented|Unverified text.]]`);
+  await tick();
+  await panel.copyAnswer();
+  const copied=writeClipboard.mock.calls[0][0];
+  expect(copied).toContain('【reading.evidence.label】 Practice helps.');
+  expect(copied).toContain('【reading.evidence.unverified】 Unverified text.');
+  expect(copied).toContain('【reading.evidence.external】 Background.');
+  expect(copied).not.toMatch(/\[\[cite:|\[\[external\]\]|fr-[a-z0-9]+-[sc]\d/u);
+  await panel.rememberLearning();
+  expect(saveLearningMemory).toHaveBeenCalledOnce();
+  const note=saveLearningMemory.mock.calls[0][0].content;
+  expect(note).toContain('【reading.evidence.label】 Practice helps.');
+  expect(note).not.toContain('[[cite:');
+});
 
 describe('reading panel streaming resize boundaries through actual setup and template',()=>{
   it('keeps standalone fixed controls while external navigation puts unique tools and followup in the answer scroll flow',async()=>{

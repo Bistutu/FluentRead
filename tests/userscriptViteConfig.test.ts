@@ -130,7 +130,7 @@ describe('userscript browser shim injection', () => {
         const defines = (userscriptConfig as {define: Record<string, string>}).define;
         const commit = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__);
         const bundles = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__) as Record<string, string>;
-        expect(commit).toBe('901524973379cd78fa4bbeb43754600e0ea02695');
+        expect(commit).toBe('d0ce95dc6e998431ae2914dd3ad76da859e91754');
         expect(Object.keys(bundles)).toHaveLength(5);
         for (const file of Object.values(bundles)) {
             const path = `userscript/languages/${file}`;

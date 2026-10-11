@@ -680,6 +680,35 @@ node scripts/testing/run-popup-quick-settings-ui-test.cjs \
 
 该脚本不下载模型、不调用外部翻译服务，也不验证播放器字幕质量或 Firefox 真实界面；不能把专项通过等同于其他 UI 套件或真实翻译链路通过。报告分别记录窗口位置、焦点策略、配置行为、布局尺寸、控制台错误和截图。
 
+## AI 阅读解释的原文依据
+
+引用协议与 Harness 后台的定向验证使用既有严格覆盖率配置；只收窄本轮涉及的文件，四维阈值保持 100%：
+
+```bash
+pnpm test:coverage -- tests/readingEvidence.test.ts tests/harnessRuntime.test.ts tests/readingAssistantPresentation.test.ts \
+  --coverage.include=src/core/harness/evidence.ts \
+  --coverage.include=src/services/harness/runtime.ts \
+  --coverage.include=src/features/reading-assistant/answerFormat.ts
+pnpm test:coverage -- tests/readingEvidenceAnchor.test.ts \
+  --coverage.include=src/features/reading-assistant/evidenceAnchor.ts
+pnpm test -- tests/readingEvidenceUi.test.ts tests/readingPanelLifecycle.test.ts \
+  tests/readingPanelStreamingResize.test.ts tests/selectionTranslatorLifecycle.test.ts
+```
+
+这些测试覆盖真实送入模型的来源身份、连续引文校验、权限裁剪、未知/改写/不完整引用拒绝、表格内标记、重复句消歧、等价 DOM 恢复、隐藏正文、正文改写、导航、历史禁定位、取消与迟到结果，以及短期高亮和内部定位滚动的清理。
+
+生产 Chrome 构建后的专项：
+
+```bash
+node scripts/testing/run-resource-safe.mjs -- node scripts/run-harness-reading-test.cjs --evidence-only \
+  --extension-dir .output/chrome-mv3 \
+  --playwright-root <bundled-node-packages> \
+  --focus-safe-helper <browser-translation-test-skill>/scripts/focus-safe-browser.cjs \
+  --artifacts-dir /private/tmp/fluentread-reading-evidence
+```
+
+脚本使用临时 Edge profile、第二屏后台可见窗口和真实鼠标/键盘，核对解释旁的多句依据、点击/Enter/Space 定位、实际全文双语翻译与恢复、等价重建、隐藏/显示、追问、正文改写、SPA 导航、关闭及停止后迟到响应。另有手工插入译文节点的排除规则测试，报告与真实翻译路径分开记录。模型和普通翻译均为本机确定性 HTTP 夹具，只证明协议、来源映射与交互链路；不证明在线模型质量、解释语义正确、所有站点或 Firefox 实机行为。报告保存来源 DOM、闭合 Shadow DOM、截图及源码/构建摘要。
+
 ## 设置层级与渐进展开
 
 通用页按日常翻译、网页辅助、基本偏好排序；服务页的连接字段直接排在服务标题下方、不再单设标题；密钥输入下方直接添加密钥，已有空行时也能继续添加，多行时每行都可删除，填好两个以上密钥后才显示“轮换使用 / 仅用首个”，仅用首个时其余密钥保持可见并标为备用。密钥要求（必填 / 允许留空）位于接口兼容页签，填写密钥后即使允许留空也仍使用已填密钥。模型偏好、提示词、请求限制和接口兼容通过紧凑页签切换，每次只显示一组；只有一个页签的服务改用小节标题。各页签统一为“左标签、右控件”的字段行，二选一或三选一用分段按钮，请求限制的三项数值各占一行；提示词模板可在确认后一键同步到所有 AI 服务。标签旁的信息按钮支持悬停和键盘聚焦，详细说明不挤占表单空间。可运行以下专项验证这些入口：

@@ -88,6 +88,7 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
     let ttsRequestId = 0;
     const modules: Record<string, unknown> = {
         './SpeechFollowText.vue': {},
+        '@/src/features/reading-assistant/public': {createReadingEvidenceAnchor: () => ({locate: () => 'unavailable', check: () => 'unavailable', suspend: vi.fn(), clear: vi.fn(), dispose: vi.fn()})},
         '@/src/core/tts/speechProgress': speechProgress,
         '@/src/core/translation/result': {hasDistinctTranslation},
         vue: {...Vue, useTemplateRef: () => Vue.ref(null)},
@@ -830,6 +831,42 @@ describe('SelectionTranslator trimmed speech offsets in rich text', () => {
         expect(fixture.state.audioTextOffset).toBe(0);
         expectAudioReset(fixture.state);
     });
+});
+
+it('preserves the reading card during its evidence scroll, then resumes ordinary auto dismissal and clears frames on close', async () => {
+    const fixture = mountSelection();
+    vi.stubGlobal('Element', class {});
+    vi.stubGlobal('Node', class {});
+    const {state} = fixture;
+    fixture.config.selectionTranslatorAutoDismiss = true;
+    state.snapshot = {text: 'Practice helps.', range: {getClientRects: () => []}, parts: [{kind: 'text', text: 'Practice helps.'}]};
+    state.readingSelection = {text: 'Practice helps.', context: '', sentence: 'Practice helps.'};
+    state.readingMode = true;
+    state.showTooltip = true;
+    const disposeAnchor = vi.fn();
+    state.readingEvidenceAnchor = {locate: () => 'located', check: () => 'located', dispose: disposeAnchor, suspend: vi.fn()};
+    const citation = {quote: 'Practice helps.', sourceText: 'Practice helps.'};
+    expect(state.locateReadingEvidence(citation)).toBe('located');
+    state.handleScroll({target: null});
+    expect(state.showTooltip).toBe(true);
+    expect(disposeAnchor).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(40);
+    state.handleScroll({target: null});
+    expect(state.showTooltip).toBe(false);
+    expect(disposeAnchor).toHaveBeenCalledOnce();
+    expect(state.readingEvidenceScrollFrame).toBeUndefined();
+
+    state.showTooltip = true;
+    state.readingMode = true;
+    state.readingEvidenceAnchor = {locate: () => 'unavailable'};
+    expect(state.locateReadingEvidence(citation)).toBe('unavailable');
+    expect(state.readingEvidenceScrollFrame).toBeUndefined();
+    state.readingEvidenceAnchor = {locate: () => 'located', dispose: disposeAnchor};
+    state.readingSelection = {text: 'Practice helps.', context: '', sentence: 'Practice helps.'};
+    expect(state.locateReadingEvidence(citation)).toBe('located');
+    fixture.unmount();
+    expect(state.readingEvidenceScrollFrame).toBeUndefined();
+    expect(vi.getTimerCount()).toBe(0);
 });
 
 it('keeps an existing ordinary translation running when opening the learning view', async () => {

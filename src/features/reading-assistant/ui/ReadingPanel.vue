@@ -1,7 +1,7 @@
 <!--
  * @file src/features/reading-assistant/ui/ReadingPanel.vue
  * 文件职责：在划词卡内以内容为主呈现学习回答，复用父卡片导航、提供紧凑操作栏、按需展开的原文译文对照与连续追问。
- * 主要内容：相同译文保留原文且不重复展示；按原文与配置复用各学习动作的已完成回答，显式重新生成；历史问答按轮次与问题摘要逐条展开，区分当前问答与旧回答，切换回答时收起历史；统一导航的学习卡默认收起原文与匹配译文，查看原文后可返回当前阅读，短回答不再保留一屏空白；独立面板仍在滚动区顶部展示对照内容，进入回答时滚过原文，译文晚到时保持回答位置，关闭局部浏览器滚动锚定以避免流式格式变化移动阅读位置；流式正文只更新内部滚动内容，回答出现或消失及状态变化才通知父卡片检查布局；重复点击当前动作保留位置和待发送追问；把原文朗读和 30 天问答记录收进次级操作，在回答下方区分原文收藏与学习笔记；原文收藏仅保存对应译文，笔记保存不依赖 AI 参考开关，让多语言动作标签按空间换行，统一呈现 Markdown，以局部主题变量保持正文、状态和操作文字的对比度，并以代次隔离过期请求。
+ * 主要内容：相同译文保留原文且不重复展示；按原文与配置复用各学习动作的已完成回答，显式重新生成；历史问答按轮次与问题摘要逐条展开，区分当前问答与旧回答，切换回答时收起历史；统一导航的学习卡默认收起原文与匹配译文，查看原文后可返回当前阅读，短回答不再保留一屏空白；独立面板仍在滚动区顶部展示对照内容，进入回答时滚过原文，译文晚到时保持回答位置，关闭局部浏览器滚动锚定以避免流式格式变化移动阅读位置；流式正文只更新内部滚动内容，回答出现或消失及状态变化才通知父卡片检查布局；重复点击当前动作保留位置和待发送追问；把原文朗读和 30 天问答记录收进次级操作，在回答下方区分原文收藏与学习笔记；原文收藏仅保存对应译文，笔记保存不依赖 AI 参考开关，让多语言动作标签按空间换行，统一呈现 Markdown，以局部主题变量保持正文、状态和操作文字的对比度，并以代次隔离过期请求；冻结每轮许可原文身份，显示就近引用和来源状态，历史恢复保留引文而不授予当前网页定位权限，回写前核查页面归属。
  * 模块边界：不持有模型密钥、不扫描页面、不直接请求供应商；记录由后台会话仓库保存，父划词组件负责选区、位置和 Shadow UI 生命周期。
  -->
 <template>
@@ -63,7 +63,7 @@
             </button>
             <div v-show="expandedTurnId === turn.id" :id="`fr-reading-turn-${turn.id}`" class="fr-reading-turn-answer">
               <span class="fr-reading-role" data-i18n-ignore>{{ t('reading.answerLabel') }}</span>
-              <ReadingAnswer v-if="expandedTurnId === turn.id && turn.answer" :text="turn.answer" :source-text="activeText" />
+              <ReadingAnswer v-if="expandedTurnId === turn.id && turn.answer" :text="turn.answer" :source-text="activeText" :evidence-sources="turn.evidenceSources || evidenceSources" :locate-evidence="evidenceLocator" :evidence-state="evidenceState" />
               <p v-else class="fr-reading-hint" data-i18n-ignore>{{ t('reading.emptyAnswer') }}</p>
             </div>
           </article>
@@ -81,7 +81,7 @@
       </div>
       <p v-if="stopped && !busy" class="fr-reading-status" role="status">已停止<button type="button" @click="retry">继续生成</button></p>
       <div v-if="answer" class="fr-reading-answer" :aria-busy="busy">
-        <ReadingAnswer :text="answer" :source-text="activeText" />
+        <ReadingAnswer :text="answer" :source-text="activeText" :evidence-sources="evidenceSources" :locate-evidence="evidenceLocator" :evidence-state="evidenceState" />
       </div>
       <p v-if="!busy && !answer && !error && !stopped" class="fr-reading-hint">选一种方式，理解这段表达。</p>
     <footer v-if="answer && !busy" class="fr-reading-footer">
@@ -122,6 +122,8 @@ import browser from 'webextension-polyfill';
 import {HARNESS_ACTIONS, type HarnessActionId, type HarnessPreferences} from '@/src/core/config/harness';
 import ReadingAnswer from './ReadingAnswer.vue';
 import type {ReadingSelection, ReadingTurn} from '../types';
+import {buildReadingEvidence, readingEvidenceText, type ReadingEvidenceSource} from '@/src/core/harness/evidence';
+import type {ReadingEvidenceAnchor} from '../evidenceAnchor';
 import {getHarnessSession, listHarnessSessions, streamReading, saveLearningMemory} from '../client';
 import type {HarnessSession, HarnessSessionSummary, HarnessStoredTurnStatus} from '@/src/services/harness/sessionTypes';
 import {normalizeLearningSourceText} from '@/src/features/vocabulary/public';
@@ -142,6 +144,10 @@ const props = defineProps<{
   playingSourceText?: string;
   sourceLanguage?: string;
   modelRevision?: number;
+  locateEvidence?: ReadingEvidenceAnchor['locate'];
+  clearEvidence?: () => void;
+  checkEvidence?: ReadingEvidenceAnchor['check'];
+  sourceRevision?: number;
   sourceTranslation?: {source: string; text: string; pending?: boolean; error?: string};
 }>();
 const emit = defineEmits<{resize: []; 'play-source': [text: string]; 'source-change': [text: string]; 'view-change': [view: {action: HarnessActionId; history: boolean}]}>();
@@ -151,6 +157,17 @@ const historicalText = ref('');
 const historicalContext = ref('');
 const sessionWarning = ref('');
 const activeText = computed(() => historicalText.value || (wholeSentence.value ? props.selection.sentence : props.selection.text));
+const requestEvidenceSources = computed(() => buildReadingEvidence(activeText.value, props.preferences.contextMode === 'paragraph'
+  ? (historicalContext.value || props.selection.context).trim().slice(0, Math.min(4000, Math.max(0, props.preferences.maxContextChars))) : ''));
+const evidenceSources = ref<readonly ReadingEvidenceSource[]>(requestEvidenceSources.value);
+// 已保存记录没有当前 DOM 所有权；展示引用文字，禁止从历史记录定位到当前页面的相似句子。
+const evidenceLocator = computed(() => historicalText.value || !props.active ? undefined : props.locateEvidence);
+const evidenceState = computed(() => {
+  void props.sourceRevision;
+  void props.selection;
+  return historicalText.value ? 'unavailable' : props.checkEvidence?.();
+});
+watch(() => props.sourceRevision, () => { props.clearEvidence?.(); if (busy.value) stop(); });
 const activeTranslation = computed(() => props.sourceTranslation
   && props.sourceTranslation.source.replace(/\s+/gu, ' ').trim() === activeText.value.replace(/\s+/gu, ' ').trim()
   ? props.sourceTranslation : undefined);
@@ -264,7 +281,7 @@ function dismissTools(): boolean {
   closeTools(true);
   return true;
 }
-defineExpose({dismissTools});
+defineExpose({dismissTools, stop});
 function dismissToolsOutside(event: Event): void {
   if (toolsMenu.value?.open && !toolsMenu.value.contains(event.target as Node)) closeTools();
 }
@@ -292,7 +309,7 @@ const ReadingTools = () => {
     ]),
   ]);
 };
-const previousAnswers = ref<Array<ReadingTurn & {id: string; intent: HarnessActionId; status: HarnessStoredTurnStatus}>>([]);
+const previousAnswers = ref<Array<ReadingTurn & {id: string; intent: HarnessActionId; status: HarnessStoredTurnStatus; evidenceSources?: readonly ReadingEvidenceSource[]}>>([]);
 const currentTurnKey = ref('');
 const priorAnswers = computed(() => previousAnswers.value.filter(turn => turn.id !== currentTurnKey.value));
 const historyDetails = ref<HTMLDetailsElement>();
@@ -315,6 +332,7 @@ const formatDate = (value: number) => new Intl.DateTimeFormat(undefined, {month:
 const history: ReadingTurn[] = [];
 const canSaveWord = computed(() => props.vocabularyEnabled && !props.privateContext && Boolean(normalizeLearningSourceText(activeText.value)));
 interface CachedAnswer {
+  evidenceSources: readonly ReadingEvidenceSource[];
   id: string;
   answer: string;
   question: string;
@@ -342,6 +360,7 @@ let restoreEpoch = 0;
 
 function cancelRequest(): void {
   cancelReadingPosition();
+  props.clearEvidence?.();
   generation += 1;
   streamHandle?.cancel();
   streamHandle = undefined;
@@ -350,18 +369,26 @@ function cancelRequest(): void {
   busy.value = false;
 }
 function stop(): void { cancelRequest(); stopped.value = true; }
+function sourceStillCurrent(): boolean {
+  if (historicalText.value) return true;
+  const status = props.checkEvidence?.();
+  if (status !== 'changed' && status !== 'navigated') return true;
+  stop();
+  return false;
+}
 function archiveAnswer(): void {
   if (!answer.value || !currentTurnKey.value) return;
-  const turn = {id: currentTurnKey.value, question: currentQuestion.value, answer: answer.value, intent: intent.value, status: (busy.value || stopped.value ? 'stopped' : error.value ? 'error' : 'completed') as HarnessStoredTurnStatus};
+  const turn = {evidenceSources: evidenceSources.value, id: currentTurnKey.value, question: currentQuestion.value, answer: answer.value, intent: intent.value, status: (busy.value || stopped.value ? 'stopped' : error.value ? 'error' : 'completed') as HarnessStoredTurnStatus};
   const existing = previousAnswers.value.findIndex(item => item.id === turn.id);
   if (existing >= 0) previousAnswers.value[existing] = turn;
   else previousAnswers.value.push(turn);
   if (previousAnswers.value.length > 60) previousAnswers.value.splice(0, previousAnswers.value.length - 60);
 }
 function rememberAnswer(): void {
-  actionCache.set(intent.value, {id: currentTurnKey.value, answer: answer.value, question: currentQuestion.value, model: model.value, history: copyTurns(history), lastHistory: copyTurns(lastHistory), memoryCount: memoryCount.value, anchorTurnId, lastAnchorTurnId});
+  actionCache.set(intent.value, {evidenceSources: evidenceSources.value, id: currentTurnKey.value, answer: answer.value, question: currentQuestion.value, model: model.value, history: copyTurns(history), lastHistory: copyTurns(lastHistory), memoryCount: memoryCount.value, anchorTurnId, lastAnchorTurnId});
 }
 function restoreAnswer(cached: CachedAnswer): void {
+  evidenceSources.value = cached.evidenceSources;
   currentTurnKey.value = cached.id;
   answer.value = cached.answer;
   currentQuestion.value = cached.question;
@@ -381,6 +408,7 @@ async function run(prompt: string, turns: ReadingTurn[], retrying = false): Prom
   if (!retrying) archiveAnswer();
   cancelRequest();
   const token = generation;
+  evidenceSources.value = requestEvidenceSources.value;
   const requestId = `reading-${crypto.randomUUID()}`;
   currentTurnKey.value = requestId;
   pendingId = requestId;
@@ -407,14 +435,14 @@ async function run(prompt: string, turns: ReadingTurn[], retrying = false): Prom
       ...(sessionId && requestAnchor ? {anchorTurnId: requestAnchor} : {}),
     }, {
       progress: progress => {
-        if (token !== generation) return;
+        if (token !== generation || !sourceStillCurrent()) return;
         if (progress.kind === 'model') model.value = progress.model;
         if (progress.kind === 'text') answer.value = progress.text;
         if (progress.kind === 'session') { sessionId = progress.persistent ? (progress.sessionId || '') : ''; anchorTurnId = progress.persistent ? (progress.turnId || '') : ''; if (progress.warning) sessionWarning.value = progress.warning; }
         if (progress.kind === 'memory') { memoryCount.value = progress.count; if (progress.warning) feedback.value = progress.warning; }
       },
       result: response => {
-        if (token !== generation) return;
+        if (token !== generation || !sourceStillCurrent()) return;
         busy.value = false;
         pendingId = '';
         streamHandle = undefined;
@@ -431,7 +459,7 @@ async function run(prompt: string, turns: ReadingTurn[], retrying = false): Prom
         rememberAnswer();
       },
       error: failure => {
-        if (token !== generation) return;
+        if (token !== generation || !sourceStillCurrent()) return;
         busy.value = false;
         pendingId = '';
         streamHandle = undefined;
@@ -476,6 +504,7 @@ async function restoreSession(id: string): Promise<void> {
   previousAnswers.value = session.turns.slice(0, -1).map(turn => ({id: turn.id, question: turn.question, answer: turn.answer, intent: turn.intent, status: turn.status}));
   historicalText.value = session.text;
   historicalContext.value = session.context;
+  evidenceSources.value = buildReadingEvidence(session.text, session.context);
   sessionId = session.id;
   wholeSentence.value = false;
   const latest = session.turns.at(-1);
@@ -497,7 +526,7 @@ async function restoreSession(id: string): Promise<void> {
     const turn = session.turns[index];
     if (turn.status !== 'completed' || !turn.answer.trim()) continue;
     const before = session.turns.slice(0, index).filter(item => item.answer.trim()).slice(-4).map(item => ({question: item.question, answer: item.answer}));
-    actionCache.set(turn.intent, {id: turn.id, answer: turn.answer, question: turn.question === actionLabelFor(turn.intent) ? '' : turn.question, model: turn.model, history: [...before, {question: turn.question, answer: turn.answer}].slice(-4), lastHistory: before, memoryCount: 0, anchorTurnId: turn.id, lastAnchorTurnId: session.turns.slice(0, index).findLast(item => item.intent === turn.intent && item.answer.trim())?.id || ''});
+    actionCache.set(turn.intent, {evidenceSources: evidenceSources.value, id: turn.id, answer: turn.answer, question: turn.question === actionLabelFor(turn.intent) ? '' : turn.question, model: turn.model, history: [...before, {question: turn.question, answer: turn.answer}].slice(-4), lastHistory: before, memoryCount: 0, anchorTurnId: turn.id, lastAnchorTurnId: session.turns.slice(0, index).findLast(item => item.intent === turn.intent && item.answer.trim())?.id || ''});
   }
   error.value = latest?.status === 'error' ? '上次生成失败，已保留收到的内容，可以重试。' : '';
   stopped.value = latest?.status === 'stopped' || latest?.status === 'streaming'; saved.value = false;
@@ -519,10 +548,13 @@ async function openSettings(section = 'settings-selection'): Promise<void> {
     if (response?.success !== true) throw new Error('打开设置失败');
   } catch { feedback.value = section === 'settings-services' ? '打开设置失败，请从扩展菜单进入“翻译服务”。' : '打开设置失败，请从专项翻译进入“划词翻译”。'; }
 }
+function readableAnswer(): string {
+  return readingEvidenceText(answer.value, evidenceSources.value, {evidence: t('reading.evidence.label'), unverified: t('reading.evidence.unverified'), external: t('reading.evidence.external')});
+}
 async function copyAnswer(): Promise<void> {
   const owner = generation;
   try {
-    await navigator.clipboard.writeText(`${activeText.value}\n\n${answer.value}`);
+    await navigator.clipboard.writeText(`${activeText.value}\n\n${readableAnswer()}`);
     if (owner !== generation || !props.active) return;
     copied.value = true;
     clearTimeout(copyTimer);
@@ -546,7 +578,7 @@ async function rememberLearning(): Promise<void> {
   const owner = currentTurnKey.value;
   remembering.value = true;
   try {
-    await saveLearningMemory({kind: 'lesson', content: `原文：${activeText.value.slice(0, 350)}\n${currentQuestion.value ? `问题：${currentQuestion.value.slice(0, 200)}\n` : ''}学习要点：${answer.value.slice(0, 1400)}`});
+    await saveLearningMemory({kind: 'lesson', content: `原文：${activeText.value.slice(0, 350)}\n${currentQuestion.value ? `问题：${currentQuestion.value.slice(0, 200)}\n` : ''}学习要点：${readableAnswer().slice(0, 1400)}`});
     if (currentTurnKey.value === owner) { remembered.value = true; feedback.value = t('reading.noteSaved'); }
   } catch (failure) { if (currentTurnKey.value === owner) feedback.value = failure instanceof Error ? failure.message : t('reading.noteSaveFailed'); }
   finally { remembering.value = false; }
@@ -579,7 +611,7 @@ watch(() => JSON.stringify(props.selection), () => {
 watch(activeText, text => { sourceExpanded.value = false; closeTools(); saved.value = false; emit('source-change', text); });
 watch(() => [props.initialAction, props.historyOnly, props.active] as const, ([action, only, active], [oldAction, oldOnly, oldActive]) => {
   restoreEpoch += 1;
-  if (!active) { closeTools(); emit('source-change', ''); if (busy.value) stop(); return; }
+  if (!active) { props.clearEvidence?.(); closeTools(); emit('source-change', ''); if (busy.value) stop(); return; }
   if (only) openRecords();
   else if (action !== oldAction || oldOnly || !oldActive) startAction(action || props.preferences.defaultAction);
 });
@@ -601,6 +633,7 @@ async function loadMoreSessions(): Promise<void> {
   finally { if (token === recordsGeneration) recordsLoading.value = false; }
 }
 function openRecords(): void {
+  props.clearEvidence?.();
   cancelReadingPosition();
   restoreEpoch += 1;
   showRecords.value = true;

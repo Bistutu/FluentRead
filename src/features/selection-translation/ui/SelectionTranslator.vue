@@ -2,7 +2,7 @@
  * @file src/features/selection-translation/ui/SelectionTranslator.vue
  * 文件职责：实现划词翻译的主要页面组件，覆盖选区捕获、图标/小点/悬停/快捷键/仅右键菜单/直接弹出、原生菜单可信选区恢复与重复请求复用、翻译与词卡展示、朗读、收藏选中的单词/表达/句子、双语分享卡片、重试和关闭。
  * 主要内容：相同译文保留原文且不重复展示；组件管理可信手势、已关闭选区与选择丢失宽限、继续阅读或复制原文时自动收起、请求 token、行内代码保护与纯文本安全渲染、按标签页页面缩放补偿的弹窗定位、空白拖动、边角缩放、主题及可换行的多语言标题；普通译文先于完整原文，单行可横向滚动的导航把高度留给正文；指针移动按帧合并并在结束时提交最后位置，已定位卡片不重复读取选区几何；富文本 UTF-16 跟读偏移一次计算并复用；默认过滤同语言选区，按配置开放中英反向入口，并在卡片内仅对本次翻译切换译文语言；统一卡片默认显示翻译并以同一导航进入学习；首次定位后保持弹窗锚点，手动尺寸下内容与播放状态变化只影响内部布局；闲置语音栏不占空间，自动卡生成与播放期间用独立临时高度保持外框，停止恢复自然尺寸；学习短回答自然收拢、长回答受高度上限约束，完整原文和译文按需对照并允许翻译继续完成；单词先展示原文与可用词卡，再补充辅助释义，以紧凑状态提示等待、未命中与网络失败；关闭或更换选区取消等待并阻止旧响应覆盖新结果；区分语音生成和播放，按实际音频时钟或浏览器词边界显示完整词高亮，并提供真实音频时间与前后 5 秒跳转。
- * 模块边界：组件只通过公共客户端和 runtime 消息触达后台，不直接持有 provider、IndexedDB 或 Offscreen 资源；纯选区算法在 core，活动 Range 通过回调交给 content/runtime 管理 modal 挂载所有权；扩展 PDF 文档页通过可选来源适配器复用同一卡片、标题和阅读上下文，来源失效时取消当前请求，词书协议独立维护。
+ * 模块边界：组件只通过公共客户端和 runtime 消息触达后台，不直接持有 provider、IndexedDB 或 Offscreen 资源；纯选区算法在 core，活动 Range 通过回调交给 content/runtime 管理 modal 挂载所有权；扩展 PDF 文档页通过可选来源适配器复用同一卡片、标题和阅读上下文，来源失效时取消当前请求，词书协议独立维护；阅读依据的 DOM 锚点只属于当前选区，关闭、换区或卸载释放临时绘制和监听。
  -->
 <template>
   <div v-ui-i18n v-show="showIndicator || showTooltip || noticeMessage || copySuccess" class="fr-selection-translator-root" :data-display-delay="selectionSettings.delay" @pointerdown.stop @wheel.stop="handleUiWheel">
@@ -46,7 +46,7 @@
         <button v-else type="button" @click="openSelectionSettings">配置 AI 讲解</button>
       </div>
       <div v-if="readingSelection" v-show="readingMode" class="fr-tooltip-content fr-reading-content">
-        <ReadingPanel ref="reading-panel-ref" :external-navigation="true" @view-change="syncReadingView" :selection="readingSelection" :source-translation="{source: selectedText, text: translationResult, pending: isLoading, error}" :preferences="readingPreferences" :active="readingMode" :initial-action="readingInitialAction" :history-only="readingHistoryOnly" :source-language="effectiveSourceLanguage" :target-language="effectiveTargetLanguage" :playing-source-text="isPlaying && currentAudioKind === 'source' ? currentAudioText : ''" :model-revision="readingModelRevision" :vocabulary-enabled="config.vocabularyBookEnabled" :private-context="isPrivateContext" :animations="config.animations" @play-source="toggleAudio($event, 'source')" @source-change="stopAudio()" @resize="schedulePositionUpdate" />
+        <ReadingPanel ref="reading-panel-ref" :external-navigation="true" @view-change="syncReadingView" :selection="readingSelection" :locate-evidence="locateReadingEvidence" :clear-evidence="clearReadingEvidence" :source-revision="readingSourceRevision" :check-evidence="checkReadingEvidence" :source-translation="{source: selectedText, text: translationResult, pending: isLoading, error}" :preferences="readingPreferences" :active="readingMode" :initial-action="readingInitialAction" :history-only="readingHistoryOnly" :source-language="effectiveSourceLanguage" :target-language="effectiveTargetLanguage" :playing-source-text="isPlaying && currentAudioKind === 'source' ? currentAudioText : ''" :model-revision="readingModelRevision" :vocabulary-enabled="config.vocabularyBookEnabled" :private-context="isPrivateContext" :animations="config.animations" @play-source="toggleAudio($event, 'source')" @source-change="stopAudio()" @resize="schedulePositionUpdate" />
       </div>
       <div v-show="!readingMode" class="fr-tooltip-content" aria-live="polite">
         <div v-if="isLoading && !translationResult && !wordCard && !wordCardError && !isWordSelection" class="fr-loading-state"><span :class="['fr-loading-spinner', { 'fr-static': !config.animations }]" aria-hidden="true" /><span>正在查询…</span></div>
@@ -201,7 +201,7 @@ import { createSelectionTtsContentController } from '@/src/features/selection-tr
 import { setSelectionContextMenuHandler } from '@/src/features/selection-translation/content/contextMenuBridge';
 import {normalizeSelectionPageZoom, SELECTION_PAGE_ZOOM_CHANGED, SELECTION_PAGE_ZOOM_REQUEST} from '@/src/features/selection-translation/pageZoom';
 import { VOCABULARY_BOOK_CHANGED_MESSAGE, VOCABULARY_BOOK_MESSAGE, type VocabularyBookResponse } from '@/src/features/vocabulary/protocol';
-import {ReadingPanel, captureReadingSelection, type ReadingSelection} from '@/src/features/reading-assistant/public';
+import {ReadingPanel, captureReadingSelection, createReadingEvidenceAnchor, type ReadingEvidenceAnchor, type ReadingSelection} from '@/src/features/reading-assistant/public';
 import {HARNESS_ACTIONS, getHarnessModelCacheKey, normalizeHarnessPreferences, type HarnessActionId} from '@/src/core/config/harness';
 import {useUiI18n} from '@/src/ui/i18n';
 
@@ -245,6 +245,27 @@ const readingMode = ref(false);
 const readingInitialAction = ref<HarnessActionId>();
 const readingHistoryOnly = ref(false);
 const readingSelection = ref<ReadingSelection | null>(null);
+let readingEvidenceAnchor: ReadingEvidenceAnchor | undefined;
+const readingSourceRevision = ref(0);
+let readingEvidenceScrollFrame: number | undefined;
+function clearReadingEvidenceScroll(): void {
+  if (readingEvidenceScrollFrame !== undefined) window.cancelAnimationFrame(readingEvidenceScrollFrame);
+  readingEvidenceScrollFrame = undefined;
+}
+const locateReadingEvidence: ReadingEvidenceAnchor['locate'] = citation => {
+  clearReadingEvidenceScroll();
+  // instant scrollIntoView 的 scroll 事件在下一次绘制前派发；仅保留本次定位的两帧。
+  readingEvidenceScrollFrame = window.requestAnimationFrame(() => {
+    readingEvidenceScrollFrame = window.requestAnimationFrame(() => { readingEvidenceScrollFrame = undefined; });
+  });
+  const result = readingEvidenceAnchor?.locate(citation) ?? 'unavailable';
+  if (result !== 'located') clearReadingEvidenceScroll();
+  return result;
+};
+const clearReadingEvidence = () => { clearReadingEvidenceScroll(); readingEvidenceAnchor?.suspend(); };
+const checkReadingEvidence = () => readingEvidenceAnchor?.check() ?? 'unavailable';
+function disposeReadingEvidence(): void { clearReadingEvidenceScroll(); readingEvidenceAnchor?.dispose(); readingEvidenceAnchor = undefined; }
+watch(readingSelection, selection => { if (!selection) disposeReadingEvidence(); }, {flush: 'sync'});
 const copySuccess = ref(false);
 const copiedTextKind = ref<CopyKind | null>(null);
 const isDarkTheme = ref(false);
@@ -998,6 +1019,10 @@ function openReadingCard(): void {
   if (!readingSelection.value) {
     readingSelection.value = (props.selectionAdapter?.captureReading ?? captureReadingSelection)(snapshot.value.range, snapshot.value.text,
       readingPreferences.value.contextMode === 'paragraph' ? readingPreferences.value.maxContextChars : 0);
+    disposeReadingEvidence();
+    readingEvidenceAnchor = createReadingEvidenceAnchor(snapshot.value.range, readingSelection.value, {
+      onInvalidate: () => { readingSourceRevision.value += 1; clearReadingEvidence(); },
+    });
   }
   const wasVisible = showTooltip.value;
   readingMode.value = true;
@@ -1947,6 +1972,7 @@ function handleScroll(event: Event): void {
       || Date.now() - lastTrustedSelectionInteractionAt <= TRUSTED_SELECTION_INTERACTION_GRACE_MS)) hideAll();
     return;
   }
+  if (readingMode.value && readingEvidenceScrollFrame !== undefined) { schedulePositionUpdate(); return; }
   if (selectionSettings.value.autoDismiss) { hideAll(); return; }
   schedulePositionUpdate();
 }
@@ -2114,6 +2140,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  disposeReadingEvidence();
   zoomRequestGeneration += 1;
   releaseContextMenuHandler?.();
   releaseContextMenuHandler = null;

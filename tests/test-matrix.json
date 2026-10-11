@@ -411,7 +411,8 @@
       "tests/informationHighlightScoring.test.ts",
       "tests/informationHighlightWorker.test.ts",
       "tests/targetLanguageDetector.test.ts",
-      "tests/targetTranslationResult.test.ts"
+      "tests/targetTranslationResult.test.ts",
+      "tests/readingEvidence.test.ts"
     ],
     "functional": [
       "tests/finalCoveragePublicBoundariesA.test.ts",
@@ -616,7 +617,9 @@
       "tests/targetLanguageReleaseCorpus.test.ts",
       "tests/floatingPopupAuthorization.test.ts",
       "tests/floatingPopupOverlay.test.ts",
-      "tests/popupEmbedded.test.ts"
+      "tests/popupEmbedded.test.ts",
+      "tests/readingEvidenceAnchor.test.ts",
+      "tests/readingEvidenceUi.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",
