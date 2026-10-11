@@ -17,6 +17,7 @@ const artifactsDir = path.resolve(arg('artifacts-dir', '/private/tmp/fluentread-
 const baselineOnly = process.argv.includes('--baseline-only');
 const productHuntOnly = process.argv.includes('--producthunt-only');
 const productHuntHomeControl = process.argv.includes('--producthunt-home-control');
+const disableInflightOnly = process.argv.includes('--disable-inflight-only');
 const {chromium} = require(path.join(arg('playwright-root'), 'playwright'));
 const {launchFocusSafePersistentContext, newPageWithoutForeground, activateExtensionTabWithoutForeground,
   startFocusEventMonitor, queryMacFrontmostApplication} = require('./focus-safe-browser.cjs');
@@ -25,14 +26,17 @@ const timeout = 30000;
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const profileDir = fs.mkdtempSync('/private/tmp/fluentread-site-navigation-');
 const requests = [];
-const report = {ok: false, artifact: 'production', extensionDir, sourceSha: arg('source-sha', null), baselineOnly, productHuntOnly, productHuntHomeControl,
+const report = {ok: false, artifact: 'production', extensionDir, sourceSha: arg('source-sha', null), baselineOnly, productHuntOnly, productHuntHomeControl, disableInflightOnly,
+  scriptSha256: crypto.createHash('sha256').update(fs.readFileSync(__filename)).digest('hex'),
+  resourcePolicy: {concurrency: Number(process.env.FLUENTREAD_TEST_CONCURRENCY) || null, maxWorkers: Number(process.env.FLUENTREAD_TEST_MAX_WORKERS) || null,
+    lockHeld: process.env.FLUENTREAD_RESOURCE_LOCK_HELD === '1', slot: process.env.FLUENTREAD_RESOURCE_LOCK_SLOT || null, cpuExclusive: false, browserCpuTimingCompared: false},
   fixtureNetwork: {firstHost: '127.0.0.1', secondHost: 'localhost', hostResolverRules: null, proxyPolicy: 'browser default; standard localhost loopback bypass', bindAddress: '127.0.0.1'}, navigationRequests: [],
   cases: [], assertions: [], persistenceCases: [], quickClose: false, latestWriteWins: false, crossPageSync: false,
   screenshots: [], consoleErrors: [], runtimeMessages: [], focusEvents: [], cleanupErrors: [],
   failedRequests: [], httpErrors: [],
   evidenceBoundary: 'Real production MV3 extension in isolated Edge. Content lifecycle, configuration persistence and translation DOM use production code. Translation transport is a local deterministic custom OpenAI provider; active-tab lookup is controlled only because the normal extension test tab occupies a tab. No native-toolbar, live-provider, Firefox, BFCache or arbitrary-site coverage claim.'};
 let port, launched, context, control, content, popup, origin, monitor, browserPid, currentCase = 'launch';
-let focusViolation, closePromise;
+let focusViolation, closePromise, slowResponseGate;
 fs.mkdirSync(artifactsDir, {recursive: true});
 const source = route => `Reading page ${route} should feel calm and effortless. Colors and lines should follow the article you are reading.`;
 function fixture(route) {
@@ -77,10 +81,17 @@ const server = http.createServer(async (request, response) => {
     const prompt = body.messages.filter(message => message.role === 'user').map(message => message.content).join('\n');
     const text = /SOURCE_BEGIN([\s\S]*?)SOURCE_END/u.exec(prompt)?.[1] || '';
     const item = {source: text, model: body.model, at: Date.now(), aborted: false}; requests.push(item);
-    response.on('close', () => {if (!response.writableFinished) item.aborted = true;});
-    await delay(text.includes('/spa/slow') ? 900 : 100);
-    if (response.destroyed) return;
+    response.on('close', () => {item.closedAt = Date.now(); if (!response.writableFinished) {item.aborted = true; item.abortedAt = item.closedAt;}});
+    const gate = slowResponseGate && text === source('/spa/slow') ? slowResponseGate : null;
+    if (gate) {
+      gate.requests.push(item); gate.request ||= item; gate.arrivedAt ||= item.at; item.responseGate = 'disable-inflight';
+      await gate.promise;
+      item.gateReleasedAt = gate.releasedAt;
+    } else {await delay(text.includes('/spa/slow') ? 900 : 100);}
+    item.responseDecisionAt = Date.now();
+    if (response.destroyed) {item.responseOutcome = 'aborted-before-send'; return;}
     response.setHeader('content-type', 'application/json');
+    item.responseOutcome = 'sent'; item.responseSentAt = Date.now();
     response.end(JSON.stringify({id: 'site-navigation-fixture', object: 'chat.completion', created: 1, model: body.model,
       choices: [{index: 0, message: {role: 'assistant', content: `这篇文章阅读起来轻松自然。颜色和线条贴合当前页面。`}, finish_reason: 'stop'}]}));
     return;
@@ -182,6 +193,53 @@ async function runCase(name, action) {
   const value = await Promise.race([action(), new Promise((_, reject) => {timer = setTimeout(() => reject(new Error(`Case watchdog expired: ${name}`)), 25000);})]).finally(() => clearTimeout(timer));
   report.cases.push({name, passed: true, durationMs: Math.round(performance.now() - start), requests: requests.length - before, dom: value || await dom()});
   console.log(JSON.stringify({event: 'case-passed', name, durationMs: report.cases.at(-1).durationMs, requests: requests.length - before}));
+}
+async function runDisableInflightCase() {
+  await runCase('disable interrupts slow translation and late reply never reinserts DOM', async () => {
+    let release;
+    const gate = slowResponseGate = {armedAt: Date.now(), requests: [], promise: new Promise(resolve => {release = resolve;})};
+    report.inflightDisable = {provider: 'local deterministic response gate', armedAt: gate.armedAt, events: []};
+    const evidence = report.inflightDisable;
+    const event = name => evidence.events.push({name, at: Date.now()});
+    const releaseGate = () => {if (!gate.releasedAt) {gate.releasedAt = Date.now(); event('provider-gate-released'); release();}};
+    try {
+      await content.locator('#slow').click();
+      await until(() => Boolean(gate.request), 'current slow article reached the gated provider');
+      evidence.request = gate.request; event('provider-request-arrived');
+      assert.equal(gate.releasedAt, undefined); assert.equal(gate.request.responseSentAt, undefined); assert.equal(gate.request.aborted, false);
+      await openPopup(); assert.equal(await popup.locator('[data-setting="disable-extension-site"]').isDisabled(), false);
+      assert.equal(gate.request.responseSentAt, undefined, 'Response completed before real disable click');
+      assert.equal(gate.request.aborted, false, 'Current request already aborted before real disable click');
+      const disableStartedAt = Date.now();
+      evidence.pendingBeforeDisable = {at: disableStartedAt, requestArrivedAt: gate.request.at, responseSent: false, aborted: false, gateReleased: false};
+      event('disable-click-started');
+      await quickClick('[data-setting="disable-extension-site"]'); event('popup-immediate-close-completed');
+      await saved('disabledExtensionDomains', ['127.0.0.1']); event('persisted-state-acknowledged');
+      const persisted = await readConfig();
+      evidence.persistedState = {disabledExtensionDomains: persisted.disabledExtensionDomains, revision: persisted.__fluentConfigRevision};
+      await restored('inflight disable original'); event('original-dom-restored');
+      await until(() => gate.request.aborted, 'disable abort reached the provider before gate release'); event('provider-abort-observed');
+      assert(gate.request.abortedAt >= disableStartedAt, 'Request aborted before disable began');
+      assert.equal(gate.releasedAt, undefined); assert.equal(gate.request.responseSentAt, undefined);
+      await openPopup();
+      evidence.reopenedPopup = {enabled: await popup.locator('[data-setting="disable-extension-site"]').getAttribute('data-enabled'),
+        busy: await popup.locator('[data-setting="disable-extension-site"]').getAttribute('aria-busy'),
+        translationDisabled: await popup.locator('[data-testid="page-translation"]').isDisabled(),
+        alwaysRuleDisabled: await popup.locator('[data-setting="always-translate-site"]').isDisabled()};
+      assert.deepEqual(evidence.reopenedPopup, {enabled: 'true', busy: 'false', translationDisabled: true, alwaysRuleDisabled: true});
+      event('reopened-popup-disabled-state-confirmed');
+      await shot(popup, 'disable-inflight-gated-popup'); await closePopup();
+      const disabledAt = requests.length; releaseGate();
+      await until(() => Boolean(gate.request.responseOutcome), 'released provider response settled');
+      assert.equal(gate.request.responseOutcome, 'aborted-before-send');
+      await delay(1300); await restored('late released response remains original'); assert.equal(requests.length, disabledAt);
+      assert.equal(gate.requests.length, 1, 'The gated current article must issue only one request');
+      assert.equal((await contentMessage({type: 'contextMenuTranslate', action: 'fullPage'}))?.status, 'disabled');
+      evidence.noReinsertionAfterRelease = true; evidence.newRequestsAfterDisable = requests.length - disabledAt;
+      event('post-release-original-dom-confirmed');
+      await shot(content, 'disable-inflight-late-reply'); return dom();
+    } finally {releaseGate(); slowResponseGate = null;}
+  });
 }
 async function productHunt() {
   const result = report.productHunt = {status: 'pending', requestedUrl: 'https://www.producthunt.com/products/reso', navigations: [], screenshots: [], transport: 'local deterministic custom OpenAI provider'};
@@ -351,6 +409,19 @@ async function main() {
       await productHunt(); report.ok = report.productHunt.status !== 'failed'; return;
     }
     content = await open(`http://127.0.0.1:${port}/spa/initial`, 'content'); await ready();
+    if (disableInflightOnly) {
+      await openPopup(); await quickClick('[data-setting="always-translate-site"]');
+      await saved('alwaysTranslateDomains', ['127.0.0.1']);
+      report.targetedSetup = {alwaysRulePersisted: true, initialArticle: await translated('targeted initial article')};
+      await runDisableInflightCase();
+      report.localConsoleErrors = [...report.consoleErrors]; assert.deepEqual(report.localConsoleErrors, []);
+      report.assertions = ['The current article request is held at the local provider before the real disable click',
+        'Immediate popup close is followed by persisted state acknowledgement and a reopened disabled, non-saving popup',
+        'The provider observes request abort before response release', 'Releasing the held response cannot reinsert translation DOM or create new provider requests',
+        'Native macOS focus events contain no activation of the isolated test Edge PID'];
+      assert.equal(report.windowPlacement.browserFrontmost, false); assert.notEqual((await queryMacFrontmostApplication()).pid, browserPid);
+      report.ok = true; return;
+    }
     await runCase('initial rule click survives immediate popup close', async () => {
       await openPopup(); await quickClick('[data-setting="always-translate-site"]');
       await saved('alwaysTranslateDomains', ['127.0.0.1']); const value = await translated('initial rule translates');
@@ -456,16 +527,7 @@ async function main() {
       assert.equal(requests.slice(before).filter(request => request.source.includes('/spa/slow-anchor')).length, 1);
       assert.equal(value.route, '/spa/slow-anchor'); return value;
     });
-    await runCase('disable interrupts slow translation and late reply never reinserts DOM', async () => {
-      const before = requests.length; await content.locator('#slow').click();
-      await until(() => requests.slice(before).some(request => request.source.includes('/spa/slow')), 'slow request began');
-      await openPopup(); assert.equal(await popup.locator('[data-setting="disable-extension-site"]').isDisabled(), false);
-      await quickClick('[data-setting="disable-extension-site"]'); await saved('disabledExtensionDomains', ['127.0.0.1']);
-      await restored('inflight disable original'); const disabledAt = requests.length;
-      await delay(1300); await restored('late reply remains original'); assert.equal(requests.length, disabledAt);
-      assert.equal((await contentMessage({type: 'contextMenuTranslate', action: 'fullPage'}))?.status, 'disabled');
-      await shot(content, 'disable-inflight-late-reply'); return dom();
-    });
+    await runDisableInflightCase();
     await runCase('reenable after aborted slow translation starts one current session', async () => {
       await openPopup(); await quickClick('[data-setting="disable-extension-site"]'); await saved('disabledExtensionDomains', []);
       return translated('slow article reenabled');

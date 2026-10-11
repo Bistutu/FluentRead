@@ -100,5 +100,47 @@
       "Build and deterministic verifier only; no userscript-manager or remote-CDN runtime acceptance.",
       "Same lockfile/dependencies and language pin as the frozen previous successful package; the current follow-up changes no dependency or resource pin."
     ]
+  },
+  "performanceIntegration": {
+    "baseCommit": "c8a06bb5fe0148f629ecaf60e70e5bf6ebb4f957",
+    "candidate": {
+      "buildSourceCommit": "dd07045944ed5f0dbf19b4932def7f90514d0c05",
+      "bytes": 2026916,
+      "sha256": "ac0bf8cdc4be0c21b01c598b115ea8bc16bb519abc16736460a7450b4fd9c918",
+      "verifierExitCode": 0,
+      "budgetBytes": 2027000,
+      "headroomBytes": 84,
+      "languageResourceCommit": "57b76a06a54d8849c5de2f7a239a4cf3cb3b014e"
+    },
+    "coreSourceCommit": "b3322d33423cb1445c221d57fee82741911bbde4",
+    "coreFilesIdentical": [
+      "src/core/site-rules/domain.ts",
+      "src/app/content/pageAvailability.ts",
+      "src/app/content/runtime.ts",
+      "src/app/popup/PopupApp.vue"
+    ],
+    "limits": [
+      "Comparison to the frozen c254 package also includes newly merged main changes; it is not a performance-only size delta.",
+      "No userscript manager runtime or remote-CDN runtime acceptance."
+    ],
+    "baseline": {
+      "commit": "c8a06bb5fe0148f629ecaf60e70e5bf6ebb4f957",
+      "bytes": 2024873,
+      "sha256": "4943291cb4158273aff96f06dab5f0b04748980cf80a3eb0b45b78f8c2c033fd",
+      "budgetBytes": 2025000,
+      "verifierExitCode": 0,
+      "trackedBlobsVerified": 4949,
+      "trackedChecks": 6,
+      "lockfileSha256": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
+      "generated": "No language additions; seven missing .wxt files and userscript output only."
+    },
+    "comparison": {
+      "totalPrDeltaBytes": 2043,
+      "totalPrDeltaPercent": 0.10089521663827807,
+      "candidateOverMainBudgetBytes": 1916,
+      "totalBudgetIncreaseFromMainBytes": 2000,
+      "finalHeadroomBytes": 84,
+      "boundary": "This delta includes original correctness/interaction fixes and performance follow-up; it is not a performance-only size delta."
+    }
   }
 }

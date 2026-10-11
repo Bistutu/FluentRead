@@ -114,6 +114,8 @@ node scripts/testing/run-site-rules-navigation-test.cjs \
 
 追加 `--producthunt` 会访问 Product Hunt 首页和 Reso 产品页，用实际链接检查正文适配切换后的自动翻译。翻译响应仍来自本地测试服务；站点防护或链接不可用会单独记录为隔离结果，不计入通过项。
 
+仅补测在途禁用可追加 `--disable-inflight-only`，默认完整范围保持不变。该原有用例用本地 provider 响应闸门替代固定等待：确认当前正文请求已到达但尚未响应，点击禁用并立即关闭 Popup，核对持久化确认与请求取消，重开检查已禁用且保存已结束，最后释放响应并断言译文不回插、不新增请求。单项报告记录完整时序及资源锁配置，不能把一次固定延迟结束后的原文状态当作请求取消证据。
+
 网站规则 CPU 对照可运行 `node scripts/testing/run-resource-safe.mjs --concurrency 1 -- node scripts/testing/benchmark-site-rules.mjs <明确的旧版本提交> <输出JSON路径>`。脚本用同一依赖编译旧/新 domain 模块，分别记录域名解析工作量与七轮交替计时，覆盖空、小、大名单、首次建索引、热查询、同值和真实配置修改、混合路线。输出保留源文件散列、语义比较、全部样本和初始化成本；低于计时下限不计算速度比例。配置通知仍 O(N) 比较，数据仅限本地 Node CPU，不代表 DOM、网络或用户端到端延迟。本轮范围与对照见 [网站规则性能复验](./reports/site-rules-navigation-20261011/performance.md)。
 
 ## Popup 首次打开与语言引导
