@@ -134,9 +134,10 @@
     "src/app/popup/pageActions.ts": "11e40d0f9a3ddafe27ec449c8af57f0f6298bff2613d17f77329f47c6366254a",
     "src/app/popup/PopupApp.vue": "dd18fca855d1ef4cdfe238e614685db9c22ff1fd25b752e84a3d23f948f44de2",
     "src/app/popup/popup.css": "40e6f389053d0273b086c998b98973a4bbab093e38583bd3e45bce0a46a7ca95",
-    "src/features/progressive-reading/ui/ProgressiveReading.vue": "ee19d2bc4a729e4929fb16784111edb6417cfb1214b8e3a66e2797a5b1d559f2",
+    "src/features/progressive-reading/ui/ProgressiveReading.vue": "4b1690887ed6e5a885be0884b7cfdf4c8d6f0434b98d2b8aee87a30213a3e8c3",
     "userscript/vite.config.ts": "fe3ae2259d5dd02dc530bf6f4e5a1bf484d295d5056103a2e9ca18835c1fa2e1",
-    "userscript/unsupportedCapabilities.ts": "083ed5cb3c6797d105f04043dbca82cbf959074bb450b39739470ededd9e069d"
+    "userscript/unsupportedCapabilities.ts": "083ed5cb3c6797d105f04043dbca82cbf959074bb450b39739470ededd9e069d",
+    "scripts/run-progressive-reading-test.cjs": "8a808bf0bd41b3104cd367d1199f438b7a18dce0e30cecce796b0d1045ecb6b6"
   },
   "manifests": [
     {
@@ -198,8 +199,8 @@
     }
   ],
   "artifacts": {
-    "chromeContentSha256": "6740a54b485aaed40640d846e4ae3bc3df667652294fdc681064b7e851039be8",
-    "firefoxContentSha256": "1158163c7783c6e1a1726975219acc578ea482adaa1acabd3ac2c85de8667575",
+    "chromeContentSha256": "4c5d5572e634b4a8736f9568342008ee5443f0c95c260f00a7d4ff26dfaa8e08",
+    "firefoxContentSha256": "4d125a9d009ee1b6e6dedc697aaf8dd400c42725c3dec4b24b32f216a09abb10",
     "userscriptBytes": 2026951,
     "userscriptSha256": "fa8734558fc0b8deb01bd84c5f2be39e4e8b9b5b7fc52db319a9b2f7552ff7c9",
     "userscriptBudgetBytes": 2027000
@@ -230,10 +231,65 @@
       "passed": 400
     }
   },
+  "brandUi": {
+    "palette": {
+      "390-light": {
+        "scheme": "light",
+        "background": "rgb(255, 255, 255)",
+        "ink": "rgb(23, 32, 51)",
+        "selectedBackground": "rgb(255, 240, 244)",
+        "selectedInk": "rgb(220, 49, 95)",
+        "textContrast": 16.268480224545662
+      },
+      "390-dark": {
+        "scheme": "dark",
+        "background": "rgb(40, 40, 48)",
+        "ink": "rgb(241, 241, 244)",
+        "selectedBackground": "rgba(239, 71, 118, 0.16)",
+        "selectedInk": "rgb(255, 173, 198)",
+        "textContrast": 12.968772087702426
+      },
+      "auto-dark": {
+        "scheme": "dark",
+        "background": "rgb(40, 40, 48)",
+        "ink": "rgb(241, 241, 244)",
+        "selectedBackground": "rgba(250, 187, 204, 0.376)",
+        "selectedInk": "rgb(255, 173, 198)",
+        "textContrast": 12.968772087702426
+      },
+      "auto-light": {
+        "scheme": "light",
+        "background": "rgb(255, 255, 255)",
+        "ink": "rgb(23, 32, 51)",
+        "selectedBackground": "rgba(255, 238, 242, 0.937)",
+        "selectedInk": "rgb(220, 49, 95)",
+        "textContrast": 16.268480224545662
+      }
+    },
+    "automaticThemeVerified": true,
+    "keyboardExplanationVerified": true,
+    "screenshots": [
+      "panel-original.png",
+      "panel-phrases.png",
+      "panel-logic.png",
+      "panel-bilingual.png"
+    ],
+    "checks": {
+      "domTests": 14,
+      "userscriptContractTests": 35,
+      "architectureTests": 951,
+      "compile": "passed",
+      "chromeBuild": "passed",
+      "firefoxBuild": "passed",
+      "userscriptBuild": "passed",
+      "userscriptVerifier": "passed",
+      "docsBuild": "passed"
+    }
+  },
   "browser": {
     "passed": 18,
     "consoleErrors": 0,
-    "focusSamples": 38,
+    "focusSamples": 49,
     "launchMode": "macos-background-cdp",
     "focusPolicy": "launchservices-no-foreground",
     "windowPlacement": "background-visible-no-focus",

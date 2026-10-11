@@ -3,7 +3,7 @@
   "extensionDir": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/.output/chrome-mv3",
   "browserPath": "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
   "profileMode": "fresh-mkdtemp-owned",
-  "profileDir": "/private/tmp/fluentread-progressive-reading-profile-nBdJ8k",
+  "profileDir": "/private/tmp/fluentread-progressive-reading-profile-FREVTR",
   "artifact": "production",
   "cases": [
     {
@@ -213,11 +213,11 @@
       "terms": [
         {
           "term": "take into account",
-          "text": "take into account考虑；把……计入 收藏参考翻译这个表达"
+          "text": "take into account考虑；把……计入 收藏参考查询表达"
         },
         {
           "term": "bank",
-          "text": "bank河岸 收藏参考翻译这个表达"
+          "text": "bank河岸 收藏参考查询表达"
         }
       ],
       "name": "Multiword hints use the learning library, matching manual mastery retreats and unfamiliar senses remain available"
@@ -231,25 +231,25 @@
     },
     {
       "clues": [
-        "If · 条件检查结论成立需要什么条件；此标记不判断条件是否已满足。",
-        "not · 否定 / 例外检查这里否定或排除的对象；此标记不确定否定覆盖整句还是局部。",
-        "may · 可能性保留原文的不确定程度，不能直接读成确定事实。",
-        "only if · 条件检查结论成立需要什么条件；此标记不判断条件是否已满足。",
-        "only · 适用范围检查对象、数量或适用场景，避免把有限范围读成普遍结论。"
+        "If条件检查结论成立需要什么条件；此标记不判断条件是否已满足。详细信息\n:host summary {\n  display: list-item;\n  counter-increment: list-item 0;\n  list-style: disclosure-closed inside;\n}\n:host([open]) summary {\n  list-style-type: disclosure-open;\n}",
+        "not否定 / 例外检查这里否定或排除的对象；此标记不确定否定覆盖整句还是局部。详细信息\n:host summary {\n  display: list-item;\n  counter-increment: list-item 0;\n  list-style: disclosure-closed inside;\n}\n:host([open]) summary {\n  list-style-type: disclosure-open;\n}",
+        "may可能性保留原文的不确定程度，不能直接读成确定事实。详细信息\n:host summary {\n  display: list-item;\n  counter-increment: list-item 0;\n  list-style: disclosure-closed inside;\n}\n:host([open]) summary {\n  list-style-type: disclosure-open;\n}",
+        "only if条件检查结论成立需要什么条件；此标记不判断条件是否已满足。详细信息\n:host summary {\n  display: list-item;\n  counter-increment: list-item 0;\n  list-style: disclosure-closed inside;\n}\n:host([open]) summary {\n  list-style-type: disclosure-open;\n}",
+        "only适用范围检查对象、数量或适用场景，避免把有限范围读成普遍结论。详细信息\n:host summary {\n  display: list-item;\n  counter-increment: list-item 0;\n  list-style: disclosure-closed inside;\n}\n:host([open]) summary {\n  list-style-type: disclosure-open;\n}"
       ],
-      "name": "Logic mode grounds clues in source words and does not make an additional AI request"
+      "name": "Logic mode grounds clues in source words, exposes explanations through trusted keyboard input and does not make an additional AI request"
     },
     {
       "requests": [
         {
           "source": "bank",
           "model": "progressive-reading-fixture",
-          "at": 1791699052791
+          "at": 1791701258472
         },
         {
           "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
           "model": "progressive-reading-fixture",
-          "at": 1791699053077
+          "at": 1791701258924
         }
       ],
       "name": "One click reaches complete bilingual from logic and mode switches reuse the same reading-session translation"
@@ -261,15 +261,48 @@
       "name": "Existing explicit mastery and relearn updates refresh help without a parallel learning state"
     },
     {
-      "visualPalette": "Current progressive panel uses its own light palette; this case validates layout under both configurations.",
-      "name": "390px panel keeps controls inside the viewport under light and dark theme configuration"
+      "palette": {
+        "390-light": {
+          "scheme": "light",
+          "background": "rgb(255, 255, 255)",
+          "ink": "rgb(23, 32, 51)",
+          "selectedBackground": "rgb(255, 240, 244)",
+          "selectedInk": "rgb(220, 49, 95)",
+          "textContrast": 16.268480224545662
+        },
+        "390-dark": {
+          "scheme": "dark",
+          "background": "rgb(40, 40, 48)",
+          "ink": "rgb(241, 241, 244)",
+          "selectedBackground": "rgba(239, 71, 118, 0.16)",
+          "selectedInk": "rgb(255, 173, 198)",
+          "textContrast": 12.968772087702426
+        },
+        "auto-dark": {
+          "scheme": "dark",
+          "background": "rgb(40, 40, 48)",
+          "ink": "rgb(241, 241, 244)",
+          "selectedBackground": "rgba(250, 187, 204, 0.376)",
+          "selectedInk": "rgb(255, 173, 198)",
+          "textContrast": 12.968772087702426
+        },
+        "auto-light": {
+          "scheme": "light",
+          "background": "rgb(255, 255, 255)",
+          "ink": "rgb(23, 32, 51)",
+          "selectedBackground": "rgba(255, 238, 242, 0.937)",
+          "selectedInk": "rgb(220, 49, 95)",
+          "textContrast": 16.268480224545662
+        }
+      },
+      "name": "390px panel keeps controls inside the viewport, uses readable FluentRead light/dark palettes and follows automatic system-theme changes"
     },
     {
-      "steps": 7,
+      "steps": 8,
       "full": true,
       "visible": true,
       "name": "390px trusted Tab scrolls the long phrase list to a visible full-translation action; Enter activates it",
-      "scrollTop": 295
+      "scrollTop": 222.5
     },
     {
       "name": "Host links and buttons remain usable; replacing a selected DOM node permits explicit recapture with the new source"
@@ -282,7 +315,7 @@
     },
     {
       "source": "If the route changes, this delayed reading request must not remain attached to the old page.",
-      "route": "http://127.0.0.1:50794/article?route=reading",
+      "route": "http://127.0.0.1:61747/article?route=reading",
       "name": "Pure history.pushState with unchanged host DOM cancels the old request through the real MAIN bridge, closes help and permits reopening"
     },
     {
@@ -300,7 +333,11 @@
     "popup-320-progressive-entry.png",
     "popup-320-long-hotkey.png",
     "popup-400-long-hotkey.png",
+    "panel-original.png",
+    "panel-phrases.png",
+    "panel-logic.png",
     "desktop-bilingual.png",
+    "panel-bilingual.png",
     "390-light-phrases.png",
     "390-dark-phrases.png",
     "390-keyboard-bilingual.png"
@@ -309,18 +346,18 @@
   "focusSamples": [
     {
       "label": "launch",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "popup-400-progressive-entry:before-screenshot",
@@ -333,17 +370,22 @@
       "name": "ChatGPT"
     },
     {
-      "label": "popup-320-progressive-entry:before-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
-    },
-    {
       "label": "continuous",
       "pid": 73685,
       "name": "ChatGPT"
     },
     {
+      "label": "popup-320-progressive-entry:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
       "label": "popup-320-progressive-entry:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
       "pid": 73685,
       "name": "ChatGPT"
     },
@@ -354,11 +396,6 @@
     },
     {
       "label": "popup-320-long-hotkey:after-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
-    },
-    {
-      "label": "continuous",
       "pid": 73685,
       "name": "ChatGPT"
     },
@@ -383,12 +420,67 @@
       "name": "ChatGPT"
     },
     {
+      "label": "panel-original:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "panel-original:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "panel-phrases:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "panel-phrases:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "panel-logic:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "panel-logic:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
       "label": "desktop-bilingual:before-screenshot",
       "pid": 73685,
       "name": "ChatGPT"
     },
     {
       "label": "desktop-bilingual:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "panel-bilingual:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "panel-bilingual:after-screenshot",
       "pid": 73685,
       "name": "ChatGPT"
     },
@@ -408,12 +500,12 @@
       "name": "ChatGPT"
     },
     {
-      "label": "continuous",
+      "label": "390-dark-phrases:before-screenshot",
       "pid": 73685,
       "name": "ChatGPT"
     },
     {
-      "label": "390-dark-phrases:before-screenshot",
+      "label": "continuous",
       "pid": 73685,
       "name": "ChatGPT"
     },
@@ -488,12 +580,12 @@
       "name": "ChatGPT"
     },
     {
-      "label": "continuous",
+      "label": "completed",
       "pid": 73685,
       "name": "ChatGPT"
     },
     {
-      "label": "completed",
+      "label": "continuous",
       "pid": 73685,
       "name": "ChatGPT"
     }
@@ -522,12 +614,12 @@
     "screenIndex": 1,
     "browserFrontmost": false,
     "frontmostBefore": {
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     "frontmostAfter": {
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     }
   },
   "manifest": {
@@ -743,62 +835,62 @@
     "desktop": {
       "left": 764,
       "right": 1184,
-      "top": 296.765625,
+      "top": 329.640625,
       "bottom": 834,
       "width": 420,
-      "height": 537.234375,
+      "height": 504.359375,
       "viewportWidth": 1200,
       "viewportHeight": 850,
       "horizontalOverflow": false,
       "controls": [
         {
           "text": "关闭渐进阅读",
-          "left": 1131.6875,
-          "right": 1165,
-          "width": 33.3125,
+          "left": 1139,
+          "right": 1167,
+          "width": 28,
+          "height": 28
+        },
+        {
+          "text": "读取选中正文",
+          "left": 781,
+          "right": 1167,
+          "width": 386,
           "height": 34
         },
         {
-          "text": "读取选中的正文",
-          "left": 783,
-          "right": 1165,
-          "width": 382,
-          "height": 37.09375
-        },
-        {
           "text": "只读原文",
-          "left": 783,
+          "left": 781,
           "right": 971,
-          "width": 188,
-          "height": 37.09375
+          "width": 190,
+          "height": 34
         },
         {
           "text": "短语提示",
           "left": 977,
-          "right": 1165,
-          "width": 188,
-          "height": 37.09375
+          "right": 1167,
+          "width": 190,
+          "height": 34
         },
         {
           "text": "逻辑线索",
-          "left": 783,
+          "left": 781,
           "right": 971,
-          "width": 188,
-          "height": 37.09375
+          "width": 190,
+          "height": 34
         },
         {
           "text": "完整双语",
           "left": 977,
-          "right": 1165,
-          "width": 188,
-          "height": 37.09375
+          "right": 1167,
+          "width": 190,
+          "height": 34
         },
         {
           "text": "完整双语",
-          "left": 783,
-          "right": 861,
-          "width": 78,
-          "height": 37.09375
+          "left": 781,
+          "right": 851,
+          "width": 70,
+          "height": 32.796875
         }
       ]
     },
@@ -815,73 +907,73 @@
       "controls": [
         {
           "text": "关闭渐进阅读",
-          "left": 329.6875,
+          "left": 335,
           "right": 363,
-          "width": 33.3125,
-          "height": 34
+          "width": 28,
+          "height": 28
         },
         {
-          "text": "读取选中的正文",
+          "text": "读取选中正文",
           "left": 27,
           "right": 363,
           "width": 336,
-          "height": 37.09375
+          "height": 34
         },
         {
           "text": "只读原文",
           "left": 27,
           "right": 192,
           "width": 165,
-          "height": 37.09375
+          "height": 34
         },
         {
           "text": "短语提示",
           "left": 198,
           "right": 363,
           "width": 165,
-          "height": 37.09375
+          "height": 34
         },
         {
           "text": "逻辑线索",
           "left": 27,
           "right": 192,
           "width": 165,
-          "height": 37.09375
+          "height": 34
         },
         {
           "text": "完整双语",
           "left": 198,
           "right": 363,
           "width": 165,
-          "height": 37.09375
+          "height": 34
         },
         {
           "text": "仍需要帮助",
-          "left": 219.3203125,
-          "right": 301.3203125,
-          "width": 82,
-          "height": 33.796875
+          "left": 285,
+          "right": 363,
+          "width": 78,
+          "height": 26.796875
         },
         {
-          "text": "翻译这个表达",
+          "text": "查询表达",
           "left": 27,
-          "right": 133,
-          "width": 106,
-          "height": 37.09375
+          "right": 93,
+          "width": 66,
+          "height": 26.796875
         },
         {
-          "text": "翻译这个表达",
+          "text": "查询表达",
           "left": 27,
-          "right": 133,
-          "width": 106,
-          "height": 37.09375
+          "right": 93,
+          "width": 66,
+          "height": 26.796875
         },
         {
           "text": "完整双语",
           "left": 27,
-          "right": 105,
-          "width": 78,
-          "height": 37.09375
+          "right": 97,
+          "width": 70,
+          "height": 32.796875
         }
       ]
     },
@@ -898,131 +990,165 @@
       "controls": [
         {
           "text": "关闭渐进阅读",
-          "left": 329.6875,
+          "left": 335,
           "right": 363,
-          "width": 33.3125,
-          "height": 34
+          "width": 28,
+          "height": 28
         },
         {
-          "text": "读取选中的正文",
+          "text": "读取选中正文",
           "left": 27,
           "right": 363,
           "width": 336,
-          "height": 37.09375
+          "height": 34
         },
         {
           "text": "只读原文",
           "left": 27,
           "right": 192,
           "width": 165,
-          "height": 37.09375
+          "height": 34
         },
         {
           "text": "短语提示",
           "left": 198,
           "right": 363,
           "width": 165,
-          "height": 37.09375
+          "height": 34
         },
         {
           "text": "逻辑线索",
           "left": 27,
           "right": 192,
           "width": 165,
-          "height": 37.09375
+          "height": 34
         },
         {
           "text": "完整双语",
           "left": 198,
           "right": 363,
           "width": 165,
-          "height": 37.09375
+          "height": 34
         },
         {
           "text": "仍需要帮助",
-          "left": 219.3203125,
-          "right": 301.3203125,
-          "width": 82,
-          "height": 33.796875
+          "left": 285,
+          "right": 363,
+          "width": 78,
+          "height": 26.796875
         },
         {
-          "text": "翻译这个表达",
+          "text": "查询表达",
           "left": 27,
-          "right": 133,
-          "width": 106,
-          "height": 37.09375
+          "right": 93,
+          "width": 66,
+          "height": 26.796875
         },
         {
-          "text": "翻译这个表达",
+          "text": "查询表达",
           "left": 27,
-          "right": 133,
-          "width": 106,
-          "height": 37.09375
+          "right": 93,
+          "width": 66,
+          "height": 26.796875
         },
         {
           "text": "完整双语",
           "left": 27,
-          "right": 105,
-          "width": 78,
-          "height": 37.09375
+          "right": 97,
+          "width": 70,
+          "height": 32.796875
         }
       ]
+    }
+  },
+  "palette": {
+    "390-light": {
+      "scheme": "light",
+      "background": "rgb(255, 255, 255)",
+      "ink": "rgb(23, 32, 51)",
+      "selectedBackground": "rgb(255, 240, 244)",
+      "selectedInk": "rgb(220, 49, 95)",
+      "textContrast": 16.268480224545662
+    },
+    "390-dark": {
+      "scheme": "dark",
+      "background": "rgb(40, 40, 48)",
+      "ink": "rgb(241, 241, 244)",
+      "selectedBackground": "rgba(239, 71, 118, 0.16)",
+      "selectedInk": "rgb(255, 173, 198)",
+      "textContrast": 12.968772087702426
+    },
+    "auto-dark": {
+      "scheme": "dark",
+      "background": "rgb(40, 40, 48)",
+      "ink": "rgb(241, 241, 244)",
+      "selectedBackground": "rgba(250, 187, 204, 0.376)",
+      "selectedInk": "rgb(255, 173, 198)",
+      "textContrast": 12.968772087702426
+    },
+    "auto-light": {
+      "scheme": "light",
+      "background": "rgb(255, 255, 255)",
+      "ink": "rgb(23, 32, 51)",
+      "selectedBackground": "rgba(255, 238, 242, 0.937)",
+      "selectedInk": "rgb(220, 49, 95)",
+      "textContrast": 16.268480224545662
     }
   },
   "requests": [
     {
       "source": "bank",
       "model": "progressive-reading-fixture",
-      "at": 1791699052791
+      "at": 1791701258472
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791699053077
+      "at": 1791701258924
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791699055381
+      "at": 1791701261789
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791699056587
+      "at": 1791701262889
     },
     {
       "source": "Unless the review is complete, the result may not apply to a new bank account.",
       "model": "progressive-reading-fixture",
-      "at": 1791699057325
+      "at": 1791701263610
     },
     {
       "source": "Unless the review is complete, the result may not apply to a new bank account.",
       "model": "progressive-reading-fixture",
-      "at": 1791699059031
+      "at": 1791701265232
     },
     {
       "source": "If the route changes, this delayed reading request must not remain attached to the old page.",
       "model": "progressive-reading-fixture",
-      "at": 1791699060326
+      "at": 1791701266458
     }
   ],
   "hostLifecycle": [
     {
       "event": "pageshow",
-      "at": 1791699048998
+      "at": 1791701254070
     },
     {
       "event": "pagehide",
-      "at": 1791699063519
+      "at": 1791701269687
     },
     {
       "event": "pageshow",
-      "at": 1791699063572
+      "at": 1791701269716
     },
     {
       "event": "pagehide",
-      "at": 1791699063950
+      "at": 1791701270154
     }
   ],
-  "originalArtifactsDirectory": "/private/tmp/fluentread-progressive-reading-20261011-integration-final"
+  "originalArtifactsDirectory": "/private/tmp/fluentread-progressive-reading-20261011-brand-final-pass"
 }

@@ -229,11 +229,34 @@ async function popupEntryGeometry() {
     await popup.setViewportSize({width: 400, height: 650});
     record('320px and 400px real Popup documents expose full-page, local-section and reading actions in two rows with complete labels and a visible long hotkey', {variants: report.popupLayout});
 }
-async function shot(name) {
+async function shot(name, panelOnly = false) {
     await focusSample(`${name}:before-screenshot`);
     const file = path.join(artifactsDir, `${name}.png`);
-    await page.screenshot({path: file}); report.screenshots.push(file);
+    const clip = panelOnly ? await ui(function() {
+        const bounds = this.getBoundingClientRect();
+        return {x: Math.max(0, bounds.left), y: Math.max(0, bounds.top), width: Math.min(bounds.width, innerWidth - bounds.left), height: Math.min(bounds.height, innerHeight - bounds.top)};
+    }) : undefined;
+    await page.screenshot({path: file, ...(clip ? {clip} : {})}); report.screenshots.push(file);
     await focusSample(`${name}:after-screenshot`);
+}
+async function palette(label, expectedScheme) {
+    await until(async () => (await ui(function() {return getComputedStyle(this).colorScheme;})) === expectedScheme, `${label}: applied color scheme`);
+    const values = await ui(function() {
+        const panel = getComputedStyle(this), selected = getComputedStyle(this.querySelector('[aria-pressed="true"]'));
+        return {scheme: panel.colorScheme, background: panel.backgroundColor, ink: panel.color, selectedBackground: selected.backgroundColor, selectedInk: selected.color};
+    });
+    const luminance = color => {
+        const channels = color.match(/[\d.]+/gu)?.slice(0, 3).map(Number);
+        assert(channels?.length === 3, `Unrecognized computed color: ${color}`);
+        const linear = channels.map(value => {const normalized = value / 255; return normalized <= .04045 ? normalized / 12.92 : ((normalized + .055) / 1.055) ** 2.4;});
+        return .2126 * linear[0] + .7152 * linear[1] + .0722 * linear[2];
+    };
+    const background = luminance(values.background), ink = luminance(values.ink);
+    values.textContrast = (Math.max(background, ink) + .05) / (Math.min(background, ink) + .05);
+    assert(values.textContrast >= 4.5, `${label}: unreadable panel text contrast ${values.textContrast}`);
+    assert(expectedScheme === 'dark' ? background < .1 : background > .8, `${label}: theme does not change the actual panel surface`);
+    report.palette ||= {}; report.palette[label] = values;
+    return values;
 }
 async function geometry(label) {
     const metrics = await ui(function() {
@@ -319,6 +342,7 @@ async function main() {
         assert.equal(fixture.requests.length, 0); assert.equal(await page.locator('article').innerHTML(), originalHtml);
         assert.equal(await ui(function() {return getComputedStyle(this.querySelector('[data-reading-source]')).userSelect;}), 'text');
         record('Original source remains readable, selectable and unchanged, with no automatic provider call');
+        await shot('panel-original', true);
         await click(mode('phrases'), 'phrases');
         await until(async () => (await phraseTerms()).some(item => item.term.toLowerCase() === 'bank'), 'saved learning hints including the unfamiliar bank usage');
         let terms = await phraseTerms();
@@ -328,6 +352,7 @@ async function main() {
         assert(find((await snapshot()).panel, has('data-reading-hidden-hints')), 'The reader needs an explicit way to recover omitted known hints');
         assert(/\d+/u.test(text(find((await snapshot()).panel, has('data-reading-hidden-hints')))), 'Known-hint status must state a recoverable omitted count');
         record('Multiword hints use the learning library, matching manual mastery retreats and unfamiliar senses remain available', {terms});
+        await shot('panel-phrases', true);
         await queryPhrase('bank');
         await until(async () => Boolean(await ui(function() {return this.querySelector('[data-reading-phrase-answer]')?.textContent.includes('银行（本机确定性测试响应');})), 'explicit phrase translation response');
         assert.equal(fixture.requests.filter(request => request.source === 'bank').length, 1);
@@ -341,7 +366,17 @@ async function main() {
         const logicText = clues.join('\n').toLowerCase();
         assert(logicText.includes('not') && logicText.includes('may') && logicText.includes('if') && logicText.includes('only'), 'Actual clue nodes must quote source words for negation, possibility, condition and scope');
         assert.equal(fixture.requests.length, beforeLogic);
-        record('Logic mode grounds clues in source words and does not make an additional AI request', {clues});
+        await focus(node => node.nodeName === 'SUMMARY' && (attr(node, 'aria-label') || '').includes('逻辑线索说明'), 'logic explanation keyboard focus');
+        await page.keyboard.press('Enter');
+        assert(await ui(function() {return this.querySelector('.fr-reading-help').open;}), 'Keyboard Enter must expose the logic-boundary explanation');
+        await page.keyboard.press('Enter');
+        assert.equal(await ui(function() {return this.querySelector('.fr-reading-help').open;}), false);
+        await focus(node => node.nodeName === 'SUMMARY' && (attr(node, 'aria-label') || '').toLowerCase().startsWith('查看 if '), 'conditional clue keyboard focus');
+        await page.keyboard.press('Enter');
+        assert(await ui(function() {return [...this.querySelectorAll('[data-reading-logic] details')].some(detail => detail.open);}), 'Keyboard Enter must expose the condition-clue explanation');
+        record('Logic mode grounds clues in source words, exposes explanations through trusted keyboard input and does not make an additional AI request', {clues});
+        await shot('panel-logic', true);
+        await page.keyboard.press('Enter');
         await click(has('data-reading-full'), 'one-step complete bilingual');
         await until(async () => (await translationText()).includes(TRANSLATION), 'full bilingual translation');
         assert.equal(fixture.requests.filter(request => request.source === SOURCE).length, 1);
@@ -350,7 +385,7 @@ async function main() {
         await until(async () => (await translationText()).includes(TRANSLATION), 'reuse complete translation');
         assert.equal(fixture.requests.length, afterFull);
         record('One click reaches complete bilingual from logic and mode switches reuse the same reading-session translation', {requests: fixture.requests.slice()});
-        await geometry('desktop'); await shot('desktop-bilingual');
+        await geometry('desktop'); await shot('desktop-bilingual'); await shot('panel-bilingual', true);
         await focus(mode('original'), 'original keyboard start'); await page.keyboard.press('Enter');
         assert.equal(await selectedMode(), 'original'); await page.keyboard.press('Tab'); await page.keyboard.press('Enter');
         assert.equal(await selectedMode(), 'phrases');
@@ -362,11 +397,14 @@ async function main() {
         await vocabulary('relearn', {entryId: unmastered.id});
         await until(async () => (await phraseTerms()).some(item => item.term.toLowerCase() === 'take into account'), 'relearn restores phrase');
         record('Existing explicit mastery and relearn updates refresh help without a parallel learning state');
-        await page.setViewportSize({width: 390, height: 800}); await geometry('390-light'); await shot('390-light-phrases');
-        await patch({theme: 'dark'}); await geometry('390-dark'); await shot('390-dark-phrases');
-        await patch({theme: 'light'});
+        await page.setViewportSize({width: 390, height: 800}); await geometry('390-light'); const light = await palette('390-light', 'light'); await shot('390-light-phrases');
+        await patch({theme: 'dark'}); await palette('390-dark', 'dark'); await geometry('390-dark'); await shot('390-dark-phrases');
+        await patch({theme: 'auto'}); await page.emulateMedia({colorScheme: 'dark'}); await palette('auto-dark', 'dark');
+        await page.emulateMedia({colorScheme: 'light'}); const autoLight = await palette('auto-light', 'light');
+        assert.equal(autoLight.background, light.background, 'Automatic light mode must use the same reading surface as explicit light mode');
+        await patch({theme: 'light'}); await page.emulateMedia({colorScheme: null});
         const modesBeforeResize = await selectedMode(); assert.equal(modesBeforeResize, 'phrases');
-        record('390px panel keeps controls inside the viewport under light and dark theme configuration', {visualPalette: 'Current progressive panel uses its own light palette; this case validates layout under both configurations.'});
+        record('390px panel keeps controls inside the viewport, uses readable FluentRead light/dark palettes and follows automatic system-theme changes', {palette: report.palette});
         await narrowKeyboardFull(); await shot('390-keyboard-bilingual');
         await page.setViewportSize({width: 1200, height: 850});
         await page.locator('#host-link').click(); assert.equal(new URL(page.url()).hash, '#guide');

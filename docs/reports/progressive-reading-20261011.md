@@ -11,7 +11,7 @@
 
 ## 使用与行为
 
-网页选择一个词、表达或正文段落后，点击 Popup 的「渐进阅读」；也可以先开启面板，再选择正文并点击「读取选中的正文」。每段新原文从「只读原文」开始，可以自由切换短语提示、逻辑线索和完整双语。任何档位均可一步打开完整双语，无需学习反馈或逐级查看。
+网页选择一个词、表达或正文段落后，点击 Popup 的「渐进阅读」；也可以先开启面板，再选择正文并点击「读取选中正文」。每段新原文从「只读原文」开始，可以自由切换短语提示、逻辑线索和完整双语。任何档位均可一步打开完整双语，无需学习反馈或逐级查看。
 
 短语提示合并少量本地多词表达、主动选中的短表达和现有收藏。收藏只投影最多 24 次命中的坐标、所请求目标语言的已有参考及保守掌握证据，不返回收藏地址、笔记、语境或学习日志。只有当前状态为 mastered、最新时间的日志均为 manual-mastered、时间与当前学习状态对应、原文与保存语境相同且没有跨源语言同词歧义时才自动收起。「仍需要帮助」可恢复这些提示；学习中心的显式变更沿用已有通知刷新提示。停留、滚动和模式切换不写学习状态。提示展示和查询保留阅读快照中的真实词面与大小写。
 
@@ -19,7 +19,7 @@
 
 面板使用封闭 Shadow UI，不改写网页文字、链接或原生 Selection。只读快照排除表单、编辑区、代码、交互控件、隐藏和禁止翻译内容及扩展 UI。关闭面板清空会话、取消请求、停止正文观察并移除 UI；禁用和页面卸载进一步注销功能监听；原文变化清空旧结果并提示重新选择，迟到结果不得返回旧会话。精确匹配的已完成网页双语摘录可复用；同一阅读会话已取得的译文也直接复用。
 
-无痕模式不读取学习库，用户脚本、原生 PDF 和 Thunderbird 不提供 Popup 入口。当前面板使用固定浅色阅读配色，深色配置专项只验收可读布局。
+无痕模式不读取学习库，用户脚本、原生 PDF 和 Thunderbird 不提供 Popup 入口。面板沿用 FluentRead 默认划词卡片的粉色品牌、白色表面和灰色分隔，支持亮色、深色与系统自动主题。长说明使用可聚焦的原生展开入口，保留原文与四档操作的优先级；不向宿主页面应用界面皮肤或下载字体。
 
 ## 验证
 
@@ -72,9 +72,16 @@ node scripts/run-progressive-reading-test.cjs \
 
 验收覆盖 Popup 入口与 320px / 400px 两行页面操作、原生正文拖选与宿主 HTML 保留、四档自由切换、多词表达、明确掌握退场和恢复、熟词异语境仍有帮助、词面逻辑线索、一步完整双语、同会话译文复用、Tab/Enter/Escape、390px 滚动控件可达、宿主链接和按钮、DOM 替换、延迟请求关闭重开、总开关禁用恢复及页面卸载。
 
-最终专项还检查 320px / 400px Popup 中长快捷键和完整主按钮文字、宿主 DOM 不变的纯 history.pushState 路由切换与迟到请求取消。报告记录 38 次焦点采样，`launchMode=macos-background-cdp`、`focusPolicy=launchservices-no-foreground`、`windowPlacement.mode=background-visible-no-focus`、第二屏 normal 可见窗口及 `browserFrontmost=false`；控制台错误为 0，自有浏览器已关闭且临时 profile 已删除。
+最终专项还检查 320px / 400px Popup 中长快捷键和完整主按钮文字、宿主 DOM 不变的纯 history.pushState 路由切换与迟到请求取消。报告记录 49 次焦点采样，`launchMode=macos-background-cdp`、`focusPolicy=launchservices-no-foreground`、`windowPlacement.mode=background-visible-no-focus`、第二屏 normal 可见窗口及 `browserFrontmost=false`；控制台错误为 0，自有浏览器已关闭且临时 profile 已删除。品牌 UI 复验额外断言真实 `color-scheme`、亮暗表面和正文对比度（约 16.27 / 12.97）、自动主题跟随，以及键盘展开词面说明；新增四档面板截图，共 12 张。
 
 可审阅证据：[浏览器报告](./progressive-reading-20261011/report.json)、[验证摘要](./progressive-reading-20261011/verification.json)。截图逐项复核布局、文本及焦点可达性：
+
+| 模式截图 | 用户可以做什么 |
+| --- | --- |
+| [只读原文](./progressive-reading-20261011/panel-original.png) | 先尝试阅读选中的正文与段落上下文 |
+| [短语提示](./progressive-reading-20261011/panel-phrases.png) | 查看本地/收藏参考，恢复已收起的熟悉提示，按需查询表达 |
+| [逻辑线索](./progressive-reading-20261011/panel-logic.png) | 查看原文中的否定、可能性、条件、范围词，并展开词面说明 |
+| [完整双语](./progressive-reading-20261011/panel-bilingual.png) | 直接对照原文与完整译文 |
 
 ![320px Popup 与完整长快捷键](./progressive-reading-20261011/popup-320-long-hotkey.png)
 
