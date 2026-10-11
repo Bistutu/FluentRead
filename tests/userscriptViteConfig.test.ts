@@ -253,6 +253,29 @@ describe('userscript browser shim injection', () => {
         expect(restored.legacyText['回到视频片段']).toBe(extensionBundles['en-US'].legacyText['回到视频片段']);
     });
 
+    it('embeds the English bundle without the reader-only keys and preserves every other field', () => {
+        const defines = (userscriptConfig as {define: Record<string, string>}).define;
+        const compressed = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__) as Record<string, string>;
+        expect(Object.keys(compressed)).toEqual(['en-US']);
+        const original = UI_LANGUAGE_BUNDLES['en-US'];
+        const readerOnly = Object.keys(original.messages).filter(key => key.startsWith('document.'));
+        expect(readerOnly.length).toBeGreaterThan(0);
+        const messages = Object.fromEntries(Object.entries(original.messages).filter(([key]) => !readerOnly.includes(key)));
+        const expected = {...original, messages};
+        const bytes = Buffer.from(compressed['en-US'], 'base64');
+        const restored = JSON.parse(gunzipSync(bytes).toString('utf8'));
+        // 整包比较同时约束保留 messages、legacyText、legacyPatterns 及其余 bundle 字段。
+        expect(restored).toEqual(expected);
+        expect(Object.keys(restored.messages)).toHaveLength(Object.keys(original.messages).length - readerOnly.length);
+        // 读出实际 define 后再走现有脚本解码端口，不以另造的 fixture 压缩串代替构建配置。
+        vi.stubGlobal('pako', {ungzip});
+        try {
+            expect(JSON.parse(inflateWithPako(bytes))).toEqual(expected);
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
     it('keeps all site rule JSON data intact when embedding compressed offline catalogs', () => {
         const plugin = createUserscriptCatalogCompressionPlugin() as unknown as {
             resolveId: (source: string, importer: string) => string | null;

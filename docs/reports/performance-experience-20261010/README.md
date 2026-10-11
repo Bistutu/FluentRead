@@ -1120,9 +1120,32 @@ Escape 组自然0，8阶段/3原生场景/4原始图。真实可信三击选中�
 
 中英文使用指南补充“配置服务→划词行配置连接→检查凭据后手动重试”的路径。最终文档构建、Storybook及文档规则结果由docs-final-site-attempt1回执记录。冻结证据位于round50-authentication-settings-entry/的peer-source-proposal/v3、peer-owner-proposal/v2、SOURCE-HANDOFF-V4、direct-baseline-attempt1/direct-candidate-attempt2、audit-architecture-attempt2、build-candidate-attempt2、peer-native-plan/v4、native-authentication-entry-attempt1/2/3及根/独立复核。仅本地保存，无推送、PR、合并或发布；未复制参考仓库代码。
 
+## 第四十六批：构建内嵌英文目录排除脚本不可达的文档页文案
+
+普通与完整独立用户脚本在构建英文 gzip payload 时，仅将 bundle.messages 中的 document.* key 投影出去，与已有中文内嵌目录的 reader-only 边界对齐。当前脚本没有扩展文档翻译页或 PDF 阅读器的入口；限定源码可达性审查未发现脚本自有界面的可达消费者。原 bundle 及共享/扩展完整字典仍保留，既有解压格式、loader、翻译服务、语言和配置协议不变；将来脚本接入文档 UI 或新增该命名空间的动态生产者时，应重新核对此构建边界。
+
+本批从干净 HEAD2219a199c 的当前输入新建实测基线，完整冻结1974个生产/构建文件，加四份完整 owner 和实际 globalSetup hook共1979项。候选工作树严格为 userscript/vite.config.ts 与 userscriptViteConfig、userscriptLanguageBundles 两份 owner 三处修改；1974项中唯一生产差异是 Vite 构建文件。两臂锁文件、Node/pnpm实际字节及其余生产输入相同，CPU目标60%、maxWorkers1、concurrency3，每阶段前后复验输入、HEAD、状态、工具、协调器和准备文件。没有借用第四十五批产物冒称新基线；本批普通基线是1,960,589 B，不是前批1,960,545 B。
+
+四份直接 owner 的基线实际93项（Vite69、userscript语言3、共享语言18、compression3），候选95项（70、4、18、3）均自然0，无失败、missing、pending或todo。原93项 fullName及重复计数逐份完整保留，新增两项实际通过：真实构建 define 解压后保留全部非文档字段，以及真实语言 loader 注册压缩英文、重复加载和既有 legacy文案，不发GM请求。使用正式 vitest.config.ts/globalSetup，未筛用例名；受控端口不等同真实界面或远程资源验收。test:audit 自然0，641文件/10,637为声明索引；另四份完整架构 owner 实际942项通过（14、6、906、16），两阶段自然0，不称全仓业务回归。
+
+基线与候选各独立新执行 compile、ordinary build/verifier、standalone build/verifier 五阶段，十个阶段全部自然0，两版各自保留新的产物副本和完整文件清单。构建前拒绝未清除的 STANDALONE、GREASYFORK_SOURCE、VENDOR_URL、DATA_URL覆盖环境变量，避免改变目标。原预算与固定资源校验维持原值，实际未压缩体积如下：
+
+| 产物 | 本批新基线字节 | 候选字节 | 差值 | 原预算字节 | 候选余量字节 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| ordinary脚本 | 1,960,589 | 1,958,537 | −2,052 | 1,976,000 | 17,463 |
+| 完整独立脚本 | 3,584,239 | 3,582,187 | −2,052 | 3,600,000 | 17,813 |
+
+两类冻结产物的英文 gzip均实际解压并比较：messages从2406减至2310，准确移除96个 document.* key，其中普通文档44个、pdfReading52个。全部3249项 legacyText、early/late legacyPatterns、其余字段及数组顺序完整相等；保留 key的值未改。英文base64长度由186,864减至184,812 B，净减少2052 B，与两类脚本的总未压缩净差相同，元数据头逐字相等。替换英文literal后的其余整包字节并不相等，已观察到minified标识符名称变化；净字节一致不能证明整个包只有一个literal变化或全部非英文代码逐字相同。独立只读token复核中，除唯一英文literal外，两类冻结JS其余非Identifier token的kind/text/order整序列相等；变化Identifier均能静态解析到对应位置同类局部声明。此为词法与局部binding解析证据，不是整包字节或完整语义/运行证明。此处结论限于实测字节与真实JSON比较，不从中推出CPU、heap、启动时延、ZIP或压缩传输收益。
+
+原五份远程语言JSON、全局/扩展完整字典、Greasy Fork DATA、资源pin、服务分配、配置与完整能力相关源码保持原输入。没有增加依赖、改固定资源commit或预算，也没有删除现有文档服务分配。五阶段只构建用户脚本，本批未重新运行Chrome/Firefox扩展或原生浏览器验收；原Greasy Fork固定资源前置失败未重跑、未通过。静态可达性与限定构建/loader证据不扩大为所有外部动态key、七语言在线加载或真实provider行为。
+
+失败历史原样保留：根代理两次静态准备在SHA/清单排序前置门禁被拒绝，均未启动业务子进程；后续准确绑定另存新版本。首次冻结payload审查错误假定“替换英文后其余整包字节相同”，其assert失败属于只读检查假设失败，不是产品构建失败。修订比较如实记录净字节、解压JSON和整包不等的边界，旧脚本与失败记录未改绿。本报告的docs:build:site、storybook:check、docs:check由根代理按同工具和输入门禁执行，结果另存docs-final-site-attempt1回执，不能以业务/构建回执替代文档验证。
+
+冻结证据位于round51-embedded-english-document-copy/的root-source-owner/v2、direct-baseline-attempt2、direct-candidate-attempt1、ACTUAL-CASE-PRESERVATION、audit-architecture-attempt1、build-baseline-attempt1、build-candidate-attempt1、root-payload-review/v1/v2和ACTUAL-PAYLOAD-COMPARISON。仅本地保存，无推送、PR、合并或发布；未复制参考仓库代码。
+
 ## 后续候选
 
-第四十五批完整脚本为3,584,239 B，原3,600,000 B预算通过、余量15,761 B。鉴权失败后的配置入口已实施，并通过完整直接owner236项、架构owner942项、八项新候选构建和中英文两独立真实主错误/键盘/设置连接验收。保持本批行内模板与原生主错误的范围区分。下一候选是仅在构建期投影内嵌英文词典中的document.*文案，与已有中文reader-only边界对齐；当前只有只读可达性审查，未正式实施、未测减包，不改公共字典、legacy映射、五份远程JSON或固定资源引用。继续保持完整服务、语言、许可、原预算与稳定性。
+第四十六批完整独立脚本实际为3,582,187 B，原3,600,000 B严格预算通过、余量17,813 B；普通脚本为1,958,537 B，两类均比本批新基线减少2052 B。英文内嵌目录投影已实施，四份完整直接owner95项、原93项保留、架构owner942项与两臂各五项新构建/验证通过；保持静态可达性、真实payload和原生运行的证据边界。下一候选为round52的progressPanel界面指令：当前仅私有source/owner草案，尚未正式apply或实测工作计数、CPU与体积，不宣称收益。继续保留既有插件能力、全局算法、完整服务与语言、许可、资源pin和原预算。
 
 
 合成段 loading 挂载循环、缓存键重复术语解析、高级请求限制禁用与缓存复习快捷键已在第二十七至三十批分别修复。第三十一轮调度只读探针保留现检查：13 个受控普通场景虽减少同 owner 复验，但第三个 source-only 读取中的 style getter 同步替换同文本 Text 时，复用先前结果留下脱离节点身份；这只是受控端口反例，未当成原生复现或 CPU 收益，未实施。证据为 `round31-page-scheduling-audit/`。第三十二轮已撤回 Cloud 普通历史入口的减加载推荐；LearningCenter 的 History/Memory 首用加载已在第三十一批实施，实际收藏阶段新增请求文件减少 20,641 B，父装配、加载故障与原行为通过限定验证。第三十四轮审计确认的八个既不可达设置子 UI 已在第三十二批排除，完整独立脚本实际减少 183,104 B，仍比原 3,600,000 B 门槛多 38,416 B。继续审查其 Options/IIFE 归属与可证明不可达的资源，保持可达服务、本地模型/TTS、数据、语言、许可和原门槛，不为达预算删除已有能力。请求队列仍在 response body 完成前占用并发槽；会改变错误种类的同步 deadline 合并未实施。
