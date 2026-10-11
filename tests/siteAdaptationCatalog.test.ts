@@ -24,6 +24,60 @@ function documentFor(html: string): Document {
 }
 
 describe('网站正文规则目录', () => {
+    it('Product Hunt 首页逐卡翻译介绍，保留产品名称、分类和订阅控件，重挂后仍命中介绍', () => {
+        const adapter = adapterById.get('product-hunt')!;
+        const url = new URL('https://www.producthunt.com/');
+        expect(adapter.matches(url)).toBe(true);
+        const html = `<div id="root-container"><header><input data-test="header-search-input" placeholder="Search"></header>
+            <main><div data-test="homepage-section-today"><h1>Top Products Launching Today</h1>
+            <section data-container="true"><div><span id="name-one"><a href="/products/first"><span id="link-overlay" data-target="true"></span>1. First Product</a></span>
+            <span id="tagline-one">Build useful tools with your team. <code id="code">KEEP_CODE_LOCAL</code></span>
+            <div><a id="topic" href="/topics/developer-tools">Developer Tools</a></div></div>
+            <button data-test="vote-button">Upvote this product</button></section>
+            <section data-container="true"><div><span id="name-two"><a href="/products/second">2. Second Product</a></span>
+            <span id="tagline-two">Find clear answers from the documents you already own.</span></div></section>
+            <section data-test="newsletter-banner"><p id="newsletter">Get the best launches in your inbox</p></section>
+            </div><article><p id="fallback">An ordinary product discussion still has readable prose.</p></article></main>
+            <footer><h3 id="footer-category">Engineering and Development</h3></footer>
+            <div data-test="dismiss-CookiePopup"><div><span id="cookie-message">We use cookies to improve your experience.<a href="/legal#privacy">Learn more in our privacy settings.</a></span>
+            <div><button>No thanks</button><button>Accept all cookies</button></div></div></div></div>`;
+        const document = documentFor(html);
+        const core = new TranslationCandidateCore({url, adapters: [adapter]});
+        const verify = () => {
+            const candidates = core.discover(document);
+            for (const id of ['tagline-one', 'tagline-two', 'fallback']) {
+                const owner = document.getElementById(id)!;
+                expect(candidates.find(candidate => candidate.element === owner)?.adapterId, id).toBe('product-hunt');
+                expect(core.resolve(owner.firstChild)?.element, id).toBe(owner);
+            }
+            for (const selector of ['#name-one', '#name-two', '#topic', '#newsletter', '#footer-category', '#cookie-message', 'button', 'input']) {
+                const protectedNode = document.querySelector(selector)!;
+                expect(core.resolve(protectedNode.firstChild ?? protectedNode), selector).toBeNull();
+                expect(core.shouldStayOriginal(protectedNode), selector).toBe(true);
+            }
+            const source = candidates.map(candidate => extractTranslationText(candidate.element, core.shouldStayOriginal)).join('\n');
+            expect(source).not.toContain('First Product');
+            expect(source).not.toContain('Developer Tools');
+            expect(source).not.toContain('Get the best launches');
+            expect(source).not.toContain('KEEP_CODE_LOCAL');
+            expect(source).not.toContain('We use cookies');
+            expect(source).not.toContain('Learn more in our privacy settings');
+            expect(adapter.shouldIgnoreMutation?.(document.getElementById('cookie-message')!, {url})).toBe(true);
+            expect(core.shouldStayOriginal(document.getElementById('code')!)).toBe(true);
+            // 卡片的透明整卡链接仍在最上层；坐标解析应找到下层介绍，不能把名称当正文。
+            const tagline = document.getElementById('tagline-two')!;
+            Object.defineProperty(document, 'elementsFromPoint', {configurable: true, value: () => [
+                document.getElementById('link-overlay')!, document.getElementById('name-one')!, tagline,
+            ]});
+            expect(core.resolveAtPoint(document, 20, 30)?.element).toBe(tagline);
+        };
+        verify();
+        document.body.innerHTML = html;
+        verify();
+        for (const path of ['/posts/first', '/products/first']) expect(adapter.matches(new URL(path, url))).toBe(true);
+        expect(adapter.matches(new URL('https://help.producthunt.com/en/articles/481909'))).toBe(false);
+    });
+
     it('ar5iv 定理中的可读叙述可形成候选，内联 MathML 保持受保护', () => {
         const url = new URL('https://ar5iv.labs.arxiv.org/html/2106.03753');
         const adapter = adapterById.get('ar5iv')!;

@@ -1,7 +1,7 @@
 /**
  * @file src/core/translation/engine.ts
  *
- * 文件职责：实现 DOM 节点到 TranslationCandidate 的核心解析引擎，协调安全守卫、站点适配器、布局边界和文本有效性。
+ * 文件职责：实现 DOM 节点到 TranslationCandidate 的核心解析引擎，协调安全守卫、站点适配器、布局边界和文本有效性；为显式非原子行内容器保留直属正文与独立子段落的一致发现和悬浮边界。
  * 主要内容：按正文/全部节点范围协调候选；定义 TranslationCandidateCore、候选优选与键值函数，记录发现步骤和原因，按站点规则把显式换行拆为两种入口一致的内联候选，处理编辑器坐标命中屏障、hover 屏障、适配优先级、快照省略、缓存及坐标命中；同步只读批量解析复用全部范围及无站点适配/应用外壳例外的普通正文祖先守卫和文本保护，涉及显式外壳权限或站点重定向目标时独立解析；无元素子节点的非文档表面不重复探测不可能成立的内联分段，仍由完整候选分类复验文本和保护；悬浮命中独立后代的包裹层时禁止回退吞并整个容器，让独立 tooltip 不抢占外层控件候选，保证全文与悬浮共享决策。 可核对的公开符号包括 TranslationCoreInspection、TranslationDiscoveryStep、getTranslationCandidateKey、selectPreferredTranslationCandidate、TranslationCandidateCore。
  * 模块边界：本文件属于可独立测试的 core 候选领域；可以读取传入 DOM 以计算结果，坐标命中栈与祖先守卫只在单次同步解析中复用，不跨手势缓存；不访问配置存储、不调用 provider、不注册页面监听器，也不负责译文渲染或 feature 生命周期。
  */
@@ -547,14 +547,11 @@ export class TranslationCandidateCore {
         element: Element,
         skipStructuralAncestorCheck: boolean,
         textProtectionCache: TranslationTextProtectionCache,
+        explicitContainer: boolean,
         candidateChildBarriers?: ReadonlySet<Element>,
         evaluationContext?: ResolutionEvaluationContext,
     ): TranslationCandidate[] {
-        if (!this.allowsGenericCandidates()) {
-            const decision = this.adapterDecision(element, evaluationContext).decision;
-            if (decision.kind !== 'force-target' || decision.atomic !== false ||
-                (decision.target ?? element) !== element) return [];
-        }
+        if (!this.allowsGenericCandidates() && !explicitContainer) return [];
         const candidates: TranslationCandidate[] = [];
         const atomicTargetCache = new WeakMap<Element, boolean>();
         const protectionOptions = evaluationContext?.textProtectionOptions;
@@ -581,6 +578,7 @@ export class TranslationCandidateCore {
             textProtectionCache,
             protectionOptions,
             this.scope,
+            explicitContainer,
         )) {
             const partitions = partitionInlineRunAtBarriers(
                 run,
@@ -662,7 +660,7 @@ export class TranslationCandidateCore {
             );
             summary = {
                 candidates: this.inlineRunCandidates(
-                    element, true, evaluationContext.textProtectionCache, childBarriers, evaluationContext,
+                    element, true, evaluationContext.textProtectionCache, explicitContainer, childBarriers, evaluationContext,
                 ),
                 blocksWholeCandidate: childBarriers.size > 0,
             };
@@ -971,12 +969,16 @@ export class TranslationCandidateCore {
                 }
 
                 if (!frame.exitCandidates) {
+                    const decision = frame.ownAdapter!.decision;
+                    const explicitContainer = decision.kind === 'force-target' && decision.atomic === false &&
+                        (decision.target ?? frame.element) === frame.element;
                     if (frame.forcedCandidate) {
                         frame.exitCandidates = frame.forcedAtomic === false && frame.descendantHasCandidate
                             ? this.inlineRunCandidates(
                                 frame.element,
                                 true,
                                 textProtectionCache,
+                                explicitContainer,
                                 frame.candidateChildBarriers,
                             )
                             : this.splitForcedCandidate(frame.forcedCandidate, frame.ownAdapter!.decision, textProtectionCache);
@@ -991,6 +993,7 @@ export class TranslationCandidateCore {
                                 frame.element,
                                 true,
                                 textProtectionCache,
+                                explicitContainer,
                                 frame.candidateChildBarriers,
                             );
                     } else {
@@ -1001,7 +1004,7 @@ export class TranslationCandidateCore {
                         );
                         frame.exitCandidates = candidate ? [candidate] : this.scope === 'all'
                             ? this.inlineRunCandidates(
-                                frame.element, true, textProtectionCache, frame.candidateChildBarriers,
+                                frame.element, true, textProtectionCache, explicitContainer, frame.candidateChildBarriers,
                             )
                             : [];
                     }

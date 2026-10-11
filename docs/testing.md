@@ -513,6 +513,15 @@ node scripts/testing/run-fixed-height-translation-test.cjs \
 `producthunt-posting-access` 分别覆盖实时首页标题列表和用户指定的帮助文章，均支持
 悬浮、全文模式。Hacker News 原有的讨论页用例继续保留。
 
+`producthunt-home` 直接覆盖产品首页的介绍 span、产品名称、页脚、搜索及 Cookie 提示保护，
+与帮助中心文章是独立用例；遇到 Cloudflare 时按 quarantine 记录站点限制。
+实时投票数字会由网站更新，投票保护由固定夹具与专项浏览器验证检查，不用数字是否变化判断翻译污染。
+`site-adaptation-fixtures.json` 的 `product-hunt` 与 established 夹具的
+`hacker-news` 使用生产规则验证正文、代码和身份操作边界。
+`siteAdaptationCatalog.test.ts` 与 `translationCore.test.ts` 检查悬浮/全文候选一致、
+多段评论不合并、动态重建和 HN 阅读页回退。性能对比应另外报告候选数、扫描步骤、
+最大源快照长度及真实浏览器长任务，不能把减少无效候选称为端到端翻译提速。
+
 可见段落插入译文时，下方内容正常展开，不应主动滚动页面来抵消展开高度。只有变化
 完全发生在同一滚动容器的视口上方时才做阅读位置补偿；页首保持页首，整页恢复优先
 保护视口上沿。`viewportStability.test.ts` 和 `fullPageVisibilityScheduling.test.ts`

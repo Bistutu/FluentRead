@@ -677,5 +677,27 @@
       "#navigation",
       "#protected"
     ]
+  },
+  {
+    "id": "product-hunt",
+    "url": "https://www.producthunt.com/",
+    "html": "<div id=\"root-container\"><header><input id=\"search\" data-test=\"header-search-input\" placeholder=\"Search\"></header><nav id=\"navigation\">Navigation remains unchanged</nav><main><div data-test=\"homepage-section-today\"><h1>Top Products Launching Today</h1><section data-container=\"true\"><div><span id=\"product-name-one\"><a href=\"/products/example-one\">1. Original Product Name</a></span><span id=\"body1\">Build useful tools with your team and keep important notes together. <code id=\"protected\">KEEP_ORIGINAL_TOKEN</code></span><div><a id=\"category\" href=\"/topics/developer-tools\">Developer Tools</a></div></div><button id=\"vote\" data-test=\"vote-button\">Upvote this product</button></section><section data-container=\"true\"><div aria-hidden=\"true\"></div><div><span id=\"product-name-two\"><a href=\"/products/example-two\">2. Another Product Name</a></span><span id=\"body2\">Find clear answers from the documents you already own and share the results.</span></div></section><section data-test=\"newsletter-banner\"><p id=\"newsletter\">Get the best launches in your inbox</p></section></div><article><p id=\"discussion\">The discussion retains its independently selectable readable paragraph.</p></article></main><footer><h3 id=\"footer-category\">Engineering and Development</h3></footer><div data-test=\"dismiss-CookiePopup\" id=\"cookie-popup\"><div><span>We use cookies to improve your experience.<a href=\"/legal#privacy\">Learn more in our privacy settings.</a></span><div><button>No thanks</button><button>Accept all cookies</button></div></div></div></div>",
+    "required": [
+      "#body1",
+      "#body2",
+      "#discussion"
+    ],
+    "forbidden": [
+      "#navigation",
+      "#protected",
+      "#search",
+      "#product-name-one",
+      "#product-name-two",
+      "#category",
+      "#vote",
+      "#newsletter",
+      "#footer-category",
+      "#cookie-popup"
+    ]
   }
 ]

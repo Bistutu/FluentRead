@@ -1020,9 +1020,10 @@
     {
       "id": "product-hunt",
       "category": "community",
-      "verification": "semantic-fixture",
-      "fixture": "discussion",
-      "liveVerification": "not-performed"
+      "verification": "site-fixture",
+      "fixture": "product-hunt",
+      "liveVerification": "passed-2026-10-11-home-production-extension-local-provider",
+      "limitations": "隔离 Edge MV3 生产包验证首页悬浮、全文、恢复和可见 Cookie 提示；提示曾未出现，同包新 profile 复测出现时通过。使用本地固定 provider 响应，Firefox/userscript 仅构建验证；详情页 Cloudflare 403，保留 discussion 回退，未宣称详情实站通过。"
     },
     {
       "id": "goodreads",

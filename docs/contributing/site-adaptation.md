@@ -85,6 +85,12 @@ Node.js 和 pnpm 版本以仓库 `package.json` 为准。开发扩展使用 `pnp
 
 修复回归时，先让新反例在旧规则上失败，再修改规则。只证明选择器字符串存在没有意义；要证明它改变了正确的候选或保护边界。若问题涉及混合文字、嵌套回复、公式、元数据或控件，把这些结构放进夹具中。
 
+Product Hunt 的 `product-hunt` 规则覆盖首页、产品与旧发布详情路径。首页使用公开页面的 `homepage-section-*`、`section[data-container]` 及其介绍 span 结构，不依赖产品 ID 或构建生成的 class；产品名与分类链接独立保护。Cookie 提示通过 `dismiss-CookiePopup` 整块排除，避免把按钮文字复制进祖先译文。首页结构改版时优先复核这条专站选择器，详情页仍保留 `discussion` 的通用回退。帮助中心文章不命中这条规则，不能用它的翻译成功代表产品首页通过。
+
+Hacker News 评论的第一段经常直接属于 `.commtext`，其余段落才使用 `p`。容器使用非原子 self 目标，并保留内部段落目标；只选择 `.commtext p` 会漏掉首段，使用 closest 原子容器会把全部段落合成一份译文。`.comhead`、`.reply` 等界面区域同时声明排除与动态观察忽略，让候选发现提前剪枝；FAQ、guidelines 等阅读页仍可走通用正文识别。
+
+参考外部规则和 issue 时记录快照、页面类型及限制，再用 FluentRead 的候选与恢复契约独立实现。例如沉浸式翻译的 [HN 规则](https://github.com/immersive-translate/config/blob/1b639a65ca857fb301dbc38f9ef809da4342edb3/dist/default_config.json#L7375)和 [Product Hunt 规则](https://github.com/immersive-translate/config/blob/1b639a65ca857fb301dbc38f9ef809da4342edb3/dist/default_config.json#L9028)可用于对照阅读区域；[HN 性能 issue #3765](https://github.com/immersive-translate/immersive-translate/issues/3765)则提示屏外译文与滚动布局必须一起验证。外部 issue 的关闭状态不等于 FluentRead 的验收，也不能据此全局注入影响宿主布局的 CSS。
+
 ## 更新验证记录
 
 在 `coverage.json` 的 `rules` 中为新规则添加对应记录：

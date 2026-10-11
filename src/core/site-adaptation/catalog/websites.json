@@ -3989,6 +3989,7 @@
         "www.producthunt.com"
       ],
       "paths": [
+        "/",
         "/posts/*",
         "/products/*"
       ],
@@ -4008,7 +4009,35 @@
         "/auth/*"
       ]
     },
-    "profile": "discussion"
+    "profile": "discussion",
+    "content": [
+      {
+        "css": [
+          "main [data-test^=\"homepage-section-\"] > section[data-container] > div > span:nth-of-type(2)"
+        ],
+        "key": "product-hunt-home-tagline",
+        "resolve": "closest",
+        "atomic": true
+      }
+    ],
+    "exclude": [
+      "main [data-test^=\"homepage-section-\"] > section[data-container] > div > span:first-of-type",
+      "main [data-test^=\"homepage-section-\"] a[href^=\"/topics/\"]",
+      "button",
+      "#root-container > footer",
+      "[data-test=\"newsletter-banner\"]",
+      "[data-test^=\"dismiss-HomepageNewsletterBanner\"]",
+      "[data-test=\"dismiss-CookiePopup\"]"
+    ],
+    "watchIgnore": [
+      "main [data-test^=\"homepage-section-\"] > section[data-container] > div > span:first-of-type",
+      "main [data-test^=\"homepage-section-\"] a[href^=\"/topics/\"]",
+      "button",
+      "#root-container > footer",
+      "[data-test=\"newsletter-banner\"]",
+      "[data-test^=\"dismiss-HomepageNewsletterBanner\"]",
+      "[data-test=\"dismiss-CookiePopup\"]"
+    ]
   },
   {
     "id": "goodreads",

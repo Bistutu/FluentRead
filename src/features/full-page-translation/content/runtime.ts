@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/content/runtime.ts
  * 文件职责：实现全文翻译的页面级会话引擎，负责候选发现、可见性调度、批量请求、动态 DOM 重扫、失败重试、缓存复用和恢复原文。
- * 主要内容：精确相同译文和有同目标语言证据的排版回显保留原文且不重复展示；以增量计数发布完成与失败摘要，仅对本会话失败目标重试和定位；维护 FullPageSession、AbortController、Intersection/Mutation 观察器、弹窗优先调度、精确属性写入过滤、候选所有权和生命周期重试；对变化来源等待安静窗口、跳过持续变化的计数，并清理延迟重扫，只有真实宿主删除启动候选回收，同批重复属性变化只处理一次；按时间片派发并在全文结果提交前让出主线程，合并同段 DOM 写入并在重挂时复用同批布局读数与单文本来源快照；已拥有状态的发现候选直接登记复验，取消记录命中后才提取原文，避免整批重扫重复计算熔断签名；按阅读进度撤回离开预取区的待派发候选，冻结请求/展示配置与识别范围，在弹窗关闭后继续正文，按实际节点阶段发布进度及工具栏结果；悬浮按候选停留而非每次移动计时，同段复用冻结的独立服务与快捷方案配置，到期复验最新命中并在路由切换取消；同目标预检单独读取受保护规则约束的行内代码语言上下文，发送与渲染仍只使用可翻译文本槽；向局部翻译开放单候选 translateTarget 与单个译文所有者的恢复入口。
+ * 主要内容：精确相同译文和有同目标语言证据的排版回显保留原文且不重复展示；以增量计数发布完成与失败摘要，仅对本会话失败目标重试和定位；维护 FullPageSession、AbortController、Intersection/Mutation 观察器、弹窗优先调度、精确属性写入过滤、候选所有权和生命周期重试；对变化来源等待安静窗口、跳过持续变化的计数，并清理延迟重扫，只有真实宿主删除启动候选回收，同批重复属性变化只处理一次；按时间片派发并在全文结果提交前让出主线程，合并同段 DOM 写入并在重挂时复用同批布局读数与单文本来源快照；合成行内段在延迟 loading 前后都按精确来源节点、HTML 和 Text 槽识别自身迁移；已拥有状态的发现候选直接登记复验，取消记录命中后才提取原文，避免整批重扫重复计算熔断签名；按阅读进度撤回离开预取区的待派发候选，冻结请求/展示配置与识别范围，在弹窗关闭后继续正文，按实际节点阶段发布进度及工具栏结果；悬浮按候选停留而非每次移动计时，同段复用冻结的独立服务与快捷方案配置，到期复验最新命中并在路由切换取消；同目标预检单独读取受保护规则约束的行内代码语言上下文，发送与渲染仍只使用可翻译文本槽；向局部翻译开放单候选 translateTarget 与单个译文所有者的恢复入口。
  * 模块边界：这是 content 侧编排层，不实现 provider 协议、纯候选算法或底层状态存储；翻译调用经 app client，发现规则来自 core/translation，渲染与状态分别交给 renderer、liveTextRender 和 state。
  */
 import {resolveTranslationToolbarStatus, countFullPageTranslationWork} from '../toolbarStatus';
@@ -1372,7 +1372,7 @@ function resolveStatefulMutationTarget(element: Element): HTMLElement | false {
 }
 
 /**
- * materialize 行内段会把来源节点移入合成 span，再追加一个 loading spinner。
+ * materialize 行内段会把来源节点移入合成 span；全文的 loading spinner 延迟挂载。
  * 这些真实 childList 记录会在 beginTranslation 之后、异步 provider 仍待完成时送达。
  * 只有本 generation 捕获的精确来源所有权、HTML 和 Text 槽身份都保持完整时才接受；
  * 任何宿主插入（包括伪装成 FluentRead 产物的节点）都必然无法通过至少一项检查，
@@ -1384,7 +1384,7 @@ function isIntactLoadingSyntheticChildList(
 ): boolean {
     if (!state.syntheticSegment || !target.matches('[data-fr-translation-segment="true"]')) return false;
     const spinner = state.spinner;
-    if (!spinner || spinner.parentNode !== target || !spinner.matches('[data-fr-translation-owned="true"]')) {
+    if (spinner && (spinner.parentNode !== target || !spinner.matches('[data-fr-translation-owned="true"]'))) {
         return false;
     }
 
@@ -1395,7 +1395,7 @@ function isIntactLoadingSyntheticChildList(
         currentSourceNodes.some((node, index) => node !== expectedSourceNodes[index])) return false;
 
     const artifacts = Array.from(target.querySelectorAll(TRANSLATION_ARTIFACT_SELECTOR));
-    if (artifacts.length !== 1 || artifacts[0] !== spinner) return false;
+    if (artifacts.length !== (spinner ? 1 : 0) || (spinner && artifacts[0] !== spinner)) return false;
 
     const sourceClone = target.cloneNode(false) as HTMLElement;
     currentSourceNodes.forEach((node) => sourceClone.appendChild(node.cloneNode(true)));
