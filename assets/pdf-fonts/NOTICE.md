@@ -19,6 +19,24 @@ Google Fonts revision: `809e4d8b8d7e9364a914909bb777679606c178b8`.
 - Derived WOFF2 size: 4,977,684 bytes.
 - Derived WOFF2 SHA256: `ea983e51e010c28a6a03839cffea942243e49342be7307be4f2f283e73ab8127`.
 
+## Runtime download
+
+The unchanged derived font is available at the fixed FluentRead revision
+`55d1219bd62e059f921b639b658a2a0a8e36d53d`, under
+`public/pdf-fonts/FluentReadNotoSansSC-Regular.woff2`:
+
+https://raw.githubusercontent.com/FluentRead/FluentRead/55d1219bd62e059f921b639b658a2a0a8e36d53d/public/pdf-fonts/FluentReadNotoSansSC-Regular.woff2
+
+The first text PDF export downloads the asset on demand through JSDMirror,
+an onmicrosoft mirror, jsDelivr, or GitHub Raw, with automatic source fallback.
+The extension verifies its size and SHA256 before use and stores the verified
+font in CacheStorage for later exports, including offline generation. Font
+requests do not include documents, translations, or service credentials.
+
+The maintenance asset remains in `assets/pdf-fonts/`, outside the extension
+installation package. Copies of this notice and the OFL are distributed with
+the extension under `third-party-notices/`.
+
 ## Reproduction
 
 Run the offline maintenance script with Python 3.9, FontTools 4.38.0 and
@@ -46,6 +64,5 @@ IDs with identical outlines so pdf-lib keeps their distinct ToUnicode mappings.
 The static TrueType font, packaged as WOFF2, avoids the variable font's default Thin face and
 the CFF subset corruption observed with Noto CJK OTF in fontkit 1.1.1. Every
 export embeds a subset of the used glyphs with visible text and Unicode mappings.
-The complete asset is bundled for offline PDF export and loaded only when a
-text PDF is downloaded, without contacting a third party or joining the content
-script bundle. Exported documents are not subject to the OFL.
+The font is used only for text PDF export and does not join the content script
+bundle. Exported documents are not subject to the OFL.

@@ -446,6 +446,7 @@
       "tests/documentTranslationBinary.test.ts",
       "tests/documentPdfRasterizer.test.ts",
       "tests/pdfTextExport.test.ts",
+      "tests/pdfReadingFontDownload.test.ts",
       "tests/documentArchive.test.ts",
       "tests/obsidianDocumentIntegration.test.ts",
       "tests/obsidianTranslationGateway.test.ts",

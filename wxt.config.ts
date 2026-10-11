@@ -221,9 +221,9 @@ export default defineConfig({
     hooks: {
         'build:done': async (wxt) => {
             const dev = wxt.config.command === 'serve';
-            // 完整 CJK PDF 可复制文本使用 4.978 MB WOFF2 和按需 fontkit；
-            // 新预算为该本地资源预留空间；独立基线与实际体积见 docs/reports/reading-reliability-experience-20261010/。
-            const budget = dev ? (process.env.FLUENTREAD_DEV_SOURCEMAPS === '1' ? 170_000_000 : 70_000_000) : 68_000_000;
+            // PDF 字体首次导出时下载并缓存，不进入安装包；fontkit 仍使用包内静态代码。
+            // 恢复字体加入前的生产体积预算，防止完整字体再次随 public/ 打包。
+            const budget = dev ? (process.env.FLUENTREAD_DEV_SOURCEMAPS === '1' ? 170_000_000 : 70_000_000) : 65_000_000;
             await checkExtensionSize(wxt.config.outDir, budget);
         },
         'entrypoints:grouped': (_wxt, groups) => {
