@@ -1,7 +1,7 @@
 /**
  * @file src/features/image-translation/services/mangaOcrAssets.ts
  * 文件职责：按固定上游版本加载并缓存本地漫画识别模型，不上传漫画图片。
- * 主要内容：固定模型版本、尺寸和 SHA-256，流式显示当前下载操作的进度，断流或损坏时切换已登记的备用来源；缓存已完成文件，保留来源偏好，支持校验后导入离线模型、读取状态与清除；删除会话期间暂缓新推理任务入队，普通识别与修补仍各自并行排队。
+ * 主要内容：固定模型版本、尺寸和 SHA-256，自动选择下载来源并在断流或损坏时切换已登记的备用来源，流式显示当前下载操作的进度；缓存已完成文件，支持校验后导入离线模型、读取状态与清除，历史来源偏好不再影响下载；删除会话期间暂缓新推理任务入队，普通识别与修补仍各自并行排队。
  * 模块边界：只处理模型数据文件，不加载远程代码、不执行 OCR、不读取用户配置；仅下载 Apache-2.0 模型数据；镜像与离线文件必须通过相同完整性校验，来源偏好不包含用户凭据。
  */
 import {modelDownloadSources} from '@/src/platform/http/modelDownloads';
@@ -48,6 +48,7 @@ export function withMangaModelRemoval(operation: () => Promise<void>): Promise<v
     removal = pending;
     return pending;
 }
+/** 兼容历史设置读写；资源下载与状态不再读取这个手动偏好。 */
 export async function getMangaModelSource():Promise<MangaModelSource> {
     const value=await (await (await caches.open(PREFERENCES_CACHE)).match(PREFERENCE_URL))?.text();
     return value==='official'||value==='mirror'?value:'auto';
@@ -60,8 +61,8 @@ export async function setMangaModelSource(source:MangaModelSource):Promise<void>
 async function downloadAsset(url:string,asset:{bytes:number;sha256:string},owner:number,signal?:AbortSignal,onProgress?:(bytes:number)=>void):Promise<ArrayBuffer> {
     // 同一公开加载请求的多个文件和备用来源共享身份，旧请求进入下一文件也不能夺回新请求的快照。
     if (owner > latestDownloadRequest) {latestDownloadRequest = owner;downloadOwner = owner;}
-    const preference=await getMangaModelSource();
-    const sources=modelDownloadSources(url,preference);
+    // 下载策略由资源服务自动决定，历史手动来源设置不能干预后续下载和校验回退。
+    const sources=modelDownloadSources(url);
     let failure:unknown;
     for(const source of sources){
         assertMangaOcrActive(signal);
@@ -94,7 +95,7 @@ async function downloadAsset(url:string,asset:{bytes:number;sha256:string},owner
         finally{clearTimeout(timeout!);controller.abort();signal?.removeEventListener('abort',abort);}
     }
     if (downloadOwner === owner && download) download.phase='error';
-    throw new Error('漫画模型下载未完成，请切换下载来源或导入模型后重试',{cause:failure});
+    throw new Error('漫画模型下载未完成，请重试或导入已下载文件',{cause:failure});
 }
 
 /** 文件名、尺寸、哈希都匹配后才写入，浏览器选择的文件从不上传。 */
@@ -177,7 +178,7 @@ export async function mangaOcrModelStatus(): Promise<{ready: boolean; bytes: num
         const index = MANGA_OCR_ASSETS.findIndex(asset => asset.path.endsWith('/' + download!.file));
         if (index >= 0 ? !!responses[index] : download.file === 'lama-manga-dynamic.onnx' && inpaintingReady) {download = undefined;downloadOwner = undefined;}
     }
-    return {ready: bytes === MANGA_OCR_MODEL_BYTES, bytes: bytes + (inpaintingReady ? MANGA_INPAINT_ASSET.bytes : 0), inpaintingReady,source:await getMangaModelSource(),...(download?{download:{...download}}:{})};
+    return {ready: bytes === MANGA_OCR_MODEL_BYTES, bytes: bytes + (inpaintingReady ? MANGA_INPAINT_ASSET.bytes : 0), inpaintingReady,source:'auto',...(download?{download:{...download}}:{})};
 }
 
 export async function removeMangaOcrAssets(): Promise<void> {

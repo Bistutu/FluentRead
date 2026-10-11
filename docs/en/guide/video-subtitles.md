@@ -48,7 +48,7 @@ Model status checks the complete file list in the local cache. If the browser re
 
 Audio recognition runs locally; recognized subtitle text still goes to your translation service. Model downloads require a network connection. Processing depends on video length and your computer. Videos up to 20 minutes are supported; some formats or restricted media cannot be read.
 
-Model downloads try ModelScope first, then Hugging Face and two mirrors after connection or transfer failures. Existing files are reused. Speech models are downloaded separately from the extension package.
+Choose a recognition model and manage its downloaded files in **Video translation settings → Local AI subtitles**. Compact model cards show size, readiness and actual download progress. Help icons explain device requirements and subtitle cache rules. Downloads handle connection failures automatically, so settings and player menus show progress without requiring a source selection. Retry a failed download to reuse complete cached files. The first download needs an internet connection; speech models are downloaded separately from the extension package.
 
 Moving the pointer away and back, rebuilding playback controls, temporarily hiding the video, or attaching its thumbnail preserves the AI timeline and pending model request. A completed model download still starts recognition when the same video gains media metadata. A different media identity clears the previous video’s state.
 
