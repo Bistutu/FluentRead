@@ -4,7 +4,7 @@
  * 主要内容：先声明 .fluent-read-bilingual-content 基础规则，再按文字、线条、标记、卡片与趣味五类定义预设；线条与底色读取
  * --fluent-read-translation-* 自定义属性并回退到各预设原有配色，使“自定义外观”无需改写类名即可生效。29 号以后的预设
  * 不写死浅色网页的配色：线条与底色用 currentColor 调配，随网页文字颜色在浅色和深色网页上自动取得合适的深浅；
- * 自带表面的卡片则同时声明文字颜色。
+ * 自带表面的卡片则同时声明文字颜色；打印时撤下自有译文的屏外渲染隔离，确保完整正文参与分页。
  * 模块边界：只包含 fluent 前缀约束的选择器，不决定何时添加类名，也不写入用户外观；外观变量由内容脚本的样式同步器或
  * 设置页预览提供，加载、重试、图片与提示框等其他页面状态仍在 src/app/content/page.css。
  */
@@ -18,6 +18,13 @@
     background: transparent;
     box-sizing: border-box;
     overflow-wrap: break-word; /* 处理长单词或 URL 的断行 */
+}
+
+@media print {
+    .fluent-read-bilingual-content[data-fr-translation-owned="true"][data-fr-rendering-contained="true"] {
+        content-visibility: visible !important;
+        contain-intrinsic-block-size: none !important;
+    }
 }
 
 /* 文字效果 */

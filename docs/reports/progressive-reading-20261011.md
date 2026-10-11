@@ -7,7 +7,7 @@
 
 # 渐进阅读：2026-10-11
 
-从 `origin/main` 的 `c8a06bb5fe0148f629ecaf60e70e5bf6ebb4f957` 开始，在 `codex/progressive-reading-20261011` 独立工作树实现；最终整合主分支 `69d41e5e1050e5004d4656963d5105f24df9d8ed` 的网站规则和导航改动后复验。没有修改参考仓库或复制参考实现，没有新增权限、依赖或持久配置。Popup 整合保留主分支的规则保存确认、忙碌状态和禁用中断，并在规则保存时阻止渐进阅读重复发起。
+从 `origin/main` 的 `c8a06bb5fe0148f629ecaf60e70e5bf6ebb4f957` 开始，在 `codex/progressive-reading-20261011` 独立工作树实现；先整合主分支 `69d41e5e1050e5004d4656963d5105f24df9d8ed` 的网站规则和导航改动，再整合 `11860f3f2233155ff27765a51b27b9d6aeb5109e` 后复验。后一次整合联合保留渐进阅读只读提示合同、主分支视频收藏语境及来源纯函数，以及双方测试登记；Popup 布局与阅读 UI 不受冲突影响。没有修改参考仓库或复制参考实现，没有新增权限、依赖或持久配置。Popup 整合保留主分支的规则保存确认、忙碌状态和禁用中断，并在规则保存时阻止渐进阅读重复发起。
 
 ## 使用与行为
 
@@ -38,19 +38,23 @@ Popup 的全文翻译、局部翻译和渐进阅读同排，渐进阅读位于�
 | 提示规则与异步会话 | 36 tests 通过 | hints/session 四维均 100% |
 | 原文所有权与内容生命周期 | 14 tests 通过 | source/content 四维均 100% |
 | 学习库只读提示与后台 handler | 27 tests 通过 | readingHints/handler 四维均 100% |
-| Popup 页面动作及内容入口组合 | 9 文件、400 tests 通过 | pageActions/messageRuntime/learningFeatures 四维均 100% |
+| Popup 页面动作及内容入口 coverage（整合前） | 9 文件、400 tests 通过 | pageActions/messageRuntime/learningFeatures 四维均 100%；上述模块整合后源码散列未变 |
+| 最新主线整合后的阅读与词书兼容性 | 6 文件、86 tests 通过 | 本功能 77 项与视频语境 9 项 |
+| 最新主线整合后的入口组合 | 9 文件、346 tests 通过 | 直接入口、Popup、生命周期；通用 49F 基线单列 |
 | Popup 可见性 | 31 tests 通过 | 用户脚本、PDF 和 Thunderbird 门禁 |
 | Popup 布局调整回归 | 88 tests 通过 | lifecycle、visibility 和 key information 三个限定文件 |
-| 用户脚本构建隔离契约 | 35 tests 通过 | public alias、空适配与无副作用拒绝 |
-| 模块边界、源文件说明及验证所有权 | 951 tests 通过 | 3 个限定架构文件 |
+| 用户脚本构建隔离契约 | 36 tests 通过 | public alias、空适配与无副作用拒绝 |
+| 模块边界、源文件说明及验证所有权 | 961 tests 通过 | 3 个限定架构文件 |
 | TypeScript/Vue 类型检查 | 通过 | pnpm compile |
-| 测试归类审计 | 通过 | 656 文件、11,014 cases 的静态审计；不代表执行全套用例 |
+| 测试归类审计 | 通过 | 667 文件、11,236 cases 的静态审计；不代表执行全套用例 |
 | Chrome / Firefox 生产构建 | 均通过 | WXT 0.20.18；不是 Firefox 实机验收 |
-| 用户脚本构建与 verifier | 均通过 | 2,026,995 bytes，整合主分支的既有预算 2,027,000 bytes |
+| 用户脚本构建与 verifier | 均通过 | 2,047,999 bytes，最新主分支的既有预算 2,050,000 bytes；本功能未放宽预算 |
 | 文档构建 | 通过 | VitePress 1.6.3 |
 | 隔离真实 Edge 专项 | 18/18 通过 | 生产扩展、确定性本机 HTTP 响应 |
 
 额外组合初查发现 `tests/implementationAudit48A.test.ts` 的 1 个既存请求头期望失败：HEAD 的 Bilibili 内置 Origin-removal 规则与同一 HEAD 测试的 `addRules=[]` 期望不一致。该测试和请求头 runtime 在本分支均未修改；本次不修复范围外规则、不将该测试计作通过。最终入口 coverage 排除 48A，依靠直接覆盖消息入口的测试验证上述三个模块。
+
+整合 `11860f3f2` 后，含通用 49F 的入口组合为 417 通过、3 失败（总计 420）。失败均为未改动的 `implementationAudit49F.test.ts` 中 pinned-data virtual catalog consumer：共用 VM 重复声明 `catalog`，报 `Identifier 'catalog' has already been declared`。在独立 `git archive` 主分支副本、同一依赖版本下只运行这三个用例，复现同样的 3 个失败；其余 71 项跳过。[主分支基线日志](./progressive-reading-20261011/49f-main-baseline.log) 保留准确结果。该问题不计作通过，也未修改范围外测试或目录压缩逻辑；移除整个通用 49F 文件后的直接入口组合为 9 文件、346 项通过。归档副本仅补 WXT 生成 compiler 配置，主分支源码与测试未改动。
 
 ```sh
 pnpm test tests/progressiveReading.test.ts tests/progressiveReadingSource.test.ts tests/progressiveReadingContent.test.ts tests/vocabularyReadingHints.test.ts tests/vocabularyBackgroundHandler.test.ts
@@ -67,6 +71,8 @@ pnpm docs:build
 ```
 
 新可执行模块已登记 coverage 所有权。专项以 `--coverage.include` 分别限定 `hints.ts`、`session.ts`、`source.ts`、`content.ts`、词书 `domain/readingHints.ts` 与后台 handler，以及三个受影响入口模块，逐模块检查四维 100%，不降低现有阈值。用户脚本在构建期排除渐进阅读注册和消息分支，并以既有 alias 机制隔离 Vue 面板；沿用整合后主分支的体积预算，本功能未放宽预算。
+
+最新主分支整合没有改变上述九个模块的源码散列，原 coverage 证据继续单列保留；86 项阅读/词书、346 项直接入口、36 项用户脚本合同是整合后重新执行的用例，不将新增视频与篇章模块算入本功能 coverage。
 
 浏览器专项命令：
 

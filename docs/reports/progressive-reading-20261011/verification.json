@@ -1,7 +1,8 @@
 {
   "date": "2026-10-11",
   "baseCommit": "c8a06bb5fe0148f629ecaf60e70e5bf6ebb4f957",
-  "integratedMainCommit": "69d41e5e1050e5004d4656963d5105f24df9d8ed",
+  "previousIntegratedMainCommit": "69d41e5e1050e5004d4656963d5105f24df9d8ed",
+  "integratedMainCommit": "11860f3f2233155ff27765a51b27b9d6aeb5109e",
   "branch": "codex/progressive-reading-20261011",
   "coverage": [
     {
@@ -135,9 +136,13 @@
     "src/app/popup/PopupApp.vue": "2f7b801fa64323a7d9dfefd58cf4026c14048ed9651f11dbc0f3bbdfa7e0265f",
     "src/app/popup/popup.css": "636c83408a189980a32da3dc2a5cffee4bc07ea60ff6a133d45399a973b7a192",
     "src/features/progressive-reading/ui/ProgressiveReading.vue": "4b1690887ed6e5a885be0884b7cfdf4c8d6f0434b98d2b8aee87a30213a3e8c3",
-    "userscript/vite.config.ts": "fe3ae2259d5dd02dc530bf6f4e5a1bf484d295d5056103a2e9ca18835c1fa2e1",
+    "userscript/vite.config.ts": "0c5f7153df0390a1acfafd1572a19bbe5fc5b2c048e145e17f076371857590bc",
     "userscript/unsupportedCapabilities.ts": "083ed5cb3c6797d105f04043dbca82cbf959074bb450b39739470ededd9e069d",
-    "scripts/run-progressive-reading-test.cjs": "8a6c823afe4fefb72534ec73faf995c1b44d572b5acde98acc8f9fb619f9860d"
+    "scripts/run-progressive-reading-test.cjs": "8a6c823afe4fefb72534ec73faf995c1b44d572b5acde98acc8f9fb619f9860d",
+    "src/features/vocabulary/protocol.ts": "a4418d6729c18c0b1fe153b7932a0c7e4cc2a49b48cdc48197c267e86d770828",
+    "src/features/vocabulary/public.ts": "5b7fcb7ec77cd6376be293efa5a7287cb63d924d68d5a4b36776c331d38b04ab",
+    "src/features/vocabulary/learningModel.ts": "c3ebb104487ffa69edeaf308b9cc399c291733203092e51b9de4feeb117bf538",
+    "tests/test-matrix.json": "370fcbd299867f9ab179d32d316127800b9173b75afbe68a2507c60d6cd5195b"
   },
   "manifests": [
     {
@@ -199,20 +204,20 @@
     }
   ],
   "artifacts": {
-    "chromeContentSha256": "4c5d5572e634b4a8736f9568342008ee5443f0c95c260f00a7d4ff26dfaa8e08",
-    "firefoxContentSha256": "4d125a9d009ee1b6e6dedc697aaf8dd400c42725c3dec4b24b32f216a09abb10",
-    "userscriptBytes": 2026995,
-    "userscriptSha256": "727d165120692d68343b8f6d06bbbd67b1d13a44a3e1dd53beda67dbe897c662",
-    "userscriptBudgetBytes": 2027000
+    "chromeContentSha256": "84ed9a5b93cfd991675800ca2f27abe322632b97b211c9b363e12861d305a279",
+    "firefoxContentSha256": "11aa25d776b3ffbfe1d4e2d15e8d7f80af62257d25b94be3b8cecfec8f97bd97",
+    "userscriptBytes": 2047999,
+    "userscriptSha256": "0d313af6f3d13cf43c6dde5140fb38d902d9da5ca8b83fd0ea4d6605da5096ec",
+    "userscriptBudgetBytes": 2050000
   },
   "gates": {
     "compile": "passed",
     "architecture": {
-      "passed": 951
+      "passed": 961
     },
     "testAudit": {
-      "files": 656,
-      "cases": 11014,
+      "files": 667,
+      "cases": 11236,
       "status": "passed"
     },
     "chromeBuild": "passed",
@@ -221,18 +226,22 @@
     "userscriptVerifier": "passed",
     "docsBuild": "passed",
     "userscriptContract": {
-      "passed": 35
+      "passed": 36
     },
     "popupVisibility": {
       "passed": 31
     },
     "entryCombination": {
       "files": 9,
-      "passed": 400
+      "passed": 346
     },
     "popupLayoutRegression": {
       "files": 3,
       "passed": 88
+    },
+    "readingVocabularyIntegration": {
+      "files": 6,
+      "passed": 86
     }
   },
   "brandUi": {
@@ -300,7 +309,8 @@
   "baseline": {
     "file": "tests/implementationAudit48A.test.ts",
     "failure": "Bilibili fixed Origin-removal rule conflicts with unchanged HEAD addRules=[] expectation",
-    "relatedProductChanges": false
+    "relatedProductChanges": false,
+    "observedAtIntegratedMainCommit": "69d41e5e1050e5004d4656963d5105f24df9d8ed"
   },
   "popupLayout": {
     "sameRow": true,
@@ -322,7 +332,7 @@
     "report": "demo-report.json",
     "timing": "demo-timing.json",
     "gif": "progressive-reading-demo.gif",
-    "gifSha256": "3b5f6924807deb37e1a204e0a9b41974630095b5515139e1976f377526664c08",
+    "gifSha256": "3fdb5e6a5914e59c2125a781635faa55d565f53dec96563d9a3ae6b09b5e9ddd",
     "frames": 91,
     "viewport": {
       "width": 660,
@@ -335,6 +345,36 @@
     "ownedBrowserClosed": true,
     "profileRemoved": true,
     "separateFrom18CaseRun": true,
-    "sampleBoundary": "The recorded demo excludes the different-sense bank collection fixture; the ordinary 18-case acceptance run retains that fixture and verifies conservative help."
+    "sampleBoundary": "The demonstration excludes the different-sense bank collection fixture; the ordinary 18-case acceptance run retains it and validates conservative help."
+  },
+  "coverageReuse": {
+    "previousIntegratedMainCommit": "69d41e5e1050e5004d4656963d5105f24df9d8ed",
+    "modules": 9,
+    "sourceModulesUnchanged": true,
+    "evidenceBoundary": "Four-dimension coverage is from the earlier targeted runs; exact covered-source hashes remain unchanged after integrating main. New video/discourse modules are not included in this claim."
+  },
+  "integrationBaseline": {
+    "file": "tests/implementationAudit49F.test.ts",
+    "integratedRun": {
+      "passed": 417,
+      "failed": 3,
+      "total": 420,
+      "files": 10,
+      "log": "/private/tmp/progressive-integration-entry.log"
+    },
+    "mainCommit": "11860f3f2233155ff27765a51b27b9d6aeb5109e",
+    "mainArchive": "/private/tmp/fluentread-49f-main-11860f3f2-vfnoxm_r",
+    "command": "pnpm exec vitest run tests/implementationAudit49F.test.ts --testNamePattern '49F actual pinned-data virtual catalog consumer'",
+    "mainResult": {
+      "failed": 3,
+      "skipped": 71,
+      "total": 74,
+      "exitCode": 1
+    },
+    "message": "Identifier 'catalog' has already been declared",
+    "sourceLocation": "tests/implementationAudit49F.test.ts:1223",
+    "repositorySourceAndTestsChanged": false,
+    "temporarySetup": "Only generated WXT compiler configuration was copied to the archive; package and lockfile match the frozen main commit.",
+    "log": "49f-main-baseline.log"
   }
 }

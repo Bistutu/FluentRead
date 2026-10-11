@@ -3,7 +3,7 @@
   "extensionDir": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/.output/chrome-mv3",
   "browserPath": "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
   "profileMode": "fresh-mkdtemp-owned",
-  "profileDir": "/private/tmp/fluentread-progressive-reading-profile-KwENjg",
+  "profileDir": "/private/tmp/fluentread-progressive-reading-profile-Ltsc1D",
   "artifact": "production",
   "cases": [
     {
@@ -300,12 +300,12 @@
         {
           "source": "bank",
           "model": "progressive-reading-fixture",
-          "at": 1791706070514
+          "at": 1791706980834
         },
         {
           "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
           "model": "progressive-reading-fixture",
-          "at": 1791706070935
+          "at": 1791706981259
         }
       ],
       "name": "One click reaches complete bilingual from logic and mode switches reuse the same reading-session translation"
@@ -371,7 +371,7 @@
     },
     {
       "source": "If the route changes, this delayed reading request must not remain attached to the old page.",
-      "route": "http://127.0.0.1:51703/article?route=reading",
+      "route": "http://127.0.0.1:55320/article?route=reading",
       "name": "Pure history.pushState with unchanged host DOM cancels the old request through the real MAIN bridge, closes help and permits reopening"
     },
     {
@@ -541,12 +541,12 @@
       "name": "微信"
     },
     {
-      "label": "390-dark-phrases:before-screenshot",
+      "label": "continuous",
       "pid": 76304,
       "name": "微信"
     },
     {
-      "label": "continuous",
+      "label": "390-dark-phrases:before-screenshot",
       "pid": 76304,
       "name": "微信"
     },
@@ -1191,56 +1191,56 @@
     {
       "source": "bank",
       "model": "progressive-reading-fixture",
-      "at": 1791706070514
+      "at": 1791706980834
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791706070935
+      "at": 1791706981259
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791706073393
+      "at": 1791706983791
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791706074388
+      "at": 1791706984771
     },
     {
       "source": "Unless the review is complete, the result may not apply to a new bank account.",
       "model": "progressive-reading-fixture",
-      "at": 1791706074970
+      "at": 1791706985363
     },
     {
       "source": "Unless the review is complete, the result may not apply to a new bank account.",
       "model": "progressive-reading-fixture",
-      "at": 1791706076598
+      "at": 1791706986975
     },
     {
       "source": "If the route changes, this delayed reading request must not remain attached to the old page.",
       "model": "progressive-reading-fixture",
-      "at": 1791706077879
+      "at": 1791706988268
     }
   ],
   "hostLifecycle": [
     {
       "event": "pageshow",
-      "at": 1791706067725
+      "at": 1791706978039
     },
     {
       "event": "pagehide",
-      "at": 1791706081145
+      "at": 1791706991445
     },
     {
       "event": "pageshow",
-      "at": 1791706081198
+      "at": 1791706991497
     },
     {
       "event": "pagehide",
-      "at": 1791706081617
+      "at": 1791706991926
     }
   ],
-  "originalArtifactsDirectory": "/private/tmp/fluentread-progressive-reading-20261011-layout-final"
+  "originalArtifactsDirectory": "/private/tmp/fluentread-progressive-reading-20261011-integrated-final"
 }
