@@ -188,10 +188,16 @@ describe('options UI composition architecture', () => {
     expect(sections).toContain('if (attempts < 20) pendingScroll = window.requestAnimationFrame(scrollWhenMounted)')
     expect(sections).toContain('window.cancelAnimationFrame(pendingScroll)')
     for (const component of [
-      'ServiceCatalog', 'ServiceConfiguration', 'InterfaceSettings', 'VideoLocalModelSettings',
-      'LocalTtsSettings', 'ModelUsageDashboard', 'TranslationStatsDashboard', 'ConfigManagement', 'TranslationCenter',
+      'ServiceCatalog', 'ServiceConfiguration', 'InterfaceSettings',
+      'LocalTtsSettings', 'ConfigManagement', 'TranslationCenter',
     ]) {
       expect(sections).toContain(`const ${component} = defineAsyncComponent(`)
+    }
+    for (const component of [
+      'WritingSettings', 'ImageOcrSettings', 'MangaSettings', 'VideoLocalModelSettings',
+      'VideoSubtitleAppearanceSettings', 'ModelUsageDashboard', 'TranslationStatsDashboard', 'AreaTranslationSettings',
+    ]) {
+      expect(sections).toContain(`const ${component} = import.meta.env.BROWSER === 'userscript' ? null : defineAsyncComponent(`)
     }
   })
 
@@ -227,7 +233,7 @@ describe('options UI composition architecture', () => {
     const dashboard = source('src/features/translation-stats/ui/TranslationStatsDashboard.vue')
     const dashboardBody = dashboard.replace(/^<!--[\s\S]*?-->\s*/u, '')
 
-    expect(settingsSections).toContain("const TranslationStatsDashboard = defineAsyncComponent(() => import('@/src/features/translation-stats/public').then(module => module.TranslationStatsDashboard))")
+    expect(settingsSections).toContain("const TranslationStatsDashboard = import.meta.env.BROWSER === 'userscript' ? null : defineAsyncComponent(() => import('@/src/features/translation-stats/public').then(module => module.TranslationStatsDashboard))")
     expect(settingsSections).toContain("v-if=\"hasVisitedSection('settings-translation-stats')\"")
     expect(settingsSections).toContain(":active=\"viewActive && props.activeSection === 'settings-translation-stats' && props.activePanel !== 'usage'\"")
     expect(statsPublic).toContain("from './ui/TranslationStatsDashboard.vue'")
@@ -433,7 +439,7 @@ describe('options UI composition architecture', () => {
     expect(sharedOcrSettings).toContain(':id="`${props.idPrefix}-ocr-pack-title`"')
     expect(sharedOcrSettings).toContain(':aria-labelledby="`${props.idPrefix}-ocr-pack-title`"')
     expect(sharedOcrSettings).not.toContain('id="image-ocr-pack-title"')
-    expect(settingsSections).toContain("const ModelUsageDashboard = defineAsyncComponent(() => import('@/src/features/model-usage/public').then(module => module.ModelUsageDashboard))")
+    expect(settingsSections).toContain("const ModelUsageDashboard = import.meta.env.BROWSER === 'userscript' ? null : defineAsyncComponent(() => import('@/src/features/model-usage/public').then(module => module.ModelUsageDashboard))")
     expect(settingsSections).toContain('<SettingsPanel name="usage" :active="props.activePanel">')
     expect(settingsSections).toContain(":active=\"viewActive && props.activeSection === 'settings-translation-stats' && props.activePanel === 'usage'\"")
     expect(modelUsagePublic).toContain("from './ui/ModelUsageDashboard.vue'")

@@ -1,5 +1,9 @@
 import {createRequire} from 'node:module';
+import {readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
+import {compileScript, parse} from 'vue/compiler-sfc';
+import ts from 'typescript';
+import {parseHTML} from 'linkedom';
 import vue from '@vitejs/plugin-vue';
 import {createServer, type Plugin, type ViteDevServer} from 'vite';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -668,5 +672,150 @@ describe('OptionsApp actual learning-panel reload callback', () => {
     expect(location.search).toBe('?siteFilter=recent&learningTab=history');
     expect(location.hash).toBe('#host-anchor');
     expect(historyPort.state).toBe(historyState);
+  });
+});
+
+// Optional real-client parent mode: navigation, search, hash resolution and capability gates
+// remain the actual Options template/setup; async feature modules are counted display ports.
+async function mountClientOptions(requestedSection: string, browser: 'userscript' | 'chrome' | 'firefox') {
+  const scope = current!;
+  if (!owns(scope) || !scope.server) throw inactive();
+  const server = scope.server;
+  const [navigation, capabilities, core, english, patterns] = await Promise.all([
+    server.ssrLoadModule('/src/features/settings/model/navigation.ts'),
+    server.ssrLoadModule('/src/platform/browser/capabilities.ts'),
+    server.ssrLoadModule('/src/core/i18n/index.ts'),
+    server.ssrLoadModule('/src/core/i18n/messages/en-US.ts'),
+    server.ssrLoadModule('/src/core/i18n/messages/legacy-patterns.ts'),
+  ]);
+  if (!owns(scope)) throw inactive();
+  core.registerUiLanguageBundle('en-US', {messages: english.enUSMessages, legacyText: english.enUSLegacyText, legacyPatterns: patterns.createLegacyPatternSet('en-US')});
+  const {window, document} = parseHTML('<html><body></body></html>');
+  for (const key of ['window', 'document', 'Node', 'Element', 'HTMLElement', 'SVGElement', 'Event'])
+    vi.stubGlobal(key, key === 'window' ? window : window[key as keyof typeof window]);
+  const prefix = '#fluentread-userscript-settings';
+  const location = {hash: `${prefix}/${requestedSection}`, search: '', href: `https://fixture.test/article${prefix}/${requestedSection}`};
+  const historyPort = {replaceState: vi.fn((_state: unknown, _title: string, target: string | URL) => {location.hash = String(target);location.href = `https://fixture.test/article${location.hash}`;})};
+  Object.assign(window, {location, history: historyPort, matchMedia: () => ({matches: false, addEventListener() {}, removeEventListener() {}}),
+    setTimeout, clearTimeout, scrollTo: vi.fn()});
+  vi.stubGlobal('history', historyPort);
+  window.HTMLElement.prototype.scrollTo = vi.fn();window.HTMLElement.prototype.scrollIntoView = vi.fn();
+  const frames = new Map<number, FrameRequestCallback>();let sequence = 0;
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {frames.set(++sequence, callback);return sequence;});
+  vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
+  vi.stubGlobal('MutationObserver', class {observe() {} disconnect() {}});
+  vi.stubGlobal('ResizeObserver', class {observe() {} disconnect() {}});
+  const language = runtime.ref<UiLanguage>('zh-CN');
+  const i18n = {language, t: (key: string, params?: TranslationParams) => core.translate(key, language.value, params), translateLegacy: (text: string) => core.translateLegacyText(text, language.value)};
+  const config = {interfaceSkin: 'default'}, unsubscribe = vi.fn(), loads = {settings: vi.fn(), learning: vi.fn()};
+  const errors: unknown[] = [];
+  const display = runtime.defineComponent({setup: () => () => runtime.h('span')});
+  const anchorPort = runtime.defineComponent({setup(_props, {expose}) {expose({cancelPendingAnchor() {}});return () => runtime.h('span');}});
+  const settingsPort = runtime.defineComponent({name: 'SettingsDisplayPort', props: ['activeSection'], setup: props => () => runtime.h('section', {'data-settings-child': 'settings', 'data-active-section': props.activeSection}, props.activeSection)});
+  const learningPort = runtime.defineComponent({name: 'LearningDisplayPort', setup: () => () => runtime.h('section', {'data-settings-child': 'learning'}, 'Saved display port')});
+  const filename = resolve('src/app/options/OptionsApp.vue');
+  const {descriptor, errors: parseErrors} = parse(readFileSync(filename, 'utf8'), {filename});expect(parseErrors).toEqual([]);
+  const script = compileScript(descriptor, {id: 'options-capability-client', inlineTemplate: true});
+  const module = {exports: {} as {default: import('vue').Component}};
+  const code = ts.transpileModule(script.content.replaceAll('import.meta.env.BROWSER', JSON.stringify(browser)), {compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022}}).outputText;
+  new Function('require', 'exports', 'module', code)((id: string) => {
+    if (id === 'vue') return runtime;
+    if (id === '@/src/features/settings/model/navigation') return navigation;
+    if (id === '@/src/ui/i18n') return {useUiI18n: () => i18n};
+    if (id === '@/src/services/config/store') return {config, configReady: Promise.resolve(), subscribeConfig: () => unsubscribe};
+    if (id === '@/src/platform/browser/capabilities') return {browserCapabilities: capabilities.resolveBrowserCapabilities({browser, manifestVersion: browser === 'chrome' ? 3 : 2})};
+    if (id === '@/src/ui/interfaceAppearance') return {applyInterfaceTheme() {}, applyInterfaceSkin() {}, applyInterfaceFont() {}, registerInterfaceAppearanceRoot: () => () => undefined};
+    if (id === '@/src/features/settings/ui/SettingsSections.vue') {loads.settings();return {__esModule: true, default: settingsPort};}
+    if (id === '@/src/features/settings/ui/LearningCenter.vue') {loads.learning();return {__esModule: true, default: learningPort};}
+    if (id.endsWith('/SettingsSectionNavigation.vue')) return {default: anchorPort};
+    if (id.endsWith('.vue')) return {default: display};
+    if (id.endsWith('.jpg')) return {default: 'synthetic-contact-image'};
+    throw new Error(`Unexpected Options client dependency ${id}`);
+  }, module.exports, module);
+  const renderer = runtime.createRenderer<Node, Element>({
+    // Native DOM nodes are non-reactive; preserve that identity for LinkeDOM refs too.
+    createElement: tag => runtime.markRaw(document.createElement(tag)), createText: text => runtime.markRaw(document.createTextNode(text)), createComment: text => runtime.markRaw(document.createComment(text)),
+    insert: (node, parent, anchor) => parent.insertBefore(node, anchor ?? null), remove: node => node.parentNode?.removeChild(node),
+    setText: (node, value) => {node.nodeValue = value;}, setElementText: (element, value) => {element.textContent = value;},
+    parentNode: node => node.parentNode as Element | null, nextSibling: node => node.nextSibling,
+    patchProp: (element, key, _before, value) => {
+      if (key.startsWith('onUpdate:')) return;
+      if (/^on[A-Z]/u.test(key)) {
+        const events = element as Element & {__optionsEvents?: Map<string, EventListener>};
+        const name = key.slice(2).toLowerCase();events.__optionsEvents ??= new Map();
+        const prior = events.__optionsEvents.get(name);if (prior) element.removeEventListener(name, prior);
+        if (value) {const handler: EventListener = event => {for (const fn of Array.isArray(value) ? value : [value]) fn(event);};events.__optionsEvents.set(name, handler);element.addEventListener(name, handler);}
+      } else if (key === 'value' && ['INPUT', 'TEXTAREA'].includes(element.tagName)) (element as HTMLInputElement).value = value ?? '';
+      else if (key.startsWith('aria-') && value != null) element.setAttribute(key, String(value));
+      else if (value == null || value === false) element.removeAttribute(key);
+      else element.setAttribute(key, value === true ? '' : String(value));
+    }, setScopeId: (element, id) => element.setAttribute(id, ''), insertStaticContent: (content, parent, anchor) => {
+      const container = document.createElement('div');container.innerHTML = content;const first = container.firstChild!, last = container.lastChild!;
+      for (const node of [...container.childNodes]) parent.insertBefore(node, anchor);return [first, last];
+    },
+  });
+  const host = document.createElement('div');document.body.appendChild(host);
+  const app = renderer.createApp(module.exports.default, {settingsHashPrefix: browser === 'userscript' ? prefix : undefined});
+  if (browser !== 'userscript') location.hash = `#${requestedSection}`;
+  app.component('ElDialog', runtime.defineComponent({render: () => null}));
+  app.config.warnHandler = () => undefined;app.config.errorHandler = error => errors.push(error);
+  let mounted = false;
+  scope.unmount = () => {if (mounted) {mounted = false;app.unmount();}frames.clear();host.remove();};unmount = scope.unmount;
+  app.mount(host);mounted = true;
+  const settle = async () => {for (let i = 0; i < 10; i++) {await Promise.resolve();await runtime.nextTick();}};
+  await settle();
+  const rail = (section: string) => host.querySelector<HTMLButtonElement>(`button[data-section="${section}"]`)!;
+  const choose = async (section: string) => {rail(section).click();await settle();};
+  const navigateHash = async (section: string) => {location.hash = browser === 'userscript' ? `${prefix}/${section}` : `#${section}`;window.dispatchEvent(new window.Event('hashchange'));await settle();};
+  return {host, loads, errors, language, t: i18n.t, location, prefix, unsubscribe, settle, rail, choose, navigateHash, search: host.querySelector<HTMLInputElement>('input[type="search"]')!};
+}
+
+describe('OptionsApp actual client standalone capability navigation', () => {
+  it.each([
+    ['settings-image-translation', 'settings-image-translation'],
+    ['settings-area-translation', 'settings-image-translation'],
+    ['settings-video', 'settings-video'],
+    ['settings-writing', 'settings-writing'],
+    ['settings-translation-stats', 'settings-translation-stats'],
+    ['settings-model-usage', 'settings-translation-stats'],
+  ])('keeps unavailable %s public links without loading extension forms', async (requested, canonical) => {
+    const h = await mountClientOptions(requested, 'userscript');
+    for (const language of ['zh-CN', 'en-US'] as const) {
+      h.language.value = language;await h.settle();
+      const notice = h.host.querySelector('.userscript-unavailable[role="status"]')!;
+      expect(notice).not.toBeNull();expect(notice.id).toBe(canonical);
+      expect(notice.querySelector('h2')!.textContent).toBe(h.t('options.userscriptUnavailableTitle'));
+      expect(notice.querySelector('p')!.textContent).toBe(h.t('options.userscriptUnavailableDescription'));
+      expect(h.rail(canonical).getAttribute('aria-current')).toBe('page');
+      expect(h.loads.settings).not.toHaveBeenCalled();expect(h.loads.learning).not.toHaveBeenCalled();
+    }
+    expect(h.location.hash).toBe(`${h.prefix}/${requested === 'settings-area-translation' ? canonical : requested}`);
+    const label = h.rail(canonical).querySelector('strong')!.textContent!;
+    h.search.value = label;h.search.dispatchEvent(new Event('input', {bubbles: true}));await h.settle();
+    const result = [...h.host.querySelectorAll<HTMLButtonElement>('.search-results button')].find(button => button.querySelector('strong')?.textContent === label)!;
+    expect(result).toBeDefined();result.click();await h.settle();
+    expect(h.search.value).toBe('');expect(h.host.querySelector('.userscript-unavailable')).not.toBeNull();
+    expect(h.loads.settings).not.toHaveBeenCalled();expect(h.loads.learning).not.toHaveBeenCalled();
+    await h.choose('settings-general');
+    expect(h.host.querySelector('[data-settings-child="settings"]')?.getAttribute('data-active-section')).toBe('settings-general');
+    expect(h.host.querySelector('.userscript-unavailable')).toBeNull();
+    for (const section of ['settings-services', 'settings-selection']) {
+      await h.choose(section);expect(h.host.querySelector('[data-settings-child="settings"]')?.getAttribute('data-active-section')).toBe(section);
+    }
+    await h.choose('settings-vocabulary');expect(h.host.querySelector('[data-settings-child="learning"]')).not.toBeNull();
+    expect(h.loads.settings).toHaveBeenCalledOnce();expect(h.loads.learning).toHaveBeenCalledOnce();
+    await h.navigateHash(requested);expect(h.host.querySelector('.userscript-unavailable[role="status"]')?.id).toBe(canonical);
+    expect(h.loads.settings).toHaveBeenCalledOnce();expect(h.loads.learning).toHaveBeenCalledOnce();expect(h.errors).toEqual([]);
+  });
+
+  it.each(['chrome', 'firefox'] as const)('keeps the existing extension child path callable in %s', async browser => {
+    const h = await mountClientOptions('settings-image-translation', browser);
+    expect(h.host.querySelector('.userscript-unavailable')).toBeNull();
+    expect(h.host.querySelector('[data-settings-child="settings"]')?.getAttribute('data-active-section')).toBe('settings-image-translation');
+    for (const section of ['settings-video', 'settings-writing', 'settings-translation-stats']) {
+      await h.choose(section);expect(h.host.querySelector('.userscript-unavailable')).toBeNull();
+      expect(h.host.querySelector('[data-settings-child="settings"]')?.getAttribute('data-active-section')).toBe(section);
+    }
+    expect(h.loads.settings).toHaveBeenCalledOnce();expect(h.loads.learning).not.toHaveBeenCalled();expect(h.errors).toEqual([]);
   });
 });
