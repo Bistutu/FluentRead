@@ -631,7 +631,7 @@ describe('options UI composition architecture', () => {
     expect(navigation).toContain("description: 'YouTube/X 边看边译'")
     expect(navigation).toContain('视频与网页会议的双语字幕')
     expect(navigation).toContain('YouTube、X、Twitter、视频字幕、本地 AI、Whisper')
-    expect(videoModelSettings).toContain('.capability-warning { margin: 6px 0 0; color: var(--el-color-danger);')
+    expect(videoModelSettings).toContain('.video-model-error, .capability-warning { margin: 0; color: var(--el-color-danger);')
     expect(settingsSections).toContain('VIDEO_SOURCE_LANGUAGE_OPTIONS')
     // Resource guidance is localized; assert the live key and its Chinese catalog entry.
     expect(videoModelSettings).toContain("t('video.modelDeviceHint')")

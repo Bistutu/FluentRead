@@ -2744,6 +2744,8 @@ export const enUSLegacyText: Readonly<Record<string, string>> = {
     "视频字幕预览": "Video subtitle preview",
     "字号": "Font size",
     "X 自动": "Auto on X",
+    "原生翻译合批": "Combine translation requests",
+    "开启合并": "Combining on",
     "X 字幕自动贴底": "Auto-position X subtitles at the bottom",
     "逐字高亮": "Word-by-word highlight",
     "字幕随播放进度逐字点亮，像 KTV 歌词一样": "Subtitles light up word by word as the video plays, like karaoke lyrics.",

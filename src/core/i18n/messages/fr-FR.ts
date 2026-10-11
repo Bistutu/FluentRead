@@ -2739,6 +2739,8 @@ export const frFRLegacyText: Readonly<Record<string, string>> = {
     "视频字幕预览": "Aperçu des sous-titres vidéo",
     "字号": "Taille de police",
     "X 自动": "Auto sur X",
+    "原生翻译合批": "Regrouper les demandes de traduction",
+    "开启合并": "Regroupement activé",
     "X 字幕自动贴底": "Placer automatiquement les sous-titres X en bas",
     "逐字高亮": "Surlignage mot à mot",
     "字幕随播放进度逐字点亮，像 KTV 歌词一样": "Les sous-titres s’illuminent mot à mot pendant la lecture, comme des paroles de karaoké.",
