@@ -7,6 +7,7 @@
  * 主要内容：复用后台焦点保护启动器与原生激活事件观察器，只设置免费服务与英译中公开选项；按输入文件逐份导入、真实翻译、阅读、下载，保存完整段落、状态、脱敏网络统计和截图。PDF 用 PDF.js 重开校验页数、左右对照尺寸与页序，再用 Poppler 渲染；--readable-pdf-first 在首份 PDF 同次真实译文上另验可复制重排导出、逐段中文文字层及首页/尾页图片。普通格式重新解析下载文件，DOCX/ePub 解包核对译文、结构与图片。默认运行实际 Attention 15 页、仓库八种普通格式及英文产品指南，--inputs 可缩小范围。Markdown 严格核对代码、链接、译文强调及指南容器、组件标记，以 VitePress 已有 markdown-it 的标准强调节点核对实际下载（先扣除原文节点，不能只数星号或用产品预览证明译文格式），并按源文本与同一标签检查两项已确认的内部英文残留回归；仅读取这些内容，不执行组件。
  * 交互验证：--exercise-pdf-ui 在首份实际 PDF 上保存首页扫描说明，经 CDP 键盘 Tab/Enter/Space 选择原生菜单按钮，验证受控 Ctrl/Cmd wheel 的文档缩放、指针锚点及键盘复位；真实译文完成后切换显示方式，恢复原版对照和适合整页，再执行既有小屏阅读与下载验收。这些事件不代表物理触控板实测。
  * 词库验证：可选 --builtin-glossary ai-en-zh-hans 从本生产包的设置界面导入可编辑副本，启用总开关，再通过公开配置端口只选择该真实库 ID；保存启用状态、来源版本、词条数及文档选择，不读取词条作为测试预期或输出其它配置。无参数时只记录实际公开状态。
+ * 恢复验证：--translation-resumes 0..3 默认关闭，仅在实际翻译中断且错误为请求超时时点击同页“继续翻译”。每次保存原错误、部分译文和截图，保留停止批次首编号而不归因该段；原翻译总截止不重置，设置和所有已完成译文必须保持不变。恢复后完成仍明确记录曾失败，不能视作一次无失败完成。
  * 诊断收尾：响应正文观察每条最多等五秒，记录超时/失败并拒绝晚到正文回填；文档失败先保存状态，批次诊断与最终清理各有截止。HTTP 证据按固定翻译端点辨认 Microsoft/Google 有序原生槽位、单文本与未知请求；仅完整多槽响应进入已完成合批统计，不把同域 2xx 或背景消息数组当作合批。
  * 模块边界：不创建请求路由、不替换 fetch、不伪造译文、不配置付费账户，不读取或输出任何凭据；只使用本次新建的临时浏览器配置，不操作用户浏览器。中文及无测试标记只能证明实际结果，译文质量和排版需结合保存的数据与图片人工复核。
  */
@@ -44,6 +45,132 @@ function parseBuiltinGlossaryArg(args) {
   const value = args[positions[0] + 1];
   assert.equal(value, 'ai-en-zh-hans', '--builtin-glossary only allows ai-en-zh-hans');
   return value;
+}
+
+/** 恢复次数在任何浏览器/profile 操作之前校验，默认保持遇错立即失败。 */
+function parseTranslationResumesArg(args) {
+  assert(!args.some(value => value.startsWith('--translation-resumes=')), 'Use --translation-resumes 0..3');
+  const positions = args.flatMap((value, index) => value === '--translation-resumes' ? [index] : []);
+  assert(positions.length <= 1, '--translation-resumes must occur only once');
+  if (!positions.length) return 0;
+  const value = args[positions[0] + 1];
+  assert(/^[0-3]$/u.test(value || ''), '--translation-resumes must be an integer from 0 to 3');
+  return Number(value);
+}
+
+/** 仅投影免费测试的公开设置；不读取模型凭据、其它词条或私有用户选项。 */
+async function readPublicResumeSettings() {
+  const stored = await chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'});
+  if (!stored?.success) throw new Error('Public resume configuration read failed');
+  const config = typeof stored.value === 'string' ? JSON.parse(stored.value) : stored.value;
+  const batch = document.querySelector('.document-batch-translation input');
+  if (!config || typeof config !== 'object' || !batch || typeof batch.checked !== 'boolean') throw new Error('Invalid public resume configuration');
+  return {name: document.querySelector('.workspace-heading h1')?.textContent.trim() || '',
+    from: config.from, to: config.to, service: config.service, documentService: config.documentService,
+    freeTranslationOrder: config.freeTranslationOrder, freeTranslationMode: config.freeTranslationMode,
+    freeTranslationTimeoutMs: config.freeTranslationTimeoutMs, documentBatchTranslation: batch.checked};
+}
+
+/** 只恢复已实际复现的 terminal timeout；暂停、取消、鉴权、配置或回显仍立即失败。 */
+function isResumableTranslationTimeout(current) {
+  return /^翻译中断(?:\s|·|$)/u.test(current.status) && /(?:翻译)?请求超时$/u.test(current.error)
+    && !/401|403|auth|unauthori[sz]ed|forbidden|bad.?config|鉴权|凭据|配置|取消|cancel|原文|回显/iu.test(current.error);
+}
+
+/** 逐位置、ID 和原文验证同一解析文档；曾完成的目标必须逐字保留，不用 normalized 文本替代证据。 */
+function assertPreservedTranslations(previous, snapshot) {
+  assert(snapshot && Array.isArray(snapshot.segments) && snapshot.segments.length, 'Resume requires a saved parsed document');
+  const ids = new Set();
+  for (const segment of snapshot.segments) {
+    assert(Number.isSafeInteger(segment.id) && segment.id >= 0 && !ids.has(segment.id)
+      && typeof segment.source === 'string' && typeof segment.translation === 'string', 'Invalid resume source/target snapshot');
+    ids.add(segment.id);
+  }
+  for (const old of previous) {
+    for (const key of ['name', 'format', 'parsedVersion', 'pages']) assert.deepEqual(snapshot[key], old[key], `Resume changed document ${key}`);
+    assert.equal(snapshot.segments.length, old.segments.length, 'Resume changed segment count');
+    old.segments.forEach((segment, index) => {
+      const next = snapshot.segments[index];
+      assert.equal(next.id, segment.id, 'Resume changed segment index/id');
+      assert.equal(next.source, segment.source, 'Resume changed source text');
+      if (segment.translation.trim()) assert.equal(next.translation, segment.translation, `Resume changed completed translation ${segment.id}`);
+    });
+  }
+  return snapshot.segments.filter(segment => segment.translation.trim()).length;
+}
+
+/** 单文档恢复守卫：真实操作由端口提供，所有端口受原截止约束；离线测试不制造可验收译文。 */
+function createTranslationResumeGuard({limit, started, timeout, settings, now = Date.now, sleep = pause}) {
+  assert(Number.isInteger(limit) && limit >= 0 && limit <= 3, 'Invalid translation resume limit');
+  assert(Number.isFinite(started) && Number.isFinite(timeout) && timeout > 0, 'Invalid translation deadline');
+  const deadline = started + timeout, snapshots = [], failures = [], recoveries = [];
+  const remaining = () => deadline - now();
+  const bounded = async (operation, label, cap = 5000) => {
+    assert(remaining() > 0, 'Original translation deadline exhausted');
+    let timer;
+    try {
+      return await Promise.race([Promise.resolve().then(operation), new Promise((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label}: original translation deadline or diagnostic bound exhausted`)), Math.min(cap, remaining()));
+      })]);
+    } finally {clearTimeout(timer);}
+  };
+  return {failures, recoveries, deadline,
+    async tryResume(current, {readSnapshot, readSettings, saveFailure, activateContinue, assertActive, persist}) {
+      if (!limit || !isResumableTranslationTimeout(current)) return false;
+      assertActive();
+      const stop = /第\s*(\d+)\s*段/u.exec(current.error);
+      const counts = /(\d+)\s*\/\s*(\d+)/u.exec(current.status);
+      const failure = {number: failures.length + 1, status: current.status, error: current.error, progress: current.progress,
+        stoppedBatchFirstSegment: stop ? Number(stop[1]) : null, stopNumberMeaning: 'Failed batch first segment; not evidence of the root-cause slot',
+        observedCompleted: counts ? Number(counts[1]) : null, observedTotal: counts ? Number(counts[2]) : null,
+        elapsedMs: now() - started, remainingMs: Math.max(0, remaining()), resumed: false};
+      failures.push(failure); persist();
+      let snapshot;
+      const snapshotDeadline = Math.min(deadline, now() + 5000);
+      while (remaining() > 0) {
+        snapshot = await bounded(readSnapshot, 'Failure snapshot read'); assertActive();
+        if (Array.isArray(snapshot?.segments) && (failure.observedCompleted === null
+          || snapshot.segments.filter(segment => typeof segment.translation === 'string' && segment.translation.trim()).length >= failure.observedCompleted)) break;
+        if (now() >= snapshotDeadline) break;
+        await sleep(Math.min(100, snapshotDeadline - now(), remaining())); assertActive();
+      }
+      failure.completed = Array.isArray(snapshot?.segments) ? snapshot.segments.filter(segment => typeof segment.translation === 'string' && segment.translation.trim()).length : 0;
+      // 原始失败证据先落盘。验证/点击失败不能抹掉已观察到的产品错误。
+      await bounded(() => saveFailure(failure, snapshot), 'Failure evidence save'); assertActive();
+      if (recoveries.length >= limit || remaining() <= 0) {failure.resumeRefused = 'Resume limit or original deadline exhausted'; persist(); return false;}
+      assert(failure.completed > 0 && (failure.observedCompleted === null || failure.completed >= failure.observedCompleted), 'Saved failure snapshot has not preserved the visible completed count');
+      assertPreservedTranslations(snapshots, snapshot);
+      assert.equal(snapshot.name, settings.name, 'Resume snapshot belongs to a different input');
+      if (failure.observedTotal !== null) assert.equal(snapshot.segments.length, failure.observedTotal, 'Resume changed visible segment count');
+      assert.deepEqual(await bounded(readSettings, 'Resume settings read'), settings, 'Resume settings/input/library changed'); assertActive();
+      snapshots.push(structuredClone(snapshot));
+      await bounded(activateContinue, 'Actual continue button activation'); assertActive();
+      assert(remaining() > 0, 'Original translation deadline exhausted');
+      failure.resumed = true;
+      recoveries.push({failureNumber: failure.number, elapsedMs: now() - started, completedBefore: failure.completed,
+        actualAction: 'Same production document: 继续翻译', settingsUnchanged: true, originalDeadline: deadline}); persist();
+      return true;
+    },
+    async verifyFinal(snapshot, readSettings) {
+      if (!recoveries.length) return null;
+      assertPreservedTranslations(snapshots, snapshot);
+      assert.deepEqual(await bounded(readSettings, 'Final resume settings read'), settings, 'Resume settings/input/library changed');
+      return {completedTargetsPreserved: true, recoveredAfterFailures: true, resumeCount: recoveries.length,
+        initialCompletedCount: snapshots[0].segments.filter(segment => segment.translation.trim()).length,
+        originalDeadline: deadline, elapsedMs: now() - started};
+    },
+  };
+}
+
+/** 只激活同一页面当前可见、可用的生产“继续翻译”，不能改成重试/重新翻译或跳过焦点守卫。 */
+async function activateProductionTranslationContinue({page, checkFocus, number, deadline, readStatus}) {
+  await checkFocus(`translation-continue-${number}`);
+  assert(isResumableTranslationTimeout(await readStatus()), 'Only the same terminal timeout may be continued');
+  const button = page.locator('.taskbar-actions').getByRole('button', {name: '继续翻译', exact: true});
+  assert.equal(await button.count(), 1, 'Production continue button must be unique');
+  assert(await button.isVisible() && await button.isEnabled(), 'Production continue button must be visible and enabled');
+  assert(deadline > Date.now(), 'Original translation deadline exhausted');
+  await button.click({timeout: Math.min(5000, deadline - Date.now())});
 }
 
 /** 自包含页面端口：只投影运行所需的公开词库元数据，不能输出词条、token 或其余配置。 */
@@ -633,6 +760,7 @@ async function exercisePdfPresentationUi(page, {result, prefix, shot, checkFocus
 
 async function main() {
   const builtinGlossary = parseBuiltinGlossaryArg(process.argv.slice(2));
+  const translationResumes = parseTranslationResumesArg(process.argv.slice(2));
   const repository = path.resolve(__dirname, '../..'), requireRepo = createRequire(path.join(repository, 'package.json'));
   const examples = path.resolve(arg('example-dir', path.join(repository, 'examples/document-translation')));
   const defaults = [path.resolve(repository, '../BabelDOC-APP/docs/1706.03762v7.pdf'),
@@ -665,7 +793,7 @@ async function main() {
       'src/providers/translation/free-chinese-web.ts', 'src/providers/translation/free-translation.ts', 'src/core/translation/documentLiterals.ts',
       'src/services/translation/broker.ts', 'src/services/translation/glossaryProtection.ts', 'src/features/document-translation/ui/documentZoom.ts',
       'src/core/i18n/messages/pdfReading.ts', 'src/core/glossary/builtins.ts'].map(file => [file, sha(fs.readFileSync(path.join(repository, file)))])),
-    parameters: {service, sourceLanguage: 'en', targetLanguage: 'zh-Hans', translationTimeout, exportTimeout, samplePages,
+    parameters: {service, sourceLanguage: 'en', targetLanguage: 'zh-Hans', translationTimeout, translationResumes, exportTimeout, samplePages,
       shortPdfAllPages: !process.argv.includes('--pdf-pages'), readablePdfFirst: process.argv.includes('--readable-pdf-first'), exercisePdfUi, builtinGlossary,
       viewport: {width: 1440, height: 960}, narrowViewports: [{width: 820, height: 960}, {width: 390, height: 844}]},
     evidenceBoundary: `Real credential-free ${service} requests and actual document UI; no routes, fetch replacements, proxy, paid credentials or synthetic responses. Chinese/no-marker checks and two targeted inline-text regression assertions are evidence, not a general translation-quality score. Optional PDF UI coverage uses CDP keyboard and Ctrl/Cmd wheel against the actual document, not physical trackpad gestures. First-PDF narrow screenshots/geometry cover only 820x960 and 390x844. Review saved paragraphs and screenshots manually.`,
@@ -816,18 +944,49 @@ async function main() {
           exercisedPdfUi = true;
           await exercisePdfZoomUi(page, {result, prefix, shot, checkFocus, persist});
         }
+        const readResumeSettings = async () => ({...await page.evaluate(readPublicResumeSettings),
+          glossary: await page.evaluate(readPublicGlossaryState, builtinGlossary), inputSha256: sha(fs.readFileSync(input))});
+        const resumeSettings = translationResumes ? await readResumeSettings() : null;
         const started = Date.now(); result.state = 'translating';
+        const resumeGuard = createTranslationResumeGuard({limit: translationResumes, started, timeout: translationTimeout, settings: resumeSettings});
+        if (translationResumes) {
+          result.translationFailures = resumeGuard.failures; result.recoveries = resumeGuard.recoveries;
+          result.resumeSettings = resumeSettings; result.originalTranslationDeadline = resumeGuard.deadline;
+        }
+        const assertTranslationActive = () => {
+          if (focusFailure) throw focusFailure;
+          if (page.isClosed()) throw new Error('Document page closed during translation recovery');
+        };
+        const readTranslationStatus = () => page.evaluate(() => ({status: document.querySelector('.document-status')?.textContent.trim() || '',
+          progress: Number(document.querySelector('.task-progress')?.getAttribute('aria-valuenow') || 0),
+          error: document.querySelector('.taskbar-notices .notice.error')?.textContent.trim() || '', retry: document.querySelector('.taskbar-notices .notice.warning')?.textContent.trim() || ''}));
         await checkFocus('translation');
         await page.locator('.taskbar-actions .translate-document-button').filter({hasText: '开始翻译'}).click();
         let lastStatus = '', lastLog = 0;
         while (Date.now() - started < translationTimeout) {
-          const current = await page.evaluate(() => ({status: document.querySelector('.document-status')?.textContent.trim() || '',
-            progress: Number(document.querySelector('.task-progress')?.getAttribute('aria-valuenow') || 0),
-            error: document.querySelector('.taskbar-notices .notice.error')?.textContent.trim() || '', retry: document.querySelector('.taskbar-notices .notice.warning')?.textContent.trim() || ''}));
+          assertTranslationActive();
+          const current = await readTranslationStatus();
           if (current.status !== lastStatus) {lastStatus = current.status; result.statuses.push({...current, elapsedMs: Date.now() - started}); persist();}
           if (Date.now() - lastLog > 30000 || current.progress === 100) {lastLog = Date.now(); console.log(JSON.stringify({stage: 'translation', name, ...current, elapsedMs: Date.now() - started}));}
           if (current.status.startsWith('翻译完成')) {result.state = 'complete'; break;}
-          if (/翻译中断|已暂停|译文与原文相同/u.test(current.status) || current.error) throw new Error(`Product translation stopped: ${current.status} ${current.error}`);
+          if (/翻译中断|已暂停|译文与原文相同/u.test(current.status) || current.error) {
+            const resumed = await resumeGuard.tryResume(current, {
+              readSnapshot: () => historySnapshot(page, name), readSettings: readResumeSettings, assertActive: assertTranslationActive, persist,
+              saveFailure: async (failure, snapshot) => {
+                const stem = `${prefix}-translation-failure-${failure.number}`;
+                if (snapshot) {failure.segmentData = path.join(artifactsDir, `${stem}-segments.json`); fs.writeFileSync(failure.segmentData, JSON.stringify(snapshot, null, 2));}
+                failure.screenshot = await shot(stem); result.screenshots.push(failure.screenshot); persist();
+                fs.writeFileSync(path.join(artifactsDir, `${stem}.json`), JSON.stringify({...failure, capturePhase: 'Before any continue action'}, null, 2));
+              },
+              activateContinue: () => activateProductionTranslationContinue({page, checkFocus, number: resumeGuard.recoveries.length + 1,
+                deadline: resumeGuard.deadline, readStatus: readTranslationStatus}),
+            });
+            if (!resumed) throw new Error(`Product translation stopped: ${current.status} ${current.error}`);
+            result.state = 'translating'; lastStatus = ''; persist();
+            console.log(JSON.stringify({stage: 'translation-continued', name, ...resumeGuard.recoveries.at(-1)}));
+            await pause(Math.min(500, Math.max(0, resumeGuard.deadline - Date.now())));
+            continue;
+          }
           await pause(500);
         }
         result.translationMs = Date.now() - started;
@@ -838,6 +997,7 @@ async function main() {
         let snapshot;
         for (let attempt = 0; attempt < 40; attempt++) {snapshot = await historySnapshot(page, name); if (snapshot?.segments.length && snapshot.segments.every(segment => segment.translation.trim())) break; await pause(250);}
         assert(snapshot?.segments.length, 'Completed document should have a saved source snapshot');
+        if (translationResumes) result.recoveryValidation = await resumeGuard.verifyFinal(snapshot, readResumeSettings);
         result.segments = snapshot.segments.length;
         const completed = snapshot.segments.filter(segment => segment.translation.trim()), chinese = completed.filter(segment => /\p{Script=Han}/u.test(segment.translation));
         result.translationChecks = {allSegmentsCompleted: completed.length === snapshot.segments.length, chineseSegments: chinese.length,
@@ -1049,5 +1209,6 @@ async function main() {
 }
 
 module.exports = {createResponseBodyObserver, closeLiveSession, isProviderDomain, shouldObserveResponseBody,
-  parseBuiltinGlossaryArg, readPublicGlossaryState, selectPublicDocumentGlossary, installBuiltinGlossaryForLiveRun};
+  parseBuiltinGlossaryArg, readPublicGlossaryState, selectPublicDocumentGlossary, installBuiltinGlossaryForLiveRun,
+  parseTranslationResumesArg, readPublicResumeSettings, isResumableTranslationTimeout, assertPreservedTranslations, createTranslationResumeGuard, activateProductionTranslationContinue};
 if (require.main === module) main().catch(error => {console.error(error.stack || error); process.exitCode = 1;});

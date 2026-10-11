@@ -1,7 +1,7 @@
 /**
  * @file tests/documentLiveTranslationDriver.test.ts
  * 文件职责：离线验证真实文档翻译工具的响应诊断截止与自有资源收尾，防止未完成正文掩盖产品失败或阻塞清理。
- * 主要内容：覆盖正常正文证据、拒绝与挂起、晚响应的文档归属、提前 drain、关闭或临时目录清理失败、Lingvanex 官方端点分类，以及可选内置词库的公开配置投影和真实 UI 操作契约。
+ * 主要内容：覆盖正常正文证据、拒绝与挂起、晚响应的文档归属、提前 drain、关闭或临时目录清理失败、Lingvanex 官方端点分类，可选内置词库的公开配置投影，以及有界超时继续的参数、总截止、逐位置译文保留与实际按钮操作契约。
  * 模块边界：只调用 driver 的离线端口和临时目录；词库测试由实际内置副本工厂提供数据，不另造术语预期。不创建浏览器、不访问网络、不模拟产品译文通过，也不更改真实翻译、格式或焦点断言。
  */
 import {createHash} from 'node:crypto';
@@ -29,10 +29,31 @@ interface PublicGlossaryState {
     documentGlossaryIds: string[] | null;
     libraries: Array<{id: string; name: string; enabled: boolean; presetId: string | null; presetVersion: number | null; termCount: number}>;
 }
+interface ResumeSnapshot {
+    name: string; format: string; parsedVersion: number; pages?: Array<{pageNumber: number}>;
+    segments: Array<{id: number; source: string; translation: string}>;
+}
+interface TranslationStatus {status: string; error: string; progress: number}
+interface ResumeSettings {name: string; glossary: PublicGlossaryState; documentBatchTranslation: boolean; from: string; to: string; inputSha256: string}
+interface ResumePorts {
+    readSnapshot(): Promise<ResumeSnapshot | null>;
+    readSettings(): Promise<ResumeSettings>;
+    saveFailure(failure: Record<string, unknown>, snapshot: ResumeSnapshot | null): Promise<void>;
+    activateContinue(): Promise<void>;
+    assertActive(): void;
+    persist(): void;
+}
+interface ResumeGuard {
+    failures: Array<Record<string, unknown>>; recoveries: Array<Record<string, unknown>>; deadline: number;
+    tryResume(current: TranslationStatus, ports: ResumePorts): Promise<boolean>;
+    verifyFinal(snapshot: ResumeSnapshot, readSettings: ResumePorts['readSettings']): Promise<Record<string, unknown> | null>;
+}
 const require = createRequire(import.meta.url);
 const fileSystem = require('node:fs') as typeof import('node:fs');
 const {createResponseBodyObserver, closeLiveSession, isProviderDomain, shouldObserveResponseBody,
-    parseBuiltinGlossaryArg, readPublicGlossaryState, selectPublicDocumentGlossary, installBuiltinGlossaryForLiveRun} = require(resolve(__dirname, '../scripts/testing/run-document-live-translation.cjs')) as {
+    parseBuiltinGlossaryArg, readPublicGlossaryState, selectPublicDocumentGlossary, installBuiltinGlossaryForLiveRun,
+    parseTranslationResumesArg, readPublicResumeSettings, isResumableTranslationTimeout, assertPreservedTranslations, createTranslationResumeGuard,
+    activateProductionTranslationContinue} = require(resolve(__dirname, '../scripts/testing/run-document-live-translation.cjs')) as {
     createResponseBodyObserver(options?: {timeoutMs?: number}): BodyObserver;
     closeLiveSession(options: {launched?: {close(): Promise<void>}; focusMonitor?: {stop(): Promise<void>}; profileDir: string; launchAttempted: boolean; report: CleanupReport; responseObserver?: BodyObserver}): Promise<void>;
     isProviderDomain(host: string): boolean;
@@ -43,6 +64,12 @@ const {createResponseBodyObserver, closeLiveSession, isProviderDomain, shouldObs
     installBuiltinGlossaryForLiveRun(options: {page: unknown; origin: string; presetId: string; checkFocus(phase: string): Promise<void>}): Promise<{
         presetId: string; source: string; before: PublicGlossaryState; imported: PublicGlossaryState; selected: PublicGlossaryState; optionsUrl: string;
     }>;
+    parseTranslationResumesArg(args: string[]): number;
+    readPublicResumeSettings(): Promise<Record<string, unknown>>;
+    isResumableTranslationTimeout(current: TranslationStatus): boolean;
+    assertPreservedTranslations(previous: ResumeSnapshot[], snapshot: ResumeSnapshot): number;
+    createTranslationResumeGuard(options: {limit: number; started: number; timeout: number; settings: ResumeSettings | null; now?: () => number; sleep?: (ms: number) => Promise<void>}): ResumeGuard;
+    activateProductionTranslationContinue(options: {page: unknown; checkFocus(phase: string): Promise<void>; number: number; deadline: number; readStatus(): Promise<TranslationStatus>}): Promise<void>;
 };
 const temporaryDirectories: string[] = [];
 const profile = () => {
@@ -310,5 +337,174 @@ describe('真实文档工具可选内置词库（离线端口，不运行翻译�
         await expect(installBuiltinGlossaryForLiveRun({page: stopped.page, origin: 'chrome-extension://actual-build', presetId: 'ai-en-zh-hans',
             checkFocus: async phase => {if (phase === 'builtin-glossary-import') throw new Error('Owned Edge activation');}})).rejects.toThrow('Owned Edge activation');
         expect(stopped.config.glossaryLibraries).toEqual([]); expect(stopped.messages.every(message => message.type === 'configStorageRead')).toBe(true);
+    });
+});
+
+const resumeSnapshot = (completed = 1): ResumeSnapshot => ({name: 'public.pdf', format: 'pdf', parsedVersion: 13,
+    pages: [{pageNumber: 1}], segments: Array.from({length: 4}, (_value, id) => ({id, source: `Saved source ${id}`,
+        translation: id < completed ? `已完成 ${id}\u00a0` : ''}))});
+const resumeSettings = (): ResumeSettings => ({name: 'public.pdf', from: 'en', to: 'zh-Hans', documentBatchTranslation: true,
+    inputSha256: 'actual-input-sha', glossary: {glossaryEnabled: true, documentGlossaryIds: ['actual-library'],
+        libraries: [{id: 'actual-library', name: 'AI', enabled: true, presetId: 'ai-en-zh-hans', presetVersion: 2, termCount: 65}]}});
+const timeoutStatus = (completed = 1): TranslationStatus => ({status: `翻译中断 · ${completed} / 4`,
+    error: '第 283 段文档翻译失败：请求超时', progress: Math.floor(completed / 4 * 100)});
+const resumePort = (snapshot = resumeSnapshot(), settings = resumeSettings()) => {
+    const captured: Array<{failure: Record<string, unknown>; snapshot: ResumeSnapshot | null}> = [];
+    const ports = {readSnapshot: vi.fn(async () => structuredClone(snapshot)), readSettings: vi.fn(async () => structuredClone(settings)),
+        saveFailure: vi.fn(async (failure: Record<string, unknown>, value: ResumeSnapshot | null) => {
+            captured.push({failure: structuredClone(failure), snapshot: structuredClone(value)});
+        }), activateContinue: vi.fn(async () => {}), assertActive: vi.fn(), persist: vi.fn()};
+    return {ports, captured};
+};
+
+describe('真实文档工具有界超时继续（离线守卫，不调用 MT）', () => {
+    it('默认零次，整数 0..3 合法；缺值、重复、隐式转换和越界在启动前拒绝', () => {
+        expect(parseTranslationResumesArg(['--service', 'freeTranslation'])).toBe(0);
+        for (const value of ['0', '1', '2', '3']) expect(parseTranslationResumesArg(['--translation-resumes', value])).toBe(Number(value));
+        for (const args of [['--translation-resumes'], ['--translation-resumes', '--service'], ['--translation-resumes', '4'],
+            ['--translation-resumes', '-1'], ['--translation-resumes', '1.0'], ['--translation-resumes', '03'],
+            ['--translation-resumes', 'Infinity'], ['--translation-resumes=1'], ['--translation-resumes', '1', '--translation-resumes', '2']]) {
+            expect(() => parseTranslationResumesArg(args)).toThrow();
+        }
+        expect(() => createTranslationResumeGuard({limit: 4, started: 0, timeout: 1000, settings: null})).toThrow('limit');
+    });
+
+    it('仅已观察到的 terminal timeout 可恢复；暂停、取消、鉴权、配置及回显原样 fail-fast', async () => {
+        expect(isResumableTranslationTimeout(timeoutStatus())).toBe(true);
+        expect(isResumableTranslationTimeout({...timeoutStatus(), error: '翻译请求超时'})).toBe(true);
+        const excluded = [{status: '已暂停', error: '请求超时'}, {status: '正在翻译', error: '请求超时'},
+            {status: '译文与原文相同，可换目标语言', error: '请求超时'}, {status: '翻译中断', error: '请求取消'},
+            ...['401', '403', 'AUTH', 'bad config', '鉴权', '配置错误', '原文回显'].map(reason => ({status: '翻译中断', error: `${reason}：请求超时`})),
+            {status: '翻译中断', error: '服务拒绝请求'}, {status: '翻译中断', error: '请求超时，将重试'}];
+        for (const value of excluded) {
+            const current = {...value, progress: 25}, {ports} = resumePort();
+            expect(isResumableTranslationTimeout(current)).toBe(false);
+            const guard = createTranslationResumeGuard({limit: 3, started: Date.now(), timeout: 1000, settings: resumeSettings()});
+            expect(await guard.tryResume(current, ports)).toBe(false);
+            expect(ports.saveFailure).not.toHaveBeenCalled(); expect(ports.activateContinue).not.toHaveBeenCalled();
+        }
+        const {ports} = resumePort(), disabled = createTranslationResumeGuard({limit: 0, started: Date.now(), timeout: 1000, settings: null});
+        expect(await disabled.tryResume(timeoutStatus(), ports)).toBe(false); expect(ports.readSnapshot).not.toHaveBeenCalled();
+    });
+
+    it('公开恢复配置只保留文档、语言、免费池及合批设置，不带任何凭据', async () => {
+        const port = publicConfigPort([aiLibrary()], true);
+        Object.assign(port.config, {from: 'en', to: 'zh-Hans', service: 'freeTranslation', documentService: 'freeTranslation',
+            freeTranslationOrder: ['microsoft'], freeTranslationMode: 'hedged', freeTranslationTimeoutMs: 20000, apiKey: 'private-api-key'});
+        vi.stubGlobal('document', {querySelector: (selector: string) => selector === '.document-batch-translation input'
+            ? {checked: true} : {textContent: ' public.pdf '}});
+        const state = await readPublicResumeSettings();
+        expect(state).toEqual({name: 'public.pdf', from: 'en', to: 'zh-Hans', service: 'freeTranslation', documentService: 'freeTranslation',
+            freeTranslationOrder: ['microsoft'], freeTranslationMode: 'hedged', freeTranslationTimeoutMs: 20000, documentBatchTranslation: true});
+        expect(JSON.stringify(state)).not.toContain('private');
+        port.sendMessage.mockResolvedValueOnce({success: false}); await expect(readPublicResumeSettings()).rejects.toThrow('read failed');
+    });
+
+    it('每次先保存原错误及完成目标，再继续同一文档；恢复上限耗尽仍保存失败且不能变成通过', async () => {
+        const settings = resumeSettings(), {ports, captured} = resumePort(), guard = createTranslationResumeGuard({limit: 3, started: Date.now(), timeout: 10000, settings});
+        ports.activateContinue.mockImplementation(async () => {expect(ports.saveFailure).toHaveBeenCalledTimes(guard.recoveries.length + 1);});
+        for (let completed = 1; completed <= 3; completed++) {
+            ports.readSnapshot.mockResolvedValueOnce(resumeSnapshot(completed));
+            expect(await guard.tryResume(timeoutStatus(completed), ports)).toBe(true);
+        }
+        ports.readSnapshot.mockResolvedValueOnce(resumeSnapshot(3));
+        expect(await guard.tryResume(timeoutStatus(3), ports)).toBe(false);
+        expect(ports.activateContinue).toHaveBeenCalledTimes(3); expect(captured).toHaveLength(4);
+        expect(captured.map(value => value.failure.completed)).toEqual([1, 2, 3, 3]);
+        expect(captured.every(value => value.failure.resumed === false && value.failure.error === timeoutStatus().error)).toBe(true);
+        expect(guard.failures[0]).toMatchObject({resumed: true, stoppedBatchFirstSegment: 283,
+            stopNumberMeaning: 'Failed batch first segment; not evidence of the root-cause slot'});
+        expect(guard.failures[3]).toMatchObject({resumed: false, resumeRefused: 'Resume limit or original deadline exhausted'});
+        expect(guard.recoveries.map(value => value.completedBefore)).toEqual([1, 2, 3]);
+    });
+
+    it('原始总截止包含快照/截图/点击时间，挂起的后续快照只能等待剩余时间，不能重置预算', async () => {
+        vi.setSystemTime(1000);
+        const settings = resumeSettings(), {ports} = resumePort(), guard = createTranslationResumeGuard({limit: 3, started: Date.now(), timeout: 1000, settings});
+        const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+        ports.readSnapshot.mockImplementationOnce(async () => {await delay(250); return resumeSnapshot();});
+        ports.saveFailure.mockImplementationOnce(async () => {await delay(250);});
+        ports.activateContinue.mockImplementationOnce(async () => {await delay(250);});
+        const first = guard.tryResume(timeoutStatus(), ports);
+        await vi.advanceTimersByTimeAsync(750); expect(await first).toBe(true);
+        expect(guard.deadline).toBe(2000); expect(guard.recoveries[0]).toMatchObject({elapsedMs: 750, originalDeadline: 2000});
+        ports.readSnapshot.mockImplementationOnce(() => new Promise(() => {}));
+        const second = expect(guard.tryResume(timeoutStatus(), ports)).rejects.toThrow('original translation deadline');
+        await vi.advanceTimersByTimeAsync(250); await second;
+        expect(Date.now()).toBe(2000); expect(ports.activateContinue).toHaveBeenCalledOnce();
+        expect(guard.failures).toHaveLength(2); expect(guard.failures[1]).toMatchObject({elapsedMs: 750, remainingMs: 250, resumed: false});
+    });
+
+    it('等到已保存完成数追上实际 UI 才捕获；五秒内仍滞后则保存失败且拒绝继续', async () => {
+        const settings = resumeSettings(), {ports, captured} = resumePort(), guard = createTranslationResumeGuard({limit: 1, started: Date.now(), timeout: 10000, settings});
+        ports.readSnapshot.mockResolvedValueOnce(resumeSnapshot(1)).mockResolvedValueOnce(resumeSnapshot(2));
+        const completion = guard.tryResume(timeoutStatus(2), ports);
+        await vi.advanceTimersByTimeAsync(100); expect(await completion).toBe(true);
+        expect(captured[0]?.failure.completed).toBe(2); expect(ports.readSnapshot).toHaveBeenCalledTimes(2);
+        const stale = resumePort(), other = createTranslationResumeGuard({limit: 1, started: Date.now(), timeout: 10000, settings});
+        const rejected = expect(other.tryResume(timeoutStatus(2), stale.ports)).rejects.toThrow('visible completed count');
+        await vi.advanceTimersByTimeAsync(5000); await rejected;
+        expect(stale.captured[0]?.failure.completed).toBe(1); expect(stale.ports.activateContinue).not.toHaveBeenCalled();
+    });
+
+    it('文档、词库/条数、语言、合批或文件 SHA 发生变化会保留原失败证据并拒绝继续', async () => {
+        const initial = resumeSettings();
+        for (const next of [{...initial, from: 'auto'}, {...initial, documentBatchTranslation: false}, {...initial, inputSha256: 'changed'},
+            {...initial, glossary: {...initial.glossary, glossaryEnabled: false}}, {...initial, glossary: {...initial.glossary,
+                libraries: initial.glossary.libraries.map(library => ({...library, termCount: 66}))}}]) {
+            const {ports, captured} = resumePort(resumeSnapshot(), next), guard = createTranslationResumeGuard({limit: 1, started: Date.now(), timeout: 10000, settings: initial});
+            await expect(guard.tryResume(timeoutStatus(), ports)).rejects.toThrow('settings/input/library changed');
+            expect(captured).toHaveLength(1); expect(ports.activateContinue).not.toHaveBeenCalled();
+        }
+        const wrong = resumePort({...resumeSnapshot(), name: 'other.pdf'}), guard = createTranslationResumeGuard({limit: 1, started: Date.now(), timeout: 10000, settings: initial});
+        await expect(guard.tryResume(timeoutStatus(), wrong.ports)).rejects.toThrow('different input');
+        expect(wrong.captured).toHaveLength(1); expect(wrong.ports.activateContinue).not.toHaveBeenCalled();
+    });
+
+    it('最终及下一次恢复逐位置保留已完成原始字符串，不能借归一化、重复 source 或改 ID 覆盖目标', async () => {
+        const settings = resumeSettings(), {ports} = resumePort(), guard = createTranslationResumeGuard({limit: 2, started: Date.now(), timeout: 10000, settings});
+        expect(await guard.tryResume(timeoutStatus(), ports)).toBe(true);
+        expect(await guard.verifyFinal(resumeSnapshot(4), ports.readSettings)).toMatchObject({completedTargetsPreserved: true, recoveredAfterFailures: true, resumeCount: 1, initialCompletedCount: 1});
+        const changed = resumeSnapshot(4); changed.segments[0]!.translation = '已完成 0 ';
+        await expect(guard.verifyFinal(changed, ports.readSettings)).rejects.toThrow('changed completed translation 0');
+        ports.readSnapshot.mockResolvedValueOnce(changed);
+        await expect(guard.tryResume(timeoutStatus(3), ports)).rejects.toThrow('changed completed translation 0');
+        expect(ports.activateContinue).toHaveBeenCalledOnce();
+        const previous = resumeSnapshot(2); previous.segments[1]!.source = previous.segments[0]!.source;
+        const swapped = structuredClone(previous); swapped.segments.reverse();
+        expect(() => assertPreservedTranslations([previous], swapped)).toThrow('index/id');
+        const newSource = structuredClone(previous); newSource.segments[0]!.source += ' ';
+        expect(() => assertPreservedTranslations([previous], newSource)).toThrow('source text');
+        expect(() => assertPreservedTranslations([previous], {...previous, pages: [{pageNumber: 2}]})).toThrow('pages');
+    });
+
+    it('实际 continue 按钮必须唯一/可见/启用，当前仍为超时，焦点检查拒绝后绝不点击', async () => {
+        const button = {count: vi.fn(async () => 1), isVisible: vi.fn(async () => true), isEnabled: vi.fn(async () => true), click: vi.fn(async () => {})};
+        const page = {locator: vi.fn((selector: string) => {
+            expect(selector).toBe('.taskbar-actions'); return {getByRole: (role: string, options: {name: string; exact: boolean}) => {
+                expect(role).toBe('button'); expect(options).toEqual({name: '继续翻译', exact: true}); return button;
+            }};
+        })}, checkFocus = vi.fn(async (_phase: string) => {});
+        const options = {page, checkFocus, number: 1, deadline: Date.now() + 1000, readStatus: async () => timeoutStatus()};
+        await activateProductionTranslationContinue(options);
+        expect(checkFocus).toHaveBeenCalledWith('translation-continue-1'); expect(button.click).toHaveBeenCalledWith({timeout: 1000});
+        button.click.mockClear(); button.isEnabled.mockResolvedValueOnce(false);
+        await expect(activateProductionTranslationContinue(options)).rejects.toThrow('visible and enabled'); expect(button.click).not.toHaveBeenCalled();
+        button.count.mockResolvedValueOnce(0);
+        await expect(activateProductionTranslationContinue(options)).rejects.toThrow('unique');
+        await expect(activateProductionTranslationContinue({...options, readStatus: async () => ({...timeoutStatus(), status: '已暂停'})})).rejects.toThrow('terminal timeout');
+        await expect(activateProductionTranslationContinue({...options, checkFocus: async () => {throw new Error('Owned Edge activation');}})).rejects.toThrow('Owned Edge activation');
+        expect(button.click).not.toHaveBeenCalled();
+    });
+
+    it('恢复端口抛错仍保留原产品失败并由原 finally 关闭浏览器和原生监控，严格失败不变', async () => {
+        const {ports, captured} = resumePort(), guard = createTranslationResumeGuard({limit: 1, started: Date.now(), timeout: 10000, settings: resumeSettings()});
+        ports.activateContinue.mockRejectedValueOnce(new Error('Owned Edge activation'));
+        const close = vi.fn(async () => {}), stop = vi.fn(async () => {}), directory = profile();
+        const report: CleanupReport = {ok: false, focusFailure: 'Owned Edge activation', cleanupErrors: []};
+        try {await expect(guard.tryResume(timeoutStatus(), ports)).rejects.toThrow('Owned Edge activation');}
+        finally {await closeLiveSession({launched: {close}, focusMonitor: {stop}, profileDir: directory, launchAttempted: true, report});}
+        expect(captured[0]?.failure.error).toBe(timeoutStatus().error); expect(guard.recoveries).toEqual([]);
+        expect(close).toHaveBeenCalledOnce(); expect(stop).toHaveBeenCalledOnce(); expect(report.ok).toBe(false); expect(report.focusFailure).toBe('Owned Edge activation');
     });
 });
