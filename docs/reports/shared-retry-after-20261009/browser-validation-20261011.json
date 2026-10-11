@@ -1,0 +1,2167 @@
+{
+  "schemaVersion": 1,
+  "status": "passed_with_explicit_scope_limits",
+  "sourceCommit": "3618398ba86436938747a32f4072857a9dae4db2",
+  "sourceTree": "d13bc56a107cbd0c96f764b7d0f020528778ed5b",
+  "testedDocumentationCheckout": "0904b33c90417f5098f26fcf1b1be2f04eee5970",
+  "productionArtifactBindingReceiptSha256": "06aac608a1e2c6ee19125cf6089d50b0671790b1f4852815734943c8ba504b4a",
+  "environment": {
+    "execution": "local workstation only",
+    "neoRelease": "browserclaw/v0.51.0",
+    "browser": "Chrome/155.0.8309.26",
+    "binarySha256": "0994937730e362e40653610fd40e38d62d4160152b590f90e99971005c2e0881",
+    "display": "owned private authenticated Xvfb; visible document; not the daily GNOME session",
+    "resourceGuard": {
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "osCpuHardCap": false
+    },
+    "profile": "fresh owned temporary HOME/XDG/profile per run; memory-backed GM; no daily profile",
+    "control": "short-lived owned loopback CDP only, removed at cleanup",
+    "network": "localhost fixture allowlist; no external provider/model/search requests"
+  },
+  "artifacts": {
+    "standard": {
+      "bytes": 2004276,
+      "sha256": "4c65c5d613bebd31f01bc8b922b804ef8b061bc9d5b1440f7790fa22cd23c7a3",
+      "budgetBytes": 2010000,
+      "expectedGzipFixtureCount": 8,
+      "expectedTldtsTableFixtureCount": 0
+    },
+    "standalone": {
+      "bytes": 3589855,
+      "sha256": "a98976e459defb4c770911b327297f437e9d2b19096317968a13cc9fdc5dbaf9",
+      "budgetBytes": 3600000,
+      "expectedGzipFixtureCount": 9,
+      "expectedTldtsTableFixtureCount": 1
+    }
+  },
+  "coverage": {
+    "modeCount": 2,
+    "initialFunctionalRuns": 2,
+    "uninstrumentedColdRuns": 6,
+    "instrumentedNaturalTableRuns": 3,
+    "repeatedRunsAreNotAdditionalDistinctCases": true,
+    "functionalDocumentForcedFallback": {
+      "DecompressionStream": "undefined",
+      "globalPako": "undefined"
+    },
+    "fixedCjsVectorsPerMode": 6,
+    "gzipAssetsPerMode": {
+      "standard": 8,
+      "standalone": 9
+    },
+    "typedViewsPerAsset": [
+      0,
+      3,
+      17
+    ],
+    "typedOffsetCasesPerMode": {
+      "standard": 24,
+      "standalone": 27
+    },
+    "invalidContractsPerMode": 5,
+    "settings": "open, navigate, close, reopen, preserved host hash"
+  },
+  "runs": [
+    {
+      "run": "browser-iife-standard-20261011T031958Z",
+      "category": "initial-standard",
+      "mode": "standard",
+      "passed": true,
+      "artifactSha256": "4c65c5d613bebd31f01bc8b922b804ef8b061bc9d5b1440f7790fa22cd23c7a3",
+      "executedScriptSha256BeforeAndAfterMatched": true,
+      "originalFunctionsUnchanged": true,
+      "wholeIifeInitialized": true,
+      "gzipAssets": 8,
+      "typedOffsetCases": 24,
+      "invalidContractsMatched": 5,
+      "cjsFixedCasesMatched": 6,
+      "settingsOpenNavigateCloseReopenPassed": true,
+      "externalTargetAttempts": 0,
+      "externalModelApiCalls": 0,
+      "permissionChanges": 0,
+      "newExtensions": 0,
+      "cleanup": {
+        "remainingOwnedPids": 0,
+        "remainingOwnedListeners": 0,
+        "fixtureServerClosed": true,
+        "xSocketExists": false,
+        "noDailyBrowserClosed": true,
+        "profileRetainedForLocalEvidence": true
+      },
+      "localUnpublishedReceiptSha256": {
+        "RESULT.json": "c57dd397a7cfdc25c24a8e410a5090066611c126043d74efd05afa7f7859a44f",
+        "cleanup.json": "3560e1e5bd7f818dd1eb08ab9da9411183617251e4fc3bdd1b53a1abe48a098e",
+        "CJS-RESULT.json": "ac6441a8be77f254e50502ae63c5d9a1410d79a6b3bc24bc11c57345599b9c2c",
+        "GZIP-RESULT.json": "f5b889f982916174e96a192e2514cc28326d2b2959a9dd016b40b3f65ed2fe70",
+        "BASIC-SETTINGS-RESULT.json": "2161204cad21c4278eba0fcda13dea3ee8182db4fdf3e888b92c3f6cd388671e",
+        "IIFE-INITIALIZATION.json": "56949ade093a827b726a49a050584e20b255b05018852a144909e03ac56e3aa3"
+      },
+      "configSha256": "64434163c35676c47de92e4946caedc95bb9f0a7db28aba87ac58ed02725f37c",
+      "fixtureSha256": "7712de1e0bbd0b41c9b7202c0c788761558d39f486743a29357fc280ff130b96",
+      "preparedManifestSha256": "89b82736530b6f6d7fa41d47b4222b9b96f6ddc9997abb7d89d52365bb3c47f6"
+    },
+    {
+      "run": "browser-iife-standalone-20261011T032026Z",
+      "category": "initial-standalone",
+      "mode": "standalone",
+      "passed": true,
+      "artifactSha256": "a98976e459defb4c770911b327297f437e9d2b19096317968a13cc9fdc5dbaf9",
+      "executedScriptSha256BeforeAndAfterMatched": true,
+      "originalFunctionsUnchanged": true,
+      "wholeIifeInitialized": true,
+      "gzipAssets": 9,
+      "typedOffsetCases": 27,
+      "invalidContractsMatched": 5,
+      "cjsFixedCasesMatched": 6,
+      "settingsOpenNavigateCloseReopenPassed": true,
+      "externalTargetAttempts": 0,
+      "externalModelApiCalls": 0,
+      "permissionChanges": 0,
+      "newExtensions": 0,
+      "cleanup": {
+        "remainingOwnedPids": 0,
+        "remainingOwnedListeners": 0,
+        "fixtureServerClosed": true,
+        "xSocketExists": false,
+        "noDailyBrowserClosed": true,
+        "profileRetainedForLocalEvidence": true
+      },
+      "localUnpublishedReceiptSha256": {
+        "RESULT.json": "8930cbc56b9d3b30d545e71973daa8a5ae4b8b0fec77b052eb04f9c45cfe425f",
+        "cleanup.json": "bb8f4ff33fa1716fe283a554f6050e638f6b9e782f8aee327370c5c3217dec7b",
+        "CJS-RESULT.json": "d7c5114a82ac4452c0ae1473ce9836ba8e28acb27b99ee8a1bb4fc31cea988bb",
+        "GZIP-RESULT.json": "82435c856cf764cf0928011a82e30522d5024b0209f50a51de6c4ec72462f234",
+        "BASIC-SETTINGS-RESULT.json": "9e3ffa0b92c23affae97aeba81c97dbba46c27f3617b0ed3d14e2a2327d05dfd",
+        "IIFE-INITIALIZATION.json": "2aa79c9fe86981e3ecd3158e1383d83b9a166be6aaa553ed7c8a8229930898dc"
+      },
+      "configSha256": "64434163c35676c47de92e4946caedc95bb9f0a7db28aba87ac58ed02725f37c",
+      "fixtureSha256": "1df17e07d58744a27cba42bd975954d9a01511a12e93f0196bd00904a89d88f7",
+      "preparedManifestSha256": "89b82736530b6f6d7fa41d47b4222b9b96f6ddc9997abb7d89d52365bb3c47f6"
+    },
+    {
+      "run": "browser-iife-standard-20261011T032941Z",
+      "category": "cold-standard",
+      "mode": "standard",
+      "passed": true,
+      "artifactSha256": "4c65c5d613bebd31f01bc8b922b804ef8b061bc9d5b1440f7790fa22cd23c7a3",
+      "executedScriptSha256BeforeAndAfterMatched": true,
+      "originalFunctionsUnchanged": true,
+      "wholeIifeInitialized": true,
+      "gzipAssets": 8,
+      "typedOffsetCases": 24,
+      "invalidContractsMatched": 5,
+      "cjsFixedCasesMatched": 6,
+      "settingsOpenNavigateCloseReopenPassed": true,
+      "externalTargetAttempts": 0,
+      "externalModelApiCalls": 0,
+      "permissionChanges": 0,
+      "newExtensions": 0,
+      "cleanup": {
+        "remainingOwnedPids": 0,
+        "remainingOwnedListeners": 0,
+        "fixtureServerClosed": true,
+        "xSocketExists": false,
+        "noDailyBrowserClosed": true,
+        "profileRetainedForLocalEvidence": true
+      },
+      "localUnpublishedReceiptSha256": {
+        "RESULT.json": "311a6d1d3508c69ccbd4d5405b59fb0276e1d9e93613439afe23896340586b8e",
+        "cleanup.json": "1939890ca44cffcd8c5b35524dc60f1db58e740f2f9c5415ebbad91ad70afb13",
+        "CJS-RESULT.json": "ac6441a8be77f254e50502ae63c5d9a1410d79a6b3bc24bc11c57345599b9c2c",
+        "GZIP-RESULT.json": "f5b889f982916174e96a192e2514cc28326d2b2959a9dd016b40b3f65ed2fe70",
+        "BASIC-SETTINGS-RESULT.json": "2161204cad21c4278eba0fcda13dea3ee8182db4fdf3e888b92c3f6cd388671e",
+        "IIFE-INITIALIZATION.json": "56949ade093a827b726a49a050584e20b255b05018852a144909e03ac56e3aa3",
+        "COLD-START-SAMPLE.json": "706938bfc6ae14c5f7dd90da0694636a4c94b9ac3d5188f51b9616e92fec3fa0",
+        "TLDTS-REPLAY-TIMING.json": "57793874c269823f98e3d029d75e80283ef79b78d96210050af50c88794078a1"
+      },
+      "configSha256": "f4b355ff548ddc6b6ffbd363e3ca4ab23e29cbd792edf9382e50ff6d70b763a6",
+      "fixtureSha256": "7712de1e0bbd0b41c9b7202c0c788761558d39f486743a29357fc280ff130b96",
+      "preparedManifestSha256": "aea51849ddcb15aa9d53857189c748609e916a2345f77a92b238045b073cc3cb",
+      "nativeDecompressionStreamDuringCold": "function",
+      "coldMetricsMs": {
+        "dependenciesToSettingsReady": 291.5,
+        "iifeAppendToScriptLoad": 61.200000047683716,
+        "iifeAppendToFourMenus": 76.30000001192093,
+        "settingsOpenToReady": 113.30000001192093,
+        "iifeAppendToSettingsReady": 190.20000004768372,
+        "iifeAppendToCssReady": 195,
+        "iifeAppendToSettingsAndCssReady": 195
+      }
+    },
+    {
+      "run": "browser-iife-standard-20261011T032945Z",
+      "category": "cold-standard",
+      "mode": "standard",
+      "passed": true,
+      "artifactSha256": "4c65c5d613bebd31f01bc8b922b804ef8b061bc9d5b1440f7790fa22cd23c7a3",
+      "executedScriptSha256BeforeAndAfterMatched": true,
+      "originalFunctionsUnchanged": true,
+      "wholeIifeInitialized": true,
+      "gzipAssets": 8,
+      "typedOffsetCases": 24,
+      "invalidContractsMatched": 5,
+      "cjsFixedCasesMatched": 6,
+      "settingsOpenNavigateCloseReopenPassed": true,
+      "externalTargetAttempts": 0,
+      "externalModelApiCalls": 0,
+      "permissionChanges": 0,
+      "newExtensions": 0,
+      "cleanup": {
+        "remainingOwnedPids": 0,
+        "remainingOwnedListeners": 0,
+        "fixtureServerClosed": true,
+        "xSocketExists": false,
+        "noDailyBrowserClosed": true,
+        "profileRetainedForLocalEvidence": true
+      },
+      "localUnpublishedReceiptSha256": {
+        "RESULT.json": "f6add35f138c5565056ec7d599f638f3570dc49e59f9e7865c14c0c78b3e28df",
+        "cleanup.json": "256e33e51f50f5142806cd4c951feedafe9fc1168dbd873902c1aa4c4f9445af",
+        "CJS-RESULT.json": "ac6441a8be77f254e50502ae63c5d9a1410d79a6b3bc24bc11c57345599b9c2c",
+        "GZIP-RESULT.json": "f5b889f982916174e96a192e2514cc28326d2b2959a9dd016b40b3f65ed2fe70",
+        "BASIC-SETTINGS-RESULT.json": "2161204cad21c4278eba0fcda13dea3ee8182db4fdf3e888b92c3f6cd388671e",
+        "IIFE-INITIALIZATION.json": "56949ade093a827b726a49a050584e20b255b05018852a144909e03ac56e3aa3",
+        "COLD-START-SAMPLE.json": "2c17b2dd3f98f45a57b2925947f489340ac4a808e7ad638b206bf093d8c15f81",
+        "TLDTS-REPLAY-TIMING.json": "57793874c269823f98e3d029d75e80283ef79b78d96210050af50c88794078a1"
+      },
+      "configSha256": "f4b355ff548ddc6b6ffbd363e3ca4ab23e29cbd792edf9382e50ff6d70b763a6",
+      "fixtureSha256": "7712de1e0bbd0b41c9b7202c0c788761558d39f486743a29357fc280ff130b96",
+      "preparedManifestSha256": "aea51849ddcb15aa9d53857189c748609e916a2345f77a92b238045b073cc3cb",
+      "nativeDecompressionStreamDuringCold": "function",
+      "coldMetricsMs": {
+        "dependenciesToSettingsReady": 286.4000000357628,
+        "iifeAppendToScriptLoad": 58.5,
+        "iifeAppendToFourMenus": 72.80000001192093,
+        "settingsOpenToReady": 114.40000003576279,
+        "iifeAppendToSettingsReady": 187.80000001192093,
+        "iifeAppendToCssReady": 192.19999998807907,
+        "iifeAppendToSettingsAndCssReady": 192.19999998807907
+      }
+    },
+    {
+      "run": "browser-iife-standard-20261011T032949Z",
+      "category": "cold-standard",
+      "mode": "standard",
+      "passed": true,
+      "artifactSha256": "4c65c5d613bebd31f01bc8b922b804ef8b061bc9d5b1440f7790fa22cd23c7a3",
+      "executedScriptSha256BeforeAndAfterMatched": true,
+      "originalFunctionsUnchanged": true,
+      "wholeIifeInitialized": true,
+      "gzipAssets": 8,
+      "typedOffsetCases": 24,
+      "invalidContractsMatched": 5,
+      "cjsFixedCasesMatched": 6,
+      "settingsOpenNavigateCloseReopenPassed": true,
+      "externalTargetAttempts": 0,
+      "externalModelApiCalls": 0,
+      "permissionChanges": 0,
+      "newExtensions": 0,
+      "cleanup": {
+        "remainingOwnedPids": 0,
+        "remainingOwnedListeners": 0,
+        "fixtureServerClosed": true,
+        "xSocketExists": false,
+        "noDailyBrowserClosed": true,
+        "profileRetainedForLocalEvidence": true
+      },
+      "localUnpublishedReceiptSha256": {
+        "RESULT.json": "7fa3b4a747e926f407209c1ed5ed76c5736160bf1c6861e77e959153ae478699",
+        "cleanup.json": "2b226e5e6ca6eb9e9f886e1db19ae7a3d125817a684990b733e4a24f37cec281",
+        "CJS-RESULT.json": "ac6441a8be77f254e50502ae63c5d9a1410d79a6b3bc24bc11c57345599b9c2c",
+        "GZIP-RESULT.json": "f5b889f982916174e96a192e2514cc28326d2b2959a9dd016b40b3f65ed2fe70",
+        "BASIC-SETTINGS-RESULT.json": "2161204cad21c4278eba0fcda13dea3ee8182db4fdf3e888b92c3f6cd388671e",
+        "IIFE-INITIALIZATION.json": "56949ade093a827b726a49a050584e20b255b05018852a144909e03ac56e3aa3",
+        "COLD-START-SAMPLE.json": "30c1ecd222ea55f1e215da8d297f8cbc07ec849f1e61bd79df3cf89127f43a9b",
+        "TLDTS-REPLAY-TIMING.json": "57793874c269823f98e3d029d75e80283ef79b78d96210050af50c88794078a1"
+      },
+      "configSha256": "f4b355ff548ddc6b6ffbd363e3ca4ab23e29cbd792edf9382e50ff6d70b763a6",
+      "fixtureSha256": "7712de1e0bbd0b41c9b7202c0c788761558d39f486743a29357fc280ff130b96",
+      "preparedManifestSha256": "aea51849ddcb15aa9d53857189c748609e916a2345f77a92b238045b073cc3cb",
+      "nativeDecompressionStreamDuringCold": "function",
+      "coldMetricsMs": {
+        "dependenciesToSettingsReady": 281.69999998807907,
+        "iifeAppendToScriptLoad": 60.5,
+        "iifeAppendToFourMenus": 75,
+        "settingsOpenToReady": 110.19999998807907,
+        "iifeAppendToSettingsReady": 185.80000001192093,
+        "iifeAppendToCssReady": 190,
+        "iifeAppendToSettingsAndCssReady": 190
+      }
+    },
+    {
+      "run": "browser-iife-standalone-20261011T033444Z",
+      "category": "cold-standalone",
+      "mode": "standalone",
+      "passed": true,
+      "artifactSha256": "a98976e459defb4c770911b327297f437e9d2b19096317968a13cc9fdc5dbaf9",
+      "executedScriptSha256BeforeAndAfterMatched": true,
+      "originalFunctionsUnchanged": true,
+      "wholeIifeInitialized": true,
+      "gzipAssets": 9,
+      "typedOffsetCases": 27,
+      "invalidContractsMatched": 5,
+      "cjsFixedCasesMatched": 6,
+      "settingsOpenNavigateCloseReopenPassed": true,
+      "externalTargetAttempts": 0,
+      "externalModelApiCalls": 0,
+      "permissionChanges": 0,
+      "newExtensions": 0,
+      "cleanup": {
+        "remainingOwnedPids": 0,
+        "remainingOwnedListeners": 0,
+        "fixtureServerClosed": true,
+        "xSocketExists": false,
+        "noDailyBrowserClosed": true,
+        "profileRetainedForLocalEvidence": true
+      },
+      "localUnpublishedReceiptSha256": {
+        "RESULT.json": "41bbb6457505c0f413539c42b054c94a53c599a35da01599aa8cbe43c48366a2",
+        "cleanup.json": "b30bc93bb91fddbed4d19d1a7c9a15cec01f1eda9260b3c4048a14ea7809623a",
+        "CJS-RESULT.json": "d7c5114a82ac4452c0ae1473ce9836ba8e28acb27b99ee8a1bb4fc31cea988bb",
+        "GZIP-RESULT.json": "e9f83996a3141b78e25d7bebab40cc554e7a7e8f2bc74e9afd1797ac42b99866",
+        "BASIC-SETTINGS-RESULT.json": "9e3ffa0b92c23affae97aeba81c97dbba46c27f3617b0ed3d14e2a2327d05dfd",
+        "IIFE-INITIALIZATION.json": "2aa79c9fe86981e3ecd3158e1383d83b9a166be6aaa553ed7c8a8229930898dc",
+        "COLD-START-SAMPLE.json": "6c9c420002a5cc55a3f2538a750cc37fda1bc976a3727ebc96c2b52891c1e014",
+        "TLDTS-REPLAY-TIMING.json": "827d8c4a64d5ba03aed164c334a985b1c45cbeb304ae72545e85b9ec24250432",
+        "TLDTS-ACTUAL-EXPORTS-RESULT.json": "468ed901f690790dfb23a7d178794cb7928b5fc23d861d14260c187fbad31c36",
+        "SETTINGS-CAPABILITIES-RESULT.json": "763b210ebdebcca425f5e4718f6b39061b84fcb6f27dc815ffefc63f494d0530"
+      },
+      "configSha256": "f4b355ff548ddc6b6ffbd363e3ca4ab23e29cbd792edf9382e50ff6d70b763a6",
+      "fixtureSha256": "1df17e07d58744a27cba42bd975954d9a01511a12e93f0196bd00904a89d88f7",
+      "preparedManifestSha256": "a90bf6ca045670ed2d852951fa5c884c4169c982b4e42f13d97a79d7a3342717",
+      "nativeDecompressionStreamDuringCold": "function",
+      "coldMetricsMs": {
+        "dependenciesToSettingsReady": 207.19999998807907,
+        "iifeAppendToScriptLoad": 164.19999998807907,
+        "iifeAppendToFourMenus": 180,
+        "settingsOpenToReady": 26.5,
+        "iifeAppendToSettingsReady": 207.19999998807907,
+        "iifeAppendToCssReady": 210.5999999642372,
+        "iifeAppendToSettingsAndCssReady": 210.5999999642372
+      },
+      "actualSevenExportsAnd22DomainVectorsPassed": true,
+      "unavailableUiAndRetainedSpeechControlsPassed": true
+    },
+    {
+      "run": "browser-iife-standalone-20261011T033449Z",
+      "category": "cold-standalone",
+      "mode": "standalone",
+      "passed": true,
+      "artifactSha256": "a98976e459defb4c770911b327297f437e9d2b19096317968a13cc9fdc5dbaf9",
+      "executedScriptSha256BeforeAndAfterMatched": true,
+      "originalFunctionsUnchanged": true,
+      "wholeIifeInitialized": true,
+      "gzipAssets": 9,
+      "typedOffsetCases": 27,
+      "invalidContractsMatched": 5,
+      "cjsFixedCasesMatched": 6,
+      "settingsOpenNavigateCloseReopenPassed": true,
+      "externalTargetAttempts": 0,
+      "externalModelApiCalls": 0,
+      "permissionChanges": 0,
+      "newExtensions": 0,
+      "cleanup": {
+        "remainingOwnedPids": 0,
+        "remainingOwnedListeners": 0,
+        "fixtureServerClosed": true,
+        "xSocketExists": false,
+        "noDailyBrowserClosed": true,
+        "profileRetainedForLocalEvidence": true
+      },
+      "localUnpublishedReceiptSha256": {
+        "RESULT.json": "f33f121d9afbeb123aa13c3df75863bbedaf2daa6bfacf79a871f208358dd235",
+        "cleanup.json": "4369ec40351fa1281a5d28555f75a646ee3c758d35ea7d66e1ab6273ffd5aa4f",
+        "CJS-RESULT.json": "d7c5114a82ac4452c0ae1473ce9836ba8e28acb27b99ee8a1bb4fc31cea988bb",
+        "GZIP-RESULT.json": "e9f83996a3141b78e25d7bebab40cc554e7a7e8f2bc74e9afd1797ac42b99866",
+        "BASIC-SETTINGS-RESULT.json": "9e3ffa0b92c23affae97aeba81c97dbba46c27f3617b0ed3d14e2a2327d05dfd",
+        "IIFE-INITIALIZATION.json": "2aa79c9fe86981e3ecd3158e1383d83b9a166be6aaa553ed7c8a8229930898dc",
+        "COLD-START-SAMPLE.json": "537f9febedc52546e3b07a9ade19a27466a553e2f7f2a3241a49cb19f2dfb633",
+        "TLDTS-REPLAY-TIMING.json": "d62c177c4d994e7bcd0940cd11882051be80fe8239e078cae5fa07afc39c1f3d",
+        "TLDTS-ACTUAL-EXPORTS-RESULT.json": "468ed901f690790dfb23a7d178794cb7928b5fc23d861d14260c187fbad31c36",
+        "SETTINGS-CAPABILITIES-RESULT.json": "763b210ebdebcca425f5e4718f6b39061b84fcb6f27dc815ffefc63f494d0530"
+      },
+      "configSha256": "f4b355ff548ddc6b6ffbd363e3ca4ab23e29cbd792edf9382e50ff6d70b763a6",
+      "fixtureSha256": "1df17e07d58744a27cba42bd975954d9a01511a12e93f0196bd00904a89d88f7",
+      "preparedManifestSha256": "a90bf6ca045670ed2d852951fa5c884c4169c982b4e42f13d97a79d7a3342717",
+      "nativeDecompressionStreamDuringCold": "function",
+      "coldMetricsMs": {
+        "dependenciesToSettingsReady": 218.10000002384186,
+        "iifeAppendToScriptLoad": 171.69999998807907,
+        "iifeAppendToFourMenus": 189.69999998807907,
+        "settingsOpenToReady": 27.69999998807907,
+        "iifeAppendToSettingsReady": 218.10000002384186,
+        "iifeAppendToCssReady": 222.30000001192093,
+        "iifeAppendToSettingsAndCssReady": 222.30000001192093
+      },
+      "actualSevenExportsAnd22DomainVectorsPassed": true,
+      "unavailableUiAndRetainedSpeechControlsPassed": true
+    },
+    {
+      "run": "browser-iife-standalone-20261011T033453Z",
+      "category": "cold-standalone",
+      "mode": "standalone",
+      "passed": true,
+      "artifactSha256": "a98976e459defb4c770911b327297f437e9d2b19096317968a13cc9fdc5dbaf9",
+      "executedScriptSha256BeforeAndAfterMatched": true,
+      "originalFunctionsUnchanged": true,
+      "wholeIifeInitialized": true,
+      "gzipAssets": 9,
+      "typedOffsetCases": 27,
+      "invalidContractsMatched": 5,
+      "cjsFixedCasesMatched": 6,
+      "settingsOpenNavigateCloseReopenPassed": true,
+      "externalTargetAttempts": 0,
+      "externalModelApiCalls": 0,
+      "permissionChanges": 0,
+      "newExtensions": 0,
+      "cleanup": {
+        "remainingOwnedPids": 0,
+        "remainingOwnedListeners": 0,
+        "fixtureServerClosed": true,
+        "xSocketExists": false,
+        "noDailyBrowserClosed": true,
+        "profileRetainedForLocalEvidence": true
+      },
+      "localUnpublishedReceiptSha256": {
+        "RESULT.json": "e8b7a91cd469cda84274e7ada999d71822b96c434573aa82066dc6559d061d31",
+        "cleanup.json": "7ce079939900e6a0c6295d8fe2c2aff56c24c08d24257c54c01cb1b1dc9c7e54",
+        "CJS-RESULT.json": "d7c5114a82ac4452c0ae1473ce9836ba8e28acb27b99ee8a1bb4fc31cea988bb",
+        "GZIP-RESULT.json": "e9f83996a3141b78e25d7bebab40cc554e7a7e8f2bc74e9afd1797ac42b99866",
+        "BASIC-SETTINGS-RESULT.json": "9e3ffa0b92c23affae97aeba81c97dbba46c27f3617b0ed3d14e2a2327d05dfd",
+        "IIFE-INITIALIZATION.json": "2aa79c9fe86981e3ecd3158e1383d83b9a166be6aaa553ed7c8a8229930898dc",
+        "COLD-START-SAMPLE.json": "d075f85e56cf652049f548ac87af10e4e14fba3d341ca40fc53171fe8da630c1",
+        "TLDTS-REPLAY-TIMING.json": "40d9e4a77726338d3c3b77a2904f5327508d508560bd815409acc8422cc5c1e1",
+        "TLDTS-ACTUAL-EXPORTS-RESULT.json": "468ed901f690790dfb23a7d178794cb7928b5fc23d861d14260c187fbad31c36",
+        "SETTINGS-CAPABILITIES-RESULT.json": "763b210ebdebcca425f5e4718f6b39061b84fcb6f27dc815ffefc63f494d0530"
+      },
+      "configSha256": "f4b355ff548ddc6b6ffbd363e3ca4ab23e29cbd792edf9382e50ff6d70b763a6",
+      "fixtureSha256": "1df17e07d58744a27cba42bd975954d9a01511a12e93f0196bd00904a89d88f7",
+      "preparedManifestSha256": "a90bf6ca045670ed2d852951fa5c884c4169c982b4e42f13d97a79d7a3342717",
+      "nativeDecompressionStreamDuringCold": "function",
+      "coldMetricsMs": {
+        "dependenciesToSettingsReady": 201.69999998807907,
+        "iifeAppendToScriptLoad": 158.19999998807907,
+        "iifeAppendToFourMenus": 174.80000001192093,
+        "settingsOpenToReady": 26.30000001192093,
+        "iifeAppendToSettingsReady": 201.69999998807907,
+        "iifeAppendToCssReady": 205.80000001192093,
+        "iifeAppendToSettingsAndCssReady": 205.80000001192093
+      },
+      "actualSevenExportsAnd22DomainVectorsPassed": true,
+      "unavailableUiAndRetainedSpeechControlsPassed": true
+    },
+    {
+      "run": "browser-iife-standalone-20261011T033848Z",
+      "category": "natural-table",
+      "mode": "standalone",
+      "passed": true,
+      "artifactSha256": "a98976e459defb4c770911b327297f437e9d2b19096317968a13cc9fdc5dbaf9",
+      "executedScriptSha256BeforeAndAfterMatched": true,
+      "originalFunctionsUnchanged": true,
+      "wholeIifeInitialized": true,
+      "gzipAssets": 9,
+      "typedOffsetCases": 27,
+      "invalidContractsMatched": 5,
+      "cjsFixedCasesMatched": 6,
+      "settingsOpenNavigateCloseReopenPassed": true,
+      "externalTargetAttempts": 0,
+      "externalModelApiCalls": 0,
+      "permissionChanges": 0,
+      "newExtensions": 0,
+      "cleanup": {
+        "remainingOwnedPids": 0,
+        "remainingOwnedListeners": 0,
+        "fixtureServerClosed": true,
+        "xSocketExists": false,
+        "noDailyBrowserClosed": true,
+        "profileRetainedForLocalEvidence": true
+      },
+      "localUnpublishedReceiptSha256": {
+        "RESULT.json": "6a3be2245ca9348e099bb106475cc53347c7fb9c1f1ac9739c03f226a30b4f46",
+        "cleanup.json": "eeeebb8d7719c1931e1d773676dba7b417525ff1063f31d3d74539cf257fa9ba",
+        "CJS-RESULT.json": "d7c5114a82ac4452c0ae1473ce9836ba8e28acb27b99ee8a1bb4fc31cea988bb",
+        "GZIP-RESULT.json": "e9f83996a3141b78e25d7bebab40cc554e7a7e8f2bc74e9afd1797ac42b99866",
+        "BASIC-SETTINGS-RESULT.json": "9e3ffa0b92c23affae97aeba81c97dbba46c27f3617b0ed3d14e2a2327d05dfd",
+        "IIFE-INITIALIZATION.json": "2aa79c9fe86981e3ecd3158e1383d83b9a166be6aaa553ed7c8a8229930898dc",
+        "COLD-START-SAMPLE.json": "9fc90787ad6239eaf539ec24ed6cf61a3791ed6ec8f16bbf99199d2a5af8fe94",
+        "TLDTS-REPLAY-TIMING.json": "6e836f9c80a36e3429a70a04849dc0a6b40d7b75f290123600c5efcaf780bda8",
+        "TLDTS-ACTUAL-EXPORTS-RESULT.json": "468ed901f690790dfb23a7d178794cb7928b5fc23d861d14260c187fbad31c36",
+        "SETTINGS-CAPABILITIES-RESULT.json": "763b210ebdebcca425f5e4718f6b39061b84fcb6f27dc815ffefc63f494d0530"
+      },
+      "configSha256": "f4b355ff548ddc6b6ffbd363e3ca4ab23e29cbd792edf9382e50ff6d70b763a6",
+      "fixtureSha256": "1df17e07d58744a27cba42bd975954d9a01511a12e93f0196bd00904a89d88f7",
+      "preparedManifestSha256": "a90bf6ca045670ed2d852951fa5c884c4169c982b4e42f13d97a79d7a3342717",
+      "nativeDecompressionStreamDuringCold": "function",
+      "coldMetricsMs": {
+        "dependenciesToSettingsReady": 211.10000002384186,
+        "iifeAppendToScriptLoad": 168,
+        "iifeAppendToFourMenus": 183.9000000357628,
+        "settingsOpenToReady": 26.400000035762787,
+        "iifeAppendToSettingsReady": 210.9000000357628,
+        "iifeAppendToCssReady": 214.4000000357628,
+        "iifeAppendToSettingsAndCssReady": 214.4000000357628
+      },
+      "actualSevenExportsAnd22DomainVectorsPassed": true,
+      "unavailableUiAndRetainedSpeechControlsPassed": true,
+      "observedNaturalTable": {
+        "scope": "Observed first natural table decode in exact cold IIFE; native API wrappers add unquantified overhead",
+        "complete": true,
+        "constructorRows": [
+          {
+            "index": 0,
+            "kind": "Uint8Array",
+            "startAtMs": 175.4000000357628,
+            "endAtMs": 175.4000000357628,
+            "durationMs": 0
+          },
+          {
+            "index": 1,
+            "kind": "Uint16Array",
+            "startAtMs": 175.4000000357628,
+            "endAtMs": 175.4000000357628,
+            "durationMs": 0
+          },
+          {
+            "index": 2,
+            "kind": "Uint8Array",
+            "startAtMs": 175.4000000357628,
+            "endAtMs": 175.4000000357628,
+            "durationMs": 0
+          },
+          {
+            "index": 3,
+            "kind": "Uint16Array",
+            "startAtMs": 175.4000000357628,
+            "endAtMs": 175.4000000357628,
+            "durationMs": 0
+          }
+        ],
+        "atobStartAtMs": 170.70000004768372,
+        "atobEndAtMs": 170.70000004768372,
+        "jsonStartAtMs": 175.20000004768372,
+        "jsonEndAtMs": 175.4000000357628,
+        "lastConstructorEndAtMs": 175.4000000357628,
+        "metricsMs": {
+          "atob": 0,
+          "bytesAndProductionInflate": 4.5,
+          "jsonParse": 0.19999998807907104,
+          "fourActualTypedConstructors": 0,
+          "atobToFourthConstructor": 4.699999988079071
+        },
+        "scalarAssignmentsNotTimed": true,
+        "zeroIsBelowClockResolutionNotFree": true
+      }
+    },
+    {
+      "run": "browser-iife-standalone-20261011T033853Z",
+      "category": "natural-table",
+      "mode": "standalone",
+      "passed": true,
+      "artifactSha256": "a98976e459defb4c770911b327297f437e9d2b19096317968a13cc9fdc5dbaf9",
+      "executedScriptSha256BeforeAndAfterMatched": true,
+      "originalFunctionsUnchanged": true,
+      "wholeIifeInitialized": true,
+      "gzipAssets": 9,
+      "typedOffsetCases": 27,
+      "invalidContractsMatched": 5,
+      "cjsFixedCasesMatched": 6,
+      "settingsOpenNavigateCloseReopenPassed": true,
+      "externalTargetAttempts": 0,
+      "externalModelApiCalls": 0,
+      "permissionChanges": 0,
+      "newExtensions": 0,
+      "cleanup": {
+        "remainingOwnedPids": 0,
+        "remainingOwnedListeners": 0,
+        "fixtureServerClosed": true,
+        "xSocketExists": false,
+        "noDailyBrowserClosed": true,
+        "profileRetainedForLocalEvidence": true
+      },
+      "localUnpublishedReceiptSha256": {
+        "RESULT.json": "d44629307b66a9ff5ddf6c96844ca73ab5d191aea3f00a156cd8b98ed975e4e7",
+        "cleanup.json": "db745558ac27dc2822db9a8d6f5468e90ca0b03cb46b3df7156e52bae18154a2",
+        "CJS-RESULT.json": "d7c5114a82ac4452c0ae1473ce9836ba8e28acb27b99ee8a1bb4fc31cea988bb",
+        "GZIP-RESULT.json": "e9f83996a3141b78e25d7bebab40cc554e7a7e8f2bc74e9afd1797ac42b99866",
+        "BASIC-SETTINGS-RESULT.json": "9e3ffa0b92c23affae97aeba81c97dbba46c27f3617b0ed3d14e2a2327d05dfd",
+        "IIFE-INITIALIZATION.json": "2aa79c9fe86981e3ecd3158e1383d83b9a166be6aaa553ed7c8a8229930898dc",
+        "COLD-START-SAMPLE.json": "aeefb7e64ec91656c041a2d7841dc5cf3c753873ff3ad176d91fc3189e769da3",
+        "TLDTS-REPLAY-TIMING.json": "72e07d90142911c2f2337d2ec74f767bd44f021c8bea18d70fb4b4d13bb23c56",
+        "TLDTS-ACTUAL-EXPORTS-RESULT.json": "468ed901f690790dfb23a7d178794cb7928b5fc23d861d14260c187fbad31c36",
+        "SETTINGS-CAPABILITIES-RESULT.json": "763b210ebdebcca425f5e4718f6b39061b84fcb6f27dc815ffefc63f494d0530"
+      },
+      "configSha256": "f4b355ff548ddc6b6ffbd363e3ca4ab23e29cbd792edf9382e50ff6d70b763a6",
+      "fixtureSha256": "1df17e07d58744a27cba42bd975954d9a01511a12e93f0196bd00904a89d88f7",
+      "preparedManifestSha256": "a90bf6ca045670ed2d852951fa5c884c4169c982b4e42f13d97a79d7a3342717",
+      "nativeDecompressionStreamDuringCold": "function",
+      "coldMetricsMs": {
+        "dependenciesToSettingsReady": 207.69999998807907,
+        "iifeAppendToScriptLoad": 164.9000000357628,
+        "iifeAppendToFourMenus": 181,
+        "settingsOpenToReady": 26,
+        "iifeAppendToSettingsReady": 207.69999998807907,
+        "iifeAppendToCssReady": 211.30000001192093,
+        "iifeAppendToSettingsAndCssReady": 211.30000001192093
+      },
+      "actualSevenExportsAnd22DomainVectorsPassed": true,
+      "unavailableUiAndRetainedSpeechControlsPassed": true,
+      "observedNaturalTable": {
+        "scope": "Observed first natural table decode in exact cold IIFE; native API wrappers add unquantified overhead",
+        "complete": true,
+        "constructorRows": [
+          {
+            "index": 0,
+            "kind": "Uint8Array",
+            "startAtMs": 172.5999999642372,
+            "endAtMs": 172.5999999642372,
+            "durationMs": 0
+          },
+          {
+            "index": 1,
+            "kind": "Uint16Array",
+            "startAtMs": 172.5999999642372,
+            "endAtMs": 172.5999999642372,
+            "durationMs": 0
+          },
+          {
+            "index": 2,
+            "kind": "Uint8Array",
+            "startAtMs": 172.5999999642372,
+            "endAtMs": 172.5999999642372,
+            "durationMs": 0
+          },
+          {
+            "index": 3,
+            "kind": "Uint16Array",
+            "startAtMs": 172.5999999642372,
+            "endAtMs": 172.5999999642372,
+            "durationMs": 0
+          }
+        ],
+        "atobStartAtMs": 168.19999998807907,
+        "atobEndAtMs": 168.19999998807907,
+        "jsonStartAtMs": 172.39999997615814,
+        "jsonEndAtMs": 172.5999999642372,
+        "lastConstructorEndAtMs": 172.5999999642372,
+        "metricsMs": {
+          "atob": 0,
+          "bytesAndProductionInflate": 4.199999988079071,
+          "jsonParse": 0.19999998807907104,
+          "fourActualTypedConstructors": 0,
+          "atobToFourthConstructor": 4.399999976158142
+        },
+        "scalarAssignmentsNotTimed": true,
+        "zeroIsBelowClockResolutionNotFree": true
+      }
+    },
+    {
+      "run": "browser-iife-standalone-20261011T033858Z",
+      "category": "natural-table",
+      "mode": "standalone",
+      "passed": true,
+      "artifactSha256": "a98976e459defb4c770911b327297f437e9d2b19096317968a13cc9fdc5dbaf9",
+      "executedScriptSha256BeforeAndAfterMatched": true,
+      "originalFunctionsUnchanged": true,
+      "wholeIifeInitialized": true,
+      "gzipAssets": 9,
+      "typedOffsetCases": 27,
+      "invalidContractsMatched": 5,
+      "cjsFixedCasesMatched": 6,
+      "settingsOpenNavigateCloseReopenPassed": true,
+      "externalTargetAttempts": 0,
+      "externalModelApiCalls": 0,
+      "permissionChanges": 0,
+      "newExtensions": 0,
+      "cleanup": {
+        "remainingOwnedPids": 0,
+        "remainingOwnedListeners": 0,
+        "fixtureServerClosed": true,
+        "xSocketExists": false,
+        "noDailyBrowserClosed": true,
+        "profileRetainedForLocalEvidence": true
+      },
+      "localUnpublishedReceiptSha256": {
+        "RESULT.json": "3d93a9a0ad539790f382195e61cbf25ad051a734f78a485e775d0df80ac7da93",
+        "cleanup.json": "600dfa39aac084592add45cdd3b85d1bf248088c74f97012a5b85ca8346432c7",
+        "CJS-RESULT.json": "d7c5114a82ac4452c0ae1473ce9836ba8e28acb27b99ee8a1bb4fc31cea988bb",
+        "GZIP-RESULT.json": "e9f83996a3141b78e25d7bebab40cc554e7a7e8f2bc74e9afd1797ac42b99866",
+        "BASIC-SETTINGS-RESULT.json": "9e3ffa0b92c23affae97aeba81c97dbba46c27f3617b0ed3d14e2a2327d05dfd",
+        "IIFE-INITIALIZATION.json": "2aa79c9fe86981e3ecd3158e1383d83b9a166be6aaa553ed7c8a8229930898dc",
+        "COLD-START-SAMPLE.json": "db6c9309d8e3473d9498aa8596cc6e168d61e6ddd89344fd7f5142aba73df35d",
+        "TLDTS-REPLAY-TIMING.json": "314dd78f0259fc64a3bdf91216d54304ddaf40e3664012126cde54e91a54e7e7",
+        "TLDTS-ACTUAL-EXPORTS-RESULT.json": "468ed901f690790dfb23a7d178794cb7928b5fc23d861d14260c187fbad31c36",
+        "SETTINGS-CAPABILITIES-RESULT.json": "763b210ebdebcca425f5e4718f6b39061b84fcb6f27dc815ffefc63f494d0530"
+      },
+      "configSha256": "f4b355ff548ddc6b6ffbd363e3ca4ab23e29cbd792edf9382e50ff6d70b763a6",
+      "fixtureSha256": "1df17e07d58744a27cba42bd975954d9a01511a12e93f0196bd00904a89d88f7",
+      "preparedManifestSha256": "a90bf6ca045670ed2d852951fa5c884c4169c982b4e42f13d97a79d7a3342717",
+      "nativeDecompressionStreamDuringCold": "function",
+      "coldMetricsMs": {
+        "dependenciesToSettingsReady": 211.39999997615814,
+        "iifeAppendToScriptLoad": 168.30000001192093,
+        "iifeAppendToFourMenus": 184.5,
+        "settingsOpenToReady": 26.099999964237213,
+        "iifeAppendToSettingsReady": 211.30000001192093,
+        "iifeAppendToCssReady": 214.80000001192093,
+        "iifeAppendToSettingsAndCssReady": 214.80000001192093
+      },
+      "actualSevenExportsAnd22DomainVectorsPassed": true,
+      "unavailableUiAndRetainedSpeechControlsPassed": true,
+      "observedNaturalTable": {
+        "scope": "Observed first natural table decode in exact cold IIFE; native API wrappers add unquantified overhead",
+        "complete": true,
+        "constructorRows": [
+          {
+            "index": 0,
+            "kind": "Uint8Array",
+            "startAtMs": 175,
+            "endAtMs": 175,
+            "durationMs": 0
+          },
+          {
+            "index": 1,
+            "kind": "Uint16Array",
+            "startAtMs": 175,
+            "endAtMs": 175,
+            "durationMs": 0
+          },
+          {
+            "index": 2,
+            "kind": "Uint8Array",
+            "startAtMs": 175,
+            "endAtMs": 175,
+            "durationMs": 0
+          },
+          {
+            "index": 3,
+            "kind": "Uint16Array",
+            "startAtMs": 175,
+            "endAtMs": 175,
+            "durationMs": 0
+          }
+        ],
+        "atobStartAtMs": 170.30000001192093,
+        "atobEndAtMs": 170.30000001192093,
+        "jsonStartAtMs": 174.80000001192093,
+        "jsonEndAtMs": 175,
+        "lastConstructorEndAtMs": 175,
+        "metricsMs": {
+          "atob": 0,
+          "bytesAndProductionInflate": 4.5,
+          "jsonParse": 0.19999998807907104,
+          "fourActualTypedConstructors": 0,
+          "atobToFourthConstructor": 4.699999988079071
+        },
+        "scalarAssignmentsNotTimed": true,
+        "zeroIsBelowClockResolutionNotFree": true
+      }
+    }
+  ],
+  "cjsFixedVectors": [
+    {
+      "algorithm": "MD5",
+      "input": "",
+      "expected": "d41d8cd98f00b204e9800998ecf8427e",
+      "actual": "d41d8cd98f00b204e9800998ecf8427e",
+      "matched": true
+    },
+    {
+      "algorithm": "MD5",
+      "input": "abc",
+      "expected": "900150983cd24fb0d6963f7d28e17f72",
+      "actual": "900150983cd24fb0d6963f7d28e17f72",
+      "matched": true
+    },
+    {
+      "algorithm": "MD5",
+      "input": "FluentRead 中文🙂",
+      "expected": "a12b4d8c1788be5790a6f470b014eb14",
+      "actual": "a12b4d8c1788be5790a6f470b014eb14",
+      "matched": true
+    },
+    {
+      "algorithm": "SHA256",
+      "input": "",
+      "expected": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "actual": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "matched": true
+    },
+    {
+      "algorithm": "SHA256",
+      "input": "abc",
+      "expected": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "actual": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "matched": true
+    },
+    {
+      "algorithm": "SHA256",
+      "input": "FluentRead 中文🙂",
+      "expected": "ba67a0b623d76d3748b6ecf42151e2b1a8f088e862bf80fab7129e930d3a3816",
+      "actual": "ba67a0b623d76d3748b6ecf42151e2b1a8f088e862bf80fab7129e930d3a3816",
+      "matched": true
+    }
+  ],
+  "invalidGzipContracts": [
+    {
+      "kind": "invalid header",
+      "expected": {
+        "status": "threw",
+        "type": "string",
+        "message": "incorrect header check"
+      },
+      "actual": {
+        "status": "threw",
+        "type": "string",
+        "message": "incorrect header check"
+      },
+      "matched": true
+    },
+    {
+      "kind": "damaged checksum",
+      "expected": {
+        "status": "threw",
+        "type": "string",
+        "message": "incorrect data check"
+      },
+      "actual": {
+        "status": "threw",
+        "type": "string",
+        "message": "incorrect data check"
+      },
+      "matched": true
+    },
+    {
+      "kind": "empty",
+      "expected": {
+        "status": "returned",
+        "type": "string",
+        "value": "undefined"
+      },
+      "actual": {
+        "status": "returned",
+        "type": "string",
+        "value": "undefined"
+      },
+      "matched": true
+    },
+    {
+      "kind": "truncated header",
+      "expected": {
+        "status": "returned",
+        "type": "string",
+        "value": "undefined"
+      },
+      "actual": {
+        "status": "returned",
+        "type": "string",
+        "value": "undefined"
+      },
+      "matched": true
+    },
+    {
+      "kind": "truncated footer",
+      "expected": {
+        "status": "returned",
+        "type": "string",
+        "value": "undefined"
+      },
+      "actual": {
+        "status": "returned",
+        "type": "string",
+        "value": "undefined"
+      },
+      "matched": true
+    }
+  ],
+  "actualTldtsExportsAndDomainResults": {
+    "passed": true,
+    "actualProductionExportsValidated": true,
+    "sevenFieldCanonicalJsonBytes": 116078,
+    "sevenFieldCanonicalJsonSha256": "b9bc8ae20f317a2317cdd1cd82737cda61fb71556298f36da16261bb8964a3b2",
+    "rows": [
+      {
+        "field": "nodeFlags",
+        "kind": "Uint8Array",
+        "length": 622,
+        "byteLength": 622,
+        "scalar": null
+      },
+      {
+        "field": "edgeStart",
+        "kind": "Uint16Array",
+        "length": 623,
+        "byteLength": 1246,
+        "scalar": null
+      },
+      {
+        "field": "edgeLength",
+        "kind": "Uint8Array",
+        "length": 10216,
+        "byteLength": 10216,
+        "scalar": null
+      },
+      {
+        "field": "edgeChild",
+        "kind": "Uint16Array",
+        "length": 10216,
+        "byteLength": 20432,
+        "scalar": null
+      },
+      {
+        "field": "labelText",
+        "kind": "string",
+        "length": 65691,
+        "byteLength": null,
+        "scalar": null
+      },
+      {
+        "field": "rulesRoot",
+        "kind": "number",
+        "length": null,
+        "byteLength": null,
+        "scalar": 617
+      },
+      {
+        "field": "exceptionsRoot",
+        "kind": "number",
+        "length": null,
+        "byteLength": null,
+        "scalar": 621
+      }
+    ],
+    "domain": {
+      "passed": true,
+      "rows": [
+        {
+          "label": "ordinary",
+          "input": "www.example.com",
+          "expected": "example.com",
+          "actual": "example.com",
+          "matched": true
+        },
+        {
+          "label": "URL extraction/case/port",
+          "input": "https://www.Example.COM:8443/path?q=1",
+          "expected": "example.com",
+          "actual": "example.com",
+          "matched": true
+        },
+        {
+          "label": "UK multilevel",
+          "input": "a.b.example.co.uk",
+          "expected": "example.co.uk",
+          "actual": "example.co.uk",
+          "matched": true
+        },
+        {
+          "label": "China multilevel",
+          "input": "www.example.com.cn",
+          "expected": "example.com.cn",
+          "actual": "example.com.cn",
+          "matched": true
+        },
+        {
+          "label": "private default",
+          "input": "tenant.blogspot.com",
+          "expected": "blogspot.com",
+          "actual": "blogspot.com",
+          "matched": true
+        },
+        {
+          "label": "private enabled",
+          "input": "tenant.blogspot.com",
+          "options": {
+            "allowPrivateDomains": true
+          },
+          "expected": "tenant.blogspot.com",
+          "actual": "tenant.blogspot.com",
+          "matched": true
+        },
+        {
+          "label": "private GitHub default",
+          "input": "project.github.io",
+          "expected": "github.io",
+          "actual": "github.io",
+          "matched": true
+        },
+        {
+          "label": "private GitHub enabled",
+          "input": "project.github.io",
+          "options": {
+            "allowPrivateDomains": true
+          },
+          "expected": "project.github.io",
+          "actual": "project.github.io",
+          "matched": true
+        },
+        {
+          "label": "wildcard",
+          "input": "a.b.ck",
+          "expected": "a.b.ck",
+          "actual": "a.b.ck",
+          "matched": true
+        },
+        {
+          "label": "wildcard exception",
+          "input": "www.ck",
+          "expected": "www.ck",
+          "actual": "www.ck",
+          "matched": true
+        },
+        {
+          "label": "Japan exception",
+          "input": "www.city.kawasaki.jp",
+          "expected": "city.kawasaki.jp",
+          "actual": "city.kawasaki.jp",
+          "matched": true
+        },
+        {
+          "label": "Unicode domain",
+          "input": "食狮.com.cn",
+          "expected": "食狮.com.cn",
+          "actual": "食狮.com.cn",
+          "matched": true
+        },
+        {
+          "label": "punycode domain",
+          "input": "xn--85x722f.com.cn",
+          "expected": "xn--85x722f.com.cn",
+          "actual": "xn--85x722f.com.cn",
+          "matched": true
+        },
+        {
+          "label": "Unicode suffix",
+          "input": "食狮.公司.cn",
+          "expected": "食狮.公司.cn",
+          "actual": "食狮.公司.cn",
+          "matched": true
+        },
+        {
+          "label": "IPv4",
+          "input": "127.0.0.1",
+          "expected": null,
+          "actual": null,
+          "matched": true
+        },
+        {
+          "label": "IPv6 URL",
+          "input": "https://[2001:db8::1]/",
+          "expected": null,
+          "actual": null,
+          "matched": true
+        },
+        {
+          "label": "localhost",
+          "input": "localhost",
+          "expected": null,
+          "actual": null,
+          "matched": true
+        },
+        {
+          "label": "empty",
+          "input": "",
+          "expected": null,
+          "actual": null,
+          "matched": true
+        },
+        {
+          "label": "invalid hostname",
+          "input": "an invalid host",
+          "expected": null,
+          "actual": null,
+          "matched": true
+        },
+        {
+          "label": "business hostname options",
+          "input": "www.example.com",
+          "options": {
+            "allowPrivateDomains": true,
+            "extractHostname": false
+          },
+          "expected": "example.com",
+          "actual": "example.com",
+          "matched": true
+        },
+        {
+          "label": "business private options",
+          "input": "project.github.io",
+          "options": {
+            "allowPrivateDomains": true,
+            "extractHostname": false
+          },
+          "expected": "project.github.io",
+          "actual": "project.github.io",
+          "matched": true
+        },
+        {
+          "label": "extraction disabled URL",
+          "input": "https://www.example.com/path",
+          "options": {
+            "allowPrivateDomains": true,
+            "extractHostname": false
+          },
+          "expected": "example.com/path",
+          "actual": "example.com/path",
+          "matched": true
+        }
+      ]
+    },
+    "artifactSha256": "a98976e459defb4c770911b327297f437e9d2b19096317968a13cc9fdc5dbaf9",
+    "originalBundleNotRewritten": true
+  },
+  "standaloneSettingsCapabilities": {
+    "applicable": true,
+    "passed": true,
+    "unavailableSections": [
+      {
+        "section": "settings-image-translation",
+        "title": "油猴脚本暂不支持此功能",
+        "description": "此功能需要浏览器扩展的运行环境。请安装 FluentRead 浏览器扩展后使用。",
+        "formFields": 0
+      },
+      {
+        "section": "settings-video",
+        "title": "油猴脚本暂不支持此功能",
+        "description": "此功能需要浏览器扩展的运行环境。请安装 FluentRead 浏览器扩展后使用。",
+        "formFields": 0
+      },
+      {
+        "section": "settings-writing",
+        "title": "油猴脚本暂不支持此功能",
+        "description": "此功能需要浏览器扩展的运行环境。请安装 FluentRead 浏览器扩展后使用。",
+        "formFields": 0
+      },
+      {
+        "section": "settings-translation-stats",
+        "title": "油猴脚本暂不支持此功能",
+        "description": "此功能需要浏览器扩展的运行环境。请安装 FluentRead 浏览器扩展后使用。",
+        "formFields": 0
+      }
+    ],
+    "contextMenu": {
+      "description": "右键菜单此功能需要浏览器扩展的运行环境。请安装 FluentRead 浏览器扩展后使用。",
+      "formFields": 0
+    },
+    "speech": {
+      "present": true,
+      "controls": 8,
+      "modelActionNotInvoked": true,
+      "audioInferenceNotInvoked": true
+    },
+    "areaAndModelUsageAliasesNotDirectlyDriven": true
+  },
+  "uninstrumentedCold": {
+    "scope": "IIFE append to script load/menu registration/settings readiness/shadow style readiness; fresh browser process/profile/document, not measured browser process startup or full page translation completion",
+    "separateUiModes": "standard lightweight settings and standalone full Options are different UIs; no paired latency ranking",
+    "osDiskAndV8CacheColdnessEstablished": false,
+    "samplesByMode": {
+      "standard": {
+        "freshProcessProfileSamples": 3,
+        "nativeApiHooks": false,
+        "debuggerEnabledOnlyAfterColdIntervals": true,
+        "metricsMs": {
+          "dependenciesToSettingsReady": {
+            "n": 3,
+            "min": 281.69999998807907,
+            "median": 286.4000000357628,
+            "max": 291.5
+          },
+          "iifeAppendToScriptLoad": {
+            "n": 3,
+            "min": 58.5,
+            "median": 60.5,
+            "max": 61.200000047683716
+          },
+          "iifeAppendToFourMenus": {
+            "n": 3,
+            "min": 72.80000001192093,
+            "median": 75,
+            "max": 76.30000001192093
+          },
+          "settingsOpenToReady": {
+            "n": 3,
+            "min": 110.19999998807907,
+            "median": 113.30000001192093,
+            "max": 114.40000003576279
+          },
+          "iifeAppendToSettingsReady": {
+            "n": 3,
+            "min": 185.80000001192093,
+            "median": 187.80000001192093,
+            "max": 190.20000004768372
+          },
+          "iifeAppendToCssReady": {
+            "n": 3,
+            "min": 190,
+            "median": 192.19999998807907,
+            "max": 195
+          },
+          "iifeAppendToSettingsAndCssReady": {
+            "n": 3,
+            "min": 190,
+            "median": 192.19999998807907,
+            "max": 195
+          }
+        }
+      },
+      "standalone": {
+        "freshProcessProfileSamples": 3,
+        "nativeApiHooks": false,
+        "debuggerEnabledOnlyAfterColdIntervals": true,
+        "metricsMs": {
+          "dependenciesToSettingsReady": {
+            "n": 3,
+            "min": 201.69999998807907,
+            "median": 207.19999998807907,
+            "max": 218.10000002384186
+          },
+          "iifeAppendToScriptLoad": {
+            "n": 3,
+            "min": 158.19999998807907,
+            "median": 164.19999998807907,
+            "max": 171.69999998807907
+          },
+          "iifeAppendToFourMenus": {
+            "n": 3,
+            "min": 174.80000001192093,
+            "median": 180,
+            "max": 189.69999998807907
+          },
+          "settingsOpenToReady": {
+            "n": 3,
+            "min": 26.30000001192093,
+            "median": 26.5,
+            "max": 27.69999998807907
+          },
+          "iifeAppendToSettingsReady": {
+            "n": 3,
+            "min": 201.69999998807907,
+            "median": 207.19999998807907,
+            "max": 218.10000002384186
+          },
+          "iifeAppendToCssReady": {
+            "n": 3,
+            "min": 205.80000001192093,
+            "median": 210.5999999642372,
+            "max": 222.30000001192093
+          },
+          "iifeAppendToSettingsAndCssReady": {
+            "n": 3,
+            "min": 205.80000001192093,
+            "median": 210.5999999642372,
+            "max": 222.30000001192093
+          }
+        }
+      }
+    }
+  },
+  "warmTableReplay": {
+    "scope": "Original captured production inflate, decoded JSON and replayed seven fields; actual exports and domain results validated separately",
+    "freshProcesses": 3,
+    "warmupsPerProcess": 3,
+    "samplesPerProcess": 15,
+    "retainedSamples": 45,
+    "retainedSamplesAreNotIndependentProcesses": true,
+    "hashTypeValueVerificationOutsideTiming": true,
+    "actualProductionConstructorsTimedByReplay": false,
+    "samplesByProcess": [
+      {
+        "run": "browser-iife-standalone-20261011T033444Z",
+        "warmups": 3,
+        "retainedSamples": 15,
+        "rawSamplesMs": [
+          {
+            "index": 0,
+            "warmup": true,
+            "base64ToBytesMs": 1.7000000476837158,
+            "actualCapturedInflateMs": 0.8999999761581421,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0.10000002384185791,
+            "totalReplayMs": 2.900000035762787
+          },
+          {
+            "index": 1,
+            "warmup": true,
+            "base64ToBytesMs": 1.600000023841858,
+            "actualCapturedInflateMs": 0.800000011920929,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.600000023841858
+          },
+          {
+            "index": 2,
+            "warmup": true,
+            "base64ToBytesMs": 2.599999964237213,
+            "actualCapturedInflateMs": 0.800000011920929,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 3.5
+          },
+          {
+            "index": 3,
+            "warmup": false,
+            "base64ToBytesMs": 1.2999999523162842,
+            "actualCapturedInflateMs": 0.7000000476837158,
+            "jsonParseMs": 0.09999996423721313,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.099999964237213
+          },
+          {
+            "index": 4,
+            "warmup": false,
+            "base64ToBytesMs": 1.2999999523162842,
+            "actualCapturedInflateMs": 0.800000011920929,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.199999988079071
+          },
+          {
+            "index": 5,
+            "warmup": false,
+            "base64ToBytesMs": 1.2999999523162842,
+            "actualCapturedInflateMs": 0.7000000476837158,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.199999988079071
+          },
+          {
+            "index": 6,
+            "warmup": false,
+            "base64ToBytesMs": 1.2999999523162842,
+            "actualCapturedInflateMs": 0.7000000476837158,
+            "jsonParseMs": 0.09999996423721313,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.099999964237213
+          },
+          {
+            "index": 7,
+            "warmup": false,
+            "base64ToBytesMs": 1.199999988079071,
+            "actualCapturedInflateMs": 0.800000011920929,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.100000023841858
+          },
+          {
+            "index": 8,
+            "warmup": false,
+            "base64ToBytesMs": 1.300000011920929,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.100000023841858
+          },
+          {
+            "index": 9,
+            "warmup": false,
+            "base64ToBytesMs": 1.2000000476837158,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.100000023841858
+          },
+          {
+            "index": 10,
+            "warmup": false,
+            "base64ToBytesMs": 1.5,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.300000011920929
+          },
+          {
+            "index": 11,
+            "warmup": false,
+            "base64ToBytesMs": 1.2000000476837158,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.100000023841858
+          },
+          {
+            "index": 12,
+            "warmup": false,
+            "base64ToBytesMs": 1.300000011920929,
+            "actualCapturedInflateMs": 0.800000011920929,
+            "jsonParseMs": 0.09999996423721313,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.199999988079071
+          },
+          {
+            "index": 13,
+            "warmup": false,
+            "base64ToBytesMs": 1.199999988079071,
+            "actualCapturedInflateMs": 0.800000011920929,
+            "jsonParseMs": 0.09999996423721313,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.099999964237213
+          },
+          {
+            "index": 14,
+            "warmup": false,
+            "base64ToBytesMs": 1.399999976158142,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.299999952316284
+          },
+          {
+            "index": 15,
+            "warmup": false,
+            "base64ToBytesMs": 1.5,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.399999976158142
+          },
+          {
+            "index": 16,
+            "warmup": false,
+            "base64ToBytesMs": 1.5,
+            "actualCapturedInflateMs": 0.800000011920929,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.400000035762787
+          },
+          {
+            "index": 17,
+            "warmup": false,
+            "base64ToBytesMs": 1.5,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.399999976158142
+          }
+        ],
+        "metricsMs": {
+          "base64ToBytesMs": {
+            "n": 15,
+            "min": 1.199999988079071,
+            "median": 1.2999999523162842,
+            "max": 1.5
+          },
+          "actualCapturedInflateMs": {
+            "n": 15,
+            "min": 0.699999988079071,
+            "median": 0.7000000476837158,
+            "max": 0.800000011920929
+          },
+          "jsonParseMs": {
+            "n": 15,
+            "min": 0.09999996423721313,
+            "median": 0.10000002384185791,
+            "max": 0.19999998807907104
+          },
+          "replayedSevenFieldsMs": {
+            "n": 15,
+            "min": 0,
+            "median": 0,
+            "max": 0
+          },
+          "totalReplayMs": {
+            "n": 15,
+            "min": 2.099999964237213,
+            "median": 2.199999988079071,
+            "max": 2.400000035762787
+          }
+        }
+      },
+      {
+        "run": "browser-iife-standalone-20261011T033449Z",
+        "warmups": 3,
+        "retainedSamples": 15,
+        "rawSamplesMs": [
+          {
+            "index": 0,
+            "warmup": true,
+            "base64ToBytesMs": 1.7000000476837158,
+            "actualCapturedInflateMs": 0.8999999761581421,
+            "jsonParseMs": 0.30000001192092896,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.900000035762787
+          },
+          {
+            "index": 1,
+            "warmup": true,
+            "base64ToBytesMs": 1.5,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0.10000002384185791,
+            "totalReplayMs": 2.5
+          },
+          {
+            "index": 2,
+            "warmup": true,
+            "base64ToBytesMs": 2.400000035762787,
+            "actualCapturedInflateMs": 0.7999999523162842,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 3.300000011920929
+          },
+          {
+            "index": 3,
+            "warmup": false,
+            "base64ToBytesMs": 1.300000011920929,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.09999996423721313,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.099999964237213
+          },
+          {
+            "index": 4,
+            "warmup": false,
+            "base64ToBytesMs": 1.4000000357627869,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.09999996423721313,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.199999988079071
+          },
+          {
+            "index": 5,
+            "warmup": false,
+            "base64ToBytesMs": 1.300000011920929,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.09999996423721313,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.099999964237213
+          },
+          {
+            "index": 6,
+            "warmup": false,
+            "base64ToBytesMs": 1.300000011920929,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.100000023841858
+          },
+          {
+            "index": 7,
+            "warmup": false,
+            "base64ToBytesMs": 1.199999988079071,
+            "actualCapturedInflateMs": 0.800000011920929,
+            "jsonParseMs": 0,
+            "replayedSevenFieldsMs": 0.09999996423721313,
+            "totalReplayMs": 2.099999964237213
+          },
+          {
+            "index": 8,
+            "warmup": false,
+            "base64ToBytesMs": 1.300000011920929,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.100000023841858
+          },
+          {
+            "index": 9,
+            "warmup": false,
+            "base64ToBytesMs": 1.399999976158142,
+            "actualCapturedInflateMs": 0.6000000238418579,
+            "jsonParseMs": 0.09999996423721313,
+            "replayedSevenFieldsMs": 0.10000002384185791,
+            "totalReplayMs": 2.199999988079071
+          },
+          {
+            "index": 10,
+            "warmup": false,
+            "base64ToBytesMs": 1.199999988079071,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.099999964237213
+          },
+          {
+            "index": 11,
+            "warmup": false,
+            "base64ToBytesMs": 1.300000011920929,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.100000023841858
+          },
+          {
+            "index": 12,
+            "warmup": false,
+            "base64ToBytesMs": 1.300000011920929,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2
+          },
+          {
+            "index": 13,
+            "warmup": false,
+            "base64ToBytesMs": 1.300000011920929,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.100000023841858
+          },
+          {
+            "index": 14,
+            "warmup": false,
+            "base64ToBytesMs": 1.4000000357627869,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.200000047683716
+          },
+          {
+            "index": 15,
+            "warmup": false,
+            "base64ToBytesMs": 1.4000000357627869,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.300000011920929
+          },
+          {
+            "index": 16,
+            "warmup": false,
+            "base64ToBytesMs": 1.5,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.399999976158142
+          },
+          {
+            "index": 17,
+            "warmup": false,
+            "base64ToBytesMs": 1.5999999642372131,
+            "actualCapturedInflateMs": 0.7000000476837158,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.5
+          }
+        ],
+        "metricsMs": {
+          "base64ToBytesMs": {
+            "n": 15,
+            "min": 1.199999988079071,
+            "median": 1.300000011920929,
+            "max": 1.5999999642372131
+          },
+          "actualCapturedInflateMs": {
+            "n": 15,
+            "min": 0.6000000238418579,
+            "median": 0.699999988079071,
+            "max": 0.800000011920929
+          },
+          "jsonParseMs": {
+            "n": 15,
+            "min": 0,
+            "median": 0.10000002384185791,
+            "max": 0.19999998807907104
+          },
+          "replayedSevenFieldsMs": {
+            "n": 15,
+            "min": 0,
+            "median": 0,
+            "max": 0.10000002384185791
+          },
+          "totalReplayMs": {
+            "n": 15,
+            "min": 2,
+            "median": 2.100000023841858,
+            "max": 2.5
+          }
+        }
+      },
+      {
+        "run": "browser-iife-standalone-20261011T033453Z",
+        "warmups": 3,
+        "retainedSamples": 15,
+        "rawSamplesMs": [
+          {
+            "index": 0,
+            "warmup": true,
+            "base64ToBytesMs": 2,
+            "actualCapturedInflateMs": 0.8999999761581421,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0.10000002384185791,
+            "totalReplayMs": 3.100000023841858
+          },
+          {
+            "index": 1,
+            "warmup": true,
+            "base64ToBytesMs": 1.699999988079071,
+            "actualCapturedInflateMs": 0.7000000476837158,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.600000023841858
+          },
+          {
+            "index": 2,
+            "warmup": true,
+            "base64ToBytesMs": 2.800000011920929,
+            "actualCapturedInflateMs": 0.7999999523162842,
+            "jsonParseMs": 0.20000004768371582,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 3.800000011920929
+          },
+          {
+            "index": 3,
+            "warmup": false,
+            "base64ToBytesMs": 1.399999976158142,
+            "actualCapturedInflateMs": 0.6000000238418579,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.199999988079071
+          },
+          {
+            "index": 4,
+            "warmup": false,
+            "base64ToBytesMs": 1.5,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.399999976158142
+          },
+          {
+            "index": 5,
+            "warmup": false,
+            "base64ToBytesMs": 1.300000011920929,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.199999988079071
+          },
+          {
+            "index": 6,
+            "warmup": false,
+            "base64ToBytesMs": 1.4000000357627869,
+            "actualCapturedInflateMs": 0.7999999523162842,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.300000011920929
+          },
+          {
+            "index": 7,
+            "warmup": false,
+            "base64ToBytesMs": 1.399999976158142,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.20000004768371582,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.300000011920929
+          },
+          {
+            "index": 8,
+            "warmup": false,
+            "base64ToBytesMs": 1.399999976158142,
+            "actualCapturedInflateMs": 0.800000011920929,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.300000011920929
+          },
+          {
+            "index": 9,
+            "warmup": false,
+            "base64ToBytesMs": 1.4000000357627869,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.300000011920929
+          },
+          {
+            "index": 10,
+            "warmup": false,
+            "base64ToBytesMs": 1.2999999523162842,
+            "actualCapturedInflateMs": 0.7000000476837158,
+            "jsonParseMs": 0.19999998807907104,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.199999988079071
+          },
+          {
+            "index": 11,
+            "warmup": false,
+            "base64ToBytesMs": 1.300000011920929,
+            "actualCapturedInflateMs": 0.800000011920929,
+            "jsonParseMs": 0.09999996423721313,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.199999988079071
+          },
+          {
+            "index": 12,
+            "warmup": false,
+            "base64ToBytesMs": 1.7000000476837158,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.09999996423721313,
+            "replayedSevenFieldsMs": 0.10000002384185791,
+            "totalReplayMs": 2.600000023841858
+          },
+          {
+            "index": 13,
+            "warmup": false,
+            "base64ToBytesMs": 1.399999976158142,
+            "actualCapturedInflateMs": 0.800000011920929,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.300000011920929
+          },
+          {
+            "index": 14,
+            "warmup": false,
+            "base64ToBytesMs": 1.5,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.300000011920929
+          },
+          {
+            "index": 15,
+            "warmup": false,
+            "base64ToBytesMs": 1.600000023841858,
+            "actualCapturedInflateMs": 0.800000011920929,
+            "jsonParseMs": 0.09999996423721313,
+            "replayedSevenFieldsMs": 0,
+            "totalReplayMs": 2.5
+          },
+          {
+            "index": 16,
+            "warmup": false,
+            "base64ToBytesMs": 1.5,
+            "actualCapturedInflateMs": 0.800000011920929,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0.09999996423721313,
+            "totalReplayMs": 2.5
+          },
+          {
+            "index": 17,
+            "warmup": false,
+            "base64ToBytesMs": 1.5999999642372131,
+            "actualCapturedInflateMs": 0.699999988079071,
+            "jsonParseMs": 0.10000002384185791,
+            "replayedSevenFieldsMs": 0.10000002384185791,
+            "totalReplayMs": 2.5
+          }
+        ],
+        "metricsMs": {
+          "base64ToBytesMs": {
+            "n": 15,
+            "min": 1.2999999523162842,
+            "median": 1.4000000357627869,
+            "max": 1.7000000476837158
+          },
+          "actualCapturedInflateMs": {
+            "n": 15,
+            "min": 0.6000000238418579,
+            "median": 0.699999988079071,
+            "max": 0.800000011920929
+          },
+          "jsonParseMs": {
+            "n": 15,
+            "min": 0.09999996423721313,
+            "median": 0.10000002384185791,
+            "max": 0.20000004768371582
+          },
+          "replayedSevenFieldsMs": {
+            "n": 15,
+            "min": 0,
+            "median": 0,
+            "max": 0.10000002384185791
+          },
+          "totalReplayMs": {
+            "n": 15,
+            "min": 2.199999988079071,
+            "median": 2.300000011920929,
+            "max": 2.600000023841858
+          }
+        }
+      }
+    ],
+    "pooledMetricsMs": {
+      "base64ToBytesMs": {
+        "n": 45,
+        "min": 1.199999988079071,
+        "median": 1.399999976158142,
+        "max": 1.7000000476837158
+      },
+      "actualCapturedInflateMs": {
+        "n": 45,
+        "min": 0.6000000238418579,
+        "median": 0.699999988079071,
+        "max": 0.800000011920929
+      },
+      "jsonParseMs": {
+        "n": 45,
+        "min": 0,
+        "median": 0.10000002384185791,
+        "max": 0.20000004768371582
+      },
+      "replayedSevenFieldsMs": {
+        "n": 45,
+        "min": 0,
+        "median": 0,
+        "max": 0.10000002384185791
+      },
+      "totalReplayMs": {
+        "n": 45,
+        "min": 2,
+        "median": 2.199999988079071,
+        "max": 2.600000023841858
+      }
+    }
+  },
+  "firstNaturalTableObservation": {
+    "scope": "First natural decode in exact IIFE, hooks before append; atob exact table literal, JSON.parse identifies seven fields, four typed constructors identified by actual parsed-array identity",
+    "freshProcesses": 3,
+    "debuggerPauseDuringIntervals": false,
+    "originalProductionScriptRewritten": false,
+    "nativeApiWrappersAddUnquantifiedOverhead": true,
+    "bytesAndProductionInflateIntervalIncludes": "byte materialization plus production inflation between atob return and JSON.parse entry",
+    "scalarAssignmentsNotTimed": true,
+    "zeroMeansBelowClockResolution": true,
+    "metricsMs": {
+      "atob": {
+        "n": 3,
+        "min": 0,
+        "median": 0,
+        "max": 0
+      },
+      "bytesAndProductionInflate": {
+        "n": 3,
+        "min": 4.199999988079071,
+        "median": 4.5,
+        "max": 4.5
+      },
+      "jsonParse": {
+        "n": 3,
+        "min": 0.19999998807907104,
+        "median": 0.19999998807907104,
+        "max": 0.19999998807907104
+      },
+      "fourActualTypedConstructors": {
+        "n": 3,
+        "min": 0,
+        "median": 0,
+        "max": 0
+      },
+      "atobToFourthConstructor": {
+        "n": 3,
+        "min": 4.399999976158142,
+        "median": 4.699999988079071,
+        "max": 4.699999988079071
+      }
+    }
+  },
+  "coldFixtureFailures": {
+    "scope": "Cold timing harness readiness correction, not production code changes",
+    "firstFailure": "Cold CSS missing",
+    "secondFailure": "Cold measurement timeout",
+    "actualDiagnosis": "The synthetic fixture disables translation, so document#fluent-read-page-styles is absent even in initial successful exact-artifact functional runs. Decoded global CSS and actual settings shadow style are the appropriate observed readiness markers.",
+    "initialFunctionalEvidence": {
+      "standard": {
+        "productionCssChars": 138536,
+        "productionStylePresent": false
+      },
+      "standalone": {
+        "productionCssChars": 684769,
+        "productionStylePresent": false
+      }
+    },
+    "gatePreserved": "Wait for decoded CSS and actual settings shadow style; keep native DS on cold document and forced fallback on functional document.",
+    "failedProfilesCleanupVerified": true,
+    "failedSamplesExcludedFromRetainedColdTimings": true,
+    "productionCommitUnchanged": "3618398ba86436938747a32f4072857a9dae4db2"
+  },
+  "stageLogBindings": {
+    "browser-inputs-published": {
+      "startedAtUTC": "2026-10-11T03:19:45.240167+00:00",
+      "finishedAtUTC": "2026-10-11T03:19:46.733961+00:00",
+      "sourceSnapshotSha256": "9b298e051f87d54f8fe212a2d3f97d65bdabeb5a0f06181099e85d8f773c6604",
+      "log": "browser-inputs-published.log.txt",
+      "logSha256": "cf30cb41e36326a6ace01b92063a65946a8083eeb509b0211c6b14c7b1f68eff",
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true
+    },
+    "browser-standard-current": {
+      "startedAtUTC": "2026-10-11T03:19:57.917521+00:00",
+      "finishedAtUTC": "2026-10-11T03:20:00.803182+00:00",
+      "sourceSnapshotSha256": "9b298e051f87d54f8fe212a2d3f97d65bdabeb5a0f06181099e85d8f773c6604",
+      "log": "browser-standard-current.log.txt",
+      "logSha256": "d2a7f3c5f75dd2757933d1f22d36341abb338342632a43c6be6778cd13fdd119",
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true
+    },
+    "browser-standalone-current": {
+      "startedAtUTC": "2026-10-11T03:20:25.467671+00:00",
+      "finishedAtUTC": "2026-10-11T03:20:28.960747+00:00",
+      "sourceSnapshotSha256": "9b298e051f87d54f8fe212a2d3f97d65bdabeb5a0f06181099e85d8f773c6604",
+      "log": "browser-standalone-current.log.txt",
+      "logSha256": "843d5e27e1baecbdff303762dc3555d48a8de38ec3704355fd1e01b3703c4f8b",
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true
+    },
+    "browser-inputs-native-cold": {
+      "startedAtUTC": "2026-10-11T03:25:48.974120+00:00",
+      "finishedAtUTC": "2026-10-11T03:25:50.484950+00:00",
+      "sourceSnapshotSha256": "9b298e051f87d54f8fe212a2d3f97d65bdabeb5a0f06181099e85d8f773c6604",
+      "log": "browser-inputs-native-cold.log.txt",
+      "logSha256": "cf30cb41e36326a6ace01b92063a65946a8083eeb509b0211c6b14c7b1f68eff",
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true
+    },
+    "browser-cold-standard-1": {
+      "startedAtUTC": "2026-10-11T03:26:25.731444+00:00",
+      "finishedAtUTC": "2026-10-11T03:26:28.184951+00:00",
+      "sourceSnapshotSha256": "9b298e051f87d54f8fe212a2d3f97d65bdabeb5a0f06181099e85d8f773c6604",
+      "log": "browser-cold-standard-1.log.txt",
+      "logSha256": "bb32ff7ff01cfaceb824116ad3f21102379f01133e09c1a81203d493a19fb398",
+      "exitCode": 1,
+      "sourceUnchangedDuringStage": true
+    },
+    "browser-cold-standard-fixed-1": {
+      "startedAtUTC": "2026-10-11T03:27:47.162123+00:00",
+      "finishedAtUTC": "2026-10-11T03:28:09.307184+00:00",
+      "sourceSnapshotSha256": "9b298e051f87d54f8fe212a2d3f97d65bdabeb5a0f06181099e85d8f773c6604",
+      "log": "browser-cold-standard-fixed-1.log.txt",
+      "logSha256": "9d7d5a689dd722a49441039d8c544daf7d3857824ff5480564538db572b6f219",
+      "exitCode": 1,
+      "sourceUnchangedDuringStage": true
+    },
+    "browser-cold-standard-ready-1": {
+      "startedAtUTC": "2026-10-11T03:29:41.076092+00:00",
+      "finishedAtUTC": "2026-10-11T03:29:44.521139+00:00",
+      "sourceSnapshotSha256": "9b298e051f87d54f8fe212a2d3f97d65bdabeb5a0f06181099e85d8f773c6604",
+      "log": "browser-cold-standard-ready-1.log.txt",
+      "logSha256": "bc07123fc3fcbadfe8595ac0ece073cf79153589c7ba72dbedc2141b81e99079",
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true
+    },
+    "browser-cold-standard-ready-2": {
+      "startedAtUTC": "2026-10-11T03:29:44.843550+00:00",
+      "finishedAtUTC": "2026-10-11T03:29:48.238813+00:00",
+      "sourceSnapshotSha256": "9b298e051f87d54f8fe212a2d3f97d65bdabeb5a0f06181099e85d8f773c6604",
+      "log": "browser-cold-standard-ready-2.log.txt",
+      "logSha256": "a883ce933a412991237e0cc585999c11023ab3c1d19a26ba7aedc7ae50773e49",
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true
+    },
+    "browser-cold-standard-ready-3": {
+      "startedAtUTC": "2026-10-11T03:29:48.565153+00:00",
+      "finishedAtUTC": "2026-10-11T03:29:51.958286+00:00",
+      "sourceSnapshotSha256": "9b298e051f87d54f8fe212a2d3f97d65bdabeb5a0f06181099e85d8f773c6604",
+      "log": "browser-cold-standard-ready-3.log.txt",
+      "logSha256": "45e39ce7bab6f6f099b1e1618fe386276a1dab23b5c7cdefdc923189ff6981a3",
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true
+    },
+    "browser-inputs-actual-tldts": {
+      "startedAtUTC": "2026-10-11T03:34:20.896038+00:00",
+      "finishedAtUTC": "2026-10-11T03:34:22.461704+00:00",
+      "sourceSnapshotSha256": "9b298e051f87d54f8fe212a2d3f97d65bdabeb5a0f06181099e85d8f773c6604",
+      "log": "browser-inputs-actual-tldts.log.txt",
+      "logSha256": "cf30cb41e36326a6ace01b92063a65946a8083eeb509b0211c6b14c7b1f68eff",
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true
+    },
+    "browser-cold-standalone-actual-1": {
+      "startedAtUTC": "2026-10-11T03:34:43.656687+00:00",
+      "finishedAtUTC": "2026-10-11T03:34:48.262243+00:00",
+      "sourceSnapshotSha256": "9b298e051f87d54f8fe212a2d3f97d65bdabeb5a0f06181099e85d8f773c6604",
+      "log": "browser-cold-standalone-actual-1.log.txt",
+      "logSha256": "bf702b6ad28bd2cc28c6da3141023a8663752600f9041cc6aa8db198538d61de",
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true
+    },
+    "browser-cold-standalone-actual-2": {
+      "startedAtUTC": "2026-10-11T03:34:48.586314+00:00",
+      "finishedAtUTC": "2026-10-11T03:34:53.068619+00:00",
+      "sourceSnapshotSha256": "9b298e051f87d54f8fe212a2d3f97d65bdabeb5a0f06181099e85d8f773c6604",
+      "log": "browser-cold-standalone-actual-2.log.txt",
+      "logSha256": "cd29b23b6a3799c2a22872a9cac75be667d4040fa3281adc35c9da45f075b691",
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true
+    },
+    "browser-cold-standalone-actual-3": {
+      "startedAtUTC": "2026-10-11T03:34:53.393716+00:00",
+      "finishedAtUTC": "2026-10-11T03:34:57.842833+00:00",
+      "sourceSnapshotSha256": "9b298e051f87d54f8fe212a2d3f97d65bdabeb5a0f06181099e85d8f773c6604",
+      "log": "browser-cold-standalone-actual-3.log.txt",
+      "logSha256": "945ec6e024b4da8d69095759e579fc4b3b79fd6f36ce98ea5a5cbbd47ac58411",
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true
+    },
+    "browser-natural-table-1": {
+      "startedAtUTC": "2026-10-11T03:38:47.842329+00:00",
+      "finishedAtUTC": "2026-10-11T03:38:52.331127+00:00",
+      "sourceSnapshotSha256": "9b298e051f87d54f8fe212a2d3f97d65bdabeb5a0f06181099e85d8f773c6604",
+      "log": "browser-natural-table-1.log.txt",
+      "logSha256": "ba65a963ea89d35019ccf64ff7891636c6fc5d9f0fb112ec843534b5b8f644cd",
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true
+    },
+    "browser-natural-table-2": {
+      "startedAtUTC": "2026-10-11T03:38:52.660481+00:00",
+      "finishedAtUTC": "2026-10-11T03:38:57.123213+00:00",
+      "sourceSnapshotSha256": "9b298e051f87d54f8fe212a2d3f97d65bdabeb5a0f06181099e85d8f773c6604",
+      "log": "browser-natural-table-2.log.txt",
+      "logSha256": "013588eb9a9502e8e5ee64017d312e057a8b10f53c73c6ecf3582d86b0076e15",
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true
+    },
+    "browser-natural-table-3": {
+      "startedAtUTC": "2026-10-11T03:38:57.450969+00:00",
+      "finishedAtUTC": "2026-10-11T03:39:01.917155+00:00",
+      "sourceSnapshotSha256": "9b298e051f87d54f8fe212a2d3f97d65bdabeb5a0f06181099e85d8f773c6604",
+      "log": "browser-natural-table-3.log.txt",
+      "logSha256": "1da64078a4b015d193eef7825a43b89d165040dd00602c40b5da6efef6b315ab",
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true
+    }
+  },
+  "helperVersionBindings": {
+    "schemaVersion": 2,
+    "scope": "Closure hashes of current helpers and preserved historical helper versions; these hashes were recorded at closure, not claimed as contemporaneous per-run helper hashes. Each run separately binds its config, fixture, production source and browser script SHA.",
+    "historicalVersions": {
+      "initialFunctional": "acceptance-first-functional.mjs",
+      "beforeActualExports": "before-actual-tldts-acceptance.mjs and before-actual-tldts-prepare.mjs",
+      "uninstrumentedCold": "performance-measurement-before-natural-table.mjs",
+      "naturalFirstTable": "performance-measurement.mjs with FLUENTREAD_NATURAL_TABLE_OBSERVE=1"
+    },
+    "files": {
+      "acceptance-first-functional.mjs": "3aeb47635563556ccf4111505bcd06f7ee87c16d191c137973344508da9cac09",
+      "acceptance-before-boundaries.mjs": "e1e74eecc0831a4d52c7a20376205771cfdc2c025405b5545f1a96bd2e96151c",
+      "before-actual-tldts-acceptance.mjs": "593279427ed99f22303cd6a37e7da9ca05d98cb2a5b4245b730d248b19c876de",
+      "before-actual-tldts-prepare.mjs": "eb49e2509d033aa368dbbb49aeec08991e10e0ec3c22a3078bd24641e151ece0",
+      "before-actual-tldts-MANIFEST.json": "aea51849ddcb15aa9d53857189c748609e916a2345f77a92b238045b073cc3cb",
+      "before-actual-tldts-PREPARED-INPUTS-RECEIPT.json": "c0609530717f2f82bd4f190108c156d164de9244c328601ae19ea52560e044ea",
+      "performance-measurement-before-css-wait.mjs": "a040d251d59798a73a1fe5d5cc96b4ea71a53573187ca1e92c9be98668ee2d9b",
+      "performance-measurement-before-natural-table.mjs": "1232d31fc7fb1bf9d202746344110475e51dd54952fe7199af69b08ffb915c68",
+      "acceptance.mjs": "7a22fd3dc1b881777ed68b9747d963c9d3b98fa115055cf0f8f04651fb8facc0",
+      "performance-measurement.mjs": "06d013d3d9728ab5dd89bd230ee3329480f4474463a728c80b5016b89e1cd250",
+      "prepare.mjs": "1d196d8778b03ef3bdb6342d8003baac1761e45b40c02b800c6a4121c09b1825",
+      "harness-config.mjs": "8034ba207e2a6888ecaaeb6c3c57e00c9f230a3ae544ab3a19fda58d02a86b50",
+      "tldts-export-capture.mjs": "037ef615b0c8363146a9ff2b96ce4b23e4960006f65076f2c94f5007f444874b",
+      "HARNESS-PARAMETERS-used-browser.json": "f4b355ff548ddc6b6ffbd363e3ca4ab23e29cbd792edf9382e50ff6d70b763a6",
+      "HARNESS-PARAMETERS.json": "e5077c27a32d56d266bda27aee866e49ab8701581cacfac9cdd285672b521511"
+    },
+    "leaseAbsent": true,
+    "launchEligible": false
+  },
+  "cleanup": {
+    "all11SuccessfulRunsOwnedCleanupPassed": true,
+    "leaseAbsentAtClosure": true,
+    "launchDisabledAtClosure": true,
+    "dailyProfileTouched": false,
+    "dailyBrowserClosed": false,
+    "RecoveryInspectedOrControlled": false
+  },
+  "notRun": [
+    "extension installation or incognito-access toggle/acceptance",
+    "real provider/model/search APIs",
+    "model download, audio playback or inference",
+    "native Wayland/Cua controls",
+    "RTX5090 WebGPU",
+    "Greasy Fork build/verifier",
+    "full repository test suite",
+    "uncompressed E5 browser control",
+    "browser RSS/memory benchmark",
+    "browser process startup or OS/V8/disk cold-cache benchmark"
+  ],
+  "reproductionLimit": "The complete local harness, original raw logs/artifacts/profiles and receipt basenames are not published. Public samples and hashes permit checking calculations/bindings; this is not a one-command reproducible browser benchmark. Build/test commands and experiment patches are published separately.",
+  "claims": "Finite synthetic coverage and observed timings only; no universal functional equivalence, full performance comparison, SOTA or Pareto optimality claim."
+}

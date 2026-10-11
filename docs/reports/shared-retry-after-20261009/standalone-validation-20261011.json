@@ -355,17 +355,26 @@
     }
   ],
   "browserAcceptance": {
-    "status": "not_run",
-    "preparedFinalArtifactInputs": true,
+    "status": "passed_with_explicit_scope_limits",
+    "receipt": "browser-validation-20261011.json",
+    "receiptSha256": "becb6e0eabe9cac36eb200d7b0ebc37b6f22b3b4eb979d62ef0d1db6e38b6266",
+    "testedDocumentationCheckout": "0904b33c90417f5098f26fcf1b1be2f04eee5970",
+    "exactOriginalArtifactsExecuted": true,
     "standardGzipAssets": 8,
     "standaloneGzipAssets": 9,
     "standardOffsetInputs": 24,
     "standaloneOffsetInputs": 27,
-    "invalidContracts": 5,
-    "preparedInputsAreNotExecutionEvidence": true
+    "invalidContractsPerMode": 5,
+    "cjsFixedVectorsPerMode": 6,
+    "basicSettingsPassedBothModes": true,
+    "standaloneCapabilityUiPassed": true,
+    "actualTldtsSevenExportsAnd22DomainVectorsPassed": true,
+    "coldFreshProcessSamplesPerMode": 3,
+    "firstNaturalTableInstrumentedSamples": 3,
+    "timingInstrumentationAndCacheLimitsExplicit": true,
+    "extensionIncognitoAcceptanceRun": false
   },
   "notRun": [
-    "current-artifact real browser IIFE/CJS/gzip/settings acceptance",
     "extension incognito localhost acceptance",
     "real provider/model/search APIs",
     "WebGPU",
