@@ -56,6 +56,24 @@ function harness() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('视频单句播放器控制器', () => {
+  it('未选句及停止后的播放事件不读取媒体状态或重复通知，已有选句仍在脱离页面时解除', () => {
+    const h = harness();
+    const connected = vi.fn(() => false);
+    Object.defineProperty(h.media, 'isConnected', {get: connected});
+    for (let i = 0; i < 100; i += 1) h.media.dispatchEvent(new Event('timeupdate'));
+    expect(connected).not.toHaveBeenCalled();
+    expect(h.state).not.toHaveBeenCalled();
+    h.controller.select(h.sentence, 'off', false);
+    h.media.dispatchEvent(new Event('timeupdate'));
+    expect(connected).toHaveBeenCalledOnce();
+    expect(h.controller.getState().sentence).toBeNull();
+    expect(h.state).toHaveBeenCalledTimes(2);
+    for (let i = 0; i < 100; i += 1) h.media.dispatchEvent(new Event('timeupdate'));
+    expect(connected).toHaveBeenCalledOnce();
+    expect(h.state).toHaveBeenCalledTimes(2);
+    h.controller.destroy();
+  });
+
   it('只在用户明确播放的原媒体上循环原始范围，保持倍速；外部 seek 立即解除', async () => {
     const h = harness();
     h.media.synchronousSeek = true;

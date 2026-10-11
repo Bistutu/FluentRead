@@ -71,6 +71,7 @@
 #fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-explain { border-color: #ffffff24; color: var(--fr-learning-text); }
 #fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-save { background: var(--fr-video-menu-brand-strong); color: #fff; border-color: var(--fr-video-menu-brand-strong); font-weight: 650; }
 #fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-save:hover { background: var(--fr-video-menu-brand-strong-hover); }
+#fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-save[data-learning-saved=true]:disabled { opacity: 1; background: var(--fr-video-menu-brand-soft); border-color: #ef47764d; color: var(--fr-learning-accent); }
 #fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-library { display: flex; margin: 4px auto 0; color: var(--fr-learning-muted); font-size: 10px; }
 #fluent-read-video-learning-panel .fr-video-learning-status { margin: 10px 0 0; font-size: 11px; color: #bfcec8; }
 #fluent-read-video-learning-panel .fr-video-learning-inline-error { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; font-size: 11px; color: #ffc1c6; margin-top: 8px; }
@@ -100,11 +101,13 @@
 
 #fluent-read-video-learning-panel { container-type: size; container-name: fr-video-learning; }
 #fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-compact-play { display: none; }
+#fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-compact-navigation { display: none; }
 @container fr-video-learning (max-height: 340px) {
   #fluent-read-video-learning-panel .fr-video-learning-header { padding: 7px 10px; }
   #fluent-read-video-learning-panel .fr-video-learning-header-actions { gap: 0; }
   #fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-icon { min-width: 28px; min-height: 28px; padding: 4px; }
   #fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-compact-play { display: inline-flex; color: var(--fr-learning-accent); }
+  #fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-compact-navigation { display: inline-flex; }
   #fluent-read-video-learning-panel .fr-video-learning-body { padding: 9px 12px; }
   #fluent-read-video-learning-panel .fr-video-learning-original { font-size: 16px; margin: 7px 0 5px; }
   #fluent-read-video-learning-panel .fr-video-learning-follow { margin-bottom: 8px; }

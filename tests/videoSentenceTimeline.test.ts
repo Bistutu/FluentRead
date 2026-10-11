@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {buildVideoSentenceTimeline, findVideoSentenceAtTime} from '@/src/features/video-subtitle/content/sentenceTimeline';
+import {buildVideoSentenceTimeline, createVideoSentenceTimeIndex, findVideoSentenceAtTime} from '@/src/features/video-subtitle/content/sentenceTimeline';
 import type {VideoSubtitleCue} from '@/src/features/video-subtitle/content/youtubeSubtitleData';
 
 const cue = (text: string, startMs: number, durationMs = 1000): VideoSubtitleCue => ({text, startMs, durationMs});
@@ -96,5 +96,74 @@ describe('原字幕完整句学习时间轴', () => {
     expect(findVideoSentenceAtTime(sentences, -1)).toBeNull();
     expect(findVideoSentenceAtTime(sentences, NaN)).toBeNull();
     expect(findVideoSentenceAtTime([], 0)).toBeNull();
+  });
+
+  it('查句快照返回原数组位置，保留乱序、同起点后项、原小数边界与长范围回退', () => {
+    const sentences = buildVideoSentenceTimeline([
+      cue('First.', 0.25, 5000), cue('Second.', 2000.25, 1000), cue('Third.', 2000.25, 500),
+    ]);
+    const unsorted = [sentences[2], sentences[0], sentences[1]];
+    const index = createVideoSentenceTimeIndex(unsorted);
+    expect(index.findIndexAtTime(0)).toBe(-1);
+    expect(index.findIndexAtTime(0.25)).toBe(1);
+    expect(index.findIndexAtTime(2200)).toBe(2);
+    expect(index.findAtTime(2500.25)).toBe(sentences[1]);
+    expect(index.findAtTime(4000)).toBe(sentences[0]);
+    expect(index.findIndexAtTime(5000.25)).toBe(-1);
+    expect(index.findAtTime(5000.25)).toBeNull();
+    expect(index.findAtTime(NaN)).toBeNull();
+    expect(index.findAtTime(Infinity)).toBeNull();
+    expect(index.findAtTime(-Infinity)).toBeNull();
+    expect(createVideoSentenceTimeIndex([]).findIndexAtTime(0)).toBe(-1);
+  });
+
+  it('重叠查句快照在复杂范围和回退时钟下与现有公开查询保持一致', () => {
+    const template = buildVideoSentenceTimeline([cue('Template.', 0)])[0];
+    const sentences = Array.from({length: 137}, (_, i) => ({
+      ...template, id: String(i), startMs: (i * 47 % 31) * 100,
+      endMs: (i * 47 % 31) * 100 + (i % 9 === 0 ? 5000 : i * 23 % 700 + 50),
+    }));
+    sentences.push({...template, startMs: NaN, endMs: 4000}, {...template, startMs: 4000, endMs: 1000});
+    const index = createVideoSentenceTimeIndex(sentences);
+    for (let i = 0; i < 750; i += 1) {
+      const clock = (i * 7919 % 8500) - 250;
+      const expected = findVideoSentenceAtTime(sentences, clock);
+      expect(index.findAtTime(clock)).toBe(expected);
+      expect(index.findIndexAtTime(clock)).toBe(expected ? sentences.indexOf(expected) : -1);
+    }
+  });
+
+  it('快照不跟踪原地编辑；公开数组查询仍立即反映编辑且可显式重建', () => {
+    const sentences = buildVideoSentenceTimeline([cue('First.', 0), cue('Second.', 2000)]);
+    const first = sentences[0];
+    const index = createVideoSentenceTimeIndex(sentences);
+    first.startMs = 1000;
+    first.endMs = 1500;
+    sentences.reverse();
+    expect(index.findIndexAtTime(500)).toBe(0);
+    expect(index.findAtTime(500)).toBe(first);
+    expect(findVideoSentenceAtTime(sentences, 500)).toBeNull();
+    expect(createVideoSentenceTimeIndex(sentences).findIndexAtTime(1250)).toBe(1);
+    sentences.pop();
+    expect(index.findAtTime(500)).toBe(first);
+    expect(findVideoSentenceAtTime(sentences, 1250)).toBeNull();
+  });
+
+  it('连续播放查句只在建索引时读取句子范围，不随事件重新访问整份字幕', () => {
+    const template = buildVideoSentenceTimeline([cue('Template.', 0)])[0];
+    let rangeReads = 0;
+    const sentences = Array.from({length: 2400}, (_, i) => ({
+      ...template,
+      get startMs() { rangeReads += 1; return i * 1000; },
+      get endMs() { rangeReads += 1; return i * 1000 + 800; },
+    }));
+    const index = createVideoSentenceTimeIndex(sentences);
+    expect(rangeReads).toBe(4800);
+    rangeReads = 0;
+    for (let i = 0; i < 1000; i += 1) {
+      expect(index.findIndexAtTime(i * 1000 + 500)).toBe(i);
+      expect(index.findIndexAtTime(i * 1000 + 800)).toBe(-1);
+    }
+    expect(rangeReads).toBe(0);
   });
 });

@@ -25,6 +25,7 @@ const playwrightRoot = arg('playwright-root', process.env.PLAYWRIGHT_ROOT);
 const helperPath = path.resolve(arg('focus-safe-helper', path.join(__dirname, 'testing/focus-safe-browser.cjs')));
 const platforms = arg('platforms', 'youtube,x').split(',');
 const liveOnly = process.argv.includes('--live-only');
+const performanceOnly = process.argv.includes('--performance-only');
 const liveUrls = [
   ...String(arg('live-youtube-urls', arg('live-youtube-url', ''))).split(',').filter(Boolean).map(url => ({platform: 'youtube', url})),
   ...(arg('live-x-url') ? [{platform: 'x', url: arg('live-x-url')}] : []),
@@ -33,6 +34,7 @@ assert.ok(playwrightRoot, 'Pass --playwright-root');
 assert.ok(fs.existsSync(path.join(extensionDir, 'manifest.json')), 'Build the production extension first');
 assert.ok(platforms.every(platform => ['youtube', 'x'].includes(platform)), '--platforms accepts youtube,x');
 assert.ok(!liveOnly || liveUrls.length, '--live-only requires a live URL');
+assert.ok(!performanceOnly || !liveOnly && !liveUrls.length, '--performance-only cannot include live probes');
 const helper = require(helperPath);
 const {chromium} = createRequire(path.join(playwrightRoot, 'video-sentence-proof.cjs'))('playwright');
 fs.mkdirSync(artifacts, {recursive: true});
@@ -42,6 +44,14 @@ const report = {
   evidence: 'Production extension; real local MP4 clock; original timed-caption fixtures; deterministic translation; actual live probes reported separately',
   fixtureCases: [], liveCases: [], pageErrors: [], cleanup: {},
 };
+if (performanceOnly) {
+  const crypto = require('node:crypto');
+  report.performanceCases = [];
+  report.performance = {tag: arg('performance-tag', 'baseline'), deterministicProviderDelayMs: 120,
+    artifact: {version: JSON.parse(fs.readFileSync(path.join(extensionDir, 'manifest.json'))).version,
+      contentSha256: crypto.createHash('sha256').update(fs.readFileSync(path.join(extensionDir, 'content-scripts/content.js'))).digest('hex')},
+    scope: 'Production UI; decoded MP4; synthetic timeupdate pressure reported separately from natural media clock; local deterministic transport, not provider latency or website acceptance'};
+}
 const cues = [
   {startMs: 0, durationMs: 1000, text: 'Sea otters'},
   {startMs: 1000, durationMs: 1500, text: 'have strong teeth.'},
@@ -108,7 +118,11 @@ async function patchConfig(patch) {
     if (!read.success) throw new Error('Cannot read test profile configuration');
     const current = typeof read.value === 'string' ? JSON.parse(read.value) : read.value || {};
     return chrome.runtime.sendMessage({type: 'persistConfig', clientId: 'sentence-learning-proof', sequence,
-      config: {...current, ...patch}, ...(Number.isSafeInteger(current.__fluentConfigRevision) ? {baseRevision: current.__fluentConfigRevision} : {})});
+      // This disposable profile only has our known placeholder credential. Public
+      // local:config omits separately stored credentials; a full fixture write
+      // must retain that placeholder without reading any user credential record.
+      config: {...current, ...patch, token: {'custom:sentence-fixture': 'fixture-token'}},
+      ...(Number.isSafeInteger(current.__fluentConfigRevision) ? {baseRevision: current.__fluentConfigRevision} : {})});
   }, {patch, sequence: ++configSequence});
   assert.equal(result.success, true, JSON.stringify(result));
 }
@@ -156,6 +170,239 @@ async function injectCaptions(platform, captionCues, mediaId) {
         responseText: `WEBVTT\n\n${captionCues.map(cue => `${stamp(cue.startMs)} --> ${stamp(cue.startMs + cue.durationMs)}\n${cue.text}`).join('\n\n')}\n`}, location.origin);
     }
   }, {platform, captionCues, mediaId});
+}
+async function createPerformancePage(platform, mediaData, captionCues, label) {
+  currentPhase = `${platform}: performance ${label}`;
+  const mediaId = platform === 'youtube' ? 'frPerfVid01' : '424260';
+  const url = platform === 'youtube' ? `https://www.youtube.com/watch?v=${mediaId}` : `https://x.com/fluentread/status/${mediaId}`;
+  await context.route(url, route => route.fulfill({contentType: 'text/html', body: fixtureHtml(platform, mediaData)}));
+  page = await helper.newPageWithoutForeground(context);
+  await page.goto(url);
+  await helper.activateExtensionTabWithoutForeground({serviceWorkers: () => [worker]}, page);
+  await page.waitForFunction(() => document.querySelector('video')?.readyState >= 2);
+  await page.locator('#fluent-read-video-subtitle-button').waitFor();
+  await injectCaptions(platform, captionCues, mediaId);
+  await page.evaluate(() => {
+    const state = window.__sentencePerformance = {phase: 'opening', actions: [], pending: [], mutations: 0, panelMutations: 0, longTasks: [], nativeTicks: 0};
+    new MutationObserver(records => {
+      state.mutations += records.length;
+      const panel = document.querySelector('#fluent-read-video-learning-panel');
+      if (panel) state.panelMutations += records.filter(record => panel.contains(record.target)).length;
+      const index = panel?.querySelector('[data-learning-sentence-index]')?.dataset.learningSentenceIndex;
+      for (const item of state.pending) {
+        if (!item.done && ((item.action === 'open' && index !== undefined)
+          || ((item.action === 'next' || item.action === 'previous') && index !== item.before)
+          || (item.action === 'close' && !panel))) {
+          item.done = true; item.durationMs = performance.now() - item.start; item.after = index ?? null;
+          state.actions.push({...item});
+        }
+      }
+      state.pending = state.pending.filter(item => !item.done);
+    }).observe(document.body, {subtree: true, childList: true, characterData: true, attributes: true});
+    document.addEventListener('click', event => {
+      const target = event.target.closest?.('[data-learning-action], [data-action="open-sentence-learning"]');
+      if (!target) return;
+      const action = target.dataset.learningAction || 'open';
+      if (!['open', 'next', 'previous', 'close'].includes(action)) return;
+      state.pending.push({phase: state.phase, action, start: performance.now(),
+        before: document.querySelector('[data-learning-sentence-index]')?.dataset.learningSentenceIndex ?? null});
+    }, true);
+    try { new PerformanceObserver(list => state.longTasks.push(...list.getEntries().map(item => ({phase: state.phase, durationMs: item.duration})))).observe({entryTypes: ['longtask']}); } catch {}
+    document.querySelector('video').addEventListener('timeupdate', event => {if (event.isTrusted) state.nativeTicks++;});
+  });
+}
+const providerCount = () => worker.evaluate(() => globalThis.sentenceFixtureRequests.length);
+const performanceStats = () => page.evaluate(() => ({...window.__sentencePerformance, pending: undefined}));
+async function dispatchTimeupdatePressure() {
+  return page.evaluate(async () => {
+    const video = document.querySelector('video'); const batchesMs = [];
+    for (let batch = 0; batch < 10; batch++) {
+      const start = performance.now();
+      for (let event = 0; event < 100; event++) video.dispatchEvent(new Event('timeupdate'));
+      batchesMs.push(performance.now() - start);
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    return {events: 1000, batchesMs, totalDispatchMs: batchesMs.reduce((sum, time) => sum + time, 0),
+      actualPaused: video.paused, actualTime: video.currentTime, selectedIndex: document.querySelector('[data-learning-sentence-index]')?.dataset.learningSentenceIndex};
+  });
+}
+async function runPerformanceFixtures(platform, mediaData) {
+  for (const size of platform === 'youtube' ? [120, 2400, 12000] : [120, 2400, 4000]) {
+    const captionCues = Array.from({length: size}, (_, index) => ({startMs: index, durationMs: 1, text: `Pressure ${platform} sentence ${String(index).padStart(5, '0')}.`}));
+    const result = {platform, scenario: `dense-timeline-${size}`, sentenceCount: size, checks: [], measurements: []};
+    report.performanceCases.push(result);
+    await createPerformancePage(platform, mediaData, captionCues, result.scenario);
+    await seek(.0005);
+    result.closedDispatch = await dispatchTimeupdatePressure();
+    await openLearning();
+    await page.waitForFunction(size => document.querySelector('.fr-video-learning-position')?.textContent.includes(`/ ${size}`), size);
+    result.opening = (await performanceStats()).actions.filter(item => item.action === 'open');
+    for (const [position, time, expected] of [['first', .0005, 0], ['tail', (size - .5) / 1000, size - 1]]) {
+      await seek(time);
+      await page.waitForFunction(index => Number(document.querySelector('[data-learning-sentence-index]')?.dataset.learningSentenceIndex) === index, expected);
+      await page.waitForFunction(() => document.querySelector('[data-learning-translation-display]')?.getAttribute('aria-busy') === 'false');
+      const before = await performanceStats(); const requests = await providerCount();
+      await page.evaluate(position => {window.__sentencePerformance.phase = `same-sentence-${position}`;}, position);
+      const pressure = await dispatchTimeupdatePressure();
+      const after = await performanceStats();
+      result.measurements.push({position, ...pressure, pageDomMutations: after.mutations - before.mutations,
+        panelDomMutations: after.panelMutations - before.panelMutations, providerRequests: await providerCount() - requests});
+      assert.equal(pressure.selectedIndex, String(expected));
+      assert.equal(await providerCount(), requests, 'Same-sentence timeupdate pressure must not restart translation');
+    }
+    await action('close').click();
+    assert.equal(await page.locator('#fluent-read-video-learning-panel').count(), 0);
+    result.success = true; process.stdout.write(`${platform}: measured ${size} sentences at first/tail\n`);
+    await page.close(); page = null; await context.unrouteAll({behavior: 'wait'});
+  }
+  const captionCues = Array.from({length: 120}, (_, index) => ({startMs: index * 500, durationMs: 450, text: `Operation ${platform} sentence ${String(index).padStart(5, '0')}.`}));
+  const result = {platform, scenario: 'operations', checks: [], measurements: {}}; report.performanceCases.push(result);
+  await createPerformancePage(platform, mediaData, captionCues, 'operations');
+  await openLearning();
+  await page.waitForFunction(() => document.querySelector('[data-learning-translation-display]')?.getAttribute('aria-busy') === 'false');
+  result.measurements.opening = (await performanceStats()).actions.filter(item => item.action === 'open');
+  let startRequests = await providerCount();
+  await page.evaluate(() => {window.__sentencePerformance.phase = 'rapid-next-12-target-30ms';});
+  for (let index = 0; index < 12; index++) {await action('next').click({force: true});await page.waitForTimeout(30);}
+  await page.waitForFunction(() => document.querySelector('[data-learning-translation-display]')?.textContent.includes('sentence 00012.'));
+  result.measurements.rapid = {requests: await providerCount() - startRequests, final: await current(),
+    actions: (await performanceStats()).actions.filter(item => item.phase === 'rapid-next-12-target-30ms')};
+  assert.equal(result.measurements.rapid.final.index, '12');
+  startRequests = await providerCount();
+  result.measurements.burst = await page.evaluate(async () => {
+    window.__sentencePerformance.phase = 'synchronous-next-12-microtask-settlement';
+    const start = performance.now();
+    for (let index = 0; index < 12; index++) document.querySelector('[data-learning-action="next"]').click();
+    await Promise.resolve(); await Promise.resolve();
+    return {kind: 'explicit synthetic click burst, not a trusted-user gesture', clicks: 12, domSettlementMs: performance.now() - start,
+      index: document.querySelector('[data-learning-sentence-index]')?.dataset.learningSentenceIndex,
+      original: document.querySelector('[data-learning-original]')?.textContent};
+  });
+  await page.waitForFunction(() => document.querySelector('[data-learning-translation-display]')?.textContent.includes('sentence 00024.'));
+  Object.assign(result.measurements.burst, {requests: await providerCount() - startRequests, final: await current()});
+  assert.equal(result.measurements.burst.final.index, '24');
+  await action('previous').click();
+  await page.waitForFunction(() => document.querySelector('[data-learning-translation-display]')?.textContent.includes('sentence 00023.'));
+  await action('next').click();
+  startRequests = await providerCount();
+  for (let index = 0; index < 6; index++) {await action('previous').click({force: true}); await action('next').click({force: true});}
+  await page.waitForTimeout(250);
+  result.measurements.warmRevisit = {requests: await providerCount() - startRequests, final: await current()};
+  assert.equal(result.measurements.warmRevisit.requests, 0, 'Completed in-session drafts should not start duplicate translation requests');
+  const player = page.locator('#movie_player, [data-testid=videoPlayer]');
+  await player.evaluate(element => {element.style.width = '390px'; element.style.height = '260px';});
+  await page.locator('[data-learning-original]').scrollIntoViewIfNeeded();
+  result.measurements.compact = await page.evaluate(() => {
+    const visible = action => {
+      const button = document.querySelector(`[data-learning-action="${action}"]`); if (!button) return false;
+      const rect = button.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0 && button.contains(document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2));
+    };
+    return {atOriginal: Object.fromEntries(['previous', 'next', 'previous-compact', 'next-compact', 'play-compact', 'loop', 'pause-at-end', 'save', 'library', 'close'].map(action => [action, visible(action)])),
+      bodyScrollTop: document.querySelector('.fr-video-learning-body').scrollTop};
+  });
+  await action('next').scrollIntoViewIfNeeded();
+  result.measurements.compact.nextReachableAfterScroll = await action('next').isVisible();
+  await player.screenshot({path: path.join(artifacts, `${platform}-performance-compact.png`)});
+  await player.evaluate(element => {element.style.width = '960px'; element.style.height = '540px';});
+  await action('close').click();
+  await page.close(); page = null; await context.unrouteAll({behavior: 'wait'});
+  await createPerformancePage(platform, mediaData, [{startMs: 0, durationMs: 6000, text: `Natural ${platform} clock stays on this complete sentence.`},
+    ...captionCues.slice(1).map((cue, index) => ({...cue, startMs: 7000 + index * 1000, durationMs: 850}))], 'natural-clock');
+  await seek(.1); await openLearning();
+  await page.waitForFunction(() => document.querySelector('[data-learning-translation-display]')?.getAttribute('aria-busy') === 'false');
+  await page.evaluate(() => {window.__sentencePerformance.phase = 'natural-first-sentence-5s';});
+  const beforeNatural = await performanceStats(); startRequests = await providerCount();
+  await page.evaluate(() => document.querySelector('video').play());
+  await page.waitForTimeout(5000);
+  await page.evaluate(() => document.querySelector('video').pause());
+  const afterNatural = await performanceStats();
+  result.measurements.naturalClock = {durationMs: 5000, final: await current(), nativeTicks: afterNatural.nativeTicks - beforeNatural.nativeTicks,
+    pageDomMutations: afterNatural.mutations - beforeNatural.mutations, panelDomMutations: afterNatural.panelMutations - beforeNatural.panelMutations,
+    requests: await providerCount() - startRequests,
+    longTasks: afterNatural.longTasks.filter(item => item.phase === 'natural-first-sentence-5s')};
+  await action('loop').click(); await action('play').click(); await action('close').click();
+  startRequests = await providerCount();
+  await page.waitForFunction(() => document.querySelector('video').currentTime > 6.1, null, {timeout: 10000});
+  result.measurements.closed = {afterOldBoundary: await current(), requests: await providerCount() - startRequests,
+    panelCount: await page.locator('#fluent-read-video-learning-panel').count()};
+  assert.equal(result.measurements.closed.panelCount, 0);
+  await page.evaluate(() => document.querySelector('video').pause());
+  result.success = true; process.stdout.write(`${platform}: measured rapid/burst/revisit/compact/natural/close\n`);
+  await page.close(); page = null; await context.unrouteAll({behavior: 'wait'});
+}
+async function runOperationImprovementFixture(platform, mediaData) {
+  const result = {platform, scenario: 'operation-improvements', source: 'controlled UI operation timeline, actual production inputs and real decoded media', checks: []};
+  report.fixtureCases.push(result);
+  await patchConfig({videoSubtitleDisplayMode: 'original-only'});
+  const text = index => `UX ${platform} original sentence ${String(index).padStart(5, '0')}.`;
+  const captionCues = Array.from({length: 40}, (_, index) => ({startMs: index * 350, durationMs: 320, text: text(index)}));
+  await createPerformancePage(platform, mediaData, captionCues, 'operation-improvements');
+  await openLearning();
+  const translated = async index => page.waitForFunction(source => document.querySelector('[data-learning-translation-display]')?.textContent.includes(source), text(index));
+  await translated(0);
+  let requests = await providerCount();
+  for (let index = 0; index < 12; index++) {await action('next').click({force: true});await page.waitForTimeout(30);}
+  await translated(12);
+  assert.equal((await current()).index, '12');
+  assert.equal(await providerCount() - requests, 1, 'Rapid stepping starts only the final confirmed source translation');
+  requests = await providerCount();
+  await page.evaluate(async () => {for (let index = 0; index < 12; index++) document.querySelector('[data-learning-action="next"]').click();await Promise.resolve();await Promise.resolve();});
+  await translated(24);
+  assert.equal((await current()).index, '24');
+  assert.equal(await providerCount() - requests, 1, 'The synchronous click burst preserves the last selection and makes one request');
+  check(result, 'Rapid trusted stepping and a synchronous microtask burst immediately select the final source and coalesce translation transport');
+  requests = await providerCount();
+  await action('next').click({force: true});
+  await action('collapse').click({force: true});
+  await page.waitForTimeout(250);
+  assert.equal(await providerCount(), requests, 'Collapsing cancels the queued translation before it starts');
+  await page.locator('#fluent-read-video-learning-panel section').focus();
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(250);
+  assert.equal((await current()).index, '26');
+  assert.equal(await providerCount(), requests, 'A hidden automatic selection does not start a new translation');
+  await action('collapse').click({force: true});
+  await translated(26);
+  assert.equal(await providerCount() - requests, 1, 'Expanding translates only the current empty source once');
+  requests = await providerCount();
+  await action('next').click({force: true});
+  await action('close').click({force: true});
+  await page.waitForTimeout(250);
+  assert.equal(await providerCount(), requests, 'Closing cancels the pending step timer');
+  assert.equal(await page.locator('#fluent-read-video-learning-panel').count(), 0);
+  check(result, 'Collapsed and closed panels release queued translation; hidden stepping waits until expansion to translate the current source');
+  await openLearning();
+  await translated(27);
+  const player = page.locator('#movie_player, [data-testid=videoPlayer]');
+  await player.evaluate(element => {element.style.width = '390px';element.style.height = '260px';});
+  for (const name of ['previous-compact', 'next-compact', 'play-compact', 'close']) {
+    assert.equal(await action(name).isVisible(), true);
+    assert.equal(await action(name).evaluate(element => {
+      const rect = element.getBoundingClientRect();return element.contains(document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2));
+    }), true, `Compact ${name} remains directly reachable`);
+  }
+  await page.locator('.fr-video-learning-body').evaluate(element => {element.scrollTop = element.scrollHeight;});
+  assert.ok(await page.locator('.fr-video-learning-body').evaluate(element => element.scrollTop) > 0);
+  await action('next-compact').click({force: true});
+  await page.waitForFunction(() => document.querySelector('[data-learning-sentence-index]')?.dataset.learningSentenceIndex === '28');
+  assert.equal(await page.locator('.fr-video-learning-body').evaluate(element => element.scrollTop), 0, 'New source starts at the top of its reading body');
+  const originalVisible = await page.locator('[data-learning-original]').evaluate(element => {
+    const rect = element.getBoundingClientRect();const body = element.closest('.fr-video-learning-body').getBoundingClientRect();return rect.top >= body.top && rect.bottom <= body.bottom + 1;
+  });
+  assert.equal(originalVisible, true);
+  await action('previous-compact').click({force: true});
+  await page.waitForFunction(() => document.querySelector('[data-learning-sentence-index]')?.dataset.learningSentenceIndex === '27');
+  await page.locator('#fluent-read-video-learning-panel section').focus();
+  await page.keyboard.press('r');assert.equal((await current()).loop, 'true');
+  await page.keyboard.press('q');assert.equal((await current()).pauseAtEnd, 'true');
+  await page.keyboard.press('ArrowRight');assert.equal((await current()).index, '28');
+  assert.equal((await current()).paused, true);
+  check(result, 'Compact previous/next controls stay reachable, reset the reading scroll to the complete source and preserve keyboard playback assistance');
+  await action('close').click();
+  result.success = true;
+  await page.close();page = null;await context.unrouteAll({behavior: 'wait'});
+  await patchConfig({videoSubtitleDisplayMode: 'bilingual'});
 }
 async function runFixture(platform, mediaData) {
   currentPhase = `${platform}: creating fixture`;
@@ -383,11 +630,14 @@ async function runFixture(platform, mediaData) {
   assert.ok(JSON.stringify(entry.translations).includes('海獭有坚硬的牙齿（已确认）。'));
   assert.ok(entry.contexts.some(context => context.pageTitle.includes('Sentence learning') && context.text.includes('They use rocks')));
   assert.ok(entry.contexts.some(context => context.video?.platform === platform && context.video.startMs === 0 && context.video.endMs === 2500 && context.sourceUrl === url));
-  await action('save').click();
+  await page.waitForFunction(() => {
+    const button = document.querySelector('[data-learning-action="save"]');
+    return button?.disabled && button.textContent.includes('已收藏');
+  });
+  assert.equal(await action('save').isDisabled(), true, 'An unchanged collected sentence cannot start a redundant save');
   await page.waitForTimeout(100);
   const repeated = await readEntry();
-  assert.equal(repeated.data.id, entry.id);
-  assert.equal(repeated.data.contexts.length, entry.contexts.length);
+  assert.deepEqual(repeated.data, entry, 'The unchanged collected sentence does not modify its persisted record');
   check(result, 'An explicit save preserves confirmed translation, title, neighboring context and stable deduplication identity', repeated.data);
   const originalRequests = await worker.evaluate(() => globalThis.sentenceFixtureRequests.filter(text => text === 'Sea otters have strong teeth.').length);
   await editField('translation', '');
@@ -762,13 +1012,14 @@ async function main() {
   browserPid = await getGuardedBrowserPid(session);
   assert.ok(!focusMonitor.events.some(event => event.pid === browserPid), 'Owned browser activated during launch');
   context = session.context;
+  if (performanceOnly) report.performance.browserVersion = context.browser()?.version() || 'CDP Edge';
   Object.assign(report, {launchMode: session.launchMode, focusPolicy: session.focusPolicy, windowPlacement: session.windowPlacement});
   assert.equal(report.windowPlacement.browserFrontmost, false, 'Focus-safe browser must stay in background');
   context.on('page', candidate => candidate.on('pageerror', error => report.pageErrors.push({message: error.message, stack: error.stack, url: candidate.url(), phase: currentPhase})));
   worker = context.serviceWorkers().find(candidate => candidate.url().endsWith('/background.js'))
     || await context.waitForEvent('serviceworker', {predicate: candidate => candidate.url().endsWith('/background.js')});
   extensionId = new URL(worker.url()).host;
-  await worker.evaluate(mapping => {
+  await worker.evaluate(({mapping, performanceOnly}) => {
     const originalFetch = globalThis.fetch;
     globalThis.sentenceFixtureRequests = [];
     globalThis.sentenceFixtureRequestLanguages = [];
@@ -780,10 +1031,11 @@ async function main() {
       const sources = body.map(item => String(item?.Text ?? item ?? ''));
       globalThis.sentenceFixtureRequests.push(...sources);
       globalThis.sentenceFixtureRequestLanguages.push({sources, from: new URL(requestUrl).searchParams.get('from')});
+      if (performanceOnly) await new Promise(resolve => setTimeout(resolve, 120));
       if (sources.includes(globalThis.sentenceFixtureHoldText)) await new Promise(resolve => globalThis.sentenceFixtureHeld.push(resolve));
       return new Response(JSON.stringify(sources.map(source => ({translations: [{text: mapping[source] || `固定译文：${source}`}]}))), {status: 200, headers: {'content-type': 'application/json'}});
     };
-  }, translations);
+  }, {mapping: translations, performanceOnly});
   control = await helper.newPageWithoutForeground(context);
   await control.goto(`chrome-extension://${extensionId}/popup.html`);
   await patchConfig({on: true, uiLanguage: 'zh-CN', uiLanguageSetupCompleted: true, from: 'auto', to: 'zh-Hans',
@@ -799,9 +1051,14 @@ async function main() {
     const media = spawnSync(arg('ffmpeg', '/opt/homebrew/bin/ffmpeg'), ['-y', '-f', 'lavfi', '-i', 'color=c=0x123044:s=960x540:r=20', '-t', '18', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', mediaFile], {encoding: 'utf8', timeout: 30000});
     assert.equal(media.status, 0, media.stderr);
     const mediaData = fs.readFileSync(mediaFile).toString('base64');
-    for (const platform of platforms) await runFixture(platform, mediaData);
-    if (platforms.includes('youtube')) await runTranslatedOnlyYoutubeFixture(mediaData);
-    if (platforms.includes('x')) await runXSourceIdentityFixtures(mediaData);
+    if (performanceOnly) {
+      await patchConfig({videoSubtitleDisplayMode: 'original-only'});
+      for (const platform of platforms) await runPerformanceFixtures(platform, mediaData);
+    } else {
+      for (const platform of platforms) {await runFixture(platform, mediaData);await runOperationImprovementFixture(platform, mediaData);}
+      if (platforms.includes('youtube')) await runTranslatedOnlyYoutubeFixture(mediaData);
+      if (platforms.includes('x')) await runXSourceIdentityFixtures(mediaData);
+    }
     report.fixturePageErrors = [...report.pageErrors];
     assert.deepEqual(report.fixturePageErrors, [], 'Controlled fixture pages must not emit runtime errors');
   }
@@ -810,7 +1067,7 @@ async function main() {
   const foreground = await helper.queryMacFrontmostApplication();
   assert.ok(foreground && foreground.pid !== browserPid, 'Owned browser must stay in background');
   report.finalBrowserFrontmost = false;
-  report.success = liveOnly ? report.liveCases.every(result => result.success) : report.fixtureCases.every(result => result.success);
+  report.success = performanceOnly ? report.performanceCases.every(result => result.success) : liveOnly ? report.liveCases.every(result => result.success) : report.fixtureCases.every(result => result.success);
   if (!report.success) process.exitCode = 1;
 }
 main().catch(async error => {
@@ -837,6 +1094,7 @@ main().catch(async error => {
   } else report.cleanup.retainedProfile = profileDir;
   fs.writeFileSync(path.join(artifacts, 'report.json'), JSON.stringify(report, null, 2));
   process.stdout.write(`${JSON.stringify({success: report.success,
+    ...(performanceOnly ? {performanceCases: report.performanceCases.map(result => ({platform: result.platform, scenario: result.scenario, success: Boolean(result.success)}))} : {}),
     fixtureCases: report.fixtureCases.map(result => ({platform: result.platform, ...(result.scenario ? {scenario: result.scenario} : {}), success: Boolean(result.success), checks: result.checks.length})),
     liveCases: report.liveCases.map(result => ({platform: result.platform, url: result.url, success: result.success,
       captionResponses: result.captionResponses?.length, limitation: result.limitation, failure: result.failure})),

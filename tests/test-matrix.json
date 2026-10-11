@@ -659,6 +659,7 @@
       "tests/userscriptDexieIsolation.test.ts",
       "tests/vocabularyBookComponentLifecycle.test.ts",
       "tests/vocabularyStudyLifecycle.test.ts",
+      "tests/videoSentenceLearningComponent.test.ts",
       "tests/allNodesTranslationCore.test.ts",
       "tests/sameTargetLanguageRegression.test.ts",
       "tests/vocabularyReencounterLifecycle.test.ts",

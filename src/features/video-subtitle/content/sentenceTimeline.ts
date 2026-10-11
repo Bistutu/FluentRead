@@ -1,8 +1,8 @@
 /**
  * @file src/features/video-subtitle/content/sentenceTimeline.ts
  * 文件职责：把已有视频字幕的原文 cue 聚合为带可靠音频范围的句子学习材料。
- * 主要内容：仅在原始 cue 边界识别多语言句末标点，并以时间、长度、数量和静音间隔限制无标点连续段；保留原 cue 索引、前后句语境和未完成边界。
- * 模块边界：不解析或生成译文，不切分单个 cue 的音频时间，不调用播放器、网络或存储；YouTube 与具备真实时间轴的 X 适配共用该纯规则。
+ * 主要内容：仅在原始 cue 边界识别多语言句末标点，以时间、长度、数量和静音间隔限制连续段；保留语境和源索引，并提供重叠安全的播放查句快照。
+ * 模块边界：不生成译文或 cue 子时间，不调用播放器、网络或存储；快照仅在字幕材料改变时重建，公开数组查询仍反映调用时的内容。
  */
 import type {VideoSubtitleCue} from './youtubeSubtitleData';
 
@@ -26,6 +26,12 @@ export interface VideoSentenceTimelineOptions {
   maxCharacters: number;
   maxCues: number;
   maxGapMs: number;
+}
+
+export interface VideoSentenceTimeIndex {
+  /** 返回快照原数组中的位置；间隙或没有命中时返回 -1。 */
+  findIndexAtTime(currentMs: number): number;
+  findAtTime(currentMs: number): VideoSentence | null;
 }
 
 const DEFAULT_LIMITS: VideoSentenceTimelineOptions = {
@@ -83,8 +89,9 @@ export function buildVideoSentenceTimeline(
   };
   for (const cue of ordered) {
     const endMs = cue.startMs + cue.durationMs;
+    let joined = cue.text;
     if (current) {
-      const joined = joinCueText(current.text, cue.text);
+      joined = joinCueText(current.text, cue.text);
       if (cue.startMs - current.endMs > limits.maxGapMs) flush('gap');
       else if (Math.max(current.endMs, endMs) - current.startMs > limits.maxDurationMs
         || joined.length > limits.maxCharacters || current.cueIndices.length >= limits.maxCues) flush('limit');
@@ -102,7 +109,7 @@ export function buildVideoSentenceTimeline(
         complete: false,
       };
     } else {
-      current.text = joinCueText(current.text, cue.text);
+      current.text = joined;
       current.endMs = Math.max(current.endMs, endMs);
       current.cueIndices.push(cue.index);
     }
@@ -126,4 +133,50 @@ export function findVideoSentenceAtTime(sentences: readonly VideoSentence[], cur
       && (!active || sentence.startMs >= active.startMs)) active = sentence;
   }
   return active;
+}
+
+/**
+ * 按调用时的数组顺序和时间范围创建快照；原数组可继续编辑，编辑后应重建索引。
+ * 起点二分后按最大终点树寻找最近仍覆盖当前时刻的范围，避免长重叠 cue 导致退化为全表回扫。
+ */
+export function createVideoSentenceTimeIndex(sentences: readonly VideoSentence[]): VideoSentenceTimeIndex {
+  const snapshot = Array.from(sentences);
+  const ordered = snapshot.map((sentence, index) => ({index, startMs: sentence.startMs, endMs: sentence.endMs}))
+    .filter(sentence => sentence.startMs < sentence.endMs)
+    .sort((left, right) => left.startMs - right.startMs || left.index - right.index);
+  let base = 1;
+  while (base < ordered.length) base *= 2;
+  const maxEnd = new Float64Array(base * 2).fill(-Infinity);
+  ordered.forEach((sentence, index) => { maxEnd[base + index] = sentence.endMs; });
+  for (let node = base - 1; node > 0; node -= 1) maxEnd[node] = Math.max(maxEnd[node * 2], maxEnd[node * 2 + 1]);
+
+  const findIndexAtTime = (currentMs: number): number => {
+    let low = 0;
+    let high = ordered.length;
+    while (low < high) {
+      const middle = Math.floor((low + high) / 2);
+      if (ordered[middle].startMs <= currentMs) low = middle + 1;
+      else high = middle;
+    }
+    if (low === 0) return -1;
+    let node = base + low - 1;
+    if (maxEnd[node] > currentMs) return ordered[low - 1].index;
+    // 只查看此前的兄弟区间；最大终点已经结束的整段无需逐句检查。
+    while (node > 1) {
+      if (node % 2 === 1 && maxEnd[node - 1] > currentMs) {
+        node -= 1;
+        while (node < base) {
+          node = node * 2 + 1;
+          if (maxEnd[node] <= currentMs) node -= 1;
+        }
+        return ordered[node - base].index;
+      }
+      node = Math.floor(node / 2);
+    }
+    return -1;
+  };
+  return {findIndexAtTime, findAtTime: currentMs => {
+    const index = findIndexAtTime(currentMs);
+    return index === -1 ? null : snapshot[index];
+  }};
 }
