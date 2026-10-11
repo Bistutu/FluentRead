@@ -553,6 +553,9 @@ export default defineConfig({
         emptyOutDir: true,
         target: 'es2018',
         minify: greasyForkSource ? false : 'esbuild',
+        // 锁定的 CommonJS 26 默认 auto 会因条件 require 的分析时机改变 MD5 初始化包装。
+        // 保留首次 require 的初始化顺序与循环依赖语义，使同源构建能稳定比较；不改库实现。
+        commonjsOptions: {strictRequires: true},
         sourcemap: false,
         cssCodeSplit: false,
         assetsInlineLimit: Number.MAX_SAFE_INTEGER,

@@ -1,10 +1,10 @@
 import {readFileSync, realpathSync, mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {tmpdir} from 'node:os';
-import {createHash} from 'node:crypto';
+import {createHash, createHmac, createCipheriv} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {resolve} from 'node:path';
-import {gunzipSync} from 'node:zlib';
+import {gunzipSync, gzipSync} from 'node:zlib';
 import {runInNewContext} from 'node:vm';
 import {describe, expect, it, vi} from 'vitest';
 import {ungzip} from 'pako';
@@ -35,6 +35,118 @@ import {
 const entrypointId = resolve(process.cwd(), 'entrypoints/userscript-injection-fixture.ts');
 const sourceModuleId = resolve(process.cwd(), 'src/app/content/runtime.ts');
 const vueScriptModuleId = `${resolve(process.cwd(), 'src/features/selection-translation/ui/SelectionTranslator.vue')}?vue&type=script&setup=true&lang.ts`;
+
+// 使用真实 Vite/CommonJS 与发布配置的同一选项，验证 require 时序而不是断言配置字面量。
+async function bundledCommonjsOwner(entry: string, files: Record<string, string> = {}) {
+    const fixture = mkdtempSync(resolve(tmpdir(), 'fluentread-commonjs-owner-'));
+    try {
+        const entryPath = resolve(fixture, 'entry.mjs');
+        writeFileSync(entryPath, entry);
+        for (const [relative, source] of Object.entries(files)) {
+            const file = resolve(fixture, 'node_modules/initialization-owner', relative);
+            mkdirSync(resolve(file, '..'), {recursive: true});
+            writeFileSync(file, source);
+        }
+        const {build} = await import('vite');
+        const configured = (userscriptConfig as import('vite').UserConfig).build!;
+        const result = await build({root: process.cwd(), configFile: false, publicDir: false, logLevel: 'silent',
+            build: {...configured, write: false, outDir: resolve(fixture, 'unused-output'),
+                lib: {entry: entryPath, name: 'CommonjsOwnerFixture', formats: ['iife']},
+                rollupOptions: {output: {inlineDynamicImports: true}}}});
+        const outputs = Array.isArray(result) ? result : [result];
+        if (outputs.length !== 1 || !('output' in outputs[0]) || outputs[0].output.length !== 1) {
+            throw new Error('Expected exactly one private owner bundle');
+        }
+        const chunk = outputs[0].output[0];
+        if (chunk.type !== 'chunk' || chunk.imports.length || chunk.dynamicImports.length) {
+            throw new Error('Owner bundle must be complete and self contained');
+        }
+        return chunk.code;
+    } finally {
+        rmSync(fixture, {recursive: true, force: true});
+    }
+}
+
+describe('userscript bundled CommonJS initialization', () => {
+    it('runs a child at the first require after its parent starts and reuses the initialized exports', async () => {
+        const code = await bundledCommonjsOwner(
+            'import value from "./node_modules/initialization-owner/parent.cjs"; globalThis.commonjsOwnerResult = value;', {
+                'parent.cjs': 'globalThis.commonjsOwnerEvents.push("parent-before"); const first=require("./child.cjs"); const second=require("./child.cjs"); globalThis.commonjsOwnerEvents.push("parent-after"); module.exports={first,second};',
+                'child.cjs': 'globalThis.commonjsOwnerEvents.push("child"); module.exports={ready:true};',
+            });
+        const realm = {commonjsOwnerEvents: [] as string[], commonjsOwnerResult: undefined as unknown};
+        runInNewContext(code, realm, {timeout: 5000});
+        expect(Array.from(realm.commonjsOwnerEvents)).toEqual(['parent-before', 'child', 'parent-after']);
+        const result = realm.commonjsOwnerResult as {first: {ready: boolean}; second: unknown};
+        expect(result.first.ready).toBe(true);
+        expect(result.second).toBe(result.first);
+    });
+
+    it('preserves partially initialized cyclic exports without loading either module twice', async () => {
+        const code = await bundledCommonjsOwner(
+            'import value from "./node_modules/initialization-owner/a.cjs"; globalThis.commonjsOwnerResult=value;', {
+                'a.cjs': 'globalThis.commonjsOwnerEvents.push("a"); exports.phase="a-before"; exports.fromB=require("./b.cjs").observed; exports.phase="a-after";',
+                'b.cjs': 'globalThis.commonjsOwnerEvents.push("b"); exports.observed=require("./a.cjs").phase;',
+            });
+        const realm = {commonjsOwnerEvents: [] as string[], commonjsOwnerResult: undefined as unknown};
+        runInNewContext(code, realm, {timeout: 5000});
+        expect(Array.from(realm.commonjsOwnerEvents)).toEqual(['a', 'b']);
+        expect(realm.commonjsOwnerResult).toEqual({phase: 'a-after', fromB: 'a-before'});
+    });
+
+    it.each(['md5-first', 'aes-first'] as const)('keeps %s locked crypto, inflation and host-safe Dexie behavior in the actual bundle', async order => {
+        const requirePackage = createRequire(resolve(process.cwd(), 'package.json'));
+        const cryptoImports = {
+            md5: 'crypto-js/md5', sha256: 'crypto-js/sha256', hmac: 'crypto-js/hmac-sha256',
+            aes: 'crypto-js/aes', utf8: 'crypto-js/enc-utf8', base64: 'crypto-js/enc-base64',
+            ecb: 'crypto-js/mode-ecb', pkcs7: 'crypto-js/pad-pkcs7',
+        };
+        const imports = Object.entries(cryptoImports);
+        if (order === 'aes-first') imports.sort(([left], [right]) => left === 'aes' ? -1 : right === 'aes' ? 1 : 0);
+        const source = imports.map(([name, file]) => `import ${name} from ${JSON.stringify(requirePackage.resolve(file))};`).join('\n')
+            + `\nimport * as pako from ${JSON.stringify(resolve(process.cwd(), 'userscript/pakoBundled.ts'))};`
+            + `\nimport Dexie from ${JSON.stringify(resolve(process.cwd(), 'userscript/dexie.ts'))};`
+            + '\nglobalThis.commonjsOwnerResult={md5,sha256,hmac,aes,utf8,base64,ecb,pkcs7,pako,Dexie};';
+        const code = await bundledCommonjsOwner(source);
+        const sentinel = {version: 'synthetic-host-version'};
+        const realm = {commonjsOwnerResult: undefined as any, [Symbol.for('Dexie')]: sentinel,
+            Uint8Array, ArrayBuffer, setTimeout, clearTimeout, console};
+        runInNewContext(code, realm, {timeout: 5000});
+        const api = realm.commonjsOwnerResult;
+        for (const text of ['', 'abc', '流畅阅读 🦦', 'x'.repeat(55), 'x'.repeat(56), 'x'.repeat(64)]) {
+            expect(api.md5(text).toString()).toBe(createHash('md5').update(text).digest('hex'));
+            expect(api.sha256(text).toString()).toBe(createHash('sha256').update(text).digest('hex'));
+            expect(api.hmac(text, 'synthetic-key-中文').toString()).toBe(createHmac('sha256', 'synthetic-key-中文').update(text).digest('hex'));
+            const cipher = createCipheriv('aes-128-ecb', Buffer.from('0123456789abcdef'), null);
+            const expected = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]).toString('base64');
+            const encrypted = api.aes.encrypt(text, api.utf8.parse('0123456789abcdef'), {mode: api.ecb, padding: api.pkcs7});
+            expect(encrypted.toString()).toBe(expected);
+            expect(api.aes.decrypt(expected, api.utf8.parse('0123456789abcdef'), {mode: api.ecb, padding: api.pkcs7}).toString(api.utf8)).toBe(text);
+            expect(api.base64.stringify(api.utf8.parse(text))).toBe(Buffer.from(text).toString('base64'));
+        }
+        // 固定 salt 使 AES 的密码短语路径实际经过 EvpKDF/MD5；预期密文由 Node 独立生成。
+        const passphrase = 'synthetic-passphrase-中文', salt = Buffer.from('12345678');
+        let previous: Buffer = Buffer.alloc(0), derived = Buffer.alloc(0);
+        while (derived.length < 48) {
+            previous = createHash('md5').update(previous).update(passphrase).update(salt).digest();
+            derived = Buffer.concat([derived, previous]);
+        }
+        const passphraseText = '首次 require 保留 AES 与 MD5 的注册顺序 🦦';
+        const cbc = createCipheriv('aes-256-cbc', derived.subarray(0, 32), derived.subarray(32, 48));
+        const expectedPassphrase = Buffer.concat([Buffer.from('Salted__'), salt,
+            cbc.update(passphraseText, 'utf8'), cbc.final()]).toString('base64');
+        expect(api.aes.encrypt(passphraseText, passphrase, {salt: api.utf8.parse('12345678')}).toString()).toBe(expectedPassphrase);
+        expect(api.aes.decrypt(expectedPassphrase, passphrase).toString(api.utf8)).toBe(passphraseText);
+        const text = '完整保留 Unicode 与字节 🦦';
+        const compressed = new Uint8Array(gzipSync(Buffer.from(text)));
+        expect(api.pako.inflateWithPako(compressed)).toBe(text);
+        const restored = api.pako.inflateBytesWithPako(compressed);
+        expect(Array.from(restored)).toEqual(Array.from(Buffer.from(text)));
+        expect(api.pako.decodeUtf8WithPako(restored)).toBe(text);
+        expect(typeof api.Dexie).toBe('function');
+        expect(realm[Symbol.for('Dexie')]).toBe(sentinel);
+    });
+});
 
 describe('userscript inline CSS compression', () => {
     const root = process.cwd();

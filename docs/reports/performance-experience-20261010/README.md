@@ -1217,9 +1217,44 @@ Escape 组自然0，8阶段/3原生场景/4原始图。真实可信三击选中�
 
 实际证据见 `/private/tmp/fluentread-performance-experience-20261010/round54-hotkey-modifier-recording` 的 `baseline-attempt1`、`red-attempt1`、`candidate-attempt1`、`ACTUAL-CASE-PRESERVATION.json`、`coverage-candidate-attempt1`、`builds-attempt1`、`frozen-builds-attempt1`；所属原失败与私有v1/v2记录保留。文档三阶段另见 `docs-attempt1` 实际回执，不据准备文件预称通过。源代码、测试和文档diff whitespace检查保持。未复制参考项目实现，未推送、创建PR、远程合并或发布，保留任务worktree与持续优化目标。
 
+## 第五十一批：固定 CommonJS 初始化边界，完成完整脚本启动对照（R55）
+
+完整脚本的严格复现门禁先发现同源构建发生变化：R54 独立脚本为 3,880,325 B，新生成版为 3,880,370 B，原 exact 门禁自然1；实际差异包括 CryptoJS MD5 的初始化包装与导出路由，不能归为纯变量重命名。加入完整 CommonJS metadata 的新对照仍自然1：两臂 MD5 分别为 `withRequireFunction` 与 `true`，因此没有拿这两个不可比产物做启动测量。此前输出形状断言失败、45 B 复现失败及 metadata 不等失败均保留，不补写成功或替换样本。
+
+本批在用户脚本 Vite 配置显式使用 `commonjsOptions.strictRequires:true`，保留 CommonJS 首次 require 初始化、循环依赖的部分 exports 与单次初始化语义。锁定 Vite 5.4.19 内置 CommonJS 26.0.1；其[官方说明](https://github.com/rollup/plugins/blob/commonjs-v26.0.1/packages/commonjs/README.md#strictrequires)描述了 auto 在条件与非条件 require 并存时的分析竞争和构建不一致。将旧差异联系到该竞争是推断：旧产物没有完整 metadata，未证明具体哪一次分析先结束。该选项作用于本配置全部38个真实 CommonJS 模块，包括 CryptoJS、pako、dayjs、Dexie 与 oidc；不只作用于 MD5，不修改库算法、资源 pin、provider 协议或独立 vendor/WXT 配置，也不把新增包装称为减包收益。
+
+新增 owner 使用真实锁定 Vite、发布配置同一选项、完整私有 IIFE 和隔离执行 realm，验证父级开始后才首次初始化子级、重复 exports 身份、循环部分初始化及单次执行。两种 md5-first/aes-first 导入顺序分别检查真实 CryptoJS MD5/SHA256/HMAC、AES 直接 key 和固定 salt 密码短语路径；预期摘要与密文由 Node 独立生成，密码短语实际经过 EvpKDF/MD5。真实 bundled pako 的字符串、字节、UTF8 端口及 Dexie 不覆盖宿主 Symbol 保留。旧135项名字与 multiplicity 全部保留，新增4项共139项：旧 auto 对照138通过/1项真实顺序失败，最终候选139通过。候选首次增补密码短语后 compile 自然2的 Buffer 类型错误保留，明确类型注解后的 compile 自然0，不改算法。
+
+直接用户脚本调用方6文件49项、provider4文件157项通过；架构34文件1,830项自然0，审计693文件12,291个声明自然0。审计数字是静态索引，未声称运行全部声明；严格覆盖门槛与豁免保持原样，本批生产变化仅构建配置。
+
+| 产物 | R54 冻结产物（B） | R55 产物（B） | 字节变化（B） |
+| --- | ---: | ---: | ---: |
+| Chrome，468文件 | 61,493,845 | 61,493,845 | 0 |
+| Firefox，468文件 | 61,492,795 | 61,492,839 | +44 |
+| 普通用户脚本 | 2,046,175 | 2,046,563 | +388 |
+| 完整独立脚本 | 3,880,325 | 3,882,108 | +1,783 |
+
+四构建、扩展清单和普通 verifier 自然0；最终批次 `[0,0,0,0,0,0,0,0,1]` 的整体成功仍为 false。独立 verifier 自然1：3,882,108 B 超原3,600,000预算 **282,108 B**，不放宽门槛。Chrome全部468文件逐字节相同；Firefox仅 background.js 有44 B差异，两个 manifest 与270个非代码静态文件不变。完整 pako/tldts 许可、全部服务和语言、资源 pin 保留；旧 Greasy Fork 失败未重跑或改绿。
+
+在新配置与新正式产物冻结后，另执行一次完整反事实构建：A 仅移除既有 tldts 数据压缩插件，B 保留插件；两臂 strictRequires:true、非插件配置、完整前缀/许可、1,205个 moduleIds、986个模块源码输入、67个配置加载依赖及全部892行 CommonJS metadata 均相同，38个真实 CommonJS 均为缓存 require 包装。单一协调器内两个真实 Vite API 构建完成、自然0；不是每臂独立子进程。B **3,882,108 B**，SHA `7537172cd77e5b9e489cd1d7fac9d656ab07966d3bcfb3dfa219f23b629f1057`，与独立发布流程新正式产物逐字节一致；A **3,941,995 B**，故单独规则数据压缩净差 **−59,887 B**。这是当前一次同源可比对照和有限复现证据，不证明所有机器/时刻确定性，也不把 R54 原 exact 失败改成通过。旧 wrapper 的280,325 B字段仅属历史 R54，当前差额为282,108 B。
+
+随后执行唯一一轮真实 Edge 131.0.2903.147 完整脚本启动：预定 AB/BA/AB/BA 四对、8个全新进程与配置目录，零预热、零替换、无自动重试。产物保持完整 classic external JS，通过无压缩/no-store localhost 传输；使用官方空 memoryFallback，未注入 GM、测试设置或 provider，实际扩展/用户脚本管理器环境不在本次实验内。浏览器实际版本由首个已归属进程读取，余7次逐字段一致；Node、Edge launcher/framework/Current指向、驱动、完整脚本、工具、输入与源状态在门禁中绑定。
+
+| 本地浏览器观测指标 | A 中位数（ms） | B 中位数（ms） | 四对 B−A（ms） | 配对差中位数（ms） |
+| --- | ---: | ---: | --- | ---: |
+| 外部脚本加载与同步执行窗口 | 229.30 | 229.95 | +4.80 / −5.40 / −3.30 / +9.40 | +0.75 |
+| 首个已连接 host 的观测上界 | 291.25 | 293.10 | −2.20 / −0.90 / −3.00 / +8.50 | −1.55 |
+| 悬浮球首次可见的观测上界 | 300.25 | 300.55 | −5.30 / −5.60 / −2.20 / +9.60 | −3.75 |
+
+八次 ResourceTiming 的 encoded/decoded body 均等于对应完整脚本字节，未遗漏完整内容；每次启动计时之后才通过真实 CDP 鼠标悬浮与 trusted 齿轮点击打开公开设置，实际 General 导航可见。根任务查看全部八张原始截图：中文“流畅阅读”与浅色粉色设置风格一致，当前视口控件和文字可读；只覆盖当前视口，不声称全部页签/语言或像素等价。八次正式诊断、外部请求、前台焦点事件均0，全部正常可见第二屏窗口未成为前台；原 owned PID/配置目录归属清理、monitor停止、浏览器关闭及 server关闭均为 true，协调器自然0，全部输入稳定。
+
+这些数字没有一致的启动加速方向；有限四对中，加载与同步执行配对中位差为+0.75 ms，保留所有正负波动。connected/visible 是观测上界，未拆开网络、解析、求值或绘制；全新进程/配置目录不证明 OS 文件缓存冷。未采样 CPU、trace 或 heap，不能据减少59,887 B声称降低 CPU/内存或适用于全部网站/设备/Firefox/真实 provider。业务协调器使用60%/worker1/最多3组资源设置；经 LaunchServices 启动的 Edge 不据此声称实际 CPU 被限额。原预算失败继续存在。
+
+完整实际证据保存在 `/private/tmp/fluentread-performance-experience-20261010/round55-whole-startup`：`red-commonjs-attempt1`、`stable-commonjs-candidate-attempt1`、`stable-commonjs-candidate-attempt2`、`stable-commonjs-candidate-attempt3`、`ACTUAL-CASE-PRESERVATION.json`、`frozen-stable-builds-attempt1`、全部历史失败、`stable-reference-pair-attempt1`、`native-ready-attempt1`、`startup-native-attempt1/REPORT.json` 与 `ROOT-NATIVE-RESULT-REVIEW.json`。READY/代码/完整 pair 与 native 结果另作只读交叉复核；文档三阶段验收以校正证据路径后的 `docs-attempt2/RECEIPT.json` 的自然退出及前后输入为准，首轮三项自然0的回执另保留于 `docs-attempt1`。未复制参考项目实现，未推送、创建 PR、远程合并或发布；持续优化目标保留。
+
 ## 后续候选
 
-第五十批完成快捷键仅修饰键录制与旧值确认修复，原29项对照、新40项、147项直接调用方回归及完整SFC四维100通过；四产物构建与扩展清单通过。最新完整独立脚本3,880,325 B，仍超原3,600,000预算280,325 B，累计相对R53同轮集成基线减少86,079 B；ordinary2,046,175 B。下一步用同源完整两臂衡量规则数据恢复的整体原生启动代价，区分加载、求值、首次可用与内存证据，保留全部服务、语言、许可、资源pin、架构、生命周期与原预算。
+第五十一批固定用户脚本 CommonJS 首次 require 初始化边界，完成同源完整双臂构建和8次真实浏览器启动。规则数据压缩实际净差−59,887 B，但有限配对观测没有一致启动加速方向；未测 CPU/heap。最新独立脚本3,882,108 B，仍超原3,600,000预算282,108 B；ordinary2,046,563 B。下一步只处理 About 两张 JPEG 的明确使用点与完整数据恢复，先验证隐藏预览不解压、首次实际打开才恢复、完整图片字节/尺寸及关闭重开行为，再测同源产物净差和首次使用代价。静态理论40,922 B未当成正式收益，品牌资源候选另行审查；保留全部服务、语言、许可、资源 pin、架构、生命周期与原预算。
 
 
 合成段 loading 挂载循环、缓存键重复术语解析、高级请求限制禁用与缓存复习快捷键已在第二十七至三十批分别修复。第三十一轮调度只读探针保留现检查：13 个受控普通场景虽减少同 owner 复验，但第三个 source-only 读取中的 style getter 同步替换同文本 Text 时，复用先前结果留下脱离节点身份；这只是受控端口反例，未当成原生复现或 CPU 收益，未实施。证据为 `round31-page-scheduling-audit/`。第三十二轮已撤回 Cloud 普通历史入口的减加载推荐；LearningCenter 的 History/Memory 首用加载已在第三十一批实施，实际收藏阶段新增请求文件减少 20,641 B，父装配、加载故障与原行为通过限定验证。第三十四轮审计确认的八个既不可达设置子 UI 已在第三十二批排除，完整独立脚本实际减少 183,104 B，仍比原 3,600,000 B 门槛多 38,416 B。继续审查其 Options/IIFE 归属与可证明不可达的资源，保持可达服务、本地模型/TTS、数据、语言、许可和原门槛，不为达预算删除已有能力。请求队列仍在 response body 完成前占用并发槽；会改变错误种类的同步 deadline 合并未实施。
