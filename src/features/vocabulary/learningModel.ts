@@ -1,7 +1,7 @@
 /**
  * @file src/features/vocabulary/learningModel.ts
  * 文件职责：定义单词与句子学习收藏的领域数据模型与纯状态算法，复用轻量协议的公共消息合同，覆盖多语种原文、上下文、掌握度、复习队列、会话推进及导入导出。
- * 主要内容：包含收藏与复习扩展类型、导入导出、解释合并与会话 guard；公共状态、选项、响应和消息常量只在 protocol 定义；学习语境复用统一表达匹配，用一个索引和挖空结果选择真实原句，不重复扫描已选语境。
+ * 主要内容：包含收藏与复习扩展类型、导入导出、带平台和原始时间点的视频语境、解释合并与会话 guard；公共合同只在 protocol 定义；学习语境复用统一表达匹配，用一个索引和挖空结果选择真实原句，不重复扫描已选语境。
  * 模块边界：此文件不访问 IndexedDB、浏览器消息或 UI；repository 负责持久化和清洗，protocol 提供公共消息合同，VocabularyBook.vue 只调用这些纯函数驱动学习流程。
  */
 import {createExpressionIndex, matchExpressions, type ExpressionIndex} from './domain/expressionMatcher';
@@ -15,6 +15,7 @@ import {
   type VocabularyScheduledReviewRating,
   type VocabularyListOptions,
   type VocabularyExportOptions,
+  type VocabularyVideoSource,
 } from './protocol';
 export {VOCABULARY_BOOK_MESSAGE, VOCABULARY_BOOK_CHANGED_MESSAGE};
 export type {
@@ -26,6 +27,7 @@ export type {
   VocabularyBookErrorCode,
   VocabularyBookResponse,
   VocabularyBookChangedMessage,
+  VocabularyVideoSource,
 } from './protocol';
 
 export const VOCABULARY_BOOK_EXPORT_FORMAT = 'fluentread-vocabulary-book' as const;
@@ -149,6 +151,7 @@ export interface VocabularyContext {
   sourceUrl?: string;
   pageTitle?: string;
   capturedAt: number;
+  video?: VocabularyVideoSource;
 }
 
 export interface VocabularyEntry {
@@ -330,6 +333,7 @@ export interface VocabularyExportContext {
   text?: string;
   sourceUrl?: string;
   pageTitle?: string;
+  video?: VocabularyVideoSource;
 }
 
 export type VocabularyExportEntry = Omit<VocabularyEntry, 'contexts'> & {

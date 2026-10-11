@@ -2,7 +2,7 @@
  * @file src/features/video-subtitle/content/ui.ts
  *
  * 文件职责：封装视频字幕 content UI 的界面语言转换与可访问名称刷新，避免 YouTube 播放器运行时承载重复的文案拼装。
- * 主要内容：提供视频菜单本地化、按逐字高亮开关写入字幕行、校时与就地模型选择控件样式、节点创建、播放器定位，过滤 YouTube 滚动窗口裁掉的旧行，按实际画面约束字幕几何、换行与大字号完整高度，并封装样式及字幕下载。
+ * 主要内容：提供视频菜单本地化、菜单与完整句学习共享的局部外观变量、按逐字高亮开关写入字幕行、校时与就地模型选择控件样式、节点创建、播放器定位，过滤 YouTube 滚动窗口裁掉的旧行，按实际画面约束字幕几何、换行与大字号完整高度，并封装字幕清理、媒体时钟读取、样式及字幕下载。
  * 模块边界：只读取界面配置并操作视频 feature 拥有的节点、样式和下载链接，不发起翻译或识别请求；任务生命周期由 runtime 管理。
  */
 
@@ -435,6 +435,24 @@ export function getOrCreateNormalizedCaptionOverlay(player: HTMLElement): HTMLEl
   return overlay;
 }
 
+/** 字幕运行时只保留状态所有权，自有 DOM 的清空交由 UI 层完成。 */
+export function clearRenderedVideoTranslation(owner: Document): void {
+  owner.querySelectorAll(`#${VIDEO_TRANSLATION_OVERLAY_ID}`).forEach(node => writeVideoCaptionText(node, ''));
+}
+
+export function deactivateNormalizedVideoCaption(owner: Document): void {
+  owner.querySelectorAll(VIDEO_CAPTION_CONTAINER_SELECTOR).forEach(node => node.classList.remove(VIDEO_NORMALIZED_CAPTION_CLASS));
+  owner.querySelectorAll(`#${VIDEO_TRANSLATION_LAYER_ID}`).forEach(node => node.classList.remove(VIDEO_NORMALIZED_CAPTION_ACTIVE_CLASS));
+  owner.querySelectorAll(`#${VIDEO_NORMALIZED_CAPTION_OVERLAY_ID}`).forEach(node => writeVideoCaptionText(node, ''));
+}
+
+/** 读取当前播放器媒体；暂未挂载或时间无效时不编造播放位置。 */
+export function readVideoPlaybackTimeMs(player: HTMLElement | null, fallback: HTMLVideoElement | null): number {
+  const video = player?.querySelector<HTMLVideoElement>('video.html5-main-video, video') || fallback;
+  const time = video?.currentTime;
+  return typeof time === 'number' && Number.isFinite(time) ? time * 1000 : Number.NaN;
+}
+
 export function removeTranslationOverlay(): void {
   document.querySelectorAll(`#${VIDEO_TRANSLATION_LAYER_ID}`).forEach((node) => node.remove());
   document.querySelectorAll(`#${VIDEO_TRANSLATION_OVERLAY_ID}`).forEach((node) => node.remove());
@@ -836,14 +854,23 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
     .${VIDEO_PLAYER_HOST_CLASS}[data-fluent-read-video-fullscreen="true"] .${VIDEO_FALLBACK_CONTROLS_CLASS} {
       display: flex !important;
     }
-    #${VIDEO_TRANSLATION_MENU_ID} {
+    /* 视频界面的外观只赋给自有节点，不向宿主网页或独立设置页注入主题。 */
+    #${VIDEO_TRANSLATION_MENU_ID}, #fluent-read-video-learning-panel {
       --fr-video-menu-brand: #ef4776;
+      --fr-video-menu-brand-strong: #dc315f;
+      --fr-video-menu-brand-strong-hover: #cf315e;
       --fr-video-menu-brand-text: #ffadc2;
       --fr-video-menu-brand-soft: rgba(239, 71, 118, .2);
+      --fr-video-menu-surface: #18181c;
+      --fr-video-menu-border: rgba(255, 255, 255, .1);
+      --fr-video-menu-radius: 12px;
+      --fr-video-menu-shadow: 0 10px 30px rgba(0, 0, 0, .36);
       --fr-video-menu-text: #f5f5f7;
       --fr-video-menu-muted: rgba(255, 255, 255, .72);
       --fr-video-menu-control: rgba(255, 255, 255, .07);
       --fr-video-menu-control-hover: rgba(255, 255, 255, .12);
+    }
+    #${VIDEO_TRANSLATION_MENU_ID} {
       position: absolute !important;
       right: 8px !important;
       bottom: 40px !important;
@@ -856,10 +883,10 @@ export function installVideoSubtitleStyle(): HTMLStyleElement {
       box-sizing: border-box !important;
       margin: 0 !important;
       padding: 6px !important;
-      border: 1px solid rgba(255, 255, 255, .1) !important;
-      border-radius: 12px !important;
-      background: #18181c !important;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, .36) !important;
+      border: 1px solid var(--fr-video-menu-border) !important;
+      border-radius: var(--fr-video-menu-radius) !important;
+      background: var(--fr-video-menu-surface) !important;
+      box-shadow: var(--fr-video-menu-shadow) !important;
       color: var(--fr-video-menu-text) !important;
       font: 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif !important;
       text-align: left !important;

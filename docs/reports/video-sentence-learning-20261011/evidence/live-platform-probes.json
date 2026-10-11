@@ -1,0 +1,314 @@
+{
+  "date": "2026-10-11",
+  "reports": [
+    {
+      "source": "Unmodified actual platform HTML/media/original-caption transport; deterministic Microsoft translation only; no original-caption fixture injection",
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "windowPlacement": {
+        "mode": "background-visible-no-focus",
+        "visible": true,
+        "hidden": false,
+        "centered": true,
+        "windowState": "normal",
+        "bounds": {
+          "left": 212,
+          "top": -990,
+          "width": 1280,
+          "height": 900
+        },
+        "displayTarget": "secondary",
+        "source": "macos-nsscreen",
+        "screenIndex": 1,
+        "browserFrontmost": false
+      },
+      "finalBrowserFrontmost": false,
+      "focusEvents": {
+        "nativeObserver": true,
+        "browserActivations": 0,
+        "observerClosed": true
+      },
+      "cleanup": {
+        "browserClosed": true,
+        "profileRemoved": true
+      },
+      "pageErrors": [],
+      "cases": [
+        {
+          "platform": "youtube",
+          "url": "https://www.youtube.com/watch?v=iG9CE55wbtY",
+          "success": false,
+          "initial": {
+            "url": "https://www.youtube.com/watch?v=iG9CE55wbtY",
+            "title": "Ken Robinson认为学校扼杀创造力 - YouTube",
+            "videoCount": 1,
+            "videos": [
+              {
+                "time": 0,
+                "duration": 1203.421,
+                "readyState": 4,
+                "tracks": []
+              }
+            ]
+          },
+          "captionResponses": [
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            }
+          ],
+          "learningAvailable": true,
+          "originalSentencePresent": false,
+          "limitation": "Actual page did not supply a usable original timed-caption learning sentence in this isolated session. See DOM, platform text and response evidence; fixture success is separate."
+        },
+        {
+          "platform": "x",
+          "url": "https://x.com/cerebras/status/2089870131291943228",
+          "success": false,
+          "initial": {
+            "url": "https://x.com/cerebras/status/2089870131291943228",
+            "title": "X 上的 Cerebras：“The Fastest AI Just Got Faster. Meet CS-4.” / X",
+            "videoCount": 2,
+            "videos": [
+              {
+                "time": 4.137274,
+                "duration": 68.033,
+                "readyState": 4,
+                "tracks": []
+              },
+              {
+                "time": 0,
+                "duration": 3.59,
+                "readyState": 4,
+                "tracks": []
+              }
+            ]
+          },
+          "captionResponses": [],
+          "originalSentencePresent": false,
+          "limitation": "Actual page did not supply a usable original timed-caption learning sentence in this isolated session. See DOM, platform text and response evidence; fixture success is separate."
+        }
+      ]
+    },
+    {
+      "source": "Unmodified actual platform HTML/media/original-caption transport; deterministic Microsoft translation only; no original-caption fixture injection",
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "windowPlacement": {
+        "mode": "background-visible-no-focus",
+        "visible": true,
+        "hidden": false,
+        "centered": true,
+        "windowState": "normal",
+        "bounds": {
+          "left": 212,
+          "top": -990,
+          "width": 1280,
+          "height": 900
+        },
+        "displayTarget": "secondary",
+        "source": "macos-nsscreen",
+        "screenIndex": 1,
+        "browserFrontmost": false
+      },
+      "finalBrowserFrontmost": false,
+      "focusEvents": {
+        "nativeObserver": true,
+        "browserActivations": 0,
+        "observerClosed": true
+      },
+      "cleanup": {
+        "browserClosed": true,
+        "profileRemoved": true
+      },
+      "pageErrors": [],
+      "cases": [
+        {
+          "platform": "youtube",
+          "url": "https://www.youtube.com/watch?v=Ks-_Mh1QhMc",
+          "success": false,
+          "captionResponses": [
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            }
+          ],
+          "originalSentencePresent": false,
+          "failure": "page.goto: Timeout 45000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"https://www.youtube.com/watch?v=Ks-_Mh1QhMc\", waiting until \"domcontentloaded\"\u001b[22m\n"
+        },
+        {
+          "platform": "youtube",
+          "url": "https://www.youtube.com/watch?v=drSMZgnmJjk",
+          "success": false,
+          "initial": {
+            "url": "https://www.youtube.com/watch?v=drSMZgnmJjk",
+            "title": "ONE OK ROCK - Be the light [Official Music Video / English subtitles] - YouTube",
+            "videoCount": 1,
+            "videos": [
+              {
+                "time": 0,
+                "duration": 353.441,
+                "readyState": 4,
+                "tracks": []
+              }
+            ],
+            "captionButton": "true",
+            "captionTracks": [
+              {
+                "language": "en",
+                "kind": "asr",
+                "name": "英语 (自动生成)"
+              }
+            ]
+          },
+          "final": {
+            "nativeCaptionPresent": false,
+            "captionButton": "true"
+          },
+          "captionResponses": [
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            },
+            {
+              "url": "https://www.youtube.com/api/timedtext",
+              "status": 200,
+              "bytes": 0
+            }
+          ],
+          "learningAvailable": true,
+          "originalSentencePresent": false,
+          "limitation": "Actual page did not supply a usable original timed-caption learning sentence in this isolated session. See DOM, platform text and response evidence; fixture success is separate."
+        }
+      ]
+    }
+  ]
+}

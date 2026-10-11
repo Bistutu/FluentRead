@@ -1,0 +1,53 @@
+{
+  "latestIntegration": {
+    "baseCommit": "43f66b01dc7bb0523f6bc7866dc248efdcdbe071",
+    "mergedWorktreeCommit": "8954f647286499b50924b38e2e9b42176808b48a",
+    "budgetBytes": 2050000,
+    "candidate": {
+      "bytes": 2047920,
+      "sha256": "3f1126a74b8b11702816fb50b963f6665c097efeae9554df0676058792fd39f9",
+      "languageResourceCommit": "aeb099f57a494b8ec8f9fa84ec22c620d275fab3"
+    },
+    "candidateLog": "/private/tmp/video-learning-merge-userscript.log",
+    "buildSeconds": 7.15,
+    "scope": "Build and verifier after merging current main; unchanged installed dependencies. No new same-main baseline build or userscript manager/browser acceptance. Prior comparisons below retain their original base commit and budget."
+  },
+  "baseCommit": "69d41e5e1050e5004d4656963d5105f24df9d8ed",
+  "budgetBytes": 2027000,
+  "base": {
+    "bytes": 2026916,
+    "sha256": "ac0bf8cdc4be0c21b01c598b115ea8bc16bb519abc16736460a7450b4fd9c918"
+  },
+  "candidate": {
+    "bytes": 2025276,
+    "sha256": "c29562edb2412301ebff0a5aac4784f8d7678cabde8ffeaec3f69bdf91d83184",
+    "languageResourceCommit": "aeb099f57a494b8ec8f9fa84ec22c620d275fab3"
+  },
+  "deltaBytes": -1640,
+  "baseLog": "/private/tmp/video-learning-userscript-baseline-69d41e5e.log",
+  "candidateLog": "/private/tmp/video-learning-perf-userscript.log",
+  "scope": "Same installed dependencies; isolated git archive baseline with shared node_modules and WXT generated type config. Build/verifier only; no userscript manager/browser acceptance.",
+  "previousStyleValidation": {
+    "candidateBytes": 2025232,
+    "candidateSha256": "374a437e1b470e5a043372e6e4fb07294a04525d6a7100d8b8c7317736e29e71",
+    "candidateLog": "/private/tmp/video-learning-userscript-integrated.log",
+    "deltaBytes": -1684
+  },
+  "previousValidation": {
+    "baseCommit": "c8a06bb5fe0148f629ecaf60e70e5bf6ebb4f957",
+    "budgetBytes": 2025000,
+    "originalCandidateBytes": 2026461,
+    "base": {
+      "bytes": 2024873,
+      "sha256": "4943291cb4158273aff96f06dab5f0b04748980cf80a3eb0b45b78f8c2c033fd"
+    },
+    "candidate": {
+      "bytes": 2023241,
+      "sha256": "7aa1efdd8f826207a6d7e725a00111081e7d6840c72feab4d5ea45a0082fbd3b",
+      "languageResourceCommit": "50a5791884a2707754224d43a84e0d542aa0037b"
+    },
+    "baseLog": "/private/tmp/video-learning-userscript-baseline.log",
+    "candidateLog": "/private/tmp/video-learning-userscript-pinned-build.log",
+    "scope": "Same installed dependencies; isolated git archive baseline with shared node_modules and WXT generated type config. Build/verifier only; no userscript manager/browser acceptance."
+  }
+}
