@@ -341,6 +341,8 @@ import {
     restoreTranslationOwner,
 } from "@/src/features/full-page-translation/content/runtime";
 import {getTranslationState} from "@/src/features/full-page-translation/content/state";
+import {createBilingualRemountCapitulationRegistry} from '@/src/features/full-page-translation/content/bilingualRemount';
+import {resetFullPageRouteSession, type FullPageRouteLifecycleSession} from '@/src/features/full-page-translation/content/routeLifecycle';
 import {getTranslationToolbarStatus} from '@/src/features/full-page-translation/content/stateNotification';
 import {
     getFullPageTranslationProgress,
@@ -8273,6 +8275,79 @@ describe("悬停重挂请求与 synthetic 提交回归", () => {
         expect(runtime.requests).toHaveBeenCalledTimes(2);
         expect(getTranslationState(owner)?.phase).toBe("translated");
         expect(owner.textContent).toContain(`新译:${source}`);
+    });
+
+    function routeLifecycleFixture() {
+        const root = document.documentElement;
+        const retry = {owner: root, source: 'Persistent source', kind: 'content' as const,
+            reason: 'route-lifecycle', attempts: 3};
+        const session: FullPageRouteLifecycleSession = {
+            active: true,
+            ...createFullPageRequestSessionState(),
+            translationSlotCache: new Map(),
+            bilingualRemountCapitulations: createBilingualRemountCapitulationRegistry(),
+            lifecycleRetries: new WeakMap([[root, retry]]),
+            unchangedCandidates: new WeakMap([[root, retry]]),
+            activeDiscovery: {root, steps: (function* () { yield {element: root, phase: 'enter' as const}; })()},
+            dirtyRoots: new Set([root]),
+            dirtyRootsBroadMode: true,
+            broadRescanCooldowns: new WeakMap([[root, 1000]]),
+        };
+        const hooks = {observe: vi.fn(), rescan: vi.fn()};
+        return {root, session, hooks};
+    }
+
+    it('路由生命周期模块立即取消旧请求、清理旧页判定并仅登记一次文档根重扫', () => {
+        const {root, session, hooks} = routeLifecycleFixture();
+        const previousController = session.requestController;
+        const previousRemount = session.bilingualRemountCapitulations;
+        const attempt = new AbortController();
+        const release = bindFullPageRequestSessionAttempt(session, attempt);
+        resetFullPageRouteSession(session, root, hooks);
+        expect(previousController.signal.aborted).toBe(true);
+        expect(attempt.signal.aborted).toBe(true);
+        expect(session.requestController).not.toBe(previousController);
+        expect(session.requestSignal.aborted).toBe(false);
+        expect(session.renderCommitGeneration).toBe(1);
+        expect(session.bilingualRemountCapitulations).not.toBe(previousRemount);
+        expect(session.lifecycleRetries.get(root)).toBeUndefined();
+        expect(session.unchangedCandidates.get(root)).toBeUndefined();
+        expect(session.activeDiscovery).toBeNull();
+        expect(session.dirtyRoots.size).toBe(0);
+        expect(session.dirtyRootsBroadMode).toBe(false);
+        expect(session.broadRescanCooldowns.get(root)).toBeUndefined();
+        expect(hooks.observe).toHaveBeenCalledOnce();
+        expect(hooks.observe).toHaveBeenCalledWith(session, root);
+        expect(hooks.rescan).toHaveBeenCalledOnce();
+        expect(hooks.rescan).toHaveBeenCalledWith(session, root);
+        release();
+    });
+
+    it('路由切换时文档根已失踪仍取消旧请求并清理，不向观察或扫描端口传空节点', () => {
+        const {session, hooks} = routeLifecycleFixture();
+        const previousSignal = session.requestSignal;
+        resetFullPageRouteSession(session, null, hooks);
+        expect(previousSignal.aborted).toBe(true);
+        expect(session.activeDiscovery).toBeNull();
+        expect(session.dirtyRoots.size).toBe(0);
+        expect(hooks.observe).not.toHaveBeenCalled();
+        expect(hooks.rescan).not.toHaveBeenCalled();
+    });
+
+    it('失活或缺席的全文会话不能创建下一代请求或重新登记路由扫描', () => {
+        const {root, session, hooks} = routeLifecycleFixture();
+        const previousController = session.requestController;
+        session.active = false;
+        resetFullPageRouteSession(session, root, hooks);
+        expect(session.requestController).toBe(previousController);
+        expect(previousController.signal.aborted).toBe(false);
+        expect(session.lifecycleRetries.get(root)?.attempts).toBe(3);
+        expect(session.dirtyRoots.size).toBe(1);
+        expect(hooks.observe).not.toHaveBeenCalled();
+        expect(hooks.rescan).not.toHaveBeenCalled();
+        resetFullPageRouteSession(null, root, hooks);
+        expect(hooks.observe).not.toHaveBeenCalled();
+        expect(hooks.rescan).not.toHaveBeenCalled();
     });
 
     it('loading 文档和迟到正文仍由同一全文会话观察，重复自动触发不创建第二个会话', async () => {

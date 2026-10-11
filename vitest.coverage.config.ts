@@ -1017,6 +1017,7 @@ export default defineConfig({
                 'src/features/full-page-translation/content/fullPageQueue.ts',
                 'src/features/full-page-translation/content/renderer.ts',
                 'src/features/full-page-translation/content/requestSession.ts',
+                'src/features/full-page-translation/content/routeLifecycle.ts',
                 'src/features/full-page-translation/content/hoverScheduler.ts',
                 'src/features/full-page-translation/content/translationStability.ts',
                 'src/features/full-page-translation/content/translationRequest.ts',

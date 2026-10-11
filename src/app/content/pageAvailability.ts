@@ -2,7 +2,7 @@
  * @file src/app/content/pageAvailability.ts
  * 文件职责：统一协调 content 总开关、站点禁用、YouTube SPA 路由与页面功能的 activate/dispose 边界。
  * 主要内容：幂等启停 MAIN-world bridge 和页面 feature，限制失效挂载重试次数，维护视频字幕路由挂载；按排除普通锚点的页面身份记录自动翻译意图，使新 SPA 页面可重新启动、手动恢复后的同页保持原文，并让自动翻译不受非必要 UI 的异步挂载阻塞。
- * 模块边界：本模块不读取全局配置、不操作具体功能 DOM；composition root 注入当前可用性、挂载器和全文状态，具体 feature 保留自己的清理实现。
+ * 模块边界：本模块通过 composition root 注入当前路由、可用性、挂载器和全文状态，不读取全局配置、不操作具体功能 DOM；具体 feature 保留自己的清理实现。
  */
 import {shouldAutoTranslatePage} from '@/src/features/site-rules/domain';
 
@@ -145,5 +145,41 @@ export function createContentPageAvailabilityRuntime(
         refreshAutoTranslation,
         syncVideoSubtitlePage,
         disposeVideoSubtitlePage,
+    };
+}
+
+/** 持有已提交路由的去重和执行顺序，避免正文适配清理会话后漏掉自动翻译。 */
+export function createContentRouteChangeHandler(dependencies: {
+    getHref(): string;
+    routeChanged(href: string): void;
+    resetTranslationRoute(): void;
+    siteDisabled(href: string): boolean;
+    currentSiteDisabled(): boolean;
+    applySiteDisabledState(disabled: boolean): Promise<void>;
+    pageAvailability: ContentPageAvailabilityRuntime;
+    reconcileFeatures(): void;
+}): () => void {
+    let currentHref = dependencies.getHref();
+    return () => {
+        const href = dependencies.getHref();
+        if (currentHref === href) return;
+        const previousIdentity = getAutoTranslationPageIdentity(currentHref);
+        currentHref = href;
+        dependencies.routeChanged(href);
+        // 普通目录锚点保留正在进行的请求和用户手动恢复；HashRouter 仍是新页面。
+        if (getAutoTranslationPageIdentity(href) !== previousIdentity) dependencies.resetTranslationRoute();
+        const disabled = dependencies.siteDisabled(href);
+        if (disabled !== dependencies.currentSiteDisabled()) {
+            void dependencies.applySiteDisabledState(disabled);
+            return;
+        }
+        const availability = dependencies.pageAvailability;
+        if (availability.needsLifecycleReconcile()) {
+            void availability.reconcile();
+            return;
+        }
+        availability.syncVideoSubtitlePage();
+        dependencies.reconcileFeatures();
+        availability.refreshAutoTranslation();
     };
 }

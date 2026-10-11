@@ -8,7 +8,7 @@ import {createLearningContentFeatures} from './learningFeatures';
 import type {ContentScriptContext} from 'wxt/utils/content-script-context';
 import {createShadowRootUi} from 'wxt/utils/content-script-ui/shadow-root';
 import {constants} from '@/src/core/config/constants';
-import {isExtensionDisabledOnSite} from '@/src/features/site-rules/domain';
+import {isExtensionDisabledOnSite, shouldAutoTranslatePage} from '@/src/features/site-rules/domain';
 import {config, configReady, subscribeConfig} from '@/src/services/config/store';
 import {ensureUiLanguageBundle} from '@/src/platform/i18n/uiLanguageBundles';
 import {cancelAllTranslations} from '@/src/app/translation/client';
@@ -46,8 +46,7 @@ import {browserCapabilities, type BrowserCapabilities} from '@/src/platform/brow
 import {setMainWorldBridgesEnabled} from './mainWorldBridgeLifecycle';
 import {
     createContentPageAvailabilityRuntime,
-    getAutoTranslationPageIdentity,
-    shouldAutomaticallyTranslatePage,
+    createContentRouteChangeHandler,
     type ContentPageAvailabilityRuntime,
 } from './pageAvailability';
 import {installContentPageLifecycle, waitForContentDocument} from './pageLifecycle';
@@ -73,8 +72,7 @@ export async function startContentApp(ctx: ContentScriptContext,
     if (ctx.isInvalid || cleanedUp || (document.readyState === 'loading' && !await waitForContentDocument(document, pageEventController.signal))) { cleanup(); return; }
     const siteAdaptation = createContentSiteAdaptationRuntime(config.siteAdaptation, new URL(window.location.href));
     applyCoreTranslationPreferences(config); clearLegacyPageTranslationCache();
-    let currentRouteHref = window.location.href;
-    let currentPageSiteDisabled = isExtensionDisabledOnSite(currentRouteHref, config.disabledExtensionDomains);
+    let currentPageSiteDisabled = isExtensionDisabledOnSite(window.location.href, config.disabledExtensionDomains);
     let unsubscribeContentConfig: (() => void) | null = null;
     let runtimeMessageListener: ContentRuntimeMessageHandler | null = null;
     const runtimeMessages = browser.runtime.onMessage;
@@ -205,7 +203,7 @@ export async function startContentApp(ctx: ContentScriptContext,
         isEnabled: isPageRuntimeEnabled,
         isPageFeaturesActive: () => featureController !== null,
         isVideoPage: isSupportedVideoPage,
-        shouldAutomaticallyTranslate: () => shouldAutomaticallyTranslatePage(window.location.href, config),
+        shouldAutomaticallyTranslate: () => shouldAutoTranslatePage(window.location.href, config),
         getPageIdentity: () => window.location.href,
         isFullPageTranslationActive,
         setMainWorldBridgesEnabled: (enabled) => setMainWorldBridgesEnabled(document, enabled),
@@ -220,29 +218,15 @@ export async function startContentApp(ctx: ContentScriptContext,
         void reportSiteDisabledState();
         await pageAvailability!.reconcile();
     };
-    document.addEventListener('fluentread-route-change', () => {
-        if (currentRouteHref === window.location.href) return;
-        const previousIdentity = getAutoTranslationPageIdentity(currentRouteHref);
-        currentRouteHref = window.location.href;
-        informationHighlight?.routeChanged();
-        siteAdaptation.routeChanged(new URL(currentRouteHref));
-        // 同篇文章内的目录锚点只移动阅读位置，不废弃在途翻译或覆盖手动恢复的选择。
-        if (getAutoTranslationPageIdentity(currentRouteHref) !== previousIdentity) {
-            resetPageTranslationContextCache(); resetFullPageTranslationRouteState();
-        }
-        const disabled = isExtensionDisabledOnSite(currentRouteHref, config.disabledExtensionDomains);
-        if (disabled !== currentPageSiteDisabled) {
-            void applySiteDisabledState(disabled);
-            return;
-        }
-        if (pageAvailability!.needsLifecycleReconcile()) {
-            void pageAvailability!.reconcile();
-            return;
-        }
-        pageAvailability!.syncVideoSubtitlePage();
-        void activePageFeatureRegistry?.reconcileEnabled();
-        pageAvailability!.refreshAutoTranslation();
-    }, {signal: pageEventController.signal});
+    document.addEventListener('fluentread-route-change', createContentRouteChangeHandler({
+        getHref: () => window.location.href,
+        routeChanged: href => { informationHighlight?.routeChanged(); siteAdaptation.routeChanged(new URL(href)); },
+        resetTranslationRoute: () => { resetPageTranslationContextCache(); resetFullPageTranslationRouteState(); },
+        siteDisabled: href => isExtensionDisabledOnSite(href, config.disabledExtensionDomains),
+        currentSiteDisabled: () => currentPageSiteDisabled,
+        applySiteDisabledState, pageAvailability,
+        reconcileFeatures: () => { void activePageFeatureRegistry?.reconcileEnabled(); },
+    }), {signal: pageEventController.signal});
 
     cleanup = (): void => {
         if (cleanedUp) return;
@@ -291,7 +275,7 @@ export async function startContentApp(ctx: ContentScriptContext,
         }
         if (!isPageRuntimeEnabled()) return;
         void activePageFeatureRegistry?.reconcileEnabled();
-        // 关闭“始终翻译”不撤销当前会话；只处理 false -> true，避免 storage.watch 同值回声。
+        // 关闭“始终翻译”不撤销当前会话；同页同值回声不会再次启动。
         pageAvailability!.refreshAutoTranslation();
     });
     // 先订阅再跨越首次 activation，避免初始化期间的总开关或站点规则写入永久漏同步。
