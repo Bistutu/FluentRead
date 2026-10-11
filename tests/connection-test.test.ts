@@ -224,6 +224,52 @@ describe('翻译服务连接测试', () => {
         expect(adapter).toHaveBeenCalledOnce();
     });
 
+    it.each(['resolve', 'reject'] as const)('连接测试超时后等待真实传输 %s，再启动共享调度的翻译和下一次检查', async settlement => {
+        vi.useFakeTimers();
+        const scheduler = createTranslationRequestScheduler(() => ({
+            maxConcurrentTranslations: 1,
+            translationRequestsPerSecond: 0,
+            translationRequestsPerMinute: 0,
+        }));
+        const identity = {service: 'demo', model: 'qwen3:8b'};
+        const physicalTransport = deferred<string>();
+        const started: string[] = [];
+        adapter.mockImplementationOnce((message: {abortSignal?: AbortSignal}) => {
+            const context = getTranslationRequestScheduler(message)!;
+            return context.scheduler.scheduleAttempt(() => {
+                started.push('first-check');
+                context.lease?.holdUntil(physicalTransport.promise);
+                return physicalTransport.promise;
+            }, {signal: message.abortSignal, identity: context.identity});
+        }).mockImplementationOnce(async () => {
+            started.push('next-check');
+            return '下一次检查译文';
+        });
+        const options = {requestScheduler: scheduler, effectiveModel: identity.model, countRate: false};
+        const first = runTranslationServiceConnectionTest('demo', options).catch(error => error);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(started).toEqual(['first-check']);
+        await vi.advanceTimersByTimeAsync(CONNECTION_TEST_TIMEOUT_MS);
+        await expect(first).resolves.toMatchObject({message: '翻译请求超时'});
+
+        const translation = scheduler.schedule(async () => {
+            started.push('translation');
+            return '共享调度译文';
+        }, {identity, countRate: false});
+        const nextCheck = runTranslationServiceConnectionTest('demo', options);
+        try {
+            await vi.advanceTimersByTimeAsync(0);
+            expect(started).toEqual(['first-check']);
+        } finally {
+            if (settlement === 'resolve') physicalTransport.resolve('迟到译文');
+            else physicalTransport.reject(new TypeError('Cancelled physical transport finished'));
+            await vi.advanceTimersByTimeAsync(0);
+            await expect(translation).resolves.toBe('共享调度译文');
+            await expect(nextCheck).resolves.toEqual({durationMs: expect.any(Number)});
+        }
+        expect(started).toEqual(['first-check', 'translation', 'next-check']);
+    });
+
     it('动态 custom:* 服务回退到共享 custom adapter，同时保留动态 serviceOverride', async () => {
         adapter.mockResolvedValue('动态服务译文');
 

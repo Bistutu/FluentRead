@@ -2,7 +2,7 @@
  * @file src/providers/translation/ai-sdk/openai-compatible.ts
  *
  * 文件职责：通过 Vercel AI SDK 执行 OpenAI 兼容翻译请求，为多个模型服务共享超时、重试、端点和响应校验。
- * 主要内容：冻结请求级配置，解析服务 endpoint 与模型，构造 commonMsgTemplate，调用 generateText，清理推理内容，并将 SDK 异常转换为 LlmTransportError。 可核对的公开符号包括 AI_SDK_REQUEST_TIMEOUT_MS、AI_SDK_MAX_RETRIES、AiSdkTranslationRequest、translateWithOpenAICompatibleAiSdk。
+ * 主要内容：冻结请求级配置，解析服务 endpoint 与模型，构造 commonMsgTemplate，调用 generateText；把真实 HTTP 请求和响应读取登记到后台并发租约，避免 SDK 取消提前释放槽位；清理推理内容，并将 SDK 异常转换为 LlmTransportError。 可核对的公开符号包括 AI_SDK_REQUEST_TIMEOUT_MS、AI_SDK_MAX_RETRIES、AiSdkTranslationRequest、translateWithOpenAICompatibleAiSdk。
  * 模块边界：本文件位于 provider 适配层，只把统一翻译请求转换为外部或浏览器服务协议；不管理页面 DOM、UI 生命周期或配置持久化，缓存、去重和超时总预算由 translation broker 统一协调。
  */
 
@@ -194,11 +194,28 @@ function compatibilityFetch(
 ) {
   return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const startedAt = Date.now();
-    let response: Response;
+    let result: {response: Response; normalized: Awaited<ReturnType<typeof normalizeSuccessfulTextResponse>>};
     try {
       const schedulerContext = getTranslationRequestScheduler(request);
-      const fetchAttempt = () => runtimeFetch(endpoint.exactEndpoint || input, init);
-      response = schedulerContext
+      const fetchAttempt = () => {
+        const settlement = (async () => {
+          const response = await runtimeFetch(endpoint.exactEndpoint || input, init);
+          const normalized = await normalizeSuccessfulTextResponse(response);
+          // SDK 还会读取失败响应体；先读完克隆，确保取消时该网络读取也受并发槽约束。
+          if (schedulerContext?.lease && !response.ok) {
+            try {
+              await response.clone().arrayBuffer();
+            } catch {
+              // 响应读取失败仍交给 SDK 解析，保留 HTTP 状态、限流与鉴权错误分类。
+            }
+          }
+          return {response, normalized};
+        })();
+        // scheduleAttempt 会在 signal 取消时立即返回；租约必须跟随真实传输结算。
+        schedulerContext?.lease?.holdUntil(settlement);
+        return settlement;
+      };
+      result = schedulerContext
         ? await schedulerContext.scheduler.scheduleAttempt(fetchAttempt, {
             signal: init?.signal ?? undefined,
             identity: {service: request.serviceOverride || schedulerContext.identity?.service, model: requestedModel},
@@ -215,7 +232,7 @@ function compatibilityFetch(
       throw error;
     }
 
-    const normalized = await normalizeSuccessfulTextResponse(response);
+    const {response, normalized} = result;
     const usage = normalizeOpenAICompatibleUsage(normalized.body?.usage, normalized.body?.model ?? requestedModel);
     reportTranslationModelUsage(request, {
       ...usage,

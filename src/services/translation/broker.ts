@@ -723,7 +723,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
                     ), requestScheduler, {
                         service: execution.service,
                         model: selectedModel,
-                    });
+                    }, lease);
 
                     let timer: ReturnType<typeof setTimeout>;
                     const timeout = new Promise<never>((_resolve, reject) => {
