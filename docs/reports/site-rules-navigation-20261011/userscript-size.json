@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "scope": "Same-dependency userscript build and size guard for website-rule/navigation fixes.",
+  "environment": {
+    "node": "v20.11.1",
+    "pnpm": "9.12.1",
+    "lockfileSha256": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
+    "lockfilesEqual": true
+  },
+  "baseline": {
+    "commit": "25f5dca794848782f717493ce0e08545a0e57b35",
+    "trackedBlobsVerified": 4892,
+    "bytes": 2024307,
+    "sha256": "1b90b6dd8d321de8c3f1a6a50476a7f6c37d058b800d41fb054de84e4e517249",
+    "verifierExitCode": 0,
+    "budgetBytes": 2025000
+  },
+  "candidate": {
+    "buildSourceCommit": "2f9c7fd5804ec00ba917e7ccfca75b2a656029d2",
+    "bytes": 2025706,
+    "sha256": "849de9a74f207e4273b0d80709091661773464afa84c52c327ce950e26036d83",
+    "verifierExitCode": 0,
+    "budgetBytes": 2026000,
+    "languageResourceCommit": "7b37302cf5e4aa5329f79e5b79309ae9334dafcf"
+  },
+  "comparison": {
+    "deltaBytes": 1399,
+    "deltaPercent": 0.06911007075507816,
+    "initialCandidateOverBudgetBytes": 706,
+    "budgetIncreaseBytes": 1000,
+    "finalHeadroomBytes": 294
+  },
+  "commands": [
+    "pnpm build:userscript",
+    "node scripts/verify-userscript-build.mjs",
+    "pnpm test tests/userscriptViteConfig.test.ts"
+  ],
+  "limits": [
+    "Build and deterministic verifier only; no userscript-manager or remote-CDN runtime acceptance."
+  ]
+}
