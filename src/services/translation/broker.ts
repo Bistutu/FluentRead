@@ -309,7 +309,12 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         sourceLanguageDetectionText?: string,
     ): string {
         const {config: current, service, sourceLanguage, targetLanguage} = execution;
-        const glossaryTerms = getTranslationGlossaryTerms(current, origin);
+        // 公开入口已冻结本次匹配范围；普通键复用保护条目，避免两次扫描同一术语库。
+        // token（包括空数组）继续按原 helper 筛选，未命中时不追加保护解析。
+        const glossaryEntries = current.glossaryProtectedTokens ? undefined : getGlossaryProtectionEntries(current, origin);
+        const glossaryTerms = glossaryEntries
+            ? glossaryEntries.map(({source, target}) => ({source, target: target || source}))
+            : getTranslationGlossaryTerms(current, origin);
 
         return deps.buildTranslationCacheKey({
             requestMode: mode,
@@ -337,7 +342,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             systemRole: current.system_role[service] || '',
             userRole: current.user_role[service] || '',
             ...(glossaryTerms.length ? {glossaryTerms, glossaryProtection: {version: 1,
-                entries: getGlossaryProtectionEntries(current, origin)}} : {}),
+                entries: glossaryEntries ?? getGlossaryProtectionEntries(current, origin)}} : {}),
             deepseekApiType: current.deepseekApiType,
             modelThinking: execution.thinking,
             transportProfile: deps.serviceTypes.isAiSdk(service)
