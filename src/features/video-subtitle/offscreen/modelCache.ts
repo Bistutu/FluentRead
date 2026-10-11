@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/offscreen/modelCache.ts
  * 文件职责：维护 Transformers.js Whisper 模型文件的远程地址、q4/q8 清单与 Cache Storage 下载。
- * 主要内容：只读缓存键核对已登记模型的完整七文件精度清单；按模型选择 Tiny/Base 的 q4/q8 或 Small 的 FP32 编码器加 q4 解码器，流式接收并在国内源、官方与镜像间有界回退，限制单文件大小、下载与断流等待，把完整文件清单合并成真实字节进度。
+ * 主要内容：只读缓存键核对已登记模型的完整七文件精度清单；按模型选择 Tiny/Base 的 q4/q8 或 Small 的 FP32 编码器加 q4 解码器，流式接收并在国内源、官方与镜像间有界回退，限制单文件大小、下载与断流等待，把完整文件清单合并成真实字节进度；下载失败展示统一重试提示，将来源诊断保留在错误原因中。
  * 模块边界：只处理模型文件缓存，不创建 Worker、不初始化 ONNX session，也不参与后台 owner 生命周期。
  */
 import {withModelDownload, type ModelSourcePreference} from '@/src/platform/http/modelDownloads';
@@ -131,7 +131,7 @@ export async function cacheVideoAiModelFiles(
     }
   } catch (error) {
     if (controller.signal.aborted) throw new Error('模型下载超过总等待时限', {cause: error});
-    throw error;
+    throw new Error('模型下载失败，请检查网络后重试', {cause: error});
   } finally {
     clearTimeout(totalTimeout);
   }

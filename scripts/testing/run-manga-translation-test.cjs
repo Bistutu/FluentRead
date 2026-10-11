@@ -1503,21 +1503,29 @@ await import('./mangaInferenceWorker.real.js');self.removeEventListener('message
 
     if(!baseline)await modelSettings.locator('.manga-download-settings > summary').click();
     await modelSettings.getByRole('button',{name:baseline?'清除漫画模型':'清除已下载资源',exact:true}).waitFor();
+    const assertAutomaticModelUi=async()=>{
+        const manager=modelSettings.locator('.manga-model-settings');
+        assert.equal(await manager.getByRole('combobox',{name:'模型下载来源',exact:true}).count(),0);
+        assert.equal(await manager.locator('a[href*="huggingface"],a[href*="hf-mirror"],a[href*="modelscope"]').count(),0);
+        assert.doesNotMatch(await manager.innerText(),/下载来源|官方源优先|备用镜像优先|Hugging Face|HF Mirror|ModelScope|huggingface\.co|hf-mirror|modelscope\.cn/iu);
+        assert.equal(await manager.getByRole('button',{name:'导入已下载文件',exact:true}).count(),1);
+    };
     if(baseline)await modelSettings.getByLabel('模型下载来源',{exact:true}).selectOption('mirror');
-    else {await modelSettings.getByRole('combobox',{name:'模型下载来源',exact:true}).press('Enter');await modelSettings.getByRole('option',{name:'备用镜像优先',exact:true}).click();}
+    else await assertAutomaticModelUi();
     await modelSettings.reload();
 
-    await wait(async()=>(await modelSettings.evaluate(()=>chrome.runtime.sendMessage({type:'fluentReadMangaModelStatus'}))).source==='mirror');
+    const expectedModelSource=baseline?'mirror':'auto';
+    await wait(async()=>(await modelSettings.evaluate(()=>chrome.runtime.sendMessage({type:'fluentReadMangaModelStatus'}))).source===expectedModelSource);
     if(!baseline)await modelSettings.locator('.manga-download-settings > summary').click();
-    if(!baseline)assert.match(await modelSettings.getByRole('combobox',{name:'模型下载来源',exact:true}).locator('xpath=ancestor::div[contains(concat(" ",normalize-space(@class)," ")," el-select ")][1]').textContent(),/备用镜像优先/);
-    report.cases.push('model source selection persists on reopen');
+    if(!baseline)await assertAutomaticModelUi();
+    report.cases.push(baseline?'model source selection persists on reopen':'model management remains automatic on reopen without source controls or provider links');
     await modelSettings.locator('.manga-model-settings').scrollIntoViewIfNeeded();
     const modelShot=path.join(artifacts,'models-before-clear.png');await modelSettings.screenshot({path:modelShot});report.screenshots.push(modelShot);
     await modelSettings.getByRole('button',{name:baseline?'清除漫画模型':'清除已下载资源',exact:true}).click();
     if(baseline)await modelSettings.locator('.manga-model-settings small').filter({hasText:/^(?:已占用空间 · )?0 MB$/}).waitFor();
     else await modelSettings.locator('.manga-resource-state').first().filter({hasText:'未下载'}).waitFor();
     report.modelStatusAfter=await popup.evaluate(()=>chrome.runtime.sendMessage({type:'fluentReadMangaModelStatus'}));
-    assert.deepEqual(report.modelStatusAfter,{success:true,ready:false,bytes:0,inpaintingReady:false,source:'mirror'});
+    assert.deepEqual(report.modelStatusAfter,{success:true,ready:false,bytes:0,inpaintingReady:false,source:expectedModelSource});
     if(offlineModels){
         await modelSettings.locator('.manga-model-settings input[type=file]').setInputFiles(['PP-OCRv6_small_det.onnx','PP-OCRv6_small_rec.onnx','ppocrv6_dict.txt','lama-manga-dynamic.onnx'].map(name=>path.join(offlineModels,name)));
         await modelSettings.locator('.manga-model-settings small').filter({hasText:'226 MB'}).waitFor({timeout:60000});

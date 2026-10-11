@@ -240,6 +240,7 @@
       "tests/videoPretranslationController.test.ts",
       "tests/videoTranslationCache.test.ts",
       "tests/videoSubtitleLogic.test.ts",
+      "tests/videoKaraoke.test.ts",
       "tests/localModelReadiness.test.ts",
       "tests/videoSubtitleLanguage.test.ts",
       "tests/videoAiModelSetup.test.ts",

@@ -18,6 +18,19 @@ Uninstalling the extension normally makes the browser automatically clear its st
 </details>
 
 <details class="guide-details">
+<summary>Do local models reload on every request or stay in memory forever?</summary>
+
+## Do local models reload on every request or stay in memory forever?
+
+Downloaded model files and models loaded into memory have separate lifetimes. Local translation, speech synthesis, video transcription, and ordinary image OCR reuse their loaded model or worker. After work finishes, they remain available for 60 seconds on devices reporting up to 4 GB of memory, 3 minutes on other devices with known memory, or 2 minutes when memory information is unavailable. New work restarts the idle window. Active and queued work is protected from idle cleanup.
+
+Modern Chrome translation reuses a language detector and sessions for up to two translation language pairs. Older experimental APIs still release each session after use. Model changes, cancellation of running requests, timeouts, model removal, and extension runtime page exit trigger cleanup according to each feature's lifecycle. Manga OCR, inpainting, and smart highlighting already have their own 3-minute idle cleanup. Releasing runtime memory keeps downloaded model files available for the next local load.
+
+These defaults balance responsiveness and memory; they do not impose a hard RAM or GPU-memory limit. Multiple features can retain models at the same time. Chrome controls the final residency of its own model weights, while external local services manage their own model lifetimes. [Ollama keeps models loaded for 5 minutes by default](https://docs.ollama.com/faq#how-do-i-keep-a-model-loaded-in-memory-or-make-it-unload-immediately); its server's `OLLAMA_KEEP_ALIVE` setting can change this.
+
+</details>
+
+<details class="guide-details">
 <summary>Page translation does nothing</summary>
 
 ## Page translation does nothing
