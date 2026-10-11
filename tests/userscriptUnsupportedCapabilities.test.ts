@@ -17,9 +17,6 @@ import {
     mountVideoSubtitleTranslation,
     unmountAreaTranslator,
     unmountImageTranslator,
-    mountProgressiveReading,
-    openProgressiveReading,
-    unmountProgressiveReading,
     mountVocabularyReencounter,
     unmountVocabularyReencounter,
     mountPersonalCorrections,
@@ -27,22 +24,6 @@ import {
 } from '@/userscript/unsupportedCapabilities';
 
 describe('userscript extension-only capability stubs', () => {
-    it('渐进阅读空适配不访问页面或扩展能力，主动开启异步返回不支持', async () => {
-        const sendMessage = vi.fn(), createElement = vi.fn(), addEventListener = vi.fn();
-        vi.stubGlobal('browser', {runtime: {sendMessage}});
-        vi.stubGlobal('document', {createElement, addEventListener});
-        try {
-            expect(mountProgressiveReading()).toBeUndefined();
-            const opened = openProgressiveReading();
-            expect(opened).toBeInstanceOf(Promise);
-            await expect(opened).resolves.toBe(false);
-            expect(unmountProgressiveReading()).toBeUndefined();
-            expect(sendMessage).not.toHaveBeenCalled();
-            expect(createElement).not.toHaveBeenCalled();
-            expect(addEventListener).not.toHaveBeenCalled();
-        } finally {vi.unstubAllGlobals();}
-    });
-
     it('never mounts area, image, or video runtimes', () => {
         expect(isAreaTranslatorMounted()).toBe(false);
         expect(mountAreaTranslator()).toBeUndefined();

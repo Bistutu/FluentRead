@@ -68,7 +68,7 @@ beforeEach(async()=>{
     if(id==='\0popup-config')return "const f=globalThis.__popupFixture;export const config=f.config;export const subscribeConfig=fn=>{f.subscribe(fn);return()=>{}};export const requestConfigPatch=async value=>f.patches(value);export const handoffPendingConfigPatches=async()=>{}"
     if(id==='\0popup-storage')return 'export const configStorage=globalThis.__popupFixture.persistencePort'
     if(id==='\0popup-credential-context')return 'export const isTrustedCredentialStorageContext=()=>true'
-    if(id==='\0popup-i18n')return "import {ref} from 'vue';const language=ref('zh-CN');export const useUiI18n=()=>({language,t:key=>key,translateLegacy:text=>text})"
+    if(id==='\0popup-i18n')return "export const useUiI18n=()=>({t:key=>key,translateLegacy:text=>text})"
     if(id==='\0popup-appearance')return 'export const applyInterfaceFont=()=>{},applyInterfaceSkin=()=>{}'
     if(id==='\0popup-capabilities')return 'export const browserCapabilities=globalThis.__popupFixture.capabilities'
     if(id==='\0popup-icons')return 'export const Setting={render:()=>null}'

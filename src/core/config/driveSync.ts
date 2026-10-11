@@ -1,7 +1,7 @@
 /**
  * @file src/core/config/driveSync.ts
  * 文件职责：定义默认排除敏感信息的云同步范围、兼容完整快照和不泄露凭据的差异预览。
- * 主要内容：学习快捷键作为普通偏好投影与预览，不包含阅读正文或学习记录；投影普通设置、读取 v1 完整与 v2 普通快照，兼容枚举列表去重与退役条目迁移，保留凭据明确删除语义、执行三方字段合并，并将请求体、
+ * 主要内容：投影普通设置、读取 v1 完整与 v2 普通快照，兼容枚举列表去重与退役条目迁移，保留凭据明确删除语义、执行三方字段合并，并将请求体、
  * 地址、请求头、密钥和未知字段统一隐藏，普通设置包含按服务保存的原生翻译合批偏好并展示稳定名称和值；数组整体合并。
  * 模块边界：只处理纯数据；不拥有口令、加密、存储、浏览器消息或 Google API。
  */
@@ -165,8 +165,6 @@ const VISIBLE_FIELDS: Record<string, string> = {
     floatingBallCollapsedOpacity: '悬浮球收起不透明度',
     paragraphCopyEnabled: '段落复制',
     sectionTranslationHotkeyEnabled: '局部翻译快捷键',
-    progressiveReadingHotkey: '学习快捷键',
-    customProgressiveReadingHotkey: '自定义学习快捷键',
     selectionAreaEnabled: '圈选翻译',
     imageTranslationMangaEnabled: '漫画连续翻译入口',
     imageTranslationMangaPromptEnabled: '独立漫画按钮',

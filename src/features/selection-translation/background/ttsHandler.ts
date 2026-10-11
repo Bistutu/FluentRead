@@ -1,7 +1,7 @@
 /**
  * @file src/features/selection-translation/background/ttsHandler.ts
  * 文件职责：编排划词朗读的后台消息路由，按标签页、frame、document 与客户端请求编号管理当前播放所有权，把本地 AbortSignal 贯穿播放传输，在 Edge、Google 与页面回退之间传递音频或状态。
- * 主要内容：定义 TTS 消息与音频契约，解析标签页、文本、语言及媒体时钟，编排播放、停止、5 秒跳转及状态转发；可显式请求页面音频以复用合成及取消归属而不启动 Offscreen 播放；持续进度不释放路由，终态按精确请求清理。
+ * 主要内容：定义 TTS 消息与音频契约，解析标签页、文本、语言及媒体时钟，编排播放、停止、5 秒跳转及状态转发；持续进度不释放路由，终态按精确请求清理。
  * 模块边界：本文件不操作页面 Audio 或 speechSynthesis，也不实现 Edge SSML；具体合成由 services 注入，Offscreen 播放由 adapter 注入，内容页控制器负责忽略迟到状态。
  */
 import {parseSpeechProgress, parseSpeechPlaybackPosition, type SpeechCue} from '@/src/core/tts/speechProgress';
@@ -65,8 +65,6 @@ export interface SelectionTtsMessage {
     text?: unknown;
     language?: unknown;
     clientRequestId?: unknown;
-    /** 省略时沿用扩展播放；page 仅返回音频，由调用页面持有媒体与播放控制。 */
-    playback?: unknown;
 }
 
 export interface SelectionTtsGoogleMessage {
@@ -322,9 +320,6 @@ export function createSelectionTtsBackgroundHandlers(
     const edgeTtsHandler: SelectionTtsBackgroundHandler<SelectionTtsMessage> = {
         type: SELECTION_TTS_MESSAGE_TYPE,
         async handle(message, context): Promise<SelectionTtsResponse> {
-                if (message.playback !== undefined && message.playback !== 'page') {
-                    throw new TypeError('TTS playback 必须为 page 或未指定');
-                }
                 const text = parseText(message.text);
                 const language = parseLanguage(message.language);
                 const clientRequestId = parseSelectionTtsClientRequestId(message.clientRequestId);
@@ -366,7 +361,7 @@ export function createSelectionTtsBackgroundHandlers(
                     return {success: false, error: '语音合成已取消'};
                 }
 
-                if (tabId !== null && active && message.playback !== 'page' && dependencies.offscreenPlaybackEnabled !== false) {
+                if (tabId !== null && active && dependencies.offscreenPlaybackEnabled !== false) {
                     active.playbackStarted = true;
                     try {
                         await dependencies.playWithOffscreen({

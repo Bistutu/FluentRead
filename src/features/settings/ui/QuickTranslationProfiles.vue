@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/QuickTranslationProfiles.vue
  * 文件职责：提供悬浮、全文与局部容器翻译的多方案设置界面，让每个额外快捷键独立选择翻译服务、模型、目标语言和展示策略。
- * 主要内容：学习组合也纳入已有入口占用校验；按动作筛选并编辑快捷翻译方案，复用快捷键录制与服务图标组件，聚合内置和自定义模型，并在新增、启停、删除及跨方案热键去重后发出最新配置快照；按活跃配置、方案生命周期、字段版本与录制会话限定旧事件，确认复验容量与全部旧入口冲突。
+ * 主要内容：按动作筛选并编辑快捷翻译方案，复用快捷键录制与服务图标组件，聚合内置和自定义模型，并在新增、启停、删除及跨方案热键去重后发出最新配置快照；按活跃配置、方案生命周期、字段版本与录制会话限定旧事件，确认复验容量与全部旧入口冲突。
  * 模块边界：组件只编辑父级传入的 QuickTranslationProfile 列表，不直接保存 Config、不注册网页快捷键或执行翻译；配置归一化与运行时路由仍由 core 和对应 feature 负责。
  -->
 <template>
@@ -251,7 +251,6 @@ import {useSettingsActionContext} from '../model/useSettingsActionContext'
 import {useQuickProfileDraft} from '../model/useQuickProfileDraft'
 import {resolveAreaTranslationHotkey} from '@/src/core/config/areaTranslation'
 import {resolveSectionTranslationHotkey} from '@/src/core/config/sectionTranslation'
-import {resolveProgressiveReadingHotkey} from '@/src/core/config/progressiveReading'
 import {
   createQuickTranslationProfile,
   quickTranslationActionKey,
@@ -402,7 +401,6 @@ const rows = computed(() => visibleProfiles.value.map(profile => {
 function hotkeyIdentity(hotkey: string): string {return (canonicalizeHotkey(hotkey) || hotkey.trim()).toLocaleLowerCase()}
 function legacyHotkeyEntries(): Array<{hotkey: string; label: string}> {
   const entries = [
-    {hotkey: resolveProgressiveReadingHotkey(props.config.progressiveReadingHotkey, props.config.customProgressiveReadingHotkey), label: t('progressiveReading.settings.title')},
     {hotkey: resolveConfiguredHotkey(props.config.hotkey, props.config.customHotkey), label: t('quickTranslation.defaultHover')},
     {hotkey: resolveConfiguredHotkey(props.config.floatingBallHotkey, props.config.customFloatingBallHotkey), label: t('quickTranslation.defaultFullPage')},
   ]

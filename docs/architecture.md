@@ -200,8 +200,6 @@ WXT 会把 `entrypoints/` 下零层或一层的入口作为构建输入，并在
 
 ## Feature 结构
 
-`src/features/progressive-reading/` 是主动开启的独立网页阅读辅助：Popup 消息进入静态 content 生命周期，封闭 Vue Shadow 面板按瞬时选区呈现四档帮助。纯 hints/session 管理有界词面线索与请求所有权，source 只读现有选区/双语摘录，翻译沿用客户端与 broker；学习库通过只读 `readingHints` 投影提供目标语参考及最新明确掌握证据，不新增学习状态或行为记录。
-
 复杂 feature 采用按需子目录，不创建空目录：
 
 ```text

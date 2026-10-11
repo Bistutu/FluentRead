@@ -1,7 +1,7 @@
 /**
  * @file src/core/tts/speechProgress.ts
  * 文件职责：把真实音频播放位置和可用句段时间映射成安全的跟读文字范围。
- * 主要内容：校验跨上下文句段、进度和媒体时钟，保留原始字符索引；统一完整词边界与稳定文字片段，没有词时间戳时按句段时长估算；允许调用方复用同一文本的分词，避免每个媒体事件重复正则扫描；跳转按实际音频时间限制在首尾范围内。
+ * 主要内容：校验跨上下文句段、进度和媒体时钟，保留原始字符索引；统一完整词边界与稳定文字片段，没有词时间戳时按句段时长估算；跳转按实际音频时间限制在首尾范围内。
  * 模块边界：纯计算，不操作 DOM、不生成音频、不推断墙钟播放进度。
  */
 export interface SpeechCue {startChar: number; endChar: number; startTime: number; endTime: number}
@@ -57,7 +57,7 @@ export function parseSpeechProgress(value: unknown): SpeechProgress | null {
     return {start:p.start,end:p.end,fraction:p.fraction,estimated:p.estimated};
 }
 
-export function audioSpeechProgress(text: string, time: number, duration: number, cues: readonly SpeechCue[] = [], tokens?: readonly SpeechTextToken[]): SpeechProgress | null {
+export function audioSpeechProgress(text: string, time: number, duration: number, cues: readonly SpeechCue[] = []): SpeechProgress | null {
     if (!text || !Number.isFinite(time) || !Number.isFinite(duration) || time < 0 || duration <= 0) return null;
     // 句段间隙保持上一个句段，结束后保持最后一个词，避免进度跳回整篇文字。
     const cue = cues.findLast(c => time >= c.startTime) ?? cues[0];
@@ -67,7 +67,7 @@ export function audioSpeechProgress(text: string, time: number, duration: number
     const fraction = Math.min(1,Math.max(0,(time-begin)/(finish-begin)));
     const reached = start + (end-start)*fraction;
     // 汉字按字推进，其他文字按词推进；标点与空白保持原样。时间仍是估算，不能当作词时间戳。
-    const words = (tokens ?? speechTextTokens(text)).filter(token => token.word && token.end > start && token.start < end);
+    const words = speechTextTokens(text).filter(token => token.word && token.end > start && token.start < end);
     const word = words.find(w => w.end > reached) ?? words.at(-1);
     if (!word) return {start,end,fraction,estimated:true};
     const wordStart = word.start, wordEnd = word.end;

@@ -10,7 +10,6 @@ export default defineConfig({
     // 组件生命周期测试执行实际客户端 SFC 模板，让 V8 归因到原始 Vue 源码。
     plugins: [vue({include: [
         /\/src\/(?:features\/share-card\/ui\/ShareCardStudio|features\/selection-translation\/ui\/SelectionTranslator|features\/settings\/ui\/services\/RequestLimit(?:Settings|Fields)|features\/reading-assistant\/ui\/[^/]+|ui\/components\/(?:MarkdownContent|MarkdownTable|[^/]*Reading[^/]*)|features\/image-translation\/ui\/MangaEntry|app\/document-translation\/(?:DocumentApp|DocumentSegmentEditor)|ui\/components\/(?:CustomHotkeyInput|UiSelect|GlossaryLibrarySelect|ServiceIcon|TranslationLoadingPreview|UiIcon|FeatureEnableCard)|features\/settings\/ui\/components\/(?:FieldHelp|InterfaceSkinPreview|PopupLayoutPreview|PopupLayoutPreviewItem|SettingsGroup|SettingsItem|TranslationColorField|TranslationStylePreview|WritingStylePreview|SegmentedControl))\.vue$/,
-        resolve(__dirname, 'src/features/progressive-reading/ui/ProgressiveReading.vue'),
         resolve(__dirname, 'src/features/document-translation/ui/PdfReader.vue'),
         resolve(__dirname, 'src/features/video-subtitle/ui/VideoSentenceLearning.vue'),
         resolve(__dirname, 'docs/.vitepress/theme/BrandReader.vue'),
