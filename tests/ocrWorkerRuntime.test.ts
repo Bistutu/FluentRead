@@ -1,4 +1,4 @@
-import {describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {
     createOcrWorkerRuntime,
     type OcrWorkerPort,
@@ -538,4 +538,162 @@ it('模型清除等待识别结束、释放 Worker，失败后仍可重新创建
  await runtime.clearModels(remove); await runtime.recognize('again','eng'); expect(factory).toHaveBeenCalledTimes(2);
  await expect(runtime.clearModels(async()=>{throw new Error('disk')})).rejects.toThrow('disk');
  await runtime.recognize('recover','eng'); expect(factory).toHaveBeenCalledTimes(3);
+});
+
+describe('OCR 模型有界驻留与页面销毁', () => {
+    beforeEach(() => {
+        vi.useFakeTimers();
+        vi.stubGlobal('navigator', {deviceMemory: 8});
+    });
+    afterEach(() => {
+        vi.clearAllTimers();
+        vi.useRealTimers();
+        vi.unstubAllGlobals();
+    });
+
+    it.each([[4, 60_000], [8, 180_000], [undefined, 120_000]])('设备内存 %s GB：短暂停顿复用，完整空闲 %s 毫秒后释放并可重新加载', async (memory, idleMs) => {
+        vi.stubGlobal('navigator', {deviceMemory: memory});
+        const worker = createWorker('warm');
+        const factory = vi.fn(async () => worker);
+        const runtime = createOcrWorkerRuntime({createWorker: factory, sparseTextMode: 11});
+        await runtime.recognize('first', 'eng');
+        await vi.advanceTimersByTimeAsync(idleMs! - 1);
+        expect(worker.terminate).not.toHaveBeenCalled();
+        await runtime.recognize('again', 'eng');
+        await vi.advanceTimersByTimeAsync(idleMs! - 1);
+        expect(worker.terminate).not.toHaveBeenCalled();
+        expect(factory).toHaveBeenCalledOnce();
+        expect(worker.setParameters).toHaveBeenCalledOnce();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(worker.terminate).toHaveBeenCalledOnce();
+        await runtime.recognize('cold', 'eng');
+        expect(factory).toHaveBeenCalledTimes(2);
+        expect(worker.setParameters).toHaveBeenCalledTimes(2);
+        runtime.dispose(); runtime.dispose();
+        await vi.advanceTimersByTimeAsync(180_000);
+        expect(worker.terminate).toHaveBeenCalledTimes(2);
+    });
+
+    it('准备与复核已加载语言都延续暖驻期限，预下载不会无限保留内存', async () => {
+        const worker = createWorker('prepared');
+        const factory = vi.fn(async () => worker);
+        const runtime = createOcrWorkerRuntime({createWorker: factory, sparseTextMode: 11});
+        await runtime.ensureLanguages(['eng']);
+        await vi.advanceTimersByTimeAsync(179_999);
+        await runtime.ensureLanguages(['eng']);
+        expect(factory).toHaveBeenCalledOnce();
+        await vi.advanceTimersByTimeAsync(179_999);
+        expect(worker.terminate).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(worker.terminate).toHaveBeenCalledOnce();
+    });
+
+    it('迟到的旧空闲回调不能终止已开始的识别或覆盖新暖驻计时器', async () => {
+        const worker = createWorker('active');
+        const timer = vi.spyOn(globalThis, 'setTimeout');
+        const runtime = createOcrWorkerRuntime({createWorker: async () => worker, sparseTextMode: 11});
+        await runtime.recognize('first', 'eng');
+        const oldIdle = timer.mock.calls[0][0] as () => void;
+        const recognition = deferred<RecognitionResult>();
+        vi.mocked(worker.recognize).mockReturnValueOnce(recognition.promise);
+        const active = runtime.recognize('active', 'eng');
+        await vi.advanceTimersByTimeAsync(0);
+        oldIdle();
+        expect(worker.terminate).not.toHaveBeenCalled();
+        recognition.resolve({worker: 'active', image: 'active'}); await active;
+        oldIdle();
+        expect(worker.terminate).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(180_000);
+        expect(worker.terminate).toHaveBeenCalledOnce();
+        timer.mockRestore();
+    });
+
+    it('识别、排队和模型校验期间不按空闲时间释放，最后一项完成才开始暖驻', async () => {
+        const worker = createWorker('active');
+        const creation = deferred<OcrWorkerPort<RecognitionResult>>();
+        const recognition = deferred<RecognitionResult>();
+        vi.mocked(worker.recognize).mockReturnValueOnce(recognition.promise);
+        const factory = vi.fn(() => creation.promise);
+        const runtime = createOcrWorkerRuntime({createWorker: factory, sparseTextMode: 11});
+        const preparing = runtime.ensureLanguages(['eng']);
+        await vi.advanceTimersByTimeAsync(300_000);
+        expect(worker.terminate).not.toHaveBeenCalled();
+        creation.resolve(worker); await preparing;
+        await vi.advanceTimersByTimeAsync(179_999);
+        const active = runtime.recognize('active', 'eng');
+        const queued = runtime.recognize('queued', 'eng');
+        const checking = runtime.ensureLanguages(['eng']);
+        await vi.advanceTimersByTimeAsync(300_000);
+        expect(worker.recognize).toHaveBeenCalledOnce();
+        expect(worker.terminate).not.toHaveBeenCalled();
+        recognition.resolve({worker: 'active', image: 'active'});
+        await Promise.all([active, queued, checking]);
+        expect(factory).toHaveBeenCalledOnce();
+        await vi.advanceTimersByTimeAsync(179_999);
+        expect(worker.terminate).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(worker.terminate).toHaveBeenCalledOnce();
+    });
+
+    it('显式销毁立即取消无外部 signal 的挂起识别及旧队列，不允许迟到结果复活 Worker', async () => {
+        const worker = createWorker('closing');
+        const recognition = deferred<RecognitionResult>();
+        vi.mocked(worker.recognize).mockReturnValueOnce(recognition.promise);
+        const factory = vi.fn(async () => worker);
+        const runtime = createOcrWorkerRuntime({createWorker: factory, sparseTextMode: 11});
+        const active = runtime.recognize('active', 'eng');
+        await vi.advanceTimersByTimeAsync(0);
+        expect(worker.recognize).toHaveBeenCalledOnce();
+        const queued = runtime.recognize('queued', 'jpn');
+        const preparing = runtime.ensureLanguages(['fra']);
+        const remove = vi.fn(async () => {});
+        const clearing = runtime.clearModels(remove);
+        const rejections = [active, queued, preparing, clearing].map(operation => expect(operation).rejects.toMatchObject({name: 'AbortError'}));
+        runtime.dispose();
+        await Promise.all(rejections);
+        await expect(runtime.recognize('after-close', 'eng')).rejects.toMatchObject({name: 'AbortError'});
+        await expect(runtime.ensureLanguages(['eng'])).rejects.toMatchObject({name: 'AbortError'});
+        await expect(runtime.clearModels(remove)).rejects.toMatchObject({name: 'AbortError'});
+        recognition.resolve({worker: 'closing', image: 'late'});
+        await vi.advanceTimersByTimeAsync(300_000);
+        expect(remove).not.toHaveBeenCalled();
+        expect(factory).toHaveBeenCalledOnce();
+        expect(worker.recognize).toHaveBeenCalledOnce();
+        expect(worker.terminate).toHaveBeenCalledOnce();
+    });
+
+    it('销毁尚在加载的模型时立即结束等待，迟到创建只会被释放，不执行参数或识别', async () => {
+        const worker = createWorker('late');
+        const creation = deferred<OcrWorkerPort<RecognitionResult>>();
+        const factory = vi.fn(() => creation.promise);
+        const runtime = createOcrWorkerRuntime({createWorker: factory, sparseTextMode: 11});
+        const pending = runtime.ensureLanguages(['eng']);
+        const rejected = expect(pending).rejects.toMatchObject({name: 'AbortError'});
+        await vi.advanceTimersByTimeAsync(0);
+        expect(factory).toHaveBeenCalledOnce();
+        runtime.dispose(); await rejected;
+        creation.resolve(worker);
+        await vi.advanceTimersByTimeAsync(300_000);
+        expect(worker.terminate).toHaveBeenCalledOnce();
+        expect(worker.setParameters).not.toHaveBeenCalled();
+        expect(worker.recognize).not.toHaveBeenCalled();
+    });
+
+    it('销毁清理队列时不等待底层终止完成，也不在迟到终止后继续删除模型', async () => {
+        const worker = createWorker('removing');
+        const termination = deferred<unknown>();
+        const runtime = createOcrWorkerRuntime({createWorker: async () => worker, sparseTextMode: 11});
+        await runtime.ensureLanguages(['eng']);
+        vi.mocked(worker.terminate).mockReturnValueOnce(termination.promise);
+        const remove = vi.fn(async () => {});
+        const pending = runtime.clearModels(remove);
+        const rejected = expect(pending).rejects.toMatchObject({name: 'AbortError'});
+        await vi.advanceTimersByTimeAsync(0);
+        expect(worker.terminate).toHaveBeenCalledOnce();
+        runtime.dispose(); await rejected;
+        termination.resolve(undefined);
+        await vi.advanceTimersByTimeAsync(300_000);
+        expect(remove).not.toHaveBeenCalled();
+        expect(worker.terminate).toHaveBeenCalledOnce();
+    });
 });

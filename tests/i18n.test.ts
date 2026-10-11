@@ -43,6 +43,16 @@ import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
 registerAllUiLanguageBundles();
 
 describe('界面 i18n 契约', () => {
+  it('Popup 站点规则的保存、暂停与网站范围反馈覆盖六种语言并保留用户域名', () => {
+    for (const language of ['en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const) {
+      for (const text of ['自动翻译已暂停', '应用于此网站及其子域名，跳转后按新网站规则执行', '禁用会停止此网站的翻译，保留始终翻译偏好', '禁用优先于自动翻译', '恢复扩展后继续自动翻译', '请先恢复扩展', '无法读取当前网站，请重试']) {
+        const translated = translateLegacyText(text, language);expect(translated).not.toBe(text);if (language !== 'ja-JP') expect(translated).not.toMatch(/[\u3400-\u9fff]/u)
+      }
+      for (const text of ['未能保存 example.com 的网站设置，请重试', '已保存 example.com，恢复扩展后生效', 'example.com 已禁用扩展，无法开启始终翻译 · 恢复扩展后继续自动翻译']) {
+        const translated = translateLegacyText(text, language);expect(translated).toContain('example.com');expect(translated).not.toBe(text);if (language !== 'ja-JP') expect(translated).not.toMatch(/[\u3400-\u9fff]/u)
+      }
+    }
+  });
   it('配置云备份和 WebDAV 七种语言的键与插值一致，供应商可互换', () => {
     const languages = ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const;
     const catalogs = languages.map(language => JSON.parse(readFileSync(join(process.cwd(), 'src/core/i18n/messages/cloud-backup', language + '.json'), 'utf8')).messages as Record<string, string>);

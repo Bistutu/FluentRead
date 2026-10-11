@@ -1,9 +1,11 @@
 /**
  * @file src/features/image-translation/services/ocrWorkerRuntime.ts
  * 文件职责：实现与具体 OCR 引擎无关的 Worker 生命周期和串行任务队列，保证识别、参数设置、语言切换及销毁不会在并发请求间交叉污染。
- * 主要内容：定义 OcrWorkerPort、依赖与 runtime 契约，复用 Worker 并串行重新初始化语言与分割参数；累计模型超过五个时重建以限制内存，失败或取消后释放实例，迟到的语言切换不得污染后续任务；提供任务隔离的真实进度、识别和语言预加载。
+ * 主要内容：定义 OcrWorkerPort、依赖与 runtime 契约，复用 Worker 并串行重新初始化语言与分割参数；累计模型超过五个时重建以限制内存，按设备内存限制空闲驻留；排队、识别和校验期间保留 Worker，显式销毁立即取消全部任务，迟到的语言切换不得污染后续任务；提供任务隔离的真实进度、识别和语言预加载。
  * 模块边界：此层不依赖 Tesseract.js 类型、浏览器 storage 或图片翻译 UI；具体 worker 工厂由 ocrRuntime 注入，语言状态记录和 Offscreen 消息编排位于其他模块。
  */
+import {localModelIdleMs} from '@/src/shared/onnx/modelResidency';
+
 /**
  * OCR Worker 的最小能力边界。
  *
@@ -36,6 +38,7 @@ export type OcrWorkerRuntime<TResult> = {
     recognize: (image: string, languages: string, signal?: AbortSignal, pageSegmentationMode?: string | number, onProgress?: (percent: number) => void) => Promise<TResult>;
     clearModels: (remove: () => Promise<void>) => Promise<void>;
     ensureLanguages: (languages: string[], signal?: AbortSignal) => Promise<void>;
+    dispose: () => void;
 };
 
 function createOcrAbortError(): Error {
@@ -59,10 +62,23 @@ export function createOcrWorkerRuntime<TResult>(
     let workerOwnershipGeneration = 0;
     let operationTail: Promise<void> = Promise.resolve();
     let jobSequence = 0;
-    let activeProgress: {jobId: string; last: number; signal?: AbortSignal; notify?: (percent: number) => void} | null = null;
+    let activeProgress: {jobId: string; last: number; signal: AbortSignal; notify?: (percent: number) => void} | null = null;
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
+    let disposed = false;
+    const operations = new Set<AbortController>();
+    function clearIdle(): void {clearTimeout(idleTimer); idleTimer = undefined;}
+    function keepWarm(): void {
+        if (disposed || operations.size || !workerPromise) return;
+        const timer = setTimeout(() => {
+            if (idleTimer !== timer) return;
+            idleTimer = undefined;
+            terminateCurrentWorker();
+        }, localModelIdleMs());
+        idleTimer = timer;
+    }
     const reportWorkerProgress = (progress: number, jobId: string) => {
         const active = activeProgress;
-        if (!active || active.jobId !== jobId || active.signal?.aborted
+        if (!active || active.jobId !== jobId || active.signal.aborted
             || !Number.isFinite(progress) || progress < 0 || progress > 1) return;
         const percent = Math.floor(progress * 100);
         if (percent <= active.last) return;
@@ -71,6 +87,7 @@ export function createOcrWorkerRuntime<TResult>(
     };
 
     function terminateCurrentWorker(): void {
+        clearIdle();
         const current = workerPromise;
         workerPromise = null;
         workerLanguages = '';
@@ -81,8 +98,7 @@ export function createOcrWorkerRuntime<TResult>(
         void current?.then(worker => worker.terminate()).catch(() => undefined);
     }
 
-    function runAbortable<T>(operation: Promise<T>, signal?: AbortSignal, ownsWorker = true): Promise<T> {
-        if (!signal) return operation;
+    function runAbortable<T>(operation: Promise<T>, signal: AbortSignal, ownsWorker = true): Promise<T> {
         return new Promise<T>((resolve, reject) => {
             let settled = false;
             const cleanup = () => signal.removeEventListener('abort', handleAbort);
@@ -110,14 +126,29 @@ export function createOcrWorkerRuntime<TResult>(
         });
     }
 
-    function runExclusive<T>(operation: () => Promise<T>, signal?: AbortSignal): Promise<T> {
+    function runExclusive<T>(operation: (operationSignal: AbortSignal) => Promise<T>, signal?: AbortSignal): Promise<T> {
+        if (disposed) return Promise.reject(createOcrAbortError());
+        clearIdle();
+        const controller = new AbortController();
+        const cancel = () => controller.abort();
+        signal?.addEventListener('abort', cancel, {once: true});
+        if (signal?.aborted) cancel();
+        operations.add(controller);
+        const execute = async () => {
+            if (controller.signal.aborted) throw createOcrAbortError();
+            return operation(controller.signal);
+        };
         // 步骤 1：无论上一项成功还是失败，后续 OCR 操作都必须继续执行。
-        const result = operationTail.then(operation, operation);
+        const result = operationTail.then(execute, execute).finally(() => {
+            signal?.removeEventListener('abort', cancel);
+            operations.delete(controller);
+            keepWarm();
+        });
         // 步骤 2：尾链只保存完成信号，调用方仍收到原始结果或异常。
         operationTail = result.then(() => undefined, () => undefined);
         // 排队请求尚未持有 worker，取消只能结束自己的等待；尾链仍等待
         // 前一任务完成，避免后来的请求越过正在进行的 OCR。
-        return runAbortable(result, signal, false);
+        return runAbortable(result, controller.signal, false);
     }
 
     async function getWorker(languages: string): Promise<OcrWorkerPort<TResult>> {
@@ -178,7 +209,7 @@ export function createOcrWorkerRuntime<TResult>(
 
     return {
         clearModels(remove) {
-            return runExclusive(async () => {
+            return runExclusive(async signal => {
                 const current = workerPromise;
                 workerPromise = null;
                 workerLanguages = '';
@@ -186,12 +217,12 @@ export function createOcrWorkerRuntime<TResult>(
                 configuredWorker = null;
                 workerOwnershipGeneration += 1;
                 await current?.then(worker => worker.terminate());
+                if (signal.aborted) throw createOcrAbortError();
                 await remove();
             });
         },
         recognize(image, languages, signal, pageSegmentationMode = dependencies.sparseTextMode, onProgress) {
-            return runExclusive(async () => {
-                if (signal?.aborted) throw createOcrAbortError();
+            return runExclusive(async signal => {
                 const worker = await runAbortable(getWorker(normalizeLanguages(languages)), signal);
                 if (configuredWorker !== worker || configuredMode !== pageSegmentationMode) {
                     // 设置失败时不再认为旧参数可信；下一任务必须重新配置。
@@ -216,8 +247,7 @@ export function createOcrWorkerRuntime<TResult>(
         },
         ensureLanguages(languages, signal) {
             if (languages.length === 0) return Promise.resolve();
-            return runExclusive(async () => {
-                if (signal?.aborted) throw createOcrAbortError();
+            return runExclusive(async signal => {
                 const normalized = normalizeLanguages(languages.join('+'));
                 if (workerPromise && normalized.split('+').every(language => loadedLanguages.has(language))) {
                     // 预下载只保证模型已存在，不改变活跃识别语言，也不重复初始化已准备的包。
@@ -226,6 +256,11 @@ export function createOcrWorkerRuntime<TResult>(
                 }
                 await runAbortable(getWorker(normalized), signal);
             }, signal);
+        },
+        dispose() {
+            disposed = true;
+            for (const operation of operations) operation.abort();
+            terminateCurrentWorker();
         },
     };
 }
