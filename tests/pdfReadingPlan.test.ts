@@ -70,4 +70,49 @@ describe('PDF canonical complete reading plan', () => {
         expect(plan.entries.map(entry => entry.kind === 'text' && entry.text)).toEqual(['Ashish Vaswani · ashish@google.com', 'arXiv:1706.03762', 'Google Brain']);
         expect(plan.entries.every(entry => entry.kind === 'text' && !entry.translated)).toBe(true);
     });
+
+    it('preserves unchanged source control encodings as exact original regions without rewriting source or translations', () => {
+        const doc = document([{source: 'before'}, {source: '\u0093idΓ'}, {source: 'after'}]);
+        const sourcePage = page([block(0), block(1, {x: 184.05846, y: 659.8628, width: 24.53219, height: 14.6201, kind: 'text'}), block(2)]);
+        const translations = ['前文', '\u0093idΓ', '后文'];
+        const before = JSON.stringify({doc, sourcePage, translations});
+        const plan = buildPdfReadingPlan(doc, sourcePage, translations);
+        expect(plan.entries.filter(entry => entry.kind === 'text').map(entry => entry.text)).toEqual(['前文', '后文']);
+        expect(plan.entries.filter(entry => entry.kind === 'region')).toEqual([expect.objectContaining({
+            segmentIndexes: [1], role: 'text', sourceRect: expect.objectContaining({x: 184.05846, y: 659.8628}),
+        })]);
+        const rect = plan.entries.find(entry => entry.kind === 'region')!.sourceRect;
+        expect(rect.width).toBeCloseTo(24.53219); expect(rect.height).toBeCloseTo(14.6201);
+        expect(plan.hasTranslation).toBe(true);
+        expect(JSON.stringify({doc, sourcePage, translations})).toBe(before);
+    });
+
+    it('limits source preservation to C0, DEL and C1 while keeping tabs, newlines and normal Unicode as text', () => {
+        const codes = [0x00, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x1F, 0x20, 0x7E, 0x7F, 0x80, 0x9F, 0xA0];
+        const expected = [true, true, false, false, true, true, false, true, true, false, false, true, true, true, false];
+        expect(codes.map(code => {
+            const source = `A${String.fromCodePoint(code)}B`;
+            const plan = buildPdfReadingPlan(document([{source}]), page([block(0)]), [source]);
+            return plan.entries.some(entry => entry.kind === 'region');
+        })).toEqual(expected);
+    });
+
+    it('retains changed translations containing controls for strict font rejection and avoids losing invalid source geometry', () => {
+        const doc = document([{source: '\u0093idΓ'}, {source: 'normal source'}, {source: '\u0093bad geometry'}, {source: ''}]);
+        const sourcePage = page([block(0), block(1), block(2, {x: NaN}), block(3)]);
+        const plan = buildPdfReadingPlan(doc, sourcePage, ['明确译文\u0093', '\u0000translated', '', '']);
+        expect(plan.entries.every(entry => entry.kind === 'text')).toBe(true);
+        expect(plan.entries.map(entry => entry.kind === 'text' && entry.text)).toEqual(['明确译文\u0093', '\u0000translated', '\u0093bad geometry']);
+    });
+
+    it('preserves unchanged control-bearing metadata and footers once, while retaining normal metadata behavior', () => {
+        const doc = document([{source: 'author\u0001'}, {source: 'footer\u0080'}]);
+        const sourcePage = page([block(0, {kind: 'metadata'}), block(1, {kind: 'footer'})], {preservedRegions: [
+            {id: 'existing', kind: 'figure', x: 10, y: 10, width: 180, height: 45},
+        ]});
+        const plan = buildPdfReadingPlan(doc, sourcePage, []);
+        expect(plan.entries.every(entry => entry.kind === 'region')).toBe(true);
+        expect(plan.entries).toHaveLength(2);
+        expect(plan.hasTranslation).toBe(false);
+    });
 });

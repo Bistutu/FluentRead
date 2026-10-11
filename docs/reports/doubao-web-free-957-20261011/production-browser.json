@@ -1,0 +1,152 @@
+{
+  "scope": "complete unmodified production FluentRead extension, controlled anonymous HTTPS providers, trusted Control paragraph toggles",
+  "cases": [
+    {
+      "case": "connectionTest-success",
+      "response": {
+        "success": true,
+        "durationMs": 10
+      },
+      "htmlBootstraps": 1,
+      "doubaoRequests": 1,
+      "microsoftRequests": 0,
+      "bootstrapCookiesOmitted": true,
+      "anonymousCookieOnly": true,
+      "originAndRefererCorrect": true,
+      "internalHeadersRemoved": true,
+      "visitorChangedOnRefresh": true,
+      "sessionRuleCleared": true,
+      "existingBrowserCookiesUnchanged": true
+    },
+    {
+      "case": "connectionTest-refresh",
+      "response": {
+        "success": true,
+        "durationMs": 7
+      },
+      "htmlBootstraps": 2,
+      "doubaoRequests": 2,
+      "microsoftRequests": 0,
+      "bootstrapCookiesOmitted": true,
+      "anonymousCookieOnly": true,
+      "originAndRefererCorrect": true,
+      "internalHeadersRemoved": true,
+      "visitorChangedOnRefresh": true,
+      "sessionRuleCleared": true,
+      "existingBrowserCookiesUnchanged": true
+    },
+    {
+      "case": "connectionTest-expired",
+      "response": {
+        "success": false,
+        "error": "豆包网页翻译请求失败（错误码 710012001）"
+      },
+      "htmlBootstraps": 2,
+      "doubaoRequests": 2,
+      "microsoftRequests": 0,
+      "bootstrapCookiesOmitted": true,
+      "anonymousCookieOnly": true,
+      "originAndRefererCorrect": true,
+      "internalHeadersRemoved": true,
+      "visitorChangedOnRefresh": true,
+      "sessionRuleCleared": true,
+      "existingBrowserCookiesUnchanged": true
+    },
+    {
+      "case": "translation-message-success",
+      "response": "这是一段便于阅读的中文译文。",
+      "htmlBootstraps": 1,
+      "doubaoRequests": 1,
+      "microsoftRequests": 0,
+      "bootstrapCookiesOmitted": true,
+      "anonymousCookieOnly": true,
+      "originAndRefererCorrect": true,
+      "internalHeadersRemoved": true,
+      "visitorChangedOnRefresh": true,
+      "sessionRuleCleared": true,
+      "existingBrowserCookiesUnchanged": true
+    },
+    {
+      "case": "trusted-Control-toggle",
+      "counts": [
+        1,
+        0,
+        1
+      ],
+      "neighborCounts": [
+        0,
+        0,
+        0
+      ],
+      "urlUnchanged": true,
+      "translationText": "这是一段便于阅读的中文译文。",
+      "duplicateTranslationsAbsent": true,
+      "htmlBootstraps": 1,
+      "doubaoRequests": 1,
+      "microsoftRequests": 0,
+      "bootstrapCookiesOmitted": true,
+      "anonymousCookieOnly": true,
+      "originAndRefererCorrect": true,
+      "internalHeadersRemoved": true,
+      "visitorChangedOnRefresh": true,
+      "sessionRuleCleared": true,
+      "existingBrowserCookiesUnchanged": true
+    },
+    {
+      "case": "final-visitor-failure-falls-back-to-microsoft",
+      "response": "微软受控回退译文。",
+      "htmlBootstraps": 2,
+      "doubaoRequests": 2,
+      "microsoftRequests": 1,
+      "bootstrapCookiesOmitted": true,
+      "anonymousCookieOnly": true,
+      "originAndRefererCorrect": true,
+      "internalHeadersRemoved": true,
+      "visitorChangedOnRefresh": true,
+      "sessionRuleCleared": true,
+      "existingBrowserCookiesUnchanged": true
+    }
+  ],
+  "sourceHashesAtArtifactCopy": {
+    "src/platform/http/doubaoGuest.ts": "d45b7954474c747233f4d4d90444b558ef2e12d96a5ec88463a82a3a4ed1a0f6",
+    "src/providers/translation/doubao-web.ts": "8a3efe80628940e29cea294524edc6d8d2dc881521927dbcb719bf300942dc89",
+    "src/platform/http/runtime.ts": "d7f2296a755c41816ecb284187c81d1c330f5e47fac0b5ceb69a1f500493a8e7",
+    "src/app/background/requestHeaderRuntime.ts": "369689898a60922d2582ed95d6fbd107fbc2457f297a9f4f1003000b2e6b146d"
+  },
+  "productionArtifactHashes": {
+    "manifest.json": "961d10d94833c621d25cd57c2668613840b1b5ff2fc8aa96628448b12a767924",
+    "background.js": "b604dd8dbe79ac28cec0aa8de2de3d1eb2d46a15d47b6ecfe4e2356da96dbe85",
+    "content-scripts/content.js": "afddf36f1ae5d43a829e92880a23720c85d74472a3528691d4b85aa7171d3f79"
+  },
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "profileMode": "generated temporary isolated profile",
+  "config": {
+    "on": true,
+    "service": "freeTranslation",
+    "from": "en",
+    "to": "zh-Hans",
+    "display": 1,
+    "hotkey": "Control",
+    "freeTranslationOrder": [
+      "doubaoWeb"
+    ],
+    "freeTranslationMode": "sequential"
+  },
+  "pageErrors": [],
+  "pass": true,
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "windowState": "normal",
+    "displayTarget": "secondary",
+    "browserFrontmost": false
+  },
+  "limitations": [
+    "Controlled HTTPS protocol fixtures, not successful live Doubao translation.",
+    "Real Firefox and userscript-manager runtime were not tested."
+  ],
+  "verificationRole": "Historical controlled HTTPS protocol fixture against initial implementation, not evidence of real Doubao availability or final corrected source.",
+  "realProviderEvidence": "production-live-browser.json"
+}

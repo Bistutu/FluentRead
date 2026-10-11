@@ -13,7 +13,7 @@ import {buildConfigDiff} from '@/src/core/config/diff';
 describe('keyless free translation configuration', () => {
     it('migrates old settings while keeping explicit opt-outs and never automatically adding paid-capable accounts', () => {
         expect(new Config().freeTranslationOrder).toEqual(DEFAULT_FREE_TRANSLATION_ORDER);
-        expect(new Config().freeTranslationOrder).toEqual(FREE_TRANSLATION_PROVIDERS.map(provider => provider.id));
+        expect(new Config().freeTranslationOrder).toEqual(FREE_TRANSLATION_PROVIDERS.filter(provider => provider.id !== 'doubaoWeb').map(provider => provider.id));
         for (const value of [undefined, null, 'myMemory', [], ['untrusted', 42]]) {
             expect(normalizeFreeTranslationOrder(value)).toEqual(DEFAULT_FREE_TRANSLATION_ORDER);
         }
@@ -21,9 +21,23 @@ describe('keyless free translation configuration', () => {
             .toEqual(['myMemory', 'google']);
         expect(normalizeConfig({freeTranslationOrder: ['myMemory']}).freeTranslationOrder).toEqual(['bilibiliFree', 'myMemory']);
         expect(FREE_TRANSLATION_PROVIDERS.find(item => item.id === 'myMemory')?.official).toBe(true);
-        expect(FREE_TRANSLATION_PROVIDERS.map(item => item.id)).toEqual(['microsoft', 'bilibiliFree', 'transmart', 'volcengineFree', 'google', 'youdaoFree', 'icibaFree', 'yandexFree', 'myMemory', 'sogouFree', 'reversoFree', 'apertiumFree', 'alibabaFree', 'modernMtFree', 'laraFree', 'lingvanexFree']);
+        expect(FREE_TRANSLATION_PROVIDERS.map(item => item.id)).toEqual(['microsoft', 'bilibiliFree', 'transmart', 'volcengineFree', 'doubaoWeb', 'google', 'youdaoFree', 'icibaFree', 'yandexFree', 'myMemory', 'sogouFree', 'reversoFree', 'apertiumFree', 'alibabaFree', 'modernMtFree', 'laraFree', 'lingvanexFree']);
         expect(normalizeFreeTranslationOrder(['azureTranslator', 'myMemory', 'deepL', 'openai'])).toEqual(['myMemory']);
         expect(normalizeFreeTranslationOrder(['azureTranslator', 'deepL'])).toEqual(DEFAULT_FREE_TRANSLATION_ORDER);
+    });
+
+    it('豆包网页节点默认关闭，明确的启用列表在重读和备份恢复时保持不变', () => {
+        expect(new Config().freeTranslationOrder).not.toContain('doubaoWeb');
+        expect(FREE_TRANSLATION_PROVIDERS.find(provider => provider.id === 'doubaoWeb')).toMatchObject({
+            label: '豆包网页翻译', description: '实验性免密钥网页接口，默认关闭；匿名访问失败会换线', defaultWeight: 1, defaultEnabled: false,
+        });
+        const previous = normalizeConfig({freeTranslationOrder: ['google', 'myMemory'], freeTranslationBilibiliDefaultApplied: true});
+        expect(previous.freeTranslationOrder).toEqual(['google', 'myMemory']);
+        expect(normalizeConfig(JSON.parse(JSON.stringify(previous))).freeTranslationOrder).toEqual(['google', 'myMemory']);
+        expect(prepareConfigForImport(prepareConfigForExport(previous), new Config()).freeTranslationOrder).toEqual(['google', 'myMemory']);
+        previous.freeTranslationOrder = ['doubaoWeb', 'google'];
+        expect(normalizeConfig(previous).freeTranslationOrder).toEqual(['doubaoWeb', 'google']);
+        expect(prepareConfigForImport(prepareConfigForExport(previous), new Config()).freeTranslationOrder).toEqual(['doubaoWeb', 'google']);
     });
 
     it('移除第三方旧节点并保留用户已选择的官方节点和独立 DeepLX 配置', () => {

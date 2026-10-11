@@ -79,6 +79,8 @@ Enable bilingual sentence highlighting under **Translation → Reading aids**, t
 
 If a provider reports too many requests, or your API has a quota, adjust concurrency and request rates under **Advanced settings → Request limits**.
 
+Concurrency counts translation tasks. A task that combines multiple texts still uses the provider's own batch scheduling internally. Its slot remains occupied until the associated network requests and response bodies have finished. Tasks that are still finishing after cancellation or timeout continue to count. Changing the limit mode or scope also counts existing tasks toward the new limit; new tasks wait while the active count meets or exceeds it.
+
 | Limit | Default |
 | --- | --- |
 | Concurrent translation requests | 10 |
@@ -87,11 +89,13 @@ If a provider reports too many requests, or your API has a quota, adjust concurr
 
 Set a per-second or per-minute limit to **0** to remove that limit. Requests wait in a queue when a limit is reached. Existing custom values are preserved.
 
-- **Per model**: in **Translation services**, open **Request limits**, set **Apply to** to **Current model**, switch **Limits** to **Custom**, then fill in the three values below.
+- **Per model**: in **Translation services**, open **Request limits**, set **Apply to** to **Current model**, switch **Limits** to **Custom**, then fill in the three values below. The current model is the model actually sent in the request. If custom JSON parameters override it, this panel displays and saves limits for the overriding model. Saved limits for other models are preserved.
 - **Per service**: when models share one provider quota, switch **Apply to** to **Entire service** and set the service-wide limit. A model's own limit also remains subject to the service-wide limit; unconfigured models inherit the service limit.
 - **Restore inheritance**: switch **Limits** back to **Use global settings** or **Use service settings**. Previously entered values stay available for later use.
 
 Retry count and intervals are configured globally in advanced settings.
+
+Free translation fallback routes and Google batches also retain slots while requests are still finishing. Free translation can try another route when capacity is available. When capacity is full, it waits for existing requests to finish within the translation's total timeout budget.
 
 </details>
 

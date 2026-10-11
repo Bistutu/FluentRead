@@ -49,10 +49,10 @@ import {
     isLikelyPageContextLeak,
 } from '@/src/core/translation/prompts';
 import {isCustomOpenAIProviderId, LEGACY_CUSTOM_OPENAI_PROVIDER_ID} from '@/src/core/config/customOpenAI';
-import {customModelString, resolveCloudRegion, services} from '@/src/core/config/catalog';
+import {resolveCloudRegion, services} from '@/src/core/config/catalog';
+import {resolveTranslationRequestModel} from '@/src/core/config/requestModel';
 import {getAliyunTranslationEndpoint} from '@/src/core/config/constants';
 import {getServiceApiKeys} from '@/src/core/config/apiKeys';
-import {currentConfiguredModel, getCurrentModel} from './templates';
 import {isModelThinkingEnabled} from '@/src/core/config/modelThinking';
 import {supportsVisionTransport} from '@/src/core/config/vision';
 import {
@@ -195,31 +195,8 @@ class GlossaryRevisionChangedError extends Error {
     }
 }
 
-/** 返回 provider 最终 payload 使用的模型身份，供 outer bucket 与实际 transport 共用。 */
-export function resolveTranslationRequestModel(
-    current: TranslationProviderConfigSnapshot,
-    service: string,
-    modelOverride: string | undefined,
-    isAiSdk: (service: string) => boolean,
-    isAI: (service: string) => boolean,
-): string {
-    const selected = service === services.gemini
-        ? modelOverride || (current.model[service] === customModelString ? current.customModel[service] : current.model[service]) || ''
-        : service === services.deepseek
-        ? getCurrentModel(service, modelOverride, current)
-        : isAiSdk(service)
-            ? currentConfiguredModel(current, service, modelOverride).replace(/（.*）/g, '')
-            : currentConfiguredModel(current, service, modelOverride);
-    const body = current.customBody?.[service];
-    if (!(isAI(service) && service !== services.gemini) || typeof body !== 'string' || !body.trim()) return selected;
-    try {
-        const parsed = JSON.parse(body) as {model?: unknown; Model?: unknown};
-        const requestedModel = service === services.huanYuanTranslation ? parsed?.Model : parsed?.model;
-        return typeof requestedModel === 'string' && requestedModel.trim() ? requestedModel.trim() : selected;
-    } catch {
-        return selected;
-    }
-}
+/** 保留既有 broker 公共入口，模型规则由设置页与后台共用的 core 函数维护。 */
+export {resolveTranslationRequestModel};
 
 export function createTranslationBroker(deps: TranslationBrokerDependencies): TranslationBroker {
     const pendingTranslations = new Map<string, Promise<string>>();
@@ -352,6 +329,9 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
                 nativeBatch: [services.google, services.microsoft].map(id =>
                     [id, isNativeTranslationBatchEnabled(id, current.nativeBatchTranslationEnabled)]),
             }} : {}),
+            // v3 将相邻自动数学字面值合为有界保护组，旧文档缓存不能绕过完整恢复契约。
+            // 仅分隔文档请求；网页缓存、已保存译文和人工校订不清空。
+            ...(current.glossaryMatchContext?.context === 'document' ? {documentTranslationPolicy: {version: 3}} : {}),
             customBody: current.customBody[service] || '',
             ...(current.customHeaders?.[service] ? {customHeaders: current.customHeaders[service]} : {}),
             systemRole: current.system_role[service] || '',
@@ -723,7 +703,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
                     ), requestScheduler, {
                         service: execution.service,
                         model: selectedModel,
-                    });
+                    }, lease);
 
                     let timer: ReturnType<typeof setTimeout>;
                     const timeout = new Promise<never>((_resolve, reject) => {
@@ -1449,7 +1429,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         );
         // 完整批次身份只计算一次；AI 分项用定长摘要保留邻段和槽位语义，避免逐项携带整个批次。
         const batchFingerprint = cacheMode === 'ai-multi-segment' ? sha256Hex(batchKey) : '';
-        const pendingKey = `${buildPendingRequestKey(batchKey, pendingBudgetMs, requestGeneration)}:cache:${useCache ? 'on' : 'off'}${pendingOwnershipSuffix(execution)}${pendingAnonymousConfigSuffix(execution)}${pendingCloudConfigSuffix(execution)}${recoverSharedDeadline ? '' : `:recovery-deadline:${requestDeadline}ms`}`;
+        const pendingKey = `${buildPendingRequestKey(batchKey, pendingBudgetMs, requestGeneration)}:cache:${useCache ? 'on' : 'off'}${pendingOwnershipSuffix(execution)}${pendingAnonymousConfigSuffix(execution)}${pendingCloudConfigSuffix(execution)}${import.meta.env.BROWSER !== 'userscript' && message.documentBatch === true ? ':document-batch' : ''}${recoverSharedDeadline ? '' : `:recovery-deadline:${requestDeadline}ms`}`;
         const existing = pendingBatches.get(pendingKey);
         if (existing) {
             execution.trace.shared = true;
@@ -1740,6 +1720,12 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             throw new GlossaryRevisionChangedError();
         }
         const glossarySource = getTranslationGlossaryContext(message);
+        // 文档合批只接受受信入口的数组；保留同一分项译文缓存，pending 则按执行策略隔离。
+        if (import.meta.env.BROWSER !== 'userscript' && message.documentBatch !== undefined
+            && (message.documentBatch !== true || !Array.isArray(message.origin) || glossarySource?.context !== 'document')) {
+            const {documentBatch: _ignored, ...withoutDocumentBatch} = message;
+            message = withoutDocumentBatch as TranslationRequestMessage;
+        }
         const glossaryContext = glossarySource?.context ?? message.glossaryContext ?? 'page';
         const selectedGlossaryIds = glossaryIds ?? (glossaryContext === 'document' ? current.documentGlossaryIds
             : glossaryContext === 'video' ? current.videoGlossaryIds : null);
@@ -1755,7 +1741,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         // Provider 只读取命中当前原文的词对；配置原文与域规则不会进入请求 JSON。
         current = Object.freeze({...current,
             glossaryTerms: Object.freeze(glossaryTerms.map(term => Object.freeze({...term}))),
-            glossaryMatchContext: Object.freeze({sourceLanguage, targetLanguage, pageUrl: glossarySource?.pageUrl,
+            glossaryMatchContext: Object.freeze({context: glossaryContext, sourceLanguage, targetLanguage, pageUrl: glossarySource?.pageUrl,
                 glossaryIds: selectedGlossaryIds ? Object.freeze([...selectedGlossaryIds]) : null}),
         });
         const execution: TranslationRequestExecution = {

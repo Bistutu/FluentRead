@@ -35,18 +35,24 @@ const {mockConfig} = vi.hoisted(() => ({
 
 vi.mock('@/src/services/config/store', () => ({config: mockConfig}));
 
-import {services} from '@/src/core/config/catalog';
-import {translateWithOpenAICompatibleAiSdk} from '@/src/providers/translation/ai-sdk/openai-compatible';
+import {resolveConfiguredModel, services, servicesType} from '@/src/core/config/catalog';
+import {getMissingCredentialMessage} from '@/src/core/config/validation';
+import {resolveTranslationLanguages} from '@/src/core/translation/languages';
+import {buildPageSummaryPrompt, buildPageSummarySystemPrompt} from '@/src/core/translation/prompts';
+import {translateWithOpenAICompatibleAiSdk, type AiSdkTranslationRequest} from '@/src/providers/translation/ai-sdk/openai-compatible';
+import {resolveOpenAICompatibleEndpoint} from '@/src/providers/translation/ai-sdk/endpoints';
 import azureOpenai from '@/src/providers/translation/azure-openai';
 import {normalizeAiSdkError} from '@/src/providers/translation/ai-sdk/errors';
 import {
     attachTranslationModelUsageObserver,
     attachTranslationProviderConfig,
+    attachTranslationRequestControl,
     attachTranslationRequestScheduler,
     createTranslationProviderConfigSnapshot,
 } from '@/src/services/translation/requestSnapshot';
 import {createTranslationRequestScheduler} from '@/src/services/translation/requestScheduler';
 import {setRuntimeFetch} from '@/src/platform/http/runtime';
+import {createTranslationBroker} from '@/src/services/translation/broker';
 import type {TranslationModelUsageObservation} from '@/src/services/translation/types';
 
 function successResponse(text = '译文') {
@@ -68,6 +74,50 @@ function errorResponse(status: number, message: string, headers: Record<string, 
     status,
     statusText: 'Provider Error',
     headers: {'content-type': 'application/json', ...headers},
+  });
+}
+
+function deferredResponse() {
+  let resolve!: (response: Response) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<Response>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return {promise, resolve, reject};
+}
+
+function ollamaBroker() {
+  const current = {
+    ...mockConfig,
+    service: services.ollama,
+    model: {[services.ollama]: 'gemma3:4b'},
+    token: {},
+    translationMaxRetries: 0,
+    maxConcurrentTranslations: 1,
+    translationRequestsPerSecond: 0,
+    translationRequestsPerMinute: 0,
+    useCache: false,
+  };
+  return createTranslationBroker({
+    ready: Promise.resolve(),
+    getConfig: () => current,
+    providers: {[services.ollama]: message => translateWithOpenAICompatibleAiSdk(message as unknown as AiSdkTranslationRequest)},
+    cache: {
+      get: async () => null,
+      set: async () => true,
+      clear: async () => undefined,
+      cleanup: async () => undefined,
+    },
+    serviceTypes: servicesType,
+    endpointResolver: {resolveOpenAICompatibleEndpoint, aiSdkTransportProfile: 'ai-sdk'},
+    promptBuilder: {buildPageSummaryPrompt, buildPageSummarySystemPrompt},
+    getMissingCredentialMessage,
+    getTranslationLanguages: override => resolveTranslationLanguages(override, {
+      sourceLanguage: current.from, targetLanguage: current.to,
+    }),
+    resolveConfiguredModel,
+    buildTranslationCacheKey: identity => JSON.stringify(identity),
   });
 }
 
@@ -487,6 +537,166 @@ describe('Vercel AI SDK OpenAI-compatible transport', () => {
       requestId: 'req-rate-test',
     });
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it.each(['resolve', 'reject'] as const)('issue #952：Ollama 取消后等真实传输 %s 再开始下一条请求', async settlement => {
+    vi.useFakeTimers();
+    const firstTransport = deferredResponse();
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(() => firstTransport.promise)
+      .mockImplementation(() => Promise.resolve(successResponse('第二条译文')));
+    setRuntimeFetch(fetchMock);
+    const broker = ollamaBroker();
+    const controller = new AbortController();
+    const first = broker.translateWithCache(attachTranslationRequestControl({
+      origin: 'The first English paragraph.', requestTimeoutMs: 5_000,
+    }, {signal: controller.signal, ownershipKey: 'issue-952-first'})).catch(error => error);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    controller.abort();
+    await expect(first).resolves.toMatchObject({name: 'AbortError'});
+    const second = broker.translateWithCache({
+      origin: 'The second English paragraph.', requestTimeoutMs: 5_000,
+    });
+    try {
+      await vi.advanceTimersByTimeAsync(0);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      if (settlement === 'resolve') firstTransport.resolve(successResponse('第一条译文'));
+      else firstTransport.reject(new TypeError('Late physical transport rejection'));
+      await vi.advanceTimersByTimeAsync(0);
+      await expect(second).resolves.toBe('第二条译文');
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('issue #952：Ollama 超时后仍持有未结束的真实请求槽位', async () => {
+    vi.useFakeTimers();
+    const firstTransport = deferredResponse();
+    let firstSignal: AbortSignal | null | undefined;
+    const fetchMock = vi.fn()
+      .mockImplementationOnce((_input, init?: RequestInit) => {
+        firstSignal = init?.signal;
+        return firstTransport.promise;
+      })
+      .mockImplementation(() => Promise.resolve(successResponse('重试译文')));
+    setRuntimeFetch(fetchMock);
+    const broker = ollamaBroker();
+    const first = broker.translateWithCache({
+      origin: 'A slow English paragraph.', requestTimeoutMs: 1_000,
+    }).catch(error => error);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1_000);
+    await expect(first).resolves.toMatchObject({name: 'TranslationProviderDeadlineError', message: '翻译请求超时'});
+    expect(firstSignal?.aborted).toBe(true);
+    const retry = broker.translateWithCache({
+      origin: 'A slow English paragraph.', requestTimeoutMs: 5_000,
+    });
+    try {
+      await vi.advanceTimersByTimeAsync(0);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      firstTransport.reject(new TypeError('Transport finished after cancellation'));
+      await vi.advanceTimersByTimeAsync(0);
+      await expect(retry).resolves.toBe('重试译文');
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([200, 500])('issue #952：Ollama 取消后等待迟到的 HTTP %s 响应正文结束', async status => {
+    vi.useFakeTimers();
+    const firstTransport = deferredResponse();
+    let bodyController!: ReadableStreamDefaultController<Uint8Array>;
+    const lateBody = new ReadableStream<Uint8Array>({
+      start(controller) {bodyController = controller;},
+    });
+    const fetchMock = vi.fn()
+      .mockImplementationOnce(() => firstTransport.promise)
+      .mockImplementation(() => Promise.resolve(successResponse('下一条译文')));
+    setRuntimeFetch(fetchMock);
+    const broker = ollamaBroker();
+    const controller = new AbortController();
+    const first = broker.translateWithCache(attachTranslationRequestControl({
+      origin: 'A paragraph with a delayed response body.', requestTimeoutMs: 5_000,
+    }, {signal: controller.signal, ownershipKey: `issue-952-body-${status}`})).catch(error => error);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    controller.abort();
+    await expect(first).resolves.toMatchObject({name: 'AbortError'});
+    const next = broker.translateWithCache({
+      origin: 'Another paragraph after cancellation.', requestTimeoutMs: 5_000,
+    });
+    firstTransport.resolve(new Response(lateBody, {status, headers: {'content-type': 'application/json'}}));
+    try {
+      await vi.advanceTimersByTimeAsync(0);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      const body = status === 200
+        ? {choices: [{message: {role: 'assistant', content: '迟到译文'}, finish_reason: 'stop'}]}
+        : {error: {message: 'Late provider failure'}};
+      bodyController.enqueue(new TextEncoder().encode(JSON.stringify(body)));
+      bodyController.close();
+      await vi.advanceTimersByTimeAsync(0);
+      await expect(next).resolves.toBe('下一条译文');
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('issue #952：Ollama 错误正文读取失败仍保留 HTTP 401 鉴权分类并释放槽位', async () => {
+    const failedBody = new ReadableStream<Uint8Array>({
+      start(controller) {controller.error(new TypeError('The error response body failed'));},
+    });
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(failedBody, {status: 401, headers: {'content-type': 'application/json'}}))
+      .mockImplementation(() => Promise.resolve(successResponse('重新配置后的译文')));
+    setRuntimeFetch(fetchMock);
+    const broker = ollamaBroker();
+    const failed = broker.translateWithCache({
+      origin: 'A paragraph rejected by the local server.', requestTimeoutMs: 5_000,
+    });
+    await expect(failed).rejects.toMatchObject({
+      statusCode: 401, kind: 'authentication', retryable: false,
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await expect(broker.translateWithCache({
+      origin: 'Another paragraph after updating authentication.', requestTimeoutMs: 5_000,
+    })).resolves.toBe('重新配置后的译文');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('issue #952：Ollama 数组和单条入口共用一个真实并发上限', async () => {
+    vi.useFakeTimers();
+    const transports: ReturnType<typeof deferredResponse>[] = [];
+    let active = 0;
+    let peak = 0;
+    const fetchMock = vi.fn((_input: RequestInfo | URL, _init?: RequestInit) => {
+      const transport = deferredResponse();
+      transports.push(transport);
+      active += 1;
+      peak = Math.max(peak, active);
+      return transport.promise.finally(() => {active -= 1;});
+    });
+    setRuntimeFetch(fetchMock);
+    const broker = ollamaBroker();
+    const batch = broker.translateWithCache({
+      origin: ['First paragraph in a document.', 'Second paragraph in a document.'],
+      requestTimeoutMs: 5_000,
+    });
+    const single = broker.translateWithCache({
+      origin: 'A paragraph from another translation entry.', requestTimeoutMs: 5_000,
+    });
+    for (let index = 0; index < 3; index += 1) {
+      await vi.advanceTimersByTimeAsync(0);
+      expect(fetchMock).toHaveBeenCalledTimes(index + 1);
+      expect(active).toBe(1);
+      transports[index].resolve(successResponse('正确译文'));
+    }
+    await expect(batch).resolves.toEqual(['正确译文', '正确译文']);
+    await expect(single).resolves.toBe('正确译文');
+    expect(peak).toBe(1);
+    expect(active).toBe(0);
+    expect(fetchMock.mock.calls.every(([url]) => String(url) === 'http://127.0.0.1:11434/v1/chat/completions')).toBe(true);
   });
 
   it('uses the configured maximum retry count for SDK-owned HTTP retries', async () => {

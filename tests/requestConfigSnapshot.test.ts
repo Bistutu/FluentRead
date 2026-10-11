@@ -3,6 +3,7 @@ import {
     TRANSLATION_MODEL_USAGE_OBSERVER,
     TRANSLATION_PROVIDER_CONFIG,
     TRANSLATION_REQUEST_CONTROL,
+    TRANSLATION_REQUEST_SCHEDULER,
     attachTranslationModelUsageObserver,
     attachTranslationProviderConfig,
     attachTranslationRequestControl,
@@ -19,6 +20,7 @@ import {
     TRANSLATION_ROUTE_OBSERVER,
     getTranslationGlossaryTerms,
     getTranslationGlossarySourceText,
+    getTranslationGlossarySourceSlots,
 } from '@/src/services/translation/requestSnapshot';
 import {createTranslationRequestScheduler} from '@/src/services/translation/requestScheduler';
 import {parseTranslationSlots, serializeTranslationSlots} from '@/src/core/translation/public';
@@ -61,6 +63,28 @@ function configSource(overrides: Partial<TranslationConfigSource> = {}): Transla
 }
 
 describe('translation provider request config snapshot', () => {
+    it.each(['chrome', 'userscript'])('保留 %s 的用户术语和严格槽原文，自动文档字面值仅用于扩展构建', browser => {
+        vi.stubEnv('BROWSER', browser);
+        try {
+            const snapshot = createTranslationProviderConfigSnapshot(configSource({glossaryEnabled: true,
+                glossaryLibraries: [{id: 'one', name: 'One', enabled: true, sourceLanguage: '', targetLanguage: '', domains: [],
+                    entries: [{id: 'agent', source: 'agent', target: '智能体', caseSensitive: false}]}],
+                glossaryTerms: [{source: 'agent', target: '智能体'}],
+                glossaryMatchContext: {context: 'document', sourceLanguage: 'en', targetLanguage: 'zh-Hans', glossaryIds: ['one']},
+            }));
+            const origins = ['Use agent with 𝑛 ∈ ℎ.'];
+            const slots = serializeTranslationSlots(origins, 'build_boundary');
+            expect(getTranslationGlossarySourceText(slots.payload)).toEqual(origins);
+            for (const source of [origins, slots.payload]) {
+                expect(getTranslationGlossaryTerms(snapshot, source)).toEqual(browser === 'userscript'
+                    ? [{source: 'agent', target: '智能体'}]
+                    : [{source: 'agent', target: '智能体'}, {source: '𝑛', target: '𝑛'}, {source: '∈', target: '∈'}, {source: 'ℎ', target: 'ℎ'}]);
+            }
+            expect(getTranslationGlossaryTerms({...snapshot, glossaryMatchContext: {...snapshot.glossaryMatchContext!, context: 'page'}}, origins))
+                .toEqual([{source: 'agent', target: '智能体'}]);
+        } finally {vi.unstubAllEnvs();}
+    });
+
     it('原生合批偏好在 provider 配置快照中默认开启并隔离后续编辑', () => {
         const preferences = {google: false, microsoft: true};
         const snapshot = createTranslationProviderConfigSnapshot(configSource({nativeBatchTranslationEnabled: preferences}));
@@ -141,13 +165,20 @@ describe('translation provider request config snapshot', () => {
     it('keeps the scheduler and immutable request identity inside trusted process-local context', () => {
         const scheduler = createTranslationRequestScheduler(() => ({}));
         const identity = {service: 'aiSdk', model: 'model-a'};
-        const request = attachTranslationRequestScheduler({origin: 'hello'}, scheduler, identity);
+        const lease = {holdUntil: vi.fn()};
+        const request = attachTranslationRequestScheduler({origin: 'hello'}, scheduler, identity, lease);
         identity.model = 'model-b';
         const context = getTranslationRequestScheduler(request)!;
         expect(context.scheduler).toBe(scheduler);
+        expect(context.lease).toBe(lease);
         expect(context.identity).toEqual({service: 'aiSdk', model: 'model-a'});
         expect(Object.isFrozen(context)).toBe(true);
         expect(Object.isFrozen(context.identity)).toBe(true);
+        expect(Object.getOwnPropertyDescriptor(request, TRANSLATION_REQUEST_SCHEDULER)?.enumerable).toBe(true);
+        for (const copy of [createTranslationRequestSnapshot(request), {...request}]) {
+            expect(getTranslationRequestScheduler(copy)).toBe(context);
+            expect(getTranslationRequestScheduler(copy)!.lease).toBe(lease);
+        }
         expect(JSON.stringify(request)).toBe('{"origin":"hello"}');
         expect(getTranslationRequestScheduler(attachTranslationRequestScheduler({}, scheduler))!.identity).toBeUndefined();
         for (const untrusted of [null, 'invalid', {}, {scheduler, identity}, JSON.parse(JSON.stringify(request))]) {
@@ -177,10 +208,12 @@ describe('translation provider request config snapshot', () => {
 
     it('matches pure source slots without protocol boundaries and leaves malformed or literal markers intact', () => {
         const packet = serializeTranslationSlots(['agent', 'An agent works.'], 'Case_1-x');
+        expect(getTranslationGlossarySourceSlots(packet.payload)).toEqual({packet, texts: ['agent', 'An agent works.']});
         expect(getTranslationGlossarySourceText(packet.payload)).toEqual(['agent', 'An agent works.']);
         expect(getTranslationGlossarySourceText(['plain', packet.payload])).toEqual(['plain', 'agent', 'An agent works.']);
         for (const text of [packet.payload.replace(packet.ends[0], ''), `${packet.payload} outside`,
             `literal ${packet.payload}`, '___FLUENTREAD_partial_0_BEGIN___agent']) {
+            expect(getTranslationGlossarySourceSlots(text)).toBeUndefined();
             expect(getTranslationGlossarySourceText(text)).toBe(text);
         }
     });

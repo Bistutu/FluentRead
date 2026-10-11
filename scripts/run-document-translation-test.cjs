@@ -25,11 +25,13 @@ async function fixtureServer() {
       const source = /SOURCE_BEGIN([\s\S]*?)SOURCE_END/u.exec(prompt)?.[1];
       assert.equal(typeof source, 'string');
       state.requests.push(source);
+      const protocol = /(___FLUENTREAD_([a-z0-9_-]+)_(\d+)_BEGIN___)([\s\S]*?)(___FLUENTREAD_\2_\3_END___)/giu;
+      const translation = protocol.test(source) ? source.replace(protocol, (_match, begin, _nonce, _index, text, end) => `${begin}测试译文：${text}${end}`) : `测试译文：${source}`;
       await new Promise(resolve => setTimeout(resolve, state.delay));
-      if (state.fail && source.includes('Failure target')) { res.writeHead(400); res.end(JSON.stringify({error: {message: 'Fixture intentional failure'}})); return; }
+      if (state.fail && source.includes('Failure target')) { res.writeHead(503); res.end(JSON.stringify({error: {message: 'Fixture intentional temporary failure'}})); return; }
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify({id: 'document-fixture', object: 'chat.completion', created: 1, model: 'document-fixture',
-        choices: [{index: 0, message: {role: 'assistant', content: `测试译文：${source}`}, finish_reason: 'stop'}],
+        choices: [{index: 0, message: {role: 'assistant', content: translation}, finish_reason: 'stop'}],
         usage: {prompt_tokens: 10, completion_tokens: 10, total_tokens: 20}}));
     } catch (error) { res.writeHead(400); res.end(JSON.stringify({error: {message: error.message}})); }
   });
@@ -204,14 +206,18 @@ async function main() {
         const dest = await download(mode);
         const bytes = fs.readFileSync(dest);
         const output = await PDFDocument.load(bytes);
-        // 原版排版下载：双语为“原页 + 同尺寸原版面译文页 + 完整译文续页”，仅译文则没有原页；不再是左右拼接的横向页。
+        // 原版排版下载：每个源页对应一个输出页；双语同页左右对照，译文保持单宽。
         const texts = await pdfPageTexts(bytes), originals = texts.map((text, index) => ({index, text})).filter(entry => entry.text.includes('Long document page'));
+        assert.equal(output.getPageCount(), 100, '下载必须保留 100 个源页的一一对应关系');
         if (mode === 'bilingual') {
           assert.equal(originals.length, 100, '双语下载必须保留全部 100 个原页');
-          originals.forEach((entry, order) => {assert(entry.text.includes(`Long document page ${order + 1}`)); assert((originals[order + 1]?.index ?? output.getPageCount()) - entry.index >= 3, `第 ${order + 1} 页后缺少译文页`);});
-          assert(output.getPageCount() >= 300);
-        } else {assert.equal(originals.length, 0, '仅译文下载不含原页文字'); assert(output.getPageCount() >= 200);}
-        assert.equal(output.getPage(0).getWidth(), 595); assert.equal(output.getPage(0).getHeight(), 842);
+          originals.forEach((entry, order) => {
+            assert.equal(Number(/Long document page\s+(\d+)/u.exec(entry.text)?.[1]), order + 1, '原页必须按源页顺序排列');
+            assert.equal(entry.index, order, `第 ${order + 1} 个原页必须在同一个左右对照输出页中`);
+          });
+        } else assert.equal(originals.length, 0, '仅译文下载不含原页矢量文字');
+        const expectedWidth = mode === 'bilingual' ? 595 * 2 + Math.max(8, Math.min(24, 595 * .025)) : 595;
+        for (const sheet of output.getPages()) {assert.equal(sheet.getWidth(), expectedWidth); assert.equal(sheet.getHeight(), 842);}
         report.exampleLoads[mode] = {pages: output.getPageCount(), originalPages: originals.length, bytes: bytes.length, elapsedMs: Date.now() - start};
       }
       await page.getByRole('button', {name: '校订译文', exact: true}).click();
@@ -716,6 +722,12 @@ async function main() {
     await newFile();
     fixture.state.fail = true;
     await load('failure.txt', Buffer.from('A successful first paragraph.\n\nAnother successful paragraph.\n\nFailure target paragraph.'));
+    // 此用例单独验证已完成片段保留；通过文档设置关闭当前任务的批量请求。
+    await showSidebar();
+    await page.locator('aside.document-sidebar .document-settings-button').click();
+    const failureSettings = page.locator('.document-settings-dialog[open]');
+    await failureSettings.locator('.document-batch-translation input').uncheck();
+    await failureSettings.getByRole('button', {name: '返回文档', exact: true}).click();
     await page.getByRole('button', {name: '开始翻译', exact: true}).click();
     // 失败不再立刻中断：服务出错时自动退避重试（2 s、4 s……累计最多 120 s），工具栏下方浮出重试提示；已完成的片段保留，服务恢复后无需手动操作即可译完。
     const retryNotice = page.locator('.document-taskbar .taskbar-notices .task-notice').filter({hasText: '翻译服务暂时没有响应，将自动重试'});

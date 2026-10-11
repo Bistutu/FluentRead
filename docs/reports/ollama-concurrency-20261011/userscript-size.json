@@ -1,0 +1,81 @@
+{
+  "baseline": {
+    "commit": "ec6d1136e6afe1a7758b6d9f3e5eae9ec50964a3",
+    "bytes": 2064692,
+    "sha256": "ee807a29076278443dc512fedf5815ac8c5ee3ec46696d3bfc111d4b94fec4fe",
+    "verifierPassed": true
+  },
+  "candidate": {
+    "state": "issue #952 follow-up working tree",
+    "bytes": 2066187,
+    "sha256": "8b2576222cf80d3c23ec3d2ba8ebd172480ee24733f1175ed4dcc2f9b2e65f1a"
+  },
+  "delta": {
+    "bytes": 1495,
+    "percent": 0.0724
+  },
+  "budget": {
+    "previousBytes": 2066000,
+    "newBytes": 2067000,
+    "stepBytes": 1000,
+    "headroomBytes": 813
+  },
+  "method": "Export baseline commit independently with git archive; share the same installed node_modules; generate WXT types in the baseline before its build. No product code or dependencies changed for this size check.",
+  "commands": [
+    "pnpm exec wxt prepare",
+    "FLUENTREAD_TEST_MAX_WORKERS=1 FLUENTREAD_TEST_CONCURRENCY=3 pnpm build:userscript",
+    "node scripts/verify-userscript-build.mjs"
+  ],
+  "integration": {
+    "baseline": {
+      "commit": "f9cf3fcb2dd75b636249f0bbc49fb40973af41b8",
+      "bytes": 2065321,
+      "sha256": "b401a39243e63d261492a724f0243d38ae363bbc600b0e365e14ef0c92a7e420",
+      "verifierPassed": true
+    },
+    "candidate": {
+      "state": "issue #952 final fixes including all free response settlement, integrated with document translation main",
+      "bytes": 2067868,
+      "sha256": "a9756670d41b0cf3cd8305f64a61ba7afcf88553d7abde4d6669219a4a054921"
+    },
+    "delta": {
+      "bytes": 2547,
+      "percent": 0.1233
+    },
+    "budget": {
+      "baselineBytes": 2066000,
+      "previousBranchBytes": 2067000,
+      "newBytes": 2068000,
+      "stepBytes": 1000,
+      "headroomBytes": 132
+    },
+    "candidateBeforeFreeResponseCleanup": {
+      "state": "issue #952 fixes integrated with document translation main",
+      "bytes": 2067193,
+      "sha256": "743b0f786f7f84c8a1ed2363c3691a623509624a33829d667e47dd49f7a3c790"
+    }
+  },
+  "doubaoIntegration": {
+    "baseline": {
+      "commit": "a861801632b3e405f3f9e6d214a28d7a7e286094",
+      "bytes": 2073858,
+      "sha256": "f3cd3a53e9cb5d683fa9f80a442b84beadd89bb9fab859c322d62c06d1610b26",
+      "verifierPassed": true
+    },
+    "candidate": {
+      "state": "issue #952 final fixes including free response/SSE settlement, integrated with Doubao translation main",
+      "bytes": 2076455,
+      "sha256": "bf4c778dd1b66131cc75ecd70257144c0a678af1e355c72fc0d9294f9eeccd8f"
+    },
+    "delta": {
+      "bytes": 2597,
+      "percent": 0.1252
+    },
+    "budget": {
+      "baselineBytes": 2074000,
+      "newBytes": 2077000,
+      "stepBytes": 1000,
+      "headroomBytes": 545
+    }
+  }
+}

@@ -170,8 +170,8 @@ describe('GlossarySettings compiled component', () => {
     await state.addBuiltin('ai-en-zh-hans');
     expect(config.glossaryEnabled).toBe(false);
     expect(config.glossaryLibraries).toHaveLength(1);
-    expect(state.selected).toMatchObject({name: 'AI 与机器学习', preset: {id: 'ai-en-zh-hans', version: 1}});
-    expect(state.selected.entries).toHaveLength(60);
+    expect(state.selected).toMatchObject({name: 'AI 与机器学习', preset: {id: 'ai-en-zh-hans', version: 2}});
+    expect(state.selected.entries).toHaveLength(65);
     await state.patchLibrary({name: '我的 AI 译名', enabled: false});
     state.editEntry(state.selected.entries[0]); state.entryDraft.target = '我的译法'; await state.saveEntry();
     const editedId = state.selectedId;
@@ -182,7 +182,7 @@ describe('GlossarySettings compiled component', () => {
     expect(state.selectedId).toBe(editedId);
     expect(state.selected).toMatchObject({name: '我的 AI 译名', enabled: false, entries: [{target: '我的译法'}, ...state.selected.entries.slice(1)]});
     state.hydrate();
-    expect(state.selected.preset).toEqual({id: 'ai-en-zh-hans', version: 1});
+    expect(state.selected.preset).toEqual({id: 'ai-en-zh-hans', version: 2});
     await state.deleteLibrary();
     await state.addBuiltin('ai-en-zh-hans');
     expect(state.selected.name).toBe('AI 与机器学习'); expect(state.selected.entries[0].target).toBe('人工智能');

@@ -1,0 +1,131 @@
+{
+  "testedAt": "2026-10-11T19:33:41.362818+08:00",
+  "session": "fresh anonymous curl session; no browser cookies or account login accessed",
+  "homepage": {
+    "url": "https://www.doubao.com/",
+    "httpStatuses": [
+      302,
+      200
+    ],
+    "hasTtwidSetCookie": true,
+    "hasHtmlTtwid": true,
+    "ttwidLength": 127,
+    "htmlAndCookieEqual": true
+  },
+  "registration": {
+    "url": "https://ttwid.bytedance.com/ttwid/union/register/",
+    "method": "POST",
+    "body": {
+      "region": "cn",
+      "aid": 1768,
+      "needFid": false,
+      "service": "www.doubao.com",
+      "migrate_info": {
+        "ticket": "",
+        "source": "node"
+      },
+      "cbUrlProtocol": "https",
+      "union": true
+    },
+    "httpStatus": 200,
+    "status_code": 0,
+    "message": "union register success",
+    "jsonKeys": [
+      "status_code",
+      "message",
+      "redirect_url"
+    ],
+    "hasTtwidSetCookie": true,
+    "ttwidCookieDomain": ".bytedance.com",
+    "ttwidLength": 127,
+    "note": "Cookie jar does not automatically send .bytedance.com cookie to .doubao.com; retry used an explicit ttwid Cookie header."
+  },
+  "translation": {
+    "endpoint": "https://www.doubao.com/samantha/plugin/stream_article_translate",
+    "method": "POST",
+    "query": {
+      "aid": "586864",
+      "device_platform": "web",
+      "tea_uuid": "fresh random 18 digits",
+      "version": "1.38.0"
+    },
+    "headers": {
+      "Content-Type": "application/json",
+      "Accept": "text/event-stream",
+      "Cookie": "ttwid=[redacted anonymous visitor token]",
+      "Origin": "https://www.doubao.com",
+      "Referer": "https://www.doubao.com/",
+      "User-Agent": "Mozilla/5.0"
+    },
+    "bodyExample": {
+      "raw_text": [
+        "Hello world. How are you today?"
+      ],
+      "target_lang": "zh",
+      "translate_service": "1",
+      "frontend_source": 1,
+      "scene": 2
+    },
+    "attempts": [
+      {
+        "visitorSource": "homepage cookie jar",
+        "target_lang": "zh",
+        "httpStatus": 200,
+        "contentType": "application/json; charset=utf-8",
+        "code": 710012001,
+        "msg": "登录已过期，请重新登录"
+      },
+      {
+        "visitorSource": "homepage cookie jar",
+        "target_lang": "en",
+        "httpStatus": 200,
+        "contentType": "application/json; charset=utf-8",
+        "code": 710012001,
+        "msg": "登录已过期，请重新登录"
+      },
+      {
+        "visitorSource": "homepage cookie jar",
+        "target_lang": "zh-Hant",
+        "httpStatus": 200,
+        "contentType": "application/json; charset=utf-8",
+        "code": 710012001,
+        "msg": "登录已过期，请重新登录"
+      },
+      {
+        "visitorSource": "explicit homepage ttwid",
+        "target_lang": "zh",
+        "httpStatus": 200,
+        "contentType": "application/json; charset=utf-8",
+        "code": 710012001,
+        "msg": "登录已过期，请重新登录"
+      },
+      {
+        "visitorSource": "explicit registered ttwid",
+        "target_lang": "zh",
+        "httpStatus": 200,
+        "contentType": "application/json; charset=utf-8",
+        "code": 710012001,
+        "msg": "登录已过期，请重新登录"
+      },
+      {
+        "visitorSource": "homepage ttwid plus web_id/samantha_web/web_platform/use-olympus-account",
+        "target_lang": "zh",
+        "httpStatus": 200,
+        "contentType": "application/json; charset=utf-8",
+        "code": 710012001,
+        "msg": "登录已过期，请重新登录"
+      }
+    ]
+  },
+  "publicScriptsInspected": [
+    "https://lf-flow-web-cdn.doubao.com/obj/flow-doubao/doubao/chat/static/js/chat.a91752e272.js",
+    "https://lf-flow-web-cdn.doubao.com/obj/flow-doubao/doubao/chat/static/js/vp.bcb7d0eec4.js",
+    "https://lf-flow-web-cdn.doubao.com/obj/flow-doubao/doubao/chat/static/js/async/s3-chat-translate-service.0227ee80f5.js"
+  ],
+  "conclusion": "The six early probes failed with business code 710012001. Later fresh anonymous homepage plus complete official public parameters and Agw-Js-Conv:str returned real SSE without account login or website signatures; see superseding evidence.",
+  "scope": "Historical early probes using incomplete public query parameters; retained to explain initial failures, not the final availability conclusion.",
+  "supersededBy": [
+    "anonymous-http-success.json",
+    "production-live-browser.json"
+  ]
+}
