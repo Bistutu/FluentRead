@@ -89,7 +89,7 @@ Product Hunt 的 `product-hunt` 规则覆盖首页、产品与旧发布详情路
 
 Hacker News 评论的第一段经常直接属于 `.commtext`，其余段落才使用 `p`。容器使用非原子 self 目标，并保留内部段落目标；只选择 `.commtext p` 会漏掉首段，使用 closest 原子容器会把全部段落合成一份译文。`.comhead`、`.reply` 等界面区域同时声明排除与动态观察忽略，让候选发现提前剪枝；FAQ、guidelines 等阅读页仍可走通用正文识别。
 
-参考外部规则和 issue 时记录快照、页面类型及限制，再用 FluentRead 的候选与恢复契约独立实现。例如沉浸式翻译的 [HN 规则](https://github.com/immersive-translate/config/blob/1b639a65ca857fb301dbc38f9ef809da4342edb3/dist/default_config.json#L7375)和 [Product Hunt 规则](https://github.com/immersive-translate/config/blob/1b639a65ca857fb301dbc38f9ef809da4342edb3/dist/default_config.json#L9028)可用于对照阅读区域；[HN 性能 issue #3765](https://github.com/immersive-translate/immersive-translate/issues/3765)则提示屏外译文与滚动布局必须一起验证。外部 issue 的关闭状态不等于 FluentRead 的验收，也不能据此全局注入影响宿主布局的 CSS。
+验证长页面时，把屏外译文、滚动布局、动态内容和恢复行为一起检查，避免全局注入影响宿主布局的 CSS。
 
 ## 更新验证记录
 
