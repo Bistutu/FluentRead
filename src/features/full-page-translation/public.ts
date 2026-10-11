@@ -37,5 +37,5 @@ export type {TranslationToolbarStatus} from './toolbarStatus';
 
 export {readBilingualExcerpt} from './content/excerpt';
 export {readVisibleTranslationRoot} from './content/public';
-export {readPersonalCorrectionPair, listVisiblePersonalCorrectionPairs, refreshVisiblePersonalCorrections, watchPersonalCorrectionContext} from './content/personalCorrections';
+export {readPersonalCorrectionPair, listVisiblePersonalCorrectionPairs, refreshVisiblePersonalCorrections, watchPersonalCorrectionContext, disableVisiblePersonalCorrections} from './content/personalCorrections';
 export type {PersonalCorrectionPair} from './content/personalCorrections';

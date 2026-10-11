@@ -42,16 +42,16 @@ describe('webpage personal correction workflow',()=>{
     const f=fixture();f.lookup.suggestions=[record({source:'He closed the bank.'})];await f.controller.open(f.pair);expect(f.state.suggestions).toHaveLength(1);expect(f.state.draft).toBe(f.pair.translation);
     f.controller.preview();f.controller.suggest(f.lookup.suggestions[0]);expect(f.state.draft).toBe('他开设了银行。');expect(f.state.previewed).toBe(false);expect(f.service.save).not.toHaveBeenCalled();
     f.controller.preview();f.controller.setDraft('另一个草稿');expect(f.state.previewed).toBe(false);f.controller.setScope(projectId);expect(f.state.editing).toBeNull();
-    f.controller.preview();expect(f.state.error).toContain('先主动');await f.controller.activateProject(projectId);expect(f.service.selectProject).toHaveBeenCalledWith(materialId,projectId);
+    f.controller.preview();expect(f.state.error).toContain('先将当前网页加入');await f.controller.activateProject(projectId);expect(f.service.selectProject).toHaveBeenCalledWith(materialId,projectId);
     f.controller.preview();await f.controller.save();expect(f.service.save.mock.calls[0][0].scope).toEqual({kind:'project',id:projectId,label:'研究'});expect(f.service.selectProject).toHaveBeenCalledTimes(1);
-    f.controller.close();await f.controller.open(f.pair);expect(f.state.scopeId).toBe('material');await f.controller.activateProject(null);expect(f.state.activeProjectId).toBe('');expect(f.state.notice).toContain('已移出');
+    f.controller.close();await f.controller.open(f.pair);expect(f.state.scopeId).toBe('material');await f.controller.activateProject(null);expect(f.state.activeProjectId).toBe('');expect(f.state.notice).toContain('已退出');
   });
   it('edits saved versions, refuses other-material editing, shows conflicts and deletes with reversible invalidation',async()=>{
     const f=fixture(),saved=record();f.list.entries=[saved];f.lookup.exact=saved;f.lookup.conflicts=[record({id:projectId,translation:'他打开了银行。'})];await f.controller.open(f.pair);
-    expect(f.state.editing).toEqual(saved);expect(f.state.conflicts).toHaveLength(1);f.controller.edit(record({scope:{kind:'material',id:otherMaterial,label:'材料 B'}}));expect(f.state.error).toContain('对应材料');
+    expect(f.state.editing).toEqual(saved);expect(f.state.conflicts).toHaveLength(1);f.controller.edit(record({scope:{kind:'material',id:otherMaterial,label:'材料 B'}}));expect(f.state.error).toContain('对应网页');
     f.controller.edit(saved);expect(f.state.pair).toBeNull();expect(f.state.materialLabel).toBe('材料 A');f.controller.setDraft('新译文');f.controller.preview();await f.controller.save();
     expect(f.service.save.mock.calls[0][0]).toMatchObject({id,expectedRevision:1,translation:'新译文',scope:{label:'材料 A'}});
-    expect(f.state.notice).toContain('暂不自动复用');
+    expect(f.state.notice).toContain('不会自动采用');
     await f.controller.remove(f.state.editing!);expect(f.service.remove).toHaveBeenCalledWith(id,2);expect(f.state.entries).toHaveLength(0);expect(f.state.undoToken).toBe('undo-delete');expect(f.state.notice).toContain('已删除');
     const project=record({scope:{kind:'project',id:projectId,label:'研究'}});f.controller.edit(project);expect(f.state.scopeId).toBe(projectId);expect(f.state.materialId).toBe(materialId);
   });
@@ -94,7 +94,7 @@ describe('webpage personal correction workflow',()=>{
     const f=fixture();await f.controller.open(f.pair);f.controller.preview();const pending=deferred<any>();f.service.save.mockReturnValueOnce(pending.promise);const task=f.controller.save();f.setActive(false);pending.reject(new Error('late'));await task;expect(f.state.error).toBe('');
   });
   it('refreshes current candidates after page updates, tolerates zero affected sentences and loads chosen project versions',async()=>{
-    const f=fixture();vi.stubGlobal('document',{title:' '.repeat(2)});await f.controller.open(f.pair);expect(f.state.materialLabel).toBe('本材料');
+    const f=fixture();vi.stubGlobal('document',{title:' '.repeat(2)});await f.controller.open(f.pair);expect(f.state.materialLabel).toBe('当前网页');
     const fresh={...f.pair,translation:'来自更新的页面'};f.visible.mockReturnValue([{...f.pair,isCurrent:()=>false},fresh]);f.controller.setDraft('新的确认译文');f.controller.preview();await f.controller.save();expect(f.state.candidate).toBe(fresh);expect(f.state.pair).toBe(fresh);expect(f.state.currentTranslation).toBe(fresh.translation);
     f.visible.mockReturnValue([]);await f.controller.remove(record({id:projectId}));expect(f.state.affected).toHaveLength(1);expect(f.state.currentTranslation).toBe(fresh.translation);
     f.lookup.exact=record({scope:{kind:'project',id:projectId,label:'研究'}});await f.controller.open(f.pair);expect(f.state.editing).toBeNull();f.controller.setScope(projectId);await f.controller.activateProject(projectId);expect(f.state.editing?.scope.kind).toBe('project');

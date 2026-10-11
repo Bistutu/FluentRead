@@ -10,7 +10,7 @@ import {resolveBrowserCapabilities} from '@/src/platform/browser/capabilities';
 vi.mock('@/src/features/writing-assistant/public', () => ({
     mountWritingAssistant: vi.fn(), unmountWritingAssistant: vi.fn(), isWritingAssistantMounted: () => false,
 }));
-vi.mock('@/src/app/content/personalCorrections', () => ({mountPersonalCorrectionContent: vi.fn()}));
+vi.mock('@/src/app/content/personalCorrections', () => ({mountPersonalCorrectionContent: vi.fn(), unmountPersonalCorrectionContent: vi.fn()}));
 vi.mock('@/src/features/personal-corrections/public', () => ({unmountPersonalCorrections: vi.fn()}));
 import {createLearningContentFeatures} from '@/src/app/content/learningFeatures';
 import type {ContentScriptContext} from 'wxt/utils/content-script-context';
@@ -31,7 +31,11 @@ describe('sentence entry ownership', () => {
                     const features = createLearningContentFeatures({} as ContentScriptContext, config,
                         resolveBrowserCapabilities({browser, manifestVersion: browser === 'chrome' ? 3 : 2}));
                     expect(features.map(feature => feature.id)).toEqual(['personal-corrections', 'writing-assistant']);
+                    expect(features[0].isEnabled()).toBe(false);
+                    config.personalCorrectionsEnabled = true;
                     expect(features[0].isEnabled()).toBe(browser !== 'userscript' && config.on);
+                    config.on = false;
+                    expect(features[0].isEnabled()).toBe(false);
                 }
             }
         },

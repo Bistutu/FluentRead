@@ -50,12 +50,13 @@ describe('actual personal correction panel',()=>{
   });
   it('displays original/current diff, exact affected sentences, approximate references and explicit project actions',async()=>{
     const saved=entry(),project=entry({id:pid,scope:{kind:'project',id:pid,label:'论文'}});const f=await mount();f.state.open=true;f.state.projects=[{id:pid,label:'论文'}] as any;f.state.suggestions=[saved] as any;f.state.conflicts=[project] as any;f.state.previewed=true;f.state.affected=[{source:saved.source,translation:'旧译文'}] as any;await settle();
-    expect(f.get('[data-testid=correction-affected-count]').textContent).toContain('1 处');expect(document.querySelector('.diff')!.textContent).toContain('记忆原句');
+    expect(f.get('[data-testid=correction-affected-count]').textContent).toContain('1 处');expect(document.querySelector('.diff')!.textContent).toContain('已保存的原句');
+    expect(f.get('[data-testid=correction-scope] option[value=material]').textContent).toBe('仅当前网页');expect(document.querySelector('.new-project')!.textContent).toContain('项目是一组相关网页');
     await f.click('.suggestions article button');expect(f.controller.suggest).toHaveBeenCalledWith(saved);await f.click('.conflict button');expect(f.controller.edit).toHaveBeenCalledWith(project);
     const scope=f.get('[data-testid=correction-scope]') as HTMLSelectElement;scope.value=pid;scope.dispatchEvent(new window.Event('change',{bubbles:true}));await settle();expect(f.controller.setScope).toHaveBeenCalledWith(pid);
     await f.click('[data-testid=correction-project-join]');expect(f.controller.activateProject).toHaveBeenCalledWith(pid);f.state.activeProjectId=pid;await settle();await f.click('[data-testid=correction-project-leave]');expect(f.controller.activateProject).toHaveBeenCalledWith(null);
     const name=f.get('[data-testid=correction-project-name]') as HTMLInputElement;name.value='新论文';name.dispatchEvent(new window.Event('input',{bubbles:true}));await settle();expect(f.state.projectName).toBe('新论文');await f.click('[data-testid=correction-project-create]');expect(f.controller.createProject).toHaveBeenCalledTimes(1);
-    f.state.context='';await settle();expect(document.querySelector('.context blockquote')!.textContent).toContain('默认语境');
+    f.state.context='';await settle();expect(document.querySelector('.context blockquote')!.textContent).toBe('此处没有章节标题');
   });
   it('manages edit/delete/undo, keeps unrelated materials read-only and presents explicit loading, error and success states',async()=>{
     const f=await mount();f.state.open=true;f.state.loading=true;await settle();expect(document.querySelector('[role=status]')!.textContent).toContain('读取');await f.click('[data-testid=correction-manage]');expect(document.querySelector('.empty')).toBeNull();

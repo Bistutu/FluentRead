@@ -16,7 +16,7 @@ import type {TranslationScope, TranslationTextProtectionOptions} from '@/src/cor
 import {hasDistinctTargetTranslation as hasDistinctTranslation} from '@/src/core/translation/targetResult';
 import type {TranslationQueueSession} from '@/src/services/translation/queue';
 import {copyFullPageTranslationConfigSnapshot} from './translationConfigSnapshot';
-import {lookupPersonalCorrection, type PersonalCorrectionSnapshot} from './personalCorrections';
+import {isPersonalCorrectionEnabled, lookupPersonalCorrection, type PersonalCorrectionSnapshot} from './personalCorrections';
 import {
     translateTextSlots,
     type FullPageTranslationConfigSnapshot,
@@ -201,7 +201,7 @@ export async function createTranslationRequest(
     const origins = parts.map((part) => part.source);
     if (origins.length === 0) return {kind: 'snapshot', sources: [], translations: []};
     let source: string | null = null;
-    if (origins.length > 1 || import.meta.env.BROWSER !== 'userscript') {
+    if (origins.length > 1 || (import.meta.env.BROWSER !== 'userscript' && isPersonalCorrectionEnabled())) {
         const core = getCurrentTranslationCore(scope);
         const skeleton = createTranslationSourceSnapshot(node, core.shouldStayOriginal, undefined,
             protectionOptions, core.shouldOmitFromTranslation);

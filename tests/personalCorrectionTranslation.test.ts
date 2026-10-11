@@ -3,7 +3,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 const runtime = vi.hoisted(() => ({lookup: vi.fn(), provider: vi.fn()}));
 vi.mock('@/src/services/personal-corrections/public', () => ({personalCorrections: {lookup: runtime.lookup}}));
 vi.mock('@/src/features/full-page-translation/content/translationRequest', () => ({translateTextSlots: runtime.provider}));
-vi.mock('@/src/services/config/store', () => ({config: {style: 0, to: 'zh'}}));
+vi.mock('@/src/services/config/store', () => ({config: {style: 0, to: 'zh', on: true, personalCorrectionsEnabled: true}}));
 import {createTranslationRequest} from '@/src/features/full-page-translation/content/liveTextTranslation';
 const snapshot = {service: 'microsoft', model: 'default', thinking: false, sourceLanguage: 'en', targetLanguage: 'zh',
     useCache: true, enableAIContext: false, enableAIMultiSegment: false, enableNativeBatch: true, displayMode: 'bilingual' as const, style: 0};

@@ -43,7 +43,7 @@ vi.mock('@/src/features/writing-assistant/public', () => ({mountWritingAssistant
 vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({language: ports.language, setLanguage: ports.setLanguage})}));
 vi.mock('@/src/ui/interfaceAppearance', () => ({applyInterfaceSkin: ports.appearance, applyInterfaceFont: ports.appearance, applyInterfaceTheme: ports.appearance}));
 
-vi.mock('@/src/app/content/personalCorrections', () => ({mountPersonalCorrectionContent: vi.fn()}));
+vi.mock('@/src/app/content/personalCorrections', () => ({mountPersonalCorrectionContent: vi.fn(), unmountPersonalCorrectionContent: vi.fn()}));
 vi.mock('@/src/features/personal-corrections/public', () => ({unmountPersonalCorrections: vi.fn()}));
 
 import {createLearningContentFeatures} from '@/src/app/content/learningFeatures';

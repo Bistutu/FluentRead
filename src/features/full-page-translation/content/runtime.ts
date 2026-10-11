@@ -496,6 +496,7 @@ async function renderTranslation(
             });
         }, [node]);
         setBilingualContent(node, content, {sources: result.sources, translations: result.translations,
+            ...(import.meta.env.BROWSER !== 'userscript' ? {sourceLanguage: snapshot.sourceLanguage} : {}),
             targetLanguage: snapshot.targetLanguage, style: snapshot.style,
             longParagraphLineBreak: snapshot.longParagraphLineBreak});
         setRenderedStyleAttribute(node);

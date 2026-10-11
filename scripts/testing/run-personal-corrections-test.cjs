@@ -1,7 +1,7 @@
 /**
  * @file scripts/testing/run-personal-corrections-test.cjs
  * 文件职责：在临时 profile 的后台可见生产 Edge 中验证网页个人校订闭环。
- * 主要内容：用可信 CDP 手势翻译、编辑、预览、保存、撤销和删除；在清除公共缓存后检查精确复用、来源标记与近似句边界，保存 DOM 和截图证据。
+ * 主要内容：从默认关闭开始，通过真实设置开关启用、关闭和重启；用可信 CDP 手势翻译、编辑、预览、保存、撤销和删除，检查零消息、精确复用、来源样式与近似句边界，保存 DOM 和截图证据。
  * 模块边界：只访问本次隔离网页、扩展配置端口及后台 fetch 的确定性传输夹具；原生 select 使用标明的 DOM change 夹具，其余产品编辑动作和快捷键使用可信 CDP 输入，不连接用户浏览器或真实凭据。
  */
 'use strict';
@@ -42,7 +42,7 @@ const profileIdentity = fs.lstatSync(profileDir);
 const owner = crypto.randomUUID();
 fs.writeFileSync(path.join(profileDir, '.owner'), owner, {flag: 'wx'});
 const server = http.createServer((request, response) => {response.writeHead(200, {'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store'}); response.end(html);});
-let session, context, worker, popup, page, cdp, focusMonitor, browserPid, focusError, currentCase = 'launch', sequence = 0, launchAttempted = false;
+let session, context, worker, popup, page, cdp, optionsUrl, focusMonitor, browserPid, focusError, currentCase = 'launch', sequence = 0, launchAttempted = false;
 function assertFocusSafe() {
   if (focusError || focusMonitor?.error) throw focusError || focusMonitor.error;
   if (browserPid && focusMonitor?.events.some(event => event.pid === browserPid)) throw new Error('本次测试 Edge 成为前台应用，测试停止');
@@ -58,6 +58,49 @@ async function patch(values) {
     const response = await chrome.runtime.sendMessage({type: 'persistConfig', mode: 'patch', config: values, expected: Object.fromEntries(Object.keys(values).map(key => [key, current[key]])), clientId: 'personal-corrections-fixture', sequence, baseRevision: current.__fluentConfigRevision || 0});
     if (!response.success) throw new Error(response.error);
   }, {values, sequence: ++sequence});
+}
+const correctionSetting = () => popup.evaluate(async () => (await chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'})).value.personalCorrectionsEnabled);
+const correctionMessageCount = () => worker.evaluate(() => globalThis.__correctionMessages.length);
+function captureErrors(target, label) {
+  target.on('pageerror', error => report.errors.push(`${label}: ${error.message}`));
+  target.on('console', message => {if (message.type() === 'error') report.consoleErrors.push(`${label}: ${message.text()}`);});
+}
+async function openCorrectionSettings() {
+  const settings = await newPageWithoutForeground(context); captureErrors(settings, 'options');
+  await settings.goto(optionsUrl); await activateExtensionTabWithoutForeground(context, settings);
+  await settings.locator('.settings-app').waitFor({state: 'visible'});
+  const control = settings.locator('[data-testid="personal-corrections-enabled"]');
+  await control.waitFor({state: 'visible'}); await control.scrollIntoViewIfNeeded();
+  assert.equal(await settings.locator('#personal-corrections-settings').count(), 1, '设置锚点唯一');
+  assert.equal(await settings.getByRole('switch', {name: '个人校订', exact: true}).count(), 1, '个人校订开关有可访问名称');
+  return {settings, control};
+}
+const switchState = control => control.evaluate(element => {
+  const semantic = element.matches('[role="switch"]') ? element : element.querySelector('[role="switch"]');
+  if (semantic?.getAttribute('aria-checked') !== null && semantic?.getAttribute('aria-checked') !== undefined) return semantic.getAttribute('aria-checked') === 'true';
+  const input = element.matches('input') ? element : element.querySelector('input');
+  return input ? input.checked : element.classList.contains('is-checked');
+});
+async function setCorrectionSetting(enabled, {capture = false} = {}) {
+  const {settings, control} = await openCorrectionSettings();
+  assert.equal(await switchState(control), !enabled, '真实开关从相反状态开始');
+  await control.click();
+  await wait(async () => await switchState(control) === enabled, '设置开关响应');
+  await settings.close(); // 反馈后立即关闭，检查持久化不会被短生命周期页面丢失。
+  await wait(async () => await correctionSetting() === enabled, '关闭设置页后后台保存完成');
+  const reopened = await openCorrectionSettings();
+  assert.equal(await switchState(reopened.control), enabled, '重开设置页保持开关值');
+  if (capture) await screenshot(enabled ? 'settings-enabled-reopened' : 'settings-disabled-reopened', reopened.settings);
+  await reopened.settings.close();
+  await popup.reload(); await popup.locator('.popup-shell[data-config-ready="true"]').waitFor({state: 'visible'});
+  assert.equal(await popup.locator('.settings-button').isVisible(), true, 'popup 重开挂载并保留设置入口');
+  assert.equal(await correctionSetting(), enabled, '重开 popup 读取相同的已保存开关');
+  await activateExtensionTabWithoutForeground(context, page); assertFocusSafe();
+  (report.settingsPersistence ||= []).push({value: enabled, trustedClick: true, closedAfterUiFeedback: true, reopenedValue: enabled, popupReloadValue: enabled});
+}
+async function assertNoCorrectionUi() {
+  assert.equal(Boolean(await panel(`return Boolean(this.querySelector('${tid('entry')}')||this.querySelector('${tid('dialog')}'))`)), false, '关闭时没有校订入口或编辑器');
+  assert.equal(await page.locator('[data-fr-personal-correction="true"]').count(), 0, '关闭时没有个人来源标记');
 }
 /** 读取 closed ShadowRoot；只有 chooseFirstProject 标明的原生 select 夹具改变 DOM，其余编辑与按钮动作使用可信 CDP 输入。 */
 async function panel(code) {
@@ -114,7 +157,7 @@ const personalProvenance = (selector = '#primary') => page.evaluate(target => do
 async function ensureOriginal(selector = '#primary') {if (await page.locator(selector + ' .fluent-read-bilingual-content').count()) await toggle(selector, 0);}
 const providerCount = () => worker.evaluate(() => globalThis.__correctionFixture.requests.length);
 async function clearPublicCache() {const response = await popup.evaluate(() => chrome.runtime.sendMessage({type: 'clearTranslationCache'})); assert.equal(response.success, true); await page.waitForTimeout(180);}
-async function screenshot(name) {const file = path.join(artifactsDir, `${String(report.screenshots.length + 1).padStart(2, '0')}-${name}.png`); await page.screenshot({path: file}); report.screenshots.push(file);}
+async function screenshot(name, target = page) {const file = path.join(artifactsDir, `${String(report.screenshots.length + 1).padStart(2, '0')}-${name}.png`); await target.screenshot({path: file}); report.screenshots.push(file);}
 function record(name, evidence = {}) {report.cases.push({name, ...evidence}); console.log(JSON.stringify({case: name, outcome: 'passed'}));}
 async function previewSave(text, expectedSource = source, targetSelector = '#primary') {
   await editTranslation(text);
@@ -151,6 +194,8 @@ async function main() {
   const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, 'manifest.json'), 'utf8'));
   const runtimeFiles = [...new Set([manifest.background?.service_worker, ...(manifest.content_scripts || []).flatMap(entry => entry.js || [])].filter(Boolean))].sort();
   report.buildArtifactHashes = Object.fromEntries(runtimeFiles.map(file => [file, crypto.createHash('sha256').update(fs.readFileSync(path.join(extensionDir, file))).digest('hex')]));
+  const stylesheets = [...new Set([...(manifest.content_scripts || []).flatMap(entry => entry.css || []), ...(manifest.web_accessible_resources || []).flatMap(entry => entry.resources || []).filter(file => file.endsWith('.css'))])].filter(file => fs.existsSync(path.join(extensionDir, file))).sort();
+  report.buildStylesheetHashes = Object.fromEntries(stylesheets.map(file => [file, crypto.createHash('sha256').update(fs.readFileSync(path.join(extensionDir, file))).digest('hex')]));
   await new Promise((resolve, reject) => {server.once('error', reject); server.listen(0, '127.0.0.1', resolve);});
   focusMonitor = startFocusEventMonitor({onEvent: event => {if (browserPid && event.pid === browserPid) focusError = new Error('隔离 Edge 成为前台应用');}, onError: error => {focusError = error;}});
   await focusMonitor.ready; launchAttempted = true;
@@ -159,8 +204,23 @@ async function main() {
   assert.equal(report.launchMode, 'macos-background-cdp'); assert.equal(report.focusPolicy, 'launchservices-no-foreground'); assert.equal(report.windowPlacement.mode, 'background-visible-no-focus'); assert.equal(report.windowPlacement.browserFrontmost, false);
   browserPid = await getGuardedBrowserPid(session); assert.ok(browserPid); assertFocusSafe(); context = session.context;
   worker = context.serviceWorkers().find(candidate => candidate.url().startsWith('chrome-extension://')) || await context.waitForEvent('serviceworker');
-  popup = await newPageWithoutForeground(context); await popup.goto(`chrome-extension://${new URL(worker.url()).host}/popup.html`);
+  await worker.evaluate(() => {
+    globalThis.__correctionMessages = []; globalThis.__correctionSettingsWrites = [];
+    chrome.runtime.onMessage.addListener(message => {
+      if (message?.type === 'fluentReadPersonalCorrections') globalThis.__correctionMessages.push({action: message.action});
+      const writes = message?.type === 'persistConfig' ? [message] : message?.type === 'persistConfigBatch' ? message.patches || [] : [];
+      for (const write of writes) if (Object.hasOwn(write.config || {}, 'personalCorrectionsEnabled')) globalThis.__correctionSettingsWrites.push({messageType: message.type, enabled: write.config.personalCorrectionsEnabled});
+      return false;
+    });
+  });
+  const extensionBase = `chrome-extension://${new URL(worker.url()).host}/`;
+  const optionsPath = manifest.options_ui?.page || manifest.options_page;
+  assert.ok(optionsPath && fs.existsSync(path.join(extensionDir, optionsPath)), '清单提供实际设置页');
+  optionsUrl = `${extensionBase}${optionsPath}?target=personal-corrections-settings#settings-translation`;
+  report.settingsPage = {manifestPath: optionsPath, section: 'settings-translation', panel: 'reading', anchor: 'personal-corrections-settings', toggle: '[data-testid="personal-corrections-enabled"]', activation: 'trusted actual options switch clicks, never a configuration patch'};
+  popup = await newPageWithoutForeground(context); captureErrors(popup, 'popup'); await popup.goto(extensionBase + manifest.action.default_popup);
   await patch({on: true, service: 'google', from: 'en', to: 'zh-Hans', display: 1, disableFloatingBall: true, disableSelectionTranslator: true, uiLanguage: 'zh-CN', uiLanguageSetupCompleted: true});
+  assert.equal(await correctionSetting(), false, '新临时 profile 默认关闭个人校订');
   await worker.evaluate(prefix => {
     const original = globalThis.fetch.bind(globalThis);
     globalThis.__correctionFixture = {requests: []};
@@ -179,13 +239,43 @@ async function main() {
       return original(input, options);
     };
   }, automaticPrefix);
-  page = await newPageWithoutForeground(context); page.on('pageerror', error => report.errors.push(error.message)); page.on('console', message => {if (message.type() === 'error') report.consoleErrors.push(message.text());});
+  page = await newPageWithoutForeground(context); captureErrors(page, 'webpage');
   await page.goto(`http://127.0.0.1:${server.address().port}/material`); cdp = await context.newCDPSession(page); await activateExtensionTabWithoutForeground(context, page);
   await page.waitForSelector('#fluent-read-page-styles', {state: 'attached'});
+  currentCase = 'default off translates normally with zero correction messages or entry';
+  await toggle(); assert.ok((await translation()).includes(automaticPrefix));
+  const disabledBox = await page.locator('#primary .fluent-read-bilingual-content').boundingBox();
+  await page.mouse.move(disabledBox.x + 12, disabledBox.y + 8); await page.keyboard.press('Alt+Shift+E');
+  await page.waitForTimeout(180); await assertNoCorrectionUi();
+  await ensureOriginal(); await page.locator('h1').click(); await page.keyboard.press('Alt+T');
+  await wait(async () => await page.locator('#neighbor .fluent-read-bilingual-content').count() === 1, '关闭校订时全文仍正常翻译');
+  await assertNoCorrectionUi(); await page.keyboard.press('Alt+T');
+  await wait(async () => await page.locator('.fluent-read-bilingual-content').count() === 0, '默认关闭时全文恢复');
+  assert.equal(await correctionMessageCount(), 0, '默认关闭时不查询或读取个人校订');
+  report.defaultOff = {config: false, personalMessages: 0, hoverEntry: false, shortcutEditor: false, paragraphAndFullpageTranslateNormally: true};
+  record(currentCase, report.defaultOff);
+
+  currentCase = 'actual settings switch enables correction and persists after quick close';
+  const beforeEnableProvider = await providerCount();
+  await setCorrectionSetting(true, {capture: true});
+  assert.equal(await providerCount(), beforeEnableProvider, '启用校订本身不请求供应商');
+  record(currentCase, {default: false, enabledAfterReopen: true});
+
   currentCase = 'trusted paragraph translation and preview-gated material correction';
   await toggle(); assert.ok((await translation()).includes(automaticPrefix)); assert.ok(await providerCount() > 0); await screenshot('01-automatic');
   await openEditor(); assert.equal(await panel(`return this.querySelectorAll('${tid('dialog')}').length`), 1);
+  assert.equal(await panel(`return this.querySelector('${tid('scope')}').selectedOptions[0].textContent.trim()`), '仅当前网页', '范围默认文案通俗明确');
   await previewSave(corrected); await screenshot('03-saved'); record(currentCase);
+
+  currentCase = 'turning off closes the live editor and restores the provider baseline';
+  const beforeDisableProvider = await providerCount();
+  await setCorrectionSetting(false, {capture: true});
+  await wait(async () => (await translation()).includes(automaticPrefix) && !(await translation()).includes(corrected), '关闭后回到服务底稿');
+  await assertNoCorrectionUi(); assert.equal(await providerCount(), beforeDisableProvider, '关闭不重新请求服务');
+  await setCorrectionSetting(true); await page.waitForTimeout(180);
+  assert.ok((await translation()).includes(automaticPrefix) && !(await translation()).includes(corrected), '重新启用不自动采用记录');
+  assert.equal(await providerCount(), beforeDisableProvider, '重新启用只补齐 metadata');
+  record(currentCase, {editorRemoved: true, restored: 'provider-baseline', reenableDoesNotAutoApply: true});
 
   currentCase = 'material exact reuse bypasses public provider cache';
   await closeEditor(); await toggle('#primary', 0); await clearPublicCache(); const requestsBeforeReuse = await providerCount(); await toggle();
@@ -193,7 +283,30 @@ async function main() {
   report.reuseAttributes = await page.locator('#primary .fluent-read-bilingual-content').evaluate(element => Object.fromEntries([...element.attributes].map(attribute => [attribute.name, attribute.value])));
   assert.equal(report.reuseAttributes['data-fr-personal-correction'], 'true');
   const provenance = await page.locator('#primary .fluent-read-bilingual-content').evaluate(element => getComputedStyle(element, '::after').content);
-  assert.ok(provenance.includes('个人校订'), '可见来源标记说明采用个人校订'); await screenshot('04-reused'); record(currentCase, {providerRequestsAdded: 0, provenance});
+  assert.ok(provenance.includes('个人校订'), '可见来源标记说明采用个人校订');
+  report.provenanceAppearance = await page.locator('#primary .fluent-read-bilingual-content').evaluate(element => {
+    const label = getComputedStyle(element, '::after'), parent = getComputedStyle(element);
+    return {content: label.content, color: label.color, parentColor: parent.color, fontSize: label.fontSize, parentFontSize: parent.fontSize, background: label.backgroundColor, borderWidth: label.borderTopWidth};
+  });
+  assert.equal(report.provenanceAppearance.color, report.provenanceAppearance.parentColor);
+  assert.equal(report.provenanceAppearance.background, 'rgba(0, 0, 0, 0)'); assert.equal(report.provenanceAppearance.borderWidth, '0px');
+  assert.ok(parseFloat(report.provenanceAppearance.fontSize) < parseFloat(report.provenanceAppearance.parentFontSize));
+  await screenshot('04-reused'); record(currentCase, {providerRequestsAdded: 0, provenance});
+
+  currentCase = 'turning off a reused correction restores original and reenable retains the record';
+  await openEditor(); await setCorrectionSetting(false);
+  await wait(async () => await page.locator('#primary .fluent-read-bilingual-content').count() === 0, '无服务底稿的复用关闭后恢复原文');
+  await assertNoCorrectionUi();
+  const beforeDisabledMessages = await correctionMessageCount(); await clearPublicCache(); await toggle();
+  assert.ok((await translation()).includes(automaticPrefix)); await assertNoCorrectionUi();
+  assert.equal(await correctionMessageCount(), beforeDisabledMessages, '关闭后再次翻译不查询个人记录');
+  const beforeReenableProvider = await providerCount(); await setCorrectionSetting(true); await page.waitForTimeout(180);
+  assert.ok((await translation()).includes(automaticPrefix), '重新开启不替换现有服务译文');
+  assert.equal(await providerCount(), beforeReenableProvider, '重新开启不发起翻译');
+  await ensureOriginal(); await clearPublicCache(); const beforeRetainedReuse = await providerCount(); await toggle();
+  assert.ok((await translation()).includes(corrected)); assert.equal(await providerCount(), beforeRetainedReuse, '重新开启后已存记录继续精确复用');
+  await openEditor(); await clickPanel(tid('manage')); assert.equal(await panel('return this.querySelectorAll("[data-correction-record]").length'), 1, '关闭和重启保留记录且不新增');
+  await closeEditor(); record(currentCase, {restored: 'original', messagesAddedWhileOff: 0, retainedEntries: 1, providerRequestsAddedDuringReenabledReuse: 0});
 
   currentCase = 'nearby sentence exposes a reviewable suggestion without automatic replacement';
   await toggle('#similar'); assert.ok((await translation('#similar')).includes(automaticPrefix)); assert.ok(!(await translation('#similar')).includes(corrected));
@@ -201,6 +314,7 @@ async function main() {
   await openEditor('#similar'); await wait(() => panel('return Boolean(this.querySelector(".suggestions"))'), '近似原句建议');
   const suggestions = await panel('return this.querySelector(".suggestions").textContent');
   assert.ok(suggestions.includes(source) && suggestions.includes(similarSource) && suggestions.includes(corrected));
+  assert.ok(suggestions.includes('已保存的原句'), '近似建议文案通俗明确');
   assert.equal(await panel(`return this.querySelector('${tid('save')}').disabled`), true);
   await clickPanel('.suggestions > summary'); await clickPanel('.suggestions button');
   assert.equal(await panel(`return this.querySelector('${tid('translation')}').value`), corrected);
@@ -209,6 +323,11 @@ async function main() {
   await screenshot('04-nearby-suggestion'); await closeEditor(); record(currentCase);
 
   currentCase = 'undo invalidates reuse and restores provider output';
+  // off/on 会卸载编辑会话，旧会话的撤销 token 不再可用。用真实管理删除及新建保存建立本会话的撤销点。
+  await openEditor(); await clickPanel(tid('manage'));
+  const priorDelete = await panel('const button=this.querySelector("[data-correction-delete]");return button?`[data-correction-delete="${button.getAttribute("data-correction-delete")}"]`:null');
+  await clickPanel(priorDelete); await wait(() => panel('return this.querySelectorAll("[data-correction-delete]").length===0'), '建立独立撤销用例前清除旧记录');
+  await closeEditor(); await ensureOriginal(); await clearPublicCache(); await toggle(); await openEditor(); await previewSave(corrected); await closeEditor();
   await openEditor(); await clickPanel(tid('undo')); await wait(async () => await page.locator('#primary .fluent-read-bilingual-content').count() === 0 || !(await translation()).includes(corrected), '撤销恢复原译文或原文');
   await closeEditor(); await ensureOriginal(); await clearPublicCache(); await toggle(); assert.ok((await translation()).includes(automaticPrefix)); assert.ok(!(await translation()).includes(corrected)); record(currentCase);
 
@@ -282,7 +401,11 @@ async function main() {
   await page.setViewportSize({width: 390, height: 844}); await openEditor();
   const narrowGeometry = await panel(`const box=this.querySelector('${tid('dialog')}').getBoundingClientRect();return{x:box.x,y:box.y,right:box.right,bottom:box.bottom,width:box.width,height:box.height,viewportWidth:innerWidth,viewportHeight:innerHeight}`);
   assert.ok(narrowGeometry.x >= 0 && narrowGeometry.y >= 0 && narrowGeometry.right <= narrowGeometry.viewportWidth && narrowGeometry.bottom <= narrowGeometry.viewportHeight, JSON.stringify(narrowGeometry));
-  await screenshot('07-narrow-editor'); await page.keyboard.press('Escape'); await wait(() => panel(`return !this.querySelector('${tid('dialog')}')`), 'Escape 关闭窄屏编辑器'); record(currentCase, narrowGeometry); await page.setViewportSize({width: 1280, height: 900});
+  await screenshot('07-narrow-editor'); await page.keyboard.press('Escape'); await wait(() => panel(`return !this.querySelector('${tid('dialog')}')`), 'Escape 关闭窄屏编辑器');
+  await page.locator('#primary').scrollIntoViewIfNeeded();
+  report.narrowProvenance = await page.evaluate(() => ({viewport: innerWidth, documentWidth: document.documentElement.scrollWidth, content: getComputedStyle(document.querySelector('#primary .fluent-read-bilingual-content'), '::after').content}));
+  assert.equal(report.narrowProvenance.content.includes('个人校订'), true); assert.ok(report.narrowProvenance.documentWidth <= report.narrowProvenance.viewport, '390像素来源不造成水平溢出');
+  await screenshot('07-narrow-provenance'); record(currentCase, {...narrowGeometry, provenanceFits: true}); await page.setViewportSize({width: 1280, height: 900});
 
   currentCase = 'fullpage heading translation preserves original context and paragraph editing';
   await ensureOriginal(); await page.locator('h1').click(); await page.keyboard.press('Alt+T');
@@ -308,6 +431,8 @@ async function main() {
   }, [corrected, secondCorrection, editedCorrection, projectCorrection, conflictingCorrection]);
   assert.equal(report.publicCacheIsolation.containsPersonalText, false, '个人校订结果没有写入公共 provider 缓存');
   report.providerRequests = await worker.evaluate(() => globalThis.__correctionFixture.requests);
+  report.settingsPersistenceRequests = await worker.evaluate(() => globalThis.__correctionSettingsWrites);
+  assert.ok(report.settingsPersistenceRequests.some(request => request.enabled === false) && report.settingsPersistenceRequests.some(request => request.enabled === true), '实际设置页发出开启及关闭保存请求');
   report.finalDom = await page.evaluate(() => ({url: location.href, primaryHtml: document.querySelector('#primary').outerHTML, neighborHtml: document.querySelector('#neighbor').outerHTML, correctionHosts: document.querySelectorAll('#fluent-read-personal-corrections').length}));
   if (realUrl) {
     currentCase = 'real external webpage edit-save-reuse-undo with deterministic provider transport';

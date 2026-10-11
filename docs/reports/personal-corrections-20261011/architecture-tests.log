@@ -2,36 +2,37 @@
 > FluentRead-流畅阅读@0.0.37 test:architecture /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
 > node scripts/testing/run-resource-safe.mjs -- node scripts/testing/run-test-group.mjs architecture
 
-[resource-safe] 等待全局测试锁（3 个并发槽已占满，当前: vue-tsc --noEmit; sh -c pnpm build > /private/tmp/personal-corrections-chrome-final.log 2>&1 && pnpm build:firefox > /private/tmp/personal-corrections-firefox-build.log 2>&1 && pnpm build:userscript > /private/tmp/personal-corrections-userscript-build.log 2>&1 && node scripts/verify-userscript-build.mjs > /private/tmp/personal-corrections-userscript-verify.log 2>&1 && pnpm docs:build > /private/tmp/personal-corrections-docs-build.log 2>&1; vitest /Users/thinkstu/Desktop/copy/FluentRead-video-sentence-learning-20261011/node_modules/vitest/vitest.mjs run tests/vocabularyVideoSource.test.ts tests/vocabularyBook.test.ts tests/vocabularyRepositoryEdges.test.ts tests/vocabularyStudyLifecycle.test.ts tests/vocabularyBookComponent.test.ts tests/vocabularyBookComponentLifecycle.test.ts）
+[resource-safe] 等待全局测试锁（3 个并发槽已占满，当前: wxt build -b firefox; wxt build -b firefox; wxt build -b firefox）
 [resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: node scripts/testing/run-test-group.mjs architecture
 
  RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
 
- ✓ tests/browserFocusSafety.test.ts (222 tests) 2347ms
-   ✓ selection CLI actual Popup contracts > 触发等待分别拒绝设置文本、trigger、hotkey、F9 或 Popup 任一状态持续不匹配 333ms
-   ✓ 视频字幕 fixture 的当前设置入口与持久配置契约 > 以生产构造和归一化验证开启/可见/双语默认，并保留用户显式关闭与原文偏好 571ms
- ✓ tests/settingsUiArchitecture.test.ts (37 tests) 139ms
- ✓ tests/selectionTtsBackgroundHandler.test.ts (39 tests) 395ms
- ✓ tests/popupFeatureVisibility.test.ts (30 tests) 106ms
- ✓ tests/backgroundConfigPersistenceHandler.test.ts (81 tests) 405ms
- ✓ tests/userscriptViteConfig.test.ts (32 tests) 1719ms
- ✓ tests/architecture/verificationOwnership.test.ts (16 tests) 7000ms
-   ✓ repository verification ownership > src 中每个可执行非组装模块都进入四维 100% 覆盖率边界 4174ms
-   ✓ repository verification ownership > 覆盖率清单不能引用不存在的源码或把组装根伪装成业务覆盖 2570ms
+ ✓ tests/browserFocusSafety.test.ts (222 tests) 1956ms
+   ✓ 视频字幕 fixture 的当前设置入口与持久配置契约 > 以生产构造和归一化验证开启/可见/双语默认，并保留用户显式关闭与原文偏好 524ms
+ ✓ tests/settingsUiArchitecture.test.ts (37 tests) 132ms
+ ✓ tests/selectionTtsBackgroundHandler.test.ts (39 tests) 390ms
+ ✓ tests/popupFeatureVisibility.test.ts (30 tests) 95ms
+ ✓ tests/backgroundConfigPersistenceHandler.test.ts (81 tests) 456ms
+ ✓ tests/userscriptViteConfig.test.ts (34 tests) 1999ms
+   ✓ authoritative site catalogs with an external pinned data asset > reconciles old-asset without mutating the external asset 302ms
+   ✓ authoritative site catalogs with an external pinned data asset > reconciles reordered without mutating the external asset 304ms
+ ✓ tests/architecture/verificationOwnership.test.ts (16 tests) 8259ms
+   ✓ repository verification ownership > src 中每个可执行非组装模块都进入四维 100% 覆盖率边界 5165ms
+   ✓ repository verification ownership > 覆盖率清单不能引用不存在的源码或把组装根伪装成业务覆盖 2880ms
  ✓ tests/backgroundTranslationHandler.test.ts (49 tests) 15ms
- ✓ tests/settingsCenterCliContracts.test.ts (31 tests) 350ms
- ✓ tests/architecture/moduleBoundaries.test.ts (13 tests) 4202ms
-   ✓ architecture module boundaries > src 的静态依赖图不存在跨文件循环 1320ms
-   ✓ architecture module boundaries > src 只能通过精确登记的 composition/browser/provider 迁移边界读取 entrypoints 1012ms
-   ✓ architecture module boundaries > feature 不能跨目录读取另一个 feature 的内部实现 615ms
-   ✓ architecture module boundaries > 按需加载的大体积资源不得被扩展运行时代码静态引入 905ms
- ✓ tests/freeTranslationSettings.test.ts (16 tests) 2424ms
-   ✓ free translation settings compiled component > 微软第一、B站第二仅展示免费标记，手动顺序仍可调整 1543ms
- ✓ tests/extensionManifestContract.test.ts (20 tests) 101ms
- ✓ tests/harnessBackground.test.ts (17 tests) 19ms
- ✓ tests/userscriptPrivacy.test.ts (11 tests) 318ms
+ ✓ tests/settingsCenterCliContracts.test.ts (31 tests) 355ms
+ ✓ tests/architecture/moduleBoundaries.test.ts (13 tests) 3897ms
+   ✓ architecture module boundaries > src 的静态依赖图不存在跨文件循环 1348ms
+   ✓ architecture module boundaries > src 只能通过精确登记的 composition/browser/provider 迁移边界读取 entrypoints 1096ms
+   ✓ architecture module boundaries > feature 不能跨目录读取另一个 feature 的内部实现 607ms
+   ✓ architecture module boundaries > 按需加载的大体积资源不得被扩展运行时代码静态引入 530ms
+ ✓ tests/freeTranslationSettings.test.ts (16 tests) 1310ms
+   ✓ free translation settings compiled component > 微软第一、B站第二仅展示免费标记，手动顺序仍可调整 811ms
+ ✓ tests/extensionManifestContract.test.ts (20 tests) 70ms
+ ✓ tests/harnessBackground.test.ts (17 tests) 17ms
+ ✓ tests/userscriptPrivacy.test.ts (11 tests) 262ms
  ✓ tests/backgroundVisionProbe.test.ts (9 tests) 73ms
- ✓ tests/fullRegressionRunner.test.ts (7 tests) 378ms
+ ✓ tests/fullRegressionRunner.test.ts (7 tests) 358ms
  ✓ tests/harnessAppRuntime.test.ts (3 tests) 11ms
 stderr | tests/backgroundConfigStorage.test.ts
 [FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
@@ -46,25 +47,25 @@ stderr | tests/backgroundConfigStorage.test.ts
     at /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011/src/app/background/configStorageBroadcast.ts:2:31
     at VitestExecutor.runModule (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vite-node@2.1.9_@types+node@22.10.7/node_modules/vite-node/dist/client.mjs:399:5)
 
- ✓ tests/backgroundConfigStorage.test.ts (6 tests) 119ms
- ✓ tests/architecture/providerBoundaries.test.ts (6 tests) 136ms
- ✓ tests/requestLimitSettings.test.ts (5 tests) 901ms
-   ✓ request limit settings interaction > inherits existing global values and retains disabled model settings across toggles 812ms
- ✓ tests/writingBackground.test.ts (7 tests) 36ms
- ✓ tests/imageTranslationSecurityContract.test.ts (6 tests) 86ms
- ✓ tests/backgroundConnectionTestHandler.test.ts (10 tests) 6ms
- ✓ tests/backgroundCoreHandlers.test.ts (9 tests) 6ms
- ✓ tests/architecture/sourceFileHeaders.test.ts (929 tests) 294ms
+ ✓ tests/backgroundConfigStorage.test.ts (6 tests) 118ms
+ ✓ tests/architecture/providerBoundaries.test.ts (6 tests) 125ms
+ ✓ tests/requestLimitSettings.test.ts (5 tests) 811ms
+   ✓ request limit settings interaction > inherits existing global values and retains disabled model settings across toggles 715ms
+ ✓ tests/writingBackground.test.ts (7 tests) 38ms
+ ✓ tests/imageTranslationSecurityContract.test.ts (6 tests) 120ms
+ ✓ tests/backgroundConnectionTestHandler.test.ts (10 tests) 7ms
+ ✓ tests/backgroundCoreHandlers.test.ts (9 tests) 8ms
+ ✓ tests/architecture/sourceFileHeaders.test.ts (929 tests) 290ms
  ✓ tests/backgroundMessageRouter.test.ts (6 tests) 5ms
  ✓ tests/contentTrustBoundary.test.ts (5 tests) 6ms
- ✓ tests/requestHeaderRuntime.test.ts (3 tests) 69ms
- ✓ tests/backgroundProviderRuntime.test.ts (2 tests) 3ms
+ ✓ tests/requestHeaderRuntime.test.ts (3 tests) 68ms
+ ✓ tests/backgroundProviderRuntime.test.ts (2 tests) 4ms
  ✓ tests/backgroundRetiredContentScripts.test.ts (3 tests) 4ms
  ✓ tests/freeTranslationWeightsHandler.test.ts (2 tests) 3ms
- ✓ tests/userscriptMetadata.test.ts (1 test) 2ms
+ ✓ tests/userscriptMetadata.test.ts (1 test) 3ms
  ✓ tests/extensionSizeBudget.test.ts (1 test) 6ms
 
  Test Files  33 passed (33)
-      Tests  1634 passed (1634)
-   Start at  13:48:23
-   Duration  34.74s (transform 2.39s, setup 0ms, collect 7.81s, tests 21.68s, environment 4ms, prepare 1.38s)
+      Tests  1636 passed (1636)
+   Start at  14:59:45
+   Duration  35.51s (transform 2.89s, setup 0ms, collect 9.15s, tests 21.27s, environment 5ms, prepare 1.43s)

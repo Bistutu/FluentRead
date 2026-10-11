@@ -10,14 +10,13 @@ import type {BrowserCapabilities} from '@/src/platform/browser/capabilities';
 import {isWritingPage} from '@/src/core/config/writing';
 import {mountWritingAssistant, unmountWritingAssistant, isWritingAssistantMounted} from '@/src/features/writing-assistant/public';
 import type {ContentFeatureDefinition} from './featureRegistry';
-import {mountPersonalCorrectionContent} from './personalCorrections';
-import {unmountPersonalCorrections} from '@/src/features/personal-corrections/public';
+import {mountPersonalCorrectionContent, unmountPersonalCorrectionContent} from './personalCorrections';
 
 export function createLearningContentFeatures(ctx: ContentScriptContext, config: Config, capabilities: BrowserCapabilities): ContentFeatureDefinition[] {
     return [
         ...(import.meta.env.BROWSER === 'userscript' ? [] : [
-            {id: 'personal-corrections', isEnabled: () => capabilities.browser !== 'userscript' && config.on,
-                mount: ({signal}) => mountPersonalCorrectionContent(ctx, signal), unmount: unmountPersonalCorrections} satisfies ContentFeatureDefinition,
+            {id: 'personal-corrections', isEnabled: () => capabilities.browser !== 'userscript' && config.on && config.personalCorrectionsEnabled === true,
+                mount: ({signal}) => mountPersonalCorrectionContent(ctx, signal), unmount: unmountPersonalCorrectionContent} satisfies ContentFeatureDefinition,
         ]),
         {id: 'writing-assistant', isEnabled: () => capabilities.browser !== 'userscript' && config.on && config.writing.enabled && isWritingPage(window.location.href),
             mount: () => mountWritingAssistant(ctx), unmount: unmountWritingAssistant, isMounted: isWritingAssistantMounted},

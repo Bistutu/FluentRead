@@ -259,7 +259,7 @@ export const settingsPagePanels: Readonly<Record<string, readonly SettingsPagePa
     {id: 'connections', labelKey: 'featureServices.connections', searchTerms: '连接 服务 密钥 API 模型', targetIds: []},
   ],
   'settings-translation': [
-    {id: 'reading', labelKey: 'options.panel.reading', searchTerms: '阅读辅助 双语逐句高亮 原文译文 句子对应', targetIds: ['translation-sentence-highlight']},
+    {id: 'reading', labelKey: 'options.panel.reading', searchTerms: '阅读辅助 双语逐句高亮 原文译文 句子对应 个人校订 修改译文 记住译法', targetIds: ['translation-sentence-highlight', 'personal-corrections-settings']},
     {id: 'information-highlight', labelKey: 'informationHighlight.title', searchTerms: '智能高亮 文本智能高亮 辅助阅读 信息高亮 重点高亮 意外度 surprisal 关键词 本地模型 密度 隐私', targetIds: ['information-highlight-settings']},
     {"id": "hover", "labelKey": "options.panel.hover", "searchTerms": "鼠标悬浮 快捷键 延迟", "targetIds": []},
     {"id": "input", "labelKey": "options.panel.input", "searchTerms": "输入框 连按 空格", "targetIds": []},

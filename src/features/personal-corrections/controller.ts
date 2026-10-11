@@ -42,7 +42,7 @@ export function createPersonalCorrectionController(ports: PersonalCorrectionUiPo
     state.source = pair.source; state.currentTranslation = pair.translation; state.draft = pair.translation;
     state.scopeId = 'material'; state.context = pair.context; state.sourceLanguage = pair.sourceLanguage;
     state.targetLanguage = pair.targetLanguage; state.materialId = pair.materialId; state.editing = null;
-    state.materialLabel = typeof document !== 'undefined' && document.title.trim() ? document.title.trim().slice(0, 80) : '本材料';
+    state.materialLabel = typeof document !== 'undefined' && document.title.trim() ? document.title.trim().slice(0, 80) : '当前网页';
     state.suggestions = []; state.conflicts = []; state.projectName = ''; invalidate(); state.loading = true;
     try {await load(generation);} catch (error) {if (isActive() && generation === readGeneration) failure(error);}
     finally {if (isActive() && generation === readGeneration) state.loading = false;}
@@ -52,9 +52,9 @@ export function createPersonalCorrectionController(ports: PersonalCorrectionUiPo
     if (!isActive() || !state.open || state.busy) return;
     if (!state.draft.trim()) {state.error = '请填写确认采用的译文。'; return;}
     if (!state.materialId || (state.scopeId !== 'material' && !state.projects.some(item => item.id === state.scopeId))) {
-      state.error = '请选择本材料或明确的项目范围。'; return;
+      state.error = '请选择“仅当前网页”或一个项目。'; return;
     }
-    if (state.scopeId !== 'material' && state.activeProjectId !== state.scopeId) {state.error = '请先主动将本材料加入所选项目，再预览保存。'; return;}
+    if (state.scopeId !== 'material' && state.activeProjectId !== state.scopeId) {state.error = '请先将当前网页加入所选项目，再预览保存。'; return;}
     state.affected = ports.listVisiblePairs(query()).filter(pair => pair.isCurrent());
     state.previewed = true; state.error = ''; state.notice = '';
   }
@@ -85,9 +85,9 @@ export function createPersonalCorrectionController(ports: PersonalCorrectionUiPo
       state.undoToken = result.undoToken; state.editing = result.record; state.previewed = false;
       await syncVisible();
       if (!isActive()) return;
-      state.notice = '已保存个人校订，仅在确认的范围、语言和语境内复用。';
+      state.notice = '已保存。所选网页中原句、翻译语言和章节标题相同的句子会使用这条校订。';
       await load();
-      if (isActive() && state.conflicts.length) state.notice = '已保存待审阅译法；存在不同的已确认译法，暂不自动复用。可在管理中删除不再使用的译法。';
+      if (isActive() && state.conflicts.length) state.notice = '已保存，但这个原句有不同译法，不会自动采用。请在“已保存的校订”中编辑或删除不再使用的译法。';
     });
   }
   async function undo(): Promise<void> {
@@ -109,12 +109,12 @@ export function createPersonalCorrectionController(ports: PersonalCorrectionUiPo
       if (state.editing?.id === record.id) state.editing = null;
       state.previewed = false; await syncVisible();
       if (!isActive()) return;
-      state.notice = '已删除；之后的翻译不再复用这条校订。'; await load();
+      state.notice = '已删除，之后的翻译不再使用这条校订。'; await load();
     });
   }
   function edit(record: PersonalCorrectionRecord): void {
     if (state.busy) return;
-    if (record.scope.kind === 'material' && record.scope.id !== state.materialId) {state.error = '请打开对应材料后编辑这条校订。'; return;}
+    if (record.scope.kind === 'material' && record.scope.id !== state.materialId) {state.error = '请打开对应网页后编辑这条校订。'; return;}
     state.source = record.source; state.currentTranslation = record.translation; state.draft = record.translation;
     state.context = record.context; state.sourceLanguage = record.sourceLanguage; state.targetLanguage = record.targetLanguage;
     state.scopeId = record.scope.kind === 'material' ? 'material' : record.scope.id;
@@ -141,7 +141,7 @@ export function createPersonalCorrectionController(ports: PersonalCorrectionUiPo
       if (!isActive()) return;
       invalidate(); state.editing = null; await syncVisible();
       if (!isActive()) return;
-      state.notice = projectId ? '本材料已加入所选项目，同语言与语境的已确认译法可以复用。' : '本材料已移出项目，之后仅复用本材料校订。';
+      state.notice = projectId ? '当前网页已加入项目。原句、翻译语言和章节标题相同的句子会使用已保存的校订。' : '当前网页已退出项目，之后只使用为这个网页保存的校订。';
       await load();
     });
   }

@@ -1,15 +1,18 @@
 
 > FluentRead-流畅阅读@0.0.37 test /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
-> node scripts/testing/run-resource-safe.mjs -- vitest run "tests/sentenceActionsMount.test.ts" "tests/implementationAudit48K.test.ts" "tests/bilingualReplay.test.ts" "tests/translationState.test.ts" "tests/liveTextRender.test.ts"
+> node scripts/testing/run-resource-safe.mjs -- vitest run "tests/translationState.test.ts" "tests/bilingualReplay.test.ts" "tests/liveTextRender.test.ts" "tests/sentenceActionsMount.test.ts" "tests/implementationAudit48K.test.ts" "tests/optionsNavigation.test.ts" "tests/settingsUiArchitecture.test.ts" "tests/settingsSectionsLifecycle.test.ts" "tests/userscriptUnsupportedCapabilities.test.ts" "tests/userscriptViteConfig.test.ts"
 
-[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vitest run tests/sentenceActionsMount.test.ts tests/implementationAudit48K.test.ts tests/bilingualReplay.test.ts tests/translationState.test.ts tests/liveTextRender.test.ts
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vitest run tests/translationState.test.ts tests/bilingualReplay.test.ts tests/liveTextRender.test.ts tests/sentenceActionsMount.test.ts tests/implementationAudit48K.test.ts tests/optionsNavigation.test.ts tests/settingsUiArchitecture.test.ts tests/settingsSectionsLifecycle.test.ts tests/userscriptUnsupportedCapabilities.test.ts tests/userscriptViteConfig.test.ts
 
  RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
 
- ✓ tests/translationState.test.ts (94 tests) 716ms
-   ✓ 指定节点翻译状态机 > removed subtree 查询不会读取大批无关 active owner 的状态 408ms
- ✓ tests/implementationAudit48K.test.ts (33 tests) 554ms
- ✓ tests/bilingualReplay.test.ts (19 tests) 110ms
+ ✓ tests/translationState.test.ts (94 tests) 897ms
+   ✓ 指定节点翻译状态机 > removed subtree 查询不会读取大批无关 active owner 的状态 558ms
+ ✓ tests/settingsUiArchitecture.test.ts (37 tests) 102ms
+ ✓ tests/implementationAudit48K.test.ts (33 tests) 601ms
+ ✓ tests/userscriptViteConfig.test.ts (34 tests) 1613ms
+ ✓ tests/bilingualReplay.test.ts (19 tests) 181ms
+ ✓ tests/optionsNavigation.test.ts (25 tests) 16ms
 stderr | tests/liveTextRender.test.ts
 [FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
     at Object.getItem (/Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011/src/platform/storage/configStorageRuntime.ts:36:29)
@@ -23,10 +26,22 @@ stderr | tests/liveTextRender.test.ts
     at /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011/src/features/full-page-translation/content/renderer.ts:2:31
     at VitestExecutor.runModule (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vite-node@2.1.9_@types+node@22.10.7/node_modules/vite-node/dist/client.mjs:399:5)
 
- ✓ tests/liveTextRender.test.ts (10 tests) 29ms
+ ✓ tests/liveTextRender.test.ts (10 tests) 30ms
+ ✓ tests/settingsSectionsLifecycle.test.ts (10 tests) 7229ms
+   ✓ 设置主表单实际组件异步归属 > 离开服务设置关闭新服务对话框，隐藏时既不打开也不提交新服务 2138ms
+   ✓ 设置主表单实际组件异步归属 > 缓存离开时关闭全文与悬浮录制，恢复暂选模式，返回后仍可录制 709ms
+   ✓ 设置主表单实际组件异步归属 > 根组件导航时只委托定位，不再创建另一条逐帧查找链 499ms
+   ✓ 设置主表单实际组件异步归属 > 独立定位最新操作取代旧操作，离开或卸载后旧帧不能滚动 521ms
+   ✓ 设置主表单实际组件异步归属 > 卸载后到达的配置水合不改主题或提交旧配置 447ms
+   ✓ 设置主表单实际组件异步归属 > 快速设置更新共用一次标签页查询，发送最新状态，过滤非法 ID 668ms
+   ✓ 设置主表单实际组件异步归属 > 拒绝查询后释放任务，随后仍能广播；卸载后的结果不继续发消息 432ms
+   ✓ 设置主表单实际组件异步归属 > 服务列表直接复用已筛选能力结果，切换显示模式不会再分配同样的列表 754ms
+   ✓ 设置主表单实际组件异步归属 > 查询完成时采用外部最新模式和进度偏好，单个标签页同步异常不阻止其余消息 551ms
+   ✓ 设置主表单实际组件异步归属 > 已缓存或卸载时到达的规则检查不会继续导航或打开自定义服务 509ms
  ✓ tests/sentenceActionsMount.test.ts (4 tests) 7ms
+ ✓ tests/userscriptUnsupportedCapabilities.test.ts (3 tests) 3ms
 
- Test Files  5 passed (5)
-      Tests  160 passed (160)
-   Start at  14:02:26
-   Duration  4.13s (transform 850ms, setup 0ms, collect 2.00s, tests 1.42s, environment 1ms, prepare 181ms)
+ Test Files  10 passed (10)
+      Tests  269 passed (269)
+   Start at  15:00:18
+   Duration  16.36s (transform 1.69s, setup 0ms, collect 4.05s, tests 10.68s, environment 2ms, prepare 402ms)

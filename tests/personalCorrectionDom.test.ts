@@ -1,7 +1,8 @@
 import {parseHTML} from 'linkedom';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 const fixture = vi.hoisted(() => ({lookup: vi.fn(), states: new WeakMap<HTMLElement, any>(),
-    artifact: true, source: true, refresh: vi.fn(), restore: vi.fn(), set: vi.fn()}));
+    config: {on: true, personalCorrectionsEnabled: true}, artifact: true, source: true, refresh: vi.fn(), restore: vi.fn(), set: vi.fn()}));
+vi.mock('@/src/services/config/store', () => ({config: fixture.config}));
 vi.mock('@/src/services/personal-corrections/public', () => ({personalCorrections: {lookup: fixture.lookup}}));
 vi.mock('@/src/features/full-page-translation/content/state', () => ({
     getTranslationState: (node: HTMLElement) => fixture.states.get(node), setBilingualContent: fixture.set,
@@ -15,14 +16,15 @@ vi.mock('@/src/features/full-page-translation/content/viewportStability', () => 
 import {createMaterialId} from '@/src/core/personal-corrections/public';
 import {listVisiblePersonalCorrectionPairs, lookupPersonalCorrection, personalCorrectionIsCurrent, readPersonalCorrectionContext,
     readPersonalCorrectionPair, refreshVisiblePersonalCorrections, registerPersonalCorrectionResult,
-    invalidateStalePersonalCorrectionContexts, watchPersonalCorrectionContext} from '@/src/features/full-page-translation/content/personalCorrections';
+    invalidateStalePersonalCorrectionContexts, watchPersonalCorrectionContext, disableVisiblePersonalCorrections} from '@/src/features/full-page-translation/content/personalCorrections';
 
 const href = 'https://example.test/article?edition=1';
 const query = {source: 'The team is ready.', sourceLanguage: 'en', targetLanguage: 'zh', context: 'Team', materialId: createMaterialId(href)};
 function pair(baseline: boolean = true, recordId?: string) {
     const node = document.querySelector('p')!;
     const content = node.querySelector<HTMLElement>('.fluent-read-bilingual-content')!;
-    const state = {bilingualContent: content, bilingualReplay: {sources: [query.source], translations: ['团队准备好了。'], personalCorrectionId: undefined as string | undefined}};
+    const state = {phase: 'translated', mode: 'bilingual', kind: 'content', bilingualContent: content,
+        bilingualReplay: {sourceLanguage: 'en', targetLanguage: 'zh', sources: [query.source], translations: ['团队准备好了。'], personalCorrectionId: undefined as string | undefined}};
     fixture.states.set(node, state);
     const snapshot = {query, recordId, ...(baseline ? {baseline: ['团队准备好了。']} : {})};
     registerPersonalCorrectionResult(node, state as any, snapshot);
@@ -32,6 +34,7 @@ beforeEach(() => {
     const {document} = parseHTML('<html><body><h2>Team</h2><p>The team is ready.<span class="fluent-read-bilingual-content">团队准备好了。</span></p></body></html>');
     vi.stubGlobal('document', document); vi.stubGlobal('location', {href});
     fixture.states = new WeakMap(); fixture.artifact = true; fixture.source = true;
+    Object.assign(fixture.config, {on: true, personalCorrectionsEnabled: true});
     fixture.lookup.mockReset().mockResolvedValue({suggestions: [], conflicts: []});
     fixture.refresh.mockReset().mockImplementation((_node, state) => {
         if (state.bilingualReplay.personalCorrectionId) state.bilingualContent.setAttribute('data-fr-personal-correction', 'true');
@@ -42,6 +45,100 @@ beforeEach(() => {
 });
 afterEach(() => {vi.unstubAllGlobals(); vi.unstubAllEnvs();});
 describe('个人校订的网页所有权端口', () => {
+    it('关闭时零记忆查询；关闭再开启也丢弃上一启用代次的查询和提交', async () => {
+        const node = document.querySelector('p')!;
+        fixture.config.personalCorrectionsEnabled = false;
+        pair(); expect(readPersonalCorrectionPair(node.querySelector('span')!)).toBeNull();
+        expect(await lookupPersonalCorrection(node, query.source, 'en', 'zh')).toBeUndefined();
+        expect(await personalCorrectionIsCurrent({query, recordId: 'saved'})).toBe(false);
+        expect(fixture.lookup).not.toHaveBeenCalled(); expect(fixture.set).not.toHaveBeenCalled();
+        fixture.config.personalCorrectionsEnabled = true; fixture.config.on = false;
+        expect(await lookupPersonalCorrection(node, query.source, 'en', 'zh')).toBeUndefined();
+        fixture.config.on = true;
+        let resolve!: (value: unknown) => void;
+        fixture.lookup.mockReturnValueOnce(new Promise(done => {resolve = done;}));
+        const pending = lookupPersonalCorrection(node, query.source, 'en', 'zh');
+        fixture.config.personalCorrectionsEnabled = false; disableVisiblePersonalCorrections(); fixture.config.personalCorrectionsEnabled = true;
+        resolve({exact: {id: 'old', revision: 1, translation: '迟到'}}); expect(await pending).toBeUndefined();
+        fixture.lookup.mockResolvedValueOnce({exact: {id: 'saved', revision: 1, translation: '已确认'}});
+        const saved = await lookupPersonalCorrection(node, query.source, 'en', 'zh');
+        fixture.lookup.mockReturnValueOnce(new Promise(done => {resolve = done;}));
+        const checking = personalCorrectionIsCurrent(saved, node);
+        fixture.config.personalCorrectionsEnabled = false; disableVisiblePersonalCorrections(); fixture.config.personalCorrectionsEnabled = true;
+        resolve({exact: {id: 'saved', revision: 1}}); expect(await checking).toBe(false);
+        expect(await personalCorrectionIsCurrent(saved)).toBe(false);
+    });
+    it('关闭恢复服务底稿或原文，解除编辑对；宿主改写后不再重放旧个人译文', () => {
+        const confirmed = pair(true, 'saved'); const editorPair = readPersonalCorrectionPair(confirmed.content)!;
+        fixture.config.personalCorrectionsEnabled = false; disableVisiblePersonalCorrections();
+        expect(confirmed.state.bilingualReplay.personalCorrectionId).toBeUndefined();
+        expect(confirmed.state.bilingualReplay.translations).toEqual(['团队准备好了。']); expect(editorPair.isCurrent()).toBe(false);
+        fixture.config.personalCorrectionsEnabled = true;
+        const reused = pair(false, 'saved'); fixture.config.personalCorrectionsEnabled = false; disableVisiblePersonalCorrections();
+        expect(fixture.restore).toHaveBeenCalledWith(reused.node);
+        fixture.config.personalCorrectionsEnabled = true;
+        const changedContext = pair(true, 'saved'); document.querySelector('h2')!.textContent = 'New context'; disableVisiblePersonalCorrections();
+        expect(fixture.restore).toHaveBeenCalledWith(changedContext.node); document.querySelector('h2')!.textContent = 'Team';
+        const hostEdited = pair(true, 'saved'); fixture.artifact = false; disableVisiblePersonalCorrections();
+        expect(hostEdited.state.bilingualReplay.personalCorrectionId).toBeUndefined();
+        expect(hostEdited.state.bilingualReplay.translations).toEqual(['团队准备好了。']);
+        fixture.artifact = true; const noBaseline = pair(false, 'saved'); fixture.source = false; disableVisiblePersonalCorrections();
+        expect(noBaseline.state.bilingualReplay).toBeUndefined();
+        fixture.source = true; pair(); fixture.refresh.mockClear(); disableVisiblePersonalCorrections(); expect(fixture.refresh).not.toHaveBeenCalled();
+        fixture.states = new WeakMap(); disableVisiblePersonalCorrections();
+        const orphan = document.createElement('span'); orphan.className = 'fluent-read-bilingual-content';
+        vi.spyOn(document, 'querySelectorAll').mockReturnValueOnce([orphan] as any); disableVisiblePersonalCorrections();
+    });
+    it('关闭的刷新零 IO，在途刷新也不能在关闭后采用返回的个人结果', async () => {
+        fixture.config.personalCorrectionsEnabled = false; await refreshVisiblePersonalCorrections(); expect(fixture.lookup).not.toHaveBeenCalled();
+        fixture.config.personalCorrectionsEnabled = true; const {state} = pair(true, 'saved');
+        let resolve!: (value: unknown) => void; fixture.lookup.mockReturnValueOnce(new Promise(done => {resolve = done;}));
+        const pending = refreshVisiblePersonalCorrections(); fixture.config.personalCorrectionsEnabled = false;
+        resolve({exact: {id: 'late', translation: '迟到'}}); await pending;
+        expect(state.bilingualReplay.translations).toEqual(['团队准备好了。']); expect(state.bilingualReplay.personalCorrectionId).toBeUndefined();
+    });
+    it('主动开启后按原请求语言校订现有服务译文，准备编辑对不查询记忆或改译文', () => {
+        fixture.config.personalCorrectionsEnabled = false; const {content, state} = pair();
+        fixture.config.personalCorrectionsEnabled = true;
+        const current = readPersonalCorrectionPair(content)!;
+        expect(current).toMatchObject({source: query.source, sourceLanguage: 'en', targetLanguage: 'zh', translation: '团队准备好了。'});
+        expect(state.bilingualReplay.translations).toEqual(['团队准备好了。']);
+        expect(fixture.lookup).not.toHaveBeenCalled(); expect(fixture.refresh).not.toHaveBeenCalled();
+        expect(readPersonalCorrectionPair(content)).toMatchObject({source: query.source});
+    });
+    it('关闭再开启期间完成的普通服务译文仍可按新启用代次校订', async () => {
+        const node = document.querySelector('p')!;
+        const pendingProvider = await lookupPersonalCorrection(node, query.source, 'en', 'zh');
+        fixture.config.personalCorrectionsEnabled = false; disableVisiblePersonalCorrections();
+        const {state, content} = pair(); fixture.config.personalCorrectionsEnabled = true;
+        expect(await personalCorrectionIsCurrent(pendingProvider, node)).toBe(true);
+        registerPersonalCorrectionResult(node, state as any, pendingProvider);
+        expect(fixture.set).not.toHaveBeenCalled();
+        const current = readPersonalCorrectionPair(content)!;
+        expect(current).toMatchObject({source: query.source, translation: '团队准备好了。'});
+        expect(current.isCurrent()).toBe(true);
+        expect(fixture.lookup).toHaveBeenCalledTimes(1);
+    });
+    it('开启现有译文仍拒绝不安全结构和槽不一致，安全多槽保留整体原句', () => {
+        const node = document.querySelector('p')!;
+        const attach = (html: string, sources: string[], options: Record<string, unknown> = {}) => {
+            node.innerHTML = `${html}<span class="fluent-read-bilingual-content" data-fr-translation-owned="true">旧译文</span>`;
+            const content = node.querySelector('span.fluent-read-bilingual-content')!;
+            const state = {phase: 'translated', mode: 'bilingual', kind: 'content', bilingualContent: content,
+                bilingualReplay: {sources, translations: sources.map((_, i) => i ? '' : '旧译文'), sourceLanguage: 'en', targetLanguage: 'zh'}, ...options};
+            fixture.states.set(node, state); return content;
+        };
+        expect(readPersonalCorrectionPair(attach('Use <code>team.ready</code> now.', ['Use ', ' now.']))).toBeNull();
+        expect(readPersonalCorrectionPair(attach('The team is ready.', ['Mismatched source']))).toBeNull();
+        expect(readPersonalCorrectionPair(attach('', []))).toBeNull();
+        const inline = attach('The <strong>team</strong> is ready.', ['The', 'team', 'is ready.'], {allowTopLevelApplicationShell: true, syntheticSegment: true});
+        vi.stubGlobal('getComputedStyle', () => ({whiteSpace: 'pre-wrap'}));
+        expect(readPersonalCorrectionPair(inline)).toMatchObject({source: query.source});
+        const normal = attach('The <strong>team</strong> is ready.', ['The', 'team', 'is ready.']);
+        vi.stubGlobal('getComputedStyle', () => ({whiteSpace: 'normal'}));
+        expect(readPersonalCorrectionPair(normal)).toMatchObject({source: query.source});
+        expect(fixture.lookup).not.toHaveBeenCalled();
+    });
     it('userscript 构建边界不查记忆或注册个人结果，既有翻译保持可提交', async () => {
         vi.stubEnv('BROWSER', 'userscript');
         const node = document.querySelector('p')!;
@@ -59,10 +156,10 @@ describe('个人校订的网页所有权端口', () => {
         vi.stubGlobal('location', {href});
         fixture.lookup.mockRejectedValueOnce(Error('offline'));
         expect(await lookupPersonalCorrection(node, query.source, 'en', 'zh')).toBeUndefined();
-        expect(await lookupPersonalCorrection(node, query.source, 'en', 'zh')).toEqual({query});
+        expect(await lookupPersonalCorrection(node, query.source, 'en', 'zh')).toEqual({query, enableGeneration: expect.any(Number)});
         fixture.lookup.mockResolvedValue({exact: {id: 'record', revision: 2, translation: '小组已就绪。'}});
         const saved = await lookupPersonalCorrection(node, query.source, 'en', 'zh');
-        expect(saved).toEqual({query, recordId: 'record', recordRevision: 2, translation: '小组已就绪。'});
+        expect(saved).toEqual({query, enableGeneration: expect.any(Number), recordId: 'record', recordRevision: 2, translation: '小组已就绪。'});
         expect(await personalCorrectionIsCurrent(saved)).toBe(true);
         expect(await personalCorrectionIsCurrent(saved, node)).toBe(true);
         document.querySelector('h2')!.textContent = 'Changed while matching';

@@ -6,6 +6,8 @@
  */
 import {createMaterialId, type CorrectionQuery} from '@/src/core/personal-corrections/public';
 import {personalCorrections} from '@/src/services/personal-corrections/public';
+import {config} from '@/src/services/config/store';
+import {buildWholeBlockTranslationSource, createTranslationSourceSnapshot, getCurrentTranslationCore} from '@/src/core/translation/public';
 import {getTranslationState, setBilingualContent, restoreTranslation, type TranslationState} from './state';
 import {statefulSourceAndTextSlotsAreCurrent, isTranslationArtifactCurrent} from './translationStability';
 import {refreshBilingualTranslationSkeleton} from './bilingualReplay';
@@ -17,6 +19,7 @@ export interface PersonalCorrectionSnapshot {
     recordRevision?: number;
     translation?: string;
     baseline?: readonly string[];
+    enableGeneration?: number;
 }
 export interface PersonalCorrectionPair extends CorrectionQuery {
     translation: string;
@@ -24,6 +27,9 @@ export interface PersonalCorrectionPair extends CorrectionQuery {
     isCurrent(): boolean;
 }
 const metadata = new WeakMap<TranslationState, PersonalCorrectionSnapshot>();
+let enableGeneration = 0;
+let refreshRevision = 0;
+export function isPersonalCorrectionEnabled(): boolean {return config.on === true && config.personalCorrectionsEnabled === true;}
 
 function headingSource(heading: HTMLElement): string {
     const state = getTranslationState(heading);
@@ -48,22 +54,26 @@ export function readPersonalCorrectionContext(node: HTMLElement): string {
 export async function lookupPersonalCorrection(node: HTMLElement, source: string, sourceLanguage: string,
     targetLanguage: string, signal?: AbortSignal): Promise<PersonalCorrectionSnapshot | undefined> {
     const href = globalThis.location?.href;
-    if (!href || !/^https?:/u.test(href) || import.meta.env.BROWSER === 'userscript') return undefined;
+    if (!href || !/^https?:/u.test(href) || import.meta.env.BROWSER === 'userscript' || !isPersonalCorrectionEnabled()) return undefined;
+    const generation = enableGeneration;
     const query: CorrectionQuery = {source, sourceLanguage, targetLanguage,
         context: readPersonalCorrectionContext(node), materialId: createMaterialId(href)};
     let match;
     try { match = await personalCorrections.lookup(query); }
     catch { return undefined; } // 记忆读取失败不阻断正常翻译。
     if (signal?.aborted) throw new DOMException('校订匹配已取消', 'AbortError');
-    return {query, ...(match.exact ? {recordId: match.exact.id, recordRevision: match.exact.revision, translation: match.exact.translation} : {})};
+    if (!isPersonalCorrectionEnabled() || generation !== enableGeneration) return undefined;
+    return {query, enableGeneration: generation, ...(match.exact ? {recordId: match.exact.id, recordRevision: match.exact.revision, translation: match.exact.translation} : {})};
 }
 
 export async function personalCorrectionIsCurrent(snapshot?: PersonalCorrectionSnapshot, node?: HTMLElement): Promise<boolean> {
     if (import.meta.env.BROWSER === 'userscript') return true;
     if (!snapshot?.recordId) return true;
+    if (!isPersonalCorrectionEnabled() || (snapshot.enableGeneration !== undefined && snapshot.enableGeneration !== enableGeneration)) return false;
     try {
         const {exact} = await personalCorrections.lookup(snapshot.query);
-        return exact?.id === snapshot.recordId && exact.revision === snapshot.recordRevision
+        return isPersonalCorrectionEnabled() && (snapshot.enableGeneration === undefined || snapshot.enableGeneration === enableGeneration)
+            && exact?.id === snapshot.recordId && exact.revision === snapshot.recordRevision
             && (!node || snapshot.query.materialId === createMaterialId(globalThis.location.href)
                 && snapshot.query.context === readPersonalCorrectionContext(node));
     } catch { return false; }
@@ -71,8 +81,8 @@ export async function personalCorrectionIsCurrent(snapshot?: PersonalCorrectionS
 
 export function registerPersonalCorrectionResult(node: HTMLElement, state: TranslationState,
     snapshot: PersonalCorrectionSnapshot | undefined): void {
-    if (import.meta.env.BROWSER === 'userscript') return;
-    if (!snapshot) return;
+    if (import.meta.env.BROWSER === 'userscript' || !isPersonalCorrectionEnabled()) return;
+    if (!snapshot || (snapshot.enableGeneration !== undefined && snapshot.enableGeneration !== enableGeneration)) return;
     metadata.set(state, snapshot);
     if (state.bilingualReplay) state.bilingualReplay.personalCorrectionId = snapshot.recordId;
     const content = state.bilingualContent;
@@ -89,7 +99,8 @@ function ownsPair(node: HTMLElement, state: TranslationState, snapshot: Personal
         && statefulSourceAndTextSlotsAreCurrent(node, state);
 }
 function currentPair(node: HTMLElement, state: TranslationState, snapshot: PersonalCorrectionSnapshot): boolean {
-    return ownsPair(node, state, snapshot) && snapshot.query.materialId === createMaterialId(globalThis.location.href)
+    return isPersonalCorrectionEnabled() && (snapshot.enableGeneration === undefined || snapshot.enableGeneration === enableGeneration)
+        && ownsPair(node, state, snapshot) && snapshot.query.materialId === createMaterialId(globalThis.location.href)
         && snapshot.query.context === readPersonalCorrectionContext(node);
 }
 
@@ -135,10 +146,29 @@ export function watchPersonalCorrectionContext(signal: AbortSignal): () => void 
 }
 
 export function readPersonalCorrectionPair(element: Element): PersonalCorrectionPair | null {
+    if (!isPersonalCorrectionEnabled()) return null;
     const content = element.closest<HTMLElement>('.fluent-read-bilingual-content');
     const node = content?.parentElement;
     const state = node ? getTranslationState(node) : undefined;
-    const snapshot = state ? metadata.get(state) : undefined;
+    let snapshot = state ? metadata.get(state) : undefined;
+    if (!snapshot && node && state?.bilingualReplay?.sourceLanguage && state.phase === 'translated'
+        && state.mode === 'bilingual' && state.kind === 'content' && isTranslationArtifactCurrent(node, state)
+        && statefulSourceAndTextSlotsAreCurrent(node, state) && /^https?:/u.test(globalThis.location.href)) {
+        // 开启后允许校订已经显示的服务译文；沿用该次请求语言，只准备当前指向段落，不查询记忆或重译整页。
+        const core = getCurrentTranslationCore(state.scope);
+        const skeleton = createTranslationSourceSnapshot(node, core.shouldStayOriginal, state.syntheticSegment ? node : undefined,
+            {protectedElement: node, ...(state.allowTopLevelApplicationShell ? {allowTopLevelApplicationShell: true} : {})}, core.shouldOmitFromTranslation);
+        const replay = state.bilingualReplay;
+        const source = skeleton.slots.length === replay.sources.length && skeleton.slots.every((slot, index) => slot.source === replay.sources[index])
+            ? replay.sources.length === 1 && !skeleton.clone.firstElementChild ? replay.sources[0]
+                : buildWholeBlockTranslationSource(skeleton, {preserveNewlines: typeof getComputedStyle === 'function' && /^(?:pre|break-spaces)/u.test(getComputedStyle(node).whiteSpace)}) : null;
+        if (source) {
+            snapshot = {query: {source, sourceLanguage: replay.sourceLanguage!, targetLanguage: replay.targetLanguage,
+                context: readPersonalCorrectionContext(node), materialId: createMaterialId(globalThis.location.href)},
+                baseline: [...replay.translations], enableGeneration};
+            registerPersonalCorrectionResult(node, state, snapshot);
+        }
+    }
     if (!node || !state?.bilingualReplay || !snapshot || !currentPair(node, state, snapshot)) return null;
     const isCurrent = () => currentPair(node, state, snapshot);
     return {...snapshot.query, translation: state.bilingualReplay.translations.join(''), isCurrent,
@@ -162,9 +192,39 @@ export function listVisiblePersonalCorrectionPairs(query: CorrectionQuery): Pers
     return pairs;
 }
 
-let refreshRevision = 0;
+/** 关闭时取消旧启用代次，保留持久记忆；只恢复仍由本功能拥有的个人结果。 */
+export function disableVisiblePersonalCorrections(): void {
+    enableGeneration += 1;
+    refreshRevision += 1;
+    for (const element of document.querySelectorAll<HTMLElement>('.fluent-read-bilingual-content')) {
+        const node = element.parentElement;
+        const state = node ? getTranslationState(node) : undefined;
+        const snapshot = state ? metadata.get(state) : undefined;
+        if (!node || !state || !snapshot) continue;
+        if (!ownsPair(node, state, snapshot)) {
+            // 宿主已经改写的内容保持宿主权威，但旧个人底稿不得在后续骨架修复时重新采用。
+            if (state.bilingualReplay?.personalCorrectionId) {
+                state.bilingualReplay.personalCorrectionId = undefined;
+                if (snapshot.baseline) state.bilingualReplay.translations = [...snapshot.baseline];
+                else state.bilingualReplay = undefined;
+            }
+            metadata.delete(state);
+            continue;
+        }
+        if (state.bilingualReplay?.personalCorrectionId) {
+            if (snapshot.baseline && snapshot.query.materialId === createMaterialId(globalThis.location.href)
+                && snapshot.query.context === readPersonalCorrectionContext(node)) {
+                state.bilingualReplay.translations = [...snapshot.baseline];
+                state.bilingualReplay.personalCorrectionId = undefined;
+                withFullPageViewportAnchor(() => refreshBilingualTranslationSkeleton(node, state), [node]);
+            } else withFullPageViewportAnchor(() => restoreTranslation(node), [node]);
+        }
+        metadata.delete(state);
+    }
+}
 /** 修改或删除后即时回滚可见个人译文；没有服务底稿的重用单元恢复原文，留给现有翻译入口重译。 */
 export async function refreshVisiblePersonalCorrections(): Promise<void> {
+    if (!isPersonalCorrectionEnabled()) {disableVisiblePersonalCorrections(); return;}
     const revision = ++refreshRevision;
     invalidateStalePersonalCorrectionContexts();
     for (const element of document.querySelectorAll<HTMLElement>('.fluent-read-bilingual-content')) {
@@ -175,6 +235,7 @@ export async function refreshVisiblePersonalCorrections(): Promise<void> {
         let match;
         try { match = await personalCorrections.lookup(snapshot.query); } catch { continue; }
         if (revision !== refreshRevision) return;
+        if (!isPersonalCorrectionEnabled()) {disableVisiblePersonalCorrections(); return;}
         if (!currentPair(node, state, snapshot)) continue;
         if (match.exact) {
             readPersonalCorrectionPair(element)?.apply(match.exact.translation, match.exact.id);

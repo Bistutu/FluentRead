@@ -1,7 +1,7 @@
 /**
  * @file tests/personalCorrectionMemory.test.ts
  * 文件职责：验证个人校订的精确范围、原子加密持久化、显式管理和消息边界。
- * 主要内容：覆盖语言/语境/大小写/数字隔离、近似建议、冲突、撤销、删除失效、重复触发、重启和竞争写入。
+ * 主要内容：覆盖显式开启与关闭门控、配置备份隔离、语言/语境/大小写/数字隔离、近似建议、冲突、撤销、删除失效、重复触发、重启和竞争写入。
  * 模块边界：使用虚构网页和 fake IndexedDB，不调用真实 provider，不接触用户阅读历史或日常浏览器。
  */
 import 'fake-indexeddb/auto';
@@ -9,6 +9,7 @@ import {afterEach, describe, expect, it, vi} from 'vitest';
 const mocked = vi.hoisted(() => {
     let value: unknown = null;
     return {
+        config: {on: true, personalCorrectionsEnabled: true},
         storage: {writeOwner: true, getItem: vi.fn(async () => value), setItem: vi.fn(async (_key: string, next: unknown) => {value = next;}),
             setItemIfUnchanged: vi.fn(async (_key: string, expected: unknown, next: unknown) => {if (JSON.stringify(expected) !== JSON.stringify(value)) return false; value = structuredClone(next); return true;}),
             removeItem: vi.fn(async () => {value = null;}), watch: vi.fn(() => () => undefined)},
@@ -20,6 +21,13 @@ const mocked = vi.hoisted(() => {
 });
 vi.mock('webextension-polyfill', () => ({default: mocked.browser}));
 vi.mock('@/src/platform/storage/configStorageRuntime', () => ({configStorage: mocked.storage}));
+vi.mock('@/src/services/config/store', () => ({config: mocked.config}));
+import {Config, normalizeConfig} from '@/src/core/config/model';
+import {buildConfigDiff, configDiffFieldLabel} from '@/src/core/config/diff';
+import {prepareConfigForExport, prepareConfigForImport} from '@/src/core/config/transfer';
+import {projectDriveSyncConfig} from '@/src/core/config/driveSync';
+import {toRestorableConfig, restoreRestorableConfig} from '@/src/services/config/history';
+import {createBaselineConfigAutoBackups} from '@/src/services/config/autoBackup';
 import {createMaterialId, correctionId, correctionMaterialId, correctionObject, correctionRevision, correctionText, emptyCorrectionState, lookupPersonalCorrection,
     PERSONAL_CORRECTION_LIMIT, PERSONAL_CORRECTION_PROJECT_LIMIT, PersonalCorrectionError, validateCorrectionInput, validateCorrectionQuery, validateCorrectionRecord, validateCorrectionScope, validateCorrectionState,
     type PersonalCorrectionInput, type PersonalCorrectionRecord, type PersonalCorrectionState} from '@/src/core/personal-corrections/public';
@@ -53,7 +61,54 @@ function setup(initial = emptyCorrectionSnapshot(), generator?: () => string) {
 const databases: FluentReadConfigDatabase[] = [];
 afterEach(async () => {
     for (const database of databases.splice(0)) {database.close(); await database.delete();}
-    mocked.clear(); mocked.browser.extension.inIncognitoContext = false; vi.clearAllMocks(); vi.unstubAllGlobals();
+    mocked.clear(); mocked.browser.extension.inIncognitoContext = false;
+    mocked.config.on = true; mocked.config.personalCorrectionsEnabled = true;
+    vi.clearAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs();
+});
+
+describe('personal correction explicit configuration consent', () => {
+    it('defaults old or malformed configuration to off and enables only literal true', () => {
+        expect(new Config().personalCorrectionsEnabled).toBe(false);
+        expect(normalizeConfig({}).personalCorrectionsEnabled).toBe(false);
+        for (const invalid of [undefined, null, 'true', 'false', 1, 0, {}, [], false]) {
+            expect(normalizeConfig({personalCorrectionsEnabled: invalid}).personalCorrectionsEnabled).toBe(false);
+        }
+        const enabled = normalizeConfig({personalCorrectionsEnabled: true});
+        expect(enabled.personalCorrectionsEnabled).toBe(true);
+        const old: Partial<Config> = {...new Config()}; delete old.personalCorrectionsEnabled;
+        expect(prepareConfigForImport(old, enabled).personalCorrectionsEnabled).toBe(false);
+        expect(restoreRestorableConfig(old, enabled).personalCorrectionsEnabled).toBe(false);
+    });
+    it('backs up only the opt-in preference and shows human-readable changes while memory stays separate', async () => {
+        const {service, current} = setup(); const saved = await service.save(input());
+        const preference = normalizeConfig({personalCorrectionsEnabled: true});
+        const exported = prepareConfigForExport(preference);
+        const history = toRestorableConfig(preference);
+        const backup = createBaselineConfigAutoBackups(preference);
+        const cloud = projectDriveSyncConfig(exported);
+        expect([exported, history, backup.entries[0]!.config, cloud].every(value => value.personalCorrectionsEnabled === true)).toBe(true);
+        for (const value of [exported, history, backup, cloud]) {
+            expect(JSON.stringify(value)).not.toContain(input().source);
+            expect(JSON.stringify(value)).not.toContain(input().translation);
+            expect(JSON.stringify(value)).not.toContain(saved.record.id);
+            expect(JSON.stringify(value)).not.toContain(PERSONAL_CORRECTION_STORAGE_KEY);
+        }
+        expect(prepareConfigForImport(exported, new Config()).personalCorrectionsEnabled).toBe(true);
+        expect(configDiffFieldLabel('personalCorrectionsEnabled')).toBe('个人校订');
+        expect(buildConfigDiff({personalCorrectionsEnabled: false}, preference).groups.find(group => group.id === 'tools')?.changes)
+            .toContainEqual({key: 'personalCorrectionsEnabled', label: '个人校订', before: '关闭', after: '开启'});
+        expect(normalizeConfig({personalCorrectionsEnabled: false}).personalCorrectionsEnabled).toBe(false);
+        expect(current().state.entries).toEqual([saved.record]);
+    });
+    it('omits unsupported userscript preferences and diff semantics even when importing an extension setting', async () => {
+        vi.stubEnv('BROWSER', 'userscript');
+        expect(Object.hasOwn(new Config(), 'personalCorrectionsEnabled')).toBe(false);
+        expect(Object.hasOwn(normalizeConfig({personalCorrectionsEnabled: true}), 'personalCorrectionsEnabled')).toBe(false);
+        vi.resetModules();
+        const userscriptDiff = await import('@/src/core/config/diff');
+        expect(userscriptDiff.configDiffFieldLabel('personalCorrectionsEnabled')).toBeUndefined();
+        vi.resetModules();
+    });
 });
 
 describe('personal correction input and material identity', () => {
@@ -377,7 +432,7 @@ describe('personal correction client and scoped runtime', () => {
     });
     function background() {
         const {service, store} = setup();
-        const dependencies = {service, extensionId: 'ext', isExtensionUrl: (url: string) => url.startsWith('chrome-extension://ext/'), privateContext: vi.fn(() => false), changed: vi.fn(async () => undefined)};
+        const dependencies = {service, extensionId: 'ext', isExtensionUrl: (url: string) => url.startsWith('chrome-extension://ext/'), privateContext: vi.fn(() => false), enabled: vi.fn(() => true), changed: vi.fn(async () => undefined)};
         const handler = createPersonalCorrectionHandler<PersonalCorrectionContext>(dependencies);
         const sender = {id: 'ext', url, tab: {id: 1}};
         const extension = {id: 'ext', url: 'chrome-extension://ext/options.html'};
@@ -402,6 +457,49 @@ describe('personal correction client and scoped runtime', () => {
         dependencies.changed.mockRejectedValueOnce(new Error('tab gone'));
         expect(await call('selectProject', {materialId, projectId: null})).toMatchObject({success: true});
         expect(dependencies.changed).toHaveBeenCalledTimes(9);
+    });
+    it('disabled lookup and confirmation perform zero memory IO, preserve sender checks and retain explicit management', async () => {
+        const {call, dependencies, service, store, sender} = background();
+        const saved = await service.save(input());
+        vi.mocked(store.read).mockClear(); vi.mocked(store.write).mockClear();
+        dependencies.enabled.mockReturnValue(false);
+        const miss = {success: true, data: {suggestions: [], conflicts: []}};
+        expect(await call('lookup', {query: query()})).toEqual(miss);
+        expect(await call('save', {input: input('Late confirmation')})).toMatchObject({success: false, error: expect.stringContaining('已关闭')});
+        expect(await call('lookup', {query: query()}, {...sender, id: 'foreign'})).toMatchObject({success: false});
+        expect(await call('lookup', {query: {...query(), materialId: otherMaterial}})).toMatchObject({success: false});
+        expect(await call('lookup', {query: {}})).toMatchObject({success: false});
+        expect(store.read).not.toHaveBeenCalled(); expect(store.write).not.toHaveBeenCalled();
+        expect(await call('list')).toMatchObject({success: true, data: {entries: [saved.record]}});
+        const removed = await call('remove', {id: saved.record.id, expectedRevision: saved.record.revision}) as {data: {undoToken: string}};
+        expect(await call('undo', {token: removed.data.undoToken})).toMatchObject({success: true});
+        expect(await call('list')).toMatchObject({success: true, data: {entries: [expect.objectContaining({id: saved.record.id, translation: saved.record.translation})]}});
+        expect(await call('lookup', {query: query()})).toEqual(miss);
+    });
+    it('discards a lookup finishing after closure and refuses a project save whose scope check finishes after closure', async () => {
+        const {call, dependencies, service, store} = background();
+        const saved = await service.save(input());
+        let finishLookup!: (value: {exact: PersonalCorrectionRecord; suggestions: never[]; conflicts: never[]}) => void;
+        const lookup = vi.spyOn(service, 'lookup').mockImplementationOnce(() => new Promise(resolve => {finishLookup = resolve;}));
+        const pendingLookup = call('lookup', {query: query()});
+        await vi.waitFor(() => expect(lookup).toHaveBeenCalledOnce());
+        dependencies.enabled.mockReturnValue(false);
+        finishLookup({exact: saved.record, suggestions: [], conflicts: []});
+        expect(await pendingLookup).toEqual({success: true, data: {suggestions: [], conflicts: []}});
+
+        const project = await service.createProject('Explicit project');
+        await service.selectProject(materialId, project.id);
+        const state = await service.list();
+        let finishScope!: (value: PersonalCorrectionState) => void;
+        const list = vi.spyOn(service, 'list').mockImplementationOnce(() => new Promise(resolve => {finishScope = resolve;}));
+        const save = vi.spyOn(service, 'save');
+        vi.mocked(store.write).mockClear();
+        dependencies.enabled.mockReturnValue(true);
+        const pendingSave = call('save', {input: {...input(), scope: {kind: 'project', id: project.id, label: project.label}}});
+        await vi.waitFor(() => expect(list).toHaveBeenCalledOnce());
+        dependencies.enabled.mockReturnValue(false); finishScope(state);
+        expect(await pendingSave).toMatchObject({success: false, error: expect.stringContaining('已关闭')});
+        expect(save).not.toHaveBeenCalled(); expect(store.write).not.toHaveBeenCalled();
     });
     it('rejects foreign senders, incognito, malformed commands and mismatched materials before storage', async () => {
         const {handler, call, sender, dependencies, store} = background();
@@ -430,6 +528,14 @@ describe('personal correction client and scoped runtime', () => {
         expect(mocked.browser.tabs.sendMessage).toHaveBeenCalledWith(1, {type: PERSONAL_CORRECTIONS_CHANGED});
         await vi.waitFor(() => expect(mocked.browser.runtime.sendMessage).toHaveBeenCalledWith({type: PERSONAL_CORRECTIONS_CHANGED}));
         expect(await handlers[0].handle({type: PERSONAL_CORRECTIONS_MESSAGE, action: 'list'} as PersonalCorrectionMessage, {sender: {id: 'ext', url: 'chrome-extension://ext/options.html'}})).toMatchObject({success: true});
+        for (const preference of [{on: false, personalCorrectionsEnabled: true}, {on: true, personalCorrectionsEnabled: false}]) {
+            Object.assign(mocked.config, preference); mocked.storage.getItem.mockClear();
+            expect(await handlers[0].handle({type: PERSONAL_CORRECTIONS_MESSAGE, action: 'lookup', query: query()} as PersonalCorrectionMessage, {sender})).toEqual({success: true, data: {suggestions: [], conflicts: []}});
+            expect(mocked.storage.getItem).not.toHaveBeenCalled();
+            expect(await handlers[0].handle({type: PERSONAL_CORRECTIONS_MESSAGE, action: 'save', input: input()} as PersonalCorrectionMessage, {sender})).toMatchObject({success: false, error: expect.stringContaining('已关闭')});
+        }
+        Object.assign(mocked.config, {on: true, personalCorrectionsEnabled: true});
+        expect(await handlers[0].handle({type: PERSONAL_CORRECTIONS_MESSAGE, action: 'lookup', query: query()} as PersonalCorrectionMessage, {sender})).toMatchObject({success: true, data: {exact: expect.objectContaining({translation: input().translation})}});
         mocked.browser.extension.inIncognitoContext = true;
         expect(await handlers[0].handle({type: PERSONAL_CORRECTIONS_MESSAGE, action: 'list'} as PersonalCorrectionMessage, {sender})).toMatchObject({success: false});
     });

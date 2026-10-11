@@ -4,11 +4,15 @@
 
 ## 运行结果
 
-最终冻结源码的 production Chrome MV3 产物通过 **16 / 16** 项矩阵，进程退出码为 0。页面异常、控制台错误和测试 Edge 的原生前台激活事件均为 0；测试结束已关闭拥有的浏览器并删除临时 profile。公共 provider 缓存抽查有 1 条普通记录，不含个人校订译文。三张归档截图均已目视检查，编辑器和主要操作在视口内。
+最终冻结源码的 production Chrome MV3 产物通过 **20 / 20** 项矩阵，进程退出码为 0。页面异常、控制台错误和测试 Edge 的原生前台激活事件均为 0；测试结束已关闭拥有的浏览器并删除临时 profile。公共 provider 缓存抽查有 1 条普通记录，不含个人校订译文。四张归档截图均已目视检查，设置、编辑器和主要操作在视口内。
 
 覆盖项目如下：
 
-- 段落翻译后打开编辑器、修改、预览并确认保存；修改后必须再次预览。
+- 默认关闭时校订消息为零，没有悬停入口或快捷键编辑器，普通段落及全文翻译正常。
+- 真实阅读辅助设置开关五次切换，反馈后立即关闭设置页，重新打开和 popup 重新加载均保持正确状态。
+- 主动开启后直接编辑已有双语译文；修改、预览并确认保存，修改后必须再次预览。
+- 关闭时编辑器退出，有底稿的当前个人译文恢复底稿，无底稿的复用单元恢复原文；保存记录保留，再开启不会自动改写已有服务译文，后续翻译仍能复用。
+- 来源文字继承译文颜色、11px 小于 18px 正文，边框为 0、底色透明；390px 的文档宽度仍为 390px。
 - 清除公共 provider 缓存后精确复用个人译法，显示来源，额外 provider 请求为零。
 - 近似原句展示差异；采用候选只填草稿，不自动替换或保存。
 - 撤销、管理中编辑、删除后失效；恢复与再次翻译回到普通服务流程。
@@ -28,21 +32,24 @@
 
 ## 产物与重现
 
-最终启动前通过 production manifest 新鲜度检查，并记录所有 manifest content script 与 background 的 SHA-256。完整结果见 [`browser-report.json`](./personal-corrections-20261011/browser-report.json)。主要运行脚本如下：
+最终启动前通过 production manifest 新鲜度检查，并记录所有 manifest content script、background 与 CSS 的 SHA-256。完整结果见 [`browser-report.json`](./personal-corrections-20261011/browser-report.json)。主要产物如下：
 
 | 产物 | SHA-256 |
 | --- | --- |
-| `background.js` | `3adab798bcd9b7c5cd7f6dfb089b91635672c4b297eb2326028356d9093cae5b` |
-| `content-scripts/content.js` | `51d80178f42b10173975ebc9e5a4f5b811aa402de2a278f59caf55827db7a4da` |
+| `background.js` | `86c1f28369eb4f7b74f41ecd5dd05aec15993f18f17f3a35e5b585ed931a4e31` |
+| `content-scripts/content.js` | `c4bb55280690a27eeb50f041090e87ffb8eb14b9c385eadc438cdadd63ba8dda` |
+| `content-scripts/content.css` | `ae3fda7c17fb9616efcaa154aa107a5501ad5afa3db51dacc5d1c912f282fcbc` |
 
-完整临时证据目录为 `/private/tmp/fluentread-personal-corrections-20261011-final2`；其中保留 17 张截图、各项结果、新鲜度与清理记录。本报告归档的是最终重跑；此前尝试分别遇到测试读取竞态、后台原生菜单限制和远程页面选择器变化，均保留在各自临时目录，不计作产品回归或最终通过结果。
+完整临时证据目录为 `/private/tmp/fluentread-personal-corrections-opt-in-20261011-r2`；其中保留 21 张截图、各项结果、新鲜度与清理记录。本报告归档的是最终重跑。前一轮 r1 的旧撤销用例假设启停后仍保留上一编辑会话的撤销按钮，与关闭后重建会话不符；最终用例先通过真实管理删除和重新确认保存建立本会话撤销点，再验证撤销及普通服务回退。r1 失败、原先界面验证及其夹具调整证据均保留，不计为本轮最终通过。
 
 测试入口为 [`scripts/testing/run-personal-corrections-test.cjs`](../../scripts/testing/run-personal-corrections-test.cjs)。运行参数必须指定 `--playwright-root`，并使用 `--background --display secondary --real-url https://example.com`；`--artifacts-dir` 指定本次独立证据目录。脚本自动创建临时 profile，检查原生焦点事件并只关闭本次拥有的浏览器，完成后按目录身份与 `.owner` 标记删除 profile。
 
 ## 截图
 
-![确认保存后的编辑器与个人来源](./personal-corrections-20261011/browser-editor.png)
+![默认关闭的个人校订设置](./personal-corrections-20261011/browser-settings-off.png)
 
-![390 × 844 视口中的校订编辑器](./personal-corrections-20261011/browser-narrow.png)
+![确认保存后的新编辑器与轻量来源文字](./personal-corrections-20261011/browser-provenance-desktop.png)
+
+![390 × 844 视口中的轻量来源文字](./personal-corrections-20261011/browser-provenance-narrow.png)
 
 ![未修改远程网页中的保存结果](./personal-corrections-20261011/browser-real-webpage.png)
