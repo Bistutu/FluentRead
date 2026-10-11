@@ -1,0 +1,355 @@
+{
+  "date": "2026-10-11",
+  "branch": "codex/progressive-reading-20261011",
+  "verifiedWorktree": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011",
+  "parentHead": "6e74ffad3539a0a0003a384097d1c66eb6fc7493",
+  "integratedMainCommit": "1983644dfb7537290573231b0db283877c03e410",
+  "pr": "https://github.com/FluentRead/FluentRead/pull/949",
+  "coverage": [
+    {
+      "file": "src/features/progressive-reading/speech.ts",
+      "sha256": "c45392d66407e08bb7a454c401d0f8e7eaf0a48bff14a66e91c615b66d100805",
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100,
+      "testCount": 41,
+      "report": "speech-coverage.json",
+      "log": "speech-coverage.log"
+    },
+    {
+      "file": "src/features/selection-translation/background/ttsHandler.ts",
+      "sha256": "526b10f5985c771b7aa32f81d7ab65554b92b052b67f37ff94a1094d77aaaea3",
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100,
+      "testCount": 137,
+      "report": "tts-handler-coverage.json",
+      "log": "tts-handler-coverage.log"
+    },
+    {
+      "file": "src/core/tts/speechProgress.ts",
+      "sha256": "721874a0182c696b223ca812c71a8485d70071b7a38653245d1c777a03eb1155",
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100,
+      "testCount": 8,
+      "report": "speech-progress-coverage.json",
+      "log": "speech-progress-coverage.log"
+    }
+  ],
+  "retainedCoverage": {
+    "source": "../progressive-reading-20261011/verification.json",
+    "modules": 11,
+    "sourceSha256": {
+      "src/features/progressive-reading/hints.ts": "5ccd30b4c94e77ec34ec134b3c1b393ec7cf7d499937b8a8305f36d21344a4d3",
+      "src/features/progressive-reading/session.ts": "255be282307675f9de68d37441a4bd6a97245a5ae6225396803e516a34fad904",
+      "src/features/vocabulary/background/handler.ts": "10f258e1fe469487f224217c2e2de6023a7ba9a4f27d12eb07afaf38803b27ff",
+      "src/features/vocabulary/domain/readingHints.ts": "cc981b2d27a2216bc9fe2aa374a3d0dcb58ce3c897069db66899329890d5957d",
+      "src/app/content/learningFeatures.ts": "1a61f5eb587812f7bbe105844b5252475725d060774ab3a15b4be63231e60d87",
+      "src/app/content/messageRuntime.ts": "260bac5fa5a5eead9c3b84d164466f3716d2779fee2b11a1166f3084d960c6c3",
+      "src/app/popup/pageActions.ts": "11e40d0f9a3ddafe27ec449c8af57f0f6298bff2613d17f77329f47c6366254a",
+      "src/features/progressive-reading/content.ts": "f1e64a9a54c552918949a59eddedea41a1f817380169530bcdf413356512e77a",
+      "src/features/progressive-reading/source.ts": "431f6950074deac346ca26b22da238e7a785fddf1cffbce952fe94c9bb7acb83",
+      "src/core/config/progressiveReading.ts": "22c6402fba69e1cdca114a60f06b06c896a749a5ae15f9a2ceb7673658feb3a7",
+      "src/features/settings/ui/useTranslationShortcutSettings.ts": "670e5fa178bea8d4057e4e8dfd74c18859fed15a95a1ec1c44dca0891dee266a"
+    },
+    "allUnchanged": true
+  },
+  "sourceSha256": {
+    "scripts/run-progressive-reading-test.cjs": "16f10838957633d4dd7929082e57a8b133361e1f287ee6cbb3b699b540b894c3",
+    "src/app/popup/PopupApp.vue": "ffb308e7d4445e86100e91779350b1bc1e88d1e7967cff23f35f75475c350851",
+    "src/core/i18n/messages/en-US.ts": "fd84858948c61bf06c09a7798799d51c1b7eed9bb7d40a71067f9ff158f73936",
+    "src/core/i18n/messages/es-ES.ts": "447ab61a7aa1ad4f0c2e137589aa7402b1da929cafa513f2794c3fbffd8f1fc7",
+    "src/core/i18n/messages/fr-FR.ts": "f780932ecd089843644f5fbbe9768ae584c0b3d76cdcb47e851b35458a60df17",
+    "src/core/i18n/messages/ja-JP.ts": "f8cb2f3996de5f3b2ac88cbe4b988d9dcc8ee3bb28f082409dcc9ef473d58c42",
+    "src/core/i18n/messages/ko-KR.ts": "e14cd33b5830738ff68333ce2d3289b7d951eed2a932e53d0905813931dcb32e",
+    "src/core/i18n/messages/ru-RU.ts": "6f16b23b9ffb755bd3b814e28217a40e67407d2564ace61e3486b0f2e0dcbe23",
+    "src/core/i18n/messages/zh-CN.ts": "2ce0eea12649d64cc8c99726ae96880d8e0d54c4498020dfeda0415ab2ee7d40",
+    "src/core/tts/speechProgress.ts": "721874a0182c696b223ca812c71a8485d70071b7a38653245d1c777a03eb1155",
+    "src/features/progressive-reading/README.md": "006072e5249d05d712eb3335de7f07ed04681383706b71d688df95d09f13e411",
+    "src/features/progressive-reading/speech.ts": "c45392d66407e08bb7a454c401d0f8e7eaf0a48bff14a66e91c615b66d100805",
+    "src/features/progressive-reading/ui/ProgressiveReading.vue": "e81b86b1eca25a4b8ec5c0a90ad33a3a654a794204247a7e8669350d0cd7dbe6",
+    "src/features/selection-translation/background/ttsHandler.ts": "526b10f5985c771b7aa32f81d7ab65554b92b052b67f37ff94a1094d77aaaea3",
+    "src/features/selection-translation/speech/public.ts": "018d24f9b9943b322515d813b22d39118fbe83da1b569ecdd43ee87fc775e91b",
+    "src/features/selection-translation/ui/public.ts": "42dea1def43ee14100c695506b93db919173bb2d0659091134518f4a3afe7a71",
+    "tests/progressiveReadingSpeech.test.ts": "d291e8eb1667f3aece4b516e0c54caa08b042cf20360d91f6a14ca0bcdaa4619",
+    "tests/progressiveReadingSpeechUi.test.ts": "048fcd1f8c2267e4a7de262fb06d6e151fb291c4dd13ca0d6a439b930228a511",
+    "tests/progressiveReadingTtsTransport.test.ts": "86fec029dd385e68009b18d371320fd531c2abb34240eca6f154281c6349d111",
+    "tests/speechProgress.test.ts": "2c7ff4b8da92d58d7999b7ad5c03da9d8984afc1a9b2f714ad0b5023f1fe9f33",
+    "tests/test-matrix.json": "b78261d24d01cc23d8f73f8c6d3bee21bae0bd9561f4b29db20a756b1714384a",
+    "tests/userscriptLanguageBundles.test.ts": "fda2c23df038199e51c6f7413de071fe4aeb1d3e7ba7196650be6c95daa40d5b",
+    "tests/userscriptViteConfig.test.ts": "2e4ad60614ea617f46ae320f2a3b9c7f4905ee37dc20d82a4a718258656ce366",
+    "userscript/languageBundles.ts": "5bdb6a6007e1ae154f6aa88c548e628c2ed960df18ac6aa0f8bbcb97dd287cf4",
+    "vitest.coverage.config.ts": "92a0ec1c5c09442c77d7834de88137d1a7d5a1f08c0bb6c4019dd13400309806",
+    "vitest.config.ts": "9aee0820a428a9fbf9620839e5ab66a9c21bc916f22eeab7f47d8feb7c0bcbc6",
+    "package.json": "0432029a38881fe76dab24d56aec362e66fe6fbbce305fffe85c7e47517bd1cc",
+    "pnpm-lock.yaml": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
+    "wxt.config.ts": "6fd77267d4c39dd7daae66e1d4648c5da817d29cc536bbf0341e3b5a2dcffc2d"
+  },
+  "manifests": [
+    {
+      "target": "chrome-mv3",
+      "manifestVersion": 3,
+      "version": "0.0.37",
+      "permissionsUnchanged": true,
+      "hostPermissionsUnchanged": true,
+      "sha256": "961d10d94833c621d25cd57c2668613840b1b5ff2fc8aa96628448b12a767924"
+    },
+    {
+      "target": "firefox-mv2",
+      "manifestVersion": 2,
+      "version": "0.0.37",
+      "permissionsUnchanged": true,
+      "hostPermissionsUnchanged": true,
+      "sha256": "205907f75626b559ff0211fc4ebcd1c5798f952a7f9b7076a549416c0911492a"
+    }
+  ],
+  "artifacts": {
+    "chromeContentSha256": "0f5e1cfef1ca5d8d676cc9b4a6f8092d2ddd14dffc6cf39438cde4b0e77816d1",
+    "firefoxContentSha256": "bc2ec2baafcc6672e2c378159135e43c155c1483adc5e80b2a82dca00fcbc145",
+    "userscriptSha256": "9054df0df2b6995ecd17595b1aaba9854f0a0f729ebce39de94505564f48bcb3",
+    "userscriptBytes": 2064753,
+    "userscriptBudgetBytes": 2066000
+  },
+  "gates": {
+    "speechUi": {
+      "files": 1,
+      "passed": 27,
+      "log": "speech-ui.log"
+    },
+    "i18n": {
+      "passed": 58,
+      "log": "i18n.log"
+    },
+    "popup": {
+      "files": 3,
+      "passed": 90,
+      "log": "popup.log"
+    },
+    "userscriptContract": {
+      "files": 3,
+      "passed": 39,
+      "log": "userscript-contract.log"
+    },
+    "directConsumers": {
+      "files": 2,
+      "passed": 146,
+      "log": "consumers.log",
+      "scope": "SelectionTranslator lifecycle and VocabularyBook component lifecycle. The separate fresh userscript contract gate supersedes the earlier 39 cases in this combined log."
+    },
+    "architecture": {
+      "files": 3,
+      "passed": 968,
+      "log": "architecture.log"
+    },
+    "testAudit": {
+      "files": 675,
+      "cases": 11377,
+      "log": "audit.log"
+    },
+    "compile": "passed",
+    "chromeBuild": "passed",
+    "firefoxBuild": "passed",
+    "userscriptBuild": "passed",
+    "userscriptVerifier": "passed",
+    "extensionManifests": "passed",
+    "docsBuild": "passed"
+  },
+  "browser": {
+    "report": "browser-report.json",
+    "passed": 27,
+    "speechCases": 6,
+    "consoleErrors": 0,
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "windowPlacement": {
+      "mode": "background-visible-no-focus",
+      "visible": true,
+      "hidden": false,
+      "centered": true,
+      "windowState": "normal",
+      "bounds": {
+        "left": 212,
+        "top": -990,
+        "width": 1280,
+        "height": 900
+      },
+      "displayTarget": "secondary",
+      "source": "macos-nsscreen",
+      "screenIndex": 1,
+      "browserFrontmost": false,
+      "frontmostBefore": {
+        "pid": 76304,
+        "name": "微信"
+      },
+      "frontmostAfter": {
+        "pid": 76304,
+        "name": "微信"
+      }
+    },
+    "ownedBrowserClosed": true,
+    "profileRemoved": true,
+    "audioBoundary": "Silent zero-PCM WAV response fixture at the Microsoft token/synthesis transport boundary. Production selectionTts playback:page routing and native page Audio decode, clock, pause/resume, rate, seek and loop remain real. Audio output is muted; no human audition, live TTS provider, voice quality or exact word alignment claim.",
+    "rateSelectionBoundary": "DOM select value/change through the actual Vue/native-select binding; OS picker and trusted keyboard selection are not tested.",
+    "speechProgressBoundary": "The fr-speech-current mark is estimated follow text, not an exact word timestamp.",
+    "rateSelections": [
+      {
+        "requested": 0.75,
+        "selected": "0.75"
+      },
+      {
+        "requested": 1,
+        "selected": "1"
+      },
+      {
+        "requested": 1.25,
+        "selected": "1.25"
+      },
+      {
+        "requested": 1.5,
+        "selected": "1.5"
+      },
+      {
+        "requested": 1,
+        "selected": "1"
+      }
+    ],
+    "narrowLayout": {
+      "width": 336,
+      "horizontalOverflow": false,
+      "controls": [
+        {
+          "label": "原文",
+          "left": 27,
+          "right": 67
+        },
+        {
+          "label": "译文",
+          "left": 70,
+          "right": 110
+        },
+        {
+          "label": "继续朗读",
+          "left": 27,
+          "right": 56
+        },
+        {
+          "label": "后退 5 秒",
+          "left": 61,
+          "right": 90
+        },
+        {
+          "label": "前进 5 秒",
+          "left": 95,
+          "right": 124
+        },
+        {
+          "label": "从头重听",
+          "left": 129,
+          "right": 158
+        },
+        {
+          "label": "停止朗读",
+          "left": 163,
+          "right": 192
+        },
+        {
+          "label": "语速",
+          "left": 197,
+          "right": 255
+        },
+        {
+          "label": "",
+          "left": 325,
+          "right": 338
+        }
+      ],
+      "left": 27,
+      "right": 363,
+      "viewportWidth": 390
+    },
+    "sourceReportPath": "/private/tmp/fluentread-progressive-reading-speech-final-v5/report.json",
+    "screenshots": [
+      "popup-400-progressive-entry.png",
+      "popup-320-progressive-entry.png",
+      "popup-320-long-hotkey.png",
+      "popup-400-long-hotkey.png",
+      "popup-learning-help.png",
+      "learning-settings-default.png",
+      "panel-original.png",
+      "panel-phrases.png",
+      "panel-logic.png",
+      "desktop-bilingual.png",
+      "panel-bilingual.png",
+      "390-light-phrases.png",
+      "390-dark-phrases.png",
+      "390-keyboard-bilingual.png",
+      "speech-original-playing.png",
+      "speech-original-paused.png",
+      "speech-translation-playing.png",
+      "speech-390-paused.png"
+    ]
+  },
+  "knownBaseline": {
+    "file": "tests/vocabularyTtsPageCancellationRuntime.test.ts",
+    "passed": 2,
+    "failed": 2,
+    "evidence": "baseline.json",
+    "log": "consumers.log",
+    "reason": "Existing explicit fixture module map omits VocabularySource.vue; source and test are byte-identical to parent HEAD; failure occurs before TTS assertions."
+  },
+  "limits": [
+    "No live TTS provider or human audition; silent zero-PCM WAV exercises production message routing and native Audio.",
+    "Rate selection is actual DOM select/change binding; OS dropdown and trusted keyboard selection are not tested.",
+    "Firefox and userscript build/contract evidence only, no runtime claim.",
+    "Progress benchmark is local pure-function evidence, no overall performance or provider latency claim.",
+    "Exact word timestamps and human learning benefit are not validated."
+  ],
+  "evidenceSha256": {
+    "390-dark-phrases.png": "0dd73b9ca08e29bdf69b500a028ad1c6856dd3b529191aa36a6955a2da97883b",
+    "390-keyboard-bilingual.png": "0f811917530acebb87450b82c6dad8b566dccebfa83e0f796ead9de9d2eafb66",
+    "390-light-phrases.png": "74f1f412851b66501e750d43a3bbdae963ebc2885c50790bc79e71e77e572822",
+    "architecture.log": "b1a055bce0a8fe84960387fa6b2d925db4a75337dbe4a674c231328d3eab8c23",
+    "audit.log": "61f29ede3957a8d21c2f97d95fa408dd9f5950635477220305cbf1d368d07460",
+    "baseline.json": "70e3101ec1a216c3963ac0a9d830158e841fbdecc2b44df67727f31548e007f8",
+    "browser-report.json": "95067251cfbb46be37469ed6ecca800a4085f67190ae438ec8f76fbd9f04891c",
+    "browser.log": "c66573ab910330bc68e04cf07c7b6ca45e197cde0a6958b7428cf24639478958",
+    "chrome.log": "2cea5a32b5163e393b7564687c09c6273f720def7f5aff0df92fba1ad5f9cb52",
+    "compile.log": "2c1b0886d432adb4c8d977b0807bc013462d0ffa7dde3dee665cdaff5d86810e",
+    "consumers.log": "fcca441d49d9f02c7a75f2e5c20b931085cd5afd0d4933e04fafda518941e924",
+    "desktop-bilingual.png": "57c3ef0ea7e8358450d883fea59aad0f1c30174d388050e7562e641441026311",
+    "firefox.log": "8d9e5646ed61d4e57628a4584a8aa0fef57284a5b5168ca6415a05970344215e",
+    "i18n.log": "cfee7d9b20f0f9af34513a0741f86558db8911e528a260653dbc24432e941d79",
+    "learning-settings-default.png": "7f567f710372f49c9c10fc8d9aec61e5e5641ac06013ed3a07bcb9f9aa9a6454",
+    "manifests.log": "61f64113e1a4f9baf6d347065aaf8652fce57dfbe9c88eee15ef4427c48e26f0",
+    "panel-bilingual.png": "612eeb1763ff988b1d08818210a2f89349b166145a8b342ee56a30ec39cd0a27",
+    "panel-logic.png": "3da56936bf2e01d313b99e0f9f1c8e2e7c35da476a003981d6e576d3b0befa86",
+    "panel-original.png": "0bacbbe1573cc8c6305770b441cd291d0128abaa4a504a3c953761788c7213fa",
+    "panel-phrases.png": "4dcdda6798560c0f71f9352394303e69f049636150e8f471bc2712fca425c6cf",
+    "popup-320-long-hotkey.png": "94fe1f0893099d7e6c6ff1f558c0e946a7758e34eaae4e8cdbd91fd5a4ff7d9e",
+    "popup-320-progressive-entry.png": "68f0debb82975b1ee09c49b665a7645162c8c16141615d3c23314e6bc384f65d",
+    "popup-400-long-hotkey.png": "36efaba4a069332d145c00efaa6f04092003250c26e4d3cd597aecff27b66050",
+    "popup-400-progressive-entry.png": "c08f51de67044d437f4f85edb71ad3488c3aed50fd2cfe01a1ddd1d395c6ce43",
+    "popup-learning-help.png": "750a80bf894759e3f93d004bd4d9d9de92a3c579a6e17e35bb0e3c1a9f8fa481",
+    "popup.log": "8335da40c3b0ccb2ab51d515a469918b616a51d2c6ba65d4b4add52c42dc92ba",
+    "progress-benchmark.json": "ffed721405d5c2a07028fc0c7974e705455049995d117eddb7ee437363dc424e",
+    "speech-390-paused.png": "3baeb4a5490a9808bac04237f995bc1823740552f119d02e6da18145db368e43",
+    "speech-coverage.json": "d23f5ae4e52fa2901b752034cf744241fa8e9d4f0717010a8ca9c8a71fb020f7",
+    "speech-coverage.log": "aec58b546f735911d236de41e0fb9501f29bd963c6c8fd37b2c1f7a6c4d357b6",
+    "speech-original-paused.png": "014263e9fe66298fbd078118762b69fa65c6117eb6f0c26e49ad498b92b49fa2",
+    "speech-original-playing.png": "94f9be0533704c57b3af8589c854615dc5c6f1844543301cc87080b9bd17b93f",
+    "speech-progress-coverage.json": "d11769d42aa1af075d3d304b16818cc61deb15c7b73ddea2d409fa8fdc17152b",
+    "speech-progress-coverage.log": "f2fb39558794c21d316659a5845a1cfc3af9858dfb0c8028056457585690d6bd",
+    "speech-translation-playing.png": "eb89add2e09e5e6bcd90f82a45a7edb7b04093d339b2d77440950ba2ec511eb9",
+    "speech-ui.log": "12f0fe165b4e8e31ef5710cc6375d895d362da491e96b3d4d548539e19b1ef66",
+    "tts-handler-coverage.json": "8d3e4511a72c29c4bd929c1846a10727106d3248b12e072d4b5fa6bab8c814ff",
+    "tts-handler-coverage.log": "572559399144e9efa19f28809cadb75ad859c57b01d732ff9ace357bbddb7441",
+    "userscript-contract.log": "403add7ef3811d7a9136621a6e3905ef9c1096b011d7ee53a086413dafd22b3d",
+    "userscript-verifier.log": "a8b1cc165af1cf4503491f25f52e6c814640be98c607a141e362419b53d25925",
+    "userscript.log": "2a7ee0d95eb4b73f29ea1d12be36e6671afdf4c4699ed671914ea754c0299ef1",
+    "docs.log": "3134f0be0a3259e0d9ff576384edaefce70a7c73dc79cdb9cb97adc4ccb0d5b5"
+  }
+}

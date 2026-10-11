@@ -16,10 +16,12 @@ const extensionDir = path.resolve(arg('extension-dir', '.output/chrome-mv3'));
 const artifactsDir = path.resolve(arg('artifacts-dir', '/private/tmp/fluentread-progressive-reading'));
 const playwrightRoot = arg('playwright-root', process.env.PLAYWRIGHT_ROOT);
 const popupOnly = process.argv.includes('--popup-only');
+const speechMode = process.argv.includes('--speech');
 const demoIndex = process.argv.indexOf('--record-demo'), demoMode = demoIndex >= 0;
 const demoArgument = demoMode && process.argv[demoIndex + 1];
 const demoDir = path.resolve(demoArgument && !demoArgument.startsWith('--') ? demoArgument : path.join(artifactsDir, 'demo'));
 if (demoMode && popupOnly) throw new Error('--record-demo and --popup-only are separate execution scopes');
+if (speechMode && (demoMode || popupOnly)) throw new Error('--speech adds production audio assertions to the complete targeted flow; it cannot be combined with demo or Popup-only mode');
 if (!playwrightRoot) throw new Error('Pass --playwright-root with the bundled Node package directory');
 if (process.argv.includes('--headed') || process.argv.includes('--headless')) throw new Error('This targeted runner requires --background and does not authorize a foreground or headless fallback');
 if (!fs.existsSync(path.join(extensionDir, 'manifest.json'))) throw new Error(`Missing production extension manifest: ${extensionDir}`);
@@ -30,16 +32,290 @@ const fixture = createProgressiveReadingFixture();
 const profileDir = fs.mkdtempSync('/private/tmp/fluentread-progressive-reading-profile-');
 fs.mkdirSync(artifactsDir, {recursive: true});
 const report = {ok: false, extensionDir, browserPath, profileMode: 'fresh-mkdtemp-owned', profileDir, artifact: 'production', cases: [], screenshots: [], consoleErrors: [], focusSamples: [],
-    executionScope: demoMode ? 'progressive-reading-recorded-demo' : popupOnly ? 'popup-entry-only' : 'progressive-reading-targeted-flow',
+    executionScope: demoMode ? 'progressive-reading-recorded-demo' : popupOnly ? 'popup-entry-only' : speechMode ? 'progressive-reading-targeted-flow-with-speech' : 'progressive-reading-targeted-flow',
     evidenceBoundary: 'Real production extension, real selection, DOM, trusted CDP keyboard/mouse and Vue Shadow UI in an isolated Edge browser. Local deterministic HTTP translation transport, Popup active-tab lookup and toolbar-close capture are fixtures. No live-provider, Firefox runtime, native-toolbar or human-comprehension claim.',
     reuseBoundary: 'This browser run verifies reuse of a translation already obtained within the same reading session. Reuse of a preexisting bilingual webpage artifact is outside this runner; its pure excerpt matcher is covered separately by unit tests.',
     ownedBrowserClosed: false, profileRemoved: false};
 const wait = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 const record = (name, details = {}) => {report.cases.push({...details, name}); console.log(`PASS ${name}`);};
-let session, context, control, popup, page, origin, fixtureInfo, browserPid, tabId;
+let session, context, control, popup, page, origin, fixtureInfo, browserPid, tabId, speechWorker;
 let launchAttempted = false, monitor, monitorTask, monitorBusy = false, stopping = false, focusError;
 let demoTarget, demoSurface, demoStepLabel, demoCaptureTask, demoCaptureError, demoCapturing = false;
 const cdpSessions = new WeakMap(), ownedCdpSessions = new Set();
+const speechContexts = new WeakMap();
+
+// 只生成零 PCM 采样；真实浏览器仍负责解码、媒体时钟和所有播放控制。
+function silentSpeechWav(seconds) {
+    const rate = 8000, count = Math.round(rate * seconds), buffer = Buffer.alloc(44 + count * 2);
+    buffer.write('RIFF', 0); buffer.writeUInt32LE(buffer.length - 8, 4); buffer.write('WAVEfmt ', 8); buffer.writeUInt32LE(16, 16);
+    buffer.writeUInt16LE(1, 20); buffer.writeUInt16LE(1, 22); buffer.writeUInt32LE(rate, 24); buffer.writeUInt32LE(rate * 2, 28);
+    buffer.writeUInt16LE(2, 32); buffer.writeUInt16LE(16, 34); buffer.write('data', 36); buffer.writeUInt32LE(count * 2, 40);
+    return buffer.toString('base64');
+}
+async function installSpeechFixture(worker) {
+    speechWorker = worker;
+    report.speech = {cases: [], samples: [], cleanup: [],
+        evidenceBoundary: 'Silent zero-PCM WAV response fixture at the Microsoft token/synthesis transport boundary. Production selectionTts playback:page routing and native page Audio decode, clock, pause/resume, rate, seek and loop remain real. Audio output is muted; no human audition, live TTS provider, voice quality or exact word alignment claim.',
+        progressBoundary: 'The fr-speech-current mark is estimated follow text, not an exact word timestamp.'};
+    await worker.evaluate(() => {
+        const nativeFetch = globalThis.fetch.bind(globalThis);
+        globalThis.__readingSpeechFixture = {generation: 0, delayMs: 120, audioBase64: '', error: false, calls: []};
+        globalThis.fetch = async (input, init) => {
+            const url = typeof input === 'string' ? input : input.url;
+            if (url.startsWith('https://dev.microsofttranslator.com/apps/endpoint')) {
+                return new Response(JSON.stringify({t: 'synthetic-reading-speech-token', r: 'reading-fixture'}), {headers: {'content-type': 'application/json'}});
+            }
+            if (/^https:\/\/[^/]+\.tts\.speech\.microsoft\.com\/cognitiveservices\/v1(?:\?|$)/u.test(url)) {
+                const fixture = globalThis.__readingSpeechFixture, generation = fixture.generation;
+                const body = String(init?.body || ''), encoded = /<prosody\b[^>]*>([\s\S]*?)<\/prosody>/u.exec(body)?.[1] || '';
+                const source = encoded.replace(/&(amp|lt|gt|quot|apos);/gu, (_, entity) => ({amp: '&', lt: '<', gt: '>', quot: '"', apos: "'"})[entity]);
+                const call = {generation, source, language: /xml:lang="([^"]+)"/u.exec(body)?.[1] || '', at: Date.now(), delayMs: fixture.delayMs, failed: fixture.error, aborted: false};
+                fixture.calls.push(call);
+                const {audioBase64, error, delayMs} = fixture;
+                // 故意让传输晚返回，验证生产 cancellation/generation，而不是夹具替组件吞掉旧结果。
+                if (init?.signal?.aborted) call.aborted = true;
+                init?.signal?.addEventListener('abort', () => {call.aborted = true;}, {once: true});
+                await new Promise(resolve => setTimeout(resolve, delayMs)); call.completedAt = Date.now();
+                if (error) return new Response('Controlled silent-WAV synthesis failure', {status: 503});
+                return new Response(Uint8Array.from(atob(audioBase64), char => char.charCodeAt(0)), {headers: {'content-type': 'audio/wav'}});
+            }
+            return nativeFetch(input, init);
+        };
+    });
+    await setSpeechFixture(worker);
+}
+async function setSpeechFixture(worker, values = {}) {
+    const {duration = 20, delayMs = 120, error = false} = values;
+    return worker.evaluate(values => {
+        const fixture = globalThis.__readingSpeechFixture;
+        Object.assign(fixture, values); fixture.generation += 1; return fixture.generation;
+    }, {audioBase64: silentSpeechWav(duration), delayMs, error});
+}
+async function speechCalls(worker) {return worker.evaluate(() => globalThis.__readingSpeechFixture.calls.map(call => ({...call})));}
+async function speechUi() {
+    return ui(function() {
+        const root = this.querySelector('[data-reading-speech]');
+        return {status: root?.getAttribute('data-status'), time: this.querySelector('[data-reading-audio-time]')?.textContent?.trim() || '',
+            error: this.querySelector('[data-reading-audio-error]')?.textContent?.trim() || '',
+            source: this.querySelector('[data-reading-source]')?.textContent?.trim() || '',
+            currentMarks: this.querySelectorAll('[data-reading-source] .fr-speech-current').length};
+    });
+}
+async function nativeSpeechAudio() {
+    const {cdp} = await snapshot();
+    let contexts = speechContexts.get(cdp);
+    if (!contexts) {
+        contexts = new Map(); speechContexts.set(cdp, contexts);
+        cdp.on('Runtime.executionContextCreated', ({context}) => contexts.set(context.id, context));
+        cdp.on('Runtime.executionContextDestroyed', ({executionContextId}) => contexts.delete(executionContextId));
+        cdp.on('Runtime.executionContextsCleared', () => contexts.clear());
+        await cdp.send('Runtime.enable');
+    }
+    const extensionId = new URL(origin).host;
+    const candidates = [...contexts.values()].filter(value => value.auxData?.type === 'isolated'
+        && (value.origin?.startsWith(origin) || value.name?.includes(extensionId)));
+    assert(candidates.length, `No production content isolated world available for native Audio inspection: ${JSON.stringify([...contexts.values()].map(value => ({name: value.name, origin: value.origin, type: value.auxData?.type})))}`);
+    const audios = [];
+    for (const candidate of candidates) {
+        const objectGroup = `reading-speech-probe-${candidate.id}`;
+        try {
+            const prototype = await cdp.send('Runtime.evaluate', {expression: 'HTMLAudioElement.prototype', contextId: candidate.id, objectGroup});
+            assert(!prototype.exceptionDetails && prototype.result.objectId, 'Native Audio prototype unavailable in the production content world');
+            const objects = await cdp.send('Runtime.queryObjects', {prototypeObjectId: prototype.result.objectId, objectGroup});
+            const result = await cdp.send('Runtime.callFunctionOn', {objectId: objects.objects.objectId, returnByValue: true,
+                functionDeclaration: 'function(){return this.filter(audio => !!audio.getAttribute("src")).map(audio => ({src:audio.src,currentTime:audio.currentTime,duration:Number.isFinite(audio.duration)?audio.duration:null,paused:audio.paused,ended:audio.ended,readyState:audio.readyState,rate:audio.playbackRate,loop:audio.loop,error:audio.error?.code||null}));}'});
+            assert(!result.exceptionDetails, JSON.stringify(result.exceptionDetails));
+            audios.push(...result.result.value.map(audio => ({...audio, contextId: candidate.id})));
+        } finally {await cdp.send('Runtime.releaseObjectGroup', {objectGroup});}
+    }
+    assert(audios.length <= 1, `The reading page must retain at most one sourced native Audio: ${JSON.stringify(audios)}`);
+    return audios;
+}
+async function speechSample(label) {
+    const audio = await nativeSpeechAudio(), panel = (await snapshot()).panel;
+    const sample = {label, at: Date.now(), audio, ui: panel ? await speechUi() : null};
+    report.speech.samples.push(sample); return sample;
+}
+async function awaitSpeech(status, label) {await until(async () => (await speechUi()).status === status, label);}
+async function activeSpeech(label) {
+    await until(async () => {const audio = (await nativeSpeechAudio())[0]; return audio?.duration > 0 && audio.readyState >= 2 && !audio.paused && audio.currentTime > .1;}, label);
+    return (await speechSample(label)).audio[0];
+}
+async function noSpeech(label, settlingMs = 0) {
+    if (settlingMs) await wait(settlingMs);
+    await until(async () => (await nativeSpeechAudio()).length === 0, label);
+    report.speech.cleanup.push(await speechSample(label));
+}
+async function stoppedSpeech(label) {
+    await awaitSpeech('idle', label);
+    const sample = await speechSample(label);
+    assert(sample.audio.every(audio => audio.paused && audio.currentTime < .08), 'Stop must silence and rewind any retained cached Audio');
+    assert.equal(sample.ui.currentMarks, 0, 'Stop must clear estimated follow text');
+    return sample;
+}
+async function speechSource(value) {
+    await page.evaluate(value => {document.querySelector('#primary').textContent = value;}, value);
+    await capture(value);
+}
+async function speechRate(value) {
+    assert([.75, 1, 1.25, 1.5].includes(value));
+    // macOS 原生下拉菜单依赖前台窗口；后台 CDP 仅操作实际 select 的选项和 Vue change 绑定。
+    // 这与 WebDriver selectOption 的边界相同，不宣称操作了系统菜单或可信快捷键。
+    await ui(function(rate) {
+        const select = this.querySelector('[data-reading-rate]');
+        if (!select || select.disabled || ![...select.options].some(option => option.value === String(rate))) throw new Error('Missing enabled native rate option');
+        select.value = String(rate); select.dispatchEvent(new Event('change', {bubbles: true}));
+    }, value);
+    report.speech.rateSelections ||= [];
+    report.speech.rateSelectionBoundary = 'DOM select value/change through the actual Vue/native-select binding; OS picker and trusted keyboard selection are not tested.';
+    report.speech.rateSelections.push({requested: value, selected: await ui(function() {return this.querySelector('[data-reading-rate]').value;})});
+    await until(async () => (await nativeSpeechAudio())[0]?.rate === value, `Native playback rate ${value}`);
+}
+function speechRecord(name, details = {}) {
+    report.speech.cases.push({...details, name}); record(name, {scope: 'speech', ...details});
+}
+async function runSpeechFlow(worker) {
+    await installSpeechFixture(worker); await patch({selectionTtsMode: 'online-only'});
+    const learningBefore = await vocabulary('list');
+    await openReading();
+    assert.equal(await ui(function() {return this.querySelector('[data-reading-speech]');}), null, 'No speech controls may fabricate an empty original');
+    assert.equal((await speechCalls(worker)).length, 0); await noSpeech('No selected source creates no Audio');
+    await capture(SOURCE); assert.equal((await speechCalls(worker)).length, 0, 'Capturing text must not start TTS');
+    assert.equal((await speechUi()).status, 'idle');
+    assert(await ui(function() {return this.querySelector('[data-reading-listen="translation"]').disabled;}), 'Translation speech must wait for an actual translation');
+    const htmlBefore = await page.locator('article').innerHTML();
+    await click(has('data-reading-play'), 'explicitly play selected original'); await awaitSpeech('playing', 'Speech enters playing after decoding');
+    const decoded = await activeSpeech('native silent WAV decode');
+    assert.equal(decoded.duration, 20); assert.equal(decoded.error, null);
+    await until(async () => (await speechUi()).currentMarks === 1, 'Estimated follow mark advances on the original');
+    assert.equal(await sourceText(), SOURCE); assert.equal(await page.locator('article').innerHTML(), htmlBefore);
+    assert.equal((await speechCalls(worker)).length, 1); assert.equal((await speechCalls(worker))[0].source, SOURCE);
+    await shot('speech-original-playing', true);
+    await click(mode('logic'), 'reading logic during original speech'); await click(mode('original'), 'return to original during speech');
+    const afterModeChange = (await speechSample('Help-mode changes preserve original Audio')).audio[0];
+    assert(afterModeChange && !afterModeChange.paused && afterModeChange.src === decoded.src, 'Changing reading help must not replace or pause the current original Audio');
+    speechRecord('Speech stays inactive until an explicit play gesture; silent WAV decodes and the native media clock advances with estimated follow text', {decoded});
+
+    const callsBeforePause = (await speechCalls(worker)).length;
+    await click(has('data-reading-play'), 'pause native playback'); await awaitSpeech('paused', 'Pause status');
+    const paused = (await speechSample('paused')).audio[0]; assert(paused?.paused);
+    await wait(650); const stillPaused = (await speechSample('pause remains frozen')).audio[0];
+    assert(stillPaused?.paused); assert.equal(stillPaused.src, paused.src); assert(Math.abs(stillPaused.currentTime - paused.currentTime) < .08, 'Pause must freeze the actual Audio clock');
+    await shot('speech-original-paused', true);
+    await click(has('data-reading-play'), 'continue native playback'); await awaitSpeech('playing', 'Continue status');
+    await until(async () => {const audio = (await nativeSpeechAudio())[0]; return audio && !audio.paused && audio.src === paused.src && audio.currentTime > paused.currentTime + .2;}, 'Continue from the same native Audio position');
+    assert.equal((await speechCalls(worker)).length, callsBeforePause);
+    speechRecord('Pause freezes native Audio and continue resumes its existing position without synthesizing again', {paused, stillPaused});
+
+    await click(has('data-reading-play'), 'pause before precise seek assertions'); await awaitSpeech('paused', 'Paused controls');
+    for (const rate of [.75, 1, 1.25, 1.5]) {await speechRate(rate); assert((await nativeSpeechAudio())[0].paused);}
+    await speechRate(1);
+    const beforeSeek = (await speechSample('before seek')).audio[0];
+    await click(node => attr(node, 'data-reading-seek') === '5', 'forward five seconds');
+    const forward = (await speechSample('forward five seconds')).audio[0]; assert(Math.abs(forward.currentTime - Math.min(beforeSeek.duration, beforeSeek.currentTime + 5)) < .08);
+    await click(node => attr(node, 'data-reading-seek') === '-5', 'rewind five seconds');
+    const backward = (await speechSample('rewind five seconds')).audio[0]; assert(Math.abs(backward.currentTime - Math.max(0, forward.currentTime - 5)) < .08);
+    await click(has('data-reading-restart'), 'restart cached original');
+    await until(async () => (await nativeSpeechAudio())[0]?.currentTime < 1.5, 'Restart resets the real audio position');
+    await click(has('data-reading-stop'), 'stop before listening to cached original again'); await stoppedSpeech('Cached relisten preparation is quiet');
+    await click(node => attr(node, 'data-reading-listen') === 'source', 'listen to cached original again');
+    assert.equal((await speechUi()).status, 'idle'); await click(has('data-reading-play'), 'explicit cached relisten');
+    await activeSpeech('relisten cached original'); assert.equal((await speechCalls(worker)).length, callsBeforePause);
+    speechRecord('Native rate, five-second seeks, restart and listening to the same original reuse synthesized audio', {beforeSeek, forward, backward});
+
+    await click(has('data-reading-stop'), 'stop before loop fixture'); await stoppedSpeech('Explicit stop silences native Audio');
+    const loopGeneration = await setSpeechFixture(worker, {duration: 3}); await speechSource('This selected sentence is the silent loop fixture.');
+    await click(has('data-reading-loop'), 'enable repeat'); await click(has('data-reading-play'), 'play repeating silent WAV');
+    const loopStart = await activeSpeech('loop playback begins'); assert.equal(loopStart.duration, 3);
+    await until(async () => (await nativeSpeechAudio())[0]?.currentTime > 2.15, 'Loop reaches the actual media end', 8000);
+    await until(async () => {const audio = (await nativeSpeechAudio())[0]; return audio && !audio.paused && audio.currentTime < .9;}, 'Native playback crosses the end and loops to the beginning', 8000);
+    const looped = (await speechSample('loop crossed native end')).audio[0];
+    assert.equal((await speechCalls(worker)).filter(call => call.generation === loopGeneration).length, 1, 'Repeating native Audio must not synthesize again');
+    await click(has('data-reading-loop'), 'disable repeat');
+    await until(async () => (await nativeSpeechAudio()).length === 0 || (await nativeSpeechAudio())[0]?.ended, 'Disabling repeat permits the real next media end', 8000);
+    speechRecord('Repeat crosses the real WAV end and returns to the beginning without another synthesis', {loopStart, looped});
+
+    await setSpeechFixture(worker); await speechSource(SOURCE);
+    await click(has('data-reading-full'), 'prepare the actual translation for speech'); await until(async () => (await translationText()).includes(TRANSLATION), 'Speech translation source');
+    await click(node => attr(node, 'data-reading-listen') === 'source', 'select original speech');
+    assert.equal((await speechUi()).status, 'idle'); await click(has('data-reading-play'), 'explicitly play original'); await activeSpeech('original playback before kind switch');
+    await click(node => attr(node, 'data-reading-listen') === 'translation', 'select translation speech');
+    assert.equal((await speechUi()).status, 'idle'); await noSpeech('Selecting the translation is quiet and releases original Audio');
+    await click(has('data-reading-play'), 'explicitly play translation'); await activeSpeech('translation replaces original Audio');
+    await shot('speech-translation-playing', true);
+    const translatedCalls = await speechCalls(worker); assert(translatedCalls.some(call => call.source === TRANSLATION), 'Translation speech must synthesize the displayed translation');
+    await click(node => attr(node, 'data-reading-listen') === 'source', 'switch back to original');
+    assert.equal((await speechUi()).status, 'idle'); await noSpeech('Selecting original is quiet');
+    await click(has('data-reading-play'), 'explicitly replay original'); await activeSpeech('source replaces translation Audio');
+    await patch({from: 'fr'}); await noSpeech('Language change cancels the current Audio'); await patch({from: 'en'});
+    await setSpeechFixture(worker, {error: true}); await speechSource('This controlled synthesis must fail before a successful retry.');
+    await click(has('data-reading-play'), 'controlled synthesis error'); await awaitSpeech('error', 'Speech exposes controlled provider failure');
+    assert((await speechUi()).error, 'Speech error must be visible'); await noSpeech('Failed synthesis does not retain Audio');
+    await setSpeechFixture(worker); await click(has('data-reading-play'), 'retry controlled synthesis'); await activeSpeech('retry succeeds with real decoder');
+    await click(has('data-reading-stop'), 'stop retry'); await stoppedSpeech('Retry stop silences Audio');
+
+    const cancelCases = [
+        {name: 'preparing cancel', text: 'Cancel this preparing silent speech request.'},
+        {name: 'close', text: 'Close this delayed silent speech request.'},
+        {name: 'source change', text: 'Replace this delayed silent speech source.'},
+        {name: 'route', text: 'Route away from this delayed silent speech request.'},
+        {name: 'disable', text: 'Disable this delayed silent speech request.'},
+    ];
+    for (const scenario of cancelCases) {
+        const generation = await setSpeechFixture(worker, {delayMs: 850});
+        await speechSource(scenario.text); await click(has('data-reading-play'), `start delayed ${scenario.name}`);
+        await until(async () => (await speechCalls(worker)).some(call => call.generation === generation), `${scenario.name}: synthesis entered fixture`);
+        assert.equal((await speechUi()).status, 'preparing');
+        if (scenario.name === 'preparing cancel') await click(has('data-reading-play'), 'cancel preparation through the play control');
+        else if (scenario.name === 'close') {await click(has('data-reading-close'), 'close delayed speech'); await until(async () => !(await snapshot()).host, 'Delayed speech panel closes');}
+        else if (scenario.name === 'source change') await speechSource('This replacement must not inherit the previous silent audio.');
+        else if (scenario.name === 'route') {
+            await page.evaluate(() => history.pushState({}, '', '/article?speech=route'));
+            await until(async () => !(await snapshot()).host, 'Speech route change closes the panel');
+        } else {await patch({on: false}); await until(async () => !(await snapshot()).host, 'Speech disable closes the panel');}
+        await noSpeech(`${scenario.name}: delayed response cannot create or revive Audio`, 1050);
+        if ((await snapshot()).panel) assert.equal((await speechUi()).status, 'idle');
+        if (scenario.name === 'disable') {await patch({on: true}); await wait(300);}
+        if (!(await snapshot()).panel) await openReading();
+    }
+    // 活跃音频清理也要覆盖，不能只证明 pending 请求从未创建媒体。
+    await setSpeechFixture(worker); await speechSource('Active silent speech must be released when its source changes.');
+    await click(has('data-reading-play'), 'start active cleanup source'); await activeSpeech('active cleanup Audio');
+    await speechSource('The latest source has no automatic speech.'); await noSpeech('Active source replacement releases Audio');
+    speechRecord('Original and translation selection stays quiet until play; failure retry and delayed preparation, close, source, route, disable and language cleanup reject stale playback', {cancellationScenarios: cancelCases.map(item => item.name)});
+
+    await page.setViewportSize({width: 390, height: 800}); await geometry('speech-390');
+    await focus(node => attr(node, 'data-reading-listen') === 'source', 'keyboard original speech entry');
+    let reachedPlay = false;
+    for (let index = 0; index < 12; index += 1) {
+        await page.keyboard.press('Tab');
+        const focused = await ui(function() {
+            const active = this.getRootNode().activeElement, panel = this.getBoundingClientRect(), rect = active?.getBoundingClientRect();
+            return {play: !!active?.hasAttribute('data-reading-play'), visible: !!rect && rect.top >= panel.top - 1 && rect.bottom <= panel.bottom + 1 && rect.left >= panel.left - 1 && rect.right <= panel.right + 1};
+        });
+        if (!focused.play) continue;
+        assert(focused.visible, 'The keyboard speech action must scroll fully inside the narrow panel'); reachedPlay = true; break;
+    }
+    assert(reachedPlay, 'Trusted Tab must reach the speech play control');
+    await page.keyboard.press('Enter'); await activeSpeech('390px trusted keyboard starts Audio');
+    await page.keyboard.press('Enter'); await awaitSpeech('paused', '390px trusted keyboard pauses Audio'); assert((await nativeSpeechAudio())[0].paused);
+    const narrow = await ui(function() {
+        const root = this.querySelector('[data-reading-speech]'), box = root.getBoundingClientRect();
+        return {width: box.width, horizontalOverflow: root.scrollWidth > root.clientWidth + 1,
+            controls: [...root.querySelectorAll('button,select,input')].filter(node => node.getClientRects().length).map(node => {const rect = node.getBoundingClientRect(); return {label: node.getAttribute('aria-label') || node.textContent.trim(), left: rect.left, right: rect.right};}),
+            left: box.left, right: box.right, viewportWidth: innerWidth};
+    });
+    await shot('speech-390-paused', true);
+    assert(!narrow.horizontalOverflow && narrow.left >= 0 && narrow.right <= 391, 'The 390px speech group must fit the viewport');
+    assert(narrow.controls.every(item => item.left >= narrow.left - 1 && item.right <= narrow.right + 1), 'Speech controls must not be horizontally clipped');
+    await click(has('data-reading-stop'), 'stop after keyboard pause'); await stoppedSpeech('Keyboard stop silences cached Audio');
+    await click(has('data-reading-close'), 'close speech final panel'); await until(async () => !(await snapshot()).host, 'Speech final panel removed');
+    await noSpeech('Final close releases cached Audio');
+    assert.deepEqual(await vocabulary('list'), learningBefore, 'Speech listening and controls must not alter learning records');
+    report.speech.fixtureRequests = await speechCalls(worker); report.speech.layout = narrow;
+    speechRecord('390px speech controls fit without horizontal overflow and trusted Tab/Enter start and pause real Audio without modifying learning records', {narrow});
+    await page.setViewportSize({width: 1200, height: 850});
+}
 
 async function until(predicate, label, timeout = 15000) {
     const end = Date.now() + timeout;
@@ -192,11 +468,13 @@ async function openPopup() {
     return target;
 }
 async function openReading() {
+    // 先激活夹具页再装载 Popup，避免真实 tabs.onActivated 与首个操作争用水合归属。
+    await helper.activateExtensionTabWithoutForeground(context, page);
     await popup.reload({waitUntil: 'domcontentloaded'});
     await popup.locator('.popup-shell[data-config-ready="true"]').waitFor();
-    await helper.activateExtensionTabWithoutForeground(context, page);
     await popup.locator('[data-testid="progressive-reading"]').click();
     await until(async () => Boolean((await snapshot()).panel), 'Popup opens progressive reading');
+    await until(async () => await popup.evaluate(() => window.__progressivePopupCloseInvocations) === 1, 'Successful reading reply requests Popup closure');
     assert.equal(await page.locator('#fluent-read-progressive-reading').count(), 1, 'Reopening must not duplicate the Shadow host');
     assert.equal(await popup.evaluate(() => window.__progressivePopupCloseInvocations), 1, 'Successful reading action must request Popup closure');
     assert.equal(findAll((await snapshot()).host, node => attr(node, 'data-reading-mode') !== undefined).length, 4, 'The panel must offer four direct help modes');
@@ -478,7 +756,7 @@ async function main() {
         launchAttempted = true;
         session = await helper.launchFocusSafePersistentContext({chromium, profileDir, browserPath, background: true, headless: false,
             viewport: {width: 1280, height: 900}, displayTarget: arg('display', 'secondary'), timeout: 30000,
-            browserArgs: [`--disable-extensions-except=${extensionDir}`, `--load-extension=${extensionDir}`, '--no-first-run', '--no-default-browser-check']});
+            browserArgs: [`--disable-extensions-except=${extensionDir}`, `--load-extension=${extensionDir}`, '--no-first-run', '--no-default-browser-check', ...(speechMode ? ['--mute-audio'] : [])]});
         guardBrowserClose(session, profileDir); context = session.context; browserPid = await getGuardedBrowserPid(session);
         Object.assign(report, {launchMode: session.launchMode, focusPolicy: session.focusPolicy, windowPlacement: session.windowPlacement});
         assert.equal(report.launchMode, 'macos-background-cdp'); assert.equal(report.focusPolicy, 'launchservices-no-foreground');
@@ -657,6 +935,7 @@ async function main() {
             assert.deepEqual(latest, previous, 'Reading must not infer mastery, encounters or review state from passive behavior');
         }
         record('Opening, mode switches, scrolling and reading do not update learning records');
+        if (speechMode) await runSpeechFlow(worker);
         assert.equal(report.consoleErrors.length, 0, JSON.stringify(report.consoleErrors));
         await focusSample('completed'); report.ok = true;
     } catch (error) {
@@ -668,6 +947,7 @@ async function main() {
         process.exitCode = 1;
     } finally {
         await stopDemoCapture().catch(error => {report.demoStopError = error.message; report.ok = false; process.exitCode = 1;});
+        if (speechWorker && report.speech) report.speech.fixtureRequests = await speechCalls(speechWorker).catch(error => ({readError: error.message}));
         stopping = true; clearInterval(monitor); if (monitorTask) await monitorTask.catch(() => {});
         for (const cdp of ownedCdpSessions) await cdp.detach().catch(() => {});
         let closed = false;

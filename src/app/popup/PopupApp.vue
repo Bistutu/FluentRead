@@ -588,19 +588,9 @@ const pageTranslationHotkey = computed(() => {
   }
   return displayName.replace(/Pageup$/u, 'PgUp').replace(/Pagedown$/u, 'PgDn');
 });
-const pageTranslationShortLabels: Record<UiLanguage, {translate: string; restore: string}> = {
-  'zh-CN': {translate: '翻译', restore: '还原'},
-  'en-US': {translate: 'Translate', restore: 'Restore'},
-  'ja-JP': {translate: '翻訳', restore: '戻す'},
-  'ko-KR': {translate: '번역', restore: '복원'},
-  'fr-FR': {translate: 'Traduire', restore: 'Rétablir'},
-  'es-ES': {translate: 'Traducir', restore: 'Restaurar'},
-  'ru-RU': {translate: 'Перевести', restore: 'Вернуть'},
-};
 const pageTranslationButtonLabel = computed(() => {
   if (currentPdfSource.value) return pageTranslationLabel.value;
-  const labels = pageTranslationShortLabels[language.value];
-  const action = pageTranslated.value ? labels.restore : labels.translate;
+  const action = t(pageTranslated.value ? 'popup.compact.restore' : 'popup.compact.translate');
   // 超长组合完整保留在提示中；短组合直接并入标题，不另占按键胶囊或一行。
   const shortcut = pageTranslationHotkey.value;
   if (!shortcut || shortcut.length > 10) return action;

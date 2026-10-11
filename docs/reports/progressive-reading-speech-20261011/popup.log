@@ -1,0 +1,51 @@
+
+> FluentRead-流畅阅读@0.0.37 test /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011
+> node scripts/testing/run-resource-safe.mjs -- vitest run "tests/popupAppLifecycle.test.ts" "tests/popupFeatureVisibility.test.ts" "tests/popupKeyInformation.test.ts"
+
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vitest run tests/popupAppLifecycle.test.ts tests/popupFeatureVisibility.test.ts tests/popupKeyInformation.test.ts
+
+ RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011
+
+ ✓ tests/popupFeatureVisibility.test.ts (31 tests) 99ms
+ ✓ tests/popupAppLifecycle.test.ts (37 tests) 16010ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 固定来源面板固定来源网页，翻译/恢复不受其它窗口或活动标签页影响 967ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 固定来源面板文档入口读取来源 PDF，源网页关闭后不切换到其它网页 483ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 信息高亮 keywords 偏好与旧入口配置不进入 Popup，也不启动页面或模型消息 624ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 信息高亮 surprisal-local 偏好与旧入口配置不进入 Popup，也不启动页面或模型消息 407ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 启动状态晚到不覆盖完成的翻译；原有站点规则也不让读取自行失效 402ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 已有始终翻译站点仍接受真实启动状态，恢复按钮与页面一致 406ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 局部等待期间锁定实际按钮，连续旧事件只发送一次并只关闭一次 418ms
+   ✓ 实际 Popup 缓存模板与页面操作 > off 使等待查询的页面/局部操作失效，不发消息或关闭 385ms
+   ✓ 实际 Popup 缓存模板与页面操作 > site 使等待查询的页面/局部操作失效，不发消息或关闭 392ms
+   ✓ 实际 Popup 缓存模板与页面操作 > hide 使等待查询的页面/局部操作失效，不发消息或关闭 395ms
+   ✓ 实际 Popup 缓存模板与页面操作 > cached 使等待查询的页面/局部操作失效，不发消息或关闭 403ms
+   ✓ 实际 Popup 缓存模板与页面操作 > unmount 使等待查询的页面/局部操作失效，不发消息或关闭 421ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 旧翻译按钮在状态切换、再次恢复后仍不能借用新的意图 392ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 活动标签页切换后不把旧页面的恢复操作发送给新页面 413ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 子组件缓存的旧站点按钮不通过新 props 和新父回调修改新页面 425ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 禁用优先于始终/全局自动翻译，保留偏好并用提示说明网站范围 409ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 禁用按钮可中断在途翻译，规则保存期间锁定两个开关并等待真实反馈 457ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 站点保存失败显示可访问错误并回读权威配置，不能声称保存或启动翻译 422ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 站点保存保留同 tick 尚未由 post watcher 提交的其他用户草稿 524ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 共享 store 同步捕获嵌套草稿，旧 ACK 不覆盖等待期间的新草稿 491ms
+   ✓ 实际 Popup 缓存模板与页面操作 > url 导航事件使已发出的旧翻译回复失效 375ms
+   ✓ 实际 Popup 缓存模板与页面操作 > loading 导航事件使已发出的旧翻译回复失效 573ms
+   ✓ 实际 Popup 缓存模板与页面操作 > activate 导航事件使已发出的旧翻译回复失效 425ms
+   ✓ 实际 Popup 缓存模板与页面操作 > remove 导航事件使已发出的旧翻译回复失效 623ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 状态查询途中连续导航仍取最后页面，标题、完成和其它窗口事件不查询 513ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 抽屉关闭再打开、字段改回及暂停后旧控件均不能借用新会话 532ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 实际显示模式保留 Google 保存偏好，并阻止旧服务和旧划词模式按钮 439ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 图片抽屉复验平台能力，旧能力回调失效，恢复后新按钮生效 476ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 缓存清理独占请求；失活旧回复不能释放重新激活后的新请求 481ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 缓存失败与暂停均有确定结束状态，失败只显示当前会话通知 429ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 赞赏打开不抢新焦点，旧遮罩不能关闭新弹窗；Tab/Escape 保持焦点归属 464ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 赞赏的未完成焦点任务在关闭/失活后失效，缓存按钮不能重新打开 496ms
+   ✓ 实际 Popup 缓存模板与页面操作 > settings 的 API 失败可恢复，关闭后旧成功不关闭新会话 472ms
+   ✓ 实际 Popup 缓存模板与页面操作 > document 的 API 失败可恢复，关闭后旧成功不关闭新会话 445ms
+ ✓ tests/popupKeyInformation.test.ts (22 tests) 1982ms
+
+ Test Files  3 passed (3)
+      Tests  90 passed (90)
+   Start at  17:54:37
+   Duration  21.57s (transform 1.40s, setup 0ms, collect 2.95s, tests 18.09s, environment 0ms, prepare 118ms)
+

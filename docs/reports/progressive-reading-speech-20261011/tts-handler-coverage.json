@@ -1,0 +1,23 @@
+{
+  "file": "src/features/selection-translation/background/ttsHandler.ts",
+  "statements": {
+    "total": 276,
+    "covered": 276,
+    "pct": 100
+  },
+  "branches": {
+    "total": 176,
+    "covered": 176,
+    "pct": 100
+  },
+  "functions": {
+    "total": 20,
+    "covered": 20,
+    "pct": 100
+  },
+  "lines": {
+    "total": 276,
+    "covered": 276,
+    "pct": 100
+  }
+}
