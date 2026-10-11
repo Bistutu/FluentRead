@@ -1296,9 +1296,37 @@ Options 的支持图仅在 About 模板分支取用；联系图仅在公开按�
 本批证据根为 `/private/tmp/fluentread-performance-experience-20261010/round56-about-jpeg-lazy/`：`candidate-attempt1/RECEIPT.json`、`ACTUAL-CASE-PRESERVATION.json`、`red-client-attempt1/`、`coverage-attempt1/`与实际coverage数据、`builds-attempt1/RECEIPT.json`、`frozen-builds-attempt1/`、`ROOT-FROZEN-PRODUCT-REVIEW.json`、原生两次收据/报告、`native-ready-attempt2/READY.json`、私有v2 diff及review、`peer-native-results-review/REVIEW.md`、`ROOT-NATIVE-RESULT-REVIEW.json`（24,192 B / `9e535f47e515d0a1f902c16458cf472077216a0a900086feb8ab4e75b3edeb73`）。第二次实际原生报告4,020,346 B / `dd5cdce0e8522d17fb21265861c31e061078555d8d86002614fccee282efe736`；退出收据2,570 B / `91f671d2191cdf8720691e757b165dae42c0f4db9f1c82c6131c294edab5e292`。本地报告与文档检查另按最终文件执行；未push、PR、merge或发布，目标继续保持active；未修改或复制参考仓库。
 
 
+### 第五十三批：品牌 SVG 表无损压缩与同步首次访问
+
+保留原 38 个品牌、63 条路径及全部有序属性、别名、色调、许可与资源 pin。普通 helper 同步返回表实际拥有的品牌。仅 `standalone && !GreasyFork` 的构建插件替换无 query/虚拟前缀的精确物理 helper，以 gzip level 9 压缩完整表，复用既有 pako 字符串端口。首次已有品牌访问恢复全表，成功校验后才缓存；unknown/custom/继承键不恢复，失败不发布，下一次实际访问可重试。
+
+模块初始化仍有 38 个 known-key 写入，General 挂载可能很早触发首次品牌恢复。这不是逐品牌延迟加载或零成本初始化；本批未测出独立 CPU/heap 收益。
+
+实际 342 个聚焦案例全部通过（原 307 + 新增 35；187/6/100/49），原完整案例正文及 fullName 重数保留。compile、architecture、audit 自然码均为 0；最终 architecture 为 34 文件/1880 个实际案例，audit 为 693 文件/12311 个索引案例，不能当作全部执行。覆盖配置仅新增 collector/helper include，四维门槛仍 100。最终 6 个图标案例给普通 helper 6/6 语句、6/6 行、1/1 函数、3/3 分支，四维均 100%，不外推生成插件或全仓覆盖。首次覆盖运行 0 tests、自然码 1，其日志和回执保留；最终 JSON 复用并覆盖同一报告目录，不能声称首次 JSON 保留。
+
+四产品正式构建以历史 R56 完整产物 A 对照本批 B，属于四生产文件整体前后比较，不是 fresh 同源反事实。Chrome/Firefox 各增加 34 B；普通脚本 2,046,563 B，完整字节相同；独立脚本从 3,840,234 降至 3,823,529 B，实际净减 16,705 B。原 3,600,000 B 预算不变，仍超 223,529 B；standalone 构建自然码 0，但预算 verifier 自然码 1，未称全绿，也不计入抛错后的检查。构建后两份 owner 与 collector 的差异属于验证输入，四生产文件保持冻结。原生行为与首次可见代价见下列实际复验。
+
+证据目录：`/private/tmp/fluentread-performance-experience-20261010/round57-service-brand-paths/`。测试/覆盖见 `candidate-attempt1/RECEIPT.json`、`validation-config-attempt2/RECEIPT.json` 与 `peer-final-test-review/REVIEW.md`；构建见 `builds-attempt1/RECEIPT.json`、`frozen-builds-attempt1/COMPARISON.json`、`ROOT-FROZEN-PRODUCT-REVIEW.json`。
+
+原生复验使用完整 A/B classic script、官方空配置 memoryFallback；正常可见、后台第二屏的临时 Edge，四对 AB/BA/AB/BA、零预热、八个独立 profile 顺序运行。第四次自然码 0，整体及八行均通过；24 个阶段、24 张 PNG 的实际 hash 保留。通用设置真实点击、唯一 aria-controls/listbox 归属、DeepL 两条路径全部有序属性与颜色、可信 INPUT Escape、默认服务与宿主投影均相等。仅映射锁定 Vue 编译器产生且各臂已核实的 ServiceIcon scope 属性，随机菜单 ID 在每臂证明归属后单独比较；其他原始属性完整保留。
+
+| 观测耗时上界（ms） | A 中位数 | B 中位数 | 配对 B−A 中位数 |
+| --- | ---: | ---: | ---: |
+| 外部脚本同步窗口 | 231.10 | 229.35 | −1.75 |
+| 宿主节点连接 | 294.85 | 292.90 | −1.95 |
+| 主入口可见 | 303.40 | 299.60 | −2.85 |
+| 齿轮→通用服务字段就绪 | 1615.35 | 1625.15 | +8.75 |
+| 选择框→DeepL 首次可见 | 136.50 | 137.25 | +2.35 |
+
+均为有限四对观测，包含渲染/CDP/调度成本，不能声称性能最佳、孤立解压耗时、CPU/heap 或显著提速。首次可见计时先记录，随后才只读等待实际动画结束及连续 rAF 几何稳定，等待另存约 194.1–225.6 ms，不混入该指标。内部 4 s 只在循环检查点生效，完整 CDP 操作由外部 5 s 限时。稳定后八行均为 45 mounted/6 visible/39 hidden；打开前及关闭后均 45/0/45，未删可见性比较。下拉点击前已存在隐藏品牌节点，General 挂载可能很早恢复表；不能声称下拉点击才首次解压。无服务调用、配置写入、GM/codec 注入或滚轮操作；不外推 Firefox 运行时、全部漫画站点、所有原生品牌或真实供应商。
+
+前三次整体自然码 1 保持独立：前两次止于输入内部 shadow 命中检查；第三次八行已完成，但 pair 2 的 xiaoniu 瞬时 visible 差异使最终比较失败。第四次增加严格归属的只读稳定观察，完整比较保留；这不证明第三次失败的动画因果。v5 由根代理事前审查、执行后独立 peer 复核。八行诊断六数组和 focusEvents 均空，七次/行前台检查均未成为前台，四项专有进程/监视器/profile 清理均为真，源输入稳定、服务器关闭。根代理仅目视最终第一对 A/B 菜单两图，保留粉色中文设置布局与蓝色 DeepL 图标，不主张整图像素相同。
+
+原始结果为 `first-use-native-attempt4/REPORT.json`（718975 B，SHA256 `62ea0098258a6fd4234d38284404f32ea1e5addb225ae77d70673770d9a877bb`）；根代理从八行重算五指标、四对完整语义投影、24 PNG、2463 源库存及 READY support 的证据在 `ROOT-NATIVE-RESULT-REVIEW.json`。根 JSON 复核初稿对诊断结构的断言错误已单独留存，修正后通过，未重跑原生业务。独立 v5 执行后审查为 `peer-native-settle-review/REVIEW.md`，最终原生独立复核为 `peer-final-native-attempt4-review/REVIEW.md`；文档门禁回执为 `docs-attempt2/RECEIPT.json`。
+
 ## 后续候选
 
-第五十二批完成 About 两张原JPEG的无损压缩和明确使用点恢复，完整独立脚本整包实测减少41,874 B。生成代码与客户端owner保留原225项、新增23项通过，八次全新原生公开首用/关闭/重开及完整图片验证通过；有限四对启动/首用方向有波动，未测隔离CPU/heap。最新完整独立脚本3,840,234 B，仍超原3,600,000预算240,234 B；ordinary2,046,563 B逐字节不变。下一步审查38品牌SVG路径表的构建期无损压缩与同步访问入口，保留品牌全表、属性/顺序、别名、自定义与未知分支、原style/accessibility及成功缓存/失败重试语义。理论payload差17,510 B未计helper、key-map、JSON parse和首次全表恢复成本，不当作正式收益；当前只是私有候选草稿。继续用完整owner、四正式出口实测与可审查首用代价决定是否采用，保留全部服务、语言、许可、资源pin、架构、生命周期与原预算。
+第五十三批完成品牌 SVG 表的无损构建压缩与同步访问入口，保留完整品牌、路径属性、别名、原样式与许可。完整独立脚本实测净减 16,705 B 至 3,823,529 B，原 3,600,000 B 预算仍超 223,529 B；ordinary 2,046,563 B 整包字节相同。342 个聚焦案例、轻量 helper 四维 100% 与八次有限原生通用设置/菜单开关验证通过，未测隔离 CPU/heap 或恢复次数，有限首用方向不支持显著提速。下一步只审查漫画数值/用户规则归一化与内置目录匹配的依赖拆分：完整迁移原五函数并保留旧 API、规则顺序与用户 URL 校验、扩展目录及真实阅读器消费者。静态 10,701 B 初始化段是候选机会，不当作净收益；私有草稿尚需 clean checkpoint 重绑、实际基线/反例、四维覆盖和四正式出口验证。继续保留全部可达能力、资源 pin、许可、架构、生命周期与原预算。
 
 
 合成段 loading 挂载循环、缓存键重复术语解析、高级请求限制禁用与缓存复习快捷键已在第二十七至三十批分别修复。第三十一轮调度只读探针保留现检查：13 个受控普通场景虽减少同 owner 复验，但第三个 source-only 读取中的 style getter 同步替换同文本 Text 时，复用先前结果留下脱离节点身份；这只是受控端口反例，未当成原生复现或 CPU 收益，未实施。证据为 `round31-page-scheduling-audit/`。第三十二轮已撤回 Cloud 普通历史入口的减加载推荐；LearningCenter 的 History/Memory 首用加载已在第三十一批实施，实际收藏阶段新增请求文件减少 20,641 B，父装配、加载故障与原行为通过限定验证。第三十四轮审计确认的八个既不可达设置子 UI 已在第三十二批排除，完整独立脚本实际减少 183,104 B，仍比原 3,600,000 B 门槛多 38,416 B。继续审查其 Options/IIFE 归属与可证明不可达的资源，保持可达服务、本地模型/TTS、数据、语言、许可和原门槛，不为达预算删除已有能力。请求队列仍在 response body 完成前占用并发槽；会改变错误种类的同步 deadline 合并未实施。

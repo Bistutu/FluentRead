@@ -17,6 +17,8 @@ import * as chineseCharacterData from '@/src/core/language/chineseVariants';
 import * as functionWordData from '@/src/core/language/functionWordData';
 import {createUserscriptCharacterDataCompressionPlugin} from '@/userscript/characterDataPlugin';
 import {createUserscriptAboutImagesCompressionPlugin} from '@/userscript/aboutImagesPlugin';
+import {createUserscriptServiceBrandIconsCompressionPlugin} from '@/userscript/serviceBrandIconsPlugin';
+import originalServiceBrandPaths from '@/src/ui/assets/serviceBrandPaths.json';
 import {getSupportImageUrl as getNormalSupportImageUrl, getContactImageUrl as getNormalContactImageUrl} from '@/src/app/options/aboutImages';
 import ordinaryContactAsset from '@/src/app/options/assets/wechat-contact.jpg';
 import {createUserscriptInlineCssCompressionPlugin} from '@/userscript/inlineCssPlugin';
@@ -951,5 +953,189 @@ describe('standalone About images at explicit use boundaries', () => {
             rmSync(fixture, {recursive: true, force: true});
             vi.unstubAllEnvs();vi.resetModules();
         }
+    });
+});
+
+describe('standalone service brand paths at actual icon use', () => {
+    const root = process.cwd();
+    const helperId = realpathSync(resolve(root, 'src/ui/assets/serviceBrandIcons.ts'));
+    const dataPath = resolve(root, 'src/ui/assets/serviceBrandPaths.json');
+    type Shape = Array<Record<string, string>>;
+    type BrandApi = {getServiceBrandIcon(service: string): Shape | undefined};
+    const expected = originalServiceBrandPaths as unknown as Record<string, Shape>;
+    const unknownServices = ['unknown', 'constructor', '__proto__', 'toString', 'custom:work', 'google'];
+    type BrandPlugin = {load(id: string): string | null};
+    const createPlugin = (enabled = true, fixtureRoot = root) => createUserscriptServiceBrandIconsCompressionPlugin(fixtureRoot, enabled) as unknown as BrandPlugin;
+    function loadHook(plugin: BrandPlugin, id: string) {
+        const addWatchFile = vi.fn();
+        const source = Reflect.apply(plugin.load, {addWatchFile}, [id]) as string | null;
+        return {source, addWatchFile};
+    }
+    function positiveSource(plugin = createPlugin(), id = helperId, watchedPath = dataPath) {
+        const result = loadHook(plugin, id);
+        expect(result.addWatchFile).toHaveBeenCalledTimes(1);expect(result.addWatchFile).toHaveBeenCalledWith(watchedPath);
+        expect(result.source).toBeTypeOf('string');
+        if (typeof result.source !== 'string') throw new Error('Expected actual brand data module');
+        return result.source;
+    }
+    async function loadAccessors(decoder = vi.fn(inflateBundledFrancData), source = positiveSource()) {
+        const {transformWithEsbuild} = await import('vite');
+        const compiled = await transformWithEsbuild(source, 'service-brands-owner.js', {format: 'cjs', target: 'es2018'});
+        const module = {exports: {} as BrandApi};
+        const decode = vi.fn(atob), parse = vi.fn(JSON.parse), hostData = {controlledHostData: true};
+        const realm = {module, exports: module.exports, Uint8Array, atob: decode, JSON: {parse}, controlledHostData: hostData,
+            require: (id: string) => {
+                expect(id).toBe('@/userscript/pakoRuntime');
+                return {inflateWithPako: decoder};
+            }};
+        runInNewContext(compiled.code, realm, {timeout: 5_000});
+        expect(decoder).not.toHaveBeenCalled();expect(decode).not.toHaveBeenCalled();expect(parse).not.toHaveBeenCalled();
+        expect(realm.controlledHostData).toBe(hostData);
+        return {api: module.exports, decoder, decode, parse, realm, hostData};
+    }
+    function assertAllBrands(api: BrandApi, input: Record<string, Shape> = expected) {
+        for (const [service, shape] of Object.entries(input)) {
+            const restored = api.getServiceBrandIcon(service);
+            expect(restored, service).toEqual(shape);
+            expect(restored?.map(attributes => Object.entries(attributes)), service).toEqual(shape.map(attributes => Object.entries(attributes)));
+            expect(api.getServiceBrandIcon(service), service).toBe(restored);
+        }
+    }
+    async function withDataFixture(value: unknown, use: (fixtureRoot: string, id: string, watchedPath: string) => Promise<void> | void) {
+        const fixtureRoot = mkdtempSync(resolve(tmpdir(), 'fluentread-service-brands-owner-'));
+        const assets = resolve(fixtureRoot, 'src/ui/assets');
+        try {
+            mkdirSync(assets, {recursive: true});
+            const id = resolve(assets, 'serviceBrandIcons.ts'), watchedPath = resolve(assets, 'serviceBrandPaths.json');
+            writeFileSync(id, 'export {};');writeFileSync(watchedPath, JSON.stringify(value));
+            await use(fixtureRoot, realpathSync(id), watchedPath);
+        } finally {rmSync(fixtureRoot, {recursive: true, force: true});}
+    }
+
+    it.each(['deepL', 'openai'])('restores the entire ordered table only at the first existing %s brand and shares the successful cache', async first => {
+        const h = await loadAccessors();
+        for (const service of unknownServices) {expect(Object.hasOwn(expected, service)).toBe(false);expect(h.api.getServiceBrandIcon(service)).toBeUndefined();}
+        expect(h.decoder).not.toHaveBeenCalled();expect(h.decode).not.toHaveBeenCalled();expect(h.parse).not.toHaveBeenCalled();
+        expect(h.api.getServiceBrandIcon(first)).toEqual(expected[first]);
+        expect(h.decoder).toHaveBeenCalledTimes(1);expect(h.decode).toHaveBeenCalledTimes(1);expect(h.parse).toHaveBeenCalledTimes(1);
+        const restoredTable = h.parse.mock.results[0].value as Record<string, Shape>;
+        expect(Object.keys(restoredTable)).toEqual(Object.keys(expected));
+        assertAllBrands(h.api);
+        for (const service of unknownServices) expect(h.api.getServiceBrandIcon(service)).toBeUndefined();
+        expect(h.decoder).toHaveBeenCalledTimes(1);expect(h.decode).toHaveBeenCalledTimes(1);expect(h.parse).toHaveBeenCalledTimes(1);
+        expect(h.realm.controlledHostData).toBe(h.hostData);
+    });
+
+    it.each(['crc', 'decoder', 'malformed-json', 'null-root', 'array-root', 'numeric-root', 'missing-current', 'empty-current', 'wrong-current-type'] as const)('does not cache %s failure and can restore a valid table in the same module', async failure => {
+        const decoder = vi.fn(inflateBundledFrancData).mockImplementationOnce(bytes => {
+            switch (failure) {
+                case 'crc': {const damaged = Uint8Array.from(bytes);damaged[damaged.length - 8] ^= 0xff;return inflateBundledFrancData(damaged);}
+                case 'decoder': throw new Error('controlled brand restoration failure');
+                case 'malformed-json': return '{';
+                case 'null-root': return 'null';
+                case 'array-root': return '[]';
+                case 'numeric-root': return '1';
+                case 'missing-current': return '{}';
+                case 'empty-current': return '{"deepL":[]}';
+                case 'wrong-current-type': return '{"deepL":{}}';
+            }
+        });
+        const h = await loadAccessors(decoder);
+        expect(() => h.api.getServiceBrandIcon('deepL')).toThrow();
+        expect(h.decoder).toHaveBeenCalledTimes(1);expect(h.decode).toHaveBeenCalledTimes(1);
+        expect(h.api.getServiceBrandIcon('constructor')).toBeUndefined();expect(h.decoder).toHaveBeenCalledTimes(1);
+        expect(h.api.getServiceBrandIcon('deepL')).toEqual(expected.deepL);
+        assertAllBrands(h.api);
+        expect(h.decoder).toHaveBeenCalledTimes(2);expect(h.decode).toHaveBeenCalledTimes(2);
+        expect(h.parse).toHaveBeenCalledTimes(failure === 'crc' || failure === 'decoder' ? 1 : 2);
+        expect(h.realm.controlledHostData).toBe(h.hostData);
+    });
+
+    it('defaults to disabled without reading or watching an unavailable helper or data file', () => {
+        for (const plugin of [createUserscriptServiceBrandIconsCompressionPlugin('/unavailable-service-brands-root') as unknown as BrandPlugin, createPlugin(false, '/unavailable-service-brands-root')]) {
+            const result = loadHook(plugin, helperId);
+            expect(result.source).toBeNull();expect(result.addWatchFile).not.toHaveBeenCalled();
+        }
+    });
+
+    it.each(['raw', 'proxy', 'virtual', 'another-module', 'similar-path'] as const)('leaves the %s route untouched without reading or watching unavailable data', async kind => {
+        await withDataFixture({}, (fixtureRoot, id, watchedPath) => {
+            rmSync(watchedPath);
+            const ignored = {raw: id + '?raw', proxy: id + '?commonjs-proxy', virtual: '\0' + id,
+                'another-module': resolve(fixtureRoot, 'src/ui/assets/other.ts'),
+                'similar-path': resolve(fixtureRoot, 'fake-src/ui/assets/serviceBrandIcons.ts')}[kind];
+            for (const plugin of [createPlugin(true, fixtureRoot), createPlugin(false, fixtureRoot)]) {
+                const result = loadHook(plugin, ignored);
+                expect(result.source).toBeNull();expect(result.addWatchFile).not.toHaveBeenCalled();
+            }
+        });
+    });
+
+    it.each([
+        ['null-table', null], ['array-table', []], ['empty-table', {}],
+        ['non-array-entry', {fixture: {d: 'M0 0'}}], ['empty-entry', {fixture: []}],
+        ['missing-d', {fixture: [{'clip-rule': 'evenodd'}]}], ['non-string-d', {fixture: [{d: 1}]}],
+        ['invalid-path', {fixture: [{d: '<script>'}]}], ['event-attribute', {fixture: [{d: 'M0 0', onload: 'controlled'}]}],
+        ['link-attribute', {fixture: [{d: 'M0 0', href: 'https://fixture.invalid/'}]}], ['non-string-attribute', {fixture: [{d: 'M0 0', opacity: 1}]}],
+    ] as const)('rejects %s schema after registering exactly its actual JSON dependency', async (_label, value) => {
+        await withDataFixture(value, (fixtureRoot, id, watchedPath) => {
+            const addWatchFile = vi.fn();
+            expect(() => Reflect.apply(createPlugin(true, fixtureRoot).load, {addWatchFile}, [id])).toThrow();
+            expect(addWatchFile).toHaveBeenCalledTimes(1);expect(addWatchFile).toHaveBeenCalledWith(watchedPath);
+        });
+    });
+
+    it('preserves all allowed ordered attributes and own reserved-looking brand keys without inheriting a fallback', async () => {
+        const attributes = {d: 'M0 0 L1 1 Z', 'clip-rule': 'evenodd', 'fill-rule': 'nonzero', opacity: '0.5', 'fill-opacity': '0.25'};
+        const value = JSON.parse('{"__proto__":[],"constructor":[],"fixture":[]}') as Record<string, Shape>;
+        for (const service of Object.keys(value)) value[service] = [attributes, {d: 'M1 1 L2 2'}];
+        await withDataFixture(value, async (fixtureRoot, id, watchedPath) => {
+            const h = await loadAccessors(vi.fn(inflateBundledFrancData), positiveSource(createPlugin(true, fixtureRoot), id, watchedPath));
+            expect(h.api.getServiceBrandIcon('toString')).toBeUndefined();expect(h.decoder).not.toHaveBeenCalled();
+            assertAllBrands(h.api, value);
+            expect(Object.keys(h.parse.mock.results[0].value)).toEqual(Object.keys(value));
+            expect(h.decoder).toHaveBeenCalledTimes(1);expect(h.decode).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    it.each([
+        ['ordinary', '0', '0', false], ['standalone', '1', '0', true],
+        ['greasy-fork', '0', '1', false], ['standalone-and-greasy', '1', '1', false],
+    ] as const)('uses the actual %s Vite mode, alias and real complete data without eager restoration', async (_label, standalone, greasy, enabled) => {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', standalone);vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', greasy);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
+        const fixture = mkdtempSync(resolve(tmpdir(), 'fluentread-service-brands-mode-owner-'));
+        try {
+            vi.resetModules();
+            const {default: configuration} = await import('@/userscript/vite.config');
+            const config = configuration as import('vite').UserConfig;
+            const plugin = (config.plugins as import('vite').Plugin[]).find(item => item.name === 'compress-standalone-service-brand-icons');
+            expect(plugin).toBeDefined();
+            const entryPath = resolve(fixture, 'entry.mjs');
+            writeFileSync(entryPath, 'import {getServiceBrandIcon} from "@/src/ui/assets/serviceBrandIcons"; globalThis.serviceBrandOwner={getServiceBrandIcon};');
+            const {build} = await import('vite');
+            const result = await build({root, configFile: false, publicDir: false, logLevel: 'silent', plugins: [plugin!], resolve: config.resolve,
+                build: {...config.build, write: false, outDir: resolve(fixture, 'unused-output'),
+                    lib: {entry: entryPath, name: 'ServiceBrandOwner', formats: ['iife']}, rollupOptions: {output: {inlineDynamicImports: true}}}});
+            const outputs = Array.isArray(result) ? result : [result];
+            expect(outputs).toHaveLength(1);
+            if (!('output' in outputs[0]) || outputs[0].output.length !== 1 || outputs[0].output[0].type !== 'chunk') throw new Error('Expected actual complete brand owner chunk');
+            const chunk = outputs[0].output[0];
+            expect(chunk.imports).toEqual([]);expect(chunk.dynamicImports).toEqual([]);
+            expect(chunk.moduleIds).toContain(helperId);
+            expect(chunk.moduleIds.includes(dataPath)).toBe(!enabled);
+            const decode = vi.fn(atob), parse = vi.fn(JSON.parse), hostData = {controlledHostData: true};
+            const realm = {serviceBrandOwner: undefined as BrandApi | undefined, atob: decode, Uint8Array, ArrayBuffer, JSON: {parse}, controlledHostData: hostData};
+            runInNewContext(chunk.code, realm, {timeout: 5_000});
+            const api = realm.serviceBrandOwner;
+            if (!api) throw new Error('Actual brand owner API missing');
+            expect(decode).not.toHaveBeenCalled();expect(parse).not.toHaveBeenCalled();
+            for (const service of unknownServices) expect(api.getServiceBrandIcon(service)).toBeUndefined();
+            expect(decode).not.toHaveBeenCalled();expect(parse).not.toHaveBeenCalled();
+            assertAllBrands(api);
+            expect(decode).toHaveBeenCalledTimes(enabled ? 1 : 0);expect(parse).toHaveBeenCalledTimes(enabled ? 1 : 0);
+            expect(realm.controlledHostData).toBe(hostData);
+            expect(readFileSync(resolve(root, 'public/third-party-notices/lobe-icons-MIT.txt'), 'utf8')).toContain('Copyright (c) 2023 LobeHub');
+        } finally {rmSync(fixture, {recursive: true, force: true});vi.unstubAllEnvs();vi.resetModules();}
     });
 });
