@@ -1,0 +1,1043 @@
+{
+  "ok": true,
+  "extensionDir": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/.output/chrome-mv3",
+  "browserPath": "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+  "profileMode": "fresh-mkdtemp-owned",
+  "profileDir": "/private/tmp/fluentread-progressive-reading-profile-6ax4Vy",
+  "artifact": "production",
+  "cases": [
+    {
+      "variants": [
+        {
+          "viewportWidth": 400,
+          "shellWidth": 320,
+          "horizontalOverflow": false,
+          "hotkey": {
+            "text": "Option+T",
+            "clipped": false
+          },
+          "buttons": [
+            {
+              "id": "page-translation",
+              "text": "翻译当前网页",
+              "left": 29,
+              "right": 291,
+              "top": 182.8984375,
+              "bottom": 222.8984375,
+              "width": 262,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "section-translation",
+              "text": "局部",
+              "left": 29,
+              "right": 156.5,
+              "top": 229.8984375,
+              "bottom": 263.8984375,
+              "width": 127.5,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "progressive-reading",
+              "text": "渐进阅读",
+              "left": 163.5,
+              "right": 291,
+              "top": 229.8984375,
+              "bottom": 263.8984375,
+              "width": 127.5,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            }
+          ],
+          "label": "popup-400-progressive-entry"
+        },
+        {
+          "viewportWidth": 320,
+          "shellWidth": 320,
+          "horizontalOverflow": false,
+          "hotkey": {
+            "text": "Option+T",
+            "clipped": false
+          },
+          "buttons": [
+            {
+              "id": "page-translation",
+              "text": "翻译当前网页",
+              "left": 29,
+              "right": 291,
+              "top": 182.8984375,
+              "bottom": 222.8984375,
+              "width": 262,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "section-translation",
+              "text": "局部",
+              "left": 29,
+              "right": 156.5,
+              "top": 229.8984375,
+              "bottom": 263.8984375,
+              "width": 127.5,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "progressive-reading",
+              "text": "渐进阅读",
+              "left": 163.5,
+              "right": 291,
+              "top": 229.8984375,
+              "bottom": 263.8984375,
+              "width": 127.5,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            }
+          ],
+          "label": "popup-320-progressive-entry"
+        },
+        {
+          "viewportWidth": 320,
+          "shellWidth": 320,
+          "horizontalOverflow": false,
+          "hotkey": {
+            "text": "Control+Option+Shift+Pagedown",
+            "clipped": false
+          },
+          "buttons": [
+            {
+              "id": "page-translation",
+              "text": "翻译当前网页",
+              "left": 29,
+              "right": 291,
+              "top": 182.8984375,
+              "bottom": 243.6953125,
+              "width": 262,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "section-translation",
+              "text": "局部",
+              "left": 29,
+              "right": 156.5,
+              "top": 250.6953125,
+              "bottom": 284.6953125,
+              "width": 127.5,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "progressive-reading",
+              "text": "渐进阅读",
+              "left": 163.5,
+              "right": 291,
+              "top": 250.6953125,
+              "bottom": 284.6953125,
+              "width": 127.5,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            }
+          ],
+          "label": "popup-320-long-hotkey"
+        },
+        {
+          "viewportWidth": 400,
+          "shellWidth": 320,
+          "horizontalOverflow": false,
+          "hotkey": {
+            "text": "Control+Option+Shift+Pagedown",
+            "clipped": false
+          },
+          "buttons": [
+            {
+              "id": "page-translation",
+              "text": "翻译当前网页",
+              "left": 29,
+              "right": 291,
+              "top": 182.8984375,
+              "bottom": 243.6953125,
+              "width": 262,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "section-translation",
+              "text": "局部",
+              "left": 29,
+              "right": 156.5,
+              "top": 250.6953125,
+              "bottom": 284.6953125,
+              "width": 127.5,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "progressive-reading",
+              "text": "渐进阅读",
+              "left": 163.5,
+              "right": 291,
+              "top": 250.6953125,
+              "bottom": 284.6953125,
+              "width": 127.5,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            }
+          ],
+          "label": "popup-400-long-hotkey"
+        }
+      ],
+      "name": "320px and 400px real Popup documents expose full-page, local-section and reading actions in two rows with complete labels and a visible long hotkey"
+    },
+    {
+      "name": "Popup entry opens four modes without fabricating a source or requesting translation"
+    },
+    {
+      "name": "Original source remains readable, selectable and unchanged, with no automatic provider call"
+    },
+    {
+      "terms": [
+        {
+          "term": "take into account",
+          "text": "take into account考虑；把……计入 收藏参考翻译这个表达"
+        },
+        {
+          "term": "bank",
+          "text": "bank河岸 收藏参考翻译这个表达"
+        }
+      ],
+      "name": "Multiword hints use the learning library, matching manual mastery retreats and unfamiliar senses remain available"
+    },
+    {
+      "qualityBoundary": "The bank response is a deterministic transport fixture; this verifies the requested text and rendering, not word-sense accuracy.",
+      "name": "A familiar word in a different saved context can explicitly request its translation without changing mastery"
+    },
+    {
+      "name": "The reader can request a mastered expression again without relearning or feedback"
+    },
+    {
+      "clues": [
+        "If · 条件检查结论成立需要什么条件；此标记不判断条件是否已满足。",
+        "not · 否定 / 例外检查这里否定或排除的对象；此标记不确定否定覆盖整句还是局部。",
+        "may · 可能性保留原文的不确定程度，不能直接读成确定事实。",
+        "only if · 条件检查结论成立需要什么条件；此标记不判断条件是否已满足。",
+        "only · 适用范围检查对象、数量或适用场景，避免把有限范围读成普遍结论。"
+      ],
+      "name": "Logic mode grounds clues in source words and does not make an additional AI request"
+    },
+    {
+      "requests": [
+        {
+          "source": "bank",
+          "model": "progressive-reading-fixture",
+          "at": 1791698331345
+        },
+        {
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "model": "progressive-reading-fixture",
+          "at": 1791698331553
+        }
+      ],
+      "name": "One click reaches complete bilingual from logic and mode switches reuse the same reading-session translation"
+    },
+    {
+      "name": "Trusted keyboard Tab and Enter choose a help mode"
+    },
+    {
+      "name": "Existing explicit mastery and relearn updates refresh help without a parallel learning state"
+    },
+    {
+      "visualPalette": "Current progressive panel uses its own light palette; this case validates layout under both configurations.",
+      "name": "390px panel keeps controls inside the viewport under light and dark theme configuration"
+    },
+    {
+      "steps": 7,
+      "full": true,
+      "visible": true,
+      "name": "390px trusted Tab scrolls the long phrase list to a visible full-translation action; Enter activates it",
+      "scrollTop": 295
+    },
+    {
+      "name": "Host links and buttons remain usable; replacing a selected DOM node permits explicit recapture with the new source"
+    },
+    {
+      "name": "Closing during a deterministic delayed request prevents its old answer from appearing after reopening"
+    },
+    {
+      "name": "Close, reopen and trusted Escape remove the panel without duplicate hosts"
+    },
+    {
+      "source": "If the route changes, this delayed reading request must not remain attached to the old page.",
+      "route": "http://127.0.0.1:63061/article?route=reading",
+      "name": "Pure history.pushState with unchanged host DOM cancels the old request through the real MAIN bridge, closes help and permits reopening"
+    },
+    {
+      "disabledResponse": {
+        "status": "disabled"
+      },
+      "name": "Global disable cleans the mount and blocks reopen; reenable works and actual navigation leaves no orphaned panel"
+    },
+    {
+      "name": "Opening, mode switches, scrolling and reading do not update learning records"
+    }
+  ],
+  "screenshots": [
+    "popup-400-progressive-entry.png",
+    "popup-320-progressive-entry.png",
+    "popup-320-long-hotkey.png",
+    "popup-400-long-hotkey.png",
+    "desktop-bilingual.png",
+    "390-light-phrases.png",
+    "390-dark-phrases.png",
+    "390-keyboard-bilingual.png"
+  ],
+  "consoleErrors": [],
+  "focusSamples": [
+    {
+      "label": "launch",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-400-progressive-entry:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-400-progressive-entry:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-320-progressive-entry:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-320-progressive-entry:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-320-long-hotkey:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-320-long-hotkey:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-400-long-hotkey:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-400-long-hotkey:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "desktop-bilingual:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "desktop-bilingual:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "390-light-phrases:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "390-light-phrases:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "390-dark-phrases:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "390-dark-phrases:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "390-keyboard-bilingual:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "390-keyboard-bilingual:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "completed",
+      "pid": 73685,
+      "name": "ChatGPT"
+    }
+  ],
+  "executionScope": "progressive-reading-targeted-flow",
+  "evidenceBoundary": "Real production extension, real selection, DOM, trusted CDP keyboard/mouse and Vue Shadow UI in an isolated Edge browser. Local deterministic HTTP translation transport, Popup active-tab lookup and toolbar-close capture are fixtures. No live-provider, Firefox runtime, native-toolbar or human-comprehension claim.",
+  "reuseBoundary": "This browser run verifies reuse of a translation already obtained within the same reading session. Reuse of a preexisting bilingual webpage artifact is outside this runner; its pure excerpt matcher is covered separately by unit tests.",
+  "ownedBrowserClosed": true,
+  "profileRemoved": true,
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 212,
+      "top": -990,
+      "width": 1280,
+      "height": 900
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    "frontmostAfter": {
+      "pid": 73685,
+      "name": "ChatGPT"
+    }
+  },
+  "manifest": {
+    "name": "FluentRead-流畅阅读",
+    "version": "0.0.37"
+  },
+  "configSummary": {
+    "on": true,
+    "service": "custom:progressive-reading-fixture",
+    "from": "en",
+    "to": "zh-Hans",
+    "display": 1,
+    "autoTranslate": false,
+    "vocabularyBookEnabled": true,
+    "vocabularyReencounterEnabled": false,
+    "disableSelectionTranslator": true
+  },
+  "popupLayout": [
+    {
+      "viewportWidth": 400,
+      "shellWidth": 320,
+      "horizontalOverflow": false,
+      "hotkey": {
+        "text": "Option+T",
+        "clipped": false
+      },
+      "buttons": [
+        {
+          "id": "page-translation",
+          "text": "翻译当前网页",
+          "left": 29,
+          "right": 291,
+          "top": 182.8984375,
+          "bottom": 222.8984375,
+          "width": 262,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "section-translation",
+          "text": "局部",
+          "left": 29,
+          "right": 156.5,
+          "top": 229.8984375,
+          "bottom": 263.8984375,
+          "width": 127.5,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "progressive-reading",
+          "text": "渐进阅读",
+          "left": 163.5,
+          "right": 291,
+          "top": 229.8984375,
+          "bottom": 263.8984375,
+          "width": 127.5,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        }
+      ],
+      "label": "popup-400-progressive-entry"
+    },
+    {
+      "viewportWidth": 320,
+      "shellWidth": 320,
+      "horizontalOverflow": false,
+      "hotkey": {
+        "text": "Option+T",
+        "clipped": false
+      },
+      "buttons": [
+        {
+          "id": "page-translation",
+          "text": "翻译当前网页",
+          "left": 29,
+          "right": 291,
+          "top": 182.8984375,
+          "bottom": 222.8984375,
+          "width": 262,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "section-translation",
+          "text": "局部",
+          "left": 29,
+          "right": 156.5,
+          "top": 229.8984375,
+          "bottom": 263.8984375,
+          "width": 127.5,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "progressive-reading",
+          "text": "渐进阅读",
+          "left": 163.5,
+          "right": 291,
+          "top": 229.8984375,
+          "bottom": 263.8984375,
+          "width": 127.5,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        }
+      ],
+      "label": "popup-320-progressive-entry"
+    },
+    {
+      "viewportWidth": 320,
+      "shellWidth": 320,
+      "horizontalOverflow": false,
+      "hotkey": {
+        "text": "Control+Option+Shift+Pagedown",
+        "clipped": false
+      },
+      "buttons": [
+        {
+          "id": "page-translation",
+          "text": "翻译当前网页",
+          "left": 29,
+          "right": 291,
+          "top": 182.8984375,
+          "bottom": 243.6953125,
+          "width": 262,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "section-translation",
+          "text": "局部",
+          "left": 29,
+          "right": 156.5,
+          "top": 250.6953125,
+          "bottom": 284.6953125,
+          "width": 127.5,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "progressive-reading",
+          "text": "渐进阅读",
+          "left": 163.5,
+          "right": 291,
+          "top": 250.6953125,
+          "bottom": 284.6953125,
+          "width": 127.5,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        }
+      ],
+      "label": "popup-320-long-hotkey"
+    },
+    {
+      "viewportWidth": 400,
+      "shellWidth": 320,
+      "horizontalOverflow": false,
+      "hotkey": {
+        "text": "Control+Option+Shift+Pagedown",
+        "clipped": false
+      },
+      "buttons": [
+        {
+          "id": "page-translation",
+          "text": "翻译当前网页",
+          "left": 29,
+          "right": 291,
+          "top": 182.8984375,
+          "bottom": 243.6953125,
+          "width": 262,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "section-translation",
+          "text": "局部",
+          "left": 29,
+          "right": 156.5,
+          "top": 250.6953125,
+          "bottom": 284.6953125,
+          "width": 127.5,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "progressive-reading",
+          "text": "渐进阅读",
+          "left": 163.5,
+          "right": 291,
+          "top": 250.6953125,
+          "bottom": 284.6953125,
+          "width": 127.5,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        }
+      ],
+      "label": "popup-400-long-hotkey"
+    }
+  ],
+  "layout": {
+    "desktop": {
+      "left": 764,
+      "right": 1184,
+      "top": 296.765625,
+      "bottom": 834,
+      "width": 420,
+      "height": 537.234375,
+      "viewportWidth": 1200,
+      "viewportHeight": 850,
+      "horizontalOverflow": false,
+      "controls": [
+        {
+          "text": "关闭渐进阅读",
+          "left": 1131.6875,
+          "right": 1165,
+          "width": 33.3125,
+          "height": 34
+        },
+        {
+          "text": "读取选中的正文",
+          "left": 783,
+          "right": 1165,
+          "width": 382,
+          "height": 37.09375
+        },
+        {
+          "text": "只读原文",
+          "left": 783,
+          "right": 971,
+          "width": 188,
+          "height": 37.09375
+        },
+        {
+          "text": "短语提示",
+          "left": 977,
+          "right": 1165,
+          "width": 188,
+          "height": 37.09375
+        },
+        {
+          "text": "逻辑线索",
+          "left": 783,
+          "right": 971,
+          "width": 188,
+          "height": 37.09375
+        },
+        {
+          "text": "完整双语",
+          "left": 977,
+          "right": 1165,
+          "width": 188,
+          "height": 37.09375
+        },
+        {
+          "text": "完整双语",
+          "left": 783,
+          "right": 861,
+          "width": 78,
+          "height": 37.09375
+        }
+      ]
+    },
+    "390-light": {
+      "left": 12,
+      "right": 378,
+      "top": 308,
+      "bottom": 788,
+      "width": 366,
+      "height": 480,
+      "viewportWidth": 390,
+      "viewportHeight": 800,
+      "horizontalOverflow": false,
+      "controls": [
+        {
+          "text": "关闭渐进阅读",
+          "left": 329.6875,
+          "right": 363,
+          "width": 33.3125,
+          "height": 34
+        },
+        {
+          "text": "读取选中的正文",
+          "left": 27,
+          "right": 363,
+          "width": 336,
+          "height": 37.09375
+        },
+        {
+          "text": "只读原文",
+          "left": 27,
+          "right": 192,
+          "width": 165,
+          "height": 37.09375
+        },
+        {
+          "text": "短语提示",
+          "left": 198,
+          "right": 363,
+          "width": 165,
+          "height": 37.09375
+        },
+        {
+          "text": "逻辑线索",
+          "left": 27,
+          "right": 192,
+          "width": 165,
+          "height": 37.09375
+        },
+        {
+          "text": "完整双语",
+          "left": 198,
+          "right": 363,
+          "width": 165,
+          "height": 37.09375
+        },
+        {
+          "text": "仍需要帮助",
+          "left": 219.3203125,
+          "right": 301.3203125,
+          "width": 82,
+          "height": 33.796875
+        },
+        {
+          "text": "翻译这个表达",
+          "left": 27,
+          "right": 133,
+          "width": 106,
+          "height": 37.09375
+        },
+        {
+          "text": "翻译这个表达",
+          "left": 27,
+          "right": 133,
+          "width": 106,
+          "height": 37.09375
+        },
+        {
+          "text": "完整双语",
+          "left": 27,
+          "right": 105,
+          "width": 78,
+          "height": 37.09375
+        }
+      ]
+    },
+    "390-dark": {
+      "left": 12,
+      "right": 378,
+      "top": 308,
+      "bottom": 788,
+      "width": 366,
+      "height": 480,
+      "viewportWidth": 390,
+      "viewportHeight": 800,
+      "horizontalOverflow": false,
+      "controls": [
+        {
+          "text": "关闭渐进阅读",
+          "left": 329.6875,
+          "right": 363,
+          "width": 33.3125,
+          "height": 34
+        },
+        {
+          "text": "读取选中的正文",
+          "left": 27,
+          "right": 363,
+          "width": 336,
+          "height": 37.09375
+        },
+        {
+          "text": "只读原文",
+          "left": 27,
+          "right": 192,
+          "width": 165,
+          "height": 37.09375
+        },
+        {
+          "text": "短语提示",
+          "left": 198,
+          "right": 363,
+          "width": 165,
+          "height": 37.09375
+        },
+        {
+          "text": "逻辑线索",
+          "left": 27,
+          "right": 192,
+          "width": 165,
+          "height": 37.09375
+        },
+        {
+          "text": "完整双语",
+          "left": 198,
+          "right": 363,
+          "width": 165,
+          "height": 37.09375
+        },
+        {
+          "text": "仍需要帮助",
+          "left": 219.3203125,
+          "right": 301.3203125,
+          "width": 82,
+          "height": 33.796875
+        },
+        {
+          "text": "翻译这个表达",
+          "left": 27,
+          "right": 133,
+          "width": 106,
+          "height": 37.09375
+        },
+        {
+          "text": "翻译这个表达",
+          "left": 27,
+          "right": 133,
+          "width": 106,
+          "height": 37.09375
+        },
+        {
+          "text": "完整双语",
+          "left": 27,
+          "right": 105,
+          "width": 78,
+          "height": 37.09375
+        }
+      ]
+    }
+  },
+  "requests": [
+    {
+      "source": "bank",
+      "model": "progressive-reading-fixture",
+      "at": 1791698331345
+    },
+    {
+      "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+      "model": "progressive-reading-fixture",
+      "at": 1791698331553
+    },
+    {
+      "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+      "model": "progressive-reading-fixture",
+      "at": 1791698334275
+    },
+    {
+      "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+      "model": "progressive-reading-fixture",
+      "at": 1791698335669
+    },
+    {
+      "source": "Unless the review is complete, the result may not apply to a new bank account.",
+      "model": "progressive-reading-fixture",
+      "at": 1791698336295
+    },
+    {
+      "source": "Unless the review is complete, the result may not apply to a new bank account.",
+      "model": "progressive-reading-fixture",
+      "at": 1791698338063
+    },
+    {
+      "source": "If the route changes, this delayed reading request must not remain attached to the old page.",
+      "model": "progressive-reading-fixture",
+      "at": 1791698339287
+    }
+  ],
+  "hostLifecycle": [
+    {
+      "event": "pageshow",
+      "at": 1791698328269
+    },
+    {
+      "event": "pagehide",
+      "at": 1791698342418
+    },
+    {
+      "event": "pageshow",
+      "at": 1791698342457
+    },
+    {
+      "event": "pagehide",
+      "at": 1791698342863
+    }
+  ],
+  "originalArtifactsDirectory": "/private/tmp/fluentread-progressive-reading-20261011-final-pass"
+}

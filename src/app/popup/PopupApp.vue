@@ -1,7 +1,7 @@
 <!--
  @file src/app/popup/PopupApp.vue
  文件职责：实现浏览器 Popup 的主交互界面，连接当前标签页状态、翻译配置、可插拔皮肤、功能抽屉和高频操作，让现场开关与显示操作保持简短，将长期偏好引导到对应设置页。
- 主要内容：在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型，保留版本、赞赏、网页翻译与恢复、局部选择及站点开关；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次语言引导独占内容；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效。
+ 主要内容：在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型，保留版本、赞赏、网页翻译与恢复、局部选择、渐进阅读及站点开关；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次语言引导独占内容；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效。
  模块边界：组件编排 UI、浏览器导航事件与生命周期；页内面板通过授权来源固定发起网页，页面消息归属由 pageActions 管理，不实现翻译 provider、缓存存储或 content 挂载；公共配置由 services/store 管理。
 -->
 <!-- Popup 页面归 app 层所有；WXT 入口只负责调用挂载函数。 -->
@@ -133,6 +133,12 @@
           :onClick="pageButtons.section">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15M10 10l7 2.6-3 1.1-1.1 3z" /></svg>
           <span>{{ t('popup.sectionTranslation') }}</span>
+        </button>
+        <button v-if="browserCapabilities.browser !== 'userscript' && !isThunderbird && !currentPdfSource" class="section-translate-button" type="button" data-testid="progressive-reading"
+          :disabled="!config.on || currentSiteExtensionDisabled || translating" aria-label="渐进阅读"
+          title="选择网页正文后，自由切换原文、短语提示、逻辑线索和完整双语" :onClick="pageButtons.reading">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1m0-15c3-2 6-2 9-1v15c-3-1-6-1-9 1V5Z" /><path d="M6 8h3m-3 3h3m6-3h3m-3 3h3" /></svg>
+          <span>渐进阅读</span>
         </button>
       </div>
 
@@ -714,7 +720,7 @@ const pageActions = createPopupPageActions({state: pageState, config: () => conf
   warning: () => credentialWarning.value || '', getTab: tabSource.getTab,
   openPdf: source => browser.tabs.create({url: createPdfReaderUrl(browser.runtime.getURL('document.html'), source)}),
   send: (id, message) => browser.tabs.sendMessage(id, message), notice: showNotice, close: closePopupSurface, translate: t, thunderbird: isThunderbird});
-const {hydrate: hydrateCurrentSite, toggle: togglePageTranslation, section: startSectionTranslation,
+const {hydrate: hydrateCurrentSite, toggle: togglePageTranslation, section: startSectionTranslation, reading: openProgressiveReading,
   setAlways: setCurrentSiteAlwaysTranslated, setDisabled: setCurrentSiteExtensionDisabled} = pageActions;
 watch(pageContext.revision, () => {pageActions.invalidate();if (!config.value.on || currentSiteExtensionDisabled.value) pageTranslated.value = false}, {flush: 'sync'});
 const pageRenderRevision = ref(0);
@@ -722,7 +728,7 @@ watch(() => [pageState.tabId, pageState.url, pageState.translated, pageState.bus
 const pageButtons = computed(() => {
   const current = pageContext.capture(), version = pageRenderRevision.value;
   const owns = () => current() && version === pageRenderRevision.value;
-  return {toggle: () => {if (owns()) return togglePageTranslation()}, section: () => {if (owns()) return startSectionTranslation()},
+  return {toggle: () => {if (owns()) return togglePageTranslation()}, section: () => {if (owns()) return startSectionTranslation()}, reading: () => {if (owns()) return openProgressiveReading()},
     always: (value: boolean) => {if (owns()) return setCurrentSiteAlwaysTranslated(value)},
     disabled: (value: boolean) => {if (owns()) setCurrentSiteExtensionDisabled(value)}};
 });

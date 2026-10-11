@@ -204,7 +204,7 @@ describe('userscript browser shim injection', () => {
             .filter((entry): entry is {find: string; replacement: string} => typeof entry.find === 'string')
             .map((entry) => [entry.find, entry.replacement]));
 
-        for (const feature of ['area-translation', 'image-translation', 'video-subtitle']) {
+        for (const feature of ['area-translation', 'image-translation', 'video-subtitle', 'progressive-reading']) {
             expect(stringAliases.get(`@/src/features/${feature}/public`)).toMatch(/userscript\/unsupportedCapabilities\.ts$/u);
         }
         expect(stringAliases.get('@/src/features/writing-assistant/public')).toMatch(/userscript\/writingAssistant\.ts$/u);

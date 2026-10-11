@@ -1,7 +1,7 @@
 /**
  * @file src/app/content/messageRuntime.ts
  * 文件职责：创建 content 侧 runtime 消息处理函数，把 popup/background 的设置变化和功能命令映射为当前页面上的精确 mount、unmount 或状态响应。
- * 主要内容：处理悬浮球、划词模式与延迟、区域/图片能力、进度面板、站点禁用及旧缓存清理消息，并把右键菜单的划词、圈选、整页与恢复请求及 Popup 的局部翻译请求转给对应 feature；结合 BrowserCapabilities 对不支持功能确定性拒绝，并更新共享运行时状态。
+ * 主要内容：处理悬浮球、划词模式与延迟、区域/图片能力、进度面板、站点禁用及旧缓存清理消息，并把右键菜单及 Popup 的局部翻译、主动渐进阅读请求转给对应 feature；结合 BrowserCapabilities 对不支持功能确定性拒绝，并更新共享运行时状态。
  * 模块边界：本文件只做消息到 feature 生命周期的适配，右键动作与反馈委托给 contextMenuCommands，全文状态与完成查询委托给 fullPageCompletionQuery，不注册全局监听器、不执行供应商翻译，也不实现组件 UI；监听安装及配置订阅由 content/runtime 负责。
  */
 import type {ContentScriptContext} from 'wxt/utils/content-script-context';
@@ -24,6 +24,7 @@ import {forwardLegacyCacheClear} from './cacheMessage';
 import {handleContextMenuNotice, handleContextMenuTranslation} from './contextMenuCommands';
 import {browserCapabilities, type BrowserCapabilities} from '@/src/platform/browser/capabilities';
 import {rejectUnsupportedContentFeature} from './featureRegistry';
+import {openProgressiveReading} from './features';
 import {handleInformationHighlightMessage, type InformationHighlightMessageState} from './informationHighlight';
 export interface ContentRuntimeMessageState extends InformationHighlightMessageState {
     updateSiteDisabled(disabled: boolean): Promise<void>;
@@ -64,6 +65,12 @@ export function createContentRuntimeMessageHandler(ctx: ContentScriptContext, st
         }
         if ((state.isSiteDisabled() || state.isPageSuspended?.()) && payload.type !== 'getFullPageTranslationState') {
             sendResponse({status: 'disabled'});
+            return true;
+        }
+        if (import.meta.env.BROWSER !== 'userscript' && payload.type === 'openProgressiveReading') {
+            if (ctx.isInvalid || config.on === false || capabilities.browser === 'userscript') {sendResponse({status: 'disabled'}); return true;}
+            void openProgressiveReading().then(opened => sendResponse({status: opened ? 'success' : 'failed'}))
+                .catch(() => sendResponse({status: 'failed'}));
             return true;
         }
         if (payload.type === 'toggleFloatingBall') {

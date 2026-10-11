@@ -1,7 +1,7 @@
 /**
  * @file src/app/popup/popup.css
  * 文件职责：定义宽度随皮肤和界面语言、高度由内容撑开且最高 560px 的浏览器 Popup 视觉系统与交互状态，包括亮暗主题、服务选择、功能卡、设置抽屉、通知和响应式细节。
- * 主要内容：以白色窄版画布、浅灰控件和品牌色强调网页翻译、局部选择及站点控制；定义版本与赞赏码的原位放大、默认服务及配置模型摘要、静态凭据提示、两列入口、完整开源胶囊与开关优先的快捷抽屉，保留操作示意、舒展间距和必要的内部滚动。
+ * 主要内容：以白色窄版画布、浅灰控件和品牌色强调网页翻译、局部选择、渐进阅读及站点控制；主翻译独占首行并保留完整快捷键，两个辅助入口共享次行，定义版本与赞赏码的原位放大、默认服务及配置模型摘要、静态凭据提示、两列入口、完整开源胶囊与开关优先的快捷抽屉，保留操作示意、舒展间距和必要的内部滚动。
  * 模块边界：样式只对应 PopupApp 的 DOM 和受控第三方组件，不决定配置值、能力可用性或消息行为；跨页面 token 在 src/ui/styles，Options/文档页各自维护页面样式。
  */
 @import "../../ui/styles/feedback.css";
@@ -205,7 +205,11 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
 .service-more-meta b { color: var(--muted); font-size: 15px; line-height: .7; font-weight: 500; transform: translateY(-1px); transition: transform 160ms ease; }
 .service-more-meta b.open { transform: translateY(1px) rotate(180deg); }
 
-.translate-action { display: flex; align-items: center; gap: 7px; margin-top: 8px; }
+.translate-action { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 7px; margin-top: 8px; }
+.translate-action > .translate-button { grid-column: 1 / -1; flex-wrap: wrap; }
+.translate-action > .section-translate-button { flex-direction: row; gap: 6px; min-height: 34px; }
+.translate-action .translate-hotkey { flex: none; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.translate-action .translate-hotkey span { overflow: visible; white-space: normal; line-height: 1.3; }
 .translate-button {
   display: flex; flex: 1 1 auto; align-items: center; justify-content: center; gap: 6px; min-width: 0; min-height: 40px; height: auto; padding: 8px;
   overflow: hidden; border: 0; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #f35482, #e93267);

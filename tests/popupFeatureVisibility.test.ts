@@ -38,6 +38,23 @@ function directive(element: TemplateElement, name: string, argument?: string): s
 }
 
 describe('popup feature visibility', () => {
+    it('shows a guarded progressive reading action for webpages with an accessible label', () => {
+        const elements = templateElements(source('src/app/popup/PopupApp.vue'));
+        const entry = elements.find(node => node.tag === 'button'
+            && node.props.some(prop => prop.type === 6 && prop.name === 'data-testid' && prop.value?.content === 'progressive-reading'))!;
+        expect(entry).toBeDefined();
+        const visible = directive(entry, 'if')!;
+        expect(visible).toBe("browserCapabilities.browser !== 'userscript' && !isThunderbird && !currentPdfSource");
+        for (const browser of ['chrome', 'firefox', 'userscript']) {
+            expect(runInNewContext(visible, {browserCapabilities: {browser}, isThunderbird: false, currentPdfSource: undefined})).toBe(browser !== 'userscript');
+        }
+        expect(runInNewContext(visible, {browserCapabilities: {browser: 'chrome'}, isThunderbird: true, currentPdfSource: undefined})).toBe(false);
+        expect(runInNewContext(visible, {browserCapabilities: {browser: 'chrome'}, isThunderbird: false, currentPdfSource: {}})).toBe(false);
+        expect(directive(entry, 'bind', 'disabled')).toBe('!config.on || currentSiteExtensionDisabled || translating');
+        expect(directive(entry, 'bind', 'onClick')).toBe('pageButtons.reading');
+        expect(entry.props.some(prop => prop.type === 6 && prop.name === 'aria-label' && prop.value?.content === '渐进阅读')).toBe(true);
+        expect(entry.props.some(prop => prop.type === 6 && prop.name === 'title' && prop.value?.content.includes('自由切换原文'))).toBe(true);
+    });
     it('keeps information highlight in settings with no Popup entry, drawer or messaging lifecycle', () => {
         const popup = source('src/app/popup/PopupApp.vue');
         const actions = source('src/app/popup/pageActions.ts');

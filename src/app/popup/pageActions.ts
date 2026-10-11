@@ -1,7 +1,7 @@
 /**
  * @file src/app/popup/pageActions.ts
- * 文件职责：管理 Popup 的标签页状态读取、全文/局部操作和站点规则即时翻译归属。
- * 主要内容：区分状态读取与用户操作版本，独占在途操作；原生在线 PDF 交给扩展阅读器，等待后复验页面和活跃上下文，关闭、配置切换和导航使旧回复失效。
+ * 文件职责：管理 Popup 的标签页状态读取、全文/局部操作、渐进阅读入口和站点规则即时翻译归属。
+ * 主要内容：区分状态读取与用户操作版本，独占在途操作；原生在线 PDF 交给扩展阅读器，渐进阅读只打开网页原文辅助而不预检翻译凭据，等待后复验页面和活跃上下文，关闭、配置切换和导航使旧回复失效。
  * 模块边界：只通过注入端口读取标签页、发送已有消息和修改界面状态/配置，不持久化、创建观察器或实现网页翻译。
  */
 import type {Config} from '@/src/core/config/model'
@@ -96,6 +96,19 @@ export function createPopupPageActions(ports: PopupPagePorts) {
     if (!ports.active() || state.busy || !ports.config().on || disabled()) return
     return translate('section', () => ports.close(), ports.translate('popup.sectionTranslationUnavailable'), true)
   }
+  async function reading() {
+    if (ports.thunderbird || getPdfSourceUrl(state.url)) return
+    const task = begin();if (!task) return
+    try {
+      const tabId = await target(task.current);if (tabId === undefined || !task.current()) return
+      if (ports.thunderbird || getPdfSourceUrl(state.url)) return
+      const response = await ports.send(tabId, {type: 'openProgressiveReading'}) as {status?: unknown} | undefined
+      if (!task.current()) return
+      if (response?.status !== 'success') throw new Error('Reading assistance unavailable')
+      ports.close()
+    } catch {if (task.current()) ports.notice('当前页面暂不支持渐进阅读，请刷新后重试', 'error')}
+    finally {task.finish()}
+  }
   function setDisabled(enabled: boolean) {
     if (!ports.active() || !state.domain || state.tabId === null || typeof enabled !== 'boolean') return
     const domain = state.domain, domains = ports.config().disabledExtensionDomains
@@ -118,5 +131,5 @@ export function createPopupPageActions(ports: PopupPagePorts) {
       state.translated = response.isTranslated !== false;ports.notice(`已开启 ${domain} 的始终翻译`)
     }, `已保存 ${domain}，当前网页请刷新后重试`)
   }
-  return {hydrate, toggle, section, setAlways, setDisabled, invalidate}
+  return {hydrate, toggle, section, reading, setAlways, setDisabled, invalidate}
 }

@@ -224,6 +224,7 @@
       "tests/userscriptUnsupportedCapabilities.test.ts",
       "tests/vocabularyBackgroundHandler.test.ts",
       "tests/vocabularyLearningModel.test.ts",
+      "tests/vocabularyReadingHints.test.ts",
       "tests/vocabularyRepositoryEdges.test.ts",
       "tests/viewportStability.test.ts",
       "tests/readmeContributors.test.ts",
@@ -616,7 +617,10 @@
       "tests/targetLanguageReleaseCorpus.test.ts",
       "tests/floatingPopupAuthorization.test.ts",
       "tests/floatingPopupOverlay.test.ts",
-      "tests/popupEmbedded.test.ts"
+      "tests/popupEmbedded.test.ts",
+      "tests/progressiveReading.test.ts",
+      "tests/progressiveReadingSource.test.ts",
+      "tests/progressiveReadingContent.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",

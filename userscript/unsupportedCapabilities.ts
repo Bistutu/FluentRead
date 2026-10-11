@@ -17,6 +17,11 @@ export function unmountImageTranslator(): void {}
 export function mountVocabularyReencounter(): void {}
 export function unmountVocabularyReencounter(): void {}
 
+/** 渐进阅读目前仅扩展支持；构建期隔离其页面扫描、学习读取与 Vue 浮层。 */
+export function mountProgressiveReading(): void {}
+export function openProgressiveReading(): Promise<boolean> { return Promise.resolve(false); }
+export function unmountProgressiveReading(): void {}
+
 export function mountVideoSubtitleTranslation(): () => void {
     return () => undefined;
 }

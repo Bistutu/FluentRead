@@ -1,0 +1,245 @@
+{
+  "date": "2026-10-11",
+  "baseCommit": "c8a06bb5fe0148f629ecaf60e70e5bf6ebb4f957",
+  "branch": "codex/progressive-reading-20261011",
+  "coverage": [
+    {
+      "file": "src/features/progressive-reading/hints.ts",
+      "percentages": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "testCount": 36,
+      "sourceReport": "/private/tmp/fluentread-progressive-reading-core-coverage/coverage-final.json",
+      "logPath": null,
+      "sessionId": 74666
+    },
+    {
+      "file": "src/features/progressive-reading/session.ts",
+      "percentages": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "testCount": 36,
+      "sourceReport": "/private/tmp/fluentread-progressive-reading-core-coverage/coverage-final.json",
+      "logPath": null,
+      "sessionId": 74666
+    },
+    {
+      "file": "src/features/progressive-reading/content.ts",
+      "percentages": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "testCount": 14,
+      "sourceReport": "/private/tmp/progressive-dom-final-coverage/coverage-summary.json",
+      "logPath": "/private/tmp/progressive-final-dom-coverage.log",
+      "sessionId": 39834
+    },
+    {
+      "file": "src/features/progressive-reading/source.ts",
+      "percentages": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "testCount": 14,
+      "sourceReport": "/private/tmp/progressive-dom-final-coverage/coverage-summary.json",
+      "logPath": "/private/tmp/progressive-final-dom-coverage.log",
+      "sessionId": 39834
+    },
+    {
+      "file": "src/features/vocabulary/background/handler.ts",
+      "percentages": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "testCount": 27,
+      "sourceReport": "/private/tmp/fluentread-progressive-vocabulary-coverage/coverage-final.json",
+      "logPath": null,
+      "sessionId": 37760
+    },
+    {
+      "file": "src/features/vocabulary/domain/readingHints.ts",
+      "percentages": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "testCount": 27,
+      "sourceReport": "/private/tmp/fluentread-progressive-vocabulary-coverage/coverage-final.json",
+      "logPath": null,
+      "sessionId": 37760
+    },
+    {
+      "file": "src/app/content/learningFeatures.ts",
+      "percentages": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "testCount": 316,
+      "sourceReport": "/private/tmp/fluentread-progressive-reading-entry-final-coverage/coverage-final.json",
+      "logPath": "/private/tmp/fluentread-progressive-reading-entry-final-coverage.log",
+      "sessionId": 76305
+    },
+    {
+      "file": "src/app/content/messageRuntime.ts",
+      "percentages": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "testCount": 316,
+      "sourceReport": "/private/tmp/fluentread-progressive-reading-entry-final-coverage/coverage-final.json",
+      "logPath": "/private/tmp/fluentread-progressive-reading-entry-final-coverage.log",
+      "sessionId": 76305
+    },
+    {
+      "file": "src/app/popup/pageActions.ts",
+      "percentages": {
+        "statements": 100,
+        "branches": 100,
+        "functions": 100,
+        "lines": 100
+      },
+      "testCount": 316,
+      "sourceReport": "/private/tmp/fluentread-progressive-reading-entry-final-coverage/coverage-final.json",
+      "logPath": "/private/tmp/fluentread-progressive-reading-entry-final-coverage.log",
+      "sessionId": 76305
+    }
+  ],
+  "sourceSha256": {
+    "src/features/progressive-reading/hints.ts": "5ccd30b4c94e77ec34ec134b3c1b393ec7cf7d499937b8a8305f36d21344a4d3",
+    "src/features/progressive-reading/session.ts": "255be282307675f9de68d37441a4bd6a97245a5ae6225396803e516a34fad904",
+    "src/features/progressive-reading/content.ts": "ff315e0c7da21571247b0713d3a917d7b39893d6c64f93454709d5faa7ad7a43",
+    "src/features/progressive-reading/source.ts": "431f6950074deac346ca26b22da238e7a785fddf1cffbce952fe94c9bb7acb83",
+    "src/features/vocabulary/background/handler.ts": "10f258e1fe469487f224217c2e2de6023a7ba9a4f27d12eb07afaf38803b27ff",
+    "src/features/vocabulary/domain/readingHints.ts": "cc981b2d27a2216bc9fe2aa374a3d0dcb58ce3c897069db66899329890d5957d",
+    "src/app/content/learningFeatures.ts": "1a61f5eb587812f7bbe105844b5252475725d060774ab3a15b4be63231e60d87",
+    "src/app/content/messageRuntime.ts": "260bac5fa5a5eead9c3b84d164466f3716d2779fee2b11a1166f3084d960c6c3",
+    "src/app/popup/pageActions.ts": "d9a2e5a68702e716d4264e00ddc9f0778658b6b9568d7c9804a5b89152c407e3",
+    "src/app/popup/PopupApp.vue": "b6277379851b1b967c51c33123407645c565830a240a5763f08182cabbd89788",
+    "src/app/popup/popup.css": "5913b114bf622eafe178e6df8f5cbfa52d7e223e4621e55c1ddba1a27b6328ac",
+    "src/features/progressive-reading/ui/ProgressiveReading.vue": "ee19d2bc4a729e4929fb16784111edb6417cfb1214b8e3a66e2797a5b1d559f2",
+    "userscript/vite.config.ts": "2ea66d5143160e4e876399733605f227100632ac435bde22d74fba1f51ae9557",
+    "userscript/unsupportedCapabilities.ts": "083ed5cb3c6797d105f04043dbca82cbf959074bb450b39739470ededd9e069d"
+  },
+  "manifests": [
+    {
+      "target": "chrome-mv3",
+      "version": "0.0.37",
+      "manifestVersion": 3,
+      "permissions": [
+        "storage",
+        "unlimitedStorage",
+        "alarms",
+        "contextMenus",
+        "declarativeNetRequestWithHostAccess",
+        "identity",
+        "offscreen"
+      ],
+      "hostPermissions": [
+        "<all_urls>",
+        "https://translate.google.com/*",
+        "https://translate.google.co.uk/*",
+        "https://translate.googleapis.com/*",
+        "https://dev.microsofttranslator.com/*",
+        "https://*.tts.speech.microsoft.com/*",
+        "https://deeplx.1stg.me/*",
+        "https://freeapi.fanyimao.cn/*",
+        "https://api.deeplx.org/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "http://*/*",
+        "https://*/*"
+      ],
+      "sha256": "961d10d94833c621d25cd57c2668613840b1b5ff2fc8aa96628448b12a767924"
+    },
+    {
+      "target": "firefox-mv2",
+      "version": "0.0.37",
+      "manifestVersion": 2,
+      "permissions": [
+        "storage",
+        "unlimitedStorage",
+        "alarms",
+        "contextMenus",
+        "declarativeNetRequestWithHostAccess",
+        "<all_urls>",
+        "https://translate.google.com/*",
+        "https://translate.google.co.uk/*",
+        "https://translate.googleapis.com/*",
+        "https://dev.microsofttranslator.com/*",
+        "https://*.tts.speech.microsoft.com/*",
+        "https://deeplx.1stg.me/*",
+        "https://freeapi.fanyimao.cn/*",
+        "https://api.deeplx.org/*",
+        "http://localhost/*",
+        "http://127.0.0.1/*",
+        "http://*/*",
+        "https://*/*"
+      ],
+      "hostPermissions": [],
+      "sha256": "205907f75626b559ff0211fc4ebcd1c5798f952a7f9b7076a549416c0911492a"
+    }
+  ],
+  "artifacts": {
+    "chromeContentSha256": "0eed2fb962799ddf82a93c079302b6bb6bce3959683057e5179ffe24e605307f",
+    "firefoxContentSha256": "8461ebefe46f4a1b03d3c03b072497b252a4b6a4bf20e3de677d593af07f48ba",
+    "userscriptBytes": 2024908,
+    "userscriptSha256": "790c45e4c9193be2b994a50cb4b680ad123f0d0edc2a5fe3b2092889076badfe",
+    "userscriptBudgetBytes": 2025000
+  },
+  "gates": {
+    "compile": "passed",
+    "architecture": {
+      "passed": 949
+    },
+    "testAudit": {
+      "files": 656,
+      "cases": 10935,
+      "status": "passed"
+    },
+    "chromeBuild": "passed",
+    "firefoxBuild": "passed",
+    "userscriptBuild": "passed",
+    "userscriptVerifier": "passed",
+    "docsBuild": "passed"
+  },
+  "browser": {
+    "passed": 18,
+    "consoleErrors": 0,
+    "focusSamples": 41,
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "windowPlacement": "background-visible-no-focus",
+    "browserFrontmost": false,
+    "ownedBrowserClosed": true,
+    "profileRemoved": true,
+    "report": "report.json"
+  },
+  "boundaries": [
+    "Local deterministic HTTP translations and Popup active-tab/close capture are fixtures.",
+    "No live-provider word-sense/translation quality or human-comprehension acceptance.",
+    "No Firefox or userscript runtime acceptance.",
+    "Webpage preexisting bilingual artifact reuse is unit-tested only; browser validates same-session reuse."
+  ],
+  "baseline": {
+    "file": "tests/implementationAudit48A.test.ts",
+    "failure": "Bilibili fixed Origin-removal rule conflicts with unchanged HEAD addRules=[] expectation",
+    "relatedProductChanges": false
+  }
+}

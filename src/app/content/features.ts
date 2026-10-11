@@ -66,3 +66,4 @@ export {
 
 export {mountShareCard, unmountShareCard, isShareCardMounted} from '@/src/features/share-card/public';
 export {mountVocabularyReencounter, unmountVocabularyReencounter} from '@/src/features/vocabulary/content/public';
+export {openProgressiveReading} from '@/src/features/progressive-reading/public';

@@ -1,7 +1,7 @@
 /**
  * @file src/features/vocabulary/protocol.ts
  * 文件职责：定义内容页、设置页和后台共用的轻量词书消息合同，作为状态、选项、响应与消息常量的唯一来源，避免调用者引入领域算法或 Dexie 副作用。
- * 主要内容：包含全部四种收藏状态、消息常量、收藏输入、列表与导出选项、动作联合、RuntimeMessage、统一响应和变更通知；线上语境允许缺少正文，领域模型再要求有效正文。
+ * 主要内容：包含全部四种收藏状态、消息常量、收藏输入、列表与导出选项、渐进阅读的有界最小提示快照、动作联合、RuntimeMessage、统一响应和变更通知；线上语境允许缺少正文，领域模型再要求有效正文。
  * 模块边界：协议文件只承载可序列化类型，不校验数据库记录、不计算复习计划也不发送消息；后台 handler 负责验证，learningModel/repository 保持权威领域状态。
  */
 export const VOCABULARY_BOOK_MESSAGE = 'fluentReadVocabularyBook' as const;
@@ -48,6 +48,26 @@ export interface VocabularyExportOptions {
     now?: number;
 }
 
+export interface VocabularyReadingHintsInput {
+    /** 保留原文 UTF16 坐标；后台拒绝超过 4096 字符的请求。 */
+    text: string;
+    targetLanguage: string;
+}
+
+/** 只返回当前选段命中的最多 24 个表达，不暴露收藏语境、地址、笔记或学习日志。 */
+export interface VocabularyReadingHint {
+    id: string;
+    term: string;
+    sourceLanguage: string;
+    reference: string;
+    start: number;
+    end: number;
+    /** 必须是当前已掌握状态，且最近学习日志为用户手动标记。 */
+    explicitMastered: boolean;
+    /** 仅原文与某个已保存语境相同；文字匹配不代表相同义项。 */
+    sameContext: boolean;
+}
+
 export type VocabularyBookErrorCode =
     | 'invalid-input'
     | 'not-found'
@@ -56,6 +76,7 @@ export type VocabularyBookErrorCode =
     | 'storage-error';
 
 export type VocabularyBookAction =
+    | 'readingHints'
     | 'reencounterList'
     | 'reencounterGet'
     | 'list'

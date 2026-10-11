@@ -1,12 +1,13 @@
 /**
  * @file src/features/vocabulary/background/handler.ts
  * 文件职责：实现本地学习收藏的后台消息处理器，对查询、收藏、解释更新、复习、撤销删除、列表、导入导出和清空进行严格输入校验与统一错误映射。
- * 主要内容：定义仓库和广播依赖，构造词书变更消息及浏览器广播适配器，创建变更 ACK、主业务 handler 和组合 handlers，并在成功写操作后通知相关标签页。
+ * 主要内容：定义仓库和广播依赖，构造词书变更消息及浏览器广播适配器，创建变更 ACK、主业务 handler 和组合 handlers；渐进阅读只读取有界命中的最小快照，成功写操作后通知相关标签页。
  * 模块边界：本文件不直接操作 Dexie 表或 Vue UI；持久化由 repository contract 注入，消息形状来自 protocol，browser.tabs 广播通过适配器隔离，失败不会泄露内部数据。
  */
 import type {BackgroundMessageHandler} from '@/src/app/background/messageRouter';
 import {reencounterSnapshot, reencounterTerm} from '../domain/reencounter';
-import type {VocabularyEntry} from '../learningModel';
+import {matchVocabularyReadingHints, vocabularyReadingHintSnapshot} from '../domain/readingHints';
+import type {VocabularyEntry, VocabularyReviewLog} from '../learningModel';
 import {
     VOCABULARY_BOOK_CHANGED_MESSAGE,
     VOCABULARY_BOOK_MESSAGE,
@@ -18,6 +19,7 @@ import {
     type VocabularyListOptions,
     type VocabularyScheduledReviewRating,
     type VocabularyUpsertInput,
+    type VocabularyReadingHintsInput,
 } from '@/src/features/vocabulary/protocol';
 
 export interface VocabularyBackgroundContext {
@@ -100,6 +102,17 @@ function validateGetByTermMessage(message: VocabularyBookRuntimeMessage): {sourc
     // 步骤 2：sourceLanguage 是词书 identity 的一部分，后台边界不再接受隐式空值。
     const sourceLanguage = requiredText(message.sourceLanguage, '缺少有效的源语言');
     return {sourceLanguage, term};
+}
+
+function validateReadingHintsInput(value: unknown): VocabularyReadingHintsInput {
+    if (!isPlainRecord(value) || typeof value.text !== 'string' || !/[\p{L}\p{N}]/u.test(value.text) || value.text.length > 4096) {
+        throw new VocabularyBookHandlerError('invalid-input', '阅读原文必须包含文字且不超过 4096 字符');
+    }
+    const targetLanguage = requiredText(value.targetLanguage, '缺少有效的目标语言').replaceAll('_', '-').toLowerCase();
+    if (targetLanguage.length > 64 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(targetLanguage)) {
+        throw new VocabularyBookHandlerError('invalid-input', '目标语言无效');
+    }
+    return {text: value.text, targetLanguage};
 }
 
 function validateUpsertInput(value: unknown): VocabularyUpsertInput {
@@ -207,6 +220,18 @@ export function createVocabularyBookHandler(
             try {
                 // 步骤 1：先在后台信任边界收窄 action 与必要参数。
                 switch (message.action) {
+                    case 'readingHints': {
+                        const input = validateReadingHintsInput(message.input);
+                        await dependencies.configReady;
+                        if (context.sender?.tab?.incognito === true || !dependencies.isVocabularyBookEnabled()) {
+                            return {success: true, data: []};
+                        }
+                        const entries = await dependencies.vocabularyBook.list({order: 'recent'}) as VocabularyEntry[];
+                        const matches = matchVocabularyReadingHints(input.text, entries);
+                        const logs = new Map(await Promise.all([...new Set(matches.map(match => match.entry.id))].map(async id =>
+                            [id, await dependencies.vocabularyBook.getReviewLogs(id) as VocabularyReviewLog[]] as const)));
+                        return {success: true, data: matches.map(match => vocabularyReadingHintSnapshot(input.text, input.targetLanguage, match, logs.get(match.entry.id)!))};
+                    }
                     case 'reencounterList':
                     case 'reencounterGet': {
                         await dependencies.configReady;

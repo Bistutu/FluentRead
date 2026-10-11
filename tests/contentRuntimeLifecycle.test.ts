@@ -1,7 +1,7 @@
 /**
  * @file tests/contentRuntimeLifecycle.test.ts
  * 文件职责：验证内容应用启动、配置等待、页面暂停恢复与离开时的生命周期边界。
- * 主要内容：隔离各 feature 的组合根依赖，确认原始 XML 与失效上下文不会启动运行时，迟到初始化和伪造页面事件不会挂载功能，扩展端口撤销或拒绝注销也不会中断宿主页面清理。
+ * 主要内容：隔离各 feature 的组合根依赖，确认原始 XML 与失效上下文不会启动运行时，主动阅读随 BFCache 暂停/恢复重建独立信号，迟到初始化和伪造页面事件不会挂载功能，扩展端口撤销或拒绝注销也不会中断宿主页面清理。
  * 模块边界：不测试各 feature 的 Vue 组件或真实翻译请求；跨域 frame 的身份与会话另有专门测试。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -22,12 +22,17 @@ const mocks = vi.hoisted(() => ({
     addRuntimeListener: vi.fn(), removeRuntimeListener: vi.fn(), createMessageHandler: vi.fn(),
     setBridges: vi.fn(),
     mountWriting: vi.fn(), unmountWriting: vi.fn(), writingMounted: false,
+    mountProgressive: vi.fn(), unmountProgressive: vi.fn(),
     floatingBallAllowed: true, shareCardMounted: false, mountShareCard: vi.fn(), mountReencounter: vi.fn(), unmountReencounter: vi.fn(),
 }));
 vi.mock('@/src/features/writing-assistant/public', () => ({
     mountWritingAssistant: () => {mocks.writingMounted = true; mocks.mountWriting();},
     unmountWritingAssistant: () => {mocks.writingMounted = false; mocks.unmountWriting();},
     isWritingAssistantMounted: () => mocks.writingMounted,
+}));
+vi.mock('@/src/features/progressive-reading/public', () => ({
+    mountProgressiveReading: mocks.mountProgressive,
+    unmountProgressiveReading: mocks.unmountProgressive,
 }));
 
 vi.mock('@/src/services/config/store', () => ({
@@ -515,22 +520,36 @@ describe('content composition root 冷启动与暂停恢复', () => {
         expect(unsubscribe).toHaveBeenCalledOnce();
     });
 
-    it('写作和分享卡片遵循同一启停和 BFCache 恢复生命周期', async () => {
+    it('写作、分享卡片和渐进阅读遵循同一启停与 BFCache 恢复生命周期', async () => {
         Object.assign(page, {location: {href: 'https://github.com/FluentRead/FluentRead/issues/1'}});
         mocks.config.writing.enabled = true;
         const {startContentApp} = await import('@/src/app/content/runtime');
         const starting = startContentApp(context as never); ready(); await starting;
         expect(mocks.mountWriting).toHaveBeenCalledOnce();
         expect(mocks.mountShareCard).toHaveBeenCalledOnce();
+        expect(mocks.mountProgressive).toHaveBeenCalledOnce();
+        const firstSignal = mocks.mountProgressive.mock.calls[0][1] as AbortSignal;
+        expect(mocks.mountProgressive.mock.calls[0][0]).toBe(context);
+        expect(firstSignal.aborted).toBe(false);
         transition(page, 'pagehide', true);
         expect(mocks.writingMounted).toBe(false);
         expect(mocks.shareCardMounted).toBe(false);
+        expect(mocks.unmountProgressive).toHaveBeenCalledOnce();
+        expect(firstSignal.aborted).toBe(true);
         transition(page, 'pageshow', true);
         await vi.waitFor(() => expect(mocks.mountWriting).toHaveBeenCalledTimes(2));
         expect(mocks.mountShareCard).toHaveBeenCalledTimes(2);
+        expect(mocks.mountProgressive).toHaveBeenCalledTimes(2);
+        const resumedSignal = mocks.mountProgressive.mock.calls[1][1] as AbortSignal;
+        expect(resumedSignal).not.toBe(firstSignal);
+        expect(resumedSignal.aborted).toBe(false);
         invalidated();
         expect(mocks.writingMounted).toBe(false);
         expect(mocks.shareCardMounted).toBe(false);
+        expect(mocks.unmountProgressive).toHaveBeenCalledTimes(2);
+        expect(resumedSignal.aborted).toBe(true);
+        transition(page, 'pageshow', true);
+        expect(mocks.mountProgressive).toHaveBeenCalledTimes(2);
     });
 
     it.each(['pagehide', 'invalidate'] as const)('配置读取期间 %s 后不允许迟到初始化挂载', async reason => {

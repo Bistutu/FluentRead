@@ -65,6 +65,10 @@ node scripts/run-selection-speech-test.cjs \
 
 ## 设置分组、阅读辅助与右键菜单
 
+渐进阅读专项使用 `tests/progressiveReading.test.ts`、`tests/progressiveReadingSource.test.ts`、`tests/progressiveReadingContent.test.ts` 与 `tests/vocabularyReadingHints.test.ts`，覆盖多词表达、Unicode 词界、熟词新语境、最新明确掌握日志、四档自由切换、精确双语复用、取消与迟到结果、宿主/路由所有权、关闭及卸载。Popup 用既有 ownership/visibility 测试验证入口与页面版本门禁。
+
+`node scripts/run-progressive-reading-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <focus-safe-browser.cjs> --artifacts-dir /private/tmp/fluentread-progressive-reading` 在临时 Edge profile、第二屏正常可见且不抢焦点的窗口运行生产扩展，使用本机确定性 HTTP 翻译夹具验证真实 Vue/DOM、键盘、390px、掌握状态变更、链接保全、DOM 替换和禁用清理。报告必须区分模拟服务与真实供应商；没有真人理解实验，不能宣称提高理解率。
+
 右键菜单后台恢复专项：`pnpm test tests/contextMenuRuntimeOwnership.test.ts tests/contextMenu.test.ts tests/backgroundBadgeRuntime.test.ts tests/contentMessageRuntime.test.ts`。受控浏览器端口覆盖 MV3 后台冷启动首击等待配置与菜单就绪、活动页查询暂时失败后的点击、导航/关闭/禁用期间丢弃旧点击，以及失败重试和翻译—恢复—再次翻译。菜单已创建后，活动页查询失败不会清空点击路由。该专项不代表操作系统原生菜单、报告者环境或在线供应商验收。
 
 右键翻译体验使用定向入口：
