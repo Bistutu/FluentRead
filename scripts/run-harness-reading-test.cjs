@@ -224,7 +224,7 @@ async function compactReadingEvidenceLayout(page) {
                 let precedingCharacter=null;
                 if (precedingText) {const range=document.createRange();range.setStart(previous,precedingText.length-1);range.setEnd(previous,precedingText.length);precedingCharacter=rect(range);}
                 const paths=svg ? [...svg.querySelectorAll('path')].map(path=>path.getAttribute('d') || '') : [];
-                return {bounds,display:style.display,visible:bounds.width>0 && bounds.height>0 && style.visibility==='visible' && style.display!=='none',hovered:button.matches(':hover'),visibleText:button.innerText.trim(),quote:button.getAttribute('data-evidence-quote') || '',title:button.title,ariaLabel:button.getAttribute('aria-label') || '',wrapperDisplay:wrapper ? getComputedStyle(wrapper).display : '',paragraphText:paragraph?.textContent.trim() || '',precedingText,precedingCharacter,followingText,svg:svg ? {bounds:rect(svg),ariaHidden:svg.getAttribute('aria-hidden'),circleCount:svg.querySelectorAll('circle').length,paths,markup:svg.outerHTML} : null,sameLine:Boolean(precedingCharacter && bounds.x>=precedingCharacter.right-1 && bounds.y<precedingCharacter.bottom && bounds.bottom>precedingCharacter.y)};
+                return {bounds,display:style.display,visible:bounds.width>0 && bounds.height>0 && style.visibility==='visible' && style.display!=='none',hovered:button.matches(':hover'),visibleText:button.innerText.trim(),color:style.color,borderWidth:style.borderWidth,background:style.backgroundColor,quote:button.getAttribute('data-evidence-quote') || '',title:button.title,ariaLabel:button.getAttribute('aria-label') || '',wrapperDisplay:wrapper ? getComputedStyle(wrapper).display : '',paragraphText:paragraph?.textContent.trim() || '',precedingText,precedingCharacter,followingText,svg:svg ? {bounds:rect(svg),icon:svg.getAttribute('data-evidence-icon'),ariaHidden:svg.getAttribute('aria-hidden'),circleCount:svg.querySelectorAll('circle').length,frameShapeCount:svg.querySelectorAll('ellipse,rect,polygon,polyline,line').length,fill:getComputedStyle(svg).fill,stroke:getComputedStyle(svg).stroke,glyphBounds:[...svg.querySelectorAll('path')].map(rect),paths,markup:svg.outerHTML} : null,sameLine:Boolean(precedingCharacter && bounds.x>=precedingCharacter.right-1 && bounds.y<precedingCharacter.bottom && bounds.bottom>precedingCharacter.y)};
             });
         }`});
         assert(!response.exceptionDetails,`紧凑依据几何检查失败: ${JSON.stringify(response.exceptionDetails)}`);
@@ -236,8 +236,11 @@ async function verifyCompactReadingEvidence({page,record}) {
     assert(entries.length>=2,'紧凑依据检查缺少多句原文入口');
     for (const entry of entries) {
         assert(entry.visible && entry.bounds.width<=20 && entry.bounds.height<=20,`依据入口没有保持20px以内的可见尺寸: ${JSON.stringify(entry)}`);
-        assert(entry.visibleText==='' && entry.svg?.circleCount>0 && entry.svg.paths.some(path=>path.includes('v')) && entry.svg.paths.some(path=>path.includes('h.01')),`依据入口不是无文字的信息i图标: ${JSON.stringify(entry)}`);
-        assert(entry.svg.bounds.width>0 && entry.svg.bounds.width<=20 && entry.svg.bounds.height>0 && entry.svg.bounds.height<=20,'信息SVG不可见或超过紧凑尺寸');
+        assert(entry.visibleText==='' && entry.svg?.icon==='quote' && entry.svg.circleCount===0 && entry.svg.frameShapeCount===0 && entry.svg.paths.length===2 && !entry.svg.paths.some(path=>path.includes('h.01')),`依据入口不是无外框的引文图标: ${JSON.stringify(entry)}`);
+        const glyphs=[...entry.svg.glyphBounds].sort((a,b)=>a.x-b.x);
+        assert(glyphs.every(glyph=>glyph.width>1 && glyph.height>1) && glyphs[0].right<=glyphs[1].x+.5 && Math.abs(glyphs[0].width-glyphs[1].width)<=1 && Math.abs(glyphs[0].height-glyphs[1].height)<=1,'引文SVG不是两枚水平相邻的引号，或仍是i/感叹号轮廓');
+        assert(entry.svg.bounds.width>0 && entry.svg.bounds.width<=20 && entry.svg.bounds.height>0 && entry.svg.bounds.height<=20 && entry.svg.fill!=='none' && entry.svg.stroke==='none','引文SVG不可见、描边告警或超过紧凑尺寸');
+        assert(entry.borderWidth==='0px' && entry.background==='rgba(0, 0, 0, 0)','引文入口仍有常驻外框或背景');
         assert(entry.quote && entry.title===entry.quote && entry.ariaLabel.includes(entry.quote),'依据入口title/aria没有保存完整原引文');
         assert(entry.display==='inline-flex' && entry.wrapperDisplay==='inline' && /[.!?。！？]$/.test(entry.precedingText) && !entry.followingText,'依据入口没有位于正文句末行内，或使用了独立引用行容器');
     }
@@ -249,7 +252,7 @@ async function verifyCompactReadingEvidence({page,record}) {
     await session.send('Input.dispatchMouseEvent',{type:'mouseMoved',x,y,button:'none'});
     const hovered=await compactReadingEvidenceLayout(page);
     assert(hovered[0].hovered && hovered[0].title===entries[0].quote,'真实hover后原生title完整引文契约丢失');
-    record('evidence.compact-info-icon-inline-title-contract','passed',{entries,hover:{x,y,title:hovered[0].title,systemTooltipCaptured:false}});
+    record('evidence.compact-quote-hint-inline-title-contract','passed',{entries,hover:{x,y,title:hovered[0].title,systemTooltipCaptured:false}});
 }
 async function readingEvidenceHighlights(page) {
     return page.evaluate(() => {

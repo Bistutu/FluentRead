@@ -32,7 +32,11 @@ it('renders citations next to claims as safe native buttons and keeps external k
   expect(button.getAttribute('aria-label')).toBe('reading.evidence.locatePractice helps.');
   expect(button.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
   expect(button.querySelector('svg')?.getAttribute('focusable')).toBe('false');
-  expect(button.querySelector('svg circle')).not.toBeNull();
+  const icon = button.querySelector('svg')!;
+  expect(icon.getAttribute('data-evidence-icon')).toBe('quote');
+  expect(icon.querySelectorAll('path')).toHaveLength(2);
+  expect(icon.querySelector('circle, line, text')).toBeNull();
+  expect(icon.innerHTML).not.toContain('M8 7v4M8 4.75h.01');
   expect(html).not.toContain('reading.evidence.label');
   expect(html).not.toContain('reading.evidence.label · Practice helps.');
   expect(html).toContain('【reading.evidence.external】');
@@ -52,6 +56,9 @@ it('keeps grammar-table citations clickable while preserving the existing struct
   expect(button.getAttribute('title')).toBe('Practice helps.');
   expect(button.getAttribute('aria-label')).toBe('reading.evidence.locatePractice helps.');
   expect(button.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+  expect(button.querySelector('svg')?.getAttribute('data-evidence-icon')).toBe('quote');
+  expect(button.querySelectorAll('svg path')).toHaveLength(2);
+  expect(button.querySelector('svg circle')).toBeNull();
   const original = await renderAnswer(table.replace(` [[cite:${source.id}|Practice helps.]]`, ''));
   expect(original).toContain('fr-reading-structure'); expect(original).not.toContain('data-reading-evidence');
 });

@@ -119,5 +119,32 @@
     "buildLog": "/private/tmp/fluentread-evidence-info-icon-userscript.log",
     "verifyLog": "/private/tmp/fluentread-evidence-info-icon-userscript-verify.log",
     "languageResourceCommit": "1e9e80dd49530aac9c7610b51a935357f4099c19"
+  },
+  "latestMainQuoteHintIntegration": {
+    "baselineCommit": "11860f3f2233155ff27765a51b27b9d6aeb5109e",
+    "baselineDirectory": "/private/tmp/fluentread-reading-evidence-main-11860f3f2-baseline.2ZoDho",
+    "dependencyDirectory": "/Users/thinkstu/Desktop/copy/FluentRead/node_modules",
+    "baselineBytes": 2047876,
+    "baselineSha256": "518eac803dc808a5c8a45301efe7fb455f38715798fd8cf030fe6401dc310d14",
+    "baselineBudgetBytes": 2050000,
+    "baselineBudgetHeadroomBytes": 2124,
+    "baselineVerifierPassed": true,
+    "baselineTrackedFilesVerified": 5059,
+    "baselineLanguagesRegenerated": false,
+    "baselineBuildLog": "/private/tmp/fluentread-reading-evidence-main-11860f3f2-baseline.2ZoDho/build-userscript.log",
+    "baselinePrepareLog": "/private/tmp/fluentread-reading-evidence-main-11860f3f2-baseline.2ZoDho/prepare-wxt.log",
+    "baselineVerifyLog": "/private/tmp/fluentread-reading-evidence-main-11860f3f2-baseline.2ZoDho/verify-userscript.log",
+    "baselineSourceIntegrityLog": "/private/tmp/fluentread-reading-evidence-main-11860f3f2-baseline.2ZoDho/source-integrity.log",
+    "candidateBytes": 2064141,
+    "candidateSha256": "63a5dfbde48ce686d8bc0cd26f39c2640e781eb59dc19c919bbd52ae9c8525d1",
+    "deltaBytes": 16265,
+    "deltaPercent": 0.794238,
+    "budgetBytes": 2066000,
+    "budgetChangedThisFollowUp": false,
+    "budgetHeadroomBytes": 1859,
+    "verifierPassed": true,
+    "buildLog": "/private/tmp/fluentread-evidence-quote-hint-userscript.log",
+    "verifyLog": "/private/tmp/fluentread-evidence-quote-hint-userscript-verify.log",
+    "languageResourceCommit": "d58e189da020b09ac9c2c8b398134288f0238428"
   }
 }

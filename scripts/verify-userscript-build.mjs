@@ -93,6 +93,7 @@ const artifactBytes = Buffer.byteLength(source);
 // 合入 43f66b01d 并将原文依据缩为信息图标后，同依赖独立 main 为 2,049,516 字节，候选为 2,065,676。
 // 增加 16,160 字节（0.7885%）；主线 2,050,000 预算余 484 字节，按实测最小增加 16 KB，余 324 字节。
 // 完整对照见 reading-evidence-20261011/userscript-size.json，所有协议与执行边界断言保留。
+// 引文提示整合 11860f3f2：同依赖独立 main 为 2,047,876 字节，候选为 2,064,141；沿用预算，余 1,859。
 const MAX_USERSCRIPT_BYTES = 2_066_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';

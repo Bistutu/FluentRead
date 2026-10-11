@@ -63,7 +63,7 @@
                       "nodeType": 3,
                       "nodeName": "#text",
                       "localName": "",
-                      "nodeValue": "/* WXT Shadow Root Reset */ :host{all:initial !important;}\n\n  :host {\n    all: initial !important;\n    display: block !important;\n    position: relative !important;\n    width: 0 !important; height: 0 !important; overflow: visible !important;\n    contain: none !important;\n    color-scheme: light dark;\n  }\n\n  html,\n  body {\n    width: 0 !important;\n    height: 0 !important;\n    margin: 0 !important;\n    padding: 0 !important;\n    overflow: visible !important;\n  }\n\n  :host[data-fluent-read-viewport-ui=\"true\"] {\n    display: block !important;\n    position: fixed !important;\n    left: 0 !important;\n    top: 0 !important;\n    width: 100vw !important;\n    height: 100vh !important;\n    overflow: hidden !important;\n    pointer-events: auto !important;\n  }\n\n  :host[data-fluent-read-viewport-ui=\"true\"] > div {\n    width: 100% !important;\n    height: 100% !important;\n    overflow: hidden !important;\n  }\n\n  :host([data-fluent-read-ui-suspended=\"true\"]) {\n    visibility: hidden !important;\n    pointer-events: none !important;\n  }\n\n  *,\n  *::before,\n  *::after {\n    box-sizing: border-box;\n  }\n\n@charset \"UTF-8\";.fr-sentence-analysis[data-v-60704d92]{margin:8px 0}.fr-sentence-tokens[data-v-60704d92]{line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.fr-sentence-unit[data-v-60704d92]{display:inline-flex;align-items:flex-start;max-width:100%;vertical-align:top;margin-block:3px}.fr-sentence-gap[data-v-60704d92]{white-space:pre-wrap;padding-top:6px}.fr-sentence-tokens button[data-v-60704d92]{--pos-color: #846242;font:inherit;display:inline-flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;max-width:100%;margin:0;padding:6px 9px;border:1px solid color-mix(in srgb,var(--pos-color) 18%,transparent);border-bottom:2px solid color-mix(in srgb,var(--pos-color) 45%,transparent);border-radius:8px;background:color-mix(in srgb,var(--pos-color) 5%,transparent);color:inherit;cursor:pointer;text-align:start;white-space:normal;overflow-wrap:anywhere}.fr-sentence-token-text[data-v-60704d92]{max-width:100%;font-size:13px;line-height:1.5}.fr-sentence-token-meta[data-v-60704d92]{max-width:100%;font-size:11px;line-height:1.45;color:var(--fr-reading-muted, var(--el-text-color-secondary, #756a74));white-space:normal;overflow-wrap:anywhere;-webkit-user-select:none;user-select:none}.fr-dark-theme .fr-sentence-token-meta[data-v-60704d92]{color:#b6a9b5}.fr-sentence-tokens button[data-pos=noun][data-v-60704d92],.fr-sentence-tokens button[data-pos=pronoun][data-v-60704d92]{--pos-color:#3c7fbb}.fr-sentence-tokens button[data-pos=verb][data-v-60704d92],.fr-sentence-tokens button[data-pos=auxiliary][data-v-60704d92]{--pos-color:#bd5481}.fr-sentence-tokens button[data-pos=adjective][data-v-60704d92],.fr-sentence-tokens button[data-pos=adverb][data-v-60704d92]{--pos-color:#398579}.fr-sentence-tokens button[data-pos=article][data-v-60704d92],.fr-sentence-tokens button[data-pos=determiner][data-v-60704d92]{--pos-color:#9c713b}.fr-sentence-tokens button[data-pos=conjunction][data-v-60704d92],.fr-sentence-tokens button[data-pos=preposition][data-v-60704d92]{--pos-color:#8067bc}.fr-sentence-tokens button[data-role=subject][data-v-60704d92]{--pos-color:#398579}.fr-sentence-tokens button[data-role=predicate][data-v-60704d92]{--pos-color:#bd5481}.fr-sentence-tokens button[data-role=object][data-v-60704d92],.fr-sentence-tokens button[data-role=indirect-object][data-v-60704d92]{--pos-color:#527fbb}.fr-sentence-tokens button[data-role=attribute][data-v-60704d92],.fr-sentence-tokens button[data-role=postmodifier][data-v-60704d92]{--pos-color:#a4792c}.fr-sentence-tokens button[aria-pressed=true][data-v-60704d92]{border-color:var(--pos-color);background:color-mix(in srgb,var(--pos-color) 8%,transparent)}.fr-sentence-tokens button[data-v-60704d92]:hover{background:color-mix(in srgb,var(--pos-color) 10%,transparent)}.fr-sentence-tokens button[data-v-60704d92]:focus-visible,.fr-sentence-reference summary[data-v-60704d92]:focus-visible{outline:2px solid currentColor;outline-offset:2px}.fr-sentence-detail[data-v-60704d92]{margin:8px 0 0;padding:9px 10px;border:1px solid var(--fr-answer-border,#e9e9ef);border-radius:8px;background:var(--fr-answer-soft,#f8f8fa)}.fr-sentence-detail-heading[data-v-60704d92]{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px}.fr-sentence-detail-heading strong[data-v-60704d92]{font-size:12px;line-height:1.5;overflow-wrap:anywhere}.fr-sentence-detail-heading>span[data-v-60704d92]{font-size:11px;opacity:.75}.fr-sentence-detail p[data-v-60704d92]{margin:4px 0 0;overflow-wrap:anywhere}.fr-sentence-meaning[data-v-60704d92]{font-size:13px;line-height:1.7}.fr-sentence-role[data-v-60704d92]{font-size:12px}.fr-sentence-role>span[data-v-60704d92]{margin-inline-end:8px;opacity:.65}.fr-sentence-reference[data-v-60704d92]{margin-top:6px;font-size:11px;color:var(--fr-reading-muted, var(--el-text-color-secondary, #756a74))}.fr-sentence-reference summary[data-v-60704d92]{cursor:pointer;width:fit-content}.fr-sentence-reference p[data-v-60704d92]{line-height:1.7}.fr-dark-theme .fr-sentence-reference[data-v-60704d92]{color:#b6a9b5}.fr-reading-evidence-wrap[data-v-dea4b536]{display:inline}.fr-reading-evidence[data-v-dea4b536]{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin:0 2px;padding:0;border:0;border-radius:50%;background:none;color:var(--fr-reading-button, #a64b6e);font:inherit;line-height:1;vertical-align:text-bottom;cursor:pointer}.fr-reading-evidence svg[data-v-dea4b536]{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}.fr-reading-evidence[data-v-dea4b536]:hover,.fr-reading-evidence[data-v-dea4b536]:focus-visible{background:var(--fr-reading-soft, #faf7f9)}.fr-reading-evidence[data-v-dea4b536]:focus-visible{outline:2px solid var(--fr-reading-button, #a64b6e);outline-offset:1px}.fr-reading-evidence-status[data-v-dea4b536]{font-size:12px;color:var(--fr-answer-quote, inherit)}.fr-reading-evidence-status.is-located[data-v-dea4b536]{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.fr-reading-markdown[data-v-c9a12318]{--fr-answer-quote: var(--el-text-color-regular, inherit);--fr-answer-border: var(--el-border-color-lighter, #e9e9ef);--fr-answer-soft: var(--el-fill-color-lighter, #f8f8fa);--fr-answer-code: var(--el-fill-color-light, #f3f3f6);color:inherit;font-size:14px;line-height:1.8;overflow-wrap:anywhere}.fr-reading-markdown[data-v-c9a12318]>:first-child{margin-top:0}.fr-reading-markdown[data-v-c9a12318]>:last-child{margin-bottom:0}.fr-reading-structure[data-v-c9a12318]{margin-bottom:16px}.fr-reading-markdown .fr-reading-structure>h3[data-v-c9a12318]{margin:0 0 8px;padding:0;border:0}.fr-reading-markdown h3[data-v-c9a12318],.fr-reading-markdown h4[data-v-c9a12318]{margin:22px 0 8px;color:inherit;font-size:14px;font-weight:700;line-height:1.45}.fr-reading-markdown h3[data-v-c9a12318]{font-size:15px}.fr-reading-markdown h3[data-v-c9a12318]:not(:first-child),.fr-reading-markdown h4[data-v-c9a12318]:not(:first-child){padding-top:12px;border-top:1px solid var(--fr-answer-border)}.fr-reading-markdown p[data-v-c9a12318]{margin:0 0 12px;white-space:pre-line}.fr-reading-markdown ul[data-v-c9a12318],.fr-reading-markdown ol[data-v-c9a12318]{margin:6px 0 14px;padding-inline-start:1.5em}.fr-reading-markdown li[data-v-c9a12318]{padding-inline-start:2px;margin:5px 0;white-space:pre-line}.fr-reading-markdown li[data-v-c9a12318]::marker{color:var(--el-color-primary, #ec4899)}.fr-reading-markdown blockquote[data-v-c9a12318]{margin:12px 0;padding:7px 12px;border-inline-start:3px solid var(--el-color-primary-light-5, #f6a5c4);color:var(--fr-answer-quote);background:var(--fr-answer-soft);border-radius:0 5px 5px 0;white-space:pre-line}.fr-reading-markdown[data-v-c9a12318] strong{color:inherit;font-weight:650}.fr-reading-markdown[data-v-c9a12318] code{padding:2px 5px;border-radius:4px;background:var(--fr-answer-code);color:inherit;font:.9em ui-monospace,SFMono-Regular,Menlo,monospace}.fr-reading-markdown pre[data-v-c9a12318]{margin:12px 0;padding:12px;max-width:100%;overflow:auto;border:1px solid var(--fr-answer-border);border-radius:7px;background:var(--fr-answer-soft);line-height:1.65}.fr-reading-markdown pre code[data-v-c9a12318]{display:block;padding:0;background:transparent;white-space:pre}.fr-reading-table[data-v-c9a12318]{max-width:100%;margin:12px 0;overflow-x:auto}.fr-reading-table table[data-v-c9a12318]{width:100%;border-collapse:collapse;font-size:13px}.fr-reading-table th[data-v-c9a12318],.fr-reading-table td[data-v-c9a12318]{padding:7px 9px;border:1px solid var(--fr-answer-border);text-align:start;vertical-align:top}.fr-reading-table th[data-v-c9a12318]{font-weight:650;background:var(--fr-answer-soft)}.is-compact[data-v-c9a12318]{font-size:13px;line-height:1.75}.is-compact h3[data-v-c9a12318],.is-compact h4[data-v-c9a12318]{margin-top:18px;font-size:13px}.is-compact p[data-v-c9a12318],.is-compact ul[data-v-c9a12318],.is-compact ol[data-v-c9a12318]{margin-bottom:10px}.fr-dark-theme .fr-reading-markdown[data-v-c9a12318]{--fr-answer-quote: #b6a9b5;--fr-answer-border: #514651;--fr-answer-soft: #352f38;--fr-answer-code: #413846}.fr-reading[data-v-d3a37183],.fr-reading-controls[data-v-d3a37183]{--fr-reading-line: #eee8ec;--fr-reading-muted: #756a74;--fr-reading-button: #826573;--fr-reading-soft: #faf7f9;color:#35333c;font:13px/1.7 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif}.fr-reading[data-v-d3a37183]{display:flex;flex-direction:column;height:100%;min-height:0;box-sizing:border-box;padding:6px 14px 10px;overflow:hidden}.fr-reading-controls[data-v-d3a37183]{display:flex;align-items:center;gap:3px}.fr-reading-navigation[data-v-d3a37183]{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px;color:var(--fr-reading-muted);font-size:11px}.fr-reading-navigation button[data-v-d3a37183]{color:#a64b6e}.fr-reading-scroll[data-v…"
+                      "nodeValue": "/* WXT Shadow Root Reset */ :host{all:initial !important;}\n\n  :host {\n    all: initial !important;\n    display: block !important;\n    position: relative !important;\n    width: 0 !important; height: 0 !important; overflow: visible !important;\n    contain: none !important;\n    color-scheme: light dark;\n  }\n\n  html,\n  body {\n    width: 0 !important;\n    height: 0 !important;\n    margin: 0 !important;\n    padding: 0 !important;\n    overflow: visible !important;\n  }\n\n  :host[data-fluent-read-viewport-ui=\"true\"] {\n    display: block !important;\n    position: fixed !important;\n    left: 0 !important;\n    top: 0 !important;\n    width: 100vw !important;\n    height: 100vh !important;\n    overflow: hidden !important;\n    pointer-events: auto !important;\n  }\n\n  :host[data-fluent-read-viewport-ui=\"true\"] > div {\n    width: 100% !important;\n    height: 100% !important;\n    overflow: hidden !important;\n  }\n\n  :host([data-fluent-read-ui-suspended=\"true\"]) {\n    visibility: hidden !important;\n    pointer-events: none !important;\n  }\n\n  *,\n  *::before,\n  *::after {\n    box-sizing: border-box;\n  }\n\n@charset \"UTF-8\";.fr-sentence-analysis[data-v-60704d92]{margin:8px 0}.fr-sentence-tokens[data-v-60704d92]{line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}.fr-sentence-unit[data-v-60704d92]{display:inline-flex;align-items:flex-start;max-width:100%;vertical-align:top;margin-block:3px}.fr-sentence-gap[data-v-60704d92]{white-space:pre-wrap;padding-top:6px}.fr-sentence-tokens button[data-v-60704d92]{--pos-color: #846242;font:inherit;display:inline-flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;max-width:100%;margin:0;padding:6px 9px;border:1px solid color-mix(in srgb,var(--pos-color) 18%,transparent);border-bottom:2px solid color-mix(in srgb,var(--pos-color) 45%,transparent);border-radius:8px;background:color-mix(in srgb,var(--pos-color) 5%,transparent);color:inherit;cursor:pointer;text-align:start;white-space:normal;overflow-wrap:anywhere}.fr-sentence-token-text[data-v-60704d92]{max-width:100%;font-size:13px;line-height:1.5}.fr-sentence-token-meta[data-v-60704d92]{max-width:100%;font-size:11px;line-height:1.45;color:var(--fr-reading-muted, var(--el-text-color-secondary, #756a74));white-space:normal;overflow-wrap:anywhere;-webkit-user-select:none;user-select:none}.fr-dark-theme .fr-sentence-token-meta[data-v-60704d92]{color:#b6a9b5}.fr-sentence-tokens button[data-pos=noun][data-v-60704d92],.fr-sentence-tokens button[data-pos=pronoun][data-v-60704d92]{--pos-color:#3c7fbb}.fr-sentence-tokens button[data-pos=verb][data-v-60704d92],.fr-sentence-tokens button[data-pos=auxiliary][data-v-60704d92]{--pos-color:#bd5481}.fr-sentence-tokens button[data-pos=adjective][data-v-60704d92],.fr-sentence-tokens button[data-pos=adverb][data-v-60704d92]{--pos-color:#398579}.fr-sentence-tokens button[data-pos=article][data-v-60704d92],.fr-sentence-tokens button[data-pos=determiner][data-v-60704d92]{--pos-color:#9c713b}.fr-sentence-tokens button[data-pos=conjunction][data-v-60704d92],.fr-sentence-tokens button[data-pos=preposition][data-v-60704d92]{--pos-color:#8067bc}.fr-sentence-tokens button[data-role=subject][data-v-60704d92]{--pos-color:#398579}.fr-sentence-tokens button[data-role=predicate][data-v-60704d92]{--pos-color:#bd5481}.fr-sentence-tokens button[data-role=object][data-v-60704d92],.fr-sentence-tokens button[data-role=indirect-object][data-v-60704d92]{--pos-color:#527fbb}.fr-sentence-tokens button[data-role=attribute][data-v-60704d92],.fr-sentence-tokens button[data-role=postmodifier][data-v-60704d92]{--pos-color:#a4792c}.fr-sentence-tokens button[aria-pressed=true][data-v-60704d92]{border-color:var(--pos-color);background:color-mix(in srgb,var(--pos-color) 8%,transparent)}.fr-sentence-tokens button[data-v-60704d92]:hover{background:color-mix(in srgb,var(--pos-color) 10%,transparent)}.fr-sentence-tokens button[data-v-60704d92]:focus-visible,.fr-sentence-reference summary[data-v-60704d92]:focus-visible{outline:2px solid currentColor;outline-offset:2px}.fr-sentence-detail[data-v-60704d92]{margin:8px 0 0;padding:9px 10px;border:1px solid var(--fr-answer-border,#e9e9ef);border-radius:8px;background:var(--fr-answer-soft,#f8f8fa)}.fr-sentence-detail-heading[data-v-60704d92]{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 8px}.fr-sentence-detail-heading strong[data-v-60704d92]{font-size:12px;line-height:1.5;overflow-wrap:anywhere}.fr-sentence-detail-heading>span[data-v-60704d92]{font-size:11px;opacity:.75}.fr-sentence-detail p[data-v-60704d92]{margin:4px 0 0;overflow-wrap:anywhere}.fr-sentence-meaning[data-v-60704d92]{font-size:13px;line-height:1.7}.fr-sentence-role[data-v-60704d92]{font-size:12px}.fr-sentence-role>span[data-v-60704d92]{margin-inline-end:8px;opacity:.65}.fr-sentence-reference[data-v-60704d92]{margin-top:6px;font-size:11px;color:var(--fr-reading-muted, var(--el-text-color-secondary, #756a74))}.fr-sentence-reference summary[data-v-60704d92]{cursor:pointer;width:fit-content}.fr-sentence-reference p[data-v-60704d92]{line-height:1.7}.fr-dark-theme .fr-sentence-reference[data-v-60704d92]{color:#b6a9b5}.fr-reading-evidence-wrap[data-v-627f0b4f]{display:inline}.fr-reading-evidence[data-v-627f0b4f]{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin:0 2px;padding:0;border:0;border-radius:4px;background:none;color:var(--fr-reading-muted, #756a74);font:inherit;line-height:1;vertical-align:text-bottom;cursor:pointer}.fr-reading-evidence svg[data-v-627f0b4f]{width:16px;height:16px;fill:currentColor;stroke:none}.fr-reading-evidence[data-v-627f0b4f]:hover,.fr-reading-evidence[data-v-627f0b4f]:focus-visible{color:var(--fr-reading-button, #a64b6e);background:var(--fr-reading-soft, #faf7f9)}.fr-reading-evidence[data-v-627f0b4f]:focus-visible{outline:2px solid var(--fr-reading-button, #a64b6e);outline-offset:1px}.fr-reading-evidence-status[data-v-627f0b4f]{font-size:12px;color:var(--fr-answer-quote, inherit)}.fr-reading-evidence-status.is-located[data-v-627f0b4f]{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.fr-reading-markdown[data-v-c9a12318]{--fr-answer-quote: var(--el-text-color-regular, inherit);--fr-answer-border: var(--el-border-color-lighter, #e9e9ef);--fr-answer-soft: var(--el-fill-color-lighter, #f8f8fa);--fr-answer-code: var(--el-fill-color-light, #f3f3f6);color:inherit;font-size:14px;line-height:1.8;overflow-wrap:anywhere}.fr-reading-markdown[data-v-c9a12318]>:first-child{margin-top:0}.fr-reading-markdown[data-v-c9a12318]>:last-child{margin-bottom:0}.fr-reading-structure[data-v-c9a12318]{margin-bottom:16px}.fr-reading-markdown .fr-reading-structure>h3[data-v-c9a12318]{margin:0 0 8px;padding:0;border:0}.fr-reading-markdown h3[data-v-c9a12318],.fr-reading-markdown h4[data-v-c9a12318]{margin:22px 0 8px;color:inherit;font-size:14px;font-weight:700;line-height:1.45}.fr-reading-markdown h3[data-v-c9a12318]{font-size:15px}.fr-reading-markdown h3[data-v-c9a12318]:not(:first-child),.fr-reading-markdown h4[data-v-c9a12318]:not(:first-child){padding-top:12px;border-top:1px solid var(--fr-answer-border)}.fr-reading-markdown p[data-v-c9a12318]{margin:0 0 12px;white-space:pre-line}.fr-reading-markdown ul[data-v-c9a12318],.fr-reading-markdown ol[data-v-c9a12318]{margin:6px 0 14px;padding-inline-start:1.5em}.fr-reading-markdown li[data-v-c9a12318]{padding-inline-start:2px;margin:5px 0;white-space:pre-line}.fr-reading-markdown li[data-v-c9a12318]::marker{color:var(--el-color-primary, #ec4899)}.fr-reading-markdown blockquote[data-v-c9a12318]{margin:12px 0;padding:7px 12px;border-inline-start:3px solid var(--el-color-primary-light-5, #f6a5c4);color:var(--fr-answer-quote);background:var(--fr-answer-soft);border-radius:0 5px 5px 0;white-space:pre-line}.fr-reading-markdown[data-v-c9a12318] strong{color:inherit;font-weight:650}.fr-reading-markdown[data-v-c9a12318] code{padding:2px 5px;border-radius:4px;background:var(--fr-answer-code);color:inherit;font:.9em ui-monospace,SFMono-Regular,Menlo,monospace}.fr-reading-markdown pre[data-v-c9a12318]{margin:12px 0;padding:12px;max-width:100%;overflow:auto;border:1px solid var(--fr-answer-border);border-radius:7px;background:var(--fr-answer-soft);line-height:1.65}.fr-reading-markdown pre code[data-v-c9a12318]{display:block;padding:0;background:transparent;white-space:pre}.fr-reading-table[data-v-c9a12318]{max-width:100%;margin:12px 0;overflow-x:auto}.fr-reading-table table[data-v-c9a12318]{width:100%;border-collapse:collapse;font-size:13px}.fr-reading-table th[data-v-c9a12318],.fr-reading-table td[data-v-c9a12318]{padding:7px 9px;border:1px solid var(--fr-answer-border);text-align:start;vertical-align:top}.fr-reading-table th[data-v-c9a12318]{font-weight:650;background:var(--fr-answer-soft)}.is-compact[data-v-c9a12318]{font-size:13px;line-height:1.75}.is-compact h3[data-v-c9a12318],.is-compact h4[data-v-c9a12318]{margin-top:18px;font-size:13px}.is-compact p[data-v-c9a12318],.is-compact ul[data-v-c9a12318],.is-compact ol[data-v-c9a12318]{margin-bottom:10px}.fr-dark-theme .fr-reading-markdown[data-v-c9a12318]{--fr-answer-quote: #b6a9b5;--fr-answer-border: #514651;--fr-answer-soft: #352f38;--fr-answer-code: #413846}.fr-reading[data-v-d3a37183],.fr-reading-controls[data-v-d3a37183]{--fr-reading-line: #eee8ec;--fr-reading-muted: #756a74;--fr-reading-button: #826573;--fr-reading-soft: #faf7f9;color:#35333c;font:13px/1.7 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif}.fr-reading[data-v-d3a37183]{display:flex;flex-direction:column;height:100%;min-height:0;box-sizing:border-box;padding:6px 14px 10px;overflow:hidden}.fr-reading-controls[data-v-d3a37183]{display:flex;align-items:center;gap:3px}.fr-reading-navigation[data-v-d3a37183]{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 8px;color:var(--fr-reading-muted);font-size:11px}.fr-reading-navigation button[data-v-d3a37183]{color:#a64b6e}.fr-reading-scroll[data-v-d3a37183]{flex:1;min…"
                     }
                   ],
                   "attributes": []
@@ -146,7 +146,7 @@
                                     "class",
                                     "fr-tooltip-brand-icon",
                                     "src",
-                                    "chrome-extension://747f43a6-6b69-4fd2-b291-a4bae21d3e33/icon/128.png",
+                                    "chrome-extension://cedf3d12-0798-4ca9-b408-2c77ee8969f9/icon/128.png",
                                     "alt",
                                     "",
                                     "aria-hidden",
@@ -1376,20 +1376,16 @@
                                                                   "parentId": 16181,
                                                                   "backendNodeId": 319,
                                                                   "nodeType": 1,
-                                                                  "nodeName": "circle",
-                                                                  "localName": "circle",
+                                                                  "nodeName": "path",
+                                                                  "localName": "path",
                                                                   "nodeValue": "",
                                                                   "childNodeCount": 0,
                                                                   "children": [],
                                                                   "attributes": [
-                                                                    "data-v-dea4b536",
+                                                                    "data-v-627f0b4f",
                                                                     "",
-                                                                    "cx",
-                                                                    "8",
-                                                                    "cy",
-                                                                    "8",
-                                                                    "r",
-                                                                    "6.25"
+                                                                    "d",
+                                                                    "M2 3h5v4c0 3-1.5 5-4 6l-1-1.5C4 10.5 5 9 5 8H2Z"
                                                                   ],
                                                                   "isSVG": true
                                                                 },
@@ -1404,21 +1400,23 @@
                                                                   "childNodeCount": 0,
                                                                   "children": [],
                                                                   "attributes": [
-                                                                    "data-v-dea4b536",
+                                                                    "data-v-627f0b4f",
                                                                     "",
                                                                     "d",
-                                                                    "M8 7v4M8 4.75h.01"
+                                                                    "M9 3h5v4c0 3-1.5 5-4 6l-1-1.5C11 10.5 12 9 12 8H9Z"
                                                                   ],
                                                                   "isSVG": true
                                                                 }
                                                               ],
                                                               "attributes": [
-                                                                "data-v-dea4b536",
+                                                                "data-v-627f0b4f",
                                                                 "",
                                                                 "aria-hidden",
                                                                 "true",
                                                                 "focusable",
                                                                 "false",
+                                                                "data-evidence-icon",
+                                                                "quote",
                                                                 "viewBox",
                                                                 "0 0 16 16"
                                                               ],
@@ -1426,7 +1424,7 @@
                                                             }
                                                           ],
                                                           "attributes": [
-                                                            "data-v-dea4b536",
+                                                            "data-v-627f0b4f",
                                                             "",
                                                             "type",
                                                             "button",
@@ -1465,7 +1463,7 @@
                                                             }
                                                           ],
                                                           "attributes": [
-                                                            "data-v-dea4b536",
+                                                            "data-v-627f0b4f",
                                                             "",
                                                             "class",
                                                             "fr-reading-evidence-status is-located",
@@ -1475,7 +1473,7 @@
                                                         }
                                                       ],
                                                       "attributes": [
-                                                        "data-v-dea4b536",
+                                                        "data-v-627f0b4f",
                                                         "",
                                                         "class",
                                                         "fr-reading-evidence-wrap",
@@ -1556,20 +1554,16 @@
                                                                   "parentId": 16191,
                                                                   "backendNodeId": 339,
                                                                   "nodeType": 1,
-                                                                  "nodeName": "circle",
-                                                                  "localName": "circle",
+                                                                  "nodeName": "path",
+                                                                  "localName": "path",
                                                                   "nodeValue": "",
                                                                   "childNodeCount": 0,
                                                                   "children": [],
                                                                   "attributes": [
-                                                                    "data-v-dea4b536",
+                                                                    "data-v-627f0b4f",
                                                                     "",
-                                                                    "cx",
-                                                                    "8",
-                                                                    "cy",
-                                                                    "8",
-                                                                    "r",
-                                                                    "6.25"
+                                                                    "d",
+                                                                    "M2 3h5v4c0 3-1.5 5-4 6l-1-1.5C4 10.5 5 9 5 8H2Z"
                                                                   ],
                                                                   "isSVG": true
                                                                 },
@@ -1584,21 +1578,23 @@
                                                                   "childNodeCount": 0,
                                                                   "children": [],
                                                                   "attributes": [
-                                                                    "data-v-dea4b536",
+                                                                    "data-v-627f0b4f",
                                                                     "",
                                                                     "d",
-                                                                    "M8 7v4M8 4.75h.01"
+                                                                    "M9 3h5v4c0 3-1.5 5-4 6l-1-1.5C11 10.5 12 9 12 8H9Z"
                                                                   ],
                                                                   "isSVG": true
                                                                 }
                                                               ],
                                                               "attributes": [
-                                                                "data-v-dea4b536",
+                                                                "data-v-627f0b4f",
                                                                 "",
                                                                 "aria-hidden",
                                                                 "true",
                                                                 "focusable",
                                                                 "false",
+                                                                "data-evidence-icon",
+                                                                "quote",
                                                                 "viewBox",
                                                                 "0 0 16 16"
                                                               ],
@@ -1606,7 +1602,7 @@
                                                             }
                                                           ],
                                                           "attributes": [
-                                                            "data-v-dea4b536",
+                                                            "data-v-627f0b4f",
                                                             "",
                                                             "type",
                                                             "button",
@@ -1635,7 +1631,7 @@
                                                         }
                                                       ],
                                                       "attributes": [
-                                                        "data-v-dea4b536",
+                                                        "data-v-627f0b4f",
                                                         "",
                                                         "class",
                                                         "fr-reading-evidence-wrap",

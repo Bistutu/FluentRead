@@ -21,12 +21,12 @@
     "screenIndex": 1,
     "browserFrontmost": false,
     "frontmostBefore": {
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 6916,
+      "name": "系统设置"
     },
     "frontmostAfter": {
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 6916,
+      "name": "系统设置"
     }
   },
   "cases": [
@@ -79,7 +79,7 @@
       "sourceCount": 6
     },
     {
-      "id": "evidence.compact-info-icon-inline-title-contract",
+      "id": "evidence.compact-quote-hint-inline-title-contract",
       "status": "passed",
       "entries": [
         {
@@ -95,6 +95,9 @@
           "visible": true,
           "hovered": false,
           "visibleText": "",
+          "color": "rgb(117, 106, 116)",
+          "borderWidth": "0px",
+          "background": "rgba(0, 0, 0, 0)",
           "quote": "Although the task was difficult, she finished it on time.",
           "title": "Although the task was difficult, she finished it on time.",
           "ariaLabel": "定位原句：Although the task was difficult, she finished it on time.",
@@ -119,12 +122,35 @@
               "right": 589.6171875,
               "bottom": 261.5
             },
+            "icon": "quote",
             "ariaHidden": "true",
-            "circleCount": 1,
-            "paths": [
-              "M8 7v4M8 4.75h.01"
+            "circleCount": 0,
+            "frameShapeCount": 0,
+            "fill": "rgb(117, 106, 116)",
+            "stroke": "none",
+            "glyphBounds": [
+              {
+                "x": 575.6171875,
+                "y": 248.5,
+                "width": 5,
+                "height": 10,
+                "right": 580.6171875,
+                "bottom": 258.5
+              },
+              {
+                "x": 582.6171875,
+                "y": 248.5,
+                "width": 5,
+                "height": 10,
+                "right": 587.6171875,
+                "bottom": 258.5
+              }
             ],
-            "markup": "<svg data-v-dea4b536=\"\" aria-hidden=\"true\" focusable=\"false\" viewBox=\"0 0 16 16\"><circle data-v-dea4b536=\"\" cx=\"8\" cy=\"8\" r=\"6.25\"></circle><path data-v-dea4b536=\"\" d=\"M8 7v4M8 4.75h.01\"></path></svg>"
+            "paths": [
+              "M2 3h5v4c0 3-1.5 5-4 6l-1-1.5C4 10.5 5 9 5 8H2Z",
+              "M9 3h5v4c0 3-1.5 5-4 6l-1-1.5C11 10.5 12 9 12 8H9Z"
+            ],
+            "markup": "<svg data-v-627f0b4f=\"\" aria-hidden=\"true\" focusable=\"false\" data-evidence-icon=\"quote\" viewBox=\"0 0 16 16\"><path data-v-627f0b4f=\"\" d=\"M2 3h5v4c0 3-1.5 5-4 6l-1-1.5C4 10.5 5 9 5 8H2Z\"></path><path data-v-627f0b4f=\"\" d=\"M9 3h5v4c0 3-1.5 5-4 6l-1-1.5C11 10.5 12 9 12 8H9Z\"></path></svg>"
           },
           "sameLine": true
         },
@@ -141,6 +167,9 @@
           "visible": true,
           "hovered": false,
           "visibleText": "",
+          "color": "rgb(117, 106, 116)",
+          "borderWidth": "0px",
+          "background": "rgba(0, 0, 0, 0)",
           "quote": "She could complete it only because her colleague supplied the final measurements.",
           "title": "She could complete it only because her colleague supplied the final measurements.",
           "ariaLabel": "定位原句：She could complete it only because her colleague supplied the final measurements.",
@@ -165,12 +194,35 @@
               "right": 500.2578125,
               "bottom": 295.75
             },
+            "icon": "quote",
             "ariaHidden": "true",
-            "circleCount": 1,
-            "paths": [
-              "M8 7v4M8 4.75h.01"
+            "circleCount": 0,
+            "frameShapeCount": 0,
+            "fill": "rgb(117, 106, 116)",
+            "stroke": "none",
+            "glyphBounds": [
+              {
+                "x": 486.2578125,
+                "y": 282.75,
+                "width": 5,
+                "height": 10,
+                "right": 491.2578125,
+                "bottom": 292.75
+              },
+              {
+                "x": 493.2578125,
+                "y": 282.75,
+                "width": 5,
+                "height": 10,
+                "right": 498.2578125,
+                "bottom": 292.75
+              }
             ],
-            "markup": "<svg data-v-dea4b536=\"\" aria-hidden=\"true\" focusable=\"false\" viewBox=\"0 0 16 16\"><circle data-v-dea4b536=\"\" cx=\"8\" cy=\"8\" r=\"6.25\"></circle><path data-v-dea4b536=\"\" d=\"M8 7v4M8 4.75h.01\"></path></svg>"
+            "paths": [
+              "M2 3h5v4c0 3-1.5 5-4 6l-1-1.5C4 10.5 5 9 5 8H2Z",
+              "M9 3h5v4c0 3-1.5 5-4 6l-1-1.5C11 10.5 12 9 12 8H9Z"
+            ],
+            "markup": "<svg data-v-627f0b4f=\"\" aria-hidden=\"true\" focusable=\"false\" data-evidence-icon=\"quote\" viewBox=\"0 0 16 16\"><path data-v-627f0b4f=\"\" d=\"M2 3h5v4c0 3-1.5 5-4 6l-1-1.5C4 10.5 5 9 5 8H2Z\"></path><path data-v-627f0b4f=\"\" d=\"M9 3h5v4c0 3-1.5 5-4 6l-1-1.5C11 10.5 12 9 12 8H9Z\"></path></svg>"
           },
           "sameLine": true
         }
@@ -1299,8 +1351,8 @@
       ],
       "sourceCount": 6
     },
-    "evidence.compact-info-icon-inline-title-contract": {
-      "id": "evidence.compact-info-icon-inline-title-contract",
+    "evidence.compact-quote-hint-inline-title-contract": {
+      "id": "evidence.compact-quote-hint-inline-title-contract",
       "status": "passed",
       "entries": [
         {
@@ -1316,6 +1368,9 @@
           "visible": true,
           "hovered": false,
           "visibleText": "",
+          "color": "rgb(117, 106, 116)",
+          "borderWidth": "0px",
+          "background": "rgba(0, 0, 0, 0)",
           "quote": "Although the task was difficult, she finished it on time.",
           "title": "Although the task was difficult, she finished it on time.",
           "ariaLabel": "定位原句：Although the task was difficult, she finished it on time.",
@@ -1340,12 +1395,35 @@
               "right": 589.6171875,
               "bottom": 261.5
             },
+            "icon": "quote",
             "ariaHidden": "true",
-            "circleCount": 1,
-            "paths": [
-              "M8 7v4M8 4.75h.01"
+            "circleCount": 0,
+            "frameShapeCount": 0,
+            "fill": "rgb(117, 106, 116)",
+            "stroke": "none",
+            "glyphBounds": [
+              {
+                "x": 575.6171875,
+                "y": 248.5,
+                "width": 5,
+                "height": 10,
+                "right": 580.6171875,
+                "bottom": 258.5
+              },
+              {
+                "x": 582.6171875,
+                "y": 248.5,
+                "width": 5,
+                "height": 10,
+                "right": 587.6171875,
+                "bottom": 258.5
+              }
             ],
-            "markup": "<svg data-v-dea4b536=\"\" aria-hidden=\"true\" focusable=\"false\" viewBox=\"0 0 16 16\"><circle data-v-dea4b536=\"\" cx=\"8\" cy=\"8\" r=\"6.25\"></circle><path data-v-dea4b536=\"\" d=\"M8 7v4M8 4.75h.01\"></path></svg>"
+            "paths": [
+              "M2 3h5v4c0 3-1.5 5-4 6l-1-1.5C4 10.5 5 9 5 8H2Z",
+              "M9 3h5v4c0 3-1.5 5-4 6l-1-1.5C11 10.5 12 9 12 8H9Z"
+            ],
+            "markup": "<svg data-v-627f0b4f=\"\" aria-hidden=\"true\" focusable=\"false\" data-evidence-icon=\"quote\" viewBox=\"0 0 16 16\"><path data-v-627f0b4f=\"\" d=\"M2 3h5v4c0 3-1.5 5-4 6l-1-1.5C4 10.5 5 9 5 8H2Z\"></path><path data-v-627f0b4f=\"\" d=\"M9 3h5v4c0 3-1.5 5-4 6l-1-1.5C11 10.5 12 9 12 8H9Z\"></path></svg>"
           },
           "sameLine": true
         },
@@ -1362,6 +1440,9 @@
           "visible": true,
           "hovered": false,
           "visibleText": "",
+          "color": "rgb(117, 106, 116)",
+          "borderWidth": "0px",
+          "background": "rgba(0, 0, 0, 0)",
           "quote": "She could complete it only because her colleague supplied the final measurements.",
           "title": "She could complete it only because her colleague supplied the final measurements.",
           "ariaLabel": "定位原句：She could complete it only because her colleague supplied the final measurements.",
@@ -1386,12 +1467,35 @@
               "right": 500.2578125,
               "bottom": 295.75
             },
+            "icon": "quote",
             "ariaHidden": "true",
-            "circleCount": 1,
-            "paths": [
-              "M8 7v4M8 4.75h.01"
+            "circleCount": 0,
+            "frameShapeCount": 0,
+            "fill": "rgb(117, 106, 116)",
+            "stroke": "none",
+            "glyphBounds": [
+              {
+                "x": 486.2578125,
+                "y": 282.75,
+                "width": 5,
+                "height": 10,
+                "right": 491.2578125,
+                "bottom": 292.75
+              },
+              {
+                "x": 493.2578125,
+                "y": 282.75,
+                "width": 5,
+                "height": 10,
+                "right": 498.2578125,
+                "bottom": 292.75
+              }
             ],
-            "markup": "<svg data-v-dea4b536=\"\" aria-hidden=\"true\" focusable=\"false\" viewBox=\"0 0 16 16\"><circle data-v-dea4b536=\"\" cx=\"8\" cy=\"8\" r=\"6.25\"></circle><path data-v-dea4b536=\"\" d=\"M8 7v4M8 4.75h.01\"></path></svg>"
+            "paths": [
+              "M2 3h5v4c0 3-1.5 5-4 6l-1-1.5C4 10.5 5 9 5 8H2Z",
+              "M9 3h5v4c0 3-1.5 5-4 6l-1-1.5C11 10.5 12 9 12 8H9Z"
+            ],
+            "markup": "<svg data-v-627f0b4f=\"\" aria-hidden=\"true\" focusable=\"false\" data-evidence-icon=\"quote\" viewBox=\"0 0 16 16\"><path data-v-627f0b4f=\"\" d=\"M2 3h5v4c0 3-1.5 5-4 6l-1-1.5C4 10.5 5 9 5 8H2Z\"></path><path data-v-627f0b4f=\"\" d=\"M9 3h5v4c0 3-1.5 5-4 6l-1-1.5C11 10.5 12 9 12 8H9Z\"></path></svg>"
           },
           "sameLine": true
         }
@@ -2472,12 +2576,12 @@
     }
   },
   "screenshots": [
-    "/private/tmp/fluentread-reading-evidence-20261011-info-icon-final/reading-menu-light-closed.png",
-    "/private/tmp/fluentread-reading-evidence-20261011-info-icon-final/reading-menu-light-wide-open.png",
-    "/private/tmp/fluentread-reading-evidence-20261011-info-icon-final/reading-menu-dark-wide-open.png",
-    "/private/tmp/fluentread-reading-evidence-20261011-info-icon-final/reading-menu-dark-narrow-open.png",
-    "/private/tmp/fluentread-reading-evidence-20261011-info-icon-final/reading-menu-light-narrow-open.png",
-    "/private/tmp/fluentread-reading-evidence-20261011-info-icon-final/reading-evidence-located.png"
+    "/private/tmp/fluentread-reading-evidence-20261011-quote-hint-final/reading-menu-light-closed.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-quote-hint-final/reading-menu-light-wide-open.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-quote-hint-final/reading-menu-dark-wide-open.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-quote-hint-final/reading-menu-dark-narrow-open.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-quote-hint-final/reading-menu-light-narrow-open.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-quote-hint-final/reading-evidence-located.png"
   ],
   "consoleErrors": [],
   "httpErrors": [],
@@ -3252,8 +3356,8 @@
     "sourceMappingOnly": true
   },
   "domArtifacts": [
-    "/private/tmp/fluentread-reading-evidence-20261011-info-icon-final/reading-evidence-source.html",
-    "/private/tmp/fluentread-reading-evidence-20261011-info-icon-final/reading-evidence-closed-shadow.json"
+    "/private/tmp/fluentread-reading-evidence-20261011-quote-hint-final/reading-evidence-source.html",
+    "/private/tmp/fluentread-reading-evidence-20261011-quote-hint-final/reading-evidence-closed-shadow.json"
   ],
   "fixture": {
     "page": "local current paragraph with one second supporting sentence and distant duplicate",
