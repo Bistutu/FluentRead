@@ -1,4 +1,6 @@
-import {readFileSync} from 'node:fs';
+import {readFileSync, realpathSync, mkdirSync, mkdtempSync, rmSync, writeFileSync} from 'node:fs';
+import {createRequire} from 'node:module';
+import {tmpdir} from 'node:os';
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {resolve} from 'node:path';
@@ -15,6 +17,9 @@ import * as chineseCharacterData from '@/src/core/language/chineseVariants';
 import * as functionWordData from '@/src/core/language/functionWordData';
 import {createUserscriptCharacterDataCompressionPlugin} from '@/userscript/characterDataPlugin';
 import {createUserscriptInlineCssCompressionPlugin} from '@/userscript/inlineCssPlugin';
+import {createUserscriptFrancDataCompressionPlugin} from '@/userscript/francDataPlugin';
+import {inflateWithPako as inflateBundledFrancData} from '@/userscript/pakoBundled';
+import {data as lockedFrancData} from 'franc-min/data.js';
 import {
     default as userscriptConfig,
     executionGuardEnd,
@@ -479,5 +484,181 @@ describe('userscript lossless Unicode character data', () => {
         expect(createPlugin().transform(original, resolve(process.cwd(), 'src/core/language/chinese.ts'))).toBeNull();
         expect(createPlugin().transform(original, resolve(process.cwd(), 'src/core/language/lexicon.ts'))).toBeNull();
         expect(createPlugin().transform(original, wordDataPath + '.backup')).toBeNull();
+    });
+});
+
+
+describe('standalone locked franc pure-data encoding', () => {
+    const require = createRequire(resolve(process.cwd(), 'package.json'));
+    const dataPath = realpathSync(require.resolve('franc-min/data.js'));
+    const original = readFileSync(dataPath, 'utf8');
+    const createPlugin = (enabled = true, root = process.cwd()) => createUserscriptFrancDataCompressionPlugin(root, enabled) as unknown as {
+        name: string;
+        transform: (code: string, id: string) => {code: string; map: null} | null;
+    };
+    const restoreData = (moduleSource: string, inflate = inflateBundledFrancData): typeof lockedFrancData => {
+        const body = moduleSource.replace("import {inflateWithPako} from '@/userscript/pakoRuntime';", '')
+            .replace('export const data =', 'const data =');
+        // 执行生成的纯数据模块与生产 bundled pako；不执行整包，也不复制检测算法。
+        return runInNewContext(body + '\ndata;', {atob, Uint8Array, JSON, inflateWithPako: inflate}, {timeout: 5_000});
+    };
+
+    it('restores every locked model string and its iteration order before the unchanged franc algorithm consumes it', () => {
+        const transformed = createPlugin().transform(original, dataPath)!;
+        expect(transformed.map).toBeNull();
+        const restored = restoreData(transformed.code);
+        expect(Object.keys(restored)).toEqual(Object.keys(lockedFrancData));
+        expect(Object.getPrototypeOf(restored)).toBe(Object.getPrototypeOf(lockedFrancData));
+        let models = 0;
+        for (const [script, values] of Object.entries(lockedFrancData)) {
+            expect(Object.keys(restored[script])).toEqual(Object.keys(values));
+            expect(Object.getPrototypeOf(restored[script])).toBe(Object.getPrototypeOf(values));
+            for (const [language, text] of Object.entries(values)) {
+                expect(restored[script][language]).toBe(text);
+                expect(Buffer.from(restored[script][language], 'utf8')).toEqual(Buffer.from(text, 'utf8'));
+                models++;
+            }
+        }
+        expect(models).toBe(66);
+    });
+
+    it('preserves repeated characters, supplementary characters, escapes and empty model strings without sorting keys', () => {
+        const data = structuredClone(lockedFrancData);
+        const models = data.Latin;
+        const [first, second] = Object.keys(models);
+        models[first] = 'A𱊯A\0\ud800';
+        models[second] = '';
+        const source = 'export const data = ' + JSON.stringify(data) + ';';
+        const transformed = createPlugin().transform(source, dataPath)!;
+        const restored = restoreData(transformed.code);
+        expect(restored).toEqual(data);
+        expect(Object.keys(restored.Latin)).toEqual(Object.keys(models));
+        expect(restored.Latin[first]).toBe(models[first]);
+        expect(restored.Latin[second]).toBe('');
+    });
+
+    it('restores no-substitution template strings through the same complete two-level data schema', () => {
+        const expected = structuredClone(lockedFrancData);
+        const first = Object.keys(expected.Latin)[0];
+        expected.Latin[first] = 'line1\n𱊯\0\ud800';
+        const placeholder = structuredClone(expected);
+        placeholder.Latin[first] = '__franc_template_fixture__';
+        const source = 'export const data = ' + JSON.stringify(placeholder)
+            .replace('"__franc_template_fixture__"', '`line1\\n𱊯\\0\\ud800`') + ';';
+        const restored = restoreData(createPlugin().transform(source, dataPath)!.code);
+        expect(restored).toEqual(expected);
+        expect(restored.Latin[first]).toBe(expected.Latin[first]);
+        expect(Object.keys(restored.Latin)).toEqual(Object.keys(expected.Latin));
+    });
+
+    it('defaults to disabled without resolving a dependency in an unavailable root', () => {
+        const disabled = createUserscriptFrancDataCompressionPlugin('/unavailable-franc-root');
+        if (typeof disabled.transform !== 'function') throw new Error('Expected the public plugin transform hook');
+        expect(Reflect.apply(disabled.transform, disabled, ['export const data = {', dataPath])).toBeNull();
+        expect(createPlugin(false, '/unavailable-franc-root').transform(original, dataPath)).toBeNull();
+    });
+
+    it.each([
+        ['logic', original + '\nsideEffect();'],
+        ['let', original.replace('export const data', 'export let data')],
+        ['wrong-export', original.replace('export const data', 'export const other')],
+        ['default', 'export default {};'],
+        ['extra-declaration', 'export const data = {}, other = 1;'],
+        ['syntax', 'export const data = {'],
+        ['call', 'export const data = {Latin: {eng: makeData()}};'],
+        ['getter', 'export const data = {get Latin() { return {}; }};'],
+        ['spread', 'export const data = {...other};'],
+        ['computed-key', 'export const data = {["Latin"]: {eng: "a"}};'],
+        ['proto', 'export const data = {"__proto__": {eng: "a"}};'],
+        ['duplicate', 'export const data = {Latin: {eng: "a", eng: "b"}};'],
+        ['wrong-depth', 'export const data = {Latin: {eng: {text: "a"}}};'],
+        ['number', 'export const data = {Latin: {eng: 42}};'],
+        ['empty', 'export const data = {};'],
+        ['wrong-model-count', 'export const data = {Latin: {eng: "a"}, Cyrillic: {rus: "b"}, Arabic: {arb: "c"}, Devanagari: {hin: "d"}};'],
+        ['wrong-script-order', 'export const data = ' + JSON.stringify(Object.fromEntries(Object.entries(lockedFrancData).reverse())) + ';'],
+        ['missing-export', original.replace('export const data', 'const data')],
+        ['extra-modifier', original.replace('export const data', 'export declare const data')],
+        ['destructured-binding', 'export const {data} = {data: {}};'],
+        ['missing-initializer', 'export const data;'],
+        ['top-level-string', 'export const data = "data";'],
+        ['inner-string', 'export const data = {Latin: "data"};'],
+        ['inner-empty-object', 'export const data = {Latin: {}};'],
+        ['interpolated-template', 'export const data = {Latin: {eng: `a${sideEffect()}`}};'],
+        ['numeric-key', 'export const data = {Latin: {1: "a"}};'],
+        ['duplicate-script', 'export const data = {Latin: {eng: "a"}, Latin: {eng: "b"}};'],
+        ['empty-source', ''],
+
+    ])('rejects %s rather than evaluating or silently compressing executable/unknown source', (_label, source) => {
+        expect(() => createPlugin().transform(source, dataPath)).toThrow('one exported const data object of model strings');
+    });
+
+    it.each([
+        ['raw', dataPath + '?raw'],
+        ['proxy', dataPath + '?commonjs-proxy'],
+        ['virtual', '\0' + dataPath],
+        ['expressions', require.resolve('franc-min/expressions.js')],
+        ['unrelated', resolve(process.cwd(), 'data.js')],
+    ])('leaves %s and disabled modules untouched without trying to parse them', (_label, id) => {
+        expect(createPlugin().transform('throw Error("must not parse")', id)).toBeNull();
+        expect(createPlugin(false).transform(original, dataPath)).toBeNull();
+        expect(createPlugin(false, '/unavailable-root').transform('export const data = {', dataPath)).toBeNull();
+    });
+
+    it.each([
+        ['ordinary', '0', '0', false],
+        ['standalone', '1', '0', true],
+        ['greasy-fork', '0', '1', false],
+        ['standalone-and-greasy', '1', '1', false],
+    ] as const)('binds the actual %s config target to the exact data plugin and existing pako alias', async (_label, standalone, greasy, enabled) => {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', standalone);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', greasy);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
+        try {
+            vi.resetModules();
+            const {default: configuration, userscriptAliases: aliases} = await import('@/userscript/vite.config');
+            const config = configuration as unknown as {plugins: Array<{name?: string; transform?: unknown}>};
+            const plugin = config.plugins.find(item => item.name === 'compress-standalone-franc-data') as unknown as ReturnType<typeof createPlugin>;
+            expect(plugin).toBeDefined();
+            const result = plugin.transform(original, dataPath);
+            if (enabled) expect(restoreData(result!.code)).toEqual(lockedFrancData);
+            else expect(result).toBeNull();
+            const bundled = aliases.find(alias => alias.find === '@/userscript/pakoRuntime');
+            expect(bundled?.replacement).toBe(standalone === '1' ? resolve(process.cwd(), 'userscript/pakoBundled.ts') : undefined);
+        } finally {
+            vi.unstubAllEnvs();
+            vi.resetModules();
+        }
+    });
+
+    it.each([
+        ['new-version', {name: 'franc-min', version: '6.3.0'}],
+        ['other-package', {name: 'other-package', version: '6.2.0'}],
+        ['missing-version', {name: 'franc-min'}],
+    ])('fails closed for %s before transforming any dependency data', (_label, manifest) => {
+        const fixture = mkdtempSync(resolve(tmpdir(), 'fluentread-franc-data-owner-'));
+        try {
+            writeFileSync(resolve(fixture, 'package.json'), '{}');
+            const packageRoot = resolve(fixture, 'node_modules/franc-min');
+            mkdirSync(packageRoot, {recursive: true});
+            writeFileSync(resolve(packageRoot, 'package.json'), JSON.stringify({...manifest, main: 'index.js'}));
+            writeFileSync(resolve(packageRoot, 'index.js'), 'export {};');
+            writeFileSync(resolve(packageRoot, 'data.js'), original);
+            expect(() => createPlugin(true, fixture)).toThrow('requires locked franc-min 6.2.0');
+        } finally {
+            rmSync(fixture, {recursive: true, force: true});
+        }
+    });
+
+    it('propagates restoration failure and retains the original module heading/digest instead of a fallback detector', () => {
+        const transformed = createPlugin().transform(original, dataPath)!;
+        const failure = new Error('controlled decoder failure');
+        expect(() => restoreData(transformed.code, () => {throw failure;})).toThrow(failure);
+        expect(transformed.code.startsWith(original.slice(0, original.indexOf('export const data')))).toBe(true);
+        expect(transformed.code).toContain('source sha256 ' + createHash('sha256').update(original).digest('hex'));
+        // 不改真实库文件/module id，现有 bundledLibraryNotices 根据原 package 归属保留 MIT。
+        expect(readFileSync(dataPath, 'utf8')).toBe(original);
+        const manifest = JSON.parse(readFileSync(resolve(dataPath, '../package.json'), 'utf8'));
+        expect(manifest).toMatchObject({name: 'franc-min', version: '6.2.0', license: 'MIT'});
     });
 });
