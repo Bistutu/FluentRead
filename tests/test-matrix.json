@@ -354,6 +354,8 @@
       "tests/backgroundWebDavBackup.test.ts",
       "tests/webDavBackupClient.test.ts",
       "tests/requestHeaderRules.test.ts",
+      "tests/doubaoGuestTransport.test.ts",
+      "tests/doubaoWebTranslation.test.ts",
       "tests/vocabularyReencounter.test.ts",
       "tests/sentenceActionsMount.test.ts",
       "tests/freeOfficialWebProviders.test.ts",

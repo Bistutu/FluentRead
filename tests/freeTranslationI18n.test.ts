@@ -3,6 +3,7 @@ import {translate, translateLegacyText} from '@/src/core/i18n';
 import type {UiLanguage} from '@/src/core/i18n';
 import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
 import {options} from '@/src/core/config/catalog';
+import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation';
 
 // 扩展运行时按需加载界面语言；本文件验证全部语言的文案契约，因此一次注册全部资源包。
 registerAllUiLanguageBundles();
@@ -44,6 +45,27 @@ describe('free translation legacy text localization', () => {
       const translated = translateLegacyText(source, language);
       expect(translated, `${language}: ${source}`).not.toBe(source);
       expect(translated).not.toContain('实验性');
+    }
+  });
+
+  it.each(languages)('%s localizes every free-pool label and endpoint description', language => {
+    for (const {label, description} of FREE_TRANSLATION_PROVIDERS) {
+      for (const source of [label, description].filter(source => /[\u3400-\u9fff]/u.test(source))) {
+        const localized = translateLegacyText(source, language);
+        expect(localized, `${language}: ${source}`).not.toBe(source);
+        if (language !== 'ja-JP') expect(localized).not.toMatch(/[\u3400-\u9fff]/u);
+      }
+    }
+  });
+
+  it.each(languages)('%s localizes Doubao web failures with safe HTTP and business codes', language => {
+    const failures = ['豆包网页翻译不支持当前目标语言', '豆包网页翻译仅支持文本输入', '豆包网页翻译访客初始化失败', '豆包网页翻译请求失败', '豆包网页翻译返回的流数据无效', '豆包网页翻译返回的译文不完整', '当前运行环境无法发送豆包匿名访客请求。', '豆包匿名访客请求需要脚本管理器的跨域请求能力。', '豆包网页翻译访客初始化失败: 403', '豆包网页翻译请求失败: 429', '豆包网页翻译访客初始化失败（错误码 1001）', '豆包网页翻译请求失败（错误码 1002）'];
+    for (const failure of failures) {
+      const localized = translateLegacyText(failure, language);
+      expect(localized, `${language}: ${failure}`).not.toBe(failure);
+      if (language !== 'ja-JP') expect(localized).not.toMatch(/[\u3400-\u9fff]/u);
+      const code = failure.match(/\d+/u)?.[0];
+      if (code) expect(localized).toContain(code);
     }
   });
 });

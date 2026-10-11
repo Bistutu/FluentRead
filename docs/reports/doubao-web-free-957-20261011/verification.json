@@ -1,0 +1,97 @@
+{
+  "issue": "https://github.com/FluentRead/FluentRead/issues/957",
+  "thanksComment": "https://github.com/FluentRead/FluentRead/issues/957#issuecomment-6108530529",
+  "date": "2026-10-11",
+  "baseCommit": "1e414ea8c2db6074343fb438bf7633af10a142a2",
+  "productBehavior": {
+    "freePoolId": "doubaoWeb",
+    "defaultEnabled": false,
+    "personalCookiesRead": false,
+    "guestPersistence": false,
+    "maxVisitorRefreshesPerCall": 1,
+    "minimumStartIntervalMs": 1000
+  },
+  "checks": {
+    "targetedRegression": {
+      "files": 13,
+      "casesPassed": 1280,
+      "filesList": [
+        "tests/free-translation.test.ts",
+        "tests/doubaoWebTranslation.test.ts",
+        "tests/doubaoGuestTransport.test.ts",
+        "tests/freeTranslationConfig.test.ts",
+        "tests/freeTranslationI18n.test.ts",
+        "tests/freeTranslationSettings.test.ts",
+        "tests/serviceIcons.test.ts",
+        "tests/freeFallback.test.ts",
+        "tests/freeDeadlineAdmission.test.ts",
+        "tests/architecture/moduleBoundaries.test.ts",
+        "tests/architecture/providerBoundaries.test.ts",
+        "tests/architecture/sourceFileHeaders.test.ts",
+        "tests/architecture/verificationOwnership.test.ts"
+      ],
+      "workerLimits": "--maxWorkers=1 --minWorkers=1"
+    },
+    "userscriptAndPlatformRegression": {
+      "files": 5,
+      "casesPassed": 73,
+      "filesList": [
+        "tests/userscriptViteConfig.test.ts",
+        "tests/userscriptPrivacy.test.ts",
+        "tests/uiLanguageBundles.test.ts",
+        "tests/userscriptHttp.test.ts",
+        "tests/requestHeaderRuntime.test.ts"
+      ]
+    },
+    "newModulesStrictCoverage": {
+      "casesPassed": 77,
+      "percentages": {
+        "src/platform/http/doubaoGuest.ts": {
+          "statements": 100,
+          "branches": 100,
+          "functions": 100,
+          "lines": 100
+        },
+        "src/providers/translation/doubao-web.ts": {
+          "statements": 100,
+          "branches": 100,
+          "functions": 100,
+          "lines": 100
+        }
+      }
+    },
+    "typeCheck": "passed",
+    "chromeProductionBuild": "passed",
+    "firefoxProductionBuild": "passed; build evidence only",
+    "documentationBuild": "passed",
+    "testAudit": {
+      "status": "passed",
+      "files": 675,
+      "cases": 11371
+    },
+    "productionBrowser": {
+      "result": "6 cases passed",
+      "evidence": "production-browser.json"
+    },
+    "liveProvider": {
+      "result": "6 anonymous requests all returned HTTP 200 / business code 710012001",
+      "evidence": "live-protocol.json"
+    },
+    "userscriptBuild": {
+      "evidence": "userscript-size.json",
+      "result": "passed; verifier passed at 2,072,640 bytes with minimally adjusted 2,073,000-byte budget"
+    }
+  },
+  "knownBaselineFailure": {
+    "file": "tests/i18n.test.ts",
+    "result": "57 passed / 1 failed both on independent base snapshot and current source",
+    "cause": "200 existing missing personal-correction translations introduced on base main; identical missing entries in both runs"
+  },
+  "limitations": [
+    "No successful live anonymous Doubao translation observed; the pool node is experimental and off by default.",
+    "SSE framing follows the issue protocol and deterministic fixtures; live snapshot semantics could not be confirmed.",
+    "Regional and traditional-Chinese target codes are rejected without silently substituting simplified Chinese.",
+    "Firefox and actual Tampermonkey manager runtime remain unverified."
+  ],
+  "referenceRepositoriesUsed": false
+}

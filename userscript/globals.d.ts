@@ -20,6 +20,7 @@ declare global {
         data?: unknown;
         responseType?: 'arraybuffer' | 'blob' | 'json' | 'text';
         anonymous?: boolean;
+        redirect?: 'follow' | 'error' | 'manual';
         timeout?: number;
         onload?: (response: UserscriptXmlHttpResponse) => void;
         onerror?: (response: UserscriptXmlHttpResponse) => void;
@@ -32,6 +33,7 @@ declare global {
     }
 
     interface UserscriptModernApi {
+        info?: UserscriptManagerInfo;
         getValue?: (key: string, defaultValue?: unknown) => unknown;
         setValue?: (key: string, value: unknown) => unknown;
         deleteValue?: (key: string) => unknown;
@@ -42,6 +44,12 @@ declare global {
     }
 
     var GM: UserscriptModernApi | undefined;
+    interface UserscriptManagerInfo {
+        scriptHandler?: string;
+        version?: string;
+        platform?: {browserName?: string; os?: string};
+    }
+    var GM_info: UserscriptManagerInfo | undefined;
 
     var GM_getValue: undefined | (<T>(key: string, defaultValue?: T) => T | Promise<T>);
     var GM_setValue: undefined | ((key: string, value: unknown) => void | Promise<void>);

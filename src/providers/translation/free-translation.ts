@@ -13,6 +13,7 @@ import {translateExtraFreeWebText, isKnownUnsupportedApertiumDirection} from './
 import {translateOfficialFreeWebProvider} from './free-official-web';
 import myMemory from './mymemory';
 import {translateBilibiliFree} from './bilibili-free';
+import {translateDoubaoWeb} from './doubao-web';
 import {services} from '@/src/core/config/catalog';
 import {isNativeTranslationBatchEnabled} from '@/src/core/config/nativeBatch';
 import {urls} from '@/src/core/config/constants';
@@ -60,6 +61,7 @@ const providerTranslators: Record<FreeProviderId, (request: TranslationProviderR
         isNativeTranslationBatchEnabled(services.google, getTranslationProviderConfig(request, config).nativeBatchTranslationEnabled), request.requestTimeoutMs),
     myMemory,
     bilibiliFree: translateBilibiliFree,
+    doubaoWeb: translateDoubaoWeb,
     transmart: request => translateFreeWebText('transmart', request.origin, request.sourceLanguage!, request.targetLanguage!, request.abortSignal),
     yandexFree: request => translateFreeWebText('yandexFree', request.origin, request.sourceLanguage!, request.targetLanguage!, request.abortSignal),
     volcengineFree: request => translateFreeWebText('volcengineFree', request.origin, request.sourceLanguage!, request.targetLanguage!, request.abortSignal),
@@ -195,7 +197,7 @@ function candidatesFor(text: string, message: PreparedRequest, groupSources?: re
             label: provider.label,
             weight: provider.defaultWeight,
             maxConcurrency: id === 'microsoft' ? 2 : 1,
-            minIntervalMs: id === 'microsoft' ? 100 : id === 'myMemory' || id === 'laraFree' || id === 'lingvanexFree' ? 1000 : 300,
+            minIntervalMs: id === 'microsoft' ? 100 : id === 'myMemory' || id === 'laraFree' || id === 'lingvanexFree' || id === 'doubaoWeb' ? 1000 : 300,
             translate: (signal: AbortSignal) => groupSources && (provider.id === 'microsoft' || provider.id === 'google')
                 ? translateNativeProviderGroup(provider.id, {...message, origin: text, abortSignal: signal}, groupSources)
                 : translateProviderText(provider.id, {...message, origin: text, abortSignal: signal}),

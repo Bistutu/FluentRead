@@ -82,17 +82,19 @@ Requests are shared evenly at first. If a key fails, FluentRead tries another an
 
 ## The free service
 
-Free translation calls the enabled free endpoints. Compact cards let you choose which endpoints participate. Experimental endpoints are separate, with enabled choices listed in the summary.
+Free translation calls enabled endpoints operated by their providers. All endpoint cards are shown together, with connection status and allocation shares. Choose which ones participate; Automatic balance distributes requests, while Priority order tries them in list order.
 
 The default **Automatic balance** mode places Microsoft first and prefers it for the initial request. The background scheduler dynamically adapts distribution using success rate, response time, and recent errors. A failed request switches to another service. Disable entries or choose **Priority order** to try them in list order. Keep at least one enabled.
 
 The scheduler maintains these allocation signals automatically. Users configure only enabled services and the mode; health and performance records used for balancing stay local.
 
-Microsoft, Tencent TranSmart, Volcengine, Google, Youdao Web, ICIBA, Yandex, MyMemory, Sogou, Reverso, Lingva, and Apertium are enabled by default without API keys. DeepLX uses an unofficial public endpoint and is off by default; you can enable it manually. Sogou, Reverso, and Lingva remain experimental, and Apertium currently has no Chinese language pairs. Existing saved selections are preserved.
+New configurations enable Microsoft, Bilibili Translation, Tencent TranSmart, Volcengine, Google, Youdao Web, ICIBA, Yandex, MyMemory, Sogou, Reverso, Apertium, Alibaba Translate, ModernMT, Lara, and Lingvanex without API keys. Doubao Web Translation is an experimental web endpoint, off by default; enable it manually in the free-service list to try it. It preserves existing saved selections. Sogou and Reverso also use experimental endpoints, and Apertium currently has no Chinese language pairs. DeepLX and Lingva have been removed from the free pool; standalone DeepLX can still be configured separately.
+
+**Doubao Web Translation** did not return a valid translation in the current anonymous access tests. If you try it, access failures or unsupported targets move to another enabled endpoint. Traditional Chinese targets are currently unsupported and are never silently changed to Simplified Chinese. It uses anonymous guest parameters from the web service, refreshes temporary credentials automatically, and keeps them in memory only. It does not read personal account cookies or the Volcengine Ark API key configured for the separate Doubao service. The web endpoint may change or stop working; keyless access does not guarantee permanent free access or continued availability.
 
 Rate limits normally pause a provider for minutes, blocked access for hours, and exhausted daily quotas for about a day. Recovery records are stored locally and survive background restarts. Each attempt has a five-second timeout by default.
 
-Free services have changing availability and allowances. Public interfaces and intermediaries have their own data policies. Keep only one entry, or select a standalone service, if you want requests to go to only that provider.
+Free services have changing availability and allowances. Provider web endpoints have their own data policies. Keep only one entry, or select a standalone service, if you want requests to go to only that provider.
 
 </details>
 
