@@ -15,6 +15,8 @@ const arg = (name, fallback) => {const index = process.argv.indexOf(`--${name}`)
 const extensionDir = path.resolve(arg('extension-dir', '.output/chrome-mv3'));
 const artifactsDir = path.resolve(arg('artifacts-dir', '/private/tmp/fluentread-site-navigation'));
 const baselineOnly = process.argv.includes('--baseline-only');
+const productHuntOnly = process.argv.includes('--producthunt-only');
+const productHuntHomeControl = process.argv.includes('--producthunt-home-control');
 const {chromium} = require(path.join(arg('playwright-root'), 'playwright'));
 const {launchFocusSafePersistentContext, newPageWithoutForeground, activateExtensionTabWithoutForeground,
   startFocusEventMonitor, queryMacFrontmostApplication} = require('./focus-safe-browser.cjs');
@@ -23,9 +25,11 @@ const timeout = 30000;
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const profileDir = fs.mkdtempSync('/private/tmp/fluentread-site-navigation-');
 const requests = [];
-const report = {ok: false, artifact: 'production', extensionDir, sourceSha: arg('source-sha', null), baselineOnly,
+const report = {ok: false, artifact: 'production', extensionDir, sourceSha: arg('source-sha', null), baselineOnly, productHuntOnly, productHuntHomeControl,
+  fixtureNetwork: {firstHost: '127.0.0.1', secondHost: 'localhost', hostResolverRules: null, proxyPolicy: 'browser default; standard localhost loopback bypass', bindAddress: '127.0.0.1'}, navigationRequests: [],
   cases: [], assertions: [], persistenceCases: [], quickClose: false, latestWriteWins: false, crossPageSync: false,
   screenshots: [], consoleErrors: [], runtimeMessages: [], focusEvents: [], cleanupErrors: [],
+  failedRequests: [], httpErrors: [],
   evidenceBoundary: 'Real production MV3 extension in isolated Edge. Content lifecycle, configuration persistence and translation DOM use production code. Translation transport is a local deterministic custom OpenAI provider; active-tab lookup is controlled only because the normal extension test tab occupies a tab. No native-toolbar, live-provider, Firefox, BFCache or arbitrary-site coverage claim.'};
 let port, launched, context, control, content, popup, origin, monitor, browserPid, currentCase = 'launch';
 let focusViolation, closePromise;
@@ -33,7 +37,7 @@ fs.mkdirSync(artifactsDir, {recursive: true});
 const source = route => `Reading page ${route} should feel calm and effortless. Colors and lines should follow the article you are reading.`;
 function fixture(route) {
   const encoded = JSON.stringify(route);
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Site navigation fixture</title><style>body{margin:48px;font:18px/1.8 system-ui;background:#fff;color:#263044}article{max-width:820px;padding:22px;border:1px solid #dde3eb}nav{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px}button,a{font:inherit}h1{font-size:28px}</style></head><body><h1 translate="no">Site rules navigation fixture</h1><nav translate="no"><a id="same" href="/document/next">Same site link</a><a id="cross" href="http://127.0.0.2:${port}/document/cross">Other site link</a><a id="backsite" href="http://127.0.0.1:${port}/document/returned">Return to ruled site</a><a id="push" href="/spa/pushed">SPA push link</a><a id="adapter" href="/adapted/article">Path-specific adapter link</a><button id="replace">SPA replace</button><a id="hash" href="#section">Same page anchor</a><button id="hashrouter">HashRouter article</button><button id="hashbang">Hashbang article</button><button id="delayed">Delayed article</button><button id="quick">Quick route changes</button><button id="slow">Slow translation</button><button id="slow-anchor">Slow request with anchor</button></nav><article id="article"></article><script>
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Site navigation fixture</title><style>body{margin:48px;font:18px/1.8 system-ui;background:#fff;color:#263044}article{max-width:820px;padding:22px;border:1px solid #dde3eb}nav{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px}button,a{font:inherit}h1{font-size:28px}</style></head><body><h1 translate="no">Site rules navigation fixture</h1><nav translate="no"><a id="same" href="/document/next">Same site link</a><a id="cross" href="http://localhost:${port}/document/cross">Other site link</a><a id="backsite" href="http://127.0.0.1:${port}/document/returned">Return to ruled site</a><a id="push" href="/spa/pushed">SPA push link</a><a id="adapter" href="/adapted/article">Path-specific adapter link</a><button id="replace">SPA replace</button><a id="hash" href="#section">Same page anchor</a><button id="hashrouter">HashRouter article</button><button id="hashbang">Hashbang article</button><button id="delayed">Delayed article</button><button id="quick">Quick route changes</button><button id="slow">Slow translation</button><button id="slow-anchor">Slow request with anchor</button></nav><article id="article"></article><script>
     const source = route => ${source.toString().replace(/^route => /, '')};
     const article = document.getElementById('article');
     let generation = 0;
@@ -82,6 +86,7 @@ const server = http.createServer(async (request, response) => {
     return;
   }
   response.setHeader('content-type', 'text/html; charset=utf-8');
+  report.navigationRequests.push({url: request.url, host: request.headers.host, at: Date.now()});
   response.end(fixture(new URL(request.url, 'http://fixture').pathname));
 });
 async function until(test, label, duration = 12000) {
@@ -89,9 +94,15 @@ async function until(test, label, duration = 12000) {
   while (Date.now() < end) {if (focusViolation) throw focusViolation; if (await test()) return; await delay(60);}
   throw new Error(`${label}: timeout`);
 }
+async function bounded(action, milliseconds, label) {
+  let timer;
+  return Promise.race([Promise.resolve().then(action), new Promise((_, reject) => {timer = setTimeout(() => reject(new Error(`${label}: operation timeout`)), milliseconds);})]).finally(() => clearTimeout(timer));
+}
 function observe(page, surface) {
   page.on('pageerror', error => report.consoleErrors.push({surface, url: page.url(), message: error.message}));
   page.on('console', message => {if (message.type() === 'error') report.consoleErrors.push({surface, url: page.url(), message: message.text()});});
+  page.on('requestfailed', request => report.failedRequests.push({surface, url: request.url(), failure: request.failure()}));
+  page.on('response', response => {if (response.status() >= 400) report.httpErrors.push({surface, url: response.url(), status: response.status()});});
 }
 async function open(url, surface) {
   const page = await newPageWithoutForeground(context, timeout); observe(page, surface);
@@ -166,8 +177,11 @@ async function quickClick(selector) {
 }
 async function runCase(name, action) {
   currentCase = name; const start = performance.now(), before = requests.length;
-  const value = await action();
+  console.log(JSON.stringify({event: 'case-start', name, url: content?.url(), requests: before}));
+  let timer;
+  const value = await Promise.race([action(), new Promise((_, reject) => {timer = setTimeout(() => reject(new Error(`Case watchdog expired: ${name}`)), 25000);})]).finally(() => clearTimeout(timer));
   report.cases.push({name, passed: true, durationMs: Math.round(performance.now() - start), requests: requests.length - before, dom: value || await dom()});
+  console.log(JSON.stringify({event: 'case-passed', name, durationMs: report.cases.at(-1).durationMs, requests: requests.length - before}));
 }
 async function productHunt() {
   const result = report.productHunt = {status: 'pending', requestedUrl: 'https://www.producthunt.com/products/reso', navigations: [], screenshots: [], transport: 'local deterministic custom OpenAI provider'};
@@ -183,7 +197,12 @@ async function productHunt() {
   const evaluate = () => content.evaluate(() => ({url: location.href, title: document.title, heading: document.querySelector('h1')?.textContent,
     timeOrigin: performance.timeOrigin, text: document.body.innerText.slice(0, 600), count: document.querySelectorAll('.fluent-read-bilingual-content').length,
     nested: document.querySelectorAll('.fluent-read-bilingual-content .fluent-read-bilingual-content').length,
+    headings: [...document.querySelectorAll('h1,h2,h3')].map(node => {const clone = node.cloneNode(true); clone.querySelectorAll('.fluent-read-bilingual-content').forEach(part => part.remove());
+      return {tag: node.tagName, source: clone.textContent.trim(), translations: [...node.querySelectorAll('.fluent-read-bilingual-content')].map(part => part.textContent)};}),
     visibleLinks: [...document.querySelectorAll('a[href]')].filter(a => a.getClientRects().length && a.href.startsWith('https://www.producthunt.com/products/reso')).map(a => ({href: a.href, text: a.textContent.slice(0, 80)})).slice(0, 30)}));
+  const translatedHeading = async (tag, source) => (await evaluate()).headings.some(heading => heading.tag === tag && source.test(heading.source) && heading.translations.some(text => /[\u4e00-\u9fff]/u.test(text)));
+  const translatedProductBody = () => content.evaluate(() => [...document.querySelectorAll('.fluent-read-bilingual-content')].some(wrapper =>
+    wrapper.parentElement.textContent.includes('ReSO is a generative engine optimization platform') && /[\u4e00-\u9fff]/u.test(wrapper.textContent)));
   try {
     await patchConfig({alwaysTranslateDomains: ['127.0.0.1', 'producthunt.com'], disabledExtensionDomains: []});
     const homeResponse = await content.goto('https://www.producthunt.com/', {waitUntil: 'domcontentloaded', timeout}).catch(error => {result.homeEntry = {status: 'quarantine', error: error.message}; return null;});
@@ -198,7 +217,9 @@ async function productHunt() {
           await until(async () => (await evaluate()).count > 0, 'Product Hunt home automatic translation', 18000);
           const before = await evaluate(), start = requests.length;
           await clickObservedLink(resoLink.href); await until(() => new URL(content.url()).pathname === '/products/reso', 'real homepage Reso link'); await ready();
-          await until(async () => (await evaluate()).count > 0, 'home to Reso uninterrupted auto translation', 18000);
+          await until(() => translatedHeading('H1', /^ReSO AI$/iu), 'home to Reso new product heading translated', 18000);
+          await until(translatedProductBody, 'home to Reso new product body translated', 18000);
+          assert(requests.slice(start).some(request => request.source.startsWith('ReSO is a generative engine optimization platform')), 'No new product body provider request after homepage link');
           const after = await evaluate();
           result.navigations.push({from: before.url, to: after.url, clickedHref: resoLink.href, restoredBeforeClick: false,
             mode: before.timeOrigin === after.timeOrigin ? 'SPA' : 'document', requests: requests.length - start, count: after.count});
@@ -218,7 +239,8 @@ async function productHunt() {
       await shot(content, 'producthunt-remote-blocked'); return;
     }
     assert.match(result.initial.heading || result.initial.text, /Reso/iu, 'Reso product content missing');
-    await until(async () => (await evaluate()).count > 0, 'Reso initial automatic translation', 18000);
+    await until(() => translatedHeading('H1', /^ReSO AI$/iu), 'Reso product heading automatic translation', 18000);
+    await until(translatedProductBody, 'Reso product body automatic translation', 18000);
     result.initialTranslated = await evaluate(); assert.equal(result.initialTranslated.nested, 0);
     await shot(content, 'producthunt-reso-initial');
     const links = result.initialTranslated.visibleLinks.filter(link => new URL(link.href).pathname.startsWith('/products/reso/') && !new URL(link.href).hash);
@@ -227,9 +249,13 @@ async function productHunt() {
     const from = await evaluate(), before = requests.length;
     await clickObservedLink(next);
     await until(() => content.url() === next || new URL(content.url()).pathname === new URL(next).pathname, 'Reso subpage real link');
-    await ready(); await until(async () => (await evaluate()).count > 0, 'Reso subpage automatic translation', 18000);
+    await ready(); await until(() => translatedHeading('H2', /^ReSO AI Reviews$/iu), 'Reso new Reviews heading automatic translation', 18000);
+    assert(requests.slice(before).some(request => request.source === 'ReSO AI Reviews'), 'No new Reviews heading provider request after real subpage link');
+    await delay(8000);
     const after = await evaluate(); assert.equal(after.nested, 0);
-    result.navigations.push({from: from.url, to: after.url, clickedHref: next, restoredBeforeClick: false, mode: from.timeOrigin === after.timeOrigin ? 'SPA' : 'document', requests: requests.length - before, count: after.count});
+    result.navigations.push({from: from.url, to: after.url, clickedHref: next, restoredBeforeClick: false, mode: from.timeOrigin === after.timeOrigin ? 'SPA' : 'document', requests: requests.length - before, count: after.count, headings: after.headings,
+      providerSources: requests.slice(before).map(request => request.source)});
+    await content.locator('h2').filter({hasText: /^ReSO AI Reviews/u}).scrollIntoViewIfNeeded();
     await shot(content, 'producthunt-reso-subpage');
     const overview = after.visibleLinks.find(link => new URL(link.href).pathname === '/products/reso' && !new URL(link.href).hash);
     assert(overview, 'No observed overview link returns to the user-provided Reso URL');
@@ -238,7 +264,10 @@ async function productHunt() {
     const beforeReturn = await evaluate(), requestStart = requests.length;
     await clickObservedLink(overview.href);
     await until(() => new URL(content.url()).pathname === '/products/reso', 'Observed real site link returns to Reso');
-    await ready(); await until(async () => (await evaluate()).count > 0, 'Reso return automatic translation', 18000);
+    await ready(); await until(() => translatedHeading('H1', /^ReSO AI$/iu), 'Reso return product heading automatic translation', 18000);
+    await until(translatedProductBody, 'Reso return product body automatic translation', 18000);
+    assert(requests.slice(requestStart).some(request => request.source.startsWith('ReSO is a generative engine optimization platform')), 'No new product body provider request after restored return');
+    await delay(600);
     const returned = await evaluate(); assert.equal(returned.nested, 0);
     result.navigations.push({from: beforeReturn.url, to: returned.url, clickedHref: overview.href, restoredBeforeClick: true, mode: beforeReturn.timeOrigin === returned.timeOrigin ? 'SPA' : 'document', requests: requests.length - requestStart, count: returned.count});
     await shot(content, 'producthunt-reso-return'); result.status = 'passed';
@@ -249,11 +278,11 @@ async function productHunt() {
     } else {result.status = 'failed';}
     await shot(content, 'producthunt-failure').catch(() => {});
     if (result.status === 'failed') throw error;
-  } finally {result.consoleErrors = report.consoleErrors.slice(errorStart);}
+  } finally {result.consoleErrors = report.consoleErrors.slice(errorStart); result.screenshots = report.screenshots.filter(file => path.basename(file).startsWith('producthunt-'));}
 }
 async function main() {
   try {
-    await new Promise((resolve, reject) => {server.once('error', reject); server.listen(0, '0.0.0.0', resolve);});
+    await new Promise((resolve, reject) => {server.once('error', reject); server.listen(0, '127.0.0.1', resolve);});
     port = server.address().port;
     const manifest = JSON.parse(fs.readFileSync(path.join(extensionDir, 'manifest.json'), 'utf8'));
     report.manifest = {version: manifest.version, popup: manifest.action?.default_popup, options: manifest.options_page || manifest.options_ui?.page};
@@ -270,7 +299,9 @@ async function main() {
     Object.assign(report, {launchMode: launched.launchMode, focusPolicy: launched.focusPolicy, windowPlacement: launched.windowPlacement});
     context = launched.context;
     const session = await context.browser().newBrowserCDPSession();
-    browserPid = (await session.send('SystemInfo.getProcessInfo')).processInfo.find(process => process.type === 'browser').id; await session.detach();
+    browserPid = (await session.send('SystemInfo.getProcessInfo')).processInfo.find(process => process.type === 'browser').id;
+    report.browserArguments = (await session.send('Browser.getBrowserCommandLine')).arguments.filter(argument => /^--(?:user-data-dir|host-resolver-rules|proxy|no-proxy|enable-features|disable-features|disable-extensions-except|load-extension|no-startup-window)/u.test(argument));
+    await session.detach();
     assert(!report.focusEvents.some(event => event.pid === browserPid), 'Browser launch activation event');
     let worker;
     await until(async () => {
@@ -292,6 +323,19 @@ async function main() {
       model: {...initial.model, [service]: 'site-navigation-model'}, token: {[service]: 'synthetic-test-key'}, user_role: {...initial.user_role, [service]: 'SOURCE_BEGIN{{origin}}SOURCE_END'},
       enableAIContext: false, enableAIMultiSegment: false, glossaryEnabled: false, disableFloatingBall: true, disableSelectionTranslator: true,
       selectionTranslatorMode: 'disabled', disableImageTranslator: true, translationProgressPanelEnabled: false, animations: false}, true);
+    if (productHuntHomeControl) {
+      currentCase = 'Product Hunt homepage same-config control';
+      await patchConfig({alwaysTranslateDomains: ['producthunt.com']});
+      content = await open('https://www.producthunt.com/', 'content'); await ready(); await delay(8000);
+      report.homeControl = await content.evaluate(() => ({url: location.href, title: document.title, text: document.body.innerText.slice(0, 600),
+        count: document.querySelectorAll('.fluent-read-bilingual-content').length, nested: document.querySelectorAll('.fluent-read-bilingual-content .fluent-read-bilingual-content').length}));
+      await shot(content, 'producthunt-home-control'); report.ok = true; return;
+    }
+    if (productHuntOnly) {
+      currentCase = 'Product Hunt live SPA navigation';
+      content = await open(`http://127.0.0.1:${port}/spa/initial`, 'content'); await ready();
+      await productHunt(); report.ok = report.productHunt.status !== 'failed'; return;
+    }
     content = await open(`http://127.0.0.1:${port}/spa/initial`, 'content'); await ready();
     await runCase('initial rule click survives immediate popup close', async () => {
       await openPopup(); await quickClick('[data-setting="always-translate-site"]');
@@ -338,15 +382,15 @@ async function main() {
     });
     await runCase('ordinary same-site link translates new document', async () => {await content.locator('#same').click(); await content.waitForURL(`http://127.0.0.1:${port}/document/next`); await ready(); return translated('same site document');});
     await runCase('unruled cross-site link stays original', async () => {
-      const before = requests.length; await content.locator('#cross').click(); await content.waitForURL(`http://127.0.0.2:${port}/document/cross`); await ready(); await delay(600);
+      const before = requests.length; await content.locator('#cross').click(); await content.waitForURL(`http://localhost:${port}/document/cross`); await ready(); await delay(600);
       await restored('unruled site original'); assert.equal(requests.length, before); await openPopup();
       assert.equal(await popup.locator('[data-setting="always-translate-site"]').getAttribute('data-enabled'), 'false'); await shot(popup, 'popup-other-site'); await closePopup(); return dom();
     });
     await runCase('link returns to ruled site and translates', async () => {await content.locator('#backsite').click(); await ready(); return translated('return ruled site');});
     await runCase('open popup follows real target tab navigation and new domain state', async () => {
       await openPopup(); await content.locator('#cross').click();
-      await content.waitForURL(`http://127.0.0.2:${port}/document/cross`); await ready();
-      await popup.locator('[data-setting="always-translate-site"][data-site-domain="127.0.0.2"]').waitFor();
+      await content.waitForURL(`http://localhost:${port}/document/cross`); await ready();
+      await popup.locator('[data-setting="always-translate-site"][data-site-domain="localhost"]').waitFor();
       assert.equal(await popup.locator('[data-setting="always-translate-site"]').getAttribute('data-enabled'), 'false');
       assert.equal(await popup.locator('[data-setting="disable-extension-site"]').getAttribute('data-enabled'), 'false');
       await shot(popup, 'popup-domain-follows-navigation'); await closePopup();
@@ -422,14 +466,17 @@ async function main() {
     assert.notEqual((await queryMacFrontmostApplication()).pid, browserPid); report.ok = true;
   } catch (error) {
     report.failure = {case: currentCase, error: error.stack};
-    if (content && !content.isClosed()) {report.failure.dom = await dom().catch(() => null); await shot(content, 'failure-content').catch(() => {});}
-    if (popup && !popup.isClosed()) {report.failure.popupText = await popup.locator('body').innerText().catch(() => ''); await shot(popup, 'failure-popup').catch(() => {});}
+    if (content && !content.isClosed()) {report.failure.dom = await bounded(dom, 2000, 'failure DOM').catch(() => null);
+      report.failure.bodyText = await bounded(() => content.locator('body').innerText(), 2000, 'failure body text').catch(() => null);
+      await bounded(() => shot(content, 'failure-content'), 2000, 'failure screenshot').catch(() => {});}
+    if (popup && !popup.isClosed()) {report.failure.popupText = await bounded(() => popup.locator('body').innerText(), 2000, 'failure popup text').catch(() => ''); await bounded(() => shot(popup, 'failure-popup'), 2000, 'failure popup screenshot').catch(() => {});}
     throw error;
   } finally {
     report.providerRequests = requests;
     report.focusEvents = monitor?.events || report.focusEvents;
     if (control && !control.isClosed()) {
-      const config = await readConfig().catch(() => null);
+      let timer;
+      const config = await Promise.race([readConfig().catch(() => null), new Promise(resolve => {timer = setTimeout(() => resolve(null), 2000);})]).finally(() => clearTimeout(timer));
       report.finalConfig = config && {alwaysTranslateDomains: config.alwaysTranslateDomains, disabledExtensionDomains: config.disabledExtensionDomains, revision: config.__fluentConfigRevision};
     }
     let closed = false;
