@@ -1,7 +1,7 @@
 <!--
 @file src/features/settings/ui/SentenceHighlightStyleSettings.vue
 文件职责：在界面风格页独立选择双语逐句高亮外观，与译文整体样式分开设置。
-主要内容：使用统一的下拉选择器保持控件与菜单风格一致；提供默认跟随界面明暗主题且可手动切换的网页交互预览、八种预设、默认折叠的自定义外观控件与 CSS 声明输入，支持命名快照的保存、切换、更新和删除；开关仍由阅读辅助管理。
+主要内容：提供默认跟随界面明暗主题且可手动切换的网页交互预览、八种预设及末尾的“无”选项；选择样式开启高亮，选择“无”关闭并保留上次外观，同时支持默认折叠的自定义控件、CSS 声明和命名快照的保存、切换、更新及删除。
 模块边界：只编辑父级 Config 草稿；与网页共用命名和绘制声明，不请求翻译、不修改宿主 DOM。
 -->
 <template>
@@ -11,28 +11,34 @@
         <TranslationStylePreview
           style-class=""
           :appearance-style="{}"
-          :highlight-enabled="true"
+          :highlight-enabled="config.bilingualSentenceHighlightEnabled"
           :highlight-style="config.bilingualSentenceHighlightStyle"
           :highlight-appearance="config.bilingualSentenceHighlightAppearance"
           :initial-sentence="0"
           :translation-before-original="config.translationBeforeOriginal"
           :page-theme="pageTheme"
-          :caption="t('sentenceHighlight.tryHint')"
-          :customized="customized"
+          :caption="t(config.bilingualSentenceHighlightEnabled ? 'sentenceHighlight.tryHint' : 'sentenceHighlight.offHint')"
+          :customized="config.bilingualSentenceHighlightEnabled && customized"
           @update:page-theme="pageTheme = $event"
         />
         <div class="sentence-highlight-options" role="radiogroup" :aria-label="t('sentenceHighlight.title')">
-          <button v-for="style in SENTENCE_HIGHLIGHT_STYLES" :key="style.value" type="button" role="radio" class="sentence-highlight-option" :class="{selected: !config.activeSentenceHighlightProfileId && config.bilingualSentenceHighlightStyle === style.value}" :aria-label="t(style.labelKey)" :aria-checked="!config.activeSentenceHighlightProfileId && config.bilingualSentenceHighlightStyle === style.value" :data-highlight-style="style.value" @click="selectPreset(style.value)">
+          <button v-for="style in SENTENCE_HIGHLIGHT_STYLES" :key="style.value" type="button" role="radio" class="sentence-highlight-option" :class="{selected: config.bilingualSentenceHighlightEnabled && !config.activeSentenceHighlightProfileId && config.bilingualSentenceHighlightStyle === style.value}" :aria-label="t(style.labelKey)" :aria-checked="config.bilingualSentenceHighlightEnabled && !config.activeSentenceHighlightProfileId && config.bilingualSentenceHighlightStyle === style.value" :data-highlight-style="style.value" @click="selectPreset(style.value)">
             <span class="bilingual-highlight-preview sentence-highlight-swatch" :data-fr-bilingual-sentence-highlight-style="style.value" :data-page-theme="pageTheme" aria-hidden="true"><span class="is-sentence-highlighted">{{ t('sentenceHighlight.sample') }}</span></span>
             <strong>{{ t(style.labelKey) }}</strong>
-            <span class="sentence-highlight-check" aria-hidden="true">{{ !config.activeSentenceHighlightProfileId && config.bilingualSentenceHighlightStyle === style.value ? '●' : '○' }}</span>
+            <span class="sentence-highlight-check" aria-hidden="true">{{ config.bilingualSentenceHighlightEnabled && !config.activeSentenceHighlightProfileId && config.bilingualSentenceHighlightStyle === style.value ? '●' : '○' }}</span>
+          </button>
+          <button type="button" role="radio" class="sentence-highlight-option sentence-highlight-option--none" :class="{selected: !config.bilingualSentenceHighlightEnabled}" :aria-label="`${t('common.none')}: ${t('sentenceHighlight.noneDescription')}`" :aria-checked="!config.bilingualSentenceHighlightEnabled" data-highlight-style="none" @click="config.bilingualSentenceHighlightEnabled = false">
+            <span class="sentence-highlight-swatch" :data-page-theme="pageTheme" aria-hidden="true">{{ t('sentenceHighlight.sample') }}</span>
+            <strong>{{ t('common.none') }}</strong>
+            <small>{{ t('sentenceHighlight.noneDescription') }}</small>
+            <span class="sentence-highlight-check" aria-hidden="true">{{ !config.bilingualSentenceHighlightEnabled ? '●' : '○' }}</span>
           </button>
         </div>
       </div>
       <section v-if="config.bilingualSentenceHighlightProfiles.length" class="sentence-highlight-saved" aria-labelledby="sentence-highlight-saved-title">
         <strong id="sentence-highlight-saved-title">{{ t('sentenceHighlight.savedTitle') }}</strong>
         <div class="sentence-highlight-saved-list" role="radiogroup" :aria-label="t('sentenceHighlight.savedTitle')">
-          <button v-for="profile in config.bilingualSentenceHighlightProfiles" :key="profile.id" type="button" role="radio" class="sentence-highlight-option sentence-highlight-saved-card" data-i18n-ignore :class="{selected: config.activeSentenceHighlightProfileId === profile.id}" :aria-checked="config.activeSentenceHighlightProfileId === profile.id" :aria-label="profile.name" :data-profile-id="profile.id" @click="selectProfile(profile)">
+          <button v-for="profile in config.bilingualSentenceHighlightProfiles" :key="profile.id" type="button" role="radio" class="sentence-highlight-option sentence-highlight-saved-card" data-i18n-ignore :class="{selected: config.bilingualSentenceHighlightEnabled && config.activeSentenceHighlightProfileId === profile.id}" :aria-checked="config.bilingualSentenceHighlightEnabled && config.activeSentenceHighlightProfileId === profile.id" :aria-label="profile.name" :data-profile-id="profile.id" @click="selectProfile(profile)">
             <span class="bilingual-highlight-preview sentence-highlight-swatch" :data-fr-bilingual-sentence-highlight-style="profile.style" :data-page-theme="pageTheme" aria-hidden="true"><span class="is-sentence-highlighted" :style="getSentenceHighlightAppearanceStyle(profile.style, profile.appearance)">{{ t('sentenceHighlight.sample') }}</span></span>
             <strong :title="profile.name">{{ profile.name }}</strong>
             <small>{{ t('settings.translationStyle.profileBase', {name: t(SENTENCE_HIGHLIGHT_STYLES.find(style => style.value === profile.style)!.labelKey)}) }}</small>
@@ -144,11 +150,21 @@ function resetAppearance(): void {
   props.config.bilingualSentenceHighlightAppearance = {...DEFAULT_SENTENCE_HIGHLIGHT_APPEARANCE}
 }
 function selectPreset(style: SentenceHighlightStyle): void {
+  const resumeRemembered = !props.config.bilingualSentenceHighlightEnabled
+    && !props.config.activeSentenceHighlightProfileId
+    && props.config.bilingualSentenceHighlightStyle === style
+  props.config.bilingualSentenceHighlightEnabled = true
+  // 重新选择关闭前的同一样式只恢复高亮，不清除尚未保存的外观微调。
+  if (resumeRemembered) return
   props.config.activeSentenceHighlightProfileId = ''
   props.config.bilingualSentenceHighlightStyle = style
   resetAppearance()
 }
 function selectProfile(profile: SentenceHighlightProfile): void {
+  const resumeRemembered = !props.config.bilingualSentenceHighlightEnabled
+    && props.config.activeSentenceHighlightProfileId === profile.id
+  props.config.bilingualSentenceHighlightEnabled = true
+  if (resumeRemembered) return
   props.config.bilingualSentenceHighlightStyle = profile.style
   props.config.bilingualSentenceHighlightAppearance = {...profile.appearance}
   props.config.activeSentenceHighlightProfileId = profile.id
@@ -191,6 +207,8 @@ function updateNumber(field: 'backgroundOpacity' | 'lineOpacity' | 'lineThicknes
 .sentence-highlight-option { position: relative; display: grid; gap: 7px; min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 12px; color: var(--ink); background: var(--surface); cursor: pointer; text-align: start; font: inherit; }
 .sentence-highlight-option:hover { border-color: var(--brand); }
 .sentence-highlight-option.selected { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); background: var(--brand-soft); }
+.sentence-highlight-option--none:not(.selected) { border-style: dashed; background: var(--surface-soft); }
+.sentence-highlight-option--none small { padding-right: 16px; color: var(--muted); font-size: 10.5px; line-height: 1.45; }
 .sentence-highlight-option:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
 .sentence-highlight-option strong { padding-right: 16px; font-size: 12px; }
 .sentence-highlight-swatch { display: block; border-radius: 6px; padding: 10px 8px; background: #fff; color: #1f2328; font-size: 13px; line-height: 1.8; }

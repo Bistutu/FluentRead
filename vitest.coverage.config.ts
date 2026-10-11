@@ -53,6 +53,7 @@ export default defineConfig({
         resolve(__dirname, 'src/features/settings/ui/LocalDataManagement.vue'),
         resolve(__dirname, 'src/features/settings/ui/LocalTtsSettings.vue'),
         resolve(__dirname, 'src/features/settings/ui/RemoteConfigSync.vue'),
+        resolve(__dirname, 'src/features/settings/ui/SentenceHighlightStyleSettings.vue'),
         resolve(__dirname, 'src/features/settings/ui/TranslationCacheSettings.vue'),
         resolve(__dirname, 'src/features/settings/ui/VideoLocalModelSettings.vue'),
         resolve(__dirname, 'src/features/settings/ui/WebDavBackup.vue'),

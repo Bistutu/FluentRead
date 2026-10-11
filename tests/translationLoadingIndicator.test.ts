@@ -4,7 +4,7 @@ import {
   createTranslationLoadingIndicator,
   shouldAnimateTranslationLoading,
 } from '@/src/ui/translationLoadingIndicator'
-import {translationLoadingStyleOptions} from '@/src/core/config/translationLoadingStyle'
+import {applyTranslationLoadingStyleChoice, getTranslationLoadingStyleChoice, normalizeTranslationLoadingStyle, translationLoadingStyleChoices, translationLoadingStyleOptions} from '@/src/core/config/translationLoadingStyle'
 
 type FakeShadowRoot = {
   adoptedStyleSheets: unknown
@@ -62,6 +62,24 @@ function installStylesheetRuntime(document: Document, options: StylesheetRuntime
 }
 
 describe('段落翻译加载指示器', () => {
+  it('末尾的“无”兼容旧关闭状态，保留静态样式且任意预设都能重新启用动画', () => {
+    expect(translationLoadingStyleChoices.at(-1)?.value).toBe('none')
+    expect(normalizeTranslationLoadingStyle('unknown')).toBe('ring')
+    const config = {animations: false, translationLoadingStyle: 'orbit' as const}
+    expect(getTranslationLoadingStyleChoice(config)).toBe('none')
+    applyTranslationLoadingStyleChoice(config, 'none')
+    expect(config.translationLoadingStyle).toBe('orbit')
+    for (const option of translationLoadingStyleOptions) {
+      applyTranslationLoadingStyleChoice(config, option.value)
+      expect(config.animations).toBe(true)
+      expect(getTranslationLoadingStyleChoice(config)).toBe(option.value)
+      applyTranslationLoadingStyleChoice(config, 'none')
+      expect(config.animations).toBe(false)
+      expect(config.translationLoadingStyle).toBe(option.value)
+      expect(getTranslationLoadingStyleChoice(config)).toBe('none')
+    }
+  })
+
   it('每种注册样式都在独立 Shadow Root 内生成固定结构', () => {
     const {document} = parseHTML('<html><body></body></html>')
 
