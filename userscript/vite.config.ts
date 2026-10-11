@@ -11,6 +11,7 @@ import {createUserscriptMetadata} from './metadata';
 import {createUserscriptCharacterDataCompressionPlugin} from './characterDataPlugin';
 import {createUserscriptInlineCssCompressionPlugin} from './inlineCssPlugin';
 import {createUserscriptFrancDataCompressionPlugin} from './francDataPlugin';
+import {createUserscriptAboutImagesCompressionPlugin} from './aboutImagesPlugin';
 import {UI_LANGUAGE_BUNDLES, zhCNMessages} from './languageBundles';
 
 const root = resolve(__dirname, '..');
@@ -19,7 +20,6 @@ const packageJson = JSON.parse(fs.readFileSync(resolve(root, 'package.json'), 'u
     userscriptVersion: string;
 };
 const iconDataUrl = `data:image/png;base64,${fs.readFileSync(resolve(root, 'public/icon/64.png')).toString('base64')}`;
-const approveDataUrl = `data:image/jpeg;base64,${fs.readFileSync(resolve(root, 'public/misc/approve.jpg')).toString('base64')}`;
 const bundleLibraries = process.env.FLUENTREAD_USERSCRIPT_STANDALONE === '1';
 const greasyForkSource = process.env.FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE === '1';
 const vendorUrl = process.env.FLUENTREAD_USERSCRIPT_VENDOR_URL;
@@ -443,7 +443,6 @@ function bundleUserscriptCss(): Plugin {
             const bootstrap = [
                 `${compatibilityPreludeStart}\n${preludeCode}\n${compatibilityPreludeEnd}`,
                 `globalThis.__FLUENTREAD_ICON_DATA__=${JSON.stringify(iconMetaUrl)};`,
-                ...(bundleLibraries ? [`globalThis.__FLUENTREAD_APPROVE_DATA__=${JSON.stringify(approveDataUrl)};`] : []),
                 ...(greasyForkSource
                     ? ['globalThis.__fluentReadUserscriptCss=globalThis.__FLUENTREAD_USERSCRIPT_DATA__.css;']
                     : [`globalThis.__fluentReadUserscriptCssCompressed=${JSON.stringify(compressedCss)};`]),
@@ -532,7 +531,7 @@ export const userscriptAliases = [
 export default defineConfig({
     root,
     publicDir: false,
-    plugins: [unwrapWxtEntrypoints(), createUserscriptCatalogCompressionPlugin(), createUserscriptCharacterDataCompressionPlugin(root, !greasyForkSource), createUserscriptFrancDataCompressionPlugin(root, bundleLibraries && !greasyForkSource), injectUserscriptBrowserShim(), vue(), bundleUserscriptCss(), createUserscriptInlineCssCompressionPlugin(root, !greasyForkSource)],
+    plugins: [unwrapWxtEntrypoints(), createUserscriptCatalogCompressionPlugin(), createUserscriptCharacterDataCompressionPlugin(root, !greasyForkSource), createUserscriptFrancDataCompressionPlugin(root, bundleLibraries && !greasyForkSource), createUserscriptAboutImagesCompressionPlugin(root, bundleLibraries && !greasyForkSource), injectUserscriptBrowserShim(), vue(), bundleUserscriptCss(), createUserscriptInlineCssCompressionPlugin(root, !greasyForkSource)],
     resolve: {
         alias: userscriptAliases,
     },

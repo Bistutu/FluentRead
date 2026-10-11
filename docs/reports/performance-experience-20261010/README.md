@@ -1252,9 +1252,53 @@ Escape 组自然0，8阶段/3原生场景/4原始图。真实可信三击选中�
 
 完整实际证据保存在 `/private/tmp/fluentread-performance-experience-20261010/round55-whole-startup`：`red-commonjs-attempt1`、`stable-commonjs-candidate-attempt1`、`stable-commonjs-candidate-attempt2`、`stable-commonjs-candidate-attempt3`、`ACTUAL-CASE-PRESERVATION.json`、`frozen-stable-builds-attempt1`、全部历史失败、`stable-reference-pair-attempt1`、`native-ready-attempt1`、`startup-native-attempt1/REPORT.json` 与 `ROOT-NATIVE-RESULT-REVIEW.json`。READY/代码/完整 pair 与 native 结果另作只读交叉复核；文档三阶段验收以校正证据路径后的 `docs-attempt2/RECEIPT.json` 的自然退出及前后输入为准，首轮三项自然0的回执另保留于 `docs-attempt1`。未复制参考项目实现，未推送、创建 PR、远程合并或发布；持续优化目标保留。
 
+## B52：关于页离线图片按使用点恢复
+
+本批将完整独立脚本的两张 About JPEG 无损压缩，并在明确使用点同步恢复完整原 data URL。普通扩展与普通/Greasy Fork 出口继续使用原资产管线与 setup 捕获的支持图地址。`aboutImages.ts` 提供两个轻量同步访问入口，构建插件仅精确替换该物理模块；不处理 query/raw/virtual 路由，不增加全局状态、远程请求、对象 URL 或异步恢复层。支持图与联系图分别有模块私有成功缓存；导入不解压，选中一张不会恢复另一张，恢复失败不会发布缓存，后续真实调用可再尝试。压缩字面量仍随完整脚本解析，成功后还持有完整 URL，本批不据此声称 heap 或 CPU 降低。
+
+Options 的支持图仅在 About 模板分支取用；联系图仅在公开按钮选择该类型时取用。预览先成功获得 URL，再同步提交 kind/URL/visible；隐藏 dialog slot 只读已准备的 URL ref。关闭保留图片地址及原销毁动画、`@closed` 焦点返回和 section/dispose 归属逻辑，不新增重复响应式缓存或自动重试。两张原始 JPEG 未改：支持图67,652 B、自然尺寸1152×1152；联系图100,720 B、888×1131。
+
+先在旧生产源码下运行新增完整客户端 owner：原37项全部通过，45项中39通过、6个新增行为断言失败，无 collection error。六个失败不是六个已复现的现有产品缺陷；隐藏预览绑定与访问入口/异常提交等受控验收压力分别保留。正式候选的构建 owner154、客户端45、六完整脚本运行 owners49全部通过；原139/37/49项实际 fullName 与重复次数保留，新增15+8项均通过。类型检查自然0，架构34文件/1846项通过；audit的693文件/12302项是静态声明计数，不作为12302项行为执行。新增普通图像 helper 的有限严格覆盖为 statement/line7、function/branch2，四维100%；没有下调阈值，也不把此覆盖称为整个SFC、生成VM代码或全部项目100%。
+
+| 完整产物 | R55官方冻结基准（B） | R56候选（B） | 净变化（B） |
+| --- | ---: | ---: | ---: |
+| Chrome，468文件 | 61,493,845 | 61,493,896 | +51 |
+| Firefox，468文件 | 61,492,839 | 61,492,934 | +95 |
+| 普通用户脚本 | 2,046,563 | 2,046,563 | 0 |
+| 完整独立脚本 | 3,882,108 | 3,840,234 | −41,874 |
+
+四产品构建、清单与普通 verifier 均自然0；七阶段实际 `[0,0,0,0,0,0,1]`，整体 success=false。独立 verifier 仍自然1：3,840,234 B 超原3,600,000 B门槛 **240,234 B**，预算抛错后的检查不冒称执行。普通脚本全文逐字节相同；扩展两个 manifest 与270个非代码静态文件分别不变。完整独立脚本 SHA `653eb815abac6197df50326c5712f41e14695b067ba2d398f88cf01124c7e304`，前73,660 B许可/notice前缀及完整pako/tldts原许可保留；原始JPEG完整data URL与旧支持图bootstrap赋值均不再作为raw重复内容出现在候选中。−41,874 B是四项生产变更一起的最终整包实测差，不等于静态理论payload差−40,922 B，也不全归因于gzip字面量或代表启动加速。
+
+完整原生验证比较 R55 官方冻结完整脚本 A（3,882,108 B）与 R56 完整脚本 B（3,840,234 B），两臂均保留 full Options、tldts 压缩和 strict CommonJS 初始化。旧臂原构建 HEAD/dirty 状态按历史记录保存，当前 HEAD `f88d479782b973d308f73eef5f27d99a1382ff56` 的2,459项旧生产输入逐项对上历史源库存；候选库存2,461项包含两个新增入口，生产差为四文件，另有测试/coverage配置差。本次不是重新同源构建的两臂，也不归因于单独某个压缩字面量；使用同锁文件、固定 Node/pnpm 与官方完整出口的实际构建收据及源码配置审查绑定，未冒称 resolved Vite config 采样。
+
+保留第一次原生尝试的自然失败：只执行 A 的首次 General 设置可见性门禁，30秒超时，尚未进入 About 或解码图片。截图与实际按钮几何显示 General 已可见；验证器把非裁剪盒的行内祖先（`display:inline`、clientWidth/clientHeight 为0、overflow:hidden）误作零面积裁剪盒。仅私有验证脚本修正该判断，真实隐藏/禁用/inert、实际盒裁剪、命中测试、公开滚轮、超时与清理门禁保留，产品源码未因此改动。新实验八次的只读祖先记录实际确认这层行内容器；第一次失败报告 `99e8a52eeedd5edbaf44186342889508fedd134c10f8ecde80c8ab633b8b036a` 和自然退出1仍保留，不混入新配对、不替换其中样本。
+
+第二次实验固定 AB/BA/AB/BA、零热身、八个全新隔离 Edge profile，单浏览器依次运行，完整未改写 classic JS 使用官方空 memoryFallback。Edge实际版本 `131.0.2903.147`，8次协议版本/二进制绑定一致。窗口在第二屏正常可见而不抢前台；88次前台查询与连续监视无 owned 浏览器前台事件，document.hasFocus 为 true 与 macOS 前台归属分开记录。Node 协调器使用 CPU target60/maxWorkers1/concurrency3；不声称 LaunchServices 启动的 Edge 也受该 CPU 包装约束。整体自然退出0、报告 passed=true、serverClosed=true；8次均四项清理true，原PID已消失、监视器已停止、owned profile已删除，源码稳定，diagnostics/外部请求/cleanupErrors皆空。
+
+每次从实际齿轮打开 General，再实际 CDP wheel 将 About 导航滚入可见区域（scrollTop 0→173.5），完成 About 支持图首用、微信交流首开、原生关闭、交流重开、第二次关闭、支持图放大、原生关闭七阶段。64次公共 click（含齿轮）全部观测 isTrusted；滚轮记录实际命中与位移，不冒称记录了 wheel.isTrusted。32次图片观察含真实 `HTMLImageElement.decode()` 返回；16张原始 raw URL 在 A/B 全文一致，base64完整解码回两张原JPEG字节/SHA，尺寸1152×1152与888×1131一致。56阶段的 About 文本、dialog标题、alt/尺寸、实际 shadow root 焦点与宿主 title/lang/文本/五属性投影分别一致；原生关闭后焦点返回正确公开按钮。40张PNG均核验实际哈希，根直接查看第一对A/B共10张代表截图：中文“流畅阅读”、粉色翻译标识、About和两种图片均正常；dialog截图采在入场动画阶段，不是动画结束画面、像素相同或所有40张逐张目视证明。共有16个 loopback GET，仅 `/` 与 `/product.js`；未注入GM、provider/config seed、atob hook 或恢复次数探针。
+
+| 有限浏览器配对指标 | 四对 B−A（ms，按 pair1…4） | 配对差中位数（ms） |
+| --- | --- | ---: |
+| 完整外部脚本同步窗口 | −4.4 / −3.4 / −1.4 / +0.8 | −2.40 |
+| host接入观察上界 | −6.8 / −5.8 / −0.2 / +2.3 | −3.00 |
+| 主入口可见观察上界 | −13.5 / +2.0 / +0.5 / +1.6 | +1.05 |
+| About支持图 click→可见 | −0.9 / −0.1 / +4.1 / +9.6 | +2.00 |
+| About支持图 click→decode返回 | −0.1 / −1.7 / −1.8 / +15.2 | −0.90 |
+| 微信交流首开 click→可见 | −34.0 / +13.3 / −67.5 / −33.0 | −33.50 |
+| 微信交流首开 click→decode返回 | −45.6 / −1.6 / −52.0 / −35.5 | −40.55 |
+| 微信交流重开 click→可见 | −37.1 / −39.0 / +1.3 / −8.4 | −22.75 |
+| 微信交流重开 click→decode返回 | −26.9 / −35.3 / +5.8 / −14.1 | −20.50 |
+| 支持图放大 click→可见 | +4.3 / −34.2 / +2.7 / −4.2 | −0.75 |
+| 支持图放大 click→decode返回 | +6.5 / −31.6 / +16.9 / +0.3 | +3.40 |
+
+这些是受控 loopback、公开交互到可见/decode返回的观察上界，包含SFC挂载/render、调度、CDP与轮询；只有四对，方向不一致，不能外推全面启动或首用加速，更不是隔离解析/解压CPU、heap或动画完成时延。native证明完整图片与真实公开生命周期，按图片惰性恢复/成功缓存次数由生成代码的受控owner证明；不混成native计数证明。Firefox扩展仅有构建/清单证据，本批也未新增扩展运行、真实提供商、远程站点、商店或所有设备验证。历史Greasy Fork未通过的门禁未重跑或改成绿色，原独立体积门禁仍失败240,234 B。
+
+本批证据根为 `/private/tmp/fluentread-performance-experience-20261010/round56-about-jpeg-lazy/`：`candidate-attempt1/RECEIPT.json`、`ACTUAL-CASE-PRESERVATION.json`、`red-client-attempt1/`、`coverage-attempt1/`与实际coverage数据、`builds-attempt1/RECEIPT.json`、`frozen-builds-attempt1/`、`ROOT-FROZEN-PRODUCT-REVIEW.json`、原生两次收据/报告、`native-ready-attempt2/READY.json`、私有v2 diff及review、`peer-native-results-review/REVIEW.md`、`ROOT-NATIVE-RESULT-REVIEW.json`（24,192 B / `9e535f47e515d0a1f902c16458cf472077216a0a900086feb8ab4e75b3edeb73`）。第二次实际原生报告4,020,346 B / `dd5cdce0e8522d17fb21265861c31e061078555d8d86002614fccee282efe736`；退出收据2,570 B / `91f671d2191cdf8720691e757b165dae42c0f4db9f1c82c6131c294edab5e292`。本地报告与文档检查另按最终文件执行；未push、PR、merge或发布，目标继续保持active；未修改或复制参考仓库。
+
+
 ## 后续候选
 
-第五十一批固定用户脚本 CommonJS 首次 require 初始化边界，完成同源完整双臂构建和8次真实浏览器启动。规则数据压缩实际净差−59,887 B，但有限配对观测没有一致启动加速方向；未测 CPU/heap。最新独立脚本3,882,108 B，仍超原3,600,000预算282,108 B；ordinary2,046,563 B。下一步只处理 About 两张 JPEG 的明确使用点与完整数据恢复，先验证隐藏预览不解压、首次实际打开才恢复、完整图片字节/尺寸及关闭重开行为，再测同源产物净差和首次使用代价。静态理论40,922 B未当成正式收益，品牌资源候选另行审查；保留全部服务、语言、许可、资源 pin、架构、生命周期与原预算。
+第五十二批完成 About 两张原JPEG的无损压缩和明确使用点恢复，完整独立脚本整包实测减少41,874 B。生成代码与客户端owner保留原225项、新增23项通过，八次全新原生公开首用/关闭/重开及完整图片验证通过；有限四对启动/首用方向有波动，未测隔离CPU/heap。最新完整独立脚本3,840,234 B，仍超原3,600,000预算240,234 B；ordinary2,046,563 B逐字节不变。下一步审查38品牌SVG路径表的构建期无损压缩与同步访问入口，保留品牌全表、属性/顺序、别名、自定义与未知分支、原style/accessibility及成功缓存/失败重试语义。理论payload差17,510 B未计helper、key-map、JSON parse和首次全表恢复成本，不当作正式收益；当前只是私有候选草稿。继续用完整owner、四正式出口实测与可审查首用代价决定是否采用，保留全部服务、语言、许可、资源pin、架构、生命周期与原预算。
 
 
 合成段 loading 挂载循环、缓存键重复术语解析、高级请求限制禁用与缓存复习快捷键已在第二十七至三十批分别修复。第三十一轮调度只读探针保留现检查：13 个受控普通场景虽减少同 owner 复验，但第三个 source-only 读取中的 style getter 同步替换同文本 Text 时，复用先前结果留下脱离节点身份；这只是受控端口反例，未当成原生复现或 CPU 收益，未实施。证据为 `round31-page-scheduling-audit/`。第三十二轮已撤回 Cloud 普通历史入口的减加载推荐；LearningCenter 的 History/Memory 首用加载已在第三十一批实施，实际收藏阶段新增请求文件减少 20,641 B，父装配、加载故障与原行为通过限定验证。第三十四轮审计确认的八个既不可达设置子 UI 已在第三十二批排除，完整独立脚本实际减少 183,104 B，仍比原 3,600,000 B 门槛多 38,416 B。继续审查其 Options/IIFE 归属与可证明不可达的资源，保持可达服务、本地模型/TTS、数据、语言、许可和原门槛，不为达预算删除已有能力。请求队列仍在 response body 完成前占用并发槽；会改变错误种类的同步 deadline 合并未实施。

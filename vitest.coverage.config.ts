@@ -666,6 +666,7 @@ export default defineConfig({
             reporter: ['text', 'json-summary', 'html'],
             include: [
                 'userscript/inlineCssPlugin.ts',
+                'src/app/options/aboutImages.ts',
                 'src/core/personal-corrections/model.ts',
                 'src/core/personal-corrections/matching.ts',
                 'src/services/personal-corrections/store.ts',

@@ -67,6 +67,7 @@ function createFixtureServer(browser = 'chrome') {
       if (id.endsWith('/src/services/config/store')) return '\0options-config';
       if (id.endsWith('/src/ui/interfaceAppearance')) return '\0options-appearance';
       if (id.endsWith('/src/platform/browser/capabilities')) return '\0options-capabilities';
+      if (id === './assets/wechat-contact.jpg') return '\0options-contact-image';
       return null;
     },
     load(id) {
@@ -75,6 +76,7 @@ function createFixtureServer(browser = 'chrome') {
       if (id === '\0options-config') return `export const {config, configReady, subscribeConfig} = globalThis.${TEST_KEY};`;
       if (id === '\0options-appearance') return `export const {theme: applyInterfaceTheme, skin: applyInterfaceSkin, font: applyInterfaceFont, registerAppearance: registerInterfaceAppearanceRoot} = globalThis.${TEST_KEY};`;
       if (id === '\0options-capabilities') return `export const {browserCapabilities} = globalThis.${TEST_KEY};`;
+      if (id === '\0options-contact-image') return 'export default "synthetic-contact-image";';
       return null;
     },
   };
@@ -677,20 +679,34 @@ describe('OptionsApp actual learning-panel reload callback', () => {
 
 // Optional real-client parent mode: navigation, search, hash resolution and capability gates
 // remain the actual Options template/setup; async feature modules are counted display ports.
-async function mountClientOptions(requestedSection: string, browser: 'userscript' | 'chrome' | 'firefox') {
+type AboutClientFixture = {supportGlobal?: string};
+async function mountClientOptions(requestedSection: string, browser: 'userscript' | 'chrome' | 'firefox', about?: AboutClientFixture) {
   const scope = current!;
   if (!owns(scope) || !scope.server) throw inactive();
   const server = scope.server;
-  const [navigation, capabilities, core, english, patterns] = await Promise.all([
+  const [navigation, capabilities, core, english, patterns, ordinaryImages] = await Promise.all([
     server.ssrLoadModule('/src/features/settings/model/navigation.ts'),
     server.ssrLoadModule('/src/platform/browser/capabilities.ts'),
     server.ssrLoadModule('/src/core/i18n/index.ts'),
     server.ssrLoadModule('/src/core/i18n/messages/en-US.ts'),
     server.ssrLoadModule('/src/core/i18n/messages/legacy-patterns.ts'),
+    // Real ordinary helper with only its JPEG asset URL replaced by the fixture port.
+    server.ssrLoadModule('/src/app/options/aboutImages.ts'),
   ]);
   if (!owns(scope)) throw inactive();
   core.registerUiLanguageBundle('en-US', {messages: english.enUSMessages, legacyText: english.enUSLegacyText, legacyPatterns: patterns.createLegacyPatternSet('en-US')});
-  const {window, document} = parseHTML('<html><body></body></html>');
+  const {window, document} = parseHTML(about
+    ? '<html lang="fr" class="host-class" style="--host-sentinel: 7" data-theme="host-theme" data-interface-skin="host-skin" data-interface-font="host-font"><head><title>Host title sentinel</title></head><body></body></html>'
+    : '<html><body></body></html>');
+  const hostDocumentState = () => ({title: document.title, lang: document.documentElement.getAttribute('lang'),
+    attributes: Object.fromEntries(['class', 'style', 'data-theme', 'data-interface-skin', 'data-interface-font']
+      .map(name => [name, document.documentElement.getAttribute(name)]))});
+  const initialHostDocumentState = hostDocumentState();
+  if (about) vi.stubGlobal('__FLUENTREAD_APPROVE_DATA__', about.supportGlobal);
+  const images = {support: vi.fn((normalUrl: string) => ordinaryImages.getSupportImageUrl(normalUrl) as string),
+    contact: vi.fn(() => ordinaryImages.getContactImageUrl() as string)};
+  let dialogSlotRuns = 0;
+  const dialogNotifications: {closed?: () => void} = {};
   for (const key of ['window', 'document', 'Node', 'Element', 'HTMLElement', 'SVGElement', 'Event'])
     vi.stubGlobal(key, key === 'window' ? window : window[key as keyof typeof window]);
   const prefix = '#fluentread-userscript-settings';
@@ -729,6 +745,7 @@ async function mountClientOptions(requestedSection: string, browser: 'userscript
     if (id === '@/src/features/settings/ui/LearningCenter.vue') {loads.learning();return {__esModule: true, default: learningPort};}
     if (id.endsWith('/SettingsSectionNavigation.vue')) return {default: anchorPort};
     if (id.endsWith('.vue')) return {default: display};
+    if (id === './aboutImages') return {getSupportImageUrl: images.support, getContactImageUrl: images.contact};
     if (id.endsWith('.jpg')) return {default: 'synthetic-contact-image'};
     throw new Error(`Unexpected Options client dependency ${id}`);
   }, module.exports, module);
@@ -744,7 +761,10 @@ async function mountClientOptions(requestedSection: string, browser: 'userscript
         const events = element as Element & {__optionsEvents?: Map<string, EventListener>};
         const name = key.slice(2).toLowerCase();events.__optionsEvents ??= new Map();
         const prior = events.__optionsEvents.get(name);if (prior) element.removeEventListener(name, prior);
-        if (value) {const handler: EventListener = event => {for (const fn of Array.isArray(value) ? value : [value]) fn(event);};events.__optionsEvents.set(name, handler);element.addEventListener(name, handler);}
+        if (value) {const handler: EventListener = event => {for (const fn of Array.isArray(value) ? value : [value]) {
+          if (!about) fn(event);
+          else {try {fn(event);} catch (error) {errors.push(error);}}
+        }};events.__optionsEvents.set(name, handler);element.addEventListener(name, handler);}
       } else if (key === 'value' && ['INPUT', 'TEXTAREA'].includes(element.tagName)) (element as HTMLInputElement).value = value ?? '';
       else if (key.startsWith('aria-') && value != null) element.setAttribute(key, String(value));
       else if (value == null || value === false) element.removeAttribute(key);
@@ -757,7 +777,22 @@ async function mountClientOptions(requestedSection: string, browser: 'userscript
   const host = document.createElement('div');document.body.appendChild(host);
   const app = renderer.createApp(module.exports.default, {settingsHashPrefix: browser === 'userscript' ? prefix : undefined});
   if (browser !== 'userscript') location.hash = `#${requestedSection}`;
-  app.component('ElDialog', runtime.defineComponent({render: () => null}));
+  app.component('ElDialog', about ? runtime.defineComponent({
+    props: {modelValue: Boolean}, emits: ['update:modelValue', 'closed'],
+    setup(props, {slots, emit}) {
+      dialogNotifications.closed = () => emit('closed');
+      return () => {
+        // Deliberately evaluate the slot while false: hidden must not cause eager acquisition.
+        dialogSlotRuns++;
+        return runtime.h('section', {'data-about-dialog-port': '', 'data-model-visible': String(props.modelValue),
+          'aria-hidden': String(!props.modelValue)}, [
+          ...(slots.default?.() ?? []),
+          runtime.h('button', {type: 'button', 'data-about-dialog-close': '',
+            onClick: () => emit('update:modelValue', false)}, 'Controlled dialog close'),
+        ]);
+      };
+    },
+  }) : runtime.defineComponent({render: () => null}));
   app.config.warnHandler = () => undefined;app.config.errorHandler = error => errors.push(error);
   let mounted = false;
   scope.unmount = () => {if (mounted) {mounted = false;app.unmount();}frames.clear();host.remove();};unmount = scope.unmount;
@@ -767,7 +802,19 @@ async function mountClientOptions(requestedSection: string, browser: 'userscript
   const rail = (section: string) => host.querySelector<HTMLButtonElement>(`button[data-section="${section}"]`)!;
   const choose = async (section: string) => {rail(section).click();await settle();};
   const navigateHash = async (section: string) => {location.hash = browser === 'userscript' ? `${prefix}/${section}` : `#${section}`;window.dispatchEvent(new window.Event('hashchange'));await settle();};
-  return {host, loads, errors, language, t: i18n.t, location, prefix, unsubscribe, settle, rail, choose, navigateHash, search: host.querySelector<HTMLInputElement>('input[type="search"]')!};
+  const previewState = () => {
+    const dialog = host.querySelector<HTMLElement>('[data-about-dialog-port]')!;
+    const image = dialog.querySelector<HTMLImageElement>('.about-approve-preview')!;
+    return {visible: dialog.getAttribute('data-model-visible'),
+      kind: dialog.classList.contains('about-wechat-contact-dialog') ? 'contact' : 'support',
+      title: dialog.getAttribute('title'), src: image.getAttribute('src'), alt: image.getAttribute('alt'),
+      width: image.getAttribute('width'), height: image.getAttribute('height')};
+  };
+  const notifyDialogClosed = () => {if (!dialogNotifications.closed) throw new Error('Dialog display port is not mounted');dialogNotifications.closed();};
+  return {host, loads, errors, language, t: i18n.t, location, prefix, unsubscribe, settle, rail, choose, navigateHash,
+    images, previewState, notifyDialogClosed, dialogSlotEvaluations: () => dialogSlotRuns,
+    hostDocumentState, initialHostDocumentState, dispose: () => scope.unmount?.(),
+    search: host.querySelector<HTMLInputElement>('input[type="search"]')!};
 }
 
 describe('OptionsApp actual client standalone capability navigation', () => {
@@ -837,6 +884,125 @@ describe('OptionsApp actual client localized sidebar brand', () => {
     h.language.value = 'zh-CN';
     await h.settle();
     expect(brand().textContent).toBe('流畅阅读');
+    expect(h.errors).toEqual([]);
+  });
+});
+
+// Linkedom/client display-port evidence only: this is not an Element Plus animation,
+// browser image decode, native focus, or JPEG-cache performance test.
+describe('OptionsApp actual client lazy About image ownership', () => {
+  const supportSnapshot = 'data:image/jpeg;base64,c3ludGhldGljLXNldHVwLXN1cHBvcnQ=';
+  const contactPort = 'synthetic-contact-image';
+  const mountAbout = (section = 'settings-general', supportGlobal?: string) =>
+    mountClientOptions(section, 'userscript', {supportGlobal});
+  const assertSupportSnapshot = (h: Awaited<ReturnType<typeof mountAbout>>, expected: string) => {
+    expect(h.images.support).toHaveBeenCalled();
+    expect(h.images.support.mock.calls.every(([url]) => url === expected)).toBe(true);
+  };
+
+  it('does not acquire either image or assign a preview src in General even when the hidden dialog slot renders', async () => {
+    const h = await mountAbout();
+    expect(h.dialogSlotEvaluations()).toBeGreaterThan(0);
+    expect(h.previewState()).toMatchObject({visible: 'false', src: null, kind: 'support'});
+    expect(h.images.support).not.toHaveBeenCalled();
+    expect(h.images.contact).not.toHaveBeenCalled();
+    expect(h.host.querySelector('#settings-about')).toBeNull();
+    await h.choose('settings-about');
+    expect(h.host.querySelector('.about-support-qr')?.getAttribute('src')).toBe('/misc/approve.jpg');
+    assertSupportSnapshot(h, '/misc/approve.jpg');
+    expect(h.images.contact).not.toHaveBeenCalled();
+    expect(h.previewState()).toMatchObject({visible: 'false', src: null});
+    expect(h.hostDocumentState()).toEqual(h.initialHostDocumentState);
+    expect(h.errors).toEqual([]);
+  });
+
+  it('acquires contact only through its public button and retains the setup support snapshot across host global changes', async () => {
+    const h = await mountAbout('settings-general', supportSnapshot);
+    vi.stubGlobal('__FLUENTREAD_APPROVE_DATA__', 'synthetic-later-host-support');
+    await h.choose('settings-about');
+    expect(h.host.querySelector('.about-support-qr')?.getAttribute('src')).toBe(supportSnapshot);
+    expect(h.images.contact).not.toHaveBeenCalled();
+    assertSupportSnapshot(h, supportSnapshot);
+    await h.choose('settings-general');
+    await h.choose('settings-about');
+    expect(h.images.contact).not.toHaveBeenCalled();
+    const contact = h.host.querySelector<HTMLButtonElement>('button.about-wechat-contact')!;
+    expect(contact.getAttribute('type')).toBe('button');
+    expect(contact.getAttribute('aria-haspopup')).toBe('dialog');
+    contact.click();await h.settle();
+    expect(h.images.contact).toHaveBeenCalledTimes(1);
+    expect(h.previewState()).toMatchObject({visible: 'true', kind: 'contact', src: contactPort,
+      alt: h.t('options.aboutWechatContactCodeAlt'), width: '888', height: '1131'});
+    assertSupportSnapshot(h, supportSnapshot);
+    const support = h.host.querySelector<HTMLButtonElement>('button.about-support-wechat')!;
+    support.click();await h.settle();
+    expect(h.images.contact).toHaveBeenCalledTimes(1);
+    expect(h.previewState()).toMatchObject({visible: 'true', kind: 'support', src: supportSnapshot,
+      alt: h.t('popup.donationCodeAlt'), width: '1152', height: '1152'});
+    support.click();await h.settle();
+    expect(h.images.contact).toHaveBeenCalledTimes(1);
+    expect(h.previewState().src).toBe(supportSnapshot);
+    contact.click();await h.settle();
+    expect(h.images.contact).toHaveBeenCalledTimes(2);
+    expect(h.previewState().src).toBe(contactPort);
+    assertSupportSnapshot(h, supportSnapshot);
+    expect(h.hostDocumentState()).toEqual(h.initialHostDocumentState);
+    expect(h.errors).toEqual([]);
+  });
+
+  it.each(['contact', 'support'] as const)('commits no preview state when the selected %s accessor throws', async selected => {
+    const h = await mountAbout('settings-about', supportSnapshot);
+    const previous = selected === 'contact' ? 'support' : 'contact';
+    h.host.querySelector<HTMLButtonElement>(previous === 'contact' ? 'button.about-wechat-contact' : 'button.about-support-wechat')!.click();
+    await h.settle();
+    const before = h.previewState();
+    expect(before.visible).toBe('true');expect(before.kind).toBe(previous);
+    const failure = new Error(`synthetic ${selected} image restoration failed`);
+    if (selected === 'contact') h.images.contact.mockImplementationOnce(() => {throw failure;});
+    else h.images.support.mockImplementationOnce(() => {throw failure;});
+    h.host.querySelector<HTMLButtonElement>(selected === 'contact' ? 'button.about-wechat-contact' : 'button.about-support-wechat')!.click();
+    await h.settle();
+    expect(h.errors).toEqual([failure]);
+    expect(h.previewState()).toEqual(before);
+    expect(h.hostDocumentState()).toEqual(h.initialHostDocumentState);
+  });
+
+  it.each(['contact', 'support'] as const)('retains %s preview src through close update and returns focus only at the closed notification', async selected => {
+    const h = await mountAbout('settings-about', supportSnapshot);
+    const trigger = h.host.querySelector<HTMLButtonElement>(selected === 'contact' ? 'button.about-wechat-contact' : 'button.about-support-wechat')!;
+    const focus = vi.spyOn(trigger, 'focus').mockImplementation(() => undefined);
+    trigger.click();await h.settle();
+    const before = h.previewState();expect(before.visible).toBe('true');
+    const contactCalls = h.images.contact.mock.calls.length;
+    h.host.querySelector<HTMLButtonElement>('[data-about-dialog-close]')!.click();
+    await h.settle();
+    expect(h.previewState()).toEqual({...before, visible: 'false'});
+    expect(focus).not.toHaveBeenCalled();
+    expect(h.images.contact).toHaveBeenCalledTimes(contactCalls);
+    h.notifyDialogClosed();await h.settle();
+    expect(focus).toHaveBeenCalledOnce();
+    expect(focus).toHaveBeenCalledWith({preventScroll: true});
+    expect(h.images.contact).toHaveBeenCalledTimes(contactCalls);
+    assertSupportSnapshot(h, supportSnapshot);
+    expect(h.hostDocumentState()).toEqual(h.initialHostDocumentState);
+    expect(h.errors).toEqual([]);
+  });
+
+  it.each(['leave-about', 'unmount'] as const)('does not restore the old trigger after %s before the delayed closed notification', async outcome => {
+    const h = await mountAbout('settings-about', supportSnapshot);
+    const trigger = h.host.querySelector<HTMLButtonElement>('button.about-wechat-contact')!;
+    const focus = vi.spyOn(trigger, 'focus').mockImplementation(() => undefined);
+    trigger.click();await h.settle();
+    h.host.querySelector<HTMLButtonElement>('[data-about-dialog-close]')!.click();
+    await h.settle();expect(focus).not.toHaveBeenCalled();
+    if (outcome === 'leave-about') await h.choose('settings-general');
+    else h.dispose();
+    const supportCalls = h.images.support.mock.calls.length, contactCalls = h.images.contact.mock.calls.length;
+    h.notifyDialogClosed();await h.settle();
+    expect(focus).not.toHaveBeenCalled();
+    expect(h.images.support).toHaveBeenCalledTimes(supportCalls);
+    expect(h.images.contact).toHaveBeenCalledTimes(contactCalls);
+    expect(h.hostDocumentState()).toEqual(h.initialHostDocumentState);
     expect(h.errors).toEqual([]);
   });
 });

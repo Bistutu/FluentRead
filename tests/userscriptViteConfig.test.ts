@@ -16,6 +16,9 @@ import {inflateWithPako} from '@/userscript/pakoRuntime';
 import * as chineseCharacterData from '@/src/core/language/chineseVariants';
 import * as functionWordData from '@/src/core/language/functionWordData';
 import {createUserscriptCharacterDataCompressionPlugin} from '@/userscript/characterDataPlugin';
+import {createUserscriptAboutImagesCompressionPlugin} from '@/userscript/aboutImagesPlugin';
+import {getSupportImageUrl as getNormalSupportImageUrl, getContactImageUrl as getNormalContactImageUrl} from '@/src/app/options/aboutImages';
+import ordinaryContactAsset from '@/src/app/options/assets/wechat-contact.jpg';
 import {createUserscriptInlineCssCompressionPlugin} from '@/userscript/inlineCssPlugin';
 import {createUserscriptFrancDataCompressionPlugin} from '@/userscript/francDataPlugin';
 import {inflateWithPako as inflateBundledFrancData} from '@/userscript/pakoBundled';
@@ -795,5 +798,158 @@ describe('standalone locked franc pure-data encoding', () => {
         expect(readFileSync(dataPath, 'utf8')).toBe(original);
         const manifest = JSON.parse(readFileSync(resolve(dataPath, '../package.json'), 'utf8'));
         expect(manifest).toMatchObject({name: 'franc-min', version: '6.2.0', license: 'MIT'});
+    });
+});
+
+describe('standalone About images at explicit use boundaries', () => {
+    const root = process.cwd();
+    const helperId = realpathSync(resolve(root, 'src/app/options/aboutImages.ts'));
+    const originalImage = (relative: string) => readFileSync(resolve(root, relative));
+    const originals = {
+        support: originalImage('public/misc/approve.jpg'),
+        contact: originalImage('src/app/options/assets/wechat-contact.jpg'),
+    };
+    const expectedUrl = (kind: keyof typeof originals) => 'data:image/jpeg;base64,' + originals[kind].toString('base64');
+    const createPlugin = (enabled = true, fixtureRoot = root) => createUserscriptAboutImagesCompressionPlugin(fixtureRoot, enabled) as unknown as {
+        name: string; load(id: string): string | null;
+    };
+    async function loadAccessors(decoder = vi.fn(inflateBundledFrancData)) {
+        const source = createPlugin().load(helperId)!;
+        const {transformWithEsbuild} = await import('vite');
+        const compiled = await transformWithEsbuild(source, 'about-images-owner.js', {format: 'cjs', target: 'es2018'});
+        const module = {exports: {} as {getSupportImageUrl(normal: string): string; getContactImageUrl(): string}};
+        const decode = vi.fn(atob);
+        const hostImage = {controlledHostImage: true};
+        const realm = {module, exports: module.exports, Uint8Array, atob: decode,
+            __FLUENTREAD_APPROVE_DATA__: hostImage,
+            require: (id: string) => {
+                expect(id).toBe('@/userscript/pakoRuntime');
+                return {inflateWithPako: decoder};
+            }};
+        runInNewContext(compiled.code, realm, {timeout: 5_000});
+        expect(decoder).not.toHaveBeenCalled();
+        expect(decode).not.toHaveBeenCalled();
+        expect(realm.__FLUENTREAD_APPROVE_DATA__).toBe(hostImage);
+        return {api: module.exports, decoder, decode, realm, hostImage, source};
+    }
+    function assertImage(actual: string, kind: keyof typeof originals) {
+        expect(actual).toBe(expectedUrl(kind));
+        expect(Buffer.from(actual.slice('data:image/jpeg;base64,'.length), 'base64')).toEqual(originals[kind]);
+    }
+
+    it('keeps the ordinary caller snapshot and existing contact asset route', () => {
+        for (const normal of ['/misc/approve.jpg', 'controlled-captured-data-url', '']) {
+            expect(getNormalSupportImageUrl(normal)).toBe(normal);
+        }
+        expect(getNormalContactImageUrl()).toBe(ordinaryContactAsset);
+    });
+
+    it.each(['support-first', 'contact-first'] as const)('keeps import lazy and restores complete original JPEGs independently with %s', async order => {
+        const h = await loadAccessors();
+        const support = () => h.api.getSupportImageUrl('controlled-normal-url');
+        const contact = () => h.api.getContactImageUrl();
+        const first = order === 'support-first' ? support : contact;
+        const second = order === 'support-first' ? contact : support;
+        assertImage(first(), order === 'support-first' ? 'support' : 'contact');
+        expect(h.decoder).toHaveBeenCalledTimes(1);expect(h.decode).toHaveBeenCalledTimes(1);
+        first();first();expect(h.decoder).toHaveBeenCalledTimes(1);
+        assertImage(second(), order === 'support-first' ? 'contact' : 'support');
+        expect(h.decoder).toHaveBeenCalledTimes(2);expect(h.decode).toHaveBeenCalledTimes(2);
+        assertImage(support(), 'support');assertImage(contact(), 'contact');
+        expect(h.decoder).toHaveBeenCalledTimes(2);
+        expect(h.realm.__FLUENTREAD_APPROVE_DATA__).toBe(h.hostImage);
+    });
+
+    it.each(['support', 'contact'] as const)('does not publish a failed %s restoration or affect the other successful cache', async kind => {
+        const decoder = vi.fn(inflateBundledFrancData).mockImplementationOnce(() => {throw new Error('controlled restore failure');});
+        const h = await loadAccessors(decoder);
+        const selected = () => kind === 'support' ? h.api.getSupportImageUrl('normal') : h.api.getContactImageUrl();
+        const other = () => kind === 'support' ? h.api.getContactImageUrl() : h.api.getSupportImageUrl('normal');
+        expect(selected).toThrow('controlled restore failure');expect(decoder).toHaveBeenCalledTimes(1);
+        assertImage(other(), kind === 'support' ? 'contact' : 'support');
+        other();expect(decoder).toHaveBeenCalledTimes(2);
+        assertImage(selected(), kind);expect(decoder).toHaveBeenCalledTimes(3);
+        selected();other();expect(decoder).toHaveBeenCalledTimes(3);
+        expect(h.decode).toHaveBeenCalledTimes(3);
+    });
+
+    it('defaults to disabled without reading nonexistent helper or image files', () => {
+        const plugin = createUserscriptAboutImagesCompressionPlugin('/unavailable-about-images-root');
+        if (typeof plugin.load !== 'function') throw new Error('Expected image load hook');
+        expect(Reflect.apply(plugin.load, plugin, [helperId])).toBeNull();
+        expect(createPlugin(false, '/unavailable-about-images-root').load(helperId)).toBeNull();
+    });
+
+    it.each([
+        ['raw', helperId + '?raw'], ['proxy', helperId + '?commonjs-proxy'],
+        ['virtual', '\0' + helperId], ['another-module', resolve(root, 'src/app/options/other.ts')],
+        ['similar-path', resolve(root, 'fake-src/app/options/aboutImages.ts')],
+    ])('leaves the %s route and disabled module untouched', (_label, id) => {
+        expect(createPlugin().load(id)).toBeNull();
+        expect(createPlugin(false).load(id)).toBeNull();
+    });
+
+    it.each([
+        ['ordinary', '0', '0', false], ['standalone', '1', '0', true],
+        ['greasy-fork', '0', '1', false], ['standalone-and-greasy', '1', '1', false],
+    ] as const)('uses the actual %s config plugin, Vite alias resolution and asset path', async (_label, standalone, greasy, enabled) => {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', standalone);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', greasy);
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
+        const fixture = mkdtempSync(resolve(tmpdir(), 'fluentread-about-images-owner-'));
+        try {
+            vi.resetModules();
+            const {default: configuration} = await import('@/userscript/vite.config');
+            const config = configuration as import('vite').UserConfig;
+            const plugin = (config.plugins as import('vite').Plugin[]).find(item => item.name === 'compress-standalone-about-images');
+            expect(plugin).toBeDefined();
+            const entryPath = resolve(fixture, 'entry.mjs');
+            writeFileSync(entryPath, 'import {getSupportImageUrl,getContactImageUrl} from "@/src/app/options/aboutImages"; globalThis.aboutImagesOwner={getSupportImageUrl,getContactImageUrl};');
+            const {build} = await import('vite');
+            const result = await build({root, configFile: false, publicDir: false, logLevel: 'silent',
+                plugins: [plugin!], resolve: config.resolve,
+                build: {...config.build, write: false, outDir: resolve(fixture, 'unused-output'),
+                    lib: {entry: entryPath, name: 'AboutImagesOwner', formats: ['iife']},
+                    rollupOptions: {output: {inlineDynamicImports: true}}}});
+            const outputs = Array.isArray(result) ? result : [result];
+            expect(outputs).toHaveLength(1);
+            if (!('output' in outputs[0])) throw new Error('Expected actual Rollup output');
+            expect(outputs[0].output).toHaveLength(1);
+            const chunk = outputs[0].output[0];
+            if (chunk.type !== 'chunk') throw new Error('Expected complete image owner entry');
+            expect(chunk.imports).toEqual([]);expect(chunk.dynamicImports).toEqual([]);
+            const decode = vi.fn(atob);
+            const realm = {aboutImagesOwner: undefined as any, atob: decode, Uint8Array, ArrayBuffer};
+            runInNewContext(chunk.code, realm, {timeout: 5_000});
+            expect(decode).not.toHaveBeenCalled();
+            const api = realm.aboutImagesOwner;
+            const normalUrl = 'controlled-captured-normal-url';
+            const support = api.getSupportImageUrl(normalUrl);
+            assertImage(api.getContactImageUrl(), 'contact');
+            if (enabled) {
+                assertImage(support, 'support');expect(decode).toHaveBeenCalledTimes(2);
+                expect(chunk.code).not.toContain(expectedUrl('support'));
+                expect(chunk.code).not.toContain(expectedUrl('contact'));
+                expect(chunk.moduleIds).not.toContain(resolve(root, 'src/app/options/assets/wechat-contact.jpg'));
+            } else {
+                expect(support).toBe(normalUrl);expect(decode).not.toHaveBeenCalled();
+                expect(chunk.moduleIds).toContain(resolve(root, 'src/app/options/assets/wechat-contact.jpg'));
+            }
+            api.getSupportImageUrl('other-normal-url');api.getContactImageUrl();
+            expect(decode).toHaveBeenCalledTimes(enabled ? 2 : 0);
+            const bootstrapPlugin = (config.plugins as import('vite').Plugin[]).find(item => item.name === 'bundle-userscript-css') as unknown as {
+                generateBundle: {handler: Function};
+            };
+            await Reflect.apply(bootstrapPlugin.generateBundle.handler, {emitFile: vi.fn()}, [{}, {'entry.js': chunk}]);
+            expect(chunk.code).not.toMatch(/globalThis\.__FLUENTREAD_APPROVE_DATA__\s*=/u);
+            if (enabled) {
+                expect(chunk.code).not.toContain(expectedUrl('support'));
+                expect(chunk.code).not.toContain(expectedUrl('contact'));
+            }
+        } finally {
+            rmSync(fixture, {recursive: true, force: true});
+            vi.unstubAllEnvs();vi.resetModules();
+        }
     });
 });

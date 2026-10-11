@@ -133,7 +133,7 @@
                   @click="openQrPreview('support')"
                 >
                   <!-- 绑定表达式让模板编译器保留 public 路径，避免再打包一份带 hash 的同图。 -->
-                  <img class="about-support-qr" :src="approveUrl" :alt="t('popup.donationCodeAlt')" width="1152" height="1152" />
+                  <img class="about-support-qr" :src="getSupportImageUrl(approveUrl)" :alt="t('popup.donationCodeAlt')" width="1152" height="1152" />
                   <span>{{ t('popup.donationWechat') }}</span>
                 </button>
                 <a class="about-support-method about-support-kofi-link" data-support-method="kofi" href="https://ko-fi.com/thinkstu" target="_blank" rel="noopener noreferrer">
@@ -169,7 +169,7 @@
     >
       <img
         class="about-approve-preview"
-        :src="qrPreviewKind === 'contact' ? wechatContactUrl : approveUrl"
+        :src="qrPreviewUrl"
         :alt="qrPreviewKind === 'contact' ? t('options.aboutWechatContactCodeAlt') : t('popup.donationCodeAlt')"
         :width="qrPreviewKind === 'contact' ? 888 : 1152"
         :height="qrPreviewKind === 'contact' ? 1131 : 1152"
@@ -180,7 +180,7 @@
 
 <script setup lang="ts">
 import UiIcon from '@/src/ui/components/UiIcon.vue'
-import wechatContactUrl from './assets/wechat-contact.jpg'
+import {getSupportImageUrl, getContactImageUrl} from './aboutImages'
 import {SETTINGS_TABBED_SECTION_IDS, settingsPagePanels, resolveSettingsPanel, filterNavigationItems, filterSettingsSearchTargets, isUiLanguageSearch, settingsSearchTargets} from '@/src/features/settings/model/navigation';
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import SettingsNavigationIcon from '@/src/features/settings/ui/SettingsNavigationIcon.vue'
@@ -216,11 +216,14 @@ const websiteUrl = 'https://read.thinkstu.com'
 const iconUrl = globalThis.__FLUENTREAD_ICON_DATA__ || '/icon/128.png'
 const approveUrl = globalThis.__FLUENTREAD_APPROVE_DATA__ || '/misc/approve.jpg'
 const approvePreviewVisible = ref(false)
+const qrPreviewUrl = ref<string>()
 const approvePreviewTrigger = ref<HTMLButtonElement | null>(null)
 const wechatContactTrigger = ref<HTMLButtonElement | null>(null)
 const qrPreviewKind = ref<'contact' | 'support'>('support')
 function openQrPreview(kind: 'contact' | 'support') {
+  const nextUrl = kind === 'contact' ? getContactImageUrl() : getSupportImageUrl(approveUrl)
   qrPreviewKind.value = kind
+  qrPreviewUrl.value = nextUrl
   approvePreviewVisible.value = true
 }
 function restoreApprovePreviewFocus() {
