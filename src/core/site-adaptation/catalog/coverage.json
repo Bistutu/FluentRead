@@ -1276,6 +1276,41 @@
       "verification": "site-fixture",
       "fixture": "pypi-packages",
       "liveVerification": "not-performed"
+    },
+    {
+      "id": "bing-search",
+      "category": "documentation",
+      "verification": "site-fixture",
+      "fixture": "bing-search",
+      "liveVerification": "not-performed"
+    },
+    {
+      "id": "steam-community-discussions",
+      "category": "community",
+      "verification": "site-fixture",
+      "fixture": "steam-community-discussions",
+      "liveVerification": "not-performed"
+    },
+    {
+      "id": "google-news-home-headlines",
+      "category": "news",
+      "verification": "site-fixture",
+      "fixture": "google-news-home-headlines",
+      "liveVerification": "not-performed"
+    },
+    {
+      "id": "github-gist",
+      "category": "community",
+      "verification": "site-fixture",
+      "fixture": "github-gist",
+      "liveVerification": "not-performed"
+    },
+    {
+      "id": "firefox-addons",
+      "category": "documentation",
+      "verification": "site-fixture",
+      "fixture": "firefox-addons",
+      "liveVerification": "not-performed"
     }
   ],
   "remainingCapabilities": [
@@ -1968,5 +2003,23 @@
       "pnpm在最后精确保护更新后又单独复验通过。",
       "运行策略：临时Edge profile、第二屏后台正常尺寸窗口、无前台焦点抢占。"
     ]
+  },
+  "commonSiteExpansion": {
+    "checkedAt": "2026-10-11",
+    "newRules": [
+      "bing-search",
+      "steam-community-discussions",
+      "google-news-home-headlines",
+      "github-gist",
+      "firefox-addons"
+    ],
+    "fixtureShapes": 7,
+    "method": "Current public DOM or owning component source establishes selectors; independently authored mock pages validate request boundaries and reversible runtime behavior.",
+    "limitations": [
+      "Google News rule explicitly covers /home headlines only",
+      "AMO DOM is backed by owning component source; direct page fetch encountered a client challenge",
+      "Browser mocks and local provider responses do not prove all live layouts or network latency"
+    ],
+    "previousScopeAudit": "scopeAudit retains its historical numbers; this dated entry extends only the explicitly listed page shapes."
   }
 }

@@ -1,5 +1,5 @@
 import {EventEmitter} from 'node:events';
-import {mkdtempSync, mkdirSync, writeFileSync, utimesSync, rmSync} from 'node:fs';
+import {mkdtempSync, mkdirSync, writeFileSync, utimesSync, rmSync, readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createRequire} from 'node:module';
@@ -2676,6 +2676,76 @@ describe('real-site translation matrix gates', () => {
     translation.textContent = `测试译文：${source}`;
     owner.appendChild(translation.cloneNode(true));
     expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(false);
+  });
+
+  it('compares local echo prose across actual inline Text slots while keeping exact code and link markup', () => {
+    const {document} = parseHTML('<p id="owner"><span class="fluent-read-bilingual-content">测试译文：This readable opening describes a <a href="https://example.test/reference">测试译文：useful reference</a> 测试译文：with <code>requestIdleCallback()</code>测试译文：.</span></p>');
+    const parts = [{selector: '#owner', sourceIncludes: 'This readable opening describes a useful reference with requestIdleCallback().',
+      preservedText: ['requestIdleCallback()'], omittedText: ['Fixture Author'],
+      preservedMarkup: [{selector: 'code', text: 'requestIdleCallback()'},
+        {selector: 'a[href="https://example.test/reference"]', text: '测试译文：useful reference'}]}];
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(true);
+    const wrapper = document.querySelector('.fluent-read-bilingual-content')!;
+    const code = wrapper.querySelector('code')!;
+    code.textContent = '测试译文：requestIdleCallback()';
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(false);
+    code.textContent = 'requestIdleCallback()';
+    const link = wrapper.querySelector('a')!;
+    link.setAttribute('href', 'https://wrong.test/reference');
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(false);
+    link.setAttribute('href', 'https://example.test/reference');
+    wrapper.insertAdjacentHTML('beforeend', '<span>Fixture 测试译文：Author</span>');
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(false);
+    wrapper.lastChild!.remove();
+    wrapper.firstChild!.textContent = 'This readable 其他译文：opening describes a ';
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(false);
+  });
+
+  it('still rejects missing Chinese, missing prose, duplicate owners and duplicate wrappers in slot echoes', () => {
+    const {document} = parseHTML('<main><p id="owner"><span class="fluent-read-bilingual-content">测试译文：Readable <em>测试译文：inline source</em>测试译文： remains complete.</span></p></main>');
+    const parts = [{selector: '#owner', sourceIncludes: 'Readable inline source remains complete.'}];
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(true);
+    const owner = document.querySelector('#owner')!, wrapper = owner.querySelector('.fluent-read-bilingual-content')!;
+    const html = wrapper.innerHTML;
+    wrapper.innerHTML = html.replaceAll('测试译文：', '');
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(false);
+    wrapper.innerHTML = html.replace('inline source', 'wrong source');
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(false);
+    wrapper.innerHTML = html;
+    owner.append(wrapper.cloneNode(true));
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(false);
+    owner.lastChild!.remove();
+    owner.parentElement!.append(owner.cloneNode(true));
+    expect(inspectFixtureTranslationParts({parts, requireAll: true}, document)).toBe(false);
+  });
+
+  it('changes one original fixture Text slot despite a translated link clone and rejects two original links', async () => {
+    const source = readFileSync(new URL('../scripts/run-site-adaptation-test.cjs', import.meta.url), 'utf8');
+    const start = source.indexOf('async function fixtureHostWrite(');
+    const end = source.indexOf('async function runFixtureDynamic(', start);
+    expect(start).toBeGreaterThanOrEqual(0); expect(end).toBeGreaterThan(start);
+    const {document} = parseHTML('<html><body><p id="body">Original <a href="#same">inline source</a><span class="fluent-read-bilingual-content">测试 <a href="#same">译文 inline source</a></span></p></body></html>');
+    const {document: expected} = parseHTML('<html><body><p id="body">Original <a href="#same">inline source</a></p></body></html>');
+    const {Script} = require('node:vm');
+    const write = new Script(`(${source.slice(start, end)})`, {filename: 'actual-fixture-host-write.cjs'}).runInNewContext({
+      document, window: {__adaptationFixtureHost: expected}, NodeFilter: {SHOW_TEXT: 4},
+    }) as (page: {evaluate: (fn: (operation: unknown) => unknown, operation: unknown) => Promise<unknown>},
+      operation: Record<string, unknown>) => Promise<void>;
+    const page = {evaluate: async (fn: (operation: unknown) => unknown, operation: unknown) => fn(operation)};
+    const link = document.querySelector('#body > a')!, node = link.firstChild;
+    const wrapper = document.querySelector('.fluent-read-bilingual-content')!;
+    const wrapperHtml = wrapper.outerHTML;
+    await write(page, {kind: 'text', selector: '#body a', from: 'inline source', to: 'updated source'});
+    expect(link.firstChild).toBe(node);
+    expect(node?.textContent).toBe('updated source');
+    expect(link.getAttribute('href')).toBe('#same');
+    expect(expected.querySelector('#body a')?.textContent).toBe('updated source');
+    expect(wrapper.outerHTML).toBe(wrapperHtml);
+    document.querySelector('#body')!.insertAdjacentHTML('beforeend', '<a href="#second">second original</a>');
+    await expect(write(page, {kind: 'text', selector: '#body a', from: 'updated source', to: 'must reject'})).rejects.toThrow('must be unique');
+    expect(node?.textContent).toBe('updated source');
+    expect(expected.querySelector('#body a')?.textContent).toBe('updated source');
+    expect(wrapper.outerHTML).toBe(wrapperHtml);
   });
 
   it('targets visible package readme content while requiring both fenced and inline code protection', () => {

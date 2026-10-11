@@ -2889,7 +2889,9 @@
         "atomic": true
       },
       {
-        "css": [".mw-parser-output h2"],
+        "css": [
+          ".mw-parser-output h2"
+        ],
         "atomic": false
       }
     ],
@@ -5659,6 +5661,429 @@
         ],
         "atomic": false
       }
+    ]
+  },
+  {
+    "id": "bing-search",
+    "name": "Bing 普通搜索结果",
+    "match": {
+      "hosts": [
+        "www.bing.com"
+      ],
+      "paths": [
+        "/search"
+      ]
+    },
+    "profile": "search",
+    "mode": "focus",
+    "content": [
+      {
+        "css": [
+          "#b_results > .b_algo h2",
+          "#b_results > .b_algo .b_caption > p"
+        ],
+        "resolve": "self",
+        "atomic": false,
+        "key": "bing-organic-result-prose"
+      }
+    ],
+    "exclude": [
+      "#b_header",
+      "#b_footer",
+      "#b_context",
+      "#b_results > .b_ad",
+      "#b_results > .b_ans",
+      "#b_results > .b_pag",
+      ".b_tpcn",
+      ".b_attribution",
+      ".tptxt",
+      "#b_results > .b_algo .b_caption .b_algoReadMore"
+    ],
+    "omit": [
+      "#b_results > .b_algo .b_caption .news_dt",
+      "#b_results > .b_algo .b_caption .b_algoReadMore"
+    ],
+    "watchIgnore": [
+      "#b_header",
+      "#b_footer",
+      "#b_context",
+      "#b_results > .b_ad",
+      "#b_results > .b_ans",
+      "#b_results > .b_pag",
+      ".b_tpcn",
+      ".b_attribution",
+      ".tptxt",
+      ".news_dt",
+      "#b_results > .b_algo .b_caption .b_algoReadMore"
+    ],
+    "protect": [
+      "#b_results > .b_algo .b_caption .b_algoReadMore"
+    ]
+  },
+  {
+    "id": "steam-community-discussions",
+    "name": "Steam 社区讨论",
+    "match": {
+      "hosts": [
+        "steamcommunity.com"
+      ],
+      "paths": [
+        "/app/*/discussions/",
+        "/app/*/discussions/*"
+      ]
+    },
+    "profile": "message",
+    "mode": "focus",
+    "content": [
+      {
+        "css": [
+          "#AppHubContent .forum_topics .forum_topic_name",
+          "#AppHubContent .forum_op > .topic"
+        ],
+        "resolve": "self",
+        "atomic": false,
+        "key": "steam-discussion-titles"
+      },
+      {
+        "css": [
+          "#AppHubContent .forum_op > .content[id^=\"forum_op_content_\"] h1",
+          "#AppHubContent .forum_op > .content[id^=\"forum_op_content_\"] h2",
+          "#AppHubContent .forum_op > .content[id^=\"forum_op_content_\"] h3",
+          "#AppHubContent .forum_op > .content[id^=\"forum_op_content_\"] h4",
+          "#AppHubContent .forum_op > .content[id^=\"forum_op_content_\"] h5",
+          "#AppHubContent .forum_op > .content[id^=\"forum_op_content_\"] h6",
+          "#AppHubContent .forum_op > .content[id^=\"forum_op_content_\"] p",
+          "#AppHubContent .forum_op > .content[id^=\"forum_op_content_\"] li",
+          "#AppHubContent .forum_op > .content[id^=\"forum_op_content_\"] dt",
+          "#AppHubContent .forum_op > .content[id^=\"forum_op_content_\"] dd",
+          "#AppHubContent .forum_op > .content[id^=\"forum_op_content_\"] blockquote",
+          "#AppHubContent .forum_op > .content[id^=\"forum_op_content_\"] th",
+          "#AppHubContent .forum_op > .content[id^=\"forum_op_content_\"] td",
+          "#AppHubContent .forum_op > .content[id^=\"forum_op_content_\"] figcaption",
+          "#AppHubContent .commentthread_comment_text h1",
+          "#AppHubContent .commentthread_comment_text h2",
+          "#AppHubContent .commentthread_comment_text h3",
+          "#AppHubContent .commentthread_comment_text h4",
+          "#AppHubContent .commentthread_comment_text h5",
+          "#AppHubContent .commentthread_comment_text h6",
+          "#AppHubContent .commentthread_comment_text p",
+          "#AppHubContent .commentthread_comment_text li",
+          "#AppHubContent .commentthread_comment_text dt",
+          "#AppHubContent .commentthread_comment_text dd",
+          "#AppHubContent .commentthread_comment_text blockquote",
+          "#AppHubContent .commentthread_comment_text th",
+          "#AppHubContent .commentthread_comment_text td",
+          "#AppHubContent .commentthread_comment_text figcaption",
+          "#AppHubContent .forum_op > .content[id^=\"forum_op_content_\"]",
+          "#AppHubContent .commentthread_comment_text"
+        ],
+        "resolve": "self",
+        "atomic": false,
+        "key": "steam-discussion-body"
+      }
+    ],
+    "exclude": [
+      "#global_header",
+      "#global_actions",
+      "#footer",
+      ".apphub_sectionTabs",
+      ".rightcol",
+      ".forum_paging",
+      ".forum_topic_details",
+      ".forum_topic_op",
+      ".forum_op_header",
+      ".forum_op_footer",
+      ".commentthread_comment_author",
+      ".commentthread_comment_timestamp",
+      ".commentthread_comment_actions",
+      ".commentthread_entry",
+      ".bb_code",
+      ".bb_quoteauthor"
+    ],
+    "omit": [
+      ".forum_topic_label",
+      ".bb_quoteauthor"
+    ],
+    "watchIgnore": [
+      "#global_header",
+      "#global_actions",
+      "#footer",
+      ".apphub_sectionTabs",
+      ".rightcol",
+      ".forum_paging",
+      ".forum_topic_details",
+      ".forum_topic_op",
+      ".forum_op_header",
+      ".forum_op_footer",
+      ".commentthread_comment_author",
+      ".commentthread_comment_timestamp",
+      ".commentthread_comment_actions",
+      ".commentthread_entry",
+      ".forum_topic_label",
+      ".bb_code",
+      ".bb_quoteauthor"
+    ],
+    "protect": [
+      ".bb_code",
+      ".bb_quoteauthor"
+    ]
+  },
+  {
+    "id": "google-news-home-headlines",
+    "name": "Google News 首页标题",
+    "match": {
+      "hosts": [
+        "news.google.com"
+      ],
+      "paths": [
+        "/home"
+      ]
+    },
+    "profile": "search",
+    "mode": "focus",
+    "content": [
+      {
+        "css": [
+          "main a[href^=\"./read/\"]:not([aria-hidden=\"true\"])"
+        ],
+        "resolve": "self",
+        "atomic": false,
+        "key": "google-news-home-read-headline"
+      }
+    ],
+    "exclude": [
+      "main aside",
+      "[role=\"complementary\"]",
+      "[aria-hidden=\"true\"]"
+    ],
+    "watchIgnore": [
+      "header",
+      "nav",
+      "footer",
+      "main aside",
+      "[role=\"complementary\"]",
+      "[aria-hidden=\"true\"]",
+      "time",
+      "button"
+    ]
+  },
+  {
+    "id": "github-gist",
+    "name": "GitHub Gist 正文与评论",
+    "match": {
+      "hosts": [
+        "gist.github.com"
+      ],
+      "paths": [
+        "/*/*"
+      ],
+      "excludePaths": [
+        "/login",
+        "/login/*",
+        "/signin",
+        "/signin/*",
+        "/signup",
+        "/signup/*",
+        "/account",
+        "/account/*",
+        "/settings",
+        "/settings/*",
+        "/checkout",
+        "/checkout/*",
+        "/auth/*",
+        "/*/*/edit",
+        "/*/*/edit/*"
+      ]
+    },
+    "profile": "message",
+    "content": [
+      {
+        "css": [
+          ".gist-content .markdown-body h1",
+          ".gist-content .markdown-body h2",
+          ".gist-content .markdown-body h3",
+          ".gist-content .markdown-body h4",
+          ".gist-content .markdown-body h5",
+          ".gist-content .markdown-body h6",
+          ".gist-content .markdown-body p",
+          ".gist-content .markdown-body li",
+          ".gist-content .markdown-body dt",
+          ".gist-content .markdown-body dd",
+          ".gist-content .markdown-body blockquote",
+          ".gist-content .markdown-body th",
+          ".gist-content .markdown-body td",
+          ".gist-content .markdown-body figcaption",
+          ".gist-content .markdown-body"
+        ],
+        "resolve": "self",
+        "atomic": false,
+        "key": "gist-readable-markdown"
+      }
+    ],
+    "protect": [
+      ".user-mention",
+      ".blob-code",
+      ".blob-num"
+    ],
+    "exclude": [
+      ".gisthead",
+      ".file-header",
+      ".blob-wrapper",
+      ".blob-code",
+      ".blob-num",
+      ".timeline-comment-header",
+      ".comment-reactions",
+      ".user-mention"
+    ],
+    "watchIgnore": [
+      ".gisthead",
+      ".file-header",
+      ".blob-wrapper",
+      ".blob-code",
+      ".blob-num",
+      ".timeline-comment-header",
+      ".comment-reactions",
+      ".user-mention"
+    ]
+  },
+  {
+    "id": "firefox-addons",
+    "name": "Firefox Add-ons 描述与评论",
+    "match": {
+      "hosts": [
+        "addons.mozilla.org"
+      ],
+      "paths": [
+        "/*/firefox/addon/*"
+      ],
+      "excludePaths": [
+        "/login",
+        "/login/*",
+        "/signin",
+        "/signin/*",
+        "/signup",
+        "/signup/*",
+        "/account",
+        "/account/*",
+        "/settings",
+        "/settings/*",
+        "/checkout",
+        "/checkout/*",
+        "/auth/*",
+        "/developers/*",
+        "/*/developers/*"
+      ]
+    },
+    "content": [
+      {
+        "css": [
+          "p.Addon-summary"
+        ],
+        "atomic": false,
+        "key": "addon-summary",
+        "resolve": "self"
+      },
+      {
+        "css": [
+          ".AddonDescription-contents h1",
+          ".AddonDescription-contents h2",
+          ".AddonDescription-contents h3",
+          ".AddonDescription-contents h4",
+          ".AddonDescription-contents h5",
+          ".AddonDescription-contents h6",
+          ".AddonDescription-contents p",
+          ".AddonDescription-contents li",
+          ".AddonDescription-contents dt",
+          ".AddonDescription-contents dd",
+          ".AddonDescription-contents blockquote",
+          ".AddonDescription-contents th",
+          ".AddonDescription-contents td",
+          ".AddonDescription-contents figcaption",
+          ".Addon-developer-comments-contents h1",
+          ".Addon-developer-comments-contents h2",
+          ".Addon-developer-comments-contents h3",
+          ".Addon-developer-comments-contents h4",
+          ".Addon-developer-comments-contents h5",
+          ".Addon-developer-comments-contents h6",
+          ".Addon-developer-comments-contents p",
+          ".Addon-developer-comments-contents li",
+          ".Addon-developer-comments-contents dt",
+          ".Addon-developer-comments-contents dd",
+          ".Addon-developer-comments-contents blockquote",
+          ".Addon-developer-comments-contents th",
+          ".Addon-developer-comments-contents td",
+          ".Addon-developer-comments-contents figcaption"
+        ],
+        "atomic": false,
+        "key": "addon-readable-blocks",
+        "resolve": "self"
+      },
+      {
+        "css": [
+          ".AddonDescription-contents",
+          ".Addon-developer-comments-contents",
+          ".UserReview-body > .Card-contents > .ShowMoreCard-contents > div"
+        ],
+        "atomic": false,
+        "key": "addon-direct-lines",
+        "resolve": "self"
+      }
+    ],
+    "exclude": [
+      "nav",
+      "[role=\"navigation\"]",
+      "[role=\"search\"]",
+      "[role=\"tablist\"]",
+      "[role=\"toolbar\"]",
+      "[role=\"menu\"]",
+      "footer:not(article footer) p",
+      "footer:not(article footer) li",
+      "footer:not(article footer) dd",
+      "footer:not(article footer) blockquote",
+      "footer:not(article footer) figcaption",
+      "aside:not(article aside):not(main aside):not([role=\"main\"] aside)",
+      "aside:not(article aside):not([role=\"note\"]):not(.admonition):not(.callout):not(.caution):not(.important):not(.note):not(.notice):not(.tip):not(.warning)",
+      "[role=\"complementary\"]",
+      "form",
+      "aside",
+      ".AddonTitle",
+      ".UserReview-byLine",
+      ".AddonReviewCard-authorByLine",
+      ".AddonReviewCard-allControls",
+      ".ShowMoreCard-expand-link",
+      ".AddonBadges",
+      ".Addon-install",
+      ".AddonReviewCard-control"
+    ],
+    "watchIgnore": [
+      "[role=\"status\"]",
+      "[role=\"progressbar\"]",
+      ".AddonTitle",
+      ".UserReview-byLine",
+      ".AddonReviewCard-authorByLine",
+      ".AddonReviewCard-allControls",
+      ".ShowMoreCard-expand-link",
+      ".AddonBadges",
+      ".Addon-install",
+      ".AddonReviewCard-control"
+    ],
+    "mode": "focus",
+    "protect": [
+      "pre",
+      "code",
+      "kbd",
+      "samp",
+      "var",
+      "math",
+      ".katex",
+      ".MathJax",
+      "button",
+      "input",
+      "textarea",
+      "select",
+      "[contenteditable=\"true\"]",
+      "time",
+      "[role=\"menuitem\"]"
     ]
   }
 ]

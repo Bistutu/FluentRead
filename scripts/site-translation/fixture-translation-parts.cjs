@@ -9,10 +9,14 @@ function inspectFixtureTranslationParts({parts, requireAll = false}, root = docu
     const wrappers = targets.length === 1
       ? [...targets[0].children].filter(node => node.matches('.fluent-read-bilingual-content')) : [];
     const text = normalize(wrappers[0]?.textContent);
+    // The local provider echoes each original Text slot independently. Its exact
+    // prefix can occur inside links/emphasis; remove only that known marker for
+    // prose comparison while keeping raw Chinese and preserved markup checks.
+    const echoedSource = normalize(String(wrappers[0]?.textContent ?? '').replaceAll('测试译文：', ''));
     const translated = targets.length === 1 && wrappers.length === 1 && /[\u3400-\u9fff]/u.test(text)
-      && text.includes(normalize(part.sourceIncludes))
+      && echoedSource.includes(normalize(part.sourceIncludes))
       && (part.preservedText ?? []).every(value => text.includes(normalize(value)))
-      && (part.omittedText ?? []).every(value => !text.includes(normalize(value)))
+      && (part.omittedText ?? []).every(value => !echoedSource.includes(normalize(value)))
       && (part.preservedMarkup ?? []).every(expected =>
         [...wrappers[0].querySelectorAll(expected.selector)].some(node => node.textContent === expected.text));
     return {selector: part.selector, targetCount: targets.length, wrapperCount: wrappers.length, text, translated};

@@ -699,5 +699,761 @@
       "#footer-category",
       "#cookie-popup"
     ]
+  },
+  {
+    "id": "bing-search",
+    "url": "https://www.bing.com/search?q=fixture",
+    "html": "<header id=\"b_header\"><form role=\"search\"><input id=\"query\" value=\"fixture search\"><button id=\"search-button\">Search</button></form><nav id=\"navigation\"><a href=\"/images/search?q=fixture\">Images</a></nav></header><div id=\"b_content\"><main><ol id=\"b_results\"><li class=\"b_algo\"><div class=\"b_tpcn\" id=\"source1\"><a href=\"https://source.invalid\"><div class=\"tptxt\">Source Identity Alpha<div class=\"b_attribution\"><cite>source.invalid/docs</cite></div></div></a></div><h2 id=\"title1\"><a href=\"https://source.invalid/docs\">Reliable <strong>web access</strong> for readers</a></h2><div class=\"b_caption\"><p id=\"body1\"><span class=\"news_dt\" id=\"date1\">2026-10-11</span> This first result explains readable page content and safe navigation. <a href=\"https://source.invalid/details\">Read additional context</a> <a class=\"b_algoReadMore\" id=\"read-more\" href=\"https://source.invalid/more\">Summary action remains original</a> <code id=\"protected\">KEEP_ORIGINAL_TOKEN</code></p></div></li><li class=\"b_algo\"><div class=\"b_tpcn\" id=\"source2\"><div class=\"tptxt\">Source Identity Beta<div class=\"b_attribution\"><cite>another.invalid/reference</cite></div></div></div><h2 id=\"title2\"><a href=\"https://another.invalid/reference\">A second independent reference for browser behavior</a></h2><div class=\"b_caption\"><p id=\"body2\">This second result provides a separate explanation that should be translated once.</p></div></li><li class=\"b_ad\" id=\"advert\"><h2>Promoted result remains unchanged</h2><div class=\"b_caption\"><p>Advertisement text must never be included in the source fields.</p></div></li><li class=\"b_ans\" id=\"answer\"><h2>Interactive answer panel</h2><p>Answer card is outside the declared ordinary search results.</p></li><li class=\"b_pag\" id=\"paging\"><nav><a href=\"/search?q=fixture&first=11\">Next page</a></nav></li></ol></main><aside id=\"b_context\"><h2>Related search controls</h2><div class=\"b_caption\"><p>Sidebar description has similar markup but stays unchanged.</p></div></aside></div><footer id=\"b_footer\"><p>Footer controls remain unchanged.</p></footer>",
+    "required": [
+      "#title1",
+      "#title2",
+      "#body1",
+      "#body2"
+    ],
+    "forbidden": [
+      "#navigation",
+      "#query",
+      "#search-button",
+      "#source1",
+      "#source2",
+      "#date1",
+      "#protected",
+      "#advert",
+      "#answer",
+      "#paging",
+      "#b_context",
+      "#b_footer",
+      "#read-more"
+    ],
+    "restoreSelectors": [
+      "#b_results",
+      "#b_header",
+      "#b_context",
+      "#b_footer"
+    ],
+    "sourceAssertions": {
+      "required": [
+        "This first result explains readable page content and safe navigation.",
+        "This second result provides a separate explanation that should be translated once."
+      ],
+      "forbidden": [
+        "Source Identity Alpha",
+        "Source Identity Beta",
+        "source.invalid/docs",
+        "another.invalid/reference",
+        "2026-10-11",
+        "KEEP_ORIGINAL_TOKEN",
+        "Advertisement text must never be included",
+        "Sidebar description",
+        "Summary action remains original"
+      ]
+    },
+    "provenance": "original-mock-known-boundaries; synthetic content and simplified structure; not a copied page or browser acceptance",
+    "dynamic": {
+      "appendHtml": [
+        {
+          "selector": "#b_results",
+          "html": "<li class=\"b_algo\"><div class=\"b_tpcn\" id=\"new-source\">Dynamic Source Identity</div><h2 id=\"new-title\">A dynamically inserted result heading supplies new context</h2><div class=\"b_caption\"><p id=\"new-body\"><span class=\"news_dt\" id=\"new-date\">2026-10-12</span> The new result description should translate during an active session.</p></div></li>",
+          "required": [
+            "#new-title",
+            "#new-body"
+          ],
+          "forbidden": [
+            "#new-source",
+            "#new-date"
+          ],
+          "sourceIncludes": [
+            "A dynamically inserted result heading supplies new context",
+            "The new result description should translate during an active session."
+          ]
+        }
+      ],
+      "remountSelector": "#b_results",
+      "inlineText": [
+        {
+          "selector": "#body1 a:not(.b_algoReadMore)",
+          "owner": "#body1",
+          "from": "Read additional context",
+          "to": "DYNAMIC_BING_INLINE_TOKEN"
+        }
+      ],
+      "noiseSelector": "#date1",
+      "noiseText": "DYNAMIC_BING_DATE_TOKEN"
+    }
+  },
+  {
+    "id": "steam-community-discussions",
+    "url": "https://steamcommunity.com/app/570/discussions/",
+    "html": "<style>.forum_topic{position:relative;height:48px;box-sizing:border-box;margin:8px 0;background:#eee}.forum_topic_name{padding:4px 16px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.forum_topic_overlay{position:absolute;inset:0;z-index:2}.forum_topic_details{position:absolute;right:8px;top:6px}.forum_topic_op{font-size:12px;margin-left:16px}.rightcol{margin-top:24px}</style><header id=\"global_header\"><nav id=\"navigation\"><a href=\"/\">Steam Community</a></nav><a id=\"signin\" href=\"/login/home/\">Sign in</a></header><div id=\"AppHubContent\" class=\"apphub_Discussion_Content\"><div class=\"maincontent\"><div class=\"leftcol\"><div class=\"forum_area\"><div class=\"forum_paging\" id=\"paging\"><a role=\"button\" href=\"#\">Next</a><span>Showing 1-15 of 1735 active topics</span></div><div class=\"forum_topics_container\"><div class=\"forum_topics\" id=\"topics\"><div class=\"forum_topic unread sticky\" role=\"button\" id=\"card1\"><a class=\"forum_topic_overlay\" id=\"overlay1\" href=\"https://steamcommunity.com/app/570/discussions/0/1696040635904700731/\" style=\"position:absolute;inset:0\"></a><div class=\"forum_topic_details\" id=\"details1\"><div class=\"forum_topic_reply_count\">136</div><div class=\"forum_topic_award_count\">1</div><div class=\"forum_topic_lastpost\">12 October, 2018 @ 11:04am</div></div><div class=\"forum_topic_name\" id=\"body1\"><span class=\"forum_topic_label sticky_label\" id=\"label1\">PINNED:</span> How to recognize a safe community discussion</div><div class=\"forum_topic_op\" id=\"author1\">Community Author Alpha</div></div><div class=\"forum_topic unread\" role=\"button\" id=\"card2\"><a class=\"forum_topic_overlay\" id=\"overlay2\" href=\"/app/570/discussions/0/123456789/\" style=\"position:absolute;inset:0\"></a><div class=\"forum_topic_details\" id=\"details2\"><div class=\"forum_topic_reply_count\">22</div><div class=\"forum_topic_lastpost\">10 minutes ago</div></div><div class=\"forum_topic_name\" id=\"body2\">A second title explains stable browser behavior</div><div class=\"forum_topic_op\" id=\"author2\">Community Author Beta</div></div></div></div></div></div><div class=\"rightcol\" id=\"sidebar\"><div class=\"forum_topics\"><div class=\"forum_topic_name\">Lookalike sidebar category should remain unchanged</div></div></div></div></div><div id=\"outside\"><p>Unrelated page text is outside the discussion scope.</p></div><footer id=\"footer\"><p>Community footer remains unchanged.</p></footer><pre id=\"fixture-code\"><code id=\"protected\">KEEP_ORIGINAL_TOKEN</code></pre>",
+    "required": [
+      "#body1",
+      "#body2"
+    ],
+    "forbidden": [
+      "#navigation",
+      "#signin",
+      "#details1",
+      "#details2",
+      "#author1",
+      "#author2",
+      "#label1",
+      "#paging",
+      "#sidebar",
+      "#outside",
+      "#footer",
+      "#fixture-code",
+      "#overlay1",
+      "#overlay2"
+    ],
+    "restoreSelectors": [
+      "#topics",
+      "#global_header",
+      "#paging",
+      "#sidebar",
+      "#outside",
+      "#footer",
+      "#fixture-code"
+    ],
+    "sourceAssertions": {
+      "required": [
+        "How to recognize a safe community discussion",
+        "A second title explains stable browser behavior"
+      ],
+      "forbidden": [
+        "PINNED:",
+        "Community Author Alpha",
+        "Community Author Beta",
+        "12 October, 2018",
+        "10 minutes ago",
+        "Lookalike sidebar category",
+        "Unrelated page text",
+        "KEEP_ORIGINAL_TOKEN"
+      ]
+    },
+    "provenance": "original-mock-known-boundaries; synthetic content and simplified structure; not a copied page or browser acceptance",
+    "dynamic": {
+      "appendHtml": [
+        {
+          "selector": "#topics",
+          "html": "<div class=\"forum_topic unread\" role=\"button\"><a class=\"forum_topic_overlay\" href=\"/app/570/discussions/0/2468/\"></a><div class=\"forum_topic_name\" id=\"new-body\">New discussion title arrives while translation is active</div><div class=\"forum_topic_op\" id=\"new-author\">Dynamic Community Author</div></div>",
+          "required": [
+            "#new-body"
+          ],
+          "forbidden": [
+            "#new-author"
+          ],
+          "sourceIncludes": [
+            "New discussion title arrives while translation is active"
+          ]
+        }
+      ],
+      "remountSelector": "#topics",
+      "noiseSelector": "#author1",
+      "noiseText": "DYNAMIC_STEAM_AUTHOR_TOKEN"
+    },
+    "variants": [
+      {
+        "url": "https://steamcommunity.com/app/570/discussions/0/1696040635904700731/",
+        "html": "<header id=\"global_header\"><nav id=\"navigation\"><a href=\"/\">Steam Community</a></nav></header><div id=\"AppHubContent\" class=\"apphub_Discussion_Content\"><div class=\"maincontent\"><div class=\"leftcol\"><div class=\"forum_op\" id=\"original-post\"><div class=\"forum_op_header commentthread_comment_author\" id=\"post-meta\"><div class=\"authorline author_name_group\"><a class=\"forum_op_author\" href=\"/id/mock-author\">Community Author Alpha</a><div class=\"date commentthread_comment_timestamp\">12 October, 2018 @ 11:04am</div></div></div><div class=\"topic\" id=\"title\">How readable discussion text can preserve browser controls</div><div class=\"content\" id=\"forum_op_content_mock\">This opening explains the discussion in plain text.<br><b>Important context:</b> A linked <a href=\"https://example.invalid/discussion\">reference remains interactive</a> while the surrounding prose is translated.<ul><li id=\"list-body\">A readable list item supplies separate details for the original post.</li></ul><blockquote class=\"bb_blockquote with_author\" id=\"quote-body\"><div class=\"bb_quoteauthor\" id=\"quote-author\">Quoted Community Author</div>The quoted explanation supplies readable context while its author stays original.</blockquote><pre id=\"protected\"><code>KEEP_ORIGINAL_TOKEN &lt;command&gt;</code></pre></div><div class=\"forum_op_footer\" id=\"post-controls\"><a role=\"button\" href=\"#\">Quote</a><a role=\"button\" href=\"#\">Report</a><span>3 awards</span></div></div><div class=\"commentthread_comments\" id=\"comments\"><div class=\"commentthread_comment\"><div class=\"commentthread_comment_content\"><div class=\"commentthread_comment_author\" id=\"author1\"><a href=\"/id/mock-reply-one\">Community Reply Alpha</a><div class=\"commentthread_comment_timestamp\">10 minutes ago</div><div class=\"commentthread_comment_actions\"><a role=\"button\" href=\"#\">Report</a></div></div><div class=\"commentthread_comment_text\" id=\"body1\">This first reply has direct text and an <a href=\"https://example.invalid/reference\">inline reference</a> that stays clickable.<br>A second line gives useful detail without copying the author.</div></div></div><div class=\"commentthread_comment\"><div class=\"commentthread_comment_content\"><div class=\"commentthread_comment_author\" id=\"author2\"><a href=\"/id/mock-reply-two\">Community Reply Beta</a><div class=\"commentthread_comment_timestamp\">8 minutes ago</div></div><div class=\"commentthread_comment_text\" id=\"body2\">This second reply gives an independent explanation and must be translated once.</div></div></div></div><div class=\"forum_paging\" id=\"paging\"><a role=\"button\" href=\"#\">Next</a></div><div class=\"commentthread_entry\" id=\"editor\"><textarea>Draft text must remain unchanged.</textarea><button>Post Comment</button></div></div><div class=\"rightcol\" id=\"sidebar\"><div class=\"commentthread_comment_text\">Lookalike sidebar text remains unchanged.</div></div></div></div><div class=\"commentthread_comment_text\" id=\"outside\">Lookalike comment outside AppHubContent remains unchanged.</div><footer id=\"footer\"><p>Community footer remains unchanged.</p></footer>",
+        "required": [
+          "#title",
+          "#forum_op_content_mock",
+          "#list-body",
+          "#body1",
+          "#body2",
+          "#quote-body"
+        ],
+        "forbidden": [
+          "#navigation",
+          "#post-meta",
+          "#post-controls",
+          "#author1",
+          "#author2",
+          "#protected",
+          "#paging",
+          "#editor",
+          "#sidebar",
+          "#outside",
+          "#footer",
+          "#quote-author"
+        ],
+        "restoreSelectors": [
+          "#original-post",
+          "#comments",
+          "#paging",
+          "#editor",
+          "#sidebar",
+          "#outside",
+          "#footer"
+        ],
+        "sourceAssertions": {
+          "required": [
+            "This opening explains the discussion in plain text.",
+            "This first reply has direct text and an",
+            "This second reply gives an independent explanation and must be translated once.",
+            "The quoted explanation supplies readable context"
+          ],
+          "forbidden": [
+            "Community Author Alpha",
+            "Community Reply Alpha",
+            "Community Reply Beta",
+            "KEEP_ORIGINAL_TOKEN",
+            "Report",
+            "Draft text",
+            "Lookalike sidebar text",
+            "Lookalike comment outside",
+            "Quoted Community Author"
+          ]
+        },
+        "provenance": "original-mock-known-boundaries; synthetic content and simplified structure; not a copied page or browser acceptance",
+        "dynamic": {
+          "appendHtml": [
+            {
+              "selector": "#comments",
+              "html": "<div class=\"commentthread_comment\"><div class=\"commentthread_comment_content\"><div class=\"commentthread_comment_author\" id=\"new-author\">Dynamic Reply Author<div class=\"commentthread_comment_timestamp\">3 minutes ago</div></div><div class=\"commentthread_comment_text\" id=\"new-body\">This dynamically appended reply should translate during an active session.</div></div></div>",
+              "required": [
+                "#new-body"
+              ],
+              "forbidden": [
+                "#new-author"
+              ],
+              "sourceIncludes": [
+                "This dynamically appended reply should translate during an active session."
+              ]
+            }
+          ],
+          "remountSelector": "#comments",
+          "inlineText": [
+            {
+              "selector": "#body1 a",
+              "owner": "#body1",
+              "from": "inline reference",
+              "to": "DYNAMIC_STEAM_INLINE_TOKEN"
+            }
+          ],
+          "noiseSelector": "#author2",
+          "noiseText": "DYNAMIC_STEAM_REPLY_AUTHOR_TOKEN"
+        },
+        "name": "thread"
+      }
+    ]
+  },
+  {
+    "id": "google-news-home-headlines",
+    "url": "https://news.google.com/home?hl=en-US&gl=US&ceid=US:en",
+    "html": "<style>.mock-story{position:relative;margin:16px 0;padding:12px;border:1px solid #ccc}.mock-stretch,.mock-overlay{position:absolute;inset:0;z-index:1}</style><header><nav id=\"navigation\"><a href=\"./home\">Home</a><a href=\"./read/navigation\" id=\"nav-read\">Navigation read-link lookalike</a></nav><form role=\"search\"><input id=\"query\" value=\"Fixture news\"><button>Search</button></form></header><main><h2 id=\"section-title\">Section heading is outside headline scope</h2><section id=\"stories\"><div class=\"mock-story\"><div class=\"mock-stretch\"><a aria-hidden=\"true\" class=\"mock-overlay\" id=\"overlay1\" href=\"./read/mock-one\" style=\"position:absolute;inset:0\"></a></div><div id=\"source1\">Publisher Identity Alpha</div><a id=\"body1\" class=\"mock-new-title-class\" href=\"./read/mock-one\" aria-label=\"Headline with Publisher Identity Alpha and time metadata\">Researchers explain a reliable browser behavior</a><time id=\"date1\">2 hours ago</time><button id=\"menu1\">More actions</button></div><div class=\"mock-story\"><div class=\"mock-stretch\"><a aria-hidden=\"true\" class=\"mock-overlay\" id=\"overlay2\" href=\"./read/mock-two\" style=\"position:absolute;inset:0\"></a></div><div id=\"source2\">Publisher Identity Beta</div><a id=\"body2\" class=\"mock-other-title-class\" href=\"./read/mock-two\">A second independent headline provides useful context</a><time id=\"date2\">1 hour ago</time><button id=\"menu2\">More actions</button></div><div id=\"non-story\"><a href=\"./topics/mock\">Topic navigation stays unchanged</a></div></section><aside id=\"sidebar\"><a href=\"./read/aside\" id=\"sidebar-read\">Sidebar read-link lookalike remains unchanged</a></aside></main><footer id=\"footer\"><a href=\"./read/footer\" id=\"footer-read\">Footer read-link lookalike remains unchanged</a></footer><pre id=\"fixture-code\"><code id=\"protected\">KEEP_ORIGINAL_TOKEN</code></pre>",
+    "required": [
+      "#body1",
+      "#body2"
+    ],
+    "forbidden": [
+      "#navigation",
+      "#nav-read",
+      "#query",
+      "#section-title",
+      "#overlay1",
+      "#overlay2",
+      "#source1",
+      "#source2",
+      "#date1",
+      "#date2",
+      "#menu1",
+      "#menu2",
+      "#non-story",
+      "#sidebar",
+      "#footer",
+      "#fixture-code"
+    ],
+    "restoreSelectors": [
+      "#stories",
+      "#navigation",
+      "#query",
+      "#section-title",
+      "#sidebar",
+      "#footer",
+      "#fixture-code"
+    ],
+    "sourceAssertions": {
+      "required": [
+        "Researchers explain a reliable browser behavior",
+        "A second independent headline provides useful context"
+      ],
+      "forbidden": [
+        "Publisher Identity Alpha",
+        "Publisher Identity Beta",
+        "2 hours ago",
+        "1 hour ago",
+        "Section heading",
+        "Navigation read-link lookalike",
+        "Sidebar read-link lookalike",
+        "More actions",
+        "KEEP_ORIGINAL_TOKEN"
+      ]
+    },
+    "provenance": "original-mock-known-boundaries; synthetic content and simplified structure; not a copied page or browser acceptance",
+    "dynamic": {
+      "appendHtml": [
+        {
+          "selector": "#stories",
+          "html": "<div class=\"mock-story\"><div class=\"mock-stretch\"><a class=\"mock-overlay\" style=\"position:absolute;inset:0\" aria-hidden=\"true\" href=\"./read/mock-dynamic\" id=\"new-overlay\"></a></div><div id=\"new-source\">Dynamic Publisher Identity</div><a id=\"new-body\" href=\"./read/mock-dynamic\">A dynamically inserted news headline should translate once</a><time id=\"new-date\">Just now</time></div>",
+          "required": [
+            "#new-body"
+          ],
+          "forbidden": [
+            "#new-overlay",
+            "#new-source",
+            "#new-date"
+          ],
+          "sourceIncludes": [
+            "A dynamically inserted news headline should translate once"
+          ]
+        }
+      ],
+      "remountSelector": "#stories",
+      "noiseSelector": "#date1",
+      "noiseText": "DYNAMIC_NEWS_DATE_TOKEN"
+    }
+  },
+  {
+    "id": "github-gist",
+    "url": "https://gist.github.com/fixture-reader/0123456789abcdef0123456789abcdef",
+    "html": "<header><nav id=\"navigation\"><a href=\"/\">Gist navigation remains unchanged</a><a href=\"/discover\">Discover</a></nav></header><div class=\"gisthead\" id=\"gist-meta\"><h1>Fixture Author / notes.md</h1><span>Last active 10 minutes ago</span><button id=\"star\">Star 42</button><a href=\"#forks\">Forks 7</a></div><div class=\"repository-content gist-content\" id=\"gist-root\"><div class=\"file\"><div class=\"file-header\" id=\"file-header\"><a href=\"#file-notes\">notes.md</a><a href=\"/raw/mock/notes.md\">Raw</a><button>Download ZIP</button></div><div class=\"file-data\"><article class=\"markdown-body entry-content\" id=\"direct-body\">This opening explains how readable notes should be translated alongside code.<div class=\"markdown-heading\"><h1 id=\"title\">Readable notes for a stable browser workflow</h1><a class=\"anchor\" id=\"permalink\" href=\"#readable-notes\" aria-label=\"Permalink\"></a></div><p id=\"body1\">This first paragraph explains the example with an <a href=\"https://example.invalid/reference\">ordinary inline reference</a>, <strong>important context</strong>, and <code id=\"protected\">KEEP_ORIGINAL_TOKEN</code>. A mention <a class=\"user-mention notranslate\" id=\"mention1\" href=\"https://github.com/mock-reader\">@MockReaderAlpha</a> remains unchanged.</p><ul><li id=\"list-body\">This readable list item supplies independent details for the same example.</li></ul><table id=\"prose-table\"><tbody><tr><th id=\"table-heading\">Readable column description</th><td id=\"table-body\">A prose table cell has enough context to translate safely.</td></tr></tbody></table><pre id=\"code-block\"><code>GIST_BLOCK_TOKEN &lt;command&gt;</code></pre></article></div></div><div class=\"file\"><div class=\"file-header\" id=\"code-file-header\"><a href=\"#file-example\">example.ts</a><a href=\"/raw/mock/example.ts\">Raw</a></div><div class=\"blob-wrapper\" id=\"code-table\"><table><tbody><tr><td class=\"blob-num\" id=\"line-number\">101</td><td class=\"blob-code\" id=\"code-line\">GIST_CODE_LINE_TOKEN = 42</td></tr></tbody></table></div></div><div class=\"timeline-comment\" id=\"comment\"><div class=\"timeline-comment-header\" id=\"comment-meta\"><a href=\"https://github.com/mock-comment-author\">Fixture Comment Author</a><time id=\"comment-date\">2026-10-11</time><button id=\"comment-menu\">Comment actions</button></div><div class=\"comment-body markdown-body js-comment-body\" id=\"comment-body\">This direct comment opening must translate without copying the author or timestamp.<p id=\"body2\">This second independent paragraph comes from a comment and includes an <a href=\"https://example.invalid/comment-reference\">ordinary linked explanation</a>. The mention <a class=\"user-mention notranslate\" id=\"mention2\" href=\"https://github.com/mock-comment-user\">@MockReaderBeta</a> stays unchanged.</p></div></div><form id=\"editor\"><textarea id=\"draft\">Private draft remains unchanged.</textarea><button>Comment</button></form></div><aside id=\"sidebar\"><article class=\"markdown-body\"><p id=\"sidebar-prose\">Lookalike Markdown outside gist-content remains unchanged.</p></article></aside><footer id=\"footer\"><p>Gist footer remains unchanged.</p></footer>",
+    "required": [
+      "#title",
+      "#body1",
+      "#body2",
+      "#direct-body",
+      "#comment-body",
+      "#list-body",
+      "#table-heading",
+      "#table-body"
+    ],
+    "forbidden": [
+      "#navigation",
+      "#gist-meta",
+      "#star",
+      "#file-header",
+      "#code-file-header",
+      "#code-table",
+      "#line-number",
+      "#code-line",
+      "#comment-meta",
+      "#comment-menu",
+      "#mention1",
+      "#mention2",
+      "#protected",
+      "#code-block",
+      "#editor",
+      "#draft",
+      "#sidebar",
+      "#sidebar-prose",
+      "#footer"
+    ],
+    "restoreSelectors": [
+      "#gist-root",
+      "#gist-meta",
+      "#sidebar",
+      "#footer"
+    ],
+    "sourceAssertions": {
+      "required": [
+        "This opening explains how readable notes should be translated alongside code.",
+        "This first paragraph explains the example with an",
+        "This direct comment opening must translate without copying the author or timestamp.",
+        "This second independent paragraph comes from a comment and includes an"
+      ],
+      "forbidden": [
+        "KEEP_ORIGINAL_TOKEN",
+        "GIST_BLOCK_TOKEN",
+        "GIST_CODE_LINE_TOKEN",
+        "Fixture Author",
+        "Fixture Comment Author",
+        "@MockReaderAlpha",
+        "@MockReaderBeta",
+        "Last active",
+        "Star 42",
+        "Forks 7",
+        "notes.md",
+        "example.ts",
+        "Private draft",
+        "Lookalike Markdown"
+      ],
+      "interpretation": "Assert actual provider paragraph fields; never require an entire mixed wrapper textContent in one field. Protected tokens may be preserved as original DOM without entering the provider source."
+    },
+    "selectorContract": {
+      "contentRoot": ".gist-content .markdown-body",
+      "nonAtomic": true,
+      "semanticChildren": [
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "p",
+        "li",
+        "dt",
+        "dd",
+        "blockquote",
+        "th",
+        "td",
+        "figcaption"
+      ],
+      "directRuns": [
+        "#direct-body opening",
+        "#comment-body opening"
+      ],
+      "protectedBoundaryClasses": [
+        ".blob-wrapper",
+        ".blob-code",
+        ".blob-num",
+        ".file-header",
+        ".gisthead",
+        ".timeline-comment-header",
+        ".user-mention"
+      ]
+    },
+    "provenance": {
+      "kind": "original-mock",
+      "text": "All prose, identities, dates, counts, controls and code sentinels independently authored. Known class and parent boundaries come from the saved public HTML/official source; this is not a copied page or real browser acceptance.",
+      "evidence": [
+        {
+          "url": "https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f",
+          "method": "existing saved public HTML read only; no text copied into fixture"
+        },
+        {
+          "url": "https://gist.github.com/jancurn/ad525425dd2f93a002586faf1dc21842",
+          "method": "Read-only public HTML establishes blob-wrapper, blob-code and blob-num; all mock content remains original"
+        }
+      ],
+      "limitations": [
+        "Public Markdown and code Gists establish the declared containers; the direct-opening mock exercises the generic non-atomic ownership contract and does not represent all code file types.",
+        "No browser, provider, geometry or logged-in editor acceptance was executed."
+      ]
+    },
+    "dynamic": {
+      "appendHtml": [
+        {
+          "selector": "#gist-root",
+          "html": "<div class=\"timeline-comment\" id=\"dynamic-comment\"><div class=\"timeline-comment-header\" id=\"new-author\">Dynamic Gist Author <time>Just now</time><button>Comment actions</button></div><div class=\"comment-body markdown-body\" id=\"new-body\">This newly inserted direct comment explains a fresh readable example.<p id=\"new-paragraph\">A separate dynamic paragraph keeps an <a href=\"https://example.invalid/dynamic\">inline reference</a> and <a class=\"user-mention\" id=\"new-mention\" href=\"https://github.com/mock-dynamic\">@MockDynamicReader</a> exact.</p></div></div>",
+          "required": [
+            "#new-body",
+            "#new-paragraph"
+          ],
+          "forbidden": [
+            "#new-author",
+            "#new-mention"
+          ],
+          "sourceIncludes": [
+            "This newly inserted direct comment explains a fresh readable example.",
+            "A separate dynamic paragraph keeps an"
+          ]
+        }
+      ],
+      "remountSelector": "#gist-root",
+      "inlineText": [
+        {
+          "selector": "#body1 a:not(.user-mention)",
+          "owner": "#body1",
+          "from": "ordinary inline reference",
+          "to": "DYNAMIC_GIST_INLINE_TOKEN"
+        }
+      ],
+      "noiseSelector": "#comment-date",
+      "noiseText": "DYNAMIC_GIST_DATE_TOKEN",
+      "override": {
+        "protect": [
+          "#body1"
+        ],
+        "required": [
+          "#body2"
+        ],
+        "lateText": {
+          "selector": "#body1 a:not(.user-mention)",
+          "owner": "#body1",
+          "from": "DYNAMIC_GIST_INLINE_TOKEN",
+          "to": "LATE_GIST_INLINE_TOKEN"
+        }
+      }
+    }
+  },
+  {
+    "id": "firefox-addons",
+    "url": "https://addons.mozilla.org/en-US/firefox/addon/mock-reader/",
+    "html": "<header><nav id=\"navigation\"><a href=\"/en-US/firefox/\">Firefox Add-ons</a><a href=\"/en-US/firefox/extensions/\">Extensions</a></nav><form role=\"search\"><input id=\"search-query\" value=\"Mock Reader\"><button>Search</button></form></header><main class=\"Addon\"><section class=\"Card Addon-content\"><div class=\"Card-contents\"><header class=\"Addon-header\" id=\"addon-header\"><div class=\"Addon-info\"><h1 class=\"AddonTitle\" id=\"addon-title\">Mock Reader Extension <a href=\"/en-US/firefox/user/10001/\">Fixture Developer Alpha</a></h1><p class=\"Addon-summary\" id=\"body1\">This summary explains readable extension behavior and should translate inside the header.</p></div><div class=\"AddonBadges\" id=\"badges\"><span>Recommended</span><span>12345 users</span></div><div class=\"Addon-install\" id=\"install\"><button id=\"install-button\">Add to Firefox</button></div></header><div class=\"Addon-main-content\"><div class=\"Addon-description-and-ratings\"><section class=\"Card ShowMoreCard AddonDescription Card--no-style\" id=\"description-card\"><header class=\"Card-header\" id=\"description-header\"><div class=\"Card-header-text\">About this extension</div></header><div class=\"Card-contents\"><div class=\"ShowMoreCard-contents\"><div class=\"AddonDescription-contents\" id=\"description-body\">This direct description opening explains a useful browser workflow.<br>Readable details continue on the next line.<p id=\"body2\">This second independent paragraph provides an <a href=\"https://example.invalid/addon-reference\">ordinary inline reference</a>, <strong>important context</strong>, and <code id=\"protected\">KEEP_ORIGINAL_TOKEN</code> that remains exact.</p><ul><li id=\"list-body\">A readable feature description supplies separate details about the extension.</li></ul></div><div class=\"Addon-developer-comments\"><header class=\"Addon-developer-comments-header\" id=\"developer-header\">Developer comments</header><div class=\"Addon-developer-comments-contents\" id=\"developer-body\">This direct developer note explains why the extension behaves consistently.<br>A second line provides a readable implementation example.</div></div></div></div><footer class=\"Card-footer Card-footer-link\" id=\"description-footer\"><a class=\"ShowMoreCard-expand-link\" id=\"expand\" href=\"#show-more\" aria-label=\"Expand to read more\"><span class=\"visually-hidden\">Expand to</span> Read more</a></footer></section><section class=\"Card Addon-overall-rating\" id=\"ratings\"><header class=\"Card-header\"><div class=\"Card-header-text\">Rated 4.8 by 500 reviewers</div></header><div class=\"Card-contents\"><a href=\"/en-US/firefox/addon/mock-reader/reviews/\">Read all 500 reviews</a></div></section></div><aside id=\"sidebar\"><section class=\"Card\"><header class=\"Card-header\">Metadata</header><div class=\"Card-contents\"><p>Version 1.2.3</p><p>Last updated 2026-10-11</p><p class=\"Addon-summary\" id=\"sidebar-summary\">Lookalike summary in a sidebar remains unchanged.</p><div class=\"AddonDescription-contents\" id=\"sidebar-description\">Lookalike description in a sidebar remains unchanged.</div><div class=\"Addon-developer-comments-contents\" id=\"sidebar-developer\">Lookalike developer note in a sidebar remains unchanged.</div></div></section></aside><form id=\"editor\"><textarea>Private developer draft remains unchanged.</textarea><button>Submit</button></form></div></div></section></main><footer id=\"footer\"><p>Mozilla footer remains unchanged.</p></footer>",
+    "required": [
+      "#body1",
+      "#body2",
+      "#description-body",
+      "#list-body",
+      "#developer-body"
+    ],
+    "forbidden": [
+      "#navigation",
+      "#search-query",
+      "#addon-title",
+      "#badges",
+      "#install",
+      "#install-button",
+      "#protected",
+      "#description-header",
+      "#developer-header",
+      "#description-footer",
+      "#expand",
+      "#ratings",
+      "#sidebar",
+      "#sidebar-summary",
+      "#sidebar-description",
+      "#sidebar-developer",
+      "#editor",
+      "#footer"
+    ],
+    "restoreSelectors": [
+      "#addon-header",
+      "#description-card",
+      "#ratings",
+      "#sidebar",
+      "#editor",
+      "#footer"
+    ],
+    "sourceAssertions": {
+      "required": [
+        "This summary explains readable extension behavior and should translate inside the header.",
+        "This direct description opening explains a useful browser workflow.",
+        "This second independent paragraph provides an",
+        "This direct developer note explains why the extension behaves consistently."
+      ],
+      "forbidden": [
+        "KEEP_ORIGINAL_TOKEN",
+        "Mock Reader Extension",
+        "Fixture Developer Alpha",
+        "Recommended",
+        "12345 users",
+        "Add to Firefox",
+        "About this extension",
+        "Developer comments",
+        "Expand to",
+        "Read more",
+        "Rated 4.8",
+        "Read all 500 reviews",
+        "Version 1.2.3",
+        "Last updated",
+        "Lookalike summary",
+        "Lookalike description",
+        "Lookalike developer note",
+        "Private developer draft"
+      ],
+      "interpretation": "Assert actual provider paragraph fields; never require an entire mixed wrapper textContent in one field. Protected tokens may be preserved as original DOM without entering the provider source."
+    },
+    "selectorContract": {
+      "summary": "p.Addon-summary inside header.Addon-header > .Addon-info",
+      "description": ".AddonDescription-contents",
+      "developer": ".Addon-developer-comments-contents",
+      "nonAtomic": true,
+      "separateGuards": [
+        ".AddonTitle",
+        ".AddonBadges",
+        ".Addon-install",
+        ".Card-header",
+        ".Card-footer",
+        ".ShowMoreCard-expand-link",
+        ".Addon-overall-rating",
+        "aside",
+        "form"
+      ],
+      "important": "Shared profile header:not(article header) p exclusion would wrongly suppress the real Addon-summary; fixture intentionally retains its actual header location."
+    },
+    "provenance": {
+      "kind": "original-mock",
+      "text": "All prose, identities, dates, counts, controls and code sentinels independently authored. Known class and parent boundaries come from the saved public HTML/official source; this is not a copied page or real browser acceptance.",
+      "evidence": [
+        {
+          "officialComponents": "Addon summary/renderAboutThisCard",
+          "url": "https://github.com/mozilla/addons-frontend/blob/master/src/amo/pages/Addon/index.js"
+        },
+        {
+          "officialComponents": "ShowMoreCard",
+          "url": "https://github.com/mozilla/addons-frontend/blob/master/src/amo/components/ShowMoreCard/index.js"
+        },
+        {
+          "officialComponents": "Card",
+          "url": "https://github.com/mozilla/addons-frontend/blob/master/src/amo/components/Card/index.js"
+        }
+      ],
+      "limitations": [
+        "Component-source evidence only. The anonymous live AMO response was a challenge, not addon content.",
+        "AddonTitle and AddonBadges internals are simplified, with synthetic metadata; no claim about every rendered title class.",
+        "Inline code sentinel is an adversarial generic protection contract; not a claim that the server current sanitizeUserHTML permits every synthetic rich tag.",
+        "No browser/provider/layout/click acceptance was executed."
+      ]
+    },
+    "dynamic": {
+      "appendHtml": [
+        {
+          "selector": ".Addon-description-and-ratings",
+          "html": "<section class=\"Card ShowMoreCard AddonDescription\"><header class=\"Card-header\" id=\"new-header\">Additional information controls</header><div class=\"Card-contents\"><div class=\"ShowMoreCard-contents\"><div class=\"AddonDescription-contents\" id=\"new-body\">This dynamically inserted description provides independent readable context.<br>Another line should translate while preserving its separator.</div></div></div><footer class=\"Card-footer\" id=\"new-footer\"><a class=\"ShowMoreCard-expand-link\" href=\"#show-more\">Read more</a></footer></section>",
+          "required": [
+            "#new-body"
+          ],
+          "forbidden": [
+            "#new-header",
+            "#new-footer"
+          ],
+          "sourceIncludes": [
+            "This dynamically inserted description provides independent readable context."
+          ]
+        }
+      ],
+      "remountSelector": ".Addon-description-and-ratings",
+      "inlineText": [
+        {
+          "selector": "#body2 a",
+          "owner": "#body2",
+          "from": "ordinary inline reference",
+          "to": "DYNAMIC_AMO_INLINE_TOKEN"
+        }
+      ],
+      "noiseSelector": "#badges",
+      "noiseText": "DYNAMIC_AMO_BADGE_TOKEN"
+    },
+    "variants": [
+      {
+        "url": "https://addons.mozilla.org/en-US/firefox/addon/mock-reader/reviews/",
+        "html": "<header><nav id=\"navigation\"><a href=\"/en-US/firefox/\">Firefox Add-ons</a></nav></header><main class=\"AddonReviewList\"><header class=\"AddonReviewList-header\" id=\"list-header\"><h1 id=\"addon-title\">Reviews for Mock Reader Extension</h1><a href=\"/en-US/firefox/addon/mock-reader/\">Back to add-on</a></header><div id=\"reviews\"><section class=\"AddonReviewCard AddonReviewCard-viewOnly\" id=\"review-one\"><div class=\"AddonReviewCard-container\"><div class=\"UserReview\"><div class=\"UserReview-byLine\" id=\"author1\"><div class=\"UserRating\">Rated 5 out of 5</div><span class=\"AddonReviewCard-authorByLine\"><a href=\"/en-US/firefox/user/10002/\">Fixture Reviewer Alpha</a>, 2 days ago</span></div><section class=\"Card ShowMoreCard UserReview-body Card--no-style\"><div class=\"Card-contents\"><div class=\"ShowMoreCard-contents\"><div id=\"body1\">This first review explains a useful browser workflow in plain text.<br>The second line adds enough context to translate as readable prose.</div></div></div><footer class=\"Card-footer Card-footer-link\" id=\"review-footer1\"><a class=\"ShowMoreCard-expand-link\" id=\"expand1\" href=\"#show-more\" aria-label=\"Expand to read more\"><span class=\"visually-hidden\">Expand to</span> Read more</a></footer></section><button class=\"AddonReviewCard-control\" id=\"control1\">Report</button></div></div></section><section class=\"AddonReviewCard AddonReviewCard-isReply AddonReviewCard-viewOnly\" id=\"review-two\"><div class=\"AddonReviewCard-container\"><div class=\"UserReview\"><div class=\"UserReview-byLine\" id=\"author2\"><h4 class=\"UserReview-reply-header\">Developer response</h4><span class=\"AddonReviewCard-authorByLine\"><a href=\"/en-US/firefox/user/10003/\">Fixture Developer Beta</a>, 1 day ago</span></div><section class=\"Card ShowMoreCard UserReview-body Card--no-style\"><div class=\"Card-contents\"><div class=\"ShowMoreCard-contents\"><div id=\"body2\">This second independent reply explains why the extension remains stable.<br>Its plain text response is translated without copying the developer identity.</div></div></div><footer class=\"Card-footer Card-footer-link\" id=\"review-footer2\"><a class=\"ShowMoreCard-expand-link\" id=\"expand2\" href=\"#show-more\">Read more</a></footer></section><button class=\"AddonReviewCard-control\" id=\"control2\">Delete</button></div></div></section><section class=\"AddonReviewCard\" id=\"unrelated-card\"><div class=\"Card-contents\"><p>Lookalike general card content is outside the review-body scope.</p></div></section></div><aside id=\"sidebar\"><section class=\"Card ShowMoreCard UserReview-body\"><div class=\"Card-contents\"><div class=\"ShowMoreCard-contents\"><div id=\"sidebar-review\">Lookalike review body in a sidebar remains unchanged.</div></div></div></section><pre><code id=\"protected\">KEEP_ORIGINAL_TOKEN</code></pre></aside><form id=\"editor\"><textarea id=\"draft\">Private review draft remains unchanged.</textarea><button>Submit review</button></form><nav id=\"paging\"><a href=\"?page=2\">Next page</a></nav></main><footer id=\"footer\"><p>Mozilla footer remains unchanged.</p></footer>",
+        "required": [
+          "#body1",
+          "#body2"
+        ],
+        "forbidden": [
+          "#navigation",
+          "#list-header",
+          "#addon-title",
+          "#author1",
+          "#author2",
+          "#review-footer1",
+          "#review-footer2",
+          "#expand1",
+          "#expand2",
+          "#control1",
+          "#control2",
+          "#unrelated-card",
+          "#sidebar",
+          "#sidebar-review",
+          "#protected",
+          "#editor",
+          "#draft",
+          "#paging",
+          "#footer"
+        ],
+        "restoreSelectors": [
+          "#reviews",
+          "#list-header",
+          "#sidebar",
+          "#editor",
+          "#paging",
+          "#footer"
+        ],
+        "sourceAssertions": {
+          "required": [
+            "This first review explains a useful browser workflow in plain text.",
+            "The second line adds enough context to translate as readable prose.",
+            "This second independent reply explains why the extension remains stable.",
+            "Its plain text response is translated without copying the developer identity."
+          ],
+          "forbidden": [
+            "KEEP_ORIGINAL_TOKEN",
+            "Mock Reader Extension",
+            "Fixture Reviewer Alpha",
+            "Fixture Developer Beta",
+            "Rated 5 out of 5",
+            "2 days ago",
+            "1 day ago",
+            "Developer response",
+            "Read more",
+            "Expand to",
+            "Report",
+            "Delete",
+            "Lookalike general card",
+            "Lookalike review body",
+            "Private review draft",
+            "Next page"
+          ],
+          "interpretation": "Assert actual provider paragraph fields; never require an entire mixed wrapper textContent in one field. Protected tokens may be preserved as original DOM without entering the provider source."
+        },
+        "selectorContract": {
+          "reviewBody": ".UserReview-body > .Card-contents > .ShowMoreCard-contents > div",
+          "nonAtomic": true,
+          "reviewFormatting": "Official UserReview sanitizes nl2br(review.body) with only br allowed: plain direct text and br are the truthful body shape.",
+          "separateGuards": [
+            ".UserReview-byLine",
+            ".UserReview-reply-header",
+            ".AddonReviewCard-control",
+            ".Card-footer",
+            ".ShowMoreCard-expand-link",
+            "aside",
+            "form",
+            "nav"
+          ]
+        },
+        "provenance": {
+          "kind": "original-mock",
+          "text": "All prose, identities, dates, counts, controls and code sentinels independently authored. Known class and parent boundaries come from the saved public HTML/official source; this is not a copied page or real browser acceptance.",
+          "evidence": [
+            {
+              "officialComponents": "UserReview.reviewBody and UserReviewBase",
+              "url": "https://github.com/mozilla/addons-frontend/blob/master/src/amo/components/UserReview/index.js"
+            },
+            {
+              "officialComponents": "AddonReviewCard author byline, controls and UserReview composition",
+              "url": "https://github.com/mozilla/addons-frontend/blob/master/src/amo/components/AddonReviewCard/index.js"
+            },
+            {
+              "officialComponents": "ShowMoreCard body versus footer",
+              "url": "https://github.com/mozilla/addons-frontend/blob/master/src/amo/components/ShowMoreCard/index.js"
+            },
+            {
+              "officialComponents": "Card-contents parent",
+              "url": "https://github.com/mozilla/addons-frontend/blob/master/src/amo/components/Card/index.js"
+            }
+          ],
+          "limitations": [
+            "Component-source mock contract, not current live review page or browser evidence.",
+            "Adjacent protected code sentinel is placed in the sidebar; there is deliberately no synthetic code/anchor markup in the review body.",
+            "No browser/provider/layout/review expansion click acceptance was executed."
+          ]
+        },
+        "dynamic": {
+          "appendHtml": [
+            {
+              "selector": "#reviews",
+              "html": "<section class=\"AddonReviewCard AddonReviewCard-viewOnly\"><div class=\"AddonReviewCard-container\"><div class=\"UserReview\"><div class=\"UserReview-byLine\" id=\"new-author\">Dynamic AMO Reviewer, just now</div><section class=\"Card ShowMoreCard UserReview-body\"><div class=\"Card-contents\"><div class=\"ShowMoreCard-contents\"><div id=\"new-body\">This dynamic review supplies new readable plain text.<br>A second line preserves its original separator.</div></div></div><footer class=\"Card-footer\" id=\"new-footer\"><a class=\"ShowMoreCard-expand-link\" href=\"#show-more\">Read more</a></footer></section><button class=\"AddonReviewCard-control\" id=\"new-control\">Report</button></div></div></section>",
+              "required": [
+                "#new-body"
+              ],
+              "forbidden": [
+                "#new-author",
+                "#new-footer",
+                "#new-control"
+              ],
+              "sourceIncludes": [
+                "This dynamic review supplies new readable plain text."
+              ]
+            }
+          ],
+          "remountSelector": "#reviews",
+          "inlineText": [
+            {
+              "selector": "#body1",
+              "owner": "#body1",
+              "from": "This first review explains a useful browser workflow in plain text.",
+              "to": "DYNAMIC_AMO_REVIEW_TEXT_TOKEN"
+            }
+          ],
+          "noiseSelector": "#author2",
+          "noiseText": "DYNAMIC_AMO_REVIEW_AUTHOR_TOKEN"
+        },
+        "name": "reviews"
+      }
+    ]
   }
 ]

@@ -9,7 +9,7 @@ import liveCases from '@/scripts/site-translation/site-adaptation-live-cases.jso
 import {compileSiteRulePack, resolveSiteRule} from '@/src/core/site-adaptation/compiler';
 import {parseSiteRulePack, validateSelectors} from '@/src/core/site-adaptation/schema';
 import {TranslationCandidateCore} from '@/src/core/translation/engine';
-import {extractTranslationText} from '@/src/core/translation/text';
+import {extractTranslationText, extractTranslationTextFromNodes} from '@/src/core/translation/text';
 import {applyTranslationsToSnapshot, buildWholeBlockTranslationSource, createTranslationSourceSnapshot} from '@/src/core/translation/serialization';
 
 const result = parseSiteRulePack({version: 1, profiles: rawProfiles, rules: rawRules});
@@ -164,7 +164,7 @@ describe('网站正文规则目录', () => {
     });
 
     it('每一个 focus 规则和每一种正文模板都有真实引擎消费的可重复夹具', () => {
-        expect(new Set(fixtures.map(fixture => rulesById.get(fixture.id)?.profile)))
+        expect(new Set(fixtures.map(fixture => rulesById.get(fixture.id)?.profile).filter(Boolean)))
             .toEqual(new Set(Object.keys(pack.profiles ?? {})));
         const fixtureIds = new Set(fixtures.map(fixture => fixture.id));
         expect(fixtureIds.size).toBe(fixtures.length);
@@ -241,7 +241,8 @@ describe('网站正文规则目录', () => {
             for (const excluded of rule.match.excludePaths ?? []) {
                 expect(adapter.matches(new URL(`https://${host}${excluded.replaceAll('*', 'fixture')}`))).toBe(false);
             }
-            if (rule.match.paths) expect(adapter.matches(new URL(`https://${host}/__unrelated_route__/`))).toBe(false);
+            // 不带末尾 / 的单段路径不匹配 Gist 的双段页面；空 wildcard 可合法匹配尾部 /。
+            if (rule.match.paths) expect(adapter.matches(new URL(`https://${host}/__unrelated_route__`))).toBe(false);
         }
     });
 
@@ -264,8 +265,18 @@ describe('网站正文规则目录', () => {
                 expect(element, `${fixture.id}: ${selector}`).not.toBeNull();
                 const candidate = candidates.find(candidate => candidate.element === element);
                 expect(candidate, `${fixture.id}: ${selector}`).toBeDefined();
-                expect(candidate?.adapterId, `${fixture.id}: ${selector}`).toBe(fixture.id);
-                expect(core.resolve(element.firstChild)?.element, `${fixture.id}: hover ${selector}`).toBe(element);
+                if (candidate?.reason === 'generic-inline-run') {
+                    // 非原子容器直接首段沿用现有 inline-run 类型，由实时专站决策授权。
+                    expect(adapter.decide(element, {url}), `${fixture.id}: ${selector}`)
+                        .toMatchObject({kind: 'force-target', target: element, atomic: false});
+                    expect(candidate.nodes?.length, `${fixture.id}: ${selector}`).toBeGreaterThan(0);
+                } else expect(candidate?.adapterId, `${fixture.id}: ${selector}`).toBe(fixture.id);
+                const walker = document.createTreeWalker(element, 4);
+                let readable = walker.nextNode();
+                while (readable && (!readable.textContent?.trim() ||
+                    (readable.parentElement && core.shouldStayOriginal(readable.parentElement)))) readable = walker.nextNode();
+                expect(readable, `${fixture.id}: readable ${selector}`).not.toBeNull();
+                expect(core.resolve(readable)?.element, `${fixture.id}: hover ${selector}`).toBe(element);
             }
             for (const selector of fixture.forbidden) {
                 const element = document.querySelector(selector)!;
@@ -273,7 +284,8 @@ describe('网站正文规则目录', () => {
                 expect(candidates.some(candidate => element === candidate.element || element.contains(candidate.element)),
                     `${fixture.id}: protected ${selector}`).toBe(false);
             }
-            const source = candidates.map(candidate => extractTranslationText(candidate.element, core.shouldStayOriginal)).join('\n');
+            const source = candidates.map(candidate => extractTranslationTextFromNodes(
+                candidate.nodes ?? [candidate.element], core.shouldStayOriginal)).join('\n');
             expect(source).not.toContain('KEEP_ORIGINAL_TOKEN');
             expect(source).not.toContain('FORMULA_TOKEN');
             expect(source).not.toContain('Navigation remains unchanged');
