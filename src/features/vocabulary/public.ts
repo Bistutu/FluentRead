@@ -15,4 +15,9 @@ export {
     type VocabularyBookRequest,
     type VocabularyBookResponse,
     type VocabularyImportResult,
+    type VocabularyVideoSource,
+    type VocabularyUpsertInput,
+    type VocabularyContext,
+    type VocabularyContextInput,
 } from './learningModel';
+export {sanitizeVocabularyVideoSource, sanitizeVocabularyVideoUrl, vocabularySourceContext, vocabularySourceLink} from './source';

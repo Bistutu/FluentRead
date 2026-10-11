@@ -2,6 +2,18 @@
 
 Follow YouTube and X videos or Google Meet, Teams and Zoom web meetings with bilingual captions, using accessible captions provided by the platform.
 
+## Sentence learning
+
+Choose **Sentence learning** in the FluentRead menu of a YouTube or X player. The optional panel groups original timed captions into sentences, with surrounding context and a translation requested for the whole original sentence. Missing punctuation and long captions are labelled as fragments. Enable original captions if no timeline is available. X local AI captions must finish generating before learning is available.
+
+Previous/Next seek without starting playback. Replay plays from the original start. Loop sentence repeats its original interval; Pause at end stops at its end. Off releases playback assistance while preserving the current paused or playing state. Manual seeking cancels control; pauses and playback speed remain authoritative. Closing learning or captions, changing videos, rebuilding the player, and unloading clean up controls. The collapsible panel keeps header and save controls visible while its body scrolls. Fullscreen uses the same panel and media element. Picture-in-picture retains the original player's controls.
+
+With focus in the panel, arrows change sentence, R toggles looping, Q toggles end pause, and Escape closes learning. Text fields keep normal input. Explain reuses the existing selection explanation service and allowed context scope, and runs only on request. Translations and explanations appear as reading cards; Edit opens an editor and pins the sentence. Sentence changes preserve drafts within the current panel session, and Return to current sentence resumes following playback. Then save the sentence to the existing learning center with its title, neighboring captions, reliable source, and start/end times. Repeated saves merge the same sentence, retaining distinct source intervals as contexts. While translation is loading, wait or enter your own translation before saving.
+
+Learning-center sources show a time range. YouTube links include a timestamp; X links are restored and paused by FluentRead in the matching post player, so the extension must be enabled. Missing reliable URLs have an explicit recovery hint. A deleted or restricted video may no longer open; saved text and title remain available. Privacy-safe vocabulary exports omit source addresses and times with private context.
+
+Aggregation uses original caption boundaries and timing. Unpunctuated groups are bounded by approximately 20 seconds, 420 characters, 24 cues, or a silence gap. A single caption with multiple sentences or long text keeps its complete source interval; no internal timestamps are invented. Translation order and subtitle display offsets never replace original audio timing.
+
 <GuideVisual kind="video" en />
 
 ## A video with subtitles

@@ -17,9 +17,9 @@
       <template v-if="context">
         <h4>你收藏时的原句</h4>
         <blockquote data-i18n-ignore>{{ context.text }}</blockquote>
-        <a v-if="context.sourceUrl" :href="context.sourceUrl" target="_blank" rel="noopener noreferrer"><span data-i18n-ignore>{{ context.pageTitle || translateLegacy('查看原文来源') }}</span> ↗</a>
       </template>
       <p v-else-if="!sentenceEntry" class="study-hint">这条收藏没有可用的原句。可以先了解常见用法；下次连同原句收藏，更容易判断具体含义。</p>
+      <VocabularySource :context="sourceContext" />
       <details v-if="reference && !sentenceEntry" class="study-reference"><summary>收藏时的参考内容</summary><ReadingAnswer :text="reference" /></details>
     </div>
     <div class="study-workspace">
@@ -50,18 +50,21 @@
 </template>
 <script setup lang="ts">
 import {useUiI18n} from "@/src/ui/i18n";
-const {t, translateLegacy} = useUiI18n();
+const {t} = useUiI18n();
 import {computed, onBeforeUnmount, ref, watch} from 'vue';
 import {ReadingAnswer, streamReading} from '@/src/features/reading-assistant/public';
 import {config, subscribeConfig} from '@/src/services/config/store';
 import browser from 'webextension-polyfill';
 import SavedExplanation from './SavedExplanation.vue';
+import VocabularySource from './VocabularySource.vue';
+import {vocabularySourceContext} from '../source';
 import {vocabularyStudyContext, isVocabularySentence, VOCABULARY_BOOK_MESSAGE, type VocabularyBookResponse, type VocabularyEntry} from '../learningModel';
 
 const props = defineProps<{entry: VocabularyEntry; reference: string; playing?: boolean}>();
 const emit = defineEmits<{close: []; speak: []; navigate: [section: string]; updated: [entry: VocabularyEntry]}>();
 const sentenceEntry = computed(() => isVocabularySentence(props.entry));
 const context = computed(() => vocabularyStudyContext(props.entry));
+const sourceContext = computed(() => vocabularySourceContext(props.entry));
 const enabled = ref(config.on && config.harness.enabled);
 const contextAllowed = ref(config.harness.contextMode === 'paragraph');
 const explanation = ref('');

@@ -1,0 +1,101 @@
+/**
+ * @file src/features/video-subtitle/ui/videoSentenceLearning.css
+ * 文件职责：为完整句学习提供层次清楚、可折叠的播放器内双语阅读卡样式。
+ * 主要内容：突出原句和重播，把播放辅助做成互斥分段项；译文与讲解默认阅读，编辑按需出现，固定头尾操作和滚动正文保留原播放器控制区。
+ * 模块边界：仅匹配 FluentRead 自有面板后代，由字幕 runtime 显式注入和清理，不依赖宿主样式或 WXT Shadow UI 自动挂载。
+ */
+#fluent-read-video-learning-panel .fr-video-learning {
+  --fr-learning-accent: #f6a5bc;
+  --fr-learning-text: #f1f3f7;
+  --fr-learning-muted: #a3adbd;
+  box-sizing: border-box; pointer-events: auto; display: flex; flex-direction: column; max-height: 100%; overflow: hidden;
+  color: var(--fr-learning-text); background: #1d222bf5; border: 1px solid #ffffff24; border-radius: 16px;
+  font: 13px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  box-shadow: 0 14px 46px #0005, 0 2px 8px #0003; overflow-wrap: anywhere; text-align: left;
+}
+#fluent-read-video-learning-panel .fr-video-learning * { box-sizing: border-box; }
+#fluent-read-video-learning-panel .fr-video-learning button {
+  appearance: none; font: inherit; color: inherit; cursor: pointer; line-height: 1.4; margin: 0;
+  border: 1px solid transparent; border-radius: 8px; padding: 7px 10px; background: transparent;
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 32px;
+}
+#fluent-read-video-learning-panel .fr-video-learning button:hover { background: #ffffff0d; }
+#fluent-read-video-learning-panel .fr-video-learning button:disabled { opacity: .4; cursor: default; }
+#fluent-read-video-learning-panel .fr-video-learning svg { width: 18px; height: 18px; flex: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+#fluent-read-video-learning-panel .fr-video-learning .is-flipped { transform: rotate(180deg); }
+#fluent-read-video-learning-panel .fr-video-learning-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 11px 14px; flex: none; border-bottom: 1px solid #ffffff10; }
+#fluent-read-video-learning-panel .fr-video-learning-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
+#fluent-read-video-learning-panel .fr-video-learning-heading strong { font-family: inherit; font-size: 13px; font-weight: 600; line-height: 1.4; }
+#fluent-read-video-learning-panel .fr-video-learning-brand { width: 7px; height: 7px; border-radius: 50%; background: var(--fr-learning-accent); box-shadow: 0 0 0 4px #f6a5bc10; flex: none; }
+#fluent-read-video-learning-panel .fr-video-learning-header-actions { display: flex; align-items: center; gap: 2px; }
+#fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-icon { padding: 6px; min-width: 32px; color: var(--fr-learning-muted); }
+#fluent-read-video-learning-panel .fr-video-learning-help { position: relative; margin: 0; }
+#fluent-read-video-learning-panel .fr-video-learning-help summary { list-style: none; width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; cursor: pointer; color: var(--fr-learning-muted); font-weight: 500; }
+#fluent-read-video-learning-panel .fr-video-learning-help summary::-webkit-details-marker { display: none; }
+#fluent-read-video-learning-panel .fr-video-learning-help summary:hover { background: #ffffff0d; }
+#fluent-read-video-learning-panel .fr-video-learning-help p { position: absolute; right: 0; top: 100%; z-index: 1; width: 235px; max-width: calc(100vw - 24px); margin: 8px 0 0; padding: 12px; background: #303744; border: 1px solid #ffffff25; border-radius: 9px; font-size: 12px; box-shadow: 0 8px 24px #0004; max-height: 170px; overflow: auto; }
+#fluent-read-video-learning-panel .fr-video-learning-body { padding: 14px 16px 12px; overflow: auto; overscroll-behavior: contain; min-height: 0; scrollbar-width: thin; scrollbar-color: #66708366 transparent; }
+#fluent-read-video-learning-panel .fr-video-learning-position { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--fr-learning-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+#fluent-read-video-learning-panel .fr-video-learning-dim { color: var(--fr-learning-muted); font-size: 11px; }
+#fluent-read-video-learning-panel .fr-video-learning-badge { border: 1px solid #ffffff20; border-radius: 5px; padding: 1px 5px; font-size: 10px; }
+#fluent-read-video-learning-panel .fr-video-learning-original { margin: 11px 0 7px; font-size: 19px; font-weight: 500; line-height: 1.55; letter-spacing: -.15px; white-space: pre-wrap; }
+#fluent-read-video-learning-panel .fr-video-learning-follow { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 23px; margin-bottom: 12px; font-size: 10px; color: var(--fr-learning-muted); }
+#fluent-read-video-learning-panel .fr-video-learning-follow > span { display: inline-flex; align-items: center; gap: 5px; }
+#fluent-read-video-learning-panel .fr-video-learning-follow i { width: 4px; height: 4px; background: #92baad; border-radius: 50%; }
+#fluent-read-video-learning-panel .fr-video-learning-follow .is-pinned i { background: var(--fr-learning-accent); }
+#fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-text-button { padding: 1px 2px; min-height: 24px; color: var(--fr-learning-muted); font-size: 11px; border-radius: 4px; }
+#fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-text-button:hover { color: var(--fr-learning-text); }
+#fluent-read-video-learning-panel .fr-video-learning-navigation { display: grid; grid-template-columns: 34px 1fr 34px; gap: 8px; margin-bottom: 10px; }
+#fluent-read-video-learning-panel .fr-video-learning-navigation button { min-height: 36px; background: #ffffff07; }
+#fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-replay { background: #f6a5bc13; border-color: #f6a5bc32; color: #ffd6e1; font-weight: 600; }
+#fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-replay:hover { background: #f6a5bc22; }
+#fluent-read-video-learning-panel .fr-video-learning-mode { display: grid; grid-template-columns: .7fr 1fr 1fr; background: #11151d80; border: 1px solid #ffffff0b; border-radius: 9px; padding: 3px; gap: 3px; margin-bottom: 15px; }
+#fluent-read-video-learning-panel .fr-video-learning-mode button { min-height: 28px; padding: 4px 6px; color: var(--fr-learning-muted); font-size: 11px; }
+#fluent-read-video-learning-panel .fr-video-learning-mode button[aria-pressed=true] { background: #39414e; color: #f7f8fc; box-shadow: 0 1px 3px #0002; }
+#fluent-read-video-learning-panel .fr-video-learning-card { background: #ffffff06; border: 1px solid #ffffff0c; border-radius: 10px; padding: 11px 12px; margin-top: 9px; }
+#fluent-read-video-learning-panel .fr-video-learning-card-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; color: var(--fr-learning-muted); font-size: 11px; }
+#fluent-read-video-learning-panel .fr-video-learning-card-heading button:last-child { margin-left: auto; }
+#fluent-read-video-learning-panel .fr-video-learning-translation { margin: 0; color: #e3e8f0; font-size: 13px; line-height: 1.75; white-space: pre-wrap; }
+#fluent-read-video-learning-panel .fr-video-learning textarea { appearance: none; display: block; width: 100%; margin: 6px 0 0; background: #151a2380; color: #f1f3f7; border: 1px solid #ffffff24; border-radius: 7px; padding: 8px; font-family: inherit; font-size: 13px; line-height: 1.65; min-height: 70px; resize: vertical; }
+#fluent-read-video-learning-panel .fr-video-learning .is-loading { color: var(--fr-learning-muted); font-size: 12px; }
+#fluent-read-video-learning-panel .fr-video-learning-context { margin-top: 14px; color: var(--fr-learning-muted); font-size: 11px; }
+#fluent-read-video-learning-panel .fr-video-learning-context summary { cursor: pointer; padding: 3px 0; }
+#fluent-read-video-learning-panel .fr-video-learning-context p { margin: 9px 0 0; padding-left: 9px; border-left: 2px solid #ffffff15; line-height: 1.7; }
+#fluent-read-video-learning-panel .fr-video-learning-context p.is-current { border-color: #f6a5bc77; color: #e3e8f0; }
+#fluent-read-video-learning-panel .fr-video-learning-footer { border-top: 1px solid #ffffff10; padding: 11px 16px 8px; background: #1d222b; flex: none; }
+#fluent-read-video-learning-panel .fr-video-learning-footer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+#fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-explain { border-color: #ffffff24; color: #d9e0ec; }
+#fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-save { background: #efb1c3; color: #2a1720; border-color: #efb1c3; font-weight: 650; }
+#fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-save:hover { background: #f7c2d0; }
+#fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-library { display: flex; margin: 4px auto 0; color: #98a4b6; font-size: 10px; }
+#fluent-read-video-learning-panel .fr-video-learning-status { margin: 10px 0 0; font-size: 11px; color: #bfcec8; }
+#fluent-read-video-learning-panel .fr-video-learning-inline-error { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; font-size: 11px; color: #ffc1c6; margin-top: 8px; }
+#fluent-read-video-learning-panel .fr-video-learning-empty { margin: 8px 0 14px; color: var(--fr-learning-muted); font-size: 12px; line-height: 1.8; }
+#fluent-read-video-learning-panel .fr-video-learning-peek { display: block; width: 100%; text-align: left; margin: 0; padding: 0 14px 12px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; font-size: 12px; color: #d1d9e7; cursor: pointer; }
+#fluent-read-video-learning-panel .fr-video-learning.is-collapsed .fr-video-learning-header { border-bottom: 0; }
+#fluent-read-video-learning-panel .fr-video-learning .fr-reading-markdown { font-size: 12px; line-height: 1.75; color: #dce3ef; --fr-answer-border: #ffffff18; --fr-answer-soft: #ffffff08; --fr-answer-code: #ffffff0b; }
+#fluent-read-video-learning-panel .fr-video-learning .fr-reading-markdown p { margin: 0 0 8px; white-space: pre-line; }
+#fluent-read-video-learning-panel .fr-video-learning .fr-reading-markdown p:last-child { margin-bottom: 0; }
+#fluent-read-video-learning-panel .fr-video-learning .fr-reading-markdown h3, #fluent-read-video-learning-panel .fr-video-learning .fr-reading-markdown h4 { color: inherit; font-size: 12px; margin: 10px 0 5px; }
+#fluent-read-video-learning-panel .fr-video-learning .fr-reading-markdown ul, #fluent-read-video-learning-panel .fr-video-learning .fr-reading-markdown ol { margin: 4px 0; padding-left: 18px; }
+#fluent-read-video-learning-panel .fr-video-learning .fr-reading-markdown strong { font-weight: 600; color: inherit; }
+#fluent-read-video-learning-panel .fr-video-learning button:focus-visible, #fluent-read-video-learning-panel .fr-video-learning textarea:focus-visible, #fluent-read-video-learning-panel .fr-video-learning summary:focus-visible { outline: 2px solid var(--fr-learning-accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: no-preference) {
+  #fluent-read-video-learning-panel .fr-video-learning button { transition: background-color .12s ease, color .12s ease; }
+}
+
+#fluent-read-video-learning-panel { container-type: size; container-name: fr-video-learning; }
+#fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-compact-play { display: none; }
+@container fr-video-learning (max-height: 340px) {
+  #fluent-read-video-learning-panel .fr-video-learning-header { padding: 7px 10px; }
+  #fluent-read-video-learning-panel .fr-video-learning-header-actions { gap: 0; }
+  #fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-icon { min-width: 28px; min-height: 28px; padding: 4px; }
+  #fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-compact-play { display: inline-flex; color: var(--fr-learning-accent); }
+  #fluent-read-video-learning-panel .fr-video-learning-body { padding: 9px 12px; }
+  #fluent-read-video-learning-panel .fr-video-learning-original { font-size: 16px; margin: 7px 0 5px; }
+  #fluent-read-video-learning-panel .fr-video-learning-follow { margin-bottom: 8px; }
+  #fluent-read-video-learning-panel .fr-video-learning-footer { padding: 7px 10px; }
+  #fluent-read-video-learning-panel .fr-video-learning-footer-actions { gap: 7px; }
+  #fluent-read-video-learning-panel .fr-video-learning-footer-actions button { padding: 6px 8px; min-height: 32px; font-size: 12px; }
+  #fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-library { min-height: 18px; margin-top: 2px; }
+}

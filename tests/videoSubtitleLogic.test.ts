@@ -1,9 +1,25 @@
 import {describe, expect, it} from 'vitest';
 import {Config} from '@/src/core/config/model';
 import {createGlossaryLibrary} from '@/src/core/glossary';
-import {getVideoTranslationConfigFingerprint, mergeBilingualVideoSubtitleCues, normalizeVideoCaptionText, revealVideoSubtitleTranslation, translateVideoSubtitleCues, selectYoutubeCaptionCue, selectVideoSubtitleCueAtOffset, selectVideoSubtitlePretranslationCues, findProgressiveVideoCaptionCue} from '@/src/features/video-subtitle/content/subtitleLogic';
+import {getVideoTranslationConfigFingerprint, mergeBilingualVideoSubtitleCues, normalizeVideoCaptionText, revealVideoSubtitleTranslation, translateVideoSubtitleCues, selectYoutubeCaptionCue, selectVideoSubtitleCueAtOffset, selectVideoSubtitlePretranslationCues, findProgressiveVideoCaptionCue, findActiveVideoCaptionCue, selectProgressiveVideoCaptionCue} from '@/src/features/video-subtitle/content/subtitleLogic';
 
 describe('video subtitle logic', () => {
+  it('X 渐进字幕保持短句区间与旧 DOM 匹配，未知文本不猜时间轴', () => {
+    const first = {startMs: 0, durationMs: 100, text: 'First sentence'};
+    const overlapping = {startMs: 50, durationMs: 100, text: 'Overlapping sentence'};
+    const next = {startMs: 1000, durationMs: 1000, text: 'Next sentence'};
+    const cues = [overlapping, first, next];
+    expect(findActiveVideoCaptionCue(cues, 100)).toBe(overlapping);
+    expect(findActiveVideoCaptionCue(cues, 550)).toBeNull();
+    expect(findActiveVideoCaptionCue([], 0)).toBeNull();
+    expect(findActiveVideoCaptionCue(cues, NaN)).toBeNull();
+    expect(selectProgressiveVideoCaptionCue(cues, first.text, 1200)).toBe(next);
+    expect(selectProgressiveVideoCaptionCue(cues, next.text, 100)).toBe(next);
+    expect(selectProgressiveVideoCaptionCue(cues, first.text, 600)).toBe(first);
+    expect(selectProgressiveVideoCaptionCue(cues, 'Unknown caption', 1200)).toBeNull();
+    expect(selectProgressiveVideoCaptionCue(cues, first.text, 20)).toBe(first);
+  });
+
   it('预翻译把当前句放在首位，去重后提前八句，不被旧字幕或重复条目占满', () => {
     const current = {startMs: 900, durationMs: 1000, text: ' Current  sentence '};
     const older = {...current, startMs: 700, text: 'Older overlapping sentence'};

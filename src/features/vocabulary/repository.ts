@@ -1,10 +1,11 @@
 /**
  * @file src/features/vocabulary/repository.ts
  * 文件职责：实现 FluentRead 本地单词与句子收藏的 Dexie 持久化仓库，负责多语种记录清洗、兼容旧词条的唯一身份、上下文合并、复习调度、删除撤销以及安全导入导出。
- * 主要内容：定义数据库 schema、语言和 URL 规范化、掌握状态/间隔算法，提供收藏增删查改、独立解释更新、review、按解释时间合并的 JSON 导入和导出；语境候选保留八条，导入时间逐个归约，避免全数组排序及无界实参。
+ * 主要内容：定义数据库 schema、语言和 URL 规范化、掌握状态/间隔算法，提供收藏增删查改、独立解释更新、review、按解释时间合并的 JSON 导入和导出；视频语境校验平台与原始时间，片段参与去重，私密导出才携带来源；候选保留八条，避免无界排序与实参。
  * 模块边界：仓库只拥有本地 IndexedDB 数据与领域不变量，不处理 runtime 消息或渲染界面；后台 handler 负责权限和广播，learningModel 提供纯会话模型，敏感上下文默认不导出。
  */
 import Dexie, { type Table } from 'dexie';
+import {sanitizeVocabularyVideoSource, sanitizeVocabularyVideoUrl} from './source';
 import {
   VOCABULARY_BOOK_EXPORT_FORMAT,
   VOCABULARY_BOOK_EXPORT_VERSION,
@@ -57,6 +58,7 @@ export const VOCABULARY_REVIEW_GOOD_INTERVALS_MS = [
 
 const MAX_TRANSLATION_LENGTH = 8_000;
 const MAX_CONTEXT_LENGTH = 500;
+const MAX_VIDEO_CONTEXT_LENGTH = 6_000;
 const MAX_PAGE_TITLE_LENGTH = 200;
 const MAX_PHONETIC_LENGTH = 256;
 const MAX_PART_OF_SPEECH_LENGTH = 128;
@@ -207,21 +209,29 @@ export function sanitizeVocabularyContext(
   now = Date.now(),
 ): VocabularyContext | null {
   if (!isPlainRecord(value)) return null;
-  const text = sanitizeText(value.text, MAX_CONTEXT_LENGTH);
+  const video = sanitizeVocabularyVideoSource(value.video);
+  const text = sanitizeText(value.text, video ? MAX_VIDEO_CONTEXT_LENGTH : MAX_CONTEXT_LENGTH);
   if (!text) return null;
 
-  const sourceUrl = sanitizeVocabularySourceUrl(value.sourceUrl);
+  const sourceUrl = value.video === undefined ? sanitizeVocabularySourceUrl(value.sourceUrl)
+    : video ? sanitizeVocabularyVideoUrl(value.sourceUrl, video.platform) : undefined;
   const pageTitle = sanitizeText(value.pageTitle, MAX_PAGE_TITLE_LENGTH) || undefined;
   return {
     text,
     ...(sourceUrl ? { sourceUrl } : {}),
     ...(pageTitle ? { pageTitle } : {}),
+    ...(video ? {video} : {}),
     capturedAt: sanitizeTimestamp(value.capturedAt, now),
   };
 }
 
 function contextIdentity(context: VocabularyContext): string {
-  return `${normalizeComparableText(context.text, MAX_CONTEXT_LENGTH)}\u0000${context.sourceUrl ?? ''}`;
+  const videoIdentity = context.video ? `\u0000${context.video.platform}:${context.video.startMs}:${context.video.endMs}` : '';
+  return `${normalizeComparableText(context.text, context.video ? MAX_VIDEO_CONTEXT_LENGTH : MAX_CONTEXT_LENGTH)}\u0000${context.sourceUrl ?? ''}${videoIdentity}`;
+}
+
+function cloneContext(context: VocabularyContext): VocabularyContext {
+  return {...context, ...(context.video ? {video: {...context.video}} : {})};
 }
 
 export function mergeVocabularyContexts(
@@ -235,7 +245,7 @@ export function mergeVocabularyContexts(
       const identity = contextIdentity(context);
       const previous = byIdentity.get(identity);
       if (!previous || context.capturedAt >= previous.capturedAt) {
-        byIdentity.set(identity, { ...context });
+        byIdentity.set(identity, cloneContext(context));
       }
     }
   }
@@ -316,7 +326,7 @@ function cloneEntry(entry: VocabularyEntry): VocabularyEntry {
   return {
     ...entry,
     translations: cloneTranslations(entry.translations),
-    contexts: entry.contexts.map((context) => ({ ...context })),
+    contexts: entry.contexts.map(cloneContext),
   };
 }
 
@@ -673,7 +683,7 @@ export class VocabularyBookRepository {
         entries: entries.map((entry): VocabularyExportEntry => ({
           ...cloneEntry(entry),
           contexts: entry.contexts.map((context) =>
-            includePrivateContext ? { ...context } : { capturedAt: context.capturedAt },
+            includePrivateContext ? cloneContext(context) : { capturedAt: context.capturedAt },
           ),
         })),
         reviewLogs: reviewLogs.map((log) => ({ ...log })),
