@@ -56,7 +56,10 @@ const artifactBytes = Buffer.byteLength(source);
 // 相对主线 2,013,000 预算按实测最小增加 12 KB，余量 698 字节；基线本次重建超原预算 29 字节亦如实记录。
 // 比较与散列见 docs/reports/target-language-quality-20261011/userscript-size.json。
 // 不引入额外检测模型。
-const MAX_USERSCRIPT_BYTES = 2_025_000;
+// 网站连续导航的自动意图、请求取消域和增量发现重置增加 1,399 字节（0.0691%）：
+// 同依赖独立基线 25f5dca79 为 2,024,307，候选为 2,025,706；利用原余量后最小增加 1 KB。
+// 保留全部协议和执行边界校验，原始与最终散列见 docs/reports/site-rules-navigation-20261011/userscript-size.json。
+const MAX_USERSCRIPT_BYTES = 2_026_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);
