@@ -13,10 +13,14 @@ Fonts revision `809e4d8b8d7e9364a914909bb777679606c178b8`. That directory's `NOT
 The generator verifies every source's existing SHA-256 before processing it.
 No network download is used during regeneration.
 
-These previews contain only source glyphs used by the current font option labels,
-descriptions and sample text in zh-CN, en-US, ja-JP, ko-KR, fr-FR, es-ES and ru-RU,
-plus `Aa Bb Cc · 0123456789`. Variable sources are instantiated at weight 400 and
-700 with all other axes at their source defaults. LXGW WenKai uses its respective
+Each weight-700 face contains only the source glyphs needed by that font option's
+own title in zh-CN, en-US, ja-JP, ko-KR, fr-FR, es-ES and ru-RU. Each weight-400
+face contains its own descriptions, the localized bottom preview and
+`Aa Bb Cc · 0123456789`. Noto Sans SC additionally supplies source-supported
+characters missing from the other fonts' titles/descriptions at the same weight.
+System font option text does not use a preview font. Variable sources are
+instantiated at weight 400 and 700 with all other axes at their source defaults.
+LXGW WenKai uses its respective
 original Regular and Bold sources. Font names are rewritten to independent
 `FluentRead Preview …` names. The modified Source Sans 3 primary name is
 `FluentRead Preview Humanist Sans`; IBM Plex Sans is
@@ -35,8 +39,13 @@ All these modified font files remain licensed under SIL OFL 1.1.
 Each Latin family shares the bundled Noto Sans SC preview as a fallback for
 characters it does not contain. A preview does not add glyphs absent from its
 original source: unsupported characters, including most Korean Hangul in these
-sources, retain the usual system fallback. `manifest.json` records the exact
-per-face character coverage and each language's missing source characters.
+sources, retain the usual system fallback. `manifest.json` records each face's
+actual role requests, its original source's full-corpus coverage, its retained
+character mappings and each language's missing characters for that role. Output
+outlines and advance/sidebearing metrics are compared to the original source at
+the same weight, and all effective stacks retain every source-supported role
+character. The maintenance generator reads only original full source assets;
+it never relies on previously generated preview subsets.
 
 ## Offline reproduction
 
@@ -45,8 +54,10 @@ or append `--check` to reproduce and compare without changing any file.
 The maintenance script uses Python, fontTools 4.38.0 and Node 20+
 with built-in Brotli. These are not extension build or runtime dependencies.
 The script keeps original font timestamps so regenerated WOFF2 bytes are stable.
-When card copy changes, regenerate and review the new coverage and hashes.
+When card copy or its 400/700 rendering roles change, regenerate and review the
+new coverage and hashes.
 
-The 18 checked-in WOFF2 faces total 473,120 bytes. They
-cover a corpus of 383 distinct requested Unicode
-characters, retaining each source font's real outlines and supported mappings.
+The 18 checked-in WOFF2 faces total 197,480 bytes. Requests
+are drawn from a corpus of 383 distinct Unicode
+characters and trimmed by font option and weight, retaining each source font's
+real outlines and supported mappings.

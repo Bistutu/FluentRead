@@ -69,8 +69,12 @@ The separately named modified subsets in `assets/interface-font-previews/` are
 small offline samples for font cards. They are generated from these exact,
 SHA-256-verified WOFF2 sources by
 `scripts/fonts/build-interface-font-previews.py`, using the existing translated
-font labels, descriptions and sample text. Regular and bold glyphs are real
-weight-400/700 outlines; source files and the full on-demand fonts stay unchanged.
+font labels, descriptions and sample text. Each bold subset contains its own
+card title; each regular subset contains its own description and common samples.
+Noto Sans SC supplies the actual missing characters for other cards at the same
+weight. Regular and bold glyphs are real weight-400/700 outlines; the generator
+verifies their outlines and metrics against the original sources. Source files
+and the full on-demand fonts stay unchanged.
 
 The subsets use independent `FluentRead Preview …` internal font names. Source
 Sans 3 is renamed `FluentRead Preview Humanist Sans`, and IBM Plex Sans becomes

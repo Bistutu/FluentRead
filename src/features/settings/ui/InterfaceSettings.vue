@@ -544,6 +544,7 @@ function setPopupQuickFeatureVisibility(featureId: string, visible: boolean) {
   background: var(--surface-soft);
   overflow-wrap: anywhere;
   font-size: 17px;
+  font-weight: 400;
   line-height: 1.6;
 }
 

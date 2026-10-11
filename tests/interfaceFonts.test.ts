@@ -11,6 +11,8 @@ import previewManifest from '../assets/interface-font-previews/manifest.json'
 
 const digest = (data: ArrayBuffer) => webcrypto.subtle.digest('SHA-256', data)
 const bytes = (file: string) => Uint8Array.from(readFileSync(resolve(__dirname, '../assets/interface-fonts', file))).buffer
+const previewCatalogs: Record<string, Readonly<Record<string, string>>> = {'zh-CN': zhCNMessages,
+  ...Object.fromEntries(Object.entries(UI_LANGUAGE_BUNDLES).map(([language, bundle]) => [language, bundle.messages]))}
 function harness() {
   const entries = new Map<string, Response>()
   const cache = {
@@ -70,24 +72,58 @@ describe('按需字体资源契约', () => {
   })
 
   it('内置预览覆盖所有语言的当前卡片文案，避免文案更新后静默缺字', () => {
-    const catalogs: Record<string, Readonly<Record<string, string>>> = {'zh-CN': zhCNMessages, ...Object.fromEntries(Object.entries(UI_LANGUAGE_BUNDLES)
-      .map(([language, bundle]) => [language, bundle.messages]))}
     const keys = [...interfaceFontOptions.flatMap(font => [font.labelKey, font.descriptionKey]),
       'settings.interface.font.preview'].sort()
-    const texts = Object.fromEntries(Object.entries(catalogs).sort(([a], [b]) => a.localeCompare(b))
+    const texts = Object.fromEntries(Object.entries(previewCatalogs).sort(([a], [b]) => a.localeCompare(b))
       .map(([language, catalog]) => [language, keys.map(key => catalog[key]).join('\n') + '\nAa Bb Cc · 0123456789']))
     const sha256 = (text: string) => createHash('sha256').update(text).digest('hex')
-    expect(previewManifest.languages.toSorted()).toEqual(Object.keys(catalogs).toSorted())
+    expect(previewManifest.languages.toSorted()).toEqual(Object.keys(previewCatalogs).toSorted())
     expect(previewManifest.corpusSha256).toBe(sha256(JSON.stringify(texts)))
     for (const [language, text] of Object.entries(texts)) {
       expect(previewManifest.corpus[language as keyof typeof previewManifest.corpus].sha256).toBe(sha256(text))
     }
   })
 
+  it('按卡片与字重精准保留字形，共享中文只补齐主字体缺字', () => {
+    const codepoints = (text: string) => new Set([...text]
+      .filter(character => character === ' ' || !/\s/u.test(character)).map(character => character.codePointAt(0)!))
+    const labels = (points: Iterable<number>) => [...points].sort((a, b) => a - b)
+      .map(point => `U+${point.toString(16).toUpperCase().padStart(4, '0')}`)
+    const decoded = (range: readonly string[]) => new Set(range.map(label => Number.parseInt(label.slice(2), 16)))
+    const options = interfaceFontOptions.filter(option => option.value !== 'system')
+    const faceFor = (option: string, weight: number) => previewManifest.fonts
+      .find(face => face.option === option && face.weight === weight)!
+    const rolePoints = (option: typeof options[number], catalog: Readonly<Record<string, string>>, weight: number) =>
+      codepoints(weight === 700 ? catalog[option.labelKey]
+        : `${catalog[option.descriptionKey]}\n${catalog['settings.interface.font.preview']}\nAa Bb Cc · 0123456789`)
+    for (const face of previewManifest.fonts) {
+      const option = options.find(option => option.value === face.option)!
+      const sourcePoints = decoded(face.sourceCorpusUnicodeRange)
+      const renderedPoints = decoded(face.unicodeRange)
+      const requestedPoints = new Set<number>()
+      for (const [language, catalog] of Object.entries(previewCatalogs)) {
+        const points = rolePoints(option, catalog, face.weight)
+        if (option.value === 'noto-sans-sc') {
+          for (const other of options.filter(other => other.value !== option.value)) {
+            const primarySourcePoints = decoded(faceFor(other.value, face.weight).sourceCorpusUnicodeRange)
+            for (const point of rolePoints(other, catalog, face.weight)) {
+              if (!primarySourcePoints.has(point)) points.add(point)
+            }
+          }
+        }
+        for (const point of points) requestedPoints.add(point)
+        expect(face.missingByLanguage[language as keyof typeof face.missingByLanguage])
+          .toEqual(labels([...points].filter(point => !renderedPoints.has(point))))
+      }
+      expect(face.requestedUnicodeRange).toEqual(labels(requestedPoints))
+      expect(face.unicodeRange).toEqual(labels([...requestedPoints].filter(point => sourcePoints.has(point))))
+    }
+  })
+
   it('预览只分发独立命名的小型字库，400/700 文件与完整字体缓存分离', () => {
     const css = readFileSync(resolve(__dirname, '../src/features/settings/ui/interface-font-previews.css'), 'utf8')
     expect(previewManifest.fonts).toHaveLength((interfaceFontOptions.length - 1) * 2)
-    expect(previewManifest.totalFontBytes).toBeLessThan(512 * 1024)
+    expect(previewManifest.totalFontBytes).toBeLessThan(256 * 1024)
     expect(css).not.toMatch(/https?:/u)
     for (const font of previewManifest.fonts) {
       const data = readFileSync(resolve(__dirname, '../assets/interface-font-previews', font.asset))
