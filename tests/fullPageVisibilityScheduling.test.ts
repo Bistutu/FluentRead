@@ -4887,7 +4887,7 @@ describe("全文翻译可见性锚点", () => {
         expect(singleTranslationText(candidates[9]!)).toContain('译:9:');
     });
 
-    it('滚动停止后优先翻译新可见候选，离开预取区的旧候选等待再次进入', async () => {
+    it('滚动期间优先翻译新可见候选，离开预取区的旧候选等待再次进入', async () => {
         runtime.config.maxConcurrentTranslations = 1;
         document.body.innerHTML = [
             '<p id="first">The first paragraph is already being translated.</p>',
@@ -4962,7 +4962,7 @@ describe("全文翻译可见性锚点", () => {
         window.scrollY = 0;
         document.dispatchEvent(new window.Event('scroll'));
         observer.emit(old, true);
-        await vi.advanceTimersByTimeAsync(219);
+        await vi.advanceTimersByTimeAsync(119);
         expect(runtime.requests).toHaveBeenCalledTimes(2);
         await vi.advanceTimersByTimeAsync(2);
         await Promise.resolve();
@@ -5937,9 +5937,7 @@ describe("全文翻译可见性锚点", () => {
             });
 
             candidates.slice(0, 4).forEach((candidate) => observer.emit(candidate, true));
-            await vi.advanceTimersByTimeAsync(1);
-            await Promise.resolve();
-            await Promise.resolve();
+            await waitForRequestCount(3);
 
             expect(runtime.requests).toHaveBeenCalledTimes(3);
             expectCurrentProgress({
@@ -6030,8 +6028,7 @@ describe("全文翻译可见性锚点", () => {
 
         autoTranslateEnglishPage();
         await vi.advanceTimersByTimeAsync(51);
-        await Promise.resolve();
-        await Promise.resolve();
+        await waitForRequestCount(3);
 
         expect(runtime.requests).toHaveBeenCalledTimes(3);
         expect(TestIntersectionObserver.instances[0]!.observe).not.toHaveBeenCalled();
@@ -7254,7 +7251,122 @@ describe("全文翻译可见性锚点", () => {
         expect(singleTranslationText(tweetText)).toBe(`译:${source}`);
     });
 
-    it("全文滚动期间暂停新翻译，停止滚动后再继续排队", async () => {
+    it('连续滚动不重置可见派发时刻，单槽预算逐段可读且不预取离屏内容', async () => {
+        runtime.config.display = 1;
+        runtime.config.fullPageTranslationMode = 'all';
+        runtime.config.maxConcurrentTranslations = 1;
+        document.body.innerHTML = Array.from({length: 5}, (_, index) => `<p>Readable scrolling paragraph ${index}.</p>`).join('');
+        const paragraphs = [...document.querySelectorAll<HTMLElement>('p')];
+        paragraphs.forEach((element, index) => {
+            setLayoutBox(element, 600, 80);
+            setViewportRect(element, [80, 180, 280, 800, 2000][index]!);
+        });
+        runtime.candidates = paragraphs.map(element => ({element, kind: 'content', reason: 'paragraph'}));
+        Object.defineProperty(window, 'innerHeight', {configurable: true, value: 600});
+        autoTranslateEnglishPage();
+        document.dispatchEvent(new window.Event('scroll'));
+        await vi.advanceTimersByTimeAsync(80);
+        document.dispatchEvent(new window.Event('scroll'));
+        expect(runtime.requests).toHaveBeenCalledTimes(0);
+        await vi.advanceTimersByTimeAsync(41);
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+        // 已完成段在滚动期间可读，不等空闲，也不占满所有配置槽位。
+        await vi.advanceTimersByTimeAsync(2);
+        expect(paragraphs[0]!.querySelector('.fluent-read-bilingual-content')?.textContent).toContain('译:');
+        for (let tick = 0; tick < 8; tick++) {
+            document.dispatchEvent(new window.Event('scroll'));
+            await vi.advanceTimersByTimeAsync(80);
+        }
+        expect(runtime.requests).toHaveBeenCalledTimes(3);
+        expect(paragraphs.slice(0, 3).map(element => element.querySelectorAll('.fluent-read-bilingual-content').length)).toEqual([1, 1, 1]);
+        expect(paragraphs[3]!.querySelector('.fluent-read-bilingual-content')).toBeNull();
+        await vi.advanceTimersByTimeAsync(220);
+        await finishScheduledWork();
+        expect(runtime.requests).toHaveBeenCalledTimes(5);
+    });
+
+    it('滚动派发高并发配置时每批仍最多三个可见候选，并保留原生合批', async () => {
+        replaceGlobal('performance', {now: () => Date.now()});
+        runtime.config.fullPageTranslationMode = 'all';
+        runtime.config.maxConcurrentTranslations = 10;
+        runtime.nativeBatchEnabled = true;
+        document.body.innerHTML = Array.from({length: 6}, (_, index) => `<p>Current visible reading paragraph ${index}.</p>`).join('');
+        const paragraphs = [...document.querySelectorAll<HTMLElement>('p')];
+        paragraphs.forEach((element, index) => {setLayoutBox(element, 600, 60); setViewportRect(element, 80 + index * 70, 60);});
+        Object.defineProperty(window, 'innerHeight', {configurable: true, value: 600});
+        runtime.candidates = paragraphs.map(element => ({element, kind: 'content', reason: 'paragraph'}));
+        const batch = deferred<string[]>();
+        runtime.requests.mockImplementationOnce(() => batch.promise);
+        autoTranslateEnglishPage();
+        document.dispatchEvent(new window.Event('scroll'));
+        await vi.advanceTimersByTimeAsync(80);
+        document.dispatchEvent(new window.Event('scroll'));
+        await vi.advanceTimersByTimeAsync(41);
+        expect(runtime.requests).toHaveBeenCalledOnce();
+        expect(runtime.requests.mock.calls[0]![0]).toHaveLength(3);
+        batch.resolve(runtime.requests.mock.calls[0]![0].map(origin => `译:${origin}`));
+        await vi.advanceTimersByTimeAsync(2);
+        expect(paragraphs.slice(0, 3).map(singleTranslationText).every(Boolean)).toBe(true);
+        expect(paragraphs.slice(3).map(singleTranslationText)).toEqual(['', '', '']);
+        document.dispatchEvent(new window.Event('scroll'));
+        await vi.advanceTimersByTimeAsync(118);
+        expect(runtime.requests).toHaveBeenCalledTimes(2);
+        expect(runtime.requests.mock.calls[1]![0]).toHaveLength(3);
+        await finishScheduledWork();
+    });
+
+    it('根预取区内段落变成可见时，滚动事件独立唤醒，不依赖第二次入视口回调', async () => {
+        document.body.innerHTML = '<p>Already observed near the viewport.</p>';
+        const element = document.querySelector<HTMLElement>('p')!;
+        setLayoutBox(element, 600, 80);
+        const move = setViewportRect(element, 850);
+        runtime.candidates = [{element, kind: 'content', reason: 'paragraph'}];
+        Object.defineProperty(window, 'innerHeight', {configurable: true, value: 600});
+        autoTranslateEnglishPage();
+        document.dispatchEvent(new window.Event('scroll'));
+        await vi.advanceTimersByTimeAsync(50);
+        const observer = TestIntersectionObserver.instances[0]!;
+        observer.emit(element, true);
+        await vi.advanceTimersByTimeAsync(71);
+        expect(runtime.requests).not.toHaveBeenCalled();
+        move(100);
+        document.dispatchEvent(new window.Event('scroll'));
+        await vi.advanceTimersByTimeAsync(121);
+        expect(runtime.requests).toHaveBeenCalledOnce();
+        expect(singleTranslationText(element)).toContain('译:');
+    });
+
+    it('滚动派发定时器到期前恢复会话不请求，重译仍可用，旧响应不能回写', async () => {
+        runtime.config.fullPageTranslationMode = 'all';
+        document.body.innerHTML = '<p>A reading request with a late response.</p>';
+        const element = document.querySelector<HTMLElement>('p')!;
+        setLayoutBox(element, 600, 80); setViewportRect(element, 100);
+        runtime.candidates = [{element, kind: 'content', reason: 'paragraph'}];
+        autoTranslateEnglishPage();
+        document.dispatchEvent(new window.Event('scroll'));
+        await vi.advanceTimersByTimeAsync(60);
+        restoreOriginalContent();
+        await vi.advanceTimersByTimeAsync(300);
+        expect(runtime.requests).not.toHaveBeenCalled();
+        const late = deferred<string[]>();
+        runtime.requests.mockImplementationOnce(() => late.promise);
+        autoTranslateEnglishPage();
+        document.dispatchEvent(new window.Event('scroll'));
+        await vi.advanceTimersByTimeAsync(121);
+        expect(runtime.requests).toHaveBeenCalledOnce();
+        restoreOriginalContent();
+        runtime.config.to = 'fr';
+        autoTranslateEnglishPage();
+        await vi.advanceTimersByTimeAsync(60);
+        expect(runtime.requests).toHaveBeenCalledTimes(2);
+        late.resolve(['Late old Chinese result']);
+        await finishScheduledWork();
+        expect(singleTranslationText(element)).toBe('译:A reading request with a late response.');
+        expect(runtime.requestOptions.at(-1)?.targetLanguage).toBe('fr');
+        expect(element.textContent).not.toContain('Late old');
+    });
+
+    it("全文滚动期间无可读视口布局的候选仍等空闲后派发", async () => {
         runtime.config.display = 1;
         runtime.config.fullPageTranslationMode = "all";
         runtime.config.maxConcurrentTranslations = 1;

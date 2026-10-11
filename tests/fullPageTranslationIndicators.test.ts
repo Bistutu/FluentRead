@@ -112,6 +112,15 @@ afterEach(() => {
 });
 
 describe('全文翻译节点状态指示', () => {
+  it.each([true, false])('受控重试返回 %s 时保留反馈，交由 runtime 排队与清理', accepted => {
+    const target = document.getElementById('target')!;
+    const retry = vi.fn(() => accepted);
+    const wrapper = insertFailedTip(target, 'provider unavailable', retry);
+    wrapper.querySelector<HTMLElement>('.fluent-read-retry')!.click();
+    expect(retry).toHaveBeenCalledOnce();
+    expect(wrapper.isConnected).toBe(true);
+    expect(target.getAttribute('data-fr-translation-failed')).toBe('true');
+  });
   it('失败节点可查看经过归类的原因，并安全重试', () => {
     const target = document.getElementById('target')!;
     const retry = vi.fn();

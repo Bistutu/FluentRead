@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/content/fullPageQueue.ts
  * 文件职责：维护全文翻译 pending 候选的排队元数据，并选择当前最适合启动的候选。
- * 主要内容：保留同源候选的等待时间与稳定序号，显式失败重试去重入队并保留强制刷新意图，按 drain 批次一次性读取候选锚点布局并排序，执行视口优先、方向预取和后台公平配额。
+ * 主要内容：保留同源候选的等待时间与稳定序号，显式失败重试去重入队并保留强制刷新意图，按 drain 批次一次性读取候选锚点布局并排序；滚动期间仅派发可见候选，空闲时执行方向预取和后台公平配额。
  * 模块边界：本文件不发现候选、不修改 DOM、不调用 provider；runtime 负责生命周期与资格判断，fullPagePriority 负责纯排序规则。
  */
 
@@ -40,6 +40,8 @@ export type FullPageQueueStorage = Omit<FullPageQueueState, 'inFlightCandidates'
 export interface FullPageQueueSelectionOptions {
     now: number;
     viewportHeight: number;
+    /** 滚动中的阅读派发不预取，也不消耗后台公平配额。 */
+    visibleOnly?: boolean;
     isEligible: (candidate: TranslationCandidate) => boolean;
     resolveSource: (candidate: TranslationCandidate) => string;
 }
@@ -199,7 +201,8 @@ function collectPrioritizedCandidates(
     const candidates: FullPagePendingSelection[] = [];
     for (const [key, candidate] of state.pending) {
         if (state.inFlightCandidates.has(key) || !options.isEligible(candidate)) continue;
-        candidates.push({key, candidate, priority: getCandidatePriority(state, key, candidate, options)});
+        const priority = getCandidatePriority(state, key, candidate, options);
+        if (!options.visibleOnly || priority.band === 'visible') candidates.push({key, candidate, priority});
     }
     return candidates;
 }

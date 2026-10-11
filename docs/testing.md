@@ -507,6 +507,22 @@ node scripts/testing/run-fixed-height-translation-test.cjs \
 
 它检查卡片实际内容边界而非仅检查卡片壳，覆盖翻译、恢复、再次翻译、共用卡片、宿主高度改写及独立滚动区域。页面和翻译响应均为本地夹具，不能代替真实网站或翻译服务的验证。高度覆盖在仍有译文时共享保留，避免在“解除高度后无溢出”与“恢复高度后再次溢出”之间反复切换；最后一个译文移除时恢复宿主样式。
 
+### 连续滚动中的阅读等待
+
+```bash
+node scripts/testing/run-reading-wait-priority-test.cjs \
+  --phase optimized --iterations 3 --delay-ms 180 \
+  --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> \
+  --focus-safe-helper scripts/testing/focus-safe-browser.cjs \
+  --artifacts-dir /private/tmp/fluentread-reading-wait-optimized
+```
+
+专项使用生产扩展、临时 Edge profile 和第二屏后台可见窗口，在同一材料和本地微软 HTTP 响应下记录首屏与连续滚动的首次可读、逐帧实际视口完成时间、HTTP 请求数、文本槽数及至少 50ms 的长任务。首次可读要求译文自身进入视口；视口完成要求当帧所有可见候选的译文 DOM 就绪，部分可见段落也计入。指定三个阅读锚点另记完成时间，并检查它们始终可见。80 段视口模式重复三次，1000 段整页模式另测一次；滚动每 80ms 前进 3px，持续至少 1600ms。请求计数固定观察首屏 800ms、滚动 2600ms，包含已有的独立标题翻译；正文并发以一槽候选计数，不能把合批 HTTP 数等同于候选并发。
+
+`--phase baseline --extension-dir <同一基础提交的冻结生产包> --measurements-only` 复现旧版等待滚动结束后才请求的行为；`--measurements-only` 和 `--lifecycle-only` 可限定范围，后者可追加 `--lifecycle-case failure-retry` 等单项。完整新版专项还检查并发占满、在途恢复和重译、全局关闭、恢复后切换目标语言、动态 DOM、失败重试、导航清理和悬浮翻译—恢复—再次翻译。既有会话冻结调用时配置，目标语言变更由下一次调用采用。
+
+相关定向测试为 `fullPagePriority`、`fullPageVisibilityScheduling`、`fullPageTranslationIndicators`、`viewportStability`、`translateQueue`、`translationRequestScheduler`、`fullPageFailureRecovery` 与 `hoverTranslationScheduler`。对比结论见[阅读等待优化报告](./reports/reading-wait-priority-20261011.md)。本地响应只验证插件调度与 DOM 可读性，不证明在线服务延迟、语义质量、任意网站或 Firefox 实机表现。
+
 ### Hacker News 与 Product Hunt 翻译滚动
 
 `tests/browser-translation-cases.json` 的 `hacker-news-home` 与
