@@ -103,7 +103,7 @@ beforeEach(() => {
   vi.stubGlobal('matchMedia', () => ({matches: false, onchange: null}));
   vi.stubGlobal('close', vi.fn());
   for (const [name, value] of Object.entries({document, window, HTMLElement: window.HTMLElement, Event: window.Event,
-    Node: window.Node, MutationObserver: window.MutationObserver, NodeFilter: {SHOW_TEXT: 4}, navigator: {languages: ['zh-CN']}})) vi.stubGlobal(name, value);
+    Node: window.Node, MutationObserver: window.MutationObserver, NodeFilter: {SHOW_TEXT: 4}, navigator: {languages: ['zh-CN'], platform: 'Win32'}})) vi.stubGlobal(name, value);
 });
 
 afterEach(async () => {app?.unmount();app = undefined;await settle();});
@@ -150,7 +150,8 @@ describe('Popup 首页关键信息', () => {
     expect(summary().getAttribute('aria-haspopup')).toBe('dialog');
     expect(button.querySelector('.translate-label')?.textContent).toBe(label);
     expect(button.getAttribute('title')).toBe(label);
-    expect(button.querySelector('.translate-hotkey')).toBeNull();
+    expect(button.querySelector('kbd, .translate-hotkey')).toBeNull();
+    expect(button.getAttribute('title')).not.toMatch(/Alt\+T|⌥\+T/u);
     expect(document.querySelector('[data-testid="section-translation"]')).toBeNull();
     expect(button.hasAttribute('disabled')).toBe(false);
     expect(send).not.toHaveBeenCalled();
@@ -163,7 +164,11 @@ describe('Popup 首页关键信息', () => {
     expect(JSON.stringify(config)).toBe(before);expect(patches).not.toHaveBeenCalled();
   });
 
-  it('PDF 导航回普通页恢复实际主按钮与快捷键，旧 PDF 查询晚到不改写模板或创建阅读器', async () => {
+  it.each([
+    ['Win32', 'Alt+T', 'Ctrl+Alt+Shift+Arrowright'],
+    ['MacIntel', '⌥+T', '⌃+⌥+⇧+Arrowright'],
+  ] as const)('%s PDF 导航回普通页恢复紧凑主按钮与快捷键，旧 PDF 查询晚到不改写模板或创建阅读器', async (platform, shortcut, longShortcut) => {
+    vi.stubGlobal('navigator', {languages: ['en-US'], platform});
     language.value = 'en-US';
     queryTabs.mockResolvedValue([{id: 7, windowId: 3, url: 'https://example.test/first.pdf'}]);
     await mount();
@@ -180,14 +185,15 @@ describe('Popup 首页关键信息', () => {
     await settle();
 
     const button = document.querySelector<HTMLButtonElement>('[data-testid="page-translation"]')!;
-    expect(button.querySelector('.translate-label')?.textContent).toBe('Translate this page');
-    expect(button.querySelector('.translate-hotkey')?.textContent).toBeTruthy();
+    expect(button.querySelector('.translate-label')?.textContent).toBe(`Translate (${shortcut})`);
+    expect(button.querySelector('kbd, .translate-hotkey')).toBeNull();
+    expect(button.getAttribute('aria-label')).toBe('Translate this page');
     expect(document.querySelector('[data-testid="section-translation"]')).not.toBeNull();
     expect(summary().querySelector('strong')?.textContent).toBe('OpenAI');
     expect(model()?.textContent).toBe('saved-model');
     resolveOld([latePdf]);await settle();
-    expect(button.getAttribute('title')).toBe('Translate this page');
-    expect(button.querySelector('.translate-hotkey')?.textContent).toBeTruthy();
+    expect(button.getAttribute('title')).toBe(`Translate this page · ${shortcut}`);
+    expect(button.querySelector('.translate-label')?.textContent).toBe(`Translate (${shortcut})`);
     expect(document.querySelector('[data-testid="section-translation"]')).not.toBeNull();
     expect(createTab).not.toHaveBeenCalled();
     expect(send.mock.calls).toEqual([[7, {type: 'getFullPageTranslationState'}]]);
@@ -196,11 +202,24 @@ describe('Popup 首页关键信息', () => {
     expect(createTab).not.toHaveBeenCalled();
     expect(send.mock.calls).toEqual([[7, {type: 'getFullPageTranslationState'}], [7, {type: 'contextMenuTranslate', action: 'fullPage'}]]);
     expect(button.getAttribute('aria-pressed')).toBe('true');
+    expect(button.querySelector('.translate-label')?.textContent).toBe(`Restore (${shortcut})`);
+    expect(button.getAttribute('title')).toBe(`Restore this page · ${shortcut}`);
+    publish(next => {next.floatingBallHotkey = 'custom';next.customFloatingBallHotkey = 'Control+Alt+Shift+ArrowRight';});await settle();
+    expect(button.querySelector('.translate-label')?.textContent).toBe('Restore');
+    expect(button.getAttribute('title')).toBe(`Restore this page · ${longShortcut}`);
+    expect(button.querySelector('kbd, .translate-hotkey')).toBeNull();
     expect(model()?.textContent).toBe('saved-model');expect(patches).not.toHaveBeenCalled();
   });
 
   it('首页直接显示网页默认服务和配置模型，完整信息进入无障碍名称', async () => {
     await mount();
+    const main = document.querySelector<HTMLButtonElement>('[data-testid="page-translation"]')!;
+    expect(main.querySelector('.translate-label')?.textContent).toBe('翻译（Alt+T）');
+    expect(main.getAttribute('title')).toBe('翻译当前网页 · Alt+T');
+    expect(main.getAttribute('aria-label')).toBe('翻译当前网页');
+    expect(main.querySelector('kbd, .translate-hotkey')).toBeNull();
+    expect([...document.querySelectorAll('.translate-action > button')].map(button => button.getAttribute('data-testid')))
+      .toEqual(['page-translation', 'section-translation']);
     expect(summary().querySelector('strong')?.textContent).toBe('OpenAI');
     expect(model()?.textContent).toBe('saved-model');
     expect(model()?.getAttribute('title')).toBe('配置模型：saved-model');

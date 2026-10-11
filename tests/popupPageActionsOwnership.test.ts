@@ -115,9 +115,9 @@ describe('Popup 站点规则与即时翻译',()=>{
     expect(notice).not.toHaveBeenCalled();expect(persistRule).not.toHaveBeenCalled();expect(cfg.alwaysTranslateDomains).toEqual([]);expect(cfg.disabledExtensionDomains).toEqual([])
   })
   it('规则保存期间独占按钮并等待后台确认；确认前不启动即时翻译或声称成功',async()=>{
-    const {actions,persistRule,state,send,notice,getTab}=setup(),commit=deferred<void>();persistRule.mockReturnValueOnce(commit.promise)
+    const {actions,persistRule,state,send,notice,getTab,close}=setup(),commit=deferred<void>();persistRule.mockReturnValueOnce(commit.promise)
     const pending=actions.setAlways(true);await settle();expect(state.savingRule).toBe(true);expect(persistRule).toHaveBeenCalledWith({alwaysTranslateDomains:['example.com']});expect(send).not.toHaveBeenCalled();expect(notice).not.toHaveBeenCalled()
-    await actions.setAlways(false);await actions.setDisabled(true);await actions.toggle();expect(getTab).toHaveBeenCalledOnce();commit.resolve();await pending
+    await actions.setAlways(false);await actions.setDisabled(true);await actions.toggle();await actions.section();expect(getTab).toHaveBeenCalledOnce();expect(send).not.toHaveBeenCalled();expect(close).not.toHaveBeenCalled();commit.resolve();await pending
     expect(state.savingRule).toBe(false);expect(send).toHaveBeenCalledOnce();expect(notice).toHaveBeenLastCalledWith('已开启 example.com 的始终翻译')
   })
   it('验证实际页面期间配置失效不能继续修改规则',async()=>{

@@ -29,6 +29,11 @@ vi.mock('@/src/features/writing-assistant/public', () => ({
     unmountWritingAssistant: () => {mocks.writingMounted = false; mocks.unmountWriting();},
     isWritingAssistantMounted: () => mocks.writingMounted,
 }));
+// 本测试只验证组合层生命周期，个人校订的 Vue UI 与页面端口由其专项覆盖。
+vi.mock('@/src/app/content/personalCorrections', () => ({
+    mountPersonalCorrectionContent: vi.fn(),
+    unmountPersonalCorrectionContent: vi.fn(),
+}));
 
 vi.mock('@/src/services/config/store', () => ({
     config: mocks.config, get configReady() { return mocks.configReady; }, subscribeConfig: mocks.subscribeConfig,

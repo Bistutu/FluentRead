@@ -34,7 +34,7 @@ The card includes 3,000 common English dictionary entries that work without a se
 
 The card keeps its position when switching learning tabs, streaming answers, or starting and stopping speech. Long content scrolls within the available space. Drag the card by its top or surrounding blank space to move it. Drag an edge or corner to resize it; long text scrolls inside. The next selection opens a new card at its default size near the selected text.
 
-When the target is Chinese or English, the card's language button can change the direction for this result without changing page translation settings. Selection behavior and language preferences are configured under **Selection translation**.
+The card starts with its action tabs, with share, save and close controls on the right. Translation follows your language settings. For a Chinese or English target, enable bidirectional selection translation under **Selection translation** to reverse the direction based on the selected language. Activation preferences are configured there too.
 
 </details>
 

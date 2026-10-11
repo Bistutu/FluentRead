@@ -23,6 +23,8 @@ import {translationStatsRussianMessages} from './translationStats';
 import {localTranslationRussianMessages} from './localTranslation';
 
 export const ruRUMessages = {
+    "popup.compact.translate": "Перевести",
+    "popup.compact.restore": "Вернуть",
     ...videoLearningText,
     ...pdfReadingMessages['ru-RU'],
     ...informationHighlightMessages['ru-RU'],

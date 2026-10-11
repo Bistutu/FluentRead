@@ -23,6 +23,8 @@ import {translationStatsKoreanMessages} from './translationStats';
 import {localTranslationKoreanMessages} from './localTranslation';
 
 export const koKRMessages = {
+    "popup.compact.translate": "번역",
+    "popup.compact.restore": "복원",
     ...videoLearningText,
     ...pdfReadingMessages['ko-KR'],
     ...informationHighlightMessages['ko-KR'],

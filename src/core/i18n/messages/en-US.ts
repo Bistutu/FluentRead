@@ -25,6 +25,8 @@ import {translationStatsEnglishMessages} from './translationStats';
 import {localTranslationEnglishMessages} from './localTranslation';
 
 export const enUSMessages = {
+    "popup.compact.translate": "Translate",
+    "popup.compact.restore": "Restore",
     ...videoLearningText,
     ...pdfReadingMessages['en-US'],
     ...informationHighlightMessages['en-US'],

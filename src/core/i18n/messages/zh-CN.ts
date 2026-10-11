@@ -22,6 +22,8 @@ import {translationStatsChineseMessages} from './translationStats';
 import {localTranslationChineseMessages} from './localTranslation';
 
 export const zhCNMessages = {
+    "popup.compact.translate": "翻译",
+    "popup.compact.restore": "还原",
     ...videoLearningText,
     ...pdfReadingMessages['zh-CN'],
     ...informationHighlightMessages['zh-CN'],

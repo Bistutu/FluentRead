@@ -23,6 +23,8 @@ import {translationStatsFrenchMessages} from './translationStats';
 import {localTranslationFrenchMessages} from './localTranslation';
 
 export const frFRMessages = {
+    "popup.compact.translate": "Traduire",
+    "popup.compact.restore": "Rétablir",
     ...videoLearningText,
     ...pdfReadingMessages['fr-FR'],
     ...informationHighlightMessages['fr-FR'],

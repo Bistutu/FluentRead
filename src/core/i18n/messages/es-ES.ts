@@ -23,6 +23,8 @@ import {translationStatsSpanishMessages} from './translationStats';
 import {localTranslationSpanishMessages} from './localTranslation';
 
 export const esESMessages = {
+    "popup.compact.translate": "Traducir",
+    "popup.compact.restore": "Restaurar",
     ...videoLearningText,
     ...pdfReadingMessages['es-ES'],
     ...informationHighlightMessages['es-ES'],

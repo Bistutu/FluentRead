@@ -1,7 +1,7 @@
 /**
  * @file tests/selectionTranslatorLifecycle.test.ts
  * 文件职责：执行划词组件的实际挂载与卸载回调，验证扩展消息端口撤销不会留下宿主页面资源。
- * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界和窗口尺寸变化清理。
+ * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界、导航空白拖动、按配置与显式反向请求确定翻译语言和窗口尺寸变化清理。
  * 模块边界：编译真实 Vue setup 并替换浏览器和渲染依赖，不模拟完整 UI 或声称真实浏览器验证。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -140,6 +140,54 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         registerContextMenu, get contextMenuHandler() {return contextMenuHandler;},
         lifecycleErrors, unmount: () => { currentApp.unmount(); app = undefined; }};
 }
+
+describe('selection card language configuration without header switches', () => {
+    it.each([
+        ['Ceci est une phrase française complète.', 'fr', 'de', false, false, 'fr', 'de'],
+        ['这是完整的中文选文。', 'auto', 'zh-Hans', true, false, 'zh-Hans', 'en'],
+        ['This is a clear English sentence for reverse translation.', 'zh-Hant', 'en', true, false, 'en', 'zh-Hant'],
+        ['这是完整的中文选文。', 'auto', 'zh-Hans', false, true, 'zh-Hans', 'en'],
+        ['This is a clear English sentence for translation.', 'auto', 'zh-Hans', false, false, 'auto', 'zh-Hans'],
+    ] as const)('uses configuration and explicit reverse entry for %s', (text, from, to, bidirectional, manual, expectedSource, expectedTarget) => {
+        const fixture = mountSelection();
+        fixture.config.from = from;
+        fixture.config.to = to;
+        fixture.config.selectionTranslatorBidirectional = bidirectional;
+        fixture.state.selectionConfigVersion += 1;
+        fixture.state.selectedText = text;
+        fixture.state.manuallyRequestedSelection = manual;
+        expect(fixture.state.effectiveSourceLanguage).toBe(expectedSource);
+        expect(fixture.state.effectiveTargetLanguage).toBe(expectedTarget);
+        expect(fixture.state.beginSelectionContentRequest(text)).toMatchObject({text, sourceLanguage: expectedSource, targetLanguage: expectedTarget});
+    });
+
+    it('cancels an old direction request and rejects its delayed answer after the language setting changes', async () => {
+        const fixture = mountSelection();
+        const text = 'Ceci est une phrase française complète.';
+        let resolveOld!: (value: string) => void;
+        fixture.translateText.mockImplementationOnce(() => new Promise<string>(resolve => {resolveOld = resolve;}));
+        fixture.translateText.mockResolvedValueOnce('A fresh English answer.');
+        fixture.state.snapshot = {text, parts: [{kind: 'text', text}]};
+        fixture.state.selectedText = text;
+        fixture.state.showTooltip = true;
+        fixture.state.requestSelectionContent(text);
+        const oldOptions = fixture.translateText.mock.calls[0][2];
+        expect(oldOptions.targetLanguage).toBe('zh-Hans');
+        fixture.config.to = 'en';
+        fixture.state.selectionConfigVersion += 1;
+        await Vue.nextTick();
+        await Promise.resolve();
+        expect(oldOptions.signal.aborted).toBe(true);
+        expect(fixture.translateText).toHaveBeenLastCalledWith(text, undefined, expect.objectContaining({sourceLanguage: 'auto', targetLanguage: 'en'}));
+        expect(fixture.state.translationResult).toBe('A fresh English answer.');
+        resolveOld('An obsolete Chinese answer.');
+        await Promise.resolve();
+        await Vue.nextTick();
+        expect(fixture.state.translationResult).toBe('A fresh English answer.');
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+});
 
 describe('explicit selection sentence collection', () => {
     function prepare(text: string, sourceLanguage = 'en', privateContext = false) {
@@ -1480,8 +1528,8 @@ describe('selection card bounded layout work', () => {
             clientWidth = 388;
             captured = false;
             getBoundingClientRect = vi.fn(() => ({left: 200, top: 100, right: 588, bottom: 340, width: 388, height: 240}));
-            closest(selector: string) {return selector === '.fr-tooltip-header' ? this : null;}
-            matches() {return false;}
+            closest(selector: string) {return selector === '.fr-study-navigation' ? this : null;}
+            matches(selector: string) {return selector === '.fr-study-navigation';}
             setPointerCapture() {this.captured = true;}
             hasPointerCapture() {return this.captured;}
             releasePointerCapture() {this.captured = false;}
@@ -1501,6 +1549,31 @@ describe('selection card bounded layout work', () => {
         const flush = () => {const pending = [...frames.values()];frames.clear();pending.forEach(callback => callback(0));};
         return {...fixture, element, frames, pointer, flush};
     }
+
+    it.each([
+        ['horizontal tab scrollbar', 'fr-study-toolbar', 300, 132],
+        ['learning menu blank space', 'fr-reading-tool-list', 250, 145],
+        ['vertical learning menu scrollbar', 'fr-reading-tool-list', 380, 175],
+    ] as const)('keeps native %s pointer handling without dragging the card', async (_label, className, x, y) => {
+        const {state, element, frames, pointer} = await gestureFixture();
+        state.stopPopupGesture();
+        element.getBoundingClientRect.mockClear();
+        // 非交互导航后代仍属于顶栏，但滚动条与菜单空白必须保留原生指针行为。
+        const target = Object.assign(Object.create(Object.getPrototypeOf(element)), {
+            dataset: {},
+            matches: (selector: string) => selector.split(',').some(part => part.trim() === `.${className}`),
+            closest: (selector: string) => selector === '.fr-study-navigation' ? element : null,
+        });
+        const down = {...pointer('pointerdown', x, y), target};
+        state.beginPopupGesture(down);
+        state.movePopupGesture({...pointer('pointermove', x + 30, y + 20), target});
+        expect(down.preventDefault).not.toHaveBeenCalled();
+        expect(element.captured).toBe(false);
+        expect(state.popupManipulating).toBe(false);
+        expect(state.manualPopupPosition).toEqual({left: 200, top: 100});
+        expect(frames.size).toBe(0);
+        expect(element.getBoundingClientRect).not.toHaveBeenCalled();
+    });
 
     it('coalesces trusted pointer moves and paints only the last point without re-reading card geometry', async () => {
         const {state, element, frames, pointer, flush} = await gestureFixture();

@@ -23,6 +23,8 @@ import {translationStatsJapaneseMessages} from './translationStats';
 import {localTranslationJapaneseMessages} from './localTranslation';
 
 export const jaJPMessages = {
+    "popup.compact.translate": "翻訳",
+    "popup.compact.restore": "戻す",
     ...videoLearningText,
     ...pdfReadingMessages['ja-JP'],
     ...informationHighlightMessages['ja-JP'],
