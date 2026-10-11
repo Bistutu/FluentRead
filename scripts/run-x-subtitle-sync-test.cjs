@@ -151,6 +151,14 @@ async function captureVideoMenuSnapshot(page, artifacts, report, phase) {
  await page.screenshot({path: path.join(artifacts, `video-menu-${phase}.png`)});
 }
 
+// 字幕就绪后“关闭 AI 字幕”收在“字幕选项”里，观看首页不再重复这个入口。
+async function disableReadyAiSubtitles(target) {
+  const toggle = target.locator('[data-action="toggle-ai-subtitle"]');
+  assert.equal(await toggle.getAttribute('aria-checked'), 'true', 'AI subtitles are ready before they are turned off');
+  assert.equal(await toggle.isVisible(), false, 'the ready watch view keeps the AI switch inside subtitle options');
+  await target.locator('[data-action="open-subtitle-tools"]').click();
+  await toggle.click();
+}
 async function readLocalVideoModelState(control, model) {
  const state = await control.evaluate(() => chrome.runtime.sendMessage({type: 'fluentReadGetLocalVideoModelState'}));
  assert.equal(state?.success, true, `background model state query failed: ${JSON.stringify(state)}`);
@@ -353,6 +361,11 @@ async function main() {
  if(startPlaying) await page.evaluate(()=>document.querySelector('video').play());
  const began=Date.now();
  const optionsPagesBeforeReady = context.pages().filter(candidate => candidate.url().includes('/options.html')).length;
+ // 已有原生字幕时，“生成 AI 字幕”同样收在“字幕选项”里。
+ if(nativeTrack){
+   assert.equal(await page.locator('[data-action="toggle-ai-subtitle"]').isVisible(),false,'native captions keep AI generation inside subtitle options');
+   await page.locator('[data-action="open-subtitle-tools"]').click();
+ }
  await page.locator('[data-action="toggle-ai-subtitle"]').click();
  await page.waitForTimeout(250);
  await captureVideoMenuSnapshot(page, artifacts, report, 'generating');
@@ -454,15 +467,17 @@ async function main() {
    },base);
    await secondPage.waitForFunction(()=>document.querySelector('video').readyState>=2,{},{timeout:15000});
    await secondPage.waitForSelector('#fluent-read-video-subtitle-button',{timeout:15000});
+   // 夹具控件只在悬停播放器时接收点击，与首个标签页一致。
+   await secondPage.locator('video').hover();
    await secondPage.locator('#fluent-read-video-subtitle-button').click();
-   await secondPage.locator('[data-action="toggle-ai-subtitle"]').click();
+   // 同一媒体的已完成字幕会在新标签页自动恢复，不需要再点一次生成。
    await secondPage.waitForFunction(()=>{const action=document.querySelector('[data-action="toggle-ai-subtitle"]');const text=action?.querySelector('[data-state]')?.textContent||'';if(action?.dataset.error==='true')throw new Error(action.title);return text.includes('已就绪');},{},{timeout:120000});
    const secondReady=await secondPage.evaluate(()=>({
      state:document.querySelector('[data-action="toggle-ai-subtitle"] [data-state]')?.textContent||'',
      text:document.getElementById('fluent-read-video-subtitle-original')?.textContent||'',
    }));
    assert.match(secondReady.state,/已就绪/,'another tab can prepare through the real extension UI after completed subtitles');
-   await secondPage.locator('[data-action="toggle-ai-subtitle"]').click();
+   await disableReadyAiSubtitles(secondPage);
    await secondPage.waitForTimeout(400);
    const secondStopped=await secondPage.evaluate(()=>({
      state:document.querySelector('[data-action="toggle-ai-subtitle"] [data-state]')?.textContent||'',
@@ -507,7 +522,7 @@ async function main() {
  if (speechLanguage === 'ko') assert.ok(report.texts.every(text => /[가-힣]/u.test(text) && !/[a-z]{3}/iu.test(text)), 'Korean source stays Korean with webpage source set to English');
  await page.screenshot({path:path.join(artifacts,'seek.png')});
  await page.locator('#fluent-read-video-subtitle-button').click();
- await page.locator('[data-action="toggle-ai-subtitle"]').click();
+ await disableReadyAiSubtitles(page);
  await page.waitForTimeout(400);
  report.afterStop=await page.evaluate(()=>({text:document.getElementById('fluent-read-video-subtitle-original')?.textContent||'',videos:document.querySelectorAll('video').length}));
  if(nativeTrack){
@@ -561,7 +576,7 @@ async function main() {
    const clearedCache = await control.evaluate(() => chrome.runtime.sendMessage({type: 'fluentReadClearVideoAiSubtitleCache'}));
    assert.equal(clearedCache.success, true);
    await page.locator('#fluent-read-video-subtitle-button').click();
-   await page.locator('[data-action="toggle-ai-subtitle"]').click();
+   await disableReadyAiSubtitles(page);
    await page.waitForFunction(() => document.querySelector('[data-action="toggle-ai-subtitle"]')?.getAttribute('aria-checked') === 'false');
    await page.locator('[data-action="toggle-ai-subtitle"]').click();
    await page.waitForFunction(() => /%/.test(document.querySelector('#fluent-read-video-subtitle-button')?.getAttribute('data-fluent-read-video-progress') || ''));
