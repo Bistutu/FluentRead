@@ -12,6 +12,8 @@ Specify consistent wording for names, products, and technical terms in machine a
 
 You can also preview and add a **Built-in glossary**. This creates an editable copy and preserves your master switch setting. Restore existing webpage translations before translating again.
 
+For AI papers, add **AI and machine learning**, enable the master switch, and select that glossary in the document's translation settings. It retains the original spelling of `Transformer` and `softmax`, and maps `scaled dot-product attention` to “缩放点积注意力”. Existing copies are not upgraded automatically; add these entries to your copy to retain your edits. A glossary controls matching names and phrases; review the meaning of longer sentences separately.
+
 The page toolbar shows **Import glossary** and **New glossary**, plus **Match preview** once entries are saved. Switch between multiple glossaries in the glossary card. The active language and website scope remain visible above the entries. **Glossary settings** stays visible at the bottom of the card; expand it to edit scope, export, or delete, and click again to collapse. With multiple glossaries, **Glossary priority** appears below the card. Case sensitivity is an optional entry setting.
 
 Settings save automatically; entry edits require **Save**. Drafts survive switching glossaries within the same page. Save before closing it.

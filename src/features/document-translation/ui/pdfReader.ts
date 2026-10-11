@@ -1,14 +1,14 @@
 /**
  * @file src/features/document-translation/ui/pdfReader.ts
  * 文件职责：为 PDF 阅读器提供有界页面调度和浏览器原页渲染，使用锁定版本的 PDF.js TextLayer 让文字选择与原版面一致。
- * 主要内容：按可见页优先维护五页窗口与两项并发；离屏、缩放和卸载取消迟到任务；译文页只复制一次原页像素，译文文字由阅读器叠加而不重绘；直接绘制 Canvas 而不编码 PNG，单页总像素与边长有上限；共享 PDF 加载租约，失败可重试且资源只释放一次。
+ * 主要内容：按可见页优先维护五页窗口与两项并发；离屏、缩放和卸载取消迟到任务；重排裁剪使用界面当前的原图区域，仅区域标识或几何变化使缓存失效，普通译文更新不重绘；译文页只复制一次原页像素，译文文字由阅读器叠加；直接绘制 Canvas 而不编码 PNG，单页总像素与边长有上限；共享 PDF 加载租约，失败可重试且资源只释放一次。
  * 模块边界：调度器只调用注入的渲染端口；浏览器渲染端口依赖 PDF.js 和文档预览资源，不发起翻译请求、不修改原始文件或负责入口挂载。
  */
 import type {PDFPageProxy, TextLayer} from 'pdfjs-dist/legacy/build/pdf.mjs';
 import {hasDistinctTranslation} from '@/src/core/translation/result';
 import type {DocumentRenderMode, ParsedDocument, PdfDocumentPage} from '@/src/features/document-translation/core/document';
 import {acquirePdfDocument} from '@/src/features/document-translation/ui/pdfPreview';
-import {buildPdfReadingPlan, type PdfReadingPresentation, type PdfReadingRect} from '@/src/features/document-translation/core/pdfReadingPlan';
+import {buildPdfReadingPlan, type PdfReadingPresentation, type PdfReadingRect, type PdfReadingRegionEntry} from '@/src/features/document-translation/core/pdfReadingPlan';
 
 export type PdfReaderMode = 'source' | DocumentRenderMode;
 export const PDF_READER_MAX_RESIDENT_PAGES = 5;
@@ -22,7 +22,9 @@ export interface PdfReaderSettings {
     scale: number;
     mode: PdfReaderMode;
     presentation?: PdfReadingPresentation;
-    /** 缩放、阅读方式或版面变化才使该页失效；译文更新不触发重绘。 */
+    /** 与界面同页计划一致的裁剪范围；显式空数组表示当前没有原图区域，未提供才使用兼容源计划。 */
+    regionEntries?: readonly PdfReadingRegionEntry[];
+    /** 缩放、阅读方式或原图区域变化才使该页失效；普通译文更新不触发重绘。 */
     key: string;
 }
 
@@ -78,9 +80,13 @@ export function pdfReaderPageHasTranslation(document: ParsedDocument, page: PdfD
     return page.segmentIndexes.some(index => hasDistinctTranslation(document.segments[index]?.source ?? '', translations[index]));
 }
 
-/** 页面像素只取决于缩放、阅读方式和版面；译文由阅读器叠加在页面之上，流式到达时不重绘任何 Canvas。 */
-export function pdfReaderPageKey(page: PdfDocumentPage, scale: number, mode: PdfReaderMode, presentation?: PdfReadingPresentation): string {
-    if (presentation === 'readable') return JSON.stringify([scale, mode, presentation, page.blocks, (page as PdfDocumentPage & {preservedRegions?: unknown}).preservedRegions]);
+/** 原图区域身份和坐标变更才重裁剪；键不含译文、角色或片段关联，区域插入顺序变化也不重绘原像素。 */
+export function pdfReaderPageKey(page: PdfDocumentPage, scale: number, mode: PdfReaderMode, presentation?: PdfReadingPresentation, regionEntries?: readonly PdfReadingRegionEntry[]): string {
+    if (presentation === 'readable') {
+        const regions = regionEntries?.map(entry => ({id: entry.id, rect: [entry.sourceRect.x, entry.sourceRect.y, entry.sourceRect.width, entry.sourceRect.height]}))
+            .sort((left, right) => left.id.localeCompare(right.id));
+        return JSON.stringify([scale, mode, presentation, page.blocks, (page as PdfDocumentPage & {preservedRegions?: unknown}).preservedRegions, ...(regions === undefined ? [] : [regions])]);
+    }
     return JSON.stringify([scale, mode]);
 }
 
@@ -170,8 +176,8 @@ export function createPdfReaderRenderPort(document: ParsedDocument): PdfReaderRe
                 const viewport = page.getViewport({scale: settings.scale});
                 const readable = settings.presentation === 'readable';
                 const showSource = settings.mode !== 'translated';
-                const plan = readable && settings.mode !== 'source' ? buildPdfReadingPlan(document, model, []) : undefined;
-                const regionEntries = plan?.entries.filter(entry => entry.kind === 'region') ?? [];
+                const regionEntries = readable && settings.mode !== 'source'
+                    ? settings.regionEntries ?? buildPdfReadingPlan(document, model, []).entries.filter(entry => entry.kind === 'region') : [];
                 const regionArea = regionEntries.reduce((sum, entry) => sum + entry.sourceRect.width * entry.sourceRect.height * settings.scale ** 2, 0);
                 const canvasCount = readable ? 1 + regionArea / Math.max(1, viewport.width * viewport.height) : settings.mode === 'bilingual' ? 2 : 1;
                 // 每个原图至少占一个像素；先预留，防止超细区域的向上取整累积突破上限。
@@ -230,6 +236,7 @@ export function createPdfReaderRenderPort(document: ParsedDocument): PdfReaderRe
                         crop.setAttribute('role', 'img');
                         crop.setAttribute('data-pdf-resource', 'region');
                         crop.setAttribute('data-pdf-region-id', entry.id);
+                        crop.setAttribute('data-pdf-source-rect', JSON.stringify(entry.sourceRect));
                     }
                     if (!showSource) canvas.width = canvas.height = 0;
                 } else if (settings.mode !== 'source') {

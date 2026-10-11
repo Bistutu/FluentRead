@@ -4,6 +4,7 @@
  * 主要内容：覆盖语言、分块、槽与空白保留、取消、思考输出、截断、HTTP 限流和损坏响应。
  * 模块边界：使用共享 HTTP 端口注入响应，不连接真实服务，不读取用户配置。
  */
+import {protectedDocumentLongMathParagraph} from './fixtures/documentLongMathParagraph';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import bilibili, {translateBilibiliFree, BILIBILI_FREE_TRANSLATION_URL} from '@/src/providers/translation/bilibili-free';
 import {setRuntimeFetch} from '@/src/platform/http/runtime';
@@ -20,6 +21,18 @@ const reply = (content: unknown = '你好', finish_reason = 'stop') => Response.
 afterEach(() => {setRuntimeFetch(); vi.restoreAllMocks();});
 
 describe('B站官方免费翻译', () => {
+    it('实际长数学段按2000码点分块时不拆开52个术语标记', async () => {
+        const packet = protectedDocumentLongMathParagraph(), observed: string[] = [];
+        setRuntimeFetch(vi.fn<typeof fetch>().mockImplementation(async (_url, init) => {
+            const text = JSON.parse(String(init?.body)).messages[0].content.split('\n\n')[1];
+            observed.push(text); return reply(text);
+        }));
+        const slots = serializeTranslationSlots([packet.text, 'tail'], 'protected-bili');
+        expect(parseTranslationSlots(slots, await translateBilibiliFree(request(slots.payload)))).toEqual([packet.text, 'tail']);
+        expect(observed.every(text => [...text].length <= 2000 && !text.includes('___FLUENTREAD'))).toBe(true);
+        for (const token of packet.tokens) expect(observed.filter(text => text.includes(token))).toHaveLength(1);
+    });
+
     it('独立服务归属机器翻译、无需密钥并可保存为默认服务', () => {
         expect(options.services.find(item => item.value === services.bilibili)?.label).toBe('B站翻译');
         expect(servicesType.isMachine(services.bilibili)).toBe(true);

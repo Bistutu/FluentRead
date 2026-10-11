@@ -4,6 +4,7 @@
  * 主要内容：使用可替换 runtime fetch 检查请求不带凭据，构造词霸 AES 响应，并覆盖边缘空白、换行、多槽和失败分支。
  * 模块边界：测试 provider 适配器，不把 mock 响应当作真实服务可用性或浏览器扩展端到端证据。
  */
+import {protectedDocumentLongMathParagraph} from './fixtures/documentLongMathParagraph';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import AES from 'crypto-js/aes';
 import encUtf8 from 'crypto-js/enc-utf8';
@@ -22,6 +23,19 @@ beforeEach(() => { fetchMock.mockReset(); setRuntimeFetch(fetchMock); });
 afterEach(() => setRuntimeFetch());
 
 describe('free Chinese web providers', () => {
+    it.each(['youdaoFree', 'icibaFree'] as const)('%s sends all 52 actual tokens within its codepoint budget', async provider => {
+        const packet = protectedDocumentLongMathParagraph(), observed: string[] = [];
+        fetchMock.mockImplementation(async (input, init) => {
+            const text = provider === 'youdaoFree' ? new URL(String(input)).searchParams.get('q')! : new URLSearchParams(String(init?.body)).get('q')!;
+            observed.push(text);
+            return provider === 'youdaoFree' ? Response.json({fanyi: {tran: text}}) : icibaResponse({err_no: 0, out: text});
+        });
+        const slots = serializeTranslationSlots([packet.text, 'tail'], 'protected-chinese');
+        expect(parseTranslationSlots(slots, await translateFreeChineseWebText(provider, slots.payload, 'en', 'zh-Hans'))).toEqual([packet.text, 'tail']);
+        expect(observed.every(text => [...text].length <= (provider === 'youdaoFree' ? 500 : 1000) && !text.includes('___FLUENTREAD'))).toBe(true);
+        for (const token of packet.tokens) expect(observed.filter(text => text.includes(token))).toHaveLength(1);
+    });
+
     it('uses anonymous Youdao GET query data and reads fanyi.tran', async () => {
         fetchMock.mockResolvedValue(Response.json({fanyi: {tran: '译文'}}));
         await expect(translateFreeChineseWebText('youdaoFree', ' Hello ', 'en', 'zh-Hans')).resolves.toBe(' 译文 ');
@@ -31,6 +45,62 @@ describe('free Chinese web providers', () => {
         expect(url.searchParams.get('keyfrom')).toBe('webfanyi.webmain');
         expect(url.searchParams.get('from')).toBe('en');
         expect(url.searchParams.get('to')).toBe('zh-CHS');
+    });
+
+    it('keeps the end of long Youdao paragraphs when the upstream silently truncates oversized requests', async () => {
+        // 真实匿名接口对 685 字符段落返回了在约 600 字符处截止的结果；此端口模拟该边界。
+        fetchMock.mockImplementation(async input => Response.json({fanyi: {tran: new URL(String(input)).searchParams.get('q')!.slice(0, 598)}}));
+        const source = `${'x'.repeat(600)} The final prediction depends only on earlier positions.`;
+        await expect(translateFreeChineseWebText('youdaoFree', source, 'en', 'zh-Hans')).resolves.toBe(source);
+        const queries = fetchMock.mock.calls.map(([input]) => new URL(String(input)).searchParams.get('q')!);
+        expect(queries).toHaveLength(2);
+        expect(queries.map(query => query.length)).toEqual([500, source.length - 500]);
+        expect(queries.join('')).toBe(source);
+    });
+
+    it('respects the Youdao boundary without splitting non-BMP characters and keeps Iciba chunks at 1000 codepoints', async () => {
+        fetchMock.mockImplementation(async input => Response.json({fanyi: {tran: new URL(String(input)).searchParams.get('q')!}}));
+        const source = '😀'.repeat(501);
+        await expect(translateFreeChineseWebText('youdaoFree', source, 'en', 'zh-Hans')).resolves.toBe(source);
+        const queries = fetchMock.mock.calls.map(([input]) => new URL(String(input)).searchParams.get('q')!);
+        expect(queries.map(query => Array.from(query).length)).toEqual([500, 1]);
+        expect(queries.every(query => !/[\uD800-\uDBFF]$/u.test(query) && !/^[\uDC00-\uDFFF]/u.test(query))).toBe(true);
+
+        fetchMock.mockClear();
+        fetchMock.mockImplementation(async (_input, init) => icibaResponse({err_no: 0, out: new URLSearchParams(String(init?.body)).get('q')}));
+        const icibaSource = '😀'.repeat(1001);
+        await expect(translateFreeChineseWebText('icibaFree', icibaSource, 'en', 'zh-Hans', new AbortController().signal)).resolves.toBe(icibaSource);
+        const icibaQueries = fetchMock.mock.calls.map(([_input, init]) => new URLSearchParams(String(init?.body)).get('q')!);
+        expect(icibaQueries.map(query => Array.from(query).length)).toEqual([1000, 1]);
+    });
+
+    it('does not start a second Youdao request after cancellation at its safe chunk boundary', async () => {
+        const controller = new AbortController();
+        fetchMock.mockImplementationOnce(async input => {
+            expect(new URL(String(input)).searchParams.get('q')).toHaveLength(500);
+            controller.abort();
+            return Response.json({fanyi: {tran: 'first'}});
+        });
+        await expect(translateFreeChineseWebText('youdaoFree', 'a'.repeat(501), 'en', 'zh-Hans', controller.signal)).rejects.toMatchObject({name: 'AbortError'});
+        expect(fetchMock).toHaveBeenCalledOnce();
+    });
+
+    it('prefers sentence endings and then whitespace within the safe bound without losing source characters', async () => {
+        fetchMock.mockImplementation(async input => Response.json({fanyi: {tran: new URL(String(input)).searchParams.get('q')!}}));
+        const sentence = `${'x'.repeat(480)}. `;
+        const source = `${sentence}This masking keeps the final complete prediction. ${'z'.repeat(150)}`;
+        await expect(translateFreeChineseWebText('youdaoFree', source, 'en', 'zh-Hans')).resolves.toBe(source);
+        expect(new URL(String(fetchMock.mock.calls[0]![0])).searchParams.get('q')).toBe(sentence.trim());
+
+        fetchMock.mockClear();
+        const words = 'longword '.repeat(75);
+        await expect(translateFreeChineseWebText('youdaoFree', words, 'en', 'zh-Hans')).resolves.toBe(words);
+        expect(new URL(String(fetchMock.mock.calls[0]![0])).searchParams.get('q')).toBe('longword '.repeat(55).trim());
+
+        fetchMock.mockClear();
+        const chinese = `${'中'.repeat(480)}。${'文'.repeat(100)}`;
+        await expect(translateFreeChineseWebText('youdaoFree', chinese, 'zh-Hans', 'en')).resolves.toBe(chinese);
+        expect(new URL(String(fetchMock.mock.calls[0]![0])).searchParams.get('q')).toBe(`${'中'.repeat(480)}。`);
     });
 
     it('decrypts Iciba out and preserves multiple slots and line whitespace', async () => {
@@ -136,7 +206,7 @@ describe('free Chinese web providers', () => {
         const source = `  ${'😀'.repeat(1101)}  `;
         const packet = serializeTranslationSlots(['', source, '\n\t'], 'format-test');
         const output = await translateFreeChineseWebText('youdaoFree', packet.payload, 'en', 'zh-Hans');
-        expect(parseTranslationSlots(packet, output)).toEqual(['', `  ${'译文'.repeat(2)}  `, '\n\t']);
+        expect(parseTranslationSlots(packet, output)).toEqual(['', `  ${'译文'.repeat(3)}  `, '\n\t']);
         expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
         for (const [, init] of fetchMock.mock.calls) expect(init?.credentials).toBe('omit');
     });
@@ -171,6 +241,30 @@ describe('free Chinese web providers', () => {
         };
         fetchMock.mockResolvedValueOnce(response);
         await expect(translateFreeChineseWebText('youdaoFree', 'a'.repeat(1001), 'en', 'zh-Hans', controller.signal)).rejects.toMatchObject({name: 'AbortError'});
+        expect(fetchMock).toHaveBeenCalledOnce();
+    });
+
+    it('does not decrypt or request the remaining Iciba chunks when response parsing is cancelled', async () => {
+        const controller = new AbortController();
+        const response = icibaResponse();
+        response.json = async () => {
+            controller.abort();
+            return {content: encryptedIciba({err_no: 0, out: 'first'})};
+        };
+        fetchMock.mockResolvedValueOnce(response);
+        await expect(translateFreeChineseWebText('icibaFree', 'a'.repeat(1001), 'en', 'zh-Hans', controller.signal)).rejects.toMatchObject({name: 'AbortError'});
+        expect(fetchMock).toHaveBeenCalledOnce();
+    });
+
+    it('stops at the next chunk if the caller cancels as the first parsed response settles', async () => {
+        const controller = new AbortController();
+        const response = Response.json({fanyi: {tran: 'first'}});
+        response.json = async () => {
+            queueMicrotask(() => queueMicrotask(() => queueMicrotask(() => controller.abort())));
+            return {fanyi: {tran: 'first'}};
+        };
+        fetchMock.mockResolvedValueOnce(response);
+        await expect(translateFreeChineseWebText('youdaoFree', 'a'.repeat(501), 'en', 'zh-Hans', controller.signal)).rejects.toMatchObject({name: 'AbortError'});
         expect(fetchMock).toHaveBeenCalledOnce();
     });
 });
