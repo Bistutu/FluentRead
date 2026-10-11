@@ -1,0 +1,36 @@
+{
+  "scope": "Actual original wrapper; existing guard passes; unchanged size verifier still fails. Structural removal, not a browser acceptance.",
+  "sourceStage": "gf-stats-boundary-original-wrapper",
+  "sourceSnapshotSha256": "2e1d99554ba8455f425d369dde7e45f4eb4467539ab4870638f8734155d806e9",
+  "patchSha256": "3ec6b2d786f572ac85f5fa3563819cc3e6ff3bd1fe06c7e2cdd5ef09be61d143",
+  "main": {
+    "bytes": 2280915,
+    "sha256": "23c82645c44dec85c72a06cae33564c640a1a0ca51a27426740bf7b5c777b5d9"
+  },
+  "baselineBytes": 2349380,
+  "actualMainSavingBytes": 68465,
+  "originalBudget": 2000000,
+  "excessBytes": 280915,
+  "removedUnreachableImplementations": {
+    "FluentReadModelUsageDatabase": true,
+    "FluentReadTranslationStatsDatabase": true,
+    "class ModelUsageRepository": true,
+    "class TranslationStatsRepository": true,
+    "buildModelUsageDashboard": true,
+    "buildTranslationStatsSnapshot": true
+  },
+  "resourceCommit": "80c9da44f8cd7c01f7a50ac767c79396cf78cce5",
+  "resourceBytesChanged": false,
+  "browserRun": false,
+  "modelAPIcalls": 0,
+  "resources": {
+    "fluentread-data.v1.js": {
+      "sha256": "6d43a00d1732422fe0946b292a1986254a1e3244eb04f156ce6a13c1649a0d37",
+      "committedTrackedBuiltEqual": true
+    },
+    "fluentread-vendor.v1.js": {
+      "sha256": "8fa608295f4e3479c9c70a1181ee008944c85b19d1c3bd542f7062e91898fc38",
+      "committedTrackedBuiltEqual": true
+    }
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "status": "actual graph; matched exact original wrapper final artifact SHA",
+  "oldArtifactSHA": "78bc5697da881bd392fdead89eb700b905cdd49c572cfdb512b8b44bc4ab66a1",
+  "newArtifactSHA": "74b100f3e213d88f9fa307e54e63fbacb17473871d111dcddca330694706c416",
+  "oldModules": 381,
+  "newModules": 375,
+  "removedModules": [
+    "src/app/content/features.ts",
+    "src/core/config/manga.ts",
+    "src/core/config/mangaReaderProfiles.ts",
+    "src/core/config/mangaSiteCatalog.ts",
+    "src/core/config/transfer.ts",
+    "src/platform/storage/modelUsageRepository.ts",
+    "src/platform/storage/translationStatsRepository.ts",
+    "src/services/model-usage/aggregation.ts",
+    "src/services/model-usage/types.ts",
+    "src/services/translation-stats/aggregation.ts"
+  ],
+  "addedModules": [
+    "src/core/config/mangaRules.ts",
+    "userscript/configRuntime.ts",
+    "userscript/pageTranslationRuntime.ts",
+    "userscript/translationInsights.ts"
+  ],
+  "changedModules": [
+    {
+      "id": "src/app/translation/runtime.ts",
+      "beforeCharacters": 2035,
+      "afterCharacters": 1983,
+      "removedExports": [
+        "getTranslationCacheStats"
+      ]
+    },
+    {
+      "id": "src/features/floating-ball/content/runtime.ts",
+      "beforeCharacters": 6556,
+      "afterCharacters": 6390,
+      "removedExports": [
+        "toggleFloatingBallTranslation"
+      ]
+    },
+    {
+      "id": "src/features/selection-translation/core.ts",
+      "beforeCharacters": 14432,
+      "afterCharacters": 14306,
+      "removedExports": [
+        "isSameLanguage",
+        "calculateReadingPopupLayout"
+      ]
+    },
+    {
+      "id": "src/services/config/store.ts",
+      "beforeCharacters": 59240,
+      "afterCharacters": 55091,
+      "removedExports": [
+        "CONFIG_PERSIST_BATCH_MESSAGE",
+        "prepareHydratedConfigForExport",
+        "prepareConfigSaveRequest",
+        "subscribeConfigHistory",
+        "handoffPendingConfigPatches",
+        "waitForConfigPersistenceQueue",
+        "requestConfigSave",
+        "requestConfigHistoryAction"
+      ]
+    },
+    {
+      "id": "src/services/translation-stats/types.ts",
+      "beforeCharacters": 921,
+      "afterCharacters": 49,
+      "removedExports": [
+        "TRANSLATION_STATS_SCHEMA_VERSION",
+        "TRANSLATION_STATS_MAX_STORED_REQUESTS",
+        "TRANSLATION_STATS_ROLLUP_RETENTION_DAYS",
+        "TRANSLATION_STATS_REQUEST_PAGE_SIZE",
+        "TRANSLATION_STATS_MAX_REQUEST_ROUTES",
+        "TRANSLATION_STATS_REQUEST_MAX_PAGE_SIZE",
+        "TRANSLATION_STATS_DURATION_BOUNDS_MS",
+        "TRANSLATION_STATS_SIZE_BOUNDS_CHARS",
+        "TRANSLATION_REQUEST_OUTCOMES",
+        "TRANSLATION_REQUEST_SOURCES",
+        "TRANSLATION_REQUEST_MODES",
+        "TRANSLATION_STATS_ERROR_KINDS"
+      ]
+    },
+    {
+      "id": "src/ui/translationLoadingIndicator.ts",
+      "beforeCharacters": 17634,
+      "afterCharacters": 3730,
+      "removedExports": []
+    },
+    {
+      "id": "userscript/main.ts",
+      "beforeCharacters": 6772,
+      "afterCharacters": 6794,
+      "removedExports": []
+    }
+  ],
+  "unit": "rendered JS characters, not UTF8 bytes or additive net savings",
+  "exactNetSavingsSee": "GF-FOUR-CANDIDATES-FINAL-ARTIFACT.json"
+}

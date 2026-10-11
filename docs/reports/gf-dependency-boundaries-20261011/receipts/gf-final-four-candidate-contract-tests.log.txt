@@ -1,0 +1,59 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 1, command: node <pnpm9> exec vitest run tests/userscriptViteConfig.test.ts tests/userscriptCompression.test.ts tests/mangaSites.test.ts tests/architecture/verificationOwnership.test.ts tests/translationLoadingIndicator.test.ts tests/userscriptPrivacy.test.ts tests/userscriptCredentialPersistence.test.ts tests/userscriptPlatform.test.ts tests/implementationAudit49F.test.ts tests/userscriptFullOptions.test.ts --maxWorkers=1 --minWorkers=1 --fileParallelism=false
+
+ RUN  v2.1.9 <repo>
+
+stderr | tests/implementationAudit49F.test.ts > 49F concrete Vue mount-failure ownership boundary > releases the real i18n plugin subscription and partial SettingsPanel DOM when the client renderer port throws
+[Vue warn]: Cannot unmount an app that is not mounted.
+  at <SettingsPanel >
+
+stderr | tests/implementationAudit49F.test.ts > 49F real Vue partial construction disposal and retry > cleans a configureApp failure before plugin installation and retries the same actual SettingsPanel UI
+[Vue warn]: Cannot unmount an app that is not mounted.
+  at <SettingsPanel >
+
+stderr | tests/implementationAudit49F.test.ts > 49F real Vue partial construction disposal and retry > releases real plugin resources after configureApp throws, preserving its error when unsubscribe throws=false
+[Vue warn]: Cannot unmount an app that is not mounted.
+  at <SettingsPanel >
+
+stderr | tests/implementationAudit49F.test.ts > 49F real Vue partial construction disposal and retry > releases real plugin resources after configureApp throws, preserving its error when unsubscribe throws=true
+[Vue warn]: Cannot unmount an app that is not mounted.
+  at <SettingsPanel >
+
+stderr | tests/implementationAudit49F.test.ts > 49F real Vue partial construction disposal and retry > ignores actual pending hydration and bundle completion after plugin disposal before client mount
+[Vue warn]: Cannot unmount an app that is not mounted.
+  at <SettingsPanel >
+
+stderr | tests/implementationAudit49F.test.ts > 49F real Vue partial construction disposal and retry > disposes failed real document observation even when its disconnect port also throws
+[Vue warn]: Cannot unmount an app that is not mounted.
+  at <SettingsPanel >
+
+stderr | tests/implementationAudit49F.test.ts > 49F real Vue partial construction disposal and retry > releases document watches and subscriptions when real plugin registration throws
+[Vue warn]: Cannot unmount an app that is not mounted.
+  at <SettingsPanel >
+
+stderr | tests/implementationAudit49F.test.ts > 49F real Vue partial construction disposal and retry > does not remove a reentrant new SettingsPanel owner after its predecessor configureApp throws
+[Vue warn]: Cannot unmount an app that is not mounted.
+  at <SettingsPanel >
+
+stderr | tests/implementationAudit49F.test.ts > 49F real Vue partial construction disposal and retry > does not acquire observers from Vue mounted hooks queued by a failed real SettingsPanel fragment when the UI retries
+[Vue warn]: Cannot unmount an app that is not mounted.
+  at <App >
+
+ ✓ tests/implementationAudit49F.test.ts (75 tests) 3344ms
+   ✓ 49F actual build symbol detector > preserves free, bound, property, and escaped-identifier semantics at the production entry 702ms
+   ✓ 49F real config-store ownership through the full platform public handler > uses committed hydrated state for an actual optimistic patch 516ms
+ ✓ tests/mangaSites.test.ts (286 tests) 57ms
+ ✓ tests/userscriptViteConfig.test.ts (120 tests) 3681ms
+ ✓ tests/architecture/verificationOwnership.test.ts (16 tests) 3860ms
+   ✓ repository verification ownership > src 中每个可执行非组装模块都进入四维 100% 覆盖率边界 2231ms
+   ✓ repository verification ownership > 覆盖率清单不能引用不存在的源码或把组装根伪装成业务覆盖 1549ms
+ ✓ tests/userscriptPrivacy.test.ts (11 tests) 228ms
+ ✓ tests/translationLoadingIndicator.test.ts (10 tests) 8ms
+ ✓ tests/userscriptPlatform.test.ts (8 tests) 15ms
+ ✓ tests/userscriptFullOptions.test.ts (7 tests) 4ms
+ ✓ tests/userscriptCredentialPersistence.test.ts (2 tests) 233ms
+ ✓ tests/userscriptCompression.test.ts (5 tests) 9ms
+
+ Test Files  10 passed (10)
+      Tests  540 passed (540)
+   Start at  15:16:54
+   Duration  14.44s (transform 2.17s, setup 0ms, collect 2.12s, tests 11.44s, environment 1ms, prepare 208ms)

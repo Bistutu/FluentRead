@@ -1,0 +1,75 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 1, command: node <pnpm9> exec vitest run tests/userscriptCredentialPersistence.test.ts tests/userscriptPrivacy.test.ts tests/userscriptPlatform.test.ts tests/implementationAudit49F.test.ts tests/userscriptFullOptions.test.ts --maxWorkers=1 --minWorkers=1 --fileParallelism=false
+
+ RUN  v2.1.9 <repo>
+
+stderr | tests/implementationAudit49F.test.ts > 49F concrete Vue mount-failure ownership boundary > releases the real i18n plugin subscription and partial SettingsPanel DOM when the client renderer port throws
+[Vue warn]: Cannot unmount an app that is not mounted.
+  at <SettingsPanel >
+
+stderr | tests/implementationAudit49F.test.ts > 49F real Vue partial construction disposal and retry > cleans a configureApp failure before plugin installation and retries the same actual SettingsPanel UI
+[Vue warn]: Cannot unmount an app that is not mounted.
+  at <SettingsPanel >
+
+stderr | tests/implementationAudit49F.test.ts > 49F real Vue partial construction disposal and retry > releases real plugin resources after configureApp throws, preserving its error when unsubscribe throws=false
+[Vue warn]: Cannot unmount an app that is not mounted.
+  at <SettingsPanel >
+
+stderr | tests/implementationAudit49F.test.ts > 49F real Vue partial construction disposal and retry > releases real plugin resources after configureApp throws, preserving its error when unsubscribe throws=true
+[Vue warn]: Cannot unmount an app that is not mounted.
+  at <SettingsPanel >
+
+stderr | tests/implementationAudit49F.test.ts > 49F real Vue partial construction disposal and retry > ignores actual pending hydration and bundle completion after plugin disposal before client mount
+[Vue warn]: Cannot unmount an app that is not mounted.
+  at <SettingsPanel >
+
+stderr | tests/implementationAudit49F.test.ts > 49F real Vue partial construction disposal and retry > disposes failed real document observation even when its disconnect port also throws
+[Vue warn]: Cannot unmount an app that is not mounted.
+  at <SettingsPanel >
+
+stderr | tests/implementationAudit49F.test.ts > 49F real Vue partial construction disposal and retry > releases document watches and subscriptions when real plugin registration throws
+[Vue warn]: Cannot unmount an app that is not mounted.
+  at <SettingsPanel >
+
+stderr | tests/implementationAudit49F.test.ts > 49F real Vue partial construction disposal and retry > does not remove a reentrant new SettingsPanel owner after its predecessor configureApp throws
+[Vue warn]: Cannot unmount an app that is not mounted.
+  at <SettingsPanel >
+
+stderr | tests/implementationAudit49F.test.ts > 49F real Vue partial construction disposal and retry > does not acquire observers from Vue mounted hooks queued by a failed real SettingsPanel fragment when the UI retries
+[Vue warn]: Cannot unmount an app that is not mounted.
+  at <App >
+
+ ❯ tests/implementationAudit49F.test.ts (74 tests | 1 failed) 3211ms
+   ✓ 49F actual build symbol detector > preserves free, bound, property, and escaped-identifier semantics at the production entry 690ms
+   ✓ 49F real config-store ownership through the full platform public handler > uses committed hydrated state for an actual optimistic patch 508ms
+   × 49F actual pinned-data virtual catalog consumer > reconciles all 19 authoritative established rules without mutating pinned data and reuses every unchanged rule 53ms
+     → expected [ …(19) ] to have a length of 17 but got 19
+ ✓ tests/userscriptPrivacy.test.ts (11 tests) 231ms
+ ✓ tests/userscriptPlatform.test.ts (8 tests) 15ms
+ ✓ tests/userscriptFullOptions.test.ts (7 tests) 4ms
+ ✓ tests/userscriptCredentialPersistence.test.ts (2 tests) 230ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/implementationAudit49F.test.ts > 49F actual pinned-data virtual catalog consumer > reconciles all 19 authoritative established rules without mutating pinned data and reuses every unchanged rule
+AssertionError: expected [ …(19) ] to have a length of 17 but got 19
+
+- Expected
++ Received
+
+- 17
++ 19
+
+ ❯ tests/implementationAudit49F.test.ts:1233:38
+    1231|     it('reconciles all 19 authoritative established rules without muta…
+    1232|         const {catalogs, original} = await loadCatalogs();
+    1233|         expect(original.established).toHaveLength(17);
+       |                                      ^
+    1234|         expect(catalogs.established).toHaveLength(19);
+    1235|         for (const name of ['established', 'websites', 'profiles']) {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 101 passed (102)
+   Start at  15:11:14
+   Duration  5.19s (transform 1.67s, setup 0ms, collect 1.05s, tests 3.69s, environment 0ms, prepare 105ms)

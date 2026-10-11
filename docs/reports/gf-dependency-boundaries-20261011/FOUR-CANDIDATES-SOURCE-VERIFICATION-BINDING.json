@@ -1,0 +1,14 @@
+{
+  "codeCommit": "1bd0776fa79e39dbf9f46aa7936fbe8da16c4e4c",
+  "finalCompileAnd540TestsSnapshot": "2361b478069bf12d1c0ab8cc8ea65216c005f988d1c80e12a9f44dcca268ba83",
+  "chromiumFirefoxBuildsSnapshot": "6dbbc6e98328a9ef5cd0b7bbb305b374062323bca8c0db5960789b171a1ced93",
+  "differences": [
+    "tests/implementationAudit49F.test.ts"
+  ],
+  "allProductionSourceSame": true,
+  "mangaRulesSHA": "70654f0053c93f4a455bf826c485cbad6bda7a4f58f1ace60ea91150cf4a4ba8",
+  "mangaStrictCoverageStage": "gf-manga-rules-strict-coverage",
+  "mangaCoverageScope": "only src/core/config/mangaRules.ts; original strict config thresholds 100/100/100/100 retained; no full-repository coverage pass claimed",
+  "protected912Head": "ee2c29bd5be95c2670ff2fa9ecc13985bbe85651",
+  "no912EditsByThisPhase": true
+}

@@ -1,0 +1,39 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 1, command: node <pnpm9> exec node scripts/build-userscript-greasyfork.mjs
+vite v5.4.19 building for production...
+transforming...
+✓ 443 modules transformed.
+rendering chunks...
+computing gzip size...
+.output/userscript-greasyfork/fluentread-data.v1.js    819.74 kB
+.output/userscript-greasyfork/fluent-read.user.js    2,238.69 kB │ gzip: 492.30 kB
+✓ built in 2.06s
+node:internal/modules/run_main:111
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Greasy Fork source exceeds 2 MB: 2280915 bytes
+    at file://<repo>/scripts/verify-userscript-greasyfork-build.mjs:15:8
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: false,
+  expected: true,
+  operator: '==',
+  diff: 'simple'
+}
+
+Node.js v26.11.1
+file://<repo>/scripts/build-userscript-greasyfork.mjs:26
+    if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} failed (${result.status})`);
+                                   ^
+
+Error: node scripts/verify-userscript-greasyfork-build.mjs failed (1)
+    at run (file://<repo>/scripts/build-userscript-greasyfork.mjs:26:36)
+    at file://<repo>/scripts/build-userscript-greasyfork.mjs:86:5
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25)
+    at async node:internal/modules/esm/loader:650:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:105:5)
+
+Node.js v26.11.1

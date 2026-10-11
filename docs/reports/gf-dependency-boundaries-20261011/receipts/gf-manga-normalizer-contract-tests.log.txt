@@ -1,0 +1,15 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 1, command: node <pnpm9> exec vitest run tests/mangaSites.test.ts tests/architecture/verificationOwnership.test.ts tests/userscriptViteConfig.test.ts tests/userscriptCompression.test.ts --maxWorkers=1 --minWorkers=1 --fileParallelism=false
+
+ RUN  v2.1.9 <repo>
+
+ ✓ tests/mangaSites.test.ts (286 tests) 61ms
+ ✓ tests/userscriptViteConfig.test.ts (87 tests) 2432ms
+ ✓ tests/architecture/verificationOwnership.test.ts (16 tests) 3893ms
+   ✓ repository verification ownership > src 中每个可执行非组装模块都进入四维 100% 覆盖率边界 2252ms
+   ✓ repository verification ownership > 覆盖率清单不能引用不存在的源码或把组装根伪装成业务覆盖 1562ms
+ ✓ tests/userscriptCompression.test.ts (5 tests) 9ms
+
+ Test Files  4 passed (4)
+      Tests  394 passed (394)
+   Start at  15:06:11
+   Duration  8.06s (transform 677ms, setup 0ms, collect 1.28s, tests 6.40s, environment 0ms, prepare 84ms)

@@ -1,0 +1,16 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 1, command: node <pnpm9> test:audit
+
+> FluentRead-流畅阅读@0.0.37 test:audit <repo>
+> node scripts/testing/audit-test-suite.mjs
+
+{
+  "status": "ok",
+  "groups": {
+    "architecture": 33,
+    "unit": 377,
+    "functional": 203,
+    "regression": 41
+  },
+  "files": 654,
+  "cases": 10887
+}

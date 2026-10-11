@@ -1,0 +1,23 @@
+	Command being timed: "node <repo>/scripts/testing/run-resource-safe.mjs --cpu-target 60 --max-workers 1 --concurrency 1 -- node <pnpm9> exec vitest run tests/mangaSites.test.ts tests/architecture/verificationOwnership.test.ts tests/userscriptViteConfig.test.ts tests/userscriptCompression.test.ts --maxWorkers=1 --minWorkers=1 --fileParallelism=false"
+	User time (seconds): 10.95
+	System time (seconds): 0.82
+	Percent of CPU this job got: 139%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 0:08.44
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 669904
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 53
+	Minor (reclaiming a frame) page faults: 644063
+	Voluntary context switches: 26466
+	Involuntary context switches: 664
+	Swaps: 0
+	File system inputs: 0
+	File system outputs: 64
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
