@@ -1,7 +1,7 @@
 /**
  * @file tests/pdfLayoutAnalysis.test.ts
  * 文件职责：验证 PDF 阅读分析不会把分栏、表格、公式、上下标或插图误当作一个可覆盖的正文框。
- * 主要内容：使用真实绘图操作语义和可复现字形几何验证矩阵、裁剪、行关联、已关联根号的下伸擦除范围、语义边界与阅读顺序；回放实际论文第10页的字形/细箭头，确保类型签名名称和交换图标签不进入翻译而邻近正文仍进入，反例约束普通短标题、自然语言解释、页眉页脚、缺失数学端点和粗长短线；回放参考文献的折行 URL 并验证完整地址进入既有字面保护，覆盖普通词、独立地址、段落/分栏不误拼接和长文的几何读取上限。
+ * 主要内容：使用真实绘图操作语义和可复现字形几何验证矩阵、裁剪、行关联、已关联根号的下伸擦除范围、语义边界与阅读顺序；回放实际论文第10、11页的字形/细箭头，确保类型签名名称和交换图标签不进入翻译而邻近正文仍进入，反例约束普通短标题、自然语言解释、页眉页脚、缺失数学端点和粗长短线；回放参考文献的折行 URL 并验证完整地址进入既有字面保护，覆盖普通词、独立地址、段落/分栏不误拼接和长文的几何读取上限。
  * 模块边界：测试纯分析模块；真实 PDF 提取和来源字节不变由 PDF 解析集成测试补充。
  */
 import {describe, expect, it} from 'vitest';
@@ -166,7 +166,134 @@ const pageTenMathGeometry = {
     graphics: [{"x":276.1718,"y":493.0427,"width":42.691956000000005,"height":0,"kind":"path"},{"x":277.6378,"y":548.0427,"width":39.75999999999999,"height":0,"kind":"path"},{"x":265.5428,"y":503.91170000000005,"width":0,"height":34.71597700000001,"kind":"path"},{"x":329.7328,"y":503.91170000000005,"width":0,"height":34.71597700000001,"kind":"path"},{"x":296.6778,"y":498.5427,"width":0,"height":42.113099999999974,"kind":"path"},{"x":298.5978,"y":498.5427,"width":0,"height":42.113099999999974,"kind":"path"}] as Parameters<typeof analyzePdfPageLayout>[0]['graphics'],
 };
 
+// 同一公开 PDF 第11页，source SHA256 390775dbc9debdcf2ed1b076eed013387ca057630be3cb594617b2b742e48cf0；实际字形、箭头路径与上下正文，不含译文。
+const pageElevenMathGeometry = {
+    width: 595.2756, height: 841.8898,
+    atoms: ([
+        ["Definition",70.86614,242.62140000000008,51.93099999999999,11,250.54140000000007,11,"sans-serif"],
+        ["6",125.54714,242.62140000000008,5.5,11,250.54140000000007,11,"sans-serif"],
+        [".",131.04713,242.62140000000008,2.75,11,250.54140000000007,11,"sans-serif"],
+        ["Define the transformation",136.54713,242.55540000000008,125.68599999999998,11.077000000000002,250.54140000000007,11,"sans-serif"],
+        ["recover",264.98315,241.67540000000008,34.583999999999996,11,250.54140000000007,11,"sans-serif"],
+        ["Γ",299.56714,247.05220000000006,5.4362,7.7,253.25840000000005,7.7,"sans-serif"],
+        ["on",308.36935,242.55540000000008,12.407999999999998,11.077000000000002,250.54140000000007,11,"sans-serif"],
+        ["𝜕",323.52734,241.67540000000008,5.840999999999999,11,250.54140000000007,11,"sans-serif"],
+        ["Γ",330.06134,241.67540000000008,6.875,11,250.54140000000007,11,"sans-serif"],
+        [":",336.93634,242.55540000000008,2.75,11.077000000000002,250.54140000000007,11,"sans-serif"],
+        ["recover",212.22426,262.0384,34.583999999999996,11,270.9044,11,"sans-serif"],
+        ["Γ",246.80826,267.41517000000005,5.4362,7.7,273.62137000000007,7.7,"sans-serif"],
+        [":",263.86047,262.0384,3.058,11,270.9044,11,"sans-serif"],
+        ["𝜕",284.67612,262.0384,5.840999999999999,11,270.9044,11,"sans-serif"],
+        ["Γ",291.2101,262.0384,6.875,11,270.9044,11,"sans-serif"],
+        ["→",313.0928,262.0384,11,11,270.9044,11,"sans-serif"],
+        ["𝜕",350.99255,262.0384,5.840999999999999,11,270.9044,11,"sans-serif"],
+        ["Γ",357.52655,262.0384,6.875,11,270.9044,11,"sans-serif"],
+        ["recover",212.22426,280.55140000000006,34.583999999999996,11,289.41740000000004,11,"sans-serif"],
+        ["Γ",246.80826,285.9282,5.4362,7.7,292.1344,7.7,"sans-serif"],
+        ["=",261.11047,280.55140000000006,8.558,11,289.41740000000004,11,"sans-serif"],
+        ["(",277.91846,280.55140000000006,4.279,11,289.41740000000004,11,"sans-serif"],
+        ["𝛾",282.19745,280.55140000000006,5.6979999999999995,11,289.41740000000004,11,"sans-serif"],
+        [",",288.47845,280.55140000000006,3.058,11,289.41740000000004,11,"sans-serif"],
+        ["𝜑",293.36978,280.55140000000006,7.194,11,289.41740000000004,11,"sans-serif"],
+        [")",300.56378,280.55140000000006,4.279,11,289.41740000000004,11,"sans-serif"],
+        ["↦",313.2193,280.55140000000006,10.747,11,289.41740000000004,11,"sans-serif"],
+        ["(",332.3428,280.55140000000006,4.279,11,289.41740000000004,11,"sans-serif"],
+        ["𝜑",336.6218,280.55140000000006,7.194,11,289.41740000000004,11,"sans-serif"],
+        ["(",343.8158,280.55140000000006,4.279,11,289.41740000000004,11,"sans-serif"],
+        ["𝛾",348.0948,280.55140000000006,5.6979999999999995,11,289.41740000000004,11,"sans-serif"],
+        [")",354.3758,280.55140000000006,4.279,11,289.41740000000004,11,"sans-serif"],
+        [",",358.6548,280.55140000000006,3.058,11,289.41740000000004,11,"sans-serif"],
+        ["id",363.54614,280.55140000000006,9.174,11,289.41740000000004,11,"sans-serif"],
+        ["Γ",372.72012,285.9282,5.4362,7.7,292.1344,7.7,"sans-serif"],
+        [")",378.77234,280.55140000000006,4.279,11,289.41740000000004,11,"sans-serif"],
+        ["(9)",510.35144,270.2884,14.058,11,279.1544,11,"sans-serif"],
+        ["This transformation applies the recovery function",87.36614,305.89340000000004,237.79872088499997,11.077000000000002,313.87940000000003,11,"sans-serif"],
+        ["𝜑",327.387,305.01340000000005,7.194,11,313.87940000000003,11,"sans-serif"],
+        ["to the current state",336.80314417700004,305.89340000000004,89.47443253100005,11.077000000000002,313.87940000000003,11,"sans-serif"],
+        ["𝛾",428.49973,305.01340000000005,5.6979999999999995,11,313.87940000000003,11,"sans-serif"],
+        ["and resets",437.002874177,305.89340000000004,48.64214417700001,11.077000000000002,313.87940000000003,11,"sans-serif"],
+        ["𝜑",487.86716,305.01340000000005,7.194,11,313.87940000000003,11,"sans-serif"],
+        ["to the",497.283304177,305.89340000000004,27.126144177000022,11.077000000000002,313.87940000000003,11,"sans-serif"],
+        ["identity. The following diagram illustrates how",70.86614,319.5554000000001,230.59219535000005,11.077000000000002,327.54140000000007,11,"sans-serif"],
+        ["recover",304.679,318.6754000000001,34.583999999999996,11,327.54140000000007,11,"sans-serif"],
+        ["recovers the context to its initial state",342.48360907,319.5554000000001,181.92583442,11.077000000000002,327.54140000000007,11,"sans-serif"],
+        ["after a sequence of effects",70.86614,333.21740000000005,123.717,11.077000000000002,341.20340000000004,11,"sans-serif"],
+        ["𝑓",197.33315,332.33740000000006,5.39,11,341.20340000000004,11,"sans-serif"],
+        ["′",203.71313,331.0042,3.1339,7.7,337.21040000000005,7.7,"sans-serif"],
+        ["𝑖",202.72314,337.7142,3.1108000000000002,7.7,343.92040000000003,7.7,"sans-serif"],
+        ["≔",210.5186,332.33740000000006,9.966,11,341.20340000000004,11,"sans-serif"],
+        ["track",223.54015,332.33740000000006,24.782999999999998,11,341.20340000000004,11,"sans-serif"],
+        ["Γ",248.32315,337.7142,5.4362,7.7,343.92040000000003,7.7,"sans-serif"],
+        ["(",254.37535,332.33740000000006,4.279,11,341.20340000000004,11,"sans-serif"],
+        ["𝑓",258.65436,332.33740000000006,5.39,11,341.20340000000004,11,"sans-serif"],
+        ["𝑖",264.04434,337.7142,3.1108000000000002,7.7,343.92040000000003,7.7,"sans-serif"],
+        [",",267.77115,332.33740000000006,3.058,11,341.20340000000004,11,"sans-serif"],
+        ["𝑔",272.66248,332.33740000000006,5.247,11,341.20340000000004,11,"sans-serif"],
+        ["𝑖",277.9095,337.7142,3.1108000000000002,7.7,343.92040000000003,7.7,"sans-serif"],
+        [")",281.6363,332.33740000000006,4.279,11,341.20340000000004,11,"sans-serif"],
+        [",",285.91528,333.21740000000005,2.75,11.077000000000002,341.20340000000004,11,"sans-serif"],
+        ["𝑖",291.41528,332.33740000000006,3.795,11,341.20340000000004,11,"sans-serif"],
+        ["=",298.26584,332.33740000000006,8.558,11,341.20340000000004,11,"sans-serif"],
+        ["1",309.8794,332.33740000000006,5.5,11,341.20340000000004,11,"sans-serif"],
+        [",",315.3794,332.33740000000006,3.058,11,341.20340000000004,11,"sans-serif"],
+        ["⋯",320.27072,332.33740000000006,8.536,11,341.20340000000004,11,"sans-serif"],
+        [",",328.80673,332.33740000000006,3.058,11,341.20340000000004,11,"sans-serif"],
+        ["𝑛",333.69806,332.33740000000006,6.6,11,341.20340000000004,11,"sans-serif"],
+        [", has been applied to",340.29807,333.21740000000005,99.89099999999998,11.077000000000002,341.20340000000004,11,"sans-serif"],
+        ["𝜕",442.93906,332.33740000000006,5.840999999999999,11,341.20340000000004,11,"sans-serif"],
+        ["Γ",449.47305,332.33740000000006,6.875,11,341.20340000000004,11,"sans-serif"],
+        [":",456.34805,333.21740000000005,2.75,11.077000000000002,341.20340000000004,11,"sans-serif"],
+        ["𝑓",228.72629,354.89340000000004,4.9,10,362.95340000000004,10,"sans-serif"],
+        ["1",233.6263,359.7814,3.983,7,365.4234,7,"sans-serif"],
+        ["𝑓",356.6268,354.82340000000005,4.9,10,362.88340000000005,10,"sans-serif"],
+        ["𝑛",361.5268,359.7114,4.942,7,365.3534,7,"sans-serif"],
+        ["𝑓",228.72629,422.19340000000005,4.9,10,430.25340000000006,10,"sans-serif"],
+        ["′",234.52629,420.98140000000006,2.849,7,426.62340000000006,7,"sans-serif"],
+        ["1",233.6263,427.08140000000003,3.983,7,432.7234,7,"sans-serif"],
+        ["𝑓",356.6268,422.19340000000005,4.9,10,430.25340000000006,10,"sans-serif"],
+        ["′",362.4268,420.98140000000006,2.849,7,426.62340000000006,7,"sans-serif"],
+        ["𝑛",361.5268,427.08140000000003,4.942,7,432.7234,7,"sans-serif"],
+        ["track",237.4478,389.7234,22.53,10,397.78340000000003,10,"sans-serif"],
+        ["track",301.6378,389.7234,22.53,10,397.78340000000003,10,"sans-serif"],
+        ["track",365.8278,389.7234,22.53,10,397.78340000000003,10,"sans-serif"],
+        ["recover",281.9178,442.25340000000006,31.440000000000005,10,450.31340000000006,10,"sans-serif"],
+        ["Γ",198.2278,364.77840000000003,6.25,10,372.83840000000004,10,"sans-serif"],
+        ["Γ",262.4178,364.77840000000003,6.25,10,372.83840000000004,10,"sans-serif"],
+        ["Γ",326.6078,364.77840000000003,6.25,10,372.83840000000004,10,"sans-serif"],
+        ["Γ",390.7978,364.77840000000003,6.25,10,372.83840000000004,10,"sans-serif"],
+        ["𝜕",195.2578,414.77840000000003,5.3100000000000005,10,422.83840000000004,10,"sans-serif"],
+        ["Γ",201.1978,414.77840000000003,6.25,10,422.83840000000004,10,"sans-serif"],
+        ["𝜕",259.44778,414.77840000000003,5.3100000000000005,10,422.83840000000004,10,"sans-serif"],
+        ["Γ",265.3878,414.77840000000003,6.25,10,422.83840000000004,10,"sans-serif"],
+        ["𝜕",323.6378,414.77840000000003,5.3100000000000005,10,422.83840000000004,10,"sans-serif"],
+        ["Γ",329.5778,414.77840000000003,6.25,10,422.83840000000004,10,"sans-serif"],
+        ["𝜕",387.8278,414.77840000000003,5.3100000000000005,10,422.83840000000004,10,"sans-serif"],
+        ["Γ",393.7678,414.77840000000003,6.25,10,422.83840000000004,10,"sans-serif"],
+        ["The diagram shows that the tracked effects followed by",87.36614,466.89940000000007,260.78617488000003,11.077000000000002,474.88540000000006,11,"sans-serif"],
+        ["recover",350.06332,466.0194000000001,34.583999999999996,11,474.88540000000006,11,"sans-serif"],
+        ["carry the initial effect context",386.55836186,466.89940000000007,137.85108743999993,11.077000000000002,474.88540000000006,11,"sans-serif"],
+        ["back to itself. Each tracking step in fact preserves the result of recovery itself, from whatever",70.86614,480.56140000000005,453.5433062050001,11.077000000000002,488.54740000000004,11,"sans-serif"],
+        ["state it is taken:",70.86614,494.2234,74.76699999999998,11.077000000000002,502.2094,11,"sans-serif"],
+    ] as Array<[string, number, number, number, number, number, number, string]>).map(([text, x, y, width, height, baseline, fontSize, fontFamily]) => ({text, x, y, width, height, baseline, fontSize, fontFamily})),
+    graphics: [{"x":211.98181,"y":369.4234,"width":42.691956000000005,"height":0,"kind":"path"},{"x":276.1718,"y":369.4234,"width":42.691956000000005,"height":0,"kind":"path"},{"x":340.36182,"y":369.4234,"width":42.691956000000005,"height":0,"kind":"path"},{"x":213.4478,"y":419.4234,"width":39.75999999999999,"height":0,"kind":"path"},{"x":277.6378,"y":419.4234,"width":39.75999999999999,"height":0,"kind":"path"},{"x":341.8278,"y":419.4234,"width":39.75999999999999,"height":0,"kind":"path"},{"x":232.4878,"y":374.4234,"width":0,"height":38.11310000000003,"kind":"path"},{"x":234.40779,"y":374.4234,"width":0,"height":38.11310000000003,"kind":"path"},{"x":296.6778,"y":374.4234,"width":0,"height":38.11310000000003,"kind":"path"},{"x":298.5978,"y":374.4234,"width":0,"height":38.11310000000003,"kind":"path"},{"x":360.8678,"y":374.4234,"width":0,"height":38.11310000000003,"kind":"path"},{"x":362.78778,"y":374.4234,"width":0,"height":38.11310000000003,"kind":"path"},{"x":393.9228,"y":428.83840000000004,"width":0,"height":23.085000999999977,"kind":"path"},{"x":203.8528,"y":454.4234,"width":187.57,"height":0,"kind":"path"},{"x":201.3528,"y":429.07840000000004,"width":0,"height":22.84499999999997,"kind":"path"}] as Parameters<typeof analyzePdfPageLayout>[0]['graphics'],
+};
+
 describe('isolated mathematical labels with local PDF geometry', () => {
+    it('replays actual page-eleven type, three arrow labels and U return without protecting either surrounding paragraph', async () => {
+        const before = JSON.stringify(pageElevenMathGeometry), result = analyzePdfPageLayout(pageElevenMathGeometry);
+        const {pdfPageSegments} = await import('@/src/features/document-translation/services/binary');
+        const segments: Array<import('@/src/features/document-translation/core/document').DocumentSegment> = [];
+        const registered = pdfPageSegments(result.blocks, 11, segments);
+        const protectedIndexes = result.blocks.flatMap((block, index) => block.source === 'track' || block.source === 'recover' || block.source === 'recoverΓ: 𝜕Γ → 𝜕Γ' ? [index] : []);
+        expect(protectedIndexes).toHaveLength(5);
+        for (const index of protectedIndexes) expect(registered.blocks[index]).toMatchObject({kind: 'formula', preserveSource: true, segmentIndex: -1});
+        expect(segments.some(segment => ['track', 'recover', 'recoverΓ: 𝜕Γ → 𝜕Γ'].includes(segment.source))).toBe(false);
+        for (const prefix of ['Definition 6.', 'This transformation applies', 'The diagram shows']) {
+            expect(result.blocks.find(block => block.source.startsWith(prefix))).toMatchObject({kind: 'text', preserveSource: false});
+            expect(segments.some(segment => segment.source.startsWith(prefix))).toBe(true);
+        }
+        expect(JSON.stringify(pageElevenMathGeometry)).toBe(before);
+    });
     it('replays actual page-ten glyphs and excludes both mathematical labels from provider segments while retaining definition and theorem prose', async () => {
         const before = JSON.stringify(pageTenMathGeometry);
         const result = analyzePdfPageLayout(pageTenMathGeometry);
@@ -244,6 +371,134 @@ describe('isolated mathematical labels with local PDF geometry', () => {
         expect(result.blocks.filter(block => block.source === 'rename: A → B').map(block => block.kind)).toEqual(['footer', 'footer']);
         expect(result.blocks.find(block => block.source === 'Heading')).toMatchObject({kind: 'heading', preserveSource: false});
         expect(result.blocks.find(block => block.source === 'remote')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it.each(['vertical', 'horizontal'] as const)('recognizes a %s connector joining interiors of two independently math-supported edges', orientation => {
+        const vertical = orientation === 'vertical';
+        const nodes = vertical ? [atom('Γ', 160, 104, 5), atom('Δ', 235, 104, 5), atom('Θ', 160, 174, 5), atom('Λ', 235, 174, 5)]
+            : [atom('Γ', 187, 89, 5), atom('Δ', 187, 169, 5), atom('Θ', 257, 89, 5), atom('Λ', 257, 169, 5)];
+        const label = vertical ? atom('compose', 206, 140, 35) : atom('compose', 211, 118, 35);
+        const edges = vertical ? [100, 170].map(y => ({kind: 'path' as const, x: 175, y, width: 50, height: 0}))
+            : [190, 260].map(x => ({kind: 'path' as const, x, y: 100, width: 0, height: 50}));
+        const connector = {kind: 'path' as const, x: 200, y: vertical ? 110 : 125, width: vertical ? 0 : 50, height: vertical ? 50 : 0};
+        const result = analyze([...nodes, label, atom('Ordinary prose still translates.', 70, 400, 400)], [...edges, connector]);
+        expect(result.blocks.find(block => block.source === 'compose')).toMatchObject({kind: 'formula', preserveSource: true});
+        expect(result.blocks.find(block => block.source.startsWith('Ordinary'))).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it('allows a direct mathematical node at one connector end and an independently supported edge at the other', () => {
+        const result = analyze([atom('Γ', 197, 104, 5), atom('Θ', 160, 174, 5), atom('Λ', 235, 174, 5), atom('compose', 206, 140, 35), atom('Ordinary prose still translates.', 70, 400, 400)],
+            [{kind: 'path', x: 175, y: 170, width: 50, height: 0}, {kind: 'path', x: 200, y: 110, width: 0, height: 50}]);
+        expect(result.blocks.find(block => block.source === 'compose')).toMatchObject({kind: 'formula', preserveSource: true});
+    });
+    it.each([
+        {name: 'no supporting edges', nodes: ['Γ', 'Δ', 'Θ', 'Λ'], edges: []},
+        {name: 'only one supporting edge', nodes: ['Γ', 'Δ', 'Θ', 'Λ'], edges: [100]},
+        {name: 'one mathematical endpoint per supporting edge', nodes: ['Γ', '', 'Θ', ''], edges: [100, 170]},
+        {name: 'ordinary word endpoints', nodes: ['Start', 'Finish', 'Start', 'Finish'], edges: [100, 170]},
+        {name: 'ordinary country endpoints', nodes: ['UK', 'US', 'UK', 'US'], edges: [100, 170]},
+        {name: 'parallel supporting edges', nodes: ['Γ', 'Δ', 'Θ', 'Λ'], edges: [100, 170], parallel: true},
+        {name: 'connector outside supporting edges', nodes: ['Γ', 'Δ', 'Θ', 'Λ'], edges: [100, 170], connectorX: 270},
+        {name: 'connector close to a supporting edge end', nodes: ['Γ', 'Δ', 'Θ', 'Λ'], edges: [100, 170], connectorX: 180},
+        {name: 'connector far from both supporting edges', nodes: ['Γ', 'Δ', 'Θ', 'Λ'], edges: [100, 170], connectorY: 117, connectorHeight: 36},
+        {name: 'thick supporting edges', nodes: ['Γ', 'Δ', 'Θ', 'Λ'], edges: [100, 170], thickness: 2},
+    ])('leaves an ordinary name translatable with $name', ({nodes, edges, parallel, connectorX = 200, connectorY = 110, connectorHeight = 50, thickness = 0}) => {
+        const points = parallel ? [[130, 104], [260, 104], [130, 174], [260, 174]] : [[160, 104], [235, 104], [160, 174], [235, 174]];
+        const glyphs = nodes.flatMap((text, index) => text ? [atom(text, points[index][0], points[index][1], text.length * 5)] : []);
+        const paths = parallel ? [135, 265].map(x => ({kind: 'path' as const, x, y: 110, width: 0, height: 50}))
+            : edges.map(y => ({kind: 'path' as const, x: 175, y, width: 50, height: thickness}));
+        const result = analyze([...glyphs, atom('compose', connectorX + 6, 140, 35), atom('Ordinary prose still translates.', 70, 400, 400)],
+            [...paths, {kind: 'path', x: connectorX, y: connectorY, width: 0, height: connectorHeight}]);
+        expect(result.blocks.find(block => block.source === 'compose')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it.each([
+        {name: 'the same math edge', nodeBaseline: 110, edges: [120], glyph: 'Γ', glyphX: 160, glyphWidth: 5},
+        {name: 'two math edges sharing both support nodes', nodeBaseline: 114, edges: [110, 130], glyph: 'Γ', glyphX: 160, glyphWidth: 5},
+        {name: 'a direct glyph reused as edge support', nodeBaseline: 114, edges: [130], glyph: 'Γ + Δ', glyphX: 185, glyphWidth: 20},
+    ])('cannot reuse $name as evidence for both connector ends', ({nodeBaseline, edges, glyph, glyphX, glyphWidth}) => {
+        const result = analyze([atom(glyph, glyphX, nodeBaseline, glyphWidth), atom('Θ', 235, nodeBaseline, 5), atom('compose', 206, 123, 35), atom('Ordinary prose still translates.', 70, 400, 400)],
+            [...edges.map(y => ({kind: 'path' as const, x: 175, y, width: 50, height: 0})), {kind: 'path', x: 200, y: 110, width: 0, height: 20}]);
+        expect(result.blocks.find(block => block.source === 'compose')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+
+    const returnArrow = (options: {signature?: string | false; typeAtoms?: PdfLayoutAtom[]; nodes?: PdfLayoutAtom[]; baseX?: number; baseWidth?: number; pageWidth?: number;
+        baseKind?: 'path' | 'image'; baseThickness?: number; left?: boolean; right?: boolean; cornerShift?: number; legWidth?: number; legHeight?: number; gap?: number; labelHeight?: number} = {}) => {
+        const {signature = 'recover: A → B', typeAtoms, baseX = 202, baseWidth = 136, pageWidth = 612, baseKind = 'path', baseThickness = 0,
+            left = true, right: hasRight = true, cornerShift = 0, legWidth = 0, legHeight = 30, gap = 1, labelHeight = 10} = options;
+        const baseY = 112 + legHeight;
+        const nodes = options.nodes ?? [atom('Γ', baseX - 5, 104, 5), atom('Δ', baseX + baseWidth - 1, 104, 5)];
+        const label = {...atom('recover', baseX + baseWidth / 2 - 17.5, baseY - gap - (labelHeight - 8), 35), height: labelHeight};
+        const graphics: Parameters<typeof analyzePdfPageLayout>[0]['graphics'] = [
+            {kind: baseKind, x: baseX, y: baseY, width: baseWidth, height: baseThickness},
+            ...(left ? [{kind: 'path' as const, x: baseX - 2 + cornerShift, y: 110, width: legWidth, height: legHeight}] : []),
+            ...(hasRight ? [{kind: 'path' as const, x: baseX + baseWidth + 2, y: 110, width: legWidth, height: legHeight}] : []),
+        ];
+        return analyze([...(typeAtoms ?? (signature ? [atom(signature, 100, 70, 110)] : [])), ...nodes, label, atom('Ordinary prose still translates.', 30, 400, 300)], graphics, pageWidth);
+    };
+    it('recognizes a finite U return only for a same-page confirmed type function with independent mathematical endpoints', () => {
+        const result = returnArrow();
+        expect(result.blocks.find(block => block.source === 'recover')).toMatchObject({kind: 'formula', preserveSource: true});
+        expect(result.blocks.find(block => block.source.startsWith('Ordinary'))).toMatchObject({kind: 'text', preserveSource: false});
+        expect(returnArrow({signature: false}).blocks.find(block => block.source === 'recover')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it.each(['no same-name label', 'a same-name label far from every base'])('does not rescan dense unrelated paths with %s', scenario => {
+        let geometryReads = 0;
+        const graphics = Array.from({length: 900}, (_, index) => {
+            const horizontal = index < 300;
+            return {kind: 'path' as const, x: 10, y: 600, width: horizontal ? 100 : 0,
+                get height() {geometryReads += 1; return horizontal ? 0 : 30;}};
+        });
+        const name = scenario === 'no same-name label' ? 'ordinary' : 'recover';
+        const result = analyze([atom('recover: A → B', 100, 70, 110), atom(name, 265, 240, 35), atom('Ordinary prose still translates.', 30, 400, 300)], graphics);
+        expect(result.blocks.find(block => block.source === name)).toMatchObject({kind: 'text', preserveSource: false});
+        expect(geometryReads).toBeLessThan(graphics.length * 80);
+    });
+    it('derives a typed base name from the complete fragmented prefix followed by an actual lowered smaller subscript', () => {
+        const typeAtoms = [atom('re', 100, 70, 10), atom('cover', 110, 70, 25), atom('Γ', 135, 72.5, 4, 7), atom(':', 150, 70, 3), atom('A → B', 163, 70, 45)];
+        const result = returnArrow({typeAtoms});
+        expect(result.blocks.find(block => block.source === 'recoverΓ: A → B')).toMatchObject({kind: 'formula', preserveSource: true});
+        expect(result.blocks.find(block => block.source === 'recover')).toMatchObject({kind: 'formula', preserveSource: true});
+        expect(result.blocks.some(block => block.source === 're')).toBe(false);
+    });
+    it.each([
+        {name: 'same-size Greek suffix', font: 10, baseline: 70},
+        {name: 'small Greek suffix without a lowered baseline', font: 7, baseline: 70},
+        {name: 'a raised superscript', font: 7, baseline: 67.5},
+        {name: 'a large suffix with a lowered baseline', font: 9, baseline: 72.5},
+        {name: 'a distant lowered suffix', font: 7, baseline: 80, tallArrow: true},
+    ])('does not strip $name from a confirmed type name', ({font, baseline, tallArrow}) => {
+        const rhs = tallArrow ? [atom('A', 163, 70, 5), atom('→', 174, 70, 5, 20), atom('B', 184, 70, 5)] : [atom('A → B', 163, 70, 45)];
+        const result = returnArrow({typeAtoms: [atom('recover', 100, 70, 35), atom('Γ', 135, baseline, 4, font), atom(':', 150, 70, 3), ...rhs]});
+        expect(result.blocks.find(block => block.source === 'recoverΓ: A → B')).toMatchObject({kind: 'formula', preserveSource: true});
+        expect(result.blocks.find(block => block.source === 'recover')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it('does not remove a lowered small letter in the middle of a typed identifier', () => {
+        const result = returnArrow({typeAtoms: [atom('re', 100, 70, 10), atom('Γ', 110, 72.5, 4, 7), atom('cover', 114, 70, 25), atom(':', 150, 70, 3), atom('A → B', 163, 70, 45)]});
+        expect(result.blocks.find(block => block.source === 'reΓcover: A → B')).toMatchObject({kind: 'formula', preserveSource: true});
+        expect(result.blocks.find(block => block.source === 'recover')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it.each([
+        {name: 'a frame without any confirmed type', signature: false as const},
+        {name: 'only a same-name prose mention', signature: 'We use recover when needed.'},
+        {name: 'a natural-language arrow explanation', signature: 'recover: English → Chinese'},
+        {name: 'an unrelated typed function', signature: 'compose: A → B'},
+        {name: 'a header-only type', typeAtoms: [atom('recover: A → B', 100, 20, 110)]},
+        {name: 'ordinary mathematical-looking country nodes', nodes: [atom('UK', 197, 104, 10), atom('US', 337, 104, 10)]},
+        {name: 'ordinary word endpoints', nodes: [atom('Start', 197, 104, 25), atom('Finish', 337, 104, 30)]},
+        {name: 'only one mathematical node', nodes: [atom('Γ', 197, 104, 5)]},
+        {name: 'one shared mathematical node', baseWidth: 20, nodes: [atom('Γ + Δ', 203, 104, 20)]},
+        {name: 'no left leg', left: false},
+        {name: 'no right leg', right: false},
+        {name: 'a disconnected corner', cornerShift: 8},
+        {name: 'a thick nonorthogonal leg', legWidth: 2},
+        {name: 'an excessive leg length', legHeight: 130},
+        {name: 'a bitmap base', baseKind: 'image' as const},
+        {name: 'a thick base', baseThickness: 2},
+        {name: 'a base exceeding the font limit', baseWidth: 250},
+        {name: 'a base exceeding half the page', baseX: 80, baseWidth: 200, pageWidth: 380},
+        {name: 'a distant label', legHeight: 68, gap: 18},
+        {name: 'a label below the base', gap: -2},
+        {name: 'a label too close to the upper mathematical nodes', legHeight: 20, labelHeight: 14},
+    ])('does not preserve an ordinary U-frame word with $name', ({name: _name, ...options}) => {
+        expect(returnArrow(options).blocks.find(block => block.source === 'recover')).toMatchObject({kind: 'text', preserveSource: false});
     });
 });
 

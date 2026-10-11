@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/core/pdfLayoutAnalysis.ts
  * 文件职责：从 PDF 原始字形和绘图操作推导阅读顺序、段落与必须保留的公式、表格、插图区域。
- * 主要内容：在未旋转内容坐标中追踪绘图矩阵；按相邻行共同让出的竖带识别栏间距，松散的两端对齐行不被拆散；页眉页脚、数字/罗马数字/字母编号的标题、中英文题注与公式碎片分别归类，分栏由并排的正文段落确定、同栏内缩进不同的块按上下顺序阅读，图形在题注处断开，幻灯片内容框、段落底色和标题色带这类装文字的容器不算插图，原位重复描画的文字只读一次，表格按单元格切分且含词语的单元格可以翻译；按基线关联上下标，已关联根号的下伸矩形覆盖相邻被开方字符，以同基线的冒号和纯符号箭头类型、或细线两端的数学节点确认独立数学标签，先识别图表和独立公式，再按列与段落边界组织正文，仅对同段相邻行中以斜杠结束的 HTTP(S) 地址和含斜杠及数字的路径首词省去人工行间空格；保留逐行字形几何供阅读和导出使用。
+ * 主要内容：在未旋转内容坐标中追踪绘图矩阵；按相邻行共同让出的竖带识别栏间距，松散的两端对齐行不被拆散；页眉页脚、数字/罗马数字/字母编号的标题、中英文题注与公式碎片分别归类，分栏由并排的正文段落确定、同栏内缩进不同的块按上下顺序阅读，图形在题注处断开，幻灯片内容框、段落底色和标题色带这类装文字的容器不算插图，原位重复描画的文字只读一次，表格按单元格切分且含词语的单元格可以翻译；按基线关联上下标，已关联根号的下伸矩形覆盖相邻被开方字符，以同基线的冒号和纯符号箭头类型、或细线两端的数学节点及直接由数学节点支撑的正交短边确认独立数学标签，两端不复用支撑节点，有限 U 形返回箭头还须匹配同页已确认的类型函数名，先识别图表和独立公式，再按列与段落边界组织正文，仅对同段相邻行中以斜杠结束的 HTTP(S) 地址和含斜杠及数字的路径首词省去人工行间空格；保留逐行字形几何供阅读和导出使用。
  * 模块边界：纯几何分析，不加载 PDF.js、不访问 Canvas、网络或 DOM，不修改来源文字或文件。
  */
 import type {PdfDocumentBlock, PdfDocumentLine, PdfDocumentRun, PdfPreservedRegion} from './document';
@@ -12,7 +12,7 @@ export interface PdfLayoutAtom extends PdfDocumentRun {fontSize: number; baselin
 export interface PdfGraphicsShape extends Rectangle {kind: 'image' | 'form' | 'path'}
 export interface PdfGraphicsOperators {fnArray: readonly number[]; argsArray: readonly unknown[]}
 export interface PdfLayoutBlock extends Omit<PdfDocumentBlock, 'segmentIndex'> {source: string}
-interface LayoutLine extends PdfDocumentLine {baseline: number; fontSize: number; fontFamily: string; runs: PdfDocumentRun[]}
+interface LayoutLine extends PdfDocumentLine {baseline: number; fontSize: number; fontFamily: string; runs: PdfLayoutAtom[]}
 const identity = [1, 0, 0, 1, 0, 0];
 const median = (values: number[]) => {const sorted = [...values].sort((a, b) => a - b); return sorted[Math.floor(sorted.length / 2)] || 10;};
 const right = (box: Rectangle) => box.x + box.width;
@@ -249,33 +249,68 @@ function formulaLine(line: LayoutLine, pageWidth: number, lines: readonly Layout
 /** 仅正文范围、正文字号的孤立标识可成为数学标签；词本身不构成保留依据。 */
 function isolatedMathLabels(lines: readonly LayoutLine[], graphics: readonly PdfGraphicsShape[], font: number, width: number, height: number): Set<LayoutLine> {
     const labels = new Set<LayoutLine>();
-    const local = lines.filter(line => line.y >= height * 0.065 && bottom(line) <= height * 0.945
-        && line.fontSize <= font * 1.1 && line.width <= Math.min(width * 0.5, font * 12));
+    const body = lines.filter(line => line.y >= height * 0.065 && bottom(line) <= height * 0.945
+        && line.fontSize <= font * 1.1 && line.width <= width * 0.5);
+    const local = body.filter(line => line.width <= font * 12);
     const names = local.filter(line => /^[\p{L}\p{N}_]{1,32}$/u.test(line.text));
+    const typedNames = new Set<string>();
+    const recordName = (line: LayoutLine, name: string) => {
+        let remaining = name.length, stem = '', scripted = false, trailing = true;
+        for (const run of line.runs) {
+            if (!remaining) break;
+            const part = run.text.trim().slice(0, remaining); remaining -= part.length;
+            // 别名只去掉已确认类型名称末尾、字号更小且基线降低的下标；普通同字号希腊字母不被剥离。
+            const script = run.fontSize <= line.fontSize * 0.8 && run.baseline - line.baseline >= line.fontSize * 0.15
+                && run.baseline - line.baseline <= line.fontSize * 0.8;
+            if (script) scripted = true;
+            else {if (scripted) trailing = false; stem += part;}
+        }
+        typedNames.add(name); typedNames.add(trailing ? stem : name);
+    };
     // 普通双字母词（is、UK 等）也不构成数学证据；只认单字变量、数学样式字符与算符/数学标点。
     const symbolic = (text: string) => /^(?:[A-Za-z0-9_\p{Script=Greek}\p{M}\u{1D400}-\u{1D7FF}]|\p{Sm}|(?=\p{Math})[\u2100-\u214F]|[\s()[\]{},.'′″*:/-])+$/u.test(text)
         && !/[A-Za-z\p{Script=Greek}]{2}/u.test(text);
     const type = (text: string) => /[→↦]/u.test(text) && /[\p{L}\p{N}]/u.test(text) && symbolic(text);
     const types = local.filter(line => type(line.text));
-    for (const line of local) {
-        const signature = line.text.match(/^[\p{L}\p{N}_]{1,32}\s*:\s*(.+)$/u);
-        if (signature && type(signature[1])) labels.add(line);
+    for (const line of body) {
+        const signature = line.text.match(/^([\p{L}\p{N}_]{1,32})\s*:\s*(.+)$/u);
+        if (signature && type(signature[2])) {labels.add(line); recordName(line, signature[1]);}
         // PDF 的词距会把名称、冒号、类型拆成三行；必须左右紧邻且基线一致，不能跨栏或跨正文行推断。
         if (line.text !== ':' || !types.some(after => after.x >= right(line) && after.x - right(line) <= font * 1.5
             && Math.abs(after.baseline - line.baseline) <= font * 0.3)) continue;
         const name = names.find(before => right(before) <= line.x && line.x - right(before) <= font * 1.5
             && Math.abs(before.baseline - line.baseline) <= font * 0.3);
-        if (name) labels.add(name);
+        if (name) {labels.add(name); recordName(name, name.text);}
     }
     if (!graphics.length) return labels;
     const nodes = local.filter(line => symbolic(line.text) && /\p{L}/u.test(line.text));
-    for (const stroke of graphics) {
+    const strokes = graphics.filter(stroke => stroke.kind === 'path' && Math.min(stroke.width, stroke.height) <= 1
+        && Math.max(stroke.width, stroke.height) >= font * 2 && Math.max(stroke.width, stroke.height) <= font * 12);
+    // 图中的箭头也会接到另一条数学边的内部；这条边必须直接邻接两个不同数学节点，不能递归借用其它边。
+    const nearNode = (x: number, y: number, except?: LayoutLine) => nodes.find(node => node !== except
+        && Math.max(node.x - x, x - right(node), 0) <= font * 1.5 && Math.max(node.y - y, y - bottom(node), 0) <= font * 1.5);
+    const edges: Array<{shape: PdfGraphicsShape; nodes: [LayoutLine, LayoutLine]}> = [];
+    for (const shape of strokes) {
+        const horizontal = shape.width > shape.height;
+        const start = nearNode(shape.x, shape.y), end = start && nearNode(horizontal ? right(shape) : shape.x, horizontal ? shape.y : bottom(shape), start);
+        if (start && end) edges.push({shape, nodes: [start, end]});
+    }
+    for (const stroke of strokes) {
         const horizontal = stroke.width > stroke.height;
-        const length = horizontal ? stroke.width : stroke.height, thickness = horizontal ? stroke.height : stroke.width;
-        if (stroke.kind !== 'path' || thickness > 1 || length < font * 2 || length > font * 12) continue;
+        const length = horizontal ? stroke.width : stroke.height;
         const endX = horizontal ? right(stroke) : stroke.x, endY = horizontal ? stroke.y : bottom(stroke);
-        const endpoint = (x: number, y: number, except?: LayoutLine) => nodes.find(node => node !== except && Math.abs(node.x + node.width / 2 - x) <= font * 1.5
-            && Math.abs(node.y + node.height / 2 - y) <= font * 1.5);
+        const endpoint = (x: number, y: number, except: readonly LayoutLine[] = []): readonly LayoutLine[] | undefined => {
+            const node = nodes.find(node => !except.includes(node) && Math.abs(node.x + node.width / 2 - x) <= font * 1.5
+                && Math.abs(node.y + node.height / 2 - y) <= font * 1.5);
+            if (node) return [node];
+            return edges.find(edge => {
+                const crossing = edge.shape.width > edge.shape.height;
+                if (crossing === horizontal || edge.nodes.some(node => except.includes(node))) return false;
+                const along = crossing ? x - edge.shape.x : y - edge.shape.y;
+                const gap = crossing ? Math.abs(y - edge.shape.y) : Math.abs(x - edge.shape.x);
+                return along >= font && along <= Math.max(edge.shape.width, edge.shape.height) - font && gap <= font;
+            })?.nodes;
+        };
         const start = endpoint(stroke.x, stroke.y);
         if (!start || !endpoint(endX, endY, start)) continue;
         for (const name of names) {
@@ -284,6 +319,24 @@ function isolatedMathLabels(lines: readonly LayoutLine[], graphics: readonly Pdf
                 : Math.max(stroke.x - right(name), name.x - right(stroke), 0);
             if (along >= font && along <= length - font && gap <= font) labels.add(name);
         }
+    }
+    const returnNames = names.filter(name => typedNames.has(name.text));
+    if (!returnNames.length) return labels;
+    // 只为同页纯类型签名已经确认的函数识别有限 U 形返回箭头；不把长线一般化为数学边，也不沿图递归。
+    for (const base of graphics) {
+        if (base.kind !== 'path' || base.height > 1 || base.width < font * 2 || base.width > Math.min(width * 0.5, font * 24)) continue;
+        const nearby = returnNames.filter(name => {
+            const along = name.x + name.width / 2 - base.x, gap = base.y - bottom(name);
+            return along >= font && along <= base.width - font && gap >= 0 && gap <= font;
+        });
+        if (!nearby.length) continue;
+        const legs = strokes.filter(stroke => stroke.height > stroke.width && Math.abs(bottom(stroke) - base.y) <= font * 0.5);
+        const left = legs.find(leg => Math.abs(leg.x - base.x) <= font * 0.5);
+        const rightLeg = legs.find(leg => leg !== left && Math.abs(leg.x - right(base)) <= font * 0.5);
+        if (!left || !rightLeg) continue;
+        const start = nearNode(left.x, left.y), end = start && nearNode(rightLeg.x, rightLeg.y, start);
+        if (!start || !end) continue;
+        for (const name of nearby) if (name.y >= Math.max(left.y, rightLeg.y) + font) labels.add(name);
     }
     return labels;
 }
@@ -306,7 +359,7 @@ export function analyzePdfPageLayout(input: {atoms: readonly PdfLayoutAtom[]; gr
         const title = line.text.match(/^(.*?[^\s.．·…‥])\s*(?:[.．·…‥]\s?){6,}\s*\d{0,4}$/u)?.[1];
         if (!title) return line;
         let remaining = title.replace(/\s/gu, '').length, end = line.x;
-        const runs: PdfDocumentRun[] = [];
+        const runs: PdfLayoutAtom[] = [];
         for (const run of line.runs) {
             const length = run.text.replace(/\s/gu, '').length;
             if (!remaining) break;

@@ -97,7 +97,7 @@ beforeEach(async () => {
 afterEach(async () => {ports.pagePending?.resolve(ports.tasks.find(value => value.role === 'preview')?.page); ports.renderPending?.resolve(); app?.unmount(); await flush(); await vi.dynamicImportSettled(); windowTimers.forEach(timer => clearTimeout(timer)); windowTimers.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
 describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
-    it.each(['scanned', 'mixed', 'mixed-removed-duplicate', 'mixed-formula-labels'] as const)('preserves multi-page %s PDF OCR revisions across a parsing-version upgrade and subsequent reopening', async format => {
+    it.each(['scanned', 'mixed', 'mixed-removed-duplicate', 'mixed-formula-labels', 'mixed-diagram-labels'] as const)('preserves multi-page %s PDF OCR revisions across a parsing-version upgrade and subsequent reopening', async format => {
         const base = await binaryService.parseDocumentFile(file('history.pdf'));
         if (base.binary?.kind !== 'pdf') throw new Error('expected PDF');
         const bytes = base.binary.bytes;
@@ -121,7 +121,8 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         };
         const fresh = makeDocument(format === 'mixed' ? ['Stable native', 'New native title'] : ['New native title', 'Stable native']);
         const oldNative = format === 'mixed-removed-duplicate' ? ['Old native title', 'Stable native', 'Repeated OCR']
-            : format === 'mixed-formula-labels' ? ['Old native title', 'trackΓ', 'Stable native'] : ['Old native title', 'Stable native'];
+            : format === 'mixed-formula-labels' ? ['Old native title', 'trackΓ', 'Stable native']
+            : format === 'mixed-diagram-labels' ? ['Old native title', 'track', 'Stable native'] : ['Old native title', 'Stable native'];
         const old = await ports.actualRecognize(makeDocument(oldNative), async ({pageNumber}: {pageNumber: number}) => [
             {text: 'Repeated OCR', x: 5, y: 10, width: 90, height: 12},
             {text: `Page ${pageNumber} paragraph`, x: 5, y: 55, width: 90, height: 12},
@@ -135,14 +136,14 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         }
         let repeat = 0;
         const edits = old.segments.map(({source, id}: {source: string; id: number}) => format === 'mixed-removed-duplicate' && id === 2 ? '文字页重复原文校订不能占用扫描校订'
-            : source === 'trackΓ' ? '旧公式误译不能回填为正文'
+            : source === 'trackΓ' || source === 'track' ? '旧公式误译不能回填为正文'
             : source === 'Repeated OCR' ? `第 ${++repeat} 次独立校订`
             : source === 'Old native title' ? '旧标题校订不能乱填新标题' : source === 'Stable native' ? '未变文字页校订'
                 : source === `Page ${fresh.binary.pages.length} paragraph` ? '' : '扫描正文校订');
         const id = await documentHistoryId(bytes);
         const factory = new IDBFactory();
         const history = createDocumentHistory(factory);
-        const oldVersion = format === 'scanned' ? 10 : format === 'mixed-removed-duplicate' ? 7 : format === 'mixed-formula-labels' ? 13 : 12;
+        const oldVersion = format === 'scanned' ? 10 : format === 'mixed-removed-duplicate' ? 7 : format === 'mixed-formula-labels' ? 13 : format === 'mixed-diagram-labels' ? 14 : 12;
         await history.save({id, name: 'history.pdf', format: 'pdf', size: bytes.length, total: old.segments.length,
             completed: edits.filter((value: string) => value.trim()).length, updatedAt: 1, bytes, mimeType: 'application/pdf',
             translations: edits, fingerprint: 'old-settings', parsed: old, parsedVersion: oldVersion});
@@ -184,7 +185,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         }
         await vi.waitFor(async () => {
             const saved = await history.load(id);
-            expect(saved?.parsedVersion).toBe(14);
+            expect(saved?.parsedVersion).toBe(15);
             expect(saved?.translations).toEqual(expectedTranslations);
             expect((saved?.parsed as any).segments.map((segment: any) => segment.source)).toEqual(expectedSources);
             expect(saved?.parsed).not.toHaveProperty('segmentOrigins');
