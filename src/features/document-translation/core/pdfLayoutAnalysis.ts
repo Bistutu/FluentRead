@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/core/pdfLayoutAnalysis.ts
  * 文件职责：从 PDF 原始字形和绘图操作推导阅读顺序、段落与必须保留的公式、表格、插图区域。
- * 主要内容：在未旋转内容坐标中追踪绘图矩阵；按相邻行共同让出的竖带识别栏间距，松散的两端对齐行不被拆散；页眉页脚、数字/罗马数字/字母编号的标题、中英文题注与公式碎片分别归类，分栏由并排的正文段落确定、同栏内缩进不同的块按上下顺序阅读，图形在题注处断开，幻灯片内容框、段落底色和标题色带这类装文字的容器不算插图，原位重复描画的文字只读一次，表格按单元格切分且含词语的单元格可以翻译；按基线关联上下标，已关联根号的下伸矩形覆盖相邻被开方字符，先识别图表和独立公式，再按列与段落边界组织正文，仅对同段相邻行中以斜杠结束的 HTTP(S) 地址和含斜杠及数字的路径首词省去人工行间空格；保留逐行字形几何供阅读和导出使用。
+ * 主要内容：在未旋转内容坐标中追踪绘图矩阵；按相邻行共同让出的竖带识别栏间距，松散的两端对齐行不被拆散；页眉页脚、数字/罗马数字/字母编号的标题、中英文题注与公式碎片分别归类，分栏由并排的正文段落确定、同栏内缩进不同的块按上下顺序阅读，图形在题注处断开，幻灯片内容框、段落底色和标题色带这类装文字的容器不算插图，原位重复描画的文字只读一次，表格按单元格切分且含词语的单元格可以翻译；按基线关联上下标，已关联根号的下伸矩形覆盖相邻被开方字符，以同基线的冒号和纯符号箭头类型、或细线两端的数学节点确认独立数学标签，先识别图表和独立公式，再按列与段落边界组织正文，仅对同段相邻行中以斜杠结束的 HTTP(S) 地址和含斜杠及数字的路径首词省去人工行间空格；保留逐行字形几何供阅读和导出使用。
  * 模块边界：纯几何分析，不加载 PDF.js、不访问 Canvas、网络或 DOM，不修改来源文字或文件。
  */
 import type {PdfDocumentBlock, PdfDocumentLine, PdfDocumentRun, PdfPreservedRegion} from './document';
@@ -246,6 +246,48 @@ function formulaLine(line: LayoutLine, pageWidth: number, lines: readonly Layout
         && !/\b(?:the|we|our|of|to|and|is|in|this|with|for|that|use|each|are|from|used)\b/iu.test(line.text);
 }
 
+/** 仅正文范围、正文字号的孤立标识可成为数学标签；词本身不构成保留依据。 */
+function isolatedMathLabels(lines: readonly LayoutLine[], graphics: readonly PdfGraphicsShape[], font: number, width: number, height: number): Set<LayoutLine> {
+    const labels = new Set<LayoutLine>();
+    const local = lines.filter(line => line.y >= height * 0.065 && bottom(line) <= height * 0.945
+        && line.fontSize <= font * 1.1 && line.width <= Math.min(width * 0.5, font * 12));
+    const names = local.filter(line => /^[\p{L}\p{N}_]{1,32}$/u.test(line.text));
+    // 普通双字母词（is、UK 等）也不构成数学证据；只认单字变量、数学样式字符与算符/数学标点。
+    const symbolic = (text: string) => /^(?:[A-Za-z0-9_\p{Script=Greek}\p{M}\u{1D400}-\u{1D7FF}]|\p{Sm}|(?=\p{Math})[\u2100-\u214F]|[\s()[\]{},.'′″*:/-])+$/u.test(text)
+        && !/[A-Za-z\p{Script=Greek}]{2}/u.test(text);
+    const type = (text: string) => /[→↦]/u.test(text) && /[\p{L}\p{N}]/u.test(text) && symbolic(text);
+    const types = local.filter(line => type(line.text));
+    for (const line of local) {
+        const signature = line.text.match(/^[\p{L}\p{N}_]{1,32}\s*:\s*(.+)$/u);
+        if (signature && type(signature[1])) labels.add(line);
+        // PDF 的词距会把名称、冒号、类型拆成三行；必须左右紧邻且基线一致，不能跨栏或跨正文行推断。
+        if (line.text !== ':' || !types.some(after => after.x >= right(line) && after.x - right(line) <= font * 1.5
+            && Math.abs(after.baseline - line.baseline) <= font * 0.3)) continue;
+        const name = names.find(before => right(before) <= line.x && line.x - right(before) <= font * 1.5
+            && Math.abs(before.baseline - line.baseline) <= font * 0.3);
+        if (name) labels.add(name);
+    }
+    if (!graphics.length) return labels;
+    const nodes = local.filter(line => symbolic(line.text) && /\p{L}/u.test(line.text));
+    for (const stroke of graphics) {
+        const horizontal = stroke.width > stroke.height;
+        const length = horizontal ? stroke.width : stroke.height, thickness = horizontal ? stroke.height : stroke.width;
+        if (stroke.kind !== 'path' || thickness > 1 || length < font * 2 || length > font * 12) continue;
+        const endX = horizontal ? right(stroke) : stroke.x, endY = horizontal ? stroke.y : bottom(stroke);
+        const endpoint = (x: number, y: number, except?: LayoutLine) => nodes.find(node => node !== except && Math.abs(node.x + node.width / 2 - x) <= font * 1.5
+            && Math.abs(node.y + node.height / 2 - y) <= font * 1.5);
+        const start = endpoint(stroke.x, stroke.y);
+        if (!start || !endpoint(endX, endY, start)) continue;
+        for (const name of names) {
+            const along = horizontal ? name.x + name.width / 2 - stroke.x : name.y + name.height / 2 - stroke.y;
+            const gap = horizontal ? Math.max(stroke.y - bottom(name), name.y - bottom(stroke), 0)
+                : Math.max(stroke.x - right(name), name.x - right(stroke), 0);
+            if (along >= font && along <= length - font && gap <= font) labels.add(name);
+        }
+    }
+    return labels;
+}
+
 export function analyzePdfPageLayout(input: {atoms: readonly PdfLayoutAtom[]; graphics: readonly PdfGraphicsShape[]; width: number; height: number}): {blocks: PdfLayoutBlock[]; preservedRegions: PdfPreservedRegion[]} {
     // 项目符号是单独的一个字形：符号字体里的圆点方块常被读成 n、u、l 这样的字母。它留在原页上不参与翻译，
     // 所在的行从符号之后算起，并且总是另起一段。
@@ -360,6 +402,7 @@ export function analyzePdfPageLayout(input: {atoms: readonly PdfLayoutAtom[]; gr
     }
     const inRegion = (region: PdfPreservedRegion, line: LayoutLine) => coversLine(region, line) && !(region.kind === 'figure' && (prose.has(line) || (font >= 14 && line.fontSize >= 12 && readable(line.text))));
     const ordinary = lines.filter(line => !regions.some(region => inRegion(region, line)));
+    const mathLabels = isolatedMathLabels(ordinary, input.graphics, font, input.width, input.height);
     const formulas = ordinary.filter(line => formulaLine(line, input.width, ordinary, font));
     for (const line of formulas) {
         let bounds: Rectangle = line;
@@ -397,7 +440,7 @@ export function analyzePdfPageLayout(input: {atoms: readonly PdfLayoutAtom[]; gr
         // 标题下方的作者署名字号常大于正文，但它是人名与单位标记，既不该翻译也不该出现在目录里。
         if (line.y < input.height * 0.45 && byline.test(line.text) && lines.some(above => above.baseline < line.baseline && above.fontSize > line.fontSize * 1.1)) return 'metadata';
         // 没有可读词语的短行（求和号、上下标、极限记号）是公式的碎片，翻译只会破坏它。
-        if (!readable(line.text)) return 'formula';
+        if (mathLabels.has(line) || !readable(line.text)) return 'formula';
         const numbered = line.fontSize >= font * 0.95 && line.text.length < 120;
         // “1. 标题”与编号列表同形：列表项的续行缩进或占满栏宽，标题下方则是空行或更短的折行。
         const listItem = () => lines.some(near => near.baseline > line.baseline && near.baseline - line.baseline <= line.fontSize * 1.45 * loose

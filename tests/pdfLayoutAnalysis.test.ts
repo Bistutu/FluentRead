@@ -1,7 +1,7 @@
 /**
  * @file tests/pdfLayoutAnalysis.test.ts
  * 文件职责：验证 PDF 阅读分析不会把分栏、表格、公式、上下标或插图误当作一个可覆盖的正文框。
- * 主要内容：使用真实绘图操作语义和可复现字形几何验证矩阵、裁剪、行关联、已关联根号的下伸擦除范围、语义边界与阅读顺序，回放参考文献的折行 URL 并验证完整地址进入既有字面保护，覆盖普通词、独立地址、段落/分栏不误拼接和长文的几何读取上限。
+ * 主要内容：使用真实绘图操作语义和可复现字形几何验证矩阵、裁剪、行关联、已关联根号的下伸擦除范围、语义边界与阅读顺序；回放实际论文第10页的字形/细箭头，确保类型签名名称和交换图标签不进入翻译而邻近正文仍进入，反例约束普通短标题、自然语言解释、页眉页脚、缺失数学端点和粗长短线；回放参考文献的折行 URL 并验证完整地址进入既有字面保护，覆盖普通词、独立地址、段落/分栏不误拼接和长文的几何读取上限。
  * 模块边界：测试纯分析模块；真实 PDF 提取和来源字节不变由 PDF 解析集成测试补充。
  */
 import {describe, expect, it} from 'vitest';
@@ -12,6 +12,240 @@ import {protectGlossaryText} from '@/src/core/glossary';
 const atom = (text: string, x: number, baseline: number, width = text.length * 5, fontSize = 10): PdfLayoutAtom => ({text, x, y: baseline - fontSize * .8, width, height: fontSize, baseline, fontSize, fontFamily: 'sans-serif'});
 const analyze = (atoms: PdfLayoutAtom[], graphics: Parameters<typeof analyzePdfPageLayout>[0]['graphics'] = [], width = 612, height = 792) => analyzePdfPageLayout({atoms, graphics, width, height});
 const ops = Object.fromEntries(['save', 'restore', 'transform', 'paintFormXObjectBegin', 'paintFormXObjectEnd', 'paintImageXObject', 'paintInlineImageXObject', 'paintImageMaskXObject', 'constructPath', 'stroke', 'closeStroke', 'fill', 'eoFill', 'fillStroke', 'eoFillStroke', 'closeFillStroke', 'closeEOFillStroke', 'endPath'].map((name, index) => [name, index + 1]));
+
+// 本机公开 PDF 2608.25512v1 第10页，source SHA256 390775dbc9debdcf2ed1b076eed013387ca057630be3cb594617b2b742e48cf0；由实际 PDF.js/pdfTextAtoms 提取，未包含任何机器翻译结果。
+const pageTenMathGeometry = {
+    width: 595.2756, height: 841.8898,
+    atoms: ([
+        ["Definition",70.86614,304.81940000000003,51.93099999999999,11,312.73940000000005,11,"sans-serif"],
+        ["3",125.54714,304.81940000000003,5.5,11,312.73940000000005,11,"sans-serif"],
+        [".",131.04713,304.81940000000003,2.75,11,312.73940000000005,11,"sans-serif"],
+        ["Define the transformation",136.54713,304.75340000000006,125.68599999999998,11.077000000000002,312.73940000000005,11,"sans-serif"],
+        ["track",264.98315,303.87340000000006,24.782999999999998,11,312.73940000000005,11,"sans-serif"],
+        ["Γ",289.76614,309.2502,5.4362,7.7,315.45640000000003,7.7,"sans-serif"],
+        ["on pairs of context functions:",298.56833,304.75340000000006,140.90999999999997,11.077000000000002,312.73940000000005,11,"sans-serif"],
+        ["track",154.18387,324.23640000000006,24.782999999999998,11,333.10240000000005,11,"sans-serif"],
+        ["Γ",178.96686,329.6132,5.4362,7.7,335.81940000000003,7.7,"sans-serif"],
+        [":",196.01906,324.23640000000006,3.058,11,333.10240000000005,11,"sans-serif"],
+        ["(",210.07706,324.23640000000006,4.279,11,333.10240000000005,11,"sans-serif"],
+        ["Γ",214.35606,324.23640000000006,6.875,11,333.10240000000005,11,"sans-serif"],
+        ["→",224.28662,324.23640000000006,11,11,333.10240000000005,11,"sans-serif"],
+        ["Γ",238.34218,324.23640000000006,6.875,11,333.10240000000005,11,"sans-serif"],
+        [")",245.21718,324.23640000000006,4.279,11,333.10240000000005,11,"sans-serif"],
+        ["×",251.94061,324.23640000000006,8.558,11,333.10240000000005,11,"sans-serif"],
+        ["(",262.94305,324.23640000000006,4.279,11,333.10240000000005,11,"sans-serif"],
+        ["Γ",267.22208,324.23640000000006,6.875,11,333.10240000000005,11,"sans-serif"],
+        ["→",277.15262,324.23640000000006,11,11,333.10240000000005,11,"sans-serif"],
+        ["Γ",291.20816,324.23640000000006,6.875,11,333.10240000000005,11,"sans-serif"],
+        [")",298.08316,324.23640000000006,4.279,11,333.10240000000005,11,"sans-serif"],
+        ["→",310.61218,324.23640000000006,11,11,333.10240000000005,11,"sans-serif"],
+        ["𝜕",336.61984,324.23640000000006,5.840999999999999,11,333.10240000000005,11,"sans-serif"],
+        ["Γ",343.15384,324.23640000000006,6.875,11,333.10240000000005,11,"sans-serif"],
+        ["→",365.0365,324.23640000000006,11,11,333.10240000000005,11,"sans-serif"],
+        ["𝜕",405.98462,324.23640000000006,5.840999999999999,11,333.10240000000005,11,"sans-serif"],
+        ["Γ",412.51862,324.23640000000006,6.875,11,333.10240000000005,11,"sans-serif"],
+        ["track",154.18387,342.74940000000004,24.782999999999998,11,351.6154,11,"sans-serif"],
+        ["Γ",178.96686,348.12620000000004,5.4362,7.7,354.33240000000006,7.7,"sans-serif"],
+        ["=",193.26906,342.74940000000004,8.558,11,351.6154,11,"sans-serif"],
+        ["(",243.54395,342.74940000000004,4.279,11,351.6154,11,"sans-serif"],
+        ["𝑓",247.82295,342.74940000000004,5.39,11,351.6154,11,"sans-serif"],
+        [",",254.20296,342.74940000000004,3.058,11,351.6154,11,"sans-serif"],
+        ["𝑔",259.0943,342.74940000000004,5.247,11,351.6154,11,"sans-serif"],
+        [")",264.61627,342.74940000000004,4.279,11,351.6154,11,"sans-serif"],
+        ["↦",310.73868,342.74940000000004,10.747,11,351.6154,11,"sans-serif"],
+        ["(",329.86218,342.74940000000004,4.279,11,351.6154,11,"sans-serif"],
+        ["𝛾",334.14117,342.74940000000004,5.6979999999999995,11,351.6154,11,"sans-serif"],
+        [",",340.42218,342.74940000000004,3.058,11,351.6154,11,"sans-serif"],
+        ["𝜑",345.3135,342.74940000000004,7.194,11,351.6154,11,"sans-serif"],
+        [")",352.5075,342.74940000000004,4.279,11,351.6154,11,"sans-serif"],
+        ["↦",365.163,342.74940000000004,10.747,11,351.6154,11,"sans-serif"],
+        ["(",384.2865,342.74940000000004,4.279,11,351.6154,11,"sans-serif"],
+        ["𝑓",388.56552,342.74940000000004,5.39,11,351.6154,11,"sans-serif"],
+        ["(",394.9455,342.74940000000004,4.279,11,351.6154,11,"sans-serif"],
+        ["𝛾",399.22452,342.74940000000004,5.6979999999999995,11,351.6154,11,"sans-serif"],
+        [")",405.5055,342.74940000000004,4.279,11,351.6154,11,"sans-serif"],
+        [",",409.78452,342.74940000000004,3.058,11,351.6154,11,"sans-serif"],
+        ["𝜑",414.67584,342.74940000000004,7.194,11,351.6154,11,"sans-serif"],
+        ["∘",424.31427,342.74940000000004,4.532,11,351.6154,11,"sans-serif"],
+        ["𝑔",431.29074,342.74940000000004,5.247,11,351.6154,11,"sans-serif"],
+        [")",436.8127,342.74940000000004,4.279,11,351.6154,11,"sans-serif"],
+        ["(6)",510.35144,332.48640000000006,14.058,11,341.35240000000005,11,"sans-serif"],
+        ["This transformation converts a forward function",87.36614,368.0914,233.46488706970007,11.077000000000002,376.0774,11,"sans-serif"],
+        ["𝑓",323.5812,367.2114,5.39,11,376.0774,11,"sans-serif"],
+        ["together with a candidate inverse",332.71137741394,368.0914,161.6347096557601,11.077000000000002,376.0774,11,"sans-serif"],
+        ["𝑔",497.09628,367.2114,5.247,11,376.0774,11,"sans-serif"],
+        ["into",505.36847741393996,368.0914,19.040999999999986,11.077000000000002,376.0774,11,"sans-serif"],
+        ["a transformation of the effect context",70.86614,381.75340000000006,181.26222950000002,11.077000000000002,389.73940000000005,11,"sans-serif"],
+        ["𝜕",255.47762,380.87340000000006,5.840999999999999,11,389.73940000000005,11,"sans-serif"],
+        ["Γ",262.01163,380.87340000000006,6.875,11,389.73940000000005,11,"sans-serif"],
+        [". Applying",268.88663,381.75340000000006,52.59624589999994,11.077000000000002,389.73940000000005,11,"sans-serif"],
+        ["track",324.83212,380.87340000000006,24.782999999999998,11,389.73940000000005,11,"sans-serif"],
+        ["Γ",349.6151,386.2502,5.4362,7.7,392.45640000000003,7.7,"sans-serif"],
+        ["(",355.6673,380.87340000000006,4.279,11,389.73940000000005,11,"sans-serif"],
+        ["𝑓",359.94632,380.87340000000006,5.39,11,389.73940000000005,11,"sans-serif"],
+        [",",366.3263,380.87340000000006,3.058,11,389.73940000000005,11,"sans-serif"],
+        ["𝑔",371.21765,380.87340000000006,5.247,11,389.73940000000005,11,"sans-serif"],
+        [")",376.73965,380.87340000000006,4.279,11,389.73940000000005,11,"sans-serif"],
+        ["to a state",384.3678959,381.75340000000006,44.120491800000075,11.077000000000002,389.73940000000005,11,"sans-serif"],
+        ["(",431.83762,380.87340000000006,4.279,11,389.73940000000005,11,"sans-serif"],
+        ["𝛾",436.11664,380.87340000000006,5.6979999999999995,11,389.73940000000005,11,"sans-serif"],
+        [",",442.3976,380.87340000000006,3.058,11,389.73940000000005,11,"sans-serif"],
+        ["𝜑",447.28897,380.87340000000006,7.194,11,389.73940000000005,11,"sans-serif"],
+        [")",454.48297,380.87340000000006,4.279,11,389.73940000000005,11,"sans-serif"],
+        ["transforms",462.1112059,381.75340000000006,52.66800000000003,11.077000000000002,389.73940000000005,11,"sans-serif"],
+        ["𝛾",518.1285,380.87340000000006,5.6979999999999995,11,389.73940000000005,11,"sans-serif"],
+        ["by",70.86614,395.41540000000003,11.869,11.077000000000002,403.4014,11,"sans-serif"],
+        ["𝑓",85.48514,394.53540000000004,5.39,11,403.4014,11,"sans-serif"],
+        ["and composes the inverse",94.61514,395.41540000000003,124.38800000000002,11.077000000000002,403.4014,11,"sans-serif"],
+        ["𝑔",221.75314,394.53540000000004,5.247,11,403.4014,11,"sans-serif"],
+        ["onto",230.02515,395.41540000000003,21.89000000000001,11.077000000000002,403.4014,11,"sans-serif"],
+        ["𝜑",254.66515,394.53540000000004,7.194,11,403.4014,11,"sans-serif"],
+        [", thereby tracking the effect of",261.85913,395.41540000000003,144.298,11.077000000000002,403.4014,11,"sans-serif"],
+        ["𝑓",408.90714,394.53540000000004,5.39,11,403.4014,11,"sans-serif"],
+        ["in the context.",418.03714,395.41540000000003,68.64000000000001,11.077000000000002,403.4014,11,"sans-serif"],
+        ["Theorem",70.86614,419.9434,45.232,11,427.8634,11,"sans-serif"],
+        ["4",119.29805,419.9434,5.5,11,427.8634,11,"sans-serif"],
+        [".",124.79805,419.9434,2.75,11,427.8634,11,"sans-serif"],
+        ["For every",130.747962023,419.8774,46.220912023000025,11.077000000000002,427.8634,11,"sans-serif"],
+        ["(",180.1688,418.9974,4.279,11,427.8634,11,"sans-serif"],
+        ["𝑓",184.44778,418.9974,5.39,11,427.8634,11,"sans-serif"],
+        [",",190.82779,418.9974,3.058,11,427.8634,11,"sans-serif"],
+        ["𝑔",195.71912,418.9974,5.247,11,427.8634,11,"sans-serif"],
+        [")",201.24112,418.9974,4.279,11,427.8634,11,"sans-serif"],
+        ["∈",208.57568,418.9974,7.337,11,427.8634,11,"sans-serif"],
+        ["(",218.96823,418.9974,4.279,11,427.8634,11,"sans-serif"],
+        ["Γ",223.24724,418.9974,6.875,11,427.8634,11,"sans-serif"],
+        ["→",233.1778,418.9974,11,11,427.8634,11,"sans-serif"],
+        ["Γ",247.23334,418.9974,6.875,11,427.8634,11,"sans-serif"],
+        [")",254.10834,418.9974,4.279,11,427.8634,11,"sans-serif"],
+        ["×",260.8318,418.9974,8.558,11,427.8634,11,"sans-serif"],
+        ["(",271.83423,418.9974,4.279,11,427.8634,11,"sans-serif"],
+        ["Γ",276.11322,418.9974,6.875,11,427.8634,11,"sans-serif"],
+        ["→",286.0438,418.9974,11,11,427.8634,11,"sans-serif"],
+        ["Γ",300.09933,418.9974,6.875,11,427.8634,11,"sans-serif"],
+        [")",306.97433,418.9974,4.279,11,427.8634,11,"sans-serif"],
+        [", write",311.25336,419.8774,31.480912023000023,11.077000000000002,427.8634,11,"sans-serif"],
+        ["𝑓",345.93417,418.9974,5.39,11,427.8634,11,"sans-serif"],
+        ["′",352.31418,417.6642,3.1339,7.7,423.8704,7.7,"sans-serif"],
+        ["≔",359.11963,418.9974,9.966,11,427.8634,11,"sans-serif"],
+        ["track",372.14117,418.9974,24.782999999999998,11,427.8634,11,"sans-serif"],
+        ["Γ",396.9242,424.37420000000003,5.4362,7.7,430.58040000000005,7.7,"sans-serif"],
+        ["(",402.97638,418.9974,4.279,11,427.8634,11,"sans-serif"],
+        ["𝑓",407.25537,418.9974,5.39,11,427.8634,11,"sans-serif"],
+        [",",413.63538,418.9974,3.058,11,427.8634,11,"sans-serif"],
+        ["𝑔",418.5267,418.9974,5.247,11,427.8634,11,"sans-serif"],
+        [")",424.0487,418.9974,4.279,11,427.8634,11,"sans-serif"],
+        ["; then the following",428.32773,419.8774,96.081736069,11.077000000000002,427.8634,11,"sans-serif"],
+        ["diagram commutes, that is,",70.86614,433.53940000000006,132.32999999999998,11.077000000000002,441.52540000000005,11,"sans-serif"],
+        ["pr",257.2021,453.72970000000004,10.427999999999999,11,462.5957,11,"sans-serif"],
+        ["1",267.6301,459.10650000000004,4.3813,7.7,465.31270000000006,7.7,"sans-serif"],
+        ["∘",275.07184,453.72970000000004,4.532,11,462.5957,11,"sans-serif"],
+        ["𝑓",282.04828,453.72970000000004,5.39,11,462.5957,11,"sans-serif"],
+        ["′",288.42828,452.3965,3.1339,7.7,458.6027,7.7,"sans-serif"],
+        ["=",295.23373,453.72970000000004,8.558,11,462.5957,11,"sans-serif"],
+        ["𝑓",306.8473,453.72970000000004,5.39,11,462.5957,11,"sans-serif"],
+        ["∘",315.67175,453.72970000000004,4.532,11,462.5957,11,"sans-serif"],
+        ["pr",322.6482,453.72970000000004,10.427999999999999,11,462.5957,11,"sans-serif"],
+        ["1",333.0762,459.10650000000004,4.3813,7.7,465.31270000000006,7.7,"sans-serif"],
+        ["(7)",510.35144,453.72970000000004,14.058,11,462.5957,11,"sans-serif"],
+        ["𝑓",294.7378,478.9327,4.9,10,486.9927,10,"sans-serif"],
+        ["𝑓",293.0333,550.8127000000001,4.9,10,558.8727,10,"sans-serif"],
+        ["′",298.83328,549.6007,2.849,7,555.2427,7,"sans-serif"],
+        ["pr",247.51979,515.2696800000001,9.48,10,523.32968,10,"sans-serif"],
+        ["1",256.9998,520.1577,3.983,7,525.7997,7,"sans-serif"],
+        ["pr",333.7328,515.2696800000001,9.48,10,523.32968,10,"sans-serif"],
+        ["1",343.2128,520.1577,3.983,7,525.7997,7,"sans-serif"],
+        ["track",301.6378,515.8426800000001,22.53,10,523.90268,10,"sans-serif"],
+        ["Γ",262.4178,488.39770000000004,6.25,10,496.45770000000005,10,"sans-serif"],
+        ["Γ",326.6078,488.39770000000004,6.25,10,496.45770000000005,10,"sans-serif"],
+        ["𝜕",259.44778,543.3976700000001,5.3100000000000005,10,551.45767,10,"sans-serif"],
+        ["Γ",265.3878,543.3976700000001,6.25,10,551.45767,10,"sans-serif"],
+        ["𝜕",323.6378,543.3976700000001,5.3100000000000005,10,551.45767,10,"sans-serif"],
+        ["Γ",329.5778,543.3976700000001,6.25,10,551.45767,10,"sans-serif"],
+    ] as Array<[string, number, number, number, number, number, number, string]>).map(([text, x, y, width, height, baseline, fontSize, fontFamily]) => ({text, x, y, width, height, baseline, fontSize, fontFamily})),
+    graphics: [{"x":276.1718,"y":493.0427,"width":42.691956000000005,"height":0,"kind":"path"},{"x":277.6378,"y":548.0427,"width":39.75999999999999,"height":0,"kind":"path"},{"x":265.5428,"y":503.91170000000005,"width":0,"height":34.71597700000001,"kind":"path"},{"x":329.7328,"y":503.91170000000005,"width":0,"height":34.71597700000001,"kind":"path"},{"x":296.6778,"y":498.5427,"width":0,"height":42.113099999999974,"kind":"path"},{"x":298.5978,"y":498.5427,"width":0,"height":42.113099999999974,"kind":"path"}] as Parameters<typeof analyzePdfPageLayout>[0]['graphics'],
+};
+
+describe('isolated mathematical labels with local PDF geometry', () => {
+    it('replays actual page-ten glyphs and excludes both mathematical labels from provider segments while retaining definition and theorem prose', async () => {
+        const before = JSON.stringify(pageTenMathGeometry);
+        const result = analyzePdfPageLayout(pageTenMathGeometry);
+        const {pdfPageSegments} = await import('@/src/features/document-translation/services/binary');
+        const segments: Array<import('@/src/features/document-translation/core/document').DocumentSegment> = [];
+        const registered = pdfPageSegments(result.blocks, 10, segments);
+        for (const label of ['trackΓ', 'track']) {
+            const index = result.blocks.findIndex(block => block.source === label);
+            expect(index).toBeGreaterThanOrEqual(0);
+            expect(registered.blocks[index]).toMatchObject({kind: 'formula', preserveSource: true, segmentIndex: -1});
+            expect(segments.some(segment => segment.source === label)).toBe(false);
+        }
+        for (const prefix of ['Definition 3.', 'This transformation', 'Theorem 4.']) {
+            expect(result.blocks.find(block => block.source.startsWith(prefix))).toMatchObject({kind: 'text', preserveSource: false});
+            expect(segments.some(segment => segment.source.startsWith(prefix))).toBe(true);
+        }
+        expect(result.preservedRegions.some(region => region.kind === 'formula' && region.source?.includes('trackΓ ='))).toBe(true);
+        expect(JSON.stringify(pageTenMathGeometry)).toBe(before);
+    });
+    it.each(['compose: A → B', 'rename: (Γ → Γ) ↦ Δ', 'a: 0 → 1'])('preserves the pure display type signature %s without a vocabulary whitelist', signature => {
+        const result = analyze([atom(signature, 210, 100, 110), atom('Ordinary sentences anchor the body font.', 70, 220, 400)]);
+        expect(result.blocks.find(block => block.source === signature)).toMatchObject({kind: 'formula', preserveSource: true});
+        expect(result.blocks.find(block => block.source.startsWith('Ordinary'))).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it.each([
+        {name: 'type in another column', nameX: 195, nameBaseline: 100, typeX: 400, typeBaseline: 100, type: 'A → B'},
+        {name: 'type on another line', nameX: 195, nameBaseline: 100, typeX: 257, typeBaseline: 140, type: 'A → B'},
+        {name: 'name in another column', nameX: 100, nameBaseline: 100, typeX: 257, typeBaseline: 100, type: 'A → B'},
+        {name: 'name on another line', nameX: 195, nameBaseline: 60, typeX: 257, typeBaseline: 100, type: 'A → B'},
+        {name: 'missing type arrow', nameX: 195, nameBaseline: 100, typeX: 257, typeBaseline: 100, type: 'A × B'},
+        {name: 'arrow without domain or codomain', nameX: 195, nameBaseline: 100, typeX: 257, typeBaseline: 100, type: '→'},
+    ])('does not join a split name/colon/type with $name', ({nameX, nameBaseline, typeX, typeBaseline, type}) => {
+        const result = analyze([atom('compose', nameX, nameBaseline, 30), atom(':', 240, 100, 3), atom(type, typeX, typeBaseline, 50),
+            atom('Ordinary sentences anchor the body font.', 70, 300, 400)],
+        [230, 250].map(x => ({kind: 'path' as const, x, y: 90, width: 0, height: 30})));
+        expect(result.blocks.find(block => block.source === 'compose')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it('leaves ordinary short words, headings, sentence arrows and natural-language type explanations translatable', () => {
+        const result = analyze([atom('Track', 210, 100, 50, 14), atom('track', 210, 160, 25), atom('Name: English → Chinese', 210, 210, 110),
+            atom('We use track: A → B in the proof.', 70, 250, 400), atom('compose: A → B is C', 210, 290, 110), atom('compose: Γ → Γ σε Δ', 210, 330, 110),
+            atom('compose: A × B', 210, 370, 100), atom('Ordinary sentences anchor the body font.', 70, 450, 400)]);
+        expect(result.blocks.find(block => block.source === 'Track')).toMatchObject({kind: 'heading', preserveSource: false});
+        expect(result.blocks.filter(block => block.source !== 'Track').every(block => block.kind === 'text' && !block.preserveSource)).toBe(true);
+    });
+    it.each(['vertical', 'horizontal'] as const)('retains a generic %s arrow label only between two distinct mathematical endpoints', orientation => {
+        const vertical = orientation === 'vertical';
+        const nodes = vertical ? [atom('Γ', 197, 100, 5), atom('Δ', 197, 170, 5)] : [atom('A', 180, 104, 5), atom('B', 250, 104, 5)];
+        const label = vertical ? atom('compose', 206, 138, 35) : atom('compose', 203, 94, 35);
+        const stroke = {kind: 'path' as const, x: vertical ? 200 : 190, y: vertical ? 110 : 100, width: vertical ? 0 : 50, height: vertical ? 50 : 0};
+        const result = analyze([...nodes, label, atom('Ordinary sentences anchor the body font.', 70, 300, 400)], [stroke]);
+        expect(result.blocks.find(block => block.source === 'compose')).toMatchObject({kind: 'formula', preserveSource: true});
+    });
+    it.each([
+        {name: 'no mathematical nodes', nodes: [], width: 0, height: 50},
+        {name: 'only the first endpoint', nodes: [atom('Γ', 197, 100, 5)], width: 0, height: 50},
+        {name: 'only the last endpoint', nodes: [atom('Δ', 197, 170, 5)], width: 0, height: 50},
+        {name: 'ordinary word endpoints', nodes: [atom('Start', 180, 100, 25), atom('Finish', 180, 170, 30)], width: 0, height: 50},
+        {name: 'ordinary two-letter country labels', nodes: [atom('UK', 190, 100, 10), atom('US', 190, 170, 10)], width: 0, height: 50},
+        {name: 'a thick rule', nodes: [atom('Γ', 197, 100, 5), atom('Δ', 197, 170, 5)], width: 4, height: 50},
+        {name: 'a short tick', nodes: [atom('Γ', 197, 100, 5), atom('Δ', 197, 150, 5)], width: 0, height: 19},
+        {name: 'a tall page divider', nodes: [atom('Γ', 197, 100, 5), atom('Δ', 197, 275, 5)], width: 0, height: 150},
+    ])('does not protect a word next to $name', ({nodes, width, height}) => {
+        const result = analyze([...nodes, atom('compose', 206, 138, 35), atom('Ordinary sentences anchor the body font.', 70, 400, 400)], [{kind: 'path', x: 200, y: 110, width, height}]);
+        expect(result.blocks.find(block => block.source === 'compose')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it('cannot reuse a single central mathematical node as both arrow endpoints', () => {
+        const result = analyze([atom('Γ', 194, 114, 5), atom('compose', 205, 114, 35), atom('Ordinary sentences anchor the body font.', 70, 300, 400)],
+            [{kind: 'path', x: 200, y: 100, width: 0, height: 22}]);
+        expect(result.blocks.find(block => block.source === 'compose')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+    it('keeps header and footer type-like text classified as page furniture, and rejects large diagram headings or remote labels', () => {
+        const result = analyze([atom('rename: A → B', 210, 20, 110), atom('rename: A → B', 210, 780, 110),
+            atom('Γ', 197, 100, 5), atom('Δ', 197, 170, 5), atom('Heading', 206, 138, 60, 14), atom('remote', 320, 138, 30),
+            atom('Ordinary sentences anchor the body font.', 70, 400, 400)], [{kind: 'path', x: 200, y: 110, width: 0, height: 50}]);
+        expect(result.blocks.filter(block => block.source === 'rename: A → B').map(block => block.kind)).toEqual(['footer', 'footer']);
+        expect(result.blocks.find(block => block.source === 'Heading')).toMatchObject({kind: 'heading', preserveSource: false});
+        expect(result.blocks.find(block => block.source === 'remote')).toMatchObject({kind: 'text', preserveSource: false});
+    });
+});
 
 describe('PDF visible graphics geometry', () => {
     it('tracks saves, nested form matrices, image unit squares, visible paths and viewport orientation', () => {
