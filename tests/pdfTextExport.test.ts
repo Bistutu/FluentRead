@@ -1,5 +1,4 @@
 import {mkdirSync, readFileSync, writeFileSync} from 'node:fs';
-import {createHash} from 'node:crypto';
 import {join} from 'node:path';
 import {PDFDocument} from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
@@ -8,10 +7,10 @@ import type {TextItem} from 'pdfjs-dist/types/src/display/api';
 import {describe, expect, it, vi} from 'vitest';
 import type {ParsedDocument} from '@/src/features/document-translation/core/document';
 import {createDocumentDownload, type PdfReadingRenderer} from '@/src/features/document-translation/services/binary';
-import {embedPdfReadingFont, loadPdfReadingFontBytes, PDF_READING_FONT_BYTES} from '@/src/features/document-translation/services/pdfReadingFont';
+import {embedPdfReadingFont} from '@/src/features/document-translation/services/pdfReadingFont';
 import {renderPdfReadingPages} from '@/src/features/document-translation/ui/pdfPreview';
 
-const fontBytes = new Uint8Array(readFileSync(new URL('../public/pdf-fonts/FluentReadNotoSansSC-Regular.woff2', import.meta.url)));
+const fontBytes = new Uint8Array(readFileSync(new URL('../assets/pdf-fonts/FluentReadNotoSansSC-Regular.woff2', import.meta.url)));
 const textOnlyOptions = {pdfReadingRenderer: renderPdfReadingPages, pdfFontLoader: async () => fontBytes};
 const compact = (text: string) => text.replace(/\s/gu, '');
 
@@ -143,43 +142,6 @@ describe('visible Unicode PDF reading export', () => {
         })).rejects.toThrow('Continuation canceled');
         expect(released).toBe(true);
         expect(translations).toEqual(['标题', '长文译文。'.repeat(1000)]);
-    });
-
-    it('loads the bundled font with cancellation and rejects truncated assets', async () => {
-        const fetch = vi.fn(async () => ({ok: true, arrayBuffer: async () => new ArrayBuffer(10)}));
-        vi.stubGlobal('fetch', fetch);
-        try {
-            const controller = new AbortController();
-            await expect(loadPdfReadingFontBytes(controller.signal)).rejects.toThrow('字体不完整');
-            expect(fetch).toHaveBeenCalledWith('/pdf-fonts/FluentReadNotoSansSC-Regular.woff2', {signal: controller.signal, cache: 'force-cache'});
-            expect(fontBytes.byteLength).toBe(PDF_READING_FONT_BYTES);
-        } finally {vi.unstubAllGlobals();}
-    });
-
-    it('returns complete bundled bytes and reports HTTP failure without decoding a broken response', async () => {
-        const fetch = vi.fn(async () => ({ok: true, arrayBuffer: async () => fontBytes.slice().buffer}));
-        vi.stubGlobal('fetch', fetch);
-        try {
-            const loaded = await loadPdfReadingFontBytes();
-            expect(createHash('sha256').update(loaded).digest('hex')).toBe(createHash('sha256').update(fontBytes).digest('hex'));
-            fetch.mockResolvedValueOnce({ok: false, arrayBuffer: async () => {throw new Error('Should not read HTTP error');}});
-            await expect(loadPdfReadingFontBytes()).rejects.toThrow('字体加载失败');
-        } finally {vi.unstubAllGlobals();}
-    });
-
-    it('cancels font fetching before the request and after a response read completes', async () => {
-        const before = new AbortController();
-        const reading = new AbortController();
-        const fetch = vi.fn(async () => ({ok: true, arrayBuffer: async () => {
-            reading.abort(new Error('Font response canceled')); return fontBytes.slice().buffer;
-        }}));
-        vi.stubGlobal('fetch', fetch);
-        try {
-            before.abort(new Error('Before font request'));
-            await expect(loadPdfReadingFontBytes(before.signal)).rejects.toThrow('Before font request');
-            expect(fetch).not.toHaveBeenCalled();
-            await expect(loadPdfReadingFontBytes(reading.signal)).rejects.toThrow('Font response canceled');
-        } finally {vi.unstubAllGlobals();}
     });
 
     it('cancels before fontkit initialization, during its lazy import, and after font embedding', async () => {

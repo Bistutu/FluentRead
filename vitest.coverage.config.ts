@@ -385,6 +385,7 @@ export default defineConfig({
             'tests/documentTranslationBinary.test.ts',
             'tests/documentPdfRasterizer.test.ts',
             'tests/pdfTextExport.test.ts',
+            'tests/pdfReadingFontDownload.test.ts',
             'tests/documentArchive.test.ts',
             'tests/documentTranslationBinaryEdge.test.ts',
             'tests/documentTranslationEdge.test.ts',
