@@ -492,6 +492,36 @@ describe('public mounted X subtitle track priority and lifecycle', () => {
     expect(f.callsFor(first)).toBe(1); expect(f.callsFor(second)).toBe(1);
   });
 
+  it('逐字高亮：X 字幕默认保持纯文本，开启后原文与译文按当前句时间一起点亮，拖动后跟随，关闭即还原', async () => {
+    const f = fixture(); f.start(); await settle();
+    const source = 'First sidecar sentence.';
+    f.emitCue('first', source, 0, 10); await settle();
+    const lines = () => [VIDEO_NORMALIZED_CAPTION_OVERLAY_ID, VIDEO_TRANSLATION_OVERLAY_ID].map(id => f.document.getElementById(id)!);
+    const states = () => lines().map(line => Array.from(line.querySelectorAll('.fluent-read-video-karaoke-unit'))
+      .map(unit => unit.getAttribute('data-fluent-read-karaoke-state')));
+    expect(states()).toEqual([[], []]);
+
+    f.changeConfig({videoSubtitleAppearance: {karaoke: true}} as unknown as Partial<Config>);
+    await vi.advanceTimersByTimeAsync(40);
+    expect(f.displayed()).toMatchObject({source, translated: translation(source), active: true, kind: 'sidecar'});
+    // 播放头在 1s，句子为 0–10s：两行都只点亮到第一个单元。
+    const started = states();
+    expect(started[0]).toEqual(['active', null, null]);
+    expect(started[1].filter(state => state === 'active')).toHaveLength(1);
+    expect(started[1].at(-1)).toBeNull();
+
+    f.video.currentTime = 4; f.emitVideo('seeked'); await vi.advanceTimersByTimeAsync(40);
+    const middle = states();
+    expect(middle[0]).toEqual(['sung', 'active', null]);
+    expect(middle[1].filter(state => state === 'sung').length).toBeGreaterThan(0);
+    expect(middle[1].filter(state => state === 'active')).toHaveLength(1);
+
+    f.changeConfig({videoSubtitleAppearance: {karaoke: false}} as unknown as Partial<Config>);
+    await settle();
+    expect(states()).toEqual([[], []]);
+    expect(f.displayed()).toMatchObject({source, translated: translation(source), active: true, kind: 'sidecar'});
+  });
+
   it('RT2: a real source-language configuration change invalidates late translation even for identical cue text', async () => {
     const old = deferred<string>(); let oldSignal!: AbortSignal;
     ports.translate.mockImplementationOnce((_text: string, signal: AbortSignal) => {oldSignal = signal; return old.promise;});

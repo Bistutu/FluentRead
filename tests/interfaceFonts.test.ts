@@ -1,13 +1,18 @@
 import {readFileSync} from 'node:fs'
 import {resolve} from 'node:path'
-import {webcrypto} from 'node:crypto'
+import {createHash, webcrypto} from 'node:crypto'
 import {afterEach, describe, expect, it, vi} from 'vitest'
 import {interfaceFontOptions} from '@/src/core/config/interfaceAppearance'
 import {getClearableInterfaceFontAssets, getInterfaceFontAssets, getInterfaceFontUrl, interfaceFontSources, INTERFACE_FONT_REVISION, type InterfaceFontAsset} from '@/src/core/config/interfaceFontAssets'
 import {createInterfaceFontLoader, getCachedInterfaceFonts, verifyInterfaceFont, type InterfaceFontLoadState} from '@/src/services/interfaceFonts'
+import {UI_LANGUAGE_BUNDLES} from '@/src/core/i18n/bundles'
+import {zhCNMessages} from '@/src/core/i18n/messages/zh-CN'
+import previewManifest from '../assets/interface-font-previews/manifest.json'
 
 const digest = (data: ArrayBuffer) => webcrypto.subtle.digest('SHA-256', data)
 const bytes = (file: string) => Uint8Array.from(readFileSync(resolve(__dirname, '../assets/interface-fonts', file))).buffer
+const previewCatalogs: Record<string, Readonly<Record<string, string>>> = {'zh-CN': zhCNMessages,
+  ...Object.fromEntries(Object.entries(UI_LANGUAGE_BUNDLES).map(([language, bundle]) => [language, bundle.messages]))}
 function harness() {
   const entries = new Map<string, Response>()
   const cache = {
@@ -56,7 +61,7 @@ describe('按需字体资源契约', () => {
     for (const asset of assets.values()) await verifyInterfaceFont(asset, bytes(asset.file), digest)
   })
 
-  it('拒绝大小或摘要错误的数据，字体不再随包附带或由预览提前请求', async () => {
+  it('拒绝大小或摘要错误的数据，完整字体不随包附带或由预览提前请求', async () => {
     const asset = getInterfaceFontAssets('manrope')[0]
     await expect(verifyInterfaceFont(asset, new ArrayBuffer(1), digest)).rejects.toThrow('size')
     await expect(verifyInterfaceFont(asset, new ArrayBuffer(asset.bytes), digest)).rejects.toThrow('integrity')
@@ -64,6 +69,73 @@ describe('按需字体资源契约', () => {
     expect(css).not.toContain('@font-face')
     expect(css).not.toContain('url(')
     expect(css).toContain('system-ui')
+  })
+
+  it('内置预览覆盖所有语言的当前卡片文案，避免文案更新后静默缺字', () => {
+    const keys = [...interfaceFontOptions.flatMap(font => [font.labelKey, font.descriptionKey]),
+      'settings.interface.font.preview'].sort()
+    const texts = Object.fromEntries(Object.entries(previewCatalogs).sort(([a], [b]) => a.localeCompare(b))
+      .map(([language, catalog]) => [language, keys.map(key => catalog[key]).join('\n') + '\nAa Bb Cc · 0123456789']))
+    const sha256 = (text: string) => createHash('sha256').update(text).digest('hex')
+    expect(previewManifest.languages.toSorted()).toEqual(Object.keys(previewCatalogs).toSorted())
+    expect(previewManifest.corpusSha256).toBe(sha256(JSON.stringify(texts)))
+    for (const [language, text] of Object.entries(texts)) {
+      expect(previewManifest.corpus[language as keyof typeof previewManifest.corpus].sha256).toBe(sha256(text))
+    }
+  })
+
+  it('按卡片与字重精准保留字形，共享中文只补齐主字体缺字', () => {
+    const codepoints = (text: string) => new Set([...text]
+      .filter(character => character === ' ' || !/\s/u.test(character)).map(character => character.codePointAt(0)!))
+    const labels = (points: Iterable<number>) => [...points].sort((a, b) => a - b)
+      .map(point => `U+${point.toString(16).toUpperCase().padStart(4, '0')}`)
+    const decoded = (range: readonly string[]) => new Set(range.map(label => Number.parseInt(label.slice(2), 16)))
+    const options = interfaceFontOptions.filter(option => option.value !== 'system')
+    const faceFor = (option: string, weight: number) => previewManifest.fonts
+      .find(face => face.option === option && face.weight === weight)!
+    const rolePoints = (option: typeof options[number], catalog: Readonly<Record<string, string>>, weight: number) =>
+      codepoints(weight === 700 ? catalog[option.labelKey]
+        : `${catalog[option.descriptionKey]}\n${catalog['settings.interface.font.preview']}\nAa Bb Cc · 0123456789`)
+    for (const face of previewManifest.fonts) {
+      const option = options.find(option => option.value === face.option)!
+      const sourcePoints = decoded(face.sourceCorpusUnicodeRange)
+      const renderedPoints = decoded(face.unicodeRange)
+      const requestedPoints = new Set<number>()
+      for (const [language, catalog] of Object.entries(previewCatalogs)) {
+        const points = rolePoints(option, catalog, face.weight)
+        if (option.value === 'noto-sans-sc') {
+          for (const other of options.filter(other => other.value !== option.value)) {
+            const primarySourcePoints = decoded(faceFor(other.value, face.weight).sourceCorpusUnicodeRange)
+            for (const point of rolePoints(other, catalog, face.weight)) {
+              if (!primarySourcePoints.has(point)) points.add(point)
+            }
+          }
+        }
+        for (const point of points) requestedPoints.add(point)
+        expect(face.missingByLanguage[language as keyof typeof face.missingByLanguage])
+          .toEqual(labels([...points].filter(point => !renderedPoints.has(point))))
+      }
+      expect(face.requestedUnicodeRange).toEqual(labels(requestedPoints))
+      expect(face.unicodeRange).toEqual(labels([...requestedPoints].filter(point => sourcePoints.has(point))))
+    }
+  })
+
+  it('预览只分发独立命名的小型字库，400/700 文件与完整字体缓存分离', () => {
+    const css = readFileSync(resolve(__dirname, '../src/features/settings/ui/interface-font-previews.css'), 'utf8')
+    expect(previewManifest.fonts).toHaveLength((interfaceFontOptions.length - 1) * 2)
+    expect(previewManifest.totalFontBytes).toBeLessThan(256 * 1024)
+    expect(css).not.toMatch(/https?:/u)
+    for (const font of previewManifest.fonts) {
+      const data = readFileSync(resolve(__dirname, '../assets/interface-font-previews', font.asset))
+      expect(data.subarray(0, 4).toString()).toBe('wOF2')
+      expect(data.byteLength).toBe(font.bytes)
+      expect(createHash('sha256').update(data).digest('hex')).toBe(font.sha256)
+      expect(font.family).toMatch(/^FluentRead Preview /u)
+      expect(css).toContain(font.asset)
+      const fullAssets = getInterfaceFontAssets(font.option as typeof interfaceFontOptions[number]['value'])
+      expect(fullAssets.every(asset => asset.sha256 !== font.sha256 && asset.family !== font.cssFamily)).toBe(true)
+      expect(fullAssets.find(asset => asset.file === font.sourceAsset)?.sha256).toBe(font.sourceAssetSha256)
+    }
   })
 })
 

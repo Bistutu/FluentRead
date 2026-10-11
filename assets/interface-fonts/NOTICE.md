@@ -62,3 +62,24 @@ the complete text with whitespace and line endings normalized.
 | Source NotoSansSC.ttf | a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da |
 | Inter.woff2 | 13b4cddc57045d40b411008e61588c8f81aa0bd72fe884624831a0ff9c4d159a |
 | NotoSansSC.woff2 | aef8c34277afad81ecd0227138a830263c0caea65b7aea66d1195395f097b55a |
+
+## Bundled card previews
+
+The separately named modified subsets in `assets/interface-font-previews/` are
+small offline samples for font cards. They are generated from these exact,
+SHA-256-verified WOFF2 sources by
+`scripts/fonts/build-interface-font-previews.py`, using the existing translated
+font labels, descriptions and sample text. Each bold subset contains its own
+card title; each regular subset contains its own description and common samples.
+Noto Sans SC supplies the actual missing characters for other cards at the same
+weight. Regular and bold glyphs are real weight-400/700 outlines; the generator
+verifies their outlines and metrics against the original sources. Source files
+and the full on-demand fonts stay unchanged.
+
+The subsets use independent `FluentRead Preview …` internal font names. Source
+Sans 3 is renamed `FluentRead Preview Humanist Sans`, and IBM Plex Sans becomes
+`FluentRead Preview Technical Sans`, to avoid their Reserved Font Names. Original
+copyright and license metadata are preserved. See the preview directory's
+`NOTICE.md` and `manifest.json` for reproduction, coverage, modifications and
+per-file source/output hashes. The full upstream OFL notices remain shipped in
+`public/interface-font-licenses.txt` and apply to the modified preview files too.

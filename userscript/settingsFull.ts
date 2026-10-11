@@ -3,6 +3,7 @@ import OptionsApp from '@/src/app/options/OptionsApp.vue';
 import {createVueShadowUi, type VueShadowMount} from '@/src/platform/shadow-ui';
 import type {ShadowRootContentScriptUi} from 'wxt/utils/content-script-ui/shadow-root';
 import {getUserscriptFunction} from './api';
+import {installUserscriptInterfaceFontPreviews, type UserscriptInterfaceFontPreviewMount} from './interfaceFontPreviews';
 import {
     buildUserscriptSettingsHash,
     buildUserscriptSettingsUrl,
@@ -15,6 +16,7 @@ export {buildUserscriptSettingsUrl, isUserscriptSettingsUrl};
 let settingsUi: ShadowRootContentScriptUi<VueShadowMount> | null = null;
 let settingsMountPromise: Promise<void> | null = null;
 let settingsGeneration = 0;
+let settingsPreviewFonts: UserscriptInterfaceFontPreviewMount | null = null;
 let hiddenBallHost: HTMLElement | null = null;
 let previousBallSuspendedAttribute: string | null = null;
 let ballObserver: MutationObserver | null = null;
@@ -115,35 +117,45 @@ async function mountSettingsUi(ctx: unknown, section?: string): Promise<void> {
     if (settingsUi) return;
     if (settingsMountPromise) return settingsMountPromise;
     const generation = settingsGeneration;
+    const previewFonts = installUserscriptInterfaceFontPreviews();
+    settingsPreviewFonts = previewFonts;
     if (!separateSettingsPage) hideFloatingBallBehindOverlay();
-    const mountPromise = createVueShadowUi(ctx as never, {
-        name: 'fluent-read-userscript-settings-ui',
-        hostId: 'fluent-read-userscript-settings-container',
-        component: OptionsApp,
-        props: (container) => {
-            const root = container.getRootNode();
-            const shadowRoot = root instanceof ShadowRoot ? root : null;
-            return {
-                appearanceRoot: shadowRoot?.host instanceof HTMLElement ? shadowRoot.host : null,
-                queryRoot: root,
-                settingsHashPrefix: separateSettingsPage ? USERSCRIPT_SETTINGS_HASH : undefined,
-                initialSection: separateSettingsPage ? undefined : section,
-                locationRouting: separateSettingsPage ? undefined : 'internal',
-                onClose: separateSettingsPage ? undefined : closeUserscriptSettings,
-            };
-        },
-        configureApp: (app) => installOptionsApp(app, {documentRoot: null}),
-        viewport: true,
-        zIndex: 2_147_483_647,
-        mode: 'closed',
-    }).then((ui) => {
-        if (generation !== settingsGeneration) ui.remove();
-        else settingsUi = ui;
-    });
+    const mountPromise = (async () => {
+        const ui = await createVueShadowUi(ctx as never, {
+            name: 'fluent-read-userscript-settings-ui',
+            hostId: 'fluent-read-userscript-settings-container',
+            component: OptionsApp,
+            props: (container) => {
+                const root = container.getRootNode();
+                const shadowRoot = root instanceof ShadowRoot ? root : null;
+                return {
+                    appearanceRoot: shadowRoot?.host instanceof HTMLElement ? shadowRoot.host : null,
+                    queryRoot: root,
+                    settingsHashPrefix: separateSettingsPage ? USERSCRIPT_SETTINGS_HASH : undefined,
+                    initialSection: separateSettingsPage ? undefined : section,
+                    locationRouting: separateSettingsPage ? undefined : 'internal',
+                    onClose: separateSettingsPage ? undefined : closeUserscriptSettings,
+                };
+            },
+            configureApp: (app) => {
+                installOptionsApp(app, {documentRoot: null});
+                app.onUnmount(previewFonts.dispose);
+            },
+            viewport: true,
+            zIndex: 2_147_483_647,
+            mode: 'closed',
+        });
+        if (generation !== settingsGeneration) {
+            previewFonts.dispose();
+            ui.remove();
+        } else settingsUi = ui;
+    })();
     settingsMountPromise = mountPromise;
     try {
         await mountPromise;
     } catch (error) {
+        previewFonts.dispose();
+        if (settingsPreviewFonts === previewFonts) settingsPreviewFonts = null;
         if (generation === settingsGeneration) restoreFloatingBall();
         throw error;
     } finally {
@@ -156,7 +168,10 @@ export function closeUserscriptSettings(): void {
     settingsMountPromise = null;
     const ui = settingsUi;
     settingsUi = null;
+    const previewFonts = settingsPreviewFonts;
+    settingsPreviewFonts = null;
     try {
+        previewFonts?.dispose();
         ui?.remove();
     } finally {
         restoreFloatingBall();
