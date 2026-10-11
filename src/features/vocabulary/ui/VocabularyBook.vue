@@ -211,7 +211,11 @@ const targetLanguageKey = ref('');
 const configBusy = ref(false);
 const entries = ref<VocabularyEntry[]>([]);
 const selectedEntryId = ref('');
-const studyEntry = computed(() => entries.value.find(entry => entry.id === selectedEntryId.value));
+const studyEntry = computed(() => {
+  const entryId = selectedEntryId.value;
+  if (entryId === '') return undefined;
+  return entries.value.find(entry => entry.id === entryId);
+});
 const recallDraft = ref('');
 const loading = ref(false);
 const actionBusy = ref(false);

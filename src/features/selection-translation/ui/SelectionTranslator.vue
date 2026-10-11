@@ -2024,7 +2024,7 @@ function handleKeydown(event: KeyboardEvent): void {
   if (isInsideUi(event.target)) {
     suppressSelectionRead();
     if (event.key === 'Escape' && readingPanelRef.value?.dismissTools()) { event.preventDefault(); event.stopPropagation(); return; }
-    if (event.key === 'Escape' && snapshot.value) hideAll();
+    if (event.key === 'Escape' && snapshot.value) { event.preventDefault(); event.stopPropagation(); hideAll(); }
     return;
   }
   if (event.key === 'Escape' && snapshot.value) { hideAll(); return; }

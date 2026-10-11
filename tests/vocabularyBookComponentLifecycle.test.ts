@@ -149,22 +149,60 @@ async function mountBook(confirm: (...args: unknown[]) => Promise<unknown> = asy
 describe('VocabularyBook asynchronous action ownership', () => {
   it('opens the explicitly chosen entry from a full book and closes it without replacing the collection', async () => {
     const book = await mountBook();
-    const entries = Array.from({length:5000},(_,i)=>Object.freeze({...book.entry,id:`saved-${i}`,term:`word ${i}`,identityKey:`en:word ${i}`,normalizedTerm:`word ${i}`,lastSeenAt:i+1}));
+    const originalEntries = Array.from({length:5000},(_,i)=>Object.freeze({...book.entry,id:`saved-${i}`,term:`word ${i}`,identityKey:`en:word ${i}`,normalizedTerm:`word ${i}`,lastSeenAt:i+1}));
+    let idReads = 0;
+    // 只计数对原冻结记录 ID 的读取，不替换生产 computed 或 Array.find。
+    const entries = originalEntries.map(backing => Object.freeze(Object.defineProperty({...backing}, 'id', {
+      enumerable: true,
+      get() {idReads += 1;return Reflect.get(backing, 'id');},
+    }))) as VocabularyEntry[];
     const collection = Object.freeze(entries);
     book.panel.entries = collection;
+    idReads = 0;
     expect(book.panel.studyEntry).toBeUndefined();
+    const initialIdReads = idReads;
     book.panel.startReview();
     expect(book.panel.reviewStarted).toBe(true);
     book.panel.openStudy(entries[17]);
     expect(book.panel.reviewStarted).toBe(false);
+    const readsBefore17 = idReads;
     expect(book.panel.studyEntry).toBe(entries[17]);
+    const selected17IdReads = idReads - readsBefore17;
     expect(book.panel.studyEntry.id).not.toBe(entries[4999].id);
     book.panel.openStudy(entries[4321]);
+    const readsBefore4321 = idReads;
     expect(book.panel.studyEntry).toBe(entries[4321]);
+    const selected4321IdReads = idReads - readsBefore4321;
+    book.panel.selectedEntryId = '';
+    idReads = 0;
+    expect(book.panel.studyEntry).toBeUndefined();
+    const closeIdReads = idReads;
+    expect(book.panel.entries).toBe(collection);
+    expect(book.panel.entries.map((item:VocabularyEntry)=>item.id)).toEqual(entries.map(item=>item.id));
+    // 所有原业务、实例身份与集合断言先完成，再核对受控读取数。
+    expect(initialIdReads).toBe(0);expect(selected17IdReads).toBe(18);
+    expect(selected4321IdReads).toBe(4322);expect(closeIdReads).toBe(0);
+  });
+  it('keeps an empty-ID raw row in the collection without selecting it automatically', async () => {
+    const book = await mountBook();
+    // 空选择是 UI 的未选中状态；异常原始行保留原样，不在这里迁移、清洗或删除记录。
+    const emptyIdRow = Object.freeze({...book.entry, id:'', term:'Raw empty row', normalizedTerm:'raw empty row', identityKey:'en\u0000raw empty row'});
+    const validRow = Object.freeze({...book.entry, id:'00000000-0000-4000-8000-000000000001', term:'Selected valid row', normalizedTerm:'selected valid row', identityKey:'en\u0000selected valid row'});
+    const collection = Object.freeze([emptyIdRow, validRow]);
+    book.panel.entries = collection;
+    expect(book.panel.selectedEntryId).toBe('');
+    expect(book.panel.studyEntry).toBeUndefined();
+    expect(book.panel.entries).toBe(collection);
+    expect(book.panel.entries[0]).toBe(emptyIdRow);
+    expect(book.panel.entries.map((item: VocabularyEntry) => item.id)).toEqual(['', validRow.id]);
+    book.panel.openStudy(validRow);
+    expect(book.panel.studyEntry).toBe(validRow);
+    expect(book.panel.selectedEntryId).toBe(validRow.id);
     book.panel.selectedEntryId = '';
     expect(book.panel.studyEntry).toBeUndefined();
     expect(book.panel.entries).toBe(collection);
-    expect(book.panel.entries.map((item:VocabularyEntry)=>item.id)).toEqual(entries.map(item=>item.id));
+    expect(book.panel.entries[0]).toBe(emptyIdRow);
+    expect(book.messages.filter(message => message.action && message.action !== 'list')).toEqual([]);
   });
   it.each(['clearVocabulary','exportAnki','removeEntry'])('does not start %s after its confirmation outlives the book', async action => {
     const confirmation = deferred<unknown>(); const book = await mountBook(()=>confirmation.promise);

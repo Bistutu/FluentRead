@@ -2193,3 +2193,107 @@ describe('selection card bounded layout work', () => {
         expect(state.sourceTextParts[0].offset).toBe(0);
     });
 });
+
+
+describe('selection card Escape ownership', () => {
+    // These local target/trust ports exercise the real mounted capture listener;
+    // they do not reproduce native closed-shadow retargeting or dialog defaults.
+    function keyboardFixture() {
+        const fixture = mountSelection();
+        class KeyboardNode {
+            getRootNode() {return fixture.document;}
+        }
+        class KeyboardElement extends KeyboardNode {
+            constructor(readonly id = '') {super();}
+            contains(node: unknown) {return node === this;}
+        }
+        vi.stubGlobal('Node', KeyboardNode);
+        vi.stubGlobal('Element', KeyboardElement);
+        const host = new KeyboardElement('fluent-read-selection-translator-container');
+        const outside = new KeyboardElement('host-page-control');
+        const shareCard = new KeyboardElement('fluent-read-share-card-container');
+        Object.assign(fixture.document, {
+            getElementById: vi.fn((id: string) => id === host.id ? host : null),
+        });
+        const selected = Vue.markRaw({text: 'Keep the native dialog open.', parts: [], range: {} as Range});
+        const request = Vue.markRaw({text: selected.text, generation: 1, sourceLanguage: 'en', targetLanguage: 'zh-Hans'});
+        const controller = new AbortController();
+        const dismissTools = vi.fn(() => false);
+        fixture.state.snapshot = selected;
+        fixture.state.selectedText = selected.text;
+        fixture.state.showTooltip = true;
+        fixture.state.isLoading = true;
+        fixture.state.activeContentRequest = request;
+        fixture.state.translationAbortController = controller;
+        fixture.state.readingPanelRef = Vue.markRaw({dismissTools});
+        const handlers = [...(fixture.listeners.get('document:keydown') ?? [])];
+        expect(handlers).toHaveLength(1);
+        const handler = handlers[0];
+        if (!handler) throw new Error('Selection keydown capture listener was not mounted.');
+        expect(fixture.document.addEventListener).toHaveBeenCalledWith('keydown', handler, true);
+        const dispatch = (target = host, flags: Partial<Pick<KeyboardEvent, 'key' | 'isTrusted' | 'repeat' | 'isComposing'>> = {}) => {
+            const event = {target, key: 'Escape', isTrusted: true, repeat: false, isComposing: false,
+                preventDefault: vi.fn(), stopPropagation: vi.fn(), ...flags};
+            handler(event);
+            return event;
+        };
+        return {...fixture, host, outside, shareCard, selected, request, controller, dismissTools, dispatch};
+    }
+
+    it.each(['ordinary', 'repeat', 'isComposing'] as const)('consumes an owning card Escape with the existing %s ordering', mode => {
+        const fixture = keyboardFixture();
+        const event = fixture.dispatch(fixture.host, {repeat: mode === 'repeat', isComposing: mode === 'isComposing'});
+
+        expect(fixture.state.snapshot).toBeNull();
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(fixture.state.activeContentRequest).toBeNull();
+        expect(fixture.controller.signal.aborted).toBe(true);
+        expect(fixture.state.isLoading).toBe(false);
+        expect(fixture.state.dismissedSelection).toBe(fixture.selected);
+        expect(event.preventDefault).toHaveBeenCalledOnce();
+        expect(event.stopPropagation).toHaveBeenCalledOnce();
+        expect(fixture.dismissTools).toHaveBeenCalledOnce();
+    });
+
+    it('consumes the tools Escape tier without closing the owning card or aborting its request', () => {
+        const fixture = keyboardFixture();
+        fixture.dismissTools.mockReturnValue(true);
+        const event = fixture.dispatch();
+
+        expect(fixture.state.snapshot).toBe(fixture.selected);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.state.activeContentRequest).toBe(fixture.request);
+        expect(fixture.controller.signal.aborted).toBe(false);
+        expect(fixture.state.isLoading).toBe(true);
+        expect(event.preventDefault).toHaveBeenCalledOnce();
+        expect(event.stopPropagation).toHaveBeenCalledOnce();
+        expect(fixture.dismissTools).toHaveBeenCalledOnce();
+    });
+
+    it.each(['outside with snapshot', 'own without snapshot', 'untrusted', 'share card', 'own non-Escape'] as const)(
+        'retains host event ownership for %s', condition => {
+            const fixture = keyboardFixture();
+            const noSnapshot = condition === 'own without snapshot';
+            if (noSnapshot) {
+                fixture.state.snapshot = null;
+                fixture.state.showTooltip = false;
+                fixture.state.activeContentRequest = null;
+                fixture.state.translationAbortController = null;
+                fixture.state.isLoading = false;
+            }
+            const target = condition === 'outside with snapshot' ? fixture.outside
+                : condition === 'share card' ? fixture.shareCard : fixture.host;
+            const event = fixture.dispatch(target, {isTrusted: condition !== 'untrusted',
+                key: condition === 'own non-Escape' ? 'ArrowLeft' : 'Escape'});
+            const closed = condition === 'outside with snapshot';
+
+            expect(fixture.state.snapshot).toBe(closed || noSnapshot ? null : fixture.selected);
+            expect(fixture.state.showTooltip).toBe(!closed && !noSnapshot);
+            expect(fixture.state.activeContentRequest).toBe(closed || noSnapshot ? null : fixture.request);
+            expect(fixture.controller.signal.aborted).toBe(closed);
+            expect(fixture.state.isLoading).toBe(!closed && !noSnapshot);
+            expect(event.preventDefault).not.toHaveBeenCalled();
+            expect(event.stopPropagation).not.toHaveBeenCalled();
+        },
+    );
+});
