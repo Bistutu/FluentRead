@@ -498,7 +498,7 @@ async function main() {
     for (const id of ['selection', 'image', 'area']) {await popup.locator(`[data-feature-service="${id}"]`).click(); await popup.locator('[data-service-choice=""]').click();}
     await pick('default', 'microsoft'); await saved('service', 'microsoft');
     await popup.locator('[data-feature-service="default"]').click(); await shot(popup, 'service-picker-common');
-    assert.equal(await popup.locator('.service-picker-more').getAttribute('aria-expanded'), 'false');
+    assert.equal(await popup.locator('.service-picker-more').getAttribute('aria-expanded'), 'true');
     await popup.locator('.service-picker-search input').press('Escape');
     await pick('hover', 'google'); await saved('hoverTranslationService', 'google');
     await pick('default', 'deepseek'); await saved('service', 'deepseek');
@@ -514,15 +514,17 @@ async function main() {
     await popup.locator('.service-picker-search input').press('Escape');
     await popup.locator('[data-feature-service="default"]').click(); await popup.locator('.service-picker-search input').fill(service); await popup.locator(`[data-service-choice="${service}"]`).click();
     await saved('service', service); await popup.locator('[data-feature-service="default"]').click();
-    // 当前选中的服务始终留在常用区：更多区保持收起，面板从顶部打开即可在视口内看到它。
-    assert.equal(await popup.locator('.service-picker-more').getAttribute('aria-expanded'), 'false');
+    // 当前选中的服务始终留在常用区：更多服务默认展开，面板从顶部打开即可在视口内看到选中项。
+    assert.equal(await popup.locator('.service-picker-more').getAttribute('aria-expanded'), 'true');
     assert(await popup.locator(`[data-service-choice="${service}"]`).isVisible());
     assert.equal(await popup.locator(`[data-service-choice="${service}"]`).getAttribute('aria-selected'), 'true');
     assert.equal(await popup.locator('.service-choice-grid').first().locator('[data-service-choice]').first().getAttribute('data-service-choice'), 'freeTranslation');
     const selectedVisibility = await popup.locator(`[data-service-choice="${service}"]`).evaluate(node => {const rect = node.getBoundingClientRect(); const body = node.closest('.el-drawer__body').getBoundingClientRect(); return {top: rect.top, bottom: rect.bottom, bodyTop: body.top, bodyBottom: body.bottom};});
     assert(selectedVisibility.top >= selectedVisibility.bodyTop - 1 && selectedVisibility.bottom <= selectedVisibility.bodyBottom + 1, `current service is outside drawer viewport: ${JSON.stringify(selectedVisibility)}`);
     assert(selectedVisibility.bottom <= await popup.evaluate(() => innerHeight), 'current service clipped by popup viewport');
-    await shot(popup, 'service-picker-selected'); await popup.locator('.service-picker-more').click();
+    await shot(popup, 'service-picker-selected'); const expandedCount = await popup.locator('[data-service-choice]').count(); await popup.locator('.service-picker-more').click();
+    assert.equal(await popup.locator('.service-picker-more').getAttribute('aria-expanded'), 'false'); assert(await popup.locator('[data-service-choice]').count() < expandedCount, 'collapsing more services should hide its choices');
+    await shot(popup, 'service-picker-more-collapsed'); await popup.locator('.service-picker-more').click();
     assert.equal(await popup.locator('.service-picker-more').getAttribute('aria-expanded'), 'true'); await shot(popup, 'service-picker-more');
     // 搜索框随列表滚动，只有标题栏吸顶；滚到底部后搜索框应离开抽屉视口。
     const scrolled = await popup.locator('.service-picker-search').evaluate(node => {const body = node.closest('.el-drawer__body'); body.scrollTop = body.scrollHeight; const rect = node.getBoundingClientRect(), bodyRect = body.getBoundingClientRect(), heading = body.querySelector('.service-picker-heading').getBoundingClientRect(); const result = {scrollTop: body.scrollTop, searchBottom: rect.bottom, bodyTop: bodyRect.top, headingTop: heading.top}; body.scrollTop = 0; return result;});
