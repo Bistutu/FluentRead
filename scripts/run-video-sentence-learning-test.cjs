@@ -83,6 +83,18 @@ let explanationServer;
 const explanationRequests = [];
 const pendingExplanations = [];
 let currentPhase = 'initializing';
+let rejectBrowserDisconnected;
+let stopDisconnectObservation;
+const browserDisconnected = new Promise((_, reject) => {rejectBrowserDisconnected = reject;});
+void browserDisconnected.catch(() => {});
+async function withDeadline(operation, milliseconds, label) {
+  let timer;
+  try {
+    return await Promise.race([operation, new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`${label} exceeded ${milliseconds} ms`)), milliseconds);
+    })]);
+  } finally {clearTimeout(timer);}
+}
 const check = (result, name, details) => {
   currentPhase = `${result.platform}: ${name}`;
   result.checks.push({name, pass: true, ...(details ? {details} : {})});
@@ -700,11 +712,15 @@ async function runFixture(platform, mediaData) {
   await player.screenshot({path: compactScreenshot});
   check(result, 'A 390px player keeps learning inside its bounds with scrollable content, reachable saving and space for native controls', {...compact, screenshot: compactScreenshot});
   await player.evaluate((element, saved) => saved === null ? element.removeAttribute('style') : element.setAttribute('style', saved), previousStyle);
+  currentPhase = `${platform}: requesting actual browser fullscreen`;
+  process.stdout.write(`${currentPhase}\n`);
   const cdp = await context.newCDPSession(page);
   try {
-    await cdp.send('Runtime.evaluate', {expression: 'document.querySelector("#movie_player, [data-testid=videoPlayer]").requestFullscreen()', userGesture: true, awaitPromise: true});
-  } finally {await cdp.detach();}
-  await page.waitForFunction(() => Boolean(document.fullscreenElement));
+    await withDeadline(cdp.send('Runtime.evaluate', {expression: 'document.querySelector("#movie_player, [data-testid=videoPlayer]").requestFullscreen()', userGesture: true, awaitPromise: true}), 15000, 'Actual browser fullscreen request');
+  } finally {
+    if (context.browser()?.isConnected()) await withDeadline(cdp.detach(), 1500, 'Fullscreen CDP detach');
+  }
+  await page.waitForFunction(() => Boolean(document.fullscreenElement), null, {timeout: 15000});
   assert.equal(await page.locator('#fluent-read-video-learning-panel').isVisible(), true);
   await capture(`${platform}-fullscreen`, result);
   check(result, 'Learning remains accessible in real browser fullscreen');
@@ -1012,6 +1028,13 @@ async function main() {
   browserPid = await getGuardedBrowserPid(session);
   assert.ok(!focusMonitor.events.some(event => event.pid === browserPid), 'Owned browser activated during launch');
   context = session.context;
+  const browser = context.browser();
+  const onDisconnected = () => {
+    report.browserDisconnected = {unexpected: true, phase: currentPhase, time: new Date().toISOString()};
+    rejectBrowserDisconnected(focusFailure || new Error(`Owned browser disconnected during ${currentPhase}`));
+  };
+  browser.once('disconnected', onDisconnected);
+  stopDisconnectObservation = () => browser.off('disconnected', onDisconnected);
   if (performanceOnly) report.performance.browserVersion = context.browser()?.version() || 'CDP Edge';
   Object.assign(report, {launchMode: session.launchMode, focusPolicy: session.focusPolicy, windowPlacement: session.windowPlacement});
   assert.equal(report.windowPlacement.browserFrontmost, false, 'Focus-safe browser must stay in background');
@@ -1070,14 +1093,15 @@ async function main() {
   report.success = performanceOnly ? report.performanceCases.every(result => result.success) : liveOnly ? report.liveCases.every(result => result.success) : report.fixtureCases.every(result => result.success);
   if (!report.success) process.exitCode = 1;
 }
-main().catch(async error => {
+Promise.race([main(), browserDisconnected]).catch(async error => {
   report.failure = error.stack || String(error);
-  if (page && !page.isClosed()) {
+  if (page && !page.isClosed() && context?.browser()?.isConnected()) {
     report.failureState = await current().catch(() => null);
     await capture('failure', report).catch(() => {});
   }
   process.exitCode = 1;
 }).finally(async () => {
+  stopDisconnectObservation?.();
   pendingExplanations.splice(0).forEach(resolve => resolve());
   try {
     if (session) {await session.close(); report.cleanup.browserClosed = true;}

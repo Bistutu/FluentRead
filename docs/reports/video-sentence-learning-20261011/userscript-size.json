@@ -1,4 +1,17 @@
 {
+  "latestIntegration": {
+    "baseCommit": "43f66b01dc7bb0523f6bc7866dc248efdcdbe071",
+    "mergedWorktreeCommit": "8954f647286499b50924b38e2e9b42176808b48a",
+    "budgetBytes": 2050000,
+    "candidate": {
+      "bytes": 2047920,
+      "sha256": "3f1126a74b8b11702816fb50b963f6665c097efeae9554df0676058792fd39f9",
+      "languageResourceCommit": "aeb099f57a494b8ec8f9fa84ec22c620d275fab3"
+    },
+    "candidateLog": "/private/tmp/video-learning-merge-userscript.log",
+    "buildSeconds": 7.15,
+    "scope": "Build and verifier after merging current main; unchanged installed dependencies. No new same-main baseline build or userscript manager/browser acceptance. Prior comparisons below retain their original base commit and budget."
+  },
   "baseCommit": "69d41e5e1050e5004d4656963d5105f24df9d8ed",
   "budgetBytes": 2027000,
   "base": {
