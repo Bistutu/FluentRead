@@ -40,11 +40,11 @@
 
 | 产物 | SHA-256 |
 | --- | --- |
-| `background.js` | `b45483a5d821dea15dceabcecc5732d124f825625316ab9adafdfc06e5a9bccf` |
-| `content-scripts/content.js` | `7d88da28e55241bf12556db50bef6d1a2814ce3b78407150b50cb4d2983fb043` |
-| `content-scripts/content.css` | `3186c6726bd1e9084880f0a86c6c9e5e2b32b1b50353db253216d7f4fb3ba711` |
+| `background.js` | `e2d51a6c6b3ef078bef01e58bd5f0203ba9b59aec3d73ccdae00ac80dc27d383` |
+| `content-scripts/content.js` | `d71b92a5c0505e89fef6a12afd0047cd78695ef28b96835c100c063bb4ba6201` |
+| `content-scripts/content.css` | `54f4ed02f23881893e8e9094d5cb6e61813d4cffad3c230c4df75b24efc6db02` |
 
-完整临时证据目录为 `/private/tmp/fluentread-personal-corrections-compact-layout-20261011-r1`；其中保留 31 张截图、各项结果、新鲜度与清理记录。本报告归档的是语言移至页签右侧、范围移至底部操作栏后的最终运行；收起常驻说明的 help r1、整合 main 的 r1 及原先 opt-in r1/r2 证据仍保留。旧 r1 的撤销用例假设启停后仍保留上一编辑会话的撤销按钮，与关闭后重建会话不符；后续用例先通过真实管理删除和重新确认保存建立本会话撤销点，再验证撤销及普通服务回退。
+完整临时证据目录为 `/private/tmp/fluentread-personal-corrections-merge-20261011-r1`；其中保留 31 张截图、各项结果、新鲜度与清理记录。本报告归档的是整合 main `1983644df` 后的新生产产物；语言位于页签右侧、范围位于底部操作栏。此前 compact-layout r1、收起常驻说明的 help r1、整合 main 的 r1 及原先 opt-in r1/r2 证据仍保留。旧 r1 的撤销用例假设启停后仍保留上一编辑会话的撤销按钮，与关闭后重建会话不符；后续用例先通过真实管理删除和重新确认保存建立本会话撤销点，再验证撤销及普通服务回退。
 
 测试入口为 [`scripts/testing/run-personal-corrections-test.cjs`](../../scripts/testing/run-personal-corrections-test.cjs)。运行参数必须指定 `--playwright-root`，并使用 `--background --display secondary --real-url https://example.com`；`--artifacts-dir` 指定本次独立证据目录。脚本自动创建临时 profile，检查原生焦点事件并只关闭本次拥有的浏览器，完成后按目录身份与 `.owner` 标记删除 profile。
 

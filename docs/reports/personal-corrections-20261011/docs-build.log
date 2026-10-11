@@ -12,10 +12,4 @@
 ✓ rendering pages...
 - generating sitemap...
 ✓ generating sitemap...
-build complete in 3.92s.
-
-
-> FluentRead-流畅阅读@0.0.37 docs:check /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
-> node scripts/verify-docs-build.mjs
-
-{"ok":true,"pages":81,"links":4337,"anchors":801,"images":158}
+build complete in 4.08s.

@@ -1,4 +1,9 @@
-userscript
+userscript (exit 0)
+
+> FluentRead-流畅阅读@0.0.37 test:userscript /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
+> node scripts/testing/run-resource-safe.mjs -- pnpm build:userscript && node scripts/verify-userscript-build.mjs
+
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: pnpm build:userscript
 
 > FluentRead-流畅阅读@0.0.37 build:userscript /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
 > node scripts/testing/run-resource-safe.mjs -- vite build --config userscript/vite.config.ts
@@ -6,16 +11,15 @@ userscript
 [resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vite build --config userscript/vite.config.ts
 vite v5.4.19 building for production...
 transforming...
-✓ 682 modules transformed.
+✓ 687 modules transformed.
 rendering chunks...
 computing gzip size...
-.output/userscript/fluent-read.user.js  1,992.26 kB │ gzip: 809.00 kB
-✓ built in 6.89s
+.output/userscript/fluent-read.user.js  2,008.46 kB │ gzip: 814.85 kB
+✓ built in 4.51s
+Verified .output/userscript/fluent-read.user.js (2,064,310 bytes)
 
-userscript-verification
-Verified .output/userscript/fluent-read.user.js (2,048,053 bytes)
 
-extension-manifests
+manifests (exit 0)
 
 > FluentRead-流畅阅读@0.0.37 verify:extension-manifests /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
 > node scripts/testing/verify-extension-manifests.mjs
@@ -27,7 +31,7 @@ extension-manifests
     "offscreenPermission": true,
     "runtimeCapabilityMarker": "__FLUENTREAD_BROWSER_CAPABILITY_BUILD__:chrome:mv3__",
     "artifacts": [
-      "chunks/offscreen-DH2zaQoW.js",
+      "chunks/offscreen-CvhgAD32.js",
       "offscreen.html"
     ],
     "ocrAssets": 6
@@ -37,7 +41,7 @@ extension-manifests
     "offscreenPermission": false,
     "runtimeCapabilityMarker": "__FLUENTREAD_BROWSER_CAPABILITY_BUILD__:firefox:mv2__",
     "artifacts": [
-      "chunks/offscreen-DH2zaQoW.js",
+      "chunks/offscreen-CvhgAD32.js",
       "offscreen.html"
     ],
     "ocrAssets": 6,
@@ -53,7 +57,8 @@ extension-manifests
   }
 }
 
-test-audit
+
+audit (exit 0)
 
 > FluentRead-流畅阅读@0.0.37 test:audit /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
 > node scripts/testing/audit-test-suite.mjs
@@ -62,10 +67,10 @@ test-audit
   "status": "ok",
   "groups": {
     "architecture": 33,
-    "unit": 383,
-    "functional": 212,
+    "unit": 384,
+    "functional": 214,
     "regression": 42
   },
-  "files": 670,
-  "cases": 11265
+  "files": 673,
+  "cases": 11326
 }

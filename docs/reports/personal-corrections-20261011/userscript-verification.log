@@ -1,2 +1,2 @@
-Verified .output/userscript/fluent-read.user.js (2,048,053 bytes)
-{"bytes": 2048053, "presence": {"personalCorrectionMemory": false, "PERSONAL_CORRECTION": false, "data-fr-personal-correction": false, "recordIds": false, "correction-dialog": false, "correction-language": false, "correction-project-create": false}}
+Verified .output/userscript/fluent-read.user.js (2,064,310 bytes)
+Budget inherited from main: 2,066,000 bytes; personal correction UI/messages/record ID markers absent.

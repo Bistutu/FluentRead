@@ -1,15 +1,15 @@
 
 > FluentRead-流畅阅读@0.0.37 test:coverage /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
-> node scripts/testing/run-resource-safe.mjs -- vitest run --config vitest.coverage.config.ts "tests/personalCorrectionMemory.test.ts" "tests/personalCorrectionDom.test.ts" "tests/personalCorrectionTranslation.test.ts" "tests/personalCorrectionUiController.test.ts" "tests/personalCorrectionUiRuntime.test.ts" "tests/personalCorrectionUiPanel.test.ts" "tests/personalCorrectionComposition.test.ts" "tests/liveTextTranslation.test.ts" "--coverage.include=src/app/background/personalCorrectionRuntime.ts" "--coverage.include=src/app/content/personalCorrections.ts" "--coverage.include=src/core/personal-corrections/model.ts" "--coverage.include=src/core/personal-corrections/matching.ts" "--coverage.include=src/core/personal-corrections/public.ts" "--coverage.include=src/services/personal-corrections/store.ts" "--coverage.include=src/services/personal-corrections/service.ts" "--coverage.include=src/services/personal-corrections/protocol.ts" "--coverage.include=src/services/personal-corrections/client.ts" "--coverage.include=src/services/personal-corrections/public.ts" "--coverage.include=src/platform/storage/personalCorrectionRepository.ts" "--coverage.include=src/features/full-page-translation/content/personalCorrections.ts" "--coverage.include=src/features/full-page-translation/content/liveTextTranslation.ts" "--coverage.include=src/features/personal-corrections/controller.ts" "--coverage.include=src/features/personal-corrections/content/runtime.ts" "--coverage.include=src/features/personal-corrections/ui/PersonalCorrectionPanel.vue" "--coverage.reportsDirectory=/private/tmp/personal-corrections-compact-coverage"
+> node scripts/testing/run-resource-safe.mjs -- vitest run --config vitest.coverage.config.ts "tests/personalCorrectionMemory.test.ts" "tests/personalCorrectionDom.test.ts" "tests/personalCorrectionTranslation.test.ts" "tests/personalCorrectionUiController.test.ts" "tests/personalCorrectionUiRuntime.test.ts" "tests/personalCorrectionUiPanel.test.ts" "tests/personalCorrectionComposition.test.ts" "tests/liveTextTranslation.test.ts" "--coverage.include=src/app/background/personalCorrectionRuntime.ts" "--coverage.include=src/app/content/personalCorrections.ts" "--coverage.include=src/core/personal-corrections/model.ts" "--coverage.include=src/core/personal-corrections/matching.ts" "--coverage.include=src/core/personal-corrections/public.ts" "--coverage.include=src/services/personal-corrections/store.ts" "--coverage.include=src/services/personal-corrections/service.ts" "--coverage.include=src/services/personal-corrections/protocol.ts" "--coverage.include=src/services/personal-corrections/client.ts" "--coverage.include=src/services/personal-corrections/public.ts" "--coverage.include=src/platform/storage/personalCorrectionRepository.ts" "--coverage.include=src/features/full-page-translation/content/personalCorrections.ts" "--coverage.include=src/features/full-page-translation/content/liveTextTranslation.ts" "--coverage.include=src/features/personal-corrections/controller.ts" "--coverage.include=src/features/personal-corrections/content/runtime.ts" "--coverage.include=src/features/personal-corrections/ui/PersonalCorrectionPanel.vue" "--coverage.reportsDirectory=/private/tmp/personal-corrections-merge-coverage"
 
-[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vitest run --config vitest.coverage.config.ts tests/personalCorrectionMemory.test.ts tests/personalCorrectionDom.test.ts tests/personalCorrectionTranslation.test.ts tests/personalCorrectionUiController.test.ts tests/personalCorrectionUiRuntime.test.ts tests/personalCorrectionUiPanel.test.ts tests/personalCorrectionComposition.test.ts tests/liveTextTranslation.test.ts --coverage.include=src/app/background/personalCorrectionRuntime.ts --coverage.include=src/app/content/personalCorrections.ts --coverage.include=src/core/personal-corrections/model.ts --coverage.include=src/core/personal-corrections/matching.ts --coverage.include=src/core/personal-corrections/public.ts --coverage.include=src/services/personal-corrections/store.ts --coverage.include=src/services/personal-corrections/service.ts --coverage.include=src/services/personal-corrections/protocol.ts --coverage.include=src/services/personal-corrections/client.ts --coverage.include=src/services/personal-corrections/public.ts --coverage.include=src/platform/storage/personalCorrectionRepository.ts --coverage.include=src/features/full-page-translation/content/personalCorrections.ts --coverage.include=src/features/full-page-translation/content/liveTextTranslation.ts --coverage.include=src/features/personal-corrections/controller.ts --coverage.include=src/features/personal-corrections/content/runtime.ts --coverage.include=src/features/personal-corrections/ui/PersonalCorrectionPanel.vue --coverage.reportsDirectory=/private/tmp/personal-corrections-compact-coverage
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vitest run --config vitest.coverage.config.ts tests/personalCorrectionMemory.test.ts tests/personalCorrectionDom.test.ts tests/personalCorrectionTranslation.test.ts tests/personalCorrectionUiController.test.ts tests/personalCorrectionUiRuntime.test.ts tests/personalCorrectionUiPanel.test.ts tests/personalCorrectionComposition.test.ts tests/liveTextTranslation.test.ts --coverage.include=src/app/background/personalCorrectionRuntime.ts --coverage.include=src/app/content/personalCorrections.ts --coverage.include=src/core/personal-corrections/model.ts --coverage.include=src/core/personal-corrections/matching.ts --coverage.include=src/core/personal-corrections/public.ts --coverage.include=src/services/personal-corrections/store.ts --coverage.include=src/services/personal-corrections/service.ts --coverage.include=src/services/personal-corrections/protocol.ts --coverage.include=src/services/personal-corrections/client.ts --coverage.include=src/services/personal-corrections/public.ts --coverage.include=src/platform/storage/personalCorrectionRepository.ts --coverage.include=src/features/full-page-translation/content/personalCorrections.ts --coverage.include=src/features/full-page-translation/content/liveTextTranslation.ts --coverage.include=src/features/personal-corrections/controller.ts --coverage.include=src/features/personal-corrections/content/runtime.ts --coverage.include=src/features/personal-corrections/ui/PersonalCorrectionPanel.vue --coverage.reportsDirectory=/private/tmp/personal-corrections-merge-coverage
 
  RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
       Coverage enabled with v8
 
- ✓ tests/personalCorrectionMemory.test.ts (32 tests) 518ms
- ✓ tests/personalCorrectionUiPanel.test.ts (17 tests) 426ms
- ✓ tests/personalCorrectionDom.test.ts (15 tests) 65ms
+ ✓ tests/personalCorrectionMemory.test.ts (32 tests) 458ms
+ ✓ tests/personalCorrectionUiPanel.test.ts (17 tests) 324ms
+ ✓ tests/personalCorrectionDom.test.ts (15 tests) 46ms
 stderr | tests/liveTextTranslation.test.ts
 [FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
     at Object.getItem (/Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011/src/platform/storage/configStorageRuntime.ts:36:29)
@@ -23,16 +23,16 @@ stderr | tests/liveTextTranslation.test.ts
     at /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011/src/features/full-page-translation/content/personalCorrections.ts:3:31
     at VitestExecutor.runModule (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vite-node@2.1.9_@types+node@22.10.7/node_modules/vite-node/dist/client.mjs:399:5)
 
- ✓ tests/liveTextTranslation.test.ts (17 tests) 74ms
- ✓ tests/personalCorrectionUiController.test.ts (8 tests) 20ms
- ✓ tests/personalCorrectionUiRuntime.test.ts (8 tests) 24ms
- ✓ tests/personalCorrectionTranslation.test.ts (5 tests) 29ms
- ✓ tests/personalCorrectionComposition.test.ts (4 tests) 7ms
+ ✓ tests/liveTextTranslation.test.ts (17 tests) 66ms
+ ✓ tests/personalCorrectionUiController.test.ts (8 tests) 15ms
+ ✓ tests/personalCorrectionUiRuntime.test.ts (8 tests) 17ms
+ ✓ tests/personalCorrectionTranslation.test.ts (5 tests) 32ms
+ ✓ tests/personalCorrectionComposition.test.ts (4 tests) 6ms
 
  Test Files  8 passed (8)
       Tests  106 passed (106)
-   Start at  16:52:55
-   Duration  6.57s (transform 1.41s, setup 0ms, collect 2.59s, tests 1.16s, environment 1ms, prepare 474ms)
+   Start at  17:34:27
+   Duration  6.11s (transform 1.22s, setup 0ms, collect 2.15s, tests 964ms, environment 1ms, prepare 444ms)
 
  % Coverage report from v8
 -------------------|---------|----------|---------|---------|-------------------
