@@ -251,6 +251,25 @@ async function main() {
     }));
     if (resetState.skin !== 'classic' || resetState.fontScale !== '100' || resetState.position !== 'bottom') fail(`恢复默认状态不正确：${JSON.stringify(resetState)}`);
 
+
+    // 逐字高亮默认关闭；打开后预览立即出现循环扫光，恢复默认会一并关闭。
+    const karaokeSwitch = optionsPage.getByRole('switch', {name: '视频字幕逐字高亮'});
+    const readKaraokePreview = () => optionsPage.locator('[data-video-subtitle-preview]').evaluate(element => Array.from(element.children).map(line => ({
+      animated: getComputedStyle(line, '::after').animationName !== 'none' && getComputedStyle(line, '::after').content !== 'none',
+      dimmed: getComputedStyle(line).color.includes('/') || /rgba\(/.test(getComputedStyle(line).color),
+    })));
+    result.karaoke = {default: await karaokeSwitch.getAttribute('aria-checked'), defaultPreview: await readKaraokePreview()};
+    if (result.karaoke.default !== 'false' || result.karaoke.defaultPreview.some(line => line.animated)) fail(`逐字高亮应默认关闭：${JSON.stringify(result.karaoke)}`);
+    await optionsPage.locator('[data-video-subtitle-karaoke]').click();
+    result.karaoke.enabledPreview = await readKaraokePreview();
+    if (result.karaoke.enabledPreview.length !== 2 || result.karaoke.enabledPreview.some(line => !line.animated || !line.dimmed)) fail(`开启逐字高亮后预览没有扫光：${JSON.stringify(result.karaoke)}`);
+    await optionsPage.locator('[data-video-subtitle-karaoke]').scrollIntoViewIfNeeded();
+    await optionsPage.waitForTimeout(1300);
+    await screenshot(optionsPage, path.join(options.artifactsDir, 'options-video-karaoke.png'));
+    result.screenshots.push(path.join(options.artifactsDir, 'options-video-karaoke.png'));
+    await reset.click();
+    if (await karaokeSwitch.getAttribute('aria-checked') !== 'false') fail('恢复默认应关闭逐字高亮');
+
     await optionsPage.locator('[data-video-subtitle-appearance] button[data-skin="terminal"]').click();
     await setRange(optionsPage, '字幕字号', 130);
     await selectVideoSourceLanguage(optionsPage, '한국어');
