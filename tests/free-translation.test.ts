@@ -170,7 +170,7 @@ describe('免费翻译服务', () => {
         mockConfig.freeTranslationOrder = ['doubaoWeb', 'google'];
         googleMock.mockResolvedValue('备用译文');
         let fail = false;
-        const fetch = vi.fn(async input => String(input) === actual.DOUBAO_WEB_HOME ? new Response('{"ttwid":"fixture-guest"}')
+        const fetch = vi.fn(async input => String(input) === actual.DOUBAO_WEB_HOME ? new Response('{"ttwid":"fixture-guest","web_id":"1234567890123456789"}')
             : fail ? Response.json({code: 710012001, msg: 'private diagnostic'})
                 : new Response('event: json\ndata: {"code":0,"data":{"items":[{"index":0,"res":"豆包译文"}]}}\n\nevent: done\ndata:\n\n', {headers: {'Content-Type': 'text/event-stream'}}));
         vi.stubGlobal('fetch', fetch);

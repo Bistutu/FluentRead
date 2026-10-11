@@ -12,15 +12,25 @@ import {DOUBAO_GUEST_HEADER} from '@/src/platform/http/doubaoGuest';
 
 export const DOUBAO_WEB_HOME = 'https://www.doubao.com/';
 export const DOUBAO_WEB_TRANSLATION_URL = 'https://www.doubao.com/samantha/plugin/stream_article_translate';
-export const DOUBAO_WEB_REGISTER_URL = 'https://ttwid.bytedance.com/ttwid/union/register/';
 const MAX_CHUNK_CODEPOINTS = 2000;
 const MAX_STREAM_CHARACTERS = 2_000_000;
 const MAX_EVENT_CHARACTERS = 256_000;
 const VISITOR_ERROR_CODES = new Set([710012000, 710012001]);
 const SIMPLIFIED_CHINESE_CODES: Readonly<Record<string, string>> = {zh: 'zh', 'zh-cn': 'zh', 'zh-hans': 'zh', 'zh-chs': 'zh'};
 
-interface GuestSession {ttwid?: string; refreshed: boolean; teaUuid: string;}
+interface GuestVisitor {ttwid: string; webId: string;}
+interface GuestSession {visitor?: GuestVisitor; refreshed: boolean; teaUuid: string; webTabId: string;}
 interface StreamState {text: string; done: boolean;}
+
+function randomWebTabId(): string {
+    // HTTP 网页的 userscript 也可使用 getRandomValues，不依赖仅安全上下文提供的 randomUUID。
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+    bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+    const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 
 function checkAbort(signal?: AbortSignal): void {
     if (signal?.aborted) throw abortErrorFromSignal(signal);
@@ -62,31 +72,19 @@ async function responseText(response: Response, signal?: AbortSignal): Promise<s
     }
 }
 
-async function bootstrapVisitor(signal?: AbortSignal): Promise<string> {
+async function bootstrapVisitor(signal?: AbortSignal): Promise<GuestVisitor> {
     checkAbort(signal);
     const home = await runtimeFetch(DOUBAO_WEB_HOME, {method: 'GET', credentials: 'omit', signal});
     await checkResponseAbort(home, signal);
     if (!home.ok) throw createHttpStatusError(home, '豆包网页翻译访客初始化失败');
     const cookie = visitorFromResponse(home);
-    if (cookie) return cookie;
+    // web_id 与 ttwid 必须来自同一次匿名首页；仅有 Cookie 无法证明访客初始化完整。
     const html = await responseText(home, signal);
     const htmlVisitor = html.match(/["']ttwid["']\s*:\s*["']([^"'\\]+)["']/u)?.[1];
-    if (validVisitor(htmlVisitor)) return htmlVisitor;
-
-    // 官网未暴露访客字段时仅注册新的匿名访客，不读取或附带浏览器的已有 Cookie。
-    const registered = await runtimeFetch(DOUBAO_WEB_REGISTER_URL, {
-        method: 'POST', credentials: 'omit', signal, headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({region: 'cn', aid: 1768, needFid: false, service: 'www.doubao.com',
-            union: true, cbUrlProtocol: 'https', migrate_info: {ticket: '', source: 'node'}}),
-    });
-    await checkResponseAbort(registered, signal);
-    if (!registered.ok) throw createHttpStatusError(registered, '豆包网页翻译访客初始化失败');
-    const registeredCookie = visitorFromResponse(registered);
-    if (registeredCookie) return registeredCookie;
-    const body = await readJsonResponse<{data?: {ttwid?: unknown}} | null>(registered, '豆包网页翻译访客初始化失败');
-    checkAbort(signal);
-    if (!validVisitor(body?.data?.ttwid)) throw failure('豆包网页翻译访客初始化失败');
-    return body.data.ttwid;
+    const webId = html.match(/["']web_id["']\s*:\s*["']([1-9]\d{18})["']/u)?.[1];
+    const ttwid = cookie ?? (validVisitor(htmlVisitor) ? htmlVisitor : undefined);
+    if (!ttwid || !webId) throw failure('豆包网页翻译访客初始化失败');
+    return {ttwid, webId};
 }
 
 function providerError(code: unknown): Error {
@@ -183,12 +181,18 @@ async function readTranslationStream(response: Response, signal?: AbortSignal): 
 async function translateChunk(text: string, target: string, session: GuestSession, signal?: AbortSignal): Promise<string> {
     while (true) {
         checkAbort(signal);
-        session.ttwid ??= await bootstrapVisitor(signal);
+        session.visitor ??= await bootstrapVisitor(signal);
         checkAbort(signal);
-        const url = `${DOUBAO_WEB_TRANSLATION_URL}?aid=586864&device_platform=web&tea_uuid=${session.teaUuid}&version=1.38.0`;
+        // 官方扩展 1.38.0 的公共参数已通过全新匿名首页 + 普通 HTTP 验证；简化请求实测返回登录已过期。
+        const query = new URLSearchParams({aid: '586864', device_platform: 'web', tea_uuid: session.teaUuid,
+            version: '1.38.0', 'use-olympus-account': '1', language: 'zh', browser_language: 'zh-CN',
+            real_aid: '586864', pkg_type: 'release_version', device_id: session.visitor.webId,
+            web_id: session.visitor.webId, is_new_user: '0', region: 'CN', sys_region: 'CN',
+            samantha_web: '1', version_code: '20800', pc_version: '1.38.0', web_tab_id: session.webTabId});
+        const url = `${DOUBAO_WEB_TRANSLATION_URL}?${query}`;
         const response = await runtimeFetch(url, {
             method: 'POST', credentials: 'omit', signal,
-            headers: {'Content-Type': 'application/json', Accept: 'text/event-stream', [DOUBAO_GUEST_HEADER]: session.ttwid},
+            headers: {'Content-Type': 'application/json', Accept: 'text/event-stream', 'Agw-Js-Conv': 'str', [DOUBAO_GUEST_HEADER]: session.visitor.ttwid},
             body: JSON.stringify({raw_text: [text], target_lang: target, translate_service: '1', frontend_source: 1, scene: 2}),
         });
         await checkResponseAbort(response, signal);
@@ -197,7 +201,7 @@ async function translateChunk(text: string, target: string, session: GuestSessio
             checkAbort(signal);
             if (!(error instanceof Error) || !(error as Error & {doubaoVisitorExpired?: boolean}).doubaoVisitorExpired || session.refreshed) throw error;
             session.refreshed = true;
-            session.ttwid = undefined;
+            session.visitor = undefined;
         }
     }
 }
@@ -233,7 +237,7 @@ export async function translateDoubaoWeb(request: TranslationProviderRequest<str
     if ((SIMPLIFIED_CHINESE_CODES[source] ?? source) === target) return origin;
     const random = new Uint8Array(18);
     crypto.getRandomValues(random);
-    const session: GuestSession = {refreshed: false, teaUuid: `${random[0]! % 9 + 1}${Array.from(random.slice(1), byte => byte % 10).join('')}`};
+    const session: GuestSession = {refreshed: false, teaUuid: `${random[0]! % 9 + 1}${Array.from(random.slice(1), byte => byte % 10).join('')}`, webTabId: randomWebTabId()};
     const slots = getTranslationGlossarySourceText(origin);
     if (!Array.isArray(slots)) return translatePlain(slots, target, session, abortSignal);
     const translations: string[] = [];

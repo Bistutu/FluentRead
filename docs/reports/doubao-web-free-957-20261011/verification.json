@@ -13,8 +13,8 @@
   },
   "checks": {
     "targetedRegression": {
-      "files": 13,
-      "casesPassed": 1280,
+      "files": 18,
+      "casesPassed": 1361,
       "filesList": [
         "tests/free-translation.test.ts",
         "tests/doubaoWebTranslation.test.ts",
@@ -28,7 +28,12 @@
         "tests/architecture/moduleBoundaries.test.ts",
         "tests/architecture/providerBoundaries.test.ts",
         "tests/architecture/sourceFileHeaders.test.ts",
-        "tests/architecture/verificationOwnership.test.ts"
+        "tests/architecture/verificationOwnership.test.ts",
+        "tests/userscriptViteConfig.test.ts",
+        "tests/userscriptPrivacy.test.ts",
+        "tests/uiLanguageBundles.test.ts",
+        "tests/userscriptHttp.test.ts",
+        "tests/requestHeaderRuntime.test.ts"
       ],
       "workerLimits": "--maxWorkers=1 --minWorkers=1"
     },
@@ -41,10 +46,11 @@
         "tests/uiLanguageBundles.test.ts",
         "tests/userscriptHttp.test.ts",
         "tests/requestHeaderRuntime.test.ts"
-      ]
+      ],
+      "includedIn": "targetedRegression (one combined final run)"
     },
     "newModulesStrictCoverage": {
-      "casesPassed": 77,
+      "casesPassed": 85,
       "percentages": {
         "src/platform/http/doubaoGuest.ts": {
           "statements": 100,
@@ -58,7 +64,8 @@
           "functions": 100,
           "lines": 100
         }
-      }
+      },
+      "evidence": "new-modules-coverage.json"
     },
     "typeCheck": "passed",
     "chromeProductionBuild": "passed",
@@ -67,19 +74,25 @@
     "testAudit": {
       "status": "passed",
       "files": 675,
-      "cases": 11371
+      "cases": 11373
     },
     "productionBrowser": {
-      "result": "6 cases passed",
-      "evidence": "production-browser.json"
+      "result": "3 real-provider cases passed; 3 actual Doubao POSTs, no fallback provider",
+      "evidence": "production-live-browser.json",
+      "scope": "Fresh anonymous isolated Edge with complete unmodified Chrome production build; connection test, translation broker and trusted Control toggle [1,0,1]"
     },
     "liveProvider": {
-      "result": "6 anonymous requests all returned HTTP 200 / business code 710012001",
-      "evidence": "live-protocol.json"
+      "result": "Fresh anonymous curl succeeded with complete public query parameters and paired homepage ttwid/web_id; no website JavaScript, signature, login cookies or API key",
+      "evidence": "anonymous-http-success.json",
+      "historicalFailures": "live-protocol.json"
     },
     "userscriptBuild": {
       "evidence": "userscript-size.json",
-      "result": "passed; verifier passed at 2,072,640 bytes with minimally adjusted 2,073,000-byte budget"
+      "result": "passed; verifier passed at 2,072,803 bytes within 2,073,000-byte budget"
+    },
+    "historicalControlledBrowser": {
+      "result": "6 controlled cases passed against initial implementation",
+      "evidence": "production-browser.json"
     }
   },
   "knownBaselineFailure": {
@@ -88,8 +101,8 @@
     "cause": "200 existing missing personal-correction translations introduced on base main; identical missing entries in both runs"
   },
   "limitations": [
-    "No successful live anonymous Doubao translation observed; the pool node is experimental and off by default.",
-    "SSE framing follows the issue protocol and deterministic fixtures; live snapshot semantics could not be confirmed.",
+    "Short local-network anonymous Simplified Chinese samples establish current availability only, not all languages, regions, longevity, quota or translation quality.",
+    "Real successful SSE carried one full translated item and an empty done event; repeated-snapshot and malformed-stream behavior additionally covered by deterministic fixtures.",
     "Regional and traditional-Chinese target codes are rejected without silently substituting simplified Chinese.",
     "Firefox and actual Tampermonkey manager runtime remain unverified."
   ],

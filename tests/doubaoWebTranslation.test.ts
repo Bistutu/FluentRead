@@ -1,18 +1,19 @@
 /**
  * @file tests/doubaoWebTranslation.test.ts
  * 文件职责：验证豆包网页匿名翻译的受限访客协议、完整 SSE 响应和免费池错误契约。
- * 主要内容：覆盖官网与注册初始化、调用内复用和一次刷新、槽/空白/分块、流取消与结束、协议损坏、语言限制、HTTP 限流和正文安全。
+ * 主要内容：覆盖同次匿名首页的配对访客与官方扩展公共参数、调用内复用和一次刷新、槽/空白/分块、流取消与结束、协议损坏、语言限制、HTTP 限流和正文安全。
  * 模块边界：仅向 runtimeFetch 注入合成匿名数据，不接触真实账号或个人 Cookie；线上可用性另由匿名低频实测报告记录。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {translateDoubaoWeb, DOUBAO_WEB_HOME, DOUBAO_WEB_REGISTER_URL, DOUBAO_WEB_TRANSLATION_URL} from '@/src/providers/translation/doubao-web';
+import {translateDoubaoWeb, DOUBAO_WEB_HOME, DOUBAO_WEB_TRANSLATION_URL} from '@/src/providers/translation/doubao-web';
 import {DOUBAO_GUEST_HEADER} from '@/src/platform/http/doubaoGuest';
 import {setRuntimeFetch} from '@/src/platform/http/runtime';
 import {parseTranslationSlots, serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
 
 const request = (origin = 'Hello', extra = {}) => ({origin, sourceLanguage: 'en', targetLanguage: 'zh-Hans', ...extra});
 const token = '1%7Csynthetic-guest%7C1%7Csignature';
-const home = () => new Response(`<script>{"ttwid":"${token}"}</script>`);
+const webId = '7390000000000000001';
+const home = (ttwid: unknown = token, visitorWebId: unknown = webId) => new Response(`<script>${JSON.stringify({ttwid, web_id: visitorWebId})}</script>`);
 const jsonEvent = (body: unknown) => `event: json\ndata: ${JSON.stringify(body)}\n\n`;
 const resultEvent = (res: unknown = '你好', index: unknown = 0) => jsonEvent({code: 0, data: {items: [{index, res, detect_lang: 'en'}]}});
 const done = 'event: done\ndata:\n\n';
@@ -24,7 +25,7 @@ function install(translate: () => Response = () => stream()): void {
 function translationCalls() {return fetchMock.mock.calls.filter(([input]) => String(input).startsWith(DOUBAO_WEB_TRANSLATION_URL));}
 
 beforeEach(() => {fetchMock.mockReset(); setRuntimeFetch(fetchMock);});
-afterEach(() => {setRuntimeFetch(); vi.restoreAllMocks();});
+afterEach(() => {setRuntimeFetch(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
 describe('豆包网页匿名免费翻译', () => {
     it('使用固定官方节点和受限匿名访客头，忽略历史凭据和个人 Cookie', async () => {
@@ -34,43 +35,60 @@ describe('豆包网页匿名免费翻译', () => {
         const [url, init] = translationCalls()[0]!;
         const endpoint = new URL(String(url));
         expect(endpoint.origin + endpoint.pathname).toBe(DOUBAO_WEB_TRANSLATION_URL);
-        expect(Object.fromEntries(endpoint.searchParams)).toEqual({aid: '586864', device_platform: 'web', tea_uuid: expect.stringMatching(/^[1-9]\d{17}$/u), version: '1.38.0'});
-        expect(init).toMatchObject({method: 'POST', credentials: 'omit', headers: {'Content-Type': 'application/json', Accept: 'text/event-stream', [DOUBAO_GUEST_HEADER]: token}});
+        expect(Object.fromEntries(endpoint.searchParams)).toEqual({aid: '586864', device_platform: 'web',
+            tea_uuid: expect.stringMatching(/^[1-9]\d{17}$/u), version: '1.38.0', 'use-olympus-account': '1',
+            language: 'zh', browser_language: 'zh-CN', real_aid: '586864', pkg_type: 'release_version',
+            device_id: webId, web_id: webId, is_new_user: '0', region: 'CN', sys_region: 'CN',
+            samantha_web: '1', version_code: '20800', pc_version: '1.38.0',
+            web_tab_id: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u)});
+        expect(init).toMatchObject({method: 'POST', credentials: 'omit', headers: {'Content-Type': 'application/json', Accept: 'text/event-stream', 'Agw-Js-Conv': 'str', [DOUBAO_GUEST_HEADER]: token}});
         expect(JSON.parse(String(init!.body))).toEqual({raw_text: ['Hello'], target_lang: 'zh', translate_service: '1', frontend_source: 1, scene: 2});
         expect(JSON.stringify(fetchMock.mock.calls)).not.toContain('private-key');
         expect(JSON.stringify(fetchMock.mock.calls)).not.toContain('personal-cookie');
         expect(init!.headers).not.toHaveProperty('Cookie');
     });
 
-    it('优先读取官网响应中的匿名 ttwid Cookie，只转发该单个值', async () => {
+    it('响应 Cookie 只转发匿名 ttwid，仍读取同一首页的配对 web_id', async () => {
         fetchMock.mockImplementation(async input => String(input) === DOUBAO_WEB_HOME
-            ? new Response('not a token page', {headers: {'Set-Cookie': `other=unrelated; Path=/, ttwid=${token}; Path=/; HttpOnly`}}) : stream());
+            ? new Response(JSON.stringify({web_id: webId}), {headers: {'Set-Cookie': `other=unrelated; Path=/, ttwid=${token}; Path=/; HttpOnly`}}) : stream());
         await translateDoubaoWeb(request());
         expect(translationCalls()[0]![1]!.headers).toHaveProperty(DOUBAO_GUEST_HEADER, token);
         expect(JSON.stringify(translationCalls())).not.toContain('unrelated');
     });
 
-    it('官网缺失访客时注册匿名访客并兼容受限响应 Cookie 与 JSON 字段', async () => {
-        for (const register of [
-            () => new Response('ok', {headers: {'Set-Cookie': `ttwid=${token}; Domain=.bytedance.com`}}),
-            () => Response.json({data: {ttwid: token}}),
+    it('首页缺失完整访客对时安全换线，不伪造配对标识或注册 Cookie', async () => {
+        for (const bootstrap of [
+            () => new Response('no visitor fields'),
+            () => new Response(JSON.stringify({ttwid: token})),
+            () => new Response(JSON.stringify({web_id: webId})),
+            () => new Response('no web_id', {headers: {'Set-Cookie': `ttwid=${token}; Path=/`}}),
         ]) {
             fetchMock.mockReset();
-            fetchMock.mockImplementation(async input => String(input) === DOUBAO_WEB_HOME ? new Response('no token')
-                : String(input) === DOUBAO_WEB_REGISTER_URL ? register() : stream());
-            await translateDoubaoWeb(request());
-            expect(fetchMock).toHaveBeenCalledTimes(3);
-            expect(fetchMock.mock.calls[1]![1]).toMatchObject({method: 'POST', credentials: 'omit', headers: {'Content-Type': 'application/json'}});
-            expect(JSON.parse(String(fetchMock.mock.calls[1]![1]!.body))).toEqual({region: 'cn', aid: 1768, needFid: false, service: 'www.doubao.com', union: true, cbUrlProtocol: 'https', migrate_info: {ticket: '', source: 'node'}});
-            expect(translationCalls()[0]![1]!.headers).toHaveProperty(DOUBAO_GUEST_HEADER, token);
+            fetchMock.mockImplementation(async () => bootstrap());
+            await expect(translateDoubaoWeb(request())).rejects.toMatchObject({statusCode: 502, freeFailure: 'unavailable', message: '豆包网页翻译访客初始化失败'});
+            expect(fetchMock).toHaveBeenCalledOnce();
+            expect(translationCalls()).toHaveLength(0);
         }
     });
 
-    it.each([null, {}, {data: {}}, {data: {ttwid: 42}}, {data: {ttwid: 'guest; Cookie=personal'}}, {data: {ttwid: 'guest\nunsafe'}}, {data: {ttwid: 'x'.repeat(4097)}}])('拒绝不合法访客字段 %#', async body => {
-        fetchMock.mockImplementation(async input => String(input) === DOUBAO_WEB_HOME
-            ? new Response('<script>{"ttwid":"unsafe;cookie"}</script>') : Response.json(body));
+    it.each([null, {}, '', 42, 'guest; Cookie=personal', 'guest\nunsafe', 'x'.repeat(4097)])('拒绝不合法访客字段 %#', async value => {
+        fetchMock.mockResolvedValue(home(value));
         await expect(translateDoubaoWeb(request())).rejects.toMatchObject({statusCode: 502, freeFailure: 'unavailable', message: '豆包网页翻译访客初始化失败'});
         expect(translationCalls()).toHaveLength(0);
+    });
+
+    it.each([null, 42, '0', '123', '0'.repeat(19), '1'.repeat(20), 'guest;unsafe'])('拒绝无效 web_id 而不生成替代值 %#', async value => {
+        fetchMock.mockResolvedValue(home(token, value));
+        await expect(translateDoubaoWeb(request())).rejects.toMatchObject({statusCode: 502, freeFailure: 'unavailable'});
+        expect(translationCalls()).toHaveLength(0);
+    });
+
+    it('HTTP userscript 缺少 randomUUID 时仍可生成仅本次调用使用的匿名标签', async () => {
+        vi.stubGlobal('crypto', {getRandomValues: crypto.getRandomValues.bind(crypto)});
+        install();
+        await expect(translateDoubaoWeb(request())).resolves.toBe('你好');
+        const endpoint = new URL(String(translationCalls()[0]![0]));
+        expect(endpoint.searchParams.get('web_tab_id')).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
     });
 
     it('每次调用重新初始化，调用内按槽和换行复用匿名访客并保留原命名空间', async () => {
@@ -83,8 +101,11 @@ describe('豆包网页匿名免费翻译', () => {
         expect(JSON.stringify(fetchMock.mock.calls)).not.toContain('___FLUENTREAD_');
         const uuids = translationCalls().map(([url]) => new URL(String(url)).searchParams.get('tea_uuid'));
         expect(new Set(uuids).size).toBe(1);
+        const tabIds = translationCalls().map(([url]) => new URL(String(url)).searchParams.get('web_tab_id'));
+        expect(new Set(tabIds).size).toBe(1);
         await translateDoubaoWeb(request());
         expect(fetchMock.mock.calls.filter(([input]) => String(input) === DOUBAO_WEB_HOME)).toHaveLength(2);
+        expect(new URL(String(translationCalls().at(-1)![0])).searchParams.get('web_tab_id')).not.toBe(tabIds[0]);
     });
 
     it('纯空白、相同简体语种不联网，Unicode 分块保护 emoji 与换行', async () => {
@@ -170,11 +191,15 @@ describe('豆包网页匿名免费翻译', () => {
 
     it.each([710012000, 710012001, '710012001'])('访客错误 %s 只刷新一次并重试当前块', async code => {
         let attempts = 0;
-        fetchMock.mockImplementation(async input => String(input) === DOUBAO_WEB_HOME ? home()
+        let bootstraps = 0;
+        fetchMock.mockImplementation(async input => String(input) === DOUBAO_WEB_HOME ? ++bootstraps === 1 ? home() : home('fresh-guest-token', '7390000000000000002')
             : ++attempts === 1 ? Response.json({code, msg: 'private details'}) : stream());
         await expect(translateDoubaoWeb(request())).resolves.toBe('你好');
         expect(fetchMock.mock.calls.filter(([input]) => String(input) === DOUBAO_WEB_HOME)).toHaveLength(2);
         expect(translationCalls()).toHaveLength(2);
+        expect(translationCalls().map(([url, init]) => [new URL(String(url)).searchParams.get('device_id'),
+            new URL(String(url)).searchParams.get('web_id'), new Headers(init!.headers).get(DOUBAO_GUEST_HEADER)]))
+            .toEqual([[webId, webId, token], ['7390000000000000002', '7390000000000000002', 'fresh-guest-token']]);
     });
 
     it('SSE 访客错误触发一次刷新；整次调用后续块不再次刷新', async () => {
@@ -208,10 +233,10 @@ describe('豆包网页匿名免费翻译', () => {
         await expect(translateDoubaoWeb(request())).rejects.toThrow('豆包网页翻译返回的流数据无效');
     });
 
-    it('官网或注册 HTTP 失败保留状态和限流时间', async () => {
+    it('官网 HTTP 失败保留状态和限流时间', async () => {
         fetchMock.mockResolvedValue(new Response('private text', {status: 429, headers: {'Retry-After': '6'}}));
         await expect(translateDoubaoWeb(request())).rejects.toMatchObject({statusCode: 429, retryAfterMs: 6000, message: '豆包网页翻译访客初始化失败: 429'});
-        fetchMock.mockImplementation(async input => String(input) === DOUBAO_WEB_HOME ? new Response('no token') : new Response('private text', {status: 503}));
+        fetchMock.mockResolvedValue(new Response('private text', {status: 503}));
         await expect(translateDoubaoWeb(request())).rejects.toMatchObject({statusCode: 503});
     });
 
@@ -228,7 +253,7 @@ describe('豆包网页匿名免费翻译', () => {
         fetchMock.mockImplementation(async () => {controller.abort(reason); return new Response(null);});
         await expect(translateDoubaoWeb(request('Hello', {abortSignal: controller.signal}))).rejects.toBe(reason);
         fetchMock.mockImplementation(async input => String(input) === DOUBAO_WEB_HOME
-            ? new Response('{"ttwid":"fixture-good-token"}', {headers: {'Set-Cookie': 'ttwid=invalid^token; Path=/'}}) : stream());
+            ? new Response(JSON.stringify({ttwid: 'fixture-good-token', web_id: webId}), {headers: {'Set-Cookie': 'ttwid=invalid^token; Path=/'}}) : stream());
         await translateDoubaoWeb(request());
         expect(translationCalls()[0]![1]!.headers).toHaveProperty(DOUBAO_GUEST_HEADER, 'fixture-good-token');
     });

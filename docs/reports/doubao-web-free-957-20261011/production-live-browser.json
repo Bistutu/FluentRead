@@ -1,0 +1,464 @@
+{
+  "testedAt": "2026-10-11T12:20:18.672Z",
+  "scope": "Unmodified full production FluentRead extension in isolated focus-safe anonymous Edge; actual Doubao homepage and streaming provider; local English reading page only is a fixture; no official website JS initialization, signatures, login or fallback provider",
+  "cases": [
+    {
+      "case": "real-connectionTest-doubaoWeb",
+      "response": {
+        "success": true,
+        "durationMs": 1992
+      },
+      "sessionRuleCleared": true,
+      "syntheticBrowserCookiesUnchanged": true
+    },
+    {
+      "case": "real-translation-broker-doubaoWeb",
+      "translationText": "阅读一篇短文有助于人们学习一门新语言。",
+      "sessionRuleCleared": true,
+      "syntheticBrowserCookiesUnchanged": true
+    },
+    {
+      "case": "real-provider-trusted-Control-toggle",
+      "counts": [
+        1,
+        0,
+        1
+      ],
+      "neighborCounts": [
+        0,
+        0,
+        0
+      ],
+      "urlUnchanged": true,
+      "translationText": "这款软件能帮助人们理解其他语言撰写的文章。一款可靠的阅读工具能让有用的信息更易于理解。",
+      "duplicateTranslationsAbsent": true,
+      "sessionRuleCleared": true,
+      "syntheticBrowserCookiesUnchanged": true
+    }
+  ],
+  "screenshots": [
+    "first-real-translation.png",
+    "final-real-translation.png"
+  ],
+  "network": [
+    {
+      "kind": "request",
+      "method": "GET",
+      "origin": "https://www.doubao.com",
+      "path": "/",
+      "queryKeys": [],
+      "publicParameters": {},
+      "hasABogus": false,
+      "hasWebId": false,
+      "hasDeviceId": false,
+      "cookieNames": [],
+      "hasSyntheticPrivateCookie": false,
+      "agwHeader": {
+        "present": false
+      },
+      "originCorrect": false,
+      "refererCorrect": false,
+      "internalHeaderPresent": false,
+      "authorizationPresent": false
+    },
+    {
+      "kind": "response",
+      "status": 302,
+      "path": "/",
+      "contentType": "text/html"
+    },
+    {
+      "kind": "request",
+      "method": "GET",
+      "origin": "https://www.doubao.com",
+      "path": "/chat/",
+      "queryKeys": [],
+      "publicParameters": {},
+      "hasABogus": false,
+      "hasWebId": false,
+      "hasDeviceId": false,
+      "cookieNames": [],
+      "hasSyntheticPrivateCookie": false,
+      "agwHeader": {
+        "present": false
+      },
+      "originCorrect": false,
+      "refererCorrect": false,
+      "internalHeaderPresent": false,
+      "authorizationPresent": false
+    },
+    {
+      "kind": "response",
+      "status": 200,
+      "path": "/chat/",
+      "contentType": "text/html; charset=UTF-8"
+    },
+    {
+      "kind": "request",
+      "method": "POST",
+      "origin": "https://www.doubao.com",
+      "path": "/samantha/plugin/stream_article_translate",
+      "queryKeys": [
+        "aid",
+        "device_platform",
+        "tea_uuid",
+        "version",
+        "use-olympus-account",
+        "language",
+        "browser_language",
+        "real_aid",
+        "pkg_type",
+        "device_id",
+        "web_id",
+        "is_new_user",
+        "region",
+        "sys_region",
+        "samantha_web",
+        "version_code",
+        "pc_version",
+        "web_tab_id"
+      ],
+      "publicParameters": {
+        "aid": "586864",
+        "real_aid": "586864",
+        "device_platform": "web",
+        "version": "1.38.0",
+        "version_code": "20800",
+        "pc_version": "1.38.0",
+        "pkg_type": "release_version",
+        "samantha_web": "1",
+        "use-olympus-account": "1",
+        "is_new_user": "0",
+        "language": "zh",
+        "browser_language": "zh-CN",
+        "region": "CN",
+        "sys_region": "CN"
+      },
+      "hasABogus": false,
+      "hasWebId": true,
+      "hasDeviceId": true,
+      "requestBody": {
+        "target_lang": "zh",
+        "translate_service": "1",
+        "frontend_source": 1,
+        "scene": 2,
+        "textItems": 1,
+        "textCharacters": 22
+      },
+      "cookieNames": [
+        "ttwid"
+      ],
+      "hasSyntheticPrivateCookie": false,
+      "agwHeader": "str",
+      "originCorrect": true,
+      "refererCorrect": true,
+      "internalHeaderPresent": false,
+      "authorizationPresent": false
+    },
+    {
+      "kind": "response",
+      "status": 200,
+      "path": "/samantha/plugin/stream_article_translate",
+      "contentType": "text/event-stream"
+    },
+    {
+      "kind": "request",
+      "method": "GET",
+      "origin": "https://www.doubao.com",
+      "path": "/",
+      "queryKeys": [],
+      "publicParameters": {},
+      "hasABogus": false,
+      "hasWebId": false,
+      "hasDeviceId": false,
+      "cookieNames": [],
+      "hasSyntheticPrivateCookie": false,
+      "agwHeader": {
+        "present": false
+      },
+      "originCorrect": false,
+      "refererCorrect": false,
+      "internalHeaderPresent": false,
+      "authorizationPresent": false
+    },
+    {
+      "kind": "response",
+      "status": 302,
+      "path": "/",
+      "contentType": "text/html"
+    },
+    {
+      "kind": "request",
+      "method": "GET",
+      "origin": "https://www.doubao.com",
+      "path": "/chat/",
+      "queryKeys": [],
+      "publicParameters": {},
+      "hasABogus": false,
+      "hasWebId": false,
+      "hasDeviceId": false,
+      "cookieNames": [],
+      "hasSyntheticPrivateCookie": false,
+      "agwHeader": {
+        "present": false
+      },
+      "originCorrect": false,
+      "refererCorrect": false,
+      "internalHeaderPresent": false,
+      "authorizationPresent": false
+    },
+    {
+      "kind": "response",
+      "status": 200,
+      "path": "/chat/",
+      "contentType": "text/html; charset=UTF-8"
+    },
+    {
+      "kind": "request",
+      "method": "POST",
+      "origin": "https://www.doubao.com",
+      "path": "/samantha/plugin/stream_article_translate",
+      "queryKeys": [
+        "aid",
+        "device_platform",
+        "tea_uuid",
+        "version",
+        "use-olympus-account",
+        "language",
+        "browser_language",
+        "real_aid",
+        "pkg_type",
+        "device_id",
+        "web_id",
+        "is_new_user",
+        "region",
+        "sys_region",
+        "samantha_web",
+        "version_code",
+        "pc_version",
+        "web_tab_id"
+      ],
+      "publicParameters": {
+        "aid": "586864",
+        "real_aid": "586864",
+        "device_platform": "web",
+        "version": "1.38.0",
+        "version_code": "20800",
+        "pc_version": "1.38.0",
+        "pkg_type": "release_version",
+        "samantha_web": "1",
+        "use-olympus-account": "1",
+        "is_new_user": "0",
+        "language": "zh",
+        "browser_language": "zh-CN",
+        "region": "CN",
+        "sys_region": "CN"
+      },
+      "hasABogus": false,
+      "hasWebId": true,
+      "hasDeviceId": true,
+      "requestBody": {
+        "target_lang": "zh",
+        "translate_service": "1",
+        "frontend_source": 1,
+        "scene": 2,
+        "textItems": 1,
+        "textCharacters": 58
+      },
+      "cookieNames": [
+        "ttwid"
+      ],
+      "hasSyntheticPrivateCookie": false,
+      "agwHeader": "str",
+      "originCorrect": true,
+      "refererCorrect": true,
+      "internalHeaderPresent": false,
+      "authorizationPresent": false
+    },
+    {
+      "kind": "response",
+      "status": 200,
+      "path": "/samantha/plugin/stream_article_translate",
+      "contentType": "text/event-stream"
+    },
+    {
+      "kind": "request",
+      "method": "GET",
+      "origin": "https://www.doubao.com",
+      "path": "/",
+      "queryKeys": [],
+      "publicParameters": {},
+      "hasABogus": false,
+      "hasWebId": false,
+      "hasDeviceId": false,
+      "cookieNames": [],
+      "hasSyntheticPrivateCookie": false,
+      "agwHeader": {
+        "present": false
+      },
+      "originCorrect": false,
+      "refererCorrect": false,
+      "internalHeaderPresent": false,
+      "authorizationPresent": false
+    },
+    {
+      "kind": "response",
+      "status": 302,
+      "path": "/",
+      "contentType": "text/html"
+    },
+    {
+      "kind": "request",
+      "method": "GET",
+      "origin": "https://www.doubao.com",
+      "path": "/chat/",
+      "queryKeys": [],
+      "publicParameters": {},
+      "hasABogus": false,
+      "hasWebId": false,
+      "hasDeviceId": false,
+      "cookieNames": [],
+      "hasSyntheticPrivateCookie": false,
+      "agwHeader": {
+        "present": false
+      },
+      "originCorrect": false,
+      "refererCorrect": false,
+      "internalHeaderPresent": false,
+      "authorizationPresent": false
+    },
+    {
+      "kind": "response",
+      "status": 200,
+      "path": "/chat/",
+      "contentType": "text/html; charset=UTF-8"
+    },
+    {
+      "kind": "request",
+      "method": "POST",
+      "origin": "https://www.doubao.com",
+      "path": "/samantha/plugin/stream_article_translate",
+      "queryKeys": [
+        "aid",
+        "device_platform",
+        "tea_uuid",
+        "version",
+        "use-olympus-account",
+        "language",
+        "browser_language",
+        "real_aid",
+        "pkg_type",
+        "device_id",
+        "web_id",
+        "is_new_user",
+        "region",
+        "sys_region",
+        "samantha_web",
+        "version_code",
+        "pc_version",
+        "web_tab_id"
+      ],
+      "publicParameters": {
+        "aid": "586864",
+        "real_aid": "586864",
+        "device_platform": "web",
+        "version": "1.38.0",
+        "version_code": "20800",
+        "pc_version": "1.38.0",
+        "pkg_type": "release_version",
+        "samantha_web": "1",
+        "use-olympus-account": "1",
+        "is_new_user": "0",
+        "language": "zh",
+        "browser_language": "zh-CN",
+        "region": "CN",
+        "sys_region": "CN"
+      },
+      "hasABogus": false,
+      "hasWebId": true,
+      "hasDeviceId": true,
+      "requestBody": {
+        "target_lang": "zh",
+        "translate_service": "1",
+        "frontend_source": 1,
+        "scene": 2,
+        "textItems": 1,
+        "textCharacters": 146
+      },
+      "cookieNames": [
+        "ttwid"
+      ],
+      "hasSyntheticPrivateCookie": false,
+      "agwHeader": "str",
+      "originCorrect": true,
+      "refererCorrect": true,
+      "internalHeaderPresent": false,
+      "authorizationPresent": false
+    },
+    {
+      "kind": "response",
+      "status": 200,
+      "path": "/samantha/plugin/stream_article_translate",
+      "contentType": "text/event-stream"
+    }
+  ],
+  "otherExternalRequests": [],
+  "sourceHashesAtArtifactCopy": {
+    "src/platform/http/doubaoGuest.ts": "d45b7954474c747233f4d4d90444b558ef2e12d96a5ec88463a82a3a4ed1a0f6",
+    "src/providers/translation/doubao-web.ts": "eaeb1cb4d11b4bc3b71424e1831d5f7d48219c665ad6d385e68027d33d71b2a5",
+    "src/platform/http/runtime.ts": "d7f2296a755c41816ecb284187c81d1c330f5e47fac0b5ceb69a1f500493a8e7",
+    "src/app/background/requestHeaderRuntime.ts": "369689898a60922d2582ed95d6fbd107fbc2457f297a9f4f1003000b2e6b146d"
+  },
+  "productionArtifactHashes": {
+    "manifest.json": "961d10d94833c621d25cd57c2668613840b1b5ff2fc8aa96628448b12a767924",
+    "background.js": "6dd0ba66804784e9da46c28098b638515c6d8ffab8153c1f5fd8746242db1173",
+    "content-scripts/content.js": "afddf36f1ae5d43a829e92880a23720c85d74472a3528691d4b85aa7171d3f79"
+  },
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 262,
+      "top": -950,
+      "width": 1180,
+      "height": 820
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false
+  },
+  "profileMode": "fresh temporary profile with synthetic isolation cookies, no real account or daily browser profile",
+  "config": {
+    "on": true,
+    "service": "freeTranslation",
+    "from": "en",
+    "to": "zh-Hans",
+    "display": 1,
+    "hotkey": "Control",
+    "freeTranslationOrder": [
+      "doubaoWeb"
+    ],
+    "freeTranslationMode": "sequential"
+  },
+  "networkRequests": 9,
+  "doubaoPosts": 3,
+  "homeBootstraps": 6,
+  "syntheticPrivateCookieNeverObserved": true,
+  "signatureNeverObserved": true,
+  "fallbackProviderUsed": false,
+  "pageErrors": [],
+  "pass": true,
+  "homepageBootstrapCalls": 3,
+  "homepageRedirectRequests": 3,
+  "cleanup": {
+    "browserSessionCloseCompleted": true,
+    "temporaryProfileDirectoriesRemaining": 0,
+    "rawAnonymousCredentialsKeptOnlyInDeletedTemporaryProfileOrMemory": true
+  }
+}

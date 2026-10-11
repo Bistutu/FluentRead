@@ -146,5 +146,7 @@
   "limitations": [
     "Controlled HTTPS protocol fixtures, not successful live Doubao translation.",
     "Real Firefox and userscript-manager runtime were not tested."
-  ]
+  ],
+  "verificationRole": "Historical controlled HTTPS protocol fixture against initial implementation, not evidence of real Doubao availability or final corrected source.",
+  "realProviderEvidence": "production-live-browser.json"
 }

@@ -122,5 +122,10 @@
     "https://lf-flow-web-cdn.doubao.com/obj/flow-doubao/doubao/chat/static/js/vp.bcb7d0eec4.js",
     "https://lf-flow-web-cdn.doubao.com/obj/flow-doubao/doubao/chat/static/js/async/s3-chat-translate-service.0227ee80f5.js"
   ],
-  "conclusion": "No successful anonymous translation observed. Cannot confirm SSE done framing, incremental versus snapshot semantics, supported languages, or zh-Hant support. Current official chat translate UI uses chat message transport and does not expose stream_article_translate in inspected public modules."
+  "conclusion": "The six early probes failed with business code 710012001. Later fresh anonymous homepage plus complete official public parameters and Agw-Js-Conv:str returned real SSE without account login or website signatures; see superseding evidence.",
+  "scope": "Historical early probes using incomplete public query parameters; retained to explain initial failures, not the final availability conclusion.",
+  "supersededBy": [
+    "anonymous-http-success.json",
+    "production-live-browser.json"
+  ]
 }

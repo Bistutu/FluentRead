@@ -16,20 +16,20 @@
     "sha256": "ac9730c7f3b9517aca1f716472244630efb8faa957e1acd72dd7feb55b34b826"
   },
   "candidate": {
-    "bytes": 2072640,
-    "gzipDefaultBytes": 818302,
-    "gzipLevel9Bytes": 817491,
-    "sha256": "683d1fa18624c926642868d18d1d85452d69ecaa8b08f79dfd2da83bbb7ed448"
+    "bytes": 2072803,
+    "gzipDefaultBytes": 815580,
+    "gzipLevel9Bytes": 814489,
+    "sha256": "ec28f8cb911eb7a67f3473117b7bf46f2850c04442e5937670c6debd179232bc"
   },
-  "deltaBytes": 8286,
-  "deltaPercent": 0.40138464623799985,
-  "deltaGzipDefaultBytes": 3408,
-  "deltaGzipLevel9Bytes": 3411,
+  "deltaBytes": 8449,
+  "deltaPercent": 0.4092805788154551,
+  "deltaGzipDefaultBytes": 686,
+  "deltaGzipLevel9Bytes": 409,
   "existingBudgetBytes": 2066000,
-  "candidateOverExistingBudgetBytes": 6640,
+  "candidateOverExistingBudgetBytes": 6803,
   "minimalBudgetAt1000ByteStep": 2073000,
   "candidateBudgetBytes": 2073000,
-  "candidateHeadroomBytes": 360,
+  "candidateHeadroomBytes": 197,
   "baselineVerifier": "passed with original budget and assertions",
   "assertionChanges": "Size constant only; all protocol and execution assertions retained."
 }
