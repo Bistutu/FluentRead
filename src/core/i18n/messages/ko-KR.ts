@@ -1111,7 +1111,7 @@ export const koKRMessages = {
     'settings.interface.font.noDownload': '시스템 글꼴 · 다운로드 불필요',
     'settings.interface.font.saved': '다운로드 완료 · 오프라인 캐시 저장됨',
     'settings.interface.font.sessionOnly': '글꼴이 적용되었지만 캐시를 사용할 수 없어 다음에 다시 다운로드할 수 있습니다.',
-    'settings.interface.font.failed': '다운로드 실패. 시스템 글꼴을 사용합니다. 재시도하거나 다른 소스를 선택하세요.',
+    'settings.interface.font.failed': "글꼴 다운로드에 실패했습니다. 시스템 글꼴을 사용합니다. 연결을 확인하고 다시 시도하세요.",
     'settings.interface.font.retry': '다운로드 재시도',
     'settings.interface.font.sources': '다운로드에 문제가 있나요?',
     'settings.interface.font.downloadAndUse': '다운로드 후 사용',

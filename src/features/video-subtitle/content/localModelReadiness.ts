@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/localModelReadiness.ts
  * 文件职责：读取本地视频模型缓存状态，并请求后台下载用户确认的模型。
- * 主要内容：规范化模型标识与已下载列表、校验后台响应结构，区分“未下载”与“状态读取失败”，并把下载失败整理为可展示的错误。
+ * 主要内容：规范化模型标识与已下载列表、校验后台响应结构，区分“未下载”与“状态读取失败”，下载失败统一提示检查网络并重试，不把来源或连接诊断展示到播放器菜单。
  * 模块边界：只调用注入的消息端口，不读取 DOM、storage 或播放器状态。
  */
 import {
@@ -63,12 +63,11 @@ export async function requestLocalVideoModelDownload(
   let response: unknown;
   try {
     response = await sendMessage({type: 'fluentReadPrepareLocalVideoModel', model: normalizedModel});
-  } catch (error) {
-    throw new Error(error instanceof Error && error.message ? error.message : LOCAL_VIDEO_MODEL_DOWNLOAD_ERROR);
+  } catch {
+    throw new Error(LOCAL_VIDEO_MODEL_DOWNLOAD_ERROR);
   }
   if (!isRecord(response) || response.success !== true) {
-    const message = isRecord(response) && typeof response.error === 'string' ? response.error : '';
-    throw new Error(message || LOCAL_VIDEO_MODEL_DOWNLOAD_ERROR);
+    throw new Error(LOCAL_VIDEO_MODEL_DOWNLOAD_ERROR);
   }
   const models = isValidModelList(response.models) ? normalizeVideoLocalTranscriptionModels(response.models) : [];
   return models.includes(normalizedModel) ? models : [...models, normalizedModel];

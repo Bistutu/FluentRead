@@ -1336,7 +1336,7 @@ export const zhCNMessages = {
     'settings.interface.font.noDownload': '系统字体 · 无需下载',
     'settings.interface.font.saved': '下载完成 · 已缓存，可离线使用',
     'settings.interface.font.sessionOnly': "字体已启用，但缓存不可用；关闭页面后可能需要重新下载",
-    'settings.interface.font.failed': "字体下载失败，暂时使用系统字体，请重试或切换下载来源",
+    'settings.interface.font.failed': "字体下载失败，暂时使用系统字体，请检查网络后重试",
     'settings.interface.font.retry': '重试下载',
     'settings.interface.font.sources': '下载遇到问题？',
     'settings.interface.font.downloadAndUse': '下载并使用',

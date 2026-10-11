@@ -1111,7 +1111,7 @@ export const jaJPMessages = {
     'settings.interface.font.noDownload': 'システムフォント · ダウンロード不要',
     'settings.interface.font.saved': '保存済み · オフラインで利用可能',
     'settings.interface.font.sessionOnly': 'フォントは有効ですがキャッシュできません。次回は再ダウンロードが必要な場合があります。',
-    'settings.interface.font.failed': 'ダウンロードできません。システムフォントを使用中です。再試行するか別の配信元を選んでください。',
+    'settings.interface.font.failed': "フォントをダウンロードできません。システムフォントを使用中です。接続を確認して再試行してください。",
     'settings.interface.font.retry': '再ダウンロード',
     'settings.interface.font.sources': 'ダウンロードでお困りですか？',
     'settings.interface.font.downloadAndUse': 'ダウンロードして使う',

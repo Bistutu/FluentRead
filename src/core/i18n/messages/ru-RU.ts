@@ -1111,7 +1111,7 @@ export const ruRUMessages = {
     'settings.interface.font.noDownload': 'Системный шрифт · Загрузка не нужна',
     'settings.interface.font.saved': 'Загружено · Сохранено для работы без сети',
     'settings.interface.font.sessionOnly': 'Шрифт включён, но кэш недоступен. При повторном открытии может потребоваться загрузка.',
-    'settings.interface.font.failed': 'Ошибка загрузки. Используется системный шрифт. Повторите попытку или смените источник.',
+    'settings.interface.font.failed': "Не удалось загрузить шрифт. Используется системный шрифт. Проверьте подключение и повторите попытку.",
     'settings.interface.font.retry': 'Повторить загрузку',
     'settings.interface.font.sources': 'Проблемы с загрузкой?',
     'settings.interface.font.downloadAndUse': 'Скачать и применить',
