@@ -31,7 +31,12 @@ declare global {
         abort?: () => void;
     }
 
+    interface UserscriptManagerInfo {
+        readonly isIncognito?: boolean;
+    }
+
     interface UserscriptModernApi {
+        readonly info?: UserscriptManagerInfo;
         getValue?: (key: string, defaultValue?: unknown) => unknown;
         setValue?: (key: string, value: unknown) => unknown;
         deleteValue?: (key: string) => unknown;
@@ -42,6 +47,7 @@ declare global {
     }
 
     var GM: UserscriptModernApi | undefined;
+    var GM_info: UserscriptManagerInfo | undefined;
 
     var GM_getValue: undefined | (<T>(key: string, defaultValue?: T) => T | Promise<T>);
     var GM_setValue: undefined | ((key: string, value: unknown) => void | Promise<void>);

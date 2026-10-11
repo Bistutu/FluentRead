@@ -1,4 +1,5 @@
-import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {VOCABULARY_BOOK_MESSAGE} from '@/src/features/vocabulary/protocol';
 import {CONFIG_COUNT_INCREMENT_MESSAGE} from '@/src/services/config/count';
 import {Config} from '@/src/core/config/model';
 import {TRANSLATION_CANCEL_MESSAGE_TYPE} from '@/src/services/translation/types';
@@ -14,11 +15,13 @@ const mocks = vi.hoisted(() => ({
     clearTranslationCache: vi.fn(),
     translateWithCache: vi.fn(),
     lookupWord: vi.fn(),
+    vocabularyBook: {getByTerm: vi.fn(), upsert: vi.fn(), list: vi.fn(), clear: vi.fn()},
 }));
 
 vi.mock('@/src/services/config/store', () => ({
     config: mocks.config,
     configReady: Promise.resolve(),
+    subscribeConfig: () => () => undefined,
     CONFIG_HISTORY_MESSAGE: 'configHistoryAction',
     CONFIG_PERSIST_MESSAGE: 'persistConfig',
     CONFIG_PERSIST_BATCH_MESSAGE: 'persistConfigBatch',
@@ -59,13 +62,14 @@ vi.mock('@/src/features/selection-translation/services/wordDictionary', () => ({
 
 vi.mock('@/userscript/storage', () => ({configStorage: {watch: () => () => undefined}}));
 vi.mock('@/src/platform/storage/modelUsageRepository', () => ({modelUsageRepository: {}}));
-vi.mock('@/src/features/vocabulary/repository', () => ({vocabularyBook: {}}));
+vi.mock('@/src/features/vocabulary/repository', () => ({vocabularyBook: mocks.vocabularyBook}));
 
 import {createPlatformMessageHandler} from '@/userscript/platform';
 import {createPlatformMessageHandler as createFullPlatformMessageHandler} from '@/userscript/platformFull';
 import {getTranslationGlossaryContext, getTranslationRequestControl} from '@/src/services/translation/requestSnapshot';
 
 describe('userscript 平台消息适配', () => {
+    afterEach(() => vi.unstubAllGlobals());
     it('免费池逐服务检查保留候选 ID，避免脚本端退回自动换线', async () => {
         mocks.runTranslationServiceConnectionTest.mockResolvedValue({durationMs: 12});
         const handler = createPlatformMessageHandler(vi.fn());
@@ -86,6 +90,8 @@ describe('userscript 平台消息适配', () => {
     });
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.stubGlobal('GM_info', undefined);
+        vi.stubGlobal('GM', undefined);
         Object.assign(mocks.config, new Config());
         mocks.config.count = 0;
         mocks.translateWithCache.mockReset();
@@ -131,6 +137,64 @@ describe('userscript 平台消息适配', () => {
         });
         expect(mocks.incrementUserscriptConfigCount).not.toHaveBeenCalled();
         expect(mocks.saveConfig).not.toHaveBeenCalled();
+    });
+
+
+    describe.each([
+        ['兼容', createPlatformMessageHandler],
+        ['完整', createFullPlatformMessageHandler],
+    ] as const)('%s userscript 三态隐私', (_name, createHandler) => {
+        it.each([false, true, undefined])('typed/fallback quota 只信管理器隐私 %s，保留首次 await 前快照', async privacy => {
+            vi.stubGlobal('GM_info', privacy === undefined ? undefined : {isIncognito: privacy});
+            const handler = createHandler(vi.fn());
+            mocks.translateWithCache.mockResolvedValue('翻译结果');
+            try {
+                const pending = handler({type: 'inputBoxTranslation', text: 'Hello', targetLang: 'ja',
+                    clientRequestId: 'privacy-typed', privateContext: privacy !== true,
+                    sender: {tab: {incognito: privacy !== true}}});
+                // handler 在 ready 的 await 前已快照，后续元数据变化不得改变此请求。
+                vi.stubGlobal('GM_info', {isIncognito: privacy !== true});
+                await expect(pending).resolves.toMatchObject({success: true});
+                const typedRequest = mocks.translateWithCache.mock.calls[0]![0];
+                expect(getTranslationGlossaryContext(typedRequest)?.privateContext).toBe(privacy);
+                expect(getTranslationRequestControl(typedRequest)).toBeDefined();
+                vi.stubGlobal('GM_info', privacy === undefined ? undefined : {isIncognito: privacy});
+                await handler({origin: 'ordinary alpha', targetLang: 'ja', privateContext: privacy !== true,
+                    sender: {tab: {incognito: privacy !== true}}});
+                const fallbackRequest = mocks.translateWithCache.mock.calls[1]![0];
+                expect(getTranslationGlossaryContext(fallbackRequest)?.privateContext).toBe(privacy);
+            } finally { if ('dispose' in handler && typeof handler.dispose === 'function') handler.dispose(); }
+        });
+    });
+
+    it.each([true, undefined])('完整 userscript 隐私 %s 在任何词书 handler/数据库调用前拒绝', async privacy => {
+        vi.stubGlobal('GM_info', privacy === undefined ? undefined : {isIncognito: privacy});
+        const handler = createFullPlatformMessageHandler(vi.fn());
+        try {
+            for (const action of ['getByTerm', 'upsert', 'list', 'clear']) {
+                await expect(handler({type: VOCABULARY_BOOK_MESSAGE, action,
+                    privateContext: false, sender: {tab: {incognito: false}}})).resolves
+                    .toMatchObject({success: false, error: {code: 'invalid-input'}});
+            }
+            for (const method of Object.values(mocks.vocabularyBook)) expect(method).not.toHaveBeenCalled();
+        } finally { handler.dispose(); }
+    });
+
+    it('完整 userscript 明确普通模式仍读取与保存词书', async () => {
+        vi.stubGlobal('GM_info', {isIncognito: false});
+        Object.assign(mocks.config, {vocabularyBookEnabled: true});
+        mocks.vocabularyBook.getByTerm.mockResolvedValue({id: 'normal-word'});
+        mocks.vocabularyBook.upsert.mockResolvedValue({id: 'normal-word'});
+        const handler = createFullPlatformMessageHandler(vi.fn());
+        try {
+            await expect(handler({type: VOCABULARY_BOOK_MESSAGE, action: 'getByTerm', sourceLanguage: 'en', term: 'art'}))
+                .resolves.toMatchObject({success: true, data: {id: 'normal-word'}});
+            await expect(handler({type: VOCABULARY_BOOK_MESSAGE, action: 'upsert', input: {
+                sourceLanguage: 'en', targetLanguage: 'zh-Hans', term: 'art', translation: '艺术',
+            }})).resolves.toMatchObject({success: true, data: {id: 'normal-word'}});
+            expect(mocks.vocabularyBook.getByTerm).toHaveBeenCalledOnce();
+            expect(mocks.vocabularyBook.upsert).toHaveBeenCalledOnce();
+        } finally { handler.dispose(); }
     });
 
     describe.each([

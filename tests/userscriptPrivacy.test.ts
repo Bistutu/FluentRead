@@ -239,3 +239,55 @@ describe('standalone userscript privacy boundaries', () => {
         expect(gemini).not.toMatch(/console\.(?:log|debug|info|warn|error)\(/);
     });
 });
+
+describe('userscript trusted privacy metadata', () => {
+    it.each([
+        ['legacy normal', {isIncognito: false}, undefined, false],
+        ['legacy private', {isIncognito: true}, undefined, true],
+        ['modern normal', undefined, {isIncognito: false}, false],
+        ['modern private', undefined, {isIncognito: true}, true],
+        ['missing', {scriptHandler: 'synthetic'}, undefined, undefined],
+        ['malformed', {isIncognito: 'false'}, undefined, undefined],
+        ['conflicting', {isIncognito: false}, {isIncognito: true}, undefined],
+        ['inherited', Object.create({isIncognito: false}), undefined, undefined],
+    ] as const)('keeps strict tri-state metadata and ignores message claims: %s', async (_name, legacy, modern, expected) => {
+        vi.resetModules();
+        vi.stubGlobal('GM_info', legacy);
+        vi.stubGlobal('GM', modern === undefined ? undefined : {info: modern});
+        vi.doMock('@/userscript/storage', () => ({getStoredValue: vi.fn(), listStoredKeys: vi.fn(),
+            setStoredValue: vi.fn(), storage: {watch: vi.fn()}}));
+        try {
+            const {default: browser, chrome, getUserscriptPrivacyContext, dispatchContentMessage} = await import('@/userscript/browser');
+            expect(getUserscriptPrivacyContext()).toBe(expected);
+            expect(browser.extension.inIncognitoContext).toBe(expected);
+            expect(chrome.extension.inIncognitoContext).toBe(expected);
+            // 既有 runtime 合同接收 Promise/sendResponse，不接收任意同步 object。
+            const listener = vi.fn(async (_message, sender) => ({privacy: sender.tab.incognito}));
+            browser.runtime.onMessage.addListener(listener);
+            try {
+                await expect(dispatchContentMessage({privateContext: expected !== true,
+                    sender: {tab: {incognito: expected !== true}}})).resolves.toEqual({privacy: expected});
+            } finally { browser.runtime.onMessage.removeListener(listener); }
+        } finally {
+            vi.doUnmock('@/userscript/storage'); vi.unstubAllGlobals(); vi.resetModules();
+        }
+    });
+
+    it('keeps throwing metadata unknown and reads later manager values without caching false', async () => {
+        vi.resetModules();
+        vi.stubGlobal('GM', undefined);
+        vi.stubGlobal('GM_info', Object.defineProperty({}, 'isIncognito', {get() {throw new Error('controlled metadata getter');}}));
+        vi.doMock('@/userscript/storage', () => ({getStoredValue: vi.fn(), listStoredKeys: vi.fn(),
+            setStoredValue: vi.fn(), storage: {watch: vi.fn()}}));
+        try {
+            const {getUserscriptPrivacyContext} = await import('@/userscript/browser');
+            expect(getUserscriptPrivacyContext()).toBeUndefined();
+            vi.stubGlobal('GM_info', {isIncognito: true});
+            expect(getUserscriptPrivacyContext()).toBe(true);
+            vi.stubGlobal('GM_info', {isIncognito: false});
+            expect(getUserscriptPrivacyContext()).toBe(false);
+        } finally {
+            vi.doUnmock('@/userscript/storage'); vi.unstubAllGlobals(); vi.resetModules();
+        }
+    });
+});

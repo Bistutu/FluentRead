@@ -2,7 +2,10 @@
  * 用户脚本的第三方依赖出口。这里只重导出仓库已经使用的库符号，不包含 FluentRead 产品逻辑。
  * 生成产物供 Greasy Fork 源码版通过固定提交的 @require 缓存加载。
  */
-import {APICallError, RetryError, generateText} from 'ai';
+import {APICallError, RetryError, generateText, streamText, tool} from 'ai';
+import {z} from 'zod';
+import {createAnthropic} from '@ai-sdk/anthropic';
+import {createGoogleGenerativeAI} from '@ai-sdk/google';
 import {createOpenAICompatible} from '@ai-sdk/openai-compatible';
 import sha256 from 'crypto-js/sha256';
 import md5 from 'crypto-js/md5';
@@ -18,7 +21,10 @@ import DexieImplementation from 'dexie/dist/dexie.min.js';
 import {TinyColor} from '@ctrl/tinycolor';
 import {franc, francAll} from 'franc-min';
 
-export const ai = {APICallError, RetryError, generateText};
+export const ai = {APICallError, RetryError, generateText, streamText, tool};
+export const zod = {z};
+export const anthropic = {createAnthropic};
+export const google = {createGoogleGenerativeAI};
 export const openAICompatible = {createOpenAICompatible};
 export const vendorNobleSha2 = {sha256: nobleSha256};
 export const vendorNobleUtils = {bytesToHex};

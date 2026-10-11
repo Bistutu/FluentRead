@@ -1,6 +1,6 @@
 import {setRuntimeFetch} from '@/src/platform/http/runtime';
 import {installShadowAndRouteBridge} from '@/src/platform/shadow-ui/pageBridge';
-import browser, {resetPlatformMessageHandler, setPlatformMessageHandler} from './browser';
+import browser, {closePlatformConnections, resetPlatformMessageHandler, setPlatformMessageHandler} from './browser';
 import {createUserscriptContentContext} from './context';
 import {userscriptFetch} from './http';
 import {ensureUserscriptConfig} from './initialize';
@@ -117,6 +117,7 @@ async function bootstrap(): Promise<void> {
                 try {closeSettings();}
                 catch (error) {console.error('[FluentRead userscript] 关闭设置面板失败', error);}
             },
+            () => closePlatformConnections(),
             () => ctx.invalidate(),
         ];
         // pagehide 的计数 flush 可能还在等待 GM 存储；离页时保留同页消息处理器，

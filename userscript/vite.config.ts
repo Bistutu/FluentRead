@@ -28,6 +28,9 @@ if (greasyForkSource && (!allowedResourceUrl(vendorUrl) || !allowedResourceUrl(d
 }
 const vendorGlobals: Record<string, string> = {
     ai: 'FluentReadUserscriptVendor.ai',
+    zod: 'FluentReadUserscriptVendor.zod',
+    '@ai-sdk/anthropic': 'FluentReadUserscriptVendor.anthropic',
+    '@ai-sdk/google': 'FluentReadUserscriptVendor.google',
     '@ai-sdk/openai-compatible': 'FluentReadUserscriptVendor.openAICompatible',
     'crypto-js/sha256': 'FluentReadUserscriptVendor.sha256',
     '@noble/hashes/sha2': 'FluentReadUserscriptVendor.vendorNobleSha2',

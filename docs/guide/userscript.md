@@ -16,7 +16,7 @@ Greasy Fork 上的版本可能晚于 GitHub 源码。排查问题时，请先查
 
 仓库也提供 `pnpm test:userscript` 生成体积较小的 `.output/userscript/fluent-read.user.js`，它在安装时需要脚本管理器下载固定版本的 `@require` 依赖。Violentmonkey 的首次文件安装曾出现依赖尚未就绪便执行脚本的问题；独立版在隔离的真实管理器中通过了立即打开页面的测试。两种构建都不是当前 Greasy Fork 页面已发布版本。
 
-仓库另有面向 Greasy Fork 源码规则的精简版：运行 `pnpm build:userscript:greasyfork`，生成 `.output/userscript-greasyfork/fluent-read.user.js`。它保留可阅读的翻译逻辑，并把第三方库、静态词条、站点规则和样式放在固定 Git 提交的 `@require` 资源中。安装时必须联网下载这些资源；使用精简设置面板。源码构建低于 Greasy Fork 的 2 MB 上限，但是否被网站接受仍取决于实际提交审核，仓库构建不会自动更新 Greasy Fork 页面。维护资源时先运行 `node scripts/build-userscript-greasyfork.mjs --prepare-resources` 并提交生成的两个文件，再运行正式构建，使两个 `@require` 都锁定到该提交。
+仓库另有面向 Greasy Fork 源码规则的精简版：运行 `pnpm build:userscript:greasyfork`，生成 `.output/userscript-greasyfork/fluent-read.user.js`。它保留可阅读的翻译逻辑，并把第三方库、静态词条、站点规则和样式放在固定 Git 提交的 `@require` 资源中。安装时必须联网下载这些资源；使用精简设置面板。当前源码必须通过原有 2 MB 体积校验后才可用于发布；仅生成文件不代表通过体积门禁或网站审核，仓库构建不会自动更新 Greasy Fork 页面。维护资源时先运行 `node scripts/build-userscript-greasyfork.mjs --prepare-resources` 并提交生成的两个文件，再运行正式构建，使两个 `@require` 都锁定到该提交。
 
 安装完成后：
 
@@ -64,6 +64,8 @@ Greasy Fork 上的版本可能晚于 GitHub 源码。排查问题时，请先查
 - 使用免费服务、云端服务、AI 服务或自定义接口；
 - 在脚本自己的设置页中保存语言、服务和显示偏好；仓库独立版使用完整设置中心。
 
+启用阅读理解后，划词卡可分析本次选区并在卡片内继续追问。油猴脚本的问答只在当前卡片内保留，不保存阅读记录或学习笔记，也不读取扩展中的历史会话与学习记忆；浏览器扩展继续提供原有的记录能力。
+
 精简版首次安装需要脚本管理器访问 jsDelivr，取得固定版本的界面依赖；独立版已将这些依赖打包。简体中文和英文界面随脚本提供；首次切换到日语、韩语、法语、俄语或西班牙语时，脚本会从 jsDelivr 或 GitHub 下载对应的静态界面语言文件，并缓存在脚本管理器的私有存储中。这些请求不包含正在阅读的网页内容或 API Key。离线环境中，尚未缓存的语言会暂时使用中文界面。
 
 </details>
@@ -81,6 +83,8 @@ Greasy Fork 上的版本可能晚于 GitHub 源码。排查问题时，请先查
 <summary>数据与隐私</summary>
 
 ## 数据与隐私
+
+脚本管理器未明确报告普通窗口时，划词卡会限制词书读写与持久化操作；未知状态不代表已识别为无痕窗口，翻译和临时阅读仍可使用。
 
 脚本配置保存在脚本管理器提供的私有存储中。翻译请求会发送到你当前选择的服务；界面依赖和语言文件按上文所述从 jsDelivr 或 GitHub 获取。使用云端服务前，请确认服务商的数据政策。不要在共享设备上填写 API Key，也不要把密钥放进网页、截图或公开反馈。
 

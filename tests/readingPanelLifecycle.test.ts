@@ -25,11 +25,11 @@ afterEach(async () => {
   delete (globalThis as Record<string, unknown>)[TEST_KEY];
 });
 
-async function mountPanel(overrides: Record<string, unknown> = {}, sessions: HarnessSession[] = []) {
+async function mountPanel(overrides: Record<string, unknown> = {}, sessions: HarnessSession[] = [], runtimeBrowser?: Record<string, any>) {
   const calls: StreamCall[] = [];
   const sendMessage = vi.fn(async () => ({success: true}));
   const state = {
-    browser: {runtime: {sendMessage}},
+    browser: runtimeBrowser ?? {runtime: {sendMessage}},
     streamReading: (request: ReadingRequest, callbacks: StreamCall['callbacks']) => {
       const call = {request, callbacks, cancel: vi.fn()}; calls.push(call); return {cancel: call.cancel};
     },
@@ -42,7 +42,7 @@ async function mountPanel(overrides: Record<string, unknown> = {}, sessions: Har
     name: 'reading-lifecycle-mocks', enforce: 'pre',
     resolveId(id, importer) {
       if (id === 'webextension-polyfill') return '\0reading-browser';
-      if (id === '../client' && importer?.includes('/reading-assistant/ui/')) return '\0reading-client';
+      if (!runtimeBrowser && id === '../client' && importer?.includes('/reading-assistant/ui/')) return '\0reading-client';
       return null;
     },
     load(id) {
@@ -51,7 +51,7 @@ async function mountPanel(overrides: Record<string, unknown> = {}, sessions: Har
       return null;
     },
   };
-  server = await createServer({configFile: false, appType: 'custom', logLevel: 'silent', root: process.cwd(), plugins: [mocks, vue()], resolve: {alias: {'@': resolve(process.cwd())}}, server: {hmr: false, middlewareMode: true}, ssr: {noExternal: ['webextension-polyfill']}});
+  server = await createServer({configFile: false, appType: 'custom', logLevel: 'silent', root: process.cwd(), define: runtimeBrowser ? {'import.meta.env.BROWSER': JSON.stringify('userscript')} : undefined, plugins: [mocks, vue()], resolve: {alias: {'@': resolve(process.cwd())}}, server: {hmr: false, middlewareMode: true}, ssr: {noExternal: ['webextension-polyfill']}});
   const loaded = await server.ssrLoadModule('/src/features/reading-assistant/ui/ReadingPanel.vue');
   const component = loaded.default;
   component.ssrRender = undefined; component.render = () => null;
@@ -71,12 +71,13 @@ async function mountPanel(overrides: Record<string, unknown> = {}, sessions: Har
   app.mount({}); unmount = () => app.unmount();
   await runtime.nextTick();
   const finish = (text: string, call = calls.at(-1)!) => call.callbacks.result({success: true, text, service: 'deepseek', model: 'test-model', sessionId: 'session-a'});
-  return {panel, calls, props, sendMessage, sourceChange, finish, state, tick: runtime.nextTick};
+  return {panel, calls, props, sendMessage, sourceChange, finish, state, tick: runtime.nextTick, unmount: () => {app.unmount(); unmount = undefined;}};
 }
 
 describe('reading action ownership and reuse', () => {
   it('has no active answer or model request before entering learning, and starts the default action after an empty history view', async () => {
     const {panel, calls, props, tick} = await mountPanel({active: false});
+    expect(panel.canPersistReading).toBe(true); // 缺省保留扩展记录能力；userscript 显式 false 单独覆盖。
     expect(panel.currentTurnKey).toBe(''); expect(calls).toHaveLength(0);
     Object.assign(props, {historyOnly: true, active: true}); await tick();
     expect(panel.showRecords).toBe(true); expect(calls).toHaveLength(0);
@@ -323,4 +324,122 @@ it('preserves the answer offset for late translations and respects manual upward
   props.sourceTranslation = {source: 'Practice helps.', text: '再更新的译文。'};
   await tick(); panel.cancelReadingPosition(); body.offsetTop = 240; await tick();
   expect(viewport.scrollTop).toBe(220);
+});
+
+
+
+
+describe('actual userscript ReadingPanel capability error through the real client', () => {
+  it('calls the real shim connect and reports its honest not-ready capability when the default platform has no stream transport', async () => {
+    const {default: shim, resetPlatformMessageHandler} = await import('@/userscript/browser');
+    resetPlatformMessageHandler();
+    expect(typeof Reflect.get(shim.runtime, 'connect')).toBe('function');
+    const connectReads = vi.fn(), connectCalls = vi.fn();
+    const runtimePort = new Proxy(shim.runtime, {get(target, key, receiver) {
+      const value = Reflect.get(target, key, receiver);
+      if (key !== 'connect') return value;
+      connectReads();
+      if (typeof value !== 'function') return value;
+      return (...args: unknown[]) => {connectCalls(...args); return Reflect.apply(value, target, args);};
+    }});
+    const fixture = await mountPanel({active: false, privateContext: true}, [], {...shim, runtime: runtimePort});
+    expect(fixture.calls).toHaveLength(0);
+    expect(connectReads).not.toHaveBeenCalled(); expect(connectCalls).not.toHaveBeenCalled();
+    fixture.props.active = true; await fixture.tick();
+    expect(connectReads).toHaveBeenCalled();
+    expect(connectCalls).toHaveBeenCalledWith({name: 'fluentReadHarnessStream'});
+    expect(fixture.panel.currentTurnKey).toMatch(/^reading-/u);
+    expect(fixture.panel.busy).toBe(false); expect(fixture.panel.answer).toBe('');
+    expect(fixture.panel.error).toMatch(/未就绪/u);
+    expect(fixture.panel.error).toMatch(/(?:阅读|userscript|脚本|stream|transport)/iu);
+    expect(fixture.panel.error).not.toMatch(/(?:TypeError|is not a function|undefined)/iu);
+    fixture.unmount();
+  });
+});
+
+describe('real ReadingPanel/client at a controlled semantic stream-port boundary', () => {
+  it('roundtrips the real request, progress, result and cancellation without replacing the reading client', async () => {
+    const {default: shim, setPlatformMessageHandler, resetPlatformMessageHandler} = await import('@/userscript/browser');
+    const cancelMessages: unknown[] = [];
+    setPlatformMessageHandler(async message => {
+      if (message?.type !== 'fluentReadHarness' || message.action !== 'cancel') throw new Error('Unexpected local synthetic message');
+      cancelMessages.push(message); return {success: true};
+    });
+    const ports: Array<ReturnType<typeof makePort>> = [];
+    function makePort() {
+      const messages = new Set<(message: unknown) => void>();
+      const disconnects = new Set<() => void>();
+      const port = {
+        postMessage: vi.fn(),
+        onMessage: {addListener: (listener: (message: unknown) => void) => messages.add(listener), removeListener: (listener: (message: unknown) => void) => messages.delete(listener)},
+        onDisconnect: {addListener: (listener: () => void) => disconnects.add(listener), removeListener: (listener: () => void) => disconnects.delete(listener)},
+        disconnect: vi.fn(() => {for (const listener of [...disconnects]) listener();}),
+        deliver: (message: unknown) => {for (const listener of [...messages]) listener(message);},
+        listenerCount: () => messages.size + disconnects.size,
+      };
+      return port;
+    }
+    const connect = vi.fn((_options: {name: string}) => {const port = makePort(); ports.push(port); return port;});
+    // Explicit test-only external port, with full protocol behavior; it is not a shim implementation.
+    const fixture = await mountPanel({active: false, privateContext: true}, [], {...shim, runtime: {...shim.runtime, connect}});
+    try {
+      expect(connect).not.toHaveBeenCalled();
+      fixture.props.active = true; await fixture.tick();
+      expect(fixture.calls).toHaveLength(0);
+      expect(connect).toHaveBeenCalledWith({name: 'fluentReadHarnessStream'});
+      expect(ports).toHaveLength(1);
+      const request = ports[0].postMessage.mock.calls[0][0] as ReadingRequest;
+      expect(request).toMatchObject({type: 'fluentReadHarness', action: 'run', intent: 'meaning', question: '', history: [], selection: {text: 'Practice helps.'}});
+      expect(request.requestId).toMatch(/^reading-/u);
+      expect(fixture.panel.busy).toBe(true); expect(fixture.panel.error).toBe('');
+      ports[0].deliver({type: 'progress', requestId: 'other', progress: {kind: 'text', text: 'Wrong request'}});
+      expect(fixture.panel.answer).toBe('');
+      ports[0].deliver({type: 'progress', requestId: request.requestId, progress: {kind: 'text', text: 'Controlled partial'}});
+      expect(fixture.panel.answer).toBe('Controlled partial');
+      ports[0].deliver({type: 'result', requestId: request.requestId, response: {success: true, text: 'Controlled complete', service: 'synthetic', model: 'local-fixture'}});
+      expect(fixture.panel.answer).toBe('Controlled complete'); expect(fixture.panel.busy).toBe(false);
+      expect(ports[0].disconnect).toHaveBeenCalledOnce(); expect(ports[0].listenerCount()).toBe(0);
+      fixture.panel.startAction('grammar'); await fixture.tick();
+      expect(ports).toHaveLength(2);
+      const secondRequest = ports[1].postMessage.mock.calls[0][0] as ReadingRequest;
+      fixture.panel.stop(); await fixture.tick();
+      expect(ports[1].disconnect).toHaveBeenCalledOnce(); expect(ports[1].listenerCount()).toBe(0);
+      expect(cancelMessages).toContainEqual({type: 'fluentReadHarness', action: 'cancel', requestId: secondRequest.requestId});
+      ports[1].deliver({type: 'progress', requestId: secondRequest.requestId, progress: {kind: 'text', text: 'Late partial'}});
+      expect(fixture.panel.answer).not.toBe('Late partial');
+      fixture.unmount();
+    } finally {resetPlatformMessageHandler();}
+  });
+});
+
+
+it('keeps normal-context temporary reading usable while blocking unsupported record and note persistence', async () => {
+  const {panel, calls, state, finish, tick} = await mountPanel({privateContext: false, persistenceSupported: false});
+  expect(panel.canPersistReading).toBe(false);
+  expect(panel.canSaveWord).toBe(true); // Vocabulary permission is independent of reading persistence.
+  finish('Temporary answer'); await tick();
+  panel.openRecords(); await tick();
+  expect(panel.showRecords).toBe(false);
+  expect(state.listHarnessSessions).not.toHaveBeenCalled();
+  await panel.restoreSession('saved-session');
+  expect(state.getHarnessSession).not.toHaveBeenCalled();
+  await panel.rememberLearning();
+  expect(state.saveLearningMemory).not.toHaveBeenCalled();
+  expect(panel.answer).toBe('Temporary answer');
+  panel.question = 'Why?'; panel.ask();
+  expect(calls).toHaveLength(2);
+  expect(calls[1].request.sessionId).toBeUndefined();
+  expect(calls[1].request.history?.at(-1)?.answer).toBe('Temporary answer');
+});
+
+
+it('starts reading on HTTP-like contexts without randomUUID while retaining the real request contract', async () => {
+  vi.stubGlobal('crypto', {});
+  const {panel, calls, finish} = await mountPanel({privateContext: true, persistenceSupported: false});
+  expect(calls).toHaveLength(1);
+  expect(calls[0].request.requestId).toMatch(/^reading-[\w.:-]+$/u);
+  expect(panel.busy).toBe(true);
+  finish('HTTP context answer');
+  expect(panel.error).toBe('');
+  expect(panel.answer).toBe('HTTP context answer');
 });

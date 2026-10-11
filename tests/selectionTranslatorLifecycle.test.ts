@@ -27,6 +27,7 @@ vi.mock('webextension-polyfill', () => ({default: {}}));
 const filename = 'src/features/selection-translation/ui/SelectionTranslator.vue';
 const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
 type SelectionBuildTarget = 'chrome' | 'userscript';
+type SelectionPrivacyFixture = boolean | 'unknown' | 'missing-extension';
 const setupSource = compileScript(descriptor, {id: 'selection-lifecycle'}).content;
 const compiledByTarget = new Map<SelectionBuildTarget, string>();
 function compileForTarget(target: SelectionBuildTarget): string {
@@ -43,7 +44,7 @@ function compileForTarget(target: SelectionBuildTarget): string {
 let app: Vue.App | undefined;
 afterEach(() => { app?.unmount(); app = undefined; vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
-function mountSelection(privateContext = false, selectionAdapter?: Record<string, unknown>, browserTarget: SelectionBuildTarget = 'chrome') {
+function mountSelection(privateContext: SelectionPrivacyFixture = false, selectionAdapter?: Record<string, unknown>, browserTarget: SelectionBuildTarget = 'chrome', runtimeBrowser?: Record<string, any>) {
     vi.useFakeTimers();
     const config = Object.assign(new Config(), {
         disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual', theme: 'light',
@@ -75,7 +76,8 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
     const browser = {
         runtime: {onMessage: event, getURL: (path: string) => path,
             sendMessage: vi.fn().mockResolvedValue({success: true, zoom: 1})},
-        extension: {inIncognitoContext: privateContext},
+        extension: privateContext === 'missing-extension' ? undefined
+            : {inIncognitoContext: privateContext === 'unknown' ? undefined : privateContext},
     };
     const unsubscribeConfig = vi.fn(), releaseContextMenu = vi.fn();
     let contextMenuHandler = (_selectionText?: string): boolean => false;
@@ -91,7 +93,7 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         '@/src/core/tts/speechProgress': speechProgress,
         '@/src/core/translation/result': {hasDistinctTranslation},
         vue: {...Vue, useTemplateRef: () => Vue.ref(null)},
-        'webextension-polyfill': browser,
+        'webextension-polyfill': runtimeBrowser ?? browser,
         '@/src/platform/browser/runtimeMessages': runtimeMessages,
         '@/src/services/config/store': {config, subscribeConfig: () => unsubscribeConfig},
         '@/src/app/translation/client': {translateText, translateTextBatch},
@@ -141,8 +143,8 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
 }
 
 describe('explicit selection sentence collection', () => {
-    function prepare(text: string, sourceLanguage = 'en', privateContext = false) {
-        const fixture = mountSelection(privateContext);
+    function prepare(text: string, sourceLanguage = 'en', privateContext: SelectionPrivacyFixture = false, browserTarget: SelectionBuildTarget = 'chrome') {
+        const fixture = mountSelection(privateContext, undefined, browserTarget);
         fixture.config.vocabularyBookEnabled = true;
         const request = {text, generation: 1, sourceLanguage, targetLanguage: 'zh-Hans'};
         fixture.state.snapshot = {text};
@@ -175,6 +177,20 @@ describe('explicit selection sentence collection', () => {
         expect(fixture.browser.runtime.sendMessage).toHaveBeenCalledWith(expect.objectContaining({
             action: 'upsert', input: expect.objectContaining({sourceLanguage: 'fr'}),
         }));
+    });
+
+
+    it.each([false, true, 'unknown', 'missing-extension'] as const)('userscript mounts and only confirmed normal privacy permits vocabulary: %s', async privacy => {
+        const fixture = prepare('Good ideas deserve attention.', 'en', privacy, 'userscript');
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+        expect(fixture.state.isPrivateContext).toBe(privacy !== false);
+        fixture.browser.runtime.sendMessage.mockClear();
+        await fixture.state.refreshVocabularySaved(fixture.request);
+        await fixture.state.saveVocabularyEntry({isTrusted: true});
+        const actions = fixture.browser.runtime.sendMessage.mock.calls
+            .filter(([message]) => message.type === vocabularyProtocol.VOCABULARY_BOOK_MESSAGE)
+            .map(([message]) => message.action);
+        expect(actions).toEqual(privacy === false ? ['getByTerm', 'upsert'] : []);
     });
 
     it('does not query or save a selected sentence in a private context', async () => {
@@ -1703,5 +1719,23 @@ describe('selection card bounded layout work', () => {
         state.snapshot = {parts: [{kind: 'text', text: 'new'}]};
         expect(state.sourceTextParts).not.toBe(source);
         expect(state.sourceTextParts[0].offset).toBe(0);
+    });
+});
+
+
+describe('actual userscript shim through SelectionTranslator setup', () => {
+    it.each(['actual shim', 'missing incognito flag', 'undefined incognito flag'] as const)
+    ('mounts healthy selection setup with %s instead of requiring extension capability', async shape => {
+        const {default: shim} = await import('@/userscript/browser');
+        // Same real runtime/storage adapter. Only unknown capability shapes are controlled.
+        const runtimeBrowser = shape === 'actual shim' ? shim
+            : {...shim, extension: shape === 'missing incognito flag' ? {} : {inIncognitoContext: undefined}};
+        const fixture = mountSelection(false, undefined, 'userscript', runtimeBrowser);
+        await Vue.nextTick();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+        expect(typeof fixture.state.closeTooltip).toBe('function');
+        expect(typeof fixture.state.isPrivateContext).toBe('boolean');
+        fixture.unmount();
+        expect(fixture.unsubscribeConfig).toHaveBeenCalledOnce();
     });
 });

@@ -2,7 +2,7 @@
  * @file src/features/reading-assistant/ui/ReadingPanel.vue
  * 文件职责：在划词卡内以内容为主呈现学习回答，复用父卡片导航、提供紧凑操作栏、按需展开的原文译文对照与连续追问。
  * 主要内容：相同译文保留原文且不重复展示；按原文与配置复用各学习动作的已完成回答，显式重新生成；历史问答按轮次与问题摘要逐条展开，区分当前问答与旧回答，切换回答时收起历史；统一导航的学习卡默认收起原文与匹配译文，查看原文后可返回当前阅读，短回答不再保留一屏空白；独立面板仍在滚动区顶部展示对照内容，进入回答时滚过原文，译文晚到时保持回答位置，关闭局部浏览器滚动锚定以避免流式格式变化移动阅读位置；流式正文只更新内部滚动内容，回答出现或消失及状态变化才通知父卡片检查布局；重复点击当前动作保留位置和待发送追问；把原文朗读和 30 天问答记录收进次级操作，在回答下方区分原文收藏与学习笔记；原文收藏仅保存对应译文，笔记保存不依赖 AI 参考开关，让多语言动作标签按空间换行，统一呈现 Markdown，以局部主题变量保持正文、状态和操作文字的对比度，并以代次隔离过期请求。
- * 模块边界：不持有模型密钥、不扫描页面、不直接请求供应商；记录由后台会话仓库保存，父划词组件负责选区、位置和 Shadow UI 生命周期。
+ * 模块边界：不持有模型密钥、不扫描页面、不直接请求供应商；原生扩展记录由后台会话仓库保存；同页临时能力与隐私独立限制记录和笔记，父划词组件负责选区、位置和 Shadow UI 生命周期。
  -->
 <template>
   <div class="fr-reading" data-reading-panel @pointerdown="dismissToolsOutside" @focusin="dismissToolsOutside">
@@ -88,7 +88,7 @@
       <button type="button" @click="copyAnswer">{{ copied ? '已复制' : '复制' }}</button>
       <button v-if="canSaveWord" type="button" :disabled="saving || saved" :title="t('reading.saveSourceTitle')" @click="saveWord">{{ saved ? '已收藏原文' : '收藏原文' }}</button>
       <button v-if="saved" type="button" data-i18n-ignore @click="openLearningCollection">{{ t('reading.viewSaved') }}</button>
-      <button v-if="!privateContext && !stopped && !error" type="button" data-i18n-ignore :disabled="remembering || remembered" :title="t('reading.saveNoteTitle')" @click="rememberLearning">{{ t(remembered ? 'reading.noteSavedButton' : 'reading.saveNote') }}</button>
+      <button v-if="canPersistReading && !stopped && !error" type="button" data-i18n-ignore :disabled="remembering || remembered" :title="t('reading.saveNoteTitle')" @click="rememberLearning">{{ t(remembered ? 'reading.noteSavedButton' : 'reading.saveNote') }}</button>
       <button v-if="remembered" type="button" data-i18n-ignore @click="openLearningMemory">{{ t('reading.viewNotes') }}</button>
     </footer>
       <template v-if="externalNavigation">
@@ -128,7 +128,7 @@ import {normalizeLearningSourceText} from '@/src/features/vocabulary/public';
 import {VOCABULARY_BOOK_MESSAGE, type VocabularyBookResponse} from '@/src/features/vocabulary/protocol';
 import {detectlang} from '@/src/core/language/detect';
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   selection: ReadingSelection;
   preferences: HarnessPreferences;
   active: boolean;
@@ -138,12 +138,15 @@ const props = defineProps<{
   targetLanguage: string;
   vocabularyEnabled: boolean;
   privateContext: boolean;
+  /** 同页 userscript 阅读仅在当前卡片保留问答，扩展默认支持记录。 */
+  persistenceSupported?: boolean;
   animations: boolean;
   playingSourceText?: string;
   sourceLanguage?: string;
   modelRevision?: number;
   sourceTranslation?: {source: string; text: string; pending?: boolean; error?: string};
-}>();
+}>(), {persistenceSupported: true});
+const canPersistReading = computed(() => !props.privateContext && props.persistenceSupported !== false);
 const emit = defineEmits<{resize: []; 'play-source': [text: string]; 'source-change': [text: string]; 'view-change': [view: {action: HarnessActionId; history: boolean}]}>();
 const intent = ref<HarnessActionId>(props.initialAction || props.preferences.defaultAction);
 const wholeSentence = ref(false);
@@ -284,9 +287,9 @@ const ReadingTools = () => {
       button(props.playingSourceText === activeText.value ? '停止朗读' : '朗读原文', () => emit('play-source', activeText.value), {'aria-pressed': props.playingSourceText === activeText.value}),
       !historicalText.value && props.selection.sentence !== props.selection.text && !wholeSentence.value ? button('理解整句', expandSentence) : null,
       canSaveWord.value && (busy.value || !answer.value) ? button(saved.value ? '已收藏原文' : '收藏原文', saveWord, {disabled: saving.value || saved.value, title: t('reading.saveSourceTitle')}) : null,
-      !props.privateContext ? button('阅读记录', openRecords) : null,
+      canPersistReading.value ? button('阅读记录', openRecords) : null,
       button('设置', () => openSettings(), {'aria-label': translateLegacy('打开划词翻译设置')}),
-      h('p', [translateLegacy(props.privateContext ? '隐私模式：不保存记录' : '阅读记录保存在本机 30 天'),
+      h('p', [translateLegacy(props.privateContext ? '隐私模式：不保存记录' : props.persistenceSupported === false ? '临时阅读：关闭本页后不保存问答或学习笔记' : '阅读记录保存在本机 30 天'),
         model.value ? h('span', {'data-i18n-ignore': ''}, model.value) : null,
         memoryCount.value ? h('span', {'data-i18n-ignore': ''}, t('reading.memoryReferences', {count: memoryCount.value})) : null]),
     ]),
@@ -381,7 +384,8 @@ async function run(prompt: string, turns: ReadingTurn[], retrying = false): Prom
   if (!retrying) archiveAnswer();
   cancelRequest();
   const token = generation;
-  const requestId = `reading-${crypto.randomUUID()}`;
+  // HTTP userscript 页未必暴露 randomUUID；标识只关联当前文档请求，不作为权限凭证。
+  const requestId = `reading-${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`}`;
   currentTurnKey.value = requestId;
   pendingId = requestId;
   lastQuestion = prompt;
@@ -410,7 +414,7 @@ async function run(prompt: string, turns: ReadingTurn[], retrying = false): Prom
         if (token !== generation) return;
         if (progress.kind === 'model') model.value = progress.model;
         if (progress.kind === 'text') answer.value = progress.text;
-        if (progress.kind === 'session') { sessionId = progress.persistent ? (progress.sessionId || '') : ''; anchorTurnId = progress.persistent ? (progress.turnId || '') : ''; if (progress.warning) sessionWarning.value = progress.warning; }
+        if (progress.kind === 'session') { sessionId = canPersistReading.value && progress.persistent ? (progress.sessionId || '') : ''; anchorTurnId = canPersistReading.value && progress.persistent ? (progress.turnId || '') : ''; if (progress.warning) sessionWarning.value = progress.warning; }
         if (progress.kind === 'memory') { memoryCount.value = progress.count; if (progress.warning) feedback.value = progress.warning; }
       },
       result: response => {
@@ -422,8 +426,8 @@ async function run(prompt: string, turns: ReadingTurn[], retrying = false): Prom
         currentQuestion.value = prompt;
         answer.value = response.text;
         model.value = response.model;
-        if (response.sessionId) sessionId = response.sessionId;
-        if (response.turnId) anchorTurnId = response.turnId;
+        if (canPersistReading.value && response.sessionId) sessionId = response.sessionId;
+        if (canPersistReading.value && response.turnId) anchorTurnId = response.turnId;
         if (response.persistenceWarning) sessionWarning.value = response.persistenceWarning;
         memoryCount.value = response.memoryCount || 0;
         history.splice(0, history.length, ...turns, {question: prompt || actionLabel.value, answer: response.text});
@@ -465,6 +469,7 @@ function startAction(action: HarnessActionId, preserveHistory = true): void {
 }
 function regenerate(): void { if (!busy.value) void run('', []); }
 async function restoreSession(id: string): Promise<void> {
+  if (!canPersistReading.value) return;
   const restoreToken = ++restoreEpoch;
   const restoreGeneration = generation + 1;
   cancelRequest();
@@ -542,7 +547,7 @@ async function openLearningCollection(): Promise<void> {
   } catch (failure) { feedback.value = failure instanceof Error ? failure.message : t('reading.openSavedFailed'); }
 }
 async function rememberLearning(): Promise<void> {
-  if (props.privateContext || busy.value || stopped.value || error.value || !answer.value || remembering.value || remembered.value) return;
+  if (!canPersistReading.value || busy.value || stopped.value || error.value || !answer.value || remembering.value || remembered.value) return;
   const owner = currentTurnKey.value;
   remembering.value = true;
   try {
@@ -587,7 +592,7 @@ watch(() => [props.initialAction, props.historyOnly, props.active] as const, ([a
 // 首次出现、清空和生成状态仍通知父卡片，连续文本块不重复要求父卡片读取选区与卡片尺寸。
 watch([busy, error, () => Boolean(answer.value), stopped, feedback, wholeSentence, sourceExpanded], () => emit('resize'), {flush: 'post'});
 async function loadMoreSessions(): Promise<void> {
-  if (props.privateContext || recordsLoading.value) return;
+  if (!canPersistReading.value || recordsLoading.value) return;
   const token = recordsGeneration;
   recordsLoading.value = true; recordsError.value = '';
   try {
@@ -601,6 +606,7 @@ async function loadMoreSessions(): Promise<void> {
   finally { if (token === recordsGeneration) recordsLoading.value = false; }
 }
 function openRecords(): void {
+  if (!canPersistReading.value) return;
   cancelReadingPosition();
   restoreEpoch += 1;
   showRecords.value = true;

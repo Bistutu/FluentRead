@@ -1,3 +1,4 @@
+import {createUserscriptReadingRuntime} from './readingRuntime';
 import {createVisionProbeHandlers} from '@/src/app/background/handlers/visionProbe';
 import {modelVisionProbe} from '@/src/app/translation/visionProbeRuntime';
 import {runTranslationServiceConnectionTest} from '@/src/providers/translation/connectionTest';
@@ -15,6 +16,7 @@ import {
     prepareConfigSaveRequest,
     parseStoredConfig,
     saveConfig,
+    subscribeConfig,
 } from '@/src/services/config/store';
 import {extractConfigCredentials, LOCAL_CREDENTIALS_STORAGE_KEY, mergeConfigCredentials, parseStoredCredentials} from '@/src/core/config/credentials';
 import {configStorage} from './storage';
@@ -36,7 +38,7 @@ import {
 } from '@/src/app/translation/runtime';
 import {lookupWord} from '@/src/features/selection-translation/services/wordDictionary';
 import {createInputBoxTranslationHandler} from '@/src/features/input-translation/background';
-import {dispatchContentMessage, UNHANDLED_RUNTIME_MESSAGE} from './browser';
+import {dispatchContentMessage, getUserscriptPrivacyContext, UNHANDLED_RUNTIME_MESSAGE} from './browser';
 import {attachTranslationGlossaryContext, createTranslationProviderConfigSnapshot} from '@/src/services/translation/requestSnapshot';
 import {createModelUsageHandler, MODEL_USAGE_MESSAGE_TYPE} from '@/src/app/background/handlers/modelUsage';
 import {modelUsageRepository} from '@/src/platform/storage/modelUsageRepository';
@@ -54,9 +56,11 @@ const UNSUPPORTED_CAPABILITY_MESSAGE = '该功能依赖浏览器扩展权限，u
  * 其余翻译、配置和缓存请求仍复用共享业务实现。
  */
 export function createPlatformMessageHandler(openSettings: (section?: string) => void) {
+    const reading = createUserscriptReadingRuntime({ready: configReady, getConfig: () => config, subscribeConfig, privateContext: getUserscriptPrivacyContext});
     const visionHandlers = createVisionProbeHandlers({ready: configReady, getConfig: () => config, isSettingsUrl: () => true, resolve: modelVisionProbe.resolve});
     const inputRequestRegistry = createTranslationRequestRegistry();
-    const inputRequestContext = {sender: {url: globalThis.location?.href}};
+    const inputRequestContext = {sender: {url: globalThis.location?.href,
+        tab: {get incognito() { return getUserscriptPrivacyContext(); }}}};
 
     // Options 表单可能先乐观更新同一 realm 的 config；CAS 必须以已提交快照为准。
     let committedConfig = normalizeConfig(config);
@@ -102,6 +106,7 @@ export function createPlatformMessageHandler(openSettings: (section?: string) =>
     const handle = async (message: any): Promise<any> => {
         if (disposed) return UNHANDLED_RUNTIME_MESSAGE;
         if (!message || typeof message !== 'object') return UNHANDLED_RUNTIME_MESSAGE;
+        if (message.type === 'fluentReadHarness') return reading.handle(message);
         const visionHandler = visionHandlers.find(handler => handler.type === message.type);
         if (visionHandler) {
             try { return await visionHandler.handle(message, {}); }
@@ -118,7 +123,10 @@ export function createPlatformMessageHandler(openSettings: (section?: string) =>
         }
 
         if (message.type === VOCABULARY_BOOK_MESSAGE) {
-            return vocabularyBookHandler.handle(message, {sender: {tab: {incognito: false}}});
+            const privateContext = getUserscriptPrivacyContext();
+            if (privateContext !== false) return {success: false, error: {code: 'invalid-input',
+                message: privateContext === true ? '无痕窗口不访问单词本数据' : '无法确认窗口隐私状态，暂不访问单词本数据'}};
+            return vocabularyBookHandler.handle(message, {sender: {tab: {incognito: privateContext}}});
         }
 
         if (message.type === 'fullPageTranslationState') return {success: true};
@@ -221,19 +229,20 @@ export function createPlatformMessageHandler(openSettings: (section?: string) =>
         if (typeof message.origin === 'string' || Array.isArray(message.origin)) {
             return translateWithCache(attachTranslationGlossaryContext({...message}, {
                 pageUrl: globalThis.location?.href,
+                privateContext: getUserscriptPrivacyContext(),
                 context: message.glossaryContext === 'video' ? 'video' : 'page',
             }));
         }
 
         return UNHANDLED_RUNTIME_MESSAGE;
     };
-    return Object.assign(handle, {dispose() {
+    return Object.assign(handle, {connect: reading.connect, closeConnections: reading.closeConnections, dispose() {
         if (disposed) return;
         disposed = true;
         let failed = false;
         let firstError: unknown;
         // 清空归属后再逐个释放，允许 stop 同步重入；首个异常不能阻断另一订阅。
-        for (const stop of stopWatching.splice(0)) {
+        for (const stop of [reading.dispose, ...stopWatching.splice(0)]) {
             try {stop();} catch (error) {
                 if (!failed) {failed = true; firstError = error;}
             }
