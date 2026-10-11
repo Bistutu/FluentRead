@@ -14,7 +14,192 @@ const page = (blocks: PdfDocumentBlock[], extras: Partial<PdfDocumentPage> = {})
 const regions = (entries: readonly PdfReadingEntry[]) => entries.filter((entry): entry is PdfReadingRegionEntry => entry.kind === 'region');
 const group = (blocks: PdfDocumentBlock[], entries: readonly PdfReadingEntry[], extras: Partial<PdfDocumentPage> = {}, controls: number[] = []) => groupPdfReadingRegions(page(blocks, extras), entries, new Set(controls));
 
+/** 来自公开 PDF 第 18 页的原始逐行、定界符和 prime 几何；文字改为通用数学条件，编码只表示未知原字形。 */
+function splitCases() {
+    const run = (box: PdfReadingRect, value: string, baseline: number) => ({...box, text: value, baseline});
+    const upper = block(244, rect(263.09653, 441.6304, 148.57097, 12.8414), 'case x > 0', 'text', {fontSize: 11, lines: [{
+        ...rect(263.09653, 441.6304, 148.57097, 12.8414), text: '\u0081 case x > 0', baseline: 452.3378,
+        runs: [run(rect(263.09653, 441.6304, 9.922, 11), '\u0081', 450.4964), run(rect(273.01852, 443.4718, 138.64898, 11), 'case x > 0', 452.3378)],
+    }]});
+    const lower = block(245, rect(183.34407, 456.6278, 228.32343, 24.156), 'f(x) ≔ cases', 'text', {fontSize: 11, lineCount: 2, lines: [{
+        ...rect(183.34407, 456.6278, 228.32343, 16.5), text: 'f(x) ≔ \u0082 case x < 0', baseline: 465.4938,
+        runs: [run(rect(183.34407, 456.6278, 76.69688, 11), 'f(x) ≔', 465.4938), run(rect(263.09653, 462.1278, 9.922, 11), '\u0082', 470.9938),
+            run(rect(273.01852, 456.6278, 138.64898, 11), 'case x < 0', 465.4938)],
+    }, {
+        ...rect(263.09653, 468.2405, 44.18699, 12.5433), text: '\u0083 case', baseline: 478.6498,
+        runs: [run(rect(263.09653, 468.2405, 9.922, 11), '\u0083', 477.1065), run(rect(273.01852, 469.7838, 34.265, 11), 'case', 478.6498)],
+    }]});
+    const condition = block(246, rect(335.65253, 469.7838, 45.309, 11), 'otherwise', 'text', {fontSize: 11, lines: [{
+        ...rect(335.65253, 469.7838, 45.309, 11), text: 'otherwise', baseline: 478.6498,
+        runs: [run(rect(335.65253, 469.7838, 45.309, 11), 'otherwise', 478.6498)],
+    }]});
+    const middle = block(-1, rect(263.09653, 447.743099, 9.922, 11), '\u0084', 'formula', {fontSize: 11, lines: [{
+        ...rect(263.09653, 447.743099, 9.922, 11), text: '\u0084', baseline: 456.609099,
+        runs: [run(rect(263.09653, 447.743099, 9.922, 11), '\u0084', 456.609099)],
+    }]});
+    const end = block(-1, rect(263.09653, 474.3752, 9.922, 11), '{', 'formula', {fontSize: 11, lines: [{
+        ...rect(263.09653, 474.3752, 9.922, 11), text: '{', baseline: 483.2412,
+        runs: [run(rect(263.09653, 474.3752, 9.922, 11), '{', 483.2412)],
+    }]});
+    const prime = block(-1, rect(238.9905, 455.2946, 3.1339, 7.7), '′', 'formula', {fontSize: 7.7});
+    const otherPrime = block(-1, rect(388.03452, 456.1086, 3.1339, 7.7), '′', 'formula', {fontSize: 7.7});
+    const number = block(-1, rect(504.85144, 456.6278, 19.558, 11), '(24)', 'formula', {fontSize: 11});
+    const before = block(243, rect(70.86614, 419.1972, 380.60746, 13.2902), 'definition', 'text', {fontSize: 11});
+    const after = block(247, rect(70.86614, 499.7172, 455.74331, 38.401), 'following ordinary paragraph', 'text', {fontSize: 11, lineCount: 3});
+    const targets = [text(243, before), text(244, upper, '第一种完整条件'), text(245, lower, '第二、三种完整条件'), text(246, condition, '完整补充条件'), text(247, after)];
+    const blocks = [before, upper, middle, prime, otherPrime, lower, condition, end, number, after];
+    const entries = [targets[0], targets[1], image('middle', middle), image('prime', prime), image('other-prime', otherPrime), targets[2], targets[3], image('end', end), image('number', number), targets[4]];
+    return {blocks, entries, targets, upper, lower, middle, end};
+}
+
+function displayMath(expression = 'λ → kernel(x) + 𝑦') {
+    const body = block(1, rect(245, 300, 110, 14), expression, 'text', {lines: [{
+        ...rect(245, 300, 110, 14), text: expression, baseline: 310,
+        runs: [{...rect(245, 300, 110, 14), text: expression, baseline: 310}],
+    }]});
+    const number = block(-1, rect(500, 300, 15, 10), '(7)', 'formula', {lines: [{...rect(500, 300, 15, 10), text: '(7)', baseline: 310}]});
+    const ordinary = (index: number, y: number) => block(index, rect(50, y, 500, 50), 'ordinary prose', 'text', {lineCount: 2, lines: [
+        {...rect(50, y, 500), text: 'ordinary first paragraph line', baseline: y + 8}, {...rect(50, y + 40, 500), text: 'ordinary last paragraph line', baseline: y + 48},
+    ]});
+    const before = ordinary(0, 220), after = ordinary(2, 340), targets = [text(0, before), text(1, body), text(2, after)];
+    return {body, number, before, after, targets, blocks: [before, body, number, after], entries: [targets[0], targets[1], image('number', number), targets[2]]};
+}
+
 describe('PDF preserved image components with unchanged text sequence', () => {
+    it('joins a complete centered single-line mathematical body with its same-baseline terminal number before the unchanged body text', () => {
+        for (const expression of ['λ → kernel(x) + 𝑦', '𝔇Σ ≔ 𝖲𝖾𝗍(𝐾)', 'ℳ = f(x)', 'x = 1']) {
+            const fixture = displayMath(expression), original = JSON.stringify(fixture), output = group(fixture.blocks, fixture.entries);
+            const pictures = regions(output); expect(pictures).toHaveLength(1);
+            expect(pictures[0].sourceRect.x).toBeLessThanOrEqual(fixture.body.x);
+            expect(pictures[0].sourceRect.x + pictures[0].sourceRect.width).toBeGreaterThanOrEqual(515);
+            expect(pictures[0].segmentIndexes).toEqual([-1, 1]);
+            expect(output).toEqual([fixture.targets[0], pictures[0], fixture.targets[1], fixture.targets[2]]);
+            expect(output.filter(entry => entry.kind === 'text')).toEqual(fixture.targets); expect(JSON.stringify(fixture)).toBe(original);
+        }
+    });
+
+    it('requires a complete mathematical line rather than ordinary sentences, lists, headings or uncertain source glyphs', () => {
+        const changes: Array<(fixture: ReturnType<typeof displayMath>) => void> = [
+            ...['heading', 'caption', 'footer', 'metadata', 'figure-label'].map(kind => (fixture: ReturnType<typeof displayMath>) => {fixture.body.kind = kind as PdfDocumentBlock['kind'];}),
+            fixture => {fixture.body.lineCount = 2;}, fixture => {fixture.body.lines = undefined;},
+            fixture => {fixture.body.fontSize = NaN;}, fixture => {fixture.body.fontSize = 0;},
+            fixture => {fixture.body.lines![0].width = NaN;}, fixture => {fixture.body.lines![0].x = 10;},
+            fixture => {fixture.body.lines![0].baseline = undefined;}, fixture => {fixture.body.lines![0].runs = undefined;},
+            fixture => {fixture.body.lines![0].runs![0].height = 0;}, fixture => {fixture.body.lines![0].runs![0].x = 10;},
+            fixture => {fixture.body.lines![0].runs![0].baseline = undefined;},
+        ];
+        for (const change of changes) {
+            const fixture = displayMath(); change(fixture);
+            const output = group(fixture.blocks, fixture.entries); expect(regions(output)[0].segmentIndexes).toEqual([-1]);
+            expect(output.filter(entry => entry.kind === 'text')).toEqual(fixture.targets);
+        }
+        for (const expression of ['ordinary phrase = x', 'x follows y', '𝑥name = y', '𝑥𠀀 = y', '- x = y', '* x = y', '1. x = y', 'x = \u0091', 'x = 😀']) {
+            const fixture = displayMath(expression), output = group(fixture.blocks, fixture.entries);
+            expect(regions(output)[0].segmentIndexes, expression).toEqual([-1]);
+        }
+    });
+
+    it('requires two supporting prose sides, a centered corridor and a valid terminal line in that corridor', () => {
+        const changes: Array<(fixture: ReturnType<typeof displayMath>) => void> = [
+            fixture => {fixture.blocks.splice(fixture.blocks.indexOf(fixture.before), 1);},
+            fixture => {fixture.blocks.splice(fixture.blocks.indexOf(fixture.after), 1);},
+            fixture => {fixture.before.width = 200;}, fixture => {fixture.after.x = 350;},
+            fixture => {fixture.before.x = 20; fixture.before.width = 530;}, fixture => {fixture.after.width = 449;},
+            fixture => {fixture.body.x = 100; fixture.body.lines![0].x = 100; fixture.body.lines![0].runs![0].x = 100;},
+            fixture => {for (const item of [fixture.before, fixture.after]) {item.x = 240; item.width = 129; item.lines!.forEach(line => {line.x = 240; line.width = 129;});}},
+            fixture => {fixture.number.x = 340;}, fixture => {fixture.number.x = 590;},
+            fixture => {fixture.number.lines![0].baseline = 330;}, fixture => {fixture.number.lines![0].baseline = undefined;},
+            fixture => {fixture.number.lines![0].width = NaN;},
+            fixture => {fixture.number.lines![0].x = 10;},
+            fixture => {fixture.number.lines!.push({...rect(500, 300, 15, 10), text: '', baseline: 310});},
+        ];
+        for (const change of changes) {
+            const fixture = displayMath(); change(fixture);
+            fixture.entries.find(entry => entry.id === 'number')!.sourceRect = rect(fixture.number.x, fixture.number.y, fixture.number.width, fixture.number.height);
+            expect(regions(group(fixture.blocks, fixture.entries))[0].segmentIndexes, change.toString()).toEqual([-1]);
+        }
+        const multiple = displayMath(); multiple.body.lines!.push({...multiple.body.lines![0]});
+        expect(regions(group(multiple.blocks, multiple.entries))[0].segmentIndexes).toEqual([-1]);
+    });
+
+    it('does not absorb ordinary text between a display formula and its number or cross a supported two-column gutter', () => {
+        const fixture = displayMath(), obstacle = block(9, rect(400, 300, 60, 10), 'ordinary prose', 'text', {lines: [{...rect(400, 300, 60), text: 'ordinary prose', baseline: 318}]});
+        expect(regions(group([...fixture.blocks, obstacle], [...fixture.entries, text(9, obstacle)]))[0].segmentIndexes).toEqual([-1]);
+        const columns = [rect(50, 220, 240, 60), rect(320, 220, 230, 60), rect(50, 340, 240, 60), rect(320, 340, 230, 60)].map((box, index) => block(index + 10, box, 'column prose', 'text', {lineCount: 2, lines: [
+            {...rect(box.x, box.y, box.width), text: 'top', baseline: box.y + 8}, {...rect(box.x, box.y + 50, box.width), text: 'bottom', baseline: box.y + 58},
+        ]}));
+        expect(regions(group([...fixture.blocks, ...columns], [...fixture.entries, ...columns.map(item => text(item.segmentIndex, item))]))[0].segmentIndexes).toEqual([-1]);
+    });
+    it('keeps an encoded stretched cases delimiter and translated body in one complete image without changing any text', () => {
+        const fixture = splitCases(), original = JSON.stringify(fixture);
+        const output = group(fixture.blocks, fixture.entries), pictures = regions(output);
+        expect(pictures).toHaveLength(1);
+        expect(pictures[0].sourceRect.x).toBeLessThanOrEqual(183.34407);
+        expect(pictures[0].sourceRect.y).toBeLessThanOrEqual(441.6304);
+        expect(pictures[0].sourceRect.x + pictures[0].sourceRect.width).toBeGreaterThanOrEqual(524.40944);
+        expect(pictures[0].sourceRect.y + pictures[0].sourceRect.height).toBeGreaterThanOrEqual(485.3752);
+        expect(pictures[0].sourceRect.y).toBeGreaterThan(432.4874);
+        expect(pictures[0].sourceRect.y + pictures[0].sourceRect.height).toBeLessThan(499.7172);
+        expect(pictures[0].segmentIndexes).toEqual([-1, 244, 245, 246]);
+        expect(output.filter(entry => entry.kind === 'text')).toEqual(fixture.targets);
+        fixture.targets.forEach(target => expect(output.find(entry => entry.id === target.id)).toBe(target));
+        expect(output.indexOf(pictures[0])).toBeLessThan(output.indexOf(fixture.targets[1]));
+        expect(JSON.stringify(fixture)).toBe(original);
+    });
+
+    it('recognizes Unicode stretched delimiter pieces without depending on an encoded control value', () => {
+        const fixture = splitCases();
+        for (const item of [fixture.upper, fixture.lower, fixture.middle, fixture.end]) for (const line of item.lines!) for (const run of line.runs!) {
+            if (run.width === 9.922) run.text = item === fixture.end ? '⎩' : '⎧';
+        }
+        expect(regions(group(fixture.blocks, fixture.entries))).toHaveLength(1);
+    });
+
+    it('requires complete source run geometry, a long delimiter, existing math fragments and a mathematical body', () => {
+        const changes: Array<(fixture: ReturnType<typeof splitCases>) => void> = [
+            fixture => {fixture.upper.lines![0].runs = undefined; fixture.lower.lines!.forEach(line => {line.runs = undefined;});},
+            fixture => {fixture.lower.lines![0].runs![0].width = NaN;},
+            fixture => {fixture.upper.lines![0].baseline = undefined;},
+            fixture => {fixture.upper.lines![0].runs![0].baseline = undefined;},
+            fixture => {fixture.upper.lines![0].x = 10;},
+            fixture => {fixture.upper.lines![0].runs![0].x = 10;},
+            fixture => {fixture.lower.lines![0].runs![0].x = 10;},
+            fixture => {fixture.middle.lines![0].runs![0].width = 30;},
+            fixture => {fixture.middle.lines![0].width = NaN;},
+            fixture => {fixture.end.lines![0].runs![0].text = '\u0085';},
+            fixture => {fixture.blocks.splice(fixture.blocks.indexOf(fixture.middle), 1); fixture.entries.splice(fixture.entries.findIndex(entry => entry.id === 'middle'), 1);},
+            fixture => {fixture.upper.height = 60;},
+            fixture => {fixture.upper.lines![0].text = 'ordinary words'; fixture.lower.lines!.forEach(line => {line.text = 'ordinary words';});},
+            fixture => {fixture.upper.lines![0].runs![0].x += 100; fixture.lower.lines!.forEach(line => {line.runs!.find(run => run.width === 9.922)!.x += 100;});},
+            fixture => {fixture.end.y += 100; fixture.end.lines![0].y += 100; fixture.end.lines![0].runs![0].y += 100;},
+        ];
+        for (const change of changes) {
+            const fixture = splitCases(); change(fixture);
+            const output = group(fixture.blocks, fixture.entries);
+            expect(regions(output), change.toString()).not.toHaveLength(1);
+            expect(output.filter(entry => entry.kind === 'text')).toEqual(fixture.targets);
+        }
+        const short = splitCases();
+        for (const item of short.blocks) {item.y = 440 + (item.y - 440) * .1; item.height *= .1; for (const line of item.lines ?? []) {
+            line.y = 440 + (line.y - 440) * .1; line.height *= .1; for (const run of line.runs ?? []) {run.y = 440 + (run.y - 440) * .1; run.height *= .1;}
+        }}
+        const output = regions(group(short.blocks, short.entries));
+        expect(output.every(entry => entry.sourceRect.x > 230)).toBe(true);
+    });
+
+    it('does not let a detected cases body swallow ordinary prose or cross supported prose columns', () => {
+        const fixture = splitCases(), obstacle = block(9, rect(170, 445, 65, 11), 'ordinary prose', 'text');
+        expect(regions(group([...fixture.blocks, obstacle], [...fixture.entries, text(9, obstacle)]))).not.toHaveLength(1);
+        const lines = (box: PdfReadingRect) => [{...rect(box.x, box.y, box.width), text: 'ordinary top', baseline: box.y + 8}, {...rect(box.x, box.y + box.height - 10, box.width), text: 'ordinary bottom', baseline: box.y + box.height - 2}];
+        const columns = [rect(50, 350, 200, 80), rect(280, 350, 240, 80), rect(50, 490, 200, 80), rect(280, 490, 240, 80)].map((box, index) => block(index + 10, box, 'ordinary column prose', 'text', {lineCount: 2, lines: lines(box)}));
+        expect(regions(group([...fixture.blocks, ...columns], [...fixture.entries, ...columns.map(item => text(item.segmentIndex, item))]))).not.toHaveLength(1);
+    });
+
+    it('keeps unsupported broad original crops separate even when a delimiter is otherwise confirmed', () => {
+        const fixture = splitCases();
+        const entries = fixture.entries.filter(entry => !['prime', 'other-prime'].includes(entry.id)).map(entry => entry.id === 'middle' ? image('middle', rect(100, 447.743099, 173.01853, 11)) : entry);
+        expect(regions(group(fixture.blocks, entries))).not.toHaveLength(1);
+    });
     it('keeps overlapping upper and lower formula lines and a distant terminal number in one source image', () => {
         const upper = rect(40, 100, 80, 12), lower = rect(40, 119, 170, 12), number = rect(500, 110, 15, 11);
         const before = text(0, rect(20, 60, 520, 20)), after = text(1, rect(20, 150, 520, 20));
@@ -73,6 +258,7 @@ describe('PDF preserved image components with unchanged text sequence', () => {
             block(3, rect(90, 100, 200, 30), 'condition', 'text', {lines: [{...rect(90, 100, 200), text: 'condition', baseline: 115}]}),
             block(3, rect(90, 100, 200, 30), 'condition', 'text', {lines: [{...rect(90, 100, 200), text: 'condition', baseline: undefined}]}),
             block(3, rect(90, 100, 200, 30), 'condition', 'text', {lines: [{...rect(NaN, 100, 200), text: 'invalid geometry, finite baseline', baseline: 108}]}),
+            block(3, rect(90, 100, 200, 30), 'condition', 'text', {lines: [{...rect(400, 100, 200), text: 'escaped source line, matching baseline', baseline: 108}]}),
             block(3, rect(30, 100, 100, 30), 'condition', 'text'),
             block(3, rect(90, 95, 200, 30), 'condition', 'text'),
             block(3, rect(90, 110, 200, 30), 'condition', 'text'),
@@ -219,6 +405,9 @@ describe('PDF preserved image components with unchanged text sequence', () => {
         const invalidMathLine = group([block(-1, subject, 'subject', 'formula', {lines: [{...rect(NaN, 100), text: 'invalid math geometry', baseline: 108}]}),
             block(-1, number, '(1)'), block(0, condition, 'condition', 'text')], [image('m', subject), text(0, condition), image('n', number)]);
         expect(regions(invalidMathLine)).toHaveLength(2);
+        const escapedMathLine = group([block(-1, subject, 'subject', 'formula', {lines: [{...rect(300, 100), text: 'escaped math line', baseline: 108}]}),
+            block(-1, number, '(1)'), block(0, condition, 'condition', 'text')], [image('m', subject), text(0, condition), image('n', number)]);
+        expect(regions(escapedMathLine)).toHaveLength(2);
         const badLines = block(1, rect(100, 150, 200, 20), 'bad line', 'text', {lines: [{...rect(NaN, 150), text: 'invalid'}]});
         expect(group([block(-1, subject), badLines], [image('m', subject), text(1, badLines)]).filter(e => e.kind === 'text')).toHaveLength(1);
         const prose = rect(20, 90, 300, 100);

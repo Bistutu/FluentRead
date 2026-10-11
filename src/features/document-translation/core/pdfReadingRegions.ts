@@ -1,10 +1,10 @@
 /**
  * @file src/features/document-translation/core/pdfReadingRegions.ts
  * 文件职责：在可读 PDF 计划中把同一数学式、编号和图表的原像素保留为完整区域。
- * 主要内容：定义共用的文字与原图条目；复用已保留区域与逐行几何，按局部间距合并数学组件，每次扩张检查正文和栏间距；条件需逐行基线对应，细路径只扩展既有数学组；仅移动图片的插入点，文字对象、字符及相互顺序不变。
+ * 主要内容：定义共用的文字与原图条目；复用已保留区域、逐行几何与拉伸定界符的原始字形，保守补全带编号的独立单行数学式，按局部间距合并数学组件，每次扩张检查正文和栏间距；条件需逐行基线对应，细路径只扩展既有数学组；仅移动图片的插入点，文字对象、字符及相互顺序不变。
  * 模块边界：纯数据转换，不解析 PDF、不重建公式、不调用字体、DOM、Canvas、翻译或文件 I/O。
  */
-import type {PdfDocumentBlock, PdfDocumentPage} from './document';
+import type {PdfDocumentBlock, PdfDocumentLine, PdfDocumentPage, PdfDocumentRun} from './document';
 
 export interface PdfReadingRect {x: number; y: number; width: number; height: number}
 export interface PdfReadingTextEntry {
@@ -38,7 +38,9 @@ interface Component {
     mathOnly: boolean;
     marker: boolean;
     position: number;
+    bodyIndexes: number[];
 }
+interface DelimiterPiece {block: PdfDocumentBlock; run: PdfDocumentRun; known: boolean}
 const right = (rect: PdfReadingRect) => rect.x + rect.width;
 const bottom = (rect: PdfReadingRect) => rect.y + rect.height;
 const valid = (rect: PdfReadingRect) => [rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) && rect.width > 0 && rect.height > 0;
@@ -51,8 +53,10 @@ const fontSize = (blocks: readonly PdfDocumentBlock[]) => {
     const sizes = blocks.map(block => block.fontSize).filter(size => Number.isFinite(size) && size > 0).sort((a, b) => a - b);
     return sizes[Math.floor(sizes.length / 2)] ?? 11;
 };
-// 行几何不完整时保守采用已验证的块框，不能把无效行当作不存在的正文。
-const sourceLines = (block: PdfDocumentBlock) => block.lines?.length && block.lines.every(valid) ? block.lines : [block];
+// 行几何不完整或逃逸父框时保守采用已验证的块框，不能把无效行当作不存在的正文。
+const sourceLines = (block: PdfDocumentBlock) => block.lines?.length && block.lines.every(line => valid(line) && contains(block, line)) ? block.lines : [block];
+const completeLine = (block: PdfDocumentBlock, line: PdfDocumentLine) => valid(line) && contains(block, line) && Number.isFinite(line.baseline)
+    && !!line.runs?.length && line.runs.every(run => valid(run) && contains(line, run) && Number.isFinite(run.baseline));
 function terminalBlock(block: PdfDocumentBlock): boolean {
     const font = fontSize([block]);
     return block.kind === 'formula' && block.lineCount === 1 && block.height <= font * 2 && block.width <= font * 4
@@ -65,14 +69,75 @@ function internalCondition(block: PdfDocumentBlock, rect: PdfReadingRect, math: 
     const bounds = math.slice(1).reduce<PdfReadingRect>((a, b) => union(a, b), math[0]);
     const font = fontSize(math);
     if (block.x < bounds.x + font || block.y < bounds.y - 1 || bottom(block) > bottom(bounds) + 1) return false;
-    const baselines = math.flatMap(item => item.lines ?? []).filter(valid).map(line => line.baseline).filter(Number.isFinite) as number[];
-    return block.lines.every(line => valid(line) && Number.isFinite(line.baseline) && baselines.some(baseline => Math.abs(baseline - line.baseline!) <= font * .35));
+    const baselines = math.flatMap(item => (item.lines ?? []).filter(line => valid(line) && contains(item, line))).map(line => line.baseline).filter(Number.isFinite) as number[];
+    return block.lines.every(line => valid(line) && contains(block, line) && Number.isFinite(line.baseline) && baselines.some(baseline => Math.abs(baseline - line.baseline!) <= font * .35));
 }
 
 function combined(a: Component, b: Component): Component {
     return {...a, rect: union(a.rect, b.rect), blocks: [...new Set([...a.blocks, ...b.blocks])], mathBlocks: [...new Set([...a.mathBlocks, ...b.mathBlocks])],
+        bodyIndexes: [...new Set([...a.bodyIndexes, ...b.bodyIndexes])],
         font: Math.max(a.font, b.font), math: a.math || b.math, mathOnly: a.mathOnly && b.mathOnly, marker: false, position: Math.min(a.position, b.position),
         entry: {...a.entry, segmentIndexes: [...new Set([...a.entry.segmentIndexes, ...b.entry.segmentIndexes])]}};
+}
+
+/** 仅接受完整的单行数学词法；普通短句、缺失字形几何和不可判定的编码均不能据编号变成公式。 */
+function singleDisplayMath(block: PdfDocumentBlock): boolean {
+    if (block.kind !== 'text' || block.lineCount !== 1 || block.lines?.length !== 1 || !Number.isFinite(block.fontSize) || block.fontSize <= 0) return false;
+    const line = block.lines[0];
+    if (!completeLine(block, line)) return false;
+    if (!/\p{Sm}/u.test(line.text) || !/^[\p{L}\p{N}\p{Sm}\p{P}\s]+$/u.test(line.text) || /^(?:[-*]\s|\d+[.)]\s)/u.test(line.text.trim())) return false;
+    const styled = (character: string) => {
+        const value = character.codePointAt(0)!;
+        return (value >= 0x1D400 && value <= 0x1D7FF) || (value >= 0x2100 && value <= 0x214F);
+    };
+    return [...line.text.matchAll(/\p{L}[\p{L}\p{N}_]*/gu)].every(match => {
+        const letters = [...match[0]];
+        return letters.length === 1 || line.text.slice(match.index + match[0].length).startsWith('(')
+            || (letters.some(styled) && letters.every(character => styled(character) || /\p{Script=Greek}/u.test(character)));
+    });
+}
+
+/** 拉伸定界符常由多个原字形组成，主体却被解析为可译文字；仅用同列字形与已有数学原图确认这一局部结构。 */
+function stretchedDelimiterSubjects(blocks: readonly PdfDocumentBlock[], components: readonly Component[]): Array<{rect: PdfReadingRect; blocks: PdfDocumentBlock[]}> {
+    const pieces: DelimiterPiece[] = [];
+    const knownDelimiter = /^[([{⎛⎜⎝⎡⎢⎣⎧⎨⎩]$/u;
+    const encodedGlyph = /^[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]$/u;
+    for (const block of blocks) for (const line of block.lines ?? []) {
+        if (!completeLine(block, line)) continue;
+        for (const run of line.runs!) {
+            const known = knownDelimiter.test(run.text);
+            if ((!known && !encodedGlyph.test(run.text)) || run.width > fontSize([block]) * 1.5) continue;
+            pieces.push({block, run, known});
+        }
+    }
+    const columns: DelimiterPiece[][] = [];
+    for (const piece of pieces) {
+        const font = fontSize([piece.block]);
+        const column = columns.find(items => Math.abs(items[0].run.x - piece.run.x) <= font * .25 && Math.abs(items[0].run.width - piece.run.width) <= font * .5);
+        if (column) column.push(piece); else columns.push([piece]);
+    }
+    const subjects: Array<{rect: PdfReadingRect; blocks: PdfDocumentBlock[]}> = [];
+    const examine = (items: readonly DelimiterPiece[]) => {
+        if (items.length < 3) return;
+        const sourceBlocks = [...new Set(items.map(piece => piece.block))], font = fontSize(sourceBlocks);
+        const delimiter = items.slice(1).reduce<PdfReadingRect>((box, piece) => union(box, piece.run), items[0].run);
+        const retained = sourceBlocks.filter(block => block.kind === 'formula' && components.some(component => component.math && !component.marker && component.blocks.includes(block)));
+        if (delimiter.height < font * 2.5 || retained.length < 2 || !items.some(piece => piece.known)) return;
+        const body = sourceBlocks.filter(block => block.kind === 'text' && block.y >= delimiter.y - font * .35 && bottom(block) <= bottom(delimiter) + font * .35
+            && block.lines!.every(line => completeLine(block, line)));
+        if (!body.length || !body.some(block => block.lines!.some(line => /\p{Sm}/u.test(line.text)))) return;
+        subjects.push({rect: body.reduce<PdfReadingRect>((box, block) => union(box, block), delimiter), blocks: body});
+    };
+    for (const column of columns) {
+        column.sort((a, b) => a.run.y - b.run.y);
+        let chain: DelimiterPiece[] = [], chainEnd = -Infinity;
+        for (const piece of column) {
+            if (chain.length && piece.run.y - chainEnd > fontSize([piece.block]) * .6) {examine(chain); chain = []; chainEnd = -Infinity;}
+            chain.push(piece); chainEnd = Math.max(chainEnd, bottom(piece.run));
+        }
+        examine(chain);
+    }
+    return subjects;
 }
 
 /** 输入文字先由原计划确定；新增图片 hull 不参与文字删除或译文改写。 */
@@ -92,7 +157,7 @@ export function groupPdfReadingRegions(page: PdfDocumentPage, entries: readonly 
         const marker = linked.length > 0 && linked.every(block => terminalBlocks.has(block));
         // 附加的式号基线不构成式内条件的证据；条件必须对应已存在的数学主体。
         return [{entry, rect: {...entry.sourceRect}, blocks: linked, mathBlocks: marker ? [] : mathBlocks, font, math: entry.role === 'formula',
-            mathOnly: entry.role === 'formula' || linked.some(block => sourceControlIndexes.has(block.segmentIndex)), marker, position}];
+            mathOnly: entry.role === 'formula' || linked.some(block => sourceControlIndexes.has(block.segmentIndex)), marker, position, bodyIndexes: []}];
     });
     // 只有两栏正文在同一纵带实际并存时，空白带才限制数学组；数学碎块自己的 column 不是正文栏。
     const gutters: PdfReadingRect[] = [];
@@ -112,6 +177,41 @@ export function groupPdfReadingRegions(page: PdfDocumentPage, entries: readonly 
         return textBlocks.some(block => !owned.some(part => contains(part, block)) && !internalCondition(block, rect, math)
             && sourceLines(block).some(line => overlaps(rect, line)));
     };
+    // 已译 cases 主体仍是原来的独立文字条目；完整原图只增加其数学几何，绝不据此删除或重写译文。
+    for (const subject of stretchedDelimiterSubjects(blocks, components)) {
+        const parts = components.filter(component => component.mathOnly && !component.marker && valid(component.rect) && contains(subject.rect, component.rect));
+        if (parts.length < 2) continue;
+        const joined = parts.slice(1).reduce(combined, parts[0]);
+        const candidate = {...joined, rect: union(joined.rect, subject.rect), math: true, mathOnly: true, mathBlocks: [...new Set([...joined.mathBlocks, ...subject.blocks])],
+            bodyIndexes: subject.blocks.map(block => block.segmentIndex),
+            entry: {...joined.entry, segmentIndexes: [...new Set([...joined.entry.segmentIndexes, ...subject.blocks.map(block => block.segmentIndex)])]}};
+        if (blocked(candidate.rect, [...parts.map(part => part.rect), ...subject.blocks], candidate.mathBlocks)) continue;
+        components[components.indexOf(parts[0])] = candidate;
+        components = components.filter(component => component === candidate || !parts.includes(component));
+    }
+    // 两侧普通正文共同支持同一居中公式走廊，且已有式号同基线时，才补全被解析为文字的单行主体。
+    for (const block of textBlocks.filter(singleDisplayMath)) {
+        const font = fontSize([block]);
+        const above = prose.filter(item => bottom(item) <= block.y && item.x <= block.x && right(item) >= right(block)).sort((a, b) => bottom(b) - bottom(a));
+        const below = prose.filter(item => item.y >= bottom(block) && item.x <= block.x && right(item) >= right(block)).sort((a, b) => a.y - b.y);
+        let end: number | undefined;
+        support: for (const first of above) for (const next of below) {
+            if (Math.abs(first.x - next.x) > font || Math.abs(right(first) - right(next)) > font) continue;
+            const x = Math.max(first.x, next.x), corridorEnd = Math.min(right(first), right(next));
+            if (corridorEnd - x < block.width + font * 2 || Math.abs(block.x + block.width / 2 - (x + corridorEnd) / 2) > font) continue;
+            end = corridorEnd; break support;
+        }
+        if (end === undefined) continue;
+        for (const marker of components.filter(component => component.marker && component.blocks.length === 1)) {
+            const number = marker.blocks[0], line = number.lines![0];
+            if (number.lines!.length !== 1 || !valid(line) || !contains(number, line) || !Number.isFinite(line.baseline) || number.x < right(block) + font
+                || right(number) > end + 1 || Math.abs(line.baseline! - block.lines![0].baseline!) > font * .35) continue;
+            const candidate = {...marker, rect: union(marker.rect, block), blocks: [...marker.blocks, block], mathBlocks: [block], font: Math.max(marker.font, font), marker: false,
+                bodyIndexes: [block.segmentIndex], entry: {...marker.entry, segmentIndexes: [...new Set([...marker.entry.segmentIndexes, block.segmentIndex])]}};
+            if (blocked(candidate.rect, [marker.rect, block], candidate.mathBlocks)) continue;
+            components[components.indexOf(marker)] = candidate; break;
+        }
+    }
     let changed = true;
     while (changed) {
         changed = false;
@@ -174,7 +274,7 @@ export function groupPdfReadingRegions(page: PdfDocumentPage, entries: readonly 
                 if (valid(candidate) && !blocked(candidate, [component.rect], component.mathBlocks)) component.rect = candidate;
             }
         }
-        const inside = new Set(textBlocks.filter(block => internalCondition(block, component.rect, component.mathBlocks)).map(block => block.segmentIndex));
+        const inside = new Set(textBlocks.filter(block => component.bodyIndexes.includes(block.segmentIndex) || internalCondition(block, component.rect, component.mathBlocks)).map(block => block.segmentIndex));
         component.entry = {...component.entry, segmentIndexes: [...new Set([...component.entry.segmentIndexes, ...inside])]};
         const corridor = prose.filter(block => !inside.has(block.segmentIndex) && Math.min(right(block), right(component.rect)) > Math.max(block.x, component.rect.x))
             .sort((a, b) => gap(a, component.rect).y - gap(b, component.rect).y)[0];
