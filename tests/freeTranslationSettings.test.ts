@@ -248,6 +248,18 @@ describe('free translation settings compiled component', () => {
     expect(readFileSync(resolve(process.cwd(), componentPath), 'utf8')).not.toContain('setWeight');
   });
 
+  it('豆包网页免费节点展示在目录中，但不重新启用旧列表未选择的节点', async () => {
+    expect(control('启用 豆包网页翻译').props['model-value']).toBe(false);
+    config.freeTranslationOrder = ['google'];
+    await runtime.nextTick();
+    expect(state.providers.find((provider: {id: string}) => provider.id === 'doubaoWeb')?.label).toBe('豆包网页翻译');
+    expect(control('启用 豆包网页翻译').props['model-value']).toBe(false);
+    state.toggle('doubaoWeb', true);
+    await runtime.nextTick();
+    expect(config.freeTranslationOrder).toEqual(['google', 'doubaoWeb']);
+    expect(control('启用 豆包网页翻译').props['model-value']).toBe(true);
+  });
+
   it('switches mode and exposes order controls in priority mode', async () => {
     control('优先顺序').props.onChange();
     await runtime.nextTick();

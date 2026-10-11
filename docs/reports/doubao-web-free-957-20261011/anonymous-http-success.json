@@ -1,0 +1,111 @@
+{
+  "testedAt": "2026-10-11T12:13:05.723690+00:00",
+  "scope": "Fresh anonymous curl homepage only; public official extension v1.38.0 commons and fixed Agw-Js-Conv:str; only ttwid cookie; no website JS, signatures or account login",
+  "trials": [
+    {
+      "variant": "official-extension-common-fresh-html",
+      "queryKeys": [
+        "aid",
+        "device_platform",
+        "tea_uuid",
+        "version",
+        "use-olympus-account",
+        "language",
+        "browser_language",
+        "real_aid",
+        "pkg_type",
+        "device_id",
+        "web_id",
+        "is_new_user",
+        "region",
+        "sys_region",
+        "samantha_web",
+        "version_code",
+        "pc_version",
+        "web_tab_id"
+      ],
+      "publicQuery": {
+        "aid": "586864",
+        "device_platform": "web",
+        "version": "1.38.0",
+        "use-olympus-account": "1",
+        "language": "zh",
+        "browser_language": "zh-CN",
+        "real_aid": "586864",
+        "pkg_type": "release_version",
+        "is_new_user": "0",
+        "region": "CN",
+        "sys_region": "CN",
+        "samantha_web": "1",
+        "version_code": "20800",
+        "pc_version": "1.38.0"
+      },
+      "hasAnonymousHtmlWebId": true,
+      "hasABogus": false,
+      "cookieNames": [
+        "ttwid"
+      ],
+      "agwHeader": "str",
+      "httpStatuses": [
+        "HTTP/2 200 "
+      ],
+      "contentType": "text/event-stream",
+      "events": [
+        {
+          "event": "json",
+          "code": 0,
+          "msg": "success",
+          "items": [
+            {
+              "index": 0,
+              "detect_lang": "en",
+              "res": "你好，世界。今天是美好的一天。"
+            }
+          ]
+        },
+        {
+          "event": "done",
+          "emptyData": true
+        }
+      ],
+      "success": true
+    },
+    {
+      "variant": "minimal-plus-samantha-web",
+      "queryKeys": [
+        "aid",
+        "device_platform",
+        "tea_uuid",
+        "version",
+        "use-olympus-account",
+        "samantha_web"
+      ],
+      "publicQuery": {
+        "aid": "586864",
+        "device_platform": "web",
+        "version": "1.38.0",
+        "use-olympus-account": "1",
+        "samantha_web": "1"
+      },
+      "hasAnonymousHtmlWebId": false,
+      "hasABogus": false,
+      "cookieNames": [
+        "ttwid"
+      ],
+      "agwHeader": "str",
+      "httpStatuses": [
+        "HTTP/2 200 "
+      ],
+      "contentType": "application/json; charset=utf-8",
+      "code": 710012001,
+      "msg": "登录已过期，请重新登录",
+      "success": false
+    }
+  ],
+  "bootstrap": {
+    "hasTtwid": true,
+    "hasWebId": true,
+    "encodedTtwidPreserved": true
+  },
+  "completed": true
+}

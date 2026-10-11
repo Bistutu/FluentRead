@@ -25,7 +25,7 @@
 | `groq` | [`groq.svg`](https://github.com/lobehub/lobe-icons/blob/53ead06d734cc6c003db5a87860907c4bbadfbc0/packages/static-svg/icons/groq.svg) |
 | `huanYuan` | [`hunyuan.svg`](https://github.com/lobehub/lobe-icons/blob/53ead06d734cc6c003db5a87860907c4bbadfbc0/packages/static-svg/icons/hunyuan.svg) |
 | `huanYuanTranslation` | [`hunyuan.svg`](https://github.com/lobehub/lobe-icons/blob/53ead06d734cc6c003db5a87860907c4bbadfbc0/packages/static-svg/icons/hunyuan.svg) |
-| `doubao` | [`doubao.svg`](https://github.com/lobehub/lobe-icons/blob/53ead06d734cc6c003db5a87860907c4bbadfbc0/packages/static-svg/icons/doubao.svg) |
+| `doubao`、免费池 `doubaoWeb` | [`doubao.svg`](https://github.com/lobehub/lobe-icons/blob/53ead06d734cc6c003db5a87860907c4bbadfbc0/packages/static-svg/icons/doubao.svg) |
 | `siliconCloud` | [`siliconcloud.svg`](https://github.com/lobehub/lobe-icons/blob/53ead06d734cc6c003db5a87860907c4bbadfbc0/packages/static-svg/icons/siliconcloud.svg) |
 | `openrouter` | [`openrouter.svg`](https://github.com/lobehub/lobe-icons/blob/53ead06d734cc6c003db5a87860907c4bbadfbc0/packages/static-svg/icons/openrouter.svg) |
 | `grok` | [`grok.svg`](https://github.com/lobehub/lobe-icons/blob/53ead06d734cc6c003db5a87860907c4bbadfbc0/packages/static-svg/icons/grok.svg) |

@@ -1,0 +1,175 @@
+{
+  "kind": "public-official-extension-protocol-facts",
+  "retrievedAt": "2026-10-11",
+  "sourceLandingUrl": "https://www.doubao.com/browser-extension/landing",
+  "sourceDownloadUrl": "https://clients2.google.com/service/update2/crx?response=redirect&prodversion=131.0.0.0&acceptformat=crx2,crx3&x=id%3Ddbjibobgilijgolhjdcbdebjhejelffo%26uc",
+  "extensionId": "dbjibobgilijgolhjdcbdebjhejelffo",
+  "version": "1.38.0",
+  "crxBytes": 24033189,
+  "crxSha256": "242f3a6d6b501d58f6a7e802ba5064a68e6d33cb204db796afbf5f32444b036f",
+  "method": "Downloaded public CRX and parsed manifest and JavaScript statically. Did not install or execute the extension, access a personal browser profile, or read any personal cookies.",
+  "protocol": {
+    "endpoint": "https://www.doubao.com/samantha/plugin/stream_article_translate",
+    "method": "POST",
+    "fixedQueryParams": {
+      "aid": "586864",
+      "real_aid": "586864",
+      "device_platform": "web",
+      "pkg_type": "release_version",
+      "version": "1.38.0",
+      "version_code": 20800,
+      "pc_version": "1.38.0",
+      "is_new_user": "0",
+      "use-olympus-account": 1,
+      "samantha_web": "1"
+    },
+    "dynamicQueryParams": {
+      "language": "UI language normalized to primary language subtag",
+      "browser_language": "navigator.language",
+      "device_id": "Native device_id if applicable; otherwise launch web_id when launch config has ttwid, else \"0\"",
+      "tea_uuid": "Local uuid; if absent, two randomly generated 9-digit integers concatenated and persisted locally",
+      "web_id": "teaWebId ?? tea_uuid ?? launch webId ?? \"0\"; tea_uuid is generated when absent",
+      "region": "launch country",
+      "sys_region": "launch country",
+      "web_tab_id": "Generated local request/tab identifier"
+    },
+    "headers": {
+      "Content-Type": "application/json",
+      "Agw-Js-Conv": "str",
+      "Accept": "text/event-stream"
+    },
+    "bodyFields": {
+      "raw_text": "Array of source text strings, not one string",
+      "target_lang": "Target language code from chosen language",
+      "translate_service": "String enum: \"0\" HUOSHAN, \"1\" LLM / Doubao, \"2\" GOOGLE, \"3\" MICROSOFT",
+      "scene": "Numeric enum: 1 PageTranslate, 2 AIReader, 3 ChooseWordsTranslate; other feature scenes also exist"
+    },
+    "bodyNotes": [
+      "Page translation defaults translate_service to LLM, and sends only raw_text, target_lang, translate_service, scene in the inspected caller. No frontend_source field in this caller or generated SDK method.",
+      "The port SSE transport merges base query params, JSON-serializes the body, and explicitly appends Agw-Js-Conv: str. Fetch-event-source adds Accept: text/event-stream when missing.",
+      "This is a protocol snapshot from version 1.38.0, not a service stability or usage-quota guarantee."
+    ]
+  },
+  "bootstrap": {
+    "checkEndpoint": "https://www.doubao.com/ttwid/check/",
+    "registerEndpoint": "https://www.doubao.com/ttwid/register/",
+    "method": "POST",
+    "headers": {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    "bodyEncoding": "JSON.stringify despite declared form-urlencoded content type",
+    "body": {
+      "aid": 586864,
+      "real_aid": "586864",
+      "service": "www.doubao.com",
+      "unionHost": "",
+      "union": false,
+      "needFid": false,
+      "fid": "",
+      "migrate_priority": 0
+    },
+    "notes": [
+      "check status_code 0 means no refresh; otherwise register and validate HTTP OK plus status_code 0.",
+      "Official code uses normal fetch; cookie storage / Set-Cookie handling is left to browser. This report contains no cookie values.",
+      "The extension separately POSTs /alice/user/launch and stores config.ttwid, config.web_id, and country even when authInfo.isAuthenticated is false.",
+      "The inspected code provides a first-party visitor initialization path without a user password or API key. Its static presence alone does not establish anonymous translation success; the independent live request report supplies that evidence."
+    ]
+  },
+  "loginGateBoundary": {
+    "defaultState": "authInfo.isAuthenticated false; limiting maps and sets initially empty",
+    "serverErrorCodes": {
+      "NOACCESS": 710012000,
+      "NOT_LOGIN": 710012001,
+      "SHARK_BLOCKED": 710022002
+    },
+    "notes": [
+      "The UI listens for fetch-stream-proxy-unAuthorized, chooses page_translate for stream_article_translate, and opens a login entry / emits check-login-fail after an unauthorized response unless preventDefaultAuthAction is set.",
+      "Action limits are conditional on server-recorded limited actions or a configured local upper limit; authenticated users bypass this UI restriction.",
+      "The article-translation caller does not contain an unconditional login precheck in the inspected request path. SHARK_BLOCKED only triggers service-unavailable feedback.",
+      "The official extension has cookies permission and uses a normal browser fetch. These facts do not imply that all requests from an already logged-in official installation omit account cookies. FluentRead must isolate its own anonymous credentials instead."
+    ]
+  },
+  "sourceLocations": [
+    {
+      "file": "manifest.json",
+      "finding": "Version 1.38.0, MV3, static/js/background.js service worker, cookies permission"
+    },
+    {
+      "file": "static/js/background.js",
+      "byteOffset": 260413,
+      "finding": "Host www.doubao.com; aid and real_aid 586864"
+    },
+    {
+      "file": "static/js/background.js",
+      "byteOffset": 299516,
+      "finding": "pc_version resolved from chrome.runtime.getManifest().version"
+    },
+    {
+      "file": "static/js/background.js",
+      "byteOffset": 320621,
+      "finding": "Version 1.38.0, version_code 20800; dynamic query ID generation and base params nearby"
+    },
+    {
+      "file": "static/js/background.js",
+      "byteOffset": 321518,
+      "finding": "use-olympus-account 1 in base query params"
+    },
+    {
+      "file": "static/js/background.js",
+      "byteOffset": 322172,
+      "finding": "Agw-Js-Conv str in common non-stream wrapper"
+    },
+    {
+      "file": "static/js/background.js",
+      "byteOffset": 449569,
+      "finding": "SSE helper adds Accept text/event-stream if absent"
+    },
+    {
+      "file": "static/js/background.js",
+      "byteOffset": 537310,
+      "finding": "Port SSE wrapper explicitly adds Agw-Js-Conv str, base query, JSON body"
+    },
+    {
+      "file": "static/js/background.js",
+      "byteOffset": 564224,
+      "finding": "Generated StreamArticleTranslate method endpoint and four body fields"
+    },
+    {
+      "file": "static/js/background.js",
+      "byteOffset": 797357,
+      "finding": "First-party ttwid register; check at byte 796898; body at byte 797840"
+    },
+    {
+      "file": "static/js/background.js",
+      "byteOffset": 441596,
+      "finding": "POST /alice/user/launch"
+    },
+    {
+      "file": "static/js/background.js",
+      "byteOffset": 814575,
+      "finding": "Auth/launch state update; anonymous state still saves config identifiers"
+    },
+    {
+      "file": "static/js/content.js",
+      "byteOffset": 386119,
+      "finding": "Translation service string enums; numeric scene enums at byte 386420"
+    },
+    {
+      "file": "static/js/61620.js",
+      "byteOffset": 438522,
+      "finding": "Actual page translator body and streamed item handling"
+    },
+    {
+      "file": "static/js/49724.js",
+      "byteOffset": 141794,
+      "finding": "Empty initial action limits and conditional unauthenticated gate"
+    },
+    {
+      "file": "static/js/49724.js",
+      "byteOffset": 143346,
+      "finding": "Unauthorized translation response -> page_translate login entry"
+    }
+  ],
+  "offsetConvention": "Zero-based byte offsets into the exact extracted unmodified files from the stated CRX SHA256.",
+  "evidenceHandling": "Keep CRX, extracted bundles and pretty-printed source under temporary research directory only. Publish this distilled protocol-facts report with source URLs and offsets; do not commit bulk third-party source."
+}

@@ -44,6 +44,15 @@ describe('local service SVG icons', () => {
     }
   })
 
+  it('reuses the Doubao brand for the free web node without a network fallback', async () => {
+    const html = await render('doubaoWeb')
+    expect(html).toContain('data-service="doubaoWeb"')
+    expect(html).toContain('data-brand-icon')
+    expect(html.match(/<path\b/gu)?.length).toBe(paths.doubao.length)
+    expect(html).not.toContain('data-service-icon-fallback')
+    expect(html).not.toMatch(/<(?:img|image)\b|https?:\/\//u)
+  })
+
   it('keeps static paths small and excludes SVG scripting, links, IDs and external resources', () => {
     for (const shape of Object.values(paths)) for (const attributes of shape) {
       expect(Object.keys(attributes).every(key => ['d', 'clip-rule', 'fill-rule', 'opacity', 'fill-opacity'].includes(key))).toBe(true)

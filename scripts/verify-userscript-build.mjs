@@ -100,7 +100,12 @@ const artifactBytes = Buffer.byteLength(source);
 // 增加 16,160 字节（0.7885%）；主线 2,050,000 预算余 484 字节，按实测最小增加 16 KB，余 324 字节。
 // 完整对照见 reading-evidence-20261011/userscript-size.json，所有协议与执行边界断言保留。
 // 引文提示整合 11860f3f2：同依赖独立 main 为 2,047,876 字节，候选为 2,064,141；沿用预算，余 1,859。
-const MAX_USERSCRIPT_BYTES = 2_066_000;
+// 豆包实验线路：同依赖独立主线 1e414ea8c 为 2,064,354 字节，完整匿名协议候选为 2,072,803。
+// 增加 8,449 字节（0.4093%）；利用原余量后按既有 1 KB 步长最小增加 7 KB，余 197 字节。
+// 全部协议与执行边界断言保留；对照与散列见 doubao-web-free-957-20261011/userscript-size.json。
+// 整合 f9cf3fcb2 后，同依赖独立主线为 2,065,321，最终候选为 2,073,858（增 8,537，0.4133%）。
+// 按同一 1 KB 步长最小再增 1 KB，余 142 字节；保持全部执行断言，完整前后对照见同一报告。
+const MAX_USERSCRIPT_BYTES = 2_074_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);
