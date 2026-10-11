@@ -433,6 +433,7 @@
       "tests/vocabularyVideoSource.test.ts"
     ],
     "functional": [
+      "tests/learningCenterLifecycle.test.ts",
       "tests/dateFormatLifecycle.test.ts",
       "tests/finalCoveragePublicBoundariesA.test.ts",
       "tests/finalCoveragePublicBoundariesB.test.ts",

@@ -1830,6 +1830,8 @@ export const jaJPMessages = {
     "learning.localStorage": "このブラウザーに保存",
     "learning.localStorageHelp": "アカウント不要。復習記録はアップロードされません。プライベートウィンドウでは保存されません。",
     "learning.backup": "バックアップと復元",
+    "learning.panelLoadError": "この項目を開けませんでした。ページを再読み込みして、もう一度お試しください。",
+    "learning.reloadPage": "ページを再読み込み",
     "learning.collection.actions": "コレクションと復習",
     "learning.collection.reviewHelp": "まず思い出してから答えを確認。1 回最大 20 件。",
     "learning.collection.upToDate": "今は復習する項目がありません。学習を続けましょう。",

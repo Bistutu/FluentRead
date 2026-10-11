@@ -1830,6 +1830,8 @@ export const ruRUMessages = {
     "learning.localStorage": "Сохранено в этом браузере",
     "learning.localStorageHelp": "Без аккаунта и отправки записей повторения. В приватных окнах коллекция не сохраняется.",
     "learning.backup": "Резервное копирование",
+    "learning.panelLoadError": "Не удалось открыть этот раздел. Перезагрузите страницу и попробуйте снова.",
+    "learning.reloadPage": "Перезагрузить страницу",
     "learning.collection.actions": "Коллекция и повторение",
     "learning.collection.reviewHelp": "Сначала вспомните, затем проверьте. До 20 записей за раз.",
     "learning.collection.upToDate": "Сейчас повторять нечего. Продолжайте изучать сохранённые записи.",

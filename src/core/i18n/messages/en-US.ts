@@ -1824,6 +1824,8 @@ export const enUSMessages = {
     "learning.localStorage": "Saved in this browser",
     "learning.localStorageHelp": "No account or uploaded review records. Private windows do not keep collections.",
     "learning.backup": "Backup & restore",
+    "learning.panelLoadError": "This section could not be opened. Reload the page to try again.",
+    "learning.reloadPage": "Reload page",
     "learning.collection.actions": "Collection and review",
     "learning.collection.reviewHelp": "Recall first, then check. Up to 20 entries per round.",
     "learning.collection.upToDate": "You are up to date. Keep learning from your collection.",

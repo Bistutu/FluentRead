@@ -82,11 +82,13 @@ function createFixtureServer(browser = 'chrome') {
   });
 }
 
-async function mountOptions(hash = '#settings-selection', ready = Promise.resolve(), appearanceRoot?: HTMLElement, load?: (server: ViteDevServer) => Promise<Record<string, any>>, browser = 'chrome', uiLanguage?: UiLanguage) {
+type RecoveryFixture = {href: string; historyState: unknown; props?: {locationRouting?: 'internal'; initialSection?: string}};
+async function mountOptions(hash = '#settings-selection', ready = Promise.resolve(), appearanceRoot?: HTMLElement, load?: (server: ViteDevServer) => Promise<Record<string, any>>, browser = 'chrome', uiLanguage?: UiLanguage, recovery?: RecoveryFixture) {
   const scope = current;
   if (!scope || !owns(scope) || !scope.server) throw inactive();
   const ownedServer = scope.server;
-  const location = {hash};
+  const initialUrl = recovery ? new URL(recovery.href) : undefined;
+  const location = {hash: initialUrl?.hash ?? hash, search: initialUrl?.search ?? '', href: initialUrl?.href ?? `chrome-extension://fixture/options.html${hash}`, reload: vi.fn()};
   const windowEvents = new EventTarget();
   const mediaAdd = vi.fn();
   const mediaRemove = vi.fn();
@@ -95,17 +97,25 @@ async function mountOptions(hash = '#settings-selection', ready = Promise.resolv
   const unsubscribeConfig = vi.fn();
   const theme = vi.fn(), skin = vi.fn(), font = vi.fn();
   const releaseAppearance = vi.fn(), registerAppearance = vi.fn(() => releaseAppearance);
-  const replaceState = vi.fn((_state: unknown, _unused: string, nextHash: string) => {
-    location.hash = nextHash;
+  const navigationState: {value: unknown} = {value: recovery?.historyState ?? null};
+  const replaceState = vi.fn((nextState: unknown, _unused: string, target: string | URL) => {
+    navigationState.value = nextState;
+    if (!recovery) location.hash = String(target);
+    else {
+      const next = new URL(String(target), location.href);
+      Object.assign(location, {hash: next.hash, search: next.search, href: next.href});
+    }
   });
+  const historyPort = {get state() {return navigationState.value;}, replaceState};
   const addEventListener = vi.spyOn(windowEvents, 'addEventListener');
   const removeEventListener = vi.spyOn(windowEvents, 'removeEventListener');
   vi.stubGlobal('window', Object.assign(windowEvents, {
     location,
+    history: historyPort,
     scrollTo: windowScrollTo,
     matchMedia: () => ({matches: false, addEventListener: mediaAdd, removeEventListener: mediaRemove}),
   }));
-  vi.stubGlobal('history', {replaceState});
+  vi.stubGlobal('history', historyPort);
   (globalThis as Record<string, unknown>)[TEST_KEY] = {
     config: {interfaceSkin: 'default'},
     configReady: ready,
@@ -145,9 +155,10 @@ async function mountOptions(hash = '#settings-selection', ready = Promise.resolv
     cloneNode: () => ({}), insertStaticContent: () => [{}, {}],
   });
   type SearchResult = {id: string; sectionId: string; targetId?: string; panelId?: string; label: string; searchDescription: string};
-  let state!: {activeSection: string; query: string; activeItem: {id: string}; selectSection: (id: string, target?: string) => void; activePanel: string; activePanels: {id: string}[]; sectionPanels: {id: string}[]; contentComponentProps: {activePanel?: string}; selectPanel: (id: string) => void; isGroupOpen: (index: number) => boolean; toggleGroup: (index: number) => void; settingsContentElement: {scrollTo: typeof scrollTo} | null; filteredResults: SearchResult[]; selectResult: (result: SearchResult) => Promise<void>};
+  let state!: {activeSection: string; query: string; activeItem: {id: string}; selectSection: (id: string, target?: string) => void; activePanel: string; activePanels: {id: string}[]; sectionPanels: {id: string}[]; contentComponentProps: {activePanel?: string; initialTab?: string; onReload?: (tab: string) => void}; selectPanel: (id: string) => void; isGroupOpen: (index: number) => boolean; toggleGroup: (index: number) => void; settingsContentElement: {scrollTo: typeof scrollTo} | null; filteredResults: SearchResult[]; selectResult: (result: SearchResult) => Promise<void>};
   const app = renderer.createApp({
     setup: () => () => runtime.h(component, {
+      ...recovery?.props,
       appearanceRoot,
       ref: (instance: any) => { if (instance) state = instance.$.setupState; },
     }),
@@ -166,7 +177,7 @@ async function mountOptions(hash = '#settings-selection', ready = Promise.resolv
     windowEvents.dispatchEvent(new Event('hashchange'));
     await runtime.nextTick();
   };
-  return {state, location, navigateHash, replaceState, scrollTo, windowScrollTo, addEventListener, removeEventListener, mediaAdd, mediaRemove, unsubscribeConfig, theme, skin, font, registerAppearance, releaseAppearance, i18n};
+  return {state, location, navigateHash, replaceState, historyPort, scrollTo, windowScrollTo, addEventListener, removeEventListener, mediaAdd, mediaRemove, unsubscribeConfig, theme, skin, font, registerAppearance, releaseAppearance, i18n};
 }
 
 describe('OptionsApp language recovery search with actual UI messages', () => {
@@ -611,4 +622,51 @@ it.each(['resolve', 'reject'] as const)('rejects a late SSR loader %s without mo
   unmount?.();unmount = undefined;
   expect(mounted.removeEventListener).toHaveBeenCalledWith('hashchange', listener);
   expect(mounted.unsubscribeConfig).toHaveBeenCalledOnce();
+});
+
+describe('OptionsApp actual learning-panel reload callback', () => {
+  it('reloads the requested panel with the current URL and history state preserved', async () => {
+    const historyState = {navigation: {owner: 'host'}, position: 4};
+    const href = 'chrome-extension://fixture/embedded/options.html?existing=a%2Fb&learningTab=history&keep=two#settings-vocabulary';
+    const {state, location, replaceState, historyPort} = await mountOptions('#settings-vocabulary', Promise.resolve(), undefined, undefined, 'chrome', undefined, {href, historyState});
+    expect(state.activeSection).toBe('settings-vocabulary');
+    expect(state.contentComponentProps.initialTab).toBe('history');
+    expect(state.contentComponentProps.onReload).toBeTypeOf('function');
+    expect(replaceState).not.toHaveBeenCalled();
+    state.contentComponentProps.onReload!('memory');
+    expect(replaceState).toHaveBeenCalledOnce();
+    const [savedState, title, destination] = replaceState.mock.calls[0];
+    expect(savedState).toBe(historyState);
+    expect(title).toBe('');
+    const next = new URL(String(destination));
+    expect(next.protocol).toBe('chrome-extension:');
+    expect(next.host).toBe('fixture');
+    expect(next.pathname).toBe('/embedded/options.html');
+    expect(next.hash).toBe('#settings-vocabulary');
+    expect(next.searchParams.get('existing')).toBe('a/b');
+    expect(next.searchParams.get('keep')).toBe('two');
+    expect(next.searchParams.getAll('learningTab')).toEqual(['memory']);
+    expect(historyPort.state).toBe(historyState);
+    expect(location.href).toBe(next.href);
+    expect(location.reload).toHaveBeenCalledOnce();
+    expect(replaceState.mock.invocationCallOrder[0]).toBeLessThan(location.reload.mock.invocationCallOrder[0]);
+  });
+
+  it('reloads an internal settings mount without rewriting its host URL or history', async () => {
+    const historyState = {hostRoute: 'article', position: 8};
+    const href = 'https://example.test/article?siteFilter=recent&learningTab=history#host-anchor';
+    const {state, location, replaceState, historyPort} = await mountOptions('#host-anchor', Promise.resolve(), undefined, undefined, 'userscript', undefined, {
+      href, historyState, props: {locationRouting: 'internal', initialSection: 'settings-vocabulary'},
+    });
+    expect(state.activeSection).toBe('settings-vocabulary');
+    expect(state.contentComponentProps.initialTab).toBe('history');
+    expect(state.contentComponentProps.onReload).toBeTypeOf('function');
+    state.contentComponentProps.onReload!('memory');
+    expect(location.reload).toHaveBeenCalledOnce();
+    expect(replaceState).not.toHaveBeenCalled();
+    expect(location.href).toBe(href);
+    expect(location.search).toBe('?siteFilter=recent&learningTab=history');
+    expect(location.hash).toBe('#host-anchor');
+    expect(historyPort.state).toBe(historyState);
+  });
 });

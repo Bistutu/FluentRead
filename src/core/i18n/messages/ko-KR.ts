@@ -1830,6 +1830,8 @@ export const koKRMessages = {
     "learning.localStorage": "이 브라우저에 저장",
     "learning.localStorageHelp": "계정 없이 사용하며 복습 기록을 업로드하지 않습니다. 비공개 창에서는 보관되지 않습니다.",
     "learning.backup": "백업 및 복원",
+    "learning.panelLoadError": "이 항목을 열 수 없습니다. 페이지를 새로고침한 후 다시 시도하세요.",
+    "learning.reloadPage": "페이지 새로고침",
     "learning.collection.actions": "저장 항목과 복습",
     "learning.collection.reviewHelp": "먼저 떠올린 뒤 정답을 확인하세요. 한 번에 최대 20개입니다.",
     "learning.collection.upToDate": "지금 복습할 항목이 없습니다. 저장 항목을 계속 학습하세요.",

@@ -118,6 +118,24 @@ describe('authoritative site catalogs with an external pinned data asset', () =>
 });
 
 describe('userscript browser shim injection', () => {
+    it('preserves pinned remote dictionaries for inlined panes and keeps embedded recovery copy', () => {
+        const build = (userscriptConfig as {build: {cssCodeSplit: boolean; rollupOptions: {output: {inlineDynamicImports: boolean}}}}).build;
+        expect(build.cssCodeSplit).toBe(false);
+        expect(build.rollupOptions.output.inlineDynamicImports).toBe(true);
+        for (const key of ['learning.panelLoadError', 'learning.reloadPage'] as const) {
+            expect(zhCNMessages[key]).toBe(extensionChinese[key]);
+            expect(UI_LANGUAGE_BUNDLES['en-US'].messages[key]).toBe(extensionBundles['en-US'].messages[key]);
+        }
+        for (const [language, bundle] of Object.entries(UI_LANGUAGE_BUNDLES)) {
+            const original = extensionBundles[language as keyof typeof extensionBundles];
+            expect(bundle.legacyText).toBe(original.legacyText);
+            expect(bundle.legacyPatterns).toBe(original.legacyPatterns);
+            const kept = Object.fromEntries(Object.entries(original.messages).filter(([key]) =>
+                !key.startsWith('informationHighlight.') && !key.startsWith('contextMenu.notice.') && !key.startsWith('video.learning.') && !key.startsWith('popup.compact.') && (language === 'en-US' || !['learning.panelLoadError', 'learning.reloadPage'].includes(key))));
+            expect(bundle.messages).toEqual(kept);
+            expect(original.messages['learning.reloadPage']).toBeTruthy();
+        }
+    });
     it.each(['standard', 'standalone'] as const)('keeps %s runtime icon inline and pins only the standard manager icon', async mode => {
         vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', mode === 'standalone' ? '1' : '');
         vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', '');
@@ -163,7 +181,8 @@ describe('userscript browser shim injection', () => {
         }
         const retainedKeys = Object.keys(extension).filter(key => !key.startsWith('informationHighlight.')
             && !noticeKeys.includes(key) && !learningKeys.includes(key)
-            && key !== 'popup.compact.translate' && key !== 'popup.compact.restore');
+            && key !== 'popup.compact.translate' && key !== 'popup.compact.restore'
+            && (_language === 'zh-CN' || _language === 'en-US' || !['learning.panelLoadError', 'learning.reloadPage'].includes(key)));
         expect(Object.keys(projected)).toHaveLength(retainedKeys.length);
         for (const key of retainedKeys) expect(projected[key]).toBe(extension[key]);
         expect(projected['contextMenu.translateSelection']).toBeTruthy();

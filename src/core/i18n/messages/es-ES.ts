@@ -1830,6 +1830,8 @@ export const esESMessages = {
     "learning.localStorage": "Guardado en este navegador",
     "learning.localStorageHelp": "Sin cuenta ni envío de registros de repaso. Las ventanas privadas no conservan colecciones.",
     "learning.backup": "Copia y restauración",
+    "learning.panelLoadError": "No se pudo abrir esta sección. Recarga la página para volver a intentarlo.",
+    "learning.reloadPage": "Recargar página",
     "learning.collection.actions": "Colección y repaso",
     "learning.collection.reviewHelp": "Recuerda primero y después comprueba. Hasta 20 entradas por sesión.",
     "learning.collection.upToDate": "No hay repasos pendientes. Sigue aprendiendo con tu colección.",

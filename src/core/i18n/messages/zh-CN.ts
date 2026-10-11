@@ -1821,6 +1821,8 @@ export const zhCNMessages = {
     "learning.localStorage": "保存在当前浏览器",
     "learning.localStorageHelp": "不建账号、不上传复习记录；无痕窗口不提供持久收藏。",
     "learning.backup": "备份与恢复",
+    "learning.panelLoadError": "此栏目暂时无法打开，请重新加载页面后再试。",
+    "learning.reloadPage": "重新加载页面",
     "learning.collection.actions": "收藏与复习",
     "learning.collection.reviewHelp": "先回忆，再核对答案。每轮最多 20 条。",
     "learning.collection.upToDate": "当前没有到期内容，可以继续学习收藏。",
