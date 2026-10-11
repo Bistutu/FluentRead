@@ -57,6 +57,17 @@ describe('页面私有网站规则索引', () => {
         expect(matcher.isExtensionDisabled('https://other.com/')).toBe(true);
         matcher.update({...config, disabledExtensionDomains: [...config.disabledExtensionDomains]});
         expect(matcher.isExtensionDisabled('https://other.com/')).toBe(true);
+        delete config.disabledExtensionDomains[1];
+        matcher.update(config);
+        expect(matcher.isExtensionDisabled('https://other.com/')).toBe(false);
+        expect(matcher.shouldAutoTranslate('https://other.com/')).toBe(true);
+        delete config.alwaysTranslateDomains[0];
+        matcher.update(config);
+        expect(matcher.shouldAutoTranslate('https://other.com/')).toBe(false);
+        expect(matcher.shouldAutoTranslate('https://docs.team.github.io/')).toBe(true);
+        config.alwaysTranslateDomains[0] = 'restored.com';
+        matcher.update(config);
+        expect(matcher.shouldAutoTranslate('https://restored.com/')).toBe(true);
     });
 
     it('配置快照不会被外部数组修改暗中改变，URL 对象变更则按最新 href 重新判定', () => {

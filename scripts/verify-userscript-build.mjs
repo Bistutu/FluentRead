@@ -59,7 +59,10 @@ const artifactBytes = Buffer.byteLength(source);
 // 网站连续导航的自动意图、请求取消域和增量发现重置增加 1,399 字节（0.0691%）：
 // 同依赖独立基线 25f5dca79 为 2,024,307，候选为 2,025,706；利用原余量后最小增加 1 KB。
 // 保留全部协议和执行边界校验，原始与最终散列见 docs/reports/site-rules-navigation-20261011/userscript-size.json。
-const MAX_USERSCRIPT_BYTES = 2_026_000;
+// 网站规则索引与生命周期通知合并的初轮产物增加 477 字节（0.0235%）：
+// 同依赖上一轮正确产物 c254eb935 为 2,025,894，初轮性能候选 d74fb7cfc 为 2,026,371。
+// 利用原余量后预算最小增加 1 KB；含稀疏名单失效修正的最终体积与散列见网站规则报告 performance.md。
+const MAX_USERSCRIPT_BYTES = 2_027_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);

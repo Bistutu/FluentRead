@@ -173,7 +173,13 @@ function createSiteDomainIndex() {
     return {
         update(value: unknown): void {
             const next = Array.isArray(value) ? value : [];
-            if (next.length === entries.length && next.every((entry, index) => entry === entries[index])) return;
+            if (next.length === entries.length) {
+                let unchanged = true;
+                for (let index = 0; index < next.length; index += 1) {
+                    if (next[index] !== entries[index]) {unchanged = false; break;}
+                }
+                if (unchanged) return;
+            }
             entries = next.slice();
             domains = new Set(normalizeSiteDomains(next));
         },
