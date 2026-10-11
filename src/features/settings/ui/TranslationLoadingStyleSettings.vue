@@ -47,7 +47,6 @@
               :loading-style="option.value"
               :animated="props.config.animations"
             />
-            <svg v-else class="loading-style-still-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9 8v8M15 8v8" /></svg>
           </span>
 
           <span class="loading-style-copy">
@@ -122,12 +121,6 @@ const selectedStyle = computed({
 .loading-style-option.is-none:not(.selected) {
   border-style: dashed;
   border-color: var(--muted);
-}
-
-.loading-style-still-icon {
-  width: 18px;
-  height: 18px;
-  color: var(--muted);
 }
 
 .loading-style-static-badge {

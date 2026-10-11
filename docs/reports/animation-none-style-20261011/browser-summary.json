@@ -324,7 +324,7 @@
   "copyPolishVerification": {
     "groupCopy": {
       "title": "翻译加载样式",
-      "description": "选择样式即可预览；选“无”关闭界面动画并保留静态反馈。系统开启“减少动态效果”时，预览保持静止。",
+      "description": "选择样式即可预览；选“无”关闭界面动画并保留静态反馈。",
       "nestedHeadingCount": 0
     },
     "typecheck": true,
@@ -352,11 +352,12 @@
       "browserFrontmost": false
     },
     "consoleErrors": [],
-    "rawReport": "/private/tmp/fluentread-loading-style-copy-ui/report.json",
+    "rawReport": "/private/tmp/fluentread-loading-style-line-only-ui/report.json",
     "screenshots": [
       "settings-loading-style-choices.png",
       "settings-loading-style-dark.png",
       "settings-loading-style-heading-390.png"
-    ]
+    ],
+    "nonePreview": "Horizontal line only"
   }
 }

@@ -1130,7 +1130,7 @@ export const ruRUMessages = {
     'settings.interface.font.license': 'Лицензии шрифтов',
     'settings.interface.font.sourceNote': 'Недоступные источники меняются автоматически. Выберите источник или откройте ссылку на файл. Доступность зависит от сети; целостность файлов проверяется.',
     'settings.interface.animationLoading.label': 'Анимация и загрузка',
-    'settings.interface.animationLoading.description': 'Выберите стиль, чтобы сразу увидеть его. Выберите «Нет», чтобы отключить анимации интерфейса и сохранить статические индикаторы. Если в системе включено уменьшение движения, предпросмотр остаётся статичным.',
+    'settings.interface.animationLoading.description': 'Выберите стиль, чтобы сразу увидеть его. Выберите «Нет», чтобы отключить анимации интерфейса и сохранить статические индикаторы.',
     'settings.translationStyle.title': 'Стиль перевода',
     'settings.translationStyle.previewTitle': 'Предпросмотр',
     'settings.translationStyle.savedTitle': 'Мои стили',

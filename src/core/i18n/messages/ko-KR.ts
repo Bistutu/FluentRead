@@ -1130,7 +1130,7 @@ export const koKRMessages = {
     'settings.interface.font.license': '글꼴 라이선스',
     'settings.interface.font.sourceNote': '소스에 연결할 수 없으면 자동 전환합니다. 소스를 선택하거나 파일 링크를 열 수 있습니다. 미러 가용성은 네트워크에 따라 다르며 다운로드 파일의 무결성을 확인합니다.',
     'settings.interface.animationLoading.label': '애니메이션 및 로딩 효과',
-    'settings.interface.animationLoading.description': '스타일을 선택하면 바로 미리 볼 수 있습니다. ‘없음’을 선택하면 인터페이스 애니메이션이 꺼지고 정적인 피드백은 유지됩니다. 시스템에서 ‘동작 줄이기’를 사용하면 미리 보기는 정지 상태로 표시됩니다.',
+    'settings.interface.animationLoading.description': '스타일을 선택하면 바로 미리 볼 수 있습니다. ‘없음’을 선택하면 인터페이스 애니메이션이 꺼지고 정적인 피드백은 유지됩니다.',
     'settings.translationStyle.title': '번역문 스타일',
     'settings.translationStyle.previewTitle': '실시간 미리보기',
     'settings.translationStyle.savedTitle': '내 스타일',

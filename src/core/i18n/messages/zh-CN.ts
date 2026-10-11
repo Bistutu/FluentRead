@@ -1355,7 +1355,7 @@ export const zhCNMessages = {
     'settings.interface.font.license': '字体许可',
     'settings.interface.font.sourceNote': "下载来源不可用时会自动切换，也可手动选择来源或打开文件链接；镜像可用性取决于网络，下载后会校验文件完整性",
     'settings.interface.animationLoading.label': '动画与加载效果',
-    'settings.interface.animationLoading.description': "选择样式即可预览；选“无”关闭界面动画并保留静态反馈。系统开启“减少动态效果”时，预览保持静止。",
+    'settings.interface.animationLoading.description': "选择样式即可预览；选“无”关闭界面动画并保留静态反馈。",
     'settings.translationStyle.title': '译文样式',
     'settings.translationStyle.previewTitle': '实时预览',
     'settings.translationStyle.savedTitle': '我的样式',
