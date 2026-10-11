@@ -17,6 +17,12 @@ export function unmountImageTranslator(): void {}
 export function mountVocabularyReencounter(): void {}
 export function unmountVocabularyReencounter(): void {}
 
+/** 个人校订需要扩展后台串行写入；复用空适配器以隔离管理面板与内容监听器。 */
+export {
+    mountVocabularyReencounter as mountPersonalCorrections,
+    unmountVocabularyReencounter as unmountPersonalCorrections,
+};
+
 export function mountVideoSubtitleTranslation(): () => void {
     return () => undefined;
 }

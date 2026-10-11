@@ -43,6 +43,9 @@ vi.mock('@/src/features/writing-assistant/public', () => ({mountWritingAssistant
 vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({language: ports.language, setLanguage: ports.setLanguage})}));
 vi.mock('@/src/ui/interfaceAppearance', () => ({applyInterfaceSkin: ports.appearance, applyInterfaceFont: ports.appearance, applyInterfaceTheme: ports.appearance}));
 
+vi.mock('@/src/app/content/personalCorrections', () => ({mountPersonalCorrectionContent: vi.fn(), unmountPersonalCorrectionContent: vi.fn()}));
+vi.mock('@/src/features/personal-corrections/public', () => ({unmountPersonalCorrections: vi.fn()}));
+
 import {createLearningContentFeatures} from '@/src/app/content/learningFeatures';
 import {createContentFeatureRegistry, type ContentFeatureRegistry} from '@/src/app/content/featureRegistry';
 import {resolveBrowserCapabilities} from '@/src/platform/browser/capabilities';
@@ -179,14 +182,14 @@ describe('48K 当前写作学习装配公开消费者', () => {
     ] as const)('%s 开关 %s/%s 与页面 %s 的写作注册状态', async (browser, on, writing, href, status) => {
         window.location.href = href;
         const runtime = learning({on, writing: {enabled: writing}}, browser);
-        expect((await runtime.mountEnabled(activation())).map(row => row.status)).toEqual([status]);
+        expect((await runtime.mountEnabled(activation())).filter(row => row.id === 'writing-assistant').map(row => row.status)).toEqual([status]);
         expect(ports.mountWriting).toHaveBeenCalledTimes(status === 'mounted' ? 1 : 0);
     });
     it('配置水合和关闭协调当前写作入口，反复协调不重复挂载', async () => {
         const config = {on: true, writing: {enabled: false}};
         const runtime = learning(config); await runtime.mountEnabled(activation());
         config.writing.enabled = true;
-        expect((await runtime.reconcileEnabled()).map(row => row.status)).toEqual(['mounted']);
+        expect((await runtime.reconcileEnabled()).filter(row => row.id === 'writing-assistant').map(row => row.status)).toEqual(['mounted']);
         await runtime.reconcileEnabled(); expect(ports.mountWriting).toHaveBeenCalledOnce();
         config.on = false; await runtime.reconcileEnabled();
         expect(ports.unmountWriting).toHaveBeenCalledOnce(); expect(ports.writingMounted).toBe(false);

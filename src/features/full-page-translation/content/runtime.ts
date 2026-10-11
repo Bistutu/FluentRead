@@ -72,6 +72,7 @@ import {
     resetAllBilingualArtifactHostWriteBudgets,
     resetBilingualArtifactHostWriteBudget,
     restoreTranslation,
+    createBilingualTranslationReplay,
     setBilingualContent,
     setBilingualArtifactCapitulationHandler,
     setBilingualLifecycleExternalManager,
@@ -129,6 +130,7 @@ import {restorePageTranslationContent, consumeOrphanedOwnerClassMutation, isText
 import {bindFullPageRequestSessionAttempt, createFullPageRequestSessionState, disposeFullPageRequestSession, getHoverTranslationRequestSession, invalidateContextSensitiveRequestCache, invalidateFullPageRequestSessionCache, invalidateHoverTranslationRequestSession, resetHoverTranslationRequestSession, type FullPageRequestSessionState} from '@/src/features/full-page-translation/content/requestSession';
 import {resetFullPageRouteSession} from './routeLifecycle';
 import {HoverTranslationScheduler, type HoverTranslationInvocation} from './hoverScheduler';
+import {personalCorrectionIsCurrent, registerPersonalCorrectionResult} from './personalCorrections';
 import {getSiteAdapterAttributeFilter} from '@/src/core/site-adaptation/compiler';
 import {isElementNode, asHTMLElement, mutationTargetElement, allMutationNodesMatch, createTranslationAttributeMutationFilter, createTranslationMutationObserverOptions, isOwnSyntheticSegmentMarkerMutation, mutationRootContains as nodeContains, collapseMutationRescanRoot as broadRescanRoot} from './mutationObservation';
 import {isWithinTranslationModal, mayChangeTranslationModal} from './modalPriority';
@@ -426,6 +428,7 @@ async function renderTranslation(
         // 缓存命中/批量响应会在同一个微任务检查点完成很多段。给每个全文提交独立的
         // 浏览器任务，让输入与绘制能够穿插；让出后仍须复验取消、generation 和宿主节点。
         if (owner) await new Promise<void>(resolve => window.setTimeout(resolve, 0));
+        if (import.meta.env.BROWSER !== 'userscript' && !await personalCorrectionIsCurrent(result.personalCorrection, node)) return staleOutcome();
         if (state.controller.signal.aborted || getTranslationState(node) !== state || (owner && !owner.active)) return staleOutcome();
         if ((requestSession.renderCommitGeneration ?? 0) !== requestCommitGeneration) return staleOutcome();
         const spinner = state.spinner;
@@ -494,10 +497,9 @@ async function renderTranslation(
                 longParagraphLineBreak: snapshot.longParagraphLineBreak, translationBeforeOriginal: snapshot.translationBeforeOriginal,
             });
         }, [node]);
-        setBilingualContent(node, content, {sources: result.sources, translations: result.translations,
-            targetLanguage: snapshot.targetLanguage, style: snapshot.style,
-            longParagraphLineBreak: snapshot.longParagraphLineBreak});
+        setBilingualContent(node, content, createBilingualTranslationReplay(result.sources, result.translations, snapshot));
         setRenderedStyleAttribute(node);
+        if (import.meta.env.BROWSER !== 'userscript') registerPersonalCorrectionResult(node, state, result.personalCorrection);
         return {status: "committed"};
     } catch (error) {
         if (state.controller.signal.aborted || getTranslationState(node) !== state || (owner && !owner.active)) return staleOutcome();
