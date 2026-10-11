@@ -1,14 +1,16 @@
 import {afterEach, beforeEach, describe, expect, it, vi, type MockInstance} from 'vitest';
+import {readFileSync} from 'node:fs';
 import {createRenderer, h, markRaw, nextTick, ref} from 'vue';
 import {IDBFactory} from 'fake-indexeddb';
 import {parseHTML} from 'linkedom';
 import {Config} from '@/src/core/config/model';
-import {parseDocument, type PdfDocumentPage} from '@/src/features/document-translation/core/document';
+import {getDocumentMimeType, parseDocument, type PdfDocumentPage} from '@/src/features/document-translation/core/document';
 import * as binaryService from '@/src/features/document-translation/services/binary';
 import {createDocumentHistory, documentHistoryId} from '@/src/features/document-translation/services/history';
 import {acquirePdfDocument} from '@/src/features/document-translation/ui/pdfPreview';
 import {createDocumentDownload as createRuntimeDownload} from '@/src/app/document-translation/runtime';
 import DocumentApp from '@/src/app/document-translation/DocumentApp.vue';
+import {getDocumentDownloadCopy} from '@/src/app/document-translation/downloadCopy';
 import DocumentSegmentEditor from '@/src/app/document-translation/DocumentSegmentEditor.vue';
 
 const ports = vi.hoisted(() => ({tasks: [] as any[], zoomBindings: [] as any[], renderPending: undefined as any, pagePending: undefined as any, pageProvider: undefined as undefined | ((pageNumber: number, page: any) => Promise<any>), pageCount: 1, fetchPdf: vi.fn(), i18n: vi.fn(), sendMessage: vi.fn(), translate: vi.fn(), batch: vi.fn(), recognize: vi.fn(), createRecognizer: vi.fn(), actualRecognize: undefined as any, actualCreateRecognizer: undefined as any, unsubscribe: vi.fn(), observer: undefined as any, config: undefined as any}));
@@ -71,6 +73,9 @@ let canvasPort: any[];
 let createUrl: MockInstance<typeof URL.createObjectURL>;
 let revokeUrl: MockInstance<typeof URL.revokeObjectURL>;
 let win: any;
+let downloadAnchors: Array<{click: ReturnType<typeof vi.fn>; href?: string; download?: string}>;
+const walkHost = (entry: HostNode): HostNode[] => [entry, ...entry.children.flatMap(walkHost)];
+const hostText = (entry: HostNode): string => (entry.text || '') + entry.children.map(hostText).join('');
 const windowTimers = new Set<ReturnType<typeof setTimeout>>();
 
 beforeEach(async () => {
@@ -81,7 +86,8 @@ beforeEach(async () => {
     ports.recognize.mockReset().mockImplementation(ports.actualRecognize);
     ports.createRecognizer.mockReset().mockImplementation(ports.actualCreateRecognizer);
     Object.assign(ports.config, new Config());
-    win = Object.assign(new EventTarget(), {matchMedia: () => Object.assign(new EventTarget(), {matches: false}), document: {createElement: () => ({click: vi.fn()})}, location: {origin: 'chrome-extension://fixture'}, setTimeout: (callback: () => void, delay: number) => {
+    downloadAnchors = [];
+    win = Object.assign(new EventTarget(), {matchMedia: () => Object.assign(new EventTarget(), {matches: false}), document: {createElement: () => {const anchor = {click: vi.fn()}; downloadAnchors.push(anchor); return anchor;}}, location: {origin: 'chrome-extension://fixture'}, setTimeout: (callback: () => void, delay: number) => {
         const timer = setTimeout(() => {windowTimers.delete(timer); callback();}, delay); windowTimers.add(timer); return timer;
     }, clearTimeout});
     vi.stubGlobal('window', win);
@@ -97,6 +103,158 @@ beforeEach(async () => {
 afterEach(async () => {ports.pagePending?.resolve(ports.tasks.find(value => value.role === 'preview')?.page); ports.renderPending?.resolve(); app?.unmount(); await flush(); await vi.dynamicImportSettled(); windowTimers.forEach(timer => clearTimeout(timer)); windowTimers.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
 describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
+    it('keeps the exact original download copy localized and reacts to the shared language selection', async () => {
+        for (const language of ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES']) {
+            const copy = getDocumentDownloadCopy(language);
+            expect(Object.keys(copy)).toEqual(Object.keys(getDocumentDownloadCopy('zh-CN')));
+            expect(Object.values(copy).every(value => value.trim())).toBe(true);
+        }
+        expect(getDocumentDownloadCopy('unsupported-language')).toBe(getDocumentDownloadCopy('zh-CN'));
+        expect(getDocumentDownloadCopy(undefined)).toBe(getDocumentDownloadCopy('zh-CN'));
+        await state.loadFiles([new File(['Original'], 'article.txt')]);
+        state.openDownload(); await flush();
+        expect(hostText(root)).toContain('下载原文');
+        state.language = 'en-US'; await flush();
+        expect(hostText(root)).toContain('Download original');
+        expect(hostText(root)).toContain('Keeps the original file without translation or edits.');
+    });
+    it.each(['pdf', 'epub', 'docx', 'html', 'md', 'txt', 'json', 'srt', 'vtt', 'ass', 'ssa', 'lrc'])('downloads the exact original %s file before translation without another read or export', async extension => {
+        const bytes = readFileSync(`examples/document-translation/sample.${extension}`);
+        const name = `sample.${extension}`;
+        const input = new File([bytes], name, {type: getDocumentMimeType(extension === 'md' ? 'markdown' : extension as any)});
+        const read = vi.spyOn(input, 'arrayBuffer');
+        const encode = vi.spyOn(binaryService, 'createDocumentDownload');
+        await state.loadFiles([input]); await flush();
+        const initialReads = read.mock.calls.length;
+        expect(state.hasTranslation).toBe(false);
+        expect(state.documentQueue[0].bytes).toBeUndefined();
+        expect(state.originalDownloadSource.blob).toBe(input);
+        const open = walkHost(root).find(entry => entry.props.class === 'download-button')!;
+        expect(open.props.disabled).toBe(false);
+        open.props.onClick(); await flush();
+        const dialog = walkHost(root).find(entry => entry.props['aria-labelledby'] === 'download-document-heading')!;
+        const original = walkHost(dialog).find(entry => entry.type === 'button' && hostText(entry) === '下载原文')!;
+        expect(dialog.showModal).toHaveBeenCalledOnce();
+        expect(original.props.disabled).toBe(false);
+        expect(walkHost(dialog).some(entry => entry.props.class === 'partial-export')).toBe(false);
+        original.props.onClick();
+        expect(createUrl).toHaveBeenCalledWith(input);
+        expect(read).toHaveBeenCalledTimes(initialReads);
+        expect(new Uint8Array(await (createUrl.mock.calls[0][0] as Blob).arrayBuffer())).toEqual(new Uint8Array(bytes));
+        expect(downloadAnchors[0].download).toBe(name);
+        expect(downloadAnchors[0].click).toHaveBeenCalledOnce();
+        expect(encode).not.toHaveBeenCalled();
+        expect(ports.translate).not.toHaveBeenCalled();
+        expect(ports.batch).not.toHaveBeenCalled();
+        expect(state.downloadedRevision).toBe(0);
+        expect(state.partialExportAcknowledged).toBe(false);
+    });
+
+    it('saves an online PDF from the loaded response without refetching its URL or changing edits', async () => {
+        const input = new File(['%PDF-exact-original\r\n'], '论文 原稿.pdf', {type: 'application/pdf'});
+        ports.fetchPdf.mockResolvedValueOnce(input);
+        const read = vi.spyOn(input, 'arrayBuffer');
+        state.onlinePdfUrl = 'https://example.org/original.pdf?download=1';
+        await state.openOnlinePdf();
+        state.editSegment(0, '保留校订');
+        state.partialExportAcknowledged = true;
+        const initialReads = read.mock.calls.length;
+        state.downloadOriginalDocument();
+        expect(ports.fetchPdf).toHaveBeenCalledOnce();
+        expect(read).toHaveBeenCalledTimes(initialReads);
+        expect(createUrl).toHaveBeenCalledWith(input);
+        expect(downloadAnchors[0].download).toBe('论文 原稿.pdf');
+        expect(state.translatedSegments).toEqual(['保留校订']);
+        expect(state.downloadedRevision).toBe(0);
+        expect(state.editRevision).toBe(1);
+        expect(state.partialExportAcknowledged).toBe(true);
+    });
+
+    it.each(['text/plain', ''])('downloads stored original bytes after reopening history with MIME %j', async mimeType => {
+        const bytes = new Uint8Array([0xef, 0xbb, 0xbf, ...new TextEncoder().encode('Original\r\n')]);
+        const parsed = parseDocument('history.txt', 'Original\n');
+        const id = await documentHistoryId(bytes);
+        const factory = new IDBFactory();
+        const history = createDocumentHistory(factory);
+        await history.save({id, name: 'history.txt', format: parsed.format, size: bytes.length, total: parsed.segments.length,
+            completed: 0, updatedAt: 1, bytes, mimeType, translations: [], fingerprint: '', parsed, parsedVersion: 15});
+        app.unmount();
+        vi.stubGlobal('indexedDB', factory);
+        root = node('root'); app = renderer.createApp(DocumentApp); app.mount(root); state = (app._instance as any).setupState;
+        await flush(); await state.openHistory({id});
+        expect(state.documentQueue[0].originalFile).toBeUndefined();
+        state.downloadOriginalDocument();
+        const saved = createUrl.mock.calls[0][0] as Blob;
+        expect(new Uint8Array(await saved.arrayBuffer())).toEqual(bytes);
+        expect(saved.type).toBe(mimeType || 'text/plain;charset=utf-8');
+        expect(downloadAnchors[0].download).toBe('history.txt');
+        expect(state.downloadedRevision).toBe(0);
+    });
+
+    it('saves the original during translation and PDF export without interrupting either task', async () => {
+        const input = new File(['%PDF-original'], 'original.pdf', {type: 'application/pdf'});
+        await state.loadFiles([input]);
+        state.translating = true;
+        state.openDownload(); await flush();
+        expect(state.downloadOpen).toBe(true);
+        state.downloadOriginalDocument();
+        expect(state.translating).toBe(true);
+        state.translating = false;
+        state.editSegment(0, '译文校订');
+        state.downloadOpen = false;
+        state.partialExportAcknowledged = true;
+        const encoding = deferred<binaryService.DocumentDownload>();
+        const encode = vi.spyOn(binaryService, 'createDocumentDownload').mockReturnValueOnce(encoding.promise);
+        const exporting = state.downloadDocument(); await flush();
+        await vi.waitFor(() => expect(encode).toHaveBeenCalledOnce());
+        const options = encode.mock.calls[0][3]!;
+        options.onPdfProgress?.({phase: 'rendering', completedPages: 1, totalPages: 2});
+        const progress = state.downloadProgress;
+        state.previewMode = 'translated';
+        state.openDownload(); await flush();
+        state.downloadOriginalDocument();
+        expect(state.preparingDownload).toBe(true);
+        expect(options.signal?.aborted).toBe(false);
+        expect(state.outputMode).toBe('bilingual');
+        expect(state.partialExportAcknowledged).toBe(true);
+        expect(state.downloadProgress).toBe(progress);
+        expect(state.downloadPdfProgress).toEqual({phase: 'rendering', completedPages: 1, totalPages: 2});
+        expect(state.downloadedRevision).toBe(0);
+        expect(encode).toHaveBeenCalledOnce();
+        expect(downloadAnchors.map(anchor => anchor.download)).toEqual(['original.pdf', 'original.pdf']);
+        encoding.resolve({data: new Uint8Array([1]), fileName: 'original.bilingual.pdf', mimeType: 'application/pdf'});
+        await exporting;
+        expect(state.downloadedRevision).toBe(1);
+        expect(downloadAnchors.at(-1)?.download).toBe('original.bilingual.pdf');
+    });
+
+    it('keeps failed original downloads separate from translation export and releases their URLs on replacement', async () => {
+        state.downloadOriginalDocument();
+        expect(createUrl).not.toHaveBeenCalled();
+        const input = new File(['Original\r\n'], 'first.txt', {type: 'text/plain'});
+        await state.loadFiles([input]);
+        state.editSegment(0, '校订保留');
+        state.downloadError = 'translation export error';
+        win.document.createElement = () => ({click: () => {throw new Error('original save failed');}});
+        state.downloadOriginalDocument();
+        expect(state.originalDownloadError).toBe('original save failed');
+        expect(state.downloadError).toBe('translation export error');
+        expect(state.downloadedRevision).toBe(0);
+        expect(revokeUrl).toHaveBeenCalledWith('blob:fixture-1');
+        win.document.createElement = () => ({click: vi.fn()});
+        state.downloadOriginalDocument();
+        const url = createUrl.mock.results[1].value;
+        state.resetDocument();
+        expect(revokeUrl).toHaveBeenCalledWith(url);
+        expect(state.originalDownloadSource).toBeNull();
+        expect(state.originalDownloadError).toBe('');
+        expect(state.originalDownloadNotice).toBe('');
+        const replacement = new File(['Replacement'], 'second.txt');
+        await state.loadFiles([replacement]);
+        state.downloadOriginalDocument();
+        expect(createUrl).toHaveBeenLastCalledWith(replacement);
+    });
+
     it.each(['scanned', 'mixed', 'mixed-removed-duplicate', 'mixed-formula-labels', 'mixed-diagram-labels'] as const)('preserves multi-page %s PDF OCR revisions across a parsing-version upgrade and subsequent reopening', async format => {
         const base = await binaryService.parseDocumentFile(file('history.pdf'));
         if (base.binary?.kind !== 'pdf') throw new Error('expected PDF');

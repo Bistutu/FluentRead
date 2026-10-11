@@ -1,6 +1,6 @@
 /**
  * @file src/app/document-translation/document-page.css
- * 文件职责：定义文档翻译独立页面的完整布局与主题表现，使导入区、阅读器、翻译进度、格式预览和导出操作在桌面与窄屏下保持可读。
+ * 文件职责：定义文档翻译独立页面的完整布局与主题表现，使导入区、阅读器、翻译进度、原文件保存、格式预览和导出操作在桌面与窄屏下保持可读。
  * 主要内容：声明页面级颜色变量与暗色覆盖，打开文档后的单行工具栏（内含翻译服务与目标语言选择）、可折叠的文件与目录侧栏和铺满窗口的阅读区，设置可收起的文件队列、本地范例、品牌头部、拖放卡片、工具栏、PDF 连续页及其不可见字体测量画布、EPUB/DOCX 分区、字幕与 JSON 行、设置摘要、下载预览和响应式断点。
  * 模块边界：样式仅服务 DocumentApp 的 class 结构，不解析文档、不控制翻译状态，也不覆盖 content 宿主页面；跨页面基础视觉 token 仍由 src/ui/styles/tokens.css 管理。
  */
@@ -310,6 +310,11 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
 .batch-toolbar .batch-toggle { display: inline-flex; align-items: center; justify-content: space-between; gap: 14px; border-color: transparent; background: transparent; cursor: pointer; }
 .batch-toggle span { color: var(--brand); font-size: 18px; }
 .download-dialog { width: min(620px, calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow-y: auto; }
+.original-download { display: flex; align-items: center; gap: 16px; margin-top: 22px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; }
+.original-download > div { flex: 1; min-width: 0; }
+.original-download strong { display: block; overflow-wrap: anywhere; font-size: 13px; }
+.document-dialog .original-download p { margin: 6px 0 0; font-size: 11px; }
+.original-download button { flex: none; white-space: nowrap; }
 .export-file-name { padding: 10px 12px; border-radius: 9px; background: var(--surface-soft); overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .export-preview { margin-top: 16px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .export-preview > strong { display: block; padding: 10px 14px; color: var(--muted); background: var(--surface-soft); font-size: 11px; font-weight: 600; }
@@ -344,6 +349,7 @@ input { accent-color: var(--brand); }input:focus-visible { outline: 3px solid va
   .batch-toolbar label { flex: 1; }
   .batch-files { max-height: 170px; }
   .download-dialog { padding: 20px; }
+  .original-download { align-items: stretch; flex-direction: column; gap: 12px; padding: 12px; }
   .export-options { gap: 8px; }
   .export-preview pre { max-height: 140px; }
 }

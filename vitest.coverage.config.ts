@@ -932,6 +932,7 @@ export default defineConfig({
                 'src/features/document-translation/core/pdfTextLayout.ts',
                 'src/features/document-translation/services/pdfSource.ts',
                 'src/app/document-translation/selectionRuntime.ts',
+                'src/app/document-translation/downloadCopy.ts',
                 'src/features/document-translation/services/binary.ts',
                 'src/features/document-translation/services/archive.ts',
                 'src/features/document-translation/services/translation.ts',
