@@ -72,7 +72,13 @@ const artifactBytes = Buffer.byteLength(source);
 // 相对主线按实测最小增加 15 KB，预算 2,042,000、余 827 字节；全部校验保持。
 // 顶栏更多操作与有界菜单在上述候选上增加 1,893 字节，最终 2,043,066 字节。
 // 利用原余量后按实测最小再增加 2 KB，预算 2,044,000、余 934 字节；原断言保留。
-const MAX_USERSCRIPT_BYTES = 2_044_000;
+// 单篇篇章参考、完整来源证明及重挂语义复用在同依赖主线 69d41e5e1 上增加 16,503 字节（0.8142%）：
+// 独立主线产物为 2,026,916，候选为 2,043,419；利用原余量后预算最小增加 17 KB，余 581 字节。
+// 不增加抽取模型或远程依赖；完整对照、散列与运行边界见 discourse-context-20261011/verification.json。
+// 合入 99afdbf69 后的完整候选为 2,059,784 字节，按 1 KB 步长最小预算为 2,060,000，余 216 字节。
+// 同依赖独立主线为 2,043,588 字节，增加 16,196 字节（0.7925%）；主线预算只余 412 字节，最小增加 16 KB。
+// 最新主线独立基线与精确增量见 reading-evidence-20261011/userscript-size.json；所有校验保留。
+const MAX_USERSCRIPT_BYTES = 2_060_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);

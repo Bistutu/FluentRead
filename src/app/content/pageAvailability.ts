@@ -5,6 +5,7 @@
  * 模块边界：本模块通过 composition root 注入当前路由、可用性、挂载器和全文状态，不读取全局配置、不操作具体功能 DOM；具体 feature 保留自己的清理实现。
  */
 import {shouldAutoTranslatePage} from '@/src/features/site-rules/domain';
+import {getPageTranslationMaterialIdentity} from '@/src/services/translation/context/policy';
 
 interface ContentAutoTranslationConfig {
     on: boolean;
@@ -20,16 +21,8 @@ export function shouldAutomaticallyTranslatePage(
     return shouldAutoTranslatePage(href, config);
 }
 
-/** 普通页内锚点只是阅读位置；路径、查询与 #/、#!/ 风格的 SPA 路由代表新页面。 */
-export function getAutoTranslationPageIdentity(href: string): string {
-    try {
-        const url = new URL(href);
-        if (!/^#!?\//.test(url.hash)) url.hash = '';
-        return url.href;
-    } catch {
-        return href.split('#', 1)[0]!;
-    }
-}
+/** 自动翻译与篇章上下文共用页面材料身份，避免普通阅读锚点使其失效边界不同。 */
+export const getAutoTranslationPageIdentity = getPageTranslationMaterialIdentity;
 
 export interface ContentPageAvailabilityDependencies {
     isEnabled(): boolean;

@@ -75,5 +75,27 @@
     "buildLog": "/private/tmp/fluentread-evidence-topbar-delivery-userscript.log",
     "verifyLog": "/private/tmp/fluentread-evidence-topbar-delivery-userscript-verify.log",
     "languageResourceCommit": "1e9e80dd49530aac9c7610b51a935357f4099c19"
+  },
+  "latestMainTopbarIntegration": {
+    "baselineCommit": "99afdbf69b4c2faf83115b22cd7e340e4d076a00",
+    "baselineDirectory": "/private/tmp/fluentread-reading-evidence-main-99afdbf-baseline.JXYNDN",
+    "baselineBytes": 2043588,
+    "baselineSha256": "0288d55c895bb90fb0f0c98adc4328dbf4b6d385dc85c3ea62985057c290e168",
+    "baselineBudgetBytes": 2044000,
+    "baselineBudgetHeadroomBytes": 412,
+    "baselineVerifierPassed": true,
+    "baselineBuildLog": "/private/tmp/fluentread-reading-evidence-main-99afdbf-baseline.JXYNDN/build-userscript.log",
+    "baselineVerifyLog": "/private/tmp/fluentread-reading-evidence-main-99afdbf-baseline.JXYNDN/verify-userscript.log",
+    "baselineSourceIntegrityLog": "/private/tmp/fluentread-reading-evidence-main-99afdbf-baseline.JXYNDN/source-integrity.log",
+    "candidateBytes": 2059784,
+    "candidateSha256": "c32e0e5c04d2a66df319a2f040ca0378b7b62f06b650822b9a88a47bf28f2f30",
+    "deltaBytes": 16196,
+    "deltaPercent": 0.792528,
+    "minimumBudgetBytes": 2060000,
+    "budgetHeadroomBytes": 216,
+    "verifierPassed": true,
+    "buildLog": "/private/tmp/fluentread-evidence-topbar-current-main-userscript.log",
+    "verifyLog": "/private/tmp/fluentread-evidence-topbar-current-main-userscript-verify.log",
+    "languageResourceCommit": "1e9e80dd49530aac9c7610b51a935357f4099c19"
   }
 }

@@ -19,7 +19,7 @@
 
 ## 验证
 
-工作分支为 `codex/reading-evidence-20261011`，起点 `c8a06bb5f`，最终整合主线 `69d41e5e1050e5004d4656963d5105f24df9d8ed`；独立工作树位于 `/Users/thinkstu/Desktop/copy/FluentRead-reading-evidence-20261011`。主目录与其他任务的工作树未修改。
+工作分支为 `codex/reading-evidence-20261011`，起点 `c8a06bb5f`，最终整合主线 `99afdbf69b4c2faf83115b22cd7e340e4d076a00`；独立工作树位于 `/Users/thinkstu/Desktop/copy/FluentRead-reading-evidence-20261011`。主目录与其他任务的工作树未修改。
 
 | 验证范围 | 实际结果 |
 | --- | --- |
@@ -32,17 +32,19 @@
 | 测试矩阵审计 | 通过；新增测试已归入矩阵与严格覆盖边界 |
 | `pnpm compile` | 通过 |
 | Chrome 与 Firefox 生产构建、清单验证 | 通过 |
-| 油猴构建与产物验证 | 通过；2,043,066 字节，包含五种远程语言的固定提交验证 |
+| 油猴构建与产物验证 | 通过；整合最新主线后 2,059,784 字节，包含五种远程语言的固定提交验证 |
 | 文档生产构建、`git diff --check` | 通过 |
 | 隔离 Edge 生产扩展验收 | 30/30 项通过，包含 4 项初始化契约、19 项依据流程与 7 项顶栏菜单检查；控制台与 HTTP 错误均为 0 |
 
-最终整合后重新运行 4 个核心测试文件共 113 项，四维仍为 100%；界面、语言配置与架构 9 个文件共 1,189 项及单独语言资源 3 项均通过。日志分别在 `/private/tmp/fluentread-evidence-integration-core.log`、`/private/tmp/fluentread-evidence-integration-ui.log` 与 `/private/tmp/fluentread-evidence-integration-language.log`。严格覆盖率使用仓库原有配置和 100% 阈值，只收窄目标模块；没有降低阈值或新增排除。复制和学习笔记导出保留可读引文与本地化状态，不泄露内部来源 ID 或协议。命令见 [测试文档](../testing.md#ai-阅读解释的原文依据)，摘要见 [coverage-summary.json](./reading-evidence-20261011/coverage-summary.json)。普通测试失败后的修正局限于真实新增依赖的夹具与带 scope 属性的 HTML 断言，相关项重跑通过。
+首次整合 `69d41e5e` 后重新运行 4 个核心测试文件共 113 项，四维仍为 100%；界面、语言配置与架构 9 个文件共 1,189 项及单独语言资源 3 项均通过。日志分别在 `/private/tmp/fluentread-evidence-integration-core.log`、`/private/tmp/fluentread-evidence-integration-ui.log` 与 `/private/tmp/fluentread-evidence-integration-language.log`。严格覆盖率使用仓库原有配置和 100% 阈值，只收窄目标模块；没有降低阈值或新增排除。复制和学习笔记导出保留可读引文与本地化状态，不泄露内部来源 ID 或协议。命令见 [测试文档](../testing.md#ai-阅读解释的原文依据)，摘要见 [coverage-summary.json](./reading-evidence-20261011/coverage-summary.json)。普通测试失败后的修正局限于真实新增依赖的夹具与带 scope 属性的 HTML 断言，相关项重跑通过。
+
+顶栏改动后又整合了 `99afdbf69`，四个引用核心模块未变。重新运行核心与界面 8 文件共 271 项、共享翻译与滚动路径 3 文件共 566 项，全部通过；测试矩阵审计覆盖 657 文件、11,087 项。类型检查、三类生产构建及完整产物校验也再次通过。日志为 `/private/tmp/fluentread-evidence-topbar-current-main-tests.log`、`/private/tmp/fluentread-evidence-topbar-current-main-shared-tests.log` 及同前缀的构建/校验日志。
 
 浏览器专项只操作临时 Edge profile，在第二屏后台可见窗口运行真实鼠标和键盘输入。模型与普通翻译均为本机确定性 HTTP 夹具，使用虚构凭据。实际双语翻译与恢复使用扩展全文翻译链路；手工插入译文节点的排除规则另行记录。报告绑定源码/产物摘要，并保留源 DOM、闭合 Shadow DOM 与截图。
 
 最终运行报告为 [browser-report.json](./reading-evidence-20261011/browser-report.json)。`launchMode=macos-background-cdp`、`focusPolicy=launchservices-no-foreground`、`browserFrontmost=false`；结束后清理临时 profile。点击第一处依据实际滚动 535px，CSS Highlight 中的真实 Range 属于 `#target` 的英文原句，没有跳到远处重复段落。Enter 定位第二句，Space 定位第一句；真实全文翻译产生中文双语节点后，高亮仍属于英文原文。
 
-最终顶栏验收的源码与运行器摘要为 `3d8e3a603fc799ad9a3a7da80e4296d4ff57baa614c16a0a92a18308638b38ef`，Chrome 产物摘要为 `fd5320238db2dcebae560202a110ef63cbced2ef3ca2dd4f83f24586bfcaf52a`。捕获时 HEAD 为 `14b81343a6f1bf69592673024479a192469cb2ab`，工作树已包含本次顶栏改动；摘要绑定真实源码和产物内容，验收结束后逐文件复核均未变化。详见 [build-provenance.json](./reading-evidence-20261011/build-provenance.json)。
+最终顶栏验收的源码与运行器摘要为 `07c8f5cd111c13497931f03a19f9417a37a453fb862ed6cbc9062ff012cfdb43`，Chrome 产物摘要为 `8c7fc8ae71db6343dbce1ab041426314f5bb735b42386e578da1839de2f2ea85`。捕获时 HEAD 为 `ad104f1ac1544d2a9eabd4ef3edaf4079bc52278`，工作树已合入 `99afdbf69` 主线；摘要绑定真实源码和产物内容，验收结束后逐文件复核均未变化。详见 [build-provenance.json](./reading-evidence-20261011/build-provenance.json)。
 
 ![更多操作位于记录右侧，解释正文不再保留工具占位](./reading-evidence-20261011/reading-menu-light-closed.png)
 
@@ -58,7 +60,9 @@
 
 最终对最新主线 `69d41e5e` 再次使用干净快照和同一依赖独立重建，基线为 2,026,916 字节，主线预算仅余 84 字节。整合后候选为 2,041,173 字节，增加 14,257 字节（0.7034%），按实测最小将预算增加 15 KB 至 2,042,000，余 827 字节；原有校验全部通过。
 
-顶栏菜单改动在整合候选上增加 1,893 字节；最终产物为 2,043,066 字节，相对最新主线增加 16,150 字节（0.7968%）。按实测最小再增加 2 KB，预算为 2,044,000 字节、余 934 字节；所有原有产物校验通过。
+顶栏菜单改动在 `69d41e5e` 整合候选上增加 1,893 字节；当时产物为 2,043,066 字节，相对该主线增加 16,150 字节（0.7968%）。按实测最小再增加 2 KB，预算为 2,044,000 字节、余 934 字节；所有原有产物校验通过。
+
+最后再整合 `99afdbf69`：同依赖干净主线重建为 2,043,588 字节，主线 2,044,000 字节预算余 412 字节；完整候选为 2,059,784 字节，增加 16,196 字节（0.7925%）。按既有 1 KB 步长最小增加 16 KB，最终预算 2,060,000 字节、余 216 字节；全部原有校验保留并通过。独立基线的 4,998 个跟踪源码文件与指定提交逐文件相符，未重新生成语言内容。
 
 对照与散列见 [userscript-size.json](./reading-evidence-20261011/userscript-size.json)。精简后的五种远程语言资源生成后先提交，再将构建在整合网站导航新文案后固定到 `1e9e80dd49530aac9c7610b51a935357f4099c19`；定向测试逐文件核对该提交内容与构建资源一致。
 

@@ -1,0 +1,704 @@
+{
+  "sourceBase": "c8a06bb5fe0148f629ecaf60e70e5bf6ebb4f957",
+  "fixtureSha256": "6ea993c691ce0b2da10676f2c7f9a00c0a44c6a96dfde3afb98e5fe2084275c8",
+  "testScriptSha256": "a17393dddbad72717bfe1fa1c566f8da1764a34bed176bb5b4ea07e6220d11b2",
+  "transportDelayMs": 180,
+  "config": {
+    "on": true,
+    "service": "microsoft",
+    "from": "en",
+    "to": "zh-Hans",
+    "display": 1,
+    "style": 1,
+    "hotkey": "Control",
+    "floatingBallHotkey": "Alt+T",
+    "fullPageTranslationMode": "viewport",
+    "translationScope": "all",
+    "mouseHoverTranslationDelay": 0,
+    "useCache": false,
+    "autoTranslate": false,
+    "maxConcurrentTranslations": 3,
+    "translationRequestsPerSecond": 0,
+    "translationRequestsPerMinute": 0,
+    "enableAIContext": false,
+    "enableAIMultiSegment": false,
+    "disableFloatingBall": true,
+    "uiLanguageSetupCompleted": true,
+    "uiLanguage": "zh-CN"
+  },
+  "metricNote": "First readable requires an actual viewport-visible translated wrapper. Viewport complete uses all actual visible source paragraphs, including partial ones, whose translation DOM is ready. Snapshot, first DOM ready and target-three metrics are separate. HTTP starts/text slots use fixed 800ms/2600ms windows.",
+  "baseline": {
+    "phase": "baseline",
+    "passed": true,
+    "iterations": 3,
+    "measurementsOnly": true,
+    "lifecycleOnly": false,
+    "browserVersion": "131.0.2903.147",
+    "contentSha256": "7a64767e49c50b6c35243473fc3b583336dbac2043dff67f65930b7f8228d082",
+    "pageViewport": {
+      "innerWidth": 1272,
+      "innerHeight": 816,
+      "devicePixelRatio": 2
+    },
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "windowPlacement": {
+      "mode": "background-visible-no-focus",
+      "bounds": {
+        "left": 212,
+        "top": -990,
+        "width": 1280,
+        "height": 900
+      },
+      "displayTarget": "secondary",
+      "browserFrontmost": false
+    },
+    "maxActiveHttp": 3,
+    "maxActiveOneSlotParagraphs": 3,
+    "cases": [
+      {
+        "name": "first-screen",
+        "iteration": 0,
+        "firstReadableMs": 289.69999980926514,
+        "firstDomReadyMs": 289.69999980926514,
+        "viewportCompleteMs": 486.19999980926514,
+        "viewportSnapshotCompleteMs": 486.19999980926514,
+        "targetThreeCompleteMs": 300.5,
+        "measurementWindowMs": 800,
+        "requestCount": 6,
+        "textSlots": 8,
+        "longTaskCount": 0,
+        "maxLongTaskMs": 0,
+        "scrollEndMs": null,
+        "viewportIds": [
+          "p0",
+          "p1",
+          "p2",
+          "p3"
+        ],
+        "finalViewportIds": [
+          "p0",
+          "p1",
+          "p2",
+          "p3"
+        ],
+        "monitoredIds": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "p5"
+        ],
+        "targetThreeFirstDomReadyMs": 289.69999980926514
+      },
+      {
+        "name": "continuous-scroll",
+        "iteration": 0,
+        "firstReadableMs": 2069.0999999046326,
+        "firstDomReadyMs": 2069.0999999046326,
+        "viewportCompleteMs": 2270.800000190735,
+        "viewportSnapshotCompleteMs": 2270.800000190735,
+        "targetThreeCompleteMs": 2270.800000190735,
+        "measurementWindowMs": 2600,
+        "requestCount": 4,
+        "textSlots": 11,
+        "longTaskCount": 0,
+        "maxLongTaskMs": 0,
+        "targetRequestMs": 1873,
+        "scrollEndMs": 1636.0999999046326,
+        "viewportIds": [
+          "p39",
+          "p40",
+          "p41",
+          "p42",
+          "p43"
+        ],
+        "finalViewportIds": [
+          "p39",
+          "p40",
+          "p41",
+          "p42",
+          "p43"
+        ],
+        "monitoredIds": [
+          "p37",
+          "p38",
+          "p39",
+          "p40",
+          "p41",
+          "p42",
+          "p43",
+          "p44",
+          "p45"
+        ],
+        "targetsVisibleDuringScroll": true,
+        "targetThreeFirstDomReadyMs": 2069.0999999046326
+      },
+      {
+        "name": "first-screen",
+        "iteration": 1,
+        "firstReadableMs": 283.2000002861023,
+        "firstDomReadyMs": 283.2000002861023,
+        "viewportCompleteMs": 481.40000009536743,
+        "viewportSnapshotCompleteMs": 481.40000009536743,
+        "targetThreeCompleteMs": 283.2000002861023,
+        "measurementWindowMs": 800,
+        "requestCount": 4,
+        "textSlots": 8,
+        "longTaskCount": 0,
+        "maxLongTaskMs": 0,
+        "scrollEndMs": null,
+        "viewportIds": [
+          "p0",
+          "p1",
+          "p2",
+          "p3"
+        ],
+        "finalViewportIds": [
+          "p0",
+          "p1",
+          "p2",
+          "p3"
+        ],
+        "monitoredIds": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "p5"
+        ],
+        "targetThreeFirstDomReadyMs": 283.2000002861023
+      },
+      {
+        "name": "continuous-scroll",
+        "iteration": 1,
+        "firstReadableMs": 2077.0999999046326,
+        "firstDomReadyMs": 2077.0999999046326,
+        "viewportCompleteMs": 2278.0999999046326,
+        "viewportSnapshotCompleteMs": 2278.0999999046326,
+        "targetThreeCompleteMs": 2278.0999999046326,
+        "measurementWindowMs": 2600,
+        "requestCount": 4,
+        "textSlots": 11,
+        "longTaskCount": 0,
+        "maxLongTaskMs": 0,
+        "targetRequestMs": 1877,
+        "scrollEndMs": 1628.5999999046326,
+        "viewportIds": [
+          "p39",
+          "p40",
+          "p41",
+          "p42",
+          "p43"
+        ],
+        "finalViewportIds": [
+          "p39",
+          "p40",
+          "p41",
+          "p42",
+          "p43"
+        ],
+        "monitoredIds": [
+          "p37",
+          "p38",
+          "p39",
+          "p40",
+          "p41",
+          "p42",
+          "p43",
+          "p44",
+          "p45"
+        ],
+        "targetsVisibleDuringScroll": true,
+        "targetThreeFirstDomReadyMs": 2077.0999999046326
+      },
+      {
+        "name": "first-screen",
+        "iteration": 2,
+        "firstReadableMs": 271.6000003814697,
+        "firstDomReadyMs": 271.6000003814697,
+        "viewportCompleteMs": 465.7000002861023,
+        "viewportSnapshotCompleteMs": 465.7000002861023,
+        "targetThreeCompleteMs": 271.6000003814697,
+        "measurementWindowMs": 800,
+        "requestCount": 4,
+        "textSlots": 8,
+        "longTaskCount": 0,
+        "maxLongTaskMs": 0,
+        "scrollEndMs": null,
+        "viewportIds": [
+          "p0",
+          "p1",
+          "p2",
+          "p3"
+        ],
+        "finalViewportIds": [
+          "p0",
+          "p1",
+          "p2",
+          "p3"
+        ],
+        "monitoredIds": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "p5"
+        ],
+        "targetThreeFirstDomReadyMs": 271.6000003814697
+      },
+      {
+        "name": "continuous-scroll",
+        "iteration": 2,
+        "firstReadableMs": 2074.300000190735,
+        "firstDomReadyMs": 2074.300000190735,
+        "viewportCompleteMs": 2277.0999999046326,
+        "viewportSnapshotCompleteMs": 2277.0999999046326,
+        "targetThreeCompleteMs": 2277.0999999046326,
+        "measurementWindowMs": 2600,
+        "requestCount": 4,
+        "textSlots": 11,
+        "longTaskCount": 0,
+        "maxLongTaskMs": 0,
+        "targetRequestMs": 1879,
+        "scrollEndMs": 1632.8000001907349,
+        "viewportIds": [
+          "p39",
+          "p40",
+          "p41",
+          "p42",
+          "p43"
+        ],
+        "finalViewportIds": [
+          "p39",
+          "p40",
+          "p41",
+          "p42",
+          "p43"
+        ],
+        "monitoredIds": [
+          "p37",
+          "p38",
+          "p39",
+          "p40",
+          "p41",
+          "p42",
+          "p43",
+          "p44",
+          "p45"
+        ],
+        "targetsVisibleDuringScroll": true,
+        "targetThreeFirstDomReadyMs": 2074.300000190735
+      },
+      {
+        "name": "dense-eager-continuous-scroll",
+        "paragraphs": 1000,
+        "firstReadableMs": 2085.0999999046326,
+        "firstDomReadyMs": 2085.0999999046326,
+        "viewportCompleteMs": 2288.4000000953674,
+        "viewportSnapshotCompleteMs": 2288.4000000953674,
+        "targetThreeCompleteMs": 2288.4000000953674,
+        "measurementWindowMs": 2600,
+        "requestCount": 5,
+        "textSlots": 12,
+        "longTaskCount": 0,
+        "maxLongTaskMs": 0,
+        "targetRequestMs": 1888,
+        "scrollEndMs": 1639.5,
+        "viewportIds": [
+          "p899",
+          "p900",
+          "p901",
+          "p902",
+          "p903"
+        ],
+        "finalViewportIds": [
+          "p899",
+          "p900",
+          "p901",
+          "p902",
+          "p903"
+        ],
+        "monitoredIds": [
+          "p897",
+          "p898",
+          "p899",
+          "p900",
+          "p901",
+          "p902",
+          "p903",
+          "p904",
+          "p905"
+        ],
+        "targetsVisibleDuringScroll": true,
+        "targetThreeFirstDomReadyMs": 2085.0999999046326
+      }
+    ],
+    "lifecycle": [],
+    "errors": [],
+    "consoleErrors": [],
+    "blockedNetwork": [],
+    "cleanupErrors": []
+  },
+  "optimized": {
+    "phase": "optimized",
+    "passed": true,
+    "iterations": 3,
+    "measurementsOnly": false,
+    "lifecycleOnly": false,
+    "browserVersion": "131.0.2903.147",
+    "contentSha256": "5fa83c117324a387901936b4934b717dce4c717073878fe29bbc1b0bfa2048a0",
+    "pageViewport": {
+      "innerWidth": 1272,
+      "innerHeight": 816,
+      "devicePixelRatio": 2
+    },
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "windowPlacement": {
+      "mode": "background-visible-no-focus",
+      "bounds": {
+        "left": 212,
+        "top": -990,
+        "width": 1280,
+        "height": 900
+      },
+      "displayTarget": "secondary",
+      "browserFrontmost": false
+    },
+    "maxActiveHttp": 3,
+    "maxActiveOneSlotParagraphs": 3,
+    "cases": [
+      {
+        "name": "first-screen",
+        "iteration": 0,
+        "firstReadableMs": 300.7999997138977,
+        "firstDomReadyMs": 300.7999997138977,
+        "viewportCompleteMs": 497.90000009536743,
+        "viewportSnapshotCompleteMs": 497.90000009536743,
+        "targetThreeCompleteMs": 300.7999997138977,
+        "measurementWindowMs": 800,
+        "requestCount": 6,
+        "textSlots": 8,
+        "longTaskCount": 0,
+        "maxLongTaskMs": 0,
+        "scrollEndMs": null,
+        "viewportIds": [
+          "p0",
+          "p1",
+          "p2",
+          "p3"
+        ],
+        "finalViewportIds": [
+          "p0",
+          "p1",
+          "p2",
+          "p3"
+        ],
+        "monitoredIds": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "p5"
+        ],
+        "targetThreeFirstDomReadyMs": 300.7999997138977
+      },
+      {
+        "name": "continuous-scroll",
+        "iteration": 0,
+        "firstReadableMs": 335.80000019073486,
+        "firstDomReadyMs": 335.80000019073486,
+        "viewportCompleteMs": 651.5,
+        "viewportSnapshotCompleteMs": 651.5,
+        "targetThreeCompleteMs": 651.5,
+        "measurementWindowMs": 2600,
+        "requestCount": 5,
+        "textSlots": 11,
+        "longTaskCount": 0,
+        "maxLongTaskMs": 0,
+        "targetRequestMs": 138,
+        "scrollEndMs": 1631.6000003814697,
+        "viewportIds": [
+          "p39",
+          "p40",
+          "p41",
+          "p42",
+          "p43"
+        ],
+        "finalViewportIds": [
+          "p39",
+          "p40",
+          "p41",
+          "p42",
+          "p43"
+        ],
+        "monitoredIds": [
+          "p37",
+          "p38",
+          "p39",
+          "p40",
+          "p41",
+          "p42",
+          "p43",
+          "p44",
+          "p45"
+        ],
+        "targetsVisibleDuringScroll": true,
+        "targetThreeFirstDomReadyMs": 335.80000019073486
+      },
+      {
+        "name": "first-screen",
+        "iteration": 1,
+        "firstReadableMs": 281.80000019073486,
+        "firstDomReadyMs": 281.80000019073486,
+        "viewportCompleteMs": 477.2000002861023,
+        "viewportSnapshotCompleteMs": 477.2000002861023,
+        "targetThreeCompleteMs": 281.80000019073486,
+        "measurementWindowMs": 800,
+        "requestCount": 4,
+        "textSlots": 8,
+        "longTaskCount": 0,
+        "maxLongTaskMs": 0,
+        "scrollEndMs": null,
+        "viewportIds": [
+          "p0",
+          "p1",
+          "p2",
+          "p3"
+        ],
+        "finalViewportIds": [
+          "p0",
+          "p1",
+          "p2",
+          "p3"
+        ],
+        "monitoredIds": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "p5"
+        ],
+        "targetThreeFirstDomReadyMs": 281.80000019073486
+      },
+      {
+        "name": "continuous-scroll",
+        "iteration": 1,
+        "firstReadableMs": 322.59999990463257,
+        "firstDomReadyMs": 322.59999990463257,
+        "viewportCompleteMs": 639.5999999046326,
+        "viewportSnapshotCompleteMs": 639.5999999046326,
+        "targetThreeCompleteMs": 639.5999999046326,
+        "measurementWindowMs": 2600,
+        "requestCount": 4,
+        "textSlots": 11,
+        "longTaskCount": 0,
+        "maxLongTaskMs": 0,
+        "targetRequestMs": 135,
+        "scrollEndMs": 1637.2000002861023,
+        "viewportIds": [
+          "p39",
+          "p40",
+          "p41",
+          "p42",
+          "p43"
+        ],
+        "finalViewportIds": [
+          "p39",
+          "p40",
+          "p41",
+          "p42",
+          "p43"
+        ],
+        "monitoredIds": [
+          "p37",
+          "p38",
+          "p39",
+          "p40",
+          "p41",
+          "p42",
+          "p43",
+          "p44",
+          "p45"
+        ],
+        "targetsVisibleDuringScroll": true,
+        "targetThreeFirstDomReadyMs": 322.59999990463257
+      },
+      {
+        "name": "first-screen",
+        "iteration": 2,
+        "firstReadableMs": 284.2000002861023,
+        "firstDomReadyMs": 284.2000002861023,
+        "viewportCompleteMs": 479.1000003814697,
+        "viewportSnapshotCompleteMs": 479.1000003814697,
+        "targetThreeCompleteMs": 284.2000002861023,
+        "measurementWindowMs": 800,
+        "requestCount": 4,
+        "textSlots": 8,
+        "longTaskCount": 0,
+        "maxLongTaskMs": 0,
+        "scrollEndMs": null,
+        "viewportIds": [
+          "p0",
+          "p1",
+          "p2",
+          "p3"
+        ],
+        "finalViewportIds": [
+          "p0",
+          "p1",
+          "p2",
+          "p3"
+        ],
+        "monitoredIds": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "p5"
+        ],
+        "targetThreeFirstDomReadyMs": 284.2000002861023
+      },
+      {
+        "name": "continuous-scroll",
+        "iteration": 2,
+        "firstReadableMs": 339.69999980926514,
+        "firstDomReadyMs": 339.69999980926514,
+        "viewportCompleteMs": 656.0999999046326,
+        "viewportSnapshotCompleteMs": 656.0999999046326,
+        "targetThreeCompleteMs": 656.0999999046326,
+        "measurementWindowMs": 2600,
+        "requestCount": 6,
+        "textSlots": 11,
+        "longTaskCount": 0,
+        "maxLongTaskMs": 0,
+        "targetRequestMs": 140,
+        "scrollEndMs": 1638.3000001907349,
+        "viewportIds": [
+          "p39",
+          "p40",
+          "p41",
+          "p42",
+          "p43"
+        ],
+        "finalViewportIds": [
+          "p39",
+          "p40",
+          "p41",
+          "p42",
+          "p43"
+        ],
+        "monitoredIds": [
+          "p37",
+          "p38",
+          "p39",
+          "p40",
+          "p41",
+          "p42",
+          "p43",
+          "p44",
+          "p45"
+        ],
+        "targetsVisibleDuringScroll": true,
+        "targetThreeFirstDomReadyMs": 339.69999980926514
+      },
+      {
+        "name": "dense-eager-continuous-scroll",
+        "paragraphs": 1000,
+        "firstReadableMs": 482.8999996185303,
+        "firstDomReadyMs": 482.8999996185303,
+        "viewportCompleteMs": 799.7999997138977,
+        "viewportSnapshotCompleteMs": 799.7999997138977,
+        "targetThreeCompleteMs": 799.7999997138977,
+        "measurementWindowMs": 2600,
+        "requestCount": 8,
+        "textSlots": 14,
+        "longTaskCount": 0,
+        "maxLongTaskMs": 0,
+        "targetRequestMs": 288,
+        "scrollEndMs": 1633.5999999046326,
+        "viewportIds": [
+          "p899",
+          "p900",
+          "p901",
+          "p902",
+          "p903"
+        ],
+        "finalViewportIds": [
+          "p899",
+          "p900",
+          "p901",
+          "p902",
+          "p903"
+        ],
+        "monitoredIds": [
+          "p897",
+          "p898",
+          "p899",
+          "p900",
+          "p901",
+          "p902",
+          "p903",
+          "p904",
+          "p905"
+        ],
+        "targetsVisibleDuringScroll": true,
+        "targetThreeFirstDomReadyMs": 482.8999996185303
+      }
+    ],
+    "lifecycle": [
+      {
+        "name": "scrolling respects three held candidate slots (HTTP batching can use fewer requests)",
+        "passed": true
+      },
+      {
+        "name": "restore during request rejects late result",
+        "passed": true
+      },
+      {
+        "name": "retranslate then restore keeps unique wrappers",
+        "passed": true
+      },
+      {
+        "name": "global off aborts request and rejects late DOM",
+        "passed": true
+      },
+      {
+        "name": "target language switch rejects old result then retranslation uses current settings",
+        "passed": true
+      },
+      {
+        "name": "dynamic visible paragraph is translated once and restored",
+        "passed": true
+      },
+      {
+        "name": "failed visible paragraph retries successfully without duplicate translation",
+        "passed": true
+      },
+      {
+        "name": "unload rejects old request in replacement document",
+        "passed": true
+      },
+      {
+        "name": "hover Control translate restore translate is 1 0 1 with neighbor untouched",
+        "passed": true
+      }
+    ],
+    "hoverCounts": [
+      1,
+      0,
+      1
+    ],
+    "errors": [],
+    "consoleErrors": [],
+    "blockedNetwork": [],
+    "cleanupErrors": []
+  }
+}

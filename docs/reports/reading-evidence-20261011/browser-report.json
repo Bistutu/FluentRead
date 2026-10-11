@@ -2264,12 +2264,12 @@
     }
   },
   "screenshots": [
-    "/private/tmp/fluentread-reading-evidence-20261011-topbar-delivery-final/reading-menu-light-closed.png",
-    "/private/tmp/fluentread-reading-evidence-20261011-topbar-delivery-final/reading-menu-light-wide-open.png",
-    "/private/tmp/fluentread-reading-evidence-20261011-topbar-delivery-final/reading-menu-dark-wide-open.png",
-    "/private/tmp/fluentread-reading-evidence-20261011-topbar-delivery-final/reading-menu-dark-narrow-open.png",
-    "/private/tmp/fluentread-reading-evidence-20261011-topbar-delivery-final/reading-menu-light-narrow-open.png",
-    "/private/tmp/fluentread-reading-evidence-20261011-topbar-delivery-final/reading-evidence-located.png"
+    "/private/tmp/fluentread-reading-evidence-20261011-topbar-current-main-final/reading-menu-light-closed.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-topbar-current-main-final/reading-menu-light-wide-open.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-topbar-current-main-final/reading-menu-dark-wide-open.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-topbar-current-main-final/reading-menu-dark-narrow-open.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-topbar-current-main-final/reading-menu-light-narrow-open.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-topbar-current-main-final/reading-evidence-located.png"
   ],
   "consoleErrors": [],
   "httpErrors": [],
@@ -3044,8 +3044,8 @@
     "sourceMappingOnly": true
   },
   "domArtifacts": [
-    "/private/tmp/fluentread-reading-evidence-20261011-topbar-delivery-final/reading-evidence-source.html",
-    "/private/tmp/fluentread-reading-evidence-20261011-topbar-delivery-final/reading-evidence-closed-shadow.json"
+    "/private/tmp/fluentread-reading-evidence-20261011-topbar-current-main-final/reading-evidence-source.html",
+    "/private/tmp/fluentread-reading-evidence-20261011-topbar-current-main-final/reading-evidence-closed-shadow.json"
   ],
   "fixture": {
     "page": "local current paragraph with one second supporting sentence and distant duplicate",
