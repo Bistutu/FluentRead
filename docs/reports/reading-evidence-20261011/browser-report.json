@@ -61,14 +61,16 @@
       "evidence": [
         {
           "tag": "BUTTON",
-          "text": "原文依据 · Although the task was difficult, she finished it on time.",
+          "text": "原文依据",
+          "quote": "Although the task was difficult, she finished it on time.",
           "state": "ready",
           "identity": "",
           "disabled": false
         },
         {
           "tag": "BUTTON",
-          "text": "原文依据 · She could complete it only because her colleague supplied the final measurements.",
+          "text": "原文依据",
+          "quote": "She could complete it only because her colleague supplied the final measurements.",
           "state": "ready",
           "identity": "",
           "disabled": false
@@ -170,7 +172,8 @@
       "status": "passed",
       "evidence": {
         "tag": "BUTTON",
-        "text": "原文依据 · Although the task was difficult, she finished it on time.",
+        "text": "原文依据",
+        "quote": "Although the task was difficult, she finished it on time.",
         "state": "unavailable",
         "identity": "",
         "disabled": false
@@ -237,7 +240,8 @@
       "status": "passed",
       "evidence": {
         "tag": "BUTTON",
-        "text": "原文依据 · Although the task was difficult, she finished it on time.",
+        "text": "原文依据",
+        "quote": "Although the task was difficult, she finished it on time.",
         "state": "changed",
         "identity": "",
         "disabled": false
@@ -249,7 +253,8 @@
       "status": "passed",
       "evidence": {
         "tag": "BUTTON",
-        "text": "原文依据 · Although the task was difficult, she finished it on time.",
+        "text": "原文依据",
+        "quote": "Although the task was difficult, she finished it on time.",
         "state": "navigated",
         "identity": "",
         "disabled": false
@@ -266,6 +271,7 @@
         {
           "tag": "SPAN",
           "text": "引用无法核对 · The author never wrote this sentence.",
+          "quote": "引用无法核对 · The author never wrote this sentence.",
           "state": "unverified",
           "identity": "",
           "disabled": false
@@ -273,6 +279,7 @@
         {
           "tag": "SPAN",
           "text": "引用无法核对 · She completed it without any help.",
+          "quote": "引用无法核对 · She completed it without any help.",
           "state": "unverified",
           "identity": "",
           "disabled": false
@@ -325,14 +332,16 @@
       "evidence": [
         {
           "tag": "BUTTON",
-          "text": "原文依据 · Although the task was difficult, she finished it on time.",
+          "text": "原文依据",
+          "quote": "Although the task was difficult, she finished it on time.",
           "state": "ready",
           "identity": "",
           "disabled": false
         },
         {
           "tag": "BUTTON",
-          "text": "原文依据 · She could complete it only because her colleague supplied the final measurements.",
+          "text": "原文依据",
+          "quote": "She could complete it only because her colleague supplied the final measurements.",
           "state": "ready",
           "identity": "",
           "disabled": false
@@ -434,7 +443,8 @@
       "status": "passed",
       "evidence": {
         "tag": "BUTTON",
-        "text": "原文依据 · Although the task was difficult, she finished it on time.",
+        "text": "原文依据",
+        "quote": "Although the task was difficult, she finished it on time.",
         "state": "unavailable",
         "identity": "",
         "disabled": false
@@ -501,7 +511,8 @@
       "status": "passed",
       "evidence": {
         "tag": "BUTTON",
-        "text": "原文依据 · Although the task was difficult, she finished it on time.",
+        "text": "原文依据",
+        "quote": "Although the task was difficult, she finished it on time.",
         "state": "changed",
         "identity": "",
         "disabled": false
@@ -513,7 +524,8 @@
       "status": "passed",
       "evidence": {
         "tag": "BUTTON",
-        "text": "原文依据 · Although the task was difficult, she finished it on time.",
+        "text": "原文依据",
+        "quote": "Although the task was difficult, she finished it on time.",
         "state": "navigated",
         "identity": "",
         "disabled": false
@@ -530,6 +542,7 @@
         {
           "tag": "SPAN",
           "text": "引用无法核对 · The author never wrote this sentence.",
+          "quote": "引用无法核对 · The author never wrote this sentence.",
           "state": "unverified",
           "identity": "",
           "disabled": false
@@ -537,6 +550,7 @@
         {
           "tag": "SPAN",
           "text": "引用无法核对 · She completed it without any help.",
+          "quote": "引用无法核对 · She completed it without any help.",
           "state": "unverified",
           "identity": "",
           "disabled": false
@@ -558,7 +572,7 @@
     }
   },
   "screenshots": [
-    "/private/tmp/fluentread-reading-evidence-20261011-final2/reading-evidence-located.png"
+    "/private/tmp/fluentread-reading-evidence-20261011-integrated-final/reading-evidence-located.png"
   ],
   "consoleErrors": [],
   "httpErrors": [],
@@ -1333,8 +1347,8 @@
     "sourceMappingOnly": true
   },
   "domArtifacts": [
-    "/private/tmp/fluentread-reading-evidence-20261011-final2/reading-evidence-source.html",
-    "/private/tmp/fluentread-reading-evidence-20261011-final2/reading-evidence-closed-shadow.json"
+    "/private/tmp/fluentread-reading-evidence-20261011-integrated-final/reading-evidence-source.html",
+    "/private/tmp/fluentread-reading-evidence-20261011-integrated-final/reading-evidence-closed-shadow.json"
   ],
   "fixture": {
     "page": "local current paragraph with one second supporting sentence and distant duplicate",

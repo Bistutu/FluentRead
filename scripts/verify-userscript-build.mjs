@@ -68,7 +68,9 @@ const artifactBytes = Buffer.byteLength(source);
 // 阅读依据的有限来源、真实 DOM 锚点、紧凑 UI 与可读导出增加 14,305 字节（0.7065%）：
 // 同依赖干净 c8a06bb5f 为 2,024,873，最终候选为 2,039,178，原预算只余 127 字节。
 // 按既有 1 KB 步长最小增加 15 KB，保留全部协议与运行断言；见 reading-evidence-20261011 报告。
-const MAX_USERSCRIPT_BYTES = 2_027_000;
+// 合并 69d41e5e 最新主线后，同依赖基线 2,026,916、最终候选 2,041,173，增加 14,257 字节（0.7034%）。
+// 相对主线按实测最小增加 15 KB，预算 2,042,000、余 827 字节；全部校验保持。
+const MAX_USERSCRIPT_BYTES = 2_042_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);
