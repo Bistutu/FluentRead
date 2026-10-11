@@ -126,10 +126,10 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
             {text: `Page ${pageNumber} paragraph`, x: 5, y: 55, width: 90, height: 12},
         ], {startPage: 1});
         if (format === 'mixed') {
-            // Version 11 native snapshots may contain underestimated glyph rectangles. They must be reparsed,
+            // Version 12 native snapshots predate complete font descent bounds. They must be reparsed,
             // while recognized scanned pages and exact-source revisions remain recoverable.
             for (const block of old.binary.pages[0].blocks) {
-                block.lines = block.lines?.map((line: any) => ({...line, width: 0, runs: line.runs?.map((run: any) => ({...run, width: 0}))}));
+                block.lines = block.lines?.map((line: any) => ({...line, height: 1, runs: line.runs?.map((run: any) => ({...run, height: 1}))}));
             }
         }
         let repeat = 0;
@@ -140,7 +140,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         const id = await documentHistoryId(bytes);
         const factory = new IDBFactory();
         const history = createDocumentHistory(factory);
-        const oldVersion = format === 'scanned' ? 10 : format === 'mixed-removed-duplicate' ? 7 : 11;
+        const oldVersion = format === 'scanned' ? 10 : format === 'mixed-removed-duplicate' ? 7 : 12;
         await history.save({id, name: 'history.pdf', format: 'pdf', size: bytes.length, total: old.segments.length,
             completed: edits.filter((value: string) => value.trim()).length, updatedAt: 1, bytes, mimeType: 'application/pdf',
             translations: edits, fingerprint: 'old-settings', parsed: old, parsedVersion: oldVersion});
@@ -173,7 +173,8 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         }
         if (format === 'mixed') {
             expect(state.parsedDocument.binary.pages[0].blocks[0].lines[0].runs[0].width).toBe(90);
-            expect(old.binary.pages[0].blocks[0].lines[0].runs[0].width).toBe(0);
+            expect(state.parsedDocument.binary.pages[0].blocks[0].lines[0].runs[0].height).toBeGreaterThan(1);
+            expect(old.binary.pages[0].blocks[0].lines[0].runs[0].height).toBe(1);
         }
         for (const page of state.parsedDocument.binary.pages) {
             expect(page.blocks.filter((block: any) => block.segmentIndex >= 0).map((block: any) => block.segmentIndex)).toEqual(page.segmentIndexes);
@@ -181,7 +182,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         }
         await vi.waitFor(async () => {
             const saved = await history.load(id);
-            expect(saved?.parsedVersion).toBe(12);
+            expect(saved?.parsedVersion).toBe(13);
             expect(saved?.translations).toEqual(expectedTranslations);
             expect((saved?.parsed as any).segments.map((segment: any) => segment.source)).toEqual(expectedSources);
             expect(saved?.parsed).not.toHaveProperty('segmentOrigins');
@@ -714,7 +715,6 @@ it('documentbinaryAudit mounts the actual page assembly with its app, document t
     vi.doUnmock('vue');
 });
 
-// 私有候选：追加至 tests/documentAppLifecycle.test.ts；执行真实 SFC 模板事件，未在本任务运行。
 it('glossary gate document settings buttons open the modal and translate back to complete 1/1', async () => {
     state.config.on = true;
     state.config.documentService = 'google';
@@ -739,8 +739,9 @@ it('glossary gate document settings buttons open the modal and translate back to
     expect(settings.close).toHaveBeenCalledOnce();
     await vi.waitFor(() => expect(state.translationComplete).toBe(true));
     await flush();
-    expect(ports.translate).toHaveBeenCalledOnce();
-    expect(ports.translate.mock.calls[0][0]).toBe('The agent uses FluentRead.');
+    expect(ports.translate).not.toHaveBeenCalled();
+    expect(ports.batch).toHaveBeenCalledOnce();
+    expect(ports.batch.mock.calls[0][0]).toEqual(['The agent uses FluentRead.']);
     expect(state.parsedDocument.segments[0].source).toBe('The agent uses FluentRead.');
     expect(state.pendingAction).toBeNull();
     const status = walk(root).find(entry => entry.props.class === 'document-status')!;

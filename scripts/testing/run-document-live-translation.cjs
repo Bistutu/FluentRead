@@ -6,6 +6,7 @@
  * 文件职责：在独立生产 Edge 配置中真实验证免费服务翻译普通文档、PDF 阅读与左右对照导出。
  * 主要内容：复用后台焦点保护启动器与原生激活事件观察器，只设置免费服务与英译中公开选项；按输入文件逐份导入、真实翻译、阅读、下载，保存完整段落、状态、脱敏网络统计和截图。PDF 用 PDF.js 重开校验页数、左右对照尺寸与页序，再用 Poppler 渲染；--readable-pdf-first 在首份 PDF 同次真实译文上另验可复制重排导出、逐段中文文字层及首页/尾页图片。普通格式重新解析下载文件，DOCX/ePub 解包核对译文、结构与图片。默认运行实际 Attention 15 页、仓库八种普通格式及英文产品指南，--inputs 可缩小范围。Markdown 严格核对代码、链接、译文强调及指南容器、组件标记，以 VitePress 已有 markdown-it 的标准强调节点核对实际下载（先扣除原文节点，不能只数星号或用产品预览证明译文格式），并按源文本与同一标签检查两项已确认的内部英文残留回归；仅读取这些内容，不执行组件。
  * 交互验证：--exercise-pdf-ui 在首份实际 PDF 上保存首页扫描说明，经 CDP 键盘 Tab/Enter/Space 选择原生菜单按钮，验证受控 Ctrl/Cmd wheel 的文档缩放、指针锚点及键盘复位；真实译文完成后切换显示方式，恢复原版对照和适合整页，再执行既有小屏阅读与下载验收。这些事件不代表物理触控板实测。
+ * 词库验证：可选 --builtin-glossary ai-en-zh-hans 从本生产包的设置界面导入可编辑副本，启用总开关，再通过公开配置端口只选择该真实库 ID；保存启用状态、来源版本、词条数及文档选择，不读取词条作为测试预期或输出其它配置。无参数时只记录实际公开状态。
  * 诊断收尾：响应正文观察每条最多等五秒，记录超时/失败并拒绝晚到正文回填；文档失败先保存状态，批次诊断与最终清理各有截止。HTTP 证据按固定翻译端点辨认 Microsoft/Google 有序原生槽位、单文本与未知请求；仅完整多槽响应进入已完成合批统计，不把同域 2xx 或背景消息数组当作合批。
  * 模块边界：不创建请求路由、不替换 fetch、不伪造译文、不配置付费账户，不读取或输出任何凭据；只使用本次新建的临时浏览器配置，不操作用户浏览器。中文及无测试标记只能证明实际结果，译文质量和排版需结合保存的数据与图片人工复核。
  */
@@ -33,6 +34,89 @@ const shouldObserveResponseBody = (record, response) => record.providerCandidate
   && !/csrf|token|auth/iu.test(new URL(response.url()).pathname)
   && (/json/iu.test(response.headers()['content-type'] || '')
     || record.httpEvidence?.endpoint === 'google-rpc' && /text\/plain/iu.test(response.headers()['content-type'] || ''));
+
+/** 在读取产物或创建 profile 之前拒绝拼错、缺值和重复的内置库参数。 */
+function parseBuiltinGlossaryArg(args) {
+  assert(!args.some(value => value.startsWith('--builtin-glossary=')), 'Use --builtin-glossary ai-en-zh-hans');
+  const positions = args.flatMap((value, index) => value === '--builtin-glossary' ? [index] : []);
+  assert(positions.length <= 1, '--builtin-glossary must occur only once');
+  if (!positions.length) return null;
+  const value = args[positions[0] + 1];
+  assert.equal(value, 'ai-en-zh-hans', '--builtin-glossary only allows ai-en-zh-hans');
+  return value;
+}
+
+/** 自包含页面端口：只投影运行所需的公开词库元数据，不能输出词条、token 或其余配置。 */
+async function readPublicGlossaryState(presetId = null) {
+  const stored = await chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'});
+  if (!stored?.success) throw new Error('Public glossary configuration read failed');
+  let config;
+  try {config = typeof stored.value === 'string' ? JSON.parse(stored.value) : stored.value;} catch {throw new Error('Invalid public glossary configuration');}
+  if (!config || typeof config !== 'object' || !Array.isArray(config.glossaryLibraries)) throw new Error('Invalid public glossary libraries');
+  const ids = config.documentGlossaryIds == null ? null : config.documentGlossaryIds;
+  if (ids !== null && (!Array.isArray(ids) || ids.some(id => typeof id !== 'string'))) throw new Error('Invalid public document glossary selection');
+  const libraries = config.glossaryLibraries.filter(library => library && typeof library === 'object'
+    && (presetId ? library.preset?.id === presetId : ids === null ? library.enabled === true : ids.includes(library.id)));
+  return {glossaryEnabled: config.glossaryEnabled === true, documentGlossaryIds: ids === null ? null : [...ids],
+    libraries: libraries.map(library => {
+      if (typeof library.id !== 'string' || !library.id || typeof library.name !== 'string' || !Array.isArray(library.entries)) throw new Error('Invalid selected glossary metadata');
+      const preset = library.preset;
+      if (preset && (typeof preset.id !== 'string' || !Number.isSafeInteger(preset.version) || preset.version <= 0)) throw new Error('Invalid selected glossary preset');
+      return {id: library.id, name: library.name, enabled: library.enabled === true,
+        presetId: preset?.id ?? null, presetVersion: preset?.version ?? null, termCount: library.entries.length};
+    })};
+}
+
+/** 只选择 production UI 刚导入的库；公开 CAS patch 不包含词表或其它设置。 */
+async function selectPublicDocumentGlossary({id, presetId}) {
+  if (typeof id !== 'string' || !id || presetId !== 'ai-en-zh-hans') throw new Error('Invalid builtin glossary selection');
+  const stored = await chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'});
+  if (!stored?.success) throw new Error('Public glossary configuration read failed');
+  let config;
+  try {config = typeof stored.value === 'string' ? JSON.parse(stored.value) : stored.value;} catch {throw new Error('Invalid public glossary configuration');}
+  if (!Array.isArray(config?.glossaryLibraries)) throw new Error('Invalid public glossary libraries');
+  const library = config.glossaryLibraries.find(library => library && library.id === id && library.preset?.id === presetId && library.enabled === true);
+  if (!library || config.glossaryEnabled !== true) throw new Error('Imported builtin glossary is not enabled');
+  const saved = await chrome.runtime.sendMessage({type: 'persistConfig', mode: 'patch',
+    config: {documentGlossaryIds: [id]}, expected: {documentGlossaryIds: config.documentGlossaryIds},
+    clientId: 'document-live-glossary-' + crypto.randomUUID(), sequence: 1});
+  if (!saved?.success) throw new Error('Public document glossary selection was rejected');
+}
+
+/** 使用同一后台页的真实内置库 UI；库由生产包生成，driver 不导入或复制词表。 */
+async function installBuiltinGlossaryForLiveRun({page, origin, presetId, checkFocus}) {
+  assert.equal(presetId, 'ai-en-zh-hans', 'Unsupported builtin glossary');
+  await checkFocus('builtin-glossary-options-open');
+  await page.goto(origin + '/options.html#settings-glossary', {waitUntil: 'domcontentloaded'});
+  const glossary = page.getByTestId('glossary-settings'); await glossary.waitFor();
+  const card = glossary.getByTestId('builtin-' + presetId); await card.waitFor();
+  const cardName = (await card.locator('h4').innerText()).trim();
+  const before = await page.evaluate(readPublicGlossaryState, presetId);
+  assert.equal(before.libraries.length, 0, 'Fresh profile must import a new editable builtin copy');
+  await checkFocus('builtin-glossary-import'); await card.locator('button.builtin-add').click();
+  await card.locator('.builtin-added').waitFor();
+  const imported = await page.evaluate(readPublicGlossaryState, presetId);
+  assert.equal(imported.libraries.length, 1, 'Builtin UI did not persist one library');
+  const library = imported.libraries[0];
+  assert.equal(library.name, cardName); assert(library.enabled && library.termCount > 0);
+  const master = glossary.locator('.feature-enable-card [role="switch"]');
+  if (await master.getAttribute('aria-checked') !== 'true') {
+    await checkFocus('builtin-glossary-enable'); await master.focus(); await page.keyboard.press('Space');
+  }
+  await page.waitForFunction(async () => {
+    const stored = await chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'});
+    if (!stored?.success) return false;
+    const config = typeof stored.value === 'string' ? JSON.parse(stored.value) : stored.value;
+    return config?.glossaryEnabled === true;
+  }, null, {timeout: 15000});
+  await checkFocus('builtin-glossary-document-selection');
+  await page.evaluate(selectPublicDocumentGlossary, {id: library.id, presetId});
+  const selected = await page.evaluate(readPublicGlossaryState, presetId);
+  assert.equal(selected.glossaryEnabled, true); assert.deepEqual(selected.documentGlossaryIds, [library.id]);
+  assert.deepEqual(selected.libraries, imported.libraries);
+  return {presetId, source: 'Production options builtin UI creates its editable copy; public persistConfig selects only that actual library id',
+    before, imported, selected, optionsUrl: origin + '/options.html#settings-glossary'};
+}
 
 function directoryFingerprint(directory) {
   const entries = [];
@@ -548,6 +632,7 @@ async function exercisePdfPresentationUi(page, {result, prefix, shot, checkFocus
 }
 
 async function main() {
+  const builtinGlossary = parseBuiltinGlossaryArg(process.argv.slice(2));
   const repository = path.resolve(__dirname, '../..'), requireRepo = createRequire(path.join(repository, 'package.json'));
   const examples = path.resolve(arg('example-dir', path.join(repository, 'examples/document-translation')));
   const defaults = [path.resolve(repository, '../BabelDOC-APP/docs/1706.03762v7.pdf'),
@@ -579,9 +664,9 @@ async function main() {
       'src/features/document-translation/core/document.ts', 'src/features/document-translation/core/pdfLayoutAnalysis.ts', 'src/features/document-translation/ui/PdfReader.vue',
       'src/providers/translation/free-chinese-web.ts', 'src/providers/translation/free-translation.ts', 'src/core/translation/documentLiterals.ts',
       'src/services/translation/broker.ts', 'src/services/translation/glossaryProtection.ts', 'src/features/document-translation/ui/documentZoom.ts',
-      'src/core/i18n/messages/pdfReading.ts'].map(file => [file, sha(fs.readFileSync(path.join(repository, file)))])),
+      'src/core/i18n/messages/pdfReading.ts', 'src/core/glossary/builtins.ts'].map(file => [file, sha(fs.readFileSync(path.join(repository, file)))])),
     parameters: {service, sourceLanguage: 'en', targetLanguage: 'zh-Hans', translationTimeout, exportTimeout, samplePages,
-      shortPdfAllPages: !process.argv.includes('--pdf-pages'), readablePdfFirst: process.argv.includes('--readable-pdf-first'), exercisePdfUi,
+      shortPdfAllPages: !process.argv.includes('--pdf-pages'), readablePdfFirst: process.argv.includes('--readable-pdf-first'), exercisePdfUi, builtinGlossary,
       viewport: {width: 1440, height: 960}, narrowViewports: [{width: 820, height: 960}, {width: 390, height: 844}]},
     evidenceBoundary: `Real credential-free ${service} requests and actual document UI; no routes, fetch replacements, proxy, paid credentials or synthetic responses. Chinese/no-marker checks and two targeted inline-text regression assertions are evidence, not a general translation-quality score. Optional PDF UI coverage uses CDP keyboard and Ctrl/Cmd wheel against the actual document, not physical trackpad gestures. First-PDF narrow screenshots/geometry cover only 820x960 and 390x844. Review saved paragraphs and screenshots manually.`,
     documents: [], screenshots: [], network: [], consoleErrors: [], cleanupErrors: [], focusEvents: [], focusChecks: []};
@@ -664,6 +749,16 @@ async function main() {
     assert.equal(report.config.service, service);
     await page.reload({waitUntil: 'domcontentloaded'}); await page.locator('.file-drop-zone').waitFor();
     const shot = async name => {const file = path.join(artifactsDir, `${name}.png`); await page.screenshot({path: file, animations: 'disabled'}); report.screenshots.push(file); return file;};
+    if (builtinGlossary) {
+      report.glossarySetup = await installBuiltinGlossaryForLiveRun({page, origin, presetId: builtinGlossary, checkFocus});
+      await checkFocus('builtin-glossary-imported-evidence');
+      report.glossarySetup.screenshot = await shot('builtin-glossary-ai-en-zh-hans-imported'); persist();
+      await checkFocus('builtin-glossary-document-return');
+      await page.goto(origin + '/document.html', {waitUntil: 'domcontentloaded'}); await page.locator('.file-drop-zone').waitFor();
+    }
+    report.glossary = await page.evaluate(readPublicGlossaryState, builtinGlossary);
+    if (builtinGlossary) assert.deepEqual(report.glossary, report.glossarySetup.selected, 'Document page must read the actual imported glossary selection');
+    persist();
     if (exercisePdfUi) {
       await checkFocus('pdf-ui-homepage-ocr-note');
       const note = page.locator('.landing-section .local-processing-note'); await note.waitFor();
@@ -715,6 +810,8 @@ async function main() {
         result.importMs = Date.now() - importStart;
         result.documentBatchTranslation = await page.locator('.document-batch-translation input').isChecked();
         assert.equal(result.documentBatchTranslation, true, 'New documents should use the default transient batching');
+        result.glossary = await page.evaluate(readPublicGlossaryState, builtinGlossary);
+        if (builtinGlossary) assert.deepEqual(result.glossary, report.glossary, 'Each document must retain the actual enabled builtin selection before translation');
         if (exercisePdfUi && isPdf && !exercisedPdfUi) {
           exercisedPdfUi = true;
           await exercisePdfZoomUi(page, {result, prefix, shot, checkFocus, persist});
@@ -794,6 +891,18 @@ async function main() {
                 assert(geometry.pdfGroups.length && geometry.pdfGroups.every(group => group.visible && group.x >= -1 && group.right <= viewport.width + 1), 'Complete PDF control groups must remain visible and inside the viewport');
                 assert.equal(geometry.readEditButtons, 2); assert.equal(geometry.readingModeButtons, 3);
                 assert(geometry.settingsVisible && geometry.downloadVisible, 'Narrow layouts must retain translation settings and download entry points');
+                if (builtinGlossary && viewport.width === 390) {
+                  await checkFocus('responsive-390-translated-evidence');
+                  const paragraph = page.locator('.pdf-page-row[data-page-number="1"] .translated .pdf-translation-text').filter({hasText: /\p{Script=Han}/u}).first();
+                  await paragraph.scrollIntoViewIfNeeded(); await paragraph.waitFor({state: 'visible'});
+                  const text = await paragraph.innerText(); assert.match(text, /\p{Script=Han}/u);
+                  const translatedScreenshot = await shot(`${prefix}-reader-responsive-390x844-translated`);
+                  result.screenshots.push(translatedScreenshot);
+                  result.responsive.at(-1).translatedEvidence = {screenshot: translatedScreenshot, textSha256: sha(text),
+                    segmentIndex: await paragraph.locator('..').getAttribute('data-pdf-segment-index'),
+                    scope: 'Actual translated column scrolled into the 390px viewport; no physical trackpad test'};
+                  await checkFocus('responsive-390-translated-evidence-complete'); persist();
+                }
               }
             } finally {
               await page.setViewportSize(report.parameters.viewport);
@@ -923,6 +1032,8 @@ async function main() {
       }
     }
     delete report.currentDocument;
+    report.finalGlossary = await page.evaluate(readPublicGlossaryState, builtinGlossary);
+    if (builtinGlossary) assert.deepEqual(report.finalGlossary, report.glossary, 'Actual builtin selection must remain unchanged after all documents');
     await checkFocus('completed'); report.finalFrontmostApplication = report.focusChecks.at(-1).application;
     report.ok = report.documents.every(document => document.state === 'complete') && report.consoleErrors.length === 0;
     if (!report.ok) process.exitCode = 1;
@@ -937,5 +1048,6 @@ async function main() {
   }
 }
 
-module.exports = {createResponseBodyObserver, closeLiveSession, isProviderDomain, shouldObserveResponseBody};
+module.exports = {createResponseBodyObserver, closeLiveSession, isProviderDomain, shouldObserveResponseBody,
+  parseBuiltinGlossaryArg, readPublicGlossaryState, selectPublicDocumentGlossary, installBuiltinGlossaryForLiveRun};
 if (require.main === module) main().catch(error => {console.error(error.stack || error); process.exitCode = 1;});

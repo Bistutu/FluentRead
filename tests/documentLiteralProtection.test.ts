@@ -200,9 +200,9 @@ describe('document literal protection', () => {
         expect(getTranslationGlossaryTerms(current, source)).toEqual(entries.map(({source, target}) => ({source, target})));
     });
 
-    it('preserves only the confirmed radical identifier and lets explicit user spelling take priority', () => {
+    it('preserves radical identifiers and the standalone radical while allowing explicit user spelling', () => {
         expect(findDocumentLiteralTerms('Multiply by √dmodel, √dk and √hidden_2; √2 + 3 stays mathematical prose.').map(term => term.source))
-            .toEqual(['√dmodel', '√dk', '√hidden_2']);
+            .toEqual(['√dmodel', '√dk', '√hidden_2', '√']);
         const source = 'Multiply by √dmodel.';
         const packet = prepareGlossaryRequest({origin: source}, documentConfig());
         expect(packet.message.origin).not.toContain('dmodel');

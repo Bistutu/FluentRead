@@ -1,7 +1,7 @@
 /**
  * @file tests/documentPdfLayoutParsing.test.ts
  * 文件职责：用实际 PDF.js 提取验证可读 PDF 解析合同和源文件不变，避免仅测试人工拼接的分析对象。
- * 主要内容：生成含分栏、上下标、独立公式、表格规则、位图与矢量图的 PDF；检查正文和标题顺序、原始行几何以及保护区域不进入翻译片段；使用随仓库示例与真实标准字体验证衬线正文不因非有限字体指标被删掉、标题空白受正文约束。
+ * 主要内容：生成含分栏、上下标、独立公式、表格规则、位图与矢量图的 PDF；检查正文和标题顺序、原始行几何以及保护区域不进入翻译片段；使用随仓库示例与真实标准字体验证标题降部完整、衬线正文不因非有限字体指标被删掉、标题空白受正文约束。
  * 模块边界：真实运行 pdf-lib/PDF.js 和二进制解析，不需要浏览器、翻译服务或图片截图。
  */
 import {readFileSync} from 'node:fs';
@@ -45,6 +45,58 @@ async function fixture(): Promise<Uint8Array> {
 }
 
 describe('real PDF structural parsing', () => {
+    it('contains real Helvetica-Bold p/g outlines in both sample titles without changing their typography', async () => {
+        const bytes = new Uint8Array(readFileSync(new URL('../examples/document-translation/sample.pdf', import.meta.url)));
+        const before = bytes.slice();
+        class StandardFontDataFactory {
+            async fetch({filename}: {filename: string}): Promise<Uint8Array> {
+                return new Uint8Array(readFileSync(new URL(`../node_modules/pdfjs-dist/standard_fonts/${filename}`, import.meta.url)));
+            }
+        }
+        const {getDocument, OPS} = await import('pdfjs-dist/legacy/build/pdf.mjs');
+        const loading = getDocument({data: bytes.slice(), disableFontFace: true, isEvalSupported: false, useWorkerFetch: false, StandardFontDataFactory});
+        try {
+            const pdf = await loading.promise;
+            for (const sample of [
+                {page: 1, title: 'Document Translation Example', size: 22, letter: 'p', point: {x: .20703125, y: -.20751953125}, pathPoint: 'L0.20703125 -0.20751953125'},
+                {page: 2, title: 'Regression Coverage', size: 19, letter: 'g', point: {x: .291015625, y: -.2119140625}, pathPoint: 'M0.291015625 -0.2119140625'},
+            ]) {
+                const page = await pdf.getPage(sample.page);
+                try {
+                    const viewport = page.getViewport({scale: 1}), content = await page.getTextContent();
+                    const items = content.items.filter(item => 'str' in item);
+                    const title = items.find(item => item.str === sample.title)!;
+                    const styles = content.styles as Record<string, PdfTextStyle>;
+                    expect(styles[title.fontName]).toMatchObject({ascent: .9052734375, descent: -.2119140625});
+                    const operators = await page.getOperatorList();
+                    const glyphs = operators.argsArray[operators.fnArray.indexOf(OPS.showText)][0] as Array<{unicode: string; fontChar: string; width: number}>;
+                    expect(glyphs.map(glyph => glyph.unicode).join('')).toBe(sample.title);
+                    const glyphIndex = glyphs.findIndex(glyph => glyph.unicode === sample.letter), glyph = glyphs[glyphIndex];
+                    const font = page.commonObjs.get(title.fontName);
+                    expect(font.name).toBe('Helvetica-Bold');
+                    // Check an actual endpoint from PDF.js's standard-font outline, without rasterizing it.
+                    expect(page.commonObjs.get(`${font.loadedName}_path_${glyph.fontChar}`)).toContain(sample.pathPoint);
+                    const advance = glyphs.slice(0, glyphIndex).reduce((sum, entry) => sum + entry.width, 0) * sample.size / 1000;
+                    const [inkX, inkY] = viewport.convertToViewportPoint(title.transform[4] + advance + sample.point.x * sample.size,
+                        title.transform[5] + sample.point.y * sample.size);
+                    const atoms = pdfTextAtoms(items, styles, viewport, true) as PdfLayoutAtom[];
+                    const titleAtom = atoms.find(atom => atom.text === sample.title)!;
+                    expect(titleAtom).toMatchObject({x: title.transform[4], width: title.width, baseline: 50, fontSize: sample.size});
+                    expect(inkX).toBeGreaterThanOrEqual(titleAtom.x); expect(inkX).toBeLessThanOrEqual(titleAtom.x + titleAtom.width);
+                    expect(inkY).toBeGreaterThanOrEqual(titleAtom.y); expect(inkY).toBeLessThanOrEqual(titleAtom.y + titleAtom.height);
+                    // The old one-em height ended above this point even with its unchanged 1.2pt erase padding.
+                    expect(inkY).toBeGreaterThan(titleAtom.y + sample.size + 1.2);
+                    const graphics = extractPdfGraphicsShapes(operators, OPS, viewport);
+                    const layout = analyzePdfPageLayout({atoms, graphics, width: viewport.width, height: viewport.height});
+                    const heading = layout.blocks.find(block => block.source === sample.title)!;
+                    expect(heading).toMatchObject({kind: 'heading', fontSize: sample.size, lineHeight: sample.size, lineCount: 1});
+                    expect(inkY).toBeLessThanOrEqual(heading.y + heading.height);
+                } finally {page.cleanup();}
+            }
+            expect(bytes).toEqual(before);
+        } finally {await loading.destroy();}
+    });
+
     it('keeps real standard-font serif paragraphs and bounds their preceding heading in the repository sample', async () => {
         const bytes = new Uint8Array(readFileSync(new URL('../examples/document-translation/sample.pdf', import.meta.url)));
         const before = bytes.slice();

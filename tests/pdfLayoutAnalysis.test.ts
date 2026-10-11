@@ -1,11 +1,13 @@
 /**
  * @file tests/pdfLayoutAnalysis.test.ts
  * 文件职责：验证 PDF 阅读分析不会把分栏、表格、公式、上下标或插图误当作一个可覆盖的正文框。
- * 主要内容：使用真实绘图操作语义和可复现字形几何验证矩阵、裁剪、行关联、已关联根号的下伸擦除范围、语义边界与阅读顺序，并覆盖长文的几何读取上限。
+ * 主要内容：使用真实绘图操作语义和可复现字形几何验证矩阵、裁剪、行关联、已关联根号的下伸擦除范围、语义边界与阅读顺序，回放参考文献的折行 URL 并验证完整地址进入既有字面保护，覆盖普通词、独立地址、段落/分栏不误拼接和长文的几何读取上限。
  * 模块边界：测试纯分析模块；真实 PDF 提取和来源字节不变由 PDF 解析集成测试补充。
  */
 import {describe, expect, it} from 'vitest';
 import {analyzePdfPageLayout, extractPdfGraphicsShapes, pdfLayoutLines, type PdfLayoutAtom} from '@/src/features/document-translation/core/pdfLayoutAnalysis';
+import {findDocumentLiteralTerms} from '@/src/core/translation/documentLiterals';
+import {protectGlossaryText} from '@/src/core/glossary';
 
 const atom = (text: string, x: number, baseline: number, width = text.length * 5, fontSize = 10): PdfLayoutAtom => ({text, x, y: baseline - fontSize * .8, width, height: fontSize, baseline, fontSize, fontFamily: 'sans-serif'});
 const analyze = (atoms: PdfLayoutAtom[], graphics: Parameters<typeof analyzePdfPageLayout>[0]['graphics'] = [], width = 612, height = 792) => analyzePdfPageLayout({atoms, graphics, width, height});
@@ -141,6 +143,47 @@ describe('PDF baseline and structural reading analysis', () => {
         expect(result.blocks.find(block => block.kind === 'caption')?.source).toBe('Figure 2: caption begins and ends here.');
         expect(result.blocks.find(block => block.source === 'Prose ends before caption.')?.kind).toBe('text');
         expect(result.blocks.find(block => block.source === 'Abstract')?.textAlign).toBe('center');
+    });
+    it('rejoins the actual reference 125 wrapped URL and protects the complete address before translation', () => {
+        const lines = [
+            '[125] I. Maier and M. Odersky, “Deprecating the Observer Pattern with Scala.React,”',
+            'technical report EPFL-REPORT-176887, 2012. [Online]. Available: https://infoscience.epfl.ch/',
+            'record/176887',
+        ];
+        const result = analyze(lines.map((text, index) => atom(text, 50, 100 + index * 12, index === 2 ? 80 : 500)));
+        expect(result.blocks).toHaveLength(1);
+        const source = `${lines[0]} ${lines[1]}${lines[2]}`;
+        expect(result.blocks[0].source).toBe(source);
+        expect(result.blocks[0].lines!.map(line => line.text)).toEqual(lines);
+        const literals = findDocumentLiteralTerms(source);
+        expect(literals.filter(term => term.source.startsWith('https://'))).toEqual([
+            {source: 'https://infoscience.epfl.ch/record/176887', target: 'https://infoscience.epfl.ch/record/176887', caseSensitive: true},
+        ]);
+        const packet = protectGlossaryText(source, literals);
+        expect(packet.text).not.toContain('record/176887');
+        expect(packet.restore(packet.text.replace('Available:', '可用：'))).toBe(source.replace('Available:', '可用：'));
+    });
+    it('connects only the continued path token while retaining earlier URLs and the following prose', () => {
+        const first = 'Sources https://first.test/1 and https://second.test/';
+        const next = 'record/12 More prose follows here.';
+        const source = first + next;
+        expect(analyze([atom(first, 50, 100, 400), atom(next, 50, 112, 400)]).blocks.map(block => block.source)).toEqual([source]);
+        expect(findDocumentLiteralTerms(source).filter(term => term.source.startsWith('https://')).map(term => term.source))
+            .toEqual(['https://first.test/1', 'https://second.test/record/12']);
+        const singleLine = 'Sources https://first.test/1 and https://second.test/record/12 More prose follows here.';
+        expect(analyze([atom(singleLine, 50, 100, 500)]).blocks.map(block => block.source)).toEqual([singleLine]);
+    });
+    it.each(['read this chapter', 'summary/results', 'record/one', 'record 176887', 'https://second.test/record/12'])
+    ('retains the paragraph separator when the next line is not a confirmed URL path: %s', next => {
+        const first = 'Find more details at https://example.test/';
+        expect(analyze([atom(first, 50, 100, 400), atom(next, 50, 112, 400)]).blocks.map(block => block.source))
+            .toEqual([`${first} ${next}`]);
+    });
+    it('does not attach a URL path across separated paragraphs or columns', () => {
+        const first = 'Find more details at https://example.test/';
+        const next = 'record/12 More details follow here.';
+        expect(analyze([atom(first, 50, 100, 400), atom(next, 50, 145, 400)]).blocks.map(block => block.source)).toEqual([first, next]);
+        expect(analyze([atom(first, 40, 100, 220), atom(next, 330, 112, 220)]).blocks.map(block => block.source)).toEqual([first, next]);
     });
     it('keeps narrow column headings within their column while a centered page title separates bands', () => {
         const result = analyze([atom('Page title', 260, 40, 92, 20), atom('2 Left section', 40, 80, 140, 14), atom('4 Right section', 330, 80, 150, 14), atom('Left ordinary paragraph.', 40, 110, 220), atom('Right ordinary paragraph.', 330, 110, 220), atom('3 Left next section', 40, 160, 160, 14), atom('Left final paragraph.', 40, 190, 220), atom('Right final paragraph.', 330, 150, 220)]);

@@ -152,6 +152,26 @@ describe('binary document low-level contracts', () => {
         expect(atoms.map(atom => atom.y)).toEqual([13.5, 13, 12]);
     });
 
+    it('uses finite negative descent for glyph bounds while preserving font size, baseline and advance', () => {
+        const items = [pdfItem({str: 'g', fontName: 'tall'}), pdfItem({str: 'p', fontName: 'short'})];
+        const before = items.map(item => ({...item, transform: [...item.transform]}));
+        const atoms = pdfTextAtoms(items, {tall: {ascent: .95, descent: -.25}, short: {ascent: .7, descent: -.1}},
+            {width: 100, height: 100, transform: [1, 0, 0, 1, 0, 0]}, true);
+        expect(atoms[0]).toMatchObject({x: 10, y: 10.5, width: 30, height: 12, baseline: 20, fontSize: 10});
+        // A shorter declared span must not shrink the existing one-em rectangle.
+        expect(atoms[1]).toMatchObject({x: 10, y: 13, width: 30, height: 10, baseline: 20, fontSize: 10});
+        expect(items).toEqual(before);
+        const rotated = pdfTextAtoms([pdfItem({transform: [0, -1, 10, 0, 20, 30]})],
+            {body: {ascent: .95, descent: -.25}}, {width: 100, height: 100, transform: [0, 2, -2, 0, 100, 0]}, true);
+        expect(rotated[0]).toMatchObject({x: 40, y: 21, width: 30, height: 24, baseline: 40, fontSize: 20});
+    });
+
+    it.each([undefined, NaN, Infinity, -Infinity, 0, .25])('keeps the existing rectangle for missing, invalid or nonnegative descent: %s', descent => {
+        const [atom] = pdfTextAtoms([pdfItem()], {body: {ascent: .95, descent}},
+            {width: 100, height: 100, transform: [1, 0, 0, 1, 0, 0]}, true);
+        expect(atom).toMatchObject({x: 10, y: 10.5, width: 30, height: 10, baseline: 20, fontSize: 10});
+    });
+
     it('covers the actual zero-width variation-selector math glyph without increasing erase padding', () => {
         // Public PDF source page 24: PDF.js reports width=0 for V+VS, while its
         // showText outline extends 7.26pt right; the following subscript begins 6.30307pt right.
