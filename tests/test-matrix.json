@@ -222,6 +222,7 @@
       "tests/userscriptPlatform.test.ts",
       "tests/userscriptRequires.test.ts",
       "tests/userscriptStorage.test.ts",
+      "tests/userscriptTldtsData.test.ts",
       "tests/userscriptUnsupportedCapabilities.test.ts",
       "tests/vocabularyBackgroundHandler.test.ts",
       "tests/vocabularyLearningModel.test.ts",
