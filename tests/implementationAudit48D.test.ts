@@ -184,10 +184,10 @@ describe('audit48D TTS owner public lifecycle', () => {
   expect(await removal).toContain('运行');
  });
  it('disposes a worker after an unhinted synthesis error reaches idle timeout', async () => {
-  vi.useFakeTimers(); const {api} = await owner();
+  vi.useFakeTimers(); vi.stubGlobal('navigator', {}); const {api} = await owner();
   const pending = api.synthesizeLocalTts('hello','en','auto').catch(e => e.message); await flush();
   const worker = WorkerPort.instances[0]; worker.reply({success:false,error:'invalid voice'});
-  expect(await pending).toBe('invalid voice'); await vi.advanceTimersByTimeAsync(30_000);
+  expect(await pending).toBe('invalid voice'); await vi.advanceTimersByTimeAsync(120_000);
   const terminated = worker.terminated; api.disposeLocalTtsWorker(); expect(terminated).toBe(true);
  });
  it('keeps one fresh CPU retry and ignores a stale worker response for its request ID', async () => {

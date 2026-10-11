@@ -1,8 +1,18 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
+import {localModelIdleMs} from '@/src/shared/onnx/modelResidency';
 import {createInferencePacer,createLocalInferenceBudget,localInferenceLimits,localWasmThreads} from '@/src/shared/onnx/resources';
 afterEach(()=>{vi.clearAllTimers();vi.useRealTimers();vi.unstubAllGlobals();vi.restoreAllMocks();vi.resetModules();});
 const deferred=()=>{let resolve!:()=>void;const promise=new Promise<void>(r=>{resolve=r;});return {promise,resolve};};
 describe('本地推理共享资源预算',()=>{
+    it('模型保温随已知内存缩短或延长，未知和无效内存使用两分钟',()=>{
+        for (const memory of [0.25, 1, 2, 4]) expect(localModelIdleMs(memory)).toBe(60_000);
+        for (const memory of [4.1, 8, 16]) expect(localModelIdleMs(memory)).toBe(180_000);
+        for (const memory of [null, '8', 0, -1, NaN, Infinity]) expect(localModelIdleMs(memory)).toBe(120_000);
+        vi.stubGlobal('navigator', undefined); expect(localModelIdleMs()).toBe(120_000);
+        vi.stubGlobal('navigator', {}); expect(localModelIdleMs()).toBe(120_000);
+        vi.stubGlobal('navigator', {deviceMemory: 4}); expect(localModelIdleMs()).toBe(60_000);
+        vi.stubGlobal('navigator', {deviceMemory: 8}); expect(localModelIdleMs()).toBe(180_000);
+    });
     it('限制硬件线程与并行数量，为小设备保留资源',()=>{
         expect(localInferenceLimits(16,8)).toEqual({jobs:2,threads:2});
         expect(localInferenceLimits(4,8)).toEqual({jobs:1,threads:2});
