@@ -150,6 +150,29 @@ describe('双语正文整块翻译', () => {
     };
     const paragraph = () => owner('<p id="t">Read <a href="/g">the guide</a>.</p>');
 
+    it('AI 上下文或已启用的多段会话向四种请求形态传递当前单元', async () => {
+        const session = {} as import('@/src/features/full-page-translation/content/translationRequest').FullPageTranslationSessionCache;
+        const settings = [
+            {enableAIContext: false, enableAIMultiSegment: false, requestSession: session, carriesNode: false},
+            {enableAIContext: false, enableAIMultiSegment: true, requestSession: session, carriesNode: true},
+            {enableAIContext: true, enableAIMultiSegment: false, requestSession: undefined, carriesNode: true},
+            {enableAIContext: false, enableAIMultiSegment: true, requestSession: undefined, carriesNode: false},
+            {enableAIContext: true, enableAIMultiSegment: true, requestSession: session, carriesNode: true},
+        ];
+        for (const {enableAIContext, enableAIMultiSegment, requestSession, carriesNode} of settings) {
+            const active = {...bilingual, enableAIContext, enableAIMultiSegment};
+            const targets = [paragraph(), owner('<p>Read the guide.</p>'), owner('<input type="button" value="Read the guide.">'), owner('<button>Read the guide.</button>')];
+            for (let index = 0; index < targets.length; index++) {
+                const target = targets[index]!; runtime.slots = collectRealSlots(target); runtime.translations = ['读完这份指南。'];
+                runtime.translateTextSlots.mockClear();
+                await createTranslationRequest(target, index === 3 ? 'control' : 'content', 'bilingual', active, undefined, undefined, requestSession);
+                expect(runtime.translateTextSlots).toHaveBeenCalledOnce();
+                expect(runtime.translateTextSlots.mock.calls[0]).toHaveLength(carriesNode ? 7 : 6);
+                if (carriesNode) expect(runtime.translateTextSlots.mock.calls[0]![6]).toBe(target);
+            }
+        }
+    });
+
     it('多槽候选整块请求，整段译文只回填首个槽位', async () => {
         const target = paragraph();
         runtime.translateTextSlots.mockImplementation(async () => ['读完这份指南。']);

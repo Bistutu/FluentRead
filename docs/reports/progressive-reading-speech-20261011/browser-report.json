@@ -3,7 +3,7 @@
   "extensionDir": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/.output/chrome-mv3",
   "browserPath": "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
   "profileMode": "fresh-mkdtemp-owned",
-  "profileDir": "/private/tmp/fluentread-progressive-reading-profile-AKKTle",
+  "profileDir": "/private/tmp/fluentread-progressive-reading-profile-JdrzOI",
   "artifact": "production",
   "cases": [
     {
@@ -301,7 +301,7 @@
     },
     {
       "optionsUrl": "chrome-extension://djnlaiohfaaifbibleebjggkghlmcpcj/options.html?target=progressive-reading#settings-translation",
-      "helpScreenshot": "/private/tmp/fluentread-progressive-reading-speech-final-v5/popup-learning-help.png",
+      "helpScreenshot": "/private/tmp/fluentread-progressive-reading-speech-integrated-final/popup-learning-help.png",
       "name": "Learning defaults to no binding; real hover, keyboard focus, settings-link travel, Escape and reentry reveal help and open its dedicated settings panel"
     },
     {
@@ -354,12 +354,12 @@
         {
           "source": "bank",
           "model": "progressive-reading-fixture",
-          "at": 1791713050023
+          "at": 1791714178486
         },
         {
           "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
           "model": "progressive-reading-fixture",
-          "at": 1791713050473
+          "at": 1791714178941
         }
       ],
       "name": "One click reaches complete bilingual from logic and mode switches reuse the same reading-session translation"
@@ -392,7 +392,7 @@
           "scheme": "dark",
           "background": "rgb(40, 40, 48)",
           "ink": "rgb(241, 241, 244)",
-          "selectedBackground": "rgb(255, 240, 244)",
+          "selectedBackground": "rgba(255, 237, 241, 0.906)",
           "selectedInk": "rgb(255, 173, 198)",
           "textContrast": 12.968772087702426
         },
@@ -400,7 +400,7 @@
           "scheme": "light",
           "background": "rgb(255, 255, 255)",
           "ink": "rgb(23, 32, 51)",
-          "selectedBackground": "rgba(255, 237, 242, 0.91)",
+          "selectedBackground": "rgb(255, 240, 244)",
           "selectedInk": "rgb(220, 49, 95)",
           "textContrast": 16.268480224545662
         }
@@ -425,7 +425,7 @@
     },
     {
       "source": "If the route changes, this delayed reading request must not remain attached to the old page.",
-      "route": "http://127.0.0.1:50879/article?route=reading",
+      "route": "http://127.0.0.1:55225/article?route=reading",
       "name": "Pure history.pushState with unchanged host DOM cancels the old request through the real MAIN bridge, closes help and permits reopening"
     },
     {
@@ -440,8 +440,8 @@
     {
       "scope": "speech",
       "decoded": {
-        "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-        "currentTime": 0.29173,
+        "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+        "currentTime": 0.302665,
         "duration": 20,
         "paused": false,
         "ended": false,
@@ -456,8 +456,8 @@
     {
       "scope": "speech",
       "paused": {
-        "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-        "currentTime": 0.702017,
+        "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+        "currentTime": 0.691435,
         "duration": 20,
         "paused": true,
         "ended": false,
@@ -468,8 +468,8 @@
         "contextId": 8
       },
       "stillPaused": {
-        "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-        "currentTime": 0.702017,
+        "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+        "currentTime": 0.691435,
         "duration": 20,
         "paused": true,
         "ended": false,
@@ -484,8 +484,8 @@
     {
       "scope": "speech",
       "beforeSeek": {
-        "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-        "currentTime": 1.155772,
+        "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+        "currentTime": 1.126604,
         "duration": 20,
         "paused": true,
         "ended": false,
@@ -496,8 +496,8 @@
         "contextId": 8
       },
       "forward": {
-        "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-        "currentTime": 6.155772,
+        "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+        "currentTime": 6.126604,
         "duration": 20,
         "paused": true,
         "ended": false,
@@ -508,8 +508,8 @@
         "contextId": 8
       },
       "backward": {
-        "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-        "currentTime": 1.155771,
+        "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+        "currentTime": 1.126604,
         "duration": 20,
         "paused": true,
         "ended": false,
@@ -524,8 +524,8 @@
     {
       "scope": "speech",
       "loopStart": {
-        "src": "blob:http://127.0.0.1:50879/c4925fec-976a-4091-ac6e-c8cf488da5dc",
-        "currentTime": 0.333507,
+        "src": "blob:http://127.0.0.1:55225/44505f65-9793-44f4-8949-1c35cbc2e36b",
+        "currentTime": 0.325027,
         "duration": 3,
         "paused": false,
         "ended": false,
@@ -536,8 +536,8 @@
         "contextId": 8
       },
       "looped": {
-        "src": "blob:http://127.0.0.1:50879/c4925fec-976a-4091-ac6e-c8cf488da5dc",
-        "currentTime": 0.111872,
+        "src": "blob:http://127.0.0.1:55225/44505f65-9793-44f4-8949-1c35cbc2e36b",
+        "currentTime": 0.121959,
         "duration": 3,
         "paused": false,
         "ended": false,
@@ -620,24 +620,24 @@
     }
   ],
   "screenshots": [
-    "/private/tmp/fluentread-progressive-reading-speech-final-v5/popup-400-progressive-entry.png",
-    "/private/tmp/fluentread-progressive-reading-speech-final-v5/popup-320-progressive-entry.png",
-    "/private/tmp/fluentread-progressive-reading-speech-final-v5/popup-320-long-hotkey.png",
-    "/private/tmp/fluentread-progressive-reading-speech-final-v5/popup-400-long-hotkey.png",
-    "/private/tmp/fluentread-progressive-reading-speech-final-v5/popup-learning-help.png",
-    "/private/tmp/fluentread-progressive-reading-speech-final-v5/learning-settings-default.png",
-    "/private/tmp/fluentread-progressive-reading-speech-final-v5/panel-original.png",
-    "/private/tmp/fluentread-progressive-reading-speech-final-v5/panel-phrases.png",
-    "/private/tmp/fluentread-progressive-reading-speech-final-v5/panel-logic.png",
-    "/private/tmp/fluentread-progressive-reading-speech-final-v5/desktop-bilingual.png",
-    "/private/tmp/fluentread-progressive-reading-speech-final-v5/panel-bilingual.png",
-    "/private/tmp/fluentread-progressive-reading-speech-final-v5/390-light-phrases.png",
-    "/private/tmp/fluentread-progressive-reading-speech-final-v5/390-dark-phrases.png",
-    "/private/tmp/fluentread-progressive-reading-speech-final-v5/390-keyboard-bilingual.png",
-    "/private/tmp/fluentread-progressive-reading-speech-final-v5/speech-original-playing.png",
-    "/private/tmp/fluentread-progressive-reading-speech-final-v5/speech-original-paused.png",
-    "/private/tmp/fluentread-progressive-reading-speech-final-v5/speech-translation-playing.png",
-    "/private/tmp/fluentread-progressive-reading-speech-final-v5/speech-390-paused.png"
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/popup-400-progressive-entry.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/popup-320-progressive-entry.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/popup-320-long-hotkey.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/popup-400-long-hotkey.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/popup-learning-help.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/learning-settings-default.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/panel-original.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/panel-phrases.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/panel-logic.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/desktop-bilingual.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/panel-bilingual.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/390-light-phrases.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/390-dark-phrases.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/390-keyboard-bilingual.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/speech-original-playing.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/speech-original-paused.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/speech-translation-playing.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/speech-390-paused.png"
   ],
   "consoleErrors": [],
   "focusSamples": [
@@ -663,6 +663,11 @@
     },
     {
       "label": "popup-400-progressive-entry:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
       "pid": 76304,
       "name": "微信"
     },
@@ -712,12 +717,12 @@
       "name": "微信"
     },
     {
-      "label": "continuous",
+      "label": "popup-learning-help:after-screenshot",
       "pid": 76304,
       "name": "微信"
     },
     {
-      "label": "popup-learning-help:after-screenshot",
+      "label": "continuous",
       "pid": 76304,
       "name": "微信"
     },
@@ -767,6 +772,11 @@
       "name": "微信"
     },
     {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
       "label": "panel-original:after-screenshot",
       "pid": 76304,
       "name": "微信"
@@ -782,11 +792,6 @@
       "name": "微信"
     },
     {
-      "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
-    },
-    {
       "label": "panel-logic:before-screenshot",
       "pid": 76304,
       "name": "微信"
@@ -797,12 +802,12 @@
       "name": "微信"
     },
     {
-      "label": "desktop-bilingual:before-screenshot",
+      "label": "continuous",
       "pid": 76304,
       "name": "微信"
     },
     {
-      "label": "continuous",
+      "label": "desktop-bilingual:before-screenshot",
       "pid": 76304,
       "name": "微信"
     },
@@ -837,12 +842,12 @@
       "name": "微信"
     },
     {
-      "label": "390-dark-phrases:before-screenshot",
+      "label": "continuous",
       "pid": 76304,
       "name": "微信"
     },
     {
-      "label": "continuous",
+      "label": "390-dark-phrases:before-screenshot",
       "pid": 76304,
       "name": "微信"
     },
@@ -942,12 +947,12 @@
       "name": "微信"
     },
     {
-      "label": "speech-original-playing:after-screenshot",
+      "label": "continuous",
       "pid": 76304,
       "name": "微信"
     },
     {
-      "label": "continuous",
+      "label": "speech-original-playing:after-screenshot",
       "pid": 76304,
       "name": "微信"
     },
@@ -963,6 +968,11 @@
     },
     {
       "label": "speech-original-paused:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
       "pid": 76304,
       "name": "微信"
     },
@@ -2053,7 +2063,7 @@
       "scheme": "dark",
       "background": "rgb(40, 40, 48)",
       "ink": "rgb(241, 241, 244)",
-      "selectedBackground": "rgb(255, 240, 244)",
+      "selectedBackground": "rgba(255, 237, 241, 0.906)",
       "selectedInk": "rgb(255, 173, 198)",
       "textContrast": 12.968772087702426
     },
@@ -2061,7 +2071,7 @@
       "scheme": "light",
       "background": "rgb(255, 255, 255)",
       "ink": "rgb(23, 32, 51)",
-      "selectedBackground": "rgba(255, 237, 242, 0.91)",
+      "selectedBackground": "rgb(255, 240, 244)",
       "selectedInk": "rgb(220, 49, 95)",
       "textContrast": 16.268480224545662
     }
@@ -2070,8 +2080,8 @@
     "cases": [
       {
         "decoded": {
-          "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-          "currentTime": 0.29173,
+          "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+          "currentTime": 0.302665,
           "duration": 20,
           "paused": false,
           "ended": false,
@@ -2085,8 +2095,8 @@
       },
       {
         "paused": {
-          "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-          "currentTime": 0.702017,
+          "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+          "currentTime": 0.691435,
           "duration": 20,
           "paused": true,
           "ended": false,
@@ -2097,8 +2107,8 @@
           "contextId": 8
         },
         "stillPaused": {
-          "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-          "currentTime": 0.702017,
+          "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+          "currentTime": 0.691435,
           "duration": 20,
           "paused": true,
           "ended": false,
@@ -2112,8 +2122,8 @@
       },
       {
         "beforeSeek": {
-          "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-          "currentTime": 1.155772,
+          "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+          "currentTime": 1.126604,
           "duration": 20,
           "paused": true,
           "ended": false,
@@ -2124,8 +2134,8 @@
           "contextId": 8
         },
         "forward": {
-          "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-          "currentTime": 6.155772,
+          "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+          "currentTime": 6.126604,
           "duration": 20,
           "paused": true,
           "ended": false,
@@ -2136,8 +2146,8 @@
           "contextId": 8
         },
         "backward": {
-          "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-          "currentTime": 1.155771,
+          "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+          "currentTime": 1.126604,
           "duration": 20,
           "paused": true,
           "ended": false,
@@ -2151,8 +2161,8 @@
       },
       {
         "loopStart": {
-          "src": "blob:http://127.0.0.1:50879/c4925fec-976a-4091-ac6e-c8cf488da5dc",
-          "currentTime": 0.333507,
+          "src": "blob:http://127.0.0.1:55225/44505f65-9793-44f4-8949-1c35cbc2e36b",
+          "currentTime": 0.325027,
           "duration": 3,
           "paused": false,
           "ended": false,
@@ -2163,8 +2173,8 @@
           "contextId": 8
         },
         "looped": {
-          "src": "blob:http://127.0.0.1:50879/c4925fec-976a-4091-ac6e-c8cf488da5dc",
-          "currentTime": 0.111872,
+          "src": "blob:http://127.0.0.1:55225/44505f65-9793-44f4-8949-1c35cbc2e36b",
+          "currentTime": 0.121959,
           "duration": 3,
           "paused": false,
           "ended": false,
@@ -2247,7 +2257,7 @@
     "samples": [
       {
         "label": "No selected source creates no Audio",
-        "at": 1791713062428,
+        "at": 1791714190884,
         "audio": [],
         "ui": {
           "time": "",
@@ -2258,11 +2268,11 @@
       },
       {
         "label": "native silent WAV decode",
-        "at": 1791713063820,
+        "at": 1791714192291,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-            "currentTime": 0.29173,
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+            "currentTime": 0.302665,
             "duration": 20,
             "paused": false,
             "ended": false,
@@ -2283,11 +2293,11 @@
       },
       {
         "label": "Help-mode changes preserve original Audio",
-        "at": 1791713064216,
+        "at": 1791714192668,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-            "currentTime": 0.690469,
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+            "currentTime": 0.679774,
             "duration": 20,
             "paused": false,
             "ended": false,
@@ -2308,11 +2318,11 @@
       },
       {
         "label": "paused",
-        "at": 1791713064396,
+        "at": 1791714192850,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-            "currentTime": 0.702017,
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+            "currentTime": 0.691435,
             "duration": 20,
             "paused": true,
             "ended": false,
@@ -2333,11 +2343,11 @@
       },
       {
         "label": "pause remains frozen",
-        "at": 1791713065217,
+        "at": 1791714193694,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-            "currentTime": 0.702017,
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+            "currentTime": 0.691435,
             "duration": 20,
             "paused": true,
             "ended": false,
@@ -2358,11 +2368,11 @@
       },
       {
         "label": "before seek",
-        "at": 1791713067498,
+        "at": 1791714195976,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-            "currentTime": 1.155772,
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+            "currentTime": 1.126604,
             "duration": 20,
             "paused": true,
             "ended": false,
@@ -2383,11 +2393,11 @@
       },
       {
         "label": "forward five seconds",
-        "at": 1791713067674,
+        "at": 1791714196158,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-            "currentTime": 6.155772,
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+            "currentTime": 6.126604,
             "duration": 20,
             "paused": true,
             "ended": false,
@@ -2408,11 +2418,11 @@
       },
       {
         "label": "rewind five seconds",
-        "at": 1791713067841,
+        "at": 1791714196330,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-            "currentTime": 1.155771,
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+            "currentTime": 1.126604,
             "duration": 20,
             "paused": true,
             "ended": false,
@@ -2433,10 +2443,10 @@
       },
       {
         "label": "Cached relisten preparation is quiet",
-        "at": 1791713068191,
+        "at": 1791714196674,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
             "currentTime": 0,
             "duration": 20,
             "paused": true,
@@ -2458,11 +2468,11 @@
       },
       {
         "label": "relisten cached original",
-        "at": 1791713068565,
+        "at": 1791714197033,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
-            "currentTime": 0.303102,
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+            "currentTime": 0.287879,
             "duration": 20,
             "paused": false,
             "ended": false,
@@ -2483,10 +2493,10 @@
       },
       {
         "label": "Explicit stop silences native Audio",
-        "at": 1791713068746,
+        "at": 1791714197214,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/2eb7c42d-24fe-4c8f-9e65-4f4c3d22e8ca",
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
             "currentTime": 0,
             "duration": 20,
             "paused": true,
@@ -2508,11 +2518,11 @@
       },
       {
         "label": "loop playback begins",
-        "at": 1791713069768,
+        "at": 1791714198237,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/c4925fec-976a-4091-ac6e-c8cf488da5dc",
-            "currentTime": 0.333507,
+            "src": "blob:http://127.0.0.1:55225/44505f65-9793-44f4-8949-1c35cbc2e36b",
+            "currentTime": 0.325027,
             "duration": 3,
             "paused": false,
             "ended": false,
@@ -2533,11 +2543,11 @@
       },
       {
         "label": "loop crossed native end",
-        "at": 1791713072746,
+        "at": 1791714201256,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/c4925fec-976a-4091-ac6e-c8cf488da5dc",
-            "currentTime": 0.111872,
+            "src": "blob:http://127.0.0.1:55225/44505f65-9793-44f4-8949-1c35cbc2e36b",
+            "currentTime": 0.121959,
             "duration": 3,
             "paused": false,
             "ended": false,
@@ -2558,11 +2568,11 @@
       },
       {
         "label": "original playback before kind switch",
-        "at": 1791713077195,
+        "at": 1791714205763,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/1007a972-645b-4fae-b2b6-c2f54e1b9d8b",
-            "currentTime": 0.349462,
+            "src": "blob:http://127.0.0.1:55225/dc405618-72f5-4acd-bb42-549577112ca8",
+            "currentTime": 0.340595,
             "duration": 20,
             "paused": false,
             "ended": false,
@@ -2583,7 +2593,7 @@
       },
       {
         "label": "Selecting the translation is quiet and releases original Audio",
-        "at": 1791713077566,
+        "at": 1791714206132,
         "audio": [],
         "ui": {
           "status": "idle",
@@ -2595,11 +2605,11 @@
       },
       {
         "label": "translation replaces original Audio",
-        "at": 1791713078193,
+        "at": 1791714206762,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/667d79a6-e34d-45df-960a-602e58f193f9",
-            "currentTime": 0.368701,
+            "src": "blob:http://127.0.0.1:55225/416b3d85-484f-40d5-8c59-886734ee341f",
+            "currentTime": 0.368809,
             "duration": 20,
             "paused": false,
             "ended": false,
@@ -2620,7 +2630,7 @@
       },
       {
         "label": "Selecting original is quiet",
-        "at": 1791713078750,
+        "at": 1791714207319,
         "audio": [],
         "ui": {
           "status": "idle",
@@ -2632,11 +2642,11 @@
       },
       {
         "label": "source replaces translation Audio",
-        "at": 1791713079357,
+        "at": 1791714207948,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/75aaec02-6cc1-4960-915f-c388657f4d97",
-            "currentTime": 0.355514,
+            "src": "blob:http://127.0.0.1:55225/322ff81f-07c9-46e2-9193-90239f16099d",
+            "currentTime": 0.376205,
             "duration": 20,
             "paused": false,
             "ended": false,
@@ -2657,7 +2667,7 @@
       },
       {
         "label": "Language change cancels the current Audio",
-        "at": 1791713079979,
+        "at": 1791714208556,
         "audio": [],
         "ui": {
           "status": "idle",
@@ -2669,7 +2679,7 @@
       },
       {
         "label": "Failed synthesis does not retain Audio",
-        "at": 1791713081538,
+        "at": 1791714210148,
         "audio": [],
         "ui": {
           "status": "error",
@@ -2681,11 +2691,11 @@
       },
       {
         "label": "retry succeeds with real decoder",
-        "at": 1791713082164,
+        "at": 1791714210766,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/cf98c56a-2746-46f5-a98e-f7bc2686d248",
-            "currentTime": 0.346064,
+            "src": "blob:http://127.0.0.1:55225/19f271dd-2382-4e72-8d03-fab3e87c8e77",
+            "currentTime": 0.34574,
             "duration": 20,
             "paused": false,
             "ended": false,
@@ -2706,10 +2716,10 @@
       },
       {
         "label": "Retry stop silences Audio",
-        "at": 1791713082350,
+        "at": 1791714210952,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/cf98c56a-2746-46f5-a98e-f7bc2686d248",
+            "src": "blob:http://127.0.0.1:55225/19f271dd-2382-4e72-8d03-fab3e87c8e77",
             "currentTime": 0,
             "duration": 20,
             "paused": true,
@@ -2731,7 +2741,7 @@
       },
       {
         "label": "preparing cancel: delayed response cannot create or revive Audio",
-        "at": 1791713084188,
+        "at": 1791714212811,
         "audio": [],
         "ui": {
           "status": "idle",
@@ -2743,13 +2753,13 @@
       },
       {
         "label": "close: delayed response cannot create or revive Audio",
-        "at": 1791713086052,
+        "at": 1791714214681,
         "audio": [],
         "ui": null
       },
       {
         "label": "source change: delayed response cannot create or revive Audio",
-        "at": 1791713088687,
+        "at": 1791714217365,
         "audio": [],
         "ui": {
           "status": "idle",
@@ -2761,23 +2771,23 @@
       },
       {
         "label": "route: delayed response cannot create or revive Audio",
-        "at": 1791713090536,
+        "at": 1791714219239,
         "audio": [],
         "ui": null
       },
       {
         "label": "disable: delayed response cannot create or revive Audio",
-        "at": 1791713093069,
+        "at": 1791714221790,
         "audio": [],
         "ui": null
       },
       {
         "label": "active cleanup Audio",
-        "at": 1791713095077,
+        "at": 1791714223857,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/fcff2126-b7d3-4e2c-afbf-3553bae6d988",
-            "currentTime": 0.334861,
+            "src": "blob:http://127.0.0.1:55225/433b281d-5d21-4d8e-89e8-a3a8a954d8cb",
+            "currentTime": 0.340934,
             "duration": 20,
             "paused": false,
             "ended": false,
@@ -2798,7 +2808,7 @@
       },
       {
         "label": "Active source replacement releases Audio",
-        "at": 1791713095847,
+        "at": 1791714224627,
         "audio": [],
         "ui": {
           "status": "idle",
@@ -2810,11 +2820,11 @@
       },
       {
         "label": "390px trusted keyboard starts Audio",
-        "at": 1791713096473,
+        "at": 1791714225285,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/e967c21d-25fe-43d0-8a0b-a707faafefab",
-            "currentTime": 0.350715,
+            "src": "blob:http://127.0.0.1:55225/ce19c786-8a11-4e2c-8968-6ced17275a23",
+            "currentTime": 0.356924,
             "duration": 20,
             "paused": false,
             "ended": false,
@@ -2835,10 +2845,10 @@
       },
       {
         "label": "Keyboard stop silences cached Audio",
-        "at": 1791713097030,
+        "at": 1791714225837,
         "audio": [
           {
-            "src": "blob:http://127.0.0.1:50879/e967c21d-25fe-43d0-8a0b-a707faafefab",
+            "src": "blob:http://127.0.0.1:55225/ce19c786-8a11-4e2c-8968-6ced17275a23",
             "currentTime": 0,
             "duration": 20,
             "paused": true,
@@ -2860,7 +2870,7 @@
       },
       {
         "label": "Final close releases cached Audio",
-        "at": 1791713097395,
+        "at": 1791714226196,
         "audio": [],
         "ui": null
       }
@@ -2868,7 +2878,7 @@
     "cleanup": [
       {
         "label": "No selected source creates no Audio",
-        "at": 1791713062428,
+        "at": 1791714190884,
         "audio": [],
         "ui": {
           "time": "",
@@ -2879,7 +2889,7 @@
       },
       {
         "label": "Selecting the translation is quiet and releases original Audio",
-        "at": 1791713077566,
+        "at": 1791714206132,
         "audio": [],
         "ui": {
           "status": "idle",
@@ -2891,7 +2901,7 @@
       },
       {
         "label": "Selecting original is quiet",
-        "at": 1791713078750,
+        "at": 1791714207319,
         "audio": [],
         "ui": {
           "status": "idle",
@@ -2903,7 +2913,7 @@
       },
       {
         "label": "Language change cancels the current Audio",
-        "at": 1791713079979,
+        "at": 1791714208556,
         "audio": [],
         "ui": {
           "status": "idle",
@@ -2915,7 +2925,7 @@
       },
       {
         "label": "Failed synthesis does not retain Audio",
-        "at": 1791713081538,
+        "at": 1791714210148,
         "audio": [],
         "ui": {
           "status": "error",
@@ -2927,7 +2937,7 @@
       },
       {
         "label": "preparing cancel: delayed response cannot create or revive Audio",
-        "at": 1791713084188,
+        "at": 1791714212811,
         "audio": [],
         "ui": {
           "status": "idle",
@@ -2939,13 +2949,13 @@
       },
       {
         "label": "close: delayed response cannot create or revive Audio",
-        "at": 1791713086052,
+        "at": 1791714214681,
         "audio": [],
         "ui": null
       },
       {
         "label": "source change: delayed response cannot create or revive Audio",
-        "at": 1791713088687,
+        "at": 1791714217365,
         "audio": [],
         "ui": {
           "status": "idle",
@@ -2957,19 +2967,19 @@
       },
       {
         "label": "route: delayed response cannot create or revive Audio",
-        "at": 1791713090536,
+        "at": 1791714219239,
         "audio": [],
         "ui": null
       },
       {
         "label": "disable: delayed response cannot create or revive Audio",
-        "at": 1791713093069,
+        "at": 1791714221790,
         "audio": [],
         "ui": null
       },
       {
         "label": "Active source replacement releases Audio",
-        "at": 1791713095847,
+        "at": 1791714224627,
         "audio": [],
         "ui": {
           "status": "idle",
@@ -2981,7 +2991,7 @@
       },
       {
         "label": "Final close releases cached Audio",
-        "at": 1791713097395,
+        "at": 1791714226196,
         "audio": [],
         "ui": null
       }
@@ -3016,171 +3026,171 @@
         "generation": 1,
         "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
         "language": "en-US",
-        "at": 1791713062858,
+        "at": 1791714191309,
         "delayMs": 120,
         "failed": false,
         "aborted": false,
-        "completedAt": 1791713062986
+        "completedAt": 1791714191438
       },
       {
         "generation": 2,
         "source": "This selected sentence is the silent loop fixture.",
         "language": "en-US",
-        "at": 1791713069184,
+        "at": 1791714197658,
         "delayMs": 120,
         "failed": false,
         "aborted": false,
-        "completedAt": 1791713069314
+        "completedAt": 1791714197788
       },
       {
         "generation": 3,
         "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
         "language": "en-US",
-        "at": 1791713076573,
+        "at": 1791714205140,
         "delayMs": 120,
         "failed": false,
         "aborted": false,
-        "completedAt": 1791713076703
+        "completedAt": 1791714205270
       },
       {
         "generation": 3,
         "source": "如果计划没有考虑成本，即使银行批准，也可能失败。总体而言，只有需求保持稳定时，这项估算才适用。",
         "language": "zh-CN",
-        "at": 1791713077583,
+        "at": 1791714206145,
         "delayMs": 120,
         "failed": false,
         "aborted": false,
-        "completedAt": 1791713077711
+        "completedAt": 1791714206274
       },
       {
         "generation": 3,
         "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
         "language": "en-US",
-        "at": 1791713078761,
+        "at": 1791714207330,
         "delayMs": 120,
         "failed": false,
         "aborted": false,
-        "completedAt": 1791713078883
+        "completedAt": 1791714207460
       },
       {
         "generation": 4,
         "source": "This controlled synthesis must fail before a successful retry.",
         "language": "en-US",
-        "at": 1791713080666,
+        "at": 1791714209255,
         "delayMs": 120,
         "failed": true,
         "aborted": false,
-        "completedAt": 1791713080792
+        "completedAt": 1791714209385
       },
       {
         "generation": 4,
         "source": "This controlled synthesis must fail before a successful retry.",
         "language": "en-US",
-        "at": 1791713080792,
+        "at": 1791714209385,
         "delayMs": 120,
         "failed": true,
         "aborted": false,
-        "completedAt": 1791713080923
+        "completedAt": 1791714209508
       },
       {
         "generation": 4,
         "source": "This controlled synthesis must fail before a successful retry.",
         "language": "en-US",
-        "at": 1791713080923,
+        "at": 1791714209508,
         "delayMs": 120,
         "failed": true,
         "aborted": false,
-        "completedAt": 1791713081045
+        "completedAt": 1791714209635
       },
       {
         "generation": 4,
         "source": "This controlled synthesis must fail before a successful retry.",
         "language": "en-US",
-        "at": 1791713081045,
+        "at": 1791714209636,
         "delayMs": 120,
         "failed": true,
         "aborted": false,
-        "completedAt": 1791713081176
+        "completedAt": 1791714209768
       },
       {
         "generation": 5,
         "source": "This controlled synthesis must fail before a successful retry.",
         "language": "en-US",
-        "at": 1791713081556,
+        "at": 1791714210167,
         "delayMs": 120,
         "failed": false,
         "aborted": false,
-        "completedAt": 1791713081686
+        "completedAt": 1791714210295
       },
       {
         "generation": 6,
         "source": "Cancel this preparing silent speech request.",
         "language": "en-US",
-        "at": 1791713082763,
+        "at": 1791714211367,
         "delayMs": 850,
         "failed": false,
         "aborted": true,
-        "completedAt": 1791713083624
+        "completedAt": 1791714212225
       },
       {
         "generation": 7,
         "source": "Close this delayed silent speech request.",
         "language": "en-US",
-        "at": 1791713084625,
+        "at": 1791714213261,
         "delayMs": 850,
         "failed": false,
         "aborted": true,
-        "completedAt": 1791713085483
+        "completedAt": 1791714214121
       },
       {
         "generation": 8,
         "source": "Replace this delayed silent speech source.",
         "language": "en-US",
-        "at": 1791713086895,
+        "at": 1791714215549,
         "delayMs": 850,
         "failed": false,
         "aborted": true,
-        "completedAt": 1791713087751
+        "completedAt": 1791714216408
       },
       {
         "generation": 9,
         "source": "Route away from this delayed silent speech request.",
         "language": "en-US",
-        "at": 1791713089116,
+        "at": 1791714217820,
         "delayMs": 850,
         "failed": false,
         "aborted": true,
-        "completedAt": 1791713089968
+        "completedAt": 1791714218679
       },
       {
         "generation": 10,
         "source": "Disable this delayed silent speech request.",
         "language": "en-US",
-        "at": 1791713091393,
+        "at": 1791714220109,
         "delayMs": 850,
         "failed": false,
         "aborted": true,
-        "completedAt": 1791713092253
+        "completedAt": 1791714220970
       },
       {
         "generation": 11,
         "source": "Active silent speech must be released when its source changes.",
         "language": "en-US",
-        "at": 1791713094461,
+        "at": 1791714223241,
         "delayMs": 120,
         "failed": false,
         "aborted": false,
-        "completedAt": 1791713094591
+        "completedAt": 1791714223369
       },
       {
         "generation": 11,
         "source": "The latest source has no automatic speech.",
         "language": "en-US",
-        "at": 1791713095869,
+        "at": 1791714224651,
         "delayMs": 120,
         "failed": false,
         "aborted": false,
-        "completedAt": 1791713095999
+        "completedAt": 1791714224781
       }
     ],
     "layout": {
@@ -3242,60 +3252,60 @@
     {
       "source": "bank",
       "model": "progressive-reading-fixture",
-      "at": 1791713050023
+      "at": 1791714178486
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791713050473
+      "at": 1791714178941
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791713052986
+      "at": 1791714181592
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791713054040
+      "at": 1791714182698
     },
     {
       "source": "Unless the review is complete, the result may not apply to a new bank account.",
       "model": "progressive-reading-fixture",
-      "at": 1791713054646
+      "at": 1791714183299
     },
     {
       "source": "Unless the review is complete, the result may not apply to a new bank account.",
       "model": "progressive-reading-fixture",
-      "at": 1791713056426
+      "at": 1791714185012
     },
     {
       "source": "If the route changes, this delayed reading request must not remain attached to the old page.",
       "model": "progressive-reading-fixture",
-      "at": 1791713057881
+      "at": 1791714186515
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791713076382
+      "at": 1791714204927
     }
   ],
   "hostLifecycle": [
     {
       "event": "pageshow",
-      "at": 1791713042165
+      "at": 1791714169606
     },
     {
       "event": "pagehide",
-      "at": 1791713061304
+      "at": 1791714189849
     },
     {
       "event": "pageshow",
-      "at": 1791713061359
+      "at": 1791714189910
     },
     {
       "event": "pagehide",
-      "at": 1791713097796
+      "at": 1791714226605
     }
   ]
 }

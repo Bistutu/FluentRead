@@ -1,7 +1,7 @@
 /**
  * @file src/core/config/progressiveReading.ts
  * 文件职责：定义学习入口默认仅点击的快捷键配置与共享冲突判断。
- * 主要内容：归一化 none/custom 与录制组合，提供运行时解析、平台显示及严格匹配；对已启用动作和纯修饰键前缀保守让行，设置与内容监听复用同一判断。
+ * 主要内容：归一化 none/custom 与录制组合，提供运行时解析、平台显示及严格匹配；对已启用动作、个人校订固定组合和纯修饰键前缀保守让行，设置与内容监听复用同一判断。
  * 模块边界：只做纯配置转换，不读取存储、不注册事件或打开面板；按键规则沿用 core/hotkey，配置持久化和阅读会话分别由 services 与 feature 负责。
  */
 import {canonicalizeHotkey, matchesHotkey, parseHotkey, resolveConfiguredHotkey} from '@/src/core/hotkey';
@@ -27,7 +27,7 @@ export function matchesProgressiveReadingHotkey(event: KeyboardEvent, hotkey: un
     return matchesHotkey(event, parseHotkey(resolveProgressiveReadingHotkey(hotkey, customHotkey)));
 }
 
-export type ProgressiveReadingHotkeyConflict = 'hover' | 'page' | 'selection' | 'area' | 'paragraph' | 'section' | 'input' | 'highlight' | 'profile';
+export type ProgressiveReadingHotkeyConflict = 'hover' | 'page' | 'selection' | 'area' | 'paragraph' | 'section' | 'input' | 'highlight' | 'profile' | 'personalCorrections';
 /** 只描述冲突判断需要的配置结构，避免反向依赖创建这些配置的 model。 */
 interface HotkeyConfig {
     hotkey: string;
@@ -50,6 +50,7 @@ interface HotkeyConfig {
     inputBoxTranslationTrigger: string;
     informationHighlight: {enabled: boolean; hotkeyEnabled: boolean; hotkey: string};
     quickTranslationProfiles: readonly QuickTranslationProfile[];
+    personalCorrectionsEnabled?: boolean;
 }
 
 /** 纯修饰键动作先于最终组合触发；已启用的悬浮/划词动作也占用含此修饰键的组合。 */
@@ -67,6 +68,7 @@ export function findProgressiveReadingHotkeyConflict(config: HotkeyConfig, hotke
         ['section', config.sectionTranslationHotkeyEnabled ? resolveSectionTranslationHotkey(config.sectionTranslationHotkey, config.customSectionTranslationHotkey) : ''],
         ['input', inputBoxTranslationTriggerHotkey(config.inputBoxTranslationTrigger)],
         ['highlight', config.informationHighlight.enabled && config.informationHighlight.hotkeyEnabled ? config.informationHighlight.hotkey : ''],
+        ['personalCorrections', config.personalCorrectionsEnabled === true ? 'Alt+Shift+E' : ''],
     ];
     const modifierNames: Record<string, string> = {control: 'ctrl', ctrl: 'ctrl', alt: 'alt', option: 'alt', shift: 'shift'};
     for (const [owner, binding] of owners) {

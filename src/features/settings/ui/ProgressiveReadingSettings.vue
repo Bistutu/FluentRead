@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/ProgressiveReadingSettings.vue
  * 文件职责：在网页翻译设置中介绍学习面板，并提供默认仅点击、可选自定义快捷键的入口。
- * 主要内容：复用录制对话框和配置归属草稿，确认时重新检查既有动作与纯修饰键冲突；取消保持旧配置，清除后不再监听快捷键，隐藏或配置更换使旧确认失效。
+ * 主要内容：复用录制对话框和配置归属草稿，确认时重新检查既有动作、已开启的个人校订和纯修饰键冲突；取消保持旧配置，清除后不再监听快捷键，隐藏或配置更换使旧确认失效。
  * 模块边界：只修改传入的配置偏好，不持久化、不监听网页、不改变四种阅读方式；纯按键规则归 core/config/progressiveReading，统一保存由设置中心负责。
  -->
 <template>
@@ -43,7 +43,8 @@ function findHotkeyConflict(hotkey: string): string {
     if (!owner) return '';
     const labels = {hover: 'popup.hoverTranslation', page: 'quickTranslation.commonFullPageShortcut', selection: 'popup.selectionTranslation',
         area: 'popup.areaTranslation', paragraph: 'paragraphCopy.settings.title', section: 'sectionTranslation.settings.title',
-        input: 'options.panel.input', highlight: 'informationHighlight.title', profile: 'progressiveReading.settings.profiles'};
+        input: 'options.panel.input', highlight: 'informationHighlight.title', profile: 'progressiveReading.settings.profiles',
+        personalCorrections: 'progressiveReading.settings.personalCorrections'};
     return t('progressiveReading.settings.conflict', {feature: t(labels[owner])});
 }
 function handleHotkeyChange(value: string): void {

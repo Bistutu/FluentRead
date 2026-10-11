@@ -113,6 +113,7 @@ export const koKRMessages = {
     "progressiveReading.settings.custom": "사용자 지정 단축키",
     "progressiveReading.settings.edit": "학습 단축키 편집",
     "progressiveReading.settings.conflict": "이 단축키는 {feature}에서 사용 중입니다. 다른 조합을 선택하세요.",
+    "progressiveReading.settings.personalCorrections": "개인 수정",
     "progressiveReading.settings.set": "학습 단축키를 {shortcut}(으)로 설정했습니다",
     "progressiveReading.settings.profiles": "빠른 번역 프로필",
     ...videoLearningText,

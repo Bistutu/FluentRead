@@ -112,6 +112,7 @@ export const zhCNMessages = {
     "progressiveReading.settings.custom": "自定义快捷键",
     "progressiveReading.settings.edit": "编辑学习快捷键",
     "progressiveReading.settings.conflict": "该快捷键已被{feature}使用，请选择其它组合。",
+    "progressiveReading.settings.personalCorrections": "个人校订",
     "progressiveReading.settings.set": "学习快捷键已设置为{shortcut}",
     "progressiveReading.settings.profiles": "快捷翻译方案",
     ...videoLearningText,

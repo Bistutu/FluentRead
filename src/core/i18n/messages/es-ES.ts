@@ -113,6 +113,7 @@ export const esESMessages = {
     "progressiveReading.settings.custom": "Atajo personalizado",
     "progressiveReading.settings.edit": "Editar atajo de estudio",
     "progressiveReading.settings.conflict": "{feature} ya utiliza este atajo. Elija otra combinación.",
+    "progressiveReading.settings.personalCorrections": "Correcciones personales",
     "progressiveReading.settings.set": "Atajo de estudio configurado: {shortcut}",
     "progressiveReading.settings.profiles": "Perfiles de traducción rápida",
     ...videoLearningText,

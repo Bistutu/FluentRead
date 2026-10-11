@@ -115,6 +115,7 @@ export const enUSMessages = {
     "progressiveReading.settings.custom": "Custom shortcut",
     "progressiveReading.settings.edit": "Edit study shortcut",
     "progressiveReading.settings.conflict": "This shortcut is already used by {feature}. Choose another combination.",
+    "progressiveReading.settings.personalCorrections": "Personal corrections",
     "progressiveReading.settings.set": "Study shortcut set to {shortcut}",
     "progressiveReading.settings.profiles": "Quick translation profiles",
     ...videoLearningText,

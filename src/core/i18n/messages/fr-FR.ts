@@ -113,6 +113,7 @@ export const frFRMessages = {
     "progressiveReading.settings.custom": "Raccourci personnalisé",
     "progressiveReading.settings.edit": "Modifier le raccourci d’étude",
     "progressiveReading.settings.conflict": "Ce raccourci est déjà utilisé par {feature}. Choisissez une autre combinaison.",
+    "progressiveReading.settings.personalCorrections": "Corrections personnelles",
     "progressiveReading.settings.set": "Raccourci d’étude défini sur {shortcut}",
     "progressiveReading.settings.profiles": "Profils de traduction rapide",
     ...videoLearningText,

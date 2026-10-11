@@ -2,8 +2,8 @@
   "date": "2026-10-11",
   "branch": "codex/progressive-reading-20261011",
   "verifiedWorktree": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011",
-  "parentHead": "6e74ffad3539a0a0003a384097d1c66eb6fc7493",
-  "integratedMainCommit": "1983644dfb7537290573231b0db283877c03e410",
+  "parentHead": "d58aa2c3125972d6fcba5d8a72b23550d4213bec",
+  "integratedMainCommit": "1e414ea8c2db6074343fb438bf7633af10a142a2",
   "pr": "https://github.com/FluentRead/FluentRead/pull/949",
   "coverage": [
     {
@@ -38,55 +38,139 @@
       "testCount": 8,
       "report": "speech-progress-coverage.json",
       "log": "speech-progress-coverage.log"
+    },
+    {
+      "file": "src/app/content/learningFeatures.ts",
+      "sha256": "7c03bc2ddb6211b20b46f465ba811213e4530c5b1d8a6294536d4b3ba648514c",
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100,
+      "testCount": 43,
+      "report": "learning-integration-coverage.json",
+      "log": "learning-integration-coverage.log"
+    },
+    {
+      "file": "src/core/config/progressiveReading.ts",
+      "sha256": "270254c4fe57059c1bd51df11c3f82fb5b466cd6899d98df49201b7cbe8b792e",
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100,
+      "testCount": 62,
+      "report": "hotkey-integration-coverage.json",
+      "log": "hotkey-integration-coverage.log"
     }
   ],
   "retainedCoverage": {
     "source": "../progressive-reading-20261011/verification.json",
-    "modules": 11,
+    "modules": 9,
     "sourceSha256": {
       "src/features/progressive-reading/hints.ts": "5ccd30b4c94e77ec34ec134b3c1b393ec7cf7d499937b8a8305f36d21344a4d3",
       "src/features/progressive-reading/session.ts": "255be282307675f9de68d37441a4bd6a97245a5ae6225396803e516a34fad904",
       "src/features/vocabulary/background/handler.ts": "10f258e1fe469487f224217c2e2de6023a7ba9a4f27d12eb07afaf38803b27ff",
       "src/features/vocabulary/domain/readingHints.ts": "cc981b2d27a2216bc9fe2aa374a3d0dcb58ce3c897069db66899329890d5957d",
-      "src/app/content/learningFeatures.ts": "1a61f5eb587812f7bbe105844b5252475725d060774ab3a15b4be63231e60d87",
       "src/app/content/messageRuntime.ts": "260bac5fa5a5eead9c3b84d164466f3716d2779fee2b11a1166f3084d960c6c3",
       "src/app/popup/pageActions.ts": "11e40d0f9a3ddafe27ec449c8af57f0f6298bff2613d17f77329f47c6366254a",
       "src/features/progressive-reading/content.ts": "f1e64a9a54c552918949a59eddedea41a1f817380169530bcdf413356512e77a",
       "src/features/progressive-reading/source.ts": "431f6950074deac346ca26b22da238e7a785fddf1cffbce952fe94c9bb7acb83",
-      "src/core/config/progressiveReading.ts": "22c6402fba69e1cdca114a60f06b06c896a749a5ae15f9a2ceb7673658feb3a7",
       "src/features/settings/ui/useTranslationShortcutSettings.ts": "670e5fa178bea8d4057e4e8dfd74c18859fed15a95a1ec1c44dca0891dee266a"
     },
-    "allUnchanged": true
+    "allUnchanged": true,
+    "replacedByFreshCoverage": [
+      "src/app/content/learningFeatures.ts",
+      "src/core/config/progressiveReading.ts"
+    ]
   },
   "sourceSha256": {
+    "package.json": "0432029a38881fe76dab24d56aec362e66fe6fbbce305fffe85c7e47517bd1cc",
+    "pnpm-lock.yaml": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
     "scripts/run-progressive-reading-test.cjs": "16f10838957633d4dd7929082e57a8b133361e1f287ee6cbb3b699b540b894c3",
+    "scripts/testing/run-personal-corrections-test.cjs": "a7ac9f16b9747b3bc6b8d6b76087a62927b984daebeb174e1849cc3c41279235",
+    "src/app/background/messageRuntime.ts": "0db6c06480c9c4b2ded45ff2b81040c7d9a18f6cfecebaf86abd1c2d41744da6",
+    "src/app/background/personalCorrectionRuntime.ts": "3805bebf44b604412c1d740c95368a3a625f976ba034caf5b2eee7dde8158d31",
+    "src/app/content/learningFeatures.ts": "7c03bc2ddb6211b20b46f465ba811213e4530c5b1d8a6294536d4b3ba648514c",
+    "src/app/content/messageRuntime.ts": "260bac5fa5a5eead9c3b84d164466f3716d2779fee2b11a1166f3084d960c6c3",
+    "src/app/content/page.css": "8ae1fde90fa15e92141db304421451f13889d08ecd3ed0637990fcd3f95ec1b4",
+    "src/app/content/personalCorrections.ts": "3284bc3ed83609ab7ea91aa22df3d7cd96d1cf16be47f490af874a2d94c08ed4",
     "src/app/popup/PopupApp.vue": "ffb308e7d4445e86100e91779350b1bc1e88d1e7967cff23f35f75475c350851",
-    "src/core/i18n/messages/en-US.ts": "fd84858948c61bf06c09a7798799d51c1b7eed9bb7d40a71067f9ff158f73936",
-    "src/core/i18n/messages/es-ES.ts": "447ab61a7aa1ad4f0c2e137589aa7402b1da929cafa513f2794c3fbffd8f1fc7",
-    "src/core/i18n/messages/fr-FR.ts": "f780932ecd089843644f5fbbe9768ae584c0b3d76cdcb47e851b35458a60df17",
-    "src/core/i18n/messages/ja-JP.ts": "f8cb2f3996de5f3b2ac88cbe4b988d9dcc8ee3bb28f082409dcc9ef473d58c42",
-    "src/core/i18n/messages/ko-KR.ts": "e14cd33b5830738ff68333ce2d3289b7d951eed2a932e53d0905813931dcb32e",
-    "src/core/i18n/messages/ru-RU.ts": "6f16b23b9ffb755bd3b814e28217a40e67407d2564ace61e3486b0f2e0dcbe23",
-    "src/core/i18n/messages/zh-CN.ts": "2ce0eea12649d64cc8c99726ae96880d8e0d54c4498020dfeda0415ab2ee7d40",
+    "src/app/popup/pageActions.ts": "11e40d0f9a3ddafe27ec449c8af57f0f6298bff2613d17f77329f47c6366254a",
+    "src/core/config/diff.ts": "2674328fe8507af94ea58c644c39ae7c0a04aec686b6d2ef2e8f8b06f83da604",
+    "src/core/config/model.ts": "8432be9c757f7bbd96480876f3d4c77941a187e7a572d6f18f16c70a1d6a9c01",
+    "src/core/config/progressiveReading.ts": "270254c4fe57059c1bd51df11c3f82fb5b466cd6899d98df49201b7cbe8b792e",
+    "src/core/i18n/messages/en-US.ts": "05f2daefd5ef1895ed1113641d74840e0c632fc38a0d7622333a7e0dc73d2dff",
+    "src/core/i18n/messages/es-ES.ts": "7c27c93819efc09b2c8c8d40e71869751186cb375dc461ffad145d801ddd17bd",
+    "src/core/i18n/messages/fr-FR.ts": "da9637039fb65220e8a1af8fcc72764d21f783ab4c21e957742917af156043f7",
+    "src/core/i18n/messages/ja-JP.ts": "7d9a29674735e76d4fd12c05120232b16685478482297d636e1f931e26d8e170",
+    "src/core/i18n/messages/ko-KR.ts": "61ad08ee7da1c972cab8c3199c191497842f387b474632d210893bc11bfaa258",
+    "src/core/i18n/messages/ru-RU.ts": "4b853fd4de0b3ead132e8e8866f8899f2bff87cfd1bec20db9f7ab4675bc024f",
+    "src/core/i18n/messages/zh-CN.ts": "97c551e5f652e4d3534f1cdba9e5648f7a2a85ae9f1b2fa6c82380ceaba814de",
+    "src/core/personal-corrections/matching.ts": "ca9ea9e0dc42933e071253b8ce7f87ec12ffbdc2856cd59f2b2c2963420d0681",
+    "src/core/personal-corrections/model.ts": "f318cef1df7d9bc58c14f13da5eec1b44b34abe3157baab2a565d6adfd92853d",
+    "src/core/personal-corrections/public.ts": "c2957f385cb6f0af846911690559d7146d11c1e4ae1ab229384b2da3fcb4f5a5",
     "src/core/tts/speechProgress.ts": "721874a0182c696b223ca812c71a8485d70071b7a38653245d1c777a03eb1155",
+    "src/features/full-page-translation/content/bilingualReplay.ts": "4a395983508e4e0914562bfeb973d1259c2df1b30aeb4a1b19e0937e9a0507b4",
+    "src/features/full-page-translation/content/liveTextTranslation.ts": "b6978b9d4603c265503688c60c007da1ef28ba902b2e182554ab2ac78aea3346",
+    "src/features/full-page-translation/content/personalCorrections.ts": "51de5932c4ebb84c102745ef1cd2b6c130cb607b180974b1fd4b1a26a82e4de8",
+    "src/features/full-page-translation/content/renderer.ts": "d2f944eb8afb6fe41587f206f7750145742d254bc216793adb9c0649242a5050",
+    "src/features/full-page-translation/content/runtime.ts": "9dfb6ef1e94c1e2e53108b5ab3c352c1e62d5d2de009d7e4489b35fcef883255",
+    "src/features/full-page-translation/content/state.ts": "2a2a3490afc2b94d246e2b421a790f51fe225cf072479337703b8892a8087dbc",
+    "src/features/full-page-translation/public.ts": "9a74ec2ef2a238d2939c56c6af58c11214bc2c0e8a37d10716c035bb1e883e03",
+    "src/features/personal-corrections/content/runtime.ts": "04d330ebd3b9c57051d89964dc376952ab2f46628c909076b06a895cf4c86b93",
+    "src/features/personal-corrections/controller.ts": "760b141cdb61448af690b4380b29d73623d2c009d021594c112bf0e0e6a680f7",
+    "src/features/personal-corrections/public.ts": "d59e14c11b15f7771f77b886198f3cbbaabb853d1361ed87a67ae45583a8f7c2",
+    "src/features/personal-corrections/types.ts": "e265302eb80da01fb19f077dfb7478498dca2e93699c052e18f0db13965ee5f5",
+    "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue": "e68231bbba12cf8e83a803146de4d5abc026a4b46862f4859e5e23a25af6ad0c",
     "src/features/progressive-reading/README.md": "006072e5249d05d712eb3335de7f07ed04681383706b71d688df95d09f13e411",
+    "src/features/progressive-reading/content.ts": "f1e64a9a54c552918949a59eddedea41a1f817380169530bcdf413356512e77a",
+    "src/features/progressive-reading/hints.ts": "5ccd30b4c94e77ec34ec134b3c1b393ec7cf7d499937b8a8305f36d21344a4d3",
+    "src/features/progressive-reading/session.ts": "255be282307675f9de68d37441a4bd6a97245a5ae6225396803e516a34fad904",
+    "src/features/progressive-reading/source.ts": "431f6950074deac346ca26b22da238e7a785fddf1cffbce952fe94c9bb7acb83",
     "src/features/progressive-reading/speech.ts": "c45392d66407e08bb7a454c401d0f8e7eaf0a48bff14a66e91c615b66d100805",
     "src/features/progressive-reading/ui/ProgressiveReading.vue": "e81b86b1eca25a4b8ec5c0a90ad33a3a654a794204247a7e8669350d0cd7dbe6",
     "src/features/selection-translation/background/ttsHandler.ts": "526b10f5985c771b7aa32f81d7ab65554b92b052b67f37ff94a1094d77aaaea3",
     "src/features/selection-translation/speech/public.ts": "018d24f9b9943b322515d813b22d39118fbe83da1b569ecdd43ee87fc775e91b",
     "src/features/selection-translation/ui/public.ts": "42dea1def43ee14100c695506b93db919173bb2d0659091134518f4a3afe7a71",
+    "src/features/settings/model/navigation.ts": "21770e3768564bb0241de51551691656d37f96216bab1ace753c2f0c9caf5551",
+    "src/features/settings/ui/ProgressiveReadingSettings.vue": "8088f5ac9d5ad98f421d3fec647278fd003033d18c060d718494d04471230be4",
+    "src/features/settings/ui/ReadingAssistanceSettings.vue": "4d8a76e622f7f98683852758284c6aa0164bf517b83882d1254d204db72784d3",
+    "src/features/settings/ui/useTranslationShortcutSettings.ts": "670e5fa178bea8d4057e4e8dfd74c18859fed15a95a1ec1c44dca0891dee266a",
+    "src/features/vocabulary/background/handler.ts": "10f258e1fe469487f224217c2e2de6023a7ba9a4f27d12eb07afaf38803b27ff",
+    "src/features/vocabulary/domain/readingHints.ts": "cc981b2d27a2216bc9fe2aa374a3d0dcb58ce3c897069db66899329890d5957d",
+    "src/platform/storage/personalCorrectionRepository.ts": "ed621bc28a535b9ea72b2483444ff56180dd5288b084956aae5bb5e27bd49edb",
+    "src/services/personal-corrections/client.ts": "341c867746a15b560c2e0473e07b479caff133e48438fa55ac82f11994e57803",
+    "src/services/personal-corrections/protocol.ts": "abadf323ab7ba3332e1857437c6fd55f9c6b9284224b08e630d3a087db0751ce",
+    "src/services/personal-corrections/public.ts": "2ec76182bde21522e4485270cfd5b1055e1984083032c956a577344e94a39747",
+    "src/services/personal-corrections/service.ts": "5260cdc534bbb551d755ee2d2efad1f64b0e907ebc099ecdc2fabc07f67c1bea",
+    "src/services/personal-corrections/store.ts": "5cf220ee0b3bc7bd54f1bd8d39ae8f581ae90205a766dca69f50b08bf512bafd",
+    "tests/bilingualReplay.test.ts": "6433301cca6ce7e35a4f17fe2232ab3554d3cfd50df93ffa5bcbee2e8ca8d4e6",
+    "tests/implementationAudit48K.test.ts": "a27e513f0eea1e1aa0c5bd1d20e8378d2fdfc296f47ba9ec60c0f32823f11ca3",
+    "tests/liveTextTranslation.test.ts": "d478e11a88cc523bc7b8042e982f7c04daa46d4f538b499aa3cb089a2d446c1f",
+    "tests/optionsNavigation.test.ts": "a76d9e93172843da1440c20fe96399d0cf7d77a6dd10fcd70cf70e198576654d",
+    "tests/personalCorrectionComposition.test.ts": "42beba0ead44a18907fa7f8058ffa94cc4c7ba2dc2df33d13e863fa7dd6240fc",
+    "tests/personalCorrectionDom.test.ts": "9fee7506eaf83c523e8b39164da20d04ba3fcf6bded5c4b274f0051de9cd814a",
+    "tests/personalCorrectionMemory.test.ts": "2b8049a26cb064147a18e89f9c34ee6f938c90d728be4cf1f98066ce847d94b7",
+    "tests/personalCorrectionTranslation.test.ts": "7b97ebc88847adcaa09a4235bbf58c3847a495011e178cdc8938877c77e526c2",
+    "tests/personalCorrectionUiController.test.ts": "f0f992166ea291a25cdc38db0be5c91c71d74819f0a1ff4dd5f3413f06eca97c",
+    "tests/personalCorrectionUiPanel.test.ts": "095eeb4445e562307f0b4becfd0251b065429d4fae1c9aa6db38e3dd44a38df0",
+    "tests/personalCorrectionUiRuntime.test.ts": "37957ddaea896c2d96908706476eaf65c552ec6b58df2c2e9c2d4216b1a386c6",
+    "tests/progressiveReadingHotkey.test.ts": "6ac761e7684b3ab05ed14f1d7ce668d73ff2a3d9b9008588a14eabb9e6c981ae",
+    "tests/progressiveReadingSettingsLifecycle.test.ts": "a7e9ebd266f7b53c6dfa6de54e33393e133c7e567ad729f748eb07a06a7b7915",
     "tests/progressiveReadingSpeech.test.ts": "d291e8eb1667f3aece4b516e0c54caa08b042cf20360d91f6a14ca0bcdaa4619",
     "tests/progressiveReadingSpeechUi.test.ts": "048fcd1f8c2267e4a7de262fb06d6e151fb291c4dd13ca0d6a439b930228a511",
     "tests/progressiveReadingTtsTransport.test.ts": "86fec029dd385e68009b18d371320fd531c2abb34240eca6f154281c6349d111",
+    "tests/sentenceActionsMount.test.ts": "5c158d0fba7a07441991e6e4e68c27d3a66f5bff1410cbeace4127f6708b9d26",
     "tests/speechProgress.test.ts": "2c7ff4b8da92d58d7999b7ad5c03da9d8984afc1a9b2f714ad0b5023f1fe9f33",
-    "tests/test-matrix.json": "b78261d24d01cc23d8f73f8c6d3bee21bae0bd9561f4b29db20a756b1714384a",
+    "tests/test-matrix.json": "ad99d9627e4992e9084c500d423781f7224c70ec009602636d64b4b7b4fa82eb",
+    "tests/translationState.test.ts": "a5aed00a7f091e9bd6f377b8f6e4d0257197ef0d26aecaab69c7f0a98c6767f7",
     "tests/userscriptLanguageBundles.test.ts": "fda2c23df038199e51c6f7413de071fe4aeb1d3e7ba7196650be6c95daa40d5b",
-    "tests/userscriptViteConfig.test.ts": "2e4ad60614ea617f46ae320f2a3b9c7f4905ee37dc20d82a4a718258656ce366",
+    "tests/userscriptUnsupportedCapabilities.test.ts": "d43dd15c1334f5af325ca86d8fe887dfe98b531fbe69c0034bcafb92afd496a1",
+    "tests/userscriptViteConfig.test.ts": "5192984daaf9078aa7c270a6c1e27f12964157aacda0385e0c50eea36543854a",
     "userscript/languageBundles.ts": "5bdb6a6007e1ae154f6aa88c548e628c2ed960df18ac6aa0f8bbcb97dd287cf4",
-    "vitest.coverage.config.ts": "92a0ec1c5c09442c77d7834de88137d1a7d5a1f08c0bb6c4019dd13400309806",
-    "vitest.config.ts": "9aee0820a428a9fbf9620839e5ab66a9c21bc916f22eeab7f47d8feb7c0bcbc6",
-    "package.json": "0432029a38881fe76dab24d56aec362e66fe6fbbce305fffe85c7e47517bd1cc",
-    "pnpm-lock.yaml": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
+    "userscript/unsupportedCapabilities.ts": "2ca7ff6e9272d07de566ab50417cc08ab0a90aaff58e81233fc6690435cdbec7",
+    "userscript/vite.config.ts": "56cc7aefc534d4b5fbbc29240bc121220d212d1a7e1ac3d703702547a69502af",
+    "vitest.config.ts": "4ff01948fe48273faaa7083f6363835e7ce35859a12f1a1114f28abbe399df6a",
+    "vitest.coverage.config.ts": "18fd31ee1365305797462e3d955245a5d54f4e3a73501a3a2e22ddacc80f1c44",
     "wxt.config.ts": "6fd77267d4c39dd7daae66e1d4648c5da817d29cc536bbf0341e3b5a2dcffc2d"
   },
   "manifests": [
@@ -108,30 +192,35 @@
     }
   ],
   "artifacts": {
-    "chromeContentSha256": "0f5e1cfef1ca5d8d676cc9b4a6f8092d2ddd14dffc6cf39438cde4b0e77816d1",
-    "firefoxContentSha256": "bc2ec2baafcc6672e2c378159135e43c155c1483adc5e80b2a82dca00fcbc145",
-    "userscriptSha256": "9054df0df2b6995ecd17595b1aaba9854f0a0f729ebce39de94505564f48bcb3",
-    "userscriptBytes": 2064753,
+    "chromeContentSha256": "b50f837ab2e5c9bcf7d92b4f48725076fb22e7fe1cbbc1d02131fd6b79bcc498",
+    "firefoxContentSha256": "689cebececd5a27ee208ed110d5a2df05e75d7bc45749c74199cc2fa9bb7877f",
+    "userscriptSha256": "acf1556639313d237a1978eb000379cd3dbeb487552bdad0796ca587d8492805",
+    "userscriptBytes": 2064882,
     "userscriptBudgetBytes": 2066000
   },
   "gates": {
     "speechUi": {
       "files": 1,
       "passed": 27,
-      "log": "speech-ui.log"
+      "log": "main-integration-tests.log",
+      "scope": "Actual Vue component rechecked after main integration; source SHA unchanged."
     },
     "i18n": {
-      "passed": 58,
-      "log": "i18n.log"
+      "files": 1,
+      "passed": 57,
+      "failed": 1,
+      "log": "integrated-checks.log",
+      "baselineEvidence": "main-i18n-baseline.json",
+      "reason": "Raw Vue audit finds inherited main personal-corrections localization omissions; owning Vue files are byte-identical to integrated main. No progressive-reading or Popup source failure. Not treated as passed."
     },
     "popup": {
       "files": 3,
       "passed": 90,
-      "log": "popup.log"
+      "log": "main-integration-tests.log"
     },
     "userscriptContract": {
       "files": 3,
-      "passed": 39,
+      "passed": 42,
       "log": "userscript-contract.log"
     },
     "directConsumers": {
@@ -142,12 +231,12 @@
     },
     "architecture": {
       "files": 3,
-      "passed": 968,
-      "log": "architecture.log"
+      "passed": 985,
+      "log": "integrated-checks.log"
     },
     "testAudit": {
-      "files": 675,
-      "cases": 11377,
+      "files": 682,
+      "cases": 11477,
       "log": "audit.log"
     },
     "compile": "passed",
@@ -156,7 +245,33 @@
     "userscriptBuild": "passed",
     "userscriptVerifier": "passed",
     "extensionManifests": "passed",
-    "docsBuild": "passed"
+    "docsBuild": "passed",
+    "learningIntegration": {
+      "files": 3,
+      "passed": 43,
+      "log": "learning-integration-coverage.log"
+    },
+    "hotkeySettingsIntegration": {
+      "files": 2,
+      "passed": 62,
+      "log": "hotkey-integration-coverage.log"
+    },
+    "configOptionsIntegration": {
+      "files": 3,
+      "passed": 117,
+      "log": "main-integration-tests.log",
+      "scope": "Config diff, model boundaries, options navigation; preserved personal-corrections settings and reading entry."
+    },
+    "storybookBuild": "passed",
+    "docsCheck": {
+      "passed": true,
+      "pages": 81,
+      "links": 4340,
+      "anchors": 804,
+      "images": 158,
+      "log": "docs-check.log",
+      "note": "Full site artifacts present; checker initially required the Storybook build."
+    }
   },
   "browser": {
     "report": "browser-report.json",
@@ -271,7 +386,7 @@
       "right": 363,
       "viewportWidth": 390
     },
-    "sourceReportPath": "/private/tmp/fluentread-progressive-reading-speech-final-v5/report.json",
+    "sourceReportPath": "/private/tmp/fluentread-progressive-reading-speech-integrated-final/report.json",
     "screenshots": [
       "popup-400-progressive-entry.png",
       "popup-320-progressive-entry.png",
@@ -299,7 +414,8 @@
     "failed": 2,
     "evidence": "baseline.json",
     "log": "consumers.log",
-    "reason": "Existing explicit fixture module map omits VocabularySource.vue; source and test are byte-identical to parent HEAD; failure occurs before TTS assertions."
+    "reason": "Existing explicit fixture module map omits VocabularySource.vue; source and test are byte-identical to parent HEAD; failure occurs before TTS assertions.",
+    "sourceStillUnchangedAfterMainIntegration": true
   },
   "limits": [
     "No live TTS provider or human audition; silent zero-PCM WAV exercises production message routing and native Audio.",
@@ -310,47 +426,76 @@
   ],
   "evidenceSha256": {
     "390-dark-phrases.png": "0dd73b9ca08e29bdf69b500a028ad1c6856dd3b529191aa36a6955a2da97883b",
-    "390-keyboard-bilingual.png": "0f811917530acebb87450b82c6dad8b566dccebfa83e0f796ead9de9d2eafb66",
-    "390-light-phrases.png": "74f1f412851b66501e750d43a3bbdae963ebc2885c50790bc79e71e77e572822",
+    "390-keyboard-bilingual.png": "71363ec78efb4e20b462e87b404e3877d3fb78ea2eaf514ccdaeffc504446f0b",
+    "390-light-phrases.png": "a248b356bbd8907f2fc17d68373dd2444339fbc8fd2950e794700ffd4193cb00",
     "architecture.log": "328a25b78b7ba446302baef84805c69bfa35ad594b7f40949e2e1800f3114c93",
-    "audit.log": "61f29ede3957a8d21c2f97d95fa408dd9f5950635477220305cbf1d368d07460",
+    "audit.log": "b787eb3c8e36871fd102c73b8de0a5a9c51aec2ed8d8a3cc9e1632026467ed35",
     "baseline.json": "70e3101ec1a216c3963ac0a9d830158e841fbdecc2b44df67727f31548e007f8",
-    "browser-report.json": "95067251cfbb46be37469ed6ecca800a4085f67190ae438ec8f76fbd9f04891c",
-    "browser.log": "c66573ab910330bc68e04cf07c7b6ca45e197cde0a6958b7428cf24639478958",
-    "chrome.log": "8d4db6624592385baa2e77696d4c790e3e530549c7099979ca49079877c74d2c",
+    "browser-report.json": "70f2a933b2660e645f003ebc1fd565b27c53b010e60b5e50238e61a6ebbc0b16",
+    "browser.log": "345eda27bd4513bb9e5b7e2d31010a20905036b65824f919d7be1af3ae45eab2",
+    "chrome.log": "6e80a9eff940a28be15d4c4b22b4c5765eb5017e75ee7df3e3f5a93d8b0a235f",
     "compile.log": "2c1b0886d432adb4c8d977b0807bc013462d0ffa7dde3dee665cdaff5d86810e",
     "consumers.log": "fcca441d49d9f02c7a75f2e5c20b931085cd5afd0d4933e04fafda518941e924",
     "desktop-bilingual.png": "57c3ef0ea7e8358450d883fea59aad0f1c30174d388050e7562e641441026311",
-    "firefox.log": "86b59ad156eb1a6ae633f5eca601ddf470f9642051fb19e6713c1ec83340664c",
+    "docs-check.log": "2969c5c8b6d33eff2cc83fbb78d918a567c9f5c8b82c3f1f9248a61713f69451",
+    "docs.log": "5d29ee60d86a21344d2d10b4de1cb4f039e32f413dd6331ba9f95c1da2742cbb",
+    "firefox.log": "0c1b2c451a617805f46dcb129d2e44c043ba4f503865bb5fc67fdee11f07eecd",
+    "hotkey-integration-coverage.json": "4eeb7c3aad8838d4ada714ad7aee3451be8e69153f61bcb7011bba75968dfbe3",
+    "hotkey-integration-coverage.log": "acc311602517180d329e99c107250ed8cc430f1587fda22dade3800e9b3884eb",
     "i18n.log": "95a890d025f4ea7ecace82fd637163ec8e8bba91f8d3f0cbdc1649f278f4b67f",
-    "learning-settings-default.png": "7f567f710372f49c9c10fc8d9aec61e5e5641ac06013ed3a07bcb9f9aa9a6454",
+    "integrated-checks.log": "3d5e0bf6513a32369c7e9c8ba4de341245f4798a431f7d342bdea51c75a3bda9",
+    "learning-integration-coverage.json": "5a64f91c66ab31ce09d3dbd8df79ee5785554cc9a8830bed48f4c6d3b2f6ce50",
+    "learning-integration-coverage.log": "dbc151e8c9ebd1c39ede23dab50df0ec7d1d2c3303b1bafc2556c7e8f7f44d49",
+    "learning-settings-default.png": "c6b23146b4183abff844c18716182da52d82c70c6845c9e72f455db12fb40688",
+    "main-i18n-baseline.json": "8d98fbaed09096b4acea875e2a55b778fe03024f3726762a154c688a9f4b8857",
+    "main-integration-tests.log": "b08702a9260daffda635dadbfc0e7c2bf164f507b371af09707c7caa912fe95e",
     "manifests.log": "61f64113e1a4f9baf6d347065aaf8652fce57dfbe9c88eee15ef4427c48e26f0",
     "panel-bilingual.png": "612eeb1763ff988b1d08818210a2f89349b166145a8b342ee56a30ec39cd0a27",
-    "panel-logic.png": "3da56936bf2e01d313b99e0f9f1c8e2e7c35da476a003981d6e576d3b0befa86",
+    "panel-logic.png": "3194eb5b6b55f18a283554ad7a504eae061ca3473a1f36768edd0c3b665f05ba",
     "panel-original.png": "0bacbbe1573cc8c6305770b441cd291d0128abaa4a504a3c953761788c7213fa",
-    "panel-phrases.png": "4dcdda6798560c0f71f9352394303e69f049636150e8f471bc2712fca425c6cf",
+    "panel-phrases.png": "f082a2bd62bd632b7ff2e25461a72c76844baf62cf51e3693189ea07d6b7a7ba",
     "popup-320-long-hotkey.png": "94fe1f0893099d7e6c6ff1f558c0e946a7758e34eaae4e8cdbd91fd5a4ff7d9e",
     "popup-320-progressive-entry.png": "68f0debb82975b1ee09c49b665a7645162c8c16141615d3c23314e6bc384f65d",
     "popup-400-long-hotkey.png": "36efaba4a069332d145c00efaa6f04092003250c26e4d3cd597aecff27b66050",
     "popup-400-progressive-entry.png": "c08f51de67044d437f4f85edb71ad3488c3aed50fd2cfe01a1ddd1d395c6ce43",
-    "popup-learning-help.png": "750a80bf894759e3f93d004bd4d9d9de92a3c579a6e17e35bb0e3c1a9f8fa481",
+    "popup-learning-help.png": "c9baa681acf48fe90f3c8141edb42d5579d7d37598ecee828e73c1ad1e4a0607",
     "popup.log": "d41c9a8c8955378c29ed5ab64b3fcf128d6848204eb159d8d1633684a08f9fad",
+    "pre-main-i18n.log": "95a890d025f4ea7ecace82fd637163ec8e8bba91f8d3f0cbdc1649f278f4b67f",
     "progress-benchmark.json": "ffed721405d5c2a07028fc0c7974e705455049995d117eddb7ee437363dc424e",
-    "speech-390-paused.png": "3baeb4a5490a9808bac04237f995bc1823740552f119d02e6da18145db368e43",
+    "speech-390-paused.png": "ec00a3240e1d3ff73deda4ffd85574bfc76b0910ce2b944108634fc7ad9bd97f",
     "speech-coverage.json": "d23f5ae4e52fa2901b752034cf744241fa8e9d4f0717010a8ca9c8a71fb020f7",
     "speech-coverage.log": "cd018470b95212b0270e1dbfa112b4aea9559a4a914b174a87b534cddb84cd7c",
     "speech-original-paused.png": "014263e9fe66298fbd078118762b69fa65c6117eb6f0c26e49ad498b92b49fa2",
-    "speech-original-playing.png": "94f9be0533704c57b3af8589c854615dc5c6f1844543301cc87080b9bd17b93f",
+    "speech-original-playing.png": "228a062aac79ff8efb8d3e3daf8db6befe8b2ae03fe68f58d541929b064d2d1a",
     "speech-progress-coverage.json": "d11769d42aa1af075d3d304b16818cc61deb15c7b73ddea2d409fa8fdc17152b",
     "speech-progress-coverage.log": "0048ca07aba7b0c5ebd6494f5d5fa045cba6ce39e7b1d6b9a1f07ebe41aaf69f",
     "speech-translation-playing.png": "eb89add2e09e5e6bcd90f82a45a7edb7b04093d339b2d77440950ba2ec511eb9",
     "speech-ui.log": "b6d105c803b5faa65251fae3ba75522234bb9013dd48f2faa810ff0098624855",
+    "storybook.log": "e7a989fa60f8580d9b88091c1370b028989f4e08b5e91e06bb54ffddd591a215",
     "tts-handler-coverage.json": "8d3e4511a72c29c4bd929c1846a10727106d3248b12e072d4b5fa6bab8c814ff",
     "tts-handler-coverage.log": "0d477c1a0d08ed066c26872c6450801b15920910828802452d4d05a8bee54ccc",
-    "userscript-contract.log": "176b6f207c9c16bb893cc3438e09c791b77f7f849d1032fcbea48458a17dda7a",
-    "userscript-verifier.log": "a8b1cc165af1cf4503491f25f52e6c814640be98c607a141e362419b53d25925",
-    "userscript.log": "2a7ee0d95eb4b73f29ea1d12be36e6671afdf4c4699ed671914ea754c0299ef1",
-    "docs.log": "3134f0be0a3259e0d9ff576384edaefce70a7c73dc79cdb9cb97adc4ccb0d5b5"
+    "userscript-contract.log": "dce48f2996573c856f2765ee98d417d901649bf71c201d24a9ffb3b939b4b080",
+    "userscript-verifier.log": "a5415e13a9c4428967a1f3900e3a72107a2dc6457cbf94aacae99b2cee3100f3",
+    "userscript.log": "54f7b48ff4d0faf5435056bc00a564847319f4114067e97bd164a00fc4cc5ceb"
   },
-  "logNormalization": "Only trailing whitespace and empty lines at EOF were removed for repository whitespace checks; recorded results and log content are preserved."
+  "logNormalization": "Only trailing whitespace and empty lines at EOF were removed for repository whitespace checks; recorded results and log content are preserved.",
+  "beforeMainIntegration": {
+    "integratedMainCommit": "1983644dfb7537290573231b0db283877c03e410",
+    "parentHead": "6e74ffad3539a0a0003a384097d1c66eb6fc7493",
+    "i18n": {
+      "passed": 58,
+      "failed": 0,
+      "log": "pre-main-i18n.log"
+    },
+    "note": "Historical pre-integration i18n execution; final current gates below supersede other earlier build/browser results."
+  },
+  "verifiedSourceState": "Resolved merge worktree before recording the merge commit; source and artifact hashes identify the tested payload.",
+  "knownMainBaseline": {
+    "files": 1,
+    "passed": 57,
+    "failed": 1,
+    "log": "integrated-checks.log",
+    "baselineEvidence": "main-i18n-baseline.json",
+    "reason": "Raw Vue audit finds inherited main personal-corrections localization omissions; owning Vue files are byte-identical to integrated main. No progressive-reading or Popup source failure. Not treated as passed."
+  }
 }

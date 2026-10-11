@@ -10,9 +10,10 @@ const key = '__frProgressiveReadingSettingsTest';
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
 let server: ViteDevServer | undefined, app: import('vue').App | undefined;
 const feedback = Object.assign(vi.fn(), {warning: vi.fn()});
+const translateFixture = vi.fn((message: string, _params?: Record<string, unknown>) => message);
 async function settle() {await runtime.nextTick();await runtime.nextTick();}
 async function mount(name = 'ProgressiveReadingSettings') {
-    vi.clearAllMocks();Object.assign(globalThis, {[key]: {feedback}});
+    vi.clearAllMocks();Object.assign(globalThis, {[key]: {feedback, translateFixture}});
     const mocks: Plugin = {name: 'reading-settings-mocks', enforce: 'pre', resolveId(id) {
         if (id === 'element-plus') return '\0reading-element';
         if (id === '@element-plus/icons-vue') return '\0reading-icons';
@@ -29,7 +30,7 @@ async function mount(name = 'ProgressiveReadingSettings') {
         if (id === '\0reading-image') return 'export const ImageOcrSettings = {};';
         if (id === '\0reading-probe') return 'export const useVisionProbeStatus = () => ({});';
         if (id === '\0reading-child') return 'export default {}';
-        if (id === '\0reading-i18n') return 'export const useUiI18n = () => ({t: key => key, translateLegacy: text => text});';
+        if (id === '\0reading-i18n') return `export const useUiI18n = () => ({t: globalThis.${key}.translateFixture, translateLegacy: text => text});`;
         return null;
     }};
     server = await createServer({appType: 'custom', configFile: false, logLevel: 'silent', plugins: [mocks, vue()],
@@ -50,6 +51,30 @@ async function mount(name = 'ProgressiveReadingSettings') {
 afterEach(async () => {app?.unmount();app = undefined;await server?.close();server = undefined;delete (globalThis as any)[key];});
 
 describe('学习设置实际组件草稿与配置归属', () => {
+    it('录制期间开启个人校订，确认拒绝其固定组合并指明占用；关闭后同一草稿才可确认', async () => {
+        const {state, props} = await mount();
+        expect(props.config.personalCorrectionsEnabled).toBe(false);
+        expect(state.findHotkeyConflict('Alt+Shift+E')).toBe('');
+        state.handleHotkeyChange('custom'); props.config.personalCorrectionsEnabled = true;
+        state.handleCustomHotkeyConfirm('shift+option+e');
+        expect(props.config).toMatchObject({progressiveReadingHotkey: 'none', customProgressiveReadingHotkey: ''});
+        expect(state.showCustomHotkeyDialog).toBe(true);
+        expect(feedback.warning).toHaveBeenCalledWith('progressiveReading.settings.conflict');
+        expect(translateFixture).toHaveBeenCalledWith('progressiveReading.settings.personalCorrections');
+        expect(translateFixture).toHaveBeenCalledWith('progressiveReading.settings.conflict', {feature: 'progressiveReading.settings.personalCorrections'});
+        props.config.personalCorrectionsEnabled = false; state.handleCustomHotkeyConfirm('shift+option+e');
+        expect(props.config).toMatchObject({progressiveReadingHotkey: 'custom', customProgressiveReadingHotkey: 'Alt+Shift+E'});
+        expect(state.showCustomHotkeyDialog).toBe(false);
+    });
+    it('已保存的学习组合重新启用前复验个人校订占用，拒绝激活但保留录制值', async () => {
+        const {state, props} = await mount();
+        props.config.customProgressiveReadingHotkey = 'Alt+Shift+E'; props.config.personalCorrectionsEnabled = true;
+        state.handleHotkeyChange('custom');
+        expect(props.config).toMatchObject({progressiveReadingHotkey: 'none', customProgressiveReadingHotkey: 'Alt+Shift+E'});
+        expect(state.showCustomHotkeyDialog).toBe(false); expect(feedback.warning).toHaveBeenCalledWith('progressiveReading.settings.conflict');
+        props.config.personalCorrectionsEnabled = false; state.handleHotkeyChange('custom');
+        expect(props.config.progressiveReadingHotkey).toBe('custom');
+    });
     it('默认仅点击，选择和重复选择自定义只开录制，取消不预绑定', async () => {
         const {state, props} = await mount();expect(state.hotkeyDisplayName).toBe('');
         state.handleHotkeyChange('custom');state.handleHotkeyChange('custom');

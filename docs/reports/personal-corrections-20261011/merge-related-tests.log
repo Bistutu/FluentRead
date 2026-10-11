@@ -1,0 +1,21 @@
+
+> FluentRead-流畅阅读@0.0.37 test /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
+> node scripts/testing/run-resource-safe.mjs -- vitest run "tests/translationState.test.ts" "tests/bilingualReplay.test.ts" "tests/sentenceActionsMount.test.ts" "tests/userscriptViteConfig.test.ts" "tests/userscriptUnsupportedCapabilities.test.ts" "tests/readingEvidence.test.ts" "tests/readingEvidenceAnchor.test.ts"
+
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vitest run tests/translationState.test.ts tests/bilingualReplay.test.ts tests/sentenceActionsMount.test.ts tests/userscriptViteConfig.test.ts tests/userscriptUnsupportedCapabilities.test.ts tests/readingEvidence.test.ts tests/readingEvidenceAnchor.test.ts
+
+ RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
+
+ ✓ tests/translationState.test.ts (98 tests) 738ms
+   ✓ 指定节点翻译状态机 > removed subtree 查询不会读取大批无关 active owner 的状态 420ms
+ ✓ tests/readingEvidenceAnchor.test.ts (34 tests) 121ms
+ ✓ tests/userscriptViteConfig.test.ts (35 tests) 1644ms
+ ✓ tests/bilingualReplay.test.ts (19 tests) 119ms
+ ✓ tests/readingEvidence.test.ts (8 tests) 7ms
+ ✓ tests/sentenceActionsMount.test.ts (4 tests) 9ms
+ ✓ tests/userscriptUnsupportedCapabilities.test.ts (3 tests) 2ms
+
+ Test Files  7 passed (7)
+      Tests  201 passed (201)
+   Start at  17:35:39
+   Duration  6.62s (transform 1.54s, setup 0ms, collect 2.93s, tests 2.64s, environment 1ms, prepare 281ms)

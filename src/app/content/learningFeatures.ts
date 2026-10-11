@@ -1,8 +1,8 @@
 /**
  * @file src/app/content/learningFeatures.ts
- * 文件职责：组装页面内写作入口和主动渐进阅读辅助的静态功能定义。
- * 主要内容：将当前配置、浏览器能力和 WXT context 接入写作/阅读的启用判断与挂载所有权；userscript 构建排除渐进阅读定义，句子听读与收藏统一由主动划词后的卡片承接。
- * 模块边界：只组织 feature 公开生命周期，不为普通悬停挂载句子工具条，不处理编辑器或学习数据。
+ * 文件职责：组装页面内主动渐进阅读、默认关闭的个人校订与写作入口的静态功能定义。
+ * 主要内容：将当前配置、浏览器能力和 WXT context 接入各功能的启用判断与挂载所有权；userscript 构建排除渐进阅读和个人校订定义，句子听读与收藏统一由主动划词后的卡片承接。
+ * 模块边界：只组织 feature 公开生命周期，不为普通悬停挂载句子工具条，不处理编辑器、校订存储或学习数据。
  */
 import type {ContentScriptContext} from 'wxt/utils/content-script-context';
 import type {Config} from '@/src/core/config/model';
@@ -11,6 +11,7 @@ import {isWritingPage} from '@/src/core/config/writing';
 import {mountWritingAssistant, unmountWritingAssistant, isWritingAssistantMounted} from '@/src/features/writing-assistant/public';
 import {mountProgressiveReading, unmountProgressiveReading} from '@/src/features/progressive-reading/public';
 import type {ContentFeatureDefinition} from './featureRegistry';
+import {mountPersonalCorrectionContent, unmountPersonalCorrectionContent} from './personalCorrections';
 
 export function createLearningContentFeatures(ctx: ContentScriptContext, config: Config, capabilities: BrowserCapabilities): ContentFeatureDefinition[] {
     const progressiveFeatures: ContentFeatureDefinition[] = import.meta.env.BROWSER === 'userscript' ? [] : [
@@ -19,6 +20,10 @@ export function createLearningContentFeatures(ctx: ContentScriptContext, config:
     ];
     return [
         ...progressiveFeatures,
+        ...(import.meta.env.BROWSER === 'userscript' ? [] : [
+            {id: 'personal-corrections', isEnabled: () => capabilities.browser !== 'userscript' && config.on && config.personalCorrectionsEnabled === true,
+                mount: ({signal}) => mountPersonalCorrectionContent(ctx, signal), unmount: unmountPersonalCorrectionContent} satisfies ContentFeatureDefinition,
+        ]),
         {id: 'writing-assistant', isEnabled: () => capabilities.browser !== 'userscript' && config.on && config.writing.enabled && isWritingPage(window.location.href),
             mount: () => mountWritingAssistant(ctx), unmount: unmountWritingAssistant, isMounted: isWritingAssistantMounted},
     ];

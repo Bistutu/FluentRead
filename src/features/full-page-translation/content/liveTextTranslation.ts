@@ -16,6 +16,7 @@ import type {TranslationScope, TranslationTextProtectionOptions} from '@/src/cor
 import {hasDistinctTargetTranslation as hasDistinctTranslation} from '@/src/core/translation/targetResult';
 import type {TranslationQueueSession} from '@/src/services/translation/queue';
 import {copyFullPageTranslationConfigSnapshot} from './translationConfigSnapshot';
+import {isPersonalCorrectionEnabled, lookupPersonalCorrection, type PersonalCorrectionSnapshot} from './personalCorrections';
 import {
     translateTextSlots,
     type FullPageTranslationConfigSnapshot,
@@ -65,21 +66,13 @@ function preservesSourceNewlines(node: HTMLElement): boolean {
 async function translateSnapshotAsWholeBlock(
     node: HTMLElement,
     origins: readonly string[],
+    source: string | null,
     snapshot: FullPageTranslationConfigSnapshot,
     signal?: AbortSignal,
     queueSession?: TranslationQueueSession,
     fullPageSession?: FullPageTranslationSessionCache,
-    protectionOptions?: TranslationTextProtectionOptions,
     forceFailedRequest = false,
-    scope?: TranslationScope,
 ): Promise<string[] | null> {
-    const core = getCurrentTranslationCore(scope);
-    // 与提交时的渲染骨架使用同一套省略规则；隐藏文字、tooltip 等不会被当成受保护内容。
-    const skeleton = createTranslationSourceSnapshot(node, core.shouldStayOriginal, undefined,
-        protectionOptions, core.shouldOmitFromTranslation);
-    if (skeleton.slots.length !== origins.length ||
-        skeleton.slots.some((slot, index) => slot.source !== origins[index])) return null;
-    const source = buildWholeBlockTranslationSource(skeleton, {preserveNewlines: preservesSourceNewlines(node)});
     if (!source) return null;
     const [translation = ''] = await translateTextSlots(
         [source], snapshot, signal, queueSession, fullPageSession, forceFailedRequest,
@@ -174,11 +167,11 @@ export async function translateLiveText(
     };
 }
 
-export type TranslationResult = LiveTextTranslationResult | ControlValueTranslationResult | {
+export type TranslationResult = (LiveTextTranslationResult | ControlValueTranslationResult | {
     kind: 'snapshot';
     sources: readonly string[];
     translations: readonly string[];
-};
+}) & {personalCorrection?: PersonalCorrectionSnapshot};
 
 /** 统一冻结候选范围；异步期间其他会话的范围变化不能改变本次请求的文本槽。 */
 export async function createTranslationRequest(
@@ -207,13 +200,28 @@ export async function createTranslationRequest(
         undefined, protectionOptions);
     const origins = parts.map((part) => part.source);
     if (origins.length === 0) return {kind: 'snapshot', sources: [], translations: []};
+    let source: string | null = null;
+    if (origins.length > 1 || (import.meta.env.BROWSER !== 'userscript' && isPersonalCorrectionEnabled())) {
+        const core = getCurrentTranslationCore(scope);
+        const skeleton = createTranslationSourceSnapshot(node, core.shouldStayOriginal, undefined,
+            protectionOptions, core.shouldOmitFromTranslation);
+        source = skeleton.slots.length === origins.length && skeleton.slots.every((slot, index) => slot.source === origins[index])
+            ? origins.length === 1 && !skeleton.clone.firstElementChild ? origins[0]!
+                : buildWholeBlockTranslationSource(skeleton, {preserveNewlines: preservesSourceNewlines(node)}) : null;
+    }
+    const personalCorrection = import.meta.env.BROWSER !== 'userscript' && source
+        ? await lookupPersonalCorrection(node, source, snapshot.sourceLanguage, snapshot.targetLanguage, signal) : undefined;
+    if (personalCorrection?.translation) return {kind: 'snapshot', sources: origins,
+        translations: origins.map((_, index) => index === 0 ? personalCorrection.translation! : ''), personalCorrection};
+    const finish = (translations: readonly string[]): TranslationResult => ({kind: 'snapshot', sources: origins, translations,
+        ...(import.meta.env.BROWSER !== 'userscript' && personalCorrection ? {personalCorrection: {...personalCorrection, baseline: [...translations]}} : {})});
     if (parts.length > 1) {
-        const wholeBlock = await translateSnapshotAsWholeBlock(node, origins, snapshot, signal, queueSession,
-            fullPageSession, protectionOptions, forceFailedRequest, scope);
-        if (wholeBlock) return {kind: 'snapshot', sources: origins, translations: wholeBlock};
+        const wholeBlock = await translateSnapshotAsWholeBlock(node, origins, source, snapshot, signal, queueSession,
+            fullPageSession, forceFailedRequest);
+        if (wholeBlock) return finish(wholeBlock);
     }
     const translations = await translateTextSlots(origins, snapshot, signal, queueSession,
         fullPageSession, forceFailedRequest,
         ...(snapshot.enableAIContext || (fullPageSession && snapshot.enableAIMultiSegment) ? [node] : []));
-    return {kind: 'snapshot', sources: origins, translations};
+    return finish(translations);
 }

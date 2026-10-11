@@ -66,6 +66,22 @@ describe('学习快捷键默认点击与迁移合同', () => {
 });
 
 describe('学习快捷键复用当前配置冲突边界', () => {
+    it('个人校订默认不占用，开启时占用规范化的固定组合，关闭后释放且相邻组合不误占用', () => {
+        const config = available();
+        expect(config.personalCorrectionsEnabled).toBe(false);
+        expect(findProgressiveReadingHotkeyConflict(config, 'Alt+Shift+E')).toBe(null);
+        config.personalCorrectionsEnabled = true;
+        expect(findProgressiveReadingHotkeyConflict(config, 'shift+option+e')).toBe('personalCorrections');
+        expect(findProgressiveReadingHotkeyConflict(config, 'Alt+E')).toBe(null);
+        expect(findProgressiveReadingHotkeyConflict(config, 'Ctrl+Alt+Shift+E')).toBe(null);
+        expect(findProgressiveReadingHotkeyConflict(config, 'Alt+Shift+L')).toBe(null);
+        config.personalCorrectionsEnabled = false;
+        expect(findProgressiveReadingHotkeyConflict(config, 'Alt+Shift+E')).toBe(null);
+    });
+    it.each([undefined, null, 'true', 1, {}, []])('个人校订标记 %s 未显式为布尔 true，不占用学习组合', flag => {
+        const config = Object.assign(available(), {personalCorrectionsEnabled: flag});
+        expect(findProgressiveReadingHotkeyConflict(config, 'Alt+Shift+E')).toBe(null);
+    });
     it('无快捷键、非法值和无人占用的组合均不冲突', () => {
         for (const hotkey of ['', 'none', 'unsupported', 'Alt+L']) expect(findProgressiveReadingHotkeyConflict(available(), hotkey)).toBe(null);
     });

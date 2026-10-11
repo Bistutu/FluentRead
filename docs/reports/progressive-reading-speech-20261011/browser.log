@@ -1,4 +1,4 @@
-[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: node scripts/run-progressive-reading-test.cjs --extension-dir .output/chrome-mv3 --playwright-root /Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules --focus-safe-helper scripts/testing/focus-safe-browser.cjs --background --artifacts-dir /private/tmp/fluentread-progressive-reading-speech-final-v5 --speech
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: node scripts/run-progressive-reading-test.cjs --extension-dir .output/chrome-mv3 --playwright-root /Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules --focus-safe-helper scripts/testing/focus-safe-browser.cjs --background --artifacts-dir /private/tmp/fluentread-progressive-reading-speech-integrated-final --speech
 PASS 320px and 400px real Popup documents expose three compact actions in one row, with an inline default shortcut and complete long shortcuts in real title attributes, without separate keycaps, a legacy glyph or site-rule frame
 PASS Learning defaults to no binding; real hover, keyboard focus, settings-link travel, Escape and reentry reveal help and open its dedicated settings panel
 PASS A real custom-key recording persists across closing and reopening options and is reflected in the Popup help
@@ -29,7 +29,7 @@ PASS 390px speech controls fit without horizontal overflow and trusted Tab/Enter
 {
   "ok": true,
   "cases": 27,
-  "artifactsDir": "/private/tmp/fluentread-progressive-reading-speech-final-v5",
+  "artifactsDir": "/private/tmp/fluentread-progressive-reading-speech-integrated-final",
   "launchMode": "macos-background-cdp",
   "focusPolicy": "launchservices-no-foreground",
   "windowPlacement": {

@@ -1,0 +1,317 @@
+
+> FluentRead-流畅阅读@0.0.37 test /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011
+> node scripts/testing/run-resource-safe.mjs -- vitest run "tests/architecture/moduleBoundaries.test.ts" "tests/architecture/sourceFileHeaders.test.ts" "tests/architecture/verificationOwnership.test.ts" "tests/progressiveReadingSpeechUi.test.ts" "tests/progressiveReadingHotkey.test.ts" "tests/i18n.test.ts" "tests/configDiff.test.ts" "tests/configModelAuditBoundaries.test.ts" "tests/optionsNavigation.test.ts" "tests/progressiveReadingSettingsLifecycle.test.ts" "tests/popupAppLifecycle.test.ts" "tests/popupFeatureVisibility.test.ts" "tests/popupKeyInformation.test.ts"
+
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vitest run tests/architecture/moduleBoundaries.test.ts tests/architecture/sourceFileHeaders.test.ts tests/architecture/verificationOwnership.test.ts tests/progressiveReadingSpeechUi.test.ts tests/progressiveReadingHotkey.test.ts tests/i18n.test.ts tests/configDiff.test.ts tests/configModelAuditBoundaries.test.ts tests/optionsNavigation.test.ts tests/progressiveReadingSettingsLifecycle.test.ts tests/popupAppLifecycle.test.ts tests/popupFeatureVisibility.test.ts tests/popupKeyInformation.test.ts
+
+ RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011
+
+ ❯ tests/i18n.test.ts (58 tests | 1 failed) 3366ms
+   × i18n 全量界面扫描 > Vue 文案和展示注册表在非中文界面有本地化结果 1114ms
+     → expected [ …(200) ] to deeply equal []
+   ✓ 运行期反馈文案资源 > 每条精确反馈都来自真实源码，不重复，并在每种界面语言中完整本地化 1007ms
+   ✓ 旧界面译文人工校正 > 校正原文仍在界面源码中使用，不重复，并覆盖此前的译文 888ms
+ ✓ tests/configDiff.test.ts (51 tests) 25ms
+stdout | tests/configModelAuditBoundaries.test.ts > configmodelAudit 配置、目录和真实消费者边界 > 限时独立子进程保留合法深层 JSON：deep-object
+configmodelAudit-child {"scenario":"deep-object","status":0,"signal":null,"stdout":"{\"scenario\":\"deep-object\",\"depth\":20000,\"leaf\":\"preserved\",\"consumerLeaf\":\"preserved\",\"distinct\":true,\"serialization\":{\"status\":\"error\",\"name\":\"RangeError\",\"message\":\"Maximum call stack size exceeded\"},\"sourceLeaf\":\"preserved\",\"configPrototype\":true,\"rawBodyPreserved\":true,\"loaded\":[\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/model.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/services/config/schema.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/customBody.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/sentenceHighlight.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/shareCard.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/manga.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/informationHighlight.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/modelThinking.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/validation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/deepl.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/sensitiveKeys.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/customOpenAI.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/requestHeaders.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/context-menu/domain.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/catalog.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/freeTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/progressiveReading.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/paragraphCopy.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/translationCache.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/chinese.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/interfaceAppearance.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/site-rules/domain.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/areaTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/i18n/language.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/site-adaptation/schema.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/translationLoadingStyle.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/glossary/index.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/sectionTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/scheduling.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/quickTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/localTts.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/selectionTts.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/vision.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/apiKeys.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/requestLimits.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/videoSubtitleAppearance.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/writing.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/translationAppearance.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/hotkey/index.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/pageTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/inputTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/harness.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/nativeBatch.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/codes.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/catalog.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/informationHighlightModel.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/chineseVariants.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/doubaoSeedTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/mangaReaderProfiles.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/mangaSiteCatalog.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/glossary/protection.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/glossary/model.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/glossary/match.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/glossary/revisionMemo.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/glossary/transfer.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/harness/prompts.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/localTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/deeplx.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/shared/function/sha256.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/detect.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/harness/promptLocales.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/identify.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/scripts.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/lexicon.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/statistical.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/technicalTokens.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/functionWordData.ts\"]}\n","stderr":"▲ [WARNING] \"import.meta\" is not available with the \"cjs\" output format and will be empty [empty-import-meta]\n\n    src/core/config/model.ts:714:12:\n      714 │         if (import.meta.env?.BROWSER !== 'userscript') this.perso...\n          ╵             ~~~~~~~~~~~\n\n  You need to set the output format to \"esm\" for \"import.meta\" to work correctly.\n\n▲ [WARNING] \"import.meta\" is not available with the \"cjs\" output format and will be empty [empty-import-meta]\n\n    src/core/config/model.ts:1429:8:\n      1429 │     if (import.meta.env?.BROWSER !== 'userscript') normalized.pe...\n           ╵         ~~~~~~~~~~~\n\n  You need to set the output format to \"esm\" for \"import.meta\" to work correctly.\n\n"}
+
+stdout | tests/configModelAuditBoundaries.test.ts > configmodelAudit 配置、目录和真实消费者边界 > 限时独立子进程保留合法深层 JSON：deep-array
+configmodelAudit-child {"scenario":"deep-array","status":0,"signal":null,"stdout":"{\"scenario\":\"deep-array\",\"depth\":20000,\"leaf\":\"preserved\",\"consumerLeaf\":\"preserved\",\"distinct\":true,\"serialization\":{\"status\":\"error\",\"name\":\"RangeError\",\"message\":\"Maximum call stack size exceeded\"},\"sourceLeaf\":\"preserved\",\"configPrototype\":true,\"rawBodyPreserved\":true,\"loaded\":[\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/services/config/schema.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/model.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/customBody.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/informationHighlight.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/sentenceHighlight.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/deepl.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/requestHeaders.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/manga.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/chinese.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/freeTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/context-menu/domain.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/customOpenAI.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/paragraphCopy.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/sensitiveKeys.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/catalog.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/sectionTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/quickTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/inputTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/progressiveReading.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/shareCard.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/interfaceAppearance.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/hotkey/index.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/modelThinking.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/translationLoadingStyle.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/areaTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/site-rules/domain.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/localTts.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/scheduling.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/nativeBatch.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/requestLimits.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/pageTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/writing.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/vision.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/apiKeys.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/translationAppearance.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/harness.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/videoSubtitleAppearance.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/translationCache.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/validation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/i18n/language.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/selectionTts.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/glossary/index.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/site-adaptation/schema.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/codes.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/catalog.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/informationHighlightModel.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/mangaReaderProfiles.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/chineseVariants.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/mangaSiteCatalog.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/doubaoSeedTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/harness/prompts.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/glossary/protection.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/glossary/match.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/glossary/revisionMemo.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/glossary/model.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/deeplx.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/localTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/glossary/transfer.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/shared/function/sha256.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/harness/promptLocales.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/detect.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/identify.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/scripts.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/lexicon.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/statistical.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/technicalTokens.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/functionWordData.ts\"]}\n","stderr":"▲ [WARNING] \"import.meta\" is not available with the \"cjs\" output format and will be empty [empty-import-meta]\n\n    src/core/config/model.ts:714:12:\n      714 │         if (import.meta.env?.BROWSER !== 'userscript') this.perso...\n          ╵             ~~~~~~~~~~~\n\n  You need to set the output format to \"esm\" for \"import.meta\" to work correctly.\n\n▲ [WARNING] \"import.meta\" is not available with the \"cjs\" output format and will be empty [empty-import-meta]\n\n    src/core/config/model.ts:1429:8:\n      1429 │     if (import.meta.env?.BROWSER !== 'userscript') normalized.pe...\n           ╵         ~~~~~~~~~~~\n\n  You need to set the output format to \"esm\" for \"import.meta\" to work correctly.\n\n"}
+
+stdout | tests/configModelAuditBoundaries.test.ts > configmodelAudit 配置、目录和真实消费者边界 > 限时独立子进程保留合法深层 JSON：deep-import
+configmodelAudit-child {"scenario":"deep-import","status":0,"signal":null,"stdout":"{\"scenario\":\"deep-import\",\"depth\":20000,\"leaf\":\"preserved\",\"consumerLeaf\":\"preserved\",\"distinct\":true,\"serialization\":{\"status\":\"error\",\"name\":\"RangeError\",\"message\":\"Maximum call stack size exceeded\"},\"sourceLeaf\":\"preserved\",\"configPrototype\":true,\"rawBodyPreserved\":true,\"loaded\":[\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/model.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/services/config/schema.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/customBody.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/sensitiveKeys.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/informationHighlight.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/sentenceHighlight.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/freeTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/modelThinking.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/requestHeaders.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/deepl.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/customOpenAI.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/manga.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/shareCard.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/validation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/progressiveReading.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/translationLoadingStyle.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/scheduling.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/sectionTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/i18n/language.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/translationCache.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/pageTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/requestLimits.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/harness.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/selectionTts.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/nativeBatch.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/translationAppearance.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/vision.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/writing.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/inputTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/videoSubtitleAppearance.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/quickTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/apiKeys.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/catalog.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/areaTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/chinese.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/interfaceAppearance.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/paragraphCopy.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/hotkey/index.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/glossary/index.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/site-rules/domain.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/context-menu/domain.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/localTts.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/site-adaptation/schema.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/codes.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/catalog.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/doubaoSeedTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/mangaReaderProfiles.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/mangaSiteCatalog.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/informationHighlightModel.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/chineseVariants.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/harness/prompts.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/glossary/revisionMemo.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/glossary/protection.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/glossary/model.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/glossary/match.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/glossary/transfer.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/localTranslation.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/config/deeplx.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/harness/promptLocales.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/shared/function/sha256.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/detect.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/identify.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/scripts.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/lexicon.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/statistical.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/technicalTokens.ts\",\"/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/src/core/language/functionWordData.ts\"]}\n","stderr":"▲ [WARNING] \"import.meta\" is not available with the \"cjs\" output format and will be empty [empty-import-meta]\n\n    src/core/config/model.ts:714:12:\n      714 │         if (import.meta.env?.BROWSER !== 'userscript') this.perso...\n          ╵             ~~~~~~~~~~~\n\n  You need to set the output format to \"esm\" for \"import.meta\" to work correctly.\n\n▲ [WARNING] \"import.meta\" is not available with the \"cjs\" output format and will be empty [empty-import-meta]\n\n    src/core/config/model.ts:1429:8:\n      1429 │     if (import.meta.env?.BROWSER !== 'userscript') normalized.pe...\n           ╵         ~~~~~~~~~~~\n\n  You need to set the output format to \"esm\" for \"import.meta\" to work correctly.\n\n"}
+
+stdout | tests/configModelAuditBoundaries.test.ts > configmodelAudit 配置、目录和真实消费者边界 > 共享数据节点只读取一次；非 JSON getter 抛错后可继续处理配置
+configmodelAudit-clone-operations {"references":66,"valueReads":1,"inputDigest":"b5ae8de9032ac9cf231fe54cc4d3a28083a6c024786f79dfa91cdaaad7027785","outputDigest":"d67fc90f984cd4714788a6b85be7d69b77ec04b0c63703b91a1b0af368175be7"}
+
+stdout | tests/configModelAuditBoundaries.test.ts > configmodelAudit 配置、目录和真实消费者边界 > 归一化 1 个服务在模型上限保护选择，访问操作随服务数线性增长
+configmodelAudit-operations {"providerCount":1,"modelsPerProvider":50,"mapVisits":4,"findVisits":2,"inputDigest":"eec6b27143b125011c0aaeee28912c058812bec9b9a61e91e8baa89ff813ece8","outputDigest":"2c9228055a63bd79c596c7a1a0a57ca77cfb0978c5938a0c3701fa6110d42a10"}
+
+stdout | tests/configModelAuditBoundaries.test.ts > configmodelAudit 配置、目录和真实消费者边界 > 归一化 8 个服务在模型上限保护选择，访问操作随服务数线性增长
+configmodelAudit-operations {"providerCount":8,"modelsPerProvider":50,"mapVisits":32,"findVisits":16,"inputDigest":"a47940ce2a223ef9005fea8ba82a91aff42f034c3e4695b3199adecad09c93a2","outputDigest":"a4c4014ac3dfeea33f2fd5013ce7dca6fcb27be8341f19fa17c5e25aec6cc9bf"}
+
+stdout | tests/configModelAuditBoundaries.test.ts > configmodelAudit 配置、目录和真实消费者边界 > 归一化 64 个服务在模型上限保护选择，访问操作随服务数线性增长
+configmodelAudit-operations {"providerCount":64,"modelsPerProvider":50,"mapVisits":256,"findVisits":128,"inputDigest":"8222f0fc7cfce24f1fb5f39888b4a6a2dd1d664ccc5a0e53c8a15fba2a947da1","outputDigest":"349664087b5922bfe515fa243def85f38bc10ea62cf6c258ee3490d4b6c2fe99"}
+
+ ✓ tests/configModelAuditBoundaries.test.ts (41 tests) 517ms
+ ✓ tests/popupFeatureVisibility.test.ts (31 tests) 101ms
+ ✓ tests/popupAppLifecycle.test.ts (37 tests) 15255ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 固定来源面板固定来源网页，翻译/恢复不受其它窗口或活动标签页影响 782ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 固定来源面板文档入口读取来源 PDF，源网页关闭后不切换到其它网页 557ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 信息高亮 keywords 偏好与旧入口配置不进入 Popup，也不启动页面或模型消息 466ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 信息高亮 surprisal-local 偏好与旧入口配置不进入 Popup，也不启动页面或模型消息 464ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 启动状态晚到不覆盖完成的翻译；原有站点规则也不让读取自行失效 452ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 已有始终翻译站点仍接受真实启动状态，恢复按钮与页面一致 464ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 局部等待期间锁定实际按钮，连续旧事件只发送一次并只关闭一次 457ms
+   ✓ 实际 Popup 缓存模板与页面操作 > off 使等待查询的页面/局部操作失效，不发消息或关闭 421ms
+   ✓ 实际 Popup 缓存模板与页面操作 > site 使等待查询的页面/局部操作失效，不发消息或关闭 435ms
+   ✓ 实际 Popup 缓存模板与页面操作 > hide 使等待查询的页面/局部操作失效，不发消息或关闭 450ms
+   ✓ 实际 Popup 缓存模板与页面操作 > cached 使等待查询的页面/局部操作失效，不发消息或关闭 426ms
+   ✓ 实际 Popup 缓存模板与页面操作 > unmount 使等待查询的页面/局部操作失效，不发消息或关闭 418ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 旧翻译按钮在状态切换、再次恢复后仍不能借用新的意图 408ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 活动标签页切换后不把旧页面的恢复操作发送给新页面 423ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 子组件缓存的旧站点按钮不通过新 props 和新父回调修改新页面 417ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 禁用优先于始终/全局自动翻译，保留偏好并用提示说明网站范围 428ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 禁用按钮可中断在途翻译，规则保存期间锁定两个开关并等待真实反馈 431ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 站点保存失败显示可访问错误并回读权威配置，不能声称保存或启动翻译 402ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 站点保存保留同 tick 尚未由 post watcher 提交的其他用户草稿 517ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 共享 store 同步捕获嵌套草稿，旧 ACK 不覆盖等待期间的新草稿 482ms
+   ✓ 实际 Popup 缓存模板与页面操作 > url 导航事件使已发出的旧翻译回复失效 418ms
+   ✓ 实际 Popup 缓存模板与页面操作 > loading 导航事件使已发出的旧翻译回复失效 402ms
+   ✓ 实际 Popup 缓存模板与页面操作 > activate 导航事件使已发出的旧翻译回复失效 441ms
+   ✓ 实际 Popup 缓存模板与页面操作 > remove 导航事件使已发出的旧翻译回复失效 425ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 状态查询途中连续导航仍取最后页面，标题、完成和其它窗口事件不查询 434ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 抽屉关闭再打开、字段改回及暂停后旧控件均不能借用新会话 408ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 实际显示模式保留 Google 保存偏好，并阻止旧服务和旧划词模式按钮 506ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 图片抽屉复验平台能力，旧能力回调失效，恢复后新按钮生效 427ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 缓存清理独占请求；失活旧回复不能释放重新激活后的新请求 392ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 缓存失败与暂停均有确定结束状态，失败只显示当前会话通知 421ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 赞赏打开不抢新焦点，旧遮罩不能关闭新弹窗；Tab/Escape 保持焦点归属 405ms
+   ✓ 实际 Popup 缓存模板与页面操作 > 赞赏的未完成焦点任务在关闭/失活后失效，缓存按钮不能重新打开 415ms
+   ✓ 实际 Popup 缓存模板与页面操作 > settings 的 API 失败可恢复，关闭后旧成功不关闭新会话 400ms
+   ✓ 实际 Popup 缓存模板与页面操作 > document 的 API 失败可恢复，关闭后旧成功不关闭新会话 423ms
+ ✓ tests/progressiveReadingSpeechUi.test.ts (27 tests) 5102ms
+   ✓ 学习面板真实朗读控件与生命周期 > 没有选文时隐藏朗读工具栏，打开和读取选择不会自动合成 564ms
+ ✓ tests/popupKeyInformation.test.ts (22 tests) 1037ms
+ ✓ tests/architecture/verificationOwnership.test.ts (16 tests) 7187ms
+   ✓ repository verification ownership > src 中每个可执行非组装模块都进入四维 100% 覆盖率边界 4354ms
+   ✓ repository verification ownership > 覆盖率清单不能引用不存在的源码或把组装根伪装成业务覆盖 2631ms
+ ✓ tests/architecture/moduleBoundaries.test.ts (13 tests) 3829ms
+   ✓ architecture module boundaries > src 的静态依赖图不存在跨文件循环 1357ms
+   ✓ architecture module boundaries > src 只能通过精确登记的 composition/browser/provider 迁移边界读取 entrypoints 1059ms
+   ✓ architecture module boundaries > feature 不能跨目录读取另一个 feature 的内部实现 593ms
+   ✓ architecture module boundaries > 按需加载的大体积资源不得被扩展运行时代码静态引入 506ms
+ ✓ tests/optionsNavigation.test.ts (25 tests) 11ms
+ ✓ tests/progressiveReadingSettingsLifecycle.test.ts (12 tests) 1937ms
+   ✓ 学习设置实际组件草稿与配置归属 > 默认仅点击，选择和重复选择自定义只开录制，取消不预绑定 483ms
+ ✓ tests/progressiveReadingHotkey.test.ts (41 tests) 27ms
+ ✓ tests/architecture/sourceFileHeaders.test.ts (956 tests) 279ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/i18n.test.ts > i18n 全量界面扫描 > Vue 文案和展示注册表在非中文界面有本地化结果
+AssertionError: expected [ …(200) ] to deeply equal []
+
+- Expected
++ Received
+
+- Array []
++ Array [
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的校订",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的校订",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的校订",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的校订",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的校订",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 关闭校订",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 关闭校订",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 关闭校订",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 关闭校订",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 关闭校订",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 编辑译文",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 编辑译文",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 编辑译文",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 编辑译文",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 编辑译文",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 校订视图",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 校订视图",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 校订视图",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 校订视图",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 校订视图",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 正在读取个人校订…",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 正在读取个人校订…",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 正在读取个人校订…",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 正在读取个人校订…",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 正在读取个人校订…",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认采用的译文",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认采用的译文",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认采用的译文",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认采用的译文",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认采用的译文",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 将当前网页加入此项目",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 将当前网页加入此项目",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 将当前网页加入此项目",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 将当前网页加入此项目",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 将当前网页加入此项目",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页已加入项目：",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页已加入项目：",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页已加入项目：",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页已加入项目：",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页已加入项目：",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 退出项目",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 退出项目",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 退出项目",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 退出项目",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 退出项目",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这个原句保存了不同译法",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这个原句保存了不同译法",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这个原句保存了不同译法",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这个原句保存了不同译法",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这个原句保存了不同译法",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 不会自动采用。可以编辑已有译法，或在“已保存的校订”中删除不再使用的译法。",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 不会自动采用。可以编辑已有译法，或在“已保存的校订”中删除不再使用的译法。",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 不会自动采用。可以编辑已有译法，或在“已保存的校订”中删除不再使用的译法。",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 不会自动采用。可以编辑已有译法，或在“已保存的校订”中删除不再使用的译法。",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 不会自动采用。可以编辑已有译法，或在“已保存的校订”中删除不再使用的译法。",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 相近原句的参考译文（不会自动替换）",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 相近原句的参考译文（不会自动替换）",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 相近原句的参考译文（不会自动替换）",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 相近原句的参考译文（不会自动替换）",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 相近原句的参考译文（不会自动替换）",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的原句",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的原句",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的原句",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的原句",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的原句",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前原句",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前原句",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前原句",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前原句",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前原句",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 选作草稿，再预览确认",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 选作草稿，再预览确认",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 选作草稿，再预览确认",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 选作草稿，再预览确认",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 选作草稿，再预览确认",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认预览",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认预览",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认预览",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认预览",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认预览",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前译文",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前译文",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前译文",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前译文",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前译文",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 采用校订后",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 采用校订后",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 采用校订后",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 采用校订后",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 采用校订后",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页有 12 处相同原句。出现不同的已保存译法时，不会自动采用。",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页有 12 处相同原句。出现不同的已保存译法时，不会自动采用。",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页有 12 处相同原句。出现不同的已保存译法时，不会自动采用。",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页有 12 处相同原句。出现不同的已保存译法时，不会自动采用。",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页有 12 处相同原句。出现不同的已保存译法时，不会自动采用。",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 受影响句子",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 受影响句子",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 受影响句子",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 受影响句子",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 受影响句子",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这里只保存你确认过的原句和译文。修改或删除后，旧译文会立即停止使用。",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这里只保存你确认过的原句和译文。修改或删除后，旧译文会立即停止使用。",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这里只保存你确认过的原句和译文。修改或删除后，旧译文会立即停止使用。",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这里只保存你确认过的原句和译文。修改或删除后，旧译文会立即停止使用。",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这里只保存你确认过的原句和译文。修改或删除后，旧译文会立即停止使用。",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 尚未保存个人校订。",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 尚未保存个人校订。",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 尚未保存个人校订。",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 尚未保存个人校订。",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 尚未保存个人校订。",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 所在章节",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 所在章节",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 所在章节",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 所在章节",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 所在章节",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 打开对应网页后可编辑。",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 打开对应网页后可编辑。",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 打开对应网页后可编辑。",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 打开对应网页后可编辑。",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 打开对应网页后可编辑。",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 撤销上次操作",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 撤销上次操作",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 撤销上次操作",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 撤销上次操作",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 撤销上次操作",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 仅当前网页",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 仅当前网页",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 仅当前网页",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 仅当前网页",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 仅当前网页",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围说明",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围说明",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围说明",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围说明",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围说明",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 新建项目",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 新建项目",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 新建项目",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 新建项目",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 新建项目",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目名称",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目名称",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目名称",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目名称",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目名称",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 例如：某篇论文的相关网页",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 例如：某篇论文的相关网页",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 例如：某篇论文的相关网页",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 例如：某篇论文的相关网页",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 例如：某篇论文的相关网页",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 创建",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 创建",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 创建",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 创建",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 创建",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 预览受影响句子",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 预览受影响句子",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 预览受影响句子",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 预览受影响句子",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 预览受影响句子",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认保存",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认保存",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认保存",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认保存",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认保存",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 默认只在当前网页使用。项目是一组相关网页，只有主动加入同一项目的网页，才会使用其中保存的译文。",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 默认只在当前网页使用。项目是一组相关网页，只有主动加入同一项目的网页，才会使用其中保存的译文。",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 默认只在当前网页使用。项目是一组相关网页，只有主动加入同一项目的网页，才会使用其中保存的译文。",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 默认只在当前网页使用。项目是一组相关网页，只有主动加入同一项目的网页，才会使用其中保存的译文。",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 默认只在当前网页使用。项目是一组相关网页，只有主动加入同一项目的网页，才会使用其中保存的译文。",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 原句、翻译语言（源语言和目标语言）及所在章节标题须完全相同。同一项目的其他网页会在下次翻译时使用校订。",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 原句、翻译语言（源语言和目标语言）及所在章节标题须完全相同。同一项目的其他网页会在下次翻译时使用校订。",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 原句、翻译语言（源语言和目标语言）及所在章节标题须完全相同。同一项目的其他网页会在下次翻译时使用校订。",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 原句、翻译语言（源语言和目标语言）及所在章节标题须完全相同。同一项目的其他网页会在下次翻译时使用校订。",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 原句、翻译语言（源语言和目标语言）及所在章节标题须完全相同。同一项目的其他网页会在下次翻译时使用校订。",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前章节",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前章节",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前章节",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前章节",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前章节",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目",
++   "en-US src/features/settings/ui/ReadingAssistanceSettings.vue, src/core/config/diff.ts: 个人校订",
++   "ko-KR src/features/settings/ui/ReadingAssistanceSettings.vue, src/core/config/diff.ts: 个人校订",
++   "fr-FR src/features/settings/ui/ReadingAssistanceSettings.vue, src/core/config/diff.ts: 个人校订",
++   "ru-RU src/features/settings/ui/ReadingAssistanceSettings.vue, src/core/config/diff.ts: 个人校订",
++   "es-ES src/features/settings/ui/ReadingAssistanceSettings.vue, src/core/config/diff.ts: 个人校订",
++   "en-US src/features/settings/ui/ReadingAssistanceSettings.vue: 修改网页译文，并在你确认的范围内复用。默认关闭。",
++   "ko-KR src/features/settings/ui/ReadingAssistanceSettings.vue: 修改网页译文，并在你确认的范围内复用。默认关闭。",
++   "fr-FR src/features/settings/ui/ReadingAssistanceSettings.vue: 修改网页译文，并在你确认的范围内复用。默认关闭。",
++   "ru-RU src/features/settings/ui/ReadingAssistanceSettings.vue: 修改网页译文，并在你确认的范围内复用。默认关闭。",
++   "es-ES src/features/settings/ui/ReadingAssistanceSettings.vue: 修改网页译文，并在你确认的范围内复用。默认关闭。",
++ ]
+
+ ❯ tests/i18n.test.ts:958:21
+    956|     }
+    957|     expect(audit.files.length).toBeGreaterThan(50);
+    958|     expect(missing).toEqual([]);
+       |                     ^
+    959|   });
+    960|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 12 passed (13)
+      Tests  1 failed | 1329 passed (1330)
+   Start at  18:13:08
+   Duration  45.78s (transform 1.56s, setup 0ms, collect 5.09s, tests 38.67s, environment 1ms, prepare 482ms)
+
+ ELIFECYCLE  Test failed. See above for more details.

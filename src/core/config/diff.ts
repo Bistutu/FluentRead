@@ -695,6 +695,9 @@ const FIELD_DEFINITIONS: Record<string, FieldDefinition> = {
     translationCenterLayout: {group: 'tools', label: '翻译中心结果布局', format: (value) => value === 'grid' ? '并排对比' : '列表阅读'},
     vocabularyBookEnabled: {group: 'tools', label: '单词本', format: formatBoolean},
     vocabularyReencounterEnabled: {group: 'tools', label: '再次遇见收藏表达', format: formatBoolean},
+    ...(import.meta.env?.BROWSER === 'userscript' ? {} : {
+        personalCorrectionsEnabled: {group: 'tools', label: '个人校订', format: formatBoolean} satisfies FieldDefinition,
+    }),
 };
 /** 云备份复用已知设置的名称；未知字段绝不将原始键当作可见标签。 */
 export function configDiffFieldLabel(field: string): string | undefined {

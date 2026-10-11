@@ -1,0 +1,23 @@
+{
+  "file": "src/core/config/progressiveReading.ts",
+  "statements": {
+    "total": 41,
+    "covered": 41,
+    "pct": 100
+  },
+  "branches": {
+    "total": 38,
+    "covered": 38,
+    "pct": 100
+  },
+  "functions": {
+    "total": 6,
+    "covered": 6,
+    "pct": 100
+  },
+  "lines": {
+    "total": 41,
+    "covered": 41,
+    "pct": 100
+  }
+}

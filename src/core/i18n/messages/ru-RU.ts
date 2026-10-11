@@ -113,6 +113,7 @@ export const ruRUMessages = {
     "progressiveReading.settings.custom": "Своё сочетание клавиш",
     "progressiveReading.settings.edit": "Изменить сочетание для обучения",
     "progressiveReading.settings.conflict": "Это сочетание уже используется функцией «{feature}». Выберите другое.",
+    "progressiveReading.settings.personalCorrections": "Личные исправления",
     "progressiveReading.settings.set": "Сочетание для обучения: {shortcut}",
     "progressiveReading.settings.profiles": "Профили быстрого перевода",
     ...videoLearningText,

@@ -1,17 +1,16 @@
 
 > FluentRead-流畅阅读@0.0.37 test /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011
-> node scripts/testing/run-resource-safe.mjs -- vitest run "tests/userscriptViteConfig.test.ts" "tests/userscriptUnsupportedCapabilities.test.ts" "tests/userscriptLanguageBundles.test.ts"
+> node scripts/testing/run-resource-safe.mjs -- vitest run "tests/userscriptUnsupportedCapabilities.test.ts" "tests/userscriptViteConfig.test.ts" "tests/userscriptLanguageBundles.test.ts"
 
-[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vitest run tests/userscriptViteConfig.test.ts tests/userscriptUnsupportedCapabilities.test.ts tests/userscriptLanguageBundles.test.ts
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vitest run tests/userscriptUnsupportedCapabilities.test.ts tests/userscriptViteConfig.test.ts tests/userscriptLanguageBundles.test.ts
 
  RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011
 
- ✓ tests/userscriptViteConfig.test.ts (33 tests) 1977ms
-   ✓ userscript browser shim injection > keeps standard runtime icon inline and pins only the standard manager icon 301ms
- ✓ tests/userscriptLanguageBundles.test.ts (3 tests) 112ms
- ✓ tests/userscriptUnsupportedCapabilities.test.ts (3 tests) 3ms
+ ✓ tests/userscriptViteConfig.test.ts (35 tests) 2007ms
+ ✓ tests/userscriptLanguageBundles.test.ts (3 tests) 118ms
+ ✓ tests/userscriptUnsupportedCapabilities.test.ts (4 tests) 3ms
 
  Test Files  3 passed (3)
-      Tests  39 passed (39)
-   Start at  18:00:07
-   Duration  4.49s (transform 884ms, setup 0ms, collect 1.94s, tests 2.09s, environment 0ms, prepare 104ms)
+      Tests  42 passed (42)
+   Start at  18:10:53
+   Duration  4.57s (transform 887ms, setup 0ms, collect 1.98s, tests 2.13s, environment 0ms, prepare 104ms)

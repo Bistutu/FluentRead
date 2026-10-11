@@ -113,6 +113,7 @@ export const jaJPMessages = {
     "progressiveReading.settings.custom": "カスタムショートカット",
     "progressiveReading.settings.edit": "学習ショートカットを編集",
     "progressiveReading.settings.conflict": "このショートカットは{feature}で使用されています。別の組み合わせを選んでください。",
+    "progressiveReading.settings.personalCorrections": "個人校訂",
     "progressiveReading.settings.set": "学習ショートカットを{shortcut}に設定しました",
     "progressiveReading.settings.profiles": "クイック翻訳プロファイル",
     ...videoLearningText,

@@ -23,48 +23,6 @@ export default defineUnlistedScript(() => startInformationHighlightWorkerApp());
 ---
 export default defineUnlistedScript();
 ---
-⚙ vite-node transformed entrypoint /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/entrypoints/localTranslationWorker.ts
-⚙ Original:
----
-/**
- * @file entrypoints/localTranslationWorker.ts
- * 文件职责：声明本地翻译 Worker 的独立 WXT 产物。
- */
-import {startLocalTranslationWorkerApp} from '@/src/app/offscreen/localTranslationWorker';
-
-export default defineUnlistedScript(startLocalTranslationWorkerApp);
-
----
-⚙ Transformed:
----
-/**
- * @file entrypoints/localTranslationWorker.ts
- * 文件职责：声明本地翻译 Worker 的独立 WXT 产物。
- */
-import {startLocalTranslationWorkerApp} from '@/src/app/offscreen/localTranslationWorker';
-
-export default defineUnlistedScript(startLocalTranslationWorkerApp);
----
-⚙ vite-node transformed entrypoint /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/entrypoints/localTtsWorker.ts
-⚙ Original:
----
-/**
- * @file entrypoints/localTtsWorker.ts
- * 文件职责：声明本地 TTS Worker 的独立 WXT 产物。
- * 主要内容：同步调用应用启动函数，使 WXT 收集入口元数据时能够移除运行时导入。
- * 模块边界：只注册 Worker 入口，模型与消息生命周期归 app 和 feature。
- */
-import {startLocalTtsWorkerApp} from '@/src/app/offscreen/localTtsWorker';
-
-export default defineUnlistedScript(() => {
-    startLocalTtsWorkerApp();
-});
-
----
-⚙ Transformed:
----
-export default defineUnlistedScript();
----
 ⚙ vite-node transformed entrypoint /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/entrypoints/content.ts
 ⚙ Original:
 ---
@@ -90,6 +48,98 @@ export default defineContentScript({
  runAt: 'document_start',
  cssInjectionMode: 'ui',
 });
+---
+⚙ vite-node transformed entrypoint /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/entrypoints/localTranslationWorker.ts
+⚙ Original:
+---
+/**
+ * @file entrypoints/localTranslationWorker.ts
+ * 文件职责：声明本地翻译 Worker 的独立 WXT 产物。
+ */
+import {startLocalTranslationWorkerApp} from '@/src/app/offscreen/localTranslationWorker';
+
+export default defineUnlistedScript(startLocalTranslationWorkerApp);
+
+---
+⚙ Transformed:
+---
+/**
+ * @file entrypoints/localTranslationWorker.ts
+ * 文件职责：声明本地翻译 Worker 的独立 WXT 产物。
+ */
+import {startLocalTranslationWorkerApp} from '@/src/app/offscreen/localTranslationWorker';
+
+export default defineUnlistedScript(startLocalTranslationWorkerApp);
+---
+⚙ vite-node transformed entrypoint /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/entrypoints/background.ts
+⚙ Original:
+---
+/**
+ * @file entrypoints/background.ts
+ * 文件职责：声明 FluentRead 的 WXT 后台入口，并把 service worker 生命周期委托给后台应用组合根。
+ * 主要内容：配置 Safari 非持久后台行为，调用 startBackgroundApp 组装消息路由、菜单、缓存与维护任务；配置存储会根据 MV3 worker 或 MV2 background page 身份选择后台数据库端口。
+ * 模块边界：本文件只保存 WXT 元数据和唯一启动委托，不直接注册业务 handler、访问存储或调用翻译服务。
+ */
+import {startBackgroundApp} from '@/src/app/background/runtime';
+export default defineBackground({
+    persistent: {
+        safari: false,
+    },
+    main: startBackgroundApp,
+});
+
+---
+⚙ Transformed:
+---
+export default defineBackground({
+ persistent: {
+     safari: false,
+ },
+});
+---
+⚙ vite-node transformed entrypoint /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/entrypoints/mangaInferenceWorker.ts
+⚙ Original:
+---
+/**
+ * @file entrypoints/mangaInferenceWorker.ts
+ * 文件职责：声明漫画 OCR 与修补的静态模块 Worker 产物。
+ * 主要内容：绑定独立 Worker 启动函数。
+ * 模块边界：仅处理 WXT 入口声明，推理与生命周期归 app 和 feature。
+ */
+import {startMangaInferenceWorkerApp} from '@/src/app/offscreen/mangaInferenceWorker';
+export default defineUnlistedScript(startMangaInferenceWorkerApp);
+
+---
+⚙ Transformed:
+---
+/**
+ * @file entrypoints/mangaInferenceWorker.ts
+ * 文件职责：声明漫画 OCR 与修补的静态模块 Worker 产物。
+ * 主要内容：绑定独立 Worker 启动函数。
+ * 模块边界：仅处理 WXT 入口声明，推理与生命周期归 app 和 feature。
+ */
+import {startMangaInferenceWorkerApp} from '@/src/app/offscreen/mangaInferenceWorker';
+export default defineUnlistedScript(startMangaInferenceWorkerApp);
+---
+⚙ vite-node transformed entrypoint /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/entrypoints/localTtsWorker.ts
+⚙ Original:
+---
+/**
+ * @file entrypoints/localTtsWorker.ts
+ * 文件职责：声明本地 TTS Worker 的独立 WXT 产物。
+ * 主要内容：同步调用应用启动函数，使 WXT 收集入口元数据时能够移除运行时导入。
+ * 模块边界：只注册 Worker 入口，模型与消息生命周期归 app 和 feature。
+ */
+import {startLocalTtsWorkerApp} from '@/src/app/offscreen/localTtsWorker';
+
+export default defineUnlistedScript(() => {
+    startLocalTtsWorkerApp();
+});
+
+---
+⚙ Transformed:
+---
+export default defineUnlistedScript();
 ---
 ⚙ vite-node transformed entrypoint /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/entrypoints/neteaseMailFrame.content.ts
 ⚙ Original:
@@ -121,29 +171,29 @@ export default defineContentScript({
  cssInjectionMode: 'ui',
 });
 ---
-⚙ vite-node transformed entrypoint /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/entrypoints/mangaInferenceWorker.ts
+⚙ vite-node transformed entrypoint /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/entrypoints/videoTranscriptionWorker.ts
 ⚙ Original:
 ---
 /**
- * @file entrypoints/mangaInferenceWorker.ts
- * 文件职责：声明漫画 OCR 与修补的静态模块 Worker 产物。
- * 主要内容：绑定独立 Worker 启动函数。
- * 模块边界：仅处理 WXT 入口声明，推理与生命周期归 app 和 feature。
+ * @file entrypoints/videoTranscriptionWorker.ts
+ * 文件职责：声明本地字幕模型的独立 WXT Worker 产物。
+ * 主要内容：将离屏应用组合根注册为 unlisted script，供 Offscreen 按 URL 创建 Worker。
+ * 模块边界：只负责构建入口元数据，模型推理和 Worker 消息归视频 feature 管理。
  */
-import {startMangaInferenceWorkerApp} from '@/src/app/offscreen/mangaInferenceWorker';
-export default defineUnlistedScript(startMangaInferenceWorkerApp);
+import {startVideoTranscriptionWorkerApp} from '@/src/app/offscreen/videoTranscriptionWorker';
+export default defineUnlistedScript(startVideoTranscriptionWorkerApp);
 
 ---
 ⚙ Transformed:
 ---
 /**
- * @file entrypoints/mangaInferenceWorker.ts
- * 文件职责：声明漫画 OCR 与修补的静态模块 Worker 产物。
- * 主要内容：绑定独立 Worker 启动函数。
- * 模块边界：仅处理 WXT 入口声明，推理与生命周期归 app 和 feature。
+ * @file entrypoints/videoTranscriptionWorker.ts
+ * 文件职责：声明本地字幕模型的独立 WXT Worker 产物。
+ * 主要内容：将离屏应用组合根注册为 unlisted script，供 Offscreen 按 URL 创建 Worker。
+ * 模块边界：只负责构建入口元数据，模型推理和 Worker 消息归视频 feature 管理。
  */
-import {startMangaInferenceWorkerApp} from '@/src/app/offscreen/mangaInferenceWorker';
-export default defineUnlistedScript(startMangaInferenceWorkerApp);
+import {startVideoTranscriptionWorkerApp} from '@/src/app/offscreen/videoTranscriptionWorker';
+export default defineUnlistedScript(startVideoTranscriptionWorkerApp);
 ---
 ⚙ vite-node transformed entrypoint /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/entrypoints/supportedFrame.content.ts
 ⚙ Original:
@@ -183,32 +233,6 @@ export default defineContentScript({
  allFrames: true,
  runAt: 'document_end',
  cssInjectionMode: 'ui',
-});
----
-⚙ vite-node transformed entrypoint /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/entrypoints/background.ts
-⚙ Original:
----
-/**
- * @file entrypoints/background.ts
- * 文件职责：声明 FluentRead 的 WXT 后台入口，并把 service worker 生命周期委托给后台应用组合根。
- * 主要内容：配置 Safari 非持久后台行为，调用 startBackgroundApp 组装消息路由、菜单、缓存与维护任务；配置存储会根据 MV3 worker 或 MV2 background page 身份选择后台数据库端口。
- * 模块边界：本文件只保存 WXT 元数据和唯一启动委托，不直接注册业务 handler、访问存储或调用翻译服务。
- */
-import {startBackgroundApp} from '@/src/app/background/runtime';
-export default defineBackground({
-    persistent: {
-        safari: false,
-    },
-    main: startBackgroundApp,
-});
-
----
-⚙ Transformed:
----
-export default defineBackground({
- persistent: {
-     safari: false,
- },
 });
 ---
 ⚙ vite-node transformed entrypoint /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/entrypoints/shadowBridge.content.ts
@@ -294,30 +318,6 @@ export default defineContentScript({
  world: 'MAIN',
  globalName: false,
 });
----
-⚙ vite-node transformed entrypoint /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/entrypoints/videoTranscriptionWorker.ts
-⚙ Original:
----
-/**
- * @file entrypoints/videoTranscriptionWorker.ts
- * 文件职责：声明本地字幕模型的独立 WXT Worker 产物。
- * 主要内容：将离屏应用组合根注册为 unlisted script，供 Offscreen 按 URL 创建 Worker。
- * 模块边界：只负责构建入口元数据，模型推理和 Worker 消息归视频 feature 管理。
- */
-import {startVideoTranscriptionWorkerApp} from '@/src/app/offscreen/videoTranscriptionWorker';
-export default defineUnlistedScript(startVideoTranscriptionWorkerApp);
-
----
-⚙ Transformed:
----
-/**
- * @file entrypoints/videoTranscriptionWorker.ts
- * 文件职责：声明本地字幕模型的独立 WXT Worker 产物。
- * 主要内容：将离屏应用组合根注册为 unlisted script，供 Offscreen 按 URL 创建 Worker。
- * 模块边界：只负责构建入口元数据，模型推理和 Worker 消息归视频 feature 管理。
- */
-import {startVideoTranscriptionWorkerApp} from '@/src/app/offscreen/videoTranscriptionWorker';
-export default defineUnlistedScript(startVideoTranscriptionWorkerApp);
 ---
 ⚙ All entrypoints: [ { type: 'background',
     name: 'background',
@@ -589,7 +589,7 @@ export default defineUnlistedScript(startVideoTranscriptionWorkerApp);
      '/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/.output/chrome-mv3/content-scripts',
     options: { matches: [Array], runAt: 'document_start', world: 'MAIN', globalName: false },
     skipped: false } ]
-(node:43758) ExperimentalWarning: Importing JSON modules is an experimental feature and might change at any time
+(node:52017) ExperimentalWarning: Importing JSON modules is an experimental feature and might change at any time
 (Use `node --trace-warnings ...` to show where the warning was created)
 - Preparing...
 
@@ -602,127 +602,127 @@ export default defineUnlistedScript(startVideoTranscriptionWorkerApp);
 - Using dynamic import() to code-split the application
 - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✔ Built extension in 32.2 s
+✔ Built extension in 32.4 s
   ├─ .output/chrome-mv3/manifest.json                                                                     3.23 kB
   ├─ .output/chrome-mv3/document.html                                                                     2.45 kB
   ├─ .output/chrome-mv3/offscreen.html                                                                    1.65 kB
   ├─ .output/chrome-mv3/options.html                                                                      1.96 kB
   ├─ .output/chrome-mv3/popup.html                                                                        2.19 kB
-  ├─ .output/chrome-mv3/background.js                                                                     2.28 MB
+  ├─ .output/chrome-mv3/background.js                                                                     2.29 MB
   ├─ .output/chrome-mv3/chunks/_commonjs-dynamic-modules-TDtrdbi3.js                                      239 B
   ├─ .output/chrome-mv3/chunks/_plugin-vue_export-helper-DlAUqK2U.js                                      91 B
   ├─ .output/chrome-mv3/chunks/_virtual_wxt-html-plugins-CASRt4Tk.js                                      723 B
   ├─ .output/chrome-mv3/chunks/_virtual_wxt-plugins-DkXLw86N.js                                           69.61 kB
   ├─ .output/chrome-mv3/chunks/128-rof0LK9z.js                                                            40 B
-  ├─ .output/chrome-mv3/chunks/AreaTranslationSettings-Bsk4Bu--.js                                        12.13 kB
+  ├─ .output/chrome-mv3/chunks/AreaTranslationSettings-scVJ2P71.js                                        12.13 kB
   ├─ .output/chrome-mv3/chunks/base-oSUGgB2X.js                                                           1.02 kB
-  ├─ .output/chrome-mv3/chunks/capabilities-BLW_-uG5.js                                                   682 B
-  ├─ .output/chrome-mv3/chunks/capabilities-FzOlh1MU.js                                                   118.53 kB
-  ├─ .output/chrome-mv3/chunks/client-BaU7Ex1w.js                                                         22.46 kB
-  ├─ .output/chrome-mv3/chunks/client-C5L_pR37.js                                                         3.63 kB
+  ├─ .output/chrome-mv3/chunks/capabilities-Csril9Bu.js                                                   118.53 kB
+  ├─ .output/chrome-mv3/chunks/capabilities-KrLu1BD_.js                                                   682 B
+  ├─ .output/chrome-mv3/chunks/client-C4NQN-zB.js                                                         22.46 kB
+  ├─ .output/chrome-mv3/chunks/client-CE8zyXrp.js                                                         3.63 kB
   ├─ .output/chrome-mv3/chunks/compiler-DY6RdXT-.js                                                       112.05 kB
-  ├─ .output/chrome-mv3/chunks/ConfigManagement-C5NqqF4R.js                                               113.51 kB
+  ├─ .output/chrome-mv3/chunks/ConfigManagement-TVt78eHe.js                                               113.58 kB
   ├─ .output/chrome-mv3/chunks/contextMenuBridge-Cd7EoZ8L.js                                              189 B
-  ├─ .output/chrome-mv3/chunks/ContextMenuSettings-DidxcFiV.js                                            5.53 kB
+  ├─ .output/chrome-mv3/chunks/ContextMenuSettings-DIFBXTj5.js                                            5.53 kB
   ├─ .output/chrome-mv3/chunks/core-CL73vl4w.js                                                           7.66 kB
-  ├─ .output/chrome-mv3/chunks/CustomHotkeyInput-D_Xyh0Bp.js                                              8.22 kB
-  ├─ .output/chrome-mv3/chunks/CustomOpenAIProviderDialog-Dmf1D9b_.js                                     5.07 kB
-  ├─ .output/chrome-mv3/chunks/document-DdkZh7A_.js                                                       183.11 kB
-  ├─ .output/chrome-mv3/chunks/downloadProgress-DKzOHqgr.js                                               305 B
-  ├─ .output/chrome-mv3/chunks/DownloadProgress-hi6z10ec.js                                               1.05 kB
-  ├─ .output/chrome-mv3/chunks/featureServices-NkA_R1YQ.js                                                45.12 kB
-  ├─ .output/chrome-mv3/chunks/FloatingBallSettings-CeMVGPVM.js                                           10.91 kB
-  ├─ .output/chrome-mv3/chunks/fontkit.es-b9ti0VJz.js                                                     716.51 kB
-  ├─ .output/chrome-mv3/chunks/GlossaryLibrarySelect-BKHcL0vy.js                                          2.45 kB
-  ├─ .output/chrome-mv3/chunks/i18n-BNggvvet.js                                                           774.52 kB
+  ├─ .output/chrome-mv3/chunks/CustomHotkeyInput-BEKKa8oe.js                                              8.22 kB
+  ├─ .output/chrome-mv3/chunks/CustomOpenAIProviderDialog-DCSwY6Cf.js                                     5.07 kB
+  ├─ .output/chrome-mv3/chunks/document-yE6MKWz-.js                                                       183.11 kB
+  ├─ .output/chrome-mv3/chunks/downloadProgress-DlS_Me4I.js                                               305 B
+  ├─ .output/chrome-mv3/chunks/DownloadProgress-SMthPNJO.js                                               1.05 kB
+  ├─ .output/chrome-mv3/chunks/featureServices-C-DqC_zq.js                                                45.12 kB
+  ├─ .output/chrome-mv3/chunks/FloatingBallSettings-hLPW6Lxp.js                                           10.91 kB
+  ├─ .output/chrome-mv3/chunks/fontkit.es-CGe9lw_p.js                                                     716.51 kB
+  ├─ .output/chrome-mv3/chunks/GlossaryLibrarySelect-CqJaVpp_.js                                          2.45 kB
+  ├─ .output/chrome-mv3/chunks/i18n-D7Oll55v.js                                                           774.75 kB
   ├─ .output/chrome-mv3/chunks/imageEncoding-CEiqTT_2.js                                                  3 kB
-  ├─ .output/chrome-mv3/chunks/index-BD5Xwp-K.js                                                          4.82 kB
+  ├─ .output/chrome-mv3/chunks/index-BiDOp7oO.js                                                          10.73 kB
+  ├─ .output/chrome-mv3/chunks/index-Bn-b7N8L.js                                                          45.35 kB
+  ├─ .output/chrome-mv3/chunks/index-C2Om9psD.js                                                          4.82 kB
   ├─ .output/chrome-mv3/chunks/index-CEz7xnM7.js                                                          43.75 kB
-  ├─ .output/chrome-mv3/chunks/index-CxtxSQZa.js                                                          19.08 kB
-  ├─ .output/chrome-mv3/chunks/index-Cy0a7Dpt.js                                                          390.39 kB
-  ├─ .output/chrome-mv3/chunks/index-D1E21efx.js                                                          10.73 kB
+  ├─ .output/chrome-mv3/chunks/index-CffC2NVi.js                                                          20.44 kB
+  ├─ .output/chrome-mv3/chunks/index-Cl42nj6M.js                                                          19.08 kB
   ├─ .output/chrome-mv3/chunks/index-D9awcXjb.js                                                          3.31 kB
-  ├─ .output/chrome-mv3/chunks/index-DGjl5apR.js                                                          20.44 kB
-  ├─ .output/chrome-mv3/chunks/index-JvMKXNM1.js                                                          45.35 kB
-  ├─ .output/chrome-mv3/chunks/index.full-CWaxj8VS.js                                                     728.84 kB
-  ├─ .output/chrome-mv3/chunks/InformationHighlightSettings-bDrywlv_.js                                   28.44 kB
-  ├─ .output/chrome-mv3/chunks/InputTranslationSettings-BqzYcOVZ.js                                       14.7 kB
-  ├─ .output/chrome-mv3/chunks/interfaceAppearance-CR239FVh.js                                            11.1 kB
-  ├─ .output/chrome-mv3/chunks/InterfaceSettings-Bfwfas_-.js                                              70.89 kB
-  ├─ .output/chrome-mv3/chunks/jszip.min-B9o9uy83.js                                                      96.97 kB
-  ├─ .output/chrome-mv3/chunks/LearningCenter-BcBowl00.js                                                 59.84 kB
+  ├─ .output/chrome-mv3/chunks/index-DXq5WFrI.js                                                          390.39 kB
+  ├─ .output/chrome-mv3/chunks/index.full-CJxNXpvd.js                                                     728.84 kB
+  ├─ .output/chrome-mv3/chunks/InformationHighlightSettings-DQ9lGbRv.js                                   28.44 kB
+  ├─ .output/chrome-mv3/chunks/InputTranslationSettings-Cn0QxDVK.js                                       14.7 kB
+  ├─ .output/chrome-mv3/chunks/interfaceAppearance-GXbDLxML.js                                            11.1 kB
+  ├─ .output/chrome-mv3/chunks/InterfaceSettings-D4YOhSts.js                                              70.89 kB
+  ├─ .output/chrome-mv3/chunks/jszip.min-Dvj8ibxv.js                                                      96.97 kB
+  ├─ .output/chrome-mv3/chunks/LearningCenter-Cj7xdmU1.js                                                 59.84 kB
   ├─ .output/chrome-mv3/chunks/learningModel-B1q9bLNZ.js                                                  5.37 kB
   ├─ .output/chrome-mv3/chunks/localTranslationSupport-Dq55OZJm.js                                        192 B
   ├─ .output/chrome-mv3/chunks/localTts-C820yaTe.js                                                       222.75 kB
-  ├─ .output/chrome-mv3/chunks/LocalTtsSettings-hHw9L6tU.js                                               8.68 kB
+  ├─ .output/chrome-mv3/chunks/LocalTtsSettings-DW4W0T5O.js                                               8.68 kB
   ├─ .output/chrome-mv3/chunks/mangaPatchResult-DoCqtjzx.js                                               10.24 kB
-  ├─ .output/chrome-mv3/chunks/MangaSettings.vue_vue_type_style_index_0_scoped_8861e740_lang-E-fBFHnA.js  103.96 kB
+  ├─ .output/chrome-mv3/chunks/MangaSettings.vue_vue_type_style_index_0_scoped_8861e740_lang-CCaMR26v.js  103.96 kB
   ├─ .output/chrome-mv3/chunks/modelDownloads-x4RZHIUY.js                                                 3.83 kB
-  ├─ .output/chrome-mv3/chunks/mount-Dmgb58de.js                                                          2.03 kB
+  ├─ .output/chrome-mv3/chunks/mount-Cd0c2n1x.js                                                          2.03 kB
   ├─ .output/chrome-mv3/chunks/numberFormat-BTgBvnxC.js                                                   192 B
   ├─ .output/chrome-mv3/chunks/ocr-Dga3po_l.js                                                            33.58 kB
   ├─ .output/chrome-mv3/chunks/offscreen-BL3887xY.js                                                      104.12 kB
-  ├─ .output/chrome-mv3/chunks/options-D751-Lbc.js                                                        89.47 kB
-  ├─ .output/chrome-mv3/chunks/ParagraphCopySettings-B5GmqsNj.js                                          7.08 kB
-  ├─ .output/chrome-mv3/chunks/ParagraphHandlingSettings-DdKLg7da.js                                      2.95 kB
+  ├─ .output/chrome-mv3/chunks/options-CxoE1L5V.js                                                        89.54 kB
+  ├─ .output/chrome-mv3/chunks/ParagraphCopySettings-aGksQLWm.js                                          7.08 kB
+  ├─ .output/chrome-mv3/chunks/ParagraphHandlingSettings-ufDv4dfJ.js                                      2.95 kB
   ├─ .output/chrome-mv3/chunks/pdf-DTIIO-U_.js                                                            409.22 kB
-  ├─ .output/chrome-mv3/chunks/PdfReader-pbmXVOF_.js                                                      60.49 kB
-  ├─ .output/chrome-mv3/chunks/pdfReadingFont-DJMn058a.js                                                 4.5 kB
+  ├─ .output/chrome-mv3/chunks/PdfReader-Dltbecn7.js                                                      60.49 kB
+  ├─ .output/chrome-mv3/chunks/pdfReadingFont-_WlZ_yb6.js                                                 4.5 kB
   ├─ .output/chrome-mv3/chunks/pdfSource-gjBoXda6.js                                                      648 B
-  ├─ .output/chrome-mv3/chunks/popup--C90espO.js                                                          5.57 kB
-  ├─ .output/chrome-mv3/chunks/PopupApp-CEXAV7Mk.js                                                       52.31 kB
-  ├─ .output/chrome-mv3/chunks/PopupDrawer-BnhUdn7b.js                                                    3.64 kB
-  ├─ .output/chrome-mv3/chunks/PopupOnboarding-BeAkw9gk.js                                                3.41 kB
+  ├─ .output/chrome-mv3/chunks/popup-QcFcx2nI.js                                                          5.57 kB
+  ├─ .output/chrome-mv3/chunks/PopupApp-BcN-g3_T.js                                                       52.31 kB
+  ├─ .output/chrome-mv3/chunks/PopupDrawer-BZDsNJPz.js                                                    3.64 kB
+  ├─ .output/chrome-mv3/chunks/PopupOnboarding-CxGrjKZw.js                                                3.41 kB
   ├─ .output/chrome-mv3/chunks/popupQuickFeatureIcons-BOZF-9oy.js                                         504 B
-  ├─ .output/chrome-mv3/chunks/PopupServices-pZ6OJl6r.js                                                  12.56 kB
+  ├─ .output/chrome-mv3/chunks/PopupServices-iuiFdRIH.js                                                  12.56 kB
   ├─ .output/chrome-mv3/chunks/presentation-Ck8BgFQ4.js                                                   33 kB
   ├─ .output/chrome-mv3/chunks/progress-DrSrqemQ.js                                                       2.21 kB
-  ├─ .output/chrome-mv3/chunks/ProgressiveReadingSettings-CHW1mB08.js                                     4.86 kB
-  ├─ .output/chrome-mv3/chunks/PromptTemplateEditor-Bsh6acRo.js                                           5.86 kB
+  ├─ .output/chrome-mv3/chunks/ProgressiveReadingSettings-DfJ35oWj.js                                     4.93 kB
+  ├─ .output/chrome-mv3/chunks/PromptTemplateEditor-D6OYBmtr.js                                           5.86 kB
   ├─ .output/chrome-mv3/chunks/protocol-DokfpzeP.js                                                       1.49 kB
-  ├─ .output/chrome-mv3/chunks/public-0-vfhyZd.js                                                         53.39 kB
-  ├─ .output/chrome-mv3/chunks/public-B7_6EIYt.js                                                         38.16 kB
-  ├─ .output/chrome-mv3/chunks/public-ByOT3yAo.js                                                         32.86 kB
-  ├─ .output/chrome-mv3/chunks/public-C0BO7jqq.js                                                         43.29 kB
-  ├─ .output/chrome-mv3/chunks/public-H453L-be.js                                                         23.04 kB
-  ├─ .output/chrome-mv3/chunks/QuickTranslationProfiles-gsHZ72QC.js                                       22.03 kB
-  ├─ .output/chrome-mv3/chunks/ReadingAnswer-B7oYMniU.js                                                  17.28 kB
+  ├─ .output/chrome-mv3/chunks/public-246STclk.js                                                         43.29 kB
+  ├─ .output/chrome-mv3/chunks/public-BDRzM3TD.js                                                         32.86 kB
+  ├─ .output/chrome-mv3/chunks/public-CVuRahw9.js                                                         23.04 kB
+  ├─ .output/chrome-mv3/chunks/public-DIBWxsw0.js                                                         53.39 kB
+  ├─ .output/chrome-mv3/chunks/public-S6Cv-Beg.js                                                         38.16 kB
+  ├─ .output/chrome-mv3/chunks/QuickTranslationProfiles-BeTZjXjj.js                                       22.03 kB
+  ├─ .output/chrome-mv3/chunks/ReadingAnswer-DFLKkcCn.js                                                  17.28 kB
   ├─ .output/chrome-mv3/chunks/registry-B9igFR0I.js                                                       379 B
   ├─ .output/chrome-mv3/chunks/result-S8stjcMA.js                                                         215 B
-  ├─ .output/chrome-mv3/chunks/runtimeMessages-BDrNMgFL.js                                                266 B
-  ├─ .output/chrome-mv3/chunks/SectionTranslationSettings-DS6t8zDE.js                                     7.75 kB
-  ├─ .output/chrome-mv3/chunks/SegmentedControl-BzG0JMzy.js                                               2.91 kB
-  ├─ .output/chrome-mv3/chunks/SelectionSettings-BQVvglgt.js                                              15.65 kB
-  ├─ .output/chrome-mv3/chunks/SelectionTranslator-CYQSk7uy.js                                            90.28 kB
-  ├─ .output/chrome-mv3/chunks/ServiceCatalog-BvYgwJBQ.js                                                 24.2 kB
-  ├─ .output/chrome-mv3/chunks/serviceCatalog-Dml1IiF8.js                                                 7.58 kB
-  ├─ .output/chrome-mv3/chunks/ServiceConfiguration-BSTfP7lQ.js                                           133.63 kB
-  ├─ .output/chrome-mv3/chunks/ServiceNatureBadge-CiYRS1Nx.js                                             725 B
-  ├─ .output/chrome-mv3/chunks/SettingsPreviewLayout-CHj0D-d0.js                                          892 B
-  ├─ .output/chrome-mv3/chunks/SettingsSections-WK3DK8yv.js                                               91.79 kB
-  ├─ .output/chrome-mv3/chunks/siteAdaptationEditor-n5go98nt.js                                           4.97 kB
-  ├─ .output/chrome-mv3/chunks/SiteAdaptationSettings-ysmGc6WE.js                                         26.8 kB
-  ├─ .output/chrome-mv3/chunks/sitePreferences-Cg4C8Aqb.js                                                1.34 kB
-  ├─ .output/chrome-mv3/chunks/SitePreferencesSettings-jyv5jLAg.js                                        8.37 kB
-  ├─ .output/chrome-mv3/chunks/SiteRulePreview-J3jYGKnr.js                                                5.05 kB
+  ├─ .output/chrome-mv3/chunks/runtimeMessages-CDFA7R3H.js                                                266 B
+  ├─ .output/chrome-mv3/chunks/SectionTranslationSettings-BZtHUJ4i.js                                     7.75 kB
+  ├─ .output/chrome-mv3/chunks/SegmentedControl-D3PkoRQA.js                                               2.91 kB
+  ├─ .output/chrome-mv3/chunks/SelectionSettings-CZKuEpVw.js                                              15.65 kB
+  ├─ .output/chrome-mv3/chunks/SelectionTranslator-97IgujFg.js                                            90.28 kB
+  ├─ .output/chrome-mv3/chunks/ServiceCatalog-Ke1ZuuFa.js                                                 24.2 kB
+  ├─ .output/chrome-mv3/chunks/serviceCatalog-y45GFSBu.js                                                 7.58 kB
+  ├─ .output/chrome-mv3/chunks/ServiceConfiguration-CTZeTs7e.js                                           133.63 kB
+  ├─ .output/chrome-mv3/chunks/ServiceNatureBadge-Bv-CiYol.js                                             725 B
+  ├─ .output/chrome-mv3/chunks/SettingsPreviewLayout-qQHvPvME.js                                          892 B
+  ├─ .output/chrome-mv3/chunks/SettingsSections-Dp5YsEyu.js                                               92.42 kB
+  ├─ .output/chrome-mv3/chunks/siteAdaptationEditor-BVzhh9WO.js                                           4.97 kB
+  ├─ .output/chrome-mv3/chunks/SiteAdaptationSettings-uZaCL5Dy.js                                         26.8 kB
+  ├─ .output/chrome-mv3/chunks/sitePreferences-BqGyw35v.js                                                1.34 kB
+  ├─ .output/chrome-mv3/chunks/SitePreferencesSettings-B2fibkvc.js                                        8.37 kB
+  ├─ .output/chrome-mv3/chunks/SiteRulePreview-BCuM0Elt.js                                                5.05 kB
   ├─ .output/chrome-mv3/chunks/speechProgress-YfUuy-6E.js                                                 2.33 kB
   ├─ .output/chrome-mv3/chunks/tensor-B9JHZz66.js                                                         13.7 kB
   ├─ .output/chrome-mv3/chunks/transcription-DYs8Ok0M.js                                                  2.53 kB
   ├─ .output/chrome-mv3/chunks/transformers.web-x8n3daXx.js                                               458.2 kB
-  ├─ .output/chrome-mv3/chunks/TranslationCacheSettings-DNh6Rbcj.js                                       7.54 kB
-  ├─ .output/chrome-mv3/chunks/TranslationLoadingPreview-uE7iHYdj.js                                      16.78 kB
+  ├─ .output/chrome-mv3/chunks/TranslationCacheSettings-XVzp1o-M.js                                       7.54 kB
+  ├─ .output/chrome-mv3/chunks/TranslationLoadingPreview-CjmI765v.js                                      16.78 kB
   ├─ .output/chrome-mv3/chunks/types-CN7jBpgI.js                                                          85 B
-  ├─ .output/chrome-mv3/chunks/UiLanguageOnboarding-7USau1qp.js                                           6.98 kB
-  ├─ .output/chrome-mv3/chunks/use-dialog-CMYupmwt.js                                                     6.65 kB
-  ├─ .output/chrome-mv3/chunks/useHotkeyDraft-Bm6ALBpk.js                                                 860 B
-  ├─ .output/chrome-mv3/chunks/useSettingsActionContext-Dvcmdx6-.js                                       376 B
-  ├─ .output/chrome-mv3/chunks/useVisionProbeStatus-DX8OCy6Y.js                                           13.75 kB
-  ├─ .output/chrome-mv3/chunks/VideoLocalModelSettings-DZySe7XX.js                                        10.43 kB
-  ├─ .output/chrome-mv3/chunks/VideoSubtitleAppearanceSettings-D1BK9fsW.js                                10.36 kB
+  ├─ .output/chrome-mv3/chunks/UiLanguageOnboarding-DZr0AAHZ.js                                           6.98 kB
+  ├─ .output/chrome-mv3/chunks/use-dialog-3XqRQfMS.js                                                     6.65 kB
+  ├─ .output/chrome-mv3/chunks/useHotkeyDraft-xaC3YFRP.js                                                 860 B
+  ├─ .output/chrome-mv3/chunks/useSettingsActionContext-CBaeI5hu.js                                       376 B
+  ├─ .output/chrome-mv3/chunks/useVisionProbeStatus-BSPku72z.js                                           13.75 kB
+  ├─ .output/chrome-mv3/chunks/VideoLocalModelSettings-9Okq24f9.js                                        10.43 kB
+  ├─ .output/chrome-mv3/chunks/VideoSubtitleAppearanceSettings-BT7w1eyO.js                                10.36 kB
   ├─ .output/chrome-mv3/chunks/webgpu-C2Up5DtH.js                                                         702 B
-  ├─ .output/chrome-mv3/chunks/WritingSettings-Dp9ipP68.js                                                15.04 kB
-  ├─ .output/chrome-mv3/content-scripts/content.js                                                        2.93 MB
-  ├─ .output/chrome-mv3/content-scripts/neteaseMailFrame.js                                               2.2 MB
+  ├─ .output/chrome-mv3/chunks/WritingSettings-BcWmaHoe.js                                                15.04 kB
+  ├─ .output/chrome-mv3/content-scripts/content.js                                                        2.96 MB
+  ├─ .output/chrome-mv3/content-scripts/neteaseMailFrame.js                                               2.21 MB
   ├─ .output/chrome-mv3/content-scripts/shadowBridge.js                                                   3.35 kB
   ├─ .output/chrome-mv3/content-scripts/supportedFrame.js                                                 1.98 MB
   ├─ .output/chrome-mv3/content-scripts/xVideoBridge.js                                                   8.04 kB
@@ -765,7 +765,7 @@ export default defineUnlistedScript(startVideoTranscriptionWorkerApp);
   ├─ .output/chrome-mv3/assets/PopupDrawer-CpuVa63I.css                                                   2.16 kB
   ├─ .output/chrome-mv3/assets/PopupOnboarding-CJGUjYze.css                                               321 B
   ├─ .output/chrome-mv3/assets/PopupServices-B_pHWPb4.css                                                 6.72 kB
-  ├─ .output/chrome-mv3/assets/ProgressiveReadingSettings-CgRKZLTl.css                                    387 B
+  ├─ .output/chrome-mv3/assets/ProgressiveReadingSettings-C00cOfrF.css                                    387 B
   ├─ .output/chrome-mv3/assets/PromptTemplateEditor-DT1dj0WZ.css                                          3.8 kB
   ├─ .output/chrome-mv3/assets/public-1smmMcHZ.css                                                        30.54 kB
   ├─ .output/chrome-mv3/assets/public-BdRlOPhV.css                                                        14.63 kB
@@ -780,7 +780,7 @@ export default defineUnlistedScript(startVideoTranscriptionWorkerApp);
   ├─ .output/chrome-mv3/assets/ServiceConfiguration-BDllE0je.css                                          56.5 kB
   ├─ .output/chrome-mv3/assets/ServiceNatureBadge-D8A00jJc.css                                            457 B
   ├─ .output/chrome-mv3/assets/SettingsPreviewLayout-e2D_WJRq.css                                         1.41 kB
-  ├─ .output/chrome-mv3/assets/SettingsSections-Ch7OwV_1.css                                              37.39 kB
+  ├─ .output/chrome-mv3/assets/SettingsSections-BHqDWx2E.css                                              37.39 kB
   ├─ .output/chrome-mv3/assets/SiteAdaptationSettings-DgXU1SEe.css                                        9.69 kB
   ├─ .output/chrome-mv3/assets/SitePreferencesSettings-DZM8c0yL.css                                       6.08 kB
   ├─ .output/chrome-mv3/assets/SiteRulePreview-aKN6Wzfu.css                                               6.09 kB
@@ -790,7 +790,7 @@ export default defineUnlistedScript(startVideoTranscriptionWorkerApp);
   ├─ .output/chrome-mv3/assets/VideoLocalModelSettings-uRWf8Jm0.css                                       4.94 kB
   ├─ .output/chrome-mv3/assets/VideoSubtitleAppearanceSettings-BGbwvjJ7.css                               7.4 kB
   ├─ .output/chrome-mv3/assets/WritingSettings-BdeZXuOc.css                                               20.79 kB
-  ├─ .output/chrome-mv3/content-scripts/content.css                                                       198.81 kB
+  ├─ .output/chrome-mv3/content-scripts/content.css                                                       207.37 kB
   ├─ .output/chrome-mv3/content-scripts/neteaseMailFrame.css                                              101.68 kB
   ├─ .output/chrome-mv3/content-scripts/supportedFrame.css                                                101.68 kB
   ├─ .output/chrome-mv3/assets/IBMPlexSans-Bold-BLZsKV2w.woff2                                            7.65 kB
@@ -822,12 +822,12 @@ export default defineUnlistedScript(startVideoTranscriptionWorkerApp);
   ├─ .output/chrome-mv3/fluent-read-ocr/LICENSE.md                                                        11.36 kB
   ├─ .output/chrome-mv3/fluent-read-ocr/NOTICE.md                                                         970 B
   ├─ .output/chrome-mv3/fluent-read-ocr/worker/worker.min.js.LICENSE.txt                                  466 B
-  ├─ .output/chrome-mv3/i18n/en-US.json                                                                   483.4 kB
-  ├─ .output/chrome-mv3/i18n/es-ES.json                                                                   526.71 kB
-  ├─ .output/chrome-mv3/i18n/fr-FR.json                                                                   541.48 kB
-  ├─ .output/chrome-mv3/i18n/ja-JP.json                                                                   572.95 kB
-  ├─ .output/chrome-mv3/i18n/ko-KR.json                                                                   541.42 kB
-  ├─ .output/chrome-mv3/i18n/ru-RU.json                                                                   708.88 kB
+  ├─ .output/chrome-mv3/i18n/en-US.json                                                                   483.48 kB
+  ├─ .output/chrome-mv3/i18n/es-ES.json                                                                   526.78 kB
+  ├─ .output/chrome-mv3/i18n/fr-FR.json                                                                   541.56 kB
+  ├─ .output/chrome-mv3/i18n/ja-JP.json                                                                   573.02 kB
+  ├─ .output/chrome-mv3/i18n/ko-KR.json                                                                   541.48 kB
+  ├─ .output/chrome-mv3/i18n/ru-RU.json                                                                   708.97 kB
   ├─ .output/chrome-mv3/icon/128.png                                                                      16.43 kB
   ├─ .output/chrome-mv3/icon/16.png                                                                       1.96 kB
   ├─ .output/chrome-mv3/icon/32.png                                                                       3.34 kB
@@ -1055,5 +1055,5 @@ export default defineUnlistedScript(startVideoTranscriptionWorkerApp);
   ├─ .output/chrome-mv3/third-party-notices/unicode-17.0.0.txt                                            2 kB
   ├─ .output/chrome-mv3/third-party-notices/wllama-MIT.txt                                                1.07 kB
   └─ .output/chrome-mv3/third-party-notices/xmlchars-MIT.txt                                              1.09 kB
-Σ Total size: 63.27 MB
-✔ Finished in 33.1 s
+Σ Total size: 63.33 MB
+✔ Finished in 33.3 s

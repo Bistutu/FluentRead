@@ -219,7 +219,8 @@ describe('settings control search', () => {
   it('routes smart highlighting searches to its own continuous-form anchor without mixing bilingual controls', () => {
     expect(SETTINGS_TABBED_SECTION_IDS.has('settings-translation')).toBe(false)
     const panels = settingsPagePanels['settings-translation']
-    expect(panels.find(panel => panel.id === 'reading')).toMatchObject({targetIds: ['translation-sentence-highlight']})
+    expect(panels.find(panel => panel.id === 'reading')).toMatchObject({targetIds: ['translation-sentence-highlight', 'personal-corrections-settings']})
+    expect(resolveSettingsPanel('settings-translation', 'personal-corrections-settings')).toBe('reading')
     expect(panels.find(panel => panel.id === 'reading')?.searchTerms).not.toMatch(/智能高亮|信息高亮|意外度|surprisal|关键词|本地模型/u)
     expect(panels.find(panel => panel.id === 'information-highlight')).toMatchObject({
       labelKey: 'informationHighlight.title', targetIds: ['information-highlight-settings'],

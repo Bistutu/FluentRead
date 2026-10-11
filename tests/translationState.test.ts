@@ -3,6 +3,7 @@ import {parseHTML} from "linkedom";
 import {
     acquireTranslationLayoutOverride,
     beginTranslation,
+    createBilingualTranslationReplay,
     subscribeTranslationStateChanges,
     detachFailedTranslationUi,
     discardTranslation,
@@ -83,6 +84,54 @@ describe("指定节点翻译状态机", () => {
 
     beforeEach(() => {
         node = new FakeElement();
+    });
+
+    it.each(['chrome', 'firefox'])('扩展 %s 的重放输入保留原数组、请求语言及冻结布局标量', browser => {
+        vi.stubEnv('BROWSER', browser);
+        try {
+            const sources = Object.freeze(['First original.', 'Second original.']);
+            const translations = Object.freeze(['第一段译文。', '第二段译文。']);
+            const options = {sourceLanguage: 'en', targetLanguage: 'zh-Hans', style: 2, longParagraphLineBreak: true};
+            const replay = createBilingualTranslationReplay(sources, translations, options);
+            expect(replay.sources).toBe(sources); expect(replay.translations).toBe(translations);
+            expect(replay).toEqual({sources, translations, sourceLanguage: 'en', targetLanguage: 'zh-Hans', style: 2, longParagraphLineBreak: true});
+            options.sourceLanguage = 'fr'; options.targetLanguage = 'ja'; options.style = 0; options.longParagraphLineBreak = false;
+            expect(replay.sourceLanguage).toBe('en'); expect(replay.targetLanguage).toBe('zh-Hans'); expect(replay.style).toBe(2); expect(replay.longParagraphLineBreak).toBe(true);
+        } finally {vi.unstubAllEnvs();}
+    });
+
+    it('userscript 重放仍保留数组、目标语言和 false 布局选项，并完全省略扩展源语言字段', () => {
+        vi.stubEnv('BROWSER', 'userscript');
+        try {
+            const sources = ['Original.'], translations = ['译文。'];
+            const replay = createBilingualTranslationReplay(sources, translations,
+                {sourceLanguage: 'auto', targetLanguage: 'zh-CN', style: 0, longParagraphLineBreak: false});
+            expect(replay.sources).toBe(sources); expect(replay.translations).toBe(translations);
+            expect(replay).toEqual({sources, translations, targetLanguage: 'zh-CN', style: 0, longParagraphLineBreak: false});
+            expect(Object.hasOwn(replay, 'sourceLanguage')).toBe(false);
+            const defaultLayout = createBilingualTranslationReplay(sources, translations,
+                {sourceLanguage: 'auto', targetLanguage: 'zh-CN', style: 0});
+            expect(defaultLayout).toHaveProperty('longParagraphLineBreak', undefined);
+            expect(Object.hasOwn(defaultLayout, 'sourceLanguage')).toBe(false);
+        } finally {vi.unstubAllEnvs();}
+    });
+
+    it('工厂输出登记到状态后沿用既有数组拷贝，provider 后续修改不影响已提交重放', () => {
+        vi.stubEnv('BROWSER', 'chrome');
+        try {
+            const {document} = parseHTML('<html><body><p id="owner">Original.</p></body></html>');
+            const owner = document.querySelector<HTMLElement>('#owner')!;
+            const attempt = beginTranslation(owner, 'bilingual')!;
+            const content = document.createElement('span'); content.textContent = '译文。'; owner.append(content);
+            const sources = ['Original.'], translations = ['译文。'];
+            setBilingualContent(owner, content, createBilingualTranslationReplay(sources, translations,
+                {sourceLanguage: 'en', targetLanguage: 'zh-CN', style: 1, longParagraphLineBreak: false}));
+            const saved = attempt.state.bilingualReplay!;
+            expect(saved.sources).not.toBe(sources); expect(saved.translations).not.toBe(translations);
+            sources[0] = 'Provider changed source.'; translations.push('迟到译文。');
+            expect(saved).toEqual({sources: ['Original.'], translations: ['译文。'], sourceLanguage: 'en', targetLanguage: 'zh-CN', style: 1, longParagraphLineBreak: false});
+            restoreTranslation(owner);
+        } finally {vi.unstubAllEnvs();}
     });
 
     it("阶段订阅按真实转换发布，异常观察者不影响完成和恢复，解除后不持有通知", () => {
