@@ -107,6 +107,7 @@
       "tests/sectionTranslationConfig.test.ts",
       "tests/progressiveReadingHotkey.test.ts",
       "tests/progressiveReadingSpeech.test.ts",
+      "tests/progressiveReadingSourcePresentation.test.ts",
       "tests/progressiveReadingTtsTransport.test.ts",
       "tests/sectionTranslationCore.test.ts",
       "tests/sectionTranslationRegion.test.ts",

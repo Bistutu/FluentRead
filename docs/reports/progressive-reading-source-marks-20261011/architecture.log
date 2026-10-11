@@ -1,0 +1,12 @@
+
+ RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011
+
+ ✓ tests/architecture/verificationOwnership.test.ts (16 tests) 6382ms
+   ✓ repository verification ownership > src 中每个可执行非组装模块都进入四维 100% 覆盖率边界 3733ms
+   ✓ repository verification ownership > 覆盖率清单不能引用不存在的源码或把组装根伪装成业务覆盖 2439ms
+ ✓ tests/architecture/sourceFileHeaders.test.ts (957 tests) 287ms
+
+ Test Files  2 passed (2)
+      Tests  973 passed (973)
+   Start at  20:42:31
+   Duration  7.44s (transform 57ms, setup 0ms, collect 388ms, tests 6.67s, environment 0ms, prepare 79ms)

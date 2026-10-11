@@ -1,7 +1,7 @@
 <!--
  * @file src/features/progressive-reading/ui/ProgressiveReading.vue
  * 文件职责：呈现主动选文后的渐进阅读面板，让读者随时切换原文、短语、逻辑线索和完整双语。
- * 主要内容：沿用品牌与主题，用轻量标题和模式标签将正文置于首位；正文与长错误详情支持键盘滚动，常用朗读动作固定在正文下方，重听、停止和循环按需展开，复用当前音频并跟随真实媒体事件显示估算词面进度。
+ * 主要内容：沿用品牌与主题，用轻量标题和模式标签将正文置于首位；将有效短语与逻辑坐标平铺标在原文，关联下方解释且与真实媒体事件的估算跟读共存；正文与长错误可滚动，朗读重听、停止和循环按需展开。
  * 模块边界：消费阅读会话 props 和现有朗读后台协议；音频状态与竞态归 speech，组件仅绑定 UI、配置语言和本页 Blob 资源，换文/关闭/卸载释放；不改宿主文字或学习状态，不直接调用语音供应商。
  -->
 <template>
@@ -21,11 +21,11 @@
       <button v-for="mode in modes" :key="mode.id" :data-reading-mode="mode.id" :data-reading-full="mode.id === 'bilingual' ? '' : undefined" type="button" :aria-pressed="state.mode === mode.id" :title="mode.id === 'bilingual' ? t('progressiveReading.panel.openFullHelp') : t(mode.key)" :disabled="mode.id === 'bilingual' && state.loading" @click="assistance(mode.id)">{{ t(mode.id === 'bilingual' && state.error ? 'progressiveReading.panel.retryFull' : mode.key) }}</button>
     </div>
     <div v-if="state.source" class="fr-reading-body" tabindex="0">
-      <div v-if="state.mode === 'bilingual'" class="fr-reading-label">{{ t('progressiveReading.panel.source') }}</div><p data-reading-source class="fr-reading-source" data-i18n-ignore><SpeechFollowText :text="state.source" :offset="0" :progress="listenKind === 'source' ? speech.progress : null" /></p>
+      <div v-if="state.mode === 'bilingual'" class="fr-reading-label">{{ t('progressiveReading.panel.source') }}</div><p data-reading-source class="fr-reading-source" data-i18n-ignore><template v-for="segment in sourceSegments" :key="`${segment.start}:${segment.end}`"><mark v-if="segment.indices.length" class="fr-reading-inline" :data-reading-inline-kind="state.mode === 'phrases' ? 'phrase' : 'logic'" :data-reading-inline-start="segment.start" :data-reading-inline-end="segment.end" :title="segment.title" :aria-describedby="segment.describedBy"><SpeechFollowText :text="segment.text" :offset="segment.start" :progress="listenKind === 'source' ? speech.progress : null" /></mark><SpeechFollowText v-else :text="segment.text" :offset="segment.start" :progress="listenKind === 'source' ? speech.progress : null" /></template></p>
       <template v-if="state.mode === 'phrases'">
         <details class="fr-reading-help"><summary :aria-label="t('progressiveReading.panel.phraseHelpLabel')">{{ t('progressiveReading.panel.phraseHelpTitle') }}</summary><p>{{ t('progressiveReading.panel.phraseHelp') }}</p></details>
         <p v-if="hiddenCount" data-reading-hidden-hints class="fr-reading-note fr-reading-known" :title="t('progressiveReading.panel.knownHelp')"><span>{{ t(state.showKnown ? 'progressiveReading.panel.knownShown' : 'progressiveReading.panel.knownHidden', {count: hiddenCount}) }}</span><button data-reading-show-known type="button" :aria-pressed="state.showKnown" @click="state.showKnown = !state.showKnown">{{ t(state.showKnown ? 'progressiveReading.panel.hideKnown' : 'progressiveReading.panel.showKnown') }}</button></p>
-        <ul class="fr-reading-hints"><li v-for="hint in visibleHints" :key="`${hint.start}:${hint.end}`" data-reading-phrase :data-reading-term="hint.term">
+        <ul class="fr-reading-hints"><li v-for="(hint, index) in visibleHints" :id="`fr-reading-phrase-${index}`" :key="`${hint.start}:${hint.end}`" data-reading-phrase :data-reading-term="hint.term">
           <strong data-i18n-ignore>{{ hint.term }}</strong><span v-if="hint.reference"><span data-i18n-ignore>{{ hint.reference }}</span> <small>{{ t(hint.saved ? 'progressiveReading.panel.savedReference' : 'progressiveReading.panel.localReference') }}</small></span>
           <button type="button" :title="t('progressiveReading.panel.queryExpressionHelp')" @click="assistance('phrases', hint)">{{ t('progressiveReading.panel.queryExpression') }}</button>
         </li></ul>
@@ -36,7 +36,7 @@
       </template>
       <template v-if="state.mode === 'logic'">
         <details class="fr-reading-help"><summary :aria-label="t('progressiveReading.panel.logicHelpLabel')">{{ t('progressiveReading.panel.logicHelpTitle') }}</summary><p>{{ t('progressiveReading.panel.logicHelp') }}</p></details>
-        <ul class="fr-reading-hints fr-reading-clues"><li v-for="clue in state.clues" :key="`${clue.label}:${clue.start}`" data-reading-logic><details><summary :aria-label="t('progressiveReading.panel.clueDetails', {term: clue.term, label: translateLegacy(clue.label)})"><strong data-i18n-ignore>{{ clue.term }}</strong><span>{{ translateLegacy(clue.label) }}</span></summary><p>{{ translateLegacy(clue.detail) }}</p></details></li></ul>
+        <ul class="fr-reading-hints fr-reading-clues"><li v-for="(clue, index) in state.clues" :id="`fr-reading-logic-${index}`" :key="`${clue.label}:${clue.start}`" data-reading-logic><details><summary :aria-label="t('progressiveReading.panel.clueDetails', {term: clue.term, label: translateLegacy(clue.label)})"><strong data-i18n-ignore>{{ clue.term }}</strong><span>{{ translateLegacy(clue.label) }}</span></summary><p>{{ translateLegacy(clue.detail) }}</p></details></li></ul>
         <p v-if="!state.clues.length" class="fr-reading-note" :title="t('progressiveReading.panel.noCluesHelp')">{{ t('progressiveReading.panel.noClues') }}</p>
       </template>
       <template v-if="state.mode === 'bilingual'">
@@ -78,6 +78,7 @@ import {useUiI18n} from '@/src/ui/i18n';
 import {createReadingSpeechController, createReadingSpeechState, type ReadingSpeechRate} from '../speech';
 import type {ReadingState} from '../session';
 import type {PhraseHint, ReadingMode} from '../hints';
+import {readingSourceSegments} from '../sourcePresentation';
 const props = defineProps<{state: ReadingState; close(): void; useSelection(): void; assistance(mode: ReadingMode, phrase?: PhraseHint): void}>();
 const panel = ref<HTMLElement>();
 const {t, translateLegacy} = useUiI18n();
@@ -132,6 +133,14 @@ function updateTheme(): void {
 const modes: Array<{id: ReadingMode; key: string}> = [{id: 'original', key: 'progressiveReading.panel.modeOriginal'}, {id: 'phrases', key: 'progressiveReading.panel.modePhrases'}, {id: 'logic', key: 'progressiveReading.panel.modeLogic'}, {id: 'bilingual', key: 'progressiveReading.panel.modeBilingual'}];
 const hiddenCount = computed(() => props.state.phrases.filter(hint => hint.hidden).length);
 const visibleHints = computed(() => props.state.phrases.filter(hint => !hint.hidden || props.state.showKnown));
+// 标记与分词仅在正文、模式或提示变化时重算；媒体进度只更新已有词的跟读状态。
+const sourceAnnotations = computed(() => props.state.mode === 'phrases' ? visibleHints.value.map((hint, index) => ({...hint,
+  title: hint.reference ? `${hint.term} · ${hint.reference}` : hint.term, describedBy: `fr-reading-phrase-${index}`}))
+  : props.state.mode === 'logic' ? props.state.clues.map((clue, index) => ({...clue,
+    title: `${translateLegacy(clue.label)} · ${translateLegacy(clue.detail)}`, describedBy: `fr-reading-logic-${index}`})) : []);
+const sourceSegments = computed(() => readingSourceSegments(props.state.source, sourceAnnotations.value).map(segment => ({...segment,
+  title: segment.indices.map(index => sourceAnnotations.value[index].title).join('\n'),
+  describedBy: segment.indices.map(index => sourceAnnotations.value[index].describedBy).join(' ')})));
 onMounted(() => {
   updateTheme();
   systemTheme?.addEventListener('change', updateTheme);
@@ -207,6 +216,9 @@ summary::marker {color: var(--fr-color-muted);}
 .fr-reading-audio-controls select:focus-visible, .fr-reading-audio-loop input:focus-visible {outline: 2px solid var(--fr-color-brand-strong); outline-offset: 2px;}
 .fr-reading-label {font-size: 11px; color: var(--fr-color-muted); font-weight: 650;}
 .fr-reading-source, .fr-reading-answer {white-space: pre-wrap; user-select: text; margin: 0; font-size: 15px; line-height: 1.8;}
+.fr-reading-inline {color: inherit; background: transparent; border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone;}
+.fr-reading-inline[data-reading-inline-kind=phrase] {background: color-mix(in srgb, var(--fr-color-muted) 14%, transparent);}
+.fr-reading-inline[data-reading-inline-kind=logic] {text-decoration-line: underline; text-decoration-color: color-mix(in srgb, var(--fr-color-brand-strong) 65%, transparent); text-decoration-thickness: 1.5px; text-underline-offset: 3px; text-decoration-skip-ink: auto;}
 .fr-reading-label + .fr-reading-source, .fr-reading-label + .fr-reading-answer {margin-top: 4px;}
 .fr-reading-source + .fr-reading-label {margin-top: 12px;}
 .fr-reading-answer {background: var(--fr-color-surface-soft); border-radius: 9px; padding: 8px 10px;}

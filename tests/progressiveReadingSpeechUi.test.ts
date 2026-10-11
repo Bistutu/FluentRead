@@ -1,7 +1,7 @@
 /**
  * @file tests/progressiveReadingSpeechUi.test.ts
  * 文件职责：挂载真实渐进阅读客户端模板，验证朗读动作、语言配置与页面资源的生命周期。
- * 主要内容：验证正文优先、空态与标题选文、唯一双语重试入口和按需朗读控件；以真实 speech 控制器执行对象选择、暂停续播、跳转变速循环、配置换文取消、错误重试和关闭卸载，检查折叠不打断音频及 Blob 逐一释放。
+ * 主要内容：验证正文优先、空态、原文辅助标记与列表的可访问关联、掌握提示隐藏和重叠线索；以真实 speech 控制器执行对象选择、暂停续播、跳转变速循环、配置换文取消、错误重试和关闭卸载，检查标记切换与控件折叠不打断音频及 Blob 逐一释放。
  * 模块边界：仅注入 runtime 合成响应、配置订阅与 Audio/URL 媒体端口，不复制组件方法，不访问私有 setup 状态，也不把 linkedom 验证声称为真实浏览器播放。
  */
 import {createRequire} from 'node:module';
@@ -17,6 +17,7 @@ import {Config} from '@/src/core/config/model';
 import {translate, translateLegacyText, type UiLanguage} from '@/src/core/i18n';
 import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
 import {createReadingState, type ReadingState} from '@/src/features/progressive-reading/session';
+import {readingLogicClues, readingPhraseHints, type PhraseHint} from '@/src/features/progressive-reading/hints';
 import type {ReadingSpeechResponse} from '@/src/features/progressive-reading/speech';
 
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue');
@@ -26,6 +27,7 @@ let app: App | undefined;
 let latest: Awaited<ReturnType<typeof mount>> | undefined;
 const source = 'Good ideas deserve attention. Reading slowly helps us understand every word.';
 const translated = '好的想法值得关注。慢慢阅读有助于我们理解每个词。';
+const assistedSource = 'If we take into account the cost, it may fail only if demand changes. By and large, most plans succeed.';
 const response = (): ReadingSpeechResponse => ({success: true, audioBase64: 'AQID', contentType: 'audio/wav',
   timings: [{startChar: 0, endChar: 10, startTime: 0, endTime: 4}]});
 function deferred<T>() {
@@ -486,5 +488,146 @@ describe('学习面板真实朗读控件与生命周期', () => {
     const key = (name: string) => {const event = new f.window.Event('keydown', {bubbles: true}); Object.defineProperty(event, 'key', {value: name}); button.dispatchEvent(event);};
     key('ArrowRight'); await settle(); expect(f.close).not.toHaveBeenCalled(); key('Escape'); await settle(); expect(f.close).toHaveBeenCalledOnce();
     expect(f.document.querySelector('[data-reading-speech]')).toBeNull();
+  });
+});
+
+describe('学习面板原文辅助标记与朗读共存', () => {
+  it('短语模式在真实原文上标出表达，关联对应释义且标记不触发查询或修改宿主', async () => {
+    const phrases = readingPhraseHints(assistedSource, []);
+    const f = await mount({source: assistedSource, phrases, mode: 'phrases'});
+    const host = f.document.createElement('p'); host.innerHTML = 'Host <em>selection</em> stays intact.';
+    f.document.body.insertBefore(host, f.document.getElementById('app'));
+    const originalHost = host.outerHTML;
+    const marks = Array.from(f.document.querySelectorAll<HTMLElement>('[data-reading-source] [data-reading-inline-kind="phrase"]'));
+    expect(marks.map(mark => mark.textContent)).toEqual(['take into account', 'By and large']);
+    expect(f.get('[data-reading-source]').textContent).toBe(assistedSource);
+    expect(f.document.querySelector('[data-reading-source] [data-reading-inline-kind="logic"]')).toBeNull();
+    for (const [index, mark] of marks.entries()) {
+      const hint = phrases[index];
+      expect(mark.getAttribute('data-reading-inline-start')).toBe(String(hint.start));
+      expect(mark.getAttribute('data-reading-inline-end')).toBe(String(hint.end));
+      expect(mark.title).toContain(hint.reference);
+      const description = f.document.getElementById(mark.getAttribute('aria-describedby')!);
+      expect(description?.matches('[data-reading-phrase]')).toBe(true);
+      expect(description?.textContent).toContain(hint.term); expect(description?.textContent).toContain(hint.reference);
+      expect(mark.getAttribute('tabindex')).toBeNull(); expect(mark.getAttribute('role')).toBeNull();
+    }
+    await f.click('[data-reading-source] [data-reading-inline-kind="phrase"]');
+    expect(f.assistance).not.toHaveBeenCalled(); expect(f.jobs).toHaveLength(0); expect(f.audios).toHaveLength(0);
+    expect(f.state.phrases).toEqual(phrases); expect(host.outerHTML).toBe(originalHost);
+  });
+  it('已掌握表达默认连同原文标记一起收起，主动显示与再次隐藏只改变呈现', async () => {
+    const phrases = readingPhraseHints(assistedSource, []); phrases[0].hidden = true; phrases[0].saved = true;
+    const f = await mount({source: assistedSource, phrases, mode: 'phrases'});
+    const terms = () => Array.from(f.document.querySelectorAll('[data-reading-source] [data-reading-inline-kind="phrase"]')).map(mark => mark.textContent);
+    expect(terms()).toEqual(['By and large']);
+    expect(f.document.querySelectorAll('[data-reading-phrase]')).toHaveLength(1);
+    expect(f.get('[data-reading-show-known]').getAttribute('aria-pressed')).toBe('false');
+    await f.click('[data-reading-show-known]');
+    expect(terms()).toEqual(['take into account', 'By and large']);
+    expect(f.document.querySelectorAll('[data-reading-phrase]')).toHaveLength(2);
+    expect(f.get('[data-reading-show-known]').getAttribute('aria-pressed')).toBe('true');
+    await f.click('[data-reading-show-known]'); expect(terms()).toEqual(['By and large']);
+    expect(f.get('[data-reading-source]').textContent).toBe(assistedSource);
+    expect(f.state.phrases[0]).toMatchObject({hidden: true, saved: true});
+    expect(f.assistance).not.toHaveBeenCalled(); expect(f.jobs).toHaveLength(0); expect(f.audios).toHaveLength(0);
+  });
+  it('重叠 only if 线索保留原文字序，同一标记关联条件和范围的完整说明', async () => {
+    const clues = readingLogicClues(assistedSource);
+    const f = await mount({source: assistedSource, clues, mode: 'logic'});
+    const marks = Array.from(f.document.querySelectorAll<HTMLElement>('[data-reading-source] [data-reading-inline-kind="logic"]'));
+    expect(marks.length).toBeGreaterThan(0); expect(f.get('[data-reading-source]').textContent).toBe(assistedSource);
+    expect(f.document.querySelector('[data-reading-source] [data-reading-inline-kind="phrase"]')).toBeNull();
+    const condition = clues.findIndex(clue => clue.term === 'only if');
+    const scope = clues.findIndex(clue => clue.term === 'only');
+    expect(condition).toBeGreaterThanOrEqual(0); expect(scope).toBeGreaterThanOrEqual(0);
+    const conditionId = f.document.querySelectorAll('[data-reading-logic]')[condition].id;
+    const scopeId = f.document.querySelectorAll('[data-reading-logic]')[scope].id;
+    const overlap = marks.find(mark => {
+      const descriptions = mark.getAttribute('aria-describedby')?.split(' ') ?? [];
+      return descriptions.includes(conditionId) && descriptions.includes(scopeId);
+    });
+    expect(overlap?.textContent).toBe('only');
+    for (const clue of [clues[condition], clues[scope]]) {
+      expect(overlap?.title).toContain(clue.label); expect(overlap?.title).toContain(clue.detail);
+    }
+    for (const mark of marks) {
+      expect(assistedSource.slice(Number(mark.getAttribute('data-reading-inline-start')), Number(mark.getAttribute('data-reading-inline-end')))).toBe(mark.textContent);
+      for (const id of mark.getAttribute('aria-describedby')!.split(' ')) expect(f.document.getElementById(id)?.matches('[data-reading-logic]')).toBe(true);
+    }
+    expect(f.jobs).toHaveLength(0); expect(f.audios).toHaveLength(0);
+  });
+  it('只读原文和完整双语保持干净正文，往返四种帮助不会积累标记或请求朗读', async () => {
+    const f = await mount({source: assistedSource, phrases: readingPhraseHints(assistedSource, []), clues: readingLogicClues(assistedSource)});
+    for (const mode of ['original', 'phrases', 'logic', 'bilingual', 'original', 'phrases', 'original']) {
+      await f.click(`[data-reading-mode="${mode}"]`);
+      const kinds = Array.from(f.document.querySelectorAll('[data-reading-source] [data-reading-inline-kind]')).map(mark => mark.getAttribute('data-reading-inline-kind'));
+      if (mode === 'phrases' || mode === 'logic') {expect(kinds.length).toBeGreaterThan(0); expect(new Set(kinds)).toEqual(new Set([mode === 'phrases' ? 'phrase' : 'logic']));}
+      else expect(kinds).toEqual([]);
+      expect(f.get('[data-reading-source]').textContent).toBe(assistedSource);
+      if (mode === 'bilingual') {expect(f.get('[data-reading-translation]').textContent).toBe(translated); expect(f.document.querySelector('[data-reading-translation] [data-reading-inline-kind]')).toBeNull();}
+    }
+    expect(f.jobs).toHaveLength(0); expect(f.audios).toHaveLength(0); expect(f.createUrl).not.toHaveBeenCalled();
+  });
+  it('段内标记保持真实字符偏移，当前词跟读与辅助标记共存且切模式不重建音频', async () => {
+    const start = source.indexOf('Reading slowly'), end = start + 'Reading slowly'.length;
+    const phrase: PhraseHint = {term: 'Reading slowly', reference: '慢慢阅读', start, end, hidden: false, saved: true};
+    const f = await mount({phrases: [phrase], mode: 'phrases'});
+    await f.click('[data-reading-play]');
+    await f.complete(0, {...response(), timings: [{startChar: start, endChar: end, startTime: 0, endTime: 4}]});
+    const audio = f.audios[0]; audio.currentTime = 1; audio.fire('timeupdate'); await settle();
+    expect(f.get('[data-reading-source] [data-reading-inline-kind="phrase"] .fr-speech-current').textContent).toBe('Reading');
+    expect(f.document.querySelectorAll('[data-reading-source] .fr-speech-current')).toHaveLength(1);
+    for (const mode of ['original', 'logic', 'bilingual', 'phrases']) {
+      await f.click(`[data-reading-mode="${mode}"]`);
+      expect(f.get('[data-reading-source] .fr-speech-current').textContent).toBe('Reading');
+      expect(f.get('[data-reading-source]').textContent).toBe(source);
+    }
+    audio.currentTime = 2; audio.fire('timeupdate'); await settle();
+    expect(f.get('[data-reading-source] [data-reading-inline-kind="phrase"] .fr-speech-current').textContent).toBe('slowly');
+    f.state.phrases[0].hidden = true; await settle();
+    expect(f.document.querySelector('[data-reading-source] [data-reading-inline-kind]')).toBeNull();
+    expect(f.get('[data-reading-source] .fr-speech-current').textContent).toBe('slowly');
+    await f.click('[data-reading-show-known]');
+    expect(f.get('[data-reading-source] [data-reading-inline-kind="phrase"] .fr-speech-current').textContent).toBe('slowly');
+    expect(f.get('[data-reading-speech]').getAttribute('data-status')).toBe('playing'); expect(audio.currentTime).toBe(2);
+    expect(audio.play).toHaveBeenCalledOnce(); expect(audio.pause).not.toHaveBeenCalled();
+    expect(f.jobs).toHaveLength(1); expect(f.audios).toHaveLength(1); expect(f.stops).toHaveLength(0); expect(f.revokeUrl).not.toHaveBeenCalled();
+  });
+  it('新选文即使暂留旧提示数据也不留下原文旧标记，下一次提示只标新选文', async () => {
+    const f = await mount({source: assistedSource, phrases: readingPhraseHints(assistedSource, []), mode: 'phrases'});
+    expect(f.document.querySelectorAll('[data-reading-source] [data-reading-inline-kind="phrase"]')).toHaveLength(2);
+    f.state.source = 'We carry out a new plan.'; await settle();
+    expect(f.get('[data-reading-source]').textContent).toBe('We carry out a new plan.');
+    expect(f.document.querySelector('[data-reading-source] [data-reading-inline-kind]')).toBeNull();
+    f.state.phrases = readingPhraseHints(f.state.source, []); await settle();
+    expect(f.get('[data-reading-source] [data-reading-inline-kind="phrase"]').textContent).toBe('carry out');
+    expect(f.get('[data-reading-source]').textContent).not.toContain('take into account');
+    expect(f.jobs).toHaveLength(0); expect(f.audios).toHaveLength(0);
+  });
+  it('伪造短语坐标、错误 term 和 HTML 文本不造成错误标记、注入或原文丢失', async () => {
+    const text = 'Good ideas <img src=x onerror=alert(1)> deserve attention.';
+    const valid: PhraseHint = {term: 'ideas', reference: '<script>unsafe</script>', start: 5, end: 10, hidden: false, saved: false};
+    const phrases: PhraseHint[] = [valid,
+      {...valid, start: -1}, {...valid, end: text.length + 1}, {...valid, start: 5.5}, {...valid, end: 5},
+      {...valid, start: NaN}, {...valid, start: 0, end: 4, term: 'ideas'}, {...valid, term: 'wrong text'}];
+    const f = await mount({source: text, phrases, mode: 'phrases'});
+    expect(f.get('[data-reading-source]').textContent).toBe(text);
+    expect(Array.from(f.document.querySelectorAll('[data-reading-source] [data-reading-inline-kind="phrase"]')).map(mark => mark.textContent)).toEqual(['ideas']);
+    expect(f.get('[data-reading-source] [data-reading-inline-kind="phrase"]').title).toContain('<script>unsafe</script>');
+    expect(f.document.querySelector('img, script')).toBeNull();
+    expect(f.jobs).toHaveLength(0); expect(f.audios).toHaveLength(0);
+  });
+  it('重复相同范围的短语描述使用唯一列表 ID，原文只呈现一次且所有关系都可解析', async () => {
+    const phrase: PhraseHint = {term: 'ideas', reference: '想法', start: 5, end: 10, hidden: false, saved: false};
+    const f = await mount({phrases: [phrase, {...phrase, reference: '收藏释义', saved: true}], mode: 'phrases'});
+    expect(f.get('[data-reading-source]').textContent).toBe(source);
+    const marks = Array.from(f.document.querySelectorAll('[data-reading-source] [data-reading-inline-kind="phrase"]'));
+    expect(marks).toHaveLength(1); expect(marks[0].textContent).toBe('ideas');
+    const descriptions = marks[0].getAttribute('aria-describedby')!.split(' ');
+    expect(descriptions).toHaveLength(2); expect(new Set(descriptions).size).toBe(2);
+    for (const id of descriptions) expect(f.document.querySelectorAll(`[id="${id}"]`)).toHaveLength(1);
+    expect(marks[0].getAttribute('title')).toContain('想法'); expect(marks[0].getAttribute('title')).toContain('收藏释义');
+    expect(f.jobs).toHaveLength(0); expect(f.audios).toHaveLength(0);
   });
 });

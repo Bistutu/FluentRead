@@ -87,6 +87,8 @@ The **Listen** toolbar reads the original. Once full bilingual text is available
 
 The passage comes first and scrolls independently when long. Once text is loaded, **Read selection** beside the title reads a new selection; the four compact tabs switch help levels, with one direct bilingual entry. Play, five-second seeking and speed stay visible below the passage. Open **⋯** for replay, stop and loop; collapsing these options does not interrupt playback.
 
+**Phrase hints** add a soft gray background to the corresponding expressions in the original. **Logic cues** use a thin pink underline for condition, negation, possibility and scope words. Hover over a mark to see its reference or explanation; each mark is associated with the matching hints below. Collapsed mastered expressions stay unmarked until you choose to show them. Returning to the original or full bilingual view removes these assistance marks. Speech keeps its darker gray current-word highlight; text remains selectable and copyable, and the host webpage stays unchanged.
+
 Phrase hints first use local and saved references. Translation is requested only when you ask for an expression or full bilingual text. Switching modes, lingering or scrolling does not write learning records. Closing cancels pending requests. This entry is available on ordinary webpages; native PDF pages, userscripts and Thunderbird do not offer it.
 
 <details class="guide-details">

@@ -212,10 +212,20 @@ async function runSpeechFlow(worker) {
     assert.equal(await sourceText(), SOURCE); assert.equal(await page.locator('article').innerHTML(), htmlBefore);
     assert.equal((await speechCalls(worker)).length, 1); assert.equal((await speechCalls(worker))[0].source, SOURCE);
     await shot('speech-original-playing', true);
-    await click(mode('logic'), 'reading logic during original speech'); await click(mode('original'), 'return to original during speech');
+    const callsBeforeHelp = (await speechCalls(worker)).length, translationsBeforeHelp = fixture.requests.length;
+    await click(mode('logic'), 'reading logic during original speech');
+    const spokenLogic = assertInlineSource(await inlineSourceSnapshot('speech-logic-playing'), SOURCE, 'logic');
+    assert(spokenLogic.marks.some(mark => mark.describedBy.length > 1), 'Overlapping only/only-if clues must share one flat source segment with both explanations');
+    const duringModeChange = (await speechSample('Inline logic annotations preserve playing original Audio')).audio[0];
+    assert(duringModeChange && !duringModeChange.paused && duringModeChange.src === decoded.src, 'Adding inline help must preserve the active original Audio');
+    await shot('speech-logic-playing', true);
+    await click(mode('original'), 'return to original during speech');
+    assertInlineSource(await inlineSourceSnapshot('speech-original-restored'), SOURCE);
     const afterModeChange = (await speechSample('Help-mode changes preserve original Audio')).audio[0];
     assert(afterModeChange && !afterModeChange.paused && afterModeChange.src === decoded.src, 'Changing reading help must not replace or pause the current original Audio');
-    speechRecord('Speech stays inactive until an explicit play gesture; silent WAV decodes and the native media clock advances with estimated follow text', {decoded});
+    assert.equal((await speechCalls(worker)).length, callsBeforeHelp, 'Inline help changes must not synthesize the playing original again');
+    assert.equal(fixture.requests.length, translationsBeforeHelp, 'Inline help changes during speech must not request an additional translation');
+    speechRecord('Speech stays inactive until an explicit play gesture; native media clock and estimated follow text continue through inline logic changes without replacement or synthesis', {decoded, duringModeChange, afterModeChange});
 
     const callsBeforePause = (await speechCalls(worker)).length;
     await click(has('data-reading-play'), 'pause native playback'); await awaitSpeech('paused', 'Pause status');
@@ -500,6 +510,86 @@ async function selectedMode() {return ui(function() {return this.querySelector('
 async function sourceText() {return ui(function() {return this.querySelector('[data-reading-source]')?.textContent?.trim() || '';});}
 async function translationText() {return ui(function() {return this.querySelector('[data-reading-translation]')?.textContent?.trim() || '';});}
 async function phraseTerms() {const state = await snapshot(); return findAll(state.panel, has('data-reading-phrase')).map(node => ({term: attr(node, 'data-reading-term') || attr(node, 'data-reading-phrase') || text(node).trim(), text: text(node).trim()}));}
+async function inlineSourceSnapshot(label) {
+    const sample = await ui(function() {
+        const source = this.querySelector('[data-reading-source]'), sourceStyle = getComputedStyle(source), box = source.getBoundingClientRect();
+        const style = node => {
+            const value = getComputedStyle(node);
+            return {display: value.display, fontSize: value.fontSize, fontWeight: value.fontWeight, lineHeight: value.lineHeight,
+                color: value.color, background: value.backgroundColor, decoration: value.textDecorationLine, decorationColor: value.textDecorationColor,
+                width: value.width, padding: [value.paddingTop, value.paddingRight, value.paddingBottom, value.paddingLeft],
+                margin: [value.marginTop, value.marginRight, value.marginBottom, value.marginLeft],
+                borders: [value.borderTopWidth, value.borderRightWidth, value.borderBottomWidth, value.borderLeftWidth]};
+        };
+        return {mode: this.querySelector('[data-reading-mode][aria-pressed="true"]')?.getAttribute('data-reading-mode'), text: source.textContent,
+            fontSize: sourceStyle.fontSize, lineHeight: sourceStyle.lineHeight, color: sourceStyle.color, width: box.width, height: box.height,
+            brand: getComputedStyle(this).getPropertyValue('--fr-color-brand-strong').trim(),
+            marks: [...source.querySelectorAll('[data-reading-inline-kind]')].map(mark => {
+                const describedBy = (mark.getAttribute('aria-describedby') || '').split(/\s+/u).filter(Boolean);
+                return {kind: mark.getAttribute('data-reading-inline-kind'), start: Number(mark.getAttribute('data-reading-inline-start')),
+                    end: Number(mark.getAttribute('data-reading-inline-end')), text: mark.textContent, title: mark.title,
+                    nested: !!mark.querySelector('[data-reading-inline-kind]'), describedBy,
+                    descriptions: describedBy.map(id => {
+                        const target = this.getRootNode().getElementById(id);
+                        return {id, exists: !!target, matchingIds: this.querySelectorAll(`[id="${id}"]`).length,
+                            kind: target?.hasAttribute('data-reading-phrase') ? 'phrase' : target?.hasAttribute('data-reading-logic') ? 'logic' : null,
+                            term: target?.querySelector('strong')?.textContent || '', reference: target?.querySelector(':scope > span > span')?.textContent || '',
+                            label: target?.querySelector('summary span')?.textContent || '', detail: target?.querySelector('details > p')?.textContent || ''};
+                    }), style: style(mark)};
+            })};
+    });
+    report.inlineSource ||= []; report.inlineSource.push({label, ...sample}); return sample;
+}
+function inlineColor(value) {
+    if (/^#[\da-f]{6}$/iu.test(value)) return [1, 3, 5].map(index => parseInt(value.slice(index, index + 2), 16) / 255);
+    const channels = value.match(/[\d.]+/gu)?.map(Number);
+    assert(channels?.length >= 3, `Unsupported computed annotation color: ${value}`);
+    return channels.slice(0, 3).map(channel => value.startsWith('color(srgb') ? channel : channel / 255);
+}
+function assertInlineSource(sample, expectedSource, expectedKind = null, baseline = null) {
+    assert.equal(sample.text, expectedSource, 'Inline help must preserve the entire selected source including spaces and punctuation');
+    assert.equal(sample.fontSize, '15px'); assert.equal(sample.lineHeight, '27px', 'Source typography must remain 15px with 1.8 line height');
+    if (!expectedKind) {assert.equal(sample.marks.length, 0, 'Original and complete bilingual must leave the source free of help annotations'); return sample;}
+    assert(sample.marks.length > 0, `The ${expectedKind} help must be marked directly on the source`);
+    let lastEnd = 0;
+    for (const mark of sample.marks) {
+        assert.equal(mark.kind, expectedKind); assert(!mark.nested, 'Overlapping help must use flat source segments instead of nested annotations');
+        assert(Number.isInteger(mark.start) && Number.isInteger(mark.end) && mark.start >= lastEnd && mark.end > mark.start && mark.end <= expectedSource.length,
+            `Annotation offsets must be valid, ordered and nonoverlapping: ${JSON.stringify(mark)}`);
+        assert.equal(mark.text, expectedSource.substring(mark.start, mark.end), 'Every annotation must quote its exact source UTF-16 range'); lastEnd = mark.end;
+        assert(mark.title.trim() && mark.describedBy.length > 0, 'Each annotation must expose its existing explanation in a title and accessible description');
+        assert.equal(new Set(mark.describedBy).size, mark.describedBy.length, 'An annotation must not repeat description ids');
+        for (const description of mark.descriptions) {
+            assert(description.exists && description.matchingIds === 1 && description.kind === expectedKind, `Description must resolve to one matching help row: ${JSON.stringify(description)}`);
+            assert(description.id.startsWith(`fr-reading-${expectedKind}-`));
+            if (expectedKind === 'phrase') {
+                assert(mark.title.includes(description.term), 'Phrase title must quote its existing expression');
+                if (description.reference) assert(mark.title.includes(description.reference), 'Phrase title must reuse the reference rendered below');
+            } else {
+                assert(description.label && description.detail && mark.title.includes(description.label) && mark.title.includes(description.detail), 'Logic title must reuse the existing clue label and full detail');
+            }
+        }
+        const css = mark.style;
+        assert.equal(css.display, 'inline'); assert.equal(css.width, 'auto');
+        assert.equal(css.fontSize, sample.fontSize); assert.equal(css.lineHeight, sample.lineHeight); assert.equal(css.color, sample.color);
+        assert([...css.padding, ...css.margin, ...css.borders].every(value => value === '0px'), 'Annotation painting must add no padding, margin or border that changes source line breaks');
+        if (expectedKind === 'phrase') {
+            assert(css.background !== 'rgba(0, 0, 0, 0)' && css.background !== 'transparent', 'Phrase help must have a visible muted background');
+            const shade = inlineColor(css.background);
+            assert(Math.max(...shade) - Math.min(...shade) < .15, 'Phrase help must use a muted gray background rather than the browser default yellow mark');
+            assert.equal(css.decoration, 'none', 'Phrase marks must preserve ordinary text decoration');
+        } else {
+            assert(css.decoration.includes('underline') && css.decorationColor !== sample.color, 'Logic help must underline source cues with its FluentRead accent');
+            const underline = inlineColor(css.decorationColor), brand = inlineColor(sample.brand);
+            assert(underline.every((channel, index) => Math.abs(channel - brand[index]) < .01), 'Logic underline must follow the current pink FluentRead theme token');
+            assert(css.background === 'rgba(0, 0, 0, 0)' || css.background === 'transparent', 'Logic help must preserve the source surface');
+        }
+    }
+    if (baseline) {
+        assert(Math.abs(sample.width - baseline.width) <= 1 && Math.abs(sample.height - baseline.height) <= 1, 'Help painting must preserve the source paragraph width and line wrapping');
+    }
+    return sample;
+}
 async function selectPrimary(expected, slowDrag = false) {
     await activateFixtureTabIfNeeded(`select-primary-${++selectionNumber}`);
     await page.locator('#primary').scrollIntoViewIfNeeded();
@@ -1073,6 +1163,7 @@ async function main() {
         await capture(SOURCE); await click(mode('original'), 'original'); assert.equal(await selectedMode(), 'original');
         assert.equal(fixture.requests.length, 0); assert.equal(await page.locator('article').innerHTML(), originalHtml);
         assert.equal(await ui(function() {return getComputedStyle(this.querySelector('[data-reading-source]')).userSelect;}), 'text');
+        const originalInline = assertInlineSource(await inlineSourceSnapshot('source-original'), SOURCE);
         record('Original source remains readable, selectable and unchanged, with no automatic provider call');
         await contentGeometry('source-original');
         await shot('panel-original', true);
@@ -1084,7 +1175,11 @@ async function main() {
         assert(!terms.some(item => item.term.toLowerCase() === 'by and large'), 'An explicitly mastered matching expression should retreat');
         assert(find((await snapshot()).panel, has('data-reading-hidden-hints')), 'The reader needs an explicit way to recover omitted known hints');
         assert(/\d+/u.test(text(find((await snapshot()).panel, has('data-reading-hidden-hints')))), 'Known-hint status must state a recoverable omitted count');
-        record('Multiword hints use the learning library, matching manual mastery retreats and unfamiliar senses remain available', {terms});
+        const phraseInline = assertInlineSource(await inlineSourceSnapshot('source-phrases-hidden-known'), SOURCE, 'phrase', originalInline);
+        assert(phraseInline.marks.some(mark => mark.text.toLowerCase() === 'take into account'), 'The active expression must be painted directly over its source text');
+        assert(!phraseInline.marks.some(mark => mark.text.toLowerCase().includes('by and large')), 'Retired known expressions must have no source annotation until explicitly recovered');
+        assert.equal(fixture.requests.length, 0, 'Showing local inline phrase help must not call the translation provider');
+        record('Multiword hints mark exact source ranges with accessible existing references; matching mastery retreats and unfamiliar senses remain available', {terms});
         await shot('panel-phrases', true);
         await queryPhrase('bank');
         await until(async () => Boolean(await ui(function() {return this.querySelector('[data-reading-phrase-answer]')?.textContent.includes('银行（本机确定性测试响应');})), 'explicit phrase translation response');
@@ -1092,13 +1187,18 @@ async function main() {
         record('A familiar word in a different saved context can explicitly request its translation without changing mastery', {qualityBoundary: 'The bank response is a deterministic transport fixture; this verifies the requested text and rendering, not word-sense accuracy.'});
         await click(has('data-reading-show-known'), 'show familiar usages');
         await until(async () => (await phraseTerms()).some(item => item.term.toLowerCase() === 'by and large'), 'recover mastered hint');
-        record('The reader can request a mastered expression again without relearning or feedback');
+        const recoveredInline = assertInlineSource(await inlineSourceSnapshot('source-phrases-show-known'), SOURCE, 'phrase', originalInline);
+        assert(recoveredInline.marks.some(mark => mark.text.toLowerCase() === 'by and large'), 'Explicit recovery must restore the known expression on the source');
+        assert.equal(fixture.requests.length, 1, 'Recovering a known source annotation must not call a provider');
+        record('The reader can recover a mastered expression on the original source without relearning, feedback or another provider request');
         const beforeLogic = fixture.requests.length;
         await click(mode('logic'), 'logic');
         const clues = findAll((await snapshot()).panel, has('data-reading-logic')).map(node => text(node).trim());
         const logicText = clues.join('\n').toLowerCase();
         assert(logicText.includes('not') && logicText.includes('may') && logicText.includes('if') && logicText.includes('only'), 'Actual clue nodes must quote source words for negation, possibility, condition and scope');
         assert.equal(fixture.requests.length, beforeLogic);
+        const logicInline = assertInlineSource(await inlineSourceSnapshot('source-logic'), SOURCE, 'logic', originalInline);
+        assert(logicInline.marks.some(mark => mark.describedBy.length > 1), 'Overlapping only/only-if clues must remain flat while preserving both existing explanations');
         await focus(node => node.nodeName === 'SUMMARY' && (attr(node, 'aria-label') || '').includes('逻辑线索说明'), 'logic explanation keyboard focus');
         await page.keyboard.press('Enter');
         assert(await ui(function() {return this.querySelector('.fr-reading-help').open;}), 'Keyboard Enter must expose the logic-boundary explanation');
@@ -1112,10 +1212,13 @@ async function main() {
         await page.keyboard.press('Enter');
         await click(has('data-reading-full'), 'one-step complete bilingual');
         await until(async () => (await translationText()).includes(TRANSLATION), 'full bilingual translation');
+        assertInlineSource(await inlineSourceSnapshot('source-bilingual'), SOURCE);
         assert.equal(fixture.requests.filter(request => request.source === SOURCE).length, 1);
         const afterFull = fixture.requests.length;
-        await click(mode('original'), 'original'); await click(mode('bilingual'), 'bilingual');
+        await click(mode('original'), 'original'); assertInlineSource(await inlineSourceSnapshot('source-original-after-bilingual'), SOURCE);
+        await click(mode('bilingual'), 'bilingual');
         await until(async () => (await translationText()).includes(TRANSLATION), 'reuse complete translation');
+        assertInlineSource(await inlineSourceSnapshot('source-bilingual-reused'), SOURCE);
         assert.equal(fixture.requests.length, afterFull);
         record('One click reaches complete bilingual from logic and mode switches reuse the same reading-session translation', {requests: fixture.requests.slice()});
         await geometry('desktop'); await contentGeometry('source-bilingual'); await shot('desktop-bilingual'); await shot('panel-bilingual', true);
@@ -1130,8 +1233,18 @@ async function main() {
         await vocabulary('relearn', {entryId: unmastered.id});
         await until(async () => (await phraseTerms()).some(item => item.term.toLowerCase() === 'take into account'), 'relearn restores phrase');
         record('Existing explicit mastery and relearn updates refresh help without a parallel learning state');
-        await page.setViewportSize({width: 390, height: 800}); await geometry('390-light'); const light = await palette('390-light', 'light'); await shot('390-light-phrases');
-        await patch({theme: 'dark'}); await palette('390-dark', 'dark'); await geometry('390-dark'); await shot('390-dark-phrases');
+        const callsBeforeInlineThemes = fixture.requests.length;
+        await page.setViewportSize({width: 390, height: 800}); await geometry('390-light'); const light = await palette('390-light', 'light');
+        assertInlineSource(await inlineSourceSnapshot('390-light-phrases'), SOURCE, 'phrase'); await shot('390-light-phrases');
+        await click(mode('logic'), '390px light inline logic'); await geometry('390-light-logic');
+        assertInlineSource(await inlineSourceSnapshot('390-light-logic'), SOURCE, 'logic'); await shot('390-light-logic');
+        await click(mode('phrases'), 'restore phrases before dark theme');
+        await patch({theme: 'dark'}); await palette('390-dark', 'dark'); await geometry('390-dark');
+        assertInlineSource(await inlineSourceSnapshot('390-dark-phrases'), SOURCE, 'phrase'); await shot('390-dark-phrases');
+        await click(mode('logic'), '390px dark inline logic'); await geometry('390-dark-logic');
+        assertInlineSource(await inlineSourceSnapshot('390-dark-logic'), SOURCE, 'logic'); await shot('390-dark-logic');
+        await click(mode('phrases'), 'restore phrases for automatic theme checks');
+        assert.equal(fixture.requests.length, callsBeforeInlineThemes, 'Light/dark inline mode and theme changes must not add provider requests');
         await patch({theme: 'auto'}); await page.emulateMedia({colorScheme: 'dark'}); await palette('auto-dark', 'dark');
         await page.emulateMedia({colorScheme: 'light'}); const autoLight = await palette('auto-light', 'light');
         assert.equal(autoLight.background, light.background, 'Automatic light mode must use the same reading surface as explicit light mode');
