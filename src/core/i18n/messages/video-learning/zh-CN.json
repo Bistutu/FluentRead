@@ -15,7 +15,7 @@
   "video.learning.save": "收藏此句",
   "video.learning.library": "学习中心",
   "video.learning.explanation": "确认解释（可修改）",
-  "video.learning.hint": "← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。",
+  "video.learning.hint": "在播放器内：← / → 换句，R 循环，Q 句末暂停。Esc：全屏时退出全屏，否则关闭学习。选择辅助后重播开始；拖动进度条解除辅助。拖动标题移动面板，编辑时固定当前句并保留草稿。",
   "video.learning.empty": "还没有可用时间轴。请开启视频原字幕，等待加载后重试。",
   "video.learning.translationFailed": "整句翻译失败，请重试。",
   "video.learning.playFailed": "播放器未允许播放，请使用视频播放按钮。",
@@ -44,5 +44,8 @@
   "video.learning.expand": "展开",
   "video.learning.stopped": "讲解已停止，可编辑或重新生成。",
   "video.learning.stoppedShort": "已停止",
-  "video.learning.explanationAgain": "重新讲解"
+  "video.learning.explanationAgain": "重新讲解",
+  "video.learning.start": "开始完整句学习",
+  "video.learning.appearance": "调整学习面板样式",
+  "video.learning.drag": "拖动标题移动面板"
 }

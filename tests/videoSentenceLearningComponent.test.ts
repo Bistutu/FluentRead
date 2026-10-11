@@ -2,9 +2,11 @@ import {readFileSync} from 'node:fs';
 import {createRequire} from 'node:module';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {compileScript, parse} from 'vue/compiler-sfc';
+import {parseHTML} from 'linkedom';
 import ts from 'typescript';
 import * as vue from 'vue';
 import {Config} from '@/src/core/config/model';
+import * as learningAppearance from '@/src/core/config/videoSentenceLearningAppearance';
 import * as timeline from '@/src/features/video-subtitle/content/sentenceTimeline';
 import * as playback from '@/src/features/video-subtitle/content/sentencePlayback';
 import {getVideoTranslationConfigFingerprint} from '@/src/features/video-subtitle/content/subtitleLogic';
@@ -44,6 +46,7 @@ async function mount(): Promise<void> {
     if (id === 'vue') return {...vue, onBeforeUnmount: (fn: () => void) => unmounted.push(fn)};
     if (id === '@/src/ui/i18n') return {useUiI18n: () => ({t: (key: string) => key})};
     if (id === '@/src/services/config/store') return {config, subscribeConfig: (fn: () => void) => {subscription = fn; fn(); return unsubscribe;}};
+    if (id === '@/src/core/config/videoSentenceLearningAppearance') return learningAppearance;
     if (id === '@/src/platform/browser/runtimeMessages') return {sendRuntimeMessage};
     if (id === '@/src/features/reading-assistant/public') return {ReadingAnswer: {}, streamReading};
     if (id === '@/src/features/vocabulary/public') return vocabulary;
@@ -86,6 +89,91 @@ beforeEach(() => {
 afterEach(() => {close(); vi.unstubAllGlobals(); vi.useRealTimers();});
 
 describe('完整句学习组件的调度与异步归属回归', () => {
+  it('播放器焦点下在捕获阶段接管学习键，编辑、修饰、组合输入与页面外区域保留原操作', async () => {
+    const {document} = parseHTML('<html><body><div id="player"><button id="native"></button><div id="host"><section><input/><textarea/><div contenteditable><span id="editable"></span></div></section></div></div><button id="outside"></button></body></html>');
+    const keyboardWindow = new EventTarget();
+    Object.defineProperty(document, 'defaultView', {value: keyboardWindow});
+    Object.assign(video, {ownerDocument: document, playbackRate: 1.25});
+    const add = vi.spyOn(keyboardWindow, 'addEventListener'); const remove = vi.spyOn(keyboardWindow, 'removeEventListener');
+    await mount(); state.panel = vue.markRaw(document.querySelector('section')!);
+    expect(add).toHaveBeenCalledWith('keydown', state.onPlayerKeydown, true);
+    const keyboard = (key: string, target = document.getElementById('native')!, options: Record<string, unknown> = {}) => ({key, target,
+      repeat: false, defaultPrevented: false, isComposing: false, altKey: false, ctrlKey: false, metaKey: false, shiftKey: false,
+      preventDefault: vi.fn(), stopImmediatePropagation: vi.fn(), ...options}) as unknown as KeyboardEvent;
+    const next = keyboard('ArrowRight'); state.onPlayerKeydown(next); await flush();
+    expect(state.index).toBe(1); expect(video.currentTime).toBe(2);
+    expect(next.preventDefault).toHaveBeenCalledOnce(); expect(next.stopImmediatePropagation).toHaveBeenCalledOnce();
+    const loop = keyboard('r'); state.onPlayerKeydown(loop); expect(state.mode).toBe('loop');
+    const repeated = keyboard('r', undefined, {repeat: true}); state.onPlayerKeydown(repeated);
+    expect(state.mode).toBe('loop'); expect(repeated.preventDefault).toHaveBeenCalledOnce();
+    const repeatedArrow = keyboard('ArrowRight', undefined, {repeat: true}); state.onPlayerKeydown(repeatedArrow); expect(state.index).toBe(1);
+    const pause = keyboard('q'); state.onPlayerKeydown(pause); expect(state.mode).toBe('pause');
+    expect((video as HTMLVideoElement).playbackRate).toBe(1.25);
+    for (const options of [{altKey: true}, {ctrlKey: true}, {metaKey: true}, {shiftKey: true}, {isComposing: true}, {defaultPrevented: true}]) {
+      const event = keyboard('r', undefined, options); state.onPlayerKeydown(event); expect(event.preventDefault).not.toHaveBeenCalled();
+    }
+    for (const target of [document.querySelector('input')!, document.querySelector('textarea')!, document.getElementById('editable')!, document.getElementById('outside')!]) {
+      const event = keyboard('ArrowLeft', target); state.onPlayerKeydown(event); expect(event.preventDefault).not.toHaveBeenCalled();
+    }
+    const unowned = keyboard('k'); state.onPlayerKeydown(unowned); expect(unowned.preventDefault).not.toHaveBeenCalled();
+    Object.defineProperty(document, 'fullscreenElement', {value: document.getElementById('player'), configurable: true});
+    document.getElementById('player')!.appendChild(document.createElement('video'));
+    const realMedia = document.querySelector('video')!;
+    Object.assign(realMedia, {currentTime: video.currentTime, paused: true, seeking: false, ended: false, play: vi.fn(), pause: vi.fn()});
+    props.video = realMedia;
+    await flush();
+    const fullscreenBody = keyboard('r', document.body); state.onPlayerKeydown(fullscreenBody);
+    expect(fullscreenBody.preventDefault).toHaveBeenCalledOnce(); expect(state.mode).toBe('loop');
+    const fullscreenHtml = keyboard('q', document.documentElement); state.onPlayerKeydown(fullscreenHtml);
+    expect(fullscreenHtml.preventDefault).toHaveBeenCalledOnce(); expect(state.mode).toBe('pause');
+    const outsideFullscreen = keyboard('r', document.getElementById('outside')!); state.onPlayerKeydown(outsideFullscreen);
+    expect(outsideFullscreen.preventDefault).not.toHaveBeenCalled();
+    const fullscreenEscape = keyboard('Escape'); state.onPlayerKeydown(fullscreenEscape);
+    expect(fullscreenEscape.preventDefault).not.toHaveBeenCalled(); expect(emit).not.toHaveBeenCalled();
+    Object.defineProperty(document, 'fullscreenElement', {value: null, configurable: true});
+    const normalBody = keyboard('r', document.body); state.onPlayerKeydown(normalBody);
+    expect(normalBody.preventDefault).not.toHaveBeenCalled();
+    const escape = keyboard('Escape'); state.onPlayerKeydown(escape); expect(emit).toHaveBeenCalledWith('close');
+    close(); expect(remove).toHaveBeenCalledWith('keydown', state.onPlayerKeydown, true);
+    const afterClose = keyboard('ArrowRight'); state.onKeydown(afterClose); expect(afterClose.preventDefault).not.toHaveBeenCalled();
+  });
+
+  it('视频实例更换和关闭释放原 document 学习键监听，面板节点暂不可用时不接管站点按键', async () => {
+    const original = new EventTarget(); const next = new EventTarget();
+    Object.assign(video, {ownerDocument: original});
+    const remove = vi.spyOn(original, 'removeEventListener'); const add = vi.spyOn(next, 'addEventListener');
+    await mount();
+    const event = {key: 'ArrowRight', target: null, preventDefault: vi.fn(), stopImmediatePropagation: vi.fn()} as unknown as KeyboardEvent;
+    state.onPlayerKeydown(event); expect(event.preventDefault).not.toHaveBeenCalled();
+    props.video = Object.assign(new EventTarget(), {ownerDocument: next, currentTime: 4, paused: true, seeking: false, ended: false, isConnected: true, play: vi.fn(), pause: vi.fn()});
+    await flush(); expect(remove).toHaveBeenCalledWith('keydown', state.onPlayerKeydown, true); expect(add).toHaveBeenCalledWith('keydown', state.onPlayerKeydown, true);
+    const removeNext = vi.spyOn(next, 'removeEventListener'); close(); expect(removeNext).toHaveBeenCalledWith('keydown', state.onPlayerKeydown, true);
+  });
+
+  it('换句后的异步 seek 尚未落地时立即切模式保留自身 seek 归属', async () => {
+    let time = 0;
+    const write = vi.fn(); Object.defineProperty(video, 'currentTime', {get: () => time, set: write});
+    await mount(); await step(1); state.toggleMode('loop');
+    expect(state.mode).toBe('loop'); expect(write).toHaveBeenCalledOnce(); expect(write).toHaveBeenCalledWith(2);
+    time = 2; Object.assign(video, {seeking: true}); video.dispatchEvent(new Event('seeking'));
+    expect(state.mode).toBe('loop');
+    Object.assign(video, {seeking: false}); video.dispatchEvent(new Event('seeked'));
+    state.toggleMode('pause'); expect(state.mode).toBe('pause'); expect(write).toHaveBeenCalledOnce();
+    state.toggleMode('pause'); expect(state.mode).toBe('off'); expect(write).toHaveBeenCalledOnce();
+  });
+
+  it('只调整学习外观立即更新样式而保留当前句、人工草稿和辅助模式', async () => {
+    await mount(); await step(1); await advance(120);
+    state.translation = 'My manual translation'; state.onTranslationInput(); state.toggleMode('loop');
+    const requests = translate.mock.calls.length;
+    config.videoSentenceLearningAppearance = {...config.videoSentenceLearningAppearance, layout: 'comfortable', backgroundOpacity: 70, width: 420};
+    subscription(); await flush();
+    expect(state.appearance.layout).toBe('comfortable'); expect(state.appearance.backgroundOpacity).toBe(70);
+    expect(state.appearance.width).toBe(420); expect(state.mode).toBe('loop'); expect(state.index).toBe(1);
+    expect(state.translation).toBe('My manual translation'); expect(state.translationEdited).toBe(true); expect(state.pinned).toBe(true);
+    expect(translate).toHaveBeenCalledTimes(requests); expect(state.notice).toBe('');
+  });
+
   it('立即换原句和归顶，只在最后一次显式换句停留120毫秒后翻译', async () => {
     await mount(); expect(translate.mock.calls.map(call => call[0])).toEqual([first]);
     const body = {scrollTop: 42}; state.body = body;

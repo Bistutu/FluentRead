@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/videoPlayerLocator.ts
  * 文件职责：在 X/YouTube 的单页播放器和信息流 DOM 中选择当前视频，并维护稳定的视频身份。
- * 主要内容：按全屏、用户悬浮/聚焦、当前帖子和可见性排序候选；视频节点变化立即重扫，繁忙信息流的无关 DOM 更新合并为低频重扫。
+ * 主要内容：按全屏、用户悬浮/聚焦、当前帖子和可见性排序候选；视频结构与可见性变化立即重扫，忽略播放器字幕文字更新，繁忙信息流的外部 DOM 更新合并为低频重扫。
  * 模块边界：只读取播放器 DOM 与页面事件，不创建 FluentRead 节点、不处理字幕或配置；绑定和生命周期由上层负责。
  */
 
@@ -347,10 +347,22 @@ export function createVideoPlayerLocator(options: VideoPlayerLocatorOptions = {}
   const onDom = (records: MutationRecord[]) => {
     if (records.length > 0 && records.every((record) => {
       if (isOwnedNode(record.target)) return true;
-      return [...record.addedNodes, ...record.removedNodes].every(isOwnedNode);
+      return record.type !== 'attributes' && [...record.addedNodes, ...record.removedNodes].every(isOwnedNode);
     })) return;
-    const playerChanged = records.some((record) =>
-      Boolean(selected?.player.contains(record.target))
+    const relevant = records.filter(record => {
+      if (record.type === 'attributes') {
+        if (isOwnedNode(record.target) || !isElement(record.target)) return false;
+        // classList.add 等同值写入也能产生记录，不能让入口标记自触发定位循环。
+        if (record.target.getAttribute(record.attributeName!) === record.oldValue) return false;
+        return containsVideo(record.target);
+      }
+      if ([...record.addedNodes, ...record.removedNodes].some(containsVideo)) return true;
+      // 原生字幕逐词替换 Text/span、进度文字和 tooltip 不改变视频身份。
+      // 控件结构另由 binding 观察；不能在这里每帧查询全页并强制读布局。
+      return !selected?.player.contains(record.target);
+    });
+    if (records.length && !relevant.length) return;
+    const playerChanged = relevant.some((record) => record.type === 'attributes'
       || [...record.addedNodes, ...record.removedNodes].some(containsVideo));
     if (playerChanged) {
       if (deferredDomSyncHandle !== undefined) view.clearTimeout(deferredDomSyncHandle);
@@ -368,7 +380,8 @@ export function createVideoPlayerLocator(options: VideoPlayerLocatorOptions = {}
   const observer = typeof MutationObserver !== 'undefined'
     ? new MutationObserver(onDom)
     : null;
-  observer?.observe(document.documentElement || document, {childList: true, subtree: true});
+  observer?.observe(document.documentElement || document, {childList: true, subtree: true,
+    attributes: true, attributeOldValue: true, attributeFilter: ['class', 'style', 'hidden', 'src']});
 
   return {
     getTarget: () => selected,

@@ -5,16 +5,17 @@
  * 模块边界：不创建播放器、不采集音频、不计算复习或掌握状态；翻译沿用注入的字幕服务，解释与收藏通过已有公共协议，卸载取消控制与迟到回写。
  -->
 <template>
-  <section class="fr-video-learning" :class="{'is-collapsed': !expanded}" role="region" :aria-label="t('video.learning.title')" tabindex="-1"
+  <section ref="panel" class="fr-video-learning" :class="{'is-collapsed': !expanded}" :style="appearanceStyle" :data-learning-layout="appearance.layout" role="region" :aria-label="t('video.learning.title')" tabindex="-1"
     :data-learning-sentence-id="sentence?.id" :data-learning-sentence-index="index" :data-learning-pinned="pinned"
     :data-start-ms="sentence?.startMs" :data-end-ms="sentence?.endMs" @keydown="onKeydown" @click.stop @pointerdown.stop>
     <header class="fr-video-learning-header">
-      <div class="fr-video-learning-heading"><span class="fr-video-learning-brand" aria-hidden="true"></span><strong>{{ t('video.learning.title') }}</strong></div>
+      <div class="fr-video-learning-heading" data-learning-drag-handle :title="t('video.learning.drag')"><svg class="fr-video-learning-grip" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7 5h.01M13 5h.01M7 10h.01M13 10h.01M7 15h.01M13 15h.01" /></svg><strong>{{ t('video.learning.title') }}</strong></div>
       <div class="fr-video-learning-header-actions">
         <button v-if="sentence" type="button" class="fr-video-learning-icon fr-video-learning-compact-navigation" data-learning-action="previous-compact" :aria-label="t('video.learning.previous')" :title="t('video.learning.previous')" :disabled="index <= 0" @click="step(-1)"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m12 5-5 5 5 5" /></svg></button>
         <button v-if="sentence" type="button" class="fr-video-learning-icon fr-video-learning-compact-play" data-learning-action="play-compact" :aria-label="t('video.learning.replay')" :title="t('video.learning.replay')" @click="replay"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 4 9 6-9 6Z" /></svg></button>
         <button v-if="sentence" type="button" class="fr-video-learning-icon fr-video-learning-compact-navigation" data-learning-action="next-compact" :aria-label="t('video.learning.next')" :title="t('video.learning.next')" :disabled="index >= sentences.length - 1" @click="step(1)"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
-        <details class="fr-video-learning-help"><summary :aria-label="t('video.learning.help')" :title="t('video.learning.help')">?</summary><p>{{ t('video.learning.hint') }}</p></details>
+        <button type="button" class="fr-video-learning-icon fr-video-learning-help-toggle" data-learning-action="help" :aria-label="t('video.learning.help')" :title="t('video.learning.help')" :aria-expanded="helpOpen" @click="helpOpen = !helpOpen">?</button>
+        <button type="button" class="fr-video-learning-icon" data-learning-action="appearance" :aria-label="t('video.learning.appearance')" :title="t('video.learning.appearance')" @click="openAppearance"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 6h8M15 6h2M3 14h2M9 14h8M12 3v6M6 11v6" /></svg></button>
         <button type="button" class="fr-video-learning-icon" data-learning-action="collapse" :aria-label="t(expanded ? 'video.learning.collapse' : 'video.learning.expand')" :title="t(expanded ? 'video.learning.collapse' : 'video.learning.expand')" :aria-expanded="expanded" @click="expanded = !expanded"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true" :class="{'is-flipped': !expanded}"><path d="m5 12 5-5 5 5" /></svg></button>
         <button type="button" class="fr-video-learning-icon" data-learning-action="close" :aria-label="t('video.learning.close')" :title="t('video.learning.close')" @click="emit('close')"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m6 6 8 8M14 6l-8 8" /></svg></button>
       </div>
@@ -25,6 +26,12 @@
         <div class="fr-video-learning-position"><span>{{ index + 1 }} <span class="fr-video-learning-dim">/ {{ sentences.length }}</span> · {{ timeLabel }}</span><span v-if="!sentence.complete" class="fr-video-learning-badge">{{ t('video.learning.fragment') }}</span></div>
         <p class="fr-video-learning-original" data-learning-original>{{ sentence.text }}</p>
         <div class="fr-video-learning-follow"><span :class="{'is-pinned': pinned}"><i aria-hidden="true"></i>{{ t(pinned ? 'video.learning.pinned' : 'video.learning.follow') }}</span><button v-if="pinned" type="button" class="fr-video-learning-text-button" data-learning-action="follow" @click="returnToCurrent">{{ t('video.learning.returnCurrent') }}</button></div>
+        <div class="fr-video-learning-card" :aria-busy="translating && !translationEdited">
+          <div class="fr-video-learning-card-heading"><span>{{ t('video.learning.translationTitle') }}</span><button type="button" class="fr-video-learning-text-button" :data-learning-action="editingTranslation ? 'done-translation' : 'edit-translation'" @click="editTranslation">{{ t(editingTranslation ? 'video.learning.done' : 'video.learning.edit') }}</button></div>
+          <textarea v-if="editingTranslation" ref="translationEditor" v-model="translation" data-learning-translation :aria-label="t('video.learning.translation')" :placeholder="t('video.learning.editPlaceholder')" rows="2" maxlength="6000" @focus="pinCurrent" @input="onTranslationInput" />
+          <p v-else class="fr-video-learning-translation" data-learning-translation-display :aria-busy="translating && !translationEdited" :class="{'is-loading': translating && !translation}">{{ translation || (translating ? t('video.learning.translating') : '') }}</p>
+          <div v-if="translationError" class="fr-video-learning-inline-error" role="alert"><span>{{ translationError }}</span><button type="button" class="fr-video-learning-text-button" @click="loadTranslation">{{ t('video.retryTranslation') }}</button></div>
+        </div>
         <nav class="fr-video-learning-navigation" :aria-label="t('video.learning.title')">
           <button type="button" class="fr-video-learning-icon" data-learning-action="previous" :aria-label="t('video.learning.previous')" :title="t('video.learning.previous')" :disabled="index <= 0" @click="step(-1)"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m12 5-5 5 5 5" /></svg></button>
           <button type="button" class="fr-video-learning-replay" data-learning-action="play" @click="replay"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 4 9 6-9 6Z" /></svg>{{ t('video.learning.replay') }}</button>
@@ -36,18 +43,14 @@
           <button type="button" data-learning-action="loop" :aria-pressed="mode === 'loop'" @click="toggleMode('loop')">{{ t('video.learning.loop') }}</button>
           <button type="button" data-learning-action="pause-at-end" :aria-pressed="mode === 'pause'" @click="toggleMode('pause')">{{ t('video.learning.pause') }}</button>
         </div>
-        <div class="fr-video-learning-card" :aria-busy="translating && !translationEdited">
-          <div class="fr-video-learning-card-heading"><span>{{ t('video.learning.translationTitle') }}</span><button type="button" class="fr-video-learning-text-button" :data-learning-action="editingTranslation ? 'done-translation' : 'edit-translation'" @click="editTranslation">{{ t(editingTranslation ? 'video.learning.done' : 'video.learning.edit') }}</button></div>
-          <textarea v-if="editingTranslation" ref="translationEditor" v-model="translation" data-learning-translation :aria-label="t('video.learning.translation')" :placeholder="t('video.learning.editPlaceholder')" rows="2" maxlength="6000" @focus="pinCurrent" @input="onTranslationInput" />
-          <p v-else class="fr-video-learning-translation" data-learning-translation-display :aria-busy="translating && !translationEdited" :class="{'is-loading': translating && !translation}">{{ translation || (translating ? t('video.learning.translating') : '') }}</p>
-          <div v-if="translationError" class="fr-video-learning-inline-error" role="alert"><span>{{ translationError }}</span><button type="button" class="fr-video-learning-text-button" @click="loadTranslation">{{ t('video.retryTranslation') }}</button></div>
-        </div>
         <div v-if="explanation || explaining || editingExplanation || explanationStopped" class="fr-video-learning-card fr-video-learning-explanation">
           <div class="fr-video-learning-card-heading"><span>{{ t('video.learning.explanationTitle') }}</span><span v-if="explaining" class="fr-video-learning-dim">{{ t('video.learning.explaining') }}</span><span v-else-if="explanationStopped" class="fr-video-learning-dim">{{ t('video.learning.stoppedShort') }}</span><button v-if="explaining" type="button" class="fr-video-learning-text-button" data-learning-action="stop-explanation" @click="stopExplanation">{{ t('video.learning.stop') }}</button><button v-else type="button" class="fr-video-learning-text-button" :data-learning-action="editingExplanation ? 'done-explanation' : 'edit-explanation'" @click="editExplanation">{{ t(editingExplanation ? 'video.learning.done' : 'video.learning.edit') }}</button></div>
           <textarea v-if="editingExplanation" ref="explanationEditor" v-model="explanation" data-learning-explanation :aria-label="t('video.learning.explanation')" rows="3" maxlength="2000" @focus="pinCurrent" />
           <div v-else data-learning-explanation-display :aria-busy="explaining"><ReadingAnswer v-if="explanation" :text="explanation" /><p v-else class="is-loading">{{ t(explanationStopped ? 'video.learning.stoppedShort' : 'video.learning.explaining') }}</p></div>
         </div>
         <details class="fr-video-learning-context" @toggle="onContextToggle"><summary>{{ t('video.learning.context') }}</summary><p v-if="sentence.previousText">{{ sentence.previousText }}</p><p class="is-current">{{ sentence.text }}</p><p v-if="sentence.nextText">{{ sentence.nextText }}</p></details>
+        <p v-if="saved" role="status" class="fr-video-learning-status fr-video-learning-saved-status"><span>{{ t('video.learning.savedShort') }}</span><button type="button" class="fr-video-learning-text-button" data-learning-action="library" @click="openLibrary">{{ t('video.learning.library') }} ↗</button></p>
+        <p v-if="helpOpen" class="fr-video-learning-hint" data-learning-help>{{ t('video.learning.hint') }}</p>
         <p v-if="notice" role="status" class="fr-video-learning-status">{{ notice }}</p>
         <p v-if="error" role="alert" class="fr-video-learning-inline-error">{{ error }}</p>
       </template>
@@ -58,7 +61,6 @@
         <button type="button" class="fr-video-learning-explain" data-learning-action="explain" :disabled="explaining" @click="explain">{{ t(explanation ? 'video.learning.explanationAgain' : 'video.learning.explain') }}</button>
         <button type="button" class="fr-video-learning-save" data-learning-action="save" :data-learning-saved="saved" :disabled="saved || saving || explaining || !translation.trim() || (translating && !translationEdited)" :title="!translation.trim() ? t('video.learning.editPlaceholder') : undefined" @click="save"><svg v-if="saved" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m4 10 4 4 8-8" /></svg>{{ t(saving ? 'video.learning.saving' : saved ? 'video.learning.savedShort' : savedSnapshot ? 'video.learning.update' : 'video.learning.save') }}</button>
       </div>
-      <button type="button" class="fr-video-learning-library fr-video-learning-text-button" data-learning-action="library" @click="openLibrary">{{ t('video.learning.library') }} ↗</button>
     </footer>
   </section>
 </template>
@@ -66,6 +68,7 @@
 import {computed, nextTick, onBeforeUnmount, ref, watch} from 'vue';
 import {useUiI18n} from '@/src/ui/i18n';
 import {config, subscribeConfig} from '@/src/services/config/store';
+import {getVideoSentenceLearningAppearanceCssVars, normalizeVideoSentenceLearningAppearance} from '@/src/core/config/videoSentenceLearningAppearance';
 import {sendRuntimeMessage} from '@/src/platform/browser/runtimeMessages';
 import {ReadingAnswer, streamReading} from '@/src/features/reading-assistant/public';
 import {VOCABULARY_BOOK_MESSAGE, normalizeLearningSourceText, type VocabularyBookResponse, type VocabularyUpsertInput} from '@/src/features/vocabulary/public';
@@ -78,6 +81,9 @@ const props = defineProps<{video: HTMLVideoElement; cues: VideoSubtitleCue[]; pl
   title: string; sourceLanguage: string; targetLanguage: string; translate: (text: string, signal: AbortSignal) => Promise<string>}>();
 const emit = defineEmits<{close: []}>();
 const {t} = useUiI18n();
+const appearance = ref(normalizeVideoSentenceLearningAppearance(config.videoSentenceLearningAppearance));
+const appearanceStyle = computed(() => getVideoSentenceLearningAppearanceCssVars(appearance.value));
+const helpOpen = ref(false);
 const sentences = computed(() => buildVideoSentenceTimeline(props.cues));
 const sentenceTimeIndex = computed(() => createVideoSentenceTimeIndex(sentences.value));
 const index = ref(0);
@@ -94,6 +100,7 @@ let generation = 0; let active = true; let explanationGeneration = 0;
 const pinned = ref(false); const expanded = ref(true); const editingTranslation = ref(false); const editingExplanation = ref(false); const explanationStopped = ref(false);
 const translationEditor = ref<HTMLTextAreaElement>(); const explanationEditor = ref<HTMLTextAreaElement>();
 const body = ref<HTMLElement>();
+const panel = ref<HTMLElement>();
 const savedSnapshot = ref('');
 const snapshot = () => JSON.stringify([sentence.value?.id, translation.value.trim(), explanation.value.trim()]);
 const saved = computed(() => !!savedSnapshot.value && savedSnapshot.value === snapshot());
@@ -132,9 +139,11 @@ function returnToCurrent(): void { controller?.stop(); pinned.value = false; edi
 function stopExplanation(): void { cancelExplanation(); explanationStopped.value = true; notice.value = t('video.learning.stopped'); }
 watch(() => props.video, (video, previous) => {
   previous?.removeEventListener('timeupdate', followPlayback); previous?.removeEventListener('seeking', onSeeking);
+  (previous?.ownerDocument?.defaultView ?? previous?.ownerDocument)?.removeEventListener('keydown', onPlayerKeydown, true);
   controller?.destroy(); pinned.value = false; mode.value = 'off';
   controller = new SentencePlaybackController(video, undefined, state => { mode.value = state.mode; });
   video.addEventListener('timeupdate', followPlayback); video.addEventListener('seeking', onSeeking);
+  (video.ownerDocument?.defaultView ?? video.ownerDocument)?.addEventListener('keydown', onPlayerKeydown, true);
   followPlayback();
 }, {immediate: true});
 watch(sentences, (next, previous) => {
@@ -189,10 +198,14 @@ async function replay(): Promise<void> {
 }
 function toggleMode(next: SentencePlaybackMode): void {
   if (!sentence.value) return;
-  pinned.value = true; controller?.select(sentence.value, mode.value === next ? 'off' : next, false);
+  pinned.value = true;
+  const selectedMode = mode.value === next ? 'off' : next;
+  if (controller?.getState().sentence?.id === sentence.value.id) controller.setMode(selectedMode);
+  else controller?.select(sentence.value, selectedMode, false);
 }
 function normal(): void { controller?.stop(); }
 function openLibrary(): void { void sendRuntimeMessage({type: 'openOptionsPage', section: 'settings-vocabulary'}).catch(() => undefined); }
+function openAppearance(): void { void sendRuntimeMessage({type: 'openOptionsPage', section: 'settings-interface', target: 'video-sentence-learning-appearance'}).catch(() => undefined); }
 function explain(): void {
   if (!sentence.value || explaining.value) return;
   if (!config.harness.enabled || !config.harness.actions.includes('usage')) {
@@ -232,21 +245,40 @@ async function save(): Promise<void> {
   } catch (cause) { if (active && selectedKey === draftKey()) error.value = cause instanceof Error ? cause.message : t('video.learning.saveFailed'); }
   finally { if (active) saving.value = false; }
 }
+function onPlayerKeydown(event: Event): void {
+  const player = panel.value?.parentElement?.parentElement;
+  const target = event.target;
+  if (!player || !target || typeof (target as Node).nodeType !== 'number') return;
+  // 面板打开期间，焦点回到当前播放器也能继续学习；页面其他区域保留站点快捷键。
+  const document = props.video.ownerDocument;
+  const fullscreenPlayer = document?.fullscreenElement?.contains(props.video);
+  const fullscreenPageFocus = fullscreenPlayer && (target === document.body || target === document.documentElement);
+  if (!player.contains(target as Node) && !fullscreenPageFocus) return;
+  onKeydown(event as KeyboardEvent);
+}
 function onKeydown(event: KeyboardEvent): void {
-  if ((event.target as HTMLElement).matches('textarea,input,select') || event.altKey || event.ctrlKey || event.metaKey) return;
+  const target = event.target as HTMLElement | null;
+  if (!active || event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey
+    || target?.closest?.('textarea,input,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"]')) return;
+  if (event.key === 'Escape' && props.video.ownerDocument?.fullscreenElement) return;
+  const key = event.key.toLowerCase();
+  if (!['Escape', 'ArrowLeft', 'ArrowRight'].includes(event.key) && key !== 'r' && key !== 'q') return;
+  // window capture 先于站点 document 监听，避免同键同时改速或跳转；长按只消费重复事件。
+  event.preventDefault(); event.stopImmediatePropagation();
+  if (event.repeat) return;
   if (event.key === 'Escape') emit('close');
   else if (event.key === 'ArrowLeft') step(-1);
   else if (event.key === 'ArrowRight') step(1);
-  else if (event.key.toLowerCase() === 'r') toggleMode('loop');
-  else if (event.key.toLowerCase() === 'q') toggleMode('pause');
-  else return;
-  event.preventDefault(); event.stopPropagation();
+  else if (key === 'r') toggleMode('loop');
+  else toggleMode('pause');
 }
 // subscribeConfig 会立即发送当前快照；统计计数等无关变更不能取消首句或用户循环。
 const learningConfigFingerprint = () => JSON.stringify([config.on, config.videoTranslationEnabled, config.videoSubtitleVisible,
   getVideoTranslationConfigFingerprint(config), config.harness]);
 let configRevision = learningConfigFingerprint();
 const unsubscribe = subscribeConfig(() => {
+  const nextAppearance = normalizeVideoSentenceLearningAppearance(config.videoSentenceLearningAppearance);
+  if (JSON.stringify(nextAppearance) !== JSON.stringify(appearance.value)) appearance.value = nextAppearance;
   const next = learningConfigFingerprint(); if (next === configRevision) return;
   configRevision = next; const nextTranslationRevision = getVideoTranslationConfigFingerprint(config);
   const translationChanged = translationRevision !== nextTranslationRevision; translationRevision = nextTranslationRevision;
@@ -256,5 +288,6 @@ const unsubscribe = subscribeConfig(() => {
   scheduleTranslation(); notice.value = t('video.learning.settingsChanged');
 });
 onBeforeUnmount(() => { active = false; cancelPending(); controller?.destroy(); unsubscribe();
+  (props.video.ownerDocument?.defaultView ?? props.video.ownerDocument)?.removeEventListener('keydown', onPlayerKeydown, true);
   props.video.removeEventListener('timeupdate', followPlayback); props.video.removeEventListener('seeking', onSeeking); });
 </script>

@@ -179,6 +179,11 @@ import {
     type VideoSubtitleAppearance,
 } from './videoSubtitleAppearance';
 import {
+    DEFAULT_VIDEO_SENTENCE_LEARNING_APPEARANCE,
+    normalizeVideoSentenceLearningAppearance,
+    type VideoSentenceLearningAppearance,
+} from './videoSentenceLearningAppearance';
+import {
     DEFAULT_TRANSLATION_APPEARANCE,
     normalizeTranslationAppearance,
     normalizeTranslationStyleProfiles,
@@ -375,6 +380,7 @@ export class Config {
     videoSubtitleFontSize: number; // 视频字幕字号百分比
     videoSubtitleOffsetMs: number; // 字幕时间偏移，正数延后、负数提前
     videoSubtitleAppearance: VideoSubtitleAppearance; // 视频字幕皮肤与布局参数
+    videoSentenceLearningAppearance: VideoSentenceLearningAppearance; // 完整句学习面板外观，不含会话拖动位置
     token: IMapping;
     apiKeys: Record<string, string[]>; // 按服务保存完整有序 API Key 列表；token 镜像首个 key
     apiKeyRotationEnabled: Record<string, boolean>; // 按服务启用多 Key 轮询；关闭时只使用首个 Key
@@ -580,6 +586,7 @@ export class Config {
         this.videoSubtitleFontSize = DEFAULT_VIDEO_SUBTITLE_FONT_SIZE; // 默认字幕字号
         this.videoSubtitleOffsetMs = 0;
         this.videoSubtitleAppearance = normalizeVideoSubtitleAppearance(DEFAULT_VIDEO_SUBTITLE_APPEARANCE);
+        this.videoSentenceLearningAppearance = normalizeVideoSentenceLearningAppearance(DEFAULT_VIDEO_SENTENCE_LEARNING_APPEARANCE);
         this.token = {};
         this.apiKeys = {};
         this.apiKeyRotationEnabled = {};
@@ -1281,6 +1288,8 @@ export function normalizeConfig(value: unknown): Config {
             ? source.videoSubtitleAppearance
             : {fontScale: source.videoSubtitleFontSize},
     );
+
+    normalized.videoSentenceLearningAppearance = normalizeVideoSentenceLearningAppearance(source.videoSentenceLearningAppearance);
 
     migrateModelIdentifiers(normalized.model);
     migrateModelIdentifiers(normalized.documentModel);

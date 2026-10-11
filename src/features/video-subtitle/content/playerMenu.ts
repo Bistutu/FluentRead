@@ -31,7 +31,7 @@ const WIDE_LAYOUT_MIN_PLAYER_WIDTH_PX = 300;
 /** 单列菜单高度超过播放器可用高度的这一比例时，改用更矮的双列，留出画面上半部分。 */
 const STACK_LAYOUT_MAX_HEIGHT_RATIO = .8;
 
-type IconName = 'settings' | 'minus' | 'plus' | 'reset' | 'sparkle' | 'download' | 'close' | 'back' | 'next';
+type IconName = 'settings' | 'minus' | 'plus' | 'reset' | 'sparkle' | 'download' | 'close' | 'back' | 'next' | 'learning';
 const ICON_PATHS: Record<IconName, string[]> = {
     settings: ['M4 7h9', 'M17 7h3', 'M4 17h3', 'M11 17h9', 'M15 5v4', 'M9 15v4'],
     minus: ['M6 12h12'],
@@ -42,6 +42,7 @@ const ICON_PATHS: Record<IconName, string[]> = {
     close: ['M7 7l10 10', 'M17 7 7 17'],
     back: ['M14 6l-6 6 6 6'],
     next: ['M10 6l6 6-6 6'],
+    learning: ['M5 4h14v16H5z', 'M8 8h8', 'M8 12h5'],
 };
 
 // YouTube 启用 Trusted Types，图标只能逐个创建节点，不能写入 innerHTML。
@@ -217,8 +218,8 @@ export function createVideoPlayerMenu(language: UiLanguage, withLocalGeneration:
 
     const main = createTextElement('div', 'fluent-read-video-menu-main', '');
     main.appendChild(createHeader(language, withLocalGeneration));
-    const learning = keyedText('button', 'fluent-read-video-menu-item', 'video.learning.title', language);
-    learning.type = 'button'; learning.dataset.action = 'open-sentence-learning'; learning.setAttribute('role', 'menuitem');
+    const learning = createButton('fluent-read-video-menu-item fluent-read-video-menu-learning', {'data-action': 'open-sentence-learning', role: 'menuitem'});
+    learning.append(createIcon('learning'), keyedText('span', 'fluent-read-video-menu-learning-label', 'video.learning.start', language), createIcon('next'));
     main.appendChild(learning);
     if (withLocalGeneration) {
         const watch = createTextElement('div', 'fluent-read-video-menu-watch', '');
