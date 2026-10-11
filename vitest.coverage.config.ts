@@ -1065,6 +1065,8 @@ export default defineConfig({
                 'src/features/video-subtitle/content/pretranslationController.ts',
                 'src/features/video-subtitle/content/translationCache.ts',
             'src/features/video-subtitle/content/subtitleLogic.ts',
+            'src/features/video-subtitle/content/karaokeLogic.ts',
+            'src/features/video-subtitle/content/karaoke.ts',
             'src/features/video-subtitle/content/localModelReadiness.ts',
             'src/features/video-subtitle/content/subtitleLanguage.ts',
             'src/features/video-subtitle/content/video-ai/modelSetup.ts',
