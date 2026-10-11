@@ -1,7 +1,7 @@
 <!--
  @file src/app/popup/PopupServices.vue
  文件职责：在 Popup 翻译服务抽屉中展示功能分配概览，以独立选择面板替代层叠下拉菜单，让窄弹窗里的服务选择更直观。
- 主要内容：突出网页默认服务，以紧凑列表展示各功能的独立服务或继承状态，以统一状态标签呈现服务并让多语言名称完整换行，保留本地图标、配置模型和配置提醒；选择面板合并功能标题、返回与关闭操作，将主要空间用于常用/更多服务、模型搜索及键盘导航，保留不可用的旧选择，缓存默认、继承或独立行的配置模型及本地化说明，避免将设置中的模型声明为最终请求模型；只让当前活跃配置和所属面板的事件修改草稿，焦点返回复验面板与用户焦点。
+ 主要内容：突出网页默认服务，以紧凑列表展示各功能的独立服务或继承状态，继承行在同一行标出“跟随默认”与实际跟随的服务，且仅在模型与默认服务的配置模型不同时才显示模型行，以统一状态标签呈现服务并让多语言名称完整换行，保留本地图标、配置模型和配置提醒；选择面板合并功能标题、返回与关闭操作，搜索框随列表一起滚动，常用区只放可直接使用的服务，按免费翻译、已配置或正在使用的服务、微软与谷歌、热门服务排序，待配置的服务留在更多服务中，当前选中项始终在常用区，更多服务按机器翻译、云服务厂商与 AI 翻译分组，选项下方标出配置模型或待配置状态，支持模型搜索及键盘导航，保留不可用的旧选择，缓存默认、继承或独立行的配置模型及本地化说明，避免将设置中的模型声明为最终请求模型；只让当前活跃配置和所属面板的事件修改草稿，焦点返回复验面板与用户焦点。
  模块边界：复用功能服务映射、模型解析及供应商能力，只修改父级配置草稿；保存由 PopupApp 负责，不请求翻译或处理连接密钥。
 -->
 <template>
@@ -18,11 +18,11 @@
         <span class="assignment-heading"><strong>{{ t(`featureServices.${row.field.id}`) }}</strong></span>
         <span class="assignment-details">
           <span v-if="row.warning" class="assignment-warning" role="img" :aria-label="row.warning" :title="row.warning">!</span>
-          <span class="assignment-value" :class="{'assignment-inherited': row.field.feature?.inherit && !row.selected}">
-            <ServiceIcon v-if="!row.field.feature?.inherit || row.selected" :service="row.service" :label="label(row.service)" size="small" />
-            <span>{{ row.field.feature?.inherit && !row.selected ? t('featureServices.followDefault') : label(row.service) }}</span>
+          <span class="assignment-value" :class="{'assignment-inherited': row.inherited}">
+            <span v-if="row.inherited" class="assignment-follow">{{ t('featureServices.followDefault') }}</span>
+            <span class="assignment-service"><ServiceIcon :service="row.service" :label="label(row.service)" size="small" /><span>{{ label(row.service) }}</span></span>
           </span>
-          <small v-if="!row.warning && row.model" :title="row.model">{{ row.modelLabel }}</small>
+          <small v-if="row.showModel" :title="row.model">{{ row.modelLabel }}</small>
         </span>
         <span class="assignment-chevron" aria-hidden="true">›</span>
       </button>
@@ -47,17 +47,17 @@
           <span v-if="!selected(editing.feature)" class="service-choice-check" aria-hidden="true">✓</span>
         </button>
         <template v-for="group in choiceGroups" :key="group.id">
-          <button v-if="group.id === 'more' && !query.trim() && moreChoices.length" type="button" class="service-picker-more" :aria-expanded="moreOpen" :onClick="panelActions.more">
-            <span>{{ t('popup.moreServices') }} <small>{{ moreChoices.length }}</small></span><span aria-hidden="true">{{ moreOpen ? '⌃' : '⌄' }}</span>
+          <button v-if="group.toggle" type="button" class="service-picker-more" :aria-expanded="moreOpen" :onClick="panelActions.more">
+            <span>{{ t('popup.moreServices') }} <small>{{ moreChoices.length }}</small></span><span class="service-picker-more-arrow" aria-hidden="true">›</span>
           </button>
           <div v-if="group.items.length" role="group" :aria-label="group.label" class="service-choice-group">
             <span class="service-choice-group-label">{{ group.label }}</span>
-            <div class="service-choice-grid" :class="{common: group.id === 'common'}">
+            <div class="service-choice-grid" :class="{compact: group.id !== 'search'}">
             <button v-for="option in group.items" :key="option.value" type="button" role="option" class="service-choice"
               :data-service-choice="option.value" :aria-selected="selected(editing.feature) === option.value"
-              :disabled="option.disabled" :onClick="option.choose">
+              :disabled="option.disabled" :title="option.note ? `${option.label} · ${option.note}` : option.label" :onClick="option.choose">
               <ServiceIcon :service="option.value" :label="option.label" size="small" />
-              <span class="service-choice-copy"><strong>{{ option.label }}</strong><small v-if="option.disabled">{{ translateLegacy(getTranslationServiceUnavailableMessage(option.value) || '') }}</small><small v-else-if="option.matchingModels.length">{{ option.matchingModels.join(' · ') }}</small></span>
+              <span class="service-choice-copy"><strong>{{ option.label }}</strong><small v-if="option.note" :class="{'service-choice-setup': option.needsSetup}">{{ option.note }}</small></span>
               <span v-if="selected(editing.feature) === option.value" class="service-choice-check" aria-hidden="true">✓</span>
             </button>
             </div>
@@ -73,12 +73,12 @@
 import {computed, nextTick, ref, shallowRef, watch} from 'vue';
 import type {Config} from '@/src/core/config/model';
 import {featureServiceDefinitions, getFeatureService, setFeatureService, getFeatureModel, type FeatureServiceDefinition} from '@/src/core/config/featureServices';
-import {models, customModelString, resolveConfiguredModel, servicesType} from '@/src/core/config/catalog';
+import {models, customModelString, resolveConfiguredModel, services, servicesType} from '@/src/core/config/catalog';
 import {isHarnessService} from '@/src/core/config/harness';
 import {getCustomOpenAIProvider, isCustomOpenAIProviderId} from '@/src/core/config/customOpenAI';
 import {getMissingCredentialMessage} from '@/src/core/config/validation';
 import {getTranslationServiceUnavailableMessage, isTranslationServiceAvailable} from '@/src/services/translation/capabilities';
-import {searchServiceOptions, type ServiceOption} from '@/src/ui/view-model/serviceCatalog';
+import {searchServiceOptions, splitServiceChoices, type ServiceOption, type ServiceSearchOption} from '@/src/ui/view-model/serviceCatalog';
 import {useSettingsActionContext} from '@/src/features/settings/model/useSettingsActionContext';
 import {useUiI18n} from '@/src/ui/i18n';
 import ServiceIcon from '@/src/ui/components/ServiceIcon.vue';
@@ -94,7 +94,6 @@ const editing = computed(() => session.value?.field || null);
 const searchInput = shallowRef<HTMLInputElement | null>(null);
 const results = shallowRef<HTMLElement | null>(null), panel = shallowRef<HTMLElement | null>(null);
 const fields: Field[] = [{id: 'default'}, ...featureServiceDefinitions.map(feature => ({id: feature.id, feature}))];
-const popularServices = new Set(['freeTranslation', 'microsoft', 'google', 'deepL', 'openai', 'deepseek', 'tongyi', 'gemini']);
 const labels = computed(() => {
   const result = new Map<string, string>();
   for (const option of props.serviceOptions) if (!result.has(option.value)) result.set(option.value, option.label);
@@ -116,15 +115,18 @@ function warning(feature?: FeatureServiceDefinition) {
 }
 const rows = computed(() => {
   const token = viewRevision.value, current = capture(), config = props.config;
+  const defaultModel = servicesType.isUseModel(config.service) ? resolveConfiguredModel(config.model[config.service], config.customModel[config.service]) : '';
   return fields.map(field => {
     const value = selected(field.feature), service = value || config.service;
     const model = !servicesType.isUseModel(service) ? '' : field.feature ? getFeatureModel(config, field.feature)
       : resolveConfiguredModel(config.model[service], config.customModel[service]);
     const modelLabel = model ? t('featureServices.configuredModel', {model}) : '';
     const selectedLabel = field.feature?.inherit && !value ? t('featureServices.follow', {service: label(config.service)}) : label(service);
-    return {field, selected: value, service, model, modelLabel,
+    const inherited = Boolean(field.feature?.inherit && !value), rowWarning = warning(field.feature);
+    // 继承行的模型与默认服务相同时不重复展示，只有功能自带模型覆盖时才单独标出。
+    return {field, selected: value, service, model, modelLabel, inherited, showModel: Boolean(model && !rowWarning && (!inherited || model !== defaultModel)),
       selectedLabel: modelLabel ? `${selectedLabel} · ${modelLabel}` : selectedLabel,
-      warning: warning(field.feature), open: () => {
+      warning: rowWarning, open: () => {
         if (current() && token === viewRevision.value && !session.value && selectionMatches(config, field, value, service)) openPicker(field);
       }};
   });
@@ -146,16 +148,52 @@ const filteredChoices = computed(() => {
   return current && !query.value.trim() && !available.some(option => option.value === current)
     ? [{value: current, label: label(current), disabled: true, matchingModels: []}, ...matches] : matches;
 });
-const moreChoices = computed(() => filteredChoices.value.filter(option => !popularServices.has(option.value)));
+// “已配置”指用户填过凭据且当前可直接使用；正在被任一功能使用的服务同样视为用户自己的服务。
+function hasCredential(service: string) {
+  const config = props.config;
+  return Boolean(config.token[service]?.trim()
+    || (service === services.youdao && config.youdaoAppKey?.trim())
+    || (servicesType.isTencent(service) && config.tencentSecretId?.trim()));
+}
+const configuredServices = computed(() => {
+  const config = props.config;
+  const result = new Set([config.service, ...featureServiceDefinitions.map(feature => getFeatureService(config, feature))].filter(Boolean));
+  for (const option of props.serviceOptions) {
+    if (hasCredential(option.value) && !getMissingCredentialMessage(option.value, config)) result.add(option.value);
+  }
+  return result;
+});
+const needsSetupServices = computed(() => new Set(props.serviceOptions
+  .filter(option => getMissingCredentialMessage(option.value, props.config)).map(option => option.value)));
+const splitChoices = computed(() => splitServiceChoices(filteredChoices.value,
+  {configured: configuredServices.value, needsSetup: needsSetupServices.value, selected: selected(editing.value?.feature)}));
+const moreChoices = computed(() => splitChoices.value.more);
+// 选项副标题：搜索时列出命中的模型；否则可直接使用的 AI 服务显示配置模型，缺少凭据的服务标为待配置。
+function choiceNote(option: ServiceSearchOption) {
+  const config = props.config;
+  if (option.disabled) return {note: translateLegacy(getTranslationServiceUnavailableMessage(option.value) || ''), needsSetup: false};
+  if (option.matchingModels.length) return {note: option.matchingModels.join(' · '), needsSetup: false};
+  if (needsSetupServices.value.has(option.value)) return {note: t('featureServices.needsSetup'), needsSetup: true};
+  const model = servicesType.isUseModel(option.value) && configuredServices.value.has(option.value)
+    ? resolveConfiguredModel(config.model[option.value], config.customModel[option.value]) : '';
+  return {note: model || '', needsSetup: false};
+}
+const moreCategories = [
+  {id: 'machine', label: 'translationCenter.machine', match: (service: string) => !servicesType.isCloudVendor(service) && !servicesType.isAI(service)},
+  {id: 'cloud', label: 'translationCenter.cloud', match: (service: string) => servicesType.isCloudVendor(service)},
+  {id: 'ai', label: 'translationCenter.ai', match: (service: string) => servicesType.isAI(service)},
+] as const;
 const choiceGroups = computed(() => {
   const owned = ownView(), keyword = query.value, expanded = moreOpen.value;
-  const bind = (items: typeof filteredChoices.value) => items.map(option => ({...option, choose: () => {
+  const bind = (items: readonly ServiceSearchOption[]) => items.map(option => ({...option, ...choiceNote(option), choose: () => {
     if (owned() && query.value === keyword && moreOpen.value === expanded) choose(session.value!, option.value);
   }}));
-  return query.value.trim() ? [{id: 'search', label: t('popup.providers.title'), items: bind(filteredChoices.value)}] : [
-    {id: 'common', label: t('popup.commonServices'), items: bind(filteredChoices.value.filter(option => popularServices.has(option.value)))},
-    {id: 'more', label: t('popup.moreServices'), items: moreOpen.value ? bind(moreChoices.value) : []},
-  ];
+  if (query.value.trim()) return [{id: 'search', label: t('popup.providers.title'), toggle: false, items: bind(filteredChoices.value)}];
+  const more = moreCategories.map(category => ({id: category.id, label: t(category.label), toggle: false,
+    items: expanded ? bind(moreChoices.value.filter(option => category.match(option.value))) : []}));
+  // 展开按钮固定渲染在更多区的第一个分组之前，收起时各分组为空，只留下按钮。
+  if (moreChoices.value.length) more[0].toggle = true;
+  return [{id: 'common', label: t('popup.commonServices'), toggle: false, items: bind(splitChoices.value.common)}, ...more];
 });
 function resetPicker() {session.value = null;query.value = '';moreOpen.value = false;viewRevision.value += 1;}
 watch(() => [revision.value, session.value && selected(session.value.field.feature), session.value && effective(session.value.field.feature)], () => {
@@ -180,14 +218,8 @@ function openPicker(field: Field) {
   if (!active.value || !fields.includes(field)) return;
   const before = document.activeElement, config = props.config;
   resetPicker();session.value = {field, config, selected: selected(field.feature), service: effective(field.feature), current: capture()};
-  moreOpen.value = Boolean(session.value.selected && !popularServices.has(session.value.selected));
-  const current = ownView();
-  focusAfterRender(current, before, () => searchInput.value);
-  void nextTick(() => {
-    if (!current()) return;
-    const list = results.value, option = list?.querySelector<HTMLButtonElement>('[aria-selected="true"]');
-    if (list?.isConnected && option) list.scrollTop = Math.max(0, option.offsetTop - (list.clientHeight - option.offsetHeight) / 2);
-  });
+  // 当前选中项始终在常用区内，面板从顶部打开即可看到，无需展开更多区或滚动定位。
+  focusAfterRender(ownView(), before, () => searchInput.value);
 }
 function backToOverview(value: PickerSession) {
   if (!ownsSession(value)) return;
@@ -234,22 +266,27 @@ const panelActions = computed(() => {
 .service-panel-close { display: grid; place-items: center; flex: none; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; color: var(--muted); background: var(--surface-soft); font-size: 22px; cursor: pointer; }
 .service-panel-close:hover { color: var(--ink); background: var(--brand-soft); }
 .popup-service-overview { display: grid; grid-template-columns: minmax(0, 1fr); }
-.service-assignment { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr) 8px; align-items: center; gap: 8px; min-width: 0; min-height: 38px; padding: 6px 8px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
+.service-assignment { display: grid; grid-template-columns: fit-content(45%) minmax(0, 1fr) 8px; align-items: center; gap: 8px; min-width: 0; min-height: 36px; padding: 6px 8px; border: 0; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
 .service-assignment:last-child { border-bottom: 0; }
 .service-assignment:hover { border-radius: 8px; background: var(--surface-soft); }
-.default-assignment { min-height: 50px; margin-bottom: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-soft); }
+.default-assignment { min-height: 44px; margin-bottom: 6px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-soft); }
 .default-assignment:hover { border-color: var(--brand); background: var(--brand-soft); }
 .assignment-heading { min-width: 0; font-size: 11px; line-height: 1.4; }
 .assignment-heading strong { font-weight: 600; }
 .default-assignment .assignment-heading strong { font-weight: 650; }
-.assignment-details { display: grid; grid-template-columns: auto minmax(0, auto); align-items: center; justify-content: end; justify-items: end; gap: 2px 5px; min-width: 0; }
-.assignment-value { grid-column: 2; min-height: 26px; padding: 3px 6px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); display: flex; align-items: center; justify-content: flex-end; gap: 6px; max-width: 100%; min-width: 0; font-size: 10px; line-height: 1.4; }
-.assignment-value > span { min-width: 0; white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
-.assignment-inherited { border-color: transparent; color: var(--muted); background: var(--surface-soft); }
+.assignment-details { display: grid; grid-template-columns: auto minmax(0, auto); align-items: center; justify-content: end; justify-items: end; gap: 1px 5px; min-width: 0; }
+/* 服务值不再套方框：图标加名称单行右对齐；空间不足时“跟随默认”折到名称上方，长名称在自己的行内换行。 */
+.assignment-value { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 1px 5px; max-width: 100%; min-width: 0; font-size: 10.5px; line-height: 1.4; }
+.assignment-service { display: flex; align-items: center; gap: 5px; max-width: 100%; min-width: 0; }
+.assignment-service :deep(.service-brand-icon) { width: 18px; height: 18px; border-radius: 6px; }
+.assignment-service > span:last-child { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.assignment-follow { flex: none; color: var(--muted); font-size: 10px; white-space: nowrap; }
+.assignment-follow::after { content: "·"; margin-left: 5px; }
+.assignment-inherited .assignment-service { color: var(--muted); }
 .assignment-details > small { grid-column: 2; max-width: 100%; overflow: hidden; color: var(--muted); font-size: 9px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
 .assignment-warning { grid-column: 1; grid-row: 1; display: grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; background: var(--brand-soft); color: var(--brand-strong); font-size: 10px; font-weight: 600; }
 .assignment-chevron { color: var(--muted); font-size: 16px; line-height: 1; }
-.service-picker-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.service-picker-heading { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 8px; padding-bottom: 10px; background: var(--surface); }
 .service-picker-heading > strong { min-width: 0; flex: 1; font-size: 12px; }
 .service-picker-heading > small { max-width: 100px; color: var(--muted); font-size: 9px; }
 .service-picker-back { flex: none; width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-soft); color: var(--ink); cursor: pointer; }
@@ -259,10 +296,11 @@ const panelActions = computed(() => {
 .service-picker-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 10px; }
 .service-picker-search input::-webkit-search-cancel-button { display: none; }
 .service-picker-search button { flex: none; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
-.service-picker-list { position: relative; max-height: clamp(140px, calc(88dvh - 176px), 340px); margin-top: 10px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
-.service-choice-grid.common { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
-.service-choice-grid.common .service-choice { min-width: 0; padding: 6px 4px; gap: 6px; }
-.service-choice-grid.common .service-choice-copy strong { font-size: 10px; overflow-wrap: anywhere; }
+.service-picker-list { position: relative; margin-top: 8px; }
+.service-choice-grid.compact { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+.service-choice-grid.compact .service-choice { min-width: 0; padding: 6px 4px; gap: 6px; }
+.service-choice-grid.compact .service-choice-copy strong { font-size: 10px; overflow-wrap: anywhere; }
+.service-choice-grid.compact .service-choice-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .service-choice-group-label { display: block; padding: 8px 4px 5px; color: var(--muted); font-size: 10px; }
 .service-choice { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 38px; padding: 6px 8px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
 .service-choice:hover:not(:disabled) { background: var(--surface-soft); }
@@ -271,10 +309,13 @@ const panelActions = computed(() => {
 .service-choice-copy { display: grid; gap: 2px; min-width: 0; flex: 1; }
 .service-choice-copy strong { font-size: 11px; font-weight: 550; }
 .service-choice-copy small { color: var(--muted); font-size: 9px; line-height: 1.5; overflow-wrap: anywhere; }
-.service-choice-check { font-size: 14px; color: var(--brand-strong); }
+.service-choice-setup { opacity: .8; }
+.service-choice-check { flex: none; font-size: 14px; color: var(--brand-strong); }
 .follow-choice { margin-bottom: 3px; border-color: var(--line); }
 .service-picker-more { display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 34px; margin-top: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink); background: var(--surface-soft); font-size: 11px; cursor: pointer; }
 .service-picker-more small { margin-left: 4px; color: var(--muted); font-size: 9px; }
+.service-picker-more-arrow { color: var(--muted); font-size: 14px; line-height: 1; transition: transform 160ms ease; transform: rotate(90deg); }
+.service-picker-more[aria-expanded="true"] .service-picker-more-arrow { transform: rotate(-90deg); }
 .service-picker-empty { padding: 15px 4px; color: var(--muted); font-size: 11px; text-align: center; }
 .service-picker-warning { margin: 10px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
 </style>

@@ -434,6 +434,9 @@ async function main() {
     await context.route('https://github.com/Bistutu/FluentRead', route => route.fulfill({contentType: 'text/html', body: '<title>Project link fixture</title>'}));
     const projectPagePromise = context.waitForEvent('page'); await link.click(); const projectPage = await projectPagePromise; await projectPage.waitForURL('https://github.com/Bistutu/FluentRead'); await projectPage.close();
     report.cases.push('open-source capsule opens the declared GitHub URL in a new tab (navigation fixture)');
+    // --services-only 跳过页面动作与站点规则，只验证翻译服务面板；用于面板改动的聚焦回归。
+    const servicesOnly = process.argv.includes('--services-only');
+    if (!servicesOnly) {
     currentCase = 'page-actions';
     const mainAction = popup.locator('[data-testid="page-translation"]');
     await mainAction.click(); await until(async () => await mainAction.getAttribute('aria-pressed') === 'true', 'translated state');
@@ -467,6 +470,7 @@ async function main() {
     await content.locator('#primary .fluent-read-bilingual-content').waitFor({state: 'detached'});
     await shot(popup, 'site-disabled'); await popup.locator('[data-setting="disable-extension-site"]').click(); await saved('disabledExtensionDomains', []);
     report.persistenceCases.push({name: 'site-rules-reopen-and-quick-close', passed: true});
+    }
     currentCase = 'service-chooser';
     await drawer(); assert.equal(await popup.locator('.service-assignment').count(), 10); await shot(popup, 'services-overview');
     assert.equal(await popup.locator('.provider-drawer-actions, [data-testid="ai-context-help"]').count(), 0);
@@ -510,13 +514,19 @@ async function main() {
     await popup.locator('.service-picker-search input').press('Escape');
     await popup.locator('[data-feature-service="default"]').click(); await popup.locator('.service-picker-search input').fill(service); await popup.locator(`[data-service-choice="${service}"]`).click();
     await saved('service', service); await popup.locator('[data-feature-service="default"]').click();
-    assert.equal(await popup.locator('.service-picker-more').getAttribute('aria-expanded'), 'true');
+    // 当前选中的服务始终留在常用区：更多区保持收起，面板从顶部打开即可在视口内看到它。
+    assert.equal(await popup.locator('.service-picker-more').getAttribute('aria-expanded'), 'false');
     assert(await popup.locator(`[data-service-choice="${service}"]`).isVisible());
-    const selectedVisibility = await popup.locator(`[data-service-choice="${service}"]`).evaluate(node => {const rect = node.getBoundingClientRect(); const list = node.closest('.service-picker-list').getBoundingClientRect(); return {top: rect.top, bottom: rect.bottom, listTop: list.top, listBottom: list.bottom};});
-    assert(selectedVisibility.top >= selectedVisibility.listTop - 1 && selectedVisibility.bottom <= selectedVisibility.listBottom + 1, `current service is outside list viewport: ${JSON.stringify(selectedVisibility)}`);
+    assert.equal(await popup.locator(`[data-service-choice="${service}"]`).getAttribute('aria-selected'), 'true');
+    assert.equal(await popup.locator('.service-choice-grid').first().locator('[data-service-choice]').first().getAttribute('data-service-choice'), 'freeTranslation');
+    const selectedVisibility = await popup.locator(`[data-service-choice="${service}"]`).evaluate(node => {const rect = node.getBoundingClientRect(); const body = node.closest('.el-drawer__body').getBoundingClientRect(); return {top: rect.top, bottom: rect.bottom, bodyTop: body.top, bodyBottom: body.bottom};});
+    assert(selectedVisibility.top >= selectedVisibility.bodyTop - 1 && selectedVisibility.bottom <= selectedVisibility.bodyBottom + 1, `current service is outside drawer viewport: ${JSON.stringify(selectedVisibility)}`);
     assert(selectedVisibility.bottom <= await popup.evaluate(() => innerHeight), 'current service clipped by popup viewport');
-    await shot(popup, 'service-picker-more'); await popup.locator('.service-picker-more').click(); assert.equal(await popup.locator(`[data-service-choice="${service}"]`).count(), 0);
-    await popup.locator('.service-picker-more').click();
+    await shot(popup, 'service-picker-selected'); await popup.locator('.service-picker-more').click();
+    assert.equal(await popup.locator('.service-picker-more').getAttribute('aria-expanded'), 'true'); await shot(popup, 'service-picker-more');
+    // 搜索框随列表滚动，只有标题栏吸顶；滚到底部后搜索框应离开抽屉视口。
+    const scrolled = await popup.locator('.service-picker-search').evaluate(node => {const body = node.closest('.el-drawer__body'); body.scrollTop = body.scrollHeight; const rect = node.getBoundingClientRect(), bodyRect = body.getBoundingClientRect(), heading = body.querySelector('.service-picker-heading').getBoundingClientRect(); const result = {scrollTop: body.scrollTop, searchBottom: rect.bottom, bodyTop: bodyRect.top, headingTop: heading.top}; body.scrollTop = 0; return result;});
+    assert(scrolled.scrollTop > 0 && scrolled.searchBottom <= scrolled.bodyTop + 1 && Math.abs(scrolled.headingTop - scrolled.bodyTop) <= 1, `search should scroll away under a sticky heading: ${JSON.stringify(scrolled)}`);
     const choices = popup.locator('[data-service-choice]:not(:disabled)');
     assert.equal(await choices.locator('.service-brand-icon').count(), await choices.count());
     await input.focus(); await input.press('ArrowDown'); await popup.keyboard.press('ArrowDown'); await popup.keyboard.press('Home');
@@ -528,6 +538,7 @@ async function main() {
     await drawer(); await pick('selection', 'google'); await pick('selection', 'microsoft'); await popup.close(); popup = await openPopup();
     await saved('selectionTranslationService', 'microsoft'); await drawer(); assert.match(await popup.locator('[data-feature-service="selection"]').innerText(), /微软/); await shot(popup, 'services-reopened'); await closeDrawer();
     report.quickClose = true; report.latestWriteWins = true; report.persistenceCases.push({name: 'service-two-writes-quick-close', passed: true});
+    if (servicesOnly) {assert.deepEqual(report.consoleErrors, []); report.ok = true; return;}
     currentCase = 'selection-layout';
     await drawer('selection');
     assert.equal(await popup.locator('.selection-trigger-setting, .wordbook-shortcut').count(), 0);
