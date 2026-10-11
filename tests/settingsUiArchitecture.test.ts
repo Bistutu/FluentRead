@@ -163,6 +163,16 @@ describe('options UI composition architecture', () => {
   it('keeps the WXT options entrypoint as a thin app composition shell', () => {
     const entrypoint = sourceBody('entrypoints/options/main.ts')
     expect(entrypoint).toBe("import { mountOptionsApp } from '@/src/app/options'\n\nmountOptionsApp('#app')\n")
+    const optionsEntry = sourceBody('src/app/options/index.ts')
+    const shadowPlatform = sourceBody('src/platform/shadow-ui/vue.ts')
+    expect(optionsEntry).toMatch(/uiRoot\?:\s*HTMLElement\s*\|\s*null;/u)
+    expect(optionsEntry).toMatch(/uiRoot:\s*installOptions\.uiRoot/u)
+    expect(shadowPlatform).toMatch(/configureApp\?:\s*\(app:\s*VueApp,\s*container:\s*HTMLElement\)\s*=>\s*void/u)
+    for (const path of ['src/app/options/index.ts', 'src/platform/shadow-ui/vue.ts', 'src/ui/i18n.ts']) {
+      const header = source(path).match(/^\/\*\*[\s\S]*?\*\//u)?.[0]
+      expect(header).toContain(`@file ${path}`)
+      expect(header).toMatch(/[\u4e00-\u9fff]/u)
+    }
   })
 
   it('defers options sections without dropping visited editing state and waits for hydrated UI resources', () => {

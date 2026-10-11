@@ -2,7 +2,7 @@
 
 本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 持续进行。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，第四批为 `97e92defe`，第五批为 `7e8ffe952`，第六批为 `621a1c2a2`，第七批为 `adbcfe428`，第八批为 `5e554d7fa`，第九批为 `85c29dffe`，第十批为 `626e4652e`，第十一批为 `80e2db0c5`，第十二批为 `d4c9b0a66`，第十三批为 `6312bbbfd`，第十四批为 `c420f6728`，第十五批为 `391c4683c`，第十六批为 `06ee7e81f`；后续继续使用同一集成基线，并与上一批冻结产物比较。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
 
-本报告按批次记录独立冻结结果，开头的测量、测试及失败说明属于第一批。当前已推进至第三十五批：第十八批完整确定性流水线 22 阶段通过；第十九至二十批的 18 个相关测试文件、1,542 项用例及三端构建通过；第二十二批的九个相关文件、1,278 项用例通过；第二十三批完成确认导入收尾和 11 项隔离 Edge 备份验证。第二十四批的 13 个相关文件、1,530 项用例、四模块限定四维 100% 覆盖率与三端构建通过；真实服务页首次加载的 JavaScript 原始字节减少 195,456 B。第二十五批完成本地模型 UI 按需加载，12 个相关文件、1,165 项用例及三端构建通过；普通服务页新增请求的 JavaScript 与样式合计再减少 29,378 B。第二十六批将局部恢复的取消记录改为节点弱关联，八个相关文件、1,344 项用例及三端构建通过；其 native 发现的合成段基线循环已在第二十七批修复。第二十七批八个相关文件、1,350 项用例及三端构建通过，隔离 Edge 受控夹具九阶段通过，两个 1,200 ms 窗口保持同段与同译文且无重新挂载。第二十八批复用缓存键的术语解析结果，22 个相关文件、1,578 项用例及三端构建通过，broker 限定四维 100%；公开请求的命中 key 解析由两次减为一次。第二十九批修复高级请求限制控件，1,106 项相关检查与隔离 Edge 验证通过；第三十批修复缓存中的复习按键，1,050 项相关检查、三端构建与隔离 Edge 九阶段通过。第三十一批将学习中心记录与笔记改为首用加载，1,137 项相关检查通过；隔离 Edge 默认收藏阶段新增请求文件减少 20,641 B，加载故障经页面重载恢复。第三十二批排除完整独立脚本已不可达的八个扩展设置子 UI，1,089 项相关检查与旧新完整脚本各七阶段隔离 Edge 验证通过，完整脚本减少 183,104 B 至 3,638,416 B，仍超原预算 38,416 B。第三十三批统一中文「流畅阅读」与既有六语品牌，1,997 项相关执行通过；实际安装扩展与文档语言往返通过，完整独立脚本的鼠标语言切换 7/8 未通过并已定位封闭 ShadowRoot 事件边界。第三十四批修复选择器鼠标归属、退场命中、侧栏品牌与独立脚本预览图标，并清理 Options 无消费者的组件和样式注册；17 个相关文件合并计 1,507 项定向执行通过，最终扩展 12 阶段/10 图、完整独立脚本 14 阶段/9 图的隔离 Edge 验证通过。第三十三批 7/8 鼠标语言切换失败保留为修复前证据。第三十五批无损编码完整独立脚本的识别模型数据，6 个相关文件合并 776 项定向执行通过；10 个隔离启动样本通过，完整脚本减少 38,637 B 至 3,579,502 B，并通过原 3,600,000 B 预算。采样区间重叠，不宣称净启动提速。Chrome 全部路径、字节与 SHA 保持第三十四批结果：原始产物 65,531,615 B，沿用固定 ZIP 23,686,030 B。第二十五及三十一批的收益主要是延后加载；旧各批超预算历史及 Greasy Fork 未通过的资源固定检查保留。第二十一轮是只读字幕审计，未实施索引候选。后续章节区分各批范围，不把当前针对性验证说成再次全量执行。
+本报告按批次记录独立冻结结果，开头的测量、测试及失败说明属于第一批。当前已推进至第三十六批：第十八批完整确定性流水线 22 阶段通过；第十九至二十批的 18 个相关测试文件、1,542 项用例及三端构建通过；第二十二批的九个相关文件、1,278 项用例通过；第二十三批完成确认导入收尾和 11 项隔离 Edge 备份验证。第二十四批的 13 个相关文件、1,530 项用例、四模块限定四维 100% 覆盖率与三端构建通过；真实服务页首次加载的 JavaScript 原始字节减少 195,456 B。第二十五批完成本地模型 UI 按需加载，12 个相关文件、1,165 项用例及三端构建通过；普通服务页新增请求的 JavaScript 与样式合计再减少 29,378 B。第二十六批将局部恢复的取消记录改为节点弱关联，八个相关文件、1,344 项用例及三端构建通过；其 native 发现的合成段基线循环已在第二十七批修复。第二十七批八个相关文件、1,350 项用例及三端构建通过，隔离 Edge 受控夹具九阶段通过，两个 1,200 ms 窗口保持同段与同译文且无重新挂载。第二十八批复用缓存键的术语解析结果，22 个相关文件、1,578 项用例及三端构建通过，broker 限定四维 100%；公开请求的命中 key 解析由两次减为一次。第二十九批修复高级请求限制控件，1,106 项相关检查与隔离 Edge 验证通过；第三十批修复缓存中的复习按键，1,050 项相关检查、三端构建与隔离 Edge 九阶段通过。第三十一批将学习中心记录与笔记改为首用加载，1,137 项相关检查通过；隔离 Edge 默认收藏阶段新增请求文件减少 20,641 B，加载故障经页面重载恢复。第三十二批排除完整独立脚本已不可达的八个扩展设置子 UI，1,089 项相关检查与旧新完整脚本各七阶段隔离 Edge 验证通过，完整脚本减少 183,104 B 至 3,638,416 B，仍超原预算 38,416 B。第三十三批统一中文「流畅阅读」与既有六语品牌，1,997 项相关执行通过；实际安装扩展与文档语言往返通过，完整独立脚本的鼠标语言切换 7/8 未通过并已定位封闭 ShadowRoot 事件边界。第三十四批修复选择器鼠标归属、退场命中、侧栏品牌与独立脚本预览图标，并清理 Options 无消费者的组件和样式注册；17 个相关文件合并计 1,507 项定向执行通过，最终扩展 12 阶段/10 图、完整独立脚本 14 阶段/9 图的隔离 Edge 验证通过。第三十三批 7/8 鼠标语言切换失败保留为修复前证据。第三十五批无损编码完整独立脚本的识别模型数据，6 个相关文件合并 776 项定向执行通过；10 个隔离启动样本通过，完整脚本减少 38,637 B 至 3,579,502 B，并通过原 3,600,000 B 预算。采样区间重叠，不宣称净启动提速。第三十五批 Chrome 全部路径、字节与 SHA 保持第三十四批结果：原始产物 65,531,615 B，沿用固定 ZIP 23,686,030 B。第三十六批分离自有 UI 扫描与宿主元数据权限并保护保存名称，8 个相关文件、209 项验证及两版各 7 阶段/5 图的隔离浏览器验证通过；完整脚本为 3,579,642 B，预算余量 20,358 B，Chrome 原始产物为 65,531,751 B，本批未测 ZIP。第二十五及三十一批的收益主要是延后加载；旧各批超预算历史及 Greasy Fork 未通过的资源固定检查保留。第二十一轮是只读字幕审计，未实施索引候选。后续章节区分各批范围，不把当前针对性验证说成再次全量执行。
 
 ## 改动与测量
 
@@ -905,9 +905,42 @@ root串行交替B6/当前各5个 fresh owned profile，同完整IIFE投递、原
 
 证据统一位于 `/private/tmp/fluentread-performance-experience-20261010/`：`round37-franc-data-test-implementation/{FINAL-FREEZE.json,related-attempt1/,strict-attempt1/,strict-attempt2/}`、`round37-full-residual-size-audit/formal-implementation/`；最终 `round37-formal-validation/` 的 `strict-registered-attempt1/`、`architecture-attempt1/`、`ownership-registered-attempt1/`、`audit-attempt1/`、`build-attempt{1,2}/`、`ARTIFACT-COMPARISON.json`、`GREASYFORK-PRECONDITION-BASELINE.json`、`EMITTED-AST-{DIAGNOSTIC,FIRST-DIFFERENCE}.json`、`startup-attempt1/RECEIPT.json`与10个sample子目录。原 pending 稿、全部失败证据与只读 peer 均保留；本批按用户选择仅保存本地，没有推送、PR 或发布。
 
+## 第三十六批：将用户脚本设置扫描限定到拥有的 UI 根，保留用户样式名称
+
+本批修复完整用户脚本设置在 closed ShadowRoot 中的本地化归属：设置自己的固定文案可翻译，宿主页面、同根其他内容和用户保存的样式名称不能成为扫描对象。正式范围是 5 个生产文件和 5 个既有测试文件，正式报告是另外第 11 个交付文件。未改变依赖、锁文件、远程资源 pin、严格阈值、扫描主体算法或参考项目，下一项 ColorProvider 私有实验不列为本批交付。
+
+公开 i18n plugin 增加可选 `uiRoot`，分开 UI 自动扫描和文档元数据权限：未传时沿用原 `documentRoot`，显式 `null` 关闭自动扫描，传拥有的元素则只扫描该根。`lang/title` 仍只由原 `documentRoot` 授权，不能因存在 `uiRoot` 就改写宿主元数据；显式本地化指令保留原合同。Options 转发此参数，Shadow UI 的 `configureApp` 在原挂载顺序中接收实际 container；完整用户脚本接入 `documentRoot:null, uiRoot:container`。这是可信调用方授予根的权限划分，不是对任意传入宿主节点的安全判定，也没有扩大到全 document 观察。
+
+实际客户端发现保存名称“设置”和“设置 · 设置”命中旧文案及复合分隔扫描。首轮 RED 另含一个错误的静态预设期望，历史保留；仅把期望改为实际 `getTranslationStylePreset(profile.style).label` 后，精准 RED 的 2 场景均失败，42 个 soft 断言全部属于名称 strong/title/aria 或复合名称 Preview。随后 `TranslationStyleSettings.vue` 的两处用户名称展示加既有 ignore 标记，七语往返要求名称逐字保留，固定标题和基础样式名称仍按原资源翻译。代码、用户 ignore/text、同 Shadow sibling、实际 Vue Teleport 到 body 的外部节点及宿主元数据均受边界断言保护；不承诺缺少资源 key 的所有旧标题均本地化。
+
+选择性验证去重为 **8 个唯一 owner、209 项通过**：公共 plugin 两 owner 49 项，接线三 owner 52 项，实际 Vue 客户端一 owner 78 项，架构两 owner 30 项。新增合计 8 声明 / 16 展开，旧正文和断言保留。`test:audit` 自然退出 0，检查的是 640 文件 / 10,574 用例的唯一分类等静态合同，不能当作同规模功能回归；上述选择性测试也不是全仓回归或新的全模块 V8 覆盖率结论。
+
+首次统一流程在 `compile` 自然退出 2：新测试 helper 要求整个 typed 模块，而 VM 实际模块是 loose record，两处参数报 TS2345，未到产品构建。修正只让 helper 接收已 typed 的公开 `createUiI18nPlugin` 函数，不伪造整个 VM 类型，不改生产、用例或断言。最终测试冻结在 `plugin/post-type-fix/`，同两 owner 49 项复跑自然退出 0；重复不加进 209。旧测试、首轮 GREEN、compile 失败和前一冻结均保留。
+
+第二次统一流程的 8 核心阶段全部自然退出 0：类型、Chrome、Firefox、manifests、普通脚本及 verifier、完整脚本及 verifier；1,973 个明确列出的生产/构建输入前后 SHA 不变，该集合不是全仓且不含测试文件。GreasyFork 本批未重跑，原四项 guard 输入仍逐字相同；已知资源 pin 前置条件仍标 `passed:false`，产品构建未到 Vite，不声称整个基线 GreasyFork 构建复现或通过。
+
+| 同口径实际产物 | 本批结果 | 相对第三十五批 |
+| --- | ---: | ---: |
+| 完整 standalone | 3,579,642 B | +140 B |
+| 普通用户脚本 | 1,957,246 B | +70 B |
+| Chrome 完整目录 | 444 文件 / 65,531,751 B | +136 B |
+| Firefox 完整目录 | 444 文件 / 65,530,786 B | +180 B |
+
+完整脚本满足原 3,600,000 B 预算，余量 20,358 B；两端 manifest 全文字节相同。表中是实际冻结文件 raw 长度和 SHA 账本，不是传输、压缩或设备性能数据。本批未测 ZIP，不把上一批 ZIP 当本批实测，不写总包体下降；哈希路径传播及 Firefox 后台额外差异未在此阶段获得整程序等价或完整源码归因。
+
+公共权限表覆盖 undefined/null/拥有 UI 根与元数据组合，卸载端口覆盖原 hook 顺序、观察器/定时器收口和迟到 callback。客户端按实际 `createTreeWalker` 计数，中文冷/连续刷新及返回中文后为零，缓存离开/返回仍一个拥有的 observer。卸载前排队刷新、语言资源待定后迟到成功及旧订阅 callback 均不能再提交或改写 DOM。这些是受控 DOM、MutationObserver delivery、配置传输和 bundle gate 端口证据，不是原生 mutation 时序、真实 manager、持久化存储、CPU/heap 收益。旧故障注入产生的 Vue mount warnings 保留，不称控制台全零。
+
+根任务第二轮真实原生回执自然退出 0：第三十五批基线与本批完整原始 IIFE 分别在新独占 profile 中运行，各 **7 阶段 / 5 张图**，1,973 源输入和 16 项运行 metadata 前后相同。第一轮基线自然退出 1，只有旧 locator 在界面样式区导航失败，4 阶段已完成、错误数组为空且三项清理通过；三处私有 selector 改为实际 continuous anchor link，action 全文可逆，旧失败、截图及输入保留，没有产品或断言变更。
+
+公开原生鼠标 CN→EN→CN 中，基线英文仍显示“网页辅助 / 全文翻译悬浮球 / 显示翻译进度面板”；本批显示对应 English 文案，其 switch ARIA 与 FluentRead 品牌一致，返回中文还原。根任务查看全部十张原始截图，英文固定文案和中英文保存名称均可读；截图只覆盖 app 当前视口，不保证嵌套滚动区下面全部内容可见。两版英文样式组 Highlights 均有两行折词，保留为后续候选。两版均通过公开保存/选择真实名称“设置”和“设置 · 设置”，卡片/预览/title/aria 的名字逐字保留，版本内 profiles 的 id/name/style/appearance 不变。宿主已知 text、五属性、`document.title` 和 `html.lang` 按完整 driver 逐步断言不变；390px 时 app client/scroll 都是 390，页面可见。
+
+两版 console errors、warnings、观测的 external HTTP、request failures 及 focus events 五数组为空，各 9 项焦点检查；连续 monitor 在 launch 前 ready，第二屏正常 1440×1000 可见无抢焦点窗口，owned close、profile 删除和 monitor stop 三项 true。范围仍是空的同 realm synthetic GM 端口，未验证 manager 安装、跨文档持久化、provider、Firefox或设备；七语是 owner 证据，原生只测中英往返。回执中的启动观察值不用于提速结论。
+
+证据根为 `/private/tmp/fluentread-performance-experience-20261010/`：`round38-owned-ui-root-integration/ROOT-TARGETED-VERIFICATION.json`、首次 `build-attempt1/`、最终 `build-attempt2/BUILD-FREEZE.json`、`ARTIFACT-COMPARISON.json`、`NATIVE-RECEIPT-ATTEMPT2.json` 及 `NATIVE-LOCATOR-CORRECTION.json`；owner 边界及失败历史在 `round38-owned-ui-root-tests/{plugin/post-type-fix,wiring,client}/`。原 pending 稿/十份源测试副本保留，本定稿及回执/十张实际图由 `round38-owned-ui-root-integration/report-draft/final/FINAL-FREEZE.json` 冻结；全部改动仅保存在本地，未推送、创建 PR 或发布。根任务截图复核见 `round38-owned-ui-root-integration/NATIVE-SCREENSHOT-ROOT-REVIEW.json`。
+
 ## 后续候选
 
-第三十五批最终完整脚本为 3,579,502 B，原 3,600,000 B 预算通过，余量 20,498 B。锁定 franc-min 纯数据无损编码已实施，新增同步恢复成本和十个启动样本的限制见本批正文，不把体积收益解释成普遍提速。下一批处理完整设置页的 owned-root 语言扫描：分离 UI 扫描容器与宿主 metadata 权限，先用实际 client 验证皮肤名称恰为 legacy key 时仍保持用户原文，再决定最小 owning 标记和接线；既有 Glossary 根级排除保持。ColorPicker 的 vendor locale 是另一独立候选，需保留英语缺键 fallback 与 provider 首次初始化边界。两项尚未实施；不扫描宿主或用户内容，不因已达预算删除能力、语言或许可。
+第三十六批最终完整脚本为 3,579,642 B，原 3,600,000 B 预算通过，余量 20,358 B。owned UI 根扫描、宿主元数据权限分离及用户样式名称保护已经实施；七语 owner 与中英原生往返的范围见本批正文。下一项独立候选是 TranslationColorField 取色器按钮语言：只给该子树提供公开 localeContextKey，保留父语言和英语缺键 fallback，七个 clear 短词取锁定 vendor、confirm 复用 common.confirm，避免修改远程词典摘要或 pin。私有公开 hooks 探针揭示 ElConfigProvider 首次局部挂载可能初始化全局配置，因此暂不采用它；尚无正式取色器改动、原生 footer 验收或产物收益。完整说明位于 round38-next-color-locale-audit/revision-v2-no-remote-keys/。不因达成预算删除能力、语言或许可。
 
 
 合成段 loading 挂载循环、缓存键重复术语解析、高级请求限制禁用与缓存复习快捷键已在第二十七至三十批分别修复。第三十一轮调度只读探针保留现检查：13 个受控普通场景虽减少同 owner 复验，但第三个 source-only 读取中的 style getter 同步替换同文本 Text 时，复用先前结果留下脱离节点身份；这只是受控端口反例，未当成原生复现或 CPU 收益，未实施。证据为 `round31-page-scheduling-audit/`。第三十二轮已撤回 Cloud 普通历史入口的减加载推荐；LearningCenter 的 History/Memory 首用加载已在第三十一批实施，实际收藏阶段新增请求文件减少 20,641 B，父装配、加载故障与原行为通过限定验证。第三十四轮审计确认的八个既不可达设置子 UI 已在第三十二批排除，完整独立脚本实际减少 183,104 B，仍比原 3,600,000 B 门槛多 38,416 B。继续审查其 Options/IIFE 归属与可证明不可达的资源，保持可达服务、本地模型/TTS、数据、语言、许可和原门槛，不为达预算删除已有能力。请求队列仍在 response body 完成前占用并发槽；会改变错误种类的同步 deadline 合并未实施。
