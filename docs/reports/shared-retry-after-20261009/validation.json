@@ -104,7 +104,7 @@
         ".vitest-round3-coverage.config.ts",
         "--coverage",
         "--reporter=json",
-        "--outputFile=/home/arietids/Documents/Codex/2026-10-06/task/shared-retry-after-pr-20261009/round3-affected-vitest.json"
+        "--outputFile=<evidence>/round3-affected-vitest.json"
       ]
     },
     {

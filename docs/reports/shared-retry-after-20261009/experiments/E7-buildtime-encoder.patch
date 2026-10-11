@@ -1,0 +1,35 @@
+--- a/userscript/vite.config.ts
++++ b/userscript/vite.config.ts
+@@ -1,6 +1,7 @@
+ import fs from 'node:fs';
+ import {createHash} from 'node:crypto';
+ import {createRequire} from 'node:module';
++import {gzipSync, gunzipSync} from 'node:zlib';
+ import {basename, dirname, resolve} from 'node:path';
+ import {runInNewContext} from 'node:vm';
+ import vue from '@vitejs/plugin-vue';
+@@ -71,9 +72,21 @@
+     return JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item)
+         ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : item);
+ }
+-// 构建期统一复用已安装的 pako level 9 编码静态数据；解压字节与运行时端口不变。
+-const gzipStaticData = createRequire(import.meta.url)('pako').gzip as
+-    (data: Uint8Array, options: {level: number}) => Uint8Array;
++// 构建期比较现有编码器；产物仍只含单个 literal，不添加运行时选择。
++const pakoBuild = createRequire(import.meta.url)('pako') as {gzip(data: Uint8Array, options: {level: number; memLevel?: number}): Uint8Array};
++const gzipStaticData = (data: Uint8Array, options: {level: number}): Uint8Array => {
++    if (options.level !== 9) throw new Error('Static gzip comparison requires level 9');
++    const candidates = [
++        Buffer.from(pakoBuild.gzip(data, {level: 9})),
++        Buffer.from(pakoBuild.gzip(data, {level: 9, memLevel: 9})),
++        gzipSync(data, {level: 9}),
++        gzipSync(data, {level: 9, windowBits: 13}),
++    ];
++    const length = (bytes: Uint8Array) => 4 * Math.ceil(bytes.length / 3);
++    const best = candidates.reduce((a, b) => length(b) < length(a) ? b : a);
++    if (!gunzipSync(best).equals(Buffer.from(data))) throw new Error('Static gzip data changed');
++    return best;
++};
+ const compressedUiLanguageBundles = greasyForkSource ? {} : Object.fromEntries(Object.entries(UI_LANGUAGE_BUNDLES)
+     .filter(([language]) => language === 'en-US')
+     .map(([language, bundle]) => [

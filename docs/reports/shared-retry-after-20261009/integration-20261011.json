@@ -11,8 +11,7 @@
   "resourceGuard": {
     "cpuTargetPercent": 60,
     "workers": 1,
-    "concurrency": 1,
-    "executionEnvironment": "selected CW only"
+    "concurrency": 1
   },
   "tests": {
     "distinctExecutedCasesPassing": 606,
@@ -238,7 +237,6 @@
     "receiptSha256": "c431e6969a8389da0bcf2a0d3b0b255769abc5ab0820aa7232bc30bd0fd7c573",
     "measurementSourceTree": "a24199c6090a839b6d0404591b8862597d7513c4",
     "hypothesisCount": 5,
-    "diagnosticThenFinalInputCheckNotCountedAsTen": true,
     "completeOutputValuesAreLiteralOnlyCounterfactuals": true,
     "allCandidateDecodedShaMatch": true,
     "subsequentProtocolRelayRebuildTree": "7f5b5b3038f17e8b1890d047ee2dd29e40d209dc",
@@ -251,7 +249,7 @@
       40224,
       -60
     ],
-    "mixDispatcherBytesIncluded": false
+    "buildTimeEncoderImplementationMeasuredInThisHistoricalRecord": false
   },
   "lockedDependencyRepair": {
     "package": "@pdf-lib/fontkit",
@@ -261,7 +259,6 @@
     "tarballSha256": "6dd0ae9209fce419b2ed76c97166863167b4df56d75fbe3c7f1d1e6e49c85867",
     "tarballBytes": 1600998,
     "lifecycleScriptsRun": false,
-    "sharedTreeModified": false,
     "sourceTreeChanged": false
   },
   "sourceBoundary": {
@@ -286,20 +283,21 @@
     "greasyForkBuildVerifier": true
   },
   "optimizationLimits": {
-    "noAspectDeclaredAtItsLimit": true,
-    "fiveAdditionalDistinctStaticGzipHypothesesMeasured": true,
     "globalSotaOrAllAxesParetoEstablished": false,
     "encodingTime": "unknown",
     "peakRss": "unknown",
     "browserDecodePerformance": "unknown",
     "runtimeLatencyThroughput": "unknown",
     "schedulerAndGraphLicenseSeparateSizeAttribution": "not measured in this integration",
-    "historicalCombination1645NotReattributed": true
+    "historicalCombination1645NotReattributed": true,
+    "staticParameterCandidates": 5
   },
   "publicationBoundary": {
-    "rawLogsAndFullArtifactsRemainLocal": true,
-    "prReadyOrBodyMetadataMutationAttempted": false,
-    "normalGitPushAuthorized": true
+    "rawLogsAndFullArtifactsPublished": false
   },
-  "historicalReportSuffixSha256": "6a90ec0605f303f5854ef2964f2fc37b9d5bf58ae7a211b5bd9107acabca06a9"
+  "historicalOriginalReportSuffix": {
+    "commit": "6bf22c5df49a1d2b8a500d776c566b32f28ed457",
+    "sha256": "6a90ec0605f303f5854ef2964f2fc37b9d5bf58ae7a211b5bd9107acabca06a9"
+  },
+  "publishedHistoricalSectionSha256": "cd185f6e3fec500757d97a5a2ea99c8a3c0ad6f5f1b088ee93dbebd6bc309efd"
 }

@@ -5,12 +5,13 @@
   "sourceBinding": {
     "measurementCandidateSourceTree": "a24199c6090a839b6d0404591b8862597d7513c4",
     "strictControlSourceTree": "95fa17eaaff84f1a71fa634413cd5ba61fe20bb9",
-    "finalSourceTreeReportedByRoot": "7f5b5b3038f17e8b1890d047ee2dd29e40d209dc",
-    "finalOriginalCliRebuildReportedByRoot": true,
-    "finalArtifactByteIdenticalToMeasuredCandidateReportedByRoot": true,
     "staticMeasurementsReusedByExactArtifact": true,
     "oldSourceScopeEqualsBuildTreeAssertionReusedForFinalSource": false,
-    "explanation": "CSS was measured on candidate source tree a24199c6090a839b6d0404591b8862597d7513c4. Root subsequently rebuilt the original standard CLI from tree 7f5b5b3038f17e8b1890d047ee2dd29e40d209dc and confirmed the complete artifact remains byte-identical with SHA256 4c65c5d613bebd31f01bc8b922b804ef8b061bc9d5b1440f7790fa22cd23c7a3. CSS measurements can therefore be reused by exact artifact equality; final source-to-artifact provenance requires the separate new build receipt."
+    "explanation": "CSS was measured on candidate source tree a24199c6090a839b6d0404591b8862597d7513c4. The standard-final original CLI build receipt records a rebuild from tree 7f5b5b3038f17e8b1890d047ee2dd29e40d209dc and confirmed the complete artifact remains byte-identical with SHA256 4c65c5d613bebd31f01bc8b922b804ef8b061bc9d5b1440f7790fa22cd23c7a3. CSS measurements can therefore be reused by exact artifact equality; final source-to-artifact provenance requires the separate new build receipt.",
+    "finalSourceTree": "7f5b5b3038f17e8b1890d047ee2dd29e40d209dc",
+    "finalOriginalCliRebuild": true,
+    "finalArtifactByteIdenticalToMeasuredCandidate": true,
+    "finalBuildReceipt": "integration-20261011.json: stages standard-final"
   },
   "artifacts": {
     "strictControl": {
@@ -235,5 +236,6 @@
     "sourceModifiedByThisReview": false,
     "rawArtifactsAndToolLogsRemainLocal": true,
     "publicReportContainsNoLocalArtifactPathsHostIdentityProcessIdsOrListenerPorts": true
-  }
+  },
+  "productionBoundaryReviewScope": "Historical a24199c6 production source; final CSS reuse depends only on complete standard artifact identity."
 }

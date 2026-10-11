@@ -1,0 +1,59 @@
+{
+  "scope": "Published copies replace host-specific path prefixes with <checkout>/ or <evidence>/; original test counts, assertions, traces and build data are retained. Original versions remain in Git history and local evidence.",
+  "files": [
+    {
+      "file": "standard-svg-dependency.json",
+      "originalPublishedAtCommit": "9c1ed3ccf235ea4e860392bc215258390829a3d1",
+      "originalSha256": "c62c5ba726de90e2c548134a994ce66d3db08f00e9f80e600f139b05cb33f164",
+      "redactedSha256": "cbcbdd0bae68d452fa040282126b0f7728c2754cba411ff7215326bf6227d5b2"
+    },
+    {
+      "file": "coverage-summary.json",
+      "originalPublishedAtCommit": "9c1ed3ccf235ea4e860392bc215258390829a3d1",
+      "originalSha256": "363cd2d310a7b9163ff8787ab015ce7e97869c87f2ae45c181d304efd2eb27bb",
+      "redactedSha256": "14bae72b92b9eeaa4e153860ff4a67fea8a06811b2087166da6ac2431b9c50b6"
+    },
+    {
+      "file": "validation.json",
+      "originalPublishedAtCommit": "9c1ed3ccf235ea4e860392bc215258390829a3d1",
+      "originalSha256": "396a2bb827f5efa33e6bfe6faa6dd870f51a6a8bc610ba2b918139ef29e5788b",
+      "redactedSha256": "4996fc498f8917c325b6c0b6f9a7ecf18731285d568df6adc1235301d5a97f4b"
+    },
+    {
+      "file": "license-path-red.json",
+      "originalPublishedAtCommit": "9c1ed3ccf235ea4e860392bc215258390829a3d1",
+      "originalSha256": "a9e462771dcc8cb84bc50c35de7eb0a6335eeb3c09a1633555d221d5409b1ce2",
+      "redactedSha256": "ea8d612112098220c73c961a6aecafb4ab000e4e1e70f2bfbdd62cd978d3febe"
+    },
+    {
+      "file": "seed-probe-red.json",
+      "originalPublishedAtCommit": "9c1ed3ccf235ea4e860392bc215258390829a3d1",
+      "originalSha256": "691f9a654b464753c41d17f5398e8cdb3e54302bc56b249dcf4ad943d8bf577f",
+      "redactedSha256": "2260bccec18afabed10275fb032cfe656d4825894b7bcb682dfe61ce83fec677"
+    },
+    {
+      "file": "seed-probe-green.json",
+      "originalPublishedAtCommit": "9c1ed3ccf235ea4e860392bc215258390829a3d1",
+      "originalSha256": "1a5c9bc57e114edc00c48d2c70e252baaa159c1bdd8575d659d5d0201313339d",
+      "redactedSha256": "85b025477d0ff16b62fab90f5cb0f4df8e81b1e2dafde9b8ff6678eedf650e65"
+    },
+    {
+      "file": "standalone-svg-dependency.json",
+      "originalPublishedAtCommit": "9c1ed3ccf235ea4e860392bc215258390829a3d1",
+      "originalSha256": "792b5dd313383770fd13b706726d9141e2009096bb3b378e2151b8bbc6805a6e",
+      "redactedSha256": "faedb30f0188d56a336043bec5ba3fbcf62cf52922b19fad5a696051e714e08e"
+    },
+    {
+      "file": "license-path-validation.json",
+      "originalPublishedAtCommit": "9c1ed3ccf235ea4e860392bc215258390829a3d1",
+      "originalSha256": "1292517af83a01cd50cd19f542cde861ecc41ecaab12d43aaae24e58d6942e18",
+      "redactedSha256": "4429d7d590bc459242ff37f29419b6447dd02d8b317ebe0653acaa71f91c5e3e"
+    },
+    {
+      "file": "license-path-green.json",
+      "originalPublishedAtCommit": "9c1ed3ccf235ea4e860392bc215258390829a3d1",
+      "originalSha256": "3fbed003e07e7c5c62a54c8d6cb30625f0e43260c550bb461e88cb4106f24080",
+      "redactedSha256": "b5cf0c9b4b9de86cf499e79811fb90b15c1089ee0439ba89634e777b0ce91f46"
+    }
+  ]
+}

@@ -1,8 +1,83 @@
-## 2026-10-11 冻结 main 整合与标准预算修复
+# 共享 Retry-After、取消隔离与 userscript 预算验证
 
-已验收代码：`646849ad8207092842905da2610ac39311ea329c`，树 `7f5b5b3038f17e8b1890d047ee2dd29e40d209dc`。本轮只合入冻结的 main `dc335c698c05d8a5d11dbaadacb598c0695894f8`，没有追逐更新的 main。四处实际冲突已解决；输入框处理器保留 main 的请求标识校验、共享取消注册、配置就绪及 provider 返回后的取消检查，在首次等待前从可信 sender.tab 快照三态隐私，同一个 request 先附 glossary/privacy 再附不可枚举 control。原生批处理配置、恢复和真实 attempt 的 quota/transport lease 保留。
+同一供应商返回 429 或带有效 Retry-After 的 503 时，仅让当前请求退避仍会允许其它翻译请求继续派发。本分支把反馈接入共享调度池，让 broker 请求与 SDK 的真实重试共同等待，同时保留 SDK 的重试次数和总 deadline。输入框翻译在首次等待前固定可信 sender.tab 的普通、私密或未知状态；跨标签页同 ID 的取消互不影响，忽略 abort 的原始传输实际结束前继续持有并发槽，取消结果不进入缓存。
 
-17 个文件的 **606 项不同定向用例通过**；新增净 21 项，覆盖可信普通/私密/unknown、等待前隐私快照、跨 tab 同 ID 取消隔离、忽略 abort 的原始传输持槽/不缓存、三出口 CommonJS policy 与既有视频状态查询协议。类型检查、测试审计（642 文件、静态计数 10,664）、Chrome/Firefox 构建、manifest 核验及标准原 CLI/verifier 通过。审计计数不是全仓库执行结果。首轮缺少浅克隆中的固定图标 Git 对象，补取同一不可变提交后验证通过；资源 pin 未改。仅按冻结 lock 的 SHA512 补齐 fontkit 1.1.1，不运行安装脚本，不改共享依赖树或锁文件。
+完整 Options 内联进 standalone 后，既有能力过滤只阻止显示，仍会把不可达模块打包。原成品 3,816,337 B 超出原 3,600,000 B 门禁。新增构建分支排除六个已不可用的设置加载器，复用 pako 2.1.0 解压专用入口，并无损压缩 tldts 的静态公开后缀表。最终 standalone 为 **3,589,855 B**，低于原门禁 **10,145 B**；标准版保持 **2,004,276 B**，余量 **5,724 B**。没有修改预算、依赖锁、资源 pin、权限或发布版本。
+
+**当前成品尚未执行真实浏览器验收**。下述定向测试、构建与离线夹具结果不能替代 IIFE、CommonJS、设置交互、扩展无痕或 WebGPU 的浏览器结果。
+
+## 最终源码与验证范围
+
+源码提交：`3618398ba86436938747a32f4072857a9dae4db2`；树：`d13bc56a107cbd0c96f764b7d0f020528778ed5b`。整合基线：`9c1ed3ccf235ea4e860392bc215258390829a3d1`；冻结 main：`dc335c698c05d8a5d11dbaadacb598c0695894f8`。每份最终原 CLI 构建前后文件摘要一致，并逐文件核对到源码提交；文档提交单独记录。
+
+| 成品 | 原预算 B | 实际 B | SHA256 |
+| --- | ---: | ---: | --- |
+| 标准 userscript | 2,010,000 | 2,004,276 | `4c65c5d613bebd31f01bc8b922b804ef8b061bc9d5b1440f7790fa22cd23c7a3` |
+| standalone | 3,600,000 | 3,589,855 | `a98976e459defb4c770911b327297f437e9d2b19096317968a13cc9fdc5dbaf9` |
+
+8 个文件的 **151 项不同定向用例通过**。首轮 149 项通过、2 项新测试失败：Vitest SSR 导出对象与 esbuild CommonJS 导出对象的枚举顺序不同。修正名称集合比较后，新文件 24 项通过；七项声明顺序、数组构造器、完整数组字节、字符串及 roots 的断言保留，其余 127 项对应源码未变。类型检查、测试审计、两种 userscript 原 CLI/verifier、Chrome/Firefox 构建及 manifest 核验通过。审计覆盖 643 文件、静态计数 10,669，不能当作全仓库运行数。
+
+历史 606 项通过结果按 17 文件逐项去重，并给出各批日志、测试 blob 与生产树的对应。该阶段修复净增 21 项；相对旧分支同五文件实际净增 37，另 16 项继承 main。历史 standalone 构建树 `09be0311…` 到 `7f5b5b30…` 只改变测试，后者到 `9c1ed3cc…` 只改变文档；因此基线产物来源可以明确绑定。历史用例未整批重跑，也不自动证明新产物的浏览器运行。[逐文件核对](./test-binding-20261011.json) · [最终源码、原构建与成品回执](./standalone-validation-20261011.json)
+
+## 设计与兼容性
+
+六个 loader 分别是 WritingSettings、VideoLocalModelSettings、VideoSubtitleAppearanceSettings、ModelUsageDashboard、TranslationStatsDashboard 与 ContextMenuSettings。Options 的既有 userscript 路由已将前五项所在页面转为不可用页，右键菜单仍显示既有不可用提示；supported LocalTts、视频状态查询 relay 和配置迁移保持。Chrome/Firefox 继续走原 defineAsyncComponent 分支。Vue 源码变化会改变 scope/chunk hash，不能宣称扩展全部字节一致；两份 manifest 与基线逐字节相同。
+
+pako 深入口保留完整 inflate、校验和、UTF-8、字典及串接路径。tldts 插件仅处理锁定包中七项字面量导出，拒绝调用、spread、越界、稀疏数组、类型或构造器变化及非法语法；同步恢复原 Uint8Array/Uint16Array、原顺序、字符串和两个根索引，解析算法及包入口不改。标准版使用既有固定依赖，Greasy Fork 不启用后缀表转换。原模块 ID 保留，最终完整许可前缀与组合对照逐字节一致，含 pako、tldts 与 Lobe MIT。
+
+## 实构建对照与取舍
+
+E1–E5 分别从同一 `9c1ed3cc` 基线应用一个独立补丁。E5 是组合实验，不把前四项收益机械相加。E6 从 E5 加入无损后缀表压缩；E7 在最终 E6 生产源码上仅改变构建期编码器选择。每项数值均来自原 CLI 的实际成品，失败门禁保留。
+
+| 实验 | 假设 | standalone B | 相对 3,816,337 B | 原门禁 |
+| --- | --- | ---: | ---: | --- |
+| E1 | pako 解压入口单项 | 3,790,045 | −26,292 | 失败 |
+| E2 | 两个视频 loader 单项 | 3,791,035 | −25,302 | 失败 |
+| E3 | 两个统计 loader 单项 | 3,723,302 | −93,035 | 失败 |
+| E4 | 写作与右键菜单 loader 单项 | 3,793,796 | −22,541 | 失败 |
+| E5 | 完整兼容组合 | 3,649,279 | −167,058 | 失败 |
+| E6 | E5 + tldts 静态表压缩 | 3,589,855 | −226,482 | 通过、保留 |
+| E7 | E6 + 逐资产构建期最小编码器 | 3,589,795 | −226,542 | 通过、未保留 |
+
+E6 相对 E5 省 59,424 B；完整产物再以 gzip level9 编码却增加 425 B（1,424,767→1,425,192 B），且启动时新增同步表还原。这是安装尺寸门禁与传输/初始化成本的取舍，浏览器解码时间和内存尚未测量。首次 E6 原型因错误地把 TypeScript 的 JS 上下文 flags 与 Const 做严格相等比较而拒绝构建；修正为位判断后通过，该失败不计为独立优化。
+
+E7 实测标准版与 standalone 各省 60 B，不假设运行时分派成本。九份 gzip 经 zlib/pako 解码同序、同 SHA；精确归一化后的非数据源码未逐字节相同，首次差异是标识符改名，因此不声称完整源码恒等证明。选择保留单编码器，减少四种构建编码路径的维护成本。[静态比较与失败边界](./encoder-static-comparison-20261011.json)
+
+每个构建只有一次 elapsed/RSS 样本，不能据此排名延迟、吞吐或内存性能。上述有限实验没有证明全局最优或全面 Pareto 优势；下方历史五个 gzip 参数表是 literal 反事实计算，不属于 E1–E7 的实构建数。
+
+## 复现
+
+使用报告源码提交的干净 checkout、Node 26.7.0、pnpm 9.12.1 和冻结 lock（Vite 5.4.19、WXT 0.20.18）。完整 checkout 应包含固定资源 Git 对象；浅克隆缺少图标对象时仅补取 `184a3d74f61b9d2a8d47080787f7e0180b98414d`，语言资源 pin `cf1941d43f406bb5118952066da5f9399400dd37` 不变。
+
+```bash
+pnpm install --frozen-lockfile
+export FLUENTREAD_TEST_CPU_TARGET=60
+export FLUENTREAD_TEST_MAX_WORKERS=1
+export FLUENTREAD_TEST_CONCURRENCY=1
+pnpm test tests/userscriptTldtsData.test.ts tests/userscriptCompression.test.ts tests/userscriptViteConfig.test.ts tests/settingsUiArchitecture.test.ts tests/browserCapabilities.test.ts tests/userscriptPlatform.test.ts tests/userscriptUnsupportedCapabilities.test.ts tests/siteRules.test.ts
+pnpm compile
+pnpm test:audit
+pnpm test:userscript
+pnpm test:userscript:standalone
+pnpm build
+pnpm build:firefox
+pnpm verify:extension-manifests
+pnpm docs:build
+```
+
+CPU 60%是资源保护器的协作目标，非 OS 硬配额。E1–E5 的独立补丁位于 [experiments](./experiments/README.md)，基线均为 `9c1ed3cc`；E7 补丁基于最终源码 `3618398b`。每次从对应干净基线只应用一个补丁，执行 `pnpm test:userscript:standalone`；E1–E5 的原 verifier 预期失败。源码/成品 SHA 应随实验记录，不调高预算。JSON 保留原 CLI 日志摘要，完整原始日志与成品不随本报告发布。历史公开副本中的设备路径以 `<checkout>/` 或 `<evidence>/` 脱敏，原件与副本 SHA 见 [脱敏索引](./historical-path-redaction-20261011.json)；CSS 控制组完整成品也未发布，历史 CSS 数值不能称为一键可复现。
+
+## 未完成范围
+
+当前产物的 IIFE/CJS/gzip 偏移/设置交互、扩展无痕 localhost 验收、真实供应商/模型/搜索与 WebGPU 均未运行。已完成的离线夹具枚举标准 8 份、standalone 9 份 gzip，准备 24/27 个 offset 输入及 5 个错误合约，不能当作执行通过。Greasy Fork 的构建/verifier及全仓库测试未执行；旧失败继续按原提交记载。PR 建议正文保存在 [PR-body.suggested.md](./PR-body.suggested.md)，外部正文未更新。
+
+---
+
+## 历史：646849ad 阶段的 main 整合与标准预算修复（2026-10-11）
+
+定向测试与构建对应代码：`646849ad8207092842905da2610ac39311ea329c`，树 `7f5b5b3038f17e8b1890d047ee2dd29e40d209dc`。本轮只合入冻结的 main `dc335c698c05d8a5d11dbaadacb598c0695894f8`，没有追逐更新的 main。四处实际冲突已解决；输入框处理器保留 main 的请求标识校验、共享取消注册、配置就绪及 provider 返回后的取消检查，在首次等待前从可信 sender.tab 快照三态隐私，同一个 request 先附 glossary/privacy 再附不可枚举 control。原生批处理配置、恢复和真实 attempt 的 quota/transport lease 保留。
+
+17 个文件的 **606 项不同定向用例通过**；该阶段修复净增 21 项；相对旧分支同五个测试文件净增 37 项，另 16 项继承 main。新增范围覆盖可信普通/私密/unknown、等待前隐私快照、跨 tab 同 ID 取消隔离、忽略 abort 的原始传输持槽/不缓存、三出口 CommonJS policy 与既有视频状态查询协议。类型检查、测试审计（642 文件、静态计数 10,664）、Chrome/Firefox 构建、manifest 核验及标准原 CLI/verifier 通过。审计计数不是全仓库执行结果。首轮缺少浅克隆中的固定图标 Git 对象，补取同一不可变提交后验证通过；资源 pin 未改。仅按冻结 lock 的 SHA512 补齐 fontkit 1.1.1，不运行安装脚本，不改共享依赖树或锁文件。
 
 标准实际成品 **2,004,276 B**，SHA256 `4c65c5d613bebd31f01bc8b922b804ef8b061bc9d5b1440f7790fa22cd23c7a3`，原 **2,010,000 B** 预算余量 **5,724 B**。同一整合版本的真实对照如下，静态 gzip 参数保持原 pako level 9：
 
@@ -14,7 +89,7 @@
 
 strict 的 344 B 是确定性正确性成本。死 UI 修正净省 6,483 B，组合相对 A 净省 6,139 B，均为本轮实测，不套用 #912 历史的 6,487 B。仅三个父级 loader 做 userscript 构建分支，AreaTranslationSettings 组件、模板及扩展加载分支保留。CSS 叶规则 1,278→1,018；保留规则逐字节、按祖先 at-rule 与原顺序不变。删除范围含不可达 UI 及其在标准版唯一带入的共享布局组件；基础设置与划词样式保留。两种扩展 manifest 字节不变；选项块名称和作用域样式发生变化，不宣称全部扩展产物二进制一致。[CSS 静态审查](./css-review-20261011.json)
 
-同一最终标准输入的五个不同 gzip 候选如下。当前 pako9 复现只算 baseline；诊断与最终输入复验仍算五轮。以下完整输出数值由同一产物仅替换静态 gzip literal 精确计算，属于反事实，不是五次原构建：
+同一最终标准输入的五个不同 gzip 候选如下。pako9 是比较对照。以下完整输出数值由同一产物仅替换静态 gzip literal 精确计算，属于反事实，不是五次原构建：
 
 | 轮 | 假设/候选 | 相对 C 字节 | 保留/淘汰理由 |
 | --- | --- | ---: | --- |
@@ -22,17 +97,17 @@ strict 的 344 B 是确定性正确性成本。死 UI 修正净省 6,483 B，组
 | R2 | 六受控资产 pako9 memLevel9 | +124 | 当前大小轴无收益，增加参数选择 |
 | R3 | 六受控资产 pako9 FILTERED | +19,172 | 大小增加，运行成本未知 |
 | R4 | 六受控资产 zlib9 windowBits13 | +40,224 | 大小增加，窗口成本未测 |
-| R5 | 逐资产选择上述最小 base64 | −60 | 未计分派代码及维护成本；不为有限收益加入混合分支 |
+| R5 | 逐资产选择上述最小 base64 | −60 | 此阶段只有 literal 计算；构建期实现的实际对照见本报告 E7 |
 
 全部候选经本机 zlib 与 pako 解码，decoded SHA 一致。最终八份 gzip 输入中只 CSS 改变，另七项未变；没有把旧 CSS 或旧 +56 B 诊断转移为新测量。五轮测量树为 `a24199c6…`；随后补视频状态协议 relay，在最终树重建出的标准产物完整字节/SHA 与 C 相同，故按精确产物和输入复用五轮，旧源码相等断言不套到新增 relay 的源码。[候选及逐资产数据](./gzip-candidates-20261011.json) · [可复现只读测量脚本](./measure-gzip-candidates-20261011.mjs)
 
-这些结果支持保留简单 pako9 路径及本轮标准预算修正。编码时间、RSS、浏览器解码、运行延迟/吞吐和混合实现成本仍未知；scheduler 算式与 graph 许可未在本轮独立消融，不分别归功旧组合 1,645 B。没有判断任何方面达到极限，也没有证明全面 SOTA/Pareto；五轮候选不是最优性证明。
+这些结果支持保留简单 pako9 路径及本轮标准预算修正。编码时间、RSS、浏览器解码、运行延迟/吞吐和混合实现成本仍未知；scheduler 算式与 graph 许可未在本轮独立消融，不分别归功旧组合 1,645 B。没有判断任何方面达到极限，也没有证明全面 SOTA/Pareto；这五个静态参数方案不是实构建实验或最优性证明。
 
-Standalone 首次真实构建暴露 video state-query 在 adapter 中缺 relay，已补既有协议并加入真实无 mock 回归。修复后完整构建 **3,816,337 B**，SHA256 `f851133b9d68edfa945557fcd25e8848cdd31cfa205190027a67c64b85dcb9e2`；原 verifier 因 **3,600,000 B** 预算失败，超 **216,337 B**。没有测量当前 standalone 对照，因此不推断旧构建失败或把全部超限归于本 PR。该门禁保留，#906 保持 draft；未复制 #912 其余设置裁剪/pako 包装方案重复执行。
+Standalone 首次真实构建暴露 video state-query 在 adapter 中缺 relay，已补既有协议并加入真实无 mock 回归。修复后完整构建 **3,816,337 B**，SHA256 `f851133b9d68edfa945557fcd25e8848cdd31cfa205190027a67c64b85dcb9e2`；原 verifier 因 **3,600,000 B** 预算失败，超 **216,337 B**。这是该提交的历史基线，不代表本报告开头的最终版本；不把全部超限归于本 PR。
 
-本轮未执行当前产物真实浏览器 IIFE/CJS、真实供应商/模型/搜索、GPU/WebGPU、GF 构建/verifier或全仓库测试。不同 SHA 的旧浏览器证据不作为当前成品验收。全部本机重负载共享 resource-safe：CPU 目标 60%、worker 1、并发 1；未改凭据、用户 profile、能力/安全设置或 release 版本。PR Ready/正文权限边界仍由父线程处理，不绕过 integration FORBIDDEN。[源码/阶段/产物绑定与限制](./integration-20261011.json)
+本轮未执行当前产物真实浏览器 IIFE/CJS、真实供应商/模型/搜索、GPU/WebGPU、GF 构建/verifier或全仓库测试。不同 SHA 的旧浏览器证据不作为当前成品验收。全部本机重负载共享 resource-safe：CPU 目标 60%、worker 1、并发 1；未改凭据、用户 profile、能力/安全设置或 release 版本。[源码/阶段/产物绑定与限制](./integration-20261011.json)
 
-以下历史报告原字节保留，其提交、预算和失败项属于各自旧证据。
+以下历史记录对应各自提交与产物，不能作为最终版本的验证结果。
 
 ---
 
@@ -58,15 +133,15 @@ SDK 外层逻辑任务不计并发/速率，真实 attempt 在既有 global、se
 
 ## Doubao Seed 与 probe 原始传输修复
 
-本轮从 98e88a90489b39e9a6be8e2c71019daeaa297e23 接续。Doubao registry wrapper 用 currentConfiguredModel（包括 modelOverride 与自定义模型）选择 Seed Responses adapter；服务级 isAiSdk('doubao') 却把该直接 adapter 当成 SDK，取消外层计数，而它没有内部 scheduleAttempt。因此 cap=1/3 出现 2/4 个未结束传输。
+在提交 98e88a90489b39e9a6be8e2c71019daeaa297e23 中，Doubao registry wrapper 用 currentConfiguredModel（包括 modelOverride 与自定义模型）选择 Seed Responses adapter；服务级 isAiSdk('doubao') 却把该直接 adapter 当成 SDK，取消外层计数，而它没有内部 scheduleAttempt。因此 cap=1/3 出现 2/4 个未结束传输。
 
 broker 的局部 SDK 路由谓词现在使用同一配置模型与 isDoubaoSeedTranslationModel。它同时决定 quotaScope、外层 countConcurrency 和 countRate。customBody.model 不参与协议选择；普通 Doubao SDK 仍由真实 attempt 计数。实际 registry→wrapper→adapter 的 14 项合成用例覆盖 cap=1/3、配置模型、override、自定义模型及 body-model 冲突；原始传输故意忽略 abort，取消后仍持槽，settle 后才派发下一条，实际峰值不超 cap，取消不写缓存。
 
-直接连接测试的 30 秒 abort 会令 SDK uncounted attempt 的等待者先拒绝，但原始 runtimeFetch 可继续运行。旧 probe lease 只持有 adapter operation，因而在 raw 未结束时提前归还槽。现在连接测试在 schedule 的外层 lease 内构建 symbol scheduler context，传入窄可选 transportLease；adapter 创建 raw promise 后立即 holdUntil(raw)，再 await。broker 不传该字段，其 counted attempt 仍自行等待 raw settle。这是一个已证明的实际消费者；没有机械恢复上一批无消费者的泛用 lease 分支。
+直接连接测试的 30 秒 abort 会令 SDK uncounted attempt 的等待者先拒绝，但原始 runtimeFetch 可继续运行。旧 probe lease 只持有 adapter operation，因而在 raw 未结束时提前归还槽。现在连接测试在 schedule 的外层 lease 内构建 symbol scheduler context，传入窄可选 transportLease；adapter 创建 raw promise 后立即 holdUntil(raw)，再 await。broker 不传该字段，其 counted attempt 仍自行等待 raw settle。连接测试是 transportLease 的实际消费者。
 
 global、service、model+service 三种 cap=1 桶，分别测试首次 raw 与首次429后第二次 raw：probe 调用者在30秒收到超时，健康B在60秒预算内继续等待，raw未settle前无B网络派发，settle后恢复，峰值1且不写缓存。最终有效红例是 **14失败、6普通SDK对照通过**，83个旧用例未在该 targeted 红例中执行；修复后 **111/111聚焦用例通过**：[原始红例](./seed-probe-red.json)、[原始绿例](./seed-probe-green.json)。最初错误夹具的非匹配SDK端点、错自定义模型字面量以及导入转换失败均不作有效红例。所有网络由严格合成URL白名单的 runtimeFetch 夹具接管，没有调用供应商。
 
-上一批9项 mixed probe 测试验证的是排队 broker 的完成/取消/deadline，与本轮 probe 自身超时后的 raw 持槽不同；不能把上一批91项契约冒充已覆盖本轮新边界。旧 counted/uncounted FIFO 互锁修复与真实注册 messageRuntime 隐私修复继续保留：[mixed probe 红例](./mixed-probe-red.json)、[隐私红例](./message-runtime-red.json)。
+历史9项 mixed probe 测试验证的是排队 broker 的完成/取消/deadline，与本轮 probe 自身超时后的 raw 持槽不同；不能把该91项契约冒充已覆盖本轮新边界。旧 counted/uncounted FIFO 互锁修复与真实注册 messageRuntime 隐私修复继续保留：[mixed probe 红例](./mixed-probe-red.json)、[隐私红例](./message-runtime-red.json)。
 
 ## 标准 userscript 的最小体积修正
 
@@ -74,7 +149,7 @@ global、service、model+service 三种 cap=1 桶，分别测试首次 raw 与�
 
 组合实测标准为 **1959993字节**，净减少1645，原1960000上限剩 **7字节**。此余量很窄，不保证其他工具链产物。7份嵌入gzip静态数据的解压内容多重集与未修改8467基线逐字节一致，实际嵌入base64合计仅减少48字节；静态候选中未进入标准图的理论编码收益不冒充最终包收益：[体积修正](./minimal-size-change.json)、[静态内容一致](./static-data-equality.json)。
 
-此前SVG字符表压缩已撤出#906，仍仅是CW本地独立候选，没有新建公开PR。历史standalone收益17468字节不作为本次标准体积方案：[历史SVG实测](./svg-size-comparison.json)。上一批泛用lease调用审计与组合187字节收益是98e88历史记录，本轮建立了新的probe实际消费者：[历史调用点审计](./provider-lease-call-audit.json)、[历史Occam实测](./occam-size.json)。
+SVG字符表压缩不属于该阶段生产实现。历史standalone收益17468字节不作为本次标准体积方案：[历史SVG实测](./svg-size-comparison.json)。历史泛用lease调用审计与组合187字节收益是98e88历史记录，本轮建立了新的probe实际消费者：[历史调用点审计](./provider-lease-call-audit.json)、[历史Occam实测](./occam-size.json)。
 
 ## 构建许可路径修复与当前模块图证据
 
@@ -104,4 +179,4 @@ standalone builder生成产物，但原体积verifier失败；GreasyFork Vite阶
 
 30种子原始重放是10675历史证据，最终相关套件复验同一契约，未重复未变基线。历史B0/B1-C为60/120成功、270 HTTP attempts、180次冷却内额外A派发；C为120/120、150、0，健康B时序/状态/17511实际UTF-8 body字节一致：[B0](./replay-B0.json)、[B1-C](./replay-B1-C.json)、[C](./replay-C.json)。载荷字节不等同token计费，不证明真实供应商性能。此前消融亦仅标为10675历史记录：[消融](./ablations.json)、[饱和红例](./saturation-red.json)。
 
-#906保持draft，standalone/GreasyFork体积及固定资源门禁、独立审计尚阻塞ready。全部在CW用原资源保护器串行运行，CPU目标60%、worker1、并发1；未新增依赖/权限/环境，真实模型/搜索API调用0，Recovery所有窗口和进程未操作。真实供应商、GPU/WebGPU测试未运行。
+该历史提交的 standalone/GreasyFork 体积与固定资源门禁失败。该历史验证采用资源保护器串行运行，CPU目标60%、worker1、并发1；真实模型/搜索API调用0。真实供应商、GPU/WebGPU测试未运行。

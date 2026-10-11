@@ -15,15 +15,15 @@
   "graph": {
     "moduleCount": 1216,
     "svgRelatedModuleIds": [
-      "/home/arietids/Documents/Codex/2026-10-06/task/FluentRead-shared-retry-after-20261009/src/ui/assets/serviceBrandPaths.json",
-      "/home/arietids/Documents/Codex/2026-10-06/task/FluentRead-shared-retry-after-20261009/src/ui/components/ServiceIcon.vue?vue&type=script&setup=true&lang.ts",
-      "/home/arietids/Documents/Codex/2026-10-06/task/FluentRead-shared-retry-after-20261009/src/ui/components/ServiceIcon.vue?vue&type=style&index=0&scoped=a6bf1c5d&lang.css",
-      "/home/arietids/Documents/Codex/2026-10-06/task/FluentRead-shared-retry-after-20261009/src/ui/components/ServiceIcon.vue"
+      "<checkout>/src/ui/assets/serviceBrandPaths.json",
+      "<checkout>/src/ui/components/ServiceIcon.vue?vue&type=script&setup=true&lang.ts",
+      "<checkout>/src/ui/components/ServiceIcon.vue?vue&type=style&index=0&scoped=a6bf1c5d&lang.css",
+      "<checkout>/src/ui/components/ServiceIcon.vue"
     ],
     "matchingSvgDataModuleIds": [
-      "/home/arietids/Documents/Codex/2026-10-06/task/FluentRead-shared-retry-after-20261009/src/ui/assets/serviceBrandPaths.json"
+      "<checkout>/src/ui/assets/serviceBrandPaths.json"
     ],
-    "canonicalSvgDataPath": "/home/arietids/Documents/Codex/2026-10-06/task/FluentRead-shared-retry-after-20261009/src/ui/assets/serviceBrandPaths.json",
+    "canonicalSvgDataPath": "<checkout>/src/ui/assets/serviceBrandPaths.json",
     "includesSvg": true
   },
   "fullLobeLicensePresent": true,
