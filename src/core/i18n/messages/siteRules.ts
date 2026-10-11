@@ -1,12 +1,19 @@
 /**
  * @file src/core/i18n/messages/siteRules.ts
  * 文件职责：维护网站偏好、正文规则编辑与生效预览的多语言产品文案。
- * 主要内容：以中文原文和六种界面语言登记标签、状态、解释与错误反馈，复用既有设置页文案适配机制。
+ * 主要内容：以中文原文和六种界面语言登记设置页与 Popup 的标签、保存状态、网站范围、禁用优先级及错误反馈，复用既有文案适配机制。
  * 模块边界：仅输出本地资源，不读取配置、不翻译用户域名、选择器、JSON 或网页正文。
  */
 import type {RegisteredUiLanguage} from '../types';
 type Row = readonly [string, string, string, string, string, string, string];
 const rows: readonly Row[] = [
+  ['自动翻译已暂停', 'Automatic translation paused', '自動翻訳は一時停止中', '자동 번역 일시 중지', 'Traduction automatique suspendue', 'Автоперевод приостановлен', 'Traducción automática pausada'],
+  ['应用于此网站及其子域名，跳转后按新网站规则执行', 'Applies to this site and its subdomains. After navigation, the destination site’s rules apply.', 'このサイトとサブドメインに適用します。移動後は移動先のルールに従います。', '이 사이트와 하위 도메인에 적용됩니다. 이동 후에는 새 사이트의 규칙이 적용됩니다.', 'S’applique à ce site et à ses sous-domaines. Après navigation, les règles du site de destination s’appliquent.', 'Действует на этот сайт и его поддомены. После перехода применяются правила нового сайта.', 'Se aplica a este sitio y sus subdominios. Al navegar se aplican las reglas del sitio de destino.'],
+  ['禁用会停止此网站的翻译，保留始终翻译偏好', 'Disabling stops translation on this site and keeps your always-translate preference.', '無効化するとこのサイトの翻訳を停止し、常時翻訳の設定は保持します。', '사용 중지하면 이 사이트의 번역이 멈추며 항상 번역 설정은 유지됩니다.', 'La désactivation arrête la traduction sur ce site et conserve votre préférence de traduction systématique.', 'Отключение останавливает перевод на сайте и сохраняет настройку постоянного перевода.', 'Desactivar detiene la traducción en este sitio y conserva la preferencia de traducir siempre.'],
+  ['禁用优先于自动翻译', 'Disabling takes priority over automatic translation.', '無効化は自動翻訳より優先されます。', '사용 중지는 자동 번역보다 우선합니다.', 'La désactivation est prioritaire sur la traduction automatique.', 'Отключение имеет приоритет над автопереводом.', 'Desactivar tiene prioridad sobre la traducción automática.'],
+  ['恢复扩展后继续自动翻译', 'Automatic translation resumes after the extension is restored.', '拡張機能を有効に戻すと自動翻訳を再開します。', '확장 프로그램을 다시 사용하면 자동 번역이 재개됩니다.', 'La traduction automatique reprend après réactivation de l’extension.', 'Автоперевод возобновится после включения расширения.', 'La traducción automática se reanuda al activar la extensión.'],
+  ['请先恢复扩展', 'Restore the extension first.', '先に拡張機能を有効に戻してください。', '먼저 확장 프로그램을 다시 사용하세요.', 'Réactivez d’abord l’extension.', 'Сначала включите расширение.', 'Activa primero la extensión.'],
+  ['无法读取当前网站，请重试', 'Unable to read the current site. Try again.', '現在のサイトを確認できません。再試行してください。', '현재 사이트를 확인할 수 없습니다. 다시 시도하세요.', 'Impossible de lire le site actuel. Réessayez.', 'Не удалось прочитать текущий сайт. Повторите попытку.', 'No se pudo leer el sitio actual. Reinténtalo.'],
   ['按主域名生效，包含所有子域', 'Applies to the root domain and all subdomains.', '親ドメインとすべてのサブドメインに適用します。', '주 도메인과 모든 하위 도메인에 적용됩니다.', 'S’applique au domaine principal et à tous ses sous-domaines.', 'Действует на основной домен и все поддомены.', 'Se aplica al dominio principal y a todos sus subdominios.'],
   ['检查已保存规则，不访问网站', 'Check saved rules without visiting the site.', 'サイトにアクセスせず、保存済みルールを確認します。', '사이트에 접속하지 않고 저장된 규칙을 확인합니다.', 'Vérifiez les règles enregistrées sans visiter le site.', 'Проверка сохранённых правил без посещения сайта.', 'Comprueba las reglas guardadas sin visitar el sitio.'],
   ['检查规则', 'Check rules', 'ルールを確認', '규칙 확인', 'Vérifier les règles', 'Проверить правила', 'Comprobar reglas'],
