@@ -1,6 +1,7 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {parseHTML} from 'linkedom';
 import {TranslationCandidateCore} from '@/src/core/translation/engine';
+import {createTranslationCore} from '@/src/core/translation/public';
 import {createDeclarativeAdapter} from '@/src/core/translation/adapters/declarative';
 import {compileSiteRulePack, getSiteAdapterAttributeFilter} from '@/src/core/site-adaptation/compiler';
 import {createAttributeMutationBatch, type AttributeMutationBatchPorts} from '@/src/features/full-page-translation/content/attributeMutationBatch';
@@ -60,7 +61,7 @@ vi.mock('@/src/features/full-page-translation/content/titleTranslation', () => (
 vi.mock('@/src/features/page-notice/public', () => ({showPageNotice: () => undefined}));
 vi.mock('@/src/core/config/customOpenAI', () => ({getCustomOpenAIProviderLabel: () => 'Fixture provider'}));
 
-import {autoTranslateEnglishPage, restoreOriginalContent} from '@/src/features/full-page-translation/content/runtime';
+import {autoTranslateEnglishPage, handleBilingualTranslation, restoreOriginalContent} from '@/src/features/full-page-translation/content/runtime';
 import {getTranslationState} from '@/src/features/full-page-translation/content/state';
 import * as indicators from '@/src/features/full-page-translation/ui/translationIndicators';
 import * as translationState from '@/src/features/full-page-translation/content/state';
@@ -182,6 +183,111 @@ describe('full page site attribute boundary lifecycle', () => {
             else Reflect.deleteProperty(globalThis, name);
         }
         globals.clear();
+    });
+
+    it.each(['div', 'span'] as const)('HN %s opening survives actual source-move records before the deferred full-page spinner', async tag => {
+        document.body.innerHTML = `<${tag} class="commtext c00" id="comment">The lede is being missed imo.<p>First independent paragraph.</p><p>Second independent paragraph.</p><p>Third independent paragraph.</p><p>Fourth independent paragraph.</p></${tag}>`;
+        fixture.core = createTranslationCore({url: new URL('https://news.ycombinator.com/item?id=44800746')});
+        const host = document.querySelector<HTMLElement>('#comment')!;
+        const opening = host.firstChild!;
+        const paragraphs = Array.from(host.querySelectorAll<HTMLElement>('p'));
+        const originalHTML = host.innerHTML;
+        for (const owner of [host, ...paragraphs]) Object.defineProperty(owner, 'getClientRects', {
+            configurable: true, value: () => [{width: 600, height: 60}],
+        });
+        const pending = deferred<void>();
+        fixture.requests.mockImplementation(origins => origins.includes('The lede is being missed imo.')
+            ? pending.promise.then(() => origins.map(source => source === 'The lede is being missed imo.'
+                ? '首段译文：重点被忽略了。' : `译文：${source}`))
+            : Promise.resolve(origins.map(source => `译文：${source}`)));
+        autoTranslateEnglishPage();
+        await vi.advanceTimersByTimeAsync(60);
+        const segment = host.querySelector<HTMLElement>('[data-fr-translation-segment="true"]')!;
+        const state = getTranslationState(segment)!;
+        expect(state).toMatchObject({phase: 'loading', syntheticSegment: true});
+        expect(state.spinner).toBeUndefined();
+        expect(segment.childNodes).toHaveLength(1);
+        expect(segment.firstChild).toBe(opening);
+
+        // Browser observer checkpoints arrive within milliseconds of materialize,
+        // while automatic full-page loading deliberately waits 180ms. These are
+        // the real moved Node identities, not cloned markup or a mock candidate.
+        FixtureMutationObserver.instances.at(-1)!.emit([
+            {type: 'childList', target: host, addedNodes: [segment], removedNodes: []},
+            {type: 'childList', target: host, addedNodes: [], removedNodes: [opening]},
+            {type: 'childList', target: segment, addedNodes: [opening], removedNodes: []},
+        ] as unknown as MutationRecord[]);
+        expect(getTranslationState(segment)).toBe(state);
+        expect(state.controller.signal.aborted).toBe(false);
+        expect(segment.isConnected).toBe(true);
+        await vi.advanceTimersByTimeAsync(180);
+        expect(state.spinner?.parentNode).toBe(segment);
+        pending.resolve();
+        await vi.advanceTimersByTimeAsync(1_000);
+        expect(getTranslationState(segment)).toBe(state);
+        expect(segment.querySelector('.fluent-read-bilingual-content')?.textContent).toContain('首段译文：重点被忽略了。');
+        for (const paragraph of paragraphs) expect(paragraph.querySelector('.fluent-read-bilingual-content')).not.toBeNull();
+        expect(fixture.requests.mock.calls.flatMap(([sources]) => sources)
+            .filter(source => source === 'The lede is being missed imo.')).toHaveLength(1);
+        restoreOriginalContent();
+        expect(host.innerHTML).toBe(originalHTML);
+    });
+
+    it('HN hover opening keeps immediate loading and restores the exact original mixed comment', async () => {
+        document.body.innerHTML = '<div class="commtext" id="comment">The lede is being missed imo.<p>An independent paragraph.</p></div>';
+        fixture.core = createTranslationCore({url: new URL('https://news.ycombinator.com/item?id=44800746')});
+        const host = document.querySelector<HTMLElement>('#comment')!;
+        const originalHTML = host.innerHTML;
+        const pending = deferred<string[]>();
+        fixture.requests.mockImplementationOnce(() => pending.promise);
+        handleBilingualTranslation(host, false);
+        await vi.advanceTimersByTimeAsync(50);
+        const segment = host.querySelector<HTMLElement>('[data-fr-translation-segment="true"]')!;
+        const state = getTranslationState(segment)!;
+        expect(state).toMatchObject({phase: 'loading', syntheticSegment: true});
+        expect(state.spinner?.parentNode).toBe(segment);
+        pending.resolve(['首段悬浮译文。']);
+        await vi.advanceTimersByTimeAsync(1_000);
+        expect(segment.querySelector('.fluent-read-bilingual-content')?.textContent).toContain('首段悬浮译文。');
+        restoreOriginalContent();
+        expect(host.innerHTML).toBe(originalHTML);
+    });
+
+    it.each(['source-edit', 'lookalike-artifact'] as const)('HN loading opening still rejects %s before the spinner exists', async change => {
+        document.body.innerHTML = '<div class="commtext" id="comment">The lede is being missed imo.<p>An independent paragraph.</p></div>';
+        fixture.core = createTranslationCore({url: new URL('https://news.ycombinator.com/item?id=44800746')});
+        const host = document.querySelector<HTMLElement>('#comment')!;
+        const pending = deferred<string[]>();
+        fixture.requests.mockImplementation(origins => origins.includes('The lede is being missed imo.')
+            ? pending.promise : Promise.resolve(origins.map(source => `译文：${source}`)));
+        autoTranslateEnglishPage();
+        await vi.advanceTimersByTimeAsync(60);
+        const segment = host.querySelector<HTMLElement>('[data-fr-translation-segment="true"]')!;
+        const state = getTranslationState(segment)!;
+        expect(state.spinner).toBeUndefined();
+        let changed: Node;
+        if (change === 'source-edit') {
+            changed = segment.firstChild!;
+            changed.textContent = 'The host has edited the opening source.';
+        } else {
+            const lookalike = document.createElement('span');
+            lookalike.setAttribute('data-fr-translation-owned', 'true');
+            lookalike.textContent = 'Host inserted lookalike artifact';
+            segment.appendChild(lookalike);
+            changed = lookalike;
+        }
+        // The source-move childList checkpoint reads the final live DOM: a host
+        // can edit its moved Text before that queued record is delivered.
+        FixtureMutationObserver.instances.at(-1)!.emit([{
+            type: 'childList', target: segment, addedNodes: [changed], removedNodes: [],
+        } as unknown as MutationRecord]);
+        expect(state.controller.signal.aborted).toBe(true);
+        expect(segment.isConnected).toBe(false);
+        expect(getTranslationState(segment)).toBeUndefined();
+        restoreOriginalContent();
+        pending.resolve(['已取消的旧译文。']);
+        await vi.advanceTimersByTimeAsync(1_000);
+        expect(host.querySelector('[data-fr-translation-owned="true"]')).toBeNull();
     });
 
     it('AB-R1 clears settled out-of-scope translation at the first 500ms despite genuine ancestor class changes every 200ms', async () => {
