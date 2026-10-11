@@ -1070,9 +1070,32 @@ Escape 组自然0，8阶段/3原生场景/4原始图。真实可信三击选中�
 
 本批有限提示只覆盖已有authentication分类。部分AppKey/SecretId的“尚未完整配置”仍可能归为unknown，未宣称所有供应商缺少凭据都显示该提示。中文与英文已有映射及五个额外语言固定JSON整份字节、键值、内容摘要文件名和Git固定commit一致性经静态核查；静态五语言不代替它们的真实加载验收。冻结证据位于round48-authentication-copy/ 的root-source-proposal、peer-owner/v2/v3、SOURCE-HANDOFF-V2、direct-baseline-attempt1、direct-candidate-attempt1/2、test-audit-attempt1、build-attempt1、ARTIFACT-COMPARISON、COMPARISON-RECEIPT及相应根/独立复核回执。仅本地保存，无推送、PR、合并或发布；未复制参考仓库代码。
 
+## 第四十四批：按原始配置复用划词快捷键解析
+
+悬浮翻译仲裁此前在每次鼠标移动时重新解析划词快捷键。本批在当前 controller 内只保存最后一个原始字符串及解析结果；每次仍读取配置，只在 custom 配置下读取自定义值，原始值变化后才重新解析。解析成功后再发布缓存，配置 getter 或解析异常仍原样传播，失败不会覆盖旧结果。当前候选判断、取消、按键状态、共享快捷键开始时归属、监听器、定时器和清理均保持原字节，不缓存 DOM 或选区，不增加全局映射、依赖或协议。源文件与原有完整 owner 都有整份逆向及干净第四十三批提交 f8ca96e7f 的 Git blob 对照。
+
+两份完整直接 owner 基线75项（hover63、hotkey12）及候选87项（hover75、hotkey12）均自然0，原75项名称与数量全部保留。新增12项覆盖稳定值、动态原始值、空值、配置读取异常、解析失败后恢复、暖鼠标后的 selectionchange/pointerdown 和共享释放归属；没有名称筛选、失败、pending、todo或新增skip。单个完整修改模块的 V8 四维覆盖均100：基线 statements/lines275、functions25、branches163；候选283、25、166。继承正式覆盖配置的插件、别名、globalSetup、all/exclude及原阈值，仅限定这一个完整模块，不称全仓覆盖。test:audit自然0，641文件/10,627是索引声明；另四份完整架构owner实际942项通过（模块14、provider6、源头部906、验证归属16），不当成全仓业务回归。
+
+同一冻结计数探针从真实 public mount 加载正式源，两臂各三个场景、各200次移动。direct mismatch、custom match、custom mismatch的原生 call-through split实际计数均200→1；配置仍各200读，custom读取0/200/200，当前候选判断0/200/0，翻译与宿主手势各200。全部配置读取顺序、翻译坐标/参数、keydown/move/keyup的default/propagation、600/1000/800行业务轨迹及cleanup深比较相等。两臂各三项完整测试与外层核验自然0，1977正式输入仅source/owner两处已审覆盖、1995共同输入及工具稳定。FakeTarget/trustedEvent和DOM/provider端口受控，未模拟signal移除监听器；此证据仅证明有限解析调用数与行为，不推断CPU、时延、heap/GC或原生页面收益。
+
+本轮使用同锁文件、同Node/pnpm字节独立重建基线与候选，两端八项核心阶段均自然0，1974生产/构建输入中仅hover源一个文件不同。实际未压缩产物如下：
+
+| 产物 | 新基线字节 | 候选字节 | 差值 |
+| --- | ---: | ---: | ---: |
+| ordinary脚本 | 1,958,929 | 1,958,978 | +49 |
+| 完整独立脚本 | 3,582,812 | 3,582,906 | +94 |
+| Chrome，444文件 | 65,541,154 | 65,541,345 | +191 |
+| Firefox，444文件 | 65,540,233 | 65,540,336 | +103 |
+
+原ordinary1,976,000 B与完整3,600,000 B严格预算均通过，余量分别17,022 B与17,094 B。两端manifest全文、各252静态路径/SHA与两个固定MJS全字节相同，CSS/HTML/MJS/其他分区净字节0；不把所有生成差异逐项归因于一个源文件。本批用小幅代码体积换取重复解析复用，不称减包、ZIP或传输收益；保留既有大chunk警告，Greasy Fork原固定资源前置失败未重跑、未通过。本批没有新原生浏览器或Firefox运行验收，不扩张第四十三批中英文提示和第四十二批焦点验收的范围。
+
+验证准备失败也保留：首次根代理共同输入排序被启动前校验拒绝，未创建输出或child，1995行均保留、仅修正字符串排序；第一次实际基线probe的child自然0、三项通过，但外层名称核验未匹配锁定Vitest给参数化值加的单引号，外层失败回执未改写。仅修正私有runner的所属目录和三项完整名称核验后，使用同一探针执行新基线attempt2与候选attempt1；没有因此更改生产实现或业务断言。原控制文件字节和失败报告保存于root-probe-binding-preflight-attempt1与probe-baseline-attempt1。
+
+完整冻结证据位于round49-selection-hotkey-parsing/的peer-source-owner/v2、SOURCE-HANDOFF、peer-validation/v2/v3、direct/coverage-baseline/candidate-attempt1、peer-probe/v1、root-probe-coordinator-v2、probe-baseline-attempt2、probe-candidate-attempt1、audit-architecture-attempt1、build-baseline/candidate-attempt1、ARTIFACT-COMPARISON、COMPARISON-RECEIPT及相应根/独立复核。仅本地保存，无推送、PR、合并或发布；未复制参考仓库代码。
+
 ## 后续候选
 
-第四十三批完整脚本为3,582,812 B，原3,600,000 B预算通过、余量17,188 B。既有authentication种类的划词有限提示已通过本批204项直接owner、八核心构建与两个独立中英文页面原生验收；保留上一批焦点验收原范围，本批未重跑双向Tab导航或其他语言原生加载。下一候选是悬浮仲裁中按最后原始配置复用划词快捷键解析：私有提案保留逐次配置getter、当前选区判断、取消和共享释放归属，尚未正式实施或执行操作数对照，未宣称CPU/heap或减包收益。保持完整服务/语言/许可、原预算与固定资源引用。第三十八、三十九批取色器与分类布局实际范围保持，没有在本批重跑。
+第四十四批完整脚本为3,582,906 B，原3,600,000 B预算通过、余量17,094 B。划词快捷键解析复用已通过完整owner87项、单个完整修改模块四维100、三组200→1计数/完整业务轨迹对照、四份架构owner942项和独立双臂八核心构建；有限受控计数不等于CPU、heap或原生页面收益。后续继续审查认证错误后的公共配置入口及异步请求归属；目前只有只读设计审查，尚未实施新的配置入口。保留第三十八、三十九批布局、第四十二批焦点与第四十三批两语提示的原验收范围，本批未重跑。保持完整服务、语言、许可、原预算与固定资源引用。
 
 
 合成段 loading 挂载循环、缓存键重复术语解析、高级请求限制禁用与缓存复习快捷键已在第二十七至三十批分别修复。第三十一轮调度只读探针保留现检查：13 个受控普通场景虽减少同 owner 复验，但第三个 source-only 读取中的 style getter 同步替换同文本 Text 时，复用先前结果留下脱离节点身份；这只是受控端口反例，未当成原生复现或 CPU 收益，未实施。证据为 `round31-page-scheduling-audit/`。第三十二轮已撤回 Cloud 普通历史入口的减加载推荐；LearningCenter 的 History/Memory 首用加载已在第三十一批实施，实际收藏阶段新增请求文件减少 20,641 B，父装配、加载故障与原行为通过限定验证。第三十四轮审计确认的八个既不可达设置子 UI 已在第三十二批排除，完整独立脚本实际减少 183,104 B，仍比原 3,600,000 B 门槛多 38,416 B。继续审查其 Options/IIFE 归属与可证明不可达的资源，保持可达服务、本地模型/TTS、数据、语言、许可和原门槛，不为达预算删除已有能力。请求队列仍在 response body 完成前占用并发槽；会改变错误种类的同步 deadline 合并未实施。
