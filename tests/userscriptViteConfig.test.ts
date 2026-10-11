@@ -130,7 +130,9 @@ describe('userscript browser shim injection', () => {
         const defines = (userscriptConfig as {define: Record<string, string>}).define;
         const commit = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__);
         const bundles = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__) as Record<string, string>;
-        expect(commit).toBe('cf1941d43f406bb5118952066da5f9399400dd37');
+        expect(commit).toMatch(/^[a-f\d]{40}$/u);
+        // 固定资源提交必须随当前分支一同发布，避免本地可读但远端不可达的旧提交。
+        expect(() => execFileSync('git', ['merge-base', '--is-ancestor', commit, 'HEAD'], {cwd: process.cwd()})).not.toThrow();
         expect(Object.keys(bundles)).toHaveLength(5);
         for (const file of Object.values(bundles)) {
             const path = `userscript/languages/${file}`;
