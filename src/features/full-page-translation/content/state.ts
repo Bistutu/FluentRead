@@ -47,6 +47,8 @@ export interface TranslationLayoutStyleOverride {
 }
 
 export interface BilingualTranslationReplay {
+    /** 个人校订来源随骨架重挂保留，不混入译文文字。 */
+    personalCorrectionId?: string;
     sources: readonly string[];
     translations: readonly string[];
     targetLanguage: string;

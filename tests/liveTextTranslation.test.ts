@@ -150,6 +150,22 @@ describe('双语正文整块翻译', () => {
     };
     const paragraph = () => owner('<p id="t">Read <a href="/g">the guide</a>.</p>');
 
+    it('已有 AI 多段会话只在启用时向四种请求形态传递当前单元', async () => {
+        const session = {} as import('@/src/features/full-page-translation/content/translationRequest').FullPageTranslationSessionCache;
+        for (const enabled of [false, true]) {
+            const active = {...bilingual, enableAIMultiSegment: enabled};
+            const targets = [paragraph(), owner('<p>Read the guide.</p>'), owner('<input type="button" value="Read the guide.">'), owner('<button>Read the guide.</button>')];
+            for (let index = 0; index < targets.length; index++) {
+                const target = targets[index]!; runtime.slots = collectRealSlots(target); runtime.translations = ['读完这份指南。'];
+                runtime.translateTextSlots.mockClear();
+                await createTranslationRequest(target, index === 3 ? 'control' : 'content', 'bilingual', active, undefined, undefined, session);
+                expect(runtime.translateTextSlots).toHaveBeenCalledOnce();
+                expect(runtime.translateTextSlots.mock.calls[0]).toHaveLength(enabled ? 7 : 6);
+                if (enabled) expect(runtime.translateTextSlots.mock.calls[0]![6]).toBe(target);
+            }
+        }
+    });
+
     it('多槽候选整块请求，整段译文只回填首个槽位', async () => {
         const target = paragraph();
         runtime.translateTextSlots.mockImplementation(async () => ['读完这份指南。']);

@@ -5,6 +5,17 @@
  * 模块边界：选择器均以 fluent 前缀或受控状态类约束，不承担 Shadow UI 组件主题，也不决定何时添加类名；双语译文容器与译文样式预设统一在 src/ui/styles/translation-display.css，由 pageStyles 一并注入。
  */
 /* 内容脚本注入到宿主页面的 FluentRead 专属样式。 */
+/* 来源提示不进入译文复制、校订内容或 provider 缓存。 */
+.fluent-read-bilingual-content[data-fr-personal-correction="true"]::after {
+    content: '个人校订';
+    display: inline-block;
+    font: 11px/1.4 system-ui, sans-serif;
+    color: #68756c;
+    margin-inline-start: 0.5em;
+    border: 1px solid currentColor;
+    border-radius: 4px;
+    padding: 0 4px;
+}
 .fluent-read-retry-wrapper {
     display: inline-flex !important;
     max-width: 100% !important;

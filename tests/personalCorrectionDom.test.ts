@@ -1,0 +1,205 @@
+import {parseHTML} from 'linkedom';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+const fixture = vi.hoisted(() => ({lookup: vi.fn(), states: new WeakMap<HTMLElement, any>(),
+    artifact: true, source: true, refresh: vi.fn(), restore: vi.fn(), set: vi.fn()}));
+vi.mock('@/src/services/personal-corrections/public', () => ({personalCorrections: {lookup: fixture.lookup}}));
+vi.mock('@/src/features/full-page-translation/content/state', () => ({
+    getTranslationState: (node: HTMLElement) => fixture.states.get(node), setBilingualContent: fixture.set,
+    restoreTranslation: fixture.restore,
+}));
+vi.mock('@/src/features/full-page-translation/content/translationStability', () => ({
+    statefulSourceAndTextSlotsAreCurrent: () => fixture.source, isTranslationArtifactCurrent: () => fixture.artifact,
+}));
+vi.mock('@/src/features/full-page-translation/content/bilingualReplay', () => ({refreshBilingualTranslationSkeleton: fixture.refresh}));
+vi.mock('@/src/features/full-page-translation/content/viewportStability', () => ({withFullPageViewportAnchor: (action: () => unknown) => action()}));
+import {createMaterialId} from '@/src/core/personal-corrections/public';
+import {listVisiblePersonalCorrectionPairs, lookupPersonalCorrection, personalCorrectionIsCurrent, readPersonalCorrectionContext,
+    readPersonalCorrectionPair, refreshVisiblePersonalCorrections, registerPersonalCorrectionResult,
+    invalidateStalePersonalCorrectionContexts, watchPersonalCorrectionContext} from '@/src/features/full-page-translation/content/personalCorrections';
+
+const href = 'https://example.test/article?edition=1';
+const query = {source: 'The team is ready.', sourceLanguage: 'en', targetLanguage: 'zh', context: 'Team', materialId: createMaterialId(href)};
+function pair(baseline: boolean = true, recordId?: string) {
+    const node = document.querySelector('p')!;
+    const content = node.querySelector<HTMLElement>('.fluent-read-bilingual-content')!;
+    const state = {bilingualContent: content, bilingualReplay: {sources: [query.source], translations: ['团队准备好了。'], personalCorrectionId: undefined as string | undefined}};
+    fixture.states.set(node, state);
+    const snapshot = {query, recordId, ...(baseline ? {baseline: ['团队准备好了。']} : {})};
+    registerPersonalCorrectionResult(node, state as any, snapshot);
+    return {node, content, state, snapshot};
+}
+beforeEach(() => {
+    const {document} = parseHTML('<html><body><h2>Team</h2><p>The team is ready.<span class="fluent-read-bilingual-content">团队准备好了。</span></p></body></html>');
+    vi.stubGlobal('document', document); vi.stubGlobal('location', {href});
+    fixture.states = new WeakMap(); fixture.artifact = true; fixture.source = true;
+    fixture.lookup.mockReset().mockResolvedValue({suggestions: [], conflicts: []});
+    fixture.refresh.mockReset().mockImplementation((_node, state) => {
+        if (state.bilingualReplay.personalCorrectionId) state.bilingualContent.setAttribute('data-fr-personal-correction', 'true');
+        else state.bilingualContent.removeAttribute('data-fr-personal-correction');
+        return true;
+    });
+    fixture.restore.mockReset(); fixture.set.mockReset();
+});
+afterEach(() => {vi.unstubAllGlobals(); vi.unstubAllEnvs();});
+describe('个人校订的网页所有权端口', () => {
+    it('userscript 构建边界不查记忆或注册个人结果，既有翻译保持可提交', async () => {
+        vi.stubEnv('BROWSER', 'userscript');
+        const node = document.querySelector('p')!;
+        expect(await lookupPersonalCorrection(node, query.source, 'en', 'zh')).toBeUndefined();
+        expect(await personalCorrectionIsCurrent({query, recordId: 'saved'})).toBe(true);
+        registerPersonalCorrectionResult(node, {} as any, {query, recordId: 'saved'});
+        expect(fixture.lookup).not.toHaveBeenCalled(); expect(fixture.set).not.toHaveBeenCalled();
+    });
+    it('只识别 HTTP 材料；读取失败降级，精确结果携带版本并检查取消', async () => {
+        const node = document.querySelector('p')!;
+        vi.stubGlobal('location', undefined);
+        expect(await lookupPersonalCorrection(node, query.source, 'en', 'zh')).toBeUndefined();
+        vi.stubGlobal('location', {href: 'file:///tmp/a'});
+        expect(await lookupPersonalCorrection(node, query.source, 'en', 'zh')).toBeUndefined();
+        vi.stubGlobal('location', {href});
+        fixture.lookup.mockRejectedValueOnce(Error('offline'));
+        expect(await lookupPersonalCorrection(node, query.source, 'en', 'zh')).toBeUndefined();
+        expect(await lookupPersonalCorrection(node, query.source, 'en', 'zh')).toEqual({query});
+        fixture.lookup.mockResolvedValue({exact: {id: 'record', revision: 2, translation: '小组已就绪。'}});
+        const saved = await lookupPersonalCorrection(node, query.source, 'en', 'zh');
+        expect(saved).toEqual({query, recordId: 'record', recordRevision: 2, translation: '小组已就绪。'});
+        expect(await personalCorrectionIsCurrent(saved)).toBe(true);
+        expect(await personalCorrectionIsCurrent(saved, node)).toBe(true);
+        document.querySelector('h2')!.textContent = 'Changed while matching';
+        expect(await personalCorrectionIsCurrent(saved, node)).toBe(false);
+        document.querySelector('h2')!.textContent = 'Team'; vi.stubGlobal('location', {href: href + 'changed'});
+        expect(await personalCorrectionIsCurrent(saved, node)).toBe(false);
+        vi.stubGlobal('location', {href});
+        fixture.lookup.mockResolvedValueOnce({exact: {id: 'record', revision: 3}});
+        expect(await personalCorrectionIsCurrent(saved)).toBe(false);
+        fixture.lookup.mockResolvedValueOnce({}); expect(await personalCorrectionIsCurrent(saved)).toBe(false);
+        fixture.lookup.mockRejectedValueOnce(Error('offline')); expect(await personalCorrectionIsCurrent(saved)).toBe(false);
+        expect(await personalCorrectionIsCurrent()).toBe(true);
+        expect(await personalCorrectionIsCurrent({query})).toBe(true);
+        const controller = new AbortController(); controller.abort();
+        await expect(lookupPersonalCorrection(node, query.source, 'en', 'zh', controller.signal)).rejects.toMatchObject({name: 'AbortError'});
+    });
+    it('标题语境有界向前查找；无标题和孤立单元使用空语境', () => {
+        const node = document.querySelector('p')!;
+        expect(readPersonalCorrectionContext(node)).toBe('Team');
+        const heading = document.querySelector('h2')!;
+        heading.innerHTML = 'Team<span data-fr-translation-owned="true">团队</span>';
+        expect(readPersonalCorrectionContext(node)).toBe('Team');
+        fixture.states.set(heading, {sourceText: 'Team'});
+        expect(readPersonalCorrectionContext(node)).toBe('Team');
+        fixture.source = false; expect(readPersonalCorrectionContext(node)).toBe('Team'); fixture.source = true;
+        const emptyClone = document.createElement('h2'); Object.defineProperty(emptyClone, 'textContent', {get: () => null});
+        const clone = vi.spyOn(heading, 'cloneNode').mockReturnValueOnce(emptyClone); fixture.source = false;
+        expect(readPersonalCorrectionContext(node)).toBe(''); clone.mockRestore(); fixture.source = true;
+        document.body.innerHTML = '<section><h3> Details </h3><div>unrelated</div><div><p>text</p></div></section>';
+        expect(readPersonalCorrectionContext(document.querySelector('p')!)).toBe('Details');
+        document.querySelector('h3')!.textContent = null;
+        expect(readPersonalCorrectionContext(document.querySelector('p')!)).toBe('');
+        document.body.innerHTML = `<h1>too far</h1>${'<div>x</div>'.repeat(51)}<p>text</p>`;
+        expect(readPersonalCorrectionContext(document.querySelector('p')!)).toBe('');
+        document.body.innerHTML = `<h1>too deep</h1>${'<div>'.repeat(22)}<p>text</p>${'</div>'.repeat(22)}`;
+        expect(readPersonalCorrectionContext(document.querySelector('p')!)).toBe('');
+        expect(readPersonalCorrectionContext(document.createElement('p'))).toBe('');
+    });
+    it('标记与撤销在受控译文上更新，空草稿、断连及来源改写不得提交', () => {
+        expect(readPersonalCorrectionPair(document.body)).toBeNull();
+        const {node, content, state} = pair();
+        const current = readPersonalCorrectionPair(content)!;
+        expect(current.translation).toBe('团队准备好了。'); expect(current.isCurrent()).toBe(true);
+        expect(current.apply(' ')).toBe(false); expect(current.apply('小组已就绪。', 'saved')).toBe(true);
+        expect(state.bilingualReplay.translations).toEqual(['小组已就绪。']);
+        expect(content.getAttribute('data-fr-personal-correction')).toBe('true');
+        fixture.source = false; expect(current.isCurrent()).toBe(false); expect(current.apply('迟到')).toBe(false);
+        fixture.source = true; fixture.artifact = false; expect(readPersonalCorrectionPair(content)).toBeNull();
+        fixture.artifact = true; document.querySelector('h2')!.textContent = 'Different context'; expect(current.isCurrent()).toBe(false);
+        document.querySelector('h2')!.textContent = 'Team'; vi.stubGlobal('location', {href: `${href}2`}); expect(current.isCurrent()).toBe(false);
+        vi.stubGlobal('location', {href}); fixture.states.delete(node); expect(current.isCurrent()).toBe(false);
+        fixture.states.set(node, state); node.remove(); expect(current.isCurrent()).toBe(false);
+        registerPersonalCorrectionResult(node, state as any, undefined);
+        registerPersonalCorrectionResult(node, {} as any, {query});
+    });
+    it('受影响单元按来源、材料、语言及上下文精确预览；多槽只向首槽写整段', () => {
+        const {content, state} = pair();
+        state.bilingualReplay.sources = [query.source, 'second'];
+        expect(readPersonalCorrectionPair(content)!.apply('新译文')).toBe(true);
+        expect(state.bilingualReplay.translations).toEqual(['新译文', '']);
+        expect(listVisiblePersonalCorrectionPairs(query)).toHaveLength(1);
+        for (const field of ['source', 'sourceLanguage', 'targetLanguage', 'context', 'materialId']) {
+            expect(listVisiblePersonalCorrectionPairs({...query, [field]: 'different'})).toHaveLength(0);
+        }
+        fixture.states = new WeakMap(); expect(listVisiblePersonalCorrectionPairs(query)).toHaveLength(0);
+        const orphan = document.createElement('span'); orphan.className = 'fluent-read-bilingual-content'; expect(readPersonalCorrectionPair(orphan)).toBeNull();
+    });
+    it('删除或范围退出回滚服务底稿；复用而无底稿的单元恢复原文', async () => {
+        const {state} = pair(true, 'saved');
+        fixture.lookup.mockResolvedValueOnce({exact: {id: 'updated', translation: '新版'}});
+        await refreshVisiblePersonalCorrections(); expect(state.bilingualReplay.translations).toEqual(['新版']);
+        await refreshVisiblePersonalCorrections(); expect(state.bilingualReplay.translations).toEqual(['团队准备好了。']);
+        expect(state.bilingualReplay.personalCorrectionId).toBeUndefined();
+        await refreshVisiblePersonalCorrections(); expect(fixture.restore).not.toHaveBeenCalled();
+        const reused = pair(false, 'saved'); await refreshVisiblePersonalCorrections(); expect(fixture.restore).toHaveBeenCalledWith(reused.node);
+        fixture.lookup.mockRejectedValueOnce(Error('unavailable')); await refreshVisiblePersonalCorrections();
+        fixture.states = new WeakMap(); await refreshVisiblePersonalCorrections();
+        const unattached = document.createElement('span'); unattached.className = 'fluent-read-bilingual-content';
+        const queryAll = vi.spyOn(document, 'querySelectorAll').mockReturnValueOnce([] as any).mockReturnValueOnce([unattached] as any);
+        await refreshVisiblePersonalCorrections(); queryAll.mockRestore();
+    });
+    it('变更广播重复或在途页面改变时丢弃旧刷新', async () => {
+        const {node, state} = pair(true, 'saved');
+        let resolve!: (value: unknown) => void;
+        fixture.lookup.mockReturnValueOnce(new Promise(done => {resolve = done;}));
+        const first = refreshVisiblePersonalCorrections(); await refreshVisiblePersonalCorrections();
+        resolve({exact: {id: 'old', translation: '迟到'}}); await first;
+        expect(state.bilingualReplay.translations).not.toContain('迟到');
+        fixture.lookup.mockImplementationOnce(async () => {fixture.states.delete(node); return {};});
+        await refreshVisiblePersonalCorrections();
+    });
+    it('标题与 SPA 材料变化立即恢复旧个人结果；宿主来源已改写时保留原有所有权修复路径', async () => {
+        const {node, content} = pair(true, 'saved');
+        document.querySelector('h2')!.textContent = 'New context';
+        invalidateStalePersonalCorrectionContexts(); expect(fixture.restore).toHaveBeenCalledWith(node);
+        fixture.restore.mockClear(); fixture.source = false;
+        invalidateStalePersonalCorrectionContexts(); expect(fixture.restore).not.toHaveBeenCalled();
+        fixture.source = true; document.querySelector('h2')!.textContent = 'Team';
+        vi.stubGlobal('location', {href: href + '#/new-material'});
+        await refreshVisiblePersonalCorrections(); expect(fixture.restore).toHaveBeenCalledWith(node);
+        expect(fixture.lookup).not.toHaveBeenCalled();
+        fixture.states = new WeakMap(); invalidateStalePersonalCorrectionContexts();
+        const unattached = document.createElement('span'); unattached.setAttribute('data-fr-personal-correction', 'true');
+        const queryAll = vi.spyOn(document, 'querySelectorAll').mockReturnValueOnce([unattached] as any);
+        invalidateStalePersonalCorrectionContexts(); queryAll.mockRestore();
+        content.remove();
+    });
+    it('窄标题结构观察不触发 IO，忽略扩展自有 DOM，并在取消后释放路由和观察者', () => {
+        let callback!: (mutations: MutationRecord[]) => void;
+        const observe = vi.fn(), disconnect = vi.fn();
+        const construct = vi.fn();
+        vi.stubGlobal('MutationObserver', class {constructor(handler: typeof callback) {construct(); callback = handler;} observe = observe; disconnect = disconnect;});
+        const canceled = new AbortController(); canceled.abort(); watchPersonalCorrectionContext(canceled.signal)();
+        expect(construct).not.toHaveBeenCalled();
+        const controller = new AbortController(); const dispose = watchPersonalCorrectionContext(controller.signal);
+        expect(observe).toHaveBeenCalledWith(document, {subtree: true, childList: true, characterData: true});
+        const {node, content} = pair(true, 'saved');
+        content.setAttribute('data-fr-translation-owned', 'true');
+        const record = (target: Node, type: string = 'childList', addedNodes: Node[] = [], removedNodes: Node[] = []) => ({target, type, addedNodes, removedNodes}) as unknown as MutationRecord;
+        callback([record(content), record(content.firstChild!, 'characterData')]);
+        callback([record(node.firstChild!, 'characterData'), record(document.createTextNode('detached'), 'characterData')]);
+        callback([record(document.body, 'childList', [document.createTextNode('text'), content, document.createElement('div')])]);
+        expect(fixture.restore).not.toHaveBeenCalled();
+        document.querySelector('h2')!.textContent = 'Changed';
+        callback([record(document.querySelector('h2')!.firstChild!, 'characterData')]);
+        expect(fixture.restore).toHaveBeenCalledWith(node); fixture.restore.mockClear();
+        callback([record(document.body, 'childList', [document.createElement('h1')])]);
+        const section = document.createElement('section'); section.innerHTML = '<h3>Added heading</h3>';
+        callback([record(document.body, 'childList', [], [section])]);
+        callback([record(document.querySelector('h2')!)]);
+        expect(fixture.restore).toHaveBeenCalledTimes(3); fixture.restore.mockClear();
+        document.querySelector('h2')!.textContent = 'Team'; vi.stubGlobal('location', {href: href + '?new'});
+        document.dispatchEvent(new document.defaultView!.Event('fluentread-route-change'));
+        expect(fixture.restore).toHaveBeenCalledWith(node); fixture.restore.mockClear();
+        dispose(); document.dispatchEvent(new document.defaultView!.Event('fluentread-route-change'));
+        expect(fixture.restore).not.toHaveBeenCalled(); expect(disconnect).toHaveBeenCalledOnce();
+        const second = new AbortController(); watchPersonalCorrectionContext(second.signal); second.abort();
+        expect(disconnect).toHaveBeenCalledTimes(2); expect(fixture.lookup).not.toHaveBeenCalled();
+    });
+});

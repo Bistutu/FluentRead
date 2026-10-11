@@ -176,6 +176,7 @@ function createSafeTranslationFragment(text: string): DocumentFragment {
  * 但具体节点由状态机保存，恢复时只移除这一份 wrapper。
  */
 export interface BilingualTranslationRenderOptions {
+    personalCorrectionId?: string;
     /** 全文会话启动时冻结的目标语言；普通悬浮翻译缺省仍读取当前配置。 */
     targetLanguage?: string;
     /** 全文会话启动时冻结的长段落换行开关；缺省读取当前配置。 */
@@ -278,6 +279,7 @@ function createBilingualTranslationContent(
     content.lang = (renderOptions.targetLanguage ?? config.to) || "";
     content.dir = "auto";
 
+    if (import.meta.env.BROWSER !== 'userscript' && renderOptions.personalCorrectionId) content.setAttribute('data-fr-personal-correction', 'true');
     applyTranslationFontFamily(content, node, renderOptions.sourceText);
 
     const styleValue = renderOptions.style ?? config.style;

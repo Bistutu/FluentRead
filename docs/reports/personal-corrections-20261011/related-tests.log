@@ -1,0 +1,32 @@
+
+> FluentRead-流畅阅读@0.0.37 test /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
+> node scripts/testing/run-resource-safe.mjs -- vitest run "tests/sentenceActionsMount.test.ts" "tests/implementationAudit48K.test.ts" "tests/bilingualReplay.test.ts" "tests/translationState.test.ts" "tests/liveTextRender.test.ts"
+
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vitest run tests/sentenceActionsMount.test.ts tests/implementationAudit48K.test.ts tests/bilingualReplay.test.ts tests/translationState.test.ts tests/liveTextRender.test.ts
+
+ RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
+
+ ✓ tests/translationState.test.ts (94 tests) 716ms
+   ✓ 指定节点翻译状态机 > removed subtree 查询不会读取大批无关 active owner 的状态 408ms
+ ✓ tests/implementationAudit48K.test.ts (33 tests) 554ms
+ ✓ tests/bilingualReplay.test.ts (19 tests) 110ms
+stderr | tests/liveTextRender.test.ts
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (/Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011/src/platform/storage/configStorageRuntime.ts:36:29)
+    at initializeConfig (/Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011/src/services/config/store.ts:635:41)
+    at /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011/src/services/config/store.ts:807:28
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at VitestExecutor.runModule (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vite-node@2.1.9_@types+node@22.10.7/node_modules/vite-node/dist/client.mjs:399:5)
+    at VitestExecutor.directRequest (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vite-node@2.1.9_@types+node@22.10.7/node_modules/vite-node/dist/client.mjs:381:5)
+    at VitestExecutor.cachedRequest (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vite-node@2.1.9_@types+node@22.10.7/node_modules/vite-node/dist/client.mjs:206:14)
+    at VitestExecutor.dependencyRequest (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vite-node@2.1.9_@types+node@22.10.7/node_modules/vite-node/dist/client.mjs:259:12)
+    at /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011/src/features/full-page-translation/content/renderer.ts:2:31
+    at VitestExecutor.runModule (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vite-node@2.1.9_@types+node@22.10.7/node_modules/vite-node/dist/client.mjs:399:5)
+
+ ✓ tests/liveTextRender.test.ts (10 tests) 29ms
+ ✓ tests/sentenceActionsMount.test.ts (4 tests) 7ms
+
+ Test Files  5 passed (5)
+      Tests  160 passed (160)
+   Start at  14:02:26
+   Duration  4.13s (transform 850ms, setup 0ms, collect 2.00s, tests 1.42s, environment 1ms, prepare 181ms)

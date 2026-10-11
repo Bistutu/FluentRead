@@ -17,6 +17,10 @@ import {
     mountVideoSubtitleTranslation,
     unmountAreaTranslator,
     unmountImageTranslator,
+    mountVocabularyReencounter,
+    unmountVocabularyReencounter,
+    mountPersonalCorrections,
+    unmountPersonalCorrections,
 } from '@/userscript/unsupportedCapabilities';
 
 describe('userscript extension-only capability stubs', () => {
@@ -28,6 +32,13 @@ describe('userscript extension-only capability stubs', () => {
         expect(unmountImageTranslator()).toBeUndefined();
         expect(mountVideoSubtitleTranslation()()).toBeUndefined();
         expect(isSupportedVideoPage()).toBe(false);
+    });
+
+    it('个人校订复用空适配器，不挂载面板或后台客户端', () => {
+        expect(mountPersonalCorrections).toBe(mountVocabularyReencounter);
+        expect(unmountPersonalCorrections).toBe(unmountVocabularyReencounter);
+        expect(mountPersonalCorrections()).toBeUndefined();
+        expect(unmountPersonalCorrections()).toBeUndefined();
     });
 });
 

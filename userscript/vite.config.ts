@@ -380,9 +380,28 @@ function bundleUserscriptCss(): Plugin {
     return {
         name: 'bundle-userscript-css',
         enforce: 'post',
+        transform: {
+            order: 'pre',
+            handler(code, id) {
+                // page.css 使用 ?inline 进入 JS，必须在 Vite CSS 转换前排除不可达的扩展来源提示。
+                if (normalizePath(id.split('?', 1)[0]) !== normalizePath(resolve(root, 'src/app/content/page.css'))) return null;
+                const withoutCorrectionBadge = code.replace(/\.fluent-read-bilingual-content\[data-fr-personal-correction="true"\]::after\s*\{[^}]*\}/gu, '');
+                return withoutCorrectionBadge === code ? null : {code: withoutCorrectionBadge, map: null};
+            },
+        },
         generateBundle: {
           order: 'post',
           async handler(_options, bundle) {
+            // 个人校订需要扩展后台作为唯一写入者；public 别名之外的直接导入也必须在构建期阻止。
+            const correctionFeatureRoot = `${resolve(root, 'src/features/personal-corrections')}/`;
+            const leakedCorrectionModule = Object.values(bundle)
+                .filter((item) => item.type === 'chunk')
+                .flatMap((item) => item.moduleIds)
+                .find((id) => id.startsWith(correctionFeatureRoot));
+            if (leakedCorrectionModule) {
+                throw new Error(`Userscript bundle contains unsupported personal correction feature: ${leakedCorrectionModule}`);
+            }
+
             const cssEntries = Object.entries(bundle).filter(([, item]) => item.type === 'asset' && item.fileName.endsWith('.css'));
             const css = cssEntries.map(([, item]) => String(item.type === 'asset' ? item.source : '')).join('\n');
             const compressedCss = greasyForkSource ? '' : gzipSync(Buffer.from(css, 'utf8'), {level: 9}).toString('base64');
@@ -494,6 +513,7 @@ export const userscriptAliases = [
     {find: '@/src/features/image-translation/public', replacement: resolve(root, 'userscript/unsupportedCapabilities.ts')},
     {find: '@/src/features/video-subtitle/public', replacement: resolve(root, 'userscript/unsupportedCapabilities.ts')},
     {find: '@/src/features/vocabulary/content/public', replacement: resolve(root, 'userscript/unsupportedCapabilities.ts')},
+    {find: '@/src/features/personal-corrections/public', replacement: resolve(root, 'userscript/unsupportedCapabilities.ts')},
     {find: '@/src/features/writing-assistant/public', replacement: resolve(root, 'userscript/writingAssistant.ts')},
     {find: /^\.\/chrome-translator$/u, replacement: resolve(root, 'userscript/chromeTranslator.ts')},
     {find: '@wxt-dev/storage', replacement: resolve(root, 'userscript/storage.ts')},

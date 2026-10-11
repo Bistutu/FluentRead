@@ -204,13 +204,43 @@ describe('userscript browser shim injection', () => {
             .filter((entry): entry is {find: string; replacement: string} => typeof entry.find === 'string')
             .map((entry) => [entry.find, entry.replacement]));
 
-        for (const feature of ['area-translation', 'image-translation', 'video-subtitle']) {
+        for (const feature of ['area-translation', 'image-translation', 'video-subtitle', 'personal-corrections']) {
             expect(stringAliases.get(`@/src/features/${feature}/public`)).toMatch(/userscript\/unsupportedCapabilities\.ts$/u);
         }
         expect(stringAliases.get('@/src/features/writing-assistant/public')).toMatch(/userscript\/writingAssistant\.ts$/u);
         expect(stringAliases.get('@/src/platform/storage/credentialContext')).toMatch(/userscript\/credentialContext\.ts$/u);
         expect(stringAliases.get('@/src/platform/storage/configStorageRuntime')).toMatch(/userscript\/storage\.ts$/u);
         expect(userscriptAliases.at(-1)?.find).toBe('@');
+    });
+
+    it('阻止个人校订 UI 绕过 public 空适配器进入任意 userscript chunk', async () => {
+        const plugins = (userscriptConfig as {plugins: Array<{name: string; generateBundle?: {handler: Function}}>}).plugins;
+        const plugin = plugins.find(item => item.name === 'bundle-userscript-css')!;
+        const entry = {type: 'chunk', isEntry: true, code: 'var fixture = 1;', moduleIds: []};
+        const correctionModule = `${resolve(process.cwd(), 'src/features/personal-corrections/ui/PersonalCorrectionsPanel.vue')}?vue&type=script`;
+        const otherChunk = {type: 'chunk', isEntry: false, code: '', moduleIds: [correctionModule]};
+        await expect(Reflect.apply(plugin.generateBundle!.handler, {}, [{}, {'entry.js': entry, 'other.js': otherChunk}]))
+            .rejects.toThrow(`Userscript bundle contains unsupported personal correction feature: ${correctionModule}`);
+        expect(entry.code).toBe('var fixture = 1;');
+
+        otherChunk.moduleIds = [resolve(process.cwd(), 'src/features/personal-corrections-other/public.ts')];
+        await expect(Reflect.apply(plugin.generateBundle!.handler, {}, [{}, {'entry.js': entry, 'other.js': otherChunk}])).resolves.toBeUndefined();
+    });
+
+    it('只在 userscript 构建中移除 inline page.css 的扩展校订来源提示，保留重试样式', () => {
+        const plugins = (userscriptConfig as {plugins: Array<{name: string; transform?: {order: string; handler: Function}}>}).plugins;
+        const plugin = plugins.find(item => item.name === 'bundle-userscript-css')!;
+        const pageCss = resolve(process.cwd(), 'src/app/content/page.css');
+        const source = readFileSync(pageCss, 'utf8');
+        expect(source).toContain('data-fr-personal-correction');
+        expect(plugin.transform!.order).toBe('pre');
+        const transformed = Reflect.apply(plugin.transform!.handler, {}, [source, `${pageCss}?inline`]);
+        expect(transformed.code).not.toContain('data-fr-personal-correction');
+        expect(transformed.code).toContain('.fluent-read-retry-wrapper');
+        expect(transformed.map).toBeNull();
+        expect(Reflect.apply(plugin.transform!.handler, {}, [transformed.code, pageCss])).toBeNull();
+        expect(Reflect.apply(plugin.transform!.handler, {}, [source, `${pageCss}.other.css?inline`])).toBeNull();
+        expect(readFileSync(pageCss, 'utf8')).toBe(source);
     });
 
     it('把 dexie 换成不注册全局单例的入口，且不改写 dexie 自身的实现产物路径', () => {

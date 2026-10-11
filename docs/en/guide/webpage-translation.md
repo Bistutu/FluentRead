@@ -1,5 +1,13 @@
 # Webpage translation
 
+## Personal corrections
+
+Hover a bilingual translated paragraph and select **校订译文** (Edit translation), or press **Alt + Shift + E**. Edit the draft, preview the affected exact sentences, and confirm the scope before saving. Material scope is the default. A project applies only to materials you explicitly join to it.
+
+Exact reuse requires the same original text, source/target languages, and nearest heading context. Automatic source detection is separate from an explicitly selected language. Similar sentences and conflicting translations remain reviewable suggestions; choosing one only changes the draft. Personal output carries a provenance badge and bypasses the provider cache.
+
+Manage, edit, delete, and undo saved corrections from the editor. Undo refuses to overwrite a later change. Removing a correction restores the previous provider output when available; a paragraph generated directly from memory returns to its original until translated again. Records remain local, outside glossary, document history, cloud sync and configuration backups. This release supports safely flattened bilingual webpage paragraphs; protected code/formula units, translation-only display, PDF, subtitles and userscripts retain their existing behavior.
+
 Translate an article or a selected section, compare both languages, and return to the original.
 
 When a translation matches the source, FluentRead keeps the source without displaying a duplicate translation. The comparison ignores surrounding whitespace, line breaks, repeated spaces, and equivalent Unicode composition, while preserving differences in words, case, punctuation, and Chinese variants. This also applies to selection, input, area, image, subtitle, and document results, including bilingual copying and exports. Translation Center retains and displays each service's output for comparison, even when it matches the source, and keeps its copy actions available.
