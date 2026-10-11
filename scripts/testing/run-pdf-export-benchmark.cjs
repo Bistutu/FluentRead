@@ -364,8 +364,8 @@ async function main() {
   const packages = arg('playwright-root'); assert(packages, '--playwright-root required');
   const {chromium} = createRequire(path.join(packages, 'pdf-export-runner.cjs'))('playwright');
   const artifactsDir = path.resolve(arg('artifacts-dir', `/private/tmp/fluentread-pdf-export-${label}`)); fs.mkdirSync(artifactsDir, {recursive: true});
-  const pdftoppm = arg('pdftoppm', '/Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override/pdftoppm');
-  assert(fs.existsSync(pdftoppm), '--pdftoppm must point to Poppler for export preview evidence');
+  const pdftoppm = arg('pdftoppm');
+  assert(pdftoppm && fs.existsSync(pdftoppm), '--pdftoppm must point to Poppler for export preview evidence');
   const overflowRepeat = Number(arg('overflow-repeat', 6)), cancelAfterPages = Number(arg('cancel-after-pages', 2));
   const exportTimeout = Number(arg('export-timeout-ms', 180000)), translationTimeout = Number(arg('translation-timeout-ms', 600000)), cancelTimeout = Number(arg('cancel-timeout-ms', 5000));
   assert(Number.isInteger(overflowRepeat) && overflowRepeat >= 1 && Number.isInteger(cancelAfterPages) && cancelAfterPages >= 1);

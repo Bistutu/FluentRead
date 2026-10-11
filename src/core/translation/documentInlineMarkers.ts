@@ -41,7 +41,8 @@ export function documentInlineMarkerRanges(text: string): Array<{start: number; 
     return [...text.matchAll(/<\/?g[1-9]\d*\/?\s*>/gu)].map(match => ({start: match.index, end: match.index + match[0].length}));
 }
 
-const invisibleEntityNames = new Set('nbsp NonBreakingSpace ensp emsp emsp13 emsp14 numsp puncsp thinsp hairsp Tab NewLine ThinSpace VeryThinSpace MediumSpace ThickSpace ZeroWidthSpace NegativeVeryThinSpace NegativeThinSpace NegativeMediumSpace NegativeThickSpace shy zwnj zwj lrm rlm NoBreak ApplyFunction af InvisibleTimes it InvisibleComma ic'.split(' '));
+// 静态字面集合没有初始化副作用，文档校验不可达的构建目标可连同该表一起裁剪。
+const invisibleEntityNames = /* @__PURE__ */ new Set('nbsp NonBreakingSpace ensp emsp emsp13 emsp14 numsp puncsp thinsp hairsp Tab NewLine ThinSpace VeryThinSpace MediumSpace ThickSpace ZeroWidthSpace NegativeVeryThinSpace NegativeThinSpace NegativeMediumSpace NegativeThickSpace shy zwnj zwj lrm rlm NoBreak ApplyFunction af InvisibleTimes it InvisibleComma ic'.split(' '));
 
 /** 只识别确定为空白/不可见的实体，不解码或改写候选正文，未知名称和可见数字实体保留。 */
 function hasVisibleText(text: string): boolean {

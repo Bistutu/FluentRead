@@ -61,6 +61,28 @@ function configSource(overrides: Partial<TranslationConfigSource> = {}): Transla
 }
 
 describe('translation provider request config snapshot', () => {
+    it.each(['chrome', 'userscript'])('保留 %s 的用户术语和严格槽原文，自动文档字面值仅用于扩展构建', browser => {
+        vi.stubEnv('BROWSER', browser);
+        try {
+            const snapshot = createTranslationProviderConfigSnapshot(configSource({glossaryEnabled: true,
+                glossaryLibraries: [{id: 'one', name: 'One', enabled: true, sourceLanguage: '', targetLanguage: '', domains: [],
+                    entries: [{id: 'agent', source: 'agent', target: '智能体', caseSensitive: false}]}],
+                glossaryTerms: [{source: 'agent', target: '智能体'}],
+                glossaryMatchContext: {context: 'document', sourceLanguage: 'en', targetLanguage: 'zh-Hans', glossaryIds: ['one']},
+            }));
+            const origins = ['Use agent with 𝑛 ∈ ℎ.'];
+            const slots = serializeTranslationSlots(origins, 'build_boundary');
+            expect(getTranslationGlossarySourceText(slots.payload)).toEqual(origins);
+            for (const source of [origins, slots.payload]) {
+                expect(getTranslationGlossaryTerms(snapshot, source)).toEqual(browser === 'userscript'
+                    ? [{source: 'agent', target: '智能体'}]
+                    : [{source: 'agent', target: '智能体'}, {source: '𝑛', target: '𝑛'}, {source: '∈', target: '∈'}, {source: 'ℎ', target: 'ℎ'}]);
+            }
+            expect(getTranslationGlossaryTerms({...snapshot, glossaryMatchContext: {...snapshot.glossaryMatchContext!, context: 'page'}}, origins))
+                .toEqual([{source: 'agent', target: '智能体'}]);
+        } finally {vi.unstubAllEnvs();}
+    });
+
     it('原生合批偏好在 provider 配置快照中默认开启并隔离后续编辑', () => {
         const preferences = {google: false, microsoft: true};
         const snapshot = createTranslationProviderConfigSnapshot(configSource({nativeBatchTranslationEnabled: preferences}));
