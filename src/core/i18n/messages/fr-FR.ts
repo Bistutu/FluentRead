@@ -1110,7 +1110,7 @@ export const frFRMessages = {
     'settings.interface.font.noDownload': 'Police système · Aucun téléchargement',
     'settings.interface.font.saved': 'Téléchargé · En cache pour une utilisation hors ligne',
     'settings.interface.font.sessionOnly': 'Police activée, mais cache indisponible. Un nouveau téléchargement peut être nécessaire à la réouverture.',
-    'settings.interface.font.failed': 'Échec du téléchargement. Police système utilisée. Réessayez ou changez de source.',
+    'settings.interface.font.failed': "Échec du téléchargement de la police. Police système utilisée. Vérifiez la connexion et réessayez.",
     'settings.interface.font.retry': 'Réessayer',
     'settings.interface.font.sources': 'Un problème de téléchargement ?',
     'settings.interface.font.downloadAndUse': 'Télécharger et utiliser',

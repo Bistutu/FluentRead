@@ -1338,7 +1338,7 @@ export const enUSMessages = {
     'settings.interface.font.noDownload': 'System font · No download needed',
     'settings.interface.font.saved': 'Downloaded · Cached for offline use',
     'settings.interface.font.sessionOnly': 'Font enabled, but caching is unavailable; reopening may require another download.',
-    'settings.interface.font.failed': 'Download failed. Using system fonts for now. Retry or choose another source.',
+    'settings.interface.font.failed': "Font download failed. Using system fonts for now. Check your connection and retry.",
     'settings.interface.font.retry': 'Retry download',
     'settings.interface.font.sources': 'Trouble downloading?',
     'settings.interface.font.downloadAndUse': 'Download & use',

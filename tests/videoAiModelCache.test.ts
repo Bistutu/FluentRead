@@ -119,7 +119,9 @@ describe('video AI model cache', () => {
         });
         vi.stubGlobal('caches', {open: async () => cache});vi.stubGlobal('fetch', fetcher);
         const failed: DownloadProgress[] = [];
-        await expect(cacheVideoAiQ4ModelFiles('small', item => failed.push(item))).rejects.toThrow('last file');
+        await expect(cacheVideoAiQ4ModelFiles('small', item => failed.push(item))).rejects.toMatchObject({
+            message: '模型下载失败，请检查网络后重试', cause: {message: 'last file unavailable'},
+        });
         expect(entries.size).toBe(6);
         expect(failed[0]).toMatchObject({loaded: 0, total: 590_000_000, transfer: {source: 'huggingface', state: 'connecting', attempt: 1, attempts: 3}});
         expect(failed.at(-1)!.loaded).toBeLessThan(failed.at(-1)!.total);
@@ -139,16 +141,22 @@ describe('video AI model cache', () => {
             put: vi.fn(async () => {throw new Error('353 MB header admitted');})};
         vi.stubGlobal('caches', {open: async () => cache});
         vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(new Uint8Array(1), {headers: {'Content-Length': url.endsWith('encoder_model.onnx') ? '352825870' : '1'}})));
-        await expect(cacheVideoAiQ4ModelFiles('small')).rejects.toThrow('353 MB header admitted');
+        await expect(cacheVideoAiQ4ModelFiles('small')).rejects.toMatchObject({
+            message: '模型下载失败，请检查网络后重试', cause: {message: '353 MB header admitted'},
+        });
         expect(cache.put).toHaveBeenCalled();
         cache.put.mockClear();
         vi.stubGlobal('fetch', vi.fn(async () => new Response('x', {headers: {'Content-Length': String(384 * 1024 * 1024 + 1)}})));
-        await expect(cacheVideoAiQ4ModelFiles('small')).rejects.toThrow('大小上限');
+        await expect(cacheVideoAiQ4ModelFiles('small')).rejects.toMatchObject({
+            message: '模型下载失败，请检查网络后重试', cause: {message: expect.stringContaining('大小上限')},
+        });
         expect(cache.put).not.toHaveBeenCalled();
         // Small decoder and JSON files retain the original 256 MiB cap.
         cache.match = async (url: string) => url.endsWith('decoder_model_merged_q4.onnx') ? undefined : new Response('cached');
         vi.stubGlobal('fetch', vi.fn(async () => new Response('x', {headers: {'Content-Length': String(256 * 1024 * 1024 + 1)}})));
-        await expect(cacheVideoAiQ4ModelFiles('small')).rejects.toThrow('大小上限');
+        await expect(cacheVideoAiQ4ModelFiles('small')).rejects.toMatchObject({
+            message: '模型下载失败，请检查网络后重试', cause: {message: expect.stringContaining('大小上限')},
+        });
         expect(cache.put).not.toHaveBeenCalled();
     });
     it('Small source retries share a ten-minute download deadline even while data keeps arriving', async () => {
@@ -249,7 +257,14 @@ describe('video AI model cache', () => {
         vi.stubGlobal('caches', {open: vi.fn(async () => cache)});
         vi.stubGlobal('window', {setTimeout, clearTimeout});
         vi.stubGlobal('fetch', vi.fn(async () => new Response('', {status: 503})));
-        await expect(cacheVideoAiModelFiles('tiny')).rejects.toThrow('503');
+        await expect(cacheVideoAiModelFiles('tiny')).rejects.toMatchObject({
+            message: '模型下载失败，请检查网络后重试', cause: {message: '模型文件下载失败（503）'},
+        });
+        const cause = new Error('Hugging Face / HF Mirror / ModelScope connection failed');
+        vi.stubGlobal('fetch', vi.fn(async () => {throw cause;}));
+        await expect(cacheVideoAiModelFiles('tiny')).rejects.toMatchObject({
+            message: '模型下载失败，请检查网络后重试', cause,
+        });
     });
     it('keeps q4 and q8 wrapper calls on the same cache implementation', async () => {
         const cache = {match: vi.fn(async () => new Response('cached')), put: vi.fn()};
@@ -259,7 +274,7 @@ describe('video AI model cache', () => {
         await cacheVideoAiQ8ModelFiles('tiny');
         expect(cache.match).toHaveBeenCalledTimes(VIDEO_AI_Q4_MODEL_FILES.length + VIDEO_AI_Q8_MODEL_FILES.length);
     });
-    it('converts an aborted download into a timeout error', async () => {
+    it('keeps per-source timeout diagnostics as the cause of an actionable download error', async () => {
         vi.useFakeTimers();
         const cache = {match: vi.fn(async () => undefined), put: vi.fn()};
         vi.stubGlobal('caches', {open: vi.fn(async () => cache)});
@@ -268,7 +283,9 @@ describe('video AI model cache', () => {
             options.signal.addEventListener('abort', () => reject(new Error('aborted')), {once: true});
         })));
         const pending = cacheVideoAiModelFiles('tiny');
-        const assertion = expect(pending).rejects.toThrow('超过');
+        const assertion = expect(pending).rejects.toMatchObject({
+            message: '模型下载失败，请检查网络后重试', cause: {message: expect.stringContaining('超过')},
+        });
         await vi.advanceTimersByTimeAsync(120_000 * 4);
         await assertion;
         vi.useRealTimers();

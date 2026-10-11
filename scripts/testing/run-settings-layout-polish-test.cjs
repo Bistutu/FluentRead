@@ -225,10 +225,15 @@ const record = id => { report.caseCoverage.push({id, status: 'passed'}); console
     assert((await resources.boundingBox()).height < 600, 'default resources are compact');
     await shot(resources, 'resources-current');
     await resources.locator('.manga-download-settings > summary').click();
-    await choose('模型下载来源', '备用镜像优先');
+    const modelManagement = resources.locator('.manga-download-settings');
+    assert.equal(await modelManagement.getByRole('combobox', {name: '模型下载来源', exact: true}).count(), 0);
+    assert.equal(await modelManagement.locator('a[href*="huggingface"],a[href*="hf-mirror"],a[href*="modelscope"]').count(), 0);
+    assert.doesNotMatch(await modelManagement.innerText(), /下载来源|官方源优先|备用镜像优先|Hugging Face|HF Mirror|ModelScope/iu);
+    assert(await modelManagement.getByRole('button', {name: '导入已下载文件', exact: true}).isVisible());
     assert.equal(await resources.locator('.manga-download-settings > summary').evaluate(el => getComputedStyle(el).borderLeftWidth), '0px');
     await shot(resources.locator('.manga-download-settings'), 'resources-management');
     await resources.locator('.manga-download-settings > summary').click();
+    record('model management keeps offline import and hides download source details');
     await choose('图片识别方式', 'Tesseract（轻量模型）', image);
     assert.equal(await engineDetails.getAttribute('open'), '');
     assert.equal(await languageDetails.getAttribute('open'), null);

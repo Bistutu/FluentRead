@@ -45,21 +45,30 @@ describe('local video model readiness port', () => {
 describe('local video model download port', () => {
   it('requests only the confirmed normalized model and returns the recorded list', async () => {
     const sendMessage = vi.fn(async (message: {type: string; model: string}) => {
-      expect(message).toEqual({type: 'fluentReadPrepareLocalVideoModel', model: 'tiny'});
-      return {success: true, model: 'tiny', models: ['base', 'tiny']};
+      expect(message).toEqual({type: 'fluentReadPrepareLocalVideoModel', model: 'small'});
+      return {success: true, model: 'small', models: ['base', 'small']};
     });
-    await expect(requestLocalVideoModelDownload('unknown', sendMessage)).resolves.toEqual(['base', 'tiny']);
+    await expect(requestLocalVideoModelDownload('unknown', sendMessage)).resolves.toEqual(['base', 'small']);
     await expect(requestLocalVideoModelDownload('base', vi.fn(async () => ({success: true}))))
       .resolves.toEqual(['base']);
   });
 
-  it('surfaces background errors and falls back to an actionable download error', async () => {
-    await expect(requestLocalVideoModelDownload('tiny', vi.fn(async () => ({success: false, error: '模型文件下载失败（404）'}))))
-      .rejects.toThrow('模型文件下载失败（404）');
+  it.each([
+    '模型文件下载失败（404）',
+    'Hugging Face / HF Mirror / ModelScope connection failed',
+    'https://hf-mirror.com/onnx-community/whisper-tiny/resolve/main/config.json returned 503',
+  ])('shows an actionable error without exposing background diagnostics: %s', async error => {
+    await expect(requestLocalVideoModelDownload('tiny', vi.fn(async () => ({success: false, error}))))
+      .rejects.toThrow(LOCAL_VIDEO_MODEL_DOWNLOAD_ERROR);
+  });
+
+  it('maps missing responses and rejected message ports to the actionable download error', async () => {
     await expect(requestLocalVideoModelDownload('tiny', vi.fn(async () => undefined)))
       .rejects.toThrow(LOCAL_VIDEO_MODEL_DOWNLOAD_ERROR);
     await expect(requestLocalVideoModelDownload('tiny', vi.fn(async () => { throw new Error('Extension context invalidated'); })))
-      .rejects.toThrow('Extension context invalidated');
+      .rejects.toThrow(LOCAL_VIDEO_MODEL_DOWNLOAD_ERROR);
+    await expect(requestLocalVideoModelDownload('tiny', vi.fn(async () => { throw new Error('https://huggingface.co/ unavailable'); })))
+      .rejects.toThrow(LOCAL_VIDEO_MODEL_DOWNLOAD_ERROR);
     await expect(requestLocalVideoModelDownload('tiny', vi.fn(async () => { throw 'port closed'; })))
       .rejects.toThrow(LOCAL_VIDEO_MODEL_DOWNLOAD_ERROR);
   });
