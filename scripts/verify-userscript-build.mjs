@@ -76,7 +76,10 @@ const artifactBytes = Buffer.byteLength(source);
 // 单篇篇章参考、完整来源证明及重挂语义复用在同依赖主线 69d41e5e1 上增加 16,503 字节（0.8142%）：
 // 独立主线产物为 2,026,916，候选为 2,043,419；利用原余量后预算最小增加 17 KB，余 581 字节。
 // 不增加抽取模型或远程依赖；完整对照、散列与运行边界见 discourse-context-20261011/verification.json。
-const MAX_USERSCRIPT_BYTES = 2_044_000;
+// 再整合篇章参考主线 99afdbf69：同依赖独立 main 为 2,043,424，网站/长页候选为 2,049,560。
+// 增加 6,136 字节（0.3003%），利用主线余量后预算按实测最小增加 6 KB，余 440 字节；
+// 保留全部协议与执行边界校验，原始及最终对照见 common-site-expansion-20261011/userscript-size.json。
+const MAX_USERSCRIPT_BYTES = 2_050_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);

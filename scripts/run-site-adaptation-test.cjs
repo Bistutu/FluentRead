@@ -77,6 +77,29 @@ async function configPatch(updates) {
   }, {updates, sequence: ++sequence});
   assert.equal(response.success, true, JSON.stringify(response));
 }
+// persistConfig acknowledges background storage before the content document consumes it.
+// A changed rule synchronously invalidates the old session, emits the existing ended
+// event and publishes its adapters in the same stack. Poll after that event, rather
+// than starting a hotkey session that a delayed configuration update can then clear.
+async function configPatchAfterRuleInvalidation(page, updates) {
+  await page.evaluate(() => {
+    if (window.__adaptationRuleInvalidation) throw new Error('Rule invalidation wait already installed');
+    const state = {count: 0};
+    state.listener = () => { state.count += 1; };
+    window.__adaptationRuleInvalidation = state;
+    document.addEventListener('fluentread-translation-ended', state.listener);
+  });
+  try {
+    await configPatch(updates);
+    await page.waitForFunction(() => window.__adaptationRuleInvalidation?.count > 0, null, {timeout});
+  } finally {
+    await page.evaluate(() => {
+      const state = window.__adaptationRuleInvalidation;
+      if (state) document.removeEventListener('fluentread-translation-ended', state.listener);
+      delete window.__adaptationRuleInvalidation;
+    });
+  }
+}
 function inspectFixtureOwnerInPage({selector, count, text, wrapper}) {
   const owners = document.querySelectorAll(selector);
   if (owners.length !== 1) return count === undefined && text === undefined ? null : false;
@@ -456,7 +479,7 @@ async function runFixtureDynamic(page, item, evidence) {
           {timeoutMs: timeout, message: `${item.id}: held provider response`});
       }
       item.stage = 'dynamic-same-id-override';
-      await configPatch({siteAdaptation: updated});
+      await configPatchAfterRuleInvalidation(page, {siteAdaptation: updated});
       await page.waitForFunction(wrapper => !document.querySelector(wrapper), wrapper, {timeout});
       await worker.evaluate(() => { __adaptationHold = false; __adaptationReleases.splice(0).forEach(release => release()); });
       await waitForTranslationIdle(page, timeout, `${item.id}-released-stale-response`, timeout);
@@ -475,10 +498,11 @@ async function runFixtureDynamic(page, item, evidence) {
       await exactRestore();
       evidence.dynamic.override = {sameId: item.id, protected: dynamic.override.protect, remaining: dynamic.override.required,
         staleResponseDidNotCommit: Boolean(dynamic.override.lateText), restoreExact: true,
-        restoreScope: 'declared-container-innerHTML', stableIdleMsAfterRelease: 1200};
+        restoreScope: 'declared-container-innerHTML', stableIdleMsAfterRelease: 1200,
+        contentRuleApplySignal: 'fluentread-translation-ended', waitedBeforeRestart: true};
     } finally {
       await worker.evaluate(() => { __adaptationHold = false; __adaptationReleases.splice(0).forEach(release => release()); });
-      await configPatch({siteAdaptation: settings});
+      await configPatchAfterRuleInvalidation(page, {siteAdaptation: settings});
     }
     await fullToggle(page); await verify();
   }
