@@ -32,7 +32,7 @@ import {computed,onBeforeUnmount,onMounted,ref} from 'vue';
 import browser from 'webextension-polyfill';
 import {useUiI18n} from '@/src/ui/i18n';
 import {importMangaModel,type MangaDownloadState} from '../services/mangaOcrAssets';
-const props=withDefaults(defineProps<{showInpainting?: boolean; embedded?: boolean; imageRecognition?: boolean}>(),{showInpainting:true,embedded:false,imageRecognition:true});
+withDefaults(defineProps<{showInpainting?: boolean; embedded?: boolean; imageRecognition?: boolean}>(),{showInpainting:true,embedded:false,imageRecognition:true});
 const {translateLegacy}=useUiI18n();
 const status=ref<{ready:boolean;inpaintingReady?:boolean;bytes:number;download?:MangaDownloadState}|null>(null);
 const busy=ref(false),error=ref(''),statusError=ref(''),input=ref<HTMLInputElement>();
