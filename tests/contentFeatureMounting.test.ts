@@ -1,4 +1,5 @@
-import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {parseHTML} from 'linkedom';
 
 const mocks = vi.hoisted(() => ({
     config: {
@@ -365,5 +366,127 @@ describe('圈选翻译按需挂载生命周期', () => {
         await expect(startAreaTranslationFromContextMenu()).resolves.toBe(false);
         expect(mountedUi.remove).toHaveBeenCalledOnce();
         runtime.unmountAreaTranslator();
+    });
+});
+
+
+describe('focused selection dismissal runtime ownership', () => {
+    afterEach(() => {vi.restoreAllMocks(); vi.unstubAllGlobals();});
+
+    function focusDom() {
+        const window = parseHTML('<html><body><div id="origin"><div id="first-host"></div><div id="second-host"></div></div><dialog><button>Native control</button><p>Selected text</p></dialog></body></html>');
+        const document = window.document;
+        const origin = document.querySelector('#origin') as HTMLElement;
+        const firstHost = document.querySelector('#first-host') as HTMLElement;
+        const secondHost = document.querySelector('#second-host') as HTMLElement;
+        const dialog = document.querySelector('dialog') as HTMLDialogElement;
+        const native = dialog.querySelector('button') as HTMLElement;
+        const selected = dialog.querySelector('p')!.firstChild!;
+        let active: Element | null = native;
+        Object.defineProperties(document, {activeElement: {configurable: true, get: () => active},
+            hasFocus: {configurable: true, value: () => true}});
+        dialog.open = true;
+        Object.defineProperty(dialog, 'matches', {configurable: true, value: (selector: string) => selector === ':modal'});
+        for (const element of [native, dialog]) {
+            Object.defineProperty(element, 'getClientRects', {configurable: true,
+                value: () => [{left: 0, top: 0, width: 80, height: 24}]});
+        }
+        const nativeFocus = vi.fn(() => {active = native;});
+        Object.defineProperty(native, 'focus', {configurable: true, value: nativeFocus});
+        Object.defineProperty(dialog, 'focus', {configurable: true, value: vi.fn(() => {active = dialog;})});
+        window.getComputedStyle = (() => ({transform: 'none', display: 'block', visibility: 'visible'})) as unknown as typeof window.getComputedStyle;
+        const frames = new Map<number, FrameRequestCallback>();
+        let frame = 0;
+        window.requestAnimationFrame = callback => {frames.set(++frame, callback); return frame;};
+        window.cancelAnimationFrame = id => {frames.delete(id);};
+        class QuietResizeObserver {observe() {} disconnect() {}}
+        vi.stubGlobal('document', document);
+        vi.stubGlobal('Node', window.Node);
+        vi.stubGlobal('MutationObserver', window.MutationObserver);
+        vi.stubGlobal('ResizeObserver', QuietResizeObserver);
+        const append = origin.appendChild.bind(origin), insert = origin.insertBefore.bind(origin);
+        const moved = (node: Node) => {if (node === active) active = document.body;};
+        vi.spyOn(origin, 'appendChild').mockImplementation(node => {const result = append(node); moved(node); return result;});
+        vi.spyOn(origin, 'insertBefore').mockImplementation((node, before) => {const result = insert(node, before); moved(node); return result;});
+        return {document, origin, firstHost, secondHost, dialog, native, nativeFocus,
+            range: {startContainer: selected, endContainer: selected} as unknown as Range,
+            setActive: (element: Element | null) => {active = element;}};
+    }
+
+    it('forwards dismissal only after the current actual modal controller exists', async () => {
+        const dom = focusDom();
+        const actual = await vi.importActual<typeof import('@/src/features/selection-translation/content/modalDialogHost')>(
+            '@/src/features/selection-translation/content/modalDialogHost');
+        mocks.createModalDialogHostController.mockImplementation(actual.createModalDialogHostController);
+        const pending = pendingUi();
+        mocks.createVueShadowUi.mockReturnValueOnce(pending.promise);
+        const runtime = await import('@/src/features/selection-translation/content/runtime');
+        const request = runtime.mountSelectionTranslator({} as never);
+        const props = mocks.createVueShadowUi.mock.calls[0][1].props;
+        props.onFocusedCardDismiss();
+        expect(mocks.createModalDialogHostController).not.toHaveBeenCalled();
+        expect(dom.nativeFocus).not.toHaveBeenCalled();
+
+        pending.resolve({...ui(), shadowHost: dom.firstHost} as MockUi);
+        await request;
+        props.onSelectionRangeChange(dom.range);
+        const slot = dom.firstHost.parentElement!;
+        expect(slot.parentElement).toBe(dom.dialog);
+        dom.setActive(dom.firstHost);
+        props.onFocusedCardDismiss();
+
+        expect(dom.firstHost.parentElement).toBe(dom.origin);
+        expect(slot.isConnected).toBe(false);
+        expect(dom.nativeFocus).toHaveBeenCalledOnce();
+        expect(dom.nativeFocus).toHaveBeenCalledWith({preventScroll: true});
+        expect(dom.document.activeElement).toBe(dom.native);
+        props.onSelectionRangeChange(null);
+        runtime.unmountSelectionTranslator();
+        props.onFocusedCardDismiss();
+        expect(dom.nativeFocus).toHaveBeenCalledOnce();
+    });
+
+    it.each(['mounted', 'pending'] as const)('ignores a %s old generation dismissal after remount', async oldStage => {
+        const dom = focusDom();
+        const actual = await vi.importActual<typeof import('@/src/features/selection-translation/content/modalDialogHost')>(
+            '@/src/features/selection-translation/content/modalDialogHost');
+        mocks.createModalDialogHostController.mockImplementation(actual.createModalDialogHostController);
+        const oldPending = pendingUi();
+        const oldUi = {...ui(), shadowHost: dom.firstHost};
+        mocks.createVueShadowUi.mockReturnValueOnce(oldPending.promise).mockResolvedValueOnce({...ui(), shadowHost: dom.secondHost});
+        const runtime = await import('@/src/features/selection-translation/content/runtime');
+        const oldRequest = runtime.mountSelectionTranslator({} as never);
+        const oldProps = mocks.createVueShadowUi.mock.calls[0][1].props;
+        if (oldStage === 'mounted') {
+            oldPending.resolve(oldUi);
+            await oldRequest;
+            oldProps.onSelectionRangeChange(dom.range);
+            dom.setActive(dom.firstHost);
+        }
+        runtime.unmountSelectionTranslator();
+        dom.setActive(dom.native);
+        await runtime.mountSelectionTranslator();
+        const currentProps = mocks.createVueShadowUi.mock.calls[1][1].props;
+        currentProps.onSelectionRangeChange(dom.range);
+        const currentSlot = dom.secondHost.parentElement!;
+        dom.setActive(dom.secondHost);
+        if (oldStage === 'pending') {
+            oldPending.resolve(oldUi);
+            await expect(oldRequest).resolves.toBeNull();
+            expect(oldUi.remove).toHaveBeenCalledOnce();
+        }
+
+        oldProps.onFocusedCardDismiss();
+        expect(dom.secondHost.parentElement).toBe(currentSlot);
+        expect(currentSlot.parentElement).toBe(dom.dialog);
+        expect(dom.nativeFocus).not.toHaveBeenCalled();
+        currentProps.onFocusedCardDismiss();
+        expect(dom.secondHost.parentElement).toBe(dom.origin);
+        expect(dom.nativeFocus).toHaveBeenCalledOnce();
+        expect(dom.document.activeElement).toBe(dom.native);
+        runtime.unmountSelectionTranslator();
+        oldProps.onFocusedCardDismiss();
+        currentProps.onFocusedCardDismiss();
+        expect(dom.nativeFocus).toHaveBeenCalledOnce();
     });
 });

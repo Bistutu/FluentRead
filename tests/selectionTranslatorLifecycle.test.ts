@@ -44,7 +44,7 @@ function compileForTarget(target: SelectionBuildTarget): string {
 let app: Vue.App | undefined;
 afterEach(() => { app?.unmount(); app = undefined; vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
-function mountSelection(privateContext = false, selectionAdapter?: Record<string, unknown>, browserTarget: SelectionBuildTarget = 'chrome', configReady: Promise<void> = Promise.resolve()) {
+function mountSelection(privateContext = false, selectionAdapter?: Record<string, unknown>, browserTarget: SelectionBuildTarget = 'chrome', configReady: Promise<void> = Promise.resolve(), componentProps: Record<string, unknown> = {}) {
     vi.useFakeTimers();
     const config = Object.assign(new Config(), {
         disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual', theme: 'light',
@@ -135,7 +135,7 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         createText: () => ({}), createComment: () => ({}), setText() {}, setElementText() {},
         parentNode: () => null, nextSibling: () => null,
     });
-    const currentApp = renderer.createApp(exports.default, {selectionAdapter});
+    const currentApp = renderer.createApp(exports.default, {selectionAdapter, ...componentProps});
     const lifecycleErrors = vi.fn();
     currentApp.config.errorHandler = lifecycleErrors;
     app = currentApp;
@@ -2294,6 +2294,114 @@ describe('selection card Escape ownership', () => {
             expect(fixture.state.isLoading).toBe(!closed && !noSnapshot);
             expect(event.preventDefault).not.toHaveBeenCalled();
             expect(event.stopPropagation).not.toHaveBeenCalled();
+        },
+    );
+});
+
+
+describe('focused selection card dismissal requests', () => {
+    // The renderer stays null. Root activeElement and retargeted key/trust ports
+    // exercise the actual setup handler, not native browser focus behavior.
+    function focusedFixture() {
+        const dismiss = vi.fn();
+        const fixture = mountSelection(false, undefined, 'chrome', Promise.resolve(), {onFocusedCardDismiss: dismiss});
+        const root: {activeElement: unknown} = {activeElement: null};
+        class FocusNode {
+            getRootNode() {return root;}
+        }
+        class FocusElement extends FocusNode {
+            readonly children = new Set<unknown>();
+            constructor(readonly id = '') {super();}
+            contains(value: unknown) {return this.children.has(value);}
+        }
+        vi.stubGlobal('Node', FocusNode);
+        vi.stubGlobal('Element', FocusElement);
+        const host = Vue.markRaw(new FocusElement('fluent-read-selection-translator-container'));
+        const card = Vue.markRaw(new FocusElement('card'));
+        const button = Vue.markRaw(new FocusElement('close-button'));
+        const outside = Vue.markRaw(new FocusElement('host-native-control'));
+        host.children.add(card);
+        card.children.add(button);
+        root.activeElement = button;
+        Object.assign(fixture.document, {activeElement: host,
+            getElementById: vi.fn((id: string) => id === host.id ? host : null)});
+        const selected = Vue.markRaw({text: 'Keep the native dialog open.', parts: [], range: {} as Range});
+        const controller = new AbortController();
+        const dismissTools = vi.fn(() => false);
+        fixture.state.snapshot = selected;
+        fixture.state.selectedText = selected.text;
+        fixture.state.showTooltip = true;
+        fixture.state.tooltipRef = card;
+        fixture.state.translationAbortController = controller;
+        fixture.state.readingPanelRef = Vue.markRaw({dismissTools});
+        const keydown = [...(fixture.listeners.get('document:keydown') ?? [])][0]!;
+        expect(keydown).toBeTypeOf('function');
+        const escape = (target: unknown = host, isTrusted = true) => {
+            const event = {target, key: 'Escape', isTrusted, repeat: false, isComposing: false,
+                preventDefault: vi.fn(), stopPropagation: vi.fn()};
+            keydown(event);
+            return event;
+        };
+        return {...fixture, dismiss, host, card, button, outside, root, selected, controller, dismissTools, escape};
+    }
+
+    it.each(['owned Escape', 'close button handler'] as const)('requests synchronous restoration before hiding for %s', trigger => {
+        const fixture = focusedFixture();
+        // document.activeElement is only the closed host; the actual card focus
+        // decision must read the card's root and not mistake this for no focus.
+        fixture.dismiss.mockImplementation(() => {
+            expect(fixture.state.snapshot).toBe(fixture.selected);
+            expect(fixture.state.showTooltip).toBe(true);
+            expect(fixture.controller.signal.aborted).toBe(false);
+        });
+        if (trigger === 'owned Escape') {
+            const event = fixture.escape();
+            expect(event.preventDefault).toHaveBeenCalledOnce();
+            expect(event.stopPropagation).toHaveBeenCalledOnce();
+        } else {
+            fixture.root.activeElement = fixture.card;
+            fixture.state.closeTooltip();
+        }
+
+        expect(fixture.dismiss).toHaveBeenCalledOnce();
+        expect(fixture.state.snapshot).toBeNull();
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(fixture.controller.signal.aborted).toBe(true);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it.each(['outside Escape', 'untrusted Escape', 'no snapshot', 'tools tier', 'plain hideAll',
+        'configuration notification', 'unmount', 'focus outside card', 'hidden card', 'missing tooltip'] as const)(
+        'does not request focus restoration for %s', async condition => {
+            const fixture = focusedFixture();
+            if (condition === 'outside Escape') fixture.escape(fixture.outside);
+            else if (condition === 'untrusted Escape') fixture.escape(fixture.host, false);
+            else if (condition === 'no snapshot') {
+                fixture.state.snapshot = null;
+                fixture.escape();
+            } else if (condition === 'tools tier') {
+                fixture.dismissTools.mockReturnValue(true);
+                const event = fixture.escape();
+                expect(event.preventDefault).toHaveBeenCalledOnce();
+                expect(fixture.state.showTooltip).toBe(true);
+                expect(fixture.controller.signal.aborted).toBe(false);
+            } else if (condition === 'plain hideAll') fixture.state.hideAll();
+            else if (condition === 'configuration notification') {
+                fixture.config.harness.enabled = !fixture.config.harness.enabled;
+                fixture.state.selectionConfigVersion += 1;
+                await Vue.nextTick();
+                expect(fixture.state.snapshot).toBeNull();
+            } else if (condition === 'unmount') fixture.unmount();
+            else {
+                if (condition === 'focus outside card') fixture.root.activeElement = fixture.outside;
+                if (condition === 'hidden card') fixture.state.showTooltip = false;
+                if (condition === 'missing tooltip') fixture.state.tooltipRef = null;
+                fixture.state.closeTooltip();
+                expect(fixture.state.snapshot).toBeNull();
+            }
+
+            expect(fixture.dismiss).not.toHaveBeenCalled();
+            expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
         },
     );
 });

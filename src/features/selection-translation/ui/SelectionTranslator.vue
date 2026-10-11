@@ -203,6 +203,7 @@ import {useUiI18n} from '@/src/ui/i18n';
 
 const props = defineProps<{
   onSelectionRangeChange?: (range: Range | null) => void;
+  onFocusedCardDismiss?: () => void;
   /** 扩展自有文档页可提供更严格的来源范围及纯文本上下文；普通网页继续使用默认规则。 */
   selectionAdapter?: {
     acceptsRange: (range: Range) => boolean;
@@ -1816,7 +1817,14 @@ function translateSelectionFromContextMenu(selectionText?: string): boolean {
   return showTooltip.value;
 }
 
-function closeTooltip(): void { hideAll(); }
+function closeTooltip(): void {
+  const tooltip = tooltipRef.value;
+  const root = tooltip?.getRootNode();
+  const active = root && 'activeElement' in root ? root.activeElement : null;
+  if (showTooltip.value && tooltip && active instanceof Element
+    && (active === tooltip || tooltip.contains(active))) props.onFocusedCardDismiss?.();
+  hideAll();
+}
 function hideAll(): void {
   invalidateFreeReadingEnable();
   if (import.meta.env.BROWSER !== 'userscript') clearContextMenuSelection();
@@ -2024,7 +2032,7 @@ function handleKeydown(event: KeyboardEvent): void {
   if (isInsideUi(event.target)) {
     suppressSelectionRead();
     if (event.key === 'Escape' && readingPanelRef.value?.dismissTools()) { event.preventDefault(); event.stopPropagation(); return; }
-    if (event.key === 'Escape' && snapshot.value) { event.preventDefault(); event.stopPropagation(); hideAll(); }
+    if (event.key === 'Escape' && snapshot.value) { event.preventDefault(); event.stopPropagation(); closeTooltip(); }
     return;
   }
   if (event.key === 'Escape' && snapshot.value) { hideAll(); return; }

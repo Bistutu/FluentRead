@@ -5,7 +5,8 @@
  * 模块边界：测试只覆盖 selection modal controller，不触发 provider、Vue 或浏览器扩展消息。
  */
 import {parseHTML} from 'linkedom';
-import {describe, expect, it, vi} from 'vitest';
+import {afterEach, describe, expect, it, vi} from 'vitest';
+import type {ModalDialogHostController} from '@/src/features/selection-translation/content/modalDialogHost';
 import {calibrateModalDialogHostSlot, createModalDialogHostController, findSelectionModalDialog} from '@/src/features/selection-translation/content/modalDialogHost';
 
 function installDom(markup = '<html><body></body></html>') {
@@ -532,5 +533,329 @@ describe('selection modal dialog host', () => {
         await new Promise((resolve) => setTimeout(resolve, 20));
         rectSpy.mockRestore();
         controller.dispose();
+    });
+});
+
+
+describe('selection modal focused-card restoration', () => {
+    // Linkedom supplies real nodes/slots/listeners. These document focus, rect and
+    // trust ports describe controller state; native Tab/focus stays a root check.
+    const controllers = new Set<ModalDialogHostController>();
+    afterEach(() => {
+        for (const controller of controllers) controller.dispose();
+        controllers.clear();
+        vi.restoreAllMocks();
+    });
+
+    function focusedModal() {
+        const window = installDom('<html><body><div id="origin"><div id="host"><button id="owned">Card control</button></div><span id="marker"></span></div><dialog><button id="native">Native control</button><button id="next">Next native control</button><p>Selected text</p></dialog><button id="outside">Outside control</button></body></html>');
+        const document = window.document;
+        const origin = document.querySelector('#origin') as HTMLElement;
+        const host = document.querySelector('#host') as HTMLElement;
+        const owned = document.querySelector('#owned') as HTMLElement;
+        const marker = document.querySelector('#marker')!;
+        const dialog = document.querySelector('dialog') as HTMLDialogElement;
+        const native = document.querySelector('#native') as HTMLElement;
+        const next = document.querySelector('#next') as HTMLElement;
+        const outside = document.querySelector('#outside') as HTMLElement;
+        const text = dialog.querySelector('p')!.firstChild!;
+        let active: Node | null = native, documentFocused = true;
+        let afterMove: (() => void) | null = null;
+        Object.defineProperties(document, {activeElement: {configurable: true, get: () => active},
+            hasFocus: {configurable: true, value: () => documentFocused}});
+        dialog.open = true;
+        Object.defineProperty(dialog, 'matches', {configurable: true, value: (selector: string) => selector === ':modal'});
+        for (const element of [native, next, dialog]) {
+            Object.defineProperty(element, 'getClientRects', {configurable: true,
+                value: () => [{left: 0, top: 0, width: 80, height: 24}]});
+        }
+        window.getComputedStyle = ((element: Element) => ({transform: 'none',
+            display: (element as HTMLElement).style.display || 'block',
+            visibility: (element as HTMLElement).style.visibility || 'visible'})) as unknown as typeof window.getComputedStyle;
+        const focus = (element: HTMLElement) => {
+            const spy = vi.fn(() => {active = element;});
+            Object.defineProperty(element, 'focus', {configurable: true, value: spy});
+            return spy;
+        };
+        const nativeFocus = focus(native), nextFocus = focus(next), dialogFocus = focus(dialog);
+        focus(host); focus(owned); focus(outside);
+        const frames = new Map<number, FrameRequestCallback>();
+        let frame = 0;
+        window.requestAnimationFrame = callback => {frames.set(++frame, callback); return frame;};
+        window.cancelAnimationFrame = id => {frames.delete(id);};
+        const add = vi.spyOn(dialog, 'addEventListener');
+        const remove = vi.spyOn(dialog, 'removeEventListener');
+        const append = origin.appendChild.bind(origin), insert = origin.insertBefore.bind(origin);
+        const moved = (node: Node) => {
+            if (node !== host) return;
+            if (active === host || (active && host.contains(active))) active = document.body;
+            const callback = afterMove;
+            afterMove = null;
+            callback?.();
+        };
+        vi.spyOn(origin, 'appendChild').mockImplementation(node => {const result = append(node); moved(node); return result;});
+        vi.spyOn(origin, 'insertBefore').mockImplementation((node, before) => {const result = insert(node, before); moved(node); return result;});
+        const controller = createModalDialogHostController(host);
+        controllers.add(controller);
+        const range = {startContainer: text, endContainer: text} as unknown as Range;
+        const place = () => {
+            expect(controller.placeForRange(range)).toBe(true);
+            const slot = host.parentElement!;
+            expect(slot.parentElement).toBe(dialog);
+            return slot;
+        };
+        const focusin = (target: Node, trusted = true) => {
+            const event = new window.Event('focusin', {bubbles: true});
+            Object.defineProperty(event, 'isTrusted', {value: trusted});
+            target.dispatchEvent(event);
+        };
+        return {window, document, origin, host, owned, marker, dialog, native, next, outside, text,
+            nativeFocus, nextFocus, dialogFocus, controller, range, place, focusin, add, remove,
+            setActive: (element: Node | null) => {active = element;},
+            setDocumentFocused: (value: boolean) => {documentFocused = value;},
+            setAfterMove: (callback: () => void) => {afterMove = callback;}};
+    }
+
+    it.each(['body', 'documentElement', 'host', 'owned descendant'] as const)(
+        'synchronously restores the remembered native control after migration leaves focus on %s', destination => {
+            const fixture = focusedModal();
+            const slot = fixture.place();
+            const focusListener = fixture.add.mock.calls.find(([type]) => type === 'focusin')![1] as (event: FocusEvent) => void;
+            fixture.setActive(destination === 'owned descendant' ? fixture.owned : fixture.host);
+            fixture.setAfterMove(() => fixture.setActive(destination === 'body' ? fixture.document.body
+                : destination === 'documentElement' ? fixture.document.documentElement
+                    : destination === 'host' ? fixture.host : fixture.owned));
+
+            fixture.controller.restoreFromFocusedCard();
+
+            expect(fixture.host.parentElement).toBe(fixture.origin);
+            expect(fixture.host.nextSibling).toBe(fixture.marker);
+            expect(slot.isConnected).toBe(false);
+            expect(fixture.nativeFocus).toHaveBeenCalledOnce();
+            expect(fixture.nativeFocus).toHaveBeenCalledWith({preventScroll: true});
+            expect(fixture.document.activeElement).toBe(fixture.native);
+            expect(fixture.remove).toHaveBeenCalledWith('focusin', focusListener, true);
+            // A queued callback after detach must not retain a target or steal focus.
+            fixture.setActive(fixture.next);
+            focusListener({isTrusted: true, target: fixture.next} as unknown as FocusEvent);
+            fixture.controller.restoreFromFocusedCard();
+            expect(fixture.document.activeElement).toBe(fixture.next);
+            expect(fixture.nativeFocus).toHaveBeenCalledOnce();
+            expect(fixture.nextFocus).not.toHaveBeenCalled();
+        },
+    );
+
+    it('never focuses during generic restoration, close, rejection or disposal', () => {
+        for (const operation of ['restore', 'null range', 'close', 'rejection', 'dispose'] as const) {
+            const fixture = focusedModal();
+            const slot = fixture.place();
+            fixture.setActive(fixture.host);
+            if (operation === 'restore') fixture.controller.restore();
+            else if (operation === 'null range') fixture.controller.placeForRange(null);
+            else if (operation === 'close') {
+                fixture.dialog.open = false;
+                fixture.dialog.dispatchEvent(new fixture.window.Event('close'));
+            } else if (operation === 'rejection') {
+                for (let attempt = 0; attempt < 3; attempt += 1) {
+                    fixture.host.parentElement!.remove();
+                    fixture.controller.placeForRange(fixture.range);
+                }
+                expect(fixture.controller.placeForRange(fixture.range)).toBe(false);
+            } else fixture.controller.dispose();
+            fixture.controller.restoreFromFocusedCard();
+            expect(fixture.host.parentElement).toBe(fixture.origin);
+            expect(slot.isConnected).toBe(false);
+            expect(fixture.nativeFocus).not.toHaveBeenCalled();
+            expect(fixture.dialogFocus).not.toHaveBeenCalled();
+        }
+    });
+
+    it.each(['no active dialog', 'document unfocused', 'hasFocus unavailable', 'outside focus', 'null focus',
+        'closed dialog', 'detached dialog', 'host moved', 'slot moved', 'disposed'] as const)(
+        'does not move or focus a card without current focused ownership: %s', condition => {
+            const fixture = focusedModal();
+            const slot = condition === 'no active dialog' ? null : fixture.place();
+            fixture.setActive(fixture.host);
+            if (condition === 'document unfocused') fixture.setDocumentFocused(false);
+            if (condition === 'hasFocus unavailable') Object.defineProperty(fixture.document, 'hasFocus', {value: undefined});
+            if (condition === 'outside focus') fixture.setActive(fixture.outside);
+            if (condition === 'null focus') fixture.setActive(null);
+            if (condition === 'closed dialog') fixture.dialog.open = false;
+            if (condition === 'detached dialog') fixture.dialog.remove();
+            if (condition === 'host moved') {fixture.origin.appendChild(fixture.host); fixture.setActive(fixture.host);}
+            if (condition === 'slot moved') fixture.origin.appendChild(slot!);
+            if (condition === 'disposed') fixture.controller.dispose();
+            const parent = fixture.host.parentNode;
+
+            fixture.controller.restoreFromFocusedCard();
+
+            expect(fixture.host.parentNode).toBe(parent);
+            expect(fixture.nativeFocus).not.toHaveBeenCalled();
+            expect(fixture.dialogFocus).not.toHaveBeenCalled();
+        },
+    );
+
+    it.each(['external focus', 'document loses focus', 'dialog closes', 'dispose during migration', 'new modal placement'] as const)(
+        'completes cleanup without stealing focus when %s takes over during restore', interruption => {
+            const fixture = focusedModal();
+            const slot = fixture.place();
+            fixture.setActive(fixture.host);
+            let newDialog: HTMLDialogElement | null = null;
+            fixture.setAfterMove(() => {
+                if (interruption === 'external focus') fixture.setActive(fixture.next);
+                else if (interruption === 'document loses focus') fixture.setDocumentFocused(false);
+                else if (interruption === 'dialog closes') fixture.dialog.open = false;
+                else if (interruption === 'dispose during migration') fixture.controller.dispose();
+                else {
+                    newDialog = fixture.document.createElement('dialog') as HTMLDialogElement;
+                    newDialog.open = true;
+                    Object.defineProperty(newDialog, 'matches', {value: (selector: string) => selector === ':modal'});
+                    fixture.document.body.appendChild(newDialog);
+                    const text = fixture.document.createTextNode('New owner selection');
+                    newDialog.appendChild(text);
+                    expect(fixture.controller.placeForRange({startContainer: text, endContainer: text} as unknown as Range)).toBe(true);
+                }
+            });
+
+            fixture.controller.restoreFromFocusedCard();
+
+            expect(slot.isConnected).toBe(false);
+            expect(fixture.nativeFocus).not.toHaveBeenCalled();
+            expect(fixture.dialogFocus).not.toHaveBeenCalled();
+            if (newDialog) expect(fixture.host.parentElement!.parentElement).toBe(newDialog);
+            else expect(fixture.host.parentElement).toBe(fixture.origin);
+            if (interruption === 'external focus') expect(fixture.document.activeElement).toBe(fixture.next);
+        },
+    );
+
+    it.each(['removed', 'foreign document', 'focus unavailable', 'moved into card', 'outside modal', 'nested modal',
+        'disabled', 'inert', 'hidden', 'display none', 'visibility hidden', 'visibility collapse', 'empty rects', 'inspection throws'] as const)(
+        'falls back only to the active dialog when the remembered control is %s', invalidity => {
+            const fixture = focusedModal();
+            const slot = fixture.place();
+            if (invalidity === 'removed') fixture.native.remove();
+            if (invalidity === 'foreign document') Object.defineProperty(fixture.native, 'ownerDocument', {
+                value: parseHTML('<html><body></body></html>').document});
+            if (invalidity === 'focus unavailable') Object.defineProperty(fixture.native, 'focus', {value: undefined});
+            if (invalidity === 'moved into card') fixture.host.appendChild(fixture.native);
+            if (invalidity === 'outside modal') fixture.document.body.appendChild(fixture.native);
+            if (invalidity === 'nested modal') {
+                const nested = fixture.document.createElement('dialog') as HTMLDialogElement;
+                nested.open = true;
+                Object.defineProperty(nested, 'matches', {value: (selector: string) => selector === ':modal'});
+                fixture.dialog.appendChild(nested);
+                nested.appendChild(fixture.native);
+            }
+            if (invalidity === 'disabled') fixture.native.setAttribute('disabled', '');
+            if (invalidity === 'inert' || invalidity === 'hidden') fixture.native.setAttribute(invalidity, '');
+            if (invalidity === 'display none') fixture.native.style.display = 'none';
+            if (invalidity === 'visibility hidden') fixture.native.style.visibility = 'hidden';
+            if (invalidity === 'visibility collapse') fixture.native.style.visibility = 'collapse';
+            if (invalidity === 'empty rects') Object.defineProperty(fixture.native, 'getClientRects', {value: () => []});
+            if (invalidity === 'inspection throws') vi.spyOn(fixture.native, 'matches').mockImplementation(() => {throw new Error('Host inspection failed');});
+            fixture.setActive(fixture.host);
+
+            fixture.controller.restoreFromFocusedCard();
+
+            expect(fixture.host.parentElement).toBe(fixture.origin);
+            expect(slot.isConnected).toBe(false);
+            expect(fixture.nativeFocus).not.toHaveBeenCalled();
+            expect(fixture.dialogFocus).toHaveBeenCalledOnce();
+            expect(fixture.document.activeElement).toBe(fixture.dialog);
+        },
+    );
+
+    it.each(['missing view', 'missing rect API'] as const)('keeps a valid actual target with %s', missing => {
+        const fixture = focusedModal();
+        let controller = fixture.controller;
+        if (missing === 'missing view') {
+            // The controller reads its document view at construction time.
+            fixture.controller.dispose();
+            Object.defineProperty(fixture.document, 'defaultView', {configurable: true, value: undefined});
+            controller = createModalDialogHostController(fixture.host);
+            controllers.add(controller);
+        } else Object.defineProperty(fixture.native, 'getClientRects', {value: undefined});
+        expect(controller.placeForRange(fixture.range)).toBe(true);
+        fixture.setActive(fixture.host);
+        controller.restoreFromFocusedCard();
+        expect(fixture.nativeFocus).toHaveBeenCalledOnce();
+        expect(fixture.document.activeElement).toBe(fixture.native);
+        expect(fixture.host.parentElement).toBe(fixture.origin);
+    });
+
+    it.each(['document unfocused', 'hasFocus unavailable', 'null active', 'outside active', 'non-element active'] as const)(
+        'does not remember a control from an invalid capture state: %s', capture => {
+            const fixture = focusedModal();
+            if (capture === 'document unfocused') fixture.setDocumentFocused(false);
+            if (capture === 'hasFocus unavailable') Object.defineProperty(fixture.document, 'hasFocus', {configurable: true, value: undefined});
+            if (capture === 'null active') fixture.setActive(null);
+            if (capture === 'outside active') fixture.setActive(fixture.outside);
+            if (capture === 'non-element active') fixture.setActive(fixture.text);
+            fixture.place();
+            if (capture === 'document unfocused') {
+                fixture.setActive(fixture.native);
+                fixture.focusin(fixture.native);
+            }
+            fixture.setDocumentFocused(true);
+            if (capture === 'hasFocus unavailable') Object.defineProperty(fixture.document, 'hasFocus', {value: () => true});
+            fixture.setActive(fixture.host);
+
+            fixture.controller.restoreFromFocusedCard();
+
+            expect(fixture.nativeFocus).not.toHaveBeenCalled();
+            expect(fixture.dialogFocus).toHaveBeenCalledOnce();
+            expect(fixture.document.activeElement).toBe(fixture.dialog);
+        },
+    );
+
+    it.each(['trusted native', 'untrusted native', 'different active element', 'owned host'] as const)(
+        'updates the remembered target only for valid actual focusin: %s', focusEvent => {
+            const fixture = focusedModal();
+            fixture.place();
+            if (focusEvent === 'owned host') {
+                fixture.setActive(fixture.host);
+                fixture.focusin(fixture.host);
+            } else {
+                fixture.setActive(focusEvent === 'different active element' ? fixture.native : fixture.next);
+                fixture.focusin(fixture.next, focusEvent !== 'untrusted native');
+            }
+            fixture.setActive(fixture.host);
+            fixture.controller.restoreFromFocusedCard();
+            expect(fixture.nativeFocus).toHaveBeenCalledTimes(focusEvent === 'trusted native' ? 0 : 1);
+            expect(fixture.nextFocus).toHaveBeenCalledTimes(focusEvent === 'trusted native' ? 1 : 0);
+            expect(fixture.document.activeElement).toBe(focusEvent === 'trusted native' ? fixture.next : fixture.native);
+        },
+    );
+
+    it('remembers a later trusted native focus after an unfocused initial placement', () => {
+        const fixture = focusedModal();
+        fixture.setDocumentFocused(false);
+        fixture.place();
+        fixture.setDocumentFocused(true);
+        fixture.setActive(fixture.next);
+        fixture.focusin(fixture.next);
+        fixture.setActive(fixture.host);
+        fixture.controller.restoreFromFocusedCard();
+        expect(fixture.nativeFocus).not.toHaveBeenCalled();
+        expect(fixture.nextFocus).toHaveBeenCalledOnce();
+        expect(fixture.document.activeElement).toBe(fixture.next);
+    });
+
+    it.each(['unavailable fallback', 'focus throws'] as const)('finishes DOM cleanup safely when %s', failure => {
+        const fixture = focusedModal();
+        const slot = fixture.place();
+        if (failure === 'unavailable fallback') {
+            fixture.native.remove();
+            fixture.dialog.setAttribute('inert', '');
+        } else fixture.nativeFocus.mockImplementation(() => {throw new Error('Host focus failed');});
+        fixture.setActive(fixture.host);
+
+        expect(() => fixture.controller.restoreFromFocusedCard()).not.toThrow();
+
+        expect(fixture.host.parentElement).toBe(fixture.origin);
+        expect(fixture.host.nextSibling).toBe(fixture.marker);
+        expect(slot.isConnected).toBe(false);
+        expect(fixture.dialogFocus).not.toHaveBeenCalled();
+        expect(fixture.nativeFocus).toHaveBeenCalledTimes(failure === 'focus throws' ? 1 : 0);
     });
 });

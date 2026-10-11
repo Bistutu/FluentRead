@@ -1040,9 +1040,27 @@ Escape 组自然0，8阶段/3原生场景/4原始图。真实可信三击选中�
 
 证据分别位于 round43-selection-modal-audit/ 的 baseline、owner、preparation-followup-runtime-v2/validation-combined-attempt1，round44-vocabulary-list-audit/ 的实际pair与formal-owner-proposal，以及 round45-owned-escape-vocabulary-integration/ 的 SOURCE-HANDOFF、build-attempt1、ARTIFACT-COMPARISON、native-vocabulary-attempt1/2和native-escape-attempt1（两组成功运行各附ROOT视觉回执）。本批只本地保存，未推送、PR、合并或发布；未验证Firefox实机、完整用户脚本原生运行、线上provider、设备、所有站点、深色/响应式或原生IME/工具菜单。
 
+## 第四十二批：关闭划词卡片后恢复原生弹窗焦点
+
+在第四十一批真实生产扩展的后续验收中，卡片关闭后焦点留在 BODY；同一页面再按一次可信且未取消的 Tab，document.hasFocus() 变为 false，原生 modal 仍打开。该次仅执行 forward 场景，backward 与 Enter 未执行；未推测焦点去了浏览器哪个控件。失败原始事件、两张原图与清理记录保留在 round46-authentication-copy/native-focus-attempt1，不改写为成功。
+
+本批增加一个专用卡片关闭回调：真实焦点位于可见自有卡片时，先同步通知当前挂载代次，再隐藏卡片。原生宿主 controller 记录当前 dialog 中实际聚焦的有效控件；专用恢复路径先清理宿主挂载，再恢复仍可用的原控件，否则尝试仍活跃的 dialog。只有当前会话、自有宿主焦点、文档仍有焦点、同一活跃 modal 等条件满足时才尝试；外部已接管焦点、宿主关闭或替换、旧挂载与 disposed 均保留原处理。通用 restore/dispose 不新增聚焦，没有全局 focus listener、控件扫描、缓存索引或新计时器。原 Escape 消费、工具层优先、请求取消与 hideAll 归属保持；本批未修改翻译失败文案。
+
+三份原 owner 的 131 项完整基线自然0；候选三份完整 owner 自然0、194/194 passed（划词109、宿主65、挂载20），无名称筛选、pending 或新增 skip，原131个案例保留。真实 controller 与 runtime 两完整模块逐文件 statements/branches/functions/lines 均100%：分别325/230/24/325、56/34/4/56命中计数。覆盖配置继承原插件、别名、全局初始化和原门槛，只在私有运行中限定这两模块，没有改正式 coverage 清单或忽略源码。SFC owner 编译真实 setup、render=null，受控 DOM 与可信/焦点端口案例不代替原生证明，也不称 SFC 四维100%。运行1975个输入稳定；审计641文件/10,614索引声明不是全仓执行量，既有词典超时预期 stderr 保留。
+
+八核心构建阶段均自然0，1974个生产/构建输入稳定；与第四十一批路径相同，只有本批三个生产文件改变，两轮 Node 与 pnpm 二进制字节相同。完整脚本3,581,272→3,582,802 B（+1,530），原3,600,000 B预算通过、余量17,198 B；ordinary1,957,345→1,958,831 B（+1,486）。Chrome444文件65,533,549→65,536,838 B（+3,289），Firefox444文件65,532,628→65,535,873 B（+3,245）。两端 manifest 全文、各252个非 JS/MJS/HTML/CSS 静态路径/SHA及两个固定 MJS 相同，其他分区净字节0；未把每个生成字节变化单独归因于源码。本批用少量字节修复键盘连续使用，未测 ZIP、CPU、heap、transfer 或设备性能。Greasy Fork 原资源固定前置失败仍保留，未重跑且未通过。
+
+新构建在独立临时 Edge profile 中完成12阶段、两个不同 targetId 的原生页面验收，parent/child自然0。每页真实可信三击选中同句、公开开启划词、实际 closed ShadowRoot 卡片显示原通用失败；3次真实 Tab 的第一步聚焦原生关闭按钮，第三步聚焦自有卡片关闭按钮。可信 Escape 完整 dispatch 后 defaultPrevented=true，卡片/指示器消失、slot为0、宿主仍打开且为 :modal、cancel/close均0；实际焦点立即回到原生 close-dialog，document.hasFocus() 保持 true。两页均已经在关闭按钮，因此关闭卡片后的恢复导航实际按键数均0，不能宣称执行过 Tab/Shift+Tab 双向恢复。随后各一次可信 Enter 产生 detail=0 的原生按钮 click，宿主 close一次、cancel0，焦点回到 open-dialog。此处证明直接恢复焦点与 Enter 激活；无效控件 fallback、嵌套 dialog、Firefox、任意网站焦点陷阱、屏幕阅读器及线上 provider 尚未原生验证。
+
+根任务逐张查看全部6张原始PNG，卡片关闭后的原生按钮和 Enter 后的打开按钮均有可见焦点边框；焦点与事件结论依据实际 DOM/可信事件记录。运行使用 macos-background-cdp / launchservices-no-foreground，secondary 上1280×900正常可见窗口、browserFrontmost=false；连续 focusEvents、console error/warning、page/request错误与被阻断HTTP均为空。1974源码、6个正式候选、444产物及运行输入保持；自有浏览器、夹具服务、监控器、临时profile四项清理均成功。
+
+本批首次候选尝试在浏览器创建前自然1、0阶段/0截图：Python按路径组件排序与 JavaScript按完整路径字串排序不同，1,974个路径/大小/SHA全元组本来相同。私有驱动仅在前后两次完整比对中对 expected 副本使用同一排序，保留全量文件和哈希门禁；不改产品、wrapper、binder或夹具、不重建源码。失败与v1/v2计划完整保留，新v3绑定同一真实构建后在 native-focus-attempt2通过。
+
+冻结证据位于 round47-modal-focus-repair/ 的 baseline、SOURCE-HANDOFF、validation-attempt1、peer-owner/actual-review、build-attempt1、ARTIFACT-COMPARISON、COMPARISON-RECEIPT、peer-native-v3、native-focus-attempt1/2及ROOT视觉回执。三个生产和三个测试文件均有整文件逆向基线证明及独立只读复核。本批仅本地保存，无推送、PR、合并或发布；未借用参考仓库代码。
+
 ## 后续候选
 
-第四十一批完整脚本为3,581,272 B，原3,600,000 B预算通过、余量18,728 B。空选择查找与卡片Escape的两处最小修改已通过148项直接owner、八核心构建、收藏公开UI与原生两次关闭验收；受控getter操作数与真实模板/键盘证据分别报告，不宣称CPU收益。后续先核对通用划词失败提示的真实错误协议，以及关闭卡片后BODY焦点的后续原生Tab行为；尚未实施错误文案、设置导航或焦点恢复。保留当前请求归属、取消、词典独立成功结果、原键盘合同、完整服务/语言/许可和原预算，不根据脱敏内容脚本配置推断缺少凭据。第三十八、三十九批取色器与分类布局实际范围保持，没有在本批重跑。
+第四十二批完整脚本为3,582,802 B，原3,600,000 B预算通过、余量17,198 B。原生卡片关闭的直接焦点恢复与 Enter 激活已通过本批194项直接owner、八核心构建和两页原生验收，未宣称关闭后双向Tab导航、无效控件fallback或CPU收益。下一候选是划词失败的有限错误分类提示：私有审查已核对真实错误协议和七种语言现有“密钥或权限无效”映射；尚未正式实施，不使用未上传资源commit替换用户脚本语言固定引用。保留请求归属、取消、词典独立成功结果、完整服务/语言/许可与原预算。第三十八、三十九批取色器与分类布局实际范围保持，没有在本批重跑。
 
 
 合成段 loading 挂载循环、缓存键重复术语解析、高级请求限制禁用与缓存复习快捷键已在第二十七至三十批分别修复。第三十一轮调度只读探针保留现检查：13 个受控普通场景虽减少同 owner 复验，但第三个 source-only 读取中的 style getter 同步替换同文本 Text 时，复用先前结果留下脱离节点身份；这只是受控端口反例，未当成原生复现或 CPU 收益，未实施。证据为 `round31-page-scheduling-audit/`。第三十二轮已撤回 Cloud 普通历史入口的减加载推荐；LearningCenter 的 History/Memory 首用加载已在第三十一批实施，实际收藏阶段新增请求文件减少 20,641 B，父装配、加载故障与原行为通过限定验证。第三十四轮审计确认的八个既不可达设置子 UI 已在第三十二批排除，完整独立脚本实际减少 183,104 B，仍比原 3,600,000 B 门槛多 38,416 B。继续审查其 Options/IIFE 归属与可证明不可达的资源，保持可达服务、本地模型/TTS、数据、语言、许可和原门槛，不为达预算删除已有能力。请求队列仍在 response body 完成前占用并发槽；会改变错误种类的同步 deadline 合并未实施。
