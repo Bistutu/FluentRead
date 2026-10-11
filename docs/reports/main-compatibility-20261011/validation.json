@@ -1,0 +1,555 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "ad21620f80d02729836dc77b3704ce0cf0f73dc7",
+  "sourceTree": "acf60c2a721632b5956e544822b45a97877c0d0e",
+  "mergeParents": [
+    "e74968150f308af2c176b013226f6a4a02c3520f",
+    "25f5dca794848782f717493ce0e08545a0e57b35"
+  ],
+  "frozenMain": "25f5dca794848782f717493ce0e08545a0e57b35",
+  "frozenPr912": "ee2c29bd5be95c2670ff2fa9ecc13985bbe85651",
+  "sourceSnapshotSha256": "0c17abc7d10c95bae3a1e92d5613542b4ac1be917c31d2a044e27605d7c3f46b",
+  "everyBuiltTrackedFileMatchesCommit": true,
+  "modes": {
+    "standard": {
+      "bytes": 2018735,
+      "sha256": "77799000f4e0060ebdfd57ee7e922e08cd4baeb549fcb271fd0959cbfc7de4f8",
+      "budgetBytes": 2025000,
+      "originalVerifierExitCode": 0,
+      "originalBuildReceiptPath": "final-standard-receipt.json",
+      "originalBuildReceiptSha256": "fdeb286d7b68ea4a4b748a0215dfa64c46c7fc5b7e6640e7e90f3bf79ee5894f",
+      "logSha256": "58ba687b65086bf50342a8d8a6645149649e512ccb10bfc4117673ec4422cfd6",
+      "marginBytes": 6265
+    },
+    "standalone": {
+      "bytes": 3587088,
+      "sha256": "4d3f021326ab7a0b713b5b3f5d595e3d5b507eacd75ea727c90f320f3f7b8095",
+      "budgetBytes": 3600000,
+      "originalVerifierExitCode": 0,
+      "originalBuildReceiptPath": "final-standalone-receipt.json",
+      "originalBuildReceiptSha256": "e4af67cd931ece82a3b88eb644bbc167ac37d6d000f5bdfd71e0b1880db2266d",
+      "logSha256": "fe56c48c789bc4853cfff2edaa76ea02ba30e2c2a0b815a518859b5bcd88d275",
+      "marginBytes": 12912
+    }
+  },
+  "tests": {
+    "distinctRetainedCases": 769,
+    "files": [
+      {
+        "path": "tests/inputTranslationBackground.test.ts",
+        "casesRetained": 28,
+        "gitBlob": "82bb17b898a5d05d7ca0fe66feda4c920fc5a8d0",
+        "sha256": "293e5d989f5784870786287d9c5ac0f264e62881dd77a4e5996fc342a12424a8",
+        "bytes": 29050,
+        "validationStage": "affected-tests"
+      },
+      {
+        "path": "tests/areaTextTranslation.test.ts",
+        "casesRetained": 39,
+        "gitBlob": "f007dbb601f2bc89933234aa6bb2faac0133629c",
+        "sha256": "d4ac2ccb4911eeceee1ccf7187f13e3c87f31d7c077fb6f4e7830abaa2dcf484",
+        "bytes": 18772,
+        "validationStage": "affected-tests"
+      },
+      {
+        "path": "tests/backgroundMessageRuntimePrivacy.test.ts",
+        "casesRetained": 11,
+        "gitBlob": "5f2e46e07defa4f3484b9ddc43971653d6a8a1e9",
+        "sha256": "5d7916eef1039e1938222514121b7d4f5ceea6002f759b538fd02e1913efc752",
+        "bytes": 10631,
+        "validationStage": "affected-tests"
+      },
+      {
+        "path": "tests/backgroundFeatureHandlers.test.ts",
+        "casesRetained": 54,
+        "gitBlob": "4f23efdfa25afcbeab581f2b9ce1cba16c76da00",
+        "sha256": "31ecd666257f46c82c51a69b34ce3d59c3f86bbfd8f1f2dbbe5250cde8211a5a",
+        "bytes": 75615,
+        "validationStage": "affected-tests"
+      },
+      {
+        "path": "tests/floatingPopupAuthorization.test.ts",
+        "casesRetained": 56,
+        "gitBlob": "49637c4d128b8a51f5157d3ee3c3b278517ded26",
+        "sha256": "3678d793b4890e94c23742e480d81bb742f50d86da34fe45996d21312248feb3",
+        "bytes": 10774,
+        "validationStage": "affected-tests"
+      },
+      {
+        "path": "tests/floatingPopupOverlay.test.ts",
+        "casesRetained": 22,
+        "gitBlob": "1e521f93fa0517fae45a775fd280d012f6d053fa",
+        "sha256": "4cb0fb4d070913922a2f056f1f6be9b207590f83241ba4e6a5cf8342254415b2",
+        "bytes": 16819,
+        "validationStage": "affected-tests"
+      },
+      {
+        "path": "tests/popupEmbedded.test.ts",
+        "casesRetained": 39,
+        "gitBlob": "498b303c2553b19fb9f0d5bbcaca29031e2f8a08",
+        "sha256": "5ad87e7702ecbfb364028100d7859241d3e70e60c3cc714bf2caa10cde35c3dc",
+        "bytes": 15742,
+        "validationStage": "affected-tests"
+      },
+      {
+        "path": "tests/targetTranslationResult.test.ts",
+        "casesRetained": 86,
+        "gitBlob": "78f5099fc45675ea6db7f5af30ac7003551e3d1e",
+        "sha256": "6fec17a2272892e3c43ae543e7ee3e5b13c990fa12cea4fbe844aa3b3b3d1c6a",
+        "bytes": 12340,
+        "validationStage": "affected-tests"
+      },
+      {
+        "path": "tests/sameTargetLanguageClient.test.ts",
+        "casesRetained": 74,
+        "gitBlob": "094daf85851aecd4d3b2def9c54fc2c311440af4",
+        "sha256": "28220cc43998480193f43c19fb941d2b3ed94de159eeb6b2bbcbd4c24ef96aef",
+        "bytes": 21483,
+        "validationStage": "affected-tests"
+      },
+      {
+        "path": "tests/translationCore.test.ts",
+        "casesRetained": 304,
+        "gitBlob": "8c92c51a328e623c78b525e968b48cb3c5f55db6",
+        "sha256": "b1d89b868ed544c68520800ebfce84cb133d73019eaf6e1eb7127fb67584e70b",
+        "bytes": 253352,
+        "validationStage": "affected-tests"
+      },
+      {
+        "path": "tests/userscriptViteConfig.test.ts",
+        "casesRetained": 51,
+        "gitBlob": "bca90714e13f44a328108382c62c46c21e6a470f",
+        "sha256": "a07274389a38af1dbdce2a9b4a68ebf5b102f882fc3c61b21690119632122b3a",
+        "bytes": 33636,
+        "validationStage": "svg-tests-fixed"
+      },
+      {
+        "path": "tests/userscriptCompression.test.ts",
+        "casesRetained": 5,
+        "gitBlob": "23277578baaab5e753759cea4dac446ed0a752c4",
+        "sha256": "f6dc470fac671b22251c22b1cb4f89493c49fab0687ca8daf2cd87ab75c263c8",
+        "bytes": 2239,
+        "validationStage": "affected-tests"
+      }
+    ],
+    "initialExecutionCases": 762,
+    "finalConfigExecutionCases": 51,
+    "initialConfigCasesReplacedInDistinctTotal": 44,
+    "fullSuiteExecuted": false,
+    "coverageRun": false,
+    "failureRetained": {
+      "file": "svg-tests.log.txt",
+      "sha256": "2c519a41067fcc5b5512d2e87b0da5e43e8afa1360dc0733bec109934c77f385"
+    },
+    "failureCause": "Test fixture referenced the wrong bundled inflate export; corrected alias only. Final 51 cases passed."
+  },
+  "audit": {
+    "files": 654,
+    "syntacticCaseCount": 10865,
+    "executedTests": false
+  },
+  "resourcePolicy": {
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "cpuTargetIsCooperativeNotOsQuota": true
+  },
+  "toolchain": {
+    "node": "26.7.0",
+    "pnpm": "9.12.1",
+    "vite": "5.4.19",
+    "wxt": "0.20.18"
+  },
+  "stages": [
+    {
+      "name": "affected-tests",
+      "startedAtUTC": "2026-10-11T03:55:32.818849+00:00",
+      "args": [
+        "test",
+        "tests/inputTranslationBackground.test.ts",
+        "tests/areaTextTranslation.test.ts",
+        "tests/backgroundMessageRuntimePrivacy.test.ts",
+        "tests/backgroundFeatureHandlers.test.ts",
+        "tests/floatingPopupAuthorization.test.ts",
+        "tests/floatingPopupOverlay.test.ts",
+        "tests/popupEmbedded.test.ts",
+        "tests/targetTranslationResult.test.ts",
+        "tests/sameTargetLanguageClient.test.ts",
+        "tests/translationCore.test.ts",
+        "tests/userscriptViteConfig.test.ts",
+        "tests/userscriptCompression.test.ts"
+      ],
+      "baselineCommit": "e74968150f308af2c176b013226f6a4a02c3520f",
+      "sourceSnapshotSha256": "9718cf5f8bd8e0dd5aa0a36448623126cdb9bdb32cec843c31d448394d2f1db9",
+      "patchSha256": "0835730162e77a6a7c2e46f6c056f0482226ed558913096b8fd7f8b8957f9b15",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T03:55:42.329938+00:00",
+      "wallSeconds": 9.508,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "affected-tests.log.txt",
+      "logSha256": "27a3dca0194470f4a3fb5e0c3dfa8561ad4f59a61d14d93f9628f4ce67930946",
+      "timeFileSha256": "3ea9072573091c4ea4fbe41282d2329ec74eff85bc21a455921849becf5b87d5"
+    },
+    {
+      "name": "compile",
+      "startedAtUTC": "2026-10-11T03:56:09.489738+00:00",
+      "args": [
+        "compile"
+      ],
+      "baselineCommit": "e74968150f308af2c176b013226f6a4a02c3520f",
+      "sourceSnapshotSha256": "9718cf5f8bd8e0dd5aa0a36448623126cdb9bdb32cec843c31d448394d2f1db9",
+      "patchSha256": "0835730162e77a6a7c2e46f6c056f0482226ed558913096b8fd7f8b8957f9b15",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T03:56:28.335675+00:00",
+      "wallSeconds": 18.843,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "compile.log.txt",
+      "logSha256": "c6d541ed058cefffb02f71a02be099a4e834b77d930a52920b7ff9dce9301e8f",
+      "timeFileSha256": "309d3d6e1027473e4d257798492fdb351915c4680a0db2518e4a9185bffc5d17"
+    },
+    {
+      "name": "audit",
+      "startedAtUTC": "2026-10-11T03:56:28.694679+00:00",
+      "args": [
+        "test:audit"
+      ],
+      "baselineCommit": "e74968150f308af2c176b013226f6a4a02c3520f",
+      "sourceSnapshotSha256": "9718cf5f8bd8e0dd5aa0a36448623126cdb9bdb32cec843c31d448394d2f1db9",
+      "patchSha256": "0835730162e77a6a7c2e46f6c056f0482226ed558913096b8fd7f8b8957f9b15",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T03:56:30.275996+00:00",
+      "wallSeconds": 1.579,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "audit.log.txt",
+      "logSha256": "2ab87d5eb1ba81c54193876ffa2945a2c0cbcee6dccfd3e46fc0056e2047e32d",
+      "timeFileSha256": "1166a17e8e4c1d1b13698cd3768d89cf4ecdd88436102eaa515bc16b84148b1b"
+    },
+    {
+      "name": "standard",
+      "startedAtUTC": "2026-10-11T03:56:30.633073+00:00",
+      "args": [
+        "build:userscript"
+      ],
+      "baselineCommit": "e74968150f308af2c176b013226f6a4a02c3520f",
+      "sourceSnapshotSha256": "9718cf5f8bd8e0dd5aa0a36448623126cdb9bdb32cec843c31d448394d2f1db9",
+      "patchSha256": "0835730162e77a6a7c2e46f6c056f0482226ed558913096b8fd7f8b8957f9b15",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T03:56:34.715735+00:00",
+      "wallSeconds": 4.08,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "standard.log.txt",
+      "logSha256": "adcd2b2bb4f734981c1a254cfd1847ca97b28a2a5d3e485c4be3e94c148acbe1",
+      "timeFileSha256": "f72b47818c61bb3e54caa0c20f4b079589e625700105d9ee5a6eb75216d6f2f6",
+      "artifact": {
+        "mode": "userscript",
+        "bytes": 2018735,
+        "sha256": "77799000f4e0060ebdfd57ee7e922e08cd4baeb549fcb271fd0959cbfc7de4f8",
+        "verifierExitCode": 0,
+        "originalBudget": 2025000
+      }
+    },
+    {
+      "name": "standalone",
+      "startedAtUTC": "2026-10-11T03:56:35.107249+00:00",
+      "args": [
+        "build:userscript:standalone"
+      ],
+      "baselineCommit": "e74968150f308af2c176b013226f6a4a02c3520f",
+      "sourceSnapshotSha256": "9718cf5f8bd8e0dd5aa0a36448623126cdb9bdb32cec843c31d448394d2f1db9",
+      "patchSha256": "0835730162e77a6a7c2e46f6c056f0482226ed558913096b8fd7f8b8957f9b15",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T03:56:41.998435+00:00",
+      "wallSeconds": 6.888,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "standalone.log.txt",
+      "logSha256": "085d81409ae946ac1d46a5a978a88c51ab1073bd9c74d47a9b9529d5f951d8f8",
+      "timeFileSha256": "ea57061ca66f1023d74ecbc798569947404da7f2b185e79297c56f11934bec03",
+      "artifact": {
+        "mode": "userscript-standalone",
+        "bytes": 3604328,
+        "sha256": "f741cdb1de9f5e43ae8534fa34fb9a69c7a979e3a432f1911ad67fef64ba98d1",
+        "verifierExitCode": 1,
+        "originalBudget": 3600000
+      }
+    },
+    {
+      "name": "gf-original",
+      "startedAtUTC": "2026-10-11T03:57:41.239473+00:00",
+      "args": [
+        "build:userscript:greasyfork"
+      ],
+      "baselineCommit": "e74968150f308af2c176b013226f6a4a02c3520f",
+      "sourceSnapshotSha256": "9718cf5f8bd8e0dd5aa0a36448623126cdb9bdb32cec843c31d448394d2f1db9",
+      "patchSha256": "0835730162e77a6a7c2e46f6c056f0482226ed558913096b8fd7f8b8957f9b15",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T03:57:41.801228+00:00",
+      "wallSeconds": 0.559,
+      "exitCode": 1,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-original.log.txt",
+      "logSha256": "96f6ce56cbd12527c590325bc8252cb84fa9e1dc1d05c858f88e616bb6a37b0f",
+      "timeFileSha256": "cb896c6af3acfe3c636babf1fc70ddff7b6fec3c19b7f8a99cf22347386e26e0"
+    },
+    {
+      "name": "gf-raw-diagnostic",
+      "startedAtUTC": "2026-10-11T03:57:42.162691+00:00",
+      "args": [
+        "exec",
+        "vite",
+        "build",
+        "--config",
+        "userscript/vite.config.ts"
+      ],
+      "baselineCommit": "e74968150f308af2c176b013226f6a4a02c3520f",
+      "sourceSnapshotSha256": "9718cf5f8bd8e0dd5aa0a36448623126cdb9bdb32cec843c31d448394d2f1db9",
+      "patchSha256": "0835730162e77a6a7c2e46f6c056f0482226ed558913096b8fd7f8b8957f9b15",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T03:57:45.259277+00:00",
+      "wallSeconds": 3.094,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-raw-diagnostic.log.txt",
+      "logSha256": "22d5c6c39060a31f06e803f5891780bd4a25c864f1b223c48da6867dd1b94ee7",
+      "timeFileSha256": "b4559400cff419ba8f54fe680cf9175b91a821098de6428335ce9a2874d05b8c"
+    },
+    {
+      "name": "chrome",
+      "startedAtUTC": "2026-10-11T04:01:19.707025+00:00",
+      "args": [
+        "build"
+      ],
+      "baselineCommit": "e74968150f308af2c176b013226f6a4a02c3520f",
+      "sourceSnapshotSha256": "9718cf5f8bd8e0dd5aa0a36448623126cdb9bdb32cec843c31d448394d2f1db9",
+      "patchSha256": "0835730162e77a6a7c2e46f6c056f0482226ed558913096b8fd7f8b8957f9b15",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T04:01:41.804527+00:00",
+      "wallSeconds": 22.095,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "chrome.log.txt",
+      "logSha256": "12024caa8fd580e7b2f4aad598b655ac92c0462e3bd7e5165fa78b580ce216dd",
+      "timeFileSha256": "97eb242aa557b00f8eb3c1e27417319aabc6be747f4aef261daa231189fdb3d3"
+    },
+    {
+      "name": "firefox",
+      "startedAtUTC": "2026-10-11T04:01:42.163177+00:00",
+      "args": [
+        "build:firefox"
+      ],
+      "baselineCommit": "e74968150f308af2c176b013226f6a4a02c3520f",
+      "sourceSnapshotSha256": "9718cf5f8bd8e0dd5aa0a36448623126cdb9bdb32cec843c31d448394d2f1db9",
+      "patchSha256": "0835730162e77a6a7c2e46f6c056f0482226ed558913096b8fd7f8b8957f9b15",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T04:02:05.146947+00:00",
+      "wallSeconds": 22.981,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "firefox.log.txt",
+      "logSha256": "1b7e7cc56bfe41498133c6f1dd443b1fba6515899161a7084d5f0c7809471cb4",
+      "timeFileSha256": "0d80f8e173289580cc29959fa24a81d9961a1271401973485eda1b54823c7af5"
+    },
+    {
+      "name": "extension-manifests",
+      "startedAtUTC": "2026-10-11T04:02:05.520045+00:00",
+      "args": [
+        "verify:extension-manifests"
+      ],
+      "baselineCommit": "e74968150f308af2c176b013226f6a4a02c3520f",
+      "sourceSnapshotSha256": "9718cf5f8bd8e0dd5aa0a36448623126cdb9bdb32cec843c31d448394d2f1db9",
+      "patchSha256": "0835730162e77a6a7c2e46f6c056f0482226ed558913096b8fd7f8b8957f9b15",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T04:02:06.164884+00:00",
+      "wallSeconds": 0.642,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "extension-manifests.log.txt",
+      "logSha256": "c99281f50821c66ee71f0f3d47f8f32ddff5cda8c49280b1428a4c5ed8bca7df",
+      "timeFileSha256": "3f812bb382ca6c7e12e79ede8bcbd1c69af36e0a48b27d1f14a3fc0c1704fde8"
+    },
+    {
+      "name": "svg-tests",
+      "startedAtUTC": "2026-10-11T04:03:53.994714+00:00",
+      "args": [
+        "test",
+        "tests/userscriptViteConfig.test.ts"
+      ],
+      "baselineCommit": "e74968150f308af2c176b013226f6a4a02c3520f",
+      "sourceSnapshotSha256": "09e9254f734494c489601b80cb28019c0d58de43a9e5f8ce40553e7b522b50e4",
+      "patchSha256": "6adcad74eb355de756050cd225072f2d10c2ca16242d2357c4e1d8d836b8aa52",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T04:03:57.347677+00:00",
+      "wallSeconds": 3.35,
+      "exitCode": 1,
+      "sourceUnchangedDuringStage": true,
+      "log": "svg-tests.log.txt",
+      "logSha256": "2c519a41067fcc5b5512d2e87b0da5e43e8afa1360dc0733bec109934c77f385",
+      "timeFileSha256": "40de01d5a93a5d0e1588dc18bf938ab6f1ba24c83387855f3df634b6a4899d6b"
+    },
+    {
+      "name": "svg-tests-fixed",
+      "startedAtUTC": "2026-10-11T04:05:59.668379+00:00",
+      "args": [
+        "test",
+        "tests/userscriptViteConfig.test.ts"
+      ],
+      "baselineCommit": "e74968150f308af2c176b013226f6a4a02c3520f",
+      "sourceSnapshotSha256": "0c17abc7d10c95bae3a1e92d5613542b4ac1be917c31d2a044e27605d7c3f46b",
+      "patchSha256": "d771ce953c912bec75e1f9e225068bb5ab6305f8679b5b912809c0fcb2e62daf",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T04:06:03.030359+00:00",
+      "wallSeconds": 3.359,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "svg-tests-fixed.log.txt",
+      "logSha256": "b123d59645b53e45081246d35640283bf676fe5dbd522879042da3355963c557",
+      "timeFileSha256": "8fff906ca572572dd055e6c62415a51c166b1cc53db4cccf98e02e1b6c4bf421"
+    },
+    {
+      "name": "svg-compile",
+      "startedAtUTC": "2026-10-11T04:06:03.387504+00:00",
+      "args": [
+        "compile"
+      ],
+      "baselineCommit": "e74968150f308af2c176b013226f6a4a02c3520f",
+      "sourceSnapshotSha256": "0c17abc7d10c95bae3a1e92d5613542b4ac1be917c31d2a044e27605d7c3f46b",
+      "patchSha256": "d771ce953c912bec75e1f9e225068bb5ab6305f8679b5b912809c0fcb2e62daf",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T04:06:22.187095+00:00",
+      "wallSeconds": 18.797,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "svg-compile.log.txt",
+      "logSha256": "c6d541ed058cefffb02f71a02be099a4e834b77d930a52920b7ff9dce9301e8f",
+      "timeFileSha256": "914da74381dfc860af968256bcb7c8e7d577d6938062c71504f407bd8041d17a"
+    },
+    {
+      "name": "svg-audit",
+      "startedAtUTC": "2026-10-11T04:06:22.544891+00:00",
+      "args": [
+        "test:audit"
+      ],
+      "baselineCommit": "e74968150f308af2c176b013226f6a4a02c3520f",
+      "sourceSnapshotSha256": "0c17abc7d10c95bae3a1e92d5613542b4ac1be917c31d2a044e27605d7c3f46b",
+      "patchSha256": "d771ce953c912bec75e1f9e225068bb5ab6305f8679b5b912809c0fcb2e62daf",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T04:06:24.137031+00:00",
+      "wallSeconds": 1.589,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "svg-audit.log.txt",
+      "logSha256": "7d8c060ad595b24785c4d19a95a796b514c021db7eddbafce50d382054bf4a4a",
+      "timeFileSha256": "b358b98aa07a222a89a8b678cfe0f4e28996bf42dbf3aa330994799f8a546745"
+    },
+    {
+      "name": "final-standard",
+      "startedAtUTC": "2026-10-11T04:06:24.492145+00:00",
+      "args": [
+        "build:userscript"
+      ],
+      "baselineCommit": "e74968150f308af2c176b013226f6a4a02c3520f",
+      "sourceSnapshotSha256": "0c17abc7d10c95bae3a1e92d5613542b4ac1be917c31d2a044e27605d7c3f46b",
+      "patchSha256": "d771ce953c912bec75e1f9e225068bb5ab6305f8679b5b912809c0fcb2e62daf",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T04:06:28.543389+00:00",
+      "wallSeconds": 4.048,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "final-standard.log.txt",
+      "logSha256": "58ba687b65086bf50342a8d8a6645149649e512ccb10bfc4117673ec4422cfd6",
+      "timeFileSha256": "ca56872ed193161579e7ea051cb67cd7a676b5100755236fd2fbec2a7a3b40bf",
+      "artifact": {
+        "mode": "userscript",
+        "bytes": 2018735,
+        "sha256": "77799000f4e0060ebdfd57ee7e922e08cd4baeb549fcb271fd0959cbfc7de4f8",
+        "verifierExitCode": 0,
+        "originalBudget": 2025000
+      }
+    },
+    {
+      "name": "final-standalone",
+      "startedAtUTC": "2026-10-11T04:06:28.937475+00:00",
+      "args": [
+        "build:userscript:standalone"
+      ],
+      "baselineCommit": "e74968150f308af2c176b013226f6a4a02c3520f",
+      "sourceSnapshotSha256": "0c17abc7d10c95bae3a1e92d5613542b4ac1be917c31d2a044e27605d7c3f46b",
+      "patchSha256": "d771ce953c912bec75e1f9e225068bb5ab6305f8679b5b912809c0fcb2e62daf",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T04:06:35.949218+00:00",
+      "wallSeconds": 7.009,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "final-standalone.log.txt",
+      "logSha256": "fe56c48c789bc4853cfff2edaa76ea02ba30e2c2a0b815a518859b5bcd88d275",
+      "timeFileSha256": "7fc32ff21dc1df0b68c34b4ced3d72c00f38eefa0c020f498fe3c879c367431d",
+      "artifact": {
+        "mode": "userscript-standalone",
+        "bytes": 3587088,
+        "sha256": "4d3f021326ab7a0b713b5b3f5d595e3d5b507eacd75ea727c90f320f3f7b8095",
+        "verifierExitCode": 0,
+        "originalBudget": 3600000
+      }
+    }
+  ],
+  "nativeBuildReuse": {
+    "sourceSnapshotSha256": "9718cf5f8bd8e0dd5aa0a36448623126cdb9bdb32cec843c31d448394d2f1db9",
+    "onlyTrackedDifferencesToFinal": [
+      "tests/userscriptViteConfig.test.ts",
+      "userscript/vite.config.ts"
+    ],
+    "reason": "WXT build does not consume userscript/vite.config.ts; original SVG JSON, component, WXT configuration and all native source hashes unchanged.",
+    "manifestBinding": {
+      "chrome-mv3": {
+        "bytes": 3232,
+        "sha256": "961d10d94833c621d25cd57c2668613840b1b5ff2fc8aa96628448b12a767924",
+        "matchesFrozenMainWebAccessiblePopupContract": true
+      },
+      "firefox-mv2": {
+        "bytes": 2398,
+        "sha256": "205907f75626b559ff0211fc4ebcd1c5798f952a7f9b7076a549416c0911492a",
+        "matchesFrozenMainWebAccessiblePopupContract": true
+      }
+    }
+  },
+  "originalArtifactBindingReceipt": {
+    "file": "FINAL-ARTIFACT-BINDING.json",
+    "sha256": "64b757910072d57f13658670d6c063f1aed45ccd31d9bc9229205cb67db59bd4"
+  }
+}

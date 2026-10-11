@@ -1,17 +1,17 @@
-建议标题：fix: share provider retry cooldowns and preserve userscript budgets
+建议标题：fix: preserve shared retry cooldowns and frozen main compatibility
 
-供应商返回 429 或带有效 Retry-After 的 503 后，单个 SDK 请求退避仍允许其它请求继续派发；取消调用者也可能在忽略 abort 的底层传输结束前归还并发槽。此改动将服务反馈接入既有共享调度池，保留 SDK 重试次数和 deadline，使 broker 与真实 SDK attempts 共同等待。Doubao Seed 的直接 adapter 使用实际配置模型选择计数路径，连接 probe 的 transportLease 延续到原始传输 settle；取消结果不缓存。
+供应商返回 429 或带有效 Retry-After 的 503 后，单个 SDK 请求退避仍会让其它请求继续派发；取消调用者也可能在忽略 abort 的底层传输结束前归还并发槽。此分支把 broker 与真实 SDK attempts 接入既有共享调度池，保留重试次数和 deadline、connection probe 的原始 transport lease、实际配置模型计数路径及取消不缓存。输入翻译在首次等待前固定可信 sender 的普通、私密或未知状态，跨标签页同 ID 的取消继续隔离。
 
-输入框处理器在首次等待前快照可信 sender.tab 的普通、私密或未知状态，再附同一请求的隐私/glossary及不可枚举 control。保留 main 的请求 ID 校验和取消注册；跨标签页相同 ID 的取消隔离。
+本次将官方 main `25f5dca794848782f717493ce0e08545a0e57b35` 合入源码 `ad21620f80d02729836dc77b3704ce0cf0f73dc7`（tree `acf60c2a721632b5956e544822b45a97877c0d0e`），保留 target-language/literal preflight、授权 popup、PDF 字体按需加载与 hover 改进。三个生产冲突仅在中文文件头，独立回归组合并为 28 项输入测试；81 个 broker/provider/HTTP 依赖与原 #906 字节相同。冻结 #912 的生产功能已复用，仅补齐两个 gzip 回归，不重复移植或关闭 PR。语言 pin 前进到经 740 个官方 Git 对象逐字核验的冻结 main，以覆盖旧 pin 缺失的五份资源；没有发布远程资源或更换依赖。
 
-standalone 完整 Options 的能力过滤原本只阻止显示，仍打包不可达设置。六个 userscript loader 增加构建分支，pako 使用同版本解压入口，tldts 的七项静态导出经严格字面量白名单无损还原。扩展保留原 loader 分支，标准/GF 不启用后缀表插件；依赖锁、资源 pin、许可、权限、版本和原预算保持。
+合并后 standalone 原成品 3,604,328 B 超出原门禁 4,328 B。仅对真实 ServiceIcon 消费者无损压缩完整静态 SVG 数据，实减 17,240 B，保留 38 服务、63 path、所有属性/顺序与完整 Lobe MIT。最终标准 2,018,735 B／2,025,000 B（余 6,265），standalone 3,587,088 B／3,600,000 B（余 12,912）；标准预算继承冻结 main，未进一步放宽，GF 原 2 MB 保留。标准产物在 SVG 改动前后字节相同。
 
-最终源码 `3618398ba86436938747a32f4072857a9dae4db2`（tree `d13bc56a107cbd0c96f764b7d0f020528778ed5b`）的标准成品 2,004,276 B、standalone 3,589,855 B，分别低于原预算 5,724/10,145 B。原 CLI 输入逐文件绑定到该提交；完整 SHA、对照补丁、复现命令及失败项见本目录 README 和 standalone-validation-20261011.json。
+验证：12 文件769项不同定向用例通过（762−44+51），类型检查、测试审计、原 userscript CLI/verifier、Chrome/Firefox 构建及 manifest 核验通过。native 构建到最终源码仅 userscript 构建配置与其测试两文件不同，相关输入未变，已有成功回执按来源复用；未把静态审计或历史批次算成新执行数。
 
-验证：本次 8 文件151项不同定向用例最终通过，含24项真实后缀表逐字恢复/错误输入拒绝；类型检查、测试审计、两种 userscript 原构建/verifier、Chrome/Firefox构建及manifest核验通过。历史606项结果单独按17文件、日志及Git blob核对，不与本次执行数机械相加。E1–E5 是同基线独立实构建，E6填补剩余门禁缺口；E7实际仅省60 B，选择保留单编码器。后缀表压缩使整体gzip传输大小增加425 B，初始化与表解码的有限样本已测；RSS、未压缩浏览器控制组与缓存冷态未测。
+Neo 0.51.0（Chrome/155.0.8309.26）九个隔离临时 profile 的 localhost 验收通过，原 IIFE 前后 SHA 一致，CommonJS 各6向量、gzip offset 输入24/30、各5错误合约、设置交互通过。standalone 实际七项 tldts 导出与22解析向量匹配，真实 Vue ServiceIcon/createApp 的38服务63path DOM属性匹配并全部卸载。外部 API 为零；所属进程/监听器/socket清理完成，启动开关已关闭。
 
-Neo 0.51.0（Chrome/155.0.8309.26）的临时 profile localhost 验收通过：两种原 IIFE 执行前后 SHA 一致，CommonJS 固定向量各6项、gzip offset 输入24/27项、错误合约各5项及设置交互通过。standalone 实际七项后缀表导出完整字节与22个域名解析向量一致，不可用设置提示及保留语音控件通过。每版3次未加包装器的新进程采样，IIFE append 至设置/CSS就绪中位数为标准192.2 ms、standalone210.6 ms；UI不同，不能作同功能排名。表暖态重放45个样本中位数2.2 ms；另3次首次自然解码观察为4.7 ms，含未量化native包装器开销，0 ms构造结果受计时精度限制。原始样本、绑定与夹具失败记录见 browser-validation-20261011.json。
+每版3次无 API 包装的新进程采样，IIFE append 至设置/CSS就绪中位数标准195.0 ms、standalone213.1 ms；UI不同不能作同功能排名。另3次第一次真实 SVG 解码观察中位0.9 ms，含未量化包装器开销，bytes与inflate合计，低于精度的0 ms不代表免费。首个观察样本未在 import 前固定完整 helper 文件 SHA，版本边界明确保留，实际观察函数正文跨版本一致。没有未压缩浏览器对照、RSS、吞吐或缓存冷态证明。
 
-扩展无痕 localhost 验收、真实供应商/模型/搜索、模型下载/推理、原生Wayland/Cua、RTX5090 WebGPU、GF构建或全仓库测试仍未运行；日常profile/权限未修改。完整本地浏览器harness未发布；新profile不证明OS/V8/磁盘缓存冷态，没有E5浏览器控制组、RSS或完整性能比较，不宣称全局最优或全面Pareto优势。
+Greasy Fork 仍被固定资源 lock、生成数据不一致及实际超出2 MB三项阻塞；直接Vite诊断2,486,441 B超486,441 B，不能当作原发布成功。扩展无痕、真实供应商/模型/搜索、下载/推理、原生Wayland/Cua、实际RTX5090 WebGPU、全仓库测试和coverage仍未运行。日常profile与权限未修改。完整来源、命令、失败、限制及原始样本见 ../main-compatibility-20261011/README.md 和 JSON 回执。
 
 此文件是建议正文；外部 PR 正文未更新。
