@@ -645,9 +645,32 @@ node scripts/testing/analyze-bundle-size.mjs .output/chrome-mv3 /path/to/baselin
 
 报告另按现有流程执行文档、Storybook 构建和两份 verifier，独立记录于本轮 `docs-checks/`。证据在 `/private/tmp/fluentread-performance-experience-20261010/` 下 `round30-cache-key-integration/`、`round30-cache-key-tests/`、`round30-cache-key-peer/`、`round30-cache-key-source-peer/` 和 `round30-cache-key-test-peer/`。仅本地保存；未推送、创建 PR、合并、发布或修改参考项目。
 
+## 第二十九批：恢复高级设置的全局请求限制编辑
+
+高级设置的“翻译并发数、每秒最多请求数、每分钟最多请求数”原本可见却全部禁用：外层属于 `settings-advanced/requests`，传给真实 `RequestLimitFields` 的 active 条件却是 `settings-translation`。高级页 active 为 false，离开去网页翻译后隐藏旧表单反而 active。现仅更正这个所属分区，保留 `viewActive`；整个父源逆换后逐字恢复基线，script/style、子组件整数/范围/零值校验、回调身份、配置补丁与服务/模型继承均不改。没有新增依赖、缓存、模块或样式，未使用参考仓库设计。
+
+现有 `settingsSectionsLifecycle` 增加可选真实父子 SFC 装配：真实父模板、`RequestLimitFields` 和 `useSettingsActionContext` 执行，以展示 slot 和公共数字控件端口隔离 Element Plus。原 20 条声明、24 项执行的 describe 母体逐字保留；逆去可选 fixture 扩展和新增 describe 后整个 owner 还原。新增两条声明展开四项，覆盖正常三字段编辑/不限速零值、离区与返回、KeepAlive 停用与返回、卸载拒绝旧事件。patch 为原交接接口的受控端口，组件测试不冒认真实存储。
+
+旧源完整 owner RED **25 passed / 3 failed**：原 24 项与新增卸载控制通过，三项失败对应高级全禁用、离高级去网页翻译后错误启用、KeepAlive 返回后编辑无效；自然 exit 1，无未处理错误。修复后相关 10 文件 **1,106/1,106**：主表单 28、请求限制组件 5、纯限制 5、操作上下文 3、分区导航 6、设置架构 38、配置存储受控故障边界 87，以及既有架构边界 14、源码头 904、验证归属 16。故障用例的预期诊断保留，不声称所有日志无警告。测试审计 638 文件、10,501 条声明；类型、三端构建及两份产物 verifier 八阶段均 exit 0，20 个源/test/config 输入 SHA 前后相同。V8 include/exclude 与四维阈值不变；两个 SFC 沿现有编译/构建/真实 UI 验证归属，无新 TypeScript 业务模块，不声称全项目四维覆盖率。
+
+同一冻结 native driver 分别用旧 `round30-chrome` 和新 `round31-chrome`，各新建 profile。旧包实际看到三字段全 disabled，在正确 enabled 断言自然 exit 1；新包通过九阶段（含监听/启动两阶段）：新配置 10/10/250、三字段 enabled、公开输入并 blur 保存 7/3/90、两项 rate 为 0、离开并返回、重载和 390px 操作后权威存储保持 7/0/0。`configStorageRead` 只返回三数值与空凭据布尔值，无 seed、直接配置写接口、真实 provider 或公网请求。窄屏 document/body 都为 390px，三输入 x=43、宽 100px、实际 DOM 焦点可达。root 检查五张局部 PNG：旧包两张逐字相同，查看一次；另三张均查看，标签、说明、行式布局与品牌焦点样式保持。
+
+启动为 `macos-background-cdp`、`launchservices-no-foreground`，正常可见 1440×1000 窗口完整放在第二屏；已知 owner 焦点检查均 false，连续监听无该 PID 激活，console error/warning、公网请求均 0。两次实际浏览器均 guarded close、删除 profile、停止监听成功。首个沙箱 attempt 在系统通知监听就绪前失败，尚未启动浏览器，保留报告并换允许通知的环境重试。旧包复现后 root 汇总曾把两个尚未确认 owner 的身份行当成已知 owner 行，触发 KeyError；保留报告并单独验证收据，没有重跑浏览器或放宽 driver。RED 元数据首版读到 root 交接后的新源，v2 明确区分旧运行快照和交接后源。这些环境/汇总历史不是产品回归。此证据不等于 Firefox 实机、真实服务、低端设备或 CPU/耗时测量。
+
+| 同口径 Chrome 产物 | 第二十八批 | 第二十九批 | 本批差值 |
+| --- | ---: | ---: | ---: |
+| 文件数 | 433 | 433 | 0 |
+| 全部原始字节 | 65,587,719 B | 65,587,716 B | −3 B |
+| 固定 ZIP | 23,689,082 B | 23,689,125 B | +43 B |
+
+同一排序、固定日期、JSZip 3.10.1 DEFLATE6 函数各测一次，重现旧 ZIP，包输入前后不变。400 个同路径文件逐字相同，options HTML 与 32 项哈希路径连带变化；分区字符串缩短三字节，ZIP 微差不当作性能收益。相对历史 `55d1219bd` 累计原始减少 1,787,352 B、固定 ZIP 减少 492,150 B，保留历史基线缺原逐文件 SHA 的限制，未重压历史包或制作发布包。Userscript 冻结 1,955,167 B，增加 44 B；此 SFC 不在该入口，MD5 包装变化单独记录，不归因于设置改动、不声称整个程序初始化时机等价。
+
+证据在 `/private/tmp/fluentread-performance-experience-20261010/` 下 `round31-request-limits-integration/`、`round31-settings-request-limits-tests/`、`round31-request-limits-native-plan/`、`round31-request-limits-source-peer/` 与 `round31-request-limits-emitted-peer/`。独立源审查通过。仅本地保存，未推送、创建 PR、合并或发布；主检出、参考仓库、版本和锁文件保持。
+
+
 ## 后续候选
 
-合成段 loading 挂载循环已在第二十七批通过实际运行时 RED/GREEN 与原生九阶段验证修复。缓存键的重复术语解析已在第二十八批通过公开请求 RED/GREEN 与 broker 限定四维 100% 验证后复用；后续继续检查条件组件依赖和页面候选调度的可测开销，保持来源、身份与取消语义。请求队列保持 response body 完成前占用并发槽；同步 deadline 合并会改变错误种类，未实施。
+合成段 loading 挂载循环、缓存键重复术语解析与高级请求限制禁用已在第二十七至二十九批分别修复。第三十一轮调度只读探针保留现检查：13 个受控普通场景虽减少同 owner 复验，但第三个 source-only 读取中的 style getter 同步替换同文本 Text 时，复用先前结果留下脱离节点身份；这只是受控端口反例，未当成原生复现或 CPU 收益，未实施。证据为 `round31-page-scheduling-audit/`。CloudConfigBackup 历史页、LearningCenter 收藏页约 77,423 B / 22,570 B 仅为静态归属候选，未构建或测实际请求；后续核对草稿和异步失败归属再决定。请求队列仍在 response body 完成前占用并发槽；会改变错误种类的同步 deadline 合并未实施。
 
 模型目录与语言检测、写作设置与阅读卡片的职责拆分已在第四批完成，第五批补齐轻量中文标签和字幕模型协议。继续审计其他公开出口和高频全文/悬浮/选区路径，只对能复现的重复工作做最小优化。
 

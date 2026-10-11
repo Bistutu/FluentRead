@@ -452,7 +452,7 @@
       <SettingsPanel name="requests" :active="props.activePanel">
 <SettingsGroup :title="t('settings.requestLimits.globalTitle')" :description="t('settings.requestLimits.globalHelp')">
         <div data-testid="translation-scheduler-settings">
-          <RequestLimitFields :active="viewActive && props.activeSection === 'settings-translation'" :model-value="config" @update:model-value="Object.assign(config, $event)" />
+          <RequestLimitFields :active="viewActive && props.activeSection === 'settings-advanced'" :model-value="config" @update:model-value="Object.assign(config, $event)" />
           <SettingsItem label="失败后最多重试">
             <SettingsNumberInput :model-value="config.translationMaxRetries" aria-label="失败后最多重试" :min="0" :max="10" @change="handleTranslationMaxRetriesChange" />
           </SettingsItem>

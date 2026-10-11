@@ -54,8 +54,11 @@ function createDomRenderer(document: Document, focus: ReturnType<typeof vi.fn>) 
     }});
 }
 
-async function mountSections({ready = Promise.resolve(), configSnapshot, template = false, providerGate = Promise.resolve(), activeSection = 'settings-translation'}:
-    {ready?: Promise<void>; configSnapshot?: Record<string, unknown>; template?: boolean; providerGate?: Promise<void>; activeSection?: string} = {}) {
+type NumericChange = (value: number | undefined) => void;
+type NumericPort = {disabled: boolean; change: NumericChange};
+
+async function mountSections({ready = Promise.resolve(), configSnapshot, template = false, providerGate = Promise.resolve(), activeSection = 'settings-translation', requestLimits = false}:
+    {ready?: Promise<void>; configSnapshot?: Record<string, unknown>; template?: boolean; providerGate?: Promise<void>; activeSection?: string; requestLimits?: boolean} = {}) {
     const frames = new Map<number, FrameRequestCallback>();let nextFrame = 0;
     const query = vi.fn((_options: Record<string, unknown>) => Promise.resolve([] as {id?: number}[]));
     const send = vi.fn((_id: number, _message: {type: string; isEnabled?: boolean; mode?: string}) => Promise.resolve());
@@ -70,6 +73,7 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     vi.stubGlobal('document', dom?.document ?? {querySelector: findTarget});
     if (dom) vi.stubGlobal('HTMLInputElement', dom.window.HTMLInputElement);
     const focus = vi.fn(), providerMounted = vi.fn(), providerUnmounted = vi.fn();
+    const numericPorts = new Map<string, NumericPort>();
     let providerState: Record<string, any> | undefined;
     const providerReady = deferred<void>();
     const loadProvider = vi.fn(async () => {
@@ -90,6 +94,8 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
         browser: {runtime: {sendMessage: vi.fn(() => Promise.resolve())}, tabs: {query, sendMessage: send}}};
     (globalThis as Record<string, unknown>)[key] = data;
     const mocks: Plugin = {name: 'settings-sections-lifecycle-mocks', enforce: 'pre', resolveId(id, importer) {
+        if (requestLimits && id.endsWith('/RequestLimitFields.vue')) return null;
+        if (requestLimits && (id.endsWith('/SettingsGroup.vue') || id.endsWith('/SettingsItem.vue'))) return '\0sections-slots';
         if (template && id.endsWith('/CustomOpenAIProviderDialog.vue')) {
             // 只替换父模板的动态模块加载端口；真正的子组件在首次请求后由 Vite 编译，测试不重写其 watch/草稿行为。
             if (importer?.includes('SettingsSections.vue')) return '\0sections-provider-loader';
@@ -106,6 +112,7 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
         if (id === '@element-plus/icons-vue') return '\0sections-icons';
         if (id.endsWith('/src/platform/browser/capabilities')) return '\0sections-capabilities';return null;
     }, load(id) {
+        if (id === '\0sections-slots') return `import {h} from 'vue';export default {setup(_, {slots}) {return () => h('div', null, slots.default?.());}};`;
         if (id === '\0sections-panel') return `import {h} from 'vue';export default {setup(_, {slots}) {return () => h('div', null, slots.default?.());}};`;
         if (id === '\0sections-provider-loader') return `export default await globalThis.${key}.loadProvider();`;
         if (id === '\0sections-service-catalog') return `import {h} from 'vue';export default {props: ['active'], emits: ['add:service'], setup(props, {emit}) {return () => props.active ? h('button', {'data-testid': 'fixture-add-service', onClick: () => emit('add:service')}, '添加服务') : null}};`;
@@ -121,6 +128,10 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     server = await createServer({configFile: false, appType: 'custom', logLevel: 'silent', root: process.cwd(),
         plugins: [mocks, vue()], resolve: {alias: {'@': resolve(process.cwd())}},
         ssr: {noExternal: ['element-plus', '@element-plus/icons-vue', 'webextension-polyfill']},server: {hmr: false, middlewareMode: true}});
+    if (requestLimits) {
+        const child = (await server.ssrLoadModule('/src/features/settings/ui/services/RequestLimitFields.vue')).default;
+        compileClientTemplate(child, 'src/features/settings/ui/services/RequestLimitFields.vue');
+    }
     const component = (await server.ssrLoadModule('/src/features/settings/ui/SettingsSections.vue')).default;
     component.ssrRender = undefined;component.render = () => null;
     if (template) compileClientTemplate(component, 'src/features/settings/ui/SettingsSections.vue');
@@ -134,6 +145,20 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
         ? runtime.h(component, {...props, ref: (vm: any) => {if (vm) state = vm.$.setupState;}})
         : runtime.h({render: () => null}, {key: 'other'})})});
     let dialogPort: Record<string, any> | undefined;
+    if (requestLimits) {
+        // Only the numeric widget is a public port; parent/child templates, validation and action context stay real.
+        app.component('el-input-number', runtime.defineComponent({inheritAttrs: false,
+            props: {modelValue: Number, disabled: Boolean,
+                onChange: {type: Function as import('vue').PropType<NumericChange>, required: true}},
+            setup(numberProps, {attrs}) {
+                return () => {
+                    const change = numberProps.onChange;
+                    numericPorts.set(String(attrs['aria-label']), {disabled: numberProps.disabled, change});
+                    return runtime.h('input', {...attrs, type: 'number', value: numberProps.modelValue, disabled: numberProps.disabled,
+                        onChange: (event: Event) => change(Number((event.target as HTMLInputElement).value))});
+                };
+            }}));
+    }
     if (template) {
         app.mixin({mounted() {
             if (this.$options.__name === 'CustomOpenAIProviderDialog') {providerState = (this as any).$.setupState;providerMounted();}
@@ -146,7 +171,7 @@ async function mountSections({ready = Promise.resolve(), configSnapshot, templat
     app.provide(runtime.ssrContextKey, {modules: new Set<string>()});app.config.warnHandler = () => {};
     app.mount(dom ? dom.document.querySelector('#fixture')! : {});await settle();
     if (template) {await new Promise(resolve => setTimeout(resolve, 60));await settle();}
-    return {state, props, visible, document: dom?.document, domWindow: dom?.window, loadProvider, focus, providerMounted, providerUnmounted,
+    return {state, props, visible, document: dom?.document, domWindow: dom?.window, numericPorts, loadProvider, focus, providerMounted, providerUnmounted,
         get providerState() {return providerState;}, get dialogPort() {return dialogPort;},
         async finishProviderLoad() {await providerReady.promise;await new Promise(resolve => setTimeout(resolve, 0));await settle();}, query, send, patch, theme, unsubscribe, frames, findTarget, location, data,
         notifyConfig: (value: unknown) => notifyConfig(value)};
@@ -394,5 +419,70 @@ describe('新服务对话框实际模板首次挂载与后续实例归属', () =
         expect(fixture.state.customProviderDialogOpen).toBe(false);expect(fixture.dialogPort!.open).toBe(false);
         expect(fixture.state.config.customOpenAIProviders).toEqual([expect.objectContaining({name: 'Local Fixture', endpoint: 'http://localhost:11434/v1', models: ['fixture-model']})]);
         expect(fixture.patch).toHaveBeenCalledOnce();expect(fixture.providerUnmounted).not.toHaveBeenCalled();
+    });
+});
+
+describe('高级设置全局请求限制实际父子装配', () => {
+    function limitInput(fixture: Awaited<ReturnType<typeof mountSections>>, label: string): HTMLInputElement {
+        const input = fixture.document!.querySelector(`[data-testid="translation-scheduler-settings"] input[aria-label="${label}"]`);
+        expect(input).not.toBeNull();
+        return input as unknown as HTMLInputElement;
+    }
+    function changeLimit(fixture: Awaited<ReturnType<typeof mountSections>>, label: string, value: number): void {
+        const input = limitInput(fixture, label);
+        input.value = String(value);
+        input.dispatchEvent(new fixture.domWindow!.Event('change', {bubbles: true}));
+    }
+
+    it('高级页三项限制可编辑，合法数值和不限速零值各同步交接一次配置补丁', async () => {
+        const fixture = await mountSections({template: true, requestLimits: true, activeSection: 'settings-advanced'});
+        const labels = ['翻译并发数', '每秒最多请求数', '每分钟最多请求数'];
+        expect(labels.map(label => limitInput(fixture, label).disabled)).toEqual([false, false, false]);
+        const original = {maxConcurrentTranslations: fixture.state.config.maxConcurrentTranslations,
+            translationRequestsPerSecond: fixture.state.config.translationRequestsPerSecond};
+        expect(fixture.patch).not.toHaveBeenCalled();
+        changeLimit(fixture, '每分钟最多请求数', 87);
+        expect(fixture.state.config.translationRequestsPerMinute).toBe(87);
+        expect(fixture.state.config.maxConcurrentTranslations).toBe(original.maxConcurrentTranslations);
+        expect(fixture.state.config.translationRequestsPerSecond).toBe(original.translationRequestsPerSecond);
+        expect(fixture.patch).toHaveBeenCalledOnce();
+        expect(fixture.patch).toHaveBeenLastCalledWith(expect.objectContaining({translationRequestsPerMinute: 87}), expect.any(Function));
+        await settle();changeLimit(fixture, '翻译并发数', 3);
+        expect(fixture.state.config.maxConcurrentTranslations).toBe(3);
+        expect(fixture.patch).toHaveBeenCalledTimes(2);
+        expect(fixture.patch).toHaveBeenLastCalledWith(expect.objectContaining({maxConcurrentTranslations: 3}), expect.any(Function));
+        await settle();changeLimit(fixture, '每秒最多请求数', 0);
+        expect(fixture.state.config.translationRequestsPerSecond).toBe(0);
+        expect(fixture.state.config.translationRequestsPerMinute).toBe(87);
+        expect(fixture.patch).toHaveBeenCalledTimes(3);
+        expect(fixture.patch).toHaveBeenLastCalledWith(expect.objectContaining({translationRequestsPerSecond: 0}), expect.any(Function));
+    });
+
+    it.each(['section', 'keepalive', 'unmount'] as const)('%s失活拒绝旧数值事件，返回后仅当前事件能再次保存', async reason => {
+        const fixture = await mountSections({template: true, requestLimits: true, activeSection: 'settings-advanced'});
+        const original = fixture.state.config.translationRequestsPerMinute;
+        const staleChange = fixture.numericPorts.get('每分钟最多请求数')!.change;
+        if (reason === 'section') fixture.props.activeSection = 'settings-translation';
+        else if (reason === 'keepalive') fixture.visible.value = false;
+        else {app!.unmount();app = undefined;}
+        await settle();
+        const exitSaves = fixture.patch.mock.calls.length;
+        staleChange(87);
+        expect(fixture.state.config.translationRequestsPerMinute).toBe(original);
+        expect(fixture.patch).toHaveBeenCalledTimes(exitSaves);
+        if (reason === 'unmount') return;
+        expect(fixture.numericPorts.get('每分钟最多请求数')!.disabled).toBe(true);
+        // A controlled widget can retain or deliver a handler after v-show; the real child guard rejects it.
+        fixture.numericPorts.get('每分钟最多请求数')!.change(88);
+        expect(fixture.state.config.translationRequestsPerMinute).toBe(original);
+        expect(fixture.patch).toHaveBeenCalledTimes(exitSaves);
+        fixture.props.activeSection = 'settings-advanced';fixture.visible.value = true;await settle();
+        staleChange(89);
+        expect(fixture.state.config.translationRequestsPerMinute).toBe(original);
+        expect(fixture.patch).toHaveBeenCalledTimes(exitSaves);
+        changeLimit(fixture, '每分钟最多请求数', 90);
+        expect(fixture.state.config.translationRequestsPerMinute).toBe(90);
+        expect(fixture.patch).toHaveBeenCalledTimes(exitSaves + 1);
+        expect(fixture.patch).toHaveBeenLastCalledWith(expect.objectContaining({translationRequestsPerMinute: 90}), expect.any(Function));
     });
 });
