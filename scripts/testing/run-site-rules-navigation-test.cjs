@@ -101,8 +101,8 @@ async function bounded(action, milliseconds, label) {
 function observe(page, surface) {
   page.on('pageerror', error => report.consoleErrors.push({surface, url: page.url(), message: error.message}));
   page.on('console', message => {if (message.type() === 'error') report.consoleErrors.push({surface, url: page.url(), message: message.text()});});
-  page.on('requestfailed', request => report.failedRequests.push({surface, url: request.url(), failure: request.failure()}));
-  page.on('response', response => {if (response.status() >= 400) report.httpErrors.push({surface, url: response.url(), status: response.status()});});
+  page.on('requestfailed', request => report.failedRequests.push({surface, url: request.url(), resourceType: request.resourceType(), failure: request.failure()}));
+  page.on('response', response => {if (response.status() >= 400) report.httpErrors.push({surface, url: response.url(), resourceType: response.request().resourceType(), status: response.status()});});
 }
 async function open(url, surface) {
   const page = await newPageWithoutForeground(context, timeout); observe(page, surface);
@@ -186,6 +186,7 @@ async function runCase(name, action) {
 async function productHunt() {
   const result = report.productHunt = {status: 'pending', requestedUrl: 'https://www.producthunt.com/products/reso', navigations: [], screenshots: [], transport: 'local deterministic custom OpenAI provider'};
   const errorStart = report.consoleErrors.length;
+  const httpErrorStart = report.httpErrors.length, failedRequestStart = report.failedRequests.length;
   const clickObservedLink = async href => {
     const anchors = await content.locator('a[href]:visible').all();
     for (const anchor of anchors) {
@@ -276,7 +277,13 @@ async function productHunt() {
     await shot(content, 'producthunt-reso-return'); result.status = 'passed';
   } catch (error) {
     result.error = error.stack; result.final = await evaluate().catch(() => null);
-    if (!result.initial || (result.httpStatus || 200) >= 400 || /ERR_|net::|Navigation timeout|No real Reso subpage link|No observed overview link/u.test(error.message)) {
+    const isCurrentDocument = event => event.resourceType === 'document' && new URL(event.url).hostname === 'www.producthunt.com' &&
+      (!result.final?.url || new URL(event.url).pathname === new URL(result.final.url).pathname);
+    const documentHttpErrors = report.httpErrors.slice(httpErrorStart).filter(isCurrentDocument);
+    const documentNetworkErrors = report.failedRequests.slice(failedRequestStart).filter(event => isCurrentDocument(event) && event.failure?.errorText !== 'net::ERR_ABORTED');
+    const verificationPage = /verify you are human|checking your browser|just a moment|access denied|captcha|正在进行安全验证|请验证您是真人|请稍候|在验证您不是自动程序/iu.test([result.final?.title, result.final?.text].join(' '));
+    result.classificationEvidence = {documentHttpErrors, documentNetworkErrors, verificationPage};
+    if ((result.httpStatus || 200) >= 400 || documentHttpErrors.length || documentNetworkErrors.length || verificationPage || /net::ERR_|Navigation timeout/u.test(error.message)) {
       result.status = 'quarantine'; result.reason = 'Remote navigation/content availability prevents the requested live-site acceptance';
     } else {result.status = 'failed';}
     await shot(content, 'producthunt-failure').catch(() => {});

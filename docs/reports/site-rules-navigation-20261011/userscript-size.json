@@ -37,5 +37,31 @@
   ],
   "limits": [
     "Build and deterministic verifier only; no userscript-manager or remote-CDN runtime acceptance."
-  ]
+  ],
+  "integration": {
+    "baseline": {
+      "commit": "033d6fe3a21e9c7bf71ae053193b67201d10191e",
+      "trackedBlobsVerified": 4892,
+      "bytes": 2024379,
+      "sha256": "de2bbf7f8dfe1d62f89863e835b8098e37e56b30b0a769f9b1b7af7dcf642e38",
+      "verifierExitCode": 0,
+      "budgetBytes": 2025000,
+      "languagePreparation": "Generated the five missing language resources in the temporary archive; all tracked source blobs remained identical."
+    },
+    "candidate": {
+      "buildSourceCommit": "c254eb935ea2738336185674717144752974d80c",
+      "bytes": 2025894,
+      "sha256": "9e122db9bbc975adc321b4e0975680e7f69fd4672cd0ba10cc5ced1b053e3ce6",
+      "verifierExitCode": 0,
+      "budgetBytes": 2026000,
+      "languageResourceCommit": "19fb7910b33eebac6e1914df2b5a47709ab11837"
+    },
+    "comparison": {
+      "deltaBytes": 1515,
+      "deltaPercent": 0.0748377650627674,
+      "candidateOverOriginalBudgetBytes": 894,
+      "budgetIncreaseBytes": 1000,
+      "headroomBytes": 106
+    }
+  }
 }
