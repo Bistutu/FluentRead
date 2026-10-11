@@ -232,6 +232,57 @@ describe('Explicit non-atomic inline reading containers', () => {
     });
 });
 
+describe('Forced discovery synchronous inspection', () => {
+    it('reuses the declared decision and wide ancestor selector misses within one enter step', () => {
+        const {document} = parseHTML(`<html><body><main>${'<div>'.repeat(48)}<p id="source">The explicitly declared source remains independently readable.</p>${'</div>'.repeat(48)}</main></body></html>`);
+        const source = document.getElementById('source')!;
+        const prune = Array.from({length: 20}, (_, index) => `.missing-prune-${index}`);
+        const adapter = createDeclarativeAdapter({id: 'forced-step', hosts: ['step-reader.test'],
+            prune: [{selector: prune, reason: 'excluded'}],
+            targets: [{selector: '#source', match: 'closest', reason: 'reading-source'}]});
+        const decisions = vi.spyOn(adapter, 'decide');
+        const closestCalls: string[] = [];
+        const spies = Array.from(document.querySelectorAll('*')).map(element => {
+            const nativeClosest = element.closest.bind(element);
+            return vi.spyOn(element, 'closest').mockImplementation(selector => {
+                if (selector === prune.join(',')) closestCalls.push(selector);
+                return nativeClosest(selector);
+            });
+        });
+        try {
+            const core = new TranslationCandidateCore({url: new URL('https://step-reader.test'), adapters: [adapter]});
+            const steps = core.discoverSteps(source);
+            expect(steps.next().value).toMatchObject({element: source, phase: 'enter'});
+            expect(decisions.mock.calls.filter(([element]) => element === source)).toHaveLength(1);
+            expect(closestCalls).toHaveLength(2);
+            expect(steps.next().value?.candidate?.element).toBe(source);
+            expect(source.textContent).toBe('The explicitly declared source remains independently readable.');
+        } finally { decisions.mockRestore(); spies.forEach(spy => spy.mockRestore()); }
+    });
+
+    it.each(['hard-guard', 'site-prune', 'target-loss'] as const)('reads %s afresh after a generator yields its first forced candidate', mutation => {
+        const {document} = parseHTML('<html><body><main id="host" class="allowed"><p id="first">First explicitly eligible reading paragraph.</p><p id="second">Second independently eligible reading paragraph.</p></main></body></html>');
+        const host = document.getElementById('host')!;
+        const core = new TranslationCandidateCore({url: new URL('https://step-reader.test'), adapters: [
+            createDeclarativeAdapter({id: 'yield-boundary', hosts: ['step-reader.test'], genericCandidatePolicy: 'targets-only',
+                prune: [{selector: '.excluded', reason: 'excluded'}],
+                keepOriginal: [{selector: '.excluded', reason: 'excluded-source'}],
+                targets: [{selector: '.allowed p', match: 'closest', reason: 'eligible-paragraph'}]}),
+        ]});
+        const steps = core.discoverSteps(document);
+        let first: ReturnType<typeof steps.next>;
+        do { first = steps.next(); } while (!first.done && !first.value.candidate);
+        expect(first.value?.candidate?.element.id).toBe('first');
+        if (mutation === 'hard-guard') host.setAttribute('translate', 'no');
+        else if (mutation === 'site-prune') host.classList.add('excluded');
+        else host.classList.remove('allowed');
+        expect([...steps].flatMap(step => step.candidate ? [step.candidate.element.id] : [])).toEqual([]);
+        host.removeAttribute('translate');
+        host.className = 'allowed';
+        expect(core.discover(document).map(candidate => candidate.element.id)).toEqual(['first', 'second']);
+    });
+});
+
 describe('Codeforces named form controls', () => {
     it('issue #492 continues discovery after a form input shadows tagName', () => {
         const {document} = parseHTML('<html><body><form><input name="tagName"></form><p id="statement">Read this problem statement and calculate the answer.</p></body></html>');

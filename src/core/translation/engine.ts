@@ -2,7 +2,7 @@
  * @file src/core/translation/engine.ts
  *
  * 文件职责：实现 DOM 节点到 TranslationCandidate 的核心解析引擎，协调安全守卫、站点适配器、布局边界和文本有效性；为显式非原子行内容器保留直属正文与独立子段落的一致发现和悬浮边界。
- * 主要内容：按正文/全部节点范围协调候选；定义 TranslationCandidateCore、候选优选与键值函数，记录发现步骤和原因，按站点规则把显式换行拆为两种入口一致的内联候选，处理编辑器坐标命中屏障、hover 屏障、适配优先级、快照省略、缓存及坐标命中；同步只读批量解析复用全部范围及无站点适配/应用外壳例外的普通正文祖先守卫和文本保护，涉及显式外壳权限或站点重定向目标时独立解析；无元素子节点的非文档表面不重复探测不可能成立的内联分段，仍由完整候选分类复验文本和保护；悬浮命中独立后代的包裹层时禁止回退吞并整个容器，让独立 tooltip 不抢占外层控件候选，保证全文与悬浮共享决策。 可核对的公开符号包括 TranslationCoreInspection、TranslationDiscoveryStep、getTranslationCandidateKey、selectPreferredTranslationCandidate、TranslationCandidateCore。
+ * 主要内容：按正文/全部节点范围协调候选；定义 TranslationCandidateCore、候选优选与键值函数，记录发现步骤和原因，按站点规则把显式换行拆为两种入口一致的内联候选，处理编辑器坐标命中屏障、hover 屏障、适配优先级、快照省略、缓存及坐标命中；发现强制目标时仅在当前 enter 的同步检查中复用既有决策和祖先选择器 miss，不跨生成器让出缓存；同步只读批量解析复用全部范围及无站点适配/应用外壳例外的普通正文祖先守卫和文本保护，涉及显式外壳权限或站点重定向目标时独立解析；无元素子节点的非文档表面不重复探测不可能成立的内联分段，仍由完整候选分类复验文本和保护；悬浮命中独立后代的包裹层时禁止回退吞并整个容器，让独立 tooltip 不抢占外层控件候选，保证全文与悬浮共享决策。 可核对的公开符号包括 TranslationCoreInspection、TranslationDiscoveryStep、getTranslationCandidateKey、selectPreferredTranslationCandidate、TranslationCandidateCore。
  * 模块边界：本文件属于可独立测试的 core 候选领域；可以读取传入 DOM 以计算结果，坐标命中栈与祖先守卫只在单次同步解析中复用，不跨手势缓存；不访问配置存储、不调用 provider、不注册页面监听器，也不负责译文渲染或 feature 生命周期。
  */
 
@@ -385,9 +385,8 @@ export class TranslationCandidateCore {
 
     private hardGuard(
         element: Element,
-        evaluationContext?: ResolutionEvaluationContext,
+        evaluationContext: ResolutionEvaluationContext,
     ): HardGuardResult {
-        if (!evaluationContext) return evaluateHardGuard(element);
         this.primeResolutionAncestry(element, evaluationContext);
         // primeResolutionAncestry 的正常、缓存命中与超深路径都会为命中元素写入结果。
         return evaluationContext.hardGuards.get(element)!;
@@ -453,7 +452,7 @@ export class TranslationCandidateCore {
     private inspectWithTextProtectionCache(
         element: Element,
         textProtectionCache: TranslationTextProtectionCache,
-        evaluationContext?: ResolutionEvaluationContext,
+        evaluationContext: ResolutionEvaluationContext,
     ): TranslationCoreInspection {
         const adapterContext = this.adapterContextForResolution(evaluationContext);
         const shouldStayOriginal = evaluationContext?.adapterContext
@@ -909,9 +908,15 @@ export class TranslationCandidateCore {
                         : 'children';
 
                     if (ownAdapter.decision.kind === 'force-target' && !hardGuard.prune) {
+                        // 本段检查在 enter 的 yield 之前完成；不把缓存放入 frame，
+                        // 后续节点仍读取让出后可能变化的宿主属性和站点决策。
+                        const forceContext = createResolutionEvaluationContext();
+                        forceContext.adapterContext = {...this.context, closestSelectorMisses: new WeakMap()};
+                        forceContext.adapterDecisions.set(frame.element, ownAdapter);
                         frame.forcedCandidate = this.inspectWithTextProtectionCache(
                             frame.element,
                             textProtectionCache,
+                            forceContext,
                         ).candidate ?? undefined;
                         frame.forcedAtomic = ownAdapter.decision.atomic !== false;
                         if (frame.forcedCandidate && ownAdapter.decision.atomic !== false) frame.phase = 'exit';
