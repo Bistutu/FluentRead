@@ -54,7 +54,7 @@ describe('visible Unicode PDF reading export', () => {
     it('retains every visible glyph outline after subsetting, including odd-length Chinese/Latin records', async () => {
         const font = fontkit.create(fontBytes);
         const subset = font.createSubset();
-        const glyphs = font.layout('中文译文标题 Mixed English 123，标点。éü①② ∗ϵŁłĐđɃɐἀὯ∀∑∫≠⊗⋆⨀⩽𝒜𝜖𝟟', {liga: false}).glyphs;
+        const glyphs = font.layout('中文译文标题 Mixed English 123，标点。éü①② ∗ϵŁłĐđɃɐἀὯ∀∑∫≠⊗⋆⨀⩽𝒜𝜖𝟟 ‣⌀⟶⟺ 、︁。︁！︁', {liga: false}).glyphs;
         const pairs = glyphs.map(glyph => ({original: glyph, index: subset.includeGlyph(glyph)}));
         const bytes = await new Promise<Uint8Array>((resolve, reject) => {
             const parts: Uint8Array[] = [];
@@ -70,7 +70,10 @@ describe('visible Unicode PDF reading export', () => {
         const full = [[0x0100, 0x024F], [0x2200, 0x22FF], [0x2A00, 0x2AFF]].flatMap(([lo, hi]) =>
             Array.from({length: hi - lo + 1}, (_, index) => String.fromCodePoint(lo + index)));
         expect(full.every(character => supported.has(character.codePointAt(0)!))).toBe(true);
-        const translations = ['扩展字符与数学符号', full.join('') + ' ∗ϵŁł ἀὯ𝒜𝜖𝟟 中文唯一尾部：完。'];
+        const reviewed = ['‣', '⌀', '⟶', '⟺'];
+        expect(reviewed.every(character => supported.has(character.codePointAt(0)!))).toBe(true);
+        expect(reviewed.every(character => font.layout(character).glyphs[0].id !== 0 && font.layout(character).glyphs[0].path.toSVG())).toBe(true);
+        const translations = ['扩展字符与数学符号', full.join('') + ' ∗ϵŁł ἀὯ𝒜𝜖𝟟 ‣ ⌀ ⟶ ⟺ 中文唯一尾部：完。'];
         const download = await createDocumentDownload(await fixture(), translations, 'translated', textOnlyOptions);
         const extracted = await extract(download.data as Uint8Array);
         expect(compact(extracted.join(''))).toBe(compact(translations.join('')));
@@ -85,6 +88,90 @@ describe('visible Unicode PDF reading export', () => {
         expect(compact(pages.join(''))).toBe(compact(translations.join('')));
         expect(bytes.byteLength).toBeLessThan(160_000);
         saveEvidence('chinese-mixed-selectable.pdf', bytes);
+    });
+
+    it.each([
+        '𝒱 𝒱︀ 𝒱 𝒞 𝒞︀ 𝒞 𝒮 𝒮︀ 𝒮 C C︀ C S S︀ S 葛 葛\u{E0100} 葛 𝒱\uFE0F 葛\u{E01EF} 𝒱︀ 。 。︁ 。',
+        '𝒱︀ 𝒱 𝒱︀ 𝒞︀ 𝒞 𝒞︀ 𝒮︀ 𝒮 𝒮︀ C︀ C C︀ S︀ S S︀ 葛\u{E0100} 葛 葛\u{E0100} 𝒱\uFE0F 葛\u{E01EF} 𝒱 。︁ 。 。︁',
+    ])('preserves bare and variant sequence copying in either order without assigning selectors to bare same-gid glyphs: %s', async text => {
+        const translations = ['数学变体复制验证', text + ' 完整尾部。'];
+        const download = await createDocumentDownload(await fixture(), translations, 'translated', textOnlyOptions);
+        const extracted = await extract(download.data as Uint8Array);
+        expect(compact(extracted.join(''))).toBe(compact(translations.join('')));
+    }, 30_000);
+
+    it('uses a separate cached subset per exact variant sequence and measures and draws identical runs', async () => {
+        const pdf = await PDFDocument.create();
+        const embed = vi.spyOn(pdf, 'embedFont');
+        const embedded = await embedPdfReadingFont(pdf, fontBytes);
+        const text = 'C C︀ C︀ S︀ 𝒱︀ 葛\u{E0100} C';
+        await embedded.prepareText(text);
+        await embedded.prepareText('C︀ S︀');
+        expect(embed).toHaveBeenCalledTimes(5);
+        const page = pdf.addPage();
+        const draw = vi.spyOn(page, 'drawText');
+        embedded.drawText(page, text, {x: 42, y: 700, size: 12});
+        expect(draw.mock.calls.map(call => call[0]).join('')).toBe(text);
+        expect(draw.mock.calls[1][1]!.font).toBe(draw.mock.calls[3][1]!.font);
+        expect(draw.mock.calls[1][1]!.font).not.toBe(embedded.font);
+        const expectedWidth = draw.mock.calls.reduce((sum, [run, options]) => sum + options!.font!.widthOfTextAtSize(run, 12), 0);
+        expect(embedded.measureText(text, 12)).toBe(expectedWidth);
+        expect(draw.mock.calls.at(-1)![1]!.x! + embedded.font.widthOfTextAtSize(' C', 12)).toBeCloseTo(42 + expectedWidth);
+        expect(embedded.measureText('', 12)).toBe(0);
+        const count = draw.mock.calls.length;
+        embedded.drawText(page, '', {x: 42, y: 700, size: 12});
+        expect(draw).toHaveBeenCalledTimes(count);
+        expect(() => embedded.measureText('Q︀', 12)).toThrow('尚未准备');
+        expect(compact((await extract(await pdf.save())).join(''))).toBe(compact(text));
+    }, 30_000);
+
+    it('retains the bundled font base outlines for unsupported variation mappings while keeping each full sequence identity', () => {
+        // 数学补充字形未携带其 donor 的变体映射；这些序列按该字体回退到基础轮廓，仍保留选择符。
+        for (const sequence of ['𝒱︀', '𝒞︀', '𝒮︀', 'C︀', 'S︀', '葛\u{E0100}']) {
+            const base = Array.from(sequence)[0];
+            const normal = fontkit.create(fontBytes).layout(base, {liga: false}).glyphs;
+            const variant = fontkit.create(fontBytes).layout(sequence, {liga: false}).glyphs;
+            expect(variant).toHaveLength(1);
+            expect(variant[0].codePoints).toEqual(Array.from(sequence, character => character.codePointAt(0)!));
+            expect(variant[0].path.toSVG()).toBe(normal[0].path.toSVG());
+        }
+    });
+
+    it('retains genuinely different CJK punctuation variation outlines supplied by the bundled font', () => {
+        for (const sequence of ['、︁', '。︁', '！︁']) {
+            const base = Array.from(sequence)[0];
+            const normal = fontkit.create(fontBytes).layout(base, {liga: false}).glyphs[0];
+            const variant = fontkit.create(fontBytes).layout(sequence, {liga: false}).glyphs[0];
+            expect(variant.id).not.toBe(normal.id);
+            expect(variant.path.toSVG()).not.toBe(normal.path.toSVG());
+            expect(variant.codePoints).toEqual(Array.from(sequence, character => character.codePointAt(0)!));
+        }
+    });
+
+    it('rejects genuinely missing bases and isolated or repeated selectors without dropping real text', async () => {
+        const embedded = await embedPdfReadingFont(await PDFDocument.create(), fontBytes);
+        for (const text of ['︀C', '\u{E0100}葛', 'C ︀', 'C\t︀', 'C\n︀', 'C︀︁']) {
+            expect(() => embedded.assertSupported(text)).toThrow('孤立变体选择符');
+        }
+        await expect(embedded.prepareText('🦄︀')).rejects.toThrow('U+1F984');
+        expect(() => embedded.assertSupported('C\uFFFE')).toThrow('U+FFFE');
+        expect(() => embedded.assertSupported('\u0093idΓ')).toThrow('U+93');
+    });
+
+    it('checks cancellation before variant preparation and after a distinct sequence subset is embedded', async () => {
+        const controller = new AbortController();
+        const pdf = await PDFDocument.create();
+        const embedded = await embedPdfReadingFont(pdf, fontBytes, controller.signal);
+        const embedFont = pdf.embedFont.bind(pdf);
+        const spy = vi.spyOn(pdf, 'embedFont').mockImplementation(async (bytes, options) => {
+            const font = await embedFont(bytes, options);
+            controller.abort(new Error('Variant embedding canceled'));
+            return font;
+        });
+        await expect(embedded.prepareText('C︀')).rejects.toThrow('Variant embedding canceled');
+        expect(spy).toHaveBeenCalledOnce();
+        await expect(embedded.prepareText('S︀')).rejects.toThrow('Variant embedding canceled');
+        expect(spy).toHaveBeenCalledOnce();
     });
 
     it('continues long Chinese text at a fixed readable size and keeps every paragraph including the tail', async () => {

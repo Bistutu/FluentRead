@@ -24,6 +24,12 @@ const CLOSING = /^[，。！？；：、,.!?;:%）\]】》」』”’]/u;
 // 一张输入页的续页预算；损坏或极端的几何不能令分页无限增长。
 const MAX_READING_PAGES = 4096;
 
+/** 这两段 Unicode 选择符依附于前一个字符，不单独占据字形或换行位置。 */
+export function isPdfReadingVariationSelector(character: string): boolean {
+    const code = character.codePointAt(0)!;
+    return (code >= 0xFE00 && code <= 0xFE0F) || (code >= 0xE0100 && code <= 0xE01EF);
+}
+
 export function pdfReadingFont(role: string): PdfReadingFont {
     if (role === 'title') return {size: 20, weight: 700, lineHeight: 28};
     if (role === 'heading') return {size: 16, weight: 700, lineHeight: 23};
@@ -45,8 +51,17 @@ export function wrapPdfReadingText(value: string, width: number, font: PdfReadin
         return next;
     };
     const segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, {granularity: 'grapheme'}) : undefined;
-    const graphemes = (text: string) => segmenter && /[\p{Mark}\p{Emoji_Modifier}\p{Regional_Indicator}\u200d]/u.test(text)
-        ? Array.from(segmenter.segment(text), item => item.segment) : Array.from(text);
+    const graphemes = (text: string) => {
+        if (segmenter && /[\p{Mark}\p{Emoji_Modifier}\p{Regional_Indicator}\u200d]/u.test(text)) {
+            return Array.from(segmenter.segment(text), item => item.segment);
+        }
+        const characters: string[] = [];
+        for (const character of text) {
+            if (isPdfReadingVariationSelector(character) && characters.length) characters[characters.length - 1] += character;
+            else characters.push(character);
+        }
+        return characters;
+    };
     const lines: string[] = [];
     for (const paragraph of value.replace(/\r\n?/gu, '\n').split('\n')) {
         if (!paragraph.trim()) {lines.push(''); continue;}

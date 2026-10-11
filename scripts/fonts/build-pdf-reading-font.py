@@ -41,7 +41,10 @@ revision = '809e4d8b8d7e9364a914909bb777679606c178b8'
 base_cmap = dict(font.getBestCmap())
 ranges = [(0x0100, 0x024F), (0x0370, 0x03FF), (0x1E00, 0x1FFF),
           (0x2070, 0x214F), (0x2190, 0x22FF), (0x27C0, 0x27EF),
-          (0x2980, 0x2AFF), (0x1D400, 0x1D7FF)]
+          (0x2980, 0x2AFF), (0x1D400, 0x1D7FF),
+          # Actual readable PDF targets also use these assigned symbols outside
+          # the complete blocks above. Copy only these reviewed codepoints.
+          (0x2023, 0x2023), (0x2300, 0x2300), (0x27F6, 0x27F6), (0x27FA, 0x27FA)]
 donors = [(args.sans, 'NotoSans', 'bfb7bb691513f12e734dc346c03a03f784912432d7e3fa8e56efcf906fe86b3d',
            'ofl/notosans/NotoSans%5Bwdth,wght%5D.ttf'),
           (args.math, 'NotoSansMath', '3f495fe933c06786e4d5f6d86b8ee70b6753a68ee3b9d87528726de0f6e2c47d',
@@ -142,6 +145,7 @@ assert all(codepoint in cmap for codepoint in base_cmap), 'Original Unicode cove
 assert all(codepoint in cmap for codepoint in range(0x0100, 0x0250)), 'Latin Extended A/B coverage incomplete'
 assert all(codepoint in cmap for codepoint in range(0x2200, 0x2300)), 'Mathematical Operators coverage incomplete'
 assert all(codepoint in cmap for codepoint in range(0x2A00, 0x2B00)), 'Supplemental Mathematical Operators coverage incomplete'
+assert all(codepoint in cmap for codepoint in (0x2023, 0x2300, 0x27F6, 0x27FA)), 'Reviewed readable PDF symbols missing'
 provenance = {'googleFontsRevision': revision, 'cjkSourceSha256': expected, 'supplements': sources,
               'tools': {'python': sys.version.split()[0], 'fontTools': __import__('fontTools').__version__,
                         'node': subprocess.check_output([args.node, '--version'], text=True).strip()},

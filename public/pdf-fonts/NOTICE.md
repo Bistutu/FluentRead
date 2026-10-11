@@ -4,9 +4,9 @@
 interface font. Copyright 2014-2021 Adobe (http://www.adobe.com/), with Reserved
 Font Name 'Source'. Licensed under SIL Open Font License 1.1; see `OFL.txt`.
 The derived font is renamed, fixes the `wght` axis to Regular/400, and retains all
-30,890 original Unicode characters. It adds 2,609 missing characters from pinned
+30,890 original Unicode characters. It adds 2,613 missing characters from pinned
 Noto Sans and Noto Sans Math sources, and keeps 497 separate outlines for Unicode
-aliases. The result has 33,499 encoded characters and 34,142 glyphs.
+aliases. The result has 33,503 encoded characters and 34,146 glyphs.
 The reserved name is not used by the derived font.
 
 ## Fixed source
@@ -17,8 +17,8 @@ Google Fonts revision: `809e4d8b8d7e9364a914909bb777679606c178b8`.
 - Original license: https://raw.githubusercontent.com/google/fonts/809e4d8b8d7e9364a914909bb777679606c178b8/ofl/notosanssc/OFL.txt
 - Original TTF SHA256: `a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da`.
 - Existing equivalent WOFF2: `assets/interface-fonts/NotoSansSC.woff2`, SHA256 `aef8c34277afad81ecd0227138a830263c0caea65b7aea66d1195395f097b55a`.
-- Derived WOFF2 size: 5,109,624 bytes.
-- Derived WOFF2 SHA256: `9a623773d4d63aee65360527daeaac03908145788ec69aec1efe989efef35e1c`.
+- Derived WOFF2 size: 5,112,688 bytes.
+- Derived WOFF2 SHA256: `14703e46fadf7d61c61df0d476e3f9e7e8fadfdffec4188561d99142d0831cc0`.
 
 ## Reproduction
 
@@ -62,8 +62,9 @@ The sources use the same Google Fonts revision listed above:
 - Noto Sans Math regular: [source TTF](https://raw.githubusercontent.com/google/fonts/809e4d8b8d7e9364a914909bb777679606c178b8/ofl/notosansmath/NotoSansMath-Regular.ttf), SHA256 `3f495fe933c06786e4d5f6d86b8ee70b6753a68ee3b9d87528726de0f6e2c47d`. Copyright 2022 The Noto Project Authors (https://github.com/notofonts/math); SIL OFL 1.1, see `NotoSansMath-OFL.txt`.
 
 Only missing codepoints in whole Latin Extended A/B, Greek, Greek Extended,
-Latin Extended Additional, superscript/letterlike, arrow and mathematics ranges
-are copied. Mathematical Operators and Supplemental Mathematical Operators are
+Latin Extended Additional, superscript/letterlike, arrow and mathematics ranges,
+plus the reviewed U+2023, U+2300, U+27F6 and U+27FA symbols found in actual PDF
+reading text, are copied. Mathematical Operators and Supplemental Mathematical Operators are
 complete, with all 256 characters in each block. Mathematical Alphanumeric
 Symbols retain their original Unicode identities. Coptic letters in the shared
 Greek and Coptic block are outside these donors' Greek coverage. Other scripts

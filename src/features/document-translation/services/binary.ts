@@ -1128,9 +1128,9 @@ async function renderPdf(
             const plan = buildPdfReadingPlan(document, pageData, translations);
             if (options.pdfReadingRenderer) {
                 const embedded = await prepareReadingFont();
-                for (const entry of plan.entries) if (entry.kind === 'text') embedded.assertSupported(entry.text);
+                for (const entry of plan.entries) if (entry.kind === 'text') await embedded.prepareText(entry.text);
                 for await (const rendered of options.pdfReadingRenderer({...rasterInput, plan,
-                    measureText: (text, font) => embedded.font.widthOfTextAtSize(text.replace(/\t/gu, ' '), font.size),
+                    measureText: (text, font) => embedded.measureText(text.replace(/\t/gu, ' '), font.size),
                 })) {
                     options.signal?.throwIfAborted();
                     const page = outputPdf.addPage([rendered.width, rendered.height]);
@@ -1140,7 +1140,7 @@ async function renderPdf(
                     }
                     for (const item of rendered.items) if (item.kind === 'text' && item.text) {
                         options.signal?.throwIfAborted();
-                        page.drawText(item.text.replace(/\t/gu, ' '), {font: embedded.font, size: item.font.size,
+                        embedded.drawText(page, item.text.replace(/\t/gu, ' '), {size: item.font.size,
                             x: item.x, y: rendered.height - item.y - embedded.font.heightAtSize(item.font.size, {descender: false}),
                             color: rgb(0.094, 0.129, 0.184),
                         });

@@ -1,5 +1,5 @@
 import {describe, expect, it, vi} from 'vitest';
-import {paginatePdfReadingPlan, pdfReadingFont, wrapPdfReadingText} from '@/src/features/document-translation/core/pdfTextLayout';
+import {isPdfReadingVariationSelector, paginatePdfReadingPlan, pdfReadingFont, wrapPdfReadingText} from '@/src/features/document-translation/core/pdfTextLayout';
 import type {PdfReadingPlan} from '@/src/features/document-translation/core/pdfReadingPlan';
 
 const body = pdfReadingFont('paragraph');
@@ -38,6 +38,20 @@ describe('PDF fixed-font complete-text pagination', () => {
         expect(lines.join('')).toBe(value);
         expect(wrapPdfReadingText('  甲 乙', 12, body, measure)).toEqual(['甲', '乙']);
     });
+    it('keeps BMP and supplementary variation selectors with their base at word and CJK wrap boundaries, including without Segmenter', () => {
+        expect([0xFDFF, 0xFE00, 0xFE0F, 0xFE10, 0xE00FF, 0xE0100, 0xE01EF, 0xE01F0].map(code =>
+            isPdfReadingVariationSelector(String.fromCodePoint(code)))).toEqual([false, true, true, false, false, true, true, false]);
+        const value = '𝒱︀C︀S︀葛\u{E0100}葛\u{E01EF}';
+        const width = (text: string) => Array.from(text).filter(character => !isPdfReadingVariationSelector(character)).length * 12;
+        const expected = ['𝒱︀', 'C︀', 'S︀', '葛\u{E0100}', '葛\u{E01EF}'];
+        expect(wrapPdfReadingText(value, 12, body, width)).toEqual(expected);
+        const segmenter = Intl.Segmenter;
+        try {
+            Object.defineProperty(Intl, 'Segmenter', {value: undefined, configurable: true});
+            expect(wrapPdfReadingText(value, 12, body, width)).toEqual(expected);
+            expect(wrapPdfReadingText('︀C', 12, body, width).join('')).toBe('︀C');
+        } finally {Object.defineProperty(Intl, 'Segmenter', {value: segmenter, configurable: true});}
+    });
     it('paginates 4x paragraphs completely at 12pt with no items outside page margins', () => {
         const value = ('译文保持完整，公式和图表保留原图。'.repeat(1200)) + '【最终尾文】';
         const pages = paginatePdfReadingPlan(textPlan(value), measure);
@@ -71,5 +85,17 @@ describe('PDF fixed-font complete-text pagination', () => {
         expect(strips.length).toBeLessThanOrEqual(3);
         expect(strips.reduce((sum, item) => sum + item.sourceRect.height, 0)).toBeCloseTo(944.0000000000001);
         expect(paginatePdfReadingPlan(region(Number.MAX_VALUE, Number.MIN_VALUE), measure)).toEqual([]);
+    });
+    it('bounds continuation page allocation for an oversized text entry', () => {
+        expect(() => paginatePdfReadingPlan(textPlan('line\n'.repeat(160_000)), measure)).toThrow('单页内容过长');
+    });
+    it('fails fast when a damaged geometry port changes its validated height before strip consumption', () => {
+        // 防御性 fault injection：正常解析的 PDF 使用稳定数据对象；这里显式模拟读取途中损坏的端口。
+        const heights = [100, 100, 100, 100, 100, -1];
+        const sourceRect = {x: 0, y: 0, width: 100, get height() {return heights.shift() ?? -1;}};
+        const plan: PdfReadingPlan = {pageNumber: 1, hasTranslation: true, entries: [
+            {kind: 'region', id: 'damaged', pageNumber: 1, role: 'figure', sourceRect, segmentIndexes: []},
+        ]};
+        expect(() => paginatePdfReadingPlan(plan, measure)).toThrow('原图分页无法继续');
     });
 });

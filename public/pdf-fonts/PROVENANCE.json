@@ -5,13 +5,13 @@
     {
       "family": "NotoSans",
       "sha256": "bfb7bb691513f12e734dc346c03a03f784912432d7e3fa8e56efcf906fe86b3d",
-      "addedCodepoints": 888,
+      "addedCodepoints": 889,
       "url": "https://raw.githubusercontent.com/google/fonts/809e4d8b8d7e9364a914909bb777679606c178b8/ofl/notosans/NotoSans%5Bwdth,wght%5D.ttf"
     },
     {
       "family": "NotoSansMath",
       "sha256": "3f495fe933c06786e4d5f6d86b8ee70b6753a68ee3b9d87528726de0f6e2c47d",
-      "addedCodepoints": 1721,
+      "addedCodepoints": 1724,
       "url": "https://raw.githubusercontent.com/google/fonts/809e4d8b8d7e9364a914909bb777679606c178b8/ofl/notosansmath/NotoSansMath-Regular.ttf"
     }
   ],
@@ -21,9 +21,9 @@
     "node": "v24.19.0"
   },
   "originalCodepointsRetained": 30890,
-  "addedCodepoints": 2609,
-  "codepoints": 33499,
-  "glyphs": 34142,
+  "addedCodepoints": 2613,
+  "codepoints": 33503,
+  "glyphs": 34146,
   "unicodeAliasesSeparated": 497,
   "ranges": [
     {
@@ -92,8 +92,32 @@
       "to": "U+1D7FF",
       "supported": 996,
       "assignedMissing": []
+    },
+    {
+      "from": "U+2023",
+      "to": "U+2023",
+      "supported": 1,
+      "assignedMissing": []
+    },
+    {
+      "from": "U+2300",
+      "to": "U+2300",
+      "supported": 1,
+      "assignedMissing": []
+    },
+    {
+      "from": "U+27F6",
+      "to": "U+27F6",
+      "supported": 1,
+      "assignedMissing": []
+    },
+    {
+      "from": "U+27FA",
+      "to": "U+27FA",
+      "supported": 1,
+      "assignedMissing": []
     }
   ],
-  "outputBytes": 5109624,
-  "outputSha256": "9a623773d4d63aee65360527daeaac03908145788ec69aec1efe989efef35e1c"
+  "outputBytes": 5112688,
+  "outputSha256": "14703e46fadf7d61c61df0d476e3f9e7e8fadfdffec4188561d99142d0831cc0"
 }
