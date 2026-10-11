@@ -55,6 +55,8 @@
       "tests/areaTextTranslation.test.ts",
       "tests/auth.test.ts",
       "tests/bilingualRemount.test.ts",
+      "tests/bilingualRenderingContainment.test.ts",
+      "tests/bilingualRenderingLifecycle.test.ts",
       "tests/fullPageRemountPreparation.test.ts",
       "tests/bilingualReplay.test.ts",
       "tests/syntheticRemount.test.ts",
