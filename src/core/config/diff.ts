@@ -655,6 +655,7 @@ const FIELD_DEFINITIONS: Record<string, FieldDefinition> = {
     videoSubtitleFontSize: {group: 'videoSubtitles', label: '视频字幕字号', format: (value) => formatNumber(value, '%')},
     videoSubtitleOffsetMs: {group: 'videoSubtitles', label: '字幕时间偏移', format: (value) => formatNumber(value, 'ms')},
     videoSubtitleAppearance: {group: 'videoSubtitles', label: '视频字幕外观'},
+    videoSentenceLearningAppearance: {group: 'videoSubtitles', label: '完整句学习外观'},
 
     useCache: {group: 'advanced', label: '缓存翻译结果', format: formatBoolean},
     translationCacheMaxBytes: {group: 'advanced', label: '翻译缓存容量上限', format: (value) => formatNumber(value, ' B')},

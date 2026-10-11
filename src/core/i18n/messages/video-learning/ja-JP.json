@@ -15,7 +15,7 @@
   "video.learning.save": "文を保存",
   "video.learning.library": "学習センター",
   "video.learning.explanation": "解説を確認（編集可）",
-  "video.learning.hint": "← / → で文を切り替え、R でループ、Q で文末に一時停止、Esc で閉じます。再生補助を選んでから再生し直してください。手動でシークすると補助を解除します。編集中は文を固定し、文を切り替えても今回の下書きを保持します。",
+  "video.learning.hint": "プレーヤー内：← / → で文を切り替え、R でループ、Q で文末に一時停止。Esc は全画面を解除し、通常表示では学習を閉じます。再生補助を選び、再生し直すと開始します。手動シークで補助を解除します。タイトルをドラッグすると移動できます。編集中は文を固定し、下書きを保持します。",
   "video.learning.empty": "時間軸がありません。元字幕を有効にし、読み込み後に再試行してください。",
   "video.learning.translationFailed": "翻訳に失敗しました。再試行してください。",
   "video.learning.playFailed": "動画の再生ボタンを使ってください。",
@@ -44,5 +44,8 @@
   "video.learning.expand": "展開",
   "video.learning.stopped": "解説を停止しました。編集するか、再生成できます。",
   "video.learning.stoppedShort": "停止済み",
-  "video.learning.explanationAgain": "再度解説"
+  "video.learning.explanationAgain": "再度解説",
+  "video.learning.start": "文の学習を開始",
+  "video.learning.appearance": "学習パネルの表示を調整",
+  "video.learning.drag": "タイトルをドラッグして移動"
 }

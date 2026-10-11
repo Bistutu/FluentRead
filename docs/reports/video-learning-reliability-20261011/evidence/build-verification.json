@@ -1,0 +1,127 @@
+{
+  "recordedAt": "2026-10-11T15:35:56.115027+00:00",
+  "sourceHeadBeforeFinalCommit": "240cbc42de9d1141c679fb595afea055397ac656",
+  "integratedMain": "58ef643e85b51c3236fe05e15f94b627172a06d7",
+  "lockfileSha256": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
+  "changedProductionInputsSha256": {
+    "src/app/background/popupNavigation.ts": "723ad608f8cb88c5d8077accbe8660eacc336ce55c541dc8e123bf4630d23b39",
+    "src/core/config/diff.ts": "69efd10aec58f5cf3e94de076e583f4faef112ad1b9d92385f028be3f13ca4b8",
+    "src/core/config/driveSync.ts": "83f0d3d9aeff2e49d24df943e3e9c5b9b26097add1adcbe8e59b1ffd3874e6a0",
+    "src/core/config/model.ts": "f92be6f2a0e5cd6b40ca43119c9bdf3f0f7fe6ff8fc48b284f02b68834d70081",
+    "src/core/config/videoSentenceLearningAppearance.ts": "1fe5fdb575412f462a319767b3f702d9949090f73d7d94872b1fb0602b2c78a3",
+    "src/core/i18n/messages/en-US.ts": "95d639b39a4129de33ced38b38d73419a98e5783a5eb036bb6c42bfb69a8b086",
+    "src/core/i18n/messages/es-ES.ts": "792a8dcec133b498b2c9a645a96e797ae0ec227cebdf5cfa6387cd5f9c0c7345",
+    "src/core/i18n/messages/fr-FR.ts": "4a5fbfe208308977139e8ad30a1fcfc37f2c90618190b906fc53a5ff9476ed99",
+    "src/core/i18n/messages/ja-JP.ts": "a825e4bb8c4d356664f20ada33b398be940c78a07514ebc4f5975789f39fcdef",
+    "src/core/i18n/messages/ko-KR.ts": "75f5d15288ea51b58abeee67b26122dc2dfcedf46aa656e70e41624a13ff2216",
+    "src/core/i18n/messages/legacy-corrections.ts": "c0a549080769792c61b9bbdaec1d07d0ca4e1a8668838c41e6b156e03219394f",
+    "src/core/i18n/messages/ru-RU.ts": "2de64b9bf2b969f29e736e87bf26860e629fa995b74a6e9b5476ba119ccf86d1",
+    "src/core/i18n/messages/video-learning/en-US.json": "857d0b5b41a5ed4f17048d2db551176d545ad7c51a8daa00cdd9552451755ee2",
+    "src/core/i18n/messages/video-learning/es-ES.json": "8fbe04962286fa4898fe151a1e60cfc4e819c5c67aefbbec96446f73cab5afe3",
+    "src/core/i18n/messages/video-learning/fr-FR.json": "5443295fddd79b5a3c6a2e636ef0a49bb243d2202b62ac3a30ff2a1949ce6964",
+    "src/core/i18n/messages/video-learning/ja-JP.json": "6d571ed1858ae4ea87ec1b84dfc72f580b85081e2f3736b738d1577284f9213d",
+    "src/core/i18n/messages/video-learning/ko-KR.json": "5229d82be02a7667e992e62cf3b8f922d53f6fb5596c905a6fb15ec4a8622723",
+    "src/core/i18n/messages/video-learning/ru-RU.json": "82b4e6dbcc75d9e47ffdb89a104517ce691f8d640b37a4988ba277f5d606c7b3",
+    "src/core/i18n/messages/video-learning/zh-CN.json": "449a094ae4a4c94fd89ad2ebbd1e07451099d80ed814d62792eec575f4cc8ac4",
+    "src/core/i18n/messages/zh-CN.ts": "85d2ca921d06ff8f179769469163e7fbb86384f30aed812ff0fad2c231b184ea",
+    "src/features/settings/background/openOptionsHandler.ts": "3512ab92d4aae2dbc4e7d35f714ef423576bef536c59f25f50db64a64c8ed4d8",
+    "src/features/settings/model/navigation.ts": "6a1c25f15e01d1a39f3dc0e25fef8d363c0c1321cd9cdd8a255e0da932ff3e6d",
+    "src/features/settings/ui/InterfaceSettings.vue": "219c9cbed7f062d5a0400a196c0f6ebead1da1c063fd1398b402195aaaa436d3",
+    "src/features/settings/ui/VideoSentenceLearningAppearanceSettings.vue": "6a9b2cee683e6bbab05e6b23627e78b764dc9725948fb5b385e720954ec91777",
+    "src/features/video-subtitle/content/playerMenu.ts": "0aae87290b8e99fb5c8a46c245d76872efea8b9222a4608979640e59d35f5b93",
+    "src/features/video-subtitle/content/runtime.ts": "a56f46521c83fdb7c8f8b0090ccb5108ea1493c174fbc43e7604367d47cb3836",
+    "src/features/video-subtitle/content/sentenceLearningHost.ts": "e6076b2c3f7d47cd10fba17f2822d2cbc48c6ad75b69172c79a2a1a6977096d3",
+    "src/features/video-subtitle/content/sentenceLearningPlacement.ts": "deafac649a32fc31e85aade18a7aae81488603c4c368d5c8dbc65821fe9a7fbb",
+    "src/features/video-subtitle/content/sentenceLearningSession.ts": "34a433dfdbc78801161a33a6e5a6775767eb0473d0db75ec0f78380ccf54b0e5",
+    "src/features/video-subtitle/content/sentencePlayback.ts": "c68291fb6c862f485da09bdf8c8282a88e70544b1d9bcaed1ac2bf4e33e64f6e",
+    "src/features/video-subtitle/content/ui.ts": "e198b62bdbcabb4222553b08324ff3842a9464824b4d2d191d905113c79d47be",
+    "src/features/video-subtitle/content/videoPlayerBinding.ts": "e770fcc8aeb8a5ad7ee2860fcb6038df2fbfc2d5bdc9bf1591144697aa04aa98",
+    "src/features/video-subtitle/content/videoPlayerLocator.ts": "a21f2d5d187977720146843909ca5b3cd7827519900e39d792df7e226f8873f4",
+    "src/features/video-subtitle/ui/VideoSentenceLearning.vue": "a4fa0f19b1f661628ccd257ef465160f6492fb2a2751b5acdb4543af986dcb68",
+    "src/features/video-subtitle/ui/videoSentenceLearning.css": "bae5ad32b2bd2389bb995313173f6b8db27607fc95dedf9022329027c1a99662",
+    "userscript/inlineCssPlugin.ts": "a65c49cd5e938b4a71873a827d40edffe96320bc0bf0208347453881175c0860",
+    "userscript/languages/es-ES.0e137d2a17e5b5cb.json": "7aa9db2a91623a355f8d1b417c574ebb74253cdc8eeb0ab5c0dee916191d8493",
+    "userscript/languages/fr-FR.c0b51f4e71dd4981.json": "1af7b62ead8d1c54daadbcce38391971fe54ef35649371d56c180bbbca6526e2",
+    "userscript/languages/ja-JP.08c79340a9985ae3.json": "20a196a8ee6afa60941407c505b91787a6773e091bdf47d5777302ba2d240ab0",
+    "userscript/languages/ko-KR.b5beebbaecbf1262.json": "3477e872dac8d7e33e438d134757ef3de04f6234411ce16ab591fd1e743db643",
+    "userscript/languages/ru-RU.efcd39485c4ca062.json": "1008047013d2671563fc6dfe654a2d966bc1fb4b5b01bb947004402453f4d8e7",
+    "userscript/unsupportedCapabilities.ts": "2e8f2f411102f447e5bff9796f29d129043c22134359b36aaacba5d762d8b0d5",
+    "userscript/vite.config.ts": "792f2efe2d59a7a818e1fdac9f5fd6036bdcdb2b76d5b7b23767472ca13d91de"
+  },
+  "removedProductionInputs": [],
+  "artifacts": [
+    {
+      "path": ".output/chrome-mv3/content-scripts/content.js",
+      "bytes": 2986025,
+      "sha256": "d1166be072fa5682add0e7d4c468f0f0b0a0e4258931ccc0f7481a3d5b696943"
+    },
+    {
+      "path": ".output/firefox-mv2/content-scripts/content.js",
+      "bytes": 2986027,
+      "sha256": "9bc60dd3e0b04319927dc6903f2649c27c174ce7513fe0cfa595bc250784f195"
+    },
+    {
+      "path": ".output/userscript/fluent-read.user.js",
+      "bytes": 2061358,
+      "sha256": "ac1fea9c67a17e74272fe836e6b3ba28aae8cf08b00210bddc88f1d74a0d716c"
+    }
+  ],
+  "checks": [
+    {
+      "command": "pnpm build",
+      "logPath": "/private/tmp/video-learning-reliability-final-chrome.log",
+      "logSha256": "0fe542b42f6f0af3333e086762fb21e7e8d3a5831899309161bc89366fd22032",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm build:firefox",
+      "logPath": "/private/tmp/video-learning-reliability-final-firefox.log",
+      "logSha256": "7d22d6d326f00d478a515b76de4410417fd5e7d5248c95c697d36986a7fda2f7",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm compile",
+      "logPath": "/private/tmp/video-learning-reliability-final-escape-tsc.log",
+      "logSha256": "ca849e550192dc00105a0fff070ff7e9e43a1d08371808837a1168e1e8c21f41",
+      "exitCode": 0
+    },
+    {
+      "command": "node scripts/verify-userscript-build.mjs",
+      "logPath": "/private/tmp/video-learning-reliability-final-userscript-verifier.log",
+      "logSha256": "ca75400c6d05aa0f43cfc694d6e160614f857e0622d65071a0ac930062bbe038",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm verify:extension-manifests",
+      "logPath": "/private/tmp/video-learning-reliability-final-manifests.log",
+      "logSha256": "fa3f96224b8e412b0f27bcd61e04dbb9046b9c0a0143325dde6d7d0cdadf80eb",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm test -- tests/videoSentenceLearningComponent.test.ts",
+      "logPath": "/private/tmp/video-learning-reliability-fullscreen-exit-unit.log",
+      "logSha256": "7ddddb90e74d62bbef91dadcb0583aa6a6750fc8004115caec4b8c90e1ea8156",
+      "exitCode": 0
+    },
+    {
+      "command": "Latest main integration targeted suites: 11 files, 526 cases",
+      "logPath": "/private/tmp/video-learning-reliability-integrated-tests.log",
+      "logSha256": "f3a4d2a41fd2824a78639d0dd10d13860ba303254230cee8bb292da1e54a6575",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm docs:build",
+      "logPath": "/private/tmp/video-learning-reliability-delivery-docs.log",
+      "logSha256": "cbc2ea7d5a012d794726c7af9661f3834ac33f6d6dfd5784d350122986ebe8be",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm test:audit (metadata validation only)",
+      "logPath": "/private/tmp/video-learning-reliability-delivery-audit.log",
+      "logSha256": "ad6c23c7de508f9a183645177c75ff66067df761a8ad9cfc3f8295ee2ac222ce",
+      "exitCode": 0
+    }
+  ],
+  "testScope": "Affected suites only. Audit metadata does not imply a full-suite run. 526 cases preceded the final Escape handling change; the affected 20 component cases were rerun after it.",
+  "postCompileChange": "Only compact metadata max-height 18px to 20px CSS adjustment after successful type check; both browser builds reflect the final CSS."
+}

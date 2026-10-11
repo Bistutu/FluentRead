@@ -1,0 +1,141 @@
+{
+  "success": true,
+  "evidence": "Production extension; real local MP4 clock; original timed-caption fixtures; deterministic translation; actual live probes reported separately",
+  "fixtureCases": [
+    {
+      "platform": "youtube",
+      "scenario": "appearance-entry-ui-and-persistence",
+      "checks": [
+        {
+          "name": "The panel style entry opens the dedicated interface-center section with preview left and controls right",
+          "pass": true,
+          "details": {
+            "url": "chrome-extension://djnlaiohfaaifbibleebjggkghlmcpcj/options.html?target=video-sentence-learning-appearance#settings-interface",
+            "layout": {
+              "example": {
+                "x": 275,
+                "y": 218.171875,
+                "width": 459,
+                "height": 497,
+                "top": 218.171875,
+                "right": 734,
+                "bottom": 715.171875,
+                "left": 275
+              },
+              "controls": {
+                "x": 758,
+                "y": 218.171875,
+                "width": 459,
+                "height": 497,
+                "top": 218.171875,
+                "right": 1217,
+                "bottom": 715.171875,
+                "left": 758
+              }
+            }
+          }
+        },
+        {
+          "name": "Trusted style controls persist layout, opacity, font scale, width and position without losing an open draft or reissuing translation",
+          "pass": true,
+          "details": {
+            "appearance": {
+              "layout": "comfortable",
+              "backgroundOpacity": 72,
+              "fontScale": 110,
+              "width": 400,
+              "position": "bottom-left"
+            },
+            "screenshot": "/private/tmp/fluentread-video-learning-reliability-appearance-58ef-final/learning-appearance-settings.png"
+          }
+        },
+        {
+          "name": "A fresh video document restores the saved appearance and default bottom-left position while session drag stays local",
+          "pass": true,
+          "details": {
+            "host": {
+              "x": 32,
+              "y": 125.6796875,
+              "width": 400,
+              "height": 456.5546875,
+              "top": 125.6796875,
+              "right": 432,
+              "bottom": 582.234375,
+              "left": 32
+            },
+            "player": {
+              "x": 24,
+              "y": 98.234375,
+              "width": 960,
+              "height": 540,
+              "top": 98.234375,
+              "right": 984,
+              "bottom": 638.234375,
+              "left": 24
+            },
+            "layout": "comfortable",
+            "background": "rgba(24, 24, 28, 0.72)",
+            "originalFontSize": "20.9px",
+            "translationFontSize": "14.3px"
+          }
+        }
+      ],
+      "captures": [
+        {
+          "screenshot": "/private/tmp/fluentread-video-learning-reliability-appearance-58ef-final/youtube-reliability-comfortable.png",
+          "dom": "/private/tmp/fluentread-video-learning-reliability-appearance-58ef-final/youtube-reliability-comfortable.html"
+        }
+      ],
+      "success": true
+    }
+  ],
+  "liveCases": [],
+  "pageErrors": [],
+  "cleanup": {
+    "browserClosed": true,
+    "profileRemoved": true
+  },
+  "artifact": {
+    "contentSha256": "8ebb510f78ac406524eb1dd20dd4d5706c99c3155c45cf21d235040863bb4bf5",
+    "version": "0.0.37"
+  },
+  "focusObserver": {
+    "monitorPid": 76440,
+    "time": 1791732307196.354,
+    "monotonicMs": 3157599121.194709
+  },
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 212,
+      "top": -990,
+      "width": 1280,
+      "height": 900
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 64770,
+      "name": "ChatGPT"
+    },
+    "frontmostAfter": {
+      "pid": 64770,
+      "name": "ChatGPT"
+    }
+  },
+  "fixturePageErrors": [],
+  "finalBrowserFrontmost": false,
+  "focusEvents": {
+    "nativeObserver": true,
+    "browserActivations": 0,
+    "observerClosed": true
+  }
+}

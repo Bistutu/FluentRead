@@ -1,0 +1,26 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: node scripts/run-video-sentence-learning-test.cjs --appearance-only --platforms youtube --extension-dir .output/chrome-mv3 --playwright-root /Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules --artifacts-dir /private/tmp/fluentread-video-learning-reliability-appearance-58ef-final
+youtube: The panel style entry opens the dedicated interface-center section with preview left and controls right
+youtube: Trusted style controls persist layout, opacity, font scale, width and position without losing an open draft or reissuing translation
+youtube: A fresh video document restores the saved appearance and default bottom-left position while session drag stays local
+{
+  "success": true,
+  "fixtureCases": [
+    {
+      "platform": "youtube",
+      "scenario": "appearance-entry-ui-and-persistence",
+      "success": true,
+      "checks": 3
+    }
+  ],
+  "liveCases": [],
+  "focusEvents": {
+    "nativeObserver": true,
+    "browserActivations": 0,
+    "observerClosed": true
+  },
+  "cleanup": {
+    "browserClosed": true,
+    "profileRemoved": true
+  },
+  "report": "/private/tmp/fluentread-video-learning-reliability-appearance-58ef-final/report.json"
+}

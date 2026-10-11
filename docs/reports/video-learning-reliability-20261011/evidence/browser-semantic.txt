@@ -1,0 +1,158 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: node scripts/run-video-sentence-learning-test.cjs --platforms youtube,x --extension-dir .output/chrome-mv3 --playwright-root /Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules --artifacts-dir /private/tmp/fluentread-video-learning-reliability-semantic-d1166-final
+Video sentence validation started at 2026-10-11T15:34:41.468Z
+youtube: Production content-script styles keep the learning panel readable independently of host CSS
+youtube: Two source cues become one complete sentence with original 0–2500 ms timing and preserve paused playback
+youtube: A late timed-caption response from a different YouTube video cannot replace the current original timeline
+youtube: Next complete sentence retains source interval and nearby context without implicitly playing
+youtube: A Chinese source sentence keeps its own original timing and avoids a same-target provider call
+youtube: Unrelated translation-count broadcasts do not release the user loop
+youtube: A real media clock crosses the sentence end and loops to its original start, retaining user playback rate
+youtube: User pause remains authoritative while a loop is armed
+youtube: Closing playback assistance clears its mode without implicitly playing a user-paused video
+youtube: User seek outside the active sentence releases repeat control
+youtube: Sentence-end pause stops the real media clock at the source boundary
+youtube: Turning off end pause restores uninterrupted playback
+youtube: Unrelated translation-count broadcasts leave an in-flight explanation owned by the current sentence
+youtube: The existing reading service explains the complete source sentence with permitted neighboring caption context
+youtube: Learning and the existing video menu share FluentRead appearance and readable quotes independently of host Element variables
+youtube: Editing pins the complete sentence before typing and preserves editor focus when real playback reaches the next sentence
+youtube: Following playback returns the learning selection to the current media sentence
+youtube: Explicit stepping preserves its selection and returns to the same sentence translation/explanation drafts
+youtube: Collapsing and expanding the learning body preserves the selected sentence and confirmed drafts
+youtube: An explicit save preserves confirmed translation, title, neighboring context and stable deduplication identity
+youtube: A blank edited translation disables collection and remains an intentional draft after stepping away and back
+youtube: Clearing explanation keeps its focused editor mounted and an explicit save removes the existing persisted note
+youtube: A 390px player keeps learning inside its bounds with scrollable content, reachable saving and space for native controls
+youtube: requesting actual browser fullscreen
+youtube: Learning remains accessible in real browser fullscreen
+youtube: Closing learning restores keyboard focus to the FluentRead video entry
+youtube: Closing learning removes repeat/end-pause ownership so normal playback crosses the old boundary
+youtube: The existing learning center renders the reliable source link with the original sentence interval
+youtube: A source without a reliable URL preserves title/time and gives a recovery state without fabricating a link
+youtube: Rebuilding the player detaches learning ownership and keeps one video control; the replacement plays through the old range
+youtube: Changing video identity closes old learning and shows only the new original timeline with controls off
+youtube: Saving waits for translation or explicit user confirmation, and a delayed provider response preserves the edited translation
+youtube: Rapid trusted stepping and a synchronous microtask burst immediately select the final source and coalesce translation transport
+youtube: Collapsed and closed panels release queued translation; hidden stepping waits until expansion to translate the current source
+youtube: Compact previous/next controls stay reachable, reset the reading scroll to the complete source and preserve keyboard playback assistance
+x: Production content-script styles keep the learning panel readable independently of host CSS
+x: Two source cues become one complete sentence with original 0–2500 ms timing and preserve paused playback
+x: Next complete sentence retains source interval and nearby context without implicitly playing
+x: A Chinese source sentence keeps its own original timing and avoids a same-target provider call
+x: Unrelated translation-count broadcasts do not release the user loop
+x: A real media clock crosses the sentence end and loops to its original start, retaining user playback rate
+x: User pause remains authoritative while a loop is armed
+x: Closing playback assistance clears its mode without implicitly playing a user-paused video
+x: User seek outside the active sentence releases repeat control
+x: Sentence-end pause stops the real media clock at the source boundary
+x: Turning off end pause restores uninterrupted playback
+x: Unrelated translation-count broadcasts leave an in-flight explanation owned by the current sentence
+x: The existing reading service explains the complete source sentence with permitted neighboring caption context
+x: Learning and the existing video menu share FluentRead appearance and readable quotes independently of host Element variables
+x: Editing pins the complete sentence before typing and preserves editor focus when real playback reaches the next sentence
+x: Following playback returns the learning selection to the current media sentence
+x: Explicit stepping preserves its selection and returns to the same sentence translation/explanation drafts
+x: Collapsing and expanding the learning body preserves the selected sentence and confirmed drafts
+x: An explicit save preserves confirmed translation, title, neighboring context and stable deduplication identity
+x: A blank edited translation disables collection and remains an intentional draft after stepping away and back
+x: Clearing explanation keeps its focused editor mounted and an explicit save removes the existing persisted note
+x: A 390px player keeps learning inside its bounds with scrollable content, reachable saving and space for native controls
+x: requesting actual browser fullscreen
+x: Learning remains accessible in real browser fullscreen
+x: Closing learning restores keyboard focus to the FluentRead video entry
+x: Closing learning removes repeat/end-pause ownership so normal playback crosses the old boundary
+x: The existing learning center renders the reliable source link with the original sentence interval
+x: A source without a reliable URL preserves title/time and gives a recovery state without fabricating a link
+x: Returning from the X learning source restores the saved start using production fragment recovery
+x: Rebuilding the player detaches learning ownership and keeps one video control; the replacement plays through the old range
+x: Changing video identity closes old learning and shows only the new original timeline with controls off
+x: Saving waits for translation or explicit user confirmation, and a delayed provider response preserves the edited translation
+x: Rapid trusted stepping and a synchronous microtask burst immediately select the final source and coalesce translation transport
+x: Collapsed and closed panels release queued translation; hidden stepping waits until expansion to translate the current source
+x: Compact previous/next controls stay reachable, reset the reading scroll to the complete source and preserve keyboard playback assistance
+youtube: A translated-only YouTube timed-caption track is not exposed as an original sentence, repeat range or collectible source
+youtube: The same empty learning panel becomes available only when an original timed-caption track arrives
+x: An unproven X video/status correspondence does not restore a source fragment onto the active media
+x: Explicit collection preserves sentence/title/time while omitting an unproven X source URL
+x: An unproven X video/status correspondence does not restore a source fragment onto the active media
+x: Explicit collection preserves sentence/title/time while omitting an unproven X source URL
+x: An unproven X video/status correspondence does not restore a source fragment onto the active media
+x: Explicit collection preserves sentence/title/time while omitting an unproven X source URL
+x: An explicit local X video/N ancestor restores the matching media source fragment
+x: Explicit collection retains the locally proven X video/N source identity
+x: An unproven X video/status correspondence does not restore a source fragment onto the active media
+x: Explicit collection preserves sentence/title/time while omitting an unproven X source URL
+{
+  "success": true,
+  "fixtureCases": [
+    {
+      "platform": "youtube",
+      "success": true,
+      "checks": 31
+    },
+    {
+      "platform": "youtube",
+      "scenario": "operation-improvements",
+      "success": true,
+      "checks": 3
+    },
+    {
+      "platform": "x",
+      "success": true,
+      "checks": 31
+    },
+    {
+      "platform": "x",
+      "scenario": "operation-improvements",
+      "success": true,
+      "checks": 3
+    },
+    {
+      "platform": "youtube",
+      "scenario": "translated-only-track",
+      "success": true,
+      "checks": 2
+    },
+    {
+      "platform": "x",
+      "scenario": "multiple-videos-without-index",
+      "success": true,
+      "checks": 2
+    },
+    {
+      "platform": "x",
+      "scenario": "multiple-videos-wrong-index",
+      "success": true,
+      "checks": 2
+    },
+    {
+      "platform": "x",
+      "scenario": "unassigned-quoted-status",
+      "success": true,
+      "checks": 2
+    },
+    {
+      "platform": "x",
+      "scenario": "multiple-videos-explicit-index",
+      "success": true,
+      "checks": 2
+    },
+    {
+      "platform": "x",
+      "scenario": "single-dom-video-with-unproven-index",
+      "success": true,
+      "checks": 2
+    }
+  ],
+  "liveCases": [],
+  "focusEvents": {
+    "nativeObserver": true,
+    "browserActivations": 0,
+    "observerClosed": true
+  },
+  "cleanup": {
+    "browserClosed": true,
+    "profileRemoved": true
+  },
+  "report": "/private/tmp/fluentread-video-learning-reliability-semantic-d1166-final/report.json"
+}

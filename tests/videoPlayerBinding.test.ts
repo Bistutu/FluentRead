@@ -56,6 +56,87 @@ function createFixture(markup = '<div class="player"><video></video><div class="
 afterEach(() => vi.unstubAllGlobals());
 
 describe('native picture-in-picture and fullscreen anchors', () => {
+  it('ignores caption element and icon churn while rebinding native button and host structure', () => {
+    const fixture = createFixture('<div class="player"><video></video><div class="captions"></div><div class="ytp-right-controls"><button aria-label="Settings"><span>icon</span></button><button aria-label="Full screen">full</button></div></div>');
+    let notify!: MutationCallback;
+    vi.stubGlobal('MutationObserver', class {
+      constructor(callback: MutationCallback) { notify = callback; }
+      observe() {}
+      disconnect() {}
+    });
+    const button = fixture.document.createElement('button');
+    const binding = createVideoPlayerBinding({document: fixture.document, locator: fixture.locator,
+      getState: () => ({enabled: true}), createButton: () => button});
+    const scans = vi.spyOn(fixture.locator, 'sync'); scans.mockClear();
+    const caption = fixture.player.querySelector('.captions')!;
+    const native = fixture.player.querySelector('[aria-label="Settings"]')!;
+    for (let index = 0; index < 180; index += 1) {
+      notify([
+        {type: 'childList', target: caption, addedNodes: [fixture.document.createElement('span')], removedNodes: []},
+        {type: 'childList', target: native, addedNodes: [fixture.document.createElement('svg')], removedNodes: []},
+        {type: 'attributes', target: caption, attributeName: 'title', addedNodes: [], removedNodes: []},
+      ] as unknown as MutationRecord[], {} as MutationObserver);
+    }
+    expect(scans).not.toHaveBeenCalled();
+    const host = button.parentElement!;
+    const control = fixture.document.createElement('button'); control.setAttribute('aria-label', 'Picture in picture');
+    host.insertBefore(control, button);
+    notify([{type: 'childList', target: host, addedNodes: [control], removedNodes: []}] as unknown as MutationRecord[], {} as MutationObserver);
+    expect(scans).toHaveBeenCalledOnce(); scans.mockClear();
+    const nestedButton = fixture.document.createElement('div'); nestedButton.appendChild(fixture.document.createElement('button'));
+    host.insertBefore(nestedButton, button);
+    notify([{type: 'childList', target: host, addedNodes: [nestedButton], removedNodes: []}] as unknown as MutationRecord[], {} as MutationObserver);
+    expect(scans).toHaveBeenCalledOnce(); scans.mockClear();
+    const unlabeled = fixture.document.createElement('button');
+    host.insertBefore(unlabeled, button);
+    notify([{type: 'childList', target: host, addedNodes: [unlabeled], removedNodes: []}] as unknown as MutationRecord[], {} as MutationObserver);
+    expect(scans).toHaveBeenCalledOnce(); scans.mockClear();
+    const wrapper = fixture.document.createElement('div'); fixture.player.appendChild(wrapper); wrapper.appendChild(host);
+    notify([{type: 'childList', target: fixture.player, addedNodes: [wrapper], removedNodes: []}] as unknown as MutationRecord[], {} as MutationObserver);
+    expect(scans).toHaveBeenCalledOnce(); scans.mockClear();
+    notify([{type: 'attributes', target: native, attributeName: 'aria-label', addedNodes: [], removedNodes: []}] as unknown as MutationRecord[], {} as MutationObserver);
+    expect(scans).toHaveBeenCalledOnce(); scans.mockClear();
+    button.remove();
+    notify([{type: 'childList', target: host, addedNodes: [], removedNodes: [button]}] as unknown as MutationRecord[], {} as MutationObserver);
+    expect(scans).toHaveBeenCalledOnce();
+    expect(button.parentElement).toBe(host);
+    binding.destroy(); scans.mockRestore();
+  });
+
+  it.each([false, true])('restores a static containing block across the optional CSS priority boundary (%s)', withPriority => {
+    const fixture = createFixture();
+    Object.defineProperty(fixture.document, 'defaultView', {configurable: true,
+      value: {...fixture.window, getComputedStyle: () => ({position: 'static'})}});
+    let priority = '';
+    const style = {position: '', setProperty(_name: string, value: string, nextPriority: string) {this.position = value; priority = nextPriority;}};
+    if (withPriority) Object.assign(style, {getPropertyPriority: () => priority});
+    Object.defineProperty(fixture.player, 'style', {configurable: true, value: style});
+    const binding = createVideoPlayerBinding({document: fixture.document, locator: fixture.locator,
+      getState: () => ({enabled: true}), createButton: () => fixture.document.createElement('button')});
+    expect(style.position).toBe('relative');
+    binding.destroy();
+    expect(style.position).toBe('');
+  });
+
+  it('keeps player interaction stable when pointer and focus cross sibling controls', () => {
+    const fixture = createFixture();
+    const binding = createVideoPlayerBinding({document: fixture.document, locator: fixture.locator,
+      getState: () => ({enabled: true}), createButton: () => fixture.document.createElement('button')});
+    const controls = fixture.player.querySelectorAll('button');
+    controls[0].dispatchEvent(new fixture.window.Event('pointerover', {bubbles: true}));
+    const scans = vi.spyOn(fixture.locator, 'sync'); scans.mockClear();
+    for (const type of ['pointerout', 'focusout']) {
+      const event = new fixture.window.Event(type, {bubbles: true});
+      Object.defineProperty(event, 'relatedTarget', {value: controls[1]});
+      controls[0].dispatchEvent(event);
+    }
+    controls[1].dispatchEvent(new fixture.window.Event('pointerover', {bubbles: true}));
+    controls[1].dispatchEvent(new fixture.window.Event('focusin', {bubbles: true}));
+    expect(scans).not.toHaveBeenCalled();
+    expect(fixture.player.getAttribute('data-fluent-read-video-active')).toBe('true');
+    binding.destroy(); scans.mockRestore();
+  });
+
   it.each([
     ['aria-label="Full screen"', 'aria-label="Picture in picture"'],
     ['aria-label="Exit fullscreen"', 'aria-label="Picture-in-picture"'],

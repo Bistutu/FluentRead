@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/sentencePlayback.ts
  * 文件职责：在现有网页媒体元素上提供可解除的单句循环与句末暂停控制。
- * 主要内容：只在选句期间检查媒体状态，按原文毫秒范围识别自身跳转与用户 seek，尊重暂停和倍速，并在媒体重载、卸载或销毁时取消监听与动画帧。
+ * 主要内容：只在选句期间检查媒体状态，按原文毫秒范围识别自身跳转与用户 seek；尚未进入所选范围时只准备辅助模式，待 seek 完成再检查边界，尊重暂停和倍速，并在媒体重载、卸载或销毁时取消监听与动画帧。
  * 模块边界：不创建播放器、不修改倍速/全屏/画中画，不进行字幕翻译或隐式播放；媒体与帧调度边界可注入，UI 只在用户明确播放时调用原媒体 play。
  */
 import type {VideoSentence} from './sentenceTimeline';
@@ -34,6 +34,8 @@ export class SentencePlaybackController {
   private pausedAtEnd = false;
   private frame: number | null = null;
   private expectedSeekMs: number | null = null;
+  private seekPending = false;
+  private boundaryArmed = false;
   private destroyed = false;
   private operation = 0;
   private readonly listeners: Array<[string, () => void]>;
@@ -69,6 +71,8 @@ export class SentencePlaybackController {
     this.mode = mode;
     this.pausedAtEnd = false;
     this.expectedSeekMs = null;
+    this.seekPending = false;
+    this.boundaryArmed = seekToStart || this.isInsideSentence();
     if (seekToStart && !this.seek(sentence.startMs)) return;
     this.notify();
     this.schedule();
@@ -78,6 +82,7 @@ export class SentencePlaybackController {
     if (this.destroyed) return;
     this.mode = this.sentence ? mode : 'off';
     this.pausedAtEnd = false;
+    this.boundaryArmed = this.seekPending || this.isInsideSentence();
     this.operation += 1;
     this.cancelFrame();
     this.notify();
@@ -91,6 +96,8 @@ export class SentencePlaybackController {
     this.sentence = null;
     this.pausedAtEnd = false;
     this.expectedSeekMs = null;
+    this.seekPending = false;
+    this.boundaryArmed = false;
     this.notify();
   };
 
@@ -111,7 +118,8 @@ export class SentencePlaybackController {
   }
 
   private schedule(): void {
-    if (this.frame === null && this.mode !== 'off'
+    if (this.frame === null && this.mode !== 'off' && this.boundaryArmed
+      && !this.seekPending
       && !this.media.paused && !this.media.seeking) {
       this.frame = this.scheduler.request(this.handleFrame);
     }
@@ -123,9 +131,15 @@ export class SentencePlaybackController {
   };
 
   private seek(milliseconds: number): boolean {
+    if (!this.media.seeking && Math.abs(this.media.currentTime * 1000 - milliseconds) < 1) {
+      this.expectedSeekMs = null;
+      this.seekPending = false;
+      return true;
+    }
     this.expectedSeekMs = milliseconds;
     try {
       this.media.currentTime = milliseconds / 1000;
+      this.seekPending = this.media.seeking || Math.abs(this.media.currentTime * 1000 - milliseconds) > 75;
       return true;
     } catch {
       this.stop();
@@ -139,7 +153,12 @@ export class SentencePlaybackController {
   };
 
   private handleSeeked = (): void => {
+    if (this.expectedSeekMs !== null && Math.abs(this.media.currentTime * 1000 - this.expectedSeekMs) > 75) {
+      this.stop();
+      return;
+    }
     this.expectedSeekMs = null;
+    this.seekPending = false;
     this.schedule();
   };
 
@@ -153,18 +172,19 @@ export class SentencePlaybackController {
   };
 
   private handleEnded = (): void => {
+    if (this.seekPending) return;
     if (!this.sentence) {
       this.stop();
       return;
     }
-    if (this.mode === 'loop' && this.media.currentTime * 1000 >= this.sentence.endMs) {
+    if (this.mode === 'loop' && this.boundaryArmed && this.media.currentTime * 1000 >= this.sentence.endMs) {
       const operation = this.operation;
       if (this.seek(this.sentence.startMs)) {
         void this.media.play().catch(() => {
           if (this.operation === operation) this.stop();
         });
       }
-    } else if (this.mode === 'pause') {
+    } else if (this.mode === 'pause' && this.boundaryArmed) {
       this.pausedAtEnd = true;
       this.cancelFrame();
       this.notify();
@@ -179,6 +199,15 @@ export class SentencePlaybackController {
     }
     if (this.mode === 'off' || this.media.paused || this.media.seeking || this.pausedAtEnd) return;
     const currentMs = this.media.currentTime * 1000;
+    // currentTime 写入后播放器可能还停在旧画面；等待自己的 seek 落地，不能重复跳转。
+    if (this.seekPending && this.expectedSeekMs !== null) {
+      if (Math.abs(currentMs - this.expectedSeekMs) > 75) return;
+      this.seekPending = false;
+    }
+    if (!this.boundaryArmed) {
+      if (!this.isInsideSentence()) return;
+      this.boundaryArmed = true;
+    }
     if (!Number.isFinite(currentMs) || currentMs < this.sentence.startMs - 150) {
       this.stop();
       return;
@@ -194,4 +223,10 @@ export class SentencePlaybackController {
     }
     this.schedule();
   };
+
+  private isInsideSentence(): boolean {
+    const currentMs = this.media.currentTime * 1000;
+    return !!this.sentence && Number.isFinite(currentMs)
+      && currentMs >= this.sentence.startMs && currentMs < this.sentence.endMs;
+  }
 }

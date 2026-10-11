@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/sentenceLearningHost.ts
  * 文件职责：封装视频句子学习面板的节点所有权、可靠来源选择和收藏片段的单次定位恢复。
- * 主要内容：只从当前视频的明确链接或无歧义帖子识别 X 来源；保存完整 video/N 身份，恢复时核对同一来源与安全时间范围；字幕更新同步实际来源语言；挂载、关闭和失联清理先释放所有权，避免同步卸载重入，关闭后将面板内焦点还给播放器入口。
+ * 主要内容：只从当前视频的明确链接或无歧义帖子识别 X 来源；保存完整 video/N 身份，恢复时核对同一来源与安全时间范围；字幕更新同步实际来源语言；同一媒体更换全屏容器时移动既有挂载节点，挂载、关闭和失联清理先释放所有权，避免同步卸载重入，关闭后将面板内焦点还给播放器入口。
  * 模块边界：不静态导入 Vue 或组件实现、不加载字幕和调用翻译服务；composition root 注入挂载与界面标记，原始媒体与 cue 数据仍由既有运行时持有。
  */
 import type VideoSentenceLearning from '../ui/VideoSentenceLearning.vue';
@@ -50,6 +50,7 @@ export interface VideoSentenceLearningHost {
     close(): void;
     isOpen(): boolean;
     isConnected(player?: HTMLElement): boolean;
+    syncPlayer(player: HTMLElement, video: HTMLVideoElement): boolean;
     updateCues(cues: VideoSubtitleCue[], sourceLanguage?: string): void;
     hasCues(): boolean;
 }
@@ -58,16 +59,20 @@ export interface VideoSentenceLearningHost {
 export function createVideoSentenceLearningHost(ports: {
     mount(host: HTMLElement, props: MutableVideoSentenceLearningProps): () => void;
     markUi(host: HTMLElement): void;
+    place?(host: HTMLElement, player: HTMLElement): {syncPlayer(player: HTMLElement): void; destroy(): void};
 }): VideoSentenceLearningHost {
-    let owner: {host: HTMLElement; player: HTMLElement; props: MutableVideoSentenceLearningProps; unmount?: () => void} | undefined;
+    let owner: {host: HTMLElement; player: HTMLElement; props: MutableVideoSentenceLearningProps; unmount?: () => void;
+        placement?: {syncPlayer(player: HTMLElement): void; destroy(): void}} | undefined;
     const close = (): void => {
         const previous = owner; owner = undefined;
         const focused = previous?.host.ownerDocument.activeElement;
         const returnFocus = focused && previous!.host.contains(focused)
             ? previous!.player.querySelector<HTMLElement>('#fluent-read-video-subtitle-button') : null;
         try { previous?.unmount?.(); } finally {
-            previous?.host.remove();
-            if (!owner && returnFocus?.isConnected) returnFocus.focus({preventScroll: true});
+            try { previous?.placement?.destroy(); } finally {
+                previous?.host.remove();
+                if (!owner && returnFocus?.isConnected) returnFocus.focus({preventScroll: true});
+            }
         }
     };
     return {
@@ -77,17 +82,33 @@ export function createVideoSentenceLearningHost(ports: {
             ports.markUi(host);
             Object.assign(host.style, {position: 'absolute', top: '8px', bottom: '56px', right: '8px', width: 'min(390px, calc(100% - 16px))', maxHeight: 'calc(100% - 56px)', overflow: 'auto', zIndex: '2147483646', pointerEvents: 'none'});
             player.appendChild(host);
-            const next = {host, player, props, unmount: undefined as (() => void) | undefined}; owner = next;
+            const next = {host, player, props, unmount: undefined as (() => void) | undefined,
+                placement: undefined as {syncPlayer(player: HTMLElement): void; destroy(): void} | undefined}; owner = next;
             try {
                 const unmount = ports.mount(host, props);
                 if (owner !== next) { unmount(); return; }
                 next.unmount = unmount;
+                const placement = ports.place?.(host, player);
+                if (owner !== next) { placement?.destroy(); return; }
+                next.placement = placement;
                 host.querySelector<HTMLElement>('section')?.focus({preventScroll: true});
             } catch (cause) { if (owner === next) close(); throw cause; }
         },
         close,
         isOpen: () => !!owner,
         isConnected: player => !!owner && owner.host.isConnected && owner.host.parentElement === owner.player && (!player || owner.player === player),
+        syncPlayer(player, video) {
+            if (!owner || owner.props.video !== video || !video.isConnected || !player.isConnected || !player.contains(video)) return false;
+            if (owner.player !== player || owner.host.parentElement !== player) {
+                const focused = owner.host.ownerDocument.activeElement;
+                const restoreFocus = focused && owner.host.contains(focused) ? focused as HTMLElement : null;
+                player.appendChild(owner.host);
+                owner.player = player;
+                owner.placement?.syncPlayer(player);
+                restoreFocus?.focus({preventScroll: true});
+            }
+            return owner.host.isConnected;
+        },
         updateCues(cues, sourceLanguage) {
             if (owner) {
                 owner.props.cues = cues;

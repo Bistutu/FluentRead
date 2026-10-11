@@ -15,7 +15,7 @@
   "video.learning.save": "Guardar frase",
   "video.learning.library": "Centro de aprendizaje",
   "video.learning.explanation": "Confirmar explicación (editable)",
-  "video.learning.hint": "← / → cambia de frase, R repite, Q pausa al final y Esc cierra. Elige una ayuda de reproducción y pulsa repetir. Mover manualmente la reproducción desactiva la ayuda. Al editar se fija la frase; los borradores se conservan durante esta sesión al cambiar de frase.",
+  "video.learning.hint": "En el reproductor: ← / → cambia de frase, R repite, Q pausa al final. Esc sale de pantalla completa o cierra el aprendizaje en vista normal. Elige una ayuda y vuelve a reproducir para empezar; mover manualmente la reproducción desactiva la ayuda. Arrastra el título para mover el panel. Al editar se fija la frase y se conservan los borradores.",
   "video.learning.empty": "Sin línea de tiempo. Activa los subtítulos originales y reintenta tras la carga.",
   "video.learning.translationFailed": "Falló la traducción. Reintenta.",
   "video.learning.playFailed": "Usa el botón de reproducción del vídeo.",
@@ -44,5 +44,8 @@
   "video.learning.expand": "Expandir",
   "video.learning.stopped": "La explicación se ha detenido. Puedes editarla o generarla de nuevo.",
   "video.learning.stoppedShort": "Detenida",
-  "video.learning.explanationAgain": "Explicar de nuevo"
+  "video.learning.explanationAgain": "Explicar de nuevo",
+  "video.learning.start": "Iniciar aprendizaje de frases",
+  "video.learning.appearance": "Personalizar el panel de aprendizaje",
+  "video.learning.drag": "Arrastra el título para mover el panel"
 }

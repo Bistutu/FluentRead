@@ -1,0 +1,1162 @@
+{
+  "success": true,
+  "startedAt": "2026-10-11T15:36:03.113Z",
+  "evidence": "Production extension; real local MP4 clock; original timed-caption fixtures; deterministic translation; actual live probes reported separately",
+  "fixtureCases": [
+    {
+      "platform": "youtube",
+      "scenario": "small-player-controls-bounds-probe",
+      "checks": [
+        {
+          "name": "Measured actual 390×260 control bounds and hit tests",
+          "pass": true,
+          "details": {
+            "width": 390,
+            "height": 260,
+            "player": {
+              "x": 24,
+              "y": 98.234375,
+              "width": 390,
+              "height": 260,
+              "top": 98.234375,
+              "right": 414,
+              "bottom": 358.234375,
+              "left": 24
+            },
+            "panel": {
+              "x": 46,
+              "y": 106.234375,
+              "width": 360,
+              "height": 196,
+              "top": 106.234375,
+              "right": 406,
+              "bottom": 302.234375,
+              "left": 46
+            },
+            "card": {
+              "x": 46,
+              "y": 106.234375,
+              "width": 360,
+              "height": 196,
+              "top": 106.234375,
+              "right": 406,
+              "bottom": 302.234375,
+              "left": 46
+            },
+            "header": {
+              "x": 47,
+              "y": 107.234375,
+              "width": 358,
+              "height": 41.1953125,
+              "top": 107.234375,
+              "right": 405,
+              "bottom": 148.4296875,
+              "left": 47
+            },
+            "body": {
+              "x": 47,
+              "y": 148.4296875,
+              "width": 358,
+              "height": 68.8046875,
+              "top": 148.4296875,
+              "right": 405,
+              "bottom": 217.234375,
+              "left": 47
+            },
+            "bodyScrollHeight": 240,
+            "bodyClientHeight": 69,
+            "bodyOverflow": "auto",
+            "original": {
+              "text": "They use rocks to open shells.",
+              "bounds": {
+                "x": 59,
+                "y": 180.4765625,
+                "width": 334,
+                "height": 24.6484375,
+                "top": 180.4765625,
+                "right": 393,
+                "bottom": 205.125,
+                "left": 59
+              },
+              "fontSize": "17px",
+              "lineHeight": "24.65px",
+              "textRects": [
+                {
+                  "x": 59,
+                  "y": 182.4765625,
+                  "width": 230.390625,
+                  "height": 20,
+                  "top": 182.4765625,
+                  "right": 289.390625,
+                  "bottom": 202.4765625,
+                  "left": 59
+                }
+              ],
+              "firstLineVisibleHeight": 20,
+              "readableFirstLine": true
+            },
+            "navigation": {
+              "x": 47,
+              "y": 217.234375,
+              "width": 358,
+              "height": 40,
+              "top": 217.234375,
+              "right": 405,
+              "bottom": 257.234375,
+              "left": 47
+            },
+            "footer": {
+              "x": 47,
+              "y": 257.234375,
+              "width": 358,
+              "height": 44,
+              "top": 257.234375,
+              "right": 405,
+              "bottom": 301.234375,
+              "left": 47
+            },
+            "controls": [
+              {
+                "action": "help",
+                "bounds": {
+                  "x": 299,
+                  "y": 114.234375,
+                  "width": 24,
+                  "height": 26.1953125,
+                  "top": 114.234375,
+                  "right": 323,
+                  "bottom": 140.4296875,
+                  "left": 299
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "BUTTON",
+                "hitAction": "help"
+              },
+              {
+                "action": "appearance",
+                "bounds": {
+                  "x": 323,
+                  "y": 114.328125,
+                  "width": 24,
+                  "height": 26,
+                  "top": 114.328125,
+                  "right": 347,
+                  "bottom": 140.328125,
+                  "left": 323
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "svg",
+                "hitAction": "appearance"
+              },
+              {
+                "action": "collapse",
+                "bounds": {
+                  "x": 347,
+                  "y": 114.328125,
+                  "width": 24,
+                  "height": 26,
+                  "top": 114.328125,
+                  "right": 371,
+                  "bottom": 140.328125,
+                  "left": 347
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "svg",
+                "hitAction": "collapse"
+              },
+              {
+                "action": "close",
+                "bounds": {
+                  "x": 371,
+                  "y": 114.328125,
+                  "width": 24,
+                  "height": 26,
+                  "top": 114.328125,
+                  "right": 395,
+                  "bottom": 140.328125,
+                  "left": 371
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "path",
+                "hitAction": "close"
+              },
+              {
+                "action": "previous",
+                "bounds": {
+                  "x": 57,
+                  "y": 225.234375,
+                  "width": 32,
+                  "height": 32,
+                  "top": 225.234375,
+                  "right": 89,
+                  "bottom": 257.234375,
+                  "left": 57
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "svg",
+                "hitAction": "previous"
+              },
+              {
+                "action": "play",
+                "bounds": {
+                  "x": 95,
+                  "y": 225.234375,
+                  "width": 262,
+                  "height": 32,
+                  "top": 225.234375,
+                  "right": 357,
+                  "bottom": 257.234375,
+                  "left": 95
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "BUTTON",
+                "hitAction": "play"
+              },
+              {
+                "action": "next",
+                "bounds": {
+                  "x": 363,
+                  "y": 225.234375,
+                  "width": 32,
+                  "height": 32,
+                  "top": 225.234375,
+                  "right": 395,
+                  "bottom": 257.234375,
+                  "left": 363
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "svg",
+                "hitAction": "next"
+              },
+              {
+                "action": "explain",
+                "bounds": {
+                  "x": 57,
+                  "y": 264.234375,
+                  "width": 166,
+                  "height": 30,
+                  "top": 264.234375,
+                  "right": 223,
+                  "bottom": 294.234375,
+                  "left": 57
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "BUTTON",
+                "hitAction": "explain"
+              },
+              {
+                "action": "save",
+                "bounds": {
+                  "x": 229,
+                  "y": 264.234375,
+                  "width": 166,
+                  "height": 30,
+                  "top": 264.234375,
+                  "right": 395,
+                  "bottom": 294.234375,
+                  "left": 229
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "BUTTON",
+                "hitAction": "save"
+              }
+            ],
+            "screenshot": "/private/tmp/fluentread-video-learning-reliability-small-player-d1166-final/youtube-small-player-390x260.png",
+            "allControlsReachable": true
+          }
+        },
+        {
+          "name": "Measured actual 320×180 control bounds and hit tests",
+          "pass": true,
+          "details": {
+            "width": 320,
+            "height": 180,
+            "player": {
+              "x": 24,
+              "y": 98.234375,
+              "width": 320,
+              "height": 180,
+              "top": 98.234375,
+              "right": 344,
+              "bottom": 278.234375,
+              "left": 24
+            },
+            "panel": {
+              "x": 32,
+              "y": 106.234375,
+              "width": 304,
+              "height": 116,
+              "top": 106.234375,
+              "right": 336,
+              "bottom": 222.234375,
+              "left": 32
+            },
+            "card": {
+              "x": 32,
+              "y": 106.234375,
+              "width": 304,
+              "height": 116,
+              "top": 106.234375,
+              "right": 336,
+              "bottom": 222.234375,
+              "left": 32
+            },
+            "header": {
+              "x": 33,
+              "y": 107.234375,
+              "width": 302,
+              "height": 29.1953125,
+              "top": 107.234375,
+              "right": 335,
+              "bottom": 136.4296875,
+              "left": 33
+            },
+            "body": {
+              "x": 33,
+              "y": 136.4296875,
+              "width": 302,
+              "height": 18.8046875,
+              "top": 136.4296875,
+              "right": 335,
+              "bottom": 155.234375,
+              "left": 33
+            },
+            "bodyScrollHeight": 189,
+            "bodyClientHeight": 19,
+            "bodyOverflow": "auto",
+            "original": {
+              "text": "They use rocks to open shells.",
+              "bounds": {
+                "x": 45,
+                "y": 136.4296875,
+                "width": 278,
+                "height": 20.296875,
+                "top": 136.4296875,
+                "right": 323,
+                "bottom": 156.7265625,
+                "left": 45
+              },
+              "fontSize": "14px",
+              "lineHeight": "20.3px",
+              "textRects": [
+                {
+                  "x": 45,
+                  "y": 137.9296875,
+                  "width": 195.09375,
+                  "height": 16.5,
+                  "top": 137.9296875,
+                  "right": 240.09375,
+                  "bottom": 154.4296875,
+                  "left": 45
+                }
+              ],
+              "firstLineVisibleHeight": 16.5,
+              "readableFirstLine": true
+            },
+            "navigation": {
+              "x": 33,
+              "y": 155.234375,
+              "width": 302,
+              "height": 34,
+              "top": 155.234375,
+              "right": 335,
+              "bottom": 189.234375,
+              "left": 33
+            },
+            "footer": {
+              "x": 33,
+              "y": 189.234375,
+              "width": 302,
+              "height": 32,
+              "top": 189.234375,
+              "right": 335,
+              "bottom": 221.234375,
+              "left": 33
+            },
+            "controls": [
+              {
+                "action": "help",
+                "bounds": {
+                  "x": 229,
+                  "y": 108.234375,
+                  "width": 24,
+                  "height": 26.1953125,
+                  "top": 108.234375,
+                  "right": 253,
+                  "bottom": 134.4296875,
+                  "left": 229
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "BUTTON",
+                "hitAction": "help"
+              },
+              {
+                "action": "appearance",
+                "bounds": {
+                  "x": 253,
+                  "y": 108.328125,
+                  "width": 24,
+                  "height": 26,
+                  "top": 108.328125,
+                  "right": 277,
+                  "bottom": 134.328125,
+                  "left": 253
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "svg",
+                "hitAction": "appearance"
+              },
+              {
+                "action": "collapse",
+                "bounds": {
+                  "x": 277,
+                  "y": 108.328125,
+                  "width": 24,
+                  "height": 26,
+                  "top": 108.328125,
+                  "right": 301,
+                  "bottom": 134.328125,
+                  "left": 277
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "svg",
+                "hitAction": "collapse"
+              },
+              {
+                "action": "close",
+                "bounds": {
+                  "x": 301,
+                  "y": 108.328125,
+                  "width": 24,
+                  "height": 26,
+                  "top": 108.328125,
+                  "right": 325,
+                  "bottom": 134.328125,
+                  "left": 301
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "path",
+                "hitAction": "close"
+              },
+              {
+                "action": "previous",
+                "bounds": {
+                  "x": 43,
+                  "y": 157.234375,
+                  "width": 32,
+                  "height": 32,
+                  "top": 157.234375,
+                  "right": 75,
+                  "bottom": 189.234375,
+                  "left": 43
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "svg",
+                "hitAction": "previous"
+              },
+              {
+                "action": "play",
+                "bounds": {
+                  "x": 81,
+                  "y": 157.234375,
+                  "width": 206,
+                  "height": 32,
+                  "top": 157.234375,
+                  "right": 287,
+                  "bottom": 189.234375,
+                  "left": 81
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "BUTTON",
+                "hitAction": "play"
+              },
+              {
+                "action": "next",
+                "bounds": {
+                  "x": 293,
+                  "y": 157.234375,
+                  "width": 32,
+                  "height": 32,
+                  "top": 157.234375,
+                  "right": 325,
+                  "bottom": 189.234375,
+                  "left": 293
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "svg",
+                "hitAction": "next"
+              },
+              {
+                "action": "explain",
+                "bounds": {
+                  "x": 43,
+                  "y": 190.234375,
+                  "width": 138,
+                  "height": 30,
+                  "top": 190.234375,
+                  "right": 181,
+                  "bottom": 220.234375,
+                  "left": 43
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "BUTTON",
+                "hitAction": "explain"
+              },
+              {
+                "action": "save",
+                "bounds": {
+                  "x": 187,
+                  "y": 190.234375,
+                  "width": 138,
+                  "height": 30,
+                  "top": 190.234375,
+                  "right": 325,
+                  "bottom": 220.234375,
+                  "left": 187
+                },
+                "disabled": false,
+                "withinCard": true,
+                "hitTest": true,
+                "hitTag": "BUTTON",
+                "hitAction": "save"
+              }
+            ],
+            "screenshot": "/private/tmp/fluentread-video-learning-reliability-small-player-d1166-final/youtube-small-player-320x180.png",
+            "allControlsReachable": true
+          }
+        }
+      ],
+      "sizes": [
+        {
+          "width": 390,
+          "height": 260,
+          "player": {
+            "x": 24,
+            "y": 98.234375,
+            "width": 390,
+            "height": 260,
+            "top": 98.234375,
+            "right": 414,
+            "bottom": 358.234375,
+            "left": 24
+          },
+          "panel": {
+            "x": 46,
+            "y": 106.234375,
+            "width": 360,
+            "height": 196,
+            "top": 106.234375,
+            "right": 406,
+            "bottom": 302.234375,
+            "left": 46
+          },
+          "card": {
+            "x": 46,
+            "y": 106.234375,
+            "width": 360,
+            "height": 196,
+            "top": 106.234375,
+            "right": 406,
+            "bottom": 302.234375,
+            "left": 46
+          },
+          "header": {
+            "x": 47,
+            "y": 107.234375,
+            "width": 358,
+            "height": 41.1953125,
+            "top": 107.234375,
+            "right": 405,
+            "bottom": 148.4296875,
+            "left": 47
+          },
+          "body": {
+            "x": 47,
+            "y": 148.4296875,
+            "width": 358,
+            "height": 68.8046875,
+            "top": 148.4296875,
+            "right": 405,
+            "bottom": 217.234375,
+            "left": 47
+          },
+          "bodyScrollHeight": 240,
+          "bodyClientHeight": 69,
+          "bodyOverflow": "auto",
+          "original": {
+            "text": "They use rocks to open shells.",
+            "bounds": {
+              "x": 59,
+              "y": 180.4765625,
+              "width": 334,
+              "height": 24.6484375,
+              "top": 180.4765625,
+              "right": 393,
+              "bottom": 205.125,
+              "left": 59
+            },
+            "fontSize": "17px",
+            "lineHeight": "24.65px",
+            "textRects": [
+              {
+                "x": 59,
+                "y": 182.4765625,
+                "width": 230.390625,
+                "height": 20,
+                "top": 182.4765625,
+                "right": 289.390625,
+                "bottom": 202.4765625,
+                "left": 59
+              }
+            ],
+            "firstLineVisibleHeight": 20,
+            "readableFirstLine": true
+          },
+          "navigation": {
+            "x": 47,
+            "y": 217.234375,
+            "width": 358,
+            "height": 40,
+            "top": 217.234375,
+            "right": 405,
+            "bottom": 257.234375,
+            "left": 47
+          },
+          "footer": {
+            "x": 47,
+            "y": 257.234375,
+            "width": 358,
+            "height": 44,
+            "top": 257.234375,
+            "right": 405,
+            "bottom": 301.234375,
+            "left": 47
+          },
+          "controls": [
+            {
+              "action": "help",
+              "bounds": {
+                "x": 299,
+                "y": 114.234375,
+                "width": 24,
+                "height": 26.1953125,
+                "top": 114.234375,
+                "right": 323,
+                "bottom": 140.4296875,
+                "left": 299
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "BUTTON",
+              "hitAction": "help"
+            },
+            {
+              "action": "appearance",
+              "bounds": {
+                "x": 323,
+                "y": 114.328125,
+                "width": 24,
+                "height": 26,
+                "top": 114.328125,
+                "right": 347,
+                "bottom": 140.328125,
+                "left": 323
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "svg",
+              "hitAction": "appearance"
+            },
+            {
+              "action": "collapse",
+              "bounds": {
+                "x": 347,
+                "y": 114.328125,
+                "width": 24,
+                "height": 26,
+                "top": 114.328125,
+                "right": 371,
+                "bottom": 140.328125,
+                "left": 347
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "svg",
+              "hitAction": "collapse"
+            },
+            {
+              "action": "close",
+              "bounds": {
+                "x": 371,
+                "y": 114.328125,
+                "width": 24,
+                "height": 26,
+                "top": 114.328125,
+                "right": 395,
+                "bottom": 140.328125,
+                "left": 371
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "path",
+              "hitAction": "close"
+            },
+            {
+              "action": "previous",
+              "bounds": {
+                "x": 57,
+                "y": 225.234375,
+                "width": 32,
+                "height": 32,
+                "top": 225.234375,
+                "right": 89,
+                "bottom": 257.234375,
+                "left": 57
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "svg",
+              "hitAction": "previous"
+            },
+            {
+              "action": "play",
+              "bounds": {
+                "x": 95,
+                "y": 225.234375,
+                "width": 262,
+                "height": 32,
+                "top": 225.234375,
+                "right": 357,
+                "bottom": 257.234375,
+                "left": 95
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "BUTTON",
+              "hitAction": "play"
+            },
+            {
+              "action": "next",
+              "bounds": {
+                "x": 363,
+                "y": 225.234375,
+                "width": 32,
+                "height": 32,
+                "top": 225.234375,
+                "right": 395,
+                "bottom": 257.234375,
+                "left": 363
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "svg",
+              "hitAction": "next"
+            },
+            {
+              "action": "explain",
+              "bounds": {
+                "x": 57,
+                "y": 264.234375,
+                "width": 166,
+                "height": 30,
+                "top": 264.234375,
+                "right": 223,
+                "bottom": 294.234375,
+                "left": 57
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "BUTTON",
+              "hitAction": "explain"
+            },
+            {
+              "action": "save",
+              "bounds": {
+                "x": 229,
+                "y": 264.234375,
+                "width": 166,
+                "height": 30,
+                "top": 264.234375,
+                "right": 395,
+                "bottom": 294.234375,
+                "left": 229
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "BUTTON",
+              "hitAction": "save"
+            }
+          ],
+          "screenshot": "/private/tmp/fluentread-video-learning-reliability-small-player-d1166-final/youtube-small-player-390x260.png",
+          "allControlsReachable": true
+        },
+        {
+          "width": 320,
+          "height": 180,
+          "player": {
+            "x": 24,
+            "y": 98.234375,
+            "width": 320,
+            "height": 180,
+            "top": 98.234375,
+            "right": 344,
+            "bottom": 278.234375,
+            "left": 24
+          },
+          "panel": {
+            "x": 32,
+            "y": 106.234375,
+            "width": 304,
+            "height": 116,
+            "top": 106.234375,
+            "right": 336,
+            "bottom": 222.234375,
+            "left": 32
+          },
+          "card": {
+            "x": 32,
+            "y": 106.234375,
+            "width": 304,
+            "height": 116,
+            "top": 106.234375,
+            "right": 336,
+            "bottom": 222.234375,
+            "left": 32
+          },
+          "header": {
+            "x": 33,
+            "y": 107.234375,
+            "width": 302,
+            "height": 29.1953125,
+            "top": 107.234375,
+            "right": 335,
+            "bottom": 136.4296875,
+            "left": 33
+          },
+          "body": {
+            "x": 33,
+            "y": 136.4296875,
+            "width": 302,
+            "height": 18.8046875,
+            "top": 136.4296875,
+            "right": 335,
+            "bottom": 155.234375,
+            "left": 33
+          },
+          "bodyScrollHeight": 189,
+          "bodyClientHeight": 19,
+          "bodyOverflow": "auto",
+          "original": {
+            "text": "They use rocks to open shells.",
+            "bounds": {
+              "x": 45,
+              "y": 136.4296875,
+              "width": 278,
+              "height": 20.296875,
+              "top": 136.4296875,
+              "right": 323,
+              "bottom": 156.7265625,
+              "left": 45
+            },
+            "fontSize": "14px",
+            "lineHeight": "20.3px",
+            "textRects": [
+              {
+                "x": 45,
+                "y": 137.9296875,
+                "width": 195.09375,
+                "height": 16.5,
+                "top": 137.9296875,
+                "right": 240.09375,
+                "bottom": 154.4296875,
+                "left": 45
+              }
+            ],
+            "firstLineVisibleHeight": 16.5,
+            "readableFirstLine": true
+          },
+          "navigation": {
+            "x": 33,
+            "y": 155.234375,
+            "width": 302,
+            "height": 34,
+            "top": 155.234375,
+            "right": 335,
+            "bottom": 189.234375,
+            "left": 33
+          },
+          "footer": {
+            "x": 33,
+            "y": 189.234375,
+            "width": 302,
+            "height": 32,
+            "top": 189.234375,
+            "right": 335,
+            "bottom": 221.234375,
+            "left": 33
+          },
+          "controls": [
+            {
+              "action": "help",
+              "bounds": {
+                "x": 229,
+                "y": 108.234375,
+                "width": 24,
+                "height": 26.1953125,
+                "top": 108.234375,
+                "right": 253,
+                "bottom": 134.4296875,
+                "left": 229
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "BUTTON",
+              "hitAction": "help"
+            },
+            {
+              "action": "appearance",
+              "bounds": {
+                "x": 253,
+                "y": 108.328125,
+                "width": 24,
+                "height": 26,
+                "top": 108.328125,
+                "right": 277,
+                "bottom": 134.328125,
+                "left": 253
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "svg",
+              "hitAction": "appearance"
+            },
+            {
+              "action": "collapse",
+              "bounds": {
+                "x": 277,
+                "y": 108.328125,
+                "width": 24,
+                "height": 26,
+                "top": 108.328125,
+                "right": 301,
+                "bottom": 134.328125,
+                "left": 277
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "svg",
+              "hitAction": "collapse"
+            },
+            {
+              "action": "close",
+              "bounds": {
+                "x": 301,
+                "y": 108.328125,
+                "width": 24,
+                "height": 26,
+                "top": 108.328125,
+                "right": 325,
+                "bottom": 134.328125,
+                "left": 301
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "path",
+              "hitAction": "close"
+            },
+            {
+              "action": "previous",
+              "bounds": {
+                "x": 43,
+                "y": 157.234375,
+                "width": 32,
+                "height": 32,
+                "top": 157.234375,
+                "right": 75,
+                "bottom": 189.234375,
+                "left": 43
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "svg",
+              "hitAction": "previous"
+            },
+            {
+              "action": "play",
+              "bounds": {
+                "x": 81,
+                "y": 157.234375,
+                "width": 206,
+                "height": 32,
+                "top": 157.234375,
+                "right": 287,
+                "bottom": 189.234375,
+                "left": 81
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "BUTTON",
+              "hitAction": "play"
+            },
+            {
+              "action": "next",
+              "bounds": {
+                "x": 293,
+                "y": 157.234375,
+                "width": 32,
+                "height": 32,
+                "top": 157.234375,
+                "right": 325,
+                "bottom": 189.234375,
+                "left": 293
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "svg",
+              "hitAction": "next"
+            },
+            {
+              "action": "explain",
+              "bounds": {
+                "x": 43,
+                "y": 190.234375,
+                "width": 138,
+                "height": 30,
+                "top": 190.234375,
+                "right": 181,
+                "bottom": 220.234375,
+                "left": 43
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "BUTTON",
+              "hitAction": "explain"
+            },
+            {
+              "action": "save",
+              "bounds": {
+                "x": 187,
+                "y": 190.234375,
+                "width": 138,
+                "height": 30,
+                "top": 190.234375,
+                "right": 325,
+                "bottom": 220.234375,
+                "left": 187
+              },
+              "disabled": false,
+              "withinCard": true,
+              "hitTest": true,
+              "hitTag": "BUTTON",
+              "hitAction": "save"
+            }
+          ],
+          "screenshot": "/private/tmp/fluentread-video-learning-reliability-small-player-d1166-final/youtube-small-player-320x180.png",
+          "allControlsReachable": true
+        }
+      ],
+      "success": true
+    }
+  ],
+  "liveCases": [],
+  "pageErrors": [],
+  "cleanup": {
+    "browserClosed": true,
+    "profileRemoved": true
+  },
+  "artifact": {
+    "contentSha256": "d1166be072fa5682add0e7d4c468f0f0b0a0e4258931ccc0f7481a3d5b696943",
+    "version": "0.0.37"
+  },
+  "focusObserver": {
+    "monitorPid": 80217,
+    "time": 1791732968142.3892,
+    "monotonicMs": 3158260060.1744585
+  },
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 212,
+      "top": -990,
+      "width": 1280,
+      "height": 900
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 64770,
+      "name": "ChatGPT"
+    },
+    "frontmostAfter": {
+      "pid": 64770,
+      "name": "ChatGPT"
+    }
+  },
+  "fixturePageErrors": [],
+  "finalBrowserFrontmost": false,
+  "focusEvents": {
+    "nativeObserver": true,
+    "browserActivations": 0,
+    "observerClosed": true
+  },
+  "finishedAt": "2026-10-11T15:36:12.379Z"
+}

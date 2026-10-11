@@ -66,6 +66,59 @@ describe('video learning source provenance', () => {
 });
 
 describe('learning panel mount ownership', () => {
+    it('delegates placement during mount and reparent, and disposes it even when Vue unmount fails', () => {
+        const f = fixture('<div id="player"><div id="fullscreen"><video></video></div></div>');
+        const player = f.document.getElementById('player')!; const fullscreen = f.document.getElementById('fullscreen')!;
+        const syncPlayer = vi.fn(), destroy = vi.fn(), unmount = vi.fn(() => {throw new Error('Unmount failed');});
+        const place = vi.fn(() => ({syncPlayer, destroy}));
+        const host = createVideoSentenceLearningHost({markUi: vi.fn(), mount: () => unmount, place});
+        host.open(player, props(f.video));
+        expect(place).toHaveBeenCalledWith(f.document.getElementById('fluent-read-video-learning-panel'), player);
+        expect(host.syncPlayer(fullscreen, f.video)).toBe(true); expect(syncPlayer).toHaveBeenCalledWith(fullscreen);
+        expect(() => host.close()).toThrow('Unmount failed'); expect(destroy).toHaveBeenCalledOnce();
+        expect(f.document.getElementById('fluent-read-video-learning-panel')).toBeNull();
+        const destroyFailed = createVideoSentenceLearningHost({markUi: vi.fn(), mount: () => vi.fn(), place: () => ({syncPlayer, destroy: () => {throw new Error('Placement failed');}})});
+        destroyFailed.open(player, props(f.video)); expect(() => destroyFailed.close()).toThrow('Placement failed');
+        expect(f.document.getElementById('fluent-read-video-learning-panel')).toBeNull();
+        const closeDuringPlacement = createVideoSentenceLearningHost({markUi: vi.fn(), mount: () => vi.fn(), place: () => {closeDuringPlacement.close(); return {syncPlayer, destroy};}});
+        closeDuringPlacement.open(player, props(f.video)); expect(destroy).toHaveBeenCalledTimes(2); expect(closeDuringPlacement.isOpen()).toBe(false);
+    });
+
+    it('moves the same mounted panel across fullscreen containers while retaining props, drafts and focused controls', () => {
+        const f = fixture('<div id="player"><div id="fullscreen"><video></video></div></div><div id="other"><video id="another"></video></div>');
+        const player = f.document.getElementById('player')!;
+        const fullscreen = f.document.getElementById('fullscreen')!;
+        const unmount = vi.fn(); const focus = vi.fn(); const markUi = vi.fn();
+        let active: Element | null = null;
+        Object.defineProperty(f.document, 'activeElement', {get: () => active});
+        const mount = vi.fn((element: HTMLElement) => {
+            element.innerHTML = '<section><textarea>Retained manual draft</textarea></section>';
+            const editor = element.querySelector<HTMLTextAreaElement>('textarea')!;
+            editor.focus = focus; active = editor;
+            return unmount;
+        });
+        const host = createVideoSentenceLearningHost({markUi, mount});
+        expect(host.syncPlayer(player, f.video)).toBe(false);
+        const current = props(f.video); host.open(player, current);
+        const panel = f.document.getElementById('fluent-read-video-learning-panel')!;
+        expect(host.syncPlayer(fullscreen, f.video)).toBe(true);
+        expect(panel.parentElement).toBe(fullscreen); expect(host.isConnected(fullscreen)).toBe(true);
+        expect(panel.querySelector('textarea')?.textContent).toBe('Retained manual draft');
+        expect(focus).toHaveBeenCalledOnce(); expect(focus).toHaveBeenCalledWith({preventScroll: true});
+        expect(host.syncPlayer(fullscreen, f.video)).toBe(true); expect(focus).toHaveBeenCalledOnce();
+        active = null;
+        expect(host.syncPlayer(player, f.video)).toBe(true); expect(focus).toHaveBeenCalledOnce();
+        fullscreen.appendChild(panel); expect(host.isConnected()).toBe(false);
+        expect(host.syncPlayer(player, f.video)).toBe(true); expect(host.isConnected(player)).toBe(true);
+        expect(mount).toHaveBeenCalledOnce(); expect(unmount).not.toHaveBeenCalled(); expect(markUi).toHaveBeenCalledOnce();
+        const other = f.document.getElementById('other')!;
+        expect(host.syncPlayer(other, f.document.getElementById('another')! as HTMLVideoElement)).toBe(false);
+        expect(host.syncPlayer(other, f.video)).toBe(false);
+        other.remove(); expect(host.syncPlayer(other, f.video)).toBe(false);
+        f.video.remove(); expect(host.syncPlayer(player, f.video)).toBe(false);
+        host.close(); expect(unmount).toHaveBeenCalledOnce();
+    });
+
     it('marks, positions and focuses a panel, updates mutable cues and closes once across synchronous reentry', () => {
         const f = fixture('<div id="player"><video></video></div><div id="other"></div>');
         const player = f.document.getElementById('player')!;
