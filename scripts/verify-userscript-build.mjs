@@ -56,7 +56,11 @@ const artifactBytes = Buffer.byteLength(source);
 // 相对主线 2,013,000 预算按实测最小增加 12 KB，余量 698 字节；基线本次重建超原预算 29 字节亦如实记录。
 // 比较与散列见 docs/reports/target-language-quality-20261011/userscript-size.json。
 // 不引入额外检测模型。
-const MAX_USERSCRIPT_BYTES = 2_025_000;
+// 长页自有双语块的保守渲染隔离与外观/重挂清理增加 3,038 字节（0.1500%）：
+// 同依赖独立基线 7cabb3678 为 2,024,762，候选 962a5d98b 为 2,027,800；
+// 利用原余量后预算最小增加 3 KB，剩 200 字节。保留全部协议与执行边界检查；
+// 比较与散列见 docs/reports/long-page-rendering-20261011/userscript-size.json。
+const MAX_USERSCRIPT_BYTES = 2_028_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);
