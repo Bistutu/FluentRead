@@ -3662,3 +3662,129 @@ describe('排除语言持久化配置', () => {
         expect(input.excludedLanguages).toEqual(['zh_TW', 'en', 'en', 'auto']);
     });
 });
+
+
+/** 只记录 store 直接 new 的真实 Config；归一化及其词典/迁移规则继续 call-through。 */
+async function loadConfigSingletonOwner(synchronousWatch?: Record<string, unknown>) {
+    const directConstructions: Config[] = [];
+    let actualModel!: typeof import('@/src/core/config/model');
+    let store: typeof import('@/src/services/config/store') | undefined;
+    let restoreWatch: ((key: string, callback: (value: unknown) => void) => () => void) | undefined;
+    const previousLocation = Object.getOwnPropertyDescriptor(globalThis, 'location');
+    let release!: () => void;
+    const configReadBarrier = new Promise<void>(resolve => { release = resolve; });
+    const close = async () => {
+        release();
+        try {
+            if (store) {
+                await store.configReady;
+                await store.waitForConfigPersistenceQueue();
+            }
+        } finally {
+            if (restoreWatch) storageMock.watch.mockImplementation(restoreWatch);
+            storageWatchers.clear();
+            vi.doUnmock('@/src/core/config/model');
+            vi.resetModules();
+            if (previousLocation) Object.defineProperty(globalThis, 'location', previousLocation);
+            else Reflect.deleteProperty(globalThis, 'location');
+        }
+    };
+    vi.doMock('@/src/core/config/model', async () => {
+        actualModel = await vi.importActual<typeof import('@/src/core/config/model')>('@/src/core/config/model');
+        // 复用 loadConfigModule 安装的外部 watch 端口，只让注册本身同步发出一条实际数据。
+        if (synchronousWatch) {
+            const register = storageMock.watch.getMockImplementation()!;
+            restoreWatch = register;
+            storageMock.watch.mockImplementation((key: string, callback: (value: unknown) => void) => {
+                const dispose = register(key, callback);
+                if (key === 'local:config') callback(synchronousWatch);
+                return dispose;
+            });
+        }
+        return {...actualModel, Config: new Proxy(actualModel.Config, {
+            construct(target, argumentsList, newTarget) {
+                const instance = Reflect.construct(target, argumentsList, newTarget) as Config;
+                directConstructions.push(instance);
+                return instance;
+            },
+        })};
+    });
+    try {
+        store = await loadConfigModule(storedConfig, {trusted: false, writeOwner: false, configReadBarrier});
+        return {store, directConstructions, actualModel, release, close};
+    } catch (error) {
+        await close();
+        throw error;
+    }
+}
+
+describe('配置 store 默认字段快照复用', () => {
+    it('水合阻塞时仅构造一个真实 Config，并始终保留共享实例身份', async () => {
+        const fixture = await loadConfigSingletonOwner();
+        try {
+            expect(storageOperations).toEqual(['get:local:config']);
+            expect(fixture.directConstructions).toHaveLength(1);
+            const shared = fixture.directConstructions[0];
+            expect(fixture.store.config).toBe(shared);
+            expect(shared).toBeInstanceOf(fixture.actualModel.Config);
+            expect(shared.token).toEqual({});
+            expect(shared.secret).toEqual({});
+            fixture.release();
+            await fixture.store.configReady;
+            expect(fixture.store.config).toBe(shared);
+            expect(fixture.store.config).toMatchObject(storedConfig);
+            expect(storageOperations).toEqual(['get:local:config']);
+            expect(storageMock.setItem).not.toHaveBeenCalled();
+        } finally {
+            await fixture.close();
+        }
+    });
+
+    it('注册 watch 同步加入兼容字段时，字段快照已固定且不扩大补丁权限', async () => {
+        const synchronousWatch = {...storedConfig, theme: 'dark', synchronousFutureField: 'watch-original', __fluentConfigRevision: 7};
+        const fixture = await loadConfigSingletonOwner(synchronousWatch);
+        try {
+            expect(fixture.store.config).toMatchObject({theme: 'dark', synchronousFutureField: 'watch-original'});
+            expect(storageOperations).toEqual(['get:local:config']);
+            const shared = fixture.store.config;
+            const prepared = fixture.store.prepareConfigPatchRequest({
+                theme: 'light', synchronousFutureField: 'patch-value', count: 99,
+                token: {openai: 'content-credential'}, secret: {aliyunTranslation: 'content-secret'},
+            }, {theme: 'dark'}, shared, false);
+            expect(prepared).toMatchObject({theme: 'light', synchronousFutureField: 'watch-original', count: 0});
+            expect(prepared.token).toEqual({});
+            expect(prepared.secret).toEqual({});
+            expect(shared).toMatchObject({theme: 'dark', synchronousFutureField: 'watch-original'});
+            fixture.release();
+            await fixture.store.configReady;
+            expect(fixture.store.config).toBe(shared);
+            expect(fixture.store.config).toMatchObject({theme: 'dark', synchronousFutureField: 'watch-original'});
+            expect(fixture.store.getConfigRevision()).toBe(7);
+        } finally {
+            await fixture.close();
+        }
+    });
+
+    it('后续广播与共享对象新增兼容字段不会变成可写字段，既有字段仍受 CAS 校验', async () => {
+        const fixture = await loadConfigSingletonOwner();
+        try {
+            fixture.release();
+            await fixture.store.configReady;
+            const shared = fixture.store.config;
+            const external = {...shared, theme: 'dark', lateStoredField: 'stored-original', __fluentConfigRevision: 9};
+            storageState.set('local:config', external);
+            storageWatchers.get('local:config')!(external);
+            Object.assign(shared, {lateLocalField: 'local-original'});
+            const prepared = fixture.store.prepareConfigPatchRequest({
+                theme: 'light', lateStoredField: 'changed', lateLocalField: 'changed', newlyRequestedField: true,
+            }, {theme: 'dark'}, shared, true);
+            expect(prepared).toMatchObject({theme: 'light', lateStoredField: 'stored-original', lateLocalField: 'local-original'});
+            expect(prepared).not.toHaveProperty('newlyRequestedField');
+            expect(fixture.store.config).toBe(shared);
+            expect(shared).toMatchObject({theme: 'dark', lateStoredField: 'stored-original', lateLocalField: 'local-original'});
+            expect(() => fixture.store.prepareConfigPatchRequest({theme: 'light'}, {theme: 'auto'}, shared, true)).toThrow('theme');
+        } finally {
+            await fixture.close();
+        }
+    });
+});

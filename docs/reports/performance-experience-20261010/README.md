@@ -1368,9 +1368,36 @@ Options 的支持图仅在 About 模板分支取用；联系图仅在公开按�
 
 三张原始 CDP PNG 均保持 1272×816 / DPR2、实际 2544×1632，根代理全部目视查看，中文粉色布局、搜索结果、添加规则及重置表单符合预期，未编辑截图。原始 `native-extension-attempt2/report.json` 为 169,799 B / SHA256 `8acc8b5d4b5f9aa03e9fb75ea1c60046ed5b77c6406e9528b963277663406a7e`；根复核为 `ROOT-EXTENSION-NATIVE-REVIEW.json`（4,024 B / `e8ab49411ef83ecf81d1fe8ff8588f4fb9aa0e5d912d2a96aecb4181b884ce52`），独立复核为 `peer-final-extension-native-review/REVIEW.md`。此次 Chrome 设置检查不证明 Firefox 运行、在线翻译服务、真实漫画翻译、全部网站或设备性能；原独立脚本预算失败保持。
 
+### 第五十五批：复用共享配置的启动字段快照（R59）
+
+`store.ts` 原先构造一份完整默认 Config 只为提取字段名，随后又创建真正共享的 Config。本批仅移除前一份临时构造，在原共享实例创建后立即捕获独立的 `Object.keys`/Set 快照，早于能力读取、watch 注册及首次水合。后续存储广播仍可保留兼容字段，但不会扩大 patch 可写字段集合；原 protected 字段、凭据目的地、CAS、共享对象身份、水合/迁移/失败 fallback 和公开 API 全部保留。没有另建字段表、缓存或初始化层，没有新增可执行模块或覆盖率例外。
+
+新 checkpoint `d7f0e584495a542c5e941e458f4928cc1a3701eb` 上四组真实基线 613 项全部通过；保留完整 182,490 B 原 owner 正文，只追加三个场景。旧源反例自然 1，收集 137 项、136 通过、唯一失败为读取 barrier 尚未释放时真实 Config construct-Proxy call-through 观察到 2、期望 1；原 134 项及新增另两个语义场景通过，失败后本案例余下身份断言未执行。候选四完整组 316 + 64 + 187 + 49 = 616 项全部通过，原名称/重数完整保留，仅新增三项；实际 store 直接构造为 1，共享身份、水合、同步 watch 新兼容字段、后续未知字段、protected/网页凭据过滤与字段 CAS 检查通过。这是有限直接构造计数，不是所有 normalizeConfig 分配、启动延迟、CPU 或 heap 测量。
+
+compile、architecture、audit 与四组测试共七阶段自然 0。architecture 为 34 文件/1,881 项实际通过，和聚焦组有重叠，不累加成独立总数；audit 为 693 文件/12,319 项静态索引，不能称全部执行。架构组保留原存储不可用场景 stderr，不称全程所有诊断为空。纯 Python 源应用准备首次因 Python3.9 不支持 Counter 的 `<=` 比较而退出，未应用生产源或启动候选业务；改用 multiset 差集验证后继续，原 RED 不重跑，独立失败记录保留。
+
+| 完整正式产品 | 匹配生产基线的 R58 完整产物 | R59 完整产物 | 实际字节差 |
+| --- | ---: | ---: | ---: |
+| Chrome 目录 | 61,461,232 | 61,461,253 | +21 |
+| Firefox 目录 | 61,460,226 | 61,460,203 | −23 |
+| 普通脚本 | 2,035,666 | 2,035,661 | −5 |
+| 独立脚本 | 3,812,632 | 3,812,628 | −4 |
+
+四构建自然 0，扩展清单及普通脚本校验 0；独立脚本原预算校验仍 1，原 3,600,000 B 门槛超 212,628 B，不把抛错后检查计为完成、不称全绿。采用时将历史 R58 全部 2,464 份生产输入重新哈希并与新 clean baseline 全字节核对；候选生产仅 store 一项不同。这是匹配已有完整基线的产品比较，不是 fresh dual 构建。两 manifest、各 270 非代码资源、完整 pako/tldts/品牌许可和 metadata/许可前缀保持。完整独立产物实际字段集合载体已由临时 `new Config` 改为紧邻共享实例复用，不以所有包都变小作为结论；本批主要减少一次重复默认构造。
+
+根证据目录 `/private/tmp/fluentread-performance-experience-20261010/round59-config-schema-snapshot/`。真实基线/反例/候选见 `baseline-attempt1/`、`red-attempt1/`、`candidate-attempt1/`；根复核见 `ACTUAL-OLD-SOURCE-RED-REVIEW.json`、`ROOT-VALIDATION-REVIEW.json`，测试作者的结果核对见 `peer-final-test-review/REVIEW.md`，由另一代理完成的静态审查另见前批 `peer-r59-static-review/REVIEW.md`。完整构建和冻结产品见 `builds-attempt1/RECEIPT.json`、`frozen-builds-attempt1/`、`ROOT-FROZEN-PRODUCT-REVIEW.json`；原生及最终文档检查另据完成回执记录。
+
+本批实际安装候选 Chrome 扩展并运行五个公开阶段，首次自然 0，81.518 s。中文 onboarding 显示「流畅阅读」；两个名称/域名搜索各准确 `1 / 235`，清空恢复完整 235 行，原公开添加/删除与未提交草稿导航清空检查通过。第4阶段新增两次跨页面保留检查：公开添加出现正确 `manga-smoke.example/chapter/` 和 `main img, article img` 后，先准备实际就绪的公开 Popup，再对唯一自有 options 执行 `Page.close({runBeforeUnload:true})` 并等待真实 close，仅经 Popup 齿轮创建不同的新 options 页面；重新公开导航后规则仍在。公开删除后按同一路径关闭/重开，规则为空。两个旧 options 均实际关闭，新页对象不同，浏览器连接保持，两个 Popup 均被原齿轮路径实际关闭。没有读取 store、等待内部队列、配置 seed、构造保存 ack 或改产品代码来完成验证。
+
+这条路径包含可见反馈、截图和公开 Popup 就绪步骤，证明其后关闭/重开的规则保留，不证明立即关闭竞态、全部配置字段、内部 ack 或保存延迟。新 options 的真实入口先等待 configReady、语言和字体，再挂载；驱动等待新页的实际公开 DOM。原生共 24 次协议点击、7 次协议文本输入、24 次自有滚轮和3次齿轮关闭 Popup 记录；滚动改变最近自有容器且宿主位置不变，没有新增 DOM `isTrusted`/`document.hasFocus` 断言。五阶段、两份 persistenceCases、七个完整235行投影与五张原始 PNG 保留。
+
+窗口正常可见、后台第二屏；启动前一个前台检查 owner 尚未建立，其后21次均未抢占前台，focusEvents 和 console/page/network/http/worker/externalRequests 六类诊断为空。一个真实自有 service worker 已 Runtime.enable 应答，socket 正常关闭并在浏览器关闭前停止；浏览器/原PID/监视器/profile四项清理全部为真。2,464 源库存及468份候选Chrome产品前后全字节相同；buildScope仍保留总体 false 和独立脚本预算 natural1。五张实际2544×1632原PNG均为1272×816/DPR2捕获前后不变，根代理全部目视查看：中文粉色布局、正确规则在新页保留及删除后的空表单符合预期，未编辑截图。
+
+真实 `native-config-schema-attempt1/report.json` 为340,058 B / SHA256 `58e1cacdf149d938675ece0f7a3bbf5e84c6e6b7d6ad2f2aa32a84b54c06e76b`；根实际字节、全部输入和投影复核为 `ROOT-EXTENSION-NATIVE-REVIEW.json`（6,110 B / `adf3b215a62a1c0a5c481e20383acd2ca16103bfa68afe1b0645e268bbee17ae`），独立驱动及执行后审查分别为 `peer-native-driver-review/REVIEW.md` 和 `peer-final-native-review/REVIEW.md`。产品独审另见 `peer-final-product-review/REVIEW.md`。本批未运行脚本原生首用对照、Firefox运行时、在线提供商或真实漫画翻译，不主张整体启动延迟、CPU/heap或最佳性能；参考仓库未使用或修改。
+
 ## 后续候选
 
-第五十四批已将原漫画归一化五函数完整迁至轻量入口，保留旧公开函数身份、用户规则顺序、URL 校验、目录及阅读器消费者。完整独立脚本减 10,897 B 至 3,812,632 B，原 3,600,000 B 预算仍超 212,632 B；四正式产物、1,134 个聚焦案例、新模块四维 100% 与八次有限原生通用设置及五阶段 Chrome 漫画设置检查均按本批证据记录，不主张整体或显著提速。下一步验证配置 store 启动的两次同参 Config 构造能否复用既有共享实例，固定字段快照仍必须早于任何 watch/hydration，保留未知兼容字段、凭据边界、revision CAS 和原初始化行为。私有生产/owner 草稿尚未执行，须在新 clean checkpoint 上重绑并完成实际旧源反例、候选、完整产物检查；服务添加 Dialog 首次加载失败恢复也仅为后续设计候选。继续保留可达能力、许可、资源 pin、架构与原预算。
+第五十五批已复用原共享 Config 的默认字段快照，在 watch/水合前减少一次 store 直接构造，保留未知兼容字段、凭据/protected/CAS 和原初始化；613→616 聚焦案例、类型/架构/静态审计及五阶段 Chrome 原生检查完成，新增两次公开关闭/齿轮新页重开证明规则保存与删除保留。完整独立脚本为 3,812,628 B，原 3,600,000 B 预算仍超 212,628 B；Chrome 本批 +21 B，不声称所有包减小或启动耗时、CPU/heap显著改善。下一步复现添加服务 Dialog 首次加载 pending/reject 时的可见状态与错误反馈，保留成功缓存、父子归属和离开/失活/卸载后的迟到处理。受控 owner 仅为私有草稿，尚未实际执行或修改生产源；主动页面重载的保存交接另需实际证明，不复用 fire-and-forget 关闭回调冒称保存成功。继续保持可达能力、许可、资源 pin、架构和原预算。
 
 
 合成段 loading 挂载循环、缓存键重复术语解析、高级请求限制禁用与缓存复习快捷键已在第二十七至三十批分别修复。第三十一轮调度只读探针保留现检查：13 个受控普通场景虽减少同 owner 复验，但第三个 source-only 读取中的 style getter 同步替换同文本 Text 时，复用先前结果留下脱离节点身份；这只是受控端口反例，未当成原生复现或 CPU 收益，未实施。证据为 `round31-page-scheduling-audit/`。第三十二轮已撤回 Cloud 普通历史入口的减加载推荐；LearningCenter 的 History/Memory 首用加载已在第三十一批实施，实际收藏阶段新增请求文件减少 20,641 B，父装配、加载故障与原行为通过限定验证。第三十四轮审计确认的八个既不可达设置子 UI 已在第三十二批排除，完整独立脚本实际减少 183,104 B，仍比原 3,600,000 B 门槛多 38,416 B。继续审查其 Options/IIFE 归属与可证明不可达的资源，保持可达服务、本地模型/TTS、数据、语言、许可和原门槛，不为达预算删除已有能力。请求队列仍在 response body 完成前占用并发槽；会改变错误种类的同步 deadline 合并未实施。

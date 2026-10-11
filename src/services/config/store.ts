@@ -115,7 +115,6 @@ const CONFIG_PATCH_PROTECTED_FIELDS = new Set<string>([
     'count',
     'videoServiceDefaultMigrated',
 ]);
-const CONFIG_KNOWN_FIELDS = new Set<string>(Object.keys(new Config()));
 const CONFIG_CREDENTIAL_FIELD_SET = new Set<string>(CONFIG_CREDENTIAL_FIELDS);
 const requestClientId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 let historyState: ConfigHistoryState;
@@ -134,6 +133,8 @@ type ConfigCredentialIntent = 'changed-fields' | 'exact';
 
 // 所有运行时模块共享同一个可变配置对象；存储层负责把跨上下文变更同步进来。
 export const config = new Config();
+// 在监听与首次水合前固定默认字段集合，后续自定义字段不会扩展补丁边界。
+const CONFIG_KNOWN_FIELDS = new Set<string>(Object.keys(config));
 
 interface PersistedCountOperation {
     id: string;
