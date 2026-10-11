@@ -2,7 +2,7 @@
   "issue": "https://github.com/FluentRead/FluentRead/issues/957",
   "thanksComment": "https://github.com/FluentRead/FluentRead/issues/957#issuecomment-6108530529",
   "date": "2026-10-11",
-  "baseCommit": "1e414ea8c2db6074343fb438bf7633af10a142a2",
+  "baseCommit": "f9cf3fcb2dd75b636249f0bbc49fb40973af41b8",
   "productBehavior": {
     "freePoolId": "doubaoWeb",
     "defaultEnabled": false,
@@ -13,12 +13,9 @@
   },
   "checks": {
     "targetedRegression": {
-      "files": 18,
-      "casesPassed": 1361,
+      "files": 24,
+      "casesPassed": 1615,
       "filesList": [
-        "tests/free-translation.test.ts",
-        "tests/doubaoWebTranslation.test.ts",
-        "tests/doubaoGuestTransport.test.ts",
         "tests/freeTranslationConfig.test.ts",
         "tests/freeTranslationI18n.test.ts",
         "tests/freeTranslationSettings.test.ts",
@@ -33,9 +30,30 @@
         "tests/userscriptPrivacy.test.ts",
         "tests/uiLanguageBundles.test.ts",
         "tests/userscriptHttp.test.ts",
-        "tests/requestHeaderRuntime.test.ts"
+        "tests/requestHeaderRuntime.test.ts",
+        "tests/free-translation.test.ts",
+        "tests/doubaoWebTranslation.test.ts",
+        "tests/doubaoGuestTransport.test.ts",
+        "tests/requestConfigSnapshot.test.ts",
+        "tests/translationGlossaryIntegration.test.ts",
+        "tests/freeTextChunks.test.ts",
+        "tests/documentLiteralProtection.test.ts",
+        "tests/documentMathProtection.test.ts",
+        "tests/documentMathLiterals.test.ts"
       ],
-      "workerLimits": "--maxWorkers=1 --minWorkers=1"
+      "workerLimits": "--maxWorkers=1 --minWorkers=1",
+      "disjointRuns": [
+        {
+          "files": 15,
+          "casesPassed": 1178,
+          "scope": "configuration, platform, userscript and architecture"
+        },
+        {
+          "files": 9,
+          "casesPassed": 437,
+          "scope": "free pool, Doubao, request snapshots, glossary and latest-main document protection"
+        }
+      ]
     },
     "userscriptAndPlatformRegression": {
       "files": 5,
@@ -47,7 +65,7 @@
         "tests/userscriptHttp.test.ts",
         "tests/requestHeaderRuntime.test.ts"
       ],
-      "includedIn": "targetedRegression (one combined final run)"
+      "includedIn": "targetedRegression (15-file configuration/platform/architecture run)"
     },
     "newModulesStrictCoverage": {
       "casesPassed": 85,
@@ -65,7 +83,8 @@
           "lines": 100
         }
       },
-      "evidence": "new-modules-coverage.json"
+      "evidence": "new-modules-coverage.json",
+      "includedIn": "437-case integration regression; 85 Doubao tests; final module coverage from this run"
     },
     "typeCheck": "passed",
     "chromeProductionBuild": "passed",
@@ -73,13 +92,13 @@
     "documentationBuild": "passed",
     "testAudit": {
       "status": "passed",
-      "files": 675,
-      "cases": 11373
+      "files": 682,
+      "cases": 11709
     },
     "productionBrowser": {
       "result": "3 real-provider cases passed; 3 actual Doubao POSTs, no fallback provider",
       "evidence": "production-live-browser.json",
-      "scope": "Fresh anonymous isolated Edge with complete unmodified Chrome production build; connection test, translation broker and trusted Control toggle [1,0,1]"
+      "scope": "Fresh anonymous isolated Edge with complete unmodified Chrome production build after latest-main integration; connection test, translation broker and trusted Control toggle [1,0,1]"
     },
     "liveProvider": {
       "result": "Fresh anonymous curl succeeded with complete public query parameters and paired homepage ttwid/web_id; no website JavaScript, signature, login cookies or API key",
@@ -88,7 +107,7 @@
     },
     "userscriptBuild": {
       "evidence": "userscript-size.json",
-      "result": "passed; verifier passed at 2,072,803 bytes within 2,073,000-byte budget"
+      "result": "passed; verifier passed at 2,073,858 bytes within the minimum 2,074,000-byte budget after latest-main integration"
     },
     "historicalControlledBrowser": {
       "result": "6 controlled cases passed against initial implementation",
@@ -98,7 +117,9 @@
   "knownBaselineFailure": {
     "file": "tests/i18n.test.ts",
     "result": "57 passed / 1 failed both on independent base snapshot and current source",
-    "cause": "200 existing missing personal-correction translations introduced on base main; identical missing entries in both runs"
+    "cause": "200 existing missing personal-correction translations; same entries in the same order on independent latest-main f9cf3fcb2 snapshot and integrated candidate",
+    "baseCommit": "f9cf3fcb2dd75b636249f0bbc49fb40973af41b8",
+    "evidence": "i18n-baseline-comparison.json"
   },
   "limitations": [
     "Short local-network anonymous Simplified Chinese samples establish current availability only, not all languages, regions, longevity, quota or translation quality.",
@@ -106,5 +127,7 @@
     "Regional and traditional-Chinese target codes are rejected without silently substituting simplified Chinese.",
     "Firefox and actual Tampermonkey manager runtime remain unverified."
   ],
-  "referenceRepositoriesUsed": false
+  "referenceRepositoriesUsed": false,
+  "initialImplementationBaseCommit": "1e414ea8c2db6074343fb438bf7633af10a142a2",
+  "integratedLanguageResourceCommit": "133417de436d7439c3363e164f50429ec5f0a1ed"
 }

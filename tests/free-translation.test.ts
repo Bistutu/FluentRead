@@ -222,6 +222,27 @@ describe('免费翻译服务', () => {
         expect(chineseMock).toHaveBeenCalledTimes(2);
     });
 
+    it('豆包遗漏术语标记时在池内换线，正常文字仍能继续使用豆包而不进入全局冷却', async () => {
+        mockConfig.freeTranslationOrder = ['doubaoWeb', 'google'];
+        mockConfig.freeTranslationCooldownMs = 60_000;
+        const token = '__FRTERM_123456789abc_0__';
+        doubaoMock.mockResolvedValueOnce('使用术语。').mockResolvedValue('正常文字的译文。');
+        googleMock.mockImplementation(async (source: string) => `译文:${source}`);
+        const request = attachTranslationProviderConfig({origin: `Use ${token} here.`},
+            createTranslationProviderConfigSnapshot({...mockConfig, glossaryProtectedTokens: [token]} as unknown as TranslationConfigSource));
+
+        await expect(settle(freeTranslation(request))).resolves.toBe(`译文:Use ${token} here.`);
+        expect(doubaoMock).toHaveBeenCalledOnce();
+        expect(googleMock).toHaveBeenCalledOnce();
+        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'doubaoWeb')?.status).toBe('ready');
+
+        await vi.advanceTimersByTimeAsync(1_000);
+        await expect(settle(translateFreeText('Ordinary prose.'))).resolves.toBe('正常文字的译文。');
+        expect(doubaoMock).toHaveBeenCalledTimes(2);
+        expect(doubaoMock.mock.calls[1]![0].origin).toBe('Ordinary prose.');
+        expect(googleMock).toHaveBeenCalledOnce();
+    });
+
     it('原生免费批次也逐槽验证术语，拒绝串入相邻段标记并按原顺序换线', async () => {
         mockConfig.freeTranslationOrder = ['microsoft', 'google'];
         const tokens = Array.from({length: 9}, (_, index) => `__FRTERM_123456789abc_${index}__`);
@@ -1347,6 +1368,30 @@ describe('document-only mixed free-pool batching', () => {
             .resolves.toEqual(['译:First source', ' ', '译:First source', '译:Second source', '\n']);
         expect(officialMock.mock.calls.map(call => call[1].origin)).toEqual(['First source', 'First source', 'Second source']);
         expect(officialMock.mock.calls.every(call => !call[1].origin.includes('___FLUENTREAD_'))).toBe(true);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('document batching sends Doubao independent raw scalar slots, preserves blanks and duplicates, and observes only sent characters', async () => {
+        mockConfig.freeTranslationOrder = ['doubaoWeb'];
+        doubaoMock.mockImplementation(async request => `译:${request.origin}`);
+        const {attachTranslationRouteObserver} = await import('@/src/services/translation/requestSnapshot');
+        const observed: Array<{route: string; chars: number}> = [];
+        const originals = ['First source', ' ', 'First source', 'Second source', '\n'];
+        const before = [...originals];
+        const request = attachTranslationRouteObserver({origin: originals, documentBatch: true, requestTimeoutMs: 5_000}, event => observed.push(event));
+
+        await expect(settle(freeTranslation(request)))
+            .resolves.toEqual(['译:First source', ' ', '译:First source', '译:Second source', '\n']);
+        expect(doubaoMock.mock.calls.map(call => call[0].origin)).toEqual(['First source', 'First source', 'Second source']);
+        expect(doubaoMock.mock.calls.every(call => call[0].serviceOverride === 'doubaoWeb' && call[0].enableNativeBatch === false)).toBe(true);
+        expect(observed.map(({route, chars}) => ({route, chars}))).toEqual([
+            {route: 'doubaoWeb', chars: 'First source'.length},
+            {route: 'doubaoWeb', chars: 'First source'.length},
+            {route: 'doubaoWeb', chars: 'Second source'.length},
+        ]);
+        expect(originals).toEqual(before);
+        expect(microsoftMock).not.toHaveBeenCalled();
+        expect(googleOwnerMock).not.toHaveBeenCalled();
         expect(vi.getTimerCount()).toBe(0);
     });
 

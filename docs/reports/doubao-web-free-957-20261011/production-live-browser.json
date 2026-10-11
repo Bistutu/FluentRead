@@ -1,12 +1,12 @@
 {
-  "testedAt": "2026-10-11T12:20:18.672Z",
+  "testedAt": "2026-10-11T12:25:54.176Z",
   "scope": "Unmodified full production FluentRead extension in isolated focus-safe anonymous Edge; actual Doubao homepage and streaming provider; local English reading page only is a fixture; no official website JS initialization, signatures, login or fallback provider",
   "cases": [
     {
       "case": "real-connectionTest-doubaoWeb",
       "response": {
         "success": true,
-        "durationMs": 1992
+        "durationMs": 2976
       },
       "sessionRuleCleared": true,
       "syntheticBrowserCookiesUnchanged": true
@@ -411,8 +411,8 @@
   },
   "productionArtifactHashes": {
     "manifest.json": "961d10d94833c621d25cd57c2668613840b1b5ff2fc8aa96628448b12a767924",
-    "background.js": "6dd0ba66804784e9da46c28098b638515c6d8ffab8153c1f5fd8746242db1173",
-    "content-scripts/content.js": "afddf36f1ae5d43a829e92880a23720c85d74472a3528691d4b85aa7171d3f79"
+    "background.js": "cda9ec4351e5280dd837e7179e0da9a21d875e54741113586dd63a9a93dbafe2",
+    "content-scripts/content.js": "7f4cca2c0449d0fe607f8a0d568d0277243a82f06514ed2dd5d3e1c3d2bbfca3"
   },
   "launchMode": "macos-background-cdp",
   "focusPolicy": "launchservices-no-foreground",
@@ -454,6 +454,21 @@
   "fallbackProviderUsed": false,
   "pageErrors": [],
   "pass": true,
+  "gitHeadAtFinalVerification": "133417de436d7439c3363e164f50429ec5f0a1ed",
+  "sourceAdditionalHashesAtFinalVerification": {
+    "src/services/translation/requestSnapshot.ts": "34479bf9eec45668e3ebcb5bc681c91d50e9f89430a6aa722b434a378b1a7b17"
+  },
+  "artifactStillMatchesAtFinalVerification": {
+    "manifest.json": true,
+    "background.js": true,
+    "content-scripts/content.js": true
+  },
+  "sourceStillMatchesAtFinalVerification": {
+    "src/platform/http/doubaoGuest.ts": true,
+    "src/providers/translation/doubao-web.ts": true,
+    "src/platform/http/runtime.ts": true,
+    "src/app/background/requestHeaderRuntime.ts": true
+  },
   "homepageBootstrapCalls": 3,
   "homepageRedirectRequests": 3,
   "cleanup": {
