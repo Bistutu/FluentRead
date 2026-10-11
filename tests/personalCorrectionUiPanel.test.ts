@@ -1,8 +1,8 @@
 /**
  * @file tests/personalCorrectionUiPanel.test.ts
  * 文件职责：执行真实 Vue 校订模板验证用户可编辑、可预览、可撤销及可删除的界面流程。
- * 主要内容：原译文纯文本、候选差异、显式项目加入、管理与禁用状态、浅深色配置、焦点循环和 Escape 恢复。
- * 模块边界：自有 linkedom 渲染器只验证客户端模板与事件；真实几何和闭合 Shadow DOM 验收由隔离浏览器完成。
+ * 主要内容：原译文纯文本、候选差异、显式项目加入、管理状态、范围帮助悬停与聚焦、分层 Escape、滚动定位及卸载清理。
+ * 模块边界：自有 linkedom 渲染器执行真实客户端模板和封闭根内事件，以确定几何验证定位分支；真实浏览器截图验收另行执行。
  */
 import {createRequire} from 'node:module';
 import {parseHTML} from 'linkedom';
@@ -21,25 +21,31 @@ function entry(patch:Partial<PersonalCorrectionRecord>={}):PersonalCorrectionRec
 beforeAll(async()=>{component=(await import('@/src/features/personal-corrections/ui/PersonalCorrectionPanel.vue')).default;expect(component.render).toBeTypeOf('function');});
 beforeEach(()=>{vi.clearAllMocks();mocks.config.theme='auto';mocks.listeners.clear();focused=null;mediaListener=undefined;const dom=parseHTML('<html><body><button id="outside">Outside</button><div id="app"></div></body></html>');document=dom.document;window=dom.window;
   Object.defineProperty(document,'activeElement',{get:()=>focused,configurable:true});window.HTMLElement.prototype.focus=function(){focused=this;};
+  Object.defineProperty(window,'visualViewport',{value:undefined,writable:true,configurable:true});window.innerWidth=1024;window.innerHeight=768;
+  window.HTMLElement.prototype.getBoundingClientRect=function(){return {x:20,y:300,left:20,top:300,right:340,bottom:324,width:320,height:24,toJSON:()=>({})};};
   window.matchMedia=()=>({matches:false,addEventListener:(_type:string,fn:any)=>{mediaListener=fn;},removeEventListener:removeMedia}) as any;
   for(const [name,value]of Object.entries({document,window,HTMLElement:window.HTMLElement,Element:window.Element,Event:window.Event}))vi.stubGlobal(name,value);
 });
-afterEach(async()=>{app?.unmount();app=undefined;await settle();vi.unstubAllGlobals();});
-async function mount(patch:Record<string,unknown>={}){
+afterEach(async()=>{app?.unmount();app=undefined;await settle();vi.useRealTimers();vi.unstubAllGlobals();});
+async function mount(patch:Record<string,unknown>={},closedShadow=false){
   const state=runtime.shallowReactive({candidate:null,open:false,managing:false,busy:false,loading:false,error:'',notice:'',source:'He opened the bank.',currentTranslation:'他打开了河岸。',draft:'他开设了银行。',scopeId:'material',context:'Finance',sourceLanguage:'en',targetLanguage:'zh-CN',materialId:mid,materialLabel:'文章',projectName:'',entries:[],projects:[],suggestions:[],conflicts:[],affected:[],previewed:false,editing:null,undoToken:'',activeProjectId:'',...patch});
   const controller={state,open:vi.fn(()=>{state.open=true;}),close:vi.fn(()=>{state.open=false;}),setDraft:vi.fn((value:string)=>{state.draft=value;}),setScope:vi.fn((value:string)=>{state.scopeId=value;}),preview:vi.fn(()=>{state.previewed=true;}),save:vi.fn(),undo:vi.fn(),remove:vi.fn(),edit:vi.fn(),suggest:vi.fn(),createProject:vi.fn(),activateProject:vi.fn()};
   const renderer=runtime.createRenderer<Node,HTMLElement>({
-    patchProp(node,key,old,value){if(/^on[A-Z]/u.test(key)){const event=key.slice(2).toLowerCase();if(old)node.removeEventListener(event,old);if(value)node.addEventListener(event,value);}else if(key==='value'){(node as HTMLInputElement).value=value??'';}else if(value==null||(value===false&&!/^(?:aria-|data-)/u.test(key)))node.removeAttribute(key);else node.setAttribute(key,String(value));},
+    patchProp(node,key,old,value){if(/^on[A-Z]/u.test(key)){const event=key.slice(2).toLowerCase();if(old)node.removeEventListener(event,old);if(value)node.addEventListener(event,value);}else if(key==='style'){for(const [name,item]of Object.entries(value??{}))node.style.setProperty(name,String(item));}else if(key==='value'){(node as HTMLInputElement).value=value??'';}else if(value==null||(value===false&&!/^(?:aria-|data-)/u.test(key)))node.removeAttribute(key);else node.setAttribute(key,String(value));},
     insert:(node,parent,anchor)=>parent.insertBefore(node,anchor||null),remove:node=>node.parentNode?.removeChild(node),
     createElement:tag=>{const element=runtime.markRaw(document.createElement(tag));if(tag==='select')Object.defineProperty(element,'value',{value:'',writable:true,configurable:true});return element;},
     createText:text=>document.createTextNode(text),createComment:text=>document.createComment(text),setText:(node,text)=>{node.nodeValue=text;},setElementText:(node,text)=>{node.textContent=text;},parentNode:node=>node.parentNode as HTMLElement|null,nextSibling:node=>node.nextSibling,setScopeId:(node,id)=>node.setAttribute(id,''),
     insertStaticContent:(content,parent,anchor)=>{const template=document.createElement('template');template.innerHTML=content;const first=template.content.firstChild!,last=template.content.lastChild!;parent.insertBefore(template.content,anchor||null);return[first,last];},
   });
-  app=renderer.createApp(component,{controller});app.config.warnHandler=()=>undefined;app.mount(document.querySelector('#app')!);await settle();
-  const get=(selector:string)=>{const node=document.querySelector<HTMLElement>(selector);expect(node).not.toBeNull();return node!;};
+  const container=document.querySelector<HTMLElement>('#app')!;
+  const root=closedShadow?container.attachShadow({mode:'closed'}):document;
+  if(closedShadow)Object.defineProperty(root,'activeElement',{get:()=>focused,configurable:true});
+  app=renderer.createApp(component,{controller});app.config.warnHandler=()=>undefined;app.mount(closedShadow?root as any:container);await settle();
+  const get=(selector:string)=>{const node=root.querySelector<HTMLElement>(selector);expect(node).not.toBeNull();return node!;};
   const click=async(selector:string)=>{get(selector).dispatchEvent(new window.Event('click',{bubbles:true}));await settle();};
   const key=async(key:string,shiftKey=false)=>{const event=new window.Event('keydown',{bubbles:true,cancelable:true});Object.assign(event,{key,shiftKey});get('[data-testid=correction-dialog]').dispatchEvent(event);await settle();return event;};
-  return {state,controller,get,click,key};
+  const event=async(node:HTMLElement,type:string)=>{node.dispatchEvent(new window.Event(type,{bubbles:false}));await settle();};
+  return {state,controller,get,click,key,event,root,container};
 }
 describe('actual personal correction panel',()=>{
   it('opens from accessible entry, edits text without parsing markup, previews then confirms, and restores prior focus',async()=>{
@@ -51,12 +57,39 @@ describe('actual personal correction panel',()=>{
   it('displays original/current diff, exact affected sentences, approximate references and explicit project actions',async()=>{
     const saved=entry(),project=entry({id:pid,scope:{kind:'project',id:pid,label:'论文'}});const f=await mount();f.state.open=true;f.state.projects=[{id:pid,label:'论文'}] as any;f.state.suggestions=[saved] as any;f.state.conflicts=[project] as any;f.state.previewed=true;f.state.affected=[{source:saved.source,translation:'旧译文'}] as any;await settle();
     expect(f.get('[data-testid=correction-affected-count]').textContent).toContain('1 处');expect(document.querySelector('.diff')!.textContent).toContain('已保存的原句');
-    expect(f.get('[data-testid=correction-scope] option[value=material]').textContent).toBe('仅当前网页');expect(document.querySelector('.new-project')!.textContent).toContain('项目是一组相关网页');
+    expect(f.get('[data-testid=correction-scope] option[value=material]').textContent).toBe('仅当前网页');expect(document.querySelector('.new-project summary')!.textContent).toBe('新建项目');expect(document.querySelector('.scope-hint,.context')).toBeNull();
     await f.click('.suggestions article button');expect(f.controller.suggest).toHaveBeenCalledWith(saved);await f.click('.conflict button');expect(f.controller.edit).toHaveBeenCalledWith(project);
     const scope=f.get('[data-testid=correction-scope]') as HTMLSelectElement;scope.value=pid;scope.dispatchEvent(new window.Event('change',{bubbles:true}));await settle();expect(f.controller.setScope).toHaveBeenCalledWith(pid);
     await f.click('[data-testid=correction-project-join]');expect(f.controller.activateProject).toHaveBeenCalledWith(pid);f.state.activeProjectId=pid;await settle();await f.click('[data-testid=correction-project-leave]');expect(f.controller.activateProject).toHaveBeenCalledWith(null);
     const name=f.get('[data-testid=correction-project-name]') as HTMLInputElement;name.value='新论文';name.dispatchEvent(new window.Event('input',{bubbles:true}));await settle();expect(f.state.projectName).toBe('新论文');await f.click('[data-testid=correction-project-create]');expect(f.controller.createProject).toHaveBeenCalledTimes(1);
-    f.state.context='';await settle();expect(document.querySelector('.context blockquote')!.textContent).toBe('此处没有章节标题');
+    f.state.context='';await settle();await f.event(f.get('[data-testid=correction-scope-help]'),'mouseenter');expect(f.get('.scope-tooltip-context').textContent).toBe('此处没有章节标题');
+  });
+  it('keeps scope explanations in a closed-root tooltip, supports hover transfer and focused help, and layers Escape',async()=>{
+    vi.useFakeTimers();document.querySelector<HTMLElement>('#outside')!.focus();const f=await mount({open:true},true);const help=f.get('[data-testid=correction-scope-help]');
+    expect(f.container.shadowRoot).toBeNull();expect(f.root.querySelector('.scope-hint,.context,[role=tooltip]')).toBeNull();expect(help.closest('.scope-row')).not.toBeNull();expect(help.getAttribute('aria-expanded')).toBe('false');expect(help.hasAttribute('aria-describedby')).toBe(false);
+    await f.event(help,'mouseenter');const tooltip=f.get('[data-testid=correction-scope-tooltip]');expect(tooltip.id).toBe(help.getAttribute('aria-describedby'));expect(tooltip.getAttribute('role')).toBe('tooltip');expect(help.getAttribute('aria-expanded')).toBe('true');
+    expect(tooltip.parentElement).toBe(f.get('.correction-ui'));expect(tooltip.closest('.panel-body,.correction-panel')).toBeNull();expect(tooltip.textContent).toContain('当前网页');expect(tooltip.textContent).toContain('主动加入同一项目');expect(tooltip.textContent).toContain('原句、翻译语言');expect(tooltip.textContent).toContain('章节标题须完全相同');expect(f.get('.scope-tooltip-context').textContent).toBe('Finance');expect(tooltip.style.top).toBe('270px');
+    await f.event(help,'mouseleave');await f.event(tooltip,'mouseenter');vi.advanceTimersByTime(120);await settle();expect(f.root.querySelector('[role=tooltip]')).not.toBeNull();await f.event(tooltip,'mouseleave');vi.advanceTimersByTime(120);await settle();expect(f.root.querySelector('[role=tooltip]')).toBeNull();
+    help.focus();await f.event(help,'focus');await f.event(help,'mouseleave');vi.advanceTimersByTime(200);await settle();expect(f.root.querySelector('[role=tooltip]')).not.toBeNull();expect((await f.key('Escape')).defaultPrevented).toBe(true);expect(f.state.open).toBe(true);expect(f.controller.close).not.toHaveBeenCalled();expect(f.root.querySelector('[role=tooltip]')).toBeNull();expect(help.hasAttribute('aria-describedby')).toBe(false);
+    await f.event(help,'focus');focused=null;await f.event(help,'blur');expect(f.root.querySelector('[role=tooltip]')).toBeNull();expect((await f.key('Escape')).defaultPrevented).toBe(true);expect(f.controller.close).toHaveBeenCalledTimes(1);expect(f.state.open).toBe(false);
+  });
+  it('keeps help inside a narrow visual viewport and repositions on closed-root panel scroll and viewport changes',async()=>{
+    const viewport=document.createElement('div') as unknown as HTMLElement&{width:number;height:number;offsetLeft:number;offsetTop:number};Object.assign(viewport,{width:390,height:380,offsetLeft:12,offsetTop:18});Object.defineProperty(window,'visualViewport',{value:viewport,configurable:true});
+    const add=vi.spyOn(viewport,'addEventListener'),remove=vi.spyOn(viewport,'removeEventListener');const f=await mount({open:true},true);const help=f.get('[data-testid=correction-scope-help]');let anchor={left:380,top:20,bottom:44};
+    help.getBoundingClientRect=()=>({...anchor,right:anchor.left+24,width:24,height:24,x:anchor.left,y:anchor.top,toJSON:()=>({})});
+    const originalRect=window.HTMLElement.prototype.getBoundingClientRect;window.HTMLElement.prototype.getBoundingClientRect=function(){if(!this.classList.contains('scope-tooltip'))return originalRect.call(this);const width=Math.min(320,Number.parseFloat(this.style.maxWidth)),height=Math.min(200,Number.parseFloat(this.style.maxHeight));return {x:0,y:0,left:0,top:0,right:width,bottom:height,width,height,toJSON:()=>({})};};
+    await f.event(help,'mouseenter');const tooltip=f.get('[role=tooltip]');expect(tooltip.style.left).toBe('74px');expect(tooltip.style.top).toBe('50px');expect(tooltip.style.maxWidth).toBe('374px');expect(tooltip.style.maxHeight).toBe('364px');expect(add).toHaveBeenCalledWith('resize',expect.any(Function));expect(add).toHaveBeenCalledWith('scroll',expect.any(Function));
+    anchor={left:3,top:370,bottom:394};f.get('.panel-body').dispatchEvent(new window.Event('scroll',{bubbles:true}));await settle();expect(tooltip.style.left).toBe('20px');expect(tooltip.style.top).toBe('164px');
+    Object.assign(viewport,{width:160,height:120,offsetLeft:10,offsetTop:30});viewport.dispatchEvent(new window.Event('resize'));await settle();expect(tooltip.style.maxWidth).toBe('144px');expect(tooltip.style.maxHeight).toBe('104px');expect(tooltip.style.left).toBe('18px');expect(tooltip.style.top).toBe('38px');
+    Object.assign(viewport,{offsetLeft:20,offsetTop:40});viewport.dispatchEvent(new window.Event('scroll'));await settle();expect(tooltip.style.left).toBe('28px');expect(tooltip.style.top).toBe('48px');
+    f.state.managing=true;await settle();expect(f.root.querySelector('[role=tooltip]')).toBeNull();expect(remove).toHaveBeenCalledWith('resize',expect.any(Function));expect(remove).toHaveBeenCalledWith('scroll',expect.any(Function));
+  });
+  it('releases help listeners and ignores late hover, focus, scroll and ticks after close, view switch or unmount',async()=>{
+    vi.useFakeTimers();const add=vi.fn(window.addEventListener),remove=vi.fn(window.removeEventListener);window.addEventListener=add;window.removeEventListener=remove;const f=await mount({open:true});let help=f.get('[data-testid=correction-scope-help]');
+    help.dispatchEvent(new window.Event('mouseenter'));f.state.open=false;await settle();expect(document.querySelector('[role=tooltip]')).toBeNull();const position=add.mock.calls.find(([type])=>type==='resize')![1] as EventListener;expect(remove).toHaveBeenCalledWith('resize',position);position(new window.Event('resize'));
+    const registrations=add.mock.calls.length;await f.event(help,'mouseenter');await f.event(help,'focus');await f.event(help,'mouseleave');expect(add.mock.calls).toHaveLength(registrations);f.state.open=true;help.dispatchEvent(new window.Event('mouseenter'));await settle();expect(document.querySelector('[role=tooltip]')).toBeNull();
+    help=f.get('[data-testid=correction-scope-help]');await f.event(help,'mouseenter');await f.event(help,'blur');position(new window.Event('resize'));f.state.managing=true;help.dispatchEvent(new window.Event('mouseenter'));await settle();expect(document.querySelector('[role=tooltip]')).toBeNull();
+    f.state.managing=false;await settle();help=f.get('[data-testid=correction-scope-help]');help.dispatchEvent(new window.Event('mouseenter'));app!.unmount();app=undefined;await settle();const afterUnmount=add.mock.calls.length,timers=vi.getTimerCount();await f.event(help,'mouseenter');await f.event(help,'focus');await f.event(help,'mouseleave');position(new window.Event('resize'));expect(add.mock.calls).toHaveLength(afterUnmount);expect(document.querySelector('[role=tooltip]')).toBeNull();expect(vi.getTimerCount()).toBe(timers);
   });
   it('manages edit/delete/undo, keeps unrelated materials read-only and presents explicit loading, error and success states',async()=>{
     const f=await mount();f.state.open=true;f.state.loading=true;await settle();expect(document.querySelector('[role=status]')!.textContent).toContain('读取');await f.click('[data-testid=correction-manage]');expect(document.querySelector('.empty')).toBeNull();

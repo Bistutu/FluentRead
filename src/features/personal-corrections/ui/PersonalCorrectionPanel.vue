@@ -1,7 +1,7 @@
 <!--
  * @file src/features/personal-corrections/ui/PersonalCorrectionPanel.vue
  * 文件职责：呈现网页原译文对的主动校订、明确范围预览与个人译法管理。
- * 主要内容：在封闭 Shadow UI 内提供可编辑译文、精确命中预览、近似句差异、项目范围、保存、撤销与删除；实现键盘焦点约束与响应式浅深色布局。
+ * 主要内容：在封闭 Shadow UI 内提供可编辑译文、精确命中预览、近似句差异、项目范围、保存、撤销与删除；范围说明以可悬停和聚焦的屏内提示呈现，实现分层 Escape、焦点约束与响应式浅深色布局。
  * 模块边界：不读取网页历史或存储、不请求翻译服务；动作交给校订控制器，原文和译文始终以纯文本呈现。
  -->
 <template>
@@ -19,15 +19,12 @@
           <h3>原文</h3><blockquote class="source" data-testid="correction-source" data-i18n-ignore>{{ state.source }}</blockquote>
           <label class="translation-label" for="correction-translation">确认采用的译文</label>
           <textarea id="correction-translation" ref="translationInput" data-testid="correction-translation" :value="state.draft" :disabled="state.busy" maxlength="20000" rows="4" data-i18n-ignore @input="controller.setDraft(($event.target as HTMLTextAreaElement).value)" />
-          <div class="scope-row"><label for="correction-scope">使用范围</label><select id="correction-scope" data-testid="correction-scope" :value="state.scopeId" :disabled="state.busy" @change="controller.setScope(($event.target as HTMLSelectElement).value)"><option value="material">仅当前网页</option><option v-for="project in state.projects" :key="project.id" :value="project.id" data-i18n-ignore>项目：{{ project.label }}</option></select></div>
+          <div class="scope-row"><span class="scope-label"><label for="correction-scope">使用范围</label><button ref="scopeHelpButton" class="scope-help" type="button" data-testid="correction-scope-help" aria-label="使用范围说明" :aria-expanded="scopeHelpOpen" :aria-describedby="scopeHelpOpen ? 'correction-scope-tooltip' : undefined" @mouseenter="openScopeHelp" @mouseleave="deferScopeHelpClose" @focus="openScopeHelp" @blur="closeScopeHelp"><svg aria-hidden="true" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.25" /><path d="M8 7v4M8 4.5v.5" /></svg></button></span><select id="correction-scope" data-testid="correction-scope" :value="state.scopeId" :disabled="state.busy" @change="controller.setScope(($event.target as HTMLSelectElement).value)"><option value="material">仅当前网页</option><option v-for="project in state.projects" :key="project.id" :value="project.id" data-i18n-ignore>项目：{{ project.label }}</option></select><details class="new-project"><summary>新建项目</summary><div><input v-model="state.projectName" data-testid="correction-project-name" :disabled="state.busy" maxlength="80" aria-label="项目名称" placeholder="例如：某篇论文的相关网页"><button type="button" data-testid="correction-project-create" :disabled="state.busy" @click="controller.createProject">创建</button></div></details></div>
           <button v-if="state.scopeId !== 'material' && state.activeProjectId !== state.scopeId" type="button" data-testid="correction-project-join" :disabled="state.busy" @click="controller.activateProject(state.scopeId)">将当前网页加入此项目</button>
           <p v-if="state.activeProjectId" class="hint">当前网页已加入项目：<span data-i18n-ignore>{{ state.projects.find(project => project.id === state.activeProjectId)?.label }}</span> <button type="button" data-testid="correction-project-leave" :disabled="state.busy" @click="controller.activateProject(null)">退出项目</button></p>
-          <p class="hint scope-hint">默认只在当前网页使用。选择项目后，须先将网页加入项目。</p>
-          <details class="new-project"><summary>新建项目（一组相关网页）</summary><p class="hint">项目是一组相关网页，例如同一篇论文的正文和补充资料。只有主动加入同一项目的网页，才会使用其中保存的译文。</p><div><input v-model="state.projectName" data-testid="correction-project-name" :disabled="state.busy" maxlength="80" aria-label="项目名称" placeholder="例如：某篇论文的相关网页"><button type="button" data-testid="correction-project-create" :disabled="state.busy" @click="controller.createProject">创建</button></div></details>
-          <details class="context"><summary>哪些句子会使用这条校订？</summary><p class="hint">只有原句完全相同、翻译语言相同、所在章节标题相同，才会使用这条校订。同一句在不同章节中可能含义不同。</p><blockquote data-i18n-ignore>{{ state.context || '此处没有章节标题' }}</blockquote></details>
           <div v-if="state.conflicts.length" class="conflict"><h3>这个原句保存了不同译法</h3><p class="hint">不会自动采用。可以编辑已有译法，或在“已保存的校订”中删除不再使用的译法。</p><button v-for="record in state.conflicts" :key="record.id" type="button" @click="controller.edit(record)"><span data-i18n-ignore>{{ record.translation }}</span><small data-i18n-ignore>{{ record.scope.label }}</small></button></div>
           <details v-if="state.suggestions.length" class="suggestions"><summary>相近原句的参考译文（不会自动替换）</summary><article v-for="record in state.suggestions" :key="record.id"><div class="diff"><p><strong>已保存的原句</strong><span data-i18n-ignore>{{ record.source }}</span></p><p><strong>当前原句</strong><span data-i18n-ignore>{{ state.source }}</span></p></div><p data-i18n-ignore>{{ record.translation }}</p><button type="button" :disabled="state.busy" @click="controller.suggest(record)">选作草稿，再预览确认</button></article></details>
-          <div v-if="state.previewed" class="preview" data-testid="correction-preview-result"><h3>确认预览</h3><div class="comparison"><div><small>当前译文</small><p data-i18n-ignore>{{ state.currentTranslation }}</p></div><div><small>采用校订后</small><p data-i18n-ignore>{{ state.draft }}</p></div></div><p class="hint" data-testid="correction-affected-count">当前网页有 {{ state.affected.length }} 处相同原句。出现不同的已保存译法时，不会自动采用。</p><details v-if="state.affected.length"><summary>受影响句子</summary><ol><li v-for="(pair, index) in state.affected" :key="index"><p data-i18n-ignore>{{ pair.source }}</p><small data-i18n-ignore>{{ pair.translation }}</small></li></ol></details><p v-if="state.scopeId !== 'material'" class="hint">同一项目的其他网页会在下次翻译时使用这条校订；原句、翻译语言和章节标题须相同。</p></div>
+          <div v-if="state.previewed" class="preview" data-testid="correction-preview-result"><h3>确认预览</h3><div class="comparison"><div><small>当前译文</small><p data-i18n-ignore>{{ state.currentTranslation }}</p></div><div><small>采用校订后</small><p data-i18n-ignore>{{ state.draft }}</p></div></div><p class="hint" data-testid="correction-affected-count">当前网页有 {{ state.affected.length }} 处相同原句。出现不同的已保存译法时，不会自动采用。</p><details v-if="state.affected.length"><summary>受影响句子</summary><ol><li v-for="(pair, index) in state.affected" :key="index"><p data-i18n-ignore>{{ pair.source }}</p><small data-i18n-ignore>{{ pair.translation }}</small></li></ol></details></div>
         </template>
         <template v-else>
           <p class="hint">这里只保存你确认过的原句和译文。修改或删除后，旧译文会立即停止使用。</p>
@@ -39,6 +36,11 @@
       </div>
       <footer><button v-if="state.undoToken" type="button" data-testid="correction-undo" :disabled="state.busy" @click="controller.undo">撤销上次操作</button><div v-if="!state.managing" class="save-actions"><button type="button" data-testid="correction-preview" :disabled="state.busy || state.loading || !state.draft.trim()" @click="controller.preview">预览受影响句子</button><button class="primary" type="button" data-testid="correction-save" :disabled="state.busy || state.loading || !state.previewed" @click="controller.save">{{ state.busy ? '保存中…' : '确认保存' }}</button></div></footer>
     </section>
+    <div v-if="scopeHelpOpen" id="correction-scope-tooltip" ref="scopeHelp" class="scope-tooltip" role="tooltip" data-testid="correction-scope-tooltip" :style="scopeHelpPosition" @mouseenter="openScopeHelp" @mouseleave="deferScopeHelpClose">
+      <p>默认只在当前网页使用。项目是一组相关网页，只有主动加入同一项目的网页，才会使用其中保存的译文。</p>
+      <p>原句、翻译语言（源语言和目标语言）及所在章节标题须完全相同。同一项目的其他网页会在下次翻译时使用校订。</p>
+      <small>当前章节</small><p class="scope-tooltip-context" data-i18n-ignore>{{ state.context || '此处没有章节标题' }}</p>
+    </div>
   </div>
 </template>
 <script setup lang="ts">
@@ -50,6 +52,48 @@ import type {PersonalCorrectionController} from '../controller';
 const props = defineProps<{controller: PersonalCorrectionController}>();
 const state = props.controller.state;
 const panel = ref<HTMLElement>(); const translationInput = ref<HTMLTextAreaElement>();
+const scopeHelpButton = ref<HTMLButtonElement>(); const scopeHelp = ref<HTMLElement>();
+const scopeHelpOpen = ref(false); const scopeHelpPosition = ref({left: '8px', top: '8px'});
+let helpCloseTimer: ReturnType<typeof setTimeout> | undefined;
+let helpPanel: HTMLElement | undefined;
+let disposed = false;
+function positionScopeHelp(): void {
+  const button = scopeHelpButton.value, tooltip = scopeHelp.value;
+  if (!button || !tooltip) return;
+  const viewport = window.visualViewport;
+  const width = viewport?.width ?? window.innerWidth, height = viewport?.height ?? window.innerHeight;
+  tooltip.style.maxWidth = `${Math.max(0, width - 16)}px`; tooltip.style.maxHeight = `${Math.max(0, height - 16)}px`;
+  const anchor = button.getBoundingClientRect(), bounds = tooltip.getBoundingClientRect();
+  const leftEdge = (viewport?.offsetLeft ?? 0) + 8, topEdge = (viewport?.offsetTop ?? 0) + 8;
+  const rightEdge = leftEdge + width - 16;
+  const bottomEdge = topEdge + height - 16;
+  const left = Math.max(leftEdge, Math.min(anchor.left, rightEdge - bounds.width));
+  const preferredTop = anchor.top - bounds.height - 6 >= topEdge ? anchor.top - bounds.height - 6 : anchor.bottom + 6;
+  const top = Math.max(topEdge, Math.min(preferredTop, bottomEdge - bounds.height));
+  scopeHelpPosition.value = {left: `${left}px`, top: `${top}px`};
+}
+function closeScopeHelp(): void {
+  clearTimeout(helpCloseTimer); helpCloseTimer = undefined; scopeHelpOpen.value = false;
+  helpPanel?.removeEventListener('scroll', positionScopeHelp, true); helpPanel = undefined;
+  window.removeEventListener('resize', positionScopeHelp); window.removeEventListener('scroll', positionScopeHelp, true);
+  window.visualViewport?.removeEventListener('resize', positionScopeHelp); window.visualViewport?.removeEventListener('scroll', positionScopeHelp);
+}
+async function openScopeHelp(): Promise<void> {
+  if (disposed || !state.open || state.managing || !panel.value) return;
+  clearTimeout(helpCloseTimer); helpCloseTimer = undefined; scopeHelpOpen.value = true;
+  helpPanel = panel.value; helpPanel.addEventListener('scroll', positionScopeHelp, true);
+  window.addEventListener('resize', positionScopeHelp); window.addEventListener('scroll', positionScopeHelp, true);
+  window.visualViewport?.addEventListener('resize', positionScopeHelp); window.visualViewport?.addEventListener('scroll', positionScopeHelp);
+  await nextTick();
+  if (scopeHelpOpen.value) positionScopeHelp();
+}
+function deferScopeHelpClose(): void {
+  if (disposed || !scopeHelpOpen.value) return;
+  clearTimeout(helpCloseTimer);
+  const root = scopeHelpButton.value?.getRootNode() as Document | ShadowRoot;
+  if (root?.activeElement === scopeHelpButton.value) return;
+  helpCloseTimer = setTimeout(closeScopeHelp, 100);
+}
 const prefs = ref({theme: config.theme, interfaceSkin: config.interfaceSkin});
 const media = window.matchMedia('(prefers-color-scheme: dark)'); const systemDark = ref(media.matches);
 const mediaChanged = (event: MediaQueryListEvent) => {systemDark.value = event.matches;};
@@ -60,15 +104,15 @@ const accent = computed(() => getInterfaceSkinOption(prefs.value.interfaceSkin).
 let previousFocus: HTMLElement | null = null;
 function restoreFocus(): void {if (previousFocus?.isConnected) previousFocus.focus({preventScroll: true}); previousFocus = null;}
 watch(() => state.open, async open => {
-  if (!open) {restoreFocus(); return;}
+  if (!open) {closeScopeHelp(); restoreFocus(); return;}
   const focus = document.activeElement;
   previousFocus = focus instanceof HTMLElement ? focus : null;
   await nextTick();
   if (state.open) (translationInput.value ?? panel.value?.querySelector<HTMLButtonElement>('[data-testid="correction-manage"]'))?.focus({preventScroll: true});
 }, {immediate: true});
-watch(() => state.managing, async managing => {await nextTick(); if (state.open) (managing ? panel.value?.querySelector<HTMLButtonElement>('[data-correction-edit]:not([disabled])') ?? panel.value?.querySelector<HTMLButtonElement>('[data-testid="correction-manage"]') : translationInput.value)?.focus({preventScroll: true});});
+watch(() => state.managing, async managing => {closeScopeHelp(); await nextTick(); if (state.open) (managing ? panel.value?.querySelector<HTMLButtonElement>('[data-correction-edit]:not([disabled])') ?? panel.value?.querySelector<HTMLButtonElement>('[data-testid="correction-manage"]') : translationInput.value)?.focus({preventScroll: true});});
 function keydown(event: KeyboardEvent): void {
-  if (event.key === 'Escape') {event.preventDefault(); event.stopPropagation(); props.controller.close(); return;}
+  if (event.key === 'Escape') {event.preventDefault(); event.stopPropagation(); if (scopeHelpOpen.value) closeScopeHelp(); else props.controller.close(); return;}
   if (event.key !== 'Tab') return;
   const controls = Array.from(panel.value?.querySelectorAll<HTMLElement>('button:not([disabled]), textarea:not([disabled]), select:not([disabled]), input:not([disabled]), summary') ?? [])
     .filter(node => !node.closest('details:not([open])') || node.tagName === 'SUMMARY');
@@ -78,7 +122,7 @@ function keydown(event: KeyboardEvent): void {
   if (event.shiftKey && focus === first) {event.preventDefault(); last.focus();}
   else if (!event.shiftKey && focus === last) {event.preventDefault(); first.focus();}
 }
-onBeforeUnmount(() => {stopConfig(); media.removeEventListener('change', mediaChanged); restoreFocus();});
+onBeforeUnmount(() => {disposed = true; closeScopeHelp(); stopConfig(); media.removeEventListener('change', mediaChanged); restoreFocus();});
 </script>
 <style scoped>
 /* 沿用写作面板的中性底面、字号与留白；阅读面板的轻操作页签只强调当前视图。 */
@@ -96,8 +140,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:8px
 .panel-body{overflow:auto;padding:14px;overscroll-behavior:contain;min-height:0}h3{font-size:12px;margin:0 0 6px}.language-row{font-size:11px;color:var(--muted);margin-bottom:6px}
 p,blockquote{margin:0 0 10px;white-space:pre-wrap;overflow-wrap:anywhere}blockquote{border-left:2px solid var(--line);padding:8px 10px;background:var(--soft);border-radius:0 7px 7px 0}.source{color:var(--muted)}
 .translation-label{font-size:12px;font-weight:600;display:block;margin-top:14px}textarea,input,select{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px}textarea{width:100%;resize:vertical;min-height:100px;max-height:260px;margin-top:6px;font-size:14px;line-height:1.8}input{min-width:0;flex:1}input,select{font-size:12px}
-.scope-row{display:flex;gap:12px;align-items:center;margin:12px 0 6px}.scope-row label{font-size:12px;font-weight:600}.scope-row select{flex:1;min-width:0}.hint{font-size:11px;color:var(--muted);line-height:1.7}.scope-hint{margin:6px 0 10px}
-.new-project{font-size:11px}.new-project>div{display:flex;gap:6px;margin:8px 0}.new-project>.hint{margin:6px 0}summary{cursor:pointer;color:var(--muted)}details.context{margin:8px 0 14px;font-size:11px}.context blockquote{margin-top:6px}
+.scope-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0 6px}.scope-label{display:flex;gap:2px;align-items:center;flex:none}.scope-row label{font-size:12px;font-weight:600}.scope-row select{flex:1;min-width:90px}.scope-help{display:inline-flex;align-items:center;justify-content:center;width:24px;min-height:24px;padding:0;border:0;background:transparent;color:var(--muted)}.scope-help svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.2;stroke-linecap:round}.hint{font-size:11px;color:var(--muted);line-height:1.7}
+.new-project{font-size:11px;flex:none}.new-project[open]{flex-basis:100%}.new-project summary{list-style:none;text-align:end}.new-project summary::-webkit-details-marker{display:none}.new-project>div{display:flex;gap:6px;margin:8px 0}summary{cursor:pointer;color:var(--muted)}
+.scope-tooltip{position:fixed;z-index:2;width:min(320px,calc(100vw - 16px));max-height:min(360px,calc(100dvh - 16px));overflow:auto;overscroll-behavior:contain;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--text);font-size:11px;line-height:1.7;box-shadow:0 5px 20px #152c4122}.scope-tooltip p{margin:0 0 8px}.scope-tooltip small{color:var(--muted);font-size:10px}.scope-tooltip .scope-tooltip-context{margin:2px 0 0;color:var(--muted)}
 .conflict,.preview{margin-top:14px;padding:10px;border:1px solid var(--line);border-radius:9px;background:var(--soft)}.conflict button{display:flex;justify-content:space-between;text-align:left;gap:8px;width:100%;margin-top:5px}.conflict small{color:var(--muted)}
 .suggestions{margin:12px 0;font-size:12px}.suggestions article{border-bottom:1px solid var(--line);padding:10px 0}.diff{display:grid;grid-template-columns:1fr 1fr;gap:8px}.diff strong{font-size:11px;color:var(--muted);display:block}.diff span{font-size:12px}
 .comparison{display:grid;grid-template-columns:1fr 1fr;gap:12px}.comparison>div{min-width:0}.comparison small{color:var(--muted);font-size:11px}.comparison p{margin-top:5px}.preview ol{padding-left:20px;margin:8px 0}.preview li{margin-bottom:8px}.preview li p{margin-bottom:3px}.preview small{color:var(--muted);font-size:11px}

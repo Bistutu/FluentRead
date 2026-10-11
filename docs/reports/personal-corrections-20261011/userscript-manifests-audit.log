@@ -1,0 +1,72 @@
+userscript
+> FluentRead-流畅阅读@0.0.37 test:userscript /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
+> node scripts/testing/run-resource-safe.mjs -- pnpm build:userscript && node scripts/verify-userscript-build.mjs
+
+[resource-safe] 等待全局测试锁（3 个并发槽已占满，当前: /Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node /Users/thinkstu/Desktop/copy/FluentRead-document-reader-gestures-20261010/scripts/testing/run-pdf-export-benchmark.cjs --extension-dir /Users/thinkstu/Desktop/copy/FluentRead-document-reader-gestures-20261010/.output/chrome-mv3 --playwright-root /Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules --inputs /Users/thinkstu/Desktop/copy/document-translation-validation-20261010/synthetic-stress/300-page-source.pdf --mock-min-pages 300 --label 300-font-final --build-commit 67a90403ee0e8ee854cbb433ece3eef9c8b91a6c --modes bilingual --layout side-by-side --overflow-repeat 6 --cancel-after-pages 2 --export-timeout-ms 180000 --translation-timeout-ms 600000 --cancel-timeout-ms 5000 --browser-path /Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge --display secondary --pdftoppm /Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/bin/override/pdftoppm --artifacts-dir /private/tmp/fluentread-pdf-export-300-font-final-20261011）
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: pnpm build:userscript
+
+> FluentRead-流畅阅读@0.0.37 build:userscript /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
+> node scripts/testing/run-resource-safe.mjs -- vite build --config userscript/vite.config.ts
+
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vite build --config userscript/vite.config.ts
+vite v5.4.19 building for production...
+transforming...
+✓ 677 modules transformed.
+rendering chunks...
+computing gzip size...
+.output/userscript/fluent-read.user.js  1,969.24 kB │ gzip: 799.41 kB
+✓ built in 5.06s
+Verified .output/userscript/fluent-read.user.js (2,024,969 bytes)
+
+extension-manifests
+> FluentRead-流畅阅读@0.0.37 verify:extension-manifests /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
+> node scripts/testing/verify-extension-manifests.mjs
+
+{
+  "status": "ok",
+  "chrome": {
+    "manifestVersion": 3,
+    "offscreenPermission": true,
+    "runtimeCapabilityMarker": "__FLUENTREAD_BROWSER_CAPABILITY_BUILD__:chrome:mv3__",
+    "artifacts": [
+      "chunks/offscreen-BgHX5JDy.js",
+      "offscreen.html"
+    ],
+    "ocrAssets": 6
+  },
+  "firefox": {
+    "manifestVersion": 2,
+    "offscreenPermission": false,
+    "runtimeCapabilityMarker": "__FLUENTREAD_BROWSER_CAPABILITY_BUILD__:firefox:mv2__",
+    "artifacts": [
+      "chunks/offscreen-BgHX5JDy.js",
+      "offscreen.html"
+    ],
+    "ocrAssets": 6,
+    "geckoId": "{3096bd53-3bda-4556-b076-ebf47442a5c1}",
+    "strictMinVersion": "140.0",
+    "dataCollectionPermissions": [
+      "websiteContent",
+      "authenticationInfo",
+      "personalCommunications"
+    ],
+    "archives": [],
+    "archiveOcrAssets": 0
+  }
+}
+
+test-audit
+> FluentRead-流畅阅读@0.0.37 test:audit /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
+> node scripts/testing/audit-test-suite.mjs
+
+{
+  "status": "ok",
+  "groups": {
+    "architecture": 33,
+    "unit": 376,
+    "functional": 209,
+    "regression": 41
+  },
+  "files": 659,
+  "cases": 10957
+}

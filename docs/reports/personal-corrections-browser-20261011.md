@@ -4,13 +4,15 @@
 
 ## 运行结果
 
-最终冻结源码的 production Chrome MV3 产物通过 **20 / 20** 项矩阵，进程退出码为 0。页面异常、控制台错误和测试 Edge 的原生前台激活事件均为 0；测试结束已关闭拥有的浏览器并删除临时 profile。公共 provider 缓存抽查有 1 条普通记录，不含个人校订译文。四张归档截图均已目视检查，设置、编辑器和主要操作在视口内。
+最终冻结源码的 production Chrome MV3 产物通过 **20 / 20** 项矩阵，进程退出码为 0。页面异常、控制台错误和测试 Edge 的原生前台激活事件均为 0；测试结束已关闭拥有的浏览器并删除临时 profile。公共 provider 缓存抽查有 1 条普通记录，不含个人校订译文。八张归档截图均已目视检查，设置、编辑器、帮助提示和主要操作在视口内。
 
 覆盖项目如下：
 
 - 默认关闭时校订消息为零，没有悬停入口或快捷键编辑器，普通段落及全文翻译正常。
 - 真实阅读辅助设置开关五次切换，反馈后立即关闭设置页，重新打开和 popup 重新加载均保持正确状态。
 - 主动开启后直接编辑已有双语译文；修改、预览并确认保存，修改后必须再次预览。
+- 默认编辑器不再显示常驻范围及章节说明；“使用范围”旁的 24px 信息图标由真实鼠标悬停或 Tab 聚焦打开提示，移开收起，Escape 只关闭提示并保留编辑器，普通保存反馈严格为“已保存”。
+- 390px 下真实滚轮将自然溢出的预览面板滚动 72px，锚点及提示同步上移 72px，提示继续位于可见视口内；没有为此修改业务 DOM。
 - 关闭时编辑器退出，有底稿的当前个人译文恢复底稿，无底稿的复用单元恢复原文；保存记录保留，再开启不会自动改写已有服务译文，后续翻译仍能复用。
 - 来源文字继承译文颜色、11px 小于 18px 正文，边框为 0、底色透明；390px 的文档宽度仍为 390px。
 - 清除公共 provider 缓存后精确复用个人译法，显示来源，额外 provider 请求为零。
@@ -36,15 +38,23 @@
 
 | 产物 | SHA-256 |
 | --- | --- |
-| `background.js` | `86c1f28369eb4f7b74f41ecd5dd05aec15993f18f17f3a35e5b585ed931a4e31` |
-| `content-scripts/content.js` | `c4bb55280690a27eeb50f041090e87ffb8eb14b9c385eadc438cdadd63ba8dda` |
-| `content-scripts/content.css` | `ae3fda7c17fb9616efcaa154aa107a5501ad5afa3db51dacc5d1c912f282fcbc` |
+| `background.js` | `1a1c3c5c9e506421ab331aea152ff631e754c002fac02de37e88b277ed65b623` |
+| `content-scripts/content.js` | `2f7bd810f2d178bab490d922e4d7076d5c6234cd32da4b061372a89bb04fa8bf` |
+| `content-scripts/content.css` | `06039d35c3f5090ce871ea4fd80cecebed00ab584d7be2bdc2bdff78e01401c1` |
 
-完整临时证据目录为 `/private/tmp/fluentread-personal-corrections-opt-in-20261011-r2`；其中保留 21 张截图、各项结果、新鲜度与清理记录。本报告归档的是最终重跑。前一轮 r1 的旧撤销用例假设启停后仍保留上一编辑会话的撤销按钮，与关闭后重建会话不符；最终用例先通过真实管理删除和重新确认保存建立本会话撤销点，再验证撤销及普通服务回退。r1 失败、原先界面验证及其夹具调整证据均保留，不计为本轮最终通过。
+完整临时证据目录为 `/private/tmp/fluentread-personal-corrections-help-20261011-r1`；其中保留 33 张截图、各项结果、新鲜度与清理记录。本报告归档的是收起常驻说明后的最终运行，原先 opt-in r1/r2 证据仍保留。旧 r1 的撤销用例假设启停后仍保留上一编辑会话的撤销按钮，与关闭后重建会话不符；后续用例先通过真实管理删除和重新确认保存建立本会话撤销点，再验证撤销及普通服务回退。
 
 测试入口为 [`scripts/testing/run-personal-corrections-test.cjs`](../../scripts/testing/run-personal-corrections-test.cjs)。运行参数必须指定 `--playwright-root`，并使用 `--background --display secondary --real-url https://example.com`；`--artifacts-dir` 指定本次独立证据目录。脚本自动创建临时 profile，检查原生焦点事件并只关闭本次拥有的浏览器，完成后按目录身份与 `.owner` 标记删除 profile。
 
 ## 截图
+
+![收起范围说明后的编辑器](./personal-corrections-20261011/browser-editor-compact.png)
+
+![悬停范围帮助图标](./personal-corrections-20261011/browser-scope-help-desktop.png)
+
+![390px 下键盘聚焦显示帮助](./personal-corrections-20261011/browser-scope-help-narrow.png)
+
+![真实滚轮后提示随面板滚动调整](./personal-corrections-20261011/browser-scope-help-scroll.png)
 
 ![默认关闭的个人校订设置](./personal-corrections-20261011/browser-settings-off.png)
 

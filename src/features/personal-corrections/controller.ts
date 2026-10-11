@@ -85,7 +85,7 @@ export function createPersonalCorrectionController(ports: PersonalCorrectionUiPo
       state.undoToken = result.undoToken; state.editing = result.record; state.previewed = false;
       await syncVisible();
       if (!isActive()) return;
-      state.notice = '已保存。所选网页中原句、翻译语言和章节标题相同的句子会使用这条校订。';
+      state.notice = '已保存';
       await load();
       if (isActive() && state.conflicts.length) state.notice = '已保存，但这个原句有不同译法，不会自动采用。请在“已保存的校订”中编辑或删除不再使用的译法。';
     });
@@ -141,7 +141,7 @@ export function createPersonalCorrectionController(ports: PersonalCorrectionUiPo
       if (!isActive()) return;
       invalidate(); state.editing = null; await syncVisible();
       if (!isActive()) return;
-      state.notice = projectId ? '当前网页已加入项目。原句、翻译语言和章节标题相同的句子会使用已保存的校订。' : '当前网页已退出项目，之后只使用为这个网页保存的校订。';
+      state.notice = projectId ? '已加入项目' : '已退出项目';
       await load();
     });
   }

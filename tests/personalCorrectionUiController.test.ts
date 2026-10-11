@@ -35,16 +35,16 @@ describe('webpage personal correction workflow',()=>{
     expect(f.state.scopeId).toBe('material');expect(f.service.save).not.toHaveBeenCalled();await f.controller.save();expect(f.service.save).not.toHaveBeenCalled();
     f.controller.setDraft('他开设了银行。');f.controller.preview();expect(f.state.affected).toHaveLength(1);expect(f.visible).toHaveBeenCalledWith({source:f.pair.source,sourceLanguage:'en',targetLanguage:'zh-CN',context:'Finance',materialId});
     await f.controller.save();expect(f.service.save).toHaveBeenCalledWith({source:f.pair.source,translation:'他开设了银行。',sourceLanguage:'en',targetLanguage:'zh-CN',context:'Finance',scope:{kind:'material',id:materialId,label:'Finance article'}});
-    expect(f.refresh).toHaveBeenCalledTimes(1);expect(f.state.undoToken).toBe('undo-save');expect(f.state.notice).toContain('已保存');expect(f.state.previewed).toBe(false);
+    expect(f.refresh).toHaveBeenCalledTimes(1);expect(f.state.undoToken).toBe('undo-save');expect(f.state.notice).toBe('已保存');expect(f.state.previewed).toBe(false);
     await f.controller.undo();expect(f.service.undo).toHaveBeenCalledWith('undo-save');expect(f.state.undoToken).toBe('');expect(f.state.notice).toContain('已撤销');await f.controller.undo();expect(f.service.undo).toHaveBeenCalledTimes(1);
   });
   it('resets default scope each time, makes approximate suggestions reviewable drafts and invalidates preview after changes',async()=>{
     const f=fixture();f.lookup.suggestions=[record({source:'He closed the bank.'})];await f.controller.open(f.pair);expect(f.state.suggestions).toHaveLength(1);expect(f.state.draft).toBe(f.pair.translation);
     f.controller.preview();f.controller.suggest(f.lookup.suggestions[0]);expect(f.state.draft).toBe('他开设了银行。');expect(f.state.previewed).toBe(false);expect(f.service.save).not.toHaveBeenCalled();
     f.controller.preview();f.controller.setDraft('另一个草稿');expect(f.state.previewed).toBe(false);f.controller.setScope(projectId);expect(f.state.editing).toBeNull();
-    f.controller.preview();expect(f.state.error).toContain('先将当前网页加入');await f.controller.activateProject(projectId);expect(f.service.selectProject).toHaveBeenCalledWith(materialId,projectId);
+    f.controller.preview();expect(f.state.error).toContain('先将当前网页加入');await f.controller.activateProject(projectId);expect(f.service.selectProject).toHaveBeenCalledWith(materialId,projectId);expect(f.state.notice).toBe('已加入项目');
     f.controller.preview();await f.controller.save();expect(f.service.save.mock.calls[0][0].scope).toEqual({kind:'project',id:projectId,label:'研究'});expect(f.service.selectProject).toHaveBeenCalledTimes(1);
-    f.controller.close();await f.controller.open(f.pair);expect(f.state.scopeId).toBe('material');await f.controller.activateProject(null);expect(f.state.activeProjectId).toBe('');expect(f.state.notice).toContain('已退出');
+    f.controller.close();await f.controller.open(f.pair);expect(f.state.scopeId).toBe('material');await f.controller.activateProject(null);expect(f.state.activeProjectId).toBe('');expect(f.state.notice).toBe('已退出项目');
   });
   it('edits saved versions, refuses other-material editing, shows conflicts and deletes with reversible invalidation',async()=>{
     const f=fixture(),saved=record();f.list.entries=[saved];f.lookup.exact=saved;f.lookup.conflicts=[record({id:projectId,translation:'他打开了银行。'})];await f.controller.open(f.pair);

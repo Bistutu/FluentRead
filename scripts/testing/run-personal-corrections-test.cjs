@@ -1,7 +1,7 @@
 /**
  * @file scripts/testing/run-personal-corrections-test.cjs
  * 文件职责：在临时 profile 的后台可见生产 Edge 中验证网页个人校订闭环。
- * 主要内容：从默认关闭开始，通过真实设置开关启用、关闭和重启；用可信 CDP 手势翻译、编辑、预览、保存、撤销和删除，检查零消息、精确复用、来源样式与近似句边界，保存 DOM 和截图证据。
+ * 主要内容：从默认关闭开始，通过真实设置开关启用、关闭和重启；用可信 CDP 手势翻译、编辑、预览、保存、撤销和删除，检查零消息、帮助悬停与键盘显示、精确复用、来源样式与近似句边界，保存 DOM 和截图证据。
  * 模块边界：只访问本次隔离网页、扩展配置端口及后台 fetch 的确定性传输夹具；原生 select 使用标明的 DOM change 夹具，其余产品编辑动作和快捷键使用可信 CDP 输入，不连接用户浏览器或真实凭据。
  */
 'use strict';
@@ -127,6 +127,98 @@ async function clickPanel(selector) {
   assert.ok(point && point.width && point.height && !point.disabled, `可用且可见的控件 ${selector}`);
   await page.mouse.click(point.x, point.y); assertFocusSafe();
 }
+async function movePanelPointer(selector) {
+  const point = await panel(`const element=this.querySelector(${JSON.stringify(selector)});if(!element)return null;const box=element.getBoundingClientRect();return{x:box.x+box.width/2,y:box.y+box.height/2,width:box.width,height:box.height};`);
+  assert.ok(point?.width && point?.height, `鼠标可达的控件 ${selector}`);
+  await page.mouse.move(point.x, point.y, {steps: 4}); assertFocusSafe();
+}
+async function focusPanelByTab(selector) {
+  // closed ShadowRoot 只用于读取焦点；进入帮助图标使用实际 Tab 输入，不调用 DOM.focus。
+  await clickPanel(tid('translation')); await movePanelPointer('header h2');
+  for (let count = 0; count < 30; count += 1) {
+    await page.keyboard.press('Tab'); assertFocusSafe();
+    if (await panel(`return Boolean(this.activeElement?.matches(${JSON.stringify(selector)}))`)) return count + 1;
+  }
+  throw new Error(`真实 Tab 无法进入 ${selector}`);
+}
+async function readHelp(buttonSelector, tooltipSelector) {
+  return panel(`const button=this.querySelector(${JSON.stringify(buttonSelector)}),tip=this.querySelector(${JSON.stringify(tooltipSelector)});if(!button)return null;const box=tip?.getBoundingClientRect(),style=tip&&getComputedStyle(tip);return{visible:Boolean(box?.width&&box.height&&style.display!=='none'&&style.visibility!=='hidden'&&Number(style.opacity)!==0),buttonLabel:button.getAttribute('aria-label'),expanded:button.getAttribute('aria-expanded'),describedBy:button.getAttribute('aria-describedby'),id:tip?.id,role:tip?.getAttribute('role'),text:tip?.textContent.trim(),focused:this.activeElement===button,geometry:box?{x:box.x,y:box.y,right:box.right,bottom:box.bottom,width:box.width,height:box.height,viewportWidth:innerWidth,viewportHeight:innerHeight}:null};`);
+}
+function assertHelpVisible(help) {
+  assert.equal(help?.visible, true, '帮助提示可见');
+  assert.ok(help.buttonLabel, '帮助图标具有可访问名称');
+  assert.equal(help.role, 'tooltip', '帮助使用 tooltip 语义');
+  assert.equal(help.expanded, 'true', '帮助按钮公开展开状态');
+  assert.ok(help.id && help.describedBy?.split(/\s+/).includes(help.id), '帮助按钮关联提示内容');
+  const box = help.geometry;
+  assert.ok(box.x >= 0 && box.y >= 0 && box.right <= box.viewportWidth && box.bottom <= box.viewportHeight, `帮助在当前视口内：${JSON.stringify(box)}`);
+}
+async function verifyCompactHelp(mode) {
+  const buttonSelector = tid('scope-help'), tooltipSelector = tid('scope-tooltip');
+  await movePanelPointer('header h2');
+  const ordinary = await panel(`const button=this.querySelector(${JSON.stringify(buttonSelector)}),box=button?.getBoundingClientRect();return{scope:this.querySelector('${tid('scope')}')?.value,scopeLabel:this.querySelector('${tid('scope')}')?.selectedOptions[0].textContent.trim(),explanations:this.querySelectorAll('.scope-hint,.context').length,helpByScope:Boolean(button?.closest('.scope-row')),helpWidth:box?.width,helpHeight:box?.height};`);
+  assert.equal(ordinary.explanations, 0, '普通编辑界面收起范围和语境说明行');
+  assert.equal(ordinary.scope, 'material', '编辑器每次默认仅当前网页');
+  assert.equal(ordinary.scopeLabel, '仅当前网页', '默认范围名称简明');
+  assert.equal(ordinary.helpByScope, true, '范围旁保留小帮助图标');
+  assert.ok(ordinary.helpWidth > 0 && ordinary.helpWidth <= 32 && ordinary.helpHeight > 0 && ordinary.helpHeight <= 32, '帮助图标尺寸紧凑');
+  assert.equal((await readHelp(buttonSelector, tooltipSelector))?.visible, false, '帮助默认收起');
+  await screenshot(`help-${mode}-collapsed`);
+  await screenshotPanel(`help-${mode}-collapsed-closeup`);
+  await movePanelPointer(buttonSelector);
+  await wait(async () => (await readHelp(buttonSelector, tooltipSelector))?.visible, '真实悬停显示帮助');
+  const hovered = await readHelp(buttonSelector, tooltipSelector); assertHelpVisible(hovered);
+  for (const term of ['当前网页', '项目', '原句', '翻译语言', '章节标题']) assert.ok(hovered.text.includes(term), `帮助保留 ${term} 说明`);
+  await screenshot(`help-${mode}-hover`);
+  await screenshotPanel(`help-${mode}-hover-closeup`);
+  await movePanelPointer('header h2');
+  await wait(async () => !(await readHelp(buttonSelector, tooltipSelector))?.visible, '鼠标离开收起帮助');
+  const tabPresses = await focusPanelByTab(buttonSelector);
+  await wait(async () => (await readHelp(buttonSelector, tooltipSelector))?.visible, '真实 Tab 聚焦显示帮助');
+  const focused = await readHelp(buttonSelector, tooltipSelector); assertHelpVisible(focused); assert.equal(focused.focused, true);
+  if (mode === 'narrow') {await screenshot('help-narrow-keyboard-focus'); await screenshotPanel('help-narrow-keyboard-focus-closeup');}
+  await page.keyboard.press('Escape');
+  await wait(async () => !(await readHelp(buttonSelector, tooltipSelector))?.visible, 'Escape 收起帮助');
+  assert.equal(await panel(`return Boolean(this.querySelector('${tid('dialog')}'))`), true, '第一次 Escape 保留编辑器');
+  await clickPanel(tid('translation')); await movePanelPointer('header h2');
+  (report.helpInteractions ||= []).push({mode,ordinary,hovered,focused,tabPresses,mouseLeaveCloses:true,escapeClosesHelpWithoutEditor:true,input:'trusted CDP mouse and Tab/Escape keyboard; ShadowRoot used only for state reads'});
+}
+async function verifyNarrowHelpScroll() {
+  // 使用真实预览与展开受影响句子形成自然 overflow，不写入 UI DOM 或额外业务文本。
+  await clickPanel(tid('preview'));
+  await wait(() => panel(`return Boolean(this.querySelector('${tid('preview-result')}'))`), '窄屏预览');
+  const bodyState = () => panel(`const body=this.querySelector('.panel-body'),button=this.querySelector('${tid('scope-help')}'),box=body.getBoundingClientRect(),anchor=button.getBoundingClientRect();return{scrollTop:body.scrollTop,scrollHeight:body.scrollHeight,clientHeight:body.clientHeight,box:{x:box.x,y:box.y,right:box.right,bottom:box.bottom,width:box.width,height:box.height},anchor:{x:anchor.x,y:anchor.y,top:anchor.top,bottom:anchor.bottom},viewport:{width:innerWidth,height:innerHeight,offsetLeft:visualViewport?.offsetLeft||0,offsetTop:visualViewport?.offsetTop||0}};`);
+  let available = await bodyState();
+  if (available.scrollHeight <= available.clientHeight && await panel('return Boolean(this.querySelector(".preview details > summary"))')) {
+    await clickPanel('.preview details > summary'); available = await bodyState();
+  }
+  if (available.scrollHeight <= available.clientHeight) {report.narrowHelpScroll = {tested:false,reason:'actual preview has no panel overflow',...available}; return;}
+  await focusPanelByTab(tid('scope-help'));
+  await wait(async () => (await readHelp(tid('scope-help'), tid('scope-tooltip')))?.visible, '滚动前帮助打开');
+  const before = await bodyState(), helpBefore = await readHelp(tid('scope-help'), tid('scope-tooltip'));
+  assertHelpVisible(helpBefore);
+  // 靠面板右侧发送滚轮，避开悬浮提示本身的独立滚动区域。
+  await page.mouse.move(before.box.right - 12, before.box.y + before.box.height / 2, {steps:4});
+  const delta = before.scrollTop < (before.scrollHeight - before.clientHeight) / 2 ? Math.min(72,before.scrollHeight-before.clientHeight-before.scrollTop) : -Math.min(72,before.scrollTop);
+  assert.ok(delta, '当前面板可自然滚动');
+  await page.mouse.wheel(0,delta); assertFocusSafe();
+  await wait(async () => Math.abs((await bodyState()).scrollTop-before.scrollTop)>1, '真实滚轮改变 panel-body scrollTop');
+  await wait(async () => {
+    const body = await bodyState(), help = await readHelp(tid('scope-help'),tid('scope-tooltip'));
+    if (!help?.visible) return false;
+    const edge=body.viewport.offsetTop+8,height=help.geometry.height;
+    const preferred=body.anchor.top-height-6>=edge?body.anchor.top-height-6:body.anchor.bottom+6;
+    const expected=Math.max(edge,Math.min(preferred,edge+body.viewport.height-16-height));
+    return Math.abs(help.geometry.y-expected)<2;
+  }, 'closed Shadow 面板滚动后提示跟随锚点并夹在视口内');
+  const after=await bodyState(),helpAfter=await readHelp(tid('scope-help'),tid('scope-tooltip'));assertHelpVisible(helpAfter);
+  assert.ok(Math.abs(after.anchor.top-before.anchor.top)>1,'帮助锚点随面板滚动移动');
+  await screenshot('help-narrow-after-wheel');await screenshotPanel('help-narrow-after-wheel-closeup');
+  await page.keyboard.press('Escape');
+  await wait(async()=>!(await readHelp(tid('scope-help'),tid('scope-tooltip')))?.visible,'滚动后 Escape 只关闭提示');
+  assert.equal(await panel(`return Boolean(this.querySelector('${tid('dialog')}'))`),true);
+  report.narrowHelpScroll={tested:true,before,after,helpBefore,helpAfter,deltaY:delta,escapeClosesHelpWithoutEditor:true,input:'trusted CDP wheel over actual preview overflow; no DOM business fixture'};
+}
 async function editTranslation(text) {await clickPanel(tid('translation')); await page.keyboard.press('ControlOrMeta+A'); await page.keyboard.insertText(text);}
 async function chooseFirstProject() {
   // 已验证 macOS 后台原生菜单不接受页面 CDP 选择键。只在这一个原生 select 上使用 DOM change 夹具；仍由 Vue 原生 change 监听与公开服务处理，后续显式加入、保存和移出均真实点击。
@@ -157,7 +249,12 @@ const personalProvenance = (selector = '#primary') => page.evaluate(target => do
 async function ensureOriginal(selector = '#primary') {if (await page.locator(selector + ' .fluent-read-bilingual-content').count()) await toggle(selector, 0);}
 const providerCount = () => worker.evaluate(() => globalThis.__correctionFixture.requests.length);
 async function clearPublicCache() {const response = await popup.evaluate(() => chrome.runtime.sendMessage({type: 'clearTranslationCache'})); assert.equal(response.success, true); await page.waitForTimeout(180);}
-async function screenshot(name, target = page) {const file = path.join(artifactsDir, `${String(report.screenshots.length + 1).padStart(2, '0')}-${name}.png`); await target.screenshot({path: file}); report.screenshots.push(file);}
+async function screenshot(name, target = page, options = {}) {const file = path.join(artifactsDir, `${String(report.screenshots.length + 1).padStart(2, '0')}-${name}.png`); await target.screenshot({...options,path: file}); report.screenshots.push(file);}
+async function screenshotPanel(name) {
+  const clip = await panel(`const nodes=[this.querySelector('${tid('dialog')}'),this.querySelector('${tid('scope-tooltip')}')].filter(Boolean),boxes=nodes.map(node=>node.getBoundingClientRect());if(!boxes.length)return null;const x=Math.max(0,Math.min(...boxes.map(box=>box.x))-8),y=Math.max(0,Math.min(...boxes.map(box=>box.y))-8),right=Math.min(innerWidth,Math.max(...boxes.map(box=>box.right))+8),bottom=Math.min(innerHeight,Math.max(...boxes.map(box=>box.bottom))+8);return{x,y,width:right-x,height:bottom-y};`);
+  assert.ok(clip?.width>0&&clip.height>0,'真实截图裁剪区域包含编辑器及已打开帮助');
+  await screenshot(name,page,{clip});
+}
 function record(name, evidence = {}) {report.cases.push({name, ...evidence}); console.log(JSON.stringify({case: name, outcome: 'passed'}));}
 async function previewSave(text, expectedSource = source, targetSelector = '#primary') {
   await editTranslation(text);
@@ -169,6 +266,8 @@ async function previewSave(text, expectedSource = source, targetSelector = '#pri
   assert.ok(report.previewText.includes(text), '预览包含确认译法');
   await screenshot('02-preview'); await clickPanel(tid('save'));
   await wait(async () => (await translation(targetSelector)).includes(text), '保存后采用个人校订');
+  await wait(() => panel(`return this.querySelector('${tid('notice')}')?.textContent.trim()==='已保存'`), '普通保存只显示简短反馈');
+  report.normalSaveNotice = '已保存';
 }
 async function discoverRealParagraph() {
   const requested = arg('real-selector');
@@ -265,7 +364,8 @@ async function main() {
   await toggle(); assert.ok((await translation()).includes(automaticPrefix)); assert.ok(await providerCount() > 0); await screenshot('01-automatic');
   await openEditor(); assert.equal(await panel(`return this.querySelectorAll('${tid('dialog')}').length`), 1);
   assert.equal(await panel(`return this.querySelector('${tid('scope')}').selectedOptions[0].textContent.trim()`), '仅当前网页', '范围默认文案通俗明确');
-  await previewSave(corrected); await screenshot('03-saved'); record(currentCase);
+  await verifyCompactHelp('desktop');
+  await previewSave(corrected); await screenshot('03-saved'); record(currentCase, {helpHoverAndKeyboard:true,ordinarySaveNotice:'已保存'});
 
   currentCase = 'turning off closes the live editor and restores the provider baseline';
   const beforeDisableProvider = await providerCount();
@@ -401,6 +501,8 @@ async function main() {
   await page.setViewportSize({width: 390, height: 844}); await openEditor();
   const narrowGeometry = await panel(`const box=this.querySelector('${tid('dialog')}').getBoundingClientRect();return{x:box.x,y:box.y,right:box.right,bottom:box.bottom,width:box.width,height:box.height,viewportWidth:innerWidth,viewportHeight:innerHeight}`);
   assert.ok(narrowGeometry.x >= 0 && narrowGeometry.y >= 0 && narrowGeometry.right <= narrowGeometry.viewportWidth && narrowGeometry.bottom <= narrowGeometry.viewportHeight, JSON.stringify(narrowGeometry));
+  await verifyCompactHelp('narrow');
+  await verifyNarrowHelpScroll();
   await screenshot('07-narrow-editor'); await page.keyboard.press('Escape'); await wait(() => panel(`return !this.querySelector('${tid('dialog')}')`), 'Escape 关闭窄屏编辑器');
   await page.locator('#primary').scrollIntoViewIfNeeded();
   report.narrowProvenance = await page.evaluate(() => ({viewport: innerWidth, documentWidth: document.documentElement.scrollWidth, content: getComputedStyle(document.querySelector('#primary .fluent-read-bilingual-content'), '::after').content}));
