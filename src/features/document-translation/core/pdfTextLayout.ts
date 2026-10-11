@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/core/pdfTextLayout.ts
  * 文件职责：将 PDF 阅读计划中的完整文字和原图区域分页为可读的下载版面。
- * 主要内容：正文固定可读字号与行距，按字素和词边界换行并缓存字宽；长段落与超高原图跨页续排，保留每个字符和图像区域，不缩小文字、不裁剪译文；每页绘制项使用标准 PDF 点坐标。
+ * 主要内容：正文固定可读字号与行距，按字素和词边界换行并缓存字宽；整页可容纳的公式或插图整体换页，长段落与真实超高原图跨页续排，保留每个字符和图像区域，不缩小文字、不裁剪译文；每页绘制项使用标准 PDF 点坐标。
  * 模块边界：只消费纯阅读计划和注入的字体测量，不使用 DOM、Canvas、浏览器 API 或文件 I/O；具体绘制与编码由 PDF 光栅端口负责。
  */
 import type {PdfReadingPlan, PdfReadingRect} from './pdfReadingPlan';
@@ -21,6 +21,14 @@ export interface PdfReadingOutputPage {width: number; height: number; items: Pdf
 
 const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 const CLOSING = /^[，。！？；：、,.!?;:%）\]】》」』”’]/u;
+// 一张输入页的续页预算；损坏或极端的几何不能令分页无限增长。
+const MAX_READING_PAGES = 4096;
+
+/** 这两段 Unicode 选择符依附于前一个字符，不单独占据字形或换行位置。 */
+export function isPdfReadingVariationSelector(character: string): boolean {
+    const code = character.codePointAt(0)!;
+    return (code >= 0xFE00 && code <= 0xFE0F) || (code >= 0xE0100 && code <= 0xE01EF);
+}
 
 export function pdfReadingFont(role: string): PdfReadingFont {
     if (role === 'title') return {size: 20, weight: 700, lineHeight: 28};
@@ -43,8 +51,17 @@ export function wrapPdfReadingText(value: string, width: number, font: PdfReadin
         return next;
     };
     const segmenter = typeof Intl.Segmenter === 'function' ? new Intl.Segmenter(undefined, {granularity: 'grapheme'}) : undefined;
-    const graphemes = (text: string) => segmenter && /[\p{Mark}\p{Emoji_Modifier}\p{Regional_Indicator}\u200d]/u.test(text)
-        ? Array.from(segmenter.segment(text), item => item.segment) : Array.from(text);
+    const graphemes = (text: string) => {
+        if (segmenter && /[\p{Mark}\p{Emoji_Modifier}\p{Regional_Indicator}\u200d]/u.test(text)) {
+            return Array.from(segmenter.segment(text), item => item.segment);
+        }
+        const characters: string[] = [];
+        for (const character of text) {
+            if (isPdfReadingVariationSelector(character) && characters.length) characters[characters.length - 1] += character;
+            else characters.push(character);
+        }
+        return characters;
+    };
     const lines: string[] = [];
     for (const paragraph of value.replace(/\r\n?/gu, '\n').split('\n')) {
         if (!paragraph.trim()) {lines.push(''); continue;}
@@ -83,7 +100,10 @@ export function paginatePdfReadingPlan(plan: PdfReadingPlan, measure: PdfTextMea
     const pages: PdfReadingOutputPage[] = [];
     let page: PdfReadingOutputPage | undefined;
     let y = margin;
-    const nextPage = () => {page = {width, height, items: []}; pages.push(page); y = margin;};
+    const nextPage = () => {
+        if (pages.length >= MAX_READING_PAGES) throw new Error('PDF 单页内容过长，无法在合理页数内分页');
+        page = {width, height, items: []}; pages.push(page); y = margin;
+    };
     const ensure = (size: number) => {if (!page || (page.items.length > 0 && y + size > bottom)) nextPage();};
     for (const entry of plan.entries) {
         if (entry.kind === 'text') {
@@ -99,13 +119,20 @@ export function paginatePdfReadingPlan(plan: PdfReadingPlan, measure: PdfTextMea
             const rect = entry.sourceRect;
             if (![rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) || rect.width <= 0 || rect.height <= 0) continue;
             const scale = Math.min(1.5, availableWidth / rect.width);
+            const totalHeight = rect.height * scale;
+            if (!Number.isFinite(totalHeight) || Math.ceil(totalHeight / (bottom - margin)) > MAX_READING_PAGES) throw new Error('PDF 原图区域过高，无法在合理页数内分页');
+            if (!(totalHeight > 0)) continue;
             let consumed = 0;
             while (consumed < rect.height) {
-                ensure(Math.min(80, rect.height * scale));
+                // 整页能容纳的公式或图表保持原像素整体；只有真实超高图片继续条带分页。
+                ensure(totalHeight <= bottom - margin ? totalHeight : Math.min(80, rect.height * scale));
                 const sourceHeight = Math.min(rect.height - consumed, (bottom - y) / scale);
                 const drawHeight = sourceHeight * scale;
+                if (!(sourceHeight > 0) || !Number.isFinite(sourceHeight) || consumed + sourceHeight <= consumed) throw new Error('PDF 原图分页无法继续，请重新打开文件');
                 page!.items.push({kind: 'region', entryId: entry.id, sourceRect: {...rect, y: rect.y + consumed, height: sourceHeight}, x: margin, y, width: rect.width * scale, height: drawHeight});
-                consumed += sourceHeight; y += drawHeight;
+                // 最后一个条带直接到终点，避免浮点尾差形成额外的近零切片。
+                consumed = sourceHeight >= rect.height - consumed ? rect.height : consumed + sourceHeight;
+                y += drawHeight;
                 if (consumed < rect.height) nextPage();
             }
             y += 16;

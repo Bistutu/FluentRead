@@ -1,3 +1,9 @@
+/**
+ * @file scripts/verify-userscript-build.mjs
+ * 文件职责：校验 userscript 产物的元信息、资源协议、体积与兼容性运行边界。
+ * 主要内容：静态断言及隔离 VM 兼容层检查；体积预算按已测量的共享功能增量调整。
+ * 模块边界：只读取构建产物，不安装脚本、不访问外部页面或修改运行配置。
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -97,7 +103,12 @@ const artifactBytes = Buffer.byteLength(source);
 // 真实请求租约、免费备用链与实际模型限额修复：同依赖独立 ec6d1136e 为 2,064,692 字节，
 // 候选为 2,066,187，增加 1,495 字节（0.0724%）；超原预算 187 字节，按既有步长最小增加 1 KB。
 // 余量 813 字节，全部协议与运行断言保留；散列和重现方式见 docs/reports/ollama-concurrency-20261011/userscript-size.json。
-const MAX_USERSCRIPT_BYTES = 2_067_000;
+// 合入文档翻译主线 f9cf3fcb2 后：同依赖 main 为 2,065,321 字节，最终候选为 2,067,193。
+// 增加 1,872 字节（0.0906%）；相对 main 的 2,066,000 预算最小增加 2 KB，余 807 字节。
+// 补齐其他免费线路的错误/取消正文结算后为 2,067,868 字节：相对同一 main 增加 2,547（0.1233%）。
+// 继续使用相同最小预算，余 132 字节；报告保留正文补修前与最终候选的独立散列。
+// 初始与最终集成基线均记录于同一报告；所有协议、资源和执行断言保留。
+const MAX_USERSCRIPT_BYTES = 2_068_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);

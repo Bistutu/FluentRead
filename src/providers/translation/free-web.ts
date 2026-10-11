@@ -1,10 +1,11 @@
 /**
  * @file src/providers/translation/free-web.ts
  * 文件职责：为免费翻译内部提供腾讯交互翻译、Yandex 与火山网页接口适配。
- * 主要内容：固定匿名端点与语言代码，校验 HTTP/业务状态、取消和有效译文；保留全文文本槽、换行和边缘空白，按码点限制请求长度。
+ * 主要内容：按码点预算且不切术语标记，固定匿名端点与语言代码，校验 HTTP/业务状态、取消和有效译文，取消或 HTTP 失败后也等待未读正文结算；保留全文文本槽、换行和边缘空白，按码点限制请求长度。
  * 模块边界：只接受文本、语言与取消信号，不读取用户凭据、代理或存储，不注册独立服务；超时、冷却与并发由免费翻译编排负责。
  */
 import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
+import {translateFreeTextChunks} from './freeTextChunks';
 import {serializeTranslationSlots} from '@/src/core/translation/serialization';
 import {getTranslationGlossarySourceText} from '@/src/services/translation/requestSnapshot';
 import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
@@ -73,26 +74,33 @@ async function translateChunk(provider: FreeWebProvider, text: string, from: str
         }
         throw error;
     }
-    if (signal?.aborted) throw abortErrorFromSignal(signal);
-    if (!response.ok) throw createHttpStatusError(response, provider === 'yandexFree' ? 'Yandex 翻译请求失败' : '请求失败');
-    const result = await readJsonResponse<WebResponse | null>(response);
-    if (signal?.aborted) throw abortErrorFromSignal(signal);
-    let value: unknown;
-    if (provider === 'transmart') {
-        if (result?.header?.ret_code !== 'succ') throw failure(result?.header?.ret_code === 'Auth-Failed' ? 403 : 502);
-        value = translationArray(result.auto_translation);
-    } else if (provider === 'yandexFree') {
-        if (result?.code !== 200) {
-            const code = result?.code;
-            throw failure(typeof code === 'number' && Number.isInteger(code) && code >= 400 && code <= 599 ? code : 502);
+    try {
+        if (signal?.aborted) throw abortErrorFromSignal(signal);
+        if (!response.ok) throw createHttpStatusError(response, provider === 'yandexFree' ? 'Yandex 翻译请求失败' : '请求失败');
+        const result = await readJsonResponse<WebResponse | null>(response);
+        if (signal?.aborted) throw abortErrorFromSignal(signal);
+        let value: unknown;
+        if (provider === 'transmart') {
+            if (result?.header?.ret_code !== 'succ') throw failure(result?.header?.ret_code === 'Auth-Failed' ? 403 : 502);
+            value = translationArray(result.auto_translation);
+        } else if (provider === 'yandexFree') {
+            if (result?.code !== 200) {
+                const code = result?.code;
+                throw failure(typeof code === 'number' && Number.isInteger(code) && code >= 400 && code <= 599 ? code : 502);
+            }
+            value = translationArray(result.text);
+        } else {
+            if (result?.base_resp?.status_code !== 0) throw failure();
+            value = result.translation;
         }
-        value = translationArray(result.text);
-    } else {
-        if (result?.base_resp?.status_code !== 0) throw failure();
-        value = result.translation;
+        if (typeof value !== 'string' || !value.trim()) throw failure();
+        return value.trim();
+    } finally {
+        // 取消或 HTTP 错误也须等未消费的正文结算，免费池才能归还真实在途容量。
+        if (response.bodyUsed === false) {
+            try { await response.clone().arrayBuffer(); } catch { /* 正文排空失败保留原来的 HTTP、取消或解析分类。 */ }
+        }
     }
-    if (typeof value !== 'string' || !value.trim()) throw failure();
-    return value.trim();
 }
 
 export async function translateFreeWebText(provider: FreeWebProvider, text: string, source: string, target: string, signal?: AbortSignal): Promise<string> {
@@ -102,24 +110,8 @@ export async function translateFreeWebText(provider: FreeWebProvider, text: stri
     if (!text.trim()) return text;
     const from = language(provider, source, false);
     const to = language(provider, target, true);
-    const translatePlain = async (plain: string): Promise<string> => {
-        let result = '';
-        for (const line of plain.split(/([\r\n]+)/u)) {
-            const points = Array.from(line);
-            for (let start = 0; start < points.length; start += MAX_CHUNK_CODEPOINTS) {
-                check();
-                const chunk = points.slice(start, start + MAX_CHUNK_CODEPOINTS).join('');
-                const content = chunk.trim();
-                if (!content) { result += chunk; continue; }
-                const prefix = chunk.slice(0, chunk.indexOf(content));
-                const suffix = chunk.slice(prefix.length + content.length);
-                const translated = await translateChunk(provider, content, from, to, signal);
-                check();
-                result += prefix + translated + suffix;
-            }
-        }
-        return result;
-    };
+    const translatePlain = (plain: string) => translateFreeTextChunks(plain, MAX_CHUNK_CODEPOINTS,
+        chunk => translateChunk(provider, chunk, from, to, signal), signal);
     const slots = getTranslationGlossarySourceText(text);
     if (!Array.isArray(slots)) return translatePlain(text);
     const translated: string[] = [];

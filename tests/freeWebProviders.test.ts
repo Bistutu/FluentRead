@@ -1,3 +1,4 @@
+import {protectedDocumentLongMathParagraph} from './fixtures/documentLongMathParagraph';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {translateFreeWebText, type FreeWebProvider} from '@/src/providers/translation/free-web';
 import {setRuntimeFetch} from '@/src/platform/http/runtime';
@@ -5,15 +6,102 @@ import {serializeTranslationSlots, parseTranslationSlots} from '@/src/core/trans
 import {Config, normalizeConfig} from '@/src/core/config/model';
 import {options, services} from '@/src/core/config/catalog';
 import {prepareConfigForExport, prepareConfigForImport} from '@/src/core/config/transfer';
+import {createFreeFallbackRunner} from '@/src/services/translation/freeFallback';
 
 const providers: FreeWebProvider[] = ['transmart', 'yandexFree', 'volcengineFree'];
 const fetchMock = vi.fn<typeof fetch>();
 const reply = (text: unknown = '译文') => Response.json({header: {ret_code: 'succ'}, auto_translation: [text], code: 200, text: [text], base_resp: {status_code: 0}, translation: text});
 const translate = (provider: FreeWebProvider, text = 'Hello', from = 'auto', to = 'zh-Hans', signal?: AbortSignal) => translateFreeWebText(provider, text, from, to, signal);
+const flush = async () => {for (let step = 0; step < 20; step += 1) await Promise.resolve();};
+function streamResponse(status: number) {
+    let body!: ReadableStreamDefaultController<Uint8Array>;
+    const response = new Response(new ReadableStream<Uint8Array>({start(controller) {
+        body = controller;
+        controller.enqueue(new TextEncoder().encode('private incomplete response'));
+    }}), {status, headers: {'Retry-After': '2'}});
+    return {response, body};
+}
 beforeEach(() => {fetchMock.mockReset().mockImplementation(async () => reply()); setRuntimeFetch(fetchMock);});
 afterEach(() => setRuntimeFetch());
 
 describe('free-only web providers', () => {
+    it.each(providers)('%s retains a non-success stream until its body ends, preserving HTTP classification', async provider => {
+        const {response, body} = streamResponse(429);
+        fetchMock.mockResolvedValueOnce(response);
+        let settled = false;
+        const request = translate(provider).catch(error => {settled = true; return error;});
+        try {
+            await flush();
+            expect(settled).toBe(false);
+        } finally {body.close();}
+        await expect(request).resolves.toMatchObject({statusCode: 429, retryAfterMs: 2_000});
+        expect((await request).message).not.toContain('private incomplete response');
+    });
+
+    it.each(providers)('%s retains total capacity through late headers and an unread body after prompt cancellation', async provider => {
+        const run = createFreeFallbackRunner(1);
+        const owner = new AbortController();
+        const {response, body} = streamResponse(200);
+        let deliverHeaders!: (response: Response) => void;
+        fetchMock.mockImplementationOnce(() => new Promise<Response>(resolve => {deliverHeaders = resolve;}));
+        const first = run([{identity: 'late-headers', label: provider,
+            translate: signal => translate(provider, 'a'.repeat(1_001), 'en', 'zh-Hans', signal)}],
+        {signal: owner.signal, timeoutMs: 5_000, cooldownMs: 1_000}).catch(error => error);
+        await flush();
+        expect(fetchMock).toHaveBeenCalledOnce();
+        owner.abort();
+        await expect(first).resolves.toMatchObject({name: 'AbortError'});
+        deliverHeaders(response);
+        const next = run([{identity: 'after-late-headers', label: provider,
+            translate: signal => translate(provider, 'next source', 'en', 'zh-Hans', signal)}], {timeoutMs: 5_000, cooldownMs: 1_000});
+        try {
+            await flush();
+            expect(fetchMock).toHaveBeenCalledOnce();
+        } finally {body.close();}
+        await expect(next).resolves.toBe('译文');
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it.each(providers)('%s preserves the original HTTP or abort error when an unread body fails', async provider => {
+        const http = streamResponse(429);
+        fetchMock.mockResolvedValueOnce(http.response);
+        const rejected = translate(provider).catch(error => error);
+        await flush();
+        http.body.error(new TypeError('body delivery failed'));
+        await expect(rejected).resolves.toMatchObject({statusCode: 429, retryAfterMs: 2_000});
+
+        const owner = new AbortController(), reason = new Error('cancelled before late headers');
+        const aborted = streamResponse(503);
+        fetchMock.mockImplementationOnce(async () => {owner.abort(reason); return aborted.response;});
+        const cancelled = translate(provider, 'Hello', 'en', 'zh-Hans', owner.signal).catch(error => error);
+        await flush();
+        aborted.body.error(new TypeError('cancelled body delivery failed'));
+        await expect(cancelled).resolves.toBe(reason);
+    });
+
+    it('preserves minimal fake Response compatibility and never rereads a consumed success body', async () => {
+        fetchMock.mockResolvedValueOnce({ok: false, status: 429, statusText: 'Too Many Requests', headers: new Headers()} as Response);
+        await expect(translate('transmart')).rejects.toMatchObject({statusCode: 429});
+        const response = reply(), clone = vi.spyOn(response, 'clone');
+        fetchMock.mockResolvedValueOnce(response);
+        await expect(translate('transmart')).resolves.toBe('译文');
+        expect(response.bodyUsed).toBe(true);
+        expect(clone).not.toHaveBeenCalled();
+    });
+
+    it.each(providers)('%s never sends a partial token from the actual long mathematical paragraph', async provider => {
+        const packet = protectedDocumentLongMathParagraph(), observed: string[] = [];
+        fetchMock.mockImplementation(async (url, init) => {
+            const body = init!.body ? JSON.parse(String(init!.body)) : null;
+            const text = provider === 'yandexFree' ? new URL(String(url)).searchParams.get('text')! : provider === 'transmart' ? body.source.text_list[0] : body.text;
+            observed.push(text); return reply(text);
+        });
+        const slots = serializeTranslationSlots([packet.text, 'tail'], 'protected-web');
+        expect(parseTranslationSlots(slots, await translate(provider, slots.payload))).toEqual([packet.text, 'tail']);
+        expect(observed.every(text => [...text].length <= 1000 && !text.includes('___FLUENTREAD'))).toBe(true);
+        for (const token of packet.tokens) expect(observed.filter(text => text.includes(token))).toHaveLength(1);
+    });
+
     it('names Yandex network failures and preserves cooperative cancellation', async () => {
         fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
         await expect(translateFreeWebText('yandexFree', 'Hello', 'en', 'zh-Hans')).rejects.toThrow('Yandex 网络连接失败');

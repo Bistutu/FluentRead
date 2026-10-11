@@ -79,7 +79,7 @@ Enable bilingual sentence highlighting under **Translation → Reading aids**, t
 
 If a provider reports too many requests, or your API has a quota, adjust concurrency and request rates under **Advanced settings → Request limits**.
 
-A concurrency slot remains occupied until the network request and response body have finished. Requests that are still finishing after cancellation or timeout continue to count. Changing the limit mode or scope also counts existing requests toward the new limit; new requests wait while the active count meets or exceeds it.
+Concurrency counts translation tasks. A task that combines multiple texts still uses the provider's own batch scheduling internally. Its slot remains occupied until the associated network requests and response bodies have finished. Tasks that are still finishing after cancellation or timeout continue to count. Changing the limit mode or scope also counts existing tasks toward the new limit; new tasks wait while the active count meets or exceeds it.
 
 | Limit | Default |
 | --- | --- |

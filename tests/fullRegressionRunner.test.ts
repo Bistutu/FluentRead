@@ -62,6 +62,7 @@ describe('full regression runner', () => {
             'vitest-regression',
             'agent-bridge',
             'focus-safe-browser-lifecycle',
+            'document-live-http-evidence',
             'chrome-build',
             'firefox-build',
             'firefox-zip',
@@ -82,6 +83,9 @@ describe('full regression runner', () => {
         expect(plan.steps.find((step: {id: string}) => step.id === 'focus-safe-browser-lifecycle')).toMatchObject({
             phase: 'local', command: 'node', args: ['--test', 'tests/focusSafeBrowserOrdinaryLifecycle.test.mjs'],
         });
+        expect(plan.steps.filter((step: {id: string}) => step.id === 'document-live-http-evidence')).toEqual([
+            expect.objectContaining({phase: 'local', command: 'node', args: ['--test', 'tests/documentLiveHttpEvidence.test.mjs']}),
+        ]);
         const manifestVerifier = plan.steps.find(
             (step: {id: string}) => step.id === 'extension-manifest-verifier',
         );

@@ -467,6 +467,7 @@ export async function translateTextBatch(
             ...(options.discourseContext ? {discourseContext: options.discourseContext.slice(0, 2400)} : {}),
             ...(options.enableAIContext !== undefined ? {enableAIContext: options.enableAIContext} : {}),
             origin: pendingOrigins,
+            ...(import.meta.env.BROWSER !== 'userscript' && options.documentBatch === true ? {documentBatch: true} : {}),
             enableNativeBatch,
             ...(options.aiMultiSegment === true ? {aiMultiSegment: true} : {}),
             useCache,
@@ -618,6 +619,8 @@ export interface TranslateOptions {
   sourceLanguageDetectionText?: string;
   /** 仅全文翻译内部使用：要求 broker 将多个 AI 段落合并为一次上游请求。 */
   aiMultiSegment?: boolean;
+  /** 只由开启多段的文档数组请求使用；普通网页和单条请求不携带。 */
+  documentBatch?: boolean;
   /** 仅全文内部的单条槽协议；保留供应商的 string 请求形状，在后台逐槽校验。 */
   validateTranslationSlots?: boolean;
   /** DOM 尝试恢复后，取消重试等待并忽略迟到的 runtime 响应。 */
