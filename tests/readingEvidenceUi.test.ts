@@ -1,4 +1,5 @@
 import {createRequire} from 'node:module';
+import {parseHTML} from 'linkedom';
 import {resolve} from 'node:path';
 import vue from '@vitejs/plugin-vue';
 import {createServer, type ViteDevServer} from 'vite';
@@ -26,7 +27,13 @@ it('renders citations next to claims as safe native buttons and keeps external k
   expect(html).toContain('reading.evidence.locatePractice helps.');
   expect(html).toContain('title="Practice helps."');
   expect(html).toContain('data-evidence-quote="Practice helps."');
-  expect(html).toMatch(/<button[^>]*>.*reading\.evidence\.label<\/button>/u);
+  const button = parseHTML(html).document.querySelector('button[data-reading-evidence]')!;
+  expect(button.textContent).toBe('');
+  expect(button.getAttribute('aria-label')).toBe('reading.evidence.locatePractice helps.');
+  expect(button.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
+  expect(button.querySelector('svg')?.getAttribute('focusable')).toBe('false');
+  expect(button.querySelector('svg circle')).not.toBeNull();
+  expect(html).not.toContain('reading.evidence.label');
   expect(html).not.toContain('reading.evidence.label · Practice helps.');
   expect(html).toContain('【reading.evidence.external】');
   expect(html).toContain('data-evidence-state="unverified"');
@@ -40,6 +47,11 @@ it('keeps grammar-table citations clickable while preserving the existing struct
   const html = await renderAnswer(table);
   expect(html).toMatch(/<table(?:\s|>)/u); expect(html).toContain('data-reading-evidence'); expect(html).not.toContain('fr-reading-structure');
   expect(html).not.toContain('[[cite:');
+  const button = parseHTML(html).document.querySelector('td button[data-reading-evidence]')!;
+  expect(button.textContent).toBe('');
+  expect(button.getAttribute('title')).toBe('Practice helps.');
+  expect(button.getAttribute('aria-label')).toBe('reading.evidence.locatePractice helps.');
+  expect(button.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true');
   const original = await renderAnswer(table.replace(` [[cite:${source.id}|Practice helps.]]`, ''));
   expect(original).toContain('fr-reading-structure'); expect(original).not.toContain('data-reading-evidence');
 });

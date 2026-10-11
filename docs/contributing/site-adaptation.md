@@ -85,6 +85,20 @@ Node.js 和 pnpm 版本以仓库 `package.json` 为准。开发扩展使用 `pnp
 
 修复回归时，先让新反例在旧规则上失败，再修改规则。只证明选择器字符串存在没有意义；要证明它改变了正确的候选或保护边界。若问题涉及混合文字、嵌套回复、公式、元数据或控件，把这些结构放进夹具中。
 
+Product Hunt 的 `product-hunt` 规则覆盖首页、产品与旧发布详情路径。首页使用公开页面的 `homepage-section-*`、`section[data-container]` 及其介绍 span 结构，不依赖产品 ID 或构建生成的 class；产品名与分类链接独立保护。Cookie 提示通过 `dismiss-CookiePopup` 整块排除，避免把按钮文字复制进祖先译文。首页结构改版时优先复核这条专站选择器，详情页仍保留 `discussion` 的通用回退。帮助中心文章不命中这条规则，不能用它的翻译成功代表产品首页通过。
+
+Hacker News 评论的第一段经常直接属于 `.commtext`，其余段落才使用 `p`。容器使用非原子 self 目标，并保留内部段落目标；只选择 `.commtext p` 会漏掉首段，使用 closest 原子容器会把全部段落合成一份译文。`.comhead`、`.reply` 等界面区域同时声明排除与动态观察忽略，让候选发现提前剪枝；FAQ、guidelines 等阅读页仍可走通用正文识别。
+
+Bing 普通搜索结果只选择自然结果标题与摘要，来源、日期、广告、侧栏和摘要内的操作链接保持原文。Google News 当前只声明 `/home` 的新闻标题，使用可读的 `./read/` 链接，排除隐藏覆盖链接；其他页面形态继续由通用识别处理。
+
+Steam 社区规则覆盖应用讨论列表、帖子正文和回复。置顶标签、作者、时间、计数及发帖区不进入翻译请求；空覆盖链接保留原有点击行为。GitHub Gist 分别处理 Markdown 直接文本、段落、列表、表格和评论，保护代码表格、行号、用户提及和文件操作区。
+
+Firefox Add-ons 使用独立 focus 规则：真实摘要位于 `.Addon-header` 内，因此不能继承排除所有 header 段落的模板。描述、开发者说明和评论正文分别选择，扩展名称、安装区、作者、评分、展开按钮和侧栏保持原文。评论正文只按官方组件声明的纯文本与 `<br>` 结构编写夹具。
+
+验证长页面时，把屏外译文、滚动布局、动态内容和恢复行为一起检查，避免全局注入影响宿主布局的 CSS。
+
+长页渲染优化仅作用于插件新建的普通块级双语译文，首次布局测量后保存其占位尺寸；公式、注音、图片、越界装饰与不支持相关 CSS 的浏览器保留普通渲染。隔离前后盒子位置或大小发生变化时立即回退，原文容器与仅译文文本槽不启用此优化。刷新、重挂载和修改译文外观时撤下旧尺寸隔离，避免沿用旧元素或旧宿主的高度记忆；打印也切回普通绘制。初次测量会增加布局读取，收益应与提交阶段分别记录，不能由屏外跳过推断首轮翻译更快。使用 mock 长评论、文章与论文检查屏外跳过、滚动往返、尺寸变化、文字搜索、链接焦点及精确恢复，并区分确定的渲染工作量减少与不同环境下的耗时波动。
+
 ## 更新验证记录
 
 在 `coverage.json` 的 `rules` 中为新规则添加对应记录：
@@ -150,7 +164,20 @@ node scripts/run-site-adaptation-test.cjs \
 
 `--cases` 填已经加入夹具的 ID；添加 `--live` 则从实站清单取同 ID 页面。脚本依赖提供 Playwright 的依赖目录和项目维护者使用的 focus-safe helper，当前后台流程使用 macOS Edge；没有该环境的贡献者可在临时浏览器中手动验证，并准确标明执行方式，不应声称运行过该脚本。
 
+常见站点新增规则可用 `--cases bing-search,steam-community-discussions,google-news-home-headlines,github-gist,firefox-addons --skip-settings-ui` 独立运行。一个规则的 `variants` 表示不同页面形态，Steam 包含列表和帖子，Firefox Add-ons 包含详情和评论。`sourceAssertions` 检查真正发送给本地供应商的文字；`restoreSelectors` 检查宿主 HTML 精确恢复。可选 `dynamic` 场景覆盖新增正文、原文 Text 槽更新、受保护元数据变化、宿主重建与同名规则替换后的迟到响应。
+
 无论使用何种方式，都应检查悬浮与全文的翻译、恢复和再翻译，邻段独立性、保护区原文、动态新增、路径切换，以及修改规则后的迟到请求。自动化用本地确定性翻译响应验证链路；远程服务可用性需要另行说明。
+
+长页渲染可运行三类独立编写的 mock 文档，无需访问实站或远程翻译服务：
+
+```sh
+node scripts/testing/run-resource-safe.mjs -- node scripts/testing/run-long-page-mock-test.cjs \
+  --extension-dir .output/chrome-mv3 \
+  --playwright-root /absolute/path/to/node_modules \
+  --artifacts-dir /tmp/fluentread-long-page
+```
+
+该脚本使用项目的后台浏览器 helper，验证长评论、文章及 HTML 论文；它不验证 PDF 阅读器、操作系统桌面响应或屏幕阅读器。报告分别记录首次翻译与滚动阶段，耗时对照只改变测试文档的渲染控制规则，不代表旧版本扩展或远程服务性能。
 
 ## 提交 PR 与后续维护
 

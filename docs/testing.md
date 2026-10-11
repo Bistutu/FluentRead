@@ -550,6 +550,15 @@ node scripts/testing/run-reading-wait-priority-test.cjs \
 `producthunt-posting-access` 分别覆盖实时首页标题列表和用户指定的帮助文章，均支持
 悬浮、全文模式。Hacker News 原有的讨论页用例继续保留。
 
+`producthunt-home` 直接覆盖产品首页的介绍 span、产品名称、页脚、搜索及 Cookie 提示保护，
+与帮助中心文章是独立用例；遇到 Cloudflare 时按 quarantine 记录站点限制。
+实时投票数字会由网站更新，投票保护由固定夹具与专项浏览器验证检查，不用数字是否变化判断翻译污染。
+`site-adaptation-fixtures.json` 的 `product-hunt` 与 established 夹具的
+`hacker-news` 使用生产规则验证正文、代码和身份操作边界。
+`siteAdaptationCatalog.test.ts` 与 `translationCore.test.ts` 检查悬浮/全文候选一致、
+多段评论不合并、动态重建和 HN 阅读页回退。性能对比应另外报告候选数、扫描步骤、
+最大源快照长度及真实浏览器长任务，不能把减少无效候选称为端到端翻译提速。
+
 可见段落插入译文时，下方内容正常展开，不应主动滚动页面来抵消展开高度。只有变化
 完全发生在同一滚动容器的视口上方时才做阅读位置补偿；页首保持页首，整页恢复优先
 保护视口上沿。`viewportStability.test.ts` 和 `fullPageVisibilityScheduling.test.ts`
@@ -745,6 +754,8 @@ node scripts/testing/run-resource-safe.mjs -- node scripts/run-harness-reading-t
 ```
 
 脚本使用临时 Edge profile、第二屏后台可见窗口和真实鼠标/键盘，核对解释旁的多句依据、点击/Enter/Space 定位、实际全文双语翻译与恢复、等价重建、隐藏/显示、追问、正文改写、SPA 导航、关闭及停止后迟到响应。顶栏更多入口另行检查“记录”右侧位置、正文无占位、菜单展开尺寸、键盘及外点关闭、浅深色与窄卡片。另有手工插入译文节点的排除规则测试，报告与真实翻译路径分开记录。模型和普通翻译均为本机确定性 HTTP 夹具，只证明协议、来源映射与交互链路；不证明在线模型质量、解释语义正确、所有站点或 Firefox 实机行为。报告保存来源 DOM、闭合 Shadow DOM、截图及源码/构建摘要。
+
+原文依据入口使用句末小写 i 信息图标，专项核对 20×20 按钮、16×16 SVG、无可见标签文字、完整引文 title/aria 和行内布局。真实 hover 检查原生 title 契约，系统层 tooltip 不作为截图证据；点击及 Enter / Space 继续定位原句。
 
 ## 设置层级与渐进展开
 

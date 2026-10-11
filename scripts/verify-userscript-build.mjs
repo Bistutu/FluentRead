@@ -78,7 +78,22 @@ const artifactBytes = Buffer.byteLength(source);
 // 合入 99afdbf69 后的完整候选为 2,059,784 字节，按 1 KB 步长最小预算为 2,060,000，余 216 字节。
 // 同依赖独立主线为 2,043,588 字节，增加 16,196 字节（0.7925%）；主线预算只余 412 字节，最小增加 16 KB。
 // 最新主线独立基线与精确增量见 reading-evidence-20261011/userscript-size.json；所有校验保留。
-const MAX_USERSCRIPT_BYTES = 2_060_000;
+// 长页自有双语块的保守渲染隔离与外观/重挂清理增加 3,038 字节（0.1500%）：
+// 同依赖独立基线 7cabb3678 为 2,024,762，候选 962a5d98b 为 2,027,800；
+// 利用原余量后预算最小增加 3 KB，剩 200 字节。保留全部协议与执行边界检查；
+// 比较与散列见 docs/reports/long-page-rendering-20261011/userscript-size.json。
+// 整合主线 69d41e5e1 后，长页隔离、五条正文规则及局部扫描拥有者修复共增加 6,016 字节（0.2968%）：
+// 同依赖独立 main 为 2,026,872，候选为 2,032,888；相对 main 预算按实测最小增加 6 KB。
+// 保留全部协议和执行边界校验，余量 112 字节；记录见 common-site-expansion-20261011/userscript-size.json。
+// 再整合滚动调度 717a34034：独立 main 为 2,026,877，最终候选为 2,032,969（增 6,092，0.3006%）；
+// 沿用同一最小预算，余 31 字节；本轮最终集成散列同样记录在上述报告。
+// 再整合篇章参考主线 99afdbf69：同依赖独立 main 为 2,043,424，网站/长页候选为 2,049,560。
+// 增加 6,136 字节（0.3003%），利用主线余量后预算按实测最小增加 6 KB，余 440 字节；
+// 保留全部协议与执行边界校验，原始及最终对照见 common-site-expansion-20261011/userscript-size.json。
+// 合入 43f66b01d 并将原文依据缩为信息图标后，同依赖独立 main 为 2,049,516 字节，候选为 2,065,676。
+// 增加 16,160 字节（0.7885%）；主线 2,050,000 预算余 484 字节，按实测最小增加 16 KB，余 324 字节。
+// 完整对照见 reading-evidence-20261011/userscript-size.json，所有协议与执行边界断言保留。
+const MAX_USERSCRIPT_BYTES = 2_066_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);

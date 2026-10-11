@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/content/renderer.ts
  * 文件职责：把翻译返回的受限 HTML 或纯文本安全插入原页面，构造 FluentRead 双语与仅译文节点，为学习标记保留逐行文字片段，同时保护链接属性并触发布局截断修复。
- * 主要内容：包含复验来源连续顺序的安全候选物化与显式原文行容器、URL 协议白名单、可复制属性集合、显式迭代节点净化、本地公式可视骨架的无递归受限克隆与辅助副本排除、DocumentFragment 创建、不改写宿主 class 的双语 wrapper、跨 CJK 书写体系时前置目标字体族、可选的译文前置与长段落按句换行，以及通过 Shadow DOM 保留宿主原文的仅译文文本槽。
+ * 主要内容：包含复验来源连续顺序的安全候选物化与显式原文行容器、URL 协议白名单、可复制属性集合、显式迭代节点净化、本地公式可视骨架的无递归受限克隆与辅助副本排除、DocumentFragment 创建、不改写宿主 class 的双语 wrapper、跨 CJK 书写体系时前置目标字体族、可选的译文前置与长段落按句换行、长页新译文的保守屏外渲染隔离，以及通过 Shadow DOM 保留宿主原文的仅译文文本槽。
  * 模块边界：本文件只负责安全渲染，不发起翻译或管理请求状态；服务调用归 runtime，节点所有权归 state，配置仅用于展示选项，任意脚本、事件属性和危险链接都不得穿过净化边界。
  */
 import type {TranslationCandidate} from "@/src/core/translation/types";
@@ -11,6 +11,7 @@ import {ensureTranslationTruncationLayout} from "@/src/features/full-page-transl
 import {applyLongParagraphLineBreaks} from "@/src/core/translation/lineBreak";
 import {resolveTranslationFontFamily} from "@/src/core/translation/font";
 import {registerVisibleTranslationRoot} from './visibleTranslation';
+import {enableBilingualRenderingContainment} from './renderingContainment';
 
 /**
  * 译文允许保留的内联元素。
@@ -327,6 +328,9 @@ export function appendBilingualTranslation(
     }
     // 先插入再测量：译文与解除 line-clamp 都可能使固定高度祖先发生新的纵向溢出。
     ensureTranslationTruncationLayout(node);
+    // 首次普通布局得到准确占位高度后才隔离自有译文；原文、公式和控件不参与。
+    // 同步完成属性写入，调用方随后保存的可信工件快照包含这些渲染属性。
+    enableBilingualRenderingContainment(content);
     return content;
 }
 
@@ -342,6 +346,8 @@ export function refreshBilingualTranslation(
     Array.from(replacement.attributes).forEach(({name, value}) => content.setAttribute(name, value));
     content.replaceChildren(...Array.from(replacement.childNodes));
     ensureTranslationTruncationLayout(node);
+    // 原元素可能仍持有浏览器的旧尺寸记忆。刷新后沿用普通布局，避免屏外新内容
+    // 被旧占位高度覆盖；下一次完整翻译会创建新元素并重新取得准确尺寸。
     return content;
 }
 

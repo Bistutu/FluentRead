@@ -1,7 +1,8 @@
 /**
  * @file src/features/full-page-translation/content/public.ts
- * 文件职责：向其他内容功能提供全文翻译已注册文本根的受控只读端口。
- * 主要内容：仅导出可见译文根查询，保持闭合 ShadowRoot 的注册及撤销所有权，不暴露注册器、会话或翻译运行时。
- * 模块边界：这是无平台依赖的 content 公共出口，避免只读正文收集或文档评分适配器间接启动完整翻译与配置存储。
+ * 文件职责：向其他内容功能提供已注册译文根的只读查询及页面外观变化前的受控渲染清理端口。
+ * 主要内容：导出可见译文根查询与文档内旧尺寸隔离的撤销，保持闭合 ShadowRoot 和双语工件的所有权，不暴露注册器、会话或翻译运行时。
+ * 模块边界：这是无平台依赖的 content 公共出口，正文收集、文档评分与样式接线不会间接启动完整翻译或配置存储。
  */
 export {readVisibleTranslationRoot} from './visibleTranslation';
+export {releaseDocumentBilingualRenderingContainment} from './state';

@@ -2178,6 +2178,38 @@ function findHoverTextPointInPage({selector, index}) {
   if (!target?.isConnected) return null;
   const excluded = '[data-fr-translation-owned="true"], .fluent-read-bilingual-content, ' +
     '.fluent-read-loading, .fluent-read-retry-wrapper, [hidden], [aria-hidden="true"], [inert]';
+  const hitPolicyForText = (parent, x, y) => {
+    const hit = document.elementFromPoint(x, y);
+    if (!hit || hit.closest(excluded)) return null;
+    if (target.contains(hit) && (hit === parent || hit.contains(parent))) return 'direct-text';
+    // PH 首页把产品名链接的空 span 拉伸到整张卡片。仅识别已观察到的结构，
+    // 且命中栈第二项必须是当前介绍的原文 parent，不能穿过其他遮罩或控件。
+    if (typeof location === 'undefined' || location.hostname !== 'www.producthunt.com' || location.pathname !== '/' ||
+      parent !== target || !target.matches('main [data-test^="homepage-section-"] > section[data-container] > div > span:nth-of-type(2)')) return null;
+    const barrier = 'dialog, [role="dialog"], [role="alertdialog"], button, [role="button"], input, textarea, select, [contenteditable="true"]';
+    if (hit.closest(barrier) || parent.closest(barrier) || !hit.matches('a > span[data-target="true"]') || hit.childNodes.length) return null;
+    const link = hit.parentElement;
+    const title = link?.parentElement;
+    const section = target.closest('section[data-container]');
+    if (!section || hit.closest('section[data-container]') !== section ||
+      !link.getAttribute('href')?.startsWith('/products/') || title !== target.previousElementSibling ||
+      title.parentElement !== target.parentElement || !title.matches('span:first-of-type')) return null;
+    const stack = document.elementsFromPoint?.(x, y);
+    if (!stack || stack[0] !== hit || stack[1] !== parent) return null;
+    const style = getComputedStyle(hit);
+    const transparent = style.backgroundColor === 'transparent' || /^rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)$/u.test(style.backgroundColor);
+    if (style.position !== 'absolute' || !['left', 'right', 'top', 'bottom'].every(key => style[key] === '0px') ||
+      !transparent || style.backgroundImage !== 'none' || style.boxShadow !== 'none' ||
+      style.filter !== 'none' || (style.backdropFilter && style.backdropFilter !== 'none') ||
+      !['borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'outlineWidth'].every(key => style[key] === '0px')) return null;
+    for (const owner of [hit, link, title]) {
+      for (const pseudo of ['::before', '::after']) {
+        const content = getComputedStyle(owner, pseudo).content;
+        if (content !== 'none' && content !== 'normal' && content !== '') return null;
+      }
+    }
+    return 'product-hunt-stretched-link';
+  };
   const walker = document.createTreeWalker(target, 4);
   const candidates = [];
   let textNode;
@@ -2198,12 +2230,12 @@ function findHoverTextPointInPage({selector, index}) {
       if (right - left < 2 || bottom - top < 2) continue;
       const x = left + (right - left) * 0.35;
       const y = top + (bottom - top) / 2;
-      const hit = document.elementFromPoint(x, y);
-      if (!hit || !target.contains(hit) || hit.closest(excluded) || (hit !== parent && !hit.contains(parent))) continue;
+      const hitPolicy = hitPolicyForText(parent, x, y);
+      if (!hitPolicy) continue;
       // 优先原文普通文本，避免把标题末尾的永久链接或双语副本当作手势入口。
       const link = parent.closest('a');
       candidates.push({
-        x, y, textIndex: currentIndex,
+        x, y, textIndex: currentIndex, hitPolicy,
         text: textNode.textContent,
         rect: {left: rect.left, top: rect.top, width: rect.width, height: rect.height},
         priority: link && link !== target ? 1 : 0,
@@ -2220,6 +2252,7 @@ async function waitForHoverPointer(page, targetConfig, timeout, prepareClickText
   let stableSince = started;
   let prepared = false;
   while (Date.now() - started < timeout) {
+    // 每轮都用同一原文 Range / 命中栈判定复核，移动鼠标触发的遮罩也会重置稳定期。
     const point = await page.evaluate(findHoverTextPointInPage, targetConfig);
     // Cookie 面板可能在首次页面准备结束后出现。只复核 case 已声明的准备按钮，
     // 原文 Range 无法命中时用可信点击关闭；不点击可折叠标题，也不退回标题外框。
@@ -2239,6 +2272,7 @@ async function waitForHoverPointer(page, targetConfig, timeout, prepareClickText
       }
     }
     const stable = point && previous && point.textIndex === previous.textIndex && point.text === previous.text &&
+      point.hitPolicy === previous.hitPolicy &&
       ['left', 'top', 'width', 'height'].every((key) => Math.abs(point.rect[key] - previous.rect[key]) < 0.5) &&
       Math.abs(point.x - previous.x) < 0.5 && Math.abs(point.y - previous.y) < 0.5;
     if (!stable) {
@@ -2250,6 +2284,7 @@ async function waitForHoverPointer(page, targetConfig, timeout, prepareClickText
     previous = point;
     await page.waitForTimeout(50);
   }
+  const pointerRecheck = await page.evaluate(findHoverTextPointInPage, targetConfig);
   const targetState = await page.evaluate(({selector, index}) => {
     const node = document.querySelectorAll(selector)[index];
     const rect = node?.getBoundingClientRect();
@@ -2300,7 +2335,7 @@ async function waitForHoverPointer(page, targetConfig, timeout, prepareClickText
         parentClass: item.parentElement?.className,
       }))};
   }, targetConfig);
-  throw new Error(`悬浮原文没有稳定且可命中的位置：${JSON.stringify({targetConfig, lastPoint: previous, targetState,
+  throw new Error(`悬浮原文没有稳定且可命中的位置：${JSON.stringify({targetConfig, lastPoint: previous, pointerRecheck, targetState,
     preparation: {text: prepareClickText || '', clicked: prepared}})}`);
 }
 

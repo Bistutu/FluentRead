@@ -61,7 +61,7 @@
       "evidence": [
         {
           "tag": "BUTTON",
-          "text": "原文依据",
+          "text": "",
           "quote": "Although the task was difficult, she finished it on time.",
           "state": "ready",
           "identity": "",
@@ -69,7 +69,7 @@
         },
         {
           "tag": "BUTTON",
-          "text": "原文依据",
+          "text": "",
           "quote": "She could complete it only because her colleague supplied the final measurements.",
           "state": "ready",
           "identity": "",
@@ -79,15 +79,119 @@
       "sourceCount": 6
     },
     {
+      "id": "evidence.compact-info-icon-inline-title-contract",
+      "status": "passed",
+      "entries": [
+        {
+          "bounds": {
+            "x": 571.6171875,
+            "y": 243.5,
+            "width": 20,
+            "height": 20,
+            "right": 591.6171875,
+            "bottom": 263.5
+          },
+          "display": "inline-flex",
+          "visible": true,
+          "hovered": false,
+          "visibleText": "",
+          "quote": "Although the task was difficult, she finished it on time.",
+          "title": "Although the task was difficult, she finished it on time.",
+          "ariaLabel": "定位原句：Although the task was difficult, she finished it on time.",
+          "wrapperDisplay": "inline",
+          "paragraphText": "it 指的是任务；作者以困难衬托按时完成的结果。",
+          "precedingText": "it 指的是任务；作者以困难衬托按时完成的结果。",
+          "precedingCharacter": {
+            "x": 553.03125,
+            "y": 248.5,
+            "width": 13.0078125,
+            "height": 15,
+            "right": 566.0390625,
+            "bottom": 263.5
+          },
+          "followingText": "",
+          "svg": {
+            "bounds": {
+              "x": 573.6171875,
+              "y": 245.5,
+              "width": 16,
+              "height": 16,
+              "right": 589.6171875,
+              "bottom": 261.5
+            },
+            "ariaHidden": "true",
+            "circleCount": 1,
+            "paths": [
+              "M8 7v4M8 4.75h.01"
+            ],
+            "markup": "<svg data-v-dea4b536=\"\" aria-hidden=\"true\" focusable=\"false\" viewBox=\"0 0 16 16\"><circle data-v-dea4b536=\"\" cx=\"8\" cy=\"8\" r=\"6.25\"></circle><path data-v-dea4b536=\"\" d=\"M8 7v4M8 4.75h.01\"></path></svg>"
+          },
+          "sameLine": true
+        },
+        {
+          "bounds": {
+            "x": 482.2578125,
+            "y": 277.75,
+            "width": 20,
+            "height": 20,
+            "right": 502.2578125,
+            "bottom": 297.75
+          },
+          "display": "inline-flex",
+          "visible": true,
+          "hovered": false,
+          "visibleText": "",
+          "quote": "She could complete it only because her colleague supplied the final measurements.",
+          "title": "She could complete it only because her colleague supplied the final measurements.",
+          "ariaLabel": "定位原句：She could complete it only because her colleague supplied the final measurements.",
+          "wrapperDisplay": "inline",
+          "paragraphText": "按时完成依赖同事提供最终测量。",
+          "precedingText": "按时完成依赖同事提供最终测量。",
+          "precedingCharacter": {
+            "x": 463.671875,
+            "y": 282.75,
+            "width": 13,
+            "height": 15,
+            "right": 476.671875,
+            "bottom": 297.75
+          },
+          "followingText": "",
+          "svg": {
+            "bounds": {
+              "x": 484.2578125,
+              "y": 279.75,
+              "width": 16,
+              "height": 16,
+              "right": 500.2578125,
+              "bottom": 295.75
+            },
+            "ariaHidden": "true",
+            "circleCount": 1,
+            "paths": [
+              "M8 7v4M8 4.75h.01"
+            ],
+            "markup": "<svg data-v-dea4b536=\"\" aria-hidden=\"true\" focusable=\"false\" viewBox=\"0 0 16 16\"><circle data-v-dea4b536=\"\" cx=\"8\" cy=\"8\" r=\"6.25\"></circle><path data-v-dea4b536=\"\" d=\"M8 7v4M8 4.75h.01\"></path></svg>"
+          },
+          "sameLine": true
+        }
+      ],
+      "hover": {
+        "x": 581.6171875,
+        "y": 253.5,
+        "title": "Although the task was difficult, she finished it on time.",
+        "systemTooltipCaptured": false
+      }
+    },
+    {
       "id": "reading-menu.topbar-position-without-body-slot",
       "status": "passed",
       "card": {
         "x": 266.671875,
         "y": 156.5,
         "width": 388,
-        "height": 315.6328125,
+        "height": 290.6953125,
         "right": 654.671875,
-        "bottom": 472.1328125
+        "bottom": 447.1953125
       },
       "navigation": {
         "x": 267.671875,
@@ -133,19 +237,19 @@
         "x": 281.671875,
         "y": 243.5,
         "width": 338,
-        "height": 213.6328125,
+        "height": 188.6953125,
         "right": 619.671875,
-        "bottom": 457.1328125
+        "bottom": 432.1953125
       },
       "answer": {
         "x": 281.671875,
         "y": 243.5,
         "width": 338,
-        "height": 138.9375,
+        "height": 114,
         "right": 619.671875,
-        "bottom": 382.4375
+        "bottom": 357.5
       },
-      "bodyScrollHeight": 214,
+      "bodyScrollHeight": 189,
       "bodyMoreCount": 0,
       "toolsInNavigation": true,
       "toolsOutsideScroller": true,
@@ -168,9 +272,9 @@
           "x": 266.671875,
           "y": 156.5,
           "width": 388,
-          "height": 315.6328125,
+          "height": 290.6953125,
           "right": 654.671875,
-          "bottom": 472.1328125
+          "bottom": 447.1953125
         },
         "navigation": {
           "x": 267.671875,
@@ -216,19 +320,19 @@
           "x": 281.671875,
           "y": 243.5,
           "width": 338,
-          "height": 213.6328125,
+          "height": 188.6953125,
           "right": 619.671875,
-          "bottom": 457.1328125
+          "bottom": 432.1953125
         },
         "answer": {
           "x": 281.671875,
           "y": 243.5,
           "width": 338,
-          "height": 138.9375,
+          "height": 114,
           "right": 619.671875,
-          "bottom": 382.4375
+          "bottom": 357.5
         },
-        "bodyScrollHeight": 214,
+        "bodyScrollHeight": 189,
         "bodyMoreCount": 0,
         "toolsInNavigation": true,
         "toolsOutsideScroller": true,
@@ -248,9 +352,9 @@
           "x": 266.671875,
           "y": 156.5,
           "width": 388,
-          "height": 315.6328125,
+          "height": 290.6953125,
           "right": 654.671875,
-          "bottom": 472.1328125
+          "bottom": 447.1953125
         },
         "navigation": {
           "x": 267.671875,
@@ -296,19 +400,19 @@
           "x": 281.671875,
           "y": 243.5,
           "width": 338,
-          "height": 213.6328125,
+          "height": 188.6953125,
           "right": 619.671875,
-          "bottom": 457.1328125
+          "bottom": 432.1953125
         },
         "answer": {
           "x": 281.671875,
           "y": 243.5,
           "width": 338,
-          "height": 138.9375,
+          "height": 114,
           "right": 619.671875,
-          "bottom": 382.4375
+          "bottom": 357.5
         },
-        "bodyScrollHeight": 214,
+        "bodyScrollHeight": 189,
         "bodyMoreCount": 0,
         "toolsInNavigation": true,
         "toolsOutsideScroller": true,
@@ -365,9 +469,9 @@
           "x": 266.671875,
           "y": 156.5,
           "width": 388,
-          "height": 315.6328125,
+          "height": 290.6953125,
           "right": 654.671875,
-          "bottom": 472.1328125
+          "bottom": 447.1953125
         },
         "navigation": {
           "x": 267.671875,
@@ -413,19 +517,19 @@
           "x": 281.671875,
           "y": 243.5,
           "width": 338,
-          "height": 213.6328125,
+          "height": 188.6953125,
           "right": 619.671875,
-          "bottom": 457.1328125
+          "bottom": 432.1953125
         },
         "answer": {
           "x": 281.671875,
           "y": 243.5,
           "width": 338,
-          "height": 138.9375,
+          "height": 114,
           "right": 619.671875,
-          "bottom": 382.4375
+          "bottom": 357.5
         },
-        "bodyScrollHeight": 214,
+        "bodyScrollHeight": 189,
         "bodyMoreCount": 0,
         "toolsInNavigation": true,
         "toolsOutsideScroller": true,
@@ -445,9 +549,9 @@
           "x": 266.671875,
           "y": 156.5,
           "width": 388,
-          "height": 315.6328125,
+          "height": 290.6953125,
           "right": 654.671875,
-          "bottom": 472.1328125
+          "bottom": 447.1953125
         },
         "navigation": {
           "x": 267.671875,
@@ -493,19 +597,19 @@
           "x": 281.671875,
           "y": 243.5,
           "width": 338,
-          "height": 213.6328125,
+          "height": 188.6953125,
           "right": 619.671875,
-          "bottom": 457.1328125
+          "bottom": 432.1953125
         },
         "answer": {
           "x": 281.671875,
           "y": 243.5,
           "width": 338,
-          "height": 138.9375,
+          "height": 114,
           "right": 619.671875,
-          "bottom": 382.4375
+          "bottom": 357.5
         },
-        "bodyScrollHeight": 214,
+        "bodyScrollHeight": 189,
         "bodyMoreCount": 0,
         "toolsInNavigation": true,
         "toolsOutsideScroller": true,
@@ -554,9 +658,9 @@
           "x": 266.671875,
           "y": 156.5,
           "width": 300,
-          "height": 315.6328125,
+          "height": 290.6953125,
           "right": 566.671875,
-          "bottom": 472.1328125
+          "bottom": 447.1953125
         },
         "navigation": {
           "x": 267.671875,
@@ -602,19 +706,19 @@
           "x": 281.671875,
           "y": 243.5,
           "width": 250,
-          "height": 236.3828125,
+          "height": 211.4453125,
           "right": 531.671875,
-          "bottom": 479.8828125
+          "bottom": 454.9453125
         },
         "answer": {
           "x": 281.671875,
           "y": 243.5,
           "width": 250,
-          "height": 161.6875,
+          "height": 136.75,
           "right": 531.671875,
-          "bottom": 405.1875
+          "bottom": 380.25
         },
-        "bodyScrollHeight": 236,
+        "bodyScrollHeight": 211,
         "bodyMoreCount": 0,
         "toolsInNavigation": true,
         "toolsOutsideScroller": true,
@@ -634,9 +738,9 @@
           "x": 266.671875,
           "y": 156.5,
           "width": 300,
-          "height": 315.6328125,
+          "height": 290.6953125,
           "right": 566.671875,
-          "bottom": 472.1328125
+          "bottom": 447.1953125
         },
         "navigation": {
           "x": 267.671875,
@@ -682,19 +786,19 @@
           "x": 281.671875,
           "y": 243.5,
           "width": 250,
-          "height": 236.3828125,
+          "height": 211.4453125,
           "right": 531.671875,
-          "bottom": 479.8828125
+          "bottom": 454.9453125
         },
         "answer": {
           "x": 281.671875,
           "y": 243.5,
           "width": 250,
-          "height": 161.6875,
+          "height": 136.75,
           "right": 531.671875,
-          "bottom": 405.1875
+          "bottom": 380.25
         },
-        "bodyScrollHeight": 236,
+        "bodyScrollHeight": 211,
         "bodyMoreCount": 0,
         "toolsInNavigation": true,
         "toolsOutsideScroller": true,
@@ -743,9 +847,9 @@
           "x": 266.671875,
           "y": 156.5,
           "width": 300,
-          "height": 315.6328125,
+          "height": 290.6953125,
           "right": 566.671875,
-          "bottom": 472.1328125
+          "bottom": 447.1953125
         },
         "navigation": {
           "x": 267.671875,
@@ -791,19 +895,19 @@
           "x": 281.671875,
           "y": 243.5,
           "width": 250,
-          "height": 236.3828125,
+          "height": 211.4453125,
           "right": 531.671875,
-          "bottom": 479.8828125
+          "bottom": 454.9453125
         },
         "answer": {
           "x": 281.671875,
           "y": 243.5,
           "width": 250,
-          "height": 161.6875,
+          "height": 136.75,
           "right": 531.671875,
-          "bottom": 405.1875
+          "bottom": 380.25
         },
-        "bodyScrollHeight": 236,
+        "bodyScrollHeight": 211,
         "bodyMoreCount": 0,
         "toolsInNavigation": true,
         "toolsOutsideScroller": true,
@@ -823,9 +927,9 @@
           "x": 266.671875,
           "y": 156.5,
           "width": 300,
-          "height": 315.6328125,
+          "height": 290.6953125,
           "right": 566.671875,
-          "bottom": 472.1328125
+          "bottom": 447.1953125
         },
         "navigation": {
           "x": 267.671875,
@@ -871,19 +975,19 @@
           "x": 281.671875,
           "y": 243.5,
           "width": 250,
-          "height": 236.3828125,
+          "height": 211.4453125,
           "right": 531.671875,
-          "bottom": 479.8828125
+          "bottom": 454.9453125
         },
         "answer": {
           "x": 281.671875,
           "y": 243.5,
           "width": 250,
-          "height": 161.6875,
+          "height": 136.75,
           "right": 531.671875,
-          "bottom": 405.1875
+          "bottom": 380.25
         },
-        "bodyScrollHeight": 236,
+        "bodyScrollHeight": 211,
         "bodyMoreCount": 0,
         "toolsInNavigation": true,
         "toolsOutsideScroller": true,
@@ -1018,7 +1122,7 @@
       "status": "passed",
       "evidence": {
         "tag": "BUTTON",
-        "text": "原文依据",
+        "text": "",
         "quote": "Although the task was difficult, she finished it on time.",
         "state": "unavailable",
         "identity": "",
@@ -1086,7 +1190,7 @@
       "status": "passed",
       "evidence": {
         "tag": "BUTTON",
-        "text": "原文依据",
+        "text": "",
         "quote": "Although the task was difficult, she finished it on time.",
         "state": "changed",
         "identity": "",
@@ -1099,7 +1203,7 @@
       "status": "passed",
       "evidence": {
         "tag": "BUTTON",
-        "text": "原文依据",
+        "text": "",
         "quote": "Although the task was difficult, she finished it on time.",
         "state": "navigated",
         "identity": "",
@@ -1178,7 +1282,7 @@
       "evidence": [
         {
           "tag": "BUTTON",
-          "text": "原文依据",
+          "text": "",
           "quote": "Although the task was difficult, she finished it on time.",
           "state": "ready",
           "identity": "",
@@ -1186,7 +1290,7 @@
         },
         {
           "tag": "BUTTON",
-          "text": "原文依据",
+          "text": "",
           "quote": "She could complete it only because her colleague supplied the final measurements.",
           "state": "ready",
           "identity": "",
@@ -1195,6 +1299,110 @@
       ],
       "sourceCount": 6
     },
+    "evidence.compact-info-icon-inline-title-contract": {
+      "id": "evidence.compact-info-icon-inline-title-contract",
+      "status": "passed",
+      "entries": [
+        {
+          "bounds": {
+            "x": 571.6171875,
+            "y": 243.5,
+            "width": 20,
+            "height": 20,
+            "right": 591.6171875,
+            "bottom": 263.5
+          },
+          "display": "inline-flex",
+          "visible": true,
+          "hovered": false,
+          "visibleText": "",
+          "quote": "Although the task was difficult, she finished it on time.",
+          "title": "Although the task was difficult, she finished it on time.",
+          "ariaLabel": "定位原句：Although the task was difficult, she finished it on time.",
+          "wrapperDisplay": "inline",
+          "paragraphText": "it 指的是任务；作者以困难衬托按时完成的结果。",
+          "precedingText": "it 指的是任务；作者以困难衬托按时完成的结果。",
+          "precedingCharacter": {
+            "x": 553.03125,
+            "y": 248.5,
+            "width": 13.0078125,
+            "height": 15,
+            "right": 566.0390625,
+            "bottom": 263.5
+          },
+          "followingText": "",
+          "svg": {
+            "bounds": {
+              "x": 573.6171875,
+              "y": 245.5,
+              "width": 16,
+              "height": 16,
+              "right": 589.6171875,
+              "bottom": 261.5
+            },
+            "ariaHidden": "true",
+            "circleCount": 1,
+            "paths": [
+              "M8 7v4M8 4.75h.01"
+            ],
+            "markup": "<svg data-v-dea4b536=\"\" aria-hidden=\"true\" focusable=\"false\" viewBox=\"0 0 16 16\"><circle data-v-dea4b536=\"\" cx=\"8\" cy=\"8\" r=\"6.25\"></circle><path data-v-dea4b536=\"\" d=\"M8 7v4M8 4.75h.01\"></path></svg>"
+          },
+          "sameLine": true
+        },
+        {
+          "bounds": {
+            "x": 482.2578125,
+            "y": 277.75,
+            "width": 20,
+            "height": 20,
+            "right": 502.2578125,
+            "bottom": 297.75
+          },
+          "display": "inline-flex",
+          "visible": true,
+          "hovered": false,
+          "visibleText": "",
+          "quote": "She could complete it only because her colleague supplied the final measurements.",
+          "title": "She could complete it only because her colleague supplied the final measurements.",
+          "ariaLabel": "定位原句：She could complete it only because her colleague supplied the final measurements.",
+          "wrapperDisplay": "inline",
+          "paragraphText": "按时完成依赖同事提供最终测量。",
+          "precedingText": "按时完成依赖同事提供最终测量。",
+          "precedingCharacter": {
+            "x": 463.671875,
+            "y": 282.75,
+            "width": 13,
+            "height": 15,
+            "right": 476.671875,
+            "bottom": 297.75
+          },
+          "followingText": "",
+          "svg": {
+            "bounds": {
+              "x": 484.2578125,
+              "y": 279.75,
+              "width": 16,
+              "height": 16,
+              "right": 500.2578125,
+              "bottom": 295.75
+            },
+            "ariaHidden": "true",
+            "circleCount": 1,
+            "paths": [
+              "M8 7v4M8 4.75h.01"
+            ],
+            "markup": "<svg data-v-dea4b536=\"\" aria-hidden=\"true\" focusable=\"false\" viewBox=\"0 0 16 16\"><circle data-v-dea4b536=\"\" cx=\"8\" cy=\"8\" r=\"6.25\"></circle><path data-v-dea4b536=\"\" d=\"M8 7v4M8 4.75h.01\"></path></svg>"
+          },
+          "sameLine": true
+        }
+      ],
+      "hover": {
+        "x": 581.6171875,
+        "y": 253.5,
+        "title": "Although the task was difficult, she finished it on time.",
+        "systemTooltipCaptured": false
+      }
+    },
     "reading-menu.topbar-position-without-body-slot": {
       "id": "reading-menu.topbar-position-without-body-slot",
       "status": "passed",
@@ -1202,9 +1410,9 @@
         "x": 266.671875,
         "y": 156.5,
         "width": 388,
-        "height": 315.6328125,
+        "height": 290.6953125,
         "right": 654.671875,
-        "bottom": 472.1328125
+        "bottom": 447.1953125
       },
       "navigation": {
         "x": 267.671875,
@@ -1250,19 +1458,19 @@
         "x": 281.671875,
         "y": 243.5,
         "width": 338,
-        "height": 213.6328125,
+        "height": 188.6953125,
         "right": 619.671875,
-        "bottom": 457.1328125
+        "bottom": 432.1953125
       },
       "answer": {
         "x": 281.671875,
         "y": 243.5,
         "width": 338,
-        "height": 138.9375,
+        "height": 114,
         "right": 619.671875,
-        "bottom": 382.4375
+        "bottom": 357.5
       },
-      "bodyScrollHeight": 214,
+      "bodyScrollHeight": 189,
       "bodyMoreCount": 0,
       "toolsInNavigation": true,
       "toolsOutsideScroller": true,
@@ -1285,9 +1493,9 @@
           "x": 266.671875,
           "y": 156.5,
           "width": 388,
-          "height": 315.6328125,
+          "height": 290.6953125,
           "right": 654.671875,
-          "bottom": 472.1328125
+          "bottom": 447.1953125
         },
         "navigation": {
           "x": 267.671875,
@@ -1333,19 +1541,19 @@
           "x": 281.671875,
           "y": 243.5,
           "width": 338,
-          "height": 213.6328125,
+          "height": 188.6953125,
           "right": 619.671875,
-          "bottom": 457.1328125
+          "bottom": 432.1953125
         },
         "answer": {
           "x": 281.671875,
           "y": 243.5,
           "width": 338,
-          "height": 138.9375,
+          "height": 114,
           "right": 619.671875,
-          "bottom": 382.4375
+          "bottom": 357.5
         },
-        "bodyScrollHeight": 214,
+        "bodyScrollHeight": 189,
         "bodyMoreCount": 0,
         "toolsInNavigation": true,
         "toolsOutsideScroller": true,
@@ -1365,9 +1573,9 @@
           "x": 266.671875,
           "y": 156.5,
           "width": 388,
-          "height": 315.6328125,
+          "height": 290.6953125,
           "right": 654.671875,
-          "bottom": 472.1328125
+          "bottom": 447.1953125
         },
         "navigation": {
           "x": 267.671875,
@@ -1413,19 +1621,19 @@
           "x": 281.671875,
           "y": 243.5,
           "width": 338,
-          "height": 213.6328125,
+          "height": 188.6953125,
           "right": 619.671875,
-          "bottom": 457.1328125
+          "bottom": 432.1953125
         },
         "answer": {
           "x": 281.671875,
           "y": 243.5,
           "width": 338,
-          "height": 138.9375,
+          "height": 114,
           "right": 619.671875,
-          "bottom": 382.4375
+          "bottom": 357.5
         },
-        "bodyScrollHeight": 214,
+        "bodyScrollHeight": 189,
         "bodyMoreCount": 0,
         "toolsInNavigation": true,
         "toolsOutsideScroller": true,
@@ -1482,9 +1690,9 @@
           "x": 266.671875,
           "y": 156.5,
           "width": 388,
-          "height": 315.6328125,
+          "height": 290.6953125,
           "right": 654.671875,
-          "bottom": 472.1328125
+          "bottom": 447.1953125
         },
         "navigation": {
           "x": 267.671875,
@@ -1530,19 +1738,19 @@
           "x": 281.671875,
           "y": 243.5,
           "width": 338,
-          "height": 213.6328125,
+          "height": 188.6953125,
           "right": 619.671875,
-          "bottom": 457.1328125
+          "bottom": 432.1953125
         },
         "answer": {
           "x": 281.671875,
           "y": 243.5,
           "width": 338,
-          "height": 138.9375,
+          "height": 114,
           "right": 619.671875,
-          "bottom": 382.4375
+          "bottom": 357.5
         },
-        "bodyScrollHeight": 214,
+        "bodyScrollHeight": 189,
         "bodyMoreCount": 0,
         "toolsInNavigation": true,
         "toolsOutsideScroller": true,
@@ -1562,9 +1770,9 @@
           "x": 266.671875,
           "y": 156.5,
           "width": 388,
-          "height": 315.6328125,
+          "height": 290.6953125,
           "right": 654.671875,
-          "bottom": 472.1328125
+          "bottom": 447.1953125
         },
         "navigation": {
           "x": 267.671875,
@@ -1610,19 +1818,19 @@
           "x": 281.671875,
           "y": 243.5,
           "width": 338,
-          "height": 213.6328125,
+          "height": 188.6953125,
           "right": 619.671875,
-          "bottom": 457.1328125
+          "bottom": 432.1953125
         },
         "answer": {
           "x": 281.671875,
           "y": 243.5,
           "width": 338,
-          "height": 138.9375,
+          "height": 114,
           "right": 619.671875,
-          "bottom": 382.4375
+          "bottom": 357.5
         },
-        "bodyScrollHeight": 214,
+        "bodyScrollHeight": 189,
         "bodyMoreCount": 0,
         "toolsInNavigation": true,
         "toolsOutsideScroller": true,
@@ -1671,9 +1879,9 @@
           "x": 266.671875,
           "y": 156.5,
           "width": 300,
-          "height": 315.6328125,
+          "height": 290.6953125,
           "right": 566.671875,
-          "bottom": 472.1328125
+          "bottom": 447.1953125
         },
         "navigation": {
           "x": 267.671875,
@@ -1719,19 +1927,19 @@
           "x": 281.671875,
           "y": 243.5,
           "width": 250,
-          "height": 236.3828125,
+          "height": 211.4453125,
           "right": 531.671875,
-          "bottom": 479.8828125
+          "bottom": 454.9453125
         },
         "answer": {
           "x": 281.671875,
           "y": 243.5,
           "width": 250,
-          "height": 161.6875,
+          "height": 136.75,
           "right": 531.671875,
-          "bottom": 405.1875
+          "bottom": 380.25
         },
-        "bodyScrollHeight": 236,
+        "bodyScrollHeight": 211,
         "bodyMoreCount": 0,
         "toolsInNavigation": true,
         "toolsOutsideScroller": true,
@@ -1751,9 +1959,9 @@
           "x": 266.671875,
           "y": 156.5,
           "width": 300,
-          "height": 315.6328125,
+          "height": 290.6953125,
           "right": 566.671875,
-          "bottom": 472.1328125
+          "bottom": 447.1953125
         },
         "navigation": {
           "x": 267.671875,
@@ -1799,19 +2007,19 @@
           "x": 281.671875,
           "y": 243.5,
           "width": 250,
-          "height": 236.3828125,
+          "height": 211.4453125,
           "right": 531.671875,
-          "bottom": 479.8828125
+          "bottom": 454.9453125
         },
         "answer": {
           "x": 281.671875,
           "y": 243.5,
           "width": 250,
-          "height": 161.6875,
+          "height": 136.75,
           "right": 531.671875,
-          "bottom": 405.1875
+          "bottom": 380.25
         },
-        "bodyScrollHeight": 236,
+        "bodyScrollHeight": 211,
         "bodyMoreCount": 0,
         "toolsInNavigation": true,
         "toolsOutsideScroller": true,
@@ -1860,9 +2068,9 @@
           "x": 266.671875,
           "y": 156.5,
           "width": 300,
-          "height": 315.6328125,
+          "height": 290.6953125,
           "right": 566.671875,
-          "bottom": 472.1328125
+          "bottom": 447.1953125
         },
         "navigation": {
           "x": 267.671875,
@@ -1908,19 +2116,19 @@
           "x": 281.671875,
           "y": 243.5,
           "width": 250,
-          "height": 236.3828125,
+          "height": 211.4453125,
           "right": 531.671875,
-          "bottom": 479.8828125
+          "bottom": 454.9453125
         },
         "answer": {
           "x": 281.671875,
           "y": 243.5,
           "width": 250,
-          "height": 161.6875,
+          "height": 136.75,
           "right": 531.671875,
-          "bottom": 405.1875
+          "bottom": 380.25
         },
-        "bodyScrollHeight": 236,
+        "bodyScrollHeight": 211,
         "bodyMoreCount": 0,
         "toolsInNavigation": true,
         "toolsOutsideScroller": true,
@@ -1940,9 +2148,9 @@
           "x": 266.671875,
           "y": 156.5,
           "width": 300,
-          "height": 315.6328125,
+          "height": 290.6953125,
           "right": 566.671875,
-          "bottom": 472.1328125
+          "bottom": 447.1953125
         },
         "navigation": {
           "x": 267.671875,
@@ -1988,19 +2196,19 @@
           "x": 281.671875,
           "y": 243.5,
           "width": 250,
-          "height": 236.3828125,
+          "height": 211.4453125,
           "right": 531.671875,
-          "bottom": 479.8828125
+          "bottom": 454.9453125
         },
         "answer": {
           "x": 281.671875,
           "y": 243.5,
           "width": 250,
-          "height": 161.6875,
+          "height": 136.75,
           "right": 531.671875,
-          "bottom": 405.1875
+          "bottom": 380.25
         },
-        "bodyScrollHeight": 236,
+        "bodyScrollHeight": 211,
         "bodyMoreCount": 0,
         "toolsInNavigation": true,
         "toolsOutsideScroller": true,
@@ -2135,7 +2343,7 @@
       "status": "passed",
       "evidence": {
         "tag": "BUTTON",
-        "text": "原文依据",
+        "text": "",
         "quote": "Although the task was difficult, she finished it on time.",
         "state": "unavailable",
         "identity": "",
@@ -2203,7 +2411,7 @@
       "status": "passed",
       "evidence": {
         "tag": "BUTTON",
-        "text": "原文依据",
+        "text": "",
         "quote": "Although the task was difficult, she finished it on time.",
         "state": "changed",
         "identity": "",
@@ -2216,7 +2424,7 @@
       "status": "passed",
       "evidence": {
         "tag": "BUTTON",
-        "text": "原文依据",
+        "text": "",
         "quote": "Although the task was difficult, she finished it on time.",
         "state": "navigated",
         "identity": "",
@@ -2264,12 +2472,12 @@
     }
   },
   "screenshots": [
-    "/private/tmp/fluentread-reading-evidence-20261011-topbar-current-main-final/reading-menu-light-closed.png",
-    "/private/tmp/fluentread-reading-evidence-20261011-topbar-current-main-final/reading-menu-light-wide-open.png",
-    "/private/tmp/fluentread-reading-evidence-20261011-topbar-current-main-final/reading-menu-dark-wide-open.png",
-    "/private/tmp/fluentread-reading-evidence-20261011-topbar-current-main-final/reading-menu-dark-narrow-open.png",
-    "/private/tmp/fluentread-reading-evidence-20261011-topbar-current-main-final/reading-menu-light-narrow-open.png",
-    "/private/tmp/fluentread-reading-evidence-20261011-topbar-current-main-final/reading-evidence-located.png"
+    "/private/tmp/fluentread-reading-evidence-20261011-info-icon-final/reading-menu-light-closed.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-info-icon-final/reading-menu-light-wide-open.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-info-icon-final/reading-menu-dark-wide-open.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-info-icon-final/reading-menu-dark-narrow-open.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-info-icon-final/reading-menu-light-narrow-open.png",
+    "/private/tmp/fluentread-reading-evidence-20261011-info-icon-final/reading-evidence-located.png"
   ],
   "consoleErrors": [],
   "httpErrors": [],
@@ -3044,8 +3252,8 @@
     "sourceMappingOnly": true
   },
   "domArtifacts": [
-    "/private/tmp/fluentread-reading-evidence-20261011-topbar-current-main-final/reading-evidence-source.html",
-    "/private/tmp/fluentread-reading-evidence-20261011-topbar-current-main-final/reading-evidence-closed-shadow.json"
+    "/private/tmp/fluentread-reading-evidence-20261011-info-icon-final/reading-evidence-source.html",
+    "/private/tmp/fluentread-reading-evidence-20261011-info-icon-final/reading-evidence-closed-shadow.json"
   ],
   "fixture": {
     "page": "local current paragraph with one second supporting sentence and distant duplicate",

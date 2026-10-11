@@ -203,6 +203,54 @@ async function activateReadingEvidence(page, index = 0, key) {
     await session.send('Input.dispatchMouseEvent', {type: 'mousePressed', x, y, button: 'left', clickCount: 1});
     await session.send('Input.dispatchMouseEvent', {type: 'mouseReleased', x, y, button: 'left', clickCount: 1});
 }
+async function compactReadingEvidenceLayout(page) {
+    const {host,session}=await shadowSnapshot(page);
+    const answer=find(host,node=>attr(node,'class').split(' ').includes('fr-reading-answer'));
+    assert(answer?.nodeId,'紧凑依据检查缺少当前回答');
+    const {object}=await session.send('DOM.resolveNode',{nodeId:answer.nodeId});
+    try {
+        const response=await session.send('Runtime.callFunctionOn',{objectId:object.objectId,returnByValue:true,functionDeclaration:`function() {
+            const rect=node=>{if (!node) return null;const r=node.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
+            return [...this.querySelectorAll('button.fr-reading-evidence')].map(button=>{
+                const wrapper=button.closest('.fr-reading-evidence-wrap'),paragraph=button.closest('p'),svg=button.querySelector('svg'),style=getComputedStyle(button),bounds=rect(button);
+                const walker=paragraph ? document.createTreeWalker(paragraph,NodeFilter.SHOW_TEXT) : null;
+                let node,previous=null,followingText='';
+                while (walker && (node=walker.nextNode())) {
+                    if (button.contains(node) || !node.data.trim() || node.parentElement?.closest('.fr-reading-evidence-status')) continue;
+                    if (node.compareDocumentPosition(button)&Node.DOCUMENT_POSITION_FOLLOWING) previous=node;
+                    else if (button.compareDocumentPosition(node)&Node.DOCUMENT_POSITION_FOLLOWING) followingText+=node.data.trim();
+                }
+                const precedingText=previous?.data.trimEnd() || '';
+                let precedingCharacter=null;
+                if (precedingText) {const range=document.createRange();range.setStart(previous,precedingText.length-1);range.setEnd(previous,precedingText.length);precedingCharacter=rect(range);}
+                const paths=svg ? [...svg.querySelectorAll('path')].map(path=>path.getAttribute('d') || '') : [];
+                return {bounds,display:style.display,visible:bounds.width>0 && bounds.height>0 && style.visibility==='visible' && style.display!=='none',hovered:button.matches(':hover'),visibleText:button.innerText.trim(),quote:button.getAttribute('data-evidence-quote') || '',title:button.title,ariaLabel:button.getAttribute('aria-label') || '',wrapperDisplay:wrapper ? getComputedStyle(wrapper).display : '',paragraphText:paragraph?.textContent.trim() || '',precedingText,precedingCharacter,followingText,svg:svg ? {bounds:rect(svg),ariaHidden:svg.getAttribute('aria-hidden'),circleCount:svg.querySelectorAll('circle').length,paths,markup:svg.outerHTML} : null,sameLine:Boolean(precedingCharacter && bounds.x>=precedingCharacter.right-1 && bounds.y<precedingCharacter.bottom && bounds.bottom>precedingCharacter.y)};
+            });
+        }`});
+        assert(!response.exceptionDetails,`紧凑依据几何检查失败: ${JSON.stringify(response.exceptionDetails)}`);
+        return response.result.value;
+    } finally {await session.send('Runtime.releaseObject',{objectId:object.objectId}).catch(()=>{});}
+}
+async function verifyCompactReadingEvidence({page,record}) {
+    const entries=await compactReadingEvidenceLayout(page);
+    assert(entries.length>=2,'紧凑依据检查缺少多句原文入口');
+    for (const entry of entries) {
+        assert(entry.visible && entry.bounds.width<=20 && entry.bounds.height<=20,`依据入口没有保持20px以内的可见尺寸: ${JSON.stringify(entry)}`);
+        assert(entry.visibleText==='' && entry.svg?.circleCount>0 && entry.svg.paths.some(path=>path.includes('v')) && entry.svg.paths.some(path=>path.includes('h.01')),`依据入口不是无文字的信息i图标: ${JSON.stringify(entry)}`);
+        assert(entry.svg.bounds.width>0 && entry.svg.bounds.width<=20 && entry.svg.bounds.height>0 && entry.svg.bounds.height<=20,'信息SVG不可见或超过紧凑尺寸');
+        assert(entry.quote && entry.title===entry.quote && entry.ariaLabel.includes(entry.quote),'依据入口title/aria没有保存完整原引文');
+        assert(entry.display==='inline-flex' && entry.wrapperDisplay==='inline' && /[.!?。！？]$/.test(entry.precedingText) && !entry.followingText,'依据入口没有位于正文句末行内，或使用了独立引用行容器');
+    }
+    // 第一段行尾空间不足时自然换行是合法排版；较短第二句验证与正文共同行。
+    assert(entries[1].sameLine,'较短第二句的依据图标没有与句末正文处于同一行');
+    const {nodes,session}=await evidenceSnapshot(page),first=nodes[0];
+    const {model}=await session.send('DOM.getBoxModel',{nodeId:first.nodeId});
+    const q=model.content,x=(q[0]+q[2]+q[4]+q[6])/4,y=(q[1]+q[3]+q[5]+q[7])/4;
+    await session.send('Input.dispatchMouseEvent',{type:'mouseMoved',x,y,button:'none'});
+    const hovered=await compactReadingEvidenceLayout(page);
+    assert(hovered[0].hovered && hovered[0].title===entries[0].quote,'真实hover后原生title完整引文契约丢失');
+    record('evidence.compact-info-icon-inline-title-contract','passed',{entries,hover:{x,y,title:hovered[0].title,systemTooltipCaptured:false}});
+}
 async function readingEvidenceHighlights(page) {
     return page.evaluate(() => {
         const highlights = globalThis.CSS?.highlights;
@@ -377,6 +425,7 @@ async function verifyReadingEvidence({page, configPage, requests, record, args, 
     assert(requests.every(request => !JSON.stringify(request).includes('PRIVATE_NAVIGATION') && !JSON.stringify(request).includes('PRIVATE_FORM')), '请求读取了选区之外的未允许导航或表单');
     assert(snapshot.text.includes('外部背景'), '外部背景没有与来自页面的依据区分');
     record('evidence.actual-sources-multiple-sentences-and-background', 'passed', {evidence: snapshot.evidence, sourceCount: supplied.length});
+    await verifyCompactReadingEvidence({page,record});
     await verifyReadingMoreMenu({page, configPage, requests, record, args, result});
     await page.evaluate(() => {document.querySelector('main').style.paddingTop = '1300px';});
     await activateReadingEvidence(page);

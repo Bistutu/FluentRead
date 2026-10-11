@@ -97,5 +97,27 @@
     "buildLog": "/private/tmp/fluentread-evidence-topbar-current-main-userscript.log",
     "verifyLog": "/private/tmp/fluentread-evidence-topbar-current-main-userscript-verify.log",
     "languageResourceCommit": "1e9e80dd49530aac9c7610b51a935357f4099c19"
+  },
+  "latestMainInfoIconIntegration": {
+    "baselineCommit": "43f66b01dc7bb0523f6bc7866dc248efdcdbe071",
+    "baselineDirectory": "/private/tmp/fluentread-reading-evidence-userscript-main43-d7csv7dd",
+    "baselineBytes": 2049516,
+    "baselineSha256": "a10b3e0321fac15212522e4cd04f11f41cb8d512132505444b313d385f23af9c",
+    "baselineBudgetBytes": 2050000,
+    "baselineBudgetHeadroomBytes": 484,
+    "baselineVerifierPassed": true,
+    "baselineBuildLog": "/private/tmp/fluentread-reading-evidence-userscript-main43-d7csv7dd/userscript-baseline-build.log",
+    "baselinePrepareLog": "/private/tmp/fluentread-reading-evidence-userscript-main43-d7csv7dd/userscript-baseline-prepare.log",
+    "baselineVerifyLog": "/private/tmp/fluentread-reading-evidence-userscript-main43-d7csv7dd/userscript-baseline-verify.log",
+    "candidateBytes": 2065676,
+    "candidateSha256": "69b5d47532033986ac3bbe70f9b0d008052caf69babeab2cb01ec61e0d165bfc",
+    "deltaBytes": 16160,
+    "deltaPercent": 0.788479,
+    "minimumBudgetBytes": 2066000,
+    "budgetHeadroomBytes": 324,
+    "verifierPassed": true,
+    "buildLog": "/private/tmp/fluentread-evidence-info-icon-userscript.log",
+    "verifyLog": "/private/tmp/fluentread-evidence-info-icon-userscript-verify.log",
+    "languageResourceCommit": "1e9e80dd49530aac9c7610b51a935357f4099c19"
   }
 }
