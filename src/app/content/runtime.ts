@@ -1,14 +1,14 @@
 /**
  * @file src/app/content/runtime.ts
  * 文件职责：作为内容脚本应用的顶层 composition root，协调配置就绪、站点规则、公共样式、主世界桥、功能注册表、快捷键和消息监听生命周期。
- * 主要内容：先排除原始 XML 文档与失效扩展上下文，再安装内联 page.css 并按 capability 和配置挂载页面功能；按已提交的页面地址重新检查自动翻译与站点禁用，锚点跳转保留当前翻译请求，订阅配置变化并处理停用、往返缓存暂停恢复与销毁。
+ * 主要内容：先排除原始 XML 文档与失效扩展上下文，再安装内联 page.css 并按 capability 和配置挂载页面功能；配置变更时更新页面私有网站名单索引，按已提交地址检查自动翻译与站点禁用，锚点跳转保留请求，协调停用、往返缓存暂停恢复与销毁。
  * 模块边界：本文件只负责依赖装配和页面激活所有权，不实现具体翻译算法、组件内部状态、provider 请求或配置存储；这些职责分别属于 features、services 与 platform。
  */
 import {createLearningContentFeatures} from './learningFeatures';
 import type {ContentScriptContext} from 'wxt/utils/content-script-context';
 import {createShadowRootUi} from 'wxt/utils/content-script-ui/shadow-root';
 import {constants} from '@/src/core/config/constants';
-import {isExtensionDisabledOnSite, shouldAutoTranslatePage} from '@/src/features/site-rules/domain';
+import {createSiteRuleMatcher} from '@/src/features/site-rules/domain';
 import {config, configReady, subscribeConfig} from '@/src/services/config/store';
 import {ensureUiLanguageBundle} from '@/src/platform/i18n/uiLanguageBundles';
 import {cancelAllTranslations} from '@/src/app/translation/client';
@@ -72,7 +72,8 @@ export async function startContentApp(ctx: ContentScriptContext,
     if (ctx.isInvalid || cleanedUp || (document.readyState === 'loading' && !await waitForContentDocument(document, pageEventController.signal))) { cleanup(); return; }
     const siteAdaptation = createContentSiteAdaptationRuntime(config.siteAdaptation, new URL(window.location.href));
     applyCoreTranslationPreferences(config); clearLegacyPageTranslationCache();
-    let currentPageSiteDisabled = isExtensionDisabledOnSite(window.location.href, config.disabledExtensionDomains);
+    const siteRules = createSiteRuleMatcher(config);
+    let currentPageSiteDisabled = siteRules.isExtensionDisabled(window.location.href);
     let unsubscribeContentConfig: (() => void) | null = null;
     let runtimeMessageListener: ContentRuntimeMessageHandler | null = null;
     const runtimeMessages = browser.runtime.onMessage;
@@ -203,7 +204,7 @@ export async function startContentApp(ctx: ContentScriptContext,
         isEnabled: isPageRuntimeEnabled,
         isPageFeaturesActive: () => featureController !== null,
         isVideoPage: isSupportedVideoPage,
-        shouldAutomaticallyTranslate: () => shouldAutoTranslatePage(window.location.href, config),
+        shouldAutomaticallyTranslate: () => siteRules.shouldAutoTranslate(window.location.href),
         getPageIdentity: () => window.location.href,
         isFullPageTranslationActive,
         setMainWorldBridgesEnabled: (enabled) => setMainWorldBridgesEnabled(document, enabled),
@@ -222,7 +223,7 @@ export async function startContentApp(ctx: ContentScriptContext,
         getHref: () => window.location.href,
         routeChanged: href => { informationHighlight?.routeChanged(); siteAdaptation.routeChanged(new URL(href)); },
         resetTranslationRoute: () => { resetPageTranslationContextCache(); resetFullPageTranslationRouteState(); },
-        siteDisabled: href => isExtensionDisabledOnSite(href, config.disabledExtensionDomains),
+        siteDisabled: href => siteRules.isExtensionDisabled(href),
         currentSiteDisabled: () => currentPageSiteDisabled,
         applySiteDisabledState, pageAvailability,
         reconcileFeatures: () => { void activePageFeatureRegistry?.reconcileEnabled(); },
@@ -248,6 +249,7 @@ export async function startContentApp(ctx: ContentScriptContext,
     runtimeMessages.addListener(runtimeMessageListener);
     void reportSiteDisabledState();
     unsubscribeContentConfig = subscribeConfig((nextConfig) => {
+        siteRules.update(nextConfig);
         void ensureUiLanguageBundle(nextConfig.uiLanguage); applyCoreTranslationPreferences(nextConfig);
         siteAdaptation.update(nextConfig.siteAdaptation, new URL(window.location.href));
         informationHighlight?.updatePreferences(nextConfig.informationHighlight);
@@ -259,10 +261,7 @@ export async function startContentApp(ctx: ContentScriptContext,
             inputTranslationFeature.invalidate();
         }
         optionalContentFeatures?.sync();
-        const nextSiteDisabled = isExtensionDisabledOnSite(
-            window.location.href,
-            nextConfig.disabledExtensionDomains,
-        );
+        const nextSiteDisabled = siteRules.isExtensionDisabled(window.location.href);
         if (nextSiteDisabled !== currentPageSiteDisabled) {
             void applySiteDisabledState(nextSiteDisabled);
             return;

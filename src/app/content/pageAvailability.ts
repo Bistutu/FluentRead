@@ -1,7 +1,7 @@
 /**
  * @file src/app/content/pageAvailability.ts
  * 文件职责：统一协调 content 总开关、站点禁用、YouTube SPA 路由与页面功能的 activate/dispose 边界。
- * 主要内容：幂等启停 MAIN-world bridge 和页面 feature，限制失效挂载重试次数，维护视频字幕路由挂载；按排除普通锚点的页面身份记录自动翻译意图，使新 SPA 页面可重新启动、手动恢复后的同页保持原文，并让自动翻译不受非必要 UI 的异步挂载阻塞。
+ * 主要内容：幂等启停 MAIN-world bridge 和页面 feature，合并同步与在途协调请求，限制失效挂载重试次数，维护视频字幕路由挂载；按排除普通锚点的页面身份记录自动翻译意图，使新 SPA 页面可重新启动、手动恢复后的同页保持原文，并让自动翻译不受非必要 UI 的异步挂载阻塞。
  * 模块边界：本模块通过 composition root 注入当前路由、可用性、挂载器和全文状态，不读取全局配置、不操作具体功能 DOM；具体 feature 保留自己的清理实现。
  */
 import {shouldAutoTranslatePage} from '@/src/features/site-rules/domain';
@@ -61,7 +61,8 @@ export function createContentPageAvailabilityRuntime(
     let disposeVideoSubtitle: (() => void) | null = null;
     let shouldAutomaticallyTranslate = false;
     let autoTranslationPageIdentity: string | null = null;
-    let reconcileTail = Promise.resolve();
+    let pendingReconcile: Promise<void> | null = null;
+    let reconcileRequestVersion = 0;
     let disabledStateApplied = false;
 
     const disposeVideoSubtitlePage = (): void => {
@@ -133,9 +134,23 @@ export function createContentPageAvailabilityRuntime(
         if (!dependencies.isEnabled()) {
             disablePageRuntime();
         }
-        const task = reconcileTail.then(reconcileLatest);
-        // 单个激活失败不能毒化后续配置变更；调用方仍会收到本次异常。
-        reconcileTail = task.catch(() => undefined);
+        reconcileRequestVersion += 1;
+        if (pendingReconcile) return pendingReconcile;
+        const task = Promise.resolve().then(async () => {
+            try {
+                let observedVersion: number;
+                do {
+                    observedVersion = reconcileRequestVersion;
+                    await reconcileLatest();
+                } while (observedVersion !== reconcileRequestVersion);
+            } finally {
+                // 同步释放批次，避免完成后的微任务窗口吞掉下一次启停请求。
+                pendingReconcile = null;
+            }
+        });
+        pendingReconcile = task;
+        // 本批调用方仍收到异常，后续独立请求可以恢复；忽略回声无需制造未处理拒绝。
+        void task.catch(() => undefined);
         return task;
     };
 

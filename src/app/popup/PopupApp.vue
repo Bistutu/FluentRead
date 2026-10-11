@@ -826,11 +826,11 @@ watch(() => JSON.stringify(config.value), async serialized => {
   }
 }, { flush: 'post' });
 
-// 站点操作等待后台确认；捕获完整当前草稿，让共享 store 计算字段差量，
+// 站点操作等待后台确认；捕获完整当前草稿，让共享 store 同步归一化并计算字段差量，
 // 同 tick 尚未提交的其他用户修改也随补丁保留，避免窄补丁的乐观订阅覆盖草稿。
 // 配置订阅与 post watcher 继续使用原去重，关闭前继续交接待确认补丁。
 async function persistSiteRulePatch(patch: PopupSiteRulePatch): Promise<void> {
-  await persistConfigPatch({...normalizeConfig(config.value), ...patch});
+  await persistConfigPatch({...config.value, ...patch});
 }
 watch(() => config.value.theme, theme => applyTheme(theme || 'auto'));
 watch(() => config.value.interfaceSkin, skin => applyInterfaceSkin(skin));

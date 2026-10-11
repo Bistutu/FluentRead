@@ -2,7 +2,7 @@
  * @file src/core/site-rules/domain.ts
  *
  * 文件职责：实现站点规则所需的域名规范化、eTLD+1 匹配和自动翻译决策，统一处理 URL、主机名与配置列表。
- * 主要内容：基于 tldts 解析基础域，清洗始终翻译和禁用站点列表，计算当前页自动翻译状态，同时拒绝非 HTTP 或无效域名输入。 可核对的公开符号包括 AutoTranslatePageConfig、getSiteBaseDomain、normalizeSiteDomains、normalizeAlwaysTranslateDomains、normalizeDisabledExtensionDomains、isAlwaysTranslateSite、isExtensionDisabledOnSite。
+ * 主要内容：基于 tldts 解析基础域，清洗网站名单并计算自动翻译状态；页面私有 matcher 按名单内容变化重建索引，复用最近地址的基础域，避免每次路由重新解析整份名单，同时保留原纯函数和非法输入边界。
  * 模块边界：本文件属于 core 领域层，只定义规则、类型与纯转换；不直接读写浏览器存储、不发起网络请求、不挂载 Vue/WXT 入口，持久化、协议调用和界面编排分别由 services、providers 与 features 承担。
  */
 
@@ -164,4 +164,46 @@ export function shouldAutoTranslatePage(
     // 就应生效。HTTP(S) 与可注册域名限制只属于新增的网站名单。
     if (config.autoTranslate === true) return true;
     return isAlwaysTranslateSite(input, config.alwaysTranslateDomains);
+}
+
+/** 内容快照同时识别原地编辑和同值新数组，不依赖可变数组的引用作为缓存版本。 */
+function createSiteDomainIndex() {
+    let entries: unknown[] = [];
+    let domains = new Set<string>();
+    return {
+        update(value: unknown): void {
+            const next = Array.isArray(value) ? value : [];
+            if (next.length === entries.length && next.every((entry, index) => entry === entries[index])) return;
+            entries = next.slice();
+            domains = new Set(normalizeSiteDomains(next));
+        },
+        isEmpty: () => domains.size === 0,
+        has: (domain: string | null) => domain !== null && domains.has(domain),
+    };
+}
+
+/** 页面持有并在配置通知时 update；路由只查索引，缓存大小不会随访问地址增长。 */
+export function createSiteRuleMatcher(initialConfig: AutoTranslatePageConfig) {
+    const always = createSiteDomainIndex(), disabled = createSiteDomainIndex();
+    let enabled = false, automatic = false;
+    let lastInput: string | undefined, lastDomain: string | null = null;
+    const domain = (input: string | URL): string | null => {
+        const key = input instanceof URL ? input.href : input;
+        if (key !== lastInput) {lastInput = key; lastDomain = getSiteBaseDomain(input);}
+        return lastDomain;
+    };
+    const update = (config: AutoTranslatePageConfig): void => {
+        enabled = config.on === true;
+        automatic = config.autoTranslate === true;
+        always.update(config.alwaysTranslateDomains);
+        disabled.update(config.disabledExtensionDomains);
+    };
+    const isExtensionDisabled = (input: string | URL): boolean => !disabled.isEmpty() && disabled.has(domain(input));
+    update(initialConfig);
+    return {
+        update,
+        isExtensionDisabled,
+        shouldAutoTranslate: (input: string | URL): boolean => enabled && !isExtensionDisabled(input)
+            && (automatic || (!always.isEmpty() && always.has(domain(input)))),
+    };
 }
