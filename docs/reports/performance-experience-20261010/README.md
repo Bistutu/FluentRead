@@ -1324,12 +1324,53 @@ Options 的支持图仅在 About 模板分支取用；联系图仅在公开按�
 
 原始结果为 `first-use-native-attempt4/REPORT.json`（718975 B，SHA256 `62ea0098258a6fd4234d38284404f32ea1e5addb225ae77d70673770d9a877bb`）；根代理从八行重算五指标、四对完整语义投影、24 PNG、2463 源库存及 READY support 的证据在 `ROOT-NATIVE-RESULT-REVIEW.json`。根 JSON 复核初稿对诊断结构的断言错误已单独留存，修正后通过，未重跑原生业务。独立 v5 执行后审查为 `peer-native-settle-review/REVIEW.md`，最终原生独立复核为 `peer-final-native-attempt4-review/REVIEW.md`；文档门禁回执为 `docs-attempt2/RECEIPT.json`。
 
+### 第五十四批：漫画归一化脱离内置目录初始化（R58）
+
+完整配置原先从 `manga.ts` 读取三个数值/用户规则归一化函数，因而连带加载内置目录和阅读器匹配表。本批将原五函数与规则类型移到无资源依赖的 `mangaNormalization.ts`，`model.ts` 直接读取轻量入口，原 `manga.ts` 直接重导出同一函数对象。原函数正文、URL 构造与 trim 顺序、IDN/路径回验、异常边界、前二十项、首次去重和顺序、默认/零值/floor/上下限和像素预算完整保留。没有新增缓存、运行时加载层、构建插件或依赖；扩展目录、阅读器及真实 UI 仍走既有公开入口。
+
+实际基线四组共 1,128 项，本批共 1,134 项（700 漫画、198 配置、187 构建、49 脚本运行），全部旧 fullName 重数及原完整 owner 正文保留，只追加六项。旧源两次反例均自然 1，收集 291 项、288 通过、3 失败；原 285 项通过。第二次将两个真实 model 导入各自触达 catalog/profile 的计数 1 明确记录；缺少新模块的身份案例单列为旧源预条件，不充当依赖因果证据。候选的两个资源哨兵均不触达，五公开函数身份、真实 URL call-through、原有配置和阅读器案例通过。
+
+覆盖配置仅增加新模块 include，四维 100% 门槛不变。最终新模块语句/行各 34/34、函数 5/5、分支 37/37，原始命中均大于零；这不是全仓或整个漫画功能覆盖率。首次应用的 diff 检查因末尾空行自然 2，保存独立失败记录；当时八阶段验证自然 0，随后仅删除 `manga.ts` 一个 terminal LF。最终文件上的 291 项 owner 与覆盖再次通过；compile、architecture、audit 在该换行清理前完成，其他输入全字节不变。architecture 实际为 34 文件/1,881 项通过；audit 为 693 文件/12,316 项索引，不能称全部执行。
+
+| 完整正式产品 | R57 历史完整产物 | 本批完整产物 | 实际字节差 |
+| --- | ---: | ---: | ---: |
+| Chrome 目录 | 61,493,930 | 61,461,232 | −32,698 |
+| Firefox 目录 | 61,492,968 | 61,460,226 | −32,742 |
+| 普通脚本 | 2,046,563 | 2,035,666 | −10,897 |
+| 独立脚本 | 3,823,529 | 3,812,632 | −10,897 |
+
+四种构建自然 0，扩展清单和普通脚本校验为 0。独立脚本构建为 0，但原 3,600,000 B 预算校验为 1，仍超 212,632 B；不称全绿、不计入 verifier 第 33 行抛错后的检查。比较是历史完整 R57 与本批完整产物，未制造同源反事实。两份 manifest 和各扩展 270 份非代码静态资源全字节不变；完整 pako/tldts/品牌许可、metadata、资源 pin 保留。
+
+完整原始目录文本（260 域名项、235 展示行）在旧扩展中各有五份载体，本批各保留两份：正文 content script 与真实 MangaSettings chunk；后台、两个特殊 frame 和早期共享 i18n chunk 中的载体不再出现。普通/独立脚本的目录文本载体各由一份变为零。这是实际完整模板字节定位结果，不是目录删减、URL 构造次数或隔离 CPU/heap 测量；真实匹配、阅读器与扩展目录能力仍由原消费者提供。
+
+证据根：`/private/tmp/fluentread-performance-experience-20261010/round58-manga-normalization/`。测试与反例见 `baseline-attempt1/`、`red-attempt1/`、`red-attempt2/`、`candidate-attempt1/`、`final-source-attempt1/`，最终覆盖独立保存在 `final-source-attempt1-coverage/`；根复核为 `ROOT-VALIDATION-REVIEW.json`，独立复核为 `peer-final-test-review-v2/REVIEW.md`。构建及全部冻结产品见 `builds-attempt1/RECEIPT.json`、`frozen-builds-attempt1/`、`ROOT-FROZEN-PRODUCT-REVIEW.json`（21,000 B / SHA256 `cb837b730282bb3eed8a32842cddd67af9e3331444fe4a9f6510900dea07d191`）。
+
+原生完整脚本对照采用历史 R57 完整 A 与本批完整 B，四对 AB/BA/AB/BA、八个全新自有 profile、零测量预热，首轮自然 0，98.285 s，未替换或丢弃样本。两臂保留 fullOptions、品牌/About/tldts 压缩、strict CommonJS 与全部实际许可。正常可见后台第二屏的 Edge 131.0.2903.147，仅通过真实齿轮查看 General 默认服务，不切换服务或打开菜单。每臂 General 前后完整既有投影相等；四对只排除已由锁定 Element Plus 源码和逐臂真实唯一 connected listbox 归属证明的随机 controls 值，其他 SVG、路径、ARIA、焦点和原始 scope 属性不重写。宿主文本、语言、标题及五属性保持。比较限于既有 General 投影，不外推整个 INPUT/listbox 的全部属性。
+
+| 观测耗时上界（ms） | A 中位数 | B 中位数 | 配对 B−A 中位数 |
+| --- | ---: | ---: | ---: |
+| 外部完整脚本同步窗口 | 230.20 | 229.55 | −0.50 |
+| 宿主节点连接 | 294.95 | 296.50 | +1.55 |
+| 主入口可见 | 302.70 | 303.20 | +0.80 |
+| 齿轮→General 字段观测 | 1643.45 | 1634.55 | −6.30 |
+
+第四项在真实点击后先捕获 settings PNG、执行完整 source/support/hash 守卫，随后才取字段可见时间，因此约 1.6 s 包含截图、哈希核验及串行观察，不能当作产品真实设置响应延迟。前三项在这些后续步骤前记录，也包含浏览器调度与轮询。四对方向不一致，保留 pair 3 主入口 B +36.20 ms 等所有原始值，不声称显著/整体提速或隔离解析、CPU、heap、恢复次数收益；零测量预热也不等于系统文件缓存冷启动。
+
+八个 General 阶段、16 张实际 PNG 的完整 SHA/IHDR 与八份 RUN 保留；根代理仅目视第一对 General A/B 两图，中文粉色布局和默认服务图标一致，不把哈希核验当成全部截图视觉验收。40 次前台检查均未抢占前台，八行 focusEvents 为空、六类诊断为空、四项精确自有进程/监视器/profile 清理均为真，源库存 2,464 项与全部绑定输入保持，服务器关闭。实际滚轮次数为零；未执行提供商或翻译、GM/codec 注入。
+
+原始 `first-use-native-attempt1/REPORT.json` 为 343,046 B / SHA256 `d94dc75244518f19637383d5ac61bb9bcab48692a4f9bbb7b65b2d1639025067`。根独立重算与完整源/PNG核验为 `ROOT-STANDALONE-NATIVE-REVIEW.json`（15,427 B / `9ee23a4a16812fcfb7867f4036a160d812f92656a9712f0109d18a6a3ae6b770`），独立复核为 `peer-final-standalone-native-review/REVIEW.md`。漫画设置的候选扩展公开路径另按其真实原生回执记录；本对照不证明漫画网页、Firefox运行时、真实服务、商店或全部设备。
+
+候选 Chrome 扩展安装后，以中文公开 onboarding 选择「流畅阅读」，经真实 Popup 齿轮打开新的 options 页，再依次检查漫画目录搜索、规则增删和未提交草稿导航重置。第二次执行自然 0，55.230 s，五公开阶段全部完成；按名称 `MANGA Plus` 和域名 `mangaplus.shueisha.co.jp` 搜索均为同一正确行、`1 / 235`，清空恢复 `235 / 235`。公开表单提交后自定义行实际为 `manga-smoke.example/chapter/` / `main img, article img`，公开删除后为空；未提交的相同地址和 `article img` 经通用设置离开再返回，地址清空、选择器恢复默认、规则为空、235 行不变。没有取消按钮，测试采用导航离开；返回时先断言 details 关闭，再公开展开检查输入，所以最终记录 `detailsOpen=true`，不称最终快照关闭。
+
+第一次执行自然 1，19.912 s，仅完成 onboarding，真实齿轮点击后的 finally detach 报 `No session with given id`，原失败回执保留。原 Popup 实现先 `openOptionsPage` 再关闭自身；第一次没有独立 close 记录，不把这一推断写成已实测因果。只修正私有测试驱动：点击前订阅真实 close/new page，全部实际 CDP dispatch、close 和新 options URL 均须成功；仅在确实等待并断言自有 Popup 已关闭后不再次 detach 其消亡 session。没有捕获或吞掉异常，没有修改产品代码。第二次实际记录一次 `pageClosed=true` 的受约束关闭路径，其他 session 清理保持原行为。
+
+第二次有 18 次真实协议点击、7 次协议文本输入和 12 次自有滚动，滚动改变最近自有容器 scrollTop、宿主位置不变；不新增 DOM `isTrusted` 或 `document.hasFocus` 断言。正常可见后台第二屏窗口，启动前一个前台检查 owner 尚未建立，之后 13 次均未抢占前台，focusEvents 与六类诊断为空。实际观察一个自有 service worker，Runtime.enable 应答、socket 正常结束并在浏览器关闭前停止；四项自有浏览器/原 PID/监视器/profile 清理为真。完整 2,464 份源库存与 468 份 Chrome 产物前后全字节相同。
+
+三张原始 CDP PNG 均保持 1272×816 / DPR2、实际 2544×1632，根代理全部目视查看，中文粉色布局、搜索结果、添加规则及重置表单符合预期，未编辑截图。原始 `native-extension-attempt2/report.json` 为 169,799 B / SHA256 `8acc8b5d4b5f9aa03e9fb75ea1c60046ed5b77c6406e9528b963277663406a7e`；根复核为 `ROOT-EXTENSION-NATIVE-REVIEW.json`（4,024 B / `e8ab49411ef83ecf81d1fe8ff8588f4fb9aa0e5d912d2a96aecb4181b884ce52`），独立复核为 `peer-final-extension-native-review/REVIEW.md`。此次 Chrome 设置检查不证明 Firefox 运行、在线翻译服务、真实漫画翻译、全部网站或设备性能；原独立脚本预算失败保持。
+
 ## 后续候选
 
-第五十三批完成品牌 SVG 表的无损构建压缩与同步访问入口，保留完整品牌、路径属性、别名、原样式与许可。完整独立脚本实测净减 16,705 B 至 3,823,529 B，原 3,600,000 B 预算仍超 223,529 B；ordinary 2,046,563 B 整包字节相同。342 个聚焦案例、轻量 helper 四维 100% 与八次有限原生通用设置/菜单开关验证通过，未测隔离 CPU/heap 或恢复次数，有限首用方向不支持显著提速。下一步只审查漫画数值/用户规则归一化与内置目录匹配的依赖拆分：完整迁移原五函数并保留旧 API、规则顺序与用户 URL 校验、扩展目录及真实阅读器消费者。静态 10,701 B 初始化段是候选机会，不当作净收益；私有草稿尚需 clean checkpoint 重绑、实际基线/反例、四维覆盖和四正式出口验证。继续保留全部可达能力、资源 pin、许可、架构、生命周期与原预算。
-
-
-合成段 loading 挂载循环、缓存键重复术语解析、高级请求限制禁用与缓存复习快捷键已在第二十七至三十批分别修复。第三十一轮调度只读探针保留现检查：13 个受控普通场景虽减少同 owner 复验，但第三个 source-only 读取中的 style getter 同步替换同文本 Text 时，复用先前结果留下脱离节点身份；这只是受控端口反例，未当成原生复现或 CPU 收益，未实施。证据为 `round31-page-scheduling-audit/`。第三十二轮已撤回 Cloud 普通历史入口的减加载推荐；LearningCenter 的 History/Memory 首用加载已在第三十一批实施，实际收藏阶段新增请求文件减少 20,641 B，父装配、加载故障与原行为通过限定验证。第三十四轮审计确认的八个既不可达设置子 UI 已在第三十二批排除，完整独立脚本实际减少 183,104 B，仍比原 3,600,000 B 门槛多 38,416 B。继续审查其 Options/IIFE 归属与可证明不可达的资源，保持可达服务、本地模型/TTS、数据、语言、许可和原门槛，不为达预算删除已有能力。请求队列仍在 response body 完成前占用并发槽；会改变错误种类的同步 deadline 合并未实施。
+第五十四批已将原漫画归一化五函数完整迁至轻量入口，保留旧公开函数身份、用户规则顺序、URL 校验、目录及阅读器消费者。完整独立脚本减 10,897 B 至 3,812,632 B，原 3,600,000 B 预算仍超 212,632 B；四正式产物、1,134 个聚焦案例、新模块四维 100% 与八次有限原生通用设置及五阶段 Chrome 漫画设置检查均按本批证据记录，不主张整体或显著提速。下一步验证配置 store 启动的两次同参 Config 构造能否复用既有共享实例，固定字段快照仍必须早于任何 watch/hydration，保留未知兼容字段、凭据边界、revision CAS 和原初始化行为。私有生产/owner 草稿尚未执行，须在新 clean checkpoint 上重绑并完成实际旧源反例、候选、完整产物检查；服务添加 Dialog 首次加载失败恢复也仅为后续设计候选。继续保留可达能力、许可、资源 pin、架构与原预算。
 
 模型目录与语言检测、写作设置与阅读卡片的职责拆分已在第四批完成，第五批补齐轻量中文标签和字幕模型协议。继续审计其他公开出口和高频全文/悬浮/选区路径，只对能复现的重复工作做最小优化。
 

@@ -2,44 +2,13 @@
  * @file src/core/config/manga.ts
  * 文件职责：定义漫画阅读页的内置匹配与用户扩展规则，使网站识别独立于普通图片和悬浮球开关。
  * 主要内容：精确适配 MANGA Plus、Pixiv，并接入经过结构核对的正文规则及 GANMA 路径、MangaLib p 与既有 page 页码的稳定章节身份；仅自动源语言使用已核对的俄语和韩语阅读路径提示，手动源语言与自定义规则优先；网站目录与通用路径配合 DOM 检测，Countdown 主页须有正文才发布入口；可读背景接入连续模式，无法读取的画布和分片走圈选入口；校验用户规则与提前翻译窗口，拒绝无正文首页、冒充内置站点的域名和非网页协议。
- * 模块边界：纯配置领域规则，不读取 DOM、不保存配置、不请求图片；正文图片是否可处理由漫画阅读器判断。
+ * 模块边界：纯配置领域匹配，用户规则与数值归一化由同一轻量模块实现并保留本文件公开导出；不读取 DOM、不保存配置、不请求图片，正文图片是否可处理由漫画阅读器判断。
  */
 import {isCatalogMangaHost, MANGA_READER_SELECTORS} from './mangaSiteCatalog';
 import {resolveMangaReaderProfile} from './mangaReaderProfiles';
-export interface MangaSiteRule {hostname: string; pathPrefix: string; selector: string}
+import {normalizeMangaSiteRules, type MangaSiteRule} from './mangaNormalization';
+export {createMangaSiteRule, normalizeMangaSiteRules, normalizeMangaPrefetchPages, normalizeMangaCachePages, mangaCachePixelBudget, type MangaSiteRule} from './mangaNormalization';
 export interface MangaSite {name: string; selector: string; custom: boolean; generic?: boolean; requireContent?: boolean; sourceLanguage?: 'ru' | 'ko'; chapterPath?: string; pageQueryParameter?: 'page' | 'p'; canvasSelector?: string; canvasInteractionSelector?: string; loadingSelector?: string; backgroundSelector?: string; areaSelector?: string}
-
-/** 旧配置默认提前三页；限制窗口，避免整章推理、内存和服务请求失控。 */
-export function normalizeMangaPrefetchPages(value: unknown): number {
-    return typeof value === 'number' && Number.isFinite(value) ? Math.min(5, Math.max(0, Math.floor(value))) : 3;
-}
-
-export function createMangaSiteRule(href: string, selector: string): MangaSiteRule | null {
-    try {
-        const url = new URL(href);
-        const query = selector.trim();
-        if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.port
-            || !query || query.length > 256 || query.includes(':has(')) return null;
-        return {hostname: url.hostname, pathPrefix: url.pathname, selector: query};
-    } catch { return null; }
-}
-
-export function normalizeMangaSiteRules(value: unknown): MangaSiteRule[] {
-    if (!Array.isArray(value)) return [];
-    const result: MangaSiteRule[] = [];
-    const seen = new Set<string>();
-    for (const item of value.slice(0, 20)) {
-        if (!item || typeof item !== 'object' || typeof item.hostname !== 'string'
-            || typeof item.pathPrefix !== 'string' || !item.pathPrefix.startsWith('/')
-            || typeof item.selector !== 'string') continue;
-        const rule = createMangaSiteRule(`https://${item.hostname}${item.pathPrefix}`, item.selector);
-        if (!rule || rule.hostname !== item.hostname || rule.pathPrefix !== item.pathPrefix) continue;
-        const key = `${rule.hostname}${rule.pathPrefix}`;
-        if (seen.has(key)) continue;
-        seen.add(key); result.push(rule);
-    }
-    return result;
-}
 
 export function resolveMangaSite(href: string, rules: MangaSiteRule[] = []): MangaSite | null {
     try {
@@ -69,12 +38,4 @@ export function resolveMangaSite(href: string, rules: MangaSiteRule[] = []): Man
 /** 只在自动模式使用内置阅读路径的已确认语言；不猜测页面文本，不写回全局偏好。 */
 export function resolveMangaSourceLanguage(href: string, sourceLanguage: string, rules: MangaSiteRule[] = []): string {
     return sourceLanguage === 'auto' ? resolveMangaSite(href, rules)?.sourceLanguage ?? sourceLanguage : sourceLanguage;
-}
-
-/** 正常页快速复用的容量；总像素预算另行约束超长、超大图片。 */
-export function normalizeMangaCachePages(value: unknown): number {
-    return typeof value === 'number' && Number.isFinite(value) ? Math.max(1, Math.min(24, Math.floor(value))) : 12;
-}
-export function mangaCachePixelBudget(value: unknown): number {
-    return normalizeMangaCachePages(value) * 2_000_000;
 }
