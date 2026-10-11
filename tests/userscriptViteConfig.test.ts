@@ -6,6 +6,7 @@ import {gunzipSync} from 'node:zlib';
 import {runInNewContext} from 'node:vm';
 import {describe, expect, it, vi} from 'vitest';
 import {ungzip} from 'pako';
+import ts from 'typescript';
 import {zhCNMessages, UI_LANGUAGE_BUNDLES, userscriptMessages} from '@/userscript/languageBundles';
 import {zhCNMessages as extensionChinese} from '@/src/core/i18n/messages/zh-CN';
 import {UI_LANGUAGE_BUNDLES as extensionBundles} from '@/src/core/i18n/bundles';
@@ -672,6 +673,7 @@ describe('GF plain inline CSS resources', () => {
         ['pickerStyles', 'src/features/section-translation/content/picker.css', ['src/features/section-translation/content/picker.ts']],
     ] as const;
     const keys = styles.map(([name]) => name);
+    const resourceKeys = [...keys, 'loadingIndicatorStyles'];
     const prefix = '\0fluentread-userscript-inline-style:';
     async function inMode(mode: 'standard' | 'standalone' | 'greasyfork', check: (module: typeof import('@/userscript/vite.config')) => Promise<void> | void) {
         vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', mode === 'standalone' ? '1' : '0');
@@ -713,7 +715,7 @@ describe('GF plain inline CSS resources', () => {
             await Reflect.apply(plugin.generateBundle!.handler!, {emitFile: (asset: any) => emitted.push(asset)}, [{}, {'fluent-read.user.js': entry}]);
             if (mode === 'greasyfork') {
                 expect(emitted).toHaveLength(1);
-                expect(Object.keys(runInNewContext(emitted[0].source, {}, {timeout: 5000}).inlineStyles)).toEqual(keys);
+                expect(Object.keys(runInNewContext(emitted[0].source, {}, {timeout: 5000}).inlineStyles)).toEqual(resourceKeys);
             } else expect(emitted).toHaveLength(0);
         });
     });
@@ -721,7 +723,7 @@ describe('GF plain inline CSS resources', () => {
     it('accepts only the seven real consumer edges and preserves complete strings from aliases, absolute and relative paths', async () => {
         await inMode('greasyfork', async ({createUserscriptCatalogCompressionPlugin: createPlugin, readUserscriptInlineStylesResource: readStyles}) => {
             const resource = readStyles();
-            expect(Object.keys(resource)).toEqual(keys);
+            expect(Object.keys(resource)).toEqual(resourceKeys);
             const {resolveId, load} = hooks(createPlugin());
             for (const [name, path, consumers] of styles) {
                 for (const consumer of consumers) {
@@ -799,7 +801,7 @@ describe('GF plain inline CSS resources', () => {
             await Reflect.apply(plugin.generateBundle!.handler!, {emitFile: (asset: any) => emitted.push(asset)}, [{}, bundle]);
             expect(emitted.map(asset => asset.fileName)).toEqual(['fluentread-data.v1.js']);
             const data = runInNewContext(emitted[0].source, {}, {timeout: 5000});
-            expect(Object.keys(data.inlineStyles)).toEqual(keys);
+            expect(Object.keys(data.inlineStyles)).toEqual(resourceKeys);
             expect(data.inlineStyles).toEqual(readStyles());
             expect(data.english).toEqual(UI_LANGUAGE_BUNDLES['en-US']);
             expect(data.zhCNMessages).toEqual(zhCNMessages);
@@ -811,6 +813,219 @@ describe('GF plain inline CSS resources', () => {
             for (const [name, path] of styles) expect(data.inlineStyles[name]).toBe(readFileSync(resolve(root, path), 'utf8'));
             expect(emitted[0].source).toContain(readFileSync(resolve(root, 'public/third-party-notices/unicode-17.0.0.txt'), 'utf8'));
             expect(entry.code).toContain('ENTRY_SENTINEL');
+        });
+    });
+});
+
+
+describe('GF translation insight repository boundary', () => {
+    it('keeps the disabled recorder scoped to HTTP(S) userscript metadata', () => {
+        const metadata = readFileSync(resolve(process.cwd(), 'userscript/metadata.ts'), 'utf8');
+        const matches = Array.from(metadata.matchAll(/@match\s+([^'\s]+)/gu), match => match[1]);
+        expect(matches).toEqual(['http://*/*', 'https://*/*']);
+    });
+
+    it.each(['standard', 'standalone', 'greasyfork'] as const)
+    ('uses exact repository aliases only for the GF output (%s)', async mode => {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', mode === 'standalone' ? '1' : '0');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', mode === 'greasyfork' ? '1' : '0');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
+        try {
+            vi.resetModules();
+            const {userscriptAliases: aliases} = await import('@/userscript/vite.config');
+            const ports = ['modelUsageRepository', 'translationStatsRepository'];
+            for (const port of ports) {
+                const specifier = `@/src/platform/storage/${port}`;
+                const exact = aliases.find(alias => alias.find instanceof RegExp && alias.find.test(specifier));
+                if (mode !== 'greasyfork') {expect(exact).toBeUndefined(); continue;}
+                expect(exact?.replacement).toBe(resolve(process.cwd(), 'userscript/translationInsights.ts'));
+                for (const other of [specifier + '.ts', specifier + '/nested', specifier + '?query', 'prefix/' + specifier]) {
+                    expect((exact!.find as RegExp).test(other)).toBe(false);
+                }
+            }
+            expect(aliases.at(-1)?.find).toBe('@');
+        } finally {vi.unstubAllEnvs(); vi.resetModules();}
+    });
+
+    it('keeps generation zero and ignores record inputs without database imports or calls', async () => {
+        const ts = await import('typescript');
+        const source = readFileSync(resolve(process.cwd(), 'userscript/translationInsights.ts'), 'utf8');
+        const ast = ts.createSourceFile('translationInsights.ts', source, ts.ScriptTarget.ESNext, true);
+        const imports = ast.statements.filter(ts.isImportDeclaration);
+        expect(imports.every(statement => statement.importClause?.isTypeOnly)).toBe(true);
+        expect(imports.map(statement => (statement.moduleSpecifier as import('typescript').StringLiteral).text)).toEqual([
+            '@/src/services/model-usage/types', '@/src/services/translation-stats/types',
+        ]);
+        const calls: string[] = [];
+        const visit = (node: import('typescript').Node) => {
+            if (ts.isCallExpression(node) || ts.isNewExpression(node)) calls.push(node.expression.getText(ast));
+            ts.forEachChild(node, visit);
+        };
+        visit(ast);
+        expect(calls).toEqual([]);
+        const adapter = await import('@/userscript/translationInsights');
+        expect(Object.keys(adapter).sort()).toEqual(['modelUsageRepository', 'translationStatsRepository']);
+        const event = new Proxy({}, {get() {throw new Error('disabled recorder read an event');}});
+        const events = new Proxy([], {get() {throw new Error('disabled recorder read an event array');}});
+        for (const generation of [0, 1, 99]) {
+            expect(adapter.modelUsageRepository.captureGeneration()).toBe(0);
+            expect(adapter.translationStatsRepository.captureGeneration()).toBe(0);
+            await expect(adapter.modelUsageRepository.recordMany(events, generation)).resolves.toBe(0);
+            expect(adapter.translationStatsRepository.record(
+                event as Parameters<typeof adapter.translationStatsRepository.record>[0], generation,
+            )).toBeUndefined();
+        }
+        expect(adapter.modelUsageRepository.captureGeneration()).toBe(0);
+        expect(adapter.translationStatsRepository.captureGeneration()).toBe(0);
+    });
+});
+
+
+describe('GF private loading indicator style resource boundary', () => {
+    const root = process.cwd();
+    const id = resolve(root, 'src/ui/translationLoadingIndicator.ts');
+    const source = readFileSync(id, 'utf8');
+    const binding = 'LOADING_INDICATOR_STYLES';
+    const resourceKeys = [
+        'translationDisplayStyles', 'pageStyles', 'sentenceHighlightStyles',
+        'reencounterStyles', 'noticeStyles', 'pickerStyles', 'loadingIndicatorStyles',
+    ];
+    const error = 'Userscript loading indicator styles must be one private top-level const string';
+    function initializer(code: string) {
+        const ast = ts.createSourceFile(id, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+        const declarations = ast.statements.filter(ts.isVariableStatement)
+            .flatMap(statement => Array.from(statement.declarationList.declarations))
+            .filter(declaration => ts.isIdentifier(declaration.name) && declaration.name.text === binding);
+        expect(declarations).toHaveLength(1);
+        expect(declarations[0].initializer).toBeDefined();
+        return {ast, value: declarations[0].initializer!};
+    }
+    function codeExceptInitializer(code: string) {
+        const {ast, value} = initializer(code);
+        return code.slice(0, value.getStart(ast)) + '/* SAME_INITIALIZER_BOUNDARY */' + code.slice(value.end);
+    }
+    function evaluateInitializer(code: string, data: unknown): string {
+        const {ast, value} = initializer(code);
+        return runInNewContext('(' + value.getText(ast) + ')',
+            {__FLUENTREAD_USERSCRIPT_DATA__: data}, {timeout: 5000});
+    }
+    async function inMode(mode: 'standard' | 'standalone' | 'greasyfork', check: (module: typeof import('@/userscript/vite.config')) => Promise<void> | void) {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', mode === 'standalone' ? '1' : '0');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', mode === 'greasyfork' ? '1' : '0');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
+        try {
+            vi.resetModules();
+            await check(await import('@/userscript/vite.config'));
+        } finally {vi.unstubAllEnvs(); vi.resetModules();}
+    }
+    function transform(plugin: ReturnType<typeof createUserscriptCatalogCompressionPlugin>, code: string, moduleId = id) {
+        const hook = typeof plugin.transform === 'function' ? plugin.transform : plugin.transform!.handler;
+        const watch = vi.fn();
+        const result = Reflect.apply(hook, {addWatchFile: watch}, [code, moduleId]);
+        return {result, watch};
+    }
+
+    it.each(['standard', 'standalone', 'greasyfork'] as const)
+    ('only replaces the exact module initializer in %s when GF is selected', async mode => {
+        await inMode(mode, ({createUserscriptCatalogCompressionPlugin: createPlugin, readUserscriptInlineStylesResource: readStyles}) => {
+            const {result, watch} = transform(createPlugin(), source);
+            if (mode !== 'greasyfork') {
+                expect(result).toBeNull();
+                expect(watch).not.toHaveBeenCalled();
+                // Other outputs do not even parse the private-constant candidate path.
+                expect(transform(createPlugin(), 'const broken = ;').result).toBeNull();
+                return;
+            }
+            expect(watch.mock.calls).toEqual([[id]]);
+            expect(result.map).toBeNull();
+            expect(codeExceptInitializer(result.code)).toBe(codeExceptInitializer(source));
+            const original = initializer(source).value;
+            expect(ts.isNoSubstitutionTemplateLiteral(original)).toBe(true);
+            const expected = (original as import('typescript').NoSubstitutionTemplateLiteral).text;
+            const resource = readStyles();
+            expect(Object.keys(resource)).toEqual(resourceKeys);
+            expect(createHash('sha256').update(expected).digest('hex')).toBe('dd1be4af297aa90a101a530a909cec21867fa8648fa98ee6da9757a4efc4ccfb');
+            expect(resource.loadingIndicatorStyles).toBe(expected);
+            const restored = evaluateInitializer(result.code, {inlineStyles: JSON.parse(JSON.stringify(resource))});
+            expect(restored).toBe(expected);
+            expect(Buffer.from(restored, 'utf8')).toEqual(Buffer.from(expected, 'utf8'));
+            expect(Array.from({length: restored.length}, (_, index) => restored.charCodeAt(index)))
+                .toEqual(Array.from({length: expected.length}, (_, index) => expected.charCodeAt(index)));
+            expect(result.code.slice(0, initializer(result.code).value.getStart(initializer(result.code).ast))).toBe(source.slice(0, original.getStart(initializer(source).ast)));
+            expect(result.code).not.toMatch(/\b(?:fetch|atob|inflateWithPako)\s*\(/u);
+        });
+    });
+
+    it.each([
+        ['string literal', JSON.stringify('ASCII\n汉字 😀 \u2028 line \ud800 lone \udfff end')],
+        ['static template', '`\n:host { color: red; }\n`'],
+        ['empty string', "''"],
+    ])('accepts a single private %s without changing any surrounding code or UTF-16 units', async (_label, literal) => {
+        await inMode('greasyfork', ({createUserscriptCatalogCompressionPlugin: createPlugin}) => {
+            const code = 'const BEFORE = 1;\nconst ' + binding + ' = ' + literal + ';\nfunction untouched() { return BEFORE; }\n';
+            const original = initializer(code).value as import('typescript').StringLiteralLike;
+            const {result} = transform(createPlugin(), code);
+            expect(codeExceptInitializer(result.code)).toBe(codeExceptInitializer(code));
+            const value = JSON.parse(JSON.stringify(original.text));
+            const restored = evaluateInitializer(result.code, {inlineStyles: {loadingIndicatorStyles: value}});
+            expect(restored).toBe(original.text);
+            expect(Array.from({length: restored.length}, (_, index) => restored.charCodeAt(index)))
+                .toEqual(Array.from({length: original.text.length}, (_, index) => original.text.charCodeAt(index)));
+            expect(Array.from(restored, character => character.codePointAt(0)))
+                .toEqual(Array.from(original.text, character => character.codePointAt(0)));
+        });
+    });
+
+    it.each([
+        ['wrong path', resolve(root, 'src/ui/other.ts')],
+        ['neighbor path', id + '.backup'], ['inline query', id + '?inline'],
+        ['Vue query', id + '?vue&type=script'], ['fragment', id + '#fragment'],
+    ])('does not transform or parse %s', async (_label, otherId) => {
+        await inMode('greasyfork', ({createUserscriptCatalogCompressionPlugin: createPlugin}) => {
+            const {result, watch} = transform(createPlugin(), 'const damaged = ;', otherId);
+            expect(result).toBeNull();
+            expect(watch).not.toHaveBeenCalled();
+        });
+    });
+
+    it.each([
+        ['interpolated template', 'const LOADING_INDICATOR_STYLES = `style ${value}`;'],
+        ['string expression', "const LOADING_INDICATOR_STYLES = 'a' + 'b';"],
+        ['function expression', 'const LOADING_INDICATOR_STYLES = makeStyles();'],
+        ['duplicate binding', "const LOADING_INDICATOR_STYLES = 'a'; const LOADING_INDICATOR_STYLES = 'b';"],
+        ['nested shadow binding', "const LOADING_INDICATOR_STYLES = 'a'; function nested() { const LOADING_INDICATOR_STYLES = 'b'; }"],
+        ['parameter shadow binding', "const LOADING_INDICATOR_STYLES = 'a'; function nested(LOADING_INDICATOR_STYLES: string) {}"],
+        ['destructured duplicate binding', "const LOADING_INDICATOR_STYLES = 'a'; const {value: LOADING_INDICATOR_STYLES} = styles;"],
+        ['function binding duplicate', "const LOADING_INDICATOR_STYLES = 'a'; function LOADING_INDICATOR_STYLES() {}"],
+        ['import binding duplicate', "import {styles as LOADING_INDICATOR_STYLES} from './other'; const LOADING_INDICATOR_STYLES = 'a';"],
+        ['mutable binding', "let LOADING_INDICATOR_STYLES = 'a';"],
+        ['multiple declarators', "const LOADING_INDICATOR_STYLES = 'a', other = 1;"],
+        ['exported binding', "export const LOADING_INDICATOR_STYLES = 'a';"],
+        ['nested-only binding', "function nested() { const LOADING_INDICATOR_STYLES = 'a'; }"],
+        ['missing binding', "const OTHER_STYLES = 'a';"],
+        ['damaged syntax', 'const LOADING_INDICATOR_STYLES = `unclosed'],
+    ])('rejects %s instead of widening the source-constant boundary', async (_label, code) => {
+        await inMode('greasyfork', ({createUserscriptCatalogCompressionPlugin: createPlugin}) => {
+            expect(() => transform(createPlugin(), code)).toThrow(error);
+        });
+    });
+
+    it.each([
+        ['missing namespace', undefined], ['missing map', {}], ['missing key', {inlineStyles: {}}],
+        ['number', {inlineStyles: {loadingIndicatorStyles: 42}}],
+        ['null', {inlineStyles: {loadingIndicatorStyles: null}}],
+        ['array', {inlineStyles: {loadingIndicatorStyles: ['CSS']}}],
+        ['boxed string', {inlineStyles: {loadingIndicatorStyles: new String('CSS')}}],
+    ])('throws synchronously for %s before later module work', async (_label, data) => {
+        await inMode('greasyfork', ({createUserscriptCatalogCompressionPlugin: createPlugin}) => {
+            const {result} = transform(createPlugin(), "const LOADING_INDICATOR_STYLES = 'CSS';");
+            const {ast, value} = initializer(result.code);
+            const state = {laterWork: false, __FLUENTREAD_USERSCRIPT_DATA__: data};
+            expect(() => runInNewContext('const restored = (' + value.getText(ast) + '); globalThis.laterWork = true;', state, {timeout: 5000}))
+                .toThrow('Missing pinned userscript inline style: loadingIndicatorStyles');
+            expect(state.laterWork).toBe(false);
         });
     });
 });

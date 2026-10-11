@@ -126,15 +126,48 @@ const inlineStyleFiles = [
     ['pickerStyles', 'src/features/section-translation/content/picker.css', ['src/features/section-translation/content/picker.ts']],
 ] as const;
 
+// 唯一额外源常量：不扩大六份 CSS 的 resolveId 白名单，不外置任何 DOM 函数。
+const loadingIndicatorStylesPath = normalizePath(resolve(root, 'src/ui/translationLoadingIndicator.ts'));
+const loadingIndicatorStylesName = 'LOADING_INDICATOR_STYLES';
+
+/** 资源生成和 GF 初始化值替换共用同一 AST 校验，不执行模块，也不接受计算值或影子绑定。 */
+function parseLoadingIndicatorStyles(code: string) {
+    const source = ts.createSourceFile(loadingIndicatorStylesPath, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    const unsupported = () => new Error('Userscript loading indicator styles must be one private top-level const string');
+    if ((source as ts.SourceFile & {parseDiagnostics: readonly ts.Diagnostic[]}).parseDiagnostics.length) throw unsupported();
+    let bindings = 0;
+    const visit = (node: ts.Node) => {
+        if (ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isBindingElement(node)) {
+            if (ts.isIdentifier(node.name) && node.name.text === loadingIndicatorStylesName) bindings++;
+        } else if (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node)
+            || ts.isClassDeclaration(node) || ts.isClassExpression(node) || ts.isEnumDeclaration(node)
+            || ts.isImportClause(node) || ts.isImportSpecifier(node) || ts.isNamespaceImport(node)) {
+            if (node.name?.text === loadingIndicatorStylesName) bindings++;
+        }
+        ts.forEachChild(node, visit);
+    };
+    visit(source);
+    const statement = source.statements.find(statement => ts.isVariableStatement(statement)
+        && statement.declarationList.declarations.some(declaration =>
+            ts.isIdentifier(declaration.name) && declaration.name.text === loadingIndicatorStylesName));
+    if (bindings !== 1 || !statement || !ts.isVariableStatement(statement) || statement.modifiers?.length
+        || !(statement.declarationList.flags & ts.NodeFlags.Const) || statement.declarationList.declarations.length !== 1) throw unsupported();
+    const initializer = statement.declarationList.declarations[0].initializer;
+    if (!initializer || !(ts.isStringLiteral(initializer) || ts.isNoSubstitutionTemplateLiteral(initializer))) throw unsupported();
+    return {source, initializer};
+}
+
 /** 明文资源按固定键顺序保留完整原字符串；需要 CSS 预处理的新依赖必须先经过 Vite 校验。 */
 export function readUserscriptInlineStylesResource(): Record<string, string> {
-    return Object.fromEntries(inlineStyleFiles.map(([name, path]) => {
+    const styles = inlineStyleFiles.map(([name, path]) => {
         const contents = fs.readFileSync(resolve(root, path), 'utf8');
         if (contents.startsWith('\uFEFF') || /@import\b|url\s*\(|@apply\b/iu.test(contents)) {
             throw new Error(`Userscript inline CSS requires Vite preprocessing: ${path}`);
         }
         return [name, contents];
-    }));
+    });
+    const {initializer} = parseLoadingIndicatorStyles(fs.readFileSync(loadingIndicatorStylesPath, 'utf8'));
+    return Object.fromEntries([...styles, ['loadingIndicatorStyles', initializer.text]]);
 }
 
 /** 无损压缩站点规则、中文文案与 standalone 服务 SVG 数据，并引用 GF 明文样式；产品逻辑仍留在主文件中。 */
@@ -142,6 +175,19 @@ export function createUserscriptCatalogCompressionPlugin(): Plugin {
     return {
         name: 'compress-userscript-site-catalog',
         enforce: 'pre',
+        transform(code, id) {
+            if (!greasyForkSource || normalizePath(id) !== loadingIndicatorStylesPath) return null;
+            const {source, initializer} = parseLoadingIndicatorStyles(code);
+            this.addWatchFile(loadingIndicatorStylesPath);
+            const resourceRead = [
+                '(() => {',
+                '    const style = globalThis.__FLUENTREAD_USERSCRIPT_DATA__?.inlineStyles?.loadingIndicatorStyles;',
+                "    if (typeof style !== 'string') throw new Error('Missing pinned userscript inline style: loadingIndicatorStyles');",
+                '    return style;',
+                '})()',
+            ].join('\n');
+            return {code: code.slice(0, initializer.getStart(source)) + resourceRead + code.slice(initializer.end), map: null};
+        },
         resolveId(source, importer) {
             if (greasyForkSource && importer && source.endsWith('.css?inline')
                 && source.indexOf('?') === source.length - '?inline'.length) {
@@ -548,6 +594,11 @@ function unwrapWxtEntrypoints(): Plugin {
 }
 
 export const userscriptAliases = [
+    // GF 的 HTTP(S) 页面不持久化模型用量或翻译统计；精确替换旁路端口，保留其他产物的原仓库。
+    ...(greasyForkSource ? [
+        {find: /^@\/src\/platform\/storage\/modelUsageRepository$/u, replacement: resolve(root, 'userscript/translationInsights.ts')},
+        {find: /^@\/src\/platform\/storage\/translationStatsRepository$/u, replacement: resolve(root, 'userscript/translationInsights.ts')},
+    ] : []),
     ...(bundleLibraries ? [{find: '@/userscript/pakoRuntime', replacement: resolve(root, 'userscript/pakoBundled.ts')}] : []),
     // dexie 官方 ESM 入口把自身注册到跨 realm 共享的 globalThis[Symbol.for('Dexie')]，版本不一致时会在
     // 模块求值阶段直接抛错。脚本管理器（如 Safari 的 Userscripts）把脚本注入页面主 world，与宿主页面共享

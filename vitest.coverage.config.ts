@@ -767,6 +767,7 @@ export default defineConfig({
                 'src/features/image-translation/content/imageLoads.ts',
                 'src/features/image-translation/content/mangaEntry.ts',
                 'src/core/config/manga.ts',
+                'src/core/config/mangaRules.ts',
                 'src/core/config/mangaSiteCatalog.ts',
                 'src/core/config/mangaReaderProfiles.ts',
                 'src/features/image-translation/background/pixivImageReferrer.ts',

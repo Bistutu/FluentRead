@@ -758,3 +758,27 @@ describe('漫画阅读规则与持久偏好', () => {
         expect(resolveMangaSite('https://mangaplus.shueisha.co.jp/viewer/1024050', [override])).toMatchObject({custom: true, selector: 'main img'});
     });
 });
+
+
+describe('漫画规则的纯归一化模块边界', () => {
+    it('原 public 路径与窄模块共享同一组规则函数和完整行为', async () => {
+        const publicRules = await import('@/src/core/config/manga');
+        const rules = await import('@/src/core/config/mangaRules');
+        for (const key of ['normalizeMangaPrefetchPages', 'createMangaSiteRule', 'normalizeMangaSiteRules', 'normalizeMangaCachePages'] as const) {
+            expect(publicRules[key]).toBe(rules[key]);
+        }
+        const source = [
+            {hostname: 'reader.invalid', pathPrefix: '/chapter', selector: 'main > img'},
+            {hostname: 'reader.invalid', pathPrefix: '/chapter', selector: 'article img'},
+            {hostname: 'reader.invalid', pathPrefix: 'invalid', selector: 'main img'},
+            {hostname: 'reader.invalid', pathPrefix: '/other', selector: 'section img'},
+        ];
+        expect(rules.normalizeMangaSiteRules(source)).toEqual([source[0], source[3]]);
+        expect(source[1].selector).toBe('article img');
+        expect(rules.normalizeMangaPrefetchPages(undefined)).toBe(3);
+        expect(rules.normalizeMangaPrefetchPages(0)).toBe(0);
+        expect(rules.normalizeMangaCachePages(undefined)).toBe(12);
+        expect(rules.normalizeMangaCachePages(100)).toBe(24);
+        expect(publicRules.mangaCachePixelBudget(2)).toBe(4_000_000);
+    });
+});

@@ -1202,53 +1202,125 @@ describe('49F bounded legacy text through real language bundles', () => {
 });
 
 describe('49F actual pinned-data virtual catalog consumer', () => {
-    async function loadCatalogs() {
+    const resourcePath = resolve(process.cwd(), 'userscript/resources/fluentread-data.v1.js');
+    async function loadCatalogs(pinnedSource?: string) {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', '0');
         vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', '1');
         vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');
         vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
-        const {createUserscriptCatalogCompressionPlugin} = await import('@/userscript/vite.config');
-        const {transformWithEsbuild} = await import('vite');
-        const plugin = createUserscriptCatalogCompressionPlugin();
-        const realm = createContext({});
-        runInContext(readFileSync(resolve(process.cwd(), 'userscript/resources/fluentread-data.v1.js'), 'utf8'), realm, {timeout: 5_000});
-        const original = realm.__FLUENTREAD_USERSCRIPT_DATA__.siteCatalogs;
-        const catalogs: Record<string, any> = {};
-        for (const name of ['established', 'websites', 'profiles']) {
-            const resolver = typeof plugin.resolveId === 'function' ? plugin.resolveId : plugin.resolveId!.handler;
-            const loader = typeof plugin.load === 'function' ? plugin.load : plugin.load!.handler;
-            const id = await Reflect.apply(resolver, {}, [`./catalog/${name}.json`, resolve(process.cwd(), 'src/core/site-adaptation/pack.ts')]);
-            const module = await Reflect.apply(loader, {}, [id]);
-            const compiled = await transformWithEsbuild(module, `${name}.js`, {format: 'cjs', target: 'es2018'});
-            realm.module = {exports: {}};
-            runInContext(compiled.code, realm, {timeout: 5_000});
-            catalogs[name] = realm.module.exports.default;
+        const resourceSource = pinnedSource ?? readFileSync(resourcePath, 'utf8');
+        let fixtureReads = 0;
+        if (pinnedSource !== undefined) {
+            // Only the build configuration's exact pinned-resource text read is replaced.
+            // The tracked resource, authoritative catalogs and selector remain untouched.
+            vi.doMock('node:fs', async importOriginal => {
+                const actual = await importOriginal<typeof import('node:fs')>();
+                const native = (actual as unknown as {default?: typeof actual}).default ?? actual;
+                const read = (...args: any[]) => {
+                    if (args[0] === resourcePath && args[1] === 'utf8') {
+                        fixtureReads += 1;
+                        return pinnedSource;
+                    }
+                    return Reflect.apply(native.readFileSync, native, args);
+                };
+                return {...actual, readFileSync: read, default: {...native, readFileSync: read}};
+            });
         }
-        return {catalogs, original};
+        vi.resetModules();
+        try {
+            const {createUserscriptCatalogCompressionPlugin} = await import('@/userscript/vite.config');
+            const {transformWithEsbuild} = await import('vite');
+            const plugin = createUserscriptCatalogCompressionPlugin();
+            const realm = createContext({});
+            runInContext(resourceSource, realm, {timeout: 5_000});
+            const original = realm.__FLUENTREAD_USERSCRIPT_DATA__.siteCatalogs;
+            const before = JSON.stringify(original);
+            const catalogs: Record<string, any> = {};
+            const modules: Record<string, string> = {};
+            for (const name of ['established', 'websites', 'profiles']) {
+                const resolver = typeof plugin.resolveId === 'function' ? plugin.resolveId : plugin.resolveId!.handler;
+                const loader = typeof plugin.load === 'function' ? plugin.load : plugin.load!.handler;
+                const id = await Reflect.apply(resolver, {}, [`./catalog/${name}.json`, resolve(process.cwd(), 'src/core/site-adaptation/pack.ts')]);
+                const module = await Reflect.apply(loader, {}, [id]);
+                modules[name] = module;
+                const compiled = await transformWithEsbuild(module, `${name}.js`, {format: 'cjs', target: 'es2018'});
+                realm.module = {exports: {}};
+                runInContext(compiled.code, realm, {timeout: 5_000});
+                catalogs[name] = realm.module.exports.default;
+            }
+            return {catalogs, original, before, modules, fixtureReads};
+        } finally {
+            if (pinnedSource !== undefined) {vi.doUnmock('node:fs'); vi.resetModules();}
+        }
     }
 
     afterEach(() => vi.unstubAllEnvs());
 
-    it('reconciles all 19 authoritative established rules without mutating pinned data and reuses every unchanged rule', async () => {
-        const {catalogs, original} = await loadCatalogs();
-        expect(original.established).toHaveLength(17);
+    it('roundtrips all 19 currently pinned authoritative rules with complete array and rule identity and no mutation', async () => {
+        const resourceSource = readFileSync(resourcePath, 'utf8');
+        const {catalogs, original, before, modules} = await loadCatalogs();
+        expect(original.established).toHaveLength(19);
         expect(catalogs.established).toHaveLength(19);
         for (const name of ['established', 'websites', 'profiles']) {
-            expect(catalogs[name]).toEqual(JSON.parse(readFileSync(resolve(process.cwd(), `src/core/site-adaptation/catalog/${name}.json`), 'utf8')));
-        }
-        const authoritative = JSON.parse(readFileSync(resolve(process.cwd(), 'src/core/site-adaptation/catalog/established.json'), 'utf8'));
-        for (const rule of original.established) {
-            const expected = authoritative.find((current: any) => current.id === rule.id);
-            const actual = catalogs.established.find((current: any) => current.id === rule.id);
-            if (JSON.stringify(expected) === JSON.stringify(rule)) expect(actual).toBe(rule);
-            else {expect(actual).not.toBe(rule);expect(actual).toEqual(expected);}
+            const authoritative = JSON.parse(readFileSync(resolve(process.cwd(), `src/core/site-adaptation/catalog/${name}.json`), 'utf8'));
+            expect(catalogs[name]).toEqual(authoritative);
+            expect(catalogs[name]).toBe(original[name]);
+            expect(modules[name]).toBe(`export default globalThis.__FLUENTREAD_USERSCRIPT_DATA__.siteCatalogs.${name};`);
+            for (const [key, value] of Object.entries(original[name])) expect(catalogs[name][key]).toBe(value);
         }
         const github = catalogs.established.find((rule: any) => rule.id === 'github');
         expect(github.content.flatMap((entry: any) => entry.css)).toContain('a[data-testid="issue-listitem-title-link"]');
         expect(github.protect).toContain('[data-testid="issues-list-surface"] [class*="Description-module__container"]');
-        expect(original.established.find((rule: any) => rule.id === 'github').protect)
-            .not.toContain('[data-testid="issues-list-surface"] [class*="Description-module__container"]');
-        expect(catalogs.websites).toBe(original.websites); expect(catalogs.profiles).toBe(original.profiles);
+        expect(original.established.find((rule: any) => rule.id === 'github')).toBe(github);
+        expect(JSON.stringify(original)).toBe(before);
+        expect(readFileSync(resourcePath, 'utf8')).toBe(resourceSource);
+    });
+
+    it('reconciles an explicit synthetic old 17-rule pin, adds both new rules and updates GitHub without mutating or copying unchanged rules', async () => {
+        const resourceSource = readFileSync(resourcePath, 'utf8');
+        const sourceRealm = createContext({});
+        runInContext(resourceSource, sourceRealm, {timeout: 5_000});
+        const oldCatalogs = JSON.parse(JSON.stringify(sourceRealm.__FLUENTREAD_USERSCRIPT_DATA__.siteCatalogs));
+        const addedIds = ['github-code-lines', 'video-native-captions'];
+        oldCatalogs.established = oldCatalogs.established.filter((rule: any) => !addedIds.includes(rule.id));
+        const oldGithub = oldCatalogs.established.find((rule: any) => rule.id === 'github');
+        const titleSelector = 'a[data-testid="issue-listitem-title-link"]';
+        const protector = '[data-testid="issues-list-surface"] [class*="Description-module__container"]';
+        oldGithub.content = oldGithub.content.map((entry: any) => ({...entry, css: entry.css.filter((css: string) => css !== titleSelector)}));
+        for (const key of ['protect', 'exclude', 'watchIgnore']) oldGithub[key] = oldGithub[key].filter((css: string) => css !== protector);
+        expect(oldCatalogs.established).toHaveLength(17);
+        expect(oldGithub.content.flatMap((entry: any) => entry.css)).not.toContain(titleSelector);
+        expect(oldGithub.protect).not.toContain(protector);
+        const fixtureBefore = JSON.stringify(oldCatalogs);
+        const pinnedSource = 'globalThis.__FLUENTREAD_USERSCRIPT_DATA__ = ' + JSON.stringify({siteCatalogs: oldCatalogs}) + ';';
+        const {catalogs, original, before, modules, fixtureReads} = await loadCatalogs(pinnedSource);
+        expect(fixtureReads).toBeGreaterThan(0);
+        expect(before).toBe(fixtureBefore);
         expect(original.established).toHaveLength(17);
+        expect(catalogs.established).toHaveLength(19);
+        expect(catalogs.established).not.toBe(original.established);
+        expect(modules.established).toContain('const updates = new Map(');
+        for (const name of ['established', 'websites', 'profiles']) {
+            expect(catalogs[name]).toEqual(JSON.parse(readFileSync(resolve(process.cwd(), `src/core/site-adaptation/catalog/${name}.json`), 'utf8')));
+        }
+        for (const rule of original.established) {
+            const actual = catalogs.established.find((current: any) => current.id === rule.id);
+            if (rule.id === 'github') expect(actual).not.toBe(rule);
+            else expect(actual).toBe(rule);
+        }
+        for (const addedId of addedIds) {
+            expect(original.established.find((rule: any) => rule.id === addedId)).toBeUndefined();
+            expect(catalogs.established.find((rule: any) => rule.id === addedId)).toBeDefined();
+        }
+        const github = catalogs.established.find((rule: any) => rule.id === 'github');
+        expect(github.content.flatMap((entry: any) => entry.css)).toContain(titleSelector);
+        for (const key of ['protect', 'exclude', 'watchIgnore']) expect(github[key]).toContain(protector);
+        expect(original.established.find((rule: any) => rule.id === 'github').content.flatMap((entry: any) => entry.css)).not.toContain(titleSelector);
+        expect(original.established.find((rule: any) => rule.id === 'github').protect).not.toContain(protector);
+        expect(catalogs.websites).toBe(original.websites); expect(catalogs.profiles).toBe(original.profiles);
+        expect(JSON.stringify(original)).toBe(before);
+        expect(JSON.stringify(oldCatalogs)).toBe(fixtureBefore);
+        expect(readFileSync(resourcePath, 'utf8')).toBe(resourceSource);
     });
 
     it.each(['https://meet.google.com/fixture', 'https://github.com/fixture'] as const)('excludes native captions or code through the actual virtual catalog and real engine at %s', async url => {

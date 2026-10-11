@@ -61,8 +61,8 @@ async function bootstrap(): Promise<void> {
         __FLUENTREAD_FULL_OPTIONS__ ? import('./platformFull') : import('./platform'),
         __FLUENTREAD_FULL_OPTIONS__ ? import('./settingsFull') : import('./settings'),
         import('@/entrypoints/content'),
-        import('@/src/app/content/features'),
-        import('@/src/services/config/store'),
+        import('./pageTranslationRuntime'),
+        import('./configRuntime'),
     ]);
     await configModule.configReady;
     const ctx = createUserscriptContentContext();

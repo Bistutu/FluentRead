@@ -6,40 +6,11 @@
  */
 import {isCatalogMangaHost, MANGA_READER_SELECTORS} from './mangaSiteCatalog';
 import {resolveMangaReaderProfile} from './mangaReaderProfiles';
-export interface MangaSiteRule {hostname: string; pathPrefix: string; selector: string}
+import {normalizeMangaSiteRules, normalizeMangaCachePages} from './mangaRules';
+import type {MangaSiteRule} from './mangaRules';
+export {normalizeMangaPrefetchPages, createMangaSiteRule, normalizeMangaSiteRules, normalizeMangaCachePages} from './mangaRules';
+export type {MangaSiteRule} from './mangaRules';
 export interface MangaSite {name: string; selector: string; custom: boolean; generic?: boolean; requireContent?: boolean; sourceLanguage?: 'ru' | 'ko'; chapterPath?: string; pageQueryParameter?: 'page' | 'p'; canvasSelector?: string; canvasInteractionSelector?: string; loadingSelector?: string; backgroundSelector?: string; areaSelector?: string}
-
-/** 旧配置默认提前三页；限制窗口，避免整章推理、内存和服务请求失控。 */
-export function normalizeMangaPrefetchPages(value: unknown): number {
-    return typeof value === 'number' && Number.isFinite(value) ? Math.min(5, Math.max(0, Math.floor(value))) : 3;
-}
-
-export function createMangaSiteRule(href: string, selector: string): MangaSiteRule | null {
-    try {
-        const url = new URL(href);
-        const query = selector.trim();
-        if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password || url.port
-            || !query || query.length > 256 || query.includes(':has(')) return null;
-        return {hostname: url.hostname, pathPrefix: url.pathname, selector: query};
-    } catch { return null; }
-}
-
-export function normalizeMangaSiteRules(value: unknown): MangaSiteRule[] {
-    if (!Array.isArray(value)) return [];
-    const result: MangaSiteRule[] = [];
-    const seen = new Set<string>();
-    for (const item of value.slice(0, 20)) {
-        if (!item || typeof item !== 'object' || typeof item.hostname !== 'string'
-            || typeof item.pathPrefix !== 'string' || !item.pathPrefix.startsWith('/')
-            || typeof item.selector !== 'string') continue;
-        const rule = createMangaSiteRule(`https://${item.hostname}${item.pathPrefix}`, item.selector);
-        if (!rule || rule.hostname !== item.hostname || rule.pathPrefix !== item.pathPrefix) continue;
-        const key = `${rule.hostname}${rule.pathPrefix}`;
-        if (seen.has(key)) continue;
-        seen.add(key); result.push(rule);
-    }
-    return result;
-}
 
 export function resolveMangaSite(href: string, rules: MangaSiteRule[] = []): MangaSite | null {
     try {
@@ -71,10 +42,6 @@ export function resolveMangaSourceLanguage(href: string, sourceLanguage: string,
     return sourceLanguage === 'auto' ? resolveMangaSite(href, rules)?.sourceLanguage ?? sourceLanguage : sourceLanguage;
 }
 
-/** 正常页快速复用的容量；总像素预算另行约束超长、超大图片。 */
-export function normalizeMangaCachePages(value: unknown): number {
-    return typeof value === 'number' && Number.isFinite(value) ? Math.max(1, Math.min(24, Math.floor(value))) : 12;
-}
 export function mangaCachePixelBudget(value: unknown): number {
     return normalizeMangaCachePages(value) * 2_000_000;
 }
