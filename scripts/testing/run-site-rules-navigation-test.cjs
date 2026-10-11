@@ -197,6 +197,7 @@ async function productHunt() {
   const evaluate = () => content.evaluate(() => ({url: location.href, title: document.title, heading: document.querySelector('h1')?.textContent,
     timeOrigin: performance.timeOrigin, text: document.body.innerText.slice(0, 600), count: document.querySelectorAll('.fluent-read-bilingual-content').length,
     nested: document.querySelectorAll('.fluent-read-bilingual-content .fluent-read-bilingual-content').length,
+    pageText: document.body.innerText.slice(0, 4000),
     headings: [...document.querySelectorAll('h1,h2,h3')].map(node => {const clone = node.cloneNode(true); clone.querySelectorAll('.fluent-read-bilingual-content').forEach(part => part.remove());
       return {tag: node.tagName, source: clone.textContent.trim(), translations: [...node.querySelectorAll('.fluent-read-bilingual-content')].map(part => part.textContent)};}),
     visibleLinks: [...document.querySelectorAll('a[href]')].filter(a => a.getClientRects().length && a.href.startsWith('https://www.producthunt.com/products/reso')).map(a => ({href: a.href, text: a.textContent.slice(0, 80)})).slice(0, 30)}));
@@ -222,7 +223,8 @@ async function productHunt() {
           assert(requests.slice(start).some(request => request.source.startsWith('ReSO is a generative engine optimization platform')), 'No new product body provider request after homepage link');
           const after = await evaluate();
           result.navigations.push({from: before.url, to: after.url, clickedHref: resoLink.href, restoredBeforeClick: false,
-            mode: before.timeOrigin === after.timeOrigin ? 'SPA' : 'document', requests: requests.length - start, count: after.count});
+            mode: before.timeOrigin === after.timeOrigin ? 'SPA' : 'document', requests: requests.length - start, count: after.count,
+            headings: after.headings, newBodySources: requests.slice(start).filter(request => request.source.startsWith('ReSO is a generative engine optimization platform')).map(request => request.source)});
           result.homeEntry.status = 'passed'; clickedHomeLink = true;
         } else {result.homeEntry.reason = 'No observed homepage link points to Reso in the current live listing';}
       } else {result.homeEntry.status = 'quarantine'; result.homeEntry.reason = 'Homepage content blocked by remote access or browser verification';}
@@ -249,13 +251,13 @@ async function productHunt() {
     const from = await evaluate(), before = requests.length;
     await clickObservedLink(next);
     await until(() => content.url() === next || new URL(content.url()).pathname === new URL(next).pathname, 'Reso subpage real link');
-    await ready(); await until(() => translatedHeading('H2', /^ReSO AI Reviews$/iu), 'Reso new Reviews heading automatic translation', 18000);
+    await ready(); await until(() => translatedHeading('H1', /^ReSO AI Reviews$/iu), 'Reso new Reviews heading automatic translation', 18000);
     assert(requests.slice(before).some(request => request.source === 'ReSO AI Reviews'), 'No new Reviews heading provider request after real subpage link');
     await delay(8000);
     const after = await evaluate(); assert.equal(after.nested, 0);
     result.navigations.push({from: from.url, to: after.url, clickedHref: next, restoredBeforeClick: false, mode: from.timeOrigin === after.timeOrigin ? 'SPA' : 'document', requests: requests.length - before, count: after.count, headings: after.headings,
-      providerSources: requests.slice(before).map(request => request.source)});
-    await content.locator('h2').filter({hasText: /^ReSO AI Reviews/u}).scrollIntoViewIfNeeded();
+      providerSources: requests.slice(before).map(request => request.source), pageText: after.pageText});
+    await content.locator('h1').filter({hasText: /^ReSO AI Reviews/u}).scrollIntoViewIfNeeded();
     await shot(content, 'producthunt-reso-subpage');
     const overview = after.visibleLinks.find(link => new URL(link.href).pathname === '/products/reso' && !new URL(link.href).hash);
     assert(overview, 'No observed overview link returns to the user-provided Reso URL');
@@ -269,7 +271,8 @@ async function productHunt() {
     assert(requests.slice(requestStart).some(request => request.source.startsWith('ReSO is a generative engine optimization platform')), 'No new product body provider request after restored return');
     await delay(600);
     const returned = await evaluate(); assert.equal(returned.nested, 0);
-    result.navigations.push({from: beforeReturn.url, to: returned.url, clickedHref: overview.href, restoredBeforeClick: true, mode: beforeReturn.timeOrigin === returned.timeOrigin ? 'SPA' : 'document', requests: requests.length - requestStart, count: returned.count});
+    result.navigations.push({from: beforeReturn.url, to: returned.url, clickedHref: overview.href, restoredBeforeClick: true, mode: beforeReturn.timeOrigin === returned.timeOrigin ? 'SPA' : 'document', requests: requests.length - requestStart, count: returned.count,
+      headings: returned.headings, newBodySources: requests.slice(requestStart).filter(request => request.source.startsWith('ReSO is a generative engine optimization platform')).map(request => request.source)});
     await shot(content, 'producthunt-reso-return'); result.status = 'passed';
   } catch (error) {
     result.error = error.stack; result.final = await evaluate().catch(() => null);
