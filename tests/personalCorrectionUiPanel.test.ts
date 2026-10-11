@@ -1,7 +1,7 @@
 /**
  * @file tests/personalCorrectionUiPanel.test.ts
  * 文件职责：执行真实 Vue 校订模板验证用户可编辑、可预览、可撤销及可删除的界面流程。
- * 主要内容：原译文纯文本、候选差异、显式项目加入、管理状态、范围帮助悬停与聚焦、分层 Escape、滚动定位及卸载清理。
+ * 主要内容：原译文纯文本、页签侧紧凑语言与底部范围、按需项目创建、候选差异、显式项目加入、管理状态、帮助悬停与聚焦、分层 Escape、滚动定位及卸载清理。
  * 模块边界：自有 linkedom 渲染器执行真实客户端模板和封闭根内事件，以确定几何验证定位分支；真实浏览器截图验收另行执行。
  */
 import {createRequire} from 'node:module';
@@ -54,6 +54,14 @@ describe('actual personal correction panel',()=>{
     expect(f.get('[data-testid=correction-save]').hasAttribute('disabled')).toBe(true);await f.click('[data-testid=correction-preview]');expect(f.controller.preview).toHaveBeenCalledTimes(1);expect(f.get('[data-testid=correction-preview-result]').querySelector('img')).toBeNull();
     await f.click('[data-testid=correction-save]');expect(f.controller.save).toHaveBeenCalledTimes(1);await f.click('[data-testid=correction-close]');expect(focused).toBe(outside);expect(document.querySelector('[role=dialog]')).toBeNull();
   });
+  it('keeps friendly language names beside the tabs and the compact scope in the footer without changing language identity',async()=>{
+    const longProject='论文相关网页'.repeat(10);const f=await mount({open:true,undoToken:'retained-undo',projects:[{id:pid,label:longProject}]});const language=f.get('[data-testid=correction-language]'),scope=f.get('[data-testid=correction-scope]');
+    expect(language.closest('nav.tabs')).not.toBeNull();expect(language.textContent).toBe('English → 简体中文');expect(language.title).toContain('en → zh-CN');expect(f.state.sourceLanguage).toBe('en');expect(f.state.targetLanguage).toBe('zh-CN');expect(f.root.querySelector('.panel-body .language-row,.panel-body .language-pair,.panel-body .scope-row')).toBeNull();
+    expect(scope.closest('footer .scope-row')).not.toBeNull();expect(scope.title).toBe('仅当前网页');expect(f.get('label[for=correction-scope]').textContent).toBe('使用范围');expect(f.get('.new-project').closest('footer')).toBe(f.get('[data-testid=correction-undo]').closest('footer'));expect(f.get('.new-project').hasAttribute('open')).toBe(false);
+    f.state.sourceLanguage='auto';f.state.targetLanguage='zh-TW';await settle();expect(language.textContent).toBe('自动检测 → 繁體中文');expect(f.state.targetLanguage).toBe('zh-TW');
+    f.state.sourceLanguage='de';f.state.targetLanguage='custom-language';f.state.scopeId=pid;await settle();expect(language.textContent).toBe('Deutsch → custom-language');expect(language.title).toContain('de → custom-language');expect(scope.title).toBe(longProject);
+    f.state.scopeId='removed-project';await settle();expect(scope.title).toBe('项目');await f.click('[data-testid=correction-manage]');expect(language.closest('nav.tabs')).not.toBeNull();expect(f.root.querySelector('footer .scope-row')).toBeNull();
+  });
   it('displays original/current diff, exact affected sentences, approximate references and explicit project actions',async()=>{
     const saved=entry(),project=entry({id:pid,scope:{kind:'project',id:pid,label:'论文'}});const f=await mount();f.state.open=true;f.state.projects=[{id:pid,label:'论文'}] as any;f.state.suggestions=[saved] as any;f.state.conflicts=[project] as any;f.state.previewed=true;f.state.affected=[{source:saved.source,translation:'旧译文'}] as any;await settle();
     expect(f.get('[data-testid=correction-affected-count]').textContent).toContain('1 处');expect(document.querySelector('.diff')!.textContent).toContain('已保存的原句');
@@ -61,7 +69,7 @@ describe('actual personal correction panel',()=>{
     await f.click('.suggestions article button');expect(f.controller.suggest).toHaveBeenCalledWith(saved);await f.click('.conflict button');expect(f.controller.edit).toHaveBeenCalledWith(project);
     const scope=f.get('[data-testid=correction-scope]') as HTMLSelectElement;scope.value=pid;scope.dispatchEvent(new window.Event('change',{bubbles:true}));await settle();expect(f.controller.setScope).toHaveBeenCalledWith(pid);
     await f.click('[data-testid=correction-project-join]');expect(f.controller.activateProject).toHaveBeenCalledWith(pid);f.state.activeProjectId=pid;await settle();await f.click('[data-testid=correction-project-leave]');expect(f.controller.activateProject).toHaveBeenCalledWith(null);
-    const name=f.get('[data-testid=correction-project-name]') as HTMLInputElement;name.value='新论文';name.dispatchEvent(new window.Event('input',{bubbles:true}));await settle();expect(f.state.projectName).toBe('新论文');await f.click('[data-testid=correction-project-create]');expect(f.controller.createProject).toHaveBeenCalledTimes(1);
+    f.get('.new-project').setAttribute('open','');const name=f.get('[data-testid=correction-project-name]') as HTMLInputElement;name.value='新论文';name.dispatchEvent(new window.Event('input',{bubbles:true}));await settle();expect(f.state.projectName).toBe('新论文');await f.click('[data-testid=correction-project-create]');expect(f.controller.createProject).toHaveBeenCalledTimes(1);
     f.state.context='';await settle();await f.event(f.get('[data-testid=correction-scope-help]'),'mouseenter');expect(f.get('.scope-tooltip-context').textContent).toBe('此处没有章节标题');
   });
   it('keeps scope explanations in a closed-root tooltip, supports hover transfer and focused help, and layers Escape',async()=>{
@@ -105,6 +113,24 @@ describe('actual personal correction panel',()=>{
     const f=await mount();f.state.open=true;f.state.previewed=true;await settle();const first=f.get('[data-testid=correction-close]'),last=f.get('[data-testid=correction-save]');first.focus();expect((await f.key('Tab',true)).defaultPrevented).toBe(true);expect(focused).toBe(last);
     last.focus();expect((await f.key('Tab')).defaultPrevented).toBe(true);expect(focused).toBe(first);f.get('[data-testid=correction-translation]').focus();expect((await f.key('Tab')).defaultPrevented).toBe(false);expect((await f.key('ArrowDown')).defaultPrevented).toBe(false);
     expect((await f.key('Escape')).defaultPrevented).toBe(true);expect(f.controller.close).toHaveBeenCalledTimes(1);
+  });
+  it('keeps collapsed project inputs out of the focus loop and admits them only after explicit expansion',async()=>{
+    const f=await mount({open:true,draft:'',previewed:false,undoToken:'retained-undo'});const first=f.get('[data-testid=correction-close]'),summary=f.get('.new-project > summary');first.focus();await f.key('Tab',true);expect(focused).toBe(summary);expect((await f.key('Tab')).defaultPrevented).toBe(true);expect(focused).toBe(first);
+    f.get('.new-project').setAttribute('open','');first.focus();await f.key('Tab',true);const create=f.get('[data-testid=correction-project-create]');expect(focused).toBe(create);f.get('[data-testid=correction-project-name]').focus();expect((await f.key('Tab')).defaultPrevented).toBe(false);create.focus();expect((await f.key('Tab')).defaultPrevented).toBe(true);expect(focused).toBe(first);
+  });
+  it('closes successful project creation to expose explicit joining, while preserving failed input and its visible error',async()=>{
+    const f=await mount({open:true,projectName:'论文',undoToken:'retained-undo'});const details=f.get('.new-project');details.setAttribute('open','');f.controller.createProject.mockImplementation(()=>{f.state.projects=[{id:pid,label:'论文'}] as any;f.state.scopeId=pid;f.state.projectName='';});
+    await f.click('[data-testid=correction-project-create]');expect(details.hasAttribute('open')).toBe(false);expect(focused).toBe(f.get('[data-testid=correction-scope]'));expect(f.get('[data-testid=correction-project-join]').textContent).toContain('加入');expect(f.state.activeProjectId).toBe('');expect(f.controller.activateProject).not.toHaveBeenCalled();
+    details.setAttribute('open','');f.state.projectName='未保存项目';f.controller.createProject.mockImplementation(()=>{f.state.error='项目创建失败，请重试。';});await f.click('[data-testid=correction-project-create]');expect(details.hasAttribute('open')).toBe(true);expect(f.state.projectName).toBe('未保存项目');expect(f.get('[data-testid=correction-error]').textContent).toBe('项目创建失败，请重试。');
+    f.state.error='';f.controller.createProject.mockImplementation(()=>undefined);await f.click('[data-testid=correction-project-create]');expect(details.hasAttribute('open')).toBe(true);expect(f.state.projectName).toBe('未保存项目');
+  });
+  it.each(['close','manage','replace','unmount'])('does not collapse or focus a stale project creation after %s',async change=>{
+    const f=await mount({open:true,projectName:'论文'});const details=f.get('.new-project'),create=f.get('[data-testid=correction-project-create]');details.setAttribute('open','');let finish!:()=>void;
+    f.controller.createProject.mockImplementation(()=>new Promise<void>(resolve=>{finish=()=>{f.state.projectName='';resolve();};}) as any);await f.click('[data-testid=correction-project-create]');
+    if(change==='close'||change==='replace')f.state.open=false;else if(change==='manage')f.state.managing=true;else{app!.unmount();app=undefined;}await settle();
+    if(change==='replace'){f.state.open=true;await settle();f.get('.new-project').setAttribute('open','');}const currentFocus=focused;finish();await settle();expect(focused).toBe(currentFocus);expect(details.hasAttribute('open')).toBe(true);
+    if(change==='replace')expect(f.get('.new-project').hasAttribute('open')).toBe(true);else{const calls=f.controller.createProject.mock.calls.length;await f.event(create,'click');expect(f.controller.createProject).toHaveBeenCalledTimes(calls);}
+    if(change==='close'){f.state.open=true;create.dispatchEvent(new window.Event('click'));await settle();expect(f.controller.createProject).toHaveBeenCalledTimes(1);}
   });
   it('supports already-open lazy mounts and does not steal focus when the opening is immediately canceled',async()=>{
     const f=await mount({open:true,managing:true});expect(focused).toBe(f.get('[data-testid=correction-manage]'));f.state.open=false;await settle();

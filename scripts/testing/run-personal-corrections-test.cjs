@@ -1,7 +1,7 @@
 /**
  * @file scripts/testing/run-personal-corrections-test.cjs
  * 文件职责：在临时 profile 的后台可见生产 Edge 中验证网页个人校订闭环。
- * 主要内容：从默认关闭开始，通过真实设置开关启用、关闭和重启；用可信 CDP 手势翻译、编辑、预览、保存、撤销和删除，检查零消息、帮助悬停与键盘显示、精确复用、来源样式与近似句边界，保存 DOM 和截图证据。
+ * 主要内容：从默认关闭开始，通过真实设置开关启用、关闭和重启；用可信 CDP 手势翻译、编辑、预览、保存、撤销和删除，检查零消息、页签栏右侧语言、紧凑页脚范围、帮助悬停与键盘显示、精确复用、来源样式与近似句边界，保存 DOM 和截图证据。
  * 模块边界：只访问本次隔离网页、扩展配置端口及后台 fetch 的确定性传输夹具；原生 select 使用标明的 DOM change 夹具，其余产品编辑动作和快捷键使用可信 CDP 输入，不连接用户浏览器或真实凭据。
  */
 'use strict';
@@ -102,7 +102,7 @@ async function assertNoCorrectionUi() {
   assert.equal(Boolean(await panel(`return Boolean(this.querySelector('${tid('entry')}')||this.querySelector('${tid('dialog')}'))`)), false, '关闭时没有校订入口或编辑器');
   assert.equal(await page.locator('[data-fr-personal-correction="true"]').count(), 0, '关闭时没有个人来源标记');
 }
-/** 读取 closed ShadowRoot；只有 chooseFirstProject 标明的原生 select 夹具改变 DOM，其余编辑与按钮动作使用可信 CDP 输入。 */
+/** 读取 closed ShadowRoot；只有 chooseScope 标明的原生 select 夹具改变 DOM，其余编辑与按钮动作使用可信 CDP 输入。 */
 async function panel(code) {
   const tree = await cdp.send('DOM.getDocument', {depth: -1, pierce: true});
   let host;
@@ -153,9 +153,53 @@ function assertHelpVisible(help) {
   const box = help.geometry;
   assert.ok(box.x >= 0 && box.y >= 0 && box.right <= box.viewportWidth && box.bottom <= box.viewportHeight, `帮助在当前视口内：${JSON.stringify(box)}`);
 }
+async function verifyCompactLayout(mode) {
+  const layout = await panel(`
+    const nav=this.querySelector('nav.tabs'),language=this.querySelector('${tid('language')}'),body=this.querySelector('.panel-body'),footer=this.querySelector('footer'),scope=this.querySelector('${tid('scope')}'),help=this.querySelector('${tid('scope-help')}'),source=this.querySelector('${tid('source')}');
+    const box=node=>{if(!node)return null;const r=node.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
+    const tabs=[...nav.querySelectorAll('button')],lastTab=tabs.at(-1),navStyle=getComputedStyle(nav),bodyStyle=getComputedStyle(body);
+    return{languageInNav:language?.closest('nav.tabs')===nav,languageText:language?.textContent.trim(),languageTitle:language?.title,language:box(language),nav:box(nav),lastTab:box(lastTab),navPaddingRight:parseFloat(navStyle.paddingRight),body:box(body),bodyPaddingTop:parseFloat(bodyStyle.paddingTop),bodyScrollTop:body.scrollTop,bodyLanguageRows:body.querySelectorAll('.language-row,${tid('language')}').length,firstBodyTag:body.firstElementChild?.tagName,firstBodyText:body.firstElementChild?.textContent.trim(),sourceHeading:source?.previousElementSibling?.textContent.trim(),sourceHeadingBox:box(source?.previousElementSibling),scopeInFooter:scope?.closest('footer')===footer,helpInFooter:help?.closest('footer')===footer,bodyScopeRows:body.querySelectorAll('.scope-row,${tid('scope')}').length,scope:box(scope),footer:box(footer),viewport:{width:innerWidth,height:innerHeight}};
+  `);
+  assert.equal(layout.languageInNav, true, '语言信息属于页签栏');
+  assert.equal(layout.languageText,'English → 简体中文','页签栏使用明确的语言名称');
+  assert.ok(layout.languageTitle?.includes('en → zh-Hans'),'语言完整提示保留查询代码');
+  assert.ok(Math.abs(layout.nav.right-layout.navPaddingRight-layout.language.right)<3, '语言信息贴齐页签栏最右侧');
+  const tabGap=layout.language.x-layout.lastTab.right;
+  assert.ok(tabGap>=(mode.startsWith('narrow')?8:48), `语言与已保存页签分开：${tabGap}px`);
+  assert.ok(Math.abs(layout.language.y+layout.language.height/2-layout.lastTab.y-layout.lastTab.height/2)<3,'语言与页签保持同一行');
+  assert.equal(layout.bodyLanguageRows, 0, '原文上方没有额外语言行');
+  assert.equal(layout.firstBodyTag, 'H3', '正文首行直接显示原文标题');
+  assert.equal(layout.firstBodyText, '原文');
+  assert.equal(layout.sourceHeading, '原文');
+  const bodyContentStartGap=layout.sourceHeadingBox.y+layout.bodyScrollTop-layout.body.y;
+  assert.ok(Math.abs(bodyContentStartGap-layout.bodyPaddingTop)<2,'原文前仅保留正文正常 padding');
+  assert.equal(layout.scopeInFooter, true, '范围选择位于页脚');
+  assert.equal(layout.helpInFooter, true, '范围帮助锚点位于页脚');
+  assert.equal(layout.bodyScopeRows, 0, '正文没有常驻范围行');
+  assert.ok(layout.scope.width>=90&&layout.scope.width<=160&&layout.scope.height<=32, `范围选择紧凑：${JSON.stringify(layout.scope)}`);
+  for(const key of ['language','scope','footer']){
+    const box=layout[key];assert.ok(box.x>=0&&box.y>=0&&box.right<=layout.viewport.width&&box.bottom<=layout.viewport.height, `${mode} ${key} 位于视口内：${JSON.stringify(box)}`);
+  }
+  (report.compactLayouts ||= []).push({mode,...layout,tabGap,bodyContentStartGap});
+  return layout;
+}
+async function verifyProjectCreationLayout(mode) {
+  const layout=await panel(`const details=this.querySelector('.new-project'),input=this.querySelector('${tid('project-name')}'),create=this.querySelector('${tid('project-create')}');const box=node=>{const r=node.getBoundingClientRect();return{x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};const centerHit=node=>{const r=node.getBoundingClientRect(),hit=this.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return hit===node||node.contains(hit);};return{open:details.open,undoPresent:Boolean(this.querySelector('${tid('undo')}')),popup:box(details.querySelector('div')),dialog:box(this.querySelector('${tid('dialog')}')),input:box(input),create:box(create),inputCenterReachable:centerHit(input),createCenterReachable:centerHit(create),viewport:{width:innerWidth,height:innerHeight}};`);
+  assert.equal(layout.open,true,'真实点击展开新建项目');
+  for(const key of ['input','create']){
+    const box=layout[key];assert.ok(box.width>0&&box.height>0&&box.x>=0&&box.y>=0&&box.right<=layout.viewport.width&&box.bottom<=layout.viewport.height, `${mode} 项目创建控件可达：${JSON.stringify(box)}`);
+  }
+  assert.ok(layout.input.right<=layout.create.x+1,'项目名称输入与创建按钮不重叠');
+  assert.ok(layout.popup.x>=layout.dialog.x&&layout.popup.y>=layout.dialog.y&&layout.popup.right<=layout.dialog.right&&layout.popup.bottom<=layout.dialog.bottom,'项目创建弹层完整留在编辑器内');
+  assert.equal(layout.inputCenterReachable,true,'项目输入中心未被裁切或遮挡');
+  assert.equal(layout.createCenterReachable,true,'创建按钮中心未被裁切或遮挡');
+  if(mode==='narrow') assert.equal(layout.undoPresent,true,'390创建操作覆盖已有撤销按钮的布局');
+  (report.projectCreationLayouts ||= []).push({mode,...layout});
+}
 async function verifyCompactHelp(mode) {
   const buttonSelector = tid('scope-help'), tooltipSelector = tid('scope-tooltip');
   await movePanelPointer('header h2');
+  await verifyCompactLayout(mode);
   const ordinary = await panel(`const button=this.querySelector(${JSON.stringify(buttonSelector)}),box=button?.getBoundingClientRect();return{scope:this.querySelector('${tid('scope')}')?.value,scopeLabel:this.querySelector('${tid('scope')}')?.selectedOptions[0].textContent.trim(),explanations:this.querySelectorAll('.scope-hint,.context').length,helpByScope:Boolean(button?.closest('.scope-row')),helpWidth:box?.width,helpHeight:box?.height};`);
   assert.equal(ordinary.explanations, 0, '普通编辑界面收起范围和语境说明行');
   assert.equal(ordinary.scope, 'material', '编辑器每次默认仅当前网页');
@@ -197,9 +241,12 @@ async function verifyNarrowHelpScroll() {
   await wait(async () => (await readHelp(tid('scope-help'), tid('scope-tooltip')))?.visible, '滚动前帮助打开');
   const before = await bodyState(), helpBefore = await readHelp(tid('scope-help'), tid('scope-tooltip'));
   assertHelpVisible(helpBefore);
-  // 靠面板右侧发送滚轮，避开悬浮提示本身的独立滚动区域。
-  await page.mouse.move(before.box.right - 12, before.box.y + before.box.height / 2, {steps:4});
-  const delta = before.scrollTop < (before.scrollHeight - before.clientHeight) / 2 ? Math.min(72,before.scrollHeight-before.clientHeight-before.scrollTop) : -Math.min(72,before.scrollTop);
+  // 帮助已移到固定页脚。只滚动真实正文，不能沿用旧正文锚点随 scrollTop 移动的假设。
+  const candidates=[{x:before.box.right-12,y:before.box.y+Math.min(40,before.box.height/3)},{x:before.box.right-12,y:before.box.y+before.box.height/2},{x:before.box.right-12,y:before.box.bottom-12}];
+  const point=candidates.find(point=>point.x<helpBefore.geometry.x||point.x>helpBefore.geometry.right||point.y<helpBefore.geometry.y||point.y>helpBefore.geometry.bottom);
+  assert.ok(point,'真实正文中有不被提示覆盖的滚轮位置');
+  await page.mouse.move(point.x,point.y,{steps:4});
+  const delta = before.scrollTop < (before.scrollHeight - before.clientHeight) / 2 ? Math.min(120,before.scrollHeight-before.clientHeight-before.scrollTop) : -Math.min(120,before.scrollTop);
   assert.ok(delta, '当前面板可自然滚动');
   await page.mouse.wheel(0,delta); assertFocusSafe();
   await wait(async () => Math.abs((await bodyState()).scrollTop-before.scrollTop)>1, '真实滚轮改变 panel-body scrollTop');
@@ -210,22 +257,29 @@ async function verifyNarrowHelpScroll() {
     const preferred=body.anchor.top-height-6>=edge?body.anchor.top-height-6:body.anchor.bottom+6;
     const expected=Math.max(edge,Math.min(preferred,edge+body.viewport.height-16-height));
     return Math.abs(help.geometry.y-expected)<2;
-  }, 'closed Shadow 面板滚动后提示跟随锚点并夹在视口内');
+  }, 'closed Shadow 正文滚动后提示仍贴合页脚锚点并夹在视口内');
   const after=await bodyState(),helpAfter=await readHelp(tid('scope-help'),tid('scope-tooltip'));assertHelpVisible(helpAfter);
-  assert.ok(Math.abs(after.anchor.top-before.anchor.top)>1,'帮助锚点随面板滚动移动');
+  assert.ok(Math.abs(after.anchor.top-before.anchor.top)<1,'页脚帮助锚点不随正文滚动');
+  assert.ok(Math.abs(helpAfter.geometry.y-helpBefore.geometry.y)<2,'正文滚动保留固定页脚提示位置');
   await screenshot('help-narrow-after-wheel');await screenshotPanel('help-narrow-after-wheel-closeup');
   await page.keyboard.press('Escape');
   await wait(async()=>!(await readHelp(tid('scope-help'),tid('scope-tooltip')))?.visible,'滚动后 Escape 只关闭提示');
   assert.equal(await panel(`return Boolean(this.querySelector('${tid('dialog')}'))`),true);
-  report.narrowHelpScroll={tested:true,before,after,helpBefore,helpAfter,deltaY:delta,escapeClosesHelpWithoutEditor:true,input:'trusted CDP wheel over actual preview overflow; no DOM business fixture'};
+  report.narrowHelpScroll={tested:true,before,after,helpBefore,helpAfter,deltaY:delta,actualScrollDelta:after.scrollTop-before.scrollTop,footerAnchorStayedFixed:true,escapeClosesHelpWithoutEditor:true,input:'trusted CDP wheel over actual preview overflow; fixed footer anchor; no DOM business fixture'};
 }
 async function editTranslation(text) {await clickPanel(tid('translation')); await page.keyboard.press('ControlOrMeta+A'); await page.keyboard.insertText(text);}
 async function chooseFirstProject() {
+  const selected=await panel(`return [...this.querySelector('${tid('scope')}').options].find(item=>item.value!=='material')?.value;`);
+  assert.ok(selected, '已有项目范围选项');
+  await chooseScope(selected);
+}
+async function chooseScope(value) {
   // 已验证 macOS 后台原生菜单不接受页面 CDP 选择键。只在这一个原生 select 上使用 DOM change 夹具；仍由 Vue 原生 change 监听与公开服务处理，后续显式加入、保存和移出均真实点击。
   report.scopeSelectionInput = 'native-select DOM change fixture; macOS background native menu cannot receive ordinary page CDP selection keys';
-  const selected = await panel(`const select=this.querySelector('${tid('scope')}');const option=[...select.options].find(item=>item.value!=='material');if(!option)return null;select.value=option.value;select.dispatchEvent(new Event('input',{bubbles:true}));select.dispatchEvent(new Event('change',{bubbles:true}));return option.value;`);
-  assert.ok(selected, '已有项目范围选项');
-  await wait(() => panel(`return this.querySelector('${tid('scope')}').value!=='material'`), '显式选择项目范围');
+  const selected = await panel(`const select=this.querySelector('${tid('scope')}');const option=[...select.options].find(item=>item.value===${JSON.stringify(value)});if(!option)return null;select.value=option.value;select.dispatchEvent(new Event('input',{bubbles:true}));select.dispatchEvent(new Event('change',{bubbles:true}));return option.value;`);
+  assert.equal(selected,value,'所选范围存在');
+  await wait(() => panel(`return this.querySelector('${tid('scope')}').value===${JSON.stringify(value)}`), '显式选择范围');
+  assert.equal(await panel(`return Boolean(this.querySelector('${tid('scope')}').closest('footer'))`),true,'项目选取仍使用页脚范围控件');
 }
 async function hoverTranslation(selector = '#primary') {
   await page.locator(selector).scrollIntoViewIfNeeded();
@@ -456,8 +510,8 @@ async function main() {
   assert.equal(await page.locator('#primary .fluent-read-bilingual-content').count(), 1); assert.equal(await page.locator('#fluent-read-personal-corrections').count(), 1); record(currentCase);
 
   currentCase = 'project reuse requires explicit material membership and leaving invalidates it';
-  await openEditor(); await clickPanel('.new-project > summary'); await clickPanel(tid('project-name')); await page.keyboard.insertText('校订浏览器测试项目'); await clickPanel(tid('project-create'));
-  await wait(() => panel(`return Boolean(this.querySelector('${tid('project-join')}'))`), '新建项目需要明确加入');
+  await openEditor(); await verifyCompactLayout('desktop-project'); await clickPanel('.new-project > summary'); await verifyProjectCreationLayout('desktop'); await clickPanel(tid('project-name')); await page.keyboard.insertText('校订浏览器测试项目'); await clickPanel(tid('project-create'));
+  await wait(() => panel(`return Boolean(this.querySelector('${tid('project-join')}'))&&!this.querySelector('.new-project').open`), '新建项目自动收起弹层且需要明确加入');
   await clickPanel(tid('project-join')); await wait(() => panel(`return Boolean(this.querySelector('${tid('project-leave')}'))`), '当前材料已加入项目');
   await previewSave(projectCorrection); await closeEditor(); await ensureOriginal(); await clearPublicCache(); const beforeProjectReuse = await providerCount(); await toggle(); assert.ok((await translation()).includes(projectCorrection)); assert.equal(await providerCount(), beforeProjectReuse);
   await page.goto(`http://127.0.0.1:${server.address().port}/project-material`); await page.waitForSelector('#fluent-read-page-styles', {state: 'attached'}); await toggle();
@@ -502,6 +556,18 @@ async function main() {
   const narrowGeometry = await panel(`const box=this.querySelector('${tid('dialog')}').getBoundingClientRect();return{x:box.x,y:box.y,right:box.right,bottom:box.bottom,width:box.width,height:box.height,viewportWidth:innerWidth,viewportHeight:innerHeight}`);
   assert.ok(narrowGeometry.x >= 0 && narrowGeometry.y >= 0 && narrowGeometry.right <= narrowGeometry.viewportWidth && narrowGeometry.bottom <= narrowGeometry.viewportHeight, JSON.stringify(narrowGeometry));
   await verifyCompactHelp('narrow');
+  const beforeNarrowProject=await panel(`return{options:this.querySelector('${tid('scope')}').options.length,savedCount:this.querySelector('${tid('manage')} span').textContent.trim(),membership:this.querySelector('${tid('project-leave')}')?.parentElement.textContent.trim()||null};`);
+  await clickPanel('.new-project > summary'); await verifyProjectCreationLayout('narrow');
+  const narrowProjectName='390布局测试项目';await clickPanel(tid('project-name'));await page.keyboard.press('ControlOrMeta+A');await page.keyboard.insertText(narrowProjectName);
+  assert.equal(await panel(`return this.querySelector('${tid('project-name')}').value`),narrowProjectName,'390项目名称接受真实键盘输入');
+  await clickPanel(tid('project-create'));
+  await wait(()=>panel(`return this.querySelector('${tid('scope')}').selectedOptions[0]?.textContent.includes(${JSON.stringify(narrowProjectName)})&&Boolean(this.querySelector('${tid('project-join')}'))&&!this.querySelector('.new-project').open;`),'390真实创建后自动收起弹层且仍需明确加入');
+  assert.equal(await panel(`return this.querySelector('${tid('scope')}').options.length`),beforeNarrowProject.options+1,'390创建新增项目');
+  assert.equal(await panel(`return this.querySelector('${tid('project-leave')}')?.parentElement.textContent.trim()||null`),beforeNarrowProject.membership,'390创建不改变当前项目成员状态');
+  assert.equal(await panel('return this.querySelector(".new-project").open'),false,'产品在390项目创建成功后自动收起');
+  await chooseScope('material');
+  await wait(()=>panel(`return this.querySelector('${tid('manage')} span').textContent.trim()===${JSON.stringify(beforeNarrowProject.savedCount)}`),'创建后恢复默认范围保留原校订记录数量');
+  report.narrowProjectCreation={undoPresent:true,name:narrowProjectName,trustedKeyboardInput:true,trustedCreateClick:true,productAutomaticallyClosedCreation:true,createdWithoutJoining:true,membershipUnchanged:true,scopeRestored:'material',savedCountUnchanged:true,noSaveActionToNewProject:true};
   await verifyNarrowHelpScroll();
   await screenshot('07-narrow-editor'); await page.keyboard.press('Escape'); await wait(() => panel(`return !this.querySelector('${tid('dialog')}')`), 'Escape 关闭窄屏编辑器');
   await page.locator('#primary').scrollIntoViewIfNeeded();

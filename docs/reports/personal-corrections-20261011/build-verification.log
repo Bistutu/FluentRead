@@ -5,15 +5,16 @@ typecheck — exit 0
 
 [resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vue-tsc --noEmit
 
+
 Chrome build — exit 0
   └─ .output/chrome-mv3/third-party-notices/xmlchars-MIT.txt                                              1.09 kB
 Σ Total size: 63.13 MB
-✔ Finished in 35.1 s
+✔ Finished in 40.4 s
 
 Firefox build — exit 0
   └─ .output/firefox-mv2/third-party-notices/xmlchars-MIT.txt                                              1.09 kB
 Σ Total size: 63.13 MB
-✔ Finished in 43.3 s
+✔ Finished in 37.5 s
 
 VitePress build — exit 0
 
@@ -30,12 +31,13 @@ VitePress build — exit 0
 ✓ rendering pages...
 - generating sitemap...
 ✓ generating sitemap...
-build complete in 4.30s.
+build complete in 3.92s.
+
 
 Storybook build — exit 0
 - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
-✓ built in 4.46s
-info => Preview built (4.7 s)
+✓ built in 5.32s
+info => Preview built (5.58 s)
 info => Output directory: /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011/docs/.vitepress/dist/storybook
 
 Documentation artifact check — exit 0
@@ -44,6 +46,7 @@ Documentation artifact check — exit 0
 > node scripts/verify-docs-build.mjs
 
 {"ok":true,"pages":81,"links":4337,"anchors":801,"images":158}
+
 
 Storybook artifact check — exit 0
 
