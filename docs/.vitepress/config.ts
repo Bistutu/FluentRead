@@ -130,7 +130,7 @@ const theme = (en = false): DefaultTheme.Config => ({
   },
 })
 export default defineConfig({
-  title: 'FluentRead',
+  title: '流畅阅读',
   description: `${brandTaglines['zh-CN']} 一款开源的浏览器双语翻译插件。`,
   lang: 'zh-CN',
   appearance: false,
@@ -160,7 +160,6 @@ export default defineConfig({
           href: `https://read.thinkstu.com/${opposite}`,
         },
       ],
-      ['meta', { property: 'og:site_name', content: 'FluentRead' }],
       ['meta', { property: 'og:type', content: 'website' }],
       ['meta', { property: 'og:url', content: canonical }],
     ]
@@ -185,20 +184,22 @@ export default defineConfig({
     root: {
       label: '',
       lang: 'zh-CN',
-      title: 'FluentRead',
+      title: '流畅阅读',
+      head: [['meta', { property: 'og:site_name', content: '流畅阅读' }]],
       themeConfig: theme(),
     },
     en: {
       label: '',
       lang: 'en',
       title: 'FluentRead',
+      head: [['meta', { property: 'og:site_name', content: 'FluentRead' }]],
       description: `${brandTaglines['en-US']} An open-source browser extension for bilingual translation.`,
       themeConfig: theme(true),
     },
   },
   themeConfig: {
     logo: '/brand-icon.webp',
-    siteTitle: 'FluentRead',
+    siteTitle: '流畅阅读',
     socialLinks: [{ icon: 'github', link: 'https://github.com/FluentRead/FluentRead' }],
     search: {
       provider: 'local',

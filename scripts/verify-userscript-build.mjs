@@ -131,7 +131,7 @@ const guardEnd = source.indexOf(guardEndMarker, guardCondition);
 const assertions = [
   [source.startsWith('// ==UserScript==\n'), 'metadata header must be the first bytes'],
   [source.includes(`// @version      ${packageJson.userscriptVersion}`), 'metadata must use userscriptVersion'],
-  [source.includes(`FluentRead V${packageJson.version} · Userscript V${packageJson.userscriptVersion}`), 'settings must distinguish the FluentRead and userscript versions'],
+  [source.includes(`流畅阅读 V${packageJson.version} · Userscript V${packageJson.userscriptVersion}`), 'settings must distinguish the localized product and userscript versions'],
   [source.includes('// @grant        GM_xmlhttpRequest'), 'GM_xmlhttpRequest grant is required'],
   [source.includes('// @grant        GM.getValue') && source.includes('// @grant        GM.setValue'), 'Safari GM storage grants are required'],
   [source.includes('// @grant        GM.xmlHttpRequest'), 'Safari GM request grant is required'],

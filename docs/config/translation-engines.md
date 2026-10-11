@@ -34,7 +34,7 @@ outline: false
 | 解释长句、语气或专业表达 | **AI 服务**，需要可用模型及服务凭据 |
 | 在本机处理翻译文字 | **本地模型翻译**、**Ollama（本地）**，或可用的 [Chrome 本地翻译](/guide/chrome-translator) |
 
-FluentRead 免费开源，第三方服务可能单独收费。服务商的订阅、接口额度与网页聊天会员可能不同，请确认购买的是可用于接口调用的服务。
+流畅阅读免费开源，第三方服务可能单独收费。服务商的订阅、接口额度与网页聊天会员可能不同，请确认购买的是可用于接口调用的服务。
 
 <details class="guide-details">
 <summary>使用多个 API Key</summary>
@@ -71,7 +71,7 @@ FluentRead 免费开源，第三方服务可能单独收费。服务商的订阅
 
 服务目录使用紧凑行展示完整名称，详情区优先为模型和连接字段留出空间。桌面目录和详情分别滚动；窄屏收起目录后，连接配置和高级选项共用一个滚动区。离开本地模型配置页会停止该页面的进度订阅并取消页面试译，后台模型下载继续；返回时重新读取当前进度。
 
-如果服务把明显需要翻译的外语正文或英文标签列表原样返回，FluentRead 会在剩余等待时间内再试一次；连续原样返回时会显示失败提示，不会把原文保存成译文。短名称、代码以及已经是目标语言的文字仍可能保持原样。AI 服务使用自定义提示词时，也可以检查其中是否允许模型直接返回原文。
+如果服务把明显需要翻译的外语正文或英文标签列表原样返回，流畅阅读会在剩余等待时间内再试一次；连续原样返回时会显示失败提示，不会把原文保存成译文。短名称、代码以及已经是目标语言的文字仍可能保持原样。AI 服务使用自定义提示词时，也可以检查其中是否允许模型直接返回原文。
 
 免费翻译服务通过多个供应商直连接口生成译文。所有接口卡片统一展示，可选择参与调用的接口，并查看连接状态与分流参考。自动均衡会分配请求，优先顺序模式则按编号依次尝试。
 
@@ -229,9 +229,9 @@ DeepSeek 的新编号见[官方更新记录](https://api-docs.deepseek.com/updat
 
 ### 使用本机 Agent 的 ACP 桥接
 
-浏览器扩展不能直接启动本机 CLI，也不能连接 ACP 的标准输入输出。FluentRead 提供可选的[本机 ACP 桥接程序](https://github.com/FluentRead/FluentRead/blob/main/scripts/agent-bridge/bridge.mjs)：它只监听 `127.0.0.1`，将自定义服务的文本请求交给已登录的 [GitHub Copilot CLI](https://docs.github.com/en/copilot/reference/copilot-cli-reference/acp-server) 或 [OpenCode ACP Agent](https://opencode.ai/docs/acp/)。需要在自己的电脑上安装对应官方 CLI，并先按官方说明完成登录。无需在 FluentRead 中填写 Agent 的登录凭据；CLI 使用自己的登录状态或环境变量。桥接不替代服务商的额度与使用规则。
+浏览器扩展不能直接启动本机 CLI，也不能连接 ACP 的标准输入输出。流畅阅读提供可选的[本机 ACP 桥接程序](https://github.com/FluentRead/FluentRead/blob/main/scripts/agent-bridge/bridge.mjs)：它只监听 `127.0.0.1`，将自定义服务的文本请求交给已登录的 [GitHub Copilot CLI](https://docs.github.com/en/copilot/reference/copilot-cli-reference/acp-server) 或 [OpenCode ACP Agent](https://opencode.ai/docs/acp/)。需要在自己的电脑上安装对应官方 CLI，并先按官方说明完成登录。无需在流畅阅读中填写 Agent 的登录凭据；CLI 使用自己的登录状态或环境变量。桥接不替代服务商的额度与使用规则。
 
-1. 在 FluentRead 源码目录运行 `node scripts/agent-bridge/bridge.mjs --agent=copilot`。OpenCode 用户改用 `--agent=opencode`。保持这个终端运行。
+1. 在流畅阅读源码目录运行 `node scripts/agent-bridge/bridge.mjs --agent=copilot`。OpenCode 用户改用 `--agent=opencode`。保持这个终端运行。
 2. 终端会显示本机接口地址和本次启动生成的令牌。在 **自定义服务** 中新增服务，地址填 `http://127.0.0.1:47627/v1/chat/completions`，**API Key** 填终端显示的令牌，模型填 `default`，然后点击 **检查连接**。`default` 使用 CLI 已配置的默认模型；也可以填 Agent 通过 ACP 提供的模型 ID。重启桥接程序后若生成新令牌，需要更新此 API Key。
 3. 选择该自定义服务进行文本翻译。每次请求独立创建会话；桥接会禁用 Agent 工具，拒绝文件、终端和权限请求。仅支持文本和非流式 Chat Completions 请求，图片请求会被拒绝。要停止桥接，在终端按 Ctrl+C。
 
@@ -261,7 +261,7 @@ DeepSeek 的新编号见[官方更新记录](https://api-docs.deepseek.com/updat
 
 名单默认为空。添加后默认只勾选 **移除 Origin**，需要时可另行勾选 **移除 Referer**。该名单在所有服务间共用，只匹配填写的精确域名，不包含子域名，不填写协议、端口、路径或通配符。删除该项或取消勾选后恢复默认请求头；设置会自动保存，并在浏览器重启后继续生效。
 
-规则只处理 FluentRead 扩展发出的 HTTP 请求，不影响网页自己的请求。使用浏览器已有的 `declarativeNetRequestWithHostAccess` 权限在网络层移除请求头，安装失败时连接检查会报告错误，可重试。油猴版及不支持该 API 的浏览器不提供此能力。它只解决接口来源校验，服务地址、密钥或模型配置错误仍需分别处理。
+规则只处理流畅阅读扩展发出的 HTTP 请求，不影响网页自己的请求。使用浏览器已有的 `declarativeNetRequestWithHostAccess` 权限在网络层移除请求头，安装失败时连接检查会报告错误，可重试。油猴版及不支持该 API 的浏览器不提供此能力。它只解决接口来源校验，服务地址、密钥或模型配置错误仍需分别处理。
 
 ### 腾讯混元连接失败
 
@@ -299,7 +299,7 @@ https://myproxy.example/v1beta/models/{model}:generateContent?key={key}
 
 ## 使用本地模型
 
-Ollama 需要先在电脑上安装、启动并下载模型，再将本地服务接入 FluentRead。它的翻译速度取决于模型和电脑性能。
+Ollama 需要先在电脑上安装、启动并下载模型，再将本地服务接入流畅阅读。它的翻译速度取决于模型和电脑性能。
 
 Ollama 同样遵循[请求限制](/config/#请求限制)。可在该服务的 **请求限制** 中选择 **整个服务 → 自定义**，将并发翻译数设为 **1**，让不同模型和翻译入口共享一个在途请求名额。仅设置 **当前模型** 时，上限只作用于该模型；取消或超时的网络请求结束后，下一条请求才会启动。
 

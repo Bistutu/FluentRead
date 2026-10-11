@@ -22,6 +22,8 @@ const ports = vi.hoisted(() => ({
     delayDialogClosed: false, pendingDialogClosed: new Set<() => void>(),
     send: vi.fn(), patch: vi.fn(), confirm: vi.fn(), get: vi.fn(), exportConfig: vi.fn(),
     browserCapabilities: {extensionDom: true},
+    brand: '流畅阅读',
+    backupLabelTranslation: '',
     renderedEvents: [] as Array<{tag: unknown; props: any; node: any}>,
 }));
 // 记录真实 SFC 向 Vue 公开 render API 交出的完整事件，模拟排队后迟到的旧模板事件。
@@ -40,7 +42,8 @@ vi.mock('vue', async () => {
 });
 vi.mock('@/src/ui/i18n', async () => {
     const {ref} = await import('vue');
-    return {useUiI18n: () => ({t: (key: string) => key, translateLegacy: (value: string) => value, language: ref('zh-CN')})};
+    return {useUiI18n: () => ({t: (key: string) => key === 'common.brand' ? ports.brand : key,
+        translateLegacy: (value: string) => value === 'FluentRead 备份' && ports.backupLabelTranslation ? ports.backupLabelTranslation : value, language: ref('zh-CN')})};
 });
 vi.mock('@/src/platform/browser/capabilities', () => ({browserCapabilities: ports.browserCapabilities}));
 vi.mock('element-plus/es/components/select/style/css', () => ({}));
@@ -161,6 +164,8 @@ beforeEach(() => {
     ports.exportConfig.mockReset();
     ports.delayDialogClosed = false;
     ports.browserCapabilities.extensionDom = true; ports.renderedEvents.length = 0;
+    ports.brand = '流畅阅读';
+    ports.backupLabelTranslation = '';
     for (const key of Object.keys(ports.config)) delete ports.config[key];
     Object.assign(ports.config, normalizeConfig({glossaryEnabled: true, glossaryLibraries: [{...createGlossaryLibrary([]), name: 'Original'}]}));
     ports.history = {schemaVersion: 1, cursor: 1, nextVersion: 3, entries: [
@@ -1257,6 +1262,27 @@ describe('audit49C local backup confirmation ownership', () => {
             expect(selected.focus).toHaveBeenCalledOnce(); expect(f.button().disabled).toBe(false);
             await f.chooseFile(filePort(vi.fn(async () => fileJson()))); expect(preview(f.page.host)).not.toBeNull();
         } finally {parse.mockRestore(); await f.close();}
+    });
+
+    it.each([
+        ['流畅阅读', '', '流畅阅读 备份'], ['FluentRead', '', 'FluentRead 备份'],
+        ['FluentRead', '플루언트리드 백업', 'FluentRead 백업'],
+    ])('uses the %s product name with legacy label %s while retaining the selected filename', async (brand, legacyLabel, expectedLabel) => {
+        ports.brand = brand;
+        ports.backupLabelTranslation = legacyLabel;
+        const f = await fixture();
+        try {
+            await f.chooseFile(filePort(async () => '{}'));
+            expect(ports.messages).toHaveBeenCalledWith('error', `无法读取备份：不是受支持的 ${brand} 备份或旧版配置文件`);
+            expect(preview(f.page.host)).toBeNull(); expect(ports.send).not.toHaveBeenCalled();
+            const backup = createFluentReadDataBackup({config: prepareConfigForExport(ports.config as Config),
+                vocabulary: {format: 'fluentread-vocabulary-book', version: 1, exportedAt: 1, includesPrivateContext: false, entries: [], reviewLogs: []},
+                modelUsage: {format: 'fluentread-model-usage', version: 1, exportedAt: 1, events: []}, exportedAt: 1});
+            await f.chooseFile({...filePort(async () => JSON.stringify(backup)), name: 'FluentRead-personal-note.json'});
+            expect(preview(f.page.host)?.textContent).toContain(expectedLabel);
+            expect(preview(f.page.host)?.textContent).toContain('FluentRead-personal-note.json');
+            expect(ports.send).not.toHaveBeenCalled(); expect(f.download).not.toHaveBeenCalled();
+        } finally {await f.close();}
     });
 
     it('rejects a controlled file change already outside the active view and allows a fresh active read', async () => {

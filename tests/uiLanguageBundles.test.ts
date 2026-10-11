@@ -71,6 +71,28 @@ describe('界面语言注册表', () => {
         expect(i18n.translate('common.brand', 'en-US')).toBe(bundles.UI_LANGUAGE_BUNDLES['en-US'].messages['common.brand']);
     });
 
+    it('扩展安装名称复用七语品牌，只生成浏览器 metadata 所需的名称而不复制界面目录', () => {
+        const files = bundles.createExtensionNameLocaleFiles();
+        expect(files.map(({relativeDest}) => relativeDest).sort()).toEqual([
+            '_locales/en/messages.json', '_locales/es/messages.json', '_locales/fr/messages.json',
+            '_locales/ja/messages.json', '_locales/ko/messages.json', '_locales/ru/messages.json',
+            '_locales/zh_CN/messages.json',
+        ]);
+        const languageByLocale = {
+            zh_CN: 'zh-CN', en: 'en-US', ja: 'ja-JP', ko: 'ko-KR',
+            fr: 'fr-FR', ru: 'ru-RU', es: 'es-ES',
+        } as const;
+        bundles.registerAllUiLanguageBundles();
+        for (const {relativeDest, contents} of files) {
+            const locale = relativeDest.split('/')[1] as keyof typeof languageByLocale;
+            const message = JSON.parse(contents);
+            expect(message).toEqual({extensionName: {message: i18n.translate('common.brand', languageByLocale[locale])}});
+            expect(message.extensionName.message).toBe(locale === 'zh_CN' ? '流畅阅读' : 'FluentRead');
+            expect(contents).not.toContain('\n');
+        }
+        expect(files.filter(({relativeDest}) => relativeDest.startsWith('i18n/'))).toEqual([]);
+    });
+
     it('默认中文入口只消费 PDF 阅读和信息高亮的独立中文常量', () => {
         const source = readFileSync(resolve('src/core/i18n/messages/zh-CN.ts'), 'utf8');
         expect(source).toContain("import {pdfReadingChineseMessages} from './pdfReading'");

@@ -297,7 +297,7 @@ describe('OptionsApp language recovery search with actual UI messages', () => {
       expect(state.filteredResults[0]).toEqual({
         id: 'settings-general', sectionId: 'settings-general',
         label: language === 'en-US' ? 'App language / Language' : '软件语言 / Language',
-        searchDescription: language === 'en-US' ? 'Choose the language used across FluentRead.' : '选择 FluentRead 所有界面使用的语言',
+        searchDescription: language === 'en-US' ? 'Choose the language used across FluentRead.' : '选择流畅阅读所有界面使用的语言',
       });
       await state.selectResult(state.filteredResults[0]);
       expect(state.activeSection).toBe('settings-general');

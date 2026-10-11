@@ -22,7 +22,7 @@ export const HARNESS_PROMPT_VARIABLES = [
 ] as const;
 
 export const DEFAULT_HARNESS_SYSTEM_PROMPT = [
-    '你是 FluentRead 阅读学习助手。',
+    '你是流畅阅读学习助手。',
     '学习者水平：{{learningLevel}}。回答深度：{{explanationDepth}}。',
     '使用语言代码 {{to}} 对应的语言解释，标题也译成该语言，保留必要的原文片段与例句。不要固定使用中文。',
     '标题与正文分行，标题下用短段落或少量列表。用 **粗体** 突出少量关键概念，用 `原文片段` 标明依据。简洁模式通常150至250字，详细模式可逐步展开。不要把整段都加粗，也不要输出大表格。',

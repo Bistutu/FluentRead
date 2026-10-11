@@ -6,7 +6,7 @@ import fs from 'fs';
 import {resolveBrowserCapabilities} from './src/platform/browser/capabilities';
 import {checkExtensionSize} from './scripts/testing/extension-size-budget';
 import {wllamaExtensionWorker} from './scripts/testing/wllama-extension-build';
-import {createUiLanguageBundleFiles} from './src/core/i18n/bundles';
+import {createExtensionNameLocaleFiles, createUiLanguageBundleFiles} from './src/core/i18n/bundles';
 import {UI_LANGUAGE_BUNDLE_DIRECTORY} from './src/core/i18n/language';
 import {packageWasmDiagnostics, packageTesseractWasm, packageTesseractWorker} from './scripts/wasm/package-diagnostics';
 import {tesseractSdkBuildPlugin} from './scripts/wasm/tesseract-sdk-build';
@@ -109,6 +109,8 @@ export function createExtensionManifest(
         },
     } : {};
     return {
+        name: '__MSG_extensionName__',
+        default_locale: 'en',
         permissions: [
             'storage',
             'unlimitedStorage',
@@ -244,6 +246,8 @@ export default defineConfig({
         'build:publicAssets': (_wxt, files) => {
             // 非中文界面文案只生成一份 JSON，由各运行上下文按当前语言加载，不再内联进每个 bundle。
             files.push(...createUiLanguageBundleFiles());
+            // 安装名称由浏览器原生 locale 解析，复用七语品牌，不复制完整界面目录。
+            files.push(...createExtensionNameLocaleFiles());
             files.push({absoluteSrc: resolve(__dirname, 'node_modules/@wllama/wllama/LICENCE'), relativeDest: 'third-party-notices/wllama-MIT.txt'});
             files.push({absoluteSrc: resolve(__dirname, 'node_modules/@noble/hashes/LICENSE'), relativeDest: 'third-party-notices/noble-hashes-MIT.txt'});
             files.push({absoluteSrc: resolve(__dirname, 'node_modules/ppu-paddle-ocr/LICENSE'), relativeDest: 'third-party-notices/ppu-paddle-ocr-MIT.txt'});

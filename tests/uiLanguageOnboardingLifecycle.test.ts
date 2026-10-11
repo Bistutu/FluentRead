@@ -101,6 +101,16 @@ function confirmAction() {return callback(button('.onboarding-form > .onboarding
 function componentTimers() {return vi.getTimerCount() - port.backgroundTimers}
 
 describe('UiLanguageOnboarding 实际保存与生命周期', () => {
+  it('欢迎页品牌随当前预览语言本地化，七语往返不自动保存或确认', async () => {
+    await mount({initialLanguage: 'zh-CN'})
+    expect(button('.onboarding-brand strong').textContent).toBe('流畅阅读')
+    for (const {value} of languageRules.UI_LANGUAGE_OPTIONS) {
+      await languageStep();choose(value)();await settle();callback(button('.onboarding-back'))();await settle()
+      expect(button('.onboarding-brand strong').textContent, value).toBe(value === 'zh-CN' ? '流畅阅读' : 'FluentRead')
+      expect(state.selectedLanguage).toBe(value)
+    }
+    expect(setLanguage).not.toHaveBeenCalled();expect(saved).not.toHaveBeenCalled();expect(confirmed).not.toHaveBeenCalled()
+  })
   it('七种语言任一被选中时，单选组均只保留该卡片一个 Tab 入口', async () => {
     await mount({initialLanguage: 'ja-JP'});await languageStep()
     for (const {value} of languageRules.UI_LANGUAGE_OPTIONS) {

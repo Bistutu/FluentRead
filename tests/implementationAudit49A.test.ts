@@ -24,7 +24,7 @@ const dom = await vi.hoisted(async () => {
 });
 const ports = vi.hoisted(() => ({sendMessage: vi.fn(), domainCalls: 0, config: {on: true, selectionAreaEnabled: true, animations: true, from: 'auto', theme: 'light', floatingBallHotkey: 'custom', customFloatingBallHotkey: 'Ctrl+Shift++'}}));
 vi.mock('webextension-polyfill', () => ({default: {runtime: {sendMessage: ports.sendMessage, onMessage: {addListener() {}, removeListener() {}}}}}));
-vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({translateLegacy: (text: string) => text, t: (text: string) => text})}));
+vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({translateLegacy: (text: string) => text, t: (key: string) => key === 'common.brand' ? translate(key, uiLanguage.value) : key})}));
 vi.mock('@/src/features/image-translation/public', () => ({prepareImageOcrLanguages: vi.fn()}));
 vi.mock('@/src/services/config/store', () => ({config: ports.config, subscribeConfig: () => () => undefined}));
 vi.mock('@/src/features/full-page-translation/public', () => ({autoTranslateEnglishPage() {}, restoreOriginalContent() {}, isFullPageTranslationActive: () => false}));
@@ -34,6 +34,8 @@ vi.mock('tldts', async importOriginal => {
 });
 
 import {createApp, h, nextTick, reactive, ref, type App} from 'vue';
+import {translate, type UiLanguage} from '@/src/core/i18n';
+import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
 import FloatingBall from '@/src/features/floating-ball/ui/FloatingBall.vue';
 import AreaTranslator from '@/src/features/area-translation/ui/AreaTranslator.vue';
 import {canonicalizeHotkey, matchesConfiguredHotkey, normalizeHotkeyEventKey, parseHotkey} from '@/src/core/hotkey';
@@ -49,8 +51,10 @@ import type {OffscreenClient} from '@/src/platform/offscreen/client';
 import type {FloatingBallPresentation} from '@/src/features/floating-ball/types';
 
 let app: App | undefined;
+registerAllUiLanguageBundles();
+const uiLanguage = ref<UiLanguage>('zh-CN');
 const cleanup: Array<() => void> = [];
-beforeEach(() => {ports.sendMessage.mockReset(); vi.stubGlobal('browser', browser); vi.useFakeTimers(); dom.document.body.replaceChildren();});
+beforeEach(() => {uiLanguage.value = 'zh-CN'; ports.sendMessage.mockReset(); vi.stubGlobal('browser', browser); vi.useFakeTimers(); dom.document.body.replaceChildren();});
 afterEach(() => {app?.unmount(); app = undefined; cleanup.splice(0).forEach(fn => fn()); vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals();});
 function event(type: string, values: Record<string, unknown> = {}) {
   const value = new dom.window.Event(type, {bubbles: true, cancelable: true});
@@ -136,6 +140,24 @@ describe('49A production hotkey and site boundaries', () => {
 });
 
 describe('49A real floating-ball client template', () => {
+  it.each(['translate', 'settings', 'none'] as const)('品牌语言刷新保留 %s 入口身份和行为', async action => {
+    const f = mountBall(action);
+    const settings = f.container.querySelector('.floating-ball-settings')!;
+    expect(f.main.getAttribute('aria-label')).toContain('流畅阅读');
+    expect(f.main.getAttribute('aria-label')).not.toContain('FluentRead');
+    expect(settings.getAttribute('aria-label')).toBe('打开 流畅阅读 设置');
+    for (const language of ['en-US', 'ja-JP', 'zh-CN'] as const) {
+      uiLanguage.value = language; await nextTick();
+      const brand = translate('common.brand', language);
+      expect(f.main.getAttribute('aria-label')).toContain(brand);
+      expect(settings.getAttribute('aria-label')).toBe(`打开 ${brand} 设置`);
+      expect(f.container.querySelector('.floating-ball-main')).toBe(f.main);
+      expect(f.main.getAttribute('role')).toBe(action === 'none' ? 'img' : 'button');
+    }
+    f.main.dispatchEvent(event('keydown', {key: 'Enter', repeat: false}));
+    expect(f.toggle).toHaveBeenCalledTimes(action === 'translate' ? 1 : 0);
+    expect(f.settings).toHaveBeenCalledTimes(action === 'settings' ? 1 : 0);
+  });
   it('仅真实成功显示勾选，加载和失败可区分且保持恢复原文入口', async () => {
     const f = mountBall();
     const button = f.container.querySelector<HTMLElement>('.floating-ball-translate')!;

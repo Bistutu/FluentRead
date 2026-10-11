@@ -322,7 +322,7 @@ const localizedNavigationGroups = computed(() => navigationGroups.map((group) =>
     ...item,
     label: translateLegacy(item.label),
     description: translateLegacy(item.description),
-    heading: translateLegacy(item.heading),
+    heading: translateLegacy(item.heading).replace('FluentRead', t('common.brand')),
     summary: translateLegacy(item.summary),
     kicker: translateLegacy(item.kicker),
     title: translateLegacy(item.title),

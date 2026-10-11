@@ -108,6 +108,13 @@ function permissionsFor(browser: string, manifestVersion: 2 | 3): string[] {
 }
 
 describe('extension manifest capability contract', () => {
+    it.each(['chrome', 'firefox', 'edge'] as const)('%s 安装名称使用浏览器本地化 metadata，不复用技术包名', (browser) => {
+        const manifest = createExtensionManifest({browser, manifestVersion: browser === 'firefox' ? 2 : 3});
+        expect(manifest.name).toBe('__MSG_extensionName__');
+        expect(manifest.default_locale).toBe('en');
+        expect(manifest.version).toBeUndefined();
+    });
+
     it('Chrome 原生 OAuth 绑定公开商店身份；其他构建不声明 Chrome 客户端', () => {
         const chrome = createExtensionManifest({browser: 'chrome', manifestVersion: 3});
         expect(chrome.oauth2).toEqual({client_id: GOOGLE_DRIVE_DEFAULT_CLIENT_ID, scopes: GOOGLE_DRIVE_SCOPES});

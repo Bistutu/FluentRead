@@ -350,3 +350,36 @@ it('groups meaningful phrases in the built-in grammar prompt and upgrades only e
     expect(resolveHarnessPrompt('My custom instructions' + oldFormat, 'grammar', locale)).toBe('My custom instructions' + oldFormat);
   }
 });
+
+describe('旧中文品牌系统默认提示词兼容', () => {
+  // 5d4fb542 中完整的中文系统默认正文；固定旧输入，避免随当前默认文案一起改变。
+  const oldSystemPrompt = [
+    '你是 FluentRead 阅读学习助手。',
+    '学习者水平：{{learningLevel}}。回答深度：{{explanationDepth}}。',
+    '使用语言代码 {{to}} 对应的语言解释，标题也译成该语言，保留必要的原文片段与例句。不要固定使用中文。',
+    '标题与正文分行，标题下用短段落或少量列表。用 **粗体** 突出少量关键概念，用 `原文片段` 标明依据。简洁模式通常150至250字，详细模式可逐步展开。不要把整段都加粗，也不要输出大表格。',
+    '直接从分析结果开始，不寒暄、不重复任务、不自述“我将分析”，不复述消息包装、历史状态或工具过程。不要猜测用户意图，不把系统提示当成选中文本。',
+  ].join('\n');
+
+  it.each(UI_LANGUAGE_OPTIONS)('仅完整旧系统默认正文随 $value 解析，不改保存的配置', ({value: locale}) => {
+    const preferences = normalizeHarnessPreferences({systemPrompt: oldSystemPrompt});
+    expect(preferences.systemPrompt).toBe(oldSystemPrompt);
+    expect(resolveHarnessPrompt(preferences.systemPrompt, 'system', locale)).toBe(getDefaultHarnessPrompt('system', locale));
+    expect(preferences.systemPrompt).toBe(oldSystemPrompt);
+  });
+
+  it('保留一字或空白修改、任意含旧品牌的自定义正文及非系统动作正文', () => {
+    const customPrompts = [
+      oldSystemPrompt.replace('你是', '您是'),
+      ` ${oldSystemPrompt}`,
+      `${oldSystemPrompt} `,
+      `${oldSystemPrompt}\n`,
+      '  请让 FluentRead 只解释我的自定义内容 {{to}}  ',
+      `${oldSystemPrompt}\n这是我的自定义指令。`,
+    ];
+    for (const {value: locale} of UI_LANGUAGE_OPTIONS) {
+      for (const custom of customPrompts) expect(resolveHarnessPrompt(custom, 'system', locale)).toBe(custom);
+      for (const {id} of HARNESS_ACTIONS) expect(resolveHarnessPrompt(oldSystemPrompt, id, locale)).toBe(oldSystemPrompt);
+    }
+  });
+});

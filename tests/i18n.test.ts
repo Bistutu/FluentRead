@@ -5,6 +5,7 @@ import {createLegacyPatternSet, localizedLegacyPatterns} from '@/src/core/i18n/m
 import {createRuntimeFeedbackLegacyText, getRuntimeFeedbackSources} from '@/src/core/i18n/messages/runtime-feedback';
 import {createLegacyCorrectionText, getLegacyCorrectionSources} from '@/src/core/i18n/messages/legacy-corrections';
 import {runtimeFeedbackPatterns} from '@/src/core/i18n/messages/runtime-feedback-patterns';
+import * as onboardingMessages from '@/src/core/i18n/messages/onboarding';
 
 import {
   DEFAULT_UI_LANGUAGE,
@@ -1153,4 +1154,31 @@ it('localizes word-class labels and learning explanations from the shared regist
             expect(translateLegacyText(part.description, language)).not.toBe(part.description);
         }
     }
+});
+
+it('中文展示使用流畅阅读，首启七语品牌与正式目录一致并保留外部身份和技术路径', () => {
+    const localizedKeys = [
+        'settings.backup.restoreHint', 'options.userscriptUnavailableDescription', 'glossary.builtin.source',
+        'language.settingsDescription', 'language.onboardingWelcomeTitle', 'language.onboardingDescription',
+        'language.onboardingSuccessDescription', 'video.panelAriaLabel', 'video.translationOverlayAriaLabel',
+        'video.buttonAriaLabel', 'video.globalDisabled', 'metadata.optionsTitle', 'metadata.popupTitle',
+        'metadata.documentTitle', 'document.fileLimitNote', 'options.aboutThanks', 'popup.donationTitle',
+        'shareCard.showBrand', 'learning.collection.fileReadFailed', 'settings.cloud.privacyWebDavStorage',
+    ];
+    for (const key of localizedKeys) {
+        expect(translate(key, 'zh-CN'), key).toContain('流畅阅读');
+        expect(translate(key, 'zh-CN'), key).not.toContain('FluentRead');
+    }
+    expect(translate('options.userscriptUnavailableDescription', 'zh-CN')).toBe('此功能需要浏览器扩展的运行环境。请安装流畅阅读浏览器扩展后使用。');
+    expect(translate('metadata.optionsTitle', 'zh-CN')).toBe('流畅阅读 · 设置');
+    expect(translate('metadata.popupTitle', 'zh-CN')).toBe('流畅阅读');
+    expect(translate('metadata.documentTitle', 'zh-CN')).toBe('流畅阅读 · 文档翻译');
+    expect(translate('settings.cloud.deleteManualDrive', 'zh-CN')).toBe('请前往 Google Drive 设置 → 管理应用 → FluentRead，清理该应用的数据。');
+    expect(translate('settings.cloud.deleteManualWebDav', 'zh-CN')).toBe('请在 WebDAV 服务商页面手动删除 FluentRead/fluentread-config.encrypted.json，保留目录内其他文件。');
+    for (const {value} of UI_LANGUAGE_OPTIONS) {
+        expect(onboardingMessages.onboardingProductNames[value], value).toBe(translate('common.brand', value));
+        expect(translate('common.brand', value)).toBe(value === 'zh-CN' ? '流畅阅读' : 'FluentRead');
+        expect(translateLegacyText(translate('video.panelAriaLabel', 'zh-CN'), value), value).toBe(translate('video.panelAriaLabel', value));
+    }
+    expect(translateLegacyText('用户输入 FluentRead', 'zh-CN')).toBe('用户输入 FluentRead');
 });

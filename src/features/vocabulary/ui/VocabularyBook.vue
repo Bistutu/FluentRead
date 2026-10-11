@@ -724,7 +724,7 @@ async function importCollection(event: Event): Promise<void> {
     if (!lifecycle.isActive()) return;
     await loadEntries();
     showToast(`已导入：新增 ${result.inserted} 条，更新 ${result.updated} 条，跳过 ${result.skipped} 条`);
-  } catch (cause) {if (lifecycle.isActive()) showToast(cause instanceof SyntaxError ? '无法读取文件，请选择 FluentRead 导出的收藏 JSON 文件' : cause instanceof Error ? cause.message : '收藏导入失败');}
+  } catch (cause) {if (lifecycle.isActive()) showToast(cause instanceof SyntaxError ? t('learning.collection.fileReadFailed') : cause instanceof Error ? cause.message : '收藏导入失败');}
   finally {if (lifecycle.isActive()) actionBusy.value = false;}
 }
 

@@ -26,7 +26,7 @@ const translated = computed(() => step.value >= 2)
     <div class="bv-window">
       <span class="bv-dots" aria-hidden="true"><i></i><i></i><i></i></span
       ><span>{{ t('网页双语翻译 · 示例文章', 'Bilingual webpage · example article') }}</span
-      ><img :src="withBase('/brand-icon.webp')" width="28" height="28" alt="FluentRead" />
+      ><img :src="withBase('/brand-icon.webp')" width="28" height="28" :alt="t('流畅阅读', 'FluentRead')" />
     </div>
     <div class="bv-reader-toolbar">
       <span>{{ t('英语 → 简体中文', 'Chinese → English') }}</span

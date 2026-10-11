@@ -8,7 +8,7 @@
 
 从扩展菜单进入 **文档翻译**，将文件拖入页面，或点击选择文件。
 
-在线 PDF（例如 [Attention Is All You Need](https://arxiv.org/pdf/1706.03762)）可以直接打开扩展菜单，点击 **打开 PDF 阅读器** 或 **文档翻译**。也可以在文档首页粘贴 PDF 链接。浏览器自带 PDF 查看器限制内容脚本，FluentRead 会在自己的阅读页打开原文件，不修改原文。需要登录的下载地址若无法打开，请先下载再导入。
+在线 PDF（例如 [Attention Is All You Need](https://arxiv.org/pdf/1706.03762)）可以直接打开扩展菜单，点击 **打开 PDF 阅读器** 或 **文档翻译**。也可以在文档首页粘贴 PDF 链接。浏览器自带 PDF 查看器限制内容脚本，流畅阅读会在自己的阅读页打开原文件，不修改原文。需要登录的下载地址若无法打开，请先下载再导入。
 
 支持 PDF、ePub、Word（DOCX）、HTML、TXT、Markdown、JSON，以及 SRT、VTT、ASS、SSA、LRC 字幕文件。旧版 `.doc` 文件请先另存为 `.docx`。
 
@@ -89,7 +89,7 @@ PDF 默认使用 **原版排版** 左右对照：译文按原文段落的位置�
 
 ## 在 Obsidian 中翻译
 
-FluentRead 提供[实验性 Obsidian 桌面插件](https://github.com/FluentRead/FluentRead/tree/main/integrations/obsidian)。按照插件目录中的说明构建并安装后，可从命令面板或文件右键菜单翻译 Markdown 笔记和带文字层的 PDF。译文会作为相邻的双语 Markdown 笔记保存并分栏打开，原文件不会被覆盖。Obsidian 插件目前使用微软翻译；待译文字会发送到该服务。PDF 译文按页排列，不保留原 PDF 版式。
+流畅阅读提供[实验性 Obsidian 桌面插件](https://github.com/FluentRead/FluentRead/tree/main/integrations/obsidian)。按照插件目录中的说明构建并安装后，可从命令面板或文件右键菜单翻译 Markdown 笔记和带文字层的 PDF。译文会作为相邻的双语 Markdown 笔记保存并分栏打开，原文件不会被覆盖。Obsidian 插件目前使用微软翻译；待译文字会发送到该服务。PDF 译文按页排列，不保留原 PDF 版式。
 
 </details>
 

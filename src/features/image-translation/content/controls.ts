@@ -1,7 +1,7 @@
 /**
  * @file src/features/image-translation/content/controls.ts
  * 文件职责：创建图片翻译的轻量操作条，支持单图反馈和不遮挡阅读的漫画模式，支持取消、重试和首次语言准备与模型/服务设置导航。
- * 主要内容：单图提供无额外外框的淡色图标入口、隔离操作条、可信手势按钮与全文详情；漫画隐藏所有操作条，仅在对应图片可见边缘延迟显示无交互的轻量单行状态提示，展示实际阶段和可用百分比；任务旋转独立于装饰动画开关并保留系统减少动态效果偏好，完成或切回原图后撤下。
+ * 主要内容：单图提供无额外外框的淡色图标入口、隔离操作条、可信手势按钮与全文详情，品牌提示沿用注入的界面本地化端口；漫画隐藏所有操作条，仅在对应图片可见边缘延迟显示无交互的轻量单行状态提示，展示实际阶段和可用百分比；任务旋转独立于装饰动画开关并保留系统减少动态效果偏好，完成或切回原图后撤下。
  * 模块边界：仅操作所属 Shadow DOM，不读取配置、不访问网络、不持有图片请求；业务动作及生命周期由 content/runtime 注入。
  */
 import {createImageTextReader, IMAGE_READER_CSS, type ImageReaderLine} from './textReader';
@@ -130,7 +130,8 @@ export function createImageControls(actions: {onAction(): void; onPrepare(): voi
     let sourceMessage = '翻译图片';
     let progress: number | undefined;
     const refreshLanguage = () => {
-        heading.textContent = `FluentRead · ${localize('图片翻译')}`;
+        const brand = localize('流畅阅读');
+        heading.textContent = `${brand} · ${localize('图片翻译')}`;
         prepare.textContent = localize('下载语言包并翻译');
         modelSettings.textContent = localize('调整本地模型');
         serviceSettings.textContent = localize('切换图片翻译服务');
@@ -143,7 +144,7 @@ export function createImageControls(actions: {onAction(): void; onPrepare(): voi
         dismiss.setAttribute('aria-label', dismiss.title);
         button.textContent = localize(phase === 'loading' ? '取消' : phase === 'translated' ? '原图' : phase === 'error' && feedback.dataset.preparation === 'true' ? '关闭' : phase === 'error' ? '重试' : '翻译');
         button.title = localize(phase === 'loading' ? '取消图片翻译' : phase === 'translated' ? '恢复原图' : phase === 'error' && feedback.dataset.preparation === 'true' ? '关闭图片翻译提示' : sourceMessage);
-        button.title = `FluentRead · ${button.title}`;
+        button.title = `${brand} · ${button.title}`;
         button.setAttribute('aria-label', button.title);
         statusText.textContent = localize(sourceMessage) + (progress === undefined ? '' : ` ${progress}%`);
         progressBar.setAttribute('aria-label', localize(sourceMessage));

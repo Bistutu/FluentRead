@@ -108,7 +108,7 @@ const words = computed(
         t('查看对比结果', 'Show comparison'),
       ],
       userscript: [
-        t('脚本管理器 → FluentRead', 'Script manager → FluentRead'),
+        t('脚本管理器 → 流畅阅读', 'Script manager → FluentRead'),
         t('查看脚本启用示意', 'Show the enabled script'),
       ],
       email: [
@@ -305,7 +305,7 @@ const activeStage = computed(() => (step.value === 0 ? 0 : step.value < 3 ? 1 : 
                 : t('脚本管理器', 'Script manager')
             }}
           </span>
-          <b>{{ kind === 'settings' ? t('⌕ 目标语言', '⌕ Target language') : 'FluentRead' }}</b>
+          <b>{{ kind === 'settings' ? t('⌕ 目标语言', '⌕ Target language') : t('流畅阅读', 'FluentRead') }}</b>
           <div class="gv-rule-row">
             <span>
               {{
@@ -458,7 +458,7 @@ const activeStage = computed(() => (step.value === 0 ? 0 : step.value < 3 ? 1 : 
             {{ t('Every language opens a new door.', '每一种语言都打开一扇新的门。') }}
           </blockquote>
           <p>{{ t('每一种语言都打开一扇新的门。', 'Every language opens a new door.') }}</p>
-          <small>FluentRead / example.com</small>
+          <small>{{ t('流畅阅读', 'FluentRead') }} / example.com</small>
         </div>
         <div v-else class="gv-sentence">
           <span>{{ t('你选中的好句子', 'Your selected sentence') }}</span>

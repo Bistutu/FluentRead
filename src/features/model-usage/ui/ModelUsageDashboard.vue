@@ -474,7 +474,7 @@
         >
           <span class="usage-dialog-icon" aria-hidden="true">!</span>
           <h2 id="usage-reset-title">清除本机模型用量？</h2>
-          <p id="usage-reset-description">会删除本机请求记录及其汇总；不会删除 API Key、翻译设置、FluentRead 译文缓存或配置历史。此操作无法撤销。</p>
+          <p id="usage-reset-description">{{ translateLegacy('会删除本机请求记录及其汇总；不会删除 API Key、翻译设置、FluentRead 译文缓存或配置历史。此操作无法撤销。').replace('FluentRead', t('common.brand')) }}</p>
           <p v-if="resetError" class="usage-dialog-error" role="alert">{{ resetError }}</p>
           <div>
             <button ref="resetCancelButton" type="button" :disabled="resetting" @click="closeResetDialog">取消</button>

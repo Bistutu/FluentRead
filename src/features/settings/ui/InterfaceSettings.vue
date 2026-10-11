@@ -53,7 +53,7 @@
               role="radio"
               :aria-checked="props.config.interfaceSkin === skin.value"
               :tabindex="props.config.interfaceSkin === skin.value ? 0 : -1"
-              :aria-label="`${translateLegacy(skin.label)}: ${translateLegacy(skin.description)}`"
+              :aria-label="`${translateLegacy(skin.label)}: ${translateLegacy(skin.description).replace('FluentRead', t('common.brand'))}`"
               :data-skin="skin.value"
               @click="selectInterfaceSkin(skin.value)"
             >
@@ -77,7 +77,7 @@
               </span>
               <span class="interface-skin-copy">
                 <strong>{{ translateLegacy(skin.label) }}</strong>
-                <small>{{ translateLegacy(skin.description) }}</small>
+                <small>{{ translateLegacy(skin.description).replace('FluentRead', t('common.brand')) }}</small>
               </span>
               <span class="interface-skin-radio" aria-hidden="true"><i /></span>
             </button>

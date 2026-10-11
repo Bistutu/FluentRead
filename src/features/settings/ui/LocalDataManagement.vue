@@ -54,8 +54,8 @@
           v-model="pastedJson"
           type="textarea"
           :rows="8"
-          placeholder="粘贴 FluentRead JSON"
-          aria-label="粘贴 FluentRead JSON"
+          :placeholder="translateLegacy('粘贴 FluentRead JSON').replace('FluentRead', t('common.brand'))"
+          :aria-label="translateLegacy('粘贴 FluentRead JSON').replace('FluentRead', t('common.brand'))"
         />
         <div class="legacy-paste-actions">
           <el-button :disabled="busy || !pastedJson.trim()" @click="previewPastedImport($event)">预览恢复内容</el-button>
@@ -175,7 +175,7 @@ import {toRestorableConfig} from '@/src/services/config/history';
 import SettingsGroup from './components/SettingsGroup.vue';
 import {useUiI18n} from '@/src/ui/i18n';
 
-const {t} = useUiI18n();
+const {t, translateLegacy} = useUiI18n();
 const props = withDefaults(defineProps<{config: Config; active?: boolean}>(), {active: true});
 const localDataContext = useSettingsActionContext(() => props.active, () => []);
 const importInput = useTemplateRef<HTMLInputElement>('data-import-input');
@@ -213,7 +213,7 @@ const credentialPreviewChanges = computed(() => importedConfig.value
   : []);
 const configChangeCount = computed(() => configPreviewDiff.value.changeCount + credentialPreviewChanges.value.length);
 const importKindLabel = computed(() => ({
-  complete: 'FluentRead 备份',
+  complete: translateLegacy('FluentRead 备份').replace(/FluentRead|플루언트리드/u, t('common.brand')),
   vocabulary: '旧版单词本备份',
   'model-usage': '旧版模型用量备份',
   config: '旧版配置文件',
@@ -507,6 +507,9 @@ function downloadFile(name: string, body: string, type: string): void {
 }
 
 function errorMessage(error: unknown): string {
+  if (error instanceof TypeError && error.message === '不是受支持的 FluentRead 备份或旧版配置文件') {
+    return translateLegacy(error.message).replace('FluentRead', t('common.brand'));
+  }
   return error instanceof Error && error.message.trim() ? error.message : '请稍后重试';
 }
 

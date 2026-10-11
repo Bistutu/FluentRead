@@ -20,7 +20,7 @@
 | 悬浮和划词触发方式 | 想减少误触，或让查词更快 |
 | 自动翻译与网站规则 | 某些网站总要翻译，另一些希望保持原样 |
 
-<figure class="doc-figure"><a href="/screenshots/ui/zh-CN/settings-general.webp" target="_blank" rel="noopener"><img class="doc-screenshot" src="/screenshots/ui/zh-CN/settings-general.webp" width="2560" height="1600" alt="FluentRead 设置页面中的语言、翻译模式与译文样式" loading="lazy" /></a><figcaption>设置页中的语言、翻译模式与译文样式。</figcaption></figure>
+<figure class="doc-figure"><a href="/screenshots/ui/zh-CN/settings-general.webp" target="_blank" rel="noopener"><img class="doc-screenshot" src="/screenshots/ui/zh-CN/settings-general.webp" width="2560" height="1600" alt="流畅阅读设置页面中的语言、翻译模式与译文样式" loading="lazy" /></a><figcaption>设置页中的语言、翻译模式与译文样式。</figcaption></figure>
 
 <details class="guide-details">
 <summary>不翻译的语言</summary>

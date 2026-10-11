@@ -458,13 +458,17 @@ describe('图片翻译前台交互与生命周期', () => {
     });
     it('通过配置仓库通知即时更新品牌提示，不依赖配置对象的 Vue 响应式代理', () => {
         const env = setup(); env.hover();
-        expect(env.button().title).toBe('FluentRead · 翻译图片');
+        expect(env.button().title).toBe('流畅阅读 · 翻译图片');
         toRaw(settings).uiLanguage = 'en-US';
         configNotifications.forEach(notify => notify());
         expect(env.button().title).toBe('FluentRead · Translate image');
         expect(env.button().getAttribute('aria-label')).toBe(env.button().title);
         configNotifications.forEach(notify => notify());
         expect(env.button().title).toBe('FluentRead · Translate image');
+        toRaw(settings).uiLanguage = 'zh-CN';
+        configNotifications.forEach(notify => notify());
+        expect(env.button().title).toBe('流畅阅读 · 翻译图片');
+        expect(env.button().getAttribute('aria-label')).toBe(env.button().title);
         unmountImageTranslator(); expect(configNotifications.size).toBe(0);
     });
 

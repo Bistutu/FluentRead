@@ -9,8 +9,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FluentRead-流畅阅读</title>
+    <title>流畅阅读</title>
     <meta name="manifest.type" content="browser_action" />
+    <meta name="manifest.title" content="__MSG_extensionName__" />
     <style>
       /* 工具栏先按文档内容定尺寸；关键样式必须早于后台唤醒及外部 CSS。 */
       html { width: var(--interface-popup-width, 320px); min-height: 460px; background: #fff; }
@@ -22,7 +23,7 @@
   </head>
   <body class="popup-page" style="margin: 0;">
     <div id="app">
-      <div class="popup-startup" role="status" aria-busy="true" aria-label="FluentRead">
+      <div class="popup-startup" role="status" aria-busy="true" aria-label="流畅阅读">
         <img src="/icon/128.png" alt="" width="24" height="24" />
         <i aria-hidden="true"></i>
       </div>
