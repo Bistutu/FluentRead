@@ -2080,7 +2080,34 @@ function stopFullPageSession(): void {
     disposeFullPageSession(session);
 }
 export function invalidateFullPageTranslationSessionCache(): void { if (fullPageSession?.active) invalidateFullPageRequestSessionCache(fullPageSession); }
-export function resetFullPageTranslationRouteState(): void { cancelPendingHoverTranslation(); translationSourceStability.reset(); hoverBilingualRemountCapitulations = createBilingualRemountCapitulationRegistry(); invalidateHoverTranslationRequestSession(); if (fullPageSession?.active) { fullPageSession.bilingualRemountCapitulations = createBilingualRemountCapitulationRegistry(); invalidateFullPageRequestSessionForRoute(fullPageSession); } resetAllBilingualArtifactHostWriteBudgets(); }
+/** 新路由取消旧请求并重扫当前 DOM；旧页面的熔断和无需变更判定不能压住新页面。 */
+export function resetFullPageTranslationRouteState(): void {
+    cancelPendingHoverTranslation();
+    translationSourceStability.reset();
+    hoverBilingualRemountCapitulations = createBilingualRemountCapitulationRegistry();
+    invalidateHoverTranslationRequestSession();
+    if (fullPageSession?.active) {
+        const session = fullPageSession;
+        session.bilingualRemountCapitulations = createBilingualRemountCapitulationRegistry();
+        session.lifecycleRetries = new WeakMap();
+        session.unchangedCandidates = new WeakMap();
+        invalidateFullPageRequestSessionForRoute(session);
+        session.activeDiscovery = null;
+        session.dirtyRoots.clear();
+        session.dirtyRootsBroadMode = false;
+        session.broadRescanCooldowns = new WeakMap();
+        // 站点规则可因 URL 改变而切换，即使宿主复用了原有节点且没有后续 mutation，
+        // 也要重新发现。既有 translated owner 和用户局部恢复仍由共享状态保护。
+        const root = document.documentElement;
+        if (root) {
+            observeFullPageRoot(session, root);
+            // discoverSteps 自身逐帧遍历开放 ShadowRoot 并注册观察器；路由事件
+            // 只登记一个脏根，不同步遍历整篇文章寻找 shadow host。
+            enqueueFullPageRescan(session, root);
+        }
+    }
+    resetAllBilingualArtifactHostWriteBudgets();
+}
 
 /**
  * 恢复全文翻译。全文和悬浮翻译共享同一份节点状态，因此这里无需再用

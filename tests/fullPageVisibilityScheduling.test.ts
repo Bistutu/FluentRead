@@ -8275,6 +8275,91 @@ describe("悬停重挂请求与 synthetic 提交回归", () => {
         expect(owner.textContent).toContain(`新译:${source}`);
     });
 
+    it('loading 文档和迟到正文仍由同一全文会话观察，重复自动触发不创建第二个会话', async () => {
+        runtime.config.display = 1;
+        runtime.config.fullPageTranslationMode = 'all';
+        Object.defineProperty(document, 'readyState', {configurable: true, value: 'loading'});
+        autoTranslateEnglishPage();
+        autoTranslateEnglishPage();
+        expect(isFullPageTranslationActive()).toBe(true);
+        expect(TestIntersectionObserver.instances).toHaveLength(1);
+        await finishScheduledWork();
+        expect(runtime.requests).not.toHaveBeenCalled();
+
+        document.body.innerHTML = '<p id="delayed">An SPA published this paragraph after initialization.</p>';
+        const owner = document.querySelector<HTMLElement>('#delayed')!;
+        setLayoutBox(owner, 620, 96);
+        runtime.candidates = [{element: owner, kind: 'content', reason: 'delayed-spa-content'}];
+        TestMutationObserver.instances[0]!.emit([{
+            type: 'childList', target: document.body, addedNodes: [owner], removedNodes: [],
+        } as unknown as MutationRecord]);
+        await finishScheduledWork();
+
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+        expect(owner.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(1);
+        expect(owner.textContent).toContain('译:An SPA published this paragraph after initialization.');
+        restoreOriginalContent();
+        TestMutationObserver.instances[0]!.emit([{
+            type: 'childList', target: document.body, addedNodes: [owner], removedNodes: [],
+        } as unknown as MutationRecord]);
+        await finishScheduledWork();
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+        expect(owner.textContent).toBe('An SPA published this paragraph after initialization.');
+    });
+
+    it('连续 SPA 导航取消同一 owner 的旧请求不会耗尽新页面重试，旧响应晚到不能覆盖新译文', async () => {
+        runtime.config.display = 1;
+        runtime.config.fullPageTranslationMode = 'all';
+        const source = 'A persistent paragraph must remain translatable after rapid SPA navigation.';
+        document.body.innerHTML = `<p id="rapid-route">${source}</p>`;
+        const owner = document.querySelector<HTMLElement>('#rapid-route')!;
+        setLayoutBox(owner, 620, 96);
+        runtime.candidates = [{element: owner, kind: 'content', reason: 'persistent-spa-owner'}];
+        const oldRequests = [deferred<string[]>(), deferred<string[]>(), deferred<string[]>()];
+        oldRequests.forEach(request => runtime.requests.mockReturnValueOnce(request.promise));
+        runtime.requests.mockResolvedValue(['最新页面译文']);
+        autoTranslateEnglishPage();
+        await finishScheduledWork();
+        await waitForRequestCount(1);
+
+        for (let route = 0; route < 3; route += 1) {
+            const previousState = getTranslationState(owner)!;
+            resetFullPageTranslationRouteState();
+            expect(previousState.controller.signal.aborted).toBe(true);
+            await finishScheduledWork();
+            await waitForRequestCount(route + 2);
+        }
+        expect(owner.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(1);
+        expect(owner.textContent).toContain('最新页面译文');
+        oldRequests.forEach(request => request.resolve(['过期页面译文']));
+        await finishScheduledWork();
+        expect(runtime.requests).toHaveBeenCalledTimes(4);
+        expect(owner.textContent).not.toContain('过期页面译文');
+        expect(owner.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(1);
+    });
+
+    it('SPA 路由变化重扫原有 DOM，旧页面无需变更判定不阻止新页面翻译', async () => {
+        runtime.config.display = 1;
+        runtime.config.fullPageTranslationMode = 'all';
+        const source = 'The provider accepted an unchanged source on the previous page.';
+        document.body.innerHTML = `<p id="route-unchanged">${source}</p>`;
+        const owner = document.querySelector<HTMLElement>('#route-unchanged')!;
+        setLayoutBox(owner, 620, 96);
+        runtime.candidates = [{element: owner, kind: 'content', reason: 'route-unchanged'}];
+        runtime.requests.mockResolvedValueOnce([source]).mockResolvedValueOnce(['新页面译文']);
+        autoTranslateEnglishPage();
+        await finishScheduledWork();
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+        expect(getTranslationState(owner)).toBeUndefined();
+
+        resetFullPageTranslationRouteState();
+        await finishScheduledWork();
+
+        expect(runtime.requests).toHaveBeenCalledTimes(2);
+        expect(owner.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(1);
+        expect(owner.textContent).toContain('新页面译文');
+    });
+
     it("route reset 后全文在途结果不得提交，同一候选可由新请求完成", async () => {
         runtime.config.display = 1;
         const source = "A full-page request from the previous route must not commit.";

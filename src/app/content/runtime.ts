@@ -1,7 +1,7 @@
 /**
  * @file src/app/content/runtime.ts
  * 文件职责：作为内容脚本应用的顶层 composition root，协调配置就绪、站点规则、公共样式、主世界桥、功能注册表、快捷键和消息监听生命周期。
- * 主要内容：先排除原始 XML 文档与失效扩展上下文，再安装内联 page.css 并按 capability 和配置挂载页面功能；订阅配置变化并处理停用、往返缓存暂停恢复与销毁，低频检查扩展重载以主动释放旧页面，消息端口失效不能中断清理。
+ * 主要内容：先排除原始 XML 文档与失效扩展上下文，再安装内联 page.css 并按 capability 和配置挂载页面功能；按已提交的页面地址重新检查自动翻译与站点禁用，锚点跳转保留当前翻译请求，订阅配置变化并处理停用、往返缓存暂停恢复与销毁。
  * 模块边界：本文件只负责依赖装配和页面激活所有权，不实现具体翻译算法、组件内部状态、provider 请求或配置存储；这些职责分别属于 features、services 与 platform。
  */
 import {createLearningContentFeatures} from './learningFeatures';
@@ -46,6 +46,7 @@ import {browserCapabilities, type BrowserCapabilities} from '@/src/platform/brow
 import {setMainWorldBridgesEnabled} from './mainWorldBridgeLifecycle';
 import {
     createContentPageAvailabilityRuntime,
+    getAutoTranslationPageIdentity,
     shouldAutomaticallyTranslatePage,
     type ContentPageAvailabilityRuntime,
 } from './pageAvailability';
@@ -205,6 +206,7 @@ export async function startContentApp(ctx: ContentScriptContext,
         isPageFeaturesActive: () => featureController !== null,
         isVideoPage: isSupportedVideoPage,
         shouldAutomaticallyTranslate: () => shouldAutomaticallyTranslatePage(window.location.href, config),
+        getPageIdentity: () => window.location.href,
         isFullPageTranslationActive,
         setMainWorldBridgesEnabled: (enabled) => setMainWorldBridgesEnabled(document, enabled),
         activatePageFeatures,
@@ -220,12 +222,26 @@ export async function startContentApp(ctx: ContentScriptContext,
     };
     document.addEventListener('fluentread-route-change', () => {
         if (currentRouteHref === window.location.href) return;
+        const previousIdentity = getAutoTranslationPageIdentity(currentRouteHref);
         currentRouteHref = window.location.href;
         informationHighlight?.routeChanged();
-        siteAdaptation.routeChanged(new URL(window.location.href));
-        resetPageTranslationContextCache(); resetFullPageTranslationRouteState();
+        siteAdaptation.routeChanged(new URL(currentRouteHref));
+        // 同篇文章内的目录锚点只移动阅读位置，不废弃在途翻译或覆盖手动恢复的选择。
+        if (getAutoTranslationPageIdentity(currentRouteHref) !== previousIdentity) {
+            resetPageTranslationContextCache(); resetFullPageTranslationRouteState();
+        }
+        const disabled = isExtensionDisabledOnSite(currentRouteHref, config.disabledExtensionDomains);
+        if (disabled !== currentPageSiteDisabled) {
+            void applySiteDisabledState(disabled);
+            return;
+        }
+        if (pageAvailability!.needsLifecycleReconcile()) {
+            void pageAvailability!.reconcile();
+            return;
+        }
         pageAvailability!.syncVideoSubtitlePage();
         void activePageFeatureRegistry?.reconcileEnabled();
+        pageAvailability!.refreshAutoTranslation();
     }, {signal: pageEventController.signal});
 
     cleanup = (): void => {

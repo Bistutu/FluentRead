@@ -136,6 +136,31 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
   it('子组件缓存的旧站点按钮不通过新 props 和新父回调修改新页面',async()=>{
     await mount();const old=eventOf(document.querySelector('[data-setting="disable-extension-site"]')!);getTab.mockResolvedValue([{id:8,url:'https://example.net/b'}]);await state.hydrateCurrentSite();await drain();old();await settle();expect(state.config.disabledExtensionDomains).toEqual([]);eventOf(document.querySelector('[data-setting="disable-extension-site"]')!)();await settle();expect(state.config.disabledExtensionDomains).toEqual(['example.net'])
   })
+  it('禁用优先于始终/全局自动翻译，保留偏好并用提示说明网站范围',async()=>{
+    config.alwaysTranslateDomains=['example.com'];config.autoTranslate=true;config.disabledExtensionDomains=['example.com'];await mount()
+    const always=document.querySelector('[data-setting="always-translate-site"]')!,disabled=document.querySelector('[data-setting="disable-extension-site"]')!
+    expect(always.getAttribute('aria-checked')).toBe('false');expect(always.textContent).toContain('自动翻译已暂停');expect(always.getAttribute('title')).toContain('恢复扩展后继续自动翻译');expect(always.getAttribute('aria-description')).toContain('子域名');expect(disabled.getAttribute('title')).toContain('禁用优先于自动翻译')
+    eventOf(disabled)();await drain();expect(state.config.alwaysTranslateDomains).toEqual(['example.com']);expect(state.config.disabledExtensionDomains).toEqual([]);expect(document.querySelector('[data-setting="always-translate-site"]')!.getAttribute('aria-checked')).toBe('true')
+  })
+  it('禁用按钮可中断在途翻译，规则保存期间锁定两个开关并等待真实反馈',async()=>{
+    await mount();const reply=deferred(),commit=deferred();send.mockReturnValueOnce(reply.promise);const pending=eventOf(button('page-translation'))();await drain()
+    const disabled=document.querySelector('[data-setting="disable-extension-site"]')!;expect(disabled.hasAttribute('disabled')).toBe(false);patches.mockReturnValueOnce(commit.promise);eventOf(disabled)();await drain()
+    expect(state.pageState.busy).toBe(false);expect(state.pageState.savingRule).toBe(true);expect(document.querySelectorAll('.site-rule-saving')).toHaveLength(2);expect(state.notice).toBe('');expect(patches).toHaveBeenCalledWith(expect.objectContaining({disabledExtensionDomains:['example.com']}))
+    for(const element of document.querySelectorAll('.site-rule-button')) {expect(element.hasAttribute('disabled')).toBe(true);expect(element.getAttribute('aria-busy')).toBe('true')}
+    reply.resolve({status:'success',isTranslated:true});await pending;await drain();expect(state.pageTranslated).toBe(false);commit.resolve(undefined);await drain()
+    expect(state.pageState.savingRule).toBe(false);expect(state.notice).toBe('已在 example.com 禁用扩展');expect(document.querySelector('.notice')?.getAttribute('role')).toBe('status')
+  })
+  it('站点保存失败显示可访问错误并回读权威配置，不能声称保存或启动翻译',async()=>{
+    await mount();const commit=deferred();patches.mockReturnValueOnce(commit.promise);eventOf(document.querySelector('[data-setting="always-translate-site"]')!)();await drain();expect(commands()).toHaveLength(0)
+    // 配置服务失败时回读权威存储并订阅回滚，展示层只负责真实反馈。
+    subscribe({...config,alwaysTranslateDomains:[]} as Config);commit.reject(Error('write failed'));await drain()
+    expect(state.pageState.savingRule).toBe(false);expect(state.config.alwaysTranslateDomains).toEqual([]);expect(state.notice).toBe('未能保存 example.com 的网站设置，请重试');expect(document.querySelector('.notice')?.getAttribute('role')).toBe('alert');expect(commands()).toHaveLength(0)
+  })
+  it('站点保存保留同 tick 尚未由 post watcher 提交的其他用户草稿',async()=>{
+    await mount();patches.mockImplementation(async value=>{subscribe({...config,...value} as Config)})
+    state.config.to='ja';state.config.alwaysTranslateDomains=['example.com'];await state.persistSiteRulePatch({alwaysTranslateDomains:['example.com']});await drain()
+    expect(patches).toHaveBeenCalledWith(expect.objectContaining({to:'ja',alwaysTranslateDomains:['example.com']}));expect(state.config.to).toBe('ja');expect(state.config.alwaysTranslateDomains).toEqual(['example.com'])
+  })
   it.each(['url','loading','activate','remove'])('%s 导航事件使已发出的旧翻译回复失效',async kind=>{
     await mount();const reply=deferred();send.mockImplementationOnce(()=>reply.promise);const pending=eventOf(button('page-translation'))();await drain();expect(commands()).toHaveLength(1)
     getTab.mockResolvedValue([{id:kind==='activate'||kind==='remove'?8:7,windowId:3,url:'https://example.net/b'}]);if(kind==='activate')tabEvent('onActivated',{tabId:8,windowId:3});else if(kind==='remove')tabEvent('onRemoved',7);else tabEvent('onUpdated',7,kind==='url'?{url:'https://example.net/b'}:{status:'loading'},{id:7,windowId:3,active:true})

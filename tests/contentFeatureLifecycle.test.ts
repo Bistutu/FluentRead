@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import { ensureContentFeatureMounted } from '@/src/app/content/featureLifecycle';
 import {
     createContentPageAvailabilityRuntime,
+    getAutoTranslationPageIdentity,
     shouldAutomaticallyTranslatePage,
 } from '@/src/app/content/pageAvailability';
 
@@ -56,6 +57,97 @@ describe('content feature activation lifecycle', () => {
 });
 
 describe('content 页面总开关与 SPA 路由生命周期', () => {
+    it('页面身份保留路径和查询，只排除阅读锚点，异常地址保持可比较', () => {
+        expect(getAutoTranslationPageIdentity('https://example.com/article?q=one#section'))
+            .toBe('https://example.com/article?q=one');
+        expect(getAutoTranslationPageIdentity('https://example.com/article?q=two'))
+            .not.toBe(getAutoTranslationPageIdentity('https://example.com/article?q=one'));
+        expect(getAutoTranslationPageIdentity('invalid-page#section')).toBe('invalid-page');
+        expect(getAutoTranslationPageIdentity('https://example.com/#/article/1'))
+            .not.toBe(getAutoTranslationPageIdentity('https://example.com/#/article/2'));
+        expect(getAutoTranslationPageIdentity('https://example.com/#!/article/1'))
+            .toBe('https://example.com/#!/article/1');
+    });
+
+    it('始终翻译的新 SPA 页面会重启，同页恢复和锚点跳转保持用户的原文意图', () => {
+        let href = 'https://example.com/first';
+        let fullPageActive = false;
+        let automatic = true;
+        const autoTranslate = vi.fn(() => { fullPageActive = true; });
+        const runtime = createContentPageAvailabilityRuntime({
+            isEnabled: () => true, isPageFeaturesActive: () => true,
+            isVideoPage: () => false, getPageIdentity: () => href,
+            shouldAutomaticallyTranslate: () => automatic,
+            isFullPageTranslationActive: () => fullPageActive,
+            setMainWorldBridgesEnabled: vi.fn(), activatePageFeatures: vi.fn(async () => undefined),
+            disposePageFeatures: vi.fn(), mountVideoSubtitle: () => vi.fn(), autoTranslate,
+        });
+        runtime.refreshAutoTranslation();
+        expect(autoTranslate).toHaveBeenCalledOnce();
+        fullPageActive = false; // 用户恢复原文。
+        runtime.refreshAutoTranslation();
+        href += '#details';
+        runtime.refreshAutoTranslation();
+        expect(autoTranslate).toHaveBeenCalledOnce();
+        href = 'https://example.com/second';
+        runtime.refreshAutoTranslation();
+        runtime.refreshAutoTranslation();
+        expect(autoTranslate).toHaveBeenCalledTimes(2);
+        href = 'https://example.com/third';
+        runtime.refreshAutoTranslation(); // 活跃会话继续观察新 DOM，不能重复创建。
+        expect(autoTranslate).toHaveBeenCalledTimes(2);
+        fullPageActive = false;
+        runtime.refreshAutoTranslation();
+        expect(autoTranslate).toHaveBeenCalledTimes(2);
+        automatic = false;
+        runtime.refreshAutoTranslation();
+        automatic = true;
+        runtime.refreshAutoTranslation();
+        expect(autoTranslate).toHaveBeenCalledTimes(3);
+        fullPageActive = false;
+        href = 'https://example.com/#/article/1';
+        runtime.refreshAutoTranslation();
+        expect(autoTranslate).toHaveBeenCalledTimes(4);
+        fullPageActive = false;
+        href = 'https://example.com/#/article/2';
+        runtime.refreshAutoTranslation();
+        expect(autoTranslate).toHaveBeenCalledTimes(5);
+    });
+
+    it('非必要 UI 挂载尚未结束时已经启动翻译，禁用同步取消且迟到 activation 不重启', async () => {
+        let enabled = true;
+        let featuresActive = false;
+        let fullPageActive = false;
+        let href = 'https://example.com/first';
+        const activation = deferred<void>();
+        const autoTranslate = vi.fn(() => { fullPageActive = true; });
+        const dispose = vi.fn(() => { featuresActive = false; fullPageActive = false; });
+        const runtime = createContentPageAvailabilityRuntime({
+            isEnabled: () => enabled, isPageFeaturesActive: () => featuresActive,
+            isVideoPage: () => false, getPageIdentity: () => href,
+            shouldAutomaticallyTranslate: () => true,
+            isFullPageTranslationActive: () => fullPageActive,
+            setMainWorldBridgesEnabled: vi.fn(),
+            activatePageFeatures: async () => { featuresActive = true; await activation.promise; },
+            disposePageFeatures: dispose, mountVideoSubtitle: () => vi.fn(), autoTranslate,
+        });
+        const pending = runtime.reconcile();
+        await Promise.resolve();
+        expect(autoTranslate).toHaveBeenCalledOnce();
+        expect(fullPageActive).toBe(true);
+        enabled = false;
+        const disabling = runtime.reconcile();
+        expect(fullPageActive).toBe(false);
+        href = 'https://example.com/second';
+        runtime.refreshAutoTranslation();
+        activation.resolve();
+        await Promise.all([pending, disabling]);
+        expect(autoTranslate).toHaveBeenCalledOnce();
+        expect(dispose).toHaveBeenCalledOnce();
+        enabled = true;
+        await runtime.reconcile();
+        expect(autoTranslate).toHaveBeenCalledTimes(2);
+    });
     it('caps non-progressing activations and permits recovery on the next explicit reconciliation', async () => {
         let active = false;
         let recover = false;
@@ -80,6 +172,28 @@ describe('content 页面总开关与 SPA 路由生命周期', () => {
         recover = true;
         await runtime.reconcile();
         expect(active).toBe(true);
+        expect(autoTranslate).toHaveBeenCalledOnce();
+    });
+
+    it('单次页面挂载异常不会毒化后续协调，重试成功才启动自动翻译', async () => {
+        let active = false;
+        const activate = vi.fn<() => Promise<void>>()
+            .mockRejectedValueOnce(new Error('transient feature activation'))
+            .mockImplementation(async () => { active = true; });
+        const autoTranslate = vi.fn();
+        const runtime = createContentPageAvailabilityRuntime({
+            isEnabled: () => true, isPageFeaturesActive: () => active,
+            isVideoPage: () => false, shouldAutomaticallyTranslate: () => true,
+            isFullPageTranslationActive: () => false, setMainWorldBridgesEnabled: vi.fn(),
+            activatePageFeatures: activate, disposePageFeatures: vi.fn(),
+            mountVideoSubtitle: () => vi.fn(), autoTranslate,
+        });
+
+        await expect(runtime.reconcile()).rejects.toThrow('transient feature activation');
+        expect(autoTranslate).not.toHaveBeenCalled();
+        await runtime.reconcile();
+        expect(active).toBe(true);
+        expect(activate).toHaveBeenCalledTimes(2);
         expect(autoTranslate).toHaveBeenCalledOnce();
     });
     it('首次 activation 之前已经安装配置订阅，初始化异步窗口不会漏掉写入', () => {
@@ -309,6 +423,6 @@ describe('content 页面总开关与 SPA 路由生命周期', () => {
         expect(activationStarts).toBe(2);
         expect(active).toBe(true);
         expect(setBridges).toHaveBeenLastCalledWith(true);
-        expect(autoTranslate).toHaveBeenCalledOnce();
+        expect(autoTranslate).toHaveBeenCalledTimes(2);
     });
 });
