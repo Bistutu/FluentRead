@@ -132,12 +132,12 @@
     "src/app/content/learningFeatures.ts": "1a61f5eb587812f7bbe105844b5252475725d060774ab3a15b4be63231e60d87",
     "src/app/content/messageRuntime.ts": "260bac5fa5a5eead9c3b84d164466f3716d2779fee2b11a1166f3084d960c6c3",
     "src/app/popup/pageActions.ts": "11e40d0f9a3ddafe27ec449c8af57f0f6298bff2613d17f77329f47c6366254a",
-    "src/app/popup/PopupApp.vue": "dd18fca855d1ef4cdfe238e614685db9c22ff1fd25b752e84a3d23f948f44de2",
-    "src/app/popup/popup.css": "40e6f389053d0273b086c998b98973a4bbab093e38583bd3e45bce0a46a7ca95",
+    "src/app/popup/PopupApp.vue": "2f7b801fa64323a7d9dfefd58cf4026c14048ed9651f11dbc0f3bbdfa7e0265f",
+    "src/app/popup/popup.css": "636c83408a189980a32da3dc2a5cffee4bc07ea60ff6a133d45399a973b7a192",
     "src/features/progressive-reading/ui/ProgressiveReading.vue": "4b1690887ed6e5a885be0884b7cfdf4c8d6f0434b98d2b8aee87a30213a3e8c3",
     "userscript/vite.config.ts": "fe3ae2259d5dd02dc530bf6f4e5a1bf484d295d5056103a2e9ca18835c1fa2e1",
     "userscript/unsupportedCapabilities.ts": "083ed5cb3c6797d105f04043dbca82cbf959074bb450b39739470ededd9e069d",
-    "scripts/run-progressive-reading-test.cjs": "8a808bf0bd41b3104cd367d1199f438b7a18dce0e30cecce796b0d1045ecb6b6"
+    "scripts/run-progressive-reading-test.cjs": "8a6c823afe4fefb72534ec73faf995c1b44d572b5acde98acc8f9fb619f9860d"
   },
   "manifests": [
     {
@@ -201,8 +201,8 @@
   "artifacts": {
     "chromeContentSha256": "4c5d5572e634b4a8736f9568342008ee5443f0c95c260f00a7d4ff26dfaa8e08",
     "firefoxContentSha256": "4d125a9d009ee1b6e6dedc697aaf8dd400c42725c3dec4b24b32f216a09abb10",
-    "userscriptBytes": 2026951,
-    "userscriptSha256": "fa8734558fc0b8deb01bd84c5f2be39e4e8b9b5b7fc52db319a9b2f7552ff7c9",
+    "userscriptBytes": 2026995,
+    "userscriptSha256": "727d165120692d68343b8f6d06bbbd67b1d13a44a3e1dd53beda67dbe897c662",
     "userscriptBudgetBytes": 2027000
   },
   "gates": {
@@ -229,6 +229,10 @@
     "entryCombination": {
       "files": 9,
       "passed": 400
+    },
+    "popupLayoutRegression": {
+      "files": 3,
+      "passed": 88
     }
   },
   "brandUi": {
@@ -253,7 +257,7 @@
         "scheme": "dark",
         "background": "rgb(40, 40, 48)",
         "ink": "rgb(241, 241, 244)",
-        "selectedBackground": "rgba(250, 187, 204, 0.376)",
+        "selectedBackground": "rgba(255, 237, 241, 0.906)",
         "selectedInk": "rgb(255, 173, 198)",
         "textContrast": 12.968772087702426
       },
@@ -261,7 +265,7 @@
         "scheme": "light",
         "background": "rgb(255, 255, 255)",
         "ink": "rgb(23, 32, 51)",
-        "selectedBackground": "rgba(255, 238, 242, 0.937)",
+        "selectedBackground": "rgb(255, 240, 244)",
         "selectedInk": "rgb(220, 49, 95)",
         "textContrast": 16.268480224545662
       }
@@ -273,23 +277,12 @@
       "panel-phrases.png",
       "panel-logic.png",
       "panel-bilingual.png"
-    ],
-    "checks": {
-      "domTests": 14,
-      "userscriptContractTests": 35,
-      "architectureTests": 951,
-      "compile": "passed",
-      "chromeBuild": "passed",
-      "firefoxBuild": "passed",
-      "userscriptBuild": "passed",
-      "userscriptVerifier": "passed",
-      "docsBuild": "passed"
-    }
+    ]
   },
   "browser": {
     "passed": 18,
     "consoleErrors": 0,
-    "focusSamples": 49,
+    "focusSamples": 45,
     "launchMode": "macos-background-cdp",
     "focusPolicy": "launchservices-no-foreground",
     "windowPlacement": "background-visible-no-focus",
@@ -308,5 +301,40 @@
     "file": "tests/implementationAudit48A.test.ts",
     "failure": "Bilibili fixed Origin-removal rule conflicts with unchanged HEAD addRules=[] expectation",
     "relatedProductChanges": false
+  },
+  "popupLayout": {
+    "sameRow": true,
+    "order": [
+      "full-page",
+      "section",
+      "progressive-reading"
+    ],
+    "legacyTranslationGlyph": false,
+    "visibleHotkeyPreserved": true,
+    "siteRuleOuterFrame": false,
+    "widths": [
+      320,
+      400
+    ],
+    "longHotkeyVerified": true
+  },
+  "recordedDemo": {
+    "report": "demo-report.json",
+    "timing": "demo-timing.json",
+    "gif": "progressive-reading-demo.gif",
+    "gifSha256": "3b5f6924807deb37e1a204e0a9b41974630095b5515139e1976f377526664c08",
+    "frames": 91,
+    "viewport": {
+      "width": 660,
+      "height": 720
+    },
+    "encodedDurationMs": 18200,
+    "focusSamples": 28,
+    "consoleErrors": 0,
+    "learningRecordsUnchanged": true,
+    "ownedBrowserClosed": true,
+    "profileRemoved": true,
+    "separateFrom18CaseRun": true,
+    "sampleBoundary": "The recorded demo excludes the different-sense bank collection fixture; the ordinary 18-case acceptance run retains that fixture and verifies conservative help."
   }
 }

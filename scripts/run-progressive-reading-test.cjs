@@ -16,6 +16,10 @@ const extensionDir = path.resolve(arg('extension-dir', '.output/chrome-mv3'));
 const artifactsDir = path.resolve(arg('artifacts-dir', '/private/tmp/fluentread-progressive-reading'));
 const playwrightRoot = arg('playwright-root', process.env.PLAYWRIGHT_ROOT);
 const popupOnly = process.argv.includes('--popup-only');
+const demoIndex = process.argv.indexOf('--record-demo'), demoMode = demoIndex >= 0;
+const demoArgument = demoMode && process.argv[demoIndex + 1];
+const demoDir = path.resolve(demoArgument && !demoArgument.startsWith('--') ? demoArgument : path.join(artifactsDir, 'demo'));
+if (demoMode && popupOnly) throw new Error('--record-demo and --popup-only are separate execution scopes');
 if (!playwrightRoot) throw new Error('Pass --playwright-root with the bundled Node package directory');
 if (process.argv.includes('--headed') || process.argv.includes('--headless')) throw new Error('This targeted runner requires --background and does not authorize a foreground or headless fallback');
 if (!fs.existsSync(path.join(extensionDir, 'manifest.json'))) throw new Error(`Missing production extension manifest: ${extensionDir}`);
@@ -26,7 +30,7 @@ const fixture = createProgressiveReadingFixture();
 const profileDir = fs.mkdtempSync('/private/tmp/fluentread-progressive-reading-profile-');
 fs.mkdirSync(artifactsDir, {recursive: true});
 const report = {ok: false, extensionDir, browserPath, profileMode: 'fresh-mkdtemp-owned', profileDir, artifact: 'production', cases: [], screenshots: [], consoleErrors: [], focusSamples: [],
-    executionScope: popupOnly ? 'popup-entry-only' : 'progressive-reading-targeted-flow',
+    executionScope: demoMode ? 'progressive-reading-recorded-demo' : popupOnly ? 'popup-entry-only' : 'progressive-reading-targeted-flow',
     evidenceBoundary: 'Real production extension, real selection, DOM, trusted CDP keyboard/mouse and Vue Shadow UI in an isolated Edge browser. Local deterministic HTTP translation transport, Popup active-tab lookup and toolbar-close capture are fixtures. No live-provider, Firefox runtime, native-toolbar or human-comprehension claim.',
     reuseBoundary: 'This browser run verifies reuse of a translation already obtained within the same reading session. Reuse of a preexisting bilingual webpage artifact is outside this runner; its pure excerpt matcher is covered separately by unit tests.',
     ownedBrowserClosed: false, profileRemoved: false};
@@ -34,6 +38,7 @@ const wait = milliseconds => new Promise(resolve => setTimeout(resolve, millisec
 const record = (name, details = {}) => {report.cases.push({...details, name}); console.log(`PASS ${name}`);};
 let session, context, control, popup, page, origin, fixtureInfo, browserPid, tabId;
 let launchAttempted = false, monitor, monitorTask, monitorBusy = false, stopping = false, focusError;
+let demoTarget, demoSurface, demoStepLabel, demoCaptureTask, demoCaptureError, demoCapturing = false;
 const cdpSessions = new WeakMap(), ownedCdpSessions = new Set();
 
 async function until(predicate, label, timeout = 15000) {
@@ -139,7 +144,7 @@ async function selectedMode() {return ui(function() {return this.querySelector('
 async function sourceText() {return ui(function() {return this.querySelector('[data-reading-source]')?.textContent?.trim() || '';});}
 async function translationText() {return ui(function() {return this.querySelector('[data-reading-translation]')?.textContent?.trim() || '';});}
 async function phraseTerms() {const state = await snapshot(); return findAll(state.panel, has('data-reading-phrase')).map(node => ({term: attr(node, 'data-reading-term') || attr(node, 'data-reading-phrase') || text(node).trim(), text: text(node).trim()}));}
-async function selectPrimary(expected) {
+async function selectPrimary(expected, slowDrag = false) {
     await helper.activateExtensionTabWithoutForeground(context, page);
     await page.locator('#primary').scrollIntoViewIfNeeded();
     // 先结束前一次 Shadow UI 的焦点/选区，再用可信鼠标重新开始宿主选择；准备步骤不伪造 selectionchange 或键盘事件。
@@ -152,7 +157,13 @@ async function selectPrimary(expected) {
         return {first: {x: first.left + 0.5, y: first.top + first.height / 2}, last: {x: last.right + 2, y: last.top + last.height / 2}};
     });
     await page.mouse.move(points.first.x, points.first.y); await page.mouse.down();
-    await page.mouse.move(points.last.x, points.last.y, {steps: 18}); await page.mouse.up();
+    if (slowDrag) {
+        for (let step = 1; step <= 24; step += 1) {
+            await page.mouse.move(points.first.x + (points.last.x - points.first.x) * step / 24, points.first.y + (points.last.y - points.first.y) * step / 24);
+            await wait(60);
+        }
+    } else await page.mouse.move(points.last.x, points.last.y, {steps: 18});
+    await page.mouse.up();
     assert.equal(await page.evaluate(() => getSelection()?.toString().trim()), expected, 'Trusted mouse did not select the entire original source');
 }
 async function capture(expected) {
@@ -196,6 +207,11 @@ async function popupEntryVariant(width, label) {
         const shell = document.querySelector('.popup-shell'), shellBox = shell.getBoundingClientRect(), row = document.querySelector('.translate-action');
         const shortcut = row.querySelector('.translate-hotkey'), shortcutBox = shortcut?.getBoundingClientRect(), fullBox = row.querySelector('[data-testid="page-translation"]').getBoundingClientRect();
         return {viewportWidth: innerWidth, shellWidth: shellBox.width, horizontalOverflow: document.documentElement.scrollWidth > innerWidth + 1 || shell.scrollWidth > shell.clientWidth + 1 || row.scrollWidth > row.clientWidth + 1,
+            legacyTranslationGlyph: !!row.querySelector('.translate-glyph') || row.textContent.includes('A↔译'),
+            siteRuleRows: [...document.querySelectorAll('.site-rule-row')].map(rule => {const style = getComputedStyle(rule); return {
+                borderWidths: [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth],
+                background: style.backgroundColor, backgroundImage: style.backgroundImage, shadow: style.boxShadow,
+            };}),
             hotkey: shortcut && {text: shortcut.textContent.trim(), clipped: shortcut.scrollWidth > shortcut.clientWidth + 1 || shortcutBox.left < fullBox.left - 1 || shortcutBox.right > fullBox.right + 1 || shortcutBox.bottom > fullBox.bottom + 1},
             buttons: [...row.querySelectorAll('button')].map(button => {
                 const box = button.getBoundingClientRect(), label = button.querySelector('.translate-label') || [...button.querySelectorAll('span')].at(-1), text = label.getBoundingClientRect();
@@ -211,9 +227,15 @@ async function popupEntryVariant(width, label) {
     assert.equal(metrics.horizontalOverflow, false, `${label} Popup overflows: ${JSON.stringify(metrics)}`);
     assert(metrics.buttons.every(button => button.text && button.visible && button.withinShell && !button.clipped), `${label} Popup action text is clipped or outside the shell: ${JSON.stringify(metrics)}`);
     assert(metrics.hotkey?.text && !metrics.hotkey.clipped, `${label} Popup hotkey is missing or clipped: ${JSON.stringify(metrics)}`);
+    assert.equal(metrics.legacyTranslationGlyph, false, `${label}: the legacy A↔译 glyph must be absent`);
+    assert(metrics.siteRuleRows.length && metrics.siteRuleRows.every(rule => rule.borderWidths.every(width => parseFloat(width) === 0)
+        && ['transparent', 'rgba(0, 0, 0, 0)'].includes(rule.background) && rule.backgroundImage === 'none' && rule.shadow === 'none'),
+        `${label}: site rules must have no enclosing border, background or shadow: ${JSON.stringify(metrics.siteRuleRows)}`);
     const [full, section, reading] = metrics.buttons;
-    assert(full.bottom <= section.top + 1 && Math.abs(section.top - reading.top) <= 1 && Math.abs(full.left - section.left) <= 1 && Math.abs(full.right - reading.right) <= 1,
-        `${label}: full-page action must occupy the first row and two help actions the second: ${JSON.stringify(metrics)}`);
+    assert.equal([full.id, section.id, reading.id].join(','), 'page-translation,section-translation,progressive-reading');
+    assert(Math.abs(full.top - section.top) <= 1 && Math.abs(section.top - reading.top) <= 1 && Math.abs(full.bottom - section.bottom) <= 1
+        && Math.abs(section.bottom - reading.bottom) <= 1 && full.right <= section.left + 1 && section.right <= reading.left + 1,
+        `${label}: all three actions must share one row, with reading to the right of section: ${JSON.stringify(metrics)}`);
     return metrics;
 }
 async function popupEntryGeometry() {
@@ -227,7 +249,87 @@ async function popupEntryGeometry() {
     await popupEntryVariant(400, 'popup-400-long-hotkey');
     await patch({floatingBallHotkey: previous.floatingBallHotkey, customFloatingBallHotkey: previous.customFloatingBallHotkey});
     await popup.setViewportSize({width: 400, height: 650});
-    record('320px and 400px real Popup documents expose full-page, local-section and reading actions in two rows with complete labels and a visible long hotkey', {variants: report.popupLayout});
+    record('320px and 400px real Popup documents expose all three actions in one row without a legacy glyph or site-rule frame, with complete labels and a visible long hotkey', {variants: report.popupLayout});
+}
+
+// 演示装饰只存在于本机夹具：字幕放在留白，指针跟随真实 CDP 鼠标事件，不替换生产 UI。
+async function prepareDemoSurface(target, surface) {
+    await target.setViewportSize({width: 660, height: 720});
+    await target.evaluate(surface => {
+        const caption = document.createElement('div'), cursor = document.createElement('div');
+        caption.id = 'progressive-demo-caption'; caption.dataset.fluentReadUi = 'demo-caption';
+        caption.style.cssText = `position:fixed;${surface === 'popup' ? 'top:12px;right:16px;width:290px' : 'bottom:16px;left:16px;width:196px'};z-index:2147483647;pointer-events:none;font:600 14px/1.6 system-ui;color:#273347;white-space:pre-wrap`;
+        cursor.dataset.fluentReadUi = 'demo-cursor';
+        cursor.style.cssText = 'position:fixed;left:0;top:0;width:14px;height:14px;border:2px solid #ef4776;border-radius:50%;background:transparent;z-index:2147483647;pointer-events:none;display:none;transform:translate(-50%,-50%)';
+        document.body.append(caption, cursor);
+        document.addEventListener('mousemove', event => {document.documentElement.append(cursor); cursor.style.display = 'block'; cursor.style.left = `${event.clientX}px`; cursor.style.top = `${event.clientY}px`;});
+        document.addEventListener('mousedown', () => {cursor.style.borderWidth = '4px';});
+        document.addEventListener('mouseup', () => {cursor.style.borderWidth = '2px';});
+    }, surface);
+}
+async function demoStep(target, surface, caption, action, pause = 2000) {
+    if (focusError || demoCaptureError) throw focusError || demoCaptureError;
+    demoTarget = target; demoSurface = surface; demoStepLabel = caption;
+    const step = {caption, surface, startedAtMs: Date.now() - report.demo.startedAt, completedAtMs: null}; report.demo.steps.push(step);
+    await target.evaluate(caption => {document.querySelector('#progressive-demo-caption').textContent = caption;}, caption);
+    if (action) await action();
+    await wait(pause); step.completedAtMs = Date.now() - report.demo.startedAt;
+    if (focusError || demoCaptureError) throw focusError || demoCaptureError;
+}
+async function stopDemoCapture() {
+    demoCapturing = false;
+    if (demoCaptureTask) await demoCaptureTask;
+    if (!report.demo) return;
+    report.demo.durationMs ??= Date.now() - report.demo.startedAt;
+    report.demo.encodedDurationMs = report.demo.frames.length * report.demo.frameDurationMs;
+    if (demoCaptureError) report.demo.captureError = demoCaptureError.message;
+    fs.writeFileSync(report.demo.timingPath, JSON.stringify(report.demo, null, 2));
+}
+async function recordDemo(entriesBefore) {
+    const framesDir = path.join(demoDir, 'frames'); fs.mkdirSync(framesDir, {recursive: true});
+    assert.equal(fs.readdirSync(framesDir).length, 0, `Use an empty demo frame directory: ${framesDir}`);
+    report.demo = {startedAt: Date.now(), viewport: {width: 660, height: 720}, fps: 5, frameDurationMs: 200,
+        framesDir, framePattern: 'frame-%06d.png', timingPath: path.join(demoDir, 'timing.json'), steps: [], frames: [],
+        boundary: 'Separate recorded demonstration, not the 18-case assertion run. Real Popup is rendered in an independent extension test tab at its production width on a 660x720 canvas. Local captions/cursor are presentation aids; responses and active-tab/close handling use the existing deterministic fixtures.'};
+    await prepareDemoSurface(popup, 'popup'); await prepareDemoSurface(page, 'webpage');
+    demoTarget = popup; demoSurface = 'popup'; demoStepLabel = '1 · Popup 的渐进阅读入口'; demoCapturing = true;
+    demoCaptureTask = (async () => {
+        while (demoCapturing) {
+            if (focusError) throw focusError;
+            const started = Date.now(), target = demoTarget, surface = demoSurface, step = demoStepLabel;
+            const file = path.join(framesDir, `frame-${String(report.demo.frames.length).padStart(6, '0')}.png`);
+            await target.screenshot({path: file, timeout: 5000});
+            report.demo.frames.push({file, surface, step, atMs: started - report.demo.startedAt});
+            await wait(Math.max(0, report.demo.frameDurationMs - (Date.now() - started)));
+        }
+    })().catch(error => {demoCaptureError = error; demoCapturing = false;});
+    try {
+        await helper.activateExtensionTabWithoutForeground(context, popup);
+        await demoStep(popup, 'popup', '1 · Popup 的渐进阅读入口', () => popup.locator('[data-testid="progressive-reading"]').hover());
+        await helper.activateExtensionTabWithoutForeground(context, page);
+        await popup.locator('[data-testid="progressive-reading"]').click();
+        await until(async () => Boolean((await snapshot()).panel), 'demo opens the real reading panel');
+        assert.equal(await sourceText(), '');
+        await demoStep(page, 'webpage', '2 · 先打开面板\n等待选择正文');
+        await demoStep(page, 'webpage', '3 · 在网页中拖选正文', () => selectPrimary(SOURCE, true));
+        await demoStep(page, 'webpage', '4 · 点击读取\n默认只读原文', async () => {
+            await click(has('data-reading-use-selection'), 'demo reads the selected source');
+            await until(async () => (await sourceText()) === SOURCE, 'demo source');
+        });
+        await demoStep(page, 'webpage', '5 · 短语提示\n按需查看表达', () => click(mode('phrases'), 'demo phrase hints'));
+        await demoStep(page, 'webpage', '6 · 逻辑线索\n留意条件、否定与范围', () => click(mode('logic'), 'demo logic clues'));
+        await demoStep(page, 'webpage', '7 · 完整双语\n随时直接查看译文', async () => {
+            await click(has('data-reading-full'), 'demo complete bilingual');
+            await until(async () => (await translationText()).includes(TRANSLATION), 'demo translation');
+        });
+        await demoStep(page, 'webpage', '8 · 关闭辅助\n继续阅读原网页', async () => {
+            await click(has('data-reading-close'), 'demo close');
+            await until(async () => !(await snapshot()).host, 'demo closes the real panel');
+        });
+        assert.deepEqual(await vocabulary('list'), entriesBefore, 'The demo must not change learning records');
+        report.demo.learningRecordsUnchanged = true;
+    } finally {await stopDemoCapture();}
+    if (demoCaptureError) throw demoCaptureError;
 }
 async function shot(name, panelOnly = false) {
     await focusSample(`${name}:before-screenshot`);
@@ -325,14 +427,22 @@ async function main() {
         report.configSummary = Object.fromEntries(['on', 'service', 'from', 'to', 'display', 'autoTranslate', 'vocabularyBookEnabled', 'vocabularyReencounterEnabled', 'disableSelectionTranslator'].map(key => [key, seeded[key]]));
         const unmastered = await vocabulary('upsert', {input: {sourceLanguage: 'en', targetLanguage: 'zh-Hans', term: 'take into account', translation: '考虑；把……计入', kind: 'expression', context: {text: SOURCE}}});
         const mastered = await vocabulary('upsert', {input: {sourceLanguage: 'en', targetLanguage: 'zh-Hans', term: 'by and large', translation: '总体而言', kind: 'expression', context: {text: SOURCE}}});
-        const otherSense = await vocabulary('upsert', {input: {sourceLanguage: 'en', targetLanguage: 'zh-Hans', term: 'bank', translation: '河岸', kind: 'expression', context: {text: 'They sat on the bank of the river.'}}});
-        await vocabulary('setMastery', {entryId: mastered.id}); await vocabulary('setMastery', {entryId: otherSense.id});
+        // 不同义项的收藏专用于验收；操作演示只保留本段相关参考，避免把测试样本误解为当前释义。
+        const otherSense = demoMode ? undefined : await vocabulary('upsert', {input: {sourceLanguage: 'en', targetLanguage: 'zh-Hans', term: 'bank', translation: '河岸', kind: 'expression', context: {text: 'They sat on the bank of the river.'}}});
+        await vocabulary('setMastery', {entryId: mastered.id});
+        if (otherSense) await vocabulary('setMastery', {entryId: otherSense.id});
         const entriesBefore = await vocabulary('list');
         page = await open(fixtureInfo.url, {width: 1200, height: 850});
         await page.locator('#fluent-read-page-styles').waitFor({state: 'attached'});
         tabId = await control.evaluate(async url => (await chrome.tabs.query({})).find(tab => tab.url === url).id, fixtureInfo.url);
         const originalHtml = await page.locator('article').innerHTML();
-        popup = await openPopup(); await popupEntryGeometry();
+        popup = await openPopup();
+        if (demoMode) {
+            await recordDemo(entriesBefore);
+            assert.equal(report.consoleErrors.length, 0, JSON.stringify(report.consoleErrors));
+            await focusSample('demo-completed'); report.ok = true; return;
+        }
+        await popupEntryGeometry();
         if (popupOnly) {assert.equal(report.consoleErrors.length, 0, JSON.stringify(report.consoleErrors)); await focusSample('popup-only-completed'); report.ok = true; return;}
         await openReading();
         assert.equal(await sourceText(), ''); assert.equal(fixture.requests.length, 0);
@@ -476,6 +586,7 @@ async function main() {
         if (page && !page.isClosed() && !focusError) await shot('failure').catch(screenshotError => {report.screenshotError = screenshotError.message;});
         process.exitCode = 1;
     } finally {
+        await stopDemoCapture().catch(error => {report.demoStopError = error.message; report.ok = false; process.exitCode = 1;});
         stopping = true; clearInterval(monitor); if (monitorTask) await monitorTask.catch(() => {});
         for (const cdp of ownedCdpSessions) await cdp.detach().catch(() => {});
         let closed = false;
@@ -488,6 +599,7 @@ async function main() {
         await fixture.close(); report.requests = fixture.requests; report.hostLifecycle = fixture.lifecycle;
         fs.writeFileSync(path.join(artifactsDir, 'report.json'), JSON.stringify(report, null, 2));
         console.log(JSON.stringify({ok: report.ok, cases: report.cases.length, error: report.error?.message, artifactsDir, launchMode: report.launchMode, focusPolicy: report.focusPolicy, windowPlacement: report.windowPlacement,
+            executionScope: report.executionScope, demo: report.demo && {framesDir: report.demo.framesDir, frames: report.demo.frames.length, frameDurationMs: report.demo.frameDurationMs, viewport: report.demo.viewport},
             ownedBrowserClosed: report.ownedBrowserClosed, profileRemoved: report.profileRemoved}, null, 2));
     }
 }

@@ -1,7 +1,7 @@
 <!--
  @file src/app/popup/PopupApp.vue
  文件职责：实现浏览器 Popup 的主交互界面，连接当前标签页状态、翻译配置、可插拔皮肤、功能抽屉和高频操作，让现场开关与显示操作保持简短，将长期偏好引导到对应设置页。
- 主要内容：在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型，保留版本、赞赏、网页翻译与恢复、局部选择、渐进阅读及站点开关；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次语言引导独占内容；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效；网站规则写前复验标签页，等待后台确认并呈现保存忙碌、暂停与失败反馈。
+ 主要内容：在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型；网页翻译、局部选择与渐进阅读同排，主操作只显示标题、快捷键与加载状态，站点开关保留独立按钮；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次语言引导独占内容；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效；网站规则写前复验标签页，等待后台确认并呈现保存忙碌、暂停与失败反馈。
  模块边界：组件编排 UI、浏览器导航事件与生命周期；页内面板通过授权来源固定发起网页，页面消息归属由 pageActions 管理，不实现翻译 provider、缓存存储或 content 挂载；公共配置由 services/store 管理。
 -->
 <!-- Popup 页面归 app 层所有；WXT 入口只负责调用挂载函数。 -->
@@ -124,7 +124,6 @@
           :title="pageTranslationLabel"
           :disabled="!config.on || currentSiteExtensionDisabled || translating || pageState.savingRule" :onClick="pageButtons.toggle">
           <span v-if="translating" class="spinner" aria-hidden="true" />
-          <span v-else class="translate-glyph" aria-hidden="true">A↔译</span>
           <span class="translate-label">{{ pageTranslationLabel }}</span>
           <kbd v-if="pageTranslationHotkey && !currentPdfSource" class="translate-hotkey">{{ pageTranslationHotkey }}</kbd>
         </button>

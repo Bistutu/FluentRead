@@ -3,7 +3,7 @@
   "extensionDir": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/.output/chrome-mv3",
   "browserPath": "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
   "profileMode": "fresh-mkdtemp-owned",
-  "profileDir": "/private/tmp/fluentread-progressive-reading-profile-FREVTR",
+  "profileDir": "/private/tmp/fluentread-progressive-reading-profile-KwENjg",
   "artifact": "production",
   "cases": [
     {
@@ -12,6 +12,20 @@
           "viewportWidth": 400,
           "shellWidth": 320,
           "horizontalOverflow": false,
+          "legacyTranslationGlyph": false,
+          "siteRuleRows": [
+            {
+              "borderWidths": [
+                "0px",
+                "0px",
+                "0px",
+                "0px"
+              ],
+              "background": "rgba(0, 0, 0, 0)",
+              "backgroundImage": "none",
+              "shadow": "none"
+            }
+          ],
           "hotkey": {
             "text": "Option+T",
             "clipped": false
@@ -21,10 +35,10 @@
               "id": "page-translation",
               "text": "翻译当前网页",
               "left": 29,
-              "right": 291,
+              "right": 175,
               "top": 182.8984375,
-              "bottom": 222.8984375,
-              "width": 262,
+              "bottom": 243.6953125,
+              "width": 146,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -32,11 +46,11 @@
             {
               "id": "section-translation",
               "text": "局部",
-              "left": 29,
-              "right": 156.5,
-              "top": 229.8984375,
-              "bottom": 263.8984375,
-              "width": 127.5,
+              "left": 181,
+              "right": 231,
+              "top": 182.8984375,
+              "bottom": 243.6953125,
+              "width": 50,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -44,11 +58,11 @@
             {
               "id": "progressive-reading",
               "text": "渐进阅读",
-              "left": 163.5,
+              "left": 237,
               "right": 291,
-              "top": 229.8984375,
-              "bottom": 263.8984375,
-              "width": 127.5,
+              "top": 182.8984375,
+              "bottom": 243.6953125,
+              "width": 54,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -60,6 +74,20 @@
           "viewportWidth": 320,
           "shellWidth": 320,
           "horizontalOverflow": false,
+          "legacyTranslationGlyph": false,
+          "siteRuleRows": [
+            {
+              "borderWidths": [
+                "0px",
+                "0px",
+                "0px",
+                "0px"
+              ],
+              "background": "rgba(0, 0, 0, 0)",
+              "backgroundImage": "none",
+              "shadow": "none"
+            }
+          ],
           "hotkey": {
             "text": "Option+T",
             "clipped": false
@@ -69,10 +97,10 @@
               "id": "page-translation",
               "text": "翻译当前网页",
               "left": 29,
-              "right": 291,
+              "right": 175,
               "top": 182.8984375,
-              "bottom": 222.8984375,
-              "width": 262,
+              "bottom": 243.6953125,
+              "width": 146,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -80,11 +108,11 @@
             {
               "id": "section-translation",
               "text": "局部",
-              "left": 29,
-              "right": 156.5,
-              "top": 229.8984375,
-              "bottom": 263.8984375,
-              "width": 127.5,
+              "left": 181,
+              "right": 231,
+              "top": 182.8984375,
+              "bottom": 243.6953125,
+              "width": 50,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -92,11 +120,11 @@
             {
               "id": "progressive-reading",
               "text": "渐进阅读",
-              "left": 163.5,
+              "left": 237,
               "right": 291,
-              "top": 229.8984375,
-              "bottom": 263.8984375,
-              "width": 127.5,
+              "top": 182.8984375,
+              "bottom": 243.6953125,
+              "width": 54,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -108,6 +136,20 @@
           "viewportWidth": 320,
           "shellWidth": 320,
           "horizontalOverflow": false,
+          "legacyTranslationGlyph": false,
+          "siteRuleRows": [
+            {
+              "borderWidths": [
+                "0px",
+                "0px",
+                "0px",
+                "0px"
+              ],
+              "background": "rgba(0, 0, 0, 0)",
+              "backgroundImage": "none",
+              "shadow": "none"
+            }
+          ],
           "hotkey": {
             "text": "Control+Option+Shift+Pagedown",
             "clipped": false
@@ -117,10 +159,10 @@
               "id": "page-translation",
               "text": "翻译当前网页",
               "left": 29,
-              "right": 291,
+              "right": 175,
               "top": 182.8984375,
-              "bottom": 243.6953125,
-              "width": 262,
+              "bottom": 247.0859375,
+              "width": 146,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -128,11 +170,11 @@
             {
               "id": "section-translation",
               "text": "局部",
-              "left": 29,
-              "right": 156.5,
-              "top": 250.6953125,
-              "bottom": 284.6953125,
-              "width": 127.5,
+              "left": 181,
+              "right": 231,
+              "top": 182.8984375,
+              "bottom": 247.0859375,
+              "width": 50,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -140,11 +182,11 @@
             {
               "id": "progressive-reading",
               "text": "渐进阅读",
-              "left": 163.5,
+              "left": 237,
               "right": 291,
-              "top": 250.6953125,
-              "bottom": 284.6953125,
-              "width": 127.5,
+              "top": 182.8984375,
+              "bottom": 247.0859375,
+              "width": 54,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -156,6 +198,20 @@
           "viewportWidth": 400,
           "shellWidth": 320,
           "horizontalOverflow": false,
+          "legacyTranslationGlyph": false,
+          "siteRuleRows": [
+            {
+              "borderWidths": [
+                "0px",
+                "0px",
+                "0px",
+                "0px"
+              ],
+              "background": "rgba(0, 0, 0, 0)",
+              "backgroundImage": "none",
+              "shadow": "none"
+            }
+          ],
           "hotkey": {
             "text": "Control+Option+Shift+Pagedown",
             "clipped": false
@@ -165,10 +221,10 @@
               "id": "page-translation",
               "text": "翻译当前网页",
               "left": 29,
-              "right": 291,
+              "right": 175,
               "top": 182.8984375,
-              "bottom": 243.6953125,
-              "width": 262,
+              "bottom": 247.0859375,
+              "width": 146,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -176,11 +232,11 @@
             {
               "id": "section-translation",
               "text": "局部",
-              "left": 29,
-              "right": 156.5,
-              "top": 250.6953125,
-              "bottom": 284.6953125,
-              "width": 127.5,
+              "left": 181,
+              "right": 231,
+              "top": 182.8984375,
+              "bottom": 247.0859375,
+              "width": 50,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -188,11 +244,11 @@
             {
               "id": "progressive-reading",
               "text": "渐进阅读",
-              "left": 163.5,
+              "left": 237,
               "right": 291,
-              "top": 250.6953125,
-              "bottom": 284.6953125,
-              "width": 127.5,
+              "top": 182.8984375,
+              "bottom": 247.0859375,
+              "width": 54,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -201,7 +257,7 @@
           "label": "popup-400-long-hotkey"
         }
       ],
-      "name": "320px and 400px real Popup documents expose full-page, local-section and reading actions in two rows with complete labels and a visible long hotkey"
+      "name": "320px and 400px real Popup documents expose all three actions in one row without a legacy glyph or site-rule frame, with complete labels and a visible long hotkey"
     },
     {
       "name": "Popup entry opens four modes without fabricating a source or requesting translation"
@@ -244,12 +300,12 @@
         {
           "source": "bank",
           "model": "progressive-reading-fixture",
-          "at": 1791701258472
+          "at": 1791706070514
         },
         {
           "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
           "model": "progressive-reading-fixture",
-          "at": 1791701258924
+          "at": 1791706070935
         }
       ],
       "name": "One click reaches complete bilingual from logic and mode switches reuse the same reading-session translation"
@@ -282,7 +338,7 @@
           "scheme": "dark",
           "background": "rgb(40, 40, 48)",
           "ink": "rgb(241, 241, 244)",
-          "selectedBackground": "rgba(250, 187, 204, 0.376)",
+          "selectedBackground": "rgba(255, 237, 241, 0.906)",
           "selectedInk": "rgb(255, 173, 198)",
           "textContrast": 12.968772087702426
         },
@@ -290,7 +346,7 @@
           "scheme": "light",
           "background": "rgb(255, 255, 255)",
           "ink": "rgb(23, 32, 51)",
-          "selectedBackground": "rgba(255, 238, 242, 0.937)",
+          "selectedBackground": "rgb(255, 240, 244)",
           "selectedInk": "rgb(220, 49, 95)",
           "textContrast": 16.268480224545662
         }
@@ -315,7 +371,7 @@
     },
     {
       "source": "If the route changes, this delayed reading request must not remain attached to the old page.",
-      "route": "http://127.0.0.1:61747/article?route=reading",
+      "route": "http://127.0.0.1:51703/article?route=reading",
       "name": "Pure history.pushState with unchanged host DOM cancels the old request through the real MAIN bridge, closes help and permits reopening"
     },
     {
@@ -361,233 +417,213 @@
     },
     {
       "label": "popup-400-progressive-entry:before-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "popup-400-progressive-entry:after-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
-    },
-    {
-      "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "popup-320-progressive-entry:before-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "popup-320-progressive-entry:after-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "popup-320-long-hotkey:before-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "popup-320-long-hotkey:after-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "popup-400-long-hotkey:before-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "popup-400-long-hotkey:after-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
-    },
-    {
-      "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "panel-original:before-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "panel-original:after-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "panel-phrases:before-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "panel-phrases:after-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
-    },
-    {
-      "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "panel-logic:before-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "panel-logic:after-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "desktop-bilingual:before-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "desktop-bilingual:after-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
-    },
-    {
-      "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "panel-bilingual:before-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "panel-bilingual:after-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "390-light-phrases:before-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "390-light-phrases:after-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "390-dark-phrases:before-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "390-dark-phrases:after-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "390-keyboard-bilingual:before-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "390-keyboard-bilingual:after-screenshot",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     },
     {
       "label": "completed",
-      "pid": 73685,
-      "name": "ChatGPT"
-    },
-    {
-      "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
+      "pid": 76304,
+      "name": "微信"
     }
   ],
   "executionScope": "progressive-reading-targeted-flow",
@@ -642,6 +678,20 @@
       "viewportWidth": 400,
       "shellWidth": 320,
       "horizontalOverflow": false,
+      "legacyTranslationGlyph": false,
+      "siteRuleRows": [
+        {
+          "borderWidths": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "background": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "shadow": "none"
+        }
+      ],
       "hotkey": {
         "text": "Option+T",
         "clipped": false
@@ -651,10 +701,10 @@
           "id": "page-translation",
           "text": "翻译当前网页",
           "left": 29,
-          "right": 291,
+          "right": 175,
           "top": 182.8984375,
-          "bottom": 222.8984375,
-          "width": 262,
+          "bottom": 243.6953125,
+          "width": 146,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -662,11 +712,11 @@
         {
           "id": "section-translation",
           "text": "局部",
-          "left": 29,
-          "right": 156.5,
-          "top": 229.8984375,
-          "bottom": 263.8984375,
-          "width": 127.5,
+          "left": 181,
+          "right": 231,
+          "top": 182.8984375,
+          "bottom": 243.6953125,
+          "width": 50,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -674,11 +724,11 @@
         {
           "id": "progressive-reading",
           "text": "渐进阅读",
-          "left": 163.5,
+          "left": 237,
           "right": 291,
-          "top": 229.8984375,
-          "bottom": 263.8984375,
-          "width": 127.5,
+          "top": 182.8984375,
+          "bottom": 243.6953125,
+          "width": 54,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -690,6 +740,20 @@
       "viewportWidth": 320,
       "shellWidth": 320,
       "horizontalOverflow": false,
+      "legacyTranslationGlyph": false,
+      "siteRuleRows": [
+        {
+          "borderWidths": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "background": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "shadow": "none"
+        }
+      ],
       "hotkey": {
         "text": "Option+T",
         "clipped": false
@@ -699,10 +763,10 @@
           "id": "page-translation",
           "text": "翻译当前网页",
           "left": 29,
-          "right": 291,
+          "right": 175,
           "top": 182.8984375,
-          "bottom": 222.8984375,
-          "width": 262,
+          "bottom": 243.6953125,
+          "width": 146,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -710,11 +774,11 @@
         {
           "id": "section-translation",
           "text": "局部",
-          "left": 29,
-          "right": 156.5,
-          "top": 229.8984375,
-          "bottom": 263.8984375,
-          "width": 127.5,
+          "left": 181,
+          "right": 231,
+          "top": 182.8984375,
+          "bottom": 243.6953125,
+          "width": 50,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -722,11 +786,11 @@
         {
           "id": "progressive-reading",
           "text": "渐进阅读",
-          "left": 163.5,
+          "left": 237,
           "right": 291,
-          "top": 229.8984375,
-          "bottom": 263.8984375,
-          "width": 127.5,
+          "top": 182.8984375,
+          "bottom": 243.6953125,
+          "width": 54,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -738,6 +802,20 @@
       "viewportWidth": 320,
       "shellWidth": 320,
       "horizontalOverflow": false,
+      "legacyTranslationGlyph": false,
+      "siteRuleRows": [
+        {
+          "borderWidths": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "background": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "shadow": "none"
+        }
+      ],
       "hotkey": {
         "text": "Control+Option+Shift+Pagedown",
         "clipped": false
@@ -747,10 +825,10 @@
           "id": "page-translation",
           "text": "翻译当前网页",
           "left": 29,
-          "right": 291,
+          "right": 175,
           "top": 182.8984375,
-          "bottom": 243.6953125,
-          "width": 262,
+          "bottom": 247.0859375,
+          "width": 146,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -758,11 +836,11 @@
         {
           "id": "section-translation",
           "text": "局部",
-          "left": 29,
-          "right": 156.5,
-          "top": 250.6953125,
-          "bottom": 284.6953125,
-          "width": 127.5,
+          "left": 181,
+          "right": 231,
+          "top": 182.8984375,
+          "bottom": 247.0859375,
+          "width": 50,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -770,11 +848,11 @@
         {
           "id": "progressive-reading",
           "text": "渐进阅读",
-          "left": 163.5,
+          "left": 237,
           "right": 291,
-          "top": 250.6953125,
-          "bottom": 284.6953125,
-          "width": 127.5,
+          "top": 182.8984375,
+          "bottom": 247.0859375,
+          "width": 54,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -786,6 +864,20 @@
       "viewportWidth": 400,
       "shellWidth": 320,
       "horizontalOverflow": false,
+      "legacyTranslationGlyph": false,
+      "siteRuleRows": [
+        {
+          "borderWidths": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "background": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "shadow": "none"
+        }
+      ],
       "hotkey": {
         "text": "Control+Option+Shift+Pagedown",
         "clipped": false
@@ -795,10 +887,10 @@
           "id": "page-translation",
           "text": "翻译当前网页",
           "left": 29,
-          "right": 291,
+          "right": 175,
           "top": 182.8984375,
-          "bottom": 243.6953125,
-          "width": 262,
+          "bottom": 247.0859375,
+          "width": 146,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -806,11 +898,11 @@
         {
           "id": "section-translation",
           "text": "局部",
-          "left": 29,
-          "right": 156.5,
-          "top": 250.6953125,
-          "bottom": 284.6953125,
-          "width": 127.5,
+          "left": 181,
+          "right": 231,
+          "top": 182.8984375,
+          "bottom": 247.0859375,
+          "width": 50,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -818,11 +910,11 @@
         {
           "id": "progressive-reading",
           "text": "渐进阅读",
-          "left": 163.5,
+          "left": 237,
           "right": 291,
-          "top": 250.6953125,
-          "bottom": 284.6953125,
-          "width": 127.5,
+          "top": 182.8984375,
+          "bottom": 247.0859375,
+          "width": 54,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -1082,7 +1174,7 @@
       "scheme": "dark",
       "background": "rgb(40, 40, 48)",
       "ink": "rgb(241, 241, 244)",
-      "selectedBackground": "rgba(250, 187, 204, 0.376)",
+      "selectedBackground": "rgba(255, 237, 241, 0.906)",
       "selectedInk": "rgb(255, 173, 198)",
       "textContrast": 12.968772087702426
     },
@@ -1090,7 +1182,7 @@
       "scheme": "light",
       "background": "rgb(255, 255, 255)",
       "ink": "rgb(23, 32, 51)",
-      "selectedBackground": "rgba(255, 238, 242, 0.937)",
+      "selectedBackground": "rgb(255, 240, 244)",
       "selectedInk": "rgb(220, 49, 95)",
       "textContrast": 16.268480224545662
     }
@@ -1099,56 +1191,56 @@
     {
       "source": "bank",
       "model": "progressive-reading-fixture",
-      "at": 1791701258472
+      "at": 1791706070514
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791701258924
+      "at": 1791706070935
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791701261789
+      "at": 1791706073393
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791701262889
+      "at": 1791706074388
     },
     {
       "source": "Unless the review is complete, the result may not apply to a new bank account.",
       "model": "progressive-reading-fixture",
-      "at": 1791701263610
+      "at": 1791706074970
     },
     {
       "source": "Unless the review is complete, the result may not apply to a new bank account.",
       "model": "progressive-reading-fixture",
-      "at": 1791701265232
+      "at": 1791706076598
     },
     {
       "source": "If the route changes, this delayed reading request must not remain attached to the old page.",
       "model": "progressive-reading-fixture",
-      "at": 1791701266458
+      "at": 1791706077879
     }
   ],
   "hostLifecycle": [
     {
       "event": "pageshow",
-      "at": 1791701254070
+      "at": 1791706067725
     },
     {
       "event": "pagehide",
-      "at": 1791701269687
+      "at": 1791706081145
     },
     {
       "event": "pageshow",
-      "at": 1791701269716
+      "at": 1791706081198
     },
     {
       "event": "pagehide",
-      "at": 1791701270154
+      "at": 1791706081617
     }
   ],
-  "originalArtifactsDirectory": "/private/tmp/fluentread-progressive-reading-20261011-brand-final-pass"
+  "originalArtifactsDirectory": "/private/tmp/fluentread-progressive-reading-20261011-layout-final"
 }

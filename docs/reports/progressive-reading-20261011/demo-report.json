@@ -1,0 +1,287 @@
+{
+  "ok": true,
+  "extensionDir": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/.output/chrome-mv3",
+  "browserPath": "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+  "profileMode": "fresh-mkdtemp-owned",
+  "profileDir": "/private/tmp/fluentread-progressive-reading-profile-wJaPZ5",
+  "artifact": "production",
+  "cases": [],
+  "screenshots": [],
+  "consoleErrors": [],
+  "focusSamples": [
+    {
+      "label": "launch",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "demo-completed",
+      "pid": 76304,
+      "name": "微信"
+    }
+  ],
+  "executionScope": "progressive-reading-recorded-demo",
+  "evidenceBoundary": "Real production extension, real selection, DOM, trusted CDP keyboard/mouse and Vue Shadow UI in an isolated Edge browser. Local deterministic HTTP translation transport, Popup active-tab lookup and toolbar-close capture are fixtures. No live-provider, Firefox runtime, native-toolbar or human-comprehension claim.",
+  "reuseBoundary": "This browser run verifies reuse of a translation already obtained within the same reading session. Reuse of a preexisting bilingual webpage artifact is outside this runner; its pure excerpt matcher is covered separately by unit tests.",
+  "ownedBrowserClosed": true,
+  "profileRemoved": true,
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 212,
+      "top": -990,
+      "width": 1280,
+      "height": 900
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 76304,
+      "name": "微信"
+    },
+    "frontmostAfter": {
+      "pid": 76304,
+      "name": "微信"
+    }
+  },
+  "manifest": {
+    "name": "FluentRead-流畅阅读",
+    "version": "0.0.37"
+  },
+  "configSummary": {
+    "on": true,
+    "service": "custom:progressive-reading-fixture",
+    "from": "en",
+    "to": "zh-Hans",
+    "display": 1,
+    "autoTranslate": false,
+    "vocabularyBookEnabled": true,
+    "vocabularyReencounterEnabled": false,
+    "disableSelectionTranslator": true
+  },
+  "demo": {
+    "startedAt": 1791706269292,
+    "viewport": {
+      "width": 660,
+      "height": 720
+    },
+    "fps": 5,
+    "frameDurationMs": 200,
+    "framesDir": "/private/tmp/fluentread-progressive-reading-20261011-demo-clean/recording/frames",
+    "framePattern": "frame-%06d.png",
+    "timingPath": "/private/tmp/fluentread-progressive-reading-20261011-demo-clean/recording/timing.json",
+    "steps": [
+      {
+        "caption": "1 · Popup 的渐进阅读入口",
+        "surface": "popup",
+        "startedAtMs": 31,
+        "completedAtMs": 2084
+      },
+      {
+        "caption": "2 · 先打开面板\n等待选择正文",
+        "surface": "webpage",
+        "startedAtMs": 2167,
+        "completedAtMs": 4170
+      },
+      {
+        "caption": "3 · 在网页中拖选正文",
+        "surface": "webpage",
+        "startedAtMs": 4170,
+        "completedAtMs": 7935
+      },
+      {
+        "caption": "4 · 点击读取\n默认只读原文",
+        "surface": "webpage",
+        "startedAtMs": 7935,
+        "completedAtMs": 9975
+      },
+      {
+        "caption": "5 · 短语提示\n按需查看表达",
+        "surface": "webpage",
+        "startedAtMs": 9975,
+        "completedAtMs": 11995
+      },
+      {
+        "caption": "6 · 逻辑线索\n留意条件、否定与范围",
+        "surface": "webpage",
+        "startedAtMs": 11995,
+        "completedAtMs": 14053
+      },
+      {
+        "caption": "7 · 完整双语\n随时直接查看译文",
+        "surface": "webpage",
+        "startedAtMs": 14053,
+        "completedAtMs": 16249
+      },
+      {
+        "caption": "8 · 关闭辅助\n继续阅读原网页",
+        "surface": "webpage",
+        "startedAtMs": 16249,
+        "completedAtMs": 18258
+      }
+    ],
+    "boundary": "Separate recorded demonstration, not the 18-case assertion run. Real Popup is rendered in an independent extension test tab at its production width on a 660x720 canvas. Local captions/cursor are presentation aids; responses and active-tab/close handling use the existing deterministic fixtures.",
+    "learningRecordsUnchanged": true,
+    "durationMs": 18306,
+    "encodedDurationMs": 18200,
+    "frameCount": 91,
+    "timingEvidence": "demo-timing.json",
+    "encodedArtifact": "progressive-reading-demo.gif"
+  },
+  "requests": [
+    {
+      "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+      "model": "progressive-reading-fixture",
+      "at": 1791706283377
+    }
+  ],
+  "hostLifecycle": [
+    {
+      "event": "pageshow",
+      "at": 1791706268923
+    },
+    {
+      "event": "pagehide",
+      "at": 1791706288011
+    }
+  ],
+  "originalArtifactsDirectory": "/private/tmp/fluentread-progressive-reading-20261011-demo-clean"
+}

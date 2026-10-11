@@ -1,7 +1,7 @@
 /**
  * @file src/app/popup/popup.css
  * 文件职责：定义宽度随皮肤和界面语言、高度由内容撑开且最高 560px 的浏览器 Popup 视觉系统与交互状态，包括亮暗主题、服务选择、功能卡、设置抽屉、通知和响应式细节。
- * 主要内容：以白色窄版画布、浅灰控件和品牌色强调网页翻译、局部选择、渐进阅读及站点控制；主翻译独占首行并保留完整快捷键，两个辅助入口共享次行，定义版本与赞赏码的原位放大、默认服务及配置模型摘要、静态凭据提示、两列入口、完整开源胶囊与开关优先的快捷抽屉，保留操作示意、舒展间距和必要的内部滚动；站点规则沿用原指示点展示保存状态并尊重减少动画偏好。
+ * 主要内容：以白色窄版画布、浅灰控件和品牌色强调网页翻译、局部选择、渐进阅读及站点控制；三个操作同排，主按钮弹性伸展并保留可换行的完整标题与快捷键，辅助按钮以上方图标和下方文字收拢；网站规则不再绘制外层框，独立按钮沿用指示点展示保存状态并尊重减少动画偏好；保留版本与赞赏码的原位放大、服务及模型摘要、两列入口、完整开源胶囊与开关优先的快捷抽屉和必要的内部滚动。
  * 模块边界：样式只对应 PopupApp 的 DOM 和受控第三方组件，不决定配置值、能力可用性或消息行为；跨页面 token 在 src/ui/styles，Options/文档页各自维护页面样式。
  */
 @import "../../ui/styles/feedback.css";
@@ -205,9 +205,9 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
 .service-more-meta b { color: var(--muted); font-size: 15px; line-height: .7; font-weight: 500; transform: translateY(-1px); transition: transform 160ms ease; }
 .service-more-meta b.open { transform: translateY(1px) rotate(180deg); }
 
-.translate-action { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 7px; margin-top: 8px; }
-.translate-action > .translate-button { grid-column: 1 / -1; flex-wrap: wrap; }
-.translate-action > .section-translate-button { flex-direction: row; gap: 6px; min-height: 34px; }
+.translate-action { display: flex; align-items: stretch; gap: 6px; margin-top: 8px; }
+.translate-action > .translate-button { flex: 1 1 0; flex-wrap: wrap; align-content: center; }
+.translate-action > .section-translate-button { flex-direction: column; gap: 3px; min-height: 40px; padding: 6px; }
 .translate-action .translate-hotkey { flex: none; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .translate-action .translate-hotkey span { overflow: visible; white-space: normal; line-height: 1.3; }
 .translate-button {
@@ -219,7 +219,6 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
 .translate-button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 13px 26px rgba(233, 50, 103, .3); }
 .translate-button.translated { background: linear-gradient(135deg, #f35482, #d92f63); box-shadow: 0 10px 22px rgba(217, 47, 99, .22); }
 .translate-button.translated:hover:not(:disabled) { box-shadow: 0 13px 26px rgba(217, 47, 99, .3); }
-.translate-glyph { flex: none; font-size: 9px; font-weight: 850; }
 .translate-label { min-width: 0; overflow: hidden; flex: 0 1 auto; text-overflow: ellipsis; white-space: nowrap; }
 .translate-hotkey {
   display: inline-flex; flex: 0 2 64px; align-items: center; min-width: 0; max-width: 64px; min-height: 22px; padding: 0 5px; overflow: hidden; border: 1px solid rgba(255, 255, 255, .42);
@@ -272,8 +271,8 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
 .ai-context-explanation dt { margin-bottom: 4px; color: var(--ink); font-size: 12px; font-weight: 700; }
 .ai-context-explanation dd { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.65; overflow-wrap: anywhere; }
 .site-rule-row {
-  display: grid; min-height: 34px; margin-top: 8px; padding: 6px 8px;
-  border: 1px solid var(--line); border-radius: 11px; background: var(--surface-soft);
+  display: grid; min-height: 0; margin-top: 8px; padding: 0;
+  border: 0; border-radius: 0; background: none; box-shadow: none;
 }
 .site-rule-actions { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 5px; max-width: 100%; }
 .site-rule-button {
@@ -646,8 +645,6 @@ footer button { font-weight: 500; color: var(--muted); }
 .provider-summary-chevron { margin-left: 7px; font-size: 19px; color: var(--muted); }
 .drawer-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .language-pair { grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr); gap: 6px; }
-/* 皮肤的历史自动换行规则不能再把主操作中的汉字逐行拆开。 */
-:root .popup-shell[data-interface-skin] .translate-button .translate-label { white-space: nowrap; line-height: 1.4; }
 /* 不显示域名后，两个规则按钮占用整行；覆盖简洁皮肤原先为域名预留的宽度。 */
 :root .popup-shell[data-interface-skin] .site-rule-actions { max-width: 100%; }
 
@@ -709,3 +706,24 @@ footer button { font-weight: 500; color: var(--muted); }
 :root[data-fluentread-embedded-popup] body,
 :root[data-fluentread-embedded-popup] #app { width: min(100vw, var(--fluentread-localized-popup-width, var(--interface-popup-width, 320px))); }
 :root[data-fluentread-embedded-popup] .popup-shell { max-height: min(560px, 100dvh); }
+
+/* 同排操作在所有皮肤和语言中保持相同位置；窄版允许按钮内部换行而不裁切文字。 */
+:root .popup-shell[data-interface-skin] .translate-action { display: flex; flex-wrap: nowrap; align-items: stretch; gap: 6px; }
+:root .popup-shell[data-interface-skin] .translate-action > .translate-button {
+  display: flex; flex: 1 1 0; flex-wrap: wrap; align-content: center; min-width: 0; height: auto; overflow: visible;
+}
+:root .popup-shell[data-interface-skin] .translate-action .translate-label {
+  flex: 0 1 auto; min-width: 0; overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; line-height: 1.4;
+}
+:root .popup-shell[data-interface-skin] .translate-action .translate-hotkey {
+  flex: 0 1 auto; min-width: 0; max-width: 100%; height: auto; overflow: visible; white-space: normal; overflow-wrap: anywhere; line-height: 1.3; justify-content: center;
+}
+:root .popup-shell[data-interface-skin] .translate-action .translate-hotkey span { overflow: visible; text-overflow: clip; white-space: normal; }
+:root .popup-shell[data-interface-skin] .translate-action .spinner { flex: none; }
+:root .popup-shell[data-interface-skin] .translate-action > .section-translate-button {
+  display: inline-flex; flex: 0 0 auto; flex-direction: column; justify-content: center; gap: 3px; min-width: 50px; height: auto; min-height: 40px; padding: 6px;
+}
+/* 仅移除网站规则模块的外框，排序容器、独立按钮与各皮肤的按钮状态均保留。 */
+:root .popup-shell[data-interface-skin] .site-rule-row[data-popup-module="siteRule"] {
+  min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none;
+}
