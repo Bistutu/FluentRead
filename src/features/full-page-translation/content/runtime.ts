@@ -1391,7 +1391,6 @@ function isIntactLoadingSyntheticChildList(
     if (spinner && (spinner.parentNode !== target || !spinner.matches('[data-fr-translation-owned="true"]'))) {
         return false;
     }
-
     const expectedSourceNodes = state.syntheticSourceNodes;
     if (!expectedSourceNodes) return false;
     const currentSourceNodes = Array.from(target.childNodes).filter((node) => node !== spinner);
@@ -2108,9 +2107,7 @@ export function restoreOriginalContent(): void {
     hoverBilingualRemountCapitulations = createBilingualRemountCapitulationRegistry();
     resetAllBilingualArtifactHostWriteBudgets();
     restoreAllTranslations();
-
-    // 兼容升级前遗留的 wrapper/属性；新状态机不会依赖这些标记，但旧页面
-    // 不应在扩展热更新后留下半截译文。
+    // 兼容升级前遗留的 wrapper/属性，避免热更新后留下半截译文。
     const roots: Node[] = [document.documentElement, ...getOpenShadowRoots(document.documentElement)];
     roots.forEach(clearOrphanedTranslationArtifacts);
     notifyFullPageTranslationState(false);

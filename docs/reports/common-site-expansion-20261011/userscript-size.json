@@ -44,5 +44,30 @@
   "limitations": [
     "The delta includes this task's long-page work as well as the new site rules and owner fix; it is not the isolated cost of any one rule.",
     "Userscript build and verifier acceptance do not establish userscript-manager runtime acceptance."
-  ]
+  ],
+  "finalIntegration": {
+    "baselineCommit": "717a340347cde3417bad011477a88d41718ea335",
+    "candidateCodeBaseCommit": "59d3a96b5b1c8c0246d1af31f665b556b3a52896",
+    "baseline": {
+      "bytes": 2026877,
+      "sha256": "fa6702f8d8244f113b37f293167d4d3cbd17c40354db19a4772ed56c2b2da08c",
+      "prepareExitCode": 0,
+      "buildExitCode": 0,
+      "verifierExitCode": 0
+    },
+    "candidate": {
+      "bytes": 2032969,
+      "sha256": "6a2a4f3bc3c650d08714e6bb0c7d1098be095056d5ee2fef9572c1b190de0dcc",
+      "buildExitCode": 0,
+      "verifierExitCode": 0
+    },
+    "deltaBytes": 6092,
+    "deltaPercentRounded": 0.3006,
+    "budgetBytes": 2033000,
+    "candidateHeadroomBytes": 31,
+    "mainBudgetBytes": 2027000,
+    "budgetIncreaseBytes": 6000,
+    "runtimeCommentOnlyCompaction": true,
+    "method": "Repeat the independent archive/prepare/build/verifier comparison on current main with identical dependencies. Preserve the previous integration record above; the same minimal 2033000-byte budget admits this candidate. Source comment compaction does not change executable code; final build hashes are checked against the browser-tested artifact."
+  }
 }

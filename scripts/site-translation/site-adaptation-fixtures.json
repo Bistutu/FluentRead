@@ -748,7 +748,7 @@
         "Summary action remains original"
       ]
     },
-    "provenance": "original-mock-known-boundaries; synthetic content and simplified structure; not a copied page or browser acceptance",
+    "provenance": "original-mock-known-boundaries; synthetic content and simplified structure; not a copied page; source inspection alone does not establish live-site browser acceptance",
     "dynamic": {
       "appendHtml": [
         {
@@ -830,7 +830,7 @@
         "KEEP_ORIGINAL_TOKEN"
       ]
     },
-    "provenance": "original-mock-known-boundaries; synthetic content and simplified structure; not a copied page or browser acceptance",
+    "provenance": "original-mock-known-boundaries; synthetic content and simplified structure; not a copied page; source inspection alone does not establish live-site browser acceptance",
     "dynamic": {
       "appendHtml": [
         {
@@ -905,7 +905,7 @@
             "Quoted Community Author"
           ]
         },
-        "provenance": "original-mock-known-boundaries; synthetic content and simplified structure; not a copied page or browser acceptance",
+        "provenance": "original-mock-known-boundaries; synthetic content and simplified structure; not a copied page; source inspection alone does not establish live-site browser acceptance",
         "dynamic": {
           "appendHtml": [
             {
@@ -990,7 +990,7 @@
         "KEEP_ORIGINAL_TOKEN"
       ]
     },
-    "provenance": "original-mock-known-boundaries; synthetic content and simplified structure; not a copied page or browser acceptance",
+    "provenance": "original-mock-known-boundaries; synthetic content and simplified structure; not a copied page; source inspection alone does not establish live-site browser acceptance",
     "dynamic": {
       "appendHtml": [
         {
@@ -1115,7 +1115,7 @@
     },
     "provenance": {
       "kind": "original-mock",
-      "text": "All prose, identities, dates, counts, controls and code sentinels independently authored. Known class and parent boundaries come from the saved public HTML/official source; this is not a copied page or real browser acceptance.",
+      "text": "All prose, identities, dates, counts, controls and code sentinels independently authored. Known class and parent boundaries come from the saved public HTML/official source; this is not a copied page; source inspection alone does not establish live-site browser acceptance.",
       "evidence": [
         {
           "url": "https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f",
@@ -1128,7 +1128,7 @@
       ],
       "limitations": [
         "Public Markdown and code Gists establish the declared containers; the direct-opening mock exercises the generic non-atomic ownership contract and does not represent all code file types.",
-        "No browser, provider, geometry or logged-in editor acceptance was executed."
+        "Source inspection does not establish live-site geometry, provider or logged-in editor acceptance; mock runtime receipts are recorded separately."
       ]
     },
     "dynamic": {
@@ -1265,7 +1265,7 @@
     },
     "provenance": {
       "kind": "original-mock",
-      "text": "All prose, identities, dates, counts, controls and code sentinels independently authored. Known class and parent boundaries come from the saved public HTML/official source; this is not a copied page or real browser acceptance.",
+      "text": "All prose, identities, dates, counts, controls and code sentinels independently authored. Known class and parent boundaries come from the saved public HTML/official source; this is not a copied page; source inspection alone does not establish live-site browser acceptance.",
       "evidence": [
         {
           "officialComponents": "Addon summary/renderAboutThisCard",
@@ -1284,7 +1284,7 @@
         "Component-source evidence only. The anonymous live AMO response was a challenge, not addon content.",
         "AddonTitle and AddonBadges internals are simplified, with synthetic metadata; no claim about every rendered title class.",
         "Inline code sentinel is an adversarial generic protection contract; not a claim that the server current sanitizeUserHTML permits every synthetic rich tag.",
-        "No browser/provider/layout/click acceptance was executed."
+        "Source inspection does not establish live-site browser, provider, layout or click acceptance; mock runtime receipts are recorded separately."
       ]
     },
     "dynamic": {
@@ -1397,7 +1397,7 @@
         },
         "provenance": {
           "kind": "original-mock",
-          "text": "All prose, identities, dates, counts, controls and code sentinels independently authored. Known class and parent boundaries come from the saved public HTML/official source; this is not a copied page or real browser acceptance.",
+          "text": "All prose, identities, dates, counts, controls and code sentinels independently authored. Known class and parent boundaries come from the saved public HTML/official source; this is not a copied page; source inspection alone does not establish live-site browser acceptance.",
           "evidence": [
             {
               "officialComponents": "UserReview.reviewBody and UserReviewBase",
@@ -1419,7 +1419,7 @@
           "limitations": [
             "Component-source mock contract, not current live review page or browser evidence.",
             "Adjacent protected code sentinel is placed in the sidebar; there is deliberately no synthetic code/anchor markup in the review body.",
-            "No browser/provider/layout/review expansion click acceptance was executed."
+            "Source inspection does not establish live-site browser, provider, layout or review expansion click acceptance; mock runtime receipts are recorded separately."
           ]
         },
         "dynamic": {

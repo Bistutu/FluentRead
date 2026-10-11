@@ -71,6 +71,8 @@ const artifactBytes = Buffer.byteLength(source);
 // 整合主线 69d41e5e1 后，长页隔离、五条正文规则及局部扫描拥有者修复共增加 6,016 字节（0.2968%）：
 // 同依赖独立 main 为 2,026,872，候选为 2,032,888；相对 main 预算按实测最小增加 6 KB。
 // 保留全部协议和执行边界校验，余量 112 字节；记录见 common-site-expansion-20261011/userscript-size.json。
+// 再整合滚动调度 717a34034：独立 main 为 2,026,877，最终候选为 2,032,969（增 6,092，0.3006%）；
+// 沿用同一最小预算，余 31 字节；本轮最终集成散列同样记录在上述报告。
 const MAX_USERSCRIPT_BYTES = 2_033_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';

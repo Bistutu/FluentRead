@@ -1,0 +1,1137 @@
+{
+  "date": "2026-10-11",
+  "scope": "scoped common-site rules and conservative owned long-page rendering",
+  "integratedMainCommit": "717a340347cde3417bad011477a88d41718ea335",
+  "integrationCodeCommit": "59d3a96b5b1c8c0246d1af31f665b556b3a52896",
+  "newRuleIds": [
+    "bing-search",
+    "steam-community-discussions",
+    "google-news-home-headlines",
+    "github-gist",
+    "firefox-addons"
+  ],
+  "newFixtureShapes": 7,
+  "totalRules": 197,
+  "sourceSha256": {
+    "src/core/translation/engine.ts": "49887114da7a7a3fe3aedcaa616e6b7c2fa368c9deb864317f3252926162ed34",
+    "src/core/site-adaptation/catalog/websites.json": "e656077aa84e611149695693122d8f62d941e06e8bd0a0e03824eb6c55073387",
+    "src/features/full-page-translation/content/runtime.ts": "d78e866136b1cf576713ece094ec588097214bb3bb702d9a0c9aeaafe93d5151",
+    "scripts/site-translation/site-adaptation-fixtures.json": "c9076bea98f20755d0efc188e5fe89e93bc48f8ea93ba35c221521eb10cf0550",
+    "scripts/run-site-adaptation-test.cjs": "e0e1b4bc732469ad857dbbebfd2533e0a93e35b2967bc1224c18358c22df0a2c"
+  },
+  "builds": {
+    "typecheck": {
+      "exitCode": 0
+    },
+    "chrome": {
+      "exitCode": 0,
+      "contentSha256": "b9f91630f6fbd0a76fcbe58ca71ff94d10456c725e13c1738a24001c1e66c0ec"
+    },
+    "firefox": {
+      "exitCode": 0,
+      "contentSha256": "931e074a63350d32bde29031c430deb0405b4fda4011306bac4bdb801232d917"
+    },
+    "userscript": {
+      "exitCode": 0,
+      "contentSha256": "6a2a4f3bc3c650d08714e6bb0c7d1098be095056d5ee2fef9572c1b190de0dcc"
+    },
+    "manifestVerifierExitCode": 0,
+    "userscriptVerifierExitCode": 0,
+    "allThreeArtifactsIdenticalBeforeAndAfterCommentOnlyCompaction": true
+  },
+  "unitRegression": {
+    "engine": {
+      "files": 9,
+      "passed": 754,
+      "exitCode": 0,
+      "coverage": {
+        "lines": {
+          "total": 896,
+          "covered": 896,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 45,
+          "covered": 45,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 896,
+          "covered": 896,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 493,
+          "covered": 493,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "fixtureSha256AtCoverageRun": "4ad818621308e9944de2098dee861f21fb579c54c8b73b75cb4c9a19bb7e7f91",
+      "engineSourceMatchesFinal": true
+    },
+    "currentFixturesAndHarness": {
+      "files": 3,
+      "passed": 498,
+      "exitCode": 0,
+      "fixtureSha256": "c9076bea98f20755d0efc188e5fe89e93bc48f8ea93ba35c221521eb10cf0550"
+    },
+    "integratedRuntime": {
+      "files": 15,
+      "passed": 824,
+      "exitCode": 0,
+      "coverage": {
+        "src/app/content/pageStyles.ts": {
+          "lines": {
+            "total": 18,
+            "covered": 18,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 2,
+            "covered": 2,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 18,
+            "covered": 18,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 7,
+            "covered": 7,
+            "skipped": 0,
+            "pct": 100
+          }
+        },
+        "src/app/content/translationAppearance.ts": {
+          "lines": {
+            "total": 15,
+            "covered": 15,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 1,
+            "covered": 1,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 15,
+            "covered": 15,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 15,
+            "covered": 15,
+            "skipped": 0,
+            "pct": 100
+          }
+        },
+        "src/features/full-page-translation/content/renderingContainment.ts": {
+          "lines": {
+            "total": 70,
+            "covered": 70,
+            "skipped": 0,
+            "pct": 100
+          },
+          "functions": {
+            "total": 4,
+            "covered": 4,
+            "skipped": 0,
+            "pct": 100
+          },
+          "statements": {
+            "total": 70,
+            "covered": 70,
+            "skipped": 0,
+            "pct": 100
+          },
+          "branches": {
+            "total": 73,
+            "covered": 73,
+            "skipped": 0,
+            "pct": 100
+          }
+        }
+      },
+      "runtimeSourceSha256AtRun": "eb9b0caae6e3bdf34f0854b3a751ba44830623d4dbbb52a1eab8ca83bd0abce2",
+      "subsequentSourceChange": "Comments and blank lines only; TypeScript emit and parsed executable tokens unchanged; all final build hashes match tested binaries"
+    },
+    "architectureBeforeLatestMain": {
+      "files": 33,
+      "passed": 1620,
+      "exitCode": 0
+    },
+    "finalSourceHeadersAndModuleBoundaries": {
+      "files": 2,
+      "passed": 928,
+      "exitCode": 0,
+      "growthCeilingUnchanged": true
+    },
+    "testOwnershipAudit": {
+      "exitCode": 0,
+      "registeredFiles": 655,
+      "registeredCases": 11035,
+      "note": "Audit registration count, not a claim that all registered cases ran"
+    }
+  },
+  "siteBrowserMocks": {
+    "passed": 9,
+    "total": 9,
+    "singleRun": true,
+    "profileMode": "new-temporary-profile",
+    "launchMode": "macos-background-cdp",
+    "browserVersion": "131.0.2903.147",
+    "backgroundWindowOnSecondaryDisplay": true,
+    "contentSha256": "b9f91630f6fbd0a76fcbe58ca71ff94d10456c725e13c1738a24001c1e66c0ec",
+    "ownedBrowserClosed": true,
+    "temporaryProfileRemoved": true,
+    "cases": [
+      {
+        "id": "hacker-news",
+        "hover": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "full": [
+          1,
+          0,
+          1
+        ],
+        "protected": 7,
+        "protectedExactHtml": true
+      },
+      {
+        "id": "product-hunt",
+        "hover": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "full": [
+          1,
+          0,
+          1
+        ],
+        "protected": 10,
+        "protectedExactHtml": true
+      },
+      {
+        "id": "bing-search",
+        "hover": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "full": [
+          1,
+          0,
+          1
+        ],
+        "protected": 13,
+        "protectedExactHtml": true,
+        "sourceAssertions": {
+          "required": [
+            "This first result explains readable page content and safe navigation.",
+            "This second result provides a separate explanation that should be translated once."
+          ],
+          "forbidden": [
+            "Source Identity Alpha",
+            "Source Identity Beta",
+            "source.invalid/docs",
+            "another.invalid/reference",
+            "2026-10-11",
+            "KEEP_ORIGINAL_TOKEN",
+            "Advertisement text must never be included",
+            "Sidebar description",
+            "Summary action remains original"
+          ]
+        },
+        "dynamic": {
+          "steps": [
+            {
+              "kind": "append",
+              "selector": "#b_results",
+              "required": [
+                "#new-title",
+                "#new-body"
+              ]
+            },
+            {
+              "kind": "inlineText",
+              "selector": "#body1 a:not(.b_algoReadMore)",
+              "owner": "#body1",
+              "text": "DYNAMIC_BING_INLINE_TOKEN"
+            },
+            {
+              "kind": "protectedNoise",
+              "selector": "#date1",
+              "writes": 4,
+              "providerWork": 0,
+              "sameWrappers": true
+            },
+            {
+              "kind": "equivalentRemount",
+              "selector": "#b_results"
+            }
+          ],
+          "restoreSelectors": [
+            "#b_results",
+            "#b_header",
+            "#b_context",
+            "#b_footer"
+          ],
+          "restoreScope": "declared-container-innerHTML",
+          "restoreExact": true,
+          "retranslated": true,
+          "finalRestoreExact": true
+        }
+      },
+      {
+        "id": "steam-community-discussions",
+        "hover": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "full": [
+          1,
+          0,
+          1
+        ],
+        "protected": 14,
+        "protectedExactHtml": true,
+        "sourceAssertions": {
+          "required": [
+            "How to recognize a safe community discussion",
+            "A second title explains stable browser behavior"
+          ],
+          "forbidden": [
+            "PINNED:",
+            "Community Author Alpha",
+            "Community Author Beta",
+            "12 October, 2018",
+            "10 minutes ago",
+            "Lookalike sidebar category",
+            "Unrelated page text",
+            "KEEP_ORIGINAL_TOKEN"
+          ]
+        },
+        "dynamic": {
+          "steps": [
+            {
+              "kind": "append",
+              "selector": "#topics",
+              "required": [
+                "#new-body"
+              ]
+            },
+            {
+              "kind": "protectedNoise",
+              "selector": "#author1",
+              "writes": 4,
+              "providerWork": 0,
+              "sameWrappers": true
+            },
+            {
+              "kind": "equivalentRemount",
+              "selector": "#topics"
+            }
+          ],
+          "restoreSelectors": [
+            "#topics",
+            "#global_header",
+            "#paging",
+            "#sidebar",
+            "#outside",
+            "#footer",
+            "#fixture-code"
+          ],
+          "restoreScope": "declared-container-innerHTML",
+          "restoreExact": true,
+          "retranslated": true,
+          "finalRestoreExact": true
+        }
+      },
+      {
+        "id": "steam-community-discussions",
+        "variant": "thread",
+        "hover": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "full": [
+          1,
+          0,
+          1
+        ],
+        "protected": 12,
+        "protectedExactHtml": true,
+        "sourceAssertions": {
+          "required": [
+            "This opening explains the discussion in plain text.",
+            "This first reply has direct text and an",
+            "This second reply gives an independent explanation and must be translated once.",
+            "The quoted explanation supplies readable context"
+          ],
+          "forbidden": [
+            "Community Author Alpha",
+            "Community Reply Alpha",
+            "Community Reply Beta",
+            "KEEP_ORIGINAL_TOKEN",
+            "Report",
+            "Draft text",
+            "Lookalike sidebar text",
+            "Lookalike comment outside",
+            "Quoted Community Author"
+          ]
+        },
+        "dynamic": {
+          "steps": [
+            {
+              "kind": "append",
+              "selector": "#comments",
+              "required": [
+                "#new-body"
+              ]
+            },
+            {
+              "kind": "inlineText",
+              "selector": "#body1 a",
+              "owner": "#body1",
+              "text": "DYNAMIC_STEAM_INLINE_TOKEN"
+            },
+            {
+              "kind": "protectedNoise",
+              "selector": "#author2",
+              "writes": 4,
+              "providerWork": 0,
+              "sameWrappers": true
+            },
+            {
+              "kind": "equivalentRemount",
+              "selector": "#comments"
+            }
+          ],
+          "restoreSelectors": [
+            "#original-post",
+            "#comments",
+            "#paging",
+            "#editor",
+            "#sidebar",
+            "#outside",
+            "#footer"
+          ],
+          "restoreScope": "declared-container-innerHTML",
+          "restoreExact": true,
+          "retranslated": true,
+          "finalRestoreExact": true
+        }
+      },
+      {
+        "id": "google-news-home-headlines",
+        "hover": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "full": [
+          1,
+          0,
+          1
+        ],
+        "protected": 16,
+        "protectedExactHtml": true,
+        "sourceAssertions": {
+          "required": [
+            "Researchers explain a reliable browser behavior",
+            "A second independent headline provides useful context"
+          ],
+          "forbidden": [
+            "Publisher Identity Alpha",
+            "Publisher Identity Beta",
+            "2 hours ago",
+            "1 hour ago",
+            "Section heading",
+            "Navigation read-link lookalike",
+            "Sidebar read-link lookalike",
+            "More actions",
+            "KEEP_ORIGINAL_TOKEN"
+          ]
+        },
+        "dynamic": {
+          "steps": [
+            {
+              "kind": "append",
+              "selector": "#stories",
+              "required": [
+                "#new-body"
+              ]
+            },
+            {
+              "kind": "protectedNoise",
+              "selector": "#date1",
+              "writes": 4,
+              "providerWork": 0,
+              "sameWrappers": true
+            },
+            {
+              "kind": "equivalentRemount",
+              "selector": "#stories"
+            }
+          ],
+          "restoreSelectors": [
+            "#stories",
+            "#navigation",
+            "#query",
+            "#section-title",
+            "#sidebar",
+            "#footer",
+            "#fixture-code"
+          ],
+          "restoreScope": "declared-container-innerHTML",
+          "restoreExact": true,
+          "retranslated": true,
+          "finalRestoreExact": true
+        }
+      },
+      {
+        "id": "github-gist",
+        "hover": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "full": [
+          1,
+          0,
+          1
+        ],
+        "protected": 19,
+        "protectedExactHtml": true,
+        "sourceAssertions": {
+          "required": [
+            "This opening explains how readable notes should be translated alongside code.",
+            "This first paragraph explains the example with an",
+            "This direct comment opening must translate without copying the author or timestamp.",
+            "This second independent paragraph comes from a comment and includes an"
+          ],
+          "forbidden": [
+            "KEEP_ORIGINAL_TOKEN",
+            "GIST_BLOCK_TOKEN",
+            "GIST_CODE_LINE_TOKEN",
+            "Fixture Author",
+            "Fixture Comment Author",
+            "@MockReaderAlpha",
+            "@MockReaderBeta",
+            "Last active",
+            "Star 42",
+            "Forks 7",
+            "notes.md",
+            "example.ts",
+            "Private draft",
+            "Lookalike Markdown"
+          ],
+          "interpretation": "Assert actual provider paragraph fields; never require an entire mixed wrapper textContent in one field. Protected tokens may be preserved as original DOM without entering the provider source."
+        },
+        "dynamic": {
+          "steps": [
+            {
+              "kind": "append",
+              "selector": "#gist-root",
+              "required": [
+                "#new-body",
+                "#new-paragraph"
+              ]
+            },
+            {
+              "kind": "inlineText",
+              "selector": "#body1 a:not(.user-mention)",
+              "owner": "#body1",
+              "text": "DYNAMIC_GIST_INLINE_TOKEN"
+            },
+            {
+              "kind": "protectedNoise",
+              "selector": "#comment-date",
+              "writes": 4,
+              "providerWork": 0,
+              "sameWrappers": true
+            },
+            {
+              "kind": "equivalentRemount",
+              "selector": "#gist-root"
+            }
+          ],
+          "restoreSelectors": [
+            "#gist-root",
+            "#gist-meta",
+            "#sidebar",
+            "#footer"
+          ],
+          "restoreScope": "declared-container-innerHTML",
+          "restoreExact": true,
+          "retranslated": true,
+          "override": {
+            "sameId": "github-gist",
+            "protected": [
+              "#body1"
+            ],
+            "remaining": [
+              "#body2"
+            ],
+            "staleResponseDidNotCommit": true,
+            "restoreExact": true,
+            "restoreScope": "declared-container-innerHTML",
+            "stableIdleMsAfterRelease": 1200
+          },
+          "finalRestoreExact": true
+        }
+      },
+      {
+        "id": "firefox-addons",
+        "hover": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "full": [
+          1,
+          0,
+          1
+        ],
+        "protected": 18,
+        "protectedExactHtml": true,
+        "sourceAssertions": {
+          "required": [
+            "This summary explains readable extension behavior and should translate inside the header.",
+            "This direct description opening explains a useful browser workflow.",
+            "This second independent paragraph provides an",
+            "This direct developer note explains why the extension behaves consistently."
+          ],
+          "forbidden": [
+            "KEEP_ORIGINAL_TOKEN",
+            "Mock Reader Extension",
+            "Fixture Developer Alpha",
+            "Recommended",
+            "12345 users",
+            "Add to Firefox",
+            "About this extension",
+            "Developer comments",
+            "Expand to",
+            "Read more",
+            "Rated 4.8",
+            "Read all 500 reviews",
+            "Version 1.2.3",
+            "Last updated",
+            "Lookalike summary",
+            "Lookalike description",
+            "Lookalike developer note",
+            "Private developer draft"
+          ],
+          "interpretation": "Assert actual provider paragraph fields; never require an entire mixed wrapper textContent in one field. Protected tokens may be preserved as original DOM without entering the provider source."
+        },
+        "dynamic": {
+          "steps": [
+            {
+              "kind": "append",
+              "selector": ".Addon-description-and-ratings",
+              "required": [
+                "#new-body"
+              ]
+            },
+            {
+              "kind": "inlineText",
+              "selector": "#body2 a",
+              "owner": "#body2",
+              "text": "DYNAMIC_AMO_INLINE_TOKEN"
+            },
+            {
+              "kind": "protectedNoise",
+              "selector": "#badges",
+              "writes": 4,
+              "providerWork": 0,
+              "sameWrappers": true
+            },
+            {
+              "kind": "equivalentRemount",
+              "selector": ".Addon-description-and-ratings"
+            }
+          ],
+          "restoreSelectors": [
+            "#addon-header",
+            "#description-card",
+            "#ratings",
+            "#sidebar",
+            "#editor",
+            "#footer"
+          ],
+          "restoreScope": "declared-container-innerHTML",
+          "restoreExact": true,
+          "retranslated": true,
+          "finalRestoreExact": true
+        }
+      },
+      {
+        "id": "firefox-addons",
+        "variant": "reviews",
+        "hover": [
+          1,
+          0,
+          1,
+          0
+        ],
+        "full": [
+          1,
+          0,
+          1
+        ],
+        "protected": 19,
+        "protectedExactHtml": true,
+        "sourceAssertions": {
+          "required": [
+            "This first review explains a useful browser workflow in plain text.",
+            "The second line adds enough context to translate as readable prose.",
+            "This second independent reply explains why the extension remains stable.",
+            "Its plain text response is translated without copying the developer identity."
+          ],
+          "forbidden": [
+            "KEEP_ORIGINAL_TOKEN",
+            "Mock Reader Extension",
+            "Fixture Reviewer Alpha",
+            "Fixture Developer Beta",
+            "Rated 5 out of 5",
+            "2 days ago",
+            "1 day ago",
+            "Developer response",
+            "Read more",
+            "Expand to",
+            "Report",
+            "Delete",
+            "Lookalike general card",
+            "Lookalike review body",
+            "Private review draft",
+            "Next page"
+          ],
+          "interpretation": "Assert actual provider paragraph fields; never require an entire mixed wrapper textContent in one field. Protected tokens may be preserved as original DOM without entering the provider source."
+        },
+        "dynamic": {
+          "steps": [
+            {
+              "kind": "append",
+              "selector": "#reviews",
+              "required": [
+                "#new-body"
+              ]
+            },
+            {
+              "kind": "inlineText",
+              "selector": "#body1",
+              "owner": "#body1",
+              "text": "DYNAMIC_AMO_REVIEW_TEXT_TOKEN"
+            },
+            {
+              "kind": "protectedNoise",
+              "selector": "#author2",
+              "writes": 4,
+              "providerWork": 0,
+              "sameWrappers": true
+            },
+            {
+              "kind": "equivalentRemount",
+              "selector": "#reviews"
+            }
+          ],
+          "restoreSelectors": [
+            "#reviews",
+            "#list-header",
+            "#sidebar",
+            "#editor",
+            "#paging",
+            "#footer"
+          ],
+          "restoreScope": "declared-container-innerHTML",
+          "restoreExact": true,
+          "retranslated": true,
+          "finalRestoreExact": true
+        }
+      }
+    ]
+  },
+  "longPageBrowserMocks": {
+    "passed": 3,
+    "total": 3,
+    "singleRun": true,
+    "contentSha256": "b9f91630f6fbd0a76fcbe58ca71ff94d10456c725e13c1738a24001c1e66c0ec",
+    "profileMode": "new-temporary-profile",
+    "launchMode": "macos-background-cdp",
+    "cases": [
+      {
+        "id": "discussion",
+        "units": 60,
+        "requiredCount": 120,
+        "passed": true,
+        "toggleCounts": [
+          1,
+          0,
+          1
+        ],
+        "renderingSummary": [
+          {
+            "control": "auto",
+            "samples": 3,
+            "traversalMedianMs": 523,
+            "rafP95MedianMs": 18.299999999999272,
+            "layoutMedianMs": 37.24099999999997,
+            "styleMedianMs": 6.295999999999996,
+            "totalLongTasks": 0
+          },
+          {
+            "control": "visible-control",
+            "samples": 3,
+            "traversalMedianMs": 523.8999996185303,
+            "rafP95MedianMs": 18.100000000000364,
+            "layoutMedianMs": 0,
+            "styleMedianMs": 0,
+            "totalLongTasks": 0
+          }
+        ],
+        "renderingIntegrity": {
+          "sameNodes": true,
+          "sameInnerHtml": true,
+          "exactOuterHtmlAfterRestore": true
+        },
+        "interactions": {
+          "find": {
+            "token": "长页译文 LPM-DISCUSSION-059-0",
+            "found": true,
+            "selection": "长页译文 LPM-DISCUSSION-059-0",
+            "targetTop": 393.21875,
+            "targetHeight": 296.953125,
+            "viewportHeight": 816,
+            "visible": true
+          },
+          "selection": {
+            "length": 104807,
+            "includesFirst": true,
+            "includesLast": true
+          },
+          "sourceLink": {
+            "hrefBefore": "#fixture-end",
+            "hrefAfter": "#fixture-end",
+            "focused": true
+          },
+          "translatedLink": {
+            "available": true,
+            "beforeFocus": {
+              "offscreen": true,
+              "contained": true,
+              "visible": true
+            },
+            "focused": true,
+            "visible": true,
+            "inViewport": true,
+            "href": "#fixture-end",
+            "tabReachedAnotherElement": true
+          }
+        },
+        "accessibility": {
+          "nodeCount": 3694,
+          "offscreenToken": "长页译文 LPM-DISCUSSION-059-0",
+          "containsOffscreenTranslation": true
+        },
+        "print": {
+          "media": true,
+          "checkedWrappers": 120,
+          "allVisible": true,
+          "allTextPresent": true,
+          "allPositiveHeight": true
+        },
+        "appearanceChecks": [
+          {
+            "name": "same-default-appearance",
+            "beforeContained": 181,
+            "afterContained": 181,
+            "wrapperCount": 181,
+            "sameNodes": true,
+            "newRequestCount": 0
+          },
+          {
+            "name": "changed-appearance",
+            "beforeContained": 181,
+            "afterContained": 0,
+            "wrapperCount": 181,
+            "sameNodes": true,
+            "newRequestCount": 0
+          },
+          {
+            "name": "same-new-appearance",
+            "beforeContained": 181,
+            "afterContained": 181,
+            "wrapperCount": 181,
+            "sameNodes": true,
+            "newRequestCount": 0
+          }
+        ],
+        "nativeSkippedEventCount": 176,
+        "directOpeningCount": 60
+      },
+      {
+        "id": "article",
+        "units": 60,
+        "requiredCount": 120,
+        "passed": true,
+        "toggleCounts": [
+          1,
+          0,
+          1
+        ],
+        "renderingSummary": [
+          {
+            "control": "auto",
+            "samples": 3,
+            "traversalMedianMs": 522.0999999046326,
+            "rafP95MedianMs": 18.400000000001455,
+            "layoutMedianMs": 18.905000000000005,
+            "styleMedianMs": 5.822000000000021,
+            "totalLongTasks": 0
+          },
+          {
+            "control": "visible-control",
+            "samples": 3,
+            "traversalMedianMs": 521.9000000953674,
+            "rafP95MedianMs": 18.600000000000364,
+            "layoutMedianMs": 0,
+            "styleMedianMs": 0,
+            "totalLongTasks": 0
+          }
+        ],
+        "renderingIntegrity": {
+          "sameNodes": true,
+          "sameInnerHtml": true,
+          "exactOuterHtmlAfterRestore": true
+        },
+        "interactions": {
+          "find": {
+            "token": "长页译文 LPM-ARTICLE-059-0",
+            "found": true,
+            "selection": "长页译文 LPM-ARTICLE-059-0",
+            "targetTop": 392.9453125,
+            "targetHeight": 296.953125,
+            "viewportHeight": 816,
+            "visible": true
+          },
+          "selection": {
+            "length": 88498,
+            "includesFirst": true,
+            "includesLast": true
+          },
+          "sourceLink": {
+            "hrefBefore": "#fixture-end",
+            "hrefAfter": "#fixture-end",
+            "focused": true
+          },
+          "translatedLink": {
+            "available": true,
+            "beforeFocus": {
+              "offscreen": true,
+              "contained": true,
+              "visible": true
+            },
+            "focused": true,
+            "visible": true,
+            "inViewport": true,
+            "href": "#fixture-end",
+            "tabReachedAnotherElement": true
+          }
+        },
+        "accessibility": {
+          "nodeCount": 2641,
+          "offscreenToken": "长页译文 LPM-ARTICLE-059-0",
+          "containsOffscreenTranslation": true
+        },
+        "print": {
+          "media": true,
+          "checkedWrappers": 120,
+          "allVisible": true,
+          "allTextPresent": true,
+          "allPositiveHeight": true
+        },
+        "appearanceChecks": [
+          {
+            "name": "same-default-appearance",
+            "beforeContained": 179,
+            "afterContained": 179,
+            "wrapperCount": 181,
+            "sameNodes": true,
+            "newRequestCount": 0
+          },
+          {
+            "name": "changed-appearance",
+            "beforeContained": 179,
+            "afterContained": 0,
+            "wrapperCount": 181,
+            "sameNodes": true,
+            "newRequestCount": 0
+          },
+          {
+            "name": "same-new-appearance",
+            "beforeContained": 179,
+            "afterContained": 179,
+            "wrapperCount": 181,
+            "sameNodes": true,
+            "newRequestCount": 0
+          }
+        ],
+        "nativeSkippedEventCount": 177
+      },
+      {
+        "id": "research",
+        "units": 60,
+        "requiredCount": 180,
+        "passed": true,
+        "toggleCounts": [
+          1,
+          0,
+          1
+        ],
+        "renderingSummary": [
+          {
+            "control": "auto",
+            "samples": 3,
+            "traversalMedianMs": 524.5,
+            "rafP95MedianMs": 18.69999999999709,
+            "layoutMedianMs": 20.504999999999995,
+            "styleMedianMs": 4.7359999999999625,
+            "totalLongTasks": 0
+          },
+          {
+            "control": "visible-control",
+            "samples": 3,
+            "traversalMedianMs": 529.0999999046326,
+            "rafP95MedianMs": 18.19999999999709,
+            "layoutMedianMs": 0,
+            "styleMedianMs": 0,
+            "totalLongTasks": 0
+          }
+        ],
+        "renderingIntegrity": {
+          "sameNodes": true,
+          "sameInnerHtml": true,
+          "exactOuterHtmlAfterRestore": true
+        },
+        "interactions": {
+          "find": {
+            "token": "长页译文 LPM-RESEARCH-059-1",
+            "found": true,
+            "selection": "长页译文 LPM-RESEARCH-059-1",
+            "targetTop": 393.1015625,
+            "targetHeight": 296.953125,
+            "viewportHeight": 816,
+            "visible": true
+          },
+          "selection": {
+            "length": 139157,
+            "includesFirst": true,
+            "includesLast": true
+          },
+          "sourceLink": {
+            "hrefBefore": "#fixture-end",
+            "hrefAfter": "#fixture-end",
+            "focused": true
+          },
+          "translatedLink": {
+            "available": true,
+            "beforeFocus": {
+              "offscreen": true,
+              "contained": true,
+              "visible": true
+            },
+            "focused": true,
+            "visible": true,
+            "inViewport": true,
+            "href": "#fixture-end",
+            "tabReachedAnotherElement": true
+          }
+        },
+        "accessibility": {
+          "nodeCount": 5131,
+          "offscreenToken": "长页译文 LPM-RESEARCH-059-1",
+          "containsOffscreenTranslation": true
+        },
+        "print": {
+          "media": true,
+          "checkedWrappers": 180,
+          "allVisible": true,
+          "allTextPresent": true,
+          "allPositiveHeight": true
+        },
+        "appearanceChecks": [
+          {
+            "name": "same-default-appearance",
+            "beforeContained": 303,
+            "afterContained": 303,
+            "wrapperCount": 303,
+            "sameNodes": true,
+            "newRequestCount": 0
+          },
+          {
+            "name": "changed-appearance",
+            "beforeContained": 303,
+            "afterContained": 0,
+            "wrapperCount": 303,
+            "sameNodes": true,
+            "newRequestCount": 0
+          },
+          {
+            "name": "same-new-appearance",
+            "beforeContained": 303,
+            "afterContained": 303,
+            "wrapperCount": 303,
+            "sameNodes": true,
+            "newRequestCount": 0
+          }
+        ],
+        "nativeSkippedEventCount": 298
+      }
+    ],
+    "ownedBrowserClosed": true,
+    "temporaryProfileRemoved": true,
+    "ownedBrowserProcessesAfterCleanup": 0,
+    "temporaryProfilesAfterCleanup": 0,
+    "foregroundApplicationUnchanged": true
+  },
+  "retainedEarlierFailures": [
+    "Local echo-prefix assertion and original-node selector ambiguity were repaired without relaxing source or guard assertions",
+    "Steam empty-overlay pointer auditing was bounded to the declared transparent same-card link",
+    "Google News mock overlays originally lacked a relative card; the corrected original mock keeps the observed single empty wrapper",
+    "Gist metadata noise originally replaced a parent containing the menu; the corrected host update targets the timestamp leaf",
+    "Latest-main integration initially exceeded the runtime line ceiling by three lines; comments/blank lines were compacted, the ceiling was not raised and final source checks passed"
+  ],
+  "limitations": [
+    "Authored mocks establish the declared structures and reversible runtime behavior, not all live-site layouts or translation-provider quality",
+    "Google News scope is home headlines; its geometry fixture covers direct-card-child titles",
+    "AMO structure is backed by owning component source; anonymous public fetch encountered a client challenge",
+    "Native offscreen rendering events establish use of browser skipping, not stable end-to-end speedup or a resolved Windows desktop issue",
+    "Long-page research sample is HTML, not PDF; AX/print checks are browser tree/media checks, not OS screen reader or physical printer",
+    "Firefox and userscript were built and verified; their runtime and low-end/device acceptance are outside this scope"
+  ]
+}
