@@ -12,12 +12,12 @@ function deferred<T=unknown>() {let resolve!: (value:T)=>void,reject!: (error:un
 async function settle() {for(let i=0;i<10;i++)await Promise.resolve()}
 function setup(pdfEnabled = true) {
   const cfg=new Config();cfg.on=true;cfg.autoTranslate=false;cfg.alwaysTranslateDomains=[];cfg.disabledExtensionDomains=[]
-  const state:PopupPageState={tabId:7,url:'https://example.com/a',domain:'example.com',translated:false,busy:false}
+  const state:PopupPageState={tabId:7,url:'https://example.com/a',domain:'example.com',translated:false,busy:false,savingRule:false}
   let active=true,warning='',thunderbird=false
   const getTab=vi.fn(async():Promise<PopupActiveTab|undefined>=>({id:7,url:'https://example.com/a'})),send=vi.fn(async(_id:number,_message:{type:string;action?:string}):Promise<unknown>=>({status:'success',isTranslated:true})),notice=vi.fn(),close=vi.fn()
-  const openPdf=vi.fn(async(_sourceUrl:string):Promise<unknown>=>undefined)
-  const actions=createPopupPageActions({state,config:()=>cfg,active:()=>active,warning:()=>warning,getTab,send,openPdf:pdfEnabled?openPdf:undefined,notice,close,translate:key=>key,get thunderbird(){return thunderbird}})
-  return {cfg,state,getTab,send,openPdf,notice,close,actions,setActive:(value:boolean)=>{active=value},setWarning:(value:string)=>{warning=value},setThunderbird:()=>{thunderbird=true}}
+  const openPdf=vi.fn(async(_sourceUrl:string):Promise<unknown>=>undefined),persistRule=vi.fn(async():Promise<void>=>undefined)
+  const actions=createPopupPageActions({state,config:()=>cfg,active:()=>active,warning:()=>warning,getTab,send,persistRule,openPdf:pdfEnabled?openPdf:undefined,notice,close,translate:key=>key,get thunderbird(){return thunderbird}})
+  return {cfg,state,getTab,send,openPdf,persistRule,notice,close,actions,setActive:(value:boolean)=>{active=value},setWarning:(value:string)=>{warning=value},setThunderbird:()=>{thunderbird=true}}
 }
 afterEach(()=>vi.restoreAllMocks())
 describe('Popup 页面状态与操作所有权',()=>{
@@ -61,7 +61,7 @@ describe('Popup 页面状态与操作所有权',()=>{
     const {actions,state,getTab,send}=setup();state.tabId=null;getTab.mockResolvedValueOnce({id:0,url:'https://example.com/a'});await actions.toggle();expect(send).toHaveBeenCalledWith(0,{type:'contextMenuTranslate',action:'fullPage'});expect(state.tabId).toBe(0)
   })
   it('无 URL 的同标签页仍可恢复；规则同步回调使页面失活时不启动翻译',async()=>{
-    const {actions,state,getTab,send,cfg,setActive}=setup();state.url='';getTab.mockResolvedValueOnce({id:7});await actions.toggle();expect(send).toHaveBeenCalledOnce();send.mockClear();state.domain='example.com';const leave=vi.fn(()=>setActive(false));Object.defineProperty(cfg,'alwaysTranslateDomains',{get:()=>[],set:leave});await actions.setAlways(true);expect(leave).toHaveBeenCalledOnce();expect(send).not.toHaveBeenCalled()
+    const {actions,state,getTab,send,cfg,setActive}=setup();state.url='';getTab.mockResolvedValueOnce({id:7});await actions.toggle();expect(send).toHaveBeenCalledOnce();send.mockClear();state.domain='example.com';state.url='https://example.com/a';const leave=vi.fn(()=>setActive(false));Object.defineProperty(cfg,'alwaysTranslateDomains',{get:()=>[],set:leave});await actions.setAlways(true);expect(leave).toHaveBeenCalledOnce();expect(send).not.toHaveBeenCalled()
   })
   it.each(['invalid-tab','query-error','message-error','empty','failed'])('%s 拒绝成功状态并释放执行锁；局部失败保持窗口',async failure=>{
     const {actions,getTab,send,state,close,notice,setThunderbird}=setup();setThunderbird();const configure=()=>{if(failure==='invalid-tab')getTab.mockResolvedValueOnce(undefined);if(failure==='query-error')getTab.mockRejectedValueOnce(Error('query'));if(failure==='message-error')send.mockRejectedValueOnce(Error('receiver'));if(failure==='empty')send.mockResolvedValueOnce(undefined);if(failure==='failed')send.mockResolvedValueOnce({status:'disabled'})};configure();await actions.toggle();expect(state.translated).toBe(false);expect(state.busy).toBe(false);expect(notice).toHaveBeenLastCalledWith('请先打开一封邮件，然后重试翻译','error');configure();await actions.section();expect(close).not.toHaveBeenCalled();expect(notice).toHaveBeenLastCalledWith('popup.sectionTranslationUnavailable','error')
@@ -127,20 +127,77 @@ describe('Popup 原生在线 PDF 阅读入口',()=>{
   })
 })
 describe('Popup 站点规则与即时翻译',()=>{
+  it.each(['always','disabled'] as const)('%s 写前复验当前标签页，未收到导航事件也不能误改旧网站',async kind=>{
+    for(const tab of [{id:8,url:'https://example.net/b'},{id:7,pendingUrl:'https://example.net/new'}]) {
+      const {actions,cfg,getTab,state,persistRule,send}=setup();getTab.mockResolvedValue(tab)
+      await (kind==='always'?actions.setAlways(true):actions.setDisabled(true))
+      expect(cfg.alwaysTranslateDomains).toEqual([]);expect(cfg.disabledExtensionDomains).toEqual([]);expect(persistRule).not.toHaveBeenCalled()
+      expect(send.mock.calls.map(call=>call[1].type)).toEqual(['getFullPageTranslationState']);expect(state.domain).toBe('example.net');expect(state.savingRule).toBe(false)
+    }
+  })
+  it.each(['always','disabled'] as const)('%s 查询失败或失活不保存规则，当前查询失败有真实反馈',async kind=>{
+    const {actions,getTab,persistRule,notice,cfg,setActive}=setup(),run=()=>kind==='always'?actions.setAlways(true):actions.setDisabled(true)
+    getTab.mockRejectedValueOnce(Error('query'));await run();expect(notice).toHaveBeenLastCalledWith('无法读取当前网站，请重试','error');expect(persistRule).not.toHaveBeenCalled()
+    notice.mockClear();const query=deferred<PopupActiveTab>();getTab.mockReturnValueOnce(query.promise);const pending=run();setActive(false);query.resolve({id:7,url:'https://example.com/a'});await pending
+    expect(notice).not.toHaveBeenCalled();expect(persistRule).not.toHaveBeenCalled();expect(cfg.alwaysTranslateDomains).toEqual([]);expect(cfg.disabledExtensionDomains).toEqual([])
+  })
+  it('规则保存期间独占按钮并等待后台确认；确认前不启动即时翻译或声称成功',async()=>{
+    const {actions,persistRule,state,send,notice,getTab,close}=setup(),commit=deferred<void>();persistRule.mockReturnValueOnce(commit.promise)
+    const pending=actions.setAlways(true);await settle();expect(state.savingRule).toBe(true);expect(persistRule).toHaveBeenCalledWith({alwaysTranslateDomains:['example.com']});expect(send).not.toHaveBeenCalled();expect(notice).not.toHaveBeenCalled()
+    await actions.setAlways(false);await actions.setDisabled(true);await actions.toggle();await actions.section();await actions.reading();expect(getTab).toHaveBeenCalledOnce();expect(send).not.toHaveBeenCalled();expect(close).not.toHaveBeenCalled();commit.resolve();await pending
+    expect(state.savingRule).toBe(false);expect(send).toHaveBeenCalledOnce();expect(notice).toHaveBeenLastCalledWith('已开启 example.com 的始终翻译')
+  })
+  it('验证实际页面期间配置失效不能继续修改规则',async()=>{
+    const {actions,getTab,state,persistRule,cfg}=setup(),query=deferred<PopupActiveTab>();getTab.mockReturnValueOnce(query.promise);const pending=actions.setAlways(true);actions.invalidate();query.resolve({id:7,url:'https://example.com/a'});await pending
+    expect(persistRule).not.toHaveBeenCalled();expect(cfg.alwaysTranslateDomains).toEqual([]);expect(state.savingRule).toBe(false)
+  })
+  it.each(['always','disabled'] as const)('%s 保存失败释放规则锁，不发送翻译或显示成功；离开后旧失败不提示',async kind=>{
+    const {actions,persistRule,state,notice,send,setActive}=setup(),run=()=>kind==='always'?actions.setAlways(true):actions.setDisabled(true)
+    persistRule.mockRejectedValueOnce(Error('storage unavailable'));await run();expect(state.savingRule).toBe(false);expect(send).not.toHaveBeenCalled();expect(notice).toHaveBeenLastCalledWith('未能保存 example.com 的网站设置，请重试','error')
+    notice.mockClear();const commit=deferred<void>();persistRule.mockReturnValueOnce(commit.promise);const pending=run();await settle();setActive(false);commit.reject(Error('old failure'));await pending;expect(notice).not.toHaveBeenCalled();expect(state.savingRule).toBe(false)
+  })
+  it('导航后旧规则确认不提示、不翻译，也不能释放新网站的保存锁',async()=>{
+    const {actions,persistRule,state,getTab,send,notice}=setup(),first=deferred<void>(),second=deferred<void>();persistRule.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+    const old=actions.setAlways(true);await settle();getTab.mockResolvedValue({id:7,url:'https://example.net/b'});await actions.hydrate();send.mockClear();const fresh=actions.setDisabled(true);await settle()
+    first.resolve();await old;expect(state.savingRule).toBe(true);expect(send).not.toHaveBeenCalled();expect(notice).not.toHaveBeenCalled();second.resolve();await fresh
+    expect(state.savingRule).toBe(false);expect(notice).toHaveBeenLastCalledWith('已在 example.net 禁用扩展')
+  })
+  it('失活再激活释放保存锁，旧确认不能占用新会话或显示旧成功',async()=>{
+    const {actions,persistRule,state,notice,setActive}=setup(),first=deferred<void>(),second=deferred<void>();persistRule.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+    const old=actions.setAlways(true);await settle();setActive(false);actions.invalidate();expect(state.savingRule).toBe(false);setActive(true);const fresh=actions.setDisabled(true);await settle()
+    first.resolve();await old;expect(state.savingRule).toBe(true);expect(notice).not.toHaveBeenCalled();second.resolve();await fresh;expect(state.savingRule).toBe(false);expect(notice).toHaveBeenLastCalledWith('已在 example.com 禁用扩展')
+  })
+  it('等待保存期间规则被外部撤销不显示旧成功；禁用优先且保留始终翻译偏好',async()=>{
+    const {actions,persistRule,state,notice,send,cfg}=setup(),commit=deferred<void>();persistRule.mockReturnValueOnce(commit.promise);const pending=actions.setAlways(true);await settle();cfg.alwaysTranslateDomains=[];commit.resolve();await pending
+    expect(notice).not.toHaveBeenCalled();expect(send).not.toHaveBeenCalled();expect(state.savingRule).toBe(false)
+    cfg.alwaysTranslateDomains=['example.com'];await actions.setDisabled(true);expect(cfg.alwaysTranslateDomains).toEqual(['example.com']);expect(state.translated).toBe(false);expect(persistRule).toHaveBeenLastCalledWith({disabledExtensionDomains:['example.com']})
+  })
+  it('规则启停只修改本站，保留其它网站；旧保存回复不借用外部替换的页面身份',async()=>{
+    const {actions,cfg}=setup();cfg.alwaysTranslateDomains=['example.net'];cfg.disabledExtensionDomains=['example.org'];await actions.setAlways(true);await actions.setAlways(false);await actions.setDisabled(true);await actions.setDisabled(false)
+    expect(cfg.alwaysTranslateDomains).toEqual(['example.net']);expect(cfg.disabledExtensionDomains).toEqual(['example.org'])
+    for(const identity of [{tabId:8},{url:'https://example.com/b'},{domain:'example.net'}]) {
+      const fixture=setup(),commit=deferred<void>();fixture.persistRule.mockReturnValueOnce(commit.promise);const pending=fixture.actions.setDisabled(true);await settle();Object.assign(fixture.state,identity);commit.resolve();await pending
+      expect(fixture.notice).not.toHaveBeenCalled();expect(fixture.state.savingRule).toBe(false)
+    }
+  })
+  it('保存期间禁用本站后不执行即时翻译；规则重复启用不会重发已完成的全文翻译',async()=>{
+    const {actions,persistRule,state,notice,send,cfg}=setup(),commit=deferred<void>();persistRule.mockReturnValueOnce(commit.promise);const pending=actions.setAlways(true);await settle();cfg.disabledExtensionDomains=['example.com'];commit.resolve();await pending
+    expect(notice).toHaveBeenLastCalledWith('已保存 example.com，恢复扩展后生效');expect(send).not.toHaveBeenCalled();cfg.disabledExtensionDomains=[];state.translated=true;await actions.setAlways(true);expect(send).not.toHaveBeenCalled();expect(notice).toHaveBeenLastCalledWith('已开启 example.com 的始终翻译')
+  })
   it('启用、重复启用、停用规则不产生重复域名；停用不执行恢复',async()=>{
-    const {actions,cfg,send,state,notice}=setup();await actions.setAlways(true);await actions.setAlways(true);expect(cfg.alwaysTranslateDomains).toEqual(['example.com']);expect(state.translated).toBe(true);send.mockClear();actions.setAlways(false);expect(cfg.alwaysTranslateDomains).toEqual([]);expect(send).not.toHaveBeenCalled();expect(notice).toHaveBeenLastCalledWith('已关闭 example.com 的始终翻译，当前网页保持不变')
+    const {actions,cfg,send,state,notice}=setup();await actions.setAlways(true);await actions.setAlways(true);expect(cfg.alwaysTranslateDomains).toEqual(['example.com']);expect(state.translated).toBe(true);send.mockClear();await actions.setAlways(false);expect(cfg.alwaysTranslateDomains).toEqual([]);expect(send).not.toHaveBeenCalled();expect(notice).toHaveBeenLastCalledWith('已关闭 example.com 的始终翻译，当前网页保持不变')
   })
   it('旧协议缺省/明确 false 状态与当前发送失败分别展示保存结果',async()=>{
-    const {actions,send,state,notice}=setup();send.mockResolvedValueOnce({status:'success'});await actions.setAlways(true);expect(state.translated).toBe(true);send.mockResolvedValueOnce({status:'success',isTranslated:false});await actions.setAlways(true);expect(state.translated).toBe(false);send.mockRejectedValueOnce(Error('no receiver'));await actions.setAlways(true);expect(notice).toHaveBeenLastCalledWith('已保存 example.com，当前网页请刷新后重试','error')
+    const {actions,send,state,notice}=setup();send.mockResolvedValueOnce({status:'success'});await actions.setAlways(true);expect(state.translated).toBe(true);state.translated=false;send.mockResolvedValueOnce({status:'success',isTranslated:false});await actions.setAlways(true);expect(state.translated).toBe(false);send.mockRejectedValueOnce(Error('no receiver'));await actions.setAlways(true);expect(notice).toHaveBeenLastCalledWith('已保存 example.com，当前网页请刷新后重试','error')
   })
   it.each(['inactive','busy','no-domain','no-tab','invalid'])('%s 时站点规则操作不修改配置或启动翻译',async reason=>{
-    const {actions,cfg,state,send,setActive}=setup();if(reason==='inactive')setActive(false);if(reason==='busy')state.busy=true;if(reason==='no-domain')state.domain='';if(reason==='no-tab')state.tabId=null;await actions.setAlways(reason==='invalid'?'true' as never:true);if(reason!=='busy')actions.setDisabled(reason==='invalid'?'true' as never:true);expect(cfg.alwaysTranslateDomains).toEqual([]);expect(cfg.disabledExtensionDomains).toEqual([]);expect(send).not.toHaveBeenCalled()
+    const {actions,cfg,state,send,setActive}=setup();if(reason==='inactive')setActive(false);if(reason==='busy')state.busy=true;if(reason==='no-domain')state.domain='';if(reason==='no-tab')state.tabId=null;await actions.setAlways(reason==='invalid'?'true' as never:true);if(reason!=='busy')await actions.setDisabled(reason==='invalid'?'true' as never:true);expect(cfg.alwaysTranslateDomains).toEqual([]);expect(cfg.disabledExtensionDomains).toEqual([]);expect(send).not.toHaveBeenCalled()
   })
   it('全局自动翻译和站点禁用不接受启用规则；插件关闭或缺凭据时保存而不执行',async()=>{
-    const {actions,cfg,send,notice,setWarning}=setup();cfg.autoTranslate=true;actions.setAlways(true);expect(notice).toHaveBeenLastCalledWith('所有网站自动翻译已开启，请在完整设置中关闭全局开关');cfg.autoTranslate=false;cfg.disabledExtensionDomains=['example.com'];actions.setAlways(true);expect(notice).toHaveBeenLastCalledWith('当前已在 example.com 禁用扩展，请先恢复扩展');cfg.disabledExtensionDomains=[];cfg.on=false;actions.setAlways(true);expect(notice).toHaveBeenLastCalledWith('已保存 example.com，启动插件后生效');cfg.on=true;setWarning('key');actions.setAlways(true);expect(notice).toHaveBeenLastCalledWith('已保存 example.com；key','error');expect(send).not.toHaveBeenCalled()
+    const {actions,cfg,send,notice,setWarning}=setup();cfg.autoTranslate=true;await actions.setAlways(true);expect(notice).toHaveBeenLastCalledWith('所有网站自动翻译已开启，请在完整设置中关闭全局开关');cfg.autoTranslate=false;cfg.disabledExtensionDomains=['example.com'];await actions.setAlways(true);expect(notice).toHaveBeenLastCalledWith('当前已在 example.com 禁用扩展，请先恢复扩展');cfg.disabledExtensionDomains=[];cfg.on=false;await actions.setAlways(true);expect(notice).toHaveBeenLastCalledWith('已保存 example.com，启动插件后生效');cfg.on=true;setWarning('key');await actions.setAlways(true);expect(notice).toHaveBeenLastCalledWith('已保存 example.com；key','error');expect(send).not.toHaveBeenCalled()
   })
   it('站点禁用后旧任务不能重新标记成功，启停只修改本站且不发覆盖命令',async()=>{
-    const {actions,cfg,state,send}=setup(),pending=deferred();send.mockReturnValueOnce(pending.promise);const old=actions.toggle();await settle();actions.setDisabled(true);actions.setDisabled(true);expect(cfg.disabledExtensionDomains).toEqual(['example.com']);expect(state.busy).toBe(false);expect(state.translated).toBe(false);pending.resolve({status:'success',isTranslated:true});await old;expect(state.translated).toBe(false);actions.setDisabled(false);expect(cfg.disabledExtensionDomains).toEqual([]);expect(send).toHaveBeenCalledTimes(1)
+    const {actions,cfg,state,send}=setup(),pending=deferred();send.mockReturnValueOnce(pending.promise);const old=actions.toggle();await settle();await actions.setDisabled(true);await actions.setDisabled(true);expect(cfg.disabledExtensionDomains).toEqual(['example.com']);expect(state.busy).toBe(false);expect(state.translated).toBe(false);pending.resolve({status:'success',isTranslated:true});await old;expect(state.translated).toBe(false);await actions.setDisabled(false);expect(cfg.disabledExtensionDomains).toEqual([]);expect(send).toHaveBeenCalledTimes(1)
   })
   it('外部移除规则后旧即时翻译回复不声称规则已经开启',async()=>{
     const {actions,cfg,state,send,notice}=setup(),pending=deferred();send.mockReturnValueOnce(pending.promise);const old=actions.setAlways(true);await settle();cfg.alwaysTranslateDomains=[];pending.resolve({status:'success',isTranslated:true});await old;expect(state.translated).toBe(false);expect(notice).not.toHaveBeenCalled()

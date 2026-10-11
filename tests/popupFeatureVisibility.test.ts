@@ -50,7 +50,14 @@ describe('popup feature visibility', () => {
         }
         expect(runInNewContext(visible, {browserCapabilities: {browser: 'chrome'}, isThunderbird: true, currentPdfSource: undefined})).toBe(false);
         expect(runInNewContext(visible, {browserCapabilities: {browser: 'chrome'}, isThunderbird: false, currentPdfSource: {}})).toBe(false);
-        expect(directive(entry, 'bind', 'disabled')).toBe('!config.on || currentSiteExtensionDisabled || translating');
+        const disabled = directive(entry, 'bind', 'disabled')!;
+        expect(disabled).toBe('!config.on || currentSiteExtensionDisabled || translating || pageState.savingRule');
+        const ready = {config: {on: true}, currentSiteExtensionDisabled: false, translating: false, pageState: {savingRule: false}};
+        expect(runInNewContext(disabled, ready)).toBe(false);
+        for (const blocked of [
+            {...ready, config: {on: false}}, {...ready, currentSiteExtensionDisabled: true},
+            {...ready, translating: true}, {...ready, pageState: {savingRule: true}},
+        ]) expect(runInNewContext(disabled, blocked)).toBe(true);
         expect(directive(entry, 'bind', 'onClick')).toBe('pageButtons.reading');
         expect(entry.props.some(prop => prop.type === 6 && prop.name === 'aria-label' && prop.value?.content === '渐进阅读')).toBe(true);
         expect(entry.props.some(prop => prop.type === 6 && prop.name === 'title' && prop.value?.content.includes('自由切换原文'))).toBe(true);

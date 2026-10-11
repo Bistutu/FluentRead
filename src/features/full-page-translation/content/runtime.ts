@@ -126,7 +126,8 @@ import {
 } from '@/src/features/full-page-translation/content/liveTextTranslation';
 import {clearOrphanedTranslationArtifacts, consumeOrphanedOwnerClassMutation, isTextEquivalentHostReplacement, normalizeOrphanedSingleSlots, normalizeOrphanedTranslationArtifacts, normalizeOrphanedTranslationOwner}
     from '@/src/features/full-page-translation/content/orphanArtifacts';
-import {bindFullPageRequestSessionAttempt, createFullPageRequestSessionState, disposeFullPageRequestSession, getHoverTranslationRequestSession, invalidateContextSensitiveRequestCache, invalidateFullPageRequestSessionCache, invalidateFullPageRequestSessionForRoute, invalidateHoverTranslationRequestSession, resetHoverTranslationRequestSession, type FullPageRequestSessionState} from '@/src/features/full-page-translation/content/requestSession';
+import {bindFullPageRequestSessionAttempt, createFullPageRequestSessionState, disposeFullPageRequestSession, getHoverTranslationRequestSession, invalidateContextSensitiveRequestCache, invalidateFullPageRequestSessionCache, invalidateHoverTranslationRequestSession, resetHoverTranslationRequestSession, type FullPageRequestSessionState} from '@/src/features/full-page-translation/content/requestSession';
+import {resetFullPageRouteSession} from './routeLifecycle';
 import {HoverTranslationScheduler, type HoverTranslationInvocation} from './hoverScheduler';
 import {getSiteAdapterAttributeFilter} from '@/src/core/site-adaptation/compiler';
 import {isElementNode, asHTMLElement, mutationTargetElement, allMutationNodesMatch, createTranslationAttributeMutationFilter, createTranslationMutationObserverOptions, isOwnSyntheticSegmentMarkerMutation, mutationRootContains as nodeContains, collapseMutationRescanRoot as broadRescanRoot} from './mutationObservation';
@@ -2080,7 +2081,18 @@ function stopFullPageSession(): void {
     disposeFullPageSession(session);
 }
 export function invalidateFullPageTranslationSessionCache(): void { if (fullPageSession?.active) invalidateFullPageRequestSessionCache(fullPageSession); }
-export function resetFullPageTranslationRouteState(): void { cancelPendingHoverTranslation(); translationSourceStability.reset(); hoverBilingualRemountCapitulations = createBilingualRemountCapitulationRegistry(); invalidateHoverTranslationRequestSession(); if (fullPageSession?.active) { fullPageSession.bilingualRemountCapitulations = createBilingualRemountCapitulationRegistry(); invalidateFullPageRequestSessionForRoute(fullPageSession); } resetAllBilingualArtifactHostWriteBudgets(); }
+/** 新路由取消旧请求并重扫当前 DOM；旧页面的熔断和无需变更判定不能压住新页面。 */
+export function resetFullPageTranslationRouteState(): void {
+    cancelPendingHoverTranslation();
+    translationSourceStability.reset();
+    hoverBilingualRemountCapitulations = createBilingualRemountCapitulationRegistry();
+    invalidateHoverTranslationRequestSession();
+    resetFullPageRouteSession(fullPageSession, document.documentElement, {
+        observe: observeFullPageRoot,
+        rescan: enqueueFullPageRescan,
+    });
+    resetAllBilingualArtifactHostWriteBudgets();
+}
 
 /**
  * 恢复全文翻译。全文和悬浮翻译共享同一份节点状态，因此这里无需再用

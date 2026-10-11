@@ -1,6 +1,7 @@
 {
   "date": "2026-10-11",
   "baseCommit": "c8a06bb5fe0148f629ecaf60e70e5bf6ebb4f957",
+  "integratedMainCommit": "69d41e5e1050e5004d4656963d5105f24df9d8ed",
   "branch": "codex/progressive-reading-20261011",
   "coverage": [
     {
@@ -38,9 +39,9 @@
         "lines": 100
       },
       "testCount": 14,
-      "sourceReport": "/private/tmp/progressive-dom-final-coverage/coverage-summary.json",
-      "logPath": "/private/tmp/progressive-final-dom-coverage.log",
-      "sessionId": 39834
+      "sourceReport": "/private/tmp/progressive-dom-integration-coverage/coverage-summary.json",
+      "logPath": "/private/tmp/progressive-integration-dom-coverage.log",
+      "sessionId": 44237
     },
     {
       "file": "src/features/progressive-reading/source.ts",
@@ -51,9 +52,9 @@
         "lines": 100
       },
       "testCount": 14,
-      "sourceReport": "/private/tmp/progressive-dom-final-coverage/coverage-summary.json",
-      "logPath": "/private/tmp/progressive-final-dom-coverage.log",
-      "sessionId": 39834
+      "sourceReport": "/private/tmp/progressive-dom-integration-coverage/coverage-summary.json",
+      "logPath": "/private/tmp/progressive-integration-dom-coverage.log",
+      "sessionId": 44237
     },
     {
       "file": "src/features/vocabulary/background/handler.ts",
@@ -89,10 +90,10 @@
         "functions": 100,
         "lines": 100
       },
-      "testCount": 316,
-      "sourceReport": "/private/tmp/fluentread-progressive-reading-entry-final-coverage/coverage-final.json",
-      "logPath": "/private/tmp/fluentread-progressive-reading-entry-final-coverage.log",
-      "sessionId": 76305
+      "testCount": 400,
+      "sourceReport": "/private/tmp/fluentread-progressive-reading-entry-merge-coverage/coverage-final.json",
+      "logPath": "/private/tmp/fluentread-progressive-reading-entry-merge-coverage.log",
+      "sessionId": 35857
     },
     {
       "file": "src/app/content/messageRuntime.ts",
@@ -102,10 +103,10 @@
         "functions": 100,
         "lines": 100
       },
-      "testCount": 316,
-      "sourceReport": "/private/tmp/fluentread-progressive-reading-entry-final-coverage/coverage-final.json",
-      "logPath": "/private/tmp/fluentread-progressive-reading-entry-final-coverage.log",
-      "sessionId": 76305
+      "testCount": 400,
+      "sourceReport": "/private/tmp/fluentread-progressive-reading-entry-merge-coverage/coverage-final.json",
+      "logPath": "/private/tmp/fluentread-progressive-reading-entry-merge-coverage.log",
+      "sessionId": 35857
     },
     {
       "file": "src/app/popup/pageActions.ts",
@@ -115,10 +116,10 @@
         "functions": 100,
         "lines": 100
       },
-      "testCount": 316,
-      "sourceReport": "/private/tmp/fluentread-progressive-reading-entry-final-coverage/coverage-final.json",
-      "logPath": "/private/tmp/fluentread-progressive-reading-entry-final-coverage.log",
-      "sessionId": 76305
+      "testCount": 400,
+      "sourceReport": "/private/tmp/fluentread-progressive-reading-entry-merge-coverage/coverage-final.json",
+      "logPath": "/private/tmp/fluentread-progressive-reading-entry-merge-coverage.log",
+      "sessionId": 35857
     }
   ],
   "sourceSha256": {
@@ -130,11 +131,11 @@
     "src/features/vocabulary/domain/readingHints.ts": "cc981b2d27a2216bc9fe2aa374a3d0dcb58ce3c897069db66899329890d5957d",
     "src/app/content/learningFeatures.ts": "1a61f5eb587812f7bbe105844b5252475725d060774ab3a15b4be63231e60d87",
     "src/app/content/messageRuntime.ts": "260bac5fa5a5eead9c3b84d164466f3716d2779fee2b11a1166f3084d960c6c3",
-    "src/app/popup/pageActions.ts": "d9a2e5a68702e716d4264e00ddc9f0778658b6b9568d7c9804a5b89152c407e3",
-    "src/app/popup/PopupApp.vue": "b6277379851b1b967c51c33123407645c565830a240a5763f08182cabbd89788",
-    "src/app/popup/popup.css": "5913b114bf622eafe178e6df8f5cbfa52d7e223e4621e55c1ddba1a27b6328ac",
+    "src/app/popup/pageActions.ts": "11e40d0f9a3ddafe27ec449c8af57f0f6298bff2613d17f77329f47c6366254a",
+    "src/app/popup/PopupApp.vue": "dd18fca855d1ef4cdfe238e614685db9c22ff1fd25b752e84a3d23f948f44de2",
+    "src/app/popup/popup.css": "40e6f389053d0273b086c998b98973a4bbab093e38583bd3e45bce0a46a7ca95",
     "src/features/progressive-reading/ui/ProgressiveReading.vue": "ee19d2bc4a729e4929fb16784111edb6417cfb1214b8e3a66e2797a5b1d559f2",
-    "userscript/vite.config.ts": "2ea66d5143160e4e876399733605f227100632ac435bde22d74fba1f51ae9557",
+    "userscript/vite.config.ts": "fe3ae2259d5dd02dc530bf6f4e5a1bf484d295d5056103a2e9ca18835c1fa2e1",
     "userscript/unsupportedCapabilities.ts": "083ed5cb3c6797d105f04043dbca82cbf959074bb450b39739470ededd9e069d"
   },
   "manifests": [
@@ -197,32 +198,42 @@
     }
   ],
   "artifacts": {
-    "chromeContentSha256": "0eed2fb962799ddf82a93c079302b6bb6bce3959683057e5179ffe24e605307f",
-    "firefoxContentSha256": "8461ebefe46f4a1b03d3c03b072497b252a4b6a4bf20e3de677d593af07f48ba",
-    "userscriptBytes": 2024908,
-    "userscriptSha256": "790c45e4c9193be2b994a50cb4b680ad123f0d0edc2a5fe3b2092889076badfe",
-    "userscriptBudgetBytes": 2025000
+    "chromeContentSha256": "6740a54b485aaed40640d846e4ae3bc3df667652294fdc681064b7e851039be8",
+    "firefoxContentSha256": "1158163c7783c6e1a1726975219acc578ea482adaa1acabd3ac2c85de8667575",
+    "userscriptBytes": 2026951,
+    "userscriptSha256": "fa8734558fc0b8deb01bd84c5f2be39e4e8b9b5b7fc52db319a9b2f7552ff7c9",
+    "userscriptBudgetBytes": 2027000
   },
   "gates": {
     "compile": "passed",
     "architecture": {
-      "passed": 949
+      "passed": 951
     },
     "testAudit": {
       "files": 656,
-      "cases": 10935,
+      "cases": 11014,
       "status": "passed"
     },
     "chromeBuild": "passed",
     "firefoxBuild": "passed",
     "userscriptBuild": "passed",
     "userscriptVerifier": "passed",
-    "docsBuild": "passed"
+    "docsBuild": "passed",
+    "userscriptContract": {
+      "passed": 35
+    },
+    "popupVisibility": {
+      "passed": 31
+    },
+    "entryCombination": {
+      "files": 9,
+      "passed": 400
+    }
   },
   "browser": {
     "passed": 18,
     "consoleErrors": 0,
-    "focusSamples": 41,
+    "focusSamples": 38,
     "launchMode": "macos-background-cdp",
     "focusPolicy": "launchservices-no-foreground",
     "windowPlacement": "background-visible-no-focus",

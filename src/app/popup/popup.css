@@ -1,7 +1,7 @@
 /**
  * @file src/app/popup/popup.css
  * 文件职责：定义宽度随皮肤和界面语言、高度由内容撑开且最高 560px 的浏览器 Popup 视觉系统与交互状态，包括亮暗主题、服务选择、功能卡、设置抽屉、通知和响应式细节。
- * 主要内容：以白色窄版画布、浅灰控件和品牌色强调网页翻译、局部选择、渐进阅读及站点控制；主翻译独占首行并保留完整快捷键，两个辅助入口共享次行，定义版本与赞赏码的原位放大、默认服务及配置模型摘要、静态凭据提示、两列入口、完整开源胶囊与开关优先的快捷抽屉，保留操作示意、舒展间距和必要的内部滚动。
+ * 主要内容：以白色窄版画布、浅灰控件和品牌色强调网页翻译、局部选择、渐进阅读及站点控制；主翻译独占首行并保留完整快捷键，两个辅助入口共享次行，定义版本与赞赏码的原位放大、默认服务及配置模型摘要、静态凭据提示、两列入口、完整开源胶囊与开关优先的快捷抽屉，保留操作示意、舒展间距和必要的内部滚动；站点规则沿用原指示点展示保存状态并尊重减少动画偏好。
  * 模块边界：样式只对应 PopupApp 的 DOM 和受控第三方组件，不决定配置值、能力可用性或消息行为；跨页面 token 在 src/ui/styles，Options/文档页各自维护页面样式。
  */
 @import "../../ui/styles/feedback.css";
@@ -284,6 +284,8 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
 .site-rule-button > i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: #b8bec9; }
 .site-rule-button.enabled { border-color: rgba(239, 71, 118, .35); background: var(--brand-soft); }
 .site-rule-button.enabled > i { background: var(--brand); box-shadow: 0 0 0 3px rgba(239, 71, 118, .12); }
+.site-rule-actions .site-rule-button > i.site-rule-saving { background: transparent; box-shadow: none; border: 1px solid currentColor; border-right-color: transparent; animation: spin .7s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .site-rule-actions .site-rule-button > i.site-rule-saving { animation: none; border-right-color: currentColor; } }
 .site-rule-button:hover:not(:disabled) { border-color: rgba(239, 71, 118, .48); background: var(--brand-soft); }
 .site-rule-button:disabled { cursor: default; opacity: .72; }
 .site-rule-button.global-enabled:disabled { opacity: 1; }

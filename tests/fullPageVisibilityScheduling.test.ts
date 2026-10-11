@@ -341,6 +341,8 @@ import {
     restoreTranslationOwner,
 } from "@/src/features/full-page-translation/content/runtime";
 import {getTranslationState} from "@/src/features/full-page-translation/content/state";
+import {createBilingualRemountCapitulationRegistry} from '@/src/features/full-page-translation/content/bilingualRemount';
+import {resetFullPageRouteSession, type FullPageRouteLifecycleSession} from '@/src/features/full-page-translation/content/routeLifecycle';
 import {getTranslationToolbarStatus} from '@/src/features/full-page-translation/content/stateNotification';
 import {
     getFullPageTranslationProgress,
@@ -8273,6 +8275,164 @@ describe("悬停重挂请求与 synthetic 提交回归", () => {
         expect(runtime.requests).toHaveBeenCalledTimes(2);
         expect(getTranslationState(owner)?.phase).toBe("translated");
         expect(owner.textContent).toContain(`新译:${source}`);
+    });
+
+    function routeLifecycleFixture() {
+        const root = document.documentElement;
+        const retry = {owner: root, source: 'Persistent source', kind: 'content' as const,
+            reason: 'route-lifecycle', attempts: 3};
+        const session: FullPageRouteLifecycleSession = {
+            active: true,
+            ...createFullPageRequestSessionState(),
+            translationSlotCache: new Map(),
+            bilingualRemountCapitulations: createBilingualRemountCapitulationRegistry(),
+            lifecycleRetries: new WeakMap([[root, retry]]),
+            unchangedCandidates: new WeakMap([[root, retry]]),
+            activeDiscovery: {root, steps: (function* () { yield {element: root, phase: 'enter' as const}; })()},
+            dirtyRoots: new Set([root]),
+            dirtyRootsBroadMode: true,
+            broadRescanCooldowns: new WeakMap([[root, 1000]]),
+        };
+        const hooks = {observe: vi.fn(), rescan: vi.fn()};
+        return {root, session, hooks};
+    }
+
+    it('路由生命周期模块立即取消旧请求、清理旧页判定并仅登记一次文档根重扫', () => {
+        const {root, session, hooks} = routeLifecycleFixture();
+        const previousController = session.requestController;
+        const previousRemount = session.bilingualRemountCapitulations;
+        const attempt = new AbortController();
+        const release = bindFullPageRequestSessionAttempt(session, attempt);
+        resetFullPageRouteSession(session, root, hooks);
+        expect(previousController.signal.aborted).toBe(true);
+        expect(attempt.signal.aborted).toBe(true);
+        expect(session.requestController).not.toBe(previousController);
+        expect(session.requestSignal.aborted).toBe(false);
+        expect(session.renderCommitGeneration).toBe(1);
+        expect(session.bilingualRemountCapitulations).not.toBe(previousRemount);
+        expect(session.lifecycleRetries.get(root)).toBeUndefined();
+        expect(session.unchangedCandidates.get(root)).toBeUndefined();
+        expect(session.activeDiscovery).toBeNull();
+        expect(session.dirtyRoots.size).toBe(0);
+        expect(session.dirtyRootsBroadMode).toBe(false);
+        expect(session.broadRescanCooldowns.get(root)).toBeUndefined();
+        expect(hooks.observe).toHaveBeenCalledOnce();
+        expect(hooks.observe).toHaveBeenCalledWith(session, root);
+        expect(hooks.rescan).toHaveBeenCalledOnce();
+        expect(hooks.rescan).toHaveBeenCalledWith(session, root);
+        release();
+    });
+
+    it('路由切换时文档根已失踪仍取消旧请求并清理，不向观察或扫描端口传空节点', () => {
+        const {session, hooks} = routeLifecycleFixture();
+        const previousSignal = session.requestSignal;
+        resetFullPageRouteSession(session, null, hooks);
+        expect(previousSignal.aborted).toBe(true);
+        expect(session.activeDiscovery).toBeNull();
+        expect(session.dirtyRoots.size).toBe(0);
+        expect(hooks.observe).not.toHaveBeenCalled();
+        expect(hooks.rescan).not.toHaveBeenCalled();
+    });
+
+    it('失活或缺席的全文会话不能创建下一代请求或重新登记路由扫描', () => {
+        const {root, session, hooks} = routeLifecycleFixture();
+        const previousController = session.requestController;
+        session.active = false;
+        resetFullPageRouteSession(session, root, hooks);
+        expect(session.requestController).toBe(previousController);
+        expect(previousController.signal.aborted).toBe(false);
+        expect(session.lifecycleRetries.get(root)?.attempts).toBe(3);
+        expect(session.dirtyRoots.size).toBe(1);
+        expect(hooks.observe).not.toHaveBeenCalled();
+        expect(hooks.rescan).not.toHaveBeenCalled();
+        resetFullPageRouteSession(null, root, hooks);
+        expect(hooks.observe).not.toHaveBeenCalled();
+        expect(hooks.rescan).not.toHaveBeenCalled();
+    });
+
+    it('loading 文档和迟到正文仍由同一全文会话观察，重复自动触发不创建第二个会话', async () => {
+        runtime.config.display = 1;
+        runtime.config.fullPageTranslationMode = 'all';
+        Object.defineProperty(document, 'readyState', {configurable: true, value: 'loading'});
+        autoTranslateEnglishPage();
+        autoTranslateEnglishPage();
+        expect(isFullPageTranslationActive()).toBe(true);
+        expect(TestIntersectionObserver.instances).toHaveLength(1);
+        await finishScheduledWork();
+        expect(runtime.requests).not.toHaveBeenCalled();
+
+        document.body.innerHTML = '<p id="delayed">An SPA published this paragraph after initialization.</p>';
+        const owner = document.querySelector<HTMLElement>('#delayed')!;
+        setLayoutBox(owner, 620, 96);
+        runtime.candidates = [{element: owner, kind: 'content', reason: 'delayed-spa-content'}];
+        TestMutationObserver.instances[0]!.emit([{
+            type: 'childList', target: document.body, addedNodes: [owner], removedNodes: [],
+        } as unknown as MutationRecord]);
+        await finishScheduledWork();
+
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+        expect(owner.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(1);
+        expect(owner.textContent).toContain('译:An SPA published this paragraph after initialization.');
+        restoreOriginalContent();
+        TestMutationObserver.instances[0]!.emit([{
+            type: 'childList', target: document.body, addedNodes: [owner], removedNodes: [],
+        } as unknown as MutationRecord]);
+        await finishScheduledWork();
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+        expect(owner.textContent).toBe('An SPA published this paragraph after initialization.');
+    });
+
+    it('连续 SPA 导航取消同一 owner 的旧请求不会耗尽新页面重试，旧响应晚到不能覆盖新译文', async () => {
+        runtime.config.display = 1;
+        runtime.config.fullPageTranslationMode = 'all';
+        const source = 'A persistent paragraph must remain translatable after rapid SPA navigation.';
+        document.body.innerHTML = `<p id="rapid-route">${source}</p>`;
+        const owner = document.querySelector<HTMLElement>('#rapid-route')!;
+        setLayoutBox(owner, 620, 96);
+        runtime.candidates = [{element: owner, kind: 'content', reason: 'persistent-spa-owner'}];
+        const oldRequests = [deferred<string[]>(), deferred<string[]>(), deferred<string[]>()];
+        oldRequests.forEach(request => runtime.requests.mockReturnValueOnce(request.promise));
+        runtime.requests.mockResolvedValue(['最新页面译文']);
+        autoTranslateEnglishPage();
+        await finishScheduledWork();
+        await waitForRequestCount(1);
+
+        for (let route = 0; route < 3; route += 1) {
+            const previousState = getTranslationState(owner)!;
+            resetFullPageTranslationRouteState();
+            expect(previousState.controller.signal.aborted).toBe(true);
+            await finishScheduledWork();
+            await waitForRequestCount(route + 2);
+        }
+        expect(owner.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(1);
+        expect(owner.textContent).toContain('最新页面译文');
+        oldRequests.forEach(request => request.resolve(['过期页面译文']));
+        await finishScheduledWork();
+        expect(runtime.requests).toHaveBeenCalledTimes(4);
+        expect(owner.textContent).not.toContain('过期页面译文');
+        expect(owner.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(1);
+    });
+
+    it('SPA 路由变化重扫原有 DOM，旧页面无需变更判定不阻止新页面翻译', async () => {
+        runtime.config.display = 1;
+        runtime.config.fullPageTranslationMode = 'all';
+        const source = 'The provider accepted an unchanged source on the previous page.';
+        document.body.innerHTML = `<p id="route-unchanged">${source}</p>`;
+        const owner = document.querySelector<HTMLElement>('#route-unchanged')!;
+        setLayoutBox(owner, 620, 96);
+        runtime.candidates = [{element: owner, kind: 'content', reason: 'route-unchanged'}];
+        runtime.requests.mockResolvedValueOnce([source]).mockResolvedValueOnce(['新页面译文']);
+        autoTranslateEnglishPage();
+        await finishScheduledWork();
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+        expect(getTranslationState(owner)).toBeUndefined();
+
+        resetFullPageTranslationRouteState();
+        await finishScheduledWork();
+
+        expect(runtime.requests).toHaveBeenCalledTimes(2);
+        expect(owner.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(1);
+        expect(owner.textContent).toContain('新页面译文');
     });
 
     it("route reset 后全文在途结果不得提交，同一候选可由新请求完成", async () => {

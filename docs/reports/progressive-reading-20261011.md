@@ -7,7 +7,7 @@
 
 # 渐进阅读：2026-10-11
 
-基于 `origin/main` 的 `c8a06bb5fe0148f629ecaf60e70e5bf6ebb4f957`，在 `codex/progressive-reading-20261011` 独立工作树实现。没有修改参考仓库或复制参考实现，没有新增权限、依赖或持久配置。
+从 `origin/main` 的 `c8a06bb5fe0148f629ecaf60e70e5bf6ebb4f957` 开始，在 `codex/progressive-reading-20261011` 独立工作树实现；最终整合主分支 `69d41e5e1050e5004d4656963d5105f24df9d8ed` 的网站规则和导航改动后复验。没有修改参考仓库或复制参考实现，没有新增权限、依赖或持久配置。Popup 整合保留主分支的规则保存确认、忙碌状态和禁用中断，并在规则保存时阻止渐进阅读重复发起。
 
 ## 使用与行为
 
@@ -30,14 +30,14 @@
 | 提示规则与异步会话 | 36 tests 通过 | hints/session 四维均 100% |
 | 原文所有权与内容生命周期 | 14 tests 通过 | source/content 四维均 100% |
 | 学习库只读提示与后台 handler | 27 tests 通过 | readingHints/handler 四维均 100% |
-| Popup 页面动作及内容入口组合 | 7 文件、316 tests 通过 | pageActions/messageRuntime/learningFeatures 四维均 100% |
+| Popup 页面动作及内容入口组合 | 9 文件、400 tests 通过 | pageActions/messageRuntime/learningFeatures 四维均 100% |
 | Popup 可见性 | 31 tests 通过 | 用户脚本、PDF 和 Thunderbird 门禁 |
 | 用户脚本构建隔离契约 | 35 tests 通过 | public alias、空适配与无副作用拒绝 |
-| 模块边界、源文件说明及验证所有权 | 949 tests 通过 | 3 个限定架构文件 |
+| 模块边界、源文件说明及验证所有权 | 951 tests 通过 | 3 个限定架构文件 |
 | TypeScript/Vue 类型检查 | 通过 | pnpm compile |
-| 测试归类审计 | 通过 | 656 文件、10,935 cases 的静态审计；不代表执行全套用例 |
+| 测试归类审计 | 通过 | 656 文件、11,014 cases 的静态审计；不代表执行全套用例 |
 | Chrome / Firefox 生产构建 | 均通过 | WXT 0.20.18；不是 Firefox 实机验收 |
-| 用户脚本构建与 verifier | 均通过 | 2,024,908 bytes，既有预算 2,025,000 bytes |
+| 用户脚本构建与 verifier | 均通过 | 2,026,951 bytes，整合主分支的既有预算 2,027,000 bytes |
 | 文档构建 | 通过 | VitePress 1.6.3 |
 | 隔离真实 Edge 专项 | 18/18 通过 | 生产扩展、确定性本机 HTTP 响应 |
 
@@ -46,7 +46,7 @@
 ```sh
 pnpm test tests/progressiveReading.test.ts tests/progressiveReadingSource.test.ts tests/progressiveReadingContent.test.ts tests/vocabularyReadingHints.test.ts tests/vocabularyBackgroundHandler.test.ts
 pnpm test tests/popupFeatureVisibility.test.ts tests/userscriptViteConfig.test.ts tests/userscriptUnsupportedCapabilities.test.ts
-pnpm test tests/popupPageActionsOwnership.test.ts tests/contentMessageRuntime.test.ts tests/sentenceActionsMount.test.ts tests/implementationAudit48K.test.ts tests/implementationAudit49F.test.ts tests/contentTrustBoundary.test.ts tests/contentRuntimeLifecycle.test.ts
+pnpm test tests/popupPageActionsOwnership.test.ts tests/contentMessageRuntime.test.ts tests/sentenceActionsMount.test.ts tests/implementationAudit48K.test.ts tests/implementationAudit49F.test.ts tests/contentTrustBoundary.test.ts tests/contentRuntimeLifecycle.test.ts tests/popupAppLifecycle.test.ts tests/popupFeatureVisibility.test.ts
 pnpm test tests/architecture/moduleBoundaries.test.ts tests/architecture/sourceFileHeaders.test.ts tests/architecture/verificationOwnership.test.ts
 pnpm test:audit
 pnpm compile
@@ -56,7 +56,7 @@ pnpm build:userscript
 pnpm docs:build
 ```
 
-新可执行模块已登记 coverage 所有权。专项通过 `pnpm test:coverage` 的 `--coverage.include` 分别限定 `hints.ts`、`session.ts`、`source.ts`、`content.ts`、词书 `domain/readingHints.ts` 与后台 handler，以及三个受影响入口模块，执行四维 100% 门槛，不降低现有阈值。用户脚本在构建期排除渐进阅读注册和消息分支，并以既有 alias 机制隔离 Vue 面板；保留既有体积预算。
+新可执行模块已登记 coverage 所有权。专项通过 `pnpm test:coverage` 的 `--coverage.include` 分别限定 `hints.ts`、`session.ts`、`source.ts`、`content.ts`、词书 `domain/readingHints.ts` 与后台 handler，以及三个受影响入口模块，执行四维 100% 门槛，不降低现有阈值。用户脚本在构建期排除渐进阅读注册和消息分支，并以既有 alias 机制隔离 Vue 面板；沿用整合后主分支的体积预算，本功能未放宽预算。
 
 浏览器专项命令：
 
@@ -70,9 +70,9 @@ node scripts/run-progressive-reading-test.cjs \
 
 专项使用自有临时 Edge profile、第二屏后台正常窗口和生产扩展。真实输入通过 CDP 操作，持续采样焦点，结束后关闭自有浏览器并删除临时 profile。服务端响应是本机确定性 HTTP 夹具；Popup 在测试标签中替换 active-tab 查询并捕获关闭动作，其余页面与后台路由真实执行。
 
-验收覆盖 Popup 入口与 400px 三操作行、原生正文拖选与宿主 HTML 保留、四档自由切换、多词表达、明确掌握退场和恢复、熟词异语境仍有帮助、词面逻辑线索、一步完整双语、同会话译文复用、Tab/Enter/Escape、390px 滚动控件可达、宿主链接和按钮、DOM 替换、延迟请求关闭重开、总开关禁用恢复及页面卸载。
+验收覆盖 Popup 入口与 320px / 400px 两行页面操作、原生正文拖选与宿主 HTML 保留、四档自由切换、多词表达、明确掌握退场和恢复、熟词异语境仍有帮助、词面逻辑线索、一步完整双语、同会话译文复用、Tab/Enter/Escape、390px 滚动控件可达、宿主链接和按钮、DOM 替换、延迟请求关闭重开、总开关禁用恢复及页面卸载。
 
-最终专项还检查 320px / 400px Popup 中长快捷键和完整主按钮文字、宿主 DOM 不变的纯 history.pushState 路由切换与迟到请求取消。报告记录 41 次焦点采样，`launchMode=macos-background-cdp`、`focusPolicy=launchservices-no-foreground`、`windowPlacement.mode=background-visible-no-focus`、第二屏 normal 可见窗口及 `browserFrontmost=false`；控制台错误为 0，自有浏览器已关闭且临时 profile 已删除。
+最终专项还检查 320px / 400px Popup 中长快捷键和完整主按钮文字、宿主 DOM 不变的纯 history.pushState 路由切换与迟到请求取消。报告记录 38 次焦点采样，`launchMode=macos-background-cdp`、`focusPolicy=launchservices-no-foreground`、`windowPlacement.mode=background-visible-no-focus`、第二屏 normal 可见窗口及 `browserFrontmost=false`；控制台错误为 0，自有浏览器已关闭且临时 profile 已删除。
 
 可审阅证据：[浏览器报告](./progressive-reading-20261011/report.json)、[验证摘要](./progressive-reading-20261011/verification.json)。截图逐项复核布局、文本及焦点可达性：
 
