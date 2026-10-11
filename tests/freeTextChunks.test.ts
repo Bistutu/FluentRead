@@ -1,7 +1,7 @@
 /**
  * @file tests/freeTextChunks.test.ts
  * 文件职责：验证免费翻译分块不会损坏文档术语标记或 Unicode 正文。
- * 主要内容：回放真实长数学段的 52 个保护标记，检查长度预算、边缘切点、无丢重、普通文本兼容和大输入推进。
+ * 主要内容：回放真实长数学段的 60 个保护标记（52 次变量与 8 次集合运算符），检查精确匹配身份、长度预算、边缘切点、无丢重、严格恢复、普通文本兼容和大输入推进。
  * 模块边界：离线纯文本测试，不把模拟回显当作实际翻译服务证据。
  */
 import {describe, expect, it, vi} from 'vitest';
@@ -11,17 +11,27 @@ import {documentLongMathParagraph, protectedDocumentLongMathParagraph} from './f
 const marker = '__FRTERM_0123456789ab_0__';
 
 describe('bounded free translation chunks', () => {
-    it.each([500, 1000, 2000])('keeps all 52 actual mathematical literals intact at %i codepoints', limit => {
+    it.each([500, 1000, 2000])('keeps all 60 actual mathematical occurrences intact at %i codepoints', limit => {
         const packet = protectedDocumentLongMathParagraph();
         expect(documentLongMathParagraph).toHaveLength(2083);
-        expect(packet.tokens).toHaveLength(52);
-        expect(packet.text).toHaveLength(3250);
+        // 技术字面值保护补充了原段中 3 次交集、3 次并集和 2 次属于；不是扩大到普通正文或词库。
+        expect(packet.matches.filter(match => /^[∩∪∈]$/u.test(match.value)).map(match => match.value))
+            .toEqual(['∩', '∪', '∈', '∩', '∪', '∪', '∈', '∩']);
+        expect(packet.matches.filter(match => !/^[∩∪∈]$/u.test(match.value))).toHaveLength(52);
+        expect(packet.tokens).toEqual(Array.from({length: 60}, (_, index) => `__FRTERM_28c76d055506_${index}__`));
+        expect(packet.matches.map(match => match.token)).toEqual(packet.tokens);
+        for (const match of packet.matches) expect(packet.text.slice(match.start, match.end)).toBe(match.token);
+        expect(packet.text).toHaveLength(3450);
         for (const words of [false, true]) {
             const chunks = [...splitFreeTextChunks(packet.text, limit, words)];
             expect(chunks.join('')).toBe(packet.text);
             expect(chunks.every(chunk => [...chunk].length <= limit)).toBe(true);
             for (const token of packet.tokens) expect(chunks.filter(chunk => chunk.includes(token))).toHaveLength(1);
             expect(packet.restore(chunks.join(''))).toBe(documentLongMathParagraph);
+            expect(packet.restore(chunks.join('').replace('(2) Here', '(2) 这里'))).toBe(documentLongMathParagraph.replace('(2) Here', '(2) 这里'));
+            expect(() => packet.restore(chunks.join('').replace(packet.tokens[0]!, ''))).toThrow('未完整保留术语');
+            expect(() => packet.restore(chunks.join('') + packet.tokens[0])).toThrow('未完整保留术语');
+            expect(() => packet.restore(chunks.join('') + '__FRTERM_unknown_0__')).toThrow('未完整保留术语');
         }
     });
 

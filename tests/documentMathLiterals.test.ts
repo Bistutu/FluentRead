@@ -187,14 +187,38 @@ describe('document Unicode math literal protection', () => {
 
     it('deduplicates literals but independently protects repeated occurrences and array slots', () => {
         expect(findDocumentLiteralTerms(['𝑛 + 𝑛', 'Ψ𝑢 ℎ', 'ℎ'])).toEqual(['𝑛', 'Ψ𝑢', 'ℎ'].map(source => ({source, target: '', caseSensitive: true})));
-        const origin = ['Use 𝑛 + 𝑛.', 'Then Ψ𝑢 = ℎ.'];
+        // 正文连接词明确终止自动数学表达式合组；相同变量的不同出现仍需要独立标记。
+        const origin = ['Use 𝑛 and 𝑛.', 'Then Ψ𝑢 with ℎ.'];
         const request = prepareGlossaryRequest({origin}, documentConfig());
         const encoded = request.message.origin as string[];
         const tokens = getTranslationProviderConfig(request.message, documentConfig()).glossaryProtectedTokens!;
         expect(tokens).toHaveLength(4);
-        expect(request.restore(encoded.map(text => text.replace('Use', '使用').replace('Then', '然后')))).toEqual(['使用 𝑛 + 𝑛.', '然后 Ψ𝑢 = ℎ.']);
+        expect(new Set(tokens).size).toBe(4);
+        expect(encoded).toEqual([`Use ${tokens[0]} and ${tokens[1]}.`, `Then ${tokens[2]} with ${tokens[3]}.`]);
+        expect(request.restore(encoded)).toEqual(origin);
+        expect(request.restore(encoded.map(text => text.replace('Use', '使用').replace('Then', '然后')))).toEqual(['使用 𝑛 and 𝑛.', '然后 Ψ𝑢 with ℎ.']);
         expect(() => request.restore([encoded[1], encoded[0]])).toThrow(GlossaryPlaceholderError);
         expect(() => request.restore([encoded[0]!.replace(tokens[0]!, tokens[1]!), encoded[1]])).toThrow(GlossaryPlaceholderError);
+    });
+
+    it('protects each bounded array expression as one representative without weakening slot ownership or exact restoration', () => {
+        const origin = ['Use 𝑛 + 𝑛.', 'Then Ψ𝑢 = ℎ.'];
+        const request = prepareGlossaryRequest({origin}, documentConfig());
+        const encoded = request.message.origin as string[];
+        const tokens = getTranslationProviderConfig(request.message, documentConfig()).glossaryProtectedTokens!;
+        expect(tokens).toHaveLength(2);
+        expect(new Set(tokens).size).toBe(2);
+        expect(encoded).toEqual([`Use ${tokens[0]}.`, `Then ${tokens[1]}.`]);
+        expect(request.restore(encoded)).toEqual(origin);
+        expect(request.restore(encoded.map(text => text.replace('Use', '使用').replace('Then', '然后'))))
+            .toEqual(['使用 𝑛 + 𝑛.', '然后 Ψ𝑢 = ℎ.']);
+        for (const corrupt of [
+            [encoded[1], encoded[0]],
+            [encoded[0]!.replace(tokens[0]!, tokens[1]!), encoded[1]],
+            [encoded[0]!.replace(tokens[0]!, ''), encoded[1]],
+            [encoded[0] + tokens[0], encoded[1]],
+            [encoded[0] + '__FRTERM_unknown_0__', encoded[1]],
+        ]) expect(() => request.restore(corrupt)).toThrow(GlossaryPlaceholderError);
     });
 
     it('protects serialized batch slots and rejects movement of mathematical tokens between their slots', () => {
