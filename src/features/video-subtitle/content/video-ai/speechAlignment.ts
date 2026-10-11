@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/video-ai/speechAlignment.ts
  * 文件职责：使用已经采集的 PCM 声音边界校准 Whisper 句级时间戳，避免将明显停顿显示为下一句。
- * 主要内容：计算二十毫秒音频活动帧、估计稳定底噪，保守收紧句子外侧停顿并选择完整识别窗口边界。
+ * 主要内容：计算二十毫秒音频活动帧、估计稳定底噪，保守收紧句子外侧停顿、跳过重叠窗口开头已归属上一句的残留语音并选择完整识别窗口边界。
  * 模块边界：只读音频和相对时间戳，不改变文本或全局播放头，不进行推理；仅在稳定低噪声平台与语音能量有明显差距时估计底噪；无法区分的连续声音保留模型边界。
  */
 import type {VideoAiTranscriptSegment} from './streamingTranscript';
@@ -11,7 +11,9 @@ const FRAME_SAMPLES = 320;
 const FRAME_MS = 20;
 const TRAILING_SILENCE_MIN_MS = 160;
 const TRAILING_SILENCE_EDGE_TOLERANCE_MS = 200;
-function activeFrames(audio: Float32Array, maximumNoiseVariation = 1.5): boolean[] {
+const ATTRIBUTED_SPEECH_PAUSE_MIN_MS = 360;
+const CLEAN_SPEECH_FLOOR_RATIO = 100;
+function activeFrames(audio: Float32Array, maximumNoiseVariation = 1.5, cleanSpeechFloorRatio = CLEAN_SPEECH_FLOOR_RATIO): boolean[] {
   const energies: number[] = [];
   const peaks: number[] = [];
   for (let start = 0; start < audio.length; start += FRAME_SAMPLES) {
@@ -38,14 +40,28 @@ function activeFrames(audio: Float32Array, maximumNoiseVariation = 1.5): boolean
     const speech = ordered[Math.floor(ordered.length * 0.8)];
     if (floor > WHISPER_DIGITAL_SILENCE_PEAK && plateau <= floor * maximumNoiseVariation && speech >= floor * 4) {
       threshold = floor * 1.8;
+    } else if (floor > WHISPER_DIGITAL_SILENCE_PEAK && speech >= plateau * cleanSpeechFloorRatio) {
+      // 有损编码把停顿变成缓慢漂移的极低噪声，短窗口里 10%/20% 分位之比会
+      // 略超稳定平台上限。语音高出低能量帧 40 dB 以上时这些帧不可能是配乐或
+      // 人声，按较高的分位定门槛，避免漂移的停顿被逐帧误判成语音。
+      threshold = plateau * 1.8;
     }
   }
   return energies.map((energy, index) => threshold === null
     ? peaks[index] > WHISPER_DIGITAL_SILENCE_PEAK : energy >= threshold);
 }
 
-/** 仅修剪模型边界内的外侧静音；保留一小段余量，避免吞掉轻声辅音。 */
-export function alignVideoAiSegmentsToSpeech(audio: Float32Array, segments: readonly VideoAiTranscriptSegment[]): VideoAiTranscriptSegment[] {
+/**
+ * 仅修剪模型边界内的外侧静音；保留一小段余量，避免吞掉轻声辅音。
+ * attributedSpeechEndMs 是上一个识别窗口已经归属给前句的语音终点（相对本窗口）。
+ * 重叠窗口会重新带上前句的词尾，模型常把下一句从窗口起点开始计时；只有该终点
+ * 落在一段自然停顿内时，才从停顿之后寻找本句起声，否则保留原有判断。
+ */
+export function alignVideoAiSegmentsToSpeech(
+  audio: Float32Array,
+  segments: readonly VideoAiTranscriptSegment[],
+  attributedSpeechEndMs = 0,
+): VideoAiTranscriptSegment[] {
   const frames = activeFrames(audio);
   const durationMs = audio.length / 16;
   return segments.map((segment, segmentIndex) => {
@@ -98,8 +114,16 @@ export function alignVideoAiSegmentsToSpeech(audio: Float32Array, segments: read
         }
       }
     }
-    const firstFrame = Math.max(0, Math.floor(start / FRAME_MS));
+    let firstFrame = Math.max(0, Math.floor(start / FRAME_MS));
     const lastFrame = Math.min(frames.length, Math.ceil(end / FRAME_MS));
+    const attributedFrame = Math.floor(attributedSpeechEndMs / FRAME_MS);
+    if (attributedFrame > firstFrame && attributedFrame < lastFrame && !frames[attributedFrame]) {
+      let pauseStart = attributedFrame;
+      while (pauseStart > firstFrame && !frames[pauseStart - 1]) pauseStart -= 1;
+      let pauseEnd = attributedFrame;
+      while (pauseEnd < lastFrame && !frames[pauseEnd]) pauseEnd += 1;
+      if ((pauseEnd - pauseStart) * FRAME_MS >= ATTRIBUTED_SPEECH_PAUSE_MIN_MS) firstFrame = pauseEnd;
+    }
     let first = -1;
     let last = -1;
     for (let index = firstFrame; index < lastFrame; index += 1) {
@@ -121,7 +145,7 @@ export function alignVideoAiSegmentsToSpeech(audio: Float32Array, segments: read
 export function findVideoAiPauseBoundary(audio: Float32Array): number {
   // 切割模型输入比微调输出边界更敏感：只有几乎恒定的背景噪声才允许
   // 自适应切窗，动态音乐继续保留重叠上下文，避免切断轻声词尾。
-  const frames = activeFrames(audio, 1.08);
+  const frames = activeFrames(audio, 1.08, Infinity);
   const minimumBoundary = audio.length / 16 * 0.55;
   let silenceStart = 0;
   let boundary = 0;

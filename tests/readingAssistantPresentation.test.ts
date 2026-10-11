@@ -2,6 +2,7 @@ import {describe, expect, it, vi} from 'vitest';
 import {parseHTML} from 'linkedom';
 import {readingAnswerBlocks, readingAnswerSpans} from '@/src/features/reading-assistant/answerFormat';
 import {captureReadingSelection, sentenceAroundSelection} from '@/src/features/reading-assistant/selectionContext';
+import {buildReadingEvidence, parseReadingEvidence} from '@/src/core/harness/evidence';
 
 function fixture(html: string, selector = '#selected', offset = 0) {
     const {document, window} = parseHTML(`<html><body>${html}</body></html>`);
@@ -102,6 +103,21 @@ describe('reading answer presentation', () => {
         expect(readingAnswerBlocks('Term | Meaning\n--- | ---')).toEqual([{kind: 'table', headers: ['Term', 'Meaning'], rows: []}]);
         expect(readingAnswerBlocks('A | B\nnot | a divider\nFinal | text')).toEqual([{kind: 'paragraph', text: 'A | B\nnot | a divider\nFinal | text'}]);
         expect(readingAnswerBlocks('a | b\n---')).toEqual([{kind: 'paragraph', text: 'a | b'}]);
+    });
+    it('keeps exact evidence markers in a table cell when the original quote contains pipes or backslashes', () => {
+        const sources = buildReadingEvidence('Use a|b and regex \\| when parsing.', '');
+        const citation = `[[cite:${sources[0].id}|${sources[0].text}]]`;
+        const blocks = readingAnswerBlocks(`Claim | Evidence | Notes\n--- | --- | ---\nUse the expression. | ${citation} | plain\\|pipe and \\path`);
+        expect(blocks).toEqual([{kind: 'table', headers: ['Claim', 'Evidence', 'Notes'], rows: [['Use the expression.', citation, 'plain|pipe and \\path']]}]);
+        expect(parseReadingEvidence((blocks[0] as Extract<typeof blocks[number], {kind: 'table'}>).rows[0][1], sources)).toEqual([
+            expect.objectContaining({kind: 'citation', id: sources[0].id, quote: sources[0].text}),
+        ]);
+        const incomplete = `[[cite:${sources[0].id}|Use a|b`;
+        expect(readingAnswerBlocks(`Claim | Evidence\n--- | ---\nPartial | ${incomplete}`)).toEqual([
+            {kind: 'table', headers: ['Claim', 'Evidence'], rows: [['Partial', incomplete]]},
+        ]);
+        expect(parseReadingEvidence(incomplete, sources)[0].kind).toBe('unavailable');
+        expect(readingAnswerBlocks('A | B\n|')).toEqual([{kind: 'paragraph', text: 'A | B\n|'}]);
     });
     it('keeps raw tags and resource syntax inert and formats only complete inline delimiters', () => {
         expect(readingAnswerSpans('**bold** __also__ *em* _italics_ `**code**`')).toEqual([
