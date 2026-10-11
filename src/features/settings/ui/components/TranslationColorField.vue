@@ -2,7 +2,7 @@
 @file src/features/settings/ui/components/TranslationColorField.vue
 文件职责：为译文颜色、独立背景、线条颜色和标记底色提供统一的色板选择行，支持“默认”、精选色、取色器和精确输入。
 主要内容：以 radiogroup 语义渲染默认选项与色块，支持方向键、Home、End 的漫游焦点；选中色板以外的颜色时点亮彩虹取色器并显示该色，
-取色器和颜色名、RGB、十六进制输入统一归一为小写六位十六进制，非法输入留在编辑框并显示错误，不写入配置；取色器菜单保留在原 Shadow Root，仅保留最后一次待聚焦帧，先登记帧再发出选择，仅在控件仍连接、原焦点归属与颜色有效时同步焦点，色板替换、缓存停用与卸载时取消。
+取色器和颜色名、RGB、十六进制输入统一归一为小写六位十六进制，非法输入留在编辑框并显示错误，不写入配置；取色器菜单保留在原 Shadow Root，仅保留最后一次待聚焦帧，先登记帧再发出选择，仅在控件仍连接、原焦点归属与颜色有效时同步焦点，色板替换、缓存停用与卸载时取消；仅为本取色器子树提供局部按钮语言与英语描述 fallback，不改父级 vendor 语言或全局配置。
 模块边界：只通过 v-model 发出颜色字符串，不读写配置，也不决定颜色如何作用到网页；色板与归一化规则来自 core/config/translationAppearance。
 -->
 <template>
@@ -45,13 +45,15 @@
         ><i aria-hidden="true" /></button>
       </div>
       <span class="translation-color-custom" :class="{ selected: isCustom }" :title="t('settings.translationStyle.customColor')">
-        <ElColorPicker
-          :model-value="isCustom ? modelValue : undefined"
-          :teleported="teleported"
-          size="small"
-          :aria-label="t('settings.translationStyle.customColor')"
-          @update:model-value="select"
-        />
+        <PickerLocale>
+          <ElColorPicker
+            :model-value="isCustom ? modelValue : undefined"
+            :teleported="teleported"
+            size="small"
+            :aria-label="t('settings.translationStyle.customColor')"
+            @update:model-value="select"
+          />
+        </PickerLocale>
       </span>
     </div>
     <input
@@ -72,8 +74,11 @@
 </template>
 
 <script setup lang="ts">
-import {computed, onBeforeUnmount, onDeactivated, onMounted, ref, watch} from 'vue'
-import {ElColorPicker} from 'element-plus'
+import {computed, defineComponent, onBeforeUnmount, onDeactivated, onMounted, provide, ref, watch} from 'vue'
+import {ElColorPicker, localeContextKey, useLocale} from 'element-plus'
+import English from 'element-plus/es/locale/lang/en'
+import type {Language, TranslatePair} from 'element-plus/es/locale'
+import type {UiLanguage} from '@/src/core/i18n/language'
 import {normalizeTranslationColor, type TranslationColorSwatch} from '@/src/core/config/translationAppearance'
 import {useUiI18n} from '@/src/ui/i18n'
 
@@ -89,7 +94,33 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-const {t} = useUiI18n()
+const {t, language} = useUiI18n()
+const {locale: inheritedVendorLocale} = useLocale()
+// 锁版本公开词条适配；只覆盖当前取色器两项，不改变父级或全局 vendor 配置。
+const pickerClearLabels = {
+  'zh-CN': '清空',
+  'en-US': 'Clear',
+  'ja-JP': 'クリア',
+  'ko-KR': '초기화',
+  'fr-FR': 'Effacer',
+  'ru-RU': 'Очистить',
+  'es-ES': 'Despejar',
+} as const satisfies Readonly<Record<UiLanguage, string>>
+const pickerLocale = computed<Language>(() => {
+  const inherited = inheritedVendorLocale.value
+  const section = inherited.el.colorpicker
+  return {...inherited, name: language.value, el: {...inherited.el, colorpicker: {
+    ...(English.el.colorpicker as TranslatePair),
+    ...(section && typeof section === 'object' && !Array.isArray(section) ? section : {}),
+    confirm: t('common.confirm'), clear: pickerClearLabels[language.value],
+  }}}
+})
+const PickerLocale = defineComponent({
+  setup(_, {slots}) {
+    provide(localeContextKey, pickerLocale)
+    return () => slots.default!()
+  },
+})
 const groupElement = ref<HTMLElement | null>(null)
 const teleported = ref(false)
 onMounted(() => { teleported.value = !(groupElement.value?.getRootNode() instanceof ShadowRoot) })

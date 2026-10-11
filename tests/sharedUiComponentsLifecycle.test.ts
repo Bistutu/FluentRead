@@ -36,7 +36,7 @@ const dom = await vi.hoisted(async () => {
   Object.defineProperty(globalThis, 'requestAnimationFrame', {configurable: true, writable: true, value: request});
   Object.defineProperty(globalThis, 'cancelAnimationFrame', {configurable: true, writable: true, value: cancel});
   // window 使用普通对象承载受控 ports；linkedom 代理的属性读取会绕过 spy。
-  const windowPort = {document: parsed.document, Event: parsed.window.Event, HTMLElement: parsed.window.HTMLElement,
+  const windowPort = {document: parsed.document, navigator: {userAgent: 'Linkedom shared UI test port'}, Event: parsed.window.Event, HTMLElement: parsed.window.HTMLElement,
     addEventListener: parsed.document.addEventListener.bind(parsed.document), removeEventListener: parsed.document.removeEventListener.bind(parsed.document),
     dispatchEvent: parsed.document.dispatchEvent.bind(parsed.document), innerWidth: 1000,
     getSelection: () => ({toString: () => ''}), getComputedStyle: () => ({transitionDelay: '0s', transitionDuration: '0s', animationDelay: '0s', animationDuration: '0s', transitionProperty: 'none'})};
@@ -45,12 +45,12 @@ const dom = await vi.hoisted(async () => {
   return {document: parsed.document as unknown as Document, window: windowPort, frames, outsideRegistrations, outsideCollected: () => {collectingOutside = false;},
     flush: () => {const queued = [...frames]; frames.clear(); queued.forEach(([, callback]) => callback(0));}};
 });
-const ports = vi.hoisted(() => ({selects: [] as any[], pickers: [] as any[], tooltips: [] as any[], locale: null as any, mouseSelect: false, actualSelect: null as any, clickOutside: null as any, resetOutside: null as (() => void) | null}));
+const ports = vi.hoisted(() => ({selects: [] as any[], pickers: [] as any[], tooltips: [] as any[], locale: null as any, mouseSelect: false, actualSelect: null as any, clickOutside: null as any, resetOutside: null as (() => void) | null, colorLocale: false, uiLanguage: null as Ref<UiLanguage> | null, colorUiKey: Symbol('color-ui-context-port')}));
 // 外部 UI port 的 CSS 入口在 Node 中不能由原生 ESM 加载；组件样式仍由 Vue plugin 编译。
 vi.mock('element-plus/es/components/select/style/css', () => ({}));
 vi.mock('@/src/ui/i18n', async () => {
-  const {ref} = await import('vue'); ports.locale = ref('');
-  return {useUiI18n: () => ({t: (key: string, values?: object) => ports.locale.value + key + (values ? JSON.stringify(values) : ''),
+  const {ref, inject} = await import('vue'); ports.locale = ref(''); ports.uiLanguage = ref('zh-CN');
+  return {useUiI18n: () => inject(ports.colorUiKey, {language: ports.uiLanguage!, t: (key: string, values?: object) => ports.locale.value + key + (values ? JSON.stringify(values) : ''),
     translateLegacy: (text: string) => ports.locale.value + text})};
 });
 vi.mock('element-plus', async () => {
@@ -58,6 +58,8 @@ vi.mock('element-plus', async () => {
   // 使用锁版本公开指令的真实 hooks；只控制 DOM 原生事件 retarget port，不复制 outside 算法。
   const {default: actualClickOutside} = await vi.importActual<{default: import('vue').ObjectDirective}>('element-plus/es/directives/click-outside/index.mjs?inline');
   dom.outsideCollected();
+  // 保留旧两次 outside 注册的收集边界；root locale hooks 真实执行，不模拟 vendor footer。
+  const actualVendor = await vi.importActual<typeof import('element-plus')>('element-plus');
   const ClickOutside = {...actualClickOutside};
   const resetOutside = () => {
     ClickOutside.beforeMount = vi.fn((...args: Parameters<NonNullable<typeof actualClickOutside.beforeMount>>) => actualClickOutside.beforeMount?.(...args));
@@ -93,13 +95,16 @@ vi.mock('element-plus', async () => {
     }});
   const ElOption = defineComponent({props: ['value', 'label', 'disabled'], setup: (props) => () => h('span', {'data-option': props.value, 'aria-disabled': props.disabled}, props.label)});
   const ElColorPicker = defineComponent({inheritAttrs: false, props: {modelValue: String, size: String, teleported: {type: Boolean, default: true}}, emits: ['update:modelValue'], setup(props, {attrs, emit}) {
-    ports.pickers.push({props, emit});return () => h('span', [h('button', {...attrs, type: 'button', 'data-color-picker-port': ''}, props.modelValue),
-      h(Teleport, {to: document.body, disabled: !props.teleported}, h('span', {'data-color-menu-port': ''}, 'Color menu'))]);}});
+    const locale = ports.colorLocale ? actualVendor.useLocale() : undefined;
+    ports.pickers.push({props, emit, locale});return () => h('span', [h('button', {...attrs, type: 'button', 'data-color-picker-port': ''}, props.modelValue),
+      h(Teleport, {to: document.body, disabled: !props.teleported}, h('span', {'data-color-menu-port': ''}, 'Color menu')),
+      locale ? h('output', {'data-color-locale-presentation': ''}, locale.t('el.colorpicker.clear') + ' / ' + locale.t('el.colorpicker.confirm')) : null]);}});
   const ElTooltip = defineComponent({props: {content: String, trigger: [Array, String], showAfter: Number, hideAfter: Number, placement: String, popperClass: String, teleported: {type: Boolean, default: true}},
     setup: (props, {slots}) => {ports.tooltips.push({props});return () => h('div', {'data-tooltip-port': ''}, [slots.default?.(),
       h(Teleport, {to: document.body, disabled: !props.teleported}, h('span', {'data-tooltip-content-port': ''}, slots.content?.() ?? props.content))]);}});
   ports.actualSelect = ElSelect;
-  return {ClickOutside, ElSelect, ElOption, ElColorPicker, ElTooltip};
+  return {ClickOutside, ElSelect, ElOption, ElColorPicker, ElTooltip, useLocale: actualVendor.useLocale, localeContextKey: actualVendor.localeContextKey,
+    useGlobalConfig: actualVendor.useGlobalConfig, useGlobalComponentSettings: actualVendor.useGlobalComponentSettings};
 });
 import {createApp, defineComponent, h, KeepAlive, markRaw, nextTick, reactive, ref, Suspense, withDirectives, type App, type Component} from 'vue';
 import {ElOption} from 'element-plus';
@@ -126,6 +131,19 @@ import {translationLoadingStyleOptions, type TranslationLoadingStyle} from '@/sr
 import brandPaths from '@/src/ui/assets/serviceBrandPaths.json';
 import {writingPreviewParagraphs} from '@/src/core/config/writingPreview';
 import {DEFAULT_SENTENCE_HIGHLIGHT_APPEARANCE} from '@/src/core/config/sentenceHighlight';
+import {provide, shallowRef, type Ref} from 'vue';
+import {localeContextKey, useLocale, useGlobalConfig, useGlobalComponentSettings} from 'element-plus';
+import type {Language, TranslatePair} from 'element-plus/es/locale';
+import English from 'element-plus/es/locale/lang/en';
+import Chinese from 'element-plus/es/locale/lang/zh-cn';
+import Japanese from 'element-plus/es/locale/lang/ja';
+import Korean from 'element-plus/es/locale/lang/ko';
+import French from 'element-plus/es/locale/lang/fr';
+import Russian from 'element-plus/es/locale/lang/ru';
+import Spanish from 'element-plus/es/locale/lang/es';
+import {translate, registerUiLanguageBundle, type UiLanguage, type TranslationParams} from '@/src/core/i18n';
+import {registerAllUiLanguageBundles, UI_LANGUAGE_BUNDLES} from '@/src/core/i18n/bundles';
+
 
 const apps = new Set<App>();
 async function settle() {await nextTick(); await nextTick();}
@@ -182,7 +200,7 @@ function layoutProps() {return {skin: skin(), skinLabel: 'Default', editScope: '
 function colorProps() {return {modelValue: '', fieldId: 'color-a', label: 'Color', swatches: swatches.map(swatch => ({...swatch}))};}
 function shareduiAuditSegmentProps() {return {modelValue: 'a' as string | number, label: 'Display', options: [
   {value: 'a' as string | number, label: 'Alpha', disabled: false}, {value: 'b' as string | number, label: 'Blocked', disabled: true}, {value: 3 as string | number, label: 'Three', disabled: false}]};}
-beforeEach(() => {dom.document.body.replaceChildren(); dom.frames.clear(); ports.selects.length = 0; ports.pickers.length = 0; ports.tooltips.length = 0; ports.locale.value = ''; ports.mouseSelect = false;ports.resetOutside!();dom.window.innerWidth = 1000;});
+beforeEach(() => {dom.document.body.replaceChildren(); dom.frames.clear(); ports.selects.length = 0; ports.pickers.length = 0; ports.tooltips.length = 0; ports.locale.value = ''; ports.mouseSelect = false;ports.colorLocale = false;ports.uiLanguage!.value = 'zh-CN';ports.resetOutside!();dom.window.innerWidth = 1000;});
 afterEach(async () => {for (const app of apps) app.unmount(); apps.clear(); await settle(); dom.frames.clear(); vi.restoreAllMocks();});
 
 describe('shared UI actual client SFC lifecycle', () => {
@@ -800,5 +818,124 @@ describe('UiSelect shadow mouse ownership with the real public ClickOutside dele
     for (let index = 0; index < 100; index++) {const mounted = await mount(UiSelect, {});mounted.unmount();}
     const mouse = (spy: typeof add) => spy.mock.calls.filter(([name]) => name === 'mousedown' || name === 'mouseup');
     expect(mouse(add)).toHaveLength(0);expect(mouse(remove)).toHaveLength(0);
+  });
+});
+
+
+// 实际 SFC + vendor public useLocale/key；ElColorPicker 仍是展示 port，不证明实际 footer/popup 操作。
+function colorUiContext(language: UiLanguage) {
+  const current = ref(language), revision = ref(0);
+  return {language: current, revision, t: (key: string, values?: TranslationParams) => {
+    revision.value;return translate(key, current.value, values);
+  }, translateLegacy: (value: string) => value};
+}
+function scopedColor(context: ReturnType<typeof colorUiContext>, id: string, update = vi.fn()) {
+  return defineComponent({setup() {
+    provide(ports.colorUiKey, context);
+    return () => h(TranslationColorField, {...colorProps(), modelValue: '#abcdef', fieldId: id, 'onUpdate:modelValue': update});
+  }});
+}
+function vendorLocaleProbe(capture: (context: ReturnType<typeof useLocale>) => void, global = false) {
+  return defineComponent({setup() {
+    const context = global ? useGlobalComponentSettings('button').locale : useLocale();capture(context);
+    return () => h('output', {'data-vendor-locale-probe': ''}, context.t('el.colorpicker.clear'));
+  }});
+}
+const colorLanguages = [
+  ['zh-CN', Chinese], ['en-US', English], ['ja-JP', Japanese], ['ko-KR', Korean],
+  ['fr-FR', French], ['ru-RU', Russian], ['es-ES', Spanish],
+] as const;
+describe('ColorField local public locale ownership', () => {
+  it.each(colorLanguages)('uses locked clear and existing core confirm in the actual ColorField child, language=%s', async (language, vendor) => {
+    registerAllUiLanguageBundles();ports.colorLocale = true;
+    const context = colorUiContext(language), update = vi.fn();
+    const mounted = await mount(scopedColor(context, 'seven-language', update), {}, {shadow: 'closed'});
+    const actual = ports.pickers[0].locale as ReturnType<typeof useLocale>;
+    expect(actual.t('el.colorpicker.clear')).toBe((vendor.el.colorpicker as TranslatePair).clear);
+    expect(actual.t('el.colorpicker.confirm')).toBe(translate('common.confirm', language));
+    expect(mounted.root.querySelector('[data-color-locale-presentation]')!.textContent).toBe(
+      (vendor.el.colorpicker as TranslatePair).clear + ' / ' + translate('common.confirm', language));
+    expect(ports.pickers[0].props.modelValue).toBe('#abcdef');expect(ports.pickers[0].props.teleported).toBe(false);
+    expect(update).not.toHaveBeenCalled();expect(dom.frames.size).toBe(0);
+  });
+  it.each(['absent', 'string', 'array', 'object'] as const)('keeps inherited non-Color fields and English description fallback with section=%s', async kind => {
+    registerAllUiLanguageBundles();ports.colorLocale = true;
+    const inputNumber = {increase: 'parent increase', decrease: 'parent decrease'};
+    const section = kind === 'string' ? 'parent malformed section' : kind === 'array' ? ['parent malformed section']
+      : kind === 'object' ? {description: 'parent color {color}', clear: 'parent clear', confirm: 'parent confirm'} : undefined;
+    const original: Language = {name: 'parent', el: {inputNumber, ...(section === undefined ? {} : {colorpicker: section})}};
+    const inherited = shallowRef<Language>(original);let sibling!: ReturnType<typeof useLocale>;
+    const Root = defineComponent({setup() {provide(localeContextKey, inherited);return () => h('div', [
+      h(scopedColor(colorUiContext('fr-FR'), 'partial-parent')),h(vendorLocaleProbe(value => {sibling = value;})),
+    ]);}});
+    await mount(Root, {});
+    const actual = ports.pickers[0].locale as ReturnType<typeof useLocale>;
+    expect(actual.t('el.colorpicker.clear')).toBe((French.el.colorpicker as TranslatePair).clear);
+    expect(actual.t('el.colorpicker.confirm')).toBe(translate('common.confirm', 'fr-FR'));
+    expect(actual.locale.value.el.inputNumber).toBe(inputNumber);expect(sibling.locale.value).toBe(original);
+    expect(inherited.value).toBe(original);expect(inherited.value.el.colorpicker).toBe(section);
+    expect(actual.t('el.colorpicker.description', {color: '#abcdef'})).toBe(kind === 'object'
+      ? 'parent color #abcdef' : 'current color is #abcdef. press enter to select a new color.');
+    expect(actual.t('el.colorpicker.alphaLabel')).toBe((English.el.colorpicker as TranslatePair).alphaLabel);
+    expect(sibling.t('el.inputNumber.increase')).toBe('parent increase');
+    expect(sibling.t('el.colorpicker.alphaLabel')).toBe('el.colorpicker.alphaLabel');
+  });
+  it('reacts to the real parent locale ref replacement without changing inherited or sibling data', async () => {
+    registerAllUiLanguageBundles();ports.colorLocale = true;
+    const original: Language = {name: 'parent-a', el: {colorpicker: {description: 'first {color}'}, inputNumber: {increase: 'first increase'}}};
+    const replacement: Language = {name: 'parent-b', el: {colorpicker: {description: 'second {color}'}, inputNumber: {increase: 'second increase'}}};
+    const inherited = shallowRef(original);let sibling!: ReturnType<typeof useLocale>;
+    const context = colorUiContext('ja-JP'), update = vi.fn();
+    const Root = defineComponent({setup() {provide(localeContextKey, inherited);return () => h('div', [
+      h(scopedColor(context, 'parent-replace', update)),h(vendorLocaleProbe(value => {sibling = value;})),
+    ]);}});
+    await mount(Root, {});const actual = ports.pickers[0].locale as ReturnType<typeof useLocale>;
+    expect(actual.t('el.colorpicker.description', {color: 'blue'})).toBe('first blue');
+    inherited.value = replacement;await settle();
+    expect(actual.t('el.colorpicker.description', {color: 'blue'})).toBe('second blue');
+    expect(actual.locale.value.el.inputNumber).toBe(replacement.el.inputNumber);expect(sibling.locale.value).toBe(replacement);
+    expect(actual.t('el.colorpicker.clear')).toBe((Japanese.el.colorpicker as TranslatePair).clear);
+    expect(inherited.value).toBe(replacement);expect(original.el.colorpicker).toEqual({description: 'first {color}'});
+    expect(update).not.toHaveBeenCalled();expect(ports.pickers).toHaveLength(1);
+  });
+  it('isolates each actual ColorField context from same-app siblings, another app and the public global config', async () => {
+    registerAllUiLanguageBundles();ports.colorLocale = true;
+    const before = useGlobalConfig().value, a = colorUiContext('zh-CN'), b = colorUiContext('en-US');
+    let sibling!: ReturnType<typeof useLocale>, globalConsumer!: ReturnType<typeof useLocale>;
+    const first = await mount(defineComponent({setup: () => () => h('div', [
+      h(scopedColor(a, 'independent-a')),h(vendorLocaleProbe(value => {sibling = value;})),
+    ])}), {});
+    const localA = ports.pickers[0].locale as ReturnType<typeof useLocale>;
+    expect(useGlobalConfig().value).toBe(before);expect(sibling.t('el.colorpicker.clear')).toBe('Clear');
+    const second = await mount(defineComponent({setup: () => () => h('div', [
+      h(scopedColor(b, 'independent-b')),h(vendorLocaleProbe(value => {globalConsumer = value;}, true)),
+    ])}), {});
+    const localB = ports.pickers[1].locale as ReturnType<typeof useLocale>, globalAfterConsumer = useGlobalConfig().value;
+    a.language.value = 'ko-KR';await settle();
+    expect(localA.t('el.colorpicker.clear')).toBe((Korean.el.colorpicker as TranslatePair).clear);
+    expect(localB.t('el.colorpicker.clear')).toBe('Clear');expect(localB.t('el.colorpicker.confirm')).toBe('Confirm');
+    expect(sibling.t('el.colorpicker.clear')).toBe('Clear');expect(globalConsumer.t('el.colorpicker.clear')).toBe('Clear');
+    expect(useGlobalConfig().value).toBe(globalAfterConsumer);expect(b.language.value).toBe('en-US');
+    first.unmount();a.language.value = 'es-ES';await settle();
+    expect(localB.t('el.colorpicker.confirm')).toBe('Confirm');expect(useGlobalConfig().value).toBe(globalAfterConsumer);
+    expect(second.root.querySelector('[data-color-locale-presentation]')!.textContent).toBe('Clear / Confirm');
+  });
+  it('updates a same-language real core resource revision and leaves no emissions or focus work after unmount', async () => {
+    registerAllUiLanguageBundles();ports.colorLocale = true;
+    const real = UI_LANGUAGE_BUNDLES['en-US'], context = colorUiContext('en-US'), update = vi.fn();
+    registerUiLanguageBundle('en-US', {...real, messages: {}});
+    try {
+      const mounted = await mount(scopedColor(context, 'late-core-resource', update), {}, {keepAlive: true});
+      const actual = ports.pickers[0].locale as ReturnType<typeof useLocale>;
+      expect(actual.t('el.colorpicker.clear')).toBe('Clear');expect(actual.t('el.colorpicker.confirm')).toBe('确认');
+      registerUiLanguageBundle('en-US', real);context.revision.value++;await settle();
+      expect(context.language.value).toBe('en-US');expect(actual.t('el.colorpicker.confirm')).toBe('Confirm');
+      expect(mounted.root.querySelector('[data-color-locale-presentation]')!.textContent).toBe('Clear / Confirm');
+      expect(ports.pickers).toHaveLength(1);expect(ports.pickers[0].props.modelValue).toBe('#abcdef');expect(update).not.toHaveBeenCalled();
+      mounted.visible.value = false;await settle();mounted.visible.value = true;await settle();
+      expect(mounted.root.querySelector('[data-color-locale-presentation]')!.textContent).toBe('Clear / Confirm');
+      mounted.unmount();context.language.value = 'zh-CN';context.revision.value++;await settle();dom.flush();
+      expect(mounted.root.childElementCount).toBe(0);expect(update).not.toHaveBeenCalled();expect(dom.frames.size).toBe(0);
+    } finally {registerUiLanguageBundle('en-US', real);}
   });
 });
