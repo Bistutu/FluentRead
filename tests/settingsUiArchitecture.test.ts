@@ -633,14 +633,16 @@ describe('options UI composition architecture', () => {
     expect(navigation).toContain('YouTube、X、Twitter、视频字幕、本地 AI、Whisper')
     expect(videoModelSettings).toContain('.capability-warning { margin: 6px 0 0; color: var(--el-color-danger);')
     expect(settingsSections).toContain('VIDEO_SOURCE_LANGUAGE_OPTIONS')
-    expect(videoModelSettings).toContain('CPU 和内存')
+    // Resource guidance is localized; assert the live key and its Chinese catalog entry.
+    expect(videoModelSettings).toContain("t('video.modelDeviceHint')")
+    expect(source('src/core/i18n/messages/zh-CN.ts')).toMatch(/['"]video\.modelDeviceHint['"]:.*CPU 和内存/u)
     expect(videoModelSettings).toContain('data-video-ai-cache')
     expect(videoModelSettings).toContain('VIDEO_AI_SUBTITLE_CACHE_STATS_MESSAGE')
     expect(videoModelSettings).toContain('VIDEO_AI_SUBTITLE_CACHE_CLEAR_MESSAGE')
     expect(videoModelSettings).toContain('最多保留 32 个视频、7 天')
     expect(videoModelSettings).toContain('video-model-management')
     expect(videoModelSettings).toContain('当前模型已下载，可直接生成')
-    expect(videoModelSettings).toContain('支持桌面版 Chrome、Edge 和 Firefox')
+    expect(source('src/core/i18n/messages/zh-CN.ts')).toMatch(/['"]video\.modelDeviceHint['"]:.*支持桌面版 Chrome、Edge 和 Firefox/u)
     expect(videoAppearanceSettings).toContain('VIDEO_SUBTITLE_SKINS')
     expect(videoAppearanceSettings).toContain('data-video-subtitle-preview')
     expect(videoAppearanceSettings).toContain('subtitle-appearance-advanced')
@@ -1136,6 +1138,17 @@ describe('options UI composition architecture', () => {
     expect(displayCss.indexOf('.fluent-read-bilingual-content {')).toBeGreaterThanOrEqual(0)
     expect(displayCss.indexOf('.fluent-read-bilingual-content {')).toBeLessThan(displayCss.indexOf('.fluent-display-'))
     expect(displayCss).toContain('var(--fluent-read-translation-line, #409eff)')
+    // 朴素模式不需要规则；其余预设都必须在共享样式表中有对应类，逐行绘制的预设还要有行内译文规则。
+    const presetSource = source('src/core/config/translationAppearance.ts')
+    const presetClasses = [...presetSource.matchAll(/className: '(fluent-display-[a-z-]+)'[^\n]*/gu)]
+    expect(presetClasses).toHaveLength(49)
+    for (const [line, className] of presetClasses) {
+      if (className === 'fluent-display-default') continue
+      expect(displayCss, className).toMatch(new RegExp(`\\.${className}[\\s\\[:>{]`, 'u'))
+      if (line.includes('inlineText: true')) expect(displayCss, className).toContain(`.${className} > .fluent-read-translation-text`)
+    }
+    // 新预设的线条与底色跟随网页文字颜色，不能写死只适合浅色网页的配色。
+    expect(displayCss).toContain('color-mix(in srgb, currentColor')
     expect(popup).toContain("appearance: 'settings-interface'")
   })
 

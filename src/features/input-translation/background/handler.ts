@@ -1,8 +1,8 @@
 /**
  * @file src/features/input-translation/background/handler.ts
  * 文件职责：定义输入框快捷翻译的后台消息处理器，在调用共享翻译 broker 前校验原文和目标语言，并统一返回成功译文结构。
- * 主要内容：包含 inputBoxTranslation 消息常量、请求/响应与依赖接口、非空字符串解析，以及 createInputBoxTranslationHandler 工厂对本地配置快照和共享翻译 broker 的薄编排；隐私仅来自可信 sender/platform 上下文。
- * 模块边界：此文件不监听键盘、不修改输入框也不绑定具体 provider；content feature 负责触发和提交，翻译实现由 background composition root 注入，统一路由负责错误响应。网页消息只能携带纯文本和目标语言，服务、模型、提示词与凭据均从后台配置读取。
+ * 主要内容：解析纯文本、目标语言与可选请求标识，按可信发送者注册取消请求；在首次等待前快照 sender.tab 的三态隐私，等待配置水合并冻结服务配置，保留请求控制直到 provider 返回后检查取消。
+ * 模块边界：此文件不监听键盘、不修改输入框也不绑定具体 provider；翻译实现与共享取消注册表由 composition root 注入。页面只能携带文本、目标语言和取消标识，不能提供服务凭据、隐私或内部 quota 上下文。
  */
 import {servicesType, resolveConfiguredModel} from '@/src/core/config/catalog';
 import {Config} from '@/src/core/config/model';
@@ -18,8 +18,9 @@ import {
     attachTranslationProviderConfig,
     attachTranslationGlossaryContext,
     translationPrivacyContext,
-    type TrustedTranslationSenderContext,
+    attachTranslationRequestControl,
     createTranslationProviderConfigSnapshot,
+    type TranslationRequestControl,
 } from '@/src/services/translation/requestSnapshot';
 import type {TranslationSingleRequestMessage} from '@/src/services/translation/types';
 export const INPUT_BOX_TRANSLATION_MESSAGE_TYPE = 'inputBoxTranslation' as const;
@@ -28,6 +29,26 @@ export interface InputBoxTranslationMessage {
     type: typeof INPUT_BOX_TRANSLATION_MESSAGE_TYPE;
     text?: unknown;
     targetLang?: unknown;
+    clientRequestId?: unknown;
+}
+
+/** 仅约束 composition root 提供的发送者上下文，不依赖 app 的具体后台实现。 */
+export interface InputBoxTranslationRequestContext {
+    sender?: {
+        id?: string;
+        url?: string;
+        frameId?: number;
+        documentId?: string;
+        tab?: {id?: number; incognito?: boolean};
+    };
+}
+
+/** 复用共享取消注册表；feature 只消费 run，不拥有其它入口的请求。 */
+export interface InputBoxTranslationRequestRegistry {
+    run<T>(clientRequestId: string, context: InputBoxTranslationRequestContext, operation: (
+        signal: AbortSignal,
+        ownershipKey: string,
+    ) => Promise<T>): Promise<T>;
 }
 
 export interface InputBoxTranslationResponse {
@@ -39,17 +60,60 @@ export interface InputBoxTranslationDependencies {
     readonly ready: Promise<unknown>;
     readonly getConfig: () => Config;
     readonly translate: (message: TranslationSingleRequestMessage) => Promise<string | string[]>;
+    readonly requestRegistry?: InputBoxTranslationRequestRegistry;
 }
 
 export interface InputBoxTranslationHandler {
     readonly type: typeof INPUT_BOX_TRANSLATION_MESSAGE_TYPE;
-    handle(message: InputBoxTranslationMessage, context?: TrustedTranslationSenderContext): Promise<InputBoxTranslationResponse>;
+    handle(message: InputBoxTranslationMessage, context?: InputBoxTranslationRequestContext): Promise<InputBoxTranslationResponse>;
 }
 
 function parseRequiredString(value: unknown, field: string): string {
     if (typeof value !== 'string') throw new TypeError(`输入框翻译 ${field} 必须是字符串`);
     if (!value.trim()) throw new TypeError(`输入框翻译 ${field} 不能为空`);
     return field === 'targetLang' ? value.trim() : value;
+}
+
+function parseClientRequestId(value: unknown): string | undefined {
+    if (value === undefined) return undefined;
+    if (typeof value !== 'string' || !/^[A-Za-z0-9._:-]{1,128}$/u.test(value)) {
+        throw new TypeError('输入框翻译 clientRequestId 格式无效');
+    }
+    return value;
+}
+
+function createAbortError(): Error {
+    const error = new Error('输入框翻译已取消');
+    error.name = 'AbortError';
+    return error;
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+    if (signal?.aborted) throw createAbortError();
+}
+
+/** 配置水合之前也响应取消，取消后不读取配置或启动 provider。 */
+async function waitForReady(ready: Promise<unknown>, signal?: AbortSignal): Promise<void> {
+    throwIfAborted(signal);
+    if (!signal) {
+        await ready;
+        return;
+    }
+    await new Promise<void>((resolve, reject) => {
+        const onAbort = () => {
+            signal.removeEventListener('abort', onAbort);
+            reject(createAbortError());
+        };
+        signal.addEventListener('abort', onAbort, {once: true});
+        ready.then(() => {
+            signal.removeEventListener('abort', onAbort);
+            resolve();
+        }, (error) => {
+            signal.removeEventListener('abort', onAbort);
+            reject(error);
+        });
+    });
+    throwIfAborted(signal);
 }
 
 /**
@@ -103,20 +167,33 @@ export function createInputBoxTranslationHandler(
 ): InputBoxTranslationHandler {
     return {
         type: INPUT_BOX_TRANSLATION_MESSAGE_TYPE,
-        async handle(message, context) {
+        async handle(message, context = {}) {
             // 步骤 1：页面消息先经过严格协议收窄，避免对象、HTML 或空值进入翻译 broker。
             const text = parseRequiredString(message.text, 'text');
             const targetLanguage = parseRequiredString(message.targetLang, 'targetLang');
-
-            await dependencies.ready;
-            // 步骤 2：服务、模型、提示词和凭据均从配置读取，并在任何 await 前冻结。
-            const request = createInputBoxTranslationRequest(dependencies.getConfig(), text, targetLanguage);
-            const result = await dependencies.translate(attachTranslationGlossaryContext(request, translationPrivacyContext(context)));
-            const translatedText = Array.isArray(result) ? result[0] : result;
-            if (typeof translatedText !== 'string' || !translatedText.trim()) {
-                throw new Error('输入框翻译未返回有效译文');
-            }
-            return {success: true, translatedText};
+            const clientRequestId = parseClientRequestId(message.clientRequestId);
+            // 可信发送者隐私在首次等待前快照；页面 payload 不能覆盖普通、私密或未知来源。
+            const privacyContext = translationPrivacyContext(context);
+            const translate = async (control?: TranslationRequestControl): Promise<InputBoxTranslationResponse> => {
+                const signal = control?.signal;
+                await waitForReady(dependencies.ready, signal);
+                // 步骤 2：服务、模型、提示词和凭据均从配置读取，并在 provider await 前冻结。
+                const request = createInputBoxTranslationRequest(dependencies.getConfig(), text, targetLanguage);
+                attachTranslationGlossaryContext(request, privacyContext);
+                // control symbol 不可枚举：在同一 request 上附加，之后不 spread 重建。
+                if (control) attachTranslationRequestControl(request, control);
+                const result = await dependencies.translate(request);
+                throwIfAborted(signal);
+                const translatedText = Array.isArray(result) ? result[0] : result;
+                if (typeof translatedText !== 'string' || !translatedText.trim()) {
+                    throw new Error('输入框翻译未返回有效译文');
+                }
+                return {success: true, translatedText};
+            };
+            if (!clientRequestId) return translate();
+            if (!dependencies.requestRegistry) throw new Error('输入框翻译取消注册表未配置');
+            return dependencies.requestRegistry.run(clientRequestId, context,
+                (signal, ownershipKey) => translate({signal, ownershipKey}));
         },
     };
 }

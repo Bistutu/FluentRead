@@ -46,7 +46,7 @@ import {servicesType, resolveConfiguredModel, customModelString} from '@/src/cor
 import {translateText, cancelAllTranslations} from '@/src/app/translation/client';
 import {setRuntimeFetch as installRuntimeFetch, type RuntimeFetch} from '@/src/platform/http/runtime';
 import {attachTranslationRequestControl} from '@/src/services/translation/requestSnapshot';
-import type {TranslationConfigSource} from '@/src/services/translation/types';
+import {TRANSLATION_CANCEL_MESSAGE_TYPE, type TranslationConfigSource} from '@/src/services/translation/types';
 
 function setRuntimeFetch(transport?: RuntimeFetch) {
     installRuntimeFetch(transport ? async (input, init) => {
@@ -86,7 +86,7 @@ function harness(provider?: (request: any) => Promise<any>, providerRegistry?: R
         return candidate.type ? Promise.resolve(cancel.handle(candidate as never, context))
             : fallback.handle(candidate as never, context) as Promise<unknown>;
     };
-    return {scheduler, broker, writes, fallback};
+    return {scheduler, broker, writes, fallback, registry, cancel};
 }
 
 async function flush() {
@@ -347,14 +347,30 @@ describe('review counterexamples: physical capacity and trusted pending identity
         }
     });
 
-    it.each([false, true])('binds typed input privacy from sender %s and rejects payload claims', async firstPrivate => {
-        const {broker} = harness(); state.config.translationMaxRetries = 0; let attempts = 0;
-        setRuntimeFetch(async () => {attempts += 1; return response(attempts === 1 ? 429 : 200, {'retry-after': '90'});});
-        const input = createInputBoxTranslationHandler({ready: Promise.resolve(), getConfig: () => state.config as never, translate: broker.translateWithCache});
-        const invoke = (text: string, incognito: boolean) => (input.handle as any)({type: 'inputBoxTranslation', text, targetLang: 'zh-Hans', privateContext: !incognito, quotaScope: 'forged'}, {sender: {tab: {incognito}}});
-        const a = invoke('typed first alpha', firstPrivate).catch(() => 'error'); await vi.advanceTimersByTimeAsync(10); await a;
-        const b = invoke('typed other alpha', !firstPrivate).catch(() => 'error'); await vi.advanceTimersByTimeAsync(10);
-        expect(attempts).toBe(2); expect(await b).toEqual({success: true, translatedText: '这是合成译文。'});
+    it.each([false, true].flatMap(hasId => [false, true, undefined].map(privacy => [hasId, privacy] as const)))
+    ('binds typed input ID=%s privacy=%s through real 429 cooldown and rejects payload claims', async (hasId, firstPrivate) => {
+        const {broker, scheduler, registry} = harness(); state.config.translationMaxRetries = 0; let attempts = 0;
+        const observed = vi.spyOn(scheduler, 'observeResponse');
+        setRuntimeFetch(async () => {attempts += 1; return response(attempts === 1 ? 429 : 200, {'retry-after': '2'});});
+        const input = createInputBoxTranslationHandler({ready: Promise.resolve(), getConfig: () => state.config as never,
+            translate: broker.translateWithCache, requestRegistry: registry});
+        const invoke = (text: string, incognito: boolean | undefined, suffix: string, claim: boolean) => input.handle({
+            type: 'inputBoxTranslation', text, targetLang: 'zh-Hans',
+            ...(hasId ? {clientRequestId: 'typed-privacy-' + suffix} : {}),
+            privateContext: claim, quotaScope: 'forged-' + suffix,
+        } as never, {sender: {id: 'fixture-extension', tab: {id: 1, ...(incognito === undefined ? {} : {incognito})}}});
+        const first = invoke('typed first alpha', firstPrivate, 'first', !firstPrivate).catch(() => 'error');
+        await vi.advanceTimersByTimeAsync(10); await first; expect(attempts).toBe(1);
+        const samePrivacy = invoke('typed forged same alpha', firstPrivate, 'same', Boolean(firstPrivate));
+        await vi.advanceTimersByTimeAsync(10); expect(attempts).toBe(1);
+        const otherPrivacy = invoke('typed other alpha', firstPrivate === false ? true : false, 'other', Boolean(firstPrivate));
+        await vi.advanceTimersByTimeAsync(10);
+        expect(attempts).toBe(2); expect(await otherPrivacy).toEqual({success: true, translatedText: '这是合成译文。'});
+        await vi.advanceTimersByTimeAsync(2100);
+        expect(await samePrivacy).toEqual({success: true, translatedText: '这是合成译文。'}); expect(attempts).toBe(3);
+        const scopes = observed.mock.calls.map(([identity]) => identity?.quotaScope);
+        expect(scopes).toHaveLength(3); expect(scopes[0]).toMatch(/^[a-f0-9]{64}$/u);
+        expect(scopes[1]).not.toBe(scopes[0]); expect(scopes[2]).toBe(scopes[0]);
     });
 
     it.each([false, true])('restores image offscreen privacy from the active transaction %s', async firstPrivate => {
@@ -424,6 +440,45 @@ describe('trusted ordinary/private/unknown boundary', () => {
 
 
 describe('physical attempt capacity, FIFO, and cancellation', () => {
+    it('keeps cap1 raw transport owned after typed ID cancellation and never caches its late result', async () => {
+        state.config.maxConcurrentTranslations = 1; state.config.translationMaxRetries = 0;
+        const {broker, writes, registry, cancel} = harness();
+        const input = createInputBoxTranslationHandler({ready: Promise.resolve(), getConfig: () => ({...state.config, useCache: true}) as never,
+            translate: broker.translateWithCache, requestRegistry: registry});
+        const context = {sender: {id: 'fixture-extension', tab: {id: 1, incognito: true}}};
+        let settleRaw: (() => void) | undefined; let rawSignal: AbortSignal | undefined;
+        let attempts = 0; let active = 0; let peak = 0;
+        setRuntimeFetch(async (_input, init) => {
+            attempts += 1; active += 1; peak = Math.max(peak, active);
+            try {
+                if (attempts === 1) {
+                    rawSignal = init?.signal ?? undefined;
+                    // 故意忽略 signal：取消调用方不能假装这个真实传输已经释放并发槽。
+                    await new Promise<void>(resolve => {settleRaw = resolve;});
+                }
+                return response();
+            } finally {active -= 1;}
+        });
+        const first = input.handle({type: 'inputBoxTranslation', text: 'typed cancelled raw alpha', targetLang: 'zh-Hans',
+            clientRequestId: 'typed-raw-owner'}, context).catch(error => error);
+        let next: Promise<string | string[]> | undefined;
+        try {
+            await vi.advanceTimersByTimeAsync(10); expect(attempts).toBe(1); expect(active).toBe(1);
+            expect(cancel.handle({type: TRANSLATION_CANCEL_MESSAGE_TYPE, clientRequestId: 'typed-raw-owner'}, context))
+                .toEqual({success: true, cancelled: true, clientRequestId: 'typed-raw-owner'});
+            expect(await first).toMatchObject({name: 'AbortError'}); expect(rawSignal?.aborted).toBe(true);
+            expect(writes).toEqual([]);
+            next = broker.translateWithCache({origin: 'healthy queued after typed cancel', serviceOverride: 'newapi',
+                useCache: false, requestTimeoutMs: 4000});
+            await vi.advanceTimersByTimeAsync(100); expect(attempts).toBe(1); expect(active).toBe(1); expect(writes).toEqual([]);
+            settleRaw!(); await vi.advanceTimersByTimeAsync(20);
+            expect(await next).toBe('这是合成译文。'); expect(attempts).toBe(2); expect(active).toBe(0); expect(peak).toBe(1);
+            expect(writes).toEqual([]);
+        } finally {
+            cancel.handle({type: TRANSLATION_CANCEL_MESSAGE_TYPE, clientRequestId: 'typed-raw-owner'}, context);
+            settleRaw?.(); await vi.runAllTimersAsync(); await first; await next;
+        }
+    });
     it.each([1, 3])('keeps %s real in-flight slots until ignored-abort transports settle', async cap => {
         state.config.maxConcurrentTranslations = cap; state.config.translationMaxRetries = 0;
         const {broker, writes} = harness(); const releases: Array<() => void> = []; let active = 0; let peak = 0; let attempts = 0;

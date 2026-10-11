@@ -1,7 +1,7 @@
 /**
  * @file tests/backgroundMessageRuntimePrivacy.test.ts
  * 文件职责：从真实后台总消息安装入口验证无 tab 的扩展页面不继承后台自身隐私状态。
- * 主要内容：真实 messageRuntime→router→typed input/fallback→可信 symbol；只替换本用例无关的 feature 构造器和翻译外部端口。
+ * 主要内容：真实 messageRuntime→router→typed input/fallback→可信隐私 symbol，并从 installed listener 验证 typed ID 的共享取消注册表与跨 tab 所有权；只替换本用例无关的 feature 构造器和翻译外部端口。
  * 模块边界：不手工调用 context factory，不启动浏览器，不读取用户配置或访问网络。
  */
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -42,7 +42,8 @@ vi.mock('@/src/app/background/harnessRuntime', () => ({installHarnessBackgroundR
 vi.mock('@/src/features/full-page-translation/background/embeddedFrameHandlers', () => ({createEmbeddedFrameBackgroundHandlers: () => []}));
 import {installBackgroundMessageRuntime} from '@/src/app/background/messageRuntime';
 import {TabTranslationStateStore} from '@/src/app/background/tabTranslationState';
-import {getTranslationGlossaryContext} from '@/src/services/translation/requestSnapshot';
+import {getTranslationGlossaryContext, getTranslationRequestControl} from '@/src/services/translation/requestSnapshot';
+import {TRANSLATION_CANCEL_MESSAGE_TYPE} from '@/src/services/translation/types';
 import {Config} from '@/src/core/config/model';
 beforeEach(() => {Object.assign(state.config, new Config()); state.translate.mockReset().mockResolvedValue('synthetic translated');});
 afterEach(() => {vi.unstubAllGlobals();});
@@ -73,5 +74,36 @@ describe('actual messageRuntime privacy mapping', () => {
         await listener(request(kind, !senderPrivate), {id: 'controlled', url: 'https://synthetic.test/', tab: {id: 4, incognito: senderPrivate}});
         expect(state.translate).toHaveBeenCalledOnce();
         expect(getTranslationGlossaryContext(state.translate.mock.calls[0]![0])?.privateContext).toBe(senderPrivate);
+    });
+
+    it.each([
+        {privacy: 'normal', incognito: false},
+        {privacy: 'private', incognito: true},
+        {privacy: 'unknown', incognito: undefined},
+    ])('routes typed ID→cancel through the installed listener with trusted $privacy privacy', async ({incognito}) => {
+        const listener = installed(incognito !== true);
+        let resolveProvider!: (value: string) => void;
+        state.translate.mockImplementation(() => new Promise<string>(resolve => {resolveProvider = resolve;}));
+        const owner = {
+            id: 'controlled', url: 'https://synthetic.test/', frameId: 0, documentId: 'typed-document',
+            tab: {id: 4, ...(incognito === undefined ? {} : {incognito})},
+        };
+        const pending = listener({...request('typed', incognito !== true), clientRequestId: 'installed-typed-id'}, owner);
+        await vi.waitFor(() => expect(state.translate).toHaveBeenCalledOnce());
+        const translatedRequest = state.translate.mock.calls[0]![0];
+        expect(getTranslationGlossaryContext(translatedRequest)?.privateContext).toBe(incognito);
+        const control = getTranslationRequestControl(translatedRequest)!;
+        expect(control.signal.aborted).toBe(false);
+        await expect(listener({type: TRANSLATION_CANCEL_MESSAGE_TYPE, clientRequestId: 'installed-typed-id'}, {
+            ...owner, tab: {id: 5, incognito: incognito !== true},
+        })).resolves.toMatchObject({success: true, cancelled: false});
+        expect(control.signal.aborted).toBe(false);
+        await expect(listener({type: TRANSLATION_CANCEL_MESSAGE_TYPE, clientRequestId: 'installed-typed-id'}, owner))
+            .resolves.toMatchObject({success: true, cancelled: true});
+        expect(control.signal.aborted).toBe(true);
+        resolveProvider('ignored abort late result');
+        await expect(pending).resolves.toMatchObject({success: false, error: '输入框翻译已取消'});
+        expect(state.translate).toHaveBeenCalledOnce();
+        expect(getTranslationGlossaryContext(translatedRequest)?.privateContext).toBe(incognito);
     });
 });

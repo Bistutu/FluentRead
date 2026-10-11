@@ -34,6 +34,7 @@ import {mountConfiguredQuickTranslation} from './quickTranslationRuntime';
 import {installPageStyles} from './pageStyles';
 import {syncBilingualSentenceHighlight} from './bilingualSentenceHighlight';
 import {applyCoreTranslationPreferences, createContentSiteAdaptationRuntime} from './siteAdaptationRuntime';
+import {createHoverTranslationConfigSubscription} from './hoverTranslationConfig';
 
 type MailFrameKind = 'qq' | 'netease';
 const messageTypes = {
@@ -111,12 +112,11 @@ async function startMailFrameApp(ctx: ContentScriptContext, kind: MailFrameKind)
     const lifetime = new AbortController();
     let lifecycleController: ReturnType<typeof createFrameSessionController> | undefined;
     let cleanup = () => { disposed = true; lifetime.abort(); };
-    ctx.onInvalidated(() => cleanup());
     const pageLifecycle = installContentPageLifecycle(window, lifetime.signal, {
         suspend: () => lifecycleController?.suspend(),
         resume: () => { void lifecycleController?.refresh(); },
         dispose: () => cleanup(),
-    });
+    }, ctx, document);
     await configReady;
     await ensureUiLanguageBundle(config.uiLanguage);
     if (ctx.isInvalid || disposed) { cleanup(); return; }
@@ -171,6 +171,7 @@ async function startMailFrameApp(ctx: ContentScriptContext, kind: MailFrameKind)
         syncBilingualSentenceHighlight(document, config.bilingualSentenceHighlightEnabled === true, config.bilingualSentenceHighlightStyle, config.bilingualSentenceHighlightAppearance);
         const resetHover = mountHoverTranslationContentFeature({
             config, constants, document, window, navigator, getCenterPoint,
+            subscribeConfig: createHoverTranslationConfigSubscription(config, subscribeConfig, cancelPendingHoverTranslation),
             isSiteDisabled: () => !enabled() || !authorized,
             handleTranslation, noteBilingualHostGesture, cancelPendingHoverTranslation,
             ...hotkeys.selectionShortcutPorts,

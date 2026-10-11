@@ -54,6 +54,7 @@ import {syncBilingualSentenceHighlight} from './bilingualSentenceHighlight';
 import {applyCoreTranslationPreferences, createContentSiteAdaptationRuntime} from './siteAdaptationRuntime';
 import {createOptionalContentFeatureRuntime, type OptionalContentFeatureRuntime} from './optionalFeatures';
 import {createPageInformationHighlightRuntime} from './informationHighlight';
+import {createHoverTranslationConfigSubscription} from './hoverTranslationConfig';
 export async function startContentApp(ctx: ContentScriptContext,
     capabilities: BrowserCapabilities = browserCapabilities): Promise<void> {
     if (isRawXmlContentDocument(document) || ctx.isInvalid) return;
@@ -61,12 +62,11 @@ export async function startContentApp(ctx: ContentScriptContext,
     let cleanedUp = false;
     let pageAvailability: ContentPageAvailabilityRuntime | null = null;
     let cleanup = (): void => { cleanedUp = true; pageEventController.abort(); };
-    ctx.onInvalidated(() => cleanup());
     const pageLifecycle = installContentPageLifecycle(window, pageEventController.signal, {
         suspend: () => { void pageAvailability?.reconcile(); },
         resume: () => { void pageAvailability?.reconcile(); },
         dispose: () => cleanup(),
-    }, capabilities.browser === 'userscript' ? undefined : ctx);
+    }, ctx, document, capabilities.browser !== 'userscript');
     // 非中文界面资源是扩展内本地文件，挂载前取得可避免非响应式浮层先以中文回退渲染；中文同步命中。
     await configReady; await ensureUiLanguageBundle(config.uiLanguage);
     if (ctx.isInvalid || cleanedUp || (document.readyState === 'loading' && !await waitForContentDocument(document, pageEventController.signal))) { cleanup(); return; }
@@ -135,7 +135,7 @@ export async function startContentApp(ctx: ContentScriptContext,
         });
         optionalContentFeatures.sync();
         const resetHoverKeyboardGesture = mountHoverTranslationContentFeature({
-            config,
+            config, subscribeConfig: createHoverTranslationConfigSubscription(config, subscribeConfig, cancelPendingHoverTranslation),
             constants,
             document,
             window,

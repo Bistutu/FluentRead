@@ -3,6 +3,7 @@ import {parseHTML} from "linkedom";
 import {
     acquireTranslationLayoutOverride,
     beginTranslation,
+    subscribeTranslationStateChanges,
     detachFailedTranslationUi,
     discardTranslation,
     ensureTranslationTruncationLayout,
@@ -82,6 +83,30 @@ describe("指定节点翻译状态机", () => {
 
     beforeEach(() => {
         node = new FakeElement();
+    });
+
+    it("阶段订阅按真实转换发布，异常观察者不影响完成和恢复，解除后不持有通知", () => {
+        const target = node as unknown as HTMLElement;
+        const phases: Array<string | undefined> = [];
+        const bad = subscribeTranslationStateChanges(() => { throw new Error('observer'); });
+        const stop = subscribeTranslationStateChanges((owner, state) => {
+            expect(owner).toBe(target);
+            expect(getTranslationState(owner)).toBe(state);
+            phases.push(state?.phase);
+        });
+        try {
+            const first = beginTranslation(target, 'single')!;
+            expect(beginTranslation(target, 'single')).toBeNull();
+            markTranslationError(target, first.state, first.generation);
+            const next = beginTranslation(target, 'single')!;
+            markTranslationComplete(target, next.state, next.generation);
+            restoreTranslation(target);
+            expect(phases).toEqual(['loading', 'error', 'loading', 'translated', undefined]);
+            stop();
+            beginTranslation(target, 'single');
+            restoreTranslation(target);
+            expect(phases).toHaveLength(5);
+        } finally {stop(); bad();}
     });
 
     it("同一个节点在 loading 期间不会重复发起请求", () => {
@@ -903,6 +928,26 @@ describe("指定节点翻译状态机", () => {
         expect(parent.querySelector("#synthetic")).toBeNull();
         expect(parent.textContent).toContain("inline segment");
         expect(getTranslationOwnersForRemovedNode(synthetic)).toEqual([]);
+    });
+
+    it("恢复通知保留旧 synthetic 来源身份，旧订阅仍收到已清除状态", () => {
+        const {document} = parseHTML('<html><body><p id="parent"><span id="synthetic"><!--source--><b>inline</b> segment</span></p></body></html>');
+        const parent = document.querySelector('#parent') as HTMLElement;
+        const synthetic = document.querySelector('#synthetic') as HTMLElement;
+        const sources = Array.from(synthetic.childNodes);
+        const attempt = beginTranslation(synthetic, 'bilingual', 'content', true)!;
+        const notifications: Array<[HTMLElement, TranslationState | undefined, TranslationState | undefined]> = [];
+        const stop = subscribeTranslationStateChanges((owner, state, previousState) => {
+            expect(getTranslationState(owner)).toBe(state);
+            notifications.push([owner, state, previousState]);
+        });
+        try {
+            expect(restoreTranslation(synthetic)).toBe(true);
+            expect(notifications).toEqual([[synthetic, undefined, attempt.state]]);
+            expect(notifications[0][2]?.syntheticSourceNodes).toEqual(sources);
+            expect(sources.every(source => source.parentNode === parent)).toBe(true);
+            expect(synthetic.isConnected).toBe(false);
+        } finally {stop();}
     });
 
     it("未注册节点的 artifact setter 和失败 UI detach 都安全降级", () => {

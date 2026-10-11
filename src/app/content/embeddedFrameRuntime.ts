@@ -30,6 +30,7 @@ import {mountConfiguredQuickTranslation} from './quickTranslationRuntime';
 import {installPageStyles} from './pageStyles';
 import {syncBilingualSentenceHighlight} from './bilingualSentenceHighlight';
 import {applyCoreTranslationPreferences, createContentSiteAdaptationRuntime} from './siteAdaptationRuntime';
+import {createHoverTranslationConfigSubscription} from './hoverTranslationConfig';
 
 /** 页面事件只提示刷新；frame 必须经后台校验 tab、URL 和 frameId 后读取顶层真实状态。 */
 export function installEmbeddedTopFrameBridge(isEnabled: () => boolean, signal: AbortSignal): void {
@@ -69,12 +70,11 @@ export async function startEmbeddedFrameApp(ctx: ContentScriptContext): Promise<
     const lifetime = new AbortController();
     let lifecycleController: ReturnType<typeof createFrameSessionController> | undefined;
     let cleanup = () => { disposed = true; lifetime.abort(); };
-    ctx.onInvalidated(() => cleanup());
     const pageLifecycle = installContentPageLifecycle(window, lifetime.signal, {
         suspend: () => lifecycleController?.suspend(),
         resume: () => { void lifecycleController?.refresh(); },
         dispose: () => cleanup(),
-    });
+    }, ctx, document);
     await configReady;
     await ensureUiLanguageBundle(config.uiLanguage);
     if (ctx.isInvalid || disposed) { cleanup(); return; }
@@ -109,6 +109,7 @@ export async function startEmbeddedFrameApp(ctx: ContentScriptContext): Promise<
         syncBilingualSentenceHighlight(document, config.bilingualSentenceHighlightEnabled === true, config.bilingualSentenceHighlightStyle, config.bilingualSentenceHighlightAppearance);
         const resetHover = mountHoverTranslationContentFeature({
             config, constants, document, window, navigator, getCenterPoint,
+            subscribeConfig: createHoverTranslationConfigSubscription(config, subscribeConfig, cancelPendingHoverTranslation),
             isSiteDisabled: () => !enabled() || !authorized,
             handleTranslation, noteBilingualHostGesture, cancelPendingHoverTranslation,
             ...hotkeys.selectionShortcutPorts,

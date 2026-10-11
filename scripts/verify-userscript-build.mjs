@@ -12,7 +12,43 @@ const artifactBytes = Buffer.byteLength(source);
 // 相对 main 的 1,960,000 字节预算增加 4 KB，继续校验协议、体积和运行边界。
 // 智能高亮的共享偏好（快捷键、开关、配色与浓度的归一化）使脚本增至 1,964,630 字节；功能本身不进入脚本。
 // 为保持与扩展的配置导入导出兼容，预算再放宽 1 KB。
-const MAX_USERSCRIPT_BYTES = 1_965_000;
+// 时间展示过滤与动态来源交接增加 2,939 字节：同依赖下基线 e754aa680 为 1,964,913，修复后为 1,967,852。
+// 预算仅增加 3 KB，保留体积守门；独立基线与构建记录见 docs/reports/time-changing-source-20261010/。
+// 失败摘要、受限局部重试及对应文案增加 7,324 字节（0.3722%）：
+// 同依赖独立基线 ce36085f7 为 1,967,852，候选为 1,975,176；预算增加 8 KB。
+// 实测与重现步骤见 docs/reports/reading-reliability-experience-20261010/。
+// Google 合批、共享请求节奏与 429 退避增加 2,536 字节（0.1284%）：
+// 同依赖独立基线 f3f6016e8 为 1,975,252，候选为 1,977,788；预算增加 3 KB。
+// 实测与重现步骤见 docs/reports/google-batching-backoff-20261010/。
+// 原生数组完整校验、同预算逐段恢复、实体拒收与 AI 会话隔离另增加 6 KB 预算；
+// 同依赖独立基线 36952b0fe 与增量证据见 docs/reports/native-batch-translation-20261010/。
+// 原生合批独立开关及冻结策略增加 2,560 字节（0.1291%）：
+// 同依赖基线 e4932521f 为 1,982,807，候选为 1,985,367；预算最小增加 1 KB。
+// 增量与语言固定提交验证见 docs/reports/native-batch-setting-20261011/。
+// 悬浮手势按帧合并、停留调度与取消域完整清理的原始验证增加 4,576 字节（0.2305%）：
+// 同依赖独立基线 fe7005dd9 为 1,985,367，候选为 1,989,943；该阶段预算最小增加 5 KB。
+// 体积与生产包真实事件回归见 docs/reports/hover-reliability-20261011/。
+// 20 个译文样式预设（规则、注册表与中文名称）增加 8,193 字节（0.4127%）：
+// 同依赖独立基线 fe7005dd9 为 1,985,255，候选为 1,993,448；预算增加 8 KB。
+// 实测与截图见 docs/reports/translation-style-presets-20261010/。
+// 合并前整合 b14baf4b 的全文优化与样式预设：同依赖 main 为 1,987,953，集成后为 1,992,441。
+// 增加 4,488 字节（0.2258%），保持 main 的 1,994,000 预算；证据见悬浮报告 pr-integration/。
+// 区域分片、精确取消与动态选择协作在独立基线 fe7005dd9 上增加 5,222 字节（0.2630%）。
+// 合入最新主线后复验体积，沿用主线预算；保留全部协议与执行边界校验。
+// 原始对照与集成证据见 docs/reports/section-translation-quality-20261011/。
+// 随后整合区域翻译 0a69bfc3：同依赖 main 为 1,993,179，悬浮集成产物为 1,997,758。
+// 增加 4,579 字节（0.2297%），原预算余量 821 字节，按实测最小增加 4 KB；见悬浮报告 pr-integration-931/。
+// 右键来源保护及通知交互的原始对照增加 3,443 字节（0.1734%）；原生菜单专属逻辑和文案按目标剔除。
+// 整合区域与悬浮优化后：同依赖 main 为 1,997,714，候选为 2,001,158，预算最小增加 4 KB。
+// 保留全部协议/兼容性检查；证据见 docs/reports/context-menu-experience-20261011/。
+// 输入框请求取消、有限等待及富文本标准事件写回的初始验证增加 8,638 字节（0.4351%）：
+// 同依赖独立基线 fe7005dd9 为 1,985,367，初始候选为 1,994,005；该阶段预算增加 9 KB。
+// 原始验证及最新主线集成证据见 docs/reports/input-translation-quality-20261011/。
+// PR 合并前整合 982f09df：同依赖独立 main 为 1,997,714，输入集成产物为 2,006,364。
+// 增加 8,650 字节（0.4330%），按实测最小增加 9 KB 预算，余量 636 字节；见报告 pr-integration/。
+// 最终整合右键与通知更新 bbae4100：同依赖 main 为 2,001,158，输入候选为 2,009,853。
+// 增加 8,695 字节（0.4345%），利用主线余量后预算最小增加 8 KB，余 147 字节；见报告 pr-integration-933/。
+const MAX_USERSCRIPT_BYTES = 2_010_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);
@@ -54,6 +90,8 @@ const assertions = [
   [!source.includes('fluent-read-area-translator-container'), 'area translator must be excluded from userscript'],
   [!source.includes('fluent-read-image-translation-root'), 'image translator must be excluded from userscript'],
   [!source.includes('fluent-read-video-subtitle-style'), 'video subtitle runtime must be excluded from userscript'],
+  [!source.includes('onnx-community/Qwen3-0.6B-ONNX') && !source.includes('onnx-community/Qwen2.5-0.5B'), 'highlight model artifacts must be excluded from userscript while retaining preference compatibility'],
+  [!source.includes('90ad34e62bb47572a06e0235696076976d59e9fcf5ab173d9a44689ba01b7d52') && !source.includes('8a04114ba59cc42b47d804d35d1d5c61d746ae4634f41f796768c6e302d39b9e'), 'highlight artifact manifests must be removed when only model preferences are used'],
   [!source.includes('fluent-read-writing-assistant'), 'writing assistant runtime must be excluded from userscript'],
   [!source.includes('fluent-read-vocabulary-reencounter'), 'vocabulary reencounter runtime must be excluded from userscript'],
   [!source.includes('fluent-read-sentence-actions'), 'sentence actions runtime must be excluded from userscript'],
