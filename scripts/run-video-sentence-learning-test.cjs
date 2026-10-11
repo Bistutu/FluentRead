@@ -126,7 +126,9 @@ async function capture(name, result) {
 }
 async function openLearning() {
   if (await page.locator('#fluent-read-video-learning-panel').isVisible().catch(() => false)) return;
-  await page.locator('#fluent-read-video-subtitle-button').click();
+  if (!await page.locator('#fluent-read-video-subtitle-menu').isVisible().catch(() => false)) {
+    await page.locator('#fluent-read-video-subtitle-button').click();
+  }
   await page.locator('[data-action="open-sentence-learning"]').click();
   await page.locator('#fluent-read-video-learning-panel').waitFor({state: 'visible'});
 }
@@ -136,7 +138,7 @@ function fixtureHtml(platform, mediaData) {
     ? '<div id="ytp-caption-window-container"><span class="ytp-caption-segment">Sea otters</span></div><div class="ytp-right-controls"><button aria-label="Settings">⚙</button><button aria-label="Full screen">⛶</button></div>'
     : '<div class="fixture-controls"><button aria-label="Play">▶</button><span style="flex:1">0:00 / 0:18</span><div class="fixture-actions"><button aria-label="Captions">▣</button><button aria-label="Settings">⚙</button><div id="fixture-pip"><button aria-label="Picture in picture">▣</button></div><div id="fixture-fullscreen"><button aria-label="Full screen">⛶</button></div></div></div>';
   return `<!doctype html><html><head><meta charset="utf-8"><title>Sentence learning ${platform} fixture</title><style>
-    body{margin:24px;background:#eef2f8;font:18px Arial}#movie_player,[data-testid=videoPlayer]{position:relative;width:960px;height:540px;overflow:hidden;background:#153047;color:white}
+    body{margin:24px;background:#eef2f8;font:18px Arial;--el-text-color-regular:#00ff00;--el-color-primary-light-5:#00ff00}#movie_player,[data-testid=videoPlayer]{position:relative;width:960px;height:540px;overflow:hidden;background:#153047;color:white}
     #movie_player:fullscreen,[data-testid=videoPlayer]:fullscreen{width:100vw;height:100vh}.ytp-right-controls,.fixture-controls{position:absolute;bottom:4px;left:12px;right:12px;display:flex;align-items:center;justify-content:flex-end;height:36px;z-index:30}.fixture-actions{display:flex}.ytp-right-controls button,.fixture-controls button{width:32px;height:32px;padding:0;border:0;background:#243a50;color:white}
     #ytp-caption-window-container{position:absolute;left:0;right:0;bottom:56px;text-align:center;font-size:26px}
     </style></head><body><h1>视频句子学习验收</h1><article>${platform === 'x' ? '<a class="fixture-source" href="/fluentread/status/424243">原帖子</a>' : ''}<div ${platform === 'youtube' ? 'id="movie_player" class="html5-video-player"' : 'data-testid="videoPlayer"'}>${video}${controls}</div></article></body></html>`;
@@ -168,13 +170,31 @@ async function runFixture(platform, mediaData) {
   await page.waitForFunction(() => document.querySelector('video')?.readyState >= 2);
   await page.locator('#fluent-read-video-subtitle-button').waitFor();
   await injectCaptions(platform, cues, mediaId);
+  await page.locator('#fluent-read-video-subtitle-button').click();
+  await page.locator('#fluent-read-video-subtitle-menu').waitFor({state: 'visible'});
+  const menuStyle = await page.locator('#fluent-read-video-subtitle-menu').evaluate(element => {
+    const computed = getComputedStyle(element);
+    const names = ['brand', 'brand-strong', 'brand-strong-hover', 'brand-text', 'brand-soft', 'surface', 'border', 'radius', 'shadow', 'text', 'muted', 'control', 'control-hover'];
+    return {background: computed.backgroundColor, borderColor: computed.borderColor, borderRadius: computed.borderRadius,
+      boxShadow: computed.boxShadow, fontFamily: computed.fontFamily, color: computed.color,
+      tokens: Object.fromEntries(names.map(name => [name, computed.getPropertyValue(`--fr-video-menu-${name}`).trim()]))};
+  });
+  await capture(`${platform}-video-menu`, result);
   await openLearning();
   await page.waitForFunction(() => document.querySelector('[data-learning-sentence-id]')?.textContent.includes('Sea otters have strong teeth.'));
   await page.waitForFunction(() => document.querySelector('[data-learning-translation-display]')?.textContent.trim() === '海獭有强有力的牙齿。');
   let state = await current();
+  await page.mouse.move(4, 4);
   const style = await page.locator('#fluent-read-video-learning-panel section').evaluate(element => {
     const computed = getComputedStyle(element);
-    return {fontSize: computed.fontSize, background: computed.backgroundColor, borderRadius: computed.borderRadius,
+    const names = ['brand', 'brand-strong', 'brand-strong-hover', 'brand-text', 'brand-soft', 'surface', 'border', 'radius', 'shadow', 'text', 'muted', 'control', 'control-hover'];
+    const save = getComputedStyle(element.querySelector('[data-learning-action="save"]'));
+    const replay = getComputedStyle(element.querySelector('[data-learning-action="play"]'));
+    return {fontSize: computed.fontSize, background: computed.backgroundColor, borderColor: computed.borderColor,
+      borderRadius: computed.borderRadius, boxShadow: computed.boxShadow, fontFamily: computed.fontFamily, color: computed.color,
+      saveBackground: save.backgroundColor, saveColor: save.color, replayColor: replay.color,
+      tokens: Object.fromEntries(names.map(name => [name, computed.getPropertyValue(`--fr-video-menu-${name}`).trim()])),
+      modeCaption: element.querySelector('.fr-video-learning-mode-caption')?.textContent?.trim(),
       translationDisplay: getComputedStyle(element.querySelector('[data-learning-translation-display]')).display,
       editors: element.querySelectorAll('[data-learning-translation], [data-learning-explanation]').length};
   });
@@ -182,7 +202,18 @@ async function runFixture(platform, mediaData) {
   assert.notEqual(style.background, 'rgba(0, 0, 0, 0)');
   assert.equal(style.translationDisplay, 'block');
   assert.equal(style.editors, 0, 'Translation and explanation start in reading mode');
+  assert.equal(style.modeCaption, '播放辅助');
+  assert.equal(await page.locator('.fr-video-learning-mode-caption').isVisible(), true);
   check(result, 'Production content-script styles keep the learning panel readable independently of host CSS', style);
+  assert.deepEqual(style.tokens, menuStyle.tokens, 'Learning inherits the existing video menu local appearance tokens');
+  for (const name of ['background', 'borderColor', 'borderRadius', 'boxShadow', 'fontFamily', 'color']) {
+    assert.equal(style[name], menuStyle[name], `Learning and the existing video menu share ${name}`);
+  }
+  assert.equal(style.tokens.brand, '#ef4776');
+  assert.equal(style.tokens.surface, '#18181c');
+  assert.equal(style.saveBackground, 'rgb(220, 49, 95)');
+  assert.equal(style.saveColor, 'rgb(255, 255, 255)');
+  assert.equal(style.replayColor, 'rgb(255, 173, 194)');
   assert.equal(Number(state.startMs), 0);
   assert.equal(Number(state.endMs), 2500);
   assert.equal(state.paused, true);
@@ -280,6 +311,23 @@ async function runFixture(platform, mediaData) {
   assert.ok(JSON.stringify(explanationRequests.at(-1).messages).includes('Sea otters have strong teeth.'));
   assert.ok(JSON.stringify(explanationRequests.at(-1).messages).includes('They use rocks to open shells.'));
   check(result, 'The existing reading service explains the complete source sentence with permitted neighboring caption context', {transport: 'local deterministic OpenAI-compatible SSE', explanation: await fieldDisplay('explanation').textContent()});
+  const originalExplanation = await fieldDisplay('explanation').textContent();
+  await editField('explanation', `> ${originalExplanation.trim()}`);
+  const quoteStyle = await fieldDisplay('explanation').locator('blockquote').evaluate(element => {
+    const computed = getComputedStyle(element);
+    const panel = getComputedStyle(document.querySelector('#fluent-read-video-learning-panel section'));
+    return {fontSize: computed.fontSize, color: computed.color, borderColor: computed.borderInlineStartColor,
+      borderWidth: computed.borderInlineStartWidth, hostTextVariable: getComputedStyle(document.body).getPropertyValue('--el-text-color-regular').trim(),
+      panelTextVariable: panel.getPropertyValue('--el-text-color-regular').trim(), panelQuoteBorderVariable: panel.getPropertyValue('--el-color-primary-light-5').trim()};
+  });
+  result.appearance = {menu: menuStyle, learning: style, quote: quoteStyle};
+  assert.equal(quoteStyle.fontSize, '13px');
+  assert.equal(quoteStyle.color, style.color, 'The actual rendered quote keeps local readable text despite hostile host Element variables');
+  assert.equal(quoteStyle.borderColor, 'rgb(255, 173, 194)');
+  assert.equal(quoteStyle.borderWidth, '3px');
+  assert.notEqual(quoteStyle.hostTextVariable, quoteStyle.panelTextVariable);
+  await editField('explanation', originalExplanation);
+  check(result, 'Learning and the existing video menu share FluentRead appearance and readable quotes independently of host Element variables', {menu: menuStyle, learning: style, quote: quoteStyle});
   await seek(1.8);
   await action('edit-translation').click();
   assert.equal((await current()).pinned, 'true', 'Entering edit mode pins the sentence before the first keystroke');
@@ -645,15 +693,16 @@ async function probeLive({platform, url}) {
       captionButton: document.querySelector('.ytp-subtitles-button')?.getAttribute('aria-pressed'),
       captionTracks: (document.querySelector('#movie_player')?.getPlayerResponse?.()?.captions?.playerCaptionsTracklistRenderer?.captionTracks || []).map(track => ({language: track.languageCode, kind: track.kind, name: track.name?.simpleText || track.name?.runs?.map(run => run.text).join('')})),
       sourceStatus: document.querySelector('[data-source-status]')?.textContent,
-      videos: [...document.querySelectorAll('video')].map(video => ({time: video.currentTime, duration: Number.isFinite(video.duration) ? video.duration : null, readyState: video.readyState, tracks: [...video.textTracks].map(track => ({language: track.language, cues: track.cues?.length, mode: track.mode}))}))}));
+      videos: [...document.querySelectorAll('video')].map(video => ({time: video.currentTime, duration: Number.isFinite(video.duration) ? video.duration : null, paused: video.paused, networkState: video.networkState, readyState: video.readyState, tracks: [...video.textTracks].map(track => ({language: track.language, cues: track.cues?.length, mode: track.mode}))}))}));
+    const firstVideo = page.locator('video').first();
     const captionButton = page.locator('.ytp-subtitles-button');
     if (platform === 'youtube' && await captionButton.count() && await captionButton.isVisible()) {
       if (await captionButton.getAttribute('aria-pressed') !== 'true') await captionButton.click();
       const playButton = page.locator('.ytp-play-button');
-      if (await playButton.count() && await playButton.isVisible()) await playButton.click();
+      if (await firstVideo.count() && await firstVideo.evaluate(video => video.paused)
+          && await playButton.count() && await playButton.isVisible()) await playButton.click();
       await page.waitForTimeout(5000);
     }
-    const firstVideo = page.locator('video').first();
     if (await firstVideo.isVisible().catch(() => false)) await firstVideo.hover({force: true}).catch(() => {});
     if (await page.locator('#fluent-read-video-subtitle-button').isVisible().catch(() => false)) {
       await page.locator('#fluent-read-video-subtitle-button').click();
@@ -669,7 +718,8 @@ async function probeLive({platform, url}) {
     }
     result.captionResponses = captionResponses;
     result.finalCaptionState = await page.evaluate(() => ({native: [...document.querySelectorAll('.ytp-caption-segment')].map(node => node.textContent).join(' '),
-      captionButton: document.querySelector('.ytp-subtitles-button')?.getAttribute('aria-pressed'), sourceStatus: document.querySelector('[data-source-status]')?.textContent}));
+      captionButton: document.querySelector('.ytp-subtitles-button')?.getAttribute('aria-pressed'), sourceStatus: document.querySelector('[data-source-status]')?.textContent,
+      videos: [...document.querySelectorAll('video')].map(video => ({time: video.currentTime, paused: video.paused, readyState: video.readyState, networkState: video.networkState}))}));
     if (!result.success) result.limitation = 'Actual page did not supply a usable original timed-caption learning sentence in this isolated session. See DOM, platform text and response evidence; fixture success is separate.';
     await capture(`live-${platform}-${sampleId}`, result);
   } catch (error) {

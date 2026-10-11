@@ -28,6 +28,7 @@
           <button type="button" class="fr-video-learning-replay" data-learning-action="play" @click="replay"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 4 9 6-9 6Z" /></svg>{{ t('video.learning.replay') }}</button>
           <button type="button" class="fr-video-learning-icon" data-learning-action="next" :aria-label="t('video.learning.next')" :title="t('video.learning.next')" :disabled="index >= sentences.length - 1" @click="step(1)"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
         </nav>
+        <p class="fr-video-learning-mode-caption">{{ t('video.learning.mode') }}</p>
         <div class="fr-video-learning-mode" role="group" :aria-label="t('video.learning.mode')">
           <button type="button" data-learning-action="normal" :aria-pressed="mode === 'off'" @click="normal">{{ t('video.learning.normal') }}</button>
           <button type="button" data-learning-action="loop" :aria-pressed="mode === 'loop'" @click="toggleMode('loop')">{{ t('video.learning.loop') }}</button>

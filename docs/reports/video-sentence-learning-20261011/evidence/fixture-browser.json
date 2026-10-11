@@ -11,8 +11,31 @@
           "pass": true,
           "details": {
             "fontSize": "13px",
-            "background": "rgba(29, 34, 43, 0.96)",
-            "borderRadius": "16px",
+            "background": "rgb(24, 24, 28)",
+            "borderColor": "rgba(255, 255, 255, 0.1)",
+            "borderRadius": "12px",
+            "boxShadow": "rgba(0, 0, 0, 0.36) 0px 10px 30px 0px",
+            "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+            "color": "rgb(245, 245, 247)",
+            "saveBackground": "rgb(220, 49, 95)",
+            "saveColor": "rgb(255, 255, 255)",
+            "replayColor": "rgb(255, 173, 194)",
+            "tokens": {
+              "brand": "#ef4776",
+              "brand-strong": "#dc315f",
+              "brand-strong-hover": "#cf315e",
+              "brand-text": "#ffadc2",
+              "brand-soft": "rgba(239, 71, 118, .2)",
+              "surface": "#18181c",
+              "border": "rgba(255, 255, 255, .1)",
+              "radius": "12px",
+              "shadow": "0 10px 30px rgba(0, 0, 0, .36)",
+              "text": "#f5f5f7",
+              "muted": "rgba(255, 255, 255, .72)",
+              "control": "rgba(255, 255, 255, .07)",
+              "control-hover": "rgba(255, 255, 255, .12)"
+            },
+            "modeCaption": "播放辅助",
             "translationDisplay": "block",
             "editors": 0
           }
@@ -21,7 +44,7 @@
           "name": "Two source cues become one complete sentence with original 0–2500 ms timing and preserve paused playback",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.跟随播放重播原句关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.跟随播放重播原句播放辅助关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:0,1:0:2500:1cd7mqi",
             "index": "0",
             "startMs": "0",
@@ -44,7 +67,7 @@
           "name": "Next complete sentence retains source interval and nearby context without implicitly playing",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。2 / 4 · 0:03–0:05They use rocks to open shells.固定此句回到当前句重播原句关闭循环本句句末暂停译文编辑它们用石头打开贝壳。前后语境Sea otters have strong teeth.They use rocks to open shells.它们生活在海洋里。查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。2 / 4 · 0:03–0:05They use rocks to open shells.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑它们用石头打开贝壳。前后语境Sea otters have strong teeth.They use rocks to open shells.它们生活在海洋里。查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:2,3:3000:5500:lnr9ia",
             "index": "1",
             "startMs": "3000",
@@ -63,7 +86,7 @@
           "name": "A Chinese source sentence keeps its own original timing and avoids a same-target provider call",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。3 / 4 · 0:06–0:07它们生活在海洋里。固定此句回到当前句重播原句关闭循环本句句末暂停译文编辑它们生活在海洋里。前后语境They use rocks to open shells.它们生活在海洋里。A quiet final sentence.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。3 / 4 · 0:06–0:07它们生活在海洋里。固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑它们生活在海洋里。前后语境They use rocks to open shells.它们生活在海洋里。A quiet final sentence.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:4:6000:7000:ik76cc",
             "index": "2",
             "startMs": "6000",
@@ -86,7 +109,7 @@
           "name": "A real media clock crosses the sentence end and loops to its original start, retaining user playback rate",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:0,1:0:2500:1cd7mqi",
             "index": "0",
             "startMs": "0",
@@ -105,7 +128,7 @@
           "name": "User pause remains authoritative while a loop is armed",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:0,1:0:2500:1cd7mqi",
             "index": "0",
             "startMs": "0",
@@ -124,7 +147,7 @@
           "name": "Closing playback assistance clears its mode without implicitly playing a user-paused video",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:0,1:0:2500:1cd7mqi",
             "index": "0",
             "startMs": "0",
@@ -143,7 +166,7 @@
           "name": "User seek outside the active sentence releases repeat control",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.跟随播放重播原句关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.跟随播放重播原句播放辅助关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:0,1:0:2500:1cd7mqi",
             "index": "0",
             "startMs": "0",
@@ -162,7 +185,7 @@
           "name": "Sentence-end pause stops the real media clock at the source boundary",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:0,1:0:2500:1cd7mqi",
             "index": "0",
             "startMs": "0",
@@ -181,13 +204,13 @@
           "name": "Turning off end pause restores uninterrupted playback",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:0,1:0:2500:1cd7mqi",
             "index": "0",
             "startMs": "0",
             "endMs": "2500",
             "paused": false,
-            "time": 2.817992,
+            "time": 2.81844,
             "rate": 2,
             "seeking": false,
             "loop": "false",
@@ -209,16 +232,84 @@
           }
         },
         {
+          "name": "Learning and the existing video menu share FluentRead appearance and readable quotes independently of host Element variables",
+          "pass": true,
+          "details": {
+            "menu": {
+              "background": "rgb(24, 24, 28)",
+              "borderColor": "rgba(255, 255, 255, 0.1)",
+              "borderRadius": "12px",
+              "boxShadow": "rgba(0, 0, 0, 0.36) 0px 10px 30px 0px",
+              "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+              "color": "rgb(245, 245, 247)",
+              "tokens": {
+                "brand": "#ef4776",
+                "brand-strong": "#dc315f",
+                "brand-strong-hover": "#cf315e",
+                "brand-text": "#ffadc2",
+                "brand-soft": "rgba(239, 71, 118, .2)",
+                "surface": "#18181c",
+                "border": "rgba(255, 255, 255, .1)",
+                "radius": "12px",
+                "shadow": "0 10px 30px rgba(0, 0, 0, .36)",
+                "text": "#f5f5f7",
+                "muted": "rgba(255, 255, 255, .72)",
+                "control": "rgba(255, 255, 255, .07)",
+                "control-hover": "rgba(255, 255, 255, .12)"
+              }
+            },
+            "learning": {
+              "fontSize": "13px",
+              "background": "rgb(24, 24, 28)",
+              "borderColor": "rgba(255, 255, 255, 0.1)",
+              "borderRadius": "12px",
+              "boxShadow": "rgba(0, 0, 0, 0.36) 0px 10px 30px 0px",
+              "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+              "color": "rgb(245, 245, 247)",
+              "saveBackground": "rgb(220, 49, 95)",
+              "saveColor": "rgb(255, 255, 255)",
+              "replayColor": "rgb(255, 173, 194)",
+              "tokens": {
+                "brand": "#ef4776",
+                "brand-strong": "#dc315f",
+                "brand-strong-hover": "#cf315e",
+                "brand-text": "#ffadc2",
+                "brand-soft": "rgba(239, 71, 118, .2)",
+                "surface": "#18181c",
+                "border": "rgba(255, 255, 255, .1)",
+                "radius": "12px",
+                "shadow": "0 10px 30px rgba(0, 0, 0, .36)",
+                "text": "#f5f5f7",
+                "muted": "rgba(255, 255, 255, .72)",
+                "control": "rgba(255, 255, 255, .07)",
+                "control-hover": "rgba(255, 255, 255, .12)"
+              },
+              "modeCaption": "播放辅助",
+              "translationDisplay": "block",
+              "editors": 0
+            },
+            "quote": {
+              "fontSize": "13px",
+              "color": "rgb(245, 245, 247)",
+              "borderColor": "rgb(255, 173, 194)",
+              "borderWidth": "3px",
+              "hostTextVariable": "#00ff00",
+              "panelTextVariable": "#f5f5f7",
+              "panelQuoteBorderVariable": "#ffadc2"
+            }
+          }
+        },
+        {
           "name": "Editing pins the complete sentence before typing and preserves editor focus when real playback reaches the next sentence",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句关闭循环本句句末暂停译文完成讲解编辑strong teeth 描述海獭用于咬开食物的坚硬牙齿。后一句讲到用石头打开贝壳。前后语境Sea otters have strong teeth.They use rocks to open shells.重新讲解收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文完成讲解编辑strong teeth 描述海獭用于咬开食物的坚硬牙齿。后一句讲到用石头打开贝壳。前后语境Sea otters have strong teeth.They use rocks to open shells.重新讲解收藏此句学习中心 ↗",
             "sentenceId": "sentence:0,1:0:2500:1cd7mqi",
             "index": "0",
             "startMs": "0",
             "endMs": "2500",
             "paused": true,
-            "time": 3.226514,
+            "time": 3.241016,
             "rate": 2,
             "seeking": false,
             "loop": "false",
@@ -235,13 +326,13 @@
           "name": "Following playback returns the learning selection to the current media sentence",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。2 / 4 · 0:03–0:05They use rocks to open shells.跟随播放重播原句关闭循环本句句末暂停译文编辑它们用石头打开贝壳。前后语境Sea otters have strong teeth.They use rocks to open shells.它们生活在海洋里。查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。2 / 4 · 0:03–0:05They use rocks to open shells.跟随播放重播原句播放辅助关闭循环本句句末暂停译文编辑它们用石头打开贝壳。前后语境Sea otters have strong teeth.They use rocks to open shells.它们生活在海洋里。查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:2,3:3000:5500:lnr9ia",
             "index": "1",
             "startMs": "3000",
             "endMs": "5500",
             "paused": true,
-            "time": 3.226514,
+            "time": 3.241016,
             "rate": 2,
             "seeking": false,
             "loop": "false",
@@ -262,18 +353,18 @@
           "name": "An explicit save preserves confirmed translation, title, neighboring context and stable deduplication identity",
           "pass": true,
           "details": {
-            "id": "1f8d236f-1e7e-4bad-a0c0-b04adf917f99",
+            "id": "c96b50e7-f6b0-4f9a-8789-2e2a3491cc97",
             "identityKey": "en\u0000sea otters have strong teeth.",
             "sourceLanguage": "en",
             "term": "Sea otters have strong teeth.",
             "kind": "sentence",
             "note": "strong teeth 描述用于咬开食物的坚硬牙齿（已确认）。",
-            "noteUpdatedAt": 1791699868638,
+            "noteUpdatedAt": 1791702001818,
             "normalizedTerm": "sea otters have strong teeth.",
             "translations": {
               "zh-hans": {
                 "text": "海獭有坚硬的牙齿（已确认）。",
-                "updatedAt": 1791699868638
+                "updatedAt": 1791702001818
               }
             },
             "phonetic": "",
@@ -288,16 +379,16 @@
                   "startMs": 0,
                   "endMs": 2500
                 },
-                "capturedAt": 1791699868638
+                "capturedAt": 1791702001818
               }
             ],
-            "createdAt": 1791699868573,
-            "updatedAt": 1791699868638,
-            "lastSeenAt": 1791699868638,
+            "createdAt": 1791702001769,
+            "updatedAt": 1791702001818,
+            "lastSeenAt": 1791702001818,
             "encounterCount": 2,
             "masteryLevel": 0,
             "status": "new",
-            "nextReviewAt": 1791699868573,
+            "nextReviewAt": 1791702001769,
             "lastReviewedAt": null,
             "reviewCount": 0,
             "lapseCount": 0,
@@ -359,7 +450,7 @@
             "overflowX": false,
             "overflowY": "auto",
             "saveVisible": true,
-            "screenshot": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/youtube-learning-compact.png"
+            "screenshot": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/youtube-learning-compact.png"
           }
         },
         {
@@ -375,7 +466,7 @@
           "pass": true,
           "details": {
             "paused": false,
-            "time": 3.036084,
+            "time": 3.037394,
             "rate": 2,
             "seeking": false
           }
@@ -385,7 +476,7 @@
           "pass": true,
           "details": {
             "href": "https://www.youtube.com/watch?v=frSentence1&t=3s",
-            "screenshot": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/youtube-learning-center-source.png"
+            "screenshot": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/youtube-learning-center-source.png"
           }
         },
         {
@@ -400,7 +491,7 @@
           "pass": true,
           "details": {
             "paused": false,
-            "time": 3.017448,
+            "time": 3.01422,
             "rate": 1,
             "seeking": false
           }
@@ -409,7 +500,7 @@
           "name": "Changing video identity closes old learning and shows only the new original timeline with controls off",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 1 · 0:00–0:02New youtube video owns this sentence.跟随播放重播原句关闭循环本句句末暂停译文编辑正在翻译…前后语境New youtube video owns this sentence.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 1 · 0:00–0:02New youtube video owns this sentence.跟随播放重播原句播放辅助关闭循环本句句末暂停译文编辑正在翻译…前后语境New youtube video owns this sentence.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:0:0:2000:1tckuid",
             "index": "0",
             "startMs": "0",
@@ -431,18 +522,86 @@
       ],
       "captures": [
         {
-          "screenshot": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/youtube-fullscreen.png",
-          "dom": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/youtube-fullscreen.html"
+          "screenshot": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/youtube-video-menu.png",
+          "dom": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/youtube-video-menu.html"
         },
         {
-          "screenshot": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/youtube-learning.png",
-          "dom": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/youtube-learning.html"
+          "screenshot": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/youtube-fullscreen.png",
+          "dom": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/youtube-fullscreen.html"
         },
         {
-          "screenshot": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/youtube-learning-explanation.png",
-          "dom": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/youtube-learning-explanation.html"
+          "screenshot": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/youtube-learning.png",
+          "dom": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/youtube-learning.html"
+        },
+        {
+          "screenshot": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/youtube-learning-explanation.png",
+          "dom": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/youtube-learning-explanation.html"
         }
       ],
+      "appearance": {
+        "menu": {
+          "background": "rgb(24, 24, 28)",
+          "borderColor": "rgba(255, 255, 255, 0.1)",
+          "borderRadius": "12px",
+          "boxShadow": "rgba(0, 0, 0, 0.36) 0px 10px 30px 0px",
+          "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "color": "rgb(245, 245, 247)",
+          "tokens": {
+            "brand": "#ef4776",
+            "brand-strong": "#dc315f",
+            "brand-strong-hover": "#cf315e",
+            "brand-text": "#ffadc2",
+            "brand-soft": "rgba(239, 71, 118, .2)",
+            "surface": "#18181c",
+            "border": "rgba(255, 255, 255, .1)",
+            "radius": "12px",
+            "shadow": "0 10px 30px rgba(0, 0, 0, .36)",
+            "text": "#f5f5f7",
+            "muted": "rgba(255, 255, 255, .72)",
+            "control": "rgba(255, 255, 255, .07)",
+            "control-hover": "rgba(255, 255, 255, .12)"
+          }
+        },
+        "learning": {
+          "fontSize": "13px",
+          "background": "rgb(24, 24, 28)",
+          "borderColor": "rgba(255, 255, 255, 0.1)",
+          "borderRadius": "12px",
+          "boxShadow": "rgba(0, 0, 0, 0.36) 0px 10px 30px 0px",
+          "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "color": "rgb(245, 245, 247)",
+          "saveBackground": "rgb(220, 49, 95)",
+          "saveColor": "rgb(255, 255, 255)",
+          "replayColor": "rgb(255, 173, 194)",
+          "tokens": {
+            "brand": "#ef4776",
+            "brand-strong": "#dc315f",
+            "brand-strong-hover": "#cf315e",
+            "brand-text": "#ffadc2",
+            "brand-soft": "rgba(239, 71, 118, .2)",
+            "surface": "#18181c",
+            "border": "rgba(255, 255, 255, .1)",
+            "radius": "12px",
+            "shadow": "0 10px 30px rgba(0, 0, 0, .36)",
+            "text": "#f5f5f7",
+            "muted": "rgba(255, 255, 255, .72)",
+            "control": "rgba(255, 255, 255, .07)",
+            "control-hover": "rgba(255, 255, 255, .12)"
+          },
+          "modeCaption": "播放辅助",
+          "translationDisplay": "block",
+          "editors": 0
+        },
+        "quote": {
+          "fontSize": "13px",
+          "color": "rgb(245, 245, 247)",
+          "borderColor": "rgb(255, 173, 194)",
+          "borderWidth": "3px",
+          "hostTextVariable": "#00ff00",
+          "panelTextVariable": "#f5f5f7",
+          "panelQuoteBorderVariable": "#ffadc2"
+        }
+      },
       "success": true
     },
     {
@@ -454,8 +613,31 @@
           "pass": true,
           "details": {
             "fontSize": "13px",
-            "background": "rgba(29, 34, 43, 0.96)",
-            "borderRadius": "16px",
+            "background": "rgb(24, 24, 28)",
+            "borderColor": "rgba(255, 255, 255, 0.1)",
+            "borderRadius": "12px",
+            "boxShadow": "rgba(0, 0, 0, 0.36) 0px 10px 30px 0px",
+            "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+            "color": "rgb(245, 245, 247)",
+            "saveBackground": "rgb(220, 49, 95)",
+            "saveColor": "rgb(255, 255, 255)",
+            "replayColor": "rgb(255, 173, 194)",
+            "tokens": {
+              "brand": "#ef4776",
+              "brand-strong": "#dc315f",
+              "brand-strong-hover": "#cf315e",
+              "brand-text": "#ffadc2",
+              "brand-soft": "rgba(239, 71, 118, .2)",
+              "surface": "#18181c",
+              "border": "rgba(255, 255, 255, .1)",
+              "radius": "12px",
+              "shadow": "0 10px 30px rgba(0, 0, 0, .36)",
+              "text": "#f5f5f7",
+              "muted": "rgba(255, 255, 255, .72)",
+              "control": "rgba(255, 255, 255, .07)",
+              "control-hover": "rgba(255, 255, 255, .12)"
+            },
+            "modeCaption": "播放辅助",
             "translationDisplay": "block",
             "editors": 0
           }
@@ -464,7 +646,7 @@
           "name": "Two source cues become one complete sentence with original 0–2500 ms timing and preserve paused playback",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.跟随播放重播原句关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.跟随播放重播原句播放辅助关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:0,1:0:2500:1cd7mqi",
             "index": "0",
             "startMs": "0",
@@ -484,7 +666,7 @@
           "name": "Next complete sentence retains source interval and nearby context without implicitly playing",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。2 / 4 · 0:03–0:05They use rocks to open shells.固定此句回到当前句重播原句关闭循环本句句末暂停译文编辑它们用石头打开贝壳。前后语境Sea otters have strong teeth.They use rocks to open shells.它们生活在海洋里。查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。2 / 4 · 0:03–0:05They use rocks to open shells.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑它们用石头打开贝壳。前后语境Sea otters have strong teeth.They use rocks to open shells.它们生活在海洋里。查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:2,3:3000:5500:lnr9ia",
             "index": "1",
             "startMs": "3000",
@@ -504,7 +686,7 @@
           "name": "A Chinese source sentence keeps its own original timing and avoids a same-target provider call",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。3 / 4 · 0:06–0:07它们生活在海洋里。固定此句回到当前句重播原句关闭循环本句句末暂停译文编辑它们生活在海洋里。前后语境They use rocks to open shells.它们生活在海洋里。A quiet final sentence.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。3 / 4 · 0:06–0:07它们生活在海洋里。固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑它们生活在海洋里。前后语境They use rocks to open shells.它们生活在海洋里。A quiet final sentence.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:4:6000:7000:ik76cc",
             "index": "2",
             "startMs": "6000",
@@ -528,7 +710,7 @@
           "name": "A real media clock crosses the sentence end and loops to its original start, retaining user playback rate",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:0,1:0:2500:1cd7mqi",
             "index": "0",
             "startMs": "0",
@@ -548,7 +730,7 @@
           "name": "User pause remains authoritative while a loop is armed",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:0,1:0:2500:1cd7mqi",
             "index": "0",
             "startMs": "0",
@@ -568,7 +750,7 @@
           "name": "Closing playback assistance clears its mode without implicitly playing a user-paused video",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:0,1:0:2500:1cd7mqi",
             "index": "0",
             "startMs": "0",
@@ -588,7 +770,7 @@
           "name": "User seek outside the active sentence releases repeat control",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.跟随播放重播原句关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.跟随播放重播原句播放辅助关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:0,1:0:2500:1cd7mqi",
             "index": "0",
             "startMs": "0",
@@ -608,7 +790,7 @@
           "name": "Sentence-end pause stops the real media clock at the source boundary",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:0,1:0:2500:1cd7mqi",
             "index": "0",
             "startMs": "0",
@@ -628,13 +810,13 @@
           "name": "Turning off end pause restores uninterrupted playback",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑海獭有强有力的牙齿。前后语境Sea otters have strong teeth.They use rocks to open shells.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:0,1:0:2500:1cd7mqi",
             "index": "0",
             "startMs": "0",
             "endMs": "2500",
             "paused": false,
-            "time": 2.822432,
+            "time": 2.824836,
             "rate": 2,
             "seeking": false,
             "loop": "false",
@@ -657,16 +839,84 @@
           }
         },
         {
+          "name": "Learning and the existing video menu share FluentRead appearance and readable quotes independently of host Element variables",
+          "pass": true,
+          "details": {
+            "menu": {
+              "background": "rgb(24, 24, 28)",
+              "borderColor": "rgba(255, 255, 255, 0.1)",
+              "borderRadius": "12px",
+              "boxShadow": "rgba(0, 0, 0, 0.36) 0px 10px 30px 0px",
+              "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+              "color": "rgb(245, 245, 247)",
+              "tokens": {
+                "brand": "#ef4776",
+                "brand-strong": "#dc315f",
+                "brand-strong-hover": "#cf315e",
+                "brand-text": "#ffadc2",
+                "brand-soft": "rgba(239, 71, 118, .2)",
+                "surface": "#18181c",
+                "border": "rgba(255, 255, 255, .1)",
+                "radius": "12px",
+                "shadow": "0 10px 30px rgba(0, 0, 0, .36)",
+                "text": "#f5f5f7",
+                "muted": "rgba(255, 255, 255, .72)",
+                "control": "rgba(255, 255, 255, .07)",
+                "control-hover": "rgba(255, 255, 255, .12)"
+              }
+            },
+            "learning": {
+              "fontSize": "13px",
+              "background": "rgb(24, 24, 28)",
+              "borderColor": "rgba(255, 255, 255, 0.1)",
+              "borderRadius": "12px",
+              "boxShadow": "rgba(0, 0, 0, 0.36) 0px 10px 30px 0px",
+              "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+              "color": "rgb(245, 245, 247)",
+              "saveBackground": "rgb(220, 49, 95)",
+              "saveColor": "rgb(255, 255, 255)",
+              "replayColor": "rgb(255, 173, 194)",
+              "tokens": {
+                "brand": "#ef4776",
+                "brand-strong": "#dc315f",
+                "brand-strong-hover": "#cf315e",
+                "brand-text": "#ffadc2",
+                "brand-soft": "rgba(239, 71, 118, .2)",
+                "surface": "#18181c",
+                "border": "rgba(255, 255, 255, .1)",
+                "radius": "12px",
+                "shadow": "0 10px 30px rgba(0, 0, 0, .36)",
+                "text": "#f5f5f7",
+                "muted": "rgba(255, 255, 255, .72)",
+                "control": "rgba(255, 255, 255, .07)",
+                "control-hover": "rgba(255, 255, 255, .12)"
+              },
+              "modeCaption": "播放辅助",
+              "translationDisplay": "block",
+              "editors": 0
+            },
+            "quote": {
+              "fontSize": "13px",
+              "color": "rgb(245, 245, 247)",
+              "borderColor": "rgb(255, 173, 194)",
+              "borderWidth": "3px",
+              "hostTextVariable": "#00ff00",
+              "panelTextVariable": "#f5f5f7",
+              "panelQuoteBorderVariable": "#ffadc2"
+            }
+          }
+        },
+        {
           "name": "Editing pins the complete sentence before typing and preserves editor focus when real playback reaches the next sentence",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句关闭循环本句句末暂停译文完成讲解编辑strong teeth 描述海獭用于咬开食物的坚硬牙齿。后一句讲到用石头打开贝壳。前后语境Sea otters have strong teeth.They use rocks to open shells.重新讲解收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 4 · 0:00–0:02Sea otters have strong teeth.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文完成讲解编辑strong teeth 描述海獭用于咬开食物的坚硬牙齿。后一句讲到用石头打开贝壳。前后语境Sea otters have strong teeth.They use rocks to open shells.重新讲解收藏此句学习中心 ↗",
             "sentenceId": "sentence:0,1:0:2500:1cd7mqi",
             "index": "0",
             "startMs": "0",
             "endMs": "2500",
             "paused": true,
-            "time": 3.235458,
+            "time": 3.23191,
             "rate": 2,
             "seeking": false,
             "loop": "false",
@@ -684,13 +934,13 @@
           "name": "Following playback returns the learning selection to the current media sentence",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。2 / 4 · 0:03–0:05They use rocks to open shells.跟随播放重播原句关闭循环本句句末暂停译文编辑它们用石头打开贝壳。前后语境Sea otters have strong teeth.They use rocks to open shells.它们生活在海洋里。查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。2 / 4 · 0:03–0:05They use rocks to open shells.跟随播放重播原句播放辅助关闭循环本句句末暂停译文编辑它们用石头打开贝壳。前后语境Sea otters have strong teeth.They use rocks to open shells.它们生活在海洋里。查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:2,3:3000:5500:lnr9ia",
             "index": "1",
             "startMs": "3000",
             "endMs": "5500",
             "paused": true,
-            "time": 3.235458,
+            "time": 3.23191,
             "rate": 2,
             "seeking": false,
             "loop": "false",
@@ -712,18 +962,18 @@
           "name": "An explicit save preserves confirmed translation, title, neighboring context and stable deduplication identity",
           "pass": true,
           "details": {
-            "id": "1f8d236f-1e7e-4bad-a0c0-b04adf917f99",
+            "id": "c96b50e7-f6b0-4f9a-8789-2e2a3491cc97",
             "identityKey": "en\u0000sea otters have strong teeth.",
             "sourceLanguage": "en",
             "term": "Sea otters have strong teeth.",
             "kind": "sentence",
             "note": "strong teeth 描述用于咬开食物的坚硬牙齿（已确认）。",
-            "noteUpdatedAt": 1791699881905,
+            "noteUpdatedAt": 1791702015736,
             "normalizedTerm": "sea otters have strong teeth.",
             "translations": {
               "zh-hans": {
                 "text": "海獭有坚硬的牙齿（已确认）。",
-                "updatedAt": 1791699881905
+                "updatedAt": 1791702015736
               }
             },
             "phonetic": "",
@@ -738,7 +988,7 @@
                   "startMs": 0,
                   "endMs": 2500
                 },
-                "capturedAt": 1791699869419
+                "capturedAt": 1791702002667
               },
               {
                 "text": "Sea otters have strong teeth. They use rocks to open shells.",
@@ -749,16 +999,16 @@
                   "startMs": 0,
                   "endMs": 2500
                 },
-                "capturedAt": 1791699881905
+                "capturedAt": 1791702015736
               }
             ],
-            "createdAt": 1791699868573,
-            "updatedAt": 1791699881905,
-            "lastSeenAt": 1791699881905,
+            "createdAt": 1791702001769,
+            "updatedAt": 1791702015736,
+            "lastSeenAt": 1791702015736,
             "encounterCount": 6,
             "masteryLevel": 0,
             "status": "new",
-            "nextReviewAt": 1791699868573,
+            "nextReviewAt": 1791702001769,
             "lastReviewedAt": null,
             "reviewCount": 0,
             "lapseCount": 0,
@@ -820,7 +1070,7 @@
             "overflowX": false,
             "overflowY": "auto",
             "saveVisible": true,
-            "screenshot": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/x-learning-compact.png"
+            "screenshot": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-learning-compact.png"
           }
         },
         {
@@ -836,7 +1086,7 @@
           "pass": true,
           "details": {
             "paused": false,
-            "time": 3.03868,
+            "time": 3.036522,
             "rate": 2,
             "seeking": false,
             "sourceStatus": "已加载字幕 · 6 条"
@@ -847,7 +1097,7 @@
           "pass": true,
           "details": {
             "href": "https://x.com/fluentread/status/424243#fluentread-video=3000,5500",
-            "screenshot": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/x-learning-center-source.png"
+            "screenshot": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-learning-center-source.png"
           }
         },
         {
@@ -861,13 +1111,13 @@
           "name": "Returning from the X learning source restores the saved start using production fragment recovery",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。2 / 4 · 0:03–0:05They use rocks to open shells.固定此句回到当前句重播原句关闭循环本句句末暂停译文编辑它们用石头打开贝壳（已确认）。前后语境Sea otters have strong teeth.They use rocks to open shells.它们生活在海洋里。查看解释已收藏学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。2 / 4 · 0:03–0:05They use rocks to open shells.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑它们用石头打开贝壳（已确认）。前后语境Sea otters have strong teeth.They use rocks to open shells.它们生活在海洋里。查看解释已收藏学习中心 ↗",
             "sentenceId": "sentence:2,3:3000:5500:lnr9ia",
             "index": "1",
             "startMs": "3000",
             "endMs": "5500",
             "paused": true,
-            "time": 3.041588,
+            "time": 3.03818,
             "rate": 2,
             "seeking": false,
             "loop": "false",
@@ -882,7 +1132,7 @@
           "pass": true,
           "details": {
             "paused": false,
-            "time": 3.017472,
+            "time": 3.016538,
             "rate": 1,
             "seeking": false,
             "sourceStatus": "已加载字幕 · 6 条"
@@ -892,7 +1142,7 @@
           "name": "Changing video identity closes old learning and shows only the new original timeline with controls off",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 1 · 0:00–0:02New x video owns this sentence.跟随播放重播原句关闭循环本句句末暂停译文编辑正在翻译…前后语境New x video owns this sentence.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 1 · 0:00–0:02New x video owns this sentence.跟随播放重播原句播放辅助关闭循环本句句末暂停译文编辑正在翻译…前后语境New x video owns this sentence.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:0:0:2000:13yv2cw",
             "index": "0",
             "startMs": "0",
@@ -915,18 +1165,86 @@
       ],
       "captures": [
         {
-          "screenshot": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/x-fullscreen.png",
-          "dom": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/x-fullscreen.html"
+          "screenshot": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-video-menu.png",
+          "dom": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-video-menu.html"
         },
         {
-          "screenshot": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/x-learning.png",
-          "dom": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/x-learning.html"
+          "screenshot": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-fullscreen.png",
+          "dom": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-fullscreen.html"
         },
         {
-          "screenshot": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/x-learning-explanation.png",
-          "dom": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/x-learning-explanation.html"
+          "screenshot": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-learning.png",
+          "dom": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-learning.html"
+        },
+        {
+          "screenshot": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-learning-explanation.png",
+          "dom": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-learning-explanation.html"
         }
       ],
+      "appearance": {
+        "menu": {
+          "background": "rgb(24, 24, 28)",
+          "borderColor": "rgba(255, 255, 255, 0.1)",
+          "borderRadius": "12px",
+          "boxShadow": "rgba(0, 0, 0, 0.36) 0px 10px 30px 0px",
+          "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "color": "rgb(245, 245, 247)",
+          "tokens": {
+            "brand": "#ef4776",
+            "brand-strong": "#dc315f",
+            "brand-strong-hover": "#cf315e",
+            "brand-text": "#ffadc2",
+            "brand-soft": "rgba(239, 71, 118, .2)",
+            "surface": "#18181c",
+            "border": "rgba(255, 255, 255, .1)",
+            "radius": "12px",
+            "shadow": "0 10px 30px rgba(0, 0, 0, .36)",
+            "text": "#f5f5f7",
+            "muted": "rgba(255, 255, 255, .72)",
+            "control": "rgba(255, 255, 255, .07)",
+            "control-hover": "rgba(255, 255, 255, .12)"
+          }
+        },
+        "learning": {
+          "fontSize": "13px",
+          "background": "rgb(24, 24, 28)",
+          "borderColor": "rgba(255, 255, 255, 0.1)",
+          "borderRadius": "12px",
+          "boxShadow": "rgba(0, 0, 0, 0.36) 0px 10px 30px 0px",
+          "fontFamily": "-apple-system, \"system-ui\", \"Segoe UI\", \"PingFang SC\", \"Microsoft YaHei\", sans-serif",
+          "color": "rgb(245, 245, 247)",
+          "saveBackground": "rgb(220, 49, 95)",
+          "saveColor": "rgb(255, 255, 255)",
+          "replayColor": "rgb(255, 173, 194)",
+          "tokens": {
+            "brand": "#ef4776",
+            "brand-strong": "#dc315f",
+            "brand-strong-hover": "#cf315e",
+            "brand-text": "#ffadc2",
+            "brand-soft": "rgba(239, 71, 118, .2)",
+            "surface": "#18181c",
+            "border": "rgba(255, 255, 255, .1)",
+            "radius": "12px",
+            "shadow": "0 10px 30px rgba(0, 0, 0, .36)",
+            "text": "#f5f5f7",
+            "muted": "rgba(255, 255, 255, .72)",
+            "control": "rgba(255, 255, 255, .07)",
+            "control-hover": "rgba(255, 255, 255, .12)"
+          },
+          "modeCaption": "播放辅助",
+          "translationDisplay": "block",
+          "editors": 0
+        },
+        "quote": {
+          "fontSize": "13px",
+          "color": "rgb(245, 245, 247)",
+          "borderColor": "rgb(255, 173, 194)",
+          "borderWidth": "3px",
+          "hostTextVariable": "#00ff00",
+          "panelTextVariable": "#f5f5f7",
+          "panelQuoteBorderVariable": "#ffadc2"
+        }
+      },
       "success": true
     },
     {
@@ -942,7 +1260,7 @@
           "name": "The same empty learning panel becomes available only when an original timed-caption track arrives",
           "pass": true,
           "details": {
-            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 1 · 0:00–0:02An original source track can now be learned.跟随播放重播原句关闭循环本句句末暂停译文编辑固定译文：An original source track can now be learned.前后语境An original source track can now be learned.查看解释收藏此句学习中心 ↗",
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 1 · 0:00–0:02An original source track can now be learned.跟随播放重播原句播放辅助关闭循环本句句末暂停译文编辑固定译文：An original source track can now be learned.前后语境An original source track can now be learned.查看解释收藏此句学习中心 ↗",
             "sentenceId": "sentence:0:0:2500:eigjwz",
             "index": "0",
             "startMs": "0",
@@ -960,8 +1278,8 @@
       ],
       "captures": [
         {
-          "screenshot": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/youtube-translated-only-track.png",
-          "dom": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/youtube-translated-only-track.html"
+          "screenshot": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/youtube-translated-only-track.png",
+          "dom": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/youtube-translated-only-track.html"
         }
       ],
       "success": true
@@ -992,7 +1310,7 @@
                   "startMs": 0,
                   "endMs": 2000
                 },
-                "capturedAt": 1791699890105
+                "capturedAt": 1791702023768
               }
             ],
             "providerLanguages": [
@@ -1004,8 +1322,8 @@
       ],
       "captures": [
         {
-          "screenshot": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/x-multiple-videos-without-index.png",
-          "dom": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/x-multiple-videos-without-index.html"
+          "screenshot": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-multiple-videos-without-index.png",
+          "dom": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-multiple-videos-without-index.html"
         }
       ],
       "success": true
@@ -1036,7 +1354,7 @@
                   "startMs": 0,
                   "endMs": 2000
                 },
-                "capturedAt": 1791699891554
+                "capturedAt": 1791702025352
               }
             ],
             "providerLanguages": [
@@ -1048,8 +1366,8 @@
       ],
       "captures": [
         {
-          "screenshot": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/x-multiple-videos-wrong-index.png",
-          "dom": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/x-multiple-videos-wrong-index.html"
+          "screenshot": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-multiple-videos-wrong-index.png",
+          "dom": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-multiple-videos-wrong-index.html"
         }
       ],
       "success": true
@@ -1080,7 +1398,7 @@
                   "startMs": 0,
                   "endMs": 2000
                 },
-                "capturedAt": 1791699893038
+                "capturedAt": 1791702027039
               }
             ],
             "providerLanguages": [
@@ -1092,8 +1410,8 @@
       ],
       "captures": [
         {
-          "screenshot": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/x-unassigned-quoted-status.png",
-          "dom": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/x-unassigned-quoted-status.html"
+          "screenshot": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-unassigned-quoted-status.png",
+          "dom": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-unassigned-quoted-status.html"
         }
       ],
       "success": true
@@ -1125,7 +1443,7 @@
                   "startMs": 0,
                   "endMs": 2000
                 },
-                "capturedAt": 1791699894505
+                "capturedAt": 1791702028935
               }
             ],
             "providerLanguages": [
@@ -1137,8 +1455,8 @@
       ],
       "captures": [
         {
-          "screenshot": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/x-multiple-videos-explicit-index.png",
-          "dom": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/x-multiple-videos-explicit-index.html"
+          "screenshot": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-multiple-videos-explicit-index.png",
+          "dom": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-multiple-videos-explicit-index.html"
         }
       ],
       "success": true
@@ -1169,7 +1487,7 @@
                   "startMs": 0,
                   "endMs": 2000
                 },
-                "capturedAt": 1791699895970
+                "capturedAt": 1791702030521
               }
             ],
             "providerLanguages": [
@@ -1181,8 +1499,8 @@
       ],
       "captures": [
         {
-          "screenshot": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/x-single-dom-video-with-unproven-index.png",
-          "dom": "/private/tmp/fluentread-video-sentence-learning-integrated-20261011/x-single-dom-video-with-unproven-index.html"
+          "screenshot": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-single-dom-video-with-unproven-index.png",
+          "dom": "/private/tmp/fluentread-video-sentence-learning-brand-final-20261011/x-single-dom-video-with-unproven-index.html"
         }
       ],
       "success": true
@@ -1195,9 +1513,9 @@
     "profileRemoved": true
   },
   "focusObserver": {
-    "monitorPid": 19839,
-    "time": 1791699858273.469,
-    "monotonicMs": 3125150605.3316255
+    "monitorPid": 45261,
+    "time": 1791701989454.33,
+    "monotonicMs": 3127281386.26625
   },
   "launchMode": "macos-background-cdp",
   "focusPolicy": "launchservices-no-foreground",
