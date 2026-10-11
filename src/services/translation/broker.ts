@@ -42,6 +42,7 @@ import {hasTranslationContent} from '@/src/core/translation/result';
 import {isNativeBatchResponseError, validateNativeBatchResults} from '@/src/core/translation/nativeBatch';
 import {buildGlossaryRevision, resolveGlossary} from '@/src/core/glossary';
 import {supportsNativeTranslationBatch, supportsTranslationGlossary} from './capabilities';
+import {isNativeTranslationBatchEnabled} from '@/src/core/config/nativeBatch';
 import {getGlossaryProtectionEntries, isGlossaryOnlyResult, prepareGlossaryRequest} from './glossaryProtection';
 import {
     isDefinitePageContextLeak,
@@ -105,6 +106,7 @@ interface TranslationRequestExecution {
     readonly sourceLanguage: string;
     readonly targetLanguage: string;
     readonly enableAIContext: boolean;
+    readonly nativeBatchEnabled: boolean;
     readonly thinking: boolean;
     readonly abortSignal?: AbortSignal;
     readonly ownershipKey?: string;
@@ -338,6 +340,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             sourceLanguage,
             targetLanguage,
             service,
+            ...(supportsNativeTranslationBatch(service) ? {enableNativeBatch: execution.nativeBatchEnabled} : {}),
             model: getSelectedModel(current, service, modelOverride),
             endpoint: getProviderEndpoint(current, service),
             azureOpenaiEndpoint: service === 'azureOpenai' ? current.azureOpenaiEndpoint : undefined,
@@ -346,6 +349,8 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
                 version: 4,
                 order: current.freeTranslationOrder,
                 mode: current.freeTranslationMode,
+                nativeBatch: [services.google, services.microsoft].map(id =>
+                    [id, isNativeTranslationBatchEnabled(id, current.nativeBatchTranslationEnabled)]),
             }} : {}),
             // v3 将相邻自动数学字面值合为有界保护组，旧文档缓存不能绕过完整恢复契约。
             // 仅分隔文档请求；网页缓存、已保存译文和人工校订不清空。
@@ -670,6 +675,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         return runWithApiKeyRotation(execution.config, execution.service, (selected, attempt) => (
             callProviderAttemptWithinDeadline({...execution, config: selected}, attachTranslationProviderConfig({
                 ...message,
+                enableNativeBatch: message.enableNativeBatch ?? execution.nativeBatchEnabled,
                 requestTimeoutMs: attempt.attemptTimeoutMs ?? getRemainingDeadlineMs(deadlineAt),
             }, selected))
         ), {signal: execution.abortSignal, deadlineAt, now,
@@ -1054,7 +1060,19 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             execution.service,
             message.modelOverride,
         );
-        if (message.aiMultiSegment === true && promptBasedAI) {
+        const nativeBatch = supportsNativeTranslationBatch(execution.service);
+        if (nativeBatch && !execution.nativeBatchEnabled) {
+            // 显式数组继续原子返回；关闭合批只改变上游请求形态，不提前发布或缓存任何槽。
+            const translated: string[] = [];
+            for (const origin of message.origin) {
+                const single = {...message, origin, enableNativeBatch: false};
+                translated.push(startWithoutPageContext
+                    ? await callSingleProviderWithoutPageContext(execution, single, requestDeadline, pageContext)
+                    : await callSingleProviderWithContextRecovery(execution, single, context, pageContext, requestDeadline));
+            }
+            return validateNativeBatchResults(message.origin, translated);
+        }
+        if (message.aiMultiSegment === true && promptBasedAI && !nativeBatch) {
             return callPromptBasedAIBatch(
                 execution,
                 message,
@@ -1064,7 +1082,6 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
                 startWithoutPageContext,
             );
         }
-        const nativeBatch = supportsNativeTranslationBatch(execution.service);
         const nativeOrigins = nativeBatch ? [...message.origin] : message.origin;
         let results: string[];
         try {
@@ -1084,7 +1101,8 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             if (!nativeBatch || !isNativeBatchResponseError(error)) throw error;
             const recovered: string[] = [];
             for (const origin of nativeOrigins) {
-                const single = {...message, origin};
+                // 恢复必须是真正的单项请求，不能被 Google 的 scalar 收集窗重新合成坏批次。
+                const single = {...message, origin, enableNativeBatch: false};
                 recovered.push(startWithoutPageContext
                     ? await callSingleProviderWithoutPageContext(execution, single, requestDeadline, pageContext)
                     : await callSingleProviderWithContextRecovery(execution, single, context, pageContext, requestDeadline));
@@ -1421,7 +1439,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         pendingBudgetMs: number,
         recoverSharedDeadline = true,
     ): Promise<string[]> {
-        const cacheMode: CacheRequestMode = message.aiMultiSegment === true
+        const cacheMode: CacheRequestMode = message.aiMultiSegment === true && !supportsNativeTranslationBatch(execution.service)
             ? 'ai-multi-segment'
             : 'batch';
         const batchKey = buildCacheKey(
@@ -1755,6 +1773,8 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             sourceLanguage,
             targetLanguage,
             enableAIContext: message.enableAIContext ?? current.enableAIContext,
+            nativeBatchEnabled: supportsNativeTranslationBatch(selectedService) && (message.enableNativeBatch
+                ?? isNativeTranslationBatchEnabled(selectedService, current.nativeBatchTranslationEnabled)),
             thinking: message.thinkingOverride ?? isModelThinkingEnabled(
                 current.modelThinking,
                 selectedService,
@@ -1788,7 +1808,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         const requestGeneration = cacheGeneration;
         // 步骤 2：摘要是 AI 上下文增强，只拿 provider deadline 的一小段预算。
         const summaryBudget = Math.min(10_000, Math.max(1_000, Math.floor(providerBudget / 4)));
-        const pageContext = imageInput ? '' : await addPageSummary(
+        const summarizedPageContext = imageInput ? '' : await addPageSummary(
             execution,
             rawPageContext,
             useCache,
@@ -1797,6 +1817,12 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             message.modelOverride,
             summaryBudget,
         );
+        // 篇章证据不进入摘要缓存：每段只复用原有页面摘要，且总参考预算保持 4,000。
+        const discourse = !imageInput && isAIContextEnabled(execution, message.modelOverride)
+            && typeof message.discourseContext === 'string' ? message.discourseContext.slice(0, 2400) : '';
+        const pageContext = discourse
+            ? `${summarizedPageContext.slice(0, Math.max(0, 4000 - discourse.length - 48))}\n<discourse_evidence>\n${discourse}\n</discourse_evidence>`.slice(0, 4000)
+            : summarizedPageContext;
         const remainingProviderBudget = getRemainingDeadlineMs(providerDeadline);
 
         // 步骤 3：检测样本只属于本地翻译 auto；即使其他扩展页面手工构造该字段，
@@ -1804,10 +1830,11 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         const shouldCarryDetectionText = (selectedService === 'chromeTranslator' || selectedService === 'localTranslation')
             && sourceLanguage === 'auto'
             && Boolean(message.sourceLanguageDetectionText?.trim());
+        const {discourseContext: _rawDiscourse, ...withoutDiscourse} = message;
         const providerInput = shouldCarryDetectionText
-            ? message
+            ? withoutDiscourse as TranslationRequestMessage
             : (() => {
-                const {sourceLanguageDetectionText: _ignored, ...withoutDetectionText} = message;
+                const {sourceLanguageDetectionText: _ignored, ...withoutDetectionText} = withoutDiscourse;
                 return withoutDetectionText as TranslationRequestMessage;
             })();
 
@@ -1819,6 +1846,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
                 sourceLanguage,
                 targetLanguage,
                 thinkingOverride: execution.thinking,
+                enableNativeBatch: execution.nativeBatchEnabled,
                 requestTimeoutMs: remainingProviderBudget,
             } as TranslationRequestMessage,
             current,

@@ -1,0 +1,40 @@
+{
+  "date": "2026-10-11",
+  "scope": "Conservative rendering containment for owned bilingual blocks and appearance/remount cleanup",
+  "baselineCommit": "7cabb3678f04ee9470bccfd8dab5cfbb4e06e306",
+  "candidateSourceCommit": "962a5d98bed8350c82fc4d3efadf05f45a3bd9d6",
+  "environment": {
+    "platform": "macOS",
+    "nodeVersion": "v20.11.1",
+    "pnpmVersion": "9.12.1",
+    "sameInstalledDependencies": true,
+    "packageAndLockUnchanged": true,
+    "buildConfigUnchanged": true
+  },
+  "sharedSourceSha256": {
+    "package.json": "079d4a7f919782e06e87352ab419b94e72ec4ee112a28b869d3e9e1b6d524ab8",
+    "pnpm-lock.yaml": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
+    "userscript/vite.config.ts": "067675f779eed8c88562814ecc56e4a7997083423464a14544a7da8a205562a2"
+  },
+  "baseline": {
+    "bytes": 2024762,
+    "sha256": "225fb38034a03398a23f6cacdbbd514e84233c482df3480e474837fe9b5e8e2c",
+    "prepareExitCode": 0,
+    "buildExitCode": 0,
+    "verifierExitCode": 0
+  },
+  "candidate": {
+    "bytes": 2027800,
+    "sha256": "2258c22e9dfc9953809120256488896ce751070120f9c6e569060417191fca63",
+    "buildExitCode": 0
+  },
+  "deltaBytes": 3038,
+  "deltaPercentRounded": 0.15,
+  "previousBudgetBytes": 2025000,
+  "previousBaselineHeadroomBytes": 238,
+  "candidateExcessBytes": 2800,
+  "newBudgetBytes": 2028000,
+  "budgetIncreaseBytes": 3000,
+  "candidateHeadroomBytes": 200,
+  "method": "Archive the baseline commit into a separate temporary directory, reuse the same installed dependencies, run the official resource-safe WXT prepare and userscript build, then compare exact artifact bytes and SHA256 with the candidate. No dependency or bundler changes. The budget uses the smallest whole 1000-byte increment that admits the measured candidate; all other protocol and execution-boundary assertions remain unchanged."
+}

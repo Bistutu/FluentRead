@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/VideoSubtitleAppearanceSettings.vue
  * 文件职责：提供视频字幕外观设置，并用同一套 CSS 变量展示隔离的实时预览。
- * 主要内容：左侧在等高预览区内用正常视频比例呈现字幕样式，滚动调整时保持预览可见；右侧选择显示内容、皮肤并按字号与位置、颜色与布局分组调整字幕，字号允许 80–500% 与整数自定义输入，支持恢复默认并保留所有外观配置。
+ * 主要内容：左侧在等高预览区内用正常视频比例呈现字幕样式，滚动调整时保持预览可见；右侧选择显示内容、默认关闭的逐字高亮、皮肤并按字号与位置、颜色与布局分组调整字幕，字号允许 80–500% 与整数自定义输入，支持恢复默认并保留所有外观配置。
  * 模块边界：只编辑传入 Config 草稿；保存由 SettingsSections 统一处理，播放器实际应用由 content 层负责。
  -->
 <template>
@@ -10,8 +10,8 @@
       <template #preview>
         <div class="subtitle-preview-scene" :data-position="config.videoSubtitleAppearance.position" :data-auto-bottom="config.videoSubtitleAppearance.autoBottom" data-video-subtitle-preview-scene>
         <div v-if="config.videoSubtitleVisible" class="subtitle-live-preview" :style="previewStyle" data-video-subtitle-preview>
-          <span v-if="config.videoSubtitleDisplayMode !== 'translation-only'" data-i18n-ignore>Video subtitle preview</span>
-          <b v-if="config.videoSubtitleDisplayMode !== 'original-only'" data-i18n-ignore>视频字幕预览</b>
+          <span v-if="config.videoSubtitleDisplayMode !== 'translation-only'" :class="{ 'subtitle-preview-karaoke': config.videoSubtitleAppearance.karaoke }" data-text="Video subtitle preview" data-i18n-ignore>Video subtitle preview</span>
+          <b v-if="config.videoSubtitleDisplayMode !== 'original-only'" :class="{ 'subtitle-preview-karaoke': config.videoSubtitleAppearance.karaoke }" data-text="视频字幕预览" data-i18n-ignore>视频字幕预览</b>
         </div>
         <span v-else class="subtitle-preview-hidden">字幕已隐藏</span>
       </div>
@@ -23,6 +23,9 @@
         </SettingsItem>
         <SettingsItem label="字幕显示模式" description="选择原文和译文的呈现方式" :disabled="!config.videoTranslationEnabled || !config.videoSubtitleVisible">
           <SegmentedControl v-model="config.videoSubtitleDisplayMode" :options="displayModeOptions" label="视频字幕显示模式" :disabled="!config.videoTranslationEnabled || !config.videoSubtitleVisible" />
+        </SettingsItem>
+        <SettingsItem class="subtitle-karaoke-item" label="逐字高亮" description="字幕随播放进度逐字点亮，像 KTV 歌词一样" :disabled="!config.videoTranslationEnabled || !config.videoSubtitleVisible">
+          <el-switch v-model="config.videoSubtitleAppearance.karaoke" aria-label="视频字幕逐字高亮" :disabled="!config.videoTranslationEnabled || !config.videoSubtitleVisible" data-video-subtitle-karaoke />
         </SettingsItem>
       </div>
       <div class="appearance-panel-heading">
@@ -183,6 +186,15 @@ function skinSwatchStyle(skin: typeof VIDEO_SUBTITLE_SKINS[number]): Record<stri
 .subtitle-display-preferences :deep(.settings-item) { padding:0 0 16px; grid-template-columns:minmax(0,1fr) auto; gap:12px; }
 .subtitle-display-preferences :deep(.settings-item + .settings-item) { grid-template-columns:minmax(0,1fr); }
 .subtitle-display-preferences :deep(.settings-item-control) { width:100%; }
+.subtitle-display-preferences :deep(.settings-item.subtitle-karaoke-item) { grid-template-columns:minmax(0,1fr) auto; }
+/* 预览与播放器同一套观感：未唱到的字变淡，同字高亮层循环扫过。 */
+.subtitle-preview-karaoke { position:relative; --subtitle-preview-karaoke-color:var(--fluent-read-video-subtitle-text-color); color:color-mix(in srgb, var(--subtitle-preview-karaoke-color) 46%, transparent) !important; }
+b.subtitle-preview-karaoke { --subtitle-preview-karaoke-color:var(--fluent-read-video-subtitle-translation-color); }
+.subtitle-preview-karaoke::after { position:absolute; inset:0; color:var(--subtitle-preview-karaoke-color); text-shadow:none; content:attr(data-text); content:attr(data-text) / ""; animation:subtitle-preview-karaoke 3.6s linear infinite; }
+@keyframes subtitle-preview-karaoke {
+  0% { clip-path:inset(-.3em 100% -.3em -.3em); }
+  78%, 100% { clip-path:inset(-.3em -.3em -.3em -.3em); }
+}
 .subtitle-preview-hidden { position:absolute; inset:0; display:grid; place-items:center; color:#d1d5db; font-size:13px; }
 .appearance-reset-button:focus-visible { outline:2px solid var(--brand); outline-offset:3px; }
 </style>

@@ -1,7 +1,7 @@
 /**
  * @file src/core/translation/layout.ts
  *
- * 文件职责：判定页面元素的语义块、内联关系和可重组边界，为候选引擎选择合理翻译粒度并保护页面布局。
+ * 文件职责：判定页面元素的语义块、内联关系和可重组边界，为候选引擎选择合理翻译粒度并保护页面布局；仅为站点显式非原子行内容器放开直属正文的拆分边界。
  * 主要内容：按统一的按钮语义（原生 button、按钮型 input、ARIA 控件角色、按钮类名）与呈标签形态的交互外壳区分正文与控件；识别 heading、block、inline、纯文本正文 pre、结构标签、嵌入式 aside、可选放开的侧边栏区域和 reparent 边界，保持交互控件对内部标签的翻译所有权，并在 tooltip 边界停止向外归属，限制直接子节点探测数量，并提供候选目标及内联 run 相关的布局函数。 可核对的公开符号包括 isSemanticHeadingElement、getElementDisplay、isBlockBoundary、isStructuralContainer、hasStructuralAncestor、isTranslationControlElement、findTranslationControlOwner、hasDirectReadableText、hasReadableBlockChild。
  * 模块边界：本文件属于可独立测试的 core 候选领域；可以读取传入 DOM 以计算结果，但不访问配置存储、不调用 provider、不注册页面监听器，也不负责译文渲染或 feature 生命周期。
  */
@@ -381,11 +381,12 @@ export function getDirectInlineRuns(
     protectionCache?: TranslationTextProtectionCache,
     protectionOptions?: TranslationTextProtectionOptions,
     scope: TranslationScope = 'content',
+    allowInlineContainer = false,
 ): ChildNode[][] {
     if (scope === 'content' && (isDocumentSurface(element) || isStructuralContainer(element) ||
         (!skipStructuralAncestorCheck && hasStructuralAncestor(element)))) return [];
     if (shouldStayOriginal?.(element) || isProtectedTextElement(element) ||
-        (scope === 'content' && !isBlockBoundary(element))) return [];
+        (scope === 'content' && !allowInlineContainer && !isBlockBoundary(element))) return [];
     // 控件只能走保留宿主标签/图标的实时文本槽路径，不能拆出会增加第二行的内联段落。
     const controlOwner = findTranslationControlOwner(element);
     if (controlOwner && !hasNestedTranslationControl(controlOwner)) return [];

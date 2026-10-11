@@ -1,0 +1,18 @@
+{
+  "baselineCommit": "e047f8bd05ad8439e8bd8e2bdb094b55e3056fec",
+  "baselineBytes": 2013029,
+  "candidateBytes": 2024302,
+  "deltaBytes": 11273,
+  "deltaPercent": 0.5600018678320084,
+  "baselineBudgetBytes": 2013000,
+  "budgetBytes": 2025000,
+  "budgetIncreaseBytes": 12000,
+  "baselineBudgetExceededBytes": 29,
+  "baselineSha256": "bdd8eaae5267ef00da3798e243333b8fdc5ebc304892189575fef991436afcd9",
+  "candidateSha256": "4fe0246f43a6b7b9869b4cd9aaffc85cb917b9ce60d7f8b6e466ac0908be0299",
+  "sameDependencies": true,
+  "lockfileSha256": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
+  "nodeVersion": "v20.11.1",
+  "baselineCommand": "pnpm build:userscript; independent git archive of exact main commit with same shared node_modules",
+  "candidateCommand": "pnpm build:userscript && node scripts/verify-userscript-build.mjs"
+}

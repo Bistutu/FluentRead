@@ -223,7 +223,7 @@ describe('declarative ancestor cache additional public boundaries', () => {
         expect(document.body.innerHTML).toBe(before);
     });
 
-    it('resolve and discover still use the public uncached adapter context after an inspect', () => {
+    it('keeps forced discovery misses local while resolve and public guards remain uncached', () => {
         const {document} = parseHTML('<html><body><main><p id="leaf">Readable source.</p></main></body></html>');
         const leaf = document.querySelector('#leaf')!;
         const before = document.body.innerHTML;
@@ -236,12 +236,21 @@ describe('declarative ancestor cache additional public boundaries', () => {
         const core = new TranslationCandidateCore({url, adapters: [probe, adapter]});
         expect(core.inspect(leaf).candidate?.element).toBe(leaf);
         expect(contexts.some(ctx => ctx.closestSelectorMisses !== undefined)).toBe(true);
+        const inspectMisses = contexts.find(ctx => ctx.closestSelectorMisses !== undefined)!.closestSelectorMisses;
         contexts.length = 0;
         expect(core.resolve(leaf)?.element).toBe(leaf);
         expect(contexts.length).toBeGreaterThan(0);
         expect(contexts.every(ctx => ctx.closestSelectorMisses === undefined)).toBe(true);
         contexts.length = 0;
         expect(core.discover(document.body).some(candidate => candidate.element === leaf)).toBe(true);
+        expect(contexts.length).toBeGreaterThan(0);
+        const discoveryMisses = contexts.filter(ctx => ctx.closestSelectorMisses !== undefined)
+            .map(ctx => ctx.closestSelectorMisses);
+        expect(discoveryMisses.length).toBeGreaterThan(0);
+        expect(new Set(discoveryMisses).size).toBe(1);
+        expect(discoveryMisses[0]).not.toBe(inspectMisses);
+        contexts.length = 0;
+        expect(core.shouldStayOriginal(leaf)).toBe(false);
         expect(contexts.length).toBeGreaterThan(0);
         expect(contexts.every(ctx => ctx.closestSelectorMisses === undefined)).toBe(true);
         expect(document.body.innerHTML).toBe(before);
@@ -260,6 +269,7 @@ describe('declarative ancestor cache additional public boundaries', () => {
         const core = new TranslationCandidateCore({url, adapters: [broken, adapter]});
         expect(core.inspect(blocked).candidate).toBeNull();
         expect(core.inspect(readable).candidate?.element).toBe(readable);
+        expect(core.discover(document).map(candidate => candidate.element.id)).toEqual(['readable']);
         expect(document.body.innerHTML).toBe(before);
     });
 });

@@ -1,7 +1,7 @@
 /**
  * @file tests/selectionTranslatorLifecycle.test.ts
  * 文件职责：执行划词组件的实际挂载与卸载回调，验证扩展消息端口撤销不会留下宿主页面资源。
- * 主要内容：覆盖注销清理、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移。
+ * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界和窗口尺寸变化清理。
  * 模块边界：编译真实 Vue setup 并替换浏览器和渲染依赖，不模拟完整 UI 或声称真实浏览器验证。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -20,18 +20,30 @@ import * as detect from '@/src/core/language/detect';
 import * as wordNormalization from '@/src/features/selection-translation/services/wordNormalization';
 import * as vocabularyProtocol from '@/src/features/vocabulary/protocol';
 import * as hotkey from '@/src/core/hotkey';
+import {setSelectionContextMenuHandler, translateSelectionFromContextMenu as translateSelectionThroughBridge} from '@/src/features/selection-translation/content/contextMenuBridge';
 
 vi.mock('webextension-polyfill', () => ({default: {}}));
 
 const filename = 'src/features/selection-translation/ui/SelectionTranslator.vue';
 const {descriptor} = parse(readFileSync(filename, 'utf8'), {filename});
-const compiled = ts.transpileModule(compileScript(descriptor, {id: 'selection-lifecycle'}).content, {
-    compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true},
-}).outputText;
+type SelectionBuildTarget = 'chrome' | 'userscript';
+const setupSource = compileScript(descriptor, {id: 'selection-lifecycle'}).content;
+const compiledByTarget = new Map<SelectionBuildTarget, string>();
+function compileForTarget(target: SelectionBuildTarget): string {
+    let compiled = compiledByTarget.get(target);
+    if (!compiled) {
+        // 和 Vite 的 define 使用相同静态属性替换；各构建目标只转译一次，所有用例复用真实 setup。
+        compiled = ts.transpileModule(setupSource.replaceAll('import.meta.env.BROWSER', JSON.stringify(target)), {
+            compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, esModuleInterop: true},
+        }).outputText;
+        compiledByTarget.set(target, compiled);
+    }
+    return compiled;
+}
 let app: Vue.App | undefined;
 afterEach(() => { app?.unmount(); app = undefined; vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
-function mountSelection(privateContext = false, selectionAdapter?: Record<string, unknown>) {
+function mountSelection(privateContext = false, selectionAdapter?: Record<string, unknown>, browserTarget: SelectionBuildTarget = 'chrome') {
     vi.useFakeTimers();
     const config = Object.assign(new Config(), {
         disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual', theme: 'light',
@@ -66,11 +78,17 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         extension: {inIncognitoContext: privateContext},
     };
     const unsubscribeConfig = vi.fn(), releaseContextMenu = vi.fn();
+    let contextMenuHandler = (_selectionText?: string): boolean => false;
+    const registerContextMenu = vi.fn((handler: typeof contextMenuHandler) => {
+        contextMenuHandler = handler;
+        return releaseContextMenu;
+    });
     const translateText = vi.fn().mockResolvedValue('这是译文'), translateTextBatch = vi.fn();
     let stopTts: MockInstance<(notifyRemote?: boolean) => void>;
     let ttsRequestId = 0;
     const modules: Record<string, unknown> = {
         './SpeechFollowText.vue': {},
+        '@/src/features/reading-assistant/public': {createReadingEvidenceAnchor: () => ({locate: () => 'unavailable', check: () => 'unavailable', suspend: vi.fn(), clear: vi.fn(), dispose: vi.fn()})},
         '@/src/core/tts/speechProgress': speechProgress,
         '@/src/core/translation/result': {hasDistinctTranslation},
         vue: {...Vue, useTemplateRef: () => Vue.ref(null)},
@@ -96,13 +114,13 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
             },
         },
         '@/src/features/selection-translation/content/contextMenuBridge': {
-            setSelectionContextMenuHandler: () => releaseContextMenu,
+            setSelectionContextMenuHandler: registerContextMenu,
         },
         '@/src/features/selection-translation/pageZoom': {normalizeSelectionPageZoom: () => 1},
         '@/src/ui/i18n': {useUiI18n: () => ({t: (key: string) => key, translateLegacy: (text: string) => text})},
     };
     const exports: Record<string, any> = {};
-    new Function('require', 'exports', compiled)((id: string) => {
+    new Function('require', 'exports', compileForTarget(browserTarget))((id: string) => {
         if (!(id in modules) && !id.startsWith('@/src/')) throw new Error(`Unexpected import: ${id}`);
         return modules[id] ?? {};
     }, exports);
@@ -119,6 +137,7 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
     const vm = currentApp.mount({});
     const state = (vm.$ as any).setupState as Record<string, any>;
     return {state, event, browser, config, listeners, window, document, unsubscribeConfig, releaseContextMenu, translateText, translateTextBatch, stopTts: stopTts!,
+        registerContextMenu, get contextMenuHandler() {return contextMenuHandler;},
         lifecycleErrors, unmount: () => { currentApp.unmount(); app = undefined; }};
 }
 
@@ -814,6 +833,42 @@ describe('SelectionTranslator trimmed speech offsets in rich text', () => {
     });
 });
 
+it('preserves the reading card during its evidence scroll, then resumes ordinary auto dismissal and clears frames on close', async () => {
+    const fixture = mountSelection();
+    vi.stubGlobal('Element', class {});
+    vi.stubGlobal('Node', class {});
+    const {state} = fixture;
+    fixture.config.selectionTranslatorAutoDismiss = true;
+    state.snapshot = {text: 'Practice helps.', range: {getClientRects: () => []}, parts: [{kind: 'text', text: 'Practice helps.'}]};
+    state.readingSelection = {text: 'Practice helps.', context: '', sentence: 'Practice helps.'};
+    state.readingMode = true;
+    state.showTooltip = true;
+    const disposeAnchor = vi.fn();
+    state.readingEvidenceAnchor = {locate: () => 'located', check: () => 'located', dispose: disposeAnchor, suspend: vi.fn()};
+    const citation = {quote: 'Practice helps.', sourceText: 'Practice helps.'};
+    expect(state.locateReadingEvidence(citation)).toBe('located');
+    state.handleScroll({target: null});
+    expect(state.showTooltip).toBe(true);
+    expect(disposeAnchor).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(40);
+    state.handleScroll({target: null});
+    expect(state.showTooltip).toBe(false);
+    expect(disposeAnchor).toHaveBeenCalledOnce();
+    expect(state.readingEvidenceScrollFrame).toBeUndefined();
+
+    state.showTooltip = true;
+    state.readingMode = true;
+    state.readingEvidenceAnchor = {locate: () => 'unavailable'};
+    expect(state.locateReadingEvidence(citation)).toBe('unavailable');
+    expect(state.readingEvidenceScrollFrame).toBeUndefined();
+    state.readingEvidenceAnchor = {locate: () => 'located', dispose: disposeAnchor};
+    state.readingSelection = {text: 'Practice helps.', context: '', sentence: 'Practice helps.'};
+    expect(state.locateReadingEvidence(citation)).toBe('located');
+    fixture.unmount();
+    expect(state.readingEvidenceScrollFrame).toBeUndefined();
+    expect(vi.getTimerCount()).toBe(0);
+});
+
 it('keeps an existing ordinary translation running when opening the learning view', async () => {
     const fixture = mountSelection();
     fixture.config.harness.enabled = true;
@@ -980,6 +1035,328 @@ describe('automatic card audio height ownership', () => {
     });
 });
 
+describe('context menu selection ownership', () => {
+    async function prepareMenu(browserTarget: SelectionBuildTarget = 'chrome') {
+        const fixture = mountSelection(false, undefined, browserTarget);
+        class FakeElement {}
+        class FakeNode {}
+        vi.stubGlobal('Element', FakeElement);
+        vi.stubGlobal('Node', FakeNode);
+        let nativeText = 'Good ideas deserve attention.';
+        const paragraph = {nodeType: 1, tagName: 'P', parentElement: null,
+            getAttribute: () => null, hasAttribute: () => false, closest: () => null,
+            querySelector: () => null, querySelectorAll: () => []};
+        const node = {nodeType: 3, parentElement: paragraph, isConnected: true, ownerDocument: fixture.document};
+        const range = Vue.markRaw({startContainer: node, endContainer: node, commonAncestorContainer: node,
+            startOffset: 0, endOffset: nativeText.length, collapsed: false,
+            getClientRects: vi.fn(() => [{left: 200, right: 380, top: 250, bottom: 270, width: 180, height: 20}]),
+            cloneRange: () => range, toString: () => nativeText});
+        const selection = {rangeCount: 1, isCollapsed: false, anchorNode: node, anchorOffset: 0,
+            getRangeAt: () => range, toString: () => nativeText};
+        const getSelection = vi.fn((): typeof selection | null => selection);
+        Object.assign(fixture.window, {getSelection});
+        fixture.config.selectionTranslatorTrigger = 'contextMenu';
+        fixture.config.selectionTranslatorDelay = 9000;
+        fixture.state.selectionConfigVersion += 1;
+        await Vue.nextTick();
+        const rightDown = () => fixture.state.handlePointerDown({isTrusted: true, button: 2, target: null});
+        const openMenu = () => {rightDown(); fixture.state.handleContextMenu({isTrusted: true, target: null});};
+        const inputTarget = Object.assign(new FakeElement(), {closest: () => ({}), getAttribute: () => null});
+        const uiTarget = Object.assign(new FakeNode(), {getRootNode: () => fixture.document});
+        return {...fixture, node, paragraph, range, getSelection, rightDown, openMenu, selection,
+            inputTarget, uiTarget, setText: (text: string) => {nativeText = text;}};
+    }
+
+    it('forwards the browser-bound text through the bridge without retaining a replaced handler', () => {
+        const first = vi.fn(() => false), second = vi.fn(() => true);
+        const releaseFirst = setSelectionContextMenuHandler(first);
+        const releaseSecond = setSelectionContextMenuHandler(second);
+        releaseFirst();
+        expect(translateSelectionThroughBridge('Good ideas deserve attention.')).toBe(true);
+        expect(second).toHaveBeenCalledWith('Good ideas deserve attention.');
+        expect(first).not.toHaveBeenCalled();
+        releaseSecond();
+        expect(translateSelectionThroughBridge('Good ideas deserve attention.')).toBe(false);
+    });
+
+    it.each(['chrome', 'userscript'] as const)('registers and cleans native listeners only for the extension target %s while keeping its live-selection bridge', browserTarget => {
+        const fixture = mountSelection(false, undefined, browserTarget);
+        expect(fixture.registerContextMenu).toHaveBeenCalledOnce();
+        expect(fixture.listeners.get('document:contextmenu')?.size ?? 0).toBe(browserTarget === 'chrome' ? 1 : 0);
+        fixture.unmount();
+        expect(fixture.listeners.get('document:contextmenu')?.size ?? 0).toBe(0);
+        expect(fixture.document.removeEventListener.mock.calls.some(([type]) => type === 'contextmenu')).toBe(browserTarget === 'chrome');
+        expect(fixture.releaseContextMenu).toHaveBeenCalledOnce();
+    });
+
+    it('keeps userscript right-click dismissal and its live-selection message bridge without native menu capture or suppressed ownership', async () => {
+        const fixture = await prepareMenu('userscript');
+        fixture.config.selectionTranslatorTrigger = 'icon';
+        fixture.config.selectionTranslatorDelay = 0;
+        fixture.state.selectionConfigVersion += 1;
+        await Vue.nextTick();
+        fixture.translateText.mockImplementation(() => new Promise(() => {}));
+        fixture.state.applySelection(fixture.state.readSelectionSnapshot());
+        fixture.state.openTooltip();
+        const firstController = fixture.state.translationAbortController;
+        fixture.rightDown();
+        expect(firstController.signal.aborted).toBe(true);
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(fixture.state.snapshot).toBeNull();
+        expect(fixture.state.suppressSelectionUntil).toBe(0);
+        expect(fixture.state.contextMenuSelection).toBeNull();
+        expect(fixture.contextMenuHandler('Good ideas deserve attention.')).toBe(true);
+        expect(fixture.translateText).toHaveBeenCalledTimes(2);
+        expect(fixture.state.showTooltip).toBe(true);
+        fixture.getSelection.mockReturnValue(null);
+        expect(fixture.contextMenuHandler('Good ideas deserve attention.')).toBe(false);
+        fixture.state.applySelection(null);
+        await vi.advanceTimersByTimeAsync(161);
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(fixture.state.contextMenuSourceRejected).toBe(false);
+    });
+
+    it('restores only the menu-captured Range after selection collapse and blur, without waiting for configured delay', async () => {
+        const fixture = await prepareMenu();
+        fixture.openMenu();
+        fixture.getSelection.mockReturnValue(null);
+        fixture.state.handleWindowBlur();
+        fixture.state.handleSelectionChange({isTrusted: true});
+        await vi.advanceTimersByTimeAsync(200);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.state.translateSelectionFromContextMenu('  Good  ideas deserve attention.  ')).toBe(true);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.translateText).toHaveBeenCalledTimes(1);
+        await Vue.nextTick();
+        expect(fixture.state.translationResult).toBe('这是译文');
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('cancels a pending direct-mode presentation before a native menu collapses Selection', async () => {
+        const fixture = await prepareMenu();
+        fixture.config.selectionTranslatorTrigger = 'direct';
+        fixture.state.selectionConfigVersion += 1;
+        await Vue.nextTick();
+        fixture.state.applySelection(fixture.state.readSelectionSnapshot());
+        expect(fixture.state.selectionPresentationTimer).not.toBeNull();
+        fixture.openMenu();
+        fixture.getSelection.mockReturnValue(null);
+        await vi.advanceTimersByTimeAsync(9001);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.state.selectionPresentationTimer).toBeNull();
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(true);
+        expect(fixture.translateText).toHaveBeenCalledTimes(1);
+    });
+
+    it('cancels an existing entry dismissal and rejects new pointer dismissal while the native menu owns Selection', async () => {
+        const fixture = await prepareMenu();
+        fixture.config.selectionTranslatorTrigger = 'dot';
+        fixture.config.selectionTranslatorDelay = 0;
+        fixture.config.selectionTranslatorAutoDismiss = true;
+        fixture.state.selectionConfigVersion += 1;
+        await Vue.nextTick();
+        fixture.state.applySelection(fixture.state.readSelectionSnapshot());
+        const pointer = {isTrusted: true, pointerType: 'mouse', clientX: 900, clientY: 750, target: null};
+        fixture.state.handlePointerMove(pointer);
+        expect(fixture.state.entryDismissTimer).not.toBeNull();
+        fixture.openMenu();
+        expect(fixture.state.entryDismissTimer).toBeNull();
+        fixture.state.handlePointerMove(pointer);
+        expect(fixture.state.entryDismissTimer).toBeNull();
+        fixture.getSelection.mockReturnValue(null);
+        await vi.advanceTimersByTimeAsync(601);
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(true);
+        expect(fixture.translateText).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps an in-flight request intact through repeated right clicks and duplicate menu commands', async () => {
+        const fixture = await prepareMenu();
+        let finish!: (text: string) => void;
+        fixture.translateText.mockImplementation(() => new Promise(resolve => {finish = resolve;}));
+        fixture.openMenu();
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(true);
+        const controller = fixture.state.translationAbortController;
+        const request = fixture.state.activeContentRequest;
+        fixture.openMenu();
+        expect(controller.signal.aborted).toBe(false);
+        fixture.getSelection.mockReturnValue(null);
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(true);
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(true);
+        expect(fixture.state.activeContentRequest).toBe(request);
+        expect(fixture.translateText).toHaveBeenCalledTimes(1);
+        finish('好想法值得关注。'); await Vue.nextTick();
+        expect(fixture.state.translationResult).toBe('好想法值得关注。');
+        expect(controller.signal.aborted).toBe(false);
+    });
+
+    it('reuses a completed card, then starts a fresh request after explicit dismissal', async () => {
+        const fixture = await prepareMenu();
+        fixture.openMenu();
+        fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.');
+        await Vue.nextTick();
+        fixture.openMenu();
+        fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.');
+        expect(fixture.translateText).toHaveBeenCalledTimes(1);
+        expect(fixture.state.translationResult).toBe('这是译文');
+        fixture.state.closeTooltip();
+        fixture.openMenu();
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(true);
+        expect(fixture.translateText).toHaveBeenCalledTimes(2);
+    });
+
+    it('uses the captured geometry at command time instead of measuring the host selection again', async () => {
+        const fixture = await prepareMenu();
+        fixture.openMenu();
+        fixture.range.getClientRects.mockClear();
+        fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.');
+        fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.');
+        expect(fixture.range.getClientRects).not.toHaveBeenCalled();
+        expect(fixture.translateText).toHaveBeenCalledTimes(1);
+    });
+
+    it('lets another explicit menu command retry a failed translation without discarding the selected text', async () => {
+        const fixture = await prepareMenu();
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        fixture.translateText.mockRejectedValueOnce(new Error('fixture request failure'));
+        fixture.openMenu();
+        fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.');
+        await Vue.nextTick();
+        expect(fixture.state.error).toBe('翻译失败，请重试');
+        expect(fixture.state.showTooltip).toBe(true);
+        fixture.openMenu();
+        fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.');
+        expect(fixture.translateText).toHaveBeenCalledTimes(2);
+        await Vue.nextTick();
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.translationResult).toBe('这是译文');
+    });
+
+    it('replaces an old request only when a different menu selection is explicitly translated and ignores its late response', async () => {
+        const fixture = await prepareMenu();
+        let finish!: (text: string) => void;
+        fixture.translateText.mockImplementationOnce(() => new Promise(resolve => {finish = resolve;}));
+        fixture.openMenu();
+        fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.');
+        const previousController = fixture.state.translationAbortController;
+        fixture.setText('New ideas deserve a chance.');
+        fixture.openMenu();
+        expect(previousController.signal.aborted).toBe(false);
+        fixture.state.translateSelectionFromContextMenu('New ideas deserve a chance.');
+        expect(previousController.signal.aborted).toBe(true);
+        expect(fixture.translateText).toHaveBeenCalledTimes(2);
+        await Vue.nextTick();
+        finish('旧选区的迟到结果'); await Vue.nextTick();
+        expect(fixture.state.selectedText).toBe('New ideas deserve a chance.');
+        expect(fixture.state.translationResult).toBe('这是译文');
+    });
+
+    it('keeps an explicitly opened card when a later Selection change only clears the page highlight', async () => {
+        const fixture = await prepareMenu();
+        fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.');
+        fixture.getSelection.mockReturnValue(null);
+        fixture.state.applySelection(null);
+        await vi.advanceTimersByTimeAsync(200);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.state.translationResult).toBe('这是译文');
+    });
+
+    it('rejects a browser text mismatch instead of translating a different live selection or stale menu capture', async () => {
+        const fixture = await prepareMenu();
+        fixture.openMenu();
+        expect(fixture.state.translateSelectionFromContextMenu('A different sentence.')).toBe(false);
+        fixture.getSelection.mockReturnValue(null);
+        expect(fixture.state.translateSelectionFromContextMenu('A different sentence.')).toBe(false);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+    });
+
+    it('never turns a bare browser text or untrusted contextmenu event into a translatable selection', async () => {
+        const fixture = await prepareMenu();
+        fixture.state.handleContextMenu({isTrusted: false, target: null});
+        fixture.getSelection.mockReturnValue(null);
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(false);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+    });
+
+    it('returns a missing selection response when the host Range becomes unreadable instead of throwing from the menu handler', async () => {
+        const fixture = await prepareMenu();
+        fixture.openMenu();
+        fixture.range.toString = () => {throw new Error('fixture disposed range');};
+        fixture.getSelection.mockImplementation(() => {throw new Error('fixture disposed document');});
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(false);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+    });
+
+    it('does not capture protected input text for a later browser text fallback', async () => {
+        const fixture = await prepareMenu();
+        fixture.paragraph.tagName = 'INPUT';
+        fixture.openMenu();
+        fixture.getSelection.mockReturnValue(null);
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(false);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+    });
+
+    it('rejects a menu opened in an input even when document Selection retains identical text from the page', async () => {
+        const fixture = await prepareMenu();
+        fixture.state.handleContextMenu({isTrusted: true, target: fixture.inputTarget});
+        fixture.state.handleWindowBlur();
+        expect(fixture.state.readSelectionSnapshot()).not.toBeNull();
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(false);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+    });
+
+    it('invalidates a previous page capture when a trusted menu opens inside the card without cancelling its translation', async () => {
+        const fixture = await prepareMenu();
+        fixture.translateText.mockImplementation(() => new Promise(() => {}));
+        fixture.openMenu();
+        fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.');
+        const controller = fixture.state.translationAbortController;
+        fixture.document.getElementById.mockReturnValue(fixture.uiTarget as any);
+        fixture.state.handleContextMenu({isTrusted: true, target: fixture.uiTarget});
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(false);
+        expect(fixture.state.contextMenuSelection).toBeNull();
+        expect(controller.signal.aborted).toBe(false);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.translateText).toHaveBeenCalledTimes(1);
+    });
+
+    it('allows a contenteditable=false text island while rejecting inherited editable targets', async () => {
+        const fixture = await prepareMenu();
+        const editableParent = {getAttribute: () => 'true', parentElement: null};
+        const target = Object.assign(Object.create(Object.getPrototypeOf(fixture.inputTarget)), {
+            closest: () => null, getAttribute: () => 'false', parentElement: editableParent,
+        });
+        expect(fixture.state.isContextMenuInputTarget(target)).toBe(false);
+        target.getAttribute = () => null;
+        expect(fixture.state.isContextMenuInputTarget(target)).toBe(true);
+    });
+
+    it.each(['disconnected', 'foreign-document', 'collapsed', 'text-changed', 'protected'] as const)(
+        'rechecks captured source ownership and rejects %s ranges', async reason => {
+            const fixture = await prepareMenu();
+            fixture.openMenu();
+            if (reason === 'disconnected') fixture.node.isConnected = false;
+            else if (reason === 'foreign-document') fixture.node.ownerDocument = {} as typeof fixture.document;
+            else if (reason === 'collapsed') fixture.range.collapsed = true;
+            else if (reason === 'text-changed') fixture.setText('A new sentence in the same node.');
+            else fixture.paragraph.tagName = 'TEXTAREA';
+            expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(false);
+            expect(fixture.translateText).not.toHaveBeenCalled();
+        },
+    );
+
+    it.each(['pointer', 'escape', 'scroll', 'close'] as const)('discards a menu capture after a new %s interaction', async reason => {
+        const fixture = await prepareMenu();
+        fixture.openMenu();
+        fixture.getSelection.mockReturnValue(null);
+        if (reason === 'pointer') fixture.state.handlePointerDown({isTrusted: true, button: 0, target: null});
+        else if (reason === 'escape') fixture.state.handleKeydown({isTrusted: true, key: 'Escape', target: null});
+        else if (reason === 'scroll') fixture.state.handleScroll({target: null});
+        else fixture.state.closeTooltip();
+        expect(fixture.state.translateSelectionFromContextMenu('Good ideas deserve attention.')).toBe(false);
+        expect(fixture.translateText).not.toHaveBeenCalled();
+    });
+});
+
 describe('selection card on an extension PDF page', () => {
     function preparePdf() {
         const acceptsRange = vi.fn(() => true);
@@ -994,7 +1371,7 @@ describe('selection card on an extension PDF page', () => {
         class FakeNode {}
         vi.stubGlobal('Element', FakeElement);
         vi.stubGlobal('Node', FakeNode);
-        const start = {}, end = {};
+        const start = {isConnected: true, ownerDocument: fixture.document}, end = {isConnected: true, ownerDocument: fixture.document};
         const range = {startContainer: start, endContainer: end, startOffset: 0, endOffset: 18,
             getClientRects: () => [{left: 200, right: 380, top: 250, bottom: 270, width: 180, height: 20}],
             cloneRange: () => range};
@@ -1265,6 +1642,35 @@ describe('selection card bounded layout work', () => {
         const current = [...frames.values()];frames.clear();current.forEach(callback => callback(0));
         expect(parseFloat(state.tooltipStyle.left)).toBe(12);
         expect(state.manualPopupPosition).toEqual({left: 12, top: 100});
+    });
+
+    it('dismisses the teleported tools on outside focus and viewport changes without stealing focus inside the card', () => {
+        const {state} = mountSelection();
+        const inside={}, outside={};
+        const root={contains:(node:unknown)=>node===inside};
+        const closeTools=vi.fn(), dismissToolsOutside=vi.fn();
+        state.readingPanelRef={closeTools,dismissToolsOutside};
+        const pointer={target:inside};
+        state.dismissReadingToolsOutside(pointer);
+        expect(dismissToolsOutside).toHaveBeenCalledWith(pointer);
+        state.dismissReadingToolsOnFocusOut({currentTarget:root,relatedTarget:inside});
+        expect(closeTools).not.toHaveBeenCalled();
+        state.dismissReadingToolsOnFocusOut({currentTarget:root,relatedTarget:outside});
+        state.dismissReadingToolsOnFocusOut({currentTarget:root,relatedTarget:null});
+        expect(closeTools).toHaveBeenCalledTimes(2);
+        state.handleViewportResize();
+        expect(closeTools).toHaveBeenCalledTimes(3);
+    });
+
+    it('leaves the native more summary gesture available without starting a card drag', async () => {
+        const {state,element,pointer}=await gestureFixture();
+        state.stopPopupGesture();
+        element.closest=(selector:string)=>selector.includes('summary') ? element : null;
+        const event=pointer('pointerdown',205,110);
+        state.beginPopupGesture(event);
+        expect(state.popupManipulating).toBe(false);
+        expect(element.captured).toBe(false);
+        expect(event.preventDefault).not.toHaveBeenCalled();
     });
 
     it('uses an ordinary wheel to scroll only the overflowing one-row navigation', () => {

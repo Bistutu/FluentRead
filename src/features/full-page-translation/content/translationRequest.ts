@@ -1,9 +1,12 @@
 /**
  * @file src/features/full-page-translation/content/translationRequest.ts
  * 文件职责：为单次全文翻译会话冻结请求配置，并执行文本槽的批量、原生数组和显式 AI 跨候选合并、分包、回退与会话级结果复用。
- * 主要内容：冻结调用时的长段落换行与译文位置，操作身份区分展示设置而 provider 结果键仍只包含请求维度；在调用入口复制原文与服务/模型/语言/术语/排除列表快照，先过滤排除语言的文本槽再合批，在本地保留尚未排版的三美元公式源码，构造显式 client 参数，按服务选择批译策略；标记内部单条槽协议，由 broker 按冻结术语和同一截止时间逐槽校验；为本地模型只构造一次整段语言样本，为 Chrome auto 逐槽翻译保留无哨兵整段检测样本，自动原生数组合批在完整结构校验后才分发，AI 只合并同父直接相邻候选并在协议失败后停用同快照合批，严格隔离取消归属并维护有界会话缓存。
+ * 主要内容：冻结调用时的长段落换行与译文位置，操作身份区分展示设置而 provider 结果键仍只包含请求维度；在调用入口复制原文与服务/模型/语言/术语/排除列表快照，先过滤排除语言的文本槽再合批，在本地保留尚未排版的三美元公式源码，构造显式 client 参数，按服务选择批译策略；标记内部单条槽协议，由 broker 按冻结术语和同一截止时间逐槽校验；为本地模型只构造一次整段语言样本，为 Chrome auto 逐槽翻译保留无哨兵整段检测样本，按冻结服务偏好自动原生数组合批，关闭后保留逐项请求，完整结构校验后才分发，AI 只合并同父直接相邻候选并在协议失败后停用同快照合批，严格隔离取消归属并维护有界会话缓存。
  * 模块边界：本文件不发现候选、不持有 DOM 翻译状态也不渲染译文；runtime 提供会话缓存和取消作用域，client 负责后台协议与队列执行。
  */
+import {preparePageDiscourseContext} from '@/src/services/translation/context/pageDiscourse';
+import {invalidatePageTranslationSnapshotCache} from '@/src/services/translation/context/browser';
+import {discourseRequestIdentity, discourseScope, mergeDiscourseContexts} from '@/src/services/translation/context/discourse';
 import {resolveConfiguredModel, services, servicesType} from '@/src/core/config/catalog';
 import {styles} from '@/src/core/config/constants';
 import {
@@ -13,9 +16,10 @@ import {
 import {config} from '@/src/services/config/store';
 import {normalizeMaxConcurrentTranslations} from '@/src/core/config/scheduling';
 import {normalizeExcludedLanguages} from '@/src/core/config/pageTranslation';
+import {isNativeTranslationBatchEnabled} from '@/src/core/config/nativeBatch';
 import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
 import {isModelThinkingEnabled} from '@/src/core/config/modelThinking';
-import {buildGlossaryRevision} from '@/src/core/glossary';
+import {createGlossaryRevisionMemoizer} from '@/src/core/glossary';
 import {translateText, translateTextBatch, type TranslateOptions} from '@/src/app/translation/client';
 import {supportsNativeTranslationBatch, supportsTranslationBatch} from '@/src/services/translation/capabilities';
 import {validateNativeBatchResults} from '@/src/core/translation/nativeBatch';
@@ -33,6 +37,8 @@ const FULL_PAGE_TRANSLATION_REQUEST_CACHE_LIMIT = 512;
 const FULL_PAGE_TRANSLATION_REMOUNT_GRACE_MS = 250;
 const CROSS_CANDIDATE_MAX_TEXT_SLOTS = 4;
 const CROSS_CANDIDATE_MAX_CHARACTERS = 2_000;
+// 悬浮手势的每次配置捕获仍同步冻结字段；只有全库摘要经原始标量复验后复用。
+const readGlossaryRevision = createGlossaryRevisionMemoizer();
 
 export type {FullPageTranslationConfigSnapshot, PageTranslationConfigOverrides} from './translationConfigSnapshot';
 
@@ -41,7 +47,7 @@ export function getTranslationInvocationIdentity(snapshot: FullPageTranslationCo
         snapshot.profileId ?? '', snapshot.service, snapshot.model, snapshot.thinking,
         snapshot.sourceLanguage, snapshot.targetLanguage, snapshot.displayMode, snapshot.style,
         snapshot.longParagraphLineBreak ?? false, snapshot.translationBeforeOriginal ?? false,
-        snapshot.enableAIContext, snapshot.enableAIMultiSegment,
+        snapshot.enableAIContext, snapshot.enableAIMultiSegment, snapshot.enableNativeBatch !== false,
         snapshot.glossaryRevision, snapshot.glossaryIds,
         snapshot.excludedLanguages,
     ]);
@@ -67,7 +73,7 @@ export interface FullPageTranslationRequestCacheEntry {
 type SnapshotTranslateExecutionOptions = Pick<
     TranslateOptions,
     'aiMultiSegment' | 'queueSession' | 'signal' | 'skipLanguageDetection'
-    | 'sourceLanguageDetectionText' | 'useCache' | 'validateTranslationSlots'
+    | 'sourceLanguageDetectionText' | 'useCache' | 'validateTranslationSlots' | 'discourseContext'
 >;
 
 export interface FullPageTranslationSessionCache {
@@ -92,6 +98,7 @@ interface TranslationBatchTask {
     batchKey: string;
     aiCircuitKey: string;
     context: string;
+    discourseContext?: string;
     owner?: Element;
     origins: readonly string[];
     snapshot: FullPageTranslationConfigSnapshot;
@@ -133,7 +140,7 @@ export function captureFullPageTranslationConfig(
     const profileId = overrides.profileId?.trim();
     const requestOverridesApplied = Object.keys(overrides).length > 0;
     return {
-        glossaryRevision: buildGlossaryRevision(config.glossaryLibraries, config.glossaryEnabled),
+        glossaryRevision: readGlossaryRevision(config.glossaryLibraries, config.glossaryEnabled),
         glossaryIds: overrides.glossaryIds ? Object.freeze([...overrides.glossaryIds]) : null,
         service,
         model,
@@ -144,6 +151,7 @@ export function captureFullPageTranslationConfig(
         useCache: config.useCache,
         enableAIContext: config.enableAIContext,
         enableAIMultiSegment: config.enableAIMultiSegment,
+        enableNativeBatch: isNativeTranslationBatchEnabled(service, config.nativeBatchTranslationEnabled),
         displayMode: overrides.displayMode
             ?? (config.display === styles.bilingualTranslation ? 'bilingual' : 'single'),
         style: config.style,
@@ -168,6 +176,7 @@ export function createSnapshotTranslateOptions(
         sourceLanguage: snapshot.sourceLanguage,
         targetLanguage: snapshot.targetLanguage,
         enableAIContext: snapshot.enableAIContext,
+        enableNativeBatch: snapshot.enableNativeBatch !== false,
         // 非会话 batch 需要显式禁用 broker 缓存；其余调用继续使用冻结的会话值。
         useCache: options.useCache ?? snapshot.useCache,
     };
@@ -216,6 +225,7 @@ async function translateSlotsIndividually(
     signal?: AbortSignal,
     queueSession?: TranslationQueueSession,
     context = document.title,
+    discourseContext?: string,
 ): Promise<string[]> {
     throwIfAborted(signal);
     const translations = new Array<string>(origins.length);
@@ -244,6 +254,7 @@ async function translateSlotsIndividually(
             try {
                 translations[index] = await translateText(origins[index] ?? '', context,
                     createSnapshotTranslateOptions(snapshot, {
+                        discourseContext,
                         signal: siblingController.signal,
                         queueSession,
                         ...(sourceLanguageDetectionText !== undefined
@@ -284,6 +295,7 @@ function createCacheKey(origin: string, snapshot: FullPageTranslationConfigSnaps
         to: snapshot.targetLanguage,
         excludedLanguages: snapshot.excludedLanguages,
         enableAIContext: snapshot.enableAIContext,
+        enableNativeBatch: snapshot.enableNativeBatch !== false,
         origin,
     });
 }
@@ -293,6 +305,7 @@ function createRequestCacheKey(
     snapshot: FullPageTranslationConfigSnapshot,
     pageContextGeneration: number,
     aiBatchOwnerIdentity?: number,
+    discourseContext?: string,
 ): string {
     return JSON.stringify({
         glossaryRevision: snapshot.glossaryRevision,
@@ -306,10 +319,12 @@ function createRequestCacheKey(
         useCache: snapshot.useCache,
         enableAIContext: snapshot.enableAIContext,
         enableAIMultiSegment: snapshot.enableAIMultiSegment,
+        enableNativeBatch: snapshot.enableNativeBatch !== false,
         context: document.title,
         pageUrl: document.location?.href ?? document.URL ?? '',
         pageContextGeneration,
         aiBatchOwnerIdentity,
+        discourseContext: discourseRequestIdentity(discourseContext, origins),
         origins,
     });
 }
@@ -516,6 +531,7 @@ function createTranslationBatchSnapshotKey(snapshot: FullPageTranslationConfigSn
         excludedLanguages: snapshot.excludedLanguages,
         useCache: snapshot.useCache,
         enableAIContext: snapshot.enableAIContext,
+        enableNativeBatch: snapshot.enableNativeBatch !== false,
     });
 }
 
@@ -580,6 +596,7 @@ async function fallbackTranslationBatchTasks(tasks: readonly TranslationBatchTas
         task.signal,
         task.queueSession,
         task.context,
+        task.discourseContext,
     )));
     outcomes.forEach((outcome, index) => {
         const task = activeTasks[index];
@@ -608,6 +625,7 @@ async function executeTranslationBatch(tasks: TranslationBatchTask[], queue: Tra
                 undefined,
                 () => queue.disabledAIKeys.add(task.aiCircuitKey),
                 task.context,
+                task.discourseContext,
             ));
         } catch (error) {
             if (!native && shouldFallbackAITranslationBatch(error)) {
@@ -638,6 +656,7 @@ async function executeTranslationBatch(tasks: TranslationBatchTask[], queue: Tra
             origins,
             activeTasks[0]!.context,
             createSnapshotTranslateOptions(snapshot, {
+                discourseContext: mergeDiscourseContexts(activeTasks.map(task => task.discourseContext ?? '')) || undefined,
                 ...(native ? {} : {aiMultiSegment: true}),
                 signal: controller.signal,
                 queueSession: sharedQueueSession,
@@ -687,6 +706,7 @@ function enqueueTranslationBatchTask(
     queueSession: TranslationQueueSession | undefined,
     session: FullPageTranslationSessionCache,
     owner?: Element,
+    discourseContext?: string,
 ): Promise<string[]> {
     throwIfAborted(signal);
     let queue = translationBatchQueues.get(session);
@@ -697,9 +717,10 @@ function enqueueTranslationBatchTask(
 
     return new Promise<string[]>((resolve, reject) => {
         const task: TranslationBatchTask = {
-            batchKey: createBatchScopeKey(snapshot, session),
+            batchKey: JSON.stringify([createBatchScopeKey(snapshot, session), discourseScope(discourseContext)]),
             aiCircuitKey: createAIBatchCircuitKey(snapshot),
             context: document.title,
+            discourseContext,
             owner,
             origins,
             snapshot,
@@ -733,9 +754,10 @@ async function translateArrayWithValidation(
     snapshot: FullPageTranslationConfigSnapshot,
     options: SnapshotTranslateExecutionOptions,
     context = document.title,
+    discourseContext?: string,
 ): Promise<string[]> {
     const translations = await translateTextBatch([...origins], context,
-        createSnapshotTranslateOptions(snapshot, options));
+        createSnapshotTranslateOptions(snapshot, {...options, discourseContext}));
     // 原生响应恢复只由 broker 在同一总 deadline 内执行；最终失败不得在前端重获预算。
     return supportsNativeTranslationBatch(snapshot.service)
         ? validateNativeBatchResults(origins, translations, '批量翻译返回结构异常')
@@ -750,11 +772,12 @@ async function translateTextSlotsDirectly(
     fullPageSession?: FullPageTranslationSessionCache,
     onSlotProtocolInvalid?: () => void,
     context = document.title,
+    discourseContext?: string,
 ): Promise<string[]> {
     throwIfAborted(signal);
     // 小模型直接翻译各槽，不要求模型复述结构标记；短链接借用段落正文检测语言。
     if (snapshot.service === services.localTranslation) {
-        return translateSlotsIndividually(origins, snapshot, signal, queueSession, context);
+        return translateSlotsIndividually(origins, snapshot, signal, queueSession, context, discourseContext);
     }
     const batchFriendly = supportsNativeTranslationBatch(snapshot.service)
         || snapshot.service === services.freeTranslation
@@ -762,7 +785,7 @@ async function translateTextSlotsDirectly(
         || (servicesType.isMachine(snapshot.service) && supportsTranslationBatch(snapshot.service));
     if (batchFriendly) {
         if (!fullPageSession?.active || fullPageSession.retainSettledResults === false) {
-            return translateArrayWithValidation(origins, snapshot, {useCache: false, signal, queueSession}, context);
+            return translateArrayWithValidation(origins, snapshot, {useCache: false, signal, queueSession}, context, discourseContext);
         }
 
         const resultPromises = new Array<Promise<string | undefined>>(origins.length);
@@ -788,6 +811,7 @@ async function translateTextSlotsDirectly(
                 snapshot,
                 {signal, queueSession},
                 context,
+                discourseContext,
             ).then((translations) =>
                 Array.isArray(translations) && translations.length === entries.length
                 && Array.from(translations).every((translation) => typeof translation === 'string')
@@ -813,16 +837,17 @@ async function translateTextSlotsDirectly(
     }
     if (origins.length === 1) {
         return [await translateText(origins[0] ?? '', context,
-            createSnapshotTranslateOptions(snapshot, {signal, queueSession}))];
+            createSnapshotTranslateOptions(snapshot, {discourseContext, signal, queueSession}))];
     }
 
     // 只有支持通用提示词的模型使用内部槽协议；单串机器接口不得承担标记分界。
     if (servicesType.isMachine(snapshot.service)
         || (servicesType.isAI(snapshot.service) && !servicesType.isUseAIContext(snapshot.service, snapshot.model))) {
-        return translateSlotsIndividually(origins, snapshot, signal, queueSession, context);
+        return translateSlotsIndividually(origins, snapshot, signal, queueSession, context, discourseContext);
     }
     const packet = serializeTranslationSlots(origins);
     const combined = await translateText(packet.payload, context, createSnapshotTranslateOptions(snapshot, {
+        discourseContext,
         skipLanguageDetection: true,
         validateTranslationSlots: true,
         signal,
@@ -832,10 +857,10 @@ async function translateTextSlotsDirectly(
     const parsed = parseTranslationSlots(packet, combined);
     if (parsed?.length === origins.length) return parsed;
     onSlotProtocolInvalid?.();
-    return translateSlotsIndividually(origins, snapshot, signal, queueSession, context);
+    return translateSlotsIndividually(origins, snapshot, signal, queueSession, context, discourseContext);
 }
 
-export async function translateTextSlots(
+async function translateTextSlotsInternal(
     origins: readonly string[],
     snapshot: FullPageTranslationConfigSnapshot,
     signal?: AbortSignal,
@@ -843,6 +868,7 @@ export async function translateTextSlots(
     fullPageSession?: FullPageTranslationSessionCache,
     forceFailedRequest = false,
     batchOwner?: Element,
+    discourseContext?: string,
 ): Promise<string[]> {
     if (origins.length === 0) return [];
     throwIfAborted(signal);
@@ -889,6 +915,7 @@ export async function translateTextSlots(
         ? origins
         : translatedIndexes.map((index) => origins[index] ?? '');
     const isAICrossCandidateRequest = snapshot.enableAIMultiSegment
+        && !supportsNativeTranslationBatch(snapshot.service)
         && servicesType.isUseAIContext(snapshot.service, snapshot.model)
         && fullPageSession?.active && fullPageSession.allowAIMultiSegment !== false;
     const execute = (
@@ -896,6 +923,7 @@ export async function translateTextSlots(
         executionQueueSession: TranslationQueueSession | undefined,
     ) => {
         const canCombineNativeParagraphs = supportsNativeTranslationBatch(snapshot.service)
+            && snapshot.enableNativeBatch !== false
             && fullPageSession?.active && fullPageSession.allowNativeBatch !== false;
         const canCombineAIParagraphs = isAICrossCandidateRequest;
         const request = (canCombineNativeParagraphs || canCombineAIParagraphs)
@@ -906,6 +934,7 @@ export async function translateTextSlots(
                 executionQueueSession,
                 fullPageSession!,
                 batchOwner,
+                discourseContext,
             )
             : translateTextSlotsDirectly(
                 requestOrigins,
@@ -915,6 +944,7 @@ export async function translateTextSlots(
                 fullPageSession,
                 undefined,
                 requestContext,
+                discourseContext,
             );
         return translatedIndexes.length === origins.length
             ? request
@@ -926,8 +956,8 @@ export async function translateTextSlots(
     // 正在复用的 provider 请求；会话结束仍会统一中止底层工作。
     if (fullPageSession?.active && fullPageSession.requestSignal) {
         const aiOwnerIdentity = isAICrossCandidateRequest ? getAIBatchOwnerIdentity(batchOwner) : undefined;
-        const key = createRequestCacheKey(origins, snapshot, fullPageSession.pageContextGeneration ?? 0, aiOwnerIdentity);
-        const failureKey = createRequestCacheKey(origins, snapshot, -1, aiOwnerIdentity);
+        const key = createRequestCacheKey(origins, snapshot, fullPageSession.pageContextGeneration ?? 0, aiOwnerIdentity, discourseContext);
+        const failureKey = createRequestCacheKey(origins, snapshot, -1, aiOwnerIdentity, discourseContext);
         const requestCache = fullPageSession.translationRequestCache ??= new Map();
         const failed = requestCache.get(failureKey);
         if (failed) {
@@ -964,4 +994,23 @@ export async function translateTextSlots(
     }
 
     return execute(signal, queueSession);
+}
+
+/** 用候选位置准备篇章证据；失败、取消和正文变更后的迟到结果不会成为参考。 */
+export async function translateTextSlots(
+    origins: readonly string[], snapshot: FullPageTranslationConfigSnapshot,
+    signal?: AbortSignal, queueSession?: TranslationQueueSession,
+    fullPageSession?: FullPageTranslationSessionCache, forceFailedRequest = false, batchOwner?: Element,
+): Promise<string[]> {
+    const ticket = batchOwner && snapshot.enableAIContext
+        && servicesType.isUseAIContext(snapshot.service, snapshot.model)
+        ? preparePageDiscourseContext(batchOwner, origins, JSON.stringify([
+            snapshot.service, snapshot.model, snapshot.sourceLanguage, snapshot.targetLanguage,
+            snapshot.glossaryRevision, snapshot.glossaryIds,
+        ]), signal, invalidatePageTranslationSnapshotCache) : undefined;
+    const result = await translateTextSlotsInternal(origins, snapshot, signal, queueSession,
+        fullPageSession, forceFailedRequest, batchOwner, ticket?.context);
+    throwIfAborted(signal);
+    if (result.length === origins.length) ticket?.commit(result);
+    return result;
 }

@@ -1,5 +1,30 @@
 # 测试与回归
 
+## 网页个人校订
+
+`personalCorrectionMemory`、`personalCorrectionDom`、`personalCorrectionTranslation`、`personalCorrectionComposition` 和三组 `personalCorrectionUi` 测试覆盖确认后保存、版本竞争、范围与语言隔离、近似候选、冲突拒绝自动复用、取消、节点归属、项目显式加入、编辑、删除与撤销；实际 Vue 模板检查语言信息归入页签栏、范围选择归入底部操作栏，以及范围帮助的悬停、键盘聚焦、Escape 收起与卸载清理。新增执行模块纳入严格四维覆盖率。
+
+生产 Chrome 扩展构建后运行 `node scripts/testing/run-personal-corrections-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <捆绑 Node 包目录> --focus-safe-helper <focus-safe-browser.cjs 路径> --artifacts-dir <证据目录> --real-url https://example.com`。脚本使用第二屏临时 Edge 后台窗口和可信输入，翻译响应为确定性 Google 夹具；网页、双语渲染、后台消息和加密存储使用生产实现。验证原句重复复用时零额外 provider 请求、近似句只作草稿、两种语言与标题语境隔离、材料/项目范围、恢复重译、公共缓存隔离、页签栏右侧语言与底部紧凑范围的实际几何、范围帮助的真实悬停/焦点与 390px 提示边界、焦点恢复，保存 JSON、DOM 和截图。此证据不代表在线译文质量或 Firefox 实机验收。
+
+## 视频完整句学习
+
+`pnpm test:video:learning --coverage` 限定执行原始字幕聚合、播放控制、面板所有权与来源恢复、收藏来源及 UI 五份测试；四个新增 TypeScript 模块的 statements/branches/functions/lines 均要求 100%。字幕菜单和运行时回归使用 `videoSubtitle`、`videoSubtitleTrackPriorityRuntime`、`videoSubtitleLogic`、`videoUiI18n`，以及架构、文件头和 i18n 检查。
+
+生产 Chrome 构建后运行：
+
+```sh
+node scripts/run-video-sentence-learning-test.cjs \
+  --extension-dir .output/chrome-mv3 \
+  --playwright-root "$PLAYWRIGHT_ROOT" \
+  --focus-safe-helper scripts/testing/focus-safe-browser.cjs \
+  --artifacts-dir /private/tmp/fluentread-video-sentence-learning
+```
+
+脚本使用自有临时 Edge profile、第二屏后台正常窗口、前台 PID 保护和真实解码的本地 MP4。平台 DOM、原字幕与翻译/解释传输受控；断言整句原时间、用户播放优先、循环与句末暂停、失败恢复、主动收藏、来源去重、学习中心链接、X 多视频/引用帖归属、全屏与窄屏边界。它不代表原站字幕可取得或线上服务译文质量。
+
+追加 `--live-only --live-youtube-urls <视频地址列表> --live-x-url <帖子地址>` 单独访问真实网站，不注入字幕或替换网站 DOM/媒体；仍使用受控翻译传输。原站无法供给可读取字幕时记录状态和失败，不能据此宣称字幕学习闭环通过。Firefox 与 userscript 构建不等于实际浏览器运行验收；原生画中画未通过此前台隔离脚本测试。本次结果与边界见[视频完整句学习记录](./reports/video-sentence-learning-20261011/README.md)。
+
+
 ## 扩展体积与共享推理引擎
 
 `pnpm analyze:bundle [构建目录] [基线目录]` 统计真实字节、文件类型、目录、最大文件和相同内容，详见 [2026-10-06 体积记录](./maintainers/extension-size-20261006.md)。普通开发构建不内联源码映射；需要时使用 `FLUENTREAD_DEV_SOURCEMAPS=1 pnpm dev`。手动加载可设置 `FLUENTREAD_DISABLE_BROWSER_RUNNER=1`。
@@ -67,6 +92,20 @@ node scripts/run-selection-speech-test.cjs \
 
 右键菜单后台恢复专项：`pnpm test tests/contextMenuRuntimeOwnership.test.ts tests/contextMenu.test.ts tests/backgroundBadgeRuntime.test.ts tests/contentMessageRuntime.test.ts`。受控浏览器端口覆盖 MV3 后台冷启动首击等待配置与菜单就绪、活动页查询暂时失败后的点击、导航/关闭/禁用期间丢弃旧点击，以及失败重试和翻译—恢复—再次翻译。菜单已创建后，活动页查询失败不会清空点击路由。该专项不代表操作系统原生菜单、报告者环境或在线供应商验收。
 
+右键翻译体验使用定向入口：
+
+```sh
+node scripts/run-selection-trigger-test.cjs --context-menu-only \
+  --extension-dir .output/chrome-mv3 \
+  --playwright-root <Node包目录> \
+  --focus-safe-helper scripts/testing/focus-safe-browser.cjs \
+  --artifacts-dir /private/tmp/fluentread-context-menu-experience
+```
+
+此筛选只运行右键专项，使用临时 Edge profile、第二屏后台正常窗口和本地微软 HTTP 响应夹具。原生三击选中文字后用可信 CDP 右键捕获选区，清除活动 Selection，再走生产 `contextMenuTranslate` 消息检查菜单选区恢复；用延迟响应检查加载反馈、在途重新右键与重复触发仅一次请求、完成后复用卡片；单次 HTTP 400 后验证失败提示与手动右键重试。还检查断连选区和可编辑区域拒绝，以及全文翻译—恢复—再次翻译—恢复的 `[1, 0, 1, 0]` 和原始 HTML 还原。输入框保护同时覆盖 Edge 默认右键聚焦与宿主阻止聚焦、保留同文正文选区的受控情形。
+
+通知专项复用生产 `contextMenuNotice`：同类提示只保留一份，浅色/深色和桌面/390px 的长文案均无横向溢出；检查圆角、中性阴影、阴影周围留白和完整 28px 关闭区域，并用可信鼠标点击关闭按钮边缘。真实鼠标停留超过六秒时通知继续显示，离开后按剩余阅读时间关闭；移动前明确选择输入标签页，以可信小幅鼠标移动维持后台窗口中的阅读输入，并在进入后及 500/2000/6500ms 采样实际 `:hover`、命中节点与可信进入/离开事件，失败报告也保留观测，避免将未命中的输入误判为计时回归。真实 Tab 聚焦有可见焦点，停留超过六秒仍可阅读，通知内部 Escape 关闭并还原网页焦点，外部 Escape 保持网页自身行为。还覆盖鼠标与键盘关闭后、离场动画期间同类提示再次到达时原位显示，并按新阅读时间正常关闭，避免残留暂停状态。全文专项还验证成功动作清除旧的右键失败提示，选区失效或总开关关闭的拒绝动作保留提示。报告保存时长、几何与样式数据及截图，并直接捕获带阴影留白的浅色通知局部截图；“无裁切”还需目视检查对应截图，不能仅凭构建判断。报告分别保存受控错误、加载/请求等待时间、请求计数、可信手势、焦点策略和截图；本机等待时间不代表在线供应商延迟。原生菜单注册由浏览器 API 核验，菜单项选择和后台 `contextMenus.onClicked` 事件仍由生产消息路径替代，不能将结果描述成操作系统原生菜单点击、Firefox 实机或真实供应商验收。
+
 生产扩展构建后，运行 `node scripts/testing/run-settings-reading-menu-ui-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <扩展界面测试技能>/scripts/focus-safe-browser.cjs --artifacts-dir <证据目录>`。专项使用第二屏上的临时 Edge 后台窗口，检查阅读辅助左侧预览与右侧设置、完整说明、虚线、高亮联动与样式跳转，右键菜单左侧单一虚拟菜单与右侧紧凑选项、所有启用入口的实时增删、功能前置条件禁用、总开关禁用和重开后保存；覆盖七种语言的桌面与 390px 布局、深色主题和其他设置分组标题。浏览器范围为 Edge，不代表 Firefox 实机或外部翻译服务。
 
 `run-settings-section-navigation-test.cjs` 检查连续表单中的完整导航、搜索、跨页定位、折叠、键盘与滚动高亮。翻译设置分别登记右键菜单、悬浮球进阶设置、段落复制、局部翻译与不翻译的语言；最后一组较短时，滚动到底仍应高亮其入口。元数据与既有直达链接由 `tests/optionsNavigation.test.ts` 和 `tests/optionsAppNavigationLifecycle.test.ts` 验证。
@@ -82,6 +121,27 @@ node scripts/run-selection-speech-test.cjs \
 点击官网示例的第二步，会先显示翻译中的转圈与段落占位动画，或漫画气泡的扫描动画，随后展示译文并停留在结果。重复点击可重新演示；底部按钮可暂停、继续和重播。系统开启减少动态效果时，点击第二步直接展示结果。
 
 执行 `pnpm docs:typecheck`、`pnpm docs:build` 后，运行 `node scripts/testing/run-site-demo-loading-test.cjs --playwright-root <Node包目录> --browser-path <Edge可执行文件> --output /private/tmp/fluentread-site-demo-loading`。专项使用隔离无窗口浏览器，不访问用户 profile，检查中英文首页在 1440、390、320px 宽度下的自动播放、真实点击、CSS 动画运动、逐段显示、完成停留、重复触发、暂停继续、跳转与重播，以及减少动态效果和其他演示的步骤控制。报告与截图保存到指定目录；只验证官网本地示例，不调用扩展或真实翻译服务。
+
+## 网站规则与连续导航
+
+`pnpm test tests/contentFeatureLifecycle.test.ts tests/contentRuntimeLifecycle.test.ts tests/fullPageVisibilityScheduling.test.ts tests/popupPageActionsOwnership.test.ts tests/popupAppLifecycle.test.ts tests/popupChildOwnership.test.ts tests/siteRules.test.ts` 覆盖始终翻译的新页面意图、普通锚点与 HashRouter、非必要 UI 挂载等待、跨路由取消重试、无需变更结果失效，以及规则写入前的标签页复验、后台确认、保存失败和禁用中断翻译。
+
+生产构建后运行定向浏览器专项：
+
+```sh
+node scripts/testing/run-site-rules-navigation-test.cjs \
+  --extension-dir .output/chrome-mv3 \
+  --playwright-root <捆绑 Node 包目录> \
+  --artifacts-dir <本次证据目录>
+```
+
+专项使用临时 Edge profile、第二屏后台正常窗口和焦点监控。页面和翻译 HTTP 响应为本地夹具，验证普通链接、跨站进出、push/replace/popstate、HashRouter、延迟正文和快速跳转，检查恢复原文后的同页保持与新文章自动触发、在途禁用与迟到响应、规则保存后立即关闭重开、最后写入胜出和配置跨页同步。DOM、请求计数、截图、保存响应和焦点信息保存在 `report.json`。它不代表外部翻译服务、原生工具栏 Popup、Firefox 实机或浏览器往返缓存的验收；真实网页结果需单独记录。
+
+追加 `--producthunt` 会访问 Product Hunt 首页和 Reso 产品页，用实际链接检查正文适配切换后的自动翻译。翻译响应仍来自本地测试服务；站点防护或链接不可用会单独记录为隔离结果，不计入通过项。
+
+仅补测在途禁用可追加 `--disable-inflight-only`，默认完整范围保持不变。该原有用例用本地 provider 响应闸门替代固定等待：确认当前正文请求已到达但尚未响应，点击禁用并立即关闭 Popup，核对持久化确认与请求取消，重开检查已禁用且保存已结束，最后释放响应并断言译文不回插、不新增请求。单项报告记录完整时序及资源锁配置，不能把一次固定延迟结束后的原文状态当作请求取消证据。
+
+网站规则 CPU 对照可运行 `node scripts/testing/run-resource-safe.mjs --concurrency 1 -- node scripts/testing/benchmark-site-rules.mjs <明确的旧版本提交> <输出JSON路径>`。脚本用同一依赖编译旧/新 domain 模块，分别记录域名解析工作量与七轮交替计时，覆盖空、小、大名单、首次建索引、热查询、同值和真实配置修改、混合路线。输出保留源文件散列、语义比较、全部样本和初始化成本；低于计时下限不计算速度比例。配置通知仍 O(N) 比较，数据仅限本地 Node CPU，不代表 DOM、网络或用户端到端延迟。本轮范围与对照见 [网站规则性能复验](./reports/site-rules-navigation-20261011/performance.md)。
 
 ## Popup 首次打开与语言引导
 
@@ -105,7 +165,7 @@ node scripts/run-selection-speech-test.cjs \
 
 默认仍采用后台隔离窗口与真实前台 PID 保护，并额外持续采样前台应用；任何抢焦点检测立即停止并清理，不能通过禁用保护完成测试。若后台环境持续无法保持焦点隔离，先征得用户本次明确同意，才可追加 `--headed` 使用第二屏居中的独立临时前台窗口，报告中标记 `foreground-authorized`。快捷面板专项还检查关闭按钮距滚动体右沿至少 8px，避免 macOS 覆盖式滚动条遮住控件。新快捷面板的追加验收及历史边界见[窄版与快捷面板记录](./reports/popup-ui-restoration-20260930/quick-panel-refinement.md)。
 
-使用第二屏可见但不抢焦点的临时 Edge profile，检查真实内容脚本的全文翻译—恢复—再次翻译、局部点选、站点规则立即关闭重开、每个可用服务及九项功能分配、继承和自定义模型搜索、当前更多服务可见性、本地图标及键盘导航。还检查版本、赞赏、开源胶囊的新标签页导航、默认白底、无域名的两个紧凑站点开关、翻译服务选择框、划词说明宽度、设置预览横排图标、390px 窄屏、深色及多种皮肤、配置跨页同步和控制台错误。
+使用第二屏可见但不抢焦点的临时 Edge profile，检查真实内容脚本的全文翻译—恢复—再次翻译、局部点选、站点规则立即关闭重开、每个可用服务及九项功能分配、继承和自定义模型搜索、当前服务留在常用服务、更多服务默认展开且可收起、搜索框随列表滚动、本地图标及键盘导航。还检查版本、赞赏、开源胶囊的新标签页导航、默认白底、无域名的两个紧凑站点开关、翻译服务选择框、划词说明宽度、设置预览横排图标、390px 窄屏、深色及多种皮肤、配置跨页同步和控制台错误。
 
 Popup 赞赏窗口内的微信二维码点击后原位从 164px 放大到 200px，再次点击还原，关闭重开恢复默认大小。二维码按钮支持 Enter 与空格键，提示和可访问名称随状态切换；验证过程中页面地址与标签页数量应保持不变，浅深色和窄版布局不得产生横向溢出。
 
@@ -121,21 +181,25 @@ Popup 赞赏窗口内的微信二维码点击后原位从 164px 放大到 200px�
 
 `src/core/language` 是全文、悬浮、页面标题、划词、快捷键和共享翻译客户端判断“文本已是目标语言或排除语言”的唯一入口。`codes.ts` 统一两/三字母代码、ISO 639-2/B、宏语言成员、旧别名、地区、脚本与下划线写法，目标语言和排除语言共用同一比较；配置中的裸 `zh` 仍为简体，检测器给出的裸 `zh`/`cmn` 只表示书写体系未知，不匹配任何简繁目标。`identify.ts` 只以文本为缓存键给出与目标无关的结论，目标、排除列表或源语言变化都会重新比较。
 
-识别副本先由 `technicalTokens.ts` 遮蔽 URL、路径、文件名、哈希、版本号、带版本模型名（可带一个首字母大写后缀，如 `GPT-6 Sol`）、代码标识符和字母数字编号，原文、链接和 DOM 不变。非 Latin 正文中的缩写、内部大写名称和格式名按词计权，不能主导结论；普通外语词、首字母大写的独立词和三个以上连续全大写词按外语正文处理，因此夹带的外语句子仍会翻译。可信中文技术正文另按句查找代码、缩写、字段名或操作符表达式证据，只接纳有局部中文技术句架支撑的短术语（每项至多三词，表达式至多 128 字符）；名称权重仍不能压倒中文，功能词、引文、明确要求翻译/解释的外语与跨句证据不被吞掉。`tests/fixtures/chinese-technical-pr-906.json` 保存反馈页面的四段原文，`sameTargetLanguageRegression` 与 `sameTargetLanguageClient` 验证中文目标零请求、外语目标仍请求及相邻英文仍翻译；`languageIdentification` 使用独立术语检查正反边界。
+识别副本先由 `technicalTokens.ts` 遮蔽 URL、路径、文件名、哈希、版本号、带版本模型名（可带一个首字母大写后缀，如 `GPT-6 Sol`）、代码标识符和字母数字编号，原文、链接和 DOM 不变。非 Latin 正文中的缩写、内部大写名称和格式名按词计权，不能主导结论；短名称结合本句充足的本族文字与相邻边界判定，规则覆盖中日韩与其他非 Latin 文字；引述、外语功能词、孤立英文提示及不可信的大写词组优先作为外语正文，因此不能靠目标语言占多数吞掉外语。反引号中的自然语言句子仍提供外语证据，代码标识符继续遮蔽。可信中文技术正文另按句查找代码、缩写、字段名或操作符表达式证据，只接纳有局部中文技术句架支撑的短术语（每项至多三词，表达式至多 128 字符）；名称权重仍不能压倒中文，功能词、引文、明确要求翻译/解释的外语与跨句证据不被吞掉。`tests/fixtures/chinese-technical-pr-906.json` 保存反馈页面的四段原文，`sameTargetLanguageRegression` 与 `sameTargetLanguageClient` 验证中文目标零请求、外语目标仍请求及相邻英文仍翻译；`languageIdentification` 使用独立术语检查正反边界。
 
 `statistical.ts` 只把 franc-min 的候选分数当作同一文本内的排序和分差信号，并与功能词逆文档频率得分、正字法字母反证共同判断：功能词决定性领先、功能词领先且分差达标、功能词持平但分差更大、franc 前两位几乎并列时由功能词打破平局；franc-min 没有模型的目录语言只接受决定性功能词。分差阈值随文本长度缩放；单词、少于十个字母、名称、纯共享汉字、相近语言无法区分以及目录外相近语言（加泰罗尼亚语、加利西亚语、南非荷兰语等）都保留翻译。希腊文、希伯来文、泰文和印度诸文字按文字直接识别，并排除多调希腊文、意第绪连字和阿萨姆字母；日文与韩文分支会排除中文专用字形，韩文中连续八个以上汉字按中文句子处理。
 
 测试分组：`languageCodes`、`languageTechnicalTokens`、`languageScripts`、`languageStatistical`、`languageIdentification` 为单元测试；`languageIdentificationCorpus` 用真实 franc-min 在校准语料、留出语料和第二份只测量的留出语料上检查每个“文本 × 目录目标”的错误跳过为零、目标与排除语言等价，以及任意两种语言整段拼接不会吞掉其中一种；`sameTargetLanguageClient` 与 `sameTargetLanguageSlots` 验证客户端、标题、批量/文本包/逐槽/AI 合并/公式拆分路径的一致性、取消与失败重试；`sameTargetLanguageRegression` 保留旧实现失败条件（德/葡/意三字母代码、排除与目标不一致、短句、日韩模型名、未配置排除语言时富文本槽只做字符集快判）。全文运行时的翻译—恢复—再翻译、动态改写、目标与排除变化、取消和重试由 `fullPageVisibilityScheduling` 中的真实识别用例覆盖；同段行内 `code` 只为语言预检提供上下文，仍受隐藏、禁止翻译与候选范围限制，不进入翻译请求或覆盖快照。
 
-识别器对比可复现运行 `node scripts/testing/evaluate-language-detectors.mjs --out <report.json>`；追加 `--franc-full <本地 franc 包目录>` 在同一判断链中替换统计库，`--old-root <旧源码目录>` 对比旧实现，`--browser --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <focus-safe-browser.cjs路径>` 在临时 profile 的后台 Edge 中测量 `chrome.i18n.detectLanguage`。结果只代表这些由项目编写的语料，不作为通用准确率。最近一次结论见 [语言识别报告](./reports/language-detection-20260916.md)。
+识别器对比可复现运行 `node scripts/testing/evaluate-language-detectors.mjs --out <report.json>`；追加 `--franc-full <本地 franc 包目录>` 在同一判断链中替换统计库，`--old-root <旧源码目录>` 对比旧实现，`--browser --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <focus-safe-browser.cjs路径>` 在临时 profile 的后台 Edge 中测量 `chrome.i18n.detectLanguage`。结果只代表这些由项目编写的语料，不作为通用准确率。历史基准见 [语言识别报告](./reports/language-detection-20260916.md)，当前架构和留出回归见 [目标语言优化报告](./reports/target-language-quality-20261011.md)。使用 `--extra-corpus tests/fixtures/target-language-release-corpus.json` 将本次独立发行说明语料加入同一评测。
 
 生产扩展构建后运行 `node scripts/testing/run-chinese-translation-test.cjs --multilingual-same-target --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <focus-safe-browser.cjs路径> --artifacts-dir <证据目录>`。专项复用临时 Edge、后台可见且不抢焦点的窗口，对 de/pt/it/fr/en/ru/ja/ko/zh-Hans 分别验证同目标段落和标题在悬浮与全文中零请求、相邻外语悬浮 `[1,0,1,0]` 与全文 `[1,0,1]`、GitHub `li > a` 提交链接保持、宿主 `lang="en"` 不影响判断、全文会话中动态改写为外语后重新请求、恢复原文，以及同一页面从德文目标切到英文目标、以简体为目标并排除德文时的结论。页面与译文来自本地回环夹具，只证明扩展判断链与请求计数，不代表真实供应商质量，也不替代 Firefox 实机验证。
 
 PR #906 技术中文专项将上述模式参数替换为 `--technical-pr-906`，只验证反馈中的四段原文及相邻英文。它分别使用普通文本和交替 `code`/`strong` 包装，检查简体中文目标下悬浮、全文均零中文请求和零译文节点，恢复、再次触发、动态改写为英文与切换英文目标后按新文本及目标重新判断。结果和复现说明见 [技术中文重复翻译回归报告](./reports/chinese-technical-pr-906-20261009/README.md)。
 
+发行说明专项将模式参数替换为 `--target-release`，验证截图对应的十段中文、普通与行内 `code`/`strong` 结构、中文目标零请求、相邻英文翻译—恢复—再翻译、动态正文改写和目标切换，并单独打开真实 GitHub Releases 页面复核八个中文段落，包含产品名称枚举。翻译端点仍为回环夹具，真实页面证据不能作为线上供应商译文质量证明。
+
+`targetLanguageReleaseCorpus` 覆盖 52 个目录目标的自然段落、短标题、标记外壳和 Unicode 空白；所有文本逐一检查各目标与排除语言。`targetLanguageDetector` 和独立 `targetLanguageAdversarial` 覆盖名称预算、大写提示、引述、跨语种混合与代码字面量；`imageTargetLanguage`、`inputTranslationBackground`、`areaTextTranslation` 验证直接后台文本入口同目标零调用、原行映射、冻结目标和 AI 纠错协议保留。
+
 ## 原文回显与逐槽恢复
 
-`tests/chineseUiNamesRegression.test.ts` 验证“继续使用 Apple”“通过 Google 继续操作”等短中文界面文字在中文目标下保持原样；引号内的外语、英文提示与中外文混合正文继续参与翻译。`tests/identicalTranslation.test.ts` 只在展示比较副本中忽略 U+200B，保留大小写、可见字词间隔、简繁转换、ZWJ 与 ZWNJ 的差异。
+`tests/chineseUiNamesRegression.test.ts` 验证“继续使用 Apple”“通过 Google 继续操作”等短中文界面文字在中文目标下保持原样；引号内的外语、英文提示与中外文混合正文继续参与翻译。`tests/identicalTranslation.test.ts` 只在展示比较副本中忽略 U+200B，保留大小写、可见字词间隔、简繁转换、ZWJ 与 ZWNJ 的差异。网页另通过 `targetResult.ts` 对可信同目标正文做排版等价兜底；`targetTranslationResult` 验证其不吞数字、否定、问感叹符、运算符、简繁、真实字词及引用/代码字面量变化。其他写作和文档编辑维持精确比较。
 
 `tests/translationEchoValidationRegression.test.ts` 验证有外语证据的正文仅增加句末标点或 U+200B 时，后台恢复一次并拒绝连续回显，异常结果不能缓存；真实词字、数字和运算符变化不能被折叠为相同。`tests/translationSlotEchoRegression.test.ts` 验证内部单条协议逐槽恢复：保留成功槽和顺序，沿用冻结术语的“保持原文”规则、Chrome 长检测样本和同一请求截止时间；取消、损坏协议与部分回显缓存不能被当作完整成功。`tests/requestConfigSnapshot.test.ts` 另覆盖来源中的字面槽标记、嵌套及碰撞避让后的 nonce、共享下划线和长来源边界扫描；非法尾部编号不能驱动不受输入规模约束的槽数组分配。普通用户文本不因含有相似标记而自动进入内部槽协议。
 
@@ -272,11 +336,13 @@ X 另覆盖未预取句子等待原译文成对显示、seek 后迟到结果丢�
 
 ## 输入框翻译
 
-`node scripts/run-input-translation-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <focus-safe-browser.cjs路径> --artifacts-dir /private/tmp/fluentread-input-translation` 使用生产扩展和临时 Edge profile，在第二屏后台验证输入框配置保存、三击间隔与恢复默认、独立模型和提示词、窄屏与深色布局，以及真实按键的翻译、取消、恢复和失败重试。
+`node scripts/run-input-translation-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <focus-safe-browser.cjs路径> --artifacts-dir /private/tmp/fluentread-input-translation` 使用生产扩展和临时 Edge profile，在第二屏后台验证输入框配置保存、三击间隔与恢复默认、独立模型和提示词、窄屏与深色布局，以及真实按键的翻译、重复请求去重、后台 AbortSignal 取消、恢复和失败重试。还检查富文本失焦不夺回焦点、原生输入保持其他控件的焦点与选区、写回和恢复期间的新输入保护、390px 提示边距与滚动跟随，以及编辑器拒绝写入时可手动复制的译文。
 
 供应商响应与网页均为本地夹具，报告中的请求记录用于核对模型、提示词和原文；不代表外部服务连通性或模型翻译质量。`tests/inputTranslationConfig.test.ts`、`tests/inputTranslationBackground.test.ts` 和输入框内容脚本测试覆盖配置迁移、缓存隔离、输入快照、选区、输入法和迟到结果保护；`tests/inputEditableHost.test.ts` 覆盖编辑宿主的光标度量、选区同步等待、合成粘贴与原生插入回退。
 
 同一专项还验证富文本编辑区：原生 contenteditable 通过可撤销的原生插入写回，撤销后恢复粗体结构；模拟 Lexical/Draft.js 的模型驱动编辑器只在 selectionchange 后同步选区，报告中的 `modelEditorLog` 用于确认整段粘贴发生在选区同步之后、没有重复插入；plaintext-only 支持三连触发，密码框和代码编辑器保持不参与。`node scripts/run-rich-text-input-editors-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <focus-safe-browser.cjs路径> --artifacts-dir /private/tmp/fluentread-rich-text-editors` 从 esm.sh 与 jsDelivr 加载真实的 Quill、ProseMirror、Lexical、Slate 和 Draft.js，逐个验证三连触发后编辑器自身模型只含译文、原文不含触发符，以及恢复原文；该脚本需要联网获取编辑器，结果不代表具体网站的定制编辑器。Firefox 与用户脚本构建需另外执行，Edge 结果不能替代其运行时验证。
+
+给真实编辑器脚本追加 `--slate-fast-cache`，会在 Slate 连续执行五轮翻译与恢复：前三轮供应商立即返回，第四轮开启缓存并预热，第五轮断言缓存命中且不发送供应商请求。每轮都精确检查编辑器模型与 DOM 文字，避免只看到页面变化却留下旧模型内容。专项结果见 [输入框翻译质量报告](./reports/input-translation-quality-20261011/README.md)。
 
 ## 设置页视口与滚动
 
@@ -487,11 +553,36 @@ node scripts/testing/run-fixed-height-translation-test.cjs \
 
 它检查卡片实际内容边界而非仅检查卡片壳，覆盖翻译、恢复、再次翻译、共用卡片、宿主高度改写及独立滚动区域。页面和翻译响应均为本地夹具，不能代替真实网站或翻译服务的验证。高度覆盖在仍有译文时共享保留，避免在“解除高度后无溢出”与“恢复高度后再次溢出”之间反复切换；最后一个译文移除时恢复宿主样式。
 
+### 连续滚动中的阅读等待
+
+```bash
+node scripts/testing/run-reading-wait-priority-test.cjs \
+  --phase optimized --iterations 3 --delay-ms 180 \
+  --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> \
+  --focus-safe-helper scripts/testing/focus-safe-browser.cjs \
+  --artifacts-dir /private/tmp/fluentread-reading-wait-optimized
+```
+
+专项使用生产扩展、临时 Edge profile 和第二屏后台可见窗口，在同一材料和本地微软 HTTP 响应下记录首屏与连续滚动的首次可读、逐帧实际视口完成时间、HTTP 请求数、文本槽数及至少 50ms 的长任务。首次可读要求译文自身进入视口；视口完成要求当帧所有可见候选的译文 DOM 就绪，部分可见段落也计入。指定三个阅读锚点另记完成时间，并检查它们始终可见。80 段视口模式重复三次，1000 段整页模式另测一次；滚动每 80ms 前进 3px，持续至少 1600ms。请求计数固定观察首屏 800ms、滚动 2600ms，包含已有的独立标题翻译；正文并发以一槽候选计数，不能把合批 HTTP 数等同于候选并发。
+
+`--phase baseline --extension-dir <同一基础提交的冻结生产包> --measurements-only` 复现旧版等待滚动结束后才请求的行为；`--measurements-only` 和 `--lifecycle-only` 可限定范围，后者可追加 `--lifecycle-case failure-retry` 等单项。完整新版专项还检查并发占满、在途恢复和重译、全局关闭、恢复后切换目标语言、动态 DOM、失败重试、导航清理和悬浮翻译—恢复—再次翻译。既有会话冻结调用时配置，目标语言变更由下一次调用采用。
+
+相关定向测试为 `fullPagePriority`、`fullPageVisibilityScheduling`、`fullPageTranslationIndicators`、`viewportStability`、`translateQueue`、`translationRequestScheduler`、`fullPageFailureRecovery` 与 `hoverTranslationScheduler`。对比结论见[阅读等待优化报告](./reports/reading-wait-priority-20261011.md)。本地响应只验证插件调度与 DOM 可读性，不证明在线服务延迟、语义质量、任意网站或 Firefox 实机表现。
+
 ### Hacker News 与 Product Hunt 翻译滚动
 
 `tests/browser-translation-cases.json` 的 `hacker-news-home` 与
 `producthunt-posting-access` 分别覆盖实时首页标题列表和用户指定的帮助文章，均支持
 悬浮、全文模式。Hacker News 原有的讨论页用例继续保留。
+
+`producthunt-home` 直接覆盖产品首页的介绍 span、产品名称、页脚、搜索及 Cookie 提示保护，
+与帮助中心文章是独立用例；遇到 Cloudflare 时按 quarantine 记录站点限制。
+实时投票数字会由网站更新，投票保护由固定夹具与专项浏览器验证检查，不用数字是否变化判断翻译污染。
+`site-adaptation-fixtures.json` 的 `product-hunt` 与 established 夹具的
+`hacker-news` 使用生产规则验证正文、代码和身份操作边界。
+`siteAdaptationCatalog.test.ts` 与 `translationCore.test.ts` 检查悬浮/全文候选一致、
+多段评论不合并、动态重建和 HN 阅读页回退。性能对比应另外报告候选数、扫描步骤、
+最大源快照长度及真实浏览器长任务，不能把减少无效候选称为端到端翻译提速。
 
 可见段落插入译文时，下方内容正常展开，不应主动滚动页面来抵消展开高度。只有变化
 完全发生在同一滚动容器的视口上方时才做阅读位置补偿；页首保持页首，整页恢复优先
@@ -549,6 +640,17 @@ pnpm exec vitest run tests/hoverTranslationContentFeature.test.ts tests/fullPage
 这些用例覆盖组合键取消后的连续移动、同值属性写入、后代保护资格变化、在途 Text 重建、分槽来源变化、共享等待者取消、双语重挂和恢复，以及仅译文槽被宿主克隆后的原文保全。新增竞态用例应证明旧实现失败，且包含用户下一次正常翻译或恢复的断言，避免用永久禁用翻译掩盖循环。
 
 生产 Chrome 产物另由 `scripts/run-full-page-translation-test.cjs` 验证真实键鼠事件、DOM 工件身份、请求数及连续帧可见性。使用浏览器技能提供的 focus-safe helper 与临时 profile，窗口在第二块屏幕可见但不抢前台。报告必须区分本地确定性服务夹具和真实网站、真实翻译服务的结果。
+
+悬浮性能与取消生命周期由独立专项验证；它使用临时后台 Edge、真实 CDP 键鼠事件和延迟 180ms 的本地微软协议响应：
+
+```bash
+node scripts/testing/run-hover-reliability-test.cjs \
+  --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> \
+  --focus-safe-helper scripts/testing/focus-safe-browser.cjs \
+  --artifacts-dir /private/tmp/fluentread-hover-reliability
+```
+
+默认执行八组场景：开关及连续移动开销、同段停留与最后位置、在途及已译段落唯一性、离开视口、真实隐藏标签页、SPA 路由切换、宿主替换段落、显式失败重试。各组也检查原文、原生输入与链接，报告保留请求数、DOM、截图、焦点策略和扩展文件哈希。追加 `--cases dom-replacement` 可缩小复现；`--baseline` 仅用于旧产物，记录行为失败后继续采样，不能作为修复验收通过。性能对比必须使用相同脚本和夹具、相同 320 次移动，冻结两份生产包；本地 CPU 采样不能推广为所有网站或供应商的加速比例。
 
 “识别全部节点”的专项由 `scripts/run-all-nodes-translation-test.cjs` 负责。它在生产扩展的“高级选项 → 页面识别”中操作真实开关，关闭并重新打开设置页确认保存，再通过原有全文翻译入口验证范围。设置从下一次翻译起生效；存量会话保持自己的范围快照，恢复后再次翻译才使用新值。
 
@@ -648,6 +750,37 @@ node scripts/testing/run-popup-quick-settings-ui-test.cjs \
 该专项使用生产扩展、临时 Edge profile 和第二屏后台窗口，检查六个快捷抽屉的完整可见性、对应设置入口、亮暗主题、划词与视频模式、隐藏字幕恢复、已有偏好保留、修改后立即关闭与重开、跨页面同步及连续写入。完整设置另验证 17 个导航入口、390px 布局、本地模型卡片在视频关闭后的禁用状态、字幕外观跟随配置草稿更新，以及迁入的朗读声音可以编辑并保存。配置通过真实后台消息写入本次临时扩展，不读取日常浏览器配置。
 
 该脚本不下载模型、不调用外部翻译服务，也不验证播放器字幕质量或 Firefox 真实界面；不能把专项通过等同于其他 UI 套件或真实翻译链路通过。报告分别记录窗口位置、焦点策略、配置行为、布局尺寸、控制台错误和截图。
+
+## AI 阅读解释的原文依据
+
+引用协议与 Harness 后台的定向验证使用既有严格覆盖率配置；只收窄本轮涉及的文件，四维阈值保持 100%：
+
+```bash
+pnpm test:coverage -- tests/readingEvidence.test.ts tests/harnessRuntime.test.ts tests/readingAssistantPresentation.test.ts \
+  --coverage.include=src/core/harness/evidence.ts \
+  --coverage.include=src/services/harness/runtime.ts \
+  --coverage.include=src/features/reading-assistant/answerFormat.ts
+pnpm test:coverage -- tests/readingEvidenceAnchor.test.ts \
+  --coverage.include=src/features/reading-assistant/evidenceAnchor.ts
+pnpm test -- tests/readingEvidenceUi.test.ts tests/readingPanelLifecycle.test.ts \
+  tests/readingPanelStreamingResize.test.ts tests/selectionTranslatorLifecycle.test.ts
+```
+
+这些测试覆盖真实送入模型的来源身份、连续引文校验、权限裁剪、未知/改写/不完整引用拒绝、表格内标记、重复句消歧、等价 DOM 恢复、隐藏正文、正文改写、导航、历史禁定位、取消与迟到结果，以及短期高亮和内部定位滚动的清理。
+
+生产 Chrome 构建后的专项：
+
+```bash
+node scripts/testing/run-resource-safe.mjs -- node scripts/run-harness-reading-test.cjs --evidence-only \
+  --extension-dir .output/chrome-mv3 \
+  --playwright-root <bundled-node-packages> \
+  --focus-safe-helper <browser-translation-test-skill>/scripts/focus-safe-browser.cjs \
+  --artifacts-dir /private/tmp/fluentread-reading-evidence
+```
+
+脚本使用临时 Edge profile、第二屏后台可见窗口和真实鼠标/键盘，核对解释旁的多句依据、点击/Enter/Space 定位、实际全文双语翻译与恢复、等价重建、隐藏/显示、追问、正文改写、SPA 导航、关闭及停止后迟到响应。顶栏更多入口另行检查“记录”右侧位置、正文无占位、菜单展开尺寸、键盘及外点关闭、浅深色与窄卡片。另有手工插入译文节点的排除规则测试，报告与真实翻译路径分开记录。模型和普通翻译均为本机确定性 HTTP 夹具，只证明协议、来源映射与交互链路；不证明在线模型质量、解释语义正确、所有站点或 Firefox 实机行为。报告保存来源 DOM、闭合 Shadow DOM、截图及源码/构建摘要。
+
+原文依据入口使用句末无外框双引号，专项核对 20×20 按钮、16×16 引文 SVG、无警示形状/可见标签文字、完整引文 title/aria 和行内布局。真实 hover 检查原生 title 契约，系统层 tooltip 不作为截图证据；点击及 Enter / Space 继续定位原句。
 
 ## 设置层级与渐进展开
 
@@ -1049,6 +1182,22 @@ pnpm test:pdf-selection -- \
 ## 划词窗口拖动与缩放（issue #525）
 
 `node scripts/run-selection-trigger-test.cjs --geometry-only --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <浏览器测试技能>/scripts/focus-safe-browser.cjs --artifacts-dir /private/tmp/fluentread-selection-geometry` 使用临时 Edge profile 和第二屏后台窗口，检查顶部与内容空白处拖动、八个方向缩放、自动换行、正文选择、复制、滚动后位置保持、最小尺寸和视口边界，以及关闭、禁用、重新划词和迟到译文。截图涵盖放大、窄窗口和深色主题。页面及微软翻译响应为本地夹具，不代表真实供应商质量；窗口手势通过真实 CDP 输入执行。
+
+## 单篇篇章参考
+
+生产 Chrome 构建完成后运行以下独立网页套件：
+
+```bash
+<bundled-node> scripts/testing/run-discourse-context-test.cjs \
+  --extension-dir .output/chrome-mv3 \
+  --playwright-root <bundled-node-packages> \
+  --focus-safe-helper scripts/testing/focus-safe-browser.cjs \
+  --artifacts-dir /private/tmp/fluentread-discourse-context
+```
+
+套件使用临时 Edge profile、第二屏后台可见窗口和真实 `Control` 手势，验证首 2,000 字符之后的定义、同缩写换义、正文更新、取消、SPA 材料切换、恢复后重译、深处嵌套布局以及普通锚点跳转中的已译与在途证据。生产客户端、broker、provider 和 DOM 挂载使用真实产物；本机确定性 OpenAI 响应验证传输与生命周期，不能证明模型语言质量。报告记录请求、预算、前台 PID 核对、DOM 与截图，最终关闭仅属于本次运行的浏览器。
+
+`discourseContext` 与 `pageDiscourseContext` 专项守护来源位置、有界焦点窗口、原文版本、迟到提交、章节含义与确认译法优先级，并纳入严格四维覆盖率。`documentTranslationApi` 与 `documentAppLifecycle` 验证同章去重、跨章隔离、页码与章节标签、会话确认译文和重译清理；broker/template 与既有请求、状态测试守护上下文默认关闭、摘要复用和缓存隔离。真实本地模型的原文—译文对照、token 与耗时另存于 `docs/reports/discourse-context-20261011/model-quality.json`，其中保留漏译与歧义反例；有限样本尚未建立可靠的整体质量提升，Firefox 与真实云端服务不在这次运行验收范围内。
 
 ## 按域名移除来源请求头（issue #763）
 

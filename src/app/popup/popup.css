@@ -1,7 +1,7 @@
 /**
  * @file src/app/popup/popup.css
  * 文件职责：定义宽度随皮肤和界面语言、高度由内容撑开且最高 560px 的浏览器 Popup 视觉系统与交互状态，包括亮暗主题、服务选择、功能卡、设置抽屉、通知和响应式细节。
- * 主要内容：以白色窄版画布、浅灰控件和品牌色强调网页翻译、局部选择及站点控制；定义版本与赞赏码的原位放大、默认服务及配置模型摘要、静态凭据提示、两列入口、完整开源胶囊与开关优先的快捷抽屉，保留操作示意、舒展间距和必要的内部滚动。
+ * 主要内容：以白色窄版画布、浅灰控件和品牌色强调网页翻译、局部选择及站点控制；定义版本与赞赏码的原位放大、默认服务及配置模型摘要、静态凭据提示、两列入口、完整开源胶囊与开关优先的快捷抽屉，保留操作示意、舒展间距和必要的内部滚动；站点规则沿用原指示点展示保存状态并尊重减少动画偏好。
  * 模块边界：样式只对应 PopupApp 的 DOM 和受控第三方组件，不决定配置值、能力可用性或消息行为；跨页面 token 在 src/ui/styles，Options/文档页各自维护页面样式。
  */
 @import "../../ui/styles/feedback.css";
@@ -43,6 +43,7 @@ html { min-height: 0; }
 /* Firefox 按内容的固有宽度给 popup 定尺寸，不采用 html 的宽度；body 用百分比时会被当成 auto，首启页被裁成 200px、英文菜单右侧留白。 */
 body, #app { width: var(--fluentread-localized-popup-width, var(--interface-popup-width, 320px)); }
 html, body, #app { min-width: 0; margin: 0; overflow-x: hidden; background: #fff; }
+
 :root.dark body, :root.dark #app { background: #14161b; }
 button, select, input { font: inherit; }
 button { color: inherit; }
@@ -279,6 +280,8 @@ h2 { margin-bottom: 0; font-size: 15px; line-height: 1.35; letter-spacing: -.01e
 .site-rule-button > i { flex: none; width: 6px; height: 6px; border-radius: 50%; background: #b8bec9; }
 .site-rule-button.enabled { border-color: rgba(239, 71, 118, .35); background: var(--brand-soft); }
 .site-rule-button.enabled > i { background: var(--brand); box-shadow: 0 0 0 3px rgba(239, 71, 118, .12); }
+.site-rule-actions .site-rule-button > i.site-rule-saving { background: transparent; box-shadow: none; border: 1px solid currentColor; border-right-color: transparent; animation: spin .7s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .site-rule-actions .site-rule-button > i.site-rule-saving { animation: none; border-right-color: currentColor; } }
 .site-rule-button:hover:not(:disabled) { border-color: rgba(239, 71, 118, .48); background: var(--brand-soft); }
 .site-rule-button:disabled { cursor: default; opacity: .72; }
 .site-rule-button.global-enabled:disabled { opacity: 1; }
@@ -696,3 +699,9 @@ footer button { font-weight: 500; color: var(--muted); }
 :root:not(:lang(zh)) .popup-shell .opensource-link { min-width: 0; white-space: normal; text-align: center; line-height: 1.4; }
 :root:not(:lang(zh)) .popup-shell .opensource-link > span:not(.external-mark) { min-width: 0; overflow-wrap: anywhere; }
 .opensource-link svg, .opensource-link .external-mark { flex: none; }
+
+/* 页内 iframe 已有视口尺寸，只在这个模式使用视口约束；工具栏仍保留固有宽度契约。 */
+:root[data-fluentread-embedded-popup] { width: min(100vw, var(--fluentread-localized-popup-width, var(--interface-popup-width, 320px))); min-height: 0 !important; }
+:root[data-fluentread-embedded-popup] body,
+:root[data-fluentread-embedded-popup] #app { width: min(100vw, var(--fluentread-localized-popup-width, var(--interface-popup-width, 320px))); }
+:root[data-fluentread-embedded-popup] .popup-shell { max-height: min(560px, 100dvh); }

@@ -6,8 +6,9 @@ import {gunzipSync} from 'node:zlib';
 import {runInNewContext} from 'node:vm';
 import {describe, expect, it, vi} from 'vitest';
 import {ungzip} from 'pako';
-import {zhCNMessages, userscriptMessages} from '@/userscript/languageBundles';
+import {zhCNMessages, UI_LANGUAGE_BUNDLES, userscriptMessages} from '@/userscript/languageBundles';
 import {zhCNMessages as extensionChinese} from '@/src/core/i18n/messages/zh-CN';
+import {UI_LANGUAGE_BUNDLES as extensionBundles} from '@/src/core/i18n/bundles';
 import {installInformationHighlight} from '@/userscript/informationHighlight';
 import {inflateWithPako} from '@/userscript/pakoRuntime';
 import * as chineseCharacterData from '@/src/core/language/chineseVariants';
@@ -75,6 +76,53 @@ describe('authoritative site catalogs with an external pinned data asset', () =>
 });
 
 describe('userscript browser shim injection', () => {
+    it.each(['standard', 'standalone'] as const)('keeps %s runtime icon inline and pins only the standard manager icon', async mode => {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', mode === 'standalone' ? '1' : '');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', '');
+        try {
+            vi.resetModules();
+            const {default: config} = await import('@/userscript/vite.config');
+            const plugins = (config as {plugins: Array<{name: string; generateBundle?: {handler: Function}}>}).plugins;
+            const plugin = plugins.find(item => item.name === 'bundle-userscript-css')!;
+            const entry = {type: 'chunk', isEntry: true, code: 'var fixture = 1;', moduleIds: []};
+            await Reflect.apply(plugin.generateBundle!.handler, {}, [{}, {'entry.js': entry}]);
+            const iconBytes = readFileSync(resolve(process.cwd(), 'public/icon/64.png'));
+            const runtimeIcon = JSON.parse(entry.code.match(/globalThis\.__FLUENTREAD_ICON_DATA__=("[^"]+");/u)![1]) as string;
+            expect(Buffer.from(runtimeIcon.split(',')[1], 'base64')).toEqual(iconBytes);
+            const metadataIcon = entry.code.match(/^\/\/ @icon\s+(.+)$/mu)![1];
+            if (mode === 'standalone') expect(metadataIcon).toBe(runtimeIcon);
+            else {
+                const pinned = metadataIcon.match(/^https:\/\/cdn\.jsdelivr\.net\/gh\/FluentRead\/FluentRead@([a-f0-9]{40})\/public\/icon\/64\.png$/u);
+                expect(pinned).not.toBeNull();
+                expect(execFileSync('git', ['show', `${pinned![1]}:public/icon/64.png`], {cwd: process.cwd()})).toEqual(iconBytes);
+                expect(metadataIcon).not.toBe(runtimeIcon);
+            }
+        } finally {vi.unstubAllEnvs();vi.resetModules();}
+    });
+    it.each<readonly [string, Record<string, string>, Record<string, string>]>([
+        ['zh-CN', extensionChinese, zhCNMessages],
+        ...Object.entries(extensionBundles).map(([language, bundle]) => [language, bundle.messages, UI_LANGUAGE_BUNDLES[language as keyof typeof UI_LANGUAGE_BUNDLES].messages] as const),
+    ])('retains extension-only copy in %s while preserving userscript menu and settings copy', (_language, extension, projected) => {
+        const noticeKeys = Object.keys(extension).filter(key => key.startsWith('contextMenu.notice.'));
+        expect(noticeKeys).toHaveLength(6);
+        for (const key of noticeKeys) {
+            expect(extension[key]).toBeTruthy();
+            expect(Object.hasOwn(projected, key)).toBe(false);
+        }
+        const learningKeys = Object.keys(extension).filter(key => key.startsWith('video.learning.'));
+        expect(learningKeys).not.toHaveLength(0);
+        for (const key of learningKeys) {
+            expect(extension[key]).toBeTruthy();
+            expect(Object.hasOwn(projected, key)).toBe(false);
+        }
+        const retainedKeys = Object.keys(extension).filter(key => !key.startsWith('informationHighlight.')
+            && !noticeKeys.includes(key) && !learningKeys.includes(key));
+        expect(Object.keys(projected)).toHaveLength(retainedKeys.length);
+        for (const key of retainedKeys) expect(projected[key]).toBe(extension[key]);
+        expect(projected['contextMenu.translateSelection']).toBeTruthy();
+        expect(projected['contextMenu.translatePage']).toBeTruthy();
+        expect(projected['contextMenu.restorePage']).toBeTruthy();
+    });
     it('excludes unreachable highlight code and copy while keeping an explicitly unavailable state', () => {
         expect(userscriptMessages(extensionChinese)).toEqual(zhCNMessages);
         expect(Object.keys(zhCNMessages).some(key => key.startsWith('informationHighlight.'))).toBe(false);
@@ -123,6 +171,17 @@ describe('userscript browser shim injection', () => {
         expect(moduleSource).toContain(createHash('sha256').update(gunzipSync(Buffer.from(base64!, 'base64'))).digest('hex'));
     });
 
+    it('applies the same document-page boundary to the embedded English catalog and preserves learning-center source copy', () => {
+        const defines = (userscriptConfig as {define: Record<string, string>}).define;
+        const compressed = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__)['en-US'];
+        const restored = JSON.parse(gunzipSync(Buffer.from(compressed, 'base64')).toString('utf8'));
+        const english = UI_LANGUAGE_BUNDLES['en-US'];
+        const messages = Object.fromEntries(Object.entries(english.messages).filter(([key]) => !key.startsWith('document.')));
+        expect(Object.keys(messages).length).toBeLessThan(Object.keys(english.messages).length);
+        expect(restored).toEqual({...english, messages});
+        expect(restored.legacyText['回到视频片段']).toBe(extensionBundles['en-US'].legacyText['回到视频片段']);
+    });
+
     it('keeps all site rule JSON data intact when embedding compressed offline catalogs', () => {
         const plugin = createUserscriptCatalogCompressionPlugin() as unknown as {
             resolveId: (source: string, importer: string) => string | null;
@@ -163,13 +222,43 @@ describe('userscript browser shim injection', () => {
             .filter((entry): entry is {find: string; replacement: string} => typeof entry.find === 'string')
             .map((entry) => [entry.find, entry.replacement]));
 
-        for (const feature of ['area-translation', 'image-translation', 'video-subtitle']) {
+        for (const feature of ['area-translation', 'image-translation', 'video-subtitle', 'personal-corrections']) {
             expect(stringAliases.get(`@/src/features/${feature}/public`)).toMatch(/userscript\/unsupportedCapabilities\.ts$/u);
         }
         expect(stringAliases.get('@/src/features/writing-assistant/public')).toMatch(/userscript\/writingAssistant\.ts$/u);
         expect(stringAliases.get('@/src/platform/storage/credentialContext')).toMatch(/userscript\/credentialContext\.ts$/u);
         expect(stringAliases.get('@/src/platform/storage/configStorageRuntime')).toMatch(/userscript\/storage\.ts$/u);
         expect(userscriptAliases.at(-1)?.find).toBe('@');
+    });
+
+    it('阻止个人校订 UI 绕过 public 空适配器进入任意 userscript chunk', async () => {
+        const plugins = (userscriptConfig as {plugins: Array<{name: string; generateBundle?: {handler: Function}}>}).plugins;
+        const plugin = plugins.find(item => item.name === 'bundle-userscript-css')!;
+        const entry = {type: 'chunk', isEntry: true, code: 'var fixture = 1;', moduleIds: []};
+        const correctionModule = `${resolve(process.cwd(), 'src/features/personal-corrections/ui/PersonalCorrectionsPanel.vue')}?vue&type=script`;
+        const otherChunk = {type: 'chunk', isEntry: false, code: '', moduleIds: [correctionModule]};
+        await expect(Reflect.apply(plugin.generateBundle!.handler, {}, [{}, {'entry.js': entry, 'other.js': otherChunk}]))
+            .rejects.toThrow(`Userscript bundle contains unsupported personal correction feature: ${correctionModule}`);
+        expect(entry.code).toBe('var fixture = 1;');
+
+        otherChunk.moduleIds = [resolve(process.cwd(), 'src/features/personal-corrections-other/public.ts')];
+        await expect(Reflect.apply(plugin.generateBundle!.handler, {}, [{}, {'entry.js': entry, 'other.js': otherChunk}])).resolves.toBeUndefined();
+    });
+
+    it('只在 userscript 构建中移除 inline page.css 的扩展校订来源提示，保留重试样式', () => {
+        const plugins = (userscriptConfig as {plugins: Array<{name: string; transform?: {order: string; handler: Function}}>}).plugins;
+        const plugin = plugins.find(item => item.name === 'bundle-userscript-css')!;
+        const pageCss = resolve(process.cwd(), 'src/app/content/page.css');
+        const source = readFileSync(pageCss, 'utf8');
+        expect(source).toContain('data-fr-personal-correction');
+        expect(plugin.transform!.order).toBe('pre');
+        const transformed = Reflect.apply(plugin.transform!.handler, {}, [source, `${pageCss}?inline`]);
+        expect(transformed.code).not.toContain('data-fr-personal-correction');
+        expect(transformed.code).toContain('.fluent-read-retry-wrapper');
+        expect(transformed.map).toBeNull();
+        expect(Reflect.apply(plugin.transform!.handler, {}, [transformed.code, pageCss])).toBeNull();
+        expect(Reflect.apply(plugin.transform!.handler, {}, [source, `${pageCss}.other.css?inline`])).toBeNull();
+        expect(readFileSync(pageCss, 'utf8')).toBe(source);
     });
 
     it('把 dexie 换成不注册全局单例的入口，且不改写 dexie 自身的实现产物路径', () => {
@@ -279,12 +368,12 @@ describe('userscript lossless Unicode character data', () => {
         }
     });
 
-    it('restores all 45 function-word strings byte for byte and preserves the original lexicon digest', () => {
+    it('restores all 46 function-word strings byte for byte and preserves the audited lexicon digest', () => {
         const entries = Object.entries(functionWordData).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
-        expect(entries).toHaveLength(45);
+        expect(entries).toHaveLength(46);
         // 提取前四组功能词原始字符串的摘要；按导出名排序，不依赖 module namespace 的枚举实现。
         expect(createHash('sha256').update(JSON.stringify(entries)).digest('hex'))
-            .toBe('6b56ec4873ca9ec2f137f93f32987c438a5b54ba6024e64e9de33ff314b77131');
+            .toBe('998dc8f897b31a8b91eaaec8ffe4e563b513fe856a6f91d8d528209d90f15ca1');
         const transformed = createPlugin().transform(readFileSync(wordDataPath, 'utf8'), wordDataPath)!;
         vi.stubGlobal('pako', {ungzip});
         try {

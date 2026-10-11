@@ -168,6 +168,7 @@ WXT 会把 `entrypoints/` 下零层或一层的入口作为构建输入，并在
 - Options 首次只挂载当前设置分区，访问后的分区保留实例和编辑状态；学习中心与设置表单的 `KeepAlive` 必须使用不同缓存键。表单挂载前等待配置和界面语言就绪，避免默认值闪现及额外重渲染。Popup/Options 按实际使用的 Element Plus 组件引入样式。
 - 连续设置表单使用顶部同页导航：点击模块名称滚动到该模块，滚动时同步高亮，折叠模块按需展开；入口按可见 DOM 顺序排列，窄屏导航横向滚动。定位只操作内容容器，不修改 URL 或配置、不隐藏其他模块；翻译统计与网站规则继续使用原有视图切换。页内入口使用 `data-settings-panel` 或带标题的 `data-settings-anchor` 标记，搜索也支持同级 continuation 分区中的目标。
 - ONNX Runtime 的 WASM 随扩展以原始 `.wasm` 保存，由发布 ZIP 统一压缩，避免 Edge Partner Center 拒绝包内嵌套 `.gz` 文件。首次模型初始化时读取并校验 WASM 后注入 `env.wasm.wasmBinary`；静态 MJS 仍从扩展自身加载，CSP 不允许远程代码或 blob 脚本。CPU 和 WebGPU 初始化共用这个入口，成功或失败后都释放注入的二进制引用。OPUS/Whisper 使用 ORT 1.22 的 JSEP pair，Kokoro 使用其 Transformers 精确依赖 ORT 1.26 的 Asyncify pair；两者不能混用版本或 WASM/MJS 类型。wllama 是另一套独立引擎。打包方式不改变模型及原有 GPU 启用策略；共享加载器仍兼容旧 gzip 资源。
+- PDF 文本导出字体作为静态数据按需下载，固定已发布的提交路径并校验容量与 SHA-256；按浏览器语言排序，简体中文优先 JSDMirror / onmicrosoft 镜像，其他语言优先 jsDelivr / GitHub Raw，不判断用户所在地，失败时自动切换来源。成功校验后写入扩展 CacheStorage，后续导出先读取并校验本机缓存；请求不带文档、译文或凭据。维护源与测试夹具保留在 `assets/pdf-fonts/`，不进入扩展安装包；运行时代码与字体授权说明仍随包提供。
 - MV3 background 是 service worker，内存状态必须允许重启；需要持久化的数据进入 storage/IndexedDB。
 - 扩展自有 DOM 运行时由 background 管理，content 和 UI 只通过类型化消息协议请求能力。Chrome/Edge MV3 使用原生 Offscreen，Firefox MV2 使用后台页面中的隐藏扩展 iframe；两者加载同一个 `offscreen.html`，复用同一份消息路由、OCR、图片/区域绘制、字幕推理和 TTS 播放逻辑。
 - `extensionDomClient` 只选择文档容器，并共用 `createOffscreenClient` 的准备、握手、截止时间、取消和重建。Firefox 特有代码仅负责 iframe 创建、查询和移除，不另写 feature handler、算法或配置。
@@ -420,6 +421,8 @@ pnpm test:regression:all -- --browser  # 追加屏幕外隔离浏览器 fixtures
 阅读助手采用浏览器内的有界 ledger 和独立工具循环，参考 DeepSeek Harness `dsh-v0.1.3-alpha.1`（commit `d347e703908d0406b7a7ef80e3a0e594d86b2215`）的 `packages/core/session/src/surface.ts` 消息投影思想。FluentRead 只保留选区、已授权段落、追问历史和只读 `read_context` 工具，不引入上游桌面 host、bridge、Cordis、插件、文件系统、进程、沙箱或动态执行能力；模型仍由现有 AI SDK gateway 选择。兼容模型与原生 Anthropic/Google 模型均通过各自协议接入，不能假设任意模型都支持工具调用或流式输出。
 
 阅读卡通过 `fluentReadHarnessStream` port 接收模型、正文和会话进度，正文按模型返回的增量快照更新；停止、错误、关闭、换选区和 worker 中断会取消当前请求，已收到正文仍保留在卡片中。普通模式的会话按问答保存在本机 30 天，历史可从阅读卡或设置页折叠查看、恢复、删除和清空；恢复只加载已有 turns，不自动发起模型请求，后台重建上下文时最多使用最近四轮。隐私窗口不保存也不读取历史。
+
+阅读依据采用 `core/harness/evidence` 的有界纯文本协议，引用身份由实际送入模型的选区/许可上下文及句段位置派生，后台与显示端分别核对身份和连续引文。回答中的有效引用经卡片的窄定位端口进入 `reading-assistant/evidenceAnchor`；DOM 锚点只保留原选区所属正文块、已许可快照、选区偏移及本地摘要，不接受模型的选择器、URL 或页码。等价正文重建可重绑，正文改写和 SPA 导航永久失效；历史记录保留引用快照而不重用当前 DOM 锚点。每次进度和结果写入前同步检查归属，取消、关闭、换选区和卸载清理临时绘制及监听。
 
 每个迁移批次必须：
 

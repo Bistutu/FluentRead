@@ -1,7 +1,7 @@
 /**
  * @file src/providers/translation/free-translation.ts
  * 文件职责：按冻结的用户设置编排免费翻译，并接入有界请求、取消和跨段冷却。
- * 主要内容：冻结匿名请求配置和共享预算；文档合批保留完整混合池，原生候选消费有界全组、其他候选只消费首段并继续余槽，普通调用沿用原分组条件；复用内部槽映射与原生数组传输，逐槽验证术语、文档标签、语言和原文回显，保持线路健康、间隔、取消及真实字符统计；单服务检查不换线，跳过多线路中已确认不支持的语言方向。
+ * 主要内容：冻结匿名请求配置和共享预算；文档合批保留完整混合池，原生候选消费有界全组、其他候选只消费首段并继续余槽，普通调用沿用原分组条件和冻结的服务合批偏好；复用内部槽映射与原生数组传输，逐槽验证术语、文档标签、语言和原文回显，保持线路健康、间隔、取消及真实字符统计；单服务检查不换线，跳过多线路中已确认不支持的语言方向。
  * 模块边界：只装配已有 provider；健康状态与并发调度由 freeFallback 服务持有。
  */
 import {sha256Hex} from '@/src/shared/function/sha256';
@@ -16,6 +16,7 @@ import {translateOfficialFreeWebProvider} from './free-official-web';
 import myMemory from './mymemory';
 import {translateBilibiliFree} from './bilibili-free';
 import {services} from '@/src/core/config/catalog';
+import {isNativeTranslationBatchEnabled} from '@/src/core/config/nativeBatch';
 import {urls} from '@/src/core/config/constants';
 import {DEFAULT_DEEPLX_ENDPOINT} from '@/src/core/config/deeplx';
 import {
@@ -58,7 +59,14 @@ const providerTranslators: Record<FreeProviderId, (request: TranslationProviderR
         const results = await translateMicrosoftTexts([request.origin], request.sourceLanguage!, request.targetLanguage!, request.abortSignal);
         return results[0];
     },
-    google: request => translateGoogleText(request.origin, request.sourceLanguage!, request.targetLanguage!, request.abortSignal),
+    google: request => {
+        const current = getTranslationProviderConfig(request, config);
+        // 文档逐段和已降级的槽必须保持真正单项，避免收集窗重新拼成刚被拒绝的协议批次。
+        const documentSingle = import.meta.env.BROWSER !== 'userscript' && request.enableNativeBatch === false
+            && (request.documentBatch === true || current.glossaryMatchContext?.context === 'document');
+        return translateGoogleText(request.origin, request.sourceLanguage!, request.targetLanguage!, request.abortSignal,
+            !documentSingle && isNativeTranslationBatchEnabled(services.google, current.nativeBatchTranslationEnabled), request.requestTimeoutMs);
+    },
     myMemory,
     bilibiliFree: translateBilibiliFree,
     transmart: request => translateFreeWebText('transmart', request.origin, request.sourceLanguage!, request.targetLanguage!, request.abortSignal),
@@ -214,7 +222,7 @@ function candidatesFor(text: string, message: PreparedRequest, groupSources?: re
                     ? runDocumentFreeNativeCandidate(provider.id, signal, scalarProviders!, () => translateNativeProviderGroup(provider.id as 'microsoft' | 'google', {...message, origin: text, abortSignal: signal}, groupSources))
                     : translateNativeProviderGroup(provider.id, {...message, origin: text, abortSignal: signal}, groupSources)
                 : import.meta.env.BROWSER !== 'userscript' && message.documentBatch === true && groupSources
-                    ? translateProviderText(provider.id, {...message, origin: groupSources[0]!, abortSignal: signal}).then(result => {
+                    ? translateProviderText(provider.id, {...message, origin: groupSources[0]!, enableNativeBatch: false, abortSignal: signal}).then(result => {
                         if (signal.aborted) throw abortErrorFromSignal(signal);
                         return serializeDocumentFreeFirstSlot(groupSources, result);
                     })
@@ -287,10 +295,12 @@ async function translateFreeBatch(texts: string[], message: PreparedRequest): Pr
                 }
             });
     }
-    const enabled = normalizeFreeTranslationOrder(getTranslationProviderConfig(message, config).freeTranslationOrder);
+    const current = getTranslationProviderConfig(message, config);
+    const enabled = normalizeFreeTranslationOrder(current.freeTranslationOrder);
     // 按冻结的完整启用池决定；不能借健康/方向过滤把混合池提升为原生分组池。
     const grouped = texts.length > FREE_TRANSLATION_GROUP_MAX_SLOTS
-        && enabled.every(id => id === 'microsoft' || id === 'google');
+        && enabled.every(id => (id === 'microsoft' || id === 'google')
+            && isNativeTranslationBatchEnabled(id, current.nativeBatchTranslationEnabled));
     const translations = [...texts];
     const groups = grouped ? groupFreeSlots(texts)
         : texts.map((source, index) => ({indexes: [index], sources: [source], characters: 0}));

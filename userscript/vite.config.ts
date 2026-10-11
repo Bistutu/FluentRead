@@ -48,10 +48,9 @@ function installedVersion(name: string): string {
 // 脚本管理器在安装时缓存固定版本的通用库；仓库资源固定到已发布提交，更新资源时同步换提交。
 const userscriptResourceCommit = '184a3d74f61b9d2a8d47080787f7e0180b98414d';
 // 语言文件的内容哈希来自合并后的消息目录，固定到首次包含这些文件的提交。
-const userscriptLanguageResourceCommit = 'da4228b7440523a913d3fa942501637c4a8cd55f';
-const iconMetaUrl = greasyForkSource
-    ? `https://cdn.jsdelivr.net/gh/FluentRead/FluentRead@${userscriptResourceCommit}/public/icon/64.png`
-    : iconDataUrl;
+const userscriptLanguageResourceCommit = 'd58e189da020b09ac9c2c8b398134288f0238428';
+const pinnedIconUrl = `https://cdn.jsdelivr.net/gh/FluentRead/FluentRead@${userscriptResourceCommit}/public/icon/64.png`;
+const iconMetaUrl = greasyForkSource ? pinnedIconUrl : iconDataUrl;
 const uiRequires = [
     `https://cdn.jsdelivr.net/npm/vue@${installedVersion('vue')}/dist/vue.global.prod.js`,
     `https://cdn.jsdelivr.net/gh/FluentRead/FluentRead@${userscriptResourceCommit}/userscript/vueElementPlusBridge.v1.js`,
@@ -63,11 +62,18 @@ const userscriptRequires = bundleLibraries
     ? []
     : [...uiRequires, 'https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako_inflate.min.js',
         ...(greasyForkSource ? [vendorUrl!, dataUrl!] : [])];
-const metadata = createUserscriptMetadata({version: packageJson.userscriptVersion, iconDataUrl: iconMetaUrl, requires: userscriptRequires});
+// 标准版安装时已缓存同源固定依赖，管理器列表图标复用同一提交的图片，避免重复嵌入 PNG。
+// 页面工具仍由 bootstrap 内嵌图片；无远程依赖的 standalone 连元数据图标也保持内嵌。
+const metadata = createUserscriptMetadata({version: packageJson.userscriptVersion,
+    iconDataUrl: bundleLibraries ? iconDataUrl : pinnedIconUrl, requires: userscriptRequires});
 // 界面词典只按 key 查询，稳定排序把相似 key 聚在一起，提高静态 JSON 压缩率；数组顺序保持原样。
 function serializeUiMessages(value: unknown): string {
     return JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item)
         ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : item);
+}
+// 文档翻译页面（含 PDF 阅读器）只存在于扩展里；中英内嵌词典使用同一页面能力裁剪。
+function userscriptPageMessages<T extends Record<string, string>>(messages: T): T {
+    return Object.fromEntries(Object.entries(messages).filter(([key]) => !key.startsWith('document.'))) as T;
 }
 // 构建期复用已有 pako 编码中英界面词典，减少标准 gzip 数据；解压字节与运行时端口不变。
 const gzipUiMessages = createRequire(import.meta.url)('pako').gzip as
@@ -76,7 +82,8 @@ const compressedUiLanguageBundles = greasyForkSource ? {} : Object.fromEntries(O
     .filter(([language]) => language === 'en-US')
     .map(([language, bundle]) => [
     language,
-    Buffer.from(gzipUiMessages(Buffer.from(serializeUiMessages(bundle)), {level: 9})).toString('base64'),
+    Buffer.from(gzipUiMessages(Buffer.from(serializeUiMessages({...bundle,
+        messages: userscriptPageMessages(bundle.messages)})), {level: 9})).toString('base64'),
 ]));
 const remoteUiLanguageBundles = Object.fromEntries(Object.entries(UI_LANGUAGE_BUNDLES)
     .filter(([language]) => language !== 'en-US')
@@ -123,8 +130,7 @@ export function createUserscriptCatalogCompressionPlugin(): Plugin {
         load(id) {
             if (id === externalChineseMessagesId) {
                 if (greasyForkSource) return 'export const zhCNMessages = globalThis.__FLUENTREAD_USERSCRIPT_DATA__.zhCNMessages;';
-                // 文档翻译页面（含 PDF 阅读器）只存在于扩展里，油猴脚本不含该页面，它的文案不占用脚本体积。
-                const contents = serializeUiMessages(Object.fromEntries(Object.entries(zhCNMessages).filter(([key]) => !key.startsWith('document.'))) as typeof zhCNMessages);
+                const contents = serializeUiMessages(userscriptPageMessages(zhCNMessages));
                 const compressed = Buffer.from(gzipUiMessages(Buffer.from(contents), {level: 9})).toString('base64');
                 return [
                     `/* Non-code Chinese UI messages; sha256 ${createHash('sha256').update(contents).digest('hex')}. */`,
@@ -378,9 +384,28 @@ function bundleUserscriptCss(): Plugin {
     return {
         name: 'bundle-userscript-css',
         enforce: 'post',
+        transform: {
+            order: 'pre',
+            handler(code, id) {
+                // page.css 使用 ?inline 进入 JS，必须在 Vite CSS 转换前排除不可达的扩展来源提示。
+                if (normalizePath(id.split('?', 1)[0]) !== normalizePath(resolve(root, 'src/app/content/page.css'))) return null;
+                const withoutCorrectionBadge = code.replace(/\.fluent-read-bilingual-content\[data-fr-personal-correction="true"\]::after\s*\{[^}]*\}/gu, '');
+                return withoutCorrectionBadge === code ? null : {code: withoutCorrectionBadge, map: null};
+            },
+        },
         generateBundle: {
           order: 'post',
           async handler(_options, bundle) {
+            // 个人校订需要扩展后台作为唯一写入者；public 别名之外的直接导入也必须在构建期阻止。
+            const correctionFeatureRoot = `${resolve(root, 'src/features/personal-corrections')}/`;
+            const leakedCorrectionModule = Object.values(bundle)
+                .filter((item) => item.type === 'chunk')
+                .flatMap((item) => item.moduleIds)
+                .find((id) => id.startsWith(correctionFeatureRoot));
+            if (leakedCorrectionModule) {
+                throw new Error(`Userscript bundle contains unsupported personal correction feature: ${leakedCorrectionModule}`);
+            }
+
             const cssEntries = Object.entries(bundle).filter(([, item]) => item.type === 'asset' && item.fileName.endsWith('.css'));
             const css = cssEntries.map(([, item]) => String(item.type === 'asset' ? item.source : '')).join('\n');
             const compressedCss = greasyForkSource ? '' : gzipSync(Buffer.from(css, 'utf8'), {level: 9}).toString('base64');
@@ -492,6 +517,7 @@ export const userscriptAliases = [
     {find: '@/src/features/image-translation/public', replacement: resolve(root, 'userscript/unsupportedCapabilities.ts')},
     {find: '@/src/features/video-subtitle/public', replacement: resolve(root, 'userscript/unsupportedCapabilities.ts')},
     {find: '@/src/features/vocabulary/content/public', replacement: resolve(root, 'userscript/unsupportedCapabilities.ts')},
+    {find: '@/src/features/personal-corrections/public', replacement: resolve(root, 'userscript/unsupportedCapabilities.ts')},
     {find: '@/src/features/writing-assistant/public', replacement: resolve(root, 'userscript/writingAssistant.ts')},
     {find: /^\.\/chrome-translator$/u, replacement: resolve(root, 'userscript/chromeTranslator.ts')},
     {find: '@wxt-dev/storage', replacement: resolve(root, 'userscript/storage.ts')},

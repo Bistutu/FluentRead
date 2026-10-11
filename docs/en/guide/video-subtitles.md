@@ -2,6 +2,18 @@
 
 Follow YouTube and X videos or Google Meet, Teams and Zoom web meetings with bilingual captions, using accessible captions provided by the platform.
 
+## Sentence learning
+
+Choose **Sentence learning** in the FluentRead menu of a YouTube or X player. The optional panel groups original timed captions into sentences, with surrounding context and a translation requested for the whole original sentence. Missing punctuation and long captions are labelled as fragments. Enable original captions if no timeline is available. X local AI captions must finish generating before learning is available.
+
+Previous/Next seek without starting playback. Replay plays from the original start. Loop sentence repeats its original interval; Pause at end stops at its end. Selecting either mode does not start playback, but immediately applies to media already playing. When paused, Replay starts from the original sentence start. Off releases only playback assistance while preserving the current paused or playing state. Manual seeking cancels control; pauses and playback speed remain authoritative. Closing learning or captions, changing videos, rebuilding the player, and unloading clean up controls. When expanded, the header and footer stay fixed while the body scrolls. Collapsing leaves only the title and current-sentence preview; save controls are hidden until expanded. Fullscreen uses the same panel and media element. Picture-in-picture retains the original player's controls.
+
+With focus in the panel, arrows change sentence, R toggles looping, Q toggles end pause, and Escape closes learning. Text fields keep normal input. Explain is optional, reuses the existing selection explanation service and allowed context scope, and runs only on request. Translations and explanations appear as reading cards; Edit opens an editor and pins the sentence. Sentence changes preserve drafts within the current panel session, and Return to current sentence resumes following playback. Then save the sentence to the existing learning center with its title, neighboring captions, reliable source, and start/end times; an explanation is not required. Repeated saves merge the same sentence, retaining distinct source intervals as contexts. While translation is loading, wait or enter your own translation before saving.
+
+Learning-center sources show a time range and open a new page. YouTube links include a timestamp; X links are restored to the segment start and paused by FluentRead in the matching post player, so the extension must be enabled. Returning to the source does not automatically reopen learning or restore a previous loop. Missing reliable URLs have an explicit recovery hint. A deleted or restricted video may no longer open; saved text and title remain available. Privacy-safe vocabulary exports omit source addresses and times with private context.
+
+Aggregation uses original caption boundaries and timing. Unpunctuated groups are bounded by approximately 20 seconds, 420 characters, 24 cues, or a silence gap. A single caption with multiple sentences or long text keeps its complete source interval; no internal timestamps are invented. Translation order and subtitle display offsets never replace original audio timing.
+
 <GuideVisual kind="video" en />
 
 ## A video with subtitles
@@ -48,7 +60,7 @@ Model status checks the complete file list in the local cache. If the browser re
 
 Audio recognition runs locally; recognized subtitle text still goes to your translation service. Model downloads require a network connection. Processing depends on video length and your computer. Videos up to 20 minutes are supported; some formats or restricted media cannot be read.
 
-Model downloads try ModelScope first, then Hugging Face and two mirrors after connection or transfer failures. Existing files are reused. Speech models are downloaded separately from the extension package.
+Choose a recognition model and manage its downloaded files in **Video translation settings → Local AI subtitles**. Compact model cards show size, readiness and actual download progress. Help icons explain device requirements and subtitle cache rules. Downloads handle connection failures automatically, so settings and player menus show progress without requiring a source selection. Retry a failed download to reuse complete cached files. The first download needs an internet connection; speech models are downloaded separately from the extension package.
 
 Moving the pointer away and back, rebuilding playback controls, temporarily hiding the video, or attaching its thumbnail preserves the AI timeline and pending model request. A completed model download still starts recognition when the same video gains media metadata. A different media identity clears the previous video’s state.
 
@@ -71,6 +83,12 @@ Use the menu to show or hide subtitles and download them. Completed X transcript
 
 <details class="guide-details">
 <summary>Missing or inaccurate subtitles</summary>
+
+### Word-by-word highlight
+
+To make subtitles follow the video like karaoke lyrics, turn on **Word-by-word highlight** in video appearance settings (off by default). The current sentence starts dimmed and lights up from start to end as the video plays. The original and the translation advance together, and the highlight stays in the right place after pausing, seeking, changing speed, or adjusting subtitle timing. It uses the skin and colors you already picked.
+
+Subtitles only carry start and end times for whole sentences, so the pace within a sentence is estimated from its length. It can drift slightly from the actual speech when the speaker's pace varies. It currently applies to FluentRead subtitles on YouTube and X.
 
 ## Missing or inaccurate subtitles
 
@@ -102,7 +120,7 @@ Read original subtitles and translations together on YouTube and X, or show just
 
 The open subtitle menu stays available when X hides its playback controls. Switches, display modes, and AI subtitle status update as you use them. Click outside, use the close button, or press Esc to close it. Arrow keys move focus inside the menu without seeking the video.
 
-The compact X menu puts display modes first. **Subtitle options** contains timing, downloads, and regeneration; use the back arrow or Esc to return. The source line shows native captions, saved local subtitles, or AI subtitles. When none are detected, it explains how to proceed and disables empty downloads. Native captions take priority over automatically restored AI subtitles; explicitly generated AI captions keep their own timeline.
+The compact X menu puts display modes first. **Subtitle options** contains timing, downloads, and regeneration; use the back arrow or Esc to return. The source line shows native captions, saved local subtitles, or AI subtitles. Native captions appear as **Loaded subtitles · N cues**. The count changes as the player loads captions and represents the currently loaded cues, rather than the video's final total. When none are detected, it explains how to proceed and disables empty downloads. Native captions take priority over automatically restored AI subtitles; explicitly generated AI captions keep their own timeline.
 
 </details>
 

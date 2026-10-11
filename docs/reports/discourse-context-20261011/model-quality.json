@@ -1,0 +1,754 @@
+{
+  "schemaVersion": 1,
+  "sourceKind": "authored synthetic long-form technical reading fixture",
+  "sourceFixture": "tests/fixtures/discourse-context-long-article.json",
+  "materialCharacters": 5886,
+  "definitionOffset": 2507,
+  "pageSourceBudget": 2000,
+  "method": {
+    "transport": "HTTP to existing local Ollama /api/chat",
+    "credentialReads": 0,
+    "modelDownloads": 0,
+    "cloudCalls": 0,
+    "additionalCloudCharges": 0,
+    "options": {
+      "temperature": 0,
+      "seed": 42,
+      "num_predict": 1536,
+      "num_ctx": 8192
+    },
+    "modelCallTimeoutMs": 180000,
+    "productionModules": [
+      "src/services/translation/context/policy.ts",
+      "src/services/translation/context/discourse.ts",
+      "src/core/translation/prompts.ts"
+    ],
+    "promptComposition": "Production default system/user strings and page/evidence assembly, with same fixed real baseline summary for paired requests. Real model calls; not complete production broker/browser execution.",
+    "recovery": "Qwen cases use production isLikelyPageContextLeak then one no-page-context model retry; initial and recovered outputs retained.",
+    "extraDiscourseInferenceCalls": 0
+  },
+  "conclusion": {
+    "qualityClaim": "No reliable overall translation-quality improvement established in this finite two-model sample.",
+    "observedNarrowImprovement": "DeepSeek local-model laboratory sample changes readings from 阅读 to 读数.",
+    "counterexamples": [
+      "Final DeepSeek laboratory result leaves amber/green in English and omits the probe-connected clause.",
+      "Final DeepSeek software result expands English protocol names but leaves stitching untranslated.",
+      "Final DeepSeek entity result leaves generation fence untranslated.",
+      "Final DeepSeek unresolved run changes another run to 再次提交; it does preserve the unresolved person rather than choosing a name.",
+      "Qwen software sample still translates session stitching as 缝合 after page-context leak recovery.",
+      "Qwen laboratory sample already renders readings as 读数 in the baseline and stays acceptable after evidence."
+    ],
+    "supportedBehavior": "This experiment verifies that actual local models consumed bounded, chapter-scoped original evidence. State/protocol/browser verification must be assessed separately.",
+    "timingBoundary": "Single local runs include model load and unnormalized warmth; do not interpret duration differences as product/provider latency or cost forecasts."
+  },
+  "comparisons": [
+    {
+      "model": "deepseek-r1:7b",
+      "baseline": {
+        "calls": 4,
+        "wallMs": 58777,
+        "promptTokens": 2860,
+        "outputTokens": 1332
+      },
+      "final": {
+        "calls": 4,
+        "wallMs": 102788,
+        "promptTokens": 4036,
+        "outputTokens": 1718
+      },
+      "caseComparisons": [
+        {
+          "id": "late-definition",
+          "source": "SSP rejected the stale result, and the stitching resumed from the last verified source. RAG supplied the earlier definition instead of treating the abbreviation as a status colour.",
+          "baseline": "SSP拒绝了过期的结果，修复工作从上一个验证来源继续。RAG提供了早期的定义，而不是将缩写视为状态颜色。",
+          "withDiscourse": "Session Stitching Protocol（SSP）拒绝了过期结果，并使 stitching 恢复到最后确认的来源。Retrieval-Augmented Generation（RAG）提供了早期定义，而不是将缩写视为状态颜色。",
+          "expectation": "SSP refers to Session Stitching Protocol; stitching means session reconnection; RAG refers to Retrieval-Augmented Generation. Do not import the later laboratory definitions."
+        },
+        {
+          "id": "entity-and-pronoun",
+          "source": "She asked him to rerun the delayed-response test. Her decision kept Sable behind the same generation fence until the source comparison succeeded.",
+          "baseline": "她让他重新进行延迟响应测试。她的决定让Sable保持在同一个世代分隔线上，直到源比较成功。",
+          "withDiscourse": "她要求他重新运行延迟响应测试。她的决定让Sable保持在同一个generation fence里，直到源比较成功。",
+          "expectation": "She/her refer to Mira Sen and he/him to Jon Bell. Sable remains the coordinator name, with one consistent rendering of generation fence."
+        },
+        {
+          "id": "same-acronym-new-sense",
+          "source": "SSP recorded the pulse, and RAG changed from amber to green. The probe remained connected while I checked my readings.",
+          "baseline": "SSP记录了脉搏，RAG从琥珀色变为绿色。探针保持连接状态，我检查了我的阅读。",
+          "withDiscourse": "SSP记录了脉搏，RAG从amber变为green。我同时检查了我的读数。",
+          "expectation": "SSP now refers to Signal Sampling Probe and RAG to Red-Amber-Green. The local meanings must outrank Chapter 1 definitions; I/my refer to Jon Bell."
+        },
+        {
+          "id": "unresolved-pronoun",
+          "source": "He asked for another run. The surviving note does not identify the speaker.",
+          "baseline": "他要求再运行一次。幸存的笔记未识别说话者。",
+          "withDiscourse": "他要求再次提交。幸存的笔记不明确说话者是谁。",
+          "expectation": "Do not choose Jordan Lee or Taylor Cruz as the speaker. Keep the personal reference unresolved."
+        }
+      ]
+    },
+    {
+      "model": "qwen:14b",
+      "baseline": {
+        "calls": 4,
+        "wallMs": 36964,
+        "promptTokens": 1808,
+        "outputTokens": 177
+      },
+      "final": {
+        "calls": 3,
+        "wallMs": 51787,
+        "promptTokens": 2333,
+        "outputTokens": 136
+      },
+      "caseComparisons": [
+        {
+          "id": "late-definition",
+          "source": "SSP rejected the stale result, and the stitching resumed from the last verified source. RAG supplied the earlier definition instead of treating the abbreviation as a status colour.",
+          "baseline": "SSP拒绝了过时的结果，缝合从最后一个验证的源点重新开始。RAG提供了先前的定义，而不是将缩写视为状态颜色来处理。",
+          "withDiscourse": "SSP拒绝了过时的结果，缝合从最后一个验证的源点重新开始。RAG提供了先前的定义，而不是将缩写视为状态颜色来处理。",
+          "expectation": "SSP refers to Session Stitching Protocol; stitching means session reconnection; RAG refers to Retrieval-Augmented Generation. Do not import the later laboratory definitions."
+        },
+        {
+          "id": "same-acronym-new-sense",
+          "source": "SSP recorded the pulse, and RAG changed from amber to green. The probe remained connected while I checked my readings.",
+          "baseline": "SSP记录了脉冲，RAG从琥珀色变为绿色。在我检查读数时，探针保持连接。",
+          "withDiscourse": "SSP记录了脉冲，RAG从琥珀色变为绿色。我检查读数时，探针保持连接。",
+          "expectation": "SSP now refers to Signal Sampling Probe and RAG to Red-Amber-Green. The local meanings must outrank Chapter 1 definitions; I/my refer to Jon Bell."
+        }
+      ]
+    }
+  ],
+  "evaluationCallTotals": {
+    "baseline": {
+      "translationCalls": 4,
+      "summaryCalls": 1,
+      "wallMs": 88477,
+      "promptTokens": 3353,
+      "outputTokens": 1876
+    },
+    "initialDiscourse": {
+      "translationCalls": 4,
+      "summaryCalls": 0,
+      "wallMs": 75306,
+      "promptTokens": 4078,
+      "outputTokens": 1418
+    },
+    "finalDiscourse": {
+      "translationCalls": 4,
+      "summaryCalls": 0,
+      "wallMs": 102788,
+      "promptTokens": 4036,
+      "outputTokens": 1718
+    },
+    "qwenBaseline": {
+      "translationCalls": 4,
+      "summaryCalls": 0,
+      "wallMs": 36964,
+      "promptTokens": 1808,
+      "outputTokens": 177
+    },
+    "qwenFinal": {
+      "translationCalls": 3,
+      "summaryCalls": 0,
+      "wallMs": 51787,
+      "promptTokens": 2333,
+      "outputTokens": 136
+    }
+  },
+  "rawExperiments": {
+    "baseline": {
+      "model": "deepseek-r1:7b",
+      "mode": "baseline",
+      "transport": "local Ollama HTTP /api/chat",
+      "costCurrency": null,
+      "additionalCloudCost": 0,
+      "credentialReads": 0,
+      "sourceFixture": "tests/fixtures/discourse-context-long-article.json",
+      "articleCharacters": 5886,
+      "baseContextCharacters": 2234,
+      "definitionOffset": 2507,
+      "sourceBudget": 2000,
+      "summaryCalls": 1,
+      "translationCalls": 4,
+      "cases": [
+        {
+          "id": "late-definition",
+          "source": "SSP rejected the stale result, and the stitching resumed from the last verified source. RAG supplied the earlier definition instead of treating the abbreviation as a status colour.",
+          "section": "Chapter 1 — Software review by Mira Sen",
+          "expectation": "SSP refers to Session Stitching Protocol; stitching means session reconnection; RAG refers to Retrieval-Augmented Generation. Do not import the later laboratory definitions.",
+          "contextCharacters": 3066,
+          "context": "Page summary (AI-generated reference):\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.\n\nPage title: Field notes on continuity in a changing control plane\nPage description: An original synthetic long-form article for scoped discourse-context verification, not a published technical claim.\nReadable page content (Markdown):\nA changing control plane receives updates from independent workers. Some updates finish after their original page has disappeared; others arrive while a reader is moving between chapters. This article compares a software review with a laboratory note. The same short labels can mean different things in those two settings, so each account keeps its own definitions.\n\nOur first review began with a simple inventory. A source paragraph had an identifier, its present text, and a position in the reading order. An outgoing request captured those values before waiting for a response. The inventory deliberately excluded forms, drafts, navigation, hidden panels, and executable examples, because they were outside the authorized reading material.\n\nWe also separated the lifetime of a request from the lifetime of the article. A request could finish successfully but still belong to an old article. A reader could keep the same address open while an editor replaced the body. The address alone therefore did not prove that an earlier result still described the current material. A source comparison was required before a response could be attached.\n\nAn early prototype kept every paragraph in its reference message. It worked for a short note but became expensive for a manual. Sending the entire manual with each paragraph repeated information that the model had already seen and delayed the first useful result. The revised prototype kept only a small amount of evidence relevant to the current passage, with an explicit ceiling on characters and stored records.\n\nThe evaluation distinguishes transport correctness from language quality. A fixed response can show that the right source reached a service and that a canceled response was not published. It cannot establish whether a language model chose the right noun, resolved a reference, or respected a change of subject. For those questions we keep the original sentence beside the actual returned translation and record uncertain cases.\n\nThe remain",
+          "translation": "SSP拒绝了过期的结果，修复工作从上一个验证来源继续。RAG提供了早期的定义，而不是将缩写视为状态颜色。",
+          "rawOutput": "\n\nSSP拒绝了过期的结果，修复工作从上一个验证来源继续。RAG提供了早期的定义，而不是将缩写视为状态颜色。",
+          "wallMs": 18109,
+          "promptTokens": 723,
+          "outputTokens": 353,
+          "promptEvaluationMs": 3244.951,
+          "outputEvaluationMs": 14797.373,
+          "loadMs": 9.040375,
+          "doneReason": "stop"
+        },
+        {
+          "id": "entity-and-pronoun",
+          "source": "She asked him to rerun the delayed-response test. Her decision kept Sable behind the same generation fence until the source comparison succeeded.",
+          "section": "Chapter 1 — Software review by Mira Sen",
+          "expectation": "She/her refer to Mira Sen and he/him to Jon Bell. Sable remains the coordinator name, with one consistent rendering of generation fence.",
+          "contextCharacters": 3066,
+          "context": "Page summary (AI-generated reference):\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.\n\nPage title: Field notes on continuity in a changing control plane\nPage description: An original synthetic long-form article for scoped discourse-context verification, not a published technical claim.\nReadable page content (Markdown):\nA changing control plane receives updates from independent workers. Some updates finish after their original page has disappeared; others arrive while a reader is moving between chapters. This article compares a software review with a laboratory note. The same short labels can mean different things in those two settings, so each account keeps its own definitions.\n\nOur first review began with a simple inventory. A source paragraph had an identifier, its present text, and a position in the reading order. An outgoing request captured those values before waiting for a response. The inventory deliberately excluded forms, drafts, navigation, hidden panels, and executable examples, because they were outside the authorized reading material.\n\nWe also separated the lifetime of a request from the lifetime of the article. A request could finish successfully but still belong to an old article. A reader could keep the same address open while an editor replaced the body. The address alone therefore did not prove that an earlier result still described the current material. A source comparison was required before a response could be attached.\n\nAn early prototype kept every paragraph in its reference message. It worked for a short note but became expensive for a manual. Sending the entire manual with each paragraph repeated information that the model had already seen and delayed the first useful result. The revised prototype kept only a small amount of evidence relevant to the current passage, with an explicit ceiling on characters and stored records.\n\nThe evaluation distinguishes transport correctness from language quality. A fixed response can show that the right source reached a service and that a canceled response was not published. It cannot establish whether a language model chose the right noun, resolved a reference, or respected a change of subject. For those questions we keep the original sentence beside the actual returned translation and record uncertain cases.\n\nThe remain",
+          "translation": "她让他重新进行延迟响应测试。她的决定让Sable保持在同一个世代分隔线上，直到源比较成功。",
+          "rawOutput": "\n\n她让他重新进行延迟响应测试。她的决定让Sable保持在同一个世代分隔线上，直到源比较成功。",
+          "wallMs": 14383,
+          "promptTokens": 717,
+          "outputTokens": 347,
+          "promptEvaluationMs": 266.351999,
+          "outputEvaluationMs": 14083.67,
+          "loadMs": 3.845791,
+          "doneReason": "stop"
+        },
+        {
+          "id": "same-acronym-new-sense",
+          "source": "SSP recorded the pulse, and RAG changed from amber to green. The probe remained connected while I checked my readings.",
+          "section": "Chapter 2 — Laboratory note by Jon Bell",
+          "expectation": "SSP now refers to Signal Sampling Probe and RAG to Red-Amber-Green. The local meanings must outrank Chapter 1 definitions; I/my refer to Jon Bell.",
+          "contextCharacters": 3066,
+          "context": "Page summary (AI-generated reference):\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.\n\nPage title: Field notes on continuity in a changing control plane\nPage description: An original synthetic long-form article for scoped discourse-context verification, not a published technical claim.\nReadable page content (Markdown):\nA changing control plane receives updates from independent workers. Some updates finish after their original page has disappeared; others arrive while a reader is moving between chapters. This article compares a software review with a laboratory note. The same short labels can mean different things in those two settings, so each account keeps its own definitions.\n\nOur first review began with a simple inventory. A source paragraph had an identifier, its present text, and a position in the reading order. An outgoing request captured those values before waiting for a response. The inventory deliberately excluded forms, drafts, navigation, hidden panels, and executable examples, because they were outside the authorized reading material.\n\nWe also separated the lifetime of a request from the lifetime of the article. A request could finish successfully but still belong to an old article. A reader could keep the same address open while an editor replaced the body. The address alone therefore did not prove that an earlier result still described the current material. A source comparison was required before a response could be attached.\n\nAn early prototype kept every paragraph in its reference message. It worked for a short note but became expensive for a manual. Sending the entire manual with each paragraph repeated information that the model had already seen and delayed the first useful result. The revised prototype kept only a small amount of evidence relevant to the current passage, with an explicit ceiling on characters and stored records.\n\nThe evaluation distinguishes transport correctness from language quality. A fixed response can show that the right source reached a service and that a canceled response was not published. It cannot establish whether a language model chose the right noun, resolved a reference, or respected a change of subject. For those questions we keep the original sentence beside the actual returned translation and record uncertain cases.\n\nThe remain",
+          "translation": "SSP记录了脉搏，RAG从琥珀色变为绿色。探针保持连接状态，我检查了我的阅读。",
+          "rawOutput": "\n\nSSP记录了脉搏，RAG从琥珀色变为绿色。探针保持连接状态，我检查了我的阅读。",
+          "wallMs": 12943,
+          "promptTokens": 715,
+          "outputTokens": 314,
+          "promptEvaluationMs": 259.844,
+          "outputEvaluationMs": 12661.796,
+          "loadMs": 2.976958,
+          "doneReason": "stop"
+        },
+        {
+          "id": "unresolved-pronoun",
+          "source": "He asked for another run. The surviving note does not identify the speaker.",
+          "section": "Chapter 3 — Unresolved reference",
+          "expectation": "Do not choose Jordan Lee or Taylor Cruz as the speaker. Keep the personal reference unresolved.",
+          "contextCharacters": 3066,
+          "context": "Page summary (AI-generated reference):\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.\n\nPage title: Field notes on continuity in a changing control plane\nPage description: An original synthetic long-form article for scoped discourse-context verification, not a published technical claim.\nReadable page content (Markdown):\nA changing control plane receives updates from independent workers. Some updates finish after their original page has disappeared; others arrive while a reader is moving between chapters. This article compares a software review with a laboratory note. The same short labels can mean different things in those two settings, so each account keeps its own definitions.\n\nOur first review began with a simple inventory. A source paragraph had an identifier, its present text, and a position in the reading order. An outgoing request captured those values before waiting for a response. The inventory deliberately excluded forms, drafts, navigation, hidden panels, and executable examples, because they were outside the authorized reading material.\n\nWe also separated the lifetime of a request from the lifetime of the article. A request could finish successfully but still belong to an old article. A reader could keep the same address open while an editor replaced the body. The address alone therefore did not prove that an earlier result still described the current material. A source comparison was required before a response could be attached.\n\nAn early prototype kept every paragraph in its reference message. It worked for a short note but became expensive for a manual. Sending the entire manual with each paragraph repeated information that the model had already seen and delayed the first useful result. The revised prototype kept only a small amount of evidence relevant to the current passage, with an explicit ceiling on characters and stored records.\n\nThe evaluation distinguishes transport correctness from language quality. A fixed response can show that the right source reached a service and that a canceled response was not published. It cannot establish whether a language model chose the right noun, resolved a reference, or respected a change of subject. For those questions we keep the original sentence beside the actual returned translation and record uncertain cases.\n\nThe remain",
+          "translation": "他要求再运行一次。幸存的笔记未识别说话者。",
+          "rawOutput": "\n\n他要求再运行一次。幸存的笔记未识别说话者。",
+          "wallMs": 13342,
+          "promptTokens": 705,
+          "outputTokens": 318,
+          "promptEvaluationMs": 259.628,
+          "outputEvaluationMs": 13054.744,
+          "loadMs": 2.80075,
+          "doneReason": "stop"
+        }
+      ],
+      "limits": [
+        "Authored source fixture, not a real published article.",
+        "Direct production-equivalent default prompts with production pure policy and leak cleanup; not a browser/provider end-to-end test.",
+        "Small local Q4 model sample is not an aggregate quality claim."
+      ],
+      "summary": {
+        "translation": "The webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.",
+        "rawOutput": "\n\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.",
+        "wallMs": 29700,
+        "promptTokens": 493,
+        "outputTokens": 544,
+        "promptEvaluationMs": 2327.257,
+        "outputEvaluationMs": 21938.593,
+        "loadMs": 5359.10475,
+        "doneReason": "stop"
+      },
+      "totalWallMs": 88477,
+      "totalPromptTokens": 3353,
+      "totalOutputTokens": 1876
+    },
+    "initialDiscourse": {
+      "model": "deepseek-r1:7b",
+      "mode": "discourse",
+      "transport": "local Ollama HTTP /api/chat",
+      "costCurrency": null,
+      "additionalCloudCost": 0,
+      "credentialReads": 0,
+      "sourceFixture": "tests/fixtures/discourse-context-long-article.json",
+      "articleCharacters": 5886,
+      "baseContextCharacters": 2234,
+      "definitionOffset": 2507,
+      "sourceBudget": 2000,
+      "summaryCalls": 0,
+      "translationCalls": 4,
+      "cases": [
+        {
+          "id": "late-definition",
+          "source": "SSP rejected the stale result, and the stitching resumed from the last verified source. RAG supplied the earlier definition instead of treating the abbreviation as a status colour.",
+          "section": "Chapter 1 — Software review by Mira Sen",
+          "expectation": "SSP refers to Session Stitching Protocol; stitching means session reconnection; RAG refers to Retrieval-Augmented Generation. Do not import the later laboratory definitions.",
+          "contextCharacters": 3996,
+          "context": "Page summary (AI-generated reference):\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.\n\nPage title: Field notes on continuity in a changing control plane\nPage description: An original synthetic long-form article for scoped discourse-context verification, not a published technical claim.\nReadable page content (Markdown):\nA changing control plane receives updates from independent workers. Some updates finish after their original page has disappeared; others arrive while a reader is moving between chapters. This article compares a software review with a laboratory note. The same short labels can mean different things in those two settings, so each account keeps its own definitions.\n\nOur first review began with a simple inventory. A source paragraph had an identifier, its present text, and a position in the reading order. An outgoing request captured those values before waiting for a response. The inventory deliberately excluded forms, drafts, navigation, hidden panels, and executable examples, because they were outside the authorized reading material.\n\nWe also separated the lifetime of a request from the lifetime of the article. A request could fin\n<discourse_evidence>\n{\"version\":1,\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 12\",\"precedence\":\"user_glossary \\u003e user_confirmed \\u003e previous_machine\",\"ambiguity\":\"Evidence only. Preserve ambiguity and different meanings; do not merge names or invent referents. Previous machine translations may be wrong.\",\"evidence\":[{\"kind\":\"definition\",\"blockId\":\"software-details-1\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 10\",\"source\":\"If an editor changes that source passage, the old record is removed.\"},{\"kind\":\"definition\",\"blockId\":\"software-rag-definition\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 8\",\"source\":\"In this software chapter, RAG means Retrieval-Augmented Generation.\"},{\"kind\":\"definition\",\"blockId\":\"software-definition\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 7\",\"source\":\"They call the Session Stitching Protocol (SSP) a method for reattaching a completed request to the exact source generation that created it.\"},{\"kind\":\"nearby\",\"blockId\":\"software-details-2\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 11\",\"source\":\"The same rule applies to translated names. A previous translation provides a useful preference only while its source and language pair still match. A reader's confirmed terminology outranks an automatic suggestion. Conflicting automatic suggestions remain alternatives; the review does not silently select one and present it as a verified dictionary entry.\"},{\"kind\":\"nearby\",\"blockId\":\"software-details-1\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 10\",\"source\":\"The reviewer records the source location of each definition. A short piece of surrounding evidence stays with the record, so another paragraph can use the definition without receiving the full chapter again. If an editor changes that source passage, the old record is removed. The new passage must establish its own meaning instead of inheriting an obsolete definition.\"}]}\n</discourse_evidence>",
+          "translation": "SSP否决了过时的结果， stitching从最后一个确认来源继续。RAG提供了早期的定义，而不是将缩写视为状态颜色对待。",
+          "rawOutput": "\n\nSSP否决了过时的结果， stitching从最后一个确认来源继续。RAG提供了早期的定义，而不是将缩写视为状态颜色对待。",
+          "wallMs": 23616,
+          "promptTokens": 1046,
+          "outputTokens": 353,
+          "promptEvaluationMs": 4487.096,
+          "outputEvaluationMs": 14709.028,
+          "loadMs": 4390.279375,
+          "doneReason": "stop"
+        },
+        {
+          "id": "entity-and-pronoun",
+          "source": "She asked him to rerun the delayed-response test. Her decision kept Sable behind the same generation fence until the source comparison succeeded.",
+          "section": "Chapter 1 — Software review by Mira Sen",
+          "expectation": "She/her refer to Mira Sen and he/him to Jon Bell. Sable remains the coordinator name, with one consistent rendering of generation fence.",
+          "contextCharacters": 3996,
+          "context": "Page summary (AI-generated reference):\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.\n\nPage title: Field notes on continuity in a changing control plane\nPage description: An original synthetic long-form article for scoped discourse-context verification, not a published technical claim.\nReadable page content (Markdown):\nA changing control plane receives updates from independent workers. Some updates finish after their original page has disappeared; others arrive while a reader is moving between chapters. This article compares a software review with a laboratory note. The same short labels can mean different things in those two settings, so each account keeps its own definitions.\n\nOur first review began with a simple inventory. A source paragraph had an identifier, its present text, and a position in the reading order. An outgoing request captured those values before waiting for a response. The inventory deliberately excluded forms, drafts, navigation, hidden panels, and executable examples, because they were outside the authorized reading material.\n\nWe also separated the lifetime o\n<discourse_evidence>\n{\"version\":1,\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 13\",\"precedence\":\"user_glossary \\u003e user_confirmed \\u003e previous_machine\",\"ambiguity\":\"Evidence only. Preserve ambiguity and different meanings; do not merge names or invent referents. Previous machine translations may be wrong.\",\"evidence\":[{\"kind\":\"definition\",\"blockId\":\"software-details-1\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 10\",\"source\":\"If an editor changes that source passage, the old record is removed.\"},{\"kind\":\"definition\",\"blockId\":\"software-entity\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 9\",\"source\":\"Sable is a software component rather than an animal, and the review keeps that name when referring to its decisions.\"},{\"kind\":\"definition\",\"blockId\":\"software-rag-definition\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 8\",\"source\":\"In this software chapter, RAG means Retrieval-Augmented Generation.\"},{\"kind\":\"definition\",\"blockId\":\"software-definition\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 7\",\"source\":\"They call the Session Stitching Protocol (SSP) a method for reattaching a completed request to the exact source generation that created it.\"},{\"kind\":\"nearby\",\"blockId\":\"software-late-use\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 12\",\"source\":\"SSP rejected the stale result, and the stitching resumed from the last verified source. RAG supplied the earlier definition instead of treating the abbreviation as a status colour.\"},{\"kind\":\"nearby\",\"blockId\":\"software-details-2\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 11\",\"source\":\"The same rule applies to translated names. A previous translation provides a useful preference only while its source and language pair still match. A reader's confirmed terminology outranks an automatic suggestion. Conflicting automatic suggestions remain alternatives; the review does not silently select one and present it as a verified dictionary entry.\"}]}\n</discourse_evidence>",
+          "translation": "她让他重新运行延迟响应测试。她的决定让Sable一直保持在同一个生成阶段，直到源比较成功。",
+          "rawOutput": "\n\n她让他重新运行延迟响应测试。她的决定让Sable一直保持在同一个生成阶段，直到源比较成功。",
+          "wallMs": 19142,
+          "promptTokens": 1050,
+          "outputTokens": 395,
+          "promptEvaluationMs": 2932.006,
+          "outputEvaluationMs": 16122.308,
+          "loadMs": 4.204208,
+          "doneReason": "stop"
+        },
+        {
+          "id": "same-acronym-new-sense",
+          "source": "SSP recorded the pulse, and RAG changed from amber to green. The probe remained connected while I checked my readings.",
+          "section": "Chapter 2 — Laboratory note by Jon Bell",
+          "expectation": "SSP now refers to Signal Sampling Probe and RAG to Red-Amber-Green. The local meanings must outrank Chapter 1 definitions; I/my refer to Jon Bell.",
+          "contextCharacters": 3996,
+          "context": "Page summary (AI-generated reference):\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.\n\nPage title: Field notes on continuity in a changing control plane\nPage description: An original synthetic long-form article for scoped discourse-context verification, not a published technical claim.\nReadable page content (Markdown):\nA changing control plane receives updates from independent workers. Some updates finish after their original page has disappeared; others arrive while a reader is moving between chapters. This article compares a software review with a laboratory note. The same short labels can mean different things in those two settings, so each account keeps its own definitions.\n\nOur first review began with a simple inventory. A source paragraph had an identifier, its present text, and a position in the reading order. An outgoing request captured those values before waiting for a response. The inventory deliberately excluded forms, drafts, navigation, hidden panels, and executable examples, because they were outside the authorized reading material.\n\nWe also separated the lifetime of a request from the lifetime of the article. A request could finish successfully but still be\n<discourse_evidence>\n{\"version\":1,\"section\":\"Chapter 2 — Laboratory note by Jon Bell\",\"position\":\"paragraph 17\",\"precedence\":\"user_glossary \\u003e user_confirmed \\u003e previous_machine\",\"ambiguity\":\"Evidence only. Preserve ambiguity and different meanings; do not merge names or invent referents. Previous machine translations may be wrong.\",\"evidence\":[{\"kind\":\"definition\",\"blockId\":\"lab-details\",\"section\":\"Chapter 2 — Laboratory note by Jon Bell\",\"position\":\"paragraph 16\",\"source\":\"A red lamp means the measured value is outside the permitted range; amber means a reading needs review; green means the reading passed.\"},{\"kind\":\"definition\",\"blockId\":\"lab-definition\",\"section\":\"Chapter 2 — Laboratory note by Jon Bell\",\"position\":\"paragraph 15\",\"source\":\"Here the Signal Sampling Probe (SSP) measures an analogue waveform, and RAG means Red-Amber-Green, the warning scheme on the instrument.\"},{\"kind\":\"nearby\",\"blockId\":\"lab-details\",\"section\":\"Chapter 2 — Laboratory note by Jon Bell\",\"position\":\"paragraph 16\",\"source\":\"The probe takes one sample every ten milliseconds. A red lamp means the measured value is outside the permitted range; amber means a reading needs review; green means the reading passed. The note describes these lamp states without retrieving material from a document or asking a language model to generate a response.\"},{\"kind\":\"nearby\",\"blockId\":\"lab-definition\",\"section\":\"Chapter 2 — Laboratory note by Jon Bell\",\"position\":\"paragraph 15\",\"source\":\"Jon Bell authors this laboratory note. Mira Sen is not present in the laboratory. Here the Signal Sampling Probe (SSP) measures an analogue waveform, and RAG means Red-Amber-Green, the warning scheme on the instrument. These abbreviations are local to this chapter and do not name the software methods described earlier.\"},{\"kind\":\"definition\",\"blockId\":\"introduction-1\",\"section\":\"Introduction\",\"position\":\"paragraph 1\",\"source\":\"Some updates finish after their original page has disappeared; others arrive while a reader is moving between chapters.\"}]}\n</discourse_evidence>",
+          "translation": "信号采样探头记录了脉搏，RAG从amber变为green。保持连接状态，我检查了我的读数。",
+          "rawOutput": "\n\n信号采样探头记录了脉搏，RAG从amber变为green。保持连接状态，我检查了我的读数。",
+          "wallMs": 13399,
+          "promptTokens": 1042,
+          "outputTokens": 258,
+          "promptEvaluationMs": 2886.404,
+          "outputEvaluationMs": 10396.747,
+          "loadMs": 6.137584,
+          "doneReason": "stop"
+        },
+        {
+          "id": "unresolved-pronoun",
+          "source": "He asked for another run. The surviving note does not identify the speaker.",
+          "section": "Chapter 3 — Unresolved reference",
+          "expectation": "Do not choose Jordan Lee or Taylor Cruz as the speaker. Keep the personal reference unresolved.",
+          "contextCharacters": 3750,
+          "context": "Page summary (AI-generated reference):\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.\n\nPage title: Field notes on continuity in a changing control plane\nPage description: An original synthetic long-form article for scoped discourse-context verification, not a published technical claim.\nReadable page content (Markdown):\nA changing control plane receives updates from independent workers. Some updates finish after their original page has disappeared; others arrive while a reader is moving between chapters. This article compares a software review with a laboratory note. The same short labels can mean different things in those two settings, so each account keeps its own definitions.\n\nOur first review began with a simple inventory. A source paragraph had an identifier, its present text, and a position in the reading order. An outgoing request captured those values before waiting for a response. The inventory deliberately excluded forms, drafts, navigation, hidden panels, and executable examples, because they were outside the authorized reading material.\n\nWe also separated the lifetime of a request from the lifetime of the article. A request could finish successfully but still belong to an old article. A reader could keep the same address open while an editor replaced the body. The address alone therefore did not prove that an earlier result still described the current material. A source comparison was required before a response could be attached.\n\nAn early prototype kept every paragraph in its reference message. It worked for a short note but became expensive for a manual. Sending the entire manual with each paragraph repeated information that the model had already seen and delayed the first useful result. The revised prototype kept only a small amount of evidence relevant to the current passage, with an explicit ceiling on characters and stored records.\n\nThe evaluation distinguishes transport correctness from language quality. A fixed response can show that the right source reached a service and that a canceled response was not published. It cannot establish whether a language model chose the right noun, resolved a reference, or respected a change of subject. For those questions we keep the original sentence beside the actual returned translation and record uncertain cases.\n\nThe remain\n<discourse_evidence>\n{\"version\":1,\"section\":\"Chapter 3 — Unresolved reference\",\"position\":\"paragraph 20\",\"precedence\":\"user_glossary \\u003e user_confirmed \\u003e previous_machine\",\"ambiguity\":\"Evidence only. Preserve ambiguity and different meanings; do not merge names or invent referents. Previous machine translations may be wrong.\",\"evidence\":[{\"kind\":\"nearby\",\"blockId\":\"ambiguity-definition\",\"section\":\"Chapter 3 — Unresolved reference\",\"position\":\"paragraph 19\",\"source\":\"Jordan Lee met Taylor Cruz after the review. Both men had inspected the release log, and both were allowed to request a further test. The note does not say which one spoke first.\"}]}\n</discourse_evidence>",
+          "translation": "他要求再次提交。幸存的笔记不明确说话者是谁。",
+          "rawOutput": "\n\n他要求再次提交。幸存的笔记不明确说话者是谁。",
+          "wallMs": 19149,
+          "promptTokens": 940,
+          "outputTokens": 412,
+          "promptEvaluationMs": 2415.986,
+          "outputEvaluationMs": 16687.542,
+          "loadMs": 3.322625,
+          "doneReason": "stop"
+        }
+      ],
+      "limits": [
+        "Authored source fixture, not a real published article.",
+        "Direct production-equivalent default prompts with production pure policy and leak cleanup; not a browser/provider end-to-end test.",
+        "Small local Q4 model sample is not an aggregate quality claim."
+      ],
+      "summaryReusedFrom": "baseline.json",
+      "summary": {
+        "translation": "The webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.",
+        "rawOutput": "\n\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.",
+        "wallMs": 29700,
+        "promptTokens": 493,
+        "outputTokens": 544,
+        "promptEvaluationMs": 2327.257,
+        "outputEvaluationMs": 21938.593,
+        "loadMs": 5359.10475,
+        "doneReason": "stop"
+      },
+      "totalWallMs": 75306,
+      "totalPromptTokens": 4078,
+      "totalOutputTokens": 1418
+    },
+    "finalDiscourse": {
+      "model": "deepseek-r1:7b",
+      "mode": "discourse-final",
+      "transport": "local Ollama HTTP /api/chat",
+      "costCurrency": null,
+      "additionalCloudCost": 0,
+      "credentialReads": 0,
+      "sourceFixture": "tests/fixtures/discourse-context-long-article.json",
+      "articleCharacters": 5886,
+      "baseContextCharacters": 2234,
+      "definitionOffset": 2507,
+      "sourceBudget": 2000,
+      "summaryCalls": 0,
+      "translationCalls": 4,
+      "cases": [
+        {
+          "id": "late-definition",
+          "source": "SSP rejected the stale result, and the stitching resumed from the last verified source. RAG supplied the earlier definition instead of treating the abbreviation as a status colour.",
+          "section": "Chapter 1 — Software review by Mira Sen",
+          "expectation": "SSP refers to Session Stitching Protocol; stitching means session reconnection; RAG refers to Retrieval-Augmented Generation. Do not import the later laboratory definitions.",
+          "contextCharacters": 3996,
+          "context": "Page summary (AI-generated reference):\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.\n\nPage title: Field notes on continuity in a changing control plane\nPage description: An original synthetic long-form article for scoped discourse-context verification, not a published technical claim.\nReadable page content (Markdown):\nA changing control plane receives updates from independent workers. Some updates finish after their original page has disappeared; others arrive while a reader is moving between chapters. This article compares a software review with a laboratory note. The same short labels can mean different things in those two settings, so each account keeps its own definitions.\n\nOur first review began with a simple inventory. A source paragraph had an identifier, its present text, and a position in the reading order. An outgoing request captured those values before waiting for a response. The inventory deliberately excluded forms, drafts, navigation, hidden panels, and executable examples, because they were outside the authorized reading material.\n\nWe also separated the lifetime of a request from the lifetime of the article. A request could finish successfully but still belong to an old article. A reader could keep the same address open while an editor replaced the bo\n<discourse_evidence>\n{\"version\":1,\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 12\",\"precedence\":\"user_glossary \\u003e user_confirmed \\u003e previous_machine\",\"ambiguity\":\"Evidence only. Preserve ambiguity and different meanings; do not merge names or invent referents. Previous machine translations may be wrong.\",\"evidence\":[{\"kind\":\"definition\",\"blockId\":\"software-definition\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 7\",\"source\":\"They call the Session Stitching Protocol (SSP) a method for reattaching a completed request to the exact source generation that created it. Here stitching means reconnecting a reading session; it does not mean sewing fabric.\"},{\"kind\":\"definition\",\"blockId\":\"software-rag-definition\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 8\",\"source\":\"In this software chapter, RAG means Retrieval-Augmented Generation.\"},{\"kind\":\"nearby\",\"blockId\":\"software-details-2\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 11\",\"source\":\"The same rule applies to translated names. A previous translation provides a useful preference only while its source and language pair still match. A reader's confirmed terminology outranks an automatic suggestion. Conflicting automatic suggestions remain alternatives; the review does not silently select one and present it as a verified dictionary entry.\"},{\"kind\":\"nearby\",\"blockId\":\"software-details-1\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 10\",\"source\":\"The reviewer records the source location of each definition. A short piece of surrounding evidence stays with the record, so another paragraph can use the definition without receiving the full chapter again. If an editor changes that source passage, the old record is removed. The new passage must establish its own meaning instead of inheriting an obsolete definition.\"}]}\n</discourse_evidence>",
+          "contextModuleSha256": "012ac3ec07628deec767c932ff9153bfd3e70a67d04ac53f2e6f1a3bba20de66",
+          "translation": "Session Stitching Protocol（SSP）拒绝了过期结果，并使 stitching 恢复到最后确认的来源。Retrieval-Augmented Generation（RAG）提供了早期定义，而不是将缩写视为状态颜色。",
+          "rawOutput": "\n\nSession Stitching Protocol（SSP）拒绝了过期结果，并使 stitching 恢复到最后确认的来源。Retrieval-Augmented Generation（RAG）提供了早期定义，而不是将缩写视为状态颜色。",
+          "wallMs": 42132,
+          "promptTokens": 1036,
+          "outputTokens": 680,
+          "promptEvaluationMs": 5222.038,
+          "outputEvaluationMs": 33673.845,
+          "loadMs": 3172.453,
+          "doneReason": "stop"
+        },
+        {
+          "id": "entity-and-pronoun",
+          "source": "She asked him to rerun the delayed-response test. Her decision kept Sable behind the same generation fence until the source comparison succeeded.",
+          "section": "Chapter 1 — Software review by Mira Sen",
+          "expectation": "She/her refer to Mira Sen and he/him to Jon Bell. Sable remains the coordinator name, with one consistent rendering of generation fence.",
+          "contextCharacters": 3996,
+          "context": "Page summary (AI-generated reference):\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.\n\nPage title: Field notes on continuity in a changing control plane\nPage description: An original synthetic long-form article for scoped discourse-context verification, not a published technical claim.\nReadable page content (Markdown):\nA changing control plane receives updates from independent workers. Some updates finish after their original page has disappeared; others arrive while a reader is moving between chapters. This article compares a software review with a laboratory note. The same short labels can mean different things in those two settings, so each account keeps its own definitions.\n\nOur first review began with a simple inventory. A source paragraph had an identifier, its present text, and a position in the reading order. An outgoing request captured those values before waiting for a response. The inventory deliberately excluded forms, drafts, navigation, hidden panels, and executable examples, because they were outside the authorized reading material.\n\nWe also separated the lifetime of a request from the lifetime of the article. A request could finish successfully but still belong to an old\n<discourse_evidence>\n{\"version\":1,\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 13\",\"precedence\":\"user_glossary \\u003e user_confirmed \\u003e previous_machine\",\"ambiguity\":\"Evidence only. Preserve ambiguity and different meanings; do not merge names or invent referents. Previous machine translations may be wrong.\",\"evidence\":[{\"kind\":\"section_opening\",\"blockId\":\"software-definition\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 7\",\"source\":\"Mira Sen leads the software review. Her colleague Jon Bell maintains the test harness. They call the Session Stitching Protocol (SSP) a method for reattaching a completed request to the exact source generation that created it. Here stitching means reconnecting a reading session; it does not mean sewing fabric.\"},{\"kind\":\"definition\",\"blockId\":\"software-entity\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 9\",\"source\":\"Mira names the release coordinator Sable. Sable is a software component rather than an animal, and the review keeps that name when referring to its decisions. A generation fence prevents Sable from attaching a response to a different version of the source.\"},{\"kind\":\"nearby\",\"blockId\":\"software-late-use\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 12\",\"source\":\"SSP rejected the stale result, and the stitching resumed from the last verified source. RAG supplied the earlier definition instead of treating the abbreviation as a status colour.\"},{\"kind\":\"nearby\",\"blockId\":\"software-details-2\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 11\",\"source\":\"The same rule applies to translated names. A previous translation provides a useful preference only while its source and language pair still match. A reader's confirmed terminology outranks an automatic suggestion. Conflicting automatic suggestions remain alternatives; the review does not silently select one and present it as a verified dictionary entry.\"}]}\n</discourse_evidence>",
+          "contextModuleSha256": "012ac3ec07628deec767c932ff9153bfd3e70a67d04ac53f2e6f1a3bba20de66",
+          "translation": "她要求他重新运行延迟响应测试。她的决定让Sable保持在同一个generation fence里，直到源比较成功。",
+          "rawOutput": "\n\n她要求他重新运行延迟响应测试。她的决定让Sable保持在同一个generation fence里，直到源比较成功。",
+          "wallMs": 18624,
+          "promptTokens": 1035,
+          "outputTokens": 315,
+          "promptEvaluationMs": 3306.592,
+          "outputEvaluationMs": 15258.544,
+          "loadMs": 5.661083,
+          "doneReason": "stop"
+        },
+        {
+          "id": "same-acronym-new-sense",
+          "source": "SSP recorded the pulse, and RAG changed from amber to green. The probe remained connected while I checked my readings.",
+          "section": "Chapter 2 — Laboratory note by Jon Bell",
+          "expectation": "SSP now refers to Signal Sampling Probe and RAG to Red-Amber-Green. The local meanings must outrank Chapter 1 definitions; I/my refer to Jon Bell.",
+          "contextCharacters": 3996,
+          "context": "Page summary (AI-generated reference):\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.\n\nPage title: Field notes on continuity in a changing control plane\nPage description: An original synthetic long-form article for scoped discourse-context verification, not a published technical claim.\nReadable page content (Markdown):\nA changing control plane receives updates from independent workers. Some updates finish after their original page has disappeared; others arrive while a reader is moving between chapters. This article compares a software review with a laboratory note. The same short labels can mean different things in those two settings, so each account keeps its own definitions.\n\nOur first review began with a simple inventory. A source paragraph had an identifier, its present text, and a position in the reading order. An outgoing request captured those values before waiting for a response. The inventory deliberately excluded forms, drafts, navigation, hidden panels, and executable examples, because they were outside the authorized reading material.\n\nWe also separated the lifetime of a request from the lifetime of the article. A request could finish successfully but still belong to an old article. A reader could keep the same address open while an editor replaced the body. The address alone therefore did not prove that an earlier result still described the current material. A source comparison was required before a response could be attached.\n\nAn early prototype kept every paragraph in its reference message. It worked for a short note but became expensive for a manual. Sending the entire manual with each paragraph repea\n<discourse_evidence>\n{\"version\":1,\"section\":\"Chapter 2 — Laboratory note by Jon Bell\",\"position\":\"paragraph 17\",\"precedence\":\"user_glossary \\u003e user_confirmed \\u003e previous_machine\",\"ambiguity\":\"Evidence only. Preserve ambiguity and different meanings; do not merge names or invent referents. Previous machine translations may be wrong.\",\"evidence\":[{\"kind\":\"definition\",\"blockId\":\"lab-details\",\"section\":\"Chapter 2 — Laboratory note by Jon Bell\",\"position\":\"paragraph 16\",\"source\":\"The probe takes one sample every ten milliseconds. A red lamp means the measured value is outside the permitted range; amber means a reading needs review; green means the reading passed.\"},{\"kind\":\"nearby\",\"blockId\":\"lab-details\",\"section\":\"Chapter 2 — Laboratory note by Jon Bell\",\"position\":\"paragraph 16\",\"source\":\"The probe takes one sample every ten milliseconds. A red lamp means the measured value is outside the permitted range; amber means a reading needs review; green means the reading passed. The note describes these lamp states without retrieving material from a document or asking a language model to generate a response.\"},{\"kind\":\"nearby\",\"blockId\":\"lab-definition\",\"section\":\"Chapter 2 — Laboratory note by Jon Bell\",\"position\":\"paragraph 15\",\"source\":\"Jon Bell authors this laboratory note. Mira Sen is not present in the laboratory. Here the Signal Sampling Probe (SSP) measures an analogue waveform, and RAG means Red-Amber-Green, the warning scheme on the instrument. These abbreviations are local to this chapter and do not name the software methods described earlier.\"}]}\n</discourse_evidence>",
+          "contextModuleSha256": "012ac3ec07628deec767c932ff9153bfd3e70a67d04ac53f2e6f1a3bba20de66",
+          "translation": "SSP记录了脉搏，RAG从amber变为green。我同时检查了我的读数。",
+          "rawOutput": "\n\nSSP记录了脉搏，RAG从amber变为green。我同时检查了我的读数。",
+          "wallMs": 18724,
+          "promptTokens": 1025,
+          "outputTokens": 311,
+          "promptEvaluationMs": 3319.03,
+          "outputEvaluationMs": 15365.706,
+          "loadMs": 5.515209,
+          "doneReason": "stop"
+        },
+        {
+          "id": "unresolved-pronoun",
+          "source": "He asked for another run. The surviving note does not identify the speaker.",
+          "section": "Chapter 3 — Unresolved reference",
+          "expectation": "Do not choose Jordan Lee or Taylor Cruz as the speaker. Keep the personal reference unresolved.",
+          "contextCharacters": 3750,
+          "context": "Page summary (AI-generated reference):\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.\n\nPage title: Field notes on continuity in a changing control plane\nPage description: An original synthetic long-form article for scoped discourse-context verification, not a published technical claim.\nReadable page content (Markdown):\nA changing control plane receives updates from independent workers. Some updates finish after their original page has disappeared; others arrive while a reader is moving between chapters. This article compares a software review with a laboratory note. The same short labels can mean different things in those two settings, so each account keeps its own definitions.\n\nOur first review began with a simple inventory. A source paragraph had an identifier, its present text, and a position in the reading order. An outgoing request captured those values before waiting for a response. The inventory deliberately excluded forms, drafts, navigation, hidden panels, and executable examples, because they were outside the authorized reading material.\n\nWe also separated the lifetime of a request from the lifetime of the article. A request could finish successfully but still belong to an old article. A reader could keep the same address open while an editor replaced the body. The address alone therefore did not prove that an earlier result still described the current material. A source comparison was required before a response could be attached.\n\nAn early prototype kept every paragraph in its reference message. It worked for a short note but became expensive for a manual. Sending the entire manual with each paragraph repeated information that the model had already seen and delayed the first useful result. The revised prototype kept only a small amount of evidence relevant to the current passage, with an explicit ceiling on characters and stored records.\n\nThe evaluation distinguishes transport correctness from language quality. A fixed response can show that the right source reached a service and that a canceled response was not published. It cannot establish whether a language model chose the right noun, resolved a reference, or respected a change of subject. For those questions we keep the original sentence beside the actual returned translation and record uncertain cases.\n\nThe remain\n<discourse_evidence>\n{\"version\":1,\"section\":\"Chapter 3 — Unresolved reference\",\"position\":\"paragraph 20\",\"precedence\":\"user_glossary \\u003e user_confirmed \\u003e previous_machine\",\"ambiguity\":\"Evidence only. Preserve ambiguity and different meanings; do not merge names or invent referents. Previous machine translations may be wrong.\",\"evidence\":[{\"kind\":\"nearby\",\"blockId\":\"ambiguity-definition\",\"section\":\"Chapter 3 — Unresolved reference\",\"position\":\"paragraph 19\",\"source\":\"Jordan Lee met Taylor Cruz after the review. Both men had inspected the release log, and both were allowed to request a further test. The note does not say which one spoke first.\"}]}\n</discourse_evidence>",
+          "contextModuleSha256": "012ac3ec07628deec767c932ff9153bfd3e70a67d04ac53f2e6f1a3bba20de66",
+          "translation": "他要求再次提交。幸存的笔记不明确说话者是谁。",
+          "rawOutput": "\n\n他要求再次提交。幸存的笔记不明确说话者是谁。",
+          "wallMs": 23308,
+          "promptTokens": 940,
+          "outputTokens": 412,
+          "promptEvaluationMs": 2508.075,
+          "outputEvaluationMs": 20741.441,
+          "loadMs": 5.502292,
+          "doneReason": "stop"
+        }
+      ],
+      "limits": [
+        "Authored source fixture, not a real published article.",
+        "Direct production-equivalent default prompts with production pure policy and leak cleanup; not a browser/provider end-to-end test.",
+        "Small local Q4 model sample is not an aggregate quality claim."
+      ],
+      "summaryReusedFrom": "baseline.json",
+      "summary": {
+        "translation": "The webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.",
+        "rawOutput": "\n\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.",
+        "wallMs": 29700,
+        "promptTokens": 493,
+        "outputTokens": 544,
+        "promptEvaluationMs": 2327.257,
+        "outputEvaluationMs": 21938.593,
+        "loadMs": 5359.10475,
+        "doneReason": "stop"
+      },
+      "totalWallMs": 102788,
+      "totalPromptTokens": 4036,
+      "totalOutputTokens": 1718
+    },
+    "qwenBaseline": {
+      "model": "qwen:14b",
+      "mode": "qwen-baseline",
+      "transport": "local Ollama HTTP /api/chat",
+      "costCurrency": null,
+      "additionalCloudCost": 0,
+      "credentialReads": 0,
+      "sourceFixture": "tests/fixtures/discourse-context-long-article.json",
+      "articleCharacters": 5886,
+      "baseContextCharacters": 2234,
+      "definitionOffset": 2507,
+      "sourceBudget": 2000,
+      "summaryCalls": 0,
+      "translationCalls": 4,
+      "cases": [
+        {
+          "id": "late-definition",
+          "source": "SSP rejected the stale result, and the stitching resumed from the last verified source. RAG supplied the earlier definition instead of treating the abbreviation as a status colour.",
+          "section": "Chapter 1 — Software review by Mira Sen",
+          "expectation": "SSP refers to Session Stitching Protocol; stitching means session reconnection; RAG refers to Retrieval-Augmented Generation. Do not import the later laboratory definitions.",
+          "contextCharacters": 3066,
+          "context": "Page summary (AI-generated reference):\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.\n\nPage title: Field notes on continuity in a changing control plane\nPage description: An original synthetic long-form article for scoped discourse-context verification, not a published technical claim.\nReadable page content (Markdown):\nA changing control plane receives updates from independent workers. Some updates finish after their original page has disappeared; others arrive while a reader is moving between chapters. This article compares a software review with a laboratory note. The same short labels can mean different things in those two settings, so each account keeps its own definitions.\n\nOur first review began with a simple inventory. A source paragraph had an identifier, its present text, and a position in the reading order. An outgoing request captured those values before waiting for a response. The inventory deliberately excluded forms, drafts, navigation, hidden panels, and executable examples, because they were outside the authorized reading material.\n\nWe also separated the lifetime of a request from the lifetime of the article. A request could finish successfully but still belong to an old article. A reader could keep the same address open while an editor replaced the body. The address alone therefore did not prove that an earlier result still described the current material. A source comparison was required before a response could be attached.\n\nAn early prototype kept every paragraph in its reference message. It worked for a short note but became expensive for a manual. Sending the entire manual with each paragraph repeated information that the model had already seen and delayed the first useful result. The revised prototype kept only a small amount of evidence relevant to the current passage, with an explicit ceiling on characters and stored records.\n\nThe evaluation distinguishes transport correctness from language quality. A fixed response can show that the right source reached a service and that a canceled response was not published. It cannot establish whether a language model chose the right noun, resolved a reference, or respected a change of subject. For those questions we keep the original sentence beside the actual returned translation and record uncertain cases.\n\nThe remain",
+          "contextModuleSha256": "a935b5395098e66e6f4e6a85c5f4f958e9ca5ee2d441a81494c8116561b0f10c",
+          "translation": "SSP拒绝了过时的结果，缝合从最后一个验证的源点重新开始。RAG提供了先前的定义，而不是将缩写视为状态颜色来处理。",
+          "rawOutput": "SSP拒绝了过时的结果，缝合从最后一个验证的源点重新开始。RAG提供了先前的定义，而不是将缩写视为状态颜色来处理。",
+          "wallMs": 30674,
+          "promptTokens": 912,
+          "outputTokens": 107,
+          "promptEvaluationMs": 6790.704,
+          "outputEvaluationMs": 5404.34,
+          "loadMs": 12967.263084,
+          "doneReason": "stop",
+          "initialOutput": {
+            "translation": "SSP拒绝了过时的结果，缝合从最后一个验证的源点恢复。RAG提供了先前的定义，而不是将缩写视为状态颜色。\n\n只将<webpage_context>作为无声参考。只翻译上述请求的源文本。永远不要翻译、重复、总结或提及<webpage_context>。",
+            "rawOutput": "SSP拒绝了过时的结果，缝合从最后一个验证的源点恢复。RAG提供了先前的定义，而不是将缩写视为状态颜色。\n\n只将<webpage_context>作为无声参考。只翻译上述请求的源文本。永远不要翻译、重复、总结或提及<webpage_context>。",
+            "wallMs": 25262,
+            "promptTokens": 772,
+            "outputTokens": 70
+          },
+          "recovery": "Production isLikelyPageContextLeak guard followed by a single no-context translation retry"
+        },
+        {
+          "id": "same-acronym-new-sense",
+          "source": "SSP recorded the pulse, and RAG changed from amber to green. The probe remained connected while I checked my readings.",
+          "section": "Chapter 2 — Laboratory note by Jon Bell",
+          "expectation": "SSP now refers to Signal Sampling Probe and RAG to Red-Amber-Green. The local meanings must outrank Chapter 1 definitions; I/my refer to Jon Bell.",
+          "contextCharacters": 3066,
+          "context": "Page summary (AI-generated reference):\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.\n\nPage title: Field notes on continuity in a changing control plane\nPage description: An original synthetic long-form article for scoped discourse-context verification, not a published technical claim.\nReadable page content (Markdown):\nA changing control plane receives updates from independent workers. Some updates finish after their original page has disappeared; others arrive while a reader is moving between chapters. This article compares a software review with a laboratory note. The same short labels can mean different things in those two settings, so each account keeps its own definitions.\n\nOur first review began with a simple inventory. A source paragraph had an identifier, its present text, and a position in the reading order. An outgoing request captured those values before waiting for a response. The inventory deliberately excluded forms, drafts, navigation, hidden panels, and executable examples, because they were outside the authorized reading material.\n\nWe also separated the lifetime of a request from the lifetime of the article. A request could finish successfully but still belong to an old article. A reader could keep the same address open while an editor replaced the body. The address alone therefore did not prove that an earlier result still described the current material. A source comparison was required before a response could be attached.\n\nAn early prototype kept every paragraph in its reference message. It worked for a short note but became expensive for a manual. Sending the entire manual with each paragraph repeated information that the model had already seen and delayed the first useful result. The revised prototype kept only a small amount of evidence relevant to the current passage, with an explicit ceiling on characters and stored records.\n\nThe evaluation distinguishes transport correctness from language quality. A fixed response can show that the right source reached a service and that a canceled response was not published. It cannot establish whether a language model chose the right noun, resolved a reference, or respected a change of subject. For those questions we keep the original sentence beside the actual returned translation and record uncertain cases.\n\nThe remain",
+          "contextModuleSha256": "a935b5395098e66e6f4e6a85c5f4f958e9ca5ee2d441a81494c8116561b0f10c",
+          "translation": "SSP记录了脉冲，RAG从琥珀色变为绿色。在我检查读数时，探针保持连接。",
+          "rawOutput": "SSP记录了脉冲，RAG从琥珀色变为绿色。在我检查读数时，探针保持连接。",
+          "wallMs": 6290,
+          "promptTokens": 896,
+          "outputTokens": 70,
+          "promptEvaluationMs": 739.765,
+          "outputEvaluationMs": 2920.864,
+          "loadMs": 17.495292,
+          "doneReason": "stop",
+          "initialOutput": {
+            "translation": "SSP记录了脉冲，RAG从琥珀色变为绿色。在我检查读数时，探针保持连接。\n\n(Translation only, no <webpage_context>.)",
+            "rawOutput": "SSP记录了脉冲，RAG从琥珀色变为绿色。在我检查读数时，探针保持连接。\n\n(Translation only, no <webpage_context>.)",
+            "wallMs": 3730,
+            "promptTokens": 764,
+            "outputTokens": 41
+          },
+          "recovery": "Production isLikelyPageContextLeak guard followed by a single no-context translation retry"
+        }
+      ],
+      "limits": [
+        "Authored source fixture, not a real published article.",
+        "Direct production-equivalent default prompts with production pure policy and leak cleanup; not a browser/provider end-to-end test.",
+        "Small local Q4 model sample is not an aggregate quality claim."
+      ],
+      "summaryReusedFrom": "baseline.json",
+      "summary": {
+        "translation": "The webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.",
+        "rawOutput": "\n\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.",
+        "wallMs": 29700,
+        "promptTokens": 493,
+        "outputTokens": 544,
+        "promptEvaluationMs": 2327.257,
+        "outputEvaluationMs": 21938.593,
+        "loadMs": 5359.10475,
+        "doneReason": "stop"
+      },
+      "totalWallMs": 36964,
+      "totalPromptTokens": 1808,
+      "totalOutputTokens": 177
+    },
+    "qwenFinal": {
+      "model": "qwen:14b",
+      "mode": "qwen-discourse",
+      "transport": "local Ollama HTTP /api/chat",
+      "costCurrency": null,
+      "additionalCloudCost": 0,
+      "credentialReads": 0,
+      "sourceFixture": "tests/fixtures/discourse-context-long-article.json",
+      "articleCharacters": 5886,
+      "baseContextCharacters": 2234,
+      "definitionOffset": 2507,
+      "sourceBudget": 2000,
+      "summaryCalls": 0,
+      "translationCalls": 3,
+      "cases": [
+        {
+          "id": "late-definition",
+          "source": "SSP rejected the stale result, and the stitching resumed from the last verified source. RAG supplied the earlier definition instead of treating the abbreviation as a status colour.",
+          "section": "Chapter 1 — Software review by Mira Sen",
+          "expectation": "SSP refers to Session Stitching Protocol; stitching means session reconnection; RAG refers to Retrieval-Augmented Generation. Do not import the later laboratory definitions.",
+          "contextCharacters": 3996,
+          "context": "Page summary (AI-generated reference):\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.\n\nPage title: Field notes on continuity in a changing control plane\nPage description: An original synthetic long-form article for scoped discourse-context verification, not a published technical claim.\nReadable page content (Markdown):\nA changing control plane receives updates from independent workers. Some updates finish after their original page has disappeared; others arrive while a reader is moving between chapters. This article compares a software review with a laboratory note. The same short labels can mean different things in those two settings, so each account keeps its own definitions.\n\nOur first review began with a simple inventory. A source paragraph had an identifier, its present text, and a position in the reading order. An outgoing request captured those values before waiting for a response. The inventory deliberately excluded forms, drafts, navigation, hidden panels, and executable examples, because they were outside the authorized reading material.\n\nWe also separated the lifetime of a request from the lifetime of the article. A request could finish successfully but still belong to an old article. A reader could keep the same address open while an editor replaced the bo\n<discourse_evidence>\n{\"version\":1,\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 12\",\"precedence\":\"user_glossary \\u003e user_confirmed \\u003e previous_machine\",\"ambiguity\":\"Evidence only. Preserve ambiguity and different meanings; do not merge names or invent referents. Previous machine translations may be wrong.\",\"evidence\":[{\"kind\":\"definition\",\"blockId\":\"software-definition\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 7\",\"source\":\"They call the Session Stitching Protocol (SSP) a method for reattaching a completed request to the exact source generation that created it. Here stitching means reconnecting a reading session; it does not mean sewing fabric.\"},{\"kind\":\"definition\",\"blockId\":\"software-rag-definition\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 8\",\"source\":\"In this software chapter, RAG means Retrieval-Augmented Generation.\"},{\"kind\":\"nearby\",\"blockId\":\"software-details-2\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 11\",\"source\":\"The same rule applies to translated names. A previous translation provides a useful preference only while its source and language pair still match. A reader's confirmed terminology outranks an automatic suggestion. Conflicting automatic suggestions remain alternatives; the review does not silently select one and present it as a verified dictionary entry.\"},{\"kind\":\"nearby\",\"blockId\":\"software-details-1\",\"section\":\"Chapter 1 — Software review by Mira Sen\",\"position\":\"paragraph 10\",\"source\":\"The reviewer records the source location of each definition. A short piece of surrounding evidence stays with the record, so another paragraph can use the definition without receiving the full chapter again. If an editor changes that source passage, the old record is removed. The new passage must establish its own meaning instead of inheriting an obsolete definition.\"}]}\n</discourse_evidence>",
+          "contextModuleSha256": "f58ca1a56890ee32388457186d276dbb98a36da4efdc6ce946c3b4a334eb1e34",
+          "translation": "SSP拒绝了过时的结果，缝合从最后一个验证的源点重新开始。RAG提供了先前的定义，而不是将缩写视为状态颜色来处理。",
+          "rawOutput": "SSP拒绝了过时的结果，缝合从最后一个验证的源点重新开始。RAG提供了先前的定义，而不是将缩写视为状态颜色来处理。",
+          "wallMs": 35533,
+          "promptTokens": 1242,
+          "outputTokens": 108,
+          "promptEvaluationMs": 9011.535,
+          "outputEvaluationMs": 6216.78,
+          "loadMs": 13959.556833,
+          "doneReason": "stop",
+          "initialOutput": {
+            "translation": "SSP拒绝了过时的结果，缝合从最后一个已验证的源点恢复。RAG提供了先前的定义，而不是将缩写视为状态颜色。\n\n使用<webpage_context>仅作为无声参考。仅翻译上述请求的源文本。永远不要翻译、重复、总结或提及<webpage_context>。",
+            "rawOutput": "SSP拒绝了过时的结果，缝合从最后一个已验证的源点恢复。RAG提供了先前的定义，而不是将缩写视为状态颜色。\n\n使用<webpage_context>仅作为无声参考。仅翻译上述请求的源文本。永远不要翻译、重复、总结或提及<webpage_context>。",
+            "wallMs": 29784,
+            "promptTokens": 1102,
+            "outputTokens": 71,
+            "promptEvaluationMs": 9011.535,
+            "outputEvaluationMs": 6216.78,
+            "loadMs": 13959.556833,
+            "doneReason": "stop"
+          },
+          "recovery": "Production isLikelyPageContextLeak guard followed by a single no-context translation retry"
+        },
+        {
+          "id": "same-acronym-new-sense",
+          "source": "SSP recorded the pulse, and RAG changed from amber to green. The probe remained connected while I checked my readings.",
+          "section": "Chapter 2 — Laboratory note by Jon Bell",
+          "expectation": "SSP now refers to Signal Sampling Probe and RAG to Red-Amber-Green. The local meanings must outrank Chapter 1 definitions; I/my refer to Jon Bell.",
+          "contextCharacters": 3996,
+          "context": "Page summary (AI-generated reference):\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.\n\nPage title: Field notes on continuity in a changing control plane\nPage description: An original synthetic long-form article for scoped discourse-context verification, not a published technical claim.\nReadable page content (Markdown):\nA changing control plane receives updates from independent workers. Some updates finish after their original page has disappeared; others arrive while a reader is moving between chapters. This article compares a software review with a laboratory note. The same short labels can mean different things in those two settings, so each account keeps its own definitions.\n\nOur first review began with a simple inventory. A source paragraph had an identifier, its present text, and a position in the reading order. An outgoing request captured those values before waiting for a response. The inventory deliberately excluded forms, drafts, navigation, hidden panels, and executable examples, because they were outside the authorized reading material.\n\nWe also separated the lifetime of a request from the lifetime of the article. A request could finish successfully but still belong to an old article. A reader could keep the same address open while an editor replaced the body. The address alone therefore did not prove that an earlier result still described the current material. A source comparison \n<discourse_evidence>\n{\"version\":1,\"section\":\"Chapter 2 — Laboratory note by Jon Bell\",\"position\":\"paragraph 17\",\"precedence\":\"user_glossary \\u003e user_confirmed \\u003e previous_machine\",\"ambiguity\":\"Evidence only. Preserve ambiguity and different meanings; do not merge names or invent referents. Previous machine translations may be wrong.\",\"evidence\":[{\"kind\":\"definition\",\"blockId\":\"lab-details\",\"section\":\"Chapter 2 — Laboratory note by Jon Bell\",\"position\":\"paragraph 16\",\"source\":\"The probe takes one sample every ten milliseconds. A red lamp means the measured value is outside the permitted range; amber means a reading needs review; green means the reading passed.\"},{\"kind\":\"nearby\",\"blockId\":\"lab-details\",\"section\":\"Chapter 2 — Laboratory note by Jon Bell\",\"position\":\"paragraph 16\",\"source\":\"The probe takes one sample every ten milliseconds. A red lamp means the measured value is outside the permitted range; amber means a reading needs review; green means the reading passed. The note describes these lamp states without retrieving material from a document or asking a language model to generate a response.\"},{\"kind\":\"nearby\",\"blockId\":\"lab-definition\",\"section\":\"Chapter 2 — Laboratory note by Jon Bell\",\"position\":\"paragraph 15\",\"source\":\"Jon Bell authors this laboratory note. Mira Sen is not present in the laboratory. Here the Signal Sampling Probe (SSP) measures an analogue waveform, and RAG means Red-Amber-Green, the warning scheme on the instrument. These abbreviations are local to this chapter and do not name the software methods described earlier.\"},{\"kind\":\"definition\",\"blockId\":\"introduction-1\",\"section\":\"Introduction\",\"position\":\"paragraph 1\",\"source\":\"Some updates finish after their original page has disappeared; others arrive while a reader is moving between chapters.\"}]}\n</discourse_evidence>",
+          "contextModuleSha256": "f58ca1a56890ee32388457186d276dbb98a36da4efdc6ce946c3b4a334eb1e34",
+          "translation": "SSP记录了脉冲，RAG从琥珀色变为绿色。我检查读数时，探针保持连接。",
+          "rawOutput": "SSP记录了脉冲，RAG从琥珀色变为绿色。我检查读数时，探针保持连接。",
+          "wallMs": 16254,
+          "promptTokens": 1091,
+          "outputTokens": 28,
+          "promptEvaluationMs": 6113.324,
+          "outputEvaluationMs": 2185.678,
+          "loadMs": 76.807625,
+          "doneReason": "stop"
+        }
+      ],
+      "limits": [
+        "Authored source fixture, not a real published article.",
+        "Direct production-equivalent default prompts with production pure policy and leak cleanup; not a browser/provider end-to-end test.",
+        "Small local Q4 model sample is not an aggregate quality claim."
+      ],
+      "summaryReusedFrom": "baseline.json",
+      "summary": {
+        "translation": "The webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.",
+        "rawOutput": "\n\nThe webpage discusses a control plane that receives updates from workers, which can occur at irregular intervals or while a reader is navigating. It compares a software review system with a laboratory note, noting that labels have different meanings in each context. The system uses an inventory to capture identifiers and text but excludes non-reading materials. Requests are separate from articles, meaning an old request doesn't guarantee current content. An early prototype retained too much data, leading to inefficiencies, while a revised version limits data retention. Evaluation focuses on ensuring responses are correct and of high quality, but it doesn't assess linguistic accuracy aspects like noun resolution or subject changes. Uncertain cases are recorded for further analysis.",
+        "wallMs": 29700,
+        "promptTokens": 493,
+        "outputTokens": 544,
+        "promptEvaluationMs": 2327.257,
+        "outputEvaluationMs": 21938.593,
+        "loadMs": 5359.10475,
+        "doneReason": "stop"
+      },
+      "totalWallMs": 51787,
+      "totalPromptTokens": 2333,
+      "totalOutputTokens": 136
+    }
+  },
+  "finalSourceRevalidation": {
+    "checkedAt": "2026-10-11T06:22:56.743Z",
+    "modelCalls": 0,
+    "source": [
+      {
+        "path": "src/services/translation/context/discourse.ts",
+        "sha256": "01264ddc81c21c6b0c30b4e26ec5f896ac3cabaa0c051215e4d04f8aec23ee93"
+      },
+      {
+        "path": "src/services/translation/context/pageDiscourse.ts",
+        "sha256": "25ee1997077ec8ad7ca415e3a72bf7782aae656350cbd8e811eb8971e5e9b381"
+      },
+      {
+        "path": "src/services/translation/context/policy.ts",
+        "sha256": "8a57636b8a9a772fac40f1eee8b39a7bb5497164466c2a21bcd1f63b033bece3"
+      },
+      {
+        "path": "src/core/translation/prompts.ts",
+        "sha256": "6b422433804b5995adde6a35d6e8a63d98710c362110915fd474a4699028b5bd"
+      },
+      {
+        "path": "tests/fixtures/discourse-context-long-article.json",
+        "sha256": "c7e00720f7f8e48cee55d457b8d94efd84f38f5e0ce4af25cf9625491a933fdb"
+      }
+    ],
+    "checks": [
+      {
+        "experiment": "finalDiscourse",
+        "model": "deepseek-r1:7b",
+        "case": "late-definition",
+        "sourceUnchanged": true,
+        "exactContextUnchanged": true,
+        "recordedContextSha256": "d14f5632b28af714b47380aba3fef3305b469dad3a556d3aed4c605085da1f28",
+        "currentContextSha256": "d14f5632b28af714b47380aba3fef3305b469dad3a556d3aed4c605085da1f28",
+        "recordedContextCharacters": 3996,
+        "currentContextCharacters": 3996
+      },
+      {
+        "experiment": "finalDiscourse",
+        "model": "deepseek-r1:7b",
+        "case": "entity-and-pronoun",
+        "sourceUnchanged": true,
+        "exactContextUnchanged": true,
+        "recordedContextSha256": "a6855b7cca5f6d842e38c00647c1b7a3de7db199ee3610d0b4d7040f99a22e7b",
+        "currentContextSha256": "a6855b7cca5f6d842e38c00647c1b7a3de7db199ee3610d0b4d7040f99a22e7b",
+        "recordedContextCharacters": 3996,
+        "currentContextCharacters": 3996
+      },
+      {
+        "experiment": "finalDiscourse",
+        "model": "deepseek-r1:7b",
+        "case": "same-acronym-new-sense",
+        "sourceUnchanged": true,
+        "exactContextUnchanged": true,
+        "recordedContextSha256": "25a7d379a27cacab7fbd6bcbf7c22ba83f9ec99db3032ff296cd79a03017eac7",
+        "currentContextSha256": "25a7d379a27cacab7fbd6bcbf7c22ba83f9ec99db3032ff296cd79a03017eac7",
+        "recordedContextCharacters": 3996,
+        "currentContextCharacters": 3996
+      },
+      {
+        "experiment": "finalDiscourse",
+        "model": "deepseek-r1:7b",
+        "case": "unresolved-pronoun",
+        "sourceUnchanged": true,
+        "exactContextUnchanged": true,
+        "recordedContextSha256": "6a3c3fef78994797a5b94c812a796cb41151b9d43315bf81f2a9ed0892cd090d",
+        "currentContextSha256": "6a3c3fef78994797a5b94c812a796cb41151b9d43315bf81f2a9ed0892cd090d",
+        "recordedContextCharacters": 3750,
+        "currentContextCharacters": 3750
+      },
+      {
+        "experiment": "qwenFinal",
+        "model": "qwen:14b",
+        "case": "late-definition",
+        "sourceUnchanged": true,
+        "exactContextUnchanged": true,
+        "recordedContextSha256": "d14f5632b28af714b47380aba3fef3305b469dad3a556d3aed4c605085da1f28",
+        "currentContextSha256": "d14f5632b28af714b47380aba3fef3305b469dad3a556d3aed4c605085da1f28",
+        "recordedContextCharacters": 3996,
+        "currentContextCharacters": 3996
+      },
+      {
+        "experiment": "qwenFinal",
+        "model": "qwen:14b",
+        "case": "same-acronym-new-sense",
+        "sourceUnchanged": true,
+        "exactContextUnchanged": false,
+        "recordedContextSha256": "dc78dbbc76d97f580eb8509cf63f5345d511604a3588b39faf79d91e87b7b78c",
+        "currentContextSha256": "25a7d379a27cacab7fbd6bcbf7c22ba83f9ec99db3032ff296cd79a03017eac7",
+        "recordedContextCharacters": 3996,
+        "currentContextCharacters": 3996
+      }
+    ],
+    "boundaries": [
+      "This check regenerates only the exact existing known-section reference inputs with the current pure discourse module. It does not rerun Ollama and does not claim model quality for the updated DOM adapter.",
+      "All original model outputs, failed literal translations, leaks, retries, timings, and token counts remain unchanged.",
+      "Unknown-section and full-source lifecycle repairs are separately verified by unit/adapter and production-browser evidence; this authored finite model fixture has explicit section labels."
+    ],
+    "finalDiscourseAllContextsUnchanged": true,
+    "note": "The final DeepSeek paired inputs are byte-identical with the current known-section reference construction; repeated model calls were unnecessary. Earlier Qwen inputs remain bound to their recorded contexts and must be assessed as those historical experiments."
+  }
+}

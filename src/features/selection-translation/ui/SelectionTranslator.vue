@@ -1,11 +1,11 @@
 <!--
  * @file src/features/selection-translation/ui/SelectionTranslator.vue
- * 文件职责：实现划词翻译的主要页面组件，覆盖选区捕获、图标/小点/悬停/快捷键/仅右键菜单/直接弹出、翻译与词卡展示、朗读、收藏选中的单词/表达/句子、双语分享卡片、重试和关闭。
- * 主要内容：相同译文保留原文且不重复展示；组件管理可信手势、已关闭选区与选择丢失宽限、继续阅读或复制原文时自动收起、请求 token、行内代码保护与纯文本安全渲染、按标签页页面缩放补偿的弹窗定位、空白拖动、边角缩放、主题及可换行的多语言标题；普通译文先于完整原文，单行可横向滚动的导航把高度留给正文；指针移动按帧合并并在结束时提交最后位置，已定位卡片不重复读取选区几何；富文本 UTF-16 跟读偏移一次计算并复用；默认过滤同语言选区，按配置开放中英反向入口，并在卡片内仅对本次翻译切换译文语言；统一卡片默认显示翻译并以同一导航进入学习；首次定位后保持弹窗锚点，手动尺寸下内容与播放状态变化只影响内部布局；闲置语音栏不占空间，自动卡生成与播放期间用独立临时高度保持外框，停止恢复自然尺寸；学习短回答自然收拢、长回答受高度上限约束，完整原文和译文按需对照并允许翻译继续完成；单词先展示原文与可用词卡，再补充辅助释义，以紧凑状态提示等待、未命中与网络失败；关闭或更换选区取消等待并阻止旧响应覆盖新结果；区分语音生成和播放，按实际音频时钟或浏览器词边界显示完整词高亮，并提供真实音频时间与前后 5 秒跳转。
- * 模块边界：组件只通过公共客户端和 runtime 消息触达后台，不直接持有 provider、IndexedDB 或 Offscreen 资源；纯选区算法在 core，活动 Range 通过回调交给 content/runtime 管理 modal 挂载所有权；扩展 PDF 文档页通过可选来源适配器复用同一卡片、标题和阅读上下文，来源失效时取消当前请求，词书协议独立维护。
+ * 文件职责：实现划词翻译的主要页面组件，覆盖选区捕获、图标/小点/悬停/快捷键/仅右键菜单/直接弹出、原生菜单可信选区恢复与重复请求复用、翻译与词卡展示、朗读、收藏选中的单词/表达/句子、双语分享卡片、重试和关闭。
+ * 主要内容：相同译文保留原文且不重复展示；组件管理可信手势、已关闭选区与选择丢失宽限、继续阅读或复制原文时自动收起、请求 token、行内代码保护与纯文本安全渲染、按标签页页面缩放补偿的弹窗定位、空白拖动、边角缩放、主题及可换行的多语言标题；普通译文先于完整原文，单行可横向滚动的导航和右侧固定更多操作把高度留给正文，次级菜单按可见窗口覆盖显示；指针移动按帧合并并在结束时提交最后位置，已定位卡片不重复读取选区几何；富文本 UTF-16 跟读偏移一次计算并复用；默认过滤同语言选区，按配置开放中英反向入口，并在卡片内仅对本次翻译切换译文语言；统一卡片默认显示翻译并以同一导航进入学习；首次定位后保持弹窗锚点，手动尺寸下内容与播放状态变化只影响内部布局；闲置语音栏不占空间，自动卡生成与播放期间用独立临时高度保持外框，停止恢复自然尺寸；学习短回答自然收拢、长回答受高度上限约束，完整原文和译文按需对照并允许翻译继续完成；单词先展示原文与可用词卡，再补充辅助释义，以紧凑状态提示等待、未命中与网络失败；关闭或更换选区取消等待并阻止旧响应覆盖新结果；区分语音生成和播放，按实际音频时钟或浏览器词边界显示完整词高亮，并提供真实音频时间与前后 5 秒跳转。
+ * 模块边界：组件只通过公共客户端和 runtime 消息触达后台，不直接持有 provider、IndexedDB 或 Offscreen 资源；纯选区算法在 core，活动 Range 通过回调交给 content/runtime 管理 modal 挂载所有权；扩展 PDF 文档页通过可选来源适配器复用同一卡片、标题和阅读上下文，来源失效时取消当前请求，词书协议独立维护；阅读依据的 DOM 锚点只属于当前选区，关闭、换区或卸载释放临时绘制和监听。
  -->
 <template>
-  <div v-ui-i18n v-show="showIndicator || showTooltip || noticeMessage || copySuccess" class="fr-selection-translator-root" :data-display-delay="selectionSettings.delay" @pointerdown.stop @wheel.stop="handleUiWheel">
+  <div v-ui-i18n v-show="showIndicator || showTooltip || noticeMessage || copySuccess" class="fr-selection-translator-root" :data-display-delay="selectionSettings.delay" @pointerdown.capture="dismissReadingToolsOutside" @pointerdown.stop @focusin="dismissReadingToolsOutside" @focusout="dismissReadingToolsOnFocusOut" @wheel.stop="handleUiWheel">
     <button v-if="showIndicator && !showTooltip && triggerMode !== 'contextMenu'" class="fr-selection-indicator" :class="`fr-selection-indicator--${triggerMode}`" :style="indicatorStyle" type="button" aria-label="打开划词翻译" title="打开划词翻译" @pointerdown.prevent.stop @pointerenter="scheduleIndicatorHover" @pointerleave="cancelReadingHover" @click="openTooltip()">
       <span class="fr-selection-indicator-glyph" aria-hidden="true">译</span>
     </button>
@@ -37,6 +37,7 @@
         </div>
       </header>
 
+      <div class="fr-study-navigation">
       <div class="fr-study-toolbar" role="group" aria-label="划词卡片内容" :title="isWordSelection ? '词典释义 · 按词性分类' : '先看译文，按需深入'" @focusin="handleStudyToolbarFocus">
         <button type="button" :aria-pressed="!readingMode" @click="openTooltip()">翻译</button>
         <template v-if="readingEnabled">
@@ -45,8 +46,10 @@
         </template>
         <button v-else type="button" @click="openSelectionSettings">配置 AI 讲解</button>
       </div>
+      <div ref="reading-tools-target" v-show="readingMode && !readingHistoryOnly" class="fr-study-reading-tools" />
+      </div>
       <div v-if="readingSelection" v-show="readingMode" class="fr-tooltip-content fr-reading-content">
-        <ReadingPanel ref="reading-panel-ref" :external-navigation="true" @view-change="syncReadingView" :selection="readingSelection" :source-translation="{source: selectedText, text: translationResult, pending: isLoading, error}" :preferences="readingPreferences" :active="readingMode" :initial-action="readingInitialAction" :history-only="readingHistoryOnly" :source-language="effectiveSourceLanguage" :target-language="effectiveTargetLanguage" :playing-source-text="isPlaying && currentAudioKind === 'source' ? currentAudioText : ''" :model-revision="readingModelRevision" :vocabulary-enabled="config.vocabularyBookEnabled" :private-context="isPrivateContext" :animations="config.animations" @play-source="toggleAudio($event, 'source')" @source-change="stopAudio()" @resize="schedulePositionUpdate" />
+        <ReadingPanel ref="reading-panel-ref" :external-navigation="true" :tools-target="readingToolsTarget" @view-change="syncReadingView" :selection="readingSelection" :locate-evidence="locateReadingEvidence" :clear-evidence="clearReadingEvidence" :source-revision="readingSourceRevision" :check-evidence="checkReadingEvidence" :source-translation="{source: selectedText, text: translationResult, pending: isLoading, error}" :preferences="readingPreferences" :active="readingMode" :initial-action="readingInitialAction" :history-only="readingHistoryOnly" :source-language="effectiveSourceLanguage" :target-language="effectiveTargetLanguage" :playing-source-text="isPlaying && currentAudioKind === 'source' ? currentAudioText : ''" :model-revision="readingModelRevision" :vocabulary-enabled="config.vocabularyBookEnabled" :private-context="isPrivateContext" :animations="config.animations" @play-source="toggleAudio($event, 'source')" @source-change="stopAudio()" @resize="schedulePositionUpdate" />
       </div>
       <div v-show="!readingMode" class="fr-tooltip-content" aria-live="polite">
         <div v-if="isLoading && !translationResult && !wordCard && !wordCardError && !isWordSelection" class="fr-loading-state"><span :class="['fr-loading-spinner', { 'fr-static': !config.animations }]" aria-hidden="true" /><span>正在查询…</span></div>
@@ -201,7 +204,7 @@ import { createSelectionTtsContentController } from '@/src/features/selection-tr
 import { setSelectionContextMenuHandler } from '@/src/features/selection-translation/content/contextMenuBridge';
 import {normalizeSelectionPageZoom, SELECTION_PAGE_ZOOM_CHANGED, SELECTION_PAGE_ZOOM_REQUEST} from '@/src/features/selection-translation/pageZoom';
 import { VOCABULARY_BOOK_CHANGED_MESSAGE, VOCABULARY_BOOK_MESSAGE, type VocabularyBookResponse } from '@/src/features/vocabulary/protocol';
-import {ReadingPanel, captureReadingSelection, type ReadingSelection} from '@/src/features/reading-assistant/public';
+import {ReadingPanel, captureReadingSelection, createReadingEvidenceAnchor, type ReadingEvidenceAnchor, type ReadingSelection} from '@/src/features/reading-assistant/public';
 import {HARNESS_ACTIONS, getHarnessModelCacheKey, normalizeHarnessPreferences, type HarnessActionId} from '@/src/core/config/harness';
 import {useUiI18n} from '@/src/ui/i18n';
 
@@ -223,10 +226,12 @@ const shareCardAvailable = isShareCardMounted();
 type SelectionTrigger = 'direct' | 'icon' | 'dot' | 'shortcut' | 'contextMenu';
 type AudioKind = 'source' | 'translation' | 'word';
 type CopyKind = 'source' | 'translation';
-interface SelectionSnapshot { text: string; parts: SelectionTextPart[]; range: Range; anchor: SelectionRect; isForward: boolean; }
+interface SelectionSnapshot { text: string; nativeText: string; parts: SelectionTextPart[]; range: Range; anchor: SelectionRect; isForward: boolean; }
+interface ContextMenuSelection { snapshot: SelectionSnapshot; rangeText: string; }
 
 const tooltipRef = useTemplateRef<HTMLElement>('tooltip-ref');
 const readingPanelRef = useTemplateRef<InstanceType<typeof ReadingPanel>>('reading-panel-ref');
+const readingToolsTarget = useTemplateRef<HTMLElement>('reading-tools-target');
 const selectionTranslatorIconUrl = browser.runtime.getURL('/icon/128.png');
 const selectedText = ref('');
 const selectionTargetOverride = ref<string | null>(null);
@@ -244,6 +249,27 @@ const readingMode = ref(false);
 const readingInitialAction = ref<HarnessActionId>();
 const readingHistoryOnly = ref(false);
 const readingSelection = ref<ReadingSelection | null>(null);
+let readingEvidenceAnchor: ReadingEvidenceAnchor | undefined;
+const readingSourceRevision = ref(0);
+let readingEvidenceScrollFrame: number | undefined;
+function clearReadingEvidenceScroll(): void {
+  if (readingEvidenceScrollFrame !== undefined) window.cancelAnimationFrame(readingEvidenceScrollFrame);
+  readingEvidenceScrollFrame = undefined;
+}
+const locateReadingEvidence: ReadingEvidenceAnchor['locate'] = citation => {
+  clearReadingEvidenceScroll();
+  // instant scrollIntoView 的 scroll 事件在下一次绘制前派发；仅保留本次定位的两帧。
+  readingEvidenceScrollFrame = window.requestAnimationFrame(() => {
+    readingEvidenceScrollFrame = window.requestAnimationFrame(() => { readingEvidenceScrollFrame = undefined; });
+  });
+  const result = readingEvidenceAnchor?.locate(citation) ?? 'unavailable';
+  if (result !== 'located') clearReadingEvidenceScroll();
+  return result;
+};
+const clearReadingEvidence = () => { clearReadingEvidenceScroll(); readingEvidenceAnchor?.suspend(); };
+const checkReadingEvidence = () => readingEvidenceAnchor?.check() ?? 'unavailable';
+function disposeReadingEvidence(): void { clearReadingEvidenceScroll(); readingEvidenceAnchor?.dispose(); readingEvidenceAnchor = undefined; }
+watch(readingSelection, selection => { if (!selection) disposeReadingEvidence(); }, {flush: 'sync'});
 const copySuccess = ref(false);
 const copiedTextKind = ref<CopyKind | null>(null);
 const isDarkTheme = ref(false);
@@ -340,6 +366,9 @@ let unsubscribeConfig: (() => void) | null = null;
 let unsubscribeSelectionSource: (() => void) | null = null;
 const runtimeMessageUnsubscribers: Array<() => void> = [];
 let releaseContextMenuHandler: (() => void) | null = null;
+// 原生菜单可能让 Selection 暂时折叠；只保存 trusted contextmenu 已审核的 Range，不从浏览器文本猜测 DOM 位置。
+let contextMenuSelection: ContextMenuSelection | null = null;
+let contextMenuSourceRejected = false;
 let tooltipResizeObserver: ResizeObserver | null = null;
 const selectionConfigVersion = ref(0);
 const readingPreferences = computed(() => {
@@ -447,23 +476,36 @@ function isExtensionSelection(selection: Selection): boolean {
 }
 
 function readSelectionSnapshot(): SelectionSnapshot | null {
-  const selection = window.getSelection();
-  if (!selection || selection.rangeCount === 0 || selection.isCollapsed || isExtensionSelection(selection)) return null;
-  const range = selection.getRangeAt(0).cloneRange();
-  if (props.selectionAdapter ? !props.selectionAdapter.acceptsRange(range) : shouldIgnoreSelection(range)) return null;
-  const sourceText = props.selectionAdapter?.extractText?.(range, selection.toString()) ?? selection.toString();
-  const parts = props.selectionAdapter?.normalizeText
-    ? [{kind: 'text' as const, text: props.selectionAdapter.normalizeText(sourceText)}]
-    : readSelectionParts(range, sourceText);
-  const text = parts.map(part => part.text).join('');
-  if (!text || text.length > 4096) return null;
+  try {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed || isExtensionSelection(selection)) return null;
+    const range = selection.getRangeAt(0).cloneRange();
+    if (!isSelectionRangeConnected(range)
+      || (props.selectionAdapter ? !props.selectionAdapter.acceptsRange(range) : shouldIgnoreSelection(range))) return null;
+    const nativeText = selection.toString();
+    const sourceText = props.selectionAdapter?.extractText?.(range, nativeText) ?? nativeText;
+    const parts = props.selectionAdapter?.normalizeText
+      ? [{kind: 'text' as const, text: props.selectionAdapter.normalizeText(sourceText)}]
+      : readSelectionParts(range, sourceText);
+    const text = parts.map(part => part.text).join('');
+    if (!text || text.length > 4096) return null;
 
-  const rects = Array.from(range.getClientRects()).map(toSelectionRect).filter(rect => rect.width > 0 || rect.height > 0);
-  const visualRects = rects.length > 0 ? rects : [toSelectionRect(range.getBoundingClientRect())];
-  const isForward = selection.anchorNode === range.startContainer && selection.anchorOffset === range.startOffset;
-  const anchor = chooseSelectionRect(visualRects, isForward);
-  if (!anchor || (anchor.width === 0 && anchor.height === 0)) return null;
-  return { text, parts, range, anchor, isForward };
+    const rects = Array.from(range.getClientRects()).map(toSelectionRect).filter(rect => rect.width > 0 || rect.height > 0);
+    const visualRects = rects.length > 0 ? rects : [toSelectionRect(range.getBoundingClientRect())];
+    const isForward = selection.anchorNode === range.startContainer && selection.anchorOffset === range.startOffset;
+    const anchor = chooseSelectionRect(visualRects, isForward);
+    if (!anchor || (anchor.width === 0 && anchor.height === 0)) return null;
+    return { text, nativeText, parts, range, anchor, isForward };
+  } catch {
+    // 文档/Range 在导航或宿主重绘期间失效时，据实返回缺选区，不让页面事件或菜单消息抛错。
+    return null;
+  }
+}
+
+function isSelectionRangeConnected(range: Range): boolean {
+  return Boolean(range.startContainer.isConnected && range.endContainer.isConnected
+    && range.startContainer.ownerDocument === document && range.endContainer.ownerDocument === document
+    && !range.collapsed);
 }
 
 function scheduleSelectionRead(shortcutTriggered = false): void {
@@ -496,7 +538,8 @@ function isSelectionInTargetLanguage(text: string): boolean {
 }
 
 function isSameSelection(left: SelectionSnapshot | null, right: SelectionSnapshot): boolean {
-  if (!left || left.text !== right.text || JSON.stringify(left.parts) !== JSON.stringify(right.parts)) return false;
+  if (!left || left.text !== right.text || left.parts?.length !== right.parts?.length
+    || left.parts?.some((part, index) => part.kind !== right.parts[index].kind || part.text !== right.parts[index].text)) return false;
   return left.range.startContainer === right.range.startContainer
     && left.range.startOffset === right.range.startOffset
     && left.range.endContainer === right.range.endContainer
@@ -606,7 +649,9 @@ function scheduleSelectionPresentation(presentation: 'indicator' | 'tooltip'): v
 }
 
 function scheduleSelectionLoss(): void {
-  if (!snapshot.value) return;
+  // 明确打开的卡片拥有自己的选区快照，不因原生菜单收起或网页清除高亮取消请求。
+  if (!snapshot.value || import.meta.env.BROWSER !== 'userscript'
+    && (contextMenuSelection || manuallyRequestedSelection.value && showTooltip.value)) return;
   if (selectionLossTimer !== null) return;
   selectionLossTimer = window.setTimeout(() => {
     selectionLossTimer = null;
@@ -762,7 +807,7 @@ function beginPopupGesture(event: PointerEvent): void {
   const element = tooltipRef.value;
   const target = event.target;
   if (!event.isTrusted || !event.isPrimary || event.button !== 0 || !element || !(target instanceof HTMLElement)) return;
-  if (target.closest('button, a, input, textarea, select, [contenteditable]')) return;
+  if (target.closest('button, summary, a, input, textarea, select, [contenteditable]')) return;
   const edge = target.dataset.resizeEdge ?? '';
   const blank = target.matches('.fr-translation-tooltip, .fr-tooltip-content, .fr-translation-container, .fr-text-block');
   if (!edge && !target.closest('.fr-tooltip-header') && !blank) return;
@@ -904,6 +949,8 @@ function handlePageZoomChanged(message: unknown): undefined {
 }
 
 function handleViewportResize(): void {
+  // 父卡下一帧会夹边移动；先收起菜单，避免沿用移动前的展开方向。
+  readingPanelRef.value?.closeTools();
   // 视口宽度会改变自动卡片的真实宽度，不能继续用按下时的旧矩形夹边。
   stopPopupGesture();
   viewportSize.value = {width: window.innerWidth, height: window.innerHeight};
@@ -978,6 +1025,10 @@ function openReadingCard(): void {
   if (!readingSelection.value) {
     readingSelection.value = (props.selectionAdapter?.captureReading ?? captureReadingSelection)(snapshot.value.range, snapshot.value.text,
       readingPreferences.value.contextMode === 'paragraph' ? readingPreferences.value.maxContextChars : 0);
+    disposeReadingEvidence();
+    readingEvidenceAnchor = createReadingEvidenceAnchor(snapshot.value.range, readingSelection.value, {
+      onInvalidate: () => { readingSourceRevision.value += 1; clearReadingEvidence(); },
+    });
   }
   const wasVisible = showTooltip.value;
   readingMode.value = true;
@@ -1668,9 +1719,69 @@ async function toggleWordAudio(pronunciation: WordPronunciation): Promise<void> 
   } finally {if (ttsContentController.isCurrentGeneration(requestId)) isPreparingAudio.value = false;}
 }
 
-/** 右键“翻译选中文本”：直接按当前选区出卡片，跳过触发方式与延迟设置。 */
-function translateSelectionFromContextMenu(): boolean {
-  const next = readSelectionSnapshot();
+function clearContextMenuSelection(): void {
+  contextMenuSelection = null;
+  contextMenuSourceRejected = false;
+}
+
+function isContextMenuInputTarget(target: EventTarget | null): boolean {
+  let element = target instanceof Element ? target : target instanceof Node ? target.parentElement : null;
+  if (element?.closest('input, textarea, select, button, [role="textbox"]')) return true;
+  // contenteditable=false 的正文岛仍可选择；以最近的明确编辑边界为准，不能从外层祖先猜测。
+  while (element) {
+    const editable = element.getAttribute('contenteditable');
+    if (editable !== null) return editable.trim().toLowerCase() !== 'false';
+    element = element.parentElement;
+  }
+  return false;
+}
+
+function handleContextMenu(event: MouseEvent): void {
+  if (!event.isTrusted) return;
+  clearContextMenuSelection();
+  // 原生菜单接管这次选区交互，旧的延迟出卡和入口收起计时器不能在菜单期间清掉快照。
+  cancelSelectionPresentation();
+  // 输入控件中的浏览器选择可能与 document Selection 分离，不能把仍在正文中的旧 Range 当成输入来源。
+  contextMenuSourceRejected = isInsideUi(event.target) || isContextMenuInputTarget(event.target);
+  if (contextMenuSourceRejected) return;
+  const current = readSelectionSnapshot();
+  if (!current) return;
+  contextMenuSelection = {snapshot: current, rangeText: current.range.toString()};
+  isSelecting = false;
+  cancelSelectionLoss();
+  suppressSelectionRead();
+}
+
+/** 浏览器菜单原文只用于核对本次已审核的选区，空白差异不改变内容身份。 */
+function matchesContextMenuText(current: SelectionSnapshot, selectionText?: string): boolean {
+  if (selectionText === undefined) return true;
+  const normalize = (text: string) => text.replace(/\s+/gu, ' ').trim();
+  return Boolean(selectionText.trim()) && normalize(current.nativeText) === normalize(selectionText);
+}
+
+function recoverContextMenuSelection(selectionText?: string): SelectionSnapshot | null {
+  const captured = contextMenuSelection;
+  if (!captured || !matchesContextMenuText(captured.snapshot, selectionText)) return null;
+  try {
+    const {range} = captured.snapshot;
+    // 快照跨菜单等待仍须属于当前文档、保有原文并再次通过敏感区域规则；裸 selectionText 永远不作为翻译来源。
+    if (!isSelectionRangeConnected(range) || range.toString() !== captured.rangeText
+      || (props.selectionAdapter ? !props.selectionAdapter.acceptsRange(range) : shouldIgnoreSelection(range))) return null;
+    return captured.snapshot;
+  } catch {
+    return null;
+  }
+}
+
+/** 右键“翻译选中文本”：使用菜单绑定的可信选区出卡片，跳过触发方式与延迟设置。 */
+function translateSelectionFromContextMenu(selectionText?: string): boolean {
+  if (import.meta.env.BROWSER !== 'userscript' && contextMenuSourceRejected) return false;
+  // 菜单打开时已冻结正文/代码片段和锚点，核对来源后复用，避免点击时再克隆 DOM 与测量选区。
+  let next = import.meta.env.BROWSER !== 'userscript' ? recoverContextMenuSelection(selectionText) : null;
+  if (!next) {
+    const current = readSelectionSnapshot();
+    next = current && matchesContextMenuText(current, selectionText) ? current : null;
+  }
   if (!next) return false;
   suppressSelectionUntil = 0;
   isSelecting = false;
@@ -1680,6 +1791,7 @@ function translateSelectionFromContextMenu(): boolean {
 
 function closeTooltip(): void { hideAll(); }
 function hideAll(): void {
+  if (import.meta.env.BROWSER !== 'userscript') clearContextMenuSelection();
   resetPopupGeometry();
   // 保留关闭时的选区身份，避免按钮保留原生选区时 pointerup / selectionchange 再次打开卡片。
   dismissedSelection = snapshot.value ?? readSelectionSnapshot() ?? dismissedSelection;
@@ -1731,6 +1843,15 @@ function handlePointerDown(event: PointerEvent): void {
     return;
   }
   uiPointerInteraction = false;
+  readingPanelRef.value?.closeTools();
+  if (import.meta.env.BROWSER !== 'userscript') clearContextMenuSelection();
+  // 右键是打开原生菜单的准备动作；保留同一选区正在进行的请求和已完成结果。
+  if (import.meta.env.BROWSER !== 'userscript' && event.button === 2) {
+    isSelecting = false;
+    pendingSelectionShortcutUntil = 0;
+    suppressSelectionRead();
+    return;
+  }
   suppressSelectionUntil = 0;
   isSelecting = event.button === 0;
   pendingSelectionShortcutUntil = 0;
@@ -1768,6 +1889,7 @@ function cancelEntryDismiss(): void {
 }
 function handlePointerMove(event: PointerEvent): void {
   if (!event.isTrusted || event.pointerType !== 'mouse' || isSelecting || showTooltip.value
+    || import.meta.env.BROWSER !== 'userscript' && (contextMenuSelection || contextMenuSourceRejected)
     || !selectionSettings.value.autoDismiss || !snapshot.value
     || triggerMode.value === 'shortcut' || triggerMode.value === 'contextMenu'
     || (!showIndicator.value && !pendingSelectionPresentation)) return;
@@ -1783,6 +1905,7 @@ function handlePointerMove(event: PointerEvent): void {
   entryDismissTimer = window.setTimeout(() => {
     entryDismissTimer = null;
     if (selectionSettings.value.autoDismiss && !showTooltip.value && !isSelecting
+      && (import.meta.env.BROWSER === 'userscript' || !contextMenuSelection && !contextMenuSourceRejected)
       && !isInsideUi(document.activeElement)) hideAll();
   }, 600);
 }
@@ -1793,6 +1916,7 @@ function handlePageCopy(event: ClipboardEvent): void {
 function handleSelectionChange(event: Event): void {
   if (readingMode.value && isInsideUi(document.activeElement)) return;
   if (!event.isTrusted) return;
+  if (import.meta.env.BROWSER !== 'userscript' && (contextMenuSelection || contextMenuSourceRejected)) return;
   // 新的拖选/双击可以再次选中同一段；单纯点击保留旧选区的按钮不能解除关闭状态。
   if (isSelecting && dismissedSelection) {
     const current = readSelectionSnapshot();
@@ -1802,6 +1926,13 @@ function handleSelectionChange(event: Event): void {
   if (!isSelectionReadSuppressed()) scheduleSelectionRead(selectionShortcutHeld);
 }
 // 仅在扩展 UI 内拦住滚轮冒泡；document 级 wheel 会抑制 Chromium 对同节点派发 legacy mousewheel，导致旧播放器收不到音量手势。
+function dismissReadingToolsOutside(event: Event): void {
+  readingPanelRef.value?.dismissToolsOutside(event);
+}
+function dismissReadingToolsOnFocusOut(event: FocusEvent): void {
+  const root = event.currentTarget as HTMLElement;
+  if (!event.relatedTarget || !root.contains(event.relatedTarget as Node)) readingPanelRef.value?.closeTools();
+}
 function handleStudyToolbarFocus(event: FocusEvent): void {
   const toolbar = event.currentTarget;
   const button = event.target;
@@ -1846,6 +1977,7 @@ function handleScroll(event: Event): void {
     suppressSelectionRead();
     return;
   }
+  if (import.meta.env.BROWSER !== 'userscript') clearContextMenuSelection();
   // 页面或其滚动容器移动后，未打开的入口不再跟随旧选区。
   // 选区读取可能还在下一帧或 selectionchange 队列中；连同显示计时器一起清理，
   // 避免滚动结束后才出现小点或卡片。拖选中的自动滚动仍由 pointerup 处理新选区。
@@ -1854,11 +1986,13 @@ function handleScroll(event: Event): void {
       || Date.now() - lastTrustedSelectionInteractionAt <= TRUSTED_SELECTION_INTERACTION_GRACE_MS)) hideAll();
     return;
   }
+  if (readingMode.value && readingEvidenceScrollFrame !== undefined) { schedulePositionUpdate(); return; }
   if (selectionSettings.value.autoDismiss) { hideAll(); return; }
   schedulePositionUpdate();
 }
 function handleKeydown(event: KeyboardEvent): void {
   if (!event.isTrusted || (event.target instanceof Element && event.target.id === 'fluent-read-share-card-container')) return;
+  if (import.meta.env.BROWSER !== 'userscript') clearContextMenuSelection();
   lastTrustedSelectionInteractionAt = Date.now();
   if (isInsideUi(event.target)) {
     suppressSelectionRead();
@@ -1898,7 +2032,7 @@ function handleWindowBlur(): void {
   cancelReadingHover();
   selectionShortcutHeld = false;
   pendingSelectionShortcutUntil = 0;
-  if (!showTooltip.value) hideAll();
+  if (!showTooltip.value && (import.meta.env.BROWSER === 'userscript' || !contextMenuSelection && !contextMenuSourceRejected)) hideAll();
 }
 
 function handleSelectionSettingsMessage(message: unknown): undefined {
@@ -1939,6 +2073,7 @@ onMounted(() => {
   document.addEventListener('pointercancel', handlePointerCancel, true);
   document.addEventListener('pointermove', handlePointerMove, {capture: true, passive: true});
   document.addEventListener('copy', handlePageCopy, true);
+  if (import.meta.env.BROWSER !== 'userscript') document.addEventListener('contextmenu', handleContextMenu, true);
   document.addEventListener('selectionchange', handleSelectionChange);
   document.addEventListener('keydown', handleKeydown, true);
   document.addEventListener('keyup', handleKeyup, true);
@@ -2019,6 +2154,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  disposeReadingEvidence();
   zoomRequestGeneration += 1;
   releaseContextMenuHandler?.();
   releaseContextMenuHandler = null;
@@ -2045,6 +2181,7 @@ onBeforeUnmount(() => {
   document.removeEventListener('pointercancel', handlePointerCancel, true);
   document.removeEventListener('pointermove', handlePointerMove, true);
   document.removeEventListener('copy', handlePageCopy, true);
+  if (import.meta.env.BROWSER !== 'userscript') document.removeEventListener('contextmenu', handleContextMenu, true);
   document.removeEventListener('selectionchange', handleSelectionChange);
   document.removeEventListener('keydown', handleKeydown, true);
   document.removeEventListener('keyup', handleKeyup, true);
@@ -2052,6 +2189,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('scroll', handleScroll, true);
   window.removeEventListener('resize', handleViewportResize);
   resetSelectionContentState(true);
+  if (import.meta.env.BROWSER !== 'userscript') clearContextMenuSelection();
 });
 </script>
 
@@ -2078,17 +2216,19 @@ onBeforeUnmount(() => {
 .fr-popup-resize-se { bottom: 0; right: 0; cursor: nwse-resize; }
 .fr-popup-resize-sw { bottom: 0; left: 0; cursor: nesw-resize; }
 .fr-popup-resize-se::after { content: ''; position: absolute; right: 3px; bottom: 3px; width: 5px; height: 5px; border-right: 2px solid #95858d; border-bottom: 2px solid #95858d; }
-.fr-reading-tooltip { display: flex; flex-direction: column; height: auto; }
+.fr-reading-tooltip { display: flex; flex-direction: column; height: auto; overflow: visible; }
 .fr-reading-tooltip > .fr-tooltip-header { flex: none; }
 .fr-reading-tooltip > .fr-reading-content { display: flex; flex-direction: column; flex: 1; min-height: 0; max-height: none; overflow: hidden; padding: 0; }
 /* 自动卡用内在高度收拢；达到外框上限后将收缩量传给真正的阅读滚动区。 */
 .fr-reading-content > :deep(.fr-reading) { flex: 1; height: auto; }
 .fr-tooltip-header { flex: none; display: flex; align-items: center; justify-content: space-between; gap:6px; padding: 5px 8px; border-bottom: 1px solid rgba(44, 43, 53, .06); font-size: 12px; font-weight: 500; }
 .fr-pos-label { display:flex; gap:6px; align-items:center; }
-.fr-study-toolbar { flex:none; display:flex; flex-wrap:nowrap; overflow-x:auto; overscroll-behavior:contain; scrollbar-width:thin; gap:3px; padding:4px 8px; border-bottom:1px solid var(--fr-border, #eeedf0); }
+.fr-study-navigation { flex: none; display: flex; align-items: center; gap: 3px; padding: 4px 8px; border-bottom: 1px solid var(--fr-border, #eeedf0); }
+.fr-study-toolbar { flex: 1; min-width: 0; display: flex; flex-wrap: nowrap; overflow-x: auto; overscroll-behavior: contain; scrollbar-width: thin; gap: 3px; }
+.fr-study-reading-tools { flex: none; }
 .fr-study-toolbar button { flex:none; white-space:nowrap; font:inherit; font-size:11px; border:0; background:transparent; color:#62616c; border-radius:5px; padding:5px 8px; cursor:pointer; }
 .fr-study-toolbar button[aria-pressed=true], .fr-study-toolbar button:hover, .fr-study-toolbar button:focus-visible { background:#f4f0f3; color:#8e4867; outline:1px solid #dcc3d0; }
-.fr-dark-theme .fr-study-toolbar { border-color:#4d404a; }
+.fr-dark-theme .fr-study-navigation { border-color:#4d404a; }
 .fr-dark-theme .fr-study-toolbar button { background:transparent; color:#cbc2c9; }
 .fr-dark-theme .fr-study-toolbar button[aria-pressed=true], .fr-dark-theme .fr-study-toolbar button:hover { background:#443541; color:#efbdd2; }
 .fr-tooltip-title { display: flex; align-items: center; gap: 7px; min-width: 0; }

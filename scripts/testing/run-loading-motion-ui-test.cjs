@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * 界面设置中的 15 种翻译加载动画真实浏览器回归 runner。
+ * 界面设置中的 15 种翻译加载动画及末尾“无”、逐句高亮关闭选项的真实浏览器专项。
  *
  * 本脚本只在测试页的 document_start 阶段临时包装 attachShadow，保存 closed
  * ShadowRoot 的页内句柄；产品代码仍使用 mode: closed。动画断言同时读取
@@ -254,6 +254,7 @@ async function selectInterfacePage(page, timeoutMs) {
   await section.waitFor({state: 'visible', timeout: timeoutMs});
   const picker = section.locator('.loading-style-picker');
   await picker.waitFor({state: 'visible', timeout: timeoutMs});
+  await picker.scrollIntoViewIfNeeded();
   await page.waitForFunction(() => document.querySelectorAll('.loading-style-picker .fluent-read-loading').length === 15,
     undefined, {timeout: timeoutMs});
   return {section, picker};
@@ -339,7 +340,7 @@ async function main() {
   const report = {
     ok: false,
     extensionDir,
-    browser: 'Microsoft Edge',
+    browser: browserPath.includes('Google Chrome') ? 'Google Chrome' : 'Microsoft Edge',
     launchMode: null,
     focusPolicy: null,
     windowPlacement: null,
@@ -367,8 +368,10 @@ async function main() {
       headless: false,
       background: true,
       browserArgs: [
-        `--disable-extensions-except=${extensionDir}`,
-        `--load-extension=${extensionDir}`,
+        ...(browserPath.includes('Google Chrome') ? ['--enable-unsafe-extension-debugging'] : [
+          `--disable-extensions-except=${extensionDir}`,
+          `--load-extension=${extensionDir}`,
+        ]),
         '--no-first-run',
         '--no-default-browser-check',
       ],
@@ -379,6 +382,11 @@ async function main() {
     report.focusPolicy = launched.focusPolicy;
     report.windowPlacement = launched.windowPlacement;
     const context = launched.context;
+    if (browserPath.includes('Google Chrome')) {
+      const session = await context.browser().newBrowserCDPSession();
+      await session.send('Extensions.loadUnpacked', {path: extensionDir});
+      await session.detach();
+    }
     const worker = context.serviceWorkers().find(candidate => candidate.url().startsWith('chrome-extension://'))
       || await context.waitForEvent('serviceworker', {timeout, predicate: candidate => candidate.url().startsWith('chrome-extension://')});
     const extensionOrigin = `chrome-extension://${new URL(worker.url()).host}`;
@@ -390,33 +398,47 @@ async function main() {
     pageUrl.hash = 'settings-interface';
     pageUrl.searchParams.set('loadingMotionDocument', 'first');
     await page.goto(pageUrl.toString(), {waitUntil: 'domcontentloaded', timeout});
-    const {section, picker} = await selectInterfacePage(page, timeout);
-    const animationSwitch = section.locator('.settings-group').filter({hasText: '动画与加载效果'})
-      .locator('.settings-item').filter({hasText: '动画效果'}).locator('.el-switch');
-    await animationSwitch.waitFor({state: 'visible', timeout});
-    if (await picker.getAttribute('aria-disabled') === 'true') {
-      await animationSwitch.click();
-      await page.waitForFunction(() => document.querySelector('.loading-style-picker')?.getAttribute('aria-disabled') === 'false',
-        undefined, {timeout});
-      await page.waitForTimeout(180);
-    }
+    let {section, picker} = await selectInterfacePage(page, timeout);
+    const choices = await picker.locator('input[type="radio"]').evaluateAll(inputs => inputs.map(input => ({value: input.value, disabled: input.disabled})));
+    if (choices.length !== 16 || choices.at(-1).value !== 'none' || choices.some(item => item.disabled)) throw new Error('动画选择器必须有 16 项，最后为可操作的“无”');
+    if (await section.locator('[data-settings-panel="motion"] .el-switch').count()) throw new Error('动画样式仍有冗余开关');
+    report.choices = choices;
+    const motionPanel = section.locator('[data-settings-panel="motion"]');
+    report.groupCopy = {
+      title: await motionPanel.locator('.settings-group-heading h2').innerText(),
+      description: await motionPanel.locator('.settings-group-heading p').innerText(),
+      nestedHeadingCount: await motionPanel.locator('.settings-item-label').count(),
+    };
+    await picker.locator('[data-loading-style-choice="ring"]').click();
+    await page.waitForTimeout(180);
 
     const animatedSamples = await sampleAnimations(page);
     report.animated = assertAnimatedSamples(animatedSamples, '动画开启');
     report.animationNames = report.animated.animationNames;
     report.screenshots.push(await screenshot(page, 'settings-loading-motion-animated.png'));
+    const gridScreenshot = path.join(artifactsDir, 'settings-loading-style-choices.png');
+    await section.locator('[data-settings-panel="motion"]').screenshot({path: gridScreenshot});
+    report.screenshots.push(gridScreenshot);
 
-    await animationSwitch.click();
-    await page.waitForFunction(() => document.querySelector('.loading-style-picker')?.getAttribute('aria-disabled') === 'true',
-      undefined, {timeout});
+    await picker.locator('[data-loading-style-choice="none"]').click();
+    // 点击后立即关闭页面，验证后台保存不依赖设置页继续存活。
+    await page.close();
+    page = await newPageWithoutForeground(context, timeout);
+    attachDiagnostics(page, report.consoleErrors);
+    await installClosedRootProbe(page);
+    await page.emulateMedia({reducedMotion: 'no-preference'});
+    await page.goto(pageUrl.toString(), {waitUntil: 'domcontentloaded', timeout});
+    ({section, picker} = await selectInterfacePage(page, timeout));
+    if (!await picker.locator('input[value="none"]').isChecked()) throw new Error('快速关闭重开后，“无”没有持久化');
+    if (await picker.locator('input:disabled').count()) throw new Error('选择“无”后样式不可恢复');
+    report.quickClose = {animationNone: true};
     await page.waitForTimeout(180);
     const offState = await readProbe(page);
-    report.off = assertStaticFeedback(offState, '动画总开关关闭');
+    report.off = assertStaticFeedback(offState, '选择“无”并重开');
     report.screenshots.push(await screenshot(page, 'settings-loading-motion-off.png'));
 
-    await animationSwitch.click();
-    await page.waitForFunction(() => document.querySelector('.loading-style-picker')?.getAttribute('aria-disabled') === 'false',
-      undefined, {timeout});
+    await picker.locator('[data-loading-style-choice="orbit"]').click();
+    if (!await picker.locator('input[value="orbit"]').isChecked() || await picker.locator('input[value="none"]').isChecked()) throw new Error('选择动画没有重新启用或同时选中“无”');
     await page.waitForTimeout(180);
     await page.emulateMedia({reducedMotion: 'reduce'});
     await page.waitForTimeout(220);
@@ -434,9 +456,68 @@ async function main() {
     report.screenshots.push(await screenshot(page, 'settings-loading-motion-reenabled.png'));
 
     await sharedStylesheetEvidence(page, context, extensionOrigin, optionsPath, timeout, report);
+
+    const readAppearance = () => page.evaluate(() => {
+      const none = document.querySelector('[data-loading-style-choice="none"]');
+      const selected = document.querySelector('.loading-style-option.selected');
+      return {noneBorder: getComputedStyle(none).borderStyle, noneBackground: getComputedStyle(none).backgroundColor, selectedBackground: getComputedStyle(selected).backgroundColor, selectedCount: document.querySelectorAll('.loading-style-option.selected').length};
+    });
+    report.noneAppearance = await readAppearance();
+    if (report.noneAppearance.noneBorder !== 'dashed' || report.noneAppearance.noneBackground === report.noneAppearance.selectedBackground || report.noneAppearance.selectedCount !== 1) throw new Error('未选中“无”的视觉状态不明确');
+    await page.emulateMedia({colorScheme: 'dark'});
+    await page.waitForTimeout(180);
+    await picker.scrollIntoViewIfNeeded();
+    const darkScreenshot = path.join(artifactsDir, 'settings-loading-style-dark.png');
+    await section.locator('[data-settings-panel="motion"]').screenshot({path: darkScreenshot});
+    report.screenshots.push(darkScreenshot);
+    await page.emulateMedia({colorScheme: 'light'});
+    for (const width of [1024, 390]) {
+      await page.setViewportSize({width, height: 1000});
+      await page.waitForTimeout(120);
+      await picker.scrollIntoViewIfNeeded();
+      const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
+      if (overflow) throw new Error(`${width}px 设置页出现横向溢出`);
+      report.screenshots.push(await screenshot(page, `settings-loading-motion-${width}.png`));
+      if (width === 390) {
+        await section.locator('[data-settings-panel="motion"] .settings-group-heading').scrollIntoViewIfNeeded();
+        report.screenshots.push(await screenshot(page, 'settings-loading-style-heading-390.png'));
+      }
+    }
+    await page.setViewportSize({width: 1440, height: 1000});
+
+    const highlight = page.locator('#translation-sentence-highlight-style');
+    await highlight.scrollIntoViewIfNeeded();
+    const highlightValues = await highlight.locator('[data-highlight-style]').evaluateAll(cards => cards.map(card => card.dataset.highlightStyle));
+    if (highlightValues.at(-1) !== 'none') throw new Error('逐句高亮“无”没有排在最后');
+    await highlight.locator('[data-highlight-style="none"]').click();
+    await page.close();
+    page = await newPageWithoutForeground(context, timeout);
+    attachDiagnostics(page, report.consoleErrors);
+    await page.goto(pageUrl.toString(), {waitUntil: 'domcontentloaded', timeout});
+    await page.locator('.settings-app').waitFor({state: 'visible', timeout});
+    const reopenedHighlight = page.locator('#translation-sentence-highlight-style');
+    await reopenedHighlight.scrollIntoViewIfNeeded();
+    if (await reopenedHighlight.locator('[data-highlight-style="none"]').getAttribute('aria-checked') !== 'true' || await reopenedHighlight.locator('.sentence-highlight-option[aria-checked="true"]').count() !== 1) throw new Error('逐句高亮关闭状态没有持久化或误标记旧样式');
+    report.quickClose.sentenceNone = true;
+    report.screenshots.push(await screenshot(page, 'settings-sentence-highlight-none.png'));
+    await page.locator('[data-section="settings-translation"]').click();
+    const summary = page.locator('[data-testid="current-sentence-highlight-style"]');
+    await summary.waitFor({state: 'visible', timeout});
+    if ((await summary.textContent()).trim() !== '无') throw new Error('阅读辅助页没有同步逐句高亮的关闭状态');
+    if (await page.locator('.reading-assistance-controls .el-switch').count()) throw new Error('阅读辅助仍有冗余高亮开关');
+    report.crossPageSync = {sentenceNone: true};
+    report.screenshots.push(await screenshot(page, 'settings-reading-assistance-none.png'));
+    await page.locator('[data-testid="open-sentence-highlight-styles"]').click();
+    await reopenedHighlight.waitFor({state: 'visible', timeout});
+    const firstStyle = highlightValues[0];
+    await reopenedHighlight.locator(`[data-highlight-style="${firstStyle}"]`).click();
+    if (await reopenedHighlight.locator(`[data-highlight-style="${firstStyle}"]`).getAttribute('aria-checked') !== 'true' || await reopenedHighlight.locator('[data-highlight-style="none"]').getAttribute('aria-checked') !== 'false') throw new Error('逐句样式不能重新开启高亮');
+    report.sentenceHighlight = {values: highlightValues, nonePersists: true, presetReenables: true};
+    report.screenshots.push(await screenshot(page, 'settings-sentence-highlight-enabled.png'));
     report.ok = true;
   } catch (error) {
     report.failure = serializableError(error);
+    if (page && !page.isClosed()) report.screenshots.push(await screenshot(page, 'failure.png').catch(() => null));
     throw error;
   } finally {
     fs.writeFileSync(path.join(artifactsDir, 'report.json'), JSON.stringify(report, null, 2));

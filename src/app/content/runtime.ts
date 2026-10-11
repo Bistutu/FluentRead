@@ -1,14 +1,14 @@
 /**
  * @file src/app/content/runtime.ts
  * 文件职责：作为内容脚本应用的顶层 composition root，协调配置就绪、站点规则、公共样式、主世界桥、功能注册表、快捷键和消息监听生命周期。
- * 主要内容：先排除原始 XML 文档与失效扩展上下文，再安装内联 page.css 并按 capability 和配置挂载页面功能；订阅配置变化并处理停用、往返缓存暂停恢复与销毁，低频检查扩展重载以主动释放旧页面，消息端口失效不能中断清理。
+ * 主要内容：先排除原始 XML 文档与失效扩展上下文，再安装内联 page.css 并按 capability 和配置挂载页面功能；配置变更时更新页面私有网站名单索引，按已提交地址检查自动翻译与站点禁用，锚点跳转保留请求，协调停用、往返缓存暂停恢复与销毁。
  * 模块边界：本文件只负责依赖装配和页面激活所有权，不实现具体翻译算法、组件内部状态、provider 请求或配置存储；这些职责分别属于 features、services 与 platform。
  */
 import {createLearningContentFeatures} from './learningFeatures';
 import type {ContentScriptContext} from 'wxt/utils/content-script-context';
 import {createShadowRootUi} from 'wxt/utils/content-script-ui/shadow-root';
 import {constants} from '@/src/core/config/constants';
-import {isExtensionDisabledOnSite} from '@/src/features/site-rules/domain';
+import {createSiteRuleMatcher} from '@/src/features/site-rules/domain';
 import {config, configReady, subscribeConfig} from '@/src/services/config/store';
 import {ensureUiLanguageBundle} from '@/src/platform/i18n/uiLanguageBundles';
 import {cancelAllTranslations} from '@/src/app/translation/client';
@@ -46,7 +46,7 @@ import {browserCapabilities, type BrowserCapabilities} from '@/src/platform/brow
 import {setMainWorldBridgesEnabled} from './mainWorldBridgeLifecycle';
 import {
     createContentPageAvailabilityRuntime,
-    shouldAutomaticallyTranslatePage,
+    createContentRouteChangeHandler,
     type ContentPageAvailabilityRuntime,
 } from './pageAvailability';
 import {installContentPageLifecycle, waitForContentDocument} from './pageLifecycle';
@@ -54,6 +54,7 @@ import {syncBilingualSentenceHighlight} from './bilingualSentenceHighlight';
 import {applyCoreTranslationPreferences, createContentSiteAdaptationRuntime} from './siteAdaptationRuntime';
 import {createOptionalContentFeatureRuntime, type OptionalContentFeatureRuntime} from './optionalFeatures';
 import {createPageInformationHighlightRuntime} from './informationHighlight';
+import {createHoverTranslationConfigSubscription} from './hoverTranslationConfig';
 export async function startContentApp(ctx: ContentScriptContext,
     capabilities: BrowserCapabilities = browserCapabilities): Promise<void> {
     if (isRawXmlContentDocument(document) || ctx.isInvalid) return;
@@ -71,8 +72,8 @@ export async function startContentApp(ctx: ContentScriptContext,
     if (ctx.isInvalid || cleanedUp || (document.readyState === 'loading' && !await waitForContentDocument(document, pageEventController.signal))) { cleanup(); return; }
     const siteAdaptation = createContentSiteAdaptationRuntime(config.siteAdaptation, new URL(window.location.href));
     applyCoreTranslationPreferences(config); clearLegacyPageTranslationCache();
-    let currentRouteHref = window.location.href;
-    let currentPageSiteDisabled = isExtensionDisabledOnSite(currentRouteHref, config.disabledExtensionDomains);
+    const siteRules = createSiteRuleMatcher(config);
+    let currentPageSiteDisabled = siteRules.isExtensionDisabled(window.location.href);
     let unsubscribeContentConfig: (() => void) | null = null;
     let runtimeMessageListener: ContentRuntimeMessageHandler | null = null;
     const runtimeMessages = browser.runtime.onMessage;
@@ -134,7 +135,7 @@ export async function startContentApp(ctx: ContentScriptContext,
         });
         optionalContentFeatures.sync();
         const resetHoverKeyboardGesture = mountHoverTranslationContentFeature({
-            config,
+            config, subscribeConfig: createHoverTranslationConfigSubscription(config, subscribeConfig, cancelPendingHoverTranslation),
             constants,
             document,
             window,
@@ -203,7 +204,8 @@ export async function startContentApp(ctx: ContentScriptContext,
         isEnabled: isPageRuntimeEnabled,
         isPageFeaturesActive: () => featureController !== null,
         isVideoPage: isSupportedVideoPage,
-        shouldAutomaticallyTranslate: () => shouldAutomaticallyTranslatePage(window.location.href, config),
+        shouldAutomaticallyTranslate: () => siteRules.shouldAutoTranslate(window.location.href),
+        getPageIdentity: () => window.location.href,
         isFullPageTranslationActive,
         setMainWorldBridgesEnabled: (enabled) => setMainWorldBridgesEnabled(document, enabled),
         activatePageFeatures,
@@ -217,15 +219,15 @@ export async function startContentApp(ctx: ContentScriptContext,
         void reportSiteDisabledState();
         await pageAvailability!.reconcile();
     };
-    document.addEventListener('fluentread-route-change', () => {
-        if (currentRouteHref === window.location.href) return;
-        currentRouteHref = window.location.href;
-        informationHighlight?.routeChanged();
-        siteAdaptation.routeChanged(new URL(window.location.href));
-        resetPageTranslationContextCache(); resetFullPageTranslationRouteState();
-        pageAvailability!.syncVideoSubtitlePage();
-        void activePageFeatureRegistry?.reconcileEnabled();
-    }, {signal: pageEventController.signal});
+    document.addEventListener('fluentread-route-change', createContentRouteChangeHandler({
+        getHref: () => window.location.href,
+        routeChanged: href => { informationHighlight?.routeChanged(); siteAdaptation.routeChanged(new URL(href)); },
+        resetTranslationRoute: () => { resetPageTranslationContextCache(); resetFullPageTranslationRouteState(); },
+        siteDisabled: href => siteRules.isExtensionDisabled(href),
+        currentSiteDisabled: () => currentPageSiteDisabled,
+        applySiteDisabledState, pageAvailability,
+        reconcileFeatures: () => { void activePageFeatureRegistry?.reconcileEnabled(); },
+    }), {signal: pageEventController.signal});
 
     cleanup = (): void => {
         if (cleanedUp) return;
@@ -247,6 +249,7 @@ export async function startContentApp(ctx: ContentScriptContext,
     runtimeMessages.addListener(runtimeMessageListener);
     void reportSiteDisabledState();
     unsubscribeContentConfig = subscribeConfig((nextConfig) => {
+        siteRules.update(nextConfig);
         void ensureUiLanguageBundle(nextConfig.uiLanguage); applyCoreTranslationPreferences(nextConfig);
         siteAdaptation.update(nextConfig.siteAdaptation, new URL(window.location.href));
         informationHighlight?.updatePreferences(nextConfig.informationHighlight);
@@ -258,10 +261,7 @@ export async function startContentApp(ctx: ContentScriptContext,
             inputTranslationFeature.invalidate();
         }
         optionalContentFeatures?.sync();
-        const nextSiteDisabled = isExtensionDisabledOnSite(
-            window.location.href,
-            nextConfig.disabledExtensionDomains,
-        );
+        const nextSiteDisabled = siteRules.isExtensionDisabled(window.location.href);
         if (nextSiteDisabled !== currentPageSiteDisabled) {
             void applySiteDisabledState(nextSiteDisabled);
             return;
@@ -274,7 +274,7 @@ export async function startContentApp(ctx: ContentScriptContext,
         }
         if (!isPageRuntimeEnabled()) return;
         void activePageFeatureRegistry?.reconcileEnabled();
-        // 关闭“始终翻译”不撤销当前会话；只处理 false -> true，避免 storage.watch 同值回声。
+        // 关闭“始终翻译”不撤销当前会话；同页同值回声不会再次启动。
         pageAvailability!.refreshAutoTranslation();
     });
     // 先订阅再跨越首次 activation，避免初始化期间的总开关或站点规则写入永久漏同步。

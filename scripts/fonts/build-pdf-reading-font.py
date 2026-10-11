@@ -28,7 +28,7 @@ parser.add_argument('math', type=Path, help='Pinned NotoSansMath-Regular.ttf')
 parser.add_argument('--node', default='node', help='Node executable used for deterministic WOFF2 Brotli compression')
 args = parser.parse_args()
 source = args.cjk
-target = root / 'public/pdf-fonts/FluentReadNotoSansSC-Regular.woff2'
+target = root / 'assets/pdf-fonts/FluentReadNotoSansSC-Regular.woff2'
 expected = ('a3041811a78c361b1de50f953c805e0244951c21c5bd412f7232ef0d899af0da'
             if source.suffix == '.ttf' else 'aef8c34277afad81ecd0227138a830263c0caea65b7aea66d1195395f097b55a')
 assert sha256(source.read_bytes()).hexdigest() == expected, 'Font source changed; review its provenance before regenerating'

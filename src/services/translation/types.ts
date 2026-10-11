@@ -27,8 +27,12 @@ export interface TranslationRequestMessageBase {
     glossaryContext?: TranslationGlossaryContext;
     context?: string;
     pageContext?: string;
+    /** 有界单篇原文/既有译文证据；与页面摘要分开，避免每段额外摘要调用。 */
+    discourseContext?: string;
     /** 当前请求是否允许 AI 网页上下文；全文翻译会显式携带会话启动时的冻结值。 */
     enableAIContext?: boolean;
+    /** 请求入口冻结的原生合批偏好；缺省由后台当前服务配置解析。 */
+    enableNativeBatch?: boolean;
     useCache?: boolean;
     /** 全文翻译内部标记；仅允许通用提示词型 AI 把数组合并为一次上游请求。 */
     aiMultiSegment?: boolean;
@@ -142,6 +146,7 @@ export interface TranslationConfigSnapshot {
     to: string;
     useCache: boolean;
     enableAIContext: boolean;
+    nativeBatchTranslationEnabled?: Readonly<Record<string, boolean>>;
     model: Record<string, string>;
     customModel: Record<string, string>;
     modelThinking?: ModelThinkingMapping;

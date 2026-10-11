@@ -1,0 +1,1037 @@
+{
+  "success": true,
+  "evidence": "Production extension; real local MP4 clock; original timed-caption fixtures; deterministic translation; actual live probes reported separately",
+  "fixtureCases": [],
+  "liveCases": [],
+  "pageErrors": [],
+  "cleanup": {
+    "browserClosed": true,
+    "profileRemoved": true
+  },
+  "performanceCases": [
+    {
+      "platform": "youtube",
+      "scenario": "dense-timeline-120",
+      "sentenceCount": 120,
+      "checks": [],
+      "measurements": [
+        {
+          "position": "first",
+          "events": 1000,
+          "batchesMs": [
+            2.700000286102295,
+            2.4000000953674316,
+            2.3000001907348633,
+            2.4000000953674316,
+            2.299999713897705,
+            2.5,
+            2.200000286102295,
+            2.4000000953674316,
+            2.4000000953674316,
+            2.3000001907348633
+          ],
+          "totalDispatchMs": 23.900001049041748,
+          "actualPaused": true,
+          "actualTime": 0.0005,
+          "selectedIndex": "0",
+          "pageDomMutations": 3000,
+          "panelDomMutations": 0,
+          "providerRequests": 0
+        },
+        {
+          "position": "tail",
+          "events": 1000,
+          "batchesMs": [
+            2.200000286102295,
+            2.3000001907348633,
+            2.0999999046325684,
+            2.0999999046325684,
+            2.4000000953674316,
+            2.3999996185302734,
+            2.799999713897705,
+            2.3999996185302734,
+            2.1999998092651367,
+            2.4000000953674316
+          ],
+          "totalDispatchMs": 23.299999237060547,
+          "actualPaused": true,
+          "actualTime": 0.1195,
+          "selectedIndex": "119",
+          "pageDomMutations": 3000,
+          "panelDomMutations": 0,
+          "providerRequests": 0
+        }
+      ],
+      "closedDispatch": {
+        "events": 1000,
+        "batchesMs": [
+          2,
+          1.6999998092651367,
+          1.8000001907348633,
+          2.0999999046325684,
+          2.4000000953674316,
+          2,
+          1.9000000953674316,
+          1.700000286102295,
+          1.8000001907348633,
+          2
+        ],
+        "totalDispatchMs": 19.40000057220459,
+        "actualPaused": true,
+        "actualTime": 0.0005
+      },
+      "opening": [
+        {
+          "phase": "opening",
+          "action": "open",
+          "start": 581.6999998092651,
+          "before": null,
+          "done": true,
+          "durationMs": 20,
+          "after": "0"
+        }
+      ],
+      "success": true
+    },
+    {
+      "platform": "youtube",
+      "scenario": "dense-timeline-2400",
+      "sentenceCount": 2400,
+      "checks": [],
+      "measurements": [
+        {
+          "position": "first",
+          "events": 1000,
+          "batchesMs": [
+            3.1000003814697266,
+            2.3000001907348633,
+            2.3000001907348633,
+            2.5,
+            2.1999998092651367,
+            2.5,
+            2.5999999046325684,
+            2.5999999046325684,
+            3.4000000953674316,
+            4.199999809265137
+          ],
+          "totalDispatchMs": 27.700000286102295,
+          "actualPaused": true,
+          "actualTime": 0.0005,
+          "selectedIndex": "0",
+          "pageDomMutations": 3000,
+          "panelDomMutations": 0,
+          "providerRequests": 0
+        },
+        {
+          "position": "tail",
+          "events": 1000,
+          "batchesMs": [
+            2.1999998092651367,
+            2.0999999046325684,
+            1.9000000953674316,
+            2.1999998092651367,
+            2.200000286102295,
+            2.0999999046325684,
+            2.0999999046325684,
+            2.1999998092651367,
+            2.6999998092651367,
+            2.3000001907348633
+          ],
+          "totalDispatchMs": 21.999999523162842,
+          "actualPaused": true,
+          "actualTime": 2.3995,
+          "selectedIndex": "2399",
+          "pageDomMutations": 3000,
+          "panelDomMutations": 0,
+          "providerRequests": 0
+        }
+      ],
+      "closedDispatch": {
+        "events": 1000,
+        "batchesMs": [
+          1.8000001907348633,
+          1.700000286102295,
+          1.6999998092651367,
+          1.5,
+          2,
+          1.8999996185302734,
+          1.8999996185302734,
+          1.799999713897705,
+          1.700000286102295,
+          1.8000001907348633
+        ],
+        "totalDispatchMs": 17.799999713897705,
+        "actualPaused": true,
+        "actualTime": 0.0005
+      },
+      "opening": [
+        {
+          "phase": "opening",
+          "action": "open",
+          "start": 629.6000003814697,
+          "before": null,
+          "done": true,
+          "durationMs": 27.699999809265137,
+          "after": "0"
+        }
+      ],
+      "success": true
+    },
+    {
+      "platform": "youtube",
+      "scenario": "dense-timeline-12000",
+      "sentenceCount": 12000,
+      "checks": [],
+      "measurements": [
+        {
+          "position": "first",
+          "events": 1000,
+          "batchesMs": [
+            2.6999998092651367,
+            2.1999998092651367,
+            2.0999999046325684,
+            2,
+            2.700000286102295,
+            2.5,
+            2.3000001907348633,
+            2.3000001907348633,
+            2.3000001907348633,
+            2.200000286102295
+          ],
+          "totalDispatchMs": 23.30000066757202,
+          "actualPaused": true,
+          "actualTime": 0.0005,
+          "selectedIndex": "0",
+          "pageDomMutations": 3000,
+          "panelDomMutations": 0,
+          "providerRequests": 0
+        },
+        {
+          "position": "tail",
+          "events": 1000,
+          "batchesMs": [
+            2.3000001907348633,
+            2.6999998092651367,
+            2.0999999046325684,
+            2,
+            2.5999999046325684,
+            2.5,
+            2.3999996185302734,
+            2.299999713897705,
+            2.299999713897705,
+            2.1999998092651367
+          ],
+          "totalDispatchMs": 23.399998664855957,
+          "actualPaused": true,
+          "actualTime": 11.9995,
+          "selectedIndex": "11999",
+          "pageDomMutations": 3000,
+          "panelDomMutations": 0,
+          "providerRequests": 0
+        }
+      ],
+      "closedDispatch": {
+        "events": 1000,
+        "batchesMs": [
+          2,
+          1.9000000953674316,
+          1.799999713897705,
+          1.5999999046325684,
+          2.1000003814697266,
+          1.799999713897705,
+          1.9000000953674316,
+          1.6999998092651367,
+          1.799999713897705,
+          1.8000001907348633
+        ],
+        "totalDispatchMs": 18.399999618530273,
+        "actualPaused": true,
+        "actualTime": 0.0005
+      },
+      "opening": [
+        {
+          "phase": "opening",
+          "action": "open",
+          "start": 892.1000003814697,
+          "before": null,
+          "done": true,
+          "durationMs": 36.299999713897705,
+          "after": "0"
+        }
+      ],
+      "success": true
+    },
+    {
+      "platform": "youtube",
+      "scenario": "operations",
+      "checks": [],
+      "measurements": {
+        "opening": [
+          {
+            "phase": "opening",
+            "action": "open",
+            "start": 418.40000009536743,
+            "before": null,
+            "done": true,
+            "durationMs": 18.59999990463257,
+            "after": "0"
+          }
+        ],
+        "rapid": {
+          "requests": 1,
+          "final": {
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。13 / 120 · 0:06–0:06Operation youtube sentence 00012.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑固定译文：Operation youtube sentence 00012.前后语境Operation youtube sentence 00011.Operation youtube sentence 00012.Operation youtube sentence 00013.查看解释收藏此句学习中心 ↗",
+            "sentenceId": "sentence:12:6000:6450:1yvaf8b",
+            "index": "12",
+            "startMs": "6000",
+            "endMs": "6450",
+            "paused": true,
+            "time": 6,
+            "rate": 1,
+            "seeking": false,
+            "loop": "false",
+            "pauseAtEnd": "false",
+            "pinned": "true",
+            "translation": "固定译文：Operation youtube sentence 00012."
+          },
+          "actions": [
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 589.6999998092651,
+              "before": "0",
+              "done": true,
+              "durationMs": 1,
+              "after": "1"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 629.5,
+              "before": "1",
+              "done": true,
+              "durationMs": 0.5999999046325684,
+              "after": "2"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 668.1999998092651,
+              "before": "2",
+              "done": true,
+              "durationMs": 0.40000009536743164,
+              "after": "3"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 710.5999999046326,
+              "before": "3",
+              "done": true,
+              "durationMs": 0.5,
+              "after": "4"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 747.5,
+              "before": "4",
+              "done": true,
+              "durationMs": 0.5999999046325684,
+              "after": "5"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 785.8000001907349,
+              "before": "5",
+              "done": true,
+              "durationMs": 0.2999997138977051,
+              "after": "6"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 822.0999999046326,
+              "before": "6",
+              "done": true,
+              "durationMs": 0.40000009536743164,
+              "after": "7"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 864,
+              "before": "7",
+              "done": true,
+              "durationMs": 0.3000001907348633,
+              "after": "8"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 902.4000000953674,
+              "before": "8",
+              "done": true,
+              "durationMs": 0.2999997138977051,
+              "after": "9"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 943.5999999046326,
+              "before": "9",
+              "done": true,
+              "durationMs": 0.3000001907348633,
+              "after": "10"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 983.8000001907349,
+              "before": "10",
+              "done": true,
+              "durationMs": 0.39999961853027344,
+              "after": "11"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 1024.5,
+              "before": "11",
+              "done": true,
+              "durationMs": 0.3000001907348633,
+              "after": "12"
+            }
+          ]
+        },
+        "burst": {
+          "kind": "explicit synthetic click burst, not a trusted-user gesture",
+          "clicks": 12,
+          "domSettlementMs": 1.0999999046325684,
+          "index": "24",
+          "original": "Operation youtube sentence 00024.",
+          "requests": 1,
+          "final": {
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。25 / 120 · 0:12–0:12Operation youtube sentence 00024.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑固定译文：Operation youtube sentence 00024.前后语境Operation youtube sentence 00023.Operation youtube sentence 00024.Operation youtube sentence 00025.查看解释收藏此句学习中心 ↗",
+            "sentenceId": "sentence:24:12000:12450:1t7bpbo",
+            "index": "24",
+            "startMs": "12000",
+            "endMs": "12450",
+            "paused": true,
+            "time": 12,
+            "rate": 1,
+            "seeking": false,
+            "loop": "false",
+            "pauseAtEnd": "false",
+            "pinned": "true",
+            "translation": "固定译文：Operation youtube sentence 00024."
+          }
+        },
+        "warmRevisit": {
+          "requests": 0,
+          "final": {
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。25 / 120 · 0:12–0:12Operation youtube sentence 00024.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑固定译文：Operation youtube sentence 00024.前后语境Operation youtube sentence 00023.Operation youtube sentence 00024.Operation youtube sentence 00025.查看解释收藏此句学习中心 ↗",
+            "sentenceId": "sentence:24:12000:12450:1t7bpbo",
+            "index": "24",
+            "startMs": "12000",
+            "endMs": "12450",
+            "paused": true,
+            "time": 12,
+            "rate": 1,
+            "seeking": false,
+            "loop": "false",
+            "pauseAtEnd": "false",
+            "pinned": "true",
+            "translation": "固定译文：Operation youtube sentence 00024."
+          }
+        },
+        "compact": {
+          "atOriginal": {
+            "previous": false,
+            "next": false,
+            "previous-compact": true,
+            "next-compact": true,
+            "play-compact": true,
+            "loop": false,
+            "pause-at-end": false,
+            "save": true,
+            "library": true,
+            "close": true
+          },
+          "bodyScrollTop": 0,
+          "nextReachableAfterScroll": true
+        },
+        "naturalClock": {
+          "durationMs": 5000,
+          "final": {
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 120 · 0:00–0:06Natural youtube clock stays on this complete sentence.跟随播放重播原句播放辅助关闭循环本句句末暂停译文编辑固定译文：Natural youtube clock stays on this complete sentence.前后语境Natural youtube clock stays on this complete sentence.Operation youtube sentence 00001.查看解释收藏此句学习中心 ↗",
+            "sentenceId": "sentence:0:0:6000:1p71npm",
+            "index": "0",
+            "startMs": "0",
+            "endMs": "6000",
+            "paused": true,
+            "time": 5.102014,
+            "rate": 1,
+            "seeking": false,
+            "loop": "false",
+            "pauseAtEnd": "false",
+            "pinned": "false",
+            "translation": "固定译文：Natural youtube clock stays on this complete sentence."
+          },
+          "nativeTicks": 19,
+          "pageDomMutations": 303,
+          "panelDomMutations": 0,
+          "requests": 0,
+          "longTasks": []
+        },
+        "closed": {
+          "afterOldBoundary": {
+            "paused": false,
+            "time": 6.108607,
+            "rate": 1,
+            "seeking": false
+          },
+          "requests": 0,
+          "panelCount": 0
+        }
+      },
+      "success": true
+    },
+    {
+      "platform": "x",
+      "scenario": "dense-timeline-120",
+      "sentenceCount": 120,
+      "checks": [],
+      "measurements": [
+        {
+          "position": "first",
+          "events": 1000,
+          "batchesMs": [
+            17.59999990463257,
+            18.200000286102295,
+            18.800000190734863,
+            21.59999990463257,
+            17.09999990463257,
+            18.299999713897705,
+            18.299999713897705,
+            18.300000190734863,
+            17.799999713897705,
+            18.700000286102295
+          ],
+          "totalDispatchMs": 184.69999980926514,
+          "actualPaused": true,
+          "actualTime": 0.0005,
+          "selectedIndex": "0",
+          "pageDomMutations": 27000,
+          "panelDomMutations": 0,
+          "providerRequests": 0
+        },
+        {
+          "position": "tail",
+          "events": 1000,
+          "batchesMs": [
+            17.899999618530273,
+            19,
+            17.799999713897705,
+            17.700000286102295,
+            17.299999713897705,
+            21.199999809265137,
+            17.5,
+            18,
+            16.90000009536743,
+            17.700000286102295
+          ],
+          "totalDispatchMs": 180.99999952316284,
+          "actualPaused": true,
+          "actualTime": 0.1195,
+          "selectedIndex": "119",
+          "pageDomMutations": 27130,
+          "panelDomMutations": 0,
+          "providerRequests": 0
+        }
+      ],
+      "closedDispatch": {
+        "events": 1000,
+        "batchesMs": [
+          20.799999713897705,
+          17.40000009536743,
+          16.300000190734863,
+          17.5,
+          17.90000009536743,
+          18,
+          16.200000286102295,
+          15.799999713897705,
+          15.800000190734863,
+          16.199999809265137
+        ],
+        "totalDispatchMs": 171.90000009536743,
+        "actualPaused": true,
+        "actualTime": 0.0005
+      },
+      "opening": [
+        {
+          "phase": "opening",
+          "action": "open",
+          "start": 632.0999999046326,
+          "before": null,
+          "done": true,
+          "durationMs": 22,
+          "after": "0"
+        }
+      ],
+      "success": true
+    },
+    {
+      "platform": "x",
+      "scenario": "dense-timeline-2400",
+      "sentenceCount": 2400,
+      "checks": [],
+      "measurements": [
+        {
+          "position": "first",
+          "events": 1000,
+          "batchesMs": [
+            19.5,
+            20.800000190734863,
+            19.40000009536743,
+            19.90000009536743,
+            19,
+            20,
+            19.799999713897705,
+            22.300000190734863,
+            19,
+            18.40000009536743
+          ],
+          "totalDispatchMs": 198.10000038146973,
+          "actualPaused": true,
+          "actualTime": 0.0005,
+          "selectedIndex": "0",
+          "pageDomMutations": 27000,
+          "panelDomMutations": 0,
+          "providerRequests": 0
+        },
+        {
+          "position": "tail",
+          "events": 1000,
+          "batchesMs": [
+            19.199999809265137,
+            18.700000286102295,
+            18,
+            17.299999713897705,
+            19.799999713897705,
+            19.5,
+            17.40000009536743,
+            18,
+            21.300000190734863,
+            19.200000286102295
+          ],
+          "totalDispatchMs": 188.40000009536743,
+          "actualPaused": true,
+          "actualTime": 2.3995,
+          "selectedIndex": "2399",
+          "pageDomMutations": 27130,
+          "panelDomMutations": 0,
+          "providerRequests": 0
+        }
+      ],
+      "closedDispatch": {
+        "events": 1000,
+        "batchesMs": [
+          16.799999713897705,
+          17.09999990463257,
+          19.600000381469727,
+          21.5,
+          17.5,
+          19.09999990463257,
+          17.59999990463257,
+          16.799999713897705,
+          17.700000286102295,
+          17.5
+        ],
+        "totalDispatchMs": 181.19999980926514,
+        "actualPaused": true,
+        "actualTime": 0.0005
+      },
+      "opening": [
+        {
+          "phase": "opening",
+          "action": "open",
+          "start": 740,
+          "before": null,
+          "done": true,
+          "durationMs": 27.799999713897705,
+          "after": "0"
+        }
+      ],
+      "success": true
+    },
+    {
+      "platform": "x",
+      "scenario": "dense-timeline-4000",
+      "sentenceCount": 4000,
+      "checks": [],
+      "measurements": [
+        {
+          "position": "first",
+          "events": 1000,
+          "batchesMs": [
+            20,
+            19.700000286102295,
+            21.40000009536743,
+            20.300000190734863,
+            19.59999990463257,
+            20.5,
+            20.09999990463257,
+            23.799999713897705,
+            21.200000286102295,
+            19.199999809265137
+          ],
+          "totalDispatchMs": 205.80000019073486,
+          "actualPaused": true,
+          "actualTime": 0.0005,
+          "selectedIndex": "0",
+          "pageDomMutations": 27000,
+          "panelDomMutations": 0,
+          "providerRequests": 0
+        },
+        {
+          "position": "tail",
+          "events": 1000,
+          "batchesMs": [
+            19.300000190734863,
+            18.90000009536743,
+            18.199999809265137,
+            18.5,
+            18.200000286102295,
+            19.09999990463257,
+            18.300000190734863,
+            18.59999990463257,
+            18,
+            18.600000381469727
+          ],
+          "totalDispatchMs": 185.70000076293945,
+          "actualPaused": true,
+          "actualTime": 3.9995,
+          "selectedIndex": "3999",
+          "pageDomMutations": 27000,
+          "panelDomMutations": 0,
+          "providerRequests": 0
+        }
+      ],
+      "closedDispatch": {
+        "events": 1000,
+        "batchesMs": [
+          18,
+          17.800000190734863,
+          26.299999713897705,
+          18.09999990463257,
+          17.800000190734863,
+          18.600000381469727,
+          16.699999809265137,
+          18,
+          17.09999990463257,
+          17.59999990463257
+        ],
+        "totalDispatchMs": 186,
+        "actualPaused": true,
+        "actualTime": 0.0005
+      },
+      "opening": [
+        {
+          "phase": "opening",
+          "action": "open",
+          "start": 798.3000001907349,
+          "before": null,
+          "done": true,
+          "durationMs": 28.899999618530273,
+          "after": "0"
+        }
+      ],
+      "success": true
+    },
+    {
+      "platform": "x",
+      "scenario": "operations",
+      "checks": [],
+      "measurements": {
+        "opening": [
+          {
+            "phase": "opening",
+            "action": "open",
+            "start": 398.30000019073486,
+            "before": null,
+            "done": true,
+            "durationMs": 19.90000009536743,
+            "after": "0"
+          }
+        ],
+        "rapid": {
+          "requests": 1,
+          "final": {
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。13 / 120 · 0:06–0:06Operation x sentence 00012.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑固定译文：Operation x sentence 00012.前后语境Operation x sentence 00011.Operation x sentence 00012.Operation x sentence 00013.查看解释收藏此句学习中心 ↗",
+            "sentenceId": "sentence:12:6000:6450:h1nhe2",
+            "index": "12",
+            "startMs": "6000",
+            "endMs": "6450",
+            "paused": true,
+            "time": 6,
+            "rate": 1,
+            "seeking": false,
+            "loop": "false",
+            "pauseAtEnd": "false",
+            "pinned": "true",
+            "translation": "固定译文：Operation x sentence 00012.",
+            "sourceStatus": "已加载字幕 · 120 条"
+          },
+          "actions": [
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 572.5,
+              "before": "0",
+              "done": true,
+              "durationMs": 1.3000001907348633,
+              "after": "1"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 615.0999999046326,
+              "before": "1",
+              "done": true,
+              "durationMs": 0.40000009536743164,
+              "after": "2"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 657.7000002861023,
+              "before": "2",
+              "done": true,
+              "durationMs": 0.39999961853027344,
+              "after": "3"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 697.8000001907349,
+              "before": "3",
+              "done": true,
+              "durationMs": 0.40000009536743164,
+              "after": "4"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 736.8000001907349,
+              "before": "4",
+              "done": true,
+              "durationMs": 0.5,
+              "after": "5"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 779.4000000953674,
+              "before": "5",
+              "done": true,
+              "durationMs": 0.5,
+              "after": "6"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 820.7000002861023,
+              "before": "6",
+              "done": true,
+              "durationMs": 0.5,
+              "after": "7"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 858.9000000953674,
+              "before": "7",
+              "done": true,
+              "durationMs": 0.40000009536743164,
+              "after": "8"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 899.0999999046326,
+              "before": "8",
+              "done": true,
+              "durationMs": 0.40000009536743164,
+              "after": "9"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 939.5,
+              "before": "9",
+              "done": true,
+              "durationMs": 0.5,
+              "after": "10"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 980.9000000953674,
+              "before": "10",
+              "done": true,
+              "durationMs": 0.19999980926513672,
+              "after": "11"
+            },
+            {
+              "phase": "rapid-next-12-target-30ms",
+              "action": "next",
+              "start": 1020.7000002861023,
+              "before": "11",
+              "done": true,
+              "durationMs": 0.2999997138977051,
+              "after": "12"
+            }
+          ]
+        },
+        "burst": {
+          "kind": "explicit synthetic click burst, not a trusted-user gesture",
+          "clicks": 12,
+          "domSettlementMs": 1.1000003814697266,
+          "index": "24",
+          "original": "Operation x sentence 00024.",
+          "requests": 1,
+          "final": {
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。25 / 120 · 0:12–0:12Operation x sentence 00024.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑固定译文：Operation x sentence 00024.前后语境Operation x sentence 00023.Operation x sentence 00024.Operation x sentence 00025.查看解释收藏此句学习中心 ↗",
+            "sentenceId": "sentence:24:12000:12450:vlob3h",
+            "index": "24",
+            "startMs": "12000",
+            "endMs": "12450",
+            "paused": true,
+            "time": 12,
+            "rate": 1,
+            "seeking": false,
+            "loop": "false",
+            "pauseAtEnd": "false",
+            "pinned": "true",
+            "translation": "固定译文：Operation x sentence 00024.",
+            "sourceStatus": "已加载字幕 · 120 条"
+          }
+        },
+        "warmRevisit": {
+          "requests": 0,
+          "final": {
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。25 / 120 · 0:12–0:12Operation x sentence 00024.固定此句回到当前句重播原句播放辅助关闭循环本句句末暂停译文编辑固定译文：Operation x sentence 00024.前后语境Operation x sentence 00023.Operation x sentence 00024.Operation x sentence 00025.查看解释收藏此句学习中心 ↗",
+            "sentenceId": "sentence:24:12000:12450:vlob3h",
+            "index": "24",
+            "startMs": "12000",
+            "endMs": "12450",
+            "paused": true,
+            "time": 12,
+            "rate": 1,
+            "seeking": false,
+            "loop": "false",
+            "pauseAtEnd": "false",
+            "pinned": "true",
+            "translation": "固定译文：Operation x sentence 00024.",
+            "sourceStatus": "已加载字幕 · 120 条"
+          }
+        },
+        "compact": {
+          "atOriginal": {
+            "previous": false,
+            "next": false,
+            "previous-compact": true,
+            "next-compact": true,
+            "play-compact": true,
+            "loop": false,
+            "pause-at-end": false,
+            "save": true,
+            "library": true,
+            "close": true
+          },
+          "bodyScrollTop": 0,
+          "nextReachableAfterScroll": true
+        },
+        "naturalClock": {
+          "durationMs": 5000,
+          "final": {
+            "text": "完整句学习?← / → 换句，R 循环，Q 句末暂停，Esc 关闭。选择播放辅助后点击重播；手动拖动解除辅助。编辑时固定当前句，切句保留本次草稿。1 / 120 · 0:00–0:06Natural x clock stays on this complete sentence.跟随播放重播原句播放辅助关闭循环本句句末暂停译文编辑固定译文：Natural x clock stays on this complete sentence.前后语境Natural x clock stays on this complete sentence.Operation x sentence 00001.查看解释收藏此句学习中心 ↗",
+            "sentenceId": "sentence:0:0:6000:4x52y9",
+            "index": "0",
+            "startMs": "0",
+            "endMs": "6000",
+            "paused": true,
+            "time": 5.105093,
+            "rate": 1,
+            "seeking": false,
+            "loop": "false",
+            "pauseAtEnd": "false",
+            "pinned": "false",
+            "translation": "固定译文：Natural x clock stays on this complete sentence.",
+            "sourceStatus": "已加载字幕 · 120 条"
+          },
+          "nativeTicks": 19,
+          "pageDomMutations": 1217,
+          "panelDomMutations": 0,
+          "requests": 0,
+          "longTasks": []
+        },
+        "closed": {
+          "afterOldBoundary": {
+            "paused": false,
+            "time": 6.11046,
+            "rate": 1,
+            "seeking": false,
+            "sourceStatus": "已加载字幕 · 120 条"
+          },
+          "requests": 0,
+          "panelCount": 0
+        }
+      },
+      "success": true
+    }
+  ],
+  "performance": {
+    "tag": "candidate-optimized",
+    "deterministicProviderDelayMs": 120,
+    "artifact": {
+      "version": "0.0.37",
+      "contentSha256": "0f228639a5c9fb9f47e48945749d94477a4ce5085289d05de2d45c0ad609f896"
+    },
+    "scope": "Production UI; decoded MP4; synthetic timeupdate pressure reported separately from natural media clock; local deterministic transport, not provider latency or website acceptance",
+    "browserVersion": "131.0.2903.147"
+  },
+  "focusObserver": {
+    "monitorPid": 59354,
+    "time": 1791703150701.505,
+    "monotonicMs": 3128442618.6912503
+  },
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 212,
+      "top": -990,
+      "width": 1280,
+      "height": 900
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false
+  },
+  "fixturePageErrors": [],
+  "finalBrowserFrontmost": false,
+  "focusEvents": {
+    "nativeObserver": true,
+    "browserActivations": 0,
+    "observerClosed": true
+  }
+}

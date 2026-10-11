@@ -323,7 +323,7 @@ describe('document translation transient AI batching', () => {
         const result = await createAITranslator(() => model)(segments, options);
         expect(mocks.translateTextBatch.mock.calls.map(call => call[0].length)).toEqual([16, 16, 16, 5]);
         for (const call of mocks.translateTextBatch.mock.calls) {
-            expect(call[2]).toMatchObject({documentBatch: true, aiMultiSegment: true, serviceOverride: 'openai', modelOverride: 'first-model'});
+            expect(call[2]).toMatchObject({documentBatch: true, aiMultiSegment: true, enableNativeBatch: true, serviceOverride: 'openai', modelOverride: 'first-model'});
         }
         expect(result).toEqual(translated(segments.map(segment => segment.source)));
         expect(mocks.translateText).not.toHaveBeenCalled();
@@ -341,10 +341,12 @@ describe('document translation transient AI batching', () => {
         expect(await translate(short, {fileName: 'disabled.pdf', batchTranslation: false})).toEqual(translated(short.map(segment => segment.source)));
         expect(mocks.translateText).toHaveBeenCalledTimes(4);
         expect(mocks.translateText.mock.calls.every(call => call[2].documentBatch === undefined)).toBe(true);
+        expect(mocks.translateText.mock.calls.every(call => call[2].enableNativeBatch === false)).toBe(true);
         expect(mocks.translateTextBatch).not.toHaveBeenCalled();
         await translate(short, {fileName: 'next.pdf'});
         expect(mocks.translateTextBatch).toHaveBeenCalledOnce();
         expect(mocks.translateTextBatch.mock.calls[0][2].documentBatch).toBe(true);
+        expect(mocks.translateTextBatch.mock.calls[0][2].enableNativeBatch).toBe(true);
         expect(mocks.translateTextBatch.mock.calls[0][2].aiMultiSegment).toBe(service === 'openai' ? true : undefined);
     });
 
@@ -354,6 +356,39 @@ describe('document translation transient AI batching', () => {
         await createAITranslator(() => 'translation-only')(segments.slice(0, 2), {fileName: 'paper.pdf'});
         expect(mocks.translateTextBatch).not.toHaveBeenCalled();
         expect(mocks.translateText.mock.calls.every(call => call[2].modelOverride === 'translation-only')).toBe(true);
+    });
+
+    it('keeps AI discourse sequential even when document slot batching is available', async () => {
+        mocks.defaultService = 'openai';
+        const definition = 'Accumulation Protocol (AP) schedules replicas.';
+        const usage = 'AP sends the next replica.';
+        mocks.translateText.mockImplementation(async source => {
+            await Promise.resolve();
+            return source === definition ? '累积协议（AP）调度副本。' : 'AP 发送下一个副本。';
+        });
+        const result = await createAITranslator()([{id: 0, source: definition, contextLabel: 'Replication chapter'}, {id: 1, source: usage}], {
+            fileName: 'context.epub', enableAIContext: true, batchTranslation: true,
+        });
+        expect(result).toEqual(['累积协议（AP）调度副本。', 'AP 发送下一个副本。']);
+        expect(mocks.translateTextBatch).not.toHaveBeenCalled();
+        expect(mocks.translateText).toHaveBeenCalledTimes(2);
+        expect(mocks.translateText.mock.calls.every(call => call[2].enableNativeBatch === false && call[2].enableAIContext === true)).toBe(true);
+        expect(JSON.parse(mocks.translateText.mock.calls[1][2].discourseContext).evidence).toContainEqual(expect.objectContaining({
+            kind: 'previous_machine', source: definition, translation: '累积协议（AP）调度副本。',
+        }));
+    });
+
+    it('deduplicates slot batches within each chapter without joining identical sources across chapters', async () => {
+        mocks.defaultService = 'openai';
+        const repeated = [
+            {id: 0, source: 'AP', contextLabel: 'Chapter one'}, {id: 1, source: 'AP'},
+            {id: 2, source: 'AP', contextLabel: 'Chapter two'}, {id: 3, source: 'AP'},
+        ];
+        mocks.translateTextBatch.mockResolvedValue(['第一章译法', '第二章译法']);
+        await expect(createAITranslator()(repeated, {fileName: 'chapters.epub'}))
+            .resolves.toEqual(['第一章译法', '第一章译法', '第二章译法', '第二章译法']);
+        expect(mocks.translateTextBatch).toHaveBeenCalledOnce();
+        expect(mocks.translateTextBatch.mock.calls[0][0]).toEqual(['AP', 'AP']);
     });
 
     it('removes duplicate sources before allocating batch size and commits all repeated rows in order', async () => {
@@ -412,6 +447,7 @@ describe('document translation transient AI batching', () => {
         const result = await translate(segments, {fileName: 'paper.pdf', retryBackoff: {maxWaitMs: 120_000, sleep: async delay => {waits.push(delay);}}});
         expect(mocks.translateTextBatch).toHaveBeenCalledTimes(3);
         expect(mocks.translateText).toHaveBeenCalledTimes(53);
+        expect(mocks.translateText.mock.calls.every(call => call[2].enableNativeBatch === false)).toBe(true);
         expect(peak).toBe(3);
         expect(waits).toEqual([]);
         expect(result).toEqual(segments.map(segment => segment.id === 48 ? segment.source : `译 ${segment.source}`));
@@ -569,6 +605,168 @@ describe('document incremental translation and resume', () => {
         mocks.translateText.mockImplementation(async () => { controller.abort(); return '迟到译文'; });
         await expect(translateDocumentSegments(segments.slice(0, 1), {fileName: 'late.txt', signal: controller.signal, onSegment})).rejects.toMatchObject({name: 'AbortError'});
         expect(onSegment).not.toHaveBeenCalled();
+    });
+});
+
+describe('document discourse boundaries', () => {
+    it('adds a source-backed late definition and its settled translation to the next AI paragraph without extra model calls', async () => {
+        mocks.defaultService = 'openai';
+        const filler = Array.from({length: 30}, (_, id) => ({id, source: `Unrelated filler paragraph ${id}: ${'background '.repeat(16)}`}));
+        const definition = 'Accumulation protocol (AP) schedules the replicas.';
+        const usage = 'AP retries replication after a timeout.';
+        const requests: Array<{source: string; pageContext: string; discourseContext?: string}> = [];
+        mocks.translateText.mockImplementation(async (source: string, _context: string, options: {pageContext: string; discourseContext?: string}) => {
+            requests.push({source, ...options});
+            return source === definition ? '累积协议（AP）调度副本。' : `译 ${source}`;
+        });
+        const segments = [...filler, {id: 30, source: definition, contextLabel: 'Replication chapter'}, {id: 31, source: usage}];
+        await translateDocumentSegments(segments, {fileName: 'long.epub', enableAIContext: true,
+            initialTranslations: filler.map(segment => `已有译文 ${segment.id}`)});
+        expect(requests).toHaveLength(2);
+        expect(requests[1].pageContext).not.toContain(definition);
+        expect(requests[1].discourseContext).toContain(definition);
+        expect(requests[1].discourseContext).toContain('累积协议');
+        expect(JSON.parse(requests[1].discourseContext!).evidence).toEqual(expect.arrayContaining([
+            expect.objectContaining({kind: 'previous_machine', blockId: '30', position: 'Replication chapter · 段落 31', source: definition, translation: '累积协议（AP）调度副本。'}),
+        ]));
+    });
+
+    it('marks only explicitly edited session translations as confirmed and does not carry them to the next file or language', async () => {
+        mocks.defaultService = 'openai';
+        const definition = 'Aurora is the replication coordinator.';
+        const segments = [{id: 0, source: definition}, {id: 1, source: 'Aurora restarts the replicas.'}];
+        mocks.translateText.mockResolvedValue('译后文');
+        await translateDocumentSegments(segments, {fileName: 'characters.epub', materialId: 'file-a', enableAIContext: true, sourceLanguage: 'en', targetLanguage: 'zh-Hans',
+            initialTranslations: ['用户确认：曙光是复制协调器。'], confirmedTranslationIds: [0]});
+        const confirmed = JSON.parse(mocks.translateText.mock.calls[0][2].discourseContext);
+        expect(confirmed.evidence).toEqual(expect.arrayContaining([expect.objectContaining({kind: 'user_confirmed', source: definition, translation: '用户确认：曙光是复制协调器。'})]));
+        mocks.translateText.mockClear();
+        await translateDocumentSegments(segments, {fileName: 'characters.epub', materialId: 'file-a', enableAIContext: true, targetLanguage: 'fr', initialTranslations: ['历史机器参考']});
+        expect(JSON.parse(mocks.translateText.mock.calls[0][2].discourseContext).evidence.some((item: {kind: string}) => item.kind === 'user_confirmed')).toBe(false);
+        mocks.translateText.mockClear();
+        await translateDocumentSegments([{id: 0, source: 'Borealis is the next coordinator.'}], {fileName: 'other.epub', materialId: 'file-b', enableAIContext: true});
+        expect(mocks.translateText.mock.calls[0][2].discourseContext).not.toContain('Aurora');
+    });
+
+    it('preserves 64 confirmed seeds for later paragraphs without promoting or admitting machine history into their full budget', async () => {
+        mocks.defaultService = 'openai';
+        const segments = [
+            {id: 0, source: 'Aurora means the former replication coordinator.'},
+            {id: 1, source: 'Aurora is the lead scientist.'},
+            ...Array.from({length: 63}, (_, index) => ({id: index + 2, source: `UniqueToken${index + 2} is a confirmed item.`})),
+            {id: 65, source: 'Aurora returned to the laboratory.'},
+            {id: 66, source: 'Aurora publishes her conclusion.'},
+        ];
+        const confirmedIds = Array.from({length: 64}, (_, index) => index + 1);
+        const machineHistory = '机器历史：晨曦是旧协调器。';
+        const confirmedName = '用户确认：极光是首席科学家。';
+        const initial = [machineHistory, confirmedName, ...Array.from({length: 63}, (_, index) => `确认译文 ${index + 2}`)];
+        mocks.translateText.mockImplementation(async (source: string) => source === segments[65].source ? '极光返回实验室。' : '极光发表她的结论。');
+        const result = await translateDocumentSegments(segments, {
+            fileName: 'confirmed-manual.epub', materialId: 'confirmed-manual-v1', enableAIContext: true,
+            initialTranslations: initial, confirmedTranslationIds: confirmedIds,
+        });
+        expect(mocks.translateText.mock.calls.map(call => call[0])).toEqual([segments[65].source, segments[66].source]);
+        expect(result.slice(0, 65)).toEqual(initial);
+        expect(result.slice(65)).toEqual(['极光返回实验室。', '极光发表她的结论。']);
+        for (const call of mocks.translateText.mock.calls) {
+            const data = JSON.parse(call[2].discourseContext) as {evidence: Array<{kind: string; blockId: string; translation?: string}>};
+            expect(data.evidence).toContainEqual(expect.objectContaining({kind: 'user_confirmed', blockId: '1', translation: confirmedName}));
+            expect(data.evidence.filter(item => item.kind === 'user_confirmed').every(item => confirmedIds.includes(Number(item.blockId)))).toBe(true);
+            expect(data.evidence.some(item => item.translation === machineHistory)).toBe(false);
+            expect(data.evidence.some(item => item.kind === 'user_confirmed' && item.blockId === '65')).toBe(false);
+            expect(call[2].discourseContext.length).toBeLessThanOrEqual(2400);
+        }
+    });
+
+    it.each([
+        ['repeated chapter label', 'Chapter one', 'Chapter one'],
+        ['Chinese PDF page positions', '第 1 页', '第 2 页'],
+        ['English PDF page positions', 'Page 1', 'Page 2'],
+    ])('preserves character evidence across %s', async (_case, firstLabel, nextLabel) => {
+        mocks.defaultService = 'openai';
+        const definition = 'Aurora is the lead scientist.';
+        mocks.translateText.mockResolvedValue('她返回实验室。');
+        await translateDocumentSegments([{id: 0, source: definition, contextLabel: firstLabel}, {id: 1, source: 'Aurora returned to the laboratory.', contextLabel: nextLabel}], {
+            fileName: 'characters.pdf', enableAIContext: true, initialTranslations: ['曙光是首席科学家。'], confirmedTranslationIds: [0],
+        });
+        const reference = JSON.parse(mocks.translateText.mock.calls[0][2].discourseContext);
+        expect(reference.evidence).toEqual(expect.arrayContaining([expect.objectContaining({kind: 'user_confirmed', source: definition, translation: '曙光是首席科学家。'})]));
+        expect(reference.position).toBe(`${nextLabel} · 段落 2`);
+    });
+
+    it('moves the bounded reference window to a late chapter beyond 256 paragraphs and 64,000 source characters', async () => {
+        mocks.defaultService = 'openai';
+        const filler = Array.from({length: 300}, (_, id) => ({id, source: `Background ${id}: ${'unrelated '.repeat(52)}`}));
+        const definition = 'Adaptive routing (AR) balances the replicas.';
+        const usage = 'AR retries the replicas after a timeout.';
+        mocks.translateText.mockImplementation(async (source: string) => source === definition ? '自适应路由（AR）均衡副本。' : '后文译文');
+        await translateDocumentSegments([...filler, {id: 300, source: definition, contextLabel: 'Late chapter'}, {id: 301, source: usage}], {
+            fileName: 'book.epub', enableAIContext: true, initialTranslations: filler.map(() => '此前已翻译'),
+        });
+        expect(mocks.translateText).toHaveBeenCalledTimes(2);
+        const reference = JSON.parse(mocks.translateText.mock.calls[1][2].discourseContext);
+        expect(reference.position).toBe('段落 302');
+        expect(reference.evidence).toEqual(expect.arrayContaining([
+            expect.objectContaining({kind: 'previous_machine', blockId: '300', source: definition, translation: '自适应路由（AR）均衡副本。'}),
+        ]));
+        expect(mocks.translateText.mock.calls[1][2].discourseContext.length).toBeLessThanOrEqual(2400);
+    });
+
+    it('cancels an enabled discourse request without submitting its late translation or starting the next paragraph', async () => {
+        mocks.defaultService = 'openai';
+        const controller = new AbortController();
+        const onSegment = vi.fn();
+        mocks.translateText.mockImplementation(async () => {controller.abort(); return '过期译文';});
+        await expect(translateDocumentSegments([{id: 0, source: 'Aurora is the coordinator.'}, {id: 1, source: 'Aurora restarts.'}], {
+            fileName: 'canceled.epub', enableAIContext: true, signal: controller.signal, onSegment,
+        })).rejects.toMatchObject({name: 'AbortError'});
+        expect(onSegment).not.toHaveBeenCalled();
+        expect(mocks.translateText).toHaveBeenCalledOnce();
+    });
+
+    it('keeps identical abbreviations in different native chapters separate while deduplicating within a chapter', async () => {
+        mocks.defaultService = 'openai';
+        let calls = 0;
+        mocks.translateText.mockImplementation(async (source: string) => source === 'AP' ? `译法 ${++calls}` : `译 ${source}`);
+        const segments = [
+            {id: 0, source: 'Weather', contextLabel: 'Chapter one'},
+            {id: 1, source: 'AP'},
+            {id: 2, source: 'AP'},
+            {id: 3, source: 'Networking', contextLabel: 'Chapter two'},
+            {id: 4, source: 'AP'},
+        ];
+        const result = await translateDocumentSegments(segments, {fileName: 'contexts.epub'});
+        expect(calls).toBe(2);
+        expect(result[1]).toBe(result[2]);
+        expect(result[4]).not.toBe(result[1]);
+    });
+
+    it('does not copy a previously edited abbreviation into another section with the same title', async () => {
+        mocks.translateTextBatch.mockImplementation(async (sources: string[]) => sources.map(source => `另一章 ${source}`));
+        const result = await translateDocumentSegments([
+            {id: 0, source: 'Introduction', contextLabel: 'Same chapter title'},
+            {id: 1, source: 'AP'},
+            {id: 2, source: 'Introduction', contextLabel: 'Same chapter title', role: 'heading'},
+            {id: 3, source: 'AP'},
+        ], {fileName: 'different-senses.epub', initialTranslations: ['简介', '人工确认：气压', '', ''], confirmedTranslationIds: [1]});
+        expect(mocks.translateTextBatch).toHaveBeenCalledWith(['Introduction', 'AP'], 'different-senses.epub', expect.any(Object));
+        expect(result[1]).toBe('人工确认：气压');
+        expect(result[3]).toBe('另一章 AP');
+    });
+
+    it('keeps the disabled context request shape and three-worker dispatch', async () => {
+        mocks.defaultService = 'openai';
+        const releases: Array<() => void> = [];
+        mocks.translateText.mockImplementation((source: string) => new Promise<string>(resolve => releases.push(() => resolve(`译 ${source}`))));
+        const task = translateDocumentSegments([{id: 0, source: 'One'}, {id: 1, source: 'Two'}, {id: 2, source: 'Three'}], {fileName: 'disabled.txt', enableAIContext: false});
+        await vi.waitFor(() => expect(releases).toHaveLength(3));
+        for (const call of mocks.translateText.mock.calls) {
+            expect(call[2]).toHaveProperty('enableAIContext', false);
+            expect(call[2]).not.toHaveProperty('discourseContext');
+        }
+        releases.forEach(release => release());
+        await task;
     });
 });
 

@@ -313,7 +313,7 @@ describe('options UI composition architecture', () => {
     expect(writingSettings).not.toContain('writing.demo.')
     expect(interfaceSettings).toContain('<TranslationLoadingStyleSettings :config="props.config" />')
     expect(interfaceSettings.indexOf('<TranslationLoadingStyleSettings')).toBeLessThan(interfaceSettings.indexOf('t(\'settings.interface.popupLayout.label\')'))
-    expect(source('src/features/settings/ui/TranslationLoadingStyleSettings.vue')).toContain("t('settings.interface.animationLoading.label')")
+    expect(source('src/features/settings/ui/TranslationLoadingStyleSettings.vue')).toContain("t('settings.advanced.translationLoadingStyle')")
     expect(interfaceSettings).toContain('interfaceSkinOptions')
     expect(interfaceSettings).toContain('interfaceSkinGroups')
     expect(interfaceSettings).toContain('groupedSkinOptions')
@@ -631,7 +631,7 @@ describe('options UI composition architecture', () => {
     expect(navigation).toContain("description: 'YouTube/X 边看边译'")
     expect(navigation).toContain('视频与网页会议的双语字幕')
     expect(navigation).toContain('YouTube、X、Twitter、视频字幕、本地 AI、Whisper')
-    expect(videoModelSettings).toContain('.capability-warning { margin: 6px 0 0; color: var(--el-color-danger);')
+    expect(videoModelSettings).toMatch(/\.capability-warning\s*\{[^}]*color:\s*var\(--el-color-danger\)/u)
     expect(settingsSections).toContain('VIDEO_SOURCE_LANGUAGE_OPTIONS')
     // Resource guidance is localized; assert the live key and its Chinese catalog entry.
     expect(videoModelSettings).toContain("t('video.modelDeviceHint')")
@@ -784,7 +784,7 @@ describe('options UI composition architecture', () => {
 
     expect(settings).not.toContain('<TranslationLoadingStyleSettings :config="config" />')
     expect(interfaceSettings).toContain('<TranslationLoadingStyleSettings :config="props.config" />')
-    expect(picker).toContain('v-for="option in translationLoadingStyleOptions"')
+    expect(picker).toContain('v-for="option in translationLoadingStyleChoices"')
     expect(picker).toContain('role="radiogroup"')
     expect(picker).toContain('<TranslationLoadingPreview')
     expect(picker).toContain(':animated="props.config.animations"')
@@ -792,7 +792,7 @@ describe('options UI composition architecture', () => {
     expect(picker).toContain('const { t } = useUiI18n()')
     expect(picker).toContain('t(option.labelKey)')
     expect(picker).toContain('t(option.descriptionKey)')
-    expect(picker).toContain("settings.interface.animationLoading.label")
+    expect(picker).toContain("settings.advanced.translationLoadingStyle")
     expect(picker).not.toContain('{{ option.label }}')
     expect(picker).not.toContain('{{ option.description }}')
     expect(preview).toContain('createTranslationLoadingIndicator(document')
@@ -803,8 +803,10 @@ describe('options UI composition architecture', () => {
     expect(indicator).toContain('content: none !important')
     expect(indicator).not.toContain("classList.add('static')")
     expect(pageStyles).not.toMatch(/@keyframes\s+spin\b/u)
-    expect(userscriptSettings).toContain('v-model="draft.translationLoadingStyle"')
-    expect(userscriptSettings).toContain(':disabled="!draft.animations"')
+    expect(userscriptSettings).toContain('v-model="selectedLoadingStyle"')
+    expect(userscriptSettings).not.toContain(':disabled="!draft.animations"')
+    expect(picker).not.toContain('<el-switch')
+    expect(picker).not.toContain(':disabled="!props.config.animations"')
     expect(userscriptSettings).toContain('<TranslationLoadingPreview :loading-style="draft.translationLoadingStyle"')
     expect(userscriptSettings).toContain('aria-label="当前动画参考"')
     expect(userscriptSmoke).toContain("translationLoadingStyle: 'orbit'")
@@ -1115,7 +1117,8 @@ describe('options UI composition architecture', () => {
     expect(styleSettings).toContain(':class="preset.className"')
     expect(styleSettings).toContain('getTranslationAppearanceStyle(appearance.value)')
     for (const field of ['textColor', 'lineColor', 'fillColor']) expect(styleSettings).toContain(`v-model="appearance.${field}"`)
-    expect(source('src/features/settings/ui/ReadingAssistanceSettings.vue')).toContain('v-model="config.bilingualSentenceHighlightEnabled"')
+    expect(source('src/features/settings/ui/ReadingAssistanceSettings.vue')).not.toContain('v-model="config.bilingualSentenceHighlightEnabled"')
+    expect(source('src/features/settings/ui/ReadingAssistanceSettings.vue')).toContain('data-testid="current-sentence-highlight-style"')
     expect(styleSettings).toContain("t('settings.translationStyle.bilingualOnly')")
     expect(styleSettings).toContain('@click="config.display = 1"')
     expect(styleSettings).toContain('container-type: inline-size')
@@ -1138,6 +1141,17 @@ describe('options UI composition architecture', () => {
     expect(displayCss.indexOf('.fluent-read-bilingual-content {')).toBeGreaterThanOrEqual(0)
     expect(displayCss.indexOf('.fluent-read-bilingual-content {')).toBeLessThan(displayCss.indexOf('.fluent-display-'))
     expect(displayCss).toContain('var(--fluent-read-translation-line, #409eff)')
+    // 朴素模式不需要规则；其余预设都必须在共享样式表中有对应类，逐行绘制的预设还要有行内译文规则。
+    const presetSource = source('src/core/config/translationAppearance.ts')
+    const presetClasses = [...presetSource.matchAll(/className: '(fluent-display-[a-z-]+)'[^\n]*/gu)]
+    expect(presetClasses).toHaveLength(49)
+    for (const [line, className] of presetClasses) {
+      if (className === 'fluent-display-default') continue
+      expect(displayCss, className).toMatch(new RegExp(`\\.${className}[\\s\\[:>{]`, 'u'))
+      if (line.includes('inlineText: true')) expect(displayCss, className).toContain(`.${className} > .fluent-read-translation-text`)
+    }
+    // 新预设的线条与底色跟随网页文字颜色，不能写死只适合浅色网页的配色。
+    expect(displayCss).toContain('color-mix(in srgb, currentColor')
     expect(popup).toContain("appearance: 'settings-interface'")
   })
 

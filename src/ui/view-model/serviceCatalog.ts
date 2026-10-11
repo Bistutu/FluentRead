@@ -1,7 +1,7 @@
 /**
  * @file src/ui/view-model/serviceCatalog.ts
  * 文件职责：为服务与模型选择界面提供无框架的视图模型转换，把扁平配置选项整理成可搜索、可分层和可稳定展示的数据。
- * 主要内容：定义服务目录分组与官方网站入口，提供云服务厂商的免费额度与开通指引，安全派生自定义服务站点，按服务与模型关键词搜索。
+ * 主要内容：定义服务目录分组与官方网站入口，提供云服务厂商的免费额度与开通指引，安全派生自定义服务站点，按服务与模型关键词搜索，并把选择面板的服务拆成按使用意图排序的常用区与更多区。
  * 模块边界：这些函数不读取 Vue 状态、不修改 Config，也不判断平台能力或发起连接测试；原始目录由 core/config 提供，Popup/Options 等调用方负责交互与渲染。
  */
 import { resolveConfiguredModel, services } from '@/src/core/config/catalog'
@@ -321,4 +321,51 @@ export function searchServiceOptions(
       ? [{ ...item, matchingModels }]
       : []
   })
+}
+
+/** 常用区的默认容量；用户已配置的服务不受此限制，只限制用来补位的热门服务。 */
+export const COMMON_SERVICE_LIMIT = 8
+
+// 免费翻译开箱即用，始终排第一；微软、谷歌同样无需密钥，排在用户已配置的服务之后。
+const keylessCommonServices: readonly string[] = [services.microsoft, services.google]
+const popularFallbackServices: readonly string[] = [
+  services.bilibili,
+  services.deepL,
+  services.deepseek,
+  services.tongyi,
+  services.openai,
+  services.gemini,
+]
+
+/**
+ * 把选择面板的服务拆成常用区与更多区。常用区顺序固定为：免费翻译、用户已配置或正在使用的服务、
+ * 微软与谷歌、当前选中的服务，最后用热门服务补满；其余服务保持目录顺序进入更多区。
+ * 尚缺凭据的服务（needsSetup）一律留在更多区，常用区只放可以直接使用的服务；
+ * 唯一例外是当前选中项，它始终留在常用区，面板打开时不必展开更多区或滚动才能看到它。
+ */
+export function splitServiceChoices<T extends ServiceOption>(
+  options: readonly T[],
+  context: { configured: ReadonlySet<string>; needsSetup?: ReadonlySet<string>; selected?: string; limit?: number },
+): { common: T[]; more: T[] } {
+  const limit = context.limit ?? COMMON_SERVICE_LIMIT
+  const byValue = new Map(options.map((option) => [option.value, option]))
+  const common = new Map<string, T>()
+  const add = (value: string | undefined) => {
+    const option = value ? byValue.get(value) : undefined
+    if (option && (value === context.selected || !context.needsSetup?.has(option.value))) common.set(option.value, option)
+  }
+
+  add(services.freeTranslation)
+  for (const option of options) if (context.configured.has(option.value)) add(option.value)
+  keylessCommonServices.forEach(add)
+  add(context.selected)
+  for (const value of popularFallbackServices) {
+    if (common.size >= limit) break
+    add(value)
+  }
+
+  return {
+    common: [...common.values()],
+    more: options.filter((option) => !common.has(option.value)),
+  }
 }

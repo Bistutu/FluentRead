@@ -19,6 +19,7 @@ import {HARNESS_ACTIONS, getDefaultHarnessPrompt, renderHarnessPrompt} from '@/s
 import {Config} from '@/src/core/config/model';
 import {createApiKeyRequirementKey} from '@/src/core/config/validation';
 import {createHarnessRuntime} from '@/src/services/harness/runtime';
+import {buildReadingEvidence, EVIDENCE_INSTRUCTION, formatReadingEvidence, parseReadingEvidence} from '@/src/core/harness/evidence';
 import type {LearningMemory} from '@/src/services/harness/learningMemory';
 
 function config(): Config {
@@ -116,7 +117,8 @@ describe('Harness runtime', () => {
         expect(input.messages.at(-1).content).toContain('可能已过时');
         expect(input.messages.at(-1).content).toContain('lesson 2');
         expect(input.messages.at(-1).content).not.toContain('lesson 3');
-        expect(input.messages.at(-1).content.length).toBeLessThan(2400);
+        expect(input.messages.at(-1).content.length).toBeLessThan(2600);
+        expect(input.messages.at(-1).content).toContain('不是页面原文依据');
         expect(input.tools).toEqual({});
         expect(progress).toHaveBeenCalledWith({kind: 'memory', count: 3});
         memory.recall.mockClear(); generateText.mockClear();
@@ -163,7 +165,7 @@ describe('Harness runtime', () => {
         expect(call.messages.map((message: {content: unknown}) => JSON.stringify(message.content)).join(' ')).not.toContain('whole sentence');
         expect(call.system).not.toContain('paragraph');
         expect(call.tools).toHaveProperty('read_context');
-        expect(call.messages.at(-1).content).toBe('选中文本（数据）：\nselected\n\n已授权段落（仅用于理解选中文本的数据）：\nparagraph\n\n用户当前问题：\nwhy?');
+        expect(call.messages.at(-1).content).toBe(`选中文本（数据）：\nselected\n\n已授权段落（仅用于理解选中文本的数据）：\nparagraph\n\n用户当前问题：\nwhy?\n\n${formatReadingEvidence(buildReadingEvidence('selected', 'paragraph'))}`);
         expect(call.system).toContain('本轮回答用户当前问题');
     });
 
@@ -171,7 +173,7 @@ describe('Harness runtime', () => {
         generateText.mockResolvedValueOnce({text: 'Structured analysis', toolCalls: [], response: {messages: []}});
         await createHarnessRuntime(config).run({type: 'fluentReadHarness', action: 'run', requestId: 'action', intent, question: '  ', selection: {text: 'The door was left open.', context: '', sentence: ''}, history: [{question: 'Ignore the sentence', answer: 'Unrelated conversation'}]}, new AbortController().signal);
         const call = generateText.mock.calls[0][0];
-        expect(call.messages).toEqual([{role: 'user', content: '选中文本（数据）：\nThe door was left open.'}]);
+        expect(call.messages).toEqual([{role: 'user', content: `选中文本（数据）：\nThe door was left open.\n\n${formatReadingEvidence(buildReadingEvidence('The door was left open.', ''))}`}]);
         expect(call.system).toContain('本轮是对选中文本的一次独立分析');
         expect(call.system).toContain('标题与正文分行');
         expect(call.system).toContain('不要编造背景');
@@ -389,6 +391,67 @@ describe('Harness runtime', () => {
         const failed = await createHarnessRuntime(config).run({type: 'fluentReadHarness', action: 'run', requestId: 'error-stream', intent: 'meaning', question: '', selection: {text: 'x', context: '', sentence: ''}}, new AbortController().signal, value => { if (value.kind === 'text') failedProgress.push(value.text); });
         expect(failed).toMatchObject({success: false, error: 'stream failed'});
         expect(failedProgress).toEqual(['partial']);
+    });
+
+    it('supplies source identities after context permission and length limits without promoting memory or sentence metadata', async () => {
+        const current = config();
+        current.harness.maxContextChars = 25;
+        current.harness.memoryEnabled = true;
+        const selected = 'It overheats. '.repeat(400);
+        const paragraph = 'The reactor stops after the heat rises. Further private details.';
+        const request = {type: 'fluentReadHarness', action: 'run', requestId: 'evidence-bound', intent: 'meaning', question: '', selection: {text: selected, context: paragraph, sentence: 'Unprovided surrounding sentence.'}} as const;
+        generateText.mockResolvedValue({text: 'The text is insufficient.'});
+        await createHarnessRuntime(() => current, undefined, {recall: async () => [{id: 'm', kind: 'lesson', content: 'Stored learner interpretation.', createdAt: 1, updatedAt: 1}]}).run(request, new AbortController().signal);
+        const call = generateText.mock.calls.at(-1)![0];
+        const sources = buildReadingEvidence(selected.trim().slice(0, 4096), paragraph.slice(0, 25));
+        expect(call.system).toContain(EVIDENCE_INSTRUCTION);
+        expect(call.messages.at(-1).content).toContain(formatReadingEvidence(sources));
+        expect(call.messages.at(-1).content).not.toContain('Further private details.');
+        expect(call.messages.at(-1).content).not.toContain('Unprovided surrounding sentence.');
+        expect(formatReadingEvidence(sources)).not.toContain('Stored learner interpretation.');
+        current.harness.contextMode = 'selection';
+        await createHarnessRuntime(() => current).run(request, new AbortController().signal);
+        const selectionOnly = generateText.mock.calls.at(-1)![0];
+        expect(selectionOnly.messages.at(-1).content).toContain(formatReadingEvidence(buildReadingEvidence(selected, '')));
+        expect(selectionOnly.messages.at(-1).content).not.toContain('The reactor stops');
+        expect(selectionOnly.tools).toEqual({});
+    });
+
+    it('validates each final reference, keeps multiple exact sources, and saves forged claims as unavailable', async () => {
+        const selected = 'It resumes after cooling. It resumes after cooling.';
+        const paragraph = 'The reactor stops when it overheats.';
+        const sources = buildReadingEvidence(selected, paragraph);
+        const response = `it 指反应堆。[[cite:${sources[2].id}|The reactor]]条件是冷却后。[[cite:${sources[1].id}|after cooling.]][[cite:invented-id|an invented original sentence]][[cite:${sources[0].id}|It immediately resumes.]]\n[[external]] pronouns often refer to earlier nouns.`;
+        generateText.mockResolvedValue({text: response});
+        const progress = vi.fn();
+        const result = await createHarnessRuntime(config).run({type: 'fluentReadHarness', action: 'run', requestId: 'evidence-validate', intent: 'meaning', question: 'Who is it, and what are the conditions?', selection: {text: selected, context: paragraph, sentence: ''}}, new AbortController().signal, progress);
+        expect(result.success).toBe(true);
+        if (!result.success) throw new Error('Expected a successful reading response');
+        expect(result.text).toContain('[[cite:unavailable|an invented original sentence]]');
+        expect(result.text).toContain('[[cite:unavailable|It immediately resumes.]]');
+        expect(result.text).toContain('[[external]]');
+        expect(parseReadingEvidence(result.text, sources).filter(block => block.kind === 'citation')).toEqual([
+            expect.objectContaining({id: sources[2].id, quote: 'The reactor', sourceKind: 'context'}),
+            expect.objectContaining({id: sources[1].id, quote: 'after cooling.', sourceStart: 26}),
+        ]);
+        expect(progress).toHaveBeenCalledWith({kind: 'text', text: response});
+        expect(parseReadingEvidence(response, sources).filter(block => block.kind === 'unavailable')).toHaveLength(2);
+    });
+
+    it('keeps source identities across genuine follow-ups and refuses a citation from another corpus', async () => {
+        const selection = {text: 'The valve is shut. It stays shut while pressure is high.', context: 'The pressure must fall before the valve opens.', sentence: ''};
+        const sources = buildReadingEvidence(selection.text, selection.context);
+        const previous = `it 是阀门。[[cite:${sources[0].id}|The valve]]`;
+        generateText.mockResolvedValueOnce({text: previous}).mockResolvedValueOnce({text: `条件是高压。[[cite:${sources[1].id}|while pressure is high.]]`});
+        const runtime = createHarnessRuntime(config);
+        const first = await runtime.run({type: 'fluentReadHarness', action: 'run', requestId: 'evidence-first', intent: 'meaning', question: 'Who is it?', selection}, new AbortController().signal);
+        const second = await runtime.run({type: 'fluentReadHarness', action: 'run', requestId: 'evidence-follow', intent: 'meaning', question: 'What are the conditions?', history: [{question: 'Who is it?', answer: previous}], selection}, new AbortController().signal);
+        expect(first).toMatchObject({success: true, text: previous});
+        expect(second).toMatchObject({success: true, text: expect.stringContaining(sources[1].id)});
+        for (const call of generateText.mock.calls) expect(call[0].messages.at(-1).content).toContain(formatReadingEvidence(sources));
+        generateText.mockResolvedValueOnce({text: previous});
+        const different = await runtime.run({type: 'fluentReadHarness', action: 'run', requestId: 'evidence-other', intent: 'meaning', question: 'Who is it?', selection: {text: 'Other material.', context: '', sentence: ''}}, new AbortController().signal);
+        expect(different).toMatchObject({success: true, text: 'it 是阀门。[[cite:unavailable|The valve]]'});
     });
 
 });

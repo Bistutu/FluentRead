@@ -1,0 +1,15 @@
+{
+  "baseCommit": "e047f8bd05ad8439e8bd8e2bdb094b55e3056fec",
+  "oldZipBytes": 24224445,
+  "newZipBytes": 19246784,
+  "zipDeltaBytes": -4977661,
+  "oldRawBytes": 67535967,
+  "newRawBytes": 62562259,
+  "firefoxRawBytes": 62561294,
+  "fontIncluded": false,
+  "fontkitIncluded": true,
+  "fontLicenseIncluded": true,
+  "remoteScriptCsp": false,
+  "zipSha256": "c3bdb1d92283eede75f0a8d2487492fd83bdf595af622b2aa7f4c92e4e3f77de",
+  "fontLoaderSourceSha256": "c701bf9fcb03b99b41536af27d74b6558a31883ef745bd473d30d82b1647e970"
+}

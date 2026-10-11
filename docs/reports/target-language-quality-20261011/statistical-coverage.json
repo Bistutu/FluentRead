@@ -1,0 +1,106 @@
+{
+  "total": {
+    "lines": {
+      "total": 282,
+      "covered": 282,
+      "skipped": 0,
+      "pct": 100.0
+    },
+    "statements": {
+      "total": 282,
+      "covered": 282,
+      "skipped": 0,
+      "pct": 100.0
+    },
+    "functions": {
+      "total": 9,
+      "covered": 9,
+      "skipped": 0,
+      "pct": 100.0
+    },
+    "branches": {
+      "total": 93,
+      "covered": 93,
+      "skipped": 0,
+      "pct": 100.0
+    }
+  },
+  "/Users/thinkstu/Desktop/copy/FluentRead-target-language-quality-20261011/src/core/language/functionWordData.ts": {
+    "lines": {
+      "total": 46,
+      "covered": 46,
+      "skipped": 0,
+      "pct": 100.0
+    },
+    "statements": {
+      "total": 46,
+      "covered": 46,
+      "skipped": 0,
+      "pct": 100.0
+    },
+    "functions": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    },
+    "branches": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "/Users/thinkstu/Desktop/copy/FluentRead-target-language-quality-20261011/src/core/language/lexicon.ts": {
+    "lines": {
+      "total": 88,
+      "covered": 88,
+      "skipped": 0,
+      "pct": 100.0
+    },
+    "statements": {
+      "total": 88,
+      "covered": 88,
+      "skipped": 0,
+      "pct": 100.0
+    },
+    "functions": {
+      "total": 1,
+      "covered": 1,
+      "skipped": 0,
+      "pct": 100.0
+    },
+    "branches": {
+      "total": 1,
+      "covered": 1,
+      "skipped": 0,
+      "pct": 100.0
+    }
+  },
+  "/Users/thinkstu/Desktop/copy/FluentRead-target-language-quality-20261011/src/core/language/statistical.ts": {
+    "lines": {
+      "total": 148,
+      "covered": 148,
+      "skipped": 0,
+      "pct": 100.0
+    },
+    "statements": {
+      "total": 148,
+      "covered": 148,
+      "skipped": 0,
+      "pct": 100.0
+    },
+    "functions": {
+      "total": 8,
+      "covered": 8,
+      "skipped": 0,
+      "pct": 100.0
+    },
+    "branches": {
+      "total": 92,
+      "covered": 92,
+      "skipped": 0,
+      "pct": 100.0
+    }
+  }
+}

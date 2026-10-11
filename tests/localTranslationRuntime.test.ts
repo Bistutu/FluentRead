@@ -206,8 +206,190 @@ describe('local translation idle disposal while waiting for shared capacity', ()
     vi.resetModules();
   });
 
+  async function warmOwner(memory?: number, statusHook?: () => Promise<unknown>) {
+    vi.useFakeTimers(); vi.resetModules();
+    vi.stubGlobal('navigator', memory === undefined ? {} : {deviceMemory: memory});
+    vi.doMock('@/src/features/local-translation/offscreen/downloads', () => ({
+      createLocalTranslationDownloadManager: () => ({status: statusHook || (async () => ({tasks: [{model: LOCAL_TRANSLATION_MODEL_IDS.opusZhEn, phase: 'ready'}]}))}),
+    }));
+    const workers: WarmWorker[] = [];
+    class WarmWorker {
+      onmessage?: (event: any) => void;
+      terminate = vi.fn();
+      constructor() {workers.push(this);}
+      postMessage(message: any) {queueMicrotask(() => this.onmessage?.({data: {requestId: message.requestId, success: true, result: 'warm'}}));}
+    }
+    vi.stubGlobal('Worker', WarmWorker);
+    vi.stubGlobal('window', {setTimeout, clearTimeout, location: {href: 'https://extension.test/offscreen.html'}});
+    return {workers, owner: await import('@/src/features/local-translation/offscreen/translation'), request: {
+      model: LOCAL_TRANSLATION_MODEL_IDS.opusZhEn, text: 'Hello', sourceLanguage: 'en', targetLanguage: 'zh',
+    }};
+  }
+
+  it('rejects a pre-cancelled translation before taking a queue or worker lease, and leaves later translation available', async () => {
+    const {owner, workers, request} = await warmOwner(8);
+    const controller = new AbortController(); controller.abort();
+    try {
+      await expect(owner.translateLocalText(request, controller.signal)).rejects.toMatchObject({name: 'AbortError'});
+      expect(workers).toHaveLength(0);
+      expect(vi.getTimerCount()).toBe(0);
+      await expect(owner.translateLocalText(request)).resolves.toBe('warm');
+      expect(workers).toHaveLength(1);
+    } finally {owner.disposeLocalTranslationWorker();}
+  });
+
+  it('cancels a request while checking the model cache without destroying its warm worker or poisoning a later request', async () => {
+    const ready = {tasks: [{model: LOCAL_TRANSLATION_MODEL_IDS.opusZhEn, phase: 'ready'}]};
+    let checking = false;
+    let finishStatus!: (value: typeof ready) => void;
+    const status = vi.fn(async () => checking ? new Promise<typeof ready>(resolve => {finishStatus = resolve;}) : ready);
+    const {owner, workers, request} = await warmOwner(8, status);
+    const controller = new AbortController();
+    try {
+      await owner.translateLocalText(request);
+      checking = true;
+      const pending = owner.translateLocalText(request, controller.signal);
+      const rejected = expect(pending).rejects.toMatchObject({name: 'AbortError'});
+      for (let index = 0; index < 10; index++) await Promise.resolve();
+      expect(status).toHaveBeenCalledTimes(2);
+      controller.abort(); finishStatus(ready); await rejected;
+      expect(workers).toHaveLength(1);
+      expect(workers[0].terminate).not.toHaveBeenCalled();
+      expect(vi.getTimerCount()).toBe(1);
+      checking = false;
+      await expect(owner.translateLocalText(request)).resolves.toBe('warm');
+      expect(workers).toHaveLength(1);
+    } finally {owner.disposeLocalTranslationWorker();}
+  });
+
+  it.each(['cancel', 'dispose'] as const)('discards a completed native result when %s arrives before the translation caller accepts it', async mode => {
+    const {owner, workers, request} = await warmOwner(8);
+    const controller = new AbortController();
+    let cancelFirstReply = true;
+    (globalThis.Worker as any).prototype.postMessage = function(message: any) {
+      queueMicrotask(() => {
+        this.onmessage?.({data: {requestId: message.requestId, success: true, result: 'ready'}});
+        if (cancelFirstReply) {
+          cancelFirstReply = false;
+          // Worker 回复先解除原生等待；取消在其续体之后、返回到公开调用方之前到达。
+          queueMicrotask(() => mode === 'cancel' ? controller.abort() : owner.disposeLocalTranslationWorker());
+        }
+      });
+    };
+    try {
+      await expect(owner.translateLocalText(request, controller.signal)).rejects.toMatchObject({name: 'AbortError'});
+      expect(workers).toHaveLength(1);
+      if (mode === 'cancel') expect(workers[0].terminate).not.toHaveBeenCalled();
+      else expect(workers[0].terminate).toHaveBeenCalledOnce();
+      await expect(owner.translateLocalText(request)).resolves.toBe('ready');
+      expect(workers).toHaveLength(mode === 'cancel' ? 1 : 2);
+    } finally {owner.disposeLocalTranslationWorker();}
+  });
+
+  it('does not revive an old translation that was waiting for shared inference capacity when the owner is disposed', async () => {
+    const resources = await vi.importActual<typeof import('@/src/shared/onnx/resources')>('@/src/shared/onnx/resources');
+    const budget = vi.fn(resources.createLocalInferenceBudget(1));
+    vi.doMock('@/src/shared/onnx/resources', () => ({...resources, withLocalInferenceBudget: budget}));
+    const {owner, workers, request} = await warmOwner(8);
+    let releaseBudget!: () => void;
+    const busy = new Promise<void>(resolve => {releaseBudget = resolve;});
+    let occupying: Promise<unknown> | undefined;
+    let rejected: Promise<unknown> | undefined;
+    try {
+      await owner.translateLocalText(request);
+      occupying = budget(() => busy);
+      const queued = owner.translateLocalText(request);
+      rejected = expect(queued).rejects.toMatchObject({name: 'AbortError'});
+      for (let index = 0; index < 10; index++) await Promise.resolve();
+      expect(budget).toHaveBeenCalledTimes(3);
+      expect(workers).toHaveLength(1);
+      owner.disposeLocalTranslationWorker();
+      releaseBudget(); await occupying; await rejected;
+      expect(workers).toHaveLength(1);
+      expect(workers[0].terminate).toHaveBeenCalledOnce();
+      expect(vi.getTimerCount()).toBe(0);
+      await expect(owner.translateLocalText(request)).resolves.toBe('warm');
+      expect(workers).toHaveLength(2);
+    } finally {
+      releaseBudget(); await occupying;
+      owner.disposeLocalTranslationWorker();
+      await rejected;
+    }
+  });
+
+  it.each([[4, 60_000], [8, 180_000], [undefined, 120_000]])('reuses translation across reading pauses with memory %s and releases after %s idle milliseconds', async (memory, idleMs) => {
+    const {owner, workers, request} = await warmOwner(memory);
+    try {
+      for (let index = 0; index < 3; index++) {
+        await expect(owner.translateLocalText(request)).resolves.toBe('warm');
+        await vi.advanceTimersByTimeAsync(45_000);
+      }
+      expect(workers).toHaveLength(1);
+      expect(workers[0].terminate).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(idleMs! - 45_001);
+      expect(workers[0].terminate).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(1);
+      expect(workers[0].terminate).toHaveBeenCalledOnce();
+      await expect(owner.translateLocalText(request)).resolves.toBe('warm');
+      expect(workers).toHaveLength(2);
+    } finally {owner.disposeLocalTranslationWorker();}
+  });
+
+  it('protects a warm translation while checking the model cache and invalidates the entire old queue on disposal', async () => {
+    const ready = {tasks: [{model: LOCAL_TRANSLATION_MODEL_IDS.opusZhEn, phase: 'ready'}]};
+    let finishStatus!: (value: typeof ready) => void;
+    let checking = false;
+    const status = vi.fn(async () => checking ? new Promise<typeof ready>(resolve => {finishStatus = resolve;}) : ready);
+    const {owner, workers, request} = await warmOwner(8, status);
+    try {
+      await owner.translateLocalText(request);
+      await vi.advanceTimersByTimeAsync(179_000);
+      checking = true;
+      const current = owner.translateLocalText(request);
+      const currentRejected = expect(current).rejects.toMatchObject({name: 'AbortError'});
+      const queued = owner.translateLocalText(request);
+      const queueRejected = expect(queued).rejects.toMatchObject({name: 'AbortError'});
+      await vi.advanceTimersByTimeAsync(185_000);
+      expect(workers[0].terminate).not.toHaveBeenCalled();
+      expect(status).toHaveBeenCalledTimes(2);
+      owner.disposeLocalTranslationWorker();
+      finishStatus(ready);
+      await currentRejected; await queueRejected;
+      expect(workers).toHaveLength(1);
+      expect(workers[0].terminate).toHaveBeenCalledOnce();
+      expect(vi.getTimerCount()).toBe(0);
+      checking = false;
+      await expect(owner.translateLocalText(request)).resolves.toBe('warm');
+      expect(workers).toHaveLength(2);
+    } finally {owner.disposeLocalTranslationWorker();}
+  });
+
+  it.each(['retry', 'success'])('does not revive or accept the old translation after disposal races with a %s response', async kind => {
+    const {owner, workers, request} = await warmOwner(8);
+    let disposeOnReply = true;
+    const originalPost = (globalThis.Worker as any).prototype.postMessage;
+    (globalThis.Worker as any).prototype.postMessage = function(message: any) {
+      if (!disposeOnReply) {originalPost.call(this, message); return;}
+      queueMicrotask(() => {
+        this.onmessage?.({data: {requestId: message.requestId, ...(kind === 'retry'
+          ? {success: false, retrySingleThread: true} : {success: true, result: 'old'})}});
+        disposeOnReply = false;
+        owner.disposeLocalTranslationWorker();
+      });
+    };
+    try {
+      await expect(owner.translateLocalText(request)).rejects.toMatchObject({name: 'AbortError'});
+      expect(workers).toHaveLength(1);
+      expect(workers[0].terminate).toHaveBeenCalledOnce();
+      expect(vi.getTimerCount()).toBe(0);
+      await expect(owner.translateLocalText(request)).resolves.toBe('warm');
+      expect(workers).toHaveLength(2);
+    } finally {owner.disposeLocalTranslationWorker();}
+  });
+
   it.each(['reuse', 'switch-model'] as const)('keeps the warm worker alive past its old idle deadline while a %s request waits for capacity', async mode => {
     vi.useFakeTimers();
+    vi.stubGlobal('navigator', {deviceMemory: 8});
     vi.resetModules();
     const readyModels = [LOCAL_TRANSLATION_MODEL_IDS.opusZhEn, LOCAL_TRANSLATION_MODEL_IDS.m2m100];
     vi.doMock('@/src/features/local-translation/offscreen/downloads', () => ({
@@ -249,7 +431,7 @@ describe('local translation idle disposal while waiting for shared capacity', ()
       original.complete('Warm result');
       await expect(warm).resolves.toBe('Warm result');
       expect(vi.getTimerCount()).toBe(1);
-      await vi.advanceTimersByTimeAsync(29_000);
+      await vi.advanceTimersByTimeAsync(179_000);
 
       // 另一类本地推理占满预算；新翻译尚未 postMessage，也没有 Worker 超时。
       occupying = budget(() => busy);
@@ -264,7 +446,7 @@ describe('local translation idle disposal while waiting for shared capacity', ()
       expect(budget).toHaveBeenCalledTimes(3);
       expect(budget).toHaveBeenLastCalledWith(expect.any(Function), controller.signal);
       expect(original.messages).toHaveLength(1);
-      await vi.advanceTimersByTimeAsync(45_000);
+      await vi.advanceTimersByTimeAsync(185_000);
       expect(settled).toBe(false);
       expect(workers).toHaveLength(1);
       expect(original.terminate).not.toHaveBeenCalled();
@@ -283,9 +465,9 @@ describe('local translation idle disposal while waiting for shared capacity', ()
       current.complete('Queued result');
       expect(await outcome).toEqual({result: 'Queued result'});
 
-      // 只有新请求真正完成后才重新开始空闲计时，保留随后 30 秒的热会话。
+      // 只有新请求真正完成后才重新开始空闲计时，保留随后三分钟的热会话。
       expect(vi.getTimerCount()).toBe(1);
-      await vi.advanceTimersByTimeAsync(29_999);
+      await vi.advanceTimersByTimeAsync(179_999);
       expect(current.terminate).not.toHaveBeenCalled();
       await vi.advanceTimersByTimeAsync(1);
       expect(current.terminate).toHaveBeenCalledOnce();

@@ -1,13 +1,13 @@
 /**
  * @file src/app/popup/index.ts
  * 文件职责：连接 Popup HTML 的无框架预唤醒与配置就绪后的应用组装入口。
- * 主要内容：加载尺寸和皮肤样式，利用早期后台提示并行预取候选界面，配置完成后由 mount.ts 挂载实际页面。
- * 模块边界：提示只用于预取，不缓存、不渲染、不写入；mount.ts 始终通过配置 store 新读数据后决定实际挂载界面。
+ * 主要内容：加载尺寸和皮肤样式，工具栏利用早期提示预取候选界面；页内 iframe 先完成授权，再动态载入配置与挂载模块。
+ * 模块边界：提示只用于预取，不缓存、不渲染、不写入；未经授权的嵌入页不导入配置，mount.ts 从新配置快照决定实际界面。
  */
 import './popup.css';
 import 'element-plus/es/components/base/style/css';
 import '@/src/ui/styles/interface-skins.css';
-import {mountPreparedPopupApp} from './mount';
+import {isEmbeddedPopup, isPopupSurfaceActive, observeEmbeddedPopupSize, preparePopupSurface} from './embedded';
 type PopupRuntime = {
   sendMessage(message: unknown, callback?: (response: unknown) => void): Promise<unknown> | void;
   lastError?: unknown;
@@ -43,6 +43,10 @@ function wakePopupWorker(): void {
 }
 
 export async function mountPopupApp(selector: string): Promise<void> {
+  if (!await preparePopupSurface() || !isPopupSurfaceActive()) return;
   wakePopupWorker();
+  const {mountPreparedPopupApp} = await import('./mount');
+  if (!isPopupSurfaceActive()) return;
   await mountPreparedPopupApp(selector);
+  if (isEmbeddedPopup()) observeEmbeddedPopupSize();
 }

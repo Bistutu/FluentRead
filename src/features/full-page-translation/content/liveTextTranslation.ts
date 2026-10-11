@@ -1,7 +1,7 @@
 /**
  * @file src/features/full-page-translation/content/liveTextTranslation.ts
  * 文件职责：按候选类型、展示模式和识别范围选择文本槽请求，保留异步提交所需的来源与译文快照。
- * 主要内容：相同译文保留原文且不重复展示；冻结整个请求与回退链路的配置，为正文双语构造文本快照，对可无损拍平的多槽候选重建整段原文并整块请求、整段译文回填首个槽位，为交互控件和仅译文模式构造带前后缀的实时 Text 槽结果，为按钮型 input 构造属性替换结果，统一传递取消、重试、范围与会话参数。
+ * 主要内容：精确相同译文和有同目标语言证据的排版回显保留原文且不重复展示；冻结整个请求与回退链路的配置，为正文双语构造文本快照，对可无损拍平的多槽候选重建整段原文并整块请求、整段译文回填首个槽位，为交互控件和仅译文模式构造带前后缀的实时 Text 槽结果，为按钮型 input 构造属性替换结果，统一传递取消、重试、范围与会话参数。
  * 模块边界：本文件不管理 DOM 状态、不决定候选、不监听 mutation；runtime 负责 generation 校验和最终渲染。
  */
 import {
@@ -13,9 +13,10 @@ import {
     normalizeTranslationText,
 } from '@/src/core/translation/public';
 import type {TranslationScope, TranslationTextProtectionOptions} from '@/src/core/translation/public';
-import {hasDistinctTranslation} from '@/src/core/translation/result';
+import {hasDistinctTargetTranslation as hasDistinctTranslation} from '@/src/core/translation/targetResult';
 import type {TranslationQueueSession} from '@/src/services/translation/queue';
 import {copyFullPageTranslationConfigSnapshot} from './translationConfigSnapshot';
+import {isPersonalCorrectionEnabled, lookupPersonalCorrection, type PersonalCorrectionSnapshot} from './personalCorrections';
 import {
     translateTextSlots,
     type FullPageTranslationConfigSnapshot,
@@ -65,28 +66,20 @@ function preservesSourceNewlines(node: HTMLElement): boolean {
 async function translateSnapshotAsWholeBlock(
     node: HTMLElement,
     origins: readonly string[],
+    source: string | null,
     snapshot: FullPageTranslationConfigSnapshot,
     signal?: AbortSignal,
     queueSession?: TranslationQueueSession,
     fullPageSession?: FullPageTranslationSessionCache,
-    protectionOptions?: TranslationTextProtectionOptions,
     forceFailedRequest = false,
-    scope?: TranslationScope,
 ): Promise<string[] | null> {
-    const core = getCurrentTranslationCore(scope);
-    // 与提交时的渲染骨架使用同一套省略规则；隐藏文字、tooltip 等不会被当成受保护内容。
-    const skeleton = createTranslationSourceSnapshot(node, core.shouldStayOriginal, undefined,
-        protectionOptions, core.shouldOmitFromTranslation);
-    if (skeleton.slots.length !== origins.length ||
-        skeleton.slots.some((slot, index) => slot.source !== origins[index])) return null;
-    const source = buildWholeBlockTranslationSource(skeleton, {preserveNewlines: preservesSourceNewlines(node)});
     if (!source) return null;
     const [translation = ''] = await translateTextSlots(
         [source], snapshot, signal, queueSession, fullPageSession, forceFailedRequest,
-        ...(fullPageSession && snapshot.enableAIMultiSegment ? [node] : []),
+        ...(snapshot.enableAIContext || (fullPageSession && snapshot.enableAIMultiSegment) ? [node] : []),
     );
     if (!normalizeTranslationText(translation)) return null;
-    if (!hasDistinctTranslation(source, translation)) return [...origins];
+    if (!hasDistinctTranslation(source, translation, snapshot.targetLanguage)) return [...origins];
     return origins.map((_, index) => index === 0 ? translation : '');
 }
 
@@ -106,14 +99,14 @@ export async function translateControlValue(
     const source = node.getAttribute(attribute) ?? '';
     const translations = await translateTextSlots(
         [source], snapshot, signal, queueSession, fullPageSession, forceFailedRequest,
-        ...(fullPageSession && snapshot.enableAIMultiSegment ? [node] : []),
+        ...(snapshot.enableAIContext || (fullPageSession && snapshot.enableAIMultiSegment) ? [node] : []),
     );
     const text = translations[0] ?? source;
     return {
         kind: 'control-value',
         attribute,
         complete: translations.length === 1,
-        changed: hasDistinctTranslation(source, text),
+        changed: hasDistinctTranslation(source, text, snapshot.targetLanguage),
         sources: [source],
         translations,
         text,
@@ -154,10 +147,10 @@ export async function translateLiveText(
         queueSession,
         fullPageSession,
         forceFailedRequest,
-        ...(fullPageSession && snapshot.enableAIMultiSegment ? [node] : []),
+        ...(snapshot.enableAIContext || (fullPageSession && snapshot.enableAIMultiSegment) ? [node] : []),
     );
     const changed = translations.some((translation, index) =>
-        hasDistinctTranslation(origins[index]!, translation),
+        hasDistinctTranslation(origins[index]!, translation, snapshot.targetLanguage),
     );
 
     return {
@@ -174,11 +167,11 @@ export async function translateLiveText(
     };
 }
 
-export type TranslationResult = LiveTextTranslationResult | ControlValueTranslationResult | {
+export type TranslationResult = (LiveTextTranslationResult | ControlValueTranslationResult | {
     kind: 'snapshot';
     sources: readonly string[];
     translations: readonly string[];
-};
+}) & {personalCorrection?: PersonalCorrectionSnapshot};
 
 /** 统一冻结候选范围；异步期间其他会话的范围变化不能改变本次请求的文本槽。 */
 export async function createTranslationRequest(
@@ -207,13 +200,28 @@ export async function createTranslationRequest(
         undefined, protectionOptions);
     const origins = parts.map((part) => part.source);
     if (origins.length === 0) return {kind: 'snapshot', sources: [], translations: []};
+    let source: string | null = null;
+    if (origins.length > 1 || (import.meta.env.BROWSER !== 'userscript' && isPersonalCorrectionEnabled())) {
+        const core = getCurrentTranslationCore(scope);
+        const skeleton = createTranslationSourceSnapshot(node, core.shouldStayOriginal, undefined,
+            protectionOptions, core.shouldOmitFromTranslation);
+        source = skeleton.slots.length === origins.length && skeleton.slots.every((slot, index) => slot.source === origins[index])
+            ? origins.length === 1 && !skeleton.clone.firstElementChild ? origins[0]!
+                : buildWholeBlockTranslationSource(skeleton, {preserveNewlines: preservesSourceNewlines(node)}) : null;
+    }
+    const personalCorrection = import.meta.env.BROWSER !== 'userscript' && source
+        ? await lookupPersonalCorrection(node, source, snapshot.sourceLanguage, snapshot.targetLanguage, signal) : undefined;
+    if (personalCorrection?.translation) return {kind: 'snapshot', sources: origins,
+        translations: origins.map((_, index) => index === 0 ? personalCorrection.translation! : ''), personalCorrection};
+    const finish = (translations: readonly string[]): TranslationResult => ({kind: 'snapshot', sources: origins, translations,
+        ...(import.meta.env.BROWSER !== 'userscript' && personalCorrection ? {personalCorrection: {...personalCorrection, baseline: [...translations]}} : {})});
     if (parts.length > 1) {
-        const wholeBlock = await translateSnapshotAsWholeBlock(node, origins, snapshot, signal, queueSession,
-            fullPageSession, protectionOptions, forceFailedRequest, scope);
-        if (wholeBlock) return {kind: 'snapshot', sources: origins, translations: wholeBlock};
+        const wholeBlock = await translateSnapshotAsWholeBlock(node, origins, source, snapshot, signal, queueSession,
+            fullPageSession, forceFailedRequest);
+        if (wholeBlock) return finish(wholeBlock);
     }
     const translations = await translateTextSlots(origins, snapshot, signal, queueSession,
         fullPageSession, forceFailedRequest,
-        ...(fullPageSession && snapshot.enableAIMultiSegment ? [node] : []));
-    return {kind: 'snapshot', sources: origins, translations};
+        ...(snapshot.enableAIContext || (fullPageSession && snapshot.enableAIMultiSegment) ? [node] : []));
+    return finish(translations);
 }

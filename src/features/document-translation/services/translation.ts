@@ -1,10 +1,11 @@
 /**
  * @file src/features/document-translation/services/translation.ts
  * 文件职责：编排文档片段的批量翻译流程，在固定语言和服务快照下按数量及字符预算拆批，并向调用方持续报告确定性进度。
- * 主要内容：定义进度与逐段提交契约，在本次文档调用中默认启用机器批量或 AI 多段槽请求而不改变全局设置，按阅读位置重排待译片段并可收紧单批大小，同时保持数批请求在途、先返回的先提交，以一次去重和游标领取避免重复原文挤占批量预算或反复扫描长文队列，提交前移除服务凭空加入的表情符号，请求失败时可按退避间隔自动重试并向页面报告原因，被服务原样返回的专名与短词保留原文而不中断全文，复用已有译文继续未完成片段，提供文件解析所有权，固定文件级上下文，透传全局暂停状态、校验批次结果并阻止取消和失败后的迟到提交与继续回退请求。
+ * 主要内容：定义进度与逐段提交契约，在本次文档调用中默认启用机器批量或 AI 多段槽请求而不改变全局设置，按阅读位置重排待译片段并可收紧单批大小，同时保持数批请求在途、先返回的先提交，以章节内一次去重和游标领取避免重复原文挤占批量预算或反复扫描长文队列，按原生章节和位置构建有界篇章参考并区分人工确认译文，提交前移除服务凭空加入的表情符号，请求失败时可按退避间隔自动重试并向页面报告原因，被服务原样返回的专名与短词保留原文而不中断全文，复用已有译文继续未完成片段，提供文件解析所有权，固定文件级上下文，透传全局暂停状态、校验批次结果并阻止取消和失败后的迟到提交与继续回退请求。
  * 模块边界：该层不解析文件、不持久化配置，也不直接绑定具体 provider；上层负责冻结用户设置并注入 gateway，文档结构由 core 提供，网络和缓存语义由应用翻译客户端承担。
  */
 import {serializeTranslationError, TranslationRequestError} from '@/src/services/translation/errors';
+import {createDiscourseContext, discourseContextLimits, type DiscourseBlock} from '@/src/services/translation/context/discourse';
 import type {DocumentSegment} from '@/src/features/document-translation/core/document';
 
 export interface DocumentTranslationProgress {
@@ -16,7 +17,11 @@ export interface DocumentTranslationOptions {
     glossaryIds?: readonly string[] | null;
     glossaryRevision?: string;
     fileName: string;
+    /** 原文件摘要或当前会话文件标识；篇章状态仅属于这次任务，不持久化。 */
+    materialId?: string;
     pageContext?: string;
+    /** 沿用现有 AI 上下文开关；默认不创建篇章状态，也不改变并发。 */
+    enableAIContext?: boolean;
     serviceOverride?: string;
     modelOverride?: string;
     sourceLanguage?: string;
@@ -25,6 +30,8 @@ export interface DocumentTranslationOptions {
     maxRetries?: number;
     /** 同一文档和设置下已完成或人工校订的译文；空白位置继续翻译。 */
     initialTranslations?: readonly string[];
+    /** 当前阅读会话里经用户编辑确认的片段，历史机器译文不能冒充用户确认。 */
+    confirmedTranslationIds?: readonly number[];
     /** 仅本次文档调用生效，默认开启；关闭时逐段请求，不修改网页或全局 AI 多段翻译设置。 */
     batchTranslation?: boolean;
     /** 每次领取下一批之前重排尚未翻译的片段，让阅读器把正在看的页排到前面；返回值必须恰好是传入的那些片段。 */
@@ -50,6 +57,10 @@ export interface DocumentTranslationRequestOptions {
     glossaryContext?: 'document';
     signal?: AbortSignal;
     pageContext: string;
+    discourseContext?: string;
+    enableAIContext?: boolean;
+    /** 文档本次合批开关覆盖全局偏好；逐段及协议降级不能被服务收集窗再次合批。 */
+    enableNativeBatch?: boolean;
     serviceOverride?: string;
     modelOverride?: string;
     sourceLanguage?: string;
@@ -221,6 +232,22 @@ function buildDocumentContext(segments: readonly DocumentSegment[], fileName: st
     return `Document: ${fileName}\n${preview}`.slice(0, 4_000);
 }
 
+/** 原生章节标签变化与显式标题形成局部作用域，以起始片段位置隔离；页码只提供位置，不猜测人物或缩写含义。 */
+function documentDiscourseBlocks(segments: readonly DocumentSegment[]): DiscourseBlock[] {
+    let section = 'document';
+    let chapterLabel: string | undefined;
+    return segments.map(segment => {
+        const label = segment.contextLabel;
+        // 页码只有位置语义：翻到下一页不能让同一人物突然丢掉前文；重复的章节标签也不重复切章。
+        const pageLabel = label && /^(?:第\s*\d+\s*页|Page\s+\d+)$/iu.test(label.trim());
+        const changedChapter = label && !pageLabel && label !== chapterLabel;
+        if (changedChapter || segment.role === 'title' || segment.role === 'heading') section = `section:${segment.id}`;
+        if (label && !pageLabel) chapterLabel = label;
+        return {id: String(segment.id), section, source: segment.source,
+            position: [segment.contextLabel, segment.pathLabel, segment.timeStart, `段落 ${segment.id + 1}`].filter(Boolean).join(' · ')};
+    });
+}
+
 export function createDocumentSegmentTranslator(
     gateway: DocumentTranslationGateway,
 ): TranslateDocumentSegments {
@@ -246,161 +273,115 @@ export function createDocumentSegmentTranslator(
         const targetLanguage = options.targetLanguage;
         const service = options.serviceOverride || gateway.getDefaultService();
         const model = options.modelOverride || gateway.getDefaultModel?.(service);
-        let completed = segments.length - pending.length;
-        const reportProgress = () => options.onProgress?.({completed, total: segments.length});
-        const sources = new Map(segments.map(segment => [segment.id, segment.source]));
-        // 原文完全相同的片段（字幕里重复的台词、表格里重复的单元格）只翻译一次：一处有了译文，其余同时提交，用词也保持一致。
-        const twins = new Map<string, DocumentSegment[]>();
-        for (const segment of pending) {
-            const {source} = segment;
-            const identical = twins.get(source);
-            if (identical) identical.push(segment);
-            else twins.set(source, [segment]);
-        }
-        const commit = (id: number, received: string) => {
-            throwIfAborted(options.signal);
-            const source = sources.get(id)!;
-            const translation = stripInventedPictographs(source, received);
-            for (const {id: twin} of twins.get(source)!) {
-                throwIfAborted(options.signal);
-                translations[twin] = translation;
-                completed += 1;
-                options.onSegment?.({id: twin, translation});
-            }
+        const enableAIContext = options.enableAIContext === true;
+        const blocks = Object.freeze(documentDiscourseBlocks(segments).map(block => Object.freeze(block)));
+        const blockSections = new Map(blocks.map(block => [Number(block.id), block.section]));
+        const reuseKeys = new Map(segments.map(segment => [segment.id, JSON.stringify([blockSections.get(segment.id), segment.source])]));
+        const reuseKey = ({id}: DocumentSegment) => reuseKeys.get(id)!;
+        const segmentById = new Map(segments.map(segment => [segment.id, segment]));
+        const discourse = enableAIContext ? createDiscourseContext() : undefined;
+        const materialId = options.materialId || context;
+        const languageKey = JSON.stringify([sourceLanguage, targetLanguage, service, model, glossaryOptions.glossaryRevision]);
+        const prepareDiscourse = (id: number, origins: string[]) => {
+            // 同一冻结材料只算一次全文版本；章节焦点移动保留有界译文，读取后文不会退化为前缀参考。
+            discourse?.replace(materialId, languageKey, blocks, String(id));
+            return discourse?.prepare(String(id), origins, options.signal);
         };
-        // 继续未完成的任务时，已有译文的原文直接复用给后面相同的片段，不再请求。
-        const known = new Map<string, string>();
-        for (const {id, source} of segments) if (translations[id].trim() && !known.has(source)) known.set(source, translations[id]);
-        for (const {id, source} of pending) if (!translations[id].trim() && known.has(source)) commit(id, known.get(source)!);
-        reportProgress();
-
-        // 先只保留每个原文的一段，再分配批量字符和数量预算；字幕重复台词和表格重复单元格不会挤成小请求。
-        const queuedSources = new Set<string>();
-        let queue: DocumentSegment[] = [];
-        for (const segment of pending) {
-            if (translations[segment.id].trim() || queuedSources.has(segment.source)) continue;
-            queuedSources.add(segment.source);
-            queue.push(segment);
-        }
-        let cursor = 0;
-        const nextBatch = (items: number, characters: number): DocumentSegment[] => {
-            if (options.prioritize) {
-                // 同一原文可能同时出现在首尾页：把所有尚未认领的位置交给阅读优先级，再只发送最先选中的代表。
-                const remaining = [...queuedSources].flatMap(source => twins.get(source)!);
-                const ordered = prioritized(remaining, options.prioritize);
-                const seen = new Set<string>();
-                queue = ordered.filter(segment => {
-                    if (seen.has(segment.source)) return false;
-                    seen.add(segment.source);
-                    return true;
-                });
-                cursor = 0;
+        const confirmed = new Set(options.confirmedTranslationIds);
+        if (discourse) {
+            // 历史可能已经译完几千段，最多回填状态本身可保存的64对；确认来源优先占用预算。
+            const confirmedSegments = segments.filter(segment => confirmed.has(segment.id) && translations[segment.id].trim()).slice(-discourseContextLimits.pairs);
+            const previousSegments = segments.filter(segment => !confirmed.has(segment.id) && translations[segment.id].trim());
+            const machineBudget = discourseContextLimits.pairs - confirmedSegments.length;
+            const seeds = [...(machineBudget ? previousSegments.slice(-machineBudget) : []), ...confirmedSegments];
+            for (const segment of seeds) {
+                prepareDiscourse(segment.id, [segment.source])?.commit([translations[segment.id]], confirmed.has(segment.id));
             }
-            const taken = takeBatch(queue, cursor, items, characters);
-            cursor += taken.length;
-            for (const segment of taken) queuedSources.delete(segment.source);
-            return taken;
-        };
-        const batchTranslation = options.batchTranslation !== false;
-        const aiMultiSegment = batchTranslation && Boolean(gateway.supportsAIMultiSegment?.(service, model));
-        if (batchTranslation && (gateway.supportsBatch(service) || aiMultiSegment)) {
-            const itemLimit = boundedLimit(options.batchLimits?.items, BATCH_ITEM_LIMIT);
-            const characterLimit = boundedLimit(options.batchLimits?.characters, BATCH_CHARACTER_LIMIT);
-            // 同时发出几批请求：先出结果的那一批先显示，整篇的等待时间按并发数缩短；任何一批失败后其余批次不再认领新片段。
-            let failed = false;
-            // 一个服务不理解多段槽协议时，本次任务后面的新请求直接逐段，避免每一批都先发送一次注定失败的槽包。
-            let singleFallback = false;
-            const batchWorker = async () => {
-            while (cursor < queue.length && !failed) {
+        }
+        const discourseOptions = (segment: DocumentSegment, origins: string[]) => ({
+            ...(options.enableAIContext === undefined ? {} : {enableAIContext}),
+            ...(discourse ? {discourseContext: prepareDiscourse(segment.id, origins)!.context} : {}),
+        });
+        try {
+            let completed = segments.length - pending.length;
+            const reportProgress = () => options.onProgress?.({completed, total: segments.length});
+            const sources = new Map(segments.map(segment => [segment.id, segment.source]));
+            // 同章节原文相同的片段只翻译一次；换章后缩写或人物名可能另有所指，不跨章强行复用。
+            const twins = new Map<string, DocumentSegment[]>();
+            for (const segment of pending) {
+                const key = reuseKey(segment);
+                const identical = twins.get(key);
+                if (identical) identical.push(segment);
+                else twins.set(key, [segment]);
+            }
+            const commit = (id: number, received: string) => {
                 throwIfAborted(options.signal);
-                const single = singleFallback;
-                const batch = nextBatch(single ? 1 : itemLimit, characterLimit);
-                try {
-                    const result = await withRetryBackoff(async () => {
-                    const requestOptions: DocumentTranslationRequestOptions = {
-                        ...glossaryOptions,
-                        signal: options.signal,
-                        pageContext,
-                        serviceOverride: service,
-                        modelOverride: model,
-                        sourceLanguage,
-                        targetLanguage,
-                        maxRetries: options.maxRetries,
-                    };
-                    const result = single ? [await gateway.translateText(batch[0].source, context, requestOptions)] : await gateway.translateTextBatch(
-                        batch.map((segment) => segment.source),
-                        context,
-                        {
-                            ...requestOptions,
-                            documentBatch: true,
-                            ...(aiMultiSegment ? {aiMultiSegment: true} : {}),
-                        },
-                    );
+                const source = sources.get(id)!;
+                const translation = stripInventedPictographs(source, received);
+                prepareDiscourse(id, [source])?.commit([translation]);
+                for (const {id: twin} of twins.get(reuseKey(segmentById.get(id)!))!) {
                     throwIfAborted(options.signal);
-                    // 按请求位置校验，Array.some 会跳过返回数组中的空洞。
-                    if (result.length !== batch.length || batch.some((_, index) => typeof result[index] !== 'string' || !result[index].trim())) {
-                        throw new Error('翻译服务返回的片段不完整，请重试');
-                    }
-                    return result;
-                    }, options, () => failed);
-                    if (failed) return;
-                    result.forEach((translation, index) => commit(batch[index].id, translation));
-                    reportProgress();
-                } catch (error) {
-                    if (failed) return;
-                    throwIfAborted(options.signal);
-                    if (single && untranslatedEcho(error)) {
-                        commit(batch[0].id, batch[0].source);
-                        reportProgress();
-                        continue;
-                    }
-                    if (untranslatedEcho(error) || (aiMultiSegment && invalidAIMultiSegment(error))) {
-                        if (invalidAIMultiSegment(error)) singleFallback = true;
-                        // 整批里只要有一段被原样返回就会整批报错；逐段重译，仍被原样返回的那几段保留原文。
-                        for (const segment of batch) {
-                            throwIfAborted(options.signal);
-                            let translation = segment.source;
-                            try {
-                                const received = await gateway.translateText(segment.source, context, {...glossaryOptions, signal: options.signal, pageContext,
-                                    serviceOverride: service, modelOverride: model, sourceLanguage, targetLanguage, maxRetries: options.maxRetries});
-                                if (typeof received === 'string' && received.trim()) translation = received;
-                            } catch (single) {
-                                if (failed) return;
-                                throwIfAborted(options.signal);
-                                if (!untranslatedEcho(single)) {
-                                    failed = true;
-                                    if (single instanceof TranslationRequestError && single.code === 'TRANSLATION_DISABLED') throw single;
-                                    throw new Error(`第 ${segment.id + 1} 段文档翻译失败：${getErrorMessage(single)}`);
-                                }
-                            }
-                            if (failed) return;
-                            commit(segment.id, translation);
-                            reportProgress();
-                        }
-                        continue;
-                    }
-                    failed = true;
-                    if (error instanceof TranslationRequestError && error.code === 'TRANSLATION_DISABLED') throw error;
-                    throw new Error(`第 ${batch[0].id + 1} 段文档翻译失败：${getErrorMessage(error)}`);
+                    translations[twin] = translation;
+                    completed += 1;
+                    options.onSegment?.({id: twin, translation});
                 }
-            }
             };
-            await Promise.all(Array.from({length: boundedLimit(options.batchConcurrency, BATCH_CONCURRENCY)}, () => batchWorker()));
-            return translations;
-        }
+            // 继续未完成的任务时，已有译文的原文直接复用给后面相同的片段，不再请求。
+            const known = new Map<string, string>();
+            for (const segment of segments) if (translations[segment.id].trim() && !known.has(reuseKey(segment))) known.set(reuseKey(segment), translations[segment.id]);
+            for (const segment of pending) if (!translations[segment.id].trim() && known.has(reuseKey(segment))) commit(segment.id, known.get(reuseKey(segment))!);
+            reportProgress();
 
-        let stopped = false;
-        const workerCount = Math.min(BATCH_CONCURRENCY, queue.length);
-        const worker = async () => {
-            while (true) {
-                throwIfAborted(options.signal);
-                const [segment] = nextBatch(1, Number.POSITIVE_INFINITY);
-                if (!segment) return;
-
-                try {
-                    const translation = await withRetryBackoff(async () => {
-                        const received = await gateway.translateText(segment.source, context, {
+            // 先只保留每个原文的一段，再分配批量字符和数量预算；字幕重复台词和表格重复单元格不会挤成小请求。
+            const queuedSources = new Set<string>();
+            let queue: DocumentSegment[] = [];
+            for (const segment of pending) {
+                const key = reuseKey(segment);
+                if (translations[segment.id].trim() || queuedSources.has(key)) continue;
+                queuedSources.add(key);
+                queue.push(segment);
+            }
+            let cursor = 0;
+            const nextBatch = (items: number, characters: number): DocumentSegment[] => {
+                if (options.prioritize) {
+                    // 同一原文可能同时出现在首尾页：把所有尚未认领的位置交给阅读优先级，再只发送最先选中的代表。
+                    const remaining = [...queuedSources].flatMap(source => twins.get(source)!);
+                    const ordered = prioritized(remaining, options.prioritize);
+                    const seen = new Set<string>();
+                    queue = ordered.filter(segment => {
+                        const key = reuseKey(segment);
+                        if (seen.has(key)) return false;
+                        seen.add(key);
+                        return true;
+                    });
+                    cursor = 0;
+                }
+                const taken = takeBatch(queue, cursor, items, characters);
+                cursor += taken.length;
+                for (const segment of taken) queuedSources.delete(reuseKey(segment));
+                return taken;
+            };
+            const batchTranslation = options.batchTranslation !== false;
+            // AI 篇章模式保留逐段按序提交，后文才能使用当前任务已完成的前文译法。
+            const aiMultiSegment = batchTranslation && !enableAIContext && Boolean(gateway.supportsAIMultiSegment?.(service, model));
+            if (batchTranslation && (gateway.supportsBatch(service) || aiMultiSegment)) {
+                const itemLimit = boundedLimit(options.batchLimits?.items, BATCH_ITEM_LIMIT);
+                const characterLimit = boundedLimit(options.batchLimits?.characters, BATCH_CHARACTER_LIMIT);
+                // 同时发出几批请求：先出结果的那一批先显示，整篇的等待时间按并发数缩短；任何一批失败后其余批次不再认领新片段。
+                let failed = false;
+                // 一个服务不理解多段槽协议时，本次任务后面的新请求直接逐段，避免每一批都先发送一次注定失败的槽包。
+                let singleFallback = false;
+                const batchWorker = async () => {
+                while (cursor < queue.length && !failed) {
+                    throwIfAborted(options.signal);
+                    const single = singleFallback;
+                    const batch = nextBatch(single ? 1 : itemLimit, characterLimit);
+                    try {
+                        const result = await withRetryBackoff(async () => {
+                        const requestOptions: DocumentTranslationRequestOptions = {
                             ...glossaryOptions,
+                            ...discourseOptions(batch[0], batch.map(segment => segment.source)),
+                            enableNativeBatch: !single,
                             signal: options.signal,
                             pageContext,
                             serviceOverride: service,
@@ -408,29 +389,114 @@ export function createDocumentSegmentTranslator(
                             sourceLanguage,
                             targetLanguage,
                             maxRetries: options.maxRetries,
-                        });
-                        // 其他 worker 已经失败时不再为这一段重试。
-                        if (!stopped && (typeof received !== 'string' || !received.trim())) throw new Error('翻译服务返回空译文，请重试');
-                        return received;
-                    }, options, () => stopped);
-                    // Promise.all 会在首个 worker 失败时立即 reject；其余在途请求仍会稍后结束。
-                    // 步骤 1：失败后不再上报过期进度，也不继续认领新的文档片段。
-                    if (stopped) return;
-                    throwIfAborted(options.signal);
-                    commit(segment.id, translation);
-                    reportProgress();
-                } catch (error) {
-                    if (stopped) return;
-                    if (!options.signal?.aborted && untranslatedEcho(error)) {commit(segment.id, segment.source); reportProgress(); continue;}
-                    stopped = true;
-                    if (options.signal?.aborted) throwIfAborted(options.signal);
-                    if (error instanceof TranslationRequestError && error.code === 'TRANSLATION_DISABLED') throw error;
-                    throw new Error(`第 ${segment.id + 1} 段文档翻译失败：${getErrorMessage(error)}`);
+                        };
+                        const result = single ? [await gateway.translateText(batch[0].source, context, requestOptions)] : await gateway.translateTextBatch(
+                            batch.map((segment) => segment.source),
+                            context,
+                            {
+                                ...requestOptions,
+                                documentBatch: true,
+                                ...(aiMultiSegment ? {aiMultiSegment: true} : {}),
+                            },
+                        );
+                        throwIfAborted(options.signal);
+                        // 按请求位置校验，Array.some 会跳过返回数组中的空洞。
+                        if (result.length !== batch.length || batch.some((_, index) => typeof result[index] !== 'string' || !result[index].trim())) {
+                            throw new Error('翻译服务返回的片段不完整，请重试');
+                        }
+                        return result;
+                        }, options, () => failed);
+                        if (failed) return;
+                        result.forEach((translation, index) => commit(batch[index].id, translation));
+                        reportProgress();
+                    } catch (error) {
+                        if (failed) return;
+                        throwIfAborted(options.signal);
+                        if (single && untranslatedEcho(error)) {
+                            commit(batch[0].id, batch[0].source);
+                            reportProgress();
+                            continue;
+                        }
+                        if (untranslatedEcho(error) || (aiMultiSegment && invalidAIMultiSegment(error))) {
+                            if (invalidAIMultiSegment(error)) singleFallback = true;
+                            // 整批里只要有一段被原样返回就会整批报错；逐段重译，仍被原样返回的那几段保留原文。
+                            for (const segment of batch) {
+                                throwIfAborted(options.signal);
+                                let translation = segment.source;
+                                try {
+                                    const received = await gateway.translateText(segment.source, context, {...glossaryOptions, ...discourseOptions(segment, [segment.source]), enableNativeBatch: false, signal: options.signal, pageContext,
+                                        serviceOverride: service, modelOverride: model, sourceLanguage, targetLanguage, maxRetries: options.maxRetries});
+                                    if (typeof received === 'string' && received.trim()) translation = received;
+                                } catch (single) {
+                                    if (failed) return;
+                                    throwIfAborted(options.signal);
+                                    if (!untranslatedEcho(single)) {
+                                        failed = true;
+                                        if (single instanceof TranslationRequestError && single.code === 'TRANSLATION_DISABLED') throw single;
+                                        throw new Error(`第 ${segment.id + 1} 段文档翻译失败：${getErrorMessage(single)}`);
+                                    }
+                                }
+                                if (failed) return;
+                                commit(segment.id, translation);
+                                reportProgress();
+                            }
+                            continue;
+                        }
+                        failed = true;
+                        if (error instanceof TranslationRequestError && error.code === 'TRANSLATION_DISABLED') throw error;
+                        throw new Error(`第 ${batch[0].id + 1} 段文档翻译失败：${getErrorMessage(error)}`);
+                    }
                 }
+                };
+                await Promise.all(Array.from({length: boundedLimit(options.batchConcurrency, BATCH_CONCURRENCY)}, () => batchWorker()));
+                return translations;
             }
-        };
 
-        await Promise.all(Array.from({length: workerCount}, () => worker()));
-        return translations;
+            let stopped = false;
+            const workerCount = Math.min(enableAIContext ? 1 : BATCH_CONCURRENCY, queue.length);
+            const worker = async () => {
+                while (true) {
+                    throwIfAborted(options.signal);
+                    const [segment] = nextBatch(1, Number.POSITIVE_INFINITY);
+                    if (!segment) return;
+
+                    try {
+                        const translation = await withRetryBackoff(async () => {
+                            const received = await gateway.translateText(segment.source, context, {
+                                ...glossaryOptions,
+                                ...discourseOptions(segment, [segment.source]),
+                                enableNativeBatch: false,
+                                signal: options.signal,
+                                pageContext,
+                                serviceOverride: service,
+                                modelOverride: model,
+                                sourceLanguage,
+                                targetLanguage,
+                                maxRetries: options.maxRetries,
+                            });
+                            // 其他 worker 已经失败时不再为这一段重试。
+                            if (!stopped && (typeof received !== 'string' || !received.trim())) throw new Error('翻译服务返回空译文，请重试');
+                            return received;
+                        }, options, () => stopped);
+                        // Promise.all 会在首个 worker 失败时立即 reject；其余在途请求仍会稍后结束。
+                        // 步骤 1：失败后不再上报过期进度，也不继续认领新的文档片段。
+                        if (stopped) return;
+                        throwIfAborted(options.signal);
+                        commit(segment.id, translation);
+                        reportProgress();
+                    } catch (error) {
+                        if (stopped) return;
+                        if (!options.signal?.aborted && untranslatedEcho(error)) {commit(segment.id, segment.source); reportProgress(); continue;}
+                        stopped = true;
+                        if (options.signal?.aborted) throwIfAborted(options.signal);
+                        if (error instanceof TranslationRequestError && error.code === 'TRANSLATION_DISABLED') throw error;
+                        throw new Error(`第 ${segment.id + 1} 段文档翻译失败：${getErrorMessage(error)}`);
+                    }
+                }
+            };
+
+            await Promise.all(Array.from({length: workerCount}, () => worker()));
+            return translations;
+        } finally {discourse?.clear();}
     };
 }

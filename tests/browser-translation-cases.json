@@ -867,5 +867,40 @@
     "fullPageHotkey": "Alt+T",
     "service": "freeTranslation",
     "notes": "真实帮助文章，保留搜索和反馈控件；另由 run-translation-viewport-test.cjs 验证页面不发生错误滚动补偿。"
+  },
+  "producthunt-home": {
+    "url": "https://www.producthunt.com/",
+    "hoverSelector": "main [data-test^=\"homepage-section-\"] > section[data-container] > div > span:nth-of-type(2)",
+    "requiredSelectors": [
+      "main [data-test^=\"homepage-section-\"] > section[data-container] > div > span:nth-of-type(2)"
+    ],
+    "coverageRules": [
+      {
+        "name": "product-taglines",
+        "selector": "main [data-test^=\"homepage-section-\"] > section[data-container] > div > span:nth-of-type(2)",
+        "kind": "content",
+        "minInitial": 2
+      }
+    ],
+    "forbiddenSelectors": [
+      "main [data-test^=\"homepage-section-\"] > section[data-container] > div > span:first-of-type",
+      "header",
+      "#root-container > footer",
+      "[data-test=\"dismiss-CookiePopup\"]",
+      "input[data-test=\"header-search-input\"]"
+    ],
+    "interactionSelectors": [
+      "main [data-test^=\"homepage-section-\"] > section[data-container] > div > span:first-of-type > a[href^=\"/products/\"]"
+    ],
+    "modes": [
+      "hover",
+      "full"
+    ],
+    "tier": "quarantine",
+    "quarantineReason": "Product Hunt 可能返回 Cloudflare 人机验证；正文缺失需判定站点限制。",
+    "hoverHotkey": "Control",
+    "fullPageHotkey": "Alt+T",
+    "service": "freeTranslation",
+    "notes": "真实首页产品介绍逐卡翻译；持久 case 严格保留产品名称、页脚和搜索，不能用帮助中心文章代替本页面。实时投票数会由宿主自动更新，投票控件的原文与无译文断言由专站 fixture 和本次隔离浏览器专项证据覆盖，不对实时数字进行静态文本比较。"
   }
 }

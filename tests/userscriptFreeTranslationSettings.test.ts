@@ -27,6 +27,8 @@ describe('userscript free translation settings', () => {
             freeTranslationMode: 'unexpected',
             freeTranslationOrder: ['sogouFree', 'sogouFree', 'unknown'],
             freeTranslationWeights: {sogouFree: 99},
+            // 旧配置首次升级会插入 B站；这里验证的是已升级配置的去重与过滤。
+            freeTranslationBilibiliDefaultApplied: true,
         });
         expect(normalized.freeTranslationMode).toBe('balanced');
         expect(normalized.freeTranslationOrder).toEqual(['sogouFree']);

@@ -529,9 +529,9 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(walk(root).some(entry => entry.text === `document.changeDocument.${available ? 'historyHint' : 'downloadHint'}`)).toBe(true);
     });
 
-    it('keeps the task language, service, model and document batch snapshot across delayed scanned-PDF OCR and external settings updates', async () => {
+    it.each([false, true])('keeps the task language, service, model, document batch and AI context snapshot across delayed scanned-PDF OCR with context=%s', async enableAIContext => {
         const initial = JSON.parse(JSON.stringify(ports.config));
-        Object.assign(initial, {from: 'en', to: 'zh-CN', documentService: 'openai', enableAIMultiSegment: false});
+        Object.assign(initial, {from: 'en', to: 'zh-CN', documentService: 'openai', enableAIMultiSegment: false, enableAIContext});
         initial.documentModel.openai = 'document-before';
         initial.token.openai = 'fixture-only-token';
         Object.assign(ports.config, initial);
@@ -559,7 +559,7 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(ports.translate).not.toHaveBeenCalled();
 
         const external = JSON.parse(JSON.stringify(initial));
-        Object.assign(external, {from: 'fr', to: 'de', documentService: 'google', enableAIMultiSegment: true});
+        Object.assign(external, {from: 'fr', to: 'de', documentService: 'google', enableAIMultiSegment: true, enableAIContext: !enableAIContext});
         external.documentModel.openai = 'document-after';
         Object.assign(ports.config, external);
         const sharedAfterUpdate = JSON.stringify(ports.config);
@@ -569,15 +569,25 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         expect(state.taskFingerprint).toBe(fingerprint);
 
         const sources = ['Recognized first paragraph', 'Recognized second paragraph'];
+        ports.translate.mockImplementation(async (source: string) => `译 ${source}`);
         const recognized = {...scanned, segments: sources.map((source, id) => ({id, source})), binary: {...scanned.binary,
             pages: scanned.binary.pages.map((page: any) => ({...page, scanned: false, segmentIndexes: [0, 1]})),
         }};
         recognizing.resolve(recognized); await running; await flush();
-        expect(ports.batch).toHaveBeenCalledOnce();
-        expect(ports.batch).toHaveBeenCalledWith(sources, 'scanned.pdf', expect.objectContaining({
-            serviceOverride: 'openai', modelOverride: 'document-before', sourceLanguage: 'en', targetLanguage: 'zh-CN', aiMultiSegment: true,
-        }));
-        expect(ports.translate).not.toHaveBeenCalled();
+        const frozenSettings = {serviceOverride: 'openai', modelOverride: 'document-before', sourceLanguage: 'en', targetLanguage: 'zh-CN', enableAIContext};
+        if (enableAIContext) {
+            expect(ports.batch).not.toHaveBeenCalled();
+            expect(ports.translate).toHaveBeenCalledTimes(2);
+            for (const [source, context, options] of ports.translate.mock.calls) {
+                expect(sources).toContain(source);
+                expect(context).toBe('scanned.pdf');
+                expect(options).toEqual(expect.objectContaining({...frozenSettings, discourseContext: expect.any(String)}));
+            }
+        } else {
+            expect(ports.batch).toHaveBeenCalledOnce();
+            expect(ports.batch).toHaveBeenCalledWith(sources, 'scanned.pdf', expect.objectContaining({...frozenSettings, aiMultiSegment: true}));
+            expect(ports.translate).not.toHaveBeenCalled();
+        }
         expect(state.translationComplete).toBe(true);
         expect(state.translatedSegments).toEqual(sources.map(source => `译 ${source}`));
         expect(state.taskFingerprint).toBe(fingerprint);
@@ -649,6 +659,25 @@ describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
         state.readerTab = 'read'; await flush();
         expect(ports.zoomBindings.at(-1).target).toBe(viewport);
         app.unmount(); app = null; await flush(); expect(ports.zoomBindings.every(entry => entry.dispose.mock.calls.length === 1)).toBe(true);
+    });
+
+    it('keeps manually confirmed translations in the current file session and clears them on restart', async () => {
+        state.config.documentService = 'google';
+        await state.loadFiles([file('first.txt', 'First paragraph\n\nSecond paragraph')]); await flush();
+        state.editSegment(0, '人工确认译文');
+        expect(state.confirmedTranslationIds).toEqual([0]);
+        await state.loadFiles([file('second.txt', 'Another paragraph')]); await flush();
+        expect(state.confirmedTranslationIds).toEqual([]);
+        state.selectDocument(state.documentQueue[0]); await flush();
+        expect(state.confirmedTranslationIds).toEqual([0]);
+        state.editSegment(0, '  ');
+        expect(state.confirmedTranslationIds).toEqual([]);
+        state.editSegment(0, '再次确认');
+        await state.startTranslation(true); await flush();
+        expect(state.confirmedTranslationIds).toEqual([]);
+        state.editSegment(0, '确认后重置');
+        state.resetDocument(); await flush();
+        expect(state.confirmedTranslationIds).toEqual([]);
     });
 
     it('opens a text-based formula-only PDF for source reading without provider requests or invalid progress', async () => {
