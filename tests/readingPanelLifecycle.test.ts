@@ -74,6 +74,45 @@ async function mountPanel(overrides: Record<string, unknown> = {}, sessions: Har
   return {panel, calls, props, sendMessage, sourceChange, finish, state, tick: runtime.nextTick};
 }
 
+describe('reading evidence ownership', () => {
+  it('uses only the bounded authorized context and clears highlights when stopped or the source changes', async () => {
+    const clearEvidence = vi.fn();
+    const locateEvidence = vi.fn(() => 'located');
+    const {panel, props, calls, tick} = await mountPanel({clearEvidence, locateEvidence, sourceRevision: 0, preferences: {...DEFAULT_HARNESS_PREFERENCES, enabled: true, contextMode: 'paragraph', maxContextChars: 500}});
+    expect(panel.evidenceSources.some((source: any) => source.kind === 'context')).toBe(true);
+    expect(panel.evidenceLocator).toBe(locateEvidence);
+    const call = calls.at(-1)!;
+    call.callbacks.progress({kind: 'text', text: 'Received explanation'});
+    Object.assign(props, {sourceRevision: 1}); await tick();
+    expect(call.cancel).toHaveBeenCalled(); expect(clearEvidence).toHaveBeenCalled();
+    expect(panel.answer).toBe('Received explanation');
+    call.callbacks.result({success: true, text: 'Late explanation', service: 'deepseek', model: 'test'});
+    expect(panel.answer).toBe('Received explanation');
+    props.preferences.contextMode = 'selection'; await tick();
+    expect(panel.requestEvidenceSources.every((source: any) => source.kind === 'selection')).toBe(true);
+    expect(panel.evidenceSources.some((source: any) => source.kind === 'context')).toBe(true);
+    props.active = false; await tick(); expect(panel.evidenceLocator).toBeUndefined();
+  });
+
+  it('rejects a response immediately after navigation even before the observer/poll notification', async () => {
+    let state = 'located';
+    const {panel, calls} = await mountPanel({checkEvidence: () => state});
+    const call = calls.at(-1)!;
+    call.callbacks.progress({kind: 'text', text: 'Current text'});
+    state = 'navigated';
+    call.callbacks.result({success: true, text: 'Late after navigation', service: 'deepseek', model: 'test'});
+    expect(panel.answer).toBe('Current text'); expect(panel.stopped).toBe(true);
+    expect(call.cancel).toHaveBeenCalled();
+  });
+
+  it('retains restored quotes without granting the current page anchor to historical text', async () => {
+    const {panel, tick} = await mountPanel({locateEvidence: vi.fn(() => 'located')});
+    panel.historicalText = 'A saved sentence.'; panel.historicalContext = 'A saved sentence. It was from another page.'; await tick();
+    expect(panel.evidenceLocator).toBeUndefined();
+    expect(panel.requestEvidenceSources[0].text).toBe('A saved sentence.');
+  });
+});
+
 describe('reading action ownership and reuse', () => {
   it('has no active answer or model request before entering learning, and starts the default action after an empty history view', async () => {
     const {panel, calls, props, tick} = await mountPanel({active: false});

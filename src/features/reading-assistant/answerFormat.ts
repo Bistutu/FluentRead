@@ -1,7 +1,7 @@
 /**
  * @file src/features/reading-assistant/answerFormat.ts
  * 文件职责：把模型回答转换为阅读卡和历史详情共用的安全 Markdown 结构。
- * 主要内容：解析标题、段落、列表、引用、围栏代码、简单表格与行内强调，保留流式未闭合文本和旧版纯文本回答。
+ * 主要内容：解析标题、段落、列表、引用、围栏代码、简单表格与行内强调，保留表格内原文引用协议、流式未闭合文本和旧版纯文本回答。
  * 模块边界：只生成文本结构，不生成 HTML、不执行脚本、不创建链接或加载远程图片，不参与模型请求。
  */
 export type ReadingAnswerBlock =
@@ -14,7 +14,22 @@ export interface ReadingAnswerSpan {text: string; kind: 'text' | 'strong' | 'emp
 const LIST_ITEM = /^([-*+]|\d+[.)])\s+(.+)$/u;
 const RULE = /^(?:-{3,}|\*{3,}|_{3,})$/u;
 const FENCE = /^(`{3,}|~{3,})(.*)$/u;
-const tableCells = (line: string) => line.trim().replace(/^\||\|$/gu, '').split(/(?<!\\)\|/u).map(cell => cell.trim().replace(/\\\|/gu, '|'));
+function tableCells(line: string): string[] {
+    const text = line.trim().replace(/^\||\|$/gu, '');
+    const cells = [''];
+    for (let index = 0; index < text.length; index += 1) {
+        if (text.startsWith('[[cite:', index)) {
+            const end = text.indexOf(']]', index + 7);
+            // 引文里的 pipe 与反斜杠是原句，不是表格分隔符；流式未闭合标记也留在当前格。
+            cells[cells.length - 1] += text.slice(index, end < 0 ? undefined : end + 2);
+            index = end < 0 ? text.length : end + 1;
+        } else if (text[index] === '\\' && text[index + 1] === '|') {
+            cells[cells.length - 1] += '|'; index += 1;
+        } else if (text[index] === '|') cells.push('');
+        else cells[cells.length - 1] += text[index];
+    }
+    return cells.map(cell => cell.trim());
+}
 
 function isTableDivider(line: string): boolean {
     const cells = tableCells(line);

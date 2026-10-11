@@ -417,6 +417,7 @@
       "tests/informationHighlightWorker.test.ts",
       "tests/targetLanguageDetector.test.ts",
       "tests/targetTranslationResult.test.ts",
+      "tests/readingEvidence.test.ts",
       "tests/videoSentenceTimeline.test.ts",
       "tests/vocabularyVideoSource.test.ts"
     ],
@@ -624,6 +625,8 @@
       "tests/floatingPopupAuthorization.test.ts",
       "tests/floatingPopupOverlay.test.ts",
       "tests/popupEmbedded.test.ts",
+      "tests/readingEvidenceAnchor.test.ts",
+      "tests/readingEvidenceUi.test.ts",
       "tests/videoSentencePlayback.test.ts",
       "tests/videoSentenceLearningHost.test.ts",
       "tests/vocabularyVideoSourceUi.test.ts"

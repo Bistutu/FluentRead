@@ -86,6 +86,8 @@ export default defineConfig({
         // 按真实规则内容验证共享词书样式，与普通测试配置一致。
         css: {include: [/(?:src\/app\/content\/page|src\/ui\/styles\/(?:translation-display|bilingual-sentence-highlight|vocabulary-reencounter))\.css(?:\?|$)/]},
         include: [
+            'tests/readingEvidence.test.ts',
+            'tests/readingEvidenceAnchor.test.ts',
             'tests/videoSentenceTimeline.test.ts',
             'tests/videoSentencePlayback.test.ts',
             'tests/videoSentenceLearningHost.test.ts',
@@ -636,7 +638,7 @@ export default defineConfig({
             include: [
                 'src/features/video-subtitle/content/sentenceTimeline.ts',
                 'src/features/video-subtitle/content/sentencePlayback.ts',
-            'src/features/video-subtitle/content/sentenceLearningHost.ts',
+                'src/features/video-subtitle/content/sentenceLearningHost.ts',
                 'src/features/vocabulary/source.ts',
                 'src/features/floating-ball/content/anchoredPopup.ts',
                 'src/app/popup/embedded.ts',
@@ -815,6 +817,8 @@ export default defineConfig({
                 'src/features/full-page-translation/content/frameSession.ts',
                 'src/features/full-page-translation/content/stateNotification.ts',
                 'src/core/config/harness.ts',
+                'src/core/harness/evidence.ts',
+                'src/features/reading-assistant/evidenceAnchor.ts',
                 'src/core/harness/loop.ts',
                 'src/core/harness/prompts.ts',
                 'src/core/harness/promptLocales.ts',
