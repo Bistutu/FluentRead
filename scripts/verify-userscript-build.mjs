@@ -48,7 +48,15 @@ const artifactBytes = Buffer.byteLength(source);
 // 增加 8,650 字节（0.4330%），按实测最小增加 9 KB 预算，余量 636 字节；见报告 pr-integration/。
 // 最终整合右键与通知更新 bbae4100：同依赖 main 为 2,001,158，输入候选为 2,009,853。
 // 增加 8,695 字节（0.4345%），利用主线余量后预算最小增加 8 KB，余 147 字节；见报告 pr-integration-933/。
-const MAX_USERSCRIPT_BYTES = 2_010_000;
+// 安全词库摘要/同步坐标解析复用与手势、会话复验在 dc335c698 集成后增加 3,132 字节：
+// 同依赖独立 main 为 2,009,853，候选为 2,012,985（0.1558%）；
+// 沿用主线单一悬浮调度器；利用原余量后预算最小增加 3 KB，见 hover-translation-polish-20261011/verification.json。
+// 多文字名称证据、外语否决、准确 DOM 语言副本和线性字面量保护的排版回显兜底；
+// 合并前整合 e047f8bd0：同依赖独立基线为 2,013,029，最终候选为 2,024,302，增加 11,273 字节（0.5600%）。
+// 相对主线 2,013,000 预算按实测最小增加 12 KB，余量 698 字节；基线本次重建超原预算 29 字节亦如实记录。
+// 比较与散列见 docs/reports/target-language-quality-20261011/userscript-size.json。
+// 不引入额外检测模型。
+const MAX_USERSCRIPT_BYTES = 2_025_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);

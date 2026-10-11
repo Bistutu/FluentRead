@@ -1,0 +1,46 @@
+{
+  "checkedAt": "2026-10-11T02:35:15.018455+00:00",
+  "scope": "One local network with system curl TLS validation, not regional availability acceptance",
+  "sources": [
+    {
+      "source": "jsdmirror",
+      "url": "https://cdn.jsdmirror.com/gh/FluentRead/FluentRead@55d1219bd62e059f921b639b658a2a0a8e36d53d/public/pdf-fonts/FluentReadNotoSansSC-Regular.woff2",
+      "exitCode": 0,
+      "http": "200 https://cdn.jsdmirror.com/gh/FluentRead/FluentRead@55d1219bd62e059f921b639b658a2a0a8e36d53d/public/pdf-fonts/FluentReadNotoSansSC-Regular.woff2",
+      "seconds": 4.067,
+      "bytes": 4977684,
+      "sha256": "ea983e51e010c28a6a03839cffea942243e49342be7307be4f2f283e73ab8127",
+      "verified": true
+    },
+    {
+      "source": "onmicrosoft",
+      "url": "https://jsd.onmicrosoft.cn/gh/FluentRead/FluentRead@55d1219bd62e059f921b639b658a2a0a8e36d53d/public/pdf-fonts/FluentReadNotoSansSC-Regular.woff2",
+      "exitCode": 0,
+      "http": "200 https://jsd.onmicrosoft.cn/gh/FluentRead/FluentRead@55d1219bd62e059f921b639b658a2a0a8e36d53d/public/pdf-fonts/FluentReadNotoSansSC-Regular.woff2",
+      "seconds": 3.967,
+      "bytes": 4977684,
+      "sha256": "ea983e51e010c28a6a03839cffea942243e49342be7307be4f2f283e73ab8127",
+      "verified": true
+    },
+    {
+      "source": "jsdelivr",
+      "url": "https://cdn.jsdelivr.net/gh/FluentRead/FluentRead@55d1219bd62e059f921b639b658a2a0a8e36d53d/public/pdf-fonts/FluentReadNotoSansSC-Regular.woff2",
+      "exitCode": 0,
+      "http": "200 https://cdn.jsdelivr.net/gh/FluentRead/FluentRead@55d1219bd62e059f921b639b658a2a0a8e36d53d/public/pdf-fonts/FluentReadNotoSansSC-Regular.woff2",
+      "seconds": 12.112,
+      "bytes": 4977684,
+      "sha256": "ea983e51e010c28a6a03839cffea942243e49342be7307be4f2f283e73ab8127",
+      "verified": true
+    },
+    {
+      "source": "github",
+      "url": "https://raw.githubusercontent.com/FluentRead/FluentRead/55d1219bd62e059f921b639b658a2a0a8e36d53d/public/pdf-fonts/FluentReadNotoSansSC-Regular.woff2",
+      "exitCode": 0,
+      "http": "200 https://raw.githubusercontent.com/FluentRead/FluentRead/55d1219bd62e059f921b639b658a2a0a8e36d53d/public/pdf-fonts/FluentReadNotoSansSC-Regular.woff2",
+      "seconds": 4.441,
+      "bytes": 4977684,
+      "sha256": "ea983e51e010c28a6a03839cffea942243e49342be7307be4f2f283e73ab8127",
+      "verified": true
+    }
+  ]
+}

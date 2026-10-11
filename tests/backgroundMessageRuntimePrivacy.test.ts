@@ -50,7 +50,7 @@ afterEach(() => {vi.unstubAllGlobals();});
 function installed(backgroundPrivate: boolean) {
     let listener!: (message: unknown, sender: unknown) => Promise<unknown>;
     vi.stubGlobal('browser', {extension: {inIncognitoContext: backgroundPrivate},
-        runtime: {id: 'controlled', getURL: (path: string) => 'chrome-extension://controlled/' + path.replace(/^\//u, ''), onMessage: {addListener: (value: typeof listener) => {listener = value;}}},
+        runtime: {id: 'controlled', getManifest: () => ({action: {default_popup: 'popup.html'}}), getURL: (path: string) => 'chrome-extension://controlled/' + path.replace(/^\//u, ''), onMessage: {addListener: (value: typeof listener) => {listener = value;}}},
         tabs: {onRemoved: {addListener: vi.fn()}}, storage: {local: {}}});
     installBackgroundMessageRuntime({tabTranslationStates: new TabTranslationStateStore(), onFullPageStateChanged: vi.fn()});
     return listener;

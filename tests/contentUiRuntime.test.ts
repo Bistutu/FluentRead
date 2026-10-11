@@ -19,6 +19,9 @@ const mocks = vi.hoisted(() => ({
     translationProgressPanelEnabled: true,
   },
   createVueShadowUi: vi.fn(),
+  createAnchoredPopup: vi.fn(),
+  togglePopup: vi.fn(),
+  closePopup: vi.fn(),
   requestConfigPatch: vi.fn(),
   subscribeConfig: vi.fn(),
   unsubscribeConfig: vi.fn(),
@@ -38,6 +41,7 @@ vi.mock('@/src/services/config/store', () => ({
   requestConfigPatch: mocks.requestConfigPatch,
   subscribeConfig: mocks.subscribeConfig,
 }));
+vi.mock('@/src/features/floating-ball/content/anchoredPopup', () => ({createAnchoredPopup: mocks.createAnchoredPopup}));
 vi.mock('@/src/platform/shadow-ui', () => ({createVueShadowUi: mocks.createVueShadowUi}));
 vi.mock('webextension-polyfill', () => ({
   default: {
@@ -88,10 +92,12 @@ function pendingUi(): {promise: Promise<MockUi>; resolve: (value: MockUi) => voi
 }
 
 beforeEach(() => {
+  vi.stubEnv('BROWSER', 'chrome');
   const parsed = parseHTML('<!doctype html><html><body></body></html>');
   vi.stubGlobal('window', parsed.window);
   vi.stubGlobal('document', parsed.document);
   vi.stubGlobal('Event', parsed.window.Event);
+  vi.stubGlobal('HTMLElement', parsed.window.HTMLElement);
   vi.resetModules();
   Object.assign(mocks.config, {
     disableFloatingBall: false,
@@ -111,6 +117,9 @@ beforeEach(() => {
     mocks.openMangaEntry,
     mocks.unsubscribeMangaTranslation,
     mocks.createVueShadowUi,
+    mocks.createAnchoredPopup,
+    mocks.togglePopup,
+    mocks.closePopup,
     mocks.requestConfigPatch,
     mocks.sendMessage,
     mocks.autoTranslateEnglishPage,
@@ -135,9 +144,10 @@ beforeEach(() => {
   mocks.subscribeTranslationToolbarStatus.mockReturnValue(mocks.unsubscribeTranslationToolbarStatus);
   mocks.subscribeFullPageTranslationProgress.mockReturnValue(mocks.unsubscribeFullPageTranslationProgress);
   mocks.subscribeConfig.mockReturnValue(mocks.unsubscribeConfig);
+  mocks.createAnchoredPopup.mockReturnValue({toggle: mocks.togglePopup.mockResolvedValue(undefined), close: mocks.closePopup});
 });
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {vi.unstubAllGlobals(); vi.unstubAllEnvs();});
 
 describe('悬浮球 content runtime', () => {
   it('在没有上下文或功能被禁用时不创建 UI', async () => {
@@ -196,10 +206,10 @@ describe('悬浮球 content runtime', () => {
     expect(runtime.toggleFloatingBallTranslation()).toBe(true);
     expect(toggleTranslation).toHaveBeenCalledOnce();
 
-    options.props.onSettingsClick();
+    options.props.onSettingsClick({isTrusted: true, currentTarget: document.createElement('button')});
     options.props.onPositionChanged('left', 0.25);
     await Promise.resolve();
-    expect(mocks.sendMessage).toHaveBeenCalledWith({type: 'openOptionsPage'});
+    expect(mocks.togglePopup).toHaveBeenCalledWith(expect.any(HTMLElement));
     expect(mocks.config.floatingBallPosition).toBe('left');
     expect(mocks.config.floatingBallVerticalPosition).toBe(0.25);
     expect(mocks.requestConfigPatch).toHaveBeenCalledWith({
@@ -374,6 +384,45 @@ describe('悬浮球 content runtime', () => {
     else Reflect.set(globalThis, 'location', originalLocation);
   });
 
+  it('userscript 悬浮球继续打开脚本设置入口', async () => {
+    vi.stubEnv('BROWSER', 'userscript');
+    mocks.createVueShadowUi.mockResolvedValueOnce(ui({toggleTranslation: vi.fn()}));
+    const runtime = await import('@/src/features/floating-ball/content/runtime');
+    await runtime.mountFloatingBall({} as never);
+    mocks.createVueShadowUi.mock.calls[0][1].props.onSettingsClick({isTrusted: true, currentTarget: document.createElement('button')});
+    await Promise.resolve();
+    expect(mocks.sendMessage).toHaveBeenCalledWith({type: 'openOptionsPage'});
+    runtime.unmountFloatingBall();
+  });
+
+  it('仅可信设置事件打开页内面板，失败后可重试并在卸载时清理', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const setPopupOpen = vi.fn();
+    mocks.createVueShadowUi.mockResolvedValueOnce(ui({toggleTranslation: vi.fn(), setPopupOpen}));
+    const runtime = await import('@/src/features/floating-ball/content/runtime');
+    await runtime.mountFloatingBall({} as never);
+    const click = mocks.createVueShadowUi.mock.calls[0][1].props.onSettingsClick;
+    const button = document.createElement('button');
+    click({isTrusted: false, currentTarget: button});
+    expect(mocks.createAnchoredPopup).not.toHaveBeenCalled();
+    mocks.togglePopup.mockRejectedValueOnce(new Error('popup denied'));
+    click({isTrusted: true, currentTarget: button});
+    await Promise.resolve();
+    expect(consoleError).toHaveBeenCalledWith('[FluentRead] 打开扩展快捷面板失败', expect.any(Error));
+    click({isTrusted: true, currentTarget: button});
+    await Promise.resolve();
+    expect(mocks.createAnchoredPopup).toHaveBeenCalledOnce();
+    const ports = mocks.createAnchoredPopup.mock.calls[0][2];
+    expect(ports.getUrl()).toBe('chrome-extension://fixture/popup.html');
+    await ports.request();
+    expect(mocks.sendMessage).toHaveBeenLastCalledWith({type: 'requestFloatingPopup'});
+    ports.onOpenChange(true);
+    expect(setPopupOpen).toHaveBeenCalledWith(true);
+    runtime.unmountFloatingBall();
+    expect(mocks.closePopup).toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
   it('隔离设置、保存和挂载失败，并允许重试', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     mocks.createVueShadowUi
@@ -385,9 +434,9 @@ describe('悬浮球 content runtime', () => {
     await expect(runtime.mountFloatingBall()).resolves.toEqual(expect.objectContaining({toggleTranslation: expect.any(Function)}));
     const [, options] = mocks.createVueShadowUi.mock.calls[1];
 
-    mocks.sendMessage.mockRejectedValueOnce(new Error('settings failed'));
+    mocks.togglePopup.mockRejectedValueOnce(new Error('settings failed'));
     mocks.requestConfigPatch.mockRejectedValueOnce(new Error('save failed'));
-    options.props.onSettingsClick();
+    options.props.onSettingsClick({isTrusted: true, currentTarget: document.createElement('button')});
     options.props.onPositionChanged('right', 0.8);
     mocks.isFullPageTranslationActive.mockReturnValueOnce(false);
     options.props.onTranslationToggle(true);
@@ -395,7 +444,7 @@ describe('悬浮球 content runtime', () => {
     await Promise.resolve();
 
     expect(consoleError).toHaveBeenCalledWith('[FluentRead] 悬浮球挂载失败', expect.any(Error));
-    expect(consoleError).toHaveBeenCalledWith('[FluentRead] 打开设置页失败', expect.any(Error));
+    expect(consoleError).toHaveBeenCalledWith('[FluentRead] 打开扩展快捷面板失败', expect.any(Error));
     expect(consoleError).toHaveBeenCalledWith('Failed to save config:', expect.any(Error));
     runtime.unmountFloatingBall();
     consoleError.mockRestore();

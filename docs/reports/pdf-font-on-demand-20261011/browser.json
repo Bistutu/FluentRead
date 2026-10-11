@@ -1,0 +1,152 @@
+{
+  "success": true,
+  "generatedAt": "2026-10-11T02:44:37.232Z",
+  "scope": "Production Chrome MV3 modules loaded from an isolated extension options page. One controlled HTTP 503 and one controlled delayed request exercise failure/cancel branches; fallback/retry downloads use live public fixed font sources. PDF uses production pdf-lib/font loader/pdf.js modules with a minimal Chinese fixture. No online translation providers, document UI upload workflow, Firefox, or low-end-device acceptance.",
+  "profileMode": "temporary isolated profile; one deliberate restart to prove persistent CacheStorage",
+  "modules": {
+    "font": "pdfReadingFont-CmnuKHxt.js",
+    "pdfLib": "index-DM2fnw79.js",
+    "pdfJs": "pdf-DTIIO-U_.js",
+    "pdfWorker": "pdf.worker.min-rsCePomN.mjs"
+  },
+  "build": {
+    "manifestSha256": "fd80314b160701ed5500e584e1373f5eed44a19acdc6f8b76f9a12c1565970d8",
+    "moduleSha256": {
+      "font": "256490e96e395dae2a1cca315bfb60f2280d3dcecf76040435b8c9e26ebfee52",
+      "pdfLib": "07d5e27a8a1e8697cf81e80d51159396cf26e41dcac41f585f97b381856f2c0c",
+      "pdfJs": "bf7aa8f6b38d3de0d76d2e059a9a024de014cd2f798a692527abae20c3f37544",
+      "pdfWorker": "bd88805178a26c729db8c0107a5b630cb900ec070f4d8c7529a3e45530afd41d"
+    },
+    "loaderSourceSha256": "c701bf9fcb03b99b41536af27d74b6558a31883ef745bd473d30d82b1647e970"
+  },
+  "cases": {
+    "fallbackDownload": {
+      "byteLength": 4977684,
+      "sha256": "ea983e51e010c28a6a03839cffea942243e49342be7307be4f2f283e73ab8127",
+      "elapsedMs": 745.8000001907349,
+      "requests": [
+        {
+          "url": "https://cdn.jsdmirror.com/gh/FluentRead/FluentRead@55d1219bd62e059f921b639b658a2a0a8e36d53d/public/pdf-fonts/FluentReadNotoSansSC-Regular.woff2",
+          "credentials": "omit",
+          "referrerPolicy": "no-referrer",
+          "cache": "no-store",
+          "mode": "first-fail",
+          "controlled": "HTTP 503"
+        },
+        {
+          "url": "https://jsd.onmicrosoft.cn/gh/FluentRead/FluentRead@55d1219bd62e059f921b639b658a2a0a8e36d53d/public/pdf-fonts/FluentReadNotoSansSC-Regular.woff2",
+          "credentials": "omit",
+          "referrerPolicy": "no-referrer",
+          "cache": "no-store",
+          "mode": "live"
+        }
+      ],
+      "cacheKeys": [
+        "fluentread-interface-fonts-v1",
+        "fluentread-pdf-reading-font-v1"
+      ]
+    },
+    "cancelRetry": {
+      "cancellation": {
+        "name": "AbortError",
+        "message": "Controlled browser font cancellation"
+      },
+      "cancellationElapsedMs": 7.200000286102295,
+      "transportAbortCount": 1,
+      "retryByteLength": 4977684,
+      "sha256": "ea983e51e010c28a6a03839cffea942243e49342be7307be4f2f283e73ab8127",
+      "requests": [
+        {
+          "url": "https://cdn.jsdmirror.com/gh/FluentRead/FluentRead@55d1219bd62e059f921b639b658a2a0a8e36d53d/public/pdf-fonts/FluentReadNotoSansSC-Regular.woff2",
+          "credentials": "omit",
+          "referrerPolicy": "no-referrer",
+          "cache": "no-store",
+          "mode": "pending",
+          "controlled": "wait for request AbortSignal"
+        },
+        {
+          "url": "https://cdn.jsdmirror.com/gh/FluentRead/FluentRead@55d1219bd62e059f921b639b658a2a0a8e36d53d/public/pdf-fonts/FluentReadNotoSansSC-Regular.woff2",
+          "credentials": "omit",
+          "referrerPolicy": "no-referrer",
+          "cache": "no-store",
+          "mode": "live"
+        }
+      ]
+    },
+    "persistentOfflineCache": {
+      "browserRestarted": true,
+      "offline": true,
+      "byteLength": 4977684,
+      "sha256": "ea983e51e010c28a6a03839cffea942243e49342be7307be4f2f283e73ab8127",
+      "networkFontRequests": 0,
+      "cacheKeys": [
+        "fluentread-interface-fonts-v1",
+        "fluentread-pdf-reading-font-v1"
+      ]
+    },
+    "immediateCancellation": {
+      "cancellation": {
+        "name": "AbortError",
+        "message": "Failed to execute 'throwIfAborted' on 'AbortSignal': Controlled immediate cancellation"
+      },
+      "unhandledRejections": [],
+      "retryByteLength": 4977684,
+      "networkFontRequests": 0
+    },
+    "chinesePdf": {
+      "pages": 1,
+      "extractedText": "可复制的中文 PDF 译文\n\n中文可选择、可搜索，Mixed English 123。\n\n标点：“引号”《书名》？！①②。·•\n\n唯一末尾：完整保留。",
+      "selectedText": "可复制的中文 PDF 译文\n中文可选择、可搜索，Mixed English 123。\n标点：“引号”《书名》？！①②。·•\n唯一末尾：完整保留。",
+      "assertions": {
+        "visibleChineseText": true,
+        "completeUnicodeExtraction": true,
+        "distinctUnicodeAliases": true,
+        "chineseTextSelection": true,
+        "searchableChineseText": true
+      },
+      "clipboardScope": "Selected text verified; operating-system clipboard is left unchanged.",
+      "networkFontRequests": 0,
+      "byteLength": 8698
+    }
+  },
+  "errors": [],
+  "cleanup": {
+    "browserClosed": true,
+    "profileRemoved": true
+  },
+  "visualInspection": {
+    "screenshot": "offline-selectable-chinese.png",
+    "checked": true,
+    "result": "Four selected rows of Chinese, mixed English, and punctuation are visibly present without missing-glyph boxes."
+  },
+  "sessions": [
+    {
+      "offline": false,
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
+      "locale": "zh-CN",
+      "windowPlacement": {
+        "mode": "background-visible-no-focus",
+        "visible": true,
+        "windowState": "normal",
+        "displayTarget": "secondary",
+        "browserFrontmost": false
+      }
+    },
+    {
+      "offline": true,
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "browser": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 Edg/131.0.0.0",
+      "locale": "zh-CN",
+      "windowPlacement": {
+        "mode": "background-visible-no-focus",
+        "visible": true,
+        "windowState": "normal",
+        "displayTarget": "secondary",
+        "browserFrontmost": false
+      }
+    }
+  ]
+}

@@ -102,7 +102,7 @@ describe('popup feature visibility', () => {
         expect(styles).not.toContain('body, #app { width: 100%; }');
         expect(styles).not.toContain('width: min(var(--interface-popup-width, 360px), 100vw)');
         expect(styles).toContain('.popup-shell { max-height: 560px; overflow-y: auto;');
-        expect(styles).not.toContain('max-height: min(560px, 100dvh)');
+        expect(styles).toContain(':root[data-fluentread-embedded-popup] .popup-shell { max-height: min(560px, 100dvh); }');
     });
 
     it('keeps the real Popup under a first-open language mask until confirmation', () => {

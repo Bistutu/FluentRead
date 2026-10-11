@@ -1,6 +1,6 @@
 /**
  * @file src/features/floating-ball/content/runtime.ts
- * 文件职责：协调悬浮球组件在网页中的创建、恢复位置、显隐、全屏避让、高级外观同步、权威翻译状态同步和卸载，并向组件注入全文翻译、漫画连续翻译切换与打开设置页的动作。
+ * 文件职责：协调悬浮球组件在网页中的创建、恢复位置、显隐、全屏避让、高级外观同步、权威翻译状态同步和卸载，并向组件注入全文翻译、漫画连续翻译切换与打开扩展快捷面板的动作。
  * 主要内容：维护单例 Shadow UI、迟到挂载 requestId、站点名单守卫、页面全屏显隐监听、响应式展示契约与配置订阅、全文活动及结果状态和漫画会话订阅，并将拖动后的停靠侧和纵向比例作为同一配置补丁保存；卸载入口只释放自身 UI，不恢复独立的全文会话。
  * 模块边界：运行时只拥有挂载和桥接职责，不实现拖拽视觉、外观归一化或全文翻译算法；FloatingBall.vue 负责交互，core/config 负责字段归一化，full-page feature 提供翻译动作，配置持久化通过 services/config 完成。
  */
@@ -24,12 +24,14 @@ import {
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import type { ShadowRootContentScriptUi } from 'wxt/utils/content-script-ui/shadow-root';
 import {createVueShadowUi, type VueShadowMount} from '@/src/platform/shadow-ui';
+import {createAnchoredPopup} from './anchoredPopup';
 
 interface FloatingBallExposed {
   toggleTranslation: () => void;
   setTranslationState: (isTranslating: boolean) => void;
   setTranslationStatus: (status: TranslationToolbarStatus) => void;
   setPosition: (side: 'left' | 'right', verticalPosition: number | null) => void;
+  setPopupOpen?: (open: boolean) => void;
 }
 
 let floatingBallInstance: FloatingBallExposed | null = null;
@@ -43,6 +45,7 @@ let unsubscribePresentationConfig: (() => void) | null = null;
 let floatingBallPresentation: FloatingBallPresentation | null = null;
 let removeFullscreenListener: (() => void) | null = null;
 let unsubscribeMangaTranslation: (() => void) | null = null;
+let anchoredPopup: ReturnType<typeof createAnchoredPopup> | null = null;
 
 /** 把实时配置折叠为组件需要的展示契约；字段语义与归一化都由 core/config 保证。 */
 function readPresentation(source: Config): FloatingBallPresentation {
@@ -66,9 +69,25 @@ export function isFloatingBallAllowedOnPage(href: string = currentPageHref()): b
     return !isFloatingBallDisabledOnSite(href, config.floatingBallDisabledDomains);
 }
 
-function openOptionsPage(): void {
-    void browser.runtime.sendMessage({type: 'openOptionsPage'}).catch((error: unknown) => {
-        console.error('[FluentRead] 打开设置页失败', error);
+function openPopup(event: MouseEvent): void {
+    // userscript 没有浏览器工具栏 popup，继续使用脚本自己的设置入口。
+    if (import.meta.env.BROWSER === 'userscript') {
+        void browser.runtime.sendMessage({type: 'openOptionsPage'}).catch((error: unknown) => {
+            console.error('[FluentRead] 打开设置页失败', error);
+        });
+        return;
+    }
+    if (!event?.isTrusted || !floatingBallUi) return;
+    const anchor = event.currentTarget instanceof HTMLElement ? event.currentTarget
+        : floatingBallUi.uiContainer.querySelector<HTMLElement>('.floating-ball-main');
+    if (!anchor) return;
+    anchoredPopup ??= createAnchoredPopup(floatingBallUi.uiContainer, floatingBallUi.shadowHost, {
+        getUrl: () => browser.runtime.getURL('/popup.html'),
+        request: () => browser.runtime.sendMessage({type: 'requestFloatingPopup'}),
+        onOpenChange: open => floatingBallInstance?.setPopupOpen?.(open),
+    });
+    void anchoredPopup.toggle(anchor).catch((error: unknown) => {
+        console.error('[FluentRead] 打开扩展快捷面板失败', error);
     });
 }
 
@@ -81,6 +100,7 @@ function subscribeFullscreenVisibility(ui: ShadowRootContentScriptUi<VueShadowMo
         const isVideoFullscreen = fullscreenElement != null
             && (fullscreenElement.matches('video') || fullscreenElement.querySelector('video') !== null);
         if (isVideoFullscreen) {
+            if (import.meta.env.BROWSER !== 'userscript') anchoredPopup?.close();
             ui.uiContainer.style.setProperty('display', 'none', 'important');
         } else {
             ui.uiContainer.style.removeProperty('display');
@@ -131,9 +151,10 @@ export function mountFloatingBall(ctx?: ContentScriptContext) {
       presentation,
       manga,
       onMangaToggle: (event: MouseEvent) => { if (event.isTrusted) openMangaEntry(); },
-      onSettingsClick: () => openOptionsPage(),
+      onSettingsClick: (event: MouseEvent) => openPopup(event),
       // 两个坐标字段必须一起提交，避免连续拖动或跨页面保存时只留下其中一个。
       onPositionChanged: (newPosition: 'left' | 'right', verticalPosition: number) => {
+        if (import.meta.env.BROWSER !== 'userscript') anchoredPopup?.close();
         void requestConfigPatch(
           {floatingBallPosition: newPosition, floatingBallVerticalPosition: verticalPosition},
           browser.runtime.sendMessage.bind(browser.runtime),
@@ -164,9 +185,17 @@ export function mountFloatingBall(ctx?: ContentScriptContext) {
     removeFullscreenListener = subscribeFullscreenVisibility(ui);
     // 订阅只服务当前实例；迟到的旧订阅不得继续写回已被替换的展示契约。
     unsubscribePresentationConfig?.();
+    let previousPosition = import.meta.env.BROWSER === 'userscript' ? []
+      : [config.floatingBallPosition, config.floatingBallVerticalPosition, config.floatingBallCompact];
     unsubscribePresentationConfig = subscribeConfig((nextConfig) => {
       if (floatingBallPresentation !== presentation) return;
       Object.assign(presentation, readPresentation(nextConfig));
+      if (import.meta.env.BROWSER !== 'userscript') {
+        if (!nextConfig.floatingBallSettingsEntryVisible || nextConfig.floatingBallToolsDisplay === 'hidden') anchoredPopup?.close();
+        const nextPosition = [nextConfig.floatingBallPosition, nextConfig.floatingBallVerticalPosition, nextConfig.floatingBallCompact];
+        if (nextPosition.some((value, index) => value !== previousPosition[index])) anchoredPopup?.close();
+        previousPosition = nextPosition;
+      }
       floatingBallInstance?.setPosition?.(nextConfig.floatingBallPosition, nextConfig.floatingBallVerticalPosition);
     });
     floatingBallInstance = (ui.mounted?.instance as FloatingBallExposed | null | undefined) ?? null;
@@ -212,6 +241,10 @@ export function toggleFloatingBallTranslation(): boolean {
 export function unmountFloatingBall() {
   // 先使仍在等待的挂载失效，再释放当前实例，避免迟到的 Promise 重新写回句柄。
   mountRequestId++;
+  if (import.meta.env.BROWSER !== 'userscript') {
+    anchoredPopup?.close();
+    anchoredPopup = null;
+  }
   unsubscribeMangaTranslation?.();
   unsubscribeMangaTranslation = null;
   unsubscribeFullPageTranslationProgress?.();

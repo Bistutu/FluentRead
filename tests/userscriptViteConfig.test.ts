@@ -188,7 +188,7 @@ describe('userscript browser shim injection', () => {
         const defines = (userscriptConfig as {define: Record<string, string>}).define;
         const commit = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_RESOURCE_COMMIT__);
         const bundles = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_REMOTE_LANGUAGES__) as Record<string, string>;
-        expect(commit).toBe('cf1941d43f406bb5118952066da5f9399400dd37');
+        expect(commit).toBe('25f5dca794848782f717493ce0e08545a0e57b35');
         expect(Object.keys(bundles)).toHaveLength(5);
         for (const file of Object.values(bundles)) {
             const path = `userscript/languages/${file}`;
@@ -389,12 +389,12 @@ describe('userscript lossless Unicode character data', () => {
         }
     });
 
-    it('restores all 45 function-word strings byte for byte and preserves the original lexicon digest', () => {
+    it('restores all 46 function-word strings byte for byte and preserves the audited lexicon digest', () => {
         const entries = Object.entries(functionWordData).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
-        expect(entries).toHaveLength(45);
+        expect(entries).toHaveLength(46);
         // 提取前四组功能词原始字符串的摘要；按导出名排序，不依赖 module namespace 的枚举实现。
         expect(createHash('sha256').update(JSON.stringify(entries)).digest('hex'))
-            .toBe('6b56ec4873ca9ec2f137f93f32987c438a5b54ba6024e64e9de33ff314b77131');
+            .toBe('998dc8f897b31a8b91eaaec8ffe4e563b513fe856a6f91d8d528209d90f15ca1');
         const transformed = createPlugin().transform(readFileSync(wordDataPath, 'utf8'), wordDataPath)!;
         vi.stubGlobal('pako', {ungzip});
         try {
@@ -434,5 +434,78 @@ describe('userscript lossless Unicode character data', () => {
         expect(createPlugin().transform(original, resolve(process.cwd(), 'src/core/language/chinese.ts'))).toBeNull();
         expect(createPlugin().transform(original, resolve(process.cwd(), 'src/core/language/lexicon.ts'))).toBeNull();
         expect(createPlugin().transform(original, wordDataPath + '.backup')).toBeNull();
+    });
+});
+
+describe('standalone service SVG static data and license', () => {
+    const asset = resolve(process.cwd(), 'src/ui/assets/serviceBrandPaths.json');
+    const consumer = resolve(process.cwd(), 'src/ui/components/ServiceIcon.vue');
+    const alias = '@/src/ui/assets/serviceBrandPaths.json';
+    async function inMode(mode: 'standard' | 'standalone' | 'greasyfork', use: (module: typeof import('@/userscript/vite.config')) => Promise<void>) {
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_STANDALONE', mode === 'standalone' ? '1' : '0');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE', mode === 'greasyfork' ? '1' : '0');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_VENDOR_URL', 'https://fixture.invalid/vendor.js');
+        vi.stubEnv('FLUENTREAD_USERSCRIPT_DATA_URL', 'https://fixture.invalid/data.js');
+        try {vi.resetModules(); await use(await import('@/userscript/vite.config'));}
+        finally {vi.unstubAllEnvs();vi.resetModules();}
+    }
+
+    it('restores all ordered SVG attributes and retains the full license through the actual virtual module', async () => {
+        await inMode('standalone', async ({default: config, createUserscriptCatalogCompressionPlugin: createPlugin}) => {
+            const plugin = createPlugin();
+            const resolveId = typeof plugin.resolveId === 'function' ? plugin.resolveId : plugin.resolveId!.handler;
+            const load = typeof plugin.load === 'function' ? plugin.load : plugin.load!.handler;
+            const id = await Reflect.apply(resolveId, {}, [alias, consumer + '?vue&type=script&setup=true&lang.ts']);
+            expect(id).toBe(await Reflect.apply(resolveId, {}, [asset, consumer]));
+            const watch = vi.fn();
+            const source = await Reflect.apply(load, {addWatchFile: watch}, [id]);
+            expect(watch).toHaveBeenCalledWith(asset);
+            const original = JSON.parse(readFileSync(asset, 'utf8'));
+            const canonical = JSON.stringify(original);
+            const encoded = JSON.parse(source.match(/atob\(("[^"]+")\)/u)![1]);
+            const bytes = Buffer.from(encoded, 'base64');
+            expect(gunzipSync(bytes).toString('utf8')).toBe(canonical);
+            expect(ungzip(bytes, {to: 'string'})).toBe(canonical);
+            const {transformWithEsbuild} = await import('vite');
+            const {inflateWithPako: inflateWithBundledPako} = await import('@/userscript/pakoBundled');
+            const compiled = await transformWithEsbuild(source, 'service-svg.js', {format: 'cjs', target: 'es2018'});
+            const realm = {module: {exports: {} as any}, Uint8Array,
+                atob: (value: string) => Buffer.from(value, 'base64').toString('binary'),
+                require: (specifier: string) => {
+                    expect(specifier).toBe('@/userscript/pakoRuntime');
+                    return {inflateWithPako: inflateWithBundledPako};
+                }};
+            runInNewContext(compiled.code, realm, {timeout: 5000});
+            const restored = realm.module.exports.default;
+            expect(JSON.stringify(restored)).toBe(canonical);
+            expect(Object.keys(restored)).toEqual(Object.keys(original));
+            expect(Object.keys(restored)).toHaveLength(38);
+            expect(Object.values(restored).flat()).toHaveLength(63);
+            const bundlePlugin = (config.plugins as Array<{name?: string; generateBundle?: {handler?: Function}}>)
+                .find(item => item.name === 'bundle-userscript-css')!;
+            const entry = {type: 'chunk', isEntry: true, fileName: 'fluent-read.user.js', code: 'const ENTRY_SENTINEL=1;', moduleIds: [id]};
+            await Reflect.apply(bundlePlugin.generateBundle!.handler!, {emitFile: vi.fn()}, [{}, {'fluent-read.user.js': entry}]);
+            expect(entry.code).toContain(readFileSync(resolve(process.cwd(), 'public/third-party-notices/lobe-icons-MIT.txt'), 'utf8'));
+        });
+    });
+
+    it.each(['standard', 'greasyfork'] as const)('leaves the %s SVG module and resource path unchanged', async mode => {
+        await inMode(mode, async ({createUserscriptCatalogCompressionPlugin: createPlugin}) => {
+            const plugin = createPlugin();
+            const resolveId = typeof plugin.resolveId === 'function' ? plugin.resolveId : plugin.resolveId!.handler;
+            expect(await Reflect.apply(resolveId, {}, [alias, consumer])).toBeNull();
+            expect(await Reflect.apply(resolveId, {}, [asset, consumer])).toBeNull();
+        });
+    });
+
+    it.each(['other importer', 'query source', 'missing importer', 'other asset'] as const)
+    ('preserves the ordinary JSON path for %s', async kind => {
+        await inMode('standalone', async ({createUserscriptCatalogCompressionPlugin: createPlugin}) => {
+            const plugin = createPlugin();
+            const resolveId = typeof plugin.resolveId === 'function' ? plugin.resolveId : plugin.resolveId!.handler;
+            const source = kind === 'query source' ? alias + '?raw' : kind === 'other asset' ? alias.replace('serviceBrandPaths', 'other') : alias;
+            const importer = kind === 'missing importer' ? undefined : kind === 'other importer' ? consumer.replace('ServiceIcon', 'Other') : consumer;
+            expect(await Reflect.apply(resolveId, {}, [source, importer])).toBeNull();
+        });
     });
 });

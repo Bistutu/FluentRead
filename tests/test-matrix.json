@@ -69,6 +69,7 @@
       "tests/configCount.test.ts",
       "tests/configDiff.test.ts",
       "tests/glossary.test.ts",
+      "tests/glossaryRevisionMemo.test.ts",
       "tests/builtinGlossaries.test.ts",
       "tests/glossaryConfig.test.ts",
       "tests/credentialPreview.test.ts",
@@ -410,7 +411,9 @@
       "tests/informationHighlightBackend.test.ts",
       "tests/informationHighlightComposition.test.ts",
       "tests/informationHighlightScoring.test.ts",
-      "tests/informationHighlightWorker.test.ts"
+      "tests/informationHighlightWorker.test.ts",
+      "tests/targetLanguageDetector.test.ts",
+      "tests/targetTranslationResult.test.ts"
     ],
     "functional": [
       "tests/finalCoveragePublicBoundariesA.test.ts",
@@ -448,6 +451,7 @@
       "tests/documentTranslationBinary.test.ts",
       "tests/documentPdfRasterizer.test.ts",
       "tests/pdfTextExport.test.ts",
+      "tests/pdfReadingFontDownload.test.ts",
       "tests/documentArchive.test.ts",
       "tests/obsidianDocumentIntegration.test.ts",
       "tests/obsidianTranslationGateway.test.ts",
@@ -609,7 +613,12 @@
       "tests/xModernSiteAdaptationRegression.test.ts",
       "tests/informationHighlightContent.test.ts",
       "tests/informationHighlightUiLifecycle.test.ts",
-      "tests/informationHighlightSettingsLifecycle.test.ts"
+      "tests/informationHighlightSettingsLifecycle.test.ts",
+      "tests/imageTargetLanguage.test.ts",
+      "tests/targetLanguageReleaseCorpus.test.ts",
+      "tests/floatingPopupAuthorization.test.ts",
+      "tests/floatingPopupOverlay.test.ts",
+      "tests/popupEmbedded.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",
@@ -626,6 +635,7 @@
       "tests/fullPageTitleTranslation.test.ts",
       "tests/featureVerticalSliceRegression.test.ts",
       "tests/fullPageVisibilityScheduling.test.ts",
+      "tests/fullPageTranslationConfigSnapshot.test.ts",
       "tests/fullPageHostClassPreservation.test.ts",
       "tests/pageTranslationAdvanced.test.ts",
       "tests/mainWorldBridgeCore.test.ts",
@@ -650,7 +660,8 @@
       "tests/sameTargetLanguageRegression.test.ts",
       "tests/vocabularyReencounterLifecycle.test.ts",
       "tests/fullPageAttributeBoundary.test.ts",
-      "tests/hnFirstTargetReadiness.test.ts"
+      "tests/hnFirstTargetReadiness.test.ts",
+      "tests/targetLanguageAdversarial.test.ts"
     ]
   }
 }

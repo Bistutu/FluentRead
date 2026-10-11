@@ -48,7 +48,7 @@ function installedVersion(name: string): string {
 // 脚本管理器在安装时缓存固定版本的通用库；仓库资源固定到已发布提交，更新资源时同步换提交。
 const userscriptResourceCommit = '184a3d74f61b9d2a8d47080787f7e0180b98414d';
 // 语言文件的内容哈希来自合并后的消息目录，固定到首次包含这些文件的提交。
-const userscriptLanguageResourceCommit = 'cf1941d43f406bb5118952066da5f9399400dd37';
+const userscriptLanguageResourceCommit = '25f5dca794848782f717493ce0e08545a0e57b35';
 const pinnedIconUrl = `https://cdn.jsdelivr.net/gh/FluentRead/FluentRead@${userscriptResourceCommit}/public/icon/64.png`;
 const iconMetaUrl = greasyForkSource ? pinnedIconUrl : iconDataUrl;
 const uiRequires = [
@@ -108,13 +108,21 @@ const pinnedSiteCatalogs = greasyForkSource
     : undefined;
 const compressedCatalogPrefix = '\0fluentread-userscript-site-catalog:';
 const externalChineseMessagesId = '\0fluentread-userscript-zh-cn.js';
+const compressedServiceIconsId = '\0fluentread-userscript-service-icons.js';
+const serviceIconsPath = resolve(root, 'src/ui/assets/serviceBrandPaths.json');
+const serviceIconsConsumer = normalizePath(resolve(root, 'src/ui/components/ServiceIcon.vue'));
 
-/** 只压缩站点规则与中文文案数据；产品逻辑仍留在可审查的 userscript 主文件中。 */
+/** 无损压缩站点规则、中文文案与 standalone 服务 SVG 数据；产品逻辑仍留在可审查的 userscript 主文件中。 */
 export function createUserscriptCatalogCompressionPlugin(): Plugin {
     return {
         name: 'compress-userscript-site-catalog',
         enforce: 'pre',
         resolveId(source, importer) {
+            // 只替换完整单文件出口的私有 default JSON 消费者；其他模式和 query 保留原模块。
+            if (bundleLibraries && !greasyForkSource && !source.includes('?')
+                && importer && normalizePath(importer.split('?')[0]) === serviceIconsConsumer
+                && (source === '@/src/ui/assets/serviceBrandPaths.json'
+                    || normalizePath(source) === normalizePath(serviceIconsPath))) return compressedServiceIconsId;
             if (source === './messages/zh-CN'
                 && importer?.split('?')[0] === resolve(root, 'src/core/i18n/index.ts')) return externalChineseMessagesId;
             if (!importer || !source.endsWith('.json')) return null;
@@ -123,6 +131,18 @@ export function createUserscriptCatalogCompressionPlugin(): Plugin {
             return siteCatalogFiles.has(sourcePath) ? `${compressedCatalogPrefix}${sourcePath}.js` : null;
         },
         load(id) {
+            if (bundleLibraries && !greasyForkSource && id === compressedServiceIconsId) {
+                this.addWatchFile(serviceIconsPath);
+                // 不排序、不投影、不重写路径或属性，按原 JSON 顺序保留全部 SVG 值。
+                const contents = JSON.stringify(JSON.parse(fs.readFileSync(serviceIconsPath, 'utf8')));
+                const compressed = Buffer.from(gzipStaticData(Buffer.from(contents), {level: 9})).toString('base64');
+                return [
+                    `/* Non-code service SVG paths; sha256 ${createHash('sha256').update(contents).digest('hex')}. */`,
+                    "import {inflateWithPako} from '@/userscript/pakoRuntime';",
+                    `const bytes = Uint8Array.from(atob(${JSON.stringify(compressed)}), character => character.charCodeAt(0));`,
+                    'export default JSON.parse(inflateWithPako(bytes));',
+                ].join('\n');
+            }
             if (id === externalChineseMessagesId) {
                 if (greasyForkSource) return 'export const zhCNMessages = globalThis.__FLUENTREAD_USERSCRIPT_DATA__.zhCNMessages;';
                 // 文档翻译页面（含 PDF 阅读器）只存在于扩展里，油猴脚本不含该页面，它的文案不占用脚本体积。
@@ -430,7 +450,8 @@ function bundleUserscriptCss(): Plugin {
                 bootstrap,
                 bundleLibraries ? bundledLibraryNotices(entry.moduleIds) : '',
                 // 许可跟随实际打包的 SVG 模块；轻量出口不含此表，完整出口仍保留原许可全文。
-                entry.moduleIds.some((id) => normalizePath(id).split('?')[0] === normalizePath(resolve(root, 'src/ui/assets/serviceBrandPaths.json'))),
+                entry.moduleIds.some((id) => id === compressedServiceIconsId
+                    || normalizePath(id).split('?')[0] === normalizePath(serviceIconsPath)),
             );
 
             entry.code = entry.code.replace(/[\uFFFE\uFFFF]/gu, (character) => {
