@@ -395,6 +395,7 @@
       "tests/documentHtmlInline.test.ts",
       "tests/documentMarkdownSentences.test.ts",
       "tests/documentLiteralProtection.test.ts",
+      "tests/documentMathProtection.test.ts",
       "tests/documentMathLiterals.test.ts",
       "tests/documentTextWrappedParagraphs.test.ts",
       "tests/documentPageRecognizer.test.ts",

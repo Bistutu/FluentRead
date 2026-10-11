@@ -511,7 +511,7 @@ describe('translation broker', () => {
         await expect(translateWithCache(request('document'))).resolves.toEqual(updated);
         expect(mocks.service).toHaveBeenCalledTimes(2);
         const newIdentities = translationCacheIdentities().slice(oldIdentities.length);
-        expect(newIdentities.every(identity => JSON.stringify(identity.documentTranslationPolicy) === '{"version":2}')).toBe(true);
+        expect(newIdentities.every(identity => JSON.stringify(identity.documentTranslationPolicy) === '{"version":3}')).toBe(true);
         await expect(translateWithCache(request('document'))).resolves.toEqual(updated);
         await expect(translateWithCache(request('page'))).resolves.toEqual(previous);
         expect(mocks.service).toHaveBeenCalledTimes(2);
@@ -584,7 +584,7 @@ describe('translation broker', () => {
         await expect(second).resolves.toEqual(['单段一', '单段二']);
         const identities = translationCacheIdentities();
         expect(identities[0]).toEqual(identities[1]);
-        expect(identities.every(identity => JSON.stringify(identity.documentTranslationPolicy) === '{"version":2}')).toBe(true);
+        expect(identities.every(identity => JSON.stringify(identity.documentTranslationPolicy) === '{"version":3}')).toBe(true);
         mocks.config.useCache = true;
         mocks.service.mockImplementation(async message => message.origin.map((text: string) => `译:${text}`));
         await translateWithCache(documentRequest(true));

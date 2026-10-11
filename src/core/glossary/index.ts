@@ -12,3 +12,4 @@ export type {GlossaryContext} from './match';
 export {decodeGlossaryText, parseGlossaryImport, exportGlossary} from './transfer';
 export type {GlossaryImportFormat} from './transfer';
 export {protectGlossaryText, validateGlossaryProtectedTokens, GlossaryPlaceholderError} from './protection';
+export type {GlossaryProtectionEntry, GlossaryProtectedMatch} from './protection';

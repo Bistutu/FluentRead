@@ -1,7 +1,7 @@
 /**
  * @file tests/documentLiteralProtection.test.ts
  * 文件职责：验证真实文档中行内语法、根号标识、URL、邮箱、代码式专名及 GNMT+RL 的自动原样保护边界。
- * 主要内容：回放真实 guide 空行内节点失败，验证单段/数组/slot、嵌套和重复编号的可见正文数量；检验 HTML、根号、希腊变量和专名保护；原文回显覆盖实际目标语言及用户英文译法；内部 g 原样送翻并校验结构，强调文字可译；覆盖无效结果不缓存、文档 v2 与网页缓存隔离。
+ * 主要内容：回放真实 guide 空行内节点失败，验证单段/数组/slot、嵌套和重复编号的可见正文数量；检验 HTML、根号、希腊变量和专名保护；原文回显覆盖实际目标语言及用户英文译法；内部 g 原样送翻并校验结构，强调文字可译；覆盖无效结果不缓存、文档 v3 与上一策略和网页缓存隔离。
  * 模块边界：纯规则及保护链测试，实际免费服务结果由隔离浏览器测试另行验证。
  */
 import {describe, expect, it, vi} from 'vitest';
@@ -22,6 +22,42 @@ const documentConfig = () => ({...createTranslationProviderConfigSnapshot(new Co
     glossaryMatchContext: {context: 'document' as const, sourceLanguage: 'en', targetLanguage: 'zh-hans'}});
 
 describe('document literal protection', () => {
+    it('coalesces automatic math separately in each native array packet and keeps serialized ownership unchanged', () => {
+        const current = documentConfig();
+        const origins = ['The relation 𝑓 ≃𝑆 𝑔 holds.', 'And 𝛾 ≃𝑆 𝛾′.'];
+        const request = prepareGlossaryRequest({origin: origins}, current);
+        const protectedOrigins = request.message.origin as string[];
+        const tokens = getTranslationProviderConfig(request.message, current).glossaryProtectedTokens!;
+        expect(tokens).toHaveLength(2); expect(Object.isFrozen(tokens)).toBe(true);
+        expect(request.restore(protectedOrigins)).toEqual(origins);
+        expect(request.restore([protectedOrigins[0].replace('The relation', '关系').replace('holds.', '成立。'),
+            protectedOrigins[1].replace('And', '以及')])).toEqual(['关系 𝑓 ≃𝑆 𝑔 成立。', '以及 𝛾 ≃𝑆 𝛾′.']);
+        expect(() => request.restore([protectedOrigins[0].replace(tokens[0], tokens[1]), protectedOrigins[1]]))
+            .toThrow('未完整保留术语');
+        const slotOrigin = serializeTranslationSlots(origins, 'math_array').payload;
+        const slotRequest = prepareGlossaryRequest({origin: slotOrigin}, current);
+        expect(getTranslationProviderConfig(slotRequest.message, current).glossaryProtectedTokens!.length).toBeGreaterThan(2);
+        expect(slotRequest.restore(slotRequest.message.origin)).toBe(slotOrigin);
+    });
+
+    it('omits unsupported userscript document paths while preserving ordinary page user glossary behavior', () => {
+        vi.stubEnv('BROWSER', 'userscript');
+        try {
+            const current = documentConfig();
+            const source = 'The relation 𝑓 ≃𝑆 𝑔 contains <g1>words</g1>.';
+            expect(getGlossaryProtectionEntries(current, source)).toEqual([]);
+            expect(prepareGlossaryRequest({origin: source}, current).message.origin).toBe(source);
+            expect(validateDocumentTranslationResult(current, source, '普通译文')).toBe('普通译文');
+            const user = {...current, glossaryTerms: [{source: 'API', target: '接口'}],
+                glossaryLibraries: [{id: 'user', name: 'User', enabled: true, sourceLanguage: '', targetLanguage: 'zh-hans', domains: [],
+                    entries: [{id: 'api', source: 'API', target: '接口', caseSensitive: true}]}],
+                glossaryMatchContext: {...current.glossaryMatchContext, context: 'page' as const}};
+            const request = prepareGlossaryRequest({origin: 'Read API documentation.'}, user);
+            expect(request.restore(request.message.origin)).toBe('Read 接口 documentation.');
+            expect(isGlossaryOnlyResult(user, 'API', '接口')).toBe(true);
+        } finally {vi.unstubAllEnvs();}
+    });
+
     it('rejects the exact live guide paragraph 31 whose translated menu labels were moved outside empty paired nodes', () => {
         const source = 'PDFs default to the <g1>Original layout</g1>, side by side: each translated paragraph is placed back at the position and size of its source paragraph and appears as it arrives, while waiting paragraphs show the loading style chosen in your interface settings. Formulas, figures and numeric table cells stay as they are; table headers, text cells and captions are translated. Hover a long translation to expand it; hovering also highlights the matching source paragraph (switch it off under <g2>Translation style</g2>). Translation starts from the page you are reading, retries automatically for up to two minutes when a service is briefly unavailable, and reports the reason if it still fails. Switch to <g3>Reflowed text</g3> for complete paragraphs at a fixed size. The toolbar also offers <g4>Search</g4> across source and translation, an <g5>Outline</g5> in the sidebar, and <g6>Focus reading</g6>.';
         const returned = 'PDF默认为<g1>原始布局</g1>，并排：每个翻译后的段落会被放回其源段落的位置和大小，并在到达时显示，而等待段落会显示在界面设置中选择的加载样式。公式，数字和数字表格单元格保持原样;表格标题，文本单元格和标题会被翻译。悬停长翻译以展开它;悬停还会突出显示匹配的源段落（在翻译样式下关闭它<g2></g2>）。翻译从您正在阅读的页面开始，在服务暂时不可用时自动重试最多两分钟，如果仍然失败，则报告原因。切换到<g3>“回流文本</g3>”以获取固定大小的完整段落。工具栏还提供<g4></g4>跨源和翻译的搜索、侧<g5></g5>边栏中的大纲以及<g6>聚焦阅读</g6>。';
@@ -352,7 +388,7 @@ describe('document literal protection', () => {
         expect(isGlossaryOnlyResult({...current, glossaryMatchContext: {...current.glossaryMatchContext, context: 'page'}}, emphasized, emphasized)).toBe(false);
     });
 
-    it.each([false, true])('never caches empty inline candidates or reuses policy-v1 document entries, array=%s', async array => {
+    it.each([false, true])('never caches empty inline candidates or reuses policy-v2 document entries, array=%s', async array => {
         const config = Object.assign(new Config(), {service: 'microsoft', from: 'en', to: 'zh-Hans', useCache: true});
         const source = 'The reader should choose <g1>Search</g1> before importing the document.';
         const invalid = '读者应选择搜索<g1></g1>再导入文档。', valid = '读者应选择<g1>搜索</g1>再导入文档。';
@@ -367,7 +403,7 @@ describe('document literal protection', () => {
             getTranslationLanguages: () => ({sourceLanguage: 'en', targetLanguage: 'zh-Hans'}),
             buildTranslationCacheKey: identity => {
                 identities.push(identity);
-                const oldKey = JSON.stringify({...identity, documentTranslationPolicy: {version: 1}});
+                const oldKey = JSON.stringify({...identity, documentTranslationPolicy: {version: 2}});
                 cache.set(oldKey, array ? JSON.stringify([invalid]) : invalid); oldKeys.add(oldKey);
                 return JSON.stringify(identity);
             }, logger: {warn: vi.fn()},
@@ -381,7 +417,7 @@ describe('document literal protection', () => {
         expect(writes).toHaveBeenCalledOnce(); expect(provider).toHaveBeenCalledTimes(2);
         await expect(broker.translateWithCache(request)).resolves.toEqual(array ? [valid] : valid);
         expect(provider).toHaveBeenCalledTimes(2);
-        expect(identities.every(identity => JSON.stringify(identity.documentTranslationPolicy) === '{"version":2}')).toBe(true);
+        expect(identities.every(identity => JSON.stringify(identity.documentTranslationPolicy) === '{"version":3}')).toBe(true);
         for (const oldKey of oldKeys) expect(cache.get(oldKey)).toBe(array ? JSON.stringify([invalid]) : invalid);
     });
 

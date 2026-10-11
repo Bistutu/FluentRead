@@ -347,9 +347,9 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
                 order: current.freeTranslationOrder,
                 mode: current.freeTranslationMode,
             }} : {}),
-            // v2 保护 Unicode 数学标识并拒绝有源正文却返回空的格式节点，旧文档缓存不能绕过新契约。
+            // v3 将相邻自动数学字面值合为有界保护组，旧文档缓存不能绕过完整恢复契约。
             // 仅分隔文档请求；网页缓存、已保存译文和人工校订不清空。
-            ...(current.glossaryMatchContext?.context === 'document' ? {documentTranslationPolicy: {version: 2}} : {}),
+            ...(current.glossaryMatchContext?.context === 'document' ? {documentTranslationPolicy: {version: 3}} : {}),
             customBody: current.customBody[service] || '',
             ...(current.customHeaders?.[service] ? {customHeaders: current.customHeaders[service]} : {}),
             systemRole: current.system_role[service] || '',

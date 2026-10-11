@@ -1,11 +1,21 @@
 /**
  * @file src/core/glossary/protection.ts
  * 文件职责：把原文命中的术语保护为独立占位符，并在翻译结果中原位填回指定译法。
- * 主要内容：共享词边界与大小写规则，规范写法只用于定位并映射回原文，保留未命中字符与空译法的原始写法；长词优先、重复出现独立编号，避开内部槽标记及调用方指定的语法范围，严格检查丢失、重复和未知占位符。
+ * 主要内容：共享词边界与大小写规则，规范写法只用于定位并映射回原文，保留未命中字符与空译法的原始写法；长词优先、重复出现独立编号，避开内部槽标记及调用方指定的语法范围，严格检查丢失、重复和未知占位符；可选观察器报告已经接受的匹配供文档纯算法复用，不再扫描正文。
  * 模块边界：纯文本转换，不接触宿主 DOM、存储或翻译服务；译法按字面填入，不再次参与替换。
  */
 import {findGlossaryMatches} from './match';
 import {sha256Hex} from '@/src/shared/function/sha256';
+
+export type GlossaryProtectionEntry = Readonly<{source: string; target: string; caseSensitive: boolean}>;
+/** 已接受的匹配；范围以送翻文本的 UTF-16 偏移计，条目保留原对象身份。 */
+export interface GlossaryProtectedMatch {
+    readonly token: string;
+    readonly start: number;
+    readonly end: number;
+    readonly value: string;
+    readonly entry: GlossaryProtectionEntry;
+}
 
 export class GlossaryPlaceholderError extends Error {
     readonly code = 'GLOSSARY_PLACEHOLDER_INVALID';
@@ -69,6 +79,7 @@ export function protectGlossaryText(
     entries: readonly {source: string; target: string; caseSensitive: boolean}[],
     namespace = '0',
     excludedRanges: readonly {start: number; end: number}[] = [],
+    onMatch?: (match: GlossaryProtectedMatch) => void,
 ) {
     const text = original;
     let prefix = `__FRTERM_${sha256Hex(namespace + '\0' + text).slice(0, 12)}_`;
@@ -78,10 +89,11 @@ export function protectGlossaryText(
     // 槽标记两侧的下划线不属于正文；拆开后短语仍可命中槽的首尾。
     const pieces = text.split(/(___FLUENTREAD_[a-z0-9_-]+?_\d+_(?:BEGIN|END)___)/giu);
     let offset = 0;
+    let protectedOffset = 0;
     const protectedText = pieces.map((piece, index) => {
         const pieceOffset = offset;
         offset += piece.length;
-        if (index % 2) return piece;
+        if (index % 2) {protectedOffset += piece.length; return piece;}
         const normalized = normalizeMatchText(piece);
         const occupied = findGlossaryMatches(normalized.text, entries);
         let cursor = 0;
@@ -92,12 +104,20 @@ export function protectGlossaryText(
             if (start === undefined || end === undefined) continue;
             if (excludedRanges.some(range => pieceOffset + start < range.end && range.start < pieceOffset + end)) continue;
             const token = `${prefix}${values.size}__`;
-            values.set(token, range.entry.target || piece.slice(start, end));
+            const value = range.entry.target || piece.slice(start, end);
+            values.set(token, value);
             tokenPieces.set(token, index);
-            output += piece.slice(cursor, start) + token;
+            output += piece.slice(cursor, start);
+            if (onMatch) {
+                const protectedStart = protectedOffset + output.length;
+                onMatch({token, start: protectedStart, end: protectedStart + token.length, value, entry: range.entry});
+            }
+            output += token;
             cursor = end;
         }
-        return output + piece.slice(cursor);
+        const result = output + piece.slice(cursor);
+        protectedOffset += result.length;
+        return result;
     }).join('');
     return {
         text: values.size ? protectedText : original,
