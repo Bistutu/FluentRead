@@ -1,0 +1,363 @@
+{
+  "ok": true,
+  "artifact": "chrome-mv3 production",
+  "browser": "Microsoft Edge",
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 132,
+      "top": -1040,
+      "width": 1440,
+      "height": 1000
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false
+  },
+  "choices": [
+    {
+      "value": "ring",
+      "disabled": false
+    },
+    {
+      "value": "minimal",
+      "disabled": false
+    },
+    {
+      "value": "dots",
+      "disabled": false
+    },
+    {
+      "value": "orbit",
+      "disabled": false
+    },
+    {
+      "value": "sparkle",
+      "disabled": false
+    },
+    {
+      "value": "pulse",
+      "disabled": false
+    },
+    {
+      "value": "wave",
+      "disabled": false
+    },
+    {
+      "value": "sweep",
+      "disabled": false
+    },
+    {
+      "value": "hourglass",
+      "disabled": false
+    },
+    {
+      "value": "comet",
+      "disabled": false
+    },
+    {
+      "value": "flip",
+      "disabled": false
+    },
+    {
+      "value": "bounce",
+      "disabled": false
+    },
+    {
+      "value": "typing",
+      "disabled": false
+    },
+    {
+      "value": "scan",
+      "disabled": false
+    },
+    {
+      "value": "signal",
+      "disabled": false
+    },
+    {
+      "value": "none",
+      "disabled": false
+    }
+  ],
+  "quickClose": {
+    "animationNone": true,
+    "sentenceNone": true
+  },
+  "crossPageSync": {
+    "sentenceNone": true
+  },
+  "noneAppearance": {
+    "noneBorder": "dashed",
+    "noneBackground": "rgb(255, 255, 255)",
+    "selectedBackground": "rgb(255, 240, 244)",
+    "selectedCount": 1
+  },
+  "sentenceHighlight": {
+    "values": [
+      "rose",
+      "mint",
+      "sky",
+      "underline",
+      "amber",
+      "lavender",
+      "slate",
+      "dotted",
+      "none"
+    ],
+    "nonePersists": true,
+    "presetReenables": true
+  },
+  "consoleErrors": [],
+  "checks": {
+    "animated": [
+      {
+        "style": "ring",
+        "changed": true
+      },
+      {
+        "style": "minimal",
+        "changed": true
+      },
+      {
+        "style": "dots",
+        "changed": true
+      },
+      {
+        "style": "orbit",
+        "changed": true
+      },
+      {
+        "style": "sparkle",
+        "changed": true
+      },
+      {
+        "style": "pulse",
+        "changed": true
+      },
+      {
+        "style": "wave",
+        "changed": true
+      },
+      {
+        "style": "sweep",
+        "changed": true
+      },
+      {
+        "style": "hourglass",
+        "changed": true
+      },
+      {
+        "style": "comet",
+        "changed": true
+      },
+      {
+        "style": "flip",
+        "changed": true
+      },
+      {
+        "style": "bounce",
+        "changed": true
+      },
+      {
+        "style": "typing",
+        "changed": true
+      },
+      {
+        "style": "scan",
+        "changed": true
+      },
+      {
+        "style": "signal",
+        "changed": true
+      }
+    ],
+    "static": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ],
+    "reducedMotion": true,
+    "reenabled": [
+      {
+        "style": "ring",
+        "changed": true
+      },
+      {
+        "style": "minimal",
+        "changed": true
+      },
+      {
+        "style": "dots",
+        "changed": true
+      },
+      {
+        "style": "orbit",
+        "changed": true
+      },
+      {
+        "style": "sparkle",
+        "changed": true
+      },
+      {
+        "style": "pulse",
+        "changed": true
+      },
+      {
+        "style": "wave",
+        "changed": true
+      },
+      {
+        "style": "sweep",
+        "changed": true
+      },
+      {
+        "style": "hourglass",
+        "changed": true
+      },
+      {
+        "style": "comet",
+        "changed": true
+      },
+      {
+        "style": "flip",
+        "changed": true
+      },
+      {
+        "style": "bounce",
+        "changed": true
+      },
+      {
+        "style": "typing",
+        "changed": true
+      },
+      {
+        "style": "scan",
+        "changed": true
+      },
+      {
+        "style": "signal",
+        "changed": true
+      }
+    ],
+    "sharedStylesheet": true,
+    "responsive": [
+      1024,
+      390
+    ]
+  },
+  "screenshots": [
+    "settings-loading-style-choices.png",
+    "settings-loading-style-dark.png",
+    "settings-sentence-highlight-none.png",
+    "settings-reading-assistance-none.png"
+  ],
+  "rawReport": "/private/tmp/fluentread-animation-none-ui-delivery/report.json",
+  "limitations": [
+    "Firefox runtime not exercised",
+    "Userscript runtime not exercised"
+  ],
+  "originalScreenshots": [
+    "/private/tmp/fluentread-animation-none-ui-delivery/settings-loading-motion-animated.png",
+    "/private/tmp/fluentread-animation-none-ui-delivery/settings-loading-style-choices.png",
+    "/private/tmp/fluentread-animation-none-ui-delivery/settings-loading-motion-off.png",
+    "/private/tmp/fluentread-animation-none-ui-delivery/settings-loading-motion-reduced.png",
+    "/private/tmp/fluentread-animation-none-ui-delivery/settings-loading-motion-reenabled.png",
+    "/private/tmp/fluentread-animation-none-ui-delivery/settings-loading-style-dark.png",
+    "/private/tmp/fluentread-animation-none-ui-delivery/settings-loading-motion-1024.png",
+    "/private/tmp/fluentread-animation-none-ui-delivery/settings-loading-motion-390.png",
+    "/private/tmp/fluentread-animation-none-ui-delivery/settings-sentence-highlight-none.png",
+    "/private/tmp/fluentread-animation-none-ui-delivery/settings-reading-assistance-none.png",
+    "/private/tmp/fluentread-animation-none-ui-delivery/settings-sentence-highlight-enabled.png"
+  ],
+  "baselineFailures": [
+    {
+      "suite": "tests/i18n.test.ts",
+      "cases": 2,
+      "reason": "Existing 原生翻译合批 / 开启合并 locale mappings missing",
+      "confirmedOnMain": true
+    }
+  ],
+  "verification": {
+    "focusedTests": {
+      "settingsArchitecture": 37,
+      "sharedUiLifecycle": 55,
+      "translationLoading": 11
+    },
+    "sourceHeaderCases": 909,
+    "typecheck": true,
+    "builds": {
+      "chrome": true,
+      "firefox": true,
+      "userscript": true,
+      "docs": true
+    },
+    "userscriptVerifier": true,
+    "testAudit": true,
+    "coreCoverage": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "referenceProjectsUsed": false
+  },
+  "copyPolishVerification": {
+    "groupCopy": {
+      "title": "翻译加载样式",
+      "description": "选择样式即可预览；选“无”关闭界面动画并保留静态反馈。",
+      "nestedHeadingCount": 0
+    },
+    "typecheck": true,
+    "settingsArchitectureCases": 37,
+    "testAudit": true,
+    "chromeBuild": true,
+    "browserOk": true,
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "windowPlacement": {
+      "mode": "background-visible-no-focus",
+      "visible": true,
+      "hidden": false,
+      "centered": true,
+      "windowState": "normal",
+      "bounds": {
+        "left": 132,
+        "top": -1040,
+        "width": 1440,
+        "height": 1000
+      },
+      "displayTarget": "secondary",
+      "source": "macos-nsscreen",
+      "screenIndex": 1,
+      "browserFrontmost": false
+    },
+    "consoleErrors": [],
+    "rawReport": "/private/tmp/fluentread-loading-style-line-only-ui/report.json",
+    "screenshots": [
+      "settings-loading-style-choices.png",
+      "settings-loading-style-dark.png",
+      "settings-loading-style-heading-390.png"
+    ],
+    "nonePreview": "Horizontal line only"
+  }
+}

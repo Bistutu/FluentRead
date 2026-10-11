@@ -5,6 +5,7 @@ import {
   cleanServiceLabel,
   getServiceWebsite,
   searchServiceOptions,
+  splitServiceChoices,
 } from '@/src/ui/view-model/serviceCatalog'
 import { customModelString, defaultModels, models, services, servicesType } from '@/src/core/config/catalog'
 import { Config, normalizeConfig } from '@/src/core/config/model'
@@ -250,5 +251,36 @@ describe('service catalog helpers', () => {
       expect(normalized.model[service], `${service} 未选中默认模型`).toBe(defaultModel)
       expect(new Config().model[service], `${service} 的初始配置未选中默认模型`).toBe(defaultModel)
     }
+  })
+
+  it('把免费翻译、已配置服务、微软与谷歌排在常用区前面，并用热门服务补位', () => {
+    const catalog = ['freeTranslation', 'bilibili', 'myMemory', 'microsoft', 'google', 'deepL', 'youdao', 'deepseek', 'tongyi', 'zhipu', 'openai', 'gemini', 'claude']
+      .map((value) => ({ value, label: value }))
+    const ids = (items: { value: string }[]) => items.map((item) => item.value)
+
+    const fresh = splitServiceChoices(catalog, { configured: new Set() })
+    expect(ids(fresh.common)).toEqual(['freeTranslation', 'microsoft', 'google', 'bilibili', 'deepL', 'deepseek', 'tongyi', 'openai'])
+    expect(ids(fresh.more)).toEqual(['myMemory', 'youdao', 'zhipu', 'gemini', 'claude'])
+
+    const configured = splitServiceChoices(catalog, { configured: new Set(['claude', 'zhipu', 'removed']), selected: 'youdao' })
+    expect(ids(configured.common)).toEqual(['freeTranslation', 'zhipu', 'claude', 'microsoft', 'google', 'youdao', 'bilibili', 'deepL'])
+    expect(ids(configured.more)).toEqual(['myMemory', 'deepseek', 'tongyi', 'openai', 'gemini'])
+  })
+
+  it('常用区保留全部已配置服务与当前选中项，目录缺项时不补空位', () => {
+    const catalog = ['deepseek', 'openai', 'claude', 'custom:1'].map((value) => ({ value, label: value }))
+    const split = splitServiceChoices(catalog, { configured: new Set(['custom:1', 'claude', 'openai']), selected: 'gone', limit: 2 })
+
+    expect(split.common.map((item) => item.value)).toEqual(['openai', 'claude', 'custom:1'])
+    expect(split.more.map((item) => item.value)).toEqual(['deepseek'])
+    expect(splitServiceChoices([], { configured: new Set() })).toEqual({ common: [], more: [] })
+
+    // 待配置的服务不进常用区，即使它正在被别的功能使用或属于热门服务；当前选中项例外。
+    const pending = splitServiceChoices(
+      ['freeTranslation', 'microsoft', 'google', 'bilibili', 'deepL', 'deepseek', 'openai'].map((value) => ({ value, label: value })),
+      { configured: new Set(['openai', 'deepseek']), needsSetup: new Set(['deepL', 'deepseek', 'openai']), selected: 'openai' },
+    )
+    expect(pending.common.map((item) => item.value)).toEqual(['freeTranslation', 'openai', 'microsoft', 'google', 'bilibili'])
+    expect(pending.more.map((item) => item.value)).toEqual(['deepL', 'deepseek'])
   })
 })
