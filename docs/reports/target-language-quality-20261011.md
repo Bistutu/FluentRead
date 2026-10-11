@@ -1,6 +1,6 @@
 # 目标语言重复翻译：架构审计与改进
 
-本次需求来源于 [GitHub Releases](https://github.com/FluentRead/FluentRead/releases) 的中文发布说明：中文句架内含 `Microsoft Edge`、`Chrome`、`Worker`、`ACP Agent` 等名称，仍被再次翻译。开始工作的基线为 `origin/main` 的 `fe7005dd9`，最终合入 `dc335c698` 的全文、局部、悬浮、右键和输入框更新后验证；修复在独立分支 `codex/target-language-quality-20261011` 中实现。
+本次需求来源于 [GitHub Releases](https://github.com/FluentRead/FluentRead/releases) 的中文发布说明：中文句架内含 `Microsoft Edge`、`Chrome`、`Worker`、`ACP Agent` 等名称，仍被再次翻译。开始工作的基线为 `origin/main` 的 `fe7005dd9`，合并前继续整合至 `e047f8bd0`，包括全文、局部、悬浮会话保护、右键和输入框更新；修复在独立分支 `codex/target-language-quality-20261011` 中实现。
 
 ## 现有架构
 
@@ -77,21 +77,32 @@ node scripts/testing/run-resource-safe.mjs -- node scripts/testing/benchmark-eld
 
 脚本不安装依赖，也不改变项目 lockfile。两次最终执行的语料、包和源码散列、全部决策及浏览器 bundle 字节一致，见 [复现校验](./target-language-quality-20261011/eld-reproducibility.json)。耗时和初始化内存仅为本机 Node 观测。
 
+## PR #935 合并前复核
+
+对初始 PR 提交 `044d8403d` 再作独立探针和实际入口审查，发现四类阻塞回归，修复后才继续交付：
+
+- 完整 DOM 候选里的空语义块或 CSS 块漏掉边界，可能把分行的外语拼成名称。现在 walker 同时处理根和后代元素；可见空块保留分隔，隐藏空块与真正行内节点仍保持邻接，不改变默认请求文本。
+- “英语：”“英文内容：”“英文原文如下：”等明确外语标签仍可能被当作名称枚举。现在以“外语标记、有限文本角色、有限指示后缀、直连冒号”的语法先提供反证，覆盖中、日、韩语；不会跨逗号、句号、换行借标签，产品原文功能描述仍以名称证据判断。
+- 多反引号、部分中西文引用、未闭合字面量和带任意前缀的成对字符串实值变化可能被展示兜底隐藏。保护按原始字符比较字面量，缺少完整边界或多个撇号含义不明确时保守使用原始比较；单个法文省音和英语所有格仍支持排版等价。反引号按同长度串预索引、引用顺序扫描，去掉非线性正则回溯。18 万字符不配对反引号的独立 Node 探针由约 937 ms 降到约 4–7 ms；这是本机观测，未用毫秒阈值作跨机器测试。
+- 新增的统计次位纠正会把英语正文中前置、后置或中插的西语、丹麦语短提示误判为全英语。已撤回该纠正路径，保留已有统计门槛。`You can close the browser after your changes have been saved.` 恢复为未知，保留翻译；两句完整的英语自然正文仍可信识别。保留真实语料标注，未放宽覆盖门槛来掩盖召回取舍。
+
+输入框取消与请求归属、图片 OCR 文本行去重/映射及词库版本、标准圈选冻结配置亦由真实 handler / registry / broker 探针复核。图片冻结的范围是 OCR 后的文本翻译阶段，不能据此声称整个 OCR/视觉流程已冻结全部 provider 配置。参考项目只读。
+
 ## 验证与可重复用例
 
 新增发行说明语料覆盖全部 52 个目录目标，含自然段落、短标题、技术混排、代码/链接/版本外壳、Unicode 空白、相近语种和混合负例。每段同时对全部目标及排除语言检查；不以当前目标提示识别器，不要求有歧义的短标题强制归属。
 
 四份自编语料共 579 条，对目录目标共作 29,484 次非空文本决策，统一证据链未错误跳过标注中的外语；空文本另行核对。新的 52 个自然正文跳过 45 个（86.54%），其结构标记外壳保持同一门槛。余下 `id/ms/da/hr/sr/sl/lt` 七段仍是未知，见 [逐段诊断](./target-language-quality-20261011/native-body-diagnostics.json)；这不是 52 种语言均达到完整召回的声明。
 
-最终合入主线输入框取消更新后，显式选取 47 个直接受影响的测试文件，4,956 条测试全部通过，没有运行全仓库回归。8 个改动核心模块（语言证据与词库数据、DOM 提取、回显兜底）的 statements / branches / functions / lines 均为 100%，见 [源码散列与验证清单](./target-language-quality-20261011/verification.json)。初始 `fe7005dd9` 的两个相关测试文件已有 9 条失败：6 条缺少已有 `enableNativeBatch` 快照字段，3 条序列化损坏包夹具误用了原生批量服务；本次修正测试夹具，未改变已有批量协议。
+最终合入主线输入框取消和悬浮会话更新后，显式选取 49 个直接受影响的测试文件，5,162 条测试全部通过，没有运行全仓库回归。8 个识别、词库数据、DOM 提取与回显核心模块的 statements / branches / functions / lines 均为 100%，见 [源码散列与验证清单](./target-language-quality-20261011/verification.json) 和 [合并前复核记录](./target-language-quality-20261011/pr935-review.json)。初始 `fe7005dd9` 的两个相关测试文件已有 9 条失败：6 条缺少已有 `enableNativeBatch` 快照字段，3 条序列化损坏包夹具误用了原生批量服务；本次修正测试夹具，未改变已有批量协议。
 
-Chrome、Firefox 与油猴生产构建、类型检查、扩展清单、油猴产物验证、测试归属审计均通过。用相同 lockfile 和依赖独立重建 `dc335c698`：油猴从 2,009,853 增至 2,019,586 字节，增加 9,733 字节（0.4843%）；预算按实际最小增加 10 KB，余量 414 字节，见 [精确产物比较](./target-language-quality-20261011/userscript-size.json)。
+Chrome、Firefox 与油猴生产构建、类型检查、扩展清单、油猴产物验证、测试归属审计均通过。用相同 Node、lockfile 和依赖独立重建 `e047f8bd0`：油猴从 2,013,029 增至 2,024,302 字节，增加 11,273 字节（0.5600%）；基线此次重建超原预算 29 字节如实记录，最终预算相对主线最小增加 12 KB，余量 698 字节，见 [精确产物比较](./target-language-quality-20261011/userscript-size.json)。
 
-生产 Chrome 扩展在临时 Edge profile、第二屏幕后台 CDP 中使用真实快捷键测试。真实 GitHub Releases 的 8 个中文段落悬浮与全文抽查均零请求，英文正常翻译，恢复与链接保持原样；10 段本地原文分别以普通与 `code/strong` 拆分 DOM 验证，均通过零请求、恢复、再次翻译、动态文本及切到英文目标后的重新翻译，见 [发行页浏览器报告](./target-language-quality-20261011/browser-release.json)。GitHub 自身 `/_global-navigation/payloads.json` 返回一次 404，URL 独立记录为站点资源错误，扩展控制台异常为零。拆分 DOM 的截图显示中文保留、相邻英文显示译文：
+生产 Chrome 扩展在临时 Edge profile、第二屏幕后台 CDP 中使用真实快捷键测试。最终源码复测真实 GitHub Releases 的 8 个中文段落悬浮与全文抽查均零请求，英文正常翻译，恢复与链接保持原样；10 段本地原文分别以普通与 `code/strong` 拆分 DOM 验证，均通过零请求、恢复、再次翻译、动态文本及切到英文目标后的重新翻译，见 [最终发行页浏览器报告](./target-language-quality-20261011/browser-release-review.json)。GitHub 自身 `/_global-navigation/payloads.json` 返回一次 404，URL 独立记录为站点资源错误，扩展控制台异常为零。拆分 DOM 的截图显示中文保留、相邻英文显示译文：
 
 ![目标为中文，技术名称所在中文段落保留，相邻英文段落正常翻译](./target-language-quality-20261011/browser-release-split.png)
 
-德、葡、意、法、英、俄、日、韩、简中 9 种目标的浏览器功能检查均通过：同目标悬浮零请求、标题保留、相邻外语悬浮 `[1,0,1,0]` 和全文 `[1,0,1]`、动态重识别及恢复。该批次在目标切换通过后、排除语言检查前检测到测试 Edge 成为前台，焦点保护立即中止并关闭浏览器，因此 [原批次报告](./target-language-quality-20261011/browser-multilingual.json) 的整体状态保留为失败。用新临时 profile 与同一后台保护机制，只重跑德语及剩余目标切换/排除语言检查，[独立复测报告](./target-language-quality-20261011/browser-multilingual-de.json) 整体通过，第二屏幕正常窗口且测试 Edge 未成为前台；没有切换到前台测试或绕过保护。
+最终生产扩展的德、葡、意、法、英、俄、日、韩、简中 9 种目标功能检查均通过：同目标悬浮零请求、标题保留、相邻外语悬浮 `[1,0,1,0]` 和全文 `[1,0,1]`、动态重识别及恢复。最终批次在目标切换通过后、排除语言检查前检测到测试 Edge 成为前台，焦点保护立即中止并关闭浏览器，因此 [最终批次报告](./target-language-quality-20261011/browser-multilingual-review.json) 的整体状态保留为失败。用新临时 profile 与同一后台保护机制，只重跑德语及剩余目标切换/排除语言检查，[最终独立复测报告](./target-language-quality-20261011/browser-multilingual-de-review.json) 整体通过，第二屏幕正常窗口且测试 Edge 未成为前台；没有切换到前台测试或绕过保护。先前初始提交的浏览器报告亦保留，最终交付依据带 `review` 的报告与源码散列。
 
 回环翻译端点只证明判断、请求计数和 DOM 状态，不证明供应商翻译质量。Firefox 本次验证构建与清单，未进行 Firefox 浏览器运行时测试。
 

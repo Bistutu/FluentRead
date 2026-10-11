@@ -1,7 +1,7 @@
 /**
  * @file src/core/translation/targetResult.ts
  * 文件职责：为网页翻译提供有目标语言证据的近似回显展示兜底，减少供应商只调整排版时的重复译文。
- * 主要内容：先沿用精确文本比较，再要求原文可信属于当前目标语言；仅折叠中西文同义标点、引号、句尾陈述句号及汉字/假名间排版空格；相同长度反引号、正确闭合的中西文引用保护原始实值，未闭合引用保守展示，词内撇号不当作引用边界。
+ * 主要内容：先沿用精确文本比较，再要求原文可信属于当前目标语言；仅折叠中西文同义标点、引号、句尾陈述句号及汉字/假名间排版空格；相同长度反引号、正确闭合的中西文引用保护原始实值，未闭合或有歧义的引用保守展示，单个词内撇号仍按正文处理。
  * 模块边界：纯算法，不改变原文、供应商结果、缓存或请求状态；只供具有冻结目标语言的网页展示调用，不对文档编辑和写作改写套用相似度阈值。
  */
 import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
@@ -28,7 +28,7 @@ interface ProtectedLiteral {
 interface LiteralEvidence {
     matches: ProtectedLiteral[];
     values: string[];
-    unclosed: boolean;
+    uncertain: boolean;
 }
 
 /** 只查看相邻码点，保留法文省音、英文缩写及所有格；不重复扫描前缀。 */
@@ -43,13 +43,15 @@ function infixApostrophe(value: string, index: number): boolean {
 /**
  * 先逐个反引号串建立下一处同长度位置，再按正文顺序消费闭合的代码或引用。
  * 每个字符最多经过预扫描和一次消费扫描；不配对的任意长度串不能触发正则回溯。
- * 未闭合分隔符立即回到原始比较，不能证明其内部只是排版。
+ * 未闭合分隔符立即回到原始比较；多个词内撇号也可能是前缀字符串的边界，保守保留实值。
  */
 function literalEvidence(value: string): LiteralEvidence {
     const ticks = new Map<number, {end: number; close?: number}>();
     const nextByLength = new Map<number, number>();
+    let lastApostrophe = -1;
     // 从后往前建立同长度配对位置，代码内更短或更长的反引号无需特殊递归。
     for (let index = value.length - 1; index >= 0; index--) {
+        if (lastApostrophe < 0 && (value[index] === "'" || value[index] === '’')) lastApostrophe = index;
         if (value[index] !== '`') continue;
         const end = index + 1;
         while (index > 0 && value[index - 1] === '`') index--;
@@ -58,7 +60,7 @@ function literalEvidence(value: string): LiteralEvidence {
         nextByLength.set(length, index);
     }
     const matches: ProtectedLiteral[] = [];
-    const evidence = (unclosed: boolean): LiteralEvidence => ({matches, values: matches.map(match => match.body), unclosed});
+    const evidence = (uncertain: boolean): LiteralEvidence => ({matches, values: matches.map(match => match.body), uncertain});
     for (let index = 0; index < value.length;) {
         const open = value[index]!;
         if (open === '`') {
@@ -71,6 +73,9 @@ function literalEvidence(value: string): LiteralEvidence {
             continue;
         }
         if ((open === "'" || open === '’') && wordBefore(value, index)) {
+            // 不能把 N'a  b' 等带任意前缀的成对字面量当成两个词内撇号而丢掉数据空白。
+            // 不推断前缀语言；后面还有撇号就有边界歧义，普通单次省音和所有格仍可折叠排版。
+            if (index < lastApostrophe) return evidence(true);
             index++;
             continue;
         }
@@ -123,7 +128,7 @@ export function hasDistinctTargetTranslation(source: string, translation: string
     // 共享精确比较会折叠空白；字面量变化须先保护，避免它绕过下方展示兜底。
     const sourceEvidence = literalEvidence(source);
     const translatedEvidence = literalEvidence(translation!);
-    if (sourceEvidence.unclosed || translatedEvidence.unclosed) return source !== translation;
+    if (sourceEvidence.uncertain || translatedEvidence.uncertain) return source !== translation;
     if (JSON.stringify(sourceEvidence.values) !== JSON.stringify(translatedEvidence.values)) return true;
     if (!hasDistinctTranslation(source, translation)) return false;
     if (!/\p{L}/u.test(source) || !shouldSkipTranslationForTarget(source, targetLanguage)) return true;

@@ -51,11 +51,12 @@ const artifactBytes = Buffer.byteLength(source);
 // 安全词库摘要/同步坐标解析复用与手势、会话复验在 dc335c698 集成后增加 3,132 字节：
 // 同依赖独立 main 为 2,009,853，候选为 2,012,985（0.1558%）；
 // 沿用主线单一悬浮调度器；利用原余量后预算最小增加 3 KB，见 hover-translation-polish-20261011/verification.json。
-// 多文字名称证据、外语否决、准确 DOM 语言副本和受保护字面量的排版回显兜底；
-// 同依赖独立基线 dc335c698 为 2,009,853，最终候选为 2,019,586，增加 9,733 字节（0.4843%）。
-// 预算按实测最小增加 10 KB，余量 414 字节；见 docs/reports/target-language-quality-20261011/userscript-size.json。
+// 多文字名称证据、外语否决、准确 DOM 语言副本和线性字面量保护的排版回显兜底；
+// 合并前整合 e047f8bd0：同依赖独立基线为 2,013,029，最终候选为 2,024,302，增加 11,273 字节（0.5600%）。
+// 相对主线 2,013,000 预算按实测最小增加 12 KB，余量 698 字节；基线本次重建超原预算 29 字节亦如实记录。
+// 比较与散列见 docs/reports/target-language-quality-20261011/userscript-size.json。
 // 不引入额外检测模型。
-const MAX_USERSCRIPT_BYTES = 2_020_000;
+const MAX_USERSCRIPT_BYTES = 2_025_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);

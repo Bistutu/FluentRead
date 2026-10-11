@@ -1,0 +1,226 @@
+{
+  "review": {
+    "reviewedInitialHead": "044d8403da901bb0a46269faf39ea04b83b0596a",
+    "integrationMain": "e047f8bd05ad8439e8bd8e2bdb094b55e3056fec",
+    "functionalBlockerFamiliesFixed": [
+      "empty visible descendant block omitted from language copy",
+      "explicit foreign-label roles misclassified as names",
+      "multi-tick, unclosed and prefixed literal data changes hidden",
+      "lexical correction promoted mixed English and short foreign text"
+    ],
+    "performanceFix": "linear literal scanner; no lazy backreference or repeated suffix scan",
+    "independentEntrypointProbeAssertions": 5,
+    "literalDataChangeCases": 16,
+    "shortForeignMixedCorpusCases": 30,
+    "remainingConfirmedBlockers": 0,
+    "validationScope": "49 selected suites, 8 core modules and release/multilingual loopback browser fixtures; not full repository or live providers"
+  },
+  "sourceHashes": {
+    "src/core/language/chinese.ts": "8bf08265376671df97f3f5559429caab5b148df09af8b7bb8917b477e5c6c0ea",
+    "src/core/language/functionWordData.ts": "caeb89e08bbf87f5bd4aa77a5a34a90243fb99ba5e5aead65c49d0b9f7befbf6",
+    "src/core/language/identify.ts": "0befa98f4e5a92fca4c9ee8b4c58d1502ccf0db1e8dc518db3c1f4629bee2bec",
+    "src/core/language/lexicon.ts": "a7f57d1dae473560e61190abc550217b2e14bd4beec5a42527d48b590fb18c35",
+    "src/core/language/statistical.ts": "6c8f262961d2e7c3d2272ed83c3888b3726eb9cbd28f7c9debb169faec93c0f4",
+    "src/core/language/technicalTokens.ts": "8551daf82bc503038ac8adb9991ee68d953af82b267616749a460be7a8328908",
+    "src/core/translation/targetResult.ts": "a19fc1ac75ca75c5e4a8704ffdaaf05e3fcba9e92da0ca6c9eafec3c520576fe",
+    "src/core/translation/text.ts": "a58862eb9d5d8ea789eb9cf1cf40c7df975a5a7bfb7a5029591c70d763d8e4f1",
+    "src/features/area-translation/services/textTranslation.ts": "cf20e62596dd5028a8406a12b116176a167a338422a8efa98b6343c1c69cafa6",
+    "src/features/full-page-translation/content/liveTextTranslation.ts": "fee6e3a553131d0ea4f42ffd5d494255fab370d1c88d3b14c5dd91c7a6f86e8f",
+    "src/features/full-page-translation/content/runtime.ts": "49c3f21000f55771e0654f7cf19ac9f7de4fef7ded07cbce4e0b457aca679901",
+    "src/features/full-page-translation/content/titleTranslation.ts": "ebc48fa73e55b42274c3784e2d3a8d1879e06b4e008ab43149fa2ee702fe5eb2",
+    "src/features/image-translation/background/handlers.ts": "9678f90717667660d168e13cdbb3a25ab83625e8f1460892dcbfafea28d1fbd6",
+    "src/features/input-translation/background/handler.ts": "74a794bf1a78322dc232a4971251a65171c0e637cabecbbeca74eb842acd955e"
+  },
+  "coverage": {
+    "src/core/language/chinese.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "src/core/language/identify.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "src/core/language/technicalTokens.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "src/core/translation/text.ts": {
+      "statements": 100,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100
+    },
+    "src/core/language/functionWordData.ts": {
+      "statements": 100.0,
+      "branches": 100,
+      "functions": 100,
+      "lines": 100.0
+    },
+    "src/core/language/lexicon.ts": {
+      "statements": 100.0,
+      "branches": 100.0,
+      "functions": 100.0,
+      "lines": 100.0
+    },
+    "src/core/language/statistical.ts": {
+      "statements": 100.0,
+      "branches": 100.0,
+      "functions": 100.0,
+      "lines": 100.0
+    },
+    "src/core/translation/targetResult.ts": {
+      "statements": 100.0,
+      "branches": 100.0,
+      "functions": 100.0,
+      "lines": 100.0
+    }
+  },
+  "tests": {
+    "scope": "49 explicitly selected directly affected suites including current main hover-session and glossary integration; not the repository-wide regression suite",
+    "files": 49,
+    "passed": 5162,
+    "failed": 0,
+    "commandLog": "/private/tmp/fluentread-pr935-final-tests.log",
+    "selectedFiles": [
+      "tests/architecture/moduleBoundaries.test.ts",
+      "tests/architecture/sourceFileHeaders.test.ts",
+      "tests/architecture/verificationOwnership.test.ts",
+      "tests/areaTextTranslation.test.ts",
+      "tests/backgroundFeatureHandlers.test.ts",
+      "tests/backgroundImageServices.test.ts",
+      "tests/chineseLanguage.test.ts",
+      "tests/chineseTechnicalParagraphs.test.ts",
+      "tests/chineseUiNamesRegression.test.ts",
+      "tests/documentTranslation.test.ts",
+      "tests/fullPageAttributeBoundary.test.ts",
+      "tests/fullPageTranslationConfigSnapshot.test.ts",
+      "tests/fullPageVisibilityScheduling.test.ts",
+      "tests/glossaryRevisionMemo.test.ts",
+      "tests/hoverTranslationConfig.test.ts",
+      "tests/hoverTranslationScheduler.test.ts",
+      "tests/imageGlossaryContext.test.ts",
+      "tests/imageTargetLanguage.test.ts",
+      "tests/imageTranslationHandlerClock.test.ts",
+      "tests/inputBox.test.ts",
+      "tests/inputEditableHost.test.ts",
+      "tests/inputTranslationBackground.test.ts",
+      "tests/inputTranslationContentFeature.test.ts",
+      "tests/languageAuditBoundaries.test.ts",
+      "tests/languageCodes.test.ts",
+      "tests/languageIdentification.test.ts",
+      "tests/languageIdentificationCorpus.test.ts",
+      "tests/languageScripts.test.ts",
+      "tests/languageStatistical.test.ts",
+      "tests/languageTechnicalTokens.test.ts",
+      "tests/liveTextRender.test.ts",
+      "tests/liveTextTranslation.test.ts",
+      "tests/pageTranslationAdvanced.test.ts",
+      "tests/sameTargetLanguageClient.test.ts",
+      "tests/sameTargetLanguageRegression.test.ts",
+      "tests/sameTargetLanguageSlots.test.ts",
+      "tests/sectionTranslationRegion.test.ts",
+      "tests/sectionTranslationRuntime.test.ts",
+      "tests/targetLanguageAdversarial.test.ts",
+      "tests/targetLanguageDetector.test.ts",
+      "tests/targetLanguageReleaseCorpus.test.ts",
+      "tests/targetTranslationResult.test.ts",
+      "tests/translationCore.test.ts",
+      "tests/translationEchoValidationRegression.test.ts",
+      "tests/translationSlotEchoRegression.test.ts",
+      "tests/translationStability.test.ts",
+      "tests/translationState.test.ts",
+      "tests/userscriptViteConfig.test.ts",
+      "tests/videoSubtitleLanguage.test.ts"
+    ]
+  },
+  "userscript": {
+    "baselineCommit": "e047f8bd05ad8439e8bd8e2bdb094b55e3056fec",
+    "baselineBytes": 2013029,
+    "candidateBytes": 2024302,
+    "deltaBytes": 11273,
+    "deltaPercent": 0.5600018678320084,
+    "baselineBudgetBytes": 2013000,
+    "budgetBytes": 2025000,
+    "budgetIncreaseBytes": 12000,
+    "baselineBudgetExceededBytes": 29,
+    "baselineSha256": "bdd8eaae5267ef00da3798e243333b8fdc5ebc304892189575fef991436afcd9",
+    "candidateSha256": "4fe0246f43a6b7b9869b4cd9aaffc85cb917b9ce60d7f8b6e466ac0908be0299",
+    "sameDependencies": true,
+    "lockfileSha256": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
+    "nodeVersion": "v20.11.1",
+    "baselineCommand": "pnpm build:userscript; independent git archive of exact main commit with same shared node_modules",
+    "candidateCommand": "pnpm build:userscript && node scripts/verify-userscript-build.mjs"
+  },
+  "browsers": {
+    "release": {
+      "report": "browser-release-review.json",
+      "passed": true,
+      "liveParagraphs": 8,
+      "liveHoverRequests": 0,
+      "liveFullSampleRequests": 0,
+      "fixtureParagraphs": 10,
+      "fixtureMarkup": [
+        "plain",
+        "split"
+      ],
+      "noForegroundFocus": true
+    },
+    "multilingual": {
+      "status": "functional-cases-complete-with-aborted-run-and-targeted-rerun",
+      "passedTargets": [
+        "de",
+        "pt",
+        "it",
+        "fr",
+        "en",
+        "ru",
+        "ja",
+        "ko",
+        "zh-Hans"
+      ],
+      "initialRunOverallPassed": false,
+      "initialRunAbortedBefore": "excludedLanguage",
+      "initialReport": "browser-multilingual-review.json",
+      "targetedRerunPassed": true,
+      "targetedRerunScope": "de same-target, target switch and excluded-language parity",
+      "targetedReport": "browser-multilingual-de-review.json",
+      "targetedRerunNoForegroundFocus": true
+    }
+  },
+  "artifactHashes": {
+    ".output/chrome-mv3/manifest.json": "fd80314b160701ed5500e584e1373f5eed44a19acdc6f8b76f9a12c1565970d8",
+    ".output/firefox-mv2/manifest.json": "2f4d6388a66e23f052933d6a4f972e3f65e841806a20f6b1d274fcf14d21a3ef",
+    ".output/userscript/fluent-read.user.js": "4fe0246f43a6b7b9869b4cd9aaffc85cb917b9ce60d7f8b6e466ac0908be0299",
+    ".output/chrome-mv3/background.js": "b1b9c4182c8eb617d48007b79674114a560a772c35bfe7f7a29d5372e23c94b4",
+    ".output/chrome-mv3/content-scripts/content.js": "9fd1eadbc74821cadf7f5c33fb34f7031a035eeb7f5ac33ff7d35dadc26444ee",
+    ".output/chrome-mv3/content-scripts/neteaseMailFrame.js": "4a995fa8e7c5e4e648b20ebff8c3d597a826ee692f02a4aa020b512bcde25d6f",
+    ".output/chrome-mv3/content-scripts/shadowBridge.js": "ac4cd36fa2f66d591c031c44f3d0b7bc58a39888aee263037b71be2fad686e39",
+    ".output/chrome-mv3/content-scripts/supportedFrame.js": "48ff7c7b6a9b141b8bfd87b92e6062bbeee2ba548da116411dada9c20a5668ca",
+    ".output/chrome-mv3/content-scripts/xVideoBridge.js": "f22318b71931cfc573c8aae63086438e4d186f4f654616a85ebd0c6178c50331",
+    ".output/chrome-mv3/content-scripts/youtubeBridge.js": "f5304857608090e874b144266f0def19809b0ba228765f3c7d14ef22faa57af3",
+    ".output/firefox-mv2/background.js": "e1c81b53c18a9c61e62878305c12c778c8a8fa322e4f72c093b249f44f313b75",
+    ".output/firefox-mv2/content-scripts/content.js": "7feecd6a87fff1ffba5a3aa453481e654b1e266b7de4e9a6dd4f73a24979cbc7",
+    ".output/firefox-mv2/content-scripts/neteaseMailFrame.js": "bae93c8e06e4824248a291e23082831890b11ca1031417712fc85a6f28100ce9",
+    ".output/firefox-mv2/content-scripts/shadowBridge.js": "ac4cd36fa2f66d591c031c44f3d0b7bc58a39888aee263037b71be2fad686e39",
+    ".output/firefox-mv2/content-scripts/supportedFrame.js": "df7a9dda963b7534a2731eac0cd8b48fad2c4906cfcb973e4bed05f1280f2410",
+    ".output/firefox-mv2/content-scripts/xVideoBridge.js": "f22318b71931cfc573c8aae63086438e4d186f4f654616a85ebd0c6178c50331",
+    ".output/firefox-mv2/content-scripts/youtubeBridge.js": "f5304857608090e874b144266f0def19809b0ba228765f3c7d14ef22faa57af3"
+  },
+  "checks": {
+    "compile": "passed",
+    "chromeBuild": "passed",
+    "firefoxBuild": "passed",
+    "userscriptBuild": "passed",
+    "extensionManifests": "passed",
+    "userscriptVerifier": "passed",
+    "testOwnershipAudit": "passed",
+    "diffCheck": "passed",
+    "docsBuild": "passed"
+  }
+}
