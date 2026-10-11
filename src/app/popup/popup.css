@@ -43,6 +43,7 @@ html { min-height: 0; }
 /* Firefox 按内容的固有宽度给 popup 定尺寸，不采用 html 的宽度；body 用百分比时会被当成 auto，首启页被裁成 200px、英文菜单右侧留白。 */
 body, #app { width: var(--fluentread-localized-popup-width, var(--interface-popup-width, 320px)); }
 html, body, #app { min-width: 0; margin: 0; overflow-x: hidden; background: #fff; }
+
 :root.dark body, :root.dark #app { background: #14161b; }
 button, select, input { font: inherit; }
 button { color: inherit; }
@@ -696,3 +697,9 @@ footer button { font-weight: 500; color: var(--muted); }
 :root:not(:lang(zh)) .popup-shell .opensource-link { min-width: 0; white-space: normal; text-align: center; line-height: 1.4; }
 :root:not(:lang(zh)) .popup-shell .opensource-link > span:not(.external-mark) { min-width: 0; overflow-wrap: anywhere; }
 .opensource-link svg, .opensource-link .external-mark { flex: none; }
+
+/* 页内 iframe 已有视口尺寸，只在这个模式使用视口约束；工具栏仍保留固有宽度契约。 */
+:root[data-fluentread-embedded-popup] { width: min(100vw, var(--fluentread-localized-popup-width, var(--interface-popup-width, 320px))); min-height: 0 !important; }
+:root[data-fluentread-embedded-popup] body,
+:root[data-fluentread-embedded-popup] #app { width: min(100vw, var(--fluentread-localized-popup-width, var(--interface-popup-width, 320px))); }
+:root[data-fluentread-embedded-popup] .popup-shell { max-height: min(560px, 100dvh); }

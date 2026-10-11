@@ -36,13 +36,15 @@ Enable **Full-page translation ball** under **Settings → General → Page help
 
 You can also search settings for “Full-page translation floating ball” to jump to the switch, or search for “Floating ball advanced settings” to jump to its display, position, and site options.
 
+Click the floating ball's gear button to show the same quick panel as the browser toolbar icon, next to the button. The panel controls the current webpage. Click the gear again, click a blank area of the page, or press Esc to close it. Use the panel's settings entry to open full settings. The userscript keeps its existing settings entry.
+
 **Floating ball advanced settings** tunes the rest:
 
 - **Button display**: show the translate and settings buttons on hover, always, or hide them and keep the ball alone.
 - **Expand delay**: how long the pointer has to rest before the buttons expand. It is immediate by default; a longer delay avoids accidental expansion when the pointer crosses the edge of the page. Keyboard focus always expands immediately.
-- **Click action**: clicking the ball itself can toggle translation, open the settings page, or do nothing. Holding it always drags.
+- **Click action**: clicking the ball itself can toggle translation, show the quick panel beside it, or do nothing. Holding it always drags.
 - **Smaller ball**: use a reduced size so the ball covers less of the page.
-- **Settings entry**: hide the button that opens the settings page from the ball.
+- **Settings entry**: hide the gear button that shows the quick panel.
 - **Collapsed opacity**: lower values are more transparent. Hovering, expanding, and dragging always render the ball fully.
 - **Sites without the ball**: add a registrable domain to hide the ball on that site and its subdomains. Shortcuts, the context menu, and every other feature keep working.
 
