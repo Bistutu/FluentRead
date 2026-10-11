@@ -18,13 +18,31 @@ import {
   type VideoAiMenuState,
 } from '@/src/features/video-subtitle/content/playerMenu';
 import {registerAllUiLanguageBundles} from '@/src/core/i18n/bundles';
-import {refreshVideoUiAccessibility, refreshVideoUiText} from '@/src/features/video-subtitle/content/ui';
+import {refreshVideoUiAccessibility, refreshVideoUiText, clearRenderedVideoTranslation, deactivateNormalizedVideoCaption, readVideoPlaybackTimeMs} from '@/src/features/video-subtitle/content/ui';
 import {VIDEO_LOCAL_TRANSCRIPTION_MODELS} from '@/src/features/video-subtitle/transcription';
 
 // 扩展运行时按需加载界面语言；本文件验证全部语言的文案契约，因此一次注册全部资源包。
 registerAllUiLanguageBundles();
 
 describe('player subtitle timing', () => {
+  it('清理自有字幕层并读取原媒体时钟，空播放器不伪造位置', () => {
+    const {document} = parseHTML('<body><div id="movie_player"><video class="html5-main-video"></video></div><div id="ytp-caption-window-container" class="fluent-read-video-normalized-caption"></div><div id="fluent-read-video-subtitle-layer" class="fluent-read-video-normalized-caption-active"></div><div id="fluent-read-video-subtitle">Translated</div><div id="fluent-read-video-subtitle-original">Original</div><p id="host">Host content</p></body>');
+    const player = document.querySelector<HTMLElement>('#movie_player')!;
+    const video = player.querySelector<HTMLVideoElement>('video')!;
+    Object.defineProperty(video, 'currentTime', {value: 1.25, configurable: true});
+    expect(readVideoPlaybackTimeMs(player, null)).toBe(1250);
+    expect(readVideoPlaybackTimeMs(null, video)).toBe(1250);
+    expect(readVideoPlaybackTimeMs(null, null)).toBeNaN();
+    Object.defineProperty(video, 'currentTime', {value: Infinity});
+    expect(readVideoPlaybackTimeMs(player, null)).toBeNaN();
+    clearRenderedVideoTranslation(document); deactivateNormalizedVideoCaption(document);
+    expect(document.querySelector('#fluent-read-video-subtitle')?.textContent).toBe('');
+    expect(document.querySelector('#fluent-read-video-subtitle-original')?.textContent).toBe('');
+    expect(document.querySelector('#host')?.textContent).toBe('Host content');
+    expect(document.querySelector('#ytp-caption-window-container')?.classList.contains('fluent-read-video-normalized-caption')).toBe(false);
+    expect(document.querySelector('#fluent-read-video-subtitle-layer')?.classList.contains('fluent-read-video-normalized-caption-active')).toBe(false);
+  });
+
   it('renders a single-row stepper, hides the row without a timeline and keeps reset for saved offsets', () => {
     const {document} = parseHTML('<!doctype html><body></body>');
     vi.stubGlobal('document', document);

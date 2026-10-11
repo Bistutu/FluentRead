@@ -56,7 +56,30 @@ const artifactBytes = Buffer.byteLength(source);
 // 相对主线 2,013,000 预算按实测最小增加 12 KB，余量 698 字节；基线本次重建超原预算 29 字节亦如实记录。
 // 比较与散列见 docs/reports/target-language-quality-20261011/userscript-size.json。
 // 不引入额外检测模型。
-const MAX_USERSCRIPT_BYTES = 2_025_000;
+// 网站连续导航的自动意图、请求取消域和增量发现重置增加 1,399 字节（0.0691%）：
+// 同依赖独立基线 25f5dca79 为 2,024,307，候选为 2,025,706；利用原余量后最小增加 1 KB。
+// 保留全部协议和执行边界校验，原始与最终散列见 docs/reports/site-rules-navigation-20261011/userscript-size.json。
+// 网站规则索引与生命周期通知合并的初轮产物增加 477 字节（0.0235%）：
+// 同依赖上一轮正确产物 c254eb935 为 2,025,894，初轮性能候选 d74fb7cfc 为 2,026,371。
+// 利用原余量后预算最小增加 1 KB；含稀疏名单失效修正的最终体积与散列见网站规则报告 performance.md。
+// 最后整合 c8a06bb5f：同依赖独立 main 为 2,024,873，网站规则全部修复与优化为 2,026,916。
+// 相对主线增加 2,043 字节（0.1009%）；沿用本任务的 2,027,000 预算，余 84 字节。
+// 长页自有双语块的保守渲染隔离与外观/重挂清理增加 3,038 字节（0.1500%）：
+// 同依赖独立基线 7cabb3678 为 2,024,762，候选 962a5d98b 为 2,027,800；
+// 利用原余量后预算最小增加 3 KB，剩 200 字节。保留全部协议与执行边界检查；
+// 比较与散列见 docs/reports/long-page-rendering-20261011/userscript-size.json。
+// 整合主线 69d41e5e1 后，长页隔离、五条正文规则及局部扫描拥有者修复共增加 6,016 字节（0.2968%）：
+// 同依赖独立 main 为 2,026,872，候选为 2,032,888；相对 main 预算按实测最小增加 6 KB。
+// 保留全部协议和执行边界校验，余量 112 字节；记录见 common-site-expansion-20261011/userscript-size.json。
+// 再整合滚动调度 717a34034：独立 main 为 2,026,877，最终候选为 2,032,969（增 6,092，0.3006%）；
+// 沿用同一最小预算，余 31 字节；本轮最终集成散列同样记录在上述报告。
+// 单篇篇章参考、完整来源证明及重挂语义复用在同依赖主线 69d41e5e1 上增加 16,503 字节（0.8142%）：
+// 独立主线产物为 2,026,916，候选为 2,043,419；利用原余量后预算最小增加 17 KB，余 581 字节。
+// 不增加抽取模型或远程依赖；完整对照、散列与运行边界见 discourse-context-20261011/verification.json。
+// 再整合篇章参考主线 99afdbf69：同依赖独立 main 为 2,043,424，网站/长页候选为 2,049,560。
+// 增加 6,136 字节（0.3003%），利用主线余量后预算按实测最小增加 6 KB，余 440 字节；
+// 保留全部协议与执行边界校验，原始及最终对照见 common-site-expansion-20261011/userscript-size.json。
+const MAX_USERSCRIPT_BYTES = 2_050_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);

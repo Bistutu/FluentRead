@@ -9,7 +9,7 @@ import liveCases from '@/scripts/site-translation/site-adaptation-live-cases.jso
 import {compileSiteRulePack, resolveSiteRule} from '@/src/core/site-adaptation/compiler';
 import {parseSiteRulePack, validateSelectors} from '@/src/core/site-adaptation/schema';
 import {TranslationCandidateCore} from '@/src/core/translation/engine';
-import {extractTranslationText} from '@/src/core/translation/text';
+import {extractTranslationText, extractTranslationTextFromNodes} from '@/src/core/translation/text';
 import {applyTranslationsToSnapshot, buildWholeBlockTranslationSource, createTranslationSourceSnapshot} from '@/src/core/translation/serialization';
 
 const result = parseSiteRulePack({version: 1, profiles: rawProfiles, rules: rawRules});
@@ -24,6 +24,60 @@ function documentFor(html: string): Document {
 }
 
 describe('网站正文规则目录', () => {
+    it('Product Hunt 首页逐卡翻译介绍，保留产品名称、分类和订阅控件，重挂后仍命中介绍', () => {
+        const adapter = adapterById.get('product-hunt')!;
+        const url = new URL('https://www.producthunt.com/');
+        expect(adapter.matches(url)).toBe(true);
+        const html = `<div id="root-container"><header><input data-test="header-search-input" placeholder="Search"></header>
+            <main><div data-test="homepage-section-today"><h1>Top Products Launching Today</h1>
+            <section data-container="true"><div><span id="name-one"><a href="/products/first"><span id="link-overlay" data-target="true"></span>1. First Product</a></span>
+            <span id="tagline-one">Build useful tools with your team. <code id="code">KEEP_CODE_LOCAL</code></span>
+            <div><a id="topic" href="/topics/developer-tools">Developer Tools</a></div></div>
+            <button data-test="vote-button">Upvote this product</button></section>
+            <section data-container="true"><div><span id="name-two"><a href="/products/second">2. Second Product</a></span>
+            <span id="tagline-two">Find clear answers from the documents you already own.</span></div></section>
+            <section data-test="newsletter-banner"><p id="newsletter">Get the best launches in your inbox</p></section>
+            </div><article><p id="fallback">An ordinary product discussion still has readable prose.</p></article></main>
+            <footer><h3 id="footer-category">Engineering and Development</h3></footer>
+            <div data-test="dismiss-CookiePopup"><div><span id="cookie-message">We use cookies to improve your experience.<a href="/legal#privacy">Learn more in our privacy settings.</a></span>
+            <div><button>No thanks</button><button>Accept all cookies</button></div></div></div></div>`;
+        const document = documentFor(html);
+        const core = new TranslationCandidateCore({url, adapters: [adapter]});
+        const verify = () => {
+            const candidates = core.discover(document);
+            for (const id of ['tagline-one', 'tagline-two', 'fallback']) {
+                const owner = document.getElementById(id)!;
+                expect(candidates.find(candidate => candidate.element === owner)?.adapterId, id).toBe('product-hunt');
+                expect(core.resolve(owner.firstChild)?.element, id).toBe(owner);
+            }
+            for (const selector of ['#name-one', '#name-two', '#topic', '#newsletter', '#footer-category', '#cookie-message', 'button', 'input']) {
+                const protectedNode = document.querySelector(selector)!;
+                expect(core.resolve(protectedNode.firstChild ?? protectedNode), selector).toBeNull();
+                expect(core.shouldStayOriginal(protectedNode), selector).toBe(true);
+            }
+            const source = candidates.map(candidate => extractTranslationText(candidate.element, core.shouldStayOriginal)).join('\n');
+            expect(source).not.toContain('First Product');
+            expect(source).not.toContain('Developer Tools');
+            expect(source).not.toContain('Get the best launches');
+            expect(source).not.toContain('KEEP_CODE_LOCAL');
+            expect(source).not.toContain('We use cookies');
+            expect(source).not.toContain('Learn more in our privacy settings');
+            expect(adapter.shouldIgnoreMutation?.(document.getElementById('cookie-message')!, {url})).toBe(true);
+            expect(core.shouldStayOriginal(document.getElementById('code')!)).toBe(true);
+            // 卡片的透明整卡链接仍在最上层；坐标解析应找到下层介绍，不能把名称当正文。
+            const tagline = document.getElementById('tagline-two')!;
+            Object.defineProperty(document, 'elementsFromPoint', {configurable: true, value: () => [
+                document.getElementById('link-overlay')!, document.getElementById('name-one')!, tagline,
+            ]});
+            expect(core.resolveAtPoint(document, 20, 30)?.element).toBe(tagline);
+        };
+        verify();
+        document.body.innerHTML = html;
+        verify();
+        for (const path of ['/posts/first', '/products/first']) expect(adapter.matches(new URL(path, url))).toBe(true);
+        expect(adapter.matches(new URL('https://help.producthunt.com/en/articles/481909'))).toBe(false);
+    });
+
     it('ar5iv 定理中的可读叙述可形成候选，内联 MathML 保持受保护', () => {
         const url = new URL('https://ar5iv.labs.arxiv.org/html/2106.03753');
         const adapter = adapterById.get('ar5iv')!;
@@ -110,7 +164,7 @@ describe('网站正文规则目录', () => {
     });
 
     it('每一个 focus 规则和每一种正文模板都有真实引擎消费的可重复夹具', () => {
-        expect(new Set(fixtures.map(fixture => rulesById.get(fixture.id)?.profile)))
+        expect(new Set(fixtures.map(fixture => rulesById.get(fixture.id)?.profile).filter(Boolean)))
             .toEqual(new Set(Object.keys(pack.profiles ?? {})));
         const fixtureIds = new Set(fixtures.map(fixture => fixture.id));
         expect(fixtureIds.size).toBe(fixtures.length);
@@ -187,7 +241,8 @@ describe('网站正文规则目录', () => {
             for (const excluded of rule.match.excludePaths ?? []) {
                 expect(adapter.matches(new URL(`https://${host}${excluded.replaceAll('*', 'fixture')}`))).toBe(false);
             }
-            if (rule.match.paths) expect(adapter.matches(new URL(`https://${host}/__unrelated_route__/`))).toBe(false);
+            // 不带末尾 / 的单段路径不匹配 Gist 的双段页面；空 wildcard 可合法匹配尾部 /。
+            if (rule.match.paths) expect(adapter.matches(new URL(`https://${host}/__unrelated_route__`))).toBe(false);
         }
     });
 
@@ -210,8 +265,18 @@ describe('网站正文规则目录', () => {
                 expect(element, `${fixture.id}: ${selector}`).not.toBeNull();
                 const candidate = candidates.find(candidate => candidate.element === element);
                 expect(candidate, `${fixture.id}: ${selector}`).toBeDefined();
-                expect(candidate?.adapterId, `${fixture.id}: ${selector}`).toBe(fixture.id);
-                expect(core.resolve(element.firstChild)?.element, `${fixture.id}: hover ${selector}`).toBe(element);
+                if (candidate?.reason === 'generic-inline-run') {
+                    // 非原子容器直接首段沿用现有 inline-run 类型，由实时专站决策授权。
+                    expect(adapter.decide(element, {url}), `${fixture.id}: ${selector}`)
+                        .toMatchObject({kind: 'force-target', target: element, atomic: false});
+                    expect(candidate.nodes?.length, `${fixture.id}: ${selector}`).toBeGreaterThan(0);
+                } else expect(candidate?.adapterId, `${fixture.id}: ${selector}`).toBe(fixture.id);
+                const walker = document.createTreeWalker(element, 4);
+                let readable = walker.nextNode();
+                while (readable && (!readable.textContent?.trim() ||
+                    (readable.parentElement && core.shouldStayOriginal(readable.parentElement)))) readable = walker.nextNode();
+                expect(readable, `${fixture.id}: readable ${selector}`).not.toBeNull();
+                expect(core.resolve(readable)?.element, `${fixture.id}: hover ${selector}`).toBe(element);
             }
             for (const selector of fixture.forbidden) {
                 const element = document.querySelector(selector)!;
@@ -219,7 +284,8 @@ describe('网站正文规则目录', () => {
                 expect(candidates.some(candidate => element === candidate.element || element.contains(candidate.element)),
                     `${fixture.id}: protected ${selector}`).toBe(false);
             }
-            const source = candidates.map(candidate => extractTranslationText(candidate.element, core.shouldStayOriginal)).join('\n');
+            const source = candidates.map(candidate => extractTranslationTextFromNodes(
+                candidate.nodes ?? [candidate.element], core.shouldStayOriginal)).join('\n');
             expect(source).not.toContain('KEEP_ORIGINAL_TOKEN');
             expect(source).not.toContain('FORMULA_TOKEN');
             expect(source).not.toContain('Navigation remains unchanged');

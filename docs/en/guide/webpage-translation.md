@@ -105,6 +105,8 @@ When you open a raw XML, RSS, or SVG file directly, FluentRead leaves the docume
 
 By default, translation follows your reading position. Choose whole-page processing in settings if you want the entire page translated at once. Restore the original whenever you like, then translate again with another language or service.
 
+During continuous scrolling, paragraphs on the current screen can still start translating at a limited pace, and completed translations appear as they arrive. Nearby prefetch resumes after a brief pause. Pending paragraphs that you quickly scroll past wait until you read them again; requests already sent can finish.
+
 Fixed-height cards and line-clamped summaries expand while bilingual text is shown, so the translation stays visible without overlapping the next card. Restoring the original also restores the page's height and truncation styles; independent scroll areas keep their original behavior.
 
 When an announcement or modal dialog blocks the page, full-page translation handles the active dialog first and automatically continues with the page after you close it. A dialog that appears during translation pauses unfinished page tasks while preserving existing translations. If progress feedback is enabled, it explains that translation will continue after the dialog closes. Restoring the original also cancels this automatic continuation. Non-blocking notices and panels do not pause the page.

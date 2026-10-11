@@ -1,0 +1,100 @@
+{
+  "date": "2026-10-11",
+  "scope": "Integrated long-page rendering containment, five common-site rules and conservative dirty-subtree owner discovery",
+  "baselineCommit": "69d41e5e1",
+  "candidateBaseCommit": "edeabb2e4",
+  "environment": {
+    "platform": "macOS",
+    "nodeVersion": "v20.11.1",
+    "pnpmVersion": "9.12.1",
+    "sameInstalledDependencies": true,
+    "packageAndLockUnchanged": true,
+    "buildConfigUnchanged": true
+  },
+  "sharedSourceSha256": {
+    "package.json": "079d4a7f919782e06e87352ab419b94e72ec4ee112a28b869d3e9e1b6d524ab8",
+    "pnpm-lock.yaml": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
+    "userscript/vite.config.ts": "1d1525d23d77ad52048fc589f063a73a79b07934d6eee6d71f2505926d3acd40"
+  },
+  "baseline": {
+    "bytes": 2026872,
+    "sha256": "a075446e0088af6ec0d2bd700a6483bd026fdf453f4695e10f0cbb38d180adc4",
+    "prepareExitCode": 0,
+    "buildExitCode": 0,
+    "verifierExitCode": 0
+  },
+  "candidate": {
+    "bytes": 2032888,
+    "sha256": "859767a96b2d558a48ef105a11d41fb5770917a9390e7bf4ed8cc6e1ccd754e6",
+    "engineSourceSha256": "49887114da7a7a3fe3aedcaa616e6b7c2fa368c9deb864317f3252926162ed34",
+    "catalogSourceSha256": "e656077aa84e611149695693122d8f62d941e06e8bd0a0e03824eb6c55073387",
+    "buildExitCode": 0,
+    "verifierExitCode": 0
+  },
+  "deltaBytes": 6016,
+  "deltaPercentRounded": 0.2968,
+  "mainBudgetBytes": 2027000,
+  "mainBaselineHeadroomBytes": 128,
+  "previousTaskBudgetBytes": 2028000,
+  "newBudgetBytes": 2033000,
+  "increaseFromMainBytes": 6000,
+  "increaseFromPreviousTaskBytes": 5000,
+  "candidateHeadroomBytes": 112,
+  "method": "Archive the integrated main baseline in a separate temporary directory, reuse the same installed dependencies, run resource-safe WXT prepare and the official userscript build, then compare exact artifact bytes and SHA256. The budget uses the smallest whole 1000-byte increment that admits the measured candidate. Protocol, duplicate-injection, grant and execution-boundary checks are unchanged.",
+  "limitations": [
+    "The delta includes this task's long-page work as well as the new site rules and owner fix; it is not the isolated cost of any one rule.",
+    "Userscript build and verifier acceptance do not establish userscript-manager runtime acceptance."
+  ],
+  "finalIntegration": {
+    "baselineCommit": "717a340347cde3417bad011477a88d41718ea335",
+    "candidateCodeBaseCommit": "59d3a96b5b1c8c0246d1af31f665b556b3a52896",
+    "baseline": {
+      "bytes": 2026877,
+      "sha256": "fa6702f8d8244f113b37f293167d4d3cbd17c40354db19a4772ed56c2b2da08c",
+      "prepareExitCode": 0,
+      "buildExitCode": 0,
+      "verifierExitCode": 0
+    },
+    "candidate": {
+      "bytes": 2032969,
+      "sha256": "6a2a4f3bc3c650d08714e6bb0c7d1098be095056d5ee2fef9572c1b190de0dcc",
+      "buildExitCode": 0,
+      "verifierExitCode": 0
+    },
+    "deltaBytes": 6092,
+    "deltaPercentRounded": 0.3006,
+    "budgetBytes": 2033000,
+    "candidateHeadroomBytes": 31,
+    "mainBudgetBytes": 2027000,
+    "budgetIncreaseBytes": 6000,
+    "runtimeCommentOnlyCompaction": true,
+    "method": "Repeat the independent archive/prepare/build/verifier comparison on current main with identical dependencies. Preserve the previous integration record above; the same minimal 2033000-byte budget admits this candidate. Source comment compaction does not change executable code; final build hashes are checked against the browser-tested artifact."
+  },
+  "discourseMainIntegration": {
+    "baselineCommit": "99afdbf69b4c2faf83115b22cd7e340e4d076a00",
+    "candidateCodeCommit": "85c920a9a2d745ffef95cbdec07a288dc4994c5d",
+    "baseline": {
+      "bytes": 2043424,
+      "sha256": "6953539b5f867c873b1c8596f75bd59d21f4bd48d41c489353f9ed1332dcdca4",
+      "prepareExitCode": 0,
+      "buildExitCode": 0,
+      "verifierExitCode": 0
+    },
+    "candidate": {
+      "bytes": 2049560,
+      "sha256": "6f0f1bd713709774316d3e6b6d7bb2a2c4c5edb3833651b9afb225116af3ca1d",
+      "buildExitCode": 0,
+      "verifierExitCode": 0
+    },
+    "deltaBytes": 6136,
+    "deltaPercentRounded": 0.3003,
+    "mainBudgetBytes": 2044000,
+    "budgetBytes": 2050000,
+    "budgetIncreaseBytes": 6000,
+    "candidateHeadroomBytes": 440,
+    "sameInstalledDependencies": true,
+    "packageAndLockUnchanged": true,
+    "buildConfigUnchanged": true,
+    "method": "Repeat the independent archive/prepare/build/verifier comparison on the integrated discourse-context main with identical dependencies. Preserve all earlier integration records; the budget uses the smallest whole 1000-byte increment that admits the candidate. Protocol and execution-boundary checks are unchanged."
+  }
+}

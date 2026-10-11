@@ -38,11 +38,11 @@
 
 | 产物 | SHA-256 |
 | --- | --- |
-| `background.js` | `1a1c3c5c9e506421ab331aea152ff631e754c002fac02de37e88b277ed65b623` |
-| `content-scripts/content.js` | `2f7bd810f2d178bab490d922e4d7076d5c6234cd32da4b061372a89bb04fa8bf` |
+| `background.js` | `b45483a5d821dea15dceabcecc5732d124f825625316ab9adafdfc06e5a9bccf` |
+| `content-scripts/content.js` | `64c2a4b58752729b28a2698530e3190f1af5443455d36deb050ea2e3354971e8` |
 | `content-scripts/content.css` | `06039d35c3f5090ce871ea4fd80cecebed00ab584d7be2bdc2bdff78e01401c1` |
 
-完整临时证据目录为 `/private/tmp/fluentread-personal-corrections-help-20261011-r1`；其中保留 33 张截图、各项结果、新鲜度与清理记录。本报告归档的是收起常驻说明后的最终运行，原先 opt-in r1/r2 证据仍保留。旧 r1 的撤销用例假设启停后仍保留上一编辑会话的撤销按钮，与关闭后重建会话不符；后续用例先通过真实管理删除和重新确认保存建立本会话撤销点，再验证撤销及普通服务回退。
+完整临时证据目录为 `/private/tmp/fluentread-personal-corrections-integrated-main-20261011-r2`；其中保留 33 张截图、各项结果、新鲜度与清理记录。本报告归档的是整合 main 和双语重放状态整理后的最终运行；收起常驻说明的 help r1、整合 main 的 r1 及原先 opt-in r1/r2 证据仍保留。旧 r1 的撤销用例假设启停后仍保留上一编辑会话的撤销按钮，与关闭后重建会话不符；后续用例先通过真实管理删除和重新确认保存建立本会话撤销点，再验证撤销及普通服务回退。
 
 测试入口为 [`scripts/testing/run-personal-corrections-test.cjs`](../../scripts/testing/run-personal-corrections-test.cjs)。运行参数必须指定 `--playwright-root`，并使用 `--background --display secondary --real-url https://example.com`；`--artifacts-dir` 指定本次独立证据目录。脚本自动创建临时 profile，检查原生焦点事件并只关闭本次拥有的浏览器，完成后按目录身份与 `.owner` 标记删除 profile。
 

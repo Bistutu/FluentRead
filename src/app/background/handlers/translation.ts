@@ -45,6 +45,7 @@ export interface TranslationRequestRegistry {
 const STRING_FIELDS = [
     'context',
     'pageContext',
+    'discourseContext',
     'serviceOverride',
     'modelOverride',
     'sourceLanguage',

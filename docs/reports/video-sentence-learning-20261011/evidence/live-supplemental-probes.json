@@ -1,0 +1,1293 @@
+{
+  "date": "2026-10-11",
+  "maximumNewSamples": 2,
+  "samples": [
+    {
+      "sample": "https://www.youtube.com/watch?v=rB9ql0L0cUQ",
+      "title": "如何在上传和编辑视频时添加字幕 - YouTube",
+      "videoCount": 1,
+      "captionTracks": [
+        {
+          "language": "en",
+          "kind": null
+        },
+        {
+          "language": "en",
+          "kind": "asr"
+        },
+        {
+          "language": "en-GB",
+          "kind": null
+        },
+        {
+          "language": "zh-Hant",
+          "kind": null
+        },
+        {
+          "language": "zh-Hans",
+          "kind": null
+        }
+      ],
+      "platformPlayerErrorVisible": true,
+      "learningEmptyTimelineVisible": true,
+      "originalCaptionFixtureInjected": false,
+      "mediaOrPageReplaced": false,
+      "captionHTTPMetadata": "not recovered; enhanced probe hung while waiting for response body settlement",
+      "secondSampleAttempt": "not completed in this batch",
+      "focus": "final event counts unavailable after rescue; do not infer 0 activations or an exit cause",
+      "cleanup": {
+        "ownedNodePID": 25793,
+        "identityVerifiedBeforeSIGINT": true,
+        "signalExitCode": 130,
+        "guardedCloseErrorOutput": false,
+        "matchingOwnedBrowserArgvAfterExit": 0,
+        "profileRemoved": true
+      },
+      "screenshot": "/private/tmp/fluentread-video-sentence-learning-live-diagnostic-20261011/live-rB9ql0L0cUQ-final.png",
+      "harnessFailure": "unbounded pending response.text settlement before page.close in temporary enhanced probe; production runner unchanged",
+      "captionTrackCount": 83,
+      "baseCaptionURLQueryKeys": [
+        "caps",
+        "ei",
+        "exp",
+        "expire",
+        "hl",
+        "ip",
+        "ipbits",
+        "key",
+        "kind",
+        "lang",
+        "opi",
+        "signature",
+        "sparams",
+        "v",
+        "variant",
+        "xoaf",
+        "xowf"
+      ]
+    },
+    {
+      "url": "https://www.youtube.com/watch?v=iCvmsMzlF7o",
+      "source": "actual YouTube HTML/media/original captions unchanged; controlled Microsoft translation only",
+      "success": false,
+      "initial": {
+        "url": "https://www.youtube.com/watch?v=iCvmsMzlF7o",
+        "title": "布琳.布朗:脆弱的力量 - YouTube",
+        "videoId": "iCvmsMzlF7o",
+        "bridgeInstalled": true,
+        "captionPressed": "true",
+        "adShowing": false,
+        "videoCount": 1,
+        "videos": [
+          {
+            "time": 0,
+            "duration": 1249.741,
+            "paused": true,
+            "readyState": 4,
+            "networkState": 2,
+            "tracks": []
+          }
+        ],
+        "nativeCaptionPresent": false,
+        "captionTrackCount": 52,
+        "englishTrackMetadata": [
+          {
+            "language": "en",
+            "name": "英语"
+          },
+          {
+            "language": "en",
+            "kind": "asr",
+            "name": "英语 (自动生成)"
+          }
+        ],
+        "bridgeMessageCount": 0
+      },
+      "afterTenSecondsPlayback": {
+        "url": "https://www.youtube.com/watch?v=iCvmsMzlF7o",
+        "title": "布琳.布朗:脆弱的力量 - YouTube",
+        "videoId": "iCvmsMzlF7o",
+        "bridgeInstalled": true,
+        "captionPressed": "true",
+        "adShowing": false,
+        "videoCount": 1,
+        "videos": [
+          {
+            "time": 10.156112,
+            "duration": 1249.741,
+            "paused": false,
+            "readyState": 4,
+            "networkState": 2,
+            "tracks": []
+          }
+        ],
+        "nativeCaptionPresent": false,
+        "captionTrackCount": 52,
+        "englishTrackMetadata": [
+          {
+            "language": "en",
+            "name": "英语"
+          },
+          {
+            "language": "en",
+            "kind": "asr",
+            "name": "英语 (自动生成)"
+          }
+        ],
+        "bridgeMessageCount": 0
+      },
+      "final": {
+        "url": "https://www.youtube.com/watch?v=iCvmsMzlF7o",
+        "title": "布琳.布朗:脆弱的力量 - YouTube",
+        "videoId": "iCvmsMzlF7o",
+        "bridgeInstalled": true,
+        "captionPressed": "false",
+        "adShowing": false,
+        "videoCount": 1,
+        "videos": [
+          {
+            "time": 0,
+            "duration": null,
+            "paused": true,
+            "readyState": 0,
+            "networkState": 0,
+            "tracks": []
+          }
+        ],
+        "nativeCaptionPresent": false,
+        "captionTrackCount": 52,
+        "englishTrackMetadata": [
+          {
+            "language": "en",
+            "name": "英语"
+          },
+          {
+            "language": "en",
+            "kind": "asr",
+            "name": "英语 (自动生成)"
+          }
+        ],
+        "bridgeMessageCount": 0
+      },
+      "playbackSamples": [
+        {
+          "media": {
+            "time": 1.001544,
+            "duration": 1249.741,
+            "paused": false,
+            "readyState": 4,
+            "networkState": 2,
+            "tracks": []
+          },
+          "captionPressed": "true",
+          "nativeCaptionPresent": false,
+          "bridgeMessageCount": 0
+        },
+        {
+          "media": {
+            "time": 2.010942,
+            "duration": 1249.741,
+            "paused": false,
+            "readyState": 4,
+            "networkState": 2,
+            "tracks": []
+          },
+          "captionPressed": "true",
+          "nativeCaptionPresent": false,
+          "bridgeMessageCount": 0
+        },
+        {
+          "media": {
+            "time": 3.0229,
+            "duration": 1249.741,
+            "paused": false,
+            "readyState": 4,
+            "networkState": 2,
+            "tracks": []
+          },
+          "captionPressed": "true",
+          "nativeCaptionPresent": false,
+          "bridgeMessageCount": 0
+        },
+        {
+          "media": {
+            "time": 4.035545,
+            "duration": 1249.741,
+            "paused": false,
+            "readyState": 4,
+            "networkState": 2,
+            "tracks": []
+          },
+          "captionPressed": "true",
+          "nativeCaptionPresent": false,
+          "bridgeMessageCount": 0
+        },
+        {
+          "media": {
+            "time": 5.048277,
+            "duration": 1249.741,
+            "paused": false,
+            "readyState": 4,
+            "networkState": 2,
+            "tracks": []
+          },
+          "captionPressed": "true",
+          "nativeCaptionPresent": false,
+          "bridgeMessageCount": 0
+        },
+        {
+          "media": {
+            "time": 6.056626,
+            "duration": 1249.741,
+            "paused": false,
+            "readyState": 4,
+            "networkState": 2,
+            "tracks": []
+          },
+          "captionPressed": "true",
+          "nativeCaptionPresent": false,
+          "bridgeMessageCount": 0
+        },
+        {
+          "media": {
+            "time": 7.062397,
+            "duration": 1249.741,
+            "paused": false,
+            "readyState": 4,
+            "networkState": 2,
+            "tracks": []
+          },
+          "captionPressed": "true",
+          "nativeCaptionPresent": false,
+          "bridgeMessageCount": 0
+        },
+        {
+          "media": {
+            "time": 8.076124,
+            "duration": 1249.741,
+            "paused": false,
+            "readyState": 4,
+            "networkState": 2,
+            "tracks": []
+          },
+          "captionPressed": "true",
+          "nativeCaptionPresent": false,
+          "bridgeMessageCount": 0
+        },
+        {
+          "media": {
+            "time": 9.109331,
+            "duration": 1249.741,
+            "paused": false,
+            "readyState": 4,
+            "networkState": 2,
+            "tracks": []
+          },
+          "captionPressed": "true",
+          "nativeCaptionPresent": false,
+          "bridgeMessageCount": 0
+        },
+        {
+          "media": {
+            "time": 10.142655,
+            "duration": 1249.741,
+            "paused": false,
+            "readyState": 4,
+            "networkState": 2,
+            "tracks": []
+          },
+          "captionPressed": "true",
+          "nativeCaptionPresent": false,
+          "bridgeMessageCount": 0
+        }
+      ],
+      "captionResponses": [
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "zh-CN",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "sq",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cbr",
+            "cbrand",
+            "cbrver",
+            "cos",
+            "cosver",
+            "cplatform",
+            "cplayer",
+            "cver",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "pot",
+            "potc",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "zh-CN",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": true,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/youtubeBridge.js",
+              "https://www.youtube.com/s/player/5203c085/player_es6.vflset/zh_CN/base.js",
+              "https://www.youtube.com/s/player/5203c085/player_es6.vflset/zh_CN/captions.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "zh-CN",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "sq",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "zh-CN",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "sq",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "zh-CN",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "sq",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "zh-CN",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "sq",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "zh-CN",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "sq",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "zh-CN",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "sq",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "zh-CN",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "sq",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "zh-CN",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "sq",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "zh-CN",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        },
+        {
+          "path": "https://www.youtube.com/api/timedtext",
+          "queryKeys": [
+            "c",
+            "caps",
+            "cplayer",
+            "ei",
+            "exp",
+            "expire",
+            "fmt",
+            "hl",
+            "ip",
+            "ipbits",
+            "key",
+            "lang",
+            "opi",
+            "signature",
+            "sparams",
+            "v",
+            "xoaf",
+            "xobt",
+            "xorb",
+            "xovt",
+            "xowf"
+          ],
+          "videoId": "iCvmsMzlF7o",
+          "language": "sq",
+          "translatedLanguage": null,
+          "client": "WEB",
+          "format": "json3",
+          "kind": null,
+          "proofTokenPresent": false,
+          "status": 200,
+          "initiator": {
+            "type": "script",
+            "stackSources": [
+              "null/content-scripts/content.js"
+            ]
+          },
+          "bytes": 0,
+          "nonempty": false,
+          "contentType": "text/html; charset=UTF-8",
+          "contentLength": "0"
+        }
+      ],
+      "originalSentencePresent": false,
+      "platformPlayerErrorVisible": true,
+      "responseSettlementDeadlineReached": false,
+      "limitation": "No actual original timeline supplied; stopped at source diagnostics without injected captions or further samples.",
+      "pageErrors": [],
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "windowPlacement": {
+        "mode": "background-visible-no-focus",
+        "visible": true,
+        "hidden": false,
+        "centered": true,
+        "windowState": "normal",
+        "bounds": {
+          "left": 212,
+          "top": -990,
+          "width": 1280,
+          "height": 900
+        },
+        "displayTarget": "secondary",
+        "source": "macos-nsscreen",
+        "screenIndex": 1,
+        "browserFrontmost": false
+      },
+      "finalBrowserFrontmost": false,
+      "focusEvents": {
+        "nativeObserver": true,
+        "browserActivations": 0,
+        "observerClosed": true
+      },
+      "cleanup": {
+        "browserClosed": true,
+        "profileRemoved": true
+      },
+      "screenshot": "/private/tmp/fluentread-video-sentence-learning-live-second-20261011/live-iCvmsMzlF7o-final.png"
+    }
+  ],
+  "samplePrimarySources": [
+    "https://support.google.com/youtube/answer/2734796/add-subtitles-and-captions?hl=en",
+    "https://www.youtube.com/watch?v=rB9ql0L0cUQ",
+    "https://www.ted.com/talks/brene_brown_the_power_of_vulnerability?view=transcript",
+    "https://www.youtube.com/watch?v=iCvmsMzlF7o"
+  ],
+  "observations": [
+    "No usable original platform caption timeline reached learning; no live replay/loop/pause/save/source closed loop was claimed.",
+    "The second sample native YouTube request with a pot query key and YouTube captions.js initiator also returned a genuinely empty body; missing pot is not a demonstrated cause.",
+    "The production bridge clones responses and returns the original response unchanged, and rejects empty payloads; these captures do not show a parser or bridge regression.",
+    "In auto source mode the existing active loader selected the first human sq track while English tracks also existed. This selection comes from existing track chooser logic and does not establish the cause of native empty responses.",
+    "The temporary enhanced first probe had an unbounded response-body settlement wait; original production runner did not have this wait. Its Node was stopped through its owned guard and profile safely removed. The first batch final focus count is unknown."
+  ],
+  "stoppedAtSupplySide": true,
+  "existingIntegrated72EvidenceChanged": false
+}

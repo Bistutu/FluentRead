@@ -1,0 +1,32 @@
+
+> FluentRead-流畅阅读@0.0.37 test /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
+> node scripts/testing/run-resource-safe.mjs -- vitest run "tests/translationBroker.test.ts" "tests/fullPageVisibilityScheduling.test.ts" "tests/translationTruncation.test.ts"
+
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vitest run tests/translationBroker.test.ts tests/fullPageVisibilityScheduling.test.ts tests/translationTruncation.test.ts
+
+ RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
+
+ ✓ tests/fullPageVisibilityScheduling.test.ts (343 tests) 2864ms
+   ✓ 全文翻译可见性锚点 > 全属性关系规则的 80 个兄弟 class/style 变化只为 120 个 owner 各排一次复验 355ms
+stderr | tests/translationBroker.test.ts
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (/Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011/src/platform/storage/configStorageRuntime.ts:36:29)
+    at initializeConfig (/Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011/src/services/config/store.ts:635:41)
+    at /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011/src/services/config/store.ts:807:28
+    at processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at VitestExecutor.runModule (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vite-node@2.1.9_@types+node@22.10.7/node_modules/vite-node/dist/client.mjs:399:5)
+    at VitestExecutor.directRequest (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vite-node@2.1.9_@types+node@22.10.7/node_modules/vite-node/dist/client.mjs:381:5)
+    at VitestExecutor.cachedRequest (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vite-node@2.1.9_@types+node@22.10.7/node_modules/vite-node/dist/client.mjs:206:14)
+    at VitestExecutor.dependencyRequest (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vite-node@2.1.9_@types+node@22.10.7/node_modules/vite-node/dist/client.mjs:259:12)
+    at /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011/src/services/translation/templates.ts:5:31
+    at VitestExecutor.runModule (file:///Users/thinkstu/Desktop/copy/FluentRead/node_modules/.pnpm/vite-node@2.1.9_@types+node@22.10.7/node_modules/vite-node/dist/client.mjs:399:5)
+
+ ✓ tests/translationBroker.test.ts (190 tests) 1607ms
+ ✓ tests/translationTruncation.test.ts (63 tests) 1340ms
+   ✓ translation truncation layout > 本地骨架净化深层 span 时不递归耗尽调用栈或改写来源 642ms
+   ✓ translation truncation layout > 本地骨架净化深层 x-inert 时不递归耗尽调用栈或改写来源 373ms
+
+ Test Files  3 passed (3)
+      Tests  596 passed (596)
+   Start at  16:29:40
+   Duration  11.27s (transform 3.41s, setup 0ms, collect 4.72s, tests 5.81s, environment 0ms, prepare 166ms)

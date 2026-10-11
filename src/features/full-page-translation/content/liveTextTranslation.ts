@@ -76,7 +76,7 @@ async function translateSnapshotAsWholeBlock(
     if (!source) return null;
     const [translation = ''] = await translateTextSlots(
         [source], snapshot, signal, queueSession, fullPageSession, forceFailedRequest,
-        ...(fullPageSession && snapshot.enableAIMultiSegment ? [node] : []),
+        ...(snapshot.enableAIContext || (fullPageSession && snapshot.enableAIMultiSegment) ? [node] : []),
     );
     if (!normalizeTranslationText(translation)) return null;
     if (!hasDistinctTranslation(source, translation, snapshot.targetLanguage)) return [...origins];
@@ -99,7 +99,7 @@ export async function translateControlValue(
     const source = node.getAttribute(attribute) ?? '';
     const translations = await translateTextSlots(
         [source], snapshot, signal, queueSession, fullPageSession, forceFailedRequest,
-        ...(fullPageSession && snapshot.enableAIMultiSegment ? [node] : []),
+        ...(snapshot.enableAIContext || (fullPageSession && snapshot.enableAIMultiSegment) ? [node] : []),
     );
     const text = translations[0] ?? source;
     return {
@@ -147,7 +147,7 @@ export async function translateLiveText(
         queueSession,
         fullPageSession,
         forceFailedRequest,
-        ...(fullPageSession && snapshot.enableAIMultiSegment ? [node] : []),
+        ...(snapshot.enableAIContext || (fullPageSession && snapshot.enableAIMultiSegment) ? [node] : []),
     );
     const changed = translations.some((translation, index) =>
         hasDistinctTranslation(origins[index]!, translation, snapshot.targetLanguage),
@@ -222,6 +222,6 @@ export async function createTranslationRequest(
     }
     const translations = await translateTextSlots(origins, snapshot, signal, queueSession,
         fullPageSession, forceFailedRequest,
-        ...(fullPageSession && snapshot.enableAIMultiSegment ? [node] : []));
+        ...(snapshot.enableAIContext || (fullPageSession && snapshot.enableAIMultiSegment) ? [node] : []));
     return finish(translations);
 }

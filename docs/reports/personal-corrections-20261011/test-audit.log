@@ -6,10 +6,10 @@
   "status": "ok",
   "groups": {
     "architecture": 33,
-    "unit": 376,
-    "functional": 209,
-    "regression": 41
+    "unit": 383,
+    "functional": 212,
+    "regression": 42
   },
-  "files": 659,
-  "cases": 10954
+  "files": 670,
+  "cases": 11261
 }

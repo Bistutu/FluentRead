@@ -1,0 +1,21 @@
+
+> FluentRead-流畅阅读@0.0.37 test /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
+> node scripts/testing/run-resource-safe.mjs -- vitest run "tests/discourseContext.test.ts" "tests/pageDiscourseContext.test.ts" "tests/fullPageTranslationConfigSnapshot.test.ts"
+
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vitest run tests/discourseContext.test.ts tests/pageDiscourseContext.test.ts tests/fullPageTranslationConfigSnapshot.test.ts
+
+ RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-personal-corrections-20261011
+
+ ✓ tests/discourseContext.test.ts (68 tests) 87ms
+ ✓ tests/pageDiscourseContext.test.ts (33 tests) 3052ms
+   ✓ 有界网页篇章适配 > 当前原文的节点数量超过证明预算时仍能阅读，但不提交未经完整复验的译法 428ms
+   ✓ 有界网页篇章适配 > 已译来源超过条数或总字符预算后仍可引用刚验证的结果（{"length":80,"tag":"div"}） 421ms
+   ✓ 有界网页篇章适配 > 已译来源超过条数或总字符预算后仍可引用刚验证的结果（{"length":2000,"tag":"p"}） 444ms
+   ✓ 有界网页篇章适配 > 多个已译单元的总核验节点超限时撤销无法完整检查的依据 1099ms
+   ✓ 有界网页篇章适配 > 节点及字符预算截断仍保留当前位置，无TreeWalker时静默降级 319ms
+ ✓ tests/fullPageTranslationConfigSnapshot.test.ts (10 tests) 22ms
+
+ Test Files  3 passed (3)
+      Tests  111 passed (111)
+   Start at  16:13:36
+   Duration  4.24s (transform 386ms, setup 0ms, collect 596ms, tests 3.16s, environment 0ms, prepare 116ms)

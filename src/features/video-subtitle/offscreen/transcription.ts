@@ -1,10 +1,11 @@
 /**
  * @file src/features/video-subtitle/offscreen/transcription.ts
  * 文件职责：在 Offscreen Document 中串行调度视频 Whisper Worker、PCM 解码和模型预热。
- * 主要内容：复用共享并行预算及排队任务代次保护，管理单待处理转写、prepare 去重、模型切换、GPU 生命周期失败后的单次 CPU 重建、超时终止、首窗等待的有界预热租期、取消清理与空闲释放；透传实际语言检测诊断，预下载时校验本次来源偏好，并把字节及连接状态交给调用方。
+ * 主要内容：复用共享并行预算及排队任务代次保护，管理单待处理转写、prepare 去重、模型切换、GPU 生命周期失败后的单次 CPU 重建、超时终止、首窗等待的有界预热租期、取消清理与按设备内存安排的空闲释放；透传实际语言检测诊断，预下载时校验本次来源偏好，并把字节及连接状态交给调用方。
  * 模块边界：只编排 Offscreen/Worker 资源，不解析字幕时间轴，也不管理后台 tab owner。
  */
 import {withLocalInferenceBudget} from '@/src/shared/onnx/resources';
+import {localModelIdleMs} from '@/src/shared/onnx/modelResidency';
 import {
   normalizeVideoLocalTranscriptionModel,
   getVideoLocalTranscriptionWorkerTimeoutMs,
@@ -98,7 +99,6 @@ interface PendingPrepareJob {
 
 type WorkerLifecycleError = Error & {retryableWorkerFailure?: true};
 
-const MODEL_IDLE_DISPOSE_MS = 30_000;
 // 覆盖 X 的 5 秒媒体发现、60 秒独立读取和 8 秒解码，首窗提交即消费。
 const MODEL_FIRST_AUDIO_WARM_LEASE_MS = 90_000;
 const MAX_WHISPER_AUDIO_SECONDS = 30;
@@ -338,7 +338,7 @@ function scheduleIdleDisposal(): void {
     void disposeLoadedTranscriber();
   }, firstAudioWarmLease?.streamId === activeStreamId && firstAudioWarmLease.deadlineAt > Date.now()
     ? firstAudioWarmLease.deadlineAt - Date.now()
-    : MODEL_IDLE_DISPOSE_MS);
+    : localModelIdleMs());
 }
 
 function clearIdleDisposal(): void {

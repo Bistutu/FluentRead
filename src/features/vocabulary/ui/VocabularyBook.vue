@@ -44,7 +44,7 @@
             <p v-else-if="!entryTranslation(currentReview)" class="answer-translation">尚未保存参考内容。可以先进入学习页理解这个表达，再回来复习。</p>
             <button type="button" class="study-entry-button" @click="openStudy(currentReview)">{{ t(isVocabularySentence(currentReview) ? 'learning.collection.listenLearn' : 'learning.collection.learnUsage') }}</button>
             <p v-if="latestContext(currentReview)?.text && latestContext(currentReview)?.text !== currentReview.term" class="answer-context" data-i18n-ignore>{{ latestContext(currentReview)?.text }}</p>
-            <a v-if="latestContext(currentReview)?.sourceUrl" :href="latestContext(currentReview)?.sourceUrl" target="_blank" rel="noreferrer">查看收藏来源 ↗</a>
+            <VocabularySource :context="vocabularySourceContext(currentReview)" />
             <div class="review-actions">
               <button type="button" class="again" :disabled="actionBusy" @click="rateReview('again')"><span>1</span><strong>忘了</strong><small>约 10 分钟后</small></button>
               <button type="button" class="good" :disabled="actionBusy" @click="rateReview('good')"><span>2</span><strong>记得</strong><small>{{ goodIntervalLabel(currentReview) }}</small></button>
@@ -158,6 +158,8 @@ function translateControlLabel(value: string): string { return translateLegacyTe
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 import VocabularyStudy from './VocabularyStudy.vue';
 import CollectionEntry from './CollectionEntry.vue';
+import VocabularySource from './VocabularySource.vue';
+import {vocabularySourceContext, vocabularySourceLink} from '../source';
 import {ReadingAnswer} from '@/src/features/reading-assistant/public';
 import {ElMessageBox} from 'element-plus';
 import browser from 'webextension-polyfill';
@@ -659,12 +661,13 @@ async function exportAnki(): Promise<void> {
     if (!lifecycle.isActive()) return;
     const rows = data.entries.map(entry => {
       const context = includePrivateContext ? entry.contexts.at(-1) : undefined;
+      const source = vocabularySourceLink(context);
       return [
         entry.term,
         entryTranslation(entry),
         entry.note || '',
         context?.text || '',
-        context?.sourceUrl || '',
+        source.href || (source.timeLabel ? `${context?.pageTitle || '视频'} · ${source.timeLabel}` : ''),
         `fluentread ${entry.status}`,
       ];
     });

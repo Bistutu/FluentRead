@@ -1,0 +1,4452 @@
+{
+  "schemaVersion": 1,
+  "baselineRevision": "824d9c0c429b7a5143988a7466a0b2cb3b834b43",
+  "benchmarkCandidateHead": "dd07045944ed5f0dbf19b4932def7f90514d0c05",
+  "coreSourceCommit": "b3322d33423cb1445c221d57fee82741911bbde4",
+  "source": {
+    "file": "src/core/site-rules/domain.ts",
+    "baselineSha256": "6f039fe85cf6e479a0c6a2d344b597071d7da75a525fae4ee80eec49e1fa251a",
+    "candidateSha256": "b22711c9820062fe72e4c2c94135db6f4478c5e2060ae5f2ef88aed4448f56ad",
+    "candidateDiffersFromBaseline": true,
+    "scriptSha256": "5f9dc6defbe27fe0a85e943d5ba88d0771062a10003061fbc66cb9a628ff0cd7"
+  },
+  "coreSourceHashes": {
+    "src/core/site-rules/domain.ts": "b22711c9820062fe72e4c2c94135db6f4478c5e2060ae5f2ef88aed4448f56ad",
+    "src/app/content/pageAvailability.ts": "50cc672cc1e0027b8d39a841ebf08e1346028247829850b5be97d89da3bf607d",
+    "src/app/content/runtime.ts": "cd47d2f8c29353e2d46391b0b2edeec85e5612326ef0b3e6fa46ef11bf08239e",
+    "src/app/popup/PopupApp.vue": "c7f4d600f36b977b73f1da14e268ca995d5c23581ce52a2a83e7f62ac2a945e3"
+  },
+  "runtime": {
+    "node": "v24.19.0",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M1 Pro",
+    "logicalCpus": 10,
+    "tldtsVersion": "7.4.10",
+    "tldtsEntrySha256": "7af403476d2566665ea0f8ca7c3a338ad62e9b916251cc9b70375ccf46b23f55",
+    "lockfileSha256": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
+    "resourceConcurrency": "3",
+    "resourceLockHeld": true,
+    "resourceLockSlot": "lock-1"
+  },
+  "scope": "Local synthetic Node CPU workloads only; excludes browser DOM scanning, rendering, network, translation providers and end-to-end user latency.",
+  "methodology": {
+    "rounds": 7,
+    "order": "baseline/current on even rounds; current/baseline on odd rounds",
+    "warmupOperations": 40,
+    "timing": "Synchronous batches without tldts wrappers; matcher setup is outside warm-query/update batches and explicitly reported by separate setup/state-build cases.",
+    "workcount": "Separate compiled modules wrap getDomain/parse and delegate to the same actual tldts package; no PSL semantics are mocked. Counts exclude final validation.",
+    "queries": "Each decision evaluates extension-disabled and auto-translate predicates as a pair; this is a controlled predicate workload, not an exact browser-event trace.",
+    "limitation": "Only domain module has a baseline snapshot; its sole runtime import tldts is identical for both. Same-value update still compares O(N) entries. Index rebuild counts and DOM scans are not inferred from parser counts.",
+    "timingFloorMs": 0.2,
+    "maximumRunMs": 55000
+  },
+  "measurementLimits": [
+    "Synchronous batch elapsed times include OS scheduling; CPU was shared and not exclusive.",
+    "Parser work counts are the primary performance evidence.",
+    "Timing below the stated floor has no speed ratio; raw samples and regressions in setup/update costs are retained."
+  ],
+  "semanticChecks": {
+    "comparisons": 1586,
+    "mutations": 22
+  },
+  "cases": [
+    {
+      "name": "Build initial rule state (0 entries per list)",
+      "category": "cold-state-build",
+      "entriesPerList": 0,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 1,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 1,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 3,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 1,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 1,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 1000,
+        "baselineMedianMs": 0.040084000000007336,
+        "candidateMedianMs": 0.24212499999998727,
+        "baselineSamplesMs": [
+          0.1499170000000163,
+          0.08041700000001129,
+          0.03854100000000926,
+          0.037499999999994316,
+          0.040084000000007336,
+          0.06966699999998127,
+          0.03849999999999909
+        ],
+        "candidateSamplesMs": [
+          0.5107920000000092,
+          0.37395899999998505,
+          0.5170420000000036,
+          0.22675000000000978,
+          0.1756249999999966,
+          0.13220799999999144,
+          0.24212499999998727
+        ],
+        "checksums": [
+          [
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000
+          ],
+          [
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Warm predicate pair: first (0 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 0,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 3,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 30,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 3,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 2500,
+        "baselineMedianMs": 5.647041999999999,
+        "candidateMedianMs": 0.17966599999999744,
+        "baselineSamplesMs": [
+          9.01762500000001,
+          13.89941600000003,
+          5.970874999999978,
+          5.394625000000019,
+          5.643624999999986,
+          5.5348749999999995,
+          5.647041999999999
+        ],
+        "candidateSamplesMs": [
+          0.3655830000000151,
+          0.29154199999999264,
+          0.1900410000000079,
+          0.17966599999999744,
+          0.13324999999997544,
+          0.12870800000001736,
+          0.14808300000004238
+        ],
+        "checksums": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Warm predicate pair: last (0 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 0,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 3,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 30,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 3,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 2500,
+        "baselineMedianMs": 5.626583000000039,
+        "candidateMedianMs": 0.10341599999998152,
+        "baselineSamplesMs": [
+          16.799709000000007,
+          5.6946250000000305,
+          5.296707999999967,
+          5.626583000000039,
+          5.516333999999972,
+          5.738917000000015,
+          5.334124999999972
+        ],
+        "candidateSamplesMs": [
+          0.10679100000004382,
+          0.10200000000003229,
+          0.10529199999996308,
+          0.10599999999999454,
+          0.09995900000001257,
+          0.09833400000002257,
+          0.10341599999998152
+        ],
+        "checksums": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Warm predicate pair: miss (0 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 0,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 3,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 30,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 3,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 2500,
+        "baselineMedianMs": 6.28449999999998,
+        "candidateMedianMs": 0.10262499999998909,
+        "baselineSamplesMs": [
+          15.85224999999997,
+          5.853916999999967,
+          6.28449999999998,
+          7.028999999999996,
+          5.88733400000001,
+          5.549416000000008,
+          15.569124999999985
+        ],
+        "candidateSamplesMs": [
+          0.13333299999999326,
+          0.10179099999999153,
+          0.10262499999998909,
+          0.10124999999999318,
+          0.10495800000001054,
+          0.12612500000000182,
+          0.09637499999996635
+        ],
+        "checksums": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Warm predicate pair: repeat (0 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 0,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 3,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 30,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 3,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 2500,
+        "baselineMedianMs": 5.342791000000034,
+        "candidateMedianMs": 0.063541999999984,
+        "baselineSamplesMs": [
+          5.418166999999983,
+          5.342791000000034,
+          5.477208000000019,
+          5.176417000000015,
+          5.073291999999981,
+          6.147166000000027,
+          5.17554100000001
+        ],
+        "candidateSamplesMs": [
+          0.0638330000000451,
+          0.06416600000000017,
+          0.06170900000000756,
+          0.06404199999997218,
+          0.062124999999980446,
+          0.06116700000001174,
+          0.063541999999984
+        ],
+        "checksums": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Warm predicate pair: anchor (0 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 0,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 3,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 30,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 3,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 2500,
+        "baselineMedianMs": 6.05925000000002,
+        "candidateMedianMs": 0.09929199999999128,
+        "baselineSamplesMs": [
+          10.711541000000011,
+          6.076624999999979,
+          5.839958000000024,
+          5.944582999999966,
+          6.240000000000009,
+          6.05925000000002,
+          5.4743330000000014
+        ],
+        "candidateSamplesMs": [
+          0.14337499999999181,
+          0.10854199999999992,
+          0.09666600000002745,
+          0.09787499999998772,
+          0.09929199999999128,
+          0.0979159999999979,
+          0.09945799999997007
+        ],
+        "checksums": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Update rule state: same-array (0 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 0,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 3,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 3,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 500,
+        "baselineMedianMs": 0.03104200000001356,
+        "candidateMedianMs": 0.03795800000000327,
+        "baselineSamplesMs": [
+          0.069500000000005,
+          0.031375000000025466,
+          0.03141699999997627,
+          0.030707999999947333,
+          0.03104200000001356,
+          0.006500000000016826,
+          0.006416999999999007
+        ],
+        "candidateSamplesMs": [
+          0.04591699999997445,
+          0.05424999999996771,
+          0.03795800000000327,
+          0.037709000000006654,
+          1.8891669999999863,
+          0.0160420000000272,
+          0.0160420000000272
+        ],
+        "checksums": [
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ],
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Update rule state: same-values-new-array (0 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 0,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 3,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 3,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 500,
+        "baselineMedianMs": 0.029291000000000622,
+        "candidateMedianMs": 0.04020900000000438,
+        "baselineSamplesMs": [
+          0.04200000000003001,
+          0.02933300000000827,
+          0.029291000000000622,
+          0.029375000000015916,
+          0.028332999999975073,
+          0.012333000000012362,
+          0.012334000000009837
+        ],
+        "candidateSamplesMs": [
+          0.06608300000004874,
+          0.06541599999997061,
+          0.05541600000003655,
+          0.04020900000000438,
+          0.023500000000012733,
+          0.023791999999957625,
+          0.023500000000012733
+        ],
+        "checksums": [
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ],
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Update rule state: add-remove (0 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 0,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 3,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 3,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 5,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 1000,
+        "baselineMedianMs": 0.015000000000100044,
+        "candidateMedianMs": 0.5024580000000469,
+        "baselineSamplesMs": [
+          0.10033400000003212,
+          0.015000000000100044,
+          0.013958000000002357,
+          0.014374999999972715,
+          0.01445899999998801,
+          0.01504099999999653,
+          0.03795800000000327
+        ],
+        "candidateSamplesMs": [
+          0.6380410000000438,
+          1.3319999999999936,
+          0.47470800000007785,
+          0.47516700000005585,
+          0.4766659999999092,
+          0.6919169999999895,
+          0.5024580000000469
+        ],
+        "checksums": [
+          [
+            500,
+            500,
+            500,
+            500,
+            500,
+            500,
+            500
+          ],
+          [
+            500,
+            500,
+            500,
+            500,
+            500,
+            500,
+            500
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Update rule state: flags-only (0 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 0,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 3,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 3,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 500,
+        "baselineMedianMs": 0.033332999999970525,
+        "candidateMedianMs": 0.04120899999998073,
+        "baselineSamplesMs": [
+          0.056292000000098597,
+          0.03195800000003146,
+          0.032792000000085864,
+          0.033332999999970525,
+          0.052709000000049855,
+          0.031791999999995824,
+          0.040124999999989086
+        ],
+        "candidateSamplesMs": [
+          0.04770800000005693,
+          0.06008299999996325,
+          0.042082999999934145,
+          0.04037500000004002,
+          0.04120899999998073,
+          0.03808400000002621,
+          0.04070799999999508
+        ],
+        "checksums": [
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ],
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Build initial rule state (10 entries per list)",
+      "category": "cold-state-build",
+      "entriesPerList": 10,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 1,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 1,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 33,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 1,
+          "counts": {
+            "getDomain": 20,
+            "parse": 0
+          },
+          "checksum": 1,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 90,
+        "baselineMedianMs": 0.0015830000000960354,
+        "candidateMedianMs": 1.9579170000000659,
+        "baselineSamplesMs": [
+          0.0028750000000172804,
+          0.0015829999999823485,
+          0.0012500000000272848,
+          0.0017500000000154614,
+          0.0017080000000078144,
+          0.0015830000000960354,
+          0.0013329999999314168
+        ],
+        "candidateSamplesMs": [
+          2.126333999999929,
+          1.9579170000000659,
+          1.6627910000000838,
+          1.9883330000000115,
+          1.640625,
+          2.508833000000095,
+          1.588416000000052
+        ],
+        "checksums": [
+          [
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90
+          ],
+          [
+            90,
+            90,
+            90,
+            90,
+            90,
+            90,
+            90
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Warm predicate pair: first (10 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 10,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 24,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 240,
+            "parse": 0
+          },
+          "checksum": 20,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 24,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 21,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 10,
+            "parse": 0
+          },
+          "checksum": 20,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 1000,
+        "baselineMedianMs": 18.762207999999987,
+        "candidateMedianMs": 0.9945410000000265,
+        "baselineSamplesMs": [
+          23.920334000000025,
+          18.08045900000002,
+          18.473250000000007,
+          24.531207999999992,
+          18.762207999999987,
+          21.000999999999976,
+          17.743291999999997
+        ],
+        "candidateSamplesMs": [
+          1.0286670000000413,
+          1.6939170000000559,
+          1.142832999999996,
+          0.8518750000000637,
+          0.9945410000000265,
+          0.832749999999919,
+          0.9258330000000115
+        ],
+        "checksums": [
+          [
+            2000,
+            2000,
+            2000,
+            2000,
+            2000,
+            2000,
+            2000
+          ],
+          [
+            2000,
+            2000,
+            2000,
+            2000,
+            2000,
+            2000,
+            2000
+          ]
+        ],
+        "bothAboveTimingFloor": true,
+        "reductionPercent": 94.69923262763089
+      }
+    },
+    {
+      "name": "Warm predicate pair: last (10 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 10,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 33,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 330,
+            "parse": 0
+          },
+          "checksum": 20,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 33,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 21,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 10,
+            "parse": 0
+          },
+          "checksum": 20,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 1000,
+        "baselineMedianMs": 26.219124999999963,
+        "candidateMedianMs": 0.85612500000002,
+        "baselineSamplesMs": [
+          29.96079199999997,
+          23.56466599999999,
+          23.23187500000006,
+          26.219124999999963,
+          23.794083999999998,
+          31.09266600000001,
+          26.46300000000008
+        ],
+        "candidateSamplesMs": [
+          0.8524169999999458,
+          0.85612500000002,
+          0.8350409999999329,
+          0.9269580000000133,
+          2.4265420000000404,
+          0.8425829999999905,
+          3.6907079999999723
+        ],
+        "checksums": [
+          [
+            2000,
+            2000,
+            2000,
+            2000,
+            2000,
+            2000,
+            2000
+          ],
+          [
+            2000,
+            2000,
+            2000,
+            2000,
+            2000,
+            2000,
+            2000
+          ]
+        ],
+        "bothAboveTimingFloor": true,
+        "reductionPercent": 96.73473085009503
+      }
+    },
+    {
+      "name": "Warm predicate pair: miss (10 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 10,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 33,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 330,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 33,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 21,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 10,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 1000,
+        "baselineMedianMs": 28.778792000000067,
+        "candidateMedianMs": 0.8548749999999927,
+        "baselineSamplesMs": [
+          24.74670900000001,
+          28.778792000000067,
+          30.819500000000062,
+          25.560125000000085,
+          34.639625000000024,
+          24.26570800000013,
+          35.56104200000004
+        ],
+        "candidateSamplesMs": [
+          0.87237499999992,
+          0.8548749999999927,
+          3.173583000000008,
+          0.8357919999999694,
+          0.8241249999998672,
+          0.9303749999999127,
+          0.8333330000000387
+        ],
+        "checksums": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "bothAboveTimingFloor": true,
+        "reductionPercent": 97.02949658206643
+      }
+    },
+    {
+      "name": "Warm predicate pair: repeat (10 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 10,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 33,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 330,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 33,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 21,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 1000,
+        "baselineMedianMs": 26.545082999999977,
+        "candidateMedianMs": 0.05895900000018628,
+        "baselineSamplesMs": [
+          26.545082999999977,
+          24.26604199999997,
+          30.908957999999984,
+          25.57074999999986,
+          25.97029099999986,
+          27.207499999999982,
+          29.854959000000008
+        ],
+        "candidateSamplesMs": [
+          0.05908399999998437,
+          0.15550000000007458,
+          0.05949999999984357,
+          0.058917000000064945,
+          0.05883400000016081,
+          0.058667000000014013,
+          0.05895900000018628
+        ],
+        "checksums": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Warm predicate pair: anchor (10 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 10,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 33,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 330,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 33,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 21,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 10,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 1000,
+        "baselineMedianMs": 34.05854199999999,
+        "candidateMedianMs": 0.9945410000000265,
+        "baselineSamplesMs": [
+          34.05854199999999,
+          37.537291000000096,
+          39.13908300000003,
+          25.76958300000001,
+          31.06925000000001,
+          44.94166600000017,
+          26.995083000000022
+        ],
+        "candidateSamplesMs": [
+          0.9471670000000358,
+          0.9945410000000265,
+          1.7717909999998938,
+          0.8865000000000691,
+          0.9011250000000928,
+          1.008167000000185,
+          1.175249999999778
+        ],
+        "checksums": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "bothAboveTimingFloor": true,
+        "reductionPercent": 97.07990729609028
+      }
+    },
+    {
+      "name": "Update rule state: same-array (10 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 10,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 24,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 24,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 21,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 500,
+        "baselineMedianMs": 0.005292000000054031,
+        "candidateMedianMs": 0.29970800000000963,
+        "baselineSamplesMs": [
+          0.0053339999999479915,
+          0.0052079999998113635,
+          0.005250000000160071,
+          0.005292000000054031,
+          0.005334000000175365,
+          0.005292000000054031,
+          0.005165999999917403
+        ],
+        "candidateSamplesMs": [
+          0.3150830000001861,
+          0.2998339999999189,
+          0.29970800000000963,
+          0.3003750000000309,
+          0.11133300000005875,
+          0.05395900000007714,
+          0.054082999999991443
+        ],
+        "checksums": [
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ],
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Update rule state: same-values-new-array (10 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 10,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 24,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 24,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 21,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 500,
+        "baselineMedianMs": 0.017791999999872132,
+        "candidateMedianMs": 0.06520900000009533,
+        "baselineSamplesMs": [
+          0.017707999999856838,
+          0.020291999999926702,
+          0.016667000000097687,
+          0.017791999999872132,
+          1.1233749999998963,
+          0.017250000000103682,
+          0.01816600000006474
+        ],
+        "candidateSamplesMs": [
+          0.08200000000010732,
+          0.06520900000009533,
+          0.07449999999994361,
+          0.06858399999987341,
+          0.04899999999997817,
+          0.048792000000048574,
+          0.049250000000029104
+        ],
+        "checksums": [
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ],
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Update rule state: in-place-edit (10 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 10,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 33,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 33,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 21,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 100,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 90,
+        "baselineMedianMs": 0.006540999999970154,
+        "candidateMedianMs": 0.8844170000002123,
+        "baselineSamplesMs": [
+          0.006458000000066022,
+          0.006959000000051674,
+          0.006540999999970154,
+          0.02987499999994725,
+          0.006499999999959982,
+          0.007040999999844644,
+          0.006333999999924345
+        ],
+        "candidateSamplesMs": [
+          2.332125000000133,
+          0.712833000000046,
+          0.9980840000000626,
+          0.8851250000000164,
+          0.8844170000002123,
+          0.7807920000000195,
+          0.8429999999998472
+        ],
+        "checksums": [
+          [
+            45,
+            45,
+            45,
+            45,
+            45,
+            45,
+            45
+          ],
+          [
+            45,
+            45,
+            45,
+            45,
+            45,
+            45,
+            45
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Update rule state: add-remove (10 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 10,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 24,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 24,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 21,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 105,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 90,
+        "baselineMedianMs": 0.0017080000000078144,
+        "candidateMedianMs": 0.7803750000000491,
+        "baselineSamplesMs": [
+          0.00620800000001509,
+          0.006582999999864114,
+          0.04370799999992414,
+          0.0016249999998763087,
+          0.0014160000000629225,
+          0.0017080000000078144,
+          0.0014169999999467109
+        ],
+        "candidateSamplesMs": [
+          1.0263749999999163,
+          0.8968330000000151,
+          0.7365839999999935,
+          0.7803750000000491,
+          0.9080000000001291,
+          0.7319999999999709,
+          0.6988750000000437
+        ],
+        "checksums": [
+          [
+            45,
+            45,
+            45,
+            45,
+            45,
+            45,
+            45
+          ],
+          [
+            45,
+            45,
+            45,
+            45,
+            45,
+            45,
+            45
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Update rule state: flags-only (10 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 10,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 33,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 33,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 21,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 500,
+        "baselineMedianMs": 0.006499999999959982,
+        "candidateMedianMs": 0.029459000000088054,
+        "baselineSamplesMs": [
+          0.006583000000091488,
+          0.006499999999959982,
+          0.006499999999959982,
+          0.006624999999985448,
+          0.006499999999959982,
+          0.006457999999838648,
+          0.00641700000005585
+        ],
+        "candidateSamplesMs": [
+          0.052000000000134605,
+          0.029459000000088054,
+          0.029250000000047294,
+          0.029166999999915788,
+          0.0439169999999649,
+          0.029875000000174623,
+          0.02941699999996672
+        ],
+        "checksums": [
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ],
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Build initial rule state (100 entries per list)",
+      "category": "cold-state-build",
+      "entriesPerList": 100,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 1,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 1,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 303,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 1,
+          "counts": {
+            "getDomain": 200,
+            "parse": 0
+          },
+          "checksum": 1,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 20,
+        "baselineMedianMs": 0.0005419999999958236,
+        "candidateMedianMs": 3.713124999999991,
+        "baselineSamplesMs": [
+          0.0005839999998897838,
+          0.0007499999999254214,
+          0.00037500000007639755,
+          0.0005419999999958236,
+          0.0006250000001273293,
+          0.0005419999999958236,
+          0.0005409999998846615
+        ],
+        "candidateSamplesMs": [
+          3.713124999999991,
+          3.283290999999963,
+          3.8070420000001377,
+          8.657582999999931,
+          4.4818330000000515,
+          3.517958000000135,
+          3.3553750000000946
+        ],
+        "checksums": [
+          [
+            20,
+            20,
+            20,
+            20,
+            20,
+            20,
+            20
+          ],
+          [
+            20,
+            20,
+            20,
+            20,
+            20,
+            20,
+            20
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Warm predicate pair: first (100 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 100,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 204,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 2040,
+            "parse": 0
+          },
+          "checksum": 20,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 204,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 201,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 10,
+            "parse": 0
+          },
+          "checksum": 20,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 200,
+        "baselineMedianMs": 36.38029199999983,
+        "candidateMedianMs": 0.17570900000009715,
+        "baselineSamplesMs": [
+          29.439334000000144,
+          34.032624999999825,
+          42.115708999999924,
+          40.10104200000001,
+          30.686374999999998,
+          49.16204199999993,
+          36.38029199999983
+        ],
+        "candidateSamplesMs": [
+          0.17020800000000236,
+          0.16604099999995015,
+          0.17508300000008603,
+          0.45404099999996106,
+          0.17849999999998545,
+          0.17570900000009715,
+          0.1758749999999054
+        ],
+        "checksums": [
+          [
+            400,
+            400,
+            400,
+            400,
+            400,
+            400,
+            400
+          ],
+          [
+            400,
+            400,
+            400,
+            400,
+            400,
+            400,
+            400
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Warm predicate pair: last (100 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 100,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 303,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 3030,
+            "parse": 0
+          },
+          "checksum": 20,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 303,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 201,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 10,
+            "parse": 0
+          },
+          "checksum": 20,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 200,
+        "baselineMedianMs": 52.083875000000035,
+        "candidateMedianMs": 0.18679199999996854,
+        "baselineSamplesMs": [
+          68.00366699999995,
+          52.083875000000035,
+          53.5318749999999,
+          43.66879199999994,
+          57.22783299999992,
+          51.034124999999676,
+          48.53895800000009
+        ],
+        "candidateSamplesMs": [
+          0.18679199999996854,
+          0.23387499999989814,
+          0.186333999999988,
+          0.18079200000011042,
+          0.20612499999970169,
+          0.3399580000000242,
+          0.18220899999960238
+        ],
+        "checksums": [
+          [
+            400,
+            400,
+            400,
+            400,
+            400,
+            400,
+            400
+          ],
+          [
+            400,
+            400,
+            400,
+            400,
+            400,
+            400,
+            400
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Warm predicate pair: miss (100 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 100,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 303,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 3030,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 303,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 201,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 10,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 200,
+        "baselineMedianMs": 51.16191600000002,
+        "candidateMedianMs": 0.16983299999992596,
+        "baselineSamplesMs": [
+          53.466917000000194,
+          51.16191600000002,
+          68.09320800000023,
+          54.983791999999994,
+          44.667541999999685,
+          50.00541699999985,
+          45.65204100000028
+        ],
+        "candidateSamplesMs": [
+          0.17579200000000128,
+          0.16620899999998073,
+          0.2684159999998883,
+          0.17266700000027413,
+          0.16983299999992596,
+          0.1671249999999418,
+          0.16962499999999636
+        ],
+        "checksums": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Warm predicate pair: repeat (100 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 100,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 303,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 3030,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 303,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 201,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 200,
+        "baselineMedianMs": 59.55608399999983,
+        "candidateMedianMs": 0.011790999999902851,
+        "baselineSamplesMs": [
+          47.105833000000075,
+          59.55608399999983,
+          58.79250000000002,
+          83.7490829999997,
+          76.63700000000017,
+          83.41270900000018,
+          56.53104200000007
+        ],
+        "candidateSamplesMs": [
+          0.012208000000100583,
+          0.011625000000094587,
+          0.011916999999812106,
+          0.01162499999963984,
+          0.011790999999902851,
+          0.011665999999877386,
+          0.011833999999907974
+        ],
+        "checksums": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Warm predicate pair: anchor (100 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 100,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 303,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 3030,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 303,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 201,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 10,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 200,
+        "baselineMedianMs": 59.35283400000026,
+        "candidateMedianMs": 0.17533400000002075,
+        "baselineSamplesMs": [
+          59.35283400000026,
+          60.20079100000021,
+          79.66387499999973,
+          52.39587500000016,
+          53.165500000000065,
+          57.3256250000004,
+          68.30637500000012
+        ],
+        "candidateSamplesMs": [
+          0.17750000000023647,
+          0.17529100000001563,
+          0.17533400000002075,
+          0.1737089999996897,
+          0.17729199999985212,
+          0.17508399999996982,
+          0.17545899999959147
+        ],
+        "checksums": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Update rule state: same-array (100 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 100,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 204,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 204,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 201,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 500,
+        "baselineMedianMs": 0.005415999999968335,
+        "candidateMedianMs": 0.17212500000005093,
+        "baselineSamplesMs": [
+          0.005415999999968335,
+          0.006041999999979453,
+          0.04279099999985192,
+          0.005500000000211003,
+          0.005208999999922526,
+          0.004791000000295753,
+          0.00483299999996234
+        ],
+        "candidateSamplesMs": [
+          0.17212500000005093,
+          0.17024999999966894,
+          0.17504199999984849,
+          0.5978749999999309,
+          0.1728330000000824,
+          0.1707499999997708,
+          0.17050000000017462
+        ],
+        "checksums": [
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ],
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Update rule state: same-values-new-array (100 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 100,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 204,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 204,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 201,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 500,
+        "baselineMedianMs": 0.05645800000002055,
+        "candidateMedianMs": 0.1966669999997066,
+        "baselineSamplesMs": [
+          0.7693330000001879,
+          0.05058299999973315,
+          0.9241250000000036,
+          0.047915999999986525,
+          0.17320900000004258,
+          0.05104200000005221,
+          0.05645800000002055
+        ],
+        "candidateSamplesMs": [
+          0.2015839999999116,
+          0.21000000000003638,
+          0.19624999999996362,
+          0.19608299999981682,
+          0.1957919999999831,
+          0.1966669999997066,
+          0.19845800000030067
+        ],
+        "checksums": [
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ],
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Update rule state: in-place-edit (100 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 100,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 303,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 303,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 201,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 1000,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 20,
+        "baselineMedianMs": 0.0006249999996725819,
+        "candidateMedianMs": 1.7632920000000922,
+        "baselineSamplesMs": [
+          0.0014999999998508429,
+          0.0005830000000059954,
+          0.0006249999996725819,
+          0.0007080000000314612,
+          0.0005830000000059954,
+          0.000875000000178261,
+          0.0005000000001018634
+        ],
+        "candidateSamplesMs": [
+          1.5830829999999878,
+          1.768500000000131,
+          1.5494589999998425,
+          1.6902500000001055,
+          1.9860839999996642,
+          1.7632920000000922,
+          1.7810420000000704
+        ],
+        "checksums": [
+          [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10
+          ],
+          [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Update rule state: add-remove (100 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 100,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 204,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 204,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 201,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 1005,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 20,
+        "baselineMedianMs": 0.0009159999999610591,
+        "candidateMedianMs": 2.0182079999999587,
+        "baselineSamplesMs": [
+          0.0017499999999017746,
+          0.0009159999999610591,
+          0.0005830000000059954,
+          0.0010419999998703133,
+          0.0005830000000059954,
+          0.0008330000000569271,
+          0.0009999999997489795
+        ],
+        "candidateSamplesMs": [
+          2.4420000000000073,
+          2.0664999999999054,
+          1.865958999999748,
+          2.0182079999999587,
+          1.9052090000000135,
+          1.6251249999995707,
+          2.1072910000002594
+        ],
+        "checksums": [
+          [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10
+          ],
+          [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Update rule state: flags-only (100 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 100,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 303,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 303,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 201,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 500,
+        "baselineMedianMs": 0.005250000000160071,
+        "candidateMedianMs": 0.1689589999996315,
+        "baselineSamplesMs": [
+          0.005625000000236469,
+          0.005290999999942869,
+          0.00508399999989706,
+          0.005375000000185537,
+          0.005250000000160071,
+          0.005124999999679858,
+          0.005125000000134605
+        ],
+        "candidateSamplesMs": [
+          0.1815839999999298,
+          0.16866699999991397,
+          0.1689589999996315,
+          0.1685419999998885,
+          0.1694999999999709,
+          0.16866699999991397,
+          0.2241249999997308
+        ],
+        "checksums": [
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ],
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Build initial rule state (1000 entries per list)",
+      "category": "cold-state-build",
+      "entriesPerList": 1000,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 1,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 1,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 3003,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 1,
+          "counts": {
+            "getDomain": 2000,
+            "parse": 0
+          },
+          "checksum": 1,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 20,
+        "baselineMedianMs": 0.0007089999999152496,
+        "candidateMedianMs": 41.38329199999998,
+        "baselineSamplesMs": [
+          0.0007909999999355932,
+          0.0008749999997235136,
+          0.0007089999999152496,
+          0.0007089999999152496,
+          0.00045799999998052954,
+          0.003290999999990163,
+          0.0007080000000314612
+        ],
+        "candidateSamplesMs": [
+          39.509500000000116,
+          41.38329199999998,
+          41.38687499999969,
+          49.68820800000003,
+          39.58054200000015,
+          36.297250000000076,
+          49.68895900000007
+        ],
+        "checksums": [
+          [
+            20,
+            20,
+            20,
+            20,
+            20,
+            20,
+            20
+          ],
+          [
+            20,
+            20,
+            20,
+            20,
+            20,
+            20,
+            20
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Warm predicate pair: first (1000 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 1000,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 2004,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 20040,
+            "parse": 0
+          },
+          "checksum": 20,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 2004,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 2001,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 10,
+            "parse": 0
+          },
+          "checksum": 20,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 50,
+        "baselineMedianMs": 94.45387500000015,
+        "candidateMedianMs": 0.047999999999774445,
+        "baselineSamplesMs": [
+          111.59795899999972,
+          81.64508300000034,
+          120.05045799999971,
+          94.45387500000015,
+          78.09666599999946,
+          85.61095899999964,
+          94.55129100000067
+        ],
+        "candidateSamplesMs": [
+          0.04733300000043528,
+          0.04591600000003382,
+          0.050583000000187894,
+          0.049667000000226835,
+          0.047999999999774445,
+          0.04362500000024738,
+          0.08520800000042072
+        ],
+        "checksums": [
+          [
+            100,
+            100,
+            100,
+            100,
+            100,
+            100,
+            100
+          ],
+          [
+            100,
+            100,
+            100,
+            100,
+            100,
+            100,
+            100
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Warm predicate pair: last (1000 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 1000,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 3003,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 30030,
+            "parse": 0
+          },
+          "checksum": 20,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 3003,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 2001,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 10,
+            "parse": 0
+          },
+          "checksum": 20,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 50,
+        "baselineMedianMs": 119.59170900000026,
+        "candidateMedianMs": 0.04858299999978044,
+        "baselineSamplesMs": [
+          143.96729200000027,
+          138.64920799999982,
+          117.11099999999988,
+          116.88262500000019,
+          119.59170900000026,
+          117.05425000000014,
+          121.03854200000023
+        ],
+        "candidateSamplesMs": [
+          0.04904200000055425,
+          0.05087499999990541,
+          0.0498330000000351,
+          0.048541000000113854,
+          0.04858299999978044,
+          0.04508399999940593,
+          0.04845899999963876
+        ],
+        "checksums": [
+          [
+            100,
+            100,
+            100,
+            100,
+            100,
+            100,
+            100
+          ],
+          [
+            100,
+            100,
+            100,
+            100,
+            100,
+            100,
+            100
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Warm predicate pair: miss (1000 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 1000,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 3003,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 30030,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 3003,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 2001,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 10,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 50,
+        "baselineMedianMs": 120.46587500000078,
+        "candidateMedianMs": 0.04829100000006292,
+        "baselineSamplesMs": [
+          128.29041599999982,
+          121.65645900000072,
+          115.29912499999955,
+          124.87704200000007,
+          113.90804099999968,
+          113.62979199999972,
+          120.46587500000078
+        ],
+        "candidateSamplesMs": [
+          0.04829100000006292,
+          0.07266700000036508,
+          0.04829100000006292,
+          0.04945899999984249,
+          0.04475000000002183,
+          0.04416700000001583,
+          0.04858299999978044
+        ],
+        "checksums": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Warm predicate pair: repeat (1000 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 1000,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 3003,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 30030,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 3003,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 2001,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 50,
+        "baselineMedianMs": 125.37412500000028,
+        "candidateMedianMs": 0.005291999999826658,
+        "baselineSamplesMs": [
+          137.08258300000034,
+          124.48016699999971,
+          109.55879199999981,
+          125.37412500000028,
+          112.89670799999931,
+          133.48404200000004,
+          148.6541670000006
+        ],
+        "candidateSamplesMs": [
+          0.0052910000003976165,
+          0.004500000000007276,
+          0.0059169999994992395,
+          0.006041999999979453,
+          0.004875000000538421,
+          0.00537499999973079,
+          0.005291999999826658
+        ],
+        "checksums": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Warm predicate pair: anchor (1000 entries per list)",
+      "category": "warm-query",
+      "entriesPerList": 1000,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 3003,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 30030,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 3003,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 2001,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 10,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 50,
+        "baselineMedianMs": 119.34983300000022,
+        "candidateMedianMs": 0.04587499999979627,
+        "baselineSamplesMs": [
+          120.14649999999892,
+          119.34983300000022,
+          117.80408399999942,
+          123.08529099999942,
+          119.04491699999926,
+          117.98299999999836,
+          135.47295900000063
+        ],
+        "candidateSamplesMs": [
+          0.04637499999989814,
+          0.04462500000045111,
+          0.04545899999902758,
+          0.042792000000190455,
+          0.05125000000043656,
+          0.04587499999979627,
+          0.04883399999926041
+        ],
+        "checksums": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Update rule state: same-array (1000 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 1000,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 2004,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 2004,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 2001,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 500,
+        "baselineMedianMs": 0.026792000000568805,
+        "candidateMedianMs": 1.5397499999999127,
+        "baselineSamplesMs": [
+          0.023166999999375548,
+          0.028415999999197084,
+          0.026792000000568805,
+          0.026834000000235392,
+          0.04137500000069849,
+          0.023916000000099302,
+          0.023832999999285676
+        ],
+        "candidateSamplesMs": [
+          1.516250000000582,
+          1.5397499999999127,
+          1.5253749999992579,
+          1.6887920000008307,
+          1.5724579999987327,
+          1.6219579999997222,
+          1.5229170000002341
+        ],
+        "checksums": [
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ],
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Update rule state: same-values-new-array (1000 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 1000,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 2004,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 2004,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 2001,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 500,
+        "baselineMedianMs": 0.6838329999991402,
+        "candidateMedianMs": 2.5460000000002765,
+        "baselineSamplesMs": [
+          0.5797500000007858,
+          0.7872500000012224,
+          0.7467499999984284,
+          0.5814580000005662,
+          0.6838329999991402,
+          0.5528329999997368,
+          0.8895830000001297
+        ],
+        "candidateSamplesMs": [
+          2.648790999999619,
+          2.540333000000828,
+          1.9863750000004075,
+          2.5460000000002765,
+          7.377834000000803,
+          3.7257920000010927,
+          2.3164170000000013
+        ],
+        "checksums": [
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ],
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ]
+        ],
+        "bothAboveTimingFloor": true,
+        "reductionPercent": -272.3131232338126
+      }
+    },
+    {
+      "name": "Update rule state: in-place-edit (1000 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 1000,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 3003,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 3003,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 2001,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 10000,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 20,
+        "baselineMedianMs": 0.004499999999097781,
+        "candidateMedianMs": 23.502791000000798,
+        "baselineSamplesMs": [
+          0.004999999999199645,
+          0.004584000000249944,
+          0.008083999999143998,
+          0.004166000000623171,
+          0.004499999999097781,
+          0.0020409999997355044,
+          0.002749999999650754
+        ],
+        "candidateSamplesMs": [
+          21.376374999999825,
+          24.57850000000144,
+          42.14979200000016,
+          27.603124999999636,
+          21.08824999999888,
+          23.502791000000798,
+          21.70258300000023
+        ],
+        "checksums": [
+          [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10
+          ],
+          [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Update rule state: add-remove (1000 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 1000,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 2004,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 2004,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 2001,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 10005,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 20,
+        "baselineMedianMs": 0.0038330000006681075,
+        "candidateMedianMs": 22.85033300000032,
+        "baselineSamplesMs": [
+          0.004582999999911408,
+          0.003917000000001281,
+          0.00204200000007404,
+          0.005959000000075321,
+          0.0038330000006681075,
+          0.0023330000003625173,
+          0.0017499999994470272
+        ],
+        "candidateSamplesMs": [
+          17.129291999999623,
+          25.912915999999313,
+          17.34808300000077,
+          22.85033300000032,
+          18.28570799999943,
+          27.685374999999112,
+          27.952166999999463
+        ],
+        "checksums": [
+          [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10
+          ],
+          [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Update rule state: flags-only (1000 entries per list)",
+      "category": "config-update",
+      "entriesPerList": 1000,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 3003,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 3003,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 2001,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "checksum": 5,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 0,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 500,
+        "baselineMedianMs": 0.009165999999822816,
+        "candidateMedianMs": 1.5808329999999842,
+        "baselineSamplesMs": [
+          0.009583999999449588,
+          0.007415999998556799,
+          0.008457999998427113,
+          0.009165999999822816,
+          0.009834000000410015,
+          0.007541999999375548,
+          0.10120800000004238
+        ],
+        "candidateSamplesMs": [
+          1.6273330000003625,
+          1.5655420000002778,
+          1.56683300000077,
+          1.5178329999998823,
+          1.5808329999999842,
+          2.3845000000001164,
+          1.598707999999533
+        ],
+        "checksums": [
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ],
+          [
+            250,
+            250,
+            250,
+            250,
+            250,
+            250,
+            250
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Flag branch: paused (1000 entries per list)",
+      "category": "flags",
+      "entriesPerList": 1000,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 1001,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 10010,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 1001,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 2001,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 10,
+            "parse": 0
+          },
+          "checksum": 0,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 50,
+        "baselineMedianMs": 46.22225000000071,
+        "candidateMedianMs": 0.04304200000115088,
+        "baselineSamplesMs": [
+          46.22225000000071,
+          50.121541000000434,
+          57.57316600000013,
+          40.09783400000015,
+          41.90558299999975,
+          37.019249999999374,
+          49.12054200000057
+        ],
+        "candidateSamplesMs": [
+          0.09695800000008603,
+          0.04212499999994179,
+          0.042417000000568805,
+          0.04470899999978428,
+          0.04304200000115088,
+          0.04033299999900919,
+          0.04500000000007276
+        ],
+        "checksums": [
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Flag branch: global (1000 entries per list)",
+      "category": "flags",
+      "entriesPerList": 1000,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 2002,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 20020,
+            "parse": 0
+          },
+          "checksum": 20,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 2002,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 2001,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 10,
+            "parse": 0
+          },
+          "checksum": 20,
+          "finalDecision": 2,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 50,
+        "baselineMedianMs": 85.99987499999952,
+        "candidateMedianMs": 0.04724999999962165,
+        "baselineSamplesMs": [
+          104.43729100000019,
+          81.1767920000002,
+          79.1318339999998,
+          105.36066700000083,
+          81.96954199999891,
+          85.99987499999952,
+          90.29720899999847
+        ],
+        "candidateSamplesMs": [
+          0.04979100000127801,
+          0.04724999999962165,
+          0.04479200000059791,
+          0.04754099999991013,
+          0.04762500000106229,
+          0.041499999999359716,
+          0.04591699999946286
+        ],
+        "checksums": [
+          [
+            100,
+            100,
+            100,
+            100,
+            100,
+            100,
+            100
+          ],
+          [
+            100,
+            100,
+            100,
+            100,
+            100,
+            100,
+            100
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Flag branch: disabled overrides global (1000 entries per list)",
+      "category": "flags",
+      "entriesPerList": 1000,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 2002,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 20020,
+            "parse": 0
+          },
+          "checksum": 10,
+          "finalDecision": 1,
+          "validationCounts": {
+            "getDomain": 2002,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 2001,
+            "parse": 0
+          },
+          "operations": 10,
+          "counts": {
+            "getDomain": 10,
+            "parse": 0
+          },
+          "checksum": 10,
+          "finalDecision": 1,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 50,
+        "baselineMedianMs": 79.97724999999991,
+        "candidateMedianMs": 0.04545900000084657,
+        "baselineSamplesMs": [
+          83.34866599999987,
+          84.42591700000048,
+          74.89724999999999,
+          79.97724999999991,
+          72.97441699999945,
+          79.57937499999935,
+          92.12337500000103
+        ],
+        "candidateSamplesMs": [
+          0.04808400000001711,
+          0.043416000000433996,
+          0.04637499999989814,
+          0.042457999999896856,
+          0.04545900000084657,
+          0.04483299999992596,
+          0.050416000000041095
+        ],
+        "checksums": [
+          [
+            50,
+            50,
+            50,
+            50,
+            50,
+            50,
+            50
+          ],
+          [
+            50,
+            50,
+            50,
+            50,
+            50,
+            50,
+            50
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Mixed same-value update, five routes and real edit (10 entries per list)",
+      "category": "mixed",
+      "entriesPerList": 10,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 2,
+          "counts": {
+            "getDomain": 396,
+            "parse": 0
+          },
+          "checksum": 2,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 33,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 20,
+            "parse": 0
+          },
+          "operations": 2,
+          "counts": {
+            "getDomain": 32,
+            "parse": 0
+          },
+          "checksum": 2,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 10,
+        "baselineMedianMs": 1.607916999999361,
+        "candidateMedianMs": 0.13324999999895226,
+        "baselineSamplesMs": [
+          1.3860830000012356,
+          2.3011249999999563,
+          1.607916999999361,
+          1.5518749999991996,
+          1.3867499999996653,
+          1.80291699999907,
+          1.6727090000003955
+        ],
+        "candidateSamplesMs": [
+          0.13324999999895226,
+          0.12924999999995634,
+          0.20233399999960966,
+          0.13241700000071432,
+          0.13700000000062573,
+          0.13337499999943248,
+          0.13041700000030687
+        ],
+        "checksums": [
+          [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10
+          ],
+          [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10
+          ]
+        ],
+        "bothAboveTimingFloor": false,
+        "reductionPercent": null
+      }
+    },
+    {
+      "name": "Mixed same-value update, five routes and real edit (1000 entries per list)",
+      "category": "mixed",
+      "entriesPerList": 1000,
+      "workcount": {
+        "baseline": {
+          "setup": {
+            "getDomain": 0,
+            "parse": 0
+          },
+          "operations": 2,
+          "counts": {
+            "getDomain": 36036,
+            "parse": 0
+          },
+          "checksum": 2,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 3003,
+            "parse": 0
+          }
+        },
+        "candidate": {
+          "setup": {
+            "getDomain": 2000,
+            "parse": 0
+          },
+          "operations": 2,
+          "counts": {
+            "getDomain": 2012,
+            "parse": 0
+          },
+          "checksum": 2,
+          "finalDecision": 0,
+          "validationCounts": {
+            "getDomain": 1,
+            "parse": 0
+          }
+        }
+      },
+      "timing": {
+        "iterations": 10,
+        "baselineMedianMs": 207.94824999999946,
+        "candidateMedianMs": 10.244291999999405,
+        "baselineSamplesMs": [
+          633.9903340000001,
+          403.41862500000025,
+          164.78537499999948,
+          207.94824999999946,
+          140.78145799999947,
+          196.62183300000106,
+          207.9627500000006
+        ],
+        "candidateSamplesMs": [
+          11.096290999999837,
+          8.891750000000684,
+          10.244291999999405,
+          9.055583000001207,
+          8.547291999999288,
+          17.263166999999157,
+          11.191874999998618
+        ],
+        "checksums": [
+          [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10
+          ],
+          [
+            10,
+            10,
+            10,
+            10,
+            10,
+            10,
+            10
+          ]
+        ],
+        "bothAboveTimingFloor": true,
+        "reductionPercent": 95.07363394498418
+      }
+    }
+  ],
+  "totalRunMs": 14997.93775,
+  "lifecycleWorkload": {
+    "baselineCommit": "824d9c0c429b7a5143988a7466a0b2cb3b834b43",
+    "modulePath": "src/app/content/pageAvailability.ts",
+    "baselineSourceSha256": "41327a43b12a7cffa817915a707ce46407f7242205242342b34fd1775e2e8c93",
+    "candidateSourceSha256": "50cc672cc1e0027b8d39a841ebf08e1346028247829850b5be97d89da3bf607d",
+    "scope": "Deterministic runtime-source fixture with injected lifecycle functions and auto rule predicate; counts are not browser DOM timing or provider latency. Bridge DOM event count maps each bridge call to the two dispatched events in the composition root.",
+    "scenarios": {
+      "same-tick-100-notifications": {
+        "baseline": {
+          "reconcileCalls": 100,
+          "distinctPromises": 100,
+          "activationCalls": 100,
+          "activationStarts": 1,
+          "bridgeCalls": 200,
+          "bridgeDomEvents": 400,
+          "autoPredicateCalls": 200,
+          "autoTranslationStarts": 1
+        },
+        "candidate": {
+          "reconcileCalls": 100,
+          "distinctPromises": 1,
+          "activationCalls": 1,
+          "activationStarts": 1,
+          "bridgeCalls": 2,
+          "bridgeDomEvents": 4,
+          "autoPredicateCalls": 2,
+          "autoTranslationStarts": 1
+        }
+      },
+      "pending-activation-100-notifications": {
+        "baseline": {
+          "reconcileCalls": 101,
+          "distinctPromises": 101,
+          "activationCalls": 101,
+          "activationStarts": 1,
+          "bridgeCalls": 202,
+          "bridgeDomEvents": 404,
+          "autoPredicateCalls": 202,
+          "autoTranslationStarts": 1
+        },
+        "candidate": {
+          "reconcileCalls": 101,
+          "distinctPromises": 1,
+          "activationCalls": 2,
+          "activationStarts": 1,
+          "bridgeCalls": 4,
+          "bridgeDomEvents": 8,
+          "autoPredicateCalls": 4,
+          "autoTranslationStarts": 1
+        }
+      }
+    }
+  },
+  "coverage": {
+    "buildSourceCommit": "dd07045944ed5f0dbf19b4932def7f90514d0c05",
+    "coverage": {
+      "src/app/content/pageAvailability.ts": {
+        "lines": {
+          "total": 138,
+          "covered": 138,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 11,
+          "covered": 11,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 138,
+          "covered": 138,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 58,
+          "covered": 58,
+          "skipped": 0,
+          "pct": 100
+        }
+      },
+      "src/core/site-rules/domain.ts": {
+        "lines": {
+          "total": 162,
+          "covered": 162,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 22,
+          "covered": 22,
+          "skipped": 0,
+          "pct": 100
+        },
+        "statements": {
+          "total": 162,
+          "covered": 162,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 103,
+          "covered": 103,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "sourceHashes": {
+      "src/app/content/pageAvailability.ts": "50cc672cc1e0027b8d39a841ebf08e1346028247829850b5be97d89da3bf607d",
+      "src/core/site-rules/domain.ts": "b22711c9820062fe72e4c2c94135db6f4478c5e2060ae5f2ef88aed4448f56ad"
+    }
+  },
+  "productionVerification": {
+    "buildSourceCommit": "dd07045944ed5f0dbf19b4932def7f90514d0c05",
+    "baseCommit": "c8a06bb5fe0148f629ecaf60e70e5bf6ebb4f957",
+    "coreSourceCommit": "b3322d33423cb1445c221d57fee82741911bbde4",
+    "uniqueTests": 1481,
+    "testFiles": 9,
+    "coverageFunctionalTests": 523,
+    "staticAndUserscriptConfigTests": 958,
+    "compileExitCode": 0,
+    "chromeBuildExitCode": 0,
+    "firefoxBuildExitCode": 0,
+    "userscriptBuildExitCode": 0,
+    "userscriptVerifierExitCode": 0,
+    "manifestVerifierExitCode": 0,
+    "auditExitCode": 0,
+    "auditFileCount": 652,
+    "auditClassifiedCaseCount": 10908,
+    "chromeContentSha256": "e6e8d6d2c339d2b2d717a455724a911da7c56963dc0645c839cec3eb1a72aa85"
+  },
+  "browser": {
+    "sourceSha": "dd07045944ed5f0dbf19b4932def7f90514d0c05",
+    "contentSha256": "e6e8d6d2c339d2b2d717a455724a911da7c56963dc0645c839cec3eb1a72aa85",
+    "localCases": 24,
+    "localCasesPassed": 24,
+    "productHuntStatus": "passed",
+    "productHuntNavigations": [
+      {
+        "to": "https://www.producthunt.com/products/reso",
+        "mode": "SPA",
+        "restoredBeforeClick": false,
+        "requestsInNavigationWindow": 26
+      },
+      {
+        "to": "https://www.producthunt.com/products/reso/reviews",
+        "mode": "SPA",
+        "restoredBeforeClick": false,
+        "requestsInNavigationWindow": 24
+      },
+      {
+        "to": "https://www.producthunt.com/products/reso",
+        "mode": "SPA",
+        "restoredBeforeClick": true,
+        "requestsInNavigationWindow": 20
+      }
+    ],
+    "focusEvents": [],
+    "cleanupErrors": [],
+    "browserFrontmost": false,
+    "localConsoleErrors": [],
+    "resourcePolicyDeviation": {
+      "configuredConcurrency": 5,
+      "taskSharedLimit": 3,
+      "maxWorkers": 1,
+      "actualSlot": null,
+      "browserCpuTimingCompared": false,
+      "action": "No repeat of the full matrix solely to relabel resource policy; subsequent runs use explicit concurrency 3 and maxWorkers 1."
+    },
+    "inflightCancelEvidenceBoundary": "The fixed-delay full-matrix case shows restored DOM but did not record a still-pending local request abort; a separate gated repeat of the same case supplies that evidence.",
+    "gatedRepeatOfExistingCase": {
+      "sourceSha": "dd07045944ed5f0dbf19b4932def7f90514d0c05",
+      "contentSha256": "e6e8d6d2c339d2b2d717a455724a911da7c56963dc0645c839cec3eb1a72aa85",
+      "caseName": "disable interrupts slow translation and late reply never reinserts DOM",
+      "passed": true,
+      "newRequests": 1,
+      "finalWrapperCount": 0,
+      "resourcePolicy": {
+        "concurrency": 3,
+        "maxWorkers": 1,
+        "lockHeld": true,
+        "slot": "lock",
+        "cpuExclusive": false,
+        "browserCpuTimingCompared": false
+      },
+      "evidence": {
+        "provider": "local deterministic response gate",
+        "armedAt": 1791697643934,
+        "events": [
+          {
+            "name": "provider-request-arrived",
+            "at": 1791697644069
+          },
+          {
+            "name": "disable-click-started",
+            "at": 1791697644468
+          },
+          {
+            "name": "popup-immediate-close-completed",
+            "at": 1791697644592
+          },
+          {
+            "name": "persisted-state-acknowledged",
+            "at": 1791697644602
+          },
+          {
+            "name": "original-dom-restored",
+            "at": 1791697644617
+          },
+          {
+            "name": "provider-abort-observed",
+            "at": 1791697644617
+          },
+          {
+            "name": "reopened-popup-disabled-state-confirmed",
+            "at": 1791697645072
+          },
+          {
+            "name": "provider-gate-released",
+            "at": 1791697645159
+          },
+          {
+            "name": "post-release-original-dom-confirmed",
+            "at": 1791697646536
+          }
+        ],
+        "request": {
+          "source": "Reading page /spa/slow should feel calm and effortless. Colors and lines should follow the article you are reading.",
+          "model": "site-navigation-model",
+          "at": 1791697644056,
+          "aborted": true,
+          "responseGate": "disable-inflight",
+          "closedAt": 1791697644591,
+          "abortedAt": 1791697644591,
+          "gateReleasedAt": 1791697645159,
+          "responseDecisionAt": 1791697645159,
+          "responseOutcome": "aborted-before-send"
+        },
+        "pendingBeforeDisable": {
+          "at": 1791697644468,
+          "requestArrivedAt": 1791697644056,
+          "responseSent": false,
+          "aborted": false,
+          "gateReleased": false
+        },
+        "persistedState": {
+          "disabledExtensionDomains": [
+            "127.0.0.1"
+          ],
+          "revision": 4
+        },
+        "reopenedPopup": {
+          "enabled": "true",
+          "busy": "false",
+          "translationDisabled": true,
+          "alwaysRuleDisabled": true
+        },
+        "noReinsertionAfterRelease": true,
+        "newRequestsAfterDisable": 0
+      },
+      "focusEvents": [],
+      "cleanupErrors": [],
+      "browserFrontmost": false,
+      "localConsoleErrors": []
+    }
+  }
+}

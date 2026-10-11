@@ -21,7 +21,7 @@
               <summary>收藏信息</summary>
               <p>{{ status }} · {{ review }}<br>{{ entry.encounterCount }} 次收藏记录<span v-if="entry.partOfSpeech"> · {{ entry.partOfSpeech }}</span><span v-if="entry.phonetic"> · {{ entry.phonetic }}</span></p>
               <p v-if="context?.text" data-i18n-ignore>{{ context.text }}</p>
-              <a v-if="context?.sourceUrl" :href="context.sourceUrl" target="_blank" rel="noreferrer">查看收藏来源 ↗</a>
+              <VocabularySource :context="sourceContext" />
             </details>
             <button type="button" class="danger" :disabled="busy" @click="act('remove')">删除收藏</button>
           </div>
@@ -42,6 +42,8 @@ import {hasDistinctTranslation} from '@/src/core/translation/result';
 import {computed, nextTick, ref} from 'vue';
 import {isVocabularySentence, vocabularyReferencePreview, vocabularyStudyContext, type VocabularyEntry} from '../learningModel';
 import SavedExplanation from './SavedExplanation.vue';
+import VocabularySource from './VocabularySource.vue';
+import {vocabularySourceContext} from '../source';
 import UiIcon from '@/src/ui/components/UiIcon.vue';
 import {useUiI18n} from '@/src/ui/i18n';
 const {t} = useUiI18n();
@@ -50,6 +52,7 @@ const emit = defineEmits<{study: []; speak: []; copy: [bilingual: boolean]; mast
 const visibleTranslation = computed(() => hasDistinctTranslation(props.entry.term, props.translation));
 const sentence = computed(() => isVocabularySentence(props.entry));
 const context = computed(() => vocabularyStudyContext(props.entry));
+const sourceContext = computed(() => vocabularySourceContext(props.entry));
 const root = ref<HTMLElement>();
 const menu = ref<HTMLDetailsElement>();
 const editing = ref(false);

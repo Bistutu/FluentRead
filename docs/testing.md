@@ -6,6 +6,25 @@
 
 生产 Chrome 扩展构建后运行 `node scripts/testing/run-personal-corrections-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <捆绑 Node 包目录> --focus-safe-helper <focus-safe-browser.cjs 路径> --artifacts-dir <证据目录> --real-url https://example.com`。脚本使用第二屏临时 Edge 后台窗口和可信输入，翻译响应为确定性 Google 夹具；网页、双语渲染、后台消息和加密存储使用生产实现。验证原句重复复用时零额外 provider 请求、近似句只作草稿、两种语言与标题语境隔离、材料/项目范围、恢复重译、公共缓存隔离、范围帮助的真实悬停/焦点与 390px 提示边界、焦点恢复，保存 JSON、DOM 和截图。此证据不代表在线译文质量或 Firefox 实机验收。
 
+## 视频完整句学习
+
+`pnpm test:video:learning --coverage` 限定执行原始字幕聚合、播放控制、面板所有权与来源恢复、收藏来源及 UI 五份测试；四个新增 TypeScript 模块的 statements/branches/functions/lines 均要求 100%。字幕菜单和运行时回归使用 `videoSubtitle`、`videoSubtitleTrackPriorityRuntime`、`videoSubtitleLogic`、`videoUiI18n`，以及架构、文件头和 i18n 检查。
+
+生产 Chrome 构建后运行：
+
+```sh
+node scripts/run-video-sentence-learning-test.cjs \
+  --extension-dir .output/chrome-mv3 \
+  --playwright-root "$PLAYWRIGHT_ROOT" \
+  --focus-safe-helper scripts/testing/focus-safe-browser.cjs \
+  --artifacts-dir /private/tmp/fluentread-video-sentence-learning
+```
+
+脚本使用自有临时 Edge profile、第二屏后台正常窗口、前台 PID 保护和真实解码的本地 MP4。平台 DOM、原字幕与翻译/解释传输受控；断言整句原时间、用户播放优先、循环与句末暂停、失败恢复、主动收藏、来源去重、学习中心链接、X 多视频/引用帖归属、全屏与窄屏边界。它不代表原站字幕可取得或线上服务译文质量。
+
+追加 `--live-only --live-youtube-urls <视频地址列表> --live-x-url <帖子地址>` 单独访问真实网站，不注入字幕或替换网站 DOM/媒体；仍使用受控翻译传输。原站无法供给可读取字幕时记录状态和失败，不能据此宣称字幕学习闭环通过。Firefox 与 userscript 构建不等于实际浏览器运行验收；原生画中画未通过此前台隔离脚本测试。本次结果与边界见[视频完整句学习记录](./reports/video-sentence-learning-20261011/README.md)。
+
+
 ## 扩展体积与共享推理引擎
 
 `pnpm analyze:bundle [构建目录] [基线目录]` 统计真实字节、文件类型、目录、最大文件和相同内容，详见 [2026-10-06 体积记录](./maintainers/extension-size-20261006.md)。普通开发构建不内联源码映射；需要时使用 `FLUENTREAD_DEV_SOURCEMAPS=1 pnpm dev`。手动加载可设置 `FLUENTREAD_DISABLE_BROWSER_RUNNER=1`。
@@ -102,6 +121,27 @@ node scripts/run-selection-trigger-test.cjs --context-menu-only \
 点击官网示例的第二步，会先显示翻译中的转圈与段落占位动画，或漫画气泡的扫描动画，随后展示译文并停留在结果。重复点击可重新演示；底部按钮可暂停、继续和重播。系统开启减少动态效果时，点击第二步直接展示结果。
 
 执行 `pnpm docs:typecheck`、`pnpm docs:build` 后，运行 `node scripts/testing/run-site-demo-loading-test.cjs --playwright-root <Node包目录> --browser-path <Edge可执行文件> --output /private/tmp/fluentread-site-demo-loading`。专项使用隔离无窗口浏览器，不访问用户 profile，检查中英文首页在 1440、390、320px 宽度下的自动播放、真实点击、CSS 动画运动、逐段显示、完成停留、重复触发、暂停继续、跳转与重播，以及减少动态效果和其他演示的步骤控制。报告与截图保存到指定目录；只验证官网本地示例，不调用扩展或真实翻译服务。
+
+## 网站规则与连续导航
+
+`pnpm test tests/contentFeatureLifecycle.test.ts tests/contentRuntimeLifecycle.test.ts tests/fullPageVisibilityScheduling.test.ts tests/popupPageActionsOwnership.test.ts tests/popupAppLifecycle.test.ts tests/popupChildOwnership.test.ts tests/siteRules.test.ts` 覆盖始终翻译的新页面意图、普通锚点与 HashRouter、非必要 UI 挂载等待、跨路由取消重试、无需变更结果失效，以及规则写入前的标签页复验、后台确认、保存失败和禁用中断翻译。
+
+生产构建后运行定向浏览器专项：
+
+```sh
+node scripts/testing/run-site-rules-navigation-test.cjs \
+  --extension-dir .output/chrome-mv3 \
+  --playwright-root <捆绑 Node 包目录> \
+  --artifacts-dir <本次证据目录>
+```
+
+专项使用临时 Edge profile、第二屏后台正常窗口和焦点监控。页面和翻译 HTTP 响应为本地夹具，验证普通链接、跨站进出、push/replace/popstate、HashRouter、延迟正文和快速跳转，检查恢复原文后的同页保持与新文章自动触发、在途禁用与迟到响应、规则保存后立即关闭重开、最后写入胜出和配置跨页同步。DOM、请求计数、截图、保存响应和焦点信息保存在 `report.json`。它不代表外部翻译服务、原生工具栏 Popup、Firefox 实机或浏览器往返缓存的验收；真实网页结果需单独记录。
+
+追加 `--producthunt` 会访问 Product Hunt 首页和 Reso 产品页，用实际链接检查正文适配切换后的自动翻译。翻译响应仍来自本地测试服务；站点防护或链接不可用会单独记录为隔离结果，不计入通过项。
+
+仅补测在途禁用可追加 `--disable-inflight-only`，默认完整范围保持不变。该原有用例用本地 provider 响应闸门替代固定等待：确认当前正文请求已到达但尚未响应，点击禁用并立即关闭 Popup，核对持久化确认与请求取消，重开检查已禁用且保存已结束，最后释放响应并断言译文不回插、不新增请求。单项报告记录完整时序及资源锁配置，不能把一次固定延迟结束后的原文状态当作请求取消证据。
+
+网站规则 CPU 对照可运行 `node scripts/testing/run-resource-safe.mjs --concurrency 1 -- node scripts/testing/benchmark-site-rules.mjs <明确的旧版本提交> <输出JSON路径>`。脚本用同一依赖编译旧/新 domain 模块，分别记录域名解析工作量与七轮交替计时，覆盖空、小、大名单、首次建索引、热查询、同值和真实配置修改、混合路线。输出保留源文件散列、语义比较、全部样本和初始化成本；低于计时下限不计算速度比例。配置通知仍 O(N) 比较，数据仅限本地 Node CPU，不代表 DOM、网络或用户端到端延迟。本轮范围与对照见 [网站规则性能复验](./reports/site-rules-navigation-20261011/performance.md)。
 
 ## Popup 首次打开与语言引导
 
@@ -513,11 +553,36 @@ node scripts/testing/run-fixed-height-translation-test.cjs \
 
 它检查卡片实际内容边界而非仅检查卡片壳，覆盖翻译、恢复、再次翻译、共用卡片、宿主高度改写及独立滚动区域。页面和翻译响应均为本地夹具，不能代替真实网站或翻译服务的验证。高度覆盖在仍有译文时共享保留，避免在“解除高度后无溢出”与“恢复高度后再次溢出”之间反复切换；最后一个译文移除时恢复宿主样式。
 
+### 连续滚动中的阅读等待
+
+```bash
+node scripts/testing/run-reading-wait-priority-test.cjs \
+  --phase optimized --iterations 3 --delay-ms 180 \
+  --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> \
+  --focus-safe-helper scripts/testing/focus-safe-browser.cjs \
+  --artifacts-dir /private/tmp/fluentread-reading-wait-optimized
+```
+
+专项使用生产扩展、临时 Edge profile 和第二屏后台可见窗口，在同一材料和本地微软 HTTP 响应下记录首屏与连续滚动的首次可读、逐帧实际视口完成时间、HTTP 请求数、文本槽数及至少 50ms 的长任务。首次可读要求译文自身进入视口；视口完成要求当帧所有可见候选的译文 DOM 就绪，部分可见段落也计入。指定三个阅读锚点另记完成时间，并检查它们始终可见。80 段视口模式重复三次，1000 段整页模式另测一次；滚动每 80ms 前进 3px，持续至少 1600ms。请求计数固定观察首屏 800ms、滚动 2600ms，包含已有的独立标题翻译；正文并发以一槽候选计数，不能把合批 HTTP 数等同于候选并发。
+
+`--phase baseline --extension-dir <同一基础提交的冻结生产包> --measurements-only` 复现旧版等待滚动结束后才请求的行为；`--measurements-only` 和 `--lifecycle-only` 可限定范围，后者可追加 `--lifecycle-case failure-retry` 等单项。完整新版专项还检查并发占满、在途恢复和重译、全局关闭、恢复后切换目标语言、动态 DOM、失败重试、导航清理和悬浮翻译—恢复—再次翻译。既有会话冻结调用时配置，目标语言变更由下一次调用采用。
+
+相关定向测试为 `fullPagePriority`、`fullPageVisibilityScheduling`、`fullPageTranslationIndicators`、`viewportStability`、`translateQueue`、`translationRequestScheduler`、`fullPageFailureRecovery` 与 `hoverTranslationScheduler`。对比结论见[阅读等待优化报告](./reports/reading-wait-priority-20261011.md)。本地响应只验证插件调度与 DOM 可读性，不证明在线服务延迟、语义质量、任意网站或 Firefox 实机表现。
+
 ### Hacker News 与 Product Hunt 翻译滚动
 
 `tests/browser-translation-cases.json` 的 `hacker-news-home` 与
 `producthunt-posting-access` 分别覆盖实时首页标题列表和用户指定的帮助文章，均支持
 悬浮、全文模式。Hacker News 原有的讨论页用例继续保留。
+
+`producthunt-home` 直接覆盖产品首页的介绍 span、产品名称、页脚、搜索及 Cookie 提示保护，
+与帮助中心文章是独立用例；遇到 Cloudflare 时按 quarantine 记录站点限制。
+实时投票数字会由网站更新，投票保护由固定夹具与专项浏览器验证检查，不用数字是否变化判断翻译污染。
+`site-adaptation-fixtures.json` 的 `product-hunt` 与 established 夹具的
+`hacker-news` 使用生产规则验证正文、代码和身份操作边界。
+`siteAdaptationCatalog.test.ts` 与 `translationCore.test.ts` 检查悬浮/全文候选一致、
+多段评论不合并、动态重建和 HN 阅读页回退。性能对比应另外报告候选数、扫描步骤、
+最大源快照长度及真实浏览器长任务，不能把减少无效候选称为端到端翻译提速。
 
 可见段落插入译文时，下方内容正常展开，不应主动滚动页面来抵消展开高度。只有变化
 完全发生在同一滚动容器的视口上方时才做阅读位置补偿；页首保持页首，整页恢复优先
@@ -1086,6 +1151,22 @@ pnpm test:pdf-selection -- \
 ## 划词窗口拖动与缩放（issue #525）
 
 `node scripts/run-selection-trigger-test.cjs --geometry-only --extension-dir .output/chrome-mv3 --playwright-root <Node包目录> --focus-safe-helper <浏览器测试技能>/scripts/focus-safe-browser.cjs --artifacts-dir /private/tmp/fluentread-selection-geometry` 使用临时 Edge profile 和第二屏后台窗口，检查顶部与内容空白处拖动、八个方向缩放、自动换行、正文选择、复制、滚动后位置保持、最小尺寸和视口边界，以及关闭、禁用、重新划词和迟到译文。截图涵盖放大、窄窗口和深色主题。页面及微软翻译响应为本地夹具，不代表真实供应商质量；窗口手势通过真实 CDP 输入执行。
+
+## 单篇篇章参考
+
+生产 Chrome 构建完成后运行以下独立网页套件：
+
+```bash
+<bundled-node> scripts/testing/run-discourse-context-test.cjs \
+  --extension-dir .output/chrome-mv3 \
+  --playwright-root <bundled-node-packages> \
+  --focus-safe-helper scripts/testing/focus-safe-browser.cjs \
+  --artifacts-dir /private/tmp/fluentread-discourse-context
+```
+
+套件使用临时 Edge profile、第二屏后台可见窗口和真实 `Control` 手势，验证首 2,000 字符之后的定义、同缩写换义、正文更新、取消、SPA 材料切换、恢复后重译、深处嵌套布局以及普通锚点跳转中的已译与在途证据。生产客户端、broker、provider 和 DOM 挂载使用真实产物；本机确定性 OpenAI 响应验证传输与生命周期，不能证明模型语言质量。报告记录请求、预算、前台 PID 核对、DOM 与截图，最终关闭仅属于本次运行的浏览器。
+
+`discourseContext` 与 `pageDiscourseContext` 专项守护来源位置、有界焦点窗口、原文版本、迟到提交、章节含义与确认译法优先级，并纳入严格四维覆盖率。`documentTranslationApi` 与 `documentAppLifecycle` 验证同章去重、跨章隔离、页码与章节标签、会话确认译文和重译清理；broker/template 与既有请求、状态测试守护上下文默认关闭、摘要复用和缓存隔离。真实本地模型的原文—译文对照、token 与耗时另存于 `docs/reports/discourse-context-20261011/model-quality.json`，其中保留漏译与歧义反例；有限样本尚未建立可靠的整体质量提升，Firefox 与真实云端服务不在这次运行验收范围内。
 
 ## 按域名移除来源请求头（issue #763）
 

@@ -1,6 +1,7 @@
-import {describe, expect, it, vi} from 'vitest';
+import {afterEach, describe, expect, it, vi} from 'vitest';
 import {
     detectChromeLanguage,
+    disposeChromeTranslationModels,
     detectLanguageByScript,
     detectedLanguageFrom,
     friendlyChromeTranslationError,
@@ -16,6 +17,7 @@ import {
     type ChromeTranslationEnvironment,
     type ChromeModelStatus,
 } from '@/src/app/offscreen/translation';
+import {localModelIdleMs} from '@/src/shared/onnx/modelResidency';
 
 function modernTranslator(
     translator: Record<string, unknown>,
@@ -36,6 +38,7 @@ function deferred<T>() {
 }
 
 describe('Offscreen Chrome 翻译域', () => {
+    afterEach(() => { vi.useRealTimers(); });
     it('结构化准备错误重复经过友好映射时保留实际语言对与对象身份', () => {
         const error = createChromePreparationRequiredError('fr', 'zh');
         expect(friendlyChromeTranslationError(error, 'auto', 'en')).toBe(error);
@@ -152,19 +155,22 @@ describe('Offscreen Chrome 翻译域', () => {
             return {detect, destroy};
         });
 
-        await expect(detectChromeLanguage('Bonjour le monde.', {
+        const environment = {
             LanguageDetector: {availability, create},
             translation: {createDetector: legacyCreate},
-        }, controller.signal, (status) => statuses.push(status))).resolves.toBe('fr');
+        };
+        await expect(detectChromeLanguage('Bonjour le monde.', environment,
+            controller.signal, (status) => statuses.push(status))).resolves.toBe('fr');
 
         expect(legacyCreate).not.toHaveBeenCalled();
         expect(availability).toHaveBeenCalledOnce();
         expect(create).toHaveBeenCalledWith(expect.objectContaining({
-            signal: controller.signal,
+            signal: expect.any(AbortSignal),
             monitor: expect.any(Function),
         }));
         expect(detect).toHaveBeenCalledWith('Bonjour le monde.', {signal: controller.signal});
-        expect(destroy).toHaveBeenCalledOnce();
+        expect(create.mock.calls[0]?.[0]?.signal).not.toBe(controller.signal);
+        expect(destroy).not.toHaveBeenCalled();
         expect(statuses).toEqual([
             {model: 'language-detector', phase: 'checking'},
             {model: 'language-detector', phase: 'downloading', availability: 'downloadable'},
@@ -177,6 +183,8 @@ describe('Offscreen Chrome 翻译域', () => {
         controller.abort();
         progressListener?.({loaded: 0.75});
         expect(statuses).toEqual(completedStatuses);
+        disposeChromeTranslationModels(environment);
+        expect(destroy).toHaveBeenCalledOnce();
     });
 
     it('现代检测结果低置信度或 und 时不采用后续候选，也不把 Latin 猜成英语', async () => {
@@ -211,6 +219,8 @@ describe('Offscreen Chrome 翻译域', () => {
                 LanguageDetector: {create: vi.fn(async () => ({detect: vi.fn(async () => result), destroy}))},
             };
             await expect(detectChromeLanguage('かな', environment)).resolves.toBe('ja');
+            expect(destroy).not.toHaveBeenCalled();
+            disposeChromeTranslationModels(environment);
             expect(destroy).toHaveBeenCalledOnce();
         }
     });
@@ -314,7 +324,7 @@ describe('Offscreen Chrome 翻译域', () => {
         detectResult.resolve([]);
     });
 
-    it('串接流式翻译并始终释放 translator', async () => {
+    it('串接流式翻译并保留 translator 到容器释放', async () => {
         const destroy = vi.fn();
         const translateStreaming = vi.fn(async function* () {
             yield '你';
@@ -324,6 +334,8 @@ describe('Offscreen Chrome 翻译域', () => {
 
         await expect(performChromeTranslation('hello', 'en', 'zh', environment)).resolves.toBe('你好');
         expect(translateStreaming).toHaveBeenCalledWith('hello');
+        expect(destroy).not.toHaveBeenCalled();
+        disposeChromeTranslationModels(environment);
         expect(destroy).toHaveBeenCalledOnce();
     });
 
@@ -346,22 +358,26 @@ describe('Offscreen Chrome 翻译域', () => {
             return {translate, destroy};
         });
 
-        await expect(translateWithChromeApi({
-            text: '繁體中文', from: 'zh-TW', to: 'en',
-        }, {
+        const environment = {
             Translator: {availability, create},
             translation: {createTranslator: legacyCreate},
-        }, controller.signal, (status) => statuses.push(status))).resolves.toBe('Traditional Chinese translated');
+        };
+        await expect(translateWithChromeApi({
+            text: '繁體中文', from: 'zh-TW', to: 'en',
+        }, environment, controller.signal, (status) => statuses.push(status))).resolves.toBe('Traditional Chinese translated');
 
         expect(legacyCreate).not.toHaveBeenCalled();
         expect(availability).toHaveBeenCalledWith({sourceLanguage: 'zh-Hant', targetLanguage: 'en'});
         expect(create).toHaveBeenCalledWith(expect.objectContaining({
             sourceLanguage: 'zh-Hant',
             targetLanguage: 'en',
-            signal: controller.signal,
+            signal: expect.any(AbortSignal),
             monitor: expect.any(Function),
         }));
         expect(translate).toHaveBeenCalledWith('繁體中文', {signal: controller.signal});
+        expect(create.mock.calls[0]?.[0]?.signal).not.toBe(controller.signal);
+        expect(destroy).not.toHaveBeenCalled();
+        disposeChromeTranslationModels(environment);
         expect(destroy).toHaveBeenCalledOnce();
         expect(statuses).toEqual([
             {model: 'translator', phase: 'checking'},
@@ -461,7 +477,7 @@ describe('Offscreen Chrome 翻译域', () => {
         expect(statuses).not.toContainEqual(expect.objectContaining({phase: 'downloading'}));
     });
 
-    it('取消悬挂流会立即 return 并 destroy，迟到 chunk 不会成为结果', async () => {
+    it('取消悬挂流会立即 return，迟到 chunk 不会成为结果且共享实例不销毁', async () => {
         const next = deferred<IteratorResult<unknown>>();
         const destroy = vi.fn();
         const close = vi.fn(() => { throw new Error('stream already closed'); });
@@ -480,31 +496,33 @@ describe('Offscreen Chrome 翻译域', () => {
         await vi.waitFor(() => expect(iterator.next).toHaveBeenCalledOnce());
         expect(translateStreaming).toHaveBeenCalledWith('hello', {signal: controller.signal});
         expect(environment.Translator?.create).toHaveBeenCalledWith(expect.objectContaining({
-            signal: controller.signal,
+            signal: expect.any(AbortSignal),
         }));
 
         controller.abort();
         await expect(pending).rejects.toMatchObject({name: 'AbortError'});
         expect(close).toHaveBeenCalledOnce();
-        expect(destroy).toHaveBeenCalledOnce();
+        expect(destroy).not.toHaveBeenCalled();
         next.resolve({done: false, value: '迟到'});
+        disposeChromeTranslationModels(environment);
+        expect(destroy).toHaveBeenCalledOnce();
     });
 
-    it('取消普通 translate Promise 会立即拒绝并释放 translator', async () => {
+    it('取消普通 translate Promise 会立即拒绝且共享 translator 保留', async () => {
         const translated = deferred<unknown>();
         const destroy = vi.fn();
         const translate = vi.fn(() => translated.promise);
         const controller = new AbortController();
-        const pending = performChromeTranslation('hello', 'en', 'zh', modernTranslator({
-            translate,
-            destroy,
-        }), controller.signal);
+        const environment = modernTranslator({translate, destroy});
+        const pending = performChromeTranslation('hello', 'en', 'zh', environment, controller.signal);
         await vi.waitFor(() => expect(translate).toHaveBeenCalledOnce());
 
         controller.abort();
         await expect(pending).rejects.toMatchObject({name: 'AbortError'});
-        expect(destroy).toHaveBeenCalledOnce();
+        expect(destroy).not.toHaveBeenCalled();
         translated.resolve('迟到译文');
+        disposeChromeTranslationModels(environment);
+        expect(destroy).toHaveBeenCalledOnce();
     });
 
     it('createTranslator 在取消后迟到时仍会立即 destroy', async () => {
@@ -553,6 +571,389 @@ describe('Offscreen Chrome 翻译域', () => {
             .resolves.toBe('旧译文');
         expect(create).toHaveBeenCalledWith({sourceLanguage: 'en', targetLanguage: 'ja'});
         expect(destroy).toHaveBeenCalledOnce();
+    });
+
+    it('连续翻译与语言检测复用实例，空闲期限刷新后才释放', async () => {
+        vi.useFakeTimers();
+        const translatorDestroy = vi.fn();
+        const detectorDestroy = vi.fn();
+        const environment = {
+            ...modernTranslator({translate: vi.fn(async text => `${text}-translated`), destroy: translatorDestroy}),
+            LanguageDetector: {create: vi.fn(async () => ({
+                detect: vi.fn(async () => [{detectedLanguage: 'en', confidence: 1}]), destroy: detectorDestroy,
+            }))},
+        };
+        const request = {text: 'first', from: 'auto', to: 'ja'};
+        await expect(translateWithChromeApi(request, environment)).resolves.toBe('first-translated');
+        await vi.advanceTimersByTimeAsync(localModelIdleMs() - 1);
+        const statuses: ChromeModelStatus[] = [];
+        await expect(translateWithChromeApi({...request, text: 'second'}, environment, undefined,
+            status => statuses.push(status))).resolves.toBe('second-translated');
+        expect(environment.Translator!.create).toHaveBeenCalledOnce();
+        expect(environment.LanguageDetector.create).toHaveBeenCalledOnce();
+        expect(statuses).toEqual([
+            {model: 'language-detector', phase: 'ready', loaded: 1},
+            {model: 'translator', phase: 'ready', availability: 'available', loaded: 1},
+        ]);
+        await vi.advanceTimersByTimeAsync(localModelIdleMs() - 1);
+        expect(translatorDestroy).not.toHaveBeenCalled();
+        expect(detectorDestroy).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(translatorDestroy).toHaveBeenCalledOnce();
+        expect(detectorDestroy).toHaveBeenCalledOnce();
+        disposeChromeTranslationModels(environment);
+    });
+
+    it.each(['checking', 'initializing', 'ready'] as const)(
+        'Translator 在 %s 状态同步取消最后一个创建消费者，不进入后续模型工作', async phase => {
+            const controller = new AbortController();
+            const translate = vi.fn(async () => 'unexpected');
+            const destroy = vi.fn();
+            const create = vi.fn(async () => ({translate, destroy}));
+            const availability = vi.fn(async () => 'available');
+            const environment = {Translator: {availability, create}};
+            await expect(performChromeTranslation('hello', 'en', 'ja', environment, controller.signal, status => {
+                if (status.phase === phase) controller.abort();
+            })).rejects.toMatchObject({name: 'AbortError'});
+            expect(translate).not.toHaveBeenCalled();
+            expect(availability).toHaveBeenCalledTimes(phase === 'checking' ? 0 : 1);
+            expect(create).toHaveBeenCalledTimes(phase === 'ready' ? 1 : 0);
+            expect(destroy).toHaveBeenCalledTimes(phase === 'ready' ? 1 : 0);
+            disposeChromeTranslationModels(environment);
+        },
+    );
+
+    it('LanguageDetector ready 状态同步取消未被使用的新实例，立即拒绝且收尾销毁', async () => {
+        const controller = new AbortController();
+        const detect = vi.fn(async () => [{detectedLanguage: 'en', confidence: 1}]);
+        const destroy = vi.fn();
+        const environment = {LanguageDetector: {create: vi.fn(async () => ({detect, destroy}))}};
+        await expect(detectChromeLanguage('hello', environment, controller.signal, status => {
+            if (status.phase === 'ready') controller.abort();
+        })).rejects.toMatchObject({name: 'AbortError'});
+        expect(detect).not.toHaveBeenCalled();
+        expect(destroy).toHaveBeenCalledOnce();
+        disposeChromeTranslationModels(environment);
+    });
+
+    it('同语言对并发共享创建和下载状态，首请求取消不销毁其余消费者', async () => {
+        const creation = deferred<Record<string, unknown>>();
+        const destroy = vi.fn();
+        const translate = vi.fn(async (_text: string) => 'shared translation');
+        let creationSignal: AbortSignal | undefined;
+        let progress: ((event: {loaded: number}) => void) | undefined;
+        const create = vi.fn((options: {signal?: AbortSignal; monitor?: (monitor: {
+            addEventListener: (type: string, listener: (event: {loaded: number}) => void) => void;
+        }) => void}) => {
+            creationSignal = options.signal;
+            options.monitor?.({addEventListener: (_type, listener) => { progress = listener; }});
+            return creation.promise;
+        });
+        const environment = {Translator: {availability: vi.fn(async () => 'downloadable'), create}};
+        const firstController = new AbortController();
+        const first = performChromeTranslation('first', 'en', 'ja', environment, firstController.signal);
+        const statuses: ChromeModelStatus[] = [];
+        const second = performChromeTranslation('second', 'en', 'ja', environment, undefined,
+            status => statuses.push(status));
+        await vi.waitFor(() => expect(create).toHaveBeenCalledOnce());
+        firstController.abort();
+        await expect(first).rejects.toMatchObject({name: 'AbortError'});
+        expect(creationSignal?.aborted).toBe(false);
+        progress?.({loaded: 0.5});
+        expect(statuses).toContainEqual({model: 'translator', phase: 'downloading', availability: 'downloadable', loaded: 0.5});
+        creation.resolve({translate, destroy});
+        await expect(second).resolves.toBe('shared translation');
+        await expect(performChromeTranslation('third', 'en', 'ja', environment)).resolves.toBe('shared translation');
+        expect(translate.mock.calls.map(call => call[0])).toEqual(['second', 'third']);
+        expect(create).toHaveBeenCalledOnce();
+        expect(destroy).not.toHaveBeenCalled();
+        disposeChromeTranslationModels(environment);
+        expect(destroy).toHaveBeenCalledOnce();
+    });
+
+    it.each(['cancel-all', 'pagehide'] as const)('%s 在创建中取消全部消费者并只释放一次迟到实例', async mode => {
+        const creation = deferred<Record<string, unknown>>();
+        const destroy = vi.fn();
+        let creationSignal: AbortSignal | undefined;
+        const create = vi.fn((options: {signal?: AbortSignal}) => {
+            creationSignal = options.signal;
+            return creation.promise;
+        });
+        const environment = {Translator: {create}};
+        const firstController = new AbortController();
+        const secondController = new AbortController();
+        const first = performChromeTranslation('first', 'en', 'ja', environment, firstController.signal);
+        const second = performChromeTranslation('second', 'en', 'ja', environment, secondController.signal);
+        await vi.waitFor(() => expect(create).toHaveBeenCalledOnce());
+        if (mode === 'cancel-all') {
+            firstController.abort(); secondController.abort();
+        } else disposeChromeTranslationModels(environment);
+        await expect(first).rejects.toMatchObject({name: 'AbortError'});
+        await expect(second).rejects.toMatchObject({name: 'AbortError'});
+        expect(creationSignal?.aborted).toBe(true);
+        creation.resolve({translate: vi.fn(), destroy});
+        await vi.waitFor(() => expect(destroy).toHaveBeenCalledOnce());
+        disposeChromeTranslationModels(environment);
+        expect(destroy).toHaveBeenCalledOnce();
+    });
+
+    it('取消正在执行的推理立即返回，但其原生操作收尾前不会启动下一个任务', async () => {
+        const nativeResult = deferred<unknown>();
+        const translate = vi.fn((text: string) => text === 'active' ? nativeResult.promise : Promise.resolve(text));
+        const destroy = vi.fn();
+        const environment = modernTranslator({translate, destroy});
+        const controller = new AbortController();
+        const active = performChromeTranslation('active', 'en', 'ja', environment, controller.signal);
+        await vi.waitFor(() => expect(translate).toHaveBeenCalledOnce());
+        const queuedController = new AbortController();
+        const cancelledQueue = performChromeTranslation('cancelled queue', 'en', 'ja', environment, queuedController.signal);
+        const survivor = performChromeTranslation('survivor', 'en', 'ja', environment);
+        controller.abort(); queuedController.abort();
+        await expect(active).rejects.toMatchObject({name: 'AbortError'});
+        await expect(cancelledQueue).rejects.toMatchObject({name: 'AbortError'});
+        expect(translate).toHaveBeenCalledOnce();
+        expect(destroy).not.toHaveBeenCalled();
+        nativeResult.resolve('late original');
+        await expect(survivor).resolves.toBe('survivor');
+        expect(translate.mock.calls.map(call => call[0])).toEqual(['active', 'survivor']);
+        disposeChromeTranslationModels(environment);
+    });
+
+    it.each(['promise', 'stream'] as const)('取消 %s 永不收尾时有界释放实例与等待队列', async mode => {
+        vi.useFakeTimers();
+        const nativeResult = new Promise<never>(() => {});
+        const destroy = vi.fn();
+        const close = vi.fn(async () => ({done: true as const, value: undefined}));
+        const translate = vi.fn(() => nativeResult);
+        const iterator = {next: vi.fn(() => nativeResult), return: close,
+            [Symbol.asyncIterator]() { return this; }};
+        const create = vi.fn().mockResolvedValueOnce(mode === 'promise'
+            ? {translate, destroy} : {translateStreaming: () => iterator, destroy})
+            .mockResolvedValue({translate: vi.fn(async () => 'rebuilt')});
+        const environment = {Translator: {create}};
+        const controller = new AbortController();
+        const active = performChromeTranslation('active', 'en', 'ja', environment, controller.signal);
+        await vi.advanceTimersByTimeAsync(0);
+        const queued = performChromeTranslation('queued', 'en', 'ja', environment);
+        const queuedOutcome = queued.catch(error => error);
+        controller.abort();
+        await expect(active).rejects.toMatchObject({name: 'AbortError'});
+        await vi.advanceTimersByTimeAsync(1_499);
+        expect(destroy).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);
+        expect(destroy).toHaveBeenCalledOnce();
+        expect(await queuedOutcome).toMatchObject({name: 'InvalidStateError'});
+        await expect(performChromeTranslation('retry', 'en', 'ja', environment)).resolves.toBe('rebuilt');
+        expect(create).toHaveBeenCalledTimes(2);
+        if (mode === 'stream') expect(close).toHaveBeenCalledOnce();
+        disposeChromeTranslationModels(environment);
+    });
+
+    it('检测器共享创建且逐次推理，排队请求取消不影响进行中的检测', async () => {
+        const detected = deferred<unknown>();
+        const detect = vi.fn((text: string) => text === 'active' ? detected.promise
+            : Promise.resolve([{detectedLanguage: 'fr', confidence: 1}]));
+        const destroy = vi.fn();
+        const environment = {LanguageDetector: {create: vi.fn(async () => ({detect, destroy}))}};
+        const active = detectChromeLanguage('active', environment);
+        await vi.waitFor(() => expect(detect).toHaveBeenCalledOnce());
+        const controller = new AbortController();
+        const cancelled = detectChromeLanguage('cancelled', environment, controller.signal);
+        const survivor = detectChromeLanguage('survivor', environment);
+        controller.abort();
+        await expect(cancelled).rejects.toMatchObject({name: 'AbortError'});
+        detected.resolve([{detectedLanguage: 'en', confidence: 1}]);
+        await expect(active).resolves.toBe('en');
+        await expect(survivor).resolves.toBe('fr');
+        expect(environment.LanguageDetector.create).toHaveBeenCalledOnce();
+        expect(detect.mock.calls.map(call => call[0])).toEqual(['active', 'survivor']);
+        disposeChromeTranslationModels(environment);
+    });
+
+    it('两语言对忙碌时第三对等待容量，可取消并在释放后创建', async () => {
+        const activeJa = deferred<unknown>();
+        const activeFr = deferred<unknown>();
+        const resources = new Map<string, {destroy: ReturnType<typeof vi.fn>}>();
+        const create = vi.fn(async (options: {targetLanguage: string}) => {
+            const resource = {destroy: vi.fn(), translate: vi.fn(() => options.targetLanguage === 'ja'
+                ? activeJa.promise : options.targetLanguage === 'fr' ? activeFr.promise : Promise.resolve('de'))};
+            resources.set(options.targetLanguage, resource);
+            return resource;
+        });
+        const environment = {Translator: {create}};
+        const ja = performChromeTranslation('ja', 'en', 'ja', environment);
+        const fr = performChromeTranslation('fr', 'en', 'fr', environment);
+        await vi.waitFor(() => expect(create).toHaveBeenCalledTimes(2));
+        const controller = new AbortController();
+        const cancelled = performChromeTranslation('cancelled', 'en', 'de', environment, controller.signal);
+        const survivor = performChromeTranslation('de', 'en', 'de', environment);
+        controller.abort();
+        await expect(cancelled).rejects.toMatchObject({name: 'AbortError'});
+        expect(create).toHaveBeenCalledTimes(2);
+        activeJa.resolve('ja');
+        await expect(ja).resolves.toBe('ja');
+        await expect(survivor).resolves.toBe('de');
+        expect(resources.get('ja')?.destroy).toHaveBeenCalledOnce();
+        expect(resources.get('fr')?.destroy).not.toHaveBeenCalled();
+        activeFr.resolve('fr'); await expect(fr).resolves.toBe('fr');
+        disposeChromeTranslationModels(environment);
+    });
+
+    it('语言对缓存淘汰最久未用的空闲实例，并在推理过程中暂停空闲回收', async () => {
+        vi.useFakeTimers();
+        const nativeResult = deferred<unknown>();
+        const resources = new Map<string, {destroy: ReturnType<typeof vi.fn>}>();
+        const create = vi.fn(async (options: {targetLanguage: string}) => {
+            const resource = {destroy: vi.fn(), translate: vi.fn((text: string) => text === 'active'
+                ? nativeResult.promise : Promise.resolve(options.targetLanguage))};
+            resources.set(options.targetLanguage, resource);
+            return resource;
+        });
+        const environment = {Translator: {create}};
+        await performChromeTranslation('first', 'en', 'ja', environment);
+        await vi.advanceTimersByTimeAsync(1);
+        await performChromeTranslation('second', 'en', 'fr', environment);
+        await vi.advanceTimersByTimeAsync(1);
+        await performChromeTranslation('reuse', 'en', 'ja', environment);
+        await performChromeTranslation('third', 'en', 'de', environment);
+        expect(resources.get('fr')?.destroy).toHaveBeenCalledOnce();
+        expect(resources.get('ja')?.destroy).not.toHaveBeenCalled();
+        const active = performChromeTranslation('active', 'en', 'ja', environment);
+        await vi.advanceTimersByTimeAsync(localModelIdleMs() * 2);
+        expect(resources.get('ja')?.destroy).not.toHaveBeenCalled();
+        nativeResult.resolve('done'); await expect(active).resolves.toBe('done');
+        await vi.advanceTimersByTimeAsync(localModelIdleMs());
+        expect(resources.get('ja')?.destroy).toHaveBeenCalledOnce();
+        disposeChromeTranslationModels(environment);
+    });
+
+    it('容器释放同时结束执行、队列和容量等待，迟到原生结果不会再次销毁', async () => {
+        const nativeResult = deferred<unknown>();
+        const destroy = vi.fn();
+        const translate = vi.fn(() => nativeResult.promise);
+        const environment = modernTranslator({translate, destroy});
+        const first = performChromeTranslation('first', 'en', 'ja', environment);
+        const secondPair = performChromeTranslation('second pair', 'en', 'fr', environment);
+        await vi.waitFor(() => expect(translate).toHaveBeenCalledTimes(2));
+        const queued = performChromeTranslation('queued', 'en', 'ja', environment);
+        const capacity = performChromeTranslation('capacity', 'en', 'de', environment);
+        disposeChromeTranslationModels(environment);
+        for (const promise of [first, secondPair, queued, capacity]) {
+            await expect(promise).rejects.toMatchObject({name: 'AbortError'});
+        }
+        expect(destroy).toHaveBeenCalledTimes(2);
+        nativeResult.resolve('late');
+        await Promise.resolve();
+        disposeChromeTranslationModels(environment);
+        expect(destroy).toHaveBeenCalledTimes(2);
+    });
+
+    it('原生失败让已排队请求拒绝失效实例，后续重建且单次配额错误保持复用', async () => {
+        let rejectFirst!: (reason: Error) => void;
+        const firstResult = new Promise<string>((_resolve, reject) => { rejectFirst = reject; });
+        const destroy = vi.fn();
+        const translate = vi.fn((text: string) => text === 'failure' ? firstResult : Promise.resolve(text));
+        const environment = modernTranslator({translate, destroy});
+        const first = performChromeTranslation('failure', 'en', 'ja', environment);
+        await vi.waitFor(() => expect(translate).toHaveBeenCalledOnce());
+        const queuedOutcomes = Array.from({length: 8}, (_, index) =>
+            performChromeTranslation(`queued ${index}`, 'en', 'ja', environment).catch(error => error));
+        await Promise.resolve();
+        rejectFirst(Object.assign(new Error('invalid instance'), {name: 'InvalidStateError'}));
+        await expect(first).rejects.toMatchObject({name: 'InvalidStateError'});
+        const rebuilt = performChromeTranslation('rebuilt', 'en', 'ja', environment);
+        for (const outcome of queuedOutcomes) expect(await outcome).toMatchObject({name: 'InvalidStateError'});
+        await expect(rebuilt).resolves.toBe('rebuilt');
+        expect(translate.mock.calls.map(call => call[0])).toEqual(['failure', 'rebuilt']);
+        expect(environment.Translator?.create).toHaveBeenCalledTimes(2);
+        expect(destroy).toHaveBeenCalledOnce();
+        translate.mockRejectedValueOnce(Object.assign(new Error('too long'), {name: 'QuotaExceededError'}));
+        await expect(performChromeTranslation('quota', 'en', 'ja', environment)).rejects.toMatchObject({name: 'QuotaExceededError'});
+        await expect(performChromeTranslation('after quota', 'en', 'ja', environment)).resolves.toBe('after quota');
+        expect(environment.Translator?.create).toHaveBeenCalledTimes(2);
+        disposeChromeTranslationModels(environment);
+    });
+
+    it('模型完成准备的状态回调卸载容器，尚未交付的实例只清理一次', async () => {
+        const destroy = vi.fn();
+        const translate = vi.fn();
+        const environment = modernTranslator({translate, destroy});
+        await expect(performChromeTranslation('hello', 'en', 'ja', environment, undefined, status => {
+            if (status.phase === 'ready') disposeChromeTranslationModels(environment);
+        })).rejects.toMatchObject({name: 'AbortError'});
+        expect(translate).not.toHaveBeenCalled();
+        expect(destroy).toHaveBeenCalledOnce();
+        disposeChromeTranslationModels(environment);
+        expect(destroy).toHaveBeenCalledOnce();
+    });
+
+    it('现代检测器同步异常也释放失效实例，保留保守脚本兜底', async () => {
+        const destroy = vi.fn();
+        const environment = {LanguageDetector: {create: vi.fn(async () => ({
+            detect: vi.fn(() => { throw Object.assign(new Error('invalid detector'), {name: 'InvalidStateError'}); }),
+            destroy,
+        }))}};
+        await expect(detectChromeLanguage('かな', environment)).resolves.toBe('ja');
+        expect(destroy).toHaveBeenCalledOnce();
+        disposeChromeTranslationModels(environment);
+    });
+
+    it('旧实验接口的流式成功和取消都立即释放独占 translator', async () => {
+        const destroyComplete = vi.fn();
+        const successful = {translation: {createTranslator: vi.fn(async () => ({
+            translateStreaming: async function* () { yield 'legacy'; yield ' stream'; }, destroy: destroyComplete,
+        }))}};
+        await expect(performChromeTranslation('hello', 'en', 'ja', successful)).resolves.toBe('legacy stream');
+        expect(destroyComplete).toHaveBeenCalledOnce();
+
+        const next = deferred<IteratorResult<unknown>>();
+        const close = vi.fn(async () => ({done: true as const, value: undefined}));
+        const destroyCancelled = vi.fn();
+        const iterator = {next: vi.fn(() => next.promise), return: close,
+            [Symbol.asyncIterator]() { return this; }};
+        const cancelledEnvironment = {translation: {createTranslator: vi.fn(async () => ({
+            translateStreaming: () => iterator, destroy: destroyCancelled,
+        }))}};
+        const controller = new AbortController();
+        const cancelled = performChromeTranslation('hello', 'en', 'ja', cancelledEnvironment, controller.signal);
+        await vi.waitFor(() => expect(iterator.next).toHaveBeenCalledOnce());
+        controller.abort();
+        await expect(cancelled).rejects.toMatchObject({name: 'AbortError'});
+        expect(close).toHaveBeenCalledOnce();
+        expect(destroyCancelled).toHaveBeenCalledOnce();
+        next.resolve({done: false, value: 'late'});
+    });
+
+    it('检测与翻译阶段交接时卸载环境，旧请求和后续请求都不能重新创建实例', async () => {
+        const detection = deferred<unknown>();
+        const detect = vi.fn(() => detection.promise);
+        const createTranslator = vi.fn(async () => ({translate: vi.fn(async () => 'unexpected')}));
+        const environment = {LanguageDetector: {create: vi.fn(async () => ({detect}))},
+            Translator: {create: createTranslator}};
+        const request = {text: 'hello world', from: 'auto', to: 'ja'};
+        const translating = translateWithChromeApi(request, environment);
+        await vi.waitFor(() => expect(detect).toHaveBeenCalledOnce());
+        // detector 的原生 Promise 完成后，译文阶段的后续微任务必须看到终止标记。
+        detection.resolve([{detectedLanguage: 'en', confidence: 1}]);
+        queueMicrotask(() => disposeChromeTranslationModels(environment));
+        await expect(translating).rejects.toMatchObject({name: 'AbortError'});
+        await expect(translateWithChromeApi(request, environment)).rejects.toMatchObject({name: 'AbortError'});
+        expect(createTranslator).not.toHaveBeenCalled();
+        await expect(detectChromeLanguage('text', environment)).rejects.toMatchObject({name: 'AbortError'});
+        await expect(performChromeTranslation('text', 'en', 'ja', environment)).rejects.toMatchObject({name: 'AbortError'});
+        const neverUsed: ChromeTranslationEnvironment = {Translator: {create: createTranslator}};
+        disposeChromeTranslationModels(neverUsed);
+        await expect(performChromeTranslation('text', 'en', 'ja', neverUsed)).rejects.toMatchObject({name: 'AbortError'});
+    });
+
+    it('创建失败不会缓存拒绝，下一次请求可以重新创建', async () => {
+        const create = vi.fn().mockRejectedValueOnce(new Error('model failed'))
+            .mockResolvedValue({translate: vi.fn(async () => 'recovered')});
+        const environment = {Translator: {create}};
+        await expect(performChromeTranslation('first', 'en', 'ja', environment)).rejects.toThrow('model failed');
+        await expect(performChromeTranslation('second', 'en', 'ja', environment)).resolves.toBe('recovered');
+        expect(create).toHaveBeenCalledTimes(2);
+        disposeChromeTranslationModels(environment);
     });
 
     it('把实验 API 错误映射成可操作提示', () => {

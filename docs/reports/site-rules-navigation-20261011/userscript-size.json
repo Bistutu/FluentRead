@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "scope": "Same-dependency userscript build and size guard for website-rule/navigation fixes.",
+  "environment": {
+    "node": "v20.11.1",
+    "pnpm": "9.12.1",
+    "lockfileSha256": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
+    "lockfilesEqual": true
+  },
+  "baseline": {
+    "commit": "25f5dca794848782f717493ce0e08545a0e57b35",
+    "trackedBlobsVerified": 4892,
+    "bytes": 2024307,
+    "sha256": "1b90b6dd8d321de8c3f1a6a50476a7f6c37d058b800d41fb054de84e4e517249",
+    "verifierExitCode": 0,
+    "budgetBytes": 2025000
+  },
+  "candidate": {
+    "buildSourceCommit": "2f9c7fd5804ec00ba917e7ccfca75b2a656029d2",
+    "bytes": 2025706,
+    "sha256": "849de9a74f207e4273b0d80709091661773464afa84c52c327ce950e26036d83",
+    "verifierExitCode": 0,
+    "budgetBytes": 2026000,
+    "languageResourceCommit": "7b37302cf5e4aa5329f79e5b79309ae9334dafcf"
+  },
+  "comparison": {
+    "deltaBytes": 1399,
+    "deltaPercent": 0.06911007075507816,
+    "initialCandidateOverBudgetBytes": 706,
+    "budgetIncreaseBytes": 1000,
+    "finalHeadroomBytes": 294
+  },
+  "commands": [
+    "pnpm build:userscript",
+    "node scripts/verify-userscript-build.mjs",
+    "pnpm test tests/userscriptViteConfig.test.ts"
+  ],
+  "limits": [
+    "Build and deterministic verifier only; no userscript-manager or remote-CDN runtime acceptance."
+  ],
+  "integration": {
+    "baseline": {
+      "commit": "033d6fe3a21e9c7bf71ae053193b67201d10191e",
+      "trackedBlobsVerified": 4892,
+      "bytes": 2024379,
+      "sha256": "de2bbf7f8dfe1d62f89863e835b8098e37e56b30b0a769f9b1b7af7dcf642e38",
+      "verifierExitCode": 0,
+      "budgetBytes": 2025000,
+      "languagePreparation": "Generated the five missing language resources in the temporary archive; all tracked source blobs remained identical."
+    },
+    "candidate": {
+      "buildSourceCommit": "c254eb935ea2738336185674717144752974d80c",
+      "bytes": 2025894,
+      "sha256": "9e122db9bbc975adc321b4e0975680e7f69fd4672cd0ba10cc5ced1b053e3ce6",
+      "verifierExitCode": 0,
+      "budgetBytes": 2026000,
+      "languageResourceCommit": "19fb7910b33eebac6e1914df2b5a47709ab11837"
+    },
+    "comparison": {
+      "deltaBytes": 1515,
+      "deltaPercent": 0.0748377650627674,
+      "candidateOverOriginalBudgetBytes": 894,
+      "budgetIncreaseBytes": 1000,
+      "headroomBytes": 106
+    }
+  },
+  "performance": {
+    "baseline": {
+      "reviewCommit": "824d9c0c429b7a5143988a7466a0b2cb3b834b43",
+      "buildSourceCommit": "c254eb935ea2738336185674717144752974d80c",
+      "bytes": 2025894,
+      "sha256": "9e122db9bbc975adc321b4e0975680e7f69fd4672cd0ba10cc5ced1b053e3ce6",
+      "budgetBytes": 2026000,
+      "binding": "Frozen before performance builds; previous successful correctness package."
+    },
+    "initialCandidate": {
+      "buildSourceCommit": "d74fb7cfc7840e4de353d9cb88bf4381256596e9",
+      "bytes": 2026371,
+      "sha256": "9514380460516ef359102b1ecdcda8e9a73cc62ceb22c71d1814599daae01ce7",
+      "initialVerifierExitCode": 1,
+      "reason": "Artifact exceeded previous 2026000-byte budget by 371 bytes; remaining verifier assertions retained."
+    },
+    "candidate": {
+      "buildSourceCommit": "b3322d33423cb1445c221d57fee82741911bbde4",
+      "bytes": 2026422,
+      "sha256": "b63b3215efdb2d7185eacc854f98d8a5ec061b27609d4e8e0858650f62fc40d4",
+      "verifierExitCode": 0,
+      "budgetBytes": 2027000,
+      "languageResourceCommit": "19fb7910b33eebac6e1914df2b5a47709ab11837"
+    },
+    "comparison": {
+      "deltaBytes": 528,
+      "deltaPercent": 0.026062567932971813,
+      "candidateOverPreviousBudgetBytes": 422,
+      "budgetIncreaseBytes": 1000,
+      "finalHeadroomBytes": 578,
+      "totalDeltaFromIntegratedMainBytes": 2043
+    },
+    "limits": [
+      "Build and deterministic verifier only; no userscript-manager or remote-CDN runtime acceptance.",
+      "Same lockfile/dependencies and language pin as the frozen previous successful package; the current follow-up changes no dependency or resource pin."
+    ]
+  },
+  "performanceIntegration": {
+    "baseCommit": "c8a06bb5fe0148f629ecaf60e70e5bf6ebb4f957",
+    "candidate": {
+      "buildSourceCommit": "dd07045944ed5f0dbf19b4932def7f90514d0c05",
+      "bytes": 2026916,
+      "sha256": "ac0bf8cdc4be0c21b01c598b115ea8bc16bb519abc16736460a7450b4fd9c918",
+      "verifierExitCode": 0,
+      "budgetBytes": 2027000,
+      "headroomBytes": 84,
+      "languageResourceCommit": "57b76a06a54d8849c5de2f7a239a4cf3cb3b014e"
+    },
+    "coreSourceCommit": "b3322d33423cb1445c221d57fee82741911bbde4",
+    "coreFilesIdentical": [
+      "src/core/site-rules/domain.ts",
+      "src/app/content/pageAvailability.ts",
+      "src/app/content/runtime.ts",
+      "src/app/popup/PopupApp.vue"
+    ],
+    "limits": [
+      "Comparison to the frozen c254 package also includes newly merged main changes; it is not a performance-only size delta.",
+      "No userscript manager runtime or remote-CDN runtime acceptance."
+    ],
+    "baseline": {
+      "commit": "c8a06bb5fe0148f629ecaf60e70e5bf6ebb4f957",
+      "bytes": 2024873,
+      "sha256": "4943291cb4158273aff96f06dab5f0b04748980cf80a3eb0b45b78f8c2c033fd",
+      "budgetBytes": 2025000,
+      "verifierExitCode": 0,
+      "trackedBlobsVerified": 4949,
+      "trackedChecks": 6,
+      "lockfileSha256": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
+      "generated": "No language additions; seven missing .wxt files and userscript output only."
+    },
+    "comparison": {
+      "totalPrDeltaBytes": 2043,
+      "totalPrDeltaPercent": 0.10089521663827807,
+      "candidateOverMainBudgetBytes": 1916,
+      "totalBudgetIncreaseFromMainBytes": 2000,
+      "finalHeadroomBytes": 84,
+      "boundary": "This delta includes original correctness/interaction fixes and performance follow-up; it is not a performance-only size delta."
+    }
+  }
+}
