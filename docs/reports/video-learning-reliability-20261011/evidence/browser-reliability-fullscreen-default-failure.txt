@@ -1,0 +1,32 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: node scripts/run-video-sentence-learning-test.cjs --reliability-only --platforms youtube,x --extension-dir .output/chrome-mv3 --playwright-root /Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules --artifacts-dir /private/tmp/fluentread-video-learning-reliability-reliability-58ef-final
+youtube: Sentence learning is a labelled button with an evident interactive affordance
+youtube: Trusted shortcuts after clicking the video control learning without host speed changes or jumps to video zero
+youtube: Editing text keeps ordinary letter keys in the editor without changing playback assistance or speed
+youtube: Help is in normal document flow and leaves the original sentence readable
+youtube: Opening at compact player size and enlarging preserves reachable navigation, the panel and current edited draft
+youtube: Arrow keys focused inside the subtitle menu keep menu ownership without stepping the learning sentence or changing its draft
+youtube: The subtitle menu opens and switches display mode in actual fullscreen without changing the selected source range or draft
+youtube: Body focus during fullscreen keeps learning shortcuts scoped to its fullscreen media without reaching conflicting host shortcuts
+{
+  "success": false,
+  "fixtureCases": [
+    {
+      "platform": "youtube",
+      "scenario": "reported-keyboard-fullscreen-layout-reliability",
+      "success": false,
+      "checks": 8
+    }
+  ],
+  "liveCases": [],
+  "failure": "page.waitForFunction: Timeout 15000ms exceeded.",
+  "focusEvents": {
+    "nativeObserver": true,
+    "browserActivations": 0,
+    "observerClosed": true
+  },
+  "cleanup": {
+    "browserClosed": true,
+    "profileRemoved": true
+  },
+  "report": "/private/tmp/fluentread-video-learning-reliability-reliability-58ef-final/report.json"
+}

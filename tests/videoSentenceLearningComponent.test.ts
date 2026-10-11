@@ -142,6 +142,12 @@ describe('完整句学习组件的调度与异步归属回归', () => {
     expect(outsideFullscreen.preventDefault).not.toHaveBeenCalled();
     const fullscreenEscape = keyboard('Escape'); state.onPlayerKeydown(fullscreenEscape);
     expect(fullscreenEscape.preventDefault).not.toHaveBeenCalled(); expect(emit).not.toHaveBeenCalled();
+    const exitFullscreen = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(document, 'exitFullscreen', {value: exitFullscreen, configurable: true});
+    state.onPlayerKeydown(keyboard('Escape')); expect(exitFullscreen).toHaveBeenCalledOnce();
+    state.onPlayerKeydown(keyboard('Escape', undefined, {repeat: true})); expect(exitFullscreen).toHaveBeenCalledOnce();
+    exitFullscreen.mockRejectedValue(new Error('Native exit already completed'));
+    state.onPlayerKeydown(keyboard('Escape')); await flush(); expect(exitFullscreen).toHaveBeenCalledTimes(2);
     Object.defineProperty(document, 'fullscreenElement', {value: null, configurable: true});
     const normalBody = keyboard('r', document.body); state.onPlayerKeydown(normalBody);
     expect(normalBody.preventDefault).not.toHaveBeenCalled();

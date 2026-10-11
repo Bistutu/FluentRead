@@ -1,0 +1,48 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: node scripts/run-video-sentence-learning-test.cjs --runtime-performance-only --platforms youtube --performance-tag candidate-reliability-20261011 --extension-dir .output/chrome-mv3 --playwright-root /Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules --measurement-ms 6000 --trials 2 --artifacts-dir /private/tmp/fluentread-video-learning-reliability-perf-candidate
+youtube: Natural 1x media advances without extension seeks, speed changes or same-sentence translation requests
+youtube: Natural 1x media advances without extension seeks, speed changes or same-sentence translation requests
+youtube: Natural 1x media advances without extension seeks, speed changes or same-sentence translation requests
+youtube: Natural 1x media advances without extension seeks, speed changes or same-sentence translation requests
+{
+  "success": false,
+  "performanceCases": [
+    {
+      "platform": "youtube",
+      "scenario": "runtime-closed-static",
+      "success": true
+    },
+    {
+      "platform": "youtube",
+      "scenario": "learning-open-static",
+      "success": true
+    },
+    {
+      "platform": "youtube",
+      "scenario": "learning-open-native-caption-churn",
+      "success": true
+    },
+    {
+      "platform": "youtube",
+      "scenario": "learning-open-native-control-churn",
+      "success": true
+    },
+    {
+      "platform": "youtube",
+      "scenario": "runtime-closed-static",
+      "success": false
+    }
+  ],
+  "fixtureCases": [],
+  "liveCases": [],
+  "failure": "Error: The isolated browser became foreground; stop the test",
+  "focusEvents": {
+    "nativeObserver": true,
+    "browserActivations": 1,
+    "observerClosed": true
+  },
+  "cleanup": {
+    "browserClosed": true,
+    "profileRemoved": true
+  },
+  "report": "/private/tmp/fluentread-video-learning-reliability-perf-candidate/report.json"
+}

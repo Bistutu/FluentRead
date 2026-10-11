@@ -7,7 +7,7 @@
 <template>
   <section ref="panel" class="fr-video-learning" :class="{'is-collapsed': !expanded}" :style="appearanceStyle" :data-learning-layout="appearance.layout" role="region" :aria-label="t('video.learning.title')" tabindex="-1"
     :data-learning-sentence-id="sentence?.id" :data-learning-sentence-index="index" :data-learning-pinned="pinned"
-    :data-start-ms="sentence?.startMs" :data-end-ms="sentence?.endMs" @keydown="onKeydown" @click.stop @pointerdown.stop>
+    :data-start-ms="sentence?.startMs" :data-end-ms="sentence?.endMs" @click.stop @pointerdown.stop>
     <header class="fr-video-learning-header">
       <div class="fr-video-learning-heading" data-learning-drag-handle :title="t('video.learning.drag')"><svg class="fr-video-learning-grip" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7 5h.01M13 5h.01M7 10h.01M13 10h.01M7 15h.01M13 15h.01" /></svg><strong>{{ t('video.learning.title') }}</strong></div>
       <div class="fr-video-learning-header-actions">
@@ -259,7 +259,11 @@ function onKeydown(event: KeyboardEvent): void {
   const target = event.target as HTMLElement | null;
   if (!active || event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey
     || target?.closest?.('textarea,input,select,[contenteditable]:not([contenteditable="false"]),[role="textbox"]')) return;
-  if (event.key === 'Escape' && props.video.ownerDocument?.fullscreenElement) return;
+  const document = props.video.ownerDocument;
+  if (event.key === 'Escape' && document?.fullscreenElement?.contains(props.video)) {
+    if (!event.repeat) void document.exitFullscreen?.().catch(() => undefined);
+    return;
+  }
   const key = event.key.toLowerCase();
   if (!['Escape', 'ArrowLeft', 'ArrowRight'].includes(event.key) && key !== 'r' && key !== 'q') return;
   // window capture 先于站点 document 监听，避免同键同时改速或跳转；长按只消费重复事件。

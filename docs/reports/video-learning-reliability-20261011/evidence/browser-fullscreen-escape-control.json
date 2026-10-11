@@ -1,0 +1,134 @@
+{
+  "success": true,
+  "evidence": "Production extension; real local MP4 clock; original timed-caption fixtures; deterministic translation; actual live probes reported separately",
+  "fixtureCases": [
+    {
+      "platform": "youtube",
+      "scenario": "background-cdp-fullscreen-escape-control",
+      "checks": [
+        {
+          "name": "Observed trusted Escape in fullscreen with extension configuration disabled",
+          "pass": true,
+          "details": {
+            "extensionConfigurationEnabled": false,
+            "events": [
+              {
+                "trusted": true,
+                "target": "DIV",
+                "fullscreenBefore": true,
+                "defaultPrevented": false
+              }
+            ],
+            "fullscreenAfter": "movie_player",
+            "panelAfter": false
+          }
+        },
+        {
+          "name": "Observed trusted Escape in fullscreen with extension configuration enabled and learning open",
+          "pass": true,
+          "details": {
+            "extensionConfigurationEnabled": true,
+            "events": [
+              {
+                "trusted": true,
+                "target": "DIV",
+                "fullscreenBefore": true,
+                "defaultPrevented": false
+              }
+            ],
+            "fullscreenAfter": "movie_player",
+            "panelAfter": true
+          }
+        }
+      ],
+      "controls": [
+        {
+          "extensionConfigurationEnabled": false,
+          "events": [
+            {
+              "trusted": true,
+              "target": "DIV",
+              "fullscreenBefore": true,
+              "defaultPrevented": false
+            }
+          ],
+          "fullscreenAfter": "movie_player",
+          "panelAfter": false
+        },
+        {
+          "extensionConfigurationEnabled": true,
+          "events": [
+            {
+              "trusted": true,
+              "target": "DIV",
+              "fullscreenBefore": true,
+              "defaultPrevented": false
+            }
+          ],
+          "fullscreenAfter": "movie_player",
+          "panelAfter": true
+        }
+      ],
+      "captures": [
+        {
+          "screenshot": "/private/tmp/fluentread-video-learning-reliability-fullscreen-escape-probe/youtube-fullscreen-escape-disabled.png",
+          "dom": "/private/tmp/fluentread-video-learning-reliability-fullscreen-escape-probe/youtube-fullscreen-escape-disabled.html"
+        },
+        {
+          "screenshot": "/private/tmp/fluentread-video-learning-reliability-fullscreen-escape-probe/youtube-fullscreen-escape-learning.png",
+          "dom": "/private/tmp/fluentread-video-learning-reliability-fullscreen-escape-probe/youtube-fullscreen-escape-learning.html"
+        }
+      ],
+      "success": true
+    }
+  ],
+  "liveCases": [],
+  "pageErrors": [],
+  "cleanup": {
+    "browserClosed": true,
+    "profileRemoved": true
+  },
+  "artifact": {
+    "contentSha256": "8ebb510f78ac406524eb1dd20dd4d5706c99c3155c45cf21d235040863bb4bf5",
+    "version": "0.0.37"
+  },
+  "focusObserver": {
+    "monitorPid": 74546,
+    "time": 1791732033204.2751,
+    "monotonicMs": 3157325266.6259584
+  },
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 212,
+      "top": -990,
+      "width": 1280,
+      "height": 900
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 64770,
+      "name": "ChatGPT"
+    },
+    "frontmostAfter": {
+      "pid": 64770,
+      "name": "ChatGPT"
+    }
+  },
+  "fixturePageErrors": [],
+  "finalBrowserFrontmost": false,
+  "focusEvents": {
+    "nativeObserver": true,
+    "browserActivations": 0,
+    "observerClosed": true
+  }
+}

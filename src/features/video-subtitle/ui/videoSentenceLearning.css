@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/ui/videoSentenceLearning.css
  * 文件职责：为完整句学习提供层次清楚、可折叠的播放器内双语阅读卡样式。
- * 主要内容：沿用既有视频菜单的局部深灰表面与品牌粉色，突出原句和重播，把播放辅助做成互斥分段项；译文与讲解默认阅读，编辑按需出现，固定头尾操作和滚动正文保留原播放器控制区。
+ * 主要内容：沿用既有视频菜单的局部深灰表面与品牌粉色，突出原句与下方重播，把播放辅助做成互斥分段项；译文与讲解默认阅读，编辑按需出现，纵向留白随小播放器可用高度收缩，固定操作和滚动正文保留原播放器控制区。
  * 模块边界：仅匹配 FluentRead 自有面板后代，由字幕 runtime 显式注入和清理，不依赖宿主样式或 WXT Shadow UI 自动挂载。
  */
 #fluent-read-video-learning-panel .fr-video-learning {
@@ -101,20 +101,25 @@
 
 #fluent-read-video-learning-panel { container-type: inline-size; container-name: fr-video-learning; }
 
-#fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-header { padding: 7px 10px; gap: 5px; }
+#fluent-read-video-learning-panel[data-compact=true] .fr-video-learning {
+  --fr-learning-compact-space: clamp(1px, calc((var(--fluent-read-video-learning-max-height, 196px) - 116px) * .075 + 1px), 7px);
+  --fr-learning-compact-body-space: clamp(0px, calc((var(--fluent-read-video-learning-max-height, 196px) - 116px) * .1125), 9px);
+}
+#fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-header { padding: var(--fr-learning-compact-space) 10px; gap: 5px; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-heading strong { font-size: 12px; white-space: nowrap; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-header-actions { gap: 0; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-header-actions button.fr-video-learning-icon { min-width: 24px; min-height: 26px; padding: 3px; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-header-actions svg { width: 16px; height: 16px; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-mode-caption { display: none; }
-#fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-body { padding: 9px 12px; }
-#fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-original { margin: 6px 0; }
+#fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-body { padding: var(--fr-learning-compact-body-space) 12px; }
+#fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-position { max-height: clamp(0px, calc(var(--fluent-read-video-learning-max-height, 196px) - 132px), 20px); overflow: hidden; }
+#fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-original { margin: clamp(0px, calc((var(--fluent-read-video-learning-max-height, 196px) - 116px) * .075), 6px) 0; font-size: min(var(--fluent-read-video-learning-original-font-size, 17px), clamp(14px, calc((var(--fluent-read-video-learning-max-height, 196px) - 116px) * .14 + 14px), 26px)); }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-follow { margin-bottom: 6px; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-card { margin-top: 6px; padding: 7px 9px; border-radius: 8px; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-card-heading { margin-bottom: 3px; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-mode { margin: 8px 0 0; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-context { margin-top: 8px; }
-#fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-navigation { padding: 7px 10px 0; gap: 6px; grid-template-columns: 32px 1fr 32px; }
+#fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-navigation { padding: var(--fr-learning-compact-space) 10px 0; gap: 6px; grid-template-columns: 32px 1fr 32px; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-navigation button { min-height: 32px; padding: 5px 6px; font-size: 12px; }
-#fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-footer { padding: 7px 10px; }
+#fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-footer { padding: var(--fr-learning-compact-space) 10px; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-footer-actions button { min-height: 30px; padding: 5px 6px; font-size: 11px; }

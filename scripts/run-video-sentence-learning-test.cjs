@@ -28,6 +28,9 @@ const liveOnly = process.argv.includes('--live-only');
 const performanceOnly = process.argv.includes('--performance-only');
 const runtimePerformanceOnly = process.argv.includes('--runtime-performance-only');
 const reliabilityOnly = process.argv.includes('--reliability-only');
+const compactProbeOnly = process.argv.includes('--compact-probe-only');
+const fullscreenEscapeProbeOnly = process.argv.includes('--fullscreen-escape-probe-only');
+const appearanceOnly = process.argv.includes('--appearance-only');
 const liveUrls = [
   ...String(arg('live-youtube-urls', arg('live-youtube-url', ''))).split(',').filter(Boolean).map(url => ({platform: 'youtube', url})),
   ...(arg('live-x-url') ? [{platform: 'x', url: arg('live-x-url')}] : []),
@@ -42,15 +45,23 @@ assert.ok(!runtimePerformanceOnly || !liveOnly && !liveUrls.length && !performan
 assert.ok(!runtimePerformanceOnly || platforms.every(platform => platform === 'youtube'),
   '--runtime-performance-only measures the scoped YouTube native-DOM protocol; pass --platforms youtube');
 assert.ok(!reliabilityOnly || !liveOnly && !liveUrls.length && !performanceOnly, '--reliability-only cannot include live or older performance cases');
+assert.ok(!compactProbeOnly || !liveOnly && !liveUrls.length && !performanceOnly && !runtimePerformanceOnly && !reliabilityOnly,
+  '--compact-probe-only is a separate controlled geometry diagnosis');
+assert.ok(!fullscreenEscapeProbeOnly || !liveOnly && !liveUrls.length && !performanceOnly && !runtimePerformanceOnly && !reliabilityOnly && !compactProbeOnly,
+  '--fullscreen-escape-probe-only is a separate controlled input diagnosis');
+assert.ok(!appearanceOnly || !liveOnly && !liveUrls.length && !performanceOnly && !runtimePerformanceOnly && !reliabilityOnly && !compactProbeOnly && !fullscreenEscapeProbeOnly
+  && platforms.every(platform => platform === 'youtube'), '--appearance-only is a scoped YouTube setup/settings persistence check');
 const helper = require(helperPath);
 const {chromium} = createRequire(path.join(playwrightRoot, 'video-sentence-proof.cjs'))('playwright');
 fs.mkdirSync(artifacts, {recursive: true});
 const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fluentread-sentence-learning-'));
 const report = {
   success: false,
+  startedAt: new Date().toISOString(),
   evidence: 'Production extension; real local MP4 clock; original timed-caption fixtures; deterministic translation; actual live probes reported separately',
   fixtureCases: [], liveCases: [], pageErrors: [], cleanup: {},
 };
+process.stdout.write(`Video sentence validation started at ${report.startedAt}\n`);
 if (performanceOnly || runtimePerformanceOnly) {
   const crypto = require('node:crypto');
   report.performanceCases = [];
@@ -110,13 +121,7 @@ const check = (result, name, details) => {
   result.checks.push({name, pass: true, ...(details ? {details} : {})});
   process.stdout.write(`${currentPhase}\n`);
 };
-const action = name => {
-  const panel = '#fluent-read-video-learning-panel';
-  if (['previous', 'next', 'play'].includes(name)) {
-    return page.locator(`${panel} [data-learning-action="${name}"]:visible, ${panel} [data-learning-action="${name}-compact"]:visible`).first();
-  }
-  return page.locator(`${panel} [data-learning-action="${name}"]`);
-};
+const action = name => page.locator(`#fluent-read-video-learning-panel [data-learning-action="${name}"]`);
 const fieldDisplay = kind => page.locator(`#fluent-read-video-learning-panel [data-learning-${kind}-display]`);
 async function editField(kind, value) {
   await action(`edit-${kind}`).click();
@@ -140,6 +145,16 @@ const seek = async time => {
   await page.evaluate(time => {document.querySelector('video').currentTime = time;}, time);
   await page.waitForFunction(() => !document.querySelector('video').seeking);
 };
+async function waitForLearningGeometry() {
+  await page.waitForFunction(() => {
+    const host = document.querySelector('#fluent-read-video-learning-panel');
+    const player = document.querySelector('#movie_player, [data-testid=videoPlayer]');
+    if (!host || !player) return false;
+    const a = host.getBoundingClientRect(), b = player.getBoundingClientRect();
+    return a.width > 0 && a.height > 0 && a.left >= b.left + 7 && a.right <= b.right - 7
+      && a.top >= b.top + 7 && a.bottom <= b.bottom - 55;
+  }, null, {timeout: 5000});
+}
 async function patchConfig(patch) {
   const result = await control.evaluate(async ({patch, sequence}) => {
     const read = await chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'});
@@ -319,6 +334,7 @@ async function runPerformanceFixtures(platform, mediaData) {
   assert.equal(result.measurements.warmRevisit.requests, 0, 'Completed in-session drafts should not start duplicate translation requests');
   const player = page.locator('#movie_player, [data-testid=videoPlayer]');
   await player.evaluate(element => {element.style.width = '390px'; element.style.height = '260px';});
+  await waitForLearningGeometry();
   await page.locator('[data-learning-original]').scrollIntoViewIfNeeded();
   result.measurements.compact = await page.evaluate(() => {
     const visible = action => {
@@ -326,13 +342,14 @@ async function runPerformanceFixtures(platform, mediaData) {
       const rect = button.getBoundingClientRect();
       return rect.width > 0 && rect.height > 0 && button.contains(document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2));
     };
-    return {atOriginal: Object.fromEntries(['previous', 'next', 'previous-compact', 'next-compact', 'play-compact', 'loop', 'pause-at-end', 'save', 'library', 'close'].map(action => [action, visible(action)])),
+    return {atOriginal: Object.fromEntries(['previous', 'next', 'play', 'loop', 'pause-at-end', 'save', 'library', 'close'].map(action => [action, visible(action)])),
       bodyScrollTop: document.querySelector('.fr-video-learning-body').scrollTop};
   });
   await action('next').scrollIntoViewIfNeeded();
   result.measurements.compact.nextReachableAfterScroll = await action('next').isVisible();
   await player.screenshot({path: path.join(artifacts, `${platform}-performance-compact.png`)});
   await player.evaluate(element => {element.style.width = '960px'; element.style.height = '540px';});
+  await waitForLearningGeometry();
   await action('close').click();
   await page.close(); page = null; await context.unrouteAll({behavior: 'wait'});
   await createPerformancePage(platform, mediaData, [{startMs: 0, durationMs: 6000, text: `Natural ${platform} clock stays on this complete sentence.`},
@@ -525,11 +542,121 @@ async function runAppearanceReliability(result, mediaId) {
   assert.ok(Math.abs(parseFloat(fresh.translationFontSize) - 14.3) < .1);
   check(result, 'A fresh video document restores the saved appearance and default bottom-left position while session drag stays local', fresh);
   await section.locator('[data-video-learning-reset]').click();
+  const defaults = {layout: 'compact', backgroundOpacity: 94, fontScale: 100, width: 360, position: 'top-right'};
+  await settings.waitForFunction(() => document.querySelector('[data-video-learning-preview]')?.dataset.layout === 'compact');
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const appearance = await control.evaluate(async () => {
+      const read = await chrome.runtime.sendMessage({type: 'configStorageRead', key: 'local:config'});
+      const config = typeof read.value === 'string' ? JSON.parse(read.value) : read.value;
+      return config.videoSentenceLearningAppearance;
+    });
+    if (JSON.stringify(appearance) === JSON.stringify(defaults)) break;
+    if (attempt === 39) assert.deepEqual(appearance, defaults, 'Restore defaults must persist before the settings tab closes');
+    await settings.waitForTimeout(50);
+  }
   await page.waitForFunction(() => document.querySelector('[data-learning-layout]')?.dataset.learningLayout === 'compact');
   await settings.close();
   await helper.activateExtensionTabWithoutForeground({serviceWorkers: () => [worker]}, page);
 }
 
+async function runAppearanceFixture(mediaData) {
+  const result = {platform: 'youtube', scenario: 'appearance-entry-ui-and-persistence', checks: []};
+  report.fixtureCases.push(result);
+  await createPerformancePage('youtube', mediaData, cues, 'appearance-persistence');
+  await runAppearanceReliability(result, 'frPerfVid01');
+  result.success = true;
+  await page.close(); await context.unrouteAll({behavior: 'wait'});
+}
+async function runFullscreenEscapeProbe(platform, mediaData) {
+  const result = {platform, scenario: 'background-cdp-fullscreen-escape-control', checks: [], controls: []};
+  report.fixtureCases.push(result);
+  for (const enabled of [false, true]) {
+    await patchConfig({on: enabled});
+    const mediaId = enabled ? 'frEscProbe1' : 'frEscProbe0';
+    const url = platform === 'youtube' ? `https://www.youtube.com/watch?v=${mediaId}` : `https://x.com/fluentread/status/${mediaId}`;
+    await context.route(url, route => route.fulfill({contentType: 'text/html', body: fixtureHtml(platform, mediaData)}));
+    page = await helper.newPageWithoutForeground(context); await page.goto(url);
+    await helper.activateExtensionTabWithoutForeground({serviceWorkers: () => [worker]}, page);
+    await page.waitForFunction(() => document.querySelector('video')?.readyState >= 2);
+    await page.evaluate(() => {
+      const player = document.querySelector('#movie_player, [data-testid=videoPlayer]'); player.tabIndex = 0;
+      player.addEventListener('click', event => {if (event.target === document.querySelector('video')) player.focus();});
+      window.__escapeProbeEvents = [];
+      window.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        const entry = {trusted: event.isTrusted, target: event.target.tagName, fullscreenBefore: !!document.fullscreenElement};
+        window.__escapeProbeEvents.push(entry);
+        queueMicrotask(() => {entry.defaultPrevented = event.defaultPrevented;});
+      }, true);
+    });
+    if (enabled) {
+      await page.locator('#fluent-read-video-subtitle-button').waitFor();
+      await injectCaptions(platform, cues, mediaId); await openLearning();
+      await page.waitForFunction(() => document.querySelector('[data-learning-translation-display]')?.textContent?.trim());
+    }
+    await actualFullscreen();
+    await page.locator('video').click({position: {x: 24, y: 24}}); await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
+    const state = await page.evaluate(() => ({events: window.__escapeProbeEvents,
+      fullscreenAfter: document.fullscreenElement?.id ?? null,
+      panelAfter: !!document.querySelector('#fluent-read-video-learning-panel')}));
+    result.controls.push({extensionConfigurationEnabled: enabled, ...state});
+    check(result, `Observed trusted Escape in fullscreen with extension configuration ${enabled ? 'enabled and learning open' : 'disabled'}`, result.controls.at(-1));
+    await capture(`${platform}-fullscreen-escape-${enabled ? 'learning' : 'disabled'}`, result);
+    await page.close(); await context.unrouteAll({behavior: 'wait'});
+  }
+  result.success = true;
+}
+async function runCompactPlayerProbe(platform, mediaData) {
+  const result = {platform, scenario: 'small-player-controls-bounds-probe', checks: [], sizes: []};
+  report.fixtureCases.push(result);
+  await createPerformancePage(platform, mediaData, cues, 'small-player-controls-bounds');
+  await seek(3.2); await openLearning();
+  await page.waitForFunction(() => document.querySelector('[data-learning-translation-display]')?.textContent?.trim());
+  const player = page.locator('#movie_player, [data-testid=videoPlayer]');
+  for (const size of [{width: 390, height: 260}, {width: 320, height: 180}]) {
+    await player.evaluate((element, size) => {element.style.width = `${size.width}px`; element.style.height = `${size.height}px`;}, size);
+    await waitForLearningGeometry();
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    const bounds = await page.evaluate(() => {
+      const panel = document.querySelector('#fluent-read-video-learning-panel');
+      const card = panel.querySelector('.fr-video-learning');
+      const rect = element => element?.getBoundingClientRect().toJSON();
+      const cardBounds = card.getBoundingClientRect();
+      const controls = [...panel.querySelectorAll('.fr-video-learning-header button, .fr-video-learning-navigation button, .fr-video-learning-footer button')].map(button => {
+        const bounds = button.getBoundingClientRect();
+        const hit = document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+        return {action: button.dataset.learningAction, bounds: bounds.toJSON(), disabled: button.disabled,
+          withinCard: bounds.left >= cardBounds.left - .5 && bounds.right <= cardBounds.right + .5
+            && bounds.top >= cardBounds.top - .5 && bounds.bottom <= cardBounds.bottom + .5,
+          hitTest: hit === button || button.contains(hit), hitTag: hit?.tagName,
+          hitAction: hit?.closest?.('[data-learning-action]')?.dataset.learningAction};
+      });
+      const body = panel.querySelector('.fr-video-learning-body');
+      const original = panel.querySelector('[data-learning-original]');
+      const range = document.createRange(); range.selectNodeContents(original);
+      const textRects = [...range.getClientRects()].map(bounds => bounds.toJSON());
+      const bodyBounds = body.getBoundingClientRect();
+      const first = textRects[0];
+      const firstLineVisibleHeight = first ? Math.max(0, Math.min(first.bottom, bodyBounds.bottom) - Math.max(first.top, bodyBounds.top)) : 0;
+      const originalStyle = getComputedStyle(original);
+      return {player: rect(document.querySelector('#movie_player, [data-testid=videoPlayer]')), panel: rect(panel), card: rect(card),
+        header: rect(panel.querySelector('.fr-video-learning-header')), body: rect(body),
+        bodyScrollHeight: body.scrollHeight, bodyClientHeight: body.clientHeight, bodyOverflow: getComputedStyle(body).overflowY,
+        original: {text: original.textContent.trim(), bounds: rect(original), fontSize: originalStyle.fontSize,
+          lineHeight: originalStyle.lineHeight, textRects, firstLineVisibleHeight,
+          readableFirstLine: !!first && firstLineVisibleHeight >= first.height - .5 && original.textContent.trim().length > 0},
+        navigation: rect(panel.querySelector('.fr-video-learning-navigation')), footer: rect(panel.querySelector('.fr-video-learning-footer')), controls};
+    });
+    const screenshot = path.join(artifacts, `${platform}-small-player-${size.width}x${size.height}.png`);
+    await player.screenshot({path: screenshot});
+    result.sizes.push({...size, ...bounds, screenshot,
+      allControlsReachable: bounds.controls.every(control => control.withinCard && control.hitTest)});
+    check(result, `Measured actual ${size.width}×${size.height} control bounds and hit tests`, result.sizes.at(-1));
+  }
+  result.success = result.sizes.every(size => size.allControlsReachable && size.original.readableFirstLine);
+  await page.close(); await context.unrouteAll({behavior: 'wait'});
+}
 async function runReliabilityFixture(platform, mediaData) {
   const result = {platform, scenario: 'reported-keyboard-fullscreen-layout-reliability', checks: []};
   report.fixtureCases.push(result);
@@ -547,6 +674,7 @@ async function runReliabilityFixture(platform, mediaData) {
     window.__nativeFixtureKeys = [];
     document.addEventListener('keydown', event => {
       if (event.target.closest?.('textarea,input,select,[contenteditable="true"]')) return;
+      if (event.target.closest?.('#fluent-read-video-subtitle-menu')) return;
       if (!['r', 'q', 'ArrowRight', 'ArrowLeft'].includes(event.key)) return;
       window.__nativeFixtureKeys.push(event.key);
       // A conflicting host shortcut has a material effect, so propagation failures are observable.
@@ -567,6 +695,16 @@ async function runReliabilityFixture(platform, mediaData) {
   await capture(`${platform}-reliability-video-menu`, result);
   await openLearning();
   await page.waitForFunction(() => document.querySelector('[data-learning-original]')?.textContent === 'They use rocks to open shells.');
+  if (platform === 'youtube') {
+    await page.waitForFunction(() => {
+      const translation = document.querySelector('[data-learning-translation-display]');
+      return translation?.getAttribute('aria-busy') === 'false' && translation.textContent.trim();
+    });
+    assert.equal(await action('save').getAttribute('data-learning-saved'), 'false');
+    const screenshot = path.join(artifacts, 'youtube-learning-default-panel.png');
+    await page.locator('#fluent-read-video-learning-panel section').screenshot({path: screenshot});
+    (result.captures ||= []).push({screenshot, scope: 'Initially opened default panel; original and translation; unedited and unsaved'});
+  }
   await page.locator('video').click({position: {x: 24, y: 24}});
   await page.keyboard.press('r'); assert.equal((await current()).loop, 'true');
   await page.keyboard.press('q'); assert.equal((await current()).pauseAtEnd, 'true');
@@ -596,13 +734,34 @@ async function runReliabilityFixture(platform, mediaData) {
   await action('help').click();
   const player = page.locator('#movie_player, [data-testid=videoPlayer]');
   await player.evaluate(element => {element.style.width = '390px'; element.style.height = '260px';});
+  await waitForLearningGeometry();
   await page.waitForFunction(() => document.querySelector('#fluent-read-video-learning-panel')?.dataset.compact === 'true');
-  assert.equal(await action('next-compact').isVisible(), true);
+  assert.equal(await action('next').isVisible(), true);
+  const compactBounds = await page.evaluate(() => {
+    const panel = document.querySelector('#fluent-read-video-learning-panel');
+    const card = panel.querySelector('.fr-video-learning').getBoundingClientRect();
+    const body = panel.querySelector('.fr-video-learning-body');
+    return {bodyHeight: body.clientHeight, bodyScrollable: getComputedStyle(body).overflowY === 'auto',
+      headerNavigationCount: panel.querySelectorAll('header [data-learning-action="previous"],header [data-learning-action="play"],header [data-learning-action="next"]').length,
+      controls: ['previous', 'play', 'next', 'explain', 'save'].map(action => {
+        const matches = panel.querySelectorAll(`[data-learning-action="${action}"]`);
+        const button = matches[0]; const rect = button.getBoundingClientRect();
+        const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+        return {action, count: matches.length, bounds: rect.toJSON(),
+          withinCard: rect.top >= card.top && rect.bottom <= card.bottom,
+          hitTest: hit === button || button.contains(hit)};
+      })};
+  });
+  assert.equal(compactBounds.headerNavigationCount, 0);
+  assert.ok(compactBounds.bodyHeight > 0 && compactBounds.bodyScrollable);
+  assert.ok(compactBounds.controls.every(control => control.count === 1 && control.withinCard && control.hitTest),
+    `Compact navigation and footer must remain uniquely reachable: ${JSON.stringify(compactBounds)}`);
   const compactCapture = path.join(artifacts, `${platform}-reliability-compact.png`); await player.screenshot({path: compactCapture});
   await player.evaluate(element => {element.style.width = '960px'; element.style.height = '540px';});
+  await waitForLearningGeometry();
   await page.waitForTimeout(120); assert.equal(await page.locator('#fluent-read-video-learning-panel').isVisible(), true);
   assert.equal((await current()).translation, '操作回归草稿。');
-  check(result, 'Opening at compact player size and enlarging preserves the panel and current edited draft', {screenshot: compactCapture, state: await current()});
+  check(result, 'Opening at compact player size and enlarging preserves reachable navigation, the panel and current edited draft', {screenshot: compactCapture, compactBounds, state: await current()});
   const heading = page.locator('[data-learning-drag-handle]');
   const before = await heading.boundingBox();
   await page.mouse.move(before.x + 20, before.y + before.height / 2); await page.mouse.down();
@@ -616,6 +775,24 @@ async function runReliabilityFixture(platform, mediaData) {
   const beforeMenu = await current();
   await page.locator('#fluent-read-video-subtitle-button').click();
   const fullscreenMenu = page.locator('#fluent-read-video-subtitle-menu'); await fullscreenMenu.waitFor({state: 'visible'});
+  assert.equal(await page.locator('#fluent-read-video-learning-panel').isVisible(), true,
+    'Opening the subtitle menu must keep the learning panel mounted in fullscreen');
+  assert.equal((await current()).translation, '操作回归草稿。');
+  await fullscreenMenu.locator('[data-mode="original-only"]').focus();
+  await fullscreenMenu.evaluate(menu => {
+    window.__menuFixtureArrowKeys = [];
+    menu.addEventListener('keydown', event => {
+      if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+      window.__menuFixtureArrowKeys.push(event.key);
+    });
+  });
+  await page.keyboard.press('ArrowLeft'); await page.keyboard.press('ArrowRight');
+  assert.deepEqual(await page.evaluate(() => window.__menuFixtureArrowKeys), ['ArrowLeft', 'ArrowRight'],
+    'Menu-focused arrow keys reach the menu instead of being consumed by the learning window listener');
+  assert.equal((await current()).sentenceId, beforeMenu.sentenceId);
+  assert.equal((await current()).translation, '操作回归草稿。');
+  assert.ok(Math.abs((await current()).time - beforeMenu.time) < .05);
+  check(result, 'Arrow keys focused inside the subtitle menu keep menu ownership without stepping the learning sentence or changing its draft');
   await fullscreenMenu.locator('[data-mode="translation-only"]').click();
   await page.waitForFunction(() => document.querySelector('#fluent-read-video-subtitle-menu [data-mode="translation-only"]')?.getAttribute('aria-checked') === 'true');
   assert.equal((await current()).translation, '操作回归草稿。');
@@ -636,14 +813,22 @@ async function runReliabilityFixture(platform, mediaData) {
   assert.equal((await current()).translation, '操作回归草稿。');
   check(result, 'Body focus during fullscreen keeps learning shortcuts scoped to its fullscreen media without reaching conflicting host shortcuts');
   await capture(`${platform}-reliability-fullscreen`, result);
-  await page.locator('video').click({position: {x: 24, y: 24}}); await page.keyboard.press('Escape');
+  await page.locator('video').click({position: {x: 24, y: 24}});
+  await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.fullscreenElement, null, {timeout: 15000});
+  await waitForLearningGeometry();
   assert.equal(await page.locator('#fluent-read-video-learning-panel').isVisible(), true);
   assert.equal((await current()).translation, '操作回归草稿。');
   const afterFullscreen = await page.locator('#fluent-read-video-learning-panel').boundingBox();
   assert.ok(Math.abs(afterFullscreen.x - dragged.x) < 3 && Math.abs(afterFullscreen.y - dragged.y) < 3,
     `Session drag position must recover after fullscreen: ${JSON.stringify({dragged, afterFullscreen})}`);
-  check(result, 'Actual fullscreen preserves the draft and drag position; Escape exits browser fullscreen before closing learning', {dragged, afterFullscreen});
+  check(result, 'Actual fullscreen preserves the draft and drag position; trusted Escape exits fullscreen before closing learning', {dragged, afterFullscreen});
+  await page.locator('#fluent-read-video-subtitle-button').click();
+  await fullscreenMenu.waitFor({state: 'visible'});
+  await page.keyboard.press('Escape'); await fullscreenMenu.waitFor({state: 'hidden'});
+  assert.equal(await page.locator('#fluent-read-video-learning-panel').isVisible(), true);
+  assert.equal((await current()).translation, '操作回归草稿。');
+  check(result, 'Outside fullscreen Escape closes the open subtitle menu first and keeps the learning panel and draft');
   // Keep the exact media node/source while creating the inner fullscreen host used by site player transitions.
   await page.evaluate(() => {
     const video = document.querySelector('video'); const current = video.parentElement;
@@ -656,7 +841,8 @@ async function runReliabilityFixture(platform, mediaData) {
   await page.waitForFunction(() => document.fullscreenElement?.id === 'fixture-inner-media');
   await page.waitForFunction(() => document.querySelector('#fluent-read-video-learning-panel')?.parentElement?.id === 'fixture-inner-media');
   assert.equal((await current()).translation, '操作回归草稿。');
-  await page.keyboard.press('Escape'); await page.waitForFunction(() => !document.fullscreenElement);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.fullscreenElement);
   await page.waitForFunction(() => document.querySelector('#fluent-read-video-learning-panel')?.parentElement === document.querySelector('#movie_player, [data-testid=videoPlayer]'));
   check(result, 'A same-media inner fullscreen host reparents the existing learning instance and keeps drafts');
   await page.locator('video').click({position: {x: 24, y: 24}}); await page.keyboard.press('Escape');
@@ -690,10 +876,26 @@ async function runOperationImprovementFixture(platform, mediaData) {
   const translated = async index => page.waitForFunction(source => document.querySelector('[data-learning-translation-display]')?.textContent.includes(source), text(index));
   await translated(0);
   let requests = await providerCount();
-  for (let index = 0; index < 12; index++) {await action('next').click({force: true});await page.waitForTimeout(30);}
+  await page.evaluate(() => {
+    window.__trustedSteppingEvents = [];
+    document.addEventListener('click', event => {
+      if (event.target.closest?.('[data-learning-action="next"]')) {
+        window.__trustedSteppingEvents.push({trusted: event.isTrusted, time: performance.now()});
+      }
+    }, true);
+  });
+  const stepTimes = [];
+  for (let index = 0; index < 12; index++) {stepTimes.push(Date.now());await action('next').click({force: true});await page.waitForTimeout(30);}
   await translated(12);
   assert.equal((await current()).index, '12');
-  assert.equal(await providerCount() - requests, 1, 'Rapid stepping starts only the final confirmed source translation');
+  result.rapidStepping = {requestCount: await providerCount() - requests,
+    commandIntervalsMs: stepTimes.slice(1).map((time, index) => time - stepTimes[index]),
+    events: await page.evaluate(() => window.__trustedSteppingEvents)};
+  result.rapidStepping.trustedEventIntervalsMs = result.rapidStepping.events.slice(1)
+    .map((event, index) => event.time - result.rapidStepping.events[index].time);
+  assert.equal(result.rapidStepping.events.length, 12);
+  assert.ok(result.rapidStepping.events.every(event => event.trusted), 'The coalescing sequence uses actual trusted clicks');
+  assert.equal(result.rapidStepping.requestCount, 1, 'Rapid stepping starts only the final confirmed source translation');
   requests = await providerCount();
   await page.evaluate(async () => {for (let index = 0; index < 12; index++) document.querySelector('[data-learning-action="next"]').click();await Promise.resolve();await Promise.resolve();});
   await translated(24);
@@ -724,7 +926,8 @@ async function runOperationImprovementFixture(platform, mediaData) {
   await translated(27);
   const player = page.locator('#movie_player, [data-testid=videoPlayer]');
   await player.evaluate(element => {element.style.width = '390px';element.style.height = '260px';});
-  for (const name of ['previous-compact', 'next-compact', 'play-compact', 'close']) {
+  await waitForLearningGeometry();
+  for (const name of ['previous', 'next', 'play', 'close']) {
     assert.equal(await action(name).isVisible(), true);
     assert.equal(await action(name).evaluate(element => {
       const rect = element.getBoundingClientRect();return element.contains(document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2));
@@ -732,14 +935,14 @@ async function runOperationImprovementFixture(platform, mediaData) {
   }
   await page.locator('.fr-video-learning-body').evaluate(element => {element.scrollTop = element.scrollHeight;});
   assert.ok(await page.locator('.fr-video-learning-body').evaluate(element => element.scrollTop) > 0);
-  await action('next-compact').click({force: true});
+  await action('next').click({force: true});
   await page.waitForFunction(() => document.querySelector('[data-learning-sentence-index]')?.dataset.learningSentenceIndex === '28');
   assert.equal(await page.locator('.fr-video-learning-body').evaluate(element => element.scrollTop), 0, 'New source starts at the top of its reading body');
   const originalVisible = await page.locator('[data-learning-original]').evaluate(element => {
     const rect = element.getBoundingClientRect();const body = element.closest('.fr-video-learning-body').getBoundingClientRect();return rect.top >= body.top && rect.bottom <= body.bottom + 1;
   });
   assert.equal(originalVisible, true);
-  await action('previous-compact').click({force: true});
+  await action('previous').click({force: true});
   await page.waitForFunction(() => document.querySelector('[data-learning-sentence-index]')?.dataset.learningSentenceIndex === '27');
   await page.locator('#fluent-read-video-learning-panel section').focus();
   await page.keyboard.press('r');assert.equal((await current()).loop, 'true');
@@ -780,19 +983,27 @@ async function runFixture(platform, mediaData) {
   await page.waitForFunction(() => document.querySelector('[data-learning-translation-display]')?.textContent.trim() === '海獭有强有力的牙齿。');
   let state = await current();
   await page.mouse.move(4, 4);
+  await page.waitForFunction(() => {
+    const save = document.querySelector('[data-learning-action="save"]');
+    return save && !save.matches(':hover') && getComputedStyle(save).backgroundColor === 'rgb(220, 49, 95)';
+  }, null, {timeout: 5000});
   const style = await page.locator('#fluent-read-video-learning-panel section').evaluate(element => {
     const computed = getComputedStyle(element);
     const names = ['brand', 'brand-strong', 'brand-strong-hover', 'brand-text', 'brand-soft', 'surface', 'border', 'radius', 'shadow', 'text', 'muted', 'control', 'control-hover'];
     const save = getComputedStyle(element.querySelector('[data-learning-action="save"]'));
-    const replayButton = Array.from(element.querySelectorAll('[data-learning-action="play"], [data-learning-action="play-compact"]'))
-      .find(button => button.getBoundingClientRect().width > 0);
+    const replayButton = element.querySelector('[data-learning-action="play"]');
     const replay = getComputedStyle(replayButton);
+    const nav = element.querySelector('.fr-video-learning-navigation').getBoundingClientRect();
+    const body = element.querySelector('.fr-video-learning-body').getBoundingClientRect();
+    const footer = element.querySelector('footer').getBoundingClientRect();
     return {fontSize: computed.fontSize, background: computed.backgroundColor, borderColor: computed.borderColor,
       borderRadius: computed.borderRadius, boxShadow: computed.boxShadow, fontFamily: computed.fontFamily, color: computed.color,
       saveBackground: save.backgroundColor, saveColor: save.color, replayColor: replay.color,
       tokens: Object.fromEntries(names.map(name => [name, computed.getPropertyValue(`--fr-video-menu-${name}`).trim()])),
       modeLabel: element.querySelector('.fr-video-learning-mode[role="group"]')?.getAttribute('aria-label'),
       footerActions: Array.from(element.querySelectorAll('.fr-video-learning-footer-actions [data-learning-action]')).map(button => button.dataset.learningAction),
+      navigation: {top: nav.top, bottom: nav.bottom, bodyBottom: body.bottom, footerTop: footer.top,
+        headerButtons: element.querySelectorAll('header [data-learning-action="previous"], header [data-learning-action="play"], header [data-learning-action="next"]').length},
       translationDisplay: getComputedStyle(element.querySelector('[data-learning-translation-display]')).display,
       editors: element.querySelectorAll('[data-learning-translation], [data-learning-explanation]').length};
   });
@@ -802,6 +1013,9 @@ async function runFixture(platform, mediaData) {
   assert.equal(style.editors, 0, 'Translation and explanation start in reading mode');
   assert.equal(style.modeLabel, '播放辅助');
   assert.deepEqual(style.footerActions, ['explain', 'save'], 'The persistent footer exposes only explanation and collection');
+  assert.equal(style.navigation.headerButtons, 0, 'Previous, replay and next belong below the content instead of the title bar');
+  assert.ok(style.navigation.top >= style.navigation.bodyBottom - 1 && style.navigation.bottom <= style.navigation.footerTop + 1,
+    'The unique visible navigation row sits after the reading content and before the two footer actions');
   assert.equal(await page.locator('.fr-video-learning-mode[role="group"]').isVisible(), true);
   check(result, 'Production content-script styles keep the learning panel readable independently of host CSS', style);
   assert.deepEqual(style.tokens, menuStyle.tokens, 'Learning inherits the existing video menu local appearance tokens');
@@ -959,8 +1173,8 @@ async function runFixture(platform, mediaData) {
   assert.equal(await page.locator('[data-learning-original]').isVisible().catch(() => false), false);
   assert.equal(await action('collapse').getAttribute('aria-expanded'), 'false');
   assert.equal(await page.locator('#fluent-read-video-learning-panel').evaluate(host => {
-    const rect = host.getBoundingClientRect();
-    return host.contains(document.elementFromPoint(rect.left + rect.width / 2, rect.bottom - 4));
+    const card = host.querySelector('section').getBoundingClientRect();
+    return host.contains(document.elementFromPoint(card.left + card.width / 2, card.bottom + 4));
   }), false, 'The transparent area below the collapsed card must not intercept media input');
   await action('collapse').click();
   await page.locator('[data-learning-original]').waitFor({state: 'visible'});
@@ -1031,9 +1245,10 @@ async function runFixture(platform, mediaData) {
   const player = page.locator('#movie_player, [data-testid=videoPlayer]');
   const previousStyle = await player.getAttribute('style');
   await player.evaluate(element => {element.style.width = '390px';element.style.height = '260px';});
+  await waitForLearningGeometry();
   await page.locator('[data-learning-original]').scrollIntoViewIfNeeded();
-  await action('play-compact').waitFor({state: 'visible'});
-  await action('play-compact').click();
+  await action('play').waitFor({state: 'visible'});
+  await action('play').click();
   await page.waitForFunction(() => !document.querySelector('video').paused && document.querySelector('video').currentTime > .1);
   await page.evaluate(() => document.querySelector('video').pause());
   await action('save').scrollIntoViewIfNeeded();
@@ -1046,7 +1261,8 @@ async function runFixture(platform, mediaData) {
     const rect = element => element.getBoundingClientRect().toJSON();
     const point = button.getBoundingClientRect();
     return {panel: rect(host), player: rect(player), body: rect(body), original: rect(original), overflowX: host.scrollWidth > host.clientWidth + 1,
-      overflowY: getComputedStyle(host).overflowY, saveVisible: host.contains(document.elementFromPoint(point.left + point.width / 2, point.top + point.height / 2))};
+      hostOverflowY: getComputedStyle(host).overflowY, overflowY: getComputedStyle(body).overflowY,
+      saveVisible: host.contains(document.elementFromPoint(point.left + point.width / 2, point.top + point.height / 2))};
   });
   assert.ok(compact.panel.left >= compact.player.left && compact.panel.right <= compact.player.right + 1);
   assert.ok(compact.panel.bottom <= compact.player.bottom - 48 && !compact.overflowX && compact.saveVisible, JSON.stringify(compact));
@@ -1421,6 +1637,12 @@ async function main() {
     if (runtimePerformanceOnly) {
       await patchConfig({videoSubtitleDisplayMode: 'original-only'});
       for (const platform of platforms) await runRuntimePerformanceFixtures(platform, mediaData);
+    } else if (appearanceOnly) {
+      await runAppearanceFixture(mediaData);
+    } else if (fullscreenEscapeProbeOnly) {
+      for (const platform of platforms) await runFullscreenEscapeProbe(platform, mediaData);
+    } else if (compactProbeOnly) {
+      for (const platform of platforms) await runCompactPlayerProbe(platform, mediaData);
     } else if (reliabilityOnly) {
       for (const platform of platforms) await runReliabilityFixture(platform, mediaData);
     } else if (performanceOnly) {
@@ -1444,6 +1666,7 @@ async function main() {
 }
 Promise.race([main(), browserDisconnected]).catch(async error => {
   report.failure = error.stack || String(error);
+  if ('actual' in error && 'expected' in error) report.failureComparison = {actual: error.actual, expected: error.expected, operator: error.operator};
   if (page && !page.isClosed() && context?.browser()?.isConnected()) {
     report.failureState = await current().catch(() => null);
     await capture('failure', report).catch(() => {});
@@ -1465,6 +1688,7 @@ Promise.race([main(), browserDisconnected]).catch(async error => {
     fs.rmSync(profileDir, {recursive: true, force: true});
     report.cleanup.profileRemoved = true;
   } else report.cleanup.retainedProfile = profileDir;
+  report.finishedAt = new Date().toISOString();
   fs.writeFileSync(path.join(artifacts, 'report.json'), JSON.stringify(report, null, 2));
   process.stdout.write(`${JSON.stringify({success: report.success,
     ...(performanceOnly || runtimePerformanceOnly ? {performanceCases: report.performanceCases.map(result => ({platform: result.platform, scenario: result.scenario, success: Boolean(result.success)}))} : {}),
