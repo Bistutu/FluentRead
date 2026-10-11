@@ -54,5 +54,28 @@
       "bytes": 2067193,
       "sha256": "743b0f786f7f84c8a1ed2363c3691a623509624a33829d667e47dd49f7a3c790"
     }
+  },
+  "doubaoIntegration": {
+    "baseline": {
+      "commit": "a861801632b3e405f3f9e6d214a28d7a7e286094",
+      "bytes": 2073858,
+      "sha256": "f3cd3a53e9cb5d683fa9f80a442b84beadd89bb9fab859c322d62c06d1610b26",
+      "verifierPassed": true
+    },
+    "candidate": {
+      "state": "issue #952 final fixes including free response/SSE settlement, integrated with Doubao translation main",
+      "bytes": 2076455,
+      "sha256": "bf4c778dd1b66131cc75ecd70257144c0a678af1e355c72fc0d9294f9eeccd8f"
+    },
+    "delta": {
+      "bytes": 2597,
+      "percent": 0.1252
+    },
+    "budget": {
+      "baselineBytes": 2074000,
+      "newBytes": 2077000,
+      "stepBytes": 1000,
+      "headroomBytes": 545
+    }
   }
 }

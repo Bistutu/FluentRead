@@ -30,6 +30,7 @@ const EXPECTED_PROVIDER_FILES = [
     'deepseek.ts',
     'doubao.ts',
     'doubao-seed-translation.ts',
+    'doubao-web.ts',
     'documentFreeBatch.ts',
     'free-translation.ts',
     'free-web.ts',

@@ -1,11 +1,12 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
-const {mockConfig, storedHealth, microsoftMock, officialMock, bilibiliMock, googleMock, googleOwnerMock, myMemoryMock, webMock, chineseMock, extraMock, unsupportedApertiumMock} = vi.hoisted(() => ({
+const {mockConfig, storedHealth, microsoftMock, officialMock, bilibiliMock, doubaoMock, googleMock, googleOwnerMock, myMemoryMock, webMock, chineseMock, extraMock, unsupportedApertiumMock} = vi.hoisted(() => ({
     mockConfig: {} as Record<string, any>,
     storedHealth: {records: null as unknown},
     microsoftMock: vi.fn(),
     officialMock: vi.fn(),
     bilibiliMock: vi.fn(),
+    doubaoMock: vi.fn(),
     googleMock: vi.fn(),
     googleOwnerMock: vi.fn(),
     myMemoryMock: vi.fn(),
@@ -18,6 +19,7 @@ vi.mock('@/src/platform/storage/freeTranslationHealthStorage', () => ({freeTrans
 vi.mock('@/src/services/config/store', () => ({config: mockConfig}));
 vi.mock('@/src/providers/translation/microsoft', () => ({translateMicrosoftTexts: microsoftMock}));
 vi.mock('@/src/providers/translation/bilibili-free', () => ({translateBilibiliFree: bilibiliMock}));
+vi.mock('@/src/providers/translation/doubao-web', () => ({translateDoubaoWeb: doubaoMock}));
 vi.mock('@/src/providers/translation/free-official-web', () => ({translateOfficialFreeWebProvider: officialMock}));
 vi.mock('@/src/providers/translation/google', () => ({translateGoogleText: googleMock, translateGoogleOwnerTexts: googleOwnerMock}));
 vi.mock('@/src/providers/translation/mymemory', () => ({default: myMemoryMock}));
@@ -71,7 +73,7 @@ beforeEach(async () => {
         freeTranslationOrder: ['microsoft', 'alibabaFree', 'google', 'myMemory'],
         myMemoryEmail: '', deeplx: 'https://deeplx.example/translate',
     });
-    for (const mock of [microsoftMock, officialMock, bilibiliMock, googleMock, googleOwnerMock, myMemoryMock, chineseMock, extraMock]) {
+    for (const mock of [microsoftMock, officialMock, bilibiliMock, doubaoMock, googleMock, googleOwnerMock, myMemoryMock, chineseMock, extraMock]) {
         mock.mockRejectedValue(httpFailure());
     }
     ({default: freeTranslation, FREE_TRANSLATION_BATCH_CONCURRENCY, getFreeTranslationWeightSnapshot, translateFreeTranslationProvider}
@@ -352,6 +354,27 @@ describe('免费翻译服务', () => {
         expect(chineseMock).toHaveBeenCalledTimes(2);
     });
 
+    it('豆包遗漏术语标记时在池内换线，正常文字仍能继续使用豆包而不进入全局冷却', async () => {
+        mockConfig.freeTranslationOrder = ['doubaoWeb', 'google'];
+        mockConfig.freeTranslationCooldownMs = 60_000;
+        const token = '__FRTERM_123456789abc_0__';
+        doubaoMock.mockResolvedValueOnce('使用术语。').mockResolvedValue('正常文字的译文。');
+        googleMock.mockImplementation(async (source: string) => `译文:${source}`);
+        const request = attachTranslationProviderConfig({origin: `Use ${token} here.`},
+            createTranslationProviderConfigSnapshot({...mockConfig, glossaryProtectedTokens: [token]} as unknown as TranslationConfigSource));
+
+        await expect(settle(freeTranslation(request))).resolves.toBe(`译文:Use ${token} here.`);
+        expect(doubaoMock).toHaveBeenCalledOnce();
+        expect(googleMock).toHaveBeenCalledOnce();
+        expect((await getFreeTranslationWeightSnapshot()).entries.find(entry => entry.providerId === 'doubaoWeb')?.status).toBe('ready');
+
+        await vi.advanceTimersByTimeAsync(1_000);
+        await expect(settle(translateFreeText('Ordinary prose.'))).resolves.toBe('正常文字的译文。');
+        expect(doubaoMock).toHaveBeenCalledTimes(2);
+        expect(doubaoMock.mock.calls[1]![0].origin).toBe('Ordinary prose.');
+        expect(googleMock).toHaveBeenCalledOnce();
+    });
+
     it('原生免费批次也逐槽验证术语，拒绝串入相邻段标记并按原顺序换线', async () => {
         mockConfig.freeTranslationOrder = ['microsoft', 'google'];
         const tokens = Array.from({length: 9}, (_, index) => `__FRTERM_123456789abc_${index}__`);
@@ -403,15 +426,16 @@ describe('免费翻译服务', () => {
     it.each(FREE_TRANSLATION_PROVIDERS)('单服务检查直接使用 $id 匿名适配器，即使没有开启', async ({id}) => {
         mockConfig.freeTranslationOrder = ['microsoft'];
         microsoftMock.mockResolvedValue(['有效译文']);
-        for (const mock of [officialMock, bilibiliMock, googleMock, myMemoryMock, webMock, chineseMock, extraMock]) mock.mockResolvedValue('有效译文');
+        for (const mock of [officialMock, bilibiliMock, doubaoMock, googleMock, myMemoryMock, webMock, chineseMock, extraMock]) mock.mockResolvedValue('有效译文');
         await expect(translateFreeTranslationProvider(id, {origin: 'Hello from FluentRead.', sourceLanguage: 'en', targetLanguage: 'zh-Hans'})).resolves.toBe('有效译文');
-        const calls = [microsoftMock, officialMock, bilibiliMock, googleMock, myMemoryMock, webMock, chineseMock, extraMock].reduce((total, mock) => total + mock.mock.calls.length, 0);
+        const calls = [microsoftMock, officialMock, bilibiliMock, doubaoMock, googleMock, myMemoryMock, webMock, chineseMock, extraMock].reduce((total, mock) => total + mock.mock.calls.length, 0);
         expect(calls).toBe(1);
         const families = {transmart: webMock, yandexFree: webMock, volcengineFree: webMock, youdaoFree: chineseMock, icibaFree: chineseMock,
             sogouFree: extraMock, reversoFree: extraMock, apertiumFree: extraMock};
         if (id in families) expect(families[id as keyof typeof families]).toHaveBeenCalledWith(id, 'Hello from FluentRead.', 'en', 'zh-Hans', undefined);
         if (['alibabaFree', 'modernMtFree', 'laraFree', 'lingvanexFree'].includes(id)) expect(officialMock).toHaveBeenCalledWith(id, expect.objectContaining({origin: 'Hello from FluentRead.', sourceLanguage: 'en', targetLanguage: 'zh-Hans'}));
         if (id === 'bilibiliFree') expect(bilibiliMock).toHaveBeenCalledWith(expect.objectContaining({origin: 'Hello from FluentRead.', sourceLanguage: 'en', targetLanguage: 'zh-Hans'}));
+        if (id === 'doubaoWeb') expect(doubaoMock).toHaveBeenCalledWith(expect.objectContaining({origin: 'Hello from FluentRead.', sourceLanguage: 'en', targetLanguage: 'zh-Hans'}));
         expect(mockConfig.freeTranslationOrder).toEqual(['microsoft']);
     });
 
@@ -428,6 +452,41 @@ describe('免费翻译服务', () => {
         expect(snapshot.proxy).toEqual({});
         await expect(translateFreeTranslationProvider('bilibiliFree', {origin: 'Hello', sourceLanguage: 'en', targetLanguage: 'zh-Hans'})).rejects.toMatchObject({statusCode: 429});
         expect(googleMock).toHaveBeenCalledOnce();
+    });
+
+    it('豆包匿名访客拒绝后按冻结顺序换线，连接检查保留单线路错误', async () => {
+        Object.assign(mockConfig, {freeTranslationOrder: ['doubaoWeb', 'google'],
+            token: {doubao: 'private-token'}, secret: {doubao: 'private-secret'}, customHeaders: {doubao: {Cookie: 'personal'}},
+            proxy: {doubao: 'https://private-proxy.example'}, to: 'zh-Hans'});
+        doubaoMock.mockRejectedValue(Object.assign(new Error('豆包网页翻译请求失败（错误码 710012001）'), {statusCode: 403, freeFailure: 'blocked'}));
+        googleMock.mockResolvedValue('有效译文');
+        const result = translateFreeText('Hello from FluentRead.');
+        mockConfig.to = 'ja'; mockConfig.freeTranslationOrder = ['microsoft'];
+        await expect(settle(result)).resolves.toBe('有效译文');
+        const message = doubaoMock.mock.calls[0][0];
+        expect(message).toMatchObject({origin: 'Hello from FluentRead.', sourceLanguage: 'auto', targetLanguage: 'zh-Hans', serviceOverride: 'doubaoWeb', abortSignal: expect.any(AbortSignal)});
+        expect(readSnapshot(message)).toMatchObject({token: {}, secret: {}, customHeaders: {}, proxy: {}, freeTranslationOrder: ['doubaoWeb', 'google'], to: 'zh-Hans'});
+        expect(googleMock).toHaveBeenCalledOnce(); expect(microsoftMock).not.toHaveBeenCalled();
+        await expect(translateFreeTranslationProvider('doubaoWeb', {origin: 'Hello', targetLanguage: 'zh-Hans'})).rejects.toMatchObject({statusCode: 403});
+        expect(googleMock).toHaveBeenCalledOnce();
+    });
+
+    it('豆包真实适配器经免费入口处理完整 SSE、返回错误后由原池换线', async () => {
+        const actual = await vi.importActual<typeof import('@/src/providers/translation/doubao-web')>('@/src/providers/translation/doubao-web');
+        doubaoMock.mockImplementation(actual.translateDoubaoWeb);
+        mockConfig.freeTranslationOrder = ['doubaoWeb', 'google'];
+        googleMock.mockResolvedValue('备用译文');
+        let fail = false;
+        const fetch = vi.fn(async input => String(input) === actual.DOUBAO_WEB_HOME ? new Response('{"ttwid":"fixture-guest","web_id":"1234567890123456789"}')
+            : fail ? Response.json({code: 710012001, msg: 'private diagnostic'})
+                : new Response('event: json\ndata: {"code":0,"data":{"items":[{"index":0,"res":"豆包译文"}]}}\n\nevent: done\ndata:\n\n', {headers: {'Content-Type': 'text/event-stream'}}));
+        vi.stubGlobal('fetch', fetch);
+        await expect(translateFreeTranslationProvider('doubaoWeb', {origin: 'Hello', targetLanguage: 'zh-Hans'})).resolves.toBe('豆包译文');
+        expect(fetch).toHaveBeenCalledTimes(2); expect(googleMock).not.toHaveBeenCalled();
+        fail = true;
+        await expect(settle(translateFreeText('New readable paragraph.'))).resolves.toBe('备用译文');
+        // 当前块第一次访客拒绝 + 刷新后拒绝，仅两轮网页初始化和翻译。
+        expect(fetch).toHaveBeenCalledTimes(6); expect(googleMock).toHaveBeenCalledOnce();
     });
 
     it('单服务检查保留匿名边界和结果验证，失败或原文回显不会自动换线', async () => {
@@ -1317,6 +1376,7 @@ describe('owner-local bounded high-slot free batches', () => {
         for (const mock of [webMock, chineseMock, extraMock]) mock.mockImplementation(async (_id, text: string) => `译:${text}`);
         myMemoryMock.mockImplementation(async (request: {origin: string}) => `译:${request.origin}`);
         bilibiliMock.mockImplementation(async (request: {origin: string}) => `译:${request.origin}`);
+        doubaoMock.mockImplementation(async (request: {origin: string}) => `译:${request.origin}`);
         officialMock.mockImplementation(async (_id, request: {origin: string}) => `译:${request.origin}`);
         const {attachTranslationRouteObserver} = await import('@/src/services/translation/requestSnapshot');
         const observations: Array<{route: string; outcome: string; chars: number}> = [];
@@ -1331,6 +1391,7 @@ describe('owner-local bounded high-slot free batches', () => {
             ...[webMock, chineseMock, extraMock].flatMap(mock => mock.mock.calls.map(call => call[1])),
             ...myMemoryMock.mock.calls.map(call => call[0].origin),
             ...bilibiliMock.mock.calls.map(call => call[0].origin),
+            ...doubaoMock.mock.calls.map(call => call[0].origin),
             ...officialMock.mock.calls.map(call => call[1].origin),
         ];
         expect(submitted).toHaveLength(63);
@@ -1445,6 +1506,30 @@ describe('document-only mixed free-pool batching', () => {
             .resolves.toEqual(['译:First source', ' ', '译:First source', '译:Second source', '\n']);
         expect(officialMock.mock.calls.map(call => call[1].origin)).toEqual(['First source', 'First source', 'Second source']);
         expect(officialMock.mock.calls.every(call => !call[1].origin.includes('___FLUENTREAD_'))).toBe(true);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('document batching sends Doubao independent raw scalar slots, preserves blanks and duplicates, and observes only sent characters', async () => {
+        mockConfig.freeTranslationOrder = ['doubaoWeb'];
+        doubaoMock.mockImplementation(async request => `译:${request.origin}`);
+        const {attachTranslationRouteObserver} = await import('@/src/services/translation/requestSnapshot');
+        const observed: Array<{route: string; chars: number}> = [];
+        const originals = ['First source', ' ', 'First source', 'Second source', '\n'];
+        const before = [...originals];
+        const request = attachTranslationRouteObserver({origin: originals, documentBatch: true, requestTimeoutMs: 5_000}, event => observed.push(event));
+
+        await expect(settle(freeTranslation(request)))
+            .resolves.toEqual(['译:First source', ' ', '译:First source', '译:Second source', '\n']);
+        expect(doubaoMock.mock.calls.map(call => call[0].origin)).toEqual(['First source', 'First source', 'Second source']);
+        expect(doubaoMock.mock.calls.every(call => call[0].serviceOverride === 'doubaoWeb' && call[0].enableNativeBatch === false)).toBe(true);
+        expect(observed.map(({route, chars}) => ({route, chars}))).toEqual([
+            {route: 'doubaoWeb', chars: 'First source'.length},
+            {route: 'doubaoWeb', chars: 'First source'.length},
+            {route: 'doubaoWeb', chars: 'Second source'.length},
+        ]);
+        expect(originals).toEqual(before);
+        expect(microsoftMock).not.toHaveBeenCalled();
+        expect(googleOwnerMock).not.toHaveBeenCalled();
         expect(vi.getTimerCount()).toBe(0);
     });
 

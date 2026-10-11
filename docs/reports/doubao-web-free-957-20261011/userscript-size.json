@@ -1,0 +1,70 @@
+{
+  "baseCommit": "f9cf3fcb2dd75b636249f0bbc49fb40973af41b8",
+  "commands": [
+    "git archive f9cf3fcb2dd75b636249f0bbc49fb40973af41b8",
+    "pnpm generate:userscript-languages",
+    "node scripts/testing/run-resource-safe.mjs -- pnpm exec wxt prepare",
+    "pnpm build:userscript",
+    "node scripts/verify-userscript-build.mjs"
+  ],
+  "dependencyLink": "Same installed dependency tree used by baseline and candidate; no dependency changes.",
+  "nodeVersion": "v20.11.1",
+  "baseline": {
+    "bytes": 2065321,
+    "gzipDefaultBytes": 815688,
+    "gzipLevel9Bytes": 814879,
+    "sha256": "b401a39243e63d261492a724f0243d38ae363bbc600b0e365e14ef0c92a7e420"
+  },
+  "candidate": {
+    "bytes": 2073858,
+    "gzipDefaultBytes": 816221,
+    "gzipLevel9Bytes": 815124,
+    "sha256": "f3cd3a53e9cb5d683fa9f80a442b84beadd89bb9fab859c322d62c06d1610b26"
+  },
+  "deltaBytes": 8537,
+  "deltaPercent": 0.41334978920952237,
+  "deltaGzipDefaultBytes": 533,
+  "deltaGzipLevel9Bytes": 245,
+  "existingBudgetBytes": 2066000,
+  "candidateOverExistingBudgetBytes": 7858,
+  "minimalBudgetAt1000ByteStep": 2074000,
+  "candidateBudgetBytes": 2074000,
+  "candidateHeadroomBytes": 142,
+  "baselineVerifier": "passed with original budget and assertions",
+  "assertionChanges": "Size constant only; all protocol and execution assertions retained.",
+  "preIntegrationComparison": {
+    "baseCommit": "1e414ea8c2db6074343fb438bf7633af10a142a2",
+    "commands": [
+      "git archive f9cf3fcb2dd75b636249f0bbc49fb40973af41b8",
+      "pnpm generate:userscript-languages",
+      "node scripts/testing/run-resource-safe.mjs -- pnpm exec wxt prepare",
+      "pnpm build:userscript",
+      "node scripts/verify-userscript-build.mjs"
+    ],
+    "dependencyLink": "Same installed dependency tree used by baseline and candidate; no dependency changes.",
+    "nodeVersion": "v20.11.1",
+    "baseline": {
+      "bytes": 2064354,
+      "gzipDefaultBytes": 814894,
+      "gzipLevel9Bytes": 814080,
+      "sha256": "ac9730c7f3b9517aca1f716472244630efb8faa957e1acd72dd7feb55b34b826"
+    },
+    "candidate": {
+      "bytes": 2072803,
+      "gzipDefaultBytes": 815580,
+      "gzipLevel9Bytes": 814489,
+      "sha256": "ec28f8cb911eb7a67f3473117b7bf46f2850c04442e5937670c6debd179232bc"
+    },
+    "deltaBytes": 8449,
+    "deltaPercent": 0.4092805788154551,
+    "deltaGzipDefaultBytes": 686,
+    "deltaGzipLevel9Bytes": 409,
+    "existingBudgetBytes": 2066000,
+    "candidateOverExistingBudgetBytes": 6803,
+    "minimalBudgetAt1000ByteStep": 2073000,
+    "candidateBudgetBytes": 2073000,
+    "candidateHeadroomBytes": 197,
+    "baselineVerifier": "passed with original budget and assertions",
+    "assertionChanges": "Size constant only; all protocol and execution assertions retained."
+  }
+}

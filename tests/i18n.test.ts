@@ -1068,7 +1068,8 @@ describe('运行期反馈文案资源', () => {
   const han = /[㐀-鿿]/u;
 
   it('每条精确反馈都来自真实源码，不重复，并在每种界面语言中完整本地化', () => {
-    const sourceText = collectSourceText('src', (path) => !path.includes('/i18n/messages/'));
+    const sourceText = collectSourceText('src', (path) => !path.includes('/i18n/messages/'))
+      + collectSourceText('userscript', () => true);
     const sources = getRuntimeFeedbackSources();
     expect(new Set(sources).size).toBe(sources.length);
     expect(sources.filter((source) => !sourceText.includes(source))).toEqual([]);
