@@ -1,8 +1,8 @@
 /**
  * @file src/services/translation/context/policy.ts
  *
- * 文件职责：定义页面上下文的纯预算与拼装策略，在不访问 DOM 的情况下约束文本、Markdown 和元数据长度。
- * 主要内容：声明 pageContextLimits 与输入结构，规范化空白，判断是否启用 bounded capture，并由 buildPageTranslationContext 按预算组合标题、URL、正文和可读 Markdown。 可核对的公开符号包括 pageContextLimits、PageSnapshotBudget、PageTranslationContextInput、normalizePageText、normalizePageMarkdown、shouldUseBoundedPageCapture、buildPageTranslationContext。
+ * 文件职责：定义页面上下文的纯身份、预算与拼装策略，在不访问 DOM 的情况下区分页面路由与阅读锚点，并约束文本、Markdown 和元数据长度。
+ * 主要内容：声明 pageContextLimits 与输入结构，以 getPageTranslationMaterialIdentity 保留路径、查询和哈希路由身份，规范化空白，判断是否启用 bounded capture，并由 buildPageTranslationContext 按预算组合标题、正文和可读 Markdown。
  * 模块边界：本文件位于翻译 application service 层，负责用例编排和端口契约；不挂载页面 UI，且不应把某家供应商的网络细节扩散到 feature，具体 HTTP 协议由 providers/platform 实现。
  */
 
@@ -28,6 +28,17 @@ export interface PageTranslationContextInput {
     title?: string;
     description?: string;
     readableText?: string;
+}
+
+/** 普通页内锚点只是阅读位置；路径、查询与 #/、#!/ 风格的 SPA 路由代表新材料。 */
+export function getPageTranslationMaterialIdentity(href: string): string {
+    try {
+        const url = new URL(href);
+        if (!/^#!?\//.test(url.hash)) url.hash = '';
+        return url.href;
+    } catch {
+        return href.split('#', 1)[0]!;
+    }
 }
 
 /** 归一化普通网页文本，同时折叠全角空格，避免页面排版噪声进入提示词。 */

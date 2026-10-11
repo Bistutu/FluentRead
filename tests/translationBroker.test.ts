@@ -1583,6 +1583,37 @@ describe('translation broker', () => {
         expect(mocks.config.enableAIContext).toBe(true);
     });
 
+    it('篇章证据变更复用一次页面摘要且进入缓存身份，总预算不增长', async () => {
+        mocks.config.service = 'ai'; mocks.config.enableAIContext = true;
+        mocks.service.mockImplementation((message: {summaryPrompt?: string; origin: string}) =>
+            Promise.resolve(message.summaryPrompt ? '短摘要' : `${message.origin}-译文`));
+        for (const evidence of ['chapter-a', 'chapter-b', 'chapter-b']) {
+            await translateWithCache({origin: 'AP controls timing.', pageContext: 'Article context',
+                discourseContext: evidence});
+        }
+        expect(mocks.service.mock.calls.filter(([message]) => message.summaryPrompt)).toHaveLength(1);
+        expect(mocks.service.mock.calls.filter(([message]) => !message.summaryPrompt)).toHaveLength(2);
+        const identities = translationCacheIdentities();
+        expect(identities.map(identity => identity.pageContext).some(context => context?.includes('chapter-a'))).toBe(true);
+        expect(identities.map(identity => identity.pageContext).some(context => context?.includes('chapter-b'))).toBe(true);
+        await translateWithCache({origin: 'An independent source.', pageContext: 'a'.repeat(4000),
+            discourseContext: 'b'.repeat(10000)});
+        const last = mocks.service.mock.calls.at(-1)![0];
+        expect(last.pageContext.length).toBeLessThanOrEqual(4000);
+        expect(last).not.toHaveProperty('discourseContext');
+        expect(last.pageContext).toContain('</discourse_evidence>');
+    });
+
+    it('关闭上下文或机器服务不外传篇章原始数据', async () => {
+        for (const service of ['ai', 'mock']) {
+            mocks.config.service = service;
+            await translateWithCache({origin: 'Independent source', discourseContext: 'Private evidence',
+                enableAIContext: false, useCache: false});
+            expect(mocks.service.mock.calls.at(-1)![0]).not.toHaveProperty('discourseContext');
+            expect(mocks.service.mock.calls.at(-1)![0].pageContext).toBe('');
+        }
+    });
+
     it('请求级 AI 上下文策略覆盖实时配置，并同时约束摘要与正文 provider', async () => {
         mocks.config.service = 'ai';
         mocks.config.enableAIContext = false;

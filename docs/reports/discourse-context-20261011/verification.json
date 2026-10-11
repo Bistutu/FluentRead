@@ -1,0 +1,806 @@
+{
+  "schemaVersion": 2,
+  "verifiedAt": "2026-10-11T06:26:25.181855+00:00",
+  "base": "69d41e5e1050e5004d4656963d5105f24df9d8ed",
+  "branch": "codex/discourse-context-20261011",
+  "worktree": "/Users/thinkstu/Desktop/copy/FluentRead-discourse-context-20261011",
+  "behavior": [
+    "Uses the existing AI 精翻 setting; disabled by default and restricted to supported prompt-based AI services.",
+    "Keeps source positions, chapter-local meanings, confirmed document wording and fallible previous machine translations as evidence. The existing user glossary takes precedence.",
+    "Web context follows bounded article and neighboring layout windows. Unknown sections use local evidence without importing cross-section definitions.",
+    "Ordinary in-page anchors retain article evidence and pending commits; paths, queries and #/ or #!/ routes use the same material identity policy as the existing content lifecycle.",
+    "Revalidates complete submitted source units, rejects cancelled or obsolete commits, and resets on material, language, source or restoration changes.",
+    "Document reuse is scoped to native chapter identity; PDF page labels are positions. Human confirmation is transient to the current file session, while restored history remains machine evidence.",
+    "Session request reuse ignores remount location metadata and strictly identical-source nearby/machine evidence, while definitions, different prior wording, confirmed translations and chapters remain separate. Providers receive the complete positioned evidence."
+  ],
+  "budgets": {
+    "storedSourceBlocks": 256,
+    "storedSourceCharacters": 64000,
+    "sourcePerBlock": 1000,
+    "translationPairs": 64,
+    "sourceAndTranslationPerPair": 1000,
+    "discourseReferenceCharacters": 2400,
+    "brokerTotalReferenceCharacters": 4000,
+    "webCaptureNodesPerPhase": 8192,
+    "submittedSourceProofItems": 64,
+    "submittedSourceProofCharacters": 64000,
+    "submittedSourceProofNodesPerPhase": 8192,
+    "currentTicketSourceProofCharacters": 64000,
+    "extraDiscourseModelCalls": 0,
+    "persistentDiscourseRecords": 0
+  },
+  "tradeoffs": [
+    "AI document single-segment requests run sequentially when context is enabled, so later requests can use completed earlier translations. With context disabled, the existing three-worker path is retained.",
+    "Chapter-scoped repeated text can require separate translations. Context changes also separate existing request-cache entries.",
+    "The frozen document adapter keeps O(segment count) metadata references to the already parsed document and computes its complete identity once; mutable evidence/pair stores and outgoing references are bounded. This does not cap all document-parser or renderer memory."
+  ],
+  "verification": {
+    "targetedRegression": {
+      "files": 20,
+      "tests": 1950,
+      "passed": true,
+      "status": "All 20 files passed on the final integrated source.",
+      "log": "/private/tmp/discourse-final3-tests.log"
+    },
+    "contextAndDocument": {
+      "files": 5,
+      "tests": 189,
+      "passed": true,
+      "testsByFile": {
+        "tests/discourseContext.test.ts": 68,
+        "tests/pageDiscourseContext.test.ts": 33,
+        "tests/pageContextPolicy.test.ts": 17,
+        "tests/documentTranslationApi.test.ts": 54,
+        "tests/documentAppLifecycle.test.ts": 17
+      }
+    },
+    "coverage": {
+      "discourse": {
+        "statements": {
+          "covered": 335,
+          "total": 335,
+          "percent": 100
+        },
+        "branches": {
+          "covered": 268,
+          "total": 268,
+          "percent": 100
+        },
+        "functions": {
+          "covered": 22,
+          "total": 22,
+          "percent": 100
+        },
+        "lines": {
+          "covered": 335,
+          "total": 335,
+          "percent": 100
+        }
+      },
+      "pageDiscourse": {
+        "statements": {
+          "covered": 217,
+          "total": 217,
+          "percent": 100.0
+        },
+        "branches": {
+          "covered": 184,
+          "total": 184,
+          "percent": 100.0
+        },
+        "functions": {
+          "covered": 10,
+          "total": 10,
+          "percent": 100.0
+        },
+        "lines": {
+          "percent": 100
+        }
+      },
+      "documentService": {
+        "statements": {
+          "covered": 283,
+          "total": 283,
+          "percent": 100
+        },
+        "branches": {
+          "covered": 203,
+          "total": 203,
+          "percent": 100
+        },
+        "functions": {
+          "covered": 25,
+          "total": 25,
+          "percent": 100
+        },
+        "lines": {
+          "percent": 100
+        }
+      },
+      "pagePolicy": {
+        "statements": {
+          "covered": 45,
+          "total": 45,
+          "percent": 100
+        },
+        "branches": {
+          "covered": 20,
+          "total": 20,
+          "percent": 100
+        },
+        "functions": {
+          "covered": 5,
+          "total": 5,
+          "percent": 100
+        },
+        "lines": {
+          "covered": 45,
+          "total": 45,
+          "percent": 100
+        }
+      },
+      "restoration": {
+        "statements": {
+          "covered": 106,
+          "total": 106,
+          "percent": 100.0
+        },
+        "branches": {
+          "covered": 65,
+          "total": 65,
+          "percent": 100.0
+        },
+        "functions": {
+          "covered": 10,
+          "total": 10,
+          "percent": 100.0
+        },
+        "lines": {
+          "percent": 100
+        }
+      }
+    },
+    "compile": {
+      "passed": true,
+      "log": "/private/tmp/discourse-final3-compile.log"
+    },
+    "builds": {
+      "chrome": {
+        "passed": true,
+        "log": "/private/tmp/discourse-final3-chrome-build.log"
+      },
+      "firefox": {
+        "passed": true,
+        "log": "/private/tmp/discourse-final3-firefox-build.log"
+      },
+      "userscript": {
+        "passed": true,
+        "log": "/private/tmp/discourse-final3-userscript-build.log"
+      },
+      "docs": {
+        "passed": true,
+        "log": "/private/tmp/discourse-final3-docs-build.log"
+      }
+    },
+    "userscriptVerifier": {
+      "passed": true,
+      "log": "/private/tmp/discourse-final3-userscript-verify.log"
+    },
+    "manifestVerifier": {
+      "passed": true,
+      "log": "/private/tmp/discourse-final3-manifests.log"
+    },
+    "testAudit": {
+      "passed": true,
+      "files": 654,
+      "cases": 11023,
+      "log": "/private/tmp/discourse-final3-audit.log"
+    },
+    "observedUnresolvedBaselineFailures": [],
+    "fullRegressionSuiteRun": false,
+    "restorationRegression": {
+      "files": 2,
+      "tests": 402,
+      "passed": true,
+      "testsByFile": {
+        "tests/fullPageVisibilityScheduling.test.ts": 339,
+        "tests/translationTruncation.test.ts": 63
+      },
+      "coverageReport": "/private/tmp/discourse-orphan-coverage-final/coverage-final.json"
+    },
+    "requestConfigRegression": {
+      "files": 2,
+      "tests": 47,
+      "passed": true,
+      "log": "/private/tmp/discourse-final3-request-regression.log"
+    },
+    "architecture": {
+      "files": 4,
+      "tests": 951,
+      "passed": true,
+      "log": "/private/tmp/discourse-final3-architecture.log"
+    },
+    "correctedIntegrationRegressions": [
+      "Ordinary anchors incorrectly discarded positioned article evidence and pending commits; repaired by sharing existing material identity policy.",
+      "DOM remount location and same-source prior evidence changed session request keys; repaired by semantic identity while retaining distinct definitions and confirmed wording. All three original failures now pass.",
+      "The new restore calls exceeded the historical runtime file ceiling by three lines; original restoration and orphan cleanup moved together into the existing recovery module."
+    ],
+    "uniqueTargetedTests": 2202,
+    "uniqueTargetedFiles": 26,
+    "countingNote": "1950 tests in the 20-file regression cohort plus 189 in five context/document files and 63 restoration tests; repeated focused and coverage executions are not double-counted."
+  },
+  "browser": {
+    "report": "browser-report.json",
+    "cases": [
+      "Late software passage receives bounded earlier definitions",
+      "Same abbreviations retain chapter-local meanings",
+      "User-confirmed terms outrank automatic references",
+      "Dynamic source replacement invalidates earlier evidence",
+      "Cancel rejects late output and retry remains usable",
+      "SPA route and article replacement isolate material identity",
+      "Restore and retranslate produce one current translation",
+      "After 90 blocks, three nested wrappers preserve adjacent definitions and previous machine wording",
+      "Native ordinary anchor jumps preserve person wording and pending-result evidence"
+    ],
+    "passed": true,
+    "summaryRequests": 4,
+    "translationRequests": 15,
+    "focusChecks": [
+      {
+        "label": "software-late-use",
+        "browserFrontmost": false
+      },
+      {
+        "label": "lab-late-use",
+        "browserFrontmost": false
+      },
+      {
+        "label": "different-article",
+        "browserFrontmost": false
+      },
+      {
+        "label": "wrapped-late-use",
+        "browserFrontmost": false
+      },
+      {
+        "label": "ordinary-anchor-use",
+        "browserFrontmost": false
+      },
+      {
+        "label": "suite-complete",
+        "browserFrontmost": false
+      }
+    ],
+    "consoleErrors": [],
+    "rawReferenceLimit": 4000,
+    "maxReferenceIncluding139CharacterWrapper": 4139,
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "windowPlacement": {
+      "mode": "background-visible-no-focus",
+      "visible": true,
+      "hidden": false,
+      "centered": true,
+      "windowState": "normal",
+      "bounds": {
+        "left": 212,
+        "top": -990,
+        "width": 1280,
+        "height": 900
+      },
+      "displayTarget": "secondary",
+      "source": "macos-nsscreen",
+      "screenIndex": 1,
+      "browserFrontmost": false,
+      "frontmostBefore": {
+        "pid": 73685,
+        "name": "ChatGPT"
+      },
+      "frontmostAfter": {
+        "pid": 73685,
+        "name": "ChatGPT"
+      }
+    },
+    "temporaryProfileRemoved": true,
+    "transport": "deterministic loopback OpenAI; production browser/client/broker/provider/DOM path; no model-quality claim",
+    "sourceBindings": 20,
+    "productionFiles": 450,
+    "ordinaryAnchorEvidence": "Real href clicks generated production route events; pre-anchor machine wording and delayed pending result were preserved in later provider references."
+  },
+  "realModels": {
+    "report": "model-quality.json",
+    "sourceKind": "authored synthetic long-form technical reading fixture",
+    "conclusion": {
+      "qualityClaim": "No reliable overall translation-quality improvement established in this finite two-model sample.",
+      "observedNarrowImprovement": "DeepSeek local-model laboratory sample changes readings from 阅读 to 读数.",
+      "counterexamples": [
+        "Final DeepSeek laboratory result leaves amber/green in English and omits the probe-connected clause.",
+        "Final DeepSeek software result expands English protocol names but leaves stitching untranslated.",
+        "Final DeepSeek entity result leaves generation fence untranslated.",
+        "Final DeepSeek unresolved run changes another run to 再次提交; it does preserve the unresolved person rather than choosing a name.",
+        "Qwen software sample still translates session stitching as 缝合 after page-context leak recovery.",
+        "Qwen laboratory sample already renders readings as 读数 in the baseline and stays acceptable after evidence."
+      ],
+      "supportedBehavior": "This experiment verifies that actual local models consumed bounded, chapter-scoped original evidence. State/protocol/browser verification must be assessed separately.",
+      "timingBoundary": "Single local runs include model load and unnormalized warmth; do not interpret duration differences as product/provider latency or cost forecasts."
+    },
+    "comparisons": [
+      {
+        "model": "deepseek-r1:7b",
+        "baseline": {
+          "calls": 4,
+          "wallMs": 58777,
+          "promptTokens": 2860,
+          "outputTokens": 1332
+        },
+        "final": {
+          "calls": 4,
+          "wallMs": 102788,
+          "promptTokens": 4036,
+          "outputTokens": 1718
+        }
+      },
+      {
+        "model": "qwen:14b",
+        "baseline": {
+          "calls": 4,
+          "wallMs": 36964,
+          "promptTokens": 1808,
+          "outputTokens": 177
+        },
+        "final": {
+          "calls": 3,
+          "wallMs": 51787,
+          "promptTokens": 2333,
+          "outputTokens": 136
+        }
+      }
+    ],
+    "finalReferenceRevalidation": {
+      "checkedAt": "2026-10-11T06:22:56.743Z",
+      "modelCalls": 0,
+      "source": [
+        {
+          "path": "src/services/translation/context/discourse.ts",
+          "sha256": "01264ddc81c21c6b0c30b4e26ec5f896ac3cabaa0c051215e4d04f8aec23ee93"
+        },
+        {
+          "path": "src/services/translation/context/pageDiscourse.ts",
+          "sha256": "25ee1997077ec8ad7ca415e3a72bf7782aae656350cbd8e811eb8971e5e9b381"
+        },
+        {
+          "path": "src/services/translation/context/policy.ts",
+          "sha256": "8a57636b8a9a772fac40f1eee8b39a7bb5497164466c2a21bcd1f63b033bece3"
+        },
+        {
+          "path": "src/core/translation/prompts.ts",
+          "sha256": "6b422433804b5995adde6a35d6e8a63d98710c362110915fd474a4699028b5bd"
+        },
+        {
+          "path": "tests/fixtures/discourse-context-long-article.json",
+          "sha256": "c7e00720f7f8e48cee55d457b8d94efd84f38f5e0ce4af25cf9625491a933fdb"
+        }
+      ],
+      "checks": [
+        {
+          "experiment": "finalDiscourse",
+          "model": "deepseek-r1:7b",
+          "case": "late-definition",
+          "sourceUnchanged": true,
+          "exactContextUnchanged": true,
+          "recordedContextSha256": "d14f5632b28af714b47380aba3fef3305b469dad3a556d3aed4c605085da1f28",
+          "currentContextSha256": "d14f5632b28af714b47380aba3fef3305b469dad3a556d3aed4c605085da1f28",
+          "recordedContextCharacters": 3996,
+          "currentContextCharacters": 3996
+        },
+        {
+          "experiment": "finalDiscourse",
+          "model": "deepseek-r1:7b",
+          "case": "entity-and-pronoun",
+          "sourceUnchanged": true,
+          "exactContextUnchanged": true,
+          "recordedContextSha256": "a6855b7cca5f6d842e38c00647c1b7a3de7db199ee3610d0b4d7040f99a22e7b",
+          "currentContextSha256": "a6855b7cca5f6d842e38c00647c1b7a3de7db199ee3610d0b4d7040f99a22e7b",
+          "recordedContextCharacters": 3996,
+          "currentContextCharacters": 3996
+        },
+        {
+          "experiment": "finalDiscourse",
+          "model": "deepseek-r1:7b",
+          "case": "same-acronym-new-sense",
+          "sourceUnchanged": true,
+          "exactContextUnchanged": true,
+          "recordedContextSha256": "25a7d379a27cacab7fbd6bcbf7c22ba83f9ec99db3032ff296cd79a03017eac7",
+          "currentContextSha256": "25a7d379a27cacab7fbd6bcbf7c22ba83f9ec99db3032ff296cd79a03017eac7",
+          "recordedContextCharacters": 3996,
+          "currentContextCharacters": 3996
+        },
+        {
+          "experiment": "finalDiscourse",
+          "model": "deepseek-r1:7b",
+          "case": "unresolved-pronoun",
+          "sourceUnchanged": true,
+          "exactContextUnchanged": true,
+          "recordedContextSha256": "6a3c3fef78994797a5b94c812a796cb41151b9d43315bf81f2a9ed0892cd090d",
+          "currentContextSha256": "6a3c3fef78994797a5b94c812a796cb41151b9d43315bf81f2a9ed0892cd090d",
+          "recordedContextCharacters": 3750,
+          "currentContextCharacters": 3750
+        },
+        {
+          "experiment": "qwenFinal",
+          "model": "qwen:14b",
+          "case": "late-definition",
+          "sourceUnchanged": true,
+          "exactContextUnchanged": true,
+          "recordedContextSha256": "d14f5632b28af714b47380aba3fef3305b469dad3a556d3aed4c605085da1f28",
+          "currentContextSha256": "d14f5632b28af714b47380aba3fef3305b469dad3a556d3aed4c605085da1f28",
+          "recordedContextCharacters": 3996,
+          "currentContextCharacters": 3996
+        },
+        {
+          "experiment": "qwenFinal",
+          "model": "qwen:14b",
+          "case": "same-acronym-new-sense",
+          "sourceUnchanged": true,
+          "exactContextUnchanged": false,
+          "recordedContextSha256": "dc78dbbc76d97f580eb8509cf63f5345d511604a3588b39faf79d91e87b7b78c",
+          "currentContextSha256": "25a7d379a27cacab7fbd6bcbf7c22ba83f9ec99db3032ff296cd79a03017eac7",
+          "recordedContextCharacters": 3996,
+          "currentContextCharacters": 3996
+        }
+      ],
+      "boundaries": [
+        "This check regenerates only the exact existing known-section reference inputs with the current pure discourse module. It does not rerun Ollama and does not claim model quality for the updated DOM adapter.",
+        "All original model outputs, failed literal translations, leaks, retries, timings, and token counts remain unchanged.",
+        "Unknown-section and full-source lifecycle repairs are separately verified by unit/adapter and production-browser evidence; this authored finite model fixture has explicit section labels."
+      ],
+      "finalDiscourseAllContextsUnchanged": true,
+      "note": "The final DeepSeek paired inputs are byte-identical with the current known-section reference construction; repeated model calls were unnecessary. Earlier Qwen inputs remain bound to their recorded contexts and must be assessed as those historical experiments."
+    }
+  },
+  "userscriptSize": {
+    "baselineRef": "69d41e5e1050e5004d4656963d5105f24df9d8ed",
+    "sameDependencies": true,
+    "baselineBytes": 2026916,
+    "candidateBytes": 2043419,
+    "deltaBytes": 16503,
+    "deltaPercent": 0.8141925960424605,
+    "baselineSha256": "ac0bf8cdc4be0c21b01c598b115ea8bc16bb519abc16736460a7450b4fd9c918",
+    "candidateSha256": "ae4e83454e660e705a366577a99a7d4105e45a2f78154e5d6909d1b8b99f5c47",
+    "oldBudget": 2027000,
+    "newBudget": 2044000,
+    "headroomBytes": 581,
+    "policy": "Minimum 1,000-byte increment containing the measured final artifact, retaining all protocol and compatibility checks."
+  },
+  "sourceSha256": {
+    "scripts/testing/focus-safe-browser.cjs": "06d94068ba1ae538b3c8a5675108ce75704dcde16e223d6164df9db971739739",
+    "scripts/testing/run-discourse-context-test.cjs": "12f90f814c593947eb750c11c6e89a086b5eda6a0c1cffe38ff8247ee278b0ef",
+    "src/app/background/handlers/translation.ts": "87e05bdefc1eb28d3b061f3d01582e13a16bd2f8f1e0247928aceccc3839b907",
+    "src/app/content/pageAvailability.ts": "211ec63518b85278846b155417e3789b2ef0d3ef6de8b754c1c7465865a747e6",
+    "src/app/content/runtime.ts": "cd47d2f8c29353e2d46391b0b2edeec85e5612326ef0b3e6fa46ef11bf08239e",
+    "src/app/document-translation/DocumentApp.vue": "23a587173736165a33f4672c28f6eb3bd069a8364b9c77b2508c6a2bbdb605a6",
+    "src/app/translation/client.ts": "bc090ddfa384b0f017e3d3d17a2212b41e5c3722c17385a5bdbe020dd5af18d6",
+    "src/features/document-translation/services/translation.ts": "5372024fc88e3bf05e3f1f1fb12f8664c47513e49c01aa9be0563a459998987d",
+    "src/features/full-page-translation/content/liveTextTranslation.ts": "1cc4d514e5242b79c76969eb5a7512e4befbae79191192a97fb0be7c9c555b6e",
+    "src/features/full-page-translation/content/orphanArtifacts.ts": "eb211cf43c25a35f6d1878f758e2c46a47b5be6238f2c4fff2afdce04ae36eab",
+    "src/features/full-page-translation/content/requestSession.ts": "f10cf9843eb46ed284dc35e693a18e714955136d41df39bc7ca613a848fc9aa6",
+    "src/features/full-page-translation/content/runtime.ts": "444bbc01101f144ed27289561854fdb08de4b6be30ce1f5c1e5824678ff4d3d1",
+    "src/features/full-page-translation/content/translationRequest.ts": "812a6642d4c7859d2effe0b6ba4a5af1b9592b46543b3ddee51d5eef70364eba",
+    "src/platform/shadow-ui/pageBridgeCore.ts": "dd56fda854d5f396237c700d2b9eae33ff06ef07717ee7235cb80b2e51b90910",
+    "src/services/translation/broker.ts": "e34ba32b81aa5a1c8abdf8015582700c2fb6ef8bc4bda852714df7ca630a8075",
+    "src/services/translation/context/browser.ts": "38686e56d2dd2e9a7e76267c15b94ca2fb61fe21f7cb81fae19ad34f124c6128",
+    "src/services/translation/context/discourse.ts": "01264ddc81c21c6b0c30b4e26ec5f896ac3cabaa0c051215e4d04f8aec23ee93",
+    "src/services/translation/context/pageDiscourse.ts": "25ee1997077ec8ad7ca415e3a72bf7782aae656350cbd8e811eb8971e5e9b381",
+    "src/services/translation/context/policy.ts": "8a57636b8a9a772fac40f1eee8b39a7bb5497164466c2a21bcd1f63b033bece3",
+    "src/services/translation/templates.ts": "15fe6fd8043dc5f989a7536908286aec2b80052715b8e2c0a4327f9c88769c06",
+    "src/services/translation/types.ts": "11cb1940a8104e502835b4c0f2358497e88fe9e609f4d44d381016c9dabd1c1a",
+    "tests/fixtures/discourse-context-long-article.json": "c7e00720f7f8e48cee55d457b8d94efd84f38f5e0ce4af25cf9625491a933fdb",
+    "userscript/pageContext.ts": "471f93eae0e837004a125f9f93aebf96a9975dd5870641a3d6d4fd848dec19b7"
+  },
+  "limitations": [
+    "Finite authored English technical corpus; real local model calls do not establish reliable overall translation-quality improvement. DeepSeek improves readings from 阅读 to 读数 but preserves counterexamples including omissions and English residue.",
+    "DeepSeek final known-section references were revalidated byte-for-byte against the final source. Qwen laboratory references belong to an earlier retrieval version and remain historical experiments, as labeled in model-quality.json.",
+    "Lexical definition retrieval uses Latin tokens/acronyms. Other scripts retain local source context but have limited long-distance lexical retrieval.",
+    "Capture and reference limits deliberately abstain outside a proven window; unstructured or more complex/deeper layouts and headings beyond the window can have less evidence.",
+    "Firefox and userscript builds/verifiers passed; their actual runtime, cloud providers, mobile and low-end devices were not exercised.",
+    "No cross-document knowledge base, personal correction manager, terminology community, extra extraction model or reference-repository runtime dependency was added."
+  ],
+  "referenceRepositoriesUsed": [],
+  "preintegrationVerification": {
+    "base": "1cdefa0d9",
+    "verification": {
+      "targetedRegression": {
+        "files": 20,
+        "tests": 1950,
+        "passed": false,
+        "status": "pending final rerun after semantic request-cache and restoration repairs",
+        "log": "/private/tmp/discourse-final3-tests.log"
+      },
+      "contextAndDocument": {
+        "files": 5,
+        "tests": 189,
+        "passed": true,
+        "testsByFile": {
+          "tests/discourseContext.test.ts": 68,
+          "tests/pageDiscourseContext.test.ts": 33,
+          "tests/pageContextPolicy.test.ts": 17,
+          "tests/documentTranslationApi.test.ts": 54,
+          "tests/documentAppLifecycle.test.ts": 17
+        }
+      },
+      "coverage": {
+        "discourse": {
+          "statements": {
+            "covered": 335,
+            "total": 335,
+            "percent": 100
+          },
+          "branches": {
+            "covered": 268,
+            "total": 268,
+            "percent": 100
+          },
+          "functions": {
+            "covered": 22,
+            "total": 22,
+            "percent": 100
+          },
+          "lines": {
+            "covered": 335,
+            "total": 335,
+            "percent": 100
+          }
+        },
+        "pageDiscourse": {
+          "statements": {
+            "covered": 217,
+            "total": 217,
+            "percent": 100.0
+          },
+          "branches": {
+            "covered": 184,
+            "total": 184,
+            "percent": 100.0
+          },
+          "functions": {
+            "covered": 10,
+            "total": 10,
+            "percent": 100.0
+          },
+          "lines": {
+            "percent": 100
+          }
+        },
+        "documentService": {
+          "statements": {
+            "covered": 283,
+            "total": 283,
+            "percent": 100
+          },
+          "branches": {
+            "covered": 203,
+            "total": 203,
+            "percent": 100
+          },
+          "functions": {
+            "covered": 25,
+            "total": 25,
+            "percent": 100
+          },
+          "lines": {
+            "percent": 100
+          }
+        },
+        "pagePolicy": {
+          "statements": {
+            "covered": 45,
+            "total": 45,
+            "percent": 100
+          },
+          "branches": {
+            "covered": 20,
+            "total": 20,
+            "percent": 100
+          },
+          "functions": {
+            "covered": 5,
+            "total": 5,
+            "percent": 100
+          },
+          "lines": {
+            "covered": 45,
+            "total": 45,
+            "percent": 100
+          }
+        },
+        "restoration": {
+          "statements": {
+            "covered": 106,
+            "total": 106,
+            "percent": 100.0
+          },
+          "branches": {
+            "covered": 65,
+            "total": 65,
+            "percent": 100.0
+          },
+          "functions": {
+            "covered": 10,
+            "total": 10,
+            "percent": 100.0
+          },
+          "lines": {
+            "percent": 100
+          }
+        }
+      },
+      "compile": {
+        "passed": true,
+        "log": "/private/tmp/discourse-final3-compile.log"
+      },
+      "builds": {
+        "chrome": {
+          "passed": true,
+          "log": "/private/tmp/discourse-final3-chrome-build.log"
+        },
+        "firefox": {
+          "passed": true,
+          "log": "/private/tmp/discourse-final3-firefox-build.log"
+        },
+        "userscript": {
+          "passed": true,
+          "log": "/private/tmp/discourse-final3-userscript-build.log"
+        },
+        "docs": {
+          "passed": true,
+          "log": "/private/tmp/discourse-final3-docs-build.log"
+        }
+      },
+      "userscriptVerifier": {
+        "passed": true,
+        "log": "/private/tmp/discourse-final3-userscript-verify.log"
+      },
+      "manifestVerifier": {
+        "passed": true,
+        "log": "/private/tmp/discourse-final3-manifests.log"
+      },
+      "testAudit": {
+        "passed": true,
+        "files": 654,
+        "cases": 11023,
+        "log": "/private/tmp/discourse-final3-audit.log"
+      },
+      "observedUnresolvedBaselineFailures": [],
+      "fullRegressionSuiteRun": false,
+      "restorationRegression": {
+        "files": 2,
+        "tests": 402,
+        "passed": true,
+        "testsByFile": {
+          "tests/fullPageVisibilityScheduling.test.ts": 339,
+          "tests/translationTruncation.test.ts": 63
+        },
+        "coverageReport": "/private/tmp/discourse-orphan-coverage-final/coverage-final.json"
+      },
+      "requestConfigRegression": {
+        "files": 2,
+        "tests": 47,
+        "passed": true,
+        "log": "/private/tmp/discourse-final3-request-regression.log"
+      },
+      "architecture": {
+        "files": 4,
+        "tests": 951,
+        "passed": true,
+        "log": "/private/tmp/discourse-final3-architecture.log"
+      },
+      "correctedIntegrationRegressions": [
+        "Ordinary anchors incorrectly discarded positioned article evidence and pending commits; repaired by sharing existing material identity policy.",
+        "DOM remount location and same-source prior evidence changed session request keys; repaired by semantic identity while retaining distinct definitions and confirmed wording. All three original failures now pass.",
+        "The new restore calls exceeded the historical runtime file ceiling by three lines; original restoration and orphan cleanup moved together into the existing recovery module."
+      ]
+    },
+    "userscriptSize": {
+      "baselineRef": "1cdefa0d9",
+      "sameDependencies": true,
+      "baselineBytes": 2024829,
+      "candidateBytes": 2040462,
+      "deltaBytes": 15633,
+      "deltaPercent": 0.7720651966166032,
+      "baselineSha256": "b7b6e0fe9fcf2952cdf8c9a0e4f2224235bc759a6abd65f7134268c1c2550fcf",
+      "candidateSha256": "3e768607b2fa99a0d461858a5da973b88f533e907ef5a527cd7a5bff0b7a4039",
+      "oldBudget": 2025000,
+      "newBudget": 2041000,
+      "headroomBytes": 538,
+      "policy": "Minimum 1,000-byte increment that contains the measured final artifact, with all compatibility/protocol/runtime checks retained."
+    },
+    "browser": {
+      "report": "browser-report.json",
+      "cases": [
+        "Late software passage receives bounded earlier definitions",
+        "Same abbreviations retain chapter-local meanings",
+        "User-confirmed terms outrank automatic references",
+        "Dynamic source replacement invalidates earlier evidence",
+        "Cancel rejects late output and retry remains usable",
+        "SPA route and article replacement isolate material identity",
+        "Restore and retranslate produce one current translation",
+        "After 90 blocks, three nested wrappers preserve adjacent definitions and previous machine wording",
+        "Native ordinary anchor jumps preserve person wording and pending-result evidence"
+      ],
+      "passed": true,
+      "summaryRequests": 4,
+      "translationRequests": 15,
+      "focusChecks": [
+        {
+          "label": "software-late-use",
+          "browserFrontmost": false
+        },
+        {
+          "label": "lab-late-use",
+          "browserFrontmost": false
+        },
+        {
+          "label": "different-article",
+          "browserFrontmost": false
+        },
+        {
+          "label": "wrapped-late-use",
+          "browserFrontmost": false
+        },
+        {
+          "label": "ordinary-anchor-use",
+          "browserFrontmost": false
+        },
+        {
+          "label": "suite-complete",
+          "browserFrontmost": false
+        }
+      ],
+      "consoleErrors": [],
+      "rawReferenceLimit": 4000,
+      "maxReferenceIncluding139CharacterWrapper": 4139,
+      "launchMode": "macos-background-cdp",
+      "focusPolicy": "launchservices-no-foreground",
+      "windowPlacement": {
+        "mode": "background-visible-no-focus",
+        "visible": true,
+        "hidden": false,
+        "centered": true,
+        "windowState": "normal",
+        "bounds": {
+          "left": 212,
+          "top": -990,
+          "width": 1280,
+          "height": 900
+        },
+        "displayTarget": "secondary",
+        "source": "macos-nsscreen",
+        "screenIndex": 1,
+        "browserFrontmost": false,
+        "frontmostBefore": {
+          "pid": 73685,
+          "name": "ChatGPT"
+        },
+        "frontmostAfter": {
+          "pid": 73685,
+          "name": "ChatGPT"
+        }
+      },
+      "temporaryProfileRemoved": true,
+      "transport": "deterministic loopback OpenAI; production browser/client/broker/provider/DOM path; no model-quality claim",
+      "sourceBindings": 20,
+      "productionFiles": 450,
+      "ordinaryAnchorEvidence": "Real href clicks generated production route events; pre-anchor machine wording and delayed pending result were preserved in later provider references."
+    },
+    "sourceSha256": {
+      "src/services/translation/context/discourse.ts": "c52aca25e35d8e1661d745c36219ac17276a707efe395bca26032bda4142160e",
+      "src/services/translation/context/pageDiscourse.ts": "bb43b749d03336bf4f1a7c91ffedf795eeab3035ae417803a95310a4c3155438",
+      "src/features/document-translation/services/translation.ts": "5372024fc88e3bf05e3f1f1fb12f8664c47513e49c01aa9be0563a459998987d",
+      "src/app/document-translation/DocumentApp.vue": "23a587173736165a33f4672c28f6eb3bd069a8364b9c77b2508c6a2bbdb605a6",
+      "src/features/full-page-translation/content/translationRequest.ts": "61c0c4cae96d927935e04223e542162a7088940a2e928fd2d8ac4d931637eeee",
+      "src/services/translation/broker.ts": "e34ba32b81aa5a1c8abdf8015582700c2fb6ef8bc4bda852714df7ca630a8075",
+      "src/services/translation/templates.ts": "15fe6fd8043dc5f989a7536908286aec2b80052715b8e2c0a4327f9c88769c06",
+      "scripts/testing/run-discourse-context-test.cjs": "112eb4255457bb7b66b382d1137b0c0876786a6b857771202fb8307899b776f7"
+    }
+  }
+}

@@ -64,7 +64,10 @@ const artifactBytes = Buffer.byteLength(source);
 // 利用原余量后预算最小增加 1 KB；含稀疏名单失效修正的最终体积与散列见网站规则报告 performance.md。
 // 最后整合 c8a06bb5f：同依赖独立 main 为 2,024,873，网站规则全部修复与优化为 2,026,916。
 // 相对主线增加 2,043 字节（0.1009%）；沿用本任务的 2,027,000 预算，余 84 字节。
-const MAX_USERSCRIPT_BYTES = 2_027_000;
+// 单篇篇章参考、完整来源证明及重挂语义复用在同依赖主线 69d41e5e1 上增加 16,503 字节（0.8142%）：
+// 独立主线产物为 2,026,916，候选为 2,043,419；利用原余量后预算最小增加 17 KB，余 581 字节。
+// 不增加抽取模型或远程依赖；完整对照、散列与运行边界见 discourse-context-20261011/verification.json。
+const MAX_USERSCRIPT_BYTES = 2_044_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);

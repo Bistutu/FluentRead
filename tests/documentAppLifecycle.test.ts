@@ -75,6 +75,25 @@ beforeEach(async () => {
 afterEach(async () => {ports.pagePending?.resolve(ports.tasks.find(value => value.role === 'preview')?.page); ports.renderPending?.resolve(); app?.unmount(); await flush(); await vi.dynamicImportSettled(); windowTimers.forEach(timer => clearTimeout(timer)); windowTimers.clear(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
 describe('documentbinaryAudit actual DocumentApp SFC ownership', () => {
+    it('keeps manually confirmed translations in the current file session and clears them on restart', async () => {
+        state.config.documentService = 'google';
+        await state.loadFiles([file('first.txt', 'First paragraph\n\nSecond paragraph')]); await flush();
+        state.editSegment(0, '人工确认译文');
+        expect(state.confirmedTranslationIds).toEqual([0]);
+        await state.loadFiles([file('second.txt', 'Another paragraph')]); await flush();
+        expect(state.confirmedTranslationIds).toEqual([]);
+        state.selectDocument(state.documentQueue[0]); await flush();
+        expect(state.confirmedTranslationIds).toEqual([0]);
+        state.editSegment(0, '  ');
+        expect(state.confirmedTranslationIds).toEqual([]);
+        state.editSegment(0, '再次确认');
+        await state.startTranslation(true); await flush();
+        expect(state.confirmedTranslationIds).toEqual([]);
+        state.editSegment(0, '确认后重置');
+        state.resetDocument(); await flush();
+        expect(state.confirmedTranslationIds).toEqual([]);
+    });
+
     it('opens a text-based formula-only PDF for source reading without provider requests or invalid progress', async () => {
         ports.pageProvider = async (_pageNumber, page) => ({...page, getTextContent: async () => ({items: [{str: 'f(x)=x', transform: [1, 0, 0, 12, 20, 50], width: 60, height: 12, fontName: 'body'}], styles: {}})});
         await state.loadFiles([file('formula-only.pdf')]); await flush();
