@@ -388,6 +388,7 @@
       "tests/documentPdfRotation.test.ts",
       "tests/pdfReaderLifecycle.test.ts",
       "tests/pdfReadingPlan.test.ts",
+      "tests/pdfReadingRegions.test.ts",
       "tests/pdfBlockFit.test.ts",
       "tests/documentHistory.test.ts",
       "tests/richPreviewSync.test.ts",

@@ -2,6 +2,7 @@ import {parseHTML} from 'linkedom';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {createRenderer, h, markRaw, nextTick, ref} from 'vue';
 import PdfReader from '@/src/features/document-translation/ui/PdfReader.vue';
+import {buildPdfReadingPlan, type PdfReadingRegionEntry} from '@/src/features/document-translation/core/pdfReadingPlan';
 import type {ParsedDocument, PdfDocumentPage} from '@/src/features/document-translation/core/document';
 import {createPdfReaderRenderPort, PDF_READER_MAX_CANVAS_EDGE, PDF_READER_MAX_PAGE_PIXELS, PDF_READER_MAX_RESIDENT_PAGES, pdfReaderCanvasSize, pdfReaderDisplayRect, pdfReaderPageHasTranslation, pdfReaderPageKey, pdfReaderPageWindow, PdfReaderScheduler, type PdfReaderPageState, type PdfReaderRenderedPage, type PdfReaderSettings} from '@/src/features/document-translation/ui/pdfReader';
 import {acquirePdfDocument, releasePdfDocument} from '@/src/features/document-translation/ui/pdfPreview';
@@ -66,7 +67,37 @@ beforeEach(() => {
 afterEach(async () => {mountedApp?.unmount(); ports.textPending?.resolve(); win.dispatchEvent(new Event('pagehide')); models.forEach(model => {if (model.binary?.kind === 'pdf') releasePdfDocument(model.binary.bytes);}); await vi.dynamicImportSettled(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 const model = (count = 1) => {const value = documentModel(count); models.push(value); return value;};
 
+// 公开论文2608.25512v1.pdf SHA390775dbc9debdcf2ed1b076eed013387ca057630be3cb594617b2b742e48cf0的实际源块与V22真实译文。
+// 这里只保留裁剪契约需要的source18/39控制字形几何；Canvas/PDF.js为受控端口，不代表实际画面或译文质量通过。
+function actualControlModel(sourcePage: 18 | 39): {document: ParsedDocument; page: PdfDocumentPage; translations: string[]} {
+    const inputs = sourcePage === 18 ? [
+        {id: 244, source: '\u0095activating if 𝜎 ⊭ 𝑑 ∧ 𝜎′ ⊧ 𝑑', target: '如果𝜎 ⊭ 𝑑 ∧ 𝜎′ ⊧ 𝑑，则禁用激活', x: 263.09653, y: 441.63040000000007, width: 148.57097000000005, height: 12.841399999999965},
+        {id: 245, source: 'notify𝑑(𝜎, 𝜎) ≔ \u0094deactivating if 𝜎 ⊧ 𝑑 ∧ 𝜎 ⊭ 𝑑 \u0093neutral', target: '若 𝜎 ⊧ 𝑑 ∧ 𝜎 ⊭ 𝑑 为中性，则 notify𝑑(𝜎, 𝜎) ≔ 停用', x: 183.34407, y: 456.62780000000004, width: 228.32343000000003, height: 24.156000000000006},
+    ] : [{id: 502, source: '\u0093idΓ', target: '\u0093idΓ', x: 184.05846, y: 659.8628000000001, width: 24.532190000000014, height: 14.62009999999998}];
+    const doc = model();
+    const segments = Array.from({length: inputs.at(-1)!.id + 1}, (_, id) => ({id, source: ''}));
+    const translations = Array(segments.length).fill('');
+    for (const input of inputs) {segments[input.id] = {id: input.id, source: input.source}; translations[input.id] = input.target;}
+    doc.segments = segments;
+    const page = {...pageModel(sourcePage, 595.2756, 841.8898), segmentIndexes: inputs.map(input => input.id),
+        blocks: inputs.map(input => ({...pageModel(1).blocks[0], segmentIndex: input.id, kind: 'text' as const, x: input.x, y: input.y, width: input.width, height: input.height}))};
+    if (doc.binary?.kind === 'pdf') doc.binary.pages = [page];
+    return {document: doc, page, translations};
+}
+
 describe('PDF reader visible page scheduling and memory bounds', () => {
+    it('keys injected readable crop identity and geometry without target metadata or image insertion order', () => {
+        const page = pageModel(1);
+        const regions: PdfReadingRegionEntry[] = [{kind: 'region', id: 'a', pageNumber: 1, role: 'formula', sourceRect: {x: 10, y: 20, width: 30, height: 40}, segmentIndexes: [-1]},
+            {kind: 'region', id: 'b', pageNumber: 1, role: 'figure', sourceRect: {x: 100, y: 200, width: 300, height: 40}, segmentIndexes: [0]}];
+        const keyed = (entries: readonly PdfReadingRegionEntry[]) => pdfReaderPageKey(page, 1, 'bilingual', 'readable', entries);
+        expect(keyed(regions)).toBe(keyed([...regions].reverse()));
+        expect(keyed(regions)).toBe(keyed(regions.map(entry => ({...entry, role: 'table', segmentIndexes: [99], pageNumber: 2}))));
+        expect(keyed(regions)).not.toBe(keyed([{...regions[0], id: 'changed'}, regions[1]]));
+        expect(keyed(regions)).not.toBe(keyed([{...regions[0], sourceRect: {...regions[0].sourceRect, width: 31}}, regions[1]]));
+        expect(keyed([])).not.toBe(pdfReaderPageKey(page, 1, 'bilingual', 'readable'));
+        expect(pdfReaderPageKey(page, 1, 'bilingual', 'layout', regions)).toBe(JSON.stringify([1, 'bilingual']));
+    });
     it('keys readable source work by scale, mode, blocks and preserved regions only, and maps all preserved-region rotations', () => {
         const page = pageModel(1);
         expect(pdfReaderPageKey(page, 1, 'bilingual', 'readable')).toBe(JSON.stringify([1, 'bilingual', 'readable', page.blocks, undefined]));
@@ -316,13 +347,43 @@ describe('PDF reader actual PDF.js resource adapter', () => {
         result.dispose(); expect(canvases.every(canvas => canvas.width === 0 && canvas.height === 0)).toBe(true); reader.dispose();
     });
 
+    it('uses the actual source18/39 plan regions at the crop port, including explicit empty regions instead of source-only fallback', async () => {
+        for (const sourcePage of [18, 39] as const) {
+            const actual = actualControlModel(sourcePage);
+            const entries = buildPdfReadingPlan(actual.document, actual.page, actual.translations).entries.filter((entry): entry is PdfReadingRegionEntry => entry.kind === 'region');
+            const sourceEntries = buildPdfReadingPlan(actual.document, actual.page, []).entries.filter(entry => entry.kind === 'region');
+            if (sourcePage === 18) {expect(entries).toEqual([]); expect(sourceEntries).toHaveLength(2);}
+            else {expect(entries).toHaveLength(1); expect(entries).toEqual(sourceEntries);}
+            const port = createPdfReaderRenderPort(actual.document);
+            const result = await port.render(actual.page, {scale: 1, mode: 'bilingual', presentation: 'readable', regionEntries: entries,
+                key: pdfReaderPageKey(actual.page, 1, 'bilingual', 'readable', entries)}, new AbortController().signal);
+            expect([...result.regions!.keys()]).toEqual(entries.map(entry => entry.id));
+            for (const entry of entries) {
+                const crop = result.regions!.get(entry.id)!;
+                expect(crop.getAttribute('data-pdf-region-id')).toBe(entry.id);
+                expect(crop.getAttribute('data-pdf-source-rect')).toBe(JSON.stringify(entry.sourceRect));
+                expect(crop.getContext('2d')!.drawImage).toHaveBeenCalledWith(result.sourceCanvas, entry.sourceRect.x * 2, entry.sourceRect.y * 2,
+                    entry.sourceRect.width * 2, entry.sourceRect.height * 2, 0, 0, crop.width, crop.height);
+            }
+            expect(canvases.reduce((sum, canvas) => sum + canvas.width * canvas.height, 0)).toBeLessThanOrEqual(PDF_READER_MAX_PAGE_PIXELS);
+            result.dispose(); port.dispose();
+            expect(canvases.every(canvas => canvas.width === 0 && canvas.height === 0)).toBe(true);
+            const sourcePort = createPdfReaderRenderPort(actual.document);
+            const sourceOnly = await sourcePort.render(actual.page, {scale: 1, mode: 'source', presentation: 'readable', regionEntries: sourceEntries,
+                key: pdfReaderPageKey(actual.page, 1, 'source', 'readable', sourceEntries)}, new AbortController().signal);
+            expect(sourceOnly.sourceCanvas).toBeTruthy(); expect(sourceOnly.regions!.size).toBe(0);
+            sourceOnly.dispose(); sourcePort.dispose();
+        }
+    });
+
     it.each([90, 180, 270] as const)('returns %i degree formula crops to canonical orientation without rotating the original page', async rotation => {
         win.devicePixelRatio = 1;
         const doc = model();
         const page = {...pageModel(1, rotation === 180 ? 612 : 792, rotation === 180 ? 792 : 612), rotation, preservedRegions: [{id: 'formula', kind: 'formula' as const, x: 50, y: 300, width: 200, height: 30}]};
         pdfPage.getViewport.mockImplementation(({scale}: {scale: number}) => ({width: page.width * scale, height: page.height * scale, scale, rotation}));
         const reader = createPdfReaderRenderPort(doc);
-        const result = await reader.render(page, {...settings('canonical-crop', 1, 'bilingual'), presentation: 'readable'}, new AbortController().signal);
+        const regionEntries: PdfReadingRegionEntry[] = [{kind: 'region', id: 'pdf-1-region-formula', pageNumber: 1, role: 'formula', sourceRect: page.preservedRegions[0], segmentIndexes: []}];
+        const result = await reader.render(page, {...settings('canonical-crop', 1, 'bilingual'), presentation: 'readable', regionEntries}, new AbortController().signal);
         const crop = [...result.regions!.values()][0]; const context = crop.getContext('2d')!;
         const rect = pdfReaderDisplayRect(page.preservedRegions[0], page);
         // 画布固定按 2 倍像素比渲染，即使窗口报告的像素比是 1。
@@ -341,7 +402,8 @@ describe('PDF reader actual PDF.js resource adapter', () => {
     it('reserves every thin region pixel and keeps the combined source/crop budget bounded after integer rounding', async () => {
         const doc = model(); const reader = createPdfReaderRenderPort(doc);
         const page = {...pageModel(1), preservedRegions: Array.from({length: 250}, (_, index) => ({id: `thin-${index}`, kind: 'formula' as const, x: 50, y: 100 + index * 2.5, width: 500, height: .0001}))};
-        const result = await reader.render(page, {...settings('thin-crops', 1.5, 'bilingual'), presentation: 'readable'}, new AbortController().signal);
+        const regionEntries: PdfReadingRegionEntry[] = page.preservedRegions.map(region => ({kind: 'region', id: `pdf-1-region-${region.id}`, pageNumber: 1, role: region.kind, sourceRect: region, segmentIndexes: []}));
+        const result = await reader.render(page, {...settings('thin-crops', 1.5, 'bilingual'), presentation: 'readable', regionEntries}, new AbortController().signal);
         expect(result.regions!.size).toBe(250);
         expect([...result.regions!.values()].every(canvas => canvas.width >= 1 && canvas.height >= 1)).toBe(true);
         expect(canvases.reduce((sum, canvas) => sum + canvas.width * canvas.height, 0)).toBeLessThanOrEqual(PDF_READER_MAX_PAGE_PIXELS);
@@ -590,9 +652,13 @@ describe('PDF reader actual Vue component reading interaction', () => {
         const {root, state} = mountReader(doc, 'bilingual', ['译文'], {presentation: 'readable'});
         await vi.waitFor(() => expect(root.querySelector('[data-pdf-region-id="pdf-1-region-formula"] canvas')).toBeTruthy());
         const host = root.querySelector('.pdf-region-canvas') as HTMLElement;
-        expect(host.style.width).toBe('300px'); expect(host.style.getPropertyValue('aspectRatio')).toBe('200 / 30');
+        const rect = JSON.parse(root.querySelector('figure[data-pdf-region-id="pdf-1-region-formula"]')!.getAttribute('data-pdf-source-rect')!);
+        expect(rect.x).toBeLessThanOrEqual(50); expect(rect.y).toBeLessThanOrEqual(300);
+        expect(rect.x + rect.width).toBeGreaterThanOrEqual(250); expect(rect.y + rect.height).toBeGreaterThanOrEqual(330);
+        expect(host.style.width).toBe(`${rect.width * 1.5}px`); expect(host.style.getPropertyValue('aspectRatio')).toBe(`${rect.width} / ${rect.height}`);
+        expect(root.querySelector('[data-pdf-resource="region"]')!.getAttribute('data-pdf-source-rect')).toBe(JSON.stringify(rect));
         state.zoom = '1.5'; await componentFlush();
-        expect(host.style.width).toBe('450px'); expect(host.style.getPropertyValue('aspectRatio')).toBe('200 / 30');
+        expect(host.style.width).toBe(`${rect.width * 1.5 * 1.5}px`); expect(host.style.getPropertyValue('aspectRatio')).toBe(`${rect.width} / ${rect.height}`);
         expect(root.querySelector('[data-pdf-resource="source"]')).toBeTruthy();
     });
 
@@ -620,6 +686,61 @@ describe('PDF reader actual Vue component reading interaction', () => {
         state.zoom = '1.5'; await componentFlush(); flushFrames(); await componentFlush();
         expect(second.getBoundingClientRect().top).toBe(before); expect(state.currentPage).toBe(1);
         mountedApp.unmount(); mountedApp = undefined; await componentFlush(); expect(frames.size).toBe(0);
+    });
+
+    it('keeps actual plan source-control crops identical to the DOM and redraws only when their geometry or identity changes', async () => {
+        const actual = actualControlModel(18);
+        const {root, state, currentTranslations} = mountReader(actual.document, 'bilingual', actual.translations, {presentation: 'readable'});
+        await vi.waitFor(() => expect(root.querySelector('[data-pdf-resource="source"]')).toBeTruthy());
+        await componentFlush(); flushFrames(); await componentFlush();
+        expect(root.querySelectorAll('[data-pdf-resource="region"]')).toHaveLength(0);
+        const firstSource = root.querySelector('[data-pdf-resource="source"]') as HTMLCanvasElement;
+        const initialRenders = pdfPage.render.mock.calls.length;
+        const changed = [...actual.translations]; changed[244] = actual.document.segments[244].source;
+        currentTranslations.value = changed;
+        await componentFlush(); flushFrames(); await componentFlush();
+        await vi.waitFor(() => expect(root.querySelectorAll('[data-pdf-resource="region"]')).toHaveLength(1));
+        const figure = root.querySelector('figure[data-pdf-region-id]')!;
+        const crop = figure.querySelector('[data-pdf-resource="region"]')!;
+        expect(crop.getAttribute('data-pdf-region-id')).toBe(figure.getAttribute('data-pdf-region-id'));
+        expect(crop.getAttribute('data-pdf-source-rect')).toBe(figure.getAttribute('data-pdf-source-rect'));
+        expect(firstSource).toMatchObject({width: 0, height: 0});
+        expect(pdfPage.render).toHaveBeenCalledTimes(initialRenders + 1);
+        const geometryRenders = pdfPage.render.mock.calls.length;
+        const retainedSource = root.querySelector('[data-pdf-resource="source"]');
+        const updated = [...changed]; updated[245] += '追加校订。'; currentTranslations.value = updated;
+        await componentFlush(); flushFrames(); await componentFlush();
+        expect(root.querySelector('[data-pdf-segment-index="245"]')!.textContent).toBe(updated[245]);
+        expect(pdfPage.render).toHaveBeenCalledTimes(geometryRenders);
+        expect(root.querySelector('[data-pdf-resource="source"]')).toBe(retainedSource);
+        expect(figure.querySelector('[data-pdf-resource="region"]')).toBe(crop);
+        currentTranslations.value = actual.translations;
+        await componentFlush(); flushFrames(); await componentFlush();
+        await vi.waitFor(() => expect(pdfPage.render).toHaveBeenCalledTimes(geometryRenders + 1));
+        expect(root.querySelectorAll('[data-pdf-resource="region"]')).toHaveLength(0);
+        expect(crop).toMatchObject({width: 0, height: 0});
+        expect(state.residentIndexes).toHaveLength(1);
+        expect(canvases.reduce((sum, canvas) => sum + canvas.width * canvas.height, 0)).toBeLessThanOrEqual(PDF_READER_MAX_PAGE_PIXELS);
+    });
+
+    it('cancels a late readable crop job when the actual source39 C1 target changes its region set', async () => {
+        const actual = actualControlModel(39), pending = deferred<void>(), cancel = vi.fn();
+        pdfPage.render.mockImplementationOnce(() => ({promise: pending.promise, cancel}));
+        const {root, currentTranslations} = mountReader(actual.document, 'bilingual', actual.translations, {presentation: 'readable'});
+        await vi.waitFor(() => expect(pdfPage.render).toHaveBeenCalledOnce());
+        const staleSource = canvases[0];
+        const changed = [...actual.translations]; changed[502] = '实际校订后的恒等映射Γ'; currentTranslations.value = changed;
+        await componentFlush(); flushFrames(); await componentFlush();
+        await vi.waitFor(() => expect(pdfPage.render).toHaveBeenCalledTimes(2));
+        await vi.waitFor(() => expect(root.querySelector('[data-pdf-resource="source"]')).toBeTruthy());
+        expect(cancel).toHaveBeenCalled(); expect(staleSource).toMatchObject({width: 0, height: 0});
+        expect(root.querySelectorAll('[data-pdf-resource="region"]')).toHaveLength(0);
+        expect(root.querySelector('[data-pdf-segment-index="502"]')!.textContent).toBe(changed[502]);
+        const currentSource = root.querySelector('[data-pdf-resource="source"]');
+        pending.resolve(); await componentFlush(); flushFrames(); await componentFlush();
+        expect(root.querySelector('[data-pdf-resource="source"]')).toBe(currentSource);
+        expect(root.querySelectorAll('[data-pdf-resource="region"]')).toHaveLength(0);
+        expect(pdfPage.render).toHaveBeenCalledTimes(2);
     });
 
     it('renders complete selectable HTML, preserves original graph regions and updates translations without redrawing original PDF pages', async () => {

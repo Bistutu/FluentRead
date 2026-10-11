@@ -1,7 +1,7 @@
 /**
  * @file src/features/document-translation/core/pdfTextLayout.ts
  * 文件职责：将 PDF 阅读计划中的完整文字和原图区域分页为可读的下载版面。
- * 主要内容：正文固定可读字号与行距，按字素和词边界换行并缓存字宽；长段落与超高原图跨页续排，保留每个字符和图像区域，不缩小文字、不裁剪译文；每页绘制项使用标准 PDF 点坐标。
+ * 主要内容：正文固定可读字号与行距，按字素和词边界换行并缓存字宽；整页可容纳的公式或插图整体换页，长段落与真实超高原图跨页续排，保留每个字符和图像区域，不缩小文字、不裁剪译文；每页绘制项使用标准 PDF 点坐标。
  * 模块边界：只消费纯阅读计划和注入的字体测量，不使用 DOM、Canvas、浏览器 API 或文件 I/O；具体绘制与编码由 PDF 光栅端口负责。
  */
 import type {PdfReadingPlan, PdfReadingRect} from './pdfReadingPlan';
@@ -124,7 +124,8 @@ export function paginatePdfReadingPlan(plan: PdfReadingPlan, measure: PdfTextMea
             if (!(totalHeight > 0)) continue;
             let consumed = 0;
             while (consumed < rect.height) {
-                ensure(Math.min(80, rect.height * scale));
+                // 整页能容纳的公式或图表保持原像素整体；只有真实超高图片继续条带分页。
+                ensure(totalHeight <= bottom - margin ? totalHeight : Math.min(80, rect.height * scale));
                 const sourceHeight = Math.min(rect.height - consumed, (bottom - y) / scale);
                 const drawHeight = sourceHeight * scale;
                 if (!(sourceHeight > 0) || !Number.isFinite(sourceHeight) || consumed + sourceHeight <= consumed) throw new Error('PDF 原图分页无法继续，请重新打开文件');

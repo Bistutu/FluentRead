@@ -77,6 +77,15 @@ describe('PDF fixed-font complete-text pagination', () => {
         const narrow = {...plan, entries: [{kind: 'region' as const, id: 'wide', pageNumber: 1, role: 'table', sourceRect: {x: 0, y: 0, width: 1000, height: 10}, segmentIndexes: []}]};
         expect(paginatePdfReadingPlan(narrow, measure)[0].items[0]).toMatchObject({width: 528, height: 5.28});
     });
+    it('moves an entire fitting formula to the next page rather than clipping it to the remaining space', () => {
+        const prior = textPlan('前文\n'.repeat(31)).entries[0];
+        const picture = {kind: 'region' as const, id: 'formula', pageNumber: 1, role: 'formula', sourceRect: {x: 20, y: 30, width: 352, height: 80}, segmentIndexes: []};
+        const pages = paginatePdfReadingPlan({pageNumber: 1, hasTranslation: true, entries: [prior, picture]}, measure);
+        expect(pages).toHaveLength(2); expect(pages[0].items.every(item => item.kind === 'text')).toBe(true);
+        expect(pages[1].items).toEqual([{kind: 'region', entryId: 'formula', sourceRect: picture.sourceRect, x: 42, y: 42, width: 528, height: 120}]);
+        const exact = {...picture, sourceRect: {...picture.sourceRect, height: 472}};
+        expect(paginatePdfReadingPlan({pageNumber: 1, hasTranslation: true, entries: [prior, exact]}, measure)[1].items[0]).toMatchObject({height: 708, sourceRect: exact.sourceRect});
+    });
     it('rejects unbounded source strips and consumes subpixel tails without extra loops', () => {
         const region = (width: number, height: number): PdfReadingPlan => ({pageNumber: 1, hasTranslation: true, entries: [{kind: 'region', id: 'r', pageNumber: 1, role: 'figure', sourceRect: {x: 0, y: 0, width, height}, segmentIndexes: []}]});
         expect(() => paginatePdfReadingPlan(region(100, Number.MAX_VALUE), measure)).toThrow('合理页数');
@@ -91,7 +100,7 @@ describe('PDF fixed-font complete-text pagination', () => {
     });
     it('fails fast when a damaged geometry port changes its validated height before strip consumption', () => {
         // 防御性 fault injection：正常解析的 PDF 使用稳定数据对象；这里显式模拟读取途中损坏的端口。
-        const heights = [100, 100, 100, 100, 100, -1];
+        const heights = [100, 100, 100, 100, -1];
         const sourceRect = {x: 0, y: 0, width: 100, get height() {return heights.shift() ?? -1;}};
         const plan: PdfReadingPlan = {pageNumber: 1, hasTranslation: true, entries: [
             {kind: 'region', id: 'damaged', pageNumber: 1, role: 'figure', sourceRect, segmentIndexes: []},
