@@ -207,6 +207,7 @@ export class VideoAiFullCaptureController {
   private fullCaptureFinished = false;
   private fullNextWindowStartMs = 0;
   private fullNextWindowOverlapMs = 0;
+  private fullAttributedSpeechEndMs = 0;
   private fullWindowLengthMs = 0;
   private fullWindowStepMs = 0;
   private fullWindowSequence = 0;
@@ -995,13 +996,19 @@ export class VideoAiFullCaptureController {
         if (result.skipped) throw new Error('本地视频 AI 完整识别请求被跳过，请重试');
       }
       if (!this.isCurrentSession(session)) throw new Error(FULL_CANCELLED_ERROR);
+      // 重叠窗口开头会重新带上前一窗已经归属的词尾；把该终点交给对齐器，
+      // 让下一句从其后的停顿之后起声，而不是贴在上一句的结尾。
+      const segments = alignVideoAiSegmentsToSpeech(window.pcm, result.segments?.length
+        ? result.segments : [{startMs: 0, endMs: chunk.durationMs, text: result.text}],
+      this.fullAttributedSpeechEndMs - window.startMs);
+      this.fullAttributedSpeechEndMs = window.startMs
+        + Math.max(0, ...segments.map(segment => segment.endMs!));
       const cues = this.fullTranscriptionStabilizer.ingest({
         startMs: window.startMs,
         durationMs: chunk.durationMs,
         availableAtMs: 0,
         text: result.text,
-        segments: alignVideoAiSegmentsToSpeech(window.pcm, result.segments?.length
-          ? result.segments : [{startMs: 0, endMs: chunk.durationMs, text: result.text}]),
+        segments,
       });
       this.fullFallbackCues = this.absorbCues(cues, this.fullCuesById, this.fullFallbackCues);
       if (this.options.onCuesProgress) {
@@ -1039,6 +1046,7 @@ export class VideoAiFullCaptureController {
     this.fullCaptureFinished = false;
     this.fullNextWindowStartMs = 0;
     this.fullNextWindowOverlapMs = 0;
+    this.fullAttributedSpeechEndMs = 0;
     this.fullWindowLengthMs = 0;
     this.fullWindowStepMs = 0;
     this.fullWindowSequence = 0;

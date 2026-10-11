@@ -377,6 +377,64 @@ describe('本地 AI 完整生成控制器的安全边界', () => {
   });
 });
 
+describe('本地 AI 完整模式重叠窗口的句首对齐', () => {
+  it('重叠窗口重新带上前句词尾时，下一句从其后的停顿之后起声', async () => {
+    // 复现 X 夹具：三句话之间各有约 1.4 秒停顿，停顿内的编码底噪起伏使第一窗
+    // 不按停顿切开，第二窗因此从 8.8 秒重叠起步并带上第二句最后 190 ms。
+    const speechRanges = [[0, 3_830], [5_230, 8_990], [10_410, 13_700]];
+    const audio = new Float32Array(13_740 * 16);
+    for (let frame = 0; frame * 320 < audio.length; frame += 1) {
+      audio.fill(frame % 2 ? 0.0013 : 0.001, frame * 320, (frame + 1) * 320);
+    }
+    for (const [start, end] of speechRanges) audio.fill(0.1, start * 16, end * 16);
+    class AudioContextStub {
+      state: AudioContextState = 'running';
+      async close(): Promise<void> { this.state = 'closed'; }
+    }
+    const chunks: VideoAiAudioChunk[] = [];
+    const transcribe = vi.fn(async (chunk: VideoAiAudioChunk) => {
+      chunks.push({...chunk, pcm: new Float32Array()});
+      return chunk.startMs === 0
+        ? {text: 'At sunrise the team opened the lab. A few moments later the results appeared.', segments: [
+          {startMs: 0, endMs: 4_160, text: 'At sunrise the team opened the lab.'},
+          {startMs: 4_160, endMs: 9_000, text: 'A few moments later the results appeared.'},
+        ]}
+        : {text: 'The speaker reviewed the numbers carefully.', segments: [
+          {startMs: 0, endMs: chunk.durationMs, text: 'The speaker reviewed the numbers carefully.'},
+        ]};
+    });
+    let completed: {startMs: number; spokenEndMs: number; text: string}[] = [];
+    vi.stubGlobal('window', { AudioContext: AudioContextStub, setTimeout, clearTimeout });
+    const controller = new VideoAiFullCaptureController({
+      getVideo: () => ({
+        currentSrc: 'blob:https://x.com/mse', src: '', duration: 13.74, currentTime: 0, paused: true,
+        playbackRate: 1, muted: false, volume: 1,
+        captureStream: () => ({ getAudioTracks: () => [] }), pause: vi.fn(), play: vi.fn(async () => undefined),
+      }) as unknown as HTMLVideoElement,
+      getAudio: async () => audio,
+      getModel: () => 'tiny',
+      isSupported: () => true,
+      transcribe,
+      onTranscriptionComplete: async (cues) => {
+        completed = cues.map(({startMs, spokenEndMs, text}) => ({startMs, spokenEndMs, text}));
+      },
+      onError: vi.fn(),
+      onStateChange: () => undefined,
+    });
+    expect(controller.start()).toBe(true);
+    for (let index = 0; index < 60 && controller.getPhase() !== 'ready'; index += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+    expect(controller.getPhase()).toBe('ready');
+    expect(chunks.map(chunk => [chunk.startMs, chunk.durationMs])).toEqual([[0, 10_000], [8_800, 4_940]]);
+    expect(completed).toEqual([
+      {startMs: 0, spokenEndMs: 3_880, text: 'At sunrise the team opened the lab.'},
+      {startMs: 5_180, spokenEndMs: 9_040, text: 'A few moments later the results appeared.'},
+      {startMs: 10_360, spokenEndMs: 13_740, text: 'The speaker reviewed the numbers carefully.'},
+    ]);
+  });
+});
+
 class FullFakeNode {
   connect(): this { return this; }
   disconnect(): void {}
