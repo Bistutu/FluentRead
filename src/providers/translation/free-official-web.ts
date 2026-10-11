@@ -1,7 +1,7 @@
 /**
  * @file src/providers/translation/free-official-web.ts
  * 文件职责：直连阿里翻译、ModernMT、Lara 与 Lingvanex 的官方匿名网页服务。
- * 主要内容：按码点预算且不切术语标记，按供应商协议处理临时网页参数、公开校验签名、语言映射与安全错误，保留文本槽、换行和空白；所有请求省略 Cookie，官网参数仅在本次调用中使用。
+ * 主要内容：按码点预算且不切术语标记，按供应商协议处理临时网页参数、公开校验签名、语言映射与安全错误，保留文本槽、换行和空白；所有请求省略 Cookie，官网参数仅在本次调用中使用，已发请求的未读正文结算后才结束候选。
  * 模块边界：只访问固定供应商官方端点，不读取用户凭据、代理或存储；超时、并发、竞争和冷却由免费翻译编排层负责。
  */
 import MD5 from 'crypto-js/md5';
@@ -39,6 +39,14 @@ function checkAbort(signal?: AbortSignal): void {
     if (signal?.aborted) throw abortErrorFromSignal(signal);
 }
 
+/** 错误或迟到取消仍等未读正文结束，清理失败不覆盖原始分类。 */
+async function settleUnreadResponse(response: Response): Promise<void> {
+    if (!response.bodyUsed) {
+        try {await response.clone().arrayBuffer();}
+        catch { /* 保留原始 HTTP、取消或协议错误。 */ }
+    }
+}
+
 function failure(statusCode = 502): Error {
     const freeFailure = statusCode === 429 ? 'rate-limit'
         : statusCode === 402 || statusCode === 456 ? 'quota'
@@ -73,11 +81,13 @@ function providerLanguage(provider: OfficialFreeWebProvider, code: string): stri
 async function json(url: string, init: RequestInit, signal?: AbortSignal): Promise<WebResponse | null> {
     checkAbort(signal);
     const response = await runtimeFetch(url, {...init, credentials: 'omit', signal});
-    checkAbort(signal);
-    if (!response.ok) throw createHttpStatusError(response, '官方网页翻译请求失败');
-    const result = await readJsonResponse<WebResponse | null>(response, '官方网页翻译返回的不是有效 JSON');
-    checkAbort(signal);
-    return result;
+    try {
+        checkAbort(signal);
+        if (!response.ok) throw createHttpStatusError(response, '官方网页翻译请求失败');
+        const result = await readJsonResponse<WebResponse | null>(response, '官方网页翻译返回的不是有效 JSON');
+        checkAbort(signal);
+        return result;
+    } finally {await settleUnreadResponse(response);}
 }
 
 async function translateChunk(provider: OfficialFreeWebProvider, text: string, source: string, target: string, signal?: AbortSignal): Promise<string> {
@@ -110,12 +120,16 @@ async function translateChunk(provider: OfficialFreeWebProvider, text: string, s
     } else {
         checkAbort(signal);
         const response = await runtimeFetch(LINGVANEX_HOME, {method: 'GET', credentials: 'omit', signal});
-        checkAbort(signal);
-        if (!response.ok) throw createHttpStatusError(response, 'Lingvanex 官网请求失败');
-        const html = await response.text();
-        checkAbort(signal);
-        const auth = html.match(/const\s+API_BEARER_TOKEN\s*=\s*"(Bearer [a-zA-Z0-9_-]{1,256})"/u)?.[1];
-        if (!auth) throw failure();
+        let auth: string;
+        try {
+            checkAbort(signal);
+            if (!response.ok) throw createHttpStatusError(response, 'Lingvanex 官网请求失败');
+            const html = await response.text();
+            checkAbort(signal);
+            const match = html.match(/const\s+API_BEARER_TOKEN\s*=\s*"(Bearer [a-zA-Z0-9_-]{1,256})"/u)?.[1];
+            if (!match) throw failure();
+            auth = match;
+        } finally {await settleUnreadResponse(response);}
         result = await json(LINGVANEX_URL, {method: 'POST', headers: {'Content-Type': 'application/json', Authorization: auth},
             body: JSON.stringify({...(source ? {from: source} : {}), to: target, text, platform: 'dp'})}, signal);
         if (result?.err) throw failure(businessStatus(result.err?.code));

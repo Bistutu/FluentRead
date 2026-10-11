@@ -1,7 +1,7 @@
 /**
  * @file src/providers/translation/bilibili-free.ts
  * 文件职责：适配 B站 Index-Translate 官方匿名文本翻译 API。
- * 主要内容：按码点预算且不切术语标记，固定模型与端点、关闭思考输出，按 Unicode 码点有界分块，保护全文文本槽、换行和边缘空白，拒绝截断、空值及损坏响应并透传取消和 HTTP 状态。
+ * 主要内容：按码点预算且不切术语标记，固定模型与端点、关闭思考输出，按 Unicode 码点有界分块，保护全文文本槽、换行和边缘空白，拒绝截断、空值及损坏响应并透传取消和 HTTP 状态，取消或错误响应也等待未读正文结算后归还容量。
  * 模块边界：仅通过 runtimeFetch 请求官方服务，不读取用户密钥、Cookie、代理或可编辑请求体；Origin 兼容由扩展后台网络层处理，独立入口与免费池共用协议，调度与换线由上层编排负责。
  */
 import {config} from '@/src/services/config/store';
@@ -42,17 +42,24 @@ async function translateChunk(text: string, source: string, target: string, sign
             chat_template_kwargs: {enable_thinking: false},
         }),
     });
-    checkAbort(signal);
-    if (!response.ok) throw createHttpStatusError(response, 'B站翻译请求失败');
-    const data = await readJsonResponse<{choices?: Array<{finish_reason?: unknown; message?: {content?: unknown}}> } | null>(response, 'B站翻译返回的不是有效 JSON');
-    checkAbort(signal);
-    const choice = data?.choices?.[0];
-    const content = choice?.message?.content;
-    if (choice?.finish_reason === 'length' || typeof content !== 'string') throw new Error('B站翻译返回的译文不完整');
-    // 兼容供应商偶发的完整思考块；未闭合思考块不能作为译文返回。
-    const result = content.replace(/<think>[\s\S]*?<\/think>/gu, '').trim();
-    if (!result || result.includes('<think>') || result.includes('</think>')) throw new Error('B站翻译没有返回有效译文');
-    return result;
+    try {
+        checkAbort(signal);
+        if (!response.ok) throw createHttpStatusError(response, 'B站翻译请求失败');
+        const data = await readJsonResponse<{choices?: Array<{finish_reason?: unknown; message?: {content?: unknown}}> } | null>(response, 'B站翻译返回的不是有效 JSON');
+        checkAbort(signal);
+        const choice = data?.choices?.[0];
+        const content = choice?.message?.content;
+        if (choice?.finish_reason === 'length' || typeof content !== 'string') throw new Error('B站翻译返回的译文不完整');
+        // 兼容供应商偶发的完整思考块；未闭合思考块不能作为译文返回。
+        const result = content.replace(/<think>[\s\S]*?<\/think>/gu, '').trim();
+        if (!result || result.includes('<think>') || result.includes('</think>')) throw new Error('B站翻译没有返回有效译文');
+        return result;
+    } finally {
+        // 取消或错误 headers 不能让候选 Promise 先于未读正文结束；读取失败保留原错误。
+        if (!response.bodyUsed) {
+            try { await response.clone().arrayBuffer(); } catch {}
+        }
+    }
 }
 
 async function translatePlain(text: string, source: string, target: string, signal?: AbortSignal): Promise<string> {

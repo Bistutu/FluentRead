@@ -48,6 +48,23 @@ async function flush<T>(promise: Promise<T>): Promise<T> {
     return promise;
 }
 
+async function scheduledGoogle(maxConcurrentTranslations = 1) {
+    const {createTranslationRequestScheduler} = await import('@/src/services/translation/requestScheduler');
+    const {attachTranslationRequestScheduler} = await import('@/src/services/translation/requestSnapshot');
+    const scheduler = createTranslationRequestScheduler(() => ({
+        maxConcurrentTranslations, translationRequestsPerSecond: 0, translationRequestsPerMinute: 0,
+    }));
+    const identity = {service: 'google'};
+    return {
+        scheduler,
+        start: (origin: string, signal?: AbortSignal, requestTimeoutMs = 5_000) => scheduler.schedule(lease => api.default(
+            attachTranslationRequestScheduler({
+                origin, sourceLanguage: 'en', targetLanguage: 'zh-Hans', abortSignal: signal, requestTimeoutMs,
+            }, scheduler, identity, lease),
+        ), {signal, identity}),
+    };
+}
+
 beforeEach(async () => {
     vi.resetModules();
     vi.useFakeTimers();
@@ -486,6 +503,142 @@ describe('Google 动态优先级', () => {
 });
 
 describe('Google 合批取消所有权', () => {
+    it.each(['resolve', 'reject'] as const)('取消 owner 后等待真实 HTTP %s，再归还用户并发槽', async settlement => {
+        let settle!: (response: Response) => void;
+        let fail!: (error: unknown) => void;
+        fetchMock.mockImplementationOnce(() => new Promise((resolve, reject) => {settle = resolve; fail = reject;}))
+            .mockImplementation(async (url, init) => successfulResponse(url, requestData(url, init).texts.map(() => '下一条译文')));
+        const {start} = await scheduledGoogle();
+        const owner = new AbortController();
+        const first = start('First readable paragraph', owner.signal).catch(error => error);
+        await vi.advanceTimersByTimeAsync(120);
+        expect(fetchMock).toHaveBeenCalledOnce();
+        owner.abort();
+        await expect(first).resolves.toMatchObject({name: 'AbortError'});
+        const next = start('Next readable paragraph');
+        try {
+            await vi.advanceTimersByTimeAsync(200);
+            expect(fetchMock).toHaveBeenCalledOnce();
+        } finally {
+            if (settlement === 'resolve') settle(response([['迟到译文']]));
+            else fail(new TypeError('Physical HTTP stopped after owner cancellation'));
+            await vi.advanceTimersByTimeAsync(200);
+            await expect(next).resolves.toBe('下一条译文');
+        }
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('owner 总超时立即返回，真实请求结算前仍占用户并发槽', async () => {
+        let fail!: (error: unknown) => void;
+        fetchMock.mockImplementationOnce(() => new Promise((_resolve, reject) => {fail = reject;}))
+            .mockImplementation(async (url, init) => successfulResponse(url, requestData(url, init).texts.map(() => '后续译文')));
+        const {start} = await scheduledGoogle();
+        const first = start('Slow readable paragraph', undefined, 500).catch(error => error);
+        await vi.advanceTimersByTimeAsync(500);
+        await expect(first).resolves.toMatchObject({message: expect.stringContaining('请求超时')});
+        expect(fetchMock.mock.calls[0]![1]!.signal!.aborted).toBe(true);
+        const next = start('Another readable paragraph');
+        try {
+            await vi.advanceTimersByTimeAsync(200);
+            expect(fetchMock).toHaveBeenCalledOnce();
+        } finally {
+            fail(new TypeError('Physical HTTP settled after timeout'));
+            await vi.advanceTimersByTimeAsync(200);
+            await expect(next).resolves.toBe('后续译文');
+        }
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('取消一个共享批次 owner 后，它的用户并发槽仍等整批真实响应结束', async () => {
+        let settle!: (response: Response) => void;
+        fetchMock.mockImplementationOnce(() => new Promise(resolve => {settle = resolve;}))
+            .mockImplementation(async (url, init) => successfulResponse(url, requestData(url, init).texts.map(() => '第三条译文')));
+        const {start} = await scheduledGoogle(2);
+        const owner = new AbortController();
+        const first = start('First owner prose', owner.signal).catch(error => error);
+        const second = start('Second owner prose');
+        await vi.advanceTimersByTimeAsync(120);
+        expect(requestData(...fetchMock.mock.calls[0]!).texts).toHaveLength(2);
+        owner.abort(); await expect(first).resolves.toMatchObject({name: 'AbortError'});
+        expect(fetchMock.mock.calls[0]![1]!.signal!.aborted).toBe(false);
+        const third = start('Third owner prose');
+        try {
+            await vi.advanceTimersByTimeAsync(200);
+            expect(fetchMock).toHaveBeenCalledOnce();
+        } finally {
+            settle(response([['第一条译文', '第二条译文']]));
+            await expect(second).resolves.toBe('第二条译文');
+            await vi.advanceTimersByTimeAsync(200);
+            await expect(third).resolves.toBe('第三条译文');
+        }
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('取消读取正文中的 owner 后保持并发槽，直到真实响应正文结束', async () => {
+        let finishBody!: (body: string) => void;
+        const firstResponse = response([['译文']]);
+        firstResponse.text = vi.fn(() => new Promise<string>(resolve => {finishBody = resolve;}));
+        fetchMock.mockResolvedValueOnce(firstResponse)
+            .mockImplementation(async (url, init) => successfulResponse(url, requestData(url, init).texts.map(() => '下一条译文')));
+        const {start} = await scheduledGoogle();
+        const owner = new AbortController();
+        const first = start('Paragraph with a slow response body', owner.signal).catch(error => error);
+        await vi.advanceTimersByTimeAsync(120);
+        expect(firstResponse.text).toHaveBeenCalledOnce();
+        owner.abort(); await expect(first).resolves.toMatchObject({name: 'AbortError'});
+        const next = start('Paragraph after a slow response body');
+        try {
+            await vi.advanceTimersByTimeAsync(200);
+            expect(fetchMock).toHaveBeenCalledOnce();
+        } finally {
+            finishBody(JSON.stringify([['迟到正文']]));
+            await vi.advanceTimersByTimeAsync(200);
+            await expect(next).resolves.toBe('下一条译文');
+        }
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it.each([200, 500])('取消后迟到 HTTP %s headers 的正文也结束后才归还用户并发槽', async status => {
+        let finishFetch!: (value: Response) => void;
+        let finishBody!: (body: string) => void;
+        const lateResponse = response('', status);
+        lateResponse.text = vi.fn(() => new Promise<string>(resolve => {finishBody = resolve;}));
+        fetchMock.mockImplementationOnce(() => new Promise(resolve => {finishFetch = resolve;}))
+            .mockImplementation(async (url, init) => successfulResponse(url, requestData(url, init).texts.map(() => '后续译文')));
+        const {start} = await scheduledGoogle();
+        const owner = new AbortController();
+        const first = start('Cancelled before response headers', owner.signal).catch(error => error);
+        await vi.advanceTimersByTimeAsync(120);
+        owner.abort(); await expect(first).resolves.toMatchObject({name: 'AbortError'});
+        const next = start('Paragraph after a late response');
+        finishFetch(lateResponse);
+        try {
+            await vi.advanceTimersByTimeAsync(200);
+            expect(lateResponse.text).toHaveBeenCalledOnce();
+            expect(fetchMock).toHaveBeenCalledOnce();
+        } finally {
+            finishBody(status === 200 ? JSON.stringify([['迟到译文']]) : 'Late provider failure');
+            await vi.advanceTimersByTimeAsync(200);
+            await expect(next).resolves.toBe('后续译文');
+        }
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('收集窗内取消的 owner 未持有任何物理批次，不阻塞下一个用户请求', async () => {
+        fetchMock.mockImplementation(async (url, init) => successfulResponse(url, requestData(url, init).texts.map(() => '唯一译文')));
+        const {start} = await scheduledGoogle();
+        const owner = new AbortController();
+        const cancelled = start('Cancelled in collection window', owner.signal).catch(error => error);
+        owner.abort(); await expect(cancelled).resolves.toMatchObject({name: 'AbortError'});
+        const next = start('Remaining owner paragraph');
+        await vi.advanceTimersByTimeAsync(120);
+        await expect(next).resolves.toBe('唯一译文');
+        expect(fetchMock).toHaveBeenCalledOnce();
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
     it('许可交付到 fetch 前取消或越过绝对截止时间时归还许可并发送零请求', async () => {
         vi.setSystemTime(0);
         const owner = new AbortController();

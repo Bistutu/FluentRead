@@ -1,7 +1,7 @@
 /**
  * @file src/services/translation/freeFallback.ts
  * 文件职责：在健康免费服务间加权均衡并自动回退，持久遵守各类错误的恢复窗口。
- * 主要内容：协调总预算、单次超时、服务并发与间隔、错误退避、恢复单探测、异步持久化、有预算的延迟备用竞争、取消代际保护；在线路容量或间隔等待时归还全局许可并于唤醒后重新校验，结构化区分总截止时间和线路耗尽，把特定文本的原文回显或明显错语种结果作为不冷却线路的请求失败，并向调用方旁路上报每次线路尝试的结果与耗时。
+ * 主要内容：协调总预算、单次超时、服务并发与间隔、错误退避、恢复单探测、异步持久化、有预算的延迟备用竞争、取消代际保护；公开调用在取消或超时后及时结束，候选和总并发许可仍跟随实际在途 Promise 及内部传输租约结算；线路容量或间隔等待不占许可，唤醒后重新校验；无剩余容量时不追加竞速，把特定文本的无效结果作为不冷却线路的请求失败，并旁路上报每次尝试。
  * 模块边界：只接收匿名身份、provider 回调和注入的存储端口；不读取用户配置或供应商凭据。
  */
 import {abortErrorFromSignal} from '@/src/platform/http/runtime';
@@ -12,13 +12,17 @@ import {
     getDynamicFreeProviderWeight, observeFreeProviderPerformance, type FreeProviderPerformance,
 } from './freeRoutingPolicy';
 
+/** 每条候选及其内部传输共享真实在途生命周期，可继续传给 broker 的外层租约。 */
+export interface FreeFallbackLease {
+    holdUntil(settlement: PromiseLike<unknown>): void;
+}
 export interface FreeFallbackCandidate {
     readonly identity: string;
     readonly label: string;
     readonly weight?: number;
     readonly maxConcurrency?: number;
     readonly minIntervalMs?: number;
-    readonly translate: (signal: AbortSignal) => Promise<unknown>;
+    readonly translate: (signal: AbortSignal, lease: FreeFallbackLease) => Promise<unknown>;
 }
 export type FreeFallbackAttemptOutcome = 'success' | 'error' | 'timeout' | 'cancelled';
 export interface FreeFallbackAttempt {
@@ -28,6 +32,8 @@ export interface FreeFallbackAttempt {
 }
 export interface FreeFallbackOptions {
     readonly signal?: AbortSignal;
+    /** 后台 provider 已持有的租约；回退获胜或取消不能提前归还仍在途的传输槽。 */
+    readonly lease?: FreeFallbackLease;
     /** 每次真实线路尝试结束后的旁路观察；只接收身份、结果和耗时。 */
     readonly onAttempt?: (attempt: FreeFallbackAttempt) => void;
     readonly timeoutMs: number;
@@ -94,24 +100,43 @@ function safeFailure(error: unknown): string {
     return '请求失败';
 }
 
-async function runAttempt(candidate: FreeFallbackCandidate, timeoutMs: number, signal?: AbortSignal): Promise<string> {
+function runAttempt(candidate: FreeFallbackCandidate, timeoutMs: number, signal?: AbortSignal): {
+    result: Promise<string>;
+    settlement: Promise<void>;
+} {
     const controller = new AbortController();
+    const heldSettlements: Promise<void>[] = [];
+    let acceptsHolds = true;
+    const lease: FreeFallbackLease = {
+        holdUntil(settlement) {
+            if (!acceptsHolds) throw new Error('免费翻译线路已结束，无法继续占用并发槽');
+            heldSettlements.push(Promise.resolve(settlement).then(() => undefined, () => undefined));
+        },
+    };
+    const operation = Promise.resolve().then(() => {
+        if (controller.signal.aborted) throw abortErrorFromSignal(controller.signal);
+        return candidate.translate(controller.signal, lease);
+    });
+    const settlement = operation.then(() => undefined, () => undefined).then(async () => {
+        acceptsHolds = false;
+        await Promise.all(heldSettlements);
+    });
     let timer: ReturnType<typeof setTimeout>;
     let onAbort: () => void;
     const result = new Promise<string>((resolve, reject) => {
         onAbort = () => { reject(abortErrorFromSignal(signal!)); controller.abort(signal?.reason); };
         signal?.addEventListener('abort', onAbort, {once: true});
         timer = setTimeout(() => { reject(new AttemptTimeoutError()); controller.abort(); }, timeoutMs);
-        Promise.resolve().then(() => {
-            if (controller.signal.aborted) throw abortErrorFromSignal(controller.signal);
-            return candidate.translate(controller.signal);
-        }).then(value => {
+        if (signal?.aborted) onAbort();
+        operation.then(value => {
             if (typeof value !== 'string' || !value.trim()) reject(new InvalidTranslationError());
             else resolve(value);
         }, reject);
     });
-    try { return await result; }
-    finally { clearTimeout(timer!); signal?.removeEventListener('abort', onAbort!); }
+    return {result: result.finally(() => {
+        clearTimeout(timer!);
+        signal?.removeEventListener('abort', onAbort!);
+    }), settlement};
 }
 
 /** 存储故障或挂起不阻断翻译；迟到的加载值不会覆盖已开始服务的健康状态。 */
@@ -138,7 +163,7 @@ export function createFreeFallbackRunner(maxConcurrency = 3, dependencies: FreeF
     const concurrency = Math.max(1, Math.floor(maxConcurrency));
     const random = dependencies.random ?? Math.random;
     let active = 0;
-    // 全局最多一条额外在途线路；初始允许一次，之后每五次成功补充一次。
+    // 全局最多一组备用竞争，且每条竞速线路也占总容量；每五次成功补充一次信用。
     let hedgeActive = false;
     let hedgeCredit = 1;
     let loaded: Promise<void> | undefined;
@@ -236,7 +261,25 @@ export function createFreeFallbackRunner(maxConcurrency = 3, dependencies: FreeF
                 queue.splice(low, 0, {deadline, wake: onReady});
             });
         } else active += 1;
-        return () => { const next = queue.shift(); if (next) next.wake(); else active -= 1; };
+        return permitRelease();
+    }
+
+    function permitRelease(): () => void {
+        let released = false;
+        return () => {
+            if (released) return;
+            released = true;
+            const next = queue.shift();
+            if (next) next.wake();
+            else active -= 1;
+        };
+    }
+
+    /** 竞速不能排队后挤占普通请求；只在当前有真实空闲总容量时取得许可。 */
+    function tryAcquireHedge(): (() => void) | undefined {
+        if (active >= concurrency || queue.length > 0) return undefined;
+        active += 1;
+        return permitRelease();
     }
 
     async function waitForAvailability(durationMs: number, signal?: AbortSignal): Promise<void> {
@@ -280,7 +323,10 @@ export function createFreeFallbackRunner(maxConcurrency = 3, dependencies: FreeF
             try { options.onAttempt?.(attempt); } catch { /* 观察失败不改变翻译。 */ }
         };
         type Outcome = {value: string} | {error: unknown};
-        const attempt = async (candidate: FreeFallbackCandidate, signal: AbortSignal): Promise<Outcome> => {
+        const attempt = (candidate: FreeFallbackCandidate, signal: AbortSignal, releasePermit: () => void): {
+            result: Promise<Outcome>;
+            settlement: Promise<void>;
+        } => {
             attempted.add(candidate.identity);
             const state = getHealth(candidate.identity);
             const generation = state.generation;
@@ -290,40 +336,52 @@ export function createFreeFallbackRunner(maxConcurrency = 3, dependencies: FreeF
             state.nextAttemptAt = Date.now() + Math.max(0, candidate.minIntervalMs ?? 0);
             const startedAt = Date.now();
             const remaining = deadline - startedAt;
-            let outcome: Outcome;
-            try {
-                const result = await runAttempt(candidate, Math.min(options.timeoutMs, remaining), signal);
-                if (signal.aborted) throw abortErrorFromSignal(signal);
-                observe({identity: candidate.identity, outcome: 'success', durationMs: Date.now() - startedAt});
-                state.generation += 1;
-                state.retryAt = 0;
-                state.failures = 0;
-                state.performance = observeFreeProviderPerformance(state.performance, true, Date.now() - startedAt, Date.now());
-                persistHealth();
-                outcome = {value: result};
-            } catch (error) {
-                observe({identity: candidate.identity, outcome: attemptOutcome(error, signal), durationMs: Date.now() - startedAt});
-                if (signal.aborted) return {error: abortErrorFromSignal(signal)};
-                if (error instanceof Error && error.name === 'AbortError') return {error};
-                if (error instanceof AttemptTimeoutError && remaining < options.timeoutMs && Date.now() >= deadline) return {error};
-                const cooldown = getFreeFailureCooldown(error, state.failures + 1, options.cooldownMs, random());
-                // 原文回显、错语种、长度等只属于当前文本，不暂停其他段落的线路。
-                if (state.generation === generation && cooldown.durationMs > 0) {
-                    state.performance = observeFreeProviderPerformance(state.performance, false, Date.now() - startedAt, Date.now());
-                    state.generation += 1;
-                    state.retryAt = Date.now() + cooldown.durationMs;
-                    state.failures = Math.min(100, state.failures + 1);
-                    state.category = cooldown.category;
-                    persistHealth();
-                }
-                failures.push(`${candidate.label}: ${safeFailure(error)}`);
-                outcome = {error};
-            } finally {
+            const work = runAttempt(candidate, Math.min(options.timeoutMs, remaining), signal);
+            const settlement = work.settlement.then(() => {
                 state.active -= 1;
                 if (probing) state.probing = false;
+                releasePermit();
                 [...availabilityWaiters].forEach(wake => wake());
+            });
+            try { options.lease?.holdUntil(settlement); } catch (error) {
+                // 已关闭的外层租约不能启动裸传输；调用层会同步取消本次 controller。
+                // 结果尚未交给调用层，先消费取消拒绝，真实 settlement 仍归还容量。
+                void work.result.catch(() => undefined);
+                throw error;
             }
-            return outcome;
+            const result = (async (): Promise<Outcome> => {
+                let outcome: Outcome;
+                try {
+                    const result = await work.result;
+                    if (signal.aborted) throw abortErrorFromSignal(signal);
+                    observe({identity: candidate.identity, outcome: 'success', durationMs: Date.now() - startedAt});
+                    state.generation += 1;
+                    state.retryAt = 0;
+                    state.failures = 0;
+                    state.performance = observeFreeProviderPerformance(state.performance, true, Date.now() - startedAt, Date.now());
+                    persistHealth();
+                    outcome = {value: result};
+                } catch (error) {
+                    observe({identity: candidate.identity, outcome: attemptOutcome(error, signal), durationMs: Date.now() - startedAt});
+                    if (signal.aborted) return {error: abortErrorFromSignal(signal)};
+                    if (error instanceof Error && error.name === 'AbortError') return {error};
+                    if (error instanceof AttemptTimeoutError && remaining < options.timeoutMs && Date.now() >= deadline) return {error};
+                    const cooldown = getFreeFailureCooldown(error, state.failures + 1, options.cooldownMs, random());
+                    // 原文回显、错语种、长度等只属于当前文本，不暂停其他段落的线路。
+                    if (state.generation === generation && cooldown.durationMs > 0) {
+                        state.performance = observeFreeProviderPerformance(state.performance, false, Date.now() - startedAt, Date.now());
+                        state.generation += 1;
+                        state.retryAt = Date.now() + cooldown.durationMs;
+                        state.failures = Math.min(100, state.failures + 1);
+                        state.category = cooldown.category;
+                        persistHealth();
+                    }
+                    failures.push(`${candidate.label}: ${safeFailure(error)}`);
+                    outcome = {error};
+                }
+                return outcome;
+            })();
+            return {result, settlement};
         };
         try {
             while (pendingCandidates().length) {
@@ -338,7 +396,7 @@ export function createFreeFallbackRunner(maxConcurrency = 3, dependencies: FreeF
                         const time = getHealth(item.identity).nextAttemptAt - Date.now();
                         return time > 0 ? time : remaining;
                     }));
-                    // 等线路容量或间隔时没有在途 attempt，不能占住全局许可阻塞其他可用线路。
+                    // 本轮没有已预留的 attempt，容量或间隔等待不能阻塞其他可用线路。
                     // 先放弃本次许可所有权；等待失败时 finally 只调用空操作，避免重复归还。
                     release();
                     release = () => undefined;
@@ -359,31 +417,40 @@ export function createFreeFallbackRunner(maxConcurrency = 3, dependencies: FreeF
                 options.signal?.addEventListener('abort', onAbort, {once: true});
                 let timer: ReturnType<typeof setTimeout> | undefined;
                 let ownsHedge = false;
-                const primary = attempt(candidate, controller.signal);
-                let backup: Promise<Outcome> | undefined;
+                let primary: ReturnType<typeof attempt>;
+                try { primary = attempt(candidate, controller.signal, release); } catch (error) {
+                    controller.abort(error);
+                    options.signal?.removeEventListener('abort', onAbort);
+                    throw error;
+                }
+                // 全局许可转交真实 attempt；取消/超时结果交付后仍由 settlement 负责归还。
+                release = () => undefined;
+                ownsPermit = false;
+                let backup: ReturnType<typeof attempt> | undefined;
                 try {
                     const delay = getFreeHedgeDelayMs(getHealth(candidate.identity).performance);
                     const canHedge = options.mode === 'balanced' && !hedged && !hedgeActive && hedgeCredit >= 1
                         && pendingCandidates().length > 0 && delay < Math.min(options.timeoutMs, remaining);
                     let outcome = canHedge ? await Promise.race([
-                        primary,
+                        primary.result,
                         new Promise<undefined>(resolve => { timer = setTimeout(() => resolve(undefined), delay); }),
-                    ]) : await primary;
+                    ]) : await primary.result;
                     if (!outcome) {
                         // 延迟到期后重新检查容量、冷却与预算，不挤占已在限流中的线路。
                         const alternative = !controller.signal.aborted && !hedgeActive && hedgeCredit >= 1
                             ? choose(readyCandidates()) : undefined;
-                        if (alternative) {
+                        const hedgePermit = alternative ? tryAcquireHedge() : undefined;
+                        if (alternative && hedgePermit) {
                             hedged = true;
                             ownsHedge = hedgeActive = true;
                             hedgeCredit -= 1;
-                            backup = attempt(alternative, controller.signal);
+                            backup = attempt(alternative, controller.signal, hedgePermit);
                             const first = await Promise.race([
-                                primary.then(result => ({result, other: backup!})),
-                                backup.then(result => ({result, other: primary})),
+                                primary.result.then(result => ({result, other: backup!.result})),
+                                backup.result.then(result => ({result, other: primary.result})),
                             ]);
                             outcome = 'value' in first.result ? first.result : await first.other;
-                        } else outcome = await primary;
+                        } else outcome = await primary.result;
                     }
                     if (options.signal?.aborted) throw abortErrorFromSignal(options.signal);
                     if ('value' in outcome) {
@@ -396,9 +463,10 @@ export function createFreeFallbackRunner(maxConcurrency = 3, dependencies: FreeF
                     clearTimeout(timer);
                     controller.abort();
                     options.signal?.removeEventListener('abort', onAbort);
-                    // runAttempt 会立即处理取消，即便供应商忽略信号也不占着调度槽。
-                    await Promise.all([primary, backup]);
-                    if (ownsHedge) hedgeActive = false;
+                    // 公开结果及时收口；真实传输及备用竞争所有权在迟到结算后才归还。
+                    await Promise.all([primary.result, backup?.result]);
+                    if (ownsHedge) void Promise.all([primary.settlement, backup?.settlement])
+                        .then(() => { hedgeActive = false; });
                     if (options.signal?.aborted) throw abortErrorFromSignal(options.signal);
                 }
             }

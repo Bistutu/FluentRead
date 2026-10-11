@@ -3,6 +3,7 @@ import {
     TRANSLATION_MODEL_USAGE_OBSERVER,
     TRANSLATION_PROVIDER_CONFIG,
     TRANSLATION_REQUEST_CONTROL,
+    TRANSLATION_REQUEST_SCHEDULER,
     attachTranslationModelUsageObserver,
     attachTranslationProviderConfig,
     attachTranslationRequestControl,
@@ -19,6 +20,7 @@ import {
     TRANSLATION_ROUTE_OBSERVER,
     getTranslationGlossaryTerms,
     getTranslationGlossarySourceText,
+    getTranslationGlossarySourceSlots,
 } from '@/src/services/translation/requestSnapshot';
 import {createTranslationRequestScheduler} from '@/src/services/translation/requestScheduler';
 import {parseTranslationSlots, serializeTranslationSlots} from '@/src/core/translation/public';
@@ -163,13 +165,20 @@ describe('translation provider request config snapshot', () => {
     it('keeps the scheduler and immutable request identity inside trusted process-local context', () => {
         const scheduler = createTranslationRequestScheduler(() => ({}));
         const identity = {service: 'aiSdk', model: 'model-a'};
-        const request = attachTranslationRequestScheduler({origin: 'hello'}, scheduler, identity);
+        const lease = {holdUntil: vi.fn()};
+        const request = attachTranslationRequestScheduler({origin: 'hello'}, scheduler, identity, lease);
         identity.model = 'model-b';
         const context = getTranslationRequestScheduler(request)!;
         expect(context.scheduler).toBe(scheduler);
+        expect(context.lease).toBe(lease);
         expect(context.identity).toEqual({service: 'aiSdk', model: 'model-a'});
         expect(Object.isFrozen(context)).toBe(true);
         expect(Object.isFrozen(context.identity)).toBe(true);
+        expect(Object.getOwnPropertyDescriptor(request, TRANSLATION_REQUEST_SCHEDULER)?.enumerable).toBe(true);
+        for (const copy of [createTranslationRequestSnapshot(request), {...request}]) {
+            expect(getTranslationRequestScheduler(copy)).toBe(context);
+            expect(getTranslationRequestScheduler(copy)!.lease).toBe(lease);
+        }
         expect(JSON.stringify(request)).toBe('{"origin":"hello"}');
         expect(getTranslationRequestScheduler(attachTranslationRequestScheduler({}, scheduler))!.identity).toBeUndefined();
         for (const untrusted of [null, 'invalid', {}, {scheduler, identity}, JSON.parse(JSON.stringify(request))]) {
@@ -199,10 +208,12 @@ describe('translation provider request config snapshot', () => {
 
     it('matches pure source slots without protocol boundaries and leaves malformed or literal markers intact', () => {
         const packet = serializeTranslationSlots(['agent', 'An agent works.'], 'Case_1-x');
+        expect(getTranslationGlossarySourceSlots(packet.payload)).toEqual({packet, texts: ['agent', 'An agent works.']});
         expect(getTranslationGlossarySourceText(packet.payload)).toEqual(['agent', 'An agent works.']);
         expect(getTranslationGlossarySourceText(['plain', packet.payload])).toEqual(['plain', 'agent', 'An agent works.']);
         for (const text of [packet.payload.replace(packet.ends[0], ''), `${packet.payload} outside`,
             `literal ${packet.payload}`, '___FLUENTREAD_partial_0_BEGIN___agent']) {
+            expect(getTranslationGlossarySourceSlots(text)).toBeUndefined();
             expect(getTranslationGlossarySourceText(text)).toBe(text);
         }
     });

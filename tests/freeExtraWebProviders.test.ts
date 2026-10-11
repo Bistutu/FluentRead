@@ -11,7 +11,60 @@ afterEach(() => setRuntimeFetch());
 function home() { return new Response('<script>window.__INITIAL_STATE__={"common":{"CONFIG":{"secretCode":109984457}}}</script>'); }
 function result(text: string) { return Response.json({status: 0, data: {translate: {dit: `译:${text}`}}}); }
 
+const responseStages = [
+    ['sogouFree', 'home'], ['sogouFree', 'translation'],
+    ['reversoFree', 'translation'], ['lingvaFree', 'translation'],
+    ['apertiumFree', 'pairs'], ['apertiumFree', 'translation'],
+] as const;
+
+function installBeforeResponse(id: typeof responseStages[number][0], stage: typeof responseStages[number][1]): void {
+    if (id === 'sogouFree' && stage === 'translation') fetchMock.mockResolvedValueOnce(home());
+    if (id === 'apertiumFree' && stage === 'translation') fetchMock.mockResolvedValueOnce(Response.json(['eng-spa']));
+}
+
+function streamingResponse(status: number) {
+    let body!: ReadableStreamDefaultController<Uint8Array>;
+    const response = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}}), {
+        status, headers: {'Retry-After': '60'},
+    });
+    return {response, body};
+}
+
 describe('extra anonymous web providers', () => {
+    it.each(responseStages)('%s %s retains a streaming HTTP failure until its body finishes', async (id, stage) => {
+        installBeforeResponse(id, stage);
+        const {response, body} = streamingResponse(429);
+        fetchMock.mockResolvedValueOnce(response);
+        let settled = false;
+        const pending = translateExtraFreeWebText(id, 'Hello', 'en', id === 'apertiumFree' ? 'es' : 'zh-Hans')
+            .catch(error => error).finally(() => {settled = true;});
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+        try {expect(settled).toBe(false);}
+        finally {body.close();}
+        await expect(pending).resolves.toMatchObject({statusCode: 429, retryAfterMs: 60000});
+        expect(fetchMock).toHaveBeenCalledTimes(stage === 'translation' && (id === 'sogouFree' || id === 'apertiumFree') ? 2 : 1);
+    });
+
+    it.each(responseStages)('%s %s retains a late cancelled response and preserves cancellation when draining fails', async (id, stage) => {
+        installBeforeResponse(id, stage);
+        const controller = new AbortController();
+        const reason = new Error('owner cancelled before headers');
+        const {response, body} = streamingResponse(200);
+        let deliver!: (response: Response) => void;
+        fetchMock.mockImplementationOnce(() => new Promise<Response>(resolve => {deliver = resolve;}));
+        let settled = false;
+        const pending = translateExtraFreeWebText(id, 'Hello', 'en', id === 'apertiumFree' ? 'es' : 'zh-Hans', controller.signal)
+            .catch(error => error).finally(() => {settled = true;});
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+        controller.abort(reason);
+        deliver(response);
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+        try {expect(settled).toBe(false);}
+        finally {body.error(new TypeError('response body stopped'));}
+        await expect(pending).resolves.toBe(reason);
+        expect(fetchMock).toHaveBeenCalledTimes(stage === 'translation' && (id === 'sogouFree' || id === 'apertiumFree') ? 2 : 1);
+    });
+
     it('Reverso sends the actual long mathematical paragraph with complete protection tokens per request', async () => {
         const packet = protectedDocumentLongMathParagraph(), observed: string[] = [];
         fetchMock.mockImplementation(async (_url, init) => {

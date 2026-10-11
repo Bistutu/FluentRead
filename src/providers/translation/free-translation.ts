@@ -1,7 +1,7 @@
 /**
  * @file src/providers/translation/free-translation.ts
  * 文件职责：按冻结的用户设置编排免费翻译，并接入有界请求、取消和跨段冷却。
- * 主要内容：冻结匿名请求配置和共享预算；文档合批保留完整混合池，原生候选消费有界全组、其他候选只消费首段并继续余槽，普通调用沿用原分组条件和冻结的服务合批偏好；复用内部槽映射与原生数组传输，逐槽验证术语、文档标签、语言和原文回显，保持线路健康、间隔、取消及真实字符统计；单服务检查不换线，跳过多线路中已确认不支持的语言方向。
+ * 主要内容：冻结匿名请求配置和共享预算；文档合批保留完整混合池，原生候选消费有界全组、其他候选只消费首段并继续余槽，普通调用沿用原分组条件和冻结的服务合批偏好；逐槽验证术语、文档标签、语言和原文回显，保持线路健康、间隔、取消及真实字符统计；向免费池与子服务传递真实在途租约，使取消后的迟到传输继续受候选、总池和后台并发约束；单服务检查不换线，跳过多线路中已确认不支持的语言方向。
  * 模块边界：只装配已有 provider；健康状态与并发调度由 freeFallback 服务持有。
  */
 import {sha256Hex} from '@/src/shared/function/sha256';
@@ -32,14 +32,16 @@ import {
 import {config} from '@/src/services/config/store';
 import {abortErrorFromSignal} from '@/src/platform/http/runtime';
 import {freeTranslationHealthStorage} from '@/src/platform/storage/freeTranslationHealthStorage';
-import {createFreeFallbackRunner, UntranslatedFreeResultError, WrongLanguageFreeResultError, type FreeFallbackCandidate} from '@/src/services/translation/freeFallback';
+import {createFreeFallbackRunner, UntranslatedFreeResultError, WrongLanguageFreeResultError, type FreeFallbackCandidate, type FreeFallbackLease} from '@/src/services/translation/freeFallback';
 import {isClearlyWrongLanguageResponse, isLikelyUntranslatedResponse} from '@/src/core/translation/resultValidation';
 import {parseTranslationSlots, serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
 import {calculateFreeTranslationWeightSnapshot, type FreeTranslationWeightSnapshot} from '@/src/services/translation/freeWeights';
 import {
     attachTranslationProviderConfig,
+    attachTranslationRequestScheduler,
     createTranslationProviderConfigSnapshot,
     getTranslationProviderConfig,
+    getTranslationRequestScheduler,
     reportTranslationRoute,
     type TranslationProviderRequest,
 } from '@/src/services/translation/requestSnapshot';
@@ -48,25 +50,28 @@ import {documentFreeAttemptCharacters, runDocumentFreeNativeCandidate, serialize
 
 type FreeTranslationRequest = Omit<TranslationProviderRequest<string>, 'origin'>;
 const FREE_TRANSLATION_DEADLINE = Symbol('free-translation-deadline');
-type PreparedRequest = FreeTranslationRequest & {readonly [FREE_TRANSLATION_DEADLINE]?: number};
+// 所有内部调用均先经过 prepareRequest；分组与恢复沿用必填的同一截止时间。
+type PreparedRequest = FreeTranslationRequest & {readonly [FREE_TRANSLATION_DEADLINE]: number};
 type FreeProviderId = typeof FREE_TRANSLATION_PROVIDERS[number]['id'];
 
 export const FREE_TRANSLATION_BATCH_CONCURRENCY = 6;
 const FREE_TRANSLATION_GROUP_MAX_SLOTS = 8;
 const FREE_TRANSLATION_GROUP_MAX_CHARACTERS = 2_000;
 const runFallback = createFreeFallbackRunner(FREE_TRANSLATION_BATCH_CONCURRENCY, {persistence: freeTranslationHealthStorage});
-const providerTranslators: Record<FreeProviderId, (request: TranslationProviderRequest<string>) => Promise<unknown>> = {
-    microsoft: async request => {
-        const results = await translateMicrosoftTexts([request.origin], request.sourceLanguage!, request.targetLanguage!, request.abortSignal);
+const providerTranslators: Record<FreeProviderId, (request: TranslationProviderRequest<string>, lease?: FreeFallbackLease) => Promise<unknown>> = {
+    microsoft: async (request, lease) => {
+        const results = await translateMicrosoftTexts([request.origin], request.sourceLanguage!, request.targetLanguage!, request.abortSignal,
+            true, lease ?? getTranslationRequestScheduler(request)?.lease);
         return results[0];
     },
-    google: request => {
+    google: (request, lease) => {
         const current = getTranslationProviderConfig(request, config);
         // 文档逐段和已降级的槽必须保持真正单项，避免收集窗重新拼成刚被拒绝的协议批次。
         const documentSingle = import.meta.env.BROWSER !== 'userscript' && request.enableNativeBatch === false
             && (request.documentBatch === true || current.glossaryMatchContext?.context === 'document');
         return translateGoogleText(request.origin, request.sourceLanguage!, request.targetLanguage!, request.abortSignal,
-            !documentSingle && isNativeTranslationBatchEnabled(services.google, current.nativeBatchTranslationEnabled), request.requestTimeoutMs);
+            !documentSingle && isNativeTranslationBatchEnabled(services.google, current.nativeBatchTranslationEnabled), request.requestTimeoutMs,
+            lease ?? getTranslationRequestScheduler(request)?.lease);
     },
     myMemory,
     bilibiliFree: translateBilibiliFree,
@@ -85,8 +90,11 @@ const providerTranslators: Record<FreeProviderId, (request: TranslationProviderR
     lingvanexFree: request => translateOfficialFreeWebProvider('lingvanexFree', request),
 };
 
-async function translateProviderText(id: FreeProviderId, message: TranslationProviderRequest<string>): Promise<unknown> {
-    const result = validateProtectedResult(message.origin, await providerTranslators[id]({...message, serviceOverride: id}), message);
+async function translateProviderText(id: FreeProviderId, message: TranslationProviderRequest<string>, lease?: FreeFallbackLease): Promise<unknown> {
+    const request = {...message, serviceOverride: id};
+    const translated = id === services.google || id === services.microsoft ? await providerTranslators[id](request, lease)
+        : await providerTranslators[id](request);
+    const result = validateProtectedResult(message.origin, translated, message);
     if (typeof result === 'string' && isLikelyUntranslatedResponse(message.origin, result, message.targetLanguage!)) {
         throw new UntranslatedFreeResultError();
     }
@@ -115,12 +123,13 @@ class InvalidFreeGroupResultError extends Error {
 
 async function translateNativeProviderGroup(
     id: 'microsoft' | 'google', message: TranslationProviderRequest<string>, sources: readonly string[],
+    lease?: FreeFallbackLease,
 ): Promise<string> {
     const packet = serializeTranslationSlots(sources);
     // 只接原生数组 transport；不把文本适配器的串行 HTTP 压进同一 attempt。
     const result = id === 'microsoft'
-        ? await translateMicrosoftTexts([...sources], message.sourceLanguage!, message.targetLanguage!, message.abortSignal)
-        : await translateGoogleOwnerTexts(sources, message.sourceLanguage!, message.targetLanguage!, message.abortSignal!);
+        ? await translateMicrosoftTexts([...sources], message.sourceLanguage!, message.targetLanguage!, message.abortSignal, true, lease)
+        : await translateGoogleOwnerTexts(sources, message.sourceLanguage!, message.targetLanguage!, message.abortSignal!, lease);
     if (!Array.isArray(result) || result.length !== sources.length) throw new InvalidFreeGroupResultError();
     const translations = sources.map((source, index) => {
         const value = validateProtectedResult(source, result[index], message);
@@ -218,17 +227,26 @@ function candidatesFor(text: string, message: PreparedRequest, groupSources?: re
             weight: provider.defaultWeight,
             maxConcurrency: id === 'microsoft' ? 2 : 1,
             minIntervalMs: id === 'microsoft' ? 100 : id === 'myMemory' || id === 'laraFree' || id === 'lingvanexFree' || id === 'doubaoWeb' ? 1000 : 300,
-            translate: (signal: AbortSignal) => groupSources && (provider.id === 'microsoft' || provider.id === 'google')
-                && !(import.meta.env.BROWSER !== 'userscript' && message.documentBatch === true && scalarProviders?.has(provider.id))
-                ? import.meta.env.BROWSER !== 'userscript' && message.documentBatch === true
-                    ? runDocumentFreeNativeCandidate(provider.id, signal, scalarProviders!, () => translateNativeProviderGroup(provider.id as 'microsoft' | 'google', {...message, origin: text, abortSignal: signal}, groupSources))
-                    : translateNativeProviderGroup(provider.id, {...message, origin: text, abortSignal: signal}, groupSources)
-                : import.meta.env.BROWSER !== 'userscript' && message.documentBatch === true && groupSources
-                    ? translateProviderText(provider.id, {...message, origin: groupSources[0]!, enableNativeBatch: false, abortSignal: signal}).then(result => {
+            translate: (signal: AbortSignal, lease: FreeFallbackLease) => {
+                let request = {...message, origin: text, abortSignal: signal};
+                const schedulerContext = getTranslationRequestScheduler(message);
+                if (schedulerContext) request = attachTranslationRequestScheduler(
+                    request, schedulerContext.scheduler, schedulerContext.identity, lease,
+                );
+                if (groupSources && (provider.id === 'microsoft' || provider.id === 'google')
+                    && !(import.meta.env.BROWSER !== 'userscript' && message.documentBatch === true && scalarProviders?.has(provider.id))) {
+                    const translate = () => translateNativeProviderGroup(provider.id as 'microsoft' | 'google', request, groupSources, lease);
+                    return import.meta.env.BROWSER !== 'userscript' && message.documentBatch === true
+                        ? runDocumentFreeNativeCandidate(provider.id, signal, scalarProviders!, translate) : translate();
+                }
+                if (import.meta.env.BROWSER !== 'userscript' && message.documentBatch === true && groupSources) {
+                    return translateProviderText(provider.id, {...request, origin: groupSources[0]!, enableNativeBatch: false}, lease).then(result => {
                         if (signal.aborted) throw abortErrorFromSignal(signal);
                         return serializeDocumentFreeFirstSlot(groupSources, result);
-                    })
-                    : translateProviderText(provider.id, {...message, origin: text, abortSignal: signal}),
+                    });
+                }
+                return translateProviderText(provider.id, request, lease);
+            },
         };
     });
     return {candidates, routeByIdentity};
@@ -241,6 +259,7 @@ async function translatePreparedText(text: string, message: PreparedRequest, gro
     const scalarBeforeAttempt = import.meta.env.BROWSER !== 'userscript' && message.documentBatch === true ? new Set(scalarProviders) : undefined;
     return runFallback(candidates, {
         signal: message.abortSignal,
+        lease: getTranslationRequestScheduler(message)?.lease,
         // 每条线路的真实表现只按标识与耗时上报，供设置页比较免费服务。
         onAttempt: attempt => reportTranslationRoute(message, {
             route: routeByIdentity.get(attempt.identity)!,
@@ -292,7 +311,7 @@ async function translateFreeBatch(texts: string[], message: PreparedRequest): Pr
                     // 本轮全池失败且新发现原生协议不兼容时，重入一次原调度器实施已记录的逐段降级。
                     // 第二轮直接传播失败，不延长预算、不绕过线路间隔，也不重跑没有新标记的 HTTP 错误。
                     if (signal.aborted || scalarProviders.size <= previousFailures
-                        || Date.now() >= (message[FREE_TRANSLATION_DEADLINE] ?? 0)) throw error;
+                        || Date.now() >= message[FREE_TRANSLATION_DEADLINE]) throw error;
                     return translate();
                 }
             });

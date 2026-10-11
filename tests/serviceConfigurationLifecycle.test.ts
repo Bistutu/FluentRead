@@ -88,6 +88,15 @@ afterEach(async () => {
 })
 
 describe('实际服务连接配置的活跃生命周期与确认归属', () => {
+  it('当前模型限额随请求体实际模型变化，选择器模型继续用于其他设置', async () => {
+    props.service = 'ollama';props.config.model.ollama = 'gemma3:4b';props.config.customBody.ollama = '{"model":" qwen3:8b "}';await settle()
+    expect(state.effectiveModelLabel).toBe('gemma3:4b');expect(state.requestLimitModel).toBe('qwen3:8b')
+    props.config.customBody.ollama = '{"model":"{{model}}"}';await settle();expect(state.requestLimitModel).toBe('{{model}}')
+    props.config.customBody.ollama = '{invalid';await settle();expect(state.requestLimitModel).toBe('gemma3:4b')
+    props.service = 'gemini';props.config.model.gemini = 'gemini-2.5-pro';props.config.customBody.gemini = '{"model":"ignored"}';await settle()
+    expect(state.requestLimitModel).toBe('gemini-2.5-pro')
+  })
+
   it.each(['queue', 'save', 'response'])('单Key检查在%s的隐藏、缓存停用或卸载后立即收束且不写迟到结果', async phase => {
     for (const reason of ['hidden', 'cached', 'unmount']) {
       if (reason === 'cached') {props.active = true;await settle()}

@@ -24,10 +24,92 @@ function install(translate: () => Response = () => stream()): void {
 }
 function translationCalls() {return fetchMock.mock.calls.filter(([input]) => String(input).startsWith(DOUBAO_WEB_TRANSLATION_URL));}
 
+function delayedCancelResponse(status = 200) {
+    let resolveCancel!: () => void;
+    let rejectCancel!: (error: Error) => void;
+    const cleanup = new Promise<void>((resolve, reject) => {resolveCancel = resolve; rejectCancel = reject;});
+    void cleanup.catch(() => {});
+    const cancel = vi.fn(() => cleanup);
+    const response = new Response(new ReadableStream<Uint8Array>({
+        start(controller) {controller.enqueue(new TextEncoder().encode(resultEvent()));}, cancel,
+    }), {status, headers: {'Content-Type': 'text/event-stream', 'Retry-After': '12'}});
+    return {response, cancel, finish(fails: boolean) {
+        if (fails) rejectCancel(new TypeError('transport cancellation failed'));
+        else resolveCancel();
+    }};
+}
+
 beforeEach(() => {fetchMock.mockReset(); setRuntimeFetch(fetchMock);});
 afterEach(() => {setRuntimeFetch(); vi.restoreAllMocks(); vi.unstubAllGlobals();});
 
 describe('豆包网页匿名免费翻译', () => {
+    it.each([
+        {stage: 'home', fails: false}, {stage: 'home', fails: true},
+        {stage: 'translation', fails: false}, {stage: 'translation', fails: true},
+    ])('$stage HTTP error waits for body cancellation, cleanup failure=$fails preserves the original status', async ({stage, fails}) => {
+        if (stage === 'translation') fetchMock.mockResolvedValueOnce(home());
+        const body = delayedCancelResponse(429);
+        fetchMock.mockResolvedValueOnce(body.response);
+        let settled = false;
+        const pending = translateDoubaoWeb(request()).catch(error => error).finally(() => {settled = true;});
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+        try {
+            expect(body.cancel).toHaveBeenCalledOnce();
+            expect(settled).toBe(false);
+        } finally {body.finish(fails);}
+        await expect(pending).resolves.toMatchObject({statusCode: 429, retryAfterMs: 12000,
+            message: stage === 'home' ? '豆包网页翻译访客初始化失败: 429' : '豆包网页翻译请求失败: 429'});
+        expect(fetchMock).toHaveBeenCalledTimes(stage === 'home' ? 1 : 2);
+    });
+
+    it.each(['home', 'translation'])('%s HTTP error without a body preserves its status', async stage => {
+        if (stage === 'translation') fetchMock.mockResolvedValueOnce(home());
+        fetchMock.mockResolvedValueOnce(new Response(null, {status: 503}));
+        await expect(translateDoubaoWeb(request())).rejects.toMatchObject({statusCode: 503});
+    });
+
+    it.each([
+        {stage: 'home', fails: false}, {stage: 'home', fails: true},
+        {stage: 'translation', fails: false}, {stage: 'translation', fails: true},
+    ])('$stage late response waits for body cancellation, cleanup failure=$fails preserves the owner reason', async ({stage, fails}) => {
+        if (stage === 'translation') fetchMock.mockResolvedValueOnce(home());
+        const body = delayedCancelResponse();
+        const controller = new AbortController();
+        const reason = new Error('owner cancelled before headers');
+        fetchMock.mockImplementationOnce(async () => {controller.abort(reason); return body.response;});
+        let settled = false;
+        const pending = translateDoubaoWeb(request('Hello', {abortSignal: controller.signal}))
+            .catch(error => error).finally(() => {settled = true;});
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+        try {
+            expect(body.cancel).toHaveBeenCalledOnce();
+            expect(settled).toBe(false);
+        } finally {body.finish(fails);}
+        await expect(pending).resolves.toBe(reason);
+        expect(fetchMock).toHaveBeenCalledTimes(stage === 'home' ? 1 : 2);
+    });
+
+    it.each([false, true])('SSE owner cancellation waits for its first physical reader cancellation, cleanup failure=%s', async fails => {
+        const body = delayedCancelResponse();
+        const controller = new AbortController();
+        const reason = new Error('owner cancelled while reading SSE');
+        fetchMock.mockResolvedValueOnce(home()).mockResolvedValueOnce(body.response);
+        let settled = false;
+        const pending = translateDoubaoWeb(request('Hello', {abortSignal: controller.signal}))
+            .catch(error => error).finally(() => {settled = true;});
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+        controller.abort(reason);
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+        try {
+            expect(body.cancel).toHaveBeenCalledOnce();
+            expect(settled).toBe(false);
+            expect(body.response.body!.locked).toBe(true);
+        } finally {body.finish(fails);}
+        await expect(pending).resolves.toBe(reason);
+        expect(body.response.body!.locked).toBe(false);
+        expect(body.cancel).toHaveBeenCalledOnce();
+    });
+
     it('使用固定官方节点和受限匿名访客头，忽略历史凭据和个人 Cookie', async () => {
         install();
         await expect(translateDoubaoWeb(request(' Hello ', {token: 'private-key', customHeaders: {Cookie: 'personal-cookie'}, serviceOverride: 'other'}))).resolves.toBe(' 你好 ');

@@ -135,4 +135,34 @@ describe('B站官方免费翻译', () => {
         setRuntimeFetch(async () => ({ok: true, json: async () => {parsing.abort(); return {};}} as Response));
         await expect(translateBilibiliFree(request('Hello', {abortSignal: parsing.signal}))).rejects.toMatchObject({name: 'AbortError'});
     });
+    it.each(['http', 'abort'] as const)('B站 %s headers 后仍等待真实流式正文结算且保留错误分类', async mode => {
+        let body!: ReadableStreamDefaultController<Uint8Array>;
+        const response = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}}),
+            {status: mode === 'http' ? 429 : 200, headers: {'Retry-After': '12'}});
+        const signal = new AbortController();
+        const reason = new Error('cancelled after headers');
+        setRuntimeFetch(async () => {if (mode === 'abort') signal.abort(reason); return response;});
+        let settled = false;
+        const result = translateBilibiliFree(request('Hello', {abortSignal: signal.signal})).then(
+            () => {settled = true; throw new Error('unexpected success');},
+            error => {settled = true; return error;},
+        );
+        await new Promise(resolve => setTimeout(resolve, 0));
+        expect(settled).toBe(false);
+        body.close();
+        const error = await result;
+        if (mode === 'abort') expect(error).toBe(reason);
+        else expect(error).toMatchObject({statusCode: 429, retryAfterMs: 12000});
+    });
+
+    it('B站 错误正文读取失败不覆盖原 HTTP 状态', async () => {
+        let body!: ReadableStreamDefaultController<Uint8Array>;
+        const response = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}}), {status: 503});
+        setRuntimeFetch(async () => response);
+        const result = translateBilibiliFree(request()).catch(error => error);
+        await new Promise(resolve => setTimeout(resolve, 0));
+        body.error(new Error('body failed'));
+        expect(await result).toMatchObject({statusCode: 503});
+    });
+
 });

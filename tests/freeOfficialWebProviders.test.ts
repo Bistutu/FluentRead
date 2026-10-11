@@ -27,10 +27,64 @@ function install(provider: OfficialFreeWebProvider): void {
         return response(provider);
     });
 }
+const responseStages = [
+    ['alibabaFree', 'csrf'], ['alibabaFree', 'translation'],
+    ['modernMtFree', 'translation'], ['laraFree', 'translation'],
+    ['lingvanexFree', 'home'], ['lingvanexFree', 'translation'],
+] as const;
+
+function installBeforeResponse(provider: OfficialFreeWebProvider, stage: typeof responseStages[number][1]): void {
+    if (provider === 'alibabaFree' && stage === 'translation') {
+        fetchMock.mockResolvedValueOnce(Response.json({token: 'anonymous-csrf', headerName: 'X-XSRF-TOKEN_PROPERTY_ITEM'}));
+    }
+    if (provider === 'lingvanexFree' && stage === 'translation') fetchMock.mockResolvedValueOnce(authPage());
+}
+
+function streamingResponse(status: number) {
+    let body!: ReadableStreamDefaultController<Uint8Array>;
+    const response = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}}), {
+        status, headers: {'Retry-After': '60'},
+    });
+    return {response, body};
+}
 beforeEach(() => {vi.restoreAllMocks(); fetchMock.mockReset(); setRuntimeFetch(fetchMock);});
 afterEach(() => setRuntimeFetch());
 
 describe('official anonymous web translation providers', () => {
+    it.each(responseStages)('%s %s retains a streaming HTTP failure until its body finishes', async (provider, stage) => {
+        installBeforeResponse(provider, stage);
+        const {response, body} = streamingResponse(429);
+        fetchMock.mockResolvedValueOnce(response);
+        let settled = false;
+        const pending = translateOfficialFreeWebText(provider, 'Hello', 'en', 'zh-Hans')
+            .catch(error => error).finally(() => {settled = true;});
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+        try {expect(settled).toBe(false);}
+        finally {body.close();}
+        await expect(pending).resolves.toMatchObject({statusCode: 429, retryAfterMs: 60000});
+        expect(fetchMock).toHaveBeenCalledTimes(stage === 'translation' && (provider === 'alibabaFree' || provider === 'lingvanexFree') ? 2 : 1);
+    });
+
+    it.each(responseStages)('%s %s retains a late cancelled response and preserves cancellation when draining fails', async (provider, stage) => {
+        installBeforeResponse(provider, stage);
+        const controller = new AbortController();
+        const reason = new Error('owner cancelled before headers');
+        const {response, body} = streamingResponse(200);
+        let deliver!: (response: Response) => void;
+        fetchMock.mockImplementationOnce(() => new Promise<Response>(resolve => {deliver = resolve;}));
+        let settled = false;
+        const pending = translateOfficialFreeWebText(provider, 'Hello', 'en', 'zh-Hans', controller.signal)
+            .catch(error => error).finally(() => {settled = true;});
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+        controller.abort(reason);
+        deliver(response);
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
+        try {expect(settled).toBe(false);}
+        finally {body.error(new TypeError('response body stopped'));}
+        await expect(pending).resolves.toBe(reason);
+        expect(fetchMock).toHaveBeenCalledTimes(stage === 'translation' && (provider === 'alibabaFree' || provider === 'lingvanexFree') ? 2 : 1);
+    });
+
     it.each(providers)('%s sends every actual mathematical token intact across bounded requests', async provider => {
         const packet = protectedDocumentLongMathParagraph(), observed: string[] = [];
         fetchMock.mockImplementation(async (input, init) => {
