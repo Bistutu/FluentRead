@@ -36,7 +36,7 @@ Enable **Full-page translation ball** under **Settings → General → Page help
 
 You can also search settings for “Full-page translation floating ball” to jump to the switch, or search for “Floating ball advanced settings” to jump to its display, position, and site options.
 
-Click the floating ball's gear button to show the same quick panel as the browser toolbar icon, next to the button. The panel controls the current webpage. Click the gear again, click a blank area of the page, or press Esc to close it. Use the panel's settings entry to open full settings. The userscript keeps its existing settings entry.
+Click the floating ball's gear button to show the same quick panel as the browser toolbar icon, next to the button. The panel controls the current webpage. It sits slightly above the button by default and adjusts near screen edges and in narrow windows. It appears once its content and size are ready, avoiding an empty loading panel and height changes during startup. Click the gear again, click a blank area of the page, or press Esc to close it. Use the panel's settings entry to open full settings. The userscript keeps its existing settings entry.
 
 **Floating ball advanced settings** tunes the rest:
 

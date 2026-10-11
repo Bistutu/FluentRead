@@ -99,13 +99,16 @@ function loadFrame(frame: HTMLIFrameElement) {
 }
 
 describe('悬浮 Popup 的视口定位', () => {
-    it('右侧按钮向左展开，左侧按钮向右展开，并保持按钮顶边对齐', () => {
+    it('右侧按钮向左展开，左侧按钮向右展开，并比按钮上移 24px', () => {
         expect(positionAnchoredPopup({left: 1120, right: 1160, top: 220, bottom: 260},
             {width: 320, height: 560}, {width: 1200, height: 900}))
-            .toEqual({left: 788, top: 220, width: 320, height: 560});
+            .toEqual({left: 788, top: 196, width: 320, height: 560});
         expect(positionAnchoredPopup({left: 40, right: 80, top: 220, bottom: 260},
             {width: 320, height: 560}, {width: 1200, height: 900}))
-            .toEqual({left: 92, top: 220, width: 320, height: 560});
+            .toEqual({left: 92, top: 196, width: 320, height: 560});
+        expect(positionAnchoredPopup({left: 1120, right: 1160, top: 20, bottom: 60},
+            {width: 320, height: 560}, {width: 1200, height: 900}))
+            .toEqual({left: 788, top: 8, width: 320, height: 560});
     });
 
     it('底部和窄视口压缩面板，始终保留边距；越界按钮也不会推出面板', () => {
@@ -151,7 +154,11 @@ describe('悬浮 Popup 的授权和消息边界', () => {
         expect(frame.src).toBe(popupUrl);
         expect(frame.outerHTML).not.toContain('private-one-use-token');
         expect(frame.title).toBe('FluentRead');
-        expect(frame.style.visibility).toBe('hidden');
+        expect(frame.style.opacity).toBe('0');
+        expect(frame.style.pointerEvents).toBe('none');
+        expect(frame.tabIndex).toBe(-1);
+        expect(frame.getAttribute('aria-hidden')).toBe('true');
+        expect(frame.hasAttribute('inert')).toBe(true);
         expect(frame.style.left).toBe('788px');
         expect(iframeWindow!.postMessage).not.toHaveBeenCalled();
         const connection = loadFrame(frame);
@@ -161,8 +168,17 @@ describe('悬浮 Popup 的授权和消息边界', () => {
             'chrome-extension://test-extension', [connection.port2]);
         frame.dispatchEvent(new Event('load'));
         expect(TestChannel.instances).toHaveLength(1);
-        connection.port1.emit({type: 'ready'});
-        expect(frame.style.visibility).toBe('visible');
+        connection.port1.emit({type: 'ready', width: 320, height: 437, actualWidth: 320});
+        expect(frame.style.top).toBe('196px');
+        expect(frame.style.height).toBe('437px');
+        expect(frame.style.opacity).toBe('1');
+        expect(frame.style.pointerEvents).toBe('auto');
+        // linkedom 将合法的 0 回退为 -1，读取真实反射属性验证恢复值。
+        expect(frame.getAttribute('tabindex')).toBe('0');
+        expect(frame.hasAttribute('aria-hidden')).toBe(false);
+        expect(frame.hasAttribute('inert')).toBe(false);
+        expect(connection.port1.postMessage).toHaveBeenLastCalledWith(
+            {type: 'placed', width: 320, requestedWidth: 320, shown: true});
         vi.advanceTimersByTime(15_000);
         expect(f.frame()).toBe(frame);
     });
@@ -182,6 +198,65 @@ describe('悬浮 Popup 的授权和消息边界', () => {
         expect(f.getUrl).not.toHaveBeenCalled();
         expect(vi.getTimerCount()).toBe(0);
         expect(f.button.focus).not.toHaveBeenCalled();
+    });
+
+    it('尺寸协商期间保持隐藏，并把窗口缩窄后的实际宽度回传给面板', async () => {
+        const f = fixture();
+        await f.controller.toggle(f.button);
+        const frame = f.frame()!;
+        const connection = loadFrame(frame);
+        connection.port1.emit({type: 'resize', width: 380, height: 472});
+        expect(connection.port1.postMessage).toHaveBeenLastCalledWith({type: 'placed', width: 380, requestedWidth: 380, shown: false});
+        expect(frame.style.opacity).toBe('0');
+        expect(vi.getTimerCount()).toBe(1);
+        viewport = {width: 360, height: 500};
+        f.setAnchor({left: 300, right: 340, top: 250, bottom: 290});
+        fireWindow('resize');
+        expect(connection.port1.postMessage).toHaveBeenLastCalledWith({type: 'placed', width: 344, requestedWidth: 380, shown: false});
+        expect(frame.style.opacity).toBe('0');
+        connection.port1.emit({type: 'ready', width: 380, height: 437, actualWidth: 344});
+        expect(frame.style.width).toBe('344px');
+        expect(frame.style.height).toBe('230px');
+        expect(frame.style.top).toBe('8px');
+        expect(frame.style.opacity).toBe('1');
+        expect(connection.port1.postMessage).toHaveBeenLastCalledWith(
+            {type: 'placed', width: 344, requestedWidth: 380, shown: true});
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('测量后宿主缩窄时拒绝旧宽度 ready，重新确认裁剪后的布局才显示', async () => {
+        const f = fixture();
+        await f.controller.toggle(f.button);
+        const frame = f.frame()!;
+        const connection = loadFrame(frame);
+        connection.port1.emit({type: 'resize', width: 380, height: 447});
+        viewport = {width: 360, height: 500};
+        f.setAnchor({left: 300, right: 340, top: 8, bottom: 48});
+        connection.port1.emit({type: 'ready', width: 380, height: 447, actualWidth: 380});
+        expect(frame.style.opacity).toBe('0');
+        expect(vi.getTimerCount()).toBe(1);
+        expect(connection.port1.postMessage).toHaveBeenLastCalledWith(
+            {type: 'placed', width: 344, requestedWidth: 380, shown: false});
+        connection.port1.emit({type: 'ready', width: 380, height: 479, actualWidth: 344});
+        expect(frame.style.opacity).toBe('1');
+        expect(frame.style.height).toBe('432px');
+        expect(vi.getTimerCount()).toBe(0);
+        fireWindow('resize');
+        expect(connection.port1.postMessage).toHaveBeenLastCalledWith(
+            {type: 'placed', width: 344, requestedWidth: 380, shown: true});
+    });
+
+    it('缺少实际布局宽度的 ready 保持隐藏，继续等候尺寸确认', async () => {
+        const f = fixture();
+        await f.controller.toggle(f.button);
+        const frame = f.frame()!;
+        const connection = loadFrame(frame);
+        connection.port1.emit({type: 'ready', width: 320, height: 437});
+        expect(frame.style.opacity).toBe('0');
+        expect(connection.port1.postMessage).toHaveBeenLastCalledWith(
+            {type: 'placed', width: 320, requestedWidth: 320, shown: false});
+        vi.advanceTimersByTime(15_000);
+        expect(f.frame()).toBeNull();
     });
 
     it('取消请求后迟到失败被吸收，不干扰新一次打开', async () => {
@@ -235,11 +310,11 @@ describe('悬浮 Popup 的授权和消息边界', () => {
         oldFrame.dispatchEvent(new Event('load'));
         await f.controller.toggle(f.button);
         const nextFrame = f.frame()!;
-        for (const data of [{type: 'ready'}, {type: 'resize', width: 400, height: 200}, {type: 'close'}]) {
+        for (const data of [{type: 'ready', width: 400, height: 200}, {type: 'resize', width: 400, height: 200}, {type: 'close'}]) {
             oldMessage({data} as MessageEvent);
         }
         expect(f.frame()).toBe(nextFrame);
-        expect(nextFrame.style.visibility).toBe('hidden');
+        expect(nextFrame.style.opacity).toBe('0');
         expect(nextFrame.style.width).toBe('320px');
         expect(f.button.focus).not.toHaveBeenCalled();
         expect(oldConnection.port1.postMessage).toHaveBeenCalledWith({type: 'close'});
@@ -261,21 +336,29 @@ describe('悬浮 Popup 的授权和消息边界', () => {
         await f.controller.toggle(f.button);
         const frame = f.frame()!;
         const connection = loadFrame(frame);
-        for (const data of [null, {}, {type: 'unknown'},
+        for (const data of [null, {}, {type: 'unknown'}, {type: 'ready'},
+            {type: 'ready', width: 320, height: 0},
             {type: 'resize', width: NaN, height: 100}, {type: 'resize', width: 200, height: Infinity},
             {type: 'resize', width: 0, height: 100}, {type: 'resize', width: 200, height: -1},
             {type: 'resize', width: '400', height: 100}]) connection.port1.emit(data);
-        expect(frame.style.visibility).toBe('hidden');
+        expect(frame.style.opacity).toBe('0');
         expect(frame.style.width).toBe('320px');
         expect(frame.style.height).toBe('560px');
         connection.port1.emit({type: 'resize', width: 2000, height: 2000});
         expect(frame.style.width).toBe('800px');
         expect(frame.style.height).toBe('560px');
         expect(frame.style.left).toBe('308px');
+        expect(connection.port1.postMessage).toHaveBeenLastCalledWith(
+            {type: 'placed', width: 800, requestedWidth: 2000, shown: false});
         connection.port1.emit({type: 'resize', width: 400, height: 260});
         expect(frame.style.width).toBe('400px');
         expect(frame.style.height).toBe('260px');
         expect(frame.style.left).toBe('708px');
+        expect(frame.style.opacity).toBe('0');
+        expect(connection.port1.postMessage).toHaveBeenLastCalledWith({type: 'placed', width: 400, requestedWidth: 400, shown: false});
+        connection.port1.emit({type: 'ready', width: 400, height: 260, actualWidth: 400});
+        expect(frame.style.opacity).toBe('1');
+        expect(vi.getTimerCount()).toBe(0);
     });
 });
 
@@ -346,8 +429,8 @@ describe('悬浮 Popup 的关闭和页面生命周期', () => {
         f.controller.close(true);
         await f.controller.toggle(f.button);
         const channel = loadFrame(f.frame()!);
-        channel.port1.emit({type: 'ready'});
-        channel.port1.emit({type: 'ready'});
+        channel.port1.emit({type: 'ready', width: 320, height: 437, actualWidth: 320});
+        channel.port1.emit({type: 'ready', width: 320, height: 437, actualWidth: 320});
         f.controller.close(true);
         expect(f.frame()).toBeNull();
         expect(f.button.focus).toHaveBeenCalledOnce();
