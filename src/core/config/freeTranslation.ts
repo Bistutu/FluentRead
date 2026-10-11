@@ -1,7 +1,7 @@
 /**
  * @file src/core/config/freeTranslation.ts
  * 文件职责：定义免费翻译服务池、默认智能加速策略及请求预算的合法范围。
- * 主要内容：维护仅直连供应商的免密钥目录、实验性豆包网页节点的默认关闭与保守冷启动权重、均衡与顺序模式，规范启用列表、超时及可选邮箱；迁移时移除第三方代理，保留其余明确选择。
+ * 主要内容：维护仅直连供应商的默认启用免密钥目录、实验性豆包网页节点的保守冷启动权重、均衡与顺序模式，规范启用列表、超时及可选邮箱；迁移时移除第三方代理，保留其余明确选择。
  * 模块边界：本文件只包含纯配置规则，不读取存储、调用供应商或持有请求健康状态；运行时降级由翻译服务编排。
  */
 
@@ -13,7 +13,7 @@ export const FREE_TRANSLATION_PROVIDERS = [
     {id: 'bilibiliFree', label: 'B站翻译', description: '官方免费文本 API，Index-Translate-35B-A3B，无需密钥', official: true, defaultWeight: 2},
     {id: 'transmart', label: '腾讯交互翻译', description: '免密钥网页接口，与腾讯云翻译不同', official: true, defaultWeight: 3},
     {id: 'volcengineFree', label: '火山翻译', description: '免密钥网页接口，无需配置火山云账号', official: true, defaultWeight: 3},
-    {id: 'doubaoWeb', label: '豆包网页翻译', description: '实验性免密钥网页接口，默认关闭；匿名访问失败会换线', official: true, defaultWeight: 1, defaultEnabled: false},
+    {id: 'doubaoWeb', label: '豆包网页翻译', description: '实验性免密钥网页接口，默认开启；匿名访问失败会换线', official: true, defaultWeight: 1},
     {id: 'google', label: '谷歌翻译', description: '网页接口，非官方公开 API', official: true, defaultWeight: 3},
     {id: 'youdaoFree', label: '有道网页翻译', description: '免密钥普通文本翻译，与有道智云不同', official: true, defaultWeight: 3},
     {id: 'icibaFree', label: '金山词霸', description: '免密钥网页翻译，自动处理网页签名', official: true, defaultWeight: 3},
@@ -37,7 +37,6 @@ export function isFreeTranslationProviderId(value: unknown): value is FreeTransl
 export type FreeTranslationMode = 'balanced' | 'sequential';
 export const DEFAULT_FREE_TRANSLATION_MODE: FreeTranslationMode = 'balanced';
 export const DEFAULT_FREE_TRANSLATION_ORDER = FREE_TRANSLATION_PROVIDERS
-    .filter(provider => !('defaultEnabled' in provider) || provider.defaultEnabled !== false)
     .map(provider => provider.id);
 export const DEFAULT_FREE_TRANSLATION_TIMEOUT_MS = 5_000;
 export const DEFAULT_FREE_TRANSLATION_COOLDOWN_MS = 60_000;
