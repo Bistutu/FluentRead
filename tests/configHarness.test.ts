@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { getHarnessModelCacheKey, HARNESS_ACTIONS, DEFAULT_HARNESS_ACTION_PROMPTS, DEFAULT_HARNESS_SYSTEM_PROMPT, HARNESS_PROMPT_MAX_LENGTH, getDefaultHarnessPrompt, resolveHarnessPrompt, renderHarnessPrompt, isHarnessService, normalizeHarnessPreferences } from '@/src/core/config/harness'
+import { getHarnessModelCacheKey, resolveHarnessModel, HARNESS_ACTIONS, DEFAULT_HARNESS_ACTION_PROMPTS, DEFAULT_HARNESS_SYSTEM_PROMPT, HARNESS_PROMPT_MAX_LENGTH, getDefaultHarnessPrompt, resolveHarnessPrompt, renderHarnessPrompt, isHarnessService, isReadingService, isReadingActionSupported, isReadingFollowUpSupported, normalizeHarnessPreferences } from '@/src/core/config/harness'
 import {UI_LANGUAGE_OPTIONS} from '@/src/core/i18n/language'
 import {type HarnessPromptKind} from '@/src/core/harness/prompts'
 import { Config, normalizeConfig } from '@/src/core/config/model'
+import {customModelString, services, servicesType} from '@/src/core/config/catalog'
+import {BILIBILI_FREE_TRANSLATION_MODEL} from '@/src/core/config/freeTranslation'
 
 describe('Harness config contract', () => {
   it('defaults to quiet dismissal while preserving an explicit opt-out and trigger choice', () => {
@@ -83,6 +85,54 @@ describe('Harness config contract', () => {
     expect(isHarnessService('custom:study', [{ id: 'custom:study', name: 'Study', endpoint: '', models: ['study'] }])).toBe(true)
   })
 
+  it('accepts anonymous B站 reading without changing translation classification or opt-in defaults', () => {
+    expect(isReadingService(services.bilibili)).toBe(true)
+    expect(isHarnessService(services.bilibili)).toBe(false)
+    expect(isReadingService(services.openai)).toBe(true)
+    expect(isReadingService(services.microsoft)).toBe(false)
+    expect(isReadingService('custom:study')).toBe(false)
+    expect(isReadingService('custom:study', [{id: 'custom:study', name: 'Study', endpoint: '', models: ['study']}])).toBe(true)
+    expect(servicesType.isAI(services.bilibili)).toBe(false)
+    expect(servicesType.isMachine(services.bilibili)).toBe(true)
+    expect(normalizeHarnessPreferences({service: ` ${services.bilibili} `})).toMatchObject({enabled: false, service: services.bilibili})
+    expect(normalizeConfig({harness: {service: services.bilibili}}).harness).toMatchObject({enabled: false, service: services.bilibili})
+  })
+
+  it('limits B站 to verified basic actions and preserves full AI actions and follow-ups', () => {
+    expect(HARNESS_ACTIONS.filter(({id}) => isReadingActionSupported(services.bilibili, id)).map(({id}) => id)).toEqual(['meaning', 'usage'])
+    expect(isReadingFollowUpSupported(services.bilibili)).toBe(false)
+    const provider = {id: 'custom:study', name: 'Study', endpoint: 'https://example.test/v1/chat/completions', models: ['reader']}
+    for (const service of [services.openai, services.gemini, services.claude, provider.id]) {
+      expect(isHarnessService(service, [provider])).toBe(true)
+      expect(HARNESS_ACTIONS.every(({id}) => isReadingActionSupported(service, id))).toBe(true)
+      expect(isReadingFollowUpSupported(service)).toBe(true)
+    }
+  })
+
+  it('keeps B站 reading eligibility out of persisted writing configuration', () => {
+    const config = normalizeConfig({harness: {service: services.bilibili}, writing: {service: services.bilibili, model: 'unused'}})
+    expect(config.harness.service).toBe(services.bilibili)
+    expect(config.writing.service).toBe('')
+    expect(isHarnessService(services.bilibili)).toBe(false)
+  })
+
+  it('resolves the fixed anonymous model and preserves ordinary inherited, custom and overridden models', () => {
+    const config = new Config()
+    config.service = services.bilibili
+    config.harness.model = 'unused-override'
+    config.model.bilibili = 'unused-service-model'
+    config.customModel.bilibili = 'unused-custom-model'
+    expect(resolveHarnessModel(config)).toEqual({service: services.bilibili, model: BILIBILI_FREE_TRANSLATION_MODEL})
+    config.harness.service = services.bilibili; config.service = services.openai
+    expect(resolveHarnessModel(config)).toEqual({service: services.bilibili, model: BILIBILI_FREE_TRANSLATION_MODEL})
+    config.harness.service = ''; config.harness.model = ''; config.model.openai = 'inherited-reader'
+    expect(resolveHarnessModel(config)).toEqual({service: services.openai, model: 'inherited-reader'})
+    config.model.openai = customModelString; config.customModel.openai = 'custom-reader'
+    expect(resolveHarnessModel(config)).toEqual({service: services.openai, model: 'custom-reader'})
+    config.harness.service = services.deepseek; config.harness.model = 'specific-reader'
+    expect(resolveHarnessModel(config)).toEqual({service: services.deepseek, model: 'specific-reader'})
+  })
+
   it('preserves the supported advanced learning level', () => {
     expect(normalizeHarnessPreferences({ learningLevel: 'advanced' }).learningLevel).toBe('advanced')
   })
@@ -160,6 +210,28 @@ describe('localized Harness defaults', () => {
 })
 
 describe('reading model cache identity', () => {
+  it('keeps B站 answers when editing unused credentials, endpoints or model fields', () => {
+    const config = new Config(); config.harness.service = services.bilibili
+    const original = getHarnessModelCacheKey(config)
+    config.harness.model = 'ignored'; config.model.bilibili = 'ignored'; config.customModel.bilibili = 'ignored'
+    config.token.bilibili = 'test-only-ignored'; config.proxy.bilibili = 'https://unused.test/v1'
+    config.apiKeys.bilibili = ['test-only-unused']; config.apiKeyRotationEnabled.bilibili = false
+    config.customHeaders.bilibili = '{"x-unused":"test"}'; config.service = services.openai
+    config.custom = 'https://unused.test'; config.newApiUrl = 'https://unused.test'; config.azureOpenaiEndpoint = 'https://unused.test'
+    config.deepseekApiType = 'responses'; config.customOpenAIProviders = [{id: 'custom:unused', name: 'Unused', endpoint: 'https://unused.test', models: ['unused']}]
+    expect(getHarnessModelCacheKey(config)).toBe(original)
+    config.uiLanguage = 'en-US'
+    const translatedUi = getHarnessModelCacheKey(config); expect(translatedUi).not.toBe(original)
+    config.on = !config.on; expect(getHarnessModelCacheKey(config)).not.toBe(translatedUi)
+    config.harness.service = services.openai; expect(getHarnessModelCacheKey(config)).not.toBe(original)
+  })
+  it('does not access ignored anonymous credential and endpoint objects', () => {
+    const config = new Config(); config.harness.service = services.bilibili
+    for (const key of ['token', 'proxy', 'apiKeys', 'apiKeyRotationEnabled', 'customHeaders', 'customOpenAIProviders', 'modelThinking']) {
+      Object.defineProperty(config, key, {get() {throw new Error(`unexpected read: ${key}`)}})
+    }
+    expect(() => getHarnessModelCacheKey(config)).not.toThrow()
+  })
   it('ignores unrelated configuration notifications but tracks inherited and overridden model inputs', () => {
     const config = new Config();
     config.service = 'openai'; config.model.openai = 'reader';

@@ -1,6 +1,7 @@
 <!--
  @file src/app/popup/PopupServices.vue
  文件职责：在 Popup 翻译服务抽屉中展示功能分配概览，以独立选择面板替代层叠下拉菜单，让窄弹窗里的服务选择更直观。
+ B站匿名讲解只出现在阅读分配中，并展示固定有效模型；写作继续遵循通用AI服务边界。
  主要内容：突出网页默认服务，以紧凑列表展示各功能的独立服务或继承状态，继承行在同一行标出“跟随默认”与实际跟随的服务，且仅在模型与默认服务的配置模型不同时才显示模型行，以统一状态标签呈现服务并让多语言名称完整换行，保留本地图标、配置模型和配置提醒；选择面板合并功能标题、返回与关闭操作，搜索框随列表一起滚动，常用区只放可直接使用的服务，按免费翻译、已配置或正在使用的服务、微软与谷歌、热门服务排序，待配置的服务留在更多服务中，当前选中项始终在常用区，更多服务默认展开并按机器翻译、云服务厂商与 AI 翻译分组，选项下方标出配置模型或待配置状态，支持模型搜索及键盘导航，保留不可用的旧选择，缓存默认、继承或独立行的配置模型及本地化说明，避免将设置中的模型声明为最终请求模型；只让当前活跃配置和所属面板的事件修改草稿，焦点返回复验面板与用户焦点。
  模块边界：复用功能服务映射、模型解析及供应商能力，只修改父级配置草稿；保存由 PopupApp 负责，不请求翻译或处理连接密钥。
 -->
@@ -72,9 +73,8 @@
 <script setup lang="ts">
 import {computed, nextTick, ref, shallowRef, watch} from 'vue';
 import type {Config} from '@/src/core/config/model';
-import {featureServiceDefinitions, getFeatureService, setFeatureService, getFeatureModel, type FeatureServiceDefinition} from '@/src/core/config/featureServices';
+import {featureServiceDefinitions, getFeatureService, setFeatureService, getFeatureModel, isFeatureServiceSupported, type FeatureServiceDefinition} from '@/src/core/config/featureServices';
 import {models, customModelString, resolveConfiguredModel, services, servicesType} from '@/src/core/config/catalog';
-import {isHarnessService} from '@/src/core/config/harness';
 import {getCustomOpenAIProvider, isCustomOpenAIProviderId} from '@/src/core/config/customOpenAI';
 import {getMissingCredentialMessage} from '@/src/core/config/validation';
 import {getTranslationServiceUnavailableMessage, isTranslationServiceAvailable} from '@/src/services/translation/capabilities';
@@ -109,7 +109,7 @@ function selectionMatches(config: Config, field: Field, value: string, service: 
 }
 function warning(feature?: FeatureServiceDefinition) {
   const config = props.config, service = effective(feature);
-  if (feature?.aiOnly && !isHarnessService(service, config.customOpenAIProviders)) return `${t(`featureServices.${feature.id}`)} · ${t('featureServices.aiOnly')}`;
+  if (feature && !isFeatureServiceSupported(feature, service, config.customOpenAIProviders)) return `${t(`featureServices.${feature.id}`)} · ${t('featureServices.aiOnly')}`;
   const model = feature ? getFeatureModel(config, feature) : config.model[service];
   const message = getTranslationServiceUnavailableMessage(service) || getMissingCredentialMessage(service, config, model);
   return message ? translateLegacy(message) : '';
@@ -119,7 +119,7 @@ const rows = computed(() => {
   const defaultModel = servicesType.isUseModel(config.service) ? resolveConfiguredModel(config.model[config.service], config.customModel[config.service]) : '';
   return fields.map(field => {
     const value = selected(field.feature), service = value || config.service;
-    const model = !servicesType.isUseModel(service) ? '' : field.feature ? getFeatureModel(config, field.feature)
+    const model = field.feature?.id === 'reading' ? getFeatureModel(config, field.feature) : !servicesType.isUseModel(service) ? '' : field.feature ? getFeatureModel(config, field.feature)
       : resolveConfiguredModel(config.model[service], config.customModel[service]);
     const modelLabel = model ? t('featureServices.configuredModel', {model}) : '';
     const selectedLabel = field.feature?.inherit && !value ? t('featureServices.follow', {service: label(config.service)}) : label(service);
@@ -143,7 +143,7 @@ const filteredChoices = computed(() => {
   const feature = editing.value?.feature;
   const available = props.serviceOptions.filter(option => !option.disabled && isTranslationServiceAvailable(option.value)
     && (!isCustomOpenAIProviderId(option.value) || Boolean(getCustomOpenAIProvider(props.config.customOpenAIProviders, option.value)))
-    && (!feature?.aiOnly || isHarnessService(option.value, props.config.customOpenAIProviders)));
+    && (!feature || isFeatureServiceSupported(feature, option.value, props.config.customOpenAIProviders)));
   const matches = searchServiceOptions(available, query.value, searchableModels.value, props.config.model, props.config.customModel);
   const current = selected(feature);
   return current && !query.value.trim() && !available.some(option => option.value === current)

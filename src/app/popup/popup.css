@@ -1,7 +1,7 @@
 /**
  * @file src/app/popup/popup.css
  * 文件职责：定义宽度随皮肤和界面语言、高度由内容撑开且最高 560px 的浏览器 Popup 视觉系统与交互状态，包括亮暗主题、服务选择、功能卡、设置抽屉、通知和响应式细节。
- * 主要内容：以白色窄版画布、浅灰控件和品牌色强调翻译、局部、学习及站点控制；三个操作以 42px 高度紧凑同排，主按钮弹性伸展并用短标题合并快捷键，辅助按钮以上方图标和下方文字收拢，学习帮助沿用表面、分隔与品牌色并支持键盘聚焦；网站规则不再绘制外层框，独立按钮沿用指示点展示保存状态并尊重减少动画偏好；保留版本与赞赏码的原位放大、服务及模型摘要、两列入口、完整开源胶囊与开关优先的快捷抽屉和必要的内部滚动。
+ * 主要内容：以白色窄版画布、浅灰控件和品牌色强调翻译、局部及站点控制；两个操作以 42px 高度紧凑同排，主按钮弹性伸展并用短标题合并快捷键，辅助按钮以上方图标和下方文字收拢；网站规则不再绘制外层框，独立按钮沿用指示点展示保存状态并尊重减少动画偏好；保留版本与赞赏码的原位放大、服务及模型摘要、两列入口、完整开源胶囊与开关优先的快捷抽屉和必要的内部滚动。
  * 模块边界：样式只对应 PopupApp 的 DOM 和受控第三方组件，不决定配置值、能力可用性或消息行为；跨页面 token 在 src/ui/styles，Options/文档页各自维护页面样式。
  */
 @import "../../ui/styles/feedback.css";
@@ -706,20 +706,9 @@ footer button { font-weight: 500; color: var(--muted); }
   flex: 0 1 auto; min-width: 0; overflow: visible; text-overflow: clip; white-space: nowrap; line-height: 1.25;
 }
 :root .popup-shell[data-interface-skin] .translate-action .spinner { flex: none; }
-:root .popup-shell[data-interface-skin] .translate-action > .section-translate-button,
-:root .popup-shell[data-interface-skin] .learning-entry > .section-translate-button {
+:root .popup-shell[data-interface-skin] .translate-action > .section-translate-button {
   display: inline-flex; flex: 0 0 auto; flex-direction: column; justify-content: center; gap: 2px; min-width: 46px; height: auto; min-height: 42px; padding: 4px 5px;
 }
-.learning-entry { position: relative; display: flex; flex: none; }
-.learning-help {
-  position: absolute; z-index: 30; right: 0; top: 100%; width: 220px; padding: 12px;
-  border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink);
-  box-shadow: var(--fr-menu-shadow); text-align: left; font-size: 12px; line-height: 1.6;
-}
-.learning-help p { margin: 0 0 8px; }
-.learning-help small { display: block; color: var(--muted); font-size: 11px; }
-.learning-help button { margin-top: 8px; padding: 0; border: 0; background: none; color: var(--brand-strong); font: inherit; font-weight: 600; cursor: pointer; }
-.learning-help button:hover { text-decoration: underline; }
 /* 仅移除网站规则模块的外框，排序容器、独立按钮与各皮肤的按钮状态均保留。 */
 :root .popup-shell[data-interface-skin] .site-rule-row[data-popup-module="siteRule"] {
   min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none;

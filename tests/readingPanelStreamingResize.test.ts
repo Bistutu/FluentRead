@@ -10,7 +10,7 @@ import {parseHTML} from 'linkedom';
 import {compileScript, compileStyle, compileTemplate, parse} from 'vue/compiler-sfc';
 import ts from 'typescript';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {DEFAULT_HARNESS_PREFERENCES, HARNESS_ACTIONS} from '@/src/core/config/harness';
+import {DEFAULT_HARNESS_PREFERENCES, HARNESS_ACTIONS, isReadingActionSupported, isReadingFollowUpSupported} from '@/src/core/config/harness';
 import {hasDistinctTranslation} from '@/src/core/translation/result';
 import {buildReadingEvidence, readingEvidenceText} from '@/src/core/harness/evidence';
 import type {ReadingProgress, ReadingRequest, ReadingResponse} from '@/src/features/reading-assistant/types';
@@ -42,7 +42,7 @@ async function mountPanel(overrides:Record<string,unknown>={}) {
     '@/src/core/harness/evidence':{buildReadingEvidence, readingEvidenceText},
     '@/src/ui/i18n':{useUiI18n:()=>({t:(key:string)=>key,translateLegacy})},
     'webextension-polyfill':{default:{runtime:{sendMessage}}},
-    '@/src/core/config/harness':{HARNESS_ACTIONS},
+    '@/src/core/config/harness':{HARNESS_ACTIONS,isReadingActionSupported,isReadingFollowUpSupported},
     './ReadingAnswer.vue':{default:runtime.defineComponent({props:['text'],setup:props=>()=>runtime.h('div',{'data-reading-answer':''},props.text)})},
     '../client':{streamReading:(request:ReadingRequest,callbacks:StreamCall['callbacks'])=>{const call={request,callbacks,cancel:vi.fn()};calls.push(call);return {cancel:call.cancel};},
       getHarnessSession:async()=>null,listHarnessSessions:async()=>({sessions:[],hasMore:false}),saveLearningMemory},
@@ -125,6 +125,35 @@ it('copies and saves readable source quotes without leaking model citation IDs o
 });
 
 describe('reading panel streaming resize boundaries through actual setup and template',()=>{
+  it.each([false,true])('preserves scoped followup nodes, IME input and stopped keyboard propagation in both layouts (external=%s)',async externalNavigation=>{
+    const {host,panel,props,calls,window,finish,styles}=await mountPanel({externalNavigation});
+    vi.stubGlobal('Event',window.Event);
+    finish('Completed explanation');await tick();
+    panel.question='Draft';panel.feedback='Saved';panel.sessionWarning='Session warning';await tick();
+    const form=host.querySelector('.fr-reading-followup')!;
+    const input=form.querySelector('input') as unknown as HTMLInputElement;
+    const button=form.querySelector('button')!;
+    expect(form.parentNode).toBe(host.querySelector(externalNavigation?'.fr-reading-body':'[data-reading-panel]'));
+    expect(host.querySelectorAll('.fr-reading-followup')).toHaveLength(1);
+    for(const element of [form,input,button,...host.querySelectorAll('.fr-reading-feedback')]) expect(element.hasAttribute('data-v-reading-stream-resize')).toBe(true);
+    for(const fragment of ['.fr-reading-followup input','.fr-reading-followup button','.fr-reading-feedback']){
+      const selector=[...styles.matchAll(/([^{}]+)\{([^{}]+)\}/gu)].find(([,rule])=>rule.trim().startsWith(fragment))![1].trim();
+      expect(host.querySelector(selector)).not.toBeNull();
+    }
+    const propagated=vi.fn();host.addEventListener('keydown',propagated);host.addEventListener('keyup',propagated);
+    for(const type of ['keydown','keyup']) input.dispatchEvent(new window.Event(type,{bubbles:true}));
+    expect(propagated).not.toHaveBeenCalled();
+    input.dispatchEvent(new window.Event('compositionstart'));input.value='输入中的问题';
+    input.dispatchEvent(new window.Event('input',{bubbles:true}));await tick();
+    expect(panel.question).toBe('Draft');expect(panel.feedback).toBe('');
+    input.dispatchEvent(new window.Event('compositionend'));await tick();expect(panel.question).toBe('输入中的问题');
+    const submitted=new window.Event('submit',{bubbles:true,cancelable:true});form.dispatchEvent(submitted);await tick();
+    expect(submitted.defaultPrevented).toBe(true);expect(calls).toHaveLength(2);expect(calls[1].request.question).toBe('输入中的问题');
+    expect(input.hasAttribute('disabled')).toBe(true);expect(button.hasAttribute('disabled')).toBe(true);
+    props.preferences.service='bilibili';await tick();expect(host.querySelector('.fr-reading-followup')).toBeNull();
+    props.preferences.service='deepseek';await tick();expect(host.querySelectorAll('.fr-reading-followup')).toHaveLength(1);
+  });
+
   it('keeps standalone controls while external navigation teleports unique tools to the fixed slot and leaves followup in the answer',async()=>{
     const {host,toolsTarget,props,calls,viewport,finish,styles}=await mountPanel({externalNavigation:false});
     const root=host.querySelector('[data-reading-panel]')!;
@@ -240,7 +269,11 @@ describe('reading panel streaming resize boundaries through actual setup and tem
     const toolsRenders=()=>translateLegacy.mock.calls.filter(([text])=>text==='更多操作').length;
     const beforeChunks=toolsRenders();
     viewport.scrollTop=7;viewport.dispatchEvent(new window.Event('wheel',{bubbles:true}));
-    for(let index=0;index<8;index++){calls[0].callbacks.progress({kind:'text',text:`Stream paragraph ${index}`});await tick();expect(viewport.scrollTop).toBe(7);}
+    const followUpUpdates=vi.spyOn(runtime.vModelText as {beforeUpdate:NonNullable<typeof runtime.vModelText.beforeUpdate>},'beforeUpdate');
+    try {
+      for(let index=0;index<8;index++){calls[0].callbacks.progress({kind:'text',text:`Stream paragraph ${index}`});await tick();expect(viewport.scrollTop).toBe(7);}
+      expect(followUpUpdates).not.toHaveBeenCalled();
+    } finally {followUpUpdates.mockRestore();}
     expect(resize).not.toHaveBeenCalled();
     expect(toolsRenders()).toBe(beforeChunks);
     click(host.querySelector('.fr-reading-controls button[aria-label="停止"]')!);await tick();

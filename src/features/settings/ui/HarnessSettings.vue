@@ -1,12 +1,12 @@
 <!--
  * @file src/features/settings/ui/HarnessSettings.vue
  * 文件职责：作为划词翻译的学习子设置，用示例说明 AI 讲解，并明确原文范围、学习笔记和自定义指令的用途。
- * 主要内容：左侧用真实回答组件预览学习动作，右侧配置服务、模型、动作与回答偏好；多行偏好使用完整单列控件保持左侧对齐，窄屏下默认动作也纵向排列；独立展示上下文和记忆分区，提供学习中心入口；关闭讲解保留偏好，示例不发送请求。
+ * 主要内容：左侧用真实回答组件预览学习动作，右侧配置服务、模型、动作与回答偏好；B站仅预览基础读懂和用法、禁用暂不可用动作，默认动作临时回退而保留用户偏好，明确免费免密钥并展示固定模型，其他服务恢复完整动作与模型选择；多行偏好使用完整单列控件保持左侧对齐，窄屏下默认动作也纵向排列；独立展示上下文和记忆分区，提供学习中心入口；关闭讲解保留偏好，示例不发送请求。
  * 模块边界：只编辑传入 Config 的 harness 字段；记录由学习中心管理，不发起模型请求、不拥有网页选区。
  -->
 <template>
-  <SettingsGroup data-settings-anchor="learning" data-settings-anchor-label="AI 深入讲解" title="AI 深入讲解" description="切换左侧示例了解学习动作；在网页卡片中主动点击动作后，才向所选 AI 服务发送请求">
-    <FeatureEnableCard v-model="config.harness.enabled" title="启用 AI 讲解" description="使用已配置的 AI 服务讲解原文；关闭后仍可翻译和查词，讲解偏好会保留" />
+  <SettingsGroup data-settings-anchor="learning" data-settings-anchor-label="AI 深入讲解" title="AI 深入讲解" description="切换左侧示例了解学习动作；在网页卡片中触发学习动作后，才向所选 AI 服务发送请求">
+    <FeatureEnableCard v-model="config.harness.enabled" title="启用 AI 讲解" description="选择服务讲解原文，B站提供免费基础读懂和用法；关闭后仍可翻译和查词，讲解偏好会保留" />
     <SettingsPreviewLayout label="AI 讲解效果预览">
       <template #preview>
         <p class="harness-preview-source" data-i18n-ignore>{{ sentenceSource }}</p>
@@ -23,10 +23,12 @@
             <el-option v-for="item in serviceOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
           <small v-if="!effectiveServiceSupportsHarness" id="harness-service-hint" class="service-hint" role="status">当前默认服务不能回答学习问题，请在这里选择一个 AI 服务</small>
+          <small v-if="isBilibiliReading" class="harness-free-hint" role="status">免费基础读懂/用法，无需 API Key；完整语法、练习和追问可切换 AI 服务。触发学习动作时发送选中文字和已授权的段落</small>
         </div>
         <div class="harness-provider-field">
           <label>模型</label>
-          <el-select v-model="config.harness.model" class="harness-select" clearable filterable allow-create default-first-option aria-label="学习讲解模型" placeholder="跟随服务模型">
+          <div v-if="isBilibiliReading" class="harness-fixed-model" aria-label="学习讲解模型" data-i18n-ignore>{{ effectiveModel.model }}</div>
+          <el-select v-else v-model="config.harness.model" class="harness-select" clearable filterable allow-create default-first-option aria-label="学习讲解模型" placeholder="跟随服务模型">
             <el-option v-for="model in modelOptions" :key="model" :label="model" :value="model" />
           </el-select>
         </div>
@@ -34,19 +36,20 @@
       <div class="harness-preferences">
         <SettingsItem label="卡片中的学习动作" description="“读懂”始终显示，其他动作按需显示；左侧示例同步更新" stacked>
           <div class="harness-actions">
-            <label v-for="action in HARNESS_ACTIONS" :key="action.id" class="harness-action" :class="{selected: config.harness.actions.includes(action.id)}">
-              <input type="checkbox" :checked="config.harness.actions.includes(action.id)" :disabled="action.id === 'meaning'" @change="toggleAction(action.id)" />
-              <span><strong>{{ action.label }}<em v-if="action.id === 'meaning'">固定显示</em></strong><small>{{ action.description }}</small></span>
+            <label v-for="action in HARNESS_ACTIONS" :key="action.id" class="harness-action" :class="{selected: config.harness.actions.includes(action.id), unavailable: !isReadingActionSupported(effectiveModel.service, action.id)}">
+              <input type="checkbox" :checked="config.harness.actions.includes(action.id)" :disabled="action.id === 'meaning' || !isReadingActionSupported(effectiveModel.service, action.id)" @change="toggleAction(action.id)" />
+              <span><strong>{{ action.label }}<em v-if="action.id === 'meaning'">固定显示</em></strong><small>{{ isReadingActionSupported(effectiveModel.service, action.id) ? action.description : 'B站暂不支持；切换 AI 服务后恢复此偏好' }}</small></span>
             </label>
           </div>
         </SettingsItem>
         <SettingsItem class="harness-default-action" label="默认学习动作">
-          <el-select v-model="config.harness.defaultAction" class="harness-select" aria-label="默认动作"><el-option v-for="action in visibleActions" :key="action.id" :label="action.label" :value="action.id" /></el-select>
+          <el-select v-model="effectiveDefaultAction" class="harness-select" aria-label="默认动作"><el-option v-for="action in visibleActions" :key="action.id" :label="action.label" :value="action.id" /></el-select>
+          <small v-if="effectiveDefaultAction !== config.harness.defaultAction" class="harness-default-hint" role="status">当前使用“读懂”；切换 AI 服务后恢复原默认动作</small>
         </SettingsItem>
-        <SettingsItem label="回答长度" description="先给出重点，需要更多解释时可以继续追问" stacked>
+        <SettingsItem label="回答长度" :description="isBilibiliReading ? '先给出重点，可选择更详细的基础讲解' : '先给出重点，需要更多解释时可以继续追问'" stacked>
           <SegmentedControl v-model="config.harness.explanationDepth" :options="explanationDepthOptions" label="解释深度" />
         </SettingsItem>
-        <SettingsItem label="学习程度" description="让解释和练习贴近你的水平" stacked>
+        <SettingsItem label="学习程度" description="让学习讲解贴近你的水平" stacked>
           <SegmentedControl v-model="config.harness.learningLevel" :options="learningLevelOptions" label="学习程度" />
         </SettingsItem>
       </div>
@@ -75,9 +78,9 @@ import {ReadingAnswer} from '@/src/features/reading-assistant/public';
 import {sentenceSource, sentenceTranslation, sentenceAnalysis, learningPreviewAnswers} from '@/src/core/config/selectionPreview';
 import FeatureEnableCard from '@/src/ui/components/FeatureEnableCard.vue';
 import {computed, ref, toRef, watch} from 'vue'
-import {models, options} from '@/src/core/config/catalog'
+import {models, options, services} from '@/src/core/config/catalog'
 import {getCustomOpenAIProviderLabel, getCustomOpenAIProviderModels, isCustomOpenAIProviderId} from '@/src/core/config/customOpenAI'
-import {HARNESS_ACTIONS, isHarnessService, type HarnessActionId} from '@/src/core/config/harness'
+import {HARNESS_ACTIONS, isReadingActionSupported, isReadingService, resolveHarnessModel, type HarnessActionId} from '@/src/core/config/harness'
 import type {Config} from '@/src/core/config/model'
 import SettingsGroup from './components/SettingsGroup.vue'
 import SettingsItem from './components/SettingsItem.vue'
@@ -92,23 +95,31 @@ const previewAction = ref<HarnessActionId>(props.config.harness.defaultAction)
 const previewAnswer = computed(() => previewAction.value === 'grammar' ? sentenceAnalysis : learningPreviewAnswers[previewAction.value][config.value.harness.explanationDepth])
 const {t} = useUiI18n()
 const serviceOptions = computed(() => [
-  ...options.services.filter((item) => !item.disabled && isHarnessService(item.value)),
+  ...options.services.filter((item) => !item.disabled && isReadingService(item.value)).map(item => item.value === services.bilibili ? {...item, label: 'B站翻译 · 免费'} : item),
   ...config.value.customOpenAIProviders.filter((provider) => !options.services.some((item) => item.value === provider.id)).map((provider) => ({value: provider.id, label: getCustomOpenAIProviderLabel(config.value.customOpenAIProviders, provider.id)})),
 ])
 const modelOptions = computed(() => {
   const service = config.value.harness.service || config.value.service
   return (isCustomOpenAIProviderId(service) ? getCustomOpenAIProviderModels(config.value.customOpenAIProviders, service) : models.get(service) || []).filter((model) => model !== '自定义模型')
 })
-const effectiveServiceSupportsHarness = computed(() => isHarnessService(config.value.harness.service || config.value.service, config.value.customOpenAIProviders))
-const visibleActions = computed(() => HARNESS_ACTIONS.filter((action) => config.value.harness.actions.includes(action.id)))
-watch(() => config.value.harness.defaultAction, (action) => { previewAction.value = action })
-watch(visibleActions, (actions) => { if (!actions.some(action => action.id === previewAction.value)) previewAction.value = config.value.harness.defaultAction })
+const effectiveServiceSupportsHarness = computed(() => isReadingService(config.value.harness.service || config.value.service, config.value.customOpenAIProviders))
+const effectiveModel = computed(() => resolveHarnessModel(config.value))
+const isBilibiliReading = computed(() => effectiveModel.value.service === services.bilibili)
+const visibleActions = computed(() => HARNESS_ACTIONS.filter((action) => config.value.harness.actions.includes(action.id) && isReadingActionSupported(effectiveModel.value.service, action.id)))
+// 服务能力只影响当前显示；不能用临时回退覆盖用户在完整AI服务中保存的默认动作。
+const effectiveDefaultAction = computed({
+  get: () => visibleActions.value.find(action => action.id === config.value.harness.defaultAction)?.id
+    || visibleActions.value.find(action => action.id === 'meaning')?.id || visibleActions.value[0]?.id || 'meaning',
+  set: (action: HarnessActionId) => { if (visibleActions.value.some(item => item.id === action)) config.value.harness.defaultAction = action },
+})
+watch(effectiveDefaultAction, (action) => { previewAction.value = action }, {immediate: true})
+watch(visibleActions, (actions) => { if (!actions.some(action => action.id === previewAction.value)) previewAction.value = effectiveDefaultAction.value })
 const contextModeOptions = [{value: 'paragraph', label: '可参考本段'}, {value: 'selection', label: '仅选中文字'}]
 const explanationDepthOptions = [{value: 'concise', label: '简洁'}, {value: 'detailed', label: '详细'}]
 const learningLevelOptions = [{value: 'beginner', label: '初级'}, {value: 'intermediate', label: '中级'}, {value: 'advanced', label: '高级'}]
 
 function toggleAction(id: HarnessActionId) {
-  if (id === 'meaning') return
+  if (id === 'meaning' || !isReadingActionSupported(effectiveModel.value.service, id)) return
   const actions = config.value.harness.actions.includes(id) ? config.value.harness.actions.filter((item) => item !== id) : [...config.value.harness.actions, id]
   config.value.harness.actions = actions.includes('meaning') ? actions : ['meaning', ...actions]
   if (!config.value.harness.actions.includes(config.value.harness.defaultAction)) config.value.harness.defaultAction = 'meaning'
@@ -125,6 +136,8 @@ function toggleAction(id: HarnessActionId) {
 .harness-provider-field { display:flex; flex-direction:column; gap:8px; min-width:0; }
 .harness-provider-field > label { color:var(--ink); font-size:13px; font-weight:600; }
 .service-hint { font-size:12px; line-height:1.6; color:var(--warning,#b26a00); }
+.harness-free-hint, .harness-default-hint { font-size:12px; line-height:1.6; color:var(--muted); }
+.harness-fixed-model { min-height:32px; display:flex; align-items:center; padding:0 11px; border:1px solid var(--line); border-radius:6px; background:var(--surface-soft); color:var(--ink); font-size:12px; overflow-wrap:anywhere; }
 .harness-select { width:100%; }
 .harness-preferences :deep(.settings-item) { gap:10px; padding:16px 0; border-top:1px solid var(--line); }
 .harness-preferences :deep(.settings-item-control) { width:100%; }
@@ -132,6 +145,7 @@ function toggleAction(id: HarnessActionId) {
 .harness-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; width:100%; }
 .harness-action { display:flex; gap:8px; align-items:flex-start; padding:12px; border:1px solid var(--line); border-radius:9px; cursor:pointer; }
 .harness-action.selected { border-color:color-mix(in srgb,var(--brand) 45%,var(--line)); background:color-mix(in srgb,var(--brand) 4%,var(--surface)); }
+.harness-action.unavailable { cursor:default; opacity:.65; }
 .harness-action input { accent-color:var(--brand); margin:3px 0 0; }
 .harness-action span { display:flex; flex-direction:column; gap:5px; color:var(--ink); font-size:12px; }
 .harness-action strong { display:flex; flex-wrap:wrap; gap:4px 8px; }

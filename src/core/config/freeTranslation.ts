@@ -1,12 +1,13 @@
 /**
  * @file src/core/config/freeTranslation.ts
  * 文件职责：定义免费翻译服务池、默认智能加速策略及请求预算的合法范围。
- * 主要内容：维护仅直连供应商的默认启用免密钥目录、实验性豆包网页节点的保守冷启动权重、均衡与顺序模式，规范启用列表、超时及可选邮箱；迁移时移除第三方代理，保留其余明确选择。
+ * 主要内容：维护仅直连供应商的默认启用免密钥目录、B站官方固定域名与模型、实验性豆包网页节点的保守冷启动权重、均衡与顺序模式，规范启用列表、超时及可选邮箱；迁移时移除第三方代理，保留其余明确选择。
  * 模块边界：本文件只包含纯配置规则，不读取存储、调用供应商或持有请求健康状态；运行时降级由翻译服务编排。
  */
 
 /** official 表示由供应商运营，网页端点不等于有文档或服务保证的公开 API。 */
 export const BILIBILI_FREE_TRANSLATION_DOMAIN = 'index-translate.bilibili.com';
+export const BILIBILI_FREE_TRANSLATION_MODEL = 'Index-Translate-35B-A3B';
 
 export const FREE_TRANSLATION_PROVIDERS = [
     {id: 'microsoft', label: '微软翻译', description: 'Edge 网页接口，非官方公开 API', official: true, defaultWeight: 5},

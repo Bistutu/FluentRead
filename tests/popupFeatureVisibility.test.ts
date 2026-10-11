@@ -38,18 +38,16 @@ function directive(element: TemplateElement, name: string, argument?: string): s
 }
 
 describe('popup feature visibility', () => {
-    it('shows a guarded progressive reading action for webpages with an accessible label', () => {
+    it('keeps compact page and section actions with their accessible purpose and guarded page ownership', () => {
         const elements = templateElements(source('src/app/popup/PopupApp.vue'));
         const entry = elements.find(node => node.tag === 'button'
-            && node.props.some(prop => prop.type === 6 && prop.name === 'data-testid' && prop.value?.content === 'progressive-reading'))!;
+            && node.props.some(prop => prop.type === 6 && prop.name === 'data-testid' && prop.value?.content === 'section-translation'))!;
         expect(entry).toBeDefined();
-        const visible = directive(elements.find(node => node.props.some(prop => prop.type === 6 && prop.name === 'class' && prop.value?.content === 'learning-entry'))!, 'if')!;
-        expect(visible).toBe("browserCapabilities.browser !== 'userscript' && !isThunderbird && !currentPdfSource");
-        for (const browser of ['chrome', 'firefox', 'userscript']) {
-            expect(runInNewContext(visible, {browserCapabilities: {browser}, isThunderbird: false, currentPdfSource: undefined})).toBe(browser !== 'userscript');
-        }
-        expect(runInNewContext(visible, {browserCapabilities: {browser: 'chrome'}, isThunderbird: true, currentPdfSource: undefined})).toBe(false);
-        expect(runInNewContext(visible, {browserCapabilities: {browser: 'chrome'}, isThunderbird: false, currentPdfSource: {}})).toBe(false);
+        const visible = directive(entry, 'if')!;
+        expect(visible).toBe('!isThunderbird && !currentPdfSource');
+        expect(runInNewContext(visible, {isThunderbird: false, currentPdfSource: undefined})).toBe(true);
+        expect(runInNewContext(visible, {isThunderbird: true, currentPdfSource: undefined})).toBe(false);
+        expect(runInNewContext(visible, {isThunderbird: false, currentPdfSource: {}})).toBe(false);
         const disabled = directive(entry, 'bind', 'disabled')!;
         expect(disabled).toBe('!config.on || currentSiteExtensionDisabled || translating || pageState.savingRule');
         const ready = {config: {on: true}, currentSiteExtensionDisabled: false, translating: false, pageState: {savingRule: false}};
@@ -58,11 +56,8 @@ describe('popup feature visibility', () => {
             {...ready, config: {on: false}}, {...ready, currentSiteExtensionDisabled: true},
             {...ready, translating: true}, {...ready, pageState: {savingRule: true}},
         ]) expect(runInNewContext(disabled, blocked)).toBe(true);
-        expect(directive(entry, 'bind', 'onClick')).toBe('pageButtons.reading');
-        expect(directive(entry, 'bind', 'aria-label')).toBe("t('progressiveReading.entry.label')");
-        const label = entry.children.find(node => node.type === 1 && node.tag === 'span')!;
-        expect(label.type === 1 && label.children.some(node => node.type === 5 && node.content.type === 4 && node.content.content === "t('progressiveReading.entry.label')")).toBe(true);
-        expect(entry.props.some(prop => prop.type === 6 && prop.name === 'aria-describedby' && prop.value?.content === 'learning-entry-description learning-entry-shortcut')).toBe(true);
+        expect(directive(entry, 'bind', 'onClick')).toBe('pageButtons.section');
+        expect(directive(entry, 'bind', 'aria-label')).toBe('sectionTranslationLabel');
         const main = elements.find(node => node.tag === 'button'
             && node.props.some(prop => prop.type === 6 && prop.name === 'data-testid' && prop.value?.content === 'page-translation'))!;
         expect(directive(main, 'bind', 'title')).toBe('pageTranslationTitle');

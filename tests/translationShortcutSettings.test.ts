@@ -38,21 +38,6 @@ beforeEach(() => {vi.useFakeTimers(); vi.clearAllMocks(); vi.stubGlobal('navigat
 afterEach(() => {for (const scope of scopes) scope.stop(); vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals();});
 
 describe('快捷键设置草稿生命周期', () => {
-    it('学习组合双向保护全文、输入框及悬浮划词的纯修饰前缀，停用学习后释放', () => {
-        const {state, config} = mount();
-        config.value.progressiveReadingHotkey = 'custom';config.value.customProgressiveReadingHotkey = 'Ctrl+Alt+L';
-        expect(state.quickTranslationConflictMessage('Control+Alt+L')).toContain('progressiveReading.settings.conflict');
-        for (const prefix of ['Control', 'Alt']) expect(state.quickTranslationConflictMessage(prefix)).toContain('progressiveReading.settings.conflict');
-        expect(state.quickTranslationConflictMessage('Shift')).toBe('');expect(state.quickTranslationConflictMessage('F10')).toBe('');
-        state.handleHotkeyChange('custom');vi.advanceTimersByTime(100);state.handleCustomHotkeyConfirm('Ctrl+Alt+L');
-        expect(config.value.customFloatingBallHotkey).toBe('');expect(state.showCustomHotkeyDialog.value).toBe(true);
-        state.handleMouseHotkeyChange('Control');expect(config.value.hotkey).toBe('Shift');
-        state.handleSelectionTriggerChange('Alt');expect(config.value.selectionTranslatorTrigger).toBe('hover');
-        config.value.customProgressiveReadingHotkey = 'Ctrl+Enter';config.value.inputBoxTranslationTrigger = 'disabled';state.handleInputBoxTranslationTriggerChange('ctrl_enter');
-        expect(config.value.inputBoxTranslationTrigger).toBe('disabled');
-        expect(state.quickTranslationConflictMessage('Ctrl+Enter')).toContain('progressiveReading.settings.conflict');
-        config.value.progressiveReadingHotkey = 'none';expect(state.quickTranslationConflictMessage('Ctrl+Enter')).toBe('');
-    });
     it.each(groups)('$name 快速改选不会让迟到弹窗重新打开或取消覆盖新选择', async group => {
         const {state, config} = mount();
         state[group.change]('custom'); state[group.change](group.replacement);

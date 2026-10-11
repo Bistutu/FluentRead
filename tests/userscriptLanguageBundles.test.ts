@@ -22,7 +22,6 @@ describe('userscript remote UI language data', () => {
         for (const bundle of Object.values(UI_LANGUAGE_BUNDLES)) {
             expect(bundle.messages).not.toHaveProperty('popup.compact.translate');
             expect(bundle.messages).not.toHaveProperty('popup.compact.restore');
-            expect(bundle.messages).not.toHaveProperty('progressiveReading.audio.play');
             expect(bundle.messages['popup.translateCurrentPage']).toBeTruthy();
         }
         const requests: string[] = [];

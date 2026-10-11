@@ -1,7 +1,7 @@
 /**
  * @file tests/popupServicesLifecycle.test.ts
  * 文件职责：验证实际 Popup 服务选择模板的事件归属、面板焦点、独立模型与凭据读取范围。
- * 主要内容：执行真实缓存客户端模板，覆盖隐藏、缓存、配置替换、选择会话切换、查询、目录权限、九种功能模型和默认继承。
+ * 主要内容：执行真实缓存客户端模板，覆盖隐藏、缓存、配置替换、选择会话切换、查询、目录权限、九种功能模型和默认继承；验证B站免费阅读选项、固定模型与写作拒绝边界。
  * 模块边界：Linkedom 保留实际节点树，展示控件与焦点为受控端口；不调用翻译或验证系统输入法。
  */
 import {createRequire} from 'node:module'
@@ -15,6 +15,7 @@ import ts from 'typescript'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {Config} from '@/src/core/config/model'
 import {createApiKeyRequirementKey} from '@/src/core/config/validation'
+import {BILIBILI_FREE_TRANSLATION_MODEL} from '@/src/core/config/freeTranslation'
 
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
 let server: ViteDevServer, app: import('vue').App, document: Document, win: any, focused: Element | null
@@ -92,6 +93,29 @@ async function search(keyword: string) {const input = document.querySelector('in
 function pickerBack() {return eventOf(document.querySelector('.service-picker-back')!)}
 
 describe('Popup 服务选择实际缓存模板', () => {
+  it('阅读选择面板允许免密钥B站并显示固定模型，写作面板不提供该服务', async () => {
+    const config = runtime.reactive(new Config()); config.harness.model = 'unused-reader'; config.model.bilibili = 'unused-default'
+    await mountPopup(config, {serviceOptions: [...services, {value: 'bilibili', label: 'B站翻译'}]}, false)
+    await open('reading'); expect(option('bilibili')).not.toBeNull(); expect(option('bilibili').hasAttribute('disabled')).toBe(false)
+    expect(option('bilibili').querySelector('.service-choice-setup')).toBeNull()
+    eventOf(option('bilibili'))(); await settle(); expect(config.harness.service).toBe('bilibili')
+    expect(row('reading').textContent).toContain(BILIBILI_FREE_TRANSLATION_MODEL)
+    expect(row('reading').querySelector('.assignment-warning')).toBeNull()
+    await open('reading'); expect(document.querySelector('.service-picker-warning')).toBeNull(); pickerBack()(); await settle()
+    await open('writing'); expect(document.querySelector('[data-service-choice="bilibili"]')).toBeNull()
+  })
+  it('默认B站阅读继承无警告，写作继承及残留独立选择保留禁用状态并可恢复AI', async () => {
+    const config = runtime.reactive(new Config())
+    await mountPopup(config, {serviceOptions: [...services, {value: 'bilibili', label: 'B站翻译'}]}); config.service = 'bilibili'; await settle()
+    expect(row('reading').querySelector('.assignment-warning')).toBeNull(); expect(row('reading').textContent).toContain(BILIBILI_FREE_TRANSLATION_MODEL)
+    expect(row('writing').querySelector('.assignment-warning')?.getAttribute('aria-label')).toBe('featureServices.writing · featureServices.aiOnly')
+    config.writing.service = 'bilibili'; await settle(); await open('writing')
+    expect(option('bilibili').hasAttribute('disabled')).toBe(true)
+    const unchanged = config.writing.service; eventOf(option('bilibili'))(); expect(config.writing.service).toBe(unchanged)
+    expect(document.querySelector('.service-picker-warning')?.textContent).toBe('featureServices.writing · featureServices.aiOnly')
+    eventOf(option('openai'))(); await settle(); expect(config.writing.service).toBe('openai')
+    expect(row('writing').querySelector('.assignment-warning')).toBeNull()
+  })
   it.each(['hidden', 'cached', 'unmount', 'config'])('%s 后旧选项、返回、输入与关闭事件全部失效', async reason => {
     await mountPopup();await open('input');const choose = eventOf(option('deepseek')), close = eventOf(document.querySelector('.service-panel-close')!), back = pickerBack(), input = document.querySelector('input')!, type = eventOf(input,'onInput');invalidate(reason);await settle();const before = snapshot(props.config)
     choose();back();type({target:input});close();expect(snapshot(props.config)).toEqual(before);expect(updates).not.toHaveBeenCalled()

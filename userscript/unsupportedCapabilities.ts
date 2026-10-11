@@ -17,11 +17,6 @@ export function unmountImageTranslator(): void {}
 export function mountVocabularyReencounter(): void {}
 export function unmountVocabularyReencounter(): void {}
 
-/** 渐进阅读目前仅扩展支持；构建期隔离其页面扫描、学习读取与 Vue 浮层。 */
-export function mountProgressiveReading(): void {}
-export function openProgressiveReading(): Promise<boolean> { return Promise.resolve(false); }
-export function unmountProgressiveReading(): void {}
-
 /** 个人校订需要扩展后台串行写入；复用空适配器以隔离管理面板与内容监听器。 */
 export {
     mountVocabularyReencounter as mountPersonalCorrections,

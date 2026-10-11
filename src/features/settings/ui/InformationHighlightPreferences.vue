@@ -1,7 +1,7 @@
 <!--
 @file src/features/settings/ui/InformationHighlightPreferences.vue
 文件职责：提供智能高亮的开关与阅读偏好控件，让用户直接比较密度、渐变配色和绘制效果。
-主要内容：学习组合也纳入快捷键占用校验；首行设置当前页面的开关快捷键，其下开关决定是否自动高亮；分析方式后提供两张模型资源卡的插槽，模型选择由父级处理；以密度、色阶卡、浓度和绘制方式控制外观，所有写入绑定活跃配置归属。
+主要内容：首行设置当前页面的开关快捷键，其下开关决定是否自动高亮；分析方式后提供两张模型资源卡的插槽，模型选择由父级处理；以密度、色阶卡、浓度和绘制方式控制外观，所有写入绑定活跃配置归属。
 模块边界：只修改已有 Config.informationHighlight，不分析正文、不下载模型；设置持久化由父级现有配置服务负责。
 -->
 <template>
@@ -67,7 +67,6 @@ import {useSettingsActionContext} from '../model/useSettingsActionContext'
 import {useUiI18n} from '@/src/ui/i18n'
 import {canonicalizeHotkey, resolveConfiguredHotkey} from '@/src/core/hotkey'
 import {resolveSectionTranslationHotkey} from '@/src/core/config/sectionTranslation'
-import {resolveProgressiveReadingHotkey} from '@/src/core/config/progressiveReading'
 import {resolveParagraphCopyHotkey} from '@/src/core/config/paragraphCopy'
 import {resolveAreaTranslationHotkey} from '@/src/core/config/areaTranslation'
 import {findEnabledQuickTranslationHotkeyConflict} from '@/src/core/config/quickTranslation'
@@ -89,7 +88,6 @@ function hotkeyConflict(hotkey: string): string {
   const identity = canonicalizeHotkey(hotkey).toLocaleLowerCase(), config = props.config
   if (!identity) return ''
   const taken = [resolveConfiguredHotkey(config.hotkey, config.customHotkey), resolveConfiguredHotkey(config.floatingBallHotkey, config.customFloatingBallHotkey),
-    resolveProgressiveReadingHotkey(config.progressiveReadingHotkey, config.customProgressiveReadingHotkey),
     config.selectionTranslatorMode === 'disabled' ? '' : resolveConfiguredHotkey(config.selectionTranslatorTrigger, config.customSelectionTranslatorHotkey),
     config.sectionTranslationHotkeyEnabled ? resolveSectionTranslationHotkey(config.sectionTranslationHotkey, config.customSectionTranslationHotkey) : '',
     config.paragraphCopyEnabled ? resolveParagraphCopyHotkey(config.paragraphCopyHotkey, config.customParagraphCopyHotkey) : '',

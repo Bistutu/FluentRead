@@ -39,7 +39,6 @@ const mocks = vi.hoisted(() => ({
     translateSelectionFromContextMenu: vi.fn(),
     startAreaTranslationFromContextMenu: vi.fn(),
     startSectionTranslationPicker: vi.fn(),
-    openProgressiveReading: vi.fn(),
     sendMessage: vi.fn(),
     showPageNotice: vi.fn(),
     dismissPageNotice: vi.fn(),
@@ -80,7 +79,6 @@ vi.mock('@/src/app/content/features', () => ({
     translateSelectionFromContextMenu: mocks.translateSelectionFromContextMenu,
     startAreaTranslationFromContextMenu: mocks.startAreaTranslationFromContextMenu,
     startSectionTranslationPicker: mocks.startSectionTranslationPicker,
-    openProgressiveReading: mocks.openProgressiveReading,
 }));
 
 beforeEach(() => {
@@ -107,96 +105,11 @@ beforeEach(() => {
     mocks.sendMessage.mockResolvedValue(undefined);
     mocks.isFullPageTranslationActive.mockReturnValue(false);
     mocks.getTranslationToolbarStatus.mockReturnValue('idle');
-    mocks.openProgressiveReading.mockResolvedValue(false);
     vi.stubGlobal('browser', {runtime: {sendMessage: mocks.sendMessage}});
     vi.stubGlobal('document', {getElementById: vi.fn(() => null)});
 });
 
 describe('内容脚本 runtime 消息协议', () => {
-    it('渐进阅读主动命令等待真实开启结果，失败和异常均如实回传', async () => {
-        const {createContentRuntimeMessageHandler} = await import('@/src/app/content/messageRuntime');
-        const {resolveBrowserCapabilities} = await import('@/src/platform/browser/capabilities');
-        const {ContentScriptContext} = await import('wxt/utils/content-script-context');
-        const ctx = new ContentScriptContext('progressive-message-result');
-        const respond = vi.fn();
-        const handler = createContentRuntimeMessageHandler(ctx, {isSiteDisabled: () => false, updateSiteDisabled: vi.fn()},
-            resolveBrowserCapabilities({browser: 'chrome', manifestVersion: 3}));
-        let resolveOpened!: (opened: boolean) => void;
-        mocks.openProgressiveReading.mockReturnValueOnce(new Promise<boolean>(resolve => {resolveOpened = resolve;}));
-        expect(handler({type: 'openProgressiveReading'}, {}, respond)).toBe(true);
-        expect(respond).not.toHaveBeenCalled();
-        resolveOpened(true);
-        await vi.waitFor(() => expect(respond).toHaveBeenLastCalledWith({status: 'success'}));
-        expect(mocks.openProgressiveReading).toHaveBeenCalledWith();
-        handler({type: 'openProgressiveReading'}, {}, respond);
-        await vi.waitFor(() => expect(respond).toHaveBeenLastCalledWith({status: 'failed'}));
-        mocks.openProgressiveReading.mockRejectedValueOnce(new Error('controlled reading mount failure'));
-        handler({type: 'openProgressiveReading'}, {}, respond);
-        await vi.waitFor(() => expect(respond).toHaveBeenCalledTimes(3));
-        expect(respond).toHaveBeenLastCalledWith({status: 'failed'});
-        expect(mocks.openProgressiveReading).toHaveBeenCalledTimes(3);
-        expect(mocks.translateSelectionFromContextMenu).not.toHaveBeenCalled();
-        expect(mocks.autoTranslateEnglishPage).not.toHaveBeenCalled();
-        ctx.abort();
-    });
-
-    it('userscript 构建不注册渐进阅读消息分支，即使注入扩展能力也不调用功能', async () => {
-        vi.stubEnv('BROWSER', 'userscript');
-        try {
-            const {createContentRuntimeMessageHandler} = await import('@/src/app/content/messageRuntime');
-            const {resolveBrowserCapabilities} = await import('@/src/platform/browser/capabilities');
-            const {ContentScriptContext} = await import('wxt/utils/content-script-context');
-            const ctx = new ContentScriptContext('userscript-progressive-message');
-            const handler = createContentRuntimeMessageHandler(ctx, {isSiteDisabled: () => false, updateSiteDisabled: vi.fn()},
-                resolveBrowserCapabilities({browser: 'chrome', manifestVersion: 3}));
-            const respond = vi.fn();
-            expect(handler({type: 'openProgressiveReading'}, {}, respond)).toBe(false);
-            expect(mocks.openProgressiveReading).not.toHaveBeenCalled();
-            expect(respond).not.toHaveBeenCalled();
-            ctx.abort();
-        } finally {
-            vi.unstubAllEnvs();
-        }
-    });
-
-    it.each(['config-disabled', 'userscript', 'site-disabled', 'page-suspended', 'context-invalid'] as const)(
-        '渐进阅读命令在 %s 门禁下不触发功能', async gate => {
-            const {createContentRuntimeMessageHandler} = await import('@/src/app/content/messageRuntime');
-            const {resolveBrowserCapabilities} = await import('@/src/platform/browser/capabilities');
-            const {ContentScriptContext} = await import('wxt/utils/content-script-context');
-            const ctx = new ContentScriptContext('progressive-message-gate');
-            if (gate === 'context-invalid') ctx.abort();
-            if (gate === 'config-disabled') mocks.config.on = false;
-            const handler = createContentRuntimeMessageHandler(ctx, {
-                isSiteDisabled: () => gate === 'site-disabled', isPageSuspended: () => gate === 'page-suspended', updateSiteDisabled: vi.fn(),
-            }, resolveBrowserCapabilities({browser: gate === 'userscript' ? 'userscript' : 'chrome', manifestVersion: 3}));
-            const respond = vi.fn();
-            expect(handler({type: 'openProgressiveReading'}, {}, respond)).toBe(true);
-            expect(respond).toHaveBeenCalledOnce();
-            expect(respond).toHaveBeenCalledWith({status: 'disabled'});
-            expect(mocks.openProgressiveReading).not.toHaveBeenCalled();
-            ctx.abort();
-        },
-    );
-
-    it('渐进阅读消息在同一页面恢复后重新检查站点和挂起状态', async () => {
-        const {createContentRuntimeMessageHandler} = await import('@/src/app/content/messageRuntime');
-        const {resolveBrowserCapabilities} = await import('@/src/platform/browser/capabilities');
-        const lifecycle = {disabled: true, suspended: false};
-        const handler = createContentRuntimeMessageHandler({isInvalid: false} as ContentScriptContext, {
-            isSiteDisabled: () => lifecycle.disabled, isPageSuspended: () => lifecycle.suspended, updateSiteDisabled: vi.fn(),
-        }, resolveBrowserCapabilities({browser: 'firefox', manifestVersion: 2}));
-        const respond = vi.fn();
-        handler({type: 'openProgressiveReading'}, {}, respond);
-        lifecycle.disabled = false; lifecycle.suspended = true;
-        handler({type: 'openProgressiveReading'}, {}, respond);
-        expect(mocks.openProgressiveReading).not.toHaveBeenCalled();
-        lifecycle.suspended = false; mocks.openProgressiveReading.mockResolvedValueOnce(true);
-        handler({type: 'openProgressiveReading'}, {}, respond);
-        await vi.waitFor(() => expect(respond).toHaveBeenLastCalledWith({status: 'success'}));
-        expect(mocks.openProgressiveReading).toHaveBeenCalledOnce();
-    });
-
     it('信息高亮状态在暂停或关闭时仍可读，关闭可抢占，开启和重试遵循当前页面门禁', async () => {
         const {createContentRuntimeMessageHandler} = await import('@/src/app/content/messageRuntime');
         const respond = vi.fn(); let disabled = false, suspended = false, invalid = false;

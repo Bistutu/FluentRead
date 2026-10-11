@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/ParagraphCopySettings.vue
  * 文件职责：在翻译交互设置中提供"复制鼠标所指段落"的开关、触发快捷键与复制内容口径，让用户不必先选中文字也能取走一整段。
- * 主要内容：学习组合也纳入占用校验；绑定 paragraphCopyEnabled、paragraphCopyHotkey、customParagraphCopyHotkey 与 paragraphCopyContent，提供预设与自定义录制入口，并对悬浮、全文、划词、圈选、局部翻译、输入框翻译和快捷翻译方案的占用给出冲突提示。
+ * 主要内容：绑定 paragraphCopyEnabled、paragraphCopyHotkey、customParagraphCopyHotkey 与 paragraphCopyContent，提供预设与自定义录制入口，并对悬浮、全文、划词、圈选、局部翻译、输入框翻译和快捷翻译方案的占用给出冲突提示。
  * 模块边界：本组件只修改传入的 config 对象并提示冲突，不持久化配置、不监听网页按键、不访问剪贴板；快捷键归一化归 core/config/paragraphCopy，复制行为归 features/paragraph-copy。
  -->
 <template>
@@ -60,7 +60,6 @@ import {
 } from '@/src/core/config/quickTranslation';
 import {useUiI18n} from '@/src/ui/i18n';
 import {useHotkeyDraft} from './useHotkeyDraft';
-import {resolveProgressiveReadingHotkey} from '@/src/core/config/progressiveReading';
 import SettingsGroup from './components/SettingsGroup.vue';
 import SettingsItem from './components/SettingsItem.vue';
 
@@ -79,7 +78,6 @@ const hotkeyDisplayName = computed(() => paragraphCopyHotkeyDisplayName(
 /** 列出已被其他功能占用的快捷键，避免一次按键同时触发复制和翻译。 */
 function reservedHotkeyOwners(): {hotkey: string; feature: string}[] {
     return [
-        {hotkey: resolveProgressiveReadingHotkey(props.config.progressiveReadingHotkey, props.config.customProgressiveReadingHotkey), feature: t('progressiveReading.settings.title')},
         {hotkey: resolveConfiguredHotkey(props.config.hotkey, props.config.customHotkey), feature: t('popup.hoverTranslation')},
         {hotkey: resolveConfiguredHotkey(props.config.floatingBallHotkey, props.config.customFloatingBallHotkey), feature: t('quickTranslation.commonFullPageShortcut')},
         {

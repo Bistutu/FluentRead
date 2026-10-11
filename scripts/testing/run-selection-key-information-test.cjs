@@ -34,7 +34,7 @@ const ANSWER = '### 读懂\n\n打印顺序会影响耗材切换。关键设置�
 const SHORT_SOURCE = 'A curious reader explores new ideas.';
 const SHORT_ANSWER = '### 读懂\n\n这位读者好奇地探索新想法。';
 const FIXTURE_URL = 'https://example.com/fluentread-selection-key-information';
-const DRAG_TARGET = '.fr-tooltip-brand-icon';
+const DRAG_TARGET = '.fr-study-navigation';
 const TOOLBAR_LABELS = {
     'zh-CN':['翻译','读懂','词性与句法','用法','练习','记录'],
     'en-US':['Translation','Understand','Parts of speech & syntax','Usage','Practice','History'],
@@ -254,13 +254,13 @@ async function pointFor(page, selector) {
         const element = this.querySelector(selector);
         if (!element) throw new Error(`Missing gesture target ${selector}`);
         const r = element.getBoundingClientRect();
-        const point = {x:r.left + r.width / 2, y:r.top + r.height / 2};
-        if (selector === '.fr-tooltip-brand-icon') {
+        const point = {x: selector === '.fr-study-navigation' ? r.left + 7 * (r.width / element.offsetWidth) : r.left + r.width / 2, y:r.top + r.height / 2};
+        if (selector === '.fr-study-navigation') {
             const hit = this.getRootNode().elementFromPoint(point.x,point.y);
-            if (!hit || !hit.closest('.fr-tooltip-header') || hit.closest('button,a,input,textarea,select,[contenteditable]')) {
-                throw new Error('Drag point does not hit a noninteractive header element');
+            if (!hit || !hit.closest('.fr-study-navigation') || hit.closest('button,a,input,textarea,select,[contenteditable]')) {
+                throw new Error('Drag point does not hit noninteractive navigation padding');
             }
-            if (hit !== element && !element.contains(hit)) throw new Error('Drag brand icon is obscured');
+            if (hit !== element && !element.contains(hit)) throw new Error('Drag navigation is obscured');
         }
         return point;
     }, selector);
@@ -750,7 +750,7 @@ async function main(argv = process.argv.slice(2)) {
                             originalText:original?.textContent || '', labels:[...this.querySelectorAll('.fr-study-toolbar button')].map(button => button.textContent.trim()),
                             translatedTokenTexts:[...this.querySelectorAll('.fr-translation-result .fr-speech-word')].map(token => token.textContent),
                             status:[...this.querySelectorAll('.fr-loading-state,.fr-error-state,.fr-inline-error,[role="status"]')].map(element => ({className:element.className,text:element.textContent})),
-                            targetLanguages:[...this.querySelectorAll('[data-target-language]')].map(button => ({language:button.dataset.targetLanguage,pressed:button.getAttribute('aria-pressed'),disabled:button.disabled}))};
+                            standaloneHeader:!!this.querySelector('.fr-tooltip-header'),targetLanguageControl:!!this.querySelector('[data-target-language]')};
                     });
                     diagnostics.actualEqualsFixture = diagnostics.card.translationText === TRANSLATION;
                     diagnostics.originalEqualsFixture = diagnostics.card.originalText === SOURCE;
@@ -901,7 +901,8 @@ async function main(argv = process.argv.slice(2)) {
             Math.abs(keyboard.summary.summary.rect?.width-32)<1 && Math.abs(keyboard.summary.summary.rect?.height-32)<1, keyboard.summary, true);
         check('learning tools open with native Enter and Space and close with Escape', keyboard.enter?.menu.open && !keyboard.escapeAfterEnter?.menu.open &&
             keyboard.space?.menu.open && keyboard.escapeAfterMenu?.menu.open === false && keyboard.escapeAfterMenu.focus.summary, keyboard, true);
-        check('expanded learning tools stay in the reading scroll flow', keyboard.space?.menu.position === 'static' && keyboard.space.menu.inReadingScroll, keyboard.space, true);
+        // 工具菜单沿用已有浮层设计，不挤占正文或改变手动卡片尺寸；逐项可见性仍由下方真实 Tab 断言验证。
+        check('expanded learning tools overlay outside the reading scroll flow', keyboard.space?.menu.position === 'absolute' && !keyboard.space.menu.inReadingScroll, keyboard.space, true);
         check('native Tab reaches every enabled learning tool fully within clipping ancestors', keyboard.space?.menu.buttons.length > 0 &&
             keyboard.space.menu.buttons.every(button=>!button.disabled && button.tabIndex>=0) && keyboard.menuTabs.length === keyboard.space.menu.buttons.length &&
             keyboard.menuTabs.every((state,index)=>state.focus.menuIndex === index && state.menu.buttons[index]?.visible && !state.menu.buttons[index].clipped), keyboard.menuTabs, true);
