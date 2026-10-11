@@ -63,5 +63,42 @@
       "budgetIncreaseBytes": 1000,
       "headroomBytes": 106
     }
+  },
+  "performance": {
+    "baseline": {
+      "reviewCommit": "824d9c0c429b7a5143988a7466a0b2cb3b834b43",
+      "buildSourceCommit": "c254eb935ea2738336185674717144752974d80c",
+      "bytes": 2025894,
+      "sha256": "9e122db9bbc975adc321b4e0975680e7f69fd4672cd0ba10cc5ced1b053e3ce6",
+      "budgetBytes": 2026000,
+      "binding": "Frozen before performance builds; previous successful correctness package."
+    },
+    "initialCandidate": {
+      "buildSourceCommit": "d74fb7cfc7840e4de353d9cb88bf4381256596e9",
+      "bytes": 2026371,
+      "sha256": "9514380460516ef359102b1ecdcda8e9a73cc62ceb22c71d1814599daae01ce7",
+      "initialVerifierExitCode": 1,
+      "reason": "Artifact exceeded previous 2026000-byte budget by 371 bytes; remaining verifier assertions retained."
+    },
+    "candidate": {
+      "buildSourceCommit": "b3322d33423cb1445c221d57fee82741911bbde4",
+      "bytes": 2026422,
+      "sha256": "b63b3215efdb2d7185eacc854f98d8a5ec061b27609d4e8e0858650f62fc40d4",
+      "verifierExitCode": 0,
+      "budgetBytes": 2027000,
+      "languageResourceCommit": "19fb7910b33eebac6e1914df2b5a47709ab11837"
+    },
+    "comparison": {
+      "deltaBytes": 528,
+      "deltaPercent": 0.026062567932971813,
+      "candidateOverPreviousBudgetBytes": 422,
+      "budgetIncreaseBytes": 1000,
+      "finalHeadroomBytes": 578,
+      "totalDeltaFromIntegratedMainBytes": 2043
+    },
+    "limits": [
+      "Build and deterministic verifier only; no userscript-manager or remote-CDN runtime acceptance.",
+      "Same lockfile/dependencies and language pin as the frozen previous successful package; the current follow-up changes no dependency or resource pin."
+    ]
   }
 }

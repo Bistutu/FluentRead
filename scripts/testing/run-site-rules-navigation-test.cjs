@@ -258,7 +258,11 @@ async function productHunt() {
     const after = await evaluate(); assert.equal(after.nested, 0);
     result.navigations.push({from: from.url, to: after.url, clickedHref: next, restoredBeforeClick: false, mode: from.timeOrigin === after.timeOrigin ? 'SPA' : 'document', requests: requests.length - before, count: after.count, headings: after.headings,
       providerSources: requests.slice(before).map(request => request.source), pageText: after.pageText});
-    await content.locator('h1').filter({hasText: /^ReSO AI Reviews/u}).scrollIntoViewIfNeeded();
+    // 标题已经露在视口底部时也对齐；让同一截图同时呈现独有标题和已加载的空评论正文。
+    await content.locator('h1').filter({hasText: /^ReSO AI Reviews/u}).evaluate(heading => {
+      const top = heading.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({top: Math.max(0, top - 100), behavior: 'instant'});
+    });
     await shot(content, 'producthunt-reso-subpage');
     const overview = after.visibleLinks.find(link => new URL(link.href).pathname === '/products/reso' && !new URL(link.href).hash);
     assert(overview, 'No observed overview link returns to the user-provided Reso URL');
