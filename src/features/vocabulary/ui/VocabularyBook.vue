@@ -155,7 +155,7 @@ import {applyInterfaceTheme} from '@/src/ui/interfaceAppearance'
 import {ElOption} from 'element-plus';
 function translateControlLabel(value: string): string { return translateLegacyText(value, normalizeUiLanguage(runtimeConfig.uiLanguage)); }
 
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
+import { computed, nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, shallowRef, watch } from 'vue';
 import VocabularyStudy from './VocabularyStudy.vue';
 import CollectionEntry from './CollectionEntry.vue';
 import VocabularySource from './VocabularySource.vue';
@@ -808,8 +808,12 @@ function handleBookChanged(message: unknown): undefined {
   if (lifecycle.isActive() && (message as VocabularyBookChangedMessage)?.type === VOCABULARY_BOOK_CHANGED_MESSAGE) void loadEntries();
   return undefined;
 }
+// 缓存保留复习会话与已接受的保存，只有当前显示的页面处理全局复习按键。
+let reviewKeyboardActive = true;
+onActivated(() => { reviewKeyboardActive = true; });
+onDeactivated(() => { reviewKeyboardActive = false; });
 function handleReviewKeyboard(event: KeyboardEvent): void {
-  if (!lifecycle.isActive() || !reviewActive.value || actionBusy.value) return;
+  if (!reviewKeyboardActive || !lifecycle.isActive() || !reviewActive.value || actionBusy.value) return;
   const target = event.target as HTMLElement | null;
   if (target?.matches('input, textarea, select, button, a')) return;
   if (event.key === 'Escape') { event.preventDefault(); finishReview(); return; }
