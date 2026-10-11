@@ -319,6 +319,13 @@ function deterministicSteps() {
             args: ['--test', 'tests/focusSafeBrowserOrdinaryLifecycle.test.mjs'],
         }),
         step({
+            id: 'document-live-http-evidence',
+            phase: 'local',
+            label: 'document HTTP evidence decoder (offline node:test)',
+            command: 'node',
+            args: ['--test', 'tests/documentLiveHttpEvidence.test.mjs'],
+        }),
+        step({
             id: 'chrome-build',
             phase: 'local',
             label: 'chrome build',

@@ -17,6 +17,7 @@ import {
 } from '@/src/services/translation/persistenceBarrier';
 import {
     attachTranslationRequestControl,
+    attachTranslationGlossaryContext,
     attachTranslationProviderConfig,
     createTranslationProviderConfigSnapshot,
     getTranslationProviderConfig,
@@ -495,6 +496,30 @@ describe('translation broker', () => {
         delete (policy as Partial<typeof policy>).freeTranslationOrder;
     });
 
+    it.each([false, true])('separates pre-validation document caches without clearing page caches, batch=%s', async batch => {
+        const source = 'Choose <g1>Document translation</g1> from the menu to open and read the file.';
+        const oldTranslation = '从菜单选择 <g1>Document translation</g1> 打开并阅读文件。';
+        const translation = '从菜单选择 <g1>文档翻译</g1> 打开并阅读文件。';
+        const request = (glossaryContext: 'page' | 'document'): TranslationRequestMessage => batch
+            ? {origin: [source], glossaryContext} : {origin: source, glossaryContext};
+        const previous = batch ? [oldTranslation] : oldTranslation;
+        const updated = batch ? [translation] : translation;
+        mocks.service.mockResolvedValueOnce(previous).mockResolvedValueOnce(updated);
+        // 旧文档契约没有内容政策字段；没有自动字面量的同源 page 请求复现该身份。
+        await expect(translateWithCache(request('page'))).resolves.toEqual(previous);
+        const oldIdentities = translationCacheIdentities().map(identity => ({...identity}));
+        expect(oldIdentities.every(identity => !('documentTranslationPolicy' in identity))).toBe(true);
+        const oldRecords = [...mocks.cacheStore.entries()];
+        await expect(translateWithCache(request('document'))).resolves.toEqual(updated);
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        const newIdentities = translationCacheIdentities().slice(oldIdentities.length);
+        expect(newIdentities.every(identity => JSON.stringify(identity.documentTranslationPolicy) === '{"version":3}')).toBe(true);
+        await expect(translateWithCache(request('document'))).resolves.toEqual(updated);
+        await expect(translateWithCache(request('page'))).resolves.toEqual(previous);
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        for (const [key, value] of oldRecords) expect(mocks.cacheStore.get(key)).toBe(value);
+    });
+
     it.each([
         ['freeTranslation', false], ['freeTranslation', true],
         ['myMemory', false], ['myMemory', true],
@@ -538,6 +563,43 @@ describe('translation broker', () => {
         expect(await oldRequest).toBeInstanceOf(Error);
         expect(await newRequest).toBe('新策略译文');
         expect(mocks.service).toHaveBeenCalledTimes(2);
+    });
+
+    it('trusted document batch intent isolates pending execution while preserving reusable item caches', async () => {
+        Object.assign(mocks.config, {service: 'freeTranslation', useCache: false});
+        const grouped = deferred<string[]>(), scalar = deferred<string[]>();
+        mocks.service.mockImplementation(message => message.documentBatch === true ? grouped.promise : scalar.promise);
+        const documentRequest = (documentBatch: boolean) => attachTranslationGlossaryContext({
+            origin: ['First source', 'Second source'], glossaryContext: 'document' as const, documentBatch,
+        }, {context: 'document'});
+        const mutable = documentRequest(true);
+        const first = translateWithCache(mutable);
+        mutable.documentBatch = false;
+        const second = translateWithCache(documentRequest(false));
+        const third = translateWithCache(documentRequest(true));
+        await flushMicrotasks(80);
+        expect(mocks.service).toHaveBeenCalledTimes(2);
+        expect(mocks.service.mock.calls.map(call => call[0].documentBatch)).toEqual([true, undefined]);
+        grouped.resolve(['分组一', '分组二']); scalar.resolve(['单段一', '单段二']);
+        await expect(first).resolves.toEqual(['分组一', '分组二']);
+        await expect(third).resolves.toEqual(['分组一', '分组二']);
+        await expect(second).resolves.toEqual(['单段一', '单段二']);
+        const identities = translationCacheIdentities();
+        expect(identities[0]).toEqual(identities[1]);
+        expect(identities.every(identity => JSON.stringify(identity.documentTranslationPolicy) === '{"version":3}')).toBe(true);
+        mocks.config.useCache = true;
+        mocks.service.mockImplementation(async message => message.origin.map((text: string) => `译:${text}`));
+        await translateWithCache(documentRequest(true));
+        const calls = mocks.service.mock.calls.length;
+        await translateWithCache(documentRequest(false));
+        expect(mocks.service).toHaveBeenCalledTimes(calls);
+    });
+
+    it.each(['page', 'document'] as const)('untrusted %s payload cannot enable document batch execution', async glossaryContext => {
+        mocks.config.service = 'freeTranslation';
+        mocks.service.mockResolvedValue(['合格译文']);
+        await translateWithCache({origin: ['Readable source'], glossaryContext, documentBatch: true});
+        expect(mocks.service.mock.calls[0]![0]).not.toHaveProperty('documentBatch');
     });
 
     it.each(['freeTranslation', 'myMemory'])('%s 在途去重归一默认值且忽略实际不用的 Key 与代理', async service => {

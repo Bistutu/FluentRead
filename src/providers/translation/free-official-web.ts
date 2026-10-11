@@ -1,10 +1,11 @@
 /**
  * @file src/providers/translation/free-official-web.ts
  * 文件职责：直连阿里翻译、ModernMT、Lara 与 Lingvanex 的官方匿名网页服务。
- * 主要内容：按供应商协议处理临时网页参数、公开校验签名、语言映射与安全错误，保留文本槽、换行和空白；所有请求省略 Cookie，官网参数仅在本次调用中使用。
+ * 主要内容：按码点预算且不切术语标记，按供应商协议处理临时网页参数、公开校验签名、语言映射与安全错误，保留文本槽、换行和空白；所有请求省略 Cookie，官网参数仅在本次调用中使用。
  * 模块边界：只访问固定供应商官方端点，不读取用户凭据、代理或存储；超时、并发、竞争和冷却由免费翻译编排层负责。
  */
 import MD5 from 'crypto-js/md5';
+import {translateFreeTextChunks} from './freeTextChunks';
 import {serializeTranslationSlots} from '@/src/core/translation/serialization';
 import {getTranslationGlossarySourceText, type TranslationProviderRequest} from '@/src/services/translation/requestSnapshot';
 import {abortErrorFromSignal, runtimeFetch} from '@/src/platform/http/runtime';
@@ -129,20 +130,7 @@ function businessStatus(value: unknown): number {
 }
 
 async function translatePlain(provider: OfficialFreeWebProvider, text: string, source: string, target: string, signal?: AbortSignal): Promise<string> {
-    let output = '';
-    for (const line of text.split(/(\r\n|\r|\n)/u)) {
-        const points = Array.from(line);
-        for (let start = 0; start < points.length; start += MAX_CHUNK_CODEPOINTS) {
-            checkAbort(signal);
-            const chunk = points.slice(start, start + MAX_CHUNK_CODEPOINTS).join('');
-            const content = chunk.trim();
-            if (!content) { output += chunk; continue; }
-            const prefix = chunk.slice(0, chunk.indexOf(content));
-            const suffix = chunk.slice(prefix.length + content.length);
-            output += prefix + await translateChunk(provider, content, source, target, signal) + suffix;
-        }
-    }
-    return output;
+    return translateFreeTextChunks(text, MAX_CHUNK_CODEPOINTS, chunk => translateChunk(provider, chunk, source, target, signal), signal);
 }
 
 export async function translateOfficialFreeWebText(provider: OfficialFreeWebProvider, text: string, source: string, target: string, signal?: AbortSignal): Promise<string> {

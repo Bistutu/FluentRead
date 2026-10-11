@@ -1,3 +1,9 @@
+/**
+ * @file scripts/verify-userscript-build.mjs
+ * 文件职责：校验 userscript 产物的元信息、资源协议、体积与兼容性运行边界。
+ * 主要内容：静态断言及隔离 VM 兼容层检查；体积预算按已测量的共享功能增量调整。
+ * 模块边界：只读取构建产物，不安装脚本、不访问外部页面或修改运行配置。
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';

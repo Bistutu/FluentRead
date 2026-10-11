@@ -352,6 +352,9 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
                 nativeBatch: [services.google, services.microsoft].map(id =>
                     [id, isNativeTranslationBatchEnabled(id, current.nativeBatchTranslationEnabled)]),
             }} : {}),
+            // v3 将相邻自动数学字面值合为有界保护组，旧文档缓存不能绕过完整恢复契约。
+            // 仅分隔文档请求；网页缓存、已保存译文和人工校订不清空。
+            ...(current.glossaryMatchContext?.context === 'document' ? {documentTranslationPolicy: {version: 3}} : {}),
             customBody: current.customBody[service] || '',
             ...(current.customHeaders?.[service] ? {customHeaders: current.customHeaders[service]} : {}),
             systemRole: current.system_role[service] || '',
@@ -1449,7 +1452,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         );
         // 完整批次身份只计算一次；AI 分项用定长摘要保留邻段和槽位语义，避免逐项携带整个批次。
         const batchFingerprint = cacheMode === 'ai-multi-segment' ? sha256Hex(batchKey) : '';
-        const pendingKey = `${buildPendingRequestKey(batchKey, pendingBudgetMs, requestGeneration)}:cache:${useCache ? 'on' : 'off'}${pendingOwnershipSuffix(execution)}${pendingAnonymousConfigSuffix(execution)}${pendingCloudConfigSuffix(execution)}${recoverSharedDeadline ? '' : `:recovery-deadline:${requestDeadline}ms`}`;
+        const pendingKey = `${buildPendingRequestKey(batchKey, pendingBudgetMs, requestGeneration)}:cache:${useCache ? 'on' : 'off'}${pendingOwnershipSuffix(execution)}${pendingAnonymousConfigSuffix(execution)}${pendingCloudConfigSuffix(execution)}${import.meta.env.BROWSER !== 'userscript' && message.documentBatch === true ? ':document-batch' : ''}${recoverSharedDeadline ? '' : `:recovery-deadline:${requestDeadline}ms`}`;
         const existing = pendingBatches.get(pendingKey);
         if (existing) {
             execution.trace.shared = true;
@@ -1740,6 +1743,12 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             throw new GlossaryRevisionChangedError();
         }
         const glossarySource = getTranslationGlossaryContext(message);
+        // 文档合批只接受受信入口的数组；保留同一分项译文缓存，pending 则按执行策略隔离。
+        if (import.meta.env.BROWSER !== 'userscript' && message.documentBatch !== undefined
+            && (message.documentBatch !== true || !Array.isArray(message.origin) || glossarySource?.context !== 'document')) {
+            const {documentBatch: _ignored, ...withoutDocumentBatch} = message;
+            message = withoutDocumentBatch as TranslationRequestMessage;
+        }
         const glossaryContext = glossarySource?.context ?? message.glossaryContext ?? 'page';
         const selectedGlossaryIds = glossaryIds ?? (glossaryContext === 'document' ? current.documentGlossaryIds
             : glossaryContext === 'video' ? current.videoGlossaryIds : null);
@@ -1755,7 +1764,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         // Provider 只读取命中当前原文的词对；配置原文与域规则不会进入请求 JSON。
         current = Object.freeze({...current,
             glossaryTerms: Object.freeze(glossaryTerms.map(term => Object.freeze({...term}))),
-            glossaryMatchContext: Object.freeze({sourceLanguage, targetLanguage, pageUrl: glossarySource?.pageUrl,
+            glossaryMatchContext: Object.freeze({context: glossaryContext, sourceLanguage, targetLanguage, pageUrl: glossarySource?.pageUrl,
                 glossaryIds: selectedGlossaryIds ? Object.freeze([...selectedGlossaryIds]) : null}),
         });
         const execution: TranslationRequestExecution = {

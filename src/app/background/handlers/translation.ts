@@ -1,7 +1,7 @@
 /**
  * @file src/app/background/handlers/translation.ts
  * 文件职责：解析没有显式 type 的翻译请求，并把它作为后台消息路由的受控 fallback 接入共享翻译 broker。
- * 主要内容：校验 origin、clientRequestId、原生合批冻结偏好、AI 多段与内部单条槽校验标记、Chrome 源语言检测样本及其他可选字段，以发送者和随机 ID 管理 AbortController，并提供精确取消 handler。
+ * 主要内容：校验 origin、clientRequestId、原生合批冻结偏好、AI 多段、文档合批、内部槽校验与检测样本；文档合批仅从真实扩展文档页的数组请求保留，以发送者和随机 ID 管理 AbortController，并提供精确取消 handler。
  * 模块边界：本文件只承担协议验证与 fallback 适配，不选择 provider、不缓存结果、不读取配置或凭据；真正的翻译执行由注入的 translateWithCache 完成。
  */
 import type {BackgroundFallbackHandler} from '../messageRouter';
@@ -169,6 +169,9 @@ export function parseTranslationRequest(candidate: TranslationRequestCandidate):
     if (candidate.aiMultiSegment !== undefined && typeof candidate.aiMultiSegment !== 'boolean') {
         throw new TypeError('翻译请求字段 aiMultiSegment 必须是布尔值');
     }
+    if (import.meta.env.BROWSER !== 'userscript' && candidate.documentBatch !== undefined && typeof candidate.documentBatch !== 'boolean') {
+        throw new TypeError('翻译请求字段 documentBatch 必须是布尔值');
+    }
     if (candidate.validateTranslationSlots !== undefined && typeof candidate.validateTranslationSlots !== 'boolean') {
         throw new TypeError('翻译请求字段 validateTranslationSlots 必须是布尔值');
     }
@@ -206,6 +209,7 @@ export function parseTranslationRequest(candidate: TranslationRequestCandidate):
     if (typeof candidate.enableNativeBatch === 'boolean') base.enableNativeBatch = candidate.enableNativeBatch;
     if (typeof candidate.useCache === 'boolean') base.useCache = candidate.useCache;
     if (typeof candidate.aiMultiSegment === 'boolean') base.aiMultiSegment = candidate.aiMultiSegment;
+    if (import.meta.env.BROWSER !== 'userscript' && candidate.documentBatch === true) base.documentBatch = true;
     if (typeof candidate.validateTranslationSlots === 'boolean') base.validateTranslationSlots = candidate.validateTranslationSlots;
     if (typeof candidate.thinkingOverride === 'boolean') base.thinkingOverride = candidate.thinkingOverride;
     if (typeof candidate.requestTimeoutMs === 'number') base.requestTimeoutMs = candidate.requestTimeoutMs;
@@ -231,6 +235,10 @@ export function createTranslationRequestFallback<TContext = undefined>(
                 const senderUrl = (context as TranslationRequestContext | undefined)?.sender?.url;
                 const isDocument = typeof senderUrl === 'string'
                     && /^(?:chrome|moz|safari-web)-extension:\/\/[^/]+\/document\.html(?:[?#]|$)/u.test(senderUrl);
+                if (import.meta.env.BROWSER !== 'userscript' && message.documentBatch !== undefined
+                    && (!isDocument || !Array.isArray(message.origin) || message.glossaryContext !== 'document')) {
+                    delete message.documentBatch;
+                }
                 attachTranslationGlossaryContext(message, {
                     pageUrl: typeof senderUrl === 'string' && /^https?:\/\//u.test(senderUrl) ? senderUrl : undefined,
                     context: message.glossaryContext === 'document' && isDocument ? 'document'

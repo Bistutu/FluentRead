@@ -1,3 +1,4 @@
+import {protectedDocumentLongMathParagraph} from './fixtures/documentLongMathParagraph';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {translateFreeWebText, type FreeWebProvider} from '@/src/providers/translation/free-web';
 import {setRuntimeFetch} from '@/src/platform/http/runtime';
@@ -14,6 +15,19 @@ beforeEach(() => {fetchMock.mockReset().mockImplementation(async () => reply());
 afterEach(() => setRuntimeFetch());
 
 describe('free-only web providers', () => {
+    it.each(providers)('%s never sends a partial token from the actual long mathematical paragraph', async provider => {
+        const packet = protectedDocumentLongMathParagraph(), observed: string[] = [];
+        fetchMock.mockImplementation(async (url, init) => {
+            const body = init!.body ? JSON.parse(String(init!.body)) : null;
+            const text = provider === 'yandexFree' ? new URL(String(url)).searchParams.get('text')! : provider === 'transmart' ? body.source.text_list[0] : body.text;
+            observed.push(text); return reply(text);
+        });
+        const slots = serializeTranslationSlots([packet.text, 'tail'], 'protected-web');
+        expect(parseTranslationSlots(slots, await translate(provider, slots.payload))).toEqual([packet.text, 'tail']);
+        expect(observed.every(text => [...text].length <= 1000 && !text.includes('___FLUENTREAD'))).toBe(true);
+        for (const token of packet.tokens) expect(observed.filter(text => text.includes(token))).toHaveLength(1);
+    });
+
     it('names Yandex network failures and preserves cooperative cancellation', async () => {
         fetchMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
         await expect(translateFreeWebText('yandexFree', 'Hello', 'en', 'zh-Hans')).rejects.toThrow('Yandex 网络连接失败');

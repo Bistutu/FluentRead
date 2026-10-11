@@ -632,18 +632,20 @@ describe('translation API request lifecycle performance', () => {
     mocks.getPageTranslationContext.mockReturnValue(context.promise);
     mocks.sendMessage.mockImplementation(async ({origin}: {origin: string | string[]}) => Array.isArray(origin) ? origin.map(value => `译:${value}`) : `译:${origin}`);
     const origins = ['Original first', 'Original second'];
-    const options = {enableAIContext: true, aiMultiSegment: true, sourceLanguageDetectionText: 'Original detection', maxRetries: 0};
+    const options = {enableAIContext: true, aiMultiSegment: true, documentBatch: true, sourceLanguageDetectionText: 'Original detection', maxRetries: 0};
     const batch = translateTextBatch(origins, 'Page', options);
     const single = translateText('Original single', 'Page', options);
     origins.push('Added later');
     options.enableAIContext = false;
     options.aiMultiSegment = false;
+    options.documentBatch = false;
     context.resolve('captured context');
 
     await expect(batch).resolves.toEqual(['译:Original first', '译:Original second']);
     await expect(single).resolves.toBe('译:Original single');
-    expect(mocks.sendMessage.mock.calls[0][0]).toMatchObject({origin: ['Original first', 'Original second'], aiMultiSegment: true, enableAIContext: true});
+    expect(mocks.sendMessage.mock.calls[0][0]).toMatchObject({origin: ['Original first', 'Original second'], documentBatch: true, aiMultiSegment: true, enableAIContext: true});
     expect(mocks.sendMessage.mock.calls[1][0]).toMatchObject({enableAIContext: true});
+    expect(mocks.sendMessage.mock.calls[1][0]).not.toHaveProperty('documentBatch');
     expect(origins).toEqual(['Original first', 'Original second', 'Added later']);
   });
 
