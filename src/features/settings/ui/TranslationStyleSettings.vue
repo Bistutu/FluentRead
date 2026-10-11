@@ -786,6 +786,6 @@ function resetAppearance(): void {
 .translation-style-card-name { padding-left: 0; font-size: 11px; font-weight: 500; color: var(--muted); }
 .translation-style-card.selected .translation-style-card-name { color: var(--brand-strong); font-weight: 650; }
 .translation-style-card-check { right: 9px; bottom: 9px; }
-.translation-style-categories.segmented-control { min-width: 220px; max-width: 290px; }
+.translation-style-categories.segmented-control { min-width: 220px; max-width: 290px; grid-auto-columns: auto; }
 @container (max-width: 480px) { .translation-style-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 </style>
