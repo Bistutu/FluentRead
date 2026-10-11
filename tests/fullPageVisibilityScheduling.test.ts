@@ -343,6 +343,7 @@ import {
 import {getTranslationState} from "@/src/features/full-page-translation/content/state";
 import {createBilingualRemountCapitulationRegistry} from '@/src/features/full-page-translation/content/bilingualRemount';
 import {resetFullPageRouteSession, type FullPageRouteLifecycleSession} from '@/src/features/full-page-translation/content/routeLifecycle';
+import {toggleTranslationSection} from '@/src/features/full-page-translation/content/sectionTranslation';
 import {getTranslationToolbarStatus} from '@/src/features/full-page-translation/content/stateNotification';
 import {
     getFullPageTranslationProgress,
@@ -4336,6 +4337,168 @@ describe("全文翻译可见性锚点", () => {
         TestIntersectionObserver.instances.at(-1)!.emit(paragraph, true);
         await finishScheduledWork();
         expect(runtime.requests).toHaveBeenCalledTimes(2);
+    });
+
+    it.each(['unchanged', 'rewritten'] as const)(
+        '局部恢复的同 Node 移除再插入后按当前原文保留或解除取消：%s',
+        async (sourceChange) => {
+            runtime.config.display = 1;
+            document.body.innerHTML = '<section id="container"><p id="owner">A restored paragraph keeps its node identity.</p></section>';
+            const container = document.querySelector<HTMLElement>('#container')!;
+            const owner = document.querySelector<HTMLElement>('#owner')!;
+            const source = owner.firstChild as Text;
+            const candidate = {element: owner, kind: 'content' as const, reason: 'restored-node'};
+            runtime.candidates = [candidate];
+            setLayoutBox(owner, 640, 90);
+            setViewportRect(owner, 100);
+            Object.defineProperty(window, 'innerWidth', {configurable: true, value: 800});
+            Object.defineProperty(window, 'innerHeight', {configurable: true, value: 600});
+            autoTranslateEnglishPage();
+            await vi.advanceTimersByTimeAsync(50);
+            const intersection = TestIntersectionObserver.instances[0]!;
+            intersection.emit(owner, true);
+            await finishScheduledWork();
+            expect(getTranslationState(owner)?.phase).toBe('translated');
+            expect(runtime.requests).toHaveBeenCalledTimes(1);
+            expect(restoreTranslationOwner(owner)).toBe(true);
+            expect(owner.firstChild).toBe(source);
+
+            owner.remove();
+            expect(owner.isConnected).toBe(false);
+            TestMutationObserver.instances[0]!.emit([{
+                type: 'childList', target: container, addedNodes: [], removedNodes: [owner],
+            } as unknown as MutationRecord]);
+            await finishScheduledWork();
+            if (sourceChange === 'rewritten') source.data = 'The host now presents a different readable paragraph.';
+            container.appendChild(owner);
+            expect(owner.firstChild).toBe(source);
+            expect(owner.isConnected).toBe(true);
+            TestMutationObserver.instances[0]!.emit([{
+                type: 'childList', target: container, addedNodes: [owner], removedNodes: [],
+            } as unknown as MutationRecord]);
+            await finishScheduledWork();
+            intersection.emit(owner, true);
+            await finishScheduledWork();
+
+            expect(isFullPageTranslationActive()).toBe(true);
+            if (sourceChange === 'unchanged') {
+                expect(runtime.requests).toHaveBeenCalledTimes(1);
+                expect(getTranslationState(owner)).toBeUndefined();
+                expect(owner.textContent).toBe('A restored paragraph keeps its node identity.');
+                expect(owner.querySelector('[data-fr-translation-owned="true"]')).toBeNull();
+            } else {
+                expect(runtime.requests).toHaveBeenCalledTimes(2);
+                expect(runtime.requests).toHaveBeenLastCalledWith(['The host now presents a different readable paragraph.']);
+                expect(getTranslationState(owner)?.phase).toBe('translated');
+                expect(owner.querySelector('.fluent-read-bilingual-content')?.textContent)
+                    .toBe('译:The host now presents a different readable paragraph.');
+            }
+        },
+    );
+
+    it('恢复多 Text 合成段后，首 key 同文替换仍由后续原 Text 保留取消，新文案可重新翻译', async () => {
+        runtime.config.display = 1;
+        document.body.innerHTML = '<div id="host"><p>Independent block.</p></div>';
+        const host = document.querySelector<HTMLElement>('#host')!;
+        const block = host.firstChild!;
+        const first = document.createTextNode('First readable part. ');
+        const second = document.createTextNode('Second readable part.');
+        host.insertBefore(first, block);
+        host.insertBefore(second, block);
+        const candidate = {element: host, nodes: [first, second], kind: 'content' as const, reason: 'generic-inline-run'};
+        runtime.candidates = [candidate];
+        setLayoutBox(host, 640, 100);
+        setViewportRect(host, 100);
+        Object.defineProperty(window, 'innerWidth', {configurable: true, value: 800});
+        Object.defineProperty(window, 'innerHeight', {configurable: true, value: 600});
+        autoTranslateEnglishPage();
+        await vi.advanceTimersByTimeAsync(50);
+        const intersection = TestIntersectionObserver.instances[0]!;
+        intersection.emit(host, true);
+        await finishScheduledWork();
+        const segment = host.querySelector<HTMLElement>('[data-fr-translation-segment="true"]')!;
+        expect(getTranslationState(segment)?.phase).toBe('translated');
+        expect(getTranslationState(segment)?.sourceTextNodes).toEqual([first, second]);
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+        expect(restoreTranslationOwner(segment)).toBe(true);
+        expect(segment.isConnected).toBe(false);
+        expect(first.parentNode).toBe(host);
+        expect(second.parentNode).toBe(host);
+
+        const replacement = document.createTextNode(first.data);
+        first.replaceWith(replacement);
+        runtime.candidates = [{...candidate, nodes: [replacement, second]}];
+        TestMutationObserver.instances[0]!.emit([{
+            type: 'childList', target: host, addedNodes: [replacement], removedNodes: [first],
+        } as unknown as MutationRecord]);
+        await finishScheduledWork();
+        intersection.emit(host, true);
+        await finishScheduledWork();
+        expect(first.isConnected).toBe(false);
+        expect(second.isConnected).toBe(true);
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+        expect(host.querySelector('[data-fr-translation-segment="true"]')).toBeNull();
+        expect(host.querySelector('[data-fr-translation-owned="true"]')).toBeNull();
+
+        const oldValue = second.data;
+        second.data = 'The later text now contains new readable prose.';
+        TestMutationObserver.instances[0]!.emit([{
+            type: 'characterData', target: second, oldValue, addedNodes: [], removedNodes: [],
+        } as unknown as MutationRecord]);
+        await finishScheduledWork();
+        intersection.emit(host, true);
+        await finishScheduledWork();
+        expect(runtime.requests).toHaveBeenCalledTimes(2);
+        expect(runtime.requests).toHaveBeenLastCalledWith(['First readable part. The later text now contains new readable prose.']);
+        expect(host.querySelector('.fluent-read-bilingual-content')?.textContent)
+            .toBe('译:First readable part. The later text now contains new readable prose.');
+        expect(second.isConnected).toBe(true);
+        expect(block.parentNode).toBe(host);
+    });
+
+    it('实际区域 toggle 恢复当前全文 owner 后不被 mutation 重译，整体恢复后的新会话仍可翻译', async () => {
+        runtime.config.display = 1;
+        document.body.innerHTML = '<p id="owner"><strong id="selected">Restore the translated owner around this selected region.</strong></p>';
+        const owner = document.querySelector<HTMLElement>('#owner')!;
+        const selected = document.querySelector<HTMLElement>('#selected')!;
+        const originalText = selected.firstChild!;
+        runtime.candidates = [{element: owner, kind: 'content', reason: 'section-owner'}];
+        setLayoutBox(owner, 640, 90);
+        autoTranslateEnglishPage();
+        await vi.advanceTimersByTimeAsync(50);
+        TestIntersectionObserver.instances[0]!.emit(owner, true);
+        await finishScheduledWork();
+        const wrapper = owner.querySelector('.fluent-read-bilingual-content')!;
+        expect(getTranslationState(owner)?.phase).toBe('translated');
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+
+        // 使用实际区域盘点和恢复入口；这里不 mock toggle/restoreTranslationOwner。
+        await expect(toggleTranslationSection(selected)).resolves.toEqual({
+            action: 'restored', translated: 0, failed: 0, unchanged: 0, restored: 1,
+        });
+        expect(getTranslationState(owner)).toBeUndefined();
+        expect(selected.firstChild).toBe(originalText);
+        expect(wrapper.isConnected).toBe(false);
+        TestMutationObserver.instances[0]!.emit([{
+            type: 'childList', target: owner, addedNodes: [], removedNodes: [wrapper],
+        } as unknown as MutationRecord]);
+        await finishScheduledWork();
+        TestIntersectionObserver.instances[0]!.emit(owner, true);
+        await finishScheduledWork();
+        expect(isFullPageTranslationActive()).toBe(true);
+        expect(runtime.requests).toHaveBeenCalledTimes(1);
+        expect(owner.querySelector('.fluent-read-bilingual-content')).toBeNull();
+
+        restoreOriginalContent();
+        expect(isFullPageTranslationActive()).toBe(false);
+        autoTranslateEnglishPage();
+        await vi.advanceTimersByTimeAsync(50);
+        TestIntersectionObserver.instances.at(-1)!.emit(owner, true);
+        await finishScheduledWork();
+        expect(runtime.requests).toHaveBeenCalledTimes(2);
+        expect(getTranslationState(owner)?.phase).toBe('translated');
+        expect(selected.firstChild).toBe(originalText);
+        expect(owner.querySelectorAll('.fluent-read-bilingual-content')).toHaveLength(1);
     });
 
     it.each([

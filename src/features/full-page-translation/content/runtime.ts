@@ -179,8 +179,9 @@ interface FullPageSession extends FullPageRequestSessionState, ModalPrioritySess
     /**
      * 用户在本次全文会话中显式恢复的候选标识。来源快照允许真实宿主编辑
      * 清除取消墓碑，同时让扩展自身产生的恢复 mutation 继续排除该片段。
+     * 按节点弱关联，不因保留取消记录而延长已被宿主删除节点的生命周期。
      */
-    userCancelledCandidates: Map<Node, string>;
+    userCancelledCandidates: WeakMap<Node, string>;
     /** 用户滚动期间暂停新增翻译/重排，等待虚拟列表稳定后再继续。 */
     scrollController: FullPageScrollController;
     /** 宿主连续拒绝 wrapper 后，对稳定边界内的同源候选停止写 DOM。 */
@@ -2013,7 +2014,7 @@ function createFullPageSession(
         statefulAncestorsByTarget: new WeakMap(),
         lifecycleRetries: new WeakMap(),
         unchangedCandidates: new WeakMap(),
-        userCancelledCandidates: new Map(),
+        userCancelledCandidates: new WeakMap(),
         inFlightCandidates: new Map(),
         scrollController,
         bilingualRemountCapitulations: createBilingualRemountCapitulationRegistry(),
@@ -2067,7 +2068,7 @@ function disposeFullPageSession(session: FullPageSession): void {
     session.statefulTargetsByAncestor.clear();
     session.statefulAncestorsByTarget = new WeakMap();
     session.inFlightCandidates.clear();
-    session.userCancelledCandidates.clear();
+    session.userCancelledCandidates = new WeakMap();
     session.translationSlotCache.clear();
     session.dirtyRoots.clear();
     session.dirtyRootsBroadMode = false;
