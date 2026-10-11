@@ -1,9 +1,10 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {createSharedOcrTasks} from '@/src/features/image-translation/services/sharedOcrTasks';
 
-const {recognize, ensureLanguages, clearModels, removeFiles, createRuntime, tesseractCreateWorker, prefetchModels} = vi.hoisted(() => ({
+const {recognize, ensureLanguages, clearModels, disposeWorker, removeFiles, createRuntime, tesseractCreateWorker, prefetchModels} = vi.hoisted(() => ({
     clearModels: vi.fn(async (remove: () => Promise<void>) => remove()), removeFiles: vi.fn(async () => {}), recognize: vi.fn(), ensureLanguages: vi.fn(), createRuntime: vi.fn(), tesseractCreateWorker: vi.fn(),
     prefetchModels: vi.fn(async () => {}),
+    disposeWorker: vi.fn(),
 }));
 vi.mock('@/src/features/image-translation/services/ocrModelDownload', () => ({prefetchOcrModelFiles: prefetchModels}));
 // Keep the production cancellable encoder; control only Canvas and FileReader.
@@ -72,11 +73,18 @@ describe('图片 OCR 处理与结果缓存', () => {
         await recognizeImage('same', 'en');
         expect(recognize).toHaveBeenCalledTimes(2);
     });
+    it('离屏页面销毁出口终止 OCR Worker 并释放完成结果', async () => {
+        await recognizeImage('completed-before-close', 'en');
+        const {disposeImageOcrWorker} = await import('@/src/features/image-translation/services/ocrRuntime');
+        disposeImageOcrWorker();
+        expect(disposeWorker).toHaveBeenCalledOnce();
+    });
     beforeEach(async () => {
         vi.resetModules();
         recognize.mockReset().mockResolvedValue(blockResult());
         ensureLanguages.mockReset().mockResolvedValue(undefined);
-        createRuntime.mockReset().mockReturnValue({recognize, ensureLanguages, clearModels});
+        disposeWorker.mockReset();
+        createRuntime.mockReset().mockReturnValue({recognize, ensureLanguages, clearModels, dispose: disposeWorker});
         tesseractCreateWorker.mockReset().mockResolvedValue({});
         onImageCreated = undefined;
         dimensions = {width: 100, height: 100};
@@ -187,6 +195,8 @@ describe('图片 OCR 处理与结果缓存', () => {
             cachePath: 'fluent-read-image-ocr', workerBlobURL: false, errorHandler: expect.any(Function), logger: expect.any(Function),
         }, {tessedit_load_sublangs: ''});
         const logger = tesseractCreateWorker.mock.calls[0][2].logger;
+        // SDK 的错误通知不能从消息回调另抛一次；具体失败仍由对应任务 Promise 传回。
+        expect(() => tesseractCreateWorker.mock.calls[0][2].errorHandler(new Error('recognition failed'))).not.toThrow();
         logger({status:'loading language', progress:0.2, userJobId:'load'});
         logger({status:'recognizing text', progress:0.4, userJobId:'recognize'});
         expect(onProgress).toHaveBeenCalledOnce(); expect(onProgress).toHaveBeenCalledWith(0.4, 'recognize');
@@ -358,6 +368,21 @@ describe('图片 OCR 处理与结果缓存', () => {
         await expect(pending).rejects.toMatchObject({name: 'AbortError'});
         expect(sources[0].src).toBe('');
         expect(recognize).not.toHaveBeenCalled();
+    });
+
+    it('借用图片已完成准备但尚未进入 Worker 时取消，不启动识别且后续可以重试', async () => {
+        const controller = new AbortController();
+        const decodedImage = {naturalWidth: 100, naturalHeight: 100, src: 'borrowed'} as HTMLImageElement;
+        const pending = recognizeImage('prepared-before-worker', 'en', controller.signal, {decodedImage});
+        // 借用位图无需异步解码；准备已经完成，Worker 消息在下一个 Promise 续体才会发出。
+        controller.abort();
+        await expect(pending).rejects.toMatchObject({name: 'AbortError'});
+        await Promise.resolve();
+        expect(recognize).not.toHaveBeenCalled();
+        expect(decodedImage.src).toBe('borrowed');
+        expect(sources).toHaveLength(0);
+        await expect(recognizeImage('prepared-before-worker', 'en', undefined, {decodedImage})).resolves.toHaveLength(1);
+        expect(recognize).toHaveBeenCalledOnce();
     });
 
     it('创建解码对象期间或编码完成时取消，不赋予来源或启动后续 OCR', async () => {

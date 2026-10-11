@@ -1,11 +1,12 @@
 /**
  * @file src/app/offscreen/translation.ts
  * 文件职责：封装 Chrome 内置 Translation API 在 Offscreen 环境中的能力检查、模型准备、语言检测、规范化、翻译执行和错误解释，并兼容新旧实验接口形态。
- * 主要内容：定义最小环境与请求契约，验证 from/to 语言码并映射 Chrome 151 中文别名，优先使用不含结构哨兵的检测样本和现代 API；处理 availability、下载进度、低置信度、取消、资源清理及友好错误，仅在脚本明确时执行保守兜底。
+ * 主要内容：定义最小环境与请求契约，验证语言码并映射中文别名；现代 API 按环境复用一个检测器和最多两个语言对，以独立取消、串行租约、空闲 TTL 与 LRU 控制常驻，旧 API 保持独占清理；保留 availability、下载进度、低置信度和保守脚本兜底。
  * 模块边界：这里不读取扩展配置、不选择第三方 provider，也不监听 runtime 消息；调用协议由 offscreen/messageRouter 管理，宿主能力是否开放由 browser capability 层决定。
  */
 import {normalizeChineseLanguageCode} from '@/src/core/language/chinese';
 import {detectChineseScript, MIN_CHROME_LANGUAGE_CONFIDENCE} from '@/src/core/language/detect';
+import {localModelIdleMs} from '@/src/shared/onnx/modelResidency';
 
 // 保留既有导出，同时让设置页与 offscreen 共用单一阈值。
 export {MIN_CHROME_LANGUAGE_CONFIDENCE} from '@/src/core/language/detect';
@@ -256,7 +257,7 @@ function createModelOptions(
     signal?: AbortSignal,
 ): ChromeModelCreateOptions {
     return {
-        ...(signal ? {signal} : {}),
+        signal,
         monitor(monitor) {
             monitor.addEventListener('downloadprogress', (event) => {
                 const loaded = event.loaded;
@@ -280,6 +281,223 @@ function safelyDestroy(resource: {destroy?: () => void}): void {
     } catch {
         // 实验 API 的清理失败不能覆盖已经完成的检测或翻译结果。
     }
+}
+
+type ChromeResource = ChromeLanguageDetector | ChromeTranslator;
+interface ChromeResourceSubscriber {
+    readonly reporter?: ChromeModelStatusReporter;
+    readonly signal?: AbortSignal;
+}
+interface ChromeCachedResource {
+    readonly key: string;
+    readonly kind: ChromeModelKind;
+    readonly controller: AbortController;
+    readonly subscribers: Set<ChromeResourceSubscriber>;
+    promise: Promise<ChromeResource>;
+    resource?: ChromeResource;
+    status?: ChromeModelStatus;
+    queue: Promise<void>;
+    timer?: ReturnType<typeof setTimeout>;
+    lastUsed: number;
+    retired: boolean;
+    removed: boolean;
+    drainTimedOut: boolean;
+}
+interface ChromeResourceCache {
+    readonly entries: Map<string, ChromeCachedResource>;
+    readonly waiters: Set<() => void>;
+    disposed: boolean;
+}
+const chromeResourceCaches = new WeakMap<ChromeTranslationEnvironment, ChromeResourceCache>();
+const CHROME_CANCEL_DRAIN_TIMEOUT_MS = 1_500;
+
+function wakeChromeResourceWaiters(cache: ChromeResourceCache): void {
+    for (const wake of cache.waiters) wake();
+    cache.waiters.clear();
+}
+
+function removeChromeResource(cache: ChromeResourceCache, entry: ChromeCachedResource): void {
+    if (entry.removed) return;
+    entry.removed = true;
+    if (entry.timer !== undefined) clearTimeout(entry.timer);
+    cache.entries.delete(entry.key);
+    // create.signal 是整个实例的生命周期，不能绑定某一个翻译请求。
+    entry.controller.abort();
+    if (entry.resource) safelyDestroy(entry.resource);
+    wakeChromeResourceWaiters(cache);
+}
+
+/** 卸载 Offscreen 容器时同时取消创建、排队与推理，迟到资源仍由创建路径释放。 */
+export function disposeChromeTranslationModels(environment: ChromeTranslationEnvironment): void {
+    let cache = chromeResourceCaches.get(environment);
+    if (!cache) {
+        cache = {entries: new Map(), waiters: new Set(), disposed: true};
+        chromeResourceCaches.set(environment, cache);
+        return;
+    }
+    cache.disposed = true;
+    for (const entry of cache.entries.values()) removeChromeResource(cache, entry);
+    wakeChromeResourceWaiters(cache);
+}
+
+function throwIfChromeEnvironmentDisposed(environment: ChromeTranslationEnvironment): void {
+    if (chromeResourceCaches.get(environment)?.disposed) throw createAbortError();
+}
+
+function releaseChromeResource(
+    cache: ChromeResourceCache,
+    entry: ChromeCachedResource,
+    subscriber: ChromeResourceSubscriber,
+): void {
+    entry.subscribers.delete(subscriber);
+    if (entry.removed || entry.subscribers.size > 0) return;
+    entry.lastUsed = Date.now();
+    if (!entry.resource || entry.retired) {
+        removeChromeResource(cache, entry);
+        return;
+    }
+    entry.timer = setTimeout(() => removeChromeResource(cache, entry), localModelIdleMs());
+    wakeChromeResourceWaiters(cache);
+}
+
+async function waitForChromeResourceCapacity(cache: ChromeResourceCache, signal?: AbortSignal): Promise<void> {
+    let wake!: () => void;
+    const available = new Promise<void>(resolve => { wake = resolve; });
+    cache.waiters.add(wake);
+    try {
+        await awaitWithAbort(available, signal);
+    } finally {
+        cache.waiters.delete(wake);
+    }
+}
+
+/**
+ * 同语言对首次并发共享创建；同实例任务串行，但取消只结束当前请求。
+ * 容量满时只淘汰无租约的最旧实例，所有实例忙碌时等待，避免额外第三个语言对。
+ */
+async function runCachedChromeOperation<T extends ChromeResource, R>(
+    environment: ChromeTranslationEnvironment,
+    key: string,
+    kind: ChromeModelKind,
+    create: (signal: AbortSignal, reporter: ChromeModelStatusReporter) => Promise<T>,
+    operation: (resource: T, lifecycleSignal: AbortSignal) => Promise<R>,
+    signal?: AbortSignal,
+    reporter?: ChromeModelStatusReporter,
+): Promise<R> {
+    throwIfAborted(signal);
+    let cache = chromeResourceCaches.get(environment);
+    if (!cache) {
+        cache = {entries: new Map(), waiters: new Set(), disposed: false};
+        chromeResourceCaches.set(environment, cache);
+    }
+    let entry: ChromeCachedResource;
+    while (true) {
+        throwIfAborted(signal);
+        if (cache.disposed) throw createAbortError();
+        const existing = cache.entries.get(key);
+        if (existing && !existing.retired) {
+            entry = existing;
+            break;
+        }
+        const peers = [...cache.entries.values()].filter(item => item.kind === kind);
+        const capacity = kind === 'translator' ? 2 : 1;
+        if (existing) {
+            // retired 实例仍有租约；最后一个租约释放时会移除并唤醒等待者。
+            await waitForChromeResourceCapacity(cache, signal);
+            continue;
+        } else if (peers.length >= capacity) {
+            const idle = peers.filter(item => item.subscribers.size === 0)
+                .sort((a, b) => a.lastUsed - b.lastUsed)[0];
+            if (idle) removeChromeResource(cache, idle);
+            else {
+                await waitForChromeResourceCapacity(cache, signal);
+                continue;
+            }
+        }
+        entry = {
+            key, kind, controller: new AbortController(), subscribers: new Set(),
+            promise: Promise.resolve({} as T), queue: Promise.resolve(), lastUsed: Date.now(),
+            retired: false, removed: false, drainTimedOut: false,
+        };
+        cache.entries.set(key, entry);
+        const creatingEntry = entry;
+        const creatingCache = cache;
+        entry.promise = Promise.resolve().then(async () => {
+            const resource = await create(creatingEntry.controller.signal, status => {
+                creatingEntry.status = status;
+                for (const subscriber of creatingEntry.subscribers) {
+                    reportModelStatus(subscriber.reporter, status, subscriber.signal);
+                }
+            });
+            if (creatingEntry.removed) {
+                safelyDestroy(resource);
+                throw createAbortError();
+            }
+            creatingEntry.resource = resource;
+            return resource;
+        }).catch(error => {
+            removeChromeResource(creatingCache, creatingEntry);
+            throw error;
+        });
+        break;
+    }
+    if (entry.timer !== undefined) {
+        clearTimeout(entry.timer);
+        entry.timer = undefined;
+    }
+    const leasedEntry = entry;
+    const leasedCache = cache;
+    const subscriber = {reporter, signal};
+    const cancelUnconsumedCreation = () => {
+        // 状态 reporter 可在同一调用栈取消请求；不能等 job 的微任务清理再停止 create。
+        if (!leasedEntry.resource && [...leasedEntry.subscribers].every(item => item.signal?.aborted)) {
+            removeChromeResource(leasedCache, leasedEntry);
+        }
+    };
+    entry.subscribers.add(subscriber);
+    signal?.addEventListener('abort', cancelUnconsumedCreation, {once: true});
+    if (entry.status) reportModelStatus(reporter, entry.status, signal);
+    let unlock: (() => void) | undefined;
+    let drainTimer: ReturnType<typeof setTimeout> | undefined;
+    const handleActiveAbort = () => {
+        drainTimer = setTimeout(() => {
+            leasedEntry.drainTimedOut = true;
+            removeChromeResource(leasedCache, leasedEntry);
+        }, CHROME_CANCEL_DRAIN_TIMEOUT_MS);
+    };
+    const job = (async () => {
+        try {
+            const resource = await awaitWithAbort(leasedEntry.promise, signal) as T;
+            const previous = leasedEntry.queue;
+            const slot = new Promise<void>(resolve => { unlock = resolve; });
+            leasedEntry.queue = previous.then(() => slot);
+            await awaitWithAbort(awaitWithAbort(previous, leasedEntry.controller.signal), signal);
+            throwIfAborted(signal);
+            throwIfAborted(leasedEntry.controller.signal);
+            if (leasedEntry.retired) {
+                throw createNamedError('InvalidStateError', 'Chrome 本地模型实例已失效，请重新翻译');
+            }
+            // 原生取消通常立即确认；错误实现迟迟不收尾时销毁实例，避免永久占住队列。
+            signal?.addEventListener('abort', handleActiveAbort, {once: true});
+            return await awaitWithAbort(operation(resource, leasedEntry.controller.signal), leasedEntry.controller.signal);
+        } catch (error) {
+            // 单次取消或输入过长不销毁共享实例；底层失效待其余租约完成后重建。
+            if (!signal?.aborted && !leasedEntry.controller.signal.aborted
+                && !(error instanceof Error && error.name === 'QuotaExceededError')) leasedEntry.retired = true;
+            if (leasedEntry.drainTimedOut && !signal?.aborted) {
+                throw createNamedError('InvalidStateError', 'Chrome 本地模型未响应取消，已释放实例，请重新翻译');
+            }
+            throw error;
+        }
+    })().finally(() => {
+        signal?.removeEventListener('abort', cancelUnconsumedCreation);
+        signal?.removeEventListener('abort', handleActiveAbort);
+        if (drainTimer !== undefined) clearTimeout(drainTimer);
+        unlock?.();
+        releaseChromeResource(leasedCache, leasedEntry, subscriber);
+    });
+    // caller 立即取消，内部 job 仍持有正在执行的实例，直到原生推理确认收尾。
+    return awaitWithAbort(job, signal);
 }
 
 function createAbortError(): Error {
@@ -338,7 +556,7 @@ async function acquireAbortableResource<T extends {destroy?: () => void}>(
     try {
         return await awaitWithAbort(promise, signal);
     } catch (error) {
-        // create() 本身不可取消；若资源迟到，必须在它可用的第一刻释放。
+        // 兼容实现可能忽略 create.signal；若资源迟到，必须在可用的第一刻释放。
         if (signal?.aborted) void promise.then(safelyDestroy, () => undefined);
         throw error;
     }
@@ -348,7 +566,7 @@ function closeStream(iterator: AsyncIterator<unknown>): void {
     try {
         if (typeof iterator.return === 'function') void Promise.resolve(iterator.return()).catch(() => undefined);
     } catch {
-        // stream.return() 属于尽力清理，translator.destroy() 仍会在 finally 执行。
+        // stream.return() 属于尽力清理；缓存会保留租约直到原生操作收尾。
     }
 }
 
@@ -369,37 +587,36 @@ export async function detectChromeLanguage(
     let detectionError: unknown;
     try {
         throwIfAborted(signal);
+        throwIfChromeEnvironmentDisposed(environment);
         const modernDetector = environment.LanguageDetector;
         if (typeof modernDetector?.create === 'function') {
-            const availability = await checkModelAvailability(
-                'language-detector',
-                typeof modernDetector.availability === 'function'
-                    ? () => modernDetector.availability!()
-                    : undefined,
-                reporter,
-                signal,
+            const result = await runCachedChromeOperation(
+                environment, 'language-detector', 'language-detector',
+                async (creationSignal, sharedReporter) => {
+                    const availability = await checkModelAvailability(
+                        'language-detector',
+                        typeof modernDetector.availability === 'function'
+                            ? () => modernDetector.availability!()
+                            : undefined,
+                        sharedReporter,
+                        creationSignal,
+                    );
+                    throwIfAborted(creationSignal);
+                    const resource = await acquireAbortableResource(
+                        modernDetector.create(createModelOptions(
+                            'language-detector', availability, sharedReporter, creationSignal,
+                        )), creationSignal,
+                    );
+                    reportModelStatus(sharedReporter, {
+                        model: 'language-detector', phase: 'ready',
+                        ...(availability ? {availability} : {}), loaded: 1,
+                    }, creationSignal);
+                    return resource;
+                },
+                resource => resource.detect(text, signal ? {signal} : undefined),
+                signal, reporter,
             );
-            throwIfAborted(signal);
-            detector = await acquireAbortableResource(
-                modernDetector.create(createModelOptions(
-                    'language-detector',
-                    availability,
-                    reporter,
-                    signal,
-                )),
-                signal,
-            );
-            reportModelStatus(reporter, {
-                model: 'language-detector',
-                phase: 'ready',
-                ...(availability ? {availability} : {}),
-                loaded: 1,
-            }, signal);
-            throwIfAborted(signal);
-            const detected = detectedLanguageFrom(await awaitWithAbort(
-                detector.detect(text, signal ? {signal} : undefined),
-                signal,
-            ));
+            const detected = detectedLanguageFrom(result);
             if (detected) return refineDetectedChineseLanguage(detected, text);
         } else if (typeof environment.translation?.createDetector === 'function') {
             detector = await acquireAbortableResource(environment.translation.createDetector(), signal);
@@ -472,6 +689,60 @@ async function acquireChromeTranslator(
     throw new Error('没有可用的翻译 API');
 }
 
+async function translateWithChromeTranslator(
+    text: string,
+    translator: ChromeTranslator,
+    modern: boolean,
+    signal?: AbortSignal,
+    lifecycleSignal?: AbortSignal,
+): Promise<string> {
+    throwIfAborted(signal);
+    if (typeof translator.translateStreaming === 'function') {
+        let translated = '';
+        const stream = modern && signal
+            ? translator.translateStreaming(text, {signal})
+            : translator.translateStreaming(text);
+        const iterator = stream[Symbol.asyncIterator]();
+        let completed = false;
+        let closed = false;
+        const close = () => {
+            if (closed || completed) return;
+            closed = true;
+            closeStream(iterator);
+        };
+        signal?.addEventListener('abort', close, {once: true});
+        lifecycleSignal?.addEventListener('abort', close, {once: true});
+        try {
+            while (true) {
+                // 现代 signal 会中止原生流；保留队列租约直到原生 next() 确认结束。
+                const next = modern ? await iterator.next()
+                    : await awaitWithAbort(Promise.resolve(iterator.next()), signal);
+                throwIfAborted(signal);
+                if (next.done) {
+                    completed = true;
+                    break;
+                }
+                const chunk = next.value;
+                if (typeof chunk !== 'string') throw new Error('翻译器返回了无效的流式结果');
+                translated += chunk;
+            }
+        } finally {
+            signal?.removeEventListener('abort', close);
+            lifecycleSignal?.removeEventListener('abort', close);
+            if (!completed) close();
+        }
+        return translated;
+    }
+    if (typeof translator.translate === 'function') {
+        const result = modern && signal ? translator.translate(text, {signal}) : translator.translate(text);
+        const translated = modern ? await result : await awaitWithAbort(result, signal);
+        throwIfAborted(signal);
+        if (typeof translated !== 'string') throw new Error('翻译器返回了无效结果');
+        return translated;
+    }
+    throw new Error('翻译器不支持翻译方法');
+}
+
 export async function performChromeTranslation(
     text: string,
     sourceLanguage: string,
@@ -481,46 +752,22 @@ export async function performChromeTranslation(
     reporter?: ChromeModelStatusReporter,
 ): Promise<string> {
     throwIfAborted(signal);
-    const {translator, modern} = await acquireChromeTranslator(
-        environment,
-        {sourceLanguage, targetLanguage},
-        signal,
-        reporter,
-    );
+    throwIfChromeEnvironmentDisposed(environment);
+    const options = {sourceLanguage, targetLanguage};
+    if (typeof environment.Translator?.create === 'function') {
+        const key = JSON.stringify([sourceLanguage.toLowerCase(), targetLanguage.toLowerCase()]);
+        return runCachedChromeOperation(
+            environment, key, 'translator',
+            async (creationSignal, sharedReporter) => (await acquireChromeTranslator(
+                environment, options, creationSignal, sharedReporter,
+            )).translator,
+            (translator, lifecycleSignal) => translateWithChromeTranslator(text, translator, true, signal, lifecycleSignal),
+            signal, reporter,
+        );
+    }
+    const {translator, modern} = await acquireChromeTranslator(environment, options, signal, reporter);
     try {
-        throwIfAborted(signal);
-        if (typeof translator.translateStreaming === 'function') {
-            let translated = '';
-            const stream = modern && signal
-                ? translator.translateStreaming(text, {signal})
-                : translator.translateStreaming(text);
-            const iterator = stream[Symbol.asyncIterator]();
-            let completed = false;
-            try {
-                while (true) {
-                    const next = await awaitWithAbort(Promise.resolve(iterator.next()), signal);
-                    if (next.done) {
-                        completed = true;
-                        break;
-                    }
-                    const chunk = next.value;
-                    if (typeof chunk !== 'string') throw new Error('翻译器返回了无效的流式结果');
-                    translated += chunk;
-                }
-            } finally {
-                if (!completed) closeStream(iterator);
-            }
-            return translated;
-        }
-        if (typeof translator.translate === 'function') {
-            const translated = await awaitWithAbort(
-                modern && signal ? translator.translate(text, {signal}) : translator.translate(text),
-                signal,
-            );
-            if (typeof translated !== 'string') throw new Error('翻译器返回了无效结果');
-            return translated;
-        }
-        throw new Error('翻译器不支持翻译方法');
+        return await translateWithChromeTranslator(text, translator, modern, signal);
     } finally {
         safelyDestroy(translator);
     }
@@ -588,6 +835,7 @@ export async function translateWithChromeApi(
     reporter?: ChromeModelStatusReporter,
 ): Promise<string> {
     throwIfAborted(signal);
+    throwIfChromeEnvironmentDisposed(environment);
     const request = parseChromeTranslationRequest(requestValue);
     if (!request.text.trim()) return '';
     if (!isChromeTranslationSupported(environment)) {
@@ -608,6 +856,7 @@ export async function translateWithChromeApi(
             );
             detectedGenericChinese = sourceLanguage === 'zh';
         }
+        throwIfChromeEnvironmentDisposed(environment);
         sourceLanguage = mapChromeLanguageCode(sourceLanguage);
         targetLanguage = mapChromeLanguageCode(targetLanguage);
 
