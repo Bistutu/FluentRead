@@ -129,7 +129,9 @@ describe('语言混合与书写体系边界', () => {
         for (const id of ['english-negative-not', 'english-positive']) {
             const text = cases.find(item => item.id === id)!.text;
             expect(shouldSkipTranslationForTarget(text, 'zh-Hans')).toBe(false);
-            expect(shouldSkipTranslationForTarget(text, 'en')).toBe(true);
+            // 肯定句被 franc 错排为德语时保持未知；不能救援整个段落而漏掉短外语提示。
+            expect(shouldSkipTranslationForTarget(text, 'en')).toBe(id === 'english-negative-not');
+            if (id === 'english-positive') expect(identifyTextLanguage(text).status).toBe('unknown');
         }
     });
 });

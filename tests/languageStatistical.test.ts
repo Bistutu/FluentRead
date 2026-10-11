@@ -16,6 +16,8 @@ import {
     type StatisticalScript,
 } from '@/src/core/language/lexicon';
 import {FRANC_MIN_LANGUAGES, STATISTICAL_THRESHOLDS, assessStatisticalLanguage} from '@/src/core/language/statistical';
+import {shouldSkipTranslationForTarget} from '@/src/core/language/detect';
+import {identifyTextLanguage} from '@/src/core/language/identify';
 
 const rankOverride = vi.hoisted(() => ({value: undefined as Array<[string, number]> | undefined}));
 vi.mock('franc-min', async importOriginal => {
@@ -180,12 +182,30 @@ describe('保留翻译机会的拒绝分支', () => {
 describe('模型排序与强功能词旁证', () => {
     const english = 'You can close the browser after your changes have been saved.';
 
-    it('真实模型把普通英语排为德语时，六种英语功能词与零种德语功能词纠正近邻排序', () => {
+    it('真实模型把普通英语排为德语时保守保留翻译，不把六种英语功能词作为整段同语证明', () => {
         const result = assess('Latin', english);
         expect(result.candidates.slice(0, 2).map(candidate => candidate.language)).toEqual(['de', 'en']);
         expect(result.functionWordScores.de).toBe(0);
-        expect(result).toMatchObject({language: 'en', reason: 'lexical-correction'});
+        expect(result).toMatchObject({reason: 'function-words'});
+        expect(result.language).toBeUndefined();
         expect(assess('Latin', `${english} ${english}`)).toMatchObject({language: 'en'});
+    });
+
+    const mixedInstructions = ['Guardar cambios', 'Gem dokument'].flatMap(foreign =>
+        [' ', ', ', '. ', '; ', '\n'].flatMap(separator => [
+            [`${foreign} 在结尾 ${JSON.stringify(separator)}`, `${english.slice(0, -1)}${separator}${foreign}`],
+            [`${foreign} 在开头 ${JSON.stringify(separator)}`, `${foreign}${separator}${english}`],
+            [`${foreign} 在中间 ${JSON.stringify(separator)}`, `You can close the browser${separator}${foreign}${separator}after your changes have been saved.`],
+        ]));
+    it.each(mixedInstructions)('真实短外语操作提示%s不能由整段英语功能词抹掉', (_label, text) => {
+        expect(shouldSkipTranslationForTarget(text!, 'en'), JSON.stringify(identifyTextLanguage(text!))).toBe(false);
+        expect(['unknown', 'mixed']).toContain(identifyTextLanguage(text!).status);
+    });
+
+    it('已有逐句证据的完整英语正文仍可过滤，无需救援统计次位', () => {
+        const text = 'Readers can now save a paragraph for later and return to the same place after closing their browser. The saved text remains available when the page is opened again.';
+        expect(identifyTextLanguage(text)).toMatchObject({status: 'identified', languages: ['en']});
+        expect(shouldSkipTranslationForTarget(text, 'en')).toBe(true);
     });
 
     // 控制依赖的候选排序以验证防御边界；正文仍为完整自然语言，功能词与字母表使用真实数据。

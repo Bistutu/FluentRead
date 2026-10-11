@@ -42,6 +42,8 @@ const TECHNICAL_ROLE_AFTER = /^(?:只|仅|僅)?(?:构建|構建|脚本|腳本|�
 const EXPLICIT_FOREIGN_WORD_BEFORE = /(?:翻译|翻譯|解释|解釋|(?:英文|外语|外語)(?:标题|標題|短语|短語|提示|句子)?(?:列表)?|单词|單詞|词语|詞語)(?:一下|为|為|是|的)?$/u;
 // 外语标记描述文本的角色，不列举英文短语或品牌；语言与角色之间只允许有界本族修饰。
 const EXPLICIT_FOREIGN_TEXT_CONTEXT = /(?:英文|英语|英語|外文|外语|外語)[\p{Script=Han}\s]{0,16}(?:标题|標題|题目|題目|短句|短语|短語|提示|句子|单词|單詞|词语|詞語)|(?:英語|外国語|外語)[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\s]{0,16}(?:タイトル|題名|見出し|単語|語句|文章|表現)|(?:영어|영문|외국어)[\p{Script=Hangul}\s]{0,16}(?:제목|문장|단어|구절|표현|안내|메시지)/u;
+// 标签只含有限文本角色和指示后缀，并须直连冒号；产品的“英语原文功能”不能借此否决名称。
+const EXPLICIT_FOREIGN_LABEL_BEFORE = /(?:(?:英文|英语|英語|外文|外语|外語)(?:[ \t]*(?:原文|本文|内容|內容|文本)){0,2}(?:[ \t]*(?:如下|以下|是|为|為))?|(?:英語|外国語|外語)(?:[ \t]*の?[ \t]*(?:原文|本文|内容|文章))?(?:[ \t]*(?:は[ \t]*)?(?:以下|次の(?:とおり|通り))(?:です)?)?|(?:영어|영문|외국어)(?:[ \t]*(?:원문|본문|내용))?(?:[ \t]*(?:은|는)?[ \t]*(?:다음|아래)(?:(?:과|와)[ \t]*같습니다|입니다)?)?)[ \t]*[:：]$/u;
 const FOREIGN_CONTEXT_CLAUSE_BOUNDARY = /[,.!?。！？;；，\n\u061F\u061B\u06D4\u0964\u0965\u037E\u0589\u104B\u17D4\u1362]/u;
 // 后置标记须直接述谓当前片段；“产品提供英文标题功能”不等于“它是英文标题”。
 const CHINESE_FOREIGN_REFERENCE = /^(?:这|這|这些|這些|它|它们|它們|此|以上|上面|前述|原文|文本)?(?:都|均|全|全部|也)?(?:是|为|為|属于|屬於)$/u;
@@ -76,7 +78,8 @@ function writingGroup(word: ScriptWord): string {
 /** 有界同子句反证；冒号仍连接外语标签与正文，不从上一子句或完整句子借用标记。 */
 function hasExplicitForeignContext(copy: string, start: number, end: number): boolean {
     const before = copy.slice(Math.max(0, start - 128), start).split(FOREIGN_CONTEXT_CLAUSE_BOUNDARY).at(-1)!.trimEnd();
-    if (EXPLICIT_FOREIGN_WORD_BEFORE.test(before.replace(/[:：]\s*$/u, ''))
+    if (EXPLICIT_FOREIGN_LABEL_BEFORE.test(before)
+        || EXPLICIT_FOREIGN_WORD_BEFORE.test(before.replace(/[:：]\s*$/u, ''))
         || EXPLICIT_FOREIGN_TEXT_CONTEXT.test(before)) return true;
     const after = copy.slice(end, end + 128).split(FOREIGN_CONTEXT_CLAUSE_BOUNDARY)[0]!.trimStart().replace(/^\+(?=\p{L})/u, '');
     const role = EXPLICIT_FOREIGN_TEXT_CONTEXT.exec(after);

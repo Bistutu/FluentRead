@@ -17,6 +17,25 @@ describe('目标语言译文排版回显', () => {
         ['我们已经完成文档翻译。', '我们已经完成文档翻译。\u200b', 'zh-Hans'],
         ['我们已经完成文档翻译。', undefined, 'zh-Hans'],
         [String.raw`这个功能使用 "a\"  b" 作为数据字段名称。`, String.raw`这个功能使用 "a\"  b" 作为数据字段名称。`, 'zh-Hans'],
+        ['这个功能使用 ``中 文`` 作为数据字段名称。', '这个功能使用 ``中 文`` 作为数据字段名称', 'zh-Hans'],
+        ['这个功能使用 ```甲`乙``` 作为数据字段名称。', '这个功能使用 ```甲`乙``` 作为数据字段名称', 'zh-Hans'],
+        ['这个功能使用 «中 文» 作为数据字段名称。', '这个功能使用 «中 文» 作为数据字段名称', 'zh-Hans'],
+        ['这个功能使用 ‹中 文› 作为数据字段名称。', '这个功能使用 ‹中 文› 作为数据字段名称', 'zh-Hans'],
+        ['这个功能使用 „中 文“ 作为数据字段名称。', '这个功能使用 „中 文“ 作为数据字段名称', 'zh-Hans'],
+        ['这个功能使用 ‚中 文‘ 作为数据字段名称。', '这个功能使用 ‚中 文‘ 作为数据字段名称', 'zh-Hans'],
+        ['这个功能使用「中 文」作为数据字段名称。', '这个功能使用「中 文」作为数据字段名称', 'zh-Hans'],
+        ['这个功能使用『中 文』作为数据字段名称。', '这个功能使用『中 文』作为数据字段名称', 'zh-Hans'],
+        ['这个功能使用 ``“中 文”`` 作为数据字段名称。', '这个功能使用 ``“中 文”`` 作为数据字段名称', 'zh-Hans'],
+        ['这个功能使用 "``中 文``" 作为数据字段名称。', '这个功能使用 "``中 文``" 作为数据字段名称', 'zh-Hans'],
+        ["这个功能使用 'don't中 文' 作为数据字段名称。", "这个功能使用 'don't中 文' 作为数据字段名称。", 'zh-Hans'],
+        ['这个功能使用‘don’t中 文’作为数据字段名称。', '这个功能使用‘don’t中 文’作为数据字段名称。', 'zh-Hans'],
+        ["L'application est disponible pour les utilisateurs.", "L'application est disponible pour les utilisateurs", 'fr'],
+        ['L’application est disponible pour les utilisateurs.', "L'application est disponible pour les utilisateurs", 'fr'],
+        ["The readers' settings are available to every user.", "The readers' settings are available to every user", 'en'],
+        ["The page explains 'don't stop' and keeps all the settings available for every user.", "The page explains 'don't stop' and keeps all the settings available for every user", 'en'],
+        ['The page explains ‘don’t stop’ and keeps all the settings available for every user.', 'The page explains ‘don’t stop’ and keeps all the settings available for every user', 'en'],
+        ['这个功能使用 `中 文 作为数据字段名称。', '这个功能使用 `中 文 作为数据字段名称。', 'zh-Hans'],
+        ['这个功能使用“中 文作为数据字段名称。', '这个功能使用“中 文作为数据字段名称。', 'zh-Hans'],
     ])('仅排版回显保留原文 %#', (source, translation, target) => {
         expect(hasDistinctTargetTranslation(source!, translation, target!)).toBe(false);
     });
@@ -43,7 +62,37 @@ describe('目标语言译文排版回显', () => {
         ['The value is 1.2 and the setting is enabled.', 'The value is 12 and the setting is enabled.', 'en'],
         ['The settings are available for every user.', 'Thesettings are available for every user.', 'en'],
         ['日本国立大学', '日本国立大学。', 'zh-Hans'],
+        ['这个功能使用 ``中 文`` 作为数据字段名称。', '这个功能使用 ``中文`` 作为数据字段名称。', 'zh-Hans'],
+        ['这个功能使用 ``甲，乙`` 作为数据字段名称。', '这个功能使用 ``甲,乙`` 作为数据字段名称。', 'zh-Hans'],
+        ['这个功能使用 ``甲`乙 中 文`` 作为数据字段名称。', '这个功能使用 ``甲`乙 中文`` 作为数据字段名称。', 'zh-Hans'],
+        ['这个功能使用 ```中 文``` 作为数据字段名称。', '这个功能使用 ```中文``` 作为数据字段名称。', 'zh-Hans'],
+        ['这个功能使用 ````中 文```` 作为数据字段名称。', '这个功能使用 ````中文```` 作为数据字段名称。', 'zh-Hans'],
+        ['这个功能使用 ``é`` 作为数据字段名称。', '这个功能使用 ``e\u0301`` 作为数据字段名称。', 'zh-Hans'],
+        ['这个功能使用 ``a\u200bb`` 作为数据字段名称。', '这个功能使用 ``ab`` 作为数据字段名称。', 'zh-Hans'],
+        ['这个功能使用 `中 文 作为数据字段名称。', '这个功能使用 `中文 作为数据字段名称。', 'zh-Hans'],
+        ['这个功能使用 ``中 文``` 作为数据字段名称。', '这个功能使用 ``中文``` 作为数据字段名称。', 'zh-Hans'],
+        ['这个功能使用“中 文作为数据字段名称。', '这个功能使用“中文作为数据字段名称。', 'zh-Hans'],
+        ['这个功能使用中 文”作为数据字段名称。', '这个功能使用中文”作为数据字段名称。', 'zh-Hans'],
+        ['这个功能使用 «中 文» 作为数据字段名称。', '这个功能使用 «中文» 作为数据字段名称。', 'zh-Hans'],
+        ['这个功能使用 ‹中 文› 作为数据字段名称。', '这个功能使用 ‹中文› 作为数据字段名称。', 'zh-Hans'],
+        ['这个功能使用 „中 文“ 作为数据字段名称。', '这个功能使用 „中文“ 作为数据字段名称。', 'zh-Hans'],
+        ['这个功能使用 ‚中 文‘ 作为数据字段名称。', '这个功能使用 ‚中文‘ 作为数据字段名称。', 'zh-Hans'],
+        ['这个功能使用‘don’t中 文’作为数据字段名称。', '这个功能使用‘don’t中文’作为数据字段名称。', 'zh-Hans'],
+        ["这个功能使用 'don't中 文' 作为数据字段名称。", "这个功能使用 'don't中文' 作为数据字段名称。", 'zh-Hans'],
+        ['这个功能使用“中“ 文”作为数据字段名称。', '这个功能使用“中“文”作为数据字段名称。', 'zh-Hans'],
+        ['这个功能使用 ``“中 文”`` 作为数据字段名称。', '这个功能使用 ``“中文”`` 作为数据字段名称。', 'zh-Hans'],
+        ['这个功能使用 "``中 文``" 作为数据字段名称。', '这个功能使用 "``中文``" 作为数据字段名称。', 'zh-Hans'],
+        ["'中 文'", "'中文'", 'zh-Hans'],
     ])('相似但存在实质变化或目标证据不足仍展示 %#', (source, translation, target) => {
         expect(hasDistinctTargetTranslation(source!, translation, target!)).toBe(true);
+    });
+
+    it.each([
+        `这个功能使用 '${"a'".repeat(50_000)}尾部作为数据字段名称。`,
+        '这个功能使用 ' + Array.from({length: 600}, (_, index) => '`'.repeat(index + 1) + 'x').join('') + '作为数据字段名称。',
+        '这个功能使用 ``' + '中 文'.repeat(20_000) + ' 作为数据字段名称。',
+        '这个功能使用 ' + '""'.repeat(50_000) + '作为数据字段名称。',
+    ])('大引用输入仍保留实值变化且完成扫描 %#', source => {
+        expect(hasDistinctTargetTranslation(source, source.replace('作为', '用作'), 'zh-Hans')).toBe(true);
     });
 });

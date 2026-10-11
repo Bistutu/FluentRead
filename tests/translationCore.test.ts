@@ -331,6 +331,38 @@ describe('候选语言副本保留真实行内文字边界', () => {
         expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(false);
     });
 
+    it.each([
+        ['div', 'inline'], ['p', 'inline'], ['span', 'block'], ['span', 'flex'], ['span', 'grid'],
+    ])('完整候选内部空 %s/%s 块保留分行外语', (tag, display) => {
+        const {document} = page(`<div>页面的运行状态正常，所有功能可以继续使用。<span>Birds</span><${tag} id="gap"></${tag}><strong>Fly</strong></div>`);
+        Object.defineProperty(document.defaultView, 'getComputedStyle', {
+            configurable: true,
+            value: (element: Element) => ({display: element.id === 'gap' ? display : 'inline'}),
+        });
+        const element = document.body.firstElementChild!;
+        const source = extractTranslationText(element);
+        const copy = extractTranslationText(element, undefined, undefined, languageOptions);
+        expect(copy).toMatch(/Birds\n+Fly/u);
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(false);
+        expect(shouldSkipTranslationForTarget(copy, 'en', ['zh-Hans'])).toBe(false);
+        expect(extractTranslationText(element)).toBe(source);
+    });
+
+    it.each([
+        ['div', 'none'], ['span', 'none'], ['span', 'inline'], ['span', 'inline-block'], ['span', 'contents'],
+    ])('空 %s/%s 元素不打断真实相邻名称', (tag, display) => {
+        const {document} = page(`<div>请求状态已经更新，新增<span>Google</span><${tag} id="gap"></${tag}><strong>Meet</strong>翻译服务，可以继续翻译。</div>`);
+        Object.defineProperty(document.defaultView, 'getComputedStyle', {
+            configurable: true,
+            value: (element: Element) => ({display: element.id === 'gap' ? display : 'inline'}),
+        });
+        const element = document.body.firstElementChild!;
+        const copy = extractTranslationText(element, undefined, undefined, languageOptions);
+        expect(copy).toContain('GoogleMeet');
+        expect(shouldSkipTranslationForTarget(copy, 'zh-Hans')).toBe(true);
+        expect(extractTranslationTextFromNodes([...element.childNodes], undefined, undefined, languageOptions)).toContain('GoogleMeet');
+    });
+
     it('无语义块的离线片段不会因缓存空祖先制造边界', () => {
         const {document} = page('');
         const fragment = document.createElement('span');

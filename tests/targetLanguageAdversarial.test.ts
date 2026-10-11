@@ -97,6 +97,54 @@ describe('独立反例：展示兜底保留实质变化', () => {
 
 describe('外语文本语境优先于名称枚举和后缀', () => {
     it.each([
+        ['以下展示的是需要翻译的英语：Birds Fly、Teams、Zoom 都是原文内容。', 'zh-Hans'],
+        ['以下展示的是需要翻译的外文：Birds Fly、Teams、Zoom 都是原文内容。', 'zh-Hans'],
+        ['以下展示的是需要翻译的英语原文：Birds Fly、Teams、Zoom 都是原文内容。', 'zh-Hans'],
+        ['以下展示的是需要翻译的英文原文：Birds Fly、Teams、Zoom 都是原文内容。', 'zh-Hans'],
+        ['以下展示的是需要翻译的外语本文: Birds Fly、Teams、Zoom 都是原文内容。', 'zh-Hans'],
+        ['这些完整文本需要翻译，英文内容：Birds Fly、Teams、Zoom这些都是同一组需要展示的内容。', 'zh-Hans'],
+        ['这些完整文本需要翻译，英文原文如下：Birds Fly、Teams、Zoom这些都是同一组需要展示的内容。', 'zh-Hans'],
+        ['这些完整文本需要翻译，英语原文内容如下: Birds Fly、Teams、Zoom这些都是同一组需要展示的内容。', 'zh-Hans'],
+        ['这些完整文本需要翻译，外文文本为：Birds Fly、Teams、Zoom这些都是同一组需要展示的内容。', 'zh-Hans'],
+        ['這些完整文本需要翻譯，英語內容以下：Birds Fly、Teams、Zoom這些都是同一組需要展示的內容。', 'zh-Hant'],
+        ['以下展示的是需要翻譯的英語原文：Birds Fly、Teams、Zoom 都是原文內容。', 'zh-Hant'],
+        ['次の英語：Birds Fly、Teams、Zoom は翻訳する必要があります。', 'ja'],
+        ['次の外国語の原文：Birds Fly、Teams、Zoom は翻訳する必要があります。', 'ja'],
+        ['次の英語 本文: Birds Fly、Teams、Zoom は翻訳する必要があります。', 'ja'],
+        ['英語の原文は次のとおり：Birds Fly、Teams、Zoom は翻訳する必要があります。', 'ja'],
+        ['外国語の内容は次の通りです: Birds Fly、Teams、Zoom は翻訳する必要があります。', 'ja'],
+        ['다음 영어: Birds Fly、Teams、Zoom 은 번역해야 하는 원문입니다.', 'ko'],
+        ['다음 영문 원문：Birds Fly、Teams、Zoom 은 번역해야 하는 원문입니다.', 'ko'],
+        ['다음 외국어 본문: Birds Fly、Teams、Zoom 은 번역해야 하는 원문입니다.', 'ko'],
+        ['영어 원문은 다음과 같습니다: Birds Fly、Teams、Zoom 은 번역해야 하는 원문입니다.', 'ko'],
+        ['외국어 내용은 아래와 같습니다：Birds Fly、Teams、Zoom 은 번역해야 하는 원문입니다.', 'ko'],
+    ])('直连外语/原文标签保留翻译：%s', (source, target) => {
+        expect(shouldSkipTranslationForTarget(source, target), JSON.stringify(identifyTextLanguage(source))).toBe(false);
+        expect(shouldSkipTranslationForTarget(source, 'und', [target])).toBe(false);
+    });
+
+    it.each([
+        ['英语原文功能现已支持 Google Meet 服务，可以继续翻译。', 'zh-Hans'],
+        ['Google Meet 服务提供英语原文功能，可以继续翻译。', 'zh-Hans'],
+        ['英语原文功能：Google Meet、Teams、Zoom 已支持字幕设置并保留完整中文说明。', 'zh-Hans'],
+        ['英语内容配置：Google Meet、Teams、Zoom 已支持字幕设置并保留完整中文说明。', 'zh-Hans'],
+        ['这里先展示英文原文如下，新增可访问字幕驱动的 Google Meet、Teams、Zoom 网页会议双语字幕。', 'zh-Hans'],
+        ['这里先展示英文内容如下。新增可访问字幕驱动的 Google Meet、Teams、Zoom 网页会议双语字幕。', 'zh-Hans'],
+        ['这里先展示英文原文如下:\n新增可访问字幕驱动的 Google Meet、Teams、Zoom 网页会议双语字幕。', 'zh-Hans'],
+        ['这里展示英语原文：新增可访问字幕驱动的 Google Meet、Teams、Zoom 网页会议双语字幕。', 'zh-Hans'],
+        ['这里展示英语原文，新增可访问字幕驱动的 Google Meet、Teams、Zoom 网页会议双语字幕。', 'zh-Hans'],
+        ['这里展示英语原文。新增可访问字幕驱动的 Google Meet、Teams、Zoom 网页会议双语字幕。', 'zh-Hans'],
+        ['这里展示英语原文:\n新增可访问字幕驱动的 Google Meet、Teams、Zoom 网页会议双语字幕。', 'zh-Hans'],
+        ['先展示英语：其他部分已经关闭，随后新增 Google Meet 服务并保留中文说明。', 'zh-Hans'],
+        ['アプリの Google Meet は英語の原文を表示して元の文章を保持します。', 'ja'],
+        ['英語の原文表示機能：アプリは Google Meet に対応し、元の文章を保持します。', 'ja'],
+        ['이 확장 프로그램의 Google Meet 은 영어 원문을 표시하며 원문을 보존합니다.', 'ko'],
+        ['영어 원문 표시 기능: 이 확장 프로그램은 Google Meet 을 지원하며 원문을 보존합니다.', 'ko'],
+    ])('非直连外语标签不污染正常名称：%s', (source, target) => {
+        expect(shouldSkipTranslationForTarget(source, target), JSON.stringify(identifyTextLanguage(source))).toBe(true);
+    });
+
+    it.each([
         ['以下列表中的每一项都是英文标题：Birds Fly、Teams、Zoom 都是原文内容。', 'zh-Hans'],
         ['以下列表中的每一项都是外语标题：Birds Fly、Teams、Zoom 都是原文内容。', 'zh-Hans'],
         ['以下这些英语标题 Birds Fly、Teams、Zoom 都是需要翻译的完整原文。', 'zh-Hans'],

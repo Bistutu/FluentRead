@@ -191,6 +191,17 @@ function collectReadableText(
     };
     // 每个文本节点都要复核完整祖先链；长文章中相邻文本共享祖先，逐节点重算会随正文规模二次增长。
     const protectionCache = createTranslationTextProtectionCache();
+    const appendElementBoundary = (element: Element): void => {
+        // 空块也会分开可见行；隐藏或保护的空元素没有可读布局，不制造新边界。
+        if (isTranslationTextElementProtected(element, shouldStayOriginal, protectionCache, protectionOptions, ignoredExtensionElement)) return;
+        if (getElementTagName(element) === 'br') {
+            parts.push('\n');
+            return;
+        }
+        const block = languageContextBlockOwner(element, blockOwners);
+        if (previousBlock !== undefined && previousBlock !== block) parts.push('\n');
+        previousBlock = block;
+    };
     for (const root of roots) {
         if (languageContext && previousRoot && previousRoot.nextSibling !== root) parts.push('\n');
         previousRoot = root;
@@ -213,13 +224,8 @@ function collectReadableText(
         const element = root as Element;
         if (languageContext) {
             // walker 不访问根本身，根级换行和空块仍须保留真实边界。
-            if (getElementTagName(element) === 'br') {
-                parts.push('\n');
-                continue;
-            }
-            const block = languageContextBlockOwner(element, blockOwners);
-            if (previousBlock !== undefined && previousBlock !== block) parts.push('\n');
-            previousBlock = block;
+            appendElementBoundary(element);
+            if (getElementTagName(element) === 'br') continue;
         }
         // 按钮型 input 的可见标签只存在于 value 属性里。仅当它本身就是候选根时才读取：
         // 外层容器的译文经由文本槽或双语骨架渲染，无法写回子元素属性，把属性文本混进去
@@ -238,7 +244,7 @@ function collectReadableText(
         let current = walker.nextNode();
         while (current) {
             if (current.nodeType === 1) {
-                if (getElementTagName(current as Element) === 'br') parts.push('\n');
+                appendElementBoundary(current as Element);
                 current = walker.nextNode();
                 continue;
             }
