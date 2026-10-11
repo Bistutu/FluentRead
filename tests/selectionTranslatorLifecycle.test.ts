@@ -1,7 +1,7 @@
 /**
  * @file tests/selectionTranslatorLifecycle.test.ts
  * 文件职责：执行划词组件的实际挂载与卸载回调，验证扩展消息端口撤销不会留下宿主页面资源。
- * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移。
+ * 主要内容：覆盖注销清理、原生右键菜单选区恢复与重复翻译复用、朗读生成与降级、取消、迟到响应、进度隔离和富文本 trim 后的 UTF-16 跟读偏移、顶栏菜单外点/焦点关闭边界和窗口尺寸变化清理。
  * 模块边界：编译真实 Vue setup 并替换浏览器和渲染依赖，不模拟完整 UI 或声称真实浏览器验证。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -88,6 +88,7 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
     let ttsRequestId = 0;
     const modules: Record<string, unknown> = {
         './SpeechFollowText.vue': {},
+        '@/src/features/reading-assistant/public': {createReadingEvidenceAnchor: () => ({locate: () => 'unavailable', check: () => 'unavailable', suspend: vi.fn(), clear: vi.fn(), dispose: vi.fn()})},
         '@/src/core/tts/speechProgress': speechProgress,
         '@/src/core/translation/result': {hasDistinctTranslation},
         vue: {...Vue, useTemplateRef: () => Vue.ref(null)},
@@ -830,6 +831,42 @@ describe('SelectionTranslator trimmed speech offsets in rich text', () => {
         expect(fixture.state.audioTextOffset).toBe(0);
         expectAudioReset(fixture.state);
     });
+});
+
+it('preserves the reading card during its evidence scroll, then resumes ordinary auto dismissal and clears frames on close', async () => {
+    const fixture = mountSelection();
+    vi.stubGlobal('Element', class {});
+    vi.stubGlobal('Node', class {});
+    const {state} = fixture;
+    fixture.config.selectionTranslatorAutoDismiss = true;
+    state.snapshot = {text: 'Practice helps.', range: {getClientRects: () => []}, parts: [{kind: 'text', text: 'Practice helps.'}]};
+    state.readingSelection = {text: 'Practice helps.', context: '', sentence: 'Practice helps.'};
+    state.readingMode = true;
+    state.showTooltip = true;
+    const disposeAnchor = vi.fn();
+    state.readingEvidenceAnchor = {locate: () => 'located', check: () => 'located', dispose: disposeAnchor, suspend: vi.fn()};
+    const citation = {quote: 'Practice helps.', sourceText: 'Practice helps.'};
+    expect(state.locateReadingEvidence(citation)).toBe('located');
+    state.handleScroll({target: null});
+    expect(state.showTooltip).toBe(true);
+    expect(disposeAnchor).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(40);
+    state.handleScroll({target: null});
+    expect(state.showTooltip).toBe(false);
+    expect(disposeAnchor).toHaveBeenCalledOnce();
+    expect(state.readingEvidenceScrollFrame).toBeUndefined();
+
+    state.showTooltip = true;
+    state.readingMode = true;
+    state.readingEvidenceAnchor = {locate: () => 'unavailable'};
+    expect(state.locateReadingEvidence(citation)).toBe('unavailable');
+    expect(state.readingEvidenceScrollFrame).toBeUndefined();
+    state.readingEvidenceAnchor = {locate: () => 'located', dispose: disposeAnchor};
+    state.readingSelection = {text: 'Practice helps.', context: '', sentence: 'Practice helps.'};
+    expect(state.locateReadingEvidence(citation)).toBe('located');
+    fixture.unmount();
+    expect(state.readingEvidenceScrollFrame).toBeUndefined();
+    expect(vi.getTimerCount()).toBe(0);
 });
 
 it('keeps an existing ordinary translation running when opening the learning view', async () => {
@@ -1605,6 +1642,35 @@ describe('selection card bounded layout work', () => {
         const current = [...frames.values()];frames.clear();current.forEach(callback => callback(0));
         expect(parseFloat(state.tooltipStyle.left)).toBe(12);
         expect(state.manualPopupPosition).toEqual({left: 12, top: 100});
+    });
+
+    it('dismisses the teleported tools on outside focus and viewport changes without stealing focus inside the card', () => {
+        const {state} = mountSelection();
+        const inside={}, outside={};
+        const root={contains:(node:unknown)=>node===inside};
+        const closeTools=vi.fn(), dismissToolsOutside=vi.fn();
+        state.readingPanelRef={closeTools,dismissToolsOutside};
+        const pointer={target:inside};
+        state.dismissReadingToolsOutside(pointer);
+        expect(dismissToolsOutside).toHaveBeenCalledWith(pointer);
+        state.dismissReadingToolsOnFocusOut({currentTarget:root,relatedTarget:inside});
+        expect(closeTools).not.toHaveBeenCalled();
+        state.dismissReadingToolsOnFocusOut({currentTarget:root,relatedTarget:outside});
+        state.dismissReadingToolsOnFocusOut({currentTarget:root,relatedTarget:null});
+        expect(closeTools).toHaveBeenCalledTimes(2);
+        state.handleViewportResize();
+        expect(closeTools).toHaveBeenCalledTimes(3);
+    });
+
+    it('leaves the native more summary gesture available without starting a card drag', async () => {
+        const {state,element,pointer}=await gestureFixture();
+        state.stopPopupGesture();
+        element.closest=(selector:string)=>selector.includes('summary') ? element : null;
+        const event=pointer('pointerdown',205,110);
+        state.beginPopupGesture(event);
+        expect(state.popupManipulating).toBe(false);
+        expect(element.captured).toBe(false);
+        expect(event.preventDefault).not.toHaveBeenCalled();
     });
 
     it('uses an ordinary wheel to scroll only the overflowing one-row navigation', () => {

@@ -3,7 +3,7 @@
   "extensionDir": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/.output/chrome-mv3",
   "browserPath": "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
   "profileMode": "fresh-mkdtemp-owned",
-  "profileDir": "/private/tmp/fluentread-progressive-reading-profile-Ex0In4",
+  "profileDir": "/private/tmp/fluentread-progressive-reading-profile-B7mQR4",
   "artifact": "production",
   "cases": [],
   "screenshots": [],
@@ -198,69 +198,69 @@
     "disableSelectionTranslator": true
   },
   "demo": {
-    "startedAt": 1791709365564,
+    "startedAt": 1791710033451,
     "viewport": {
       "width": 660,
       "height": 720
     },
     "fps": 5,
     "frameDurationMs": 200,
-    "framesDir": "/private/tmp/fluentread-progressive-learning-demo/recording/frames",
+    "framesDir": "/private/tmp/fluentread-progressive-learning-integrated-demo/recording/frames",
     "framePattern": "frame-%06d.png",
-    "timingPath": "/private/tmp/fluentread-progressive-learning-demo/recording/timing.json",
+    "timingPath": "/private/tmp/fluentread-progressive-learning-integrated-demo/recording/timing.json",
     "steps": [
       {
         "caption": "1 · Popup 的学习入口",
         "surface": "popup",
-        "startedAtMs": 25,
-        "completedAtMs": 2080
+        "startedAtMs": 29,
+        "completedAtMs": 2084
       },
       {
         "caption": "2 · 先打开面板\n等待选择正文",
         "surface": "webpage",
-        "startedAtMs": 2169,
-        "completedAtMs": 4170
+        "startedAtMs": 2173,
+        "completedAtMs": 4176
       },
       {
         "caption": "3 · 在网页中拖选正文",
         "surface": "webpage",
-        "startedAtMs": 4170,
-        "completedAtMs": 7847
+        "startedAtMs": 4176,
+        "completedAtMs": 7947
       },
       {
         "caption": "4 · 点击读取\n默认只读原文",
         "surface": "webpage",
-        "startedAtMs": 7847,
-        "completedAtMs": 9889
+        "startedAtMs": 7947,
+        "completedAtMs": 9988
       },
       {
         "caption": "5 · 短语提示\n按需查看表达",
         "surface": "webpage",
-        "startedAtMs": 9889,
-        "completedAtMs": 11917
+        "startedAtMs": 9988,
+        "completedAtMs": 12005
       },
       {
         "caption": "6 · 逻辑线索\n留意条件、否定与范围",
         "surface": "webpage",
-        "startedAtMs": 11917,
-        "completedAtMs": 13949
+        "startedAtMs": 12005,
+        "completedAtMs": 14018
       },
       {
         "caption": "7 · 完整双语\n随时直接查看译文",
         "surface": "webpage",
-        "startedAtMs": 13949,
-        "completedAtMs": 16243
+        "startedAtMs": 14018,
+        "completedAtMs": 16228
       },
       {
         "caption": "8 · 关闭辅助\n继续阅读原网页",
         "surface": "webpage",
-        "startedAtMs": 16243,
-        "completedAtMs": 18261
+        "startedAtMs": 16228,
+        "completedAtMs": 18238
       }
     ],
     "boundary": "Separate recorded demonstration, not the 18-case assertion run. Real Popup is rendered in an independent extension test tab at its production width on a 660x720 canvas. Local captions/cursor are presentation aids; responses and active-tab/close handling use the existing deterministic fixtures.",
     "learningRecordsUnchanged": true,
-    "durationMs": 18305,
+    "durationMs": 18371,
     "encodedDurationMs": 18200,
     "frameCount": 91,
     "timingEvidence": "demo-timing.json",
@@ -270,18 +270,18 @@
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791709379557
+      "at": 1791710047502
     }
   ],
   "hostLifecycle": [
     {
       "event": "pageshow",
-      "at": 1791709365189
+      "at": 1791710033090
     },
     {
       "event": "pagehide",
-      "at": 1791709384308
+      "at": 1791710052172
     }
   ],
-  "originalArtifactsDirectory": "/private/tmp/fluentread-progressive-learning-demo"
+  "originalArtifactsDirectory": "/private/tmp/fluentread-progressive-learning-integrated-demo"
 }

@@ -3,7 +3,7 @@
   "extensionDir": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/.output/chrome-mv3",
   "browserPath": "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
   "profileMode": "fresh-mkdtemp-owned",
-  "profileDir": "/private/tmp/fluentread-progressive-reading-profile-0hjVGg",
+  "profileDir": "/private/tmp/fluentread-progressive-reading-profile-zcOVjq",
   "artifact": "production",
   "cases": [
     {
@@ -301,7 +301,7 @@
     },
     {
       "optionsUrl": "chrome-extension://djnlaiohfaaifbibleebjggkghlmcpcj/options.html?target=progressive-reading#settings-translation",
-      "helpScreenshot": "/private/tmp/fluentread-progressive-learning-final/popup-learning-help.png",
+      "helpScreenshot": "/private/tmp/fluentread-progressive-learning-integrated-final/popup-learning-help.png",
       "name": "Learning defaults to no binding; real hover, keyboard focus, settings-link travel, Escape and reentry reveal help and open its dedicated settings panel"
     },
     {
@@ -354,12 +354,12 @@
         {
           "source": "bank",
           "model": "progressive-reading-fixture",
-          "at": 1791709313106
+          "at": 1791709986981
         },
         {
           "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
           "model": "progressive-reading-fixture",
-          "at": 1791709313558
+          "at": 1791709987435
         }
       ],
       "name": "One click reaches complete bilingual from logic and mode switches reuse the same reading-session translation"
@@ -392,7 +392,7 @@
           "scheme": "dark",
           "background": "rgb(40, 40, 48)",
           "ink": "rgb(241, 241, 244)",
-          "selectedBackground": "rgba(255, 237, 241, 0.906)",
+          "selectedBackground": "rgba(255, 237, 242, 0.92)",
           "selectedInk": "rgb(255, 173, 198)",
           "textContrast": 12.968772087702426
         },
@@ -425,7 +425,7 @@
     },
     {
       "source": "If the route changes, this delayed reading request must not remain attached to the old page.",
-      "route": "http://127.0.0.1:51723/article?route=reading",
+      "route": "http://127.0.0.1:54652/article?route=reading",
       "name": "Pure history.pushState with unchanged host DOM cancels the old request through the real MAIN bridge, closes help and permits reopening"
     },
     {
@@ -522,12 +522,12 @@
       "name": "ChatGPT"
     },
     {
-      "label": "continuous",
+      "label": "popup-learning-help:before-screenshot",
       "pid": 73685,
       "name": "ChatGPT"
     },
     {
-      "label": "popup-learning-help:before-screenshot",
+      "label": "continuous",
       "pid": 73685,
       "name": "ChatGPT"
     },
@@ -537,12 +537,12 @@
       "name": "ChatGPT"
     },
     {
-      "label": "continuous",
+      "label": "learning-settings-default:before-screenshot",
       "pid": 73685,
       "name": "ChatGPT"
     },
     {
-      "label": "learning-settings-default:before-screenshot",
+      "label": "continuous",
       "pid": 73685,
       "name": "ChatGPT"
     },
@@ -582,17 +582,17 @@
       "name": "ChatGPT"
     },
     {
-      "label": "continuous",
-      "pid": 73685,
-      "name": "ChatGPT"
-    },
-    {
       "label": "panel-original:after-screenshot",
       "pid": 73685,
       "name": "ChatGPT"
     },
     {
       "label": "panel-phrases:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
       "pid": 73685,
       "name": "ChatGPT"
     },
@@ -652,12 +652,12 @@
       "name": "ChatGPT"
     },
     {
-      "label": "continuous",
+      "label": "390-dark-phrases:before-screenshot",
       "pid": 73685,
       "name": "ChatGPT"
     },
     {
-      "label": "390-dark-phrases:before-screenshot",
+      "label": "continuous",
       "pid": 73685,
       "name": "ChatGPT"
     },
@@ -1330,7 +1330,7 @@
       "scheme": "dark",
       "background": "rgb(40, 40, 48)",
       "ink": "rgb(241, 241, 244)",
-      "selectedBackground": "rgba(255, 237, 241, 0.906)",
+      "selectedBackground": "rgba(255, 237, 242, 0.92)",
       "selectedInk": "rgb(255, 173, 198)",
       "textContrast": 12.968772087702426
     },
@@ -1347,56 +1347,56 @@
     {
       "source": "bank",
       "model": "progressive-reading-fixture",
-      "at": 1791709313106
+      "at": 1791709986981
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791709313558
+      "at": 1791709987435
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791709316182
+      "at": 1791709990010
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791709317284
+      "at": 1791709991116
     },
     {
       "source": "Unless the review is complete, the result may not apply to a new bank account.",
       "model": "progressive-reading-fixture",
-      "at": 1791709317873
+      "at": 1791709991743
     },
     {
       "source": "Unless the review is complete, the result may not apply to a new bank account.",
       "model": "progressive-reading-fixture",
-      "at": 1791709319621
+      "at": 1791709993537
     },
     {
       "source": "If the route changes, this delayed reading request must not remain attached to the old page.",
       "model": "progressive-reading-fixture",
-      "at": 1791709321017
+      "at": 1791709994978
     }
   ],
   "hostLifecycle": [
     {
       "event": "pageshow",
-      "at": 1791709305102
+      "at": 1791709979030
     },
     {
       "event": "pagehide",
-      "at": 1791709324364
+      "at": 1791709998304
     },
     {
       "event": "pageshow",
-      "at": 1791709324418
+      "at": 1791709998364
     },
     {
       "event": "pagehide",
-      "at": 1791709324777
+      "at": 1791709998777
     }
   ],
-  "originalArtifactsDirectory": "/private/tmp/fluentread-progressive-learning-final"
+  "originalArtifactsDirectory": "/private/tmp/fluentread-progressive-learning-integrated-final"
 }
