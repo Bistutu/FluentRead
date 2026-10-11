@@ -71,6 +71,10 @@ function serializeUiMessages(value: unknown): string {
     return JSON.stringify(value, (_key, item) => item && typeof item === 'object' && !Array.isArray(item)
         ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)) : item);
 }
+// 文档翻译页面（含 PDF 阅读器）只存在于扩展里；中英内嵌词典使用同一页面能力裁剪。
+function userscriptPageMessages<T extends Record<string, string>>(messages: T): T {
+    return Object.fromEntries(Object.entries(messages).filter(([key]) => !key.startsWith('document.'))) as T;
+}
 // 构建期复用已有 pako 编码中英界面词典，减少标准 gzip 数据；解压字节与运行时端口不变。
 const gzipUiMessages = createRequire(import.meta.url)('pako').gzip as
     (data: Uint8Array, options: {level: number}) => Uint8Array;
@@ -78,7 +82,8 @@ const compressedUiLanguageBundles = greasyForkSource ? {} : Object.fromEntries(O
     .filter(([language]) => language === 'en-US')
     .map(([language, bundle]) => [
     language,
-    Buffer.from(gzipUiMessages(Buffer.from(serializeUiMessages(bundle)), {level: 9})).toString('base64'),
+    Buffer.from(gzipUiMessages(Buffer.from(serializeUiMessages({...bundle,
+        messages: userscriptPageMessages(bundle.messages)})), {level: 9})).toString('base64'),
 ]));
 const remoteUiLanguageBundles = Object.fromEntries(Object.entries(UI_LANGUAGE_BUNDLES)
     .filter(([language]) => language !== 'en-US')
@@ -125,8 +130,7 @@ export function createUserscriptCatalogCompressionPlugin(): Plugin {
         load(id) {
             if (id === externalChineseMessagesId) {
                 if (greasyForkSource) return 'export const zhCNMessages = globalThis.__FLUENTREAD_USERSCRIPT_DATA__.zhCNMessages;';
-                // 文档翻译页面（含 PDF 阅读器）只存在于扩展里，油猴脚本不含该页面，它的文案不占用脚本体积。
-                const contents = serializeUiMessages(Object.fromEntries(Object.entries(zhCNMessages).filter(([key]) => !key.startsWith('document.'))) as typeof zhCNMessages);
+                const contents = serializeUiMessages(userscriptPageMessages(zhCNMessages));
                 const compressed = Buffer.from(gzipUiMessages(Buffer.from(contents), {level: 9})).toString('base64');
                 return [
                     `/* Non-code Chinese UI messages; sha256 ${createHash('sha256').update(contents).digest('hex')}. */`,

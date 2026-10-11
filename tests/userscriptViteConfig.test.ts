@@ -102,14 +102,21 @@ describe('userscript browser shim injection', () => {
     it.each<readonly [string, Record<string, string>, Record<string, string>]>([
         ['zh-CN', extensionChinese, zhCNMessages],
         ...Object.entries(extensionBundles).map(([language, bundle]) => [language, bundle.messages, UI_LANGUAGE_BUNDLES[language as keyof typeof UI_LANGUAGE_BUNDLES].messages] as const),
-    ])('retains extension notices in %s while preserving all other userscript menu and settings copy', (_language, extension, projected) => {
+    ])('retains extension-only copy in %s while preserving userscript menu and settings copy', (_language, extension, projected) => {
         const noticeKeys = Object.keys(extension).filter(key => key.startsWith('contextMenu.notice.'));
         expect(noticeKeys).toHaveLength(6);
         for (const key of noticeKeys) {
             expect(extension[key]).toBeTruthy();
             expect(Object.hasOwn(projected, key)).toBe(false);
         }
-        const retainedKeys = Object.keys(extension).filter(key => !key.startsWith('informationHighlight.') && !noticeKeys.includes(key));
+        const learningKeys = Object.keys(extension).filter(key => key.startsWith('video.learning.'));
+        expect(learningKeys).not.toHaveLength(0);
+        for (const key of learningKeys) {
+            expect(extension[key]).toBeTruthy();
+            expect(Object.hasOwn(projected, key)).toBe(false);
+        }
+        const retainedKeys = Object.keys(extension).filter(key => !key.startsWith('informationHighlight.')
+            && !noticeKeys.includes(key) && !learningKeys.includes(key));
         expect(Object.keys(projected)).toHaveLength(retainedKeys.length);
         for (const key of retainedKeys) expect(projected[key]).toBe(extension[key]);
         expect(projected['contextMenu.translateSelection']).toBeTruthy();
@@ -162,6 +169,17 @@ describe('userscript browser shim injection', () => {
             vi.unstubAllGlobals();
         }
         expect(moduleSource).toContain(createHash('sha256').update(gunzipSync(Buffer.from(base64!, 'base64'))).digest('hex'));
+    });
+
+    it('applies the same document-page boundary to the embedded English catalog and preserves learning-center source copy', () => {
+        const defines = (userscriptConfig as {define: Record<string, string>}).define;
+        const compressed = JSON.parse(defines.__FLUENTREAD_USERSCRIPT_LANGUAGE_BUNDLES__)['en-US'];
+        const restored = JSON.parse(gunzipSync(Buffer.from(compressed, 'base64')).toString('utf8'));
+        const english = UI_LANGUAGE_BUNDLES['en-US'];
+        const messages = Object.fromEntries(Object.entries(english.messages).filter(([key]) => !key.startsWith('document.')));
+        expect(Object.keys(messages).length).toBeLessThan(Object.keys(english.messages).length);
+        expect(restored).toEqual({...english, messages});
+        expect(restored.legacyText['回到视频片段']).toBe(extensionBundles['en-US'].legacyText['回到视频片段']);
     });
 
     it('keeps all site rule JSON data intact when embedding compressed offline catalogs', () => {

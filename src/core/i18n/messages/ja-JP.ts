@@ -5,6 +5,7 @@
  * 主要内容：保持语言名称使用各自原生写法，并为尚未 key 化的旧 UI 提供日语映射。
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入或翻译结果。
  */
+import videoLearningText from './video-learning/ja-JP.json';
 import {pdfReadingMessages} from './pdfReading';
 import {informationHighlightMessages} from './informationHighlight';
 import reencounterText from './reencounter/ja-JP.json';
@@ -22,6 +23,7 @@ import {translationStatsJapaneseMessages} from './translationStats';
 import {localTranslationJapaneseMessages} from './localTranslation';
 
 export const jaJPMessages = {
+    ...videoLearningText,
     ...pdfReadingMessages['ja-JP'],
     ...informationHighlightMessages['ja-JP'],
     ...reencounterText,

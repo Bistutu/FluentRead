@@ -417,7 +417,9 @@
       "tests/informationHighlightWorker.test.ts",
       "tests/targetLanguageDetector.test.ts",
       "tests/targetTranslationResult.test.ts",
-      "tests/readingEvidence.test.ts"
+      "tests/readingEvidence.test.ts",
+      "tests/videoSentenceTimeline.test.ts",
+      "tests/vocabularyVideoSource.test.ts"
     ],
     "functional": [
       "tests/finalCoveragePublicBoundariesA.test.ts",
@@ -624,7 +626,10 @@
       "tests/floatingPopupOverlay.test.ts",
       "tests/popupEmbedded.test.ts",
       "tests/readingEvidenceAnchor.test.ts",
-      "tests/readingEvidenceUi.test.ts"
+      "tests/readingEvidenceUi.test.ts",
+      "tests/videoSentencePlayback.test.ts",
+      "tests/videoSentenceLearningHost.test.ts",
+      "tests/vocabularyVideoSourceUi.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",
@@ -662,6 +667,7 @@
       "tests/userscriptDexieIsolation.test.ts",
       "tests/vocabularyBookComponentLifecycle.test.ts",
       "tests/vocabularyStudyLifecycle.test.ts",
+      "tests/videoSentenceLearningComponent.test.ts",
       "tests/allNodesTranslationCore.test.ts",
       "tests/sameTargetLanguageRegression.test.ts",
       "tests/vocabularyReencounterLifecycle.test.ts",

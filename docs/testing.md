@@ -1,5 +1,24 @@
 # 测试与回归
 
+## 视频完整句学习
+
+`pnpm test:video:learning --coverage` 限定执行原始字幕聚合、播放控制、面板所有权与来源恢复、收藏来源及 UI 五份测试；四个新增 TypeScript 模块的 statements/branches/functions/lines 均要求 100%。字幕菜单和运行时回归使用 `videoSubtitle`、`videoSubtitleTrackPriorityRuntime`、`videoSubtitleLogic`、`videoUiI18n`，以及架构、文件头和 i18n 检查。
+
+生产 Chrome 构建后运行：
+
+```sh
+node scripts/run-video-sentence-learning-test.cjs \
+  --extension-dir .output/chrome-mv3 \
+  --playwright-root "$PLAYWRIGHT_ROOT" \
+  --focus-safe-helper scripts/testing/focus-safe-browser.cjs \
+  --artifacts-dir /private/tmp/fluentread-video-sentence-learning
+```
+
+脚本使用自有临时 Edge profile、第二屏后台正常窗口、前台 PID 保护和真实解码的本地 MP4。平台 DOM、原字幕与翻译/解释传输受控；断言整句原时间、用户播放优先、循环与句末暂停、失败恢复、主动收藏、来源去重、学习中心链接、X 多视频/引用帖归属、全屏与窄屏边界。它不代表原站字幕可取得或线上服务译文质量。
+
+追加 `--live-only --live-youtube-urls <视频地址列表> --live-x-url <帖子地址>` 单独访问真实网站，不注入字幕或替换网站 DOM/媒体；仍使用受控翻译传输。原站无法供给可读取字幕时记录状态和失败，不能据此宣称字幕学习闭环通过。Firefox 与 userscript 构建不等于实际浏览器运行验收；原生画中画未通过此前台隔离脚本测试。本次结果与边界见[视频完整句学习记录](./reports/video-sentence-learning-20261011/README.md)。
+
+
 ## 扩展体积与共享推理引擎
 
 `pnpm analyze:bundle [构建目录] [基线目录]` 统计真实字节、文件类型、目录、最大文件和相同内容，详见 [2026-10-06 体积记录](./maintainers/extension-size-20261006.md)。普通开发构建不内联源码映射；需要时使用 `FLUENTREAD_DEV_SOURCEMAPS=1 pnpm dev`。手动加载可设置 `FLUENTREAD_DISABLE_BROWSER_RUNNER=1`。
