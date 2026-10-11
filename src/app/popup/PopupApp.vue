@@ -1,7 +1,7 @@
 <!--
  @file src/app/popup/PopupApp.vue
  文件职责：实现浏览器 Popup 的主交互界面，连接当前标签页状态、翻译配置、可插拔皮肤、功能抽屉和高频操作，让现场开关与显示操作保持简短，将长期偏好引导到对应设置页。
- 主要内容：在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型，保留版本、赞赏、网页翻译与恢复、局部选择及站点开关；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次语言引导独占内容；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效；网站规则写前复验标签页，等待后台确认并呈现保存忙碌、暂停与失败反馈。
+ 主要内容：在配置 hydration 后汇总翻译服务，直接展示网页默认服务与适用的配置模型；翻译、局部与学习同排，主操作用短标题合并平台快捷键并保留加载状态，长组合在悬停提示中完整显示，学习的悬停与聚焦说明提供当前快捷键和设置入口，学习仍打开渐进阅读，站点开关保留独立按钮；赞赏码在当前弹窗内切换放大与还原，关闭后重置；悬停、划词与图片抽屉优先展示开关和操作示意，首次语言引导独占内容；页面操作、抽屉和导航绑定活跃会话，等待期间独占请求，关闭和配置切换使旧回复失效；网站规则写前复验标签页，等待后台确认并呈现保存忙碌、暂停与失败反馈。
  模块边界：组件编排 UI、浏览器导航事件与生命周期；页内面板通过授权来源固定发起网页，页面消息归属由 pageActions 管理，不实现翻译 provider、缓存存储或 content 挂载；公共配置由 services/store 管理。
 -->
 <!-- Popup 页面归 app 层所有；WXT 入口只负责调用挂载函数。 -->
@@ -121,12 +121,10 @@
       <div class="translate-action">
         <button class="translate-button" :class="{ translated: pageTranslated }" type="button"
           data-testid="page-translation" :aria-pressed="pageTranslated" :aria-busy="translating"
-          :title="pageTranslationLabel"
+          :aria-label="pageTranslationLabel" :title="pageTranslationTitle"
           :disabled="!config.on || currentSiteExtensionDisabled || translating || pageState.savingRule" :onClick="pageButtons.toggle">
           <span v-if="translating" class="spinner" aria-hidden="true" />
-          <span v-else class="translate-glyph" aria-hidden="true">A↔译</span>
-          <span class="translate-label">{{ pageTranslationLabel }}</span>
-          <kbd v-if="pageTranslationHotkey && !currentPdfSource" class="translate-hotkey">{{ pageTranslationHotkey }}</kbd>
+          <span class="translate-label">{{ pageTranslationButtonLabel }}</span>
         </button>
         <button v-if="!isThunderbird && !currentPdfSource" class="section-translate-button" type="button" data-testid="section-translation"
           :disabled="!config.on || currentSiteExtensionDisabled || translating || pageState.savingRule" :aria-label="sectionTranslationLabel" :title="sectionTranslationLabel"
@@ -134,6 +132,21 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15M10 10l7 2.6-3 1.1-1.1 3z" /></svg>
           <span>{{ t('popup.sectionTranslation') }}</span>
         </button>
+        <div v-if="browserCapabilities.browser !== 'userscript' && !isThunderbird && !currentPdfSource" class="learning-entry"
+          @mouseenter="readingHelpHovered = true; readingHelpOpen = true" @mouseleave="leaveReadingHelpMouse" @focusin="readingHelpOpen = true" @focusout="leaveReadingHelp"
+          @keydown.esc.stop="dismissReadingHelp">
+        <button class="section-translate-button" type="button" data-testid="progressive-reading"
+          :disabled="!config.on || currentSiteExtensionDisabled || translating || pageState.savingRule" :aria-label="t('progressiveReading.entry.label')"
+          aria-describedby="learning-entry-description learning-entry-shortcut" :onClick="pageButtons.reading">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5c-3-2-6-2-9-1v15c3-1 6-1 9 1m0-15c3-2 6-2 9-1v15c-3-1-6-1-9 1V5Z" /><path d="M6 8h3m-3 3h3m6-3h3m-3 3h3" /></svg>
+          <span>{{ t('progressiveReading.entry.label') }}</span>
+        </button>
+        <div v-show="readingHelpOpen" class="learning-help" data-testid="learning-help" role="region" :aria-label="t('progressiveReading.entry.title')">
+          <p id="learning-entry-description">{{ t('progressiveReading.entry.description') }}</p>
+          <small id="learning-entry-shortcut">{{ readingShortcutHint }}</small>
+          <button type="button" data-testid="learning-shortcut-settings" :onClick="popupActions.readingSettings">{{ t('progressiveReading.entry.settings') }} →</button>
+        </div>
+        </div>
       </div>
 
       <PopupSiteRule
@@ -373,6 +386,7 @@ import {
 import {parseHotkey, resolveConfiguredHotkey} from '@/src/core/hotkey';
 import {areaTranslationHotkeyDisplayName, resolveAreaTranslationHotkey} from '@/src/core/config/areaTranslation';
 import {sectionTranslationHotkeyDisplayName} from '@/src/core/config/sectionTranslation';
+import {progressiveReadingHotkeyDisplayName} from '@/src/core/config/progressiveReading';
 import {
   getCustomOpenAIProvider,
   withCustomOpenAIServiceOptions,
@@ -419,7 +433,7 @@ import {featureServiceDefinitions, getFeatureService} from '@/src/core/config/fe
 const PopupServices = defineAsyncComponent(() => import('./PopupServices.vue'));
 const ElDrawer = defineAsyncComponent(() => import('./PopupDrawer'));
 const UiLanguageOnboarding = defineAsyncComponent(() => import('@/src/ui/components/UiLanguageOnboarding.vue'));
-const {t, translateLegacy} = useUiI18n();
+const {language, t, translateLegacy} = useUiI18n();
 const version = browser.runtime.getManifest().version;
 // composition root 已等待配置服务；首次渲染直接使用完整快照，不能先暴露默认布局。
 const config = ref(normalizeConfig(runtimeConfig));
@@ -486,6 +500,24 @@ const sectionTranslationLabel = computed(() => {
   const shortcut = sectionTranslationHotkeyDisplayName(config.value.sectionTranslationHotkey, config.value.customSectionTranslationHotkey);
   return `${title} · ${t('popup.sectionTranslationShortcut', {shortcut})}`;
 });
+const readingHelpOpen = ref(false);
+const readingHelpHovered = ref(false);
+const readingShortcutHint = computed(() => {
+  const shortcut = progressiveReadingHotkeyDisplayName(config.value.progressiveReadingHotkey, config.value.customProgressiveReadingHotkey);
+  return shortcut ? t('progressiveReading.entry.shortcut', {shortcut}) : t('progressiveReading.entry.clickOnly');
+});
+function leaveReadingHelp(event: FocusEvent): void {
+  if (!readingHelpHovered.value && !(event.currentTarget as HTMLElement).contains(event.relatedTarget as Node | null)) readingHelpOpen.value = false;
+}
+function leaveReadingHelpMouse(event: MouseEvent): void {
+  readingHelpHovered.value = false;
+  if (!(event.currentTarget as HTMLElement).contains(document.activeElement)) readingHelpOpen.value = false;
+}
+function dismissReadingHelp(event: KeyboardEvent): void {
+  const entry = event.currentTarget as HTMLElement;
+  if (entry.querySelector('.learning-help')?.contains(document.activeElement)) entry.querySelector<HTMLButtonElement>('[data-testid="progressive-reading"]')?.focus();
+  readingHelpOpen.value = false;
+}
 // 自定义接口名称属于用户配置；内置服务才复用旧 UI 名称的本地化。
 const customProviderNames = computed(() => new Map(config.value.customOpenAIProviders.map(provider => [provider.id, provider.name])));
 const allServiceOptions = computed(() => withCustomOpenAIServiceOptions(
@@ -548,8 +580,24 @@ const aiContextPresentation = computed(() => resolveAIContextPresentation({
 const isSiteModuleVisible = computed(() => config.value.interfaceVisibility.popupSiteRule && !isThunderbird);
 const pageTranslationHotkey = computed(() => {
   const shortcut = resolveConfiguredHotkey(config.value.floatingBallHotkey, config.value.customFloatingBallHotkey);
-  return shortcut && shortcut !== 'none' ? parseHotkey(shortcut).displayName : '';
+  if (!shortcut || shortcut === 'none') return '';
+  let displayName = parseHotkey(shortcut).displayName;
+  if (/Mac|iPod|iPhone|iPad/u.test(navigator.platform)) {
+    displayName = displayName.replace(/Control(?=\+)/gu, '⌃').replace(/Option(?=\+)/gu, '⌥')
+      .replace(/Shift(?=\+)/gu, '⇧').replace(/Cmd(?=\+)/gu, '⌘');
+  }
+  return displayName.replace(/Pageup$/u, 'PgUp').replace(/Pagedown$/u, 'PgDn');
 });
+const pageTranslationButtonLabel = computed(() => {
+  if (currentPdfSource.value) return pageTranslationLabel.value;
+  const action = t(pageTranslated.value ? 'popup.compact.restore' : 'popup.compact.translate');
+  // 超长组合完整保留在提示中；短组合直接并入标题，不另占按键胶囊或一行。
+  const shortcut = pageTranslationHotkey.value;
+  if (!shortcut || shortcut.length > 10) return action;
+  return language.value === 'zh-CN' ? `${action}（${shortcut}）` : `${action} (${shortcut})`;
+});
+const pageTranslationTitle = computed(() => currentPdfSource.value || !pageTranslationHotkey.value
+  ? pageTranslationLabel.value : `${pageTranslationLabel.value} · ${pageTranslationHotkey.value}`);
 const visiblePopupQuickFeatureIds = computed(() => config.value.popupQuickFeatureOrder.filter(
   (featureId) => config.value.popupQuickFeatureVisibility[featureId]
     && (!isThunderbird || ['hover', 'selection', 'appearance'].includes(featureId)),
@@ -717,7 +765,7 @@ const pageActions = createPopupPageActions({state: pageState, config: () => conf
   persistRule: persistSiteRulePatch,
   openPdf: source => browser.tabs.create({url: createPdfReaderUrl(browser.runtime.getURL('document.html'), source)}),
   send: (id, message) => browser.tabs.sendMessage(id, message), notice: showNotice, close: closePopupSurface, translate: t, thunderbird: isThunderbird});
-const {hydrate: hydrateCurrentSite, toggle: togglePageTranslation, section: startSectionTranslation,
+const {hydrate: hydrateCurrentSite, toggle: togglePageTranslation, section: startSectionTranslation, reading: openProgressiveReading,
   setAlways: setCurrentSiteAlwaysTranslated, setDisabled: setCurrentSiteExtensionDisabled} = pageActions;
 watch(pageContext.revision, () => {pageActions.invalidate();if (!config.value.on || currentSiteExtensionDisabled.value) pageTranslated.value = false}, {flush: 'sync'});
 const pageRenderRevision = ref(0);
@@ -725,7 +773,7 @@ watch(() => [pageState.tabId, pageState.url, pageState.translated, pageState.bus
 const pageButtons = computed(() => {
   const current = pageContext.capture(), version = pageRenderRevision.value;
   const owns = () => current() && version === pageRenderRevision.value;
-  return {toggle: () => {if (owns()) return togglePageTranslation()}, section: () => {if (owns()) return startSectionTranslation()},
+  return {toggle: () => {if (owns()) return togglePageTranslation()}, section: () => {if (owns()) return startSectionTranslation()}, reading: () => {if (owns()) return openProgressiveReading()},
     always: (value: boolean) => {if (owns()) return setCurrentSiteAlwaysTranslated(value)},
     disabled: (value: boolean) => {if (owns()) return setCurrentSiteExtensionDisabled(value)}};
 });
@@ -742,6 +790,7 @@ const popupActions = computed(() => {
   const current = popupContext.capture();
   const bind = (run: () => void | Promise<void>) => () => {if (current()) return run()};
   return {settings: bind(() => openOptions()), serviceSettings: bind(() => openOptions('settings-services')),
+    readingSettings: bind(() => openOptions('settings-translation', 'progressive-reading')),
     services: bind(() => openDrawer('services')), cache: bind(clearCache)};
 });
 const drawerContext = useSettingsActionContext(() => popupContext.active.value && drawerVisible.value,
@@ -767,7 +816,7 @@ const drawerDisplayModes = computed(() => {
   return options.display.map(item => ({...item, disabled: !config.value.on || (config.value.service === 'google' && item.value === 0),
     choose: () => {if (current() && config.value.on && (config.value.service !== 'google' || item.value !== 0)) config.value.display = item.value}}));
 });
-watch(popupContext.active, enabled => {if (!enabled) {drawerVisible.value = false;donationVisible.value = false;notice.value = '';if (noticeTimer) clearTimeout(noticeTimer)}}, {flush: 'sync'});
+watch(popupContext.active, enabled => {if (!enabled) {readingHelpOpen.value = false;readingHelpHovered.value = false;drawerVisible.value = false;donationVisible.value = false;notice.value = '';if (noticeTimer) clearTimeout(noticeTimer)}}, {flush: 'sync'});
 watch(() => config.value.on, enabled => {if (!enabled && activeDrawer.value !== 'services' && activeDrawer.value !== 'aiContext') drawerVisible.value = false}, {flush: 'sync'});
 watch(cacheContext.active, enabled => {if (!enabled) clearingCache.value = false}, {flush: 'sync'});
 

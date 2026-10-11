@@ -1,0 +1,247 @@
+
+> FluentRead-流畅阅读@0.0.37 test /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011
+> node scripts/testing/run-resource-safe.mjs -- vitest run "--maxWorkers=1" "--minWorkers=1" "tests/architecture/sourceFileHeaders.test.ts" "tests/architecture/verificationOwnership.test.ts" "tests/architecture/moduleBoundaries.test.ts" "tests/i18n.test.ts" "tests/userscriptLanguageBundles.test.ts"
+
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vitest run --maxWorkers=1 --minWorkers=1 tests/architecture/sourceFileHeaders.test.ts tests/architecture/verificationOwnership.test.ts tests/architecture/moduleBoundaries.test.ts tests/i18n.test.ts tests/userscriptLanguageBundles.test.ts
+
+ RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011
+
+ ❯ tests/i18n.test.ts (58 tests | 1 failed) 3306ms
+   × i18n 全量界面扫描 > Vue 文案和展示注册表在非中文界面有本地化结果 1043ms
+     → expected [ …(195) ] to deeply equal []
+   ✓ 运行期反馈文案资源 > 每条精确反馈都来自真实源码，不重复，并在每种界面语言中完整本地化 1001ms
+   ✓ 旧界面译文人工校正 > 校正原文仍在界面源码中使用，不重复，并覆盖此前的译文 874ms
+ ✓ tests/architecture/verificationOwnership.test.ts (16 tests) 6844ms
+   ✓ repository verification ownership > src 中每个可执行非组装模块都进入四维 100% 覆盖率边界 3952ms
+   ✓ repository verification ownership > 覆盖率清单不能引用不存在的源码或把组装根伪装成业务覆盖 2683ms
+ ✓ tests/architecture/moduleBoundaries.test.ts (13 tests) 3930ms
+   ✓ architecture module boundaries > src 的静态依赖图不存在跨文件循环 1366ms
+   ✓ architecture module boundaries > src 只能通过精确登记的 composition/browser/provider 迁移边界读取 entrypoints 1110ms
+   ✓ architecture module boundaries > feature 不能跨目录读取另一个 feature 的内部实现 613ms
+   ✓ architecture module boundaries > 按需加载的大体积资源不得被扩展运行时代码静态引入 510ms
+ ✓ tests/architecture/sourceFileHeaders.test.ts (968 tests) 292ms
+ ✓ tests/userscriptLanguageBundles.test.ts (3 tests) 137ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/i18n.test.ts > i18n 全量界面扫描 > Vue 文案和展示注册表在非中文界面有本地化结果
+AssertionError: expected [ …(195) ] to deeply equal []
+
+- Expected
++ Received
+
+- Array []
++ Array [
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的校订",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的校订",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的校订",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的校订",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的校订",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 关闭校订",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 关闭校订",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 关闭校订",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 关闭校订",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 关闭校订",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 编辑译文",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 编辑译文",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 编辑译文",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 编辑译文",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 编辑译文",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 校订视图",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 校订视图",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 校订视图",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 校订视图",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 校订视图",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 正在读取个人校订…",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 正在读取个人校订…",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 正在读取个人校订…",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 正在读取个人校订…",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 正在读取个人校订…",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认采用的译文",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认采用的译文",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认采用的译文",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认采用的译文",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认采用的译文",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 将当前网页加入此项目",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 将当前网页加入此项目",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 将当前网页加入此项目",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 将当前网页加入此项目",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 将当前网页加入此项目",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页已加入项目：",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页已加入项目：",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页已加入项目：",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页已加入项目：",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页已加入项目：",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 退出项目",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 退出项目",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 退出项目",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 退出项目",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 退出项目",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这个原句保存了不同译法",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这个原句保存了不同译法",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这个原句保存了不同译法",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这个原句保存了不同译法",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这个原句保存了不同译法",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 不会自动采用。可以编辑已有译法，或在“已保存的校订”中删除不再使用的译法。",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 不会自动采用。可以编辑已有译法，或在“已保存的校订”中删除不再使用的译法。",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 不会自动采用。可以编辑已有译法，或在“已保存的校订”中删除不再使用的译法。",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 不会自动采用。可以编辑已有译法，或在“已保存的校订”中删除不再使用的译法。",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 不会自动采用。可以编辑已有译法，或在“已保存的校订”中删除不再使用的译法。",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 相近原句的参考译文（不会自动替换）",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 相近原句的参考译文（不会自动替换）",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 相近原句的参考译文（不会自动替换）",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 相近原句的参考译文（不会自动替换）",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 相近原句的参考译文（不会自动替换）",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的原句",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的原句",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的原句",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的原句",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 已保存的原句",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前原句",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前原句",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前原句",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前原句",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前原句",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 选作草稿，再预览确认",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 选作草稿，再预览确认",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 选作草稿，再预览确认",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 选作草稿，再预览确认",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 选作草稿，再预览确认",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认预览",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认预览",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认预览",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认预览",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认预览",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前译文",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前译文",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前译文",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前译文",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前译文",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 采用校订后",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 采用校订后",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 采用校订后",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 采用校订后",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 采用校订后",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页有 12 处相同原句。出现不同的已保存译法时，不会自动采用。",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页有 12 处相同原句。出现不同的已保存译法时，不会自动采用。",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页有 12 处相同原句。出现不同的已保存译法时，不会自动采用。",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页有 12 处相同原句。出现不同的已保存译法时，不会自动采用。",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前网页有 12 处相同原句。出现不同的已保存译法时，不会自动采用。",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 受影响句子",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 受影响句子",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 受影响句子",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 受影响句子",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 受影响句子",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这里只保存你确认过的原句和译文。修改或删除后，旧译文会立即停止使用。",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这里只保存你确认过的原句和译文。修改或删除后，旧译文会立即停止使用。",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这里只保存你确认过的原句和译文。修改或删除后，旧译文会立即停止使用。",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这里只保存你确认过的原句和译文。修改或删除后，旧译文会立即停止使用。",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 这里只保存你确认过的原句和译文。修改或删除后，旧译文会立即停止使用。",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 尚未保存个人校订。",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 尚未保存个人校订。",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 尚未保存个人校订。",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 尚未保存个人校订。",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 尚未保存个人校订。",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 所在章节",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 所在章节",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 所在章节",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 所在章节",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 所在章节",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 打开对应网页后可编辑。",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 打开对应网页后可编辑。",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 打开对应网页后可编辑。",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 打开对应网页后可编辑。",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 打开对应网页后可编辑。",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 撤销上次操作",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 撤销上次操作",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 撤销上次操作",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 撤销上次操作",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 撤销上次操作",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 仅当前网页",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 仅当前网页",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 仅当前网页",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 仅当前网页",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 仅当前网页",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围说明",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围说明",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围说明",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围说明",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 使用范围说明",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 新建项目",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 新建项目",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 新建项目",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 新建项目",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 新建项目",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目名称",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目名称",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目名称",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目名称",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目名称",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 例如：某篇论文的相关网页",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 例如：某篇论文的相关网页",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 例如：某篇论文的相关网页",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 例如：某篇论文的相关网页",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 例如：某篇论文的相关网页",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 创建",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 创建",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 创建",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 创建",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 创建",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 预览受影响句子",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 预览受影响句子",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 预览受影响句子",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 预览受影响句子",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 预览受影响句子",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认保存",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认保存",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认保存",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认保存",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 确认保存",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 默认只在当前网页使用。项目是一组相关网页，只有主动加入同一项目的网页，才会使用其中保存的译文。",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 默认只在当前网页使用。项目是一组相关网页，只有主动加入同一项目的网页，才会使用其中保存的译文。",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 默认只在当前网页使用。项目是一组相关网页，只有主动加入同一项目的网页，才会使用其中保存的译文。",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 默认只在当前网页使用。项目是一组相关网页，只有主动加入同一项目的网页，才会使用其中保存的译文。",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 默认只在当前网页使用。项目是一组相关网页，只有主动加入同一项目的网页，才会使用其中保存的译文。",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 原句、翻译语言（源语言和目标语言）及所在章节标题须完全相同。同一项目的其他网页会在下次翻译时使用校订。",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 原句、翻译语言（源语言和目标语言）及所在章节标题须完全相同。同一项目的其他网页会在下次翻译时使用校订。",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 原句、翻译语言（源语言和目标语言）及所在章节标题须完全相同。同一项目的其他网页会在下次翻译时使用校订。",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 原句、翻译语言（源语言和目标语言）及所在章节标题须完全相同。同一项目的其他网页会在下次翻译时使用校订。",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 原句、翻译语言（源语言和目标语言）及所在章节标题须完全相同。同一项目的其他网页会在下次翻译时使用校订。",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前章节",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前章节",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前章节",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前章节",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 当前章节",
++   "en-US src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目",
++   "ko-KR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目",
++   "fr-FR src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目",
++   "ru-RU src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目",
++   "es-ES src/features/personal-corrections/ui/PersonalCorrectionPanel.vue: 项目",
++   "en-US src/features/settings/ui/ReadingAssistanceSettings.vue: 修改网页译文，并在你确认的范围内复用。默认关闭。",
++   "ko-KR src/features/settings/ui/ReadingAssistanceSettings.vue: 修改网页译文，并在你确认的范围内复用。默认关闭。",
++   "fr-FR src/features/settings/ui/ReadingAssistanceSettings.vue: 修改网页译文，并在你确认的范围内复用。默认关闭。",
++   "ru-RU src/features/settings/ui/ReadingAssistanceSettings.vue: 修改网页译文，并在你确认的范围内复用。默认关闭。",
++   "es-ES src/features/settings/ui/ReadingAssistanceSettings.vue: 修改网页译文，并在你确认的范围内复用。默认关闭。",
++ ]
+
+ ❯ tests/i18n.test.ts:958:21
+    956|     }
+    957|     expect(audit.files.length).toBeGreaterThan(50);
+    958|     expect(missing).toEqual([]);
+       |                     ^
+    959|   });
+    960|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 1057 passed (1058)
+   Start at  21:12:40
+   Duration  17.82s (transform 1.24s, setup 0ms, collect 2.50s, tests 14.51s, environment 1ms, prepare 186ms)
+
+ ELIFECYCLE  Test failed. See above for more details.

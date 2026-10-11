@@ -1,0 +1,65 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: node scripts/run-progressive-reading-test.cjs --extension-dir .output/chrome-mv3 --playwright-root /Users/thinkstu/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules --focus-safe-helper scripts/testing/focus-safe-browser.cjs --background --artifacts-dir /private/tmp/fluentread-progressive-reading-annotations-verified --speech
+PASS 320px and 400px real Popup documents expose three compact actions in one row, with an inline default shortcut and complete long shortcuts in real title attributes, without separate keycaps, a legacy glyph or site-rule frame
+PASS Learning defaults to no binding; real hover, keyboard focus, settings-link travel, Escape and reentry reveal help and open its dedicated settings panel
+PASS A real custom-key recording persists across closing and reopening options and is reflected in the Popup help
+PASS The configured shortcut opens one panel, yields to real input and contenteditable focus, and stops responding immediately after the real clear-and-confirm action
+PASS Popup entry waits for explicit source capture without fabricating text, help modes or a translation request
+PASS Original source remains readable, selectable and unchanged, with no automatic provider call
+PASS Multiword hints mark exact source ranges with accessible existing references; matching mastery retreats and unfamiliar senses remain available
+PASS A familiar word in a different saved context can explicitly request its translation without changing mastery
+PASS The reader can recover a mastered expression on the original source without relearning, feedback or another provider request
+PASS Logic mode grounds clues in source words, exposes explanations through trusted keyboard input and does not make an additional AI request
+PASS One click reaches complete bilingual from logic and mode switches reuse the same reading-session translation
+PASS Trusted keyboard Tab and Enter choose a help mode
+PASS Existing explicit mastery and relearn updates refresh help without a parallel learning state
+PASS 390px panel keeps controls inside the viewport, uses readable FluentRead light/dark palettes and follows automatic system-theme changes
+PASS 390px trusted Tab reaches the visible top bilingual action; the body owns scrolling above fixed audio controls and Enter activates complete bilingual
+PASS Host links and buttons remain usable; replacing a selected DOM node permits explicit recapture with the new source
+PASS Closing during a deterministic delayed request prevents its old answer from appearing after reopening
+PASS Close, reopen and trusted Escape remove the panel without duplicate hosts
+PASS Pure history.pushState with unchanged host DOM cancels the old request through the real MAIN bridge, closes help and permits reopening
+PASS Global disable cleans the mount and blocks reopen; reenable works and actual navigation leaves no orphaned panel
+PASS Opening, mode switches, scrolling and reading do not update learning records
+PASS Speech stays inactive until an explicit play gesture; native media clock and estimated follow text continue through inline logic changes without replacement or synthesis
+PASS Pause freezes native Audio and continue resumes its existing position without synthesizing again
+PASS Native rate, five-second seeks, restart and listening to the same original reuse synthesized audio
+PASS Repeat crosses the real WAV end and returns to the beginning without another synthesis
+PASS 390x320 real TTS failure keeps one original line and all controls visible; trusted keyboard scrolling reaches the full bounded error without moving reading or audio regions
+PASS Original and translation selection stays quiet until play; failure retry and delayed preparation, close, source, route, disable and language cleanup reject stale playback
+PASS Trusted PageDown scrolls the focused real long original body while help tabs and audio controls remain visible and stationary
+PASS 390px trusted Tab/Enter controls real Audio; advanced controls fold without synthesis and long original text scrolls independently above visible audio controls
+{
+  "ok": true,
+  "cases": 29,
+  "artifactsDir": "/private/tmp/fluentread-progressive-reading-annotations-verified",
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 212,
+      "top": -990,
+      "width": 1280,
+      "height": 900
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 64770,
+      "name": "ChatGPT"
+    },
+    "frontmostAfter": {
+      "pid": 64770,
+      "name": "ChatGPT"
+    }
+  },
+  "executionScope": "progressive-reading-targeted-flow-with-speech",
+  "ownedBrowserClosed": true,
+  "profileRemoved": true
+}

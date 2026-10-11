@@ -1,7 +1,7 @@
 /**
  * @file tests/popupPageActionsOwnership.test.ts
  * 文件职责：验证 Popup 页面状态与异步操作归属，防止旧读取、旧页面或旧任务覆盖新状态。
- * 主要内容：以真实页面控制器和受控浏览器端口覆盖翻译/恢复、导航、重复局部请求、失活、配置失效与站点规则。
+ * 主要内容：以真实页面控制器和受控浏览器端口覆盖翻译/恢复、导航、渐进阅读、重复局部请求、失活、配置失效与站点规则。
  * 模块边界：不挂载 Popup 或连接供应商；组件实际生命周期另由组件和生产浏览器验证。
  */
 import {afterEach, describe, expect, it, vi} from 'vitest'
@@ -43,7 +43,7 @@ describe('Popup 页面状态与操作所有权',()=>{
     const {actions,send,state}=setup();send.mockImplementation(async(_id,message)=>({status:'success',isTranslated:message.action==='fullPage'}));await actions.toggle();await actions.toggle();await actions.toggle();expect(send.mock.calls.map(call=>call[1].action)).toEqual(['fullPage','restore','fullPage']);send.mockResolvedValueOnce({status:'success'});await actions.toggle();expect(state.translated).toBe(false);send.mockResolvedValueOnce({status:'success'});await actions.toggle();expect(state.translated).toBe(true)
   })
   it.each(['inactive','busy','off','disabled'])('%s 时全文和局部操作不查询、不发送、不关闭',async reason=>{
-    const {actions,cfg,state,getTab,send,close,setActive}=setup();if(reason==='inactive')setActive(false);if(reason==='busy')state.busy=true;if(reason==='off')cfg.on=false;if(reason==='disabled')cfg.disabledExtensionDomains=['example.com'];await actions.toggle();await actions.section();expect(getTab).not.toHaveBeenCalled();expect(send).not.toHaveBeenCalled();expect(close).not.toHaveBeenCalled()
+    const {actions,cfg,state,getTab,send,close,setActive}=setup();if(reason==='inactive')setActive(false);if(reason==='busy')state.busy=true;if(reason==='off')cfg.on=false;if(reason==='disabled')cfg.disabledExtensionDomains=['example.com'];await actions.toggle();await actions.section();await actions.reading();expect(getTab).not.toHaveBeenCalled();expect(send).not.toHaveBeenCalled();expect(close).not.toHaveBeenCalled()
   })
   it('凭据提醒阻止新翻译和局部；恢复原文不受新凭据缺失影响',async()=>{
     const {actions,notice,setWarning,send,state}=setup();setWarning('missing key');await actions.toggle();await actions.section();expect(notice).toHaveBeenCalledTimes(2);expect(send).not.toHaveBeenCalled();state.translated=true;await actions.toggle();expect(send).toHaveBeenLastCalledWith(7,{type:'contextMenuTranslate',action:'restore'})
@@ -68,6 +68,33 @@ describe('Popup 页面状态与操作所有权',()=>{
   })
   it('已经发送的旧成功或失败回复在失活后不关闭、不提示、不写状态',async()=>{
     for(const rejected of [false,true]){const {actions,send,setActive,notice,close,state}=setup(),old=deferred();send.mockReturnValueOnce(old.promise);const pending=actions.section();await settle();setActive(false);actions.invalidate();if(rejected)old.reject(Error('old'));else old.resolve({status:'success'});await pending;expect(close).not.toHaveBeenCalled();expect(notice).not.toHaveBeenCalled();expect(state.busy).toBe(false)}
+  })
+})
+describe('Popup 渐进阅读入口',()=>{
+  it('直接打开网页阅读辅助，缺翻译凭据仍可读原文，成功后关闭且不改变全文状态',async()=>{
+    const {actions,state,send,close,notice,setWarning}=setup();state.translated=true;setWarning('missing key');await actions.reading();expect(send).toHaveBeenCalledWith(7,{type:'openProgressiveReading'});expect(close).toHaveBeenCalledOnce();expect(notice).not.toHaveBeenCalled();expect(state).toMatchObject({translated:true,busy:false})
+  })
+  it('阅读入口等待时独占页面动作，连续触发只打开一次',async()=>{
+    const {actions,getTab,state,send,close}=setup(),query=deferred<PopupActiveTab>();getTab.mockReturnValueOnce(query.promise);const pending=actions.reading();expect(state.busy).toBe(true);await actions.reading();await actions.section();await actions.toggle();expect(getTab).toHaveBeenCalledOnce();query.resolve({id:7,url:state.url});await pending;expect(send).toHaveBeenCalledOnce();expect(close).toHaveBeenCalledOnce();expect(state.busy).toBe(false)
+  })
+  it.each(['invalid-tab','query-error','message-error','empty','failed'])('%s 阅读失败保留窗口、释放操作并允许重试',async failure=>{
+    const {actions,getTab,send,state,close,notice}=setup();if(failure==='invalid-tab')getTab.mockResolvedValueOnce(undefined);if(failure==='query-error')getTab.mockRejectedValueOnce(Error('query'));if(failure==='message-error')send.mockRejectedValueOnce(Error('receiver'));if(failure==='empty')send.mockResolvedValueOnce(undefined);if(failure==='failed')send.mockResolvedValueOnce({status:'disabled'});await actions.reading();expect(close).not.toHaveBeenCalled();expect(notice).toHaveBeenLastCalledWith('当前页面暂不支持渐进阅读，请刷新后重试','error');expect(state.busy).toBe(false);await actions.reading();expect(close).toHaveBeenCalledOnce();expect(state.translated).toBe(false)
+  })
+  it('Thunderbird 与已识别 PDF 没有网页阅读动作，不查询标签页',async()=>{
+    for(const kind of ['thunderbird','pdf']){const {actions,state,getTab,send,close,setThunderbird}=setup();if(kind==='thunderbird')setThunderbird();else state.url='https://example.com/book.pdf';await actions.reading();expect(getTab).not.toHaveBeenCalled();expect(send).not.toHaveBeenCalled();expect(close).not.toHaveBeenCalled();expect(state.busy).toBe(false)}
+  })
+  it('初次查询发现 PDF 或等待中切换 Thunderbird 时不发送网页动作',async()=>{
+    const pdf=setup();pdf.state.tabId=null;pdf.getTab.mockResolvedValueOnce({id:0,url:'https://example.com/book.pdf'});await pdf.actions.reading();expect(pdf.send).not.toHaveBeenCalled();expect(pdf.openPdf).not.toHaveBeenCalled();expect(pdf.close).not.toHaveBeenCalled();expect(pdf.state.busy).toBe(false)
+    const mail=setup(),query=deferred<PopupActiveTab>();mail.getTab.mockReturnValueOnce(query.promise);const pending=mail.actions.reading();mail.setThunderbird();query.resolve({id:7,url:mail.state.url});await pending;expect(mail.send).not.toHaveBeenCalled();expect(mail.state.busy).toBe(false)
+  })
+  it('导航刷新身份而不将旧阅读动作交给新网页',async()=>{
+    const {actions,state,getTab,send,close}=setup();getTab.mockResolvedValue({id:7,pendingUrl:'https://example.net/new'});await actions.reading();expect(send.mock.calls.map(call=>call[1].type)).toEqual(['getFullPageTranslationState']);expect(state.url).toBe('https://example.net/new');expect(close).not.toHaveBeenCalled();await actions.reading();expect(send).toHaveBeenLastCalledWith(7,{type:'openProgressiveReading'});expect(close).toHaveBeenCalledOnce()
+  })
+  it('失效后的标签页查询不发送阅读命令，旧完成不释放新操作',async()=>{
+    const {actions,getTab,send,state,close}=setup(),query=deferred<PopupActiveTab>();getTab.mockReturnValueOnce(query.promise);const cancelled=actions.reading();actions.invalidate();query.resolve({id:7,url:state.url});await cancelled;expect(send).not.toHaveBeenCalled();const oldResponse=deferred(),freshResponse=deferred();send.mockReturnValueOnce(oldResponse.promise).mockReturnValueOnce(freshResponse.promise);const old=actions.reading();await settle();actions.invalidate();const fresh=actions.reading();await settle();oldResponse.resolve({status:'success'});await old;expect(close).not.toHaveBeenCalled();expect(state.busy).toBe(true);freshResponse.resolve({status:'success'});await fresh;expect(close).toHaveBeenCalledOnce();expect(state.busy).toBe(false)
+  })
+  it('已经发送的旧成功或失败回复在失活后不关闭、不提示',async()=>{
+    for(const rejected of [false,true]){const {actions,send,setActive,notice,close,state}=setup(),old=deferred();send.mockReturnValueOnce(old.promise);const pending=actions.reading();await settle();setActive(false);actions.invalidate();if(rejected)old.reject(Error('old'));else old.resolve({status:'success'});await pending;expect(close).not.toHaveBeenCalled();expect(notice).not.toHaveBeenCalled();expect(state.busy).toBe(false)}
   })
 })
 describe('Popup 原生在线 PDF 阅读入口',()=>{
@@ -115,9 +142,9 @@ describe('Popup 站点规则与即时翻译',()=>{
     expect(notice).not.toHaveBeenCalled();expect(persistRule).not.toHaveBeenCalled();expect(cfg.alwaysTranslateDomains).toEqual([]);expect(cfg.disabledExtensionDomains).toEqual([])
   })
   it('规则保存期间独占按钮并等待后台确认；确认前不启动即时翻译或声称成功',async()=>{
-    const {actions,persistRule,state,send,notice,getTab}=setup(),commit=deferred<void>();persistRule.mockReturnValueOnce(commit.promise)
+    const {actions,persistRule,state,send,notice,getTab,close}=setup(),commit=deferred<void>();persistRule.mockReturnValueOnce(commit.promise)
     const pending=actions.setAlways(true);await settle();expect(state.savingRule).toBe(true);expect(persistRule).toHaveBeenCalledWith({alwaysTranslateDomains:['example.com']});expect(send).not.toHaveBeenCalled();expect(notice).not.toHaveBeenCalled()
-    await actions.setAlways(false);await actions.setDisabled(true);await actions.toggle();expect(getTab).toHaveBeenCalledOnce();commit.resolve();await pending
+    await actions.setAlways(false);await actions.setDisabled(true);await actions.toggle();await actions.section();await actions.reading();expect(getTab).toHaveBeenCalledOnce();expect(send).not.toHaveBeenCalled();expect(close).not.toHaveBeenCalled();commit.resolve();await pending
     expect(state.savingRule).toBe(false);expect(send).toHaveBeenCalledOnce();expect(notice).toHaveBeenLastCalledWith('已开启 example.com 的始终翻译')
   })
   it('验证实际页面期间配置失效不能继续修改规则',async()=>{

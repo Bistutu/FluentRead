@@ -1,0 +1,5 @@
+
+> FluentRead-流畅阅读@0.0.37 docs:check /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011
+> node scripts/verify-docs-build.mjs
+
+{"ok":true,"pages":81,"links":4340,"anchors":804,"images":158}

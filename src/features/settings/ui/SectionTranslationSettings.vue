@@ -1,7 +1,7 @@
 <!--
  * @file src/features/settings/ui/SectionTranslationSettings.vue
  * 文件职责：在翻译交互设置中介绍局部翻译（点选网页中的一块区域、只翻译这部分）的用法，并提供进入选择模式的快捷键开关、预设组合、自定义录制和独立快捷方案。
- * 主要内容：展示功能说明与操作方式，绑定 sectionTranslationHotkeyEnabled、sectionTranslationHotkey 与 customSectionTranslationHotkey，对悬浮、全文、划词、圈选、段落复制、输入框翻译和快捷翻译方案的占用给出冲突提示，录制期间保留原有组合，隐藏或配置变更时关闭所属草稿。
+ * 主要内容：学习组合也纳入占用校验；展示功能说明与操作方式，绑定 sectionTranslationHotkeyEnabled、sectionTranslationHotkey 与 customSectionTranslationHotkey，对悬浮、全文、划词、圈选、段落复制、输入框翻译和快捷翻译方案的占用给出冲突提示，录制期间保留原有组合，隐藏或配置变更时关闭所属草稿。
  * 模块边界：本组件只修改传入的 config 对象并提示冲突，不持久化配置、不监听网页按键，也不执行翻译；快捷键归一化归 core/config/sectionTranslation，选择模式与区域翻译归 features/section-translation 与全文翻译 feature。
  -->
 <template>
@@ -48,6 +48,7 @@ import {
     sectionTranslationHotkeyDisplayName,
 } from '@/src/core/config/sectionTranslation';
 import {resolveAreaTranslationHotkey} from '@/src/core/config/areaTranslation';
+import {resolveProgressiveReadingHotkey} from '@/src/core/config/progressiveReading';
 import {resolveParagraphCopyHotkey} from '@/src/core/config/paragraphCopy';
 import {canonicalizeHotkey, resolveConfiguredHotkey} from '@/src/core/hotkey';
 import {
@@ -76,6 +77,7 @@ const hotkeyDisplayName = computed(() => sectionTranslationHotkeyDisplayName(
 /** 列出已被其他功能占用的快捷键，避免一次按键同时进入选择模式又触发翻译或复制。 */
 function reservedHotkeyOwners(): {hotkey: string; feature: string}[] {
     return [
+        {hotkey: resolveProgressiveReadingHotkey(props.config.progressiveReadingHotkey, props.config.customProgressiveReadingHotkey), feature: t('progressiveReading.settings.title')},
         {hotkey: resolveConfiguredHotkey(props.config.hotkey, props.config.customHotkey), feature: t('popup.hoverTranslation')},
         {hotkey: resolveConfiguredHotkey(props.config.floatingBallHotkey, props.config.customFloatingBallHotkey), feature: t('quickTranslation.commonFullPageShortcut')},
         {

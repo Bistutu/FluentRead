@@ -1,8 +1,8 @@
 /**
  * @file tests/implementationAudit48K.test.ts
  * 文件职责：经公开消费者验证第 48 批 K 的学习装配、词书状态、轻量引导资源及漫画排印边界。
- * 主要内容：执行真实功能注册表、词书公开生命周期、客户端 SFC 模板及界面翻译入口；以有界长输入、完整输出哈希和分段操作数验证排印。
- * 模块边界：Shadow UI、写作挂载、扫描器、存储、Canvas 和模块加载为受控端口；不读取账号、不连接日常浏览器、不复制私有业务逻辑。
+ * 主要内容：执行真实功能注册表，验证渐进阅读与默认关闭的个人校订独立协调；覆盖词书公开生命周期、客户端 SFC 模板及界面翻译入口，以有界长输入、完整输出哈希和分段操作数验证排印。
+ * 模块边界：Shadow UI、写作、渐进阅读和个人校订公开挂载、扫描器、存储、Canvas 和模块加载为受控端口；不读取账号、不连接日常浏览器、不复制私有业务逻辑。
  */
 import {createHash} from 'node:crypto';
 import {readFileSync} from 'node:fs';
@@ -24,6 +24,8 @@ const ports = vi.hoisted(() => ({
     createReencounterUi: vi.fn(), installScanner: vi.fn(), patch: vi.fn(),
     scanner: {setEntries: vi.fn(), dispose: vi.fn()}, writingMounted: false,
     mountWriting: vi.fn(), unmountWriting: vi.fn(), setLanguage: vi.fn(), language: undefined as unknown as Vue.Ref<string>,
+    mountProgressive: vi.fn(), unmountProgressive: vi.fn(),
+    mountCorrections: vi.fn(), unmountCorrections: vi.fn(),
     appearance: vi.fn(), subscribe: vi.fn(), unsubscribe: vi.fn(), reload: vi.fn(),
 }));
 vi.mock('vue', async importOriginal => {
@@ -40,10 +42,12 @@ vi.mock('@/src/features/vocabulary/content/scanner', () => ({installReencounterS
 vi.mock('@/src/services/config/store', () => ({config: ports.config, requestConfigPatch: ports.patch, subscribeConfig: ports.subscribe}));
 vi.mock('@/src/features/writing-assistant/public', () => ({mountWritingAssistant: ports.mountWriting,
     unmountWritingAssistant: ports.unmountWriting, isWritingAssistantMounted: () => ports.writingMounted}));
+vi.mock('@/src/features/progressive-reading/public', () => ({mountProgressiveReading: ports.mountProgressive,
+    unmountProgressiveReading: ports.unmountProgressive}));
 vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({language: ports.language, setLanguage: ports.setLanguage})}));
 vi.mock('@/src/ui/interfaceAppearance', () => ({applyInterfaceSkin: ports.appearance, applyInterfaceFont: ports.appearance, applyInterfaceTheme: ports.appearance}));
 
-vi.mock('@/src/app/content/personalCorrections', () => ({mountPersonalCorrectionContent: vi.fn(), unmountPersonalCorrectionContent: vi.fn()}));
+vi.mock('@/src/app/content/personalCorrections', () => ({mountPersonalCorrectionContent: ports.mountCorrections, unmountPersonalCorrectionContent: ports.unmountCorrections}));
 vi.mock('@/src/features/personal-corrections/public', () => ({unmountPersonalCorrections: vi.fn()}));
 
 import {createLearningContentFeatures} from '@/src/app/content/learningFeatures';
@@ -165,7 +169,7 @@ function loadClientComponent(file: 'src/ui/components/UiLanguageOnboarding.vue' 
 }
 function element(selector: string) {const node = document.querySelector(selector); expect(node, selector).not.toBeNull(); return node!;}
 function click(selector: string) {const callback = events.get(element(selector))?.onClick; expect(callback).toBeTypeOf('function'); return (callback as () => unknown)();}
-function learning(config: {on: boolean; writing: {enabled: boolean}}, browser = 'chrome') {
+function learning(config: {on: boolean; writing: {enabled: boolean}; personalCorrectionsEnabled?: boolean}, browser = 'chrome') {
     const capabilities = resolveBrowserCapabilities({browser, manifestVersion: 3});
     registry = createContentFeatureRegistry(createLearningContentFeatures(ctx, config as Config, capabilities), {capabilities});
     return registry;
@@ -182,19 +186,51 @@ describe('48K 当前写作学习装配公开消费者', () => {
     ] as const)('%s 开关 %s/%s 与页面 %s 的写作注册状态', async (browser, on, writing, href, status) => {
         window.location.href = href;
         const runtime = learning({on, writing: {enabled: writing}}, browser);
-        expect((await runtime.mountEnabled(activation())).filter(row => row.id === 'writing-assistant').map(row => row.status)).toEqual([status]);
+        const active = activation();
+        const progressiveStatus = browser !== 'userscript' && on ? 'mounted' : 'skipped';
+        expect((await runtime.mountEnabled(active)).map(row => ({id: row.id, status: row.status}))).toEqual([
+            {id: 'progressive-reading', status: progressiveStatus}, {id: 'personal-corrections', status: 'skipped'}, {id: 'writing-assistant', status},
+        ]);
+        expect(ports.mountProgressive).toHaveBeenCalledTimes(progressiveStatus === 'mounted' ? 1 : 0);
+        if (progressiveStatus === 'mounted') expect(ports.mountProgressive).toHaveBeenCalledWith(ctx, active.signal);
+        expect(ports.mountCorrections).not.toHaveBeenCalled();
         expect(ports.mountWriting).toHaveBeenCalledTimes(status === 'mounted' ? 1 : 0);
     });
     it('配置水合和关闭协调当前写作入口，反复协调不重复挂载', async () => {
         const config = {on: true, writing: {enabled: false}};
         const runtime = learning(config); await runtime.mountEnabled(activation());
         config.writing.enabled = true;
-        expect((await runtime.reconcileEnabled()).filter(row => row.id === 'writing-assistant').map(row => row.status)).toEqual(['mounted']);
+        expect((await runtime.reconcileEnabled()).map(row => ({id: row.id, status: row.status}))).toEqual([
+            {id: 'progressive-reading', status: 'mounted'}, {id: 'personal-corrections', status: 'skipped'}, {id: 'writing-assistant', status: 'mounted'},
+        ]);
         await runtime.reconcileEnabled(); expect(ports.mountWriting).toHaveBeenCalledOnce();
+        expect(ports.mountProgressive).toHaveBeenCalledOnce();
         config.on = false; await runtime.reconcileEnabled();
         expect(ports.unmountWriting).toHaveBeenCalledOnce(); expect(ports.writingMounted).toBe(false);
+        expect(ports.unmountProgressive).toHaveBeenCalledOnce();
         config.on = true; await runtime.reconcileEnabled();
         expect(ports.mountWriting).toHaveBeenCalledTimes(2); expect(ports.writingMounted).toBe(true);
+        expect(ports.mountProgressive).toHaveBeenCalledTimes(2);
+        runtime.unmountAll(); registry = undefined;
+        expect(ports.unmountProgressive).toHaveBeenCalledTimes(2); expect(ports.unmountWriting).toHaveBeenCalledTimes(2);
+    });
+    it('个人校订显式开启才挂载，开关变化独立清理，不卸载或重复挂载渐进阅读', async () => {
+        const config = {on: true, writing: {enabled: false}, personalCorrectionsEnabled: false};
+        const runtime = learning(config), active = activation();
+        await runtime.mountEnabled(active);
+        expect(ports.mountProgressive).toHaveBeenCalledWith(ctx, active.signal);
+        expect(ports.mountCorrections).not.toHaveBeenCalled();
+        config.personalCorrectionsEnabled = true;
+        expect((await runtime.reconcileEnabled()).filter(row => row.id === 'personal-corrections')).toEqual([{id: 'personal-corrections', status: 'mounted'}]);
+        expect(ports.mountCorrections).toHaveBeenCalledWith(ctx, active.signal);
+        await runtime.reconcileEnabled(); expect(ports.mountCorrections).toHaveBeenCalledOnce();
+        expect(ports.mountProgressive).toHaveBeenCalledOnce();
+        config.personalCorrectionsEnabled = false; await runtime.reconcileEnabled();
+        expect(ports.unmountCorrections).toHaveBeenCalledOnce(); expect(ports.unmountProgressive).not.toHaveBeenCalled();
+        config.personalCorrectionsEnabled = true; await runtime.reconcileEnabled();
+        expect(ports.mountCorrections).toHaveBeenCalledTimes(2); expect(ports.mountProgressive).toHaveBeenCalledOnce();
+        config.on = false; await runtime.reconcileEnabled();
+        expect(ports.unmountCorrections).toHaveBeenCalledTimes(2); expect(ports.unmountProgressive).toHaveBeenCalledOnce();
     });
 });
 

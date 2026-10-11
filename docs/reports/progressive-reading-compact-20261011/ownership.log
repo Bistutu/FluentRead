@@ -1,0 +1,16 @@
+
+> FluentRead-流畅阅读@0.0.37 test /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011
+> node scripts/testing/run-resource-safe.mjs -- vitest run "tests/architecture/verificationOwnership.test.ts" "--maxWorkers=1"
+
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vitest run tests/architecture/verificationOwnership.test.ts --maxWorkers=1
+
+ RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011
+
+ ✓ tests/architecture/verificationOwnership.test.ts (16 tests) 7459ms
+   ✓ repository verification ownership > src 中每个可执行非组装模块都进入四维 100% 覆盖率边界 3658ms
+   ✓ repository verification ownership > 覆盖率清单不能引用不存在的源码或把组装根伪装成业务覆盖 3613ms
+
+ Test Files  1 passed (1)
+      Tests  16 passed (16)
+   Start at  19:57:55
+   Duration  8.03s (transform 50ms, setup 0ms, collect 348ms, tests 7.46s, environment 0ms, prepare 40ms)

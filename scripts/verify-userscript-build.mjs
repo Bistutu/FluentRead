@@ -116,7 +116,11 @@ const artifactBytes = Buffer.byteLength(source);
 // 再整合豆包主线 a86180163：同依赖 main 为 2,073,858，含全部请求/正文/SSE 结算修复的候选为 2,076,455。
 // 增加 2,597 字节（0.1252%）；相对 main 预算按既有步长最小增加 3 KB，余 545 字节。
 // 最终基线、候选散列与之前集成数据保存在同一并发报告，全部原有断言保留。
-const MAX_USERSCRIPT_BYTES = 2_077_000;
+// 渐进阅读合并前整合 3f5ccc69f：同锁文件独立 main 为 2,076,455，候选为 2,077,027 字节。
+// 增加 572 字节（0.0275%）；保留共享偏好兼容，学习运行时仍被剔除。
+// 利用原预算余量后按既有 1 KB 步长最小增加 1 KB，余 973 字节；全部协议与运行断言保留。
+// 独立基线、候选散列及整合复验见 docs/reports/progressive-reading-merge-20261011/verification.json。
+const MAX_USERSCRIPT_BYTES = 2_078_000;
 const preludeStartMarker = '/* FluentRead userscript compatibility prelude:start */';
 const preludeEndMarker = '/* FluentRead userscript compatibility prelude:end */';
 const preludeStart = source.indexOf(preludeStartMarker);

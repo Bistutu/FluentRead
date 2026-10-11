@@ -1,0 +1,3311 @@
+{
+  "ok": true,
+  "extensionDir": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/.output/chrome-mv3",
+  "browserPath": "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+  "profileMode": "fresh-mkdtemp-owned",
+  "profileDir": "/private/tmp/fluentread-progressive-reading-profile-JdrzOI",
+  "artifact": "production",
+  "cases": [
+    {
+      "variants": [
+        {
+          "viewportWidth": 400,
+          "platform": "MacIntel",
+          "shellWidth": 320,
+          "horizontalOverflow": false,
+          "shortcutChips": 0,
+          "legacyTranslationGlyph": false,
+          "siteRuleRows": [
+            {
+              "borderWidths": [
+                "0px",
+                "0px",
+                "0px",
+                "0px"
+              ],
+              "background": "rgba(0, 0, 0, 0)",
+              "backgroundImage": "none",
+              "shadow": "none"
+            }
+          ],
+          "buttons": [
+            {
+              "id": "page-translation",
+              "text": "翻译（⌥+T）",
+              "title": "翻译当前网页 · ⌥+T",
+              "ariaLabel": "翻译当前网页",
+              "captionLines": 1,
+              "left": 29,
+              "right": 187,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 158,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "section-translation",
+              "text": "局部",
+              "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "captionLines": 1,
+              "left": 193,
+              "right": 239,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "progressive-reading",
+              "text": "学习",
+              "title": "",
+              "ariaLabel": "学习",
+              "captionLines": 1,
+              "left": 245,
+              "right": 291,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            }
+          ],
+          "label": "popup-400-progressive-entry"
+        },
+        {
+          "viewportWidth": 320,
+          "platform": "MacIntel",
+          "shellWidth": 320,
+          "horizontalOverflow": false,
+          "shortcutChips": 0,
+          "legacyTranslationGlyph": false,
+          "siteRuleRows": [
+            {
+              "borderWidths": [
+                "0px",
+                "0px",
+                "0px",
+                "0px"
+              ],
+              "background": "rgba(0, 0, 0, 0)",
+              "backgroundImage": "none",
+              "shadow": "none"
+            }
+          ],
+          "buttons": [
+            {
+              "id": "page-translation",
+              "text": "翻译（⌥+T）",
+              "title": "翻译当前网页 · ⌥+T",
+              "ariaLabel": "翻译当前网页",
+              "captionLines": 1,
+              "left": 29,
+              "right": 187,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 158,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "section-translation",
+              "text": "局部",
+              "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "captionLines": 1,
+              "left": 193,
+              "right": 239,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "progressive-reading",
+              "text": "学习",
+              "title": "",
+              "ariaLabel": "学习",
+              "captionLines": 1,
+              "left": 245,
+              "right": 291,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            }
+          ],
+          "label": "popup-320-progressive-entry"
+        },
+        {
+          "viewportWidth": 320,
+          "platform": "MacIntel",
+          "shellWidth": 320,
+          "horizontalOverflow": false,
+          "shortcutChips": 0,
+          "legacyTranslationGlyph": false,
+          "siteRuleRows": [
+            {
+              "borderWidths": [
+                "0px",
+                "0px",
+                "0px",
+                "0px"
+              ],
+              "background": "rgba(0, 0, 0, 0)",
+              "backgroundImage": "none",
+              "shadow": "none"
+            }
+          ],
+          "buttons": [
+            {
+              "id": "page-translation",
+              "text": "翻译",
+              "title": "翻译当前网页 · ⌃+⌥+⇧+Arrowright",
+              "ariaLabel": "翻译当前网页",
+              "captionLines": 1,
+              "left": 29,
+              "right": 187,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 158,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "section-translation",
+              "text": "局部",
+              "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "captionLines": 1,
+              "left": 193,
+              "right": 239,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "progressive-reading",
+              "text": "学习",
+              "title": "",
+              "ariaLabel": "学习",
+              "captionLines": 1,
+              "left": 245,
+              "right": 291,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            }
+          ],
+          "label": "popup-320-long-hotkey"
+        },
+        {
+          "viewportWidth": 400,
+          "platform": "MacIntel",
+          "shellWidth": 320,
+          "horizontalOverflow": false,
+          "shortcutChips": 0,
+          "legacyTranslationGlyph": false,
+          "siteRuleRows": [
+            {
+              "borderWidths": [
+                "0px",
+                "0px",
+                "0px",
+                "0px"
+              ],
+              "background": "rgba(0, 0, 0, 0)",
+              "backgroundImage": "none",
+              "shadow": "none"
+            }
+          ],
+          "buttons": [
+            {
+              "id": "page-translation",
+              "text": "翻译",
+              "title": "翻译当前网页 · ⌃+⌥+⇧+Arrowright",
+              "ariaLabel": "翻译当前网页",
+              "captionLines": 1,
+              "left": 29,
+              "right": 187,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 158,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "section-translation",
+              "text": "局部",
+              "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "captionLines": 1,
+              "left": 193,
+              "right": 239,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "progressive-reading",
+              "text": "学习",
+              "title": "",
+              "ariaLabel": "学习",
+              "captionLines": 1,
+              "left": 245,
+              "right": 291,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            }
+          ],
+          "label": "popup-400-long-hotkey"
+        }
+      ],
+      "name": "320px and 400px real Popup documents expose three compact actions in one row, with an inline default shortcut and complete long shortcuts in real title attributes, without separate keycaps, a legacy glyph or site-rule frame"
+    },
+    {
+      "optionsUrl": "chrome-extension://djnlaiohfaaifbibleebjggkghlmcpcj/options.html?target=progressive-reading#settings-translation",
+      "helpScreenshot": "/private/tmp/fluentread-progressive-reading-speech-integrated-final/popup-learning-help.png",
+      "name": "Learning defaults to no binding; real hover, keyboard focus, settings-link travel, Escape and reentry reveal help and open its dedicated settings panel"
+    },
+    {
+      "shortcut": "Ctrl+Alt+L",
+      "recorded": "Control+Option+L",
+      "hint": "快捷键：Control+Option+L",
+      "name": "A real custom-key recording persists across closing and reopening options and is reflected in the Popup help"
+    },
+    {
+      "name": "The configured shortcut opens one panel, yields to real input and contenteditable focus, and stops responding immediately after the real clear-and-confirm action"
+    },
+    {
+      "name": "Popup entry opens four modes without fabricating a source or requesting translation"
+    },
+    {
+      "name": "Original source remains readable, selectable and unchanged, with no automatic provider call"
+    },
+    {
+      "terms": [
+        {
+          "term": "take into account",
+          "text": "take into account考虑；把……计入收藏参考查询表达"
+        },
+        {
+          "term": "bank",
+          "text": "bank河岸收藏参考查询表达"
+        }
+      ],
+      "name": "Multiword hints use the learning library, matching manual mastery retreats and unfamiliar senses remain available"
+    },
+    {
+      "qualityBoundary": "The bank response is a deterministic transport fixture; this verifies the requested text and rendering, not word-sense accuracy.",
+      "name": "A familiar word in a different saved context can explicitly request its translation without changing mastery"
+    },
+    {
+      "name": "The reader can request a mastered expression again without relearning or feedback"
+    },
+    {
+      "clues": [
+        "If条件检查结论成立需要什么条件；此标记不判断条件是否已满足。详细信息\n:host summary {\n  display: list-item;\n  counter-increment: list-item 0;\n  list-style: disclosure-closed inside;\n}\n:host([open]) summary {\n  list-style-type: disclosure-open;\n}",
+        "not否定 / 例外检查这里否定或排除的对象；此标记不确定否定覆盖整句还是局部。详细信息\n:host summary {\n  display: list-item;\n  counter-increment: list-item 0;\n  list-style: disclosure-closed inside;\n}\n:host([open]) summary {\n  list-style-type: disclosure-open;\n}",
+        "may可能性保留原文的不确定程度，不能直接读成确定事实。详细信息\n:host summary {\n  display: list-item;\n  counter-increment: list-item 0;\n  list-style: disclosure-closed inside;\n}\n:host([open]) summary {\n  list-style-type: disclosure-open;\n}",
+        "only if条件检查结论成立需要什么条件；此标记不判断条件是否已满足。详细信息\n:host summary {\n  display: list-item;\n  counter-increment: list-item 0;\n  list-style: disclosure-closed inside;\n}\n:host([open]) summary {\n  list-style-type: disclosure-open;\n}",
+        "only适用范围检查对象、数量或适用场景，避免把有限范围读成普遍结论。详细信息\n:host summary {\n  display: list-item;\n  counter-increment: list-item 0;\n  list-style: disclosure-closed inside;\n}\n:host([open]) summary {\n  list-style-type: disclosure-open;\n}"
+      ],
+      "name": "Logic mode grounds clues in source words, exposes explanations through trusted keyboard input and does not make an additional AI request"
+    },
+    {
+      "requests": [
+        {
+          "source": "bank",
+          "model": "progressive-reading-fixture",
+          "at": 1791714178486
+        },
+        {
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "model": "progressive-reading-fixture",
+          "at": 1791714178941
+        }
+      ],
+      "name": "One click reaches complete bilingual from logic and mode switches reuse the same reading-session translation"
+    },
+    {
+      "name": "Trusted keyboard Tab and Enter choose a help mode"
+    },
+    {
+      "name": "Existing explicit mastery and relearn updates refresh help without a parallel learning state"
+    },
+    {
+      "palette": {
+        "390-light": {
+          "scheme": "light",
+          "background": "rgb(255, 255, 255)",
+          "ink": "rgb(23, 32, 51)",
+          "selectedBackground": "rgb(255, 240, 244)",
+          "selectedInk": "rgb(220, 49, 95)",
+          "textContrast": 16.268480224545662
+        },
+        "390-dark": {
+          "scheme": "dark",
+          "background": "rgb(40, 40, 48)",
+          "ink": "rgb(241, 241, 244)",
+          "selectedBackground": "rgba(239, 71, 118, 0.16)",
+          "selectedInk": "rgb(255, 173, 198)",
+          "textContrast": 12.968772087702426
+        },
+        "auto-dark": {
+          "scheme": "dark",
+          "background": "rgb(40, 40, 48)",
+          "ink": "rgb(241, 241, 244)",
+          "selectedBackground": "rgba(255, 237, 241, 0.906)",
+          "selectedInk": "rgb(255, 173, 198)",
+          "textContrast": 12.968772087702426
+        },
+        "auto-light": {
+          "scheme": "light",
+          "background": "rgb(255, 255, 255)",
+          "ink": "rgb(23, 32, 51)",
+          "selectedBackground": "rgb(255, 240, 244)",
+          "selectedInk": "rgb(220, 49, 95)",
+          "textContrast": 16.268480224545662
+        }
+      },
+      "name": "390px panel keeps controls inside the viewport, uses readable FluentRead light/dark palettes and follows automatic system-theme changes"
+    },
+    {
+      "steps": 12,
+      "full": true,
+      "visible": true,
+      "name": "390px trusted Tab scrolls the long phrase list to a visible full-translation action; Enter activates it",
+      "scrollTop": 260
+    },
+    {
+      "name": "Host links and buttons remain usable; replacing a selected DOM node permits explicit recapture with the new source"
+    },
+    {
+      "name": "Closing during a deterministic delayed request prevents its old answer from appearing after reopening"
+    },
+    {
+      "name": "Close, reopen and trusted Escape remove the panel without duplicate hosts"
+    },
+    {
+      "source": "If the route changes, this delayed reading request must not remain attached to the old page.",
+      "route": "http://127.0.0.1:55225/article?route=reading",
+      "name": "Pure history.pushState with unchanged host DOM cancels the old request through the real MAIN bridge, closes help and permits reopening"
+    },
+    {
+      "disabledResponse": {
+        "status": "disabled"
+      },
+      "name": "Global disable cleans the mount and blocks reopen; reenable works and actual navigation leaves no orphaned panel"
+    },
+    {
+      "name": "Opening, mode switches, scrolling and reading do not update learning records"
+    },
+    {
+      "scope": "speech",
+      "decoded": {
+        "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+        "currentTime": 0.302665,
+        "duration": 20,
+        "paused": false,
+        "ended": false,
+        "readyState": 4,
+        "rate": 1,
+        "loop": false,
+        "error": null,
+        "contextId": 8
+      },
+      "name": "Speech stays inactive until an explicit play gesture; silent WAV decodes and the native media clock advances with estimated follow text"
+    },
+    {
+      "scope": "speech",
+      "paused": {
+        "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+        "currentTime": 0.691435,
+        "duration": 20,
+        "paused": true,
+        "ended": false,
+        "readyState": 4,
+        "rate": 1,
+        "loop": false,
+        "error": null,
+        "contextId": 8
+      },
+      "stillPaused": {
+        "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+        "currentTime": 0.691435,
+        "duration": 20,
+        "paused": true,
+        "ended": false,
+        "readyState": 4,
+        "rate": 1,
+        "loop": false,
+        "error": null,
+        "contextId": 8
+      },
+      "name": "Pause freezes native Audio and continue resumes its existing position without synthesizing again"
+    },
+    {
+      "scope": "speech",
+      "beforeSeek": {
+        "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+        "currentTime": 1.126604,
+        "duration": 20,
+        "paused": true,
+        "ended": false,
+        "readyState": 4,
+        "rate": 1,
+        "loop": false,
+        "error": null,
+        "contextId": 8
+      },
+      "forward": {
+        "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+        "currentTime": 6.126604,
+        "duration": 20,
+        "paused": true,
+        "ended": false,
+        "readyState": 4,
+        "rate": 1,
+        "loop": false,
+        "error": null,
+        "contextId": 8
+      },
+      "backward": {
+        "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+        "currentTime": 1.126604,
+        "duration": 20,
+        "paused": true,
+        "ended": false,
+        "readyState": 4,
+        "rate": 1,
+        "loop": false,
+        "error": null,
+        "contextId": 8
+      },
+      "name": "Native rate, five-second seeks, restart and listening to the same original reuse synthesized audio"
+    },
+    {
+      "scope": "speech",
+      "loopStart": {
+        "src": "blob:http://127.0.0.1:55225/44505f65-9793-44f4-8949-1c35cbc2e36b",
+        "currentTime": 0.325027,
+        "duration": 3,
+        "paused": false,
+        "ended": false,
+        "readyState": 4,
+        "rate": 1,
+        "loop": true,
+        "error": null,
+        "contextId": 8
+      },
+      "looped": {
+        "src": "blob:http://127.0.0.1:55225/44505f65-9793-44f4-8949-1c35cbc2e36b",
+        "currentTime": 0.121959,
+        "duration": 3,
+        "paused": false,
+        "ended": false,
+        "readyState": 4,
+        "rate": 1,
+        "loop": true,
+        "error": null,
+        "contextId": 8
+      },
+      "name": "Repeat crosses the real WAV end and returns to the beginning without another synthesis"
+    },
+    {
+      "scope": "speech",
+      "cancellationScenarios": [
+        "preparing cancel",
+        "close",
+        "source change",
+        "route",
+        "disable"
+      ],
+      "name": "Original and translation selection stays quiet until play; failure retry and delayed preparation, close, source, route, disable and language cleanup reject stale playback"
+    },
+    {
+      "scope": "speech",
+      "narrow": {
+        "width": 336,
+        "horizontalOverflow": false,
+        "controls": [
+          {
+            "label": "原文",
+            "left": 27,
+            "right": 67
+          },
+          {
+            "label": "译文",
+            "left": 70,
+            "right": 110
+          },
+          {
+            "label": "继续朗读",
+            "left": 27,
+            "right": 56
+          },
+          {
+            "label": "后退 5 秒",
+            "left": 61,
+            "right": 90
+          },
+          {
+            "label": "前进 5 秒",
+            "left": 95,
+            "right": 124
+          },
+          {
+            "label": "从头重听",
+            "left": 129,
+            "right": 158
+          },
+          {
+            "label": "停止朗读",
+            "left": 163,
+            "right": 192
+          },
+          {
+            "label": "语速",
+            "left": 197,
+            "right": 255
+          },
+          {
+            "label": "",
+            "left": 325,
+            "right": 338
+          }
+        ],
+        "left": 27,
+        "right": 363,
+        "viewportWidth": 390
+      },
+      "name": "390px speech controls fit without horizontal overflow and trusted Tab/Enter start and pause real Audio without modifying learning records"
+    }
+  ],
+  "screenshots": [
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/popup-400-progressive-entry.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/popup-320-progressive-entry.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/popup-320-long-hotkey.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/popup-400-long-hotkey.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/popup-learning-help.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/learning-settings-default.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/panel-original.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/panel-phrases.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/panel-logic.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/desktop-bilingual.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/panel-bilingual.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/390-light-phrases.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/390-dark-phrases.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/390-keyboard-bilingual.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/speech-original-playing.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/speech-original-paused.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/speech-translation-playing.png",
+    "/private/tmp/fluentread-progressive-reading-speech-integrated-final/speech-390-paused.png"
+  ],
+  "consoleErrors": [],
+  "focusSamples": [
+    {
+      "label": "launch",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "popup-400-progressive-entry:before-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "popup-400-progressive-entry:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "popup-320-progressive-entry:before-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "popup-320-progressive-entry:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "popup-320-long-hotkey:before-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "popup-320-long-hotkey:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "popup-400-long-hotkey:before-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "popup-400-long-hotkey:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "popup-learning-help:before-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "popup-learning-help:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "learning-settings-default:before-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "learning-settings-default:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "panel-original:before-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "panel-original:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "panel-phrases:before-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "panel-phrases:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "panel-logic:before-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "panel-logic:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "desktop-bilingual:before-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "desktop-bilingual:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "panel-bilingual:before-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "panel-bilingual:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "390-light-phrases:before-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "390-light-phrases:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "390-dark-phrases:before-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "390-dark-phrases:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "390-keyboard-bilingual:before-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "390-keyboard-bilingual:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "speech-original-playing:before-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "speech-original-playing:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "speech-original-paused:before-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "speech-original-paused:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "speech-translation-playing:before-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "speech-translation-playing:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "speech-390-paused:before-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "speech-390-paused:after-screenshot",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "continuous",
+      "pid": 76304,
+      "name": "微信"
+    },
+    {
+      "label": "completed",
+      "pid": 76304,
+      "name": "微信"
+    }
+  ],
+  "executionScope": "progressive-reading-targeted-flow-with-speech",
+  "evidenceBoundary": "Real production extension, real selection, DOM, trusted CDP keyboard/mouse and Vue Shadow UI in an isolated Edge browser. Local deterministic HTTP translation transport, Popup active-tab lookup and toolbar-close capture are fixtures. No live-provider, Firefox runtime, native-toolbar or human-comprehension claim.",
+  "reuseBoundary": "This browser run verifies reuse of a translation already obtained within the same reading session. Reuse of a preexisting bilingual webpage artifact is outside this runner; its pure excerpt matcher is covered separately by unit tests.",
+  "ownedBrowserClosed": true,
+  "profileRemoved": true,
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 212,
+      "top": -990,
+      "width": 1280,
+      "height": 900
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 76304,
+      "name": "微信"
+    },
+    "frontmostAfter": {
+      "pid": 76304,
+      "name": "微信"
+    }
+  },
+  "manifest": {
+    "name": "FluentRead-流畅阅读",
+    "version": "0.0.37"
+  },
+  "configSummary": {
+    "on": true,
+    "service": "custom:progressive-reading-fixture",
+    "from": "en",
+    "to": "zh-Hans",
+    "display": 1,
+    "autoTranslate": false,
+    "vocabularyBookEnabled": true,
+    "vocabularyReencounterEnabled": false,
+    "disableSelectionTranslator": true
+  },
+  "popupLayout": [
+    {
+      "viewportWidth": 400,
+      "platform": "MacIntel",
+      "shellWidth": 320,
+      "horizontalOverflow": false,
+      "shortcutChips": 0,
+      "legacyTranslationGlyph": false,
+      "siteRuleRows": [
+        {
+          "borderWidths": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "background": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "shadow": "none"
+        }
+      ],
+      "buttons": [
+        {
+          "id": "page-translation",
+          "text": "翻译（⌥+T）",
+          "title": "翻译当前网页 · ⌥+T",
+          "ariaLabel": "翻译当前网页",
+          "captionLines": 1,
+          "left": 29,
+          "right": 187,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 158,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "section-translation",
+          "text": "局部",
+          "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "captionLines": 1,
+          "left": 193,
+          "right": 239,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "progressive-reading",
+          "text": "学习",
+          "title": "",
+          "ariaLabel": "学习",
+          "captionLines": 1,
+          "left": 245,
+          "right": 291,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        }
+      ],
+      "label": "popup-400-progressive-entry"
+    },
+    {
+      "viewportWidth": 320,
+      "platform": "MacIntel",
+      "shellWidth": 320,
+      "horizontalOverflow": false,
+      "shortcutChips": 0,
+      "legacyTranslationGlyph": false,
+      "siteRuleRows": [
+        {
+          "borderWidths": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "background": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "shadow": "none"
+        }
+      ],
+      "buttons": [
+        {
+          "id": "page-translation",
+          "text": "翻译（⌥+T）",
+          "title": "翻译当前网页 · ⌥+T",
+          "ariaLabel": "翻译当前网页",
+          "captionLines": 1,
+          "left": 29,
+          "right": 187,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 158,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "section-translation",
+          "text": "局部",
+          "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "captionLines": 1,
+          "left": 193,
+          "right": 239,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "progressive-reading",
+          "text": "学习",
+          "title": "",
+          "ariaLabel": "学习",
+          "captionLines": 1,
+          "left": 245,
+          "right": 291,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        }
+      ],
+      "label": "popup-320-progressive-entry"
+    },
+    {
+      "viewportWidth": 320,
+      "platform": "MacIntel",
+      "shellWidth": 320,
+      "horizontalOverflow": false,
+      "shortcutChips": 0,
+      "legacyTranslationGlyph": false,
+      "siteRuleRows": [
+        {
+          "borderWidths": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "background": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "shadow": "none"
+        }
+      ],
+      "buttons": [
+        {
+          "id": "page-translation",
+          "text": "翻译",
+          "title": "翻译当前网页 · ⌃+⌥+⇧+Arrowright",
+          "ariaLabel": "翻译当前网页",
+          "captionLines": 1,
+          "left": 29,
+          "right": 187,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 158,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "section-translation",
+          "text": "局部",
+          "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "captionLines": 1,
+          "left": 193,
+          "right": 239,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "progressive-reading",
+          "text": "学习",
+          "title": "",
+          "ariaLabel": "学习",
+          "captionLines": 1,
+          "left": 245,
+          "right": 291,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        }
+      ],
+      "label": "popup-320-long-hotkey"
+    },
+    {
+      "viewportWidth": 400,
+      "platform": "MacIntel",
+      "shellWidth": 320,
+      "horizontalOverflow": false,
+      "shortcutChips": 0,
+      "legacyTranslationGlyph": false,
+      "siteRuleRows": [
+        {
+          "borderWidths": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "background": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "shadow": "none"
+        }
+      ],
+      "buttons": [
+        {
+          "id": "page-translation",
+          "text": "翻译",
+          "title": "翻译当前网页 · ⌃+⌥+⇧+Arrowright",
+          "ariaLabel": "翻译当前网页",
+          "captionLines": 1,
+          "left": 29,
+          "right": 187,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 158,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "section-translation",
+          "text": "局部",
+          "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "captionLines": 1,
+          "left": 193,
+          "right": 239,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "progressive-reading",
+          "text": "学习",
+          "title": "",
+          "ariaLabel": "学习",
+          "captionLines": 1,
+          "left": 245,
+          "right": 291,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        }
+      ],
+      "label": "popup-400-long-hotkey"
+    }
+  ],
+  "layout": {
+    "desktop": {
+      "left": 764,
+      "right": 1184,
+      "top": 292.2421875,
+      "bottom": 834,
+      "width": 420,
+      "height": 541.7578125,
+      "viewportWidth": 1200,
+      "viewportHeight": 850,
+      "horizontalOverflow": false,
+      "controls": [
+        {
+          "text": "关闭渐进阅读",
+          "left": 1139,
+          "right": 1167,
+          "width": 28,
+          "height": 28
+        },
+        {
+          "text": "读取选中正文",
+          "left": 781,
+          "right": 1167,
+          "width": 386,
+          "height": 34
+        },
+        {
+          "text": "只读原文",
+          "left": 781,
+          "right": 873.75,
+          "width": 92.75,
+          "height": 32
+        },
+        {
+          "text": "短语提示",
+          "left": 878.75,
+          "right": 971.5,
+          "width": 92.75,
+          "height": 32
+        },
+        {
+          "text": "逻辑线索",
+          "left": 976.5,
+          "right": 1069.25,
+          "width": 92.75,
+          "height": 32
+        },
+        {
+          "text": "完整双语",
+          "left": 1074.25,
+          "right": 1167,
+          "width": 92.75,
+          "height": 32
+        },
+        {
+          "text": "原文",
+          "left": 781,
+          "right": 821,
+          "width": 40,
+          "height": 23.3984375
+        },
+        {
+          "text": "译文",
+          "left": 824,
+          "right": 864,
+          "width": 40,
+          "height": 23.3984375
+        },
+        {
+          "text": "播放原文",
+          "left": 781,
+          "right": 810,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "后退 5 秒",
+          "left": 815,
+          "right": 844,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "前进 5 秒",
+          "left": 849,
+          "right": 878,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "从头重听",
+          "left": 883,
+          "right": 912,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "停止朗读",
+          "left": 917,
+          "right": 946,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "完整双语",
+          "left": 781,
+          "right": 851,
+          "width": 70,
+          "height": 32.796875
+        }
+      ]
+    },
+    "390-light": {
+      "left": 12,
+      "right": 378,
+      "top": 308,
+      "bottom": 788,
+      "width": 366,
+      "height": 480,
+      "viewportWidth": 390,
+      "viewportHeight": 800,
+      "horizontalOverflow": false,
+      "controls": [
+        {
+          "text": "关闭渐进阅读",
+          "left": 335,
+          "right": 363,
+          "width": 28,
+          "height": 28
+        },
+        {
+          "text": "读取选中正文",
+          "left": 27,
+          "right": 363,
+          "width": 336,
+          "height": 34
+        },
+        {
+          "text": "只读原文",
+          "left": 27,
+          "right": 107.25,
+          "width": 80.25,
+          "height": 32
+        },
+        {
+          "text": "短语提示",
+          "left": 112.25,
+          "right": 192.5,
+          "width": 80.25,
+          "height": 32
+        },
+        {
+          "text": "逻辑线索",
+          "left": 197.5,
+          "right": 277.75,
+          "width": 80.25,
+          "height": 32
+        },
+        {
+          "text": "完整双语",
+          "left": 282.75,
+          "right": 363,
+          "width": 80.25,
+          "height": 32
+        },
+        {
+          "text": "原文",
+          "left": 27,
+          "right": 67,
+          "width": 40,
+          "height": 23.3984375
+        },
+        {
+          "text": "译文",
+          "left": 70,
+          "right": 110,
+          "width": 40,
+          "height": 23.3984375
+        },
+        {
+          "text": "播放原文",
+          "left": 27,
+          "right": 56,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "后退 5 秒",
+          "left": 61,
+          "right": 90,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "前进 5 秒",
+          "left": 95,
+          "right": 124,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "从头重听",
+          "left": 129,
+          "right": 158,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "停止朗读",
+          "left": 163,
+          "right": 192,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "仍需要帮助",
+          "left": 285,
+          "right": 363,
+          "width": 78,
+          "height": 26.796875
+        },
+        {
+          "text": "查询表达",
+          "left": 27,
+          "right": 93,
+          "width": 66,
+          "height": 26.796875
+        },
+        {
+          "text": "查询表达",
+          "left": 27,
+          "right": 93,
+          "width": 66,
+          "height": 26.796875
+        },
+        {
+          "text": "完整双语",
+          "left": 27,
+          "right": 97,
+          "width": 70,
+          "height": 32.796875
+        }
+      ]
+    },
+    "390-dark": {
+      "left": 12,
+      "right": 378,
+      "top": 308,
+      "bottom": 788,
+      "width": 366,
+      "height": 480,
+      "viewportWidth": 390,
+      "viewportHeight": 800,
+      "horizontalOverflow": false,
+      "controls": [
+        {
+          "text": "关闭渐进阅读",
+          "left": 335,
+          "right": 363,
+          "width": 28,
+          "height": 28
+        },
+        {
+          "text": "读取选中正文",
+          "left": 27,
+          "right": 363,
+          "width": 336,
+          "height": 34
+        },
+        {
+          "text": "只读原文",
+          "left": 27,
+          "right": 107.25,
+          "width": 80.25,
+          "height": 32
+        },
+        {
+          "text": "短语提示",
+          "left": 112.25,
+          "right": 192.5,
+          "width": 80.25,
+          "height": 32
+        },
+        {
+          "text": "逻辑线索",
+          "left": 197.5,
+          "right": 277.75,
+          "width": 80.25,
+          "height": 32
+        },
+        {
+          "text": "完整双语",
+          "left": 282.75,
+          "right": 363,
+          "width": 80.25,
+          "height": 32
+        },
+        {
+          "text": "原文",
+          "left": 27,
+          "right": 67,
+          "width": 40,
+          "height": 23.3984375
+        },
+        {
+          "text": "译文",
+          "left": 70,
+          "right": 110,
+          "width": 40,
+          "height": 23.3984375
+        },
+        {
+          "text": "播放原文",
+          "left": 27,
+          "right": 56,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "后退 5 秒",
+          "left": 61,
+          "right": 90,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "前进 5 秒",
+          "left": 95,
+          "right": 124,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "从头重听",
+          "left": 129,
+          "right": 158,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "停止朗读",
+          "left": 163,
+          "right": 192,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "仍需要帮助",
+          "left": 285,
+          "right": 363,
+          "width": 78,
+          "height": 26.796875
+        },
+        {
+          "text": "查询表达",
+          "left": 27,
+          "right": 93,
+          "width": 66,
+          "height": 26.796875
+        },
+        {
+          "text": "查询表达",
+          "left": 27,
+          "right": 93,
+          "width": 66,
+          "height": 26.796875
+        },
+        {
+          "text": "完整双语",
+          "left": 27,
+          "right": 97,
+          "width": 70,
+          "height": 32.796875
+        }
+      ]
+    },
+    "speech-390": {
+      "left": 12,
+      "right": 378,
+      "top": 400.765625,
+      "bottom": 788,
+      "width": 366,
+      "height": 387.234375,
+      "viewportWidth": 390,
+      "viewportHeight": 800,
+      "horizontalOverflow": false,
+      "controls": [
+        {
+          "text": "关闭渐进阅读",
+          "left": 335,
+          "right": 363,
+          "width": 28,
+          "height": 28
+        },
+        {
+          "text": "读取选中正文",
+          "left": 27,
+          "right": 363,
+          "width": 336,
+          "height": 34
+        },
+        {
+          "text": "只读原文",
+          "left": 27,
+          "right": 107.25,
+          "width": 80.25,
+          "height": 32
+        },
+        {
+          "text": "短语提示",
+          "left": 112.25,
+          "right": 192.5,
+          "width": 80.25,
+          "height": 32
+        },
+        {
+          "text": "逻辑线索",
+          "left": 197.5,
+          "right": 277.75,
+          "width": 80.25,
+          "height": 32
+        },
+        {
+          "text": "完整双语",
+          "left": 282.75,
+          "right": 363,
+          "width": 80.25,
+          "height": 32
+        },
+        {
+          "text": "原文",
+          "left": 27,
+          "right": 67,
+          "width": 40,
+          "height": 23.3984375
+        },
+        {
+          "text": "译文",
+          "left": 70,
+          "right": 110,
+          "width": 40,
+          "height": 23.3984375
+        },
+        {
+          "text": "播放原文",
+          "left": 27,
+          "right": 56,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "后退 5 秒",
+          "left": 61,
+          "right": 90,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "前进 5 秒",
+          "left": 95,
+          "right": 124,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "从头重听",
+          "left": 129,
+          "right": 158,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "停止朗读",
+          "left": 163,
+          "right": 192,
+          "width": 29,
+          "height": 30
+        },
+        {
+          "text": "完整双语",
+          "left": 27,
+          "right": 97,
+          "width": 70,
+          "height": 32.796875
+        }
+      ]
+    }
+  },
+  "palette": {
+    "390-light": {
+      "scheme": "light",
+      "background": "rgb(255, 255, 255)",
+      "ink": "rgb(23, 32, 51)",
+      "selectedBackground": "rgb(255, 240, 244)",
+      "selectedInk": "rgb(220, 49, 95)",
+      "textContrast": 16.268480224545662
+    },
+    "390-dark": {
+      "scheme": "dark",
+      "background": "rgb(40, 40, 48)",
+      "ink": "rgb(241, 241, 244)",
+      "selectedBackground": "rgba(239, 71, 118, 0.16)",
+      "selectedInk": "rgb(255, 173, 198)",
+      "textContrast": 12.968772087702426
+    },
+    "auto-dark": {
+      "scheme": "dark",
+      "background": "rgb(40, 40, 48)",
+      "ink": "rgb(241, 241, 244)",
+      "selectedBackground": "rgba(255, 237, 241, 0.906)",
+      "selectedInk": "rgb(255, 173, 198)",
+      "textContrast": 12.968772087702426
+    },
+    "auto-light": {
+      "scheme": "light",
+      "background": "rgb(255, 255, 255)",
+      "ink": "rgb(23, 32, 51)",
+      "selectedBackground": "rgb(255, 240, 244)",
+      "selectedInk": "rgb(220, 49, 95)",
+      "textContrast": 16.268480224545662
+    }
+  },
+  "speech": {
+    "cases": [
+      {
+        "decoded": {
+          "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+          "currentTime": 0.302665,
+          "duration": 20,
+          "paused": false,
+          "ended": false,
+          "readyState": 4,
+          "rate": 1,
+          "loop": false,
+          "error": null,
+          "contextId": 8
+        },
+        "name": "Speech stays inactive until an explicit play gesture; silent WAV decodes and the native media clock advances with estimated follow text"
+      },
+      {
+        "paused": {
+          "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+          "currentTime": 0.691435,
+          "duration": 20,
+          "paused": true,
+          "ended": false,
+          "readyState": 4,
+          "rate": 1,
+          "loop": false,
+          "error": null,
+          "contextId": 8
+        },
+        "stillPaused": {
+          "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+          "currentTime": 0.691435,
+          "duration": 20,
+          "paused": true,
+          "ended": false,
+          "readyState": 4,
+          "rate": 1,
+          "loop": false,
+          "error": null,
+          "contextId": 8
+        },
+        "name": "Pause freezes native Audio and continue resumes its existing position without synthesizing again"
+      },
+      {
+        "beforeSeek": {
+          "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+          "currentTime": 1.126604,
+          "duration": 20,
+          "paused": true,
+          "ended": false,
+          "readyState": 4,
+          "rate": 1,
+          "loop": false,
+          "error": null,
+          "contextId": 8
+        },
+        "forward": {
+          "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+          "currentTime": 6.126604,
+          "duration": 20,
+          "paused": true,
+          "ended": false,
+          "readyState": 4,
+          "rate": 1,
+          "loop": false,
+          "error": null,
+          "contextId": 8
+        },
+        "backward": {
+          "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+          "currentTime": 1.126604,
+          "duration": 20,
+          "paused": true,
+          "ended": false,
+          "readyState": 4,
+          "rate": 1,
+          "loop": false,
+          "error": null,
+          "contextId": 8
+        },
+        "name": "Native rate, five-second seeks, restart and listening to the same original reuse synthesized audio"
+      },
+      {
+        "loopStart": {
+          "src": "blob:http://127.0.0.1:55225/44505f65-9793-44f4-8949-1c35cbc2e36b",
+          "currentTime": 0.325027,
+          "duration": 3,
+          "paused": false,
+          "ended": false,
+          "readyState": 4,
+          "rate": 1,
+          "loop": true,
+          "error": null,
+          "contextId": 8
+        },
+        "looped": {
+          "src": "blob:http://127.0.0.1:55225/44505f65-9793-44f4-8949-1c35cbc2e36b",
+          "currentTime": 0.121959,
+          "duration": 3,
+          "paused": false,
+          "ended": false,
+          "readyState": 4,
+          "rate": 1,
+          "loop": true,
+          "error": null,
+          "contextId": 8
+        },
+        "name": "Repeat crosses the real WAV end and returns to the beginning without another synthesis"
+      },
+      {
+        "cancellationScenarios": [
+          "preparing cancel",
+          "close",
+          "source change",
+          "route",
+          "disable"
+        ],
+        "name": "Original and translation selection stays quiet until play; failure retry and delayed preparation, close, source, route, disable and language cleanup reject stale playback"
+      },
+      {
+        "narrow": {
+          "width": 336,
+          "horizontalOverflow": false,
+          "controls": [
+            {
+              "label": "原文",
+              "left": 27,
+              "right": 67
+            },
+            {
+              "label": "译文",
+              "left": 70,
+              "right": 110
+            },
+            {
+              "label": "继续朗读",
+              "left": 27,
+              "right": 56
+            },
+            {
+              "label": "后退 5 秒",
+              "left": 61,
+              "right": 90
+            },
+            {
+              "label": "前进 5 秒",
+              "left": 95,
+              "right": 124
+            },
+            {
+              "label": "从头重听",
+              "left": 129,
+              "right": 158
+            },
+            {
+              "label": "停止朗读",
+              "left": 163,
+              "right": 192
+            },
+            {
+              "label": "语速",
+              "left": 197,
+              "right": 255
+            },
+            {
+              "label": "",
+              "left": 325,
+              "right": 338
+            }
+          ],
+          "left": 27,
+          "right": 363,
+          "viewportWidth": 390
+        },
+        "name": "390px speech controls fit without horizontal overflow and trusted Tab/Enter start and pause real Audio without modifying learning records"
+      }
+    ],
+    "samples": [
+      {
+        "label": "No selected source creates no Audio",
+        "at": 1791714190884,
+        "audio": [],
+        "ui": {
+          "time": "",
+          "error": "",
+          "source": "",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "native silent WAV decode",
+        "at": 1791714192291,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+            "currentTime": 0.302665,
+            "duration": 20,
+            "paused": false,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": false,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "playing",
+          "time": "0:00 / 0:20",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 1
+        }
+      },
+      {
+        "label": "Help-mode changes preserve original Audio",
+        "at": 1791714192668,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+            "currentTime": 0.679774,
+            "duration": 20,
+            "paused": false,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": false,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "playing",
+          "time": "0:00 / 0:20",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 1
+        }
+      },
+      {
+        "label": "paused",
+        "at": 1791714192850,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+            "currentTime": 0.691435,
+            "duration": 20,
+            "paused": true,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": false,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "paused",
+          "time": "0:00 / 0:20",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 1
+        }
+      },
+      {
+        "label": "pause remains frozen",
+        "at": 1791714193694,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+            "currentTime": 0.691435,
+            "duration": 20,
+            "paused": true,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": false,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "paused",
+          "time": "0:00 / 0:20",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 1
+        }
+      },
+      {
+        "label": "before seek",
+        "at": 1791714195976,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+            "currentTime": 1.126604,
+            "duration": 20,
+            "paused": true,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": false,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "paused",
+          "time": "0:01 / 0:20",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 1
+        }
+      },
+      {
+        "label": "forward five seconds",
+        "at": 1791714196158,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+            "currentTime": 6.126604,
+            "duration": 20,
+            "paused": true,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": false,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "paused",
+          "time": "0:06 / 0:20",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 1
+        }
+      },
+      {
+        "label": "rewind five seconds",
+        "at": 1791714196330,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+            "currentTime": 1.126604,
+            "duration": 20,
+            "paused": true,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": false,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "paused",
+          "time": "0:01 / 0:20",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 1
+        }
+      },
+      {
+        "label": "Cached relisten preparation is quiet",
+        "at": 1791714196674,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+            "currentTime": 0,
+            "duration": 20,
+            "paused": true,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": false,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "idle",
+          "time": "0:00 / 0:20",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "relisten cached original",
+        "at": 1791714197033,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+            "currentTime": 0.287879,
+            "duration": 20,
+            "paused": false,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": false,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "playing",
+          "time": "0:00 / 0:20",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 1
+        }
+      },
+      {
+        "label": "Explicit stop silences native Audio",
+        "at": 1791714197214,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/2b799b12-0a1d-4445-8f3d-0f4a68696354",
+            "currentTime": 0,
+            "duration": 20,
+            "paused": true,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": false,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "idle",
+          "time": "0:00 / 0:20",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "loop playback begins",
+        "at": 1791714198237,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/44505f65-9793-44f4-8949-1c35cbc2e36b",
+            "currentTime": 0.325027,
+            "duration": 3,
+            "paused": false,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": true,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "playing",
+          "time": "0:00 / 0:03",
+          "error": "",
+          "source": "This selected sentence is the silent loop fixture.",
+          "currentMarks": 1
+        }
+      },
+      {
+        "label": "loop crossed native end",
+        "at": 1791714201256,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/44505f65-9793-44f4-8949-1c35cbc2e36b",
+            "currentTime": 0.121959,
+            "duration": 3,
+            "paused": false,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": true,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "playing",
+          "time": "0:00 / 0:03",
+          "error": "",
+          "source": "This selected sentence is the silent loop fixture.",
+          "currentMarks": 1
+        }
+      },
+      {
+        "label": "original playback before kind switch",
+        "at": 1791714205763,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/dc405618-72f5-4acd-bb42-549577112ca8",
+            "currentTime": 0.340595,
+            "duration": 20,
+            "paused": false,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": false,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "playing",
+          "time": "0:00 / 0:20",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 1
+        }
+      },
+      {
+        "label": "Selecting the translation is quiet and releases original Audio",
+        "at": 1791714206132,
+        "audio": [],
+        "ui": {
+          "status": "idle",
+          "time": "朗读",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "translation replaces original Audio",
+        "at": 1791714206762,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/416b3d85-484f-40d5-8c59-886734ee341f",
+            "currentTime": 0.368809,
+            "duration": 20,
+            "paused": false,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": false,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "playing",
+          "time": "0:00 / 0:20",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "Selecting original is quiet",
+        "at": 1791714207319,
+        "audio": [],
+        "ui": {
+          "status": "idle",
+          "time": "朗读",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "source replaces translation Audio",
+        "at": 1791714207948,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/322ff81f-07c9-46e2-9193-90239f16099d",
+            "currentTime": 0.376205,
+            "duration": 20,
+            "paused": false,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": false,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "playing",
+          "time": "0:00 / 0:20",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 1
+        }
+      },
+      {
+        "label": "Language change cancels the current Audio",
+        "at": 1791714208556,
+        "audio": [],
+        "ui": {
+          "status": "idle",
+          "time": "朗读",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "Failed synthesis does not retain Audio",
+        "at": 1791714210148,
+        "audio": [],
+        "ui": {
+          "status": "error",
+          "time": "朗读",
+          "error": "Edge TTS 音色均不可用（en-US-AvaMultilingualNeural: Edge TTS synthesis failed: 503；en-US-AriaNeural: Edge TTS synthesis failed: 503；en-US-JennyNeural: Edge TTS synthesis failed: 503；en-US-GuyNeural: Edge TTS synthesis failed: 503）",
+          "source": "This controlled synthesis must fail before a successful retry.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "retry succeeds with real decoder",
+        "at": 1791714210766,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/19f271dd-2382-4e72-8d03-fab3e87c8e77",
+            "currentTime": 0.34574,
+            "duration": 20,
+            "paused": false,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": false,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "playing",
+          "time": "0:00 / 0:20",
+          "error": "",
+          "source": "This controlled synthesis must fail before a successful retry.",
+          "currentMarks": 1
+        }
+      },
+      {
+        "label": "Retry stop silences Audio",
+        "at": 1791714210952,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/19f271dd-2382-4e72-8d03-fab3e87c8e77",
+            "currentTime": 0,
+            "duration": 20,
+            "paused": true,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": false,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "idle",
+          "time": "0:00 / 0:20",
+          "error": "",
+          "source": "This controlled synthesis must fail before a successful retry.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "preparing cancel: delayed response cannot create or revive Audio",
+        "at": 1791714212811,
+        "audio": [],
+        "ui": {
+          "status": "idle",
+          "time": "朗读",
+          "error": "",
+          "source": "Cancel this preparing silent speech request.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "close: delayed response cannot create or revive Audio",
+        "at": 1791714214681,
+        "audio": [],
+        "ui": null
+      },
+      {
+        "label": "source change: delayed response cannot create or revive Audio",
+        "at": 1791714217365,
+        "audio": [],
+        "ui": {
+          "status": "idle",
+          "time": "朗读",
+          "error": "",
+          "source": "This replacement must not inherit the previous silent audio.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "route: delayed response cannot create or revive Audio",
+        "at": 1791714219239,
+        "audio": [],
+        "ui": null
+      },
+      {
+        "label": "disable: delayed response cannot create or revive Audio",
+        "at": 1791714221790,
+        "audio": [],
+        "ui": null
+      },
+      {
+        "label": "active cleanup Audio",
+        "at": 1791714223857,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/433b281d-5d21-4d8e-89e8-a3a8a954d8cb",
+            "currentTime": 0.340934,
+            "duration": 20,
+            "paused": false,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": false,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "playing",
+          "time": "0:00 / 0:20",
+          "error": "",
+          "source": "Active silent speech must be released when its source changes.",
+          "currentMarks": 1
+        }
+      },
+      {
+        "label": "Active source replacement releases Audio",
+        "at": 1791714224627,
+        "audio": [],
+        "ui": {
+          "status": "idle",
+          "time": "朗读",
+          "error": "",
+          "source": "The latest source has no automatic speech.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "390px trusted keyboard starts Audio",
+        "at": 1791714225285,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/ce19c786-8a11-4e2c-8968-6ced17275a23",
+            "currentTime": 0.356924,
+            "duration": 20,
+            "paused": false,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": false,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "playing",
+          "time": "0:00 / 0:20",
+          "error": "",
+          "source": "The latest source has no automatic speech.",
+          "currentMarks": 1
+        }
+      },
+      {
+        "label": "Keyboard stop silences cached Audio",
+        "at": 1791714225837,
+        "audio": [
+          {
+            "src": "blob:http://127.0.0.1:55225/ce19c786-8a11-4e2c-8968-6ced17275a23",
+            "currentTime": 0,
+            "duration": 20,
+            "paused": true,
+            "ended": false,
+            "readyState": 4,
+            "rate": 1,
+            "loop": false,
+            "error": null,
+            "contextId": 8
+          }
+        ],
+        "ui": {
+          "status": "idle",
+          "time": "0:00 / 0:20",
+          "error": "",
+          "source": "The latest source has no automatic speech.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "Final close releases cached Audio",
+        "at": 1791714226196,
+        "audio": [],
+        "ui": null
+      }
+    ],
+    "cleanup": [
+      {
+        "label": "No selected source creates no Audio",
+        "at": 1791714190884,
+        "audio": [],
+        "ui": {
+          "time": "",
+          "error": "",
+          "source": "",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "Selecting the translation is quiet and releases original Audio",
+        "at": 1791714206132,
+        "audio": [],
+        "ui": {
+          "status": "idle",
+          "time": "朗读",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "Selecting original is quiet",
+        "at": 1791714207319,
+        "audio": [],
+        "ui": {
+          "status": "idle",
+          "time": "朗读",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "Language change cancels the current Audio",
+        "at": 1791714208556,
+        "audio": [],
+        "ui": {
+          "status": "idle",
+          "time": "朗读",
+          "error": "",
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "Failed synthesis does not retain Audio",
+        "at": 1791714210148,
+        "audio": [],
+        "ui": {
+          "status": "error",
+          "time": "朗读",
+          "error": "Edge TTS 音色均不可用（en-US-AvaMultilingualNeural: Edge TTS synthesis failed: 503；en-US-AriaNeural: Edge TTS synthesis failed: 503；en-US-JennyNeural: Edge TTS synthesis failed: 503；en-US-GuyNeural: Edge TTS synthesis failed: 503）",
+          "source": "This controlled synthesis must fail before a successful retry.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "preparing cancel: delayed response cannot create or revive Audio",
+        "at": 1791714212811,
+        "audio": [],
+        "ui": {
+          "status": "idle",
+          "time": "朗读",
+          "error": "",
+          "source": "Cancel this preparing silent speech request.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "close: delayed response cannot create or revive Audio",
+        "at": 1791714214681,
+        "audio": [],
+        "ui": null
+      },
+      {
+        "label": "source change: delayed response cannot create or revive Audio",
+        "at": 1791714217365,
+        "audio": [],
+        "ui": {
+          "status": "idle",
+          "time": "朗读",
+          "error": "",
+          "source": "This replacement must not inherit the previous silent audio.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "route: delayed response cannot create or revive Audio",
+        "at": 1791714219239,
+        "audio": [],
+        "ui": null
+      },
+      {
+        "label": "disable: delayed response cannot create or revive Audio",
+        "at": 1791714221790,
+        "audio": [],
+        "ui": null
+      },
+      {
+        "label": "Active source replacement releases Audio",
+        "at": 1791714224627,
+        "audio": [],
+        "ui": {
+          "status": "idle",
+          "time": "朗读",
+          "error": "",
+          "source": "The latest source has no automatic speech.",
+          "currentMarks": 0
+        }
+      },
+      {
+        "label": "Final close releases cached Audio",
+        "at": 1791714226196,
+        "audio": [],
+        "ui": null
+      }
+    ],
+    "evidenceBoundary": "Silent zero-PCM WAV response fixture at the Microsoft token/synthesis transport boundary. Production selectionTts playback:page routing and native page Audio decode, clock, pause/resume, rate, seek and loop remain real. Audio output is muted; no human audition, live TTS provider, voice quality or exact word alignment claim.",
+    "progressBoundary": "The fr-speech-current mark is estimated follow text, not an exact word timestamp.",
+    "rateSelections": [
+      {
+        "requested": 0.75,
+        "selected": "0.75"
+      },
+      {
+        "requested": 1,
+        "selected": "1"
+      },
+      {
+        "requested": 1.25,
+        "selected": "1.25"
+      },
+      {
+        "requested": 1.5,
+        "selected": "1.5"
+      },
+      {
+        "requested": 1,
+        "selected": "1"
+      }
+    ],
+    "rateSelectionBoundary": "DOM select value/change through the actual Vue/native-select binding; OS picker and trusted keyboard selection are not tested.",
+    "fixtureRequests": [
+      {
+        "generation": 1,
+        "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+        "language": "en-US",
+        "at": 1791714191309,
+        "delayMs": 120,
+        "failed": false,
+        "aborted": false,
+        "completedAt": 1791714191438
+      },
+      {
+        "generation": 2,
+        "source": "This selected sentence is the silent loop fixture.",
+        "language": "en-US",
+        "at": 1791714197658,
+        "delayMs": 120,
+        "failed": false,
+        "aborted": false,
+        "completedAt": 1791714197788
+      },
+      {
+        "generation": 3,
+        "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+        "language": "en-US",
+        "at": 1791714205140,
+        "delayMs": 120,
+        "failed": false,
+        "aborted": false,
+        "completedAt": 1791714205270
+      },
+      {
+        "generation": 3,
+        "source": "如果计划没有考虑成本，即使银行批准，也可能失败。总体而言，只有需求保持稳定时，这项估算才适用。",
+        "language": "zh-CN",
+        "at": 1791714206145,
+        "delayMs": 120,
+        "failed": false,
+        "aborted": false,
+        "completedAt": 1791714206274
+      },
+      {
+        "generation": 3,
+        "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+        "language": "en-US",
+        "at": 1791714207330,
+        "delayMs": 120,
+        "failed": false,
+        "aborted": false,
+        "completedAt": 1791714207460
+      },
+      {
+        "generation": 4,
+        "source": "This controlled synthesis must fail before a successful retry.",
+        "language": "en-US",
+        "at": 1791714209255,
+        "delayMs": 120,
+        "failed": true,
+        "aborted": false,
+        "completedAt": 1791714209385
+      },
+      {
+        "generation": 4,
+        "source": "This controlled synthesis must fail before a successful retry.",
+        "language": "en-US",
+        "at": 1791714209385,
+        "delayMs": 120,
+        "failed": true,
+        "aborted": false,
+        "completedAt": 1791714209508
+      },
+      {
+        "generation": 4,
+        "source": "This controlled synthesis must fail before a successful retry.",
+        "language": "en-US",
+        "at": 1791714209508,
+        "delayMs": 120,
+        "failed": true,
+        "aborted": false,
+        "completedAt": 1791714209635
+      },
+      {
+        "generation": 4,
+        "source": "This controlled synthesis must fail before a successful retry.",
+        "language": "en-US",
+        "at": 1791714209636,
+        "delayMs": 120,
+        "failed": true,
+        "aborted": false,
+        "completedAt": 1791714209768
+      },
+      {
+        "generation": 5,
+        "source": "This controlled synthesis must fail before a successful retry.",
+        "language": "en-US",
+        "at": 1791714210167,
+        "delayMs": 120,
+        "failed": false,
+        "aborted": false,
+        "completedAt": 1791714210295
+      },
+      {
+        "generation": 6,
+        "source": "Cancel this preparing silent speech request.",
+        "language": "en-US",
+        "at": 1791714211367,
+        "delayMs": 850,
+        "failed": false,
+        "aborted": true,
+        "completedAt": 1791714212225
+      },
+      {
+        "generation": 7,
+        "source": "Close this delayed silent speech request.",
+        "language": "en-US",
+        "at": 1791714213261,
+        "delayMs": 850,
+        "failed": false,
+        "aborted": true,
+        "completedAt": 1791714214121
+      },
+      {
+        "generation": 8,
+        "source": "Replace this delayed silent speech source.",
+        "language": "en-US",
+        "at": 1791714215549,
+        "delayMs": 850,
+        "failed": false,
+        "aborted": true,
+        "completedAt": 1791714216408
+      },
+      {
+        "generation": 9,
+        "source": "Route away from this delayed silent speech request.",
+        "language": "en-US",
+        "at": 1791714217820,
+        "delayMs": 850,
+        "failed": false,
+        "aborted": true,
+        "completedAt": 1791714218679
+      },
+      {
+        "generation": 10,
+        "source": "Disable this delayed silent speech request.",
+        "language": "en-US",
+        "at": 1791714220109,
+        "delayMs": 850,
+        "failed": false,
+        "aborted": true,
+        "completedAt": 1791714220970
+      },
+      {
+        "generation": 11,
+        "source": "Active silent speech must be released when its source changes.",
+        "language": "en-US",
+        "at": 1791714223241,
+        "delayMs": 120,
+        "failed": false,
+        "aborted": false,
+        "completedAt": 1791714223369
+      },
+      {
+        "generation": 11,
+        "source": "The latest source has no automatic speech.",
+        "language": "en-US",
+        "at": 1791714224651,
+        "delayMs": 120,
+        "failed": false,
+        "aborted": false,
+        "completedAt": 1791714224781
+      }
+    ],
+    "layout": {
+      "width": 336,
+      "horizontalOverflow": false,
+      "controls": [
+        {
+          "label": "原文",
+          "left": 27,
+          "right": 67
+        },
+        {
+          "label": "译文",
+          "left": 70,
+          "right": 110
+        },
+        {
+          "label": "继续朗读",
+          "left": 27,
+          "right": 56
+        },
+        {
+          "label": "后退 5 秒",
+          "left": 61,
+          "right": 90
+        },
+        {
+          "label": "前进 5 秒",
+          "left": 95,
+          "right": 124
+        },
+        {
+          "label": "从头重听",
+          "left": 129,
+          "right": 158
+        },
+        {
+          "label": "停止朗读",
+          "left": 163,
+          "right": 192
+        },
+        {
+          "label": "语速",
+          "left": 197,
+          "right": 255
+        },
+        {
+          "label": "",
+          "left": 325,
+          "right": 338
+        }
+      ],
+      "left": 27,
+      "right": 363,
+      "viewportWidth": 390
+    }
+  },
+  "requests": [
+    {
+      "source": "bank",
+      "model": "progressive-reading-fixture",
+      "at": 1791714178486
+    },
+    {
+      "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+      "model": "progressive-reading-fixture",
+      "at": 1791714178941
+    },
+    {
+      "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+      "model": "progressive-reading-fixture",
+      "at": 1791714181592
+    },
+    {
+      "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+      "model": "progressive-reading-fixture",
+      "at": 1791714182698
+    },
+    {
+      "source": "Unless the review is complete, the result may not apply to a new bank account.",
+      "model": "progressive-reading-fixture",
+      "at": 1791714183299
+    },
+    {
+      "source": "Unless the review is complete, the result may not apply to a new bank account.",
+      "model": "progressive-reading-fixture",
+      "at": 1791714185012
+    },
+    {
+      "source": "If the route changes, this delayed reading request must not remain attached to the old page.",
+      "model": "progressive-reading-fixture",
+      "at": 1791714186515
+    },
+    {
+      "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+      "model": "progressive-reading-fixture",
+      "at": 1791714204927
+    }
+  ],
+  "hostLifecycle": [
+    {
+      "event": "pageshow",
+      "at": 1791714169606
+    },
+    {
+      "event": "pagehide",
+      "at": 1791714189849
+    },
+    {
+      "event": "pageshow",
+      "at": 1791714189910
+    },
+    {
+      "event": "pagehide",
+      "at": 1791714226605
+    }
+  ]
+}

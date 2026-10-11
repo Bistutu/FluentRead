@@ -1,7 +1,7 @@
 /**
  * @file src/core/config/diff.ts
  * 文件职责：把两份配置转换为可供预览的结构化差异，同时确保凭据和嵌套敏感内容只显示脱敏摘要。
- * 主要内容：维护设置字段到页面分组及中文标签的映射，按服务展示原生翻译合批开关，格式化枚举、映射和长文本，用迭代比较检查深层对象并对预览深度作安全摘要，生成稳定的分组差异结果。
+ * 主要内容：将学习快捷键及录制组合归入翻译设置，默认显示仅点击；维护设置字段到页面分组及中文标签的映射，按服务展示原生翻译合批开关，格式化枚举、映射和长文本，用迭代比较检查深层对象并对预览深度作安全摘要，生成稳定的分组差异结果。
  * 模块边界：本文件是无浏览器副作用的纯配置算法，不读取存储、不打开确认框也不执行恢复；设置页面只消费其脱敏后的 ConfigDiffResult。
  */
 import {CONFIG_CREDENTIAL_FIELDS, isSensitiveConfigKey} from './credentials';
@@ -585,6 +585,8 @@ const FIELD_DEFINITIONS: Record<string, FieldDefinition> = {
     sectionTranslationHotkeyEnabled: {group: 'translation', label: '局部翻译快捷键', format: formatBoolean},
     sectionTranslationHotkey: {group: 'translation', label: '局部翻译快捷键组合', format: value => value === 'custom' ? '自定义快捷键' : formatValue(value)},
     customSectionTranslationHotkey: {group: 'translation', label: '自定义局部翻译快捷键'},
+    progressiveReadingHotkey: {group: 'translation', label: '学习快捷键', format: value => value === 'custom' ? '自定义快捷键' : '无快捷键（仅点击）'},
+    customProgressiveReadingHotkey: {group: 'translation', label: '自定义学习快捷键'},
     disableSelectionTranslator: {group: 'translation', label: '划词翻译', format: (value) => formatBoolean(value, true)},
     selectionTranslatorPresentation: {group: 'translation', label: '划词呈现方式', format: (value) => value === 'card' ? '卡片模式' : '普通翻译'},
     selectionTranslatorAutoDismiss: {group: 'translation', label: '继续阅读时自动收起'},

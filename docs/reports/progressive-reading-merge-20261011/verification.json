@@ -1,0 +1,165 @@
+{
+  "integratedMain": "3f5ccc69f792168db8630b8bcf2432ff496ceb6c",
+  "validationProductHead": "5158a9b204d4ca9b2628ee7a3a32b134543a4df4",
+  "originalSourceMarksHead": "271384db8b1f9bfc3eaf72c605883f2be5974834",
+  "learningSourceUnchanged": true,
+  "focused": {
+    "files": 14,
+    "passed": 578
+  },
+  "architecture": {
+    "headers": 968,
+    "ownership": 16,
+    "boundaries": 13,
+    "totalPassed": 997
+  },
+  "languageProjectionPassed": 3,
+  "i18n": {
+    "passed": 57,
+    "failed": 1,
+    "missingRecords": 195,
+    "unchangedOwners": [
+      {
+        "path": "src/features/personal-corrections/ui/PersonalCorrectionPanel.vue",
+        "candidateSha256": "e68231bbba12cf8e83a803146de4d5abc026a4b46862f4859e5e23a25af6ad0c",
+        "mainSha256": "e68231bbba12cf8e83a803146de4d5abc026a4b46862f4859e5e23a25af6ad0c",
+        "identical": true
+      },
+      {
+        "path": "src/features/settings/ui/ReadingAssistanceSettings.vue",
+        "candidateSha256": "4d8a76e622f7f98683852758284c6aa0164bf517b83882d1254d204db72784d3",
+        "mainSha256": "4d8a76e622f7f98683852758284c6aa0164bf517b83882d1254d204db72784d3",
+        "identical": true
+      }
+    ],
+    "progressiveOrPopupMissing": false
+  },
+  "audit": {
+    "files": 692,
+    "staticCases": 11944
+  },
+  "builds": {
+    "compile": true,
+    "chrome": true,
+    "firefox": true,
+    "manifestVerifier": true,
+    "docs": true,
+    "userscript": true,
+    "userscriptVerifier": true,
+    "firefoxRuntime": false
+  },
+  "userscript": {
+    "baseline": {
+      "bytes": 2076455,
+      "sha256": "bf4c778dd1b66131cc75ecd70257144c0a678af1e355c72fc0d9294f9eeccd8f"
+    },
+    "candidate": {
+      "bytes": 2077027,
+      "sha256": "e601c46abb29b6ec5cc05f15fc250f0d51fbb00a52e56419255d811a36b60d52"
+    },
+    "sameLockfile": true,
+    "lockfileSha256": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a",
+    "sameDependencies": true,
+    "deltaBytes": 572,
+    "deltaPercent": 0.027546949006840987,
+    "oldBudget": 2077000,
+    "initialOverflowBytes": 27,
+    "newBudget": 2078000,
+    "remainingBytes": 973,
+    "baselineVerifierPassed": true,
+    "candidateVerifierPassed": true
+  },
+  "browser": {
+    "cases": 29,
+    "speechGroups": 8,
+    "inlineSourceSamples": 13,
+    "focusSamples": 332,
+    "consoleErrors": 0,
+    "ok": true,
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "windowPlacement": {
+      "mode": "background-visible-no-focus",
+      "visible": true,
+      "hidden": false,
+      "centered": true,
+      "windowState": "normal",
+      "bounds": {
+        "left": 212,
+        "top": -990,
+        "width": 1280,
+        "height": 900
+      },
+      "displayTarget": "secondary",
+      "source": "macos-nsscreen",
+      "screenIndex": 1,
+      "browserFrontmost": false,
+      "frontmostBefore": {
+        "pid": 64770,
+        "name": "ChatGPT"
+      },
+      "frontmostAfter": {
+        "pid": 64770,
+        "name": "ChatGPT"
+      }
+    },
+    "ownedBrowserClosed": true,
+    "profileRemoved": true,
+    "reportSha256": "da445ed24f02c7f1b10502d614af7607320bf71dde067d9987600e10532cfd74",
+    "archiveFormat": "compact summary; full browser report retained outside worktree",
+    "archiveSha256": "4f9388b1fc0ff06e5455964296e48d625d0155b286367d3f31002c4183df98cb"
+  },
+  "sourceSha256": {
+    "src/features/progressive-reading/ui/ProgressiveReading.vue": "0e1001e9e9022a973ad8ad3c405dba77f838c80d261e149a1440f0b1a5856399",
+    "src/features/progressive-reading/sourcePresentation.ts": "4b2c2096d29234b36ae65dfd05f396f3721f67e04d30344b3c27793b1460c010",
+    "src/features/progressive-reading/hints.ts": "5ccd30b4c94e77ec34ec134b3c1b393ec7cf7d499937b8a8305f36d21344a4d3",
+    "src/features/progressive-reading/speech.ts": "c45392d66407e08bb7a454c401d0f8e7eaf0a48bff14a66e91c615b66d100805",
+    "src/features/selection-translation/ui/SpeechFollowText.vue": "b8b7ecb8f141af0d31530fd3e79ceac8caf625675ce544c609a9dc90b2caca69",
+    "scripts/run-progressive-reading-test.cjs": "dc5e5b493ed74e51400aad7163a2ec785b1792969fb2b8949aea3c3905f0ada8",
+    "scripts/testing/focus-safe-browser.cjs": "06d94068ba1ae538b3c8a5675108ce75704dcde16e223d6164df9db971739739",
+    "tests/progressiveReadingSpeechUi.test.ts": "8170f1593361c9620b24e3056c613fab7c912439b43db41058272cae1d0fca54",
+    "tests/progressiveReadingSourcePresentation.test.ts": "55c31e5836341895f2f660522201d4c5254638b6c1fded0859067f62b48d2b81",
+    "docs/guide/webpage-translation.md": "ae61d2d4e1358e17b1c46ae2dbdf0e017bb4afd55d3b5999a358cd0a92a9c205",
+    "docs/en/guide/webpage-translation.md": "593036371541d8675067e07188d7f509ae031e83033585e61a313288dc5f548d",
+    "src/features/progressive-reading/README.md": "28127fa5ff34e10781cd7c3228375bef0652d0e66a2ddee420b59d599f03beb8",
+    "docs/reports/progressive-reading-source-marks-20261011.md": "8f938724587c021fbbb757d53b835bfba1f3c8a0fba487b5fe6123785dfb445d",
+    "scripts/verify-userscript-build.mjs": "30ca16f43ac4c16df8eb9851294456fcc22c077ad44235393f044d88d6eea084",
+    "vitest.coverage.config.ts": "026e3609d0d0bf4bee169b2e6b5a3cc6861dd23d748527fd3ec4dd2188c453de",
+    "tests/test-matrix.json": "ed4a89ed4284f0db7a3d8f6d96afa9c5594e571b327027bf4c82001d4dec8160",
+    "userscript/vite.config.ts": "347042407f5851c901b99ddc05649d7e8c89754a1989489d8fb3a4a5927d3461"
+  },
+  "logSha256": {
+    "focused": "6ae8eec40938ea368c29fa2f36729f8506ef54829ac067fa0b7a44788706c46d",
+    "compile": "2c1b0886d432adb4c8d977b0807bc013462d0ffa7dde3dee665cdaff5d86810e",
+    "chrome": "74c7101925e13e8553e1046d18760dc9af217587b0e8c3ba4f9d3950efe9e23c",
+    "firefox": "8c48e8fe4e5019cb4fd955af7d0bcdd51837d2849ea50918eae5e465135da093",
+    "docs": "a8236a5a3aaa3e011267ca46d23af162745599a3eafccb83094f92326c23a76d",
+    "browser": "b4c64f3e8aa500df8a361c8f6798bc249d4302aa9bc23f26a8cf4db2c1886f07",
+    "contracts": "009063749f995ad6b0cf66c9aba5bd38d55a6b8f13ff3c3b098a13e93a1578a8",
+    "audit": "f5856b1c0c0aa4bfde3c79d9b81c6f6f5d93176a36f26be250eac3805f6d86f0",
+    "manifests": "b684df3e7c227509c7a586b3ac245a99ab8bb84a952d1c3c20b3c71770c0cff0",
+    "userscript": "c11b18d94fe17feeef7799c14cc24d3038fd147810e3db12a123c0ecd41da902",
+    "userscript-verify": "e3a3e2bd3786f8fdf9c6f2493610ad7da971d70acfc0e24cbd5138628043dbe2",
+    "userscript-baseline": "619be2f0c44bc1b954680ba858017fa9ce7e0249d3ca5e0622f4850f4db317e1",
+    "userscript-baseline-verify": "1cb434b6d50ee102e15274bcb0bc5c425bddd69bfeaba6e42d821fc8a8f0a0d6"
+  },
+  "artifacts": {
+    "chromeContentSha256": "9ba1c2ce62035d4bedc9aded13f58116aeb72e9497561b3d5d60c0cc1f70104b",
+    "firefoxContentSha256": "afe438ff4eb6e52f42855f5285b56f0d7dcf45bb7788f919affb3f3c4ba2de65"
+  },
+  "boundaries": [
+    "Focused regression, not full repository regression.",
+    "Silent WAV and deterministic HTTP translation fixtures; not live voice quality or provider latency.",
+    "Firefox and userscript build/contracts only; no Firefox or script-manager runtime verification.",
+    "Prior source marks coverage evidence remains valid for unchanged source bytes; not counted as a fresh full coverage run.",
+    "Final changes after product validation only adjust the verifier budget and add this evidence report; production sources and artifacts unchanged."
+  ],
+  "archivedLogSha256": {
+    "contracts.log": "ebc5cd78bd9949b0975b97a98bac631d325f7e2db5b4ae239c92599a3d2bb853",
+    "userscript-baseline-verify.log": "1cb434b6d50ee102e15274bcb0bc5c425bddd69bfeaba6e42d821fc8a8f0a0d6",
+    "audit.log": "f5856b1c0c0aa4bfde3c79d9b81c6f6f5d93176a36f26be250eac3805f6d86f0",
+    "userscript-verify.log": "e3a3e2bd3786f8fdf9c6f2493610ad7da971d70acfc0e24cbd5138628043dbe2",
+    "focused.log": "07e96ca02b87533e7884d689da2a519ff59e0bb99f7d389a082976a801b940a0"
+  },
+  "localEvidenceDir": "/Users/thinkstu/Desktop/copy/fluentread-evidence/progressive-reading-merge-20261011"
+}

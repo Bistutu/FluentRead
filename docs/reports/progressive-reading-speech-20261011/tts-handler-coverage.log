@@ -1,0 +1,27 @@
+
+> FluentRead-流畅阅读@0.0.37 test /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011
+> node scripts/testing/run-resource-safe.mjs -- vitest run "tests/progressiveReadingTtsTransport.test.ts" "tests/selectionTtsBackgroundHandler.test.ts" "tests/selectionTtsPageOwnershipRuntime.test.ts" "tests/selectionTtsSenderFrameRuntime.test.ts" "tests/selectionTtsReceiverRecovery.test.ts" "--coverage" "--coverage.include=src/features/selection-translation/background/ttsHandler.ts" "--coverage.reporter=text" "--coverage.reporter=json" "--coverage.reportsDirectory=/private/tmp/progressive-reading-tts-handler-coverage" "--coverage.thresholds.statements=100" "--coverage.thresholds.branches=100" "--coverage.thresholds.functions=100" "--coverage.thresholds.lines=100"
+
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 3, command: vitest run tests/progressiveReadingTtsTransport.test.ts tests/selectionTtsBackgroundHandler.test.ts tests/selectionTtsPageOwnershipRuntime.test.ts tests/selectionTtsSenderFrameRuntime.test.ts tests/selectionTtsReceiverRecovery.test.ts --coverage --coverage.include=src/features/selection-translation/background/ttsHandler.ts --coverage.reporter=text --coverage.reporter=json --coverage.reportsDirectory=/private/tmp/progressive-reading-tts-handler-coverage --coverage.thresholds.statements=100 --coverage.thresholds.branches=100 --coverage.thresholds.functions=100 --coverage.thresholds.lines=100
+
+ RUN  v2.1.9 /Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011
+      Coverage enabled with v8
+
+ ✓ tests/selectionTtsBackgroundHandler.test.ts (39 tests) 388ms
+ ✓ tests/selectionTtsSenderFrameRuntime.test.ts (39 tests) 44ms
+ ✓ tests/selectionTtsReceiverRecovery.test.ts (15 tests) 26ms
+ ✓ tests/selectionTtsPageOwnershipRuntime.test.ts (22 tests) 21ms
+ ✓ tests/progressiveReadingTtsTransport.test.ts (22 tests) 14ms
+
+ Test Files  5 passed (5)
+      Tests  137 passed (137)
+   Start at  17:35:12
+   Duration  2.30s (transform 286ms, setup 0ms, collect 434ms, tests 492ms, environment 1ms, prepare 215ms)
+
+ % Coverage report from v8
+---------------|---------|----------|---------|---------|-------------------
+File           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+---------------|---------|----------|---------|---------|-------------------
+All files      |     100 |      100 |     100 |     100 |
+ ttsHandler.ts |     100 |      100 |     100 |     100 |
+---------------|---------|----------|---------|---------|-------------------

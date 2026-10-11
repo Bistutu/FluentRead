@@ -1,0 +1,1402 @@
+{
+  "ok": true,
+  "extensionDir": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/.output/chrome-mv3",
+  "browserPath": "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+  "profileMode": "fresh-mkdtemp-owned",
+  "profileDir": "/private/tmp/fluentread-progressive-reading-profile-zcOVjq",
+  "artifact": "production",
+  "cases": [
+    {
+      "variants": [
+        {
+          "viewportWidth": 400,
+          "platform": "MacIntel",
+          "shellWidth": 320,
+          "horizontalOverflow": false,
+          "shortcutChips": 0,
+          "legacyTranslationGlyph": false,
+          "siteRuleRows": [
+            {
+              "borderWidths": [
+                "0px",
+                "0px",
+                "0px",
+                "0px"
+              ],
+              "background": "rgba(0, 0, 0, 0)",
+              "backgroundImage": "none",
+              "shadow": "none"
+            }
+          ],
+          "buttons": [
+            {
+              "id": "page-translation",
+              "text": "翻译（⌥+T）",
+              "title": "翻译当前网页 · ⌥+T",
+              "ariaLabel": "翻译当前网页",
+              "captionLines": 1,
+              "left": 29,
+              "right": 187,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 158,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "section-translation",
+              "text": "局部",
+              "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "captionLines": 1,
+              "left": 193,
+              "right": 239,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "progressive-reading",
+              "text": "学习",
+              "title": "",
+              "ariaLabel": "学习",
+              "captionLines": 1,
+              "left": 245,
+              "right": 291,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            }
+          ],
+          "label": "popup-400-progressive-entry"
+        },
+        {
+          "viewportWidth": 320,
+          "platform": "MacIntel",
+          "shellWidth": 320,
+          "horizontalOverflow": false,
+          "shortcutChips": 0,
+          "legacyTranslationGlyph": false,
+          "siteRuleRows": [
+            {
+              "borderWidths": [
+                "0px",
+                "0px",
+                "0px",
+                "0px"
+              ],
+              "background": "rgba(0, 0, 0, 0)",
+              "backgroundImage": "none",
+              "shadow": "none"
+            }
+          ],
+          "buttons": [
+            {
+              "id": "page-translation",
+              "text": "翻译（⌥+T）",
+              "title": "翻译当前网页 · ⌥+T",
+              "ariaLabel": "翻译当前网页",
+              "captionLines": 1,
+              "left": 29,
+              "right": 187,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 158,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "section-translation",
+              "text": "局部",
+              "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "captionLines": 1,
+              "left": 193,
+              "right": 239,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "progressive-reading",
+              "text": "学习",
+              "title": "",
+              "ariaLabel": "学习",
+              "captionLines": 1,
+              "left": 245,
+              "right": 291,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            }
+          ],
+          "label": "popup-320-progressive-entry"
+        },
+        {
+          "viewportWidth": 320,
+          "platform": "MacIntel",
+          "shellWidth": 320,
+          "horizontalOverflow": false,
+          "shortcutChips": 0,
+          "legacyTranslationGlyph": false,
+          "siteRuleRows": [
+            {
+              "borderWidths": [
+                "0px",
+                "0px",
+                "0px",
+                "0px"
+              ],
+              "background": "rgba(0, 0, 0, 0)",
+              "backgroundImage": "none",
+              "shadow": "none"
+            }
+          ],
+          "buttons": [
+            {
+              "id": "page-translation",
+              "text": "翻译",
+              "title": "翻译当前网页 · ⌃+⌥+⇧+Arrowright",
+              "ariaLabel": "翻译当前网页",
+              "captionLines": 1,
+              "left": 29,
+              "right": 187,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 158,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "section-translation",
+              "text": "局部",
+              "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "captionLines": 1,
+              "left": 193,
+              "right": 239,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "progressive-reading",
+              "text": "学习",
+              "title": "",
+              "ariaLabel": "学习",
+              "captionLines": 1,
+              "left": 245,
+              "right": 291,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            }
+          ],
+          "label": "popup-320-long-hotkey"
+        },
+        {
+          "viewportWidth": 400,
+          "platform": "MacIntel",
+          "shellWidth": 320,
+          "horizontalOverflow": false,
+          "shortcutChips": 0,
+          "legacyTranslationGlyph": false,
+          "siteRuleRows": [
+            {
+              "borderWidths": [
+                "0px",
+                "0px",
+                "0px",
+                "0px"
+              ],
+              "background": "rgba(0, 0, 0, 0)",
+              "backgroundImage": "none",
+              "shadow": "none"
+            }
+          ],
+          "buttons": [
+            {
+              "id": "page-translation",
+              "text": "翻译",
+              "title": "翻译当前网页 · ⌃+⌥+⇧+Arrowright",
+              "ariaLabel": "翻译当前网页",
+              "captionLines": 1,
+              "left": 29,
+              "right": 187,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 158,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "section-translation",
+              "text": "局部",
+              "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "captionLines": 1,
+              "left": 193,
+              "right": 239,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            },
+            {
+              "id": "progressive-reading",
+              "text": "学习",
+              "title": "",
+              "ariaLabel": "学习",
+              "captionLines": 1,
+              "left": 245,
+              "right": 291,
+              "top": 182.8984375,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
+              "clipped": false,
+              "withinShell": true,
+              "visible": true
+            }
+          ],
+          "label": "popup-400-long-hotkey"
+        }
+      ],
+      "name": "320px and 400px real Popup documents expose three compact actions in one row, with an inline default shortcut and complete long shortcuts in real title attributes, without separate keycaps, a legacy glyph or site-rule frame"
+    },
+    {
+      "optionsUrl": "chrome-extension://djnlaiohfaaifbibleebjggkghlmcpcj/options.html?target=progressive-reading#settings-translation",
+      "helpScreenshot": "/private/tmp/fluentread-progressive-learning-integrated-final/popup-learning-help.png",
+      "name": "Learning defaults to no binding; real hover, keyboard focus, settings-link travel, Escape and reentry reveal help and open its dedicated settings panel"
+    },
+    {
+      "shortcut": "Ctrl+Alt+L",
+      "recorded": "Control+Option+L",
+      "hint": "快捷键：Control+Option+L",
+      "name": "A real custom-key recording persists across closing and reopening options and is reflected in the Popup help"
+    },
+    {
+      "name": "The configured shortcut opens one panel, yields to real input and contenteditable focus, and stops responding immediately after the real clear-and-confirm action"
+    },
+    {
+      "name": "Popup entry opens four modes without fabricating a source or requesting translation"
+    },
+    {
+      "name": "Original source remains readable, selectable and unchanged, with no automatic provider call"
+    },
+    {
+      "terms": [
+        {
+          "term": "take into account",
+          "text": "take into account考虑；把……计入 收藏参考查询表达"
+        },
+        {
+          "term": "bank",
+          "text": "bank河岸 收藏参考查询表达"
+        }
+      ],
+      "name": "Multiword hints use the learning library, matching manual mastery retreats and unfamiliar senses remain available"
+    },
+    {
+      "qualityBoundary": "The bank response is a deterministic transport fixture; this verifies the requested text and rendering, not word-sense accuracy.",
+      "name": "A familiar word in a different saved context can explicitly request its translation without changing mastery"
+    },
+    {
+      "name": "The reader can request a mastered expression again without relearning or feedback"
+    },
+    {
+      "clues": [
+        "If条件检查结论成立需要什么条件；此标记不判断条件是否已满足。详细信息\n:host summary {\n  display: list-item;\n  counter-increment: list-item 0;\n  list-style: disclosure-closed inside;\n}\n:host([open]) summary {\n  list-style-type: disclosure-open;\n}",
+        "not否定 / 例外检查这里否定或排除的对象；此标记不确定否定覆盖整句还是局部。详细信息\n:host summary {\n  display: list-item;\n  counter-increment: list-item 0;\n  list-style: disclosure-closed inside;\n}\n:host([open]) summary {\n  list-style-type: disclosure-open;\n}",
+        "may可能性保留原文的不确定程度，不能直接读成确定事实。详细信息\n:host summary {\n  display: list-item;\n  counter-increment: list-item 0;\n  list-style: disclosure-closed inside;\n}\n:host([open]) summary {\n  list-style-type: disclosure-open;\n}",
+        "only if条件检查结论成立需要什么条件；此标记不判断条件是否已满足。详细信息\n:host summary {\n  display: list-item;\n  counter-increment: list-item 0;\n  list-style: disclosure-closed inside;\n}\n:host([open]) summary {\n  list-style-type: disclosure-open;\n}",
+        "only适用范围检查对象、数量或适用场景，避免把有限范围读成普遍结论。详细信息\n:host summary {\n  display: list-item;\n  counter-increment: list-item 0;\n  list-style: disclosure-closed inside;\n}\n:host([open]) summary {\n  list-style-type: disclosure-open;\n}"
+      ],
+      "name": "Logic mode grounds clues in source words, exposes explanations through trusted keyboard input and does not make an additional AI request"
+    },
+    {
+      "requests": [
+        {
+          "source": "bank",
+          "model": "progressive-reading-fixture",
+          "at": 1791709986981
+        },
+        {
+          "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+          "model": "progressive-reading-fixture",
+          "at": 1791709987435
+        }
+      ],
+      "name": "One click reaches complete bilingual from logic and mode switches reuse the same reading-session translation"
+    },
+    {
+      "name": "Trusted keyboard Tab and Enter choose a help mode"
+    },
+    {
+      "name": "Existing explicit mastery and relearn updates refresh help without a parallel learning state"
+    },
+    {
+      "palette": {
+        "390-light": {
+          "scheme": "light",
+          "background": "rgb(255, 255, 255)",
+          "ink": "rgb(23, 32, 51)",
+          "selectedBackground": "rgb(255, 240, 244)",
+          "selectedInk": "rgb(220, 49, 95)",
+          "textContrast": 16.268480224545662
+        },
+        "390-dark": {
+          "scheme": "dark",
+          "background": "rgb(40, 40, 48)",
+          "ink": "rgb(241, 241, 244)",
+          "selectedBackground": "rgba(239, 71, 118, 0.16)",
+          "selectedInk": "rgb(255, 173, 198)",
+          "textContrast": 12.968772087702426
+        },
+        "auto-dark": {
+          "scheme": "dark",
+          "background": "rgb(40, 40, 48)",
+          "ink": "rgb(241, 241, 244)",
+          "selectedBackground": "rgba(255, 237, 242, 0.92)",
+          "selectedInk": "rgb(255, 173, 198)",
+          "textContrast": 12.968772087702426
+        },
+        "auto-light": {
+          "scheme": "light",
+          "background": "rgb(255, 255, 255)",
+          "ink": "rgb(23, 32, 51)",
+          "selectedBackground": "rgb(255, 240, 244)",
+          "selectedInk": "rgb(220, 49, 95)",
+          "textContrast": 16.268480224545662
+        }
+      },
+      "name": "390px panel keeps controls inside the viewport, uses readable FluentRead light/dark palettes and follows automatic system-theme changes"
+    },
+    {
+      "steps": 8,
+      "full": true,
+      "visible": true,
+      "name": "390px trusted Tab scrolls the long phrase list to a visible full-translation action; Enter activates it",
+      "scrollTop": 222.5
+    },
+    {
+      "name": "Host links and buttons remain usable; replacing a selected DOM node permits explicit recapture with the new source"
+    },
+    {
+      "name": "Closing during a deterministic delayed request prevents its old answer from appearing after reopening"
+    },
+    {
+      "name": "Close, reopen and trusted Escape remove the panel without duplicate hosts"
+    },
+    {
+      "source": "If the route changes, this delayed reading request must not remain attached to the old page.",
+      "route": "http://127.0.0.1:54652/article?route=reading",
+      "name": "Pure history.pushState with unchanged host DOM cancels the old request through the real MAIN bridge, closes help and permits reopening"
+    },
+    {
+      "disabledResponse": {
+        "status": "disabled"
+      },
+      "name": "Global disable cleans the mount and blocks reopen; reenable works and actual navigation leaves no orphaned panel"
+    },
+    {
+      "name": "Opening, mode switches, scrolling and reading do not update learning records"
+    }
+  ],
+  "screenshots": [
+    "popup-400-progressive-entry.png",
+    "popup-320-progressive-entry.png",
+    "popup-320-long-hotkey.png",
+    "popup-400-long-hotkey.png",
+    "popup-learning-help.png",
+    "learning-settings-default.png",
+    "panel-original.png",
+    "panel-phrases.png",
+    "panel-logic.png",
+    "desktop-bilingual.png",
+    "panel-bilingual.png",
+    "390-light-phrases.png",
+    "390-dark-phrases.png",
+    "390-keyboard-bilingual.png"
+  ],
+  "consoleErrors": [],
+  "focusSamples": [
+    {
+      "label": "launch",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-400-progressive-entry:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-400-progressive-entry:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-320-progressive-entry:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-320-progressive-entry:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-320-long-hotkey:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-320-long-hotkey:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-400-long-hotkey:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-400-long-hotkey:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-learning-help:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-learning-help:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "learning-settings-default:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "learning-settings-default:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "panel-original:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "panel-original:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "panel-phrases:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "panel-phrases:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "panel-logic:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "panel-logic:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "desktop-bilingual:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "desktop-bilingual:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "panel-bilingual:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "panel-bilingual:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "390-light-phrases:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "390-light-phrases:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "390-dark-phrases:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "390-dark-phrases:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "390-keyboard-bilingual:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "390-keyboard-bilingual:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "completed",
+      "pid": 73685,
+      "name": "ChatGPT"
+    }
+  ],
+  "executionScope": "progressive-reading-targeted-flow",
+  "evidenceBoundary": "Real production extension, real selection, DOM, trusted CDP keyboard/mouse and Vue Shadow UI in an isolated Edge browser. Local deterministic HTTP translation transport, Popup active-tab lookup and toolbar-close capture are fixtures. No live-provider, Firefox runtime, native-toolbar or human-comprehension claim.",
+  "reuseBoundary": "This browser run verifies reuse of a translation already obtained within the same reading session. Reuse of a preexisting bilingual webpage artifact is outside this runner; its pure excerpt matcher is covered separately by unit tests.",
+  "ownedBrowserClosed": true,
+  "profileRemoved": true,
+  "launchMode": "macos-background-cdp",
+  "focusPolicy": "launchservices-no-foreground",
+  "windowPlacement": {
+    "mode": "background-visible-no-focus",
+    "visible": true,
+    "hidden": false,
+    "centered": true,
+    "windowState": "normal",
+    "bounds": {
+      "left": 212,
+      "top": -990,
+      "width": 1280,
+      "height": 900
+    },
+    "displayTarget": "secondary",
+    "source": "macos-nsscreen",
+    "screenIndex": 1,
+    "browserFrontmost": false,
+    "frontmostBefore": {
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    "frontmostAfter": {
+      "pid": 73685,
+      "name": "ChatGPT"
+    }
+  },
+  "manifest": {
+    "name": "FluentRead-流畅阅读",
+    "version": "0.0.37"
+  },
+  "configSummary": {
+    "on": true,
+    "service": "custom:progressive-reading-fixture",
+    "from": "en",
+    "to": "zh-Hans",
+    "display": 1,
+    "autoTranslate": false,
+    "vocabularyBookEnabled": true,
+    "vocabularyReencounterEnabled": false,
+    "disableSelectionTranslator": true
+  },
+  "popupLayout": [
+    {
+      "viewportWidth": 400,
+      "platform": "MacIntel",
+      "shellWidth": 320,
+      "horizontalOverflow": false,
+      "shortcutChips": 0,
+      "legacyTranslationGlyph": false,
+      "siteRuleRows": [
+        {
+          "borderWidths": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "background": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "shadow": "none"
+        }
+      ],
+      "buttons": [
+        {
+          "id": "page-translation",
+          "text": "翻译（⌥+T）",
+          "title": "翻译当前网页 · ⌥+T",
+          "ariaLabel": "翻译当前网页",
+          "captionLines": 1,
+          "left": 29,
+          "right": 187,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 158,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "section-translation",
+          "text": "局部",
+          "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "captionLines": 1,
+          "left": 193,
+          "right": 239,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "progressive-reading",
+          "text": "学习",
+          "title": "",
+          "ariaLabel": "学习",
+          "captionLines": 1,
+          "left": 245,
+          "right": 291,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        }
+      ],
+      "label": "popup-400-progressive-entry"
+    },
+    {
+      "viewportWidth": 320,
+      "platform": "MacIntel",
+      "shellWidth": 320,
+      "horizontalOverflow": false,
+      "shortcutChips": 0,
+      "legacyTranslationGlyph": false,
+      "siteRuleRows": [
+        {
+          "borderWidths": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "background": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "shadow": "none"
+        }
+      ],
+      "buttons": [
+        {
+          "id": "page-translation",
+          "text": "翻译（⌥+T）",
+          "title": "翻译当前网页 · ⌥+T",
+          "ariaLabel": "翻译当前网页",
+          "captionLines": 1,
+          "left": 29,
+          "right": 187,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 158,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "section-translation",
+          "text": "局部",
+          "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "captionLines": 1,
+          "left": 193,
+          "right": 239,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "progressive-reading",
+          "text": "学习",
+          "title": "",
+          "ariaLabel": "学习",
+          "captionLines": 1,
+          "left": 245,
+          "right": 291,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        }
+      ],
+      "label": "popup-320-progressive-entry"
+    },
+    {
+      "viewportWidth": 320,
+      "platform": "MacIntel",
+      "shellWidth": 320,
+      "horizontalOverflow": false,
+      "shortcutChips": 0,
+      "legacyTranslationGlyph": false,
+      "siteRuleRows": [
+        {
+          "borderWidths": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "background": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "shadow": "none"
+        }
+      ],
+      "buttons": [
+        {
+          "id": "page-translation",
+          "text": "翻译",
+          "title": "翻译当前网页 · ⌃+⌥+⇧+Arrowright",
+          "ariaLabel": "翻译当前网页",
+          "captionLines": 1,
+          "left": 29,
+          "right": 187,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 158,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "section-translation",
+          "text": "局部",
+          "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "captionLines": 1,
+          "left": 193,
+          "right": 239,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "progressive-reading",
+          "text": "学习",
+          "title": "",
+          "ariaLabel": "学习",
+          "captionLines": 1,
+          "left": 245,
+          "right": 291,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        }
+      ],
+      "label": "popup-320-long-hotkey"
+    },
+    {
+      "viewportWidth": 400,
+      "platform": "MacIntel",
+      "shellWidth": 320,
+      "horizontalOverflow": false,
+      "shortcutChips": 0,
+      "legacyTranslationGlyph": false,
+      "siteRuleRows": [
+        {
+          "borderWidths": [
+            "0px",
+            "0px",
+            "0px",
+            "0px"
+          ],
+          "background": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "shadow": "none"
+        }
+      ],
+      "buttons": [
+        {
+          "id": "page-translation",
+          "text": "翻译",
+          "title": "翻译当前网页 · ⌃+⌥+⇧+Arrowright",
+          "ariaLabel": "翻译当前网页",
+          "captionLines": 1,
+          "left": 29,
+          "right": 187,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 158,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "section-translation",
+          "text": "局部",
+          "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "captionLines": 1,
+          "left": 193,
+          "right": 239,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        },
+        {
+          "id": "progressive-reading",
+          "text": "学习",
+          "title": "",
+          "ariaLabel": "学习",
+          "captionLines": 1,
+          "left": 245,
+          "right": 291,
+          "top": 182.8984375,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
+          "clipped": false,
+          "withinShell": true,
+          "visible": true
+        }
+      ],
+      "label": "popup-400-long-hotkey"
+    }
+  ],
+  "layout": {
+    "desktop": {
+      "left": 764,
+      "right": 1184,
+      "top": 329.640625,
+      "bottom": 834,
+      "width": 420,
+      "height": 504.359375,
+      "viewportWidth": 1200,
+      "viewportHeight": 850,
+      "horizontalOverflow": false,
+      "controls": [
+        {
+          "text": "关闭渐进阅读",
+          "left": 1139,
+          "right": 1167,
+          "width": 28,
+          "height": 28
+        },
+        {
+          "text": "读取选中正文",
+          "left": 781,
+          "right": 1167,
+          "width": 386,
+          "height": 34
+        },
+        {
+          "text": "只读原文",
+          "left": 781,
+          "right": 971,
+          "width": 190,
+          "height": 34
+        },
+        {
+          "text": "短语提示",
+          "left": 977,
+          "right": 1167,
+          "width": 190,
+          "height": 34
+        },
+        {
+          "text": "逻辑线索",
+          "left": 781,
+          "right": 971,
+          "width": 190,
+          "height": 34
+        },
+        {
+          "text": "完整双语",
+          "left": 977,
+          "right": 1167,
+          "width": 190,
+          "height": 34
+        },
+        {
+          "text": "完整双语",
+          "left": 781,
+          "right": 851,
+          "width": 70,
+          "height": 32.796875
+        }
+      ]
+    },
+    "390-light": {
+      "left": 12,
+      "right": 378,
+      "top": 308,
+      "bottom": 788,
+      "width": 366,
+      "height": 480,
+      "viewportWidth": 390,
+      "viewportHeight": 800,
+      "horizontalOverflow": false,
+      "controls": [
+        {
+          "text": "关闭渐进阅读",
+          "left": 335,
+          "right": 363,
+          "width": 28,
+          "height": 28
+        },
+        {
+          "text": "读取选中正文",
+          "left": 27,
+          "right": 363,
+          "width": 336,
+          "height": 34
+        },
+        {
+          "text": "只读原文",
+          "left": 27,
+          "right": 192,
+          "width": 165,
+          "height": 34
+        },
+        {
+          "text": "短语提示",
+          "left": 198,
+          "right": 363,
+          "width": 165,
+          "height": 34
+        },
+        {
+          "text": "逻辑线索",
+          "left": 27,
+          "right": 192,
+          "width": 165,
+          "height": 34
+        },
+        {
+          "text": "完整双语",
+          "left": 198,
+          "right": 363,
+          "width": 165,
+          "height": 34
+        },
+        {
+          "text": "仍需要帮助",
+          "left": 285,
+          "right": 363,
+          "width": 78,
+          "height": 26.796875
+        },
+        {
+          "text": "查询表达",
+          "left": 27,
+          "right": 93,
+          "width": 66,
+          "height": 26.796875
+        },
+        {
+          "text": "查询表达",
+          "left": 27,
+          "right": 93,
+          "width": 66,
+          "height": 26.796875
+        },
+        {
+          "text": "完整双语",
+          "left": 27,
+          "right": 97,
+          "width": 70,
+          "height": 32.796875
+        }
+      ]
+    },
+    "390-dark": {
+      "left": 12,
+      "right": 378,
+      "top": 308,
+      "bottom": 788,
+      "width": 366,
+      "height": 480,
+      "viewportWidth": 390,
+      "viewportHeight": 800,
+      "horizontalOverflow": false,
+      "controls": [
+        {
+          "text": "关闭渐进阅读",
+          "left": 335,
+          "right": 363,
+          "width": 28,
+          "height": 28
+        },
+        {
+          "text": "读取选中正文",
+          "left": 27,
+          "right": 363,
+          "width": 336,
+          "height": 34
+        },
+        {
+          "text": "只读原文",
+          "left": 27,
+          "right": 192,
+          "width": 165,
+          "height": 34
+        },
+        {
+          "text": "短语提示",
+          "left": 198,
+          "right": 363,
+          "width": 165,
+          "height": 34
+        },
+        {
+          "text": "逻辑线索",
+          "left": 27,
+          "right": 192,
+          "width": 165,
+          "height": 34
+        },
+        {
+          "text": "完整双语",
+          "left": 198,
+          "right": 363,
+          "width": 165,
+          "height": 34
+        },
+        {
+          "text": "仍需要帮助",
+          "left": 285,
+          "right": 363,
+          "width": 78,
+          "height": 26.796875
+        },
+        {
+          "text": "查询表达",
+          "left": 27,
+          "right": 93,
+          "width": 66,
+          "height": 26.796875
+        },
+        {
+          "text": "查询表达",
+          "left": 27,
+          "right": 93,
+          "width": 66,
+          "height": 26.796875
+        },
+        {
+          "text": "完整双语",
+          "left": 27,
+          "right": 97,
+          "width": 70,
+          "height": 32.796875
+        }
+      ]
+    }
+  },
+  "palette": {
+    "390-light": {
+      "scheme": "light",
+      "background": "rgb(255, 255, 255)",
+      "ink": "rgb(23, 32, 51)",
+      "selectedBackground": "rgb(255, 240, 244)",
+      "selectedInk": "rgb(220, 49, 95)",
+      "textContrast": 16.268480224545662
+    },
+    "390-dark": {
+      "scheme": "dark",
+      "background": "rgb(40, 40, 48)",
+      "ink": "rgb(241, 241, 244)",
+      "selectedBackground": "rgba(239, 71, 118, 0.16)",
+      "selectedInk": "rgb(255, 173, 198)",
+      "textContrast": 12.968772087702426
+    },
+    "auto-dark": {
+      "scheme": "dark",
+      "background": "rgb(40, 40, 48)",
+      "ink": "rgb(241, 241, 244)",
+      "selectedBackground": "rgba(255, 237, 242, 0.92)",
+      "selectedInk": "rgb(255, 173, 198)",
+      "textContrast": 12.968772087702426
+    },
+    "auto-light": {
+      "scheme": "light",
+      "background": "rgb(255, 255, 255)",
+      "ink": "rgb(23, 32, 51)",
+      "selectedBackground": "rgb(255, 240, 244)",
+      "selectedInk": "rgb(220, 49, 95)",
+      "textContrast": 16.268480224545662
+    }
+  },
+  "requests": [
+    {
+      "source": "bank",
+      "model": "progressive-reading-fixture",
+      "at": 1791709986981
+    },
+    {
+      "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+      "model": "progressive-reading-fixture",
+      "at": 1791709987435
+    },
+    {
+      "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+      "model": "progressive-reading-fixture",
+      "at": 1791709990010
+    },
+    {
+      "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
+      "model": "progressive-reading-fixture",
+      "at": 1791709991116
+    },
+    {
+      "source": "Unless the review is complete, the result may not apply to a new bank account.",
+      "model": "progressive-reading-fixture",
+      "at": 1791709991743
+    },
+    {
+      "source": "Unless the review is complete, the result may not apply to a new bank account.",
+      "model": "progressive-reading-fixture",
+      "at": 1791709993537
+    },
+    {
+      "source": "If the route changes, this delayed reading request must not remain attached to the old page.",
+      "model": "progressive-reading-fixture",
+      "at": 1791709994978
+    }
+  ],
+  "hostLifecycle": [
+    {
+      "event": "pageshow",
+      "at": 1791709979030
+    },
+    {
+      "event": "pagehide",
+      "at": 1791709998304
+    },
+    {
+      "event": "pageshow",
+      "at": 1791709998364
+    },
+    {
+      "event": "pagehide",
+      "at": 1791709998777
+    }
+  ],
+  "originalArtifactsDirectory": "/private/tmp/fluentread-progressive-learning-integrated-final"
+}

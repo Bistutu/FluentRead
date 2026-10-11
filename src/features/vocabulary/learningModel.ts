@@ -368,6 +368,7 @@ export type VocabularyGetByTermRequest = {
 
 export type VocabularyBookRequest =
   | { type: typeof VOCABULARY_BOOK_MESSAGE; action: 'list'; options?: VocabularyListOptions }
+  | { type: typeof VOCABULARY_BOOK_MESSAGE; action: 'readingHints'; input: import('./protocol').VocabularyReadingHintsInput }
   | { type: typeof VOCABULARY_BOOK_MESSAGE; action: 'get'; entryId: string }
   | VocabularyGetByTermRequest
   | { type: typeof VOCABULARY_BOOK_MESSAGE; action: 'upsert'; input: VocabularyUpsertInput }

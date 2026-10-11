@@ -1,7 +1,7 @@
 /**
  * @file src/app/popup/pageActions.ts
- * 文件职责：管理 Popup 的标签页状态读取、全文/局部操作和站点规则即时翻译归属。
- * 主要内容：区分状态读取、页面翻译与规则保存的操作归属；写规则前复验实际标签页，确认后台保存后反馈，禁用规则可中断翻译；原生在线 PDF 交给扩展阅读器，导航和失活使旧回复失效。
+ * 文件职责：管理 Popup 的标签页状态读取、全文/局部操作、渐进阅读入口和站点规则即时翻译归属。
+ * 主要内容：区分状态读取、页面操作与规则保存的归属；写规则前复验实际标签页，确认后台保存后反馈，禁用规则可中断翻译；渐进阅读不预检翻译凭据，原生在线 PDF 交给扩展阅读器，导航和失活使旧回复失效。
  * 模块边界：只通过注入端口读取标签页、发送已有消息、提交站点字段补丁和修改界面状态，不直接访问存储、创建观察器或实现网页翻译。
  */
 import type {Config} from '@/src/core/config/model'
@@ -103,6 +103,19 @@ export function createPopupPageActions(ports: PopupPagePorts) {
     if (!ports.active() || state.busy || !ports.config().on || disabled()) return
     return translate('section', () => ports.close(), ports.translate('popup.sectionTranslationUnavailable'), true)
   }
+  async function reading() {
+    if (ports.thunderbird || getPdfSourceUrl(state.url)) return
+    const task = begin();if (!task) return
+    try {
+      const tabId = await target(task.current);if (tabId === undefined || !task.current()) return
+      if (ports.thunderbird || getPdfSourceUrl(state.url)) return
+      const response = await ports.send(tabId, {type: 'openProgressiveReading'}) as {status?: unknown} | undefined
+      if (!task.current()) return
+      if (response?.status !== 'success') throw new Error('Reading assistance unavailable')
+      ports.close()
+    } catch {if (task.current()) ports.notice('当前页面暂不支持渐进阅读，请刷新后重试', 'error')}
+    finally {task.finish()}
+  }
   function beginRule(enabled: boolean, interrupt = false) {
     if (!ports.active() || state.savingRule || (!interrupt && state.busy) || !state.domain || state.tabId === null || typeof enabled !== 'boolean') return
     const token = Symbol(), before = revision, tabId = state.tabId, url = state.url, domain = state.domain
@@ -151,5 +164,5 @@ export function createPopupPageActions(ports: PopupPagePorts) {
     } catch {if (task.current()) ports.notice('无法读取当前网站，请重试', 'error')}
     finally {task.finish()}
   }
-  return {hydrate, toggle, section, setAlways, setDisabled, invalidate}
+  return {hydrate, toggle, section, reading, setAlways, setDisabled, invalidate}
 }
