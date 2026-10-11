@@ -8,21 +8,13 @@ import { createApp, type App, type Component } from 'vue'
 import {prepareInterfaceFont} from '@/src/ui/interfaceAppearance'
 import {
   ElButton,
-  ElCollapse,
-  ElCollapseItem,
-  ElCol,
   ElDialog,
-  ElDivider,
-  ElEmpty,
   ElIcon,
   ElInput,
   ElInputNumber,
-  ElLink,
   ElOption,
   ElOptionGroup,
-  ElRow,
   ElSwitch,
-  ElText,
   ElTooltip,
 } from 'element-plus'
 import {
@@ -34,7 +26,6 @@ import {
   Loading,
   Refresh,
   Setting,
-  Star,
   Upload,
   Warning,
   WarningFilled,
@@ -43,22 +34,15 @@ import OptionsApp from './OptionsApp.vue'
 import UiSelect from '@/src/ui/components/UiSelect.vue'
 import 'element-plus/es/components/base/style/css'
 import 'element-plus/es/components/button/style/css'
-import 'element-plus/es/components/collapse/style/css'
-import 'element-plus/es/components/col/style/css'
 import 'element-plus/es/components/dialog/style/css'
-import 'element-plus/es/components/divider/style/css'
-import 'element-plus/es/components/empty/style/css'
 import 'element-plus/es/components/icon/style/css'
 import 'element-plus/es/components/input/style/css'
 import 'element-plus/es/components/input-number/style/css'
-import 'element-plus/es/components/link/style/css'
 import 'element-plus/es/components/option/style/css'
 import 'element-plus/es/components/option-group/style/css'
 import 'element-plus/es/components/popover/style/css'
-import 'element-plus/es/components/row/style/css'
 import 'element-plus/es/components/select/style/css'
 import 'element-plus/es/components/switch/style/css'
-import 'element-plus/es/components/text/style/css'
 import 'element-plus/es/components/tooltip/style/css'
 import 'element-plus/es/components/message/style/css'
 import 'element-plus/es/components/message-box/style/css'
@@ -71,21 +55,13 @@ import {ensureUiLanguageBundle} from '@/src/platform/i18n/uiLanguageBundles'
 
 const ELEMENT_COMPONENTS: Component[] = [
   ElButton,
-  ElCollapse,
-  ElCollapseItem,
-  ElCol,
   ElDialog,
-  ElDivider,
-  ElEmpty,
   ElIcon,
   ElInput,
   ElInputNumber,
-  ElLink,
   ElOption,
   ElOptionGroup,
-  ElRow,
   ElSwitch,
-  ElText,
   ElTooltip,
 ]
 
@@ -98,7 +74,6 @@ const ELEMENT_ICONS: Record<string, Component> = {
   Loading,
   Refresh,
   Setting,
-  Star,
   Upload,
   Warning,
   WarningFilled,

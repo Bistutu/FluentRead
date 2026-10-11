@@ -88,7 +88,8 @@ vi.mock('element-plus', async () => {
     const NumberInput = defineComponent({props: ['modelValue', 'disabled'], emits: ['update:modelValue'], setup: (props, {attrs, emit}) => () => h('input', {...attrs, type: 'number', value: props.modelValue, disabled: props.disabled,
         onInput: (event: Event) => emit('update:modelValue', Number((event.target as HTMLInputElement).value))})});
     const Switch = defineComponent({props: ['modelValue', 'disabled'], emits: ['change'], setup: (props, {attrs, emit}) => () => h('input', {...attrs, type: 'checkbox', checked: props.modelValue, disabled: props.disabled, onChange: (event: Event) => emit('change', (event.target as HTMLInputElement).checked)})});
-    return {ElSelect: Select, ElOption: Option, ElTooltip: Slot, ElDialog: Dialog, ElButton: Button, ElInputNumber: NumberInput, ElSwitch: Switch,
+    // 本组选择端口不验证鼠标外部点击；该公开导出由共享 UI 指令测试与真实浏览器负责。
+    return {ClickOutside: {}, ElSelect: Select, ElOption: Option, ElTooltip: Slot, ElDialog: Dialog, ElButton: Button, ElInputNumber: NumberInput, ElSwitch: Switch,
         ElMessage: {success: (...args: unknown[]) => ports.messages('success', ...args), error: (...args: unknown[]) => ports.messages('error', ...args)},
         ElMessageBox: {confirm: (...args: unknown[]) => ports.confirm(...args)}};
 });

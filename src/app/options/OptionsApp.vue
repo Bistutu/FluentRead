@@ -10,7 +10,7 @@
       <a class="brand" :href="websiteUrl" target="_blank" rel="noopener noreferrer" :aria-label="t('options.aboutWebsite')" :title="t('options.aboutWebsite')">
         <img :src="iconUrl" alt="" />
         <div class="brand-copy">
-          <strong>流畅阅读</strong>
+          <strong data-i18n-ignore>{{ t('common.brand') }}</strong>
           <p class="sidebar-tagline" data-testid="brand-tagline" data-i18n-ignore>{{ t('brand.tagline') }}</p>
         </div>
       </a>

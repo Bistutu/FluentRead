@@ -205,9 +205,8 @@ describe('options UI composition architecture', () => {
     const popupEntry = source('src/app/popup/index.ts')
     const optionsEntry = source('src/app/options/index.ts')
     const requiredOptionsStyles = [
-      'base', 'button', 'collapse', 'col', 'dialog', 'divider', 'empty', 'icon', 'input',
-      'input-number', 'link', 'option', 'option-group', 'popover', 'row', 'select', 'switch',
-      'text', 'tooltip', 'message', 'message-box', 'color-picker',
+      'base', 'button', 'dialog', 'icon', 'input', 'input-number', 'option', 'option-group',
+      'popover', 'select', 'switch', 'tooltip', 'message', 'message-box', 'color-picker',
     ]
 
     expect(popupEntry).not.toContain('element-plus/dist/index.css')
@@ -356,7 +355,8 @@ describe('options UI composition architecture', () => {
     expect(popupLayoutPreview).toContain('usePopupLayoutReorder')
     expect(popupPreview).toContain('class="preview-language-pair"')
     expect(popupPreview).toContain('class="preview-service"')
-    expect(popupPreview).toContain(":src=\"'/icon/128.png'\"")
+    expect(popupPreview).toContain(':src="iconUrl"')
+    expect(popupPreview).toContain("const iconUrl = globalThis.__FLUENTREAD_ICON_DATA__ || '/icon/128.png'")
     expect(popupPreview).toContain('data-preview-popup-module="translation"')
     expect(popupPreview).toContain(':data-preview-quick-feature="feature.id"')
     expect(popupPreview).toContain('siteModuleNestedInTranslation')

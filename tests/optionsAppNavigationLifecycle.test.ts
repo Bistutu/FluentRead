@@ -819,3 +819,24 @@ describe('OptionsApp actual client standalone capability navigation', () => {
     expect(h.loads.settings).toHaveBeenCalledOnce();expect(h.loads.learning).not.toHaveBeenCalled();expect(h.errors).toEqual([]);
   });
 });
+
+describe('OptionsApp actual client localized sidebar brand', () => {
+  it.each(['userscript', 'chrome', 'firefox'] as const)('reactively restores the brand through all UI languages in %s without a legacy DOM scanner', async browser => {
+    const h = await mountClientOptions('settings-general', browser);
+    const bundles = await current!.server!.ssrLoadModule('/src/core/i18n/bundles.ts');
+    bundles.registerAllUiLanguageBundles();
+    const brand = () => h.host.querySelector<HTMLElement>('.brand-copy strong')!;
+    expect(brand().textContent).toBe('流畅阅读');
+    expect(brand().hasAttribute('data-i18n-ignore')).toBe(true);
+    for (const language of ['en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'] as const) {
+      h.language.value = language;
+      await h.settle();
+      expect(brand().textContent).toBe('FluentRead');
+      expect(brand().textContent).toBe(h.t('common.brand'));
+    }
+    h.language.value = 'zh-CN';
+    await h.settle();
+    expect(brand().textContent).toBe('流畅阅读');
+    expect(h.errors).toEqual([]);
+  });
+});

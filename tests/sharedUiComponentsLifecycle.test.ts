@@ -10,6 +10,14 @@ const dom = await vi.hoisted(async () => {
   for (const key of ['window', 'document', 'Node', 'Element', 'HTMLElement', 'SVGElement', 'ShadowRoot', 'Event', 'CustomEvent']) {
     Object.defineProperty(globalThis, key, {configurable: true, writable: true, value: (parsed.window as any)[key]});
   }
+  const outsideRegistrations: Array<{type: string; events: Event[]}> = [];
+  const addDocument = parsed.document.addEventListener.bind(parsed.document);
+  let collectingOutside = true;
+  parsed.document.addEventListener = ((type: string, handler: EventListener, options?: boolean | AddEventListenerOptions) => {
+    if (!collectingOutside || (type !== 'mousedown' && type !== 'mouseup')) return addDocument(type, handler, options);
+    const row = {type, events: [] as Event[]};outsideRegistrations.push(row);
+    addDocument(type, (event: Event) => {row.events.push(event);handler.call(parsed.document, event);}, options);
+  }) as typeof parsed.document.addEventListener;
   let active: any = null, nextFrame = 1;
   const frames = new Map<number, FrameRequestCallback>();
   Object.defineProperty(parsed.document, 'activeElement', {configurable: true, get: () => active});
@@ -34,10 +42,10 @@ const dom = await vi.hoisted(async () => {
     getSelection: () => ({toString: () => ''}), getComputedStyle: () => ({transitionDelay: '0s', transitionDuration: '0s', animationDelay: '0s', animationDuration: '0s', transitionProperty: 'none'})};
   parsed.window.HTMLElement.prototype.getBoundingClientRect = function () {return {x: 0, y: 0, top: 0, left: 0, right: 10, bottom: 10, width: 10, height: 10, toJSON: () => ({})};};
   Object.defineProperty(globalThis, 'window', {configurable: true, writable: true, value: windowPort});
-  return {document: parsed.document as unknown as Document, window: windowPort, frames,
+  return {document: parsed.document as unknown as Document, window: windowPort, frames, outsideRegistrations, outsideCollected: () => {collectingOutside = false;},
     flush: () => {const queued = [...frames]; frames.clear(); queued.forEach(([, callback]) => callback(0));}};
 });
-const ports = vi.hoisted(() => ({selects: [] as any[], pickers: [] as any[], tooltips: [] as any[], locale: null as any}));
+const ports = vi.hoisted(() => ({selects: [] as any[], pickers: [] as any[], tooltips: [] as any[], locale: null as any, mouseSelect: false, actualSelect: null as any, clickOutside: null as any, resetOutside: null as (() => void) | null}));
 // 外部 UI port 的 CSS 入口在 Node 中不能由原生 ESM 加载；组件样式仍由 Vue plugin 编译。
 vi.mock('element-plus/es/components/select/style/css', () => ({}));
 vi.mock('@/src/ui/i18n', async () => {
@@ -46,14 +54,42 @@ vi.mock('@/src/ui/i18n', async () => {
     translateLegacy: (text: string) => ports.locale.value + text})};
 });
 vi.mock('element-plus', async () => {
-  const {defineComponent, h, getCurrentInstance, Teleport} = await import('vue');
-  const ElSelect = defineComponent({inheritAttrs: false,
-    props: ['modelValue', 'disabled', 'teleported', 'placement', 'fallbackPlacements', 'popperClass', 'multiple', 'filterable', 'noMatchText', 'noDataText'],
+  const {defineComponent, h, getCurrentInstance, Teleport, ref, resolveDirective, withDirectives} = await import('vue');
+  // 使用锁版本公开指令的真实 hooks；只控制 DOM 原生事件 retarget port，不复制 outside 算法。
+  const {default: actualClickOutside} = await vi.importActual<{default: import('vue').ObjectDirective}>('element-plus/es/directives/click-outside/index.mjs?inline');
+  dom.outsideCollected();
+  const ClickOutside = {...actualClickOutside};
+  const resetOutside = () => {
+    ClickOutside.beforeMount = vi.fn((...args: Parameters<NonNullable<typeof actualClickOutside.beforeMount>>) => actualClickOutside.beforeMount?.(...args));
+    ClickOutside.updated = vi.fn((...args: Parameters<NonNullable<typeof actualClickOutside.updated>>) => actualClickOutside.updated?.(...args));
+    ClickOutside.unmounted = vi.fn((...args: Parameters<NonNullable<typeof actualClickOutside.unmounted>>) => actualClickOutside.unmounted?.(...args));
+  };
+  resetOutside();ports.resetOutside = resetOutside;
+  ports.clickOutside = ClickOutside;
+  const ElSelect = defineComponent({inheritAttrs: false, directives: {ClickOutside},
+    props: ['modelValue', 'disabled', 'teleported', 'placement', 'fallbackPlacements', 'popperClass', 'multiple', 'filterable', 'noMatchText', 'noDataText', 'mousePopper'],
     emits: ['change', 'update:modelValue', 'visible-change'],
     setup(props, {slots, attrs, emit, expose}) {
-      const focus = vi.fn(), blur = vi.fn(() => emit('visible-change', false));
-      ports.selects.push({props, slots, emit, focus, blur, instance: getCurrentInstance()}); expose({focus, blur});
-      return () => h('div', {...attrs, 'data-select-port': ''}, [slots.prefix?.(), slots.label?.({label: 'Chosen'}), slots.default?.(), slots.footer?.({label: 'Footer'})]);
+      const focus = vi.fn(), expanded = ref(false), blur = vi.fn(() => {expanded.value = false;emit('visible-change', false);});
+      const port: any = {props, slots, emit, focus, blur, instance: getCurrentInstance(), outside: vi.fn(), handledVersions: []};
+      Object.defineProperty(port.instance.ctx, 'popperRef', {configurable: true, get: () => props.mousePopper});
+      port.open = () => {expanded.value = true;emit('visible-change', true);};
+      port.expanded = expanded;
+      ports.selects.push(port);expose({focus, blur, get popperRef() {return props.mousePopper;}});
+      return () => {
+        const children: any[] = [slots.prefix?.(), slots.label?.({label: 'Chosen'}), slots.default?.(), slots.footer?.({label: 'Footer'})];
+        if (ports.mouseSelect) children.push(h('button', {'data-select-option': '', onClick: () => {
+          if (!expanded.value) return;
+          emit('change', 'b');expanded.value = false;emit('visible-change', false);
+        }}, 'Beta'));
+        const node = h('div', {...attrs, 'data-select-port': '', 'aria-expanded': ports.mouseSelect ? String(expanded.value) : undefined}, children);
+        if (!ports.mouseSelect) return node;
+        const version = props.modelValue;
+        const outside = (mouseup: MouseEvent, mousedown: MouseEvent) => {
+          port.outside(mouseup, mousedown);port.handledVersions.push(version);expanded.value = false;emit('visible-change', false);
+        };
+        return withDirectives(node, [[resolveDirective('ClickOutside')!, outside, props.mousePopper as any]]);
+      };
     }});
   const ElOption = defineComponent({props: ['value', 'label', 'disabled'], setup: (props) => () => h('span', {'data-option': props.value, 'aria-disabled': props.disabled}, props.label)});
   const ElColorPicker = defineComponent({inheritAttrs: false, props: {modelValue: String, size: String, teleported: {type: Boolean, default: true}}, emits: ['update:modelValue'], setup(props, {attrs, emit}) {
@@ -62,9 +98,10 @@ vi.mock('element-plus', async () => {
   const ElTooltip = defineComponent({props: {content: String, trigger: [Array, String], showAfter: Number, hideAfter: Number, placement: String, popperClass: String, teleported: {type: Boolean, default: true}},
     setup: (props, {slots}) => {ports.tooltips.push({props});return () => h('div', {'data-tooltip-port': ''}, [slots.default?.(),
       h(Teleport, {to: document.body, disabled: !props.teleported}, h('span', {'data-tooltip-content-port': ''}, slots.content?.() ?? props.content))]);}});
-  return {ElSelect, ElOption, ElColorPicker, ElTooltip};
+  ports.actualSelect = ElSelect;
+  return {ClickOutside, ElSelect, ElOption, ElColorPicker, ElTooltip};
 });
-import {createApp, defineComponent, h, KeepAlive, markRaw, nextTick, reactive, ref, Suspense, type App, type Component} from 'vue';
+import {createApp, defineComponent, h, KeepAlive, markRaw, nextTick, reactive, ref, Suspense, withDirectives, type App, type Component} from 'vue';
 import {ElOption} from 'element-plus';
 import UiSelect from '@/src/ui/components/UiSelect.vue';
 import GlossaryLibrarySelect from '@/src/ui/components/GlossaryLibrarySelect.vue';
@@ -109,6 +146,31 @@ function event(target: Element, type: string, fields: Record<string, unknown> = 
   Object.assign(value, {_vts: Date.now() + 1}, fields); target.dispatchEvent(value); return value;
 }
 function key(target: Element, value: string) {return event(target, 'keydown', {key: value});}
+// Linkedom 0.18.12 在 invokeListeners 后 delete event.target，而原生 Event 保留该节点。
+// 每个鼠标 Event 私有原型承载此 DOM port，不改全局原型；closed-shadow retarget 仍显式控制同一 Event。
+function retainedSelectMouse(target: Element, type: 'mousedown' | 'mouseup', bubbles: boolean) {
+  const value = new dom.window.Event(type, {bubbles, cancelable: true});let visibleTarget = target;
+  Reflect.deleteProperty(value, 'target');
+  Object.setPrototypeOf(value, Object.create(Object.getPrototypeOf(value), {target: {get: () => visibleTarget, set: () => {}}}));
+  Object.assign(value, {_vts: Date.now() + 1});
+  return {value, retarget: (next: Element) => {visibleTarget = next;}};
+}
+function documentMouse(target: Element, type: 'mousedown' | 'mouseup') {
+  const {value} = retainedSelectMouse(target, type, true);target.dispatchEvent(value);expect(value.target).toBe(target);return value;
+}
+function retargetedMouse(capture: Element, target: Element, type: 'mousedown' | 'mouseup', host: Element) {
+  const {value, retarget} = retainedSelectMouse(target, type, false);
+  const stop = vi.spyOn(value, 'stopPropagation'), prevent = vi.spyOn(value, 'preventDefault');capture.dispatchEvent(value);
+  retarget(host);dom.document.dispatchEvent(value);
+  expect(value.target).toBe(host);expect(stop).not.toHaveBeenCalled();expect(prevent).not.toHaveBeenCalled();expect(value.defaultPrevented).toBe(false);
+  return value;
+}
+function selectElements(mounted: Awaited<ReturnType<typeof mount>>, index = 0) {
+  const element = mounted.root.querySelectorAll<HTMLElement>('[data-select-port]')[index];
+  const option = element.querySelector<HTMLButtonElement>('[data-select-option]')!;
+  const host = (element.getRootNode() as ShadowRoot).host;
+  return {element, option, host};
+}
 const libraries = [{id: 'a', name: 'Alpha', entries: []}, {id: 'b', name: 'Beta', entries: []}];
 const swatches = [{id: 'red', value: '#ff0000', labelKey: 'red'}, {id: 'blue', value: '#0000ff', labelKey: 'blue'}];
 function skin(value = 'default') {return interfaceSkinOptions.find(item => item.value === value)!;}
@@ -120,7 +182,7 @@ function layoutProps() {return {skin: skin(), skinLabel: 'Default', editScope: '
 function colorProps() {return {modelValue: '', fieldId: 'color-a', label: 'Color', swatches: swatches.map(swatch => ({...swatch}))};}
 function shareduiAuditSegmentProps() {return {modelValue: 'a' as string | number, label: 'Display', options: [
   {value: 'a' as string | number, label: 'Alpha', disabled: false}, {value: 'b' as string | number, label: 'Blocked', disabled: true}, {value: 3 as string | number, label: 'Three', disabled: false}]};}
-beforeEach(() => {dom.document.body.replaceChildren(); dom.frames.clear(); ports.selects.length = 0; ports.pickers.length = 0; ports.tooltips.length = 0; ports.locale.value = ''; dom.window.innerWidth = 1000;});
+beforeEach(() => {dom.document.body.replaceChildren(); dom.frames.clear(); ports.selects.length = 0; ports.pickers.length = 0; ports.tooltips.length = 0; ports.locale.value = ''; ports.mouseSelect = false;ports.resetOutside!();dom.window.innerWidth = 1000;});
 afterEach(async () => {for (const app of apps) app.unmount(); apps.clear(); await settle(); dom.frames.clear(); vi.restoreAllMocks();});
 
 describe('shared UI actual client SFC lifecycle', () => {
@@ -647,5 +709,96 @@ describe('shared UI actual client SFC lifecycle', () => {
     for (const length of ['short', 'standard', 'detailed']) {mounted.props.length = length;await settle();expect([...mounted.root.querySelectorAll('.preview-body p')].map(item => item.textContent)).toEqual(writingPreviewParagraphs({length: length as any, style: 'auto', tone: 'natural', role: 'auto'}).map(item => item.text));expect(dom.frames.size).toBe(0);}
     for (const [tone, role, note] of [['custom', 'auto', '自定义语气会'], ['natural', 'custom', '自定义角色会'], ['custom', 'custom', '自定义语气和角色会']]) {mounted.props.tone = tone;mounted.props.role = role;await settle();expect(mounted.root.textContent).toContain(note);}
     mounted.props.referenceLabel = 'English';mounted.props.animated = true;await settle();expect(mounted.root.textContent).toContain('English');ports.locale.value = 'localized:';await settle();expect(mounted.root.querySelector('.preview-scenario')!.textContent).toContain('localized:');
+  });
+});
+
+describe('UiSelect shadow mouse ownership with the real public ClickOutside delegate', () => {
+  beforeEach(() => {ports.mouseSelect = true;expect(dom.outsideRegistrations.map(row => row.type)).toEqual(['mousedown', 'mouseup']);});
+  it.each([true, 'closed'] as const)('preserves an inside selection without stopping document events, shadow=%s', async shadow => {
+    const change = vi.fn(), visible = vi.fn(), documentMouse = vi.fn();
+    const mounted = await mount(UiSelect, {modelValue: 'a'}, {shadow, listeners: {onChange: change, onVisibleChange: visible}});
+    const {element, option, host} = selectElements(mounted), port = ports.selects[0];port.open();await settle();
+    dom.document.addEventListener('mouseup', documentMouse);
+    try {
+      const down = retargetedMouse(element, option, 'mousedown', host);
+      const up = retargetedMouse(element, option, 'mouseup', host);
+      expect(port.outside).not.toHaveBeenCalled();expect(port.expanded.value).toBe(true);
+      expect(documentMouse).toHaveBeenCalledOnce();expect(documentMouse).toHaveBeenCalledWith(up);
+      expect(dom.outsideRegistrations[0].events).toContain(down);expect(dom.outsideRegistrations[1].events).toContain(up);
+      expect(up).not.toBe(down);event(option, 'click');await settle();
+      expect(change).toHaveBeenCalledOnce();expect(change).toHaveBeenCalledWith('b');expect(visible.mock.calls.map(([value]) => value)).toEqual([true, false]);
+    } finally {dom.document.removeEventListener('mouseup', documentMouse);}
+  });
+  it('keeps the original component definition and all other directives unchanged', async () => {
+    const original = ports.actualSelect, directive = original.directives.ClickOutside;
+    const mounted = await mount(UiSelect, {}, {shadow: 'closed'}), local = ports.selects[0].instance.type;
+    expect(local).not.toBe(original);expect(local.setup).toBe(original.setup);expect(local.props).toBe(original.props);
+    expect(local.directives.ClickOutside).not.toBe(directive);expect(original.directives.ClickOutside).toBe(directive);
+    expect(ports.clickOutside.beforeMount).toHaveBeenCalledOnce();mounted.unmount();expect(ports.clickOutside.unmounted).toHaveBeenCalledOnce();
+  });
+  it('preserves outside closing for a sibling select and another real ClickOutside consumer', async () => {
+    const colorOutside = vi.fn();
+    const color = defineComponent({setup: () => () => withDirectives(h('button', {'data-outside-color': ''}, 'Color'), [[ports.clickOutside, colorOutside]])});
+    await mount(color, {});
+    const pair = defineComponent({setup: () => () => h('div', [h(UiSelect), h(UiSelect)])});
+    const mounted = await mount(pair, {}, {shadow: 'closed'});
+    const {element, option, host} = selectElements(mounted, 1);ports.selects[0].open();ports.selects[1].open();await settle();
+    retargetedMouse(element, option, 'mousedown', host);retargetedMouse(element, option, 'mouseup', host);
+    expect(ports.selects[0].outside).toHaveBeenCalledOnce();expect(ports.selects[1].outside).not.toHaveBeenCalled();
+    expect(colorOutside).toHaveBeenCalledOnce();expect(ports.selects[1].expanded.value).toBe(true);
+  });
+  it.each(['down-inside', 'up-inside'] as const)('keeps the original either-endpoint containment rule, %s', async endpoint => {
+    const mounted = await mount(UiSelect, {}, {shadow: 'closed'}), {element, option, host} = selectElements(mounted);
+    const outside = dom.document.createElement('button');dom.document.body.append(outside);ports.selects[0].open();await settle();
+    if (endpoint === 'down-inside') {retargetedMouse(element, option, 'mousedown', host);documentMouse(outside, 'mouseup');}
+    else {documentMouse(outside, 'mousedown');retargetedMouse(element, option, 'mouseup', host);}
+    expect(ports.selects[0].outside).not.toHaveBeenCalled();expect(ports.selects[0].expanded.value).toBe(true);
+  });
+  it('rechecks a captured target moved outside before mouseup rather than treating historical inside as current', async () => {
+    const mounted = await mount(UiSelect, {}, {shadow: 'closed'}), {element, option, host} = selectElements(mounted);
+    ports.selects[0].open();await settle();retargetedMouse(element, option, 'mousedown', host);
+    dom.document.body.append(option);documentMouse(option, 'mouseup');expect(ports.selects[0].outside).toHaveBeenCalledOnce();
+  });
+  it('delegates ordinary document containment and outside events with no shadow capture listeners', async () => {
+    const add = vi.spyOn(dom.window.HTMLElement.prototype, 'addEventListener');
+    const mounted = await mount(UiSelect, {modelValue: 'a'}), element = mounted.root.querySelector('[data-select-port]')!, option = element.querySelector('[data-select-option]')!;
+    const port = ports.selects[0];port.open();await settle();documentMouse(option, 'mousedown');documentMouse(option, 'mouseup');expect(port.outside).not.toHaveBeenCalled();
+    expect(add.mock.calls.filter(([type]) => type === 'mousedown' || type === 'mouseup')).toHaveLength(0);
+    const outside = dom.document.createElement('button');dom.document.body.append(outside);documentMouse(outside, 'mousedown');documentMouse(outside, 'mouseup');
+    expect(port.outside).toHaveBeenCalledOnce();expect(port.expanded.value).toBe(false);
+  });
+  it('delegates exactly once to the latest binding after updates and unregisters on unmount', async () => {
+    const mounted = await mount(UiSelect, {modelValue: 'a'}, {shadow: 'closed'}), port = ports.selects[0];
+    mounted.props.modelValue = 'b';await settle();mounted.props.modelValue = 'current';await settle();
+    const outside = dom.document.createElement('button');dom.document.body.append(outside);documentMouse(outside, 'mousedown');documentMouse(outside, 'mouseup');
+    expect(port.outside).toHaveBeenCalledOnce();expect(port.handledVersions).toEqual(['current']);expect(ports.clickOutside.updated).toHaveBeenCalled();
+    for (const [, binding] of ports.clickOutside.updated.mock.calls) expect(binding.value).toBe(binding.oldValue);
+    mounted.unmount();documentMouse(outside, 'mousedown');documentMouse(outside, 'mouseup');expect(port.outside).toHaveBeenCalledOnce();expect(ports.clickOutside.unmounted).toHaveBeenCalledOnce();
+  });
+  it('releases capture listeners and old endpoints on cache deactivation and restores only the current root', async () => {
+    const add = vi.spyOn(dom.window.HTMLElement.prototype, 'addEventListener'), remove = vi.spyOn(dom.window.HTMLElement.prototype, 'removeEventListener');
+    const mounted = await mount(UiSelect, {}, {shadow: 'closed', keepAlive: true}), {element, option, host} = selectElements(mounted), port = ports.selects[0];
+    port.open();await settle();retargetedMouse(element, option, 'mousedown', host);mounted.visible.value = false;await settle();
+    expect(port.blur).toHaveBeenCalledOnce();expect(port.expanded.value).toBe(false);
+    const captures = (spy: typeof add) => spy.mock.calls.filter(([name, , capture]) => (name === 'mousedown' || name === 'mouseup') && capture === true);
+    expect(captures(add)).toHaveLength(2);expect(captures(remove)).toHaveLength(2);
+    mounted.visible.value = true;await settle();port.open();await settle();
+    const outside = dom.document.createElement('button');dom.document.body.append(outside);documentMouse(outside, 'mouseup');expect(port.outside).toHaveBeenCalledOnce();
+    expect(captures(add)).toHaveLength(4);mounted.unmount();expect(captures(remove)).toHaveLength(4);
+    const count = port.outside.mock.calls.length;retargetedMouse(element, option, 'mousedown', host);retargetedMouse(element, option, 'mouseup', host);expect(port.outside).toHaveBeenCalledTimes(count);
+  });
+  it('captures an explicitly teleported owned popper in the same shadow root and follows its current identity', async () => {
+    const mounted = await mount(UiSelect, {teleported: true}, {shadow: 'closed'}), {element, host} = selectElements(mounted);
+    const shadow = element.getRootNode(), popper = dom.document.createElement('div'), option = dom.document.createElement('button');popper.append(option);shadow.appendChild(popper);
+    mounted.props.mousePopper = popper;await settle();const port = ports.selects[0];expect(port.props.teleported).toBe(true);port.open();await settle();
+    retargetedMouse(popper, option, 'mousedown', host);retargetedMouse(popper, option, 'mouseup', host);expect(port.outside).not.toHaveBeenCalled();
+    const replacement = dom.document.createElement('div');shadow.appendChild(replacement);mounted.props.mousePopper = replacement;await settle();
+    retargetedMouse(popper, option, 'mousedown', host);retargetedMouse(popper, option, 'mouseup', host);expect(port.outside).toHaveBeenCalledOnce();
+  });
+  it('does not add any capture listeners across 100 ordinary document mounts', async () => {
+    const add = vi.spyOn(dom.window.HTMLElement.prototype, 'addEventListener'), remove = vi.spyOn(dom.window.HTMLElement.prototype, 'removeEventListener');
+    for (let index = 0; index < 100; index++) {const mounted = await mount(UiSelect, {});mounted.unmount();}
+    const mouse = (spy: typeof add) => spy.mock.calls.filter(([name]) => name === 'mousedown' || name === 'mouseup');
+    expect(mouse(add)).toHaveLength(0);expect(mouse(remove)).toHaveLength(0);
   });
 });

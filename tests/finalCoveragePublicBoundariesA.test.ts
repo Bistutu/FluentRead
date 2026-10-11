@@ -61,7 +61,7 @@ vi.mock('element-plus', async () => {
             ]);
         },
     });
-    return {ElOption, ElSelect, ElTooltip};
+    return {ClickOutside: {}, ElOption, ElSelect, ElTooltip};
 });
 vi.mock('pdfjs-dist/legacy/build/pdf.mjs', () => ({GlobalWorkerOptions: {}, getDocument: ports.getPdfDocument}));
 

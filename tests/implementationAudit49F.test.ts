@@ -65,6 +65,7 @@ vi.mock('@/src/ui/i18n', () => ({useUiI18n: () => ({translateLegacy: (text: stri
 vi.mock('element-plus', async () => {
     const {defineComponent, h} = await import('vue');
     return {
+        ClickOutside: {},
         ElSelect: defineComponent({props: ['modelValue', 'disabled'], emits: ['update:modelValue', 'change'],
             setup: (props, {slots, attrs, emit}) => () => h('div', {...attrs, 'data-value': props.modelValue, 'aria-disabled': props.disabled,
                 onChange: (event: Event) => {const value = (event.target as HTMLSelectElement).value; emit('update:modelValue', value); emit('change', value);}}, slots.default?.())}),

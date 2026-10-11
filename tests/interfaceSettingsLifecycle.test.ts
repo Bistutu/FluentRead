@@ -1,11 +1,14 @@
 import {createRequire} from 'node:module'
+import {readFileSync} from 'node:fs'
 import {resolve} from 'node:path'
+import {parseHTML} from 'linkedom'
 import vue from '@vitejs/plugin-vue'
 import {createServer, type Plugin, type ViteDevServer} from 'vite'
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
 // 实际 SFC setup/watch/KeepAlive；原生弹窗和缓存由隔离生产扩展另验。
 const runtime = createRequire(import.meta.url)('vue') as typeof import('vue')
+const {renderToString} = createRequire(import.meta.url)('vue/server-renderer') as typeof import('vue/server-renderer')
 const key = '__frInterfaceSettingsLifecycle'
 let server: ViteDevServer, app: import('vue').App, state: Record<string, any>
 let mocks: Plugin
@@ -253,5 +256,26 @@ describe('实际界面字体设置与所属确认', () => {
       expect(preview.orderedQuickFeatures.some((item: {id: string}) => item.id === 'highlight')).toBe(false)
       expect((await server.ssrLoadModule('/src/ui/popupQuickFeatureIcons.ts')).popupQuickFeatureIconPaths).not.toHaveProperty('highlight')
     } finally {previewApp.unmount()}
+  })
+  it.each(['missing', 'empty', 'embedded'] as const)('实际 Popup 预览图标 %s 时复用官方脚本资源或扩展回退', async kind => {
+    const original = Object.getOwnPropertyDescriptor(globalThis, '__FLUENTREAD_ICON_DATA__')
+    const officialIcon = `data:image/png;base64,${readFileSync(resolve(process.cwd(), 'public/icon/64.png')).toString('base64')}`
+    try {
+      if (kind === 'missing') delete globalThis.__FLUENTREAD_ICON_DATA__
+      else Object.defineProperty(globalThis, '__FLUENTREAD_ICON_DATA__', {configurable: true, writable: true, value: kind === 'empty' ? '' : officialIcon})
+      const component = (await server.ssrLoadModule('/src/features/settings/ui/components/PopupPreview.vue')).default
+      const previewApp = runtime.createSSRApp({render: () => runtime.h(component, {skin: {value: 'default'}})})
+      previewApp.config.warnHandler = () => {}
+      const html = await renderToString(previewApp)
+      const {document} = parseHTML(`<html><body>${html}</body></html>`)
+      const logos = document.querySelectorAll('img.preview-logo')
+      expect(logos).toHaveLength(1)
+      expect(logos[0].getAttribute('src')).toBe(kind === 'embedded' ? officialIcon : '/icon/128.png')
+      expect(logos[0].getAttribute('width')).toBe('32')
+      expect(logos[0].getAttribute('height')).toBe('32')
+    } finally {
+      if (original) Object.defineProperty(globalThis, '__FLUENTREAD_ICON_DATA__', original)
+      else delete globalThis.__FLUENTREAD_ICON_DATA__
+    }
   })
 })

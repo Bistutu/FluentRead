@@ -2,7 +2,7 @@
 
 本轮在独立工作树 `FluentRead-performance-experience-20261010`、分支 `codex/performance-experience-20261010` 持续进行。先冻结 `a95a9f9e0` 作对照，第一批优化提交为 `a2bc0415c`；随后合入 `55d1219bd` 的阅读恢复与导出改进，单独执行集成验证。第二批代码提交为 `21ea24ef0`，第三批为 `d9d4fa2be`，第四批为 `97e92defe`，第五批为 `7e8ffe952`，第六批为 `621a1c2a2`，第七批为 `adbcfe428`，第八批为 `5e554d7fa`，第九批为 `85c29dffe`，第十批为 `626e4652e`，第十一批为 `80e2db0c5`，第十二批为 `d4c9b0a66`，第十三批为 `6312bbbfd`，第十四批为 `c420f6728`，第十五批为 `391c4683c`，第十六批为 `06ee7e81f`；后续继续使用同一集成基线，并与上一批冻结产物比较。按用户选择仅保存于本地，未推送或创建 PR。未修改参考项目，也未借用参考实现。
 
-本报告按批次记录独立冻结结果，开头的测量、测试及失败说明属于第一批。当前已推进至第三十三批：第十八批完整确定性流水线 22 阶段通过；第十九至二十批的 18 个相关测试文件、1,542 项用例及三端构建通过；第二十二批的九个相关文件、1,278 项用例通过；第二十三批完成确认导入收尾和 11 项隔离 Edge 备份验证。第二十四批的 13 个相关文件、1,530 项用例、四模块限定四维 100% 覆盖率与三端构建通过；真实服务页首次加载的 JavaScript 原始字节减少 195,456 B。第二十五批完成本地模型 UI 按需加载，12 个相关文件、1,165 项用例及三端构建通过；普通服务页新增请求的 JavaScript 与样式合计再减少 29,378 B。第二十六批将局部恢复的取消记录改为节点弱关联，八个相关文件、1,344 项用例及三端构建通过；其 native 发现的合成段基线循环已在第二十七批修复。第二十七批八个相关文件、1,350 项用例及三端构建通过，隔离 Edge 受控夹具九阶段通过，两个 1,200 ms 窗口保持同段与同译文且无重新挂载。第二十八批复用缓存键的术语解析结果，22 个相关文件、1,578 项用例及三端构建通过，broker 限定四维 100%；公开请求的命中 key 解析由两次减为一次。第二十九批修复高级请求限制控件，1,106 项相关检查与隔离 Edge 验证通过；第三十批修复缓存中的复习按键，1,050 项相关检查、三端构建与隔离 Edge 九阶段通过。第三十一批将学习中心记录与笔记改为首用加载，1,137 项相关检查通过；隔离 Edge 默认收藏阶段新增请求文件减少 20,641 B，加载故障经页面重载恢复。第三十二批排除完整独立脚本已不可达的八个扩展设置子 UI，1,089 项相关检查与旧新完整脚本各七阶段隔离 Edge 验证通过，完整脚本减少 183,104 B 至 3,638,416 B，仍超原预算 38,416 B。第三十三批统一中文「流畅阅读」与既有六语品牌，1,997 项相关执行通过；实际安装扩展与文档语言往返通过，完整独立脚本的鼠标语言切换 7/8 未通过并已定位封闭 ShadowRoot 事件边界。当前 Chrome 原始产物为 65,594,249 B，固定 ZIP 为 23,696,078 B；第二十五及三十一批的收益主要是延后加载，完整独立 Userscript 仍超原体积预算，旧提交同样失败。第二十一轮是只读字幕审计，未实施索引候选。后续章节区分各批范围，不把当前针对性验证说成再次全量执行。
+本报告按批次记录独立冻结结果，开头的测量、测试及失败说明属于第一批。当前已推进至第三十四批：第十八批完整确定性流水线 22 阶段通过；第十九至二十批的 18 个相关测试文件、1,542 项用例及三端构建通过；第二十二批的九个相关文件、1,278 项用例通过；第二十三批完成确认导入收尾和 11 项隔离 Edge 备份验证。第二十四批的 13 个相关文件、1,530 项用例、四模块限定四维 100% 覆盖率与三端构建通过；真实服务页首次加载的 JavaScript 原始字节减少 195,456 B。第二十五批完成本地模型 UI 按需加载，12 个相关文件、1,165 项用例及三端构建通过；普通服务页新增请求的 JavaScript 与样式合计再减少 29,378 B。第二十六批将局部恢复的取消记录改为节点弱关联，八个相关文件、1,344 项用例及三端构建通过；其 native 发现的合成段基线循环已在第二十七批修复。第二十七批八个相关文件、1,350 项用例及三端构建通过，隔离 Edge 受控夹具九阶段通过，两个 1,200 ms 窗口保持同段与同译文且无重新挂载。第二十八批复用缓存键的术语解析结果，22 个相关文件、1,578 项用例及三端构建通过，broker 限定四维 100%；公开请求的命中 key 解析由两次减为一次。第二十九批修复高级请求限制控件，1,106 项相关检查与隔离 Edge 验证通过；第三十批修复缓存中的复习按键，1,050 项相关检查、三端构建与隔离 Edge 九阶段通过。第三十一批将学习中心记录与笔记改为首用加载，1,137 项相关检查通过；隔离 Edge 默认收藏阶段新增请求文件减少 20,641 B，加载故障经页面重载恢复。第三十二批排除完整独立脚本已不可达的八个扩展设置子 UI，1,089 项相关检查与旧新完整脚本各七阶段隔离 Edge 验证通过，完整脚本减少 183,104 B 至 3,638,416 B，仍超原预算 38,416 B。第三十三批统一中文「流畅阅读」与既有六语品牌，1,997 项相关执行通过；实际安装扩展与文档语言往返通过，完整独立脚本的鼠标语言切换 7/8 未通过并已定位封闭 ShadowRoot 事件边界。第三十四批修复选择器鼠标归属、退场命中、侧栏品牌与独立脚本预览图标，并清理 Options 无消费者的组件和样式注册；17 个相关文件合并计 1,507 项定向执行通过，最终扩展 12 阶段/10 图、完整独立脚本 14 阶段/9 图的隔离 Edge 验证通过。第三十三批 7/8 鼠标语言切换失败保留为修复前证据。当前 Chrome 原始产物为 65,531,615 B，固定 ZIP 为 23,686,030 B；第二十五及三十一批的收益主要是延后加载，完整独立 Userscript 仍超原体积预算，旧提交同样失败。第二十一轮是只读字幕审计，未实施索引候选。后续章节区分各批范围，不把当前针对性验证说成再次全量执行。
 
 ## 改动与测量
 
@@ -801,9 +801,65 @@ ZIP 按原 TS-AST 提取的 JSZip 3.10.1 / 排序路径 / 固定日期 / DEFLATE
 
 证据位于 `/private/tmp/fluentread-performance-experience-20261010/` 的 `round35-localized-brand-integration/`、`round35-localized-brand-ux/`、`round35-localized-brand-runtime/` 与 `round35-localized-brand-manifest/`，包括全部原冻结、真实失败、当前源码/产物、文档 SPA 修复、安装验收、整包测量与独立 peer。仅本地提交，未推送、创建 PR、合并或发布；版本、主检出与参考项目保持，没有借用参考实现。
 
+## 第三十四批：closed ShadowRoot 选择器鼠标归属与实际 Options 注册减重（round36）
+
+**实际 B6 extension7 12阶段/10图与 standalone4 14阶段/9图均在限定端口和原门禁下自然通过。B5成功与全部先前失败保留，完整 standalone 原体积预算仍未达标。** 本批只在当前本地 worktree 中工作，没有改参考项目、升级依赖或推送。旧第三十三批正文及全部失败证据保持。
+
+本轮最终生产范围仅 `src/ui/components/UiSelect.vue`、`src/ui/shadowSelectOutside.ts`、`src/app/options/index.ts`、`src/app/options/OptionsApp.vue` 和共享 `PopupPreview.vue` 五个 owning 源；既有 tests/config/阈值各依明确 owner 范围验证。
+
+本批处理了上轮完整 Userscript 的真实鼠标语言选择失败。Element Plus 的 document ClickOutside 在 closed ShadowRoot 外只能看见重定向后的 target，可能在 option 的 mouseup/click 之前关闭菜单，使实际 UiLanguageSelector 的当前菜单 guard 正常拒绝迟到选择。局部 UiSelect 保留原 Element Plus select/属性/slots/filter/键盘合同，只替换自身 ClickOutside 适配；新增小 helper 用同一个原生 Event 的 WeakMap 保存自有 root/popper 内原始 down/up target，在调用锁定原 directive 前重验当前节点/排除项，普通 Document 继续委托原行为。mounted/activated 开始本地捕获，deactivated/unmount 释放；没有阻断 document 事件传播、全局替换 Element Plus、观察整个 ShadowRoot 或另建菜单状态。
+
+这条实现有受控端口与真实浏览器两类证据，口径分开。Linkedom 0.18.12 的派发实现会在节点监听器集合调用结束后删除 event.target；首次诊断因这个端口差异出现失败。新测试仅在每个私有 Event 实例的 prototype 恢复原生 target 保留，并以同一 Event 的受控重定向模拟 closed shadow 两阶段；没有修改生产事件/global prototype。document add/remove 和锁定 ClickOutside 真实叶源 call-through。初收集失败、等待退出、非枚举诊断、typed fixture compile 及旧49C端口缺少 ClickOutside 引发的级联错误均单独保留，不能计作多项产品回归。
+
+普通 Document 又出现一个真实鼠标命中缺口。extension-attempt2 的被动捕获记录：原 target INPUT 收到 mousedown；原 service focusout 后 expanded=false，但离场 `.fluentread-select-popper.el-zoom-in-top-leave-active` 仍覆盖相同坐标，mouseup 落在旧 service 的 LI，click 落在 BODY，target 因此从未收到完整 click。这不是目标选项结构或 Document 适配已经关闭正确菜单的证明。锁定 Element Plus 实际上下 placement 都使用默认 top transition，因此只给专属 top leave-active 增加 pointer-events:none，使退场菜单及时让出命中；不改正常菜单/进入/持续时长，也没有扩大到未使用 bottom class。reduced-motion 的极短 leave 仍沿同一 class。extension-attempt3 随后真实 down/up/click 全命中 target INPUT，菜单与旧 service 关闭断言通过；最终全部控制验收仍按独立 native receipt 收口。
+
+注册减重按当前生产消费者清单进行。Options 只删 8 个无消费者 global 组件注册（Collapse/CollapseItem/Col/Row/Divider/Empty/Link/Text）、7 个对应样式入口和无消费者的 Star 图标绑定，共 25 行。InfoFilled、自有 UiIcon.star、普通 Button/Dialog/Icon/Input/InputNumber/Option/OptionGroup/Switch/Tooltip 及 select/message/color-picker 等保留样式和锁定依赖 closure 都保留；没有删功能、服务/语言/能力入口或改变界面布局。源码逆向仅恢复这些删除行后整文件等基线。
+
+本批实际 standalone 英文语言操作还暴露 sidebar `<strong>流畅阅读</strong>` 的硬编码。单行改为 `t('common.brand')` 并加既有 data-i18n-ignore；同一名称权威资源用于七语言，不改技术标识、URL、prompt 或存储。实际 owner 从旧 34 展开增为 37（一个声明、三个环境展开），检查既有受控真实目录语言；这不表示所有历史中文 literal 都已翻译。下一轮 owned-root 扫描另行审计；中文ColorPicker footer的Clear/OK属于vendor locale，scanner候选不能覆盖，已附单独边界。
+
+不同冻结阶段的定向执行按唯一文件合并为 **17 files / 1507 executions**：根 4 files / 1093（含 935 architecture 与真实49C 158），bundle 9 files / 270（旧 Options34 用新37替换），runtime 3 files / 111，图标修复新增纳入本轮的 interfaceSettingsLifecycle 1 file / 33。图标组另重跑的 settingsUiArchitecture 38 替代同 owner 的原 38，不再追加；重复 strict 的 111 也不再加计。这是多次限定执行的唯一文件合并，不是同一全量运行、最终每个变化都经旧冻结 source 执行或一整套 V8 结论。runtime 两已登记 owning modules 四维均 100%（S/L147、F18、B85），其中 helper S/L70/F12/B43，UiSelect S/L77/F6/B42。该 strict 输入的 UiSelect 为 CSS 前 10270B 版本；后续171B仅样式，script未改，不能冒称审阅者重跑最终源码 V8。原61个 shared UI 和18个 language owner 全文保留。test:audit 第三次自然0、输入前后相同，640文件/10557声明，分类 architecture33/unit366/functional201/regression40；原第二次10556的证明保留。新增图标测试一个声明/三个展开，因此分类声明仅增一；这是分类检查，不是全量10557执行。
+
+中间历史 build-attempt5 八个阶段均自然结束：compile、Chrome、Firefox、manifest、普通 Userscript 构建/verifier、完整 standalone 构建成功；完整 verifier 仅原3600000B cap 自然1，expectedBudgetFailureOnly=true。完整 standalone **3618140B，仍超18140B**，未放宽阈值。旧 attempt1/2 compile 的新增测试类型失败均保留，不能归作生产运行时失败或冒称这些旧 attempts 已构建。
+
+B5 Chrome 历史444文件 raw **65531573B**，按原排序/固定日期/JSZip3.10.1/DEFLATE6 同函数一次测得 ZIP **23685964B**；相对第三十三批已冻结 whole inventory/result，分别减少 **62676B / 10114B**。中间 build4 的 −62750/−10178 保留为 CSS 前结果，不当最终值。55历史430文件参考 raw67375068/ZIP24181275，累计分别减少1843495/495311B；该历史测量原无逐文件SHA账本，限定仍保留。没有把静态构建字节当实际 network、冷启动耗时、CPU、真实设备或 provider 延迟收益。
+
+图标修复后的实际 B6 八阶段也全部自然结束：compile、Chrome、Firefox、manifest、ordinary build/verifier、full standalone build 都为0；full verifier 仅原3600000B cap自然1，expectedBudgetFailureOnly=true，完整1972个 build inputs 前后相同。普通 Userscript **1957220B**；full standalone **3618139B，仍超18139B**，没有放宽预算。B6 Chrome444文件 raw **65531615B**，同原一次 JSZip 方法测 ZIP **23686030B**；对第三十三批 raw/ZIP 分别 **−62634B / −10048B**。累计55历史参考分别减少1843453/495245B，原历史SHA限度仍保留。上段B4/B5均为明确历史数字，不混作本批最后B6结果。
+
+native 已知事实与未完成边界：
+
+- standalone-attempt2 已真实鼠标 CN→EN→CN、七项自有 `.el-popper`/ARIA 归属、同一文档 GM Map authority 与英文/中文 sidebar；后续 grouped-filter stage 未完成，尚不是全部14 stage成功。每文档 GM Map 不证明 reload 跨文档持久性，独立 hash 设置页没有 overlay close，不能混说关闭重开。
+- extension-attempt1/2 的公开语言选择→权威 storage 英文→实际 options reload仍英文→新 page 中文重开已通过；两次的完整 after 计数均为10/12，尚未完成最后两个控制阶段。
+- extension-attempt3 已验证上文 target 鼠标命中修复；随后原 driver 点击 `.settings-content-title` 失败。该标题实际1px并 clip-path 是辅助技术标题，不能作为可见外部点击；这是夹具错误，不是产品回归。旧report/receipt/截图保留。
+- extension-attempt4 用实际 main padding gap 的原生 click，严核 geometry/elementFromPoint/非任何 control/popper/dialog，真实 target handoff/outside、Dialog取消、InputNumber0与恢复已通过，11/12后在默认 disabled 划词时等待尚未显示的双向开关超时。这是公开启用前置缺失；旧12stage/10图断言没有去掉。
+- extension-attempt5 主开关实际已 bilingual/ARIA true，截图底部双向文字/开关已经存在，仍因旧 locator 错将 aria-label 查在外 `.el-switch` 而超时。锁定 switch2.mjs 公开 render 将该 prop 放在内部 `input[role=switch]`，外层只有 class/onClick；不能把缺失 to 日志猜成 unsupported target。第6次只改为外wrapper :has(内部精确ARIA input)，增加 exact1/checked/aria三状态，原两次鼠标/存储等待保持。
+- **extension-attempt6 实际自然0，12阶段/10PNG全通过。** 根 receipt SHAa7ca1715…4f6d7，审阅者逐项读取114证据/1972源metadata并核当前SHA，以及Chrome444全路径/bytes/SHA与冻结清单相等。输入before/after、完整artifact均保持。实际公开语言选择后 storage=en-US、真正reload仍EN、新独立页面回中文；服务Google mouse与free键盘恢复、两个Select handoff/ownedoutside、分组filter、Dialog取消、请求数0/restore、划词disabled→bilingual→disabled与双向false→true→false、ColorPicker外点关闭/390无横溢出均经原真实操作/门禁完成，最后safeControls白名单整体等初值。没有保存完整配置或引provider/真实用户数据。
+- extension6实际console errors/warnings、external page requests、request failures、focusEvents均0；14个foreground检查（owner已知时均非前台），第二屏normal可见/no focus；owned session close/profile removed/focus monitor stop三项true。审阅者实际看desktop和390ColorPicker两PNG，控件/按钮可读且无横溢出。中文vendorfooter仍Clear/OK另记下一轮候选，不能说本批全语言文案覆盖。
+
+**B5 standalone-attempt3真实结果：** 自然1；全部14个stage after及9张normal PNG完成，另1张failure图，不是14阶段整体失败，也不是整体验收成功。最终zero-error gate记录唯一宿主 `http://127.0.0.1:18734/icon/128.png` 被阻止后 consoleERR_FAILED、requestFailure、externalRequest各1；原错误门禁未放宽。cleanup三true、before/after inputs/source保持。实际 `PopupPreview.vue` 使用hostroot `/icon/128.png`，绕过同项目 OptionsApp/userscript browser 已有 `__FLUENTREAD_ICON_DATA__` authority，是生产资产归属缺口，不能让fixture映射/免责掩盖。
+
+随后最小修复复用 PopupPreview 同项目既有 `globalThis.__FLUENTREAD_ICON_DATA__ || '/icon/128.png'` 权威出口，header/iconUrl/image binding 三处逆向可恢复旧源全文；扩展缺省路径、width/height、用户文案/布局和其他算法原样。真实 Vue SSR owner 在注入数据 URL、扩展缺省与清空字段三种输入检查组件生成的图像 source 与原尺寸；33/33，通过实际组件生成输出，但不把 SSR 当 native decode、请求或完整浏览器验收。另38/38 architecture 通过；首 attempt 仅因为非根依赖 `@vue/server-renderer` 引入路径无法收集而自然1，改用锁定 Vue 公开 `vue/server-renderer` 后通过，原日志保留。
+
+根五源补充账本 pin7b7d14…保留原 previousSources 三源并绑定 helper/品牌/退场/图标四份完整逆向证明。B6 extension7 私有计划仅升级整包/唯一输出，并在原 Interface 进入位置检查已有 `.preview-logo` count>=1、raw `/icon/128.png`、当前 chrome-extension origin、complete/naturalWidth 和真实 native decode；原12阶段10PNG/全部公开鼠标、存储恢复、焦点/清理门禁逐字逆向保持。计划由根任务在真正 B6 整包门禁通过后执行；审阅者没有执行，也没有新图片或路由填充，与 standalone 需要注入 data URL 的合同区分。
+
+**最终 B6 extension-attempt7：** 根任务真实自然0，12阶段/10张正常PNG完成；receipt8254e110…d414b、report5e66e32d…fcc2e。绑定136份证据及完整1972源 before/after相同、Chrome444全inventory保持均由冻结wrapper门禁检查；compact peer复用这条已审完整gate而不重复所有历史输入遍历，逐项核新增观察、五源和receipt/input关系。既有服务Google mouse/free键盘恢复、两Select原native handoff/outside和groupfilter、Dialog cancel、InputNumber0/restore、划词主开关公开disabled→bilingual→disabled、双向恢复、ColorPickeroutside/390及最终safeControls白名单相等保持通过。target原被动native事件中 down/up/click均见当前INPUT。语言 EN通过真正reload仍EN，新的独立page中文重开；不是只GMMap或仅Vue缓存恢复。
+
+新增图标观察实际两张 `.preview-logo`，raw `/icon/128.png`，resolved src均为当前扩展 `chrome-extension://…/icon/128.png`，complete/connected true、自然128×128，真实 `Image.decode` 全部成功。只读peer未注入图片/放行host资源；既有图像可能包括已挂载但隐藏的preview，不能宣称每张在截图内可见或全像素保真。errors/warnings/external page requests/requestFailures/focusEvents 均0，14次focus检查中12次已知owner全部非前台，第二屏正常可见/no-focus；owned session/profile/monitor三项cleanup true。peer实际view B6 grouped菜单与390 ColorPicker两图，分组/选中标记可读、390各控件和popper在视口内，无横溢出；Clear/OK英文vendor文案仍仅后续候选。
+
+**最终 B6 standalone-attempt4：** 根任务按顺序使用新独占临时profile运行冻结完整原IIFE，自然0，14阶段/9张正常PNG；receipt e610d42c…3d914、report bebabe38…26c4，49账本行（含历史重复输入，非49唯一模块）before/after相同，完整1972源门禁及actual full artifact/原4540B ports SHA保持。完整脚本 `5dce8d8163a10f8cde9ebcae7c2235ab526d441d1a74b66d1b144514132b1dc4` 直接执行，未改IIFE、未加业务配置seed或放行宿主 `/icon/128.png`。新图标实际观察 **1张**，source逐字等官方注入 `__FLUENTREAD_ICON_DATA__` data PNG，原生complete true、自然 **64×64**、UI属性 **32×32**。该driver以原生complete/尺寸确认图像加载，不是调用扩展端所用的 `Image.decode()`；两端数量/路径/尺寸不混用，旧hostroot requestError原证据保留。
+
+standalone 所有原 console errors/warnings、externalRequests、requestFailures、focusEvents 数组为0；16次focus检查中14次已知owner均非前台，第二屏可见/no-focus，owned close/profile removed/monitor stopped三项true。six原不可用hash入口、真实默认free服务目录/搜索、划词静态句子preview、defaultSaved实际空状态/无error、cached返回继续通过；没有伪造 History/Memory business handler 或声称其 CRUD可用。正确owned `.el-popper`/七项/ARIA的真实鼠标 CN→EN→CN 同一文档GM authority与sidebar品牌成功；另组filter、键盘恢复、Select handoff/outside、离页失活返回、Dialog公开取消/模型字段局部Escape、ColorPickeroutside/非法值拒绝/red规范化/default、请求数0/restore、划词primary和双向公开toggle/restore都保持原断言通过。
+
+离线朗读验收仅通过公开选项选择Ava后取消，online-first→local-only→online-first，观察本地模型warning与禁用下载按钮，并恢复初始声音/mode/完整safeControls白名单；最后unexpectedGMNetwork为空。390布局的app宽度、可见菜单/朗读模块边界均在视口内。peer实际view新English unavailable和390朗读两图，品牌/不可用提示、菜单及disabled模型状态可读；没有将选项表达/恢复称音频、模型下载、真实浏览器manager安装或真实设备能力通过。
+
+两端最终native仅上述 **12/10 + 14/9** 公开受控流；standalone每新document的GMMap仍初始为空，仅同文档保存、cache away/return，独立hash页无overlay关闭合同，不能外推跨document reload持久性。extension端的独立权威storage/reload/newpage证据另列。所有前失败/旧图/driver/receipt完整保留；不是重跑旧包同新版全部脚本的对照或native全部站点/功能成功。审阅者只读receipt/源码和本地PNG，没有执行 native、测试、构建或formal修改。
+
+所有 native 仅根任务使用独占临时 profile、第二屏后台可见、不抢前台、持续 focus monitor 与 exact-owned close 执行。审阅者没有启动浏览器；无日常profile、真实模型/下载/OS取色、Firefox runtime、真实manager安装、手机/低端设备、全量回归或速度保证。旧所有权失配、locator标签/共享class、MD5 strict-alpha false、完整standalone cap false 等历史限制不因本批删除。
+
+后续候选已冻结为 round37-owned-ui-i18n-audit：当前完整 settingsFull documentRoot:null 保护宿主却跳过已有 legacy scanner；不能直接传 container，否则插件仍写宿主 html.lang/title。建议仅分离 owned uiRoot/metadata授权、configureApp转交当前 container，复用既有 scanner与真实 client 回归，先证明 host/用户内容排除、语言往返及清理。尚无正式修改或收益/全语言覆盖声明。
+
 ## 后续候选
 
-第三十三批实际产物为 3,639,283 B，超原预算 39,283 B。完整脚本的正确语言鼠标点击仍被 closed ShadowRoot/document ClickOutside 顺序提前关闭；下一批先保留真实传播并修复本实例边界，再验收语言持久化及其他控件的 outside 关闭。第三十六轮只读审计已确认 Options 全局注册中的八个无消费者组件、七份直接样式与 Star import/map 可以缩小候选入口；InfoFilled、独立 UiIcon 的 star、本地模型/TTS 与可达选择/弹层样式保留。该候选尚未实施或量化实际构建收益，见 `round36-candidate-audit/implementation-plan/`。
+第三十四批最终完整脚本为 3,618,139 B，仍超原 3,600,000 B 预算 18,139 B。封闭 ShadowRoot 鼠标语言选择、选择器退场命中、Options 无消费者注册与图标路径问题已在本批修复并按限定合同验收。下一批试验只压缩锁定 franc-min 的生成式纯数据，恢复全部 66 模型原始字符串、顺序和接口；先完成真实插件测试与原预算构建，再对同一完整脚本交付方式比较启动成本。私有表示层差值不作为整包收益，新增同步解压、解析及临时分配须单独说明。另保留 owned-root 语言扫描和 ColorPicker 的 vendor locale 候选；宿主文档、用户内容、七语言资源、可达能力与许可边界保持，候选尚未实施。
 
 
 合成段 loading 挂载循环、缓存键重复术语解析、高级请求限制禁用与缓存复习快捷键已在第二十七至三十批分别修复。第三十一轮调度只读探针保留现检查：13 个受控普通场景虽减少同 owner 复验，但第三个 source-only 读取中的 style getter 同步替换同文本 Text 时，复用先前结果留下脱离节点身份；这只是受控端口反例，未当成原生复现或 CPU 收益，未实施。证据为 `round31-page-scheduling-audit/`。第三十二轮已撤回 Cloud 普通历史入口的减加载推荐；LearningCenter 的 History/Memory 首用加载已在第三十一批实施，实际收藏阶段新增请求文件减少 20,641 B，父装配、加载故障与原行为通过限定验证。第三十四轮审计确认的八个既不可达设置子 UI 已在第三十二批排除，完整独立脚本实际减少 183,104 B，仍比原 3,600,000 B 门槛多 38,416 B。继续审查其 Options/IIFE 归属与可证明不可达的资源，保持可达服务、本地模型/TTS、数据、语言、许可和原门槛，不为达预算删除已有能力。请求队列仍在 response body 完成前占用并发槽；会改变错误种类的同步 deadline 合并未实施。
