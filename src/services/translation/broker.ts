@@ -49,10 +49,10 @@ import {
     isLikelyPageContextLeak,
 } from '@/src/core/translation/prompts';
 import {isCustomOpenAIProviderId, LEGACY_CUSTOM_OPENAI_PROVIDER_ID} from '@/src/core/config/customOpenAI';
-import {customModelString, resolveCloudRegion, services} from '@/src/core/config/catalog';
+import {resolveCloudRegion, services} from '@/src/core/config/catalog';
+import {resolveTranslationRequestModel} from '@/src/core/config/requestModel';
 import {getAliyunTranslationEndpoint} from '@/src/core/config/constants';
 import {getServiceApiKeys} from '@/src/core/config/apiKeys';
-import {currentConfiguredModel, getCurrentModel} from './templates';
 import {isModelThinkingEnabled} from '@/src/core/config/modelThinking';
 import {supportsVisionTransport} from '@/src/core/config/vision';
 import {
@@ -195,31 +195,8 @@ class GlossaryRevisionChangedError extends Error {
     }
 }
 
-/** 返回 provider 最终 payload 使用的模型身份，供 outer bucket 与实际 transport 共用。 */
-export function resolveTranslationRequestModel(
-    current: TranslationProviderConfigSnapshot,
-    service: string,
-    modelOverride: string | undefined,
-    isAiSdk: (service: string) => boolean,
-    isAI: (service: string) => boolean,
-): string {
-    const selected = service === services.gemini
-        ? modelOverride || (current.model[service] === customModelString ? current.customModel[service] : current.model[service]) || ''
-        : service === services.deepseek
-        ? getCurrentModel(service, modelOverride, current)
-        : isAiSdk(service)
-            ? currentConfiguredModel(current, service, modelOverride).replace(/（.*）/g, '')
-            : currentConfiguredModel(current, service, modelOverride);
-    const body = current.customBody?.[service];
-    if (!(isAI(service) && service !== services.gemini) || typeof body !== 'string' || !body.trim()) return selected;
-    try {
-        const parsed = JSON.parse(body) as {model?: unknown; Model?: unknown};
-        const requestedModel = service === services.huanYuanTranslation ? parsed?.Model : parsed?.model;
-        return typeof requestedModel === 'string' && requestedModel.trim() ? requestedModel.trim() : selected;
-    } catch {
-        return selected;
-    }
-}
+/** 保留既有 broker 公共入口，模型规则由设置页与后台共用的 core 函数维护。 */
+export {resolveTranslationRequestModel};
 
 export function createTranslationBroker(deps: TranslationBrokerDependencies): TranslationBroker {
     const pendingTranslations = new Map<string, Promise<string>>();

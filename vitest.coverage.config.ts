@@ -960,6 +960,7 @@ export default defineConfig({
                 'src/core/config/inputTranslation.ts',
                 'src/core/config/scheduling.ts',
                 'src/core/config/requestLimits.ts',
+                'src/core/config/requestModel.ts',
                 'src/core/config/selectionTts.ts',
                 'src/core/config/translationLoadingStyle.ts',
                 'src/core/config/translationAppearance.ts',

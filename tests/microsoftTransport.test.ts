@@ -1,11 +1,91 @@
 import {describe, expect, it, vi} from 'vitest';
 import {translateMicrosoftTextsWithTransport} from '@/src/providers/translation/microsoftTransport';
+import {createTranslationRequestScheduler} from '@/src/services/translation/requestScheduler';
 
 function response(value: unknown, status = 200): Response {
     return new Response(JSON.stringify(value), {status});
 }
 
+function deferred<T>() {
+    let resolve!: (value: T | PromiseLike<T>) => void;
+    let reject!: (error: unknown) => void;
+    const promise = new Promise<T>((done, fail) => {resolve = done; reject = fail;});
+    return {promise, resolve, reject};
+}
+
+async function flushMicrotasks() {
+    for (let step = 0; step < 16; step++) await Promise.resolve();
+}
+
 describe('shared Microsoft translation transport', () => {
+    it.each([200, 500])('cancelled late HTTP %s headers keep the lease until the response body finishes', async status => {
+        const scheduler = createTranslationRequestScheduler(() => ({
+            maxConcurrentTranslations: 1, translationRequestsPerSecond: 0, translationRequestsPerMinute: 0,
+        }));
+        const headers = deferred<Response>();
+        let body!: ReadableStreamDefaultController<Uint8Array>;
+        const late = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}}), {status});
+        const transport = vi.fn().mockImplementationOnce(() => headers.promise)
+            .mockResolvedValue(response([{translations: [{text: '后续译文'}]}]));
+        const owner = new AbortController();
+        const first = scheduler.schedule(lease => translateMicrosoftTextsWithTransport(
+            transport, ['First readable paragraph'], 'en', 'zh-Hans', owner.signal, true, lease,
+        ), {signal: owner.signal}).catch(error => error);
+        expect(transport).toHaveBeenCalledOnce();
+        owner.abort(); await expect(first).resolves.toMatchObject({name: 'AbortError'});
+        const next = scheduler.schedule(lease => translateMicrosoftTextsWithTransport(
+            transport, ['Next readable paragraph'], 'en', 'zh-Hans', undefined, true, lease,
+        ));
+        headers.resolve(late);
+        try {
+            await flushMicrotasks();
+            expect(transport).toHaveBeenCalledOnce();
+        } finally {
+            body.enqueue(new TextEncoder().encode(JSON.stringify(status === 200
+                ? [{translations: [{text: '迟到译文'}]}] : {error: 'Late provider failure'})));
+            body.close();
+            await expect(next).resolves.toEqual(['后续译文']);
+        }
+        expect(transport).toHaveBeenCalledTimes(2);
+    });
+
+    it('holds an ordinary HTTP error body and preserves its status when that body fails', async () => {
+        const scheduler = createTranslationRequestScheduler(() => ({
+            maxConcurrentTranslations: 1, translationRequestsPerSecond: 0, translationRequestsPerMinute: 0,
+        }));
+        let body!: ReadableStreamDefaultController<Uint8Array>;
+        const rejected = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}}), {status: 401});
+        const transport = vi.fn().mockResolvedValueOnce(rejected)
+            .mockResolvedValue(response([{translations: [{text: '正常译文'}]}]));
+        const first = scheduler.schedule(lease => translateMicrosoftTextsWithTransport(
+            transport, ['Denied readable paragraph'], 'en', 'zh-Hans', undefined, true, lease,
+        )).catch(error => error);
+        const next = scheduler.schedule(lease => translateMicrosoftTextsWithTransport(
+            transport, ['Allowed readable paragraph'], 'en', 'zh-Hans', undefined, true, lease,
+        ));
+        try {
+            await flushMicrotasks();
+            expect(transport).toHaveBeenCalledOnce();
+        } finally {
+            body.error(new TypeError('Error body disconnected'));
+            await expect(first).resolves.toMatchObject({statusCode: 401});
+            await expect(next).resolves.toEqual(['正常译文']);
+        }
+        expect(transport).toHaveBeenCalledTimes(2);
+    });
+
+    it('without a lease, an unread error body does not add a drain to the shared Obsidian transport path', async () => {
+        let body!: ReadableStreamDefaultController<Uint8Array>;
+        const denied = new Response(new ReadableStream<Uint8Array>({start(controller) {body = controller;}}), {status: 403});
+        const clone = vi.spyOn(denied, 'clone');
+        const transport = vi.fn().mockResolvedValue(denied);
+        try {
+            await expect(translateMicrosoftTextsWithTransport(transport, ['Paragraph'], 'en', 'zh-Hans'))
+                .rejects.toMatchObject({statusCode: 403});
+            expect(clone).not.toHaveBeenCalled();
+        } finally {body.close();}
+    });
+
     it('skips empty batches without a network request', async () => {
         const transport = vi.fn();
         await expect(translateMicrosoftTextsWithTransport(transport, [], 'auto', 'zh-CN')).resolves.toEqual([]);

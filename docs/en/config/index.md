@@ -89,11 +89,13 @@ A concurrency slot remains occupied until the network request and response body 
 
 Set a per-second or per-minute limit to **0** to remove that limit. Requests wait in a queue when a limit is reached. Existing custom values are preserved.
 
-- **Per model**: in **Translation services**, open **Request limits**, set **Apply to** to **Current model**, switch **Limits** to **Custom**, then fill in the three values below.
+- **Per model**: in **Translation services**, open **Request limits**, set **Apply to** to **Current model**, switch **Limits** to **Custom**, then fill in the three values below. The current model is the model actually sent in the request. If custom JSON parameters override it, this panel displays and saves limits for the overriding model. Saved limits for other models are preserved.
 - **Per service**: when models share one provider quota, switch **Apply to** to **Entire service** and set the service-wide limit. A model's own limit also remains subject to the service-wide limit; unconfigured models inherit the service limit.
 - **Restore inheritance**: switch **Limits** back to **Use global settings** or **Use service settings**. Previously entered values stay available for later use.
 
 Retry count and intervals are configured globally in advanced settings.
+
+Free translation fallback routes and Google batches also retain slots while requests are still finishing. Free translation can try another route when capacity is available. When capacity is full, it waits for existing requests to finish within the translation's total timeout budget.
 
 </details>
 

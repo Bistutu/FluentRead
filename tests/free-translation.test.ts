@@ -26,6 +26,9 @@ vi.mock('@/src/providers/translation/free-chinese-web', () => ({translateFreeChi
 vi.mock('@/src/providers/translation/free-extra-web', () => ({translateExtraFreeWebText: extraMock, isKnownUnsupportedApertiumDirection: unsupportedApertiumMock}));
 
 import type {TranslationConfigSource} from '@/src/services/translation/types';
+import type {FreeFallbackLease} from '@/src/services/translation/freeFallback';
+import type {TranslationProviderRequest} from '@/src/services/translation/requestSnapshot';
+import {servicesType} from '@/src/core/config/catalog';
 import {DEFAULT_DEEPLX_ENDPOINT} from '@/src/core/config/deeplx';
 import {FREE_TRANSLATION_PROVIDERS} from '@/src/core/config/freeTranslation';
 import {serializeTranslationSlots} from '@/src/core/translation/slotProtocol';
@@ -79,6 +82,75 @@ beforeEach(async () => {
 afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
 describe('免费翻译服务', () => {
+    it.each(['google', 'microsoft'] as const)('单服务连接检查向 %s 传递后台真实传输租约', async provider => {
+        const {attachTranslationRequestScheduler} = await import('@/src/services/translation/requestSnapshot');
+        const {createTranslationRequestScheduler} = await import('@/src/services/translation/requestScheduler');
+        const scheduler = createTranslationRequestScheduler(() => ({maxConcurrentTranslations: 1}));
+        const lease = {holdUntil: vi.fn()};
+        const leaf = provider === 'microsoft' ? microsoftMock : googleMock;
+        leaf.mockResolvedValue(provider === 'microsoft' ? ['有效译文'] : '有效译文');
+        const request = attachTranslationRequestScheduler({origin: 'Hello from FluentRead.', sourceLanguage: 'en', targetLanguage: 'zh-Hans'},
+            scheduler, {service: 'freeTranslation'}, lease);
+
+        await expect(translateFreeTranslationProvider(provider, request)).resolves.toBe('有效译文');
+        expect(leaf.mock.calls[0][provider === 'microsoft' ? 5 : 6]).toBe(lease);
+    });
+
+    it.each([
+        {provider: 'google', grouped: false}, {provider: 'microsoft', grouped: false},
+        {provider: 'google', grouped: true}, {provider: 'microsoft', grouped: true},
+    ])('broker keeps $provider grouped=$grouped occupied through nested physical transport settlement', async ({provider, grouped}) => {
+        Object.assign(mockConfig, {
+            freeTranslationOrder: [provider], maxConcurrentTranslations: 1,
+            translationRequestsPerSecond: 0, translationRequestsPerMinute: 0,
+            useCache: false, enableAIContext: false,
+        });
+        const {createTranslationBroker} = await import('@/src/services/translation/broker');
+        const {attachTranslationRequestControl} = await import('@/src/services/translation/requestSnapshot');
+        const broker = createTranslationBroker({
+            ready: Promise.resolve(), getConfig: () => mockConfig as unknown as TranslationConfigSource,
+            providers: {freeTranslation: message => freeTranslation(message as unknown as TranslationProviderRequest)},
+            cache: {get: async () => null, set: async () => true, clear: async () => {}, cleanup: async () => {}},
+            serviceTypes: servicesType,
+            endpointResolver: {resolveOpenAICompatibleEndpoint: () => ({endpoint: ''}), aiSdkTransportProfile: ''},
+            promptBuilder: {buildPageSummaryPrompt: () => '', buildPageSummarySystemPrompt: () => ''},
+            getMissingCredentialMessage: () => null,
+            getTranslationLanguages: () => ({sourceLanguage: 'en', targetLanguage: 'zh-Hans'}),
+            resolveConfiguredModel: () => '', buildTranslationCacheKey: identity => JSON.stringify(identity),
+        });
+        let releasePhysical!: () => void;
+        const rawTransport = new Promise<void>(resolve => {releasePhysical = resolve;});
+        const leaf = provider === 'microsoft' ? microsoftMock : grouped ? googleOwnerMock : googleMock;
+        const leasePosition = provider === 'microsoft' ? 5 : grouped ? 4 : 6;
+        leaf.mockImplementation((...args: unknown[]) => {
+            const signal = args[3] as AbortSignal;
+            const lease = args[leasePosition] as FreeFallbackLease;
+            expect(lease).toEqual(expect.objectContaining({holdUntil: expect.any(Function)}));
+            lease.holdUntil(rawTransport);
+            return new Promise((_resolve, reject) => signal.addEventListener('abort',
+                () => reject(new DOMException('provider wrapper stopped waiting', 'AbortError')), {once: true}));
+        });
+        const controller = new AbortController();
+        const origin = grouped ? Array.from({length: 9}, (_, index) => `English source paragraph ${index}.`) : 'English source paragraph.';
+        const message = typeof origin === 'string' ? {origin, requestTimeoutMs: 5_000} : {origin, requestTimeoutMs: 5_000};
+        const first = broker.translateWithCache(attachTranslationRequestControl(message, {
+            signal: controller.signal, ownershipKey: `free-${provider}-${grouped}`,
+        })).catch(error => error);
+        await vi.advanceTimersByTimeAsync(100);
+        const firstCalls = leaf.mock.calls.length;
+        expect(firstCalls).toBeGreaterThan(0);
+        controller.abort();
+        await expect(first).resolves.toMatchObject({name: 'AbortError'});
+        const retryLeaf = provider === 'microsoft' ? microsoftMock : googleMock;
+        retryLeaf.mockImplementation(() => Promise.resolve(provider === 'microsoft' ? ['恢复译文'] : '恢复译文'));
+        const retry = broker.translateWithCache({origin: 'Another source paragraph after cancellation.', requestTimeoutMs: 5_000});
+        await vi.advanceTimersByTimeAsync(100);
+        expect(leaf).toHaveBeenCalledTimes(firstCalls);
+        releasePhysical();
+        await expect(settle(retry)).resolves.toBe('恢复译文');
+        expect(retryLeaf).toHaveBeenCalledTimes(provider === 'google' && grouped ? 1 : firstCalls + 1);
+    });
+
     it('已确认不支持的 Apertium 方向只在当前方向跳过，配置和连接健康身份不变', async () => {
         mockConfig.freeTranslationOrder = ['apertiumFree', 'google'];
         let unsupported = false;
@@ -172,7 +244,8 @@ describe('免费翻译服务', () => {
         myMemoryMock.mockImplementation(async () => { calls.push('myMemory'); return '官方译文'; });
         await expect(settle(translateFreeText('Hello'))).resolves.toBe('官方译文');
         expect(calls).toEqual(['microsoft', 'alibabaFree', 'google', 'myMemory']);
-        expect(microsoftMock).toHaveBeenCalledWith(['Hello'], 'auto', 'zh-Hans', expect.any(AbortSignal));
+        expect(microsoftMock).toHaveBeenCalledWith(['Hello'], 'auto', 'zh-Hans', expect.any(AbortSignal), true,
+            expect.objectContaining({holdUntil: expect.any(Function)}));
         expect(officialMock).toHaveBeenCalledWith('alibabaFree', expect.objectContaining({origin: 'Hello', sourceLanguage: 'auto', targetLanguage: 'zh-Hans'}));
         expect(myMemoryMock).toHaveBeenCalledWith(expect.objectContaining({origin: 'Hello', serviceOverride: 'myMemory', abortSignal: expect.any(AbortSignal)}));
     });
@@ -485,7 +558,8 @@ describe('免费翻译服务', () => {
     it('调用方取消中止所有在途 worker，不启动未领取段落、不继续降级', async () => {
         mockConfig.freeTranslationOrder = ['microsoft'];
         const controller = new AbortController();
-        microsoftMock.mockImplementation(() => new Promise(() => {}));
+        const releases: Array<(value: string[]) => void> = [];
+        microsoftMock.mockImplementation(() => new Promise<string[]>(resolve => {releases.push(resolve);}));
         const request = freeTranslation({origin: ['A', 'B', 'C', 'D', 'E'], abortSignal: controller.signal});
         const assertion = expect(request).rejects.toThrow('用户取消');
         await vi.advanceTimersByTimeAsync(100);
@@ -494,8 +568,12 @@ describe('免费翻译服务', () => {
         expect(microsoftMock).toHaveBeenCalledTimes(2);
         expect(microsoftMock.mock.calls.every(call => call[3].aborted)).toBe(true);
         expect(officialMock).not.toHaveBeenCalled();
+        const resumed = translateFreeText('next');
+        await vi.advanceTimersByTimeAsync(0);
+        expect(microsoftMock).toHaveBeenCalledTimes(2);
         microsoftMock.mockResolvedValue(['恢复']);
-        await expect(settle(translateFreeText('next'))).resolves.toBe('恢复');
+        releases.forEach(release => release(['迟到译文']));
+        await expect(settle(resumed)).resolves.toBe('恢复');
     });
 
     it('任一文本耗尽所有备用后取消 sibling，避免余下请求继续外发', async () => {

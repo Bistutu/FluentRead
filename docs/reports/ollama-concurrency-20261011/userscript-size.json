@@ -1,0 +1,29 @@
+{
+  "baseline": {
+    "commit": "ec6d1136e6afe1a7758b6d9f3e5eae9ec50964a3",
+    "bytes": 2064692,
+    "sha256": "ee807a29076278443dc512fedf5815ac8c5ee3ec46696d3bfc111d4b94fec4fe",
+    "verifierPassed": true
+  },
+  "candidate": {
+    "state": "issue #952 follow-up working tree",
+    "bytes": 2066187,
+    "sha256": "8b2576222cf80d3c23ec3d2ba8ebd172480ee24733f1175ed4dcc2f9b2e65f1a"
+  },
+  "delta": {
+    "bytes": 1495,
+    "percent": 0.0724
+  },
+  "budget": {
+    "previousBytes": 2066000,
+    "newBytes": 2067000,
+    "stepBytes": 1000,
+    "headroomBytes": 813
+  },
+  "method": "Export baseline commit independently with git archive; share the same installed node_modules; generate WXT types in the baseline before its build. No product code or dependencies changed for this size check.",
+  "commands": [
+    "pnpm exec wxt prepare",
+    "FLUENTREAD_TEST_MAX_WORKERS=1 FLUENTREAD_TEST_CONCURRENCY=3 pnpm build:userscript",
+    "node scripts/verify-userscript-build.mjs"
+  ]
+}
