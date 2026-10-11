@@ -2,7 +2,7 @@
  * @file src/core/i18n/messages/zh-CN.ts
  *
  * 文件职责：提供 FluentRead 简体中文语义资源，作为默认界面语言与缺失翻译的回退目录。
- * 主要内容：维护语言选择、popup、设置导航、通知和工具页面使用的稳定 message key，保证
+ * 主要内容：包含默认仅点击的学习入口与可选快捷键设置；维护语言选择、popup、设置导航、通知和工具页面使用的稳定 message key，保证
  * 现有中文用户在切换或升级配置后仍看到兼容文案。
  * 模块边界：资源只描述扩展自己的界面文本；翻译服务的源文本、目标文本和用户内容不属于这里。
  */
@@ -22,6 +22,21 @@ import {translationStatsChineseMessages} from './translationStats';
 import {localTranslationChineseMessages} from './localTranslation';
 
 export const zhCNMessages = {
+    "progressiveReading.entry.label": "学习",
+    "progressiveReading.entry.title": "学习：渐进阅读",
+    "progressiveReading.entry.description": "选中网页正文后，按需查看原文、短语提示、逻辑线索和完整双语。",
+    "progressiveReading.entry.clickOnly": "未设置快捷键 · 点击开启",
+    "progressiveReading.entry.shortcut": "快捷键：{shortcut}",
+    "progressiveReading.entry.settings": "设置快捷键",
+    "progressiveReading.settings.title": "学习",
+    "progressiveReading.settings.hotkey": "学习快捷键",
+    "progressiveReading.settings.hotkeyDescription": "默认仅点击开启；设置后可用快捷键打开学习面板。",
+    "progressiveReading.settings.none": "无快捷键（仅点击）",
+    "progressiveReading.settings.custom": "自定义快捷键",
+    "progressiveReading.settings.edit": "编辑学习快捷键",
+    "progressiveReading.settings.conflict": "该快捷键已被{feature}使用，请选择其它组合。",
+    "progressiveReading.settings.set": "学习快捷键已设置为{shortcut}",
+    "progressiveReading.settings.profiles": "快捷翻译方案",
     ...videoLearningText,
     ...pdfReadingMessages['zh-CN'],
     ...informationHighlightMessages['zh-CN'],

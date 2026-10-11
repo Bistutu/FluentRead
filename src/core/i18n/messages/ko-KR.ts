@@ -2,7 +2,7 @@
  * @file src/core/i18n/messages/ko-KR.ts
  *
  * 文件职责：提供 FluentRead 韩语界面资源，覆盖稳定 UI、首次引导与状态文案。
- * 主要内容：保持语言名称使用各自原生写法，并为尚未 key 化的旧 UI 提供韩语映射。
+ * 主要内容：包含默认仅点击的学习入口与可选快捷键设置；保持语言名称使用各自原生写法，并为尚未 key 化的旧 UI 提供韩语映射。
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入或翻译结果。
  */
 import videoLearningText from './video-learning/ko-KR.json';
@@ -23,6 +23,21 @@ import {translationStatsKoreanMessages} from './translationStats';
 import {localTranslationKoreanMessages} from './localTranslation';
 
 export const koKRMessages = {
+    "progressiveReading.entry.label": "학습",
+    "progressiveReading.entry.title": "학습: 단계별 읽기",
+    "progressiveReading.entry.description": "웹페이지 본문을 선택한 뒤 원문, 표현 힌트, 논리 단서와 전체 대역을 필요에 따라 확인합니다.",
+    "progressiveReading.entry.clickOnly": "단축키 없음 · 클릭하여 열기",
+    "progressiveReading.entry.shortcut": "단축키: {shortcut}",
+    "progressiveReading.entry.settings": "단축키 설정",
+    "progressiveReading.settings.title": "학습",
+    "progressiveReading.settings.hotkey": "학습 단축키",
+    "progressiveReading.settings.hotkeyDescription": "기본값은 클릭으로만 열기입니다. 단축키를 설정하면 키보드로 학습 패널을 열 수 있습니다.",
+    "progressiveReading.settings.none": "없음 (클릭만)",
+    "progressiveReading.settings.custom": "사용자 지정 단축키",
+    "progressiveReading.settings.edit": "학습 단축키 편집",
+    "progressiveReading.settings.conflict": "이 단축키는 {feature}에서 사용 중입니다. 다른 조합을 선택하세요.",
+    "progressiveReading.settings.set": "학습 단축키를 {shortcut}(으)로 설정했습니다",
+    "progressiveReading.settings.profiles": "빠른 번역 프로필",
     ...videoLearningText,
     ...pdfReadingMessages['ko-KR'],
     ...informationHighlightMessages['ko-KR'],

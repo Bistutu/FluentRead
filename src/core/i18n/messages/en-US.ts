@@ -2,7 +2,7 @@
  * @file src/core/i18n/messages/en-US.ts
  *
  * 文件职责：提供 FluentRead English 界面资源与当前旧中文模板的显式迁移映射。
- * 主要内容：覆盖语言选择、popup、设置导航、服务配置、文档、通知和内容浮层的英文文案，
+ * 主要内容：包含默认仅点击的学习入口与可选快捷键设置；覆盖语言选择、popup、设置导航、服务配置、文档、通知和内容浮层的英文文案，
  * 并保留参数化旧文案的安全回退，支持后续翻译者继续补齐未 key 化区域。
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入、提示词或翻译结果。
  */
@@ -25,6 +25,21 @@ import {translationStatsEnglishMessages} from './translationStats';
 import {localTranslationEnglishMessages} from './localTranslation';
 
 export const enUSMessages = {
+    "progressiveReading.entry.label": "Study",
+    "progressiveReading.entry.title": "Study: progressive reading",
+    "progressiveReading.entry.description": "Select webpage text to view the original, phrase hints, logic clues or full bilingual text as needed.",
+    "progressiveReading.entry.clickOnly": "No shortcut set · Click to open",
+    "progressiveReading.entry.shortcut": "Shortcut: {shortcut}",
+    "progressiveReading.entry.settings": "Set shortcut",
+    "progressiveReading.settings.title": "Study",
+    "progressiveReading.settings.hotkey": "Study shortcut",
+    "progressiveReading.settings.hotkeyDescription": "Click to open by default. Set a shortcut to open the study panel from the keyboard.",
+    "progressiveReading.settings.none": "No shortcut (click only)",
+    "progressiveReading.settings.custom": "Custom shortcut",
+    "progressiveReading.settings.edit": "Edit study shortcut",
+    "progressiveReading.settings.conflict": "This shortcut is already used by {feature}. Choose another combination.",
+    "progressiveReading.settings.set": "Study shortcut set to {shortcut}",
+    "progressiveReading.settings.profiles": "Quick translation profiles",
     ...videoLearningText,
     ...pdfReadingMessages['en-US'],
     ...informationHighlightMessages['en-US'],

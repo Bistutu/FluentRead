@@ -1,12 +1,13 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {parseHTML} from 'linkedom';
 import type {ContentScriptContext} from 'wxt/utils/content-script-context';
-const mocks = vi.hoisted(() => ({create: vi.fn(), capture: vi.fn(), send: vi.fn(), translate: vi.fn(), add: vi.fn(), remove: vi.fn(), extension: {inIncognitoContext: false}, observer: vi.fn(), disconnect: vi.fn(), observe: vi.fn()}));
+import {Config} from '@/src/core/config/model';
+const mocks = vi.hoisted(() => ({config: {} as Config, create: vi.fn(), capture: vi.fn(), send: vi.fn(), translate: vi.fn(), add: vi.fn(), remove: vi.fn(), extension: {inIncognitoContext: false}, observer: vi.fn(), disconnect: vi.fn(), observe: vi.fn()}));
 vi.mock('webextension-polyfill', () => ({default: {extension: mocks.extension, runtime: {sendMessage: mocks.send, onMessage: {addListener: mocks.add, removeListener: mocks.remove}}}}));
 vi.mock('@/src/platform/shadow-ui', () => ({createVueShadowUi: mocks.create}));
 vi.mock('@/src/features/progressive-reading/source', () => ({captureProgressiveSource: mocks.capture}));
 vi.mock('@/src/app/translation/client', () => ({translateText: mocks.translate}));
-vi.mock('@/src/services/config/store', () => ({config: {to: 'zh'}}));
+vi.mock('@/src/services/config/store', () => ({config: mocks.config}));
 vi.mock('@/src/features/progressive-reading/ui/ProgressiveReading.vue', () => ({default: {name: 'Panel'}}));
 import {mountProgressiveReading, openProgressiveReading, unmountProgressiveReading} from '@/src/features/progressive-reading/content';
 const flush = async () => {for (let i = 0; i < 10; i++) await Promise.resolve();};
@@ -16,9 +17,18 @@ let root: Element;
 let valid: boolean;
 let ui: {remove: ReturnType<typeof vi.fn>; shadowHost: HTMLElement};
 const props = () => mocks.create.mock.calls.at(-1)![1].props;
+function keydown(target: EventTarget = document, values: Partial<KeyboardEvent> = {}) {
+  const event = new document.defaultView!.Event('keydown', {bubbles: true, cancelable: true});
+  const {defaultPrevented, ...keyboard} = values;
+  Object.defineProperties(event, Object.fromEntries(Object.entries({isTrusted: true, key: 'l', code: 'KeyL', ctrlKey: true, altKey: true,
+    shiftKey: false, metaKey: false, repeat: false, isComposing: false, keyCode: 76, ...keyboard}).map(([key, value]) => [key, {value}])));
+  if (defaultPrevented) event.preventDefault();
+  target.dispatchEvent(event); return event;
+}
 function mount() {const controller = new AbortController(); const ctx = {isInvalid: false}; const events = vi.spyOn(controller.signal, 'addEventListener'); mountProgressiveReading(ctx as ContentScriptContext, controller.signal); return {controller, ctx, dispose: () => {const callback = events.mock.calls.find(call => call[0] === 'abort')?.[1]; if (typeof callback === 'function') callback(new Event('abort'));}};}
 beforeEach(() => {
   vi.clearAllMocks(); valid = true; mocks.extension.inIncognitoContext = false;
+  Object.assign(mocks.config, new Config(), {to: 'zh', hotkey: 'none'});
   document = parseHTML('<html><body><p>Some source may not apply.</p></body></html>').document as unknown as Document;
   Object.defineProperty(document, 'location', {value: {href: 'https://example.test/article'}, configurable: true});
   root = document.querySelector('p')!; vi.stubGlobal('document', document);
@@ -30,6 +40,60 @@ beforeEach(() => {
 });
 afterEach(() => {unmountProgressiveReading(); vi.unstubAllGlobals();});
 describe('progressive reading content lifecycle', () => {
+  it('keeps the shortcut off by default, reads current settings immediately and shares pending/idempotent opens', async () => {
+    mount(); expect(keydown().defaultPrevented).toBe(false); expect(mocks.create).not.toHaveBeenCalled();
+    Object.assign(mocks.config, {progressiveReadingHotkey: 'custom', customProgressiveReadingHotkey: 'Ctrl+Alt+L'});
+    expect(keydown(document, {altKey: false}).defaultPrevented).toBe(false); expect(mocks.create).not.toHaveBeenCalled();
+    const waiting = deferred<typeof ui>(); mocks.create.mockReturnValue(waiting.promise);
+    expect(keydown().defaultPrevented).toBe(true); expect(keydown().defaultPrevented).toBe(true); expect(mocks.create).toHaveBeenCalledTimes(1);
+    waiting.resolve(ui); await flush(); expect(await openProgressiveReading()).toBe(true); expect(mocks.create).toHaveBeenCalledTimes(1);
+    props().close(); mocks.create.mockResolvedValue(ui);
+    mocks.config.customProgressiveReadingHotkey = 'Ctrl+Alt+K';
+    expect(keydown().defaultPrevented).toBe(false);
+    expect(keydown(document, {key: 'k', code: 'KeyK'}).defaultPrevented).toBe(true); await flush(); expect(mocks.create).toHaveBeenCalledTimes(2);
+    props().close(); mocks.config.progressiveReadingHotkey = 'none';
+    expect(keydown(document, {key: 'k', code: 'KeyK'}).defaultPrevented).toBe(false); expect(mocks.create).toHaveBeenCalledTimes(2);
+  });
+  it('leaves untrusted, composing, repeated, handled or unavailable keyboard events untouched and releases its listener', async () => {
+    const task = mount(); Object.assign(mocks.config, {progressiveReadingHotkey: 'custom', customProgressiveReadingHotkey: 'Ctrl+Alt+L'});
+    for (const values of [{isTrusted: false}, {repeat: true}, {isComposing: true}, {keyCode: 229}]) expect(keydown(document, values).defaultPrevented).toBe(false);
+    expect(keydown(document, {defaultPrevented: true}).defaultPrevented).toBe(true); expect(mocks.create).not.toHaveBeenCalled();
+    mocks.config.on = false; expect(keydown().defaultPrevented).toBe(false); mocks.config.on = true;
+    task.ctx.isInvalid = true; expect(keydown().defaultPrevented).toBe(false); task.ctx.isInvalid = false;
+    task.controller.abort(); expect(keydown().defaultPrevented).toBe(false); expect(mocks.create).not.toHaveBeenCalled();
+    mount(); unmountProgressiveReading(); expect(keydown().defaultPrevented).toBe(false); expect(mocks.create).not.toHaveBeenCalled();
+  });
+  it('protects typing targets, deep and opaque focus, and the panel controls', async () => {
+    mount(); Object.assign(mocks.config, {progressiveReadingHotkey: 'custom', customProgressiveReadingHotkey: 'Ctrl+Alt+L'});
+    for (const html of ['<input>', '<textarea></textarea>', '<select></select>', '<div contenteditable="true"><span>typing</span></div>', '<div role="textbox">typing</div>']) {
+      const target = document.createElement('div'); target.innerHTML = html; document.body.append(target);
+      expect(keydown(target.querySelector('span') ?? target.firstElementChild!).defaultPrevented).toBe(false); target.remove();
+    }
+    const focused = document.createElement('input'), shadowHost = document.createElement('div');
+    Object.defineProperty(shadowHost, 'shadowRoot', {value: {activeElement: focused}});
+    Object.defineProperty(document, 'activeElement', {value: shadowHost, configurable: true});
+    expect(keydown().defaultPrevented).toBe(false);
+    Object.defineProperty(document, 'activeElement', {value: document.createElement('closed-editor'), configurable: true});
+    expect(keydown().defaultPrevented).toBe(false);
+    Object.defineProperty(document, 'activeElement', {value: document.body, configurable: true});
+    const owned = document.createElement('div'); owned.setAttribute('data-fluent-read-ui', 'test'); const button = document.createElement('button'); owned.append(button); document.body.append(owned);
+    expect(keydown(button).defaultPrevented).toBe(false); expect(mocks.create).not.toHaveBeenCalled();
+    await openProgressiveReading(); const control = document.createElement('button'); ui.shadowHost.append(control);
+    expect(keydown(root).defaultPrevented).toBe(true); expect(mocks.create).toHaveBeenCalledTimes(1);
+    expect(keydown(control).defaultPrevented).toBe(false); expect(mocks.create).toHaveBeenCalledTimes(1);
+    Object.defineProperty(document, 'activeElement', {value: ui.shadowHost, configurable: true});
+    expect(keydown().defaultPrevented).toBe(false); expect(mocks.create).toHaveBeenCalledTimes(1);
+  });
+  it.each([
+    ['page', {floatingBallHotkey: 'custom', customFloatingBallHotkey: 'Ctrl+Alt+L'}],
+    ['hover', {hotkey: 'custom', customHotkey: 'Ctrl+Alt+L'}],
+    ['selection', {disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual', selectionTranslatorTrigger: 'custom', customSelectionTranslatorHotkey: 'Ctrl+Alt+L'}],
+    ['selection prefix', {disableSelectionTranslator: false, selectionTranslatorMode: 'bilingual', selectionTranslatorTrigger: 'Control'}],
+    ['profile', {quickTranslationProfiles: [{id: 'reading-conflict', name: 'Existing', enabled: true, action: 'full-page', hotkey: 'Ctrl+Alt+L'}]}],
+  ] as const)('yields to the existing %s shortcut without consuming its event', (_name, configuration) => {
+    mount(); Object.assign(mocks.config, {progressiveReadingHotkey: 'custom', customProgressiveReadingHotkey: 'Ctrl+Alt+L'}, configuration);
+    expect(keydown().defaultPrevented).toBe(false); expect(mocks.create).not.toHaveBeenCalled();
+  });
   it('mounts only for a current activation and removes one owner on abort', async () => {
     expect(await openProgressiveReading()).toBe(false);
     const aborted = new AbortController(); aborted.abort(); mountProgressiveReading({isInvalid: false} as ContentScriptContext, aborted.signal);

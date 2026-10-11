@@ -2,7 +2,7 @@
  * @file src/core/i18n/messages/fr-FR.ts
  *
  * 文件职责：提供 FluentRead 法语界面资源，覆盖稳定 UI、首次引导与状态文案。
- * 主要内容：保持语言名称使用各自原生写法，并为尚未 key 化的旧 UI 提供法语映射。
+ * 主要内容：包含默认仅点击的学习入口与可选快捷键设置；保持语言名称使用各自原生写法，并为尚未 key 化的旧 UI 提供法语映射。
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入或翻译结果。
  */
 import videoLearningText from './video-learning/fr-FR.json';
@@ -23,6 +23,21 @@ import {translationStatsFrenchMessages} from './translationStats';
 import {localTranslationFrenchMessages} from './localTranslation';
 
 export const frFRMessages = {
+    "progressiveReading.entry.label": "Étudier",
+    "progressiveReading.entry.title": "Étudier : lecture progressive",
+    "progressiveReading.entry.description": "Sélectionnez du texte sur la page pour consulter l’original, des indices de vocabulaire, des repères logiques ou le texte bilingue complet.",
+    "progressiveReading.entry.clickOnly": "Aucun raccourci · Cliquer pour ouvrir",
+    "progressiveReading.entry.shortcut": "Raccourci : {shortcut}",
+    "progressiveReading.entry.settings": "Définir un raccourci",
+    "progressiveReading.settings.title": "Étudier",
+    "progressiveReading.settings.hotkey": "Raccourci d’étude",
+    "progressiveReading.settings.hotkeyDescription": "Par défaut, ouvrez par clic. Définissez un raccourci pour ouvrir le panneau au clavier.",
+    "progressiveReading.settings.none": "Aucun raccourci (clic seul)",
+    "progressiveReading.settings.custom": "Raccourci personnalisé",
+    "progressiveReading.settings.edit": "Modifier le raccourci d’étude",
+    "progressiveReading.settings.conflict": "Ce raccourci est déjà utilisé par {feature}. Choisissez une autre combinaison.",
+    "progressiveReading.settings.set": "Raccourci d’étude défini sur {shortcut}",
+    "progressiveReading.settings.profiles": "Profils de traduction rapide",
     ...videoLearningText,
     ...pdfReadingMessages['fr-FR'],
     ...informationHighlightMessages['fr-FR'],

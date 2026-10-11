@@ -2,7 +2,7 @@
  * @file src/core/i18n/messages/es-ES.ts
  *
  * 文件职责：提供 FluentRead 西班牙语界面资源，覆盖首次引导、Popup、Options、通知和视频字幕等稳定文案。
- * 主要内容：以 English 资源作为结构基线，逐项覆盖当前稳定 message key；旧版尚未 key 化的文案由 i18n 迁移层按显式映射处理。
+ * 主要内容：包含默认仅点击的学习入口与可选快捷键设置；以 English 资源作为结构基线，逐项覆盖当前稳定 message key；旧版尚未 key 化的文案由 i18n 迁移层按显式映射处理。
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入、提示词或翻译结果。
  */
 import videoLearningText from './video-learning/es-ES.json';
@@ -23,6 +23,21 @@ import {translationStatsSpanishMessages} from './translationStats';
 import {localTranslationSpanishMessages} from './localTranslation';
 
 export const esESMessages = {
+    "progressiveReading.entry.label": "Estudiar",
+    "progressiveReading.entry.title": "Estudiar: lectura progresiva",
+    "progressiveReading.entry.description": "Seleccione texto de la página para consultar el original, pistas de expresiones, señales lógicas o el texto bilingüe completo.",
+    "progressiveReading.entry.clickOnly": "Sin atajo · Haga clic para abrir",
+    "progressiveReading.entry.shortcut": "Atajo: {shortcut}",
+    "progressiveReading.entry.settings": "Configurar atajo",
+    "progressiveReading.settings.title": "Estudiar",
+    "progressiveReading.settings.hotkey": "Atajo de estudio",
+    "progressiveReading.settings.hotkeyDescription": "De forma predeterminada se abre con un clic. Configure un atajo para abrir el panel con el teclado.",
+    "progressiveReading.settings.none": "Sin atajo (solo clic)",
+    "progressiveReading.settings.custom": "Atajo personalizado",
+    "progressiveReading.settings.edit": "Editar atajo de estudio",
+    "progressiveReading.settings.conflict": "{feature} ya utiliza este atajo. Elija otra combinación.",
+    "progressiveReading.settings.set": "Atajo de estudio configurado: {shortcut}",
+    "progressiveReading.settings.profiles": "Perfiles de traducción rápida",
     ...videoLearningText,
     ...pdfReadingMessages['es-ES'],
     ...informationHighlightMessages['es-ES'],

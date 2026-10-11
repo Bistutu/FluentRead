@@ -9,7 +9,7 @@ When a translation matches the source, FluentRead keeps the source without displ
 ## Page translation
 
 1. Open an article and click the FluentRead icon in the browser toolbar.
-2. Choose the target language and translation service, then click **Translate this page**.
+2. Choose the target language and translation service, then click **Translate** (the button also shows your shortcut).
 3. Read in bilingual mode, or select **Translation only** to focus on the result. Click **Restore original** to return to the page as it was.
 
 The default translates as you read. If you need the whole page at once, change the translation range in settings. After restoring, you can translate again with another language or service.
@@ -52,7 +52,7 @@ Turning the ball off leaves the full-page translation shortcut (Alt+T by default
 
 ## Section translation
 
-When you only want to read part of a page, such as a GitHub README, an article body or one comment thread, you don’t have to translate the whole page. Click the **Section** button next to **Translate this page** in the extension menu to start picking:
+When you only want to read part of a page, such as a GitHub README, an article body or one comment thread, you don’t have to translate the whole page. Click the **Section** button next to **Translate** in the extension menu to start picking:
 
 - Move the pointer to preview a section. An outline marks the current range, and the label shows its type, such as paragraph, list, table, article or region, along with its translation status.
 - Clicking a section only locks the selection; it does not start translation. Once locked, the toolbar offers **Expand selection**, **Shrink selection**, **Reselect**, **Translate selected section** (or **Restore original** for a translated section), and a close button. Choose **Reselect** to return to the hover preview.
@@ -64,6 +64,14 @@ When you only want to read part of a page, such as a GitHub README, an article b
 If you use it often, turn on its shortcut in **Settings → Translation → Section translation** (default **Alt+R**, Option+R on a Mac); press it again while picking to exit. Headers, navigation and sidebars usually stay in the original language during page translation, but if you pick one of them yourself, its text is translated too and, like other interface text, replaces the original in place so the layout stays intact. Restoring page translation also restores any translated sections.
 
 The hover preview follows changes in page content, layout and scrolling. Locking keeps your chosen section while you scroll to check it. Pausing the extension or leaving the page stops unfinished section tasks, and late results cannot reinsert translations after you restore the original.
+
+## Study: progressive reading
+
+Select an expression or a passage, then click **Study** beside **Section** in the extension panel. Start with the original and freely choose phrase hints, logic cues or full bilingual text. You can also open the panel first, select a passage and click **读取选中正文** (“Read selected text”; the reading panel currently uses Chinese labels). Each new passage starts with the original; full bilingual help is always directly available.
+
+Learning has no shortcut by default and opens by clicking. Hover over or focus **Study** to see its explanation and current shortcut. Choose **Set shortcut** in the hint to record a combination under **Settings → Translation settings → Study**. Saving enables keyboard activation on webpages; clearing returns to click-only activation. Inputs and editing areas keep normal typing, and occupied combinations show a conflict.
+
+Phrase hints first use local and saved references. Translation is requested only when you ask for an expression or full bilingual text. Switching modes, lingering or scrolling does not write learning records. Closing cancels pending requests. This entry is available on ordinary webpages; native PDF pages, userscripts and Thunderbird do not offer it.
 
 <details class="guide-details">
 <summary>Automatic translation and site rules</summary>

@@ -201,21 +201,22 @@ async function openReading() {
     assert.equal(await popup.evaluate(() => window.__progressivePopupCloseInvocations), 1, 'Successful reading action must request Popup closure');
     assert.equal(findAll((await snapshot()).host, node => attr(node, 'data-reading-mode') !== undefined).length, 4, 'The panel must offer four direct help modes');
 }
-async function popupEntryVariant(width, label) {
+async function popupEntryVariant(width, label, longShortcut = false) {
     await popup.setViewportSize({width, height: 650});
     const metrics = await popup.evaluate(() => {
         const shell = document.querySelector('.popup-shell'), shellBox = shell.getBoundingClientRect(), row = document.querySelector('.translate-action');
-        const shortcut = row.querySelector('.translate-hotkey'), shortcutBox = shortcut?.getBoundingClientRect(), fullBox = row.querySelector('[data-testid="page-translation"]').getBoundingClientRect();
-        return {viewportWidth: innerWidth, shellWidth: shellBox.width, horizontalOverflow: document.documentElement.scrollWidth > innerWidth + 1 || shell.scrollWidth > shell.clientWidth + 1 || row.scrollWidth > row.clientWidth + 1,
+        return {viewportWidth: innerWidth, platform: navigator.platform, shellWidth: shellBox.width, horizontalOverflow: document.documentElement.scrollWidth > innerWidth + 1 || shell.scrollWidth > shell.clientWidth + 1 || row.scrollWidth > row.clientWidth + 1,
+            shortcutChips: row.querySelectorAll('kbd, .translate-hotkey').length,
             legacyTranslationGlyph: !!row.querySelector('.translate-glyph') || row.textContent.includes('A↔译'),
             siteRuleRows: [...document.querySelectorAll('.site-rule-row')].map(rule => {const style = getComputedStyle(rule); return {
                 borderWidths: [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth],
                 background: style.backgroundColor, backgroundImage: style.backgroundImage, shadow: style.boxShadow,
             };}),
-            hotkey: shortcut && {text: shortcut.textContent.trim(), clipped: shortcut.scrollWidth > shortcut.clientWidth + 1 || shortcutBox.left < fullBox.left - 1 || shortcutBox.right > fullBox.right + 1 || shortcutBox.bottom > fullBox.bottom + 1},
-            buttons: [...row.querySelectorAll('button')].map(button => {
+            buttons: [...row.querySelectorAll('[data-testid="page-translation"], [data-testid="section-translation"], [data-testid="progressive-reading"]')].map(button => {
                 const box = button.getBoundingClientRect(), label = button.querySelector('.translate-label') || [...button.querySelectorAll('span')].at(-1), text = label.getBoundingClientRect();
-                return {id: button.dataset.testid, text: label.textContent.trim(), left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width,
+                const captionRange = document.createRange(); captionRange.selectNodeContents(label);
+                return {id: button.dataset.testid, text: label.textContent.trim(), title: button.title, ariaLabel: button.getAttribute('aria-label'), captionLines: captionRange.getClientRects().length,
+                    left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height,
                     clipped: button.scrollWidth > button.clientWidth + 1 || label.scrollWidth > label.clientWidth + 1 || text.left < box.left - 1 || text.right > box.right + 1,
                     withinShell: box.left >= shellBox.left - 1 && box.right <= shellBox.right + 1, visible: box.width > 0 && box.height > 0 && box.top >= 0 && box.bottom <= innerHeight};
             })};
@@ -226,12 +227,18 @@ async function popupEntryVariant(width, label) {
     assert.equal(metrics.viewportWidth, width); assert.equal(metrics.buttons.length, 3, 'Popup must expose exactly the full-page, local-section and progressive-reading actions');
     assert.equal(metrics.horizontalOverflow, false, `${label} Popup overflows: ${JSON.stringify(metrics)}`);
     assert(metrics.buttons.every(button => button.text && button.visible && button.withinShell && !button.clipped), `${label} Popup action text is clipped or outside the shell: ${JSON.stringify(metrics)}`);
-    assert(metrics.hotkey?.text && !metrics.hotkey.clipped, `${label} Popup hotkey is missing or clipped: ${JSON.stringify(metrics)}`);
+    assert.equal(metrics.shortcutChips, 0, `${label}: shortcuts must share the action caption without a separate kbd chip`);
     assert.equal(metrics.legacyTranslationGlyph, false, `${label}: the legacy A↔译 glyph must be absent`);
     assert(metrics.siteRuleRows.length && metrics.siteRuleRows.every(rule => rule.borderWidths.every(width => parseFloat(width) === 0)
         && ['transparent', 'rgba(0, 0, 0, 0)'].includes(rule.background) && rule.backgroundImage === 'none' && rule.shadow === 'none'),
         `${label}: site rules must have no enclosing border, background or shadow: ${JSON.stringify(metrics.siteRuleRows)}`);
     const [full, section, reading] = metrics.buttons;
+    const mac = /Mac|iPod|iPhone|iPad/u.test(metrics.platform), shortcut = longShortcut ? (mac ? '⌃+⌥+⇧+Arrowright' : 'Ctrl+Alt+Shift+Arrowright') : (mac ? '⌥+T' : 'Alt+T');
+    assert.equal(full.text, longShortcut ? '翻译' : `翻译（${shortcut}）`, `${label}: compact action caption must retain the default shortcut and use a short label for long combinations`);
+    assert.equal(full.title, `翻译当前网页 · ${shortcut}`, `${label}: the real title attribute must retain the complete configured shortcut`);
+    assert.equal(full.ariaLabel, '翻译当前网页'); assert.equal(full.captionLines, 1, `${label}: the main caption must remain on one line`);
+    assert.equal(reading.text, '学习', `${label}: the reading entry must use the short learning label`);
+    assert(metrics.buttons.every(button => button.height <= 44), `${label}: default-skin actions must stay compact at no more than 44px: ${JSON.stringify(metrics.buttons)}`);
     assert.equal([full.id, section.id, reading.id].join(','), 'page-translation,section-translation,progressive-reading');
     assert(Math.abs(full.top - section.top) <= 1 && Math.abs(section.top - reading.top) <= 1 && Math.abs(full.bottom - section.bottom) <= 1
         && Math.abs(section.bottom - reading.bottom) <= 1 && full.right <= section.left + 1 && section.right <= reading.left + 1,
@@ -242,14 +249,87 @@ async function popupEntryGeometry() {
     await popupEntryVariant(400, 'popup-400-progressive-entry');
     await popupEntryVariant(320, 'popup-320-progressive-entry');
     const previous = await readConfig();
-    await patch({floatingBallHotkey: 'custom', customFloatingBallHotkey: 'Control+Alt+Shift+PageDown'});
+    await patch({floatingBallHotkey: 'custom', customFloatingBallHotkey: 'Control+Alt+Shift+ArrowRight'});
     await popup.reload({waitUntil: 'domcontentloaded'}); await popup.locator('.popup-shell[data-config-ready="true"]').waitFor();
-    const long = await popupEntryVariant(320, 'popup-320-long-hotkey');
-    assert(long.hotkey.text.length >= 12, 'The long-shortcut fixture did not render enough modifiers to exercise wrapping');
-    await popupEntryVariant(400, 'popup-400-long-hotkey');
+    await popupEntryVariant(320, 'popup-320-long-hotkey', true);
+    await popupEntryVariant(400, 'popup-400-long-hotkey', true);
     await patch({floatingBallHotkey: previous.floatingBallHotkey, customFloatingBallHotkey: previous.customFloatingBallHotkey});
     await popup.setViewportSize({width: 400, height: 650});
-    record('320px and 400px real Popup documents expose all three actions in one row without a legacy glyph or site-rule frame, with complete labels and a visible long hotkey', {variants: report.popupLayout});
+    record('320px and 400px real Popup documents expose three compact actions in one row, with an inline default shortcut and complete long shortcuts in real title attributes, without separate keycaps, a legacy glyph or site-rule frame', {variants: report.popupLayout});
+}
+async function learningShortcutFlow(entriesBefore) {
+    const initial = await readConfig();
+    assert.equal(initial.progressiveReadingHotkey, 'none', 'The fresh profile must have no default learning shortcut');
+    assert.equal(initial.customProgressiveReadingHotkey, '', 'The fresh profile must not contain a hidden learning binding');
+    // 明确停用夹具悬浮组合，避免把既有 Control 前缀的让行误当作默认关闭的证明。
+    await patch({hotkey: 'none'});
+    await helper.activateExtensionTabWithoutForeground(context, page);
+    await page.mouse.click(5, 5); await page.keyboard.press('Control+Alt+L'); await wait(250);
+    assert.equal(Boolean((await snapshot()).host), false, 'The default click-only preference must not open a panel');
+    const entry = popup.locator('[data-testid="progressive-reading"]'), help = popup.locator('[data-testid="learning-help"]'), settings = popup.locator('[data-testid="learning-shortcut-settings"]');
+    await helper.activateExtensionTabWithoutForeground(context, popup);
+    await entry.hover(); await help.waitFor({state: 'visible'});
+    assert.equal((await popup.locator('#learning-entry-shortcut').textContent()).trim(), '未设置快捷键 · 点击开启');
+    await focusSample('popup-learning-help:before-screenshot');
+    const helpScreenshot = path.join(artifactsDir, 'popup-learning-help.png'); await popup.screenshot({path: helpScreenshot}); report.screenshots.push(helpScreenshot);
+    await focusSample('popup-learning-help:after-screenshot');
+    await popup.mouse.move(5, 5); await help.waitFor({state: 'hidden'});
+    await entry.focus(); await help.waitFor({state: 'visible'}); await popup.keyboard.press('Tab');
+    assert.equal(await popup.evaluate(() => document.activeElement?.dataset.testid), 'learning-shortcut-settings', 'The settings link must be keyboard reachable inside the help');
+    await popup.mouse.move(5, 5); await help.waitFor({state: 'visible'});
+    await settings.hover(); await help.waitFor({state: 'visible'});
+    await popup.mouse.move(5, 5); await help.waitFor({state: 'visible'});
+    await popup.keyboard.press('Escape'); await help.waitFor({state: 'hidden'});
+    await popup.mouse.move(5, 5); await entry.hover(); await help.waitFor({state: 'visible'});
+    const created = context.waitForEvent('page'); await settings.click(); let options = await created; observe(options);
+    await options.setViewportSize({width: 1200, height: 900}); await options.waitForLoadState('domcontentloaded');
+    await options.locator('[data-testid="progressive-reading-hotkey"]').waitFor({state: 'visible'});
+    await focusSample('learning-settings-default:before-screenshot');
+    const settingsScreenshot = path.join(artifactsDir, 'learning-settings-default.png'); await options.screenshot({path: settingsScreenshot}); report.screenshots.push(settingsScreenshot);
+    await focusSample('learning-settings-default:after-screenshot');
+    const optionsUrl = options.url(); assert.equal(new URL(optionsUrl).searchParams.get('target'), 'progressive-reading'); assert.equal(new URL(optionsUrl).hash, '#settings-translation');
+    assert.equal(Boolean((await snapshot()).host), false, 'Opening shortcut settings must not open reading');
+    record('Learning defaults to no binding; real hover, keyboard focus, settings-link travel, Escape and reentry reveal help and open its dedicated settings panel', {optionsUrl, helpScreenshot});
+
+    await helper.activateExtensionTabWithoutForeground(context, options);
+    await options.locator('[data-testid="progressive-reading-hotkey"]').click();
+    await options.locator('.el-select-dropdown:visible').getByRole('option').nth(1).click();
+    const dialog = options.locator('.custom-hotkey-dialog'); await dialog.waitFor({state: 'visible'});
+    await dialog.locator('.hotkey-input-field').click(); await options.keyboard.press('Control+Alt+L');
+    await until(async () => await dialog.locator('.hotkey-display').count() === 1 && await dialog.locator('.primary-button').isEnabled(), 'the real recorder produces an available custom shortcut');
+    await dialog.locator('.primary-button').click(); await dialog.waitFor({state: 'hidden'});
+    await until(async () => {const config = await readConfig(); return config.progressiveReadingHotkey === 'custom' && config.customProgressiveReadingHotkey === 'Ctrl+Alt+L';}, 'options persists the recorded learning shortcut');
+    await options.close(); options = await open(optionsUrl, {width: 1200, height: 900});
+    await options.locator('[data-testid="progressive-reading-hotkey-edit"]').waitFor({state: 'visible'});
+    await options.locator('[data-testid="progressive-reading-hotkey-edit"]').click(); await options.locator('.custom-hotkey-dialog').waitFor({state: 'visible'});
+    const recorded = (await options.locator('.custom-hotkey-dialog .hotkey-display').textContent()).trim();
+    assert(/(?:Control|Ctrl)\+(?:Option|Alt)\+L/u.test(recorded), `Reopened settings lost the complete shortcut: ${recorded}`);
+    await options.locator('.custom-hotkey-dialog .secondary-button').click();
+    await popup.reload({waitUntil: 'domcontentloaded'}); await popup.locator('.popup-shell[data-config-ready="true"]').waitFor();
+    await entry.hover(); await help.waitFor({state: 'visible'});
+    const hint = (await popup.locator('#learning-entry-shortcut').textContent()).trim(); assert(hint.includes(recorded), `Popup shortcut hint is stale: ${hint}`);
+    record('A real custom-key recording persists across closing and reopening options and is reflected in the Popup help', {shortcut: 'Ctrl+Alt+L', recorded, hint});
+
+    await helper.activateExtensionTabWithoutForeground(context, page); await page.mouse.click(5, 5);
+    await page.keyboard.press('Control+Alt+L'); await until(async () => Boolean((await snapshot()).panel), 'configured shortcut opens the existing reading panel');
+    await page.mouse.click(5, 5); await page.keyboard.press('Control+Alt+L');
+    assert.equal(await page.locator('#fluent-read-progressive-reading').count(), 1, 'Repeated shortcut opens must share one panel');
+    await click(has('data-reading-close'), 'close the shortcut-opened panel'); await until(async () => !(await snapshot()).host, 'close shortcut panel');
+    await page.evaluate(() => {const targets = document.createElement('div'); targets.id = 'learning-keyboard-fixture'; targets.innerHTML = '<input aria-label="Keyboard fixture input"><div contenteditable="true" role="textbox" aria-label="Keyboard fixture editor">Editable fixture</div>'; document.body.append(targets);});
+    for (const selector of ['input', '[contenteditable]']) {
+        await page.locator(`#learning-keyboard-fixture ${selector}`).click(); await page.keyboard.press('Control+Alt+L'); await wait(200);
+        assert.equal(Boolean((await snapshot()).host), false, `Learning shortcut must leave ${selector} editing alone`);
+    }
+    await helper.activateExtensionTabWithoutForeground(context, options); await options.locator('[data-testid="progressive-reading-hotkey-edit"]').click();
+    await options.locator('.custom-hotkey-dialog .clear-button').click(); await options.locator('.custom-hotkey-dialog .primary-button').click();
+    await until(async () => {const config = await readConfig(); return config.progressiveReadingHotkey === 'none' && config.customProgressiveReadingHotkey === '';}, 'clearing the recorder persists click-only preference');
+    await options.close(); await helper.activateExtensionTabWithoutForeground(context, page); await page.mouse.click(5, 5);
+    await page.keyboard.press('Control+Alt+L'); await wait(250); assert.equal(Boolean((await snapshot()).host), false, 'Clearing the shortcut must take effect without reloading the article');
+    await page.evaluate(() => document.querySelector('#learning-keyboard-fixture').remove());
+    await patch({hotkey: initial.hotkey, customHotkey: initial.customHotkey});
+    assert.equal(fixture.requests.length, 0, 'Shortcut setup and opening original mode must not call a translation provider');
+    assert.deepEqual(await vocabulary('list'), entriesBefore, 'Shortcut setup and use must not write learning records');
+    record('The configured shortcut opens one panel, yields to real input and contenteditable focus, and stops responding immediately after the real clear-and-confirm action');
 }
 
 // 演示装饰只存在于本机夹具：字幕放在留白，指针跟随真实 CDP 鼠标事件，不替换生产 UI。
@@ -292,7 +372,7 @@ async function recordDemo(entriesBefore) {
         framesDir, framePattern: 'frame-%06d.png', timingPath: path.join(demoDir, 'timing.json'), steps: [], frames: [],
         boundary: 'Separate recorded demonstration, not the 18-case assertion run. Real Popup is rendered in an independent extension test tab at its production width on a 660x720 canvas. Local captions/cursor are presentation aids; responses and active-tab/close handling use the existing deterministic fixtures.'};
     await prepareDemoSurface(popup, 'popup'); await prepareDemoSurface(page, 'webpage');
-    demoTarget = popup; demoSurface = 'popup'; demoStepLabel = '1 · Popup 的渐进阅读入口'; demoCapturing = true;
+    demoTarget = popup; demoSurface = 'popup'; demoStepLabel = '1 · Popup 的学习入口'; demoCapturing = true;
     demoCaptureTask = (async () => {
         while (demoCapturing) {
             if (focusError) throw focusError;
@@ -305,7 +385,7 @@ async function recordDemo(entriesBefore) {
     })().catch(error => {demoCaptureError = error; demoCapturing = false;});
     try {
         await helper.activateExtensionTabWithoutForeground(context, popup);
-        await demoStep(popup, 'popup', '1 · Popup 的渐进阅读入口', () => popup.locator('[data-testid="progressive-reading"]').hover());
+        await demoStep(popup, 'popup', '1 · Popup 的学习入口', () => popup.locator('[data-testid="progressive-reading"]').hover());
         await helper.activateExtensionTabWithoutForeground(context, page);
         await popup.locator('[data-testid="progressive-reading"]').click();
         await until(async () => Boolean((await snapshot()).panel), 'demo opens the real reading panel');
@@ -444,6 +524,7 @@ async function main() {
         }
         await popupEntryGeometry();
         if (popupOnly) {assert.equal(report.consoleErrors.length, 0, JSON.stringify(report.consoleErrors)); await focusSample('popup-only-completed'); report.ok = true; return;}
+        await learningShortcutFlow(entriesBefore);
         await openReading();
         assert.equal(await sourceText(), ''); assert.equal(fixture.requests.length, 0);
         assert(await ui(function() {return [...this.querySelectorAll('[data-reading-mode]')].every(button => button.disabled);}), 'Help modes must wait for an explicitly selected source');

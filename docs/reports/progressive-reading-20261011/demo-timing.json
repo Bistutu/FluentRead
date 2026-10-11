@@ -1,424 +1,424 @@
 {
-  "startedAt": 1791707026545,
+  "startedAt": 1791709365564,
   "viewport": {
     "width": 660,
     "height": 720
   },
   "fps": 5,
   "frameDurationMs": 200,
-  "framesDir": "/private/tmp/fluentread-progressive-reading-20261011-integrated-demo/recording/frames",
+  "framesDir": "/private/tmp/fluentread-progressive-learning-demo/recording/frames",
   "framePattern": "frame-%06d.png",
-  "timingPath": "/private/tmp/fluentread-progressive-reading-20261011-integrated-demo/recording/timing.json",
+  "timingPath": "/private/tmp/fluentread-progressive-learning-demo/recording/timing.json",
   "steps": [
     {
-      "caption": "1 · Popup 的渐进阅读入口",
+      "caption": "1 · Popup 的学习入口",
       "surface": "popup",
-      "startedAtMs": 33,
-      "completedAtMs": 2084
+      "startedAtMs": 25,
+      "completedAtMs": 2080
     },
     {
       "caption": "2 · 先打开面板\n等待选择正文",
       "surface": "webpage",
-      "startedAtMs": 2159,
-      "completedAtMs": 4162
+      "startedAtMs": 2169,
+      "completedAtMs": 4170
     },
     {
       "caption": "3 · 在网页中拖选正文",
       "surface": "webpage",
-      "startedAtMs": 4162,
-      "completedAtMs": 7898
+      "startedAtMs": 4170,
+      "completedAtMs": 7847
     },
     {
       "caption": "4 · 点击读取\n默认只读原文",
       "surface": "webpage",
-      "startedAtMs": 7898,
-      "completedAtMs": 9940
+      "startedAtMs": 7847,
+      "completedAtMs": 9889
     },
     {
       "caption": "5 · 短语提示\n按需查看表达",
       "surface": "webpage",
-      "startedAtMs": 9940,
-      "completedAtMs": 11952
+      "startedAtMs": 9889,
+      "completedAtMs": 11917
     },
     {
       "caption": "6 · 逻辑线索\n留意条件、否定与范围",
       "surface": "webpage",
-      "startedAtMs": 11952,
-      "completedAtMs": 13963
+      "startedAtMs": 11917,
+      "completedAtMs": 13949
     },
     {
       "caption": "7 · 完整双语\n随时直接查看译文",
       "surface": "webpage",
-      "startedAtMs": 13963,
-      "completedAtMs": 16156
+      "startedAtMs": 13949,
+      "completedAtMs": 16243
     },
     {
       "caption": "8 · 关闭辅助\n继续阅读原网页",
       "surface": "webpage",
-      "startedAtMs": 16156,
-      "completedAtMs": 18171
+      "startedAtMs": 16243,
+      "completedAtMs": 18261
     }
   ],
   "frames": [
     {
       "file": "frame-000000.png",
       "surface": "popup",
-      "step": "1 · Popup 的渐进阅读入口",
-      "atMs": 9
+      "step": "1 · Popup 的学习入口",
+      "atMs": 13
     },
     {
       "file": "frame-000001.png",
       "surface": "popup",
-      "step": "1 · Popup 的渐进阅读入口",
-      "atMs": 210
+      "step": "1 · Popup 的学习入口",
+      "atMs": 213
     },
     {
       "file": "frame-000002.png",
       "surface": "popup",
-      "step": "1 · Popup 的渐进阅读入口",
-      "atMs": 411
+      "step": "1 · Popup 的学习入口",
+      "atMs": 413
     },
     {
       "file": "frame-000003.png",
       "surface": "popup",
-      "step": "1 · Popup 的渐进阅读入口",
-      "atMs": 612
+      "step": "1 · Popup 的学习入口",
+      "atMs": 615
     },
     {
       "file": "frame-000004.png",
       "surface": "popup",
-      "step": "1 · Popup 的渐进阅读入口",
-      "atMs": 814
+      "step": "1 · Popup 的学习入口",
+      "atMs": 816
     },
     {
       "file": "frame-000005.png",
       "surface": "popup",
-      "step": "1 · Popup 的渐进阅读入口",
+      "step": "1 · Popup 的学习入口",
       "atMs": 1017
     },
     {
       "file": "frame-000006.png",
       "surface": "popup",
-      "step": "1 · Popup 的渐进阅读入口",
+      "step": "1 · Popup 的学习入口",
       "atMs": 1218
     },
     {
       "file": "frame-000007.png",
       "surface": "popup",
-      "step": "1 · Popup 的渐进阅读入口",
+      "step": "1 · Popup 的学习入口",
       "atMs": 1419
     },
     {
       "file": "frame-000008.png",
       "surface": "popup",
-      "step": "1 · Popup 的渐进阅读入口",
-      "atMs": 1620
+      "step": "1 · Popup 的学习入口",
+      "atMs": 1619
     },
     {
       "file": "frame-000009.png",
       "surface": "popup",
-      "step": "1 · Popup 的渐进阅读入口",
-      "atMs": 1821
+      "step": "1 · Popup 的学习入口",
+      "atMs": 1819
     },
     {
       "file": "frame-000010.png",
       "surface": "popup",
-      "step": "1 · Popup 的渐进阅读入口",
-      "atMs": 2023
+      "step": "1 · Popup 的学习入口",
+      "atMs": 2020
     },
     {
       "file": "frame-000011.png",
       "surface": "webpage",
       "step": "2 · 先打开面板\n等待选择正文",
-      "atMs": 2225
+      "atMs": 2220
     },
     {
       "file": "frame-000012.png",
       "surface": "webpage",
       "step": "2 · 先打开面板\n等待选择正文",
-      "atMs": 2425
+      "atMs": 2421
     },
     {
       "file": "frame-000013.png",
       "surface": "webpage",
       "step": "2 · 先打开面板\n等待选择正文",
-      "atMs": 2625
+      "atMs": 2623
     },
     {
       "file": "frame-000014.png",
       "surface": "webpage",
       "step": "2 · 先打开面板\n等待选择正文",
-      "atMs": 2826
+      "atMs": 2824
     },
     {
       "file": "frame-000015.png",
       "surface": "webpage",
       "step": "2 · 先打开面板\n等待选择正文",
-      "atMs": 3027
+      "atMs": 3026
     },
     {
       "file": "frame-000016.png",
       "surface": "webpage",
       "step": "2 · 先打开面板\n等待选择正文",
-      "atMs": 3229
+      "atMs": 3227
     },
     {
       "file": "frame-000017.png",
       "surface": "webpage",
       "step": "2 · 先打开面板\n等待选择正文",
-      "atMs": 3430
+      "atMs": 3429
     },
     {
       "file": "frame-000018.png",
       "surface": "webpage",
       "step": "2 · 先打开面板\n等待选择正文",
-      "atMs": 3631
+      "atMs": 3630
     },
     {
       "file": "frame-000019.png",
       "surface": "webpage",
       "step": "2 · 先打开面板\n等待选择正文",
-      "atMs": 3833
+      "atMs": 3831
     },
     {
       "file": "frame-000020.png",
       "surface": "webpage",
       "step": "2 · 先打开面板\n等待选择正文",
-      "atMs": 4035
+      "atMs": 4032
     },
     {
       "file": "frame-000021.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 4235
+      "atMs": 4233
     },
     {
       "file": "frame-000022.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 4437
+      "atMs": 4433
     },
     {
       "file": "frame-000023.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 4637
+      "atMs": 4634
     },
     {
       "file": "frame-000024.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 4837
+      "atMs": 4834
     },
     {
       "file": "frame-000025.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 5037
+      "atMs": 5035
     },
     {
       "file": "frame-000026.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 5238
+      "atMs": 5235
     },
     {
       "file": "frame-000027.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 5440
+      "atMs": 5436
     },
     {
       "file": "frame-000028.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 5641
+      "atMs": 5635
     },
     {
       "file": "frame-000029.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 5842
+      "atMs": 5835
     },
     {
       "file": "frame-000030.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 6044
+      "atMs": 6035
     },
     {
       "file": "frame-000031.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 6245
+      "atMs": 6236
     },
     {
       "file": "frame-000032.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 6446
+      "atMs": 6437
     },
     {
       "file": "frame-000033.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 6647
+      "atMs": 6639
     },
     {
       "file": "frame-000034.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 6849
+      "atMs": 6839
     },
     {
       "file": "frame-000035.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 7050
+      "atMs": 7041
     },
     {
       "file": "frame-000036.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 7250
+      "atMs": 7241
     },
     {
       "file": "frame-000037.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 7450
+      "atMs": 7442
     },
     {
       "file": "frame-000038.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 7651
+      "atMs": 7642
     },
     {
       "file": "frame-000039.png",
       "surface": "webpage",
       "step": "3 · 在网页中拖选正文",
-      "atMs": 7852
+      "atMs": 7843
     },
     {
       "file": "frame-000040.png",
       "surface": "webpage",
       "step": "4 · 点击读取\n默认只读原文",
-      "atMs": 8054
+      "atMs": 8045
     },
     {
       "file": "frame-000041.png",
       "surface": "webpage",
       "step": "4 · 点击读取\n默认只读原文",
-      "atMs": 8255
+      "atMs": 8246
     },
     {
       "file": "frame-000042.png",
       "surface": "webpage",
       "step": "4 · 点击读取\n默认只读原文",
-      "atMs": 8456
+      "atMs": 8447
     },
     {
       "file": "frame-000043.png",
       "surface": "webpage",
       "step": "4 · 点击读取\n默认只读原文",
-      "atMs": 8657
+      "atMs": 8648
     },
     {
       "file": "frame-000044.png",
       "surface": "webpage",
       "step": "4 · 点击读取\n默认只读原文",
-      "atMs": 8859
+      "atMs": 8851
     },
     {
       "file": "frame-000045.png",
       "surface": "webpage",
       "step": "4 · 点击读取\n默认只读原文",
-      "atMs": 9059
+      "atMs": 9052
     },
     {
       "file": "frame-000046.png",
       "surface": "webpage",
       "step": "4 · 点击读取\n默认只读原文",
-      "atMs": 9260
+      "atMs": 9253
     },
     {
       "file": "frame-000047.png",
       "surface": "webpage",
       "step": "4 · 点击读取\n默认只读原文",
-      "atMs": 9461
+      "atMs": 9454
     },
     {
       "file": "frame-000048.png",
       "surface": "webpage",
       "step": "4 · 点击读取\n默认只读原文",
-      "atMs": 9662
+      "atMs": 9654
     },
     {
       "file": "frame-000049.png",
       "surface": "webpage",
       "step": "4 · 点击读取\n默认只读原文",
-      "atMs": 9863
+      "atMs": 9856
     },
     {
       "file": "frame-000050.png",
       "surface": "webpage",
       "step": "5 · 短语提示\n按需查看表达",
-      "atMs": 10064
+      "atMs": 10057
     },
     {
       "file": "frame-000051.png",
       "surface": "webpage",
       "step": "5 · 短语提示\n按需查看表达",
-      "atMs": 10265
+      "atMs": 10259
     },
     {
       "file": "frame-000052.png",
       "surface": "webpage",
       "step": "5 · 短语提示\n按需查看表达",
-      "atMs": 10465
+      "atMs": 10460
     },
     {
       "file": "frame-000053.png",
       "surface": "webpage",
       "step": "5 · 短语提示\n按需查看表达",
-      "atMs": 10665
+      "atMs": 10662
     },
     {
       "file": "frame-000054.png",
       "surface": "webpage",
       "step": "5 · 短语提示\n按需查看表达",
-      "atMs": 10866
+      "atMs": 10864
     },
     {
       "file": "frame-000055.png",
       "surface": "webpage",
       "step": "5 · 短语提示\n按需查看表达",
-      "atMs": 11068
+      "atMs": 11065
     },
     {
       "file": "frame-000056.png",
       "surface": "webpage",
       "step": "5 · 短语提示\n按需查看表达",
-      "atMs": 11268
+      "atMs": 11267
     },
     {
       "file": "frame-000057.png",
       "surface": "webpage",
       "step": "5 · 短语提示\n按需查看表达",
-      "atMs": 11470
+      "atMs": 11468
     },
     {
       "file": "frame-000058.png",
       "surface": "webpage",
       "step": "5 · 短语提示\n按需查看表达",
-      "atMs": 11671
+      "atMs": 11669
     },
     {
       "file": "frame-000059.png",
       "surface": "webpage",
       "step": "5 · 短语提示\n按需查看表达",
-      "atMs": 11872
+      "atMs": 11871
     },
     {
       "file": "frame-000060.png",
@@ -430,85 +430,85 @@
       "file": "frame-000061.png",
       "surface": "webpage",
       "step": "6 · 逻辑线索\n留意条件、否定与范围",
-      "atMs": 12274
+      "atMs": 12273
     },
     {
       "file": "frame-000062.png",
       "surface": "webpage",
       "step": "6 · 逻辑线索\n留意条件、否定与范围",
-      "atMs": 12475
+      "atMs": 12477
     },
     {
       "file": "frame-000063.png",
       "surface": "webpage",
       "step": "6 · 逻辑线索\n留意条件、否定与范围",
-      "atMs": 12676
+      "atMs": 12677
     },
     {
       "file": "frame-000064.png",
       "surface": "webpage",
       "step": "6 · 逻辑线索\n留意条件、否定与范围",
-      "atMs": 12876
+      "atMs": 12879
     },
     {
       "file": "frame-000065.png",
       "surface": "webpage",
       "step": "6 · 逻辑线索\n留意条件、否定与范围",
-      "atMs": 13077
+      "atMs": 13080
     },
     {
       "file": "frame-000066.png",
       "surface": "webpage",
       "step": "6 · 逻辑线索\n留意条件、否定与范围",
-      "atMs": 13278
+      "atMs": 13281
     },
     {
       "file": "frame-000067.png",
       "surface": "webpage",
       "step": "6 · 逻辑线索\n留意条件、否定与范围",
-      "atMs": 13479
+      "atMs": 13482
     },
     {
       "file": "frame-000068.png",
       "surface": "webpage",
       "step": "6 · 逻辑线索\n留意条件、否定与范围",
-      "atMs": 13680
+      "atMs": 13683
     },
     {
       "file": "frame-000069.png",
       "surface": "webpage",
       "step": "6 · 逻辑线索\n留意条件、否定与范围",
-      "atMs": 13880
+      "atMs": 13884
     },
     {
       "file": "frame-000070.png",
       "surface": "webpage",
       "step": "7 · 完整双语\n随时直接查看译文",
-      "atMs": 14081
+      "atMs": 14084
     },
     {
       "file": "frame-000071.png",
       "surface": "webpage",
       "step": "7 · 完整双语\n随时直接查看译文",
-      "atMs": 14282
+      "atMs": 14284
     },
     {
       "file": "frame-000072.png",
       "surface": "webpage",
       "step": "7 · 完整双语\n随时直接查看译文",
-      "atMs": 14483
+      "atMs": 14484
     },
     {
       "file": "frame-000073.png",
       "surface": "webpage",
       "step": "7 · 完整双语\n随时直接查看译文",
-      "atMs": 14684
+      "atMs": 14685
     },
     {
       "file": "frame-000074.png",
       "surface": "webpage",
       "step": "7 · 完整双语\n随时直接查看译文",
-      "atMs": 14885
+      "atMs": 14886
     },
     {
       "file": "frame-000075.png",
@@ -526,90 +526,90 @@
       "file": "frame-000077.png",
       "surface": "webpage",
       "step": "7 · 完整双语\n随时直接查看译文",
-      "atMs": 15488
+      "atMs": 15487
     },
     {
       "file": "frame-000078.png",
       "surface": "webpage",
       "step": "7 · 完整双语\n随时直接查看译文",
-      "atMs": 15689
+      "atMs": 15692
     },
     {
       "file": "frame-000079.png",
       "surface": "webpage",
       "step": "7 · 完整双语\n随时直接查看译文",
-      "atMs": 15890
+      "atMs": 15894
     },
     {
       "file": "frame-000080.png",
       "surface": "webpage",
       "step": "7 · 完整双语\n随时直接查看译文",
-      "atMs": 16090
+      "atMs": 16095
     },
     {
       "file": "frame-000081.png",
       "surface": "webpage",
       "step": "8 · 关闭辅助\n继续阅读原网页",
-      "atMs": 16292
+      "atMs": 16296
     },
     {
       "file": "frame-000082.png",
       "surface": "webpage",
       "step": "8 · 关闭辅助\n继续阅读原网页",
-      "atMs": 16493
+      "atMs": 16496
     },
     {
       "file": "frame-000083.png",
       "surface": "webpage",
       "step": "8 · 关闭辅助\n继续阅读原网页",
-      "atMs": 16695
+      "atMs": 16697
     },
     {
       "file": "frame-000084.png",
       "surface": "webpage",
       "step": "8 · 关闭辅助\n继续阅读原网页",
-      "atMs": 16896
+      "atMs": 16897
     },
     {
       "file": "frame-000085.png",
       "surface": "webpage",
       "step": "8 · 关闭辅助\n继续阅读原网页",
-      "atMs": 17097
+      "atMs": 17098
     },
     {
       "file": "frame-000086.png",
       "surface": "webpage",
       "step": "8 · 关闭辅助\n继续阅读原网页",
-      "atMs": 17297
+      "atMs": 17299
     },
     {
       "file": "frame-000087.png",
       "surface": "webpage",
       "step": "8 · 关闭辅助\n继续阅读原网页",
-      "atMs": 17499
+      "atMs": 17501
     },
     {
       "file": "frame-000088.png",
       "surface": "webpage",
       "step": "8 · 关闭辅助\n继续阅读原网页",
-      "atMs": 17700
+      "atMs": 17702
     },
     {
       "file": "frame-000089.png",
       "surface": "webpage",
       "step": "8 · 关闭辅助\n继续阅读原网页",
-      "atMs": 17901
+      "atMs": 17903
     },
     {
       "file": "frame-000090.png",
       "surface": "webpage",
       "step": "8 · 关闭辅助\n继续阅读原网页",
-      "atMs": 18102
+      "atMs": 18105
     }
   ],
   "boundary": "Separate recorded demonstration, not the 18-case assertion run. Real Popup is rendered in an independent extension test tab at its production width on a 660x720 canvas. Local captions/cursor are presentation aids; responses and active-tab/close handling use the existing deterministic fixtures.",
   "learningRecordsUnchanged": true,
-  "durationMs": 18302,
+  "durationMs": 18305,
   "encodedDurationMs": 18200,
-  "frameArchive": "Raw PNG frames remain in the original local temporary recording directory; this repository stores the encoded GIF and frame timing only."
+  "frameArchive": "Raw PNG frames remain in the local temporary recording directory; the repository stores the GIF and frame timing."
 }

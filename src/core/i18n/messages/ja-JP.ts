@@ -2,7 +2,7 @@
  * @file src/core/i18n/messages/ja-JP.ts
  *
  * 文件职责：提供 FluentRead 日语界面资源，覆盖稳定 UI、首次引导与状态文案。
- * 主要内容：保持语言名称使用各自原生写法，并为尚未 key 化的旧 UI 提供日语映射。
+ * 主要内容：包含默认仅点击的学习入口与可选快捷键设置；保持语言名称使用各自原生写法，并为尚未 key 化的旧 UI 提供日语映射。
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入或翻译结果。
  */
 import videoLearningText from './video-learning/ja-JP.json';
@@ -23,6 +23,21 @@ import {translationStatsJapaneseMessages} from './translationStats';
 import {localTranslationJapaneseMessages} from './localTranslation';
 
 export const jaJPMessages = {
+    "progressiveReading.entry.label": "学習",
+    "progressiveReading.entry.title": "学習：段階的な読解",
+    "progressiveReading.entry.description": "ウェブページの本文を選択し、原文、語句のヒント、論理の手掛かり、全文対訳を必要に応じて確認します。",
+    "progressiveReading.entry.clickOnly": "ショートカット未設定 · クリックで開く",
+    "progressiveReading.entry.shortcut": "ショートカット：{shortcut}",
+    "progressiveReading.entry.settings": "ショートカットを設定",
+    "progressiveReading.settings.title": "学習",
+    "progressiveReading.settings.hotkey": "学習ショートカット",
+    "progressiveReading.settings.hotkeyDescription": "初期設定はクリックのみです。ショートカットを設定するとキーボードで学習パネルを開けます。",
+    "progressiveReading.settings.none": "なし（クリックのみ）",
+    "progressiveReading.settings.custom": "カスタムショートカット",
+    "progressiveReading.settings.edit": "学習ショートカットを編集",
+    "progressiveReading.settings.conflict": "このショートカットは{feature}で使用されています。別の組み合わせを選んでください。",
+    "progressiveReading.settings.set": "学習ショートカットを{shortcut}に設定しました",
+    "progressiveReading.settings.profiles": "クイック翻訳プロファイル",
     ...videoLearningText,
     ...pdfReadingMessages['ja-JP'],
     ...informationHighlightMessages['ja-JP'],

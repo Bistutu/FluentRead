@@ -3,15 +3,17 @@
   "extensionDir": "/Users/thinkstu/Desktop/copy/FluentRead-progressive-reading-20261011/.output/chrome-mv3",
   "browserPath": "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
   "profileMode": "fresh-mkdtemp-owned",
-  "profileDir": "/private/tmp/fluentread-progressive-reading-profile-Ltsc1D",
+  "profileDir": "/private/tmp/fluentread-progressive-reading-profile-0hjVGg",
   "artifact": "production",
   "cases": [
     {
       "variants": [
         {
           "viewportWidth": 400,
+          "platform": "MacIntel",
           "shellWidth": 320,
           "horizontalOverflow": false,
+          "shortcutChips": 0,
           "legacyTranslationGlyph": false,
           "siteRuleRows": [
             {
@@ -26,19 +28,19 @@
               "shadow": "none"
             }
           ],
-          "hotkey": {
-            "text": "Option+T",
-            "clipped": false
-          },
           "buttons": [
             {
               "id": "page-translation",
-              "text": "翻译当前网页",
+              "text": "翻译（⌥+T）",
+              "title": "翻译当前网页 · ⌥+T",
+              "ariaLabel": "翻译当前网页",
+              "captionLines": 1,
               "left": 29,
-              "right": 175,
+              "right": 187,
               "top": 182.8984375,
-              "bottom": 243.6953125,
-              "width": 146,
+              "bottom": 224.8984375,
+              "width": 158,
+              "height": 42,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -46,23 +48,31 @@
             {
               "id": "section-translation",
               "text": "局部",
-              "left": 181,
-              "right": 231,
+              "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "captionLines": 1,
+              "left": 193,
+              "right": 239,
               "top": 182.8984375,
-              "bottom": 243.6953125,
-              "width": 50,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
               "clipped": false,
               "withinShell": true,
               "visible": true
             },
             {
               "id": "progressive-reading",
-              "text": "渐进阅读",
-              "left": 237,
+              "text": "学习",
+              "title": "",
+              "ariaLabel": "学习",
+              "captionLines": 1,
+              "left": 245,
               "right": 291,
               "top": 182.8984375,
-              "bottom": 243.6953125,
-              "width": 54,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -72,8 +82,10 @@
         },
         {
           "viewportWidth": 320,
+          "platform": "MacIntel",
           "shellWidth": 320,
           "horizontalOverflow": false,
+          "shortcutChips": 0,
           "legacyTranslationGlyph": false,
           "siteRuleRows": [
             {
@@ -88,19 +100,19 @@
               "shadow": "none"
             }
           ],
-          "hotkey": {
-            "text": "Option+T",
-            "clipped": false
-          },
           "buttons": [
             {
               "id": "page-translation",
-              "text": "翻译当前网页",
+              "text": "翻译（⌥+T）",
+              "title": "翻译当前网页 · ⌥+T",
+              "ariaLabel": "翻译当前网页",
+              "captionLines": 1,
               "left": 29,
-              "right": 175,
+              "right": 187,
               "top": 182.8984375,
-              "bottom": 243.6953125,
-              "width": 146,
+              "bottom": 224.8984375,
+              "width": 158,
+              "height": 42,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -108,23 +120,31 @@
             {
               "id": "section-translation",
               "text": "局部",
-              "left": 181,
-              "right": 231,
+              "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "captionLines": 1,
+              "left": 193,
+              "right": 239,
               "top": 182.8984375,
-              "bottom": 243.6953125,
-              "width": 50,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
               "clipped": false,
               "withinShell": true,
               "visible": true
             },
             {
               "id": "progressive-reading",
-              "text": "渐进阅读",
-              "left": 237,
+              "text": "学习",
+              "title": "",
+              "ariaLabel": "学习",
+              "captionLines": 1,
+              "left": 245,
               "right": 291,
               "top": 182.8984375,
-              "bottom": 243.6953125,
-              "width": 54,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -134,8 +154,10 @@
         },
         {
           "viewportWidth": 320,
+          "platform": "MacIntel",
           "shellWidth": 320,
           "horizontalOverflow": false,
+          "shortcutChips": 0,
           "legacyTranslationGlyph": false,
           "siteRuleRows": [
             {
@@ -150,19 +172,19 @@
               "shadow": "none"
             }
           ],
-          "hotkey": {
-            "text": "Control+Option+Shift+Pagedown",
-            "clipped": false
-          },
           "buttons": [
             {
               "id": "page-translation",
-              "text": "翻译当前网页",
+              "text": "翻译",
+              "title": "翻译当前网页 · ⌃+⌥+⇧+Arrowright",
+              "ariaLabel": "翻译当前网页",
+              "captionLines": 1,
               "left": 29,
-              "right": 175,
+              "right": 187,
               "top": 182.8984375,
-              "bottom": 247.0859375,
-              "width": 146,
+              "bottom": 224.8984375,
+              "width": 158,
+              "height": 42,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -170,23 +192,31 @@
             {
               "id": "section-translation",
               "text": "局部",
-              "left": 181,
-              "right": 231,
+              "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "captionLines": 1,
+              "left": 193,
+              "right": 239,
               "top": 182.8984375,
-              "bottom": 247.0859375,
-              "width": 50,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
               "clipped": false,
               "withinShell": true,
               "visible": true
             },
             {
               "id": "progressive-reading",
-              "text": "渐进阅读",
-              "left": 237,
+              "text": "学习",
+              "title": "",
+              "ariaLabel": "学习",
+              "captionLines": 1,
+              "left": 245,
               "right": 291,
               "top": 182.8984375,
-              "bottom": 247.0859375,
-              "width": 54,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -196,8 +226,10 @@
         },
         {
           "viewportWidth": 400,
+          "platform": "MacIntel",
           "shellWidth": 320,
           "horizontalOverflow": false,
+          "shortcutChips": 0,
           "legacyTranslationGlyph": false,
           "siteRuleRows": [
             {
@@ -212,19 +244,19 @@
               "shadow": "none"
             }
           ],
-          "hotkey": {
-            "text": "Control+Option+Shift+Pagedown",
-            "clipped": false
-          },
           "buttons": [
             {
               "id": "page-translation",
-              "text": "翻译当前网页",
+              "text": "翻译",
+              "title": "翻译当前网页 · ⌃+⌥+⇧+Arrowright",
+              "ariaLabel": "翻译当前网页",
+              "captionLines": 1,
               "left": 29,
-              "right": 175,
+              "right": 187,
               "top": 182.8984375,
-              "bottom": 247.0859375,
-              "width": 146,
+              "bottom": 224.8984375,
+              "width": 158,
+              "height": 42,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -232,23 +264,31 @@
             {
               "id": "section-translation",
               "text": "局部",
-              "left": 181,
-              "right": 231,
+              "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+              "captionLines": 1,
+              "left": 193,
+              "right": 239,
               "top": 182.8984375,
-              "bottom": 247.0859375,
-              "width": 50,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
               "clipped": false,
               "withinShell": true,
               "visible": true
             },
             {
               "id": "progressive-reading",
-              "text": "渐进阅读",
-              "left": 237,
+              "text": "学习",
+              "title": "",
+              "ariaLabel": "学习",
+              "captionLines": 1,
+              "left": 245,
               "right": 291,
               "top": 182.8984375,
-              "bottom": 247.0859375,
-              "width": 54,
+              "bottom": 224.8984375,
+              "width": 46,
+              "height": 42,
               "clipped": false,
               "withinShell": true,
               "visible": true
@@ -257,7 +297,21 @@
           "label": "popup-400-long-hotkey"
         }
       ],
-      "name": "320px and 400px real Popup documents expose all three actions in one row without a legacy glyph or site-rule frame, with complete labels and a visible long hotkey"
+      "name": "320px and 400px real Popup documents expose three compact actions in one row, with an inline default shortcut and complete long shortcuts in real title attributes, without separate keycaps, a legacy glyph or site-rule frame"
+    },
+    {
+      "optionsUrl": "chrome-extension://djnlaiohfaaifbibleebjggkghlmcpcj/options.html?target=progressive-reading#settings-translation",
+      "helpScreenshot": "/private/tmp/fluentread-progressive-learning-final/popup-learning-help.png",
+      "name": "Learning defaults to no binding; real hover, keyboard focus, settings-link travel, Escape and reentry reveal help and open its dedicated settings panel"
+    },
+    {
+      "shortcut": "Ctrl+Alt+L",
+      "recorded": "Control+Option+L",
+      "hint": "快捷键：Control+Option+L",
+      "name": "A real custom-key recording persists across closing and reopening options and is reflected in the Popup help"
+    },
+    {
+      "name": "The configured shortcut opens one panel, yields to real input and contenteditable focus, and stops responding immediately after the real clear-and-confirm action"
     },
     {
       "name": "Popup entry opens four modes without fabricating a source or requesting translation"
@@ -300,12 +354,12 @@
         {
           "source": "bank",
           "model": "progressive-reading-fixture",
-          "at": 1791706980834
+          "at": 1791709313106
         },
         {
           "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
           "model": "progressive-reading-fixture",
-          "at": 1791706981259
+          "at": 1791709313558
         }
       ],
       "name": "One click reaches complete bilingual from logic and mode switches reuse the same reading-session translation"
@@ -371,7 +425,7 @@
     },
     {
       "source": "If the route changes, this delayed reading request must not remain attached to the old page.",
-      "route": "http://127.0.0.1:55320/article?route=reading",
+      "route": "http://127.0.0.1:51723/article?route=reading",
       "name": "Pure history.pushState with unchanged host DOM cancels the old request through the real MAIN bridge, closes help and permits reopening"
     },
     {
@@ -389,6 +443,8 @@
     "popup-320-progressive-entry.png",
     "popup-320-long-hotkey.png",
     "popup-400-long-hotkey.png",
+    "popup-learning-help.png",
+    "learning-settings-default.png",
     "panel-original.png",
     "panel-phrases.png",
     "panel-logic.png",
@@ -402,228 +458,288 @@
   "focusSamples": [
     {
       "label": "launch",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "popup-400-progressive-entry:before-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "popup-400-progressive-entry:after-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "popup-320-progressive-entry:before-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "popup-320-progressive-entry:after-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "popup-320-long-hotkey:before-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "popup-320-long-hotkey:after-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "popup-400-long-hotkey:before-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "popup-400-long-hotkey:after-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-learning-help:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "popup-learning-help:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "learning-settings-default:before-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "learning-settings-default:after-screenshot",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "panel-original:before-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "panel-original:after-screenshot",
-      "pid": 76304,
-      "name": "微信"
-    },
-    {
-      "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "panel-phrases:before-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "panel-phrases:after-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "panel-logic:before-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "panel-logic:after-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "desktop-bilingual:before-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "desktop-bilingual:after-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "panel-bilingual:before-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "panel-bilingual:after-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "390-light-phrases:before-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "390-light-phrases:after-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "390-dark-phrases:before-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "390-dark-phrases:after-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "390-keyboard-bilingual:before-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "390-keyboard-bilingual:after-screenshot",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "continuous",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
+    },
+    {
+      "label": "continuous",
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     {
       "label": "completed",
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     }
   ],
   "executionScope": "progressive-reading-targeted-flow",
@@ -650,12 +766,12 @@
     "screenIndex": 1,
     "browserFrontmost": false,
     "frontmostBefore": {
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     },
     "frontmostAfter": {
-      "pid": 76304,
-      "name": "微信"
+      "pid": 73685,
+      "name": "ChatGPT"
     }
   },
   "manifest": {
@@ -676,8 +792,10 @@
   "popupLayout": [
     {
       "viewportWidth": 400,
+      "platform": "MacIntel",
       "shellWidth": 320,
       "horizontalOverflow": false,
+      "shortcutChips": 0,
       "legacyTranslationGlyph": false,
       "siteRuleRows": [
         {
@@ -692,19 +810,19 @@
           "shadow": "none"
         }
       ],
-      "hotkey": {
-        "text": "Option+T",
-        "clipped": false
-      },
       "buttons": [
         {
           "id": "page-translation",
-          "text": "翻译当前网页",
+          "text": "翻译（⌥+T）",
+          "title": "翻译当前网页 · ⌥+T",
+          "ariaLabel": "翻译当前网页",
+          "captionLines": 1,
           "left": 29,
-          "right": 175,
+          "right": 187,
           "top": 182.8984375,
-          "bottom": 243.6953125,
-          "width": 146,
+          "bottom": 224.8984375,
+          "width": 158,
+          "height": 42,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -712,23 +830,31 @@
         {
           "id": "section-translation",
           "text": "局部",
-          "left": 181,
-          "right": 231,
+          "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "captionLines": 1,
+          "left": 193,
+          "right": 239,
           "top": 182.8984375,
-          "bottom": 243.6953125,
-          "width": 50,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
           "clipped": false,
           "withinShell": true,
           "visible": true
         },
         {
           "id": "progressive-reading",
-          "text": "渐进阅读",
-          "left": 237,
+          "text": "学习",
+          "title": "",
+          "ariaLabel": "学习",
+          "captionLines": 1,
+          "left": 245,
           "right": 291,
           "top": 182.8984375,
-          "bottom": 243.6953125,
-          "width": 54,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -738,8 +864,10 @@
     },
     {
       "viewportWidth": 320,
+      "platform": "MacIntel",
       "shellWidth": 320,
       "horizontalOverflow": false,
+      "shortcutChips": 0,
       "legacyTranslationGlyph": false,
       "siteRuleRows": [
         {
@@ -754,19 +882,19 @@
           "shadow": "none"
         }
       ],
-      "hotkey": {
-        "text": "Option+T",
-        "clipped": false
-      },
       "buttons": [
         {
           "id": "page-translation",
-          "text": "翻译当前网页",
+          "text": "翻译（⌥+T）",
+          "title": "翻译当前网页 · ⌥+T",
+          "ariaLabel": "翻译当前网页",
+          "captionLines": 1,
           "left": 29,
-          "right": 175,
+          "right": 187,
           "top": 182.8984375,
-          "bottom": 243.6953125,
-          "width": 146,
+          "bottom": 224.8984375,
+          "width": 158,
+          "height": 42,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -774,23 +902,31 @@
         {
           "id": "section-translation",
           "text": "局部",
-          "left": 181,
-          "right": 231,
+          "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "captionLines": 1,
+          "left": 193,
+          "right": 239,
           "top": 182.8984375,
-          "bottom": 243.6953125,
-          "width": 50,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
           "clipped": false,
           "withinShell": true,
           "visible": true
         },
         {
           "id": "progressive-reading",
-          "text": "渐进阅读",
-          "left": 237,
+          "text": "学习",
+          "title": "",
+          "ariaLabel": "学习",
+          "captionLines": 1,
+          "left": 245,
           "right": 291,
           "top": 182.8984375,
-          "bottom": 243.6953125,
-          "width": 54,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -800,8 +936,10 @@
     },
     {
       "viewportWidth": 320,
+      "platform": "MacIntel",
       "shellWidth": 320,
       "horizontalOverflow": false,
+      "shortcutChips": 0,
       "legacyTranslationGlyph": false,
       "siteRuleRows": [
         {
@@ -816,19 +954,19 @@
           "shadow": "none"
         }
       ],
-      "hotkey": {
-        "text": "Control+Option+Shift+Pagedown",
-        "clipped": false
-      },
       "buttons": [
         {
           "id": "page-translation",
-          "text": "翻译当前网页",
+          "text": "翻译",
+          "title": "翻译当前网页 · ⌃+⌥+⇧+Arrowright",
+          "ariaLabel": "翻译当前网页",
+          "captionLines": 1,
           "left": 29,
-          "right": 175,
+          "right": 187,
           "top": 182.8984375,
-          "bottom": 247.0859375,
-          "width": 146,
+          "bottom": 224.8984375,
+          "width": 158,
+          "height": 42,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -836,23 +974,31 @@
         {
           "id": "section-translation",
           "text": "局部",
-          "left": 181,
-          "right": 231,
+          "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "captionLines": 1,
+          "left": 193,
+          "right": 239,
           "top": 182.8984375,
-          "bottom": 247.0859375,
-          "width": 50,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
           "clipped": false,
           "withinShell": true,
           "visible": true
         },
         {
           "id": "progressive-reading",
-          "text": "渐进阅读",
-          "left": 237,
+          "text": "学习",
+          "title": "",
+          "ariaLabel": "学习",
+          "captionLines": 1,
+          "left": 245,
           "right": 291,
           "top": 182.8984375,
-          "bottom": 247.0859375,
-          "width": 54,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -862,8 +1008,10 @@
     },
     {
       "viewportWidth": 400,
+      "platform": "MacIntel",
       "shellWidth": 320,
       "horizontalOverflow": false,
+      "shortcutChips": 0,
       "legacyTranslationGlyph": false,
       "siteRuleRows": [
         {
@@ -878,19 +1026,19 @@
           "shadow": "none"
         }
       ],
-      "hotkey": {
-        "text": "Control+Option+Shift+Pagedown",
-        "clipped": false
-      },
       "buttons": [
         {
           "id": "page-translation",
-          "text": "翻译当前网页",
+          "text": "翻译",
+          "title": "翻译当前网页 · ⌃+⌥+⇧+Arrowright",
+          "ariaLabel": "翻译当前网页",
+          "captionLines": 1,
           "left": 29,
-          "right": 175,
+          "right": 187,
           "top": 182.8984375,
-          "bottom": 247.0859375,
-          "width": 146,
+          "bottom": 224.8984375,
+          "width": 158,
+          "height": 42,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -898,23 +1046,31 @@
         {
           "id": "section-translation",
           "text": "局部",
-          "left": 181,
-          "right": 231,
+          "title": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "ariaLabel": "局部翻译：悬停预览，点击选中，再确认翻译",
+          "captionLines": 1,
+          "left": 193,
+          "right": 239,
           "top": 182.8984375,
-          "bottom": 247.0859375,
-          "width": 50,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
           "clipped": false,
           "withinShell": true,
           "visible": true
         },
         {
           "id": "progressive-reading",
-          "text": "渐进阅读",
-          "left": 237,
+          "text": "学习",
+          "title": "",
+          "ariaLabel": "学习",
+          "captionLines": 1,
+          "left": 245,
           "right": 291,
           "top": 182.8984375,
-          "bottom": 247.0859375,
-          "width": 54,
+          "bottom": 224.8984375,
+          "width": 46,
+          "height": 42,
           "clipped": false,
           "withinShell": true,
           "visible": true
@@ -1191,56 +1347,56 @@
     {
       "source": "bank",
       "model": "progressive-reading-fixture",
-      "at": 1791706980834
+      "at": 1791709313106
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791706981259
+      "at": 1791709313558
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791706983791
+      "at": 1791709316182
     },
     {
       "source": "If the plan does not take into account the cost, it may fail even when the bank approves it. By and large, the estimate applies only if demand remains stable.",
       "model": "progressive-reading-fixture",
-      "at": 1791706984771
+      "at": 1791709317284
     },
     {
       "source": "Unless the review is complete, the result may not apply to a new bank account.",
       "model": "progressive-reading-fixture",
-      "at": 1791706985363
+      "at": 1791709317873
     },
     {
       "source": "Unless the review is complete, the result may not apply to a new bank account.",
       "model": "progressive-reading-fixture",
-      "at": 1791706986975
+      "at": 1791709319621
     },
     {
       "source": "If the route changes, this delayed reading request must not remain attached to the old page.",
       "model": "progressive-reading-fixture",
-      "at": 1791706988268
+      "at": 1791709321017
     }
   ],
   "hostLifecycle": [
     {
       "event": "pageshow",
-      "at": 1791706978039
+      "at": 1791709305102
     },
     {
       "event": "pagehide",
-      "at": 1791706991445
+      "at": 1791709324364
     },
     {
       "event": "pageshow",
-      "at": 1791706991497
+      "at": 1791709324418
     },
     {
       "event": "pagehide",
-      "at": 1791706991926
+      "at": 1791709324777
     }
   ],
-  "originalArtifactsDirectory": "/private/tmp/fluentread-progressive-reading-20261011-integrated-final"
+  "originalArtifactsDirectory": "/private/tmp/fluentread-progressive-learning-final"
 }

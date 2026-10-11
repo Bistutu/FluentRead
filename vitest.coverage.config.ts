@@ -902,6 +902,7 @@ export default defineConfig({
                 'src/app/content/contextMenuCommands.ts',
                 'src/core/config/paragraphCopy.ts',
                 'src/core/config/sectionTranslation.ts',
+                'src/core/config/progressiveReading.ts',
                 'src/core/config/catalog.ts',
                 'src/core/glossary/model.ts',
                 'src/core/glossary/revisionMemo.ts',

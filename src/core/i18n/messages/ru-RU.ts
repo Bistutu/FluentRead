@@ -2,7 +2,7 @@
  * @file src/core/i18n/messages/ru-RU.ts
  *
  * 文件职责：提供 FluentRead 俄语界面资源，覆盖稳定 UI、首次引导与状态文案。
- * 主要内容：保持语言名称使用各自原生写法，并为尚未 key 化的旧 UI 提供俄语映射。
+ * 主要内容：包含默认仅点击的学习入口与可选快捷键设置；保持语言名称使用各自原生写法，并为尚未 key 化的旧 UI 提供俄语映射。
  * 模块边界：资源只描述扩展自己的界面文本；不会翻译网页正文、用户输入或翻译结果。
  */
 import videoLearningText from './video-learning/ru-RU.json';
@@ -23,6 +23,21 @@ import {translationStatsRussianMessages} from './translationStats';
 import {localTranslationRussianMessages} from './localTranslation';
 
 export const ruRUMessages = {
+    "progressiveReading.entry.label": "Учиться",
+    "progressiveReading.entry.title": "Учиться: постепенное чтение",
+    "progressiveReading.entry.description": "Выделите текст страницы, чтобы по необходимости видеть оригинал, подсказки к выражениям, логические сигналы или полный двуязычный текст.",
+    "progressiveReading.entry.clickOnly": "Без сочетания клавиш · Открыть нажатием",
+    "progressiveReading.entry.shortcut": "Сочетание клавиш: {shortcut}",
+    "progressiveReading.entry.settings": "Настроить сочетание клавиш",
+    "progressiveReading.settings.title": "Учиться",
+    "progressiveReading.settings.hotkey": "Сочетание клавиш для обучения",
+    "progressiveReading.settings.hotkeyDescription": "По умолчанию панель открывается нажатием. Настройте сочетание клавиш для открытия с клавиатуры.",
+    "progressiveReading.settings.none": "Без сочетания (только нажатие)",
+    "progressiveReading.settings.custom": "Своё сочетание клавиш",
+    "progressiveReading.settings.edit": "Изменить сочетание для обучения",
+    "progressiveReading.settings.conflict": "Это сочетание уже используется функцией «{feature}». Выберите другое.",
+    "progressiveReading.settings.set": "Сочетание для обучения: {shortcut}",
+    "progressiveReading.settings.profiles": "Профили быстрого перевода",
     ...videoLearningText,
     ...pdfReadingMessages['ru-RU'],
     ...informationHighlightMessages['ru-RU'],

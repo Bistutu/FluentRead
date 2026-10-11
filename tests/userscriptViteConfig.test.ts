@@ -115,8 +115,14 @@ describe('userscript browser shim injection', () => {
             expect(extension[key]).toBeTruthy();
             expect(Object.hasOwn(projected, key)).toBe(false);
         }
+        const readingKeys = Object.keys(extension).filter(key => key.startsWith('progressiveReading.'));
+        expect(readingKeys.length).toBeGreaterThan(0);
+        for (const key of readingKeys) {
+            expect(extension[key]).toBeTruthy();
+            expect(Object.hasOwn(projected, key)).toBe(false);
+        }
         const retainedKeys = Object.keys(extension).filter(key => !key.startsWith('informationHighlight.')
-            && !noticeKeys.includes(key) && !learningKeys.includes(key));
+            && !noticeKeys.includes(key) && !learningKeys.includes(key) && !readingKeys.includes(key));
         expect(Object.keys(projected)).toHaveLength(retainedKeys.length);
         for (const key of retainedKeys) expect(projected[key]).toBe(extension[key]);
         expect(projected['contextMenu.translateSelection']).toBeTruthy();

@@ -1,14 +1,15 @@
 /**
  * @file src/features/settings/ui/useTranslationShortcutSettings.ts
  * 文件职责：协调全文、悬浮和划词的快捷键设置草稿、额外快捷方案冲突与录制弹窗生命周期。
- * 主要内容：共用三种快捷键的延迟调度和显示解析；每个草稿保留所属配置及原模式，重复选择只保留一个计时器，换分区、配置替换和作用域卸载及时关闭并恢复仍归本次编辑所有的临时模式，确认时重新校验冲突。
+ * 主要内容：学习组合与纯修饰前缀也纳入确认与切换时的双向占用校验；共用三种快捷键的延迟调度和显示解析；每个草稿保留所属配置及原模式，重复选择只保留一个计时器，换分区、配置替换和作用域卸载及时关闭并恢复仍归本次编辑所有的临时模式，确认时重新校验冲突。
  * 模块边界：只编排 Vue 状态与提示，不保存配置、不注册网页手势、不执行翻译；持久化仍由 SettingsSections 的统一链路负责，按键解析归 core/hotkey。
  */
 import {onScopeDispose, ref, watch, type Ref} from 'vue';
 import {ElMessage} from 'element-plus';
 import type {Config} from '@/src/core/config/model';
 import {findEnabledQuickTranslationHotkeyConflict, quickTranslationActionKey, inputBoxTranslationTriggerHotkey} from '@/src/core/config/quickTranslation';
-import {parseHotkey, resolveConfiguredHotkey} from '@/src/core/hotkey';
+import {canonicalizeHotkey, parseHotkey, resolveConfiguredHotkey} from '@/src/core/hotkey';
+import {resolveProgressiveReadingHotkey} from '@/src/core/config/progressiveReading';
 import {useUiI18n} from '@/src/ui/i18n';
 
 const selectionShortcutTriggers = new Set(['Control', 'Alt', 'Shift', 'custom']);
@@ -35,6 +36,12 @@ export function useTranslationShortcutSettings(config: Ref<Config>, isActive: (k
     const available = (kind: ShortcutKind): boolean => !disposed && isActive(kind);
 
     function quickTranslationConflictMessage(hotkey: string): string {
+        const reading = resolveProgressiveReadingHotkey(config.value.progressiveReadingHotkey, config.value.customProgressiveReadingHotkey);
+        const identity = canonicalizeHotkey(reading);
+        const prefix = ({Control: 'ctrl', Alt: 'alt', Shift: 'shift'} as Record<string, string>)[hotkey];
+        if (identity && (canonicalizeHotkey(hotkey) === identity || prefix && parseHotkey(reading).modifiers.includes(prefix))) {
+            return t('progressiveReading.settings.conflict', {feature: t('progressiveReading.settings.title')});
+        }
         const conflict = findEnabledQuickTranslationHotkeyConflict(config.value.quickTranslationProfiles, hotkey);
         if (!conflict) return '';
         return t('quickTranslation.conflictProfile', {group: t(`quickTranslation.heading.${quickTranslationActionKey(conflict.action)}`)});
@@ -71,7 +78,7 @@ export function useTranslationShortcutSettings(config: Ref<Config>, isActive: (k
         if (!available(kind)) return;
         const draft = drafts[kind];
         const hotkey = kind === 'selection'
-            ? (value === 'custom' ? config.value[draft.custom] : '')
+            ? (value === 'custom' ? config.value[draft.custom] : selectionShortcutTriggers.has(value) ? value : '')
             : resolveConfiguredHotkey(value, config.value[draft.custom]);
         const conflict = quickTranslationConflictMessage(hotkey);
         if (conflict) {ElMessage.warning(conflict); return;}

@@ -1,7 +1,7 @@
 /**
  * @file src/features/settings/model/navigation.ts
  * 文件职责：定义设置中心侧边栏的导航信息模型，并提供默认分区、哈希解析与搜索过滤等不依赖 Vue 或浏览器 API 的纯规则。
- * 主要内容：包含按功能分组的标题、副标题、图标、关键词和 section ID，以及翻译设置内区分双语逐句阅读与智能高亮的独立锚点、同页分组、服务分配与模型用量深链接；旧圈选地址解析为图片页；通用页文案对应日常翻译、网页辅助与基本偏好的阅读顺序，从同一注册表派生导航列表与后台合法分区 ID，导出 resolveNavigationItem、resolveRequestedSection 与 filterNavigationItems。
+ * 主要内容：登记学习功能的独立 progressive-reading 锚点、分类和搜索入口；包含按功能分组的标题、副标题、图标、关键词和 section ID，以及翻译设置内区分双语逐句阅读与智能高亮的独立锚点、同页分组、服务分配与模型用量深链接；旧圈选地址解析为图片页；通用页文案对应日常翻译、网页辅助与基本偏好的阅读顺序，从同一注册表派生导航列表与后台合法分区 ID，导出 resolveNavigationItem、resolveRequestedSection 与 filterNavigationItems。
  * 模块边界：该模块只描述导航元数据，不切换 DOM、不写 location.hash 也不保存配置；Options 页面负责路由同步，SettingsSections.vue 负责各分区实际内容。
  */
 import brandTaglines from '@/src/core/i18n/messages/brand-taglines.json';
@@ -36,6 +36,10 @@ export type SettingsSearchTarget = {
 
 /** 表单内的直达入口与真实控件共用 targetId，避免搜索只停在长分区顶部。 */
 export const settingsSearchTargets: readonly SettingsSearchTarget[] = [
+  {
+    id: 'progressive-reading', sectionId: 'settings-translation', targetId: 'progressive-reading',
+    label: '学习', description: '翻译设置', searchTerms: '学习、渐进阅读、短语提示、逻辑线索、完整双语、快捷键、录制、仅点击',
+  },
   {
     id: 'information-highlight', sectionId: 'settings-translation', targetId: 'information-highlight-settings',
     label: '智能高亮', description: '辅助阅读', searchTerms: '文本智能高亮、信息高亮、重点高亮、意外度、surprisal、关键词、密度、本地模型、隐私',
@@ -268,6 +272,7 @@ export const settingsPagePanels: Readonly<Record<string, readonly SettingsPagePa
     {id: 'floating-ball', labelKey: 'options.panel.floatingBall', searchTerms: '悬浮球 进阶设置 按钮 位置 延迟', targetIds: ['floating-ball-settings']},
     {id: 'paragraph-copy', labelKey: 'paragraphCopy.settings.title', searchTerms: '段落复制 复制内容 快捷键', targetIds: ['paragraph-copy-settings']},
     {id: 'section-translation', labelKey: 'sectionTranslation.settings.title', searchTerms: '局部翻译 分段 区域 快捷键', targetIds: ['section-translation-settings']},
+    {id: 'progressive-reading', labelKey: 'progressiveReading.settings.title', searchTerms: '学习 渐进阅读 短语 逻辑 双语 快捷键 录制 仅点击', targetIds: ['progressive-reading']},
     {id: 'excluded-languages', labelKey: 'settings.excludedLanguages.title', searchTerms: '不翻译的语言 跳过语言 排除语言', targetIds: ['excluded-language-settings']},
   ],
   'settings-interface': [

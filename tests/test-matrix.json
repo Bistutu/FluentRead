@@ -105,6 +105,7 @@
       "tests/paragraphCopyCore.test.ts",
       "tests/paragraphCopyRuntime.test.ts",
       "tests/sectionTranslationConfig.test.ts",
+      "tests/progressiveReadingHotkey.test.ts",
       "tests/sectionTranslationCore.test.ts",
       "tests/sectionTranslationRegion.test.ts",
       "tests/sectionTranslationRuntime.test.ts",
@@ -628,6 +629,7 @@
       "tests/progressiveReading.test.ts",
       "tests/progressiveReadingSource.test.ts",
       "tests/progressiveReadingContent.test.ts",
+      "tests/progressiveReadingSettingsLifecycle.test.ts",
       "tests/videoSentencePlayback.test.ts",
       "tests/videoSentenceLearningHost.test.ts",
       "tests/vocabularyVideoSourceUi.test.ts"

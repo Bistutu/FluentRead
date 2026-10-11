@@ -43,7 +43,7 @@ describe('popup feature visibility', () => {
         const entry = elements.find(node => node.tag === 'button'
             && node.props.some(prop => prop.type === 6 && prop.name === 'data-testid' && prop.value?.content === 'progressive-reading'))!;
         expect(entry).toBeDefined();
-        const visible = directive(entry, 'if')!;
+        const visible = directive(elements.find(node => node.props.some(prop => prop.type === 6 && prop.name === 'class' && prop.value?.content === 'learning-entry'))!, 'if')!;
         expect(visible).toBe("browserCapabilities.browser !== 'userscript' && !isThunderbird && !currentPdfSource");
         for (const browser of ['chrome', 'firefox', 'userscript']) {
             expect(runInNewContext(visible, {browserCapabilities: {browser}, isThunderbird: false, currentPdfSource: undefined})).toBe(browser !== 'userscript');
@@ -59,8 +59,16 @@ describe('popup feature visibility', () => {
             {...ready, translating: true}, {...ready, pageState: {savingRule: true}},
         ]) expect(runInNewContext(disabled, blocked)).toBe(true);
         expect(directive(entry, 'bind', 'onClick')).toBe('pageButtons.reading');
-        expect(entry.props.some(prop => prop.type === 6 && prop.name === 'aria-label' && prop.value?.content === '渐进阅读')).toBe(true);
-        expect(entry.props.some(prop => prop.type === 6 && prop.name === 'title' && prop.value?.content.includes('自由切换原文'))).toBe(true);
+        expect(directive(entry, 'bind', 'aria-label')).toBe("t('progressiveReading.entry.label')");
+        const label = entry.children.find(node => node.type === 1 && node.tag === 'span')!;
+        expect(label.type === 1 && label.children.some(node => node.type === 5 && node.content.type === 4 && node.content.content === "t('progressiveReading.entry.label')")).toBe(true);
+        expect(entry.props.some(prop => prop.type === 6 && prop.name === 'aria-describedby' && prop.value?.content === 'learning-entry-description learning-entry-shortcut')).toBe(true);
+        const main = elements.find(node => node.tag === 'button'
+            && node.props.some(prop => prop.type === 6 && prop.name === 'data-testid' && prop.value?.content === 'page-translation'))!;
+        expect(directive(main, 'bind', 'title')).toBe('pageTranslationTitle');
+        expect(main.children.some(node => node.type === 1 && node.tag === 'kbd')).toBe(false);
+        expect(main.children.some(node => node.type === 1 && node.tag === 'span'
+            && node.children.some(child => child.type === 5 && child.content.type === 4 && child.content.content === 'pageTranslationButtonLabel'))).toBe(true);
     });
     it('keeps information highlight in settings with no Popup entry, drawer or messaging lifecycle', () => {
         const popup = source('src/app/popup/PopupApp.vue');
@@ -446,8 +454,6 @@ describe('popup feature visibility', () => {
         expect(popup).not.toContain('CustomHotkeyInput');
         expect(styles).toContain('.quick-profile-preview-row');
         expect(styles).toContain('.setting-row small.independent-profile-note');
-        expect(styles).toContain('flex: 0 2 64px');
-        expect(styles).toContain('.translate-hotkey span');
     });
 
     it('filters Chrome Translator but renders old synchronized selections as unavailable', () => {

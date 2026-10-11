@@ -1,7 +1,7 @@
 /**
  * @file src/features/progressive-reading/content.ts
  * 文件职责：将渐进阅读会话接入已有 WXT/Vue Shadow UI、翻译客户端与学习库消息生命周期。
- * 主要内容：只在主动打开时创建封闭面板；保存瞬时选区、观察当前原文所有权、订阅明确学习变更，关闭/禁用/卸载取消请求并释放监听与节点。
+ * 主要内容：从点击或可选可信快捷键主动创建封闭面板；保存瞬时选区、观察原文所有权和明确学习变更，快捷键让行编辑区与既有翻译组合，关闭/禁用/卸载取消请求并释放监听与节点。
  * 模块边界：不修改网页正文、不记录停留或遇见次数、不改学习算法、broker 调度或配置；纯提示和异步结果归 session，正文捕获归 source。
  */
 import browser from 'webextension-polyfill';
@@ -10,6 +10,8 @@ import type {ContentScriptContext} from 'wxt/utils/content-script-context';
 import {createVueShadowUi} from '@/src/platform/shadow-ui';
 import {translateText} from '@/src/app/translation/client';
 import {config} from '@/src/services/config/store';
+import {findProgressiveReadingHotkeyConflict, matchesProgressiveReadingHotkey, resolveProgressiveReadingHotkey} from '@/src/core/config/progressiveReading';
+import {isEditingInPage} from '@/src/shared/dom/editingTarget';
 import {VOCABULARY_BOOK_CHANGED_MESSAGE, VOCABULARY_BOOK_MESSAGE, type VocabularyBookResponse, type VocabularyReadingHint} from '@/src/features/vocabulary/protocol';
 import {captureProgressiveSource, type ReadingDomSource} from './source';
 import {createReadingSession, createReadingState} from './session';
@@ -84,9 +86,18 @@ export function mountProgressiveReading(ctx: ContentScriptContext, signal: Abort
     if ((message as {type?: string})?.type === VOCABULARY_BOOK_CHANGED_MESSAGE && current() && state.open) void session.refreshHints();
     return undefined;
   };
+  const keydown = (event: KeyboardEvent) => {
+    if (!current() || config.on === false || !event.isTrusted || event.repeat || event.isComposing || event.keyCode === 229 || event.defaultPrevented) return;
+    if (!matchesProgressiveReadingHotkey(event, config.progressiveReadingHotkey, config.customProgressiveReadingHotkey)) return;
+    if (isEditingInPage(event, document) || event.composedPath().some(target => (target as Element).closest?.('[data-fluent-read-ui]'))
+      || ui && (event.composedPath().includes(ui.shadowHost) || document.activeElement === ui.shadowHost)) return;
+    // 已有翻译入口保留组合归属；不让打开辅助同时启动全文、悬浮或划词请求。
+    if (findProgressiveReadingHotkeyConflict(config, resolveProgressiveReadingHotkey(config.progressiveReadingHotkey, config.customProgressiveReadingHotkey))) return;
+    event.preventDefault(); event.stopImmediatePropagation(); void open();
+  };
   const instance = {open, dispose() {
     if (!active) return;
-    active = false; close(); document.removeEventListener('selectionchange', capture); document.removeEventListener('fluentread-route-change', routeChanged);
+    active = false; close(); document.removeEventListener('selectionchange', capture); document.removeEventListener('fluentread-route-change', routeChanged); document.removeEventListener('keydown', keydown);
     try {browser.runtime.onMessage.removeListener(changed);} catch { /* 失效扩展仍释放 DOM。 */ }
     signal.removeEventListener('abort', instance.dispose);
     if (owner === instance) owner = undefined;
@@ -94,6 +105,7 @@ export function mountProgressiveReading(ctx: ContentScriptContext, signal: Abort
   owner = instance;
   document.addEventListener('selectionchange', capture);
   document.addEventListener('fluentread-route-change', routeChanged);
+  document.addEventListener('keydown', keydown);
   browser.runtime.onMessage.addListener(changed);
   signal.addEventListener('abort', instance.dispose, {once: true});
 }
