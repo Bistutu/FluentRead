@@ -1,8 +1,8 @@
 {
   "date": "2026-10-11",
   "scope": "scoped common-site rules and conservative owned long-page rendering",
-  "integratedMainCommit": "717a340347cde3417bad011477a88d41718ea335",
-  "integrationCodeCommit": "59d3a96b5b1c8c0246d1af31f665b556b3a52896",
+  "integratedMainCommit": "99afdbf69b4c2faf83115b22cd7e340e4d076a00",
+  "integrationCodeCommit": "85c920a9a2d745ffef95cbdec07a288dc4994c5d",
   "newRuleIds": [
     "bing-search",
     "steam-community-discussions",
@@ -15,9 +15,9 @@
   "sourceSha256": {
     "src/core/translation/engine.ts": "49887114da7a7a3fe3aedcaa616e6b7c2fa368c9deb864317f3252926162ed34",
     "src/core/site-adaptation/catalog/websites.json": "e656077aa84e611149695693122d8f62d941e06e8bd0a0e03824eb6c55073387",
-    "src/features/full-page-translation/content/runtime.ts": "d78e866136b1cf576713ece094ec588097214bb3bb702d9a0c9aeaafe93d5151",
+    "src/features/full-page-translation/content/runtime.ts": "ca483d112b62dda6bd97d9ac6d219740aa343506aff4128215d624e60c6d1a1c",
     "scripts/site-translation/site-adaptation-fixtures.json": "c9076bea98f20755d0efc188e5fe89e93bc48f8ea93ba35c221521eb10cf0550",
-    "scripts/run-site-adaptation-test.cjs": "e0e1b4bc732469ad857dbbebfd2533e0a93e35b2967bc1224c18358c22df0a2c"
+    "scripts/run-site-adaptation-test.cjs": "2825b89de35a6dd283490d091360a86c948e59baa256e0a3945ce073ae9e6110"
   },
   "builds": {
     "typecheck": {
@@ -25,19 +25,18 @@
     },
     "chrome": {
       "exitCode": 0,
-      "contentSha256": "b9f91630f6fbd0a76fcbe58ca71ff94d10456c725e13c1738a24001c1e66c0ec"
+      "contentSha256": "4620377271d75f57ef1a385fb6c7adf9c52957054a7ec5633d4cc8f354170186"
     },
     "firefox": {
       "exitCode": 0,
-      "contentSha256": "931e074a63350d32bde29031c430deb0405b4fda4011306bac4bdb801232d917"
+      "contentSha256": "f645a9b0e402692fa53a9ea0f4b0c6c9ec7df1bf495561a5082a9a0d260b92de"
     },
     "userscript": {
       "exitCode": 0,
-      "contentSha256": "6a2a4f3bc3c650d08714e6bb0c7d1098be095056d5ee2fef9572c1b190de0dcc"
+      "contentSha256": "6f0f1bd713709774316d3e6b6d7bb2a2c4c5edb3833651b9afb225116af3ca1d"
     },
     "manifestVerifierExitCode": 0,
-    "userscriptVerifierExitCode": 0,
-    "allThreeArtifactsIdenticalBeforeAndAfterCommentOnlyCompaction": true
+    "userscriptVerifierExitCode": 0
   },
   "unitRegression": {
     "engine": {
@@ -73,16 +72,43 @@
       "fixtureSha256AtCoverageRun": "4ad818621308e9944de2098dee861f21fb579c54c8b73b75cb4c9a19bb7e7f91",
       "engineSourceMatchesFinal": true
     },
-    "currentFixturesAndHarness": {
-      "files": 3,
-      "passed": 498,
-      "exitCode": 0,
-      "fixtureSha256": "c9076bea98f20755d0efc188e5fe89e93bc48f8ea93ba35c221521eb10cf0550"
-    },
     "integratedRuntime": {
-      "files": 15,
-      "passed": 824,
+      "files": 19,
+      "passed": 1856,
       "exitCode": 0,
+      "testCounts": {
+        "tests/fullPageVisibilityScheduling.test.ts": 343,
+        "tests/translationState.test.ts": 94,
+        "tests/bilingualRemount.test.ts": 87,
+        "tests/translationTruncation.test.ts": 63,
+        "tests/discourseContext.test.ts": 68,
+        "tests/bilingualRenderingLifecycle.test.ts": 18,
+        "tests/pageDiscourseContext.test.ts": 33,
+        "tests/fullPagePriority.test.ts": 20,
+        "tests/bilingualReplay.test.ts": 18,
+        "tests/syntheticRemount.test.ts": 19,
+        "tests/pageTranslationAdvanced.test.ts": 19,
+        "tests/architecture/moduleBoundaries.test.ts": 13,
+        "tests/bilingualRenderingContainment.test.ts": 83,
+        "tests/translationSnapshotProtection.test.ts": 26,
+        "tests/fullPageTranslationIndicators.test.ts": 16,
+        "tests/translationFont.test.ts": 12,
+        "tests/architecture/sourceFileHeaders.test.ts": 917,
+        "tests/pageStyles.test.ts": 4,
+        "tests/translationAppearanceStyles.test.ts": 3
+      },
+      "renderingRegression": {
+        "files": 15,
+        "passed": 825
+      },
+      "discourseRegression": {
+        "files": 2,
+        "passed": 101
+      },
+      "sourcePolicy": {
+        "files": 2,
+        "passed": 930
+      },
       "coverage": {
         "src/app/content/pageStyles.ts": {
           "lines": {
@@ -163,8 +189,10 @@
           }
         }
       },
-      "runtimeSourceSha256AtRun": "eb9b0caae6e3bdf34f0854b3a751ba44830623d4dbbb52a1eab8ca83bd0abce2",
-      "subsequentSourceChange": "Comments and blank lines only; TypeScript emit and parsed executable tokens unchanged; all final build hashes match tested binaries"
+      "runtimeSourceSha256AtRun": "ca483d112b62dda6bd97d9ac6d219740aa343506aff4128215d624e60c6d1a1c",
+      "sourceAndTestsUnchangedDuringRun": true,
+      "runtimeBodyLines": 2194,
+      "runtimeBodyLineCap": 2196
     },
     "architectureBeforeLatestMain": {
       "files": 33,
@@ -173,31 +201,58 @@
     },
     "finalSourceHeadersAndModuleBoundaries": {
       "files": 2,
-      "passed": 928,
+      "passed": 930,
       "exitCode": 0,
       "growthCeilingUnchanged": true
     },
     "testOwnershipAudit": {
       "exitCode": 0,
-      "registeredFiles": 655,
-      "registeredCases": 11035,
+      "registeredFiles": 657,
+      "registeredCases": 11110,
       "note": "Audit registration count, not a claim that all registered cases ran"
+    },
+    "currentFixturesHarnessAndRuleLifecycle": {
+      "files": 6,
+      "passed": 524,
+      "exitCode": 0,
+      "fixtureSha256": "c9076bea98f20755d0efc188e5fe89e93bc48f8ea93ba35c221521eb10cf0550",
+      "harnessSourceSha256": "2825b89de35a6dd283490d091360a86c948e59baa256e0a3945ce073ae9e6110",
+      "note": "Related fixture, helper, catalog and lifecycle unit contracts plus read-only review of the browser wait; no four-dimensional coverage claim for the new wait helper."
     }
   },
   "siteBrowserMocks": {
     "passed": 9,
     "total": 9,
     "singleRun": true,
+    "exitCode": 0,
     "profileMode": "new-temporary-profile",
     "launchMode": "macos-background-cdp",
     "browserVersion": "131.0.2903.147",
     "backgroundWindowOnSecondaryDisplay": true,
-    "contentSha256": "b9f91630f6fbd0a76fcbe58ca71ff94d10456c725e13c1738a24001c1e66c0ec",
+    "contentSha256": "4620377271d75f57ef1a385fb6c7adf9c52957054a7ec5633d4cc8f354170186",
+    "harnessSourceSha256": "2825b89de35a6dd283490d091360a86c948e59baa256e0a3945ce073ae9e6110",
     "ownedBrowserClosed": true,
     "temporaryProfileRemoved": true,
+    "ownedBrowserProcessesAfterCleanup": 0,
+    "newlyRetainedProfileCount": 0,
+    "preexistingProfilesPreservedCount": 2,
+    "cleanupScope": "Only this run's owned browser processes and newly created profile difference",
+    "foregroundApplicationUnchanged": true,
+    "physicalPointerChecks": {
+      "count": 36,
+      "allTrusted": true,
+      "freshNativeRechecks": true,
+      "policies": [
+        "direct-text",
+        "steam-empty-stretched-link",
+        "google-news-empty-read-overlay"
+      ]
+    },
     "cases": [
       {
         "id": "hacker-news",
+        "url": "https://news.ycombinator.com/item?id=123",
+        "kind": "synthetic-domain-fixture",
         "hover": [
           1,
           0,
@@ -209,11 +264,63 @@
           0,
           1
         ],
+        "wrapperCountScope": "direct-owner-or-direct-synthetic-run",
         "protected": 7,
-        "protectedExactHtml": true
+        "protectedExactHtml": true,
+        "translationParts": [
+          [
+            {
+              "selector": "#body1 > [data-fr-translation-segment=\"true\"]",
+              "targetCount": 1,
+              "wrapperCount": 1,
+              "text": "测试译文：This readable opening describes a 测试译文：useful reference 测试译文：with requestIdleCallback().",
+              "translated": true
+            },
+            {
+              "selector": "#body1-p1",
+              "targetCount": 1,
+              "wrapperCount": 1,
+              "text": "测试译文：The next paragraph explains the implementation with enough context for translation.",
+              "translated": true
+            },
+            {
+              "selector": "#body1-p2",
+              "targetCount": 1,
+              "wrapperCount": 1,
+              "text": "测试译文：The final paragraph discusses performance on a long discussion page.",
+              "translated": true
+            }
+          ],
+          [
+            {
+              "selector": "#body1 > [data-fr-translation-segment=\"true\"]",
+              "targetCount": 1,
+              "wrapperCount": 1,
+              "text": "测试译文：This readable opening describes a 测试译文：useful reference 测试译文：with requestIdleCallback().",
+              "translated": true
+            },
+            {
+              "selector": "#body1-p1",
+              "targetCount": 1,
+              "wrapperCount": 1,
+              "text": "测试译文：The next paragraph explains the implementation with enough context for translation.",
+              "translated": true
+            },
+            {
+              "selector": "#body1-p2",
+              "targetCount": 1,
+              "wrapperCount": 1,
+              "text": "测试译文：The final paragraph discusses performance on a long discussion page.",
+              "translated": true
+            }
+          ]
+        ],
+        "providerProtection": true
       },
       {
         "id": "product-hunt",
+        "url": "https://www.producthunt.com/",
+        "kind": "synthetic-domain-fixture",
         "hover": [
           1,
           0,
@@ -225,11 +332,15 @@
           0,
           1
         ],
+        "wrapperCountScope": "direct-owner-or-direct-synthetic-run",
         "protected": 10,
-        "protectedExactHtml": true
+        "protectedExactHtml": true,
+        "providerProtection": true
       },
       {
         "id": "bing-search",
+        "url": "https://www.bing.com/search?q=fixture",
+        "kind": "synthetic-domain-fixture",
         "hover": [
           1,
           0,
@@ -241,8 +352,10 @@
           0,
           1
         ],
+        "wrapperCountScope": "direct-owner-or-direct-synthetic-run",
         "protected": 13,
         "protectedExactHtml": true,
+        "providerProtection": true,
         "sourceAssertions": {
           "required": [
             "This first result explains readable page content and safe navigation.",
@@ -302,6 +415,8 @@
       },
       {
         "id": "steam-community-discussions",
+        "url": "https://steamcommunity.com/app/570/discussions/",
+        "kind": "synthetic-domain-fixture",
         "hover": [
           1,
           0,
@@ -313,8 +428,547 @@
           0,
           1
         ],
+        "wrapperCountScope": "direct-owner-or-direct-synthetic-run",
         "protected": 14,
         "protectedExactHtml": true,
+        "steamGeometryBaseline": {
+          "scope": "authored simplified card geometry",
+          "measured": [
+            {
+              "selector": "#body1",
+              "sourceRects": [
+                {
+                  "top": 167.0859375,
+                  "bottom": 188.5859375,
+                  "left": 124.75,
+                  "right": 505.296875,
+                  "width": 380.546875,
+                  "height": 21.5
+                }
+              ],
+              "translationRects": [],
+              "clippedTranslationRects": [],
+              "clips": [],
+              "translatedHeight": 0,
+              "visibleHeight": 0,
+              "title": {
+                "top": 159.0859375,
+                "bottom": 196.78125,
+                "left": 40,
+                "right": 940,
+                "width": 900,
+                "height": 37.6953125
+              },
+              "card": {
+                "top": 159.0859375,
+                "bottom": 207.0859375,
+                "left": 40,
+                "right": 940,
+                "width": 900,
+                "height": 48
+              },
+              "author": {
+                "top": 196.78125,
+                "bottom": 216.578125,
+                "left": 56,
+                "right": 940,
+                "width": 884,
+                "height": 19.796875
+              },
+              "authorCardOverflow": 9.4921875,
+              "nextCardClearance": -1.4921875,
+              "translationAuthorClearance": null
+            },
+            {
+              "selector": "#body2",
+              "sourceRects": [
+                {
+                  "top": 223.0859375,
+                  "bottom": 244.5859375,
+                  "left": 56,
+                  "right": 432.2265625,
+                  "width": 376.2265625,
+                  "height": 21.5
+                }
+              ],
+              "translationRects": [],
+              "clippedTranslationRects": [],
+              "clips": [],
+              "translatedHeight": 0,
+              "visibleHeight": 0,
+              "title": {
+                "top": 215.0859375,
+                "bottom": 252.78125,
+                "left": 40,
+                "right": 940,
+                "width": 900,
+                "height": 37.6953125
+              },
+              "card": {
+                "top": 215.0859375,
+                "bottom": 263.0859375,
+                "left": 40,
+                "right": 940,
+                "width": 900,
+                "height": 48
+              },
+              "author": {
+                "top": 252.78125,
+                "bottom": 272.578125,
+                "left": 56,
+                "right": 940,
+                "width": 884,
+                "height": 19.796875
+              },
+              "authorCardOverflow": 9.4921875,
+              "nextCardClearance": null,
+              "translationAuthorClearance": null
+            }
+          ]
+        },
+        "steamGeometry": [
+          {
+            "phase": "hover-0-1",
+            "measured": [
+              {
+                "selector": "#body1",
+                "sourceRects": [
+                  {
+                    "top": 167.0859375,
+                    "bottom": 188.5859375,
+                    "left": 124.75,
+                    "right": 505.296875,
+                    "width": 380.546875,
+                    "height": 21.5
+                  }
+                ],
+                "translationRects": [
+                  {
+                    "top": 204.78125,
+                    "bottom": 226.28125,
+                    "left": 56,
+                    "right": 547.5234375,
+                    "width": 491.5234375,
+                    "height": 21.5
+                  }
+                ],
+                "clippedTranslationRects": [
+                  {
+                    "width": 491.5234375,
+                    "height": 21.5
+                  }
+                ],
+                "clips": [
+                  {
+                    "top": 159.0859375,
+                    "bottom": 242.4765625,
+                    "left": 40,
+                    "right": 940,
+                    "width": 900,
+                    "height": 83.390625,
+                    "clipX": true,
+                    "clipY": true
+                  }
+                ],
+                "translatedHeight": 21.5,
+                "visibleHeight": 21.5,
+                "title": {
+                  "top": 159.0859375,
+                  "bottom": 242.4765625,
+                  "left": 40,
+                  "right": 940,
+                  "width": 900,
+                  "height": 83.390625
+                },
+                "card": {
+                  "top": 159.0859375,
+                  "bottom": 262.2734375,
+                  "left": 40,
+                  "right": 940,
+                  "width": 900,
+                  "height": 103.1875
+                },
+                "author": {
+                  "top": 242.4765625,
+                  "bottom": 262.2734375,
+                  "left": 56,
+                  "right": 940,
+                  "width": 884,
+                  "height": 19.796875
+                },
+                "authorCardOverflow": 0,
+                "nextCardClearance": 8,
+                "translationAuthorClearance": 16.1953125
+              }
+            ]
+          },
+          {
+            "phase": "hover-2-1",
+            "measured": [
+              {
+                "selector": "#body1",
+                "sourceRects": [
+                  {
+                    "top": 167.0859375,
+                    "bottom": 188.5859375,
+                    "left": 124.75,
+                    "right": 505.296875,
+                    "width": 380.546875,
+                    "height": 21.5
+                  }
+                ],
+                "translationRects": [
+                  {
+                    "top": 204.78125,
+                    "bottom": 226.28125,
+                    "left": 56,
+                    "right": 547.5234375,
+                    "width": 491.5234375,
+                    "height": 21.5
+                  }
+                ],
+                "clippedTranslationRects": [
+                  {
+                    "width": 491.5234375,
+                    "height": 21.5
+                  }
+                ],
+                "clips": [
+                  {
+                    "top": 159.0859375,
+                    "bottom": 242.4765625,
+                    "left": 40,
+                    "right": 940,
+                    "width": 900,
+                    "height": 83.390625,
+                    "clipX": true,
+                    "clipY": true
+                  }
+                ],
+                "translatedHeight": 21.5,
+                "visibleHeight": 21.5,
+                "title": {
+                  "top": 159.0859375,
+                  "bottom": 242.4765625,
+                  "left": 40,
+                  "right": 940,
+                  "width": 900,
+                  "height": 83.390625
+                },
+                "card": {
+                  "top": 159.0859375,
+                  "bottom": 262.2734375,
+                  "left": 40,
+                  "right": 940,
+                  "width": 900,
+                  "height": 103.1875
+                },
+                "author": {
+                  "top": 242.4765625,
+                  "bottom": 262.2734375,
+                  "left": 56,
+                  "right": 940,
+                  "width": 884,
+                  "height": 19.796875
+                },
+                "authorCardOverflow": 0,
+                "nextCardClearance": 8,
+                "translationAuthorClearance": 16.1953125
+              }
+            ]
+          },
+          {
+            "phase": "full-0-1",
+            "measured": [
+              {
+                "selector": "#body1",
+                "sourceRects": [
+                  {
+                    "top": 167.0859375,
+                    "bottom": 188.5859375,
+                    "left": 124.75,
+                    "right": 505.296875,
+                    "width": 380.546875,
+                    "height": 21.5
+                  }
+                ],
+                "translationRects": [
+                  {
+                    "top": 204.78125,
+                    "bottom": 226.28125,
+                    "left": 56,
+                    "right": 547.5234375,
+                    "width": 491.5234375,
+                    "height": 21.5
+                  }
+                ],
+                "clippedTranslationRects": [
+                  {
+                    "width": 491.5234375,
+                    "height": 21.5
+                  }
+                ],
+                "clips": [
+                  {
+                    "top": 159.0859375,
+                    "bottom": 242.4765625,
+                    "left": 40,
+                    "right": 940,
+                    "width": 900,
+                    "height": 83.390625,
+                    "clipX": true,
+                    "clipY": true
+                  }
+                ],
+                "translatedHeight": 21.5,
+                "visibleHeight": 21.5,
+                "title": {
+                  "top": 159.0859375,
+                  "bottom": 242.4765625,
+                  "left": 40,
+                  "right": 940,
+                  "width": 900,
+                  "height": 83.390625
+                },
+                "card": {
+                  "top": 159.0859375,
+                  "bottom": 262.2734375,
+                  "left": 40,
+                  "right": 940,
+                  "width": 900,
+                  "height": 103.1875
+                },
+                "author": {
+                  "top": 242.4765625,
+                  "bottom": 262.2734375,
+                  "left": 56,
+                  "right": 940,
+                  "width": 884,
+                  "height": 19.796875
+                },
+                "authorCardOverflow": 0,
+                "nextCardClearance": 8,
+                "translationAuthorClearance": 16.1953125
+              },
+              {
+                "selector": "#body2",
+                "sourceRects": [
+                  {
+                    "top": 278.2734375,
+                    "bottom": 299.7734375,
+                    "left": 56,
+                    "right": 432.2265625,
+                    "width": 376.2265625,
+                    "height": 21.5
+                  }
+                ],
+                "translationRects": [
+                  {
+                    "top": 315.96875,
+                    "bottom": 337.46875,
+                    "left": 56,
+                    "right": 550.2421875,
+                    "width": 494.2421875,
+                    "height": 21.5
+                  }
+                ],
+                "clippedTranslationRects": [
+                  {
+                    "width": 494.2421875,
+                    "height": 21.5
+                  }
+                ],
+                "clips": [
+                  {
+                    "top": 270.2734375,
+                    "bottom": 353.6640625,
+                    "left": 40,
+                    "right": 940,
+                    "width": 900,
+                    "height": 83.390625,
+                    "clipX": true,
+                    "clipY": true
+                  }
+                ],
+                "translatedHeight": 21.5,
+                "visibleHeight": 21.5,
+                "title": {
+                  "top": 270.2734375,
+                  "bottom": 353.6640625,
+                  "left": 40,
+                  "right": 940,
+                  "width": 900,
+                  "height": 83.390625
+                },
+                "card": {
+                  "top": 270.2734375,
+                  "bottom": 373.4609375,
+                  "left": 40,
+                  "right": 940,
+                  "width": 900,
+                  "height": 103.1875
+                },
+                "author": {
+                  "top": 353.6640625,
+                  "bottom": 373.4609375,
+                  "left": 56,
+                  "right": 940,
+                  "width": 884,
+                  "height": 19.796875
+                },
+                "authorCardOverflow": 0,
+                "nextCardClearance": null,
+                "translationAuthorClearance": 16.1953125
+              }
+            ]
+          },
+          {
+            "phase": "full-2-1",
+            "measured": [
+              {
+                "selector": "#body1",
+                "sourceRects": [
+                  {
+                    "top": 167.0859375,
+                    "bottom": 188.5859375,
+                    "left": 124.75,
+                    "right": 505.296875,
+                    "width": 380.546875,
+                    "height": 21.5
+                  }
+                ],
+                "translationRects": [
+                  {
+                    "top": 204.78125,
+                    "bottom": 226.28125,
+                    "left": 56,
+                    "right": 547.5234375,
+                    "width": 491.5234375,
+                    "height": 21.5
+                  }
+                ],
+                "clippedTranslationRects": [
+                  {
+                    "width": 491.5234375,
+                    "height": 21.5
+                  }
+                ],
+                "clips": [
+                  {
+                    "top": 159.0859375,
+                    "bottom": 242.4765625,
+                    "left": 40,
+                    "right": 940,
+                    "width": 900,
+                    "height": 83.390625,
+                    "clipX": true,
+                    "clipY": true
+                  }
+                ],
+                "translatedHeight": 21.5,
+                "visibleHeight": 21.5,
+                "title": {
+                  "top": 159.0859375,
+                  "bottom": 242.4765625,
+                  "left": 40,
+                  "right": 940,
+                  "width": 900,
+                  "height": 83.390625
+                },
+                "card": {
+                  "top": 159.0859375,
+                  "bottom": 262.2734375,
+                  "left": 40,
+                  "right": 940,
+                  "width": 900,
+                  "height": 103.1875
+                },
+                "author": {
+                  "top": 242.4765625,
+                  "bottom": 262.2734375,
+                  "left": 56,
+                  "right": 940,
+                  "width": 884,
+                  "height": 19.796875
+                },
+                "authorCardOverflow": 0,
+                "nextCardClearance": 8,
+                "translationAuthorClearance": 16.1953125
+              },
+              {
+                "selector": "#body2",
+                "sourceRects": [
+                  {
+                    "top": 278.2734375,
+                    "bottom": 299.7734375,
+                    "left": 56,
+                    "right": 432.2265625,
+                    "width": 376.2265625,
+                    "height": 21.5
+                  }
+                ],
+                "translationRects": [
+                  {
+                    "top": 315.96875,
+                    "bottom": 337.46875,
+                    "left": 56,
+                    "right": 550.2421875,
+                    "width": 494.2421875,
+                    "height": 21.5
+                  }
+                ],
+                "clippedTranslationRects": [
+                  {
+                    "width": 494.2421875,
+                    "height": 21.5
+                  }
+                ],
+                "clips": [
+                  {
+                    "top": 270.2734375,
+                    "bottom": 353.6640625,
+                    "left": 40,
+                    "right": 940,
+                    "width": 900,
+                    "height": 83.390625,
+                    "clipX": true,
+                    "clipY": true
+                  }
+                ],
+                "translatedHeight": 21.5,
+                "visibleHeight": 21.5,
+                "title": {
+                  "top": 270.2734375,
+                  "bottom": 353.6640625,
+                  "left": 40,
+                  "right": 940,
+                  "width": 900,
+                  "height": 83.390625
+                },
+                "card": {
+                  "top": 270.2734375,
+                  "bottom": 373.4609375,
+                  "left": 40,
+                  "right": 940,
+                  "width": 900,
+                  "height": 103.1875
+                },
+                "author": {
+                  "top": 353.6640625,
+                  "bottom": 373.4609375,
+                  "left": 56,
+                  "right": 940,
+                  "width": 884,
+                  "height": 19.796875
+                },
+                "authorCardOverflow": 0,
+                "nextCardClearance": null,
+                "translationAuthorClearance": 16.1953125
+              }
+            ]
+          }
+        ],
+        "providerProtection": true,
         "sourceAssertions": {
           "required": [
             "How to recognize a safe community discussion",
@@ -370,6 +1024,8 @@
       {
         "id": "steam-community-discussions",
         "variant": "thread",
+        "url": "https://steamcommunity.com/app/570/discussions/0/1696040635904700731/",
+        "kind": "synthetic-domain-fixture",
         "hover": [
           1,
           0,
@@ -381,8 +1037,10 @@
           0,
           1
         ],
+        "wrapperCountScope": "direct-owner-or-direct-synthetic-run",
         "protected": 12,
         "protectedExactHtml": true,
+        "providerProtection": true,
         "sourceAssertions": {
           "required": [
             "This opening explains the discussion in plain text.",
@@ -446,6 +1104,8 @@
       },
       {
         "id": "google-news-home-headlines",
+        "url": "https://news.google.com/home?hl=en-US&gl=US&ceid=US:en",
+        "kind": "synthetic-domain-fixture",
         "hover": [
           1,
           0,
@@ -457,8 +1117,10 @@
           0,
           1
         ],
+        "wrapperCountScope": "direct-owner-or-direct-synthetic-run",
         "protected": 16,
         "protectedExactHtml": true,
+        "providerProtection": true,
         "sourceAssertions": {
           "required": [
             "Researchers explain a reliable browser behavior",
@@ -514,6 +1176,8 @@
       },
       {
         "id": "github-gist",
+        "url": "https://gist.github.com/fixture-reader/0123456789abcdef0123456789abcdef",
+        "kind": "synthetic-domain-fixture",
         "hover": [
           1,
           0,
@@ -525,8 +1189,10 @@
           0,
           1
         ],
+        "wrapperCountScope": "direct-owner-or-direct-synthetic-run",
         "protected": 19,
         "protectedExactHtml": true,
+        "providerProtection": true,
         "sourceAssertions": {
           "required": [
             "This opening explains how readable notes should be translated alongside code.",
@@ -600,13 +1266,17 @@
             "staleResponseDidNotCommit": true,
             "restoreExact": true,
             "restoreScope": "declared-container-innerHTML",
-            "stableIdleMsAfterRelease": 1200
+            "stableIdleMsAfterRelease": 1200,
+            "contentRuleApplySignal": "fluentread-translation-ended",
+            "waitedBeforeRestart": true
           },
           "finalRestoreExact": true
         }
       },
       {
         "id": "firefox-addons",
+        "url": "https://addons.mozilla.org/en-US/firefox/addon/mock-reader/",
+        "kind": "synthetic-domain-fixture",
         "hover": [
           1,
           0,
@@ -618,8 +1288,10 @@
           0,
           1
         ],
+        "wrapperCountScope": "direct-owner-or-direct-synthetic-run",
         "protected": 18,
         "protectedExactHtml": true,
+        "providerProtection": true,
         "sourceAssertions": {
           "required": [
             "This summary explains readable extension behavior and should translate inside the header.",
@@ -693,6 +1365,8 @@
       {
         "id": "firefox-addons",
         "variant": "reviews",
+        "url": "https://addons.mozilla.org/en-US/firefox/addon/mock-reader/reviews/",
+        "kind": "synthetic-domain-fixture",
         "hover": [
           1,
           0,
@@ -704,8 +1378,10 @@
           0,
           1
         ],
+        "wrapperCountScope": "direct-owner-or-direct-synthetic-run",
         "protected": 19,
         "protectedExactHtml": true,
+        "providerProtection": true,
         "sourceAssertions": {
           "required": [
             "This first review explains a useful browser workflow in plain text.",
@@ -780,7 +1456,8 @@
     "passed": 3,
     "total": 3,
     "singleRun": true,
-    "contentSha256": "b9f91630f6fbd0a76fcbe58ca71ff94d10456c725e13c1738a24001c1e66c0ec",
+    "exitCode": 0,
+    "contentSha256": "4620377271d75f57ef1a385fb6c7adf9c52957054a7ec5633d4cc8f354170186",
     "profileMode": "new-temporary-profile",
     "launchMode": "macos-background-cdp",
     "cases": [
@@ -798,17 +1475,17 @@
           {
             "control": "auto",
             "samples": 3,
-            "traversalMedianMs": 523,
-            "rafP95MedianMs": 18.299999999999272,
-            "layoutMedianMs": 37.24099999999997,
-            "styleMedianMs": 6.295999999999996,
+            "traversalMedianMs": 521.7000002861023,
+            "rafP95MedianMs": 17.700000000000728,
+            "layoutMedianMs": 37.18100000000002,
+            "styleMedianMs": 5.991999999999997,
             "totalLongTasks": 0
           },
           {
             "control": "visible-control",
             "samples": 3,
-            "traversalMedianMs": 523.8999996185303,
-            "rafP95MedianMs": 18.100000000000364,
+            "traversalMedianMs": 529.5999999046326,
+            "rafP95MedianMs": 17.799999999999272,
             "layoutMedianMs": 0,
             "styleMedianMs": 0,
             "totalLongTasks": 0
@@ -818,6 +1495,14 @@
           "sameNodes": true,
           "sameInnerHtml": true,
           "exactOuterHtmlAfterRestore": true
+        },
+        "runnerAssertions": {
+          "exactOriginalTextAndLinks": true,
+          "exactGuardOuterHtml": true,
+          "exactSourceAndContainerHtmlOnRestore": true,
+          "correctPerOwnerMarkers": true,
+          "noNestedWrappers": true,
+          "noPageErrors": true
         },
         "interactions": {
           "find": {
@@ -860,10 +1545,8 @@
         },
         "print": {
           "media": true,
-          "checkedWrappers": 120,
-          "allVisible": true,
-          "allTextPresent": true,
-          "allPositiveHeight": true
+          "requiredTranslatedBlocks": 120,
+          "allPresentVisibleWithPositiveHeight": true
         },
         "appearanceChecks": [
           {
@@ -891,8 +1574,81 @@
             "newRequestCount": 0
           }
         ],
-        "nativeSkippedEventCount": 176,
-        "directOpeningCount": 60
+        "nativeSkippedEventCount": 177,
+        "initialRendering": {
+          "ownedWrappers": 181,
+          "containedWrappers": 181,
+          "autoWrappers": 181,
+          "nativeSkippedEvents": 177,
+          "snapshotSkippedWrappers": 0
+        },
+        "directOpeningCoverage": {
+          "count": 60,
+          "correctOwnMarkers": true,
+          "restoredCount": 0,
+          "retranslatedCountPerOwner": 1
+        },
+        "scroll": {
+          "scope": "stable window after two frames",
+          "maximumDriftPx": 0,
+          "provesJumpFreeFirstReveal": false
+        },
+        "resize": {
+          "scope": "visible geometry after settle; same wrapper against CSS visible control",
+          "checks": [
+            {
+              "width": 1280,
+              "fontSize": "18px",
+              "optimized": {
+                "height": 296.953125,
+                "wrapperWidth": 838,
+                "left": 221,
+                "top": 365.1953125,
+                "visible": true,
+                "intrinsicBlockSize": "auto 296.953px"
+              },
+              "visibleControl": {
+                "height": 296.953125,
+                "wrapperWidth": 838,
+                "left": 221,
+                "top": 365.234375,
+                "visible": true,
+                "intrinsicBlockSize": "none"
+              },
+              "integrity": {
+                "sameNodeDuringControl": true,
+                "sameInnerHtmlDuringControl": true,
+                "exactOuterHtmlAfterRestore": true
+              }
+            },
+            {
+              "width": 850,
+              "fontSize": "23px",
+              "optimized": {
+                "height": 531.234375,
+                "wrapperWidth": 776,
+                "left": 37,
+                "top": 242.6484375,
+                "visible": true,
+                "intrinsicBlockSize": "auto 296.953px"
+              },
+              "visibleControl": {
+                "height": 531.234375,
+                "wrapperWidth": 776,
+                "left": 37,
+                "top": 242.484375,
+                "visible": true,
+                "intrinsicBlockSize": "none"
+              },
+              "integrity": {
+                "sameNodeDuringControl": true,
+                "sameInnerHtmlDuringControl": true,
+                "exactOuterHtmlAfterRestore": true
+              }
+            }
+          ]
+        },
+        "conservativeCases": []
       },
       {
         "id": "article",
@@ -908,17 +1664,17 @@
           {
             "control": "auto",
             "samples": 3,
-            "traversalMedianMs": 522.0999999046326,
-            "rafP95MedianMs": 18.400000000001455,
-            "layoutMedianMs": 18.905000000000005,
-            "styleMedianMs": 5.822000000000021,
+            "traversalMedianMs": 523.3999996185303,
+            "rafP95MedianMs": 18,
+            "layoutMedianMs": 13.713000000000003,
+            "styleMedianMs": 3.86499999999998,
             "totalLongTasks": 0
           },
           {
             "control": "visible-control",
             "samples": 3,
-            "traversalMedianMs": 521.9000000953674,
-            "rafP95MedianMs": 18.600000000000364,
+            "traversalMedianMs": 531.8000001907349,
+            "rafP95MedianMs": 18.100000000000364,
             "layoutMedianMs": 0,
             "styleMedianMs": 0,
             "totalLongTasks": 0
@@ -928,6 +1684,14 @@
           "sameNodes": true,
           "sameInnerHtml": true,
           "exactOuterHtmlAfterRestore": true
+        },
+        "runnerAssertions": {
+          "exactOriginalTextAndLinks": true,
+          "exactGuardOuterHtml": true,
+          "exactSourceAndContainerHtmlOnRestore": true,
+          "correctPerOwnerMarkers": true,
+          "noNestedWrappers": true,
+          "noPageErrors": true
         },
         "interactions": {
           "find": {
@@ -970,10 +1734,8 @@
         },
         "print": {
           "media": true,
-          "checkedWrappers": 120,
-          "allVisible": true,
-          "allTextPresent": true,
-          "allPositiveHeight": true
+          "requiredTranslatedBlocks": 120,
+          "allPresentVisibleWithPositiveHeight": true
         },
         "appearanceChecks": [
           {
@@ -1001,7 +1763,85 @@
             "newRequestCount": 0
           }
         ],
-        "nativeSkippedEventCount": 177
+        "nativeSkippedEventCount": 174,
+        "initialRendering": {
+          "ownedWrappers": 181,
+          "containedWrappers": 179,
+          "autoWrappers": 179,
+          "nativeSkippedEvents": 174,
+          "snapshotSkippedWrappers": 0
+        },
+        "directOpeningCoverage": null,
+        "scroll": {
+          "scope": "stable window after two frames",
+          "maximumDriftPx": 0,
+          "provesJumpFreeFirstReveal": false
+        },
+        "resize": {
+          "scope": "visible geometry after settle; same wrapper against CSS visible control",
+          "checks": [
+            {
+              "width": 1280,
+              "fontSize": "18px",
+              "optimized": {
+                "height": 296.953125,
+                "wrapperWidth": 840,
+                "left": 220,
+                "top": 364.9453125,
+                "visible": true,
+                "intrinsicBlockSize": "auto 296.953px"
+              },
+              "visibleControl": {
+                "height": 296.953125,
+                "wrapperWidth": 840,
+                "left": 220,
+                "top": 365.1015625,
+                "visible": true,
+                "intrinsicBlockSize": "none"
+              },
+              "integrity": {
+                "sameNodeDuringControl": true,
+                "sameInnerHtmlDuringControl": true,
+                "exactOuterHtmlAfterRestore": true
+              }
+            },
+            {
+              "width": 850,
+              "fontSize": "23px",
+              "optimized": {
+                "height": 531.234375,
+                "wrapperWidth": 778,
+                "left": 36,
+                "top": 242.21875,
+                "visible": true,
+                "intrinsicBlockSize": "auto 296.953px"
+              },
+              "visibleControl": {
+                "height": 531.234375,
+                "wrapperWidth": 778,
+                "left": 36,
+                "top": 242.1796875,
+                "visible": true,
+                "intrinsicBlockSize": "none"
+              },
+              "integrity": {
+                "sameNodeDuringControl": true,
+                "sameInnerHtmlDuringControl": true,
+                "exactOuterHtmlAfterRestore": true
+              }
+            }
+          ]
+        },
+        "conservativeCases": [
+          {
+            "kind": "overflow",
+            "sourceId": "source-LPM-ARTICLE-004-0",
+            "contained": null,
+            "scrollWidth": 7844,
+            "clientWidth": 840,
+            "contentVisibility": "visible"
+          }
+        ]
       },
       {
         "id": "research",
@@ -1017,17 +1857,17 @@
           {
             "control": "auto",
             "samples": 3,
-            "traversalMedianMs": 524.5,
-            "rafP95MedianMs": 18.69999999999709,
-            "layoutMedianMs": 20.504999999999995,
-            "styleMedianMs": 4.7359999999999625,
+            "traversalMedianMs": 520.2000002861023,
+            "rafP95MedianMs": 18.599999999998545,
+            "layoutMedianMs": 18.277000000000044,
+            "styleMedianMs": 6.874000000000047,
             "totalLongTasks": 0
           },
           {
             "control": "visible-control",
             "samples": 3,
-            "traversalMedianMs": 529.0999999046326,
-            "rafP95MedianMs": 18.19999999999709,
+            "traversalMedianMs": 521,
+            "rafP95MedianMs": 18.599999999998545,
             "layoutMedianMs": 0,
             "styleMedianMs": 0,
             "totalLongTasks": 0
@@ -1037,6 +1877,14 @@
           "sameNodes": true,
           "sameInnerHtml": true,
           "exactOuterHtmlAfterRestore": true
+        },
+        "runnerAssertions": {
+          "exactOriginalTextAndLinks": true,
+          "exactGuardOuterHtml": true,
+          "exactSourceAndContainerHtmlOnRestore": true,
+          "correctPerOwnerMarkers": true,
+          "noNestedWrappers": true,
+          "noPageErrors": true
         },
         "interactions": {
           "find": {
@@ -1079,10 +1927,8 @@
         },
         "print": {
           "media": true,
-          "checkedWrappers": 180,
-          "allVisible": true,
-          "allTextPresent": true,
-          "allPositiveHeight": true
+          "requiredTranslatedBlocks": 180,
+          "allPresentVisibleWithPositiveHeight": true
         },
         "appearanceChecks": [
           {
@@ -1110,21 +1956,107 @@
             "newRequestCount": 0
           }
         ],
-        "nativeSkippedEventCount": 298
+        "nativeSkippedEventCount": 301,
+        "initialRendering": {
+          "ownedWrappers": 303,
+          "containedWrappers": 303,
+          "autoWrappers": 303,
+          "nativeSkippedEvents": 301,
+          "snapshotSkippedWrappers": 0
+        },
+        "directOpeningCoverage": null,
+        "scroll": {
+          "scope": "stable window after two frames",
+          "maximumDriftPx": 0,
+          "provesJumpFreeFirstReveal": false
+        },
+        "resize": {
+          "scope": "visible geometry after settle; same wrapper against CSS visible control",
+          "checks": [
+            {
+              "width": 1280,
+              "fontSize": "18px",
+              "optimized": {
+                "height": 296.953125,
+                "wrapperWidth": 840,
+                "left": 220,
+                "top": 365.078125,
+                "visible": true,
+                "intrinsicBlockSize": "auto 296.953px"
+              },
+              "visibleControl": {
+                "height": 296.953125,
+                "wrapperWidth": 840,
+                "left": 220,
+                "top": 365.109375,
+                "visible": true,
+                "intrinsicBlockSize": "none"
+              },
+              "integrity": {
+                "sameNodeDuringControl": true,
+                "sameInnerHtmlDuringControl": true,
+                "exactOuterHtmlAfterRestore": true
+              }
+            },
+            {
+              "width": 850,
+              "fontSize": "23px",
+              "optimized": {
+                "height": 531.234375,
+                "wrapperWidth": 778,
+                "left": 36,
+                "top": 242.46875,
+                "visible": true,
+                "intrinsicBlockSize": "auto 296.953px"
+              },
+              "visibleControl": {
+                "height": 531.234375,
+                "wrapperWidth": 778,
+                "left": 36,
+                "top": 242.734375,
+                "visible": true,
+                "intrinsicBlockSize": "none"
+              },
+              "integrity": {
+                "sameNodeDuringControl": true,
+                "sameInnerHtmlDuringControl": true,
+                "exactOuterHtmlAfterRestore": true
+              }
+            }
+          ]
+        },
+        "conservativeCases": []
       }
     ],
     "ownedBrowserClosed": true,
     "temporaryProfileRemoved": true,
     "ownedBrowserProcessesAfterCleanup": 0,
-    "temporaryProfilesAfterCleanup": 0,
-    "foregroundApplicationUnchanged": true
+    "newlyRetainedProfileCount": 0,
+    "preexistingProfilesPreservedCount": 2,
+    "cleanupScope": "Only this run's owned browser processes and newly created profile difference",
+    "foregroundApplicationUnchanged": true,
+    "performanceConclusion": "Native offscreen skip and the declared functional checks passed. Same-DOM CSS-control timings do not establish a speedup or less total layout work.",
+    "timingLimitations": [
+      "HTML research document, not PDF reader",
+      "CDP accessibility tree, not OS screen-reader acceptance",
+      "Print media/layout, not a physical printer",
+      "Same-DOM fixture-authored CSS override control, not an older extension or Windows performance",
+      "rAF wall time includes deliberate scroll pacing and automation; not translation latency",
+      "Other machine/global-queue jobs can affect durations; no isolated idle-machine claim",
+      "Skipped event counts are events, not distinct wrappers; snapshot skippedCount was zero after layout observations",
+      "Resize checks prove settled visible geometry, not all offscreen remembered sizes or zero first-frame scroll movement",
+      "Visible control was warmed and recorded zero Layout/Style; rAF/traversal timings are automation-paced and are not end-to-end latency",
+      "Source, guard and restore booleans report assertions completed by the unchanged runner, not an independent full-page visual audit",
+      "Two preexisting September test directories were preserved unchanged; cleanup verifies the profiles newly owned by this run"
+    ]
   },
   "retainedEarlierFailures": [
     "Local echo-prefix assertion and original-node selector ambiguity were repaired without relaxing source or guard assertions",
     "Steam empty-overlay pointer auditing was bounded to the declared transparent same-card link",
     "Google News mock overlays originally lacked a relative card; the corrected original mock keeps the observed single empty wrapper",
     "Gist metadata noise originally replaced a parent containing the menu; the corrected host update targets the timestamp leaf",
-    "Latest-main integration initially exceeded the runtime line ceiling by three lines; comments/blank lines were compacted, the ceiling was not raised and final source checks passed"
+    "Latest-main integration initially exceeded the runtime line ceiling by three lines; comments/blank lines were compacted, the ceiling was not raised and final source checks passed",
+    "A background config-save acknowledgement preceded content rule application; the final Gist restart raced with delayed invalidation. The harness now awaits the existing content translation-ended event before restarting; source, guard, stale-response and restore assertions remain unchanged."
   ],
   "limitations": [
     "Authored mocks establish the declared structures and reversible runtime behavior, not all live-site layouts or translation-provider quality",
@@ -1133,5 +2065,25 @@
     "Native offscreen rendering events establish use of browser skipping, not stable end-to-end speedup or a resolved Windows desktop issue",
     "Long-page research sample is HTML, not PDF; AX/print checks are browser tree/media checks, not OS screen reader or physical printer",
     "Firefox and userscript were built and verified; their runtime and low-end/device acceptance are outside this scope"
-  ]
+  ],
+  "preservedPreviousIntegration": {
+    "integratedMainCommit": "717a340347cde3417bad011477a88d41718ea335",
+    "integrationCodeCommit": "59d3a96b5b1c8c0246d1af31f665b556b3a52896",
+    "chromeContentSha256": "b9f91630f6fbd0a76fcbe58ca71ff94d10456c725e13c1738a24001c1e66c0ec",
+    "siteMockPassed": 9,
+    "longPageMockPassed": 3,
+    "renderingRegressionPassed": 824,
+    "sourcePolicyPassed": 928,
+    "runtimeCommentOnlyCompaction": {
+      "typeScriptEmitAndParsedTokensIdentical": true,
+      "allThreeBuildArtifactsIdentical": true
+    },
+    "fixtureAndHarnessRegression": {
+      "files": 3,
+      "passed": 498
+    }
+  },
+  "harnessCodeCommit": "717a784ab35b12d1840b80fc7305dd5fae7c4342",
+  "verificationStatus": "passed",
+  "sameFrozenChromeArtifactAcrossFinalSiteAndLongPageRuns": true
 }

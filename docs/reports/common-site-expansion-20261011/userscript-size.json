@@ -69,5 +69,32 @@
     "budgetIncreaseBytes": 6000,
     "runtimeCommentOnlyCompaction": true,
     "method": "Repeat the independent archive/prepare/build/verifier comparison on current main with identical dependencies. Preserve the previous integration record above; the same minimal 2033000-byte budget admits this candidate. Source comment compaction does not change executable code; final build hashes are checked against the browser-tested artifact."
+  },
+  "discourseMainIntegration": {
+    "baselineCommit": "99afdbf69b4c2faf83115b22cd7e340e4d076a00",
+    "candidateCodeCommit": "85c920a9a2d745ffef95cbdec07a288dc4994c5d",
+    "baseline": {
+      "bytes": 2043424,
+      "sha256": "6953539b5f867c873b1c8596f75bd59d21f4bd48d41c489353f9ed1332dcdca4",
+      "prepareExitCode": 0,
+      "buildExitCode": 0,
+      "verifierExitCode": 0
+    },
+    "candidate": {
+      "bytes": 2049560,
+      "sha256": "6f0f1bd713709774316d3e6b6d7bb2a2c4c5edb3833651b9afb225116af3ca1d",
+      "buildExitCode": 0,
+      "verifierExitCode": 0
+    },
+    "deltaBytes": 6136,
+    "deltaPercentRounded": 0.3003,
+    "mainBudgetBytes": 2044000,
+    "budgetBytes": 2050000,
+    "budgetIncreaseBytes": 6000,
+    "candidateHeadroomBytes": 440,
+    "sameInstalledDependencies": true,
+    "packageAndLockUnchanged": true,
+    "buildConfigUnchanged": true,
+    "method": "Repeat the independent archive/prepare/build/verifier comparison on the integrated discourse-context main with identical dependencies. Preserve all earlier integration records; the budget uses the smallest whole 1000-byte increment that admits the candidate. Protocol and execution-boundary checks are unchanged."
   }
 }
