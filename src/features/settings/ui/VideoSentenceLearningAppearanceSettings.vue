@@ -11,15 +11,15 @@
         <div class="learning-preview-scene" :data-position="appearance.position" :data-layout="appearance.layout" data-video-learning-preview-scene>
           <span class="learning-preview-video-label" aria-hidden="true">Sea otters</span>
           <div class="learning-preview-card" :data-layout="appearance.layout" :style="previewStyle" data-video-learning-preview>
-            <header><strong><i aria-hidden="true" /><span>{{ t('video.learning.title') }}</span></strong><span class="learning-preview-header-actions" aria-hidden="true"><span class="learning-preview-header-nav"><span>‹</span><b>▷</b><span>›</span></span><span class="learning-preview-header-tools"><span>?</span><span>☷</span><span>⌃</span><span>×</span></span></span></header>
+            <header><strong><i aria-hidden="true" /><span>{{ t('video.learning.title') }}</span></strong><span class="learning-preview-header-actions" aria-hidden="true"><span class="learning-preview-header-tools"><span>?</span><span>☷</span><span>⌃</span><span>×</span></span></span></header>
             <div class="learning-preview-content">
               <span class="learning-preview-meta">3 / 24 · 0:12–0:16</span>
               <p class="learning-preview-original" data-i18n-ignore>Sea otters have strong teeth.</p>
               <p class="learning-preview-translation">{{ t('video.learningAppearance.sampleTranslation') }}</p>
               <span class="learning-preview-follow">{{ t('video.learning.follow') }}</span>
-              <div class="learning-preview-replay" aria-hidden="true"><span>‹</span><strong>▷ {{ t('video.learning.replay') }}</strong><span>›</span></div>
               <span class="learning-preview-mode-caption">{{ t('video.learning.mode') }}</span>
               <div class="learning-preview-assistance" aria-hidden="true"><span class="selected">{{ t('video.learning.normal') }}</span><span>{{ t('video.learning.loop') }}</span><span>{{ t('video.learning.pause') }}</span></div>
+              <div class="learning-preview-replay" aria-hidden="true" data-video-learning-preview-playback><span>‹</span><strong>▷ {{ t('video.learning.replay') }}</strong><span>›</span></div>
             </div>
             <footer aria-hidden="true"><span>{{ t('video.learning.explain') }}</span><strong>{{ t('video.learning.save') }}</strong></footer>
           </div>
@@ -81,11 +81,9 @@ function resetAppearance(): void {Object.assign(appearance.value, DEFAULT_VIDEO_
 .learning-preview-header-actions { flex:none; }
 .learning-preview-card header i { width:6px; height:6px; flex:none; border-radius:50%; background:#ef4776; }
 .learning-preview-card header > span,.learning-preview-meta { color:#b5b5bd; font-size:.85em; }
-.learning-preview-header-actions,.learning-preview-header-nav,.learning-preview-header-tools { display:flex; align-items:center; gap:2px; }
+.learning-preview-header-actions,.learning-preview-header-tools { display:flex; align-items:center; gap:2px; }
 .learning-preview-header-actions span > :is(span,b) { display:inline-flex; align-items:center; justify-content:center; width:16px; min-width:16px; height:22px; font-size:12px; font-weight:400; }
-.learning-preview-header-actions b { border-radius:4px; color:#ffb3c6; background:rgba(239,71,118,.17); }
-.learning-preview-card[data-layout="comfortable"] .learning-preview-header-nav { display:none; }
-.learning-preview-card[data-layout="compact"] :is(.learning-preview-replay,.learning-preview-mode-caption) { display:none; }
+.learning-preview-card[data-layout="compact"] .learning-preview-mode-caption { display:none; }
 .learning-preview-follow,.learning-preview-mode-caption { color:#b5b5bd; font-size:11px; }
 .learning-preview-content { display:grid; gap:var(--fluent-read-video-learning-gap); padding:var(--fluent-read-video-learning-padding); }
 .learning-preview-card p { margin:0; overflow-wrap:anywhere; }

@@ -89,6 +89,7 @@ export default defineConfig({
         // 按真实规则内容验证共享词书样式，与普通测试配置一致。
         css: {include: [/(?:src\/app\/content\/page|src\/ui\/styles\/(?:translation-display|bilingual-sentence-highlight|vocabulary-reencounter))\.css(?:\?|$)/]},
         include: [
+            'tests/userscriptViteConfig.test.ts',
             'tests/personalCorrectionMemory.test.ts',
             'tests/personalCorrectionDom.test.ts',
             'tests/personalCorrectionTranslation.test.ts',
@@ -668,6 +669,7 @@ export default defineConfig({
             reportsDirectory: 'coverage/core',
             reporter: ['text', 'json-summary', 'html'],
             include: [
+                'userscript/inlineCssPlugin.ts',
                 'src/core/personal-corrections/model.ts',
                 'src/core/personal-corrections/matching.ts',
                 'src/services/personal-corrections/store.ts',

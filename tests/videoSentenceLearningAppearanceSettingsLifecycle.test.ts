@@ -60,6 +60,11 @@ describe('完整句学习外观设置实际模板', () => {
         const footer = preview.querySelector('footer')!;
         expect([...footer.children].map(node => node.textContent)).toEqual(['查看解释', '收藏此句']);
         expect(footer.querySelector('small')).toBeNull();
+        const playback = preview.querySelector('[data-video-learning-preview-playback]')!;
+        expect([...playback.children].map(node => node.textContent)).toEqual(['‹', '▷ 重播原句', '›']);
+        expect(preview.querySelector('header')?.textContent).not.toContain('重播原句');
+        expect(playback.parentElement?.lastElementChild).toBe(playback);
+        expect(playback.parentElement?.nextElementSibling).toBe(footer);
         const subtitle = serializeConfig(props.config.videoSubtitleAppearance);
         await click('[data-video-learning-layout] [data-option-index="1"]');
         await range('[data-video-learning-opacity]', 71);
@@ -68,6 +73,7 @@ describe('完整句学习外观设置实际模板', () => {
         await click('[data-video-learning-position="bottom-left"]');
         expect(props.config.videoSentenceLearningAppearance).toEqual({layout: 'comfortable', backgroundOpacity: 71, fontScale: 120, width: 430, position: 'bottom-left'});
         expect(preview.dataset.layout).toBe('comfortable');
+        expect(preview.querySelector('[data-video-learning-preview-playback]')).toBe(playback);
         expect(scene.dataset.position).toBe('bottom-left');
         expect(preview.style.getPropertyValue('--fluent-read-video-learning-background')).toBe('rgba(24,24,28,0.71)');
         expect(preview.style.getPropertyValue('--fluent-read-video-learning-original-font-size')).toBe('22.8px');

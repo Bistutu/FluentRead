@@ -1,4 +1,5 @@
 import {describe, expect, it, vi} from 'vitest';
+import {VIDEO_LOCAL_TRANSCRIPTION_STATE_MESSAGE as extensionTranscriptionStateMessage} from '@/src/features/video-subtitle/transcription';
 // Vitest 的 Node 配置不编译 Vue 组件；这里仅检验无浏览器 API 的运行时空适配器。
 vi.mock('@/src/features/image-translation/ui/ImageOcrSettings.vue', () => ({default: {}}));
 vi.mock('@/src/features/image-translation/ui/MangaSettings.vue', () => ({default: {}}));
@@ -24,9 +25,16 @@ import {
     unmountVocabularyReencounter,
     mountPersonalCorrections,
     unmountPersonalCorrections,
+    VIDEO_LOCAL_TRANSCRIPTION_STATE_MESSAGE,
 } from '@/userscript/unsupportedCapabilities';
 
 describe('userscript extension-only capability stubs', () => {
+    it('完整设置页复用同源字幕状态消息契约，同时保留字幕能力关闭状态', () => {
+        expect(VIDEO_LOCAL_TRANSCRIPTION_STATE_MESSAGE).toBe(extensionTranscriptionStateMessage);
+        expect(isSupportedVideoPage()).toBe(false);
+        expect(mountVideoSubtitleTranslation()()).toBeUndefined();
+    });
+
     it('渐进阅读空适配不访问页面或扩展能力，主动开启异步返回不支持', async () => {
         const sendMessage = vi.fn(), createElement = vi.fn(), addEventListener = vi.fn();
         vi.stubGlobal('browser', {runtime: {sendMessage}});

@@ -11,9 +11,6 @@
     <header class="fr-video-learning-header">
       <div class="fr-video-learning-heading" data-learning-drag-handle :title="t('video.learning.drag')"><svg class="fr-video-learning-grip" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M7 5h.01M13 5h.01M7 10h.01M13 10h.01M7 15h.01M13 15h.01" /></svg><strong>{{ t('video.learning.title') }}</strong></div>
       <div class="fr-video-learning-header-actions">
-        <button v-if="sentence" type="button" class="fr-video-learning-icon fr-video-learning-compact-navigation" data-learning-action="previous-compact" :aria-label="t('video.learning.previous')" :title="t('video.learning.previous')" :disabled="index <= 0" @click="step(-1)"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m12 5-5 5 5 5" /></svg></button>
-        <button v-if="sentence" type="button" class="fr-video-learning-icon fr-video-learning-compact-play" data-learning-action="play-compact" :aria-label="t('video.learning.replay')" :title="t('video.learning.replay')" @click="replay"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 4 9 6-9 6Z" /></svg></button>
-        <button v-if="sentence" type="button" class="fr-video-learning-icon fr-video-learning-compact-navigation" data-learning-action="next-compact" :aria-label="t('video.learning.next')" :title="t('video.learning.next')" :disabled="index >= sentences.length - 1" @click="step(1)"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
         <button type="button" class="fr-video-learning-icon fr-video-learning-help-toggle" data-learning-action="help" :aria-label="t('video.learning.help')" :title="t('video.learning.help')" :aria-expanded="helpOpen" @click="helpOpen = !helpOpen">?</button>
         <button type="button" class="fr-video-learning-icon" data-learning-action="appearance" :aria-label="t('video.learning.appearance')" :title="t('video.learning.appearance')" @click="openAppearance"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 6h8M15 6h2M3 14h2M9 14h8M12 3v6M6 11v6" /></svg></button>
         <button type="button" class="fr-video-learning-icon" data-learning-action="collapse" :aria-label="t(expanded ? 'video.learning.collapse' : 'video.learning.expand')" :title="t(expanded ? 'video.learning.collapse' : 'video.learning.expand')" :aria-expanded="expanded" @click="expanded = !expanded"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true" :class="{'is-flipped': !expanded}"><path d="m5 12 5-5 5 5" /></svg></button>
@@ -32,11 +29,6 @@
           <p v-else class="fr-video-learning-translation" data-learning-translation-display :aria-busy="translating && !translationEdited" :class="{'is-loading': translating && !translation}">{{ translation || (translating ? t('video.learning.translating') : '') }}</p>
           <div v-if="translationError" class="fr-video-learning-inline-error" role="alert"><span>{{ translationError }}</span><button type="button" class="fr-video-learning-text-button" @click="loadTranslation">{{ t('video.retryTranslation') }}</button></div>
         </div>
-        <nav class="fr-video-learning-navigation" :aria-label="t('video.learning.title')">
-          <button type="button" class="fr-video-learning-icon" data-learning-action="previous" :aria-label="t('video.learning.previous')" :title="t('video.learning.previous')" :disabled="index <= 0" @click="step(-1)"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m12 5-5 5 5 5" /></svg></button>
-          <button type="button" class="fr-video-learning-replay" data-learning-action="play" @click="replay"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 4 9 6-9 6Z" /></svg>{{ t('video.learning.replay') }}</button>
-          <button type="button" class="fr-video-learning-icon" data-learning-action="next" :aria-label="t('video.learning.next')" :title="t('video.learning.next')" :disabled="index >= sentences.length - 1" @click="step(1)"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
-        </nav>
         <p class="fr-video-learning-mode-caption">{{ t('video.learning.mode') }}</p>
         <div class="fr-video-learning-mode" role="group" :aria-label="t('video.learning.mode')">
           <button type="button" data-learning-action="normal" :aria-pressed="mode === 'off'" @click="normal">{{ t('video.learning.normal') }}</button>
@@ -56,6 +48,11 @@
       </template>
       <p v-else class="fr-video-learning-empty">{{ t('video.learning.empty') }}</p>
     </div>
+    <nav v-if="sentence" v-show="expanded" class="fr-video-learning-navigation" :aria-label="t('video.learning.replay')">
+      <button type="button" class="fr-video-learning-icon" data-learning-action="previous" :aria-label="t('video.learning.previous')" :title="t('video.learning.previous')" :disabled="index <= 0" @click="step(-1)"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m12 5-5 5 5 5" /></svg></button>
+      <button type="button" class="fr-video-learning-replay" data-learning-action="play" @click="replay"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m7 4 9 6-9 6Z" /></svg>{{ t('video.learning.replay') }}</button>
+      <button type="button" class="fr-video-learning-icon" data-learning-action="next" :aria-label="t('video.learning.next')" :title="t('video.learning.next')" :disabled="index >= sentences.length - 1" @click="step(1)"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m8 5 5 5-5 5" /></svg></button>
+    </nav>
     <footer v-if="sentence" v-show="expanded" class="fr-video-learning-footer">
       <div class="fr-video-learning-footer-actions">
         <button type="button" class="fr-video-learning-explain" data-learning-action="explain" :disabled="explaining" @click="explain">{{ t(explanation ? 'video.learning.explanationAgain' : 'video.learning.explain') }}</button>
@@ -249,6 +246,8 @@ function onPlayerKeydown(event: Event): void {
   const player = panel.value?.parentElement?.parentElement;
   const target = event.target;
   if (!player || !target || typeof (target as Node).nodeType !== 'number') return;
+  const menu = player.querySelector<HTMLElement>('#fluent-read-video-subtitle-menu');
+  if (menu?.contains(target as Node) || (event as KeyboardEvent).key === 'Escape' && menu?.hidden === false) return;
   // 面板打开期间，焦点回到当前播放器也能继续学习；页面其他区域保留站点快捷键。
   const document = props.video.ownerDocument;
   const fullscreenPlayer = document?.fullscreenElement?.contains(props.video);

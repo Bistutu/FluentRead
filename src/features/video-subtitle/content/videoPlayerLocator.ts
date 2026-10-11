@@ -344,6 +344,9 @@ export function createVideoPlayerLocator(options: VideoPlayerLocatorOptions = {}
     const element = node as Element;
     return element.tagName?.toLowerCase() === 'video' || Boolean(element.querySelector?.('video'));
   };
+  const isVideoContent = (node: Node): boolean => isElement(node)
+    && (node.tagName.toLowerCase() === 'video'
+      || (['source', 'track'].includes(node.tagName.toLowerCase()) && Boolean(node.closest('video'))));
   const onDom = (records: MutationRecord[]) => {
     if (records.length > 0 && records.every((record) => {
       if (isOwnedNode(record.target)) return true;
@@ -354,15 +357,16 @@ export function createVideoPlayerLocator(options: VideoPlayerLocatorOptions = {}
         if (isOwnedNode(record.target) || !isElement(record.target)) return false;
         // classList.add 等同值写入也能产生记录，不能让入口标记自触发定位循环。
         if (record.target.getAttribute(record.attributeName!) === record.oldValue) return false;
-        return containsVideo(record.target);
+        return containsVideo(record.target) || isVideoContent(record.target);
       }
-      if ([...record.addedNodes, ...record.removedNodes].some(containsVideo)) return true;
+      if (isVideoContent(record.target) || [...record.addedNodes, ...record.removedNodes].some(containsVideo)) return true;
       // 原生字幕逐词替换 Text/span、进度文字和 tooltip 不改变视频身份。
       // 控件结构另由 binding 观察；不能在这里每帧查询全页并强制读布局。
       return !selected?.player.contains(record.target);
     });
     if (records.length && !relevant.length) return;
     const playerChanged = relevant.some((record) => record.type === 'attributes'
+      || isVideoContent(record.target)
       || [...record.addedNodes, ...record.removedNodes].some(containsVideo));
     if (playerChanged) {
       if (deferredDomSyncHandle !== undefined) view.clearTimeout(deferredDomSyncHandle);

@@ -1277,7 +1277,6 @@ export function mountVideoSubtitleTranslation(): () => void {
     event.stopPropagation();
     const menu = menuElement?.isConnected ? menuElement : document.getElementById(VIDEO_TRANSLATION_MENU_ID);
     if (!(menu instanceof HTMLElement)) return;
-    closeSentenceLearning();
     menuElement = menu;
     menu.hidden = !menu.hidden;
     updatePlayerUiState();

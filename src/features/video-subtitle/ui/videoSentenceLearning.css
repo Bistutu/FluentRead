@@ -34,7 +34,6 @@
 #fluent-read-video-learning-panel .fr-video-learning-brand { width: 7px; height: 7px; border-radius: 50%; background: var(--fr-video-menu-brand); flex: none; }
 #fluent-read-video-learning-panel .fr-video-learning-header-actions { flex: none; display: flex; align-items: center; gap: 2px; }
 #fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-icon { padding: 6px; min-width: 32px; color: var(--fr-learning-muted); }
-#fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-compact-play { background: var(--fr-video-menu-brand-soft); color: var(--fr-learning-accent); }
 #fluent-read-video-learning-panel .fr-video-learning-help-toggle { font-weight: 600; }
 #fluent-read-video-learning-panel .fr-video-learning-hint { margin: 10px 0 0; padding: 8px 10px; border: 1px solid var(--fr-video-menu-border); border-radius: 7px; color: var(--fr-learning-muted); font-size: 11px; line-height: 1.6; }
 #fluent-read-video-learning-panel .fr-video-learning-body { padding: 14px 16px 12px; overflow: auto; overscroll-behavior: contain; min-height: 0; scrollbar-width: thin; scrollbar-color: #66708366 transparent; }
@@ -48,7 +47,7 @@
 #fluent-read-video-learning-panel .fr-video-learning-follow .is-pinned i { background: var(--fr-learning-accent); }
 #fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-text-button { padding: 1px 2px; min-height: 24px; color: var(--fr-learning-muted); font-size: 11px; border-radius: 4px; }
 #fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-text-button:hover { color: var(--fr-learning-text); }
-#fluent-read-video-learning-panel .fr-video-learning-navigation { display: grid; grid-template-columns: 34px 1fr 34px; gap: 8px; margin-bottom: 10px; }
+#fluent-read-video-learning-panel .fr-video-learning-navigation { display: grid; grid-template-columns: 36px 1fr 36px; gap: 8px; padding: 9px 12px 0; border-top: 1px solid #ffffff10; flex: none; }
 #fluent-read-video-learning-panel .fr-video-learning-navigation button { min-height: 36px; background: var(--fr-video-menu-control); }
 #fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-replay { background: var(--fr-video-menu-brand-soft); border-color: #ef477633; color: var(--fr-learning-accent); font-weight: 600; }
 #fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-replay:hover { background: #ef477640; }
@@ -66,7 +65,7 @@
 #fluent-read-video-learning-panel .fr-video-learning-context summary { cursor: pointer; padding: 3px 0; }
 #fluent-read-video-learning-panel .fr-video-learning-context p { margin: 9px 0 0; padding-left: 9px; border-left: 2px solid #ffffff15; line-height: 1.7; }
 #fluent-read-video-learning-panel .fr-video-learning-context p.is-current { border-color: var(--fr-learning-accent); color: var(--fr-learning-text); }
-#fluent-read-video-learning-panel .fr-video-learning-footer { border-top: 1px solid #ffffff10; padding: 9px 12px; background: transparent; flex: none; }
+#fluent-read-video-learning-panel .fr-video-learning-footer { padding: 9px 12px; background: transparent; flex: none; }
 #fluent-read-video-learning-panel .fr-video-learning-footer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-items: center; }
 #fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-explain { border-color: #ffffff24; color: var(--fr-learning-text); }
 #fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-save { background: var(--fr-video-menu-brand-strong); color: #fff; border-color: var(--fr-video-menu-brand-strong); font-weight: 650; }
@@ -101,17 +100,12 @@
 }
 
 #fluent-read-video-learning-panel { container-type: inline-size; container-name: fr-video-learning; }
-#fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-compact-play { display: none; }
-#fluent-read-video-learning-panel .fr-video-learning button.fr-video-learning-compact-navigation { display: none; }
 
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-header { padding: 7px 10px; gap: 5px; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-heading strong { font-size: 12px; white-space: nowrap; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-header-actions { gap: 0; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-header-actions button.fr-video-learning-icon { min-width: 24px; min-height: 26px; padding: 3px; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-header-actions svg { width: 16px; height: 16px; }
-#fluent-read-video-learning-panel[data-compact=true] .fr-video-learning button.fr-video-learning-compact-play,
-#fluent-read-video-learning-panel[data-compact=true] .fr-video-learning button.fr-video-learning-compact-navigation { display: inline-flex; }
-#fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-navigation,
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-mode-caption { display: none; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-body { padding: 9px 12px; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-original { margin: 6px 0; }
@@ -120,5 +114,7 @@
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-card-heading { margin-bottom: 3px; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-mode { margin: 8px 0 0; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-context { margin-top: 8px; }
+#fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-navigation { padding: 7px 10px 0; gap: 6px; grid-template-columns: 32px 1fr 32px; }
+#fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-navigation button { min-height: 32px; padding: 5px 6px; font-size: 12px; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-footer { padding: 7px 10px; }
 #fluent-read-video-learning-panel[data-compact=true] .fr-video-learning-footer-actions button { min-height: 30px; padding: 5px 6px; font-size: 11px; }

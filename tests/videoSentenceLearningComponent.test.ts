@@ -116,6 +116,18 @@ describe('完整句学习组件的调度与异步归属回归', () => {
       const event = keyboard('ArrowLeft', target); state.onPlayerKeydown(event); expect(event.preventDefault).not.toHaveBeenCalled();
     }
     const unowned = keyboard('k'); state.onPlayerKeydown(unowned); expect(unowned.preventDefault).not.toHaveBeenCalled();
+    const menu = document.createElement('div'); menu.id = 'fluent-read-video-subtitle-menu';
+    document.getElementById('player')!.appendChild(menu);
+    const menuEscape = keyboard('Escape'); state.onPlayerKeydown(menuEscape);
+    expect(menuEscape.preventDefault).not.toHaveBeenCalled(); expect(emit).not.toHaveBeenCalled();
+    const menuButton = document.createElement('button'); menu.appendChild(menuButton);
+    const menuState = [state.index, state.mode, video.currentTime];
+    for (const key of ['ArrowLeft', 'ArrowRight', 'r', 'q', 'Escape']) {
+      const event = keyboard(key, menuButton); state.onPlayerKeydown(event);
+      expect(event.preventDefault).not.toHaveBeenCalled(); expect(event.stopImmediatePropagation).not.toHaveBeenCalled();
+      expect([state.index, state.mode, video.currentTime]).toEqual(menuState);
+    }
+    menu.remove();
     Object.defineProperty(document, 'fullscreenElement', {value: document.getElementById('player'), configurable: true});
     document.getElementById('player')!.appendChild(document.createElement('video'));
     const realMedia = document.querySelector('video')!;

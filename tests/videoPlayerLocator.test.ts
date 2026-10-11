@@ -99,6 +99,39 @@ describe('video player locator', () => {
     locator.destroy(); scans.mockRestore();
   });
 
+  it('refreshes source and track children immediately without treating an unrelated source as video content', () => {
+    const fixture = setup('<div id="movie_player"><video><source src="blob:first"><track src="captions-first.vtt"></video></div>', 'https://www.youtube.com/watch?v=fixture');
+    let notify!: MutationCallback;
+    const frameState: {callback?: () => void} = {};
+    const flushFrame = () => { frameState.callback?.(); frameState.callback = undefined; };
+    Object.defineProperty(fixture.window, 'requestAnimationFrame', {configurable: true,
+      value: (callback: () => void) => { frameState.callback = callback; return 14; }});
+    vi.stubGlobal('MutationObserver', class {
+      constructor(callback: MutationCallback) { notify = callback; }
+      observe() {}
+      disconnect() {}
+    });
+    const source = fixture.document.querySelector('source')!;
+    Object.defineProperty(fixture.videos[0], 'currentSrc', {configurable: true, get: () => source.isConnected ? source.getAttribute('src') : ''});
+    const locator = createVideoPlayerLocator({document: fixture.document, window: fixture.window});
+    const original = locator.sync()!;
+    const mutation = (record: object) => notify([record] as MutationRecord[], {} as MutationObserver);
+    source.setAttribute('src', 'blob:updated');
+    mutation({type: 'attributes', target: source, attributeName: 'src', oldValue: 'blob:first', addedNodes: [], removedNodes: []});
+    expect(frameState.callback).toBeTypeOf('function'); flushFrame();
+    expect(locator.getTarget()?.key).not.toBe(original.key);
+    const track = fixture.document.querySelector('track')!;
+    track.setAttribute('src', 'captions-updated.vtt');
+    mutation({type: 'attributes', target: track, attributeName: 'src', oldValue: 'captions-first.vtt', addedNodes: [], removedNodes: []});
+    expect(frameState.callback).toBeTypeOf('function'); flushFrame();
+    source.remove();
+    mutation({type: 'childList', target: fixture.videos[0], addedNodes: [], removedNodes: [source]});
+    expect(frameState.callback).toBeTypeOf('function'); flushFrame();
+    mutation({type: 'attributes', target: source, attributeName: 'src', oldValue: null, addedNodes: [], removedNodes: []});
+    expect(frameState.callback).toBeUndefined();
+    locator.destroy();
+  });
+
   it('resolves deeply nested media overlays while ignoring equally nested adjacent post text', () => {
     const nested = (id: string) => '<span>'.repeat(10) + `<span id="${id}">Media</span>` + '</span>'.repeat(10);
     const {document, window, videos} = setup(`<article><div class="media"><video></video><a href="/proof/status/111/video/1">${nested('media-link')}</a></div><p>${nested('post-text')}</p></article>`);
