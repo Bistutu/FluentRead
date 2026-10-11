@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Reading wait priority fixture</title>
+  <style>
+    html { scroll-behavior: auto; }
+    body { margin: 32px; color: #243442; background: #faf9f6; font: 17px/1.6 system-ui, sans-serif; }
+    main { max-width: 860px; margin: auto; }
+    p { box-sizing: border-box; min-height: 210px; margin: 0; padding: 16px 0 24px; border-bottom: 1px solid #ddd; }
+    #host-control { position: fixed; right: 24px; top: 24px; z-index: 10; }
+  </style>
+</head>
+<body>
+  <button id="host-control" translate="no">Host control</button>
+  <main id="article"></main>
+  <script>
+    for (let index = 0; index < 80; index++) {
+      const paragraph = document.createElement('p');
+      paragraph.id = `p${index}`;
+      paragraph.textContent = `Reading marker ${index}: This article describes how readers follow a long document while the browser translates its paragraphs. The paragraph stays readable as the reader moves slowly through the page, and a completed translation should appear without waiting for unrelated sections.`;
+      document.querySelector('#article').append(paragraph);
+    }
+    window.hostClicks = 0;
+    document.querySelector('#host-control').onclick = () => { window.hostClicks++; };
+  </script>
+</body>
+</html>
