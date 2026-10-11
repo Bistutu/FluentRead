@@ -1607,4 +1607,126 @@ describe('input translation content feature', () => {
 
         expect(input.classList.remove).toHaveBeenCalledWith('fluent-input-error');
     });
+
+    it.each(['textarea', 'editable'] as const)('未归属的 %s input/change 不采样当前编辑值', async kind => {
+        vi.useFakeTimers();
+        const harness = mountHarness();
+        const input = kind === 'textarea' ? fakeElement('textarea') : fakeElement('div', {contenteditable: 'true'});
+        const property = kind === 'textarea' ? 'value' : 'innerText';
+        let text = '尚未触发翻译的编辑内容';
+        const readText = vi.fn(() => text);
+        Object.defineProperty(input, property, {configurable: true, get: readText, set(value: string) {text = value;}});
+        harness.fakeDocument.activeElement = input;
+        try {
+            for (let i = 0; i < 100; i += 1) {
+                await harness.fakeDocument.emit(i % 2 ? 'change' : 'input', {target: input});
+            }
+            expect(harness.sendMessage).not.toHaveBeenCalled();
+            expect(harness.tooltipRecords).toEqual([]);
+            expect(text).toBe('尚未触发翻译的编辑内容');
+            expect(readText).not.toHaveBeenCalled();
+        } finally {
+            harness.controller.abort();
+            await vi.runAllTimersAsync();
+        }
+    });
+
+    it('当前请求和三连序列不采样无关编辑宿主，且保留各自提交', async () => {
+        vi.useFakeTimers();
+        let release!: (value: unknown) => void;
+        const result = new Promise(resolve => {release = resolve;});
+        const harness = mountHarness({sendMessage: () => result});
+        const input = fakeElement('textarea');
+        input.value = '当前请求原文';
+        const other = fakeElement('div', {contenteditable: 'true'});
+        const child = fakeElement('b');
+        const host = fakeElement('section');
+        const readText = vi.fn(() => '无关编辑宿主内容');
+        Object.defineProperty(other, 'innerText', {configurable: true, get: readText});
+        harness.fakeDocument.activeElement = input;
+        const running = harness.fakeDocument.emit('keydown', trustedKey({key: 'Enter', ctrlKey: true}));
+        try {
+            await vi.waitFor(() => expect(harness.sendMessage).toHaveBeenCalledOnce());
+            for (let i = 0; i < 100; i += 1) {
+                await harness.fakeDocument.emit(i % 2 ? 'change' : 'input', i % 2
+                    ? {target: host, composedPath: () => [child, other, host]}
+                    : {target: other});
+            }
+            const pendingUnrelatedReads = readText.mock.calls.length;
+            // 当前请求仍拥有原目标，但无有效输入目标的事件也须安全退出。
+            harness.fakeDocument.activeElement = null;
+            await harness.fakeDocument.emit('input', {target: fakeElement('div')});
+            harness.fakeDocument.activeElement = input;
+            release({success: true, translatedText: '你好'});
+            await running;
+            expect(harness.sendMessage).toHaveBeenCalledOnce();
+            expect(harness.sendMessage).toHaveBeenCalledWith({type: 'inputBoxTranslation', text: '当前请求原文', targetLang: 'zh'});
+            expect(input.value).toBe('你好');
+            expect(harness.tooltipRecords.at(-1).ui.mounted.textContent).toContain('翻译成功');
+
+            harness.feature.invalidate();
+            harness.config.inputBoxTranslationTrigger = 'triple_equal';
+            input.value = '后续序列原文=';
+            input.selectionStart = input.selectionEnd = input.value.length;
+            readText.mockClear();
+            await harness.fakeDocument.emit('keydown', trustedKey({key: '=', code: 'Equal'}));
+            input.value += '=';
+            input.selectionStart = input.selectionEnd = input.value.length;
+            await harness.fakeDocument.emit('input', {target: input});
+            for (let i = 0; i < 100; i += 1) {
+                await harness.fakeDocument.emit(i % 2 ? 'change' : 'input', {target: other});
+            }
+            const sequenceUnrelatedReads = readText.mock.calls.length;
+            await harness.fakeDocument.emit('keydown', trustedKey({key: '=', code: 'Equal'}));
+            input.value += '=';
+            input.selectionStart = input.selectionEnd = input.value.length;
+            await harness.fakeDocument.emit('change', {target: input});
+            const third = trustedKey({key: '=', code: 'Equal'});
+            await harness.fakeDocument.emit('keydown', third);
+            expect(third.preventDefault).toHaveBeenCalledOnce();
+            expect(harness.sendMessage).toHaveBeenCalledTimes(2);
+            expect(harness.sendMessage).toHaveBeenLastCalledWith({type: 'inputBoxTranslation', text: '后续序列原文=', targetLang: 'zh'});
+            expect(input.value).toBe('你好');
+            expect(pendingUnrelatedReads).toBe(0);
+            expect(sequenceUnrelatedReads).toBe(0);
+        } finally {
+            harness.controller.abort();
+            release({success: true, translatedText: '迟到'});
+            await vi.runAllTimersAsync();
+            await running;
+            await vi.runAllTimersAsync();
+        }
+    });
+
+    it('跳过未归属采样后从最新原文建请求，完成后的恢复仍拒绝编辑 ABA', async () => {
+        vi.useFakeTimers();
+        const harness = mountHarness();
+        const input = fakeElement('textarea');
+        let text = '初始草稿';
+        const readText = vi.fn(() => text);
+        Object.defineProperty(input, 'value', {configurable: true, get: readText, set(value: string) {text = value;}});
+        harness.fakeDocument.activeElement = input;
+        try {
+            text = '触发前的最新草稿';
+            await harness.fakeDocument.emit('input', {target: input});
+            const unownedReads = readText.mock.calls.length;
+            await harness.fakeDocument.emit('keydown', trustedKey({key: 'Enter', ctrlKey: true}));
+            expect(harness.sendMessage).toHaveBeenCalledOnce();
+            expect(harness.sendMessage).toHaveBeenCalledWith({type: 'inputBoxTranslation', text: '触发前的最新草稿', targetLang: 'zh'});
+            expect(text).toBe('你好');
+            const restore = harness.tooltipRecords.at(-1).ui.mounted.children.at(-1).listeners.get('click')[0];
+            text = '完成后用户继续编辑';
+            await harness.fakeDocument.emit('input', {target: fakeElement('span')});
+            text = '你好';
+            await harness.fakeDocument.emit('change', {target: input});
+            restore({isTrusted: true, preventDefault: vi.fn(), stopPropagation: vi.fn()});
+            await Promise.resolve();
+            expect(text).toBe('你好');
+            expect(harness.sendMessage).toHaveBeenCalledOnce();
+            expect(unownedReads).toBe(0);
+        } finally {
+            harness.controller.abort();
+            await vi.runAllTimersAsync();
+        }
+    });
 });
