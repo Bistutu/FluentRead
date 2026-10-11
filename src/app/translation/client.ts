@@ -351,6 +351,7 @@ export async function translateText(origin: string, context: string = document.t
             ...glossary,
             context,
             pageContext,
+            ...(options.discourseContext ? {discourseContext: options.discourseContext.slice(0, 2400)} : {}),
             ...(options.enableAIContext !== undefined ? {enableAIContext: options.enableAIContext} : {}),
             origin,
             enableNativeBatch,
@@ -463,6 +464,7 @@ export async function translateTextBatch(
             ...glossary,
             context,
             pageContext,
+            ...(options.discourseContext ? {discourseContext: options.discourseContext.slice(0, 2400)} : {}),
             ...(options.enableAIContext !== undefined ? {enableAIContext: options.enableAIContext} : {}),
             origin: pendingOrigins,
             enableNativeBatch,
@@ -604,6 +606,8 @@ export interface TranslateOptions {
   targetLanguage?: string;
   /** 发送给 LLM 的网页参考上下文；未提供时按当前页面自动提取。 */
   pageContext?: string;
+  /** 当前单篇材料的有界证据，仅在允许 AI 上下文时交给现有 provider。 */
+  discourseContext?: string;
   /** 当前请求是否允许 AI 网页上下文；全文翻译用它固定会话启动时策略。 */
   enableAIContext?: boolean;
   /** 本次请求冻结的原生合批设置；全文会话不重新读取后续配置变更。 */

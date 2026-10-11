@@ -1,6 +1,7 @@
 import {describe, expect, it} from 'vitest';
 import {
     buildPageTranslationContext,
+    getPageTranslationMaterialIdentity,
     normalizePageMarkdown,
     normalizePageText,
     pageContextLimits,
@@ -8,6 +9,34 @@ import {
 } from '@/src/services/translation/context/policy';
 
 describe('page translation context policy', () => {
+    it.each([
+        ['https://example.com/article', 'https://example.com/article'],
+        ['https://example.com/article#contents', 'https://example.com/article'],
+        ['https://example.com/article#', 'https://example.com/article'],
+        ['https://example.com/article#%2Fcontents', 'https://example.com/article'],
+        ['https://example.com/article#/chapter/2', 'https://example.com/article#/chapter/2'],
+        ['https://example.com/article#!/chapter/2', 'https://example.com/article#!/chapter/2'],
+        ['https://example.com/article?language=en#contents', 'https://example.com/article?language=en'],
+        ['https://example.com/next?language=en', 'https://example.com/next?language=en'],
+        ['not a URL#contents', 'not a URL'],
+        ['/relative/path#contents', '/relative/path'],
+        ['', ''],
+        ['#contents', ''],
+    ])('uses the expected material identity for %j', (href, identity) => {
+        expect(getPageTranslationMaterialIdentity(href)).toBe(identity);
+    });
+
+    it('keeps route, query and path changes distinct from ordinary reading anchors', () => {
+        const article = getPageTranslationMaterialIdentity('https://example.com/article');
+        expect(getPageTranslationMaterialIdentity('https://example.com/article#contents')).toBe(article);
+        for (const next of [
+            'https://example.com/article#/next',
+            'https://example.com/article#!/next',
+            'https://example.com/article?next=true',
+            'https://example.com/next',
+        ]) expect(getPageTranslationMaterialIdentity(next)).not.toBe(article);
+    });
+
     it('normalizes plain text and Markdown without erasing paragraph boundaries', () => {
         expect(normalizePageText('  A\n\tB\u3000 C  ')).toBe('A B C');
         expect(normalizePageMarkdown('  A\r\n\tB\r\n\r\n\r\n C  ')).toBe('A\n B\n\n C');
