@@ -12,11 +12,11 @@ export interface FloatingBallPresentation {
   toolsDisplay: FloatingBallToolsDisplay;
   /** 指针停留多久（毫秒）后展开按钮；0 表示立即展开。 */
   hoverDelay: number;
-  /** 点击悬浮球主体时执行的动作。 */
+  /** 点击悬浮球主体时执行的动作；扩展的设置动作在球旁显示当前网页的快捷面板。 */
   clickAction: FloatingBallClickAction;
   /** 是否使用更小的悬浮球尺寸。 */
   compact: boolean;
-  /** 是否显示设置入口按钮；扩展打开快捷面板，用户脚本打开设置页。 */
+  /** 是否显示设置入口按钮；扩展在按钮旁显示页内快捷面板，用户脚本保留原设置入口。 */
   settingsEntryVisible: boolean;
   /** 收起状态下的不透明度百分比（20-100）。 */
   collapsedOpacity: number;

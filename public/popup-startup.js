@@ -1,11 +1,12 @@
 /**
  * @file public/popup-startup.js
  * 文件职责：在 Popup HTML 解析阶段唤醒后台，使后台初始化与界面模块加载并行。
- * 主要内容：只请求引导状态提示，兼容 Firefox Promise 与 Chromium callback API，吞掉预唤醒故障。
- * 模块边界：无框架依赖、不读写配置、不挂载界面；提示仅供模块预取，实际渲染等待配置 store 的新快照。
+ * 主要内容：工具栏只请求引导提示，兼容 Firefox Promise 与 Chromium callback API；任意 iframe 均跳过，等待模块入口授权。
+ * 模块边界：无框架依赖、不读写配置、不挂载界面；提示仅供模块预取，未经授权的嵌入页不唤醒配置入口。
  */
 (() => {
     const globals = globalThis;
+    if (globals.parent && globals.parent !== globals) return;
     const message = {type: 'popupStartup'};
     try {
         if (globals.browser?.runtime) {

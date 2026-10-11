@@ -44,7 +44,7 @@
 
     <SettingsItem
       label="点击行为"
-      description="选择“打开设置”时显示扩展快捷面板；按住悬浮球可以拖动调整位置"
+      description="“打开设置”在悬浮球旁显示快捷面板；按住悬浮球可拖动"
       :disabled="!enabled"
     >
       <SegmentedControl
@@ -71,7 +71,7 @@
 
     <SettingsItem
       label="显示设置入口"
-      description="关闭后悬浮球不再显示打开扩展快捷面板的按钮，仍可从扩展图标打开"
+      description="点击齿轮在按钮旁显示快捷面板，完整设置从面板进入；关闭后隐藏齿轮按钮"
       :disabled="!enabled || props.config.floatingBallToolsDisplay === 'hidden'"
     >
       <el-switch

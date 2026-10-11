@@ -89,6 +89,9 @@ export default defineConfig({
             'tests/imageTargetLanguage.test.ts',
             'tests/targetLanguageAdversarial.test.ts',
             'tests/targetLanguageReleaseCorpus.test.ts',
+            'tests/floatingPopupAuthorization.test.ts',
+            'tests/floatingPopupOverlay.test.ts',
+            'tests/popupEmbedded.test.ts',
             'tests/popupAppLifecycle.test.ts',
             'tests/informationHighlightArtifacts.test.ts',
             'tests/informationHighlightBackend.test.ts',
@@ -621,6 +624,8 @@ export default defineConfig({
             reportsDirectory: 'coverage/core',
             reporter: ['text', 'json-summary', 'html'],
             include: [
+                'src/features/floating-ball/content/anchoredPopup.ts',
+                'src/app/popup/embedded.ts',
                 'src/features/floating-ball/background/popupHandler.ts',
                 'src/app/popup/sourceTab.ts',
                 'src/app/background/popupNavigation.ts',

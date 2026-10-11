@@ -26,8 +26,7 @@ import {createImageOcrLanguageRepository, createImageTranslationBackgroundHandle
 import {createInputBoxTranslationHandler} from './handlers/inputTranslation';
 import {createLocalInsightsHandlers} from './localInsightsHandlers';
 import {createFreeTranslationWeightsHandler} from './handlers/freeTranslationWeights';
-import {createOpenOptionsPageHandler} from './handlers/openOptions';
-import {createPopupNavigationHandler, type PopupContext} from './popupNavigation';
+import {createPopupNavigationHandlers, type PopupContext} from './popupNavigation';
 import {createDownloadProgressHandler, createDownloadProgressQueryHandler} from './handlers/downloadProgress';
 import {createTranslationCancelHandler, createTranslationRequestFallback, createTranslationRequestRegistry} from './handlers/translation';
 import {createSelectionTtsBackgroundHandlers, type SelectionTtsContext} from './handlers/selectionTts';
@@ -105,14 +104,7 @@ export function installBackgroundMessageRuntime(options: BackgroundMessageRuntim
             translate: translateWithCache,
             requestRegistry: translationRequestRegistry,
         }),
-        createPopupNavigationHandler(capabilities.manifestVersion),
-        createOpenOptionsPageHandler({
-            openDefaultPage: () => browser.runtime.openOptionsPage(),
-            openSection: async (section, destination) => {
-                const query = destination ? `?${section === 'settings-vocabulary' ? 'learningTab' : 'service'}=${encodeURIComponent(destination)}` : '';
-                await browser.tabs.create({url: `${browser.runtime.getURL('/options.html')}${query}#${section}`});
-            },
-        }),
+        ...createPopupNavigationHandlers(),
         ...createFullPageTranslationStateHandlers({
             stateStore: options.tabTranslationStates,
             isTabId: isBrowserTabId,

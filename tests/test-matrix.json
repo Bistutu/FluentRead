@@ -612,7 +612,10 @@
       "tests/informationHighlightUiLifecycle.test.ts",
       "tests/informationHighlightSettingsLifecycle.test.ts",
       "tests/imageTargetLanguage.test.ts",
-      "tests/targetLanguageReleaseCorpus.test.ts"
+      "tests/targetLanguageReleaseCorpus.test.ts",
+      "tests/floatingPopupAuthorization.test.ts",
+      "tests/floatingPopupOverlay.test.ts",
+      "tests/popupEmbedded.test.ts"
     ],
     "regression": [
       "tests/discordServerIconBoundary.test.ts",

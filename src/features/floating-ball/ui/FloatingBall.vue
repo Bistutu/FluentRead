@@ -189,6 +189,7 @@ interface PointerDragState {
 }
 
 const isExpanded = ref(false);
+const popupOpen = import.meta.env.BROWSER === 'userscript' ? null : ref(false);
 const positionStyle = ref<CSSProperties>({});
 const isDragging = ref(false);
 const verticalPosition = ref<number | null>(props.verticalPosition);
@@ -212,7 +213,7 @@ const isAlwaysExpanded = computed(() => presentation.value.toolsDisplay === 'alw
 const showTranslateTool = computed(() => props.showMenu && presentation.value.toolsDisplay !== 'hidden');
 const showSettingsTool = computed(() => showTranslateTool.value && presentation.value.settingsEntryVisible);
 // 隐藏工具按钮不影响主体展开，键盘与触屏仍能完整访问悬浮球。
-const isMenuExpanded = computed(() => isAlwaysExpanded.value || isExpanded.value || touchExpanded.value);
+const isMenuExpanded = computed(() => isAlwaysExpanded.value || isExpanded.value || touchExpanded.value || (import.meta.env.BROWSER !== 'userscript' && popupOpen!.value));
 const isMainActionable = computed(() => presentation.value.clickAction !== 'none');
 const displayTranslationStatus = computed(() => isTranslating.value ? translationStatus.value : 'idle');
 const translationActionLabel = computed(() => {
@@ -506,7 +507,10 @@ function setPosition(side: 'left' | 'right', nextVerticalPosition: number | null
   nextTick(updatePositionStyle);
 }
 
-defineExpose({ toggleTranslation, setTranslationState, setTranslationStatus, setPosition });
+defineExpose(import.meta.env.BROWSER === 'userscript'
+  ? { toggleTranslation, setTranslationState, setTranslationStatus, setPosition }
+  : { toggleTranslation, setTranslationState, setTranslationStatus, setPosition,
+    setPopupOpen: (open: boolean) => { popupOpen!.value = open; } });
 
 function handleSettingsClick(event: MouseEvent) {
   props.onSettingsClick(event);

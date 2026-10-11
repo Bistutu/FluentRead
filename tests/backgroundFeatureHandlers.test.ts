@@ -41,8 +41,7 @@ import {
 import {navigationItems, NAVIGATION_SECTION_ALIASES} from '@/src/features/settings/model/navigation';
 import {isBrowserTabId, TabTranslationStateStore} from '@/src/app/background/tabTranslationState';
 import {getTranslationRequestControl} from '@/src/services/translation/requestSnapshot';
-import {createOpenPopupHandler} from '@/src/features/floating-ball/background/popupHandler';
-import {createPopupNavigationHandler} from '@/src/app/background/popupNavigation';
+import {createPopupNavigationHandlers} from '@/src/app/background/popupNavigation';
 import {Config} from '@/src/core/config/model';
 
 function wordCard(definitions: Array<{definition: string; example?: string; translatedDefinition?: string; translatedExample?: string}> = [
@@ -59,56 +58,33 @@ function wordCard(definitions: Array<{definition: string; example?: string; tran
 }
 
 describe('后台 feature handlers', () => {
-    it('悬浮球 popup 使用发送方窗口，忽略 payload 中的窗口标识', async () => {
-        const openPopup = vi.fn(async () => undefined);
-        const openPopupWindow = vi.fn(async () => undefined);
-        const handler = createOpenPopupHandler({openNativePopup: openPopup, openPopupWindow});
-        await expect(handler.handle({type: 'openPopup', windowId: 99} as never, {sender: {tab: {id: 0, windowId: 0}}}))
-            .resolves.toEqual({success: true});
-        expect(openPopup).toHaveBeenCalledWith({windowId: 0});
-        for (const context of [{}, {sender: {}}, {sender: {tab: {}}}, ...[-1, 1.5, NaN, Infinity].map(windowId => ({sender: {tab: {id: 0, windowId}}})), ...[undefined, -1, 1.5, NaN, Infinity].map(id => ({sender: {tab: {id, windowId: 0}}}))]) {
-            await expect(handler.handle({type: 'openPopup'}, context)).rejects.toThrow('无法确定悬浮球所在窗口');
-        }
-        expect(openPopup).toHaveBeenCalledOnce();
-        expect(openPopupWindow).not.toHaveBeenCalled();
-    });
-
-    it('原生 popup 被拒绝时打开相同页面的小窗，小窗失败仍交给消息路由器', async () => {
-        const openNativePopup = vi.fn().mockRejectedValue(new Error('popup unavailable'));
-        const openPopupWindow = vi.fn().mockResolvedValue(undefined);
-        const handler = createOpenPopupHandler({openNativePopup, openPopupWindow});
-        const context = {sender: {tab: {id: 12, windowId: 7}}};
-        await expect(handler.handle({type: 'openPopup'}, context)).resolves.toEqual({success: true});
-        expect(openPopupWindow).toHaveBeenCalledWith(12);
-        openPopupWindow.mockRejectedValueOnce(new Error('window unavailable'));
-        await expect(handler.handle({type: 'openPopup'}, context)).rejects.toThrow('window unavailable');
-    });
-
-    it('popup 导航选择 MV2/MV3 端口，并从清单读取默认页面与来源网页', async () => {
-        const action = {openPopup: vi.fn(async function(this: unknown) {expect(this).toBe(action);})};
-        const browserAction = {openPopup: vi.fn(async function(this: unknown) {expect(this).toBe(browserAction);})};
-        const create = vi.fn(async () => undefined);
-        const getManifest = vi.fn(() => ({action: {default_popup: 'default.html?view=main'}}));
-        vi.stubGlobal('browser', {action, browserAction, windows: {create}, runtime: {getManifest, getURL: (path: string) => `chrome-extension://fixture/${path}`}});
+    it('popup 授权装配使用默认清单页面与加密随机数，兼容 MV2/MV3', async () => {
+        const getManifest = vi.fn(() => ({action: {default_popup: 'popup.html'}}));
+        const random = vi.fn((bytes: Uint8Array) => { bytes.fill(1); return bytes; });
+        const openOptionsPage = vi.fn(async () => undefined), create = vi.fn(async () => undefined);
+        vi.stubGlobal('crypto', {getRandomValues: random});
+        vi.stubGlobal('browser', {runtime: {id: 'fixture', getManifest, openOptionsPage, getURL: (path: string) => `chrome-extension://fixture/${path.replace(/^\//, '')}`}, tabs: {create}});
         try {
-            const context = {sender: {tab: {id: 12, windowId: 7}}};
-            const handler = createPopupNavigationHandler(3);
-            await handler.handle({type: 'openPopup'}, context);
-            await createPopupNavigationHandler(2).handle({type: 'openPopup'}, context);
-            expect(action.openPopup).toHaveBeenCalledWith({windowId: 7});
-            expect(browserAction.openPopup).toHaveBeenCalledWith({windowId: 7});
-            expect(create).not.toHaveBeenCalled();
-            for (const manifest of [{action: {default_popup: 'default.html?view=main'}}, {browser_action: {default_popup: 'legacy.html'}}, {}]) {
-                action.openPopup.mockRejectedValueOnce(new Error('unsupported'));
+            for (const manifest of [{action: {default_popup: 'popup.html'}}, {browser_action: {default_popup: 'legacy.html'}}]) {
                 getManifest.mockReturnValueOnce(manifest as never);
-                if (!('action' in manifest) && !('browser_action' in manifest)) {
-                    await expect(handler.handle({type: 'openPopup'}, context)).rejects.toThrow('未配置扩展快捷面板');
-                } else {
-                    await handler.handle({type: 'openPopup'}, context);
-                }
+                const [request, authorize, options] = createPopupNavigationHandlers();
+                const result = await request.handle({type: 'requestFloatingPopup'}, {sender: {id: 'fixture', url: 'https://example.com', frameId: 0, tab: {id: 0}}});
+                expect(result.token).toBe('01'.repeat(16));
+                expect(random).toHaveBeenCalledWith(expect.any(Uint8Array));
+                const path = 'action' in manifest ? 'popup.html' : 'legacy.html';
+                await expect(authorize.handle({type: 'authorizeFloatingPopup', token: result.token}, {sender: {id: 'fixture', url: `chrome-extension://fixture/${path}`, frameId: 1, tab: {id: 0}}}))
+                    .resolves.toEqual({success: true, sourceTabId: 0});
+                await options.handle({type: 'openOptionsPage'});
+                await options.handle({type: 'openOptionsPage', section: 'settings-webpage'});
+                expect(create).toHaveBeenLastCalledWith({url: 'chrome-extension://fixture/options.html#settings-translation'});
+                await options.handle({type: 'openOptionsPage', section: 'settings-vocabulary', learningTab: 'memory'});
+                expect(create).toHaveBeenLastCalledWith({url: 'chrome-extension://fixture/options.html?learningTab=memory#settings-vocabulary'});
+                await options.handle({type: 'openOptionsPage', section: 'settings-services', service: 'microsoft'});
+                expect(create).toHaveBeenLastCalledWith({url: 'chrome-extension://fixture/options.html?service=microsoft#settings-services'});
             }
-            expect(create).toHaveBeenNthCalledWith(1, {url: 'chrome-extension://fixture/default.html?view=main&sourceTabId=12', type: 'popup', width: 420, height: 640});
-            expect(create).toHaveBeenNthCalledWith(2, {url: 'chrome-extension://fixture/legacy.html?sourceTabId=12', type: 'popup', width: 420, height: 640});
+            expect(openOptionsPage).toHaveBeenCalledTimes(2);
+            getManifest.mockReturnValueOnce({} as never);
+            expect(() => createPopupNavigationHandlers()).toThrow('未配置扩展快捷面板');
         } finally {
             vi.unstubAllGlobals();
         }

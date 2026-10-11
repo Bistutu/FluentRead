@@ -81,11 +81,15 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     for(const id of [0,7,Number.MAX_SAFE_INTEGER]){const source=createPopupTabSource(`?sourceTabId=${id}`,{query,get});expect(source).toMatchObject({fixed:true,sourceTabId:id});await expect(source.getTab()).resolves.toEqual({id})}
     expect(query).toHaveBeenCalledTimes(2)
   })
+  it('后台授权来源覆盖查询参数并固定操作网页',async()=>{
+    const query=vi.fn(async()=>[{id:99}]),get=vi.fn(async(id:number)=>({id}));const source=createPopupTabSource('?sourceTabId=99',{query,get},7)
+    expect(source).toMatchObject({fixed:true,sourceTabId:7});await expect(source.getTab()).resolves.toEqual({id:7});expect(query).not.toHaveBeenCalled()
+  })
   it('错误或重复的来源参数与失效来源不回退到活动网页',async()=>{
     const query=vi.fn(async()=>[{id:99}]),get=vi.fn(async(_id:number)=>({id:7}));for(const search of ['?sourceTabId=','?sourceTabId=-1','?sourceTabId=1.5','?sourceTabId=Infinity','?sourceTabId=NaN','?sourceTabId=00','?sourceTabId=9007199254740992','?sourceTabId=7&sourceTabId=8']){const source=createPopupTabSource(search,{query,get});expect(source).toMatchObject({fixed:true,sourceTabId:null});await expect(source.getTab()).rejects.toThrow('无效的 Popup 来源标签页')}
     expect(get).not.toHaveBeenCalled();get.mockRejectedValueOnce(new Error('closed source'));await expect(createPopupTabSource('?sourceTabId=7',{query,get}).getTab()).rejects.toThrow('closed source');expect(query).not.toHaveBeenCalled()
   })
-  it('兼容小窗固定来源网页，翻译/恢复不受其它窗口或活动标签页影响',async()=>{
+  it('固定来源面板固定来源网页，翻译/恢复不受其它窗口或活动标签页影响',async()=>{
     win.location.search='?sourceTabId=7';getTab.mockResolvedValue([{id:99,windowId:10,url:'extension://popup.html'}]);await mount()
     expect(state.currentSiteDomain).toBe('example.com');expect(getTab).not.toHaveBeenCalled();expect(getSourceTab).toHaveBeenCalledWith(7)
     const reads=getSourceTab.mock.calls.length;tabEvent('onActivated',{tabId:8,windowId:3});tabEvent('onActivated',{tabId:99,windowId:10});tabEvent('onUpdated',8,{status:'loading'},{id:8,windowId:3,active:true});tabEvent('onRemoved',8);await drain();expect(getSourceTab).toHaveBeenCalledTimes(reads)
@@ -93,7 +97,7 @@ describe('实际 Popup 缓存模板与页面操作',()=>{
     expect(commands().map(call=>[call[0],call[1].action])).toEqual([[7,'fullPage'],[7,'restore']]);expect(getTab).not.toHaveBeenCalled()
     getSourceTab.mockResolvedValue({id:7,windowId:4,url:'https://example.net/b'});tabEvent('onUpdated',7,{url:'https://example.net/b'},{id:7,windowId:4,active:false});await drain();expect(state.currentSiteDomain).toBe('example.net')
   })
-  it('兼容小窗文档入口读取来源 PDF，源网页关闭后不切换到其它网页',async()=>{
+  it('固定来源面板文档入口读取来源 PDF，源网页关闭后不切换到其它网页',async()=>{
     win.location.search='?sourceTabId=7';getSourceTab.mockResolvedValue({id:7,windowId:3,url:'https://example.com/paper.pdf'});await mount()
     await eventOf(document.querySelector('[data-feature="document-translation"]')!)();expect(createTab).toHaveBeenCalledWith({url:'extension://document.html#pdf=https%3A%2F%2Fexample.com%2Fpaper.pdf'});expect(getTab).not.toHaveBeenCalled()
     createTab.mockClear();close.mockClear();const warn=vi.spyOn(console,'warn').mockImplementation(()=>{});getSourceTab.mockRejectedValue(new Error('source removed'));tabEvent('onRemoved',7);await drain();expect(state.currentTabId).toBeNull();expect(state.currentSiteDomain).toBe('')

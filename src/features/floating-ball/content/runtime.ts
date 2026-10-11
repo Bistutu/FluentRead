@@ -24,12 +24,14 @@ import {
 import type { ContentScriptContext } from 'wxt/utils/content-script-context';
 import type { ShadowRootContentScriptUi } from 'wxt/utils/content-script-ui/shadow-root';
 import {createVueShadowUi, type VueShadowMount} from '@/src/platform/shadow-ui';
+import {createAnchoredPopup} from './anchoredPopup';
 
 interface FloatingBallExposed {
   toggleTranslation: () => void;
   setTranslationState: (isTranslating: boolean) => void;
   setTranslationStatus: (status: TranslationToolbarStatus) => void;
   setPosition: (side: 'left' | 'right', verticalPosition: number | null) => void;
+  setPopupOpen?: (open: boolean) => void;
 }
 
 let floatingBallInstance: FloatingBallExposed | null = null;
@@ -43,6 +45,7 @@ let unsubscribePresentationConfig: (() => void) | null = null;
 let floatingBallPresentation: FloatingBallPresentation | null = null;
 let removeFullscreenListener: (() => void) | null = null;
 let unsubscribeMangaTranslation: (() => void) | null = null;
+let anchoredPopup: ReturnType<typeof createAnchoredPopup> | null = null;
 
 /** 把实时配置折叠为组件需要的展示契约；字段语义与归一化都由 core/config 保证。 */
 function readPresentation(source: Config): FloatingBallPresentation {
@@ -66,7 +69,7 @@ export function isFloatingBallAllowedOnPage(href: string = currentPageHref()): b
     return !isFloatingBallDisabledOnSite(href, config.floatingBallDisabledDomains);
 }
 
-function openPopup(): void {
+function openPopup(event: MouseEvent): void {
     // userscript 没有浏览器工具栏 popup，继续使用脚本自己的设置入口。
     if (import.meta.env.BROWSER === 'userscript') {
         void browser.runtime.sendMessage({type: 'openOptionsPage'}).catch((error: unknown) => {
@@ -74,10 +77,16 @@ function openPopup(): void {
         });
         return;
     }
-    void browser.runtime.sendMessage({type: 'openPopup'}).then((response) => {
-        const result = response as {success?: boolean; error?: string} | undefined;
-        if (result?.success === false) throw new Error(result.error || '打开扩展快捷面板失败');
-    }).catch((error: unknown) => {
+    if (!event?.isTrusted || !floatingBallUi) return;
+    const anchor = event.currentTarget instanceof HTMLElement ? event.currentTarget
+        : floatingBallUi.uiContainer.querySelector<HTMLElement>('.floating-ball-main');
+    if (!anchor) return;
+    anchoredPopup ??= createAnchoredPopup(floatingBallUi.uiContainer, floatingBallUi.shadowHost, {
+        getUrl: () => browser.runtime.getURL('/popup.html'),
+        request: () => browser.runtime.sendMessage({type: 'requestFloatingPopup'}),
+        onOpenChange: open => floatingBallInstance?.setPopupOpen?.(open),
+    });
+    void anchoredPopup.toggle(anchor).catch((error: unknown) => {
         console.error('[FluentRead] 打开扩展快捷面板失败', error);
     });
 }
@@ -91,6 +100,7 @@ function subscribeFullscreenVisibility(ui: ShadowRootContentScriptUi<VueShadowMo
         const isVideoFullscreen = fullscreenElement != null
             && (fullscreenElement.matches('video') || fullscreenElement.querySelector('video') !== null);
         if (isVideoFullscreen) {
+            if (import.meta.env.BROWSER !== 'userscript') anchoredPopup?.close();
             ui.uiContainer.style.setProperty('display', 'none', 'important');
         } else {
             ui.uiContainer.style.removeProperty('display');
@@ -141,9 +151,10 @@ export function mountFloatingBall(ctx?: ContentScriptContext) {
       presentation,
       manga,
       onMangaToggle: (event: MouseEvent) => { if (event.isTrusted) openMangaEntry(); },
-      onSettingsClick: () => openPopup(),
+      onSettingsClick: (event: MouseEvent) => openPopup(event),
       // 两个坐标字段必须一起提交，避免连续拖动或跨页面保存时只留下其中一个。
       onPositionChanged: (newPosition: 'left' | 'right', verticalPosition: number) => {
+        if (import.meta.env.BROWSER !== 'userscript') anchoredPopup?.close();
         void requestConfigPatch(
           {floatingBallPosition: newPosition, floatingBallVerticalPosition: verticalPosition},
           browser.runtime.sendMessage.bind(browser.runtime),
@@ -174,9 +185,17 @@ export function mountFloatingBall(ctx?: ContentScriptContext) {
     removeFullscreenListener = subscribeFullscreenVisibility(ui);
     // 订阅只服务当前实例；迟到的旧订阅不得继续写回已被替换的展示契约。
     unsubscribePresentationConfig?.();
+    let previousPosition = import.meta.env.BROWSER === 'userscript' ? []
+      : [config.floatingBallPosition, config.floatingBallVerticalPosition, config.floatingBallCompact];
     unsubscribePresentationConfig = subscribeConfig((nextConfig) => {
       if (floatingBallPresentation !== presentation) return;
       Object.assign(presentation, readPresentation(nextConfig));
+      if (import.meta.env.BROWSER !== 'userscript') {
+        if (!nextConfig.floatingBallSettingsEntryVisible || nextConfig.floatingBallToolsDisplay === 'hidden') anchoredPopup?.close();
+        const nextPosition = [nextConfig.floatingBallPosition, nextConfig.floatingBallVerticalPosition, nextConfig.floatingBallCompact];
+        if (nextPosition.some((value, index) => value !== previousPosition[index])) anchoredPopup?.close();
+        previousPosition = nextPosition;
+      }
       floatingBallInstance?.setPosition?.(nextConfig.floatingBallPosition, nextConfig.floatingBallVerticalPosition);
     });
     floatingBallInstance = (ui.mounted?.instance as FloatingBallExposed | null | undefined) ?? null;
@@ -222,6 +241,10 @@ export function toggleFloatingBallTranslation(): boolean {
 export function unmountFloatingBall() {
   // 先使仍在等待的挂载失效，再释放当前实例，避免迟到的 Promise 重新写回句柄。
   mountRequestId++;
+  if (import.meta.env.BROWSER !== 'userscript') {
+    anchoredPopup?.close();
+    anchoredPopup = null;
+  }
   unsubscribeMangaTranslation?.();
   unsubscribeMangaTranslation = null;
   unsubscribeFullPageTranslationProgress?.();
