@@ -144,6 +144,23 @@ function withGlobalWindow<T>(value: unknown, callback: () => T): T {
 }
 
 describe('全文翻译候选队列', () => {
+    it('滚动派发只选择可见候选，超龄后台配额与近屏预取都不能抢占', () => {
+        const {document} = parseHTML('<html><body><p id="visible"></p><p id="near"></p><p id="background"></p></body></html>');
+        const elements = [...document.querySelectorAll<HTMLElement>('p')];
+        const queue = state();
+        elements.forEach((element, index) => {
+            setRect(element, [100, 720, 2000][index]!);
+            queueFullPageCandidate(queue, element, candidate(element), `source-${index}`, 0);
+        });
+        queue.foregroundDispatchesSinceBackground = 8;
+        const options = {now: 9000, viewportHeight: 600, isEligible: () => true, resolveSource: () => ''};
+        expect(createFullPageDispatchPlan(queue, options).next()?.key).toBe(elements[2]);
+        const visiblePlan = createFullPageDispatchPlan(queue, {...options, visibleOnly: true});
+        expect(visiblePlan.next()?.key).toBe(elements[0]);
+        removeFullPagePending(queue, elements[0]!);
+        expect(visiblePlan.next()).toBeUndefined();
+        expect(queue.pending.size).toBe(2);
+    });
     it('显式失败重试只登记一次，保留强制刷新意图和 owner 索引，关闭会话不再入队', () => {
         const {document} = parseHTML('<html><body><p>Retry source</p></body></html>');
         const element = document.querySelector('p')!;

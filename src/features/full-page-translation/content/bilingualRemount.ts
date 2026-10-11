@@ -5,6 +5,7 @@
  * 模块边界：本文件不发起翻译请求、不发现候选也不持有页面会话；同步准备批次复验 owner 和语义来源，runtime 提供会话索引收尾。
  */
 import {asHTMLElement, matchBilingualRemountOwners, nodeAtPath, nodePathWithin} from './bilingualRemountMatching';
+import {disableBilingualRenderingContainment} from './renderingContainment';
 import {
     beginTranslation,
     consumeBilingualArtifactHostWriteBudget,
@@ -429,6 +430,9 @@ function tryTransferBilingualOwner(
         return 'capitulated';
     }
 
+    // 新宿主的宽度可能不同。先撤下旧占位再挂载并核对布局，不能让旧高度
+    // 掩盖固定高度祖先的溢出；稍后的 setBilingualContent 同步清理可信模板。
+    disableBilingualRenderingContainment(content);
     if (content.parentNode !== replacementOwner) {
         if (previousState.bilingualBeforeSource) replacementOwner.insertBefore(content, replacementOwner.firstChild);
         else replacementOwner.appendChild(content);

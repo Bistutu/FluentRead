@@ -13,6 +13,7 @@ import {
     pageContextLimits,
     shouldUseBoundedPageCapture,
 } from './policy';
+import {resetPageDiscourseContext} from './pageDiscourse';
 
 interface PageTranslationSnapshot {
     url: string;
@@ -301,6 +302,12 @@ export async function getPageTranslationContext(): Promise<string> {
 }
 
 export function resetPageTranslationContextCache(): void {
+    resetPageDiscourseContext();
+    invalidatePageTranslationSnapshotCache();
+}
+
+/** 原文已变化时使页面快照/摘要身份重建，保留调用方正在准备的篇章所有权。 */
+export function invalidatePageTranslationSnapshotCache(): void {
     snapshotGeneration += 1;
     cachedSnapshot = null;
     pendingSnapshot = null;

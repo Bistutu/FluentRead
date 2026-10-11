@@ -5,6 +5,7 @@
  * 模块边界：本文件不执行翻译、不管理候选或 DOM；translationRequest 负责填充缓存，runtime 只调用这里的生命周期入口。
  */
 import {servicesType} from '@/src/core/config/catalog';
+import {resetPageTranslationContextCache} from '@/src/services/translation/context/browser';
 import {
     cancelTranslationQueueSession,
     type TranslationQueueSession,
@@ -97,6 +98,7 @@ export function invalidateContextSensitiveRequestCache(
     const snapshot = session.translationConfig;
     if ((snapshot.enableAIContext || snapshot.enableAIMultiSegment)
         && servicesType.isUseAIContext(snapshot.service, snapshot.model)) {
+        resetPageTranslationContextCache();
         session.pageContextGeneration += 1;
         clearFullPageTranslationRequestCache(session, true);
         session.translationSlotCache.clear();
