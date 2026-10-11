@@ -112,6 +112,8 @@ node scripts/testing/run-site-rules-navigation-test.cjs \
 
 专项使用临时 Edge profile、第二屏后台正常窗口和焦点监控。页面和翻译 HTTP 响应为本地夹具，验证普通链接、跨站进出、push/replace/popstate、HashRouter、延迟正文和快速跳转，检查恢复原文后的同页保持与新文章自动触发、在途禁用与迟到响应、规则保存后立即关闭重开、最后写入胜出和配置跨页同步。DOM、请求计数、截图、保存响应和焦点信息保存在 `report.json`。它不代表外部翻译服务、原生工具栏 Popup、Firefox 实机或浏览器往返缓存的验收；真实网页结果需单独记录。
 
+追加 `--producthunt` 会访问 Product Hunt 首页和 Reso 产品页，用实际链接检查正文适配切换后的自动翻译。翻译响应仍来自本地测试服务；站点防护或链接不可用会单独记录为隔离结果，不计入通过项。
+
 ## Popup 首次打开与语言引导
 
 生产构建后运行 `node scripts/testing/run-popup-first-run-height-test.cjs --extension-dir .output/chrome-mv3 --playwright-root <捆绑Node包目录> --browser-path <Edge可执行文件> --focus-safe-helper <focus-safe-browser.cjs路径> --artifacts-dir /private/tmp/fluentread-popup-first-run`。只检查首启相关范围：配置读取延迟 1.2 秒时，等待状态与欢迎页高度一致，首个欢迎帧已有双语文字且不请求完整英文目录，卡片没有缩放入场。短视口还检查高度由内容撑开，避免重现 130px 高度锁定。
