@@ -147,7 +147,7 @@ describe('E2 public manga resource ownership', () => {
         const error = await result;
         evidence('last-fetch-removal', {errorName: error?.name, errorMessage: error?.message, cause: error?.cause?.message, fetchAttempts: modelFetch.mock.calls.length});
         expect(error).not.toBeInstanceOf(TypeError);
-        expect(error).toMatchObject({message: '漫画模型下载未完成，请切换下载来源或导入模型后重试', cause: {message: 'last controlled fetch failure'}});
+        expect(error).toMatchObject({message: '漫画模型下载未完成，请重试或导入已下载文件', cause: {message: 'last controlled fetch failure'}});
         expect((await mangaOcrModelStatus()).download).toBeUndefined();
     });
 

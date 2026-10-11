@@ -1110,7 +1110,7 @@ export const esESMessages = {
     'settings.interface.font.noDownload': 'Fuente del sistema · Sin descarga',
     'settings.interface.font.saved': 'Descargada · Guardada para usar sin conexión',
     'settings.interface.font.sessionOnly': 'Fuente activada, pero la caché no está disponible; quizá deba descargarse de nuevo al abrir.',
-    'settings.interface.font.failed': 'Error de descarga. Se usa la fuente del sistema. Reintenta o cambia de origen.',
+    'settings.interface.font.failed': "No se pudo descargar la fuente. Se usa la fuente del sistema. Revisa la conexión y reintenta.",
     'settings.interface.font.retry': 'Reintentar descarga',
     'settings.interface.font.sources': '¿Problemas al descargar?',
     'settings.interface.font.downloadAndUse': 'Descargar y usar',

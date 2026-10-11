@@ -254,8 +254,8 @@
 <VideoSubtitleAppearanceSettings :config="config" />
 </SettingsPanel>
       <SettingsPanel name="local" :active="props.activePanel">
-<SettingsGroup title="X 本地 AI 字幕" description="仅 X 无原生字幕时使用；模型和音频留在当前浏览器，下载后可离线识别">
-        <SettingsItem label="视频原语言" description="仅用于 X 没有原生字幕时的本地识别；自动检测适合大多数视频" :disabled="!config.videoTranslationEnabled || !browserCapabilities.extensionDom">
+<SettingsGroup title="X 本地 AI 字幕" :description="translateLegacy('为没有原生字幕的 X 视频生成字幕')">
+        <SettingsItem label="视频原语言" :description="translateLegacy('自动检测适合大多数视频')" :help="translateLegacy('仅用于 X 没有原生字幕时的本地识别；模型和音频留在当前浏览器，下载后可离线识别')" :disabled="!config.videoTranslationEnabled || !browserCapabilities.extensionDom">
           <el-select v-model="config.videoSourceLanguage" aria-label="视频原语言" :disabled="!config.videoTranslationEnabled || !browserCapabilities.extensionDom" placeholder="请选择视频原语言">
             <el-option v-for="item in VIDEO_SOURCE_LANGUAGE_OPTIONS" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>

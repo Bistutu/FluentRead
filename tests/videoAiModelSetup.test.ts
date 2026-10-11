@@ -1,6 +1,7 @@
 import {describe, expect, it, vi} from 'vitest';
 
 import {createVideoAiModelSetup, type VideoAiModelSetupDependencies} from '@/src/features/video-subtitle/content/video-ai/modelSetup';
+import {LOCAL_VIDEO_MODEL_DOWNLOAD_ERROR} from '@/src/features/video-subtitle/content/localModelReadiness';
 import type {VideoLocalTranscriptionModel} from '@/src/features/video-subtitle/transcription';
 
 function deferred<T>() {
@@ -344,11 +345,11 @@ describe('video AI model setup', () => {
   it('shows download failures and does not start after the request becomes stale', async () => {
     const failed = setup({responses: {
       fluentReadGetLocalVideoModelState: [{success: true, models: []}],
-      fluentReadPrepareLocalVideoModel: [{success: false, error: '模型文件下载失败（503）'}],
+      fluentReadPrepareLocalVideoModel: [{success: false, error: 'Hugging Face / HF Mirror 模型文件下载失败（503）'}],
     }});
     await failed.controller.request(() => true);
     await failed.controller.confirm();
-    expect(failed.events.at(-1)).toBe('error:下载失败：模型文件下载失败（503）');
+    expect(failed.events.at(-1)).toBe(`error:下载失败：${LOCAL_VIDEO_MODEL_DOWNLOAD_ERROR}`);
     expect(failed.dependencies.startGeneration).not.toHaveBeenCalled();
 
     const stale = setup({responses: {

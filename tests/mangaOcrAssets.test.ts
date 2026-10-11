@@ -19,13 +19,17 @@ beforeEach(async()=>{
 afterEach(()=>{vi.useRealTimers();vi.unstubAllGlobals();});
 
 describe('漫画模型固定版本和完整性',()=>{
-    it('持久化合法来源，镜像优先失败后回退官方，损坏镜像不会入库',async()=>{
+    it('历史来源设置不影响自动下载，损坏来源仍校验失败后回退',async()=>{
+        vi.stubGlobal('navigator',{language:'en-US'});
         expect(await getMangaModelSource()).toBe('auto');preferences.match.mockResolvedValue(new Response('bad'));expect(await getMangaModelSource()).toBe('auto');
         await expect(setMangaModelSource('bad' as never)).rejects.toThrow('无效');
         await setMangaModelSource('mirror');expect(preferences.put).toHaveBeenCalled();preferences.match.mockImplementation(async()=>new Response('mirror'));
         vi.mocked(fetch).mockResolvedValueOnce(response(1));await loadMangaOcrAssets();
-        expect(vi.mocked(fetch).mock.calls[0][0]).toContain('hf-mirror.com');expect(vi.mocked(fetch).mock.calls[1][0]).toContain('huggingface.co');
+        expect(vi.mocked(fetch).mock.calls[0][0]).toContain('huggingface.co');expect(vi.mocked(fetch).mock.calls[1][0]).toContain('hf-mirror.com');
+        expect(await mangaOcrModelStatus()).toMatchObject({source:'auto'});
         preferences.match.mockImplementation(async()=>new Response('official'));expect(await getMangaModelSource()).toBe('official');
+        vi.stubGlobal('navigator',{language:'zh-CN'});vi.mocked(fetch).mockClear();await loadMangaInpaintAsset();
+        expect(vi.mocked(fetch).mock.calls[0][0]).toContain('hf-mirror.com');expect(await mangaOcrModelStatus()).toMatchObject({source:'auto'});
     });
     it('20 秒无数据会切换备用来源，用户取消则立即结束且不切换',async()=>{
         vi.useFakeTimers();vi.mocked(fetch).mockImplementationOnce((_url,options)=>new Promise((_resolve,reject)=>options!.signal!.addEventListener('abort',()=>reject(new Error('timeout')))));
