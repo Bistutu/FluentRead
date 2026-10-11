@@ -1058,9 +1058,21 @@ Escape 组自然0，8阶段/3原生场景/4原始图。真实可信三击选中�
 
 冻结证据位于 round47-modal-focus-repair/ 的 baseline、SOURCE-HANDOFF、validation-attempt1、peer-owner/actual-review、build-attempt1、ARTIFACT-COMPARISON、COMPARISON-RECEIPT、peer-native-v3、native-focus-attempt1/2及ROOT视觉回执。三个生产和三个测试文件均有整文件逆向基线证明及独立只读复核。本批仅本地保存，无推送、PR、合并或发布；未借用参考仓库代码。
 
+## 第四十三批：划词翻译明确提示密钥与权限问题
+
+此前划词翻译把所有非取消失败显示为“翻译失败，请重试”，已存在的认证错误种类没有传达给用户。本批只在当前请求仍有效、且不是 AbortError 时，复用真实 serializeTranslationError 的 authentication 种类显示现有“密钥或权限无效”；其他错误仍使用原通用提示。不展示原始诊断信息，不扩张错误分类、不修改错误协议、语言文件、资源固定引用、依赖或原生弹窗焦点 controller。普通文本与含代码选区的实际批量入口共用该处理；原重试、关闭、请求归属与词典独立成功结果保持。
+
+干净第四十二批本地提交7a7fc901d的三份完整直接owner基线190项通过；候选204/204自然0（划词123、错误协议12、用户脚本配置69），原190项的名称和数量保留，新增14项，没有名称筛选、pending、todo或新增skip。使用真实错误 serializer/结构化协议和真实选区 core；SFC 编译实际setup、render=null，受控端口不代替完整渲染或线上provider证明。首次203/204失败来自新增批量用例错误地预期英语，实际请求沿用自动检测；修正一行预期为已捕获请求的语言参数后再通过，生产实现不因该失败修改。首次后置认证断言未执行，失败最终回执与日志完整保留。运行1978输入稳定，既有词典超时预期stderr保留。test:audit自然0，641文件/10,621索引声明是审计量，不是全仓执行量。
+
+八核心构建阶段自然0，1974个生产/构建输入稳定；与上一批完整范围仅划词SFC一个生产文件不同，两端Node/pnpm字节相同。完整脚本3,582,802→3,582,812 B（+10），原3,600,000 B预算通过、余量17,188 B；ordinary1,958,831→1,958,929 B（+98）。Chrome444文件65,536,838→65,541,198 B（+4,360），Firefox444文件65,535,873→65,540,189 B（+4,316）。两端manifest全文、各252静态路径/SHA与两个固定MJS相同，CSS/HTML/MJS/其他分区净字节0；不将每个生成差异单独归因于这一个源文件。本批改善错误反馈，不称减包或CPU/heap/ZIP/transfer收益；Greasy Fork原资源固定前置失败未重跑、未通过。
+
+实际第二次原生验收父/child自然0，七阶段、两个独立target与两张原PNG通过，根代理查看全部原图。隔离Edge以macos-background-cdp、launchservices-no-foreground在第二屏后台正常显示，窗口1280×900、实际内容视口1272×816，owned浏览器前台事件0。通过公开中文引导、启用划词和选择空凭据DeepSeek，再用可信CDP三击形成实际选区及点击指示器，原生dialog内closed-root卡片显示“密钥或权限无效”/“重试”；公开通用设置切换英语后，在另一target重新形成选区，显示“Invalid key or permission”/“Retry”。两页完整文字与可用重试按钮可见、无水平溢出；五份安全配置快照只记录非秘密字段及空凭据布尔值，语言持久化且其他翻译配置保持。仅依 owning路径推断空凭据触发认证，不把它当成线上provider请求。未输入键盘或验证旧卡片即时改语言，未在本批重跑焦点恢复或双向Tab。late诊断门禁通过，console error/warning、page error、request failure、blocked HTTP均0；四项临时会话/server/monitor/profile清理为true，1974源输入、两个dirty文件、444产物与工具/HEAD/status稳定。第一次验收父/child自然1：五阶段中文卡片通过后，测试把语言控件限定在通用设置首段，而实际控件在续段，定位超时；仅修一处driver selector后使用新profile重跑。失败回执和两张中文原PNG保留，未将其当成英文或设置画面证据，也未因失败更改生产代码。实际证据为native-authentication-attempt1/2、peer-native-plan/v4/v5与NATIVE-ATTEMPT1-ROOT-REVIEW/NATIVE-ACTUAL-ROOT-REVIEW。
+
+本批有限提示只覆盖已有authentication分类。部分AppKey/SecretId的“尚未完整配置”仍可能归为unknown，未宣称所有供应商缺少凭据都显示该提示。中文与英文已有映射及五个额外语言固定JSON整份字节、键值、内容摘要文件名和Git固定commit一致性经静态核查；静态五语言不代替它们的真实加载验收。冻结证据位于round48-authentication-copy/ 的root-source-proposal、peer-owner/v2/v3、SOURCE-HANDOFF-V2、direct-baseline-attempt1、direct-candidate-attempt1/2、test-audit-attempt1、build-attempt1、ARTIFACT-COMPARISON、COMPARISON-RECEIPT及相应根/独立复核回执。仅本地保存，无推送、PR、合并或发布；未复制参考仓库代码。
+
 ## 后续候选
 
-第四十二批完整脚本为3,582,802 B，原3,600,000 B预算通过、余量17,198 B。原生卡片关闭的直接焦点恢复与 Enter 激活已通过本批194项直接owner、八核心构建和两页原生验收，未宣称关闭后双向Tab导航、无效控件fallback或CPU收益。下一候选是划词失败的有限错误分类提示：私有审查已核对真实错误协议和七种语言现有“密钥或权限无效”映射；尚未正式实施，不使用未上传资源commit替换用户脚本语言固定引用。保留请求归属、取消、词典独立成功结果、完整服务/语言/许可与原预算。第三十八、三十九批取色器与分类布局实际范围保持，没有在本批重跑。
+第四十三批完整脚本为3,582,812 B，原3,600,000 B预算通过、余量17,188 B。既有authentication种类的划词有限提示已通过本批204项直接owner、八核心构建与两个独立中英文页面原生验收；保留上一批焦点验收原范围，本批未重跑双向Tab导航或其他语言原生加载。下一候选是悬浮仲裁中按最后原始配置复用划词快捷键解析：私有提案保留逐次配置getter、当前选区判断、取消和共享释放归属，尚未正式实施或执行操作数对照，未宣称CPU/heap或减包收益。保持完整服务/语言/许可、原预算与固定资源引用。第三十八、三十九批取色器与分类布局实际范围保持，没有在本批重跑。
 
 
 合成段 loading 挂载循环、缓存键重复术语解析、高级请求限制禁用与缓存复习快捷键已在第二十七至三十批分别修复。第三十一轮调度只读探针保留现检查：13 个受控普通场景虽减少同 owner 复验，但第三个 source-only 读取中的 style getter 同步替换同文本 Text 时，复用先前结果留下脱离节点身份；这只是受控端口反例，未当成原生复现或 CPU 收益，未实施。证据为 `round31-page-scheduling-audit/`。第三十二轮已撤回 Cloud 普通历史入口的减加载推荐；LearningCenter 的 History/Memory 首用加载已在第三十一批实施，实际收藏阶段新增请求文件减少 20,641 B，父装配、加载故障与原行为通过限定验证。第三十四轮审计确认的八个既不可达设置子 UI 已在第三十二批排除，完整独立脚本实际减少 183,104 B，仍比原 3,600,000 B 门槛多 38,416 B。继续审查其 Options/IIFE 归属与可证明不可达的资源，保持可达服务、本地模型/TTS、数据、语言、许可和原门槛，不为达预算删除已有能力。请求队列仍在 response body 完成前占用并发槽；会改变错误种类的同步 deadline 合并未实施。

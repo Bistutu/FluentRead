@@ -14,6 +14,7 @@ import ts from 'typescript';
 import * as Vue from 'vue';
 import {Config} from '@/src/core/config/model';
 import * as selectionCore from '@/src/features/selection-translation/core';
+import * as translationErrors from '@/src/services/translation/errors';
 import * as harness from '@/src/core/config/harness';
 import {services} from '@/src/core/config/catalog';
 import * as runtimeMessages from '@/src/platform/browser/runtimeMessages';
@@ -101,6 +102,7 @@ function mountSelection(privateContext = false, selectionAdapter?: Record<string
         '@/src/services/config/store': {config, configReady, requestConfigPatch, subscribeConfig: (listener: () => void) => { configListener = listener; return unsubscribeConfig; }},
         '@/src/app/translation/client': {translateText, translateTextBatch},
         '@/src/features/selection-translation/core': selectionCore,
+        '@/src/services/translation/errors': translationErrors,
         '@/src/features/selection-translation/services/wordNormalization': wordNormalization,
         '@/src/core/config/harness': harness,
         '@/src/core/config/catalog': {services},
@@ -2404,4 +2406,288 @@ describe('focused selection card dismissal requests', () => {
             expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
         },
     );
+});
+
+
+describe('selection translation authentication copy and request ownership', () => {
+    // Run the actual SFC catch with the real error protocol. Only the translation
+    // transport and browser message ports use the existing lifecycle fixture.
+    const authenticationCopy = '密钥或权限无效';
+    const genericCopy = '翻译失败，请重试';
+
+    function begin(fixture: ReturnType<typeof mountSelection>, text = 'Good ideas deserve attention.') {
+        fixture.config.from = 'en';
+        fixture.config.to = 'zh-Hans';
+        fixture.state.snapshot = Vue.markRaw({text, parts: [{kind: 'text', text}],
+            range: {getClientRects: () => []} as unknown as Range});
+        fixture.state.selectedText = text;
+        fixture.state.showTooltip = true;
+        return fixture.state.beginSelectionContentRequest(text);
+    }
+
+    function deferredTranslation() {
+        let resolve!: (text: string) => void;
+        let reject!: (cause: Error) => void;
+        const promise = new Promise<string>((yes, no) => {resolve = yes; reject = no;});
+        return {promise, resolve, reject};
+    }
+
+    function structuredAuthentication() {
+        const payload = translationErrors.serializeTranslationError({
+            message: 'PRIVATE_DIAGNOSTIC_OPAQUE_PROVIDER_DETAIL',
+            kind: 'authentication', retryable: false, statusCode: 403,
+        });
+        try {
+            translationErrors.unwrapTranslationResponse<never>(payload);
+        } catch (cause) {
+            expect(cause).toBeInstanceOf(translationErrors.TranslationRequestError);
+            return cause as translationErrors.TranslationRequestError;
+        }
+        throw new Error('The actual structured error protocol did not reject.');
+    }
+
+    it.each([
+        {label: 'missing API key', kind: 'authentication', copy: authenticationCopy,
+            cause: () => new Error('API key is not configured: PRIVATE_DIAGNOSTIC_MISSING_KEY')},
+        {label: 'structured authentication with an opaque message', kind: 'authentication', copy: authenticationCopy,
+            cause: structuredAuthentication},
+        {label: 'HTTP 401 through TranslationRequestError', kind: 'authentication', copy: authenticationCopy,
+            cause: () => new translationErrors.TranslationRequestError(translationErrors.serializeTranslationError({
+                message: 'HTTP 401: PRIVATE_DIAGNOSTIC_UNAUTHORIZED', statusCode: 401,
+            }))},
+        {label: 'HTTP 403', kind: 'authentication', copy: authenticationCopy,
+            cause: () => new Error('HTTP 403: PRIVATE_DIAGNOSTIC_FORBIDDEN')},
+        {label: 'rate limit mentioning an API key', kind: 'rate-limit', copy: genericCopy,
+            cause: () => new Error('429 rate limit for API key: PRIVATE_DIAGNOSTIC_RATE_LIMIT')},
+        {label: 'invalid model', kind: 'bad-request', copy: genericCopy,
+            cause: () => new Error('Invalid model: PRIVATE_DIAGNOSTIC_MODEL')},
+        {label: 'network failure', kind: 'network', copy: genericCopy,
+            cause: () => new TypeError('Failed to fetch: PRIVATE_DIAGNOSTIC_NETWORK')},
+        {label: 'unknown failure', kind: 'unknown', copy: genericCopy,
+            cause: () => new Error('PRIVATE_DIAGNOSTIC_UNKNOWN')},
+    ])('uses bounded UI copy for $label', async ({cause: createCause, kind, copy}) => {
+        const fixture = mountSelection();
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const request = begin(fixture);
+        const cause = createCause();
+        expect(translationErrors.serializeTranslationError(cause).kind).toBe(kind);
+        fixture.translateText.mockRejectedValueOnce(cause);
+
+        await fixture.state.requestTranslation(request);
+
+        expect(fixture.translateText).toHaveBeenCalledOnce();
+        expect(fixture.state.error).toBe(copy);
+        expect(fixture.state.error).not.toContain('PRIVATE_DIAGNOSTIC');
+        expect(fixture.state.error).not.toBe(cause.message);
+        expect(fixture.state.activeContentRequest).toEqual(request);
+        expect(fixture.state.translationResult).toBe('');
+        expect(fixture.state.translationAnswer).toBeNull();
+        expect(fixture.state.translationAbortController).toBeNull();
+        expect(fixture.state.isLoading).toBe(false);
+        expect(logged).toHaveBeenCalledWith('Selection translation error:', cause);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('ignores a late authentication failure while a replacement selection is still loading', async () => {
+        const fixture = mountSelection();
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const old = deferredTranslation(), replacement = deferredTranslation();
+        fixture.translateText.mockReturnValueOnce(old.promise).mockReturnValueOnce(replacement.promise);
+        const oldRequest = begin(fixture, 'An earlier sentence.');
+        const oldPending = fixture.state.requestTranslation(oldRequest);
+        const oldController = fixture.state.translationAbortController;
+        const currentRequest = begin(fixture, 'The current sentence.');
+        const currentPending = fixture.state.requestTranslation(currentRequest);
+        const currentController = fixture.state.translationAbortController;
+        const activeRequest = fixture.state.activeContentRequest;
+
+        old.reject(structuredAuthentication());
+        await oldPending;
+
+        expect(oldController.signal.aborted).toBe(true);
+        expect(currentController.signal.aborted).toBe(false);
+        expect(fixture.state.activeContentRequest).toBe(activeRequest);
+        expect(fixture.state.translationAbortController).toBe(currentController);
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.isLoading).toBe(true);
+        expect(fixture.state.translationResult).toBe('');
+        expect(logged).not.toHaveBeenCalled();
+        replacement.resolve('当前句子的译文。');
+        await currentPending;
+        expect(fixture.state.translationAnswer).toEqual({...currentRequest, answer: '当前句子的译文。'});
+        expect(fixture.state.translationResult).toBe('当前句子的译文。');
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.isLoading).toBe(false);
+        expect(fixture.state.translationAbortController).toBeNull();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('does not resurrect error copy after the owning selection card closes', async () => {
+        const fixture = mountSelection();
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const response = deferredTranslation();
+        fixture.translateText.mockReturnValueOnce(response.promise);
+        const pending = fixture.state.requestTranslation(begin(fixture));
+        const controller = fixture.state.translationAbortController;
+
+        fixture.state.hideAll();
+        response.reject(structuredAuthentication());
+        await pending;
+
+        expect(controller.signal.aborted).toBe(true);
+        expect(fixture.state.snapshot).toBeNull();
+        expect(fixture.state.showTooltip).toBe(false);
+        expect(fixture.state.activeContentRequest).toBeNull();
+        expect(fixture.state.translationAbortController).toBeNull();
+        expect(fixture.state.translationResult).toBe('');
+        expect(fixture.state.translationAnswer).toBeNull();
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.isLoading).toBe(false);
+        expect(logged).not.toHaveBeenCalled();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('keeps AbortError silent even when its diagnostic contains authentication wording', async () => {
+        const fixture = mountSelection();
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const request = begin(fixture);
+        fixture.translateText.mockRejectedValueOnce(new DOMException('API key: PRIVATE_DIAGNOSTIC_ABORT', 'AbortError'));
+
+        await fixture.state.requestTranslation(request);
+
+        expect(fixture.state.activeContentRequest).toEqual(request);
+        expect(fixture.state.translationResult).toBe('');
+        expect(fixture.state.translationAnswer).toBeNull();
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.isLoading).toBe(false);
+        expect(fixture.state.translationAbortController).toBeNull();
+        expect(logged).not.toHaveBeenCalled();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('allows an explicit manual retry to replace authentication copy with a successful translation', async () => {
+        const fixture = mountSelection();
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const request = begin(fixture);
+        fixture.translateText.mockRejectedValueOnce(structuredAuthentication());
+        await fixture.state.requestTranslation(request);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(fixture.state.error).toBe(authenticationCopy);
+        expect(fixture.translateText).toHaveBeenCalledOnce();
+
+        fixture.translateText.mockResolvedValueOnce('好想法值得关注。');
+        fixture.state.retryTranslation();
+        await vi.advanceTimersByTimeAsync(0);
+        await Vue.nextTick();
+
+        expect(fixture.translateText).toHaveBeenCalledTimes(2);
+        expect(fixture.state.activeContentRequest.generation).toBeGreaterThan(request.generation);
+        expect(fixture.state.translationAnswer).toEqual({...fixture.state.activeContentRequest, answer: '好想法值得关注。'});
+        expect(fixture.state.translationResult).toBe('好想法值得关注。');
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.isLoading).toBe(false);
+        expect(fixture.state.translationAbortController).toBeNull();
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('preserves an independently completed dictionary answer when translation authentication later fails', async () => {
+        const fixture = mountSelection();
+        vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const card = {word: 'read', normalizedWord: 'read', phonetics: [], sources: [],
+            meanings: [{partOfSpeech: '动词', definitions: [{definition: 'to understand written words',
+                translatedDefinition: '阅读并理解文字'}]}]};
+        fixture.browser.runtime.sendMessage.mockImplementation((message: any) => message.type === 'selectionWordLookup'
+            ? Promise.resolve({success: true, data: card}) : Promise.resolve({success: true, zoom: 1}));
+        const response = deferredTranslation();
+        fixture.translateText.mockReturnValueOnce(response.promise);
+        const request = begin(fixture, 'read');
+        const pending = fixture.state.requestTranslation(request);
+        await fixture.state.requestWordCard(request);
+        const completedCard = fixture.state.wordCard;
+        const completedAnswer = fixture.state.dictionaryAnswer;
+        expect(completedAnswer).toEqual({...request, answer: '阅读并理解文字'});
+
+        response.reject(structuredAuthentication());
+        await pending;
+
+        expect(fixture.state.error).toBe(authenticationCopy);
+        expect(fixture.state.wordCard).toBe(completedCard);
+        expect(fixture.state.dictionaryAnswer).toBe(completedAnswer);
+        expect(fixture.state.vocabularyAnswer).toBe('阅读并理解文字');
+        expect(fixture.state.wordCardError).toBe('');
+        expect(fixture.state.isWordCardLoading).toBe(false);
+        expect(fixture.state.isWordCardSupportLoading).toBe(false);
+        expect(fixture.state.translationAnswer).toBeNull();
+        expect(fixture.state.translationResult).toBe('');
+        expect(fixture.state.isLoading).toBe(false);
+        expect(fixture.browser.runtime.sendMessage.mock.calls.filter(([message]) => message.type === 'selectionWordLookup')
+            .map(([message]) => message.translateFields)).toEqual([false, true]);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
+
+    it('uses bounded authentication copy after the real mixed code/prose batch request fails', async () => {
+        const fixture = mountSelection();
+        const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+        const parts: selectionCore.SelectionTextPart[] = [
+            {kind: 'text', text: 'Explain the call '},
+            {kind: 'code', text: 'reader.read()'},
+            {kind: 'text', text: ' before continuing.'},
+        ];
+        const text = 'Explain the call reader.read() before continuing.';
+        const request = begin(fixture, text);
+        const snapshot = Vue.markRaw({...fixture.state.snapshot, parts});
+        fixture.state.snapshot = snapshot;
+        const activeRequest = fixture.state.activeContentRequest;
+        expect(parts.map(part => part.text).join('')).toBe(text);
+        let rejectBatch!: (cause: Error) => void;
+        fixture.translateTextBatch.mockImplementationOnce(() => new Promise<string[]>((_resolve, reject) => {
+            rejectBatch = reject;
+        }));
+        const cause = structuredAuthentication();
+
+        const pending = fixture.state.requestTranslation(request);
+        const controller = fixture.state.translationAbortController;
+
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.translateTextBatch).toHaveBeenCalledOnce();
+        // The actual core function passes prose to the existing batch port.
+        // Code remains in the snapshot; no translation algorithm is copied here.
+        expect(fixture.translateTextBatch.mock.calls[0]?.[0]).toEqual(['Explain the call', 'before continuing.']);
+        expect(controller).toBeInstanceOf(AbortController);
+        expect(fixture.translateTextBatch.mock.calls[0]?.[2]).toEqual(expect.objectContaining({
+            signal: controller.signal, sourceLanguage: request.sourceLanguage, targetLanguage: request.targetLanguage,
+        }));
+        expect(controller.signal.aborted).toBe(false);
+        expect(fixture.state.isLoading).toBe(true);
+        expect(fixture.state.error).toBe('');
+        expect(fixture.state.translationParts).toEqual([]);
+
+        rejectBatch(cause);
+        await pending;
+
+        expect(fixture.translateText).not.toHaveBeenCalled();
+        expect(fixture.translateTextBatch).toHaveBeenCalledOnce();
+        expect(fixture.state.snapshot).toBe(snapshot);
+        expect(fixture.state.snapshot.parts).toBe(parts);
+        expect(parts).toEqual([
+            {kind: 'text', text: 'Explain the call '},
+            {kind: 'code', text: 'reader.read()'},
+            {kind: 'text', text: ' before continuing.'},
+        ]);
+        expect(fixture.state.selectedText).toBe(text);
+        expect(fixture.state.activeContentRequest).toBe(activeRequest);
+        expect(fixture.state.activeContentRequest).toEqual(request);
+        expect(fixture.state.showTooltip).toBe(true);
+        expect(fixture.state.error).toBe(authenticationCopy);
+        expect(fixture.state.error).not.toContain('PRIVATE_DIAGNOSTIC');
+        expect(fixture.state.error).not.toBe(cause.message);
+        expect(fixture.state.translationParts).toEqual([]);
+        expect(fixture.state.translationResult).toBe('');
+        expect(fixture.state.translationAnswer).toBeNull();
+        expect(fixture.state.translationAbortController).toBeNull();
+        expect(controller.signal.aborted).toBe(false);
+        expect(fixture.state.isLoading).toBe(false);
+        expect(logged).toHaveBeenCalledWith('Selection translation error:', cause);
+        expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+    });
 });
