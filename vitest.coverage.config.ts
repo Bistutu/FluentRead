@@ -778,6 +778,7 @@ export default defineConfig({
                 'src/features/image-translation/services/mangaInferenceClient.ts',
                 'src/features/image-translation/services/mangaInference.worker.ts',
                 'src/shared/onnx/resources.ts',
+                'src/shared/onnx/modelResidency.ts',
                 'src/core/tts/speechProgress.ts',
                 'src/features/image-translation/services/mangaBubbles.ts',
                 'src/features/image-translation/services/mangaOcrAssets.ts',

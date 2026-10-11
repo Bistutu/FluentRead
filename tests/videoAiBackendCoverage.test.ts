@@ -75,6 +75,7 @@ const tick = async (): Promise<void> => {
 
 function installWorker(options: {audio?: typeof CoverageAudioContext; getUrl?: boolean} = {}): void {
   vi.stubGlobal('Worker', CoverageWorker);
+  vi.stubGlobal('navigator', {});
   vi.stubGlobal('window', {
     location: {href: 'chrome-extension://test/offscreen.html'},
     setTimeout,
@@ -519,7 +520,7 @@ describe('video transcription offscreen lifecycle branches', () => {
     const disposableWorker = CoverageWorker.instances.at(-1)!;
     disposableWorker.reply({requestId: disposableWorker.lastMessage!.requestId, success: true, text: '', segments: []});
     await disposable;
-    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(120_000);
     await tick();
     expect(disposableWorker.terminated).toBe(true);
   });
@@ -569,7 +570,7 @@ describe('video transcription offscreen lifecycle branches', () => {
     const secondWorker = CoverageWorker.instances.at(-1)!;
     secondWorker.reply({requestId: secondWorker.lastMessage!.requestId, success: true, text: '', segments: []});
     await second;
-    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(120_000);
     expect(firstWorker.terminated || secondWorker.terminated).toBe(true);
     resolveClose();
     await tick();

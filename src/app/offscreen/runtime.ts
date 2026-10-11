@@ -7,6 +7,7 @@
 import {
     downloadImageOcrLanguages,
     removeImageOcrLanguages,
+    disposeImageOcrWorker,
     fetchImageInOffscreen,
     translateAreaInOffscreen,
     cropAreaInOffscreen,
@@ -24,7 +25,7 @@ import {parseSelectionTtsRoute} from '@/src/features/selection-translation/proto
 import {createDownloadProgressPublisher, LOCAL_TTS_DOWNLOAD_ID, ocrLanguageDownloadId, videoModelDownloadId} from '@/src/core/download/progress';
 import {normalizeVideoLocalTranscriptionModel} from '@/src/features/video-subtitle/transcription';
 import {createSelectionTtsPlayer} from './ttsPlayback';
-import {translateWithChromeApi, type ChromeTranslationEnvironment} from './translation';
+import {disposeChromeTranslationModels, translateWithChromeApi, type ChromeTranslationEnvironment} from './translation';
 import {removeLocalVideoTranscriptionModel, cancelLocalVideoTranscription, prepareLocalVideoTranscriptionModel, transcribeLocalVideoAudio} from '@/src/features/video-subtitle/offscreen/transcription';
 import {
     disposeLocalTtsWorker,
@@ -145,6 +146,8 @@ export function startOffscreenApp(): void {
     chrome.runtime.onMessage.addListener(listener);
     window.addEventListener('pagehide', () => {
         ttsPlayer.dispose();
+        disposeChromeTranslationModels(self as ChromeTranslationEnvironment);
+        disposeImageOcrWorker();
         disposeLocalTranslationWorker();
         disposeLocalTtsWorker();
         disposeMangaModels();

@@ -1,7 +1,7 @@
 /**
  * @file src/features/image-translation/services/ocrRuntime.ts
  * 文件职责：将 Tesseract.js Worker 适配为图片翻译可调用的 OCR 服务，配置扩展内 worker/core 资源并按源语言串行执行识别或语言包预下载。
- * 主要内容：配置扩展语言资源、转发引擎任务进度与图片/圈选识别策略；保持竖排检测和空结果一次布局重试，坐标映回原图并按策略隔离有界缓存；合并同图在途任务并独立取消，预处理共用可取消的异步 PNG 编码；整图借用预检已解码图片，其他路径限时解码，绘制后立即释放自有源像素。
+ * 主要内容：配置扩展语言资源、转发引擎任务进度与图片/圈选识别策略；保持竖排检测和空结果一次布局重试，坐标映回原图并按策略隔离有界缓存；合并同图在途任务并独立取消，预处理共用可取消的异步 PNG 编码；整图借用预检已解码图片，其他路径限时解码，绘制后立即释放自有源像素；公开离屏页面销毁时的 Worker 与结果缓存清理入口。
  * 模块边界：该文件是 Tesseract 基础设施边界，不保存下载状态、不翻译识别文本也不绘制图片；并发所有权由 ocrWorkerRuntime 管理，持久化由后台 repository 负责。
  */
 import { createWorker, PSM, type Worker } from 'tesseract.js';
@@ -211,6 +211,13 @@ export async function downloadImageOcrLanguages(
 
 export async function removeImageOcrLanguages(languages: ImageOcrLanguageCode[]): Promise<void> {
     await ocrWorkerRuntime.clearModels(() => removeOcrModelFiles(getImageOcrModelLanguages(languages)));
+    completedRecognitionCache.clear();
+    cachedRecognitionBytes = 0;
+}
+
+/** 离屏页面退出时终止普通 OCR，取消在途和排队识别并释放完成结果。 */
+export function disposeImageOcrWorker(): void {
+    ocrWorkerRuntime.dispose();
     completedRecognitionCache.clear();
     cachedRecognitionBytes = 0;
 }

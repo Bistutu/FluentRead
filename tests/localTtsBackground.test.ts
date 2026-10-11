@@ -216,6 +216,7 @@ describe('local TTS Worker response metadata boundary', () => {
     beforeEach(async () => {
         vi.useFakeTimers();
         vi.resetModules();
+        vi.stubGlobal('navigator', {});
         inferenceBudget.run.mockReset().mockImplementation((operation: () => Promise<unknown>) => operation());
         metadata = {};
         workers.length = 0;
@@ -271,7 +272,7 @@ describe('local TTS Worker response metadata boundary', () => {
         return {release, competing};
     }
 
-    it('clears the previous idle timer before waiting for budget and reuses the worker after its old 30-second deadline', async () => {
+    it('clears the previous idle timer before waiting for budget and reuses the worker after its old 120-second deadline', async () => {
         const occupied = await occupyBudget();
         const controller = new AbortController();
         const pending = runtime.synthesizeLocalTts('第二次', 'zh-CN', 'zf_001', controller.signal)
@@ -282,8 +283,8 @@ describe('local TTS Worker response metadata boundary', () => {
             expect(inferenceBudget.run).toHaveBeenLastCalledWith(expect.any(Function), controller.signal);
             expect(workers[0].postMessage).toHaveBeenCalledOnce();
             expect(vi.getTimerCount()).toBe(0);
-            // t=10s 发起第二次请求，预算在 t=35s 才放行，跨过旧 idle 的 t=30s。
-            await vi.advanceTimersByTimeAsync(25_000);
+            // t=10s 发起第二次请求，预算在 t=145s 才放行，跨过旧 idle 的 t=120s。
+            await vi.advanceTimersByTimeAsync(135_000);
             expect(workers[0].terminate).not.toHaveBeenCalled();
             expect(workers[0].postMessage).toHaveBeenCalledOnce();
             occupied.release();
@@ -295,7 +296,7 @@ describe('local TTS Worker response metadata boundary', () => {
             expect(workers[0].postMessage).toHaveBeenLastCalledWith({requestId: 2, type: 'synthesize', text: '第二次', voice: 'zf_001', speed: 1});
             expect(inferenceBudget.run).toHaveBeenCalledTimes(2);
             expect(vi.getTimerCount()).toBe(1);
-            await vi.advanceTimersByTimeAsync(29_999);
+            await vi.advanceTimersByTimeAsync(119_999);
             expect(workers[0].terminate).not.toHaveBeenCalled();
             await vi.advanceTimersByTimeAsync(1);
             expect(workers[0].terminate).toHaveBeenCalledOnce();
