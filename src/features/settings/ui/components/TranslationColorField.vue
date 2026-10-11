@@ -2,7 +2,7 @@
 @file src/features/settings/ui/components/TranslationColorField.vue
 文件职责：为译文颜色、独立背景、线条颜色和标记底色提供统一的色板选择行，支持“默认”、精选色、取色器和精确输入。
 主要内容：以 radiogroup 语义渲染默认选项与色块，支持方向键、Home、End 的漫游焦点；选中色板以外的颜色时点亮彩虹取色器并显示该色，
-取色器和颜色名、RGB、十六进制输入统一归一为小写六位十六进制，非法输入留在编辑框并显示错误，不写入配置；取色器菜单保留在原 Shadow Root，仅保留最后一次待聚焦帧，先登记帧再发出选择，仅在控件仍连接、原焦点归属与颜色有效时同步焦点，色板替换、缓存停用与卸载时取消；仅为本取色器子树提供局部按钮语言与英语描述 fallback，不改父级 vendor 语言或全局配置。
+取色器和颜色名、RGB、十六进制输入统一归一为小写六位十六进制，非法输入留在编辑框并显示错误，不写入配置；取色器菜单保留在原 Shadow Root，内部已有焦点时取消厂商误判触发的初始焦点遍历；仅保留最后一次待聚焦帧，先登记帧再发出选择，仅在控件仍连接、原焦点归属与颜色有效时同步焦点，色板替换、缓存停用与卸载时取消；仅为本取色器子树提供局部按钮语言与英语描述 fallback，不改父级 vendor 语言或全局配置。
 模块边界：只通过 v-model 发出颜色字符串，不读写配置，也不决定颜色如何作用到网页；色板与归一化规则来自 core/config/translationAppearance。
 -->
 <template>
@@ -44,7 +44,7 @@
           @keydown="handleKeydown($event, index + 1)"
         ><i aria-hidden="true" /></button>
       </div>
-      <span class="translation-color-custom" :class="{ selected: isCustom }" :title="t('settings.translationStyle.customColor')">
+      <span ref="customElement" class="translation-color-custom" :class="{ selected: isCustom }" :title="t('settings.translationStyle.customColor')">
         <PickerLocale>
           <ElColorPicker
             :model-value="isCustom ? modelValue : undefined"
@@ -74,13 +74,15 @@
 </template>
 
 <script setup lang="ts">
-import {computed, defineComponent, onBeforeUnmount, onDeactivated, onMounted, provide, ref, watch} from 'vue'
-import {ElColorPicker, localeContextKey, useLocale} from 'element-plus'
+import {computed, defineComponent, onActivated, onBeforeUnmount, onDeactivated, onMounted, provide, ref, watch} from 'vue'
+import {localeContextKey, useLocale} from 'element-plus'
+import {FOCUS_AFTER_TRAPPED} from 'element-plus/es/components/focus-trap/index'
 import English from 'element-plus/es/locale/lang/en'
 import type {Language, TranslatePair} from 'element-plus/es/locale'
 import type {UiLanguage} from '@/src/core/i18n/language'
 import {normalizeTranslationColor, type TranslationColorSwatch} from '@/src/core/config/translationAppearance'
 import {useUiI18n} from '@/src/ui/i18n'
+import {ShadowColorPicker as ElColorPicker} from '@/src/ui/shadowColorPicker'
 
 const props = defineProps<{
   modelValue: string
@@ -122,8 +124,32 @@ const PickerLocale = defineComponent({
   },
 })
 const groupElement = ref<HTMLElement | null>(null)
+const customElement = ref<HTMLElement | null>(null)
 const teleported = ref(false)
-onMounted(() => { teleported.value = !(groupElement.value?.getRootNode() instanceof ShadowRoot) })
+let focusGuardElement: HTMLElement | null = null
+function retainPickerFocus(event: Event): void {
+  const target = event.target
+  if (!(target instanceof HTMLElement)) return
+  const root = target.getRootNode()
+  // 厂商 document.activeElement 在闭合 Shadow Root 中只能看到 host。
+  // 只取消当前菜单已有内部焦点时的默认遍历，不抢焦点或阻止事件传播。
+  if (root instanceof ShadowRoot && target.contains(root.activeElement)) event.preventDefault()
+}
+function startPickerFocusGuard(): void {
+  if (focusGuardElement) return
+  focusGuardElement = customElement.value!
+  focusGuardElement.addEventListener(FOCUS_AFTER_TRAPPED, retainPickerFocus, true)
+}
+function stopPickerFocusGuard(): void {
+  if (!focusGuardElement) return
+  focusGuardElement.removeEventListener(FOCUS_AFTER_TRAPPED, retainPickerFocus, true)
+  focusGuardElement = null
+}
+onMounted(() => {
+  teleported.value = !(groupElement.value?.getRootNode() instanceof ShadowRoot)
+  startPickerFocusGuard()
+})
+onActivated(startPickerFocusGuard)
 const colorDraft = ref(props.modelValue)
 const invalidColor = ref(false)
 let pendingFocus: number | null = null
@@ -132,8 +158,8 @@ function cancelPendingFocus(): void {
   cancelAnimationFrame(pendingFocus)
   pendingFocus = null
 }
-onBeforeUnmount(cancelPendingFocus)
-onDeactivated(cancelPendingFocus)
+onBeforeUnmount(() => {cancelPendingFocus();stopPickerFocusGuard()})
+onDeactivated(() => {cancelPendingFocus();stopPickerFocusGuard()})
 watch(() => props.swatches.map(swatch => swatch.value), cancelPendingFocus)
 watch(() => props.modelValue, (value) => {
   colorDraft.value = value

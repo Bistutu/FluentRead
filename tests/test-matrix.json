@@ -598,6 +598,7 @@
       "tests/documentAppLifecycle.test.ts",
       "tests/sharedUiComponentsLifecycle.test.ts",
       "tests/shadowSelectOutside.test.ts",
+      "tests/shadowColorPicker.test.ts",
       "tests/documentUserActions.test.ts",
       "tests/implementationAudit48A.test.ts",
       "tests/implementationAudit48B.test.ts",

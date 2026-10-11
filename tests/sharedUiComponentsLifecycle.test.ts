@@ -143,6 +143,7 @@ import Russian from 'element-plus/es/locale/lang/ru';
 import Spanish from 'element-plus/es/locale/lang/es';
 import {translate, registerUiLanguageBundle, type UiLanguage, type TranslationParams} from '@/src/core/i18n';
 import {registerAllUiLanguageBundles, UI_LANGUAGE_BUNDLES} from '@/src/core/i18n/bundles';
+import {FOCUS_AFTER_TRAPPED, FOCUS_AFTER_TRAPPED_OPTS, FOCUS_AFTER_RELEASED} from 'element-plus/es/components/focus-trap/index';
 
 
 const apps = new Set<App>();
@@ -937,5 +938,127 @@ describe('ColorField local public locale ownership', () => {
       mounted.unmount();context.language.value = 'zh-CN';context.revision.value++;await settle();dom.flush();
       expect(mounted.root.childElementCount).toBe(0);expect(update).not.toHaveBeenCalled();expect(dom.frames.size).toBe(0);
     } finally {registerUiLanguageBundle('en-US', real);}
+  });
+});
+
+// Linkedom 0.18.12 不为非冒泡事件遍历祖先 capture（interface/event-target.js:70-81）。
+// 此局部 DOM port 仅补当前实例已真实登记的 capture 调用；同 Event 随后仍由目标真实 dispatch。
+// 没有模拟 FocusTrap 的遍历/默认行为，也不将其称为 native ShadowRoot 或真实 footer 证明。
+function observeColorFocusCaptures() {
+  const prototype = dom.window.HTMLElement.prototype as HTMLElement;
+  const originalAdd = prototype.addEventListener, originalRemove = prototype.removeEventListener;
+  const captures = new Map<HTMLElement, EventListenerOrEventListenerObject>();
+  const added: HTMLElement[] = [], removed: HTMLElement[] = [];
+  const isCapture = (options?: boolean | AddEventListenerOptions) => options === true || (typeof options === 'object' && options.capture === true);
+  vi.spyOn(prototype, 'addEventListener').mockImplementation(function (this: HTMLElement, ...args: Parameters<HTMLElement['addEventListener']>) {
+    const [type, listener, options] = args;
+    if (type === FOCUS_AFTER_TRAPPED && isCapture(options)) {captures.set(this, listener);added.push(this);}
+    Reflect.apply(originalAdd, this, args);
+  });
+  vi.spyOn(prototype, 'removeEventListener').mockImplementation(function (this: HTMLElement, ...args: Parameters<HTMLElement['removeEventListener']>) {
+    const [type, listener, options] = args;
+    if (type === FOCUS_AFTER_TRAPPED && isCapture(options) && captures.get(this) === listener) {captures.delete(this);removed.push(this);}
+    Reflect.apply(originalRemove, this, args);
+  });
+  function dispatch(target: Node) {
+    const value = new dom.window.Event(FOCUS_AFTER_TRAPPED, FOCUS_AFTER_TRAPPED_OPTS);
+    // Linkedom 删除 Event.target；私有原型保留该 Event 的真实目标，不修改全局原型。
+    Reflect.deleteProperty(value, 'target');
+    Object.setPrototypeOf(value, Object.create(Object.getPrototypeOf(value), {target: {get: () => target, set: () => {}}}));
+    const stop = vi.spyOn(value, 'stopPropagation'), immediate = vi.spyOn(value, 'stopImmediatePropagation');
+    const order: string[] = [];
+    const targetListener = (received: Event) => {expect(received).toBe(value);expect(received.target).toBe(target);order.push('target');};
+    target.addEventListener(FOCUS_AFTER_TRAPPED, targetListener, {once: true});
+    for (const [element, listener] of captures) {
+      if (!element.contains(target)) continue;
+      Object.defineProperty(value, 'eventPhase', {configurable: true, writable: true, value: value.CAPTURING_PHASE});
+      order.push('capture');
+      if (typeof listener === 'function') listener.call(element, value);else listener.handleEvent(value);
+    }
+    target.dispatchEvent(value);
+    expect(value.bubbles).toBe(false);expect(value.cancelable).toBe(true);
+    expect(stop).not.toHaveBeenCalled();expect(immediate).not.toHaveBeenCalled();
+    return {value, order};
+  }
+  return {captures, added, removed, dispatch};
+}
+function colorFocusPanel(mounted: Awaited<ReturnType<typeof mount>>, index = 0) {
+  const owner = mounted.root.querySelectorAll<HTMLElement>('.translation-color-custom')[index];
+  // 仅呈现外层 Popper 容器和输入；实际厂商容器由 Popper contentRef 承担，不是内层 ClickOutside div。
+  const panel = dom.document.createElement('div'), input = dom.document.createElement('input');
+  panel.tabIndex = -1;panel.append(input);owner.append(panel);
+  return {owner, panel, input};
+}
+
+describe('ColorField owned public focus-after-trapped event', () => {
+  it.each([[true, 'input'], [true, 'container'], ['closed', 'input'], ['closed', 'container']] as const)(
+    'retains existing internal focus without swallowing the target event, shadow=%s focus=%s', async (shadow, focused) => {
+      const captures = observeColorFocusCaptures(), update = vi.fn();
+      const mounted = await mount(TranslationColorField, colorProps(), {shadow, listeners: {'onUpdate:modelValue': update}});
+      const {owner, panel, input} = colorFocusPanel(mounted), root = panel.getRootNode() as ShadowRoot;
+      const active = focused === 'input' ? input : panel;active.focus();
+      // 原生 Document 在 ShadowRoot 内只看到 host；真实 guard 应从当前 root 读取内部焦点。
+      vi.spyOn(dom.document, 'activeElement', 'get').mockReturnValue(root.host);
+      expect(root.activeElement).toBe(active);expect(dom.document.activeElement).toBe(root.host);
+      const focus = vi.spyOn(dom.window.HTMLElement.prototype, 'focus');
+      const {value, order} = captures.dispatch(panel);
+      expect(value.defaultPrevented).toBe(true);expect(order).toEqual(['capture', 'target']);
+      expect(captures.captures.get(owner)).toEqual(expect.any(Function));
+      expect(root.activeElement).toBe(active);expect(focus).not.toHaveBeenCalled();expect(update).not.toHaveBeenCalled();expect(dom.frames.size).toBe(0);
+      const released = new dom.window.Event(FOCUS_AFTER_RELEASED, FOCUS_AFTER_TRAPPED_OPTS);panel.dispatchEvent(released);
+      expect(released.defaultPrevented).toBe(false);expect(root.activeElement).toBe(active);expect(update).not.toHaveBeenCalled();
+    });
+  it.each(['document', 'no-focus', 'trigger', 'other-control'] as const)(
+    'leaves original initial-focus permission unchanged for %s', async scenario => {
+      const captures = observeColorFocusCaptures(), update = vi.fn();
+      const mounted = await mount(TranslationColorField, colorProps(), {shadow: scenario !== 'document' && 'closed', listeners: {'onUpdate:modelValue': update}});
+      const {owner, panel, input} = colorFocusPanel(mounted);
+      if (scenario === 'document') input.focus();
+      if (scenario === 'trigger') owner.querySelector<HTMLButtonElement>('[data-color-picker-port]')!.focus();
+      if (scenario === 'other-control') mounted.root.querySelector<HTMLInputElement>('.translation-color-value')!.focus();
+      if (scenario === 'no-focus') expect((panel.getRootNode() as ShadowRoot).activeElement).toBeNull();
+      const focus = vi.spyOn(dom.window.HTMLElement.prototype, 'focus');
+      const {value, order} = captures.dispatch(panel);
+      expect(value.defaultPrevented).toBe(false);expect(order).toEqual(['capture', 'target']);
+      expect(focus).not.toHaveBeenCalled();expect(update).not.toHaveBeenCalled();expect(dom.frames.size).toBe(0);
+      // 另一控件的事件不在本实例 capture 路径内。
+      const outside = dom.document.createElement('div');dom.document.body.append(outside);
+      expect(captures.dispatch(outside).order).toEqual(['target']);
+    });
+  it('ignores a non-element event target and never treats an unrelated node as its menu', async () => {
+    const captures = observeColorFocusCaptures(), update = vi.fn();
+    const mounted = await mount(TranslationColorField, colorProps(), {shadow: 'closed', listeners: {'onUpdate:modelValue': update}});
+    const {panel, input} = colorFocusPanel(mounted), text = dom.document.createTextNode('text event target');panel.append(text);input.focus();
+    expect(captures.dispatch(text).value.defaultPrevented).toBe(false);
+    expect(update).not.toHaveBeenCalled();expect(dom.frames.size).toBe(0);
+  });
+  it('uses only each current instance capture and current panel focus', async () => {
+    const captures = observeColorFocusCaptures(), update = vi.fn();
+    const pair = defineComponent({setup: () => () => h('div', [
+      h(TranslationColorField, {...colorProps(), fieldId: 'first-focus', 'onUpdate:modelValue': update}),
+      h(TranslationColorField, {...colorProps(), fieldId: 'second-focus', 'onUpdate:modelValue': update}),
+    ])});
+    const mounted = await mount(pair, {}, {shadow: 'closed'}), first = colorFocusPanel(mounted), second = colorFocusPanel(mounted, 1);
+    expect(captures.captures.size).toBe(2);first.input.focus();
+    expect(captures.dispatch(first.panel).value.defaultPrevented).toBe(true);
+    expect(captures.dispatch(second.panel).value.defaultPrevented).toBe(false);
+    second.input.focus();expect(captures.dispatch(second.panel).value.defaultPrevented).toBe(true);
+    expect(captures.dispatch(first.panel).value.defaultPrevented).toBe(false);
+    expect(update).not.toHaveBeenCalled();expect(dom.frames.size).toBe(0);
+  });
+  it('balances mounted, cached activation and disposal listeners without stale capture callbacks', async () => {
+    const captures = observeColorFocusCaptures(), update = vi.fn();
+    const mounted = await mount(TranslationColorField, colorProps(), {shadow: 'closed', keepAlive: true, listeners: {'onUpdate:modelValue': update}});
+    const {owner, panel, input} = colorFocusPanel(mounted);input.focus();
+    expect(captures.added).toEqual([owner]);expect(captures.captures.size).toBe(1);
+    expect(captures.dispatch(panel).value.defaultPrevented).toBe(true);
+    mounted.visible.value = false;await settle();expect(captures.removed).toEqual([owner]);expect(captures.captures.size).toBe(0);
+    expect(captures.dispatch(panel).value.defaultPrevented).toBe(false);
+    mounted.visible.value = true;await settle();input.focus();expect(captures.added).toEqual([owner, owner]);
+    expect(captures.dispatch(panel).value.defaultPrevented).toBe(true);
+    mounted.visible.value = false;await settle();expect(captures.removed).toEqual([owner, owner]);
+    mounted.unmount();expect(captures.captures.size).toBe(0);expect(captures.removed).toEqual([owner, owner]);
+    expect(captures.dispatch(panel).value.defaultPrevented).toBe(false);
+    expect(update).not.toHaveBeenCalled();expect(dom.frames.size).toBe(0);
   });
 });

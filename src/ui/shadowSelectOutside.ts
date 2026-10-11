@@ -1,8 +1,8 @@
 /**
  * @file src/ui/shadowSelectOutside.ts
- * 文件职责：为 UiSelect 的实例局部 ClickOutside 指令保留 Shadow Root 内的真实鼠标目标。
+ * 文件职责：为下拉选择和取色器的实例局部 ClickOutside 指令保留 Shadow Root 内的真实鼠标目标。
  * 主要内容：委托原指令，按同一 Event 的内部目标和当前根、弹层、排除节点归属过滤误判；仅监听本实例节点，并在停用和卸载时清理。
- * 模块边界：不阻止或重发事件，不修改 Element Plus 全局定义，不解释选择值或配置；依赖锁版本选择器的 popperRef 指令接口。
+ * 模块边界：不阻止或重发事件，不修改 Element Plus 全局定义，不解释选择值或配置；复用锁版本指令的排除节点和可选 popperRef 接口。
  */
 import type {DirectiveBinding, ObjectDirective} from 'vue';
 
