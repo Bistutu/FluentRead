@@ -862,6 +862,8 @@ async function main() {
       return null;
     });
     await page.locator('#fluent-read-video-subtitle-menu [data-action="download-translated-subtitles"]').press('Enter');
+    // 译文导出先在菜单内列出待补译的数量，确认后才开始请求翻译。
+    await page.locator('#fluent-read-video-subtitle-menu [data-export-prompt] [data-export-choice="complete"]').click({timeout: 15000});
     await page.waitForFunction(() => {
       const button = document.querySelector('#fluent-read-video-subtitle-menu [data-action="download-translated-subtitles"]');
       return button?.getAttribute('aria-busy') === 'true'
@@ -1288,6 +1290,70 @@ async function main() {
       native: document.querySelector('#ytp-caption-window-container .ytp-caption-segment')?.textContent || '',
     }));
 
+
+    // 逐字高亮默认关闭；开启后已显示的双语字幕立即拆成单元，并按当前句（2000–5000ms）的时间扫光。
+    const readKaraoke = () => page.evaluate(() => Object.fromEntries(['fluent-read-video-subtitle-original', 'fluent-read-video-subtitle'].map((id) => {
+      const line = document.getElementById(id);
+      const units = Array.from(line?.querySelectorAll('.fluent-read-video-karaoke-unit') || []);
+      const active = units.find(unit => unit.getAttribute('data-fluent-read-karaoke-state') === 'active');
+      return [id, {
+        text: line?.textContent || '',
+        units: units.length,
+        sung: units.filter(unit => unit.getAttribute('data-fluent-read-karaoke-state') === 'sung').length,
+        activeIndex: active ? units.indexOf(active) : -1,
+        fill: active ? Number.parseFloat(active.style.getPropertyValue('--fluent-read-video-karaoke-fill')) : null,
+        clip: active ? getComputedStyle(active, '::after').clipPath : '',
+        pendingColor: units.length ? getComputedStyle(units[units.length - 1]).color : '',
+        lineColor: line ? getComputedStyle(line).color : '',
+      }];
+    })));
+    const karaokeDefault = await readKaraoke();
+    if (Object.values(karaokeDefault).some(line => line.units !== 0)) throw new Error(`逐字高亮应默认关闭：${JSON.stringify(karaokeDefault)}`);
+    const karaokeAppearance = (await readExtensionConfig(control)).videoSubtitleAppearance || {};
+    await persistExtensionConfig(control, {videoSubtitleAppearance: {...karaokeAppearance, karaoke: true}});
+    await page.waitForFunction(() => ['fluent-read-video-subtitle-original', 'fluent-read-video-subtitle']
+      .every(id => document.querySelector(`#${id} [data-fluent-read-karaoke-state="active"]`)), null, {timeout: 10000});
+    const karaokeStart = await readKaraoke();
+    await page.evaluate(() => {
+      const video = document.querySelector('video.html5-main-video');
+      video.currentTime = 3.6;
+      video.dispatchEvent(new Event('timeupdate'));
+    });
+    await page.waitForFunction(() => document.querySelectorAll('#fluent-read-video-subtitle [data-fluent-read-karaoke-state="sung"]').length > 0, null, {timeout: 10000});
+    const karaokeMiddle = await readKaraoke();
+    await page.locator('#fluent-read-video-subtitle-panel').screenshot({ path: path.join(artifactsDir, 'video-subtitle-karaoke.png') });
+    // 真实播放时由帧循环推进：同一句内高亮位置必须前进。
+    await page.evaluate(() => document.querySelector('video.html5-main-video').play());
+    await page.waitForFunction((before) => {
+      const units = Array.from(document.querySelectorAll('#fluent-read-video-subtitle .fluent-read-video-karaoke-unit'));
+      const active = units.findIndex(unit => unit.getAttribute('data-fluent-read-karaoke-state') === 'active');
+      const fill = active < 0 ? 0 : Number.parseFloat(units[active].style.getPropertyValue('--fluent-read-video-karaoke-fill'));
+      return active < 0 || active > before.activeIndex || fill > before.fill + 5;
+    }, karaokeMiddle['fluent-read-video-subtitle'], {timeout: 10000});
+    await page.evaluate(() => document.querySelector('video.html5-main-video').pause());
+    const karaokePlaying = await readKaraoke();
+    await page.evaluate(() => {
+      const video = document.querySelector('video.html5-main-video');
+      video.currentTime = 2.2;
+      video.dispatchEvent(new Event('timeupdate'));
+    });
+    await page.waitForFunction(() => document.querySelectorAll('#fluent-read-video-subtitle [data-fluent-read-karaoke-state="sung"]').length === 0, null, {timeout: 10000});
+    const karaokeRewound = await readKaraoke();
+    await persistExtensionConfig(control, {videoSubtitleAppearance: {...karaokeAppearance, karaoke: false}});
+    await page.waitForFunction(() => !document.querySelector('#fluent-read-video-subtitle-layer .fluent-read-video-karaoke-unit'), null, {timeout: 10000});
+    const karaokeOff = await readKaraoke();
+    const karaoke = {default: karaokeDefault, start: karaokeStart, middle: karaokeMiddle, playing: karaokePlaying, rewound: karaokeRewound, off: karaokeOff};
+    for (const id of ['fluent-read-video-subtitle-original', 'fluent-read-video-subtitle']) {
+      const [initial, start, middle, rewound, off] = [karaokeDefault[id], karaokeStart[id], karaokeMiddle[id], karaokeRewound[id], karaokeOff[id]];
+      if (start.text !== initial.text || middle.text !== initial.text || off.text !== initial.text || off.units !== 0
+        || start.units < 2 || start.activeIndex !== 0 || start.sung !== 0
+        || middle.sung < 1 || middle.activeIndex !== middle.sung || !(middle.fill >= 0 && middle.fill <= 100)
+        || !middle.clip.startsWith('inset(') || middle.pendingColor === middle.lineColor
+        || rewound.activeIndex !== 0 || rewound.sung !== 0) {
+        throw new Error(`逐字高亮状态不正确：${JSON.stringify(karaoke)}`);
+      }
+    }
+
     await page.locator('#fluent-read-video-subtitle-panel').screenshot({ path: path.join(artifactsDir, 'video-subtitle-panel.png') });
     await page.screenshot({ path: path.join(artifactsDir, 'video-subtitle-fixture-player.png'), fullPage: false });
     evidence = {
@@ -1333,6 +1399,7 @@ async function main() {
       aiTranslationRequests: aiPrefetchRequests.length,
       aiContextRequests: aiContextRequests.length,
       timelineAlignment,
+      karaoke,
       downloadEvidence,
       translationRequests,
       translationSources,

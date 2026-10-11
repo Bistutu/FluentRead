@@ -50,6 +50,7 @@ describe('video subtitle appearance contract', () => {
       lineSpacing: 1.35,
       maxWidth: 67,
       fontScale: 123,
+      karaoke: true,
     })).toEqual({
       skin: 'neon',
       textColor: '#abcdef',
@@ -61,6 +62,7 @@ describe('video subtitle appearance contract', () => {
       lineSpacing: 1.35,
       maxWidth: 67,
       fontScale: 123,
+      karaoke: true,
     });
     expect(normalizeVideoSubtitleAppearance({
       skin: 'removed',
@@ -74,6 +76,9 @@ describe('video subtitle appearance contract', () => {
       fontScale: undefined,
     })).toEqual(DEFAULT_VIDEO_SUBTITLE_APPEARANCE);
     expect(normalizeVideoSubtitleAppearance({position: 'center'}).position).toBe('center');
+    // 逐字高亮默认关闭，只有明确的 true 才开启。
+    expect(DEFAULT_VIDEO_SUBTITLE_APPEARANCE.karaoke).toBe(false);
+    expect(normalizeVideoSubtitleAppearance({karaoke: 'true'}).karaoke).toBe(false);
     expect(normalizeVideoSubtitleAppearance({bottomOffset: 10}).autoBottom).toBe(true);
     expect(normalizeVideoSubtitleAppearance({bottomOffset: 16}).autoBottom).toBe(false);
     expect(normalizeVideoSubtitleAppearance({autoBottom: false}).autoBottom).toBe(false);

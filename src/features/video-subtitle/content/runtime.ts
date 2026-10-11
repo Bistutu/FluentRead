@@ -1,7 +1,7 @@
 /**
  * @file src/features/video-subtitle/content/runtime.ts
  * 文件职责：装配视频及会议字幕运行时，并协调 YouTube/X 原生字幕、目标语言人工轨、逐条翻译、校时、菜单和下载。
- * 主要内容：相同译文保留原文且不重复展示；协调字幕校时、预翻译与补译导出确认；X 分片加载尊重原生轨道优先级，播放器内换模型必须确认且保留取消焦点，完整 AI 识别提前展示稳定句，完成后才缓存和导出。
+ * 主要内容：相同译文保留原文且不重复展示；协调字幕校时、预翻译与补译导出确认，并为可选的逐字高亮提供当前句时间；X 分片加载尊重原生轨道优先级，播放器内换模型必须确认且保留取消焦点，完整 AI 识别提前展示稳定句，完成后才缓存和导出。
  * 模块边界：本文件只在 content 页面编排，不拦截 fetch/XHR 也不实现翻译 provider；MAIN-world bridge 在独立模块捕获 timedtext，解析算法在 youtubeSubtitleData，翻译经 app client。
  */
 import {hasDistinctTranslation} from '@/src/core/translation/result';
@@ -56,7 +56,7 @@ import {getVideoTranslationConfigFingerprint, normalizeVideoCaptionText, revealV
 export {translateVideoSubtitleCues, getVideoTranslationConfigFingerprint, normalizeVideoCaptionText, revealVideoSubtitleTranslation} from './subtitleLogic';
 export {getVideoSubtitleDownloadErrorMessage} from './ui';
 import { config, requestConfigPatch, subscribeConfig } from '@/src/services/config/store';
-import {getVideoUiLanguage, localizeVideoUiText, refreshVideoUiAccessibility, refreshVideoUiText, getVideoSubtitleDownloadErrorMessage} from './ui';
+import {getVideoUiLanguage, localizeVideoUiText, refreshVideoUiAccessibility, refreshVideoUiText, getVideoSubtitleDownloadErrorMessage, writeVideoCaptionText, createVideoSubtitleKaraoke} from './ui';
 import {
   type Config,
   normalizeVideoSubtitleOffsetMs,
@@ -271,7 +271,7 @@ export function mountVideoSubtitleTranslation(): () => void {
 
   const clearRenderedTranslation = () => {
     document.querySelectorAll(`#${VIDEO_TRANSLATION_OVERLAY_ID}`).forEach((node) => {
-      node.textContent = '';
+      writeVideoCaptionText(node, '');
     });
   };
 
@@ -283,7 +283,7 @@ export function mountVideoSubtitleTranslation(): () => void {
       node.classList.remove(VIDEO_NORMALIZED_CAPTION_ACTIVE_CLASS);
     });
     document.querySelectorAll(`#${VIDEO_NORMALIZED_CAPTION_OVERLAY_ID}`).forEach((node) => {
-      node.textContent = '';
+      writeVideoCaptionText(node, '');
     });
     normalizedCaptionActive = false;
   };
@@ -374,6 +374,9 @@ export function mountVideoSubtitleTranslation(): () => void {
 
   const hasAdjustedTimeline = () => subtitleOffsetMs !== 0 && pretranslationCues.length > 0;
   const getAdjustedCaptionCue = () => selectVideoSubtitleCueAtOffset(pretranslationCues, getCurrentVideoTimeMs(), subtitleOffsetMs);
+  // 逐字高亮默认关闭；开启后原文与译文按当前句的时间一起扫光，手动校时同样生效。
+  const karaoke = createVideoSubtitleKaraoke(() => canReadVideo() ? observedVideo : null,
+    () => progressiveCue || getAdjustedCaptionCue(), () => subtitleOffsetMs);
   const readCurrentCaptionText = (container: Element | null): string => {
     if (!container) return '';
     if (!hasAdjustedTimeline()) return readVisibleCaptionText(container);
@@ -434,7 +437,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     }
     if (!progressiveTranslation) return;
     if (!visibleTranslation(progressiveTranslation, progressiveCue.text)) {
-      overlay.textContent = '';
+      writeVideoCaptionText(overlay, '');
       syncTranslationOverlayPosition(container);
       return;
     }
@@ -443,7 +446,7 @@ export function mountVideoSubtitleTranslation(): () => void {
       ? progressiveTranslation.trim()
       : revealVideoSubtitleTranslation(progressiveTranslation, source, progressiveCue.text);
     if (!revealed) return;
-    overlay.textContent = revealed;
+    writeVideoCaptionText(overlay, revealed);
     syncTranslationOverlayPosition(container);
   };
 
@@ -461,7 +464,7 @@ export function mountVideoSubtitleTranslation(): () => void {
       ++generation;
       lastTranslatedSource = '';
       lastTranslatedText = '';
-      overlay.textContent = '';
+      writeVideoCaptionText(overlay, '');
     } else {
       progressiveCue = cue;
     }
@@ -1390,7 +1393,7 @@ export function mountVideoSubtitleTranslation(): () => void {
             if (!currentContainer || readCurrentCaptionText(currentContainer) !== nextSource) continue;
             if (isXVideoPage()) { renderSynchronizedXCaption(currentContainer, nextSource, result); continue; }
             if (!shown) continue;
-            nextOverlay.textContent = shown;
+            writeVideoCaptionText(nextOverlay, shown);
             syncTranslationOverlayPosition(currentContainer);
           } catch (error) {
             if (!destroyed && requestGeneration === generation) {
@@ -1416,7 +1419,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     ++generation;
     lastTranslatedSource = '';
     lastTranslatedText = '';
-    overlay.textContent = '';
+    writeVideoCaptionText(overlay, '');
     if (container.id === VIDEO_AI_CAPTION_CONTAINER_ID || isYouTubeVideoPage()) {
       const player = playerLocator.getTarget()?.player || (isYouTubeVideoPage() ? findVideoPlayer() : null);
       if (player) {
@@ -1428,7 +1431,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     if (cached !== undefined) {
       lastTranslatedSource = source;
       lastTranslatedText = cached;
-      overlay.textContent = visibleTranslation(cached, source);
+      writeVideoCaptionText(overlay, visibleTranslation(cached, source));
       if (isXVideoPage()) renderSynchronizedXCaption(container, source, cached);
       pendingTranslationSource = '';
       pendingTranslationOverlay = null;
@@ -1549,14 +1552,14 @@ export function mountVideoSubtitleTranslation(): () => void {
       lastSource = '';
       lastTranslatedSource = '';
       lastTranslatedText = '';
-      overlay.textContent = '';
+      writeVideoCaptionText(overlay, '');
     }
 
     if (source === lastSource) {
       syncTranslationOverlayPosition(container);
       const shown = lastTranslatedSource === source ? visibleTranslation(lastTranslatedText, source) : '';
       if (lastTranslatedSource === source && overlay.textContent !== shown) {
-        overlay.textContent = shown;
+        writeVideoCaptionText(overlay, shown);
         syncTranslationOverlayPosition(container);
       }
       return;
@@ -1808,6 +1811,7 @@ export function mountVideoSubtitleTranslation(): () => void {
     syncPretranslationConfig();
     syncPlayerUi();
     updatePlayerUiState();
+    karaoke.sync();
     if (observedContainer) {
       applyVideoDisplayState(observedContainer);
       syncTranslationOverlayPosition(observedContainer);
@@ -1831,7 +1835,7 @@ export function mountVideoSubtitleTranslation(): () => void {
   });
 
   return () => {
-    destroyed = true; aiModelSetup.reset();
+    destroyed = true; aiModelSetup.reset(); karaoke.destroy();
     humanCaptions.clear();
     downloads.destroy();
     cacheEpoch += 1;

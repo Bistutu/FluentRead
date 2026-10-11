@@ -72,6 +72,12 @@ Use the menu to show or hide subtitles and download them. Completed X transcript
 <details class="guide-details">
 <summary>Missing or inaccurate subtitles</summary>
 
+### Word-by-word highlight
+
+To make subtitles follow the video like karaoke lyrics, turn on **Word-by-word highlight** in video appearance settings (off by default). The current sentence starts dimmed and lights up from start to end as the video plays. The original and the translation advance together, and the highlight stays in the right place after pausing, seeking, changing speed, or adjusting subtitle timing. It uses the skin and colors you already picked.
+
+Subtitles only carry start and end times for whole sentences, so the pace within a sentence is estimated from its length. It can drift slightly from the actual speech when the speaker's pace varies. It currently applies to FluentRead subtitles on YouTube and X.
+
 ## Missing or inaccurate subtitles
 
 Check that subtitles are enabled and the video has a native track. For X AI subtitles, confirm the model download and use Auto when the spoken language is unknown or changes during the video.
