@@ -236,7 +236,7 @@ describe('free translation settings compiled component', () => {
     const details = elements.find(element => element.props['data-testid'] === 'free-routing-details');
     expect(details).toBeUndefined();
     expect(elements.some(element => element.tag === 'details')).toBe(false);
-    expect(elements.find(element => element.props['data-provider-weight'] === 'microsoft')?.text).toBe('13.1%');
+    expect(elements.find(element => element.props['data-provider-weight'] === 'microsoft')?.text).toBe('12.8%');
     expect(control('启用 阿里翻译').props['model-value']).toBe(true);
     state.toggle('alibabaFree', false);
     await runtime.nextTick();
@@ -248,8 +248,8 @@ describe('free translation settings compiled component', () => {
     expect(readFileSync(resolve(process.cwd(), componentPath), 'utf8')).not.toContain('setWeight');
   });
 
-  it('豆包网页免费节点展示在目录中，但不重新启用旧列表未选择的节点', async () => {
-    expect(control('启用 豆包网页翻译').props['model-value']).toBe(false);
+  it('豆包网页免费节点默认开启，但不重新启用旧列表未选择的节点', async () => {
+    expect(control('启用 豆包网页翻译').props['model-value']).toBe(true);
     config.freeTranslationOrder = ['google'];
     await runtime.nextTick();
     expect(state.providers.find((provider: {id: string}) => provider.id === 'doubaoWeb')?.label).toBe('豆包网页翻译');
