@@ -1,0 +1,1173 @@
+{
+  "scope": "Executed stages, including failures and invalid diagnostics; snapshot hashes bind the actual inputs, not a later commit retroactively. UTC ledger timestamps; Vitest host-local clock display differs.",
+  "stages": [
+    {
+      "name": "post-maintenance-smoke",
+      "startedAtUTC": "2026-10-11T05:42:33.411048+00:00",
+      "args": [
+        "test",
+        "tests/userscriptCompression.test.ts",
+        "tests/userscriptViteConfig.test.ts"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "15b34df7d7c00c86f51a41c44007fad1305c5e62010b0c12ef97c93ef63a0a6e",
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T05:42:36.746102+00:00",
+      "wallSeconds": 3.334,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "post-maintenance-smoke.log.txt",
+      "logSha256": "766b82ae7c3bd9cbbe6166e08ddacf352be092403a282c679d340dbef71688ed",
+      "timeFileSha256": "f865c7ee45507ed89817fff8845241692354dfd6c24b802055c67c52a7e636ca",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-original-post-maintenance",
+      "startedAtUTC": "2026-10-11T05:43:38.112994+00:00",
+      "args": [
+        "build:userscript:greasyfork"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "15b34df7d7c00c86f51a41c44007fad1305c5e62010b0c12ef97c93ef63a0a6e",
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T05:43:38.661810+00:00",
+      "wallSeconds": 0.548,
+      "exitCode": 1,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-original-post-maintenance.log.txt",
+      "logSha256": "14421286228ee436b9558037d733c215e3f562aeb7ec327da7148d0b87c00716",
+      "timeFileSha256": "eff49562288e629eea99816d905e59f8309b869d88ff204e5b769ac13117735e",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-graph-diagnostic",
+      "startedAtUTC": "2026-10-11T05:44:59.939289+00:00",
+      "args": [
+        "exec",
+        "node",
+        "<local-evidence>/gf-module-graph.mjs"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "15b34df7d7c00c86f51a41c44007fad1305c5e62010b0c12ef97c93ef63a0a6e",
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T05:45:02.975125+00:00",
+      "wallSeconds": 3.035,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-graph-diagnostic.log.txt",
+      "logSha256": "326cca9aed55ad47e9bc5a782d81ccdf0d315b758c2a0b3d56108f3e445ab4cb",
+      "timeFileSha256": "388cf8cde9a8ee9b078936627b1bd6b2aa273b02aaf33ccf1c33efe01f743d09",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-original-vite-post-maintenance",
+      "startedAtUTC": "2026-10-11T05:46:43.273122+00:00",
+      "args": [
+        "exec",
+        "vite",
+        "build",
+        "--config",
+        "userscript/vite.config.ts"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "15b34df7d7c00c86f51a41c44007fad1305c5e62010b0c12ef97c93ef63a0a6e",
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T05:46:46.346703+00:00",
+      "wallSeconds": 3.073,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-original-vite-post-maintenance.log.txt",
+      "logSha256": "b47a8a7507fb54204e9adbb3e827b91e9811be609e5b676635638ece18d4aa88",
+      "timeFileSha256": "48b395299a37ba11788450699ec88c91b1d933220c83f248fb5fbc31285cae9c",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-graph-production-diagnostic",
+      "startedAtUTC": "2026-10-11T05:47:04.332370+00:00",
+      "args": [
+        "exec",
+        "node",
+        "<local-evidence>/gf-module-graph.mjs"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "15b34df7d7c00c86f51a41c44007fad1305c5e62010b0c12ef97c93ef63a0a6e",
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T05:47:07.361165+00:00",
+      "wallSeconds": 3.028,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-graph-production-diagnostic.log.txt",
+      "logSha256": "fbd540eb75b1c3a7052d2a789c7b156dc3a8201a38286fb448284e6eb1a848ea",
+      "timeFileSha256": "dc1a7d5b652977caea5000b70920501cd77e7031cbfded43876f3b69ff12759f",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-format-diagnostic",
+      "startedAtUTC": "2026-10-11T05:51:35.612745+00:00",
+      "args": [
+        "exec",
+        "node",
+        "<local-evidence>/gf-format-diagnostic.mjs"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "15b34df7d7c00c86f51a41c44007fad1305c5e62010b0c12ef97c93ef63a0a6e",
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T05:51:36.126242+00:00",
+      "wallSeconds": 0.513,
+      "exitCode": 1,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-format-diagnostic.log.txt",
+      "logSha256": "9d944fb2bf47622ea542eb0b019e9bcba7214ce9447470877bb0c241296863bf",
+      "timeFileSha256": "4fd3f27735558b74f9ae0fde7a3079c7797f85ee0b2799f9ce95da89e9a64ef2",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-format-diagnostic-fixed",
+      "startedAtUTC": "2026-10-11T05:51:45.312300+00:00",
+      "args": [
+        "exec",
+        "node",
+        "<local-evidence>/gf-format-diagnostic.mjs"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "15b34df7d7c00c86f51a41c44007fad1305c5e62010b0c12ef97c93ef63a0a6e",
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T05:51:45.992707+00:00",
+      "wallSeconds": 0.68,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-format-diagnostic-fixed.log.txt",
+      "logSha256": "73a7f5c031ef1fd77ccf88b552cdcb1ff625cadde16ff1e2ff8a5abd46682568",
+      "timeFileSha256": "844d8aecf4c559d2898327ea7c7836a2cf51209587f96cc0fbdc78b0ea499cda",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-prepare-resources",
+      "startedAtUTC": "2026-10-11T05:53:54.828608+00:00",
+      "args": [
+        "exec",
+        "node",
+        "scripts/build-userscript-greasyfork.mjs",
+        "--prepare-resources"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "15b34df7d7c00c86f51a41c44007fad1305c5e62010b0c12ef97c93ef63a0a6e",
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "expectedResourceWrites": [
+        "userscript/resources/fluentread-data.v1.js",
+        "userscript/resources/fluentread-vendor.v1.js"
+      ],
+      "afterSourceSnapshotSha256": "a40edd805c02f415cb481b130ef35ffaac9629da6ff2fc58d26a6236cb7a465b",
+      "resourceFileBinding": {
+        "userscript/resources/fluentread-data.v1.js": {
+          "before": "2c14c754f6486dee45b6bfd91f2a3b7c9464b26cf8d4be2b172b2692ae0e6fa4",
+          "after": "188f108ffa54c98cfed09551009fc8df138f1e056dc815810c44e1da7c828c9d"
+        },
+        "userscript/resources/fluentread-vendor.v1.js": {
+          "before": "5f9842e69eebcf23ead1a9807f366f4bbcb9833397b1b8e0ed7c7ec75b6a8283",
+          "after": "f3e857d7d51bf606f36a32901f1726a45702d002425d8592b94f544bad79626a"
+        }
+      },
+      "finishedAtUTC": "2026-10-11T05:53:59.009676+00:00",
+      "wallSeconds": 4.18,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": false,
+      "log": "gf-prepare-resources.log.txt",
+      "logSha256": "f670faef9c8173401996a62381b5532ffe915e7d05da158dc2032237f9952735",
+      "timeFileSha256": "03da54db42edcaa128c329e86b99928c8258771a702f6a08b2857699d0e792e5",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-fresh-resources-baseline",
+      "startedAtUTC": "2026-10-11T06:01:00.768991+00:00",
+      "args": [
+        "exec",
+        "vite",
+        "build",
+        "--config",
+        "userscript/vite.config.ts"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "a40edd805c02f415cb481b130ef35ffaac9629da6ff2fc58d26a6236cb7a465b",
+      "patchSha256": "0ea3bb9def903c65af5499d5857766cdcb26ef354112c901fd7c06b47f56f164",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T06:01:03.774093+00:00",
+      "wallSeconds": 3.003,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-fresh-resources-baseline.log.txt",
+      "logSha256": "4dfcd611eca6a50a7351e95fa8d20e4b2bcf6e44e33ade0501677fb3ba44f397",
+      "timeFileSha256": "a8901d000b21e5bfceda73dc9d31003055e97c810fbfe9727f533cec147fd7f4",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-readable-indent-measure",
+      "startedAtUTC": "2026-10-11T06:02:04.631092+00:00",
+      "args": [
+        "exec",
+        "node",
+        "<local-evidence>/gf-readable-indent.prototype.mjs",
+        "<checkout>",
+        "<local-evidence>/fresh-fluent-read.user.js",
+        "<local-evidence>/GF-READABLE-INDENT-MEASURE.json"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "a40edd805c02f415cb481b130ef35ffaac9629da6ff2fc58d26a6236cb7a465b",
+      "patchSha256": "0ea3bb9def903c65af5499d5857766cdcb26ef354112c901fd7c06b47f56f164",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T06:02:06.279282+00:00",
+      "wallSeconds": 1.646,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-readable-indent-measure.log.txt",
+      "logSha256": "8cb308c27143b054863d55fd6b15894af86427e70918ef483bb938d0ed5298eb",
+      "timeFileSha256": "5ceeedfba07bd1b79ada930816af8e4500e96c58038d2143922775e26bdeba24",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-character-contract-tests",
+      "startedAtUTC": "2026-10-11T06:02:49.657431+00:00",
+      "args": [
+        "exec",
+        "vitest",
+        "run",
+        "tests/userscriptCharacterDataResource.test.ts",
+        "tests/userscriptViteConfig.test.ts",
+        "tests/userscriptCompression.test.ts"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "48ee393b2de792439b6aa4246570524d87020e8f2641f5ee6eb6f6634756c245",
+      "patchSha256": "5dbb97a3b802996938314d68f15b4bca977286cf1764fbd08809fd6f877be74e",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T06:02:53.575670+00:00",
+      "wallSeconds": 3.916,
+      "exitCode": 1,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-character-contract-tests.log.txt",
+      "logSha256": "cd2d9ab2ef86dd73d971e511ab4a1cdf5733761f2b65f356030f4aadf8219070",
+      "timeFileSha256": "c9b80bbbdf7f39403a8925e73465dbeb4c47309df5eca484bbe92947b559cab2",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-character-resource-candidate",
+      "startedAtUTC": "2026-10-11T06:04:17.837495+00:00",
+      "args": [
+        "exec",
+        "vite",
+        "build",
+        "--config",
+        "userscript/vite.config.ts"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "eb422036c46f1a56b96938a638613c749c12fb745c8ebf2da25104452cdbc226",
+      "patchSha256": "f0f46bd4c0240afa30d92439d27c5b2898a901a989ab58426e5bc8b12cf957b5",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T06:04:20.885146+00:00",
+      "wallSeconds": 3.045,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-character-resource-candidate.log.txt",
+      "logSha256": "4b7bf18e48afcec33f15e4937bbfc705f4c4140407dd4ae92ef3d111a8ecf498",
+      "timeFileSha256": "55bc8fbfa43f35f00a7c4fba4a0f4a83e63e1642ddc807f8eedb5ba55aa5c5bf",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-character-contract-tests-final",
+      "startedAtUTC": "2026-10-11T06:05:09.449915+00:00",
+      "args": [
+        "exec",
+        "vitest",
+        "run",
+        "tests/userscriptViteConfig.test.ts",
+        "tests/userscriptCompression.test.ts"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "3e847b66a6bab1e05a4493bd9a4a319b91c8bb0cc0dc5702c1ea1d0fa615478f",
+      "patchSha256": "010a576b6672f7c801374be93f335920b3338e65084c4729f5c209bc637583c3",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T06:05:12.986456+00:00",
+      "wallSeconds": 3.535,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-character-contract-tests-final.log.txt",
+      "logSha256": "1a6d25701bbb224a49dcdc374cb5307163559a9b37699ff7550250a5a1175d34",
+      "timeFileSha256": "09adb5673c66d834e43c6ca8d56a725ff4002ecb15588adb055938d8f8e3ec52",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-candidate-compile",
+      "startedAtUTC": "2026-10-11T06:05:49.010058+00:00",
+      "args": [
+        "compile"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "3e847b66a6bab1e05a4493bd9a4a319b91c8bb0cc0dc5702c1ea1d0fa615478f",
+      "patchSha256": "010a576b6672f7c801374be93f335920b3338e65084c4729f5c209bc637583c3",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T06:06:07.548721+00:00",
+      "wallSeconds": 18.537,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-candidate-compile.log.txt",
+      "logSha256": "c6d541ed058cefffb02f71a02be099a4e834b77d930a52920b7ff9dce9301e8f",
+      "timeFileSha256": "b90b99fcd53947b6a8728c71eeddb4ea110400df38a890de0e0a703d1f85c749",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-character-tinycolor-candidate",
+      "startedAtUTC": "2026-10-11T06:06:38.624095+00:00",
+      "args": [
+        "exec",
+        "vite",
+        "build",
+        "--config",
+        "userscript/vite.config.ts"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "251396df78405baa00e6cf302e1b44c2126e9ece20956f627f9e775d8ca77ef2",
+      "patchSha256": "38b00bb7ed1020f4b66b7b12ec56cebaf0a7225246b6bd546511227d532f22a3",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T06:06:41.622577+00:00",
+      "wallSeconds": 2.997,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-character-tinycolor-candidate.log.txt",
+      "logSha256": "e953f90c1ecc94ea20ba86791fc8a62f2dbed81a09d299d87cd8460b0d001715",
+      "timeFileSha256": "fc7c24219ca84cfb08a9c56d262d89faccbdda86c49f521498bb8200ec6bbb08",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-character-tinycolor-noble-candidate",
+      "startedAtUTC": "2026-10-11T06:07:08.657929+00:00",
+      "args": [
+        "exec",
+        "vite",
+        "build",
+        "--config",
+        "userscript/vite.config.ts"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "8a1249b21b83d5fa884efe6f83444cbdc30de9a1086c890124eb7d870d4b4c3d",
+      "patchSha256": "03685c5911ca9378e0ca0a38273bb4ac17127b994abcbadea13e148ee1b2d32a",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T06:07:11.668161+00:00",
+      "wallSeconds": 3.008,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-character-tinycolor-noble-candidate.log.txt",
+      "logSha256": "9db582e023e33ed8e6128d33e22efcf2b0dd8aa0e2d96b92658a71bd6dc3f261",
+      "timeFileSha256": "1fd9d1313dda1e471686471429fb6d60b86107069f467f37947bcabd6c7d37c1",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-character-noble-candidate",
+      "startedAtUTC": "2026-10-11T06:08:59.934816+00:00",
+      "args": [
+        "exec",
+        "vite",
+        "build",
+        "--config",
+        "userscript/vite.config.ts"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "8407f9094e1b1cbe89858e48df6bfc13ab9be213f21b19f91c421393f95f257a",
+      "patchSha256": "bf121d078f90c35762209c5a349a4a5c86bef03158417b843fd0dd4405f17e86",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T06:09:02.960228+00:00",
+      "wallSeconds": 3.023,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-character-noble-candidate.log.txt",
+      "logSha256": "a5c7906ee8cdfb4516b32251b6fb92fc07a83a397ab6d2ac7f88deb8512c9e6f",
+      "timeFileSha256": "e9429b331815e125589b16a0eb3ea7dd60f35975a6fbbbcf6f686636d3b7090c",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-final-prepare-resources",
+      "startedAtUTC": "2026-10-11T06:09:55.041443+00:00",
+      "args": [
+        "exec",
+        "node",
+        "scripts/build-userscript-greasyfork.mjs",
+        "--prepare-resources"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "90f10c067aa6fc761ab5d3b64e56e6d5865176a0fb1dcbdc6756dcad4ad3d380",
+      "patchSha256": "b06051f8bd383a22c418e28d742b84da60474b1e2e62e6d621e45b99593c08bd",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "expectedResourceWrites": [
+        "userscript/resources/fluentread-data.v1.js",
+        "userscript/resources/fluentread-vendor.v1.js"
+      ],
+      "afterSourceSnapshotSha256": "c5b25fe66b002e07c4a10fdc6c9f2205ae1b40dff31f1ad01d42b7d29ee47a1a",
+      "resourceFileBinding": {
+        "userscript/resources/fluentread-data.v1.js": {
+          "before": "188f108ffa54c98cfed09551009fc8df138f1e056dc815810c44e1da7c828c9d",
+          "after": "684d26ce1328db94dcc47d3120a01923a20f12f45fcf7210769c7d5c1867cb30"
+        },
+        "userscript/resources/fluentread-vendor.v1.js": {
+          "before": "f3e857d7d51bf606f36a32901f1726a45702d002425d8592b94f544bad79626a",
+          "after": "8fa608295f4e3479c9c70a1181ee008944c85b19d1c3bd542f7062e91898fc38"
+        }
+      },
+      "finishedAtUTC": "2026-10-11T06:09:59.221999+00:00",
+      "wallSeconds": 4.179,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": false,
+      "log": "gf-final-prepare-resources.log.txt",
+      "logSha256": "fb110624a64983320432273cfab3a46b8315788e8ec6d64d4f8644f5fbd17007",
+      "timeFileSha256": "f18bbe8e9d323d73d004f2c0094a54121fd1a500234962d5e2bbb7bcbea5fb6f",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-vendor-synthetic-vectors",
+      "startedAtUTC": "2026-10-11T06:10:27.412268+00:00",
+      "args": [
+        "exec",
+        "node",
+        "<local-evidence>/vendor-public-synthetic-vectors.mjs",
+        "<checkout>",
+        "<local-evidence>/frozen-old-vendor.v1.js",
+        "<local-evidence>/prepared-final-fluentread-vendor.v1.js",
+        "CD"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "c5b25fe66b002e07c4a10fdc6c9f2205ae1b40dff31f1ad01d42b7d29ee47a1a",
+      "patchSha256": "e72f4b8e210b6a98a94a13479da13f39eb035a15b50f751b897eb8cf35f6baba",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "finishedAtUTC": "2026-10-11T06:10:27.935549+00:00",
+      "wallSeconds": 0.522,
+      "exitCode": 1,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-vendor-synthetic-vectors.log.txt",
+      "logSha256": "600a94da3b2a831f9237886a93e458540907cb0e1ab6ac109a8ea8c27e10b289",
+      "timeFileSha256": "dbeab3558defc5199d366f298c44e290d60082e8a3c61f6958c1a31a538a1933",
+      "helperFileInputs": {},
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-vendor-synthetic-vectors-browser-globals",
+      "startedAtUTC": "2026-10-11T06:11:21.789374+00:00",
+      "args": [
+        "exec",
+        "node",
+        "<local-evidence>/vendor-public-synthetic-vectors.mjs",
+        "<checkout>",
+        "<local-evidence>/frozen-old-vendor.v1.js",
+        "<local-evidence>/prepared-final-fluentread-vendor.v1.js",
+        "CD"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "c5b25fe66b002e07c4a10fdc6c9f2205ae1b40dff31f1ad01d42b7d29ee47a1a",
+      "patchSha256": "e72f4b8e210b6a98a94a13479da13f39eb035a15b50f751b897eb8cf35f6baba",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {
+        "vendor-public-synthetic-vectors.mjs": "169ad814ecae84ac9fda727699de150350581d87098963a30222cc4af328e25b",
+        "frozen-old-vendor.v1.js": "5f9842e69eebcf23ead1a9807f366f4bbcb9833397b1b8e0ed7c7ec75b6a8283",
+        "prepared-final-fluentread-vendor.v1.js": "8fa608295f4e3479c9c70a1181ee008944c85b19d1c3bd542f7062e91898fc38"
+      },
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+        "FLUENTREAD_USERSCRIPT_DATA_URL": null
+      },
+      "finishedAtUTC": "2026-10-11T06:11:22.388604+00:00",
+      "wallSeconds": 0.597,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-vendor-synthetic-vectors-browser-globals.log.txt",
+      "logSha256": "c2a14737f12afe6a75bfbc454b5acd800e5a68ea42261cd11caa5444a00b268f",
+      "timeFileSha256": "de6118ede79b92ec2b46d2c4cd4b40a410bbd83b3aad961a26699d3af1bdf7d3",
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-literal-inventory",
+      "startedAtUTC": "2026-10-11T06:11:52.002879+00:00",
+      "args": [
+        "exec",
+        "node",
+        "<local-evidence>/gf-literal-inventory.prototype.mjs",
+        "<checkout>",
+        "<local-evidence>/gf-character-tinycolor-noble-candidate-fluent-read.user.js",
+        "<local-evidence>/GF-LITERAL-INVENTORY.json"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "c5b25fe66b002e07c4a10fdc6c9f2205ae1b40dff31f1ad01d42b7d29ee47a1a",
+      "patchSha256": "e72f4b8e210b6a98a94a13479da13f39eb035a15b50f751b897eb8cf35f6baba",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {
+        "gf-literal-inventory.prototype.mjs": "3a34fffab4d7acaeafacf83846deb2f59d078baa2a89940a4055a99be0426fcc",
+        "gf-character-tinycolor-noble-candidate-fluent-read.user.js": "1c7e28e60a62937f4e67aaf22225baf076903128428dd4aaf07abb0f26bd5e4a"
+      },
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+        "FLUENTREAD_USERSCRIPT_DATA_URL": null
+      },
+      "finishedAtUTC": "2026-10-11T06:11:52.926951+00:00",
+      "wallSeconds": 0.921,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-literal-inventory.log.txt",
+      "logSha256": "f7614568f9051fefb410f7d414db473d0f377643b07f7b0bb5f8a4fa8582bf3d",
+      "timeFileSha256": "a679e9daa8f2fcdbcc2c434573fa3863da2bffa19d45ac298d3711ffd54151b0",
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "post-maintenance-standard-output",
+      "startedAtUTC": "2026-10-11T06:13:22.260103+00:00",
+      "args": [
+        "build:userscript"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "c5b25fe66b002e07c4a10fdc6c9f2205ae1b40dff31f1ad01d42b7d29ee47a1a",
+      "patchSha256": "e72f4b8e210b6a98a94a13479da13f39eb035a15b50f751b897eb8cf35f6baba",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {},
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+        "FLUENTREAD_USERSCRIPT_DATA_URL": null
+      },
+      "finishedAtUTC": "2026-10-11T06:13:26.334260+00:00",
+      "wallSeconds": 4.072,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "post-maintenance-standard-output.log.txt",
+      "logSha256": "95b879332f776523f03edab7bbe6ee8f793d07a2f8177117d5ee1128fa6269c5",
+      "timeFileSha256": "0d2ad3c263731aa9cbcc8dac02bf6b245c2291051aa4bba6d86c406b3458cc8d",
+      "artifact": {
+        "mode": "userscript",
+        "bytes": 2018735,
+        "sha256": "77799000f4e0060ebdfd57ee7e922e08cd4baeb549fcb271fd0959cbfc7de4f8",
+        "verifierExitCode": 0,
+        "originalBudget": 2025000
+      },
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "post-maintenance-standalone-output",
+      "startedAtUTC": "2026-10-11T06:13:55.429016+00:00",
+      "args": [
+        "build:userscript:standalone"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "c5b25fe66b002e07c4a10fdc6c9f2205ae1b40dff31f1ad01d42b7d29ee47a1a",
+      "patchSha256": "e72f4b8e210b6a98a94a13479da13f39eb035a15b50f751b897eb8cf35f6baba",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {},
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+        "FLUENTREAD_USERSCRIPT_DATA_URL": null
+      },
+      "finishedAtUTC": "2026-10-11T06:14:02.205961+00:00",
+      "wallSeconds": 6.775,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "post-maintenance-standalone-output.log.txt",
+      "logSha256": "9dbc8a481add7a7917146260f0d90d827b38fc850912db674d990c758b1ad126",
+      "timeFileSha256": "0728e10e56e04db3183f5208023dfcc68d0a8537efd1274537525db6fdd27ebe",
+      "artifact": {
+        "mode": "userscript-standalone",
+        "bytes": 3587043,
+        "sha256": "15534e8633a92eccaca4a8c6760df89da3bbccf0a26f2d1602179d514815352b",
+        "verifierExitCode": 0,
+        "originalBudget": 3600000
+      },
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "standalone-original-source-new-node-control",
+      "startedAtUTC": "2026-10-11T06:15:33.506293+00:00",
+      "args": [
+        "build:userscript:standalone"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "e1ee01de5f519983f4d530347ac948034c1ccf3ba507a481dfa84cab76f2df15",
+      "patchSha256": "e9652c1431474cb339cd515c1d66298283595010a77fb1b48fb21570d5cf93ba",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {},
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+        "FLUENTREAD_USERSCRIPT_DATA_URL": null
+      },
+      "finishedAtUTC": "2026-10-11T06:15:40.349309+00:00",
+      "wallSeconds": 6.841,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "standalone-original-source-new-node-control.log.txt",
+      "logSha256": "e347630d566b4bbadb01879a353eb65e66ec99d457f3dd50829e805530955301",
+      "timeFileSha256": "ba2fba4456be971e60d25ef851ae247c1fc59979744a8024d02c3d87c5a0e34e",
+      "artifact": {
+        "mode": "userscript-standalone",
+        "bytes": 3587088,
+        "sha256": "4d3f021326ab7a0b713b5b3f5d595e3d5b507eacd75ea727c90f320f3f7b8095",
+        "verifierExitCode": 0,
+        "originalBudget": 3600000
+      },
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "character-compressed-module-equality",
+      "startedAtUTC": "2026-10-11T06:17:02.038948+00:00",
+      "args": [
+        "exec",
+        "node",
+        "<local-evidence>/compare-character-transforms.mjs",
+        "<checkout>",
+        "<local-evidence>/original-characterDataPlugin.ts"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "c5b25fe66b002e07c4a10fdc6c9f2205ae1b40dff31f1ad01d42b7d29ee47a1a",
+      "patchSha256": "e72f4b8e210b6a98a94a13479da13f39eb035a15b50f751b897eb8cf35f6baba",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {
+        "compare-character-transforms.mjs": "372b2b14b772e708211fd042bba6c5c3d3e3864853fbb8e6467e9678020bed67"
+      },
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+        "FLUENTREAD_USERSCRIPT_DATA_URL": null
+      },
+      "finishedAtUTC": "2026-10-11T06:17:02.689995+00:00",
+      "wallSeconds": 0.649,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "character-compressed-module-equality.log.txt",
+      "logSha256": "130b528218e98710e01ddb62b86cb1dab47a6d2f528876d98af4a90c8be0f818",
+      "timeFileSha256": "49ea32b72d381e4d91857584387d9bb1013078e15295ff7d1350a8025dd97391",
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-character-libraries-inline-css-candidate",
+      "startedAtUTC": "2026-10-11T06:21:52.559853+00:00",
+      "args": [
+        "exec",
+        "vite",
+        "build",
+        "--config",
+        "userscript/vite.config.ts"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "fd8c081f3bb33af1e85d136c42ad5b667a08857707eccf5e3ce289387199dc49",
+      "patchSha256": "6521f138fdfc7b32f54f5ce28d41805758af451b11e553a1a2f5fc3e1d6a6c23",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {},
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": "1",
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": "https://cdn.jsdelivr.net/gh/FluentRead/FluentRead@af81332fb598f78b1199d103e0943e4e521a7f96/userscript/resources/fluentread-vendor.v1.js",
+        "FLUENTREAD_USERSCRIPT_DATA_URL": "https://cdn.jsdelivr.net/gh/FluentRead/FluentRead@af81332fb598f78b1199d103e0943e4e521a7f96/userscript/resources/fluentread-data.v1.js"
+      },
+      "finishedAtUTC": "2026-10-11T06:21:55.513450+00:00",
+      "wallSeconds": 2.952,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-character-libraries-inline-css-candidate.log.txt",
+      "logSha256": "e7db171a0b53b4ad5a17078ccfd1fbd8e97789d793e5ce13b19528b98136cf71",
+      "timeFileSha256": "33cb3176afcd17a6494bc1e4187f8a3510e09f2e9efbefb4be0a9917d62d2726",
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-retained-contract-tests",
+      "startedAtUTC": "2026-10-11T06:23:39.581585+00:00",
+      "args": [
+        "exec",
+        "vitest",
+        "run",
+        "tests/userscriptViteConfig.test.ts",
+        "tests/userscriptCompression.test.ts"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "1989a97256ca9e1e57e2ec5ce6b8c879eeeb542a0696030ccf49743228d62588",
+      "patchSha256": "198957ea1df210ab1781d536aae3b76bb7072217aaa0a2ed5df71ae440fc6604",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {},
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+        "FLUENTREAD_USERSCRIPT_DATA_URL": null
+      },
+      "finishedAtUTC": "2026-10-11T06:23:43.619390+00:00",
+      "wallSeconds": 4.036,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-retained-contract-tests.log.txt",
+      "logSha256": "2fbdf144cdcbbc57a5ca4c35d38d5f0d6542afbb55e9b213d47faabd8bb76306",
+      "timeFileSha256": "a8ff85c70dc7c827623b1d6650728b6d770761a8616f6bc7e9103f4b35c0cc1a",
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-retained-prepare-resources",
+      "startedAtUTC": "2026-10-11T06:24:59.466417+00:00",
+      "args": [
+        "exec",
+        "node",
+        "scripts/build-userscript-greasyfork.mjs",
+        "--prepare-resources"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "1989a97256ca9e1e57e2ec5ce6b8c879eeeb542a0696030ccf49743228d62588",
+      "patchSha256": "198957ea1df210ab1781d536aae3b76bb7072217aaa0a2ed5df71ae440fc6604",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {},
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+        "FLUENTREAD_USERSCRIPT_DATA_URL": null
+      },
+      "expectedResourceWrites": [
+        "userscript/resources/fluentread-data.v1.js"
+      ],
+      "afterSourceSnapshotSha256": "bc8ee507ae5a474ba519326503f432e9ec0e772f10fa8ba29ec00ddc3799d31e",
+      "resourceFileBinding": {
+        "userscript/resources/fluentread-data.v1.js": {
+          "before": "684d26ce1328db94dcc47d3120a01923a20f12f45fcf7210769c7d5c1867cb30",
+          "after": "6d43a00d1732422fe0946b292a1986254a1e3244eb04f156ce6a13c1649a0d37"
+        }
+      },
+      "finishedAtUTC": "2026-10-11T06:25:03.649229+00:00",
+      "wallSeconds": 4.181,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": false,
+      "log": "gf-retained-prepare-resources.log.txt",
+      "logSha256": "563728a8febe3aace8f955d76dafe992e38502b3ba43ab76877efd93c654e7e4",
+      "timeFileSha256": "362fe6dc4fd35c2a66fe4cbf337114278fdecddbdc6c20972656306d9e434b23",
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-retained-compile",
+      "startedAtUTC": "2026-10-11T06:26:01.520804+00:00",
+      "args": [
+        "compile"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "bc8ee507ae5a474ba519326503f432e9ec0e772f10fa8ba29ec00ddc3799d31e",
+      "patchSha256": "5525895b8a45a769972b7ab6a8e44262691fe13c677136077482002125ef9c0a",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {},
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+        "FLUENTREAD_USERSCRIPT_DATA_URL": null
+      },
+      "finishedAtUTC": "2026-10-11T06:26:20.250498+00:00",
+      "wallSeconds": 18.728,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-retained-compile.log.txt",
+      "logSha256": "c6d541ed058cefffb02f71a02be099a4e834b77d930a52920b7ff9dce9301e8f",
+      "timeFileSha256": "6eca05670040a1def808360b32dcfc863ca2563c2f44ae5756e923a7c22aa6ff",
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-retained-audit",
+      "startedAtUTC": "2026-10-11T06:26:58.443030+00:00",
+      "args": [
+        "test:audit"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "bc8ee507ae5a474ba519326503f432e9ec0e772f10fa8ba29ec00ddc3799d31e",
+      "patchSha256": "5525895b8a45a769972b7ab6a8e44262691fe13c677136077482002125ef9c0a",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {},
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+        "FLUENTREAD_USERSCRIPT_DATA_URL": null
+      },
+      "finishedAtUTC": "2026-10-11T06:27:00.007618+00:00",
+      "wallSeconds": 1.563,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-retained-audit.log.txt",
+      "logSha256": "cc4f4cdf3d22aafd97b76a256d016094a9775512c6aeb9d43ac70a1611c0d006",
+      "timeFileSha256": "900f0fc6a2885653bf2d1750971e06d0b2f574a338b3789aa8a3cb2d7de6baf3",
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "standalone-cjs-static-difference",
+      "startedAtUTC": "2026-10-11T06:28:45.020451+00:00",
+      "args": [
+        "exec",
+        "node",
+        "<local-evidence>/run-standalone-ast-probe.mjs"
+      ],
+      "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+      "sourceSnapshotSha256": "bc8ee507ae5a474ba519326503f432e9ec0e772f10fa8ba29ec00ddc3799d31e",
+      "patchSha256": "5525895b8a45a769972b7ab6a8e44262691fe13c677136077482002125ef9c0a",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {
+        "run-standalone-ast-probe.mjs": "d6584a5ab8ac4fbf280c0d1bed3549c0ff19403ec6f1c10dc3ffe36186d80eeb"
+      },
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+        "FLUENTREAD_USERSCRIPT_DATA_URL": null
+      },
+      "finishedAtUTC": "2026-10-11T06:28:50.143861+00:00",
+      "wallSeconds": 5.121,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "standalone-cjs-static-difference.log.txt",
+      "logSha256": "4d13dec891a69332e533f24edfa1a21c54c9cd022f1b73d61807ddbfa867043c",
+      "timeFileSha256": "72dc7ec8a3cb6c35192830bfef04aa33e7e4ad84ce2ab550b81cbcaa04aafe32",
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "gf-original-retained-release-gate",
+      "startedAtUTC": "2026-10-11T06:30:43.043830+00:00",
+      "args": [
+        "exec",
+        "node",
+        "scripts/build-userscript-greasyfork.mjs"
+      ],
+      "baselineCommit": "80c9da44f8cd7c01f7a50ac767c79396cf78cce5",
+      "sourceSnapshotSha256": "bc8ee507ae5a474ba519326503f432e9ec0e772f10fa8ba29ec00ddc3799d31e",
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {},
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+        "FLUENTREAD_USERSCRIPT_DATA_URL": null
+      },
+      "finishedAtUTC": "2026-10-11T06:30:46.275214+00:00",
+      "wallSeconds": 3.23,
+      "exitCode": 1,
+      "sourceUnchangedDuringStage": true,
+      "log": "gf-original-retained-release-gate.log.txt",
+      "logSha256": "1feba346c001634143a39b42ebabb41a3f8e93691e474b2f248b795c0c47605e",
+      "timeFileSha256": "b8b65d6f6d5ca42bb0dd645310403b1641b9eb1d30a9dec6a4815f577bf2e787",
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "final-source-standard",
+      "startedAtUTC": "2026-10-11T06:36:25.282406+00:00",
+      "args": [
+        "build:userscript"
+      ],
+      "baselineCommit": "80c9da44f8cd7c01f7a50ac767c79396cf78cce5",
+      "sourceSnapshotSha256": "bc8ee507ae5a474ba519326503f432e9ec0e772f10fa8ba29ec00ddc3799d31e",
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {},
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+        "FLUENTREAD_USERSCRIPT_DATA_URL": null
+      },
+      "finishedAtUTC": "2026-10-11T06:36:29.296866+00:00",
+      "wallSeconds": 4.014,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "final-source-standard.log.txt",
+      "logSha256": "e02165d7144a0591cf53df68e571ef3aa959e2080f20c4d724060de60dd8fe9e",
+      "timeFileSha256": "46a369bbe35de8afdad7597d52cb6e47db492b1039b186be6591dc6533d67dc1",
+      "artifact": {
+        "mode": "userscript",
+        "bytes": 2018735,
+        "sha256": "77799000f4e0060ebdfd57ee7e922e08cd4baeb549fcb271fd0959cbfc7de4f8",
+        "verifierExitCode": 0,
+        "originalBudget": 2025000
+      },
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "final-source-standalone",
+      "startedAtUTC": "2026-10-11T06:36:37.048301+00:00",
+      "args": [
+        "build:userscript:standalone"
+      ],
+      "baselineCommit": "80c9da44f8cd7c01f7a50ac767c79396cf78cce5",
+      "sourceSnapshotSha256": "bc8ee507ae5a474ba519326503f432e9ec0e772f10fa8ba29ec00ddc3799d31e",
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {},
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+        "FLUENTREAD_USERSCRIPT_DATA_URL": null
+      },
+      "finishedAtUTC": "2026-10-11T06:36:43.913966+00:00",
+      "wallSeconds": 6.865,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "final-source-standalone.log.txt",
+      "logSha256": "cee249be2d3532f62f536f75628c4116d4fb52b6e104df6fc53687b8c1e906e1",
+      "timeFileSha256": "8d93f5327a2c4747f8b03bb19aab77d23674950e1e1bad8f3686eee10db631f8",
+      "artifact": {
+        "mode": "userscript-standalone",
+        "bytes": 3587088,
+        "sha256": "4d3f021326ab7a0b713b5b3f5d595e3d5b507eacd75ea727c90f320f3f7b8095",
+        "verifierExitCode": 0,
+        "originalBudget": 3600000
+      },
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "final-source-contract-tests",
+      "startedAtUTC": "2026-10-11T06:37:36.783214+00:00",
+      "args": [
+        "exec",
+        "vitest",
+        "run",
+        "tests/userscriptViteConfig.test.ts",
+        "tests/userscriptCompression.test.ts"
+      ],
+      "baselineCommit": "80c9da44f8cd7c01f7a50ac767c79396cf78cce5",
+      "sourceSnapshotSha256": "bc8ee507ae5a474ba519326503f432e9ec0e772f10fa8ba29ec00ddc3799d31e",
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {},
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+        "FLUENTREAD_USERSCRIPT_DATA_URL": null
+      },
+      "finishedAtUTC": "2026-10-11T06:37:40.773910+00:00",
+      "wallSeconds": 3.99,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "final-source-contract-tests.log.txt",
+      "logSha256": "62bb23323f0158876a56edeae77fe064a4737daf091a9d9da174484dcfbef7c9",
+      "timeFileSha256": "7e748e91ccad7396a2f517619aa7d2bc85d6bca801e94d569392e67a0de35567",
+      "logAvailability": "local frozen evidence; selected sanitized logs in this report"
+    },
+    {
+      "name": "final-report-docs-build",
+      "startedAtUTC": "2026-10-11T06:40:21.816002+00:00",
+      "args": [
+        "docs:build"
+      ],
+      "baselineCommit": "80c9da44f8cd7c01f7a50ac767c79396cf78cce5",
+      "sourceSnapshotSha256": "feda162ab8fe35708f1c44f1fcec8e180545fd1362a83a090e21eb29dd7c329e",
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {},
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+        "FLUENTREAD_USERSCRIPT_DATA_URL": null
+      },
+      "finishedAtUTC": "2026-10-11T06:40:24.797512+00:00",
+      "wallSeconds": 2.981,
+      "exitCode": 0,
+      "sourceUnchangedDuringStage": true,
+      "log": "final-report-docs-build.log.txt",
+      "logSha256": "38d4be36ff5684e258cc838656fba098010d7e36b237d707319cdef1ec746869",
+      "timeFileSha256": "2c05d37f5dc998d33b1112f8aac0d52c074bf98f54358bca418b75af18b34e37",
+      "logAvailability": "local frozen evidence and selected sanitized report logs"
+    },
+    {
+      "name": "final-report-docs-check",
+      "startedAtUTC": "2026-10-11T06:41:15.796227+00:00",
+      "args": [
+        "docs:check"
+      ],
+      "baselineCommit": "80c9da44f8cd7c01f7a50ac767c79396cf78cce5",
+      "sourceSnapshotSha256": "feda162ab8fe35708f1c44f1fcec8e180545fd1362a83a090e21eb29dd7c329e",
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {},
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+        "FLUENTREAD_USERSCRIPT_DATA_URL": null
+      },
+      "finishedAtUTC": "2026-10-11T06:41:16.553493+00:00",
+      "wallSeconds": 0.756,
+      "exitCode": 1,
+      "sourceUnchangedDuringStage": true,
+      "log": "final-report-docs-check.log.txt",
+      "logSha256": "fdbc851cd553ed69644716e01f6fcfa402c9380877625c38f41f7dac90d49c9f",
+      "timeFileSha256": "29e2cddc71e8ed817c326b3336699c216c349cafd47fce75953416dfe0745272",
+      "logAvailability": "local frozen evidence and selected sanitized report logs"
+    },
+    {
+      "name": "final-report-storybook-build",
+      "startedAtUTC": "2026-10-11T06:41:28.863021+00:00",
+      "args": [
+        "storybook:build"
+      ],
+      "baselineCommit": "80c9da44f8cd7c01f7a50ac767c79396cf78cce5",
+      "sourceSnapshotSha256": "feda162ab8fe35708f1c44f1fcec8e180545fd1362a83a090e21eb29dd7c329e",
+      "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "cpuTargetPercent": 60,
+      "workers": 1,
+      "concurrency": 1,
+      "helperFileInputs": {},
+      "selectedEnvironment": {
+        "TZ": null,
+        "CI": "1",
+        "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+        "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+        "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+        "FLUENTREAD_USERSCRIPT_DATA_URL": null
+      },
+      "finishedAtUTC": "2026-10-11T06:41:29.394875+00:00",
+      "wallSeconds": 0.531,
+      "exitCode": 1,
+      "sourceUnchangedDuringStage": true,
+      "log": "final-report-storybook-build.log.txt",
+      "logSha256": "d1f939c256872979842ef53835c8fdd8e485e661f806a0dc94d9ffe98933ff8e",
+      "timeFileSha256": "fd159eef23e60c9b9d9de9a1e9136c777c793a8be5f4792bed8097aa7b5a01af",
+      "logAvailability": "local frozen evidence and selected sanitized report logs"
+    }
+  ]
+}

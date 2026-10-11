@@ -1,0 +1,8 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 1, command: node <existing-pnpm-9.12.1> storybook:build
+
+> FluentRead-流畅阅读@0.0.37 storybook:build <checkout>
+> node scripts/testing/run-resource-safe.mjs -- storybook build --output-dir docs/.vitepress/dist/storybook --disable-telemetry
+
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 1, command: storybook build --output-dir docs/.vitepress/dist/storybook --disable-telemetry
+[resource-safe] spawn storybook ENOENT
+ ELIFECYCLE  Command failed with exit code 1.

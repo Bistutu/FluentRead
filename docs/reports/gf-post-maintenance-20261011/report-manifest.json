@@ -1,0 +1,117 @@
+{
+  "scope": "Public report files before manifest; no binaries, private paths, credentials, profiles or auth bodies.",
+  "files": {
+    "README.md": {
+      "bytes": 11435,
+      "sha256": "b050dbfb425e97133a4f18e8892b7a658d21f15ab7d4883e5677cec2ed60ee9e"
+    },
+    "candidate-matrix.json": {
+      "bytes": 7971,
+      "sha256": "49ce515c2710ba9878e7f4c8358317def947a7f1e8cf0f223b1def51ba5ef922"
+    },
+    "environment.json": {
+      "bytes": 2235,
+      "sha256": "d1059fbb611b0a901f11714870023ec48637585df49957064ccb11c36de7c35c"
+    },
+    "failure-contexts.json": {
+      "bytes": 3086,
+      "sha256": "83d434d344071294ef02db6ce834382344fb9670f7546a88d0259359ce5850cf"
+    },
+    "gf-candidate-b-exclusion.json": {
+      "bytes": 1989,
+      "sha256": "88a2ab2e69fa35681adf0acf588d1042c63d7a03f6720be06d1398da9348d76d"
+    },
+    "indent-counterfactual.json": {
+      "bytes": 1548,
+      "sha256": "0571c8bdf365ffffd0b26ca1731215f320cebcf33ba147f0ac6ee3cca4d1d289"
+    },
+    "log-binding.json": {
+      "bytes": 5120,
+      "sha256": "1203f79efc07ec7689d9ec76e715f693956a62a7c378c76091beba649e8ea01e"
+    },
+    "receipts/final-report-docs-build.txt": {
+      "bytes": 544,
+      "sha256": "73ae8aee978b9247067fb7c3d7e0334068edc72652f36ea35f76b46b9b2551a6"
+    },
+    "receipts/final-report-docs-check.txt": {
+      "bytes": 857,
+      "sha256": "2defd6b0ece8b612f53e356188d30d4f536176f3542df87888088448e52ca577"
+    },
+    "receipts/final-report-storybook-build.txt": {
+      "bytes": 543,
+      "sha256": "751c9bcfa6ffc86deb232706b8640e3ffb07216a56be1e2b82f66ac8eace9dcd"
+    },
+    "receipts/final-source-contract-tests.txt": {
+      "bytes": 508,
+      "sha256": "4ec9dc2467bc5a138eb4087413006ec90b44e28b68eab52532d4662619b09a79"
+    },
+    "receipts/final-source-standalone-verifier.txt": {
+      "bytes": 101,
+      "sha256": "c16439fa87e28f3f0eb170f42e7ed60b586c84467f97a5027f1b2cc68c073393"
+    },
+    "receipts/final-source-standalone.txt": {
+      "bytes": 641,
+      "sha256": "b91d9bc164504bf6272aebe8e168f05bf7ade87e98892f92a3e68bea528039c5"
+    },
+    "receipts/final-source-standard-verifier.txt": {
+      "bytes": 66,
+      "sha256": "b695cba7be36cc43f6c53b8fe8e4ea8ccdf5e198b36d619c06d2fefaeec134c7"
+    },
+    "receipts/final-source-standard.txt": {
+      "bytes": 607,
+      "sha256": "de87da65022d1e2b3368aafcfd94ae3ab28ed05519ce5f0b8135c2e2d86ecf46"
+    },
+    "receipts/gf-character-contract-tests.txt": {
+      "bytes": 1749,
+      "sha256": "9ef65ed637abf607eb0da92490528ee73fab65933717e714b7c233d6efc34e67"
+    },
+    "receipts/gf-original-post-maintenance.txt": {
+      "bytes": 2290,
+      "sha256": "09dc66eb064f56bcd2a90670538599452519acafe980d23a6a036188e96bc9d3"
+    },
+    "receipts/gf-original-retained-release-gate.txt": {
+      "bytes": 1663,
+      "sha256": "fe29c054259b2d29171edfc75d623c08bd44bb0a1eb046cba7701dcac1175680"
+    },
+    "receipts/gf-retained-audit.txt": {
+      "bytes": 369,
+      "sha256": "03747bbdae3bf794d21929f21de46df8f5343727a3d5b6e6360acd507053f73b"
+    },
+    "receipts/gf-retained-compile.txt": {
+      "bytes": 312,
+      "sha256": "c8a14182367f83ad6166788b3720ad2d934eb5dbf9839c3704f6c859e2bebaa3"
+    },
+    "receipts/gf-vendor-synthetic-vectors-browser-globals.txt": {
+      "bytes": 7309,
+      "sha256": "b8e612a55ab837d8e9e809885e0e377eaf193e90a544f6f448f07c8dd5b32a24"
+    },
+    "receipts/gf-vendor-synthetic-vectors.txt": {
+      "bytes": 23109,
+      "sha256": "cedc4c1951f6b24741ad4b27512d3e4f6be14883486bd2b1a2a2e64415202ef8"
+    },
+    "resource-binding.json": {
+      "bytes": 3497,
+      "sha256": "d70d7ab876f36fd6bf566d006ed23e7fde10de3cd5b0d2955b987f93437a7b21"
+    },
+    "stage-ledger.json": {
+      "bytes": 50667,
+      "sha256": "0ad1ebf3b88257688ec79d232b2b1f6c7c47a048fd8d75046ef45a850e6066a8"
+    },
+    "standalone-45b-ast-probe.json": {
+      "bytes": 5417,
+      "sha256": "1ec610d1c6f69d53a957158000dc29b7add06956cf6702fdc9003920ec97fb9d"
+    },
+    "standalone-45b-audit.json": {
+      "bytes": 9260,
+      "sha256": "bf888c2bbb341baa2ebeea45a27b37d7769fea54df79cd3c01b6c4e856bb07a8"
+    },
+    "validation.json": {
+      "bytes": 5721,
+      "sha256": "4b217d7b9cda2e8f1a7c277ea047450099be4fc1365af113ea7b552858274219"
+    },
+    "vendor-synthetic-vectors.json": {
+      "bytes": 7037,
+      "sha256": "53450e3657288dbc2240d251b961eaa6f5cde272c6967186d0eb8c19cf5d652f"
+    }
+  }
+}

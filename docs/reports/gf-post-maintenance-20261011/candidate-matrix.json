@@ -1,0 +1,169 @@
+{
+  "measurementScope": "Real original-Vite-CLI diagnostic artifacts; candidates retain old 40-character immutable URL text to equalize metadata length, not valid remote content or release. Normal final wrapper has the same size and different SHA because it pins 80c9da44.",
+  "freshBaseline": [
+    {
+      "name": "freshMain",
+      "bytes": 2479675,
+      "sha256": "88da0374d98b8a630a9d15363fc55754e577b1172c59fceebf1ac7ca8d15c59a"
+    },
+    {
+      "name": "freshData",
+      "bytes": 875683,
+      "sha256": "188f108ffa54c98cfed09551009fc8df138f1e056dc815810c44e1da7c828c9d"
+    }
+  ],
+  "executedCandidates": [
+    {
+      "candidate": "A",
+      "main": {
+        "file": "gf-character-resource-candidate-fluent-read.user.js",
+        "bytes": 2426264,
+        "sha256": "3f49ff4772b2bd29a0e46fa9a3f7a8bcbe56e16331f2968e88f03214447d68a0"
+      },
+      "data": {
+        "file": "gf-character-resource-candidate-fluentread-data.v1.js",
+        "bytes": 935869,
+        "sha256": "9099cafef52660993272768464629608cf3a45a92265d33bf9210de0291eb90a"
+      },
+      "scope": "Original Vite CLI candidate diagnostic; stale fixed URL texts retained to equalize metadata bytes, no fetched URLs or valid release claimed.",
+      "sourceStage": "gf-character-resource-candidate",
+      "sourceSnapshotSha256": "eb422036c46f1a56b96938a638613c749c12fb745c8ebf2da25104452cdbc226",
+      "originalBudget": 2000000,
+      "excessBytes": 426264
+    },
+    {
+      "candidate": "A+C",
+      "main": {
+        "file": "gf-character-tinycolor-candidate-fluent-read.user.js",
+        "bytes": 2399164,
+        "sha256": "9aeebca17d473074afc9b90193e1062c25c9758eb9d8720647e9416558309ac2"
+      },
+      "data": {
+        "file": "gf-character-tinycolor-candidate-fluentread-data.v1.js",
+        "bytes": 935869,
+        "sha256": "9099cafef52660993272768464629608cf3a45a92265d33bf9210de0291eb90a"
+      },
+      "scope": "Original Vite CLI candidate diagnostic; stale fixed URL texts retained to equalize metadata bytes, no fetched URLs or valid release claimed.",
+      "sourceStage": "gf-character-tinycolor-candidate",
+      "sourceSnapshotSha256": "251396df78405baa00e6cf302e1b44c2126e9ece20956f627f9e775d8ca77ef2",
+      "originalBudget": 2000000,
+      "excessBytes": 399164
+    },
+    {
+      "candidate": "A+D",
+      "main": {
+        "file": "gf-character-noble-candidate-fluent-read.user.js",
+        "bytes": 2417327,
+        "sha256": "e8f8dc90ae6e77d14ab6dd6adde9540e5e4d7fbc87188c52ed693f72c77c0748"
+      },
+      "data": {
+        "file": "gf-character-noble-candidate-fluentread-data.v1.js",
+        "bytes": 935869,
+        "sha256": "9099cafef52660993272768464629608cf3a45a92265d33bf9210de0291eb90a"
+      },
+      "scope": "Original Vite CLI candidate diagnostic; stale fixed URL texts retained to equalize metadata bytes, no fetched URLs or valid release claimed.",
+      "sourceStage": "gf-character-noble-candidate",
+      "sourceSnapshotSha256": "8407f9094e1b1cbe89858e48df6bfc13ab9be213f21b19f91c421393f95f257a",
+      "originalBudget": 2000000,
+      "excessBytes": 417327
+    },
+    {
+      "candidate": "A+C+D",
+      "main": {
+        "file": "gf-character-tinycolor-noble-candidate-fluent-read.user.js",
+        "bytes": 2390227,
+        "sha256": "1c7e28e60a62937f4e67aaf22225baf076903128428dd4aaf07abb0f26bd5e4a"
+      },
+      "data": {
+        "file": "gf-character-tinycolor-noble-candidate-fluentread-data.v1.js",
+        "bytes": 935869,
+        "sha256": "9099cafef52660993272768464629608cf3a45a92265d33bf9210de0291eb90a"
+      },
+      "scope": "Original Vite CLI candidate diagnostic; stale fixed URL texts retained to equalize metadata bytes, no fetched URLs or valid release claimed.",
+      "sourceStage": "gf-character-tinycolor-noble-candidate",
+      "sourceSnapshotSha256": "8a1249b21b83d5fa884efe6f83444cbdc30de9a1086c890124eb7d870d4b4c3d",
+      "originalBudget": 2000000,
+      "excessBytes": 390227
+    },
+    {
+      "candidate": "A+C+D+F",
+      "main": {
+        "file": "gf-character-libraries-inline-css-candidate-fluent-read.user.js",
+        "bytes": 2349380,
+        "sha256": "7bac5a0eb392a0056dea4d8b282d1eb20aa2c1d3a312e5ffb8b6e6c73055eaa2"
+      },
+      "data": {
+        "file": "gf-character-libraries-inline-css-candidate-fluentread-data.v1.js",
+        "bytes": 980711,
+        "sha256": "6d43a00d1732422fe0946b292a1986254a1e3244eb04f156ce6a13c1649a0d37"
+      },
+      "scope": "Original Vite CLI candidate diagnostic; stale fixed URL texts retained to equalize metadata bytes, no fetched URLs or valid release claimed.",
+      "sourceStage": "gf-character-libraries-inline-css-candidate",
+      "sourceSnapshotSha256": "fd8c081f3bb33af1e85d136c42ad5b667a08857707eccf5e3ce289387199dc49",
+      "originalBudget": 2000000,
+      "excessBytes": 349380
+    }
+  ],
+  "originalWrapperFinal": {
+    "main": {
+      "bytes": 2349380,
+      "sha256": "78bc5697da881bd392fdead89eb700b905cdd49c572cfdb512b8b44bc4ab66a1"
+    },
+    "data": {
+      "bytes": 980711,
+      "sha256": "6d43a00d1732422fe0946b292a1986254a1e3244eb04f156ce6a13c1649a0d37"
+    },
+    "scope": "Original wrapper after local resource commit; no network URL fetched or release passed",
+    "resourceCommit": "80c9da44f8cd7c01f7a50ac767c79396cf78cce5",
+    "excessBytes": 349380
+  },
+  "notBuiltCandidateB": {
+    "schemaVersion": 1,
+    "status": "candidate B excluded before implementation/build",
+    "sourceCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+    "frozenArtifacts": {
+      "baseline-fluent-read.user.js": {
+        "bytes": 2486441,
+        "sha256": "bb418fb5fdb05932ebb144ebda0f80f7b278c1b6ad6a57d8ec978322a4b9ea33"
+      },
+      "fresh-fluent-read.user.js": {
+        "bytes": 2479675,
+        "sha256": "88da0374d98b8a630a9d15363fc55754e577b1172c59fceebf1ac7ca8d15c59a"
+      }
+    },
+    "spanAndStrictAstReceipt": "GF-CANDIDATE-B-SPANS.json",
+    "spanAndStrictAstReceiptSha256": "bda3e338174451c140549f4d6d126dc6013beac35f8f8dbf93c69f95f4976018",
+    "strictAstMethod": "Only extracted literal fragments parsed by installed TypeScript; no production source execution or build",
+    "eligibleInitializerUtf8Bytes": {
+      "currentModelIds": 728,
+      "cloudCredentialLabels": 322,
+      "translationLanguageOptions": 3378,
+      "TRANSLATION_STYLE_PRESETS": 7791
+    },
+    "totalInitializerSpanUpperBoundBeforeReplacementCostBytes": 12219,
+    "replacementCostMeasured": false,
+    "actualBuildRun": false,
+    "actualNetSavingMeasured": false,
+    "originalDeficitBytes": 486441,
+    "refreshedDeficitBytes": 479675,
+    "excluded": {
+      "defaultModelIds": "ComputedPropertyName using services references; strict literal AST rejects",
+      "multilingualTargetLanguageLabels": "No identified standalone binding in either frozen artifact; source size is not retained-code evidence",
+      "englishTargetLanguageLabels": "No identified standalone binding in either frozen artifact; source size is not retained-code evidence"
+    },
+    "decision": "Do not implement this bounded subset: complete removal with zero replacement cost would still leave at least 474222 original-baseline bytes above budget, or 467456 refreshed-baseline bytes. Those are arithmetic bounds on this subset only.",
+    "limitation": "Does not establish a best possible implementation, additive B/C/D savings, a global size limit or five completed rounds."
+  },
+  "allAssetsBytes": {
+    "freshMainPlusFreshVendorPlusFreshData": 3935984,
+    "retainedMainPlusVendorPlusData": 3932337,
+    "delta": -3647,
+    "olderPublishedResourceSetPlusOriginalMain": 3735095,
+    "deltaFromOlderPublishedSet": 197242
+  },
+  "limitations": [
+    "Raw module character counts and initializer spans are not measured byte savings.",
+    "Finite candidates do not prove global optimality, SOTA, Pareto dominance, a maximum, or five rounds after reaching a limit.",
+    "No total-download or performance win over the older published resource set is claimed."
+  ]
+}

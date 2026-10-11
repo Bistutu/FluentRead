@@ -1,0 +1,45 @@
+{
+  "scope": "In-memory generated indentation counterfactual only; not a build or functional acceptance",
+  "artifact": {
+    "file": "fresh-fluent-read.user.js",
+    "utf8Bytes": 2479675,
+    "sha256": "88da0374d98b8a630a9d15363fc55754e577b1172c59fceebf1ac7ca8d15c59a"
+  },
+  "transformation": "Two generated indentation spaces to one tab; all literal/template/regex/comment ranges excluded",
+  "bounds": {
+    "leadingSpaceBytes": 315245,
+    "theoreticalTwoSpaceTabSavings": 157618,
+    "excludedPrefixBytes": 1657
+  },
+  "counterfactual": {
+    "utf8Bytes": 2322881,
+    "sha256": "c93d132cbeb23991558072022384b87402817f9e003da0dbc47bfdd88bec505f",
+    "exactSavings": 156794,
+    "editedPrefixes": 49592,
+    "unchangedLineCount": 50706,
+    "exceedsOriginalBudgetBy": 322881
+  },
+  "invariants": {
+    "astAndRawLeafTokensEqual": true,
+    "literalTemplateRegexCommentRawBytesEqual": true,
+    "unchangedLineCount": true,
+    "syntax": {
+      "nodes": 647095,
+      "leaves": 426975,
+      "sha256": "e11f612e698cceac7cfe4bf0437338e0a3aa5c817d75ef11d7d68c0fe0a290e6"
+    },
+    "protected": {
+      "ranges": 17224,
+      "utf8Bytes": 415875,
+      "sha256": "6abce760972f5d0616c0b3f4e7bddbf385519dcb8fbf1316f89182e62e35402a"
+    }
+  },
+  "unknown": [
+    "Actual candidate build bytes",
+    "Runtime functional acceptance",
+    "Greasy Fork policy acceptance of final release",
+    "Cold startup/RSS costs",
+    "Global optimum or Pareto frontier"
+  ],
+  "helperSha256": "0ad9d3691be071ba2cf3228b1ae565b6da7a6dfb1a4a6bb52f1b850ff370b2b2"
+}

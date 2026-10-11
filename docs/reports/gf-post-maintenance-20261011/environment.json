@@ -1,0 +1,70 @@
+{
+  "recordedAtUTC": "2026-10-11T05:42:30.342065+00:00",
+  "host": "arietids-cw",
+  "baselineCommit": "353621606fe86a329fcd1ba678c4c78ab8107e06",
+  "baselineTree": "9de70f1ba8efc569f18ab31112d164020f35a031",
+  "maintenanceReportedNoReboot": true,
+  "nodeChangedFrom": "v26.7.0",
+  "versions": {
+    "node": "v26.11.1",
+    "npm": "11.20.0",
+    "pnpm9": "9.12.1",
+    "vite": "5.4.19",
+    "wxt": "0.20.18",
+    "typescript": "5.7.3",
+    "pako": "2.1.0",
+    "tldts": "7.4.10",
+    "vue": "3.5.13",
+    "@pdf-lib/fontkit": "1.1.1"
+  },
+  "preservedSourceAndLock": {
+    "package.json": {
+      "bytes": 7360,
+      "sha256": "079d4a7f919782e06e87352ab419b94e72ec4ee112a28b869d3e9e1b6d524ab8"
+    },
+    "pnpm-lock.yaml": {
+      "bytes": 340425,
+      "sha256": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a"
+    },
+    "userscript/vite.config.ts": {
+      "bytes": 34219,
+      "sha256": "37fd8d7414320a72b879e42de897719c3474c7e070d265e9577ccc8bd27c6ef2"
+    },
+    "userscript/vendor.vite.config.ts": {
+      "bytes": 2941,
+      "sha256": "d8c8f930a0dfa33dc06fd0fc4f5a147c9ad8bce3165f7856803e24974a570e1c"
+    },
+    "userscript/vendorEntry.ts": {
+      "bytes": 1061,
+      "sha256": "bc53600bb50838d50d1ac06561267fec282b72de66245e41564d381fc8a2c5fa"
+    },
+    "userscript/resources/fluentread-vendor.v1.js": {
+      "bytes": 580546,
+      "sha256": "5f9842e69eebcf23ead1a9807f366f4bbcb9833397b1b8e0ed7c7ec75b6a8283"
+    },
+    "userscript/resources/fluentread-data.v1.js": {
+      "bytes": 668108,
+      "sha256": "2c14c754f6486dee45b6bfd91f2a3b7c9464b26cf8d4be2b172b2692ae0e6fa4"
+    }
+  },
+  "preservedHistoricalArtifacts": {
+    "standard": {
+      "bytes": 2018735,
+      "sha256": "77799000f4e0060ebdfd57ee7e922e08cd4baeb549fcb271fd0959cbfc7de4f8"
+    },
+    "standalone": {
+      "bytes": 3587088,
+      "sha256": "4d3f021326ab7a0b713b5b3f5d595e3d5b507eacd75ea727c90f320f3f7b8095"
+    }
+  },
+  "neoBinaryCurrent": {
+    "sha256": "0994937730e362e40653610fd40e38d62d4160152b590f90e99971005c2e0881"
+  },
+  "neoRuntimeNotLaunched": true,
+  "historicalBrowserEvidenceNotReusedAsNewEnvironmentValidation": true,
+  "resourcePolicy": {
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1
+  }
+}
