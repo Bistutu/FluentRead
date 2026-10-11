@@ -1143,9 +1143,21 @@ Escape 组自然0，8阶段/3原生场景/4原始图。真实可信三击选中�
 
 冻结证据位于round51-embedded-english-document-copy/的root-source-owner/v2、direct-baseline-attempt2、direct-candidate-attempt1、ACTUAL-CASE-PRESERVATION、audit-architecture-attempt1、build-baseline-attempt1、build-candidate-attempt1、root-payload-review/v1/v2和ACTUAL-PAYLOAD-COMPARISON。仅本地保存，无推送、PR、合并或发布；未复制参考仓库代码。
 
+## 第四十七批：源码审计识别已有的只读七语文案表
+
+本批修复审计误报，不改运行时文案。取色器“清空”已有完整七语表并按当前语言提供；既有 shared UI 完整98项及七语取色器案例通过。旧收集器把表的中文分支当作全局 legacy 文案，产生 en/ko/fr/ru/es 五条缺失诊断。干净 HEAD74e3c3ca 的原 R52 基线保留：i18n58项为57通过、1失败，四份 owner 共140项为139通过、1失败；不是 R50 配置入口漏译或取色器实际缺五语。
+
+现在仅认可顶层真正 const、可信公共 UiLanguage 类型来源且有只读约束的完整七语字面量表，逐分支检查唯一语言键、非空值及外国分支中文残留，日语允许正常汉字。可变或未知类型、同名 shadow、await using、缺项、重复、spread、computed、dynamic 等仍走原审计；没有按字串、文件或变量名忽略，表外同字文案仍收集。返回合同与公开声明不变，只改测试共用脚本和 owner，不改组件、语言资源、pin、配置或服务。
+
+候选四阶段 direct、audit、architecture、compile 全部自然0。完整直接 owner 实际186项：i18n88（原58＋新增30）及 shared UI98；原58项 fullName和重复计数完整保留，原误报失败项现通过。新增案例通过真实 collector、独立临时 Vue 文件和原11个空注册表验证只读表与失败回退，原76263字节 owner 全文保留。静态审计为641文件/10641声明索引，仅新增4个声明，不等于运行展开30项；四份完整架构 owner 实际942项通过，不称全仓业务回归。
+
+本批没有新用户脚本或扩展构建、原生浏览器、CPU、heap或包体收益。体积仍引用第四十六批实测 ordinary1,960,589→1,958,537 B、完整脚本3,584,239→3,582,187 B，各减少2052 B，不能归因本次修复；旧 Greasy Fork 固定资源失败未重跑、未通过。progressPanel 优化仍是未正式应用、未实测的独立候选。
+
+实际回执见round52a-localized-source-audit/candidate-validation-attempt1/RECEIPT.json及ACTUAL-CASE-PRESERVATION.json；原 R52 失败回执与私有v1/v2历史保持。报告的文档三阶段由根代理独立验证，结果保存在本轮证据目录。首次site成功后协调器因变量重用中断检查，旧失败回执保留。仅本地保存，无推送、PR、合并或发布，未复制参考代码。
+
 ## 后续候选
 
-第四十六批完整独立脚本实际为3,582,187 B，原3,600,000 B严格预算通过、余量17,813 B；普通脚本为1,958,537 B，两类均比本批新基线减少2052 B。英文内嵌目录投影已实施，四份完整直接owner95项、原93项保留、架构owner942项与两臂各五项新构建/验证通过；保持静态可达性、真实payload和原生运行的证据边界。下一候选为round52的progressPanel界面指令：当前仅私有source/owner草案，尚未正式apply或实测工作计数、CPU与体积，不宣称收益。继续保留既有插件能力、全局算法、完整服务与语言、许可、资源pin和原预算。
+第四十七批只修复已有七语表的源码审计误报：i18n88与shared UI98共186项、架构942项、静态审计及compile通过，原基线失败保留；没有新性能或包体测量。最新完整独立脚本仍沿用第四十六批实测3,582,187 B，原3,600,000 B严格预算余量17,813 B；ordinary仍为1,958,537 B。下一候选为round52的progressPanel界面指令：当前仅私有source/owner草案，尚未正式apply或实测工作计数、CPU与体积，不宣称收益。继续保留既有插件能力、全局算法、完整服务与语言、许可、资源pin和原预算。
 
 
 合成段 loading 挂载循环、缓存键重复术语解析、高级请求限制禁用与缓存复习快捷键已在第二十七至三十批分别修复。第三十一轮调度只读探针保留现检查：13 个受控普通场景虽减少同 owner 复验，但第三个 source-only 读取中的 style getter 同步替换同文本 Text 时，复用先前结果留下脱离节点身份；这只是受控端口反例，未当成原生复现或 CPU 收益，未实施。证据为 `round31-page-scheduling-audit/`。第三十二轮已撤回 Cloud 普通历史入口的减加载推荐；LearningCenter 的 History/Memory 首用加载已在第三十一批实施，实际收藏阶段新增请求文件减少 20,641 B，父装配、加载故障与原行为通过限定验证。第三十四轮审计确认的八个既不可达设置子 UI 已在第三十二批排除，完整独立脚本实际减少 183,104 B，仍比原 3,600,000 B 门槛多 38,416 B。继续审查其 Options/IIFE 归属与可证明不可达的资源，保持可达服务、本地模型/TTS、数据、语言、许可和原门槛，不为达预算删除已有能力。请求队列仍在 response body 完成前占用并发槽；会改变错误种类的同步 deadline 合并未实施。

@@ -3,6 +3,7 @@
  * Vue 模板、绑定表达式与 script setup 均使用语法树；忽略注释和用户内容。
  * 模板文本按 Vue 运行时的文本节点合成：相邻文本与插值拼成整句，插值以数字占位。
  * 配置注册表仍保留中文数据，检查其在 UI 边界的精确本地化结果。
+ * 可信类型约束下的完整只读七语表逐分支校验，其余中文继续按原契约检查。
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -24,7 +25,83 @@ export function collectUiSourceCopy(root) {
     }
     function script(source, file) {
         const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+        const locales = ['zh-CN', 'en-US', 'ja-JP', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES'];
+        const nonChineseLocales = new Set(['en-US', 'ko-KR', 'fr-FR', 'ru-RU', 'es-ES']);
+        const typeModules = new Set(['src/core/i18n', 'src/core/i18n/language', 'src/core/i18n/types'].map(value => path.resolve(root, value)));
+        const languageTypes = new Set();
+        const blockedTypes = new Set();
+        // 只认可当前公共类型的真实 named import；同一顶层作用域的重名声明保守回到普通扫描。
+        for (const statement of ast.statements) {
+            if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
+                const value = statement.moduleSpecifier.text;
+                const modulePath = value.startsWith('@/') ? path.resolve(root, value.slice(2))
+                    : value.startsWith('.') ? path.resolve(path.dirname(file), value) : undefined;
+                const canonical = modulePath && typeModules.has(modulePath.replace(/\.ts$/u, ''));
+                const clause = statement.importClause;
+                if (clause?.name) blockedTypes.add(clause.name.text);
+                if (clause?.namedBindings && ts.isNamedImports(clause.namedBindings)) {
+                    for (const item of clause.namedBindings.elements) {
+                        if (canonical && (item.propertyName?.text ?? item.name.text) === 'UiLanguage') {
+                            if (languageTypes.has(item.name.text)) blockedTypes.add(item.name.text);
+                            languageTypes.add(item.name.text);
+                            if (item.name.text === 'Record' || item.name.text === 'Readonly') blockedTypes.add(item.name.text);
+                        } else blockedTypes.add(item.name.text);
+                    }
+                } else if (clause?.namedBindings) blockedTypes.add(clause.namedBindings.name.text);
+            } else if ((ts.isTypeAliasDeclaration(statement) || ts.isInterfaceDeclaration(statement)
+                || ts.isClassDeclaration(statement) || ts.isEnumDeclaration(statement) || ts.isModuleDeclaration(statement))
+                && statement.name && ts.isIdentifier(statement.name)) blockedTypes.add(statement.name.text);
+        }
+        function recordType(node) {
+            if (!node || !ts.isTypeReferenceNode(node) || !ts.isIdentifier(node.typeName)) return undefined;
+            const name = node.typeName.text;
+            if (blockedTypes.has(name)) return undefined;
+            if (name === 'Readonly' && node.typeArguments?.length === 1) {
+                const inner = recordType(node.typeArguments[0]);
+                return inner && {...inner, readonly: true};
+            }
+            if (name !== 'Record' || node.typeArguments?.length !== 2) return undefined;
+            const [language, value] = node.typeArguments;
+            if (!ts.isTypeReferenceNode(language) || !ts.isIdentifier(language.typeName) || language.typeArguments?.length
+                || !languageTypes.has(language.typeName.text) || blockedTypes.has(language.typeName.text)
+                || value.kind !== ts.SyntaxKind.StringKeyword) return undefined;
+            return {readonly: false};
+        }
+        function localizedTable(node) {
+            if (!ts.isVariableDeclaration(node) || !ts.isIdentifier(node.name) || !node.initializer
+                || (node.parent.flags & ts.NodeFlags.BlockScoped) !== ts.NodeFlags.Const || !ts.isVariableStatement(node.parent.parent)
+                || node.parent.parent.parent !== ast) return false;
+            const annotation = recordType(node.type);
+            if (node.type && !annotation?.readonly) return false;
+            let expression = node.initializer, constant = false, checked = false;
+            while (ts.isParenthesizedExpression(expression) || ts.isAsExpression(expression) || ts.isSatisfiesExpression(expression)) {
+                if (ts.isAsExpression(expression)) {
+                    if (!ts.isTypeReferenceNode(expression.type) || !ts.isIdentifier(expression.type.typeName)
+                        || expression.type.typeName.text !== 'const' || expression.type.typeArguments?.length) return false;
+                    constant = true;
+                } else if (ts.isSatisfiesExpression(expression)) {
+                    if (!recordType(expression.type)) return false;
+                    checked = true;
+                }
+                expression = expression.expression;
+            }
+            // satisfies 本身不冻结推断类型；可变 Record 标注也不能借 as const 作为只读表。
+            if ((!annotation?.readonly && !(constant && checked)) || !ts.isObjectLiteralExpression(expression)
+                || expression.properties.length !== locales.length) return false;
+            const seen = new Set();
+            for (const property of expression.properties) {
+                if (!ts.isPropertyAssignment(property) || !ts.isStringLiteral(property.name)
+                    || (!ts.isStringLiteral(property.initializer) && !ts.isNoSubstitutionTemplateLiteral(property.initializer))) return false;
+                const locale = property.name.text, value = property.initializer.text;
+                if (!locales.includes(locale) || seen.has(locale) || !value.trim()
+                    || (nonChineseLocales.has(locale) && /[\u3400-\u9fff]/u.test(value))) return false;
+                seen.add(locale);
+            }
+            return seen.size === locales.length;
+        }
         function visit(node) {
+            // 完整只读语言表直接验证每个分支；不把中文分支跨语言重新当成全局旧版文案。
+            if (localizedTable(node)) return;
             if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
                 // 搜索别名只用于匹配，不渲染；仍审计标签、说明与其他用户可见文案。
                 const parent = node.parent;
