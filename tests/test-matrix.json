@@ -166,6 +166,8 @@
       "tests/offscreenTtsPlayback.test.ts",
       "tests/pageContext.test.ts",
       "tests/pageContextPolicy.test.ts",
+      "tests/discourseContext.test.ts",
+      "tests/pageDiscourseContext.test.ts",
       "tests/popupCache.test.ts",
       "tests/providerUsageNormalization.test.ts",
       "tests/providerRegistry.test.ts",

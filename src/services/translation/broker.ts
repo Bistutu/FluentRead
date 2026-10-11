@@ -1799,7 +1799,7 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         const requestGeneration = cacheGeneration;
         // 步骤 2：摘要是 AI 上下文增强，只拿 provider deadline 的一小段预算。
         const summaryBudget = Math.min(10_000, Math.max(1_000, Math.floor(providerBudget / 4)));
-        const pageContext = imageInput ? '' : await addPageSummary(
+        const summarizedPageContext = imageInput ? '' : await addPageSummary(
             execution,
             rawPageContext,
             useCache,
@@ -1808,6 +1808,12 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
             message.modelOverride,
             summaryBudget,
         );
+        // 篇章证据不进入摘要缓存：每段只复用原有页面摘要，且总参考预算保持 4,000。
+        const discourse = !imageInput && isAIContextEnabled(execution, message.modelOverride)
+            && typeof message.discourseContext === 'string' ? message.discourseContext.slice(0, 2400) : '';
+        const pageContext = discourse
+            ? `${summarizedPageContext.slice(0, Math.max(0, 4000 - discourse.length - 48))}\n<discourse_evidence>\n${discourse}\n</discourse_evidence>`.slice(0, 4000)
+            : summarizedPageContext;
         const remainingProviderBudget = getRemainingDeadlineMs(providerDeadline);
 
         // 步骤 3：检测样本只属于本地翻译 auto；即使其他扩展页面手工构造该字段，
@@ -1815,10 +1821,11 @@ export function createTranslationBroker(deps: TranslationBrokerDependencies): Tr
         const shouldCarryDetectionText = (selectedService === 'chromeTranslator' || selectedService === 'localTranslation')
             && sourceLanguage === 'auto'
             && Boolean(message.sourceLanguageDetectionText?.trim());
+        const {discourseContext: _rawDiscourse, ...withoutDiscourse} = message;
         const providerInput = shouldCarryDetectionText
-            ? message
+            ? withoutDiscourse as TranslationRequestMessage
             : (() => {
-                const {sourceLanguageDetectionText: _ignored, ...withoutDetectionText} = message;
+                const {sourceLanguageDetectionText: _ignored, ...withoutDetectionText} = withoutDiscourse;
                 return withoutDetectionText as TranslationRequestMessage;
             })();
 
