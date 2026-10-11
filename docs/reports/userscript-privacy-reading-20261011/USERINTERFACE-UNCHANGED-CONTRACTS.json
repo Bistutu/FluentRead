@@ -1,0 +1,62 @@
+[
+  {
+    "path": "package.json",
+    "unchangedFrom09bc": true,
+    "sha256": "079d4a7f919782e06e87352ab419b94e72ec4ee112a28b869d3e9e1b6d524ab8"
+  },
+  {
+    "path": "pnpm-lock.yaml",
+    "unchangedFrom09bc": true,
+    "sha256": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a"
+  },
+  {
+    "path": "scripts/build-userscript-greasyfork.mjs",
+    "unchangedFrom09bc": true,
+    "sha256": "c2e441c5749d48e317b90e0052c275e58b3f14cd9f55df9ae10ade78c96792c8"
+  },
+  {
+    "path": "scripts/verify-userscript-build.mjs",
+    "unchangedFrom09bc": true,
+    "sha256": "c4b4c68f126e2ad55cf81553426decbfab7268c4b51c48557b49b2739d0405ad"
+  },
+  {
+    "path": "scripts/verify-userscript-standalone-build.mjs",
+    "unchangedFrom09bc": true,
+    "sha256": "5dc09ebf26d7bce73c035eb30be7977292f6a713082d9f1c05c324100228fe76"
+  },
+  {
+    "path": "scripts/verify-userscript-greasyfork-build.mjs",
+    "unchangedFrom09bc": true,
+    "sha256": "f732027c097fd87b87e57c24d29bd84740d66057f037ba1f722ac9e4970e0d83"
+  },
+  {
+    "path": "src/features/reading-assistant/client.ts",
+    "unchangedFrom09bc": true,
+    "sha256": "878c2c10a500e2c8a6bf1ecd40a4aea43a79938e6721e989739729fa7a92fdb7"
+  },
+  {
+    "path": "src/features/reading-assistant/background.ts",
+    "unchangedFrom09bc": true,
+    "sha256": "73b15bc533c7b5d08ba04618aa190e01bd85f8952186db947dd805afaacc8f09"
+  },
+  {
+    "path": "src/features/reading-assistant/streamPort.ts",
+    "unchangedFrom09bc": true,
+    "sha256": "383b027cc7879f8d7b1ea8f503c7a2ee37bcb27a83f82c1a216ed7f69066ce9b"
+  },
+  {
+    "path": "src/services/harness/runtime.ts",
+    "unchangedFrom09bc": true,
+    "sha256": "9c9ef26fc4d43cbf5a4bdd89c85ca53118d413735f592e392821b400e929d4c3"
+  },
+  {
+    "path": "src/services/harness/modelGateway.ts",
+    "unchangedFrom09bc": true,
+    "sha256": "ca6dd1baaadbc546225abc188edd2218a1d4aa9f8573c80ccf964642ca7a28ec"
+  },
+  {
+    "path": "src/app/background/harnessRuntime.ts",
+    "unchangedFrom09bc": true,
+    "sha256": "d8af88ced3a2f7201349493a0ff71bca01d71826e94d44c8089a97f3c3ca9ead"
+  }
+]

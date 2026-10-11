@@ -1,0 +1,309 @@
+{
+  "scope": "Finite read-only baseline screen; not the expanded correctness graph or a final build proof. Only two newly identified pure metadata boundaries are proposed. No repository mutation, build, test, browser, API, resource publication, permission or pin change.",
+  "baseline": {
+    "sourceCommit": "1bd0776fa79e39dbf9f46aa7936fbe8da16c4e4c",
+    "sourceTree": "42a2fe5ec930fae740d143c59a9d693db35ba2d9",
+    "reportCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "graphFile": "GF-FOUR-CANDIDATES-MODULE-GRAPH.json",
+    "graphSha256": "262c8138342d0a390448b98620ad1f172fdd240a03a6f173cc73f53c06019c5b",
+    "moduleCount": 375,
+    "renderedTotalJsCharacters": 2026022,
+    "artifactFile": "gf-final-four-candidate-fluent-read.user.js",
+    "artifactBytes": 2247865,
+    "artifactSha256": "74b100f3e213d88f9fa307e54e63fbacb17473871d111dcddca330694706c416",
+    "budgetBytes": 2000000,
+    "baselineExcessBytes": 247865
+  },
+  "measurementMethod": "Small finite grammar parses only three named literal array initializers in source and readable output without executing JS or importing core modules. Artifact/source whole-value equality is checked. Raw initializer and statement UTF-8 spans are gross bytes; graph renderedLength is JS characters. JSON values are canonicalized only for comparison/hash, not substituted into artifacts.",
+  "sharedImplementationProposal": "Extend existing createUserscriptCatalogCompressionPlugin GF-only exact-module transform with a shared strict literal AST reader and readUserscriptOptionCatalogsResource plain-value generator. Keep original core tables in source. Replace only selected GF initializers with synchronous shape-validated data reads; add explicit globals resource types. Do not widen existing six CSS query/importer whitelist or loadingIndicatorStyles path/name guard; do not create a duplicate plugin or arbitrary literal pool.",
+  "candidates": [
+    {
+      "id": "G1",
+      "sourcePath": "src/core/config/interfaceAppearance.ts",
+      "bindings": [
+        "interfaceSkinOptions",
+        "interfaceFontOptions"
+      ],
+      "frozenSourceSha256": "7dd32958d5a549b053709f5915fd3830526ad058fda495277bcf322aff5f3b5c",
+      "currentSourceSha256AtScreen": "7dd32958d5a549b053709f5915fd3830526ad058fda495277bcf322aff5f3b5c",
+      "currentSourceExactFrozenAtScreen": true,
+      "moduleRenderedLengthJsCharacters": 12521,
+      "measuredInitializerGrossUtf8Bytes": 8812,
+      "measuredStatementGrossUtf8Bytes": 8872,
+      "measuredNetSavingsBytes": null,
+      "replacementGuardBytes": null,
+      "resourceAssetIncreaseBytes": null,
+      "runtimeCost": "UNMEASURED",
+      "measurements": [
+        {
+          "artifact": {
+            "binding": "interfaceSkinOptions",
+            "line": 5275,
+            "initializerGrossUtf8Bytes": 6014,
+            "initializerSha256": "d4deb2dbe7a25e223428b52fb0b19ea3cc79dcb0ae66abff9739735442d9a834",
+            "fullValueCanonicalJsonUtf8Bytes": 5185,
+            "fullValueCanonicalJsonSha256": "6e48e833bfffc5e54d6edeeb49e96a8c3d007a13e51c0f2984489f934ad4f574",
+            "entryCount": 14,
+            "orderedValues": [
+              "default",
+              "minimal",
+              "compact",
+              "contrast",
+              "qinghua",
+              "zhusha",
+              "shuimo",
+              "zhuqing",
+              "ouhe",
+              "xiangse",
+              "qinglv",
+              "yuebai",
+              "xuanqing",
+              "wujin"
+            ],
+            "statementGrossUtf8Bytes": 6044,
+            "statementSha256": "f12ba7f940264974de8f9e056d86f7df9bfe10e620c23c1e6f3bb0f604da1cc8"
+          },
+          "frozenSource": {
+            "binding": "interfaceSkinOptions",
+            "line": 21,
+            "initializerGrossUtf8Bytes": 5719,
+            "initializerSha256": "bb1cf120a7f05d9ab24821b93c831a9ccbe4d1a1a4aadc0aa41e043243c69d47",
+            "fullValueCanonicalJsonUtf8Bytes": 5185,
+            "fullValueCanonicalJsonSha256": "6e48e833bfffc5e54d6edeeb49e96a8c3d007a13e51c0f2984489f934ad4f574",
+            "entryCount": 14,
+            "orderedValues": [
+              "default",
+              "minimal",
+              "compact",
+              "contrast",
+              "qinghua",
+              "zhusha",
+              "shuimo",
+              "zhuqing",
+              "ouhe",
+              "xiangse",
+              "qinglv",
+              "yuebai",
+              "xuanqing",
+              "wujin"
+            ]
+          },
+          "wholeValuesAndOrderEqual": true
+        },
+        {
+          "artifact": {
+            "binding": "interfaceFontOptions",
+            "line": 5417,
+            "initializerGrossUtf8Bytes": 2798,
+            "initializerSha256": "71e7d053e1ac1300e18b555957a421655c8499171737d409a2928d6908c5be8f",
+            "fullValueCanonicalJsonUtf8Bytes": 2495,
+            "fullValueCanonicalJsonSha256": "10ca2ee704bb9aa3109394f9b33ed9298a5837ad6d579872c46c2b13230cc2e7",
+            "entryCount": 10,
+            "orderedValues": [
+              "system",
+              "inter",
+              "noto-sans-sc",
+              "roboto",
+              "source-sans-3",
+              "ibm-plex-sans",
+              "manrope",
+              "nunito-sans",
+              "lxgw-wenkai",
+              "noto-serif-sc"
+            ],
+            "statementGrossUtf8Bytes": 2828,
+            "statementSha256": "3c6806a6eff7e4a964a1f4e00d5b6b18a22e0982ca2bb103a916fb5bd280344e"
+          },
+          "frozenSource": {
+            "binding": "interfaceFontOptions",
+            "line": 168,
+            "initializerGrossUtf8Bytes": 2687,
+            "initializerSha256": "27d3574c6f065ca55e79dd82431696409c66c2040f4118dbfb3760dd30809bcc",
+            "fullValueCanonicalJsonUtf8Bytes": 2495,
+            "fullValueCanonicalJsonSha256": "10ca2ee704bb9aa3109394f9b33ed9298a5837ad6d579872c46c2b13230cc2e7",
+            "entryCount": 10,
+            "orderedValues": [
+              "system",
+              "inter",
+              "noto-sans-sc",
+              "roboto",
+              "source-sans-3",
+              "ibm-plex-sans",
+              "manrope",
+              "nunito-sans",
+              "lxgw-wenkai",
+              "noto-serif-sc"
+            ]
+          },
+          "wholeValuesAndOrderEqual": true
+        }
+      ],
+      "hypothesis": "GF-only plain JSON metadata relocation for the 14 skin and 10 font descriptors, keeping all values and order.",
+      "suggestedResourceFields": [
+        "optionCatalogs.interfaceSkinOptions",
+        "optionCatalogs.interfaceFontOptions"
+      ],
+      "exactBoundary": "Only the two named exported const initializers in interfaceAppearance.ts. Preserve normalizers, lookup Maps, retired aliases, defaults, popup/visibility registries, DOM application and font loading.",
+      "meaningfulValidation": [
+        "Exact whole nested exports, ordered values and keys, UTF-16 code units and code-point sequences match source; include complete preview palettes and fontFamily strings.",
+        "All 14 skin and 10 font getOption results are the corresponding restored array members by reference; retired aliases and unknown/default normalization are unchanged.",
+        "Missing, wrong-type, partial or damaged resource tables fail synchronously; reject functions, calls, references, interpolation, spreads, duplicate bindings/keys, extra declarations and incorrect path/query.",
+        "GF uses only exact whitelisted module and binding; standard/standalone return null and same-source real artifacts are byte-identical to their own control.",
+        "Real options previews, skin changes, font loading and popup/visibility behavior retain all currently supported choices."
+      ]
+    },
+    {
+      "id": "G2",
+      "sourcePath": "src/core/config/translationLoadingStyle.ts",
+      "bindings": [
+        "translationLoadingStyleOptions"
+      ],
+      "frozenSourceSha256": "eb674a1385fb5a42f6d6d249493a0bdf9cd09bdcdd45d65ae48daa613a674858",
+      "currentSourceSha256AtScreen": "eb674a1385fb5a42f6d6d249493a0bdf9cd09bdcdd45d65ae48daa613a674858",
+      "currentSourceExactFrozenAtScreen": true,
+      "moduleRenderedLengthJsCharacters": 3871,
+      "measuredInitializerGrossUtf8Bytes": 4438,
+      "measuredStatementGrossUtf8Bytes": 4478,
+      "measuredNetSavingsBytes": null,
+      "replacementGuardBytes": null,
+      "resourceAssetIncreaseBytes": null,
+      "runtimeCost": "UNMEASURED",
+      "measurements": [
+        {
+          "artifact": {
+            "binding": "translationLoadingStyleOptions",
+            "line": 5618,
+            "initializerGrossUtf8Bytes": 4438,
+            "initializerSha256": "e4cd5f5750230dcffa7d2d6d61dfd669abba012c5a5de60265326033f1134b63",
+            "fullValueCanonicalJsonUtf8Bytes": 3835,
+            "fullValueCanonicalJsonSha256": "2d921673bcfef181bdac84445911d7f489a568329804efd1c4efd7f3754b97e8",
+            "entryCount": 15,
+            "orderedValues": [
+              "ring",
+              "minimal",
+              "dots",
+              "orbit",
+              "sparkle",
+              "pulse",
+              "wave",
+              "sweep",
+              "hourglass",
+              "comet",
+              "flip",
+              "bounce",
+              "typing",
+              "scan",
+              "signal"
+            ],
+            "statementGrossUtf8Bytes": 4478,
+            "statementSha256": "d7e39cdae8d104b4d6cdfa1ba6246cd6ff197c4269235435df8c70f660becc4d"
+          },
+          "frozenSource": {
+            "binding": "translationLoadingStyleOptions",
+            "line": 8,
+            "initializerGrossUtf8Bytes": 4242,
+            "initializerSha256": "f8b41e84bb5fae2dd034dfa32546887ac89d77e5610f3ef334661295d982589c",
+            "fullValueCanonicalJsonUtf8Bytes": 3835,
+            "fullValueCanonicalJsonSha256": "2d921673bcfef181bdac84445911d7f489a568329804efd1c4efd7f3754b97e8",
+            "entryCount": 15,
+            "orderedValues": [
+              "ring",
+              "minimal",
+              "dots",
+              "orbit",
+              "sparkle",
+              "pulse",
+              "wave",
+              "sweep",
+              "hourglass",
+              "comet",
+              "flip",
+              "bounce",
+              "typing",
+              "scan",
+              "signal"
+            ]
+          },
+          "wholeValuesAndOrderEqual": true
+        }
+      ],
+      "hypothesis": "GF-only plain JSON relocation for the complete 15-entry loading-style metadata array.",
+      "suggestedResourceFields": [
+        "optionCatalogs.translationLoadingStyleOptions"
+      ],
+      "exactBoundary": "Only translationLoadingStyleOptions initializer. Keep DEFAULT_TRANSLATION_LOADING_STYLE and normalizeTranslationLoadingStyle; do not modify loading-indicator DOM functions, CSS, animations or previews.",
+      "meaningfulValidation": [
+        "Exact whole 15-entry export including labels, descriptions, keys, order, UTF-16/code points matches source.",
+        "Every valid ID normalizes to itself; unknown, object and missing inputs still normalize to ring.",
+        "All 15 actual preview/indicator classes and reduced-motion behavior remain unchanged.",
+        "Same strict resource/AST/module boundaries and three-mode controlled builds as G1."
+      ]
+    }
+  ],
+  "vendorAndNarrowImportScreen": {
+    "retainedThirdPartyModuleCount": 11,
+    "positiveRenderedThirdPartyJsModules": 0,
+    "allThirdPartyEntriesAreZeroRenderedCss": true,
+    "conclusion": "No new generic licensed vendor JS implementation or narrow vendor import reduction is present in this frozen retained graph. VendorEntry already reexports library-only symbols; Vue, Element Plus/icons, tldts and pako are external as well. Zero graph JS does not assert zero CSS/assets or apply to the pending correctness graph."
+  },
+  "notResubmitted": [
+    {
+      "boundary": "currentModelIds/cloudCredentialLabels/translationLanguageOptions/TRANSLATION_STYLE_PRESETS",
+      "reason": "Already included in prior finite candidate B screening; not new candidates."
+    },
+    {
+      "boundary": "six CSS inline modules and private loading indicator CSS constant",
+      "reason": "Already relocated in this frozen four-candidate baseline; gross original strings cannot be counted again."
+    },
+    {
+      "boundary": "models initializer in src/core/config/catalog.ts",
+      "reason": "Map/calls/references/computed LOCAL_TRANSLATION_MODELS.map and custom model values are not a strict literal JSON table. Preserve supported dynamic model behavior."
+    },
+    {
+      "boundary": "CARD_THEMES in src/features/share-card/themes.ts",
+      "reason": "Font template expressions reference SANS/SERIF. Whole initializer is not accepted by strict literal-only grammar; do not evaluate product modules or move canvas painting functions."
+    },
+    {
+      "boundary": "multilingualTargetLanguageLabels and similar label maps",
+      "reason": "Not retained in this artifact; source-only byte counts are not evidence of bundle savings."
+    },
+    {
+      "boundary": "previous generic settings UI and selection logic proposals",
+      "reason": "Outside the requested new pure-data/vendor/narrow-import screen; do not remove or relocate product behavior."
+    }
+  ],
+  "dependencySnapshots": [
+    {
+      "path": "userscript/vendorEntry.ts",
+      "frozenSha256": "53547a042233aed406d5c986a7709b395363dcc6600e4433767e486ca8e8d5f6",
+      "currentSha256AtScreen": "53547a042233aed406d5c986a7709b395363dcc6600e4433767e486ca8e8d5f6",
+      "currentExactFrozenAtScreen": true
+    },
+    {
+      "path": "userscript/vite.config.ts",
+      "frozenSha256": "db0fe8b40ee207601e702b64d2946103e1b58d4ece6698e521a8538ea4416b1a",
+      "currentSha256AtScreen": "db0fe8b40ee207601e702b64d2946103e1b58d4ece6698e521a8538ea4416b1a",
+      "currentExactFrozenAtScreen": true
+    },
+    {
+      "path": "userscript/globals.d.ts",
+      "frozenSha256": "e3a8bfeb6b4247794a3b94fc02b8e54a7fb5b9e329c83229995af78a4e85c1c2",
+      "currentSha256AtScreen": "a30f4583a847267705ef646b65d4c8e335cbe15a6b005722f02ff7ae0ce09b13",
+      "currentExactFrozenAtScreen": false
+    }
+  ],
+  "finiteArithmetic": {
+    "twoCandidateInitializerGrossUtf8Bytes": 13250,
+    "baselineExcessBytes": 247865,
+    "remainingExcessAfterHypotheticalZeroOverheadDeletionBytes": 234615,
+    "interpretation": "This hypothetical removal of only these initializer spans is a finite gross-span comparison, not a real transformed build or a global lower bound. Resource reads, validation and updated immutable pin overhead reduce any real retained-file saving; resource payload grows. These two candidates alone are insufficient to close this baseline deficit."
+  },
+  "unknownsAndNextStep": [
+    "No actual patch applied, build run, net saving, runtime cost or DOM/interaction equivalence measured in this screen.",
+    "If pursued, prefer a single shared strict table reader with explicit table-specific shape checks, then sequential original-wrapper builds under the same source/toolchain. Compare standard and standalone to same-source controls and retain ES2018, original budgets, license notices, lock and resource guards.",
+    "Any enlarged data resource must be generated and validated locally with full key/value/order and nonmutation checks; publication and immutable resource selection are a separate authorized parent operation. No floating data URL or permission expansion.",
+    "The correctness work changes the graph; root should freeze and screen its final artifact before attributing any new candidate net result.",
+    "Finite screen insufficient; no global minimum, maximum optimization, SOTA or Pareto claim."
+  ],
+  "artifactAndGraphUnchangedDuringScreen": true
+}

@@ -1,0 +1,233 @@
+{
+  "codeCommit": "1a39eb1b1fb0c65766b61c7c0b66a0dfc2dfb0fa",
+  "codeTree": "05c5e75b7fdc115d0fea6202d771d5cf50588193",
+  "sourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+  "changedCodeFiles": [
+    {
+      "file": "docs/en/guide/userscript.md",
+      "bytes": 9046,
+      "sha256": "8801ef878e08b56fbfce39037dbb789bf21c9472072ede97b4247a8a06e8e2d4",
+      "baselineSha256": "691edb4650f2e516e1cd7b923cf6e881d299fb35259db516c90ad8ee6f4a1039"
+    },
+    {
+      "file": "docs/guide/userscript.md",
+      "bytes": 8749,
+      "sha256": "9f14575d6dbbc175cd2a56076a7fa4b10a7e5d863be04ed682400b8f385e722a",
+      "baselineSha256": "ce6ff7051ec2fd6c4f31cdf8b3e3709e35cbf1cc173fad5e8c0e182bc6bbb40e"
+    },
+    {
+      "file": "src/features/reading-assistant/ui/ReadingPanel.vue",
+      "bytes": 50799,
+      "sha256": "b3633700a694abd0b310ab23e14a6a039b678284dffd21cf3a3d5bc0fa1bf262",
+      "baselineSha256": "1457f963d815a717107ed556ae13970e199d6b12ec745ddd9c433467c3aefef2"
+    },
+    {
+      "file": "src/features/selection-translation/ui/SelectionTranslator.vue",
+      "bytes": 135013,
+      "sha256": "6a3878d30532ac4078b4f9249eab103cc9083f9979e6a6c3b9ff0160fce8cb8b",
+      "baselineSha256": "9c03068ca95cc33156ba3cacc5c1fc762f2b1fc7085d1106896c8a4251fb2f86"
+    },
+    {
+      "file": "tests/readingAssistantClient.test.ts",
+      "bytes": 19525,
+      "sha256": "3d7fef3a1ad6f33d8f48239c37483cb58ff772310a0d0c10346f043741ff84c2",
+      "baselineSha256": "9c45107687fdd7464aec6aa55bc6e84505d9d31f1ad3730c38d3344281229808"
+    },
+    {
+      "file": "tests/readingPanelLifecycle.test.ts",
+      "bytes": 28260,
+      "sha256": "5dfd45e4a76f51bdf2adc070c67e913f894e7518929cd84f7cb006c3664d27c5",
+      "baselineSha256": "d6e82f0f515352c6ace403846de65b6aa2fe425fe19384d7ad2cec52380afc43"
+    },
+    {
+      "file": "tests/selectionTranslatorLifecycle.test.ts",
+      "bytes": 102765,
+      "sha256": "bb9b7499d20970cc696784ca661d6a99c74f305c664b839b1ea625efb164ef79",
+      "baselineSha256": "4405ae4b7cb0e24b18eed4b883d1e22c551278ea3026e9a29415765a6f574704"
+    },
+    {
+      "file": "tests/userscriptPlatform.test.ts",
+      "bytes": 12851,
+      "sha256": "3a0425f93bd0afc09c3bd2140e792df88a447a1fbcf24e7f23ac4b98fd6e514f",
+      "baselineSha256": "9b70d8e7d955c826620b7f27bb189820895c8d9f918e7ab10f2bb50fa446a389"
+    },
+    {
+      "file": "tests/userscriptPrivacy.test.ts",
+      "bytes": 18377,
+      "sha256": "7bc1df165a1dfbe4f5a9812427a3e1266d49975074a1fff9b83daf6bfbe7221b",
+      "baselineSha256": "8680fd02981902a27dc85fe780c881dbbd59cbc39e5d8052f4cc990f95f23e0b"
+    },
+    {
+      "file": "userscript/browser.ts",
+      "bytes": 9155,
+      "sha256": "bc1bbeed6645f2c1f68e7ef8eb06b1acb8ab93794b6747d1d9bbc58acd27d131",
+      "baselineSha256": "3eba1e3e2291c087f2dbe9cc9a776002f6cf43ed3916fe4ecb523868e5a3f1ef"
+    },
+    {
+      "file": "userscript/globals.d.ts",
+      "bytes": 3599,
+      "sha256": "a30f4583a847267705ef646b65d4c8e335cbe15a6b005722f02ff7ae0ce09b13",
+      "baselineSha256": "e3a8bfeb6b4247794a3b94fc02b8e54a7fb5b9e329c83229995af78a4e85c1c2"
+    },
+    {
+      "file": "userscript/localPort.ts",
+      "bytes": 3698,
+      "sha256": "8893dcf54017c9101a4e74e3fe3b38f13a8853a4a31aae5fd129f3fe931a7fb8",
+      "baselineSha256": null
+    },
+    {
+      "file": "userscript/main.ts",
+      "bytes": 9975,
+      "sha256": "4363df56b67723af60c6bc63a390841aa72b691154c1ae036e2cc3f09435a4ee",
+      "baselineSha256": "527e4f46ac9661ec35804d7f385bb3e0abfb58e5ef9ff881ba9942ce216d7462"
+    },
+    {
+      "file": "userscript/platform.ts",
+      "bytes": 9303,
+      "sha256": "ef47c2174b423cd9c6c4e7f2237e18bf0c70a3cfd2bf68a8e028b91611509207",
+      "baselineSha256": "f8baae21074a0d04a9f8c080b9991392ac40e7ea76b3d14c520033d624cf044b"
+    },
+    {
+      "file": "userscript/platformFull.ts",
+      "bytes": 12866,
+      "sha256": "f5c39aaaf5ee2b90e4ce06c78aade78b1933cab99d52a2d90b89a4824c76c0ed",
+      "baselineSha256": "67dff42ec010ac54275875d7f213ea98f6158b608164912502c46a5090da84fb"
+    },
+    {
+      "file": "userscript/readingRuntime.ts",
+      "bytes": 6729,
+      "sha256": "830570c46ec3c61572cf9b147059bcbfb9fd8945d23d17089930ef5216c3974a",
+      "baselineSha256": null
+    },
+    {
+      "file": "userscript/resources/fluentread-data.v1.js",
+      "bytes": 995570,
+      "sha256": "4f49c29957c9caf94674a52a698312a17ac36608524127919fe524617b935ddf",
+      "baselineSha256": "c6cc74bb1c3e3f0be2a6919c45ed2fb40dfda17a7a8a9c46683b72f956a7a40e"
+    },
+    {
+      "file": "userscript/resources/fluentread-vendor.v1.js",
+      "bytes": 889381,
+      "sha256": "97043572b031723354cc35521f81e8a0da890c41f1b0fecf430a72fa6df00a39",
+      "baselineSha256": "8fa608295f4e3479c9c70a1181ee008944c85b19d1c3bd542f7062e91898fc38"
+    },
+    {
+      "file": "userscript/vendorEntry.ts",
+      "bytes": 1639,
+      "sha256": "5a606971b8ec527ed7afc68808f7f80857766cdfe2a24d51b84c41e546bd8398",
+      "baselineSha256": "53547a042233aed406d5c986a7709b395363dcc6600e4433767e486ca8e8d5f6"
+    },
+    {
+      "file": "userscript/vite.config.ts",
+      "bytes": 41583,
+      "sha256": "4534abd8f64d768cf73e2e8d0276e86287b136c765e5b061173f3dfdfa2421c3",
+      "baselineSha256": "db0fe8b40ee207601e702b64d2946103e1b58d4ece6698e521a8538ea4416b1a"
+    },
+    {
+      "file": "src/core/harness/loop.ts",
+      "bytes": 6261,
+      "sha256": "ba81b8e5c974030f37be798bf1fda59c82849da275e37dee536125e24156245f",
+      "unchangedFrom09bc": true
+    },
+    {
+      "file": "src/services/config/store.ts",
+      "bytes": 94802,
+      "sha256": "3a87abcb389b3346ac227c7f9946603901090def9813289d51796035d2ab98a4",
+      "unchangedFrom09bc": true
+    },
+    {
+      "file": "wxt.config.ts",
+      "bytes": 15612,
+      "sha256": "6fd77267d4c39dd7daae66e1d4648c5da817d29cc536bbf0341e3b5a2dcffc2d",
+      "unchangedFrom09bc": true
+    }
+  ],
+  "stageBindings": [
+    {
+      "stage": "userinterface-final-contracts",
+      "stageSourceSnapshotSha256": "cd35d8bc9d0bad659af971abbd1a5dadb99e6b30aaf9d52d6fd836f6749a2689",
+      "differencesFromCodeCommit": [
+        "docs/en/guide/userscript.md",
+        "docs/guide/userscript.md"
+      ],
+      "finalRuntimeAndTestsExact": true
+    },
+    {
+      "stage": "userinterface-final-compile",
+      "stageSourceSnapshotSha256": "cd35d8bc9d0bad659af971abbd1a5dadb99e6b30aaf9d52d6fd836f6749a2689",
+      "differencesFromCodeCommit": [
+        "docs/en/guide/userscript.md",
+        "docs/guide/userscript.md"
+      ],
+      "finalRuntimeAndTestsExact": true
+    },
+    {
+      "stage": "userinterface-architecture",
+      "stageSourceSnapshotSha256": "3b61a58ec9067cfe2c6597bb23a7f5340a8eadfda86949a0b4141509831e0098",
+      "differencesFromCodeCommit": [
+        "docs/en/guide/userscript.md",
+        "docs/guide/userscript.md",
+        "userscript/resources/fluentread-data.v1.js",
+        "userscript/resources/fluentread-vendor.v1.js",
+        "userscript/vendorEntry.ts",
+        "userscript/vite.config.ts"
+      ],
+      "finalRuntimeAndTestsExact": true
+    },
+    {
+      "stage": "userinterface-chrome-build",
+      "stageSourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+      "differencesFromCodeCommit": [],
+      "finalRuntimeAndTestsExact": true
+    },
+    {
+      "stage": "userinterface-firefox-build",
+      "stageSourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+      "differencesFromCodeCommit": [],
+      "finalRuntimeAndTestsExact": true
+    },
+    {
+      "stage": "userinterface-docs-build",
+      "stageSourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+      "differencesFromCodeCommit": [],
+      "finalRuntimeAndTestsExact": true
+    },
+    {
+      "stage": "userinterface-test-audit",
+      "stageSourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+      "differencesFromCodeCommit": [],
+      "finalRuntimeAndTestsExact": true
+    },
+    {
+      "stage": "userinterface-original-gf-wrapper",
+      "stageSourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+      "differencesFromCodeCommit": [],
+      "finalRuntimeAndTestsExact": true
+    },
+    {
+      "stage": "userinterface-standard-build",
+      "stageSourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+      "differencesFromCodeCommit": [],
+      "finalRuntimeAndTestsExact": true
+    },
+    {
+      "stage": "userinterface-standalone-build",
+      "stageSourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+      "differencesFromCodeCommit": [],
+      "finalRuntimeAndTestsExact": true
+    },
+    {
+      "stage": "userinterface-generic-roots-measurement",
+      "stageSourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+      "differencesFromCodeCommit": [],
+      "finalRuntimeAndTestsExact": true
+    },
+    {
+      "stage": "userinterface-manifest-verifier",
+      "stageSourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+      "differencesFromCodeCommit": [],
+      "finalRuntimeAndTestsExact": true
+    }
+  ],
+  "scope": "Full local source maps retained on CW; published selected hashes and exact stage differences. Reports are excluded from docs routing and added only after these runs."
+}

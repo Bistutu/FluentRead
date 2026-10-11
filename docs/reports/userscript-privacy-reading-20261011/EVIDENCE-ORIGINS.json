@@ -1,0 +1,578 @@
+[
+  {
+    "file": "userinterface-baseline-diagnostic.log.txt",
+    "originalBytes": 21461,
+    "originalSha256": "94444d80d50d1c4dd95db931ade9e928bc7f99070511a3d1fdbe0644ce9ad6a1",
+    "publishedBytes": 19037,
+    "publishedSha256": "2806d230b46119eb16ce51b4b82907adde43ba7ee3b65bdc934fa69b7bf56ff8",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-baseline-diagnostic-time.txt",
+    "originalBytes": 1057,
+    "originalSha256": "7530b0e652781db80234493638a509fb1debb0a87341ba22bdc35093e1c2d397",
+    "publishedBytes": 1001,
+    "publishedSha256": "a51e752036d83a022e17c500c3500727e1c94852da0639be491f52de95aac274",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-sfc-red.log.txt",
+    "originalBytes": 25008,
+    "originalSha256": "3535d9f5108c88cc4be3268b1397ed6c00e2b076fd17c6860790a323e2668f76",
+    "publishedBytes": 22584,
+    "publishedSha256": "510d5bf77258d015b1aed1452e2de6472ceafa475ba66f2949a8e25ab729e14b",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-sfc-red-time.txt",
+    "originalBytes": 1095,
+    "originalSha256": "c15849cde30df523fa08645b41bace423f6ca2dda5a071afd77660ae1116425a",
+    "publishedBytes": 1039,
+    "publishedSha256": "df73cfa5400dae76dec46d14285142469422afc978e739b1f10f8342e1086008",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-privacy-ui-red.log.txt",
+    "originalBytes": 33808,
+    "originalSha256": "46c3ac7016a28e84d4f19ffe72682877dd561025c35ccc90b6f373f00060fe67",
+    "publishedBytes": 31352,
+    "publishedSha256": "1ff42e1033ab98c0b379db3aac509749e67b6513c28f9255f86d17b297c5817f",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-privacy-ui-red-time.txt",
+    "originalBytes": 1160,
+    "originalSha256": "12b4afa63ef24934a6e622b0d7e018076e012d0844490c040ce8f7edbddd56ff",
+    "publishedBytes": 1104,
+    "publishedSha256": "348022d003c20952975071a9f578351255dd2c5d454e8e7ca27e633534c3a2eb",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-privacy-ui-red-corrected.log.txt",
+    "originalBytes": 38061,
+    "originalSha256": "2ee99a9f58459063bfc3adbc1283c72ae6b7b54aa5e5f4ecf7a09849bd2b3ab8",
+    "publishedBytes": 35509,
+    "publishedSha256": "ed07f5844a533327576325bbda483c3fffe3d209e8a87d0c26ccae13ca5dc12b",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-privacy-ui-red-corrected-time.txt",
+    "originalBytes": 1160,
+    "originalSha256": "72c89b5c64d7ad083203e14111470605f0d6e22a04312ee6d933d772930a3e9f",
+    "publishedBytes": 1104,
+    "publishedSha256": "b793f99570e6a84217af111d9cf5614c85f26edba0373c2f46761ef3757c8838",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-privacy-ui-green-partial.log.txt",
+    "originalBytes": 31213,
+    "originalSha256": "3444c8fc33afbf131a73fcc27f707dc7e48e8fd45636f2f96544c0b4c38f8640",
+    "publishedBytes": 28661,
+    "publishedSha256": "dcf09dd955086bf33ccec3b47f11b8bcb328e3898817a23499d47154428e53ac",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-privacy-ui-green-partial-time.txt",
+    "originalBytes": 1160,
+    "originalSha256": "d4841e8a9856eebfd2bf7ba92f605a462cbe00798007a29d6e5e922d6ee72685",
+    "publishedBytes": 1104,
+    "publishedSha256": "e87c26984bed6a2d8b55cfbe647be255cdc1b62e37d4a513549b90e7ec89e414",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-privacy-ui-and-port-green.log.txt",
+    "originalBytes": 24248,
+    "originalSha256": "6d3cc4e93dc31ea2da46cefe702adc700620fb41738c8107645a1a8b699a1d8c",
+    "publishedBytes": 21568,
+    "publishedSha256": "40768f646cc61628fb7a32dfe9e833fc14acbf6ba6b0047f63097dfe025c2ed1",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-privacy-ui-and-port-green-time.txt",
+    "originalBytes": 1159,
+    "originalSha256": "6f9f413982b4276fa2fc0958f961c957e7373a9bf0d1d56b08077b4982c0e2cf",
+    "publishedBytes": 1103,
+    "publishedSha256": "68a3b127e459cf1516953fb34241e7c1f13da5d2849afd048d38c69cc11b4dcd",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-pre-runtime-compile.log.txt",
+    "originalBytes": 423,
+    "originalSha256": "c6d541ed058cefffb02f71a02be099a4e834b77d930a52920b7ff9dce9301e8f",
+    "publishedBytes": 367,
+    "publishedSha256": "de7b298f7327dad7cd497de878e323efb195478b30628ca88237c415e1683302",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-pre-runtime-compile-time.txt",
+    "originalBytes": 979,
+    "originalSha256": "e471f4b373926b9e62aca73736a64e230758c09dad7a4c489f1fa2e12632796a",
+    "publishedBytes": 923,
+    "publishedSha256": "bcee5bf12a49da254983f97ab6a3c89cfb044bfde49f9468abb664d0cc198a8a",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-runtime-integration-preflight.log.txt",
+    "originalBytes": 49212,
+    "originalSha256": "e123fcd7ef05e5e11d4f07490305fc0da604a2fcd85d4bb3ed2c51c5730c4a27",
+    "publishedBytes": 46532,
+    "publishedSha256": "78edecd74f7138ebfc6cd66b5fa7217037135b91049a0453775882f7b89c14e2",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-runtime-integration-preflight-time.txt",
+    "originalBytes": 1264,
+    "originalSha256": "bd29e88c490a30444285a875b9b1777fc6657bbb3159ce923687c3fd8f094c13",
+    "publishedBytes": 1208,
+    "publishedSha256": "5c7cc31f1b76a03cdb226b45d6d78774f840f506b96ac665c27146dfd36622c3",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-http-reading-red.log.txt",
+    "originalBytes": 26604,
+    "originalSha256": "2083a25da3d7b7f1c4a7331359548bd88e36f9743a4c4c052405229362de7142",
+    "publishedBytes": 23956,
+    "publishedSha256": "7337e1884e5ba626555c3068b94932e60a7c4a75ae85d40a8474a17fc1f6bef6",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-http-reading-red-time.txt",
+    "originalBytes": 1085,
+    "originalSha256": "0eed203a767451abd689590a188d02e6594df0730eb35218f366ae2130c05f1a",
+    "publishedBytes": 1029,
+    "publishedSha256": "7ddf3752f5f1f0e3451cb16a09e867df9a44444532f4c256ed409ccacc0e0b05",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-real-runtime-green.log.txt",
+    "originalBytes": 30577,
+    "originalSha256": "6d57f9010da0c31388166a15cc71dcfb9e5ed1b022b01ec1b5cf269dc71a6f75",
+    "publishedBytes": 27481,
+    "publishedSha256": "043ba8f3a768ed93b97d34264f6917180de724178c53bdd74c1822506c8d1a5f",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-real-runtime-green-time.txt",
+    "originalBytes": 1226,
+    "originalSha256": "5be790ff770ab8082405cd8f2f1cf57e1f392d98ca1534ed5898eae5279c2fc5",
+    "publishedBytes": 1170,
+    "publishedSha256": "cb7e0b3108e611af2f793dd7c9cd0726e13185c040478a1de9837949d717fc3e",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-complete-compile.log.txt",
+    "originalBytes": 423,
+    "originalSha256": "c6d541ed058cefffb02f71a02be099a4e834b77d930a52920b7ff9dce9301e8f",
+    "publishedBytes": 367,
+    "publishedSha256": "de7b298f7327dad7cd497de878e323efb195478b30628ca88237c415e1683302",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-complete-compile-time.txt",
+    "originalBytes": 979,
+    "originalSha256": "9fbea77810011f1af0ed7037611231d82ffcfad6258d19b77e255a76ada6670d",
+    "publishedBytes": 923,
+    "publishedSha256": "a486b0cc0c2e3deb538bfaec0d9f3cf66c826661cab93dca78ecae51f441cdb8",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-architecture.log.txt",
+    "originalBytes": 5728,
+    "originalSha256": "0e92adf840cfcc5c5a34d9bd5c7824fb12d199e3011b23ba107bfc84c1c5648a",
+    "publishedBytes": 5352,
+    "publishedSha256": "fec1cb7aea08efc086b9bf1320c9de30eabc0c7b63ce3d7a54ace0017ed82765",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-architecture-time.txt",
+    "originalBytes": 993,
+    "originalSha256": "29457d144f158da6c92f7b8d1f3664d2604da044195110a82104c794d433e21f",
+    "publishedBytes": 937,
+    "publishedSha256": "ec960e23225d3b32219066b0b7e4d167b36eefa6e98fac80b9600e283bab52e5",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-refresh-fixed-resources.log.txt",
+    "originalBytes": 823,
+    "originalSha256": "8a487da59bfc472f4d8c6df9a01dedfcf0d49fb7c7bd3d9e04b2a491170b6490",
+    "publishedBytes": 799,
+    "publishedSha256": "851c825e589764e127fb7848e95ae7d5596efec40caf997b51c6d5a2d2639bf5",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-refresh-fixed-resources-time.txt",
+    "originalBytes": 1042,
+    "originalSha256": "f7138cf613e5f0ae8229d0cf639524f67340b9094c28cd7ccbd56e1692d31e9d",
+    "publishedBytes": 986,
+    "publishedSha256": "cb85abb335a244ab778ff087301ce83d6a7106c10aea723995235905fb76dbfc",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-final-contracts.log.txt",
+    "originalBytes": 30743,
+    "originalSha256": "0cff8219cde96f206a8a1d61b18fea8624e259930457b1845e8281fdadc560e3",
+    "publishedBytes": 27647,
+    "publishedSha256": "378b92d99238ac525d87659ac57f06e07501c36192ca846f716bf809b9f85bb8",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-final-contracts-time.txt",
+    "originalBytes": 1262,
+    "originalSha256": "07c38ba7ace95262c17b876f0302df43aec46dfd0aaa9a91b40bbf68afe07c2d",
+    "publishedBytes": 1206,
+    "publishedSha256": "2bc556076a8d5e2c084d07435b6db2b710fe436f6136a88a6604a744e04be30e",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-final-compile.log.txt",
+    "originalBytes": 423,
+    "originalSha256": "c6d541ed058cefffb02f71a02be099a4e834b77d930a52920b7ff9dce9301e8f",
+    "publishedBytes": 367,
+    "publishedSha256": "de7b298f7327dad7cd497de878e323efb195478b30628ca88237c415e1683302",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-final-compile-time.txt",
+    "originalBytes": 979,
+    "originalSha256": "583c6501632097239b3ee52c335abc6c836aaf2b826d9667ee580cb66981dd71",
+    "publishedBytes": 923,
+    "publishedSha256": "0b16816b1575648ed23442a207c18cb9ba36647e6bc0889a16ae7830fb261f44",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-chrome-build.log.txt",
+    "originalBytes": 53293,
+    "originalSha256": "4abc3dd2c27f0120088ace8effedbbe636ebb4d69e4530e5feea6efe8344e8ab",
+    "publishedBytes": 53237,
+    "publishedSha256": "3c9756251e3f1a9e1afb3773bb21a5d70e6caa36a613af56c532075dd7bde2b5",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-chrome-build-time.txt",
+    "originalBytes": 981,
+    "originalSha256": "8fda82582f283556ba7ec82d6dfc3f97c72c3b1de6beca409130cb8d1189d304",
+    "publishedBytes": 925,
+    "publishedSha256": "2a8b3f61ec240cebc230fc5d8352a080861ca9d8b37e83b4005aefce188e11f3",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-firefox-build.log.txt",
+    "originalBytes": 53766,
+    "originalSha256": "d83a368d638f3c0a35be53dd9514fab08ff01d33a48f17bc0fdc74de5c10a2e3",
+    "publishedBytes": 53710,
+    "publishedSha256": "9444c728af17af0999a52df2e9d86b3c79dfa2f6db326882e18d032af98be436",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-firefox-build-time.txt",
+    "originalBytes": 990,
+    "originalSha256": "718aa21b376f404fb154b3c37bb01f114162390d6d894217583bc88e5a727731",
+    "publishedBytes": 934,
+    "publishedSha256": "7a48c588d5e85e06415c48ac7f705cf7d2b52a733efc20b3a55297acc0ec968d",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-docs-build.log.txt",
+    "originalBytes": 682,
+    "originalSha256": "8238e1535bf0b87346c251cced8d93a3360a388eb32c940e55b1f83ff919b02a",
+    "publishedBytes": 599,
+    "publishedSha256": "5293de030053283661ac50db01e9dccc70e9b5b4278e588c650758d474f97c96",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-docs-build-time.txt",
+    "originalBytes": 984,
+    "originalSha256": "e226c08b25ca9b727ee15f38b565e151f1db8af371f8e0c1249de7f8f6f98fd5",
+    "publishedBytes": 928,
+    "publishedSha256": "02ba115ea4373f2f5bbc0550bcf43b0c8c85ef71f6401facf63ea797308b231c",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-test-audit.log.txt",
+    "originalBytes": 480,
+    "originalSha256": "4a510af61b117df295e0bfa4aa56ec5120443f835cf42c5b279648eda0aea285",
+    "publishedBytes": 424,
+    "publishedSha256": "9a1b7cf614642f6617d16b68a28fb958205557a42c3d106cda35439ab9c0e4e0",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-test-audit-time.txt",
+    "originalBytes": 976,
+    "originalSha256": "8b7a001801ad7d1160e8459b69b5a965c6d3c162b9713525331d952d66c8aeef",
+    "publishedBytes": 920,
+    "publishedSha256": "0db1d7e1224e59af5034ab45850b5c77967d31e295f817a5f1f36b48d090ec95",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-original-gf-wrapper.log.txt",
+    "originalBytes": 2376,
+    "originalSha256": "491c63005165292ebe23953c16a0da99dc254b492363b5ec05b057b70cab01a2",
+    "publishedBytes": 2192,
+    "publishedSha256": "dfefb009035d3774a4a17f115e327b331185e25acfa48ed380f975c92576c96d",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-original-gf-wrapper-time.txt",
+    "originalBytes": 1038,
+    "originalSha256": "8681b036e34689b3acf07dc7f75b61dcc4d1238ae1cd9ad63facb61ba61813f9",
+    "publishedBytes": 982,
+    "publishedSha256": "aa4b7bcf4ba041aa82cf4af5bc111a48f0ec9de1895e56277f22e5cf68eac3a1",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-standard-build.log.txt",
+    "originalBytes": 718,
+    "originalSha256": "486bbbbfabf58df09e765282900cdf5cb61c0ee0b2eb9278f670578238290758",
+    "publishedBytes": 662,
+    "publishedSha256": "f0950b383ea32b9589b454414999b1767ff8f878743444050055d4f1f3d989d7",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-standard-build-time.txt",
+    "originalBytes": 989,
+    "originalSha256": "8279053b068b841c63b2c5426b7a1dba44b39b6ea4d208480c3bcfd2d7b23fc2",
+    "publishedBytes": 933,
+    "publishedSha256": "f062c520d74f198bd1fb25a645a9129c1b1818ae3015e21e60b5ebe938b412d8",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-standard-build-verifier.log.txt",
+    "originalBytes": 765,
+    "originalSha256": "0a409695a8bbf3f984d5d1d9954d1529789411085f1739483bec9f350e94efca",
+    "publishedBytes": 701,
+    "publishedSha256": "8bc9873ab86255a877bd3b464f44c14bf7e755dab683a5d4710022c3b12f184d",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-standalone-build.log.txt",
+    "originalBytes": 752,
+    "originalSha256": "330d41aedd31c7bad7caab1d671da1e5e1402d854a07030022b6865cc539c22a",
+    "publishedBytes": 696,
+    "publishedSha256": "240fc76c594436d9b4f8f5e2aacace019b9d8562e5ebc2320f7a2e54297137ba",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-standalone-build-time.txt",
+    "originalBytes": 1002,
+    "originalSha256": "9d9854651b1ce0b8b36bd834248e30ba6db55a7ba3b4644d2e5c278dbf1a3264",
+    "publishedBytes": 946,
+    "publishedSha256": "41bf17d377b35ed1fa12f750c2d0e31dd77a62bfd257fd27e0ace7a38832174a",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-standalone-build-verifier.log.txt",
+    "originalBytes": 711,
+    "originalSha256": "ec4568740da76517cfaf5b8cfb94575ecc48a5d62c043dc467e7933cd5076891",
+    "publishedBytes": 647,
+    "publishedSha256": "617969923927f14ea3a8040911d3659bbf3287bbef57226e1b97c4db233a30ba",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-generic-roots-measurement.log.txt",
+    "originalBytes": 1192,
+    "originalSha256": "f4c09e1128ee9dc33b9a5cd83a29d50a463942b00f035604b9a53d60e4298898",
+    "publishedBytes": 1136,
+    "publishedSha256": "2cfd8dfd4a7928c730fad95236d7563ed9f9206987735901430607f5514358bf",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-generic-roots-measurement-time.txt",
+    "originalBytes": 1104,
+    "originalSha256": "a38bf0ebaeee69b11f2b0cff36c0964e330ae254bd084f7fb360574960a3c404",
+    "publishedBytes": 1016,
+    "publishedSha256": "bef82b91b9981ceb381d5f789365c1fc3f6f30e899c5f8cf13dc3fda2f7ad5f0",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-manifest-verifier.log.txt",
+    "originalBytes": 1021,
+    "originalSha256": "c164e837088ae421dfc064bbc19593d2d3428a5aa3d37a78cc2d3df3cbc3590f",
+    "publishedBytes": 997,
+    "publishedSha256": "c352f31461919e53297a4af0309c3d3722196d4cb1404f92147c6f51ab367a7c",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-manifest-verifier-time.txt",
+    "originalBytes": 1022,
+    "originalSha256": "c387eb6f87e3221434aba93a7fd4429d7676ede19d2a784cae4981e05fa584b7",
+    "publishedBytes": 966,
+    "publishedSha256": "2e9631add4a7d3bee76a3ea628213170daf4016e2c6ab17e3eb9265e427f0850",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "USERINTERFACE-ALL-OUTPUT-GATES.json",
+    "originalBytes": 1301,
+    "originalSha256": "d3f952572365f49f101bdab55ef6abea3cc088d4d89a3e755a554fbc27a34309",
+    "publishedBytes": 1301,
+    "publishedSha256": "d3f952572365f49f101bdab55ef6abea3cc088d4d89a3e755a554fbc27a34309",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "USERINTERFACE-CODE-COMMIT.json",
+    "originalBytes": 1172,
+    "originalSha256": "5e4dbabbf02a88e0c96f735eff9f5edf6eb49f0dd5892ea5f71ab718fc0972f2",
+    "publishedBytes": 1172,
+    "publishedSha256": "5e4dbabbf02a88e0c96f735eff9f5edf6eb49f0dd5892ea5f71ab718fc0972f2",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "USERINTERFACE-UNCHANGED-CONTRACTS.json",
+    "originalBytes": 2070,
+    "originalSha256": "96d2a8a6f29dedee8d45733d72c2d4e19b612bc12f0f5b3dfa1a90273081780d",
+    "publishedBytes": 2070,
+    "publishedSha256": "96d2a8a6f29dedee8d45733d72c2d4e19b612bc12f0f5b3dfa1a90273081780d",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "USERINTERFACE-CSS-SOURCE-BINDING.json",
+    "originalBytes": 396,
+    "originalSha256": "3d2fd4aa1a85760c4eb445253543e37491c727a1eedbc591f9476facb2836dd1",
+    "publishedBytes": 396,
+    "publishedSha256": "3d2fd4aa1a85760c4eb445253543e37491c727a1eedbc591f9476facb2836dd1",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "USERINTERFACE-EXTENSION-MANIFESTS.json",
+    "originalBytes": 1964,
+    "originalSha256": "1c37585298654704941e413d78d5a76f2601bdf7e448b7bb416c15f8a1ee9baa",
+    "publishedBytes": 1964,
+    "publishedSha256": "1c37585298654704941e413d78d5a76f2601bdf7e448b7bb416c15f8a1ee9baa",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "USERINTERFACE-FIXED-RESOURCE-PROBE.json",
+    "originalBytes": 951,
+    "originalSha256": "8eabe5b846eb902888abcff53eccccc980eaf9e7becaf48e3896915a191a5ddb",
+    "publishedBytes": 951,
+    "publishedSha256": "8eabe5b846eb902888abcff53eccccc980eaf9e7becaf48e3896915a191a5ddb",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "USERINTERFACE-GF-ORIGINAL-WRAPPER.json",
+    "originalBytes": 1764,
+    "originalSha256": "8c32ed68cbecb432008db04718965a23e0dde5fe298f8cc53fb7f178c40cd46c",
+    "publishedBytes": 1764,
+    "publishedSha256": "8c32ed68cbecb432008db04718965a23e0dde5fe298f8cc53fb7f178c40cd46c",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "USERINTERFACE-GM-OFFICIAL-METADATA.json",
+    "originalBytes": 249,
+    "originalSha256": "7f6b5ace77143d345631d367c90ccc15668d9ac60c7c0f7eabfc790256970083",
+    "publishedBytes": 249,
+    "publishedSha256": "7f6b5ace77143d345631d367c90ccc15668d9ac60c7c0f7eabfc790256970083",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "USERINTERFACE-GM-OFFICIAL-METADATA-FOLLOWUP.json",
+    "originalBytes": 722,
+    "originalSha256": "99f874ccaa7327e1189635f03b488140ecc9137ab2656b55b6cf94c9e9206b32",
+    "publishedBytes": 722,
+    "publishedSha256": "99f874ccaa7327e1189635f03b488140ecc9137ab2656b55b6cf94c9e9206b32",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "GF-READING-GENERIC-ROOTS-DIAGNOSTIC.json",
+    "originalBytes": 3015,
+    "originalSha256": "f635b61beee06b5f49eae983b3b19deb3e5dfe0bb2f0103e91e347f67ed69c8e",
+    "publishedBytes": 3015,
+    "publishedSha256": "f635b61beee06b5f49eae983b3b19deb3e5dfe0bb2f0103e91e347f67ed69c8e",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "GF-READING-GENERIC-ROOTS.control.graph.json",
+    "originalBytes": 137861,
+    "originalSha256": "c56b3910bd2c54387c98a2ff30a0ee263ce34c8ab665b18a02d5794b8007cb27",
+    "publishedBytes": 137765,
+    "publishedSha256": "388bf1bd97c654ab5a30f8900a18db036f1ab733c3c0a7e5e4c173fe6e3a71db",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "GF-READING-GENERIC-ROOTS.three-roots-inlined.graph.json",
+    "originalBytes": 159914,
+    "originalSha256": "94ec53030aef34037577571d568c15d92203d782e6180d16dc0bca0ffbc62fcb",
+    "publishedBytes": 159818,
+    "publishedSha256": "64db3dbee0ebec1d07335f43de9855d8bb4a836678d2c5dac672d09ede220a9e",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "GF-READING-GENERIC-VENDOR.review.json",
+    "originalBytes": 25029,
+    "originalSha256": "dc65b0d5f198b217561c72e6ab18372468a1bd98f0c3222a6a579b58971a4768",
+    "publishedBytes": 25029,
+    "publishedSha256": "dc65b0d5f198b217561c72e6ab18372468a1bd98f0c3222a6a579b58971a4768",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "GF-FINITE-DATA-SCREEN-FOUR-BASELINE.json",
+    "originalBytes": 15732,
+    "originalSha256": "64264dae11f117c452b62a5ca343e9d0c011dbd956226aef53684ed8ed8d4b33",
+    "publishedBytes": 15732,
+    "publishedSha256": "64264dae11f117c452b62a5ca343e9d0c011dbd956226aef53684ed8ed8d4b33",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "READING-SHIM-AUDIT.md",
+    "originalBytes": 3663,
+    "originalSha256": "dfcbfcd4e90e749eb7ec2247715aa81a471f22fb4906b8a07b59d77b4bf804df",
+    "publishedBytes": 3663,
+    "publishedSha256": "dfcbfcd4e90e749eb7ec2247715aa81a471f22fb4906b8a07b59d77b4bf804df",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "READING-SHIM-AUDIT.json",
+    "originalBytes": 18825,
+    "originalSha256": "d7a9877683a515a3baa8c92a12c5dc57ac39764469886f99e9ee6c3f14eed9f8",
+    "publishedBytes": 18825,
+    "publishedSha256": "d7a9877683a515a3baa8c92a12c5dc57ac39764469886f99e9ee6c3f14eed9f8",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "USERSCRIPT-PRIVACY-REVIEW.md",
+    "originalBytes": 4975,
+    "originalSha256": "74c741ae5c438eb4e53aeca68d594f26e939771c01cfbaef91c5d0a8e8452b46",
+    "publishedBytes": 4975,
+    "publishedSha256": "74c741ae5c438eb4e53aeca68d594f26e939771c01cfbaef91c5d0a8e8452b46",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "USERSCRIPT-PRIVACY-PARTIAL-GREEN-REVIEW.md",
+    "originalBytes": 1859,
+    "originalSha256": "c894f42cf6fb5fb7ff4f56bb2551e382fb8911941905ef7e38026f74f65e65b0",
+    "publishedBytes": 1859,
+    "publishedSha256": "c894f42cf6fb5fb7ff4f56bb2551e382fb8911941905ef7e38026f74f65e65b0",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "gf-reading-generic-roots-diagnostic.mjs",
+    "originalBytes": 11943,
+    "originalSha256": "fe5d478416ab5b14b477f8f6e1f5df4f0823960a51dd4999eabb5f72c732e1cb",
+    "publishedBytes": 11943,
+    "publishedSha256": "fe5d478416ab5b14b477f8f6e1f5df4f0823960a51dd4999eabb5f72c732e1cb",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "userinterface-vendor-resource-probe.mjs",
+    "originalBytes": 4690,
+    "originalSha256": "33f72c65dc2e1a0763253c8356fdb212b697e8c3c3c4d8b3d65a3d3394354a49",
+    "publishedBytes": 4690,
+    "publishedSha256": "33f72c65dc2e1a0763253c8356fdb212b697e8c3c3c4d8b3d65a3d3394354a49",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "run-stage.py",
+    "originalBytes": 4511,
+    "originalSha256": "3cfd0fd831071164950c906a4fa0497533dc017822717d9fcbbc0e1069dfb46c",
+    "publishedBytes": 4442,
+    "publishedSha256": "9cf03d6b29fea0f93f9543939294e9bf67b385178a4a6e9d8aa8546ec301215d",
+    "changes": "CW absolute paths and ANSI colors only"
+  },
+  {
+    "file": "USERINTERFACE-BROWSER-LEASE-READONLY.json",
+    "originalBytes": 17342,
+    "originalSha256": "91f5c4f7fd3230b8d3ba7333136ad2e1f562d44837c13f05edca8dec113155c4",
+    "publishedBytes": 17310,
+    "publishedSha256": "0525a6278861814b598edfa473c53c39a4549c512a761d261bb375981704f90b",
+    "changes": "CW absolute paths only"
+  }
+]

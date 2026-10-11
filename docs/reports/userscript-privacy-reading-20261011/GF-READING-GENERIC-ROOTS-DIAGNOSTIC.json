@@ -1,0 +1,65 @@
+{
+  "scope": "Finite genuine build diagnostic. Control reproduces the saved original-wrapper bytes; counterfactual only inlines three exact generic roots in RAM. No release guard pass or new size optimization claimed.",
+  "sourceCommit": "1a39eb1b1fb0c65766b61c7c0b66a0dfc2dfb0fa",
+  "sourceTree": "05c5e75b7fdc115d0fea6202d771d5cf50588193",
+  "resourceCommit": "1a39eb1b1fb0c65766b61c7c0b66a0dfc2dfb0fa",
+  "sourceFileHashes": {
+    "userscript/vite.config.ts": {
+      "bytes": 41583,
+      "sha256": "4534abd8f64d768cf73e2e8d0276e86287b136c765e5b061173f3dfdfa2421c3"
+    },
+    "userscript/vendorEntry.ts": {
+      "bytes": 1639,
+      "sha256": "5a606971b8ec527ed7afc68808f7f80857766cdfe2a24d51b84c41e546bd8398"
+    },
+    "userscript/vendor.vite.config.ts": {
+      "bytes": 2941,
+      "sha256": "d8c8f930a0dfa33dc06fd0fc4f5a147c9ad8bce3165f7856803e24974a570e1c"
+    },
+    "pnpm-lock.yaml": {
+      "bytes": 340425,
+      "sha256": "dca737aeb9c264e2c3078588ff01c85dd52d48636f7fa24b2451f9444a8ccc3a"
+    },
+    "userscript/resources/fluentread-vendor.v1.js": {
+      "bytes": 889381,
+      "sha256": "97043572b031723354cc35521f81e8a0da890c41f1b0fecf430a72fa6df00a39"
+    },
+    "userscript/resources/fluentread-data.v1.js": {
+      "bytes": 995570,
+      "sha256": "4f49c29957c9caf94674a52a698312a17ac36608524127919fe524617b935ddf"
+    },
+    "scripts/build-userscript-greasyfork.mjs": {
+      "bytes": 3899,
+      "sha256": "c2e441c5749d48e317b90e0052c275e58b3f14cd9f55df9ae10ade78c96792c8"
+    },
+    "scripts/verify-userscript-greasyfork-build.mjs": {
+      "bytes": 2714,
+      "sha256": "f732027c097fd87b87e57c24d29bd84740d66057f037ba1f722ac9e4970e0d83"
+    }
+  },
+  "originalNormalBytes": 2316434,
+  "originalNormalSha256": "b47c0cb5457ca920e35c695a77a671f5fbdeb26bceb328abc6fd36d6c8c75d19",
+  "originalNormalUnchanged": true,
+  "node": "v26.11.1",
+  "control": {
+    "artifactBytes": 2316434,
+    "artifactSha256": "b47c0cb5457ca920e35c695a77a671f5fbdeb26bceb328abc6fd36d6c8c75d19",
+    "moduleCount": 386
+  },
+  "counterfactual": {
+    "artifactBytes": 3149736,
+    "artifactSha256": "499dd76032302777b08ffe3f121581e50685fbee24944dbb6dd5966e03605c06",
+    "moduleCount": 415
+  },
+  "measuredMainBytesSavedByExactThreeVendorRoots": 833302,
+  "currentOriginalBudgetBytes": 2000000,
+  "currentControlExcessBytes": 316434,
+  "keptFixedAiStreamTextToolVendor": true,
+  "limits": [
+    "Net retained-main bytes only; not installed source spans or graph rendered characters.",
+    "Vendor/data bytes are held fixed; this diagnostic does not attribute a new vendor-resource size delta or a global all-assets optimization.",
+    "Three-root difference is a finite combined library boundary, not independent attribution to each package.",
+    "No browser/runtime performance, network/provider service, license-release or global-minimum/SOTA/Pareto proof.",
+    "The real original wrapper already failed size; this separate diagnostic does not relax the budget or replace its three fixed-resource guards."
+  ]
+}

@@ -1,0 +1,13 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 1, command: node <CW_PNPM9_TEMP>/package/bin/pnpm.cjs build:userscript
+
+> FluentRead-流畅阅读@0.0.37 build:userscript <CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010
+> node scripts/testing/run-resource-safe.mjs -- vite build --config userscript/vite.config.ts
+
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 1, command: vite build --config userscript/vite.config.ts
+vite v5.4.19 building for production...
+transforming...
+✓ 654 modules transformed.
+rendering chunks...
+computing gzip size...
+.output/userscript/fluent-read.user.js  2,265.50 kB │ gzip: 880.42 kB
+✓ built in 3.60s

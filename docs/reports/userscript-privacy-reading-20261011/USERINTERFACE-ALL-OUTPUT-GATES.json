@@ -1,0 +1,38 @@
+[
+  {
+    "mode": "GF",
+    "bytes": 2316434,
+    "sha256": "b47c0cb5457ca920e35c695a77a671f5fbdeb26bceb328abc6fd36d6c8c75d19",
+    "originalBudget": 2000000,
+    "excess": 316434,
+    "buildExitCode": 1,
+    "verifierExitCode": 1,
+    "sourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+    "codeCommit": "1a39eb1b1fb0c65766b61c7c0b66a0dfc2dfb0fa",
+    "status": "FAIL size verifier"
+  },
+  {
+    "mode": "standard",
+    "bytes": 2329902,
+    "sha256": "f30f249d44eb0dc0de2d8d0987be2507faa8850a5a99ad520c28bcd0c6e2019e",
+    "originalBudget": 2025000,
+    "excess": 304902,
+    "buildExitCode": 0,
+    "verifierExitCode": 1,
+    "sourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+    "codeCommit": "1a39eb1b1fb0c65766b61c7c0b66a0dfc2dfb0fa",
+    "status": "FAIL size verifier"
+  },
+  {
+    "mode": "standalone",
+    "bytes": 3883153,
+    "sha256": "6f9b53aff2f74323bc9d7acfae8b3936bcc0637a3f698441f290162d0d3232c2",
+    "originalBudget": 3600000,
+    "excess": 283153,
+    "buildExitCode": 0,
+    "verifierExitCode": 1,
+    "sourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+    "codeCommit": "1a39eb1b1fb0c65766b61c7c0b66a0dfc2dfb0fa",
+    "status": "FAIL size verifier"
+  }
+]

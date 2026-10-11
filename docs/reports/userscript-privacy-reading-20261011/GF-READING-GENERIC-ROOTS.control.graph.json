@@ -1,0 +1,4812 @@
+{
+  "stage": "control",
+  "scope": "In-memory original-config diagnostic, not a release guard/verifier run",
+  "sourceCommit": "1a39eb1b1fb0c65766b61c7c0b66a0dfc2dfb0fa",
+  "sourceTree": "05c5e75b7fdc115d0fea6202d771d5cf50588193",
+  "resourceCommit": "1a39eb1b1fb0c65766b61c7c0b66a0dfc2dfb0fa",
+  "artifactBytes": 2316434,
+  "artifactSha256": "b47c0cb5457ca920e35c695a77a671f5fbdeb26bceb328abc6fd36d6c8c75d19",
+  "removedExactExternalRoots": [],
+  "removedExactGlobalKeys": [],
+  "correctedAiExternalPreserved": true,
+  "emittedDataSha256": "4f49c29957c9caf94674a52a698312a17ac36608524127919fe524617b935ddf",
+  "moduleCount": 386,
+  "renderedTotalJsCharacters": 2080839,
+  "modules": [
+    {
+      "id": "src/features/selection-translation/ui/SelectionTranslator.vue?vue&type=script&setup=true&lang.ts",
+      "originalLength": 140939,
+      "renderedLength": 127708,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/runtime.ts",
+      "originalLength": 108312,
+      "renderedLength": 78760,
+      "removedExports": [
+        "handleBilingualTranslation"
+      ],
+      "renderedExports": [
+        "translateTarget",
+        "invalidateFullPageTranslationSessionCache",
+        "resetFullPageTranslationRouteState",
+        "restoreOriginalContent",
+        "autoTranslateEnglishPage",
+        "getFullPageTranslationFrameState",
+        "readFullPageUnchangedCompletion",
+        "isFullPageTranslationActive",
+        "restoreTranslationOwner",
+        "cancelPendingHoverTranslation",
+        "handleTranslation"
+      ]
+    },
+    {
+      "id": "userscript/SettingsPanel.vue?vue&type=script&setup=true&lang.ts",
+      "originalLength": 76248,
+      "renderedLength": 73273,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/core/config/model.ts",
+      "originalLength": 94324,
+      "renderedLength": 72288,
+      "removedExports": [],
+      "renderedExports": [
+        "DEFAULT_VIDEO_SUBTITLE_FONT_SIZE",
+        "DEFAULT_NEW_API_URL",
+        "VIDEO_SOURCE_LANGUAGE_OPTIONS",
+        "DEFAULT_MOUSE_HOVER_TRANSLATION_DELAY",
+        "MOUSE_HOVER_TRANSLATION_DELAY_MIN",
+        "MOUSE_HOVER_TRANSLATION_DELAY_MAX",
+        "MOUSE_HOVER_TRANSLATION_DELAY_STEP",
+        "DEFAULT_SELECTION_TRANSLATOR_DELAY",
+        "SELECTION_TRANSLATOR_DELAY_MIN",
+        "SELECTION_TRANSLATOR_DELAY_MAX",
+        "SELECTION_TRANSLATOR_DELAY_STEP",
+        "normalizeVideoSubtitleFontSize",
+        "normalizeVideoSubtitleOffsetMs",
+        "normalizeMouseHoverTranslationDelay",
+        "FLOATING_BALL_TOOLS_DISPLAY_VALUES",
+        "FLOATING_BALL_CLICK_ACTION_VALUES",
+        "DEFAULT_FLOATING_BALL_HOVER_DELAY",
+        "FLOATING_BALL_HOVER_DELAY_MIN",
+        "FLOATING_BALL_HOVER_DELAY_MAX",
+        "FLOATING_BALL_HOVER_DELAY_STEP",
+        "DEFAULT_FLOATING_BALL_COLLAPSED_OPACITY",
+        "FLOATING_BALL_COLLAPSED_OPACITY_MIN",
+        "FLOATING_BALL_COLLAPSED_OPACITY_MAX",
+        "FLOATING_BALL_COLLAPSED_OPACITY_STEP",
+        "normalizeFloatingBallHoverDelay",
+        "normalizeFloatingBallCollapsedOpacity",
+        "normalizeFloatingBallVerticalPosition",
+        "normalizeFloatingBallToolsDisplay",
+        "normalizeFloatingBallClickAction",
+        "normalizeSelectionTranslatorDelay",
+        "Config",
+        "normalizeConfig",
+        "migrateModelIdentifier"
+      ]
+    },
+    {
+      "id": "src/services/translation/broker.ts",
+      "originalLength": 87736,
+      "renderedLength": 63124,
+      "removedExports": [],
+      "renderedExports": [
+        "resolveTranslationRequestModel",
+        "createTranslationBroker"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/state.ts",
+      "originalLength": 85768,
+      "renderedLength": 61803,
+      "removedExports": [
+        "hasTranslationLayoutOverride"
+      ],
+      "renderedExports": [
+        "setBilingualOwnerRemountHandler",
+        "setBilingualArtifactCapitulationHandler",
+        "setBilingualLifecycleExternalManager",
+        "setBilingualSkeletonRefreshHandler",
+        "getTranslationSourceStructureSignature",
+        "isTranslationSourceStructureOverflow",
+        "getTranslationOverflowGenerationIdentity",
+        "getTranslationState",
+        "resolveTranslationStateNode",
+        "subscribeTranslationStateChanges",
+        "beginTranslation",
+        "isCurrentTranslation",
+        "markTranslationComplete",
+        "markTranslationError",
+        "setSpinner",
+        "setBilingualContent",
+        "setRetryWrapper",
+        "detachFailedTranslationUi",
+        "setRenderedStyleAttribute",
+        "restoreClonedTranslationOwnerPresentation",
+        "isBilingualArtifactHostWriteBudgetCapitulated",
+        "hasBilingualArtifactHostWriteBudget",
+        "beginBilingualArtifactHostWriteGesture",
+        "consumeBilingualArtifactHostWriteBudget",
+        "resetBilingualArtifactHostWriteBudget",
+        "resetAllBilingualArtifactHostWriteBudgets",
+        "inheritBilingualArtifactRepairBudget",
+        "isTrustedBilingualArtifactWithHostClass",
+        "isOwnedBilingualArtifactAttached",
+        "isBilingualArtifactDriftOnly",
+        "tryRepairBilingualTranslationArtifact",
+        "acquireTranslationLayoutOverride",
+        "isTranslationLayoutOverrideMutation",
+        "reconcileTranslationLayoutOverrides",
+        "ensureTranslationTruncationLayout",
+        "createTranslationTruncationLayoutBatch",
+        "restoreTranslation",
+        "discardTranslation",
+        "unwrapUnownedSingleTextSlots",
+        "setLiveTranslationSourceSnapshot",
+        "setTextSlotsApplied",
+        "setControlValueApplied",
+        "setSingleTextSlotHosts",
+        "getTranslationOwnersForRemovedNode",
+        "getTranslationOwnersForIndexedNode",
+        "getTranslationOwnersWithin",
+        "getOwnedTranslationCandidateAtPoint",
+        "restoreAllTranslations"
+      ]
+    },
+    {
+      "id": "src/services/config/store.ts",
+      "originalLength": 84742,
+      "renderedLength": 55091,
+      "removedExports": [
+        "CONFIG_PERSIST_BATCH_MESSAGE",
+        "prepareHydratedConfigForExport",
+        "prepareConfigSaveRequest",
+        "subscribeConfigHistory",
+        "handoffPendingConfigPatches",
+        "waitForConfigPersistenceQueue",
+        "requestConfigSave",
+        "requestConfigHistoryAction"
+      ],
+      "renderedExports": [
+        "CONFIG_HISTORY_LIMIT",
+        "parseStoredConfig",
+        "serializeConfig",
+        "CONFIG_STORAGE_KEY",
+        "CONFIG_HISTORY_STORAGE_KEY",
+        "CONFIG_PERSIST_MESSAGE",
+        "CONFIG_HISTORY_MESSAGE",
+        "config",
+        "flushConfigHistory",
+        "configReady",
+        "configHistoryReady",
+        "subscribeConfig",
+        "getConfigRevision",
+        "incrementConfigCount",
+        "requestConfigCountIncrement",
+        "prepareConfigPatchRequest",
+        "getConfigHistorySnapshot",
+        "saveConfig",
+        "requestConfigPatch",
+        "applyConfigHistoryAction"
+      ]
+    },
+    {
+      "id": "src/features/reading-assistant/ui/ReadingPanel.vue?vue&type=script&setup=true&lang.ts",
+      "originalLength": 53049,
+      "renderedLength": 51794,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/features/input-translation/content/index.ts",
+      "originalLength": 48309,
+      "renderedLength": 35151,
+      "removedExports": [],
+      "renderedExports": [
+        "inputBoxTranslationConfigKey",
+        "isInputBoxTranslationEnabled",
+        "setInputBoxText",
+        "INPUT_TRANSLATION_TIMEOUT_MS",
+        "createInputTranslationContentFeature"
+      ]
+    },
+    {
+      "id": "src/core/translation/engine.ts",
+      "originalLength": 48062,
+      "renderedLength": 32174,
+      "removedExports": [],
+      "renderedExports": [
+        "getTranslationCandidateKey",
+        "selectPreferredTranslationCandidate",
+        "TranslationCandidateCore"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/translationRequest.ts",
+      "originalLength": 40618,
+      "renderedLength": 29196,
+      "removedExports": [],
+      "renderedExports": [
+        "getTranslationInvocationIdentity",
+        "captureFullPageTranslationConfig",
+        "createSnapshotTranslateOptions",
+        "clearFullPageTranslationRequestCache",
+        "translateTextSlots"
+      ]
+    },
+    {
+      "id": "src/core/config/catalog.ts",
+      "originalLength": 49241,
+      "renderedLength": 29112,
+      "removedExports": [
+        "multilingualTargetLanguageLabels",
+        "englishTargetLanguageLabels",
+        "getMultilingualTargetLanguageLabel"
+      ],
+      "renderedExports": [
+        "services",
+        "cloudCredentialLabels",
+        "getCloudCredentialLabels",
+        "cloudVendorServices",
+        "referenceAiPlatformServices",
+        "servicesType",
+        "customModelString",
+        "cloudRegionOptions",
+        "getDefaultCloudRegion",
+        "resolveCloudRegion",
+        "minimaxBillingPlans",
+        "minimaxRegions",
+        "mimoBillingPlans",
+        "mimoRegions",
+        "resolveConfiguredModel",
+        "currentModelIds",
+        "defaultModelIds",
+        "models",
+        "firstConfiguredModel",
+        "defaultModels",
+        "options",
+        "LEGACY_DEFAULT_USER_ROLES",
+        "defaultOption"
+      ]
+    },
+    {
+      "id": "src/features/selection-translation/services/wordDictionary.ts",
+      "originalLength": 37567,
+      "renderedLength": 27823,
+      "removedExports": [
+        "clearWordDictionaryCache"
+      ],
+      "renderedExports": [
+        "selectPronunciations",
+        "mergeWordCardData",
+        "parseEcdictEntry",
+        "parseYoudaoResponse",
+        "parseFreeDictionaryEntry",
+        "parseWiktApiEntry",
+        "parseDatamuseWord",
+        "createDefaultWordDictionaryProviders",
+        "createWordDictionaryLookup",
+        "lookupWord"
+      ]
+    },
+    {
+      "id": "src/features/floating-ball/ui/FloatingBall.vue?vue&type=script&setup=true&lang.ts",
+      "originalLength": 26597,
+      "renderedLength": 25152,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/core/language/identify.ts",
+      "originalLength": 32129,
+      "renderedLength": 24486,
+      "removedExports": [
+        "clearLanguageIdentificationCache"
+      ],
+      "renderedExports": [
+        "normalizeLanguageEvidenceText",
+        "identifyTextLanguage"
+      ]
+    },
+    {
+      "id": "src/features/section-translation/content/picker.ts",
+      "originalLength": 31230,
+      "renderedLength": 23573,
+      "removedExports": [],
+      "renderedExports": [
+        "SECTION_PICKER_HOST_ATTRIBUTE",
+        "isSectionPickerActive",
+        "stopSectionPicker",
+        "startSectionPicker"
+      ]
+    },
+    {
+      "id": "src/features/share-card/ui/ShareCardStudio.vue?vue&type=script&setup=true&lang.ts",
+      "originalLength": 23740,
+      "renderedLength": 23148,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/providers/translation/google.ts",
+      "originalLength": 28604,
+      "renderedLength": 21866,
+      "removedExports": [],
+      "renderedExports": [
+        "parseGoogleBatchResponse",
+        "translateGoogleOwnerTexts",
+        "translateGoogleTexts",
+        "translateGoogleText",
+        "default"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/translationStability.ts",
+      "originalLength": 28106,
+      "renderedLength": 19543,
+      "removedExports": [],
+      "renderedExports": [
+        "createLifecycleRetry",
+        "sameLifecycleRetry",
+        "createAcceptedUnchangedCompletion",
+        "readAcceptedUnchangedCompletion",
+        "TRANSLATION_ARTIFACT_SELECTOR",
+        "normalizeComparableText",
+        "isTranslationStateSourceCurrent",
+        "getTranslationTextProtectionOptions",
+        "getTranslationStateProtectionBoundary",
+        "getCandidateTranslationTextProtectionOptions",
+        "isTranslationCandidateCurrent",
+        "isTranslationStateCandidateCurrent",
+        "createTranslationMutationStabilityChecks",
+        "getCurrentTranslationStateSourceText",
+        "getCurrentTranslationStateTextNodes",
+        "getCurrentTranslationStateSourceSnapshot",
+        "createCurrentTranslationStateSourceSnapshotBatch",
+        "statefulSourceAndTextSlotsAreCurrent",
+        "mutationTouchesCurrentTranslationArtifact",
+        "isOwnSingleTextSlotMove",
+        "isOwnCurrentArtifactAddition",
+        "isOwnStateArtifactMutation",
+        "isTranslationArtifact",
+        "hasCurrentTranslationSource",
+        "isTranslationArtifactCurrent",
+        "isBilingualArtifactKept",
+        "canKeepTranslationAttempt",
+        "reboundLiveTextResult"
+      ]
+    },
+    {
+      "id": "src/core/config/translationAppearance.ts",
+      "originalLength": 25820,
+      "renderedLength": 17352,
+      "removedExports": [
+        "TRANSLATION_STYLE_CATEGORIES",
+        "getTranslationStylePreset",
+        "TRANSLATION_TEXT_COLOR_SWATCHES",
+        "TRANSLATION_BACKGROUND_COLOR_SWATCHES",
+        "TRANSLATION_LINE_COLOR_SWATCHES",
+        "TRANSLATION_FILL_COLOR_SWATCHES",
+        "isDefaultTranslationAppearance",
+        "getTranslationAppearanceStyle"
+      ],
+      "renderedExports": [
+        "TRANSLATION_STYLE_LEGACY_GROUPS",
+        "TRANSLATION_STYLE_PRESETS",
+        "buildTranslationStyleOptions",
+        "MAX_TRANSLATION_STYLE_PROFILES",
+        "normalizeTranslationStyleProfiles",
+        "TRANSLATION_FONT_SCALE_RANGE",
+        "TRANSLATION_OPACITY_RANGE",
+        "DEFAULT_TRANSLATION_APPEARANCE",
+        "TRANSLATION_FONT_WEIGHT_OPTIONS",
+        "TRANSLATION_FONT_FAMILY_OPTIONS",
+        "TRANSLATION_APPEARANCE_VARIABLES",
+        "TRANSLATION_APPEARANCE_SELECTOR",
+        "normalizeTranslationColor",
+        "MAX_TRANSLATION_CUSTOM_CSS_LENGTH",
+        "parseTranslationCustomCss",
+        "normalizeTranslationAppearance",
+        "getTranslationAppearanceDeclarations",
+        "buildTranslationAppearanceCss"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/sectionTranslation.ts",
+      "originalLength": 23243,
+      "renderedLength": 16380,
+      "removedExports": [],
+      "renderedExports": [
+        "SECTION_PREVIEW_DISCOVERY_STEPS",
+        "inspectTranslationSection",
+        "toggleTranslationSection"
+      ]
+    },
+    {
+      "id": "src/features/hover-translation/content/index.ts",
+      "originalLength": 21165,
+      "renderedLength": 16001,
+      "removedExports": [],
+      "renderedExports": [
+        "normalizeHoverHotkeyParts",
+        "matchesPressedHotkeyParts",
+        "mountHoverTranslationContentFeature"
+      ]
+    },
+    {
+      "id": "src/services/translation/freeFallback.ts",
+      "originalLength": 22167,
+      "renderedLength": 15757,
+      "removedExports": [],
+      "renderedExports": [
+        "UntranslatedFreeResultError",
+        "WrongLanguageFreeResultError",
+        "createFreeFallbackRunner"
+      ]
+    },
+    {
+      "id": "src/app/translation/client.ts",
+      "originalLength": 24148,
+      "renderedLength": 15501,
+      "removedExports": [
+        "translateVideoText"
+      ],
+      "renderedExports": [
+        "translateText",
+        "translateTextBatch",
+        "cancelAllTranslations"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/bilingualRemount.ts",
+      "originalLength": 22175,
+      "renderedLength": 14940,
+      "removedExports": [],
+      "renderedExports": [
+        "createBilingualRemountPreparationBatch",
+        "createRemovedTranslationOwnerResolver",
+        "createBilingualRemountCapitulationRegistry",
+        "blocksBilingualRemountCandidate",
+        "forgetBilingualRemountCandidate",
+        "stabilizeBilingualArtifact",
+        "transferEquivalentBilingualOwners"
+      ]
+    },
+    {
+      "id": "src/features/selection-translation/core.ts",
+      "originalLength": 20004,
+      "renderedLength": 14306,
+      "removedExports": [
+        "isSameLanguage",
+        "calculateReadingPopupLayout"
+      ],
+      "renderedExports": [
+        "isChineseEnglishTarget",
+        "selectionReverseTarget",
+        "SelectionRequestTokenGate",
+        "canUseBundledDictionaryFallback",
+        "resolveSelectionDictionaryFallback",
+        "resolveSelectionVocabularyAnswer",
+        "getSelectionPresentationDelayRemaining",
+        "reconcileSelectionPresentation",
+        "normalizeSelectionText",
+        "summarizeSelectionContext",
+        "readSelectionParts",
+        "readSelectionText",
+        "translateSelectionParts",
+        "isSelectionExcludedTagName",
+        "shouldIgnoreSelection",
+        "chooseSelectionRect",
+        "calculateSelectionPopupPosition",
+        "normalizeSpeechLanguage"
+      ]
+    },
+    {
+      "id": "src/features/page-notice/content/notice.ts",
+      "originalLength": 17869,
+      "renderedLength": 13703,
+      "removedExports": [
+        "dismissPageNotice"
+      ],
+      "renderedExports": [
+        "showPageNotice",
+        "sendErrorMessage"
+      ]
+    },
+    {
+      "id": "src/core/language/technicalTokens.ts",
+      "originalLength": 16778,
+      "renderedLength": 13687,
+      "removedExports": [],
+      "renderedExports": [
+        "isNameVariantWord",
+        "isTechnicalAbbreviation",
+        "createLanguageDetectionCopy",
+        "isAcronymWord",
+        "isMixedCaseName",
+        "classifyEmbeddedLatinWord"
+      ]
+    },
+    {
+      "id": "src/core/translation/text.ts",
+      "originalLength": 19499,
+      "renderedLength": 13576,
+      "removedExports": [],
+      "renderedExports": [
+        "normalizeTranslationText",
+        "isIdentifierLikeText",
+        "setMinimumTranslationTextLength",
+        "isMeaningfulTranslationText",
+        "isTranslationTextNodeProtected",
+        "createTranslationTextProtectionCache",
+        "isTranslationTextElementProtected",
+        "hasMeaningfulTranslationTextInNodes",
+        "extractTranslationTextFromNodes",
+        "extractTranslationText"
+      ]
+    },
+    {
+      "id": "src/services/translation/templates.ts",
+      "originalLength": 18678,
+      "renderedLength": 13361,
+      "removedExports": [],
+      "renderedExports": [
+        "mergeCustomBody",
+        "currentConfiguredModel",
+        "commonMsgTemplate",
+        "getCurrentModel",
+        "deepseekResponsesMsgTemplate",
+        "deepseekMsgTemplate",
+        "geminiMsgTemplate",
+        "claudeMsgTemplate",
+        "tongyiMsgTemplate"
+      ]
+    },
+    {
+      "id": "src/core/translation/layout.ts",
+      "originalLength": 19461,
+      "renderedLength": 13346,
+      "removedExports": [],
+      "renderedExports": [
+        "isSemanticHeadingElement",
+        "getElementDisplay",
+        "isBlockBoundary",
+        "isIncludedSidebarRegion",
+        "isStructuralContainer",
+        "hasStructuralAncestor",
+        "isTranslationControlElement",
+        "getAllScopeCandidateKind",
+        "findTranslationControlOwner",
+        "hasDirectReadableText",
+        "hasReadableBlockChild",
+        "getDirectInlineRuns",
+        "classifyGenericCandidate"
+      ]
+    },
+    {
+      "id": "src/ui/i18n.ts",
+      "originalLength": 20426,
+      "renderedLength": 13249,
+      "removedExports": [
+        "localizeServiceOptions"
+      ],
+      "renderedExports": [
+        "UI_I18N_KEY",
+        "createUiI18nContext",
+        "useUiI18n",
+        "createUiI18nPlugin"
+      ]
+    },
+    {
+      "id": "src/services/translation/requestSnapshot.ts",
+      "originalLength": 21837,
+      "renderedLength": 12719,
+      "removedExports": [],
+      "renderedExports": [
+        "createTranslationRequestSnapshot",
+        "TRANSLATION_PROVIDER_CONFIG",
+        "TRANSLATION_REMAINING_BUDGET",
+        "TRANSLATION_MODEL_USAGE_OBSERVER",
+        "TRANSLATION_ROUTE_OBSERVER",
+        "TRANSLATION_REQUEST_CONTROL",
+        "TRANSLATION_REQUEST_SCHEDULER",
+        "TRANSLATION_GLOSSARY_CONTEXT",
+        "TRANSLATION_IMAGE_INPUT",
+        "validateTranslationImageInput",
+        "attachTranslationImageInput",
+        "getTranslationImageInput",
+        "translationPrivacyContext",
+        "attachTranslationGlossaryContext",
+        "getTranslationGlossaryContext",
+        "getTranslationGlossarySourceText",
+        "getTranslationGlossaryTerms",
+        "attachTranslationRequestScheduler",
+        "getTranslationRequestScheduler",
+        "attachTranslationRequestControl",
+        "getTranslationRequestControl",
+        "attachTranslationModelUsageObserver",
+        "attachTranslationRouteObserver",
+        "reportTranslationRoute",
+        "reportTranslationModelUsage",
+        "reportTranslationModelUsageFailure",
+        "markTranslationRemainingBudget",
+        "createTranslationProviderConfigSnapshot",
+        "attachTranslationProviderConfig",
+        "getTranslationProviderConfig"
+      ]
+    },
+    {
+      "id": "src/core/config/interfaceAppearance.ts",
+      "originalLength": 17767,
+      "renderedLength": 12521,
+      "removedExports": [
+        "interfaceSkinGroups",
+        "popupQuickFeatureOptions",
+        "interfaceSkinUsesContentHeight",
+        "withInterfaceVisibility",
+        "withPopupQuickFeatureVisibility"
+      ],
+      "renderedExports": [
+        "interfaceSkinOptions",
+        "interfaceFontOptions",
+        "DEFAULT_INTERFACE_FONT",
+        "POPUP_MODULE_IDS",
+        "POPUP_QUICK_FEATURE_IDS",
+        "INTERFACE_VISIBILITY_KEYS",
+        "popupModuleOptions",
+        "interfaceVisibilityOptions",
+        "DEFAULT_POPUP_MODULE_ORDER",
+        "DEFAULT_POPUP_QUICK_FEATURE_ORDER",
+        "DEFAULT_INTERFACE_VISIBILITY",
+        "DEFAULT_POPUP_QUICK_FEATURE_VISIBILITY",
+        "normalizeInterfaceSkin",
+        "normalizeInterfaceFont",
+        "getInterfaceFontOption",
+        "getInterfaceSkinOption",
+        "normalizeInterfaceVisibility",
+        "normalizePopupQuickFeatureVisibility",
+        "normalizePopupModuleOrder",
+        "normalizePopupQuickFeatureOrder"
+      ]
+    },
+    {
+      "id": "src/core/translation/visual.ts",
+      "originalLength": 16361,
+      "renderedLength": 12459,
+      "removedExports": [],
+      "renderedExports": [
+        "resolveVisualTranslationRange"
+      ]
+    },
+    {
+      "id": "src/core/harness/promptLocales.ts",
+      "originalLength": 13046,
+      "renderedLength": 12457,
+      "removedExports": [],
+      "renderedExports": [
+        "HARNESS_TRANSLATED_PROMPTS"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/renderer.ts",
+      "originalLength": 17337,
+      "renderedLength": 12205,
+      "removedExports": [],
+      "renderedExports": [
+        "appendSingleTranslationSlots",
+        "appendBilingualTranslation",
+        "refreshBilingualTranslation",
+        "materializeCandidate",
+        "materializeVisualTranslationCandidate"
+      ]
+    },
+    {
+      "id": "src/providers/translation/free-extra-web.ts",
+      "originalLength": 15239,
+      "renderedLength": 12096,
+      "removedExports": [],
+      "renderedExports": [
+        "isKnownUnsupportedApertiumDirection",
+        "translateExtraFreeWebText"
+      ]
+    },
+    {
+      "id": "src/core/translation/dom.ts",
+      "originalLength": 17819,
+      "renderedLength": 11794,
+      "removedExports": [],
+      "renderedExports": [
+        "getElementTagName",
+        "maxComposedAncestorDepth",
+        "getComposedParent",
+        "composedAncestors",
+        "isDocumentSurface",
+        "isExtensionElementSelf",
+        "isForeignTranslationBoundary",
+        "getTranslatableControlValueAttribute",
+        "isHardPruneTag",
+        "isPlainTextDocumentPre",
+        "isProtectedTextElement",
+        "hasNoTranslateMarker",
+        "isDocumentSurfaceNoTranslateShell",
+        "isTopLevelApplicationShell",
+        "isIconFontElement",
+        "isHiddenTranslationElement",
+        "hasContentEditableMarker",
+        "isMathRendererElement",
+        "isProtectedDescendantElement",
+        "evaluateElementHardGuard",
+        "evaluateHardGuard",
+        "getOpenShadowRoots",
+        "safeMatches",
+        "safeClosest",
+        "findElementsAtPoint",
+        "findTextPointAtPoint",
+        "findNodeAtPoint",
+        "isTranslationTooltip",
+        "isTextInNestedTranslationTooltip"
+      ]
+    },
+    {
+      "id": "src/core/translation/serialization.ts",
+      "originalLength": 18179,
+      "renderedLength": 11765,
+      "removedExports": [],
+      "renderedExports": [
+        "translationTruncationStyleOverrides",
+        "translationHeightStyleOverrides",
+        "isTranslationHeightBoundary",
+        "hasTranslationHeightOverflow",
+        "createTranslationSourceSnapshot",
+        "collectLiveTranslationTextSlots",
+        "buildWholeBlockTranslationSource",
+        "applyTranslationsToSnapshot",
+        "hasActiveTranslationLineClamp",
+        "hasActiveTranslationTruncation"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/ui/TranslationProgressPanel.vue?vue&type=script&setup=true&lang.ts",
+      "originalLength": 12949,
+      "renderedLength": 11568,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/services/translation/requestScheduler.ts",
+      "originalLength": 18445,
+      "renderedLength": 11362,
+      "removedExports": [],
+      "renderedExports": [
+        "TranslationRequestSchedulerDeadlineError",
+        "createTranslationRequestScheduler"
+      ]
+    },
+    {
+      "id": "src/app/content/runtime.ts",
+      "originalLength": 17113,
+      "renderedLength": 11313,
+      "removedExports": [],
+      "renderedExports": [
+        "startContentApp"
+      ]
+    },
+    {
+      "id": "src/providers/translation/free-translation.ts",
+      "originalLength": 17270,
+      "renderedLength": 11312,
+      "removedExports": [
+        "getFreeTranslationWeightSnapshot"
+      ],
+      "renderedExports": [
+        "FREE_TRANSLATION_BATCH_CONCURRENCY",
+        "translateFreeTranslationProvider",
+        "default"
+      ]
+    },
+    {
+      "id": "src/features/input-translation/content/editableHost.ts",
+      "originalLength": 15807,
+      "renderedLength": 11049,
+      "removedExports": [],
+      "renderedExports": [
+        "EDITABLE_SELECTION_SYNC_TIMEOUT_MS",
+        "EDITABLE_SELECTION_SETTLE_MS",
+        "EDITABLE_PASTE_POLL_MS",
+        "EDITABLE_PASTE_SETTLE_LIMIT_MS",
+        "readEditableCaretState",
+        "insertIntoEditableCaretState",
+        "isSameEditableCaretState",
+        "replaceEditableText"
+      ]
+    },
+    {
+      "id": "src/features/selection-translation/content/modalDialogHost.ts",
+      "originalLength": 13185,
+      "renderedLength": 10862,
+      "removedExports": [],
+      "renderedExports": [
+        "findSelectionModalDialog",
+        "calibrateModalDialogHostSlot",
+        "createModalDialogHostController"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/viewportStability.ts",
+      "originalLength": 14039,
+      "renderedLength": 10453,
+      "removedExports": [],
+      "renderedExports": [
+        "withFullPageViewportAnchor",
+        "withFullPageRestorationAnchors",
+        "createFullPageScrollController"
+      ]
+    },
+    {
+      "id": "src/core/translation/apiKeyPool.ts",
+      "originalLength": 13840,
+      "renderedLength": 10313,
+      "removedExports": [],
+      "renderedExports": [
+        "API_KEY_POOL_DEFAULT_WEIGHT",
+        "API_KEY_POOL_RECOVERY_MS",
+        "ApiKeyPoolExhaustedError",
+        "classifyApiKeyFailure",
+        "createApiKeyPool",
+        "createApiKeyRotation"
+      ]
+    },
+    {
+      "id": "src/providers/translation/ai-sdk/openai-compatible.ts",
+      "originalLength": 14248,
+      "renderedLength": 10311,
+      "removedExports": [],
+      "renderedExports": [
+        "AI_SDK_REQUEST_TIMEOUT_MS",
+        "AI_SDK_MAX_RETRIES",
+        "translateWithOpenAICompatibleAiSdk"
+      ]
+    },
+    {
+      "id": "src/services/translation/cache.ts",
+      "originalLength": 13354,
+      "renderedLength": 10200,
+      "removedExports": [],
+      "renderedExports": [
+        "TRANSLATION_CACHE_VERSION",
+        "TRANSLATION_CACHE_TTL_MS",
+        "TRANSLATION_CACHE_MAX_ENTRY_BYTES",
+        "TRANSLATION_CACHE_MEMORY_ENTRIES",
+        "TRANSLATION_CACHE_TOUCH_FLUSH_MS",
+        "canonicalize",
+        "buildTranslationCacheKey",
+        "translationCacheDb",
+        "translationCache"
+      ]
+    },
+    {
+      "id": "src/features/quick-translation/content/index.ts",
+      "originalLength": 13988,
+      "renderedLength": 10187,
+      "removedExports": [],
+      "renderedExports": [
+        "mountQuickTranslationContentFeature"
+      ]
+    },
+    {
+      "id": "src/core/hotkey/index.ts",
+      "originalLength": 14853,
+      "renderedLength": 9432,
+      "removedExports": [
+        "validateHotkeyConflicts"
+      ],
+      "renderedExports": [
+        "MODIFIER_KEYS",
+        "REGULAR_KEYS",
+        "normalizeHotkeyEventKey",
+        "addPressedHotkeyEventKey",
+        "deletePressedHotkeyEventKey",
+        "parseHotkey",
+        "canonicalizeHotkey",
+        "matchesHotkey",
+        "resolveConfiguredHotkey",
+        "matchesModifierOnlyHotkey",
+        "matchesConfiguredHotkey",
+        "shouldClaimConfiguredHotkey"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/bilingualRemountMatching.ts",
+      "originalLength": 12069,
+      "renderedLength": 8845,
+      "removedExports": [],
+      "renderedExports": [
+        "nodePathWithin",
+        "nodeAtPath",
+        "asHTMLElement",
+        "matchBilingualRemountOwners"
+      ]
+    },
+    {
+      "id": "src/core/site-adaptation/schema.ts",
+      "originalLength": 11355,
+      "renderedLength": 8427,
+      "removedExports": [
+        "validateSelectors"
+      ],
+      "renderedExports": [
+        "SITE_RULE_LIMITS",
+        "parseSiteRulePack",
+        "normalizeSiteAdaptationSettings"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/modalPriority.ts",
+      "originalLength": 9960,
+      "renderedLength": 8399,
+      "removedExports": [],
+      "renderedExports": [
+        "findActiveTranslationModal",
+        "isWithinTranslationModal",
+        "mayChangeTranslationModal"
+      ]
+    },
+    {
+      "id": "src/core/config/credentialBinding.ts",
+      "originalLength": 10782,
+      "renderedLength": 8357,
+      "removedExports": [],
+      "renderedExports": [
+        "dropCredentialsForChangedDestinations"
+      ]
+    },
+    {
+      "id": "src/providers/translation/usage.ts",
+      "originalLength": 11180,
+      "renderedLength": 8160,
+      "removedExports": [],
+      "renderedExports": [
+        "normalizeOpenAICompatibleUsage",
+        "normalizeClaudeUsage",
+        "normalizeGeminiUsage",
+        "normalizeDeepSeekResponsesUsage",
+        "normalizeHunyuanUsage"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/ui/translationIndicators.ts",
+      "originalLength": 9532,
+      "renderedLength": 7773,
+      "removedExports": [],
+      "renderedExports": [
+        "insertFailedTip",
+        "insertLoadingSpinner"
+      ]
+    },
+    {
+      "id": "src/services/harness/runtime.ts",
+      "originalLength": 10384,
+      "renderedLength": 7673,
+      "removedExports": [],
+      "renderedExports": [
+        "createHarnessRuntime"
+      ]
+    },
+    {
+      "id": "src/services/harness/modelGateway.ts",
+      "originalLength": 10651,
+      "renderedLength": 7602,
+      "removedExports": [],
+      "renderedExports": [
+        "sanitizeHarnessModelMessage",
+        "normalizeHarnessModelError",
+        "getHarnessModelInputKey",
+        "createHarnessLanguageModel"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/sentenceHighlight.ts",
+      "originalLength": 9774,
+      "renderedLength": 7538,
+      "removedExports": [],
+      "renderedExports": [
+        "BILINGUAL_HIGHLIGHT_NAME",
+        "installBilingualSentenceHighlight"
+      ]
+    },
+    {
+      "id": "src/core/config/sentenceHighlight.ts",
+      "originalLength": 8937,
+      "renderedLength": 7349,
+      "removedExports": [],
+      "renderedExports": [
+        "SENTENCE_HIGHLIGHT_STYLES",
+        "DEFAULT_SENTENCE_HIGHLIGHT_STYLE",
+        "normalizeSentenceHighlightStyle",
+        "SENTENCE_HIGHLIGHT_LINE_STYLES",
+        "DEFAULT_SENTENCE_HIGHLIGHT_APPEARANCE",
+        "normalizeSentenceHighlightAppearance",
+        "parseSentenceHighlightCustomCss",
+        "MAX_SENTENCE_HIGHLIGHT_PROFILES",
+        "normalizeSentenceHighlightProfiles",
+        "isDefaultSentenceHighlightAppearance",
+        "resolveSentenceHighlightAppearance",
+        "getSentenceHighlightAppearanceStyle",
+        "buildSentenceHighlightAppearanceCss"
+      ]
+    },
+    {
+      "id": "src/providers/translation/free-official-web.ts",
+      "originalLength": 9259,
+      "renderedLength": 7333,
+      "removedExports": [],
+      "renderedExports": [
+        "translateOfficialFreeWebText",
+        "translateOfficialFreeWebProvider"
+      ]
+    },
+    {
+      "id": "src/core/language/codes.ts",
+      "originalLength": 9373,
+      "renderedLength": 7226,
+      "removedExports": [],
+      "renderedExports": [
+        "parseLanguageTag",
+        "resolveChineseScriptFromSubtags",
+        "normalizeLanguageCode",
+        "normalizeDetectedLanguageCode",
+        "isLanguageCodeMatch"
+      ]
+    },
+    {
+      "id": "src/features/reading-assistant/ui/SentenceAnalysis.vue?vue&type=script&setup=true&lang.ts",
+      "originalLength": 7448,
+      "renderedLength": 7196,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/app/content/hotkeyRuntime.ts",
+      "originalLength": 10765,
+      "renderedLength": 7159,
+      "removedExports": [],
+      "renderedExports": [
+        "createContentHotkeyRuntime"
+      ]
+    },
+    {
+      "id": "src/providers/translation/ai-sdk/errors.ts",
+      "originalLength": 8961,
+      "renderedLength": 7132,
+      "removedExports": [],
+      "renderedExports": [
+        "LlmTransportError",
+        "normalizeAiSdkError"
+      ]
+    },
+    {
+      "id": "src/providers/translation/hunyuan-translation.ts",
+      "originalLength": 9819,
+      "renderedLength": 7124,
+      "removedExports": [],
+      "renderedExports": [
+        "buildHunyuanTranslationRequestBody",
+        "default"
+      ]
+    },
+    {
+      "id": "src/core/language/statistical.ts",
+      "originalLength": 10202,
+      "renderedLength": 7080,
+      "removedExports": [],
+      "renderedExports": [
+        "FRANC_MIN_LANGUAGES",
+        "STATISTICAL_THRESHOLDS",
+        "assessStatisticalLanguage"
+      ]
+    },
+    {
+      "id": "userscript/initialize.ts",
+      "originalLength": 8504,
+      "renderedLength": 6998,
+      "removedExports": [],
+      "renderedExports": [
+        "isUserscriptServiceSupported",
+        "normalizeUserscriptConfig",
+        "ensureUserscriptConfig"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/syntheticRemount.ts",
+      "originalLength": 9937,
+      "renderedLength": 6897,
+      "removedExports": [],
+      "renderedExports": [
+        "transferEquivalentSyntheticBilingualSegments"
+      ]
+    },
+    {
+      "id": "userscript/main.ts",
+      "originalLength": 9201,
+      "renderedLength": 6834,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "src/providers/translation/connectionTest.ts",
+      "originalLength": 10638,
+      "renderedLength": 6715,
+      "removedExports": [
+        "formatConnectionTestError"
+      ],
+      "renderedExports": [
+        "CONNECTION_TEST_ORIGIN",
+        "CONNECTION_TEST_TIMEOUT_MS",
+        "runTranslationServiceConnectionTest"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/sourceStabilityGate.ts",
+      "originalLength": 9423,
+      "renderedLength": 6484,
+      "removedExports": [],
+      "renderedExports": [
+        "isAnchorNearViewport",
+        "TranslationSourceStabilityGate"
+      ]
+    },
+    {
+      "id": "src/providers/translation/free-chinese-web.ts",
+      "originalLength": 8548,
+      "renderedLength": 6479,
+      "removedExports": [],
+      "renderedExports": [
+        "translateFreeChineseWebText"
+      ]
+    },
+    {
+      "id": "src/features/share-card/themes.ts",
+      "originalLength": 7132,
+      "renderedLength": 6463,
+      "removedExports": [],
+      "renderedExports": [
+        "CARD_THEMES",
+        "CARD_SECONDARY_FONT",
+        "paintCardBackground",
+        "cardPrismInk"
+      ]
+    },
+    {
+      "id": "src/services/translation/apiKeyRotation.ts",
+      "originalLength": 9260,
+      "renderedLength": 6422,
+      "removedExports": [],
+      "renderedExports": [
+        "withServiceApiKey",
+        "redactApiKeyError",
+        "runWithApiKeyRotation"
+      ]
+    },
+    {
+      "id": "src/features/floating-ball/content/runtime.ts",
+      "originalLength": 11554,
+      "renderedLength": 6390,
+      "removedExports": [
+        "toggleFloatingBallTranslation"
+      ],
+      "renderedExports": [
+        "isFloatingBallAllowedOnPage",
+        "mountFloatingBall",
+        "unmountFloatingBall"
+      ]
+    },
+    {
+      "id": "src/core/site-adaptation/compiler.ts",
+      "originalLength": 8813,
+      "renderedLength": 6356,
+      "removedExports": [
+        "resolveSiteRule"
+      ],
+      "renderedExports": [
+        "getSiteRuleObservedAttributes",
+        "getSiteAdapterAttributeFilter",
+        "compileSiteRulePack",
+        "composeSiteAdapters"
+      ]
+    },
+    {
+      "id": "src/core/config/credentials.ts",
+      "originalLength": 9160,
+      "renderedLength": 6336,
+      "removedExports": [],
+      "renderedExports": [
+        "SESSION_CREDENTIALS_STORAGE_KEY",
+        "LOCAL_CREDENTIALS_STORAGE_KEY",
+        "CREDENTIALS_SCHEMA_VERSION",
+        "CONFIG_CREDENTIAL_FIELDS",
+        "extractConfigCredentials",
+        "parseStoredCredentials",
+        "hasCredentialFields",
+        "hasCredentialData",
+        "credentialsEqual",
+        "sanitizeConfigCredentials",
+        "mergeConfigCredentials",
+        "sanitizeConfigHistoryCredentials"
+      ]
+    },
+    {
+      "id": "src/features/reading-assistant/ui/ReadingAnswer.vue?vue&type=script&setup=true&lang.ts",
+      "originalLength": 7453,
+      "renderedLength": 6309,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/features/paragraph-copy/core.ts",
+      "originalLength": 8825,
+      "renderedLength": 6036,
+      "removedExports": [],
+      "renderedExports": [
+        "PARAGRAPH_COPY_BLOCK_SELECTOR",
+        "readParagraphTexts",
+        "findCopyableBlock",
+        "composeParagraphCopyText"
+      ]
+    },
+    {
+      "id": "src/features/share-card/render.ts",
+      "originalLength": 7413,
+      "renderedLength": 5956,
+      "removedExports": [],
+      "renderedExports": [
+        "ShareCardRenderError",
+        "renderShareCard"
+      ]
+    },
+    {
+      "id": "userscript/browser.ts",
+      "originalLength": 8611,
+      "renderedLength": 5938,
+      "removedExports": [
+        "chrome"
+      ],
+      "renderedExports": [
+        "getUserscriptPrivacyContext",
+        "UNHANDLED_RUNTIME_MESSAGE",
+        "setPlatformMessageHandler",
+        "resetPlatformMessageHandler",
+        "closePlatformConnections",
+        "dispatchContentMessage",
+        "default"
+      ]
+    },
+    {
+      "id": "userscript/platform.ts",
+      "originalLength": 8639,
+      "renderedLength": 5858,
+      "removedExports": [],
+      "renderedExports": [
+        "createPlatformMessageHandler"
+      ]
+    },
+    {
+      "id": "src/services/translation/queue.ts",
+      "originalLength": 8712,
+      "renderedLength": 5809,
+      "removedExports": [],
+      "renderedExports": [
+        "TranslationQueueCancelledError",
+        "createTranslationQueueSession",
+        "cancelTranslationQueueSession",
+        "enqueueTranslation",
+        "clearTranslationQueue"
+      ]
+    },
+    {
+      "id": "userscript/count.ts",
+      "originalLength": 8631,
+      "renderedLength": 5801,
+      "removedExports": [],
+      "renderedExports": [
+        "USERSCRIPT_COUNT_BASE_PREFIX",
+        "USERSCRIPT_COUNT_REPLICA_PREFIX",
+        "createUserscriptCountCoordinator",
+        "initializeUserscriptCount",
+        "incrementUserscriptConfigCount",
+        "getUserscriptConfigCount"
+      ]
+    },
+    {
+      "id": "src/core/translation/prompts.ts",
+      "originalLength": 7409,
+      "renderedLength": 5787,
+      "removedExports": [],
+      "renderedExports": [
+        "buildPageSummaryPrompt",
+        "buildPageSummarySystemPrompt",
+        "isLikelyPageContextLeak",
+        "isDefinitePageContextLeak",
+        "stripTranslationReasoning"
+      ]
+    },
+    {
+      "id": "src/services/translation/visionProbe.ts",
+      "originalLength": 9102,
+      "renderedLength": 5674,
+      "removedExports": [
+        "prepareModelVisionRoute"
+      ],
+      "renderedExports": [
+        "VISION_PROBE_MESSAGE",
+        "VISION_PROBE_CANCEL_MESSAGE",
+        "freezeVisionProbeConfig",
+        "createModelVisionProbe"
+      ]
+    },
+    {
+      "id": "userscript/storage.ts",
+      "originalLength": 7480,
+      "renderedLength": 5541,
+      "removedExports": [],
+      "renderedExports": [
+        "completeUserscriptConfigPreparation",
+        "failUserscriptConfigPreparation",
+        "getStoredValue",
+        "setStoredValue",
+        "removeStoredValue",
+        "listStoredKeys",
+        "storage",
+        "configStorage"
+      ]
+    },
+    {
+      "id": "src/core/glossary/match.ts",
+      "originalLength": 8206,
+      "renderedLength": 5513,
+      "removedExports": [
+        "glossarySourcesOverlap"
+      ],
+      "renderedExports": [
+        "getGlossaryScopeReason",
+        "findGlossaryRanges",
+        "findGlossaryMatches",
+        "resolveGlossaryEntries",
+        "resolveGlossary"
+      ]
+    },
+    {
+      "id": "src/services/translation/modelThinking.ts",
+      "originalLength": 7590,
+      "renderedLength": 5493,
+      "removedExports": [],
+      "renderedExports": [
+        "applyModelThinkingPreference"
+      ]
+    },
+    {
+      "id": "src/core/glossary/model.ts",
+      "originalLength": 7907,
+      "renderedLength": 5337,
+      "removedExports": [
+        "createGlossaryEntry",
+        "createGlossaryLibrary"
+      ],
+      "renderedExports": [
+        "GLOSSARY_LIMITS",
+        "glossaryRecord",
+        "cleanGlossaryText",
+        "normalizeGlossaryLanguage",
+        "normalizeGlossaryDomain",
+        "normalizeGlossaryLibraries",
+        "normalizeGlossaryIds",
+        "buildGlossaryRevision"
+      ]
+    },
+    {
+      "id": "src/features/section-translation/core.ts",
+      "originalLength": 8649,
+      "renderedLength": 5242,
+      "removedExports": [
+        "describeSectionElement"
+      ],
+      "renderedExports": [
+        "SECTION_PICKER_UI_SELECTOR",
+        "isSectionPickerUi",
+        "resolveSectionElement",
+        "expandSectionElement",
+        "describeSectionScope",
+        "sectionSourcePreview",
+        "resolveSectionLabel"
+      ]
+    },
+    {
+      "id": "src/providers/translation/deeplx.ts",
+      "originalLength": 7523,
+      "renderedLength": 5173,
+      "removedExports": [],
+      "renderedExports": [
+        "getDeepLXRequestLanguages",
+        "translateDeepLXText",
+        "default"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/fullPageQueue.ts",
+      "originalLength": 8864,
+      "renderedLength": 5167,
+      "removedExports": [],
+      "renderedExports": [
+        "createFullPageQueueState",
+        "clearFullPageQueueState",
+        "noteFullPageScroll",
+        "queueFullPageCandidate",
+        "queueFullPageFailedCandidate",
+        "removeFullPagePending",
+        "createFullPageDispatchPlan"
+      ]
+    },
+    {
+      "id": "src/core/i18n/index.ts",
+      "originalLength": 7809,
+      "renderedLength": 5150,
+      "removedExports": [],
+      "renderedExports": [
+        "registerUiLanguageBundle",
+        "hasUiLanguageBundle",
+        "translate",
+        "translateLegacyText"
+      ]
+    },
+    {
+      "id": "src/core/config/videoSubtitleAppearance.ts",
+      "originalLength": 7711,
+      "renderedLength": 5122,
+      "removedExports": [
+        "getVideoSubtitleAppearanceCssVars"
+      ],
+      "renderedExports": [
+        "VIDEO_SUBTITLE_SKINS",
+        "VIDEO_SUBTITLE_FONT_SCALE_RANGE",
+        "DEFAULT_VIDEO_SUBTITLE_APPEARANCE",
+        "normalizeVideoSubtitleAppearance"
+      ]
+    },
+    {
+      "id": "src/providers/translation/ai-sdk/endpoints.ts",
+      "originalLength": 7938,
+      "renderedLength": 5020,
+      "removedExports": [],
+      "renderedExports": [
+        "AI_SDK_TRANSPORT_PROFILE",
+        "AI_SDK_COMMON_SERVICE_IDS",
+        "AI_SDK_SERVICE_IDS",
+        "parseChatCompletionsEndpoint",
+        "normalizeNewApiEndpoint",
+        "getAiSdkEndpointRoute",
+        "resolveOpenAICompatibleEndpoint"
+      ]
+    },
+    {
+      "id": "src/platform/shadow-ui/pageBridgeCore.ts",
+      "originalLength": 8640,
+      "renderedLength": 5019,
+      "removedExports": [],
+      "renderedExports": [
+        "SHADOW_ROOT_EVENT",
+        "ROUTE_CHANGE_EVENT",
+        "SHADOW_BRIDGE_DISPOSE_EVENT",
+        "SHADOW_BRIDGE_ENABLE_EVENT",
+        "SHADOW_BRIDGE_STATE_KEY",
+        "SHADOW_BRIDGE_LIFECYCLE_STATE_KEY",
+        "installShadowRouteBridgeCore",
+        "installShadowRouteBridgeLifecycleCore"
+      ]
+    },
+    {
+      "id": "src/core/config/constants.ts",
+      "originalLength": 6644,
+      "renderedLength": 5013,
+      "removedExports": [],
+      "renderedExports": [
+        "MINIMAX_ENDPOINTS",
+        "MIMO_ENDPOINTS",
+        "getMimoEndpoint",
+        "DEFAULT_OLLAMA_ENDPOINT",
+        "AZURE_TRANSLATOR_ENDPOINT",
+        "VOLC_TRANSLATION_ENDPOINT",
+        "getAliyunTranslationEndpoint",
+        "urls",
+        "method",
+        "CONNECTION_TEST_MESSAGE",
+        "tongyiTokenPlanUrl",
+        "constants",
+        "styles"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/liveTextTranslation.ts",
+      "originalLength": 8540,
+      "renderedLength": 5009,
+      "removedExports": [],
+      "renderedExports": [
+        "translateControlValue",
+        "translateLiveText",
+        "createTranslationRequest"
+      ]
+    },
+    {
+      "id": "src/providers/translation/mymemory.ts",
+      "originalLength": 7173,
+      "renderedLength": 4905,
+      "removedExports": [],
+      "renderedExports": [
+        "MY_MEMORY_MAX_BYTES",
+        "translateMyMemoryText",
+        "default"
+      ]
+    },
+    {
+      "id": "src/app/content/messageRuntime.ts",
+      "originalLength": 8010,
+      "renderedLength": 4885,
+      "removedExports": [],
+      "renderedExports": [
+        "createContentRuntimeMessageHandler"
+      ]
+    },
+    {
+      "id": "src/core/harness/prompts.ts",
+      "originalLength": 5931,
+      "renderedLength": 4881,
+      "removedExports": [
+        "HARNESS_PROMPT_VARIABLES"
+      ],
+      "renderedExports": [
+        "DEFAULT_HARNESS_ACTION_PROMPTS",
+        "HARNESS_PROMPT_MAX_LENGTH",
+        "DEFAULT_HARNESS_SYSTEM_PROMPT",
+        "getDefaultHarnessPrompt",
+        "resolveHarnessPrompt",
+        "renderHarnessPrompt"
+      ]
+    },
+    {
+      "id": "userscript/http.ts",
+      "originalLength": 7202,
+      "renderedLength": 4842,
+      "removedExports": [],
+      "renderedExports": [
+        "parseResponseHeaders",
+        "userscriptFetch"
+      ]
+    },
+    {
+      "id": "src/providers/translation/tencent.ts",
+      "originalLength": 6594,
+      "renderedLength": 4836,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/services/config/history.ts",
+      "originalLength": 7369,
+      "renderedLength": 4828,
+      "removedExports": [],
+      "renderedExports": [
+        "CONFIG_HISTORY_LIMIT",
+        "CONFIG_HISTORY_SCHEMA_VERSION",
+        "CONFIG_NON_RESTORABLE_FIELDS",
+        "toPublicConfig",
+        "toRestorableConfig",
+        "restoreRestorableConfig",
+        "serializeConfigHistory",
+        "cloneConfigHistory",
+        "createBaselineConfigHistory",
+        "parseConfigHistory",
+        "appendConfigHistorySnapshot",
+        "resolveConfigHistoryTargetIndex"
+      ]
+    },
+    {
+      "id": "src/features/reading-assistant/background.ts",
+      "originalLength": 6592,
+      "renderedLength": 4807,
+      "removedExports": [],
+      "renderedExports": [
+        "createReadingAssistantHandler"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/progress.ts",
+      "originalLength": 7206,
+      "renderedLength": 4796,
+      "removedExports": [],
+      "renderedExports": [
+        "setFullPageFailureActions",
+        "runFullPageFailureAction",
+        "hasActiveFullPageTranslationWork",
+        "shouldShowCompactFullPageTranslationStatus",
+        "startFullPageTranslationProgress",
+        "updateFullPageTranslationProgress",
+        "finishFullPageTranslationProgress",
+        "getFullPageTranslationProgress",
+        "subscribeFullPageTranslationProgress"
+      ]
+    },
+    {
+      "id": "src/features/paragraph-copy/content/index.ts",
+      "originalLength": 7227,
+      "renderedLength": 4747,
+      "removedExports": [],
+      "renderedExports": [
+        "mountParagraphCopyContentFeature"
+      ]
+    },
+    {
+      "id": "src/ui/components/UiSelect.vue?vue&type=script&setup=true&lang.ts",
+      "originalLength": 5061,
+      "renderedLength": 4663,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/providers/translation/free-web.ts",
+      "originalLength": 6201,
+      "renderedLength": 4649,
+      "removedExports": [],
+      "renderedExports": [
+        "translateFreeWebText"
+      ]
+    },
+    {
+      "id": "src/core/translation/adapters/declarative.ts",
+      "originalLength": 7722,
+      "renderedLength": 4580,
+      "removedExports": [],
+      "renderedExports": [
+        "createDeclarativeAdapter"
+      ]
+    },
+    {
+      "id": "src/core/config/harness.ts",
+      "originalLength": 7652,
+      "renderedLength": 4568,
+      "removedExports": [],
+      "renderedExports": [
+        "HARNESS_ACTIONS",
+        "DEFAULT_HARNESS_PREFERENCES",
+        "isHarnessService",
+        "normalizeHarnessPreferences",
+        "getHarnessModelCacheKey"
+      ]
+    },
+    {
+      "id": "src/core/glossary/revisionMemo.ts",
+      "originalLength": 5833,
+      "renderedLength": 4514,
+      "removedExports": [],
+      "renderedExports": [
+        "createGlossaryRevisionMemoizer"
+      ]
+    },
+    {
+      "id": "src/features/input-translation/background/handler.ts",
+      "originalLength": 8324,
+      "renderedLength": 4397,
+      "removedExports": [],
+      "renderedExports": [
+        "INPUT_BOX_TRANSLATION_MESSAGE_TYPE",
+        "createInputBoxTranslationRequest",
+        "createInputBoxTranslationHandler"
+      ]
+    },
+    {
+      "id": "userscript/readingRuntime.ts",
+      "originalLength": 6099,
+      "renderedLength": 4362,
+      "removedExports": [],
+      "renderedExports": [
+        "createUserscriptReadingRuntime"
+      ]
+    },
+    {
+      "id": "src/core/translation/targetResult.ts",
+      "originalLength": 6165,
+      "renderedLength": 4350,
+      "removedExports": [],
+      "renderedExports": [
+        "hasDistinctTargetTranslation"
+      ]
+    },
+    {
+      "id": "src/features/input-translation/content/inputBox.ts",
+      "originalLength": 6974,
+      "renderedLength": 4249,
+      "removedExports": [],
+      "renderedExports": [
+        "getDeepActiveElement",
+        "isFormControl",
+        "isEditableHost",
+        "isInputElement",
+        "normalizeEditableText",
+        "getInputBoxText",
+        "getInputBoxSelection",
+        "getInputBoxValueAfterInsertion",
+        "removeInsertedTriggerSymbols",
+        "getInputBoxValueSnapshot",
+        "canCommitInputBoxTranslation",
+        "matchesInputBoxTrigger"
+      ]
+    },
+    {
+      "id": "src/app/content/featureRegistry.ts",
+      "originalLength": 7894,
+      "renderedLength": 4220,
+      "removedExports": [],
+      "renderedExports": [
+        "rejectUnsupportedContentFeature",
+        "ContentFeatureRegistry",
+        "createContentFeatureRegistry"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/orphanArtifacts.ts",
+      "originalLength": 5735,
+      "renderedLength": 4146,
+      "removedExports": [],
+      "renderedExports": [
+        "normalizeOrphanedTranslationOwner",
+        "consumeOrphanedOwnerClassMutation",
+        "isTextEquivalentHostReplacement",
+        "normalizeOrphanedTranslationArtifacts",
+        "clearOrphanedTranslationArtifacts"
+      ]
+    },
+    {
+      "id": "src/providers/translation/aliyun-translation.ts",
+      "originalLength": 6360,
+      "renderedLength": 4114,
+      "removedExports": [],
+      "renderedExports": [
+        "buildAliyunSignedForm",
+        "default"
+      ]
+    },
+    {
+      "id": "src/core/translation/slotProtocol.ts",
+      "originalLength": 5403,
+      "renderedLength": 4050,
+      "removedExports": [],
+      "renderedExports": [
+        "serializeTranslationSlots",
+        "parseTranslationSlots"
+      ]
+    },
+    {
+      "id": "src/core/glossary/protection.ts",
+      "originalLength": 5243,
+      "renderedLength": 4044,
+      "removedExports": [],
+      "renderedExports": [
+        "GlossaryPlaceholderError",
+        "protectGlossaryText"
+      ]
+    },
+    {
+      "id": "src/providers/translation/bilibili-free.ts",
+      "originalLength": 5630,
+      "renderedLength": 3996,
+      "removedExports": [],
+      "renderedExports": [
+        "BILIBILI_FREE_TRANSLATION_URL",
+        "BILIBILI_FREE_TRANSLATION_MODEL",
+        "translateBilibiliFree",
+        "default"
+      ]
+    },
+    {
+      "id": "src/features/section-translation/content/index.ts",
+      "originalLength": 6406,
+      "renderedLength": 3958,
+      "removedExports": [],
+      "renderedExports": [
+        "startSectionTranslationPicker",
+        "mountSectionTranslationContentFeature"
+      ]
+    },
+    {
+      "id": "src/services/config/count.ts",
+      "originalLength": 6003,
+      "renderedLength": 3915,
+      "removedExports": [],
+      "renderedExports": [
+        "CONFIG_COUNT_INCREMENT_MESSAGE",
+        "CONFIG_COUNT_INCREMENT_MAX",
+        "parseConfigCountIncrement",
+        "parseConfigCountOperationId",
+        "createConfigCountOperationId",
+        "createConfigCountPersistenceQueue"
+      ]
+    },
+    {
+      "id": "src/core/harness/loop.ts",
+      "originalLength": 5715,
+      "renderedLength": 3913,
+      "removedExports": [],
+      "renderedExports": [
+        "runHarnessLoop"
+      ]
+    },
+    {
+      "id": "src/core/config/translationLoadingStyle.ts",
+      "originalLength": 4342,
+      "renderedLength": 3871,
+      "removedExports": [],
+      "renderedExports": [
+        "translationLoadingStyleOptions",
+        "DEFAULT_TRANSLATION_LOADING_STYLE",
+        "normalizeTranslationLoadingStyle"
+      ]
+    },
+    {
+      "id": "src/app/content/pageLifecycle.ts",
+      "originalLength": 5230,
+      "renderedLength": 3818,
+      "removedExports": [],
+      "renderedExports": [
+        "installContentPageLifecycle",
+        "waitForContentDocument"
+      ]
+    },
+    {
+      "id": "src/providers/translation/youdao.ts",
+      "originalLength": 5156,
+      "renderedLength": 3811,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/core/language/chinese.ts",
+      "originalLength": 5628,
+      "renderedLength": 3800,
+      "removedExports": [],
+      "renderedExports": [
+        "normalizeChineseLanguageCode",
+        "getChineseScript",
+        "hasSimplifiedChineseEvidence",
+        "hasTraditionalChineseEvidence",
+        "classifyChineseHan"
+      ]
+    },
+    {
+      "id": "src/services/translation/freeRoutingPolicy.ts",
+      "originalLength": 5257,
+      "renderedLength": 3768,
+      "removedExports": [],
+      "renderedExports": [
+        "MAX_FREE_COOLDOWN_MS",
+        "observeFreeProviderPerformance",
+        "getDynamicFreeProviderWeight",
+        "getFreeHedgeDelayMs",
+        "getFreeFailureStatus",
+        "classifyFreeFailure",
+        "getFreeFailureCooldown",
+        "selectWeightedFreeCandidate"
+      ]
+    },
+    {
+      "id": "src/core/tts/speechProgress.ts",
+      "originalLength": 5586,
+      "renderedLength": 3768,
+      "removedExports": [
+        "speechTextSlices"
+      ],
+      "renderedExports": [
+        "speechTextTokens",
+        "parseSpeechPlaybackPosition",
+        "seekSpeechTime",
+        "parseSpeechCues",
+        "parseSpeechProgress",
+        "audioSpeechProgress",
+        "boundarySpeechProgress"
+      ]
+    },
+    {
+      "id": "src/platform/shadow-ui/vue.ts",
+      "originalLength": 5647,
+      "renderedLength": 3733,
+      "removedExports": [],
+      "renderedExports": [
+        "createVueShadowUi"
+      ]
+    },
+    {
+      "id": "src/ui/translationLoadingIndicator.ts",
+      "originalLength": 18833,
+      "renderedLength": 3730,
+      "removedExports": [],
+      "renderedExports": [
+        "createTranslationLoadingIndicator",
+        "shouldAnimateTranslationLoading"
+      ]
+    },
+    {
+      "id": "src/features/selection-translation/services/ecdictAsset.ts",
+      "originalLength": 4666,
+      "renderedLength": 3712,
+      "removedExports": [],
+      "renderedExports": [
+        "canCacheOptionalEcdict",
+        "readCachedFullEcdict",
+        "downloadFullEcdict"
+      ]
+    },
+    {
+      "id": "src/providers/translation/zhipu.ts",
+      "originalLength": 5752,
+      "renderedLength": 3685,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/providers/translation/doubao-seed-translation.ts",
+      "originalLength": 6434,
+      "renderedLength": 3654,
+      "removedExports": [],
+      "renderedExports": [
+        "buildDoubaoSeedTranslationRequestBody",
+        "resolveDoubaoSeedTranslationEndpoint",
+        "default"
+      ]
+    },
+    {
+      "id": "src/providers/translation/cloud/signature.ts",
+      "originalLength": 5259,
+      "renderedLength": 3548,
+      "removedExports": [],
+      "renderedExports": [
+        "hmacSha256",
+        "hmacSha1",
+        "toHex",
+        "toBase64",
+        "sha256Hex",
+        "percentEncode",
+        "canonicalQueryString",
+        "md5Hex"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/stateNotification.ts",
+      "originalLength": 4608,
+      "renderedLength": 3529,
+      "removedExports": [],
+      "renderedExports": [
+        "subscribeTranslationToolbarStatus",
+        "getTranslationToolbarStatus",
+        "notifyTranslationToolbarStatus",
+        "getFullPageTranslationStateRevision",
+        "notifyFullPageTranslationState"
+      ]
+    },
+    {
+      "id": "src/core/language/functionWordData.ts",
+      "originalLength": 10168,
+      "renderedLength": 3522,
+      "removedExports": [],
+      "renderedExports": [
+        "latinEnWords",
+        "latinFrWords",
+        "latinDeWords",
+        "latinEsWords",
+        "latinPtWords",
+        "latinItWords",
+        "latinNlWords",
+        "latinPlWords",
+        "latinCsWords",
+        "latinSkWords",
+        "latinRoWords",
+        "latinHuWords",
+        "latinTrWords",
+        "latinViWords",
+        "latinIdWords",
+        "latinMsWords",
+        "latinFilWords",
+        "latinSwWords",
+        "latinSvWords",
+        "latinDaWords",
+        "latinNbWords",
+        "latinNnWords",
+        "latinFiWords",
+        "latinEtWords",
+        "latinLvWords",
+        "latinLtWords",
+        "latinSlWords",
+        "latinHrWords",
+        "latinBsWords",
+        "latinSrLatnWords",
+        "latinCaWords",
+        "latinGlWords",
+        "latinAfWords",
+        "cyrillicRuWords",
+        "cyrillicUkWords",
+        "cyrillicBgWords",
+        "cyrillicSrWords",
+        "cyrillicBeWords",
+        "cyrillicKkWords",
+        "cyrillicMkWords",
+        "arabicArWords",
+        "arabicFaWords",
+        "arabicUrWords",
+        "devanagariHiWords",
+        "devanagariMrWords",
+        "devanagariNeWords"
+      ]
+    },
+    {
+      "id": "src/features/image-translation/background/handlers.ts",
+      "originalLength": 28891,
+      "renderedLength": 3511,
+      "removedExports": [
+        "IMAGE_TRANSLATE_MESSAGE_TYPE",
+        "IMAGE_TRANSLATE_TEXTS_MESSAGE_TYPE",
+        "IMAGE_OCR_DOWNLOAD_MESSAGE_TYPE",
+        "IMAGE_CANCEL_MESSAGE_TYPE",
+        "IMAGE_FETCH_MESSAGE_TYPE",
+        "IMAGE_TEXT_TRANSLATION_TIMEOUT_MS",
+        "createImageTranslationBackgroundHandlers"
+      ],
+      "renderedExports": [
+        "IMAGE_OPERATION_TIMEOUT_MS",
+        "createImageOperationRegistry"
+      ]
+    },
+    {
+      "id": "src/features/reading-assistant/answerFormat.ts",
+      "originalLength": 4634,
+      "renderedLength": 3499,
+      "removedExports": [],
+      "renderedExports": [
+        "readingAnswerBlocks",
+        "readingAnswerSpans"
+      ]
+    },
+    {
+      "id": "userscript/uiLanguageBundles.ts",
+      "originalLength": 4625,
+      "renderedLength": 3478,
+      "removedExports": [
+        "renderWithUiLanguageBundle"
+      ],
+      "renderedExports": [
+        "ensureUiLanguageBundle"
+      ]
+    },
+    {
+      "id": "src/core/config/freeTranslation.ts",
+      "originalLength": 4290,
+      "renderedLength": 3448,
+      "removedExports": [],
+      "renderedExports": [
+        "BILIBILI_FREE_TRANSLATION_DOMAIN",
+        "FREE_TRANSLATION_PROVIDERS",
+        "isFreeTranslationProviderId",
+        "DEFAULT_FREE_TRANSLATION_MODE",
+        "DEFAULT_FREE_TRANSLATION_ORDER",
+        "DEFAULT_FREE_TRANSLATION_TIMEOUT_MS",
+        "DEFAULT_FREE_TRANSLATION_COOLDOWN_MS",
+        "FREE_TRANSLATION_TOTAL_TIMEOUT_MS",
+        "normalizeFreeTranslationMode",
+        "normalizeFreeTranslationOrder",
+        "normalizeFreeTranslationTimeoutMs",
+        "normalizeFreeTranslationCooldownMs",
+        "normalizeMyMemoryEmail"
+      ]
+    },
+    {
+      "id": "src/core/site-rules/domain.ts",
+      "originalLength": 5200,
+      "renderedLength": 3447,
+      "removedExports": [],
+      "renderedExports": [
+        "getSiteBaseDomain",
+        "normalizeSiteDomains",
+        "normalizeAlwaysTranslateDomains",
+        "normalizeDisabledExtensionDomains",
+        "normalizeFloatingBallDisabledDomains",
+        "isAlwaysTranslateSite",
+        "isExtensionDisabledOnSite",
+        "isFloatingBallDisabledOnSite",
+        "shouldAutoTranslatePage"
+      ]
+    },
+    {
+      "id": "src/core/config/customOpenAI.ts",
+      "originalLength": 7116,
+      "renderedLength": 3438,
+      "removedExports": [
+        "getCustomOpenAIProviderModels",
+        "createNextCustomOpenAIProviderId",
+        "removeCustomOpenAIProvider"
+      ],
+      "renderedExports": [
+        "MAX_CUSTOM_OPENAI_MODELS_PER_PROVIDER",
+        "MAX_CUSTOM_OPENAI_PROVIDER_NAME_LENGTH",
+        "MAX_CUSTOM_OPENAI_PROVIDER_ENDPOINT_LENGTH",
+        "MAX_CUSTOM_OPENAI_MODEL_LENGTH",
+        "CUSTOM_OPENAI_PROVIDER_ID_PREFIX",
+        "LEGACY_CUSTOM_OPENAI_PROVIDER_ID",
+        "CUSTOM_OPENAI_RESERVED_MODEL_ID",
+        "normalizeCustomOpenAIModels",
+        "isCustomOpenAIProviderId",
+        "normalizeCustomOpenAIProviders",
+        "getCustomOpenAIProvider",
+        "isConfiguredCustomOpenAIProvider",
+        "getCustomOpenAIProviderLabel",
+        "getCustomOpenAIServiceOptions",
+        "withCustomOpenAIServiceOptions"
+      ]
+    },
+    {
+      "id": "src/providers/translation/deepseek.ts",
+      "originalLength": 5591,
+      "renderedLength": 3436,
+      "removedExports": [],
+      "renderedExports": [
+        "buildDeepSeekEndpoint",
+        "default"
+      ]
+    },
+    {
+      "id": "src/core/config/quickTranslation.ts",
+      "originalLength": 7307,
+      "renderedLength": 3383,
+      "removedExports": [
+        "quickTranslationActionKey",
+        "createQuickTranslationProfile",
+        "enabledQuickTranslationProfiles",
+        "findEnabledQuickTranslationHotkeyConflict"
+      ],
+      "renderedExports": [
+        "MAX_QUICK_TRANSLATION_PROFILES",
+        "MAX_QUICK_TRANSLATION_MODEL_LENGTH",
+        "INPUT_BOX_TRANSLATION_TRIGGER_HOTKEYS",
+        "inputBoxTranslationTriggerHotkey",
+        "createQuickTranslationProfileId",
+        "normalizeQuickTranslationProfiles"
+      ]
+    },
+    {
+      "id": "src/services/translation/errors.ts",
+      "originalLength": 5154,
+      "renderedLength": 3379,
+      "removedExports": [],
+      "renderedExports": [
+        "TRANSLATION_ERROR_MARKER",
+        "serializeTranslationError",
+        "isSerializedTranslationError",
+        "TranslationRequestError",
+        "unwrapTranslationResponse",
+        "isRetryableTranslationError"
+      ]
+    },
+    {
+      "id": "src/core/config/vision.ts",
+      "originalLength": 6189,
+      "renderedLength": 3360,
+      "removedExports": [
+        "resolveAreaRecognitionRoute"
+      ],
+      "renderedExports": [
+        "DEFAULT_AREA_VISION_PROMPT",
+        "normalizeAreaVisionPrompt",
+        "supportsVisionTransport",
+        "normalizeModelVisionOverrides",
+        "resolveModelVisionCapability"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/hoverScheduler.ts",
+      "originalLength": 5452,
+      "renderedLength": 3348,
+      "removedExports": [],
+      "renderedExports": [
+        "HoverTranslationScheduler"
+      ]
+    },
+    {
+      "id": "src/app/content/optionalFeatures.ts",
+      "originalLength": 5159,
+      "renderedLength": 3294,
+      "removedExports": [],
+      "renderedExports": [
+        "createOptionalContentFeatureRuntime"
+      ]
+    },
+    {
+      "id": "src/core/translation/resultValidation.ts",
+      "originalLength": 4784,
+      "renderedLength": 3293,
+      "removedExports": [],
+      "renderedExports": [
+        "hasTranslatableText",
+        "isLikelyUntranslatedResponse",
+        "isClearlyWrongLanguageResponse"
+      ]
+    },
+    {
+      "id": "src/providers/translation/volc-translation.ts",
+      "originalLength": 5310,
+      "renderedLength": 3286,
+      "removedExports": [],
+      "renderedExports": [
+        "buildVolcAuthorization",
+        "default"
+      ]
+    },
+    {
+      "id": "src/providers/translation/googleRequestGate.ts",
+      "originalLength": 4693,
+      "renderedLength": 3193,
+      "removedExports": [],
+      "renderedExports": [
+        "googleRequestDeadlineError",
+        "createGoogleRequestGate"
+      ]
+    },
+    {
+      "id": "src/core/config/validation.ts",
+      "originalLength": 5324,
+      "renderedLength": 3143,
+      "removedExports": [],
+      "renderedExports": [
+        "API_KEY_REQUIREMENT_KEY_PREFIX",
+        "createApiKeyRequirementKey",
+        "getLegacyApiKeyRequirementKey",
+        "parseApiKeyRequirementKey",
+        "getApiKeyRequirementKey",
+        "isApiKeyRequired",
+        "getMissingCredentialMessage"
+      ]
+    },
+    {
+      "id": "src/core/config/scheduling.ts",
+      "originalLength": 3875,
+      "renderedLength": 3068,
+      "removedExports": [],
+      "renderedExports": [
+        "DEFAULT_MAX_CONCURRENT_TRANSLATIONS",
+        "MIN_CONCURRENT_TRANSLATIONS",
+        "MAX_CONCURRENT_TRANSLATIONS",
+        "DEFAULT_TRANSLATION_REQUESTS_PER_SECOND",
+        "MIN_TRANSLATION_REQUESTS_PER_SECOND",
+        "MAX_TRANSLATION_REQUESTS_PER_SECOND",
+        "DEFAULT_TRANSLATION_REQUESTS_PER_MINUTE",
+        "MIN_TRANSLATION_REQUESTS_PER_MINUTE",
+        "MAX_TRANSLATION_REQUESTS_PER_MINUTE",
+        "DEFAULT_TRANSLATION_MAX_RETRIES",
+        "MIN_TRANSLATION_MAX_RETRIES",
+        "MAX_TRANSLATION_MAX_RETRIES",
+        "DEFAULT_TRANSLATION_BACKOFF_BASE_MS",
+        "MIN_TRANSLATION_BACKOFF_BASE_MS",
+        "MAX_TRANSLATION_BACKOFF_BASE_MS",
+        "DEFAULT_TRANSLATION_BACKOFF_MAX_MS",
+        "MIN_TRANSLATION_BACKOFF_MAX_MS",
+        "MAX_TRANSLATION_BACKOFF_MAX_MS",
+        "API_KEY_RECOVERY_MINUTE_MS",
+        "DEFAULT_API_KEY_RECOVERY_MS",
+        "MIN_API_KEY_RECOVERY_MS",
+        "MAX_API_KEY_RECOVERY_MS",
+        "MIN_API_KEY_RECOVERY_MINUTES",
+        "MAX_API_KEY_RECOVERY_MINUTES",
+        "normalizeMaxConcurrentTranslations",
+        "normalizeTranslationRequestsPerSecond",
+        "normalizeTranslationRequestsPerMinute",
+        "normalizeTranslationMaxRetries",
+        "normalizeTranslationBackoffBaseMs",
+        "normalizeTranslationBackoffMaxMs",
+        "normalizeApiKeyRecoveryMs"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/requestSession.ts",
+      "originalLength": 5033,
+      "renderedLength": 3046,
+      "removedExports": [],
+      "renderedExports": [
+        "createFullPageRequestSessionState",
+        "getHoverTranslationRequestSession",
+        "invalidateHoverTranslationRequestSession",
+        "resetHoverTranslationRequestSession",
+        "invalidateFullPageRequestSessionCache",
+        "invalidateFullPageRequestSessionForRoute",
+        "bindFullPageRequestSessionAttempt",
+        "invalidateContextSensitiveRequestCache",
+        "disposeFullPageRequestSession"
+      ]
+    },
+    {
+      "id": "src/core/language/scripts.ts",
+      "originalLength": 4792,
+      "renderedLength": 2982,
+      "removedExports": [],
+      "renderedExports": [
+        "segmentScriptWords",
+        "SCRIPT_UNIQUE_LANGUAGES",
+        "hasScriptUniqueVeto"
+      ]
+    },
+    {
+      "id": "src/features/reading-assistant/sentenceAnalysis.ts",
+      "originalLength": 3970,
+      "renderedLength": 2974,
+      "removedExports": [],
+      "renderedExports": [
+        "anchorSentenceAnalysis",
+        "summarizeSentenceRole",
+        "describeSentenceRole"
+      ]
+    },
+    {
+      "id": "src/core/language/lexicon.ts",
+      "originalLength": 5279,
+      "renderedLength": 2970,
+      "removedExports": [],
+      "renderedExports": [
+        "FUNCTION_WORDS",
+        "STATISTICAL_SCRIPT_LANGUAGES",
+        "LATIN_EXTRA_LETTERS",
+        "CYRILLIC_LETTERS",
+        "ARABIC_FOREIGN_LETTERS"
+      ]
+    },
+    {
+      "id": "src/features/reading-assistant/selectionContext.ts",
+      "originalLength": 3609,
+      "renderedLength": 2873,
+      "removedExports": [],
+      "renderedExports": [
+        "sentenceAroundSelection",
+        "captureReadingSelection"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/ui/modalProgressHint.ts",
+      "originalLength": 3822,
+      "renderedLength": 2862,
+      "removedExports": [],
+      "renderedExports": [
+        "syncModalTranslationHint"
+      ]
+    },
+    {
+      "id": "userscript/shadow-root.ts",
+      "originalLength": 4585,
+      "renderedLength": 2842,
+      "removedExports": [],
+      "renderedExports": [
+        "createShadowRootUi"
+      ]
+    },
+    {
+      "id": "src/providers/translation/gemini.ts",
+      "originalLength": 4491,
+      "renderedLength": 2774,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/providers/translation/microsoftTransport.ts",
+      "originalLength": 4013,
+      "renderedLength": 2756,
+      "removedExports": [],
+      "renderedExports": [
+        "translateMicrosoftTextsWithTransport"
+      ]
+    },
+    {
+      "id": "src/app/content/qqMailFrameRuntime.ts",
+      "originalLength": 14033,
+      "renderedLength": 2732,
+      "removedExports": [
+        "startQqMailFrameApp",
+        "startNeteaseMailFrameApp"
+      ],
+      "renderedExports": [
+        "installQqMailTopFrameBridge",
+        "installNeteaseMailTopFrameBridge"
+      ]
+    },
+    {
+      "id": "src/features/selection-translation/content/selectionTtsContentController.ts",
+      "originalLength": 5458,
+      "renderedLength": 2721,
+      "removedExports": [],
+      "renderedExports": [
+        "SelectionTtsContentController",
+        "createSelectionTtsContentController"
+      ]
+    },
+    {
+      "id": "src/core/language/catalog.ts",
+      "originalLength": 2901,
+      "renderedLength": 2715,
+      "removedExports": [],
+      "renderedExports": [
+        "translationLanguageOptions"
+      ]
+    },
+    {
+      "id": "userscript/pageContext.ts",
+      "originalLength": 3485,
+      "renderedLength": 2715,
+      "removedExports": [],
+      "renderedExports": [
+        "getPageTranslationContext",
+        "resetPageTranslationContextCache"
+      ]
+    },
+    {
+      "id": "src/core/config/apiKeyCheckIdentity.ts",
+      "originalLength": 4675,
+      "renderedLength": 2708,
+      "removedExports": [],
+      "renderedExports": [
+        "getApiKeyRequestProxy",
+        "getApiKeySigningCredentials",
+        "createApiKeyCheckRevision",
+        "matchesApiKeyCheckRevision"
+      ]
+    },
+    {
+      "id": "src/app/background/handlers/translation.ts",
+      "originalLength": 12647,
+      "renderedLength": 2701,
+      "removedExports": [
+        "parseTranslationRequest",
+        "createTranslationRequestFallback",
+        "createTranslationCancelHandler"
+      ],
+      "renderedExports": [
+        "createTranslationRequestRegistry"
+      ]
+    },
+    {
+      "id": "src/app/content/pageAvailability.ts",
+      "originalLength": 4697,
+      "renderedLength": 2651,
+      "removedExports": [],
+      "renderedExports": [
+        "shouldAutomaticallyTranslatePage",
+        "createContentPageAvailabilityRuntime"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/mutationObservation.ts",
+      "originalLength": 4186,
+      "renderedLength": 2626,
+      "removedExports": [],
+      "renderedExports": [
+        "isElementNode",
+        "asHTMLElement",
+        "mutationTargetElement",
+        "createTranslationAttributeMutationFilter",
+        "createTranslationMutationObserverOptions",
+        "isOwnSyntheticSegmentMarkerMutation",
+        "allMutationNodesMatch",
+        "mutationRootContains",
+        "collapseMutationRescanRoot"
+      ]
+    },
+    {
+      "id": "src/core/translation/visionProbeImage.ts",
+      "originalLength": 2989,
+      "renderedLength": 2593,
+      "removedExports": [],
+      "renderedExports": [
+        "createVisionProbeImage"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/liveTextRender.ts",
+      "originalLength": 4960,
+      "renderedLength": 2576,
+      "removedExports": [],
+      "renderedExports": [
+        "renderLiveTextResult"
+      ]
+    },
+    {
+      "id": "src/providers/translation/claude.ts",
+      "originalLength": 4266,
+      "renderedLength": 2540,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/core/config/writing.ts",
+      "originalLength": 5945,
+      "renderedLength": 2534,
+      "removedExports": [
+        "WRITING_ACTIONS",
+        "WRITING_TONES",
+        "WRITING_ROLES",
+        "resolveWritingReferenceLanguage",
+        "isWritingLanguage",
+        "resolveWritingLanguage"
+      ],
+      "renderedExports": [
+        "WRITING_LANGUAGES",
+        "WRITING_STYLES",
+        "WRITING_ROLE_MAX_LENGTH",
+        "WRITING_TONE_MAX_LENGTH",
+        "WRITING_LENGTHS",
+        "normalizeWritingLanguage",
+        "normalizeWritingReferenceLanguage",
+        "normalizeWritingLength",
+        "normalizeWritingPreferences",
+        "isWritingPage"
+      ]
+    },
+    {
+      "id": "src/providers/translation/tongyi.ts",
+      "originalLength": 4089,
+      "renderedLength": 2427,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/titleTranslation.ts",
+      "originalLength": 4853,
+      "renderedLength": 2401,
+      "removedExports": [
+        "isFullPageTitleTranslationActive"
+      ],
+      "renderedExports": [
+        "startFullPageTitleTranslation",
+        "stopFullPageTitleTranslation"
+      ]
+    },
+    {
+      "id": "src/platform/browser/capabilities.ts",
+      "originalLength": 4816,
+      "renderedLength": 2385,
+      "removedExports": [],
+      "renderedExports": [
+        "resolveBrowserCapabilities",
+        "applyRuntimeBrowserConstraints",
+        "readRuntimeUserAgent",
+        "browserBuildTargetFromEnv",
+        "browserCapabilityBuildMarker",
+        "browserCapabilities"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/fullPagePriority.ts",
+      "originalLength": 4011,
+      "renderedLength": 2377,
+      "removedExports": [],
+      "renderedExports": [
+        "FULL_PAGE_PREFETCH_MARGIN_PX",
+        "FULL_PAGE_BACKGROUND_MAX_WAIT_MS",
+        "FULL_PAGE_FOREGROUND_DISPATCH_QUOTA",
+        "scoreFullPageCandidatePriority",
+        "compareFullPageCandidatePriority"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/sourceStability.ts",
+      "originalLength": 3410,
+      "renderedLength": 2364,
+      "removedExports": [],
+      "renderedExports": [
+        "TRANSLATION_SOURCE_QUIET_MS",
+        "TRANSLATION_SOURCE_MAX_QUIET_MS",
+        "createTranslationSourceHistory",
+        "observeTranslationSource"
+      ]
+    },
+    {
+      "id": "src/core/harness/surface.ts",
+      "originalLength": 3657,
+      "renderedLength": 2350,
+      "removedExports": [],
+      "renderedExports": [
+        "isSurfaceEligibleType",
+        "isSurfaceEvent",
+        "deriveEventMessage",
+        "foldSurface",
+        "deriveMessages",
+        "HarnessLedger"
+      ]
+    },
+    {
+      "id": "src/core/config/localTranslation.ts",
+      "originalLength": 12114,
+      "renderedLength": 2346,
+      "removedExports": [
+        "LOCAL_TRANSLATION_MODEL_STATE_KEY",
+        "LOCAL_TRANSLATION_DOWNLOAD_STATE_KEY",
+        "LOCAL_TRANSLATION_DTYPE",
+        "LOCAL_TRANSLATION_MODEL_REMOTE_HOST",
+        "LOCAL_TRANSLATION_MODEL_REVISION",
+        "getLocalTranslationModel",
+        "isLocalTranslationModel",
+        "normalizeLocalTranslationModel",
+        "normalizeLocalTranslationDownloadSnapshot",
+        "resolveLocalTranslationLanguageCode",
+        "HUNYUAN_LANGUAGE_NAMES",
+        "resolveOpusTranslationRepository",
+        "localTranslationErrorKey"
+      ],
+      "renderedExports": [
+        "LOCAL_TRANSLATION_SERVICE_ID",
+        "LOCAL_TRANSLATION_MODEL_IDS",
+        "LOCAL_TRANSLATION_MODELS",
+        "DEFAULT_LOCAL_TRANSLATION_MODEL"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/attributeMutationBatch.ts",
+      "originalLength": 4198,
+      "renderedLength": 2329,
+      "removedExports": [],
+      "renderedExports": [
+        "createAttributeMutationBatch"
+      ]
+    },
+    {
+      "id": "src/services/translation/glossaryProtection.ts",
+      "originalLength": 3227,
+      "renderedLength": 2294,
+      "removedExports": [],
+      "renderedExports": [
+        "getGlossaryProtectionEntries",
+        "prepareGlossaryRequest",
+        "isGlossaryOnlyResult"
+      ]
+    },
+    {
+      "id": "src/services/translation/availability.ts",
+      "originalLength": 3476,
+      "renderedLength": 2267,
+      "removedExports": [],
+      "renderedExports": [
+        "TranslationDisabledError",
+        "createTranslationAvailability"
+      ]
+    },
+    {
+      "id": "src/providers/translation/azure-translator.ts",
+      "originalLength": 3699,
+      "renderedLength": 2156,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/core/language/partOfSpeech.ts",
+      "originalLength": 2532,
+      "renderedLength": 2142,
+      "removedExports": [],
+      "renderedExports": [
+        "describePartOfSpeech"
+      ]
+    },
+    {
+      "id": "src/core/translation/sentenceAlignment.ts",
+      "originalLength": 2954,
+      "renderedLength": 2126,
+      "removedExports": [],
+      "renderedExports": [
+        "sentenceSpans",
+        "alignBilingualSentences"
+      ]
+    },
+    {
+      "id": "src/core/config/inputTranslation.ts",
+      "originalLength": 3213,
+      "renderedLength": 2122,
+      "removedExports": [
+        "INPUT_BOX_TRANSLATION_INTERVAL_STEP"
+      ],
+      "renderedExports": [
+        "DEFAULT_INPUT_BOX_TRANSLATION_INTERVAL",
+        "INPUT_BOX_TRANSLATION_INTERVAL_MIN",
+        "INPUT_BOX_TRANSLATION_INTERVAL_MAX",
+        "normalizeInputBoxTranslationOutputMode",
+        "DEFAULT_INPUT_BOX_TRANSLATION_SYSTEM_PROMPT",
+        "DEFAULT_INPUT_BOX_TRANSLATION_PROMPT",
+        "normalizeInputBoxTranslationInterval",
+        "normalizeInputBoxTranslationService",
+        "normalizeInputBoxTranslationModel",
+        "normalizeInputBoxTranslationPrompt",
+        "completeInputBoxTranslationPrompt",
+        "supportsInputBoxTranslationPrompt"
+      ]
+    },
+    {
+      "id": "src/providers/translation/deepl.ts",
+      "originalLength": 3633,
+      "renderedLength": 2116,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "userscript/localPort.ts",
+      "originalLength": 3426,
+      "renderedLength": 2096,
+      "removedExports": [],
+      "renderedExports": [
+        "createUserscriptPortPair"
+      ]
+    },
+    {
+      "id": "src/core/translation/liveData.ts",
+      "originalLength": 2377,
+      "renderedLength": 2059,
+      "removedExports": [],
+      "renderedExports": [
+        "isNonTranslatableLiveData"
+      ]
+    },
+    {
+      "id": "src/core/config/selectionTts.ts",
+      "originalLength": 2927,
+      "renderedLength": 2058,
+      "removedExports": [
+        "selectionTtsVoiceLocale"
+      ],
+      "renderedExports": [
+        "SELECTION_TTS_VOICE_OPTIONS",
+        "normalizeSelectionTtsVoiceOrder"
+      ]
+    },
+    {
+      "id": "src/features/reading-assistant/client.ts",
+      "originalLength": 3982,
+      "renderedLength": 2043,
+      "removedExports": [
+        "deleteHarnessSession",
+        "clearHarnessSessions",
+        "listLearningMemories",
+        "deleteLearningMemory",
+        "clearLearningMemories"
+      ],
+      "renderedExports": [
+        "streamReading",
+        "listHarnessSessions",
+        "getHarnessSession",
+        "saveLearningMemory"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/outcomeSession.ts",
+      "originalLength": 3221,
+      "renderedLength": 2039,
+      "removedExports": [],
+      "renderedExports": [
+        "registerFullPageOutcomeTarget",
+        "getFullPageOutcomeSummary",
+        "getFullPageModalOutcomePhases",
+        "bindFullPageOutcomeRecovery"
+      ]
+    },
+    {
+      "id": "src/core/translation/lineBreak.ts",
+      "originalLength": 2897,
+      "renderedLength": 2011,
+      "removedExports": [],
+      "renderedExports": [
+        "LONG_PARAGRAPH_LINE_BREAK_MIN_LENGTH",
+        "iterateTranslationSentences",
+        "splitTranslationSentences",
+        "applyLongParagraphLineBreaks"
+      ]
+    },
+    {
+      "id": "src/app/translation/runtime.ts",
+      "originalLength": 4177,
+      "renderedLength": 1983,
+      "removedExports": [
+        "getTranslationCacheStats"
+      ],
+      "renderedExports": [
+        "translationRequestScheduler",
+        "translateWithCache",
+        "clearTranslationCache",
+        "cleanupTranslationCache"
+      ]
+    },
+    {
+      "id": "src/features/share-card/content/runtime.ts",
+      "originalLength": 3168,
+      "renderedLength": 1981,
+      "removedExports": [],
+      "renderedExports": [
+        "isShareCardMounted",
+        "openShareCard",
+        "mountShareCard",
+        "unmountShareCard"
+      ]
+    },
+    {
+      "id": "src/core/translation/layoutMeasurements.ts",
+      "originalLength": 3338,
+      "renderedLength": 1967,
+      "removedExports": [],
+      "renderedExports": [
+        "createTranslationLayoutMeasurements"
+      ]
+    },
+    {
+      "id": "src/core/config/requestLimits.ts",
+      "originalLength": 5596,
+      "renderedLength": 1961,
+      "removedExports": [
+        "getServiceRequestLimitPreference",
+        "getModelRequestLimitPreference",
+        "withServiceRequestLimit",
+        "withModelRequestLimit",
+        "withoutModelRequestLimit"
+      ],
+      "renderedExports": [
+        "normalizeTranslationRequestLimits",
+        "normalizeRequestLimitPreference",
+        "normalizeServiceRequestLimits",
+        "normalizeModelRequestLimits"
+      ]
+    },
+    {
+      "id": "src/core/translation/current.ts",
+      "originalLength": 3420,
+      "renderedLength": 1901,
+      "removedExports": [],
+      "renderedExports": [
+        "setCurrentTranslationAdapters",
+        "setCurrentTranslationSidebarRegions",
+        "getCurrentTranslationCore",
+        "resolveTranslationCandidateAtPoint",
+        "createCurrentTranslationResolverBatch"
+      ]
+    },
+    {
+      "id": "src/providers/translation/native-batch.ts",
+      "originalLength": 3101,
+      "renderedLength": 1879,
+      "removedExports": [],
+      "renderedExports": [
+        "readNativeBatchJson",
+        "translateNativeTextBatch"
+      ]
+    },
+    {
+      "id": "src/features/selection-translation/content/runtime.ts",
+      "originalLength": 3121,
+      "renderedLength": 1859,
+      "removedExports": [],
+      "renderedExports": [
+        "mountSelectionTranslator",
+        "unmountSelectionTranslator"
+      ]
+    },
+    {
+      "id": "src/app/content/quickTranslationRuntime.ts",
+      "originalLength": 3281,
+      "renderedLength": 1834,
+      "removedExports": [],
+      "renderedExports": [
+        "mountConfiguredQuickTranslation"
+      ]
+    },
+    {
+      "id": "src/providers/translation/google-cloud-translation.ts",
+      "originalLength": 3370,
+      "renderedLength": 1816,
+      "removedExports": [],
+      "renderedExports": [
+        "GOOGLE_CLOUD_TRANSLATION_URL",
+        "default"
+      ]
+    },
+    {
+      "id": "src/providers/translation/baidu-translation.ts",
+      "originalLength": 3533,
+      "renderedLength": 1794,
+      "removedExports": [],
+      "renderedExports": [
+        "buildBaiduSignedForm",
+        "default"
+      ]
+    },
+    {
+      "id": "src/platform/http/errors.ts",
+      "originalLength": 3098,
+      "renderedLength": 1758,
+      "removedExports": [],
+      "renderedExports": [
+        "createHttpStatusError",
+        "createImageInputHttpError",
+        "getSafeProviderErrorCode",
+        "createProviderCodeError",
+        "readJsonResponse"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/ui/progressPanelVisibility.ts",
+      "originalLength": 2662,
+      "renderedLength": 1757,
+      "removedExports": [],
+      "renderedExports": [
+        "createProgressPanelVisibility"
+      ]
+    },
+    {
+      "id": "src/core/language/detect.ts",
+      "originalLength": 3463,
+      "renderedLength": 1749,
+      "removedExports": [
+        "MIN_CHROME_LANGUAGE_CONFIDENCE"
+      ],
+      "renderedExports": [
+        "detectlang",
+        "isTextInLanguage",
+        "shouldSkipTranslationForTarget",
+        "detectChineseScript",
+        "shouldSkipChineseSelection"
+      ]
+    },
+    {
+      "id": "src/features/share-card/core.ts",
+      "originalLength": 2415,
+      "renderedLength": 1743,
+      "removedExports": [],
+      "renderedExports": [
+        "SHARE_CARD_MAX_CHARACTERS",
+        "SHARE_CARD_MAX_HEIGHT",
+        "cleanCardText",
+        "cardSourceDomain",
+        "validateCardExcerpt",
+        "cardGraphemes",
+        "wrapCardText"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/progressPanel.ts",
+      "originalLength": 2809,
+      "renderedLength": 1729,
+      "removedExports": [],
+      "renderedExports": [
+        "mountTranslationProgressPanel",
+        "unmountTranslationProgressPanel"
+      ]
+    },
+    {
+      "id": "src/core/config/modelThinking.ts",
+      "originalLength": 2704,
+      "renderedLength": 1691,
+      "removedExports": [],
+      "renderedExports": [
+        "normalizeModelThinkingMapping",
+        "isModelThinkingEnabled",
+        "hasModelThinkingPreference",
+        "withModelThinkingPreference",
+        "withoutModelThinkingPreference"
+      ]
+    },
+    {
+      "id": "src/app/content/fullPageCompletionQuery.ts",
+      "originalLength": 2907,
+      "renderedLength": 1689,
+      "removedExports": [],
+      "renderedExports": [
+        "handleFullPageCompletionQuery"
+      ]
+    },
+    {
+      "id": "src/providers/translation/cloud/languages.ts",
+      "originalLength": 3166,
+      "renderedLength": 1687,
+      "removedExports": [],
+      "renderedExports": [
+        "CLOUD_LANGUAGE_MAPS",
+        "resolveCloudLanguages"
+      ]
+    },
+    {
+      "id": "src/services/harness/usage.ts",
+      "originalLength": 2464,
+      "renderedLength": 1674,
+      "removedExports": [],
+      "renderedExports": [
+        "createHarnessUsageEvent"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/bilingualReplay.ts",
+      "originalLength": 2720,
+      "renderedLength": 1648,
+      "removedExports": [],
+      "renderedExports": [
+        "refreshBilingualTranslationSkeleton"
+      ]
+    },
+    {
+      "id": "src/core/config/paragraphCopy.ts",
+      "originalLength": 3508,
+      "renderedLength": 1639,
+      "removedExports": [
+        "paragraphCopyHotkeyDisplayName"
+      ],
+      "renderedExports": [
+        "DEFAULT_PARAGRAPH_COPY_HOTKEY",
+        "PARAGRAPH_COPY_HOTKEY_OPTIONS",
+        "PARAGRAPH_COPY_CONTENT_MODES",
+        "DEFAULT_PARAGRAPH_COPY_CONTENT_MODE",
+        "normalizeParagraphCopyHotkey",
+        "normalizeCustomParagraphCopyHotkey",
+        "resolveParagraphCopyHotkey",
+        "matchesParagraphCopyHotkey",
+        "normalizeParagraphCopyContentMode"
+      ]
+    },
+    {
+      "id": "src/app/content/bilingualSentenceHighlight.ts",
+      "originalLength": 2273,
+      "renderedLength": 1629,
+      "removedExports": [],
+      "renderedExports": [
+        "BILINGUAL_SENTENCE_HIGHLIGHT_ATTRIBUTE",
+        "BILINGUAL_SENTENCE_HIGHLIGHT_STYLE_ATTRIBUTE",
+        "BILINGUAL_SENTENCE_HIGHLIGHT_APPEARANCE_ID",
+        "syncBilingualSentenceHighlight"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/core/errorMessage.ts",
+      "originalLength": 2112,
+      "renderedLength": 1606,
+      "removedExports": [],
+      "renderedExports": [
+        "getTranslationErrorMessage"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/modalSession.ts",
+      "originalLength": 3152,
+      "renderedLength": 1590,
+      "removedExports": [],
+      "renderedExports": [
+        "refreshModalSession"
+      ]
+    },
+    {
+      "id": "src/app/content/contextMenuCommands.ts",
+      "originalLength": 3988,
+      "renderedLength": 1589,
+      "removedExports": [
+        "handleContextMenuNotice"
+      ],
+      "renderedExports": [
+        "handleContextMenuTranslation"
+      ]
+    },
+    {
+      "id": "src/core/config/localTts.ts",
+      "originalLength": 4918,
+      "renderedLength": 1587,
+      "removedExports": [
+        "LOCAL_TTS_MODEL_ID",
+        "LOCAL_TTS_MODEL_REPOSITORY",
+        "LOCAL_TTS_MODEL_REVISION",
+        "LOCAL_TTS_MODEL_DTYPE",
+        "LOCAL_TTS_MODEL_FILE_NAME",
+        "LOCAL_TTS_MODEL_STATE_KEY",
+        "LOCAL_TTS_MODEL_CACHE_NAME",
+        "LOCAL_TTS_VOICE_CACHE_NAME",
+        "LOCAL_TTS_VOICE_PATH",
+        "LOCAL_TTS_MODEL",
+        "localTtsLanguageFamily",
+        "supportsLocalTtsLanguage",
+        "localTtsVoiceForLanguage"
+      ],
+      "renderedExports": [
+        "LOCAL_TTS_MODE_OPTIONS",
+        "LOCAL_TTS_VOICE_OPTIONS",
+        "DEFAULT_LOCAL_TTS_MODE",
+        "DEFAULT_LOCAL_TTS_VOICE",
+        "normalizeLocalTtsMode",
+        "normalizeLocalTtsVoice"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/eagerTranslation.ts",
+      "originalLength": 2940,
+      "renderedLength": 1582,
+      "removedExports": [],
+      "renderedExports": [
+        "candidateTextLength",
+        "getEagerTranslationBudget",
+        "consumeEagerTranslationBudget"
+      ]
+    },
+    {
+      "id": "src/app/content/embeddedFrameRuntime.ts",
+      "originalLength": 9796,
+      "renderedLength": 1564,
+      "removedExports": [
+        "startEmbeddedFrameApp"
+      ],
+      "renderedExports": [
+        "installEmbeddedTopFrameBridge"
+      ]
+    },
+    {
+      "id": "src/core/translation/font.ts",
+      "originalLength": 3004,
+      "renderedLength": 1558,
+      "removedExports": [],
+      "renderedExports": [
+        "CJK_TRANSLATION_FONT_STACKS",
+        "detectTranslationTextScript",
+        "resolveTargetTranslationScript",
+        "resolveTranslationFontFamily"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/core/outcomes.ts",
+      "originalLength": 2246,
+      "renderedLength": 1546,
+      "removedExports": [],
+      "renderedExports": [
+        "createFullPageOutcomeRegistry"
+      ]
+    },
+    {
+      "id": "src/core/config/apiKeys.ts",
+      "originalLength": 2485,
+      "renderedLength": 1498,
+      "removedExports": [],
+      "renderedExports": [
+        "normalizeApiKeys",
+        "getServiceApiKeys",
+        "getServiceApiKeyRows",
+        "apiKeysToToken"
+      ]
+    },
+    {
+      "id": "src/features/reading-assistant/streamPort.ts",
+      "originalLength": 2459,
+      "renderedLength": 1496,
+      "removedExports": [],
+      "renderedExports": [
+        "attachReadingStreamPort"
+      ]
+    },
+    {
+      "id": "src/app/content/hoverTranslationConfig.ts",
+      "originalLength": 2277,
+      "renderedLength": 1494,
+      "removedExports": [],
+      "renderedExports": [
+        "createHoverTranslationConfigInvalidator",
+        "createHoverTranslationConfigSubscription"
+      ]
+    },
+    {
+      "id": "src/shared/dom/editingTarget.ts",
+      "originalLength": 2213,
+      "renderedLength": 1491,
+      "removedExports": [],
+      "renderedExports": [
+        "deepActiveElement",
+        "isEditingInPage"
+      ]
+    },
+    {
+      "id": "src/features/selection-translation/ui/SpeechFollowText.vue?vue&type=script&setup=true&lang.ts",
+      "originalLength": 1931,
+      "renderedLength": 1476,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/core/config/mangaRules.ts",
+      "originalLength": 2038,
+      "renderedLength": 1465,
+      "removedExports": [],
+      "renderedExports": [
+        "normalizeMangaPrefetchPages",
+        "createMangaSiteRule",
+        "normalizeMangaSiteRules",
+        "normalizeMangaCachePages"
+      ]
+    },
+    {
+      "id": "src/core/config/requestHeaders.ts",
+      "originalLength": 2035,
+      "renderedLength": 1432,
+      "removedExports": [],
+      "renderedExports": [
+        "MAX_REQUEST_HEADER_RULES",
+        "normalizeRequestHeaderDomain",
+        "normalizeRequestHeaderRules"
+      ]
+    },
+    {
+      "id": "src/core/site-adaptation/literalLabel.ts",
+      "originalLength": 2100,
+      "renderedLength": 1424,
+      "removedExports": [],
+      "renderedExports": [
+        "isLiteralLabel",
+        "isLiteralToken"
+      ]
+    },
+    {
+      "id": "src/core/config/sectionTranslation.ts",
+      "originalLength": 2878,
+      "renderedLength": 1396,
+      "removedExports": [
+        "sectionTranslationHotkeyDisplayName"
+      ],
+      "renderedExports": [
+        "DEFAULT_SECTION_TRANSLATION_HOTKEY",
+        "SECTION_TRANSLATION_HOTKEY_OPTIONS",
+        "normalizeSectionTranslationHotkey",
+        "normalizeCustomSectionTranslationHotkey",
+        "resolveSectionTranslationHotkey",
+        "matchesSectionTranslationHotkey"
+      ]
+    },
+    {
+      "id": "src/providers/translation/xiaoniu.ts",
+      "originalLength": 2512,
+      "renderedLength": 1371,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/providers/translation/registry.ts",
+      "originalLength": 3325,
+      "renderedLength": 1341,
+      "removedExports": [],
+      "renderedExports": [
+        "translationProviderRegistry"
+      ]
+    },
+    {
+      "id": "src/core/config/visionProbe.ts",
+      "originalLength": 3324,
+      "renderedLength": 1326,
+      "removedExports": [
+        "resolveVisionCapabilityWithProbe"
+      ],
+      "renderedExports": [
+        "VISION_PROBE_TTL_MS",
+        "VISION_PROBE_TIMEOUT_MS",
+        "createVisionProbeIdentity",
+        "normalizeVisionProbeRecords",
+        "matchesVisionProbeAnswer",
+        "isExplicitImageInputRejection"
+      ]
+    },
+    {
+      "id": "src/core/config/pageTranslation.ts",
+      "originalLength": 2465,
+      "renderedLength": 1320,
+      "removedExports": [],
+      "renderedExports": [
+        "normalizeExcludedLanguages",
+        "DEFAULT_MIN_TRANSLATION_TEXT_LENGTH",
+        "MIN_TRANSLATION_TEXT_LENGTH_MIN",
+        "MIN_TRANSLATION_TEXT_LENGTH_MAX",
+        "DEFAULT_EAGER_TRANSLATION_CHARACTERS",
+        "EAGER_TRANSLATION_CHARACTERS_MIN",
+        "EAGER_TRANSLATION_CHARACTERS_MAX",
+        "normalizeMinTranslationTextLength",
+        "normalizeEagerTranslationCharacters"
+      ]
+    },
+    {
+      "id": "src/core/config/deeplx.ts",
+      "originalLength": 2579,
+      "renderedLength": 1308,
+      "removedExports": [
+        "requiresDeepLXToken"
+      ],
+      "renderedExports": [
+        "DEFAULT_DEEPLX_ENDPOINT",
+        "parseDeepLXEndpoints",
+        "getDeepLXEndpoints"
+      ]
+    },
+    {
+      "id": "src/core/context-menu/domain.ts",
+      "originalLength": 9169,
+      "renderedLength": 1299,
+      "removedExports": [
+        "CONTEXT_MENU_BUCKET_CONTEXTS",
+        "contextMenuItemId",
+        "resolveContextMenuEntryToggles",
+        "buildContextMenuPlan",
+        "resolveContextMenuPresentation"
+      ],
+      "renderedExports": [
+        "CONTEXT_MENU_ENTRIES",
+        "normalizeContextMenuEntryPreferences"
+      ]
+    },
+    {
+      "id": "src/core/config/areaTranslation.ts",
+      "originalLength": 2710,
+      "renderedLength": 1241,
+      "removedExports": [
+        "areaTranslationHotkeyDisplayName",
+        "matchesAreaTranslationHotkey"
+      ],
+      "renderedExports": [
+        "DEFAULT_AREA_TRANSLATION_HOTKEY",
+        "AREA_TRANSLATION_HOTKEY_OPTIONS",
+        "normalizeAreaTranslationHotkey",
+        "normalizeCustomAreaTranslationHotkey",
+        "resolveAreaTranslationHotkey"
+      ]
+    },
+    {
+      "id": "src/core/config/customBody.ts",
+      "originalLength": 2584,
+      "renderedLength": 1235,
+      "removedExports": [
+        "isValidCustomBody",
+        "isCustomBodyMapping"
+      ],
+      "renderedExports": [
+        "parseCustomBody",
+        "mergeCustomBody",
+        "normalizeCustomBodyMapping"
+      ]
+    },
+    {
+      "id": "src/services/translation-stats/measure.ts",
+      "originalLength": 2005,
+      "renderedLength": 1210,
+      "removedExports": [],
+      "renderedExports": [
+        "measureTranslationText",
+        "measureImageDataUrlBytes"
+      ]
+    },
+    {
+      "id": "src/core/translation/internal.ts",
+      "originalLength": 2760,
+      "renderedLength": 1203,
+      "removedExports": [],
+      "renderedExports": [
+        "inheritCachedFlag",
+        "readCachedFlagOr",
+        "findAdapterPrunedAncestor",
+        "partitionInlineRunAtBarriers"
+      ]
+    },
+    {
+      "id": "src/app/background/handlers/visionProbe.ts",
+      "originalLength": 2639,
+      "renderedLength": 1187,
+      "removedExports": [],
+      "renderedExports": [
+        "VISION_PROBE_MESSAGE",
+        "VISION_PROBE_CANCEL_MESSAGE",
+        "createVisionProbeHandlers"
+      ]
+    },
+    {
+      "id": "src/providers/translation/responses-api.ts",
+      "originalLength": 2230,
+      "renderedLength": 1180,
+      "removedExports": [],
+      "renderedExports": [
+        "buildOpenAIApiEndpoint",
+        "readResponsesApiText"
+      ]
+    },
+    {
+      "id": "src/core/config/informationHighlight.ts",
+      "originalLength": 2640,
+      "renderedLength": 1169,
+      "removedExports": [],
+      "renderedExports": [
+        "DEFAULT_INFORMATION_HIGHLIGHT_PREFERENCES",
+        "normalizeInformationHighlightPreferences"
+      ]
+    },
+    {
+      "id": "src/features/vocabulary/learningModel.ts",
+      "originalLength": 13557,
+      "renderedLength": 1128,
+      "removedExports": [
+        "VOCABULARY_BOOK_EXPORT_FORMAT",
+        "VOCABULARY_BOOK_EXPORT_VERSION",
+        "VOCABULARY_ENTRY_SCHEMA_VERSION",
+        "VOCABULARY_BOOK_MAX_ENTRIES",
+        "VOCABULARY_ENTRY_MAX_CONTEXTS",
+        "VOCABULARY_REVIEW_LOG_MAX_PER_ENTRY",
+        "VOCABULARY_LARGE_IMPORT_WARNING_BYTES",
+        "buildAnkiTsv",
+        "vocabularyImportNeedsConfirmation",
+        "buildVocabularyCloze",
+        "vocabularyStudyContext",
+        "vocabularyReviewCloze",
+        "vocabularyReferencePreview",
+        "isVocabularySentence",
+        "mergeVocabularyNotes",
+        "reconcileVocabularyReviewQueue",
+        "createVocabularyReviewSession",
+        "advanceVocabularyReviewSession",
+        "reconcileVocabularyReviewSession",
+        "vocabularyReviewSessionProgress",
+        "createVocabularyLifecycleGuard"
+      ],
+      "renderedExports": [
+        "VOCABULARY_BOOK_MESSAGE",
+        "VOCABULARY_BOOK_CHANGED_MESSAGE",
+        "VOCABULARY_SOURCE_TEXT_MAX",
+        "normalizeLearningSourceText",
+        "vocabularyStudyPrompt"
+      ]
+    },
+    {
+      "id": "src/core/config/translationCache.ts",
+      "originalLength": 1538,
+      "renderedLength": 1113,
+      "removedExports": [],
+      "renderedExports": [
+        "DEFAULT_TRANSLATION_CACHE_MAX_BYTES",
+        "DEFAULT_TRANSLATION_CACHE_MAX_ENTRIES",
+        "MIN_TRANSLATION_CACHE_MAX_BYTES",
+        "MAX_TRANSLATION_CACHE_MAX_BYTES",
+        "MIN_TRANSLATION_CACHE_MAX_ENTRIES",
+        "MAX_TRANSLATION_CACHE_MAX_ENTRIES",
+        "normalizeTranslationCacheLimits"
+      ]
+    },
+    {
+      "id": "src/platform/http/runtime.ts",
+      "originalLength": 2471,
+      "renderedLength": 1106,
+      "removedExports": [],
+      "renderedExports": [
+        "createRuntimeAbortContext",
+        "abortErrorFromSignal",
+        "setRuntimeFetch",
+        "runtimeFetch"
+      ]
+    },
+    {
+      "id": "src/core/translation/nativeBatch.ts",
+      "originalLength": 1745,
+      "renderedLength": 1093,
+      "removedExports": [],
+      "renderedExports": [
+        "NATIVE_BATCH_MAX_ITEMS",
+        "NATIVE_BATCH_MAX_CHARACTERS",
+        "NativeBatchResponseError",
+        "isNativeBatchResponseError",
+        "validateNativeBatchResults"
+      ]
+    },
+    {
+      "id": "src/core/site-adaptation/session.ts",
+      "originalLength": 2131,
+      "renderedLength": 1079,
+      "removedExports": [],
+      "renderedExports": [
+        "createSiteAdaptationSession"
+      ]
+    },
+    {
+      "id": "src/features/selection-translation/protocol.ts",
+      "originalLength": 5035,
+      "renderedLength": 1071,
+      "removedExports": [
+        "parseSelectionTtsTabId",
+        "parseSelectionTtsRoute",
+        "parseSelectionTtsPlaybackState",
+        "normalizeSelectionTtsOwnerUrl",
+        "sameSelectionTtsRoute"
+      ],
+      "renderedExports": [
+        "parseSelectionTtsClientRequestId",
+        "matchesSelectionTtsClientRequest",
+        "createSelectionTtsClientRequestId"
+      ]
+    },
+    {
+      "id": "src/features/image-translation/ocrLanguages.ts",
+      "originalLength": 4939,
+      "renderedLength": 1066,
+      "removedExports": [
+        "IMAGE_OCR_SOURCE_LANGUAGES",
+        "IMAGE_OCR_LANGUAGE_STATE_KEY",
+        "IMAGE_OCR_RECOMMENDED_LANGUAGES",
+        "getImageOcrModelLanguages",
+        "getRequiredImageOcrLanguages",
+        "getMangaOcrEngine",
+        "normalizeImageOcrLanguageCodes"
+      ],
+      "renderedExports": [
+        "IMAGE_OCR_LANGUAGE_PACKS"
+      ]
+    },
+    {
+      "id": "userscript/settings.ts",
+      "originalLength": 1464,
+      "renderedLength": 1052,
+      "removedExports": [],
+      "renderedExports": [
+        "openUserscriptSettings",
+        "closeUserscriptSettings"
+      ]
+    },
+    {
+      "id": "src/providers/translation/microsoft.ts",
+      "originalLength": 2188,
+      "renderedLength": 1014,
+      "removedExports": [],
+      "renderedExports": [
+        "translateMicrosoftTexts",
+        "default"
+      ]
+    },
+    {
+      "id": "src/core/config/nativeBatch.ts",
+      "originalLength": 1648,
+      "renderedLength": 1004,
+      "removedExports": [],
+      "renderedExports": [
+        "NATIVE_BATCH_TRANSLATION_SERVICES",
+        "DEFAULT_NATIVE_BATCH_TRANSLATION_ENABLED",
+        "isNativeBatchTranslationService",
+        "isNativeTranslationBatchEnabled",
+        "normalizeNativeBatchTranslationEnabled"
+      ]
+    },
+    {
+      "id": "src/core/config/doubaoSeedTranslation.ts",
+      "originalLength": 2159,
+      "renderedLength": 1001,
+      "removedExports": [],
+      "renderedExports": [
+        "DOUBAO_SEED_TRANSLATION_MODEL_ID",
+        "isDoubaoSeedTranslationModel",
+        "DOUBAO_SEED_TRANSLATION_LANGUAGES",
+        "resolveDoubaoSeedTranslationLanguage"
+      ]
+    },
+    {
+      "id": "src/app/content/siteAdaptationRuntime.ts",
+      "originalLength": 2139,
+      "renderedLength": 992,
+      "removedExports": [],
+      "renderedExports": [
+        "applyCoreTranslationPreferences",
+        "createContentSiteAdaptationRuntime"
+      ]
+    },
+    {
+      "id": "src/ui/components/TranslationLoadingPreview.vue?vue&type=script&setup=true&lang.ts",
+      "originalLength": 1268,
+      "renderedLength": 963,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/neteaseMailFrames.ts",
+      "originalLength": 2865,
+      "renderedLength": 940,
+      "removedExports": [
+        "isNeteaseMailChildUrl",
+        "parseNeteaseMailFrameRequest",
+        "parseNeteaseMailFrameChanged"
+      ],
+      "renderedExports": [
+        "NETEASE_MAIL_FRAME_REQUEST_MESSAGE_TYPE",
+        "NETEASE_MAIL_FRAME_COMMAND_MESSAGE_TYPE",
+        "NETEASE_MAIL_FRAME_CHANGED_MESSAGE_TYPE",
+        "NETEASE_MAIL_FRAME_REFRESH_MESSAGE_TYPE",
+        "isNeteaseMailTopUrl",
+        "isNeteaseMailReadUrl"
+      ]
+    },
+    {
+      "id": "src/core/config/customHeaders.ts",
+      "originalLength": 1534,
+      "renderedLength": 933,
+      "removedExports": [
+        "isValidCustomHeaders"
+      ],
+      "renderedExports": [
+        "parseCustomHeaders",
+        "mergeCustomHeaders"
+      ]
+    },
+    {
+      "id": "src/services/translation/cachePolicyBinding.ts",
+      "originalLength": 2119,
+      "renderedLength": 933,
+      "removedExports": [],
+      "renderedExports": [
+        "createTranslationCachePolicyBinding"
+      ]
+    },
+    {
+      "id": "src/services/config/schema.ts",
+      "originalLength": 1557,
+      "renderedLength": 911,
+      "removedExports": [],
+      "renderedExports": [
+        "CONFIG_REVISION_FIELD",
+        "isConfigRecord",
+        "getStoredConfigRevision",
+        "parseStoredConfig",
+        "serializeConfig"
+      ]
+    },
+    {
+      "id": "src/core/config/shareCard.ts",
+      "originalLength": 1552,
+      "renderedLength": 899,
+      "removedExports": [],
+      "renderedExports": [
+        "SHARE_CARD_THEMES",
+        "normalizeShareCardPreferences"
+      ]
+    },
+    {
+      "id": "src/core/config/azure.ts",
+      "originalLength": 1639,
+      "renderedLength": 895,
+      "removedExports": [
+        "isValidAzureEndpoint"
+      ],
+      "renderedExports": [
+        "normalizeAzureEndpoint"
+      ]
+    },
+    {
+      "id": "src/features/quick-translation/core.ts",
+      "originalLength": 1863,
+      "renderedLength": 894,
+      "removedExports": [],
+      "renderedExports": [
+        "resolveQuickTranslationInvocation"
+      ]
+    },
+    {
+      "id": "userscript/unsupportedCapabilities.ts",
+      "originalLength": 2347,
+      "renderedLength": 875,
+      "removedExports": [
+        "prepareImageOcrLanguages",
+        "toggleMangaTranslation",
+        "openMangaEntry"
+      ],
+      "renderedExports": [
+        "mountAreaTranslator",
+        "unmountAreaTranslator",
+        "isAreaTranslatorMounted",
+        "mountImageTranslator",
+        "unmountImageTranslator",
+        "mountVocabularyReencounter",
+        "unmountVocabularyReencounter",
+        "mountVideoSubtitleTranslation",
+        "isSupportedVideoPage",
+        "toggleContextMenuImage",
+        "startAreaTranslationFromContextMenu",
+        "isMangaReaderPage",
+        "isImageTranslatorNeeded",
+        "mountMangaEntry",
+        "unmountMangaEntry",
+        "subscribeMangaTranslation"
+      ]
+    },
+    {
+      "id": "src/platform/shadow-ui/pageBridge.ts",
+      "originalLength": 2026,
+      "renderedLength": 866,
+      "removedExports": [],
+      "renderedExports": [
+        "installShadowAndRouteBridge"
+      ]
+    },
+    {
+      "id": "src/services/translation/capabilities.ts",
+      "originalLength": 2892,
+      "renderedLength": 865,
+      "removedExports": [
+        "CHROME_TRANSLATOR_UNAVAILABLE_MESSAGE",
+        "LOCAL_TRANSLATION_UNAVAILABLE_MESSAGE",
+        "getTranslationServiceUnavailableMessage",
+        "filterAvailableTranslationServices"
+      ],
+      "renderedExports": [
+        "supportsNativeTranslationBatch",
+        "supportsTranslationBatch",
+        "supportsTranslationGlossary",
+        "isTranslationServiceAvailable"
+      ]
+    },
+    {
+      "id": "src/services/translation/persistenceBarrier.ts",
+      "originalLength": 1592,
+      "renderedLength": 846,
+      "removedExports": [],
+      "renderedExports": [
+        "DEFAULT_TRANSLATION_PERSISTENCE_GRACE_MS",
+        "waitForBoundedPersistence"
+      ]
+    },
+    {
+      "id": "src/app/translation/check.ts",
+      "originalLength": 1785,
+      "renderedLength": 841,
+      "removedExports": [],
+      "renderedExports": [
+        "checkConfig"
+      ]
+    },
+    {
+      "id": "src/services/translation/serviceErrors.ts",
+      "originalLength": 1409,
+      "renderedLength": 836,
+      "removedExports": [],
+      "renderedExports": [
+        "getServiceErrorMessage",
+        "formatServiceError"
+      ]
+    },
+    {
+      "id": "src/services/translation/context/policy.ts",
+      "originalLength": 2569,
+      "renderedLength": 821,
+      "removedExports": [
+        "normalizePageMarkdown",
+        "shouldUseBoundedPageCapture"
+      ],
+      "renderedExports": [
+        "pageContextLimits",
+        "normalizePageText",
+        "buildPageTranslationContext"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/embeddedFrames.ts",
+      "originalLength": 3205,
+      "renderedLength": 805,
+      "removedExports": [
+        "EMBEDDED_FRAME_REQUEST",
+        "EMBEDDED_FRAME_REFRESH",
+        "isSupportedEmbeddedFrameUrl",
+        "isSupportedEmbeddedFramePair",
+        "parseEmbeddedFrameRequest"
+      ],
+      "renderedExports": [
+        "EMBEDDED_FRAME_COMMAND",
+        "EMBEDDED_FRAME_CHANGED",
+        "isSupportedEmbeddedTopUrl"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/toolbarStatus.ts",
+      "originalLength": 1608,
+      "renderedLength": 796,
+      "removedExports": [
+        "normalizeTranslationToolbarStatus"
+      ],
+      "renderedExports": [
+        "resolveTranslationToolbarStatus",
+        "countFullPageTranslationWork"
+      ]
+    },
+    {
+      "id": "src/app/content/pageStyles.ts",
+      "originalLength": 1791,
+      "renderedLength": 753,
+      "removedExports": [],
+      "renderedExports": [
+        "installPageStyles"
+      ]
+    },
+    {
+      "id": "src/core/config/sensitiveKeys.ts",
+      "originalLength": 1187,
+      "renderedLength": 748,
+      "removedExports": [],
+      "renderedExports": [
+        "isSensitiveConfigKey"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/loadingIndicator.ts",
+      "originalLength": 1413,
+      "renderedLength": 733,
+      "removedExports": [],
+      "renderedExports": [
+        "scheduleTranslationLoadingIndicator"
+      ]
+    },
+    {
+      "id": "src/services/translation/legacyPageCache.ts",
+      "originalLength": 1511,
+      "renderedLength": 732,
+      "removedExports": [],
+      "renderedExports": [
+        "clearLegacyPageTranslationCache"
+      ]
+    },
+    {
+      "id": "src/core/i18n/language.ts",
+      "originalLength": 5896,
+      "renderedLength": 727,
+      "removedExports": [
+        "UI_LANGUAGE_BUNDLE_DIRECTORY",
+        "getUiLanguageBundlePath",
+        "resolveUiLanguageFromLocale",
+        "getUiLanguageLabel",
+        "getUiLanguageBilingualLabel",
+        "getUiLanguageDisplayLabel"
+      ],
+      "renderedExports": [
+        "DEFAULT_UI_LANGUAGE",
+        "UI_LANGUAGE_OPTIONS",
+        "normalizeUiLanguage"
+      ]
+    },
+    {
+      "id": "userscript/context.ts",
+      "originalLength": 1100,
+      "renderedLength": 723,
+      "removedExports": [],
+      "renderedExports": [
+        "createUserscriptContentContext"
+      ]
+    },
+    {
+      "id": "src/app/content/cacheMessage.ts",
+      "originalLength": 1527,
+      "renderedLength": 657,
+      "removedExports": [],
+      "renderedExports": [
+        "forwardLegacyCacheClear"
+      ]
+    },
+    {
+      "id": "src/core/language/chineseVariants.ts",
+      "originalLength": 20278,
+      "renderedLength": 620,
+      "removedExports": [],
+      "renderedExports": [
+        "simplifiedOnlyCharacters",
+        "traditionalOnlyCharacters",
+        "simplifiedChineseEvidenceCharacters"
+      ]
+    },
+    {
+      "id": "src/app/content/translationAppearance.ts",
+      "originalLength": 1143,
+      "renderedLength": 614,
+      "removedExports": [],
+      "renderedExports": [
+        "TRANSLATION_APPEARANCE_STYLE_ID",
+        "syncTranslationAppearanceStyles"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/core/hostMarkers.ts",
+      "originalLength": 1483,
+      "renderedLength": 612,
+      "removedExports": [],
+      "renderedExports": [
+        "TRANSLATION_FAILED_ATTRIBUTE",
+        "markTranslationFailedHost",
+        "clearTranslationFailedHost",
+        "clearLegacyHostMarkerClasses"
+      ]
+    },
+    {
+      "id": "src/features/floating-ball/position.ts",
+      "originalLength": 844,
+      "renderedLength": 562,
+      "removedExports": [],
+      "renderedExports": [
+        "toFloatingBallVerticalPosition",
+        "resolveFloatingBallCenterY"
+      ]
+    },
+    {
+      "id": "src/services/harness/memoryRecall.ts",
+      "originalLength": 2167,
+      "renderedLength": 532,
+      "removedExports": [
+        "createLearningMemoryRecall"
+      ],
+      "renderedExports": [
+        "readMemory"
+      ]
+    },
+    {
+      "id": "src/core/config/deepl.ts",
+      "originalLength": 840,
+      "renderedLength": 474,
+      "removedExports": [],
+      "renderedExports": [
+        "DEFAULT_DEEPL_API_PLAN",
+        "DEEPL_API_ENDPOINTS",
+        "normalizeDeepLApiPlan",
+        "getDeepLEndpoint"
+      ]
+    },
+    {
+      "id": "src/features/selection-translation/services/wordNormalization.ts",
+      "originalLength": 807,
+      "renderedLength": 460,
+      "removedExports": [],
+      "renderedExports": [
+        "normalizeEnglishWord",
+        "isSingleEnglishWord"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/qqMailFrames.ts",
+      "originalLength": 5232,
+      "renderedLength": 452,
+      "removedExports": [
+        "QQ_MAIL_FRAME_REQUEST_MESSAGE_TYPE",
+        "QQ_MAIL_FRAME_COMMAND_MESSAGE_TYPE",
+        "QQ_MAIL_FRAME_CHANGED_MESSAGE_TYPE",
+        "QQ_MAIL_FRAME_REFRESH_MESSAGE_TYPE",
+        "isQqMailReadmailUrl",
+        "parseQQMailFrameRequest",
+        "parseQQMailFrameChanged",
+        "makeQQMailFrameCommand"
+      ],
+      "renderedExports": [
+        "isQqMailLegacyTopUrl"
+      ]
+    },
+    {
+      "id": "src/features/share-card/export.ts",
+      "originalLength": 665,
+      "renderedLength": 448,
+      "removedExports": [],
+      "renderedExports": [
+        "shareCardFilename",
+        "canCopyCardImage",
+        "copyCardImage"
+      ]
+    },
+    {
+      "id": "src/providers/translation/azure-openai.ts",
+      "originalLength": 1160,
+      "renderedLength": 440,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "userscript/api.ts",
+      "originalLength": 804,
+      "renderedLength": 400,
+      "removedExports": [],
+      "renderedExports": [
+        "getUserscriptFunction"
+      ]
+    },
+    {
+      "id": "src/shared/geometry/touch.ts",
+      "originalLength": 973,
+      "renderedLength": 398,
+      "removedExports": [],
+      "renderedExports": [
+        "getCenterPoint"
+      ]
+    },
+    {
+      "id": "src/core/translation/languages.ts",
+      "originalLength": 1511,
+      "renderedLength": 397,
+      "removedExports": [],
+      "renderedExports": [
+        "resolveTranslationLanguages"
+      ]
+    },
+    {
+      "id": "src/app/content/learningFeatures.ts",
+      "originalLength": 1137,
+      "renderedLength": 395,
+      "removedExports": [],
+      "renderedExports": [
+        "createLearningContentFeatures"
+      ]
+    },
+    {
+      "id": "src/core/translation/result.ts",
+      "originalLength": 718,
+      "renderedLength": 381,
+      "removedExports": [],
+      "renderedExports": [
+        "hasTranslationContent",
+        "hasDistinctTranslation"
+      ]
+    },
+    {
+      "id": "userscript/compression.ts",
+      "originalLength": 530,
+      "renderedLength": 376,
+      "removedExports": [],
+      "renderedExports": [
+        "inflateGzipBase64"
+      ]
+    },
+    {
+      "id": "src/providers/translation/doubao.ts",
+      "originalLength": 1413,
+      "renderedLength": 367,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/content/translationConfigSnapshot.ts",
+      "originalLength": 1741,
+      "renderedLength": 346,
+      "removedExports": [],
+      "renderedExports": [
+        "copyFullPageTranslationConfigSnapshot"
+      ]
+    },
+    {
+      "id": "src/providers/translation/auth.ts",
+      "originalLength": 804,
+      "renderedLength": 330,
+      "removedExports": [],
+      "renderedExports": [
+        "appendOptionalBearer",
+        "appendOptionalHeader"
+      ]
+    },
+    {
+      "id": "src/platform/browser/runtimeMessages.ts",
+      "originalLength": 1162,
+      "renderedLength": 330,
+      "removedExports": [
+        "sendRuntimeMessage"
+      ],
+      "renderedExports": [
+        "addRuntimeMessageListener"
+      ]
+    },
+    {
+      "id": "src/features/selection-translation/content/contextMenuBridge.ts",
+      "originalLength": 892,
+      "renderedLength": 296,
+      "removedExports": [],
+      "renderedExports": [
+        "setSelectionContextMenuHandler",
+        "translateSelectionFromContextMenu"
+      ]
+    },
+    {
+      "id": "src/app/content/mainWorldBridgeLifecycle.ts",
+      "originalLength": 1180,
+      "renderedLength": 296,
+      "removedExports": [],
+      "renderedExports": [
+        "setMainWorldBridgesEnabled"
+      ]
+    },
+    {
+      "id": "src/features/selection-translation/pageZoom.ts",
+      "originalLength": 531,
+      "renderedLength": 289,
+      "removedExports": [],
+      "renderedExports": [
+        "SELECTION_PAGE_ZOOM_REQUEST",
+        "SELECTION_PAGE_ZOOM_CHANGED",
+        "normalizeSelectionPageZoom"
+      ]
+    },
+    {
+      "id": "src/app/content/areaContextMenuResponse.ts",
+      "originalLength": 657,
+      "renderedLength": 287,
+      "removedExports": [],
+      "renderedExports": [
+        "respondToAreaContextMenu"
+      ]
+    },
+    {
+      "id": "userscript/translationInsights.ts",
+      "originalLength": 775,
+      "renderedLength": 280,
+      "removedExports": [],
+      "renderedExports": [
+        "modelUsageRepository",
+        "translationStatsRepository"
+      ]
+    },
+    {
+      "id": "src/shared/dom/documentType.ts",
+      "originalLength": 601,
+      "renderedLength": 279,
+      "removedExports": [],
+      "renderedExports": [
+        "isRawXmlContentDocument"
+      ]
+    },
+    {
+      "id": "src/features/image-translation/services/client.ts",
+      "originalLength": 12097,
+      "renderedLength": 276,
+      "removedExports": [
+        "sendCancellableImageOperation",
+        "fetchImageInExtension",
+        "translateImageInExtension",
+        "prepareImageOcrLanguages"
+      ],
+      "renderedExports": []
+    },
+    {
+      "id": "src/platform/storage/freeTranslationHealthStorage.ts",
+      "originalLength": 678,
+      "renderedLength": 270,
+      "removedExports": [],
+      "renderedExports": [
+        "FREE_TRANSLATION_HEALTH_STORAGE_KEY",
+        "freeTranslationHealthStorage"
+      ]
+    },
+    {
+      "id": "src/shared/function/throttle.ts",
+      "originalLength": 892,
+      "renderedLength": 266,
+      "removedExports": [],
+      "renderedExports": [
+        "throttle"
+      ]
+    },
+    {
+      "id": "userscript/pakoRuntime.ts",
+      "originalLength": 335,
+      "renderedLength": 241,
+      "removedExports": [],
+      "renderedExports": [
+        "inflateWithPako"
+      ]
+    },
+    {
+      "id": "src/services/translation/languages.ts",
+      "originalLength": 1224,
+      "renderedLength": 229,
+      "removedExports": [],
+      "renderedExports": [
+        "getTranslationLanguages"
+      ]
+    },
+    {
+      "id": "src/platform/storage/visionProbeStorage.ts",
+      "originalLength": 607,
+      "renderedLength": 222,
+      "removedExports": [],
+      "renderedExports": [
+        "VISION_PROBE_STORAGE_KEY",
+        "visionProbeStorage"
+      ]
+    },
+    {
+      "id": "\u0000fluentread-userscript-inline-style:translationDisplayStyles.js",
+      "originalLength": 234,
+      "renderedLength": 216,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "\u0000fluentread-userscript-inline-style:sentenceHighlightStyles.js",
+      "originalLength": 232,
+      "renderedLength": 214,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "\u0000fluentread-userscript-inline-style:reencounterStyles.js",
+      "originalLength": 220,
+      "renderedLength": 198,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "\u0000fluentread-userscript-inline-style:noticeStyles.js",
+      "originalLength": 210,
+      "renderedLength": 192,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "\u0000fluentread-userscript-inline-style:pickerStyles.js",
+      "originalLength": 210,
+      "renderedLength": 192,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/providers/translation/local-translation.ts",
+      "originalLength": 2774,
+      "renderedLength": 190,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "\u0000fluentread-userscript-inline-style:pageStyles.js",
+      "originalLength": 206,
+      "renderedLength": 188,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "entrypoints/content.ts",
+      "originalLength": 453,
+      "renderedLength": 170,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/app/content/featureLifecycle.ts",
+      "originalLength": 963,
+      "renderedLength": 169,
+      "removedExports": [],
+      "renderedExports": [
+        "ensureContentFeatureMounted"
+      ]
+    },
+    {
+      "id": "\u0000plugin-vue:export-helper",
+      "originalLength": 155,
+      "renderedLength": 159,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/core/config/informationHighlightModel.ts",
+      "originalLength": 3776,
+      "renderedLength": 154,
+      "removedExports": [
+        "INFORMATION_HIGHLIGHT_MODELS",
+        "getInformationHighlightModel",
+        "INFORMATION_HIGHLIGHT_MODEL",
+        "INFORMATION_HIGHLIGHT_MODEL_NAME",
+        "INFORMATION_HIGHLIGHT_MODEL_REVISION",
+        "INFORMATION_HIGHLIGHT_MODEL_FILES",
+        "INFORMATION_HIGHLIGHT_MODEL_BYTES"
+      ],
+      "renderedExports": [
+        "INFORMATION_HIGHLIGHT_MODEL_IDS",
+        "DEFAULT_INFORMATION_HIGHLIGHT_MODEL_ID"
+      ]
+    },
+    {
+      "id": "src/features/video-subtitle/content/youtubeTimedTextBridgeCore.ts",
+      "originalLength": 16034,
+      "renderedLength": 145,
+      "removedExports": [
+        "YOUTUBE_TIMED_TEXT_MESSAGE",
+        "YOUTUBE_BRIDGE_REPLAY_EVENT",
+        "YOUTUBE_BRIDGE_STATE_KEY",
+        "YOUTUBE_BRIDGE_LIFECYCLE_STATE_KEY",
+        "getYoutubeRequestUrl",
+        "isYoutubeTimedTextUrl",
+        "createYoutubeTimedTextPayload",
+        "installYoutubeTimedTextBridgeCore",
+        "installYoutubeTimedTextBridgeLifecycleCore"
+      ],
+      "renderedExports": [
+        "YOUTUBE_BRIDGE_DISPOSE_EVENT",
+        "YOUTUBE_BRIDGE_ENABLE_EVENT"
+      ]
+    },
+    {
+      "id": "userscript/writingAssistant.ts",
+      "originalLength": 431,
+      "renderedLength": 142,
+      "removedExports": [],
+      "renderedExports": [
+        "mountWritingAssistant",
+        "unmountWritingAssistant",
+        "isWritingAssistantMounted"
+      ]
+    },
+    {
+      "id": "src/features/vocabulary/protocol.ts",
+      "originalLength": 2925,
+      "renderedLength": 134,
+      "removedExports": [],
+      "renderedExports": [
+        "VOCABULARY_BOOK_MESSAGE",
+        "VOCABULARY_BOOK_CHANGED_MESSAGE"
+      ]
+    },
+    {
+      "id": "src/core/site-adaptation/catalog.ts",
+      "originalLength": 594,
+      "renderedLength": 112,
+      "removedExports": [],
+      "renderedExports": [
+        "builtinSiteRulePack"
+      ]
+    },
+    {
+      "id": "src/app/translation/visionProbeRuntime.ts",
+      "originalLength": 556,
+      "renderedLength": 112,
+      "removedExports": [],
+      "renderedExports": [
+        "modelVisionProbe"
+      ]
+    },
+    {
+      "id": "src/ui/components/TranslationLoadingPreview.vue",
+      "originalLength": 1275,
+      "renderedLength": 111,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/features/full-page-translation/ui/TranslationProgressPanel.vue",
+      "originalLength": 13968,
+      "renderedLength": 110,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "userscript/chromeTranslator.ts",
+      "originalLength": 142,
+      "renderedLength": 108,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/features/selection-translation/ui/SelectionTranslator.vue",
+      "originalLength": 129270,
+      "renderedLength": 103,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/features/selection-translation/ui/SpeechFollowText.vue",
+      "originalLength": 1539,
+      "renderedLength": 102,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/features/reading-assistant/ui/SentenceAnalysis.vue",
+      "originalLength": 8833,
+      "renderedLength": 102,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/features/share-card/ui/ShareCardStudio.vue",
+      "originalLength": 24576,
+      "renderedLength": 101,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "userscript/SettingsPanel.vue",
+      "originalLength": 36724,
+      "renderedLength": 99,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/features/reading-assistant/ui/ReadingAnswer.vue",
+      "originalLength": 6420,
+      "renderedLength": 99,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/features/floating-ball/ui/FloatingBall.vue",
+      "originalLength": 29887,
+      "renderedLength": 98,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/features/reading-assistant/ui/ReadingPanel.vue",
+      "originalLength": 47842,
+      "renderedLength": 98,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/core/translation/registry.ts",
+      "originalLength": 712,
+      "renderedLength": 91,
+      "removedExports": [],
+      "renderedExports": [
+        "defaultTranslationAdapters"
+      ]
+    },
+    {
+      "id": "\u0000fluentread-userscript-site-catalog:<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/core/site-adaptation/catalog/established.json.js",
+      "originalLength": 82,
+      "renderedLength": 87,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "\u0000fluentread-userscript-site-catalog:<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/core/site-adaptation/catalog/websites.json.js",
+      "originalLength": 79,
+      "renderedLength": 81,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "\u0000fluentread-userscript-site-catalog:<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/core/site-adaptation/catalog/profiles.json.js",
+      "originalLength": 79,
+      "renderedLength": 81,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "src/shared/function/sha256.ts",
+      "originalLength": 394,
+      "renderedLength": 78,
+      "removedExports": [],
+      "renderedExports": [
+        "sha256Hex"
+      ]
+    },
+    {
+      "id": "\u0000fluentread-userscript-zh-cn.js",
+      "originalLength": 83,
+      "renderedLength": 76,
+      "removedExports": [],
+      "renderedExports": [
+        "zhCNMessages"
+      ]
+    },
+    {
+      "id": "src/services/translation/types.ts",
+      "originalLength": 10757,
+      "renderedLength": 70,
+      "removedExports": [],
+      "renderedExports": [
+        "TRANSLATION_CANCEL_MESSAGE_TYPE"
+      ]
+    },
+    {
+      "id": "userscript/credentialContext.ts",
+      "originalLength": 135,
+      "renderedLength": 63,
+      "removedExports": [],
+      "renderedExports": [
+        "isTrustedCredentialStorageContext"
+      ]
+    },
+    {
+      "id": "src/services/translation-stats/types.ts",
+      "originalLength": 8007,
+      "renderedLength": 49,
+      "removedExports": [
+        "TRANSLATION_STATS_SCHEMA_VERSION",
+        "TRANSLATION_STATS_MAX_STORED_REQUESTS",
+        "TRANSLATION_STATS_ROLLUP_RETENTION_DAYS",
+        "TRANSLATION_STATS_REQUEST_PAGE_SIZE",
+        "TRANSLATION_STATS_MAX_REQUEST_ROUTES",
+        "TRANSLATION_STATS_REQUEST_MAX_PAGE_SIZE",
+        "TRANSLATION_STATS_DURATION_BOUNDS_MS",
+        "TRANSLATION_STATS_SIZE_BOUNDS_CHARS",
+        "TRANSLATION_REQUEST_OUTCOMES",
+        "TRANSLATION_REQUEST_SOURCES",
+        "TRANSLATION_REQUEST_MODES",
+        "TRANSLATION_STATS_ERROR_KINDS"
+      ],
+      "renderedExports": [
+        "TRANSLATION_STATS_MAX_ROUTE_ATTEMPTS"
+      ]
+    },
+    {
+      "id": "userscript/dexie.ts",
+      "originalLength": 952,
+      "renderedLength": 34,
+      "removedExports": [],
+      "renderedExports": [
+        "Dexie",
+        "default"
+      ]
+    },
+    {
+      "id": "src/ui/components/TranslationLoadingPreview.vue?vue&type=style&index=0&scoped=7acf7d0f&lang.css",
+      "originalLength": 116,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "node_modules/.pnpm/element-plus@2.9.3_vue@3.5.13_typescript@5.7.3_/node_modules/element-plus/theme-chalk/base.css",
+      "originalLength": 8401,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "node_modules/.pnpm/element-plus@2.9.3_vue@3.5.13_typescript@5.7.3_/node_modules/element-plus/theme-chalk/el-tag.css",
+      "originalLength": 5518,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "node_modules/.pnpm/element-plus@2.9.3_vue@3.5.13_typescript@5.7.3_/node_modules/element-plus/theme-chalk/el-option.css",
+      "originalLength": 1675,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "node_modules/.pnpm/element-plus@2.9.3_vue@3.5.13_typescript@5.7.3_/node_modules/element-plus/theme-chalk/el-option-group.css",
+      "originalLength": 351,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "node_modules/.pnpm/element-plus@2.9.3_vue@3.5.13_typescript@5.7.3_/node_modules/element-plus/theme-chalk/el-scrollbar.css",
+      "originalLength": 1328,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "node_modules/.pnpm/element-plus@2.9.3_vue@3.5.13_typescript@5.7.3_/node_modules/element-plus/theme-chalk/el-popper.css",
+      "originalLength": 2191,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "node_modules/.pnpm/element-plus@2.9.3_vue@3.5.13_typescript@5.7.3_/node_modules/element-plus/theme-chalk/el-select.css",
+      "originalLength": 8013,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "src/ui/components/UiSelect.vue?vue&type=style&index=0&lang.css",
+      "originalLength": 5399,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "src/ui/components/UiSelect.vue",
+      "originalLength": 9156,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": [
+        "default"
+      ]
+    },
+    {
+      "id": "userscript/SettingsPanel.vue?vue&type=style&index=0&scoped=46d133a7&lang.css",
+      "originalLength": 6566,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "src/features/writing-assistant/ui/WritingChoices.vue?vue&type=style&index=0&scoped=37629b0f&lang.css",
+      "originalLength": 610,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "src/features/full-page-translation/ui/TranslationProgressPanel.vue?vue&type=style&index=0&scoped=8166d4a6&lang.css",
+      "originalLength": 6017,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "src/features/floating-ball/ui/FloatingBall.vue?vue&type=style&index=0&scoped=27b3480b&lang.css",
+      "originalLength": 7805,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "src/features/selection-translation/ui/SpeechFollowText.vue?vue&type=style&index=0&scoped=0b262e0c&lang.css",
+      "originalLength": 332,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "src/features/share-card/ui/ShareCardStudio.vue?vue&type=style&index=0&scoped=d24957ec&lang.css",
+      "originalLength": 10986,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "src/features/reading-assistant/ui/SentenceAnalysis.vue?vue&type=style&index=0&scoped=60704d92&lang.css",
+      "originalLength": 3582,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "src/features/reading-assistant/ui/ReadingAnswer.vue?vue&type=style&index=0&scoped=88e9dfca&lang.css",
+      "originalLength": 2829,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "src/features/reading-assistant/ui/ReadingPanel.vue?vue&type=style&index=0&scoped=e66ed0bb&lang.css",
+      "originalLength": 10286,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "node_modules/.pnpm/element-plus@2.9.3_vue@3.5.13_typescript@5.7.3_/node_modules/element-plus/theme-chalk/el-message-box.css",
+      "originalLength": 4610,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "node_modules/.pnpm/element-plus@2.9.3_vue@3.5.13_typescript@5.7.3_/node_modules/element-plus/theme-chalk/el-button.css",
+      "originalLength": 15610,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "node_modules/.pnpm/element-plus@2.9.3_vue@3.5.13_typescript@5.7.3_/node_modules/element-plus/theme-chalk/el-input.css",
+      "originalLength": 10730,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "node_modules/.pnpm/element-plus@2.9.3_vue@3.5.13_typescript@5.7.3_/node_modules/element-plus/theme-chalk/el-overlay.css",
+      "originalLength": 183,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "src/features/reading-assistant/ui/HarnessReadingHistory.vue?vue&type=style&index=0&scoped=d85b9ac6&lang.css",
+      "originalLength": 3944,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "src/features/selection-translation/ui/SelectionTranslator.vue?vue&type=style&index=0&scoped=199dfd48&lang.css",
+      "originalLength": 19071,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "userscript/pageTranslationRuntime.ts",
+      "originalLength": 345,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    },
+    {
+      "id": "userscript/configRuntime.ts",
+      "originalLength": 277,
+      "renderedLength": 0,
+      "removedExports": [],
+      "renderedExports": []
+    }
+  ]
+}

@@ -1,0 +1,346 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 1, command: node <CW_PNPM9_TEMP>/package/bin/pnpm.cjs test tests/userscriptPrivacy.test.ts tests/userscriptPlatform.test.ts tests/selectionTranslatorLifecycle.test.ts tests/readingPanelLifecycle.test.ts
+
+> FluentRead-流畅阅读@0.0.37 test <CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010
+> node scripts/testing/run-resource-safe.mjs -- vitest run "tests/userscriptPrivacy.test.ts" "tests/userscriptPlatform.test.ts" "tests/selectionTranslatorLifecycle.test.ts" "tests/readingPanelLifecycle.test.ts"
+
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 1, command: vitest run tests/userscriptPrivacy.test.ts tests/userscriptPlatform.test.ts tests/selectionTranslatorLifecycle.test.ts tests/readingPanelLifecycle.test.ts
+
+ RUN  v2.1.9 <CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010
+
+stderr | tests/selectionTranslatorLifecycle.test.ts > SelectionTranslator lifecycle after extension reload > ends an unresponsive message after 3.5 seconds while keeping the ordinary translation
+Selection word lookup unavailable: Error: Dictionary lookup timed out
+    at eval (eval at mountSelection (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/tests/selectionTranslatorLifecycle.test.ts:124:5), <anonymous>:1102:49)
+    at callTimer (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vitest@2.1.9_@types+node@22.10.7/node_modules/vitest/dist/chunks/vi.DgezovHB.js:2300:25)
+    at doTickInner (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vitest@2.1.9_@types+node@22.10.7/node_modules/vitest/dist/chunks/vi.DgezovHB.js:2886:30)
+    at doTick (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vitest@2.1.9_@types+node@22.10.7/node_modules/vitest/dist/chunks/vi.DgezovHB.js:2967:21)
+    at Immediate.<anonymous> (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vitest@2.1.9_@types+node@22.10.7/node_modules/vitest/dist/chunks/vi.DgezovHB.js:2987:30)
+    at processImmediate (node:internal/timers:574:21)
+
+ ✓ tests/selectionTranslatorLifecycle.test.ts (124 tests) 344ms
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > has no active answer or model request before entering learning, and starts the default action after an empty history view
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > expands one historical turn without changing the current answer or context, and folds history when the current turn changes
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > keeps the current tab position and unsent follow-up, and offers a focused source shortcut without a request
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > positions after the popup layout settles and cancels delayed positioning on user interaction or unmount
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > starts each action after the source and preserves an upward scroll during streaming and completion
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > reuses meaning after grammar and unrelated config refreshes, including deactivate/reactivate
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > restores each completed action and its follow-up context without requesting again; explicit regeneration requests once
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > cancels switched requests, ignores late deltas, and keeps the last successful answer after a failed regeneration
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > invalidates answers for changed source context, language, and model settings
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > restores completed actions from a saved session and does not include the failed answer in retry history
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > handles negative settings responses and allows saving original text before the model answers
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > saves completed notes explicitly while AI reference is off, and refuses incomplete or private answers
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > saves the matching translation with the original and keeps the AI explanation in study notes
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > keeps both saved-content destinations explicit when opening the learning center fails
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > keeps only the translation matching the displayed source and preserves the active answer
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > preserves the answer offset for late translations and respects manual upward scrolling
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > real ReadingPanel/client at a controlled semantic stream-port boundary > roundtrips the real request, progress, result and cancellation without replacing the reading client
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > keeps normal-context temporary reading usable while blocking unsupported record and note persistence
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+ ❯ tests/readingPanelLifecycle.test.ts (19 tests | 5 failed) 6401ms
+   × reading action ownership and reuse > has no active answer or model request before entering learning, and starts the default action after an empty history view 661ms
+     → expected false to be true // Object.is equality
+   ✓ reading action ownership and reuse > expands one historical turn without changing the current answer or context, and folds history when the current turn changes 361ms
+   ✓ reading action ownership and reuse > keeps the current tab position and unsent follow-up, and offers a focused source shortcut without a request 344ms
+   ✓ reading action ownership and reuse > positions after the popup layout settles and cancels delayed positioning on user interaction or unmount 363ms
+   ✓ reading action ownership and reuse > starts each action after the source and preserves an upward scroll during streaming and completion 351ms
+   ✓ reading action ownership and reuse > reuses meaning after grammar and unrelated config refreshes, including deactivate/reactivate 337ms
+   ✓ reading action ownership and reuse > restores each completed action and its follow-up context without requesting again; explicit regeneration requests once 332ms
+   ✓ reading action ownership and reuse > cancels switched requests, ignores late deltas, and keeps the last successful answer after a failed regeneration 327ms
+   ✓ reading action ownership and reuse > invalidates answers for changed source context, language, and model settings 326ms
+   × reading action ownership and reuse > restores completed actions from a saved session and does not include the failed answer in retry history 327ms
+     → expected '' to be 'Partial grammar' // Object.is equality
+   ✓ reading action ownership and reuse > handles negative settings responses and allows saving original text before the model answers 351ms
+   × reading action ownership and reuse > saves completed notes explicitly while AI reference is off, and refuses incomplete or private answers 351ms
+     → expected "spy" to be called with arguments: [ { kind: 'lesson', …(1) } ]
+
+Received: 
+
+
+
+Number of calls: 0
+
+   × reading action ownership and reuse > saves the matching translation with the original and keeps the AI explanation in study notes 338ms
+     → expected "spy" to be called with arguments: [ { kind: 'lesson', …(1) } ]
+
+Received: 
+
+
+
+Number of calls: 0
+
+   ✓ reading action ownership and reuse > keeps both saved-content destinations explicit when opening the learning center fails 337ms
+   ✓ keeps only the translation matching the displayed source and preserves the active answer 325ms
+   ✓ preserves the answer offset for late translations and respects manual upward scrolling 320ms
+   × actual userscript ReadingPanel capability error through the real client > calls the real shim connect and reports its honest not-ready capability when the default platform has no stream transport 3ms
+     → expected 'undefined' to be 'function' // Object.is equality
+   ✓ real ReadingPanel/client at a controlled semantic stream-port boundary > roundtrips the real request, progress, result and cancellation without replacing the reading client 323ms
+   ✓ keeps normal-context temporary reading usable while blocking unsupported record and note persistence 324ms
+ ❯ tests/userscriptPrivacy.test.ts (20 tests | 8 failed) 236ms
+   × userscript trusted privacy metadata > keeps strict tri-state metadata and ignores message claims: legacy normal 4ms
+     → expected undefined to deeply equal { privacy: false }
+   × userscript trusted privacy metadata > keeps strict tri-state metadata and ignores message claims: legacy private 1ms
+     → expected undefined to deeply equal { privacy: true }
+   × userscript trusted privacy metadata > keeps strict tri-state metadata and ignores message claims: modern normal 1ms
+     → expected undefined to deeply equal { privacy: false }
+   × userscript trusted privacy metadata > keeps strict tri-state metadata and ignores message claims: modern private 1ms
+     → expected undefined to deeply equal { privacy: true }
+   × userscript trusted privacy metadata > keeps strict tri-state metadata and ignores message claims: missing 1ms
+     → expected undefined to deeply equal { privacy: undefined }
+   × userscript trusted privacy metadata > keeps strict tri-state metadata and ignores message claims: malformed 1ms
+     → expected undefined to deeply equal { privacy: undefined }
+   × userscript trusted privacy metadata > keeps strict tri-state metadata and ignores message claims: conflicting 1ms
+     → expected undefined to deeply equal { privacy: undefined }
+   × userscript trusted privacy metadata > keeps strict tri-state metadata and ignores message claims: inherited 1ms
+     → expected undefined to deeply equal { privacy: undefined }
+ ✓ tests/userscriptPlatform.test.ts (17 tests) 24ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 13 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > has no active answer or model request before entering learning, and starts the default action after an empty history view
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ tests/readingPanelLifecycle.test.ts:82:31
+     80|     expect(panel.currentTurnKey).toBe(''); expect(calls).toHaveLength(…
+     81|     Object.assign(props, {historyOnly: true, active: true}); await tic…
+     82|     expect(panel.showRecords).toBe(true); expect(calls).toHaveLength(0…
+       |                               ^
+     83|     panel.closeRecords(); panel.chooseAction('meaning'); await tick();
+     84|     expect(panel.currentTurnKey).not.toBe(''); expect(calls).toHaveLen…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/13]⎯
+
+ FAIL  tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > restores completed actions from a saved session and does not include the failed answer in retry history
+AssertionError: expected '' to be 'Partial grammar' // Object.is equality
+
+- Expected
++ Received
+
+- Partial grammar
+
+ ❯ tests/readingPanelLifecycle.test.ts:239:57
+    237|     const {panel, calls, sourceChange, tick} = await mountPanel({histo…
+    238|     await panel.restoreSession('old'); await tick();
+    239|     expect(calls).toHaveLength(0); expect(panel.answer).toBe('Partial …
+       |                                                         ^
+    240|     expect(sourceChange).toHaveBeenCalledWith('Historical source.');
+    241|     panel.retry();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/13]⎯
+
+ FAIL  tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > saves completed notes explicitly while AI reference is off, and refuses incomplete or private answers
+AssertionError: expected "spy" to be called with arguments: [ { kind: 'lesson', …(1) } ]
+
+Received: 
+
+
+
+Number of calls: 0
+
+ ❯ tests/readingPanelLifecycle.test.ts:271:38
+    269|     expect(state.saveLearningMemory).not.toHaveBeenCalled();
+    270|     await panel.rememberLearning();
+    271|     expect(state.saveLearningMemory).toHaveBeenCalledWith({kind: 'less…
+       |                                      ^
+    272|     expect(panel.remembered).toBe(true);
+    273|     expect(panel.feedback).toContain('学习笔记');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/13]⎯
+
+ FAIL  tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > saves the matching translation with the original and keeps the AI explanation in study notes
+AssertionError: expected "spy" to be called with arguments: [ { kind: 'lesson', …(1) } ]
+
+Received: 
+
+
+
+Number of calls: 0
+
+ ❯ tests/readingPanelLifecycle.test.ts:287:38
+    285|     expect(sendMessage).toHaveBeenLastCalledWith(expect.objectContaini…
+    286|     await panel.rememberLearning();
+    287|     expect(state.saveLearningMemory).toHaveBeenCalledWith({kind: 'less…
+       |                                      ^
+    288|   });
+    289|   it('keeps both saved-content destinations explicit when opening the …
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/13]⎯
+
+ FAIL  tests/readingPanelLifecycle.test.ts > actual userscript ReadingPanel capability error through the real client > calls the real shim connect and reports its honest not-ready capability when the default platform has no stream transport
+AssertionError: expected 'undefined' to be 'function' // Object.is equality
+
+Expected: "function"
+Received: "undefined"
+
+ ❯ tests/readingPanelLifecycle.test.ts:335:57
+    333|     const {default: shim, resetPlatformMessageHandler} = await import(…
+    334|     resetPlatformMessageHandler();
+    335|     expect(typeof Reflect.get(shim.runtime, 'connect')).toBe('function…
+       |                                                         ^
+    336|     const connectReads = vi.fn(), connectCalls = vi.fn();
+    337|     const runtimePort = new Proxy(shim.runtime, {get(target, key, rece…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/13]⎯
+
+ FAIL  tests/userscriptPrivacy.test.ts > userscript trusted privacy metadata > keeps strict tri-state metadata and ignores message claims: legacy normal
+ FAIL  tests/userscriptPrivacy.test.ts > userscript trusted privacy metadata > keeps strict tri-state metadata and ignores message claims: modern normal
+AssertionError: expected undefined to deeply equal { privacy: false }
+
+- Expected: 
+Object {
+  "privacy": false,
+}
+
++ Received: 
+undefined
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/13]⎯
+
+ FAIL  tests/userscriptPrivacy.test.ts > userscript trusted privacy metadata > keeps strict tri-state metadata and ignores message claims: legacy private
+ FAIL  tests/userscriptPrivacy.test.ts > userscript trusted privacy metadata > keeps strict tri-state metadata and ignores message claims: modern private
+AssertionError: expected undefined to deeply equal { privacy: true }
+
+- Expected: 
+Object {
+  "privacy": true,
+}
+
++ Received: 
+undefined
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/13]⎯
+
+ FAIL  tests/userscriptPrivacy.test.ts > userscript trusted privacy metadata > keeps strict tri-state metadata and ignores message claims: missing
+ FAIL  tests/userscriptPrivacy.test.ts > userscript trusted privacy metadata > keeps strict tri-state metadata and ignores message claims: malformed
+ FAIL  tests/userscriptPrivacy.test.ts > userscript trusted privacy metadata > keeps strict tri-state metadata and ignores message claims: conflicting
+ FAIL  tests/userscriptPrivacy.test.ts > userscript trusted privacy metadata > keeps strict tri-state metadata and ignores message claims: inherited
+AssertionError: expected undefined to deeply equal { privacy: undefined }
+
+- Expected: 
+Object {
+  "privacy": undefined,
+}
+
++ Received: 
+undefined
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/13]⎯
+
+ Test Files  2 failed | 2 passed (4)
+      Tests  13 failed | 167 passed (180)
+   Start at  15:43:56
+   Duration  8.38s (transform 482ms, setup 0ms, collect 983ms, tests 7.01s, environment 0ms, prepare 84ms)
+
+ ELIFECYCLE  Test failed. See above for more details.

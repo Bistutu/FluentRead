@@ -1,0 +1,783 @@
+[
+  {
+    "name": "userinterface-baseline-diagnostic",
+    "startedAtUTC": "2026-10-11T07:38:35.670038+00:00",
+    "args": [
+      "test",
+      "tests/selectionTranslatorLifecycle.test.ts",
+      "tests/readingPanelLifecycle.test.ts"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "38948a73d0ddfc0ed8c7c9abff4be4fc1a4bcd0cf504407d049cd4a17e3f1968",
+    "patchSha256": "6d0e98eba4dac64fe8700945a60a7cbf93447e7070b4da98f9aa6b3e8bfedf21",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T07:38:44.148010+00:00",
+    "wallSeconds": 8.477,
+    "exitCode": 0,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-baseline-diagnostic.log.txt",
+    "logSha256": "94444d80d50d1c4dd95db931ade9e928bc7f99070511a3d1fdbe0644ce9ad6a1",
+    "timeFileSha256": "7530b0e652781db80234493638a509fb1debb0a87341ba22bdc35093e1c2d397"
+  },
+  {
+    "name": "userinterface-sfc-red",
+    "startedAtUTC": "2026-10-11T07:40:20.660111+00:00",
+    "args": [
+      "test",
+      "tests/selectionTranslatorLifecycle.test.ts",
+      "tests/readingPanelLifecycle.test.ts"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "d13b9f859b5eaa871a97fe7549e3700b6408764900549097e6e37a5e6a341e50",
+    "patchSha256": "5a7eb02eef90b07702bd872a2f5cc7bb098f4de56b91e9184c08302ffb78b4d8",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T07:40:29.209061+00:00",
+    "wallSeconds": 8.548,
+    "exitCode": 1,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-sfc-red.log.txt",
+    "logSha256": "3535d9f5108c88cc4be3268b1397ed6c00e2b076fd17c6860790a323e2668f76",
+    "timeFileSha256": "c15849cde30df523fa08645b41bace423f6ca2dda5a071afd77660ae1116425a"
+  },
+  {
+    "name": "userinterface-privacy-ui-red",
+    "startedAtUTC": "2026-10-11T07:42:20.377492+00:00",
+    "args": [
+      "test",
+      "tests/userscriptPrivacy.test.ts",
+      "tests/userscriptPlatform.test.ts",
+      "tests/selectionTranslatorLifecycle.test.ts",
+      "tests/readingPanelLifecycle.test.ts"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "5a7d4c3a32ae572116b7afbdc7c2166434eecc779a89aba1caea4205f1a8b706",
+    "patchSha256": "fcaf801934f3a6bb0533c868fe95dab4d63e0a6a0dbe48da1a6507e9b580ba90",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T07:42:28.829631+00:00",
+    "wallSeconds": 8.451,
+    "exitCode": 1,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-privacy-ui-red.log.txt",
+    "logSha256": "46c3ac7016a28e84d4f19ffe72682877dd561025c35ccc90b6f373f00060fe67",
+    "timeFileSha256": "12b4afa63ef24934a6e622b0d7e018076e012d0844490c040ce8f7edbddd56ff"
+  },
+  {
+    "name": "userinterface-privacy-ui-red-corrected",
+    "startedAtUTC": "2026-10-11T07:42:45.127559+00:00",
+    "args": [
+      "test",
+      "tests/userscriptPrivacy.test.ts",
+      "tests/userscriptPlatform.test.ts",
+      "tests/selectionTranslatorLifecycle.test.ts",
+      "tests/readingPanelLifecycle.test.ts"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "c9eea6e05d3dcc708221e97d66657b7bdb7d07d5cfb3c6167995e28ec1161e6c",
+    "patchSha256": "062f307550035e1ede697bc4da3c2366d7d2f3aeb7cf9971eb473c1ea1cf18bf",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T07:42:54.289490+00:00",
+    "wallSeconds": 9.161,
+    "exitCode": 1,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-privacy-ui-red-corrected.log.txt",
+    "logSha256": "2ee99a9f58459063bfc3adbc1283c72ae6b7b54aa5e5f4ecf7a09849bd2b3ab8",
+    "timeFileSha256": "72c89b5c64d7ad083203e14111470605f0d6e22a04312ee6d933d772930a3e9f"
+  },
+  {
+    "name": "userinterface-privacy-ui-green-partial",
+    "startedAtUTC": "2026-10-11T07:43:56.034679+00:00",
+    "args": [
+      "test",
+      "tests/userscriptPrivacy.test.ts",
+      "tests/userscriptPlatform.test.ts",
+      "tests/selectionTranslatorLifecycle.test.ts",
+      "tests/readingPanelLifecycle.test.ts"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "6ec2613a8b7e4cb4115ea50b604da24eb86dd945c2f130601be8cdb6ad625d5b",
+    "patchSha256": "c3f0a74bd544cbb8d8b5bf13755e9e9bb19d38a2b382861834cc74d8b358b41e",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T07:44:05.139974+00:00",
+    "wallSeconds": 9.104,
+    "exitCode": 1,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-privacy-ui-green-partial.log.txt",
+    "logSha256": "3444c8fc33afbf131a73fcc27f707dc7e48e8fd45636f2f96544c0b4c38f8640",
+    "timeFileSha256": "d4841e8a9856eebfd2bf7ba92f605a462cbe00798007a29d6e5e922d6ee72685"
+  },
+  {
+    "name": "userinterface-privacy-ui-and-port-green",
+    "startedAtUTC": "2026-10-11T07:46:49.510086+00:00",
+    "args": [
+      "test",
+      "tests/userscriptPrivacy.test.ts",
+      "tests/userscriptPlatform.test.ts",
+      "tests/selectionTranslatorLifecycle.test.ts",
+      "tests/readingPanelLifecycle.test.ts",
+      "tests/readingAssistantClient.test.ts"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "d91a09b24c066e1dc7b8f7c81777ae048cc4b84438397a4883014b46ad0fe553",
+    "patchSha256": "588d6bbe061b64b96a51501ec1775fc762b42e37d9faa930587e7e56f431060e",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T07:46:59.147963+00:00",
+    "wallSeconds": 9.637,
+    "exitCode": 0,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-privacy-ui-and-port-green.log.txt",
+    "logSha256": "6d3cc4e93dc31ea2da46cefe702adc700620fb41738c8107645a1a8b699a1d8c",
+    "timeFileSha256": "6f9f413982b4276fa2fc0958f961c957e7373a9bf0d1d56b08077b4982c0e2cf"
+  },
+  {
+    "name": "userinterface-pre-runtime-compile",
+    "startedAtUTC": "2026-10-11T07:47:12.625765+00:00",
+    "args": [
+      "compile"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "d91a09b24c066e1dc7b8f7c81777ae048cc4b84438397a4883014b46ad0fe553",
+    "patchSha256": "588d6bbe061b64b96a51501ec1775fc762b42e37d9faa930587e7e56f431060e",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T07:47:31.452213+00:00",
+    "wallSeconds": 18.825,
+    "exitCode": 0,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-pre-runtime-compile.log.txt",
+    "logSha256": "c6d541ed058cefffb02f71a02be099a4e834b77d930a52920b7ff9dce9301e8f",
+    "timeFileSha256": "e471f4b373926b9e62aca73736a64e230758c09dad7a4c489f1fa2e12632796a"
+  },
+  {
+    "name": "userinterface-runtime-integration-preflight",
+    "startedAtUTC": "2026-10-11T07:48:34.967341+00:00",
+    "args": [
+      "test",
+      "tests/userscriptPrivacy.test.ts",
+      "tests/userscriptPlatform.test.ts",
+      "tests/selectionTranslatorLifecycle.test.ts",
+      "tests/readingPanelLifecycle.test.ts",
+      "tests/readingAssistantClient.test.ts",
+      "tests/harnessRuntime.test.ts",
+      "tests/implementationAudit49F.test.ts"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "86c1e1b0fbec3858f34e3a00b6542a8d628b51378a68ec4fd4cdaae3bfdda5d1",
+    "patchSha256": "08b2254022d0e27ffd0bbcb3abf259f32cbd3c813a995bfad0bbc252946ef01d",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T07:48:48.776069+00:00",
+    "wallSeconds": 13.808,
+    "exitCode": 1,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-runtime-integration-preflight.log.txt",
+    "logSha256": "e123fcd7ef05e5e11d4f07490305fc0da604a2fcd85d4bb3ed2c51c5730c4a27",
+    "timeFileSha256": "bd29e88c490a30444285a875b9b1777fc6657bbb3159ce923687c3fd8f094c13"
+  },
+  {
+    "name": "userinterface-http-reading-red",
+    "startedAtUTC": "2026-10-11T07:49:52.127553+00:00",
+    "args": [
+      "test",
+      "tests/readingPanelLifecycle.test.ts",
+      "tests/userscriptPlatform.test.ts"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "d96b54a38f530f8746e2b8e0cd596c265e55dfd24f4adf5d0a4480c88bf85a06",
+    "patchSha256": "4c4ae06eb02c565996cb8c10322da2a8eed10d91372fb7f031a192e6cd5435a7",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T07:50:01.266208+00:00",
+    "wallSeconds": 9.138,
+    "exitCode": 1,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-http-reading-red.log.txt",
+    "logSha256": "2083a25da3d7b7f1c4a7331359548bd88e36f9743a4c4c052405229362de7142",
+    "timeFileSha256": "0eed203a767451abd689590a188d02e6594df0730eb35218f366ae2130c05f1a"
+  },
+  {
+    "name": "userinterface-real-runtime-green",
+    "startedAtUTC": "2026-10-11T07:51:42.081435+00:00",
+    "args": [
+      "test",
+      "tests/userscriptPrivacy.test.ts",
+      "tests/userscriptPlatform.test.ts",
+      "tests/selectionTranslatorLifecycle.test.ts",
+      "tests/readingPanelLifecycle.test.ts",
+      "tests/readingAssistantClient.test.ts",
+      "tests/harnessRuntime.test.ts",
+      "tests/implementationAudit49F.test.ts"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "3b61a58ec9067cfe2c6597bb23a7f5340a8eadfda86949a0b4141509831e0098",
+    "patchSha256": "f2cf002a7f5725ea1b987d11c0751d3f6fbc654a888600c8649b3774b631c7ad",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T07:51:56.909170+00:00",
+    "wallSeconds": 14.827,
+    "exitCode": 0,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-real-runtime-green.log.txt",
+    "logSha256": "6d57f9010da0c31388166a15cc71dcfb9e5ed1b022b01ec1b5cf269dc71a6f75",
+    "timeFileSha256": "5be790ff770ab8082405cd8f2f1cf57e1f392d98ca1534ed5898eae5279c2fc5"
+  },
+  {
+    "name": "userinterface-complete-compile",
+    "startedAtUTC": "2026-10-11T07:52:48.193621+00:00",
+    "args": [
+      "compile"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "3b61a58ec9067cfe2c6597bb23a7f5340a8eadfda86949a0b4141509831e0098",
+    "patchSha256": "f2cf002a7f5725ea1b987d11c0751d3f6fbc654a888600c8649b3774b631c7ad",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T07:53:06.911547+00:00",
+    "wallSeconds": 18.717,
+    "exitCode": 0,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-complete-compile.log.txt",
+    "logSha256": "c6d541ed058cefffb02f71a02be099a4e834b77d930a52920b7ff9dce9301e8f",
+    "timeFileSha256": "9fbea77810011f1af0ed7037611231d82ffcfad6258d19b77e255a76ada6670d"
+  },
+  {
+    "name": "userinterface-architecture",
+    "startedAtUTC": "2026-10-11T07:53:53.004718+00:00",
+    "args": [
+      "test:architecture"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "3b61a58ec9067cfe2c6597bb23a7f5340a8eadfda86949a0b4141509831e0098",
+    "patchSha256": "f2cf002a7f5725ea1b987d11c0751d3f6fbc654a888600c8649b3774b631c7ad",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T07:54:14.462485+00:00",
+    "wallSeconds": 21.457,
+    "exitCode": 0,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-architecture.log.txt",
+    "logSha256": "0e92adf840cfcc5c5a34d9bd5c7824fb12d199e3011b23ba107bfc84c1c5648a",
+    "timeFileSha256": "29457d144f158da6c92f7b8d1f3664d2604da044195110a82104c794d433e21f"
+  },
+  {
+    "name": "userinterface-refresh-fixed-resources",
+    "startedAtUTC": "2026-10-11T07:55:14.621126+00:00",
+    "args": [
+      "exec",
+      "node",
+      "scripts/build-userscript-greasyfork.mjs",
+      "--prepare-resources"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "d6afed32c714dd55ca9f8123c462d6b9322ffcda2cb32224099a5b8d63bae5b6",
+    "patchSha256": "190d293e4949d927ed86393f513337e5d14d1f1c1f3d7d097331eb105a5c75d4",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "expectedResourceWrites": [
+      "userscript/resources/fluentread-data.v1.js",
+      "userscript/resources/fluentread-vendor.v1.js"
+    ],
+    "afterSourceSnapshotSha256": "cd35d8bc9d0bad659af971abbd1a5dadb99e6b30aaf9d52d6fd836f6749a2689",
+    "resourceFileBinding": {
+      "userscript/resources/fluentread-data.v1.js": {
+        "before": "c6cc74bb1c3e3f0be2a6919c45ed2fb40dfda17a7a8a9c46683b72f956a7a40e",
+        "after": "4f49c29957c9caf94674a52a698312a17ac36608524127919fe524617b935ddf"
+      },
+      "userscript/resources/fluentread-vendor.v1.js": {
+        "before": "8fa608295f4e3479c9c70a1181ee008944c85b19d1c3bd542f7062e91898fc38",
+        "after": "97043572b031723354cc35521f81e8a0da890c41f1b0fecf430a72fa6df00a39"
+      }
+    },
+    "finishedAtUTC": "2026-10-11T07:55:19.097454+00:00",
+    "wallSeconds": 4.475,
+    "exitCode": 0,
+    "sourceUnchangedDuringStage": false,
+    "log": "userinterface-refresh-fixed-resources.log.txt",
+    "logSha256": "8a487da59bfc472f4d8c6df9a01dedfcf0d49fb7c7bd3d9e04b2a491170b6490",
+    "timeFileSha256": "f7138cf613e5f0ae8229d0cf639524f67340b9094c28cd7ccbd56e1692d31e9d"
+  },
+  {
+    "name": "userinterface-final-contracts",
+    "startedAtUTC": "2026-10-11T07:56:52.074996+00:00",
+    "args": [
+      "test",
+      "tests/userscriptViteConfig.test.ts",
+      "tests/userscriptPrivacy.test.ts",
+      "tests/userscriptPlatform.test.ts",
+      "tests/selectionTranslatorLifecycle.test.ts",
+      "tests/readingPanelLifecycle.test.ts",
+      "tests/readingAssistantClient.test.ts",
+      "tests/harnessRuntime.test.ts",
+      "tests/implementationAudit49F.test.ts"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "cd35d8bc9d0bad659af971abbd1a5dadb99e6b30aaf9d52d6fd836f6749a2689",
+    "patchSha256": "88feeea01cb7bae1f3cfa49166c90cfaa20d903005e4f2794ba82068d5393656",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T07:57:11.068740+00:00",
+    "wallSeconds": 18.991,
+    "exitCode": 0,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-final-contracts.log.txt",
+    "logSha256": "0cff8219cde96f206a8a1d61b18fea8624e259930457b1845e8281fdadc560e3",
+    "timeFileSha256": "07c38ba7ace95262c17b876f0302df43aec46dfd0aaa9a91b40bbf68afe07c2d"
+  },
+  {
+    "name": "userinterface-final-compile",
+    "startedAtUTC": "2026-10-11T07:58:21.534298+00:00",
+    "args": [
+      "compile"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "cd35d8bc9d0bad659af971abbd1a5dadb99e6b30aaf9d52d6fd836f6749a2689",
+    "patchSha256": "88feeea01cb7bae1f3cfa49166c90cfaa20d903005e4f2794ba82068d5393656",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T07:58:40.190867+00:00",
+    "wallSeconds": 18.654,
+    "exitCode": 0,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-final-compile.log.txt",
+    "logSha256": "c6d541ed058cefffb02f71a02be099a4e834b77d930a52920b7ff9dce9301e8f",
+    "timeFileSha256": "583c6501632097239b3ee52c335abc6c836aaf2b826d9667ee580cb66981dd71"
+  },
+  {
+    "name": "userinterface-chrome-build",
+    "startedAtUTC": "2026-10-11T07:59:43.630711+00:00",
+    "args": [
+      "build"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+    "patchSha256": "e8f2dc389da8b58d9919f3be69aa96fee2675e6809b2a64f223cf9fb787d9526",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T08:00:05.443704+00:00",
+    "wallSeconds": 21.811,
+    "exitCode": 0,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-chrome-build.log.txt",
+    "logSha256": "4abc3dd2c27f0120088ace8effedbbe636ebb4d69e4530e5feea6efe8344e8ab",
+    "timeFileSha256": "8fda82582f283556ba7ec82d6dfc3f97c72c3b1de6beca409130cb8d1189d304"
+  },
+  {
+    "name": "userinterface-firefox-build",
+    "startedAtUTC": "2026-10-11T08:00:45.860398+00:00",
+    "args": [
+      "build:firefox"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+    "patchSha256": "e8f2dc389da8b58d9919f3be69aa96fee2675e6809b2a64f223cf9fb787d9526",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T08:01:07.267501+00:00",
+    "wallSeconds": 21.405,
+    "exitCode": 0,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-firefox-build.log.txt",
+    "logSha256": "d83a368d638f3c0a35be53dd9514fab08ff01d33a48f17bc0fdc74de5c10a2e3",
+    "timeFileSha256": "718aa21b376f404fb154b3c37bb01f114162390d6d894217583bc88e5a727731"
+  },
+  {
+    "name": "userinterface-docs-build",
+    "startedAtUTC": "2026-10-11T08:01:20.328767+00:00",
+    "args": [
+      "docs:build"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+    "patchSha256": "e8f2dc389da8b58d9919f3be69aa96fee2675e6809b2a64f223cf9fb787d9526",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T08:01:23.350687+00:00",
+    "wallSeconds": 3.02,
+    "exitCode": 0,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-docs-build.log.txt",
+    "logSha256": "8238e1535bf0b87346c251cced8d93a3360a388eb32c940e55b1f83ff919b02a",
+    "timeFileSha256": "e226c08b25ca9b727ee15f38b565e151f1db8af371f8e0c1249de7f8f6f98fd5"
+  },
+  {
+    "name": "userinterface-test-audit",
+    "startedAtUTC": "2026-10-11T08:02:17.330248+00:00",
+    "args": [
+      "test:audit"
+    ],
+    "baselineCommit": "09bc5913ca239eadade50ffbdb7e731bda66d79a",
+    "sourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+    "patchSha256": "e8f2dc389da8b58d9919f3be69aa96fee2675e6809b2a64f223cf9fb787d9526",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T08:02:18.909737+00:00",
+    "wallSeconds": 1.577,
+    "exitCode": 0,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-test-audit.log.txt",
+    "logSha256": "4a510af61b117df295e0bfa4aa56ec5120443f835cf42c5b279648eda0aea285",
+    "timeFileSha256": "8b7a001801ad7d1160e8459b69b5a965c6d3c162b9713525331d952d66c8aeef"
+  },
+  {
+    "name": "userinterface-original-gf-wrapper",
+    "startedAtUTC": "2026-10-11T08:03:26.350089+00:00",
+    "args": [
+      "build:userscript:greasyfork"
+    ],
+    "baselineCommit": "1a39eb1b1fb0c65766b61c7c0b66a0dfc2dfb0fa",
+    "sourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+    "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T08:03:29.554259+00:00",
+    "wallSeconds": 3.203,
+    "exitCode": 1,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-original-gf-wrapper.log.txt",
+    "logSha256": "491c63005165292ebe23953c16a0da99dc254b492363b5ec05b057b70cab01a2",
+    "timeFileSha256": "8681b036e34689b3acf07dc7f75b61dcc4d1238ae1cd9ad63facb61ba61813f9"
+  },
+  {
+    "name": "userinterface-standard-build",
+    "startedAtUTC": "2026-10-11T08:05:26.254507+00:00",
+    "args": [
+      "build:userscript"
+    ],
+    "baselineCommit": "1a39eb1b1fb0c65766b61c7c0b66a0dfc2dfb0fa",
+    "sourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+    "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T08:05:30.822059+00:00",
+    "wallSeconds": 4.567,
+    "exitCode": 0,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-standard-build.log.txt",
+    "logSha256": "486bbbbfabf58df09e765282900cdf5cb61c0ee0b2eb9278f670578238290758",
+    "timeFileSha256": "8279053b068b841c63b2c5426b7a1dba44b39b6ea4d208480c3bcfd2d7b23fc2",
+    "artifact": {
+      "mode": "userscript",
+      "bytes": 2329902,
+      "sha256": "f30f249d44eb0dc0de2d8d0987be2507faa8850a5a99ad520c28bcd0c6e2019e",
+      "verifierExitCode": 1,
+      "originalBudget": 2025000
+    }
+  },
+  {
+    "name": "userinterface-standalone-build",
+    "startedAtUTC": "2026-10-11T08:07:12.000798+00:00",
+    "args": [
+      "build:userscript:standalone"
+    ],
+    "baselineCommit": "1a39eb1b1fb0c65766b61c7c0b66a0dfc2dfb0fa",
+    "sourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+    "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {},
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T08:07:19.587329+00:00",
+    "wallSeconds": 7.586,
+    "exitCode": 0,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-standalone-build.log.txt",
+    "logSha256": "330d41aedd31c7bad7caab1d671da1e5e1402d854a07030022b6865cc539c22a",
+    "timeFileSha256": "9d9854651b1ce0b8b36bd834248e30ba6db55a7ba3b4644d2e5c278dbf1a3264",
+    "artifact": {
+      "mode": "userscript-standalone",
+      "bytes": 3883153,
+      "sha256": "6f9b53aff2f74323bc9d7acfae8b3936bcc0637a3f698441f290162d0d3232c2",
+      "verifierExitCode": 1,
+      "originalBudget": 3600000
+    }
+  },
+  {
+    "name": "userinterface-generic-roots-measurement",
+    "startedAtUTC": "2026-10-11T08:08:51.388950+00:00",
+    "args": [
+      "exec",
+      "node",
+      "<CW_WORKSPACE>/pr906-gf-post-maintenance-20261011/gf-reading-generic-roots-diagnostic.mjs"
+    ],
+    "baselineCommit": "1a39eb1b1fb0c65766b61c7c0b66a0dfc2dfb0fa",
+    "sourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+    "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {
+      "<CW_WORKSPACE>/pr906-gf-post-maintenance-20261011/gf-reading-generic-roots-diagnostic.mjs": "fe5d478416ab5b14b477f8f6e1f5df4f0823960a51dd4999eabb5f72c732e1cb"
+    },
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T08:08:57.128763+00:00",
+    "wallSeconds": 5.739,
+    "exitCode": 0,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-generic-roots-measurement.log.txt",
+    "logSha256": "f4c09e1128ee9dc33b9a5cd83a29d50a463942b00f035604b9a53d60e4298898",
+    "timeFileSha256": "a38bf0ebaeee69b11f2b0cff36c0964e330ae254bd084f7fb360574960a3c404"
+  },
+  {
+    "name": "userinterface-manifest-verifier",
+    "startedAtUTC": "2026-10-11T08:12:39.820635+00:00",
+    "args": [
+      "exec",
+      "node",
+      "scripts/testing/verify-extension-manifests.mjs"
+    ],
+    "baselineCommit": "1a39eb1b1fb0c65766b61c7c0b66a0dfc2dfb0fa",
+    "sourceSnapshotSha256": "be7cf3bbdf784e864ab9f1f198ed26fffce1233f79d7d9e95a419003de14ae65",
+    "patchSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "cpuTargetPercent": 60,
+    "workers": 1,
+    "concurrency": 1,
+    "helperFileInputs": {
+      "<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/scripts/testing/verify-extension-manifests.mjs": "47c07b2dae3aefcb44714993738c354a4d9581e1cb9a47515f0f27f6cb128f9e"
+    },
+    "selectedEnvironment": {
+      "TZ": null,
+      "CI": "1",
+      "FLUENTREAD_USERSCRIPT_GREASYFORK_SOURCE": null,
+      "FLUENTREAD_USERSCRIPT_STANDALONE": null,
+      "FLUENTREAD_USERSCRIPT_VENDOR_URL": null,
+      "FLUENTREAD_USERSCRIPT_DATA_URL": null
+    },
+    "finishedAtUTC": "2026-10-11T08:12:40.420066+00:00",
+    "wallSeconds": 0.599,
+    "exitCode": 0,
+    "sourceUnchangedDuringStage": true,
+    "log": "userinterface-manifest-verifier.log.txt",
+    "logSha256": "c164e837088ae421dfc064bbc19593d2d3428a5aa3d37a78cc2d3df3cbc3590f",
+    "timeFileSha256": "c387eb6f87e3221434aba93a7fd4429d7676ede19d2a784cae4981e05fa584b7"
+  }
+]

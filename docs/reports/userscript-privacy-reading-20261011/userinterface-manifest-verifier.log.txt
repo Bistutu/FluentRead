@@ -1,0 +1,33 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 1, command: node <CW_PNPM9_TEMP>/package/bin/pnpm.cjs exec node scripts/testing/verify-extension-manifests.mjs
+{
+  "status": "ok",
+  "chrome": {
+    "manifestVersion": 3,
+    "offscreenPermission": true,
+    "runtimeCapabilityMarker": "__FLUENTREAD_BROWSER_CAPABILITY_BUILD__:chrome:mv3__",
+    "artifacts": [
+      "chunks/offscreen-DSpd1u6w.js",
+      "offscreen.html"
+    ],
+    "ocrAssets": 6
+  },
+  "firefox": {
+    "manifestVersion": 2,
+    "offscreenPermission": false,
+    "runtimeCapabilityMarker": "__FLUENTREAD_BROWSER_CAPABILITY_BUILD__:firefox:mv2__",
+    "artifacts": [
+      "chunks/offscreen-DSpd1u6w.js",
+      "offscreen.html"
+    ],
+    "ocrAssets": 6,
+    "geckoId": "{3096bd53-3bda-4556-b076-ebf47442a5c1}",
+    "strictMinVersion": "140.0",
+    "dataCollectionPermissions": [
+      "websiteContent",
+      "authenticationInfo",
+      "personalCommunications"
+    ],
+    "archives": [],
+    "archiveOcrAssets": 0
+  }
+}

@@ -1,0 +1,235 @@
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 1, command: node <CW_PNPM9_TEMP>/package/bin/pnpm.cjs test tests/selectionTranslatorLifecycle.test.ts tests/readingPanelLifecycle.test.ts
+
+> FluentRead-流畅阅读@0.0.37 test <CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010
+> node scripts/testing/run-resource-safe.mjs -- vitest run "tests/selectionTranslatorLifecycle.test.ts" "tests/readingPanelLifecycle.test.ts"
+
+[resource-safe] CPU target 60%, maxWorkers 1, concurrency 1, command: vitest run tests/selectionTranslatorLifecycle.test.ts tests/readingPanelLifecycle.test.ts
+
+ RUN  v2.1.9 <CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010
+
+stderr | tests/selectionTranslatorLifecycle.test.ts > SelectionTranslator lifecycle after extension reload > ends an unresponsive message after 3.5 seconds while keeping the ordinary translation
+Selection word lookup unavailable: Error: Dictionary lookup timed out
+    at eval (eval at mountSelection (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/tests/selectionTranslatorLifecycle.test.ts:122:5), <anonymous>:1098:49)
+    at callTimer (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vitest@2.1.9_@types+node@22.10.7/node_modules/vitest/dist/chunks/vi.DgezovHB.js:2300:25)
+    at doTickInner (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vitest@2.1.9_@types+node@22.10.7/node_modules/vitest/dist/chunks/vi.DgezovHB.js:2886:30)
+    at doTick (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vitest@2.1.9_@types+node@22.10.7/node_modules/vitest/dist/chunks/vi.DgezovHB.js:2967:21)
+    at Immediate.<anonymous> (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vitest@2.1.9_@types+node@22.10.7/node_modules/vitest/dist/chunks/vi.DgezovHB.js:2987:30)
+    at processImmediate (node:internal/timers:574:21)
+
+stderr | tests/selectionTranslatorLifecycle.test.ts > actual userscript shim through SelectionTranslator setup > mounts healthy selection setup with actual shim instead of requiring extension capability
+[Vue warn]: Avoid app logic that relies on enumerating keys on a component instance. The keys will be empty in production mode to avoid performance overhead.
+[Vue warn]: Avoid app logic that relies on enumerating keys on a component instance. The keys will be empty in production mode to avoid performance overhead.
+
+ ❯ tests/selectionTranslatorLifecycle.test.ts (120 tests | 1 failed) 344ms
+   × actual userscript shim through SelectionTranslator setup > mounts healthy selection setup with actual shim instead of requiring extension capability 15ms
+     → expected "spy" to not be called at all, but actually been called 1 times
+
+Received: 
+
+  1st spy call:
+
+    Array [
+      [TypeError: Cannot read properties of undefined (reading 'inIncognitoContext')],
+      Object {
+        "onSelectionRangeChange": undefined,
+        "selectionAdapter": undefined,
+      },
+      "setup function",
+    ]
+
+
+Number of calls: 1
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > has no active answer or model request before entering learning, and starts the default action after an empty history view
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > expands one historical turn without changing the current answer or context, and folds history when the current turn changes
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > keeps the current tab position and unsent follow-up, and offers a focused source shortcut without a request
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > positions after the popup layout settles and cancels delayed positioning on user interaction or unmount
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > starts each action after the source and preserves an upward scroll during streaming and completion
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > reuses meaning after grammar and unrelated config refreshes, including deactivate/reactivate
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > restores each completed action and its follow-up context without requesting again; explicit regeneration requests once
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > cancels switched requests, ignores late deltas, and keeps the last successful answer after a failed regeneration
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > invalidates answers for changed source context, language, and model settings
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > restores completed actions from a saved session and does not include the failed answer in retry history
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > handles negative settings responses and allows saving original text before the model answers
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > saves completed notes explicitly while AI reference is off, and refuses incomplete or private answers
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > saves the matching translation with the original and keeps the AI explanation in study notes
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > reading action ownership and reuse > keeps both saved-content destinations explicit when opening the learning center fails
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > keeps only the translation matching the displayed source and preserves the active answer
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > preserves the answer offset for late translations and respects manual upward scrolling
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+stderr | tests/readingPanelLifecycle.test.ts > real ReadingPanel/client at a controlled semantic stream-port boundary > roundtrips the real request, progress, result and cancellation without replacing the reading client
+[FluentRead] 配置读取或安全迁移失败，保留已读取的公开配置 Error: 配置存储运行时不可用
+    at Object.getItem (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/platform/storage/configStorageRuntime.ts:24:11)
+    at initializeConfig (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:434:63)
+    at eval (<CW_WORKSPACE>/FluentRead-pr906-main-merge-20261010/src/services/config/store.ts:543:21)
+    at instantiateModule (file://<CW_WORKSPACE>/FluentRead-shared-retry-after-20261009/node_modules/.pnpm/vite@5.4.19_@types+node@22.10.7/node_modules/vite/dist/node/chunks/dep-C6uTJdX2.js:53020:5)
+
+ ❯ tests/readingPanelLifecycle.test.ts (18 tests | 1 failed) 6444ms
+   ✓ reading action ownership and reuse > has no active answer or model request before entering learning, and starts the default action after an empty history view 671ms
+   ✓ reading action ownership and reuse > expands one historical turn without changing the current answer or context, and folds history when the current turn changes 395ms
+   ✓ reading action ownership and reuse > keeps the current tab position and unsent follow-up, and offers a focused source shortcut without a request 378ms
+   ✓ reading action ownership and reuse > positions after the popup layout settles and cancels delayed positioning on user interaction or unmount 368ms
+   ✓ reading action ownership and reuse > starts each action after the source and preserves an upward scroll during streaming and completion 368ms
+   ✓ reading action ownership and reuse > reuses meaning after grammar and unrelated config refreshes, including deactivate/reactivate 350ms
+   ✓ reading action ownership and reuse > restores each completed action and its follow-up context without requesting again; explicit regeneration requests once 348ms
+   ✓ reading action ownership and reuse > cancels switched requests, ignores late deltas, and keeps the last successful answer after a failed regeneration 375ms
+   ✓ reading action ownership and reuse > invalidates answers for changed source context, language, and model settings 355ms
+   ✓ reading action ownership and reuse > restores completed actions from a saved session and does not include the failed answer in retry history 347ms
+   ✓ reading action ownership and reuse > handles negative settings responses and allows saving original text before the model answers 347ms
+   ✓ reading action ownership and reuse > saves completed notes explicitly while AI reference is off, and refuses incomplete or private answers 354ms
+   ✓ reading action ownership and reuse > saves the matching translation with the original and keeps the AI explanation in study notes 382ms
+   ✓ reading action ownership and reuse > keeps both saved-content destinations explicit when opening the learning center fails 351ms
+   ✓ keeps only the translation matching the displayed source and preserves the active answer 341ms
+   ✓ preserves the answer offset for late translations and respects manual upward scrolling 357ms
+   × actual userscript ReadingPanel capability error through the real client > calls the real shim connect and reports its honest not-ready capability when the default platform has no stream transport 5ms
+     → expected 'undefined' to be 'function' // Object.is equality
+   ✓ real ReadingPanel/client at a controlled semantic stream-port boundary > roundtrips the real request, progress, result and cancellation without replacing the reading client 353ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  tests/readingPanelLifecycle.test.ts > actual userscript ReadingPanel capability error through the real client > calls the real shim connect and reports its honest not-ready capability when the default platform has no stream transport
+AssertionError: expected 'undefined' to be 'function' // Object.is equality
+
+Expected: "function"
+Received: "undefined"
+
+ ❯ tests/readingPanelLifecycle.test.ts:335:57
+    333|     const {default: shim, resetPlatformMessageHandler} = await import(…
+    334|     resetPlatformMessageHandler();
+    335|     expect(typeof Reflect.get(shim.runtime, 'connect')).toBe('function…
+       |                                                         ^
+    336|     const connectReads = vi.fn(), connectCalls = vi.fn();
+    337|     const runtimePort = new Proxy(shim.runtime, {get(target, key, rece…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  tests/selectionTranslatorLifecycle.test.ts > actual userscript shim through SelectionTranslator setup > mounts healthy selection setup with actual shim instead of requiring extension capability
+AssertionError: expected "spy" to not be called at all, but actually been called 1 times
+
+Received: 
+
+  1st spy call:
+
+    Array [
+      [TypeError: Cannot read properties of undefined (reading 'inIncognitoContext')],
+      Object {
+        "onSelectionRangeChange": undefined,
+        "selectionAdapter": undefined,
+      },
+      "setup function",
+    ]
+
+
+Number of calls: 1
+
+ ❯ tests/selectionTranslatorLifecycle.test.ts:1719:45
+    1717|         const fixture = mountSelection(false, undefined, 'userscript',…
+    1718|         await Vue.nextTick();
+    1719|         expect(fixture.lifecycleErrors).not.toHaveBeenCalled();
+       |                                             ^
+    1720|         expect(typeof fixture.state.closeTooltip).toBe('function');
+    1721|         expect(typeof fixture.state.isPrivateContext).toBe('boolean');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 136 passed (138)
+   Start at  15:40:21
+   Duration  7.81s (transform 365ms, setup 0ms, collect 796ms, tests 6.79s, environment 0ms, prepare 43ms)
+
+ ELIFECYCLE  Test failed. See above for more details.
