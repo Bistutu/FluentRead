@@ -1130,7 +1130,7 @@ export const frFRMessages = {
     'settings.interface.font.license': 'Licences des polices',
     'settings.interface.font.sourceNote': 'Les sources indisponibles sont remplacées automatiquement. Choisissez une source ou ouvrez un lien de fichier. La disponibilité dépend du réseau ; les fichiers sont vérifiés.',
     'settings.interface.animationLoading.label': 'Animations et chargement',
-    'settings.interface.animationLoading.description': 'Choisissez « Aucun » pour désactiver les animations de l’interface tout en conservant les indications statiques de chargement, de réussite et d’échec.',
+    'settings.interface.animationLoading.description': 'Choisissez un style pour le prévisualiser. Choisissez « Aucun » pour désactiver les animations de l’interface et conserver les indications statiques. L’aperçu reste immobile si l’option système de réduction des animations est activée.',
     'settings.translationStyle.title': 'Style de la traduction',
     'settings.translationStyle.previewTitle': 'Aperçu en direct',
     'settings.translationStyle.savedTitle': 'Mes styles',

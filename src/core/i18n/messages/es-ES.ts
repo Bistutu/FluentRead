@@ -1130,7 +1130,7 @@ export const esESMessages = {
     'settings.interface.font.license': 'Licencias de fuentes',
     'settings.interface.font.sourceNote': 'Se cambia automáticamente si un origen no está disponible. Elige un origen o abre un enlace de archivo. La disponibilidad depende de la red; se verifica la integridad de los archivos.',
     'settings.interface.animationLoading.label': 'Animación y carga',
-    'settings.interface.animationLoading.description': 'Elige «Ninguno» para desactivar las animaciones de la interfaz y mantener los indicadores estáticos de carga, éxito y error.',
+    'settings.interface.animationLoading.description': 'Elige un estilo para previsualizarlo. Elige «Ninguno» para desactivar las animaciones de la interfaz y conservar los indicadores estáticos. La vista previa permanece estática cuando el sistema tiene activada la opción Reducir movimiento.',
     'settings.translationStyle.title': 'Estilo de la traducción',
     'settings.translationStyle.previewTitle': 'Vista previa',
     'settings.translationStyle.savedTitle': 'Mis estilos',

@@ -1358,7 +1358,7 @@ export const enUSMessages = {
     'settings.interface.font.license': 'Font licenses',
     'settings.interface.font.sourceNote': 'Unavailable sources are retried automatically. Choose a source or open a file link. Mirror availability depends on your network; downloaded files are integrity-checked.',
     'settings.interface.animationLoading.label': 'Animation and loading effects',
-    'settings.interface.animationLoading.description': 'Choose “None” to turn off interface animations while keeping static loading, success, and failure feedback.',
+    'settings.interface.animationLoading.description': 'Choose a style to preview it. Choose “None” to turn off interface animations and keep static feedback. Previews stay still when your system’s Reduce Motion setting is enabled.',
     'settings.translationStyle.title': 'Translation style',
     'settings.translationStyle.previewTitle': 'Live preview',
     'settings.translationStyle.savedTitle': 'My styles',

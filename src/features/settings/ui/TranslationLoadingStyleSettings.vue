@@ -1,19 +1,15 @@
 <!--
  * @file src/features/settings/ui/TranslationLoadingStyleSettings.vue
  * 文件职责：用一个样式选择器控制界面动画，让用户在“界面风格”页面比较预设或选择末尾“无”关闭动态效果。
- * 主要内容：使用原生单选控件呈现 15 种运行时预览和独立静态选项；关闭后仍可直接选择任意样式恢复动画。
+ * 主要内容：用单层标题和说明引出 15 种运行时预览及独立静态选项，原生单选控件支持关闭后直接选择任意样式恢复动画。
  * 模块边界：本组件只修改父级传入的 Config 字段，不持久化配置、不创建网页内加载指示器，也不决定运行时动画调度策略。
 -->
 <template>
   <SettingsGroup
-    :title="t('settings.interface.animationLoading.label')"
+    :title="t('settings.advanced.translationLoadingStyle')"
     :description="t('settings.interface.animationLoading.description')"
   >
-    <SettingsItem
-      :label="t('settings.advanced.translationLoadingStyle')"
-      :description="t('settings.advanced.translationLoadingStyleDescription')"
-      stacked
-    >
+    <div class="loading-style-settings">
       <div
         class="loading-style-picker"
         role="radiogroup"
@@ -62,7 +58,7 @@
           <span class="loading-style-check" aria-hidden="true"><i /></span>
         </label>
       </div>
-    </SettingsItem>
+    </div>
   </SettingsGroup>
 </template>
 
@@ -73,7 +69,6 @@ import { applyTranslationLoadingStyleChoice, getTranslationLoadingStyleChoice, t
 import TranslationLoadingPreview from '@/src/ui/components/TranslationLoadingPreview.vue'
 import { useUiI18n } from '@/src/ui/i18n'
 import SettingsGroup from './components/SettingsGroup.vue'
-import SettingsItem from './components/SettingsItem.vue'
 
 const props = defineProps<{
   config: Config
@@ -86,6 +81,10 @@ const selectedStyle = computed({
 </script>
 
 <style scoped>
+.loading-style-settings {
+  padding: 16px 20px;
+}
+
 .loading-style-picker {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 156px), 1fr));
@@ -230,6 +229,12 @@ const selectedStyle = computed({
 
 .loading-style-option.selected .loading-style-check > i {
   opacity: 1;
+}
+
+@media (max-width: 700px) {
+  .loading-style-settings {
+    padding: 11px 12px;
+  }
 }
 
 @media (max-width: 480px) {

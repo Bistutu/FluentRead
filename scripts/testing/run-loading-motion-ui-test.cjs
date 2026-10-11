@@ -403,6 +403,12 @@ async function main() {
     if (choices.length !== 16 || choices.at(-1).value !== 'none' || choices.some(item => item.disabled)) throw new Error('动画选择器必须有 16 项，最后为可操作的“无”');
     if (await section.locator('[data-settings-panel="motion"] .el-switch').count()) throw new Error('动画样式仍有冗余开关');
     report.choices = choices;
+    const motionPanel = section.locator('[data-settings-panel="motion"]');
+    report.groupCopy = {
+      title: await motionPanel.locator('.settings-group-heading h2').innerText(),
+      description: await motionPanel.locator('.settings-group-heading p').innerText(),
+      nestedHeadingCount: await motionPanel.locator('.settings-item-label').count(),
+    };
     await picker.locator('[data-loading-style-choice="ring"]').click();
     await page.waitForTimeout(180);
 
@@ -472,6 +478,10 @@ async function main() {
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth);
       if (overflow) throw new Error(`${width}px 设置页出现横向溢出`);
       report.screenshots.push(await screenshot(page, `settings-loading-motion-${width}.png`));
+      if (width === 390) {
+        await section.locator('[data-settings-panel="motion"] .settings-group-heading').scrollIntoViewIfNeeded();
+        report.screenshots.push(await screenshot(page, 'settings-loading-style-heading-390.png'));
+      }
     }
     await page.setViewportSize({width: 1440, height: 1000});
 

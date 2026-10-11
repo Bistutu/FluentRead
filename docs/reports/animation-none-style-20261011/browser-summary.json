@@ -320,5 +320,43 @@
       "lines": 100
     },
     "referenceProjectsUsed": false
+  },
+  "copyPolishVerification": {
+    "groupCopy": {
+      "title": "翻译加载样式",
+      "description": "选择样式即可预览；选“无”关闭界面动画并保留静态反馈。系统开启“减少动态效果”时，预览保持静止。",
+      "nestedHeadingCount": 0
+    },
+    "typecheck": true,
+    "settingsArchitectureCases": 37,
+    "testAudit": true,
+    "chromeBuild": true,
+    "browserOk": true,
+    "launchMode": "macos-background-cdp",
+    "focusPolicy": "launchservices-no-foreground",
+    "windowPlacement": {
+      "mode": "background-visible-no-focus",
+      "visible": true,
+      "hidden": false,
+      "centered": true,
+      "windowState": "normal",
+      "bounds": {
+        "left": 132,
+        "top": -1040,
+        "width": 1440,
+        "height": 1000
+      },
+      "displayTarget": "secondary",
+      "source": "macos-nsscreen",
+      "screenIndex": 1,
+      "browserFrontmost": false
+    },
+    "consoleErrors": [],
+    "rawReport": "/private/tmp/fluentread-loading-style-copy-ui/report.json",
+    "screenshots": [
+      "settings-loading-style-choices.png",
+      "settings-loading-style-dark.png",
+      "settings-loading-style-heading-390.png"
+    ]
   }
 }

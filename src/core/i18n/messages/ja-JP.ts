@@ -1130,7 +1130,7 @@ export const jaJPMessages = {
     'settings.interface.font.license': 'フォントのライセンス',
     'settings.interface.font.sourceNote': '利用できない配信元は自動で切り替えます。配信元やファイルリンクを選べます。利用可否はネットワークに依存し、ダウンロードしたファイルの整合性を検証します。',
     'settings.interface.animationLoading.label': 'アニメーションと読み込み効果',
-    'settings.interface.animationLoading.description': '「なし」を選ぶと画面のアニメーションがオフになり、静止した読み込み・成功・失敗の表示は残ります。',
+    'settings.interface.animationLoading.description': 'スタイルを選ぶとすぐにプレビューできます。「なし」を選ぶと画面のアニメーションがオフになり、静止した表示は残ります。システムの「モーションを減らす」が有効な場合、プレビューは静止します。',
     'settings.translationStyle.title': '訳文スタイル',
     'settings.translationStyle.previewTitle': 'プレビュー',
     'settings.translationStyle.savedTitle': 'マイスタイル',
