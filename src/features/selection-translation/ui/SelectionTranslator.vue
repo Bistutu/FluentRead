@@ -1,8 +1,8 @@
 <!--
  * @file src/features/selection-translation/ui/SelectionTranslator.vue
- * 文件职责：实现划词翻译的主要页面组件，覆盖选区捕获、图标/小点/悬停/快捷键/仅右键菜单/直接弹出、原生菜单可信选区恢复与重复请求复用、翻译与词卡展示、免费 AI 讲解的显式启用、朗读、收藏选中的单词/表达/句子、双语分享卡片、重试和关闭。
- * 主要内容：相同译文保留原文且不重复展示；组件管理可信手势、已关闭选区与选择丢失宽限、继续阅读或复制原文时自动收起、请求 token、按既有错误种类显示有限提示、行内代码保护与纯文本安全渲染、按标签页页面缩放补偿的弹窗定位、空白拖动、边角缩放、主题；普通译文先于完整原文，单行可横向滚动的导航与右侧固定分享、收藏、关闭及更多操作把高度留给正文，次级菜单按可见窗口覆盖显示；指针移动按帧合并并在结束时提交最后位置，已定位卡片不重复读取选区几何；富文本 UTF-16 跟读偏移一次计算并复用；默认过滤同语言选区，按配置开放中英反向入口，翻译方向始终按现有语言配置判断；统一卡片默认显示翻译并以同一导航进入学习；首次定位后保持弹窗锚点，手动尺寸下内容与播放状态变化只影响内部布局；闲置语音栏不占空间，自动卡生成与播放期间用独立临时高度保持外框，停止恢复自然尺寸；学习短回答自然收拢、长回答受高度上限约束，完整原文和译文按需对照并允许翻译继续完成；单词先展示原文与可用词卡，再补充辅助释义，以紧凑状态提示等待、未命中与网络失败；关闭或更换选区取消等待并阻止旧响应覆盖新结果；区分语音生成和播放，按实际音频时钟或浏览器词边界显示完整词高亮，并提供真实音频时间与前后 5 秒跳转。
- * 模块边界：组件只通过公共客户端和 runtime 消息触达后台，不直接持有 provider、IndexedDB 或 Offscreen 资源；纯选区算法在 core，活动 Range 通过回调交给 content/runtime 管理 modal 挂载所有权；扩展 PDF 文档页通过可选来源适配器复用同一卡片、标题和阅读上下文，来源失效时取消当前请求，词书协议独立维护；阅读依据的 DOM 锚点只属于当前选区，关闭、换区或卸载释放临时绘制和监听。
+ * 文件职责：实现划词翻译的主要页面组件，覆盖选区捕获、图标/小点/悬停/快捷键/仅右键菜单/直接弹出、原生菜单可信选区恢复与重复请求复用、翻译与词卡展示、免费 AI 讲解的显式启用、朗读、收藏选中的单词/表达/句子、双语分享卡片、鉴权服务配置入口、重试和关闭。
+ * 主要内容：相同译文保留原文且不重复展示；组件管理可信手势、已关闭选区与选择丢失宽限、继续阅读或复制原文时自动收起、请求 token、按既有错误种类显示有限提示，并仅为当前鉴权失败提供通用设置入口、行内代码保护与纯文本安全渲染、按标签页页面缩放补偿的弹窗定位、空白拖动、边角缩放、主题；普通译文先于完整原文，单行可横向滚动的导航与右侧固定分享、收藏、关闭及更多操作把高度留给正文，次级菜单按可见窗口覆盖显示；指针移动按帧合并并在结束时提交最后位置，已定位卡片不重复读取选区几何；富文本 UTF-16 跟读偏移一次计算并复用；默认过滤同语言选区，按配置开放中英反向入口，翻译方向始终按现有语言配置判断；统一卡片默认显示翻译并以同一导航进入学习；首次定位后保持弹窗锚点，手动尺寸下内容与播放状态变化只影响内部布局；闲置语音栏不占空间，自动卡生成与播放期间用独立临时高度保持外框，停止恢复自然尺寸；学习短回答自然收拢、长回答受高度上限约束，完整原文和译文按需对照并允许翻译继续完成；单词先展示原文与可用词卡，再补充辅助释义，以紧凑状态提示等待、未命中与网络失败；关闭或更换选区取消等待并阻止旧响应覆盖新结果；区分语音生成和播放，按实际音频时钟或浏览器词边界显示完整词高亮，并提供真实音频时间与前后 5 秒跳转。
+ * 模块边界：组件只通过公共客户端和 runtime 消息触达后台及现有设置入口，不直接持有 provider、IndexedDB 或 Offscreen 资源；纯选区算法在 core，活动 Range 通过回调交给 content/runtime 管理 modal 挂载所有权；扩展 PDF 文档页通过可选来源适配器复用同一卡片、标题和阅读上下文，来源失效时取消当前请求，词书协议独立维护；阅读依据的 DOM 锚点只属于当前选区，关闭、换区或卸载释放临时绘制和监听。
  -->
 <template>
   <div v-ui-i18n v-show="showIndicator || showTooltip || noticeMessage || copySuccess" class="fr-selection-translator-root" :data-display-delay="selectionSettings.delay" @pointerdown.capture="dismissReadingToolsOutside" @pointerdown.stop @focusin="dismissReadingToolsOutside" @focusout="dismissReadingToolsOnFocusOut" @wheel.stop="handleUiWheel">
@@ -44,7 +44,7 @@
       </div>
       <div v-show="!readingMode" class="fr-tooltip-content" aria-live="polite">
         <div v-if="isLoading && !translationResult && !wordCard && !wordCardError && !isWordSelection" class="fr-loading-state"><span :class="['fr-loading-spinner', { 'fr-static': !config.animations }]" aria-hidden="true" /><span>正在查询…</span></div>
-        <div v-else-if="error && !translationResult && !wordCard" class="fr-error-state"><span>{{ error }}</span><button type="button" @click="retryTranslation">重试</button></div>
+        <div v-else-if="error && !translationResult && !wordCard" class="fr-error-state"><span>{{ error }}</span><span class="fr-error-actions"><button type="button" @click="retryTranslation">重试</button><button v-if="isAuthenticationErrorCurrent(authenticationError)" type="button" :disabled="!!openingAuthenticationSettings" @click="openAuthenticationSettings">{{ translateLegacy('配置服务') }}</button></span></div>
         <div v-else class="fr-translation-container">
           <section v-if="isWordSelection && (wordCard || isWordCardLoading)" class="fr-word-learning-card" aria-label="单词学习卡">
             <div v-if="isWordCardLoading && !wordCard" class="fr-word-card-loading" role="status"><span :class="['fr-loading-spinner', { 'fr-static': !config.animations }]" aria-hidden="true" /><span>{{ hasDistinctTranslationResult ? '译文已显示，正在补充词典…' : '正在查询词典，译文会先显示…' }}</span></div>
@@ -149,7 +149,7 @@
             </div>
             <pre><template v-for="(part, index) in sourceTextParts" :key="index"><code v-if="part.kind === 'code'" class="fr-inline-code">{{ part.text }}</code><SpeechFollowText v-else :text="part.text" :offset="part.offset" :progress="sourceAudioProgress" /></template></pre>
           </div>
-          <div v-if="error && (translationResult || wordCard)" class="fr-inline-error"><span>{{ error }}</span><button type="button" @click="retryTranslation">重试</button></div>
+          <div v-if="error && (translationResult || wordCard)" class="fr-inline-error"><span>{{ error }}</span><span class="fr-error-actions"><button type="button" @click="retryTranslation">重试</button><button v-if="isAuthenticationErrorCurrent(authenticationError)" type="button" :disabled="!!openingAuthenticationSettings" @click="openAuthenticationSettings">{{ translateLegacy('配置服务') }}</button></span></div>
         </div>
       </div>
       <div class="fr-playing-status" :class="{'is-idle': !isPlaying && !isPreparingAudio}" :aria-hidden="!isPlaying && !isPreparingAudio" :aria-busy="isPreparingAudio" role="status">
@@ -176,7 +176,7 @@
 import {audioSpeechProgress, boundarySpeechProgress, parseSpeechCues, parseSpeechProgress, parseSpeechPlaybackPosition, seekSpeechTime, type SpeechProgress, type SpeechPlaybackPosition, type SpeechCue} from '@/src/core/tts/speechProgress';
 import SpeechFollowText from './SpeechFollowText.vue';
 import {hasDistinctTranslation} from '@/src/core/translation/result';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import browser from 'webextension-polyfill';
 import {addRuntimeMessageListener} from '@/src/platform/browser/runtimeMessages';
 import {openShareCard, isShareCardMounted} from '@/src/features/share-card/public';
@@ -223,6 +223,7 @@ type AudioKind = 'source' | 'translation' | 'word';
 type CopyKind = 'source' | 'translation';
 interface SelectionSnapshot { text: string; nativeText: string; parts: SelectionTextPart[]; range: Range; anchor: SelectionRect; isForward: boolean; }
 interface ContextMenuSelection { snapshot: SelectionSnapshot; rangeText: string; }
+interface SelectionAuthenticationError { request: SelectionContentRequest; requestId: number; service?: string; }
 
 const tooltipRef = useTemplateRef<HTMLElement>('tooltip-ref');
 const readingPanelRef = useTemplateRef<InstanceType<typeof ReadingPanel>>('reading-panel-ref');
@@ -237,6 +238,8 @@ const translationResult = ref('');
 const translationParts = ref<SelectionTextPart[]>([]);
 const isLoading = ref(false);
 const error = ref('');
+const authenticationError = shallowRef<SelectionAuthenticationError | null>(null);
+const openingAuthenticationSettings = shallowRef<{authentication: SelectionAuthenticationError} | null>(null);
 const showIndicator = ref(false);
 const showTooltip = ref(false);
 const readingMode = ref(false);
@@ -594,6 +597,8 @@ function resetSelectionContentState(clearSelectionText = false): void {
   translationResult.value = '';
   translationParts.value = [];
   error.value = '';
+  authenticationError.value = null;
+  openingAuthenticationSettings.value = null;
   wordCard.value = null;
   isWordCardLoading.value = false;
   isWordCardSupportLoading.value = false;
@@ -799,6 +804,7 @@ watch(() => isPreparingAudio.value || isPlaying.value, active => {
   else clearAudioPopupHeightLock();
 }, {flush: 'sync'});
 watch([readingMode, showTooltip], () => {
+  if (readingMode.value || !showTooltip.value) openingAuthenticationSettings.value = null;
   clearAudioPopupHeightLock();
   if (!showTooltip.value || (!isPreparingAudio.value && !isPlaying.value)) return;
   const revision = audioPopupHeightRevision;
@@ -1033,6 +1039,29 @@ async function enableFreeReading(): Promise<void> {
   }
 }
 
+function isAuthenticationErrorCurrent(authentication: SelectionAuthenticationError | null): boolean {
+  return Boolean(authentication && authenticationError.value === authentication
+    && authentication.requestId === translationRequestId && error.value && showTooltip.value && !readingMode.value
+    && isContentRequestCurrent(authentication.request)
+    && (authentication.service === undefined || authentication.service === (config.selectionTranslationService || config.service)));
+}
+
+async function openAuthenticationSettings(): Promise<void> {
+  const authentication = authenticationError.value;
+  if (!authentication || !isAuthenticationErrorCurrent(authentication) || openingAuthenticationSettings.value) return;
+  const action = {authentication};
+  openingAuthenticationSettings.value = action;
+  const isCurrent = () => openingAuthenticationSettings.value === action && isAuthenticationErrorCurrent(authentication);
+  try {
+    const response = await browser.runtime.sendMessage({type: 'openOptionsPage', section: 'settings-general'}) as {success?: unknown} | null | undefined;
+    if (response?.success !== true && isCurrent()) showNotice('无法打开设置，请从扩展菜单打开设置后重试');
+  } catch {
+    if (isCurrent()) showNotice('无法打开设置，请从扩展菜单打开设置后重试');
+  } finally {
+    if (openingAuthenticationSettings.value === action) openingAuthenticationSettings.value = null;
+  }
+}
+
 function syncReadingView(view: {action: HarnessActionId; history: boolean}): void {
   readingInitialAction.value = view.action;
   readingHistoryOnly.value = view.history;
@@ -1233,11 +1262,15 @@ async function requestTranslation(request: SelectionContentRequest): Promise<voi
   const requestId = ++translationRequestId;
   isLoading.value = true;
   error.value = '';
+  authenticationError.value = null;
+  openingAuthenticationSettings.value = null;
+  let requestedService: string | undefined;
   try {
     const context = props.selectionAdapter?.context && snapshot.value
       ? props.selectionAdapter.context(snapshot.value.range, text, 4000) : undefined;
     const options = {signal: controller.signal, sourceLanguage: request.sourceLanguage, targetLanguage: request.targetLanguage, serviceOverride: selectionSettings.value.service,
       ...(context ? {pageContext: context.text || text} : {})};
+    requestedService = options.serviceOverride;
     const title = context?.title || document.title;
     const translated = parts.some(part => part.kind === 'code')
       ? await translateSelectionParts(parts, texts => translateTextBatch(texts, title, options))
@@ -1251,9 +1284,9 @@ async function requestTranslation(request: SelectionContentRequest): Promise<voi
     if (requestId !== translationRequestId || !isContentRequestCurrent(request)) return;
     if (cause instanceof Error && cause.name === 'AbortError') return;
     console.error('Selection translation error:', cause);
-    error.value = serializeTranslationError(cause).kind === 'authentication'
-      ? '密钥或权限无效'
-      : '翻译失败，请重试';
+    const kind = serializeTranslationError(cause).kind;
+    error.value = kind === 'authentication' ? '密钥或权限无效' : '翻译失败，请重试';
+    authenticationError.value = kind === 'authentication' ? {request, requestId, service: requestedService} : null;
   } finally {
     if (translationAbortController === controller) translationAbortController = null;
     if (requestId === translationRequestId) isLoading.value = false;
@@ -2290,6 +2323,10 @@ onBeforeUnmount(() => {
 .fr-loading-state, .fr-error-state { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 80px; color: #777780; font-size: 13px; }
 .fr-error-state { flex-direction: column; color: #c43b63; }
 .fr-error-state button { border: 1px solid currentColor; border-radius: 7px; padding: 4px 10px; background: transparent; color: inherit; cursor: pointer; }
+.fr-error-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; min-width: 0; max-width: 100%; }
+.fr-error-actions button { max-width: 100%; }
+.fr-error-actions button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.fr-error-actions button:disabled { opacity: .55; cursor: default; }
 .fr-loading-spinner { width: 18px; height: 18px; border: 2px solid #f5bfd3; border-top-color: #ef4b86; border-radius: 50%; animation: fr-spin .7s linear infinite; }
 .fr-loading-spinner.fr-static { animation: none; }
 @keyframes fr-spin { to { transform: rotate(360deg); } }
@@ -2334,6 +2371,8 @@ onBeforeUnmount(() => {
 .fr-word-fallback-note, .fr-inline-error { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; color: #a56578; font-size: 11px; }
 .fr-word-fallback-note { padding: 6px 8px; border-radius: 7px; background: #fff8fa; }
 .fr-inline-error button, .fr-word-fallback-note button { border: 1px solid currentColor; border-radius: 6px; padding: 2px 7px; background: transparent; color: inherit; cursor: pointer; font-size: 11px; }
+.fr-inline-error { flex-wrap: wrap; }
+.fr-inline-error .fr-error-actions { margin-left: auto; justify-content: flex-end; }
 .fr-word-fallback-note button { flex-shrink: 0; white-space: nowrap; }
 .fr-text-block { display:flow-root; padding: 0; }
 .fr-text-block + .fr-text-block { padding-top: 9px; border-top: 1px solid rgba(127, 127, 140, .12); }

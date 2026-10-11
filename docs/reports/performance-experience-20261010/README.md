@@ -1093,9 +1093,36 @@ Escape 组自然0，8阶段/3原生场景/4原始图。真实可信三击选中�
 
 完整冻结证据位于round49-selection-hotkey-parsing/的peer-source-owner/v2、SOURCE-HANDOFF、peer-validation/v2/v3、direct/coverage-baseline/candidate-attempt1、peer-probe/v1、root-probe-coordinator-v2、probe-baseline-attempt2、probe-candidate-attempt1、audit-architecture-attempt1、build-baseline/candidate-attempt1、ARTIFACT-COMPARISON、COMPARISON-RECEIPT及相应根/独立复核。仅本地保存，无推送、PR、合并或发布；未复制参考仓库代码。
 
+## 第四十五批：鉴权失败后的服务配置入口
+
+划词翻译当前请求发生已分类的 authentication 错误时，主错误与已有词卡/译文的行内错误都在“重试”后显示“配置服务”。点击沿用公共 openOptionsPage 的 settings-general 入口，不传服务参数；在通用设置的“翻译服务选择”中，从划词翻译行进入“配置连接”，使用该行的有效服务。保留默认网页服务、已有独立选择、自定义服务资料和原协议；不自动修改设置或重试。两个按钮可换行，键盘焦点有可见轮廓。文案复用已有语言映射，没有增加语言资源。
+
+配置动作只属于当前可见且非学习视图的鉴权失败：同时复验请求对象/编号、文本、目标语言、来源适配器和捕获的有效服务。等待导航期间阻止重复点击；仅严格 success===true 视为成功，缺失/非布尔响应、拒绝或同步抛错使用有限提示。更换选区、重试、关闭、进入学习或服务变化后的旧响应不能发出过时提示，也不能清掉较新的等待动作。原上下文、选项和标题 getter 次序不变。
+
+本批干净基线三份完整直接 owner 实际208项（mount20、modal65、selection123），最终候选236项（20、65、151）均自然0。原208项全名及重复计数保留，新增28项覆盖服务归属、五类导航失败、九类晚到边界、新动作拒绝、较新等待动作隔离及来源失效。四项用官方 compileScript/compileTemplate 和既有 Linkedom 渲染真正的父模板，覆盖两种错误区域的鉴权/普通失败、按钮顺序、禁用属性和实际 click handler；原123项保持原 setup harness。受控 browser、template ref、文本子组件与语言端口不证明 CSS、原生焦点、本地化或全 SFC 覆盖率。test:audit 自然0，641文件/10,635为声明索引；另四份完整架构 owner 实际942项通过（14、6、906、16），不等于全仓业务回归。
+
+最终候选类型检查、Chrome、Firefox、manifest、ordinary及完整独立脚本的构建/验证共八阶段均新执行自然0。构建基线复用第四十四批已测候选：本批干净 HEAD16bd7859 的1974生产/构建输入逐项与该历史候选相等，同锁文件和 Node/pnpm实际字节，两个历史444文件产物清单重新核对。历史基线仍保留其 f8ca96e7 HEAD及当时工作树身份，本批没有重建基线，不称本批独立双臂构建。最终候选仅一个生产 SFC 输入变化，实际未压缩字节如下：
+
+| 产物 | 匹配历史基线字节 | 候选字节 | 差值 |
+| --- | ---: | ---: | ---: |
+| ordinary脚本 | 1,958,978 | 1,960,545 | +1,567 |
+| 完整独立脚本 | 3,582,906 | 3,584,239 | +1,333 |
+| Chrome，444文件 | 65,541,345 | 65,547,100 | +5,755 |
+| Firefox，444文件 | 65,540,336 | 65,546,179 | +5,843 |
+
+原ordinary1,976,000 B与完整3,600,000 B严格预算通过，余量15,455 B与15,761 B。manifest全文、各252静态资源路径/SHA、两个固定MJS全字节相同；Chrome/Firefox CSS各+2,020 B，JS分别+3,735/+3,823 B，其他分区净0。此次用小幅代码体积补齐错误恢复操作，不称减包、ZIP、CPU、heap或时延收益；不把全部生成差异逐项归因一个源文件。保留两个构建各两条既有大chunk警告；Greasy Fork旧固定资源前置失败未重跑、未通过。
+
+实际安装并使用最终 Chrome 产物，在可见正常1280×900第二屏隔离 Edge 内后台验收，launchMode为macos-background-cdp、focusPolicy为launchservices-no-foreground；持续监控的所属浏览器前台激活为0。七阶段、两个独立中英文 fixture target及四张原始PNG自然通过。两页均用一次可信三击选词及原入口点击，真实 closed-root 主错误显示有限提示与两个按钮；390×816 CSS viewport中的卡片宽366、左右12/378，全文和按钮不被裁切，无横向溢出。每种语言实际7次Tab到重试、2次Tab到配置服务，再各一次Enter；可信事件未被消费、原生点击detail0、焦点轮廓2px。导航实际创建一个 options.html#settings-general 页面，划词行显示DeepSeek，再从“配置连接”打开 defaultGoogle/editingDeepSeek 的服务目录与可编辑空凭据输入。重试、入口及连接导航前后完整公开配置摘要相等；公开切英文只核对列举的非语言安全字段不变。未输入凭据或检查真实连接。
+
+四张PNG来自原始CDP Page.captureScreenshot，截图前后viewport/DPR/scroll/visualViewport相等，实际物理图像为2544×1632；窄屏卡片渲染在正常物理窗口的390 CSS像素区域，不能把物理PNG宽度当作390。根代理审读全部原图；所属浏览器、fixture服务器、焦点监控、临时profile四项清理均true，晚到诊断、console warning/error、page error、request failure、blocked HTTP均0，2045受保护输入及Chrome444产物前后相等。这只证明两语言主错误、有限键盘、公共入口与独立内置服务连接；行内词卡仅有真实模板owner证据，不扩大为原生行内布局、自定义/继承服务、七语言、Firefox运行、所有网站、真实provider成功或完整焦点矩阵。
+
+失败证据保持原样：首次候选compile自然2，三条诊断对应两类类型推断问题，仅用两处公共类型注解修正；新完整owner及八项构建重新执行通过。旧handoff的完整diff元数据错误保留，准确V4另存。首次原生验收在系统焦点通知注册时失败，未启动浏览器；取得已授权系统访问后第二次验收完成中文键盘和设置页创建，却因私有runner误读下拉搜索输入而失败，其裁切PNG不作为窄屏视觉成功证据。只修正可见选中标签读取和原始CDP截图采集，保持所有守卫，用新attempt3完成验收；未改写旧失败回执、放宽焦点/诊断或以清理置绿。
+
+中英文使用指南补充“配置服务→划词行配置连接→检查凭据后手动重试”的路径。最终文档构建、Storybook及文档规则结果由docs-final-site-attempt1回执记录。冻结证据位于round50-authentication-settings-entry/的peer-source-proposal/v3、peer-owner-proposal/v2、SOURCE-HANDOFF-V4、direct-baseline-attempt1/direct-candidate-attempt2、audit-architecture-attempt2、build-candidate-attempt2、peer-native-plan/v4、native-authentication-entry-attempt1/2/3及根/独立复核。仅本地保存，无推送、PR、合并或发布；未复制参考仓库代码。
+
 ## 后续候选
 
-第四十四批完整脚本为3,582,906 B，原3,600,000 B预算通过、余量17,094 B。划词快捷键解析复用已通过完整owner87项、单个完整修改模块四维100、三组200→1计数/完整业务轨迹对照、四份架构owner942项和独立双臂八核心构建；有限受控计数不等于CPU、heap或原生页面收益。后续继续审查认证错误后的公共配置入口及异步请求归属；目前只有只读设计审查，尚未实施新的配置入口。保留第三十八、三十九批布局、第四十二批焦点与第四十三批两语提示的原验收范围，本批未重跑。保持完整服务、语言、许可、原预算与固定资源引用。
+第四十五批完整脚本为3,584,239 B，原3,600,000 B预算通过、余量15,761 B。鉴权失败后的配置入口已实施，并通过完整直接owner236项、架构owner942项、八项新候选构建和中英文两独立真实主错误/键盘/设置连接验收。保持本批行内模板与原生主错误的范围区分。下一候选是仅在构建期投影内嵌英文词典中的document.*文案，与已有中文reader-only边界对齐；当前只有只读可达性审查，未正式实施、未测减包，不改公共字典、legacy映射、五份远程JSON或固定资源引用。继续保持完整服务、语言、许可、原预算与稳定性。
 
 
 合成段 loading 挂载循环、缓存键重复术语解析、高级请求限制禁用与缓存复习快捷键已在第二十七至三十批分别修复。第三十一轮调度只读探针保留现检查：13 个受控普通场景虽减少同 owner 复验，但第三个 source-only 读取中的 style getter 同步替换同文本 Text 时，复用先前结果留下脱离节点身份；这只是受控端口反例，未当成原生复现或 CPU 收益，未实施。证据为 `round31-page-scheduling-audit/`。第三十二轮已撤回 Cloud 普通历史入口的减加载推荐；LearningCenter 的 History/Memory 首用加载已在第三十一批实施，实际收藏阶段新增请求文件减少 20,641 B，父装配、加载故障与原行为通过限定验证。第三十四轮审计确认的八个既不可达设置子 UI 已在第三十二批排除，完整独立脚本实际减少 183,104 B，仍比原 3,600,000 B 门槛多 38,416 B。继续审查其 Options/IIFE 归属与可证明不可达的资源，保持可达服务、本地模型/TTS、数据、语言、许可和原门槛，不为达预算删除已有能力。请求队列仍在 response body 完成前占用并发槽；会改变错误种类的同步 deadline 合并未实施。
