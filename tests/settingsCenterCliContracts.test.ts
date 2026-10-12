@@ -3,6 +3,7 @@ import {resolve} from 'node:path';
 import {Script} from 'node:vm';
 import ts from 'typescript';
 import {parseHTML} from 'linkedom';
+import {parse as parseVueSfc} from 'vue/compiler-sfc';
 import {describe, expect, it} from 'vitest';
 import {navigationGroups, navigationItems, SETTINGS_TABBED_SECTION_IDS} from '@/src/features/settings/model/navigation';
 import {interfaceSkinOptions, DEFAULT_POPUP_QUICK_FEATURE_ORDER, DEFAULT_POPUP_QUICK_FEATURE_VISIBILITY} from '@/src/core/config/interfaceAppearance';
@@ -27,6 +28,25 @@ function bindings(names: string[], globals: Record<string, unknown> = {}): Recor
 }
 
 describe('settings center CLI production contracts', () => {
+    it('keeps six continuous panel names and both ordering contracts aligned with the actual InterfaceSettings template', () => {
+        const panelOrder = productionInterfacePanelNames();
+        const contract = bindings(['expectedInterfaceGroups']);
+        expect(panelOrder).toHaveLength(6);
+        expect(new Set(panelOrder).size).toBe(6);
+        expect(panelOrder.indexOf('video-learning')).toBe(panelOrder.indexOf('layout') + 1);
+        expect(panelOrder.indexOf('font')).toBe(panelOrder.indexOf('video-learning') + 1);
+        // The real source moved sentence-learning appearance after layout; the
+        // seven group headings retain their exact membership and adjacency.
+        expect(contract.expectedInterfaceGroups).toHaveLength(7);
+        expect(new Set(contract.expectedInterfaceGroups).size).toBe(7);
+        const layout = productionChineseCopy('settings.interface.popupLayout.label');
+        const learning = productionChineseCopy('video.learningAppearance.title');
+        const font = productionChineseCopy('settings.interface.font.label');
+        expect(contract.expectedInterfaceGroups.indexOf(learning)).toBe(contract.expectedInterfaceGroups.indexOf(layout) + 1);
+        expect(contract.expectedInterfaceGroups.indexOf(font)).toBe(contract.expectedInterfaceGroups.indexOf(learning) + 1);
+        expect(bindings(['expectedInterfacePanelOrder']).expectedInterfacePanelOrder).toEqual(panelOrder);
+    });
+
     it('keeps exact canonical section names, order and grouping aligned with production', () => {
         const contract = bindings(['expectedNavigation', 'expectedNavigationGroups']);
         expect(contract.expectedNavigation).toEqual(navigationItems.map(item => [item.id, item.label]));
@@ -70,7 +90,7 @@ function navigationPage(mobileVisible: boolean, initiallyCollapsed = false, pane
     let activeSection = '';
     let collapsed = initiallyCollapsed;
     const {document} = parseHTML('<!doctype html><html><body><nav class="settings-page-tabs"></nav></body></html>');
-    const continuousPanels = ['translation', 'video-learning', 'skin', 'motion', 'layout', 'font'].map(id => {
+    const continuousPanels = productionInterfacePanelNames().map(id => {
         const panel = document.createElement('section');
         panel.dataset.settingsAnchor = id;
         document.body.append(panel);
@@ -147,7 +167,7 @@ describe('settings center CLI navigation interactions', () => {
         await selectSettingsSection(fixture.page, 'settings-interface', 'motion');
         expect(fixture.actions).toEqual([`${mobile ? 'mobile' : 'sidebar'}:settings-interface`, 'active:settings-interface', 'panel:motion', 'panel-active:motion']);
         expect(SETTINGS_TABBED_SECTION_IDS.has('settings-interface')).toBe(false);
-        expect(fixture.continuousPanels.map(panel => panel.dataset.settingsAnchor)).toEqual(['translation', 'video-learning', 'skin', 'motion', 'layout', 'font']);
+        expect(fixture.continuousPanels.map(panel => panel.dataset.settingsAnchor)).toEqual(bindings(['expectedInterfacePanelOrder']).expectedInterfacePanelOrder);
         expect(fixture.continuousPanels.every(panel => !panel.hidden)).toBe(true);
     });
 
@@ -172,6 +192,27 @@ describe('settings center CLI navigation interactions', () => {
 
 function productionSource(relative: string): string {
     return readFileSync(resolve(__dirname, '..', relative), 'utf8');
+}
+
+function productionInterfacePanelNames(): string[] {
+    const filename = 'src/features/settings/ui/InterfaceSettings.vue';
+    const parsed = parseVueSfc(productionSource(filename), {filename});
+    if (parsed.errors.length || !parsed.descriptor.template) throw new Error('Invalid actual InterfaceSettings template');
+    return [...parsed.descriptor.template.content.matchAll(/<SettingsPanel\b[^>]*\bname="([^"]+)"/gu)].map(match => match[1]);
+}
+
+function productionChineseCopy(key: string): string {
+    const relative = 'src/core/i18n/messages/zh-CN.ts';
+    const messages = ts.createSourceFile(relative, productionSource(relative), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    let value: string | undefined;
+    const visit = (node: ts.Node) => {
+        if (ts.isPropertyAssignment(node) && ts.isStringLiteralLike(node.name) && node.name.text === key
+            && ts.isStringLiteralLike(node.initializer)) value = node.initializer.text;
+        ts.forEachChild(node, visit);
+    };
+    visit(messages);
+    if (value === undefined) throw new Error(`Missing actual Chinese message: ${key}`);
+    return value;
 }
 
 function cssDeclarations(relative: string, selector: string): Record<string, string> {

@@ -133,7 +133,8 @@ function resolveSolidBackground(layers) {
 }
 const expectedGeneralGroups = ['基础配置', '翻译服务选择', '网页辅助', '基本偏好'];
 const expectedGeneralSubgroups = [];
-const expectedInterfaceGroups = ['译文样式', '逐句高亮样式', '完整句学习外观', '界面与弹窗', '翻译加载样式', '菜单栏布局', '界面字体'];
+const expectedInterfacePanelOrder = ['translation', 'skin', 'motion', 'layout', 'video-learning', 'font'];
+const expectedInterfaceGroups = ['译文样式', '逐句高亮样式', '界面与弹窗', '翻译加载样式', '菜单栏布局', '完整句学习外观', '界面字体'];
 // 划词触发、翻译卡片与朗读均在划词页；阅读辅助保留在翻译设置首项。
 const expectedTranslationGroups = ['阅读辅助', '智能高亮', '鼠标悬浮翻译', '输入框翻译', '全文翻译', '右键菜单', '悬浮球进阶设置', '段落复制', '局部翻译', '不翻译的语言'];
 const expectedLoadingStyles = [
@@ -1761,7 +1762,7 @@ async function main() {
       name: panel.getAttribute('data-settings-panel'),
       visible: panel.getClientRects().length > 0,
     })));
-    if (JSON.stringify(interfacePanelContract.map(panel => panel.name)) !== JSON.stringify(['translation', 'video-learning', 'skin', 'motion', 'layout', 'font'])
+    if (JSON.stringify(interfacePanelContract.map(panel => panel.name)) !== JSON.stringify(expectedInterfacePanelOrder)
       || interfacePanelContract.some(panel => !panel.visible)) {
       throw new Error(`界面风格的连续 SettingsPanel 契约异常：${JSON.stringify(interfacePanelContract)}`);
     }
@@ -1941,7 +1942,7 @@ async function main() {
     const interfaceGroups = (await interfaceSection.locator('.settings-group-heading h2').allTextContents()).map(value => value.trim());
     if (await interfaceSettingsGroup.count() !== 1 || await menuLayoutSettingsGroup.count() !== 1
       || JSON.stringify(interfaceGroups) !== JSON.stringify(expectedInterfaceGroups)) {
-      throw new Error(`界面风格没有按顺序提供译文、逐句高亮、完整句学习、界面与弹窗、加载样式、菜单栏布局和字体分组：${JSON.stringify(interfaceGroups)}`);
+      throw new Error(`界面风格没有按顺序提供译文、逐句高亮、界面与弹窗、加载样式、菜单栏布局、完整句学习和字体分组：${JSON.stringify(interfaceGroups)}`);
     }
     if (/Popup\s*布局/iu.test(await interfaceSection.innerText())) {
       throw new Error('界面布局仍向用户显示 Popup 布局旧名称');
